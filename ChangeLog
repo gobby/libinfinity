@@ -1,0 +1,13 @@
+2007-02-16  Armin Burgmeier  <armin@arbur.net>
+
+	* configure.ac:
+	* Makefile.am:
+	* AUTHORS:
+	* NEWS:
+	* README:
+	* COPYING:
+	* INSTALL:
+	* infinity/Makefile.am:
+	* infinity/inf-config.h.in:
+	* infinity/inf-netobject.h:
+	* infinity/inf-netobject.c: Initial revision.

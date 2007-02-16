@@ -1,0 +1,42 @@
+
+ 1. Components
+
+infinote consists of four parts:
+
+libinfinity:
+  Library with common functionality for the other three components
+
+libinfinoted:
+  Library containing functionality to set up an infinote server
+
+infinoted:
+  Simple stand-alone infinote server application.
+
+infinote:
+  Client application.
+
+ 2. Requirements
+
+libinfinity requires:
+ - glib-2.0 >= 2.12
+ - gobject-2.0 >= 2.12
+ - libxml-2.0
+ - gnetwork-0.11
+
+libinfinoted requires:
+  - libinfinity
+  - avahi (optional)
+
+infinoted:
+  - libinfinoted
+
+infinote:
+  - libinfinity
+  - gtk+-2.0 >= 2.10
+  - libinfinoted (optional)
+  - avahi (optional)
+
+ 3. Developers
+
+This program is developed by Armin Burgmeier <armin@arbur.net>. Artwork is
+done by Benjamin Herr <ben@0x539.de>.
