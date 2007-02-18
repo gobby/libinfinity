@@ -15,9 +15,14 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
-AC_CONFIG_FILES(
+PKG_CHECK_MODULES([glib], [glib-2.0 >= 2.12])
+PKG_CHECK_MODULES([gobject], [gobject-2.0 >= 2.12])
+PKG_CHECK_MODULES([libgnetwork], [libgnetwork-1.0 >= 0.0.10])
+PKG_CHECK_MODULES([libxml2], [libxml-2.0])
+
+AC_CONFIG_FILES([
 	Makefile
 		infinity/Makefile
-)
+])
 
 AC_OUTPUT

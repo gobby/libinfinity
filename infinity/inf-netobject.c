@@ -26,7 +26,7 @@ inf_net_object_get_type(void)
   if(!net_object_type)
   {
     static const GTypeInfo net_object_info = {
-      sizeof(InfNetObjectInterface), /* class_size */
+      sizeof(InfNetObjectIface),     /* class_size */
       (GBaseInitFunc)NULL,           /* base_init */
       (GBaseFinalizeFunc)NULL,       /* base_finalize */
       (GClassInitFunc)NULL,          /* class_init */

@@ -1,3 +1,16 @@
+2007-02-18  Armin Burgmeier  <armin@arbur.net>
+
+	* configure.ac: Added check for glib, gobject, libgnetwork and
+	libxml2.
+
+	* infinity/Makefile.am: Add CFLAGS and libs of dependencies to
+	libinfinity_1_0_la_CPPFLAGS respectively libinfinity_1_0_la_LIBADD.
+
+	* infinity/inf-netobject.h: Added libgnetwork/gnetwork-connection.h
+	and libxml/tree.h includes to make it actually compile.
+
+	* infinity/inf-config.h.in: Removed generated file from repository.
+
 2007-02-16  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac:
