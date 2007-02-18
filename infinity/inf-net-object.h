@@ -19,11 +19,11 @@
 #ifndef __INF_NET_OBJECT_H__
 #define __INF_NET_OBJECT_H__
 
-#include <glib-object.h>
-
 #include <libgnetwork/gnetwork-connection.h>
 
 #include <libxml/tree.h>
+
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
@@ -36,16 +36,16 @@ typedef struct _InfNetObject InfNetObject;
 typedef struct _InfNetObjectIface InfNetObjectIface;
 
 struct _InfNetObjectIface {
-	GTypeInterface parent;
+  GTypeInterface parent;
 
-	/* Virtual Table */
-	void (*received)(InfNetObject* object,
-                         GNetworkConnection* conn,
-                         const xmlNodePtr node);
+  /* Virtual Table */
+  void (*received)(InfNetObject* object,
+                   GNetworkConnection* conn,
+                   const xmlNodePtr node);
 
-	void (*sent)(InfNetObject* object,
-                     GNetworkConnection* conn,
-                     const xmlNodePtr node);
+  void (*sent)(InfNetObject* object,
+               GNetworkConnection* conn,
+               const xmlNodePtr node);
 };
 
 GType

@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <infinity/inf-netobject.h>
+#include <infinity/inf-net-object.h>
 
 GType
 inf_net_object_get_type(void)
@@ -27,14 +27,14 @@ inf_net_object_get_type(void)
   {
     static const GTypeInfo net_object_info = {
       sizeof(InfNetObjectIface),     /* class_size */
-      (GBaseInitFunc)NULL,           /* base_init */
-      (GBaseFinalizeFunc)NULL,       /* base_finalize */
-      (GClassInitFunc)NULL,          /* class_init */
-      (GClassFinalizeFunc)NULL,      /* class_finalize */
+      NULL,                          /* base_init */
+      NULL,                          /* base_finalize */
+      NULL,                          /* class_init */
+      NULL,                          /* class_finalize */
       NULL,                          /* class_data */
       0,                             /* instance_size */
       0,                             /* n_preallocs */
-      (GInstanceInitFunc)NULL,       /* instance_init */
+      NULL,                          /* instance_init */
       NULL                           /* value_table */
     };
 

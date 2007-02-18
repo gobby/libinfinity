@@ -17,7 +17,9 @@ libinfinity_1_0_ladir = infinity
 
 libinfinity_1_0_la_HEADERS = \
 	inf-config.h \
-	inf-netobject.h
+	inf-connection-manager.h \
+	inf-net-object.h
 
 libinfinity_1_0_la_SOURCES = \
-	inf-netobject.c
+	inf-connection-manager.c \
+	inf-net-object.c

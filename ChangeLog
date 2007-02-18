@@ -1,5 +1,13 @@
 2007-02-18  Armin Burgmeier  <armin@arbur.net>
 
+	* infinity/inf-connection-manager.c:
+	* infinity/inf-connection-manager.h: Added InfConnectionManager class,
+	not yet fully implemented, but compilable.
+
+	* infinity/Makefile.am: Added inf-connection-manager.[ch].
+
+2007-02-18  Armin Burgmeier  <armin@arbur.net>
+
 	* infinity/inf-net-object.h:
 	* infinity/inf-net-object.c: Renamed inf-netobject.[ch] to
 	inf-net-object.[ch].
