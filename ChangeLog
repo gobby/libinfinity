@@ -1,5 +1,16 @@
 2007-02-18  Armin Burgmeier  <armin@arbur.net>
 
+	* infinity/inf-net-object.h:
+	* infinity/inf-net-object.c: Renamed inf-netobject.[ch] to
+	inf-net-object.[ch].
+
+2007-02-18  Armin Burgmeier  <armin@arbur.net>
+
+	* infinity/inf-netobject.h: Replaced INF_NET_OBJECT_TYPE by
+	INF_TYPE_NET_OBJECT to follow gobject naming conventions.
+
+2007-02-18  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac: Added check for glib, gobject, libgnetwork and
 	libxml2.
 
