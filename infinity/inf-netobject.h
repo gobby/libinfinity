@@ -16,8 +16,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INF_NETOBJECT_H__
-#define __INF_NETOBJECT_H__
+#ifndef __INF_NET_OBJECT_H__
+#define __INF_NET_OBJECT_H__
 
 #include <glib-object.h>
 
@@ -27,10 +27,10 @@
 
 G_BEGIN_DECLS
 
-#define INF_NET_OBJECT_TYPE                 (inf_net_object_get_type())
-#define INF_NET_OBJECT(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_NET_OBJECT_TYPE, InfNetObject))
-#define INF_IS_NET_OBJECT(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_NET_OBJECT_TYPE))
-#define INF_NET_OBJECT_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_NET_OBJECT_TYPE, InfNetObjectIface))
+#define INF_TYPE_NET_OBJECT                 (inf_net_object_get_type())
+#define INF_NET_OBJECT(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_NET_OBJECT, InfNetObject))
+#define INF_IS_NET_OBJECT(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_NET_OBJECT))
+#define INF_NET_OBJECT_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_NET_OBJECT, InfNetObjectIface))
 
 typedef struct _InfNetObject InfNetObject;
 typedef struct _InfNetObjectIface InfNetObjectIface;
@@ -63,4 +63,4 @@ inf_net_object_sent(InfNetObject* object,
 
 G_END_DECLS
 
-#endif /* __INF_NETOBJCET_H__ */
+#endif /* __INF_NET_OBJECT_H__ */
