@@ -1,3 +1,17 @@
+2007-02-19  Armin Burgmeier  <armin@arbur.net>
+
+	* infinity/inf-xml-stream.c:
+	* infinity/inf-xml-stream.h:
+	* infinity/Makefile.am: Added InfXmlStream class.
+
+	* test/inf-test-xml-stream.c:
+	* test/inf-test-stream.xml:
+	* test/Makefile.am: Simple test routine to test functionality of
+	InfXmlStream.
+
+	* configure.ac: Create test/Makefile.
+	* Makefile.am: Added test to SUBDIRS.
+
 2007-02-18  Armin Burgmeier  <armin@arbur.net>
 
 	* infinity/inf-connection-manager.c:

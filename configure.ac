@@ -2,7 +2,7 @@ AC_PREREQ(2.59)
 AC_INIT([infinote], [0.1.0], [armin@arbur.net])
 AM_INIT_AUTOMAKE([infinote], 1.9, check-news)
 AM_MAINTAINER_MODE
-AC_CONFIG_SRCDIR([infinity/inf-netobject.h])
+AC_CONFIG_SRCDIR([infinity/inf-net-object.h])
 AC_CONFIG_HEADER([infinity/inf-config.h])
 
 AC_CANONICAL_HOST
@@ -23,6 +23,8 @@ PKG_CHECK_MODULES([libxml2], [libxml-2.0])
 AC_CONFIG_FILES([
 	Makefile
 		infinity/Makefile
+
+		test/Makefile
 ])
 
 AC_OUTPUT

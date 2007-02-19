@@ -18,8 +18,10 @@ libinfinity_1_0_ladir = infinity
 libinfinity_1_0_la_HEADERS = \
 	inf-config.h \
 	inf-connection-manager.h \
-	inf-net-object.h
+	inf-net-object.h \
+	inf-xml-stream.h
 
 libinfinity_1_0_la_SOURCES = \
 	inf-connection-manager.c \
-	inf-net-object.c
+	inf-net-object.c \
+	inf-xml-stream.c

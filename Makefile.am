@@ -1,1 +1,1 @@
-SUBDIRS = infinity
+SUBDIRS = infinity test

@@ -281,7 +281,7 @@ inf_connection_manager_add_connection(InfConnectionManager* manager,
   GSList* item;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(G_NETWORK_IS_CONNECTION(connection));
+  g_return_if_fail(GNETWORK_IS_CONNECTION(connection));
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
   item = g_slist_find(priv->connections, connection);
@@ -489,7 +489,7 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
-  g_return_if_fail(INF_IS_NET_OBJCET(object));
+  g_return_if_fail(INF_IS_NET_OBJECT(object));
 
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_if_fail(conn != NULL);
