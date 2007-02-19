@@ -84,7 +84,7 @@ void
 inf_connection_manager_send_to_object(InfConnectionManager* manager,
                                       GNetworkConnection* gnetwork_conn,
                                       InfNetObject* object,
-                                      const xmlNodePtr message);
+                                      xmlNodePtr message);
 
 G_END_DECLS
 

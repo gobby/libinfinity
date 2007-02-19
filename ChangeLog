@@ -1,5 +1,11 @@
 2007-02-19  Armin Burgmeier  <armin@arbur.net>
 
+	* infinity/inf-connection-manager.h:
+	* infinity/inf-connection-manager.c: Implemented message processing
+	and inf_connection_manager_send_to_object().
+
+2007-02-19  Armin Burgmeier  <armin@arbur.net>
+
 	* infinity/inf-xml-stream.c:
 	* infinity/inf-xml-stream.h:
 	* infinity/Makefile.am: Added InfXmlStream class.

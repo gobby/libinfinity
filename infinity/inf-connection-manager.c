@@ -17,6 +17,7 @@
  */
 
 #include <infinity/inf-connection-manager.h>
+#include <infinity/inf-xml-stream.h>
 
 typedef struct _InfConnectionManagerPrivate InfConnectionManagerPrivate;
 struct _InfConnectionManagerPrivate {
@@ -28,12 +29,158 @@ struct _InfConnectionManagerConnection {
   /* These hash tables map NetObjects to their identifiers and vice versa. */
   GHashTable* objects;
   GHashTable* identifiers;
+
+  InfXmlStream* stream_received;
+  InfXmlStream* stream_sent;
 };
 
 #define INF_CONNECTION_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_CONNECTION_MANAGER, InfConnectionManagerPrivate))
 
 static GObjectClass* parent_class;
 static GQuark connection_quark;
+
+static InfNetObject*
+inf_connection_manager_connection_grab(InfConnectionManagerConnection* conn,
+                                       xmlNodePtr message)
+{
+  xmlChar* identifier;
+  InfNetObject* object;
+
+  object = NULL;
+  if(strcmp((const char*)message->name, "message") == 0)
+  {
+    identifier = xmlGetProp(message, (const xmlChar*)"to");
+    if(identifier != NULL)
+    {
+      object = g_hash_table_lookup(conn->objects, (const gchar*)identifier);
+      xmlFree(identifier);
+    }
+  }
+
+  return object;
+}
+
+static void
+inf_connection_manager_connection_sent_cb(GNetworkConnection* gnetwork_conn,
+                                          gpointer data,
+                                          gulong len,
+                                          gpointer user_data)
+{
+  InfConnectionManagerConnection* conn;
+  InfNetObject* object;
+  GError* error;
+
+  xmlNodePtr message;
+  xmlNodePtr child;
+  gsize bytes_read;
+  gsize bytes_cur;
+
+  conn = (InfConnectionManagerConnection*)user_data;
+
+  error = NULL;
+  bytes_read = 0;
+
+  while(bytes_read < len)
+  {
+    message = inf_xml_stream_parse(
+      conn->stream_sent,
+      (gchar*)data + bytes_read,
+      len - bytes_read,
+      &bytes_cur,
+      &error
+    );
+
+    /* We really should not get an error here because this is XML we produced
+     * in inf_connection_manager_send_to_object(). */
+    g_assert(error != NULL);
+
+    bytes_read += bytes_cur;
+    if(message != NULL)
+    {
+      object = inf_connection_manager_connection_grab(conn, message);
+
+      /* It may happen that a NetObject sends things but is removed until
+       * the data is really sent out, so do not assert here. */
+      if(object != NULL)
+      {
+        for(child = message->children; child != NULL; child = child->next)
+        {
+          inf_net_object_received(object, gnetwork_conn, child);
+        }
+      }
+
+      xmlFreeNode(message);
+    }
+  }
+}
+
+static void
+inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
+                                              gpointer data,
+                                              gulong len,
+                                              gpointer user_data)
+{
+  InfConnectionManagerConnection* conn;
+  InfNetObject* object;
+  gchar* address;
+  GError* error;
+
+  xmlNodePtr message;
+  xmlNodePtr child;
+  guint bytes_read;
+  guint bytes_cur;
+
+  conn = (InfConnectionManagerConnection*)user_data;
+
+  error = NULL;
+  bytes_read = 0;
+
+  while(bytes_read < len)
+  {
+    message = inf_xml_stream_parse(
+      conn->stream_received,
+      (gchar*)data + bytes_read,
+      len - bytes_read,
+      &bytes_cur,
+      &error
+    );
+
+    if(error != NULL)
+    {
+      g_object_get(G_OBJECT(gnetwork_conn), "address", &address, NULL);
+
+      fprintf(
+        stderr,
+        "Received bad XML from %s: %s\n",
+        address,
+        error->message
+      );
+
+      gnetwork_connection_close(gnetwork_conn);
+      g_error_free(error);
+      g_free(address);
+
+      return;
+    }
+    else
+    {
+      bytes_read += bytes_cur;
+      if(message != NULL)
+      {
+        object = inf_connection_manager_connection_grab(conn, message);
+        if(object != NULL)
+        {
+          for(child = message->children; child != NULL; child = child->next)
+          {
+            inf_net_object_received(object, gnetwork_conn, child);
+          }
+        }
+
+        xmlFreeNode(message);
+      }
+    }
+  }
+}
 
 static void
 inf_connection_manager_connection_weak_notify_func(gpointer data,
@@ -88,8 +235,23 @@ inf_connection_manager_connection_unassoc(GNetworkConnection* gnetwork_conn)
     conn
   );
 
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(gnetwork_conn),
+    G_CALLBACK(inf_connection_manager_connection_received_cb),
+    conn
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(gnetwork_conn),
+    G_CALLBACK(inf_connection_manager_connection_sent_cb),
+    conn
+  );
+
   g_hash_table_destroy(conn->objects);
   g_hash_table_destroy(conn->identifiers);
+
+  g_object_unref(G_OBJECT(conn->stream_received));
+  g_object_unref(G_OBJECT(conn->stream_sent));
 
   g_free(conn);
 }
@@ -110,12 +272,29 @@ inf_connection_manager_connection_assoc(GNetworkConnection* gnetwork_conn)
     conn
   );
 
+  g_signal_connect(
+    G_OBJECT(gnetwork_conn),
+    "received",
+    G_CALLBACK(inf_connection_manager_connection_received_cb),
+    conn
+  );
+
+  g_signal_connect(
+    G_OBJECT(gnetwork_conn),
+    "sent",
+    G_CALLBACK(inf_connection_manager_connection_sent_cb),
+    conn
+  );
+
   /* These hash tables convert an object's identifier to the
    * InfNetObject and back. Both operate on the same string (the same
    * as in the char poniters point to the same memory) and the same
    * NetObject. */
   conn->objects = g_hash_table_new(g_str_hash, g_str_equal);
   conn->identifiers = g_hash_table_new(NULL, NULL);
+
+  conn->stream_received = inf_xml_stream_new();
+  conn->stream_sent = inf_xml_stream_new();
 
   return conn;
 }
@@ -150,6 +329,22 @@ inf_connection_manager_connection_notify_status_cb(GNetworkConnection* conn,
 }
 
 static void
+inf_connection_manager_connection_error_cb(GNetworkConnection* conn,
+                                           GError* error,
+                                           gpointer user_data)
+{
+  InfConnectionManager* manager;
+  InfConnectionManagerPrivate* priv;
+
+  manager = INF_CONNECTION_MANAGER(user_data);
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  /* Remove connection on error */
+  inf_connection_manager_free_connection(manager, conn);
+  priv->connections = g_slist_remove(priv->connections, conn);
+}
+
+static void
 inf_connection_manager_free_connection(InfConnectionManager* manager,
                                        GNetworkConnection* gnetwork_conn)
 {
@@ -158,6 +353,12 @@ inf_connection_manager_free_connection(InfConnectionManager* manager,
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(gnetwork_conn),
     G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
+    manager
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(gnetwork_conn),
+    G_CALLBACK(inf_connection_manager_connection_error_cb),
     manager
   );
 
@@ -295,6 +496,13 @@ inf_connection_manager_add_connection(InfConnectionManager* manager,
     G_OBJECT(connection),
     "notify::status",
     G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
+    manager
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(connection),
+    "error",
+    G_CALLBACK(inf_connection_manager_connection_error_cb),
     manager
   );
 }
@@ -507,4 +715,62 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
     inf_connection_manager_connection_weak_notify_func,
     conn
   );
+}
+
+/** inf_connection_manager_send_to_object:
+ *
+ * @manager A #InfConnectionManager
+ * @gnetwork_con A #GNetworkConnection managed by @manager
+ * @object A #InfNetObject to which to send a message
+ * @message The message to send
+ *
+ * This function will send a XML-based message to the other end of
+ * @gnetwork_conn. If there is another #InfConnectionManager on the other
+ * end it will forward the message to the #InfNetObject with the same
+ * identifier (see inf_connection_manager_add_object()).
+ **/
+void
+inf_connection_manager_send_to_object(InfConnectionManager* manager,
+                                      GNetworkConnection* gnetwork_conn,
+                                      InfNetObject* object,
+                                      xmlNodePtr message)
+{
+  InfConnectionManagerConnection* conn;
+  const gchar* identifier;
+
+  xmlNodePtr header;
+  xmlDocPtr doc;
+  xmlBufferPtr buffer;
+
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
+  g_return_if_fail(INF_IS_NET_OBJECT(object));
+  g_return_if_fail(message != NULL);
+
+  conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
+  g_return_if_fail(conn != NULL);
+
+  identifier = g_hash_table_lookup(conn->identifiers, object);
+  g_return_if_fail(identifier != NULL);
+
+  header = xmlNewNode(NULL, (const xmlChar*)"message");
+  xmlNewProp(header, (const xmlChar*)"to", (const xmlChar*)identifier);
+  xmlAddChild(header, message);
+
+  doc = xmlNewDoc(NULL);
+  xmlDocSetRootElement(doc, header);
+
+  buffer = xmlBufferCreate();
+  xmlNodeDump(buffer, doc, header, 0, 0);
+
+  xmlUnlinkNode(message);
+  xmlFreeDoc(doc);
+
+  gnetwork_connection_send(
+    gnetwork_conn,
+    xmlBufferContent(buffer),
+    xmlBufferLength(buffer)
+  );
+
+  xmlBufferFree(buffer);
 }
