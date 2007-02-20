@@ -1,5 +1,11 @@
 2007-02-20  Armin Burgmeier  <armin@arbur.net>
 
+	* infinity/inf-stroke.h:
+	* infinity/inf-stroke.c: Added position to InfStroke to which
+	the coordinates of the contained InfStrokePoints are relative.
+
+2007-02-20  Armin Burgmeier  <armin@arbur.net>
+
 	* infinity/inf-xml-stream.c:
 	* infinity/inf-connection-manager.c: Documentation fixes.
 

@@ -53,7 +53,26 @@ inf_stroke_new(void)
   stroke->points = NULL;
   stroke->n_points = 0;
 
+  stroke->x = 0.0;
+  stroke->y = 0.0;
+
   return stroke;
+}
+
+/** inf_stroke_new_at:
+ *
+ * @x: X position of the new stroke.
+ * @y: Y position of the new stroke.
+ *
+ * Creates a new #InfStroke at the specified position. The coordinates of
+ * the points within the stroke are relative to the stroke's position.
+ *
+ * Return Value: A new #InfStroke.
+ **/
+InfStroke*
+inf_stroke_new_at(gdouble x,
+                  gdouble y)
+{
 }
 
 /** inf_stroke_copy:
@@ -83,6 +102,9 @@ inf_stroke_copy(const InfStroke* stroke)
   new_stroke->id = 0;
   new_stroke->points = g_new(InfStrokePoint, stroke->n_points);
   new_stroke->n_points = stroke->n_points;
+
+  new_stroke->x = stroke->x;
+  new_stroke->y = stroke->y;
 
   if(stroke->n_points > 0)
   {

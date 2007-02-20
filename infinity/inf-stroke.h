@@ -41,6 +41,9 @@ struct _InfStroke {
 
   InfStrokePoint* points;
   guint n_points;
+
+  gdouble x;
+  gdouble y;
 };
 
 GType
@@ -48,6 +51,10 @@ inf_stroke_get_type(void) G_GNUC_CONST;
 
 InfStroke*
 inf_stroke_new(void);
+
+InfStroke*
+inf_stroke_new_at(gdouble x,
+                  gdouble y);
 
 InfStroke*
 inf_stroke_copy(const InfStroke* stroke);
