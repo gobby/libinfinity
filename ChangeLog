@@ -1,5 +1,19 @@
 2007-02-20  Armin Burgmeier  <armin@arbur.net>
 
+	* infinity/inf-connection-manager.c:
+	* infinity/inf-xml-stream.c: Chain up in destructor.
+
+	* infinity/inf-buffer.h:
+	* infinity/inf-buffer.c: Added InfBuffer class managing multiple
+	InfStrokes.
+
+	* infinity/inf-marshal.in: Added input file for glib-genmarshal.
+
+	* infinity/Makefile.am: Create inf-marshal.h and inf-marshal.c from
+	inf-marshal.in. Also added inf-buffer.c to build.
+
+2007-02-20  Armin Burgmeier  <armin@arbur.net>
+
 	* infinity/inf-stroke.h:
 	* infinity/inf-stroke.c: Added position to InfStroke to which
 	the coordinates of the contained InfStrokePoints are relative.

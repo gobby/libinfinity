@@ -244,6 +244,8 @@ inf_xml_stream_finalize(GObject* object)
     xmlFreeParserCtxt(priv->parser);
     priv->parser = NULL;
   }
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 static void

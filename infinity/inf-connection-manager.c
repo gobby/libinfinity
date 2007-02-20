@@ -397,6 +397,8 @@ inf_connection_manager_dispose(GObject* object)
 
   g_slist_free(priv->connections);
   priv->connections = NULL;
+
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
