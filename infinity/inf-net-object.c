@@ -64,7 +64,7 @@ inf_net_object_received(InfNetObject* object,
 
   g_return_if_fail(iface->received != NULL);
 
-  return (*iface->received)(object, conn, node);
+  (*iface->received)(object, conn, node);
 }
 
 void
@@ -82,5 +82,5 @@ inf_net_object_sent(InfNetObject* object,
 
   g_return_if_fail(iface->sent != NULL);
 
-  return (*iface->sent)(object, conn, node);
+  (*iface->sent)(object, conn, node);
 }

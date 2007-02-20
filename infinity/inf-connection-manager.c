@@ -451,7 +451,7 @@ inf_connection_manager_get_type(void)
  *
  * Creates a new connection manager.
  *
- * Return value: A new #InfConnectionManager.
+ * Return Value: A new #InfConnectionManager.
  **/
 InfConnectionManager*
 inf_connection_manager_new(void)
@@ -465,8 +465,8 @@ inf_connection_manager_new(void)
 
 /** inf_connection_manager_add_connection:
  *
- * @manager A #InfConnectionManager.
- * @connection A #GNetworkConnection that is not yet added to the manager.
+ * @manager: A #InfConnectionManager.
+ * @connection: A #GNetworkConnection that is not yet added to the manager.
  *
  * This function adds a new connection to the connection manager. It holds
  * a reference on the connection until the connection is closed or the
@@ -509,14 +509,16 @@ inf_connection_manager_add_connection(InfConnectionManager* manager,
 
 /** inf_connection_manager_get_by_address:
  *
- * @manager A #InfConnectionManager.
- * @address The IP address to which to fetch a connection
- * @port The port to which to fetch a connection
+ * @manager: A #InfConnectionManager.
+ * @address: The IP address to which to fetch a connection
+ * @port: The port to which to fetch a connection
  *
  * This function looks for a connection to the given host and port in the
  * currently open connections the manager manages. If none has been found,
  * a new connection is created. The returned connection might not yet be
  * fully established but yet being opened.
+ *
+ * Return Value: A #GNetworkTcpConnection to the given address.
  **/
 GNetworkTcpConnection*
 inf_connection_manager_get_by_address(InfConnectionManager* manager,
@@ -568,14 +570,16 @@ inf_connection_manager_get_by_address(InfConnectionManager* manager,
 
 /** inf_connection_manager_get_by_hostname:
  *
- * @manager A #InfConnectionManager
- * @hostname The name of the host to which to fetch a connection
- * @port The port to which to fetch a connection
+ * @manager: A #InfConnectionManager
+ * @hostname: The name of the host to which to fetch a connection
+ * @port: The port to which to fetch a connection
  *
  * This function looks for a connection to the given host and port in the
  * currently open connections the manager manages. If none has been found,
  * a new connection is created. The returned connection might not yet be
  * fully established but yet being opened.
+ *
+ * Return Value: A #GNetworkTcpConnection to the given host.
  */
 GNetworkTcpConnection*
 inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
@@ -636,10 +640,10 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
 
 /** inf_connection_manager_add_object:
  *
- * @manager A #InfConnectionManager
- * @gnetwork_conn A #GNetworkConnection that is managed by @manager
- * @object An object implementing #InfNetObject
- * @identifier A unique identifier for @object
+ * @manager: A #InfConnectionManager
+ * @gnetwork_conn: A #GNetworkConnection that is managed by @manager
+ * @object: An object implementing #InfNetObject
+ * @identifier: A unique identifier for @object
  *
  * Adds a #InfNetObject to the given #GNetworkConnection. This allows that
  * messages may be sent to the remote site where a #InfNetObject with the
@@ -677,10 +681,10 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
 
 /** inf_connection_manager_remove_object:
  *
- * @manager A #InfConnectionManager.
- * @gnetwork_conn A #GNetworkConnection that is managed by @manager.
- * @object A #InfNetObject that has been added to @gnetwork_conn by a call
- *         to inf_connection_manager_add_object().
+ * @manager: A #InfConnectionManager.
+ * @gnetwork_conn: A #GNetworkConnection that is managed by @manager.
+ * @object: A #InfNetObject that has been added to @gnetwork_conn by a call
+ *          to inf_connection_manager_add_object().
  *
  * Removes #InfNetObject that has previously been added to a
  * #GNetworkConnection by a call to inf_connection_manager_add_object().
@@ -719,10 +723,10 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
 
 /** inf_connection_manager_send_to_object:
  *
- * @manager A #InfConnectionManager
- * @gnetwork_con A #GNetworkConnection managed by @manager
- * @object A #InfNetObject to which to send a message
- * @message The message to send
+ * @manager: A #InfConnectionManager
+ * @gnetwork_conn: A #GNetworkConnection managed by @manager
+ * @object: A #InfNetObject to which to send a message
+ * @message: The message to send
  *
  * This function will send a XML-based message to the other end of
  * @gnetwork_conn. If there is another #InfConnectionManager on the other

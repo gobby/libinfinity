@@ -19,9 +19,11 @@ libinfinity_1_0_la_HEADERS = \
 	inf-config.h \
 	inf-connection-manager.h \
 	inf-net-object.h \
+	inf-stroke.h \
 	inf-xml-stream.h
 
 libinfinity_1_0_la_SOURCES = \
 	inf-connection-manager.c \
 	inf-net-object.c \
+	inf-stroke.c \
 	inf-xml-stream.c

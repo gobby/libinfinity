@@ -294,7 +294,7 @@ inf_xml_stream_get_type(void)
  *
  * Creates a new XML stream.
  *
- * Return value: A new #InfXmlStream.
+ * Return Value: A new #InfXmlStream.
  **/
 InfXmlStream*
 inf_xml_stream_new(void)
@@ -308,11 +308,11 @@ inf_xml_stream_new(void)
 
 /** inf_xml_stream_parse:
  *
- * @stream A #InfXmlStream.
- * @data Data to parse.
- * @len Length of @data
- * @bytes_read Output parameter to indicate how much of the data has been
- *             parsed.
+ * @stream: A #InfXmlStream.
+ * @data: Data to parse.
+ * @len: Length of @data
+ * @bytes_read: Output parameter to indicate how much of the data has been
+ *              parsed.
  * @error Set if an error occurs.
  *
  * Parses the given XML input. If a XML message is complete, it is returned

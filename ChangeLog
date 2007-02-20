@@ -1,3 +1,16 @@
+2007-02-20  Armin Burgmeier  <armin@arbur.net>
+
+	* infinity/inf-xml-stream.c:
+	* infinity/inf-connection-manager.c: Documentation fixes.
+
+	* infinity/inf-net-object.c: Removed return in inf_net_object_sent()
+	and inf_net_object_received() because these functions are void.
+
+	* infinity/inf-stroke.h:
+	* infinity/inf-stroke.c: Added object representing a single stroke.
+
+	* infinity/Makefile.am: Added inf-stroke.c to build.
+
 2007-02-19  Armin Burgmeier  <armin@arbur.net>
 
 	* infinity/inf-connection-manager.h:
