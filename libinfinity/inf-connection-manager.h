@@ -19,7 +19,7 @@
 #ifndef __INF_CONNECTION_MANAGER_H__
 #define __INF_CONNECTION_MANAGER_H__
 
-#include <infinity/inf-net-object.h>
+#include <libinfinity/inf-net-object.h>
 
 #include <libgnetwork/gnetwork-tcp-connection.h>
 #include <libgnetwork/gnetwork-connection.h>

@@ -19,7 +19,7 @@
 #ifndef __INF_BUFFER_H__
 #define __INF_BUFFER_H__
 
-#include <infinity/inf-stroke.h>
+#include <libinfinity/inf-stroke.h>
 
 #include <glib-object.h>
 

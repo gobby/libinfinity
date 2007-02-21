@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <infinity/inf-xml-stream.h>
+#include <libinfinity/inf-xml-stream.h>
 
 #include <libxml/parser.h>
 

@@ -16,8 +16,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <infinity/inf-buffer.h>
-#include <infinity/inf-marshal.h>
+#include <libinfinity/inf-buffer.h>
+#include <libinfinity/inf-marshal.h>
 
 typedef struct _InfBufferPrivate InfBufferPrivate;
 struct _InfBufferPrivate {

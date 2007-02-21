@@ -11,4 +11,4 @@ inf_test_xml_stream_SOURCES = \
 	inf-test-xml-stream.c
 
 inf_test_xml_stream_LDADD = \
-	${top_builddir}/infinity/libinfinity-1.0.la
+	${top_builddir}/libinfinity/libinfinity-1.0.la

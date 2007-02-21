@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <infinity/inf-net-object.h>
+#include <libinfinity/inf-net-object.h>
 
 GType
 inf_net_object_get_type(void)

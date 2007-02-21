@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <infinity/inf-stroke.h>
+#include <libinfinity/inf-stroke.h>
 
 #include <string.h>
 
@@ -73,6 +73,17 @@ InfStroke*
 inf_stroke_new_at(gdouble x,
                   gdouble y)
 {
+  InfStroke* stroke;
+  stroke = g_new(InfStroke, 1);
+
+  stroke->id = 0;
+  stroke->points = NULL;
+  stroke->n_points = 0;
+
+  stroke->x = x;
+  stroke->y = y;
+
+  return stroke;
 }
 
 /** inf_stroke_copy:

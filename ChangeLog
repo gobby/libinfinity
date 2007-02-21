@@ -1,5 +1,16 @@
 2007-02-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity: Renamed infinity directory to libinfinity.
+
+	* configure.ac:
+	* Makefile.am:
+	* test/Makefile.am:
+	* test/inf-test-xml-stream.c:
+	* libinfinity/*.[ch]: Changed references and includes from infinity to
+	libinfinity. Also implemented inf_stroke_new_at().
+
+2007-02-21  Armin Burgmeier  <armin@arbur.net>
+
 	* infinity/inf-net-object.c: Add G_TYPE_OBJECT prerequisite.
 
 2007-02-20  Armin Burgmeier  <armin@arbur.net>
