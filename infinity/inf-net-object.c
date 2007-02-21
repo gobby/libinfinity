@@ -44,6 +44,8 @@ inf_net_object_get_type(void)
       &net_object_info,
       0
     );
+
+    g_type_interface_add_prerequisite(net_object_type, G_TYPE_OBJECT);
   }
 
   return net_object_type;
