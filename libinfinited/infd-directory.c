@@ -24,6 +24,8 @@ typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfdDirectoryStorage* storage;
   InfConnectionManager* connection_manager;
+
+  GNetworkServer* server;
 };
 
 enum {
@@ -36,6 +38,42 @@ enum {
 #define INFD_DIRECTORY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_DIRECTORY, InfdDirectoryPrivate))
 
 static GObjectClass* parent_class;
+
+static void
+infd_directory_server_notify_status_cb(GNetworkServer* server,
+                                       const gchar* property,
+                                       gpointer user_data)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  GNetworkServerStatus status;
+
+  directory = INFD_DIRECTORY(user_data);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_object_get(G_OBJECT(server), "status", &status, NULL);
+
+  if(status == GNETWORK_SERVER_OPEN)
+  {
+    /* TODO: Announce on avahi, if not already */
+  }
+  else
+  {
+    /* TODO: Unannounce on avahi, if not already */
+  }
+}
+
+static void
+infd_directory_server_error_cb(GNetworkServer* server,
+                               GError* error,
+                               gpointer user_data)
+{
+  InfdDirectory* directory;
+  directory = INFD_DIRECTORY(user_data);
+
+  /* Close server on error */
+  infd_directory_set_server(directory, NULL);
+}
 
 static void
 infd_directory_set_storage(InfdDirectory* directory,
@@ -55,13 +93,13 @@ infd_directory_set_storage(InfdDirectory* directory,
     g_object_unref(G_OBJECT(priv->storage));
   }
 
+  priv->storage = storage;
+
   if(storage != NULL)
   {
     /* TODO: Send root folder to all connections that opened root folder */
     g_object_ref(G_OBJECT(storage));
   }
-
-  priv->storage = storage;
 }
 
 static void
@@ -73,22 +111,21 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
 
   if(priv->connection_manager != NULL)
   {
-    /* TODO: Close all sessions (?) */
-
     /* TODO: call inf_connection_manager_remove_object() for every connection
-     * we accepted */
-
-    /* TODO: Remove all connections */
+     * we accepted. */
 
     g_object_unref(G_OBJECT(priv->connection_manager));
   }
 
+  priv->connection_manager = manager;
+
   if(manager != NULL)
   {
+    /* TODO: Add all connections to the new connection manager. */
+
+    /* TODO: Call inf_connection_manager_add_object() for every connection. */
     g_object_ref(G_OBJECT(manager));
   }
-
-  priv->connection_manager = manager;
 }
 
 static void
@@ -103,6 +140,7 @@ infd_directory_init(GTypeInstance* instance,
 
   priv->storage = NULL;
   priv->connection_manager = NULL;
+  priv->server = NULL;
 }
 
 static void
@@ -113,6 +151,8 @@ infd_directory_dispose(GObject* object)
 
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_set_server(directory, NULL);
 
   /* It is important that the connection manager is unrefed first, otherwise
    * we would call infd_directory_set_storage while we have still connections
@@ -301,8 +341,7 @@ infd_directory_get_type(void)
  * connections to and which forwards incoming data to the directory
  * or running sessions.
  *
- * Creates a new #InfdDirectory that listens on a random port for
- * incoming connections and announces itself via avahi.
+ * Creates a new #InfdDirectory.
  *
  * Return Value: A new #InfdDirectory.
  **/
@@ -353,4 +392,108 @@ infd_directory_get_connection_manager(InfdDirectory* directory)
 {
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
   return INFD_DIRECTORY_PRIVATE(directory)->connection_manager;
+}
+
+/** infd_directory_set_server:
+ *
+ * @directory: A #InfdDirectory.
+ * @server: A #GNetworkServer, or %NULL.
+ *
+ * Makes @directory use @server to listen for incoming connections. If a
+ * server was set previously, this one will overwrite the old. If you do not
+ * own a reference of the old one anymore, and the "close-children" property
+ * of it is set to TRUE, all connections from the old server will be closed.
+ *
+ * It is your responsibility to open @server. If an error occurs, @server
+ * will be unset from @directory. If @server is open, incoming connections
+ * are accepted and requests from them are handled by @directory.
+ *
+ * @server may be %NULL to unset the server which is currently in use.
+ **/
+void
+infd_directory_set_server(InfdDirectory* directory,
+                          GNetworkServer* server)
+{
+  InfdDirectoryPrivate* priv;
+  GNetworkServerStatus status;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(server == NULL || GNETWORK_IS_SERVER(server));
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(priv->server != NULL)
+  {
+    /* TODO: Unannounce on avahi, if not already */
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->server),
+      G_CALLBACK(infd_directory_server_notify_status_cb),
+      directory
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->server),
+      G_CALLBACK(infd_directory_server_error_cb),
+      directory
+    );
+
+    g_object_unref(G_OBJECT(priv->server));
+  }
+
+  priv->server = server;
+
+  if(server != NULL)
+  {
+    g_signal_connect_after(
+      G_OBJECT(server),
+      "notify::status",
+      G_CALLBACK(infd_directory_server_notify_status_cb),
+      directory
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(server),
+      "error",
+      G_CALLBACK(infd_directory_server_error_cb),
+      directory
+    );
+
+    g_object_get(G_OBJECT(server), "status", &status, NULL);
+
+    if(status == GNETWORK_SERVER_OPEN)
+    {
+      /* TODO: Announce on avahi, if not already */
+    }
+
+    g_object_ref(G_OBJECT(server));
+  }
+}
+
+/** infd_directory_open_server:
+ *
+ * @directory: A #InfdDirectory.
+ * @interface: IP address of interface to bind to, or %NULL.
+ * @port: Port number to bind to, or 0.
+ *
+ * This is a convenience function that creates a new #GNetworkTcpServer
+ * object and then calls infd_directory_set_server(). The created server
+ * is returned and has a reference count of 1 which belongs to @directory.
+ *
+ * Return Value: A newly-created #GNetworkTcpServer.
+ **/
+GNetworkTcpServer*
+infd_directory_open_server(InfdDirectory* directory,
+                           const gchar* interface,
+                           guint port)
+{
+  GNetworkTcpServer* server;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+
+  server = gnetwork_tcp_server_new(interface, port);
+  infd_directory_set_server(directory, GNETWORK_SERVER(server));
+  g_object_unref(G_OBJECT(server));
+
+  return server;
 }
