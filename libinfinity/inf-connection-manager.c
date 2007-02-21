@@ -491,6 +491,7 @@ inf_connection_manager_add_connection(InfConnectionManager* manager,
 
   g_return_if_fail(item == NULL);
 
+  g_object_ref(G_OBJECT(connection));
   inf_connection_manager_connection_assoc(connection);
   priv->connections = g_slist_prepend(priv->connections, connection);
 
@@ -637,6 +638,8 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
   );
 
   inf_connection_manager_add_connection(manager, GNETWORK_CONNECTION(tcp));
+  g_object_unref(G_OBJECT(tcp));
+
   return tcp;
 }
 

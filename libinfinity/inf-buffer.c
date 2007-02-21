@@ -42,11 +42,11 @@ static void
 inf_buffer_init(GTypeInstance* instance,
                 gpointer g_class)
 {
-  InfBuffer* stream;
+  InfBuffer* buffer;
   InfBufferPrivate* priv;
 
-  stream = INF_BUFFER(instance);
-  priv = INF_BUFFER_PRIVATE(stream);
+  buffer = INF_BUFFER(instance);
+  priv = INF_BUFFER_PRIVATE(buffer);
 
   priv->id_counter = 1;
   priv->strokes = g_hash_table_new_full(
@@ -60,11 +60,11 @@ inf_buffer_init(GTypeInstance* instance,
 static void
 inf_buffer_finalize(GObject* object)
 {
-  InfBuffer* stream;
+  InfBuffer* buffer;
   InfBufferPrivate* priv;
 
-  stream = INF_BUFFER(object);
-  priv = INF_BUFFER_PRIVATE(stream);
+  buffer = INF_BUFFER(object);
+  priv = INF_BUFFER_PRIVATE(buffer);
 
   g_hash_table_destroy(priv->strokes);
 

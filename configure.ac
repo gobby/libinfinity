@@ -23,6 +23,7 @@ PKG_CHECK_MODULES([libxml2], [libxml-2.0])
 AC_CONFIG_FILES([
 	Makefile
 		libinfinity/Makefile
+		libinfinited/Makefile
 
 		test/Makefile
 ])

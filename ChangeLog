@@ -1,5 +1,21 @@
 2007-02-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-connection-manager.c: Take a reference of the
+	connection in inf_connection_manager_add_connection().
+
+	* libinfinited/infd-directory.c:
+	* libinfinited/infd-directory-storage.c:
+	* libinfinited/infd-directory.h:
+	* libinfinited/infd-directory-storage.h:
+	* libinfinited/infd-marshal.in:
+	* libinfinited/Makefile.am: Added interface for directory storage in
+	libinfinited and initial directory class.
+
+	* Makefile.am:
+	* configure.ac: Build libinfinited.
+
+2007-02-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity: Renamed infinity directory to libinfinity.
 
 	* configure.ac:
