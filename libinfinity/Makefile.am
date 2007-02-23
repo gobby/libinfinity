@@ -27,18 +27,18 @@ CLEANFILES = inf-marshal.h inf-marshal.c
 libinfinity_1_0_ladir = libinfinity
 
 libinfinity_1_0_la_HEADERS = \
-	inf-buffer.h \
 	inf-config.h \
 	inf-connection-manager.h \
+	inf-ink-buffer.h \
+	inf-ink-stroke.h \
 	inf-marshal.h \
 	inf-net-object.h \
-	inf-stroke.h \
 	inf-xml-stream.h
 
 libinfinity_1_0_la_SOURCES = \
-	inf-buffer.c \
 	inf-connection-manager.c \
+	inf-ink-buffer.c \
+	inf-ink-stroke.c \
 	inf-marshal.c \
 	inf-net-object.c \
-	inf-stroke.c \
 	inf-xml-stream.c

@@ -19,7 +19,7 @@
 #ifndef __INFD_DIRECTORY_STORAGE_H__
 #define __INFD_DIRECTORY_STORAGE_H__
 
-#include <libinfinity/inf-buffer.h>
+#include <libinfinity/inf-ink-buffer.h>
 
 #include <glib-object.h>
 
@@ -28,7 +28,7 @@ G_BEGIN_DECLS
 #define INFD_TYPE_DIRECTORY_STORAGE                 (infd_directory_storage_get_type())
 #define INFD_DIRECTORY_STORAGE(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFD_TYPE_DIRECTORY_STORAGE, InfdDirectoryStorage))
 #define INFD_IS_DIRECTORY_STORAGE(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFD_TYPE_DIRECTORY_STORAGE))
-#define INFD_DIRECTORY_STORAGE_IFACE(inst)          (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_DIRECTORY_STORAGE, InfdDirectoryStorageIface))
+#define INFD_DIRECTORY_STORAGE_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_DIRECTORY_STORAGE, InfdDirectoryStorageIface))
 
 #define INFD_TYPE_DIRECTORY_STORAGE_NODE_TYPE       (infd_directory_storage_node_type_get_type())
 #define INFD_TYPE_DIRECTORY_STORAGE_NODE            (infd_directory_storage_node_get_type())
@@ -38,14 +38,14 @@ typedef struct _InfdDirectoryStorageIface InfdDirectoryStorageIface;
 
 typedef enum _InfdDirectoryStorageNodeType {
   INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY,
-  INFD_DIRECTORY_STORAGE_NODE_NOTE
+  INFD_DIRECTORY_STORAGE_NODE_TEXT,
+  INFD_DIRECTORY_STORAGE_NODE_INK
 } InfdDirectoryStorageNodeType;
 
 typedef struct _InfdDirectoryStorageNode InfdDirectoryStorageNode;
 struct _InfdDirectoryStorageNode {
   InfdDirectoryStorageNodeType type;
   gchar* path;
-  gboolean empty;
 };
 
 struct _InfdDirectoryStorageIface {
@@ -56,12 +56,11 @@ struct _InfdDirectoryStorageIface {
                                const gchar* path,
                                GError** error);
 
-  InfBuffer* (*read_note)(InfdDirectoryStorage* storage,
-                          const gchar* path,
-                          GError** error);
+  InfInkBuffer* (*read_ink)(InfdDirectoryStorage* storage,
+                            const gchar* path,
+                            GError** error);
 
-  /* TODO: Add further methods to add, delete and move notes
-   * and subdirectories */
+  /* TODO: Add further methods to add, delete and move nodes */
 };
 
 GType
@@ -74,9 +73,13 @@ GType
 infd_directory_storage_get_type(void) G_GNUC_CONST;
 
 InfdDirectoryStorageNode*
-infd_directory_storage_node_new(InfdDirectoryStorageNodeType type,
-                                const gchar* path,
-                                gboolean empty);
+infd_directory_storage_node_new_subdirectory(const gchar* path);
+
+InfdDirectoryStorageNode*
+infd_directory_storage_node_new_ink(const gchar* path);
+
+InfdDirectoryStorageNode*
+infd_directory_storage_node_new_text(const gchar* path);
 
 InfdDirectoryStorageNode*
 infd_directory_storage_node_copy(InfdDirectoryStorageNode* node);
@@ -92,10 +95,10 @@ infd_directory_storage_read_subdirectory(InfdDirectoryStorage* storage,
                                          const gchar* path,
                                          GError** error);
 
-InfBuffer*
-infd_directory_storage_read_note(InfdDirectoryStorage* storage,
-                                 const gchar* path,
-                                 GError** error);
+InfInkBuffer*
+infd_directory_storage_read_ink(InfdDirectoryStorage* storage,
+                                const gchar* path,
+                                GError** error);
 
 G_END_DECLS
 

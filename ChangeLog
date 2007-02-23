@@ -1,3 +1,24 @@
+2007-02-23  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-ink-stroke.h:
+	* libinfinity/inf-ink-stroke.c: Renamed from InfStroke to
+	InfInkStroke.
+
+	* libinfinity/inf-ink-buffer.h:
+	* libinfinity/inf-ink-buffer.c: Made an interface out of InfBuffer,
+	renamed to InfInkBuffer.
+
+	* libinfinity/Makefile.am: Adjusted build rules for renamed files.
+
+	* libinfinited/infd-directory-storage.h:
+	* libinfinited/infd-directory-storage.c: Include inf-ink-buffer.h
+	instead of inf-buffer.h, added text node type for upcoming
+	collaborative text editing support, removed empty flag from node
+	(client should query a node to check whether it is empty, this way it
+	can also treat it as empty if it only contains nodes it is not
+	interested in, for example a subdirectory containing only ink nodes
+	will be shown empty in a text editor).
+
 2007-02-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinited/infd-directory.h:

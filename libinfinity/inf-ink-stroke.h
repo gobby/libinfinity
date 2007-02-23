@@ -16,30 +16,30 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INF_STROKE_H__
-#define __INF_STROKE_H__
+#ifndef __INF_INK_STROKE_H__
+#define __INF_INK_STROKE_H__
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INF_TYPE_STROKE                 (inf_stroke_get_type())
+#define INF_TYPE_INK_STROKE                 (inf_ink_stroke_get_type())
 
-typedef struct _InfStroke InfStroke;
+typedef struct _InfInkStroke InfInkStroke;
 
-typedef struct _InfStrokePoint InfStrokePoint;
-struct _InfStrokePoint {
+typedef struct _InfInkStrokePoint InfInkStrokePoint;
+struct _InfInkStrokePoint {
   gdouble x;
   gdouble y;
 
   /* TODO: Add curve information, pressure, tilt */
 };
 
-struct _InfStroke {
+struct _InfInkStroke {
   /* all fields are read-only */
-  guint id; /* used by InfBuffer */
+  guint id; /* used by InfInkBuffer implementations */
 
-  InfStrokePoint* points;
+  InfInkStrokePoint* points;
   guint n_points;
 
   gdouble x;
@@ -47,23 +47,23 @@ struct _InfStroke {
 };
 
 GType
-inf_stroke_get_type(void) G_GNUC_CONST;
+inf_ink_stroke_get_type(void) G_GNUC_CONST;
 
-InfStroke*
-inf_stroke_new(void);
+InfInkStroke*
+inf_ink_stroke_new(void);
 
-InfStroke*
-inf_stroke_new_at(gdouble x,
-                  gdouble y);
+InfInkStroke*
+inf_ink_stroke_new_at(gdouble x,
+                      gdouble y);
 
-InfStroke*
-inf_stroke_copy(const InfStroke* stroke);
+InfInkStroke*
+inf_ink_stroke_copy(const InfInkStroke* ink_stroke);
 
 void
-inf_stroke_free(InfStroke* stroke);
+inf_ink_stroke_free(InfInkStroke* ink_stroke);
 
 /* TODO: Add methods to add points */
 
 G_END_DECLS
 
-#endif /* __INF_STROKE_H__ */
+#endif /* __INF_INK_STROKE_H__ */

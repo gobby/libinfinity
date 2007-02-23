@@ -31,9 +31,13 @@ infd_directory_storage_node_type_get_type(void)
         "INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY",
         "subdirectory"
       }, {
-        INFD_DIRECTORY_STORAGE_NODE_NOTE,
-        "INFD_DIRECTORY_STORAGE_NODE_NOTE",
-        "note"
+        INFD_DIRECTORY_STORAGE_NODE_TEXT,
+        "INFD_DIRECTORY_STORAGE_NODE_TEXT",
+        "text"
+      }, {
+        INFD_DIRECTORY_STORAGE_NODE_INK,
+        "INFD_DIRECTORY_STORAGE_NODE_INK",
+        "ink"
       }, {
         0,
         NULL,
@@ -100,23 +104,19 @@ infd_directory_storage_get_type(void)
   return directory_storage_type;
 }
 
-/** infd_directory_storage_node_new:
+/** infd_directory_storage_node_new_subdirectory:
  *
- * @type: The type of the storage node.
  * @path: Path to the node.
- * @empty: Only used for subdirectory nodes. This specifies whether a
- * subdirectory is empty or not.
  *
- * Creates a new #InfdDirectoryStorageNode with the given attributes. This
- * is most likely only going to be used by InfdDirectoryStorage
+ * Creates a new #InfdDirectoryStorageNode with type
+ * %INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY and the given path. This
+ * is most likely only going to be used by #InfdDirectoryStorage
  * implementations.
  *
  * Return Value: A new #InfdDirectoryStorageNode.
  **/
 InfdDirectoryStorageNode*
-infd_directory_storage_node_new(InfdDirectoryStorageNodeType type,
-                                const gchar* path,
-                                gboolean empty)
+infd_directory_storage_node_new_subdirectory(const gchar* path)
 {
   InfdDirectoryStorageNode* node;
 
@@ -124,9 +124,60 @@ infd_directory_storage_node_new(InfdDirectoryStorageNodeType type,
 
   node = g_slice_new(InfdDirectoryStorageNode);
 
-  node->type = type;
+  node->type = INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY;
   node->path = g_strdup(path);
-  node->empty = empty;
+
+  return node;
+}
+
+/** infd_directory_storage_node_new_text:
+ *
+ * @path: Path to the node.
+ *
+ * Creates a new #InfdDirectoryStorageNode with type
+ * %INFD_DIRECTORY_STORAGE_NODE_TEXT and the given path. This
+ * is most likely only going to be used by #InfdDirectoryStorage
+ * implementations.
+ *
+ * Return Value: A new #InfdDirectoryStorageNode.
+ **/
+InfdDirectoryStorageNode*
+infd_directory_storage_node_new_text(const gchar* path)
+{
+  InfdDirectoryStorageNode* node;
+
+  g_return_val_if_fail(path != NULL, NULL);
+
+  node = g_slice_new(InfdDirectoryStorageNode);
+
+  node->type = INFD_DIRECTORY_STORAGE_NODE_TEXT;
+  node->path = g_strdup(path);
+
+  return node;
+}
+
+/** infd_directory_storage_node_new_subdirectory:
+ *
+ * @path: Path to the node.
+ *
+ * Creates a new #InfdDirectoryStorageNode with type
+ * %INFD_DIRECTORY_STORAGE_NODE_INK and the given path. This
+ * is most likely only going to be used by #InfdDirectoryStorage
+ * implementations.
+ *
+ * Return Value: A new #InfdDirectoryStorageNode.
+ **/
+InfdDirectoryStorageNode*
+infd_directory_storage_node_new_ink(const gchar* path)
+{
+  InfdDirectoryStorageNode* node;
+
+  g_return_val_if_fail(path != NULL, NULL);
+
+  node = g_slice_new(InfdDirectoryStorageNode);
+
+  node->type = INFD_DIRECTORY_STORAGE_NODE_INK;
+  node->path = g_strdup(path);
 
   return node;
 }
@@ -142,8 +193,15 @@ infd_directory_storage_node_new(InfdDirectoryStorageNodeType type,
 InfdDirectoryStorageNode*
 infd_directory_storage_node_copy(InfdDirectoryStorageNode* node)
 {
+  InfdDirectoryStorageNode* new_node;
+
   g_return_val_if_fail(node != NULL, NULL);
-  return infd_directory_storage_node_new(node->type, node->path, node->empty);
+  new_node = g_slice_new(InfdDirectoryStorageNode);
+
+  new_node->type = node->type;
+  new_node->path = g_strdup(node->path);
+
+  return new_node;
 }
 
 /** infd_directory_storage_node_free:
@@ -203,38 +261,40 @@ infd_directory_read_subdirectory(InfdDirectoryStorage* storage,
                                  const gchar* path,
                                  GError** error)
 {
+  InfdDirectoryStorageIface* iface;
+
   g_return_val_if_fail(INFD_IS_DIRECTORY_STORAGE(storage), NULL);
   g_return_val_if_fail(path != NULL, NULL);
 
-  return INFD_DIRECTORY_STORAGE_IFACE(storage)->read_subdirectory(
-    storage,
-    path,
-    error
-  );
+  iface = INFD_DIRECTORY_STORAGE_GET_IFACE(storage);
+  g_return_val_if_fail(iface->read_subdirectory != NULL, NULL);
+
+  return iface->read_subdirectory(storage, path, error);
 }
 
-/** infd_directory_storage_read_note:
+/** infd_directory_storage_read_ink:
  *
  * @storage: A #InfdDirectoryStorage.
  * @path: A path pointing to a note node.
  * @error: Location to store error information.
  *
- * Reads a note from the storage into an #InfBuffer. The caller owns the
+ * Reads a note from the storage into an #InfInkBuffer. The caller owns the
  * initial reference on the buffer.
  *
- * Return Value: A #InfBuffer containing the requested note.
+ * Return Value: A #InfInkBuffer containing the requested note.
  **/
-InfBuffer*
+InfInkBuffer*
 infd_directory_storage_read_note(InfdDirectoryStorage* storage,
                                  const gchar* path,
                                  GError** error)
 {
+  InfdDirectoryStorageIface* iface;
+
   g_return_val_if_fail(INFD_IS_DIRECTORY_STORAGE(storage), NULL);
   g_return_val_if_fail(path != NULL, NULL);
 
-  return INFD_DIRECTORY_STORAGE_IFACE(storage)->read_note(
-    storage,
-    path,
-    error
-  );
+  iface = INFD_DIRECTORY_STORAGE_GET_IFACE(storage);
+  g_return_val_if_fail(iface->read_ink != NULL, NULL);
+
+  return iface->read_ink(storage, path, error);
 }
