@@ -51,18 +51,10 @@ inf_ink_buffer_base_init(gpointer g_class)
       INF_TYPE_INK_STROKE | G_SIGNAL_TYPE_STATIC_SCOPE
     );
 
-    /* Actually, I would like to remove the stroke from the buffer during
-     * the RUN_LAST state and free the InfInkStroke in RUN_CLEANUP so that
-     * people connecting with G_SIGNAL_CONNECT_AFTER still have a valid
-     * stroke that is no longer in the buffer. However, for this to work it
-     * would be required to find out the current emission state in the default
-     * signal handler, so the object is now also taken out from the buffer
-     * in RUN_CLEANUP state. I am however not sure whether it is correct
-     * to specify G_SIGNAL_TYPE_STATIC_SCOPE here. */
     ink_buffer_signals[REMOVE_STROKE] = g_signal_new(
       "remove-stroke",
       G_OBJECT_CLASS_TYPE(object_class),
-      G_SIGNAL_RUN_CLEANUP,
+      G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfInkBufferIface, remove_stroke),
       NULL, NULL,
       inf_marshal_VOID__BOXED,
@@ -167,12 +159,16 @@ inf_ink_buffer_remove_stroke(InfInkBuffer* buffer,
     inf_ink_buffer_get_stroke_by_id(buffer, stroke->id) == stroke
   );
 
+  g_object_ref(G_OBJECT(stroke));
+
   g_signal_emit(
     G_OBJECT(buffer),
     ink_buffer_signals[REMOVE_STROKE],
     0,
     stroke
   );
+
+  g_object_unref(G_OBJECT(stroke));
 }
 
 /** inf_ink_buffer_move_stroke:

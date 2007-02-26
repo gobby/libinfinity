@@ -33,6 +33,8 @@ libinfinity_1_0_la_HEADERS = \
 	inf-ink-stroke.h \
 	inf-marshal.h \
 	inf-net-object.h \
+	inf-session.h \
+	inf-user.h \
 	inf-xml-stream.h
 
 libinfinity_1_0_la_SOURCES = \
@@ -41,4 +43,6 @@ libinfinity_1_0_la_SOURCES = \
 	inf-ink-stroke.c \
 	inf-marshal.c \
 	inf-net-object.c \
+	inf-session.c \
+	inf-user.c \
 	inf-xml-stream.c
