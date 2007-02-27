@@ -19,6 +19,7 @@
 #ifndef __INFD_DIRECTORY_STORAGE_H__
 #define __INFD_DIRECTORY_STORAGE_H__
 
+#include <libinfinity/inf-text-buffer.h>
 #include <libinfinity/inf-ink-buffer.h>
 
 #include <glib-object.h>
@@ -56,11 +57,35 @@ struct _InfdDirectoryStorageIface {
                                const gchar* path,
                                GError** error);
 
-  InfInkBuffer* (*read_ink)(InfdDirectoryStorage* storage,
-                            const gchar* path,
-                            GError** error);
+  gboolean (*read_text)(InfdDirectoryStorage* storage,
+                        const gchar* path,
+                        InfTextBuffer* buffer,
+                        GError** error);
 
-  /* TODO: Add further methods to add, delete and move nodes */
+  gboolean (*read_ink)(InfdDirectoryStorage* storage,
+                       const gchar* path,
+                       InfInkBuffer* buffer,
+                       GError** error);
+
+  gboolean (*create_subdirectory)(InfdDirectoryStorage* storage,
+                                  const gchar* path,
+                                  GError** error);
+
+  gboolean (*write_text)(InfdDirectoryStorage* storage,
+                         const gchar* path,
+                         InfTextBuffer* buffer,
+                         GError** error);
+
+  gboolean (*write_ink)(InfdDirectoryStorage* storage,
+                        const gchar* path,
+                        InfInkBuffer* buffer,
+                        GError** error);
+
+  gboolean (*remove_node)(InfdDirectoryStorage* storage,
+                          const gchar* path,
+                          GError** error);
+
+  /* TODO: Add further methods to copy, move and expunge nodes */
 };
 
 GType
@@ -95,10 +120,39 @@ infd_directory_storage_read_subdirectory(InfdDirectoryStorage* storage,
                                          const gchar* path,
                                          GError** error);
 
-InfInkBuffer*
+gboolean
+infd_directory_storage_read_text(InfdDirectoryStorage* storage,
+                                 const gchar* path,
+                                 InfTextBuffer* buffer,
+                                 GError** error);
+
+gboolean
 infd_directory_storage_read_ink(InfdDirectoryStorage* storage,
                                 const gchar* path,
+                                InfInkBuffer* buffer,
                                 GError** error);
+
+gboolean
+infd_directory_storage_create_subdirectory(InfdDirectoryStorage* storage,
+                                           const gchar* path,
+                                           GError** error);
+
+gboolean
+infd_directory_storage_write_text(InfdDirectoryStorage* storage,
+                                  const gchar* path,
+                                  InfTextBuffer* buffer,
+                                  GError** error);
+
+gboolean
+infd_directory_storage_write_ink(InfdDirectoryStorage* storage,
+                                 const gchar* path,
+                                 InfInkBuffer* buffer,
+                                 GError** error);
+
+gboolean
+infd_directory_storage_remove_node(InfdDirectoryStorage* storage,
+                                   const gchar* path,
+                                   GError** error);
 
 G_END_DECLS
 

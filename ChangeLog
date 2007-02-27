@@ -1,3 +1,17 @@
+2007-02-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added marshallers required for
+	InfTextBuffer.
+
+	* libinfinity/inf-text-buffer.h:
+	* libinfinity/inf-text-buffer.c:
+	* libinfinity/Makefile.am: Added InfTextBuffer interface.
+
+	* libinfinited/inf-directory-storage.h:
+	* libinfinited/inf-directory-storage.c: Added methods to read text
+	notes, write ink and text notes, create a subdirectory and
+	remove nodes.
+
 2007-02-26  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-connection-manager.h:
