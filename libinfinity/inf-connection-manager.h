@@ -59,6 +59,10 @@ void
 inf_connection_manager_add_connection(InfConnectionManager* manager,
                                       GNetworkConnection* connection);
 
+gboolean
+inf_connection_manager_has_connection(InfConnectionManager* manager,
+                                      GNetworkConnection* connection);
+
 GNetworkTcpConnection*
 inf_connection_manager_get_by_address(InfConnectionManager* manager,
                                       const GNetworkIpAddress* address,

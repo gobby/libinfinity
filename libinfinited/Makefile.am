@@ -30,9 +30,11 @@ libinfinited_1_0_ladir = libinfinited
 libinfinited_1_0_la_HEADERS = \
 	infd-directory.h \
 	infd-directory-storage.h \
-	infd-marshal.h
+	infd-marshal.h \
+	infd-server.h
 
 libinfinited_1_0_la_SOURCES = \
 	infd-directory.c \
 	infd-directory-storage.c \
-	infd-marshal.c
+	infd-marshal.c \
+	infd-server.c

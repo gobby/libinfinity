@@ -23,9 +23,6 @@
 
 #include <libinfinity/inf-connection-manager.h>
 
-#include <libgnetwork/gnetwork-tcp-server.h>
-#include <libgnetwork/gnetwork-server.h>
-
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -62,13 +59,8 @@ InfConnectionManager*
 infd_directory_get_connection_manager(InfdDirectory* directory);
 
 void
-infd_directory_set_server(InfdDirectory* directory,
-                          GNetworkServer* server);
-
-GNetworkTcpServer*
-infd_directory_open_server(InfdDirectory* directory,
-                           const gchar* interface,
-                           guint port);
+infd_directory_add_connection(InfdDirectory* directory,
+                              GNetworkConnection* connection);
 
 G_END_DECLS
 

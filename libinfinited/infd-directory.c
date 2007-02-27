@@ -18,14 +18,43 @@
 
 #include <libinfinited/infd-directory.h>
 
+#include <libinfinity/inf-session.h>
 #include <libinfinity/inf-net-object.h>
+
+typedef struct _InfdDirectoryNode InfdDirectoryNode;
+struct _InfdDirectoryNode {
+  InfdDirectoryNode* parent;
+
+  InfdDirectoryStorageNodeType type;
+  guint id;
+  gchar* name;
+
+  union {
+    struct {
+      /* Running session, or NULL */
+      InfSession* session; /* TODO: Make InfdSession out of this as soon as we have InfdSession */
+    } note;
+
+    struct {
+      /* List of nodes this folder contains. */
+      GHashTable* nodes;
+      /* List of connections that have this folder open and have to be
+       * notified if something happens with it. */
+      GSList* connections;
+    } subdir;
+  } shared;
+};
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfdDirectoryStorage* storage;
   InfConnectionManager* connection_manager;
 
-  GNetworkServer* server;
+  GSList* connections;
+
+  guint node_counter;
+  GHashTable* nodes; /* Mapping from id to node */
+  InfdDirectoryNode* root;
 };
 
 enum {
@@ -39,40 +68,217 @@ enum {
 
 static GObjectClass* parent_class;
 
-static void
-infd_directory_server_notify_status_cb(GNetworkServer* server,
-                                       const gchar* property,
-                                       gpointer user_data)
+/* This function takes ownership of name */
+static InfdDirectoryNode*
+infd_directory_node_new(InfdDirectory* directory,
+                        InfdDirectoryNode* parent,
+                        InfdDirectoryStorageNodeType type,
+                        gchar* name)
 {
-  InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
-  GNetworkServerStatus status;
+  InfdDirectoryNode* node;
 
-  directory = INFD_DIRECTORY(user_data);
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_object_get(G_OBJECT(server), "status", &status, NULL);
+  node = g_slice_new(InfdDirectoryNode);
+  node->parent = parent;
+  node->type = type;
+  node->id = priv->node_counter ++;
+  node->name = name;
 
-  if(status == GNETWORK_SERVER_OPEN)
+  switch(type)
   {
-    /* TODO: Announce on avahi, if not already */
+  case INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY:
+    node->shared.subdir.nodes = g_hash_table_new(
+      g_str_hash,
+      g_str_equal
+    );
+
+    node->shared.subdir.connections = NULL;
+    break;
+  case INFD_DIRECTORY_STORAGE_NODE_TEXT:
+    node->shared.note.session = NULL;
+    break;
+  case INFD_DIRECTORY_STORAGE_NODE_INK:
+    node->shared.note.session = NULL;
+    break;
+  default:
+    g_assert_not_reached();
+    break;
   }
-  else
+
+#if 0
+  if(parent != NULL)
   {
-    /* TODO: Unannounce on avahi, if not already */
+    g_assert(parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+    g_hash_table_insert(parent->shared.subdir.nodes, name, node);
+  }
+#endif
+
+  g_hash_table_insert(priv->nodes, GUINT_TO_POINTER(node->id), node);
+
+  return node;
+}
+
+/* Required by infd_directory_node_free_foreach_func() */
+static void
+infd_directory_node_free(InfdDirectory* directory,
+                         InfdDirectoryNode* node);
+
+static void
+infd_directory_node_free_foreach_func(gpointer key,
+                                      gpointer value,
+                                      gpointer user_data)
+{
+  infd_directory_node_free(INFD_DIRECTORY(user_data), value);
+}
+
+static void
+infd_directory_node_free(InfdDirectory* directory,
+                         InfdDirectoryNode* node)
+{
+  InfdDirectoryPrivate* priv;
+  gboolean removed;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+#if 0
+  if(node->parent != NULL)
+  {
+    g_assert(node->parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+
+    removed = g_hash_table_remove(
+      node->parent->shared.subdir.nodes,
+      node->name
+    );
+
+    g_assert(removed == TRUE);
+  }
+#endif
+
+  removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
+  g_assert(removed == TRUE);
+
+  switch(node->type)
+  {
+  case INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY:
+    g_slist_free(node->shared.subdir.connections);
+
+    /* Free child nodes */
+    g_hash_table_foreach(
+      node->shared.subdir.nodes,
+      infd_directory_node_free_foreach_func,
+      directory
+    );
+
+    g_hash_table_destroy(node->shared.subdir.nodes);
+    break;
+  case INFD_DIRECTORY_STORAGE_NODE_TEXT:
+    /* TODO: Do not close session, but save into storage. */
+    break;
+  case INFD_DIRECTORY_STORAGE_NODE_INK:
+    /* TODO: Do not close session, but save into storage. */
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  g_free(node->name);
+  g_slice_free(InfdDirectoryNode, node);
+}
+
+/* Required by infd_directory_node_remove_connection_foreach_func() */
+static void
+infd_directory_node_remove_connection(InfdDirectoryNode* node,
+                                      GNetworkConnection* connection);
+
+static void
+infd_directory_node_remove_connection_foreach_func(gpointer key,
+                                                   gpointer value,
+                                                   gpointer user_data)
+{
+  infd_directory_node_remove_connection(
+    value,
+    GNETWORK_CONNECTION(user_data)
+  );
+}
+
+static void
+infd_directory_node_remove_connection(InfdDirectoryNode* node,
+                                      GNetworkConnection* connection)
+{
+  GSList* item;
+
+  g_return_if_fail(node->type != INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+
+  item = g_slist_find(node->shared.subdir.connections, connection);
+
+  /* Note that if the connection is not in this node's connection list,
+   * then it cannot be in a child's list either. */
+  if(item != NULL)
+  {
+    node->shared.subdir.connections = g_slist_delete_link(
+      node->shared.subdir.connections,
+      item
+    );
+
+    g_hash_table_foreach(
+      node->shared.subdir.nodes,
+      infd_directory_node_remove_connection_foreach_func,
+      connection
+    );
+  }
+}
+
+/* Required by infd_directory_connection_notify_status_cb() */
+static void
+infd_directory_remove_connection(InfdDirectory* directory,
+                                 GNetworkConnection* connection);
+
+static void
+infd_directory_connection_notify_status_cb(GNetworkConnection* connection,
+                                           const gchar* property,
+                                           gpointer user_data)
+{
+  InfdDirectory* directory;
+  GNetworkConnectionStatus status;
+
+  directory = INFD_DIRECTORY(user_data);
+
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+
+  if(status == GNETWORK_CONNECTION_CLOSING ||
+     status == GNETWORK_CONNECTION_CLOSED)
+  {
+    infd_directory_remove_connection(directory, connection);
   }
 }
 
 static void
-infd_directory_server_error_cb(GNetworkServer* server,
-                               GError* error,
-                               gpointer user_data)
+infd_directory_remove_connection(InfdDirectory* directory,
+                                 GNetworkConnection* connection)
 {
-  InfdDirectory* directory;
-  directory = INFD_DIRECTORY(user_data);
+  InfdDirectoryPrivate* priv;
 
-  /* Close server on error */
-  infd_directory_set_server(directory, NULL);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(priv->root != NULL)
+  {
+    infd_directory_node_remove_connection(priv->root, connection);
+  }
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(connection),
+    G_CALLBACK(infd_directory_connection_notify_status_cb),
+    directory
+  );
+
+  priv->connections = g_slist_remove(priv->connections, connection);
+  g_object_unref(G_OBJECT(connection));
 }
 
 static void
@@ -84,11 +290,22 @@ infd_directory_set_storage(InfdDirectory* directory,
 
   if(priv->storage != NULL)
   {
-    /* TODO: Store running sessions into storage */
-    /* TODO: Close running sessions */
-    /* TODO: Clear directory tree */
-    /* TODO: Send to connections which opened root folder */
-    /* TODO: Remove all entries except root folder for all connections */
+    /* priv->root may be NULL if this is called from dispose. */
+    if(priv->root != NULL)
+    {
+      /* Clear directory tree. This will cause all sessions to be saved in
+       * storage. */
+      g_hash_table_foreach(
+        priv->root->shared.subdir.nodes,
+        infd_directory_node_free_foreach_func,
+        directory
+      );
+
+      g_hash_table_remove_all(priv->root->shared.subdir.nodes);
+    }
+
+    /* TODO: Tell all connections which opened root folder that the folder
+     * was cleared (expunged?), but the folder itself still exists. */
 
     g_object_unref(G_OBJECT(priv->storage));
   }
@@ -97,7 +314,8 @@ infd_directory_set_storage(InfdDirectory* directory,
 
   if(storage != NULL)
   {
-    /* TODO: Send root folder to all connections that opened root folder */
+    /* TODO: Send root folder content to all connections that
+     * opened root folder. */
     g_object_ref(G_OBJECT(storage));
   }
 }
@@ -107,12 +325,23 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
                                       InfConnectionManager* manager)
 {
   InfdDirectoryPrivate* priv;
+  GSList* item;
+  gboolean result;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   if(priv->connection_manager != NULL)
   {
-    /* TODO: call inf_connection_manager_remove_object() for every connection
-     * we accepted. */
+    /* Unassociate from this connection manager, so it does no longer
+     * forward incoming data to us. */
+    for(item = priv->connections; item != NULL; item = g_slist_next(item))
+    {
+      inf_connection_manager_remove_object(
+        priv->connection_manager,
+        GNETWORK_CONNECTION(item->data),
+        INF_NET_OBJECT(directory)
+      );
+    }
 
     g_object_unref(G_OBJECT(priv->connection_manager));
   }
@@ -121,9 +350,31 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
 
   if(manager != NULL)
   {
-    /* TODO: Add all connections to the new connection manager. */
+    /* Add connections to the new connection manager (if they are not
+     * already) and tell it to forward data. */
+    for(item = priv->connections; item != NULL; item = g_slist_next(item))
+    {
+      result = inf_connection_manager_has_connection(
+        priv->connection_manager,
+        GNETWORK_CONNECTION(item->data)
+      );
 
-    /* TODO: Call inf_connection_manager_add_object() for every connection. */
+      if(result == FALSE)
+      {
+        inf_connection_manager_add_connection(
+          priv->connection_manager,
+          GNETWORK_CONNECTION(item->data)
+        );
+      }
+
+      inf_connection_manager_add_object(
+        priv->connection_manager,
+        GNETWORK_CONNECTION(item->data),
+        INF_NET_OBJECT(directory),
+        "InfDirectory"
+      );
+    }
+
     g_object_ref(G_OBJECT(manager));
   }
 }
@@ -140,7 +391,18 @@ infd_directory_init(GTypeInstance* instance,
 
   priv->storage = NULL;
   priv->connection_manager = NULL;
-  priv->server = NULL;
+
+  priv->connections = NULL;
+
+  priv->node_counter = 0;
+  priv->nodes = g_hash_table_new(NULL, NULL);
+
+  priv->root = infd_directory_node_new(
+    directory,
+    NULL,
+    INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY,
+    NULL /* The root node has no name */
+  );
 }
 
 static void
@@ -152,12 +414,18 @@ infd_directory_dispose(GObject* object)
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  infd_directory_set_server(directory, NULL);
+  /* This frees the complete directory tree. */
+  infd_directory_node_free(directory, priv->root);
+  priv->root = NULL;
 
-  /* It is important that the connection manager is unrefed first, otherwise
-   * we would call infd_directory_set_storage while we have still connections
-   * eshablished and the function would try to tell everyone that all
-   * notes disappeared... */
+  g_hash_table_destroy(priv->nodes);
+  priv->nodes = NULL;
+
+  while(priv->connections != NULL)
+    infd_directory_remove_connection(directory, priv->connections->data);
+
+  /* We have droppen all references to connections now, so these do not try
+   * to tell anyone that the directory tree has gone or whatever. */
   infd_directory_set_connection_manager(directory, NULL);
   infd_directory_set_storage(directory, NULL);
 
@@ -337,7 +605,7 @@ infd_directory_get_type(void)
  *
  * @storage: Storage backend that is used to read/write notes from
  * permanent memory into #InfBuffer objects.
- * @connection_manager: A #InfConnectionManager to register incoming
+ * @connection_manager: A #InfConnectionManager to register added
  * connections to and which forwards incoming data to the directory
  * or running sessions.
  *
@@ -394,106 +662,40 @@ infd_directory_get_connection_manager(InfdDirectory* directory)
   return INFD_DIRECTORY_PRIVATE(directory)->connection_manager;
 }
 
-/** infd_directory_set_server:
+/**
+ * infd_directory_add_connection:
  *
  * @directory: A #InfdDirectory.
- * @server: A #GNetworkServer, or %NULL.
+ * @connection: A #GNetworkConnection.
  *
- * Makes @directory use @server to listen for incoming connections. If a
- * server was set previously, this one will overwrite the old. If you do not
- * own a reference of the old one anymore, and the "close-children" property
- * of it is set to TRUE, all connections from the old server will be closed.
- *
- * It is your responsibility to open @server. If an error occurs, @server
- * will be unset from @directory. If @server is open, incoming connections
- * are accepted and requests from them are handled by @directory.
- *
- * @server may be %NULL to unset the server which is currently in use.
+ * Adds @connection to the connections of @directory (and to its
+ * #InfConnectionManager, if not already). The directory will then
+ * receive requests from @connection.
  **/
 void
-infd_directory_set_server(InfdDirectory* directory,
-                          GNetworkServer* server)
+infd_directory_add_connection(InfdDirectory* directory,
+                              GNetworkConnection* connection)
 {
   InfdDirectoryPrivate* priv;
-  GNetworkServerStatus status;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(server == NULL || GNETWORK_IS_SERVER(server));
+  g_return_if_fail(GNETWORK_IS_CONNECTION(connection));
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(priv->connection_manager));
 
-  if(priv->server != NULL)
-  {
-    /* TODO: Unannounce on avahi, if not already */
+  inf_connection_manager_add_connection(
+    priv->connection_manager,
+    connection
+  );
 
-    g_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->server),
-      G_CALLBACK(infd_directory_server_notify_status_cb),
-      directory
-    );
+  g_signal_connect_after(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(infd_directory_connection_notify_status_cb),
+    directory
+  );
 
-    g_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->server),
-      G_CALLBACK(infd_directory_server_error_cb),
-      directory
-    );
-
-    g_object_unref(G_OBJECT(priv->server));
-  }
-
-  priv->server = server;
-
-  if(server != NULL)
-  {
-    g_signal_connect_after(
-      G_OBJECT(server),
-      "notify::status",
-      G_CALLBACK(infd_directory_server_notify_status_cb),
-      directory
-    );
-
-    g_signal_connect_after(
-      G_OBJECT(server),
-      "error",
-      G_CALLBACK(infd_directory_server_error_cb),
-      directory
-    );
-
-    g_object_get(G_OBJECT(server), "status", &status, NULL);
-
-    if(status == GNETWORK_SERVER_OPEN)
-    {
-      /* TODO: Announce on avahi, if not already */
-    }
-
-    g_object_ref(G_OBJECT(server));
-  }
-}
-
-/** infd_directory_open_server:
- *
- * @directory: A #InfdDirectory.
- * @interface: IP address of interface to bind to, or %NULL.
- * @port: Port number to bind to, or 0.
- *
- * This is a convenience function that creates a new #GNetworkTcpServer
- * object and then calls infd_directory_set_server(). The created server
- * is returned and has a reference count of 1 which belongs to @directory.
- *
- * Return Value: A newly-created #GNetworkTcpServer.
- **/
-GNetworkTcpServer*
-infd_directory_open_server(InfdDirectory* directory,
-                           const gchar* interface,
-                           guint port)
-{
-  GNetworkTcpServer* server;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-
-  server = gnetwork_tcp_server_new(interface, port);
-  infd_directory_set_server(directory, GNETWORK_SERVER(server));
-  g_object_unref(G_OBJECT(server));
-
-  return server;
+  priv->connections = g_slist_prepend(priv->connections, connection);
+  g_object_ref(G_OBJECT(connection));
 }

@@ -183,38 +183,13 @@ inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
 }
 
 static void
-inf_connection_manager_connection_weak_notify_func(gpointer data,
-                                                   GObject* object)
-{
-  InfConnectionManagerConnection* connection;
-  gchar* name;
-  gboolean result;
-
-  connection = data;
-
-  name = g_hash_table_lookup(connection->identifiers, object);
-
-  result = g_hash_table_remove(connection->identifiers, object);
-  g_assert(result == TRUE);
-
-  g_hash_table_remove(connection->objects, name);
-  g_assert(result == TRUE);
-
-  g_free(name);
-}
-
-static void
 inf_connection_manager_connection_unassoc_foreach_func(gpointer key,
                                                        gpointer value,
                                                        gpointer data)
 {
   g_free(key);
 
-  g_object_weak_unref(
-    G_OBJECT(value),
-    inf_connection_manager_connection_weak_notify_func,
-    (InfConnectionManagerConnection*)data
-  );
+  g_object_unref(G_OBJECT(value));
 }
 
 /* Note that this function does not free the given GNetworkConnection but
@@ -510,6 +485,32 @@ inf_connection_manager_add_connection(InfConnectionManager* manager,
   );
 }
 
+/** inf_connection_manager_has_connection:
+ *
+ * @manager: A #InfConnectionManager.
+ * @connection: A #GNetworkConnection.
+ *
+ * Returns TRUE if @connection was added to @manager and false otherwise.
+ *
+ * Return Value: Whether @connection is managed by @manager.
+ **/
+gboolean
+inf_connection_manager_has_connection(InfConnectionManager* manager,
+                                      GNetworkConnection* connection)
+{
+  InfConnectionManagerPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), FALSE);
+  g_return_val_if_fail(GNETWORK_IS_CONNECTION(connection), FALSE);
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  if(g_slist_find(priv->connections, connection) == NULL)
+    return FALSE;
+  else
+    return TRUE;
+}
+
 /** inf_connection_manager_get_by_address:
  *
  * @manager: A #InfConnectionManager.
@@ -673,11 +674,7 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
-  g_object_weak_ref(
-    G_OBJECT(object),
-    inf_connection_manager_connection_weak_notify_func,
-    conn
-  );
+  g_object_ref(G_OBJECT(object));
 
   identifier_copy = g_strdup(identifier);
   g_hash_table_insert(conn->objects, identifier_copy, object);
@@ -719,11 +716,7 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
 
   g_free(identifier);
 
-  g_object_weak_unref(
-    G_OBJECT(object),
-    inf_connection_manager_connection_weak_notify_func,
-    conn
-  );
+  g_object_unref(G_OBJECT(object));
 }
 
 /** inf_connection_manager_send_to_object:
