@@ -21,6 +21,7 @@
 
 #include <libinfinited/infd-directory-storage.h>
 
+#include <libinfinity/inf-session.h>
 #include <libinfinity/inf-connection-manager.h>
 
 #include <glib-object.h>
@@ -34,11 +35,32 @@ G_BEGIN_DECLS
 #define INFD_IS_DIRECTORY_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFD_TYPE_DIRECTORY))
 #define INFD_DIRECTORY_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFD_TYPE_DIRECTORY, InfdDirectoryClass))
 
+#define INFD_TYPE_DIRECTORY_ITER            (infd_directory_iter_get_type())
+
 typedef struct _InfdDirectory InfdDirectory;
 typedef struct _InfdDirectoryClass InfdDirectoryClass;
 
+typedef struct _InfdDirectoryIter InfdDirectoryIter;
+struct _InfdDirectoryIter {
+  guint node_id;
+  gpointer node;
+};
+
 struct _InfdDirectoryClass {
   GObjectClass parent_class;
+
+  /* Signals */
+  void (*add_node)(InfdDirectory* directory,
+                   InfdDirectoryIter* iter);
+
+  void (*remove_node)(InfdDirectory* directory,
+                      InfdDirectoryIter* iter);
+
+  /* Virtual Table */
+  InfTextBuffer* (*text_buffer_new)(InfdDirectory* directory);
+  InfInkBuffer* (*ink_buffer_new)(InfdDirectory* directory);
+  InfSession* (*text_session_new)(InfdDirectory* directory);
+  InfSession* (*ink_session_new)(InfdDirectory* directory);
 };
 
 struct _InfdDirectory {
@@ -46,7 +68,16 @@ struct _InfdDirectory {
 };
 
 GType
+infd_directory_iter_get_type(void) G_GNUC_CONST;
+
+GType
 infd_directory_get_type(void) G_GNUC_CONST;
+
+InfdDirectoryIter*
+infd_directory_iter_copy(InfdDirectoryIter* iter);
+
+void
+infd_directory_iter_free(InfdDirectoryIter* iter);
 
 InfdDirectory*
 infd_directory_new(InfdDirectoryStorage* storage,
@@ -61,6 +92,59 @@ infd_directory_get_connection_manager(InfdDirectory* directory);
 void
 infd_directory_add_connection(InfdDirectory* directory,
                               GNetworkConnection* connection);
+
+void
+infd_directory_iter_get_root(InfdDirectory* directory,
+                             InfdDirectoryIter* iter);
+
+gboolean
+infd_directory_iter_get_next(InfdDirectory* directory,
+                             InfdDirectoryIter* iter);
+
+gboolean
+infd_directory_iter_get_prev(InfdDirectory* directory,
+                             InfdDirectoryIter* iter);
+
+gboolean
+infd_directory_iter_get_parent(InfdDirectory* directory,
+                               InfdDirectoryIter* iter);
+
+gboolean
+infd_directory_iter_get_child(InfdDirectory* directory,
+                              InfdDirectoryIter* iter,
+                              GError** error);
+
+gboolean
+infd_directory_add_subdirectory(InfdDirectory* directory,
+                                InfdDirectoryIter* parent,
+                                InfdDirectoryIter* iter,
+                                GError** error);
+
+gboolean
+infd_directory_add_text(InfdDirectory* directory,
+                        InfdDirectoryIter* parent,
+                        InfdDirectoryIter* iter,
+                        GError** error);
+
+gboolean
+infd_directory_add_ink(InfdDirectory* directory,
+                       InfdDirectoryIter* parent,
+                       InfdDirectoryIter* iter,
+                       GError** error);
+
+gboolean
+infd_directory_remove_node(InfdDirectory* directory,
+                           InfdDirectoryIter* iter,
+                           GError** error);
+
+InfdDirectoryStorageNodeType
+infd_directory_iter_get_node_type(InfdDirectory* directory,
+                                  InfdDirectoryIter* iter);
+
+InfSession*
+infd_directory_iter_get_session(InfdDirectory* directory,
+                                InfdDirectoryIter* iter,
+                                GError** error);
 
 G_END_DECLS
 

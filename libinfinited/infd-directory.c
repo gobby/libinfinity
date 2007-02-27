@@ -24,6 +24,8 @@
 typedef struct _InfdDirectoryNode InfdDirectoryNode;
 struct _InfdDirectoryNode {
   InfdDirectoryNode* parent;
+  InfdDirectoryNode* prev;
+  InfdDirectoryNode* next;
 
   InfdDirectoryStorageNodeType type;
   guint id;
@@ -36,11 +38,15 @@ struct _InfdDirectoryNode {
     } note;
 
     struct {
-      /* List of nodes this folder contains. */
-      GHashTable* nodes;
       /* List of connections that have this folder open and have to be
        * notified if something happens with it. */
       GSList* connections;
+      /* First child node */
+      InfdDirectoryNode* child;
+      /* Whether we requested the node already from the background storage.
+       * This is required because the nodes field may be NULL due to an empty
+       * subdirectory or due to an unexplored subdirectory. */
+      gboolean explored;
     } subdir;
   } shared;
 };
@@ -68,6 +74,50 @@ enum {
 
 static GObjectClass* parent_class;
 
+/* Link a node to the parent's list of children */
+static void
+infd_directory_node_link(InfdDirectoryNode* node,
+                         InfdDirectoryNode* parent)
+{
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(parent != NULL);
+
+  g_return_if_fail(parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+
+  node->prev = NULL;
+  if(parent->shared.subdir.child != NULL)
+  {
+    parent->shared.subdir.child->prev = node;
+    node->next = parent->shared.subdir.child;
+  }
+  else
+  {
+    node->next = NULL;
+  }
+
+  parent->shared.subdir.child = node;
+}
+
+static void
+infd_directory_node_unlink(InfdDirectoryNode* node)
+{
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(node->parent != NULL);
+
+  if(node->prev != NULL)
+  {
+    node->prev->next = node->next;
+  }
+  else 
+  {
+    g_assert(node->parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+    node->parent->shared.subdir.child = node->next;
+  }
+
+  if(node->next != NULL)
+    node->next->prev = node->prev;
+}
+
 /* This function takes ownership of name */
 static InfdDirectoryNode*
 infd_directory_node_new(InfdDirectory* directory,
@@ -88,15 +138,17 @@ infd_directory_node_new(InfdDirectory* directory,
   node->id = priv->node_counter ++;
   node->name = name;
 
+  if(parent != NULL)
+    infd_directory_node_link(node, parent);
+
+  g_hash_table_insert(priv->nodes, GUINT_TO_POINTER(node->id), node);
+
   switch(type)
   {
   case INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY:
-    node->shared.subdir.nodes = g_hash_table_new(
-      g_str_hash,
-      g_str_equal
-    );
-
     node->shared.subdir.connections = NULL;
+    node->shared.subdir.child = NULL;
+    node->shared.subdir.explored = FALSE;
     break;
   case INFD_DIRECTORY_STORAGE_NODE_TEXT:
     node->shared.note.session = NULL;
@@ -109,30 +161,7 @@ infd_directory_node_new(InfdDirectory* directory,
     break;
   }
 
-#if 0
-  if(parent != NULL)
-  {
-    g_assert(parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
-    g_hash_table_insert(parent->shared.subdir.nodes, name, node);
-  }
-#endif
-
-  g_hash_table_insert(priv->nodes, GUINT_TO_POINTER(node->id), node);
-
   return node;
-}
-
-/* Required by infd_directory_node_free_foreach_func() */
-static void
-infd_directory_node_free(InfdDirectory* directory,
-                         InfdDirectoryNode* node);
-
-static void
-infd_directory_node_free_foreach_func(gpointer key,
-                                      gpointer value,
-                                      gpointer user_data)
-{
-  infd_directory_node_free(INFD_DIRECTORY(user_data), value);
 }
 
 static void
@@ -145,36 +174,18 @@ infd_directory_node_free(InfdDirectory* directory,
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-#if 0
-  if(node->parent != NULL)
-  {
-    g_assert(node->parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
-
-    removed = g_hash_table_remove(
-      node->parent->shared.subdir.nodes,
-      node->name
-    );
-
-    g_assert(removed == TRUE);
-  }
-#endif
-
-  removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
-  g_assert(removed == TRUE);
-
   switch(node->type)
   {
   case INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY:
     g_slist_free(node->shared.subdir.connections);
 
     /* Free child nodes */
-    g_hash_table_foreach(
-      node->shared.subdir.nodes,
-      infd_directory_node_free_foreach_func,
-      directory
-    );
+    if(node->shared.subdir.explored == TRUE)
+    {
+      while(node->shared.subdir.child != NULL)
+        infd_directory_node_free(directory, node->shared.subdir.child);
+    }
 
-    g_hash_table_destroy(node->shared.subdir.nodes);
     break;
   case INFD_DIRECTORY_STORAGE_NODE_TEXT:
     /* TODO: Do not close session, but save into storage. */
@@ -187,33 +198,25 @@ infd_directory_node_free(InfdDirectory* directory,
     break;
   }
 
+  if(node->parent != NULL)
+    infd_directory_node_unlink(node);
+
+  removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
+  g_assert(removed == TRUE);
+
   g_free(node->name);
   g_slice_free(InfdDirectoryNode, node);
-}
-
-/* Required by infd_directory_node_remove_connection_foreach_func() */
-static void
-infd_directory_node_remove_connection(InfdDirectoryNode* node,
-                                      GNetworkConnection* connection);
-
-static void
-infd_directory_node_remove_connection_foreach_func(gpointer key,
-                                                   gpointer value,
-                                                   gpointer user_data)
-{
-  infd_directory_node_remove_connection(
-    value,
-    GNETWORK_CONNECTION(user_data)
-  );
 }
 
 static void
 infd_directory_node_remove_connection(InfdDirectoryNode* node,
                                       GNetworkConnection* connection)
 {
+  InfdDirectoryNode* child;
   GSList* item;
 
   g_return_if_fail(node->type != INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+  g_return_if_fail(node->shared.subdir.explored == FALSE);
 
   item = g_slist_find(node->shared.subdir.connections, connection);
 
@@ -226,12 +229,33 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
       item
     );
 
-    g_hash_table_foreach(
-      node->shared.subdir.nodes,
-      infd_directory_node_remove_connection_foreach_func,
-      connection
-    );
+    if(node->shared.subdir.explored == TRUE)
+    {
+      for(child = node->shared.subdir.child;
+          child != NULL;
+          child = child->next)
+      {
+        infd_directory_node_remove_connection(child, connection);
+      }
+    }
+    else
+    {
+      g_assert(node->shared.subdir.connections == NULL);
+    }
   }
+}
+
+static gboolean
+infd_directory_node_explore(InfdDirectory* directory,
+                            InfdDirectoryNode* node,
+                            GError** error)
+{
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(node != NULL, FALSE);
+
+  /* TODO: Implement this method */
+
+  return TRUE;
 }
 
 /* Required by infd_directory_connection_notify_status_cb() */
@@ -286,22 +310,18 @@ infd_directory_set_storage(InfdDirectory* directory,
                            InfdDirectoryStorage* storage)
 {
   InfdDirectoryPrivate* priv;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   if(priv->storage != NULL)
   {
     /* priv->root may be NULL if this is called from dispose. */
-    if(priv->root != NULL)
+    if(priv->root != NULL && priv->root->shared.subdir.explored == TRUE)
     {
       /* Clear directory tree. This will cause all sessions to be saved in
        * storage. */
-      g_hash_table_foreach(
-        priv->root->shared.subdir.nodes,
-        infd_directory_node_free_foreach_func,
-        directory
-      );
-
-      g_hash_table_remove_all(priv->root->shared.subdir.nodes);
+      while(priv->root->shared.subdir.child)
+        infd_directory_node_free(directory, priv->root->shared.subdir.child);
     }
 
     /* TODO: Tell all connections which opened root folder that the folder
@@ -424,7 +444,7 @@ infd_directory_dispose(GObject* object)
   while(priv->connections != NULL)
     infd_directory_remove_connection(directory, priv->connections->data);
 
-  /* We have droppen all references to connections now, so these do not try
+  /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
   infd_directory_set_connection_manager(directory, NULL);
   infd_directory_set_storage(directory, NULL);
@@ -559,6 +579,23 @@ infd_directory_net_object_init(gpointer g_iface,
 }
 
 GType
+infd_directory_iter_get_type(void)
+{
+  static GType directory_iter_type = 0;
+
+  if(!directory_iter_type)
+  {
+    directory_iter_type = g_boxed_type_register_static(
+      "InfDirectoryIter",
+      (GBoxedCopyFunc)infd_directory_iter_copy,
+      (GBoxedFreeFunc)infd_directory_iter_free
+    );
+  }
+
+  return directory_iter_type;
+}
+
+GType
 infd_directory_get_type(void)
 {
   static GType directory_type = 0;
@@ -599,6 +636,42 @@ infd_directory_get_type(void)
   }
 
   return directory_type;
+}
+
+/** infd_directory_iter_copy:
+ *
+ * @iter: A @InfdDirectoryIter.
+ *
+ * Makes a dynamically-allocated copy of @iter. This should not be used by
+ * applications because you can copy the structs by value.
+ *
+ * Return Value: A newly-allocated copy of @iter.
+ **/
+InfdDirectoryIter*
+infd_directory_iter_copy(InfdDirectoryIter* iter)
+{
+  InfdDirectoryIter* new_iter;
+
+  g_return_val_if_fail(iter != NULL, NULL);
+
+  new_iter = g_slice_new(InfdDirectoryIter);
+  *new_iter = *iter;
+
+  return new_iter;
+}
+
+/** infd_directory_iter_free:
+ *
+ * @iter: A #InfdDirectoryIter.
+ *
+ * Frees a #InfdDirectoryIter allocated with infd_directory_iter_copy().
+ **/
+void
+infd_directory_iter_free(InfdDirectoryIter* iter)
+{
+  g_return_if_fail(iter != NULL);
+
+  g_slice_free(InfdDirectoryIter, iter);
 }
 
 /** infd_directory_new:
@@ -699,3 +772,343 @@ infd_directory_add_connection(InfdDirectory* directory,
   priv->connections = g_slist_prepend(priv->connections, connection);
   g_object_ref(G_OBJECT(connection));
 }
+
+/** infd_directory_iter_get_root:
+ *
+ * @directory: A #InfdDirectory
+ * @iter An uninitalized #InfdDirectoryIter.
+ *
+ * Sets @iter to point to the root node of the directory.
+ **/
+void
+infd_directory_iter_get_root(InfdDirectory* directory,
+                             InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(iter != NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_assert(priv->root != NULL);
+
+  iter->node_id = priv->root->id;
+  iter->node = priv->root;
+}
+
+/** infd_directory_iter_get_next:
+ *
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to some node in @directory.
+ *
+ * Sets @iter to point to the next node within the same subdirectory. If there
+ * is no next node, @iter is left untouched and the function returns %FALSE.
+ *
+ * Return Value: %TRUE, if @iter was set. 
+ **/
+gboolean
+infd_directory_iter_get_next(InfdDirectory* directory,
+                             InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_return_val_if_fail(
+    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
+    FALSE
+  );
+
+  if(node->next != NULL)
+  {
+    iter->node_id = node->next->id;
+    iter->node = node->next;
+
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** infd_directory_iter_get_prev:
+ *
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to some node in @directory.
+ *
+ * Sets @iter to point to the previous node within the same subdirectory. If
+ * there is no such node, @iter is left untouched and the function returns
+ * %FALSE.
+ *
+ * Return Value: %TRUE, if @iter was set. 
+ **/
+gboolean
+infd_directory_iter_get_prev(InfdDirectory* directory,
+                             InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_return_val_if_fail(
+    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
+    FALSE
+  );
+
+  if(node->prev != NULL)
+  {
+    iter->node_id = node->prev->id;
+    iter->node = node->prev;
+
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** infd_directory_iter_get_parent:
+ *
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to some node in @directory.
+ *
+ * Sets @iter to point to the parent node of @iter. This node is guaranteed
+ * to be a subdirectory node. If there is no such node (i.e. @iter points
+ * to the root node), @iter is left untouched and the function returns %FALSE.
+ *
+ * Return Value: %TRUE, if @iter was set. 
+ **/
+gboolean
+infd_directory_iter_get_parent(InfdDirectory* directory,
+                               InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_return_val_if_fail(
+    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
+    FALSE
+  );
+
+  if(node->parent != NULL)
+  {
+    iter->node_id = node->parent->id;
+    iter->node = node->parent;
+
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** infd_directory_iter_get_child:
+ *
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
+ * @error: Location to store error information.
+ *
+ * Sets @iter to point to first child node of @iter. This requires that @iter
+ * points to a subdirectory node. If the subdirectory @iter points to has
+ * no children, the function returns %FALSE and @iter is left untouched.
+ *
+ * The function might fail if this node's children have not yet been read
+ * from the background storage and an error occurs while reading them. In
+ * this case, %FALSE is returned and @error is set.
+ *
+ * Return Value: %TRUE, if @iter was set. 
+ **/
+gboolean
+infd_directory_iter_get_child(InfdDirectory* directory,
+                              InfdDirectoryIter* iter,
+                              GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_return_val_if_fail(
+    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
+    FALSE
+  );
+
+  g_return_val_if_fail(
+    node->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY,
+    FALSE
+  );
+
+  if(node->shared.subdir.explored == FALSE)
+  {
+    if(infd_directory_node_explore(directory, node, error) == FALSE)
+      return FALSE;
+
+    g_assert(node->shared.subdir.explored == TRUE);
+  }
+
+  if(node->shared.subdir.child != NULL)
+  {
+    iter->node_id = node->shared.subdir.child->id;
+    iter->node = node->shared.subdir.child;
+
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** infd_directory_add_subdirectory:
+ *
+ * @directory: A #InfdDirectory.
+ * @parent: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
+ * @iter: An uninitalized #InfdDirectoryIter.
+ * @error: Location to store error information.
+ *
+ * Adds a subdirectory to the directory tree. The new subdirectory will be
+ * a child the subdirectory @parent points to. @iter is modified to point to
+ * the new subdirectory. If creation fails, the function returns FALSE and
+ * @error is set.
+ *
+ * Return Value: %TRUE if the subdirectory was created successfully.
+ **/
+gboolean
+infd_directory_add_subdirectory(InfdDirectory* directory,
+                                InfdDirectoryIter* parent,
+				InfdDirectoryIter* iter,
+				GError** error)
+{
+  /* TODO: Implement */
+  return FALSE;
+}
+
+/** infd_directory_add_text:
+ *
+ * @directory: A #InfdDirectory.
+ * @parent: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
+ * @iter: An uninitialized #InfdDirectoryIter.
+ * @error: Location to store error information.
+ *
+ * Creates a new text note in @directory. It will be child of the subdirectory
+ * node @parent points to. @iter is set to point to the new node. If an
+ * error occurs, the function returns %FALSE and @error is set.
+ *
+ * Return Value: %TRUE on success.
+ **/
+gboolean
+infd_directory_add_text(InfdDirectory* directory,
+                        InfdDirectoryIter* parent,
+                        InfdDirectoryIter* iter,
+                        GError** error)
+{
+  /* TODO: Implement */
+  return FALSE;
+}
+
+/** infd_directory_add_ink:
+ *
+ * @directory: A #InfdDirectory.
+ * @parent: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
+ * @iter: An uninitialized #InfdDirectoryIter.
+ * @error: Location to store error information.
+ *
+ * Creates a new ink note in @directory. It will be child of the subdirectory
+ * node @parent points to. @iter is set to point to the new node. If an
+ * error occurs, the function returns %FALSE and @error is set.
+ *
+ * Return Value: %TRUE on success.
+ **/
+gboolean
+infd_directory_add_ink(InfdDirectory* directory,
+                       InfdDirectoryIter* parent,
+                       InfdDirectoryIter* iter,
+                       GError** error)
+{
+  /* TODO: Implement */
+  return FALSE;
+}
+
+/** infd_directory_remove_node:
+ *
+ * @directory: A #InfdDirectory
+ * @iter: A #InfdDirectoryIter pointing to some node in @directory.
+ * @error: Location to store error information.
+ *
+ * Removes the node @iter points to. If it is a subdirectory node, every
+ * node it contains will also be removed. If the function fails, %FALSE is
+ * returned and @error is set.
+ *
+ * Return Value: %TRUE on success.
+ **/
+gboolean
+infd_directory_remove_node(InfdDirectory* directory,
+                           InfdDirectoryIter* iter,
+                           GError** error)
+{
+  /* TODO: Implement */
+  return FALSE;
+}
+
+/** infd_directory_iter_get_node_type:
+ *
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to some node in @directory.
+ *
+ * Returns the type of the node @iter points to.
+ *
+ * Returns: A #InfdDirectoryStorageNodeType.
+ **/
+InfdDirectoryStorageNodeType
+infd_directory_iter_get_node_type(InfdDirectory* directory,
+                                  InfdDirectoryIter* iter)
+{
+  /* TODO: Implement */
+  return INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY;
+}
+
+/** infd_directory_iter_get_session:
+ *
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a note in @directory.
+ * @error: Location to store error information.
+ *
+ * Returns the running session in which the note @iter points to is currently
+ * edited. If the session does not exist, it is created. However, this might
+ * fail if the loading from the background storage fails. In this case, %NULL
+ * is returned and @error is set.
+ *
+ * Return Value: A #InfSession for the note @iter points to.
+ **/
+InfSession*
+infd_directory_iter_get_session(InfdDirectory* directory,
+                                InfdDirectoryIter* iter,
+                                GError** error)
+{
+  /* TODO: Implement */
+  return NULL;
+}
+

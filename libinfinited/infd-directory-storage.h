@@ -52,6 +52,11 @@ struct _InfdDirectoryStorageNode {
 struct _InfdDirectoryStorageIface {
   GTypeInterface parent;
 
+  /* All these calls are supposed to be synchronous, e.g. completly perform
+   * the required task. Some day, we could implement asynchronous
+   * behaviour in InfdDirectory (e.g. it caches operations and executes
+   * them via the storage in the background). */
+
   /* Virtual Table */
   GSList* (*read_subdirectory)(InfdDirectoryStorage* storage,
                                const gchar* path,
