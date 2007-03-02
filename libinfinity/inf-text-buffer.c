@@ -17,6 +17,7 @@
  */
 
 #include <libinfinity/inf-text-buffer.h>
+#include <libinfinity/inf-buffer.h>
 #include <libinfinity/inf-marshal.h>
 
 enum {
@@ -96,7 +97,7 @@ inf_text_buffer_get_type(void)
       0
     );
 
-    g_type_interface_add_prerequisite(text_buffer_type, G_TYPE_OBJECT);
+    g_type_interface_add_prerequisite(text_buffer_type, INF_TYPE_BUFFER);
   }
 
   return text_buffer_type;
