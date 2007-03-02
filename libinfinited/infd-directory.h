@@ -50,11 +50,11 @@ struct _InfdDirectoryClass {
   GObjectClass parent_class;
 
   /* Signals */
-  void (*add_node)(InfdDirectory* directory,
-                   InfdDirectoryIter* iter);
+  void (*node_added)(InfdDirectory* directory,
+                     InfdDirectoryIter* iter);
 
-  void (*remove_node)(InfdDirectory* directory,
-                      InfdDirectoryIter* iter);
+  void (*node_removed)(InfdDirectory* directory,
+                       InfdDirectoryIter* iter);
 
   /* Virtual Table */
   InfTextBuffer* (*text_buffer_new)(InfdDirectory* directory);
@@ -118,6 +118,7 @@ gboolean
 infd_directory_add_subdirectory(InfdDirectory* directory,
                                 InfdDirectoryIter* parent,
                                 InfdDirectoryIter* iter,
+                                const gchar* path,
                                 GError** error);
 
 gboolean

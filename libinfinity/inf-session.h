@@ -38,6 +38,21 @@ typedef struct _InfSessionClass InfSessionClass;
 struct _InfSessionClass {
   GObjectClass parent_class;
 
+  /* Virtual table */
+  void(*to_xml)(InfSession* session,
+                xmlNodePtr parent);
+  gboolean(*process_xml)(InfSession* session,
+                         xmlNodePtr xml,
+                         GError** error);
+
+  GHashTable*(*get_xml_user_props_sync)(InfSession* session,
+                                        GNetworkConnection* conn, /* ? */
+                                        xmlNodePtr xml);
+
+  gboolean(*check_user_props_sync)(InfSession* session,
+                                   GHashTable* properties,
+                                   GError** error);
+
   /* Signals */
   void(*add_user)(InfSession* session,
                   InfUser* user);
@@ -56,13 +71,10 @@ typedef void(*InfSessionForeachUserFunc)(InfUser* user,
 GType
 inf_session_get_type(void) G_GNUC_CONST;
 
-void
+InfUser*
 inf_session_add_user(InfSession* session,
-                     InfUser* user);
-
-void
-inf_session_remove_user(InfSession* session,
-                        InfUser* user);
+                     GHashTable* properties,
+                     GError** error);
 
 InfUser*
 inf_session_lookup_user_by_id(InfSession* session,

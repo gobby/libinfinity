@@ -17,6 +17,7 @@
  */
 
 #include <libinfinited/infd-directory.h>
+#include <libinfinited/infd-marshal.h>
 
 #include <libinfinity/inf-session.h>
 #include <libinfinity/inf-net-object.h>
@@ -63,6 +64,10 @@ struct _InfdDirectoryPrivate {
   InfdDirectoryNode* root;
 };
 
+typedef gboolean(*InfdDirectoryCreateStorageNodeFunc)(InfdDirectoryStorage*,
+                                                      const gchar*,
+                                                      GError**);
+
 enum {
   PROP_0,
 
@@ -70,19 +75,61 @@ enum {
   PROP_CONNECTION_MANAGER
 };
 
+enum {
+  NODE_ADDED,
+  NODE_REMOVED,
+
+  LAST_SIGNAL
+};
+
 #define INFD_DIRECTORY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_DIRECTORY, InfdDirectoryPrivate))
 
-static GObjectClass* parent_class;
+/* These make sure that the node iter points to is contained in directory */
+#define infd_directory_return_if_iter_fail(directory, iter) \
+  g_return_if_fail( \
+    g_hash_table_lookup( \
+      INFD_DIRECTORY_PRIVATE(INFD_DIRECTORY(directory))->nodes, \
+      GUINT_TO_POINTER((iter)->node_id) \
+    ) == (iter)->node \
+  )
 
-/* Link a node to the parent's list of children */
+#define infd_directory_return_val_if_iter_fail(directory, iter, val) \
+  g_return_val_if_fail( \
+    g_hash_table_lookup( \
+      INFD_DIRECTORY_PRIVATE(INFD_DIRECTORY(directory))->nodes, \
+      GUINT_TO_POINTER((iter)->node_id) \
+    ) == (iter)->node, \
+    val \
+  )
+
+/* These make sure that node is a subdirectory node */
+#define infd_directory_return_if_subdir_fail(node) \
+  g_return_if_fail( \
+    ((InfdDirectoryNode*)node)->type == \
+    INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY \
+  )
+
+#define infd_directory_return_val_if_subdir_fail(node, val) \
+  g_return_val_if_fail( \
+    ((InfdDirectoryNode*)node)->type == \
+    INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY, \
+    val \
+  )
+
+static GObjectClass* parent_class;
+static guint directory_signals[LAST_SIGNAL];
+
+/*
+ * Node construction and removal
+ */
+
 static void
 infd_directory_node_link(InfdDirectoryNode* node,
                          InfdDirectoryNode* parent)
 {
   g_return_if_fail(node != NULL);
   g_return_if_fail(parent != NULL);
-
-  g_return_if_fail(parent->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+  infd_directory_return_if_subdir_fail(node);
 
   node->prev = NULL;
   if(parent->shared.subdir.child != NULL)
@@ -127,8 +174,15 @@ infd_directory_node_new(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  InfdDirectoryIter iter;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+
+  if(parent != NULL)
+  {
+    infd_directory_return_val_if_subdir_fail(parent, NULL);
+    g_return_val_if_fail(parent->shared.subdir.explored == TRUE, NULL);
+  }
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -172,6 +226,8 @@ infd_directory_node_free(InfdDirectory* directory,
   gboolean removed;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(node != NULL);
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   switch(node->type)
@@ -215,7 +271,7 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
   InfdDirectoryNode* child;
   GSList* item;
 
-  g_return_if_fail(node->type != INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+  infd_directory_return_if_subdir_fail(node);
   g_return_if_fail(node->shared.subdir.explored == FALSE);
 
   item = g_slist_find(node->shared.subdir.connections, connection);
@@ -245,18 +301,307 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
   }
 }
 
+/*
+ * Node synchronization.
+ */
+
+/* Announces the presence of a new node. This is not done in
+ * infd_directory_node_new because we do not want to do this for all
+ * nodes we create (namely not for the root node). */
+static void
+infd_directory_node_register(InfdDirectory* directory,
+                             InfdDirectoryNode* node)
+{
+  InfdDirectoryIter iter;
+  xmlNodePtr xml;
+  gchar id_buf[16];
+  gchar parent_buf[16];
+  const gchar* typename;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(node->parent != NULL);
+  infd_directory_return_if_subdir_failed(node->parent);
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  g_signal_emit(
+    G_OBJECT(directory),
+    directory_signals[NODE_ADDED],
+    0,
+    &iter
+  );
+
+  if(node->parent->shared.subdir.connections != NULL)
+  {
+    g_sprintf(id_buf, "%u", node->id);
+    g_sprintf(parent_buf, "%u", node->parent->id);
+
+    switch(node->type)
+    {
+    case INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY:
+      typename = "InfSubdirectory";
+      break;
+    case INFD_DIRECTORY_STORAGE_NODE_TEXT:
+      typename = "InfText";
+      break;
+    case INFD_DIRECTORY_STORAGE_NODE_INK:
+      typename = "InfInk";
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    xml = xmlNewNode((const xmlChar*)"add-node");
+
+    xmlAddProp(xml, (const xmlChar*)"id", (const xmlChar*)id_buf);
+    xmlAddProp(xml, (const xmlChar*)"parent", (const xmlChar*)parent_buf);
+    xmlAddProp(xml, (const xmlChar*)"name", (const xmlChar*)node->name);
+    xmlAddProp(xml, (const xmlChar*)"type", (const xmlChar*)typename);
+
+    /* TODO: Send xml to all connections */
+  }
+}
+
+/* Announces that a node is removed. Again, this is not done in
+ * infd_directory_node_free because we do not want to do this for
+ * every subnode if a subdirectory is freed. */
+static void
+infd_directory_node_unregister(InfdDirectory* directory,
+                               InfdDirectoryNode* node)
+{
+  InfdDirectoryIter iter;
+  xmlNodePtr xml;
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  g_signal_emit(
+    G_OBJECT(directory),
+    directory_signals[NODE_REMOVED],
+    0,
+    &iter
+  );
+
+  /* TODO: Announce in network */
+}
+
+/*
+ * Path handling.
+ */
+
+/* Returns the complete path to this node in the given GString */
+static void
+infd_directory_node_get_path_string(InfdDirectoryNode* node,
+                                    GString* string)
+{
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(string != NULL);
+
+  if(node->parent != NULL)
+  {
+    /* Each node except the root node has a name */
+    g_assert(node->name != NULL);
+
+    /* Make sure to not recurse if our parent is the root node because
+     * this would add an additional slash */
+    if(node->parent->parent != NULL)
+      infd_directory_get_path_string(directory, node->parent, string);
+ 
+    g_string_append_c(string, '/');
+    g_string_append(string, node->name);
+  }
+  else
+  {
+    /* This node has no parent, so it is the root node */
+    gassert(node->name == NULL);
+    g_string_append_c(string, '/');
+  }
+}
+
+static void
+infd_directory_node_get_path(InfdDirectoryNode* node,
+                             gchar** path,
+                             gsize* len)
+{
+  GString* str;
+
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(path != NULL);
+
+  str = g_string_sized_new(128);
+
+  infd_directory_node_get_path_string(node, str);
+  *path = str->str;
+
+  if(len != NULL)
+    *len = str->len;
+
+  g_string_free(str, FALSE);
+}
+
+static void
+infd_directory_node_make_path(InfdDirectoryNode* node,
+                              const gchar* name,
+                              gchar** path,
+                              gsize* len)
+{
+  GString* str;
+
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(name != NULL);
+  g_return_if_fail(path != NULL);
+
+  str = g_string_sized_new(128);
+
+  infd_directory_node_get_path_string(node, str);
+  g_string_append_c(str, '/');
+  g_string_append(str, name);
+
+  *path = str->str;
+  if(len != NULL)
+    *len = str->len;
+
+  g_string_free(str, FALSE);
+}
+
+/*
+ * Directory tree operations.
+ */
+
 static gboolean
 infd_directory_node_explore(InfdDirectory* directory,
                             InfdDirectoryNode* node,
                             GError** error)
 {
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(node != NULL, FALSE);
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryStorageNode* storage_node;
+  InfdDirectoryNode* new_node;
+  GError* local_error;
+  GSList* list;
+  GSList* item;
+  gchar* path;
+  gsize len;
 
-  /* TODO: Implement this method */
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  g_assert(priv->storage != NULL, FALSE);
+  g_assert(node->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(node->shared.subdir.explored == FALSE);
+
+  infd_directory_node_get_path(node, &path, &len);
+
+  local_error = NULL;
+
+  list = infd_directory_storage_read_subdirectory(
+    priv->storage,
+    path,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  for(item = list; item != NULL; item = g_slist_next(item))
+  {
+    storage_node = (InfdDirectoryStorageNode*)item->data;
+
+    g_assert(strlen(storage_node->path) > len);
+
+    /* storage_node->path + len + 1 results in the name of the node */
+    new_node = infd_directory_node_new(
+      directory,
+      node,
+      storage_node->type,
+      storage_node->path + len + 1
+    );
+
+    /* Announce the new node. In most cases, this does nothing on the network
+     * because there are no connections that have this node open (otherwise,
+     * we would already have explored the node earlier). However, if the
+     * background storage is replaced by a new one, the root folder of the
+     * new storage will be explored immediately (see below in
+     * infd_directory_set_storage()) and there might still be connections
+     * interesting in root folder changes (because they opened the root
+     * folder from the old storage). Also, local users might be interested
+     * in the new node. */
+    infd_directory_node_register(directory, node);
+  }
+
+  infd_directory_storage_node_list_free(list);
+
+  node->shared.subdir.explored = TRUE;
   return TRUE;
 }
+
+static InfdDirectoryNode*
+infd_directory_node_add_text(InfdDirectory* directory,
+                             InfdDirectoryNode* parent,
+                             const gchar* name,
+                             GError** error)
+{
+  InfdDirectoryClass* directory_class;
+  InfdDirectoryPrivate* priv;
+  InfSession* session;
+  gboolean result;
+  gchar* path;
+
+  directory_class = INFD_DIRECTORY_CLASS(directory);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(priv->storage != NULL);
+  g_assert(directory_class->text_session_new != NULL);
+
+  session = directory_class->text_session_new(directory);
+  
+}
+
+static InfdDirectoryNode*
+infd_directory_node_add_subdirectory(InfdDirectory* directory,
+                                     InfdDirectoryNode* parent,
+                                     const gchar* name,
+                                     GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gboolean result;
+  gchar* path;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_assert(priv->storage != NULL);
+
+  infd_directory_node_make_path(parent, name, &path, NULL);
+
+  result = infd_directory_storage_create_subdirectory(
+    priv->storage,
+    path,
+    error
+  );
+
+  g_free(path);
+  if(result == FALSE) return FALSE;
+
+  node = infd_directory_node_new(
+    directory,
+    parent->node,
+    INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY,
+    name
+  );
+
+  infd_directory_node_register(directory, node);
+}
+
+/*
+ * Network command handling.
+ */
+
+/*
+ * Signal handlers.
+ */
 
 /* Required by infd_directory_connection_notify_status_cb() */
 static void
@@ -305,11 +650,17 @@ infd_directory_remove_connection(InfdDirectory* directory,
   g_object_unref(G_OBJECT(connection));
 }
 
+/*
+ * Property modification.
+ */
+
 static void
 infd_directory_set_storage(InfdDirectory* directory,
                            InfdDirectoryStorage* storage)
 {
   InfdDirectoryPrivate* priv;
+
+  InfdDirectoryNode* child;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -320,12 +671,12 @@ infd_directory_set_storage(InfdDirectory* directory,
     {
       /* Clear directory tree. This will cause all sessions to be saved in
        * storage. */
-      while(priv->root->shared.subdir.child)
-        infd_directory_node_free(directory, priv->root->shared.subdir.child);
+      while((child = priv->root->shared.subdir.child) != NULL)
+      {
+        infd_directory_node_unregister(directory, child);
+        infd_directory_node_free(directory, child);
+      }
     }
-
-    /* TODO: Tell all connections which opened root folder that the folder
-     * was cleared (expunged?), but the folder itself still exists. */
 
     g_object_unref(G_OBJECT(priv->storage));
   }
@@ -334,8 +685,16 @@ infd_directory_set_storage(InfdDirectory* directory,
 
   if(storage != NULL)
   {
-    /* TODO: Send root folder content to all connections that
-     * opened root folder. */
+    /* root folder was explored before storage change, so keep it
+     * explored. */
+    if(priv->root->shared.subdir.explored == TRUE)
+    {
+      /* Need to set explored flag to FALSE to meet preconditions of
+       * infd_directory_node_explore(). */
+      priv->root->shared.subdir.explored = FALSE;
+      infd_directory_node_explore(directory, priv->root);
+    }
+
     g_object_ref(G_OBJECT(storage));
   }
 }
@@ -398,6 +757,10 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
     g_object_ref(G_OBJECT(manager));
   }
 }
+
+/*
+ * GObject overrides.
+ */
 
 static void
 infd_directory_init(GTypeInstance* instance,
@@ -512,6 +875,9 @@ infd_directory_get_property(GObject* object,
   }
 }
 
+/*
+ * InfNetObject implementation.
+ */
 static void
 infd_directory_net_object_sent(InfNetObject* net_object,
                                GNetworkConnection* connection,
@@ -528,12 +894,18 @@ infd_directory_net_object_received(InfNetObject* net_object,
   /* TODO: Implement */
 }
 
+/*
+ * GType registration.
+ */
 static void
 infd_directory_class_init(gpointer g_class,
                           gpointer class_data)
 {
   GObjectClass* object_class;
+  InfdDirectoryClass* directory_class;
+
   object_class = G_OBJECT_CLASS(g_class);
+  directory_class = INFD_DIRECTORY_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfdDirectoryPrivate));
@@ -541,6 +913,9 @@ infd_directory_class_init(gpointer g_class,
   object_class->dispose = infd_directory_dispose;
   object_class->set_property = infd_directory_set_property;
   object_class->get_property = infd_directory_get_property;
+
+  directory_class->node_added = NULL;
+  directory_class->node_removed = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -564,6 +939,30 @@ infd_directory_class_init(gpointer g_class,
       INF_TYPE_CONNECTION_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
+  );
+
+  directory_signals[NODE_ADDED] = g_signal_new(
+    "node-added",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdDirectoryClass, node_added),
+    NULL, NULL,
+    infd_marshal_VOID__BOXED,
+    G_TYPE_NONE,
+    1,
+    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
+
+  directory_signals[NODE_REMOVED] = g_signal_new(
+    "node-removed",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdDirectoryClass, node_removed),
+    NULL, NULL,
+    infd_marshal_VOID__BOXED,
+    G_TYPE_NONE,
+    1,
+    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
   );
 }
 
@@ -637,6 +1036,10 @@ infd_directory_get_type(void)
 
   return directory_type;
 }
+
+/*
+ * Public API.
+ */
 
 /** infd_directory_iter_copy:
  *
@@ -815,14 +1218,10 @@ infd_directory_iter_get_next(InfdDirectory* directory,
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
-
-  g_return_val_if_fail(
-    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
-    FALSE
-  );
 
   if(node->next != NULL)
   {
@@ -857,14 +1256,10 @@ infd_directory_iter_get_prev(InfdDirectory* directory,
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
-
-  g_return_val_if_fail(
-    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
-    FALSE
-  );
 
   if(node->prev != NULL)
   {
@@ -899,14 +1294,10 @@ infd_directory_iter_get_parent(InfdDirectory* directory,
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
-
-  g_return_val_if_fail(
-    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
-    FALSE
-  );
 
   if(node->parent != NULL)
   {
@@ -947,19 +1338,11 @@ infd_directory_iter_get_child(InfdDirectory* directory,
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+  infd_directory_return_val_if_subdir_fail(iter->node, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
-
-  g_return_val_if_fail(
-    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) == node,
-    FALSE
-  );
-
-  g_return_val_if_fail(
-    node->type == INFD_DIRECTORY_STORAGE_NODE_SUBDIRECTORY,
-    FALSE
-  );
 
   if(node->shared.subdir.explored == FALSE)
   {
@@ -999,11 +1382,38 @@ infd_directory_iter_get_child(InfdDirectory* directory,
 gboolean
 infd_directory_add_subdirectory(InfdDirectory* directory,
                                 InfdDirectoryIter* parent,
-				InfdDirectoryIter* iter,
-				GError** error)
+                                const gchar* name,
+                                InfdDirectoryIter* iter,
+                                GError** error)
 {
-  /* TODO: Implement */
-  return FALSE;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  gchar* parent_path;
+  gchar* path;
+  gboolean result;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(parent != NULL, FALSE);
+  g_return_val_if_fail(name != NULL, FALSE);
+  infd_directory_return_val_if_iter_fail(directory, parent, FALSE);
+  infd_directory_return_val_if_subdir_fail(parent->node, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_return_val_if_fail(priv->storage != NULL, FALSE);
+
+  /* TODO: Explore parent if it is not already */
+
+  infd_directory_get_path(parent->node, &parent_path, NULL);
+  path = g_strconcat(parent_path, "/", name, NULL);
+  g_free(parent_path);
+
+  if(iter != NULL)
+  {
+    iter->node_id = node->id;
+    iter->node = node;
+  }
+
+  return TRUE;
 }
 
 /** infd_directory_add_text:

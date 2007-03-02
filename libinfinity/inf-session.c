@@ -31,6 +31,14 @@ struct _InfSessionForeachUserData {
 };
 
 enum {
+  PROP_0,
+
+  PROP_CONNECTION_MANAGER,
+  PROP_BUFFER,
+  PROP_SYNCHRONIZATION_MODE
+};
+
+enum {
   ADD_USER,
   REMOVE_USER,
 

@@ -1,5 +1,13 @@
 2007-03-01  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/docs:
+	* libinfinity/docs/terminology:
+	* libinfinity/docs/session: Added some notes, mostly for me to not
+	forget how things are supposed to work, but perhaps also interesting
+	to others.
+
+2007-03-01  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-marshal.in: Added VOID:BOOLEAN marshaller.
 
 	* libinfinity/inf-buffer.h:
