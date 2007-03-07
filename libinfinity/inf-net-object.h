@@ -43,6 +43,10 @@ struct _InfNetObjectIface {
                    GNetworkConnection* conn,
                    const xmlNodePtr node);
 
+  void (*enqueued)(InfNetObject* object,
+                   GNetworkConnection* conn,
+                   const xmlNodePtr node);
+
   void (*sent)(InfNetObject* object,
                GNetworkConnection* conn,
                const xmlNodePtr node);
@@ -53,6 +57,11 @@ inf_net_object_get_type(void) G_GNUC_CONST;
 
 void
 inf_net_object_received(InfNetObject* object,
+                        GNetworkConnection* conn,
+                        const xmlNodePtr node);
+
+void
+inf_net_object_enqueued(InfNetObject* object,
                         GNetworkConnection* conn,
                         const xmlNodePtr node);
 

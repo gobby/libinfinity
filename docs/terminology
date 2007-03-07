@@ -1,64 +1,82 @@
-directory
-  The directory tree.
+Uncategorized:
+  directory
+    The directory tree.
 
-node
-  An item in the directory tree.
+  node
+    An item in the directory tree.
 
-root
-  The root item of the directory tree.
+  root
+    The root item of the directory tree.
 
-subdirectory
-  A node which contains child nodes.
+  subdirectory
+    A node which contains child nodes.
 
-note
-  A leaf node.
+  note
+    A leaf node.
 
-connection
-  A two-way connection between client and server.
+  connection
+    A two-way connection between client and server.
 
-explore
-  This has meanings on two layers. In InfdDirectory, explore means to read
-  a subdirectory from the background storage into memory ("explore the
-  subdirectory").
+  explore
+    This has meanings on two layers. In InfdDirectory, explore means to read
+    a subdirectory from the background storage into memory ("explore the
+    subdirectory").
 
-  Also, a client can explore a subdirectory on the server. This means that he
-  requests its content from the server and wants to be notified if content
-  is added or removed.
+    Also, a client can explore a subdirectory on the server. This means that he
+    requests its content from the server and wants to be notified if content
+    is added or removed.
 
-buffer
-  A document of a given type, for example a text buffer which holds text.
+  buffer
+    A document of a given type, for example a text buffer which holds text.
 
-session
-  A session manages real-time collaborative editing of a buffer.
+  session
+    A session manages real-time collaborative editing of a buffer.
 
-user
-  A user is a participant in a session.
+  user
+    A user is a participant in a session.
 
-available (user):
-  An available user is a user that can actively perform changes in a buffer.
+  subscribe
+    A client can subscribe to a session on a server through a connection. This
+    means that the session is first synchronized to the client (meaning the
+    content of the underlaying buffer are transferred) and then the client
+    gets notified about changes in the buffer.
 
-unavailable (user):
-  An unavailable user has lost its connection to the server and so cannot
-  edit the buffer.
+    Note that the client cannot modify the buffer after having subscribed
+    because it has no user in the session.
 
-local (user):
-  A local user is a user that does not need a connection to the server to
-  be available because it operates directly on the buffer the server uses.
+  join
+    A join (or user join) may be performed by a client after having subscribed
+    to a session. This means that a new user for the session is created that
+    belongs to that client so that the client can actually modify the buffer.
+    It is also possible that an existing user that is unavailable is used
+    instead of creating a new one. In this case, the join is also called a
+    rejoin. Note that it is also possible that a client performs multiple
+    user joins.
 
-subscribe
-  A client can subscribe to a session on a server through a connection. This
-  means that the session is first synchronized to the client (meaning the
-  content of the underlaying buffer are transferred) and then the client
-  gets notified about changes in the buffer.
+ConnectionManager:
+  outer queue:
+    The outer queue of the connection manager is a list of messages of a
+    particular net object that is waiting for being sent. However, there is a
+    limit of how many messages are given to the actual gnetwork connection,
+    so that if someone decides to send a huge amount of messages (for example,
+    a session synchronization), most messages only get into the outer queue
+    and messages from other netobjects do not have to wait until all these
+    messages are actually sent.
 
-  Note that the client cannot modify the buffer after having subscribed
-  because it has no user in the session.
+  inner queue:
+    The inner queue is the queue inside the gnetwork connection object.
+    Messages in the inner queue are always guaranteed to be sent in order.
+    If a message was sent successfully, the first message from the outer
+    queue is moved into the inner queue, if there is any.
 
-join
-  A join (or user join) may be performed by a client after having subscribed
-  to a session. This means that a new user for the session is created that
-  belongs to that client so that the client can actually modify the buffer.
-  It is also possible that an existing user that is unavailable is used
-  instead of creating a new one. In this case, the join is also called a
-  rejoin. Note that it is also possible that a client performs multiple
-  user joins.
+User:
+  available:
+    An available user is a user that can actively perform changes in a buffer.
+
+  unavailable:
+    An unavailable user has lost its connection to the server and so cannot
+    edit the buffer.
+
+  local:
+    A local user is a user that does not need a connection to the server to
+    be available because it operates directly on the buffer the server uses.

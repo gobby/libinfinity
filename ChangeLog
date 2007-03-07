@@ -1,3 +1,25 @@
+2007-03-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:OBJECT,DOUBLE and
+	VOID:OBJECT,POINTER marshallers for synchronization signals.
+
+	* libinfinity/inf-net-object.h:
+	* libinfinity/inf-net-object.c:
+	* libinfinity/inf-connection-manager.h:
+	* libinfinity/inf-connection-manager.c: Implemented separation between
+	inner and outer queue, added enqueued vfunc in InfNetObject.
+
+	* libinfinity/inf-session.h:
+	* libinfinity/inf-session.c: Implemented session synchronization.
+
+	* libinfinity/inf-buffer.c: Minor build fixes.
+
+	* libinfinity/docs/terminology: Added inner queue and outer queue of
+	connection manager.
+
+	* libinfinity/docs/session: Applied slight changes that came up during
+	implementation.
+
 2007-03-01  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/docs:

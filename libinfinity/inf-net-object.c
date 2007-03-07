@@ -59,7 +59,7 @@ inf_net_object_received(InfNetObject* object,
   InfNetObjectIface* iface;
 
   g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(conn != NULL);
+  g_return_if_fail(GNETWORK_IS_CONNECTION(conn));
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);
@@ -70,6 +70,23 @@ inf_net_object_received(InfNetObject* object,
 }
 
 void
+inf_net_object_enqueued(InfNetObject* object,
+                        GNetworkConnection* conn,
+                        const xmlNodePtr node)
+{
+  InfNetObjectIface* iface;
+
+  g_return_if_fail(INF_IS_NET_OBJECT(object));
+  g_return_if_fail(GNETWORK_IS_CONNECTION(conn));
+  g_return_if_fail(node != NULL);
+
+  iface = INF_NET_OBJECT_GET_IFACE(object);
+  g_return_if_fail(iface->enqueued != NULL);
+
+  (*iface->enqueued)(object, conn, node);
+}
+
+void
 inf_net_object_sent(InfNetObject* object,
                     GNetworkConnection* conn,
                     const xmlNodePtr node)
@@ -77,7 +94,7 @@ inf_net_object_sent(InfNetObject* object,
   InfNetObjectIface* iface;
 
   g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(conn != NULL);
+  g_return_if_fail(GNETWORK_IS_CONNECTION(object));
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);

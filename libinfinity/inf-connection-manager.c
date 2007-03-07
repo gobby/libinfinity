@@ -24,13 +24,31 @@ struct _InfConnectionManagerPrivate {
   GSList* connections;
 };
 
+/* object-local stuff of connection */
+typedef struct _InfConnectionManagerObject InfConnectionManagerObject;
+struct _InfConnectionManagerObject {
+  InfNetObject* net_object;
+  gchar* identifier;
+
+  xmlNodePtr outer_queue;
+  xmlNodePtr outer_queue_last_item;
+  guint inner_queue_count;
+
+  xmlDocPtr doc;
+  xmlNodePtr container;
+};
+
 typedef struct _InfConnectionManagerConnection InfConnectionManagerConnection;
 struct _InfConnectionManagerConnection {
-  /* These hash tables map NetObjects to their identifiers and vice versa. */
-  GHashTable* objects;
-  GHashTable* identifiers;
+  /* identifier -> InfConnectionManagerObject */
+  GHashTable* identifier_connobj_table;
+  /* NetObject -> InfConnectionManagerObject */
+  GHashTable* object_connobj_table;
 
   InfXmlStream* stream_received;
+
+  /* TODO: Count byte positions and keep inner-queued nodes to not have to
+   * parse sent XML again. */
   InfXmlStream* stream_sent;
 };
 
@@ -39,12 +57,116 @@ struct _InfConnectionManagerConnection {
 static GObjectClass* parent_class;
 static GQuark connection_quark;
 
-static InfNetObject*
+/* Maximal number of XML nodes that are sent to a particular netobject A.
+ * If more are to be sent, they are kept in an outer queue so that messages
+ * from another netobject B can be sent through the same connection without
+ * having to wait until all messages from A have been sent. */
+static const guint INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT = 5;
+
+static InfConnectionManagerObject*
+inf_connection_manager_object_new(InfNetObject* net_object,
+                                  const gchar* identifier)
+{
+  InfConnectionManagerObject* object;
+  object = g_slice_new(InfConnectionManagerObject);
+
+  object->net_object = net_object;
+  g_object_ref(G_OBJECT(net_object));
+
+  object->identifier = g_strdup(identifier);
+  object->outer_queue = NULL;
+  object->outer_queue_last_item = NULL;
+  object->inner_queue_count = 0;
+
+  object->container = xmlNewNode(NULL, (const xmlChar*)"message");
+
+  xmlNewProp(
+    object->container,
+    (const xmlChar*)"to",
+    (const xmlChar*)identifier
+  );
+
+  object->doc = xmlNewDoc(NULL);
+  xmlDocSetRootElement(object->doc, object->container);
+
+  return object;
+}
+
+static void
+inf_connection_manager_object_free(InfConnectionManagerObject* object)
+{
+  xmlNodePtr next;
+
+  for(; object->outer_queue != NULL; object->outer_queue = next)
+  {
+    next = object->outer_queue->next;
+    xmlFreeNode(object->outer_queue);
+  }
+
+  xmlFreeDoc(object->doc); /* Also frees container */
+  g_free(object->identifier);
+
+  g_object_unref(G_OBJECT(object));
+  g_slice_free(InfConnectionManagerObject, object);
+}
+
+/* Sends a list of xml nodes through connection and returns the new list
+ * head. Successfully sent nodes are freed. */
+static xmlNodePtr
+inf_connection_manager_object_real_send(InfConnectionManagerObject* connobj,
+                                        GNetworkConnection* gnetwork_conn,
+                                        xmlNodePtr xml,
+                                        guint max_messages)
+{
+  xmlBufferPtr buffer;
+  xmlNodePtr cur;
+
+  /* Increase max messages and count down to one instead of zero. This way,
+   * max_messages == 0 means no limit. */
+  if(max_messages != 0)
+    ++ max_messages;
+
+  while(xml != NULL && max_messages != 1)
+  {
+    cur = xml;
+    xml = xml->next;
+
+    xmlUnlinkNode(cur);
+    xmlAddChild(connobj->container, cur);
+
+    /* Object was enqueued in inner queue */
+    inf_net_object_enqueued(connobj->net_object, gnetwork_conn, cur);
+
+    ++ connobj->inner_queue_count;
+    if(max_messages > 1) -- max_messages;
+  }
+
+  buffer = xmlBufferCreate();
+  xmlNodeDump(buffer, connobj->doc, connobj->container, 0, 0);
+
+  for(cur = connobj->container->children; cur != NULL; cur = cur->next)
+  {
+    xmlUnlinkNode(cur);
+    xmlFreeNode(cur);
+  }
+
+  gnetwork_connection_send(
+    gnetwork_conn,
+    xmlBufferContent(buffer),
+    xmlBufferLength(buffer)
+  );
+
+  xmlBufferFree(buffer);
+
+  return xml;
+}
+
+static InfConnectionManagerObject*
 inf_connection_manager_connection_grab(InfConnectionManagerConnection* conn,
                                        xmlNodePtr message)
 {
   xmlChar* identifier;
-  InfNetObject* object;
+  InfConnectionManagerObject* object;
 
   object = NULL;
   if(strcmp((const char*)message->name, "message") == 0)
@@ -52,7 +174,11 @@ inf_connection_manager_connection_grab(InfConnectionManagerConnection* conn,
     identifier = xmlGetProp(message, (const xmlChar*)"to");
     if(identifier != NULL)
     {
-      object = g_hash_table_lookup(conn->objects, (const gchar*)identifier);
+      object = g_hash_table_lookup(
+        conn->identifier_connobj_table,
+        (const gchar*)identifier
+      );
+
       xmlFree(identifier);
     }
   }
@@ -67,7 +193,7 @@ inf_connection_manager_connection_sent_cb(GNetworkConnection* gnetwork_conn,
                                           gpointer user_data)
 {
   InfConnectionManagerConnection* conn;
-  InfNetObject* object;
+  InfConnectionManagerObject* object;
   GError* error;
 
   xmlNodePtr message;
@@ -105,8 +231,31 @@ inf_connection_manager_connection_sent_cb(GNetworkConnection* gnetwork_conn,
       {
         for(child = message->children; child != NULL; child = child->next)
         {
-          inf_net_object_received(object, gnetwork_conn, child);
+          inf_net_object_sent(object->net_object, gnetwork_conn, child);
+          -- object->inner_queue_count;
         }
+
+        if(object->inner_queue_count <
+           INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+        {
+          /* We actually sent some objects, so we have some space in the
+           * inner queue again. */
+          object->outer_queue = inf_connection_manager_object_real_send(
+            object,
+            gnetwork_conn,
+            object->outer_queue,
+            INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT -
+              object->inner_queue_count
+          );
+
+          if(object->outer_queue == NULL)
+            object->outer_queue_last_item = NULL;
+        }
+
+        g_assert(
+          object->inner_queue_count <=
+          INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT
+        );
       }
 
       xmlFreeNode(message);
@@ -115,13 +264,13 @@ inf_connection_manager_connection_sent_cb(GNetworkConnection* gnetwork_conn,
 }
 
 static void
-inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
+inf_connection_manager_connection_received_cb(GNetworkConnection* gconn,
                                               gpointer data,
                                               gulong len,
                                               gpointer user_data)
 {
   InfConnectionManagerConnection* conn;
-  InfNetObject* object;
+  InfConnectionManagerObject* object;
   gchar* address;
   GError* error;
 
@@ -147,7 +296,7 @@ inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
 
     if(error != NULL)
     {
-      g_object_get(G_OBJECT(gnetwork_conn), "address", &address, NULL);
+      g_object_get(G_OBJECT(gconn), "address", &address, NULL);
 
       fprintf(
         stderr,
@@ -156,11 +305,9 @@ inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
         error->message
       );
 
-      gnetwork_connection_close(gnetwork_conn);
+      gnetwork_connection_close(gconn);
       g_error_free(error);
       g_free(address);
-
-      return;
     }
     else
     {
@@ -172,7 +319,7 @@ inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
         {
           for(child = message->children; child != NULL; child = child->next)
           {
-            inf_net_object_received(object, gnetwork_conn, child);
+            inf_net_object_received(object->net_object, gconn, child);
           }
         }
 
@@ -183,32 +330,12 @@ inf_connection_manager_connection_received_cb(GNetworkConnection* gnetwork_conn,
 }
 
 static void
-inf_connection_manager_connection_unassoc_foreach_func(gpointer key,
-                                                       gpointer value,
-                                                       gpointer data)
-{
-  g_free(key);
-
-  g_object_unref(G_OBJECT(value));
-}
-
-/* Note that this function does not free the given GNetworkConnection but
- * the associated InfConnectionManagerConnection. */
-static void
 inf_connection_manager_connection_unassoc(GNetworkConnection* gnetwork_conn)
 {
   InfConnectionManagerConnection* conn;
   conn = g_object_steal_qdata(G_OBJECT(gnetwork_conn), connection_quark);
 
   g_return_if_fail(conn != NULL);
-
-  /* It is enough to run foreach over one of the two hash tables because
-   * both refer to the same data. */
-  g_hash_table_foreach(
-    conn->objects,
-    inf_connection_manager_connection_unassoc_foreach_func,
-    conn
-  );
 
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(gnetwork_conn),
@@ -222,13 +349,13 @@ inf_connection_manager_connection_unassoc(GNetworkConnection* gnetwork_conn)
     conn
   );
 
-  g_hash_table_destroy(conn->objects);
-  g_hash_table_destroy(conn->identifiers);
+  g_hash_table_destroy(conn->identifier_connobj_table);
+  g_hash_table_destroy(conn->object_connobj_table);
 
   g_object_unref(G_OBJECT(conn->stream_received));
   g_object_unref(G_OBJECT(conn->stream_sent));
 
-  g_free(conn);
+  g_slice_free(InfConnectionManagerConnection, conn);
 }
 
 static InfConnectionManagerConnection*
@@ -239,7 +366,7 @@ inf_connection_manager_connection_assoc(GNetworkConnection* gnetwork_conn)
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_val_if_fail(conn == NULL, NULL);
 
-  conn = g_new(InfConnectionManagerConnection, 1);
+  conn = g_slice_new(InfConnectionManagerConnection);
 
   g_object_set_qdata(
     G_OBJECT(gnetwork_conn),
@@ -261,12 +388,19 @@ inf_connection_manager_connection_assoc(GNetworkConnection* gnetwork_conn)
     conn
   );
 
-  /* These hash tables convert an object's identifier to the
-   * InfNetObject and back. Both operate on the same string (the same
-   * as in the char poniters point to the same memory) and the same
-   * NetObject. */
-  conn->objects = g_hash_table_new(g_str_hash, g_str_equal);
-  conn->identifiers = g_hash_table_new(NULL, NULL);
+  /* This maps from InfNetObject to InfConnectionManagerObject. */
+  conn->object_connobj_table = g_hash_table_new_full(
+    NULL,
+    NULL,
+    NULL,
+    (GDestroyNotify)inf_connection_manager_object_free
+  );
+
+  /* Maps identifier to InfConnectionManagerObject. The identifier given to
+   * the hash table is exactly the same as the one stored in the
+   * InfConnectionManagerObject, so we do not use it as a key_destroy_func,
+   * because it is freed with that object. */
+  conn->identifier_connobj_table = g_hash_table_new(g_str_hash, g_str_equal);
 
   conn->stream_received = inf_xml_stream_new();
   conn->stream_sent = inf_xml_stream_new();
@@ -286,20 +420,17 @@ inf_connection_manager_connection_notify_status_cb(GNetworkConnection* conn,
                                                    gpointer user_data)
 {
   InfConnectionManager* manager;
-  InfConnectionManagerPrivate* priv;
   GNetworkConnectionStatus status;
 
   g_object_get(G_OBJECT(conn), "status", &status, NULL);
 
   /* Remove the connection from the list of connections if it has
    * been closed. */
-  if(status == GNETWORK_CONNECTION_CLOSED)
+  if(status == GNETWORK_CONNECTION_CLOSED ||
+     status == GNETWORK_CONNECTION_CLOSING)
   {
     manager = INF_CONNECTION_MANAGER(user_data);
-    priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
-
     inf_connection_manager_free_connection(manager, conn);
-    priv->connections = g_slist_remove(priv->connections, conn);
   }
 }
 
@@ -309,20 +440,19 @@ inf_connection_manager_connection_error_cb(GNetworkConnection* conn,
                                            gpointer user_data)
 {
   InfConnectionManager* manager;
-  InfConnectionManagerPrivate* priv;
-
   manager = INF_CONNECTION_MANAGER(user_data);
-  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
 
   /* Remove connection on error */
   inf_connection_manager_free_connection(manager, conn);
-  priv->connections = g_slist_remove(priv->connections, conn);
 }
 
 static void
 inf_connection_manager_free_connection(InfConnectionManager* manager,
                                        GNetworkConnection* gnetwork_conn)
 {
+  InfConnectionManagerPrivate* priv;
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
   inf_connection_manager_connection_unassoc(gnetwork_conn);
 
   g_signal_handlers_disconnect_by_func(
@@ -337,6 +467,7 @@ inf_connection_manager_free_connection(InfConnectionManager* manager,
     manager
   );
 
+  priv->connections = g_slist_remove(priv->connections, gnetwork_conn);
   g_object_unref(G_OBJECT(gnetwork_conn));
 }
 
@@ -358,20 +489,12 @@ inf_connection_manager_dispose(GObject* object)
 {
   InfConnectionManager* manager;
   InfConnectionManagerPrivate* priv;
-  GNetworkConnection* gnetwork_conn;
-  GSList* item;
 
   manager = INF_CONNECTION_MANAGER(object);
   priv = INF_CONNECTION_MANAGER_PRIVATE(object);
 
-  for(item = priv->connections; item != NULL; item = g_slist_next(item))
-  {
-    gnetwork_conn = GNETWORK_CONNECTION(item->data);
-    inf_connection_manager_free_connection(manager, gnetwork_conn);
-  }
-
-  g_slist_free(priv->connections);
-  priv->connections = NULL;
+  while(priv->connections != NULL)
+    inf_connection_manager_free_connection(manager, priv->connections->data);
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -664,7 +787,7 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
                                   const gchar* identifier)
 {
   InfConnectionManagerConnection* conn;
-  gchar* identifier_copy;
+  InfConnectionManagerObject* connobj;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
@@ -674,11 +797,19 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
-  g_object_ref(G_OBJECT(object));
+  connobj = inf_connection_manager_object_new(object, identifier);
 
-  identifier_copy = g_strdup(identifier);
-  g_hash_table_insert(conn->objects, identifier_copy, object);
-  g_hash_table_insert(conn->identifiers, object, identifier_copy);
+  g_hash_table_insert(
+    conn->object_connobj_table,
+    object,
+    connobj
+  );
+
+  g_hash_table_insert(
+    conn->identifier_connobj_table,
+    connobj->identifier,
+    connobj
+  );
 }
 
 /** inf_connection_manager_remove_object:
@@ -692,14 +823,20 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
  * #GNetworkConnection by a call to inf_connection_manager_add_object().
  * After this call, @object no longer receives network input from
  * @gnetwork_conn.
- */
+ *
+ * This function causes all remaining messages in the outer queue to be
+ * flushed, regardless of how many messages are already in the inner queue.
+ * If the messages in the outer queue do not need to reach the remote site
+ * anymore, you should cancel them before calling this function using
+ * inf_connection_manager_cancel_outer().
+ **/
 void
 inf_connection_manager_remove_object(InfConnectionManager* manager,
                                      GNetworkConnection* gnetwork_conn,
                                      InfNetObject* object)
 {
   InfConnectionManagerConnection* conn;
-  gchar* identifier;
+  InfConnectionManagerObject* connobj;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
@@ -708,18 +845,27 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
-  identifier = g_hash_table_lookup(conn->identifiers, object);
-  g_return_if_fail(identifier != NULL);
+  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
+  g_return_if_fail(connobj != NULL);
+
+  if(connobj->outer_queue != NULL)
+  {
+    /* TODO: Do not do this if the queue is big, but we need to find a
+     * way to specify which messages still have to be flushed. */
+    /* Flush outer queue completely */
+    connobj->outer_queue = inf_connection_manager_object_real_send(
+      connobj,
+      gnetwork_conn,
+      connobj->outer_queue,
+      0
+    );
+  }
  
-  g_hash_table_remove(conn->identifiers, object);
-  g_hash_table_remove(conn->objects, identifier);
-
-  g_free(identifier);
-
-  g_object_unref(G_OBJECT(object));
+  g_hash_table_remove(conn->identifier_connobj_table, connobj->identifier);
+  g_hash_table_remove(conn->object_connobj_table, object);
 }
 
-/** inf_connection_manager_send_to_object:
+/** inf_connection_manager_send:
  *
  * @manager: A #InfConnectionManager
  * @gnetwork_conn: A #GNetworkConnection managed by @manager
@@ -730,19 +876,18 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
  * @gnetwork_conn. If there is another #InfConnectionManager on the other
  * end it will forward the message to the #InfNetObject with the same
  * identifier (see inf_connection_manager_add_object()).
+ *
+ * The function takes ownership of @message and unlinks it from its current
+ * context.
  **/
 void
-inf_connection_manager_send_to_object(InfConnectionManager* manager,
-                                      GNetworkConnection* gnetwork_conn,
-                                      InfNetObject* object,
-                                      xmlNodePtr message)
+inf_connection_manager_send(InfConnectionManager* manager,
+                            GNetworkConnection* gnetwork_conn,
+                            InfNetObject* object,
+                            xmlNodePtr message)
 {
   InfConnectionManagerConnection* conn;
-  const gchar* identifier;
-
-  xmlNodePtr header;
-  xmlDocPtr doc;
-  xmlBufferPtr buffer;
+  InfConnectionManagerObject* connobj;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
@@ -752,27 +897,150 @@ inf_connection_manager_send_to_object(InfConnectionManager* manager,
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
-  identifier = g_hash_table_lookup(conn->identifiers, object);
-  g_return_if_fail(identifier != NULL);
+  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
+  g_return_if_fail(connobj != NULL);
 
-  header = xmlNewNode(NULL, (const xmlChar*)"message");
-  xmlNewProp(header, (const xmlChar*)"to", (const xmlChar*)identifier);
-  xmlAddChild(header, message);
+  if(connobj->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+  {
+    message = inf_connection_manager_object_real_send(
+      connobj,
+      gnetwork_conn,
+      message,
+      1
+    );
+  }
+  else
+  {
+    /* Message was not sent because inner queue is full, so enqueue it to
+     * outer queue and wait until other messages have been sent. */
+    if(message != NULL)
+    {
+      if(connobj->outer_queue_last_item == NULL)
+        connobj->outer_queue = message;
+      else
+        connobj->outer_queue_last_item->next = message;
 
-  doc = xmlNewDoc(NULL);
-  xmlDocSetRootElement(doc, header);
+      message->prev = connobj->outer_queue_last_item;
+      message->next = NULL;
+      connobj->outer_queue_last_item = message;
+    }
+  }
+}
 
-  buffer = xmlBufferCreate();
-  xmlNodeDump(buffer, doc, header, 0, 0);
+/** inf_connection_manager_send_multiple:
+ *
+ * @manager: A #InfConnectionManager
+ * @gnetwork_conn: A #GNetworkConnection managed by @manager
+ * @object: A #InfNetObject to which to send a message
+ * @messages: The messages to send, linked with the next field.
+ *
+ * This function will send multiple XML-based messages to the other end of
+ * @gnetwork_conn. If there is another #InfConnectionManager on the other
+ * end it will forward the messages to the #InfNetObject with the same
+ * identifier (see inf_connection_manager_add_object()).
+ *
+ * The function takes ownership of the list of messages and unlinks them
+ * from their current context.
+ **/
+void
+inf_connection_manager_send_multiple(InfConnectionManager* manager,
+                                     GNetworkConnection* gnetwork_conn,
+                                     InfNetObject* object,
+                                     xmlNodePtr messages)
+{
+  InfConnectionManagerConnection* conn;
+  InfConnectionManagerObject* connobj;
+  xmlNodePtr cur;
+  xmlNodePtr prev;
+  xmlNodePtr next;
 
-  xmlUnlinkNode(message);
-  xmlFreeDoc(doc);
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
+  g_return_if_fail(INF_IS_NET_OBJECT(object));
 
-  gnetwork_connection_send(
-    gnetwork_conn,
-    xmlBufferContent(buffer),
-    xmlBufferLength(buffer)
-  );
+  conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
+  g_return_if_fail(conn != NULL);
 
-  xmlBufferFree(buffer);
+  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
+  g_return_if_fail(connobj != NULL);
+
+  if(connobj->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+  {
+    messages = inf_connection_manager_object_real_send(
+      connobj,
+      gnetwork_conn,
+      messages,
+      INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - connobj->inner_queue_count
+    );
+  }
+
+  /* Not all messages could be sent, so enqueue in outer queue. */
+  if(messages != NULL)
+  {
+    /* Detach nodes from their current context, but keep them linked */
+    prev = NULL;
+    for(cur = messages; cur != NULL; cur = next)
+    {
+      next = cur->next;
+      xmlUnlinkNode(cur);
+
+      /* Do not set cur->next because it would be unlinked in the
+       * next iteration, anyway. */
+      cur->prev = prev;
+      if(prev != NULL) prev->next = cur;
+
+      prev = cur;
+    }
+
+    /* prev now contains the last node in the list */
+
+    if(connobj->outer_queue_last_item == NULL)
+      connobj->outer_queue = messages;
+    else
+      connobj->outer_queue_last_item->next = messages;
+
+    messages->prev = connobj->outer_queue_last_item;
+    prev->next = NULL;
+    connobj->outer_queue_last_item = prev;
+  }
+}
+
+/** inf_connection_manager_cancel_outer:
+ *
+ * @manager: A #InfConnectionManager.
+ * @gnetwork_conn: A #GNetworkConnection managed by @manager
+ * @object: A #InfNetObject.
+ *
+ * Cancels all messages that were registered to be sent by
+ * inf_connection_manager_send() or inf_connection_manager_send_multiple()
+ * and that have not yet been enqueued. Sending already enqueued messages
+ * cannot be cancelled.
+ **/
+void
+inf_connection_manager_cancel_outer(InfConnectionManager* manager,
+                                    GNetworkConnection* gnetwork_conn,
+                                    InfNetObject* object)
+{
+  InfConnectionManagerConnection* conn;
+  InfConnectionManagerObject* connobj;
+  xmlNodePtr next;
+
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(GNETWORK_IS_CONNECTION(gnetwork_conn));
+  g_return_if_fail(INF_IS_NET_OBJECT(object));
+
+  conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
+  g_return_if_fail(conn != NULL);
+
+  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
+  g_return_if_fail(connobj != NULL);
+
+  /* Clear outer queue */
+  for(; connobj->outer_queue != NULL; connobj->outer_queue = next)
+  {
+    next = connobj->outer_queue->next;
+    xmlFreeNode(connobj->outer_queue);
+  }
+
+  connobj->outer_queue_last_item = NULL;
 }

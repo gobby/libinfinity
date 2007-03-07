@@ -46,7 +46,7 @@ inf_buffer_base_init(gpointer g_class)
       inf_marshal_VOID__BOOLEAN,
       G_TYPE_NONE,
       1,
-      G_TYPE_BOOLEAN,
+      G_TYPE_BOOLEAN
     );
   }
 }
@@ -94,7 +94,13 @@ void
 inf_buffer_set_read_only(InfBuffer* buffer)
 {
   g_return_if_fail(INF_IS_BUFFER(buffer));
-  g_signal_emit(G_OBJECT(buffer), buffer_signals[READ_ONLY_CHANGED], 0, true);
+
+  g_signal_emit(
+    G_OBJECT(buffer),
+    buffer_signals[READ_ONLY_CHANGED],
+    0,
+    TRUE
+  );
 }
 
 /** inf_buffer_set_read_write:
@@ -106,7 +112,13 @@ inf_buffer_set_read_only(InfBuffer* buffer)
 void inf_buffer_set_read_write(InfBuffer* buffer)
 {
   g_return_if_fail(INF_IS_BUFFER(buffer));
-  g_signal_emit(G_OBJECT(buffer), buffer_signals[READ_ONLY_CHANGED], 0, false);
+
+  g_signal_emit(
+    G_OBJECT(buffer),
+    buffer_signals[READ_ONLY_CHANGED],
+    0,
+    FALSE
+  );
 }
 
 /** inf_buffer_is_read_only:

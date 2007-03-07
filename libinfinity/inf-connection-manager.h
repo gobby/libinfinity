@@ -85,10 +85,21 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
                                      InfNetObject* object);
 
 void
-inf_connection_manager_send_to_object(InfConnectionManager* manager,
-                                      GNetworkConnection* gnetwork_conn,
-                                      InfNetObject* object,
-                                      xmlNodePtr message);
+inf_connection_manager_send(InfConnectionManager* manager,
+                            GNetworkConnection* gnetwork_conn,
+                            InfNetObject* object,
+                            xmlNodePtr message);
+
+void
+inf_connection_manager_send_multiple(InfConnectionManager* manager,
+                                     GNetworkConnection* gnetwork_conn,
+                                     InfNetObject* object,
+                                     xmlNodePtr messages);
+
+void
+inf_connection_manager_cancel_outer(InfConnectionManager* manager,
+                                    GNetworkConnection* gnetwork_conn,
+                                    InfNetObject* object);
 
 G_END_DECLS
 

@@ -21,6 +21,10 @@
 
 #include <libinfinity/inf-user.h>
 
+#include <libxml/tree.h>
+
+#include <libgnetwork/gnetwork-connection.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -32,26 +36,94 @@ G_BEGIN_DECLS
 #define INF_IS_SESSION_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_USER))
 #define INF_SESSION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_USER, InfSessionClass))
 
+#define INF_TYPE_SESSION_STATUS          (inf_session_status_get_type())
+
 typedef struct _InfSession InfSession;
 typedef struct _InfSessionClass InfSessionClass;
+
+typedef enum _InfSessionStatus {
+  INF_SESSION_SYNCHRONIZING,
+  INF_SESSION_RUNNING,
+  INF_SESSION_CLOSED
+} InfSessionStatus;
+
+typedef enum _InfSessionSyncError {
+  /* Got unexpected XML node during synchronization */
+  INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
+  /* id attribute not present in XML node */
+  INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT,
+  /* The ID is already in use by another user */
+  INF_SESSION_SYNC_ERROR_ID_IN_USE,
+  /* name attribute not present in XML node */
+  INF_SESSION_SYNC_ERROR_NAME_NOT_PRESENT,
+  /* The name is already in use by another user */
+  INF_SESSION_SYNC_ERROR_NAME_IN_USE,
+  /* The underlaying connection has been closed */
+  INF_SESSION_SYNC_ERROR_CONNECTION_CLOSED,
+  /* The sender has cancelled the synchronization */
+  INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
+  /* The receiver has cancelled the synchronization */
+  INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
+  /* Got begin-of-sync message, but sync is already in progress */
+  INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC,
+  /* The begin-of-sinc message does not contain the number of messages
+   * to expect */
+  INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING,
+  /* Got end-of-sync, but sync is still in progress */
+  INF_SESSION_SYNC_ERROR_UNEXPECTED_END_OF_SYNC,
+  /* Sync has just started, but first message was not begin-of-sync */
+  INF_SESSION_SYNC_ERROR_EXPECTED_BEGIN_OF_SYNC,
+  /* Last sync message shoud be end-of-sync, but it is not */
+  INF_SESSION_SYNC_ERROR_EXPECTED_END_OF_SYNC,
+
+  INF_SESSION_SYNC_ERROR_FAILED
+} InfSessionSyncError;
 
 struct _InfSessionClass {
   GObjectClass parent_class;
 
   /* Virtual table */
-  void(*to_xml)(InfSession* session,
-                xmlNodePtr parent);
-  gboolean(*process_xml)(InfSession* session,
-                         xmlNodePtr xml,
-                         GError** error);
 
-  GHashTable*(*get_xml_user_props_sync)(InfSession* session,
-                                        GNetworkConnection* conn, /* ? */
-                                        xmlNodePtr xml);
+  /* This should save the session within a XML document. parent is the root
+   * node of the document. It should create as much nodes as possible within
+   * that root node and not in sub-nodes because these are sent to the client
+   * and it is allowed that other traffic is put inbetween those notes. This
+   * way, communication through the same connection does not hang just because
+   * a large document is synchronized. */
+  void(*to_xml_sync)(InfSession* session,
+                     xmlNodePtr parent);
 
-  gboolean(*check_user_props_sync)(InfSession* session,
-                                   GHashTable* properties,
-                                   GError** error);
+  /* This method is called for every node in the XML document created above
+   * on the other site. It should reconstruct the session. */
+  gboolean(*process_xml_sync)(InfSession* session,
+                              GNetworkConnection* connection,
+                              const xmlNodePtr xml,
+                              GError** error);
+
+  /* This method is called for every received message while the session is
+   * running. */
+  void(*process_xml_run)(InfSession* session,
+                         GNetworkConnection* connection,
+                         const xmlNodePtr xml);
+
+  GArray*(*get_xml_user_props)(InfSession* session,
+                               GNetworkConnection* conn, /* ? */
+                               const xmlNodePtr xml);
+
+  gboolean(*validate_user_props)(InfSession* session,
+                                 const GParameter* params,
+                                 guint n_params,
+                                 GError** error);
+
+  void(*user_to_xml)(InfSession* session,
+                     InfUser* user,
+                     xmlNodePtr xml);
+
+  InfUser*(*user_new)(InfSession* session,
+                      const GParameter* params,
+                      guint n_params);
+
+  void(*close)(InfSession* session);
 
   /* Signals */
   void(*add_user)(InfSession* session,
@@ -59,6 +131,17 @@ struct _InfSessionClass {
 
   void(*remove_user)(InfSession* session,
                      InfUser* user);
+
+  void(*synchronization_progress)(InfSession* session,
+                                  GNetworkConnection* connection,
+                                  gdouble percentage);
+
+  void(*synchronization_complete)(InfSession* session,
+                                  GNetworkConnection* connection);
+
+  void(*synchronization_failed)(InfSession* session,
+                                GNetworkConnection* connection,
+                                const GError* error);
 };
 
 struct _InfSession {
@@ -68,22 +151,47 @@ struct _InfSession {
 typedef void(*InfSessionForeachUserFunc)(InfUser* user,
                                          gpointer user_data);
 
+const GParameter*
+inf_session_lookup_user_property(const GParameter* params,
+                                 guint n_params,
+                                 const gchar* name);
+
+GParameter*
+inf_session_get_user_property(GArray* array,
+                              const gchar* name);
+
+GType
+inf_session_status_get_type(void) G_GNUC_CONST;
+
 GType
 inf_session_get_type(void) G_GNUC_CONST;
 
+void
+inf_session_close(InfSession* session);
+
 InfUser*
 inf_session_add_user(InfSession* session,
-                     GHashTable* properties,
+                     GParameter* params,
+                     guint n_params,
                      GError** error);
 
 InfUser*
 inf_session_lookup_user_by_id(InfSession* session,
                               guint user_id);
 
+InfUser*
+inf_session_lookup_user_by_name(InfSession* session,
+                                const gchar* name);
+
 void
 inf_session_foreach_user(InfSession* session,
                          InfSessionForeachUserFunc func,
                          gpointer user_data);
+
+void
+inf_session_synchronize_to(InfSession* session,
+                           GNetworkConnection* connection,
+                           const gchar* identifier);
 
 G_END_DECLS
 

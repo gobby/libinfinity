@@ -36,10 +36,10 @@ If a session is in synchronization mode and receives a XML node, it is passed
 to the process_xml vfunc. This function should reconstruct the session from
 the XML. Note that not the whole XML tree is processed at once, but node
 by node. InfSession reconstructs the user information by looking for <user>
-tags. Foreach such tag, it calls the get_xml_user_props_sync vfunc. This
+tags. Foreach such tag, it calls the get_xml_user_props vfunc. This
 vfunc is supposed to create a hash table that maps property names to
 property values. In InfSession, the id, name and status attribute are
-converted respectively. Then, the check_user_props_sync vfunc is called. This
+converted respectively. Then, the check_user_props vfunc is called. This
 function is supposed to verify the input. In InfSession, it makes sure
 that both ID and user name are unique. InfdSession (which is used on the
 server side) adds an additional check that forces the status of each user
@@ -48,14 +48,13 @@ vfunc. Derived sessions (such as InfdTextSession) might create a different
 user type here (such as InfdTextUser).
 
 Actual user joins are handled in InfdSession since they only appear on the
-server side. Here, a similar proceduce happens except that other vfuncs are
-called because slightly different semantics are required. First,
-the get_xml_user_props_join vfunc is called in correspondance to
-get_xml_user_props_sync. Then, the arguments are verified with
-check_user_props_join. In this case, duplicate names are allowed if the
-existing user is unavailable. In this case, no new user is created but the
-existing one is used. This way, users are able to rejoin with the same user
-information if they left the session for a while.
+server side. Here, a similar proceduce happens except that after having
+called get_xml_user_props, it is checked whether the name matches
+the one of an existing but unavailable user. In this case, the existing
+one is reused. This way, users are able to rejoin with the same user
+information if they left the session for a while. If it does not match,
+a new ID for the user is chosen. Then, check_user_props is called to check
+the other properties.
 
 To send the user join to clients, the user_to_xml vfunc is used, but only
 if a new user has been created. Otherwise, only a status-change for the
@@ -67,6 +66,6 @@ hash table are just used as attributes for the XML message sent to the
 server.
 
 When it receives a user join from the server, it uses the
-get_xml_user_props_sync vfunc from InfSession because the semantics are the
-same on the client. Also, check_user_props_sync is used to validate the
+get_xml_user_props vfunc from InfSession because the semantics are exactly
+the same on the client. Also, check_user_props is used to validate the
 received data and then the user is created using user_new.
