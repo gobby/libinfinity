@@ -1,5 +1,13 @@
 2007-03-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-session.h:
+	* libinfinity/inf-session.c: Provide getters for connection manager
+	and buffer. Also do a ref on the connection we get in
+	inf_session_synchronize_to() because it will be unrefed when the
+	synchronization is complete or failed.
+
+2007-03-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-session.c: Before removing the session from the
 	connection manager in inf_session_release_connection(), make sure that
 	the connection manager still has the connection. If the connection was

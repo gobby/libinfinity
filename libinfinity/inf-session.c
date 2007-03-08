@@ -22,6 +22,8 @@
 
 #include <libinfinity/inf-marshal.h>
 
+/* TODO: Set buffer to read-only during synchronization */
+
 typedef struct _InfSessionSync InfSessionSync;
 struct _InfSessionSync {
   GNetworkConnection* conn;
@@ -1715,6 +1717,36 @@ inf_session_close(InfSession* session)
   session_class->close(session);
 }
 
+/** inf_session_get_connection_manager:
+ *
+ * @session: A #InfSession.
+ *
+ * Returns the connection manager for @session.
+ *
+ * Return Value: A #InfConnectionManager.
+ **/
+InfConnectionManager*
+inf_session_get_connection_manager(InfSession* session)
+{
+  g_return_val_if_fail(INF_IS_SESSION(session), NULL);
+  return INF_SESSION_PRIVATE(session)->manager;
+}
+
+/** inf_session_get_buffer:
+ *
+ * @session: A #InfSession.
+ *
+ * Returns the buffer used by @session.
+ *
+ * Return Value: A #InfBuffer.
+ **/
+InfBuffer*
+inf_session_get_buffer(InfSession* session)
+{
+  g_return_val_if_fail(INF_IS_SESSION(session), NULL);
+  return INF_SESSION_PRIVATE(session)->buffer
+}
+
 /** inf_session_add_user:
  *
  * @session A #InfSession.
@@ -1923,6 +1955,7 @@ inf_session_synchronize_to(InfSession* session,
   sync->messages_total = 2; /* including sync-begin and sync-end */
   sync->end_enqueued = FALSE;
 
+  g_object_ref(G_OBJECT(connection));
   priv->shared.run.syncs = g_slist_prepend(priv->shared.run.syncs, sync);
 
   inf_connection_manager_add_object(

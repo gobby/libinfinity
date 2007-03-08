@@ -169,6 +169,12 @@ inf_session_get_type(void) G_GNUC_CONST;
 void
 inf_session_close(InfSession* session);
 
+InfConnectionManager*
+inf_session_get_connection_manager(InfSession* session);
+
+InfBuffer*
+inf_session_get_buffer(InfSession* session);
+
 InfUser*
 inf_session_add_user(InfSession* session,
                      GParameter* params,
