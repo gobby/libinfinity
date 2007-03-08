@@ -178,45 +178,6 @@ inf_session_get_sync_error_message(GQuark domain,
   return "An error with unknown error domain occured";
 }
 
-static void
-inf_session_init_sync(InfSession* session)
-{
-  InfSessionPrivate* priv;
-  priv = INF_SESSION_PRIVATE(session);
-
-  /* RUNNING is initial state */
-  if(priv->status == INF_SESSION_RUNNING)
-  {
-    priv->status = INF_SESSION_SYNCHRONIZING;
-    priv->shared.sync.conn = NULL;
-    priv->shared.sync.messages_total = 0;
-    priv->shared.sync.messages_received = 0;
-    priv->shared.sync.identifier = NULL;
-  }
-}
-
-static void
-inf_session_register_sync(InfSession* session)
-{
-  InfSessionPrivate* priv;
-  priv = INF_SESSION_PRIVATE(session);
-
-  /* Register NetObject when all requirements for initial synchronization
-   * are met. */
-  if(priv->status == INF_SESSION_SYNCHRONIZING &&
-     priv->manager != NULL &&
-     priv->shared.sync.conn != NULL &&
-     priv->shared.sync.identifier != NULL)
-  {
-    inf_connection_manager_add_object(
-      priv->manager,
-      priv->shared.sync.conn,
-      INF_NET_OBJECT(session),
-      priv->shared.sync.identifier
-    );
-  }
-}
-
 static GSList*
 inf_session_find_sync_item_by_connection(InfSession* session,
                                          GNetworkConnection* conn)
@@ -415,6 +376,52 @@ inf_session_connection_notify_status_cb(GNetworkConnection* connection,
 /*
  * GObject overrides.
  */
+
+static void
+inf_session_init_sync(InfSession* session)
+{
+  InfSessionPrivate* priv;
+  priv = INF_SESSION_PRIVATE(session);
+
+  /* RUNNING is initial state */
+  if(priv->status == INF_SESSION_RUNNING)
+  {
+    priv->status = INF_SESSION_SYNCHRONIZING;
+    priv->shared.sync.conn = NULL;
+    priv->shared.sync.messages_total = 0;
+    priv->shared.sync.messages_received = 0;
+    priv->shared.sync.identifier = NULL;
+  }
+}
+
+static void
+inf_session_register_sync(InfSession* session)
+{
+  InfSessionPrivate* priv;
+  priv = INF_SESSION_PRIVATE(session);
+
+  /* Register NetObject when all requirements for initial synchronization
+   * are met. */
+  if(priv->status == INF_SESSION_SYNCHRONIZING &&
+     priv->manager != NULL &&
+     priv->shared.sync.conn != NULL &&
+     priv->shared.sync.identifier != NULL)
+  {
+    inf_connection_manager_add_object(
+      priv->manager,
+      priv->shared.sync.conn,
+      INF_NET_OBJECT(session),
+      priv->shared.sync.identifier
+    );
+
+    g_signal_connect(
+      G_OBJECT(priv->shared.sync.conn),
+      "notify::status",
+      G_CALLBACK(inf_session_connection_notify_status_cb),
+      session
+    );
+  }
+}
 
 static void
 inf_session_init(GTypeInstance* instance,
@@ -1744,7 +1751,7 @@ InfBuffer*
 inf_session_get_buffer(InfSession* session)
 {
   g_return_val_if_fail(INF_IS_SESSION(session), NULL);
-  return INF_SESSION_PRIVATE(session)->buffer
+  return INF_SESSION_PRIVATE(session)->buffer;
 }
 
 /** inf_session_add_user:
@@ -1957,6 +1964,13 @@ inf_session_synchronize_to(InfSession* session,
 
   g_object_ref(G_OBJECT(connection));
   priv->shared.run.syncs = g_slist_prepend(priv->shared.run.syncs, sync);
+
+  g_signal_connect(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(inf_session_connection_notify_status_cb),
+    session
+  );
 
   inf_connection_manager_add_object(
     priv->manager,

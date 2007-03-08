@@ -19,6 +19,8 @@
 #ifndef __INF_SESSION_H__
 #define __INF_SESSION_H__
 
+#include <libinfinity/inf-connection-manager.h>
+#include <libinfinity/inf-buffer.h>
 #include <libinfinity/inf-user.h>
 
 #include <libxml/tree.h>

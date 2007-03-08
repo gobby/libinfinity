@@ -1,5 +1,10 @@
 2007-03-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-session.c: Connect to notify::status to find out
+	when a connection is closed.
+
+2007-03-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-session.h:
 	* libinfinity/inf-session.c: Provide getters for connection manager
 	and buffer. Also do a ref on the connection we get in
