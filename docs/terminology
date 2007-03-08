@@ -78,5 +78,5 @@ User:
     edit the buffer.
 
   local:
-    A local user is a user that does not need a connection to the server to
-    be available because it operates directly on the buffer the server uses.
+    A local user is a user that does not need a connection to be available
+    because it operates directly on the buffer of the host session.

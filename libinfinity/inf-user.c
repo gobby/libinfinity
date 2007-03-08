@@ -23,6 +23,7 @@ struct _InfUserPrivate {
   guint id;
   gchar* name;
   InfUserStatus status;
+  GNetworkConnection* connection;
 };
 
 enum {
@@ -30,12 +31,79 @@ enum {
 
   PROP_ID,
   PROP_NAME,
-  PROP_STATUS
+  PROP_STATUS,
+  PROP_CONNECTION
 };
 
 #define INF_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
 
 static GObjectClass* parent_class;
+
+/* Required by inf_user_set_connection */
+static void
+inf_user_connection_notify_status_cb(GNetworkConnection* connection,
+                                     const gchar* property,
+                                     gpointer user_data);
+
+static void
+inf_user_set_connection(InfUser* user,
+                        GNetworkConnection* connection)
+{
+  InfUserPrivate* priv;
+  priv = INF_USER_PRIVATE(user);
+
+  if(priv->connection != NULL)
+  {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(connection),
+      G_CALLBACK(inf_user_connection_notify_status_cb),
+      user
+    );
+
+    g_object_unref(G_OBJECT(priv->connection));
+  }
+
+  priv->connection = connection;
+
+  if(connection != NULL)
+  {
+    g_object_ref(G_OBJECT(connection));
+
+    g_signal_connect_after(
+      G_OBJECT(connection),
+      "notify::status",
+      G_CALLBACK(inf_user_connection_notify_status_cb),
+      user
+    );
+  }
+}
+
+static void
+inf_user_connection_notify_status_cb(GNetworkConnection* connection,
+                                     const gchar* property,
+				     gpointer user_data)
+{
+  InfUser* user;
+  InfUserPrivate* priv;
+
+  GNetworkConnectionStatus status;
+
+  user = INF_USER(user_data);
+  priv = INF_USER_PRIVATE(user);
+
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+
+  if(status == GNETWORK_CONNECTION_CLOSED ||
+     status == GNETWORK_CONNECTION_CLOSING)
+  {
+    inf_user_set_connection(user, NULL);
+    if(priv->status != INF_USER_UNAVAILABLE)
+    {
+      priv->status = INF_USER_UNAVAILABLE;
+      g_object_notify(G_OBJECT(user), "status");
+    }
+  }
+}
 
 static void
 inf_user_init(GTypeInstance* instance,
@@ -50,6 +118,18 @@ inf_user_init(GTypeInstance* instance,
   priv->id = 0;
   priv->name = NULL;
   priv->status = INF_USER_UNAVAILABLE;
+  priv->connection = NULL;
+}
+
+static void
+inf_user_dispose(GObject* object)
+{
+  InfUser* user;
+  user = INF_USER(object);
+
+  inf_user_set_connection(user, NULL);
+
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
@@ -89,6 +169,14 @@ inf_user_set_property(GObject* object,
     break;
   case PROP_STATUS:
     priv->status = g_value_get_enum(value);
+    /* TODO: Unset connection if the user becomes unavailable? */
+    break;
+  case PROP_CONNECTION:
+    inf_user_set_connection(
+      user,
+      GNETWORK_CONNECTION(g_value_get_object(value))
+    );
+
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -119,6 +207,9 @@ inf_user_get_property(GObject* object,
   case PROP_STATUS:
     g_value_set_enum(value, priv->status);
     break;
+  case PROP_CONNECTION:
+    g_value_set_object(value, priv->connection);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -135,6 +226,7 @@ inf_user_class_init(gpointer g_class,
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfUserPrivate));
 
+  object_class->dispose = inf_user_dispose;
   object_class->finalize = inf_user_finalize;
   object_class->set_property = inf_user_set_property;
   object_class->get_property = inf_user_get_property;
@@ -175,6 +267,18 @@ inf_user_class_init(gpointer g_class,
       "Whether the user is currently available or not.",
       INF_TYPE_USER_STATUS,
       INF_USER_UNAVAILABLE,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_CONNECTION,
+    g_param_spec_object(
+      "connection",
+      "Connection",
+      "Connection to this user",
+      GNETWORK_TYPE_CONNECTION,
       G_PARAM_READWRITE
     )
   );
@@ -221,15 +325,15 @@ inf_user_get_type(void)
   {
     static const GTypeInfo user_type_info = {
       sizeof(InfUserClass),  /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_user_class_init,  /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
+      NULL,                  /* base_init */
+      NULL,                  /* base_finalize */
+      inf_user_class_init,   /* class_init */
+      NULL,                  /* class_finalize */
+      NULL,                  /* class_data */
       sizeof(InfUser),       /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_user_init,        /* instance_init */
-      NULL                                /* value_table */
+      0,                     /* n_preallocs */
+      inf_user_init,         /* instance_init */
+      NULL                   /* value_table */
     };
 
     user_type = g_type_register_static(
@@ -286,4 +390,23 @@ inf_user_get_status(const InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), INF_USER_UNAVAILABLE);
   return INF_USER_PRIVATE(user)->status;
+}
+
+/** inf_user_get_connection:
+ *
+ * @user: A #InfUser.
+ *
+ * Returns a connection to the user, if there is one. Note that this is not
+ * necessarily a direct connection. On the client side, this is mostly a
+ * connection to the server.
+ *
+ * The connection represents rather the communication channel to that user
+ * and should not be used to try to send things to it. If that connection is
+ * closed, there is no way for anything to be propagated to the user.
+ **/
+GNetworkConnection*
+inf_user_get_connection(const InfUser* user)
+{
+  g_return_val_if_fail(INF_IS_USER(user), NULL);
+  return INF_USER_PRIVATE(user)->connection;
 }

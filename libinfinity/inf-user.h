@@ -19,6 +19,8 @@
 #ifndef __INF_USER_H__
 #define __INF_USER_H__
 
+#include <libgnetwork/gnetwork-connection.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -63,6 +65,9 @@ inf_user_get_name(const InfUser* user);
 
 InfUserStatus
 inf_user_get_status(const InfUser* user);
+
+GNetworkConnection*
+inf_user_get_connection(const InfUser* user);
 
 G_END_DECLS
 

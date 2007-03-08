@@ -1,3 +1,10 @@
+2007-03-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-user.h:
+	* libinfinity/inf-user.c: Added a connection field to InfUser
+	specifieng a (not necessarily direct) connection between the local
+	host and that user.
+
 2007-03-07  Armin Burgmeier  <armin@arbur.net>
 
 	* docs/plugin: Added notes about the plugin interface. It is not yet
