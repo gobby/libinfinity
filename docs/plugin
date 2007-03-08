@@ -1,0 +1,56 @@
+NOTE: This is just a draft of the time being, the exact specifications might
+change during implementation of the plugin interface.
+
+infinote allows arbitrary kind of notes, a note type may be implemented as a C
+plugin. See the existing inftext/ and infink/ modules for examples.
+
+Note types must be registered at the client and at the server. On the server,
+a call to infd_directory_register_note is required. It takes a
+InfdDirectoryPlugin structure that looks roughly like this:
+
+struct InfdNotePlugin {
+  const gchar* name;
+  const gchar* desc;
+
+  InfBuffer*(*buffer_new)(void);
+  InfdSession*(*session_new)(InfConnectionManager*, InfBuffer*, GNetworkConnection*, const gchar*);
+
+  InfdStoragePlugin* storage_list;
+};
+
+struct InfdStoragePlugin {
+  const gchar* storage;
+  infd_storage_read_func; // signature to be specified
+  infd_storage_write_func; // signature to be specified
+};
+
+name should be a unique identifier for this type of note, for example "InfText",
+or "InfInk". desc should be a (human-visible, and thus translated) description
+of the note type, like "A note containing plain text". buffer_new should
+create a new buffer (surprise!) for this type. The InfText module for example
+has two InfdNotePlugins: One that creates a InfSimpleTextBuffer and one that
+implements a InfGtkTextBuffer.
+
+Finally, session_new should create a new (server side) session. The
+parameters should be given as they are as construction properties to
+the session which must derive from InfdSession. The InfText module creates
+a InfdTextSession.
+
+storage_list is a 0-terminated array of InfdStoragePlugins. Each storage plugin
+defines a read and write function that reads respectively writes a session
+to the background storage. The stoarge field contains the name of the storage
+this plugin belongs to. For example, the InfdStorageXml storage is named
+"InfdStorageXml". If the note type should be storable inside such a storage
+(if it is not, it cannot actually be used by a server using such a storage),
+it needs a StoragePlugin within the storage_list with the storage field set
+to "InfdStorageXml" and implemented read and write functions.
+
+On the client side, it looks similar, but without the storage list:
+
+struct InfcNotePlugin {
+  const gchar* name;
+  const gchar* desc;
+
+  InfBuffer*(*buffer_new)(void);
+  InfcSesison*(*session_new)(InfConnectionManager*, InfBuffer*, GNetworkConnection*, const gchar*);
+};

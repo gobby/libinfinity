@@ -1,3 +1,9 @@
+2007-03-07  Armin Burgmeier  <armin@arbur.net>
+
+	* docs/plugin: Added notes about the plugin interface. It is not yet
+	implemented, these are my just ideas how it should work, so I do not
+	forget and could be expanded to a complete specification later.
+
 2007-03-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:OBJECT,DOUBLE and
