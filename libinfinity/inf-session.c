@@ -284,11 +284,17 @@ inf_session_release_connection(InfSession* session,
     break;
   }
 
-  inf_connection_manager_remove_object(
-    priv->manager,
-    connection,
-    INF_NET_OBJECT(session)
-  );
+  /* If the connection was closed, the connection manager removes the
+   * connection from itself automatically, so make sure that it has not
+   * already done so. */
+  if(inf_connection_manager_has_connection(priv->manager, connection) == TRUE)
+  {
+    inf_connection_manager_remove_object(
+      priv->manager,
+      connection,
+      INF_NET_OBJECT(session)
+    );
+  }
 
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(connection),

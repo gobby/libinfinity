@@ -1,5 +1,17 @@
 2007-03-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-session.c: Before removing the session from the
+	connection manager in inf_session_release_connection(), make sure that
+	the connection manager still has the connection. If the connection was
+	closed, the connection manager might have dropped the connection
+	earlier.
+
+	* libinfinity/inf-connection-manager.c: Refcount netobject
+	registrations, but make sure objects are added with the same
+	identifier.
+
+2007-03-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-user.h:
 	* libinfinity/inf-user.c: Added a connection field to InfUser
 	specifieng a (not necessarily direct) connection between the local

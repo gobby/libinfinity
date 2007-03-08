@@ -29,6 +29,7 @@ typedef struct _InfConnectionManagerObject InfConnectionManagerObject;
 struct _InfConnectionManagerObject {
   InfNetObject* net_object;
   gchar* identifier;
+  guint ref_count;
 
   xmlNodePtr outer_queue;
   xmlNodePtr outer_queue_last_item;
@@ -74,6 +75,7 @@ inf_connection_manager_object_new(InfNetObject* net_object,
   g_object_ref(G_OBJECT(net_object));
 
   object->identifier = g_strdup(identifier);
+  object->ref_count = 1;
   object->outer_queue = NULL;
   object->outer_queue_last_item = NULL;
   object->inner_queue_count = 0;
@@ -777,8 +779,13 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
  * Adds a #InfNetObject to the given #GNetworkConnection. This allows that
  * messages may be sent to the remote site where a #InfNetObject with the
  * same identifier should be registered. Vice-versa, incoming messages
- * addressed to this #InfNetObject are delivered to @object. The object
- * is automatically removed again when it gets finalized.
+ * addressed to this #InfNetObject are delivered to @object.
+ *
+ * If the object is already registered, and the identifier does not match
+ * the one with which it was previously registered, the function produces
+ * an error. Otherwise, a reference count on that object is increased, so
+ * that you have to call inf_connection_manager_remove_object() one more
+ * time to actually remove the object from the connection manager.
  **/
 void
 inf_connection_manager_add_object(InfConnectionManager* manager,
@@ -797,19 +804,37 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
   conn = g_object_get_qdata(G_OBJECT(gnetwork_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
-  connobj = inf_connection_manager_object_new(object, identifier);
-
-  g_hash_table_insert(
-    conn->object_connobj_table,
-    object,
-    connobj
-  );
-
-  g_hash_table_insert(
+  connobj = g_hash_table_lookup(
     conn->identifier_connobj_table,
-    connobj->identifier,
-    connobj
+    identifier
   );
+
+  if(connobj != NULL)
+  {
+    g_assert(
+      g_hash_table_lookup(conn->object_connobj_table, object) == connobj
+    );
+
+    ++ connobj->ref_count;
+  }
+  else
+  {
+    g_assert(g_hash_table_lookup(conn->object_connobj_table, object) == NULL);
+
+    connobj = inf_connection_manager_object_new(object, identifier);
+
+    g_hash_table_insert(
+      conn->object_connobj_table,
+      object,
+      connobj
+    );
+
+    g_hash_table_insert(
+      conn->identifier_connobj_table,
+      connobj->identifier,
+      connobj
+    );
+  }
 }
 
 /** inf_connection_manager_remove_object:
@@ -848,21 +873,25 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
   connobj = g_hash_table_lookup(conn->object_connobj_table, object);
   g_return_if_fail(connobj != NULL);
 
-  if(connobj->outer_queue != NULL)
+  -- connobj->ref_count;
+  if(connobj->ref_count == 0)
   {
-    /* TODO: Do not do this if the queue is big, but we need to find a
-     * way to specify which messages still have to be flushed. */
-    /* Flush outer queue completely */
-    connobj->outer_queue = inf_connection_manager_object_real_send(
-      connobj,
-      gnetwork_conn,
-      connobj->outer_queue,
-      0
-    );
-  }
+    if(connobj->outer_queue != NULL)
+    {
+      /* TODO: Do not do this if the queue is big, but we need to find a
+       * way to specify which messages still have to be flushed. */
+      /* Flush outer queue completely */
+      connobj->outer_queue = inf_connection_manager_object_real_send(
+        connobj,
+        gnetwork_conn,
+        connobj->outer_queue,
+        0
+      );
+    }
  
-  g_hash_table_remove(conn->identifier_connobj_table, connobj->identifier);
-  g_hash_table_remove(conn->object_connobj_table, object);
+    g_hash_table_remove(conn->identifier_connobj_table, connobj->identifier);
+    g_hash_table_remove(conn->object_connobj_table, object);
+  }
 }
 
 /** inf_connection_manager_send:
