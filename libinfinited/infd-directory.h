@@ -19,7 +19,7 @@
 #ifndef __INFD_DIRECTORY_H__
 #define __INFD_DIRECTORY_H__
 
-#include <libinfinited/infd-directory-storage.h>
+#include <libinfinited/infd-storage.h>
 
 #include <libinfinity/inf-session.h>
 #include <libinfinity/inf-connection-manager.h>
@@ -55,12 +55,6 @@ struct _InfdDirectoryClass {
 
   void (*node_removed)(InfdDirectory* directory,
                        InfdDirectoryIter* iter);
-
-  /* Virtual Table */
-  InfTextBuffer* (*text_buffer_new)(InfdDirectory* directory);
-  InfInkBuffer* (*ink_buffer_new)(InfdDirectory* directory);
-  InfSession* (*text_session_new)(InfdDirectory* directory);
-  InfSession* (*ink_session_new)(InfdDirectory* directory);
 };
 
 struct _InfdDirectory {
@@ -80,10 +74,10 @@ void
 infd_directory_iter_free(InfdDirectoryIter* iter);
 
 InfdDirectory*
-infd_directory_new(InfdDirectoryStorage* storage,
+infd_directory_new(InfdStorage* storage,
                    InfConnectionManager* connection_manager);
 
-InfdDirectoryStorage*
+InfdStorage*
 infd_directory_get_storage(InfdDirectory* directory);
 
 InfConnectionManager*
@@ -138,7 +132,7 @@ infd_directory_remove_node(InfdDirectory* directory,
                            InfdDirectoryIter* iter,
                            GError** error);
 
-InfdDirectoryStorageNodeType
+InfdStorageNodeType
 infd_directory_iter_get_node_type(InfdDirectory* directory,
                                   InfdDirectoryIter* iter);
 

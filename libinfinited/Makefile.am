@@ -28,13 +28,14 @@ CLEANFILES = infd-marshal.h infd-marshal.c
 libinfinited_1_0_ladir = libinfinited
 
 libinfinited_1_0_la_HEADERS = \
-	infd-directory.h \
-	infd-directory-storage.h \
 	infd-marshal.h \
-	infd-server.h
+	infd-note-plugin.h \
+	infd-session.h \
+	infd-server.h \
+	infd-storage.h
 
 libinfinited_1_0_la_SOURCES = \
-	infd-directory.c \
-	infd-directory-storage.c \
 	infd-marshal.c \
-	infd-server.c
+	infd-server.c \
+	infd-session.c \
+	infd-storage.c

@@ -1,5 +1,17 @@
 2007-03-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinited/infd-storage.h:
+	* libinfinited/infd-storage.c: Renamed InfdDirectoryStorage to
+	InfdStorage.
+
+	* libinfinited/infd-note-plugin.h: Added interface for a note plugin.
+
+	* libinfinited/infd-session.h:
+	* libinfinited/infd-session.c:
+	* libinfinined/Makefile.am: Implemented user joins.
+
+2007-03-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-user.h:
 	* libinfinity/inf-user.c: Removed connection field again. I don't
 	think it is useful.
@@ -11,7 +23,7 @@
 
 	* libinfinity/inf-error.h:
 	* libinfinity/inf-error.c:
-	* Makefile.am: These specify some error codes that are
+	* libinfinity/Makefile.am: These specify some error codes that are
 	commonly used by client and server.
 
 2007-03-08  Armin Burgmeier  <armin@arbur.net>
