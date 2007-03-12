@@ -66,9 +66,6 @@ inf_user_get_name(const InfUser* user);
 InfUserStatus
 inf_user_get_status(const InfUser* user);
 
-GNetworkConnection*
-inf_user_get_connection(const InfUser* user);
-
 G_END_DECLS
 
 #endif /* __INF_USER_H__ */

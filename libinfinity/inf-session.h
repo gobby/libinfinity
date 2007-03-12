@@ -49,6 +49,15 @@ typedef enum _InfSessionStatus {
   INF_SESSION_CLOSED
 } InfSessionStatus;
 
+typedef enum _InfSessionSyncStatus {
+  /* No synchronization in progress */
+  INF_SESSION_SYNC_NONE,
+  /* The synchronization is in progress */
+  INF_SESSION_SYNC_IN_PROGRESS,
+  /* The synchronization is in progress and cannot be cancelled anymore. */
+  INF_SESSION_SYNC_END_ENQUEUED
+} InfSessionSyncStatus;
+
 typedef enum _InfSessionSyncError {
   /* Got unexpected XML node during synchronization */
   INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
@@ -115,6 +124,7 @@ struct _InfSessionClass {
   gboolean(*validate_user_props)(InfSession* session,
                                  const GParameter* params,
                                  guint n_params,
+                                 InfUser* exclude,
                                  GError** error);
 
   void(*user_to_xml)(InfSession* session,
@@ -179,7 +189,7 @@ inf_session_get_buffer(InfSession* session);
 
 InfUser*
 inf_session_add_user(InfSession* session,
-                     GParameter* params,
+                     const GParameter* params,
                      guint n_params,
                      GError** error);
 
@@ -200,6 +210,10 @@ void
 inf_session_synchronize_to(InfSession* session,
                            GNetworkConnection* connection,
                            const gchar* identifier);
+
+InfSessionSyncStatus
+inf_session_get_synchronization_status(InfSession* session,
+                                       GNetworkConnection* connection);
 
 G_END_DECLS
 

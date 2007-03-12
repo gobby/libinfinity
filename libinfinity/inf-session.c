@@ -414,7 +414,7 @@ inf_session_register_sync(InfSession* session)
       priv->shared.sync.identifier
     );
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(priv->shared.sync.conn),
       "notify::status",
       G_CALLBACK(inf_session_connection_notify_status_cb),
@@ -593,7 +593,7 @@ inf_session_to_xml_sync_impl_foreach_func(gpointer key,
 
   g_return_if_fail(session_class->user_to_xml != NULL);
 
-  usernode = xmlNewNode(NULL, (const xmlChar*)"user");
+  usernode = xmlNewNode(NULL, (const xmlChar*)"sync-user");
   session_class->user_to_xml(data->session, (InfUser*)value, usernode);
 
   xmlAddChild(data->xml, usernode);
@@ -637,7 +637,7 @@ inf_session_process_xml_sync_impl(InfSession* session,
   g_return_val_if_fail(priv->status == INF_SESSION_SYNCHRONIZING, FALSE);
   g_return_val_if_fail(connection == priv->shared.sync.conn, FALSE);
 
-  if(strcmp((const gchar*)xml->name, "user") == 0)
+  if(strcmp((const gchar*)xml->name, "sync-user") == 0)
   {
     user_props = session_class->get_xml_user_props(
       session,
@@ -739,6 +739,7 @@ static gboolean
 inf_session_validate_user_props_impl(InfSession* session,
                                      const GParameter* params,
                                      guint n_params,
+                                     InfUser* exclude,
                                      GError** error)
 {
   const GParameter* parameter;
@@ -763,7 +764,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   id = g_value_get_uint(&parameter->value);
   user = inf_session_lookup_user_by_id(session, id);
 
-  if(user != NULL)
+  if(user != NULL && user != exclude)
   {
     g_set_error(
       error,
@@ -793,7 +794,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   name = g_value_get_string(&parameter->value);
   user = inf_session_lookup_user_by_name(session, name);
 
-  if(user != NULL)
+  if(user != NULL && user != exclude)
   {
     g_set_error(
       error,
@@ -1345,7 +1346,10 @@ inf_session_synchronization_complete_handler(InfSession* session,
     g_object_notify(G_OBJECT(session), "status");
     break;
   case INF_SESSION_RUNNING:
-    g_assert(inf_session_find_sync_by_connection(session, connection) != NULL);
+    g_assert(
+      inf_session_find_sync_by_connection(session, connection) != NULL
+    );
+
     inf_session_release_connection(session, connection);
     break;
   case INF_SESSION_CLOSED:
@@ -1374,7 +1378,10 @@ inf_session_synchronization_failed_handler(InfSession* session,
      * synchronization_failed signal. */
     break;
   case INF_SESSION_RUNNING:
-    g_assert(inf_session_find_sync_by_connection(session, connection) != NULL);
+    g_assert(
+      inf_session_find_sync_by_connection(session, connection) != NULL
+    );
+
     inf_session_release_connection(session, connection);
     break;
   case INF_SESSION_CLOSED:
@@ -1758,24 +1765,28 @@ inf_session_get_buffer(InfSession* session)
  *
  * @session A #InfSession.
  * @params: Construction parameters for the #InfUser (or derived) object.
- * @n_params: Number of parmeters.
+ * @n_params: Number of parameters.
+ * @error: Location to store error information.
  *
  * Adds a user to @session. The user object is constructed via the
  * user_new vfunc of #InfSessionClass. This will create a new #InfUser
  * object by default, but may be overridden by subclasses to create
- * different kinds of users. This function will most likely only be
- * usefel to types inheriting from #InfSession.
+ * different kinds of users. This function should only be used by types
+ * inheriting directly from #InfSession.
+ *
+ * Return Value: The new #InfUser, or %NULL in case of an error.
  **/
 InfUser*
 inf_session_add_user(InfSession* session,
-                     GParameter* params,
+                     const GParameter* params,
                      guint n_params,
                      GError** error)
 {
   InfSessionClass* session_class;
   InfUser* user;
   gboolean result;
- 
+
+  g_return_val_if_fail(INF_IS_SESSION(session), NULL);
   session_class = INF_SESSION_GET_CLASS(session);
 
   g_return_val_if_fail(session_class->validate_user_props != NULL, NULL);
@@ -1785,6 +1796,7 @@ inf_session_add_user(InfSession* session,
     session,
     params,
     n_params,
+    NULL,
     error
   );
 
@@ -1965,7 +1977,7 @@ inf_session_synchronize_to(InfSession* session,
   g_object_ref(G_OBJECT(connection));
   priv->shared.run.syncs = g_slist_prepend(priv->shared.run.syncs, sync);
 
-  g_signal_connect(
+  g_signal_connect_after(
     G_OBJECT(connection),
     "notify::status",
     G_CALLBACK(inf_session_connection_notify_status_cb),
@@ -2021,4 +2033,61 @@ inf_session_synchronize_to(InfSession* session,
     INF_NET_OBJECT(session),
     xml
   );
+}
+
+/** inf_session_get_synchronization_status:
+ *
+ * @session: A #InfSession.
+ * @connection: A #GNetworkConnection.
+ *
+ * If @session is in status %INF_SESSION_SYNCHRONIZING, this always returns
+ * %INF_SESSION_SYNC_IN_PROGRESS if @connection is the connection with which
+ * the session is synchronized, and %INF_SESSION_SYNC_NONE otherwise.
+ *
+ * If @session is in status %INF_SESSION_RUNNING, this returns the status
+ * of the synchronization to @connection. %INF_SESSION_SYNC_NONE is returned,
+ * when there is currently no synchronization ongoing to @connection,
+ * %INF_SESSION_SYNC_IN_PROGRESS is returned, if there is one, and
+ * %INF_SESSION_SYNC_END_ENQUEUED is returned if the synchronization can no
+ * longer be cancelled but is not yet complete and might still fail.
+ *
+ * If @session is in status $INF_SESSION_CLOSED, this always returns
+ * %INF_SESSION_SYNC_NONE.
+ *
+ * Return Value: The synchronization status of @connection.
+ **/
+InfSessionSyncStatus
+inf_session_get_synchronization_status(InfSession* session,
+                                       GNetworkConnection* connection)
+{
+  InfSessionPrivate* priv;
+  InfSessionSync* sync;
+
+  g_return_val_if_fail(INF_IS_SESSION(session), INF_SESSION_SYNC_NONE);
+
+  g_return_val_if_fail(
+    GNETWORK_IS_CONNECTION(connection),
+    INF_SESSION_SYNC_NONE
+  );
+
+  priv = INF_SESSION_PRIVATE(session);
+
+  switch(priv->status)
+  {
+  case INF_SESSION_SYNCHRONIZING:
+    if(connection == priv->shared.sync.conn)
+      return INF_SESSION_SYNC_IN_PROGRESS;
+    return INF_SESSION_SYNC_NONE;
+  case INF_SESSION_RUNNING:
+    sync = inf_session_find_sync_by_connection(session, connection);
+    if(sync == NULL) return INF_SESSION_SYNC_NONE;
+
+    if(sync->end_enqueued == TRUE) return INF_SESSION_SYNC_END_ENQUEUED;
+    return INF_SESSION_SYNC_IN_PROGRESS;
+  case INF_SESSION_CLOSED:
+    return INF_SESSION_SYNC_NONE;
+  default:
+    g_assert_not_reached();
+    break;
+  }
 }
