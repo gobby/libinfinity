@@ -20,6 +20,7 @@
 #define __INFD_DIRECTORY_H__
 
 #include <libinfinited/infd-storage.h>
+#include <libinfinited/infd-note-plugin.h>
 
 #include <libinfinity/inf-session.h>
 #include <libinfinity/inf-connection-manager.h>
@@ -39,6 +40,34 @@ G_BEGIN_DECLS
 
 typedef struct _InfdDirectory InfdDirectory;
 typedef struct _InfdDirectoryClass InfdDirectoryClass;
+
+/* TODO: The error messages use node for both an XML node and a node
+ * in the directory tree. This might be misleading. */
+
+typedef enum _InfdDirectoryError {
+  /* A node with this name exists already */
+  INFD_DIRECTORY_ERROR_NODE_EXISTS,
+  /* Request does not contain a node attribute */
+  INFD_DIRECTORY_ERROR_NODE_MISSING,
+  /* The node referred to does not exist */
+  INFD_DIRECTORY_ERROR_NO_SUCH_NODE,
+  /* The node referred to is not a subdirectory */
+  INFD_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
+  /* The node referred to is not a note */
+  INFD_DIRECTORY_ERROR_NOT_A_NOTE,
+  /* The given subdirectory has already been explored */
+  INFD_DIRECTORY_ERROR_ALREADY_EXPLORED,
+  /* 'type' attribute is missing in XML request */
+  INFD_DIRECTORY_ERROR_TYPE_MISSING,
+  /* There is no plugin that covers the given type */
+  INFD_DIRECTORY_ERROR_TYPE_UNKNOWN,
+  /* 'name' attribute is missing in XML request */
+  INFD_DIRECTORY_ERROR_NAME_MISSING,
+  /* Got unexpected XML node */
+  INFD_DIRECTORY_ERROR_UNEXPECTED_NODE,
+
+  INFD_DIRECTORY_ERROR_FAILED
+} InfdDirectoryError;
 
 typedef struct _InfdDirectoryIter InfdDirectoryIter;
 struct _InfdDirectoryIter {
@@ -83,6 +112,10 @@ infd_directory_get_storage(InfdDirectory* directory);
 InfConnectionManager*
 infd_directory_get_connection_manager(InfdDirectory* directory);
 
+gboolean
+infd_directory_add_plugin(InfdDirectory* directory,
+                          InfdNotePlugin* plugin);
+
 void
 infd_directory_add_connection(InfdDirectory* directory,
                               GNetworkConnection* connection);
@@ -111,21 +144,17 @@ infd_directory_iter_get_child(InfdDirectory* directory,
 gboolean
 infd_directory_add_subdirectory(InfdDirectory* directory,
                                 InfdDirectoryIter* parent,
+                                const gchar* name,
                                 InfdDirectoryIter* iter,
-                                const gchar* path,
                                 GError** error);
 
 gboolean
-infd_directory_add_text(InfdDirectory* directory,
+infd_directory_add_note(InfdDirectory* directory,
                         InfdDirectoryIter* parent,
+                        const gchar* name,
+                        InfdNotePlugin* plugin,
                         InfdDirectoryIter* iter,
                         GError** error);
-
-gboolean
-infd_directory_add_ink(InfdDirectory* directory,
-                       InfdDirectoryIter* parent,
-                       InfdDirectoryIter* iter,
-                       GError** error);
 
 gboolean
 infd_directory_remove_node(InfdDirectory* directory,
@@ -136,7 +165,11 @@ InfdStorageNodeType
 infd_directory_iter_get_node_type(InfdDirectory* directory,
                                   InfdDirectoryIter* iter);
 
-InfSession*
+InfdNotePlugin*
+infd_directory_iter_get_plugin(InfdDirectory* directory,
+                               InfdDirectoryIter* iter);
+
+InfdSession*
 infd_directory_iter_get_session(InfdDirectory* directory,
                                 InfdDirectoryIter* iter,
                                 GError** error);

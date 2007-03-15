@@ -112,16 +112,16 @@ infd_storage_get_type(void)
  * Return Value: A new #InfdStorageNode.
  **/
 InfdStorageNode*
-infd_storage_node_new_subdirectory(const gchar* path)
+infd_storage_node_new_subdirectory(const gchar* name)
 {
   InfdStorageNode* node;
 
-  g_return_val_if_fail(path != NULL, NULL);
+  g_return_val_if_fail(name != NULL, NULL);
 
   node = g_slice_new(InfdStorageNode);
 
   node->type = INFD_STORAGE_NODE_SUBDIRECTORY;
-  node->path = g_strdup(path);
+  node->name = g_strdup(name);
 
   return node;
 }
@@ -140,17 +140,18 @@ infd_storage_node_new_subdirectory(const gchar* path)
  * Return Value: A new #InfdStorageNode.
  **/
 InfdStorageNode*
-infd_storage_node_new_note(const gchar* path,
+infd_storage_node_new_note(const gchar* name,
                            const gchar* identifier)
 {
   InfdStorageNode* node;
 
-  g_return_val_if_fail(path != NULL, NULL);
+  g_return_val_if_fail(name != NULL, NULL);
+  g_return_val_if_fail(identifier != NULL, NULL);
 
   node = g_slice_new(InfdStorageNode);
 
   node->type = INFD_STORAGE_NODE_NOTE;
-  node->path = g_strdup(path);
+  node->name = g_strdup(name);
   node->identifier = g_strdup(identifier);
 
   return node;
@@ -173,7 +174,7 @@ infd_storage_node_copy(InfdStorageNode* node)
   new_node = g_slice_new(InfdStorageNode);
 
   new_node->type = node->type;
-  new_node->path = g_strdup(node->path);
+  new_node->name = g_strdup(node->name);
 
   if(node->type == INFD_STORAGE_NODE_NOTE)
     new_node->identifier = g_strdup(node->identifier);
@@ -194,7 +195,7 @@ infd_storage_node_free(InfdStorageNode* node)
 {
   g_return_if_fail(node != NULL);
 
-  g_free(node->path);
+  g_free(node->name);
   if(node->type == INFD_STORAGE_NODE_NOTE)
     g_free(node->identifier);
 

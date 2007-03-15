@@ -42,7 +42,7 @@ typedef enum _InfdStorageNodeType {
 typedef struct _InfdStorageNode InfdStorageNode;
 struct _InfdStorageNode {
   InfdStorageNodeType type;
-  gchar* path;
+  gchar* name;
 
   gchar* identifier; /* Only set when type == INFD_STORAGE_NODE_NOTE */
 };
@@ -81,10 +81,10 @@ GType
 infd_storage_get_type(void) G_GNUC_CONST;
 
 InfdStorageNode*
-infd_storage_node_new_subdirectory(const gchar* path);
+infd_storage_node_new_subdirectory(const gchar* name);
 
 InfdStorageNode*
-infd_storage_node_new_note(const gchar* path,
+infd_storage_node_new_note(const gchar* name,
                            const gchar* identifier);
 
 InfdStorageNode*
@@ -94,7 +94,7 @@ void
 infd_storage_node_free(InfdStorageNode* node);
 
 void
-infd_storage_free_node_list(GSList* node_list);
+infd_storage_node_list_free(GSList* node_list);
 
 GSList*
 infd_storage_read_subdirectory(InfdStorage* storage,

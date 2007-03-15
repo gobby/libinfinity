@@ -1,3 +1,14 @@
+2007-03-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinited/infd-storage.h:
+	* libinfinited/infd-storage.c: Turned the path field of
+	InfdStorageNode to name.
+
+	* libinfinited/infd-directory.h:
+	* libinfinited/infd-directory.c: Implemented remaining functionality
+	that was missing, some more enhanced operations like copying or moving
+	nodes are still not supported, though.
+
 2007-03-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinited/infd-storage.h:
