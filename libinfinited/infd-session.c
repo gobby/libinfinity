@@ -38,7 +38,7 @@ struct _InfdSessionMessage {
 
 typedef struct _InfdSessionSubscription InfdSessionSubscription;
 struct _InfdSessionSubscription {
-  GNetworkConnection* connection;
+  InfConnection* connection;
   GSList* users; /* Joined users via this connection */
 };
 
@@ -98,7 +98,7 @@ infd_session_message_free(InfdSessionMessage* message)
  */
 
 static InfdSessionSubscription*
-infd_session_subscription_new(GNetworkConnection* connection)
+infd_session_subscription_new(InfConnection* connection)
 {
   InfdSessionSubscription* subscription;
   subscription = g_slice_new(InfdSessionSubscription);
@@ -124,7 +124,7 @@ infd_session_subscription_free(InfdSessionSubscription* subscription)
 
 static GSList*
 infd_session_find_subscription_item_by_connection(InfdSession* session,
-                                                  GNetworkConnection* conn)
+                                                  InfConnection* conn)
 {
   InfdSessionPrivate* priv;
   GSList* item;
@@ -139,7 +139,7 @@ infd_session_find_subscription_item_by_connection(InfdSession* session,
 
 static InfdSessionSubscription*
 infd_session_find_subscription_by_connection(InfdSession* session,
-                                             GNetworkConnection* connection)
+                                             InfConnection* connection)
 {
   GSList* item;
 
@@ -154,7 +154,7 @@ infd_session_find_subscription_by_connection(InfdSession* session,
 
 /* Required by infd_session_release_connection() */
 static void
-infd_session_connection_notify_status_cb(GNetworkConnection* connection,
+infd_session_connection_notify_status_cb(InfConnection* connection,
                                          const gchar* property,
                                          gpointer user_data);
 
@@ -164,7 +164,7 @@ infd_session_release_subscription(InfdSession* session,
                                   InfdSessionSubscription* subscription)
 {
   InfdSessionPrivate* priv;
-  GNetworkConnection* connection;
+  InfConnection* connection;
 
   priv = INFD_SESSION_PRIVATE(session);
   connection = subscription->connection;
@@ -217,7 +217,7 @@ infd_session_remove_subscription(InfdSession* session,
 
 static InfUser*
 infd_session_perform_user_join(InfdSession* session,
-                               GNetworkConnection* connection,
+                               InfConnection* connection,
                                GArray* user_props,
                                GError** error)
 {
@@ -415,7 +415,7 @@ infd_session_perform_user_join(InfdSession* session,
 /* Subscribes the given connection to the session without synchronizing it. */
 static void
 infd_session_subscribe_connection(InfdSession* session,
-                                  GNetworkConnection* connection,
+                                  InfConnection* connection,
                                   const gchar* identifier)
 {
   InfdSessionPrivate* priv;
@@ -450,20 +450,19 @@ infd_session_subscribe_connection(InfdSession* session,
  */
 
 static void
-infd_session_connection_notify_status_cb(GNetworkConnection* connection,
+infd_session_connection_notify_status_cb(InfConnection* connection,
                                          const gchar* property,
                                          gpointer user_data)
 {
   InfdSession* session;
   InfdSessionSubscription* subscription;
-  GNetworkConnectionStatus status;
+  InfConnectionStatus status;
 
   session = INFD_SESSION(user_data);
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status == GNETWORK_CONNECTION_CLOSED ||
-     status == GNETWORK_CONNECTION_CLOSING)
+  if(status == INF_CONNECTION_CLOSED || status == INF_CONNECTION_CLOSING)
   {
     subscription = infd_session_find_subscription_by_connection(
       session,
@@ -564,7 +563,7 @@ infd_session_dispose(GObject* object)
 
 static void
 infd_session_process_xml_run_impl(InfSession* session,
-                                  GNetworkConnection* connection,
+                                  InfConnection* connection,
                                   const xmlNodePtr xml)
 {
   InfdSessionClass* sessiond_class;
@@ -685,7 +684,7 @@ infd_session_add_user_impl(InfSession* session,
 
 static void
 infd_session_synchronization_complete_impl(InfSession* session,
-                                           GNetworkConnection* connection)
+                                           InfConnection* connection)
 {
   InfdSessionPrivate* priv;
   InfSessionStatus status;
@@ -720,7 +719,7 @@ infd_session_synchronization_complete_impl(InfSession* session,
 
 static void
 infd_session_synchronization_failed_impl(InfSession* session,
-                                         GNetworkConnection* connection,
+                                         InfConnection* connection,
                                          const GError* error)
 {
   InfSessionStatus status;
@@ -758,7 +757,7 @@ infd_session_synchronization_failed_impl(InfSession* session,
 
 static gboolean
 infd_session_handle_user_join(InfdSession* session,
-                              GNetworkConnection* connection,
+                              InfConnection* connection,
                               const xmlNodePtr xml,
                               GError** error)
 {
@@ -823,7 +822,7 @@ infd_session_handle_user_join(InfdSession* session,
 
 static gboolean
 infd_session_handle_user_leave(InfdSession* session,
-                               GNetworkConnection* connection,
+                               InfConnection* connection,
                                const xmlNodePtr xml,
                                GError** error)
 {
@@ -891,7 +890,7 @@ infd_session_handle_user_leave(InfdSession* session,
 
 static gboolean
 infd_session_handle_session_unsubscribe(InfdSession* session,
-                                        GNetworkConnection* connection,
+                                        InfConnection* connection,
                                         const xmlNodePtr xml,
                                         GError** error)
 {
@@ -1105,7 +1104,7 @@ infd_session_add_user(InfdSession* session,
 /** infd_session_subscribe_to:
  *
  * @session: A #InfdSession with state %INF_SESSION_RUNNING.
- * @connection: A #GNetworkConnection that is not yet subscribed.
+ * @connection: A #InfConnection that is not yet subscribed.
  * @identifier: A session identifier.
  *
  * Subscribes @connection to @session. The first thing that will be done
@@ -1118,13 +1117,13 @@ infd_session_add_user(InfdSession* session,
  **/
 void
 infd_session_subscribe_to(InfdSession* session,
-                          GNetworkConnection* connection,
+                          InfConnection* connection,
                           const gchar* identifier)
 {
   InfdSessionPrivate* priv;
 
   g_return_if_fail(INFD_IS_SESSION(session));
-  g_return_if_fail(GNETWORK_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_CONNECTION(connection));
   g_return_if_fail(identifier != NULL);
 
   g_return_if_fail(
@@ -1148,7 +1147,7 @@ infd_session_subscribe_to(InfdSession* session,
  **/
 void
 infd_session_send_to_subscriptions(InfdSession* session,
-                                   GNetworkConnection* exclude,
+                                   InfConnection* exclude,
                                    xmlNodePtr xml)
 {
   InfdSessionPrivate* priv;

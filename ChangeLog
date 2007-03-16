@@ -1,5 +1,37 @@
 2007-03-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-connection.h: 
+	* libinfinity/inf-connection.c: Added an InfConnection interface that
+	replaces GNetworkConnection.
+
+	* libinfinity/inf-buffer.c:
+	* libinfinity/inf-buffer.h: Made a property out of the read-only
+	functions and signal.
+
+	* libinfinity/inf-marshal.in: Replaced VOID:BOOLEAN by VOID:POINTER
+	for InfConnection.
+
+	* libinfinity/inf-net-object.h:
+	* libinfinity/inf-connection-manager.h:
+	* libinfinity/inf-session.h:
+	* libinfinited/infd-note-plugin.h:
+	* libinfinited/infd-session.h:
+	* libinfinited/infd-directory.h:
+	* libinfinity/inf-net-object.c:
+	* libinfinity/inf-connection-manager.c:
+	* libinfinity/inf-session.c:
+	* libinfinited/infd-session.c:
+	* libinfinited/infd-directory.c: Adjusted to use InfConnection instead
+	of GNetworkConnection.
+
+	* configure.ac:
+	* libinfinity/Makefile.am:
+	* libinfinited/Makefile.am: Dropped dependency on libgnetwork. Also
+	excluded infd-server.[hc] from build because they would still require
+	GNetworkServer. Another interface in libinfinity is required here.
+
+2007-03-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinited/infd-storage.h:
 	* libinfinited/infd-storage.c: Turned the path field of
 	InfdStorageNode to name.

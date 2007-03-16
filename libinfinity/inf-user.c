@@ -37,12 +37,6 @@ enum {
 
 static GObjectClass* parent_class;
 
-/* Required by inf_user_set_connection */
-static void
-inf_user_connection_notify_status_cb(GNetworkConnection* connection,
-                                     const gchar* property,
-                                     gpointer user_data);
-
 static void
 inf_user_init(GTypeInstance* instance,
               gpointer g_class)

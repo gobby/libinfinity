@@ -22,6 +22,8 @@
 #include <libinfinity/inf-session.h>
 #include <libinfinity/inf-net-object.h>
 
+#include <string.h>
+
 /* TODO: Close and store sessions when there are no available users for
  * some time. */
 
@@ -429,7 +431,7 @@ infd_directory_node_free(InfdDirectory* directory,
 
 static void
 infd_directory_node_remove_connection(InfdDirectoryNode* node,
-                                      GNetworkConnection* connection)
+                                      InfConnection* connection)
 {
   InfdDirectoryNode* child;
   GSList* item;
@@ -542,7 +544,7 @@ infd_directory_send(InfdDirectory* directory,
       {
         inf_connection_manager_send(
           priv->connection_manager,
-          GNETWORK_CONNECTION(item->data),
+          INF_CONNECTION(item->data),
           INF_NET_OBJECT(directory),
           xmlCopyNode(xml, 1)
         );
@@ -551,7 +553,7 @@ infd_directory_send(InfdDirectory* directory,
       {
         inf_connection_manager_send(
           priv->connection_manager,
-          GNETWORK_CONNECTION(item->data),
+          INF_CONNECTION(item->data),
           INF_NET_OBJECT(directory),
           xml
         );
@@ -1011,7 +1013,7 @@ infd_directory_get_node_from_xml_typed(InfdDirectory* directory,
 
 static gboolean
 infd_directory_handle_explore_node(InfdDirectory* directory,
-                                   GNetworkConnection* connection,
+                                   InfConnection* connection,
                                    const xmlNodePtr xml,
                                    GError** error)
 {
@@ -1071,7 +1073,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 
 static gboolean
 infd_directory_handle_add_node(InfdDirectory* directory,
-                               GNetworkConnection* connection,
+                               InfConnection* connection,
                                const xmlNodePtr xml,
                                GError** error)
 {
@@ -1178,7 +1180,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
 
 static gboolean
 infd_directory_handle_remove_node(InfdDirectory* directory,
-                                  GNetworkConnection* connection,
+                                  InfConnection* connection,
                                   const xmlNodePtr xml,
                                   GError** error)
 {
@@ -1192,7 +1194,7 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
 
 static gboolean
 infd_directory_handle_subscribe_session(InfdDirectory* directory,
-                                        GNetworkConnection* connection,
+                                        InfConnection* connection,
                                         const xmlNodePtr xml,
                                         GError** error)
 {
@@ -1227,22 +1229,21 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 /* Required by infd_directory_connection_notify_status_cb() */
 static void
 infd_directory_remove_connection(InfdDirectory* directory,
-                                 GNetworkConnection* connection);
+                                 InfConnection* connection);
 
 static void
-infd_directory_connection_notify_status_cb(GNetworkConnection* connection,
+infd_directory_connection_notify_status_cb(InfConnection* connection,
                                            const gchar* property,
                                            gpointer user_data)
 {
   InfdDirectory* directory;
-  GNetworkConnectionStatus status;
+  InfConnectionStatus status;
 
   directory = INFD_DIRECTORY(user_data);
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status == GNETWORK_CONNECTION_CLOSING ||
-     status == GNETWORK_CONNECTION_CLOSED)
+  if(status == INF_CONNECTION_CLOSING || status == INF_CONNECTION_CLOSED)
   {
     infd_directory_remove_connection(directory, connection);
   }
@@ -1250,7 +1251,7 @@ infd_directory_connection_notify_status_cb(GNetworkConnection* connection,
 
 static void
 infd_directory_remove_connection(InfdDirectory* directory,
-                                 GNetworkConnection* connection)
+                                 InfConnection* connection)
 {
   InfdDirectoryPrivate* priv;
 
@@ -1341,7 +1342,7 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
     {
       inf_connection_manager_remove_object(
         priv->connection_manager,
-        GNETWORK_CONNECTION(item->data),
+        INF_CONNECTION(item->data),
         INF_NET_OBJECT(directory)
       );
     }
@@ -1359,20 +1360,20 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
     {
       result = inf_connection_manager_has_connection(
         priv->connection_manager,
-        GNETWORK_CONNECTION(item->data)
+        INF_CONNECTION(item->data)
       );
 
       if(result == FALSE)
       {
         inf_connection_manager_add_connection(
           priv->connection_manager,
-          GNETWORK_CONNECTION(item->data)
+          INF_CONNECTION(item->data)
         );
       }
 
       inf_connection_manager_add_object(
         priv->connection_manager,
-        GNETWORK_CONNECTION(item->data),
+        INF_CONNECTION(item->data),
         INF_NET_OBJECT(directory),
         "InfDirectory"
       );
@@ -1506,7 +1507,7 @@ infd_directory_get_property(GObject* object,
 
 static void
 infd_directory_net_object_received(InfNetObject* net_object,
-                                   GNetworkConnection* connection,
+                                   InfConnection* connection,
                                    const xmlNodePtr node)
 {
   GError* error;
@@ -1846,7 +1847,7 @@ infd_directory_add_plugin(InfdDirectory* directory,
  * infd_directory_add_connection:
  *
  * @directory: A #InfdDirectory.
- * @connection: A #GNetworkConnection.
+ * @connection: A #InfConnection.
  *
  * Adds @connection to the connections of @directory (and to its
  * #InfConnectionManager, if not already). The directory will then
@@ -1854,12 +1855,12 @@ infd_directory_add_plugin(InfdDirectory* directory,
  **/
 void
 infd_directory_add_connection(InfdDirectory* directory,
-                              GNetworkConnection* connection)
+                              InfConnection* connection)
 {
   InfdDirectoryPrivate* priv;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(GNETWORK_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_CONNECTION(connection));
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(priv->connection_manager));

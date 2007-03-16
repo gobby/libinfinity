@@ -22,11 +22,13 @@
 
 #include <libinfinity/inf-marshal.h>
 
+#include <string.h>
+
 /* TODO: Set buffer to read-only during synchronization */
 
 typedef struct _InfSessionSync InfSessionSync;
 struct _InfSessionSync {
-  GNetworkConnection* conn;
+  InfConnection* conn;
   guint messages_total;
   guint messages_sent;
   gboolean end_enqueued;
@@ -43,7 +45,7 @@ struct _InfSessionPrivate {
   union {
     /* INF_SESSION_SYNCHRONIZING */
     struct {
-      GNetworkConnection* conn;
+      InfConnection* conn;
       guint messages_total;
       guint messages_received;
       gchar* identifier;
@@ -180,7 +182,7 @@ inf_session_get_sync_error_message(GQuark domain,
 
 static GSList*
 inf_session_find_sync_item_by_connection(InfSession* session,
-                                         GNetworkConnection* conn)
+                                         InfConnection* conn)
 {
   InfSessionPrivate* priv;
   GSList* item;
@@ -200,7 +202,7 @@ inf_session_find_sync_item_by_connection(InfSession* session,
 
 static InfSessionSync*
 inf_session_find_sync_by_connection(InfSession* session,
-                                    GNetworkConnection* conn)
+                                    InfConnection* conn)
 {
   GSList* item;
   item = inf_session_find_sync_item_by_connection(session, conn);
@@ -211,13 +213,13 @@ inf_session_find_sync_by_connection(InfSession* session,
 
 /* Required by inf_session_release_connection() */
 static void
-inf_session_connection_notify_status_cb(GNetworkConnection* connection,
+inf_session_connection_notify_status_cb(InfConnection* connection,
                                         const gchar* property,
                                         gpointer user_data);
 
 static void
 inf_session_release_connection(InfSession* session,
-                               GNetworkConnection* connection)
+                               InfConnection* connection)
 {
   InfSessionPrivate* priv;
   GSList* item;
@@ -304,13 +306,13 @@ inf_session_send_sync_error(InfSession* session,
  * Signal handlers.
  */
 static void
-inf_session_connection_notify_status_cb(GNetworkConnection* connection,
+inf_session_connection_notify_status_cb(InfConnection* connection,
                                         const gchar* property,
                                         gpointer user_data)
 {
   InfSession* session;
   InfSessionPrivate* priv;
-  GNetworkConnectionStatus status;
+  InfConnectionStatus status;
   GError* error;
 
   session = INF_SESSION(user_data);
@@ -319,8 +321,8 @@ inf_session_connection_notify_status_cb(GNetworkConnection* connection,
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status == GNETWORK_CONNECTION_CLOSED ||
-     status == GNETWORK_CONNECTION_CLOSING)
+  if(status == INF_CONNECTION_CLOSED ||
+     status == INF_CONNECTION_CLOSING)
   {
     g_set_error(
       &error,
@@ -494,7 +496,7 @@ inf_session_set_property(GObject* object,
 {
   InfSession* session;
   InfSessionPrivate* priv;
-  GNetworkConnection* conn;
+  InfConnection* conn;
   gchar* identifier;
 
   session = INF_SESSION(object);
@@ -512,7 +514,7 @@ inf_session_set_property(GObject* object,
     priv->buffer = INF_BUFFER(g_value_dup_object(value));
     break;
   case PROP_SYNC_CONNECTION:
-    conn = GNETWORK_CONNECTION(g_value_get_object(value));
+    conn = INF_CONNECTION(g_value_get_object(value));
     if(conn != NULL)
     {
       inf_session_init_sync(session);
@@ -619,7 +621,7 @@ inf_session_to_xml_sync_impl(InfSession* session,
 
 static gboolean
 inf_session_process_xml_sync_impl(InfSession* session,
-                                  GNetworkConnection* connection,
+                                  InfConnection* connection,
                                   const xmlNodePtr xml,
                                   GError** error)
 {
@@ -703,7 +705,7 @@ inf_session_process_xml_sync_impl(InfSession* session,
 
 static GArray*
 inf_session_get_xml_user_props_impl(InfSession* session,
-                                    GNetworkConnection* conn,
+                                    InfConnection* conn,
                                     const xmlNodePtr xml)
 {
   GArray* array;
@@ -930,7 +932,7 @@ inf_session_close_impl(InfSession* session)
  */
 static gboolean
 inf_session_handle_received_sync_message(InfSession* session,
-                                         GNetworkConnection* connection,
+                                         InfConnection* connection,
                                          const xmlNodePtr node,
                                          GError** error)
 {
@@ -1092,7 +1094,7 @@ inf_session_handle_received_sync_message(InfSession* session,
 
 static void
 inf_session_net_object_sent(InfNetObject* net_object,
-                            GNetworkConnection* connection,
+                            InfConnection* connection,
                             const xmlNodePtr node)
 {
   InfSessionSync* sync;
@@ -1138,7 +1140,7 @@ inf_session_net_object_sent(InfNetObject* net_object,
 
 static void
 inf_session_net_object_enqueued(InfNetObject* net_object,
-                                GNetworkConnection* connection,
+                                InfConnection* connection,
                                 const xmlNodePtr node)
 {
   InfSessionSync* sync;
@@ -1164,7 +1166,7 @@ inf_session_net_object_enqueued(InfNetObject* net_object,
 
 static void
 inf_session_net_object_received(InfNetObject* net_object,
-                                GNetworkConnection* connection,
+                                InfConnection* connection,
                                 const xmlNodePtr node)
 {
   InfSessionClass* session_class;
@@ -1327,7 +1329,7 @@ inf_session_remove_user_handler(InfSession* session,
 
 static void
 inf_session_synchronization_complete_handler(InfSession* session,
-                                             GNetworkConnection* connection)
+                                             InfConnection* connection)
 {
   InfSessionPrivate* priv;
   priv = INF_SESSION_PRIVATE(session);
@@ -1361,7 +1363,7 @@ inf_session_synchronization_complete_handler(InfSession* session,
 
 static void
 inf_session_synchronization_failed_handler(InfSession* session,
-                                           GNetworkConnection* connection,
+                                           InfConnection* connection,
                                            const GError* error)
 {
   InfSessionPrivate* priv;
@@ -1468,7 +1470,7 @@ inf_session_class_init(gpointer g_class,
       "sync-connection",
       "Synchronizing connection",
       "Connection which synchronizes the initial session state",
-      GNETWORK_TYPE_CONNECTION,
+      INF_TYPE_CONNECTION,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1531,7 +1533,7 @@ inf_session_class_init(gpointer g_class,
     inf_marshal_VOID__OBJECT_DOUBLE,
     G_TYPE_NONE,
     2,
-    GNETWORK_TYPE_CONNECTION,
+    INF_TYPE_CONNECTION,
     G_TYPE_DOUBLE
   );
 
@@ -1544,7 +1546,7 @@ inf_session_class_init(gpointer g_class,
     inf_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
-    GNETWORK_TYPE_CONNECTION
+    INF_TYPE_CONNECTION
   );
 
   session_signals[SYNCHRONIZATION_FAILED] = g_signal_new(
@@ -1556,7 +1558,7 @@ inf_session_class_init(gpointer g_class,
     inf_marshal_VOID__OBJECT_POINTER,
     G_TYPE_NONE,
     2,
-    GNETWORK_TYPE_CONNECTION,
+    INF_TYPE_CONNECTION,
     G_TYPE_POINTER /* actually a GError* */
   );
 }
@@ -1930,7 +1932,7 @@ inf_session_foreach_user(InfSession* session,
 /** inf_session_synchronize_to:
  *
  * @session: A #InfSession with state %INF_SESSION_RUNNING.
- * @connection: A #GNetworkConnection.
+ * @connection: A #InfConnection.
  * @identifier: A Session identifier.
  *
  * Initiates a synchronization to @connection. On the other end of
@@ -1944,7 +1946,7 @@ inf_session_foreach_user(InfSession* session,
  **/
 void
 inf_session_synchronize_to(InfSession* session,
-                           GNetworkConnection* connection,
+                           InfConnection* connection,
                            const gchar* identifier)
 {
   InfSessionPrivate* priv;
@@ -1955,7 +1957,7 @@ inf_session_synchronize_to(InfSession* session,
   gchar num_messages_buf[16];
 
   g_return_if_fail(INF_IS_SESSION(session));
-  g_return_if_fail(GNETWORK_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_CONNECTION(connection));
   g_return_if_fail(identifier != NULL);
 
   priv = INF_SESSION_PRIVATE(session);
@@ -2038,7 +2040,7 @@ inf_session_synchronize_to(InfSession* session,
 /** inf_session_get_synchronization_status:
  *
  * @session: A #InfSession.
- * @connection: A #GNetworkConnection.
+ * @connection: A #InfConnection.
  *
  * If @session is in status %INF_SESSION_SYNCHRONIZING, this always returns
  * %INF_SESSION_SYNC_IN_PROGRESS if @connection is the connection with which
@@ -2058,7 +2060,7 @@ inf_session_synchronize_to(InfSession* session,
  **/
 InfSessionSyncStatus
 inf_session_get_synchronization_status(InfSession* session,
-                                       GNetworkConnection* connection)
+                                       InfConnection* connection)
 {
   InfSessionPrivate* priv;
   InfSessionSync* sync;
@@ -2066,7 +2068,7 @@ inf_session_get_synchronization_status(InfSession* session,
   g_return_val_if_fail(INF_IS_SESSION(session), INF_SESSION_SYNC_NONE);
 
   g_return_val_if_fail(
-    GNETWORK_IS_CONNECTION(connection),
+    INF_IS_CONNECTION(connection),
     INF_SESSION_SYNC_NONE
   );
 

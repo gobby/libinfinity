@@ -35,26 +35,10 @@ typedef struct _InfBufferIface InfBufferIface;
 
 struct _InfBufferIface {
   GTypeInterface parent;
-
-  /* Virtual table */
-  gboolean (*is_read_only)(InfBuffer* buffer);
-
-  /* Signals */
-  void (*read_only_changed)(InfBuffer* buffer,
-                            gboolean read_only);
 };
 
 GType
 inf_buffer_get_type(void) G_GNUC_CONST;
-
-void
-inf_buffer_set_read_only(InfBuffer* buffer);
-
-void
-inf_buffer_set_read_write(InfBuffer* buffer);
-
-gboolean
-inf_buffer_is_read_only(InfBuffer* buffer);
 
 G_END_DECLS
 

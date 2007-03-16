@@ -19,8 +19,6 @@
 #ifndef __INF_USER_H__
 #define __INF_USER_H__
 
-#include <libgnetwork/gnetwork-connection.h>
-
 #include <glib-object.h>
 
 G_BEGIN_DECLS

@@ -4,13 +4,11 @@ libinfinity_1_0_la_CPPFLAGS = \
 	-I${top_srcdir} \
 	$(glib_CFLAGS) \
 	$(gobject_CFLAGS) \
-	$(libgnetwork_CFLAGS) \
 	$(libxml2_CFLAGS)
 
 libinfinity_1_0_la_LIBADD = \
 	$(glib_LIBS) \
 	$(gobject_LIBS) \
-	$(libgnetwork_LIBS) \
 	$(libxml2_LIBS)
 
 dist_pkgdata_DATA = inf-marshal.in
@@ -29,6 +27,7 @@ libinfinity_1_0_ladir = libinfinity
 libinfinity_1_0_la_HEADERS = \
 	inf-buffer.h \
 	inf-config.h \
+	inf-connection.h \
 	inf-connection-manager.h \
 	inf-error.h \
 	inf-ink-buffer.h \
@@ -42,6 +41,7 @@ libinfinity_1_0_la_HEADERS = \
 
 libinfinity_1_0_la_SOURCES = \
 	inf-buffer.c \
+	inf-connection.c \
 	inf-connection-manager.c \
 	inf-error.c \
 	inf-ink-buffer.c \

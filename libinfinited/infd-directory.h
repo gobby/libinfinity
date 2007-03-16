@@ -118,7 +118,7 @@ infd_directory_add_plugin(InfdDirectory* directory,
 
 void
 infd_directory_add_connection(InfdDirectory* directory,
-                              GNetworkConnection* connection);
+                              InfConnection* connection);
 
 void
 infd_directory_iter_get_root(InfdDirectory* directory,

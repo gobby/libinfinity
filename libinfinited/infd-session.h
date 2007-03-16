@@ -46,7 +46,7 @@ struct _InfdSession {
 };
 
 typedef gboolean(*InfdSessionMessageFunc)(InfdSession* session,
-                                          GNetworkConnection* connection,
+                                          InfConnection* connection,
 					  const xmlNodePtr xml,
 					  GError** error);
 
@@ -66,12 +66,12 @@ infd_session_add_user(InfdSession* session,
 
 void
 infd_session_subscribe_to(InfdSession* session,
-                          GNetworkConnection* connection,
+                          InfConnection* connection,
                           const gchar* identifier);
 
 void
 infd_session_send_to_subscriptions(InfdSession* session,
-                                   GNetworkConnection* exclude,
+                                   InfConnection* exclude,
                                    xmlNodePtr xml);
 
 G_END_DECLS

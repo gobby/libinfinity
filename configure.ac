@@ -21,7 +21,6 @@ AC_PROG_LIBTOOL
 
 PKG_CHECK_MODULES([glib], [glib-2.0 >= 2.12])
 PKG_CHECK_MODULES([gobject], [gobject-2.0 >= 2.12])
-PKG_CHECK_MODULES([libgnetwork], [libgnetwork-1.0 >= 0.0.10])
 PKG_CHECK_MODULES([libxml2], [libxml-2.0])
 
 ####################

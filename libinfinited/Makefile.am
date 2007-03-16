@@ -4,13 +4,11 @@ libinfinited_1_0_la_CPPFLAGS = \
 	-I${top_srcdir} \
 	$(glib_CFLAGS) \
 	$(gobject_CFLAGS) \
-	$(libgnetwork_CFLAGS) \
 	$(libxml2_CFLAGS)
 
 libinfinited_1_0_la_LIBADD = \
 	$(glib_LIBS) \
 	$(gobject_LIBS) \
-	$(libgnetwork_LIBS) \
 	$(libxml2_LIBS) \
 	${top_builddir}/libinfinity/libinfinity-1.0.la
 
@@ -32,12 +30,10 @@ libinfinited_1_0_la_HEADERS = \
 	infd-marshal.h \
 	infd-note-plugin.h \
 	infd-session.h \
-	infd-server.h \
 	infd-storage.h
 
 libinfinited_1_0_la_SOURCES = \
 	infd-directory.c \
 	infd-marshal.c \
-	infd-server.c \
 	infd-session.c \
 	infd-storage.c

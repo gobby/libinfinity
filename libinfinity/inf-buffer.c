@@ -17,36 +17,23 @@
  */
 
 #include <libinfinity/inf-buffer.h>
-#include <libinfinity/inf-marshal.h>
-
-enum {
-  READ_ONLY_CHANGED,
-
-  LAST_SIGNAL
-};
-
-static guint buffer_signals[LAST_SIGNAL];
 
 static void
 inf_buffer_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
-  GObjectClass* object_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
 
   if(!initialized)
   {
-    buffer_signals[READ_ONLY_CHANGED] = g_signal_new(
-      "read-only-changed",
-      G_OBJECT_CLASS_TYPE(object_class),
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBufferIface, read_only_changed),
-      NULL, NULL,
-      inf_marshal_VOID__BOOLEAN,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_BOOLEAN
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_boolean(
+        "read-only",
+        "Read Only",
+        "Whether write access on the buffer is permitted or not",
+        TRUE,
+        G_PARAM_READWRITE
+      )
     );
   }
 }
@@ -82,62 +69,4 @@ inf_buffer_get_type(void)
   }
 
   return buffer_type;
-}
-
-/** inf_buffer_set_read_only:
- *
- * @buffer: A #InfBuffer.
- *
- * Sets @buffer in read-only mode, so no modifications can be performed.
- **/
-void
-inf_buffer_set_read_only(InfBuffer* buffer)
-{
-  g_return_if_fail(INF_IS_BUFFER(buffer));
-
-  g_signal_emit(
-    G_OBJECT(buffer),
-    buffer_signals[READ_ONLY_CHANGED],
-    0,
-    TRUE
-  );
-}
-
-/** inf_buffer_set_read_write:
- *
- * @buffer A #InfBuffer.
- *
- * Sets @buffer in read-write mode, so modifications can be performed.
- **/
-void inf_buffer_set_read_write(InfBuffer* buffer)
-{
-  g_return_if_fail(INF_IS_BUFFER(buffer));
-
-  g_signal_emit(
-    G_OBJECT(buffer),
-    buffer_signals[READ_ONLY_CHANGED],
-    0,
-    FALSE
-  );
-}
-
-/** inf_buffer_is_read_only:
- *
- * @buffer: A #InfBuffer.
- *
- * Returns whether @buffer is in read-only mode.
- *
- * Return Value: Whether @buffer is in read-only mode.
- **/
-gboolean
-inf_buffer_is_read_only(InfBuffer* buffer)
-{
-  InfBufferIface* iface;
-
-  g_return_val_if_fail(INF_IS_BUFFER(buffer), FALSE);
-
-  iface = INF_BUFFER_GET_IFACE(buffer);
-  g_return_val_if_fail(iface->is_read_only != NULL, FALSE);
-
-  return iface->is_read_only(buffer);
 }

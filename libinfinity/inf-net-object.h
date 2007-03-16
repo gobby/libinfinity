@@ -19,7 +19,7 @@
 #ifndef __INF_NET_OBJECT_H__
 #define __INF_NET_OBJECT_H__
 
-#include <libgnetwork/gnetwork-connection.h>
+#include <libinfinity/inf-connection.h>
 
 #include <libxml/tree.h>
 
@@ -40,15 +40,15 @@ struct _InfNetObjectIface {
 
   /* Virtual Table */
   void (*received)(InfNetObject* object,
-                   GNetworkConnection* conn,
+                   InfConnection* conn,
                    const xmlNodePtr node);
 
   void (*enqueued)(InfNetObject* object,
-                   GNetworkConnection* conn,
+                   InfConnection* conn,
                    const xmlNodePtr node);
 
   void (*sent)(InfNetObject* object,
-               GNetworkConnection* conn,
+               InfConnection* conn,
                const xmlNodePtr node);
 };
 
@@ -57,17 +57,17 @@ inf_net_object_get_type(void) G_GNUC_CONST;
 
 void
 inf_net_object_received(InfNetObject* object,
-                        GNetworkConnection* conn,
+                        InfConnection* conn,
                         const xmlNodePtr node);
 
 void
 inf_net_object_enqueued(InfNetObject* object,
-                        GNetworkConnection* conn,
+                        InfConnection* conn,
                         const xmlNodePtr node);
 
 void
 inf_net_object_sent(InfNetObject* object,
-                    GNetworkConnection* conn,
+                    InfConnection* conn,
                     const xmlNodePtr node);
 
 G_END_DECLS
