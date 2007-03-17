@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-connection.h>
+#include <libinfinity/inf-xml-connection.h>
 #include <libinfinity/inf-marshal.h>
 
 enum {
@@ -29,7 +29,7 @@ enum {
 static guint connection_signals[LAST_SIGNAL];
 
 static void
-inf_connection_base_init(gpointer g_class)
+inf_xml_connection_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
   GObjectClass* object_class;
@@ -42,7 +42,7 @@ inf_connection_base_init(gpointer g_class)
       "sent",
       G_OBJECT_CLASS_TYPE(object_class),
       G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfConnectionIface, sent),
+      G_STRUCT_OFFSET(InfXmlConnectionIface, sent),
       NULL, NULL,
       inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
@@ -54,7 +54,7 @@ inf_connection_base_init(gpointer g_class)
       "received",
       G_OBJECT_CLASS_TYPE(object_class),
       G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfConnectionIface, received),
+      G_STRUCT_OFFSET(InfXmlConnectionIface, received),
       NULL, NULL,
       inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
@@ -66,10 +66,10 @@ inf_connection_base_init(gpointer g_class)
       g_class,
       g_param_spec_enum(
         "status",
-        "Connection Status",
+        "XmlConnection Status",
         "The status of the connection.",
-        INF_TYPE_CONNECTION_STATUS,
-        INF_CONNECTION_CLOSED,
+        INF_TYPE_XML_CONNECTION_STATUS,
+        INF_XML_CONNECTION_CLOSED,
         G_PARAM_READABLE
       )
     );
@@ -77,7 +77,7 @@ inf_connection_base_init(gpointer g_class)
 }
 
 GType
-inf_connection_status_get_type(void)
+inf_xml_connection_status_get_type(void)
 {
   static GType connection_status_type = 0;
 
@@ -85,26 +85,26 @@ inf_connection_status_get_type(void)
   {
     static const GEnumValue connection_status_values[] = {
       {
-        INF_CONNECTION_CLOSED,
-        "INF_CONNECTION_CLOSED",
+        INF_XML_CONNECTION_CLOSED,
+        "INF_XML_CONNECTION_CLOSED",
         "closed"
       }, {
-        INF_CONNECTION_CLOSING,
-        "INF_CONNECTION_CLOSING",
+        INF_XML_CONNECTION_CLOSING,
+        "INF_XML_CONNECTION_CLOSING",
         "closing"
       }, {
-        INF_CONNECTION_OPEN,
-        "INF_CONNECTION_OPEN",
+        INF_XML_CONNECTION_OPEN,
+        "INF_XML_CONNECTION_OPEN",
         "open"
       }, {
-        INF_CONNECTION_OPENING,
-        "INF_CONNECTION_OPENING",
+        INF_XML_CONNECTION_OPENING,
+        "INF_XML_CONNECTION_OPENING",
         "opening"
       }
     };
 
     connection_status_type = g_enum_register_static(
-      "InfConnectionStatus",
+      "InfXmlConnectionStatus",
       connection_status_values
     );
   }
@@ -113,15 +113,15 @@ inf_connection_status_get_type(void)
 }
 
 GType
-inf_connection_get_type(void)
+inf_xml_connection_get_type(void)
 {
   static GType connection_type = 0;
 
   if(!connection_type)
   {
     static const GTypeInfo connection_info = {
-      sizeof(InfConnectionIface),    /* class_size */
-      inf_connection_base_init,      /* base_init */
+      sizeof(InfXmlConnectionIface),    /* class_size */
+      inf_xml_connection_base_init,      /* base_init */
       NULL,                          /* base_finalize */
       NULL,                          /* class_init */
       NULL,                          /* class_finalize */
@@ -134,7 +134,7 @@ inf_connection_get_type(void)
 
     connection_type = g_type_register_static(
       G_TYPE_INTERFACE,
-      "InfConnection",
+      "InfXmlConnection",
       &connection_info,
       0
     );
@@ -145,58 +145,58 @@ inf_connection_get_type(void)
   return connection_type;
 }
 
-/** inf_connection_close:
+/** inf_xml_connection_close:
  *
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  *
  * Closes the given connection.
  **/
 void
-inf_connection_close(InfConnection* connection)
+inf_xml_connection_close(InfXmlConnection* connection)
 {
-  InfConnectionIface* iface;
+  InfXmlConnectionIface* iface;
 
-  g_return_if_fail(INF_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
-  iface = INF_CONNECTION_GET_IFACE(connection);
+  iface = INF_XML_CONNECTION_GET_IFACE(connection);
   g_return_if_fail(iface->close != NULL);
 
   iface->close(connection);
 }
 
-/** inf_connection_send:
+/** inf_xml_connection_send:
  *
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  * @xml: A XML message to send. The function takes ownership of the XML node.
  *
  * Sends the given XML message to the remote host.
  **/
-void inf_connection_send(InfConnection* connection,
-                         xmlNodePtr xml)
+void inf_xml_connection_send(InfXmlConnection* connection,
+                             xmlNodePtr xml)
 {
-  InfConnectionIface* iface;
+  InfXmlConnectionIface* iface;
 
-  g_return_if_fail(INF_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(xml != NULL);
 
-  iface = INF_CONNECTION_GET_IFACE(connection);
+  iface = INF_XML_CONNECTION_GET_IFACE(connection);
   g_return_if_fail(iface->send != NULL);
 
   iface->send(connection, xml);
 }
 
-/** inf_connection_sent:
+/** inf_xml_connection_sent:
  *
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  * @xml: The XML message that has been sent.
  *
  * Emits the "sent" signal on @connection. This will most likely only be
  * useful to implementors.
  **/
-void inf_connection_sent(InfConnection* connection,
-                         const xmlNodePtr xml)
+void inf_xml_connection_sent(InfXmlConnection* connection,
+                             const xmlNodePtr xml)
 {
-  g_return_if_fail(INF_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(xml != NULL);
 
   g_signal_emit(
@@ -208,18 +208,18 @@ void inf_connection_sent(InfConnection* connection,
   );
 }
 
-/** inf_connection_received:
+/** inf_xml_connection_received:
  *
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  * @xml: The XML message that has been received.
  *
  * Emits the "received" signal on @connection. This will most likely only
  * be useful to implementors.
  **/
-void inf_connection_received(InfConnection* connection,
-                             const xmlNodePtr xml)
+void inf_xml_connection_received(InfXmlConnection* connection,
+                                 const xmlNodePtr xml)
 {
-  g_return_if_fail(INF_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(xml != NULL);
 
   g_signal_emit(

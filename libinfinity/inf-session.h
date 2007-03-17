@@ -22,7 +22,7 @@
 #include <libinfinity/inf-connection-manager.h>
 #include <libinfinity/inf-buffer.h>
 #include <libinfinity/inf-user.h>
-#include <libinfinity/inf-connection.h>
+#include <libinfinity/inf-xml-connection.h>
 
 #include <libxml/tree.h>
 
@@ -106,18 +106,18 @@ struct _InfSessionClass {
   /* This method is called for every node in the XML document created above
    * on the other site. It should reconstruct the session. */
   gboolean(*process_xml_sync)(InfSession* session,
-                              InfConnection* connection,
+                              InfXmlConnection* connection,
                               const xmlNodePtr xml,
                               GError** error);
 
   /* This method is called for every received message while the session is
    * running. */
   void(*process_xml_run)(InfSession* session,
-                         InfConnection* connection,
+                         InfXmlConnection* connection,
                          const xmlNodePtr xml);
 
   GArray*(*get_xml_user_props)(InfSession* session,
-                               InfConnection* conn, /* ? */
+                               InfXmlConnection* conn, /* ? */
                                const xmlNodePtr xml);
 
   gboolean(*validate_user_props)(InfSession* session,
@@ -144,14 +144,14 @@ struct _InfSessionClass {
                      InfUser* user);
 
   void(*synchronization_progress)(InfSession* session,
-                                  InfConnection* connection,
+                                  InfXmlConnection* connection,
                                   gdouble percentage);
 
   void(*synchronization_complete)(InfSession* session,
-                                  InfConnection* connection);
+                                  InfXmlConnection* connection);
 
   void(*synchronization_failed)(InfSession* session,
-                                InfConnection* connection,
+                                InfXmlConnection* connection,
                                 const GError* error);
 };
 
@@ -207,12 +207,12 @@ inf_session_foreach_user(InfSession* session,
 
 void
 inf_session_synchronize_to(InfSession* session,
-                           InfConnection* connection,
+                           InfXmlConnection* connection,
                            const gchar* identifier);
 
 InfSessionSyncStatus
 inf_session_get_synchronization_status(InfSession* session,
-                                       InfConnection* connection);
+                                       InfXmlConnection* connection);
 
 G_END_DECLS
 

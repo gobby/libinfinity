@@ -1,15 +1,21 @@
+2007-03-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-io.h:
+	* libinfinity/inf-io.c:
+	* Makefile.am: Added InfIo interface.
+
 2007-03-15  Armin Burgmeier  <armin@arbur.net>
 
-	* libinfinity/inf-connection.h: 
-	* libinfinity/inf-connection.c: Added an InfConnection interface that
-	replaces GNetworkConnection.
+	* libinfinity/inf-xml-connection.h: 
+	* libinfinity/inf-xml-connection.c: Added an InfXmlConnection
+	interface that replaces GNetworkConnection.
 
 	* libinfinity/inf-buffer.c:
 	* libinfinity/inf-buffer.h: Made a property out of the read-only
 	functions and signal.
 
 	* libinfinity/inf-marshal.in: Replaced VOID:BOOLEAN by VOID:POINTER
-	for InfConnection.
+	for InfXmlConnection.
 
 	* libinfinity/inf-net-object.h:
 	* libinfinity/inf-connection-manager.h:
@@ -21,14 +27,14 @@
 	* libinfinity/inf-connection-manager.c:
 	* libinfinity/inf-session.c:
 	* libinfinited/infd-session.c:
-	* libinfinited/infd-directory.c: Adjusted to use InfConnection instead
-	of GNetworkConnection.
+	* libinfinited/infd-directory.c: Adjusted to use InfXmlConnection
+	instead of GNetworkConnection.
 
 	* configure.ac:
 	* libinfinity/Makefile.am:
 	* libinfinited/Makefile.am: Dropped dependency on libgnetwork. Also
 	excluded infd-server.[hc] from build because they would still require
-	GNetworkServer. Another interface in libinfinity is required here.
+	GNetworkServer. Another interface in libinfinited is required here.
 
 2007-03-15  Armin Burgmeier  <armin@arbur.net>
 

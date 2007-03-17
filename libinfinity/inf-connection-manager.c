@@ -97,7 +97,7 @@ inf_connection_manager_object_free(InfConnectionManagerObject* object)
  * head. Successfully sent nodes are freed. */
 static xmlNodePtr
 inf_connection_manager_object_real_send(InfConnectionManagerObject* connobj,
-                                        InfConnection* inf_conn,
+                                        InfXmlConnection* xml_conn,
                                         xmlNodePtr xml,
                                         guint max_messages)
 {
@@ -126,13 +126,13 @@ inf_connection_manager_object_real_send(InfConnectionManagerObject* connobj,
     xmlAddChild(container, cur);
 
     /* Object was enqueued in inner queue */
-    inf_net_object_enqueued(connobj->net_object, inf_conn, cur);
+    inf_net_object_enqueued(connobj->net_object, xml_conn, cur);
 
     ++ connobj->inner_queue_count;
     if(max_messages > 1) -- max_messages;
   }
 
-  inf_connection_send(inf_conn, container);
+  inf_xml_connection_send(xml_conn, container);
   return xml;
 }
 
@@ -162,7 +162,7 @@ inf_connection_manager_connection_grab(InfConnectionManagerConnection* conn,
 }
 
 static void
-inf_connection_manager_connection_sent_cb(InfConnection* inf_conn,
+inf_connection_manager_connection_sent_cb(InfXmlConnection* xml_conn,
                                           const xmlNodePtr xml,
                                           gpointer user_data)
 {
@@ -179,7 +179,7 @@ inf_connection_manager_connection_sent_cb(InfConnection* inf_conn,
   {
     for(child = xml->children; child != NULL; child = child->next)
     {
-      inf_net_object_sent(object->net_object, inf_conn, child);
+      inf_net_object_sent(object->net_object, xml_conn, child);
       -- object->inner_queue_count;
     }
 
@@ -189,7 +189,7 @@ inf_connection_manager_connection_sent_cb(InfConnection* inf_conn,
        * inner queue again. */
       object->outer_queue = inf_connection_manager_object_real_send(
         object,
-        inf_conn,
+        xml_conn,
         object->outer_queue,
         INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - object->inner_queue_count
       );
@@ -205,7 +205,7 @@ inf_connection_manager_connection_sent_cb(InfConnection* inf_conn,
 }
 
 static void
-inf_connection_manager_connection_received_cb(InfConnection* inf_conn,
+inf_connection_manager_connection_received_cb(InfXmlConnection* xml_conn,
                                               const xmlNodePtr xml,
                                               gpointer user_data)
 {
@@ -220,27 +220,27 @@ inf_connection_manager_connection_received_cb(InfConnection* inf_conn,
   {
     for(child = xml->children; child != NULL; child = child->next)
     {
-      inf_net_object_received(object->net_object, inf_conn, child);
+      inf_net_object_received(object->net_object, xml_conn, child);
     }
   }
 }
 
 static void
-inf_connection_manager_connection_unassoc(InfConnection* inf_conn)
+inf_connection_manager_connection_unassoc(InfXmlConnection* xml_conn)
 {
   InfConnectionManagerConnection* conn;
-  conn = g_object_steal_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_steal_qdata(G_OBJECT(xml_conn), connection_quark);
 
   g_return_if_fail(conn != NULL);
 
   g_signal_handlers_disconnect_by_func(
-    G_OBJECT(inf_conn),
+    G_OBJECT(xml_conn),
     G_CALLBACK(inf_connection_manager_connection_received_cb),
     conn
   );
 
   g_signal_handlers_disconnect_by_func(
-    G_OBJECT(inf_conn),
+    G_OBJECT(xml_conn),
     G_CALLBACK(inf_connection_manager_connection_sent_cb),
     conn
   );
@@ -252,30 +252,30 @@ inf_connection_manager_connection_unassoc(InfConnection* inf_conn)
 }
 
 static InfConnectionManagerConnection*
-inf_connection_manager_connection_assoc(InfConnection* inf_conn)
+inf_connection_manager_connection_assoc(InfXmlConnection* xml_conn)
 {
   InfConnectionManagerConnection* conn;
 
-  conn = g_object_get_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_val_if_fail(conn == NULL, NULL);
 
   conn = g_slice_new(InfConnectionManagerConnection);
 
   g_object_set_qdata(
-    G_OBJECT(inf_conn),
+    G_OBJECT(xml_conn),
     connection_quark,
     conn
   );
 
   g_signal_connect(
-    G_OBJECT(inf_conn),
+    G_OBJECT(xml_conn),
     "received",
     G_CALLBACK(inf_connection_manager_connection_received_cb),
     conn
   );
 
   g_signal_connect(
-    G_OBJECT(inf_conn),
+    G_OBJECT(xml_conn),
     "sent",
     G_CALLBACK(inf_connection_manager_connection_sent_cb),
     conn
@@ -302,21 +302,22 @@ inf_connection_manager_connection_assoc(InfConnection* inf_conn)
  * remove the gnetwork connection if it has been closed. */
 static void
 inf_connection_manager_free_connection(InfConnectionManager* manager,
-                                       InfConnection* inf_conn);
+                                       InfXmlConnection* xml_conn);
 
 static void
-inf_connection_manager_connection_notify_status_cb(InfConnection* conn,
+inf_connection_manager_connection_notify_status_cb(InfXmlConnection* conn,
                                                    GParamSpec* pspec,
                                                    gpointer user_data)
 {
   InfConnectionManager* manager;
-  InfConnectionStatus status;
+  InfXmlConnectionStatus status;
 
   g_object_get(G_OBJECT(conn), "status", &status, NULL);
 
   /* Remove the connection from the list of connections if it has
    * been closed. */
-  if(status == INF_CONNECTION_CLOSED || status == INF_CONNECTION_CLOSING)
+  if(status == INF_XML_CONNECTION_CLOSED ||
+     status == INF_XML_CONNECTION_CLOSING)
   {
     manager = INF_CONNECTION_MANAGER(user_data);
     inf_connection_manager_free_connection(manager, conn);
@@ -325,21 +326,21 @@ inf_connection_manager_connection_notify_status_cb(InfConnection* conn,
 
 static void
 inf_connection_manager_free_connection(InfConnectionManager* manager,
-                                       InfConnection* inf_conn)
+                                       InfXmlConnection* xml_conn)
 {
   InfConnectionManagerPrivate* priv;
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
 
-  inf_connection_manager_connection_unassoc(inf_conn);
+  inf_connection_manager_connection_unassoc(xml_conn);
 
   g_signal_handlers_disconnect_by_func(
-    G_OBJECT(inf_conn),
+    G_OBJECT(xml_conn),
     G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
     manager
   );
 
-  priv->connections = g_slist_remove(priv->connections, inf_conn);
-  g_object_unref(G_OBJECT(inf_conn));
+  priv->connections = g_slist_remove(priv->connections, xml_conn);
+  g_object_unref(G_OBJECT(xml_conn));
 }
 
 static void
@@ -447,13 +448,13 @@ inf_connection_manager_new(void)
  **/
 void
 inf_connection_manager_add_connection(InfConnectionManager* manager,
-                                      InfConnection* connection)
+                                      InfXmlConnection* connection)
 {
   InfConnectionManagerPrivate* priv;
   GSList* item;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
   item = g_slist_find(priv->connections, connection);
@@ -483,12 +484,12 @@ inf_connection_manager_add_connection(InfConnectionManager* manager,
  **/
 gboolean
 inf_connection_manager_has_connection(InfConnectionManager* manager,
-                                      InfConnection* connection)
+                                      InfXmlConnection* connection)
 {
   InfConnectionManagerPrivate* priv;
 
   g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), FALSE);
-  g_return_val_if_fail(INF_IS_CONNECTION(connection), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
 
@@ -653,7 +654,7 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
  **/
 void
 inf_connection_manager_add_object(InfConnectionManager* manager,
-                                  InfConnection* inf_conn,
+                                  InfXmlConnection* xml_conn,
                                   InfNetObject* object,
                                   const gchar* identifier)
 {
@@ -661,11 +662,11 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
   InfConnectionManagerObject* connobj;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_CONNECTION(inf_conn));
+  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
   g_return_if_fail(INF_IS_NET_OBJECT(object));
   g_return_if_fail(identifier != NULL);
 
-  conn = g_object_get_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
   connobj = g_hash_table_lookup(
@@ -721,17 +722,17 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
  **/
 void
 inf_connection_manager_remove_object(InfConnectionManager* manager,
-                                     InfConnection* inf_conn,
+                                     InfXmlConnection* xml_conn,
                                      InfNetObject* object)
 {
   InfConnectionManagerConnection* conn;
   InfConnectionManagerObject* connobj;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_CONNECTION(inf_conn));
+  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
   g_return_if_fail(INF_IS_NET_OBJECT(object));
 
-  conn = g_object_get_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
   connobj = g_hash_table_lookup(conn->object_connobj_table, object);
@@ -747,7 +748,7 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
       /* Flush outer queue completely */
       connobj->outer_queue = inf_connection_manager_object_real_send(
         connobj,
-        inf_conn,
+        xml_conn,
         connobj->outer_queue,
         0
       );
@@ -775,7 +776,7 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
  **/
 void
 inf_connection_manager_send(InfConnectionManager* manager,
-                            InfConnection* inf_conn,
+                            InfXmlConnection* xml_conn,
                             InfNetObject* object,
                             xmlNodePtr message)
 {
@@ -783,11 +784,11 @@ inf_connection_manager_send(InfConnectionManager* manager,
   InfConnectionManagerObject* connobj;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_CONNECTION(inf_conn));
+  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
   g_return_if_fail(INF_IS_NET_OBJECT(object));
   g_return_if_fail(message != NULL);
 
-  conn = g_object_get_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
   connobj = g_hash_table_lookup(conn->object_connobj_table, object);
@@ -797,7 +798,7 @@ inf_connection_manager_send(InfConnectionManager* manager,
   {
     message = inf_connection_manager_object_real_send(
       connobj,
-      inf_conn,
+      xml_conn,
       message,
       1
     );
@@ -837,7 +838,7 @@ inf_connection_manager_send(InfConnectionManager* manager,
  **/
 void
 inf_connection_manager_send_multiple(InfConnectionManager* manager,
-                                     InfConnection* inf_conn,
+                                     InfXmlConnection* xml_conn,
                                      InfNetObject* object,
                                      xmlNodePtr messages)
 {
@@ -848,10 +849,10 @@ inf_connection_manager_send_multiple(InfConnectionManager* manager,
   xmlNodePtr next;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_CONNECTION(inf_conn));
+  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
   g_return_if_fail(INF_IS_NET_OBJECT(object));
 
-  conn = g_object_get_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
   connobj = g_hash_table_lookup(conn->object_connobj_table, object);
@@ -861,7 +862,7 @@ inf_connection_manager_send_multiple(InfConnectionManager* manager,
   {
     messages = inf_connection_manager_object_real_send(
       connobj,
-      inf_conn,
+      xml_conn,
       messages,
       INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - connobj->inner_queue_count
     );
@@ -911,7 +912,7 @@ inf_connection_manager_send_multiple(InfConnectionManager* manager,
  **/
 void
 inf_connection_manager_cancel_outer(InfConnectionManager* manager,
-                                    InfConnection* inf_conn,
+                                    InfXmlConnection* xml_conn,
                                     InfNetObject* object)
 {
   InfConnectionManagerConnection* conn;
@@ -919,10 +920,10 @@ inf_connection_manager_cancel_outer(InfConnectionManager* manager,
   xmlNodePtr next;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_CONNECTION(inf_conn));
+  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
   g_return_if_fail(INF_IS_NET_OBJECT(object));
 
-  conn = g_object_get_qdata(G_OBJECT(inf_conn), connection_quark);
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_if_fail(conn != NULL);
 
   connobj = g_hash_table_lookup(conn->object_connobj_table, object);

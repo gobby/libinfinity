@@ -20,6 +20,8 @@
 
 #include <libinfinity/inf-error.h>
 
+#include <string.h>
+
 /* These are only used locally in this file to report errors that occured
  * while processing a client request. */
 typedef enum _InfdSessionMessageError {
@@ -38,7 +40,7 @@ struct _InfdSessionMessage {
 
 typedef struct _InfdSessionSubscription InfdSessionSubscription;
 struct _InfdSessionSubscription {
-  InfConnection* connection;
+  InfXmlConnection* connection;
   GSList* users; /* Joined users via this connection */
 };
 
@@ -98,7 +100,7 @@ infd_session_message_free(InfdSessionMessage* message)
  */
 
 static InfdSessionSubscription*
-infd_session_subscription_new(InfConnection* connection)
+infd_session_subscription_new(InfXmlConnection* connection)
 {
   InfdSessionSubscription* subscription;
   subscription = g_slice_new(InfdSessionSubscription);
@@ -124,7 +126,7 @@ infd_session_subscription_free(InfdSessionSubscription* subscription)
 
 static GSList*
 infd_session_find_subscription_item_by_connection(InfdSession* session,
-                                                  InfConnection* conn)
+                                                  InfXmlConnection* conn)
 {
   InfdSessionPrivate* priv;
   GSList* item;
@@ -139,7 +141,7 @@ infd_session_find_subscription_item_by_connection(InfdSession* session,
 
 static InfdSessionSubscription*
 infd_session_find_subscription_by_connection(InfdSession* session,
-                                             InfConnection* connection)
+                                             InfXmlConnection* connection)
 {
   GSList* item;
 
@@ -154,7 +156,7 @@ infd_session_find_subscription_by_connection(InfdSession* session,
 
 /* Required by infd_session_release_connection() */
 static void
-infd_session_connection_notify_status_cb(InfConnection* connection,
+infd_session_connection_notify_status_cb(InfXmlConnection* connection,
                                          const gchar* property,
                                          gpointer user_data);
 
@@ -164,12 +166,12 @@ infd_session_release_subscription(InfdSession* session,
                                   InfdSessionSubscription* subscription)
 {
   InfdSessionPrivate* priv;
-  InfConnection* connection;
+  InfXmlConnection* connection;
 
   priv = INFD_SESSION_PRIVATE(session);
   connection = subscription->connection;
 
-  g_signal_handler_disconnect_by_func(
+  g_signal_handlers_disconnect_by_func(
     G_OBJECT(connection),
     G_CALLBACK(infd_session_connection_notify_status_cb),
     session
@@ -217,7 +219,7 @@ infd_session_remove_subscription(InfdSession* session,
 
 static InfUser*
 infd_session_perform_user_join(InfdSession* session,
-                               InfConnection* connection,
+                               InfXmlConnection* connection,
                                GArray* user_props,
                                GError** error)
 {
@@ -415,7 +417,7 @@ infd_session_perform_user_join(InfdSession* session,
 /* Subscribes the given connection to the session without synchronizing it. */
 static void
 infd_session_subscribe_connection(InfdSession* session,
-                                  InfConnection* connection,
+                                  InfXmlConnection* connection,
                                   const gchar* identifier)
 {
   InfdSessionPrivate* priv;
@@ -450,19 +452,20 @@ infd_session_subscribe_connection(InfdSession* session,
  */
 
 static void
-infd_session_connection_notify_status_cb(InfConnection* connection,
+infd_session_connection_notify_status_cb(InfXmlConnection* connection,
                                          const gchar* property,
                                          gpointer user_data)
 {
   InfdSession* session;
   InfdSessionSubscription* subscription;
-  InfConnectionStatus status;
+  InfXmlConnectionStatus status;
 
   session = INFD_SESSION(user_data);
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status == INF_CONNECTION_CLOSED || status == INF_CONNECTION_CLOSING)
+  if(status == INF_XML_CONNECTION_CLOSED ||
+     status == INF_XML_CONNECTION_CLOSING)
   {
     subscription = infd_session_find_subscription_by_connection(
       session,
@@ -563,7 +566,7 @@ infd_session_dispose(GObject* object)
 
 static void
 infd_session_process_xml_run_impl(InfSession* session,
-                                  InfConnection* connection,
+                                  InfXmlConnection* connection,
                                   const xmlNodePtr xml)
 {
   InfdSessionClass* sessiond_class;
@@ -684,7 +687,7 @@ infd_session_add_user_impl(InfSession* session,
 
 static void
 infd_session_synchronization_complete_impl(InfSession* session,
-                                           InfConnection* connection)
+                                           InfXmlConnection* connection)
 {
   InfdSessionPrivate* priv;
   InfSessionStatus status;
@@ -719,7 +722,7 @@ infd_session_synchronization_complete_impl(InfSession* session,
 
 static void
 infd_session_synchronization_failed_impl(InfSession* session,
-                                         InfConnection* connection,
+                                         InfXmlConnection* connection,
                                          const GError* error)
 {
   InfSessionStatus status;
@@ -757,7 +760,7 @@ infd_session_synchronization_failed_impl(InfSession* session,
 
 static gboolean
 infd_session_handle_user_join(InfdSession* session,
-                              InfConnection* connection,
+                              InfXmlConnection* connection,
                               const xmlNodePtr xml,
                               GError** error)
 {
@@ -822,7 +825,7 @@ infd_session_handle_user_join(InfdSession* session,
 
 static gboolean
 infd_session_handle_user_leave(InfdSession* session,
-                               InfConnection* connection,
+                               InfXmlConnection* connection,
                                const xmlNodePtr xml,
                                GError** error)
 {
@@ -890,7 +893,7 @@ infd_session_handle_user_leave(InfdSession* session,
 
 static gboolean
 infd_session_handle_session_unsubscribe(InfdSession* session,
-                                        InfConnection* connection,
+                                        InfXmlConnection* connection,
                                         const xmlNodePtr xml,
                                         GError** error)
 {
@@ -1117,13 +1120,13 @@ infd_session_add_user(InfdSession* session,
  **/
 void
 infd_session_subscribe_to(InfdSession* session,
-                          InfConnection* connection,
+                          InfXmlConnection* connection,
                           const gchar* identifier)
 {
   InfdSessionPrivate* priv;
 
   g_return_if_fail(INFD_IS_SESSION(session));
-  g_return_if_fail(INF_IS_CONNECTION(connection));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(identifier != NULL);
 
   g_return_if_fail(
@@ -1147,7 +1150,7 @@ infd_session_subscribe_to(InfdSession* session,
  **/
 void
 infd_session_send_to_subscriptions(InfdSession* session,
-                                   InfConnection* exclude,
+                                   InfXmlConnection* exclude,
                                    xmlNodePtr xml)
 {
   InfdSessionPrivate* priv;

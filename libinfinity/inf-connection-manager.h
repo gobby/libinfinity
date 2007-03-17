@@ -19,8 +19,8 @@
 #ifndef __INF_CONNECTION_MANAGER_H__
 #define __INF_CONNECTION_MANAGER_H__
 
-#include <libinfinity/inf-connection.h>
 #include <libinfinity/inf-net-object.h>
+#include <libinfinity/inf-xml-connection.h>
 
 #include <libxml/tree.h>
 
@@ -54,19 +54,19 @@ inf_connection_manager_new(void);
 
 void
 inf_connection_manager_add_connection(InfConnectionManager* manager,
-                                      InfConnection* connection);
+                                      InfXmlConnection* connection);
 
 gboolean
 inf_connection_manager_has_connection(InfConnectionManager* manager,
-                                      InfConnection* connection);
+                                      InfXmlConnection* connection);
 
 #if 0
-GNetworkTcpConnection*
+GNetworkTcpXmlConnection*
 inf_connection_manager_get_by_address(InfConnectionManager* manager,
                                       const GNetworkIpAddress* address,
                                       guint port);
 
-GNetworkTcpConnection*
+GNetworkTcpXmlConnection*
 inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
                                        const gchar* hostname,
                                        guint port);
@@ -74,30 +74,30 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
 
 void
 inf_connection_manager_add_object(InfConnectionManager* manager,
-                                  InfConnection* inf_conn,
+                                  InfXmlConnection* inf_conn,
                                   InfNetObject* object,
                                   const gchar* identifier);
 
 void
 inf_connection_manager_remove_object(InfConnectionManager* manager,
-                                     InfConnection* inf_conn,
+                                     InfXmlConnection* inf_conn,
                                      InfNetObject* object);
 
 void
 inf_connection_manager_send(InfConnectionManager* manager,
-                            InfConnection* inf_conn,
+                            InfXmlConnection* inf_conn,
                             InfNetObject* object,
                             xmlNodePtr message);
 
 void
 inf_connection_manager_send_multiple(InfConnectionManager* manager,
-                                     InfConnection* inf_conn,
+                                     InfXmlConnection* inf_conn,
                                      InfNetObject* object,
                                      xmlNodePtr messages);
 
 void
 inf_connection_manager_cancel_outer(InfConnectionManager* manager,
-                                    InfConnection* inf_conn,
+                                    InfXmlConnection* inf_conn,
                                     InfNetObject* object);
 
 G_END_DECLS

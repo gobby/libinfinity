@@ -27,28 +27,30 @@ libinfinity_1_0_ladir = libinfinity
 libinfinity_1_0_la_HEADERS = \
 	inf-buffer.h \
 	inf-config.h \
-	inf-connection.h \
 	inf-connection-manager.h \
 	inf-error.h \
 	inf-ink-buffer.h \
 	inf-ink-stroke.h \
+	inf-io.h \
 	inf-marshal.h \
 	inf-net-object.h \
 	inf-session.h \
 	inf-text-buffer.h \
 	inf-user.h \
+	inf-xml-connection.h \
 	inf-xml-stream.h
 
 libinfinity_1_0_la_SOURCES = \
 	inf-buffer.c \
-	inf-connection.c \
 	inf-connection-manager.c \
 	inf-error.c \
 	inf-ink-buffer.c \
 	inf-ink-stroke.c \
+	inf-io.c \
 	inf-marshal.c \
 	inf-net-object.c \
 	inf-session.c \
 	inf-text-buffer.c \
 	inf-user.c \
+	inf-xml-connection.c \
 	inf-xml-stream.c

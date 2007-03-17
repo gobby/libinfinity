@@ -33,7 +33,7 @@ struct _InfdNotePlugin {
   const gchar* identifier;
 
   InfdSession*(*session_new)(InfConnectionManager* manager,
-                             InfConnection* sync_connection,
+                             InfXmlConnection* sync_connection,
 			     const gchar* sync_identifier);
 
   gboolean(*session_read)(InfdStorage* storage,
