@@ -28,7 +28,7 @@ G_BEGIN_DECLS
 #define INF_IS_IO(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_IO))
 #define INF_IO_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_IO, InfIoIface))
 
-#define INF_TYPE_IO_STATUS          (inf_io_status_get_type())
+#define INF_TYPE_IO_EVENT           (inf_io_event_get_type())
 
 typedef struct _InfIo InfIo;
 typedef struct _InfIoIface InfIoIface;

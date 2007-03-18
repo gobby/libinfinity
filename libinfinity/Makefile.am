@@ -28,6 +28,8 @@ libinfinity_1_0_la_HEADERS = \
 	inf-buffer.h \
 	inf-config.h \
 	inf-connection-manager.h \
+	inf-discovery.h \
+	inf-discovery-info.h \
 	inf-error.h \
 	inf-ink-buffer.h \
 	inf-ink-stroke.h \
@@ -43,6 +45,8 @@ libinfinity_1_0_la_HEADERS = \
 libinfinity_1_0_la_SOURCES = \
 	inf-buffer.c \
 	inf-connection-manager.c \
+	inf-discovery.c
+	inf-discovery-info.c \
 	inf-error.c \
 	inf-ink-buffer.c \
 	inf-ink-stroke.c \
