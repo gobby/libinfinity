@@ -34,6 +34,7 @@ libinfinity_1_0_la_HEADERS = \
 	inf-ink-buffer.h \
 	inf-ink-stroke.h \
 	inf-io.h \
+	inf-ip-address.h \
 	inf-marshal.h \
 	inf-net-object.h \
 	inf-session.h \
@@ -45,12 +46,13 @@ libinfinity_1_0_la_HEADERS = \
 libinfinity_1_0_la_SOURCES = \
 	inf-buffer.c \
 	inf-connection-manager.c \
-	inf-discovery.c
+	inf-discovery.c \
 	inf-discovery-info.c \
 	inf-error.c \
 	inf-ink-buffer.c \
 	inf-ink-stroke.c \
 	inf-io.c \
+	inf-ip-address.c \
 	inf-marshal.c \
 	inf-net-object.c \
 	inf-session.c \

@@ -1,5 +1,11 @@
 2007-03-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-ip-address.h:
+	* libinfinity/inf-ip-address.c:
+	* Makefile.am: Boxed type managing an IP address.
+
+2007-03-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-discovery-info.h:
 	* libinfinity/inf-discovery.h:
 	* libinfinity/inf-discovery-info.c:
