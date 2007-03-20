@@ -91,7 +91,7 @@ enum {
   LAST_SIGNAL
 };
 
-#define INF_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfSessionPrivate))
+#define INF_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_SESSION, InfSessionPrivate))
 
 static GObjectClass* parent_class;
 static guint session_signals[LAST_SIGNAL];

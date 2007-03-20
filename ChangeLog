@@ -1,3 +1,24 @@
+2007-03-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:POINTER,UINT marshaller.
+
+	* libinfinity/inf-standalone-io.h:
+	* libinfinity/inf-standalone-io.c: Added simple InfIo implementation.
+
+	* libinfinity/inf-tcp-connection.h:
+	* libinfinity/inf-tcp-connection.c: Implemented a TCP connection
+	object.
+
+	* libinfinity/Makefile.am: Added InfIoStandalone and InfTcpConnection
+	to build.
+
+	* test/inf-test-stream.xml:
+	* test/inf-test-xml-stream.c: Removed those since InfXmlStream will
+	probably be removed too, or at least change semantics.
+
+	* test/inf-test-tcp-connection.c:
+	* test/Makefile.am: Added simple TCP connection test.
+
 2007-03-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-ip-address.h:

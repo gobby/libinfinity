@@ -31,11 +31,11 @@
 G_BEGIN_DECLS
 
 #define INF_TYPE_SESSION                 (inf_session_get_type())
-#define INF_SESSION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_USER, InfSession))
-#define INF_SESSION_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_TYPE_USER, InfSessionClass))
-#define INF_IS_SESSION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_USER))
-#define INF_IS_SESSION_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_USER))
-#define INF_SESSION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_USER, InfSessionClass))
+#define INF_SESSION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_SESSION, InfSession))
+#define INF_SESSION_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_TYPE_SESSION, InfSessionClass))
+#define INF_IS_SESSION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_SESSION))
+#define INF_IS_SESSION_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_SESSION))
+#define INF_SESSION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_SESSION, InfSessionClass))
 
 #define INF_TYPE_SESSION_STATUS          (inf_session_status_get_type())
 

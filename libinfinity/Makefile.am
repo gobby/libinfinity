@@ -38,6 +38,8 @@ libinfinity_1_0_la_HEADERS = \
 	inf-marshal.h \
 	inf-net-object.h \
 	inf-session.h \
+	inf-standalone-io.h \
+	inf-tcp-connection.h \
 	inf-text-buffer.h \
 	inf-user.h \
 	inf-xml-connection.h \
@@ -56,6 +58,8 @@ libinfinity_1_0_la_SOURCES = \
 	inf-marshal.c \
 	inf-net-object.c \
 	inf-session.c \
+	inf-standalone-io.c \
+	inf-tcp-connection.c \
 	inf-text-buffer.c \
 	inf-user.c \
 	inf-xml-connection.c \

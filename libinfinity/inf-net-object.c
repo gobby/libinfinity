@@ -77,7 +77,7 @@ inf_net_object_enqueued(InfNetObject* object,
   InfNetObjectIface* iface;
 
   g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(INF_IS_CONNECTION(conn));
+  g_return_if_fail(INF_IS_XML_CONNECTION(conn));
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);
@@ -94,7 +94,7 @@ inf_net_object_sent(InfNetObject* object,
   InfNetObjectIface* iface;
 
   g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(INF_IS_CONNECTION(object));
+  g_return_if_fail(INF_IS_XML_CONNECTION(object));
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);
