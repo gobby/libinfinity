@@ -4,12 +4,16 @@ libinfinity_1_0_la_CPPFLAGS = \
 	-I${top_srcdir} \
 	$(glib_CFLAGS) \
 	$(gobject_CFLAGS) \
-	$(libxml2_CFLAGS)
+	$(libxml2_CFLAGS) \
+	$(gnutls_CFLAGS) \
+	$(gsasl_CFLAGS)
 
 libinfinity_1_0_la_LIBADD = \
 	$(glib_LIBS) \
 	$(gobject_LIBS) \
-	$(libxml2_LIBS)
+	$(libxml2_LIBS) \
+	$(gnutls_LIBS) \
+	$(gsasl_LIBS)
 
 dist_pkgdata_DATA = inf-marshal.in
 
@@ -43,7 +47,7 @@ libinfinity_1_0_la_HEADERS = \
 	inf-text-buffer.h \
 	inf-user.h \
 	inf-xml-connection.h \
-	inf-xml-stream.h
+	inf-xmpp-connection.h
 
 libinfinity_1_0_la_SOURCES = \
 	inf-buffer.c \
@@ -63,4 +67,4 @@ libinfinity_1_0_la_SOURCES = \
 	inf-text-buffer.c \
 	inf-user.c \
 	inf-xml-connection.c \
-	inf-xml-stream.c
+	inf-xmpp-connection.c 

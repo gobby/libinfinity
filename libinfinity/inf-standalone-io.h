@@ -30,8 +30,6 @@ G_BEGIN_DECLS
 #define INF_IS_STANDALONE_IO_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_STANDALONE_IO))
 #define INF_STANDALONE_IO_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_STANDALONE_IO, InfStandaloneIoClass))
 
-#define INF_TYPE_STANDALONE_IO_STATUS          (inf_standalone_io_status_get_type())
-
 typedef struct _InfStandaloneIo InfStandaloneIo;
 typedef struct _InfStandaloneIoClass InfStandaloneIoClass;
 

@@ -293,7 +293,7 @@ inf_standalone_io_get_type(void)
   return standalone_io_type;
 }
 
-/** inf_standalone_ie_new:
+/** inf_standalone_io_new:
  *
  * Creates a new #InfStandaloneIo.
  **/

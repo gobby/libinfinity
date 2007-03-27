@@ -22,6 +22,8 @@ AC_PROG_LIBTOOL
 PKG_CHECK_MODULES([glib], [glib-2.0 >= 2.12])
 PKG_CHECK_MODULES([gobject], [gobject-2.0 >= 2.12])
 PKG_CHECK_MODULES([libxml2], [libxml-2.0])
+PKG_CHECK_MODULES([gnutls], [gnutls])
+PKG_CHECK_MODULES([gsasl], [libgsasl])
 
 ####################
 # Check for avahi

@@ -1,3 +1,16 @@
+2070-03-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-xmpp-connection.h:
+	* libinfinity/inf-xmpp-connection.c: Added XMPP client and server
+	implementation, yet untested.
+
+	* libinfinity/inf-xml-stream.h:
+	* libinfinity/inf-xml-stream.c: Removed, this is no longer used and
+	replaced by XMPP.
+
+	* configure.in:
+	* libinfinity/Makefile.am: Depend on gnutls and libgsasl.
+
 2007-03-19  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:POINTER,UINT marshaller.
