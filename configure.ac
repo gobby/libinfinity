@@ -2,7 +2,7 @@ AC_PREREQ(2.59)
 AC_INIT([infinote], [0.1.0], [armin@arbur.net])
 AM_INIT_AUTOMAKE([infinote], 1.9, check-news)
 AM_MAINTAINER_MODE
-AC_CONFIG_SRCDIR([libinfinity/inf-net-object.h])
+AC_CONFIG_SRCDIR([libinfinity/common/inf-net-object.h])
 AC_CONFIG_HEADER([libinfinity/inf-config.h])
 
 AC_CANONICAL_HOST
@@ -19,11 +19,20 @@ AC_PROG_LIBTOOL
 # Check for regular dependencies
 ###################################
 
-PKG_CHECK_MODULES([glib], [glib-2.0 >= 2.12])
-PKG_CHECK_MODULES([gobject], [gobject-2.0 >= 2.12])
-PKG_CHECK_MODULES([libxml2], [libxml-2.0])
-PKG_CHECK_MODULES([gnutls], [gnutls])
-PKG_CHECK_MODULES([gsasl], [libgsasl])
+PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.12 gobject-2.0 >= 2.12 libxml-2.0 gnutls libgsasl])
+
+########################
+# Compile time options
+########################
+
+# TODO: Should this be --enable instead of --with?
+AC_ARG_WITH([server], AC_HELP_STRING([--with-server], [Enables the infinote server [default=yes])]), use_server=$withval, use_server=yes)
+
+if test $use_server = yes
+then
+	AC_DEFINE([WITH_SERER], 1, [Build the infinote server])
+fi
+
 
 ####################
 # Check for avahi
@@ -51,7 +60,8 @@ fi
 AC_CONFIG_FILES([
 	Makefile
 		libinfinity/Makefile
-		libinfinited/Makefile
+		libinfinity/common/Makefile
+		libinfinity/server/Makefile
 
 		test/Makefile
 ])

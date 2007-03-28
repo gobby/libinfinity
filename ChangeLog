@@ -1,3 +1,18 @@
+2007-03-28  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/: Moved all libinfinity sources and headers
+	except inf-config.h and inf-marshal.h into a subdirectory.
+
+	* libinfinity/server/: Moved all libinfinited files into another
+	subdirectory.
+
+	* libinfinited/: Removed.
+
+	* libinfinity/common/Makefile.am:
+	* libinfinity/server/Makefile.am:
+	* libinfinity/Makefile.am:
+	* configure.ac: Adjusted build for new directory structure.
+
 2070-03-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-xmpp-connection.h:

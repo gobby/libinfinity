@@ -16,11 +16,11 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinited/infd-directory.h>
-#include <libinfinited/infd-marshal.h>
+#include <libinfinity/server/infd-directory.h>
+#include <libinfinity/server/infd-session.h>
 
-#include <libinfinity/inf-session.h>
-#include <libinfinity/inf-net-object.h>
+#include <libinfinity/common/inf-net-object.h>
+#include <libinfinity/inf-marshal.h>
 
 #include <string.h>
 
@@ -1625,7 +1625,7 @@ infd_directory_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdDirectoryClass, node_added),
     NULL, NULL,
-    infd_marshal_VOID__BOXED,
+    inf_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
@@ -1637,7 +1637,7 @@ infd_directory_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdDirectoryClass, node_removed),
     NULL, NULL,
-    infd_marshal_VOID__BOXED,
+    inf_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE

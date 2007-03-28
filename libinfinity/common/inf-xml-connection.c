@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-xml-connection.h>
+#include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/inf-marshal.h>
 
 enum {

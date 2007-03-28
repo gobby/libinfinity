@@ -16,10 +16,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-session.h>
-#include <libinfinity/inf-connection-manager.h>
-#include <libinfinity/inf-buffer.h>
-
+#include <libinfinity/common/inf-session.h>
+#include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <string.h>

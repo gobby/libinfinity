@@ -19,7 +19,7 @@
 #ifndef __INF_XMPP_CONNECTION_H__
 #define __INF_XMPP_CONNECTION_H__
 
-#include <libinfinity/inf-tcp-connection.h>
+#include <libinfinity/common/inf-tcp-connection.h>
 
 #include <gnutls/gnutls.h>
 #include <gsasl.h>

@@ -16,9 +16,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinited/infd-server.h>
+#include <libinfinity/server/infd-server.h>
 
-#include <libinfinity/inf-net-object.h>
+#include <libinfinity/common/inf-net-object.h>
 
 typedef struct _InfdServerPrivate InfdServerPrivate;
 struct _InfdServerPrivate {

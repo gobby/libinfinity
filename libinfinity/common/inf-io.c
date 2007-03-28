@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-io.h>
+#include <libinfinity/common/inf-io.h>
 
 GType
 inf_io_event_get_type(void)

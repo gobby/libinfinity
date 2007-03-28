@@ -19,7 +19,7 @@
 #ifndef __INFD_SERVER_H__
 #define __INFD_SERVER_H__
 
-#include <libinfinited/infd-directory.h>
+#include <libinfinity/server/infd-directory.h>
 
 #include <libgnetwork/gnetwork-tcp-server.h>
 #include <libgnetwork/gnetwork-server.h>

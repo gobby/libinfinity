@@ -1,1 +1,1 @@
-SUBDIRS = libinfinity libinfinited test
+SUBDIRS = libinfinity test

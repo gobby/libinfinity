@@ -16,37 +16,30 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INFD_NOTE_PLUGIN_H__
-#define __INFD_NOTE_PLUGIN_H__
+#ifndef __INF_BUFFER_H__
+#define __INF_BUFFER_H__
 
-#include <libinfinited/infd-storage.h>
-#include <libinfinited/infd-session.h>
+#include <libinfinity/common/inf-user.h>
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-/* TODO: GTypeModule stuff? */
+#define INF_TYPE_BUFFER                 (inf_buffer_get_type())
+#define INF_BUFFER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_BUFFER, InfBuffer))
+#define INF_IS_BUFFER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_BUFFER))
+#define INF_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_BUFFER, InfBufferIface))
 
-typedef struct _InfdNotePlugin InfdNotePlugin;
-struct _InfdNotePlugin {
-  const gchar* identifier;
+typedef struct _InfBuffer InfBuffer;
+typedef struct _InfBufferIface InfBufferIface;
 
-  InfdSession*(*session_new)(InfConnectionManager* manager,
-                             InfXmlConnection* sync_connection,
-			     const gchar* sync_identifier);
-
-  gboolean(*session_read)(InfdStorage* storage,
-                          InfdSession* session,
-			  const gchar* path,
-			  GError** error);
-
-  gboolean(*session_write)(InfdStorage* storage,
-                           InfdSession* session,
-			   const gchar* path,
-			   GError** error);
+struct _InfBufferIface {
+  GTypeInterface parent;
 };
+
+GType
+inf_buffer_get_type(void) G_GNUC_CONST;
 
 G_END_DECLS
 
-#endif /* __INFD_NOTE_PLUGIN_H__ */
+#endif /* __INF_BUFFER_H__ */

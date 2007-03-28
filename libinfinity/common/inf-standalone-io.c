@@ -16,8 +16,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-standalone-io.h>
-#include <libinfinity/inf-io.h>
+#include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-io.h>
 
 #include <poll.h>
 #include <errno.h>

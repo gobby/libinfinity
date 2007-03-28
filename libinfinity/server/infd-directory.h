@@ -19,11 +19,10 @@
 #ifndef __INFD_DIRECTORY_H__
 #define __INFD_DIRECTORY_H__
 
-#include <libinfinited/infd-storage.h>
-#include <libinfinited/infd-note-plugin.h>
-
-#include <libinfinity/inf-session.h>
-#include <libinfinity/inf-connection-manager.h>
+#include <libinfinity/server/infd-storage.h>
+#include <libinfinity/server/infd-note-plugin.h>
+#include <libinfinity/server/infd-session.h>
+#include <libinfinity/common/inf-connection-manager.h>
 
 #include <glib-object.h>
 

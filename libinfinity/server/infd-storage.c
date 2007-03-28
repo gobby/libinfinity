@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinited/infd-storage.h>
+#include <libinfinity/server/infd-storage.h>
 
 GType
 infd_storage_node_type_get_type(void)
@@ -210,7 +210,7 @@ infd_storage_node_free(InfdStorageNode* node)
  * infd_storage_read_subdirectory().
  **/
 void
-infd_storage_free_node_list(GSList* node_list)
+infd_storage_node_list_free(GSList* node_list)
 {
   GSList* iter;
   GSList* next;
@@ -239,9 +239,9 @@ infd_storage_free_node_list(GSList* node_list)
  * error occured.
  **/
 GSList*
-infd_directory_read_subdirectory(InfdStorage* storage,
-                                 const gchar* path,
-                                 GError** error)
+infd_storage_read_subdirectory(InfdStorage* storage,
+                               const gchar* path,
+                               GError** error)
 {
   InfdStorageIface* iface;
 

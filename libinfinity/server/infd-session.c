@@ -16,9 +16,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinited/infd-session.h>
+#include <libinfinity/server/infd-session.h>
 
-#include <libinfinity/inf-error.h>
+#include <libinfinity/common/inf-error.h>
 
 #include <string.h>
 

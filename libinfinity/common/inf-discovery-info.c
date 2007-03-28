@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-discovery-info.h>
+#include <libinfinity/common/inf-discovery-info.h>
 
 GType
 inf_discovery_info_get_type(void)

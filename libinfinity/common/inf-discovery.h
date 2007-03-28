@@ -19,8 +19,8 @@
 #ifndef __INF_DISCOVERY_H__
 #define __INF_DISCOVERY_H__
 
-#include <libinfinity/inf-discovery-info.h>
-#include <libinfinity/inf-xml-connection.h>
+#include <libinfinity/common/inf-discovery-info.h>
+#include <libinfinity/common/inf-xml-connection.h>
 
 #include <glib-object.h>
 

@@ -1,9 +1,7 @@
 AM_CPPFLAGS = \
 	-I${top_srcdir} \
 	-I${top_builddir} \
-	${glib_CFLAGS} \
-	${gobject_CFLAGS} \
-	${libxml2_CFLAGS}
+	${infinity_CFLAGS}
 
 noinst_PROGRAMS = inf-test-tcp-connection
 

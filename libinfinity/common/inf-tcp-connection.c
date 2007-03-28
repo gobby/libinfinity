@@ -16,9 +16,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-tcp-connection.h>
-#include <libinfinity/inf-ip-address.h>
-#include <libinfinity/inf-io.h>
+#include <libinfinity/common/inf-tcp-connection.h>
+#include <libinfinity/common/inf-ip-address.h>
+#include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <sys/types.h>

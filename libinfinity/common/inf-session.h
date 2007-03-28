@@ -19,10 +19,10 @@
 #ifndef __INF_SESSION_H__
 #define __INF_SESSION_H__
 
-#include <libinfinity/inf-connection-manager.h>
-#include <libinfinity/inf-buffer.h>
-#include <libinfinity/inf-user.h>
-#include <libinfinity/inf-xml-connection.h>
+#include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/common/inf-buffer.h>
+#include <libinfinity/common/inf-user.h>
+#include <libinfinity/common/inf-xml-connection.h>
 
 #include <libxml/tree.h>
 

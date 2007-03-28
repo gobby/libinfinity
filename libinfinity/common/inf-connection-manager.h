@@ -19,8 +19,8 @@
 #ifndef __INF_CONNECTION_MANAGER_H__
 #define __INF_CONNECTION_MANAGER_H__
 
-#include <libinfinity/inf-net-object.h>
-#include <libinfinity/inf-xml-connection.h>
+#include <libinfinity/common/inf-net-object.h>
+#include <libinfinity/common/inf-xml-connection.h>
 
 #include <libxml/tree.h>
 

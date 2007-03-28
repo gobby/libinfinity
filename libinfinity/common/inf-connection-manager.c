@@ -16,8 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-connection-manager.h>
-#include <libinfinity/inf-xml-stream.h>
+#include <libinfinity/common/inf-connection-manager.h>
 
 #include <string.h>
 

@@ -19,7 +19,7 @@
 #ifndef __INF_NET_OBJECT_H__
 #define __INF_NET_OBJECT_H__
 
-#include <libinfinity/inf-xml-connection.h>
+#include <libinfinity/common/inf-xml-connection.h>
 
 #include <libxml/tree.h>
 

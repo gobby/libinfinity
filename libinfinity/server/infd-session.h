@@ -19,7 +19,7 @@
 #ifndef __INFD_SESSION_H__
 #define __INFD_SESSION_H__
 
-#include <libinfinity/inf-session.h>
+#include <libinfinity/common/inf-session.h>
 
 #include <glib-object.h>
 

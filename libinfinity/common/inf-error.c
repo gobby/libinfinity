@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-error.h>
+#include <libinfinity/common/inf-error.h>
 
 const gchar*
 inf_user_join_strerror(InfUserJoinError code)

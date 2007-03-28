@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-buffer.h>
+#include <libinfinity/common/inf-buffer.h>
 
 static void
 inf_buffer_base_init(gpointer g_class)

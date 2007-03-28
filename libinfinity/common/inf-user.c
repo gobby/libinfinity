@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-user.h>
+#include <libinfinity/common/inf-user.h>
 
 typedef struct _InfUserPrivate InfUserPrivate;
 struct _InfUserPrivate {

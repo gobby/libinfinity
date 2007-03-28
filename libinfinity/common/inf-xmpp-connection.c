@@ -16,9 +16,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-xmpp-connection.h>
-#include <libinfinity/inf-xml-connection.h>
-#include <libinfinity/inf-ip-address.h>
+#include <libinfinity/common/inf-xmpp-connection.h>
+#include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <errno.h>
