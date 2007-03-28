@@ -32,15 +32,12 @@ static void
 inf_xml_connection_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
-  GObjectClass* object_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
 
   if(!initialized)
   {
     connection_signals[SENT] = g_signal_new(
       "sent",
-      G_OBJECT_CLASS_TYPE(object_class),
+      INF_TYPE_XML_CONNECTION,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfXmlConnectionIface, sent),
       NULL, NULL,
@@ -52,7 +49,7 @@ inf_xml_connection_base_init(gpointer g_class)
 
     connection_signals[RECEIVED] = g_signal_new(
       "received",
-      G_OBJECT_CLASS_TYPE(object_class),
+      INF_TYPE_XML_CONNECTION,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfXmlConnectionIface, received),
       NULL, NULL,
@@ -73,6 +70,8 @@ inf_xml_connection_base_init(gpointer g_class)
         G_PARAM_READABLE
       )
     );
+
+    initialized = TRUE;
   }
 }
 
@@ -115,34 +114,34 @@ inf_xml_connection_status_get_type(void)
 GType
 inf_xml_connection_get_type(void)
 {
-  static GType connection_type = 0;
+  static GType xml_connection_type = 0;
 
-  if(!connection_type)
+  if(!xml_connection_type)
   {
-    static const GTypeInfo connection_info = {
-      sizeof(InfXmlConnectionIface),    /* class_size */
+    static const GTypeInfo xml_connection_info = {
+      sizeof(InfXmlConnectionIface),     /* class_size */
       inf_xml_connection_base_init,      /* base_init */
-      NULL,                          /* base_finalize */
-      NULL,                          /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      0,                             /* instance_size */
-      0,                             /* n_preallocs */
-      NULL,                          /* instance_init */
-      NULL                           /* value_table */
+      NULL,                              /* base_finalize */
+      NULL,                              /* class_init */
+      NULL,                              /* class_finalize */
+      NULL,                              /* class_data */
+      0,                                 /* instance_size */
+      0,                                 /* n_preallocs */
+      NULL,                              /* instance_init */
+      NULL                               /* value_table */
     };
 
-    connection_type = g_type_register_static(
+    xml_connection_type = g_type_register_static(
       G_TYPE_INTERFACE,
       "InfXmlConnection",
-      &connection_info,
+      &xml_connection_info,
       0
     );
 
-    g_type_interface_add_prerequisite(connection_type, G_TYPE_OBJECT);
+    g_type_interface_add_prerequisite(xml_connection_type, G_TYPE_OBJECT);
   }
 
-  return connection_type;
+  return xml_connection_type;
 }
 
 /** inf_xml_connection_close:

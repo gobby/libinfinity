@@ -217,7 +217,8 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
         (guint)result
       );
     }
-  } while( (result > 0) || (result < 0 && errno == EINTR) );
+  } while( ((result > 0) || (result < 0 && errno == EINTR)) &&
+           (priv->socket != -1));
 }
 
 static void
@@ -294,7 +295,8 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
         }
       }
     } while( (priv->events & INF_IO_OUTGOING) &&
-             (result > 0 || (result < 0 && errno == EINTR)));
+             (result > 0 || (result < 0 && errno == EINTR)) &&
+	     (priv->socket != -1));
 
     break;
   case INF_TCP_CONNECTION_CLOSED:

@@ -550,6 +550,8 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
+  printf("\033[00;34m%.*s\033[00;00m\n", (int)len, data);
+
   if(priv->session != NULL)
   {
     bytes = 0;
@@ -621,7 +623,7 @@ inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
     xmlBufferLength(priv->buf)
   );
 
-  xmlDocSetRootElement(priv->doc, NULL);
+  xmlUnlinkNode(xml);
   xmlBufferEmpty(priv->buf);
 }
 
@@ -684,7 +686,7 @@ inf_xmpp_connection_node_new(const gchar* name,
 {
   xmlNodePtr ptr;
   ptr = xmlNewNode(NULL, (const xmlChar*)name);
-  xmlNewProp(ptr, (const xmlChar*)"xmlns", (const xmlChar*)"xmlns");
+  xmlNewProp(ptr, (const xmlChar*)"xmlns", (const xmlChar*)xmlns);
   return ptr;
 }
 
@@ -718,19 +720,6 @@ inf_xmpp_connection_node_new_sasl(const gchar* name)
 /*
  * XMPP deinitialization
  */
-
-static void
-inf_xmpp_connection_terminate_sent_func(InfXmppConnection* xmpp,
-                                        gpointer user_data)
-{
-  InfXmppConnectionPrivate* priv;
-  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-
-  /* Terminating </stream:stream> and GnuTLS bye have been sent, so
-   * close underlaying TCP connection. This will trigger a TCP status
-   * notify. */
-  inf_tcp_connection_close(priv->tcp);
-}
 
 /* Terminates the XMPP session and closes the connection. */
 static void
@@ -778,10 +767,13 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
       gnutls_bye(priv->session, GNUTLS_SHUT_WR);
   }
 
-  /* Clear connection, we do not need the GnuTLS session or the XML
-   * parser any longer. We just wait until the gnutls bye has actually
-   * been sent out and then close the TCP connection. */
-  inf_xmpp_connection_clear(xmpp);
+  /* Do not clear resources at this point because we might be in a XML parser
+   * or GnuTLS callback, issued via received_cb(). received_cb() calls
+   * _clear() if the status changes to CLOSING_GNUTLS. Make sure to call
+   * _clear() on your own if you call _terminate() outside of received_cb().
+   * The only point were the current code needs to do this is in
+   * inf_xmpp_connection_xml_connection_close() */
+  /*inf_xmpp_connection_clear(xmpp);*/
 
   /* The Change from CLOSING_STREAM to CLOSING_GNUTLS does not change
    * the XML status, so we need no notify in this case. */
@@ -794,13 +786,6 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
   {
     priv->status = INF_XMPP_CONNECTION_CLOSING_GNUTLS;
   }
-
-  inf_xmpp_connection_push_message(
-    xmpp,
-    inf_xmpp_connection_terminate_sent_func,
-    NULL,
-    NULL
-  );
 }
 
 /* This sends a <failure> with the given error code, but does not close
@@ -1062,6 +1047,19 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
 {
   static const guint xmpp_connection_dh_bits = 1024;
 
+#if 0
+  static const int xmpp_connection_protocol_priority[] =
+    { GNUTLS_TLS1, GNUTLS_SSL3, 0 };
+  static const int xmpp_connection_kx_priority[] =
+    { GNUTLS_KX_RSA, 0 };
+  static const int xmpp_connection_cipher_priority[] =
+    { GNUTLS_CIPHER_3DES_CBC, GNUTLS_CIPHER_ARCFOUR, 0 };
+  static const int xmpp_connection_comp_priority[] =
+    { GNUTLS_COMP_ZLIB, GNUTLS_COMP_NULL, 0 };
+  static const int xmpp_connection_mac_priority[] =
+    { GNUTLS_MAC_SHA, GNUTLS_MAC_MD5, 0 };
+#endif
+
   InfXmppConnectionPrivate* priv;
   gnutls_dh_params_t dh_params;
 
@@ -1074,9 +1072,12 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
     gnutls_certificate_allocate_credentials(&priv->own_cred);
     priv->cred = priv->own_cred;
 
-    gnutls_dh_params_init(&dh_params);
-    gnutls_dh_params_generate2(dh_params, xmpp_connection_dh_bits);
-    gnutls_certificate_set_dh_params(priv->cred, dh_params);
+    if(priv->site == INF_XMPP_CONNECTION_SERVER)
+    {
+      gnutls_dh_params_init(&dh_params);
+      gnutls_dh_params_generate2(dh_params, xmpp_connection_dh_bits);
+      gnutls_certificate_set_dh_params(priv->cred, dh_params);
+    }
   }
 
   switch(priv->site)
@@ -1091,6 +1092,20 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
     g_assert_not_reached();
     break;
   }
+
+#if 0
+  gnutls_protocol_set_priority(
+    priv->session,
+    xmpp_connection_protocol_priority
+  );
+  gnutls_cipher_set_priority(priv->session, xmpp_connection_cipher_priority);
+  gnutls_compression_set_priority(
+    priv->session,
+    xmpp_connection_comp_priority
+  );
+  gnutls_kx_set_priority(priv->session, xmpp_connection_kx_priority);
+  gnutls_mac_set_priority(priv->session, xmpp_connection_mac_priority);
+#endif
 
   gnutls_set_default_priority(priv->session);
   gnutls_credentials_set(priv->session, GNUTLS_CRD_CERTIFICATE, priv->cred);
@@ -1235,6 +1250,7 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
     }
     else
     {
+      priv->sasl_context = priv->sasl_own_context;
       gsasl_callback_set(priv->sasl_context, inf_xmpp_connection_sasl_cb);
       gsasl_callback_hook_set(priv->sasl_context, xmpp);
       priv->sasl_context = priv->sasl_own_context;
@@ -1255,9 +1271,11 @@ inf_xmpp_connection_sasl_finish(InfXmppConnection* xmpp)
   gsasl_finish(priv->sasl_session);
   priv->sasl_session = NULL;
 
-  /* Authentication done, switch to AUTH_CONNECTED, reinitiate stream */
+  /* Authentication done, switch to AUTH_CONNECTED */
   priv->status = INF_XMPP_CONNECTION_AUTH_CONNECTED;
-  inf_xmpp_connection_initiate(xmpp);
+  /* We might be in a XML callback here, so do not initiate the stream right
+   * now because it replaces the XML parser. The stream is reinitiated in
+   * received_cb(). */
 }
 
 static void
@@ -1705,7 +1723,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
     /* Server sent something else. Don't know what it is, so let us ignore it.
      * Perhaps the <stream:features> we are waiting for follows later. */
   }
-  else if(priv->session != NULL)
+  else if(priv->session == NULL)
   {
     for(child = xml->children; child != NULL; child = child->next)
       if(strcmp((const gchar*)child->name, "starttls") == 0)
@@ -2215,6 +2233,30 @@ inf_xmpp_connection_sax_end_element(void* context,
 }
 
 static void
+inf_xmpp_connection_sax_characters(void* context,
+                                   const xmlChar* content,
+				   int len)
+{
+  InfXmppConnection* xmpp;
+  InfXmppConnectionPrivate* priv;
+
+  xmpp = INF_XMPP_CONNECTION(context);
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
+
+  if(priv->root == NULL)
+  {
+    /* Someone sent content of the <stream:stream> node. Ignore. */
+  }
+  else
+  {
+    g_assert(priv->cur != NULL);
+    xmlNodeAddContentLen(priv->cur, content, len);
+  }
+}
+
+static void
 inf_xmpp_connection_sax_warning(void* context,
                                 const char* msg,
                                 ...)
@@ -2302,7 +2344,7 @@ static xmlSAXHandler inf_xmpp_connection_handler = {
   inf_xmpp_connection_sax_start_element,  /* startElement */
   inf_xmpp_connection_sax_end_element,    /* endElement */
   NULL,                                   /* reference */
-  NULL,                                   /* characters */
+  inf_xmpp_connection_sax_characters,     /* characters */
   NULL,                                   /* ignorableWhitespace */
   NULL,                                   /* processingInstruction */
   NULL,                                   /* comment */
@@ -2344,7 +2386,7 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
   );
 
   /* Create XML buffer for outgoing data */
-  if(priv->buf != NULL)
+  if(priv->buf == NULL)
   {
     priv->buf = xmlBufferCreate();
     priv->doc = xmlNewDoc((const xmlChar*)"1.0");
@@ -2376,6 +2418,19 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
 /*
  * Signal handlers.
  */
+
+static void
+inf_xmpp_connection_received_cb_sent_func(InfXmppConnection* xmpp,
+                                          gpointer user_data)
+{
+  InfXmppConnectionPrivate* priv;
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  /* Terminating </stream:stream> and GnuTLS bye have been sent, so
+   * close underlaying TCP connection. This will trigger a TCP status
+   * notify. */
+  inf_tcp_connection_close(priv->tcp);
+}
 
 static void
 inf_xmpp_connection_sent_cb(InfTcpConnection* tcp,
@@ -2414,6 +2469,11 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
 
   xmpp = INF_XMPP_CONNECTION(user_data);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  /* We just keep the connection open to send a final gnutls bye and
+   * </stream:stream> in this state, any input gets discarded. */
+  if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
+    return;
 
   g_assert(priv->parser != NULL);
 
@@ -2461,6 +2521,7 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
         else
         {
           /* Feed decoded data into XML parser */
+          printf("\033[00;32m%.*s\033[00;00m\n", (int)res, buffer);
           xmlParseChunk(priv->parser, buffer, res, 0);
         }
       }
@@ -2468,13 +2529,41 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
     else
     {
       /* Feed input directly into XML parser */
+      printf("\033[00;31m%.*s\033[00;00m\n", (int)len, data);
       xmlParseChunk(priv->parser, data, len, 0);
     }
   }
   else
   {
     /* Perform TLS handshake */
+    priv->pull_data = data;
+    priv->pull_len = len;
     inf_xmpp_connection_tls_handshake(xmpp);
+
+    /* TODO: Perhaps we should just close the connection in this case so that
+     * evil people cannot trigger this assertion by modified TLS packtes. */
+    g_assert(priv->pull_len == 0);
+  }
+
+  if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
+  {
+    /* Status changed to CLOSING_GNUTLS, this means that someone called
+     * _terminate(). Clean up any resources in use (XML parser, GnuTLS
+     * session etc. */
+    inf_xmpp_connection_clear(xmpp);
+
+    /* Close the TCP connection after remaining stuff has been sent out. */
+    inf_xmpp_connection_push_message(
+      xmpp,
+      inf_xmpp_connection_received_cb_sent_func,
+      NULL,
+      NULL
+    );
+  }
+  else if(priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED)
+  {
+    /* Reinitiate connection after successful authentication */
+    inf_xmpp_connection_initiate(xmpp);
   }
 }
 
@@ -2495,7 +2584,7 @@ inf_xmpp_connection_error_cb(InfTcpConnection* tcp,
 
 static void
 inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
-                                     const gchar* property,
+                                     GParamSpec* pspec,
                                      gpointer user_data)
 {
   InfXmppConnection* xmpp;
@@ -2521,6 +2610,7 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
       g_assert(priv->session == NULL);
       g_assert(priv->messages == NULL);
       g_assert(priv->parser == NULL);
+      g_assert(priv->doc == NULL);
     }
 
     break;
@@ -2921,6 +3011,8 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
   case INF_XMPP_CONNECTION_CONNECTED:
   case INF_XMPP_CONNECTION_AUTH_CONNECTED:
     inf_xmpp_connection_terminate(INF_XMPP_CONNECTION(connection));
+    /* This is not in a XML callback, so we need to call clear explicitely */
+    inf_xmpp_connection_clear(INF_XMPP_CONNECTION(connection));
     break;
   case INF_XMPP_CONNECTION_HANDSHAKING:
   case INF_XMPP_CONNECTION_ENCRYPTION_REQUESTED:
@@ -2941,6 +3033,8 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
      * and then close the connection normally. Actually, this is what
      * inf_xmpp_connection_deinitiate is supposed to do. */
     inf_xmpp_connection_terminate(INF_XMPP_CONNECTION(connection));
+    /* This is not in a XML callback, so we need to call clear explicitely */
+    inf_xmpp_connection_clear(INF_XMPP_CONNECTION(connection));
     break;
   case INF_XMPP_CONNECTION_INITIATED:
   case INF_XMPP_CONNECTION_AUTH_INITIATED:

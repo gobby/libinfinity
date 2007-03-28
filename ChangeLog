@@ -1,5 +1,19 @@
 2007-03-28  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c: Fixed some bugs, client
+	part mostly works.
+
+	* libinfinity/common/inf-tcp-connection.c: Exit receiving/sending loop
+	if the connection has been closed in a received/sent signal handler.
+
+	* libinfinity/common/inf-xml-connection.c: Initialize interface only
+	once.
+
+	* test/inf-test-xmpp-connection.c:
+	* test/Makefile.am: Added XMPP client test.
+
+2007-03-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/: Moved all libinfinity sources and headers
 	except inf-config.h and inf-marshal.h into a subdirectory.
 
