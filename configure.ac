@@ -30,9 +30,8 @@ AC_ARG_WITH([server], AC_HELP_STRING([--with-server], [Enables the infinote serv
 
 if test $use_server = yes
 then
-	AC_DEFINE([WITH_SERER], 1, [Build the infinote server])
+	AC_DEFINE([WITH_SERVER], 1, [Build the infinote server])
 fi
-
 
 ####################
 # Check for avahi

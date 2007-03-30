@@ -3,7 +3,8 @@ AM_CPPFLAGS = \
 	-I${top_builddir} \
 	${infinity_CFLAGS}
 
-noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection
+noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
+	inf-test-tcp-server
 
 inf_test_tcp_connection_SOURCES = \
 	inf-test-tcp-connection.c
@@ -15,4 +16,10 @@ inf_test_xmpp_connection_SOURCES = \
 	inf-test-xmpp-connection.c
 
 inf_test_xmpp_connection_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-1.0.la
+
+inf_test_tcp_server_SOURCES = \
+	inf-test-tcp-server.c
+
+inf_test_tcp_server_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la

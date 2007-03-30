@@ -1,3 +1,20 @@
+2007-03-29  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-tcp-server.h:
+	* libinfinity/server/infd-tcp-server.c: Added InfdTcpServer object.
+
+	* libinfinity/server/infd-xml-server.h:
+	* libinfinity/server/infd-xml-server.c: Added InfdXmlServer interface.
+
+	* libinfinity/common/inf-tcp-connection.c: Added
+	_inf_tcp_connection_accepted function, do not leak a socket if the
+	connection attempt fails in inf_tcp_connection_open, do not chain up
+	to finalize in dispose, do not leak the IO object, don't rely on errno
+	keeping its value at the end of the recv/send loop.
+
+	* test/inf-test-tcp-server.c:
+	* test/Makefile.am: Added test for the TCP server.
+
 2007-03-28  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c: Fixed some bugs, client

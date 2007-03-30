@@ -21,6 +21,8 @@
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
 
+#include <libinfinity/inf-config.h>
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -78,9 +80,10 @@ static guint tcp_connection_signals[LAST_SIGNAL];
 static GQuark inf_tcp_connection_error_quark;
 
 static void
-inf_tcp_connection_local_info(InfNativeSocket socket,
-                              InfIpAddress** address,
-                              guint* port)
+inf_tcp_connection_addr_info(InfNativeSocket socket,
+                             gboolean local,
+                             InfIpAddress** address,
+                             guint* port)
 {
   union {
     struct sockaddr in_generic;
@@ -90,7 +93,11 @@ inf_tcp_connection_local_info(InfNativeSocket socket,
   socklen_t len;
 
   len = sizeof(native_addr);
-  getsockname(socket, &native_addr.in_generic, &len);
+
+  if(local == TRUE)
+    getsockname(socket, &native_addr.in_generic, &len);
+  else
+    getpeername(socket, &native_addr.in_generic, &len);
 
   switch(native_addr.in_generic.sa_family)
   {
@@ -184,6 +191,7 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
 {
   InfTcpConnectionPrivate* priv;
   gchar buf[2048];
+  int errcode;
   ssize_t result;
   
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -199,9 +207,11 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
       MSG_NOSIGNAL
     );
 
-    if(result < 0 && errno != EINTR && errno != EAGAIN)
+    errcode = errno;
+
+    if(result < 0 && errcode != EINTR && errcode != EAGAIN)
     {
-      inf_tcp_connection_system_error(connection, errno);
+      inf_tcp_connection_system_error(connection, errcode);
     }
     else if(result == 0)
     {
@@ -217,7 +227,7 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
         (guint)result
       );
     }
-  } while( ((result > 0) || (result < 0 && errno == EINTR)) &&
+  } while( ((result > 0) || (result < 0 && errcode == EINTR)) &&
            (priv->socket != -1));
 }
 
@@ -258,9 +268,12 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
         MSG_NOSIGNAL
       );
 
-      if(result < 0 && errno != EINTR && errno != EAGAIN)
+      /* Preserve errno so that it is not modified by future calls */
+      errcode = errno;
+
+      if(result < 0 && errcode != EINTR && errcode != EAGAIN)
       {
-        inf_tcp_connection_system_error(connection, errno);
+        inf_tcp_connection_system_error(connection, errcode);
       }
       else if(result == 0)
       {
@@ -295,8 +308,8 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
         }
       }
     } while( (priv->events & INF_IO_OUTGOING) &&
-             (result > 0 || (result < 0 && errno == EINTR)) &&
-	     (priv->socket != -1));
+             (result > 0 || (result < 0 && errcode == EINTR)) &&
+             (priv->socket != -1));
 
     break;
   case INF_TCP_CONNECTION_CLOSED:
@@ -334,7 +347,10 @@ inf_tcp_connection_io(InfNativeSocket* socket,
       inf_tcp_connection_io_incoming(connection);
     }
 
-    if(events & INF_IO_OUTGOING)
+    /* It may happen that the above closes the connection and we received
+     * events for both INCOMING & OUTGOING here. */
+    if((priv->status != INF_TCP_CONNECTION_CLOSED) &&
+       (events & INF_IO_OUTGOING))
     {
       inf_tcp_connection_io_outgoing(connection);
     }
@@ -379,10 +395,13 @@ inf_tcp_connection_dispose(GObject* object)
   if(priv->status != INF_TCP_CONNECTION_CLOSED)
     inf_tcp_connection_close(connection);
 
-  g_object_unref(G_OBJECT(priv->io));
-  priv->io = NULL;
+  if(priv->io != NULL)
+  {
+    g_object_unref(G_OBJECT(priv->io));
+    priv->io = NULL;
+  }
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
@@ -393,6 +412,9 @@ inf_tcp_connection_finalize(GObject* object)
 
   connection = INF_TCP_CONNECTION(object);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  if(priv->remote_address != NULL)
+    inf_ip_address_free(priv->remote_address);
 
   g_free(priv->queue);
 
@@ -464,12 +486,12 @@ inf_tcp_connection_get_property(GObject* object,
     break;
   case PROP_LOCAL_ADDRESS:
     g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
-    inf_tcp_connection_local_info(priv->socket, &address, NULL);
+    inf_tcp_connection_addr_info(priv->socket, TRUE, &address, NULL);
     g_value_take_boxed(value, address);
     break;
   case PROP_LOCAL_PORT:
     g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
-    inf_tcp_connection_local_info(priv->socket, NULL, &port);
+    inf_tcp_connection_addr_info(priv->socket, TRUE, NULL, &port);
     g_value_set_uint(value, port);
     break;
   }
@@ -723,10 +745,11 @@ inf_tcp_connection_get_type(void)
 /** inf_tcp_connection_open:
  *
  * @connection: A #InfTcpConnection.
+ * #error: Location to store error information.
  *
  * Attempts to open @connection. Make sure to have set the "remote-address"
  * and "remote-port" property before calling this function. If an error
- * occurs, the function returns FALSE and error is set. Note however that
+ * occurs, the function returns FALSE and @error is set. Note however that
  * the connection might not be fully open when the function returns
  * (check the "status" property if you need to know). If an asynchronous
  * error occurs while the connection is being opened, the "error" signal
@@ -804,12 +827,18 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   if(result == -1)
   {
     inf_tcp_connection_make_system_error(errno, error);
+
+    close(priv->socket);
+    priv->socket = -1;
     return FALSE;
   }
 
   if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
     inf_tcp_connection_make_system_error(errno, error);
+
+    close(priv->socket);
+    priv->socket = -1;
     return FALSE;
   }
 
@@ -819,6 +848,10 @@ inf_tcp_connection_open(InfTcpConnection* connection,
     if(result == -1 && errno != EINTR && errno != EINPROGRESS)
     {
       inf_tcp_connection_make_system_error(errno, error);
+
+      close(priv->socket);
+      priv->socket = -1;
+
       return FALSE;
     }
   } while(result == -1 && errno != EINPROGRESS);
@@ -831,9 +864,6 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   else
   {
     /* Connection establishment in progress */
-    priv->status = INF_TCP_CONNECTION_CONNECTING;
-    g_object_notify(G_OBJECT(connection), "status");
-
     priv->events = INF_IO_OUTGOING | INF_IO_ERROR;
 
     inf_io_watch(
@@ -843,6 +873,9 @@ inf_tcp_connection_open(InfTcpConnection* connection,
       inf_tcp_connection_io,
       connection
     );
+
+    priv->status = INF_TCP_CONNECTION_CONNECTING;
+    g_object_notify(G_OBJECT(connection), "status");
   }
 
   return TRUE;
@@ -947,3 +980,59 @@ inf_tcp_connection_send(InfTcpConnection* connection,
     );
   }
 }
+
+#ifdef WITH_SERVER
+/* Creates a new TCP connection from an accepted socket. This is only used
+ * by InfdTcpServer and should not be considered regular API. Do not call
+ * this function. Language bindings should not wrap it. */
+InfTcpConnection*
+_inf_tcp_connection_accepted(InfIo* io,
+                             InfNativeSocket socket,
+                             GError** error)
+{
+  InfTcpConnection* connection;
+  InfTcpConnectionPrivate* priv;
+  int result;
+
+  InfIpAddress* address;
+  guint port;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(socket != -1, NULL);
+
+  result = fcntl(socket, F_GETFL);
+  if(result == -1)
+  {
+    inf_tcp_connection_make_system_error(errno, error);
+    return NULL;
+  }
+
+  if(fcntl(socket, F_SETFL, result | O_NONBLOCK) == -1)
+  {
+    inf_tcp_connection_make_system_error(errno, error);
+    return NULL;
+  }
+
+  inf_tcp_connection_addr_info(socket, FALSE, &address, &port);
+  g_return_val_if_fail(address != NULL, NULL);
+  g_return_val_if_fail(port != 0, NULL);
+
+  connection = INF_TCP_CONNECTION(
+    g_object_new(
+      INF_TYPE_TCP_CONNECTION,
+      "io", io,
+      "remote-address", address,
+      "remote-port", port,
+      NULL
+    )
+  );
+
+  inf_ip_address_free(address);
+
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+  priv->socket = socket;
+
+  inf_tcp_connection_connected(connection);
+  return connection;
+}
+#endif /* WITH_SERVER */
