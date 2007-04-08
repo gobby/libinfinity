@@ -12,7 +12,8 @@ libinfinity_server_la_SOURCES = \
 	infd-session.c \
 	infd-storage.c \
 	infd-tcp-server.c \
-	infd-xml-server.c
+	infd-xml-server.c \
+	infd-xmpp-server.c
 
 libinfinity_server_la_HEADERS = \
 	infd-directory.h \
@@ -20,4 +21,5 @@ libinfinity_server_la_HEADERS = \
 	infd-session.h \
 	infd-storage.h \
 	infd-tcp-server.h \
-	infd-xml-server.h
+	infd-xml-server.h \
+	infd-xmpp-server.h

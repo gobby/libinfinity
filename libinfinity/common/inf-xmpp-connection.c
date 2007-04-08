@@ -1078,6 +1078,8 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
       gnutls_dh_params_generate2(dh_params, xmpp_connection_dh_bits);
       gnutls_certificate_set_dh_params(priv->cred, dh_params);
     }
+
+    g_object_notify(G_OBJECT(xmpp), "credentials");
   }
 
   switch(priv->site)
@@ -1253,7 +1255,7 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
       priv->sasl_context = priv->sasl_own_context;
       gsasl_callback_set(priv->sasl_context, inf_xmpp_connection_sasl_cb);
       gsasl_callback_hook_set(priv->sasl_context, xmpp);
-      priv->sasl_context = priv->sasl_own_context;
+      g_object_notify(G_OBJECT(xmpp), "sasl-context");
     }
   }
 

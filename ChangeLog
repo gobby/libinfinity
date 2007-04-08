@@ -1,3 +1,13 @@
+2007-04-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c: Notify credentials and
+	sasl-context properties when they are created.
+
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfintiy/server/infd-xmpp-server.c:
+	* libinfinity/server/Makefile.am: Added XMPP server class,
+	yet untested.
+
 2007-03-29  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-tcp-server.h:
