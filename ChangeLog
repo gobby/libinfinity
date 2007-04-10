@@ -1,5 +1,16 @@
 2007-04-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfintiy/common/inf-connection-manager.h:
+	* libinfintiy/common/inf-connection-manager.c: Removed
+	inf_connection_manager_add_connection, and add connection
+	automatically on first invocation of
+	inf_connection_manager_add_object.
+
+	* libinfinity/common/inf-session.c:
+	* libinfinity/server/infd-directory.c: Adjusted use.
+
+2007-04-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Fixed bugs, server side
 	mostly works.
 

@@ -222,6 +222,7 @@ inf_session_release_connection(InfSession* session,
 {
   InfSessionPrivate* priv;
   GSList* item;
+  gboolean result;
 
   priv = INF_SESSION_PRIVATE(session);
 
@@ -251,7 +252,13 @@ inf_session_release_connection(InfSession* session,
   /* If the connection was closed, the connection manager removes the
    * connection from itself automatically, so make sure that it has not
    * already done so. */
-  if(inf_connection_manager_has_connection(priv->manager, connection) == TRUE)
+  result = inf_connection_manager_has_object(
+    priv->manager,
+    connection,
+    INF_NET_OBJECT(session)
+  );
+
+  if(result == TRUE)
   {
     inf_connection_manager_remove_object(
       priv->manager,

@@ -1331,7 +1331,6 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   GSList* item;
-  gboolean result;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1355,23 +1354,9 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
 
   if(manager != NULL)
   {
-    /* Add connections to the new connection manager (if they are not
-     * already) and tell it to forward data. */
+    /* Add connections to the new connection manager. */
     for(item = priv->connections; item != NULL; item = g_slist_next(item))
     {
-      result = inf_connection_manager_has_connection(
-        priv->connection_manager,
-        INF_XML_CONNECTION(item->data)
-      );
-
-      if(result == FALSE)
-      {
-        inf_connection_manager_add_connection(
-          priv->connection_manager,
-          INF_XML_CONNECTION(item->data)
-        );
-      }
-
       inf_connection_manager_add_object(
         priv->connection_manager,
         INF_XML_CONNECTION(item->data),
@@ -1850,8 +1835,7 @@ infd_directory_add_plugin(InfdDirectory* directory,
  * @directory: A #InfdDirectory.
  * @connection: A #InfConnection.
  *
- * Adds @connection to the connections of @directory (and to its
- * #InfConnectionManager, if not already). The directory will then
+ * Adds @connection to the connections of @directory. The directory will then
  * receive requests from @connection.
  **/
 void
@@ -1866,9 +1850,11 @@ infd_directory_add_connection(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(priv->connection_manager));
 
-  inf_connection_manager_add_connection(
+  inf_connection_manager_add_object(
     priv->connection_manager,
-    connection
+    connection,
+    INF_NET_OBJECT(directory),
+    "InfDirectory"
   );
 
   g_signal_connect_after(

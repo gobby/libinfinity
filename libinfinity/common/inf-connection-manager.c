@@ -314,9 +314,9 @@ inf_connection_manager_connection_notify_status_cb(InfXmlConnection* conn,
   g_object_get(G_OBJECT(conn), "status", &status, NULL);
 
   /* Remove the connection from the list of connections if it has
-   * been closed. */
-  if(status == INF_XML_CONNECTION_CLOSED ||
-     status == INF_XML_CONNECTION_CLOSING)
+   * been closed. Keep it alive it is already CLOSING to allow it to
+   * properly close the connection. */
+  if(status == INF_XML_CONNECTION_CLOSED)
   {
     manager = INF_CONNECTION_MANAGER(user_data);
     inf_connection_manager_free_connection(manager, conn);
@@ -340,6 +340,33 @@ inf_connection_manager_free_connection(InfConnectionManager* manager,
 
   priv->connections = g_slist_remove(priv->connections, xml_conn);
   g_object_unref(G_OBJECT(xml_conn));
+}
+
+static void
+inf_connection_manager_add_connection(InfConnectionManager* manager,
+                                      InfXmlConnection* connection)
+{
+  InfConnectionManagerPrivate* priv;
+  GSList* item;
+
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+  item = g_slist_find(priv->connections, connection);
+
+  g_return_if_fail(item == NULL);
+
+  g_object_ref(G_OBJECT(connection));
+  inf_connection_manager_connection_assoc(connection);
+  priv->connections = g_slist_prepend(priv->connections, connection);
+
+  g_signal_connect_after(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
+    manager
+  );
 }
 
 static void
@@ -434,44 +461,7 @@ inf_connection_manager_new(void)
   return INF_CONNECTION_MANAGER(object);
 }
 
-/** inf_connection_manager_add_connection:
- *
- * @manager: A #InfConnectionManager.
- * @connection: A #InfConnection that is not yet added to the manager.
- *
- * This function adds a new connection to the connection manager. It holds
- * a reference on the connection until the connection is closed or the
- * connection manager is finalized. Incoming data is forwarded to any
- * associated #InfNetObject objects associated with this connection
- * (see inf_connection_manager_add_object()).
- **/
-void
-inf_connection_manager_add_connection(InfConnectionManager* manager,
-                                      InfXmlConnection* connection)
-{
-  InfConnectionManagerPrivate* priv;
-  GSList* item;
-
-  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
-
-  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
-  item = g_slist_find(priv->connections, connection);
-
-  g_return_if_fail(item == NULL);
-
-  g_object_ref(G_OBJECT(connection));
-  inf_connection_manager_connection_assoc(connection);
-  priv->connections = g_slist_prepend(priv->connections, connection);
-
-  g_signal_connect_after(
-    G_OBJECT(connection),
-    "notify::status",
-    G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
-    manager
-  );
-}
-
+#if 0
 /** inf_connection_manager_has_connection:
  *
  * @manager: A #InfConnectionManager.
@@ -497,6 +487,7 @@ inf_connection_manager_has_connection(InfConnectionManager* manager,
   else
     return TRUE;
 }
+#endif
 
 #if 0
 /** inf_connection_manager_get_by_address:
@@ -650,6 +641,10 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
  * an error. Otherwise, a reference count on that object is increased, so
  * that you have to call inf_connection_manager_remove_object() one more
  * time to actually remove the object from the connection manager.
+ *
+ * The connection manager will keep the connection alive even if the object
+ * is unassociated again. To connection manager releases the connection as
+ * soon as it is closed.
  **/
 void
 inf_connection_manager_add_object(InfConnectionManager* manager,
@@ -657,6 +652,7 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
                                   InfNetObject* object,
                                   const gchar* identifier)
 {
+  InfConnectionManagerPrivate* priv;
   InfConnectionManagerConnection* conn;
   InfConnectionManagerObject* connobj;
 
@@ -664,6 +660,10 @@ inf_connection_manager_add_object(InfConnectionManager* manager,
   g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
   g_return_if_fail(INF_IS_NET_OBJECT(object));
   g_return_if_fail(identifier != NULL);
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+  if(g_slist_find(priv->connections, xml_conn) == NULL)
+    inf_connection_manager_add_connection(manager, xml_conn);
 
   conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
   g_return_if_fail(conn != NULL);
@@ -758,15 +758,47 @@ inf_connection_manager_remove_object(InfConnectionManager* manager,
   }
 }
 
+/** inf_connection_manager_has_object:
+ *
+ * @manager: A #InfConnectionManager.
+ * @xml_conn: A #InfXmlConnection.
+ * @object: A #InfNetObject.
+ *
+ * Returns whether @object was associated to @xml_conn using
+ * inf_connection_manager_add_object().
+ *
+ * Return Value: Whether @object is registered for @xml_conn.
+ **/
+gboolean
+inf_connection_manager_has_object(InfConnectionManager* manager,
+                                  InfXmlConnection* xml_conn,
+                                  InfNetObject* object)
+{
+  InfConnectionManagerConnection* conn;
+  InfConnectionManagerObject* connobj;
+
+  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(xml_conn), FALSE);
+  g_return_val_if_fail(INF_IS_NET_OBJECT(object), FALSE);
+
+  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
+  if(conn == NULL) return FALSE;
+
+  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
+  if(connobj == NULL) return FALSE;
+
+  return TRUE;
+}
+
 /** inf_connection_manager_send:
  *
  * @manager: A #InfConnectionManager
- * @inf_conn: A #InfConnection managed by @manager
+ * @xml_conn: A #InfConnection managed by @manager
  * @object: A #InfNetObject to which to send a message
  * @message: The message to send
  *
  * This function will send a XML-based message to the other end of
- * @inf_conn. If there is another #InfConnectionManager on the other
+ * @xml_conn. If there is another #InfConnectionManager on the other
  * end it will forward the message to the #InfNetObject with the same
  * identifier (see inf_connection_manager_add_object()).
  *
@@ -823,12 +855,12 @@ inf_connection_manager_send(InfConnectionManager* manager,
 /** inf_connection_manager_send_multiple:
  *
  * @manager: A #InfConnectionManager
- * @inf_conn: A #InfConnection managed by @manager
+ * @xml_conn: A #InfConnection managed by @manager
  * @object: A #InfNetObject to which to send a message
  * @messages: The messages to send, linked with the next field.
  *
  * This function will send multiple XML-based messages to the other end of
- * @inf_conn. If there is another #InfConnectionManager on the other
+ * @xml_conn. If there is another #InfConnectionManager on the other
  * end it will forward the messages to the #InfNetObject with the same
  * identifier (see inf_connection_manager_add_object()).
  *
@@ -901,7 +933,7 @@ inf_connection_manager_send_multiple(InfConnectionManager* manager,
 /** inf_connection_manager_cancel_outer:
  *
  * @manager: A #InfConnectionManager.
- * @inf_conn: A #InfConnection managed by @manager
+ * @xml_conn: A #InfConnection managed by @manager
  * @object: A #InfNetObject.
  *
  * Cancels all messages that were registered to be sent by

@@ -52,6 +52,7 @@ inf_connection_manager_get_type(void) G_GNUC_CONST;
 InfConnectionManager*
 inf_connection_manager_new(void);
 
+#if 0
 void
 inf_connection_manager_add_connection(InfConnectionManager* manager,
                                       InfXmlConnection* connection);
@@ -60,7 +61,6 @@ gboolean
 inf_connection_manager_has_connection(InfConnectionManager* manager,
                                       InfXmlConnection* connection);
 
-#if 0
 GNetworkTcpXmlConnection*
 inf_connection_manager_get_by_address(InfConnectionManager* manager,
                                       const GNetworkIpAddress* address,
@@ -74,30 +74,35 @@ inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
 
 void
 inf_connection_manager_add_object(InfConnectionManager* manager,
-                                  InfXmlConnection* inf_conn,
+                                  InfXmlConnection* xml_conn,
                                   InfNetObject* object,
                                   const gchar* identifier);
 
 void
 inf_connection_manager_remove_object(InfConnectionManager* manager,
-                                     InfXmlConnection* inf_conn,
+                                     InfXmlConnection* xml_conn,
                                      InfNetObject* object);
+
+gboolean
+inf_connection_manager_has_object(InfConnectionManager* manager,
+                                  InfXmlConnection* xml_conn,
+                                  InfNetObject* object);
 
 void
 inf_connection_manager_send(InfConnectionManager* manager,
-                            InfXmlConnection* inf_conn,
+                            InfXmlConnection* xml_conn,
                             InfNetObject* object,
                             xmlNodePtr message);
 
 void
 inf_connection_manager_send_multiple(InfConnectionManager* manager,
-                                     InfXmlConnection* inf_conn,
+                                     InfXmlConnection* xml_conn,
                                      InfNetObject* object,
                                      xmlNodePtr messages);
 
 void
 inf_connection_manager_cancel_outer(InfConnectionManager* manager,
-                                    InfXmlConnection* inf_conn,
+                                    InfXmlConnection* xml_conn,
                                     InfNetObject* object);
 
 G_END_DECLS
