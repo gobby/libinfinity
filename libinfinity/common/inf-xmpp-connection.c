@@ -533,7 +533,9 @@ inf_xmpp_connection_pop_message(InfXmppConnection* connection)
   priv->messages = message->next;
   if(priv->messages == NULL) priv->last_message = NULL;
 
-  message->free_func(connection, message->user_data);
+  if(message->free_func != NULL)
+    message->free_func(connection, message->user_data);
+
   g_slice_free(InfXmppConnectionMessage, message);
 }
 
@@ -601,6 +603,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
   else
   {
     inf_tcp_connection_send(priv->tcp, data, len);
+    priv->position += len;
   }
 }
 
@@ -941,6 +944,8 @@ inf_xmpp_connection_tls_push(gnutls_transport_ptr_t ptr,
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   inf_tcp_connection_send(priv->tcp, data, len);
+  priv->position += len;
+
   return len;
 }
 
@@ -1095,6 +1100,8 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
     break;
   }
 
+  gnutls_set_default_priority(priv->session);
+
 #if 0
   gnutls_protocol_set_priority(
     priv->session,
@@ -1109,7 +1116,6 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
   gnutls_mac_set_priority(priv->session, xmpp_connection_mac_priority);
 #endif
 
-  gnutls_set_default_priority(priv->session);
   gnutls_credentials_set(priv->session, GNUTLS_CRD_CERTIFICATE, priv->cred);
   gnutls_dh_set_prime_bits(priv->session, xmpp_connection_dh_bits);
 
@@ -1300,13 +1306,18 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
   }
   else
   {
-    /* Reply */
+    /* We do not need to send a challenge when the authentication
+     * has already been completed, but we need to response every
+     * challenge. */
     if(output != NULL)
     {
+      reply = NULL;
       switch(priv->site)
       {
       case INF_XMPP_CONNECTION_SERVER:
-        reply = inf_xmpp_connection_node_new_sasl("challenge");
+        if(ret == GSASL_NEEDS_MORE)
+          reply = inf_xmpp_connection_node_new_sasl("challenge");
+
         break;
       case INF_XMPP_CONNECTION_CLIENT:
         reply = inf_xmpp_connection_node_new_sasl("response");
@@ -1316,11 +1327,14 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
         break;
       }
 
-      xmlNodeAddContent(reply, (const xmlChar*)output);
-      free(output);
+      if(reply != NULL)
+      {
+        xmlNodeAddContent(reply, (const xmlChar*)output);
+        inf_xmpp_connection_send_xml(xmpp, reply);
+        xmlFreeNode(reply);
+      }
 
-      inf_xmpp_connection_send_xml(xmpp, reply);
-      xmlFreeNode(reply);
+      free(output);
     }
 
     /* Send authentication success to client when done */
@@ -1386,7 +1400,7 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
 
     /* Begin on server site */
     if(priv->site == INF_XMPP_CONNECTION_SERVER)
-      inf_xmpp_connection_sasl_request(xmpp, "");
+      inf_xmpp_connection_sasl_request(xmpp, NULL);
   }
 }
 
@@ -1446,11 +1460,11 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
 {
   /* TODO: xml:lang and id field are missing here */
   static const gchar xmpp_connection_initial_request_to[] =
-    "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\""
+    "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" "
     "xmlns=\"jabber:client\" version=\"1.0\" from=\"%s\" to=\"%s\">";
 
   static const gchar xmpp_connection_initial_request_noto[] = 
-    "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\""
+    "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" "
     "xmlns=\"jabber:client\" version=\"1.0\" from=\"%s\">";
 
   InfXmppConnectionPrivate* priv;
@@ -1481,7 +1495,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   if(attrs != NULL)
   {
     to_attr = attrs;
-    while(to_attr != NULL)
+    while(*to_attr != NULL)
     {
       if(strcmp((const gchar*)*to_attr, "from") == 0)
       {
@@ -1495,7 +1509,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
     }
   }
 
-  if(to_attr == NULL)
+  if(to_attr == NULL || *to_attr == NULL)
   {  
     reply = g_strdup_printf(
       xmpp_connection_initial_request_noto,
@@ -1512,6 +1526,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   }
 
   inf_xmpp_connection_send_chars(xmpp, reply, strlen(reply));
+  g_free(reply);
 
   /* <stream:stream> was sent, so change status to initiated */
   switch(priv->status)
@@ -1640,7 +1655,7 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
   g_assert(priv->site == INF_XMPP_CONNECTION_SERVER);
   g_assert(priv->status == INF_XMPP_CONNECTION_INITIATED);
 
-  if(priv->session != NULL)
+  if(priv->session == NULL)
   {
     if(strcmp((const gchar*)xml->name, "starttls") == 0)
     {
@@ -2028,7 +2043,7 @@ inf_xmpp_connection_process_end_element(InfXmppConnection* xmpp,
       stream_code = INF_XMPP_CONNECTION_STREAM_ERROR_FAILED;
       if(priv->root->children != NULL)
       {
-        inf_xmpp_connection_stream_error_from_condition(
+        stream_code = inf_xmpp_connection_stream_error_from_condition(
           (const gchar*)priv->root->children->name
         );
       }
@@ -2237,7 +2252,7 @@ inf_xmpp_connection_sax_end_element(void* context,
 static void
 inf_xmpp_connection_sax_characters(void* context,
                                    const xmlChar* content,
-				   int len)
+                                   int len)
 {
   InfXmppConnection* xmpp;
   InfXmppConnectionPrivate* priv;
@@ -2369,9 +2384,11 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
 {
   static const gchar xmpp_connection_initial_request[] =
     "<stream:stream version=\"1.0\" xmlns=\"jabber:client\" "
-    "xmlns:stream=\"http://etherx.jabber.org/streams\">";
+    "xmlns:stream=\"http://etherx.jabber.org/streams\" from=\"%s\">";
 
   InfXmppConnectionPrivate* priv;
+  gchar* request;
+
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->status == INF_XMPP_CONNECTION_CONNECTED ||
@@ -2396,11 +2413,9 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
 
   if(priv->site == INF_XMPP_CONNECTION_CLIENT)
   {
-    inf_xmpp_connection_send_chars(
-      xmpp,
-      xmpp_connection_initial_request,
-      sizeof(xmpp_connection_initial_request) - 1
-    );
+    request = g_strdup_printf(xmpp_connection_initial_request, priv->jid);
+    inf_xmpp_connection_send_chars(xmpp, request, strlen(request));
+    g_free(request);
 
     switch(priv->status)
     {
@@ -2447,14 +2462,23 @@ inf_xmpp_connection_sent_cb(InfTcpConnection* tcp,
   xmpp = INF_XMPP_CONNECTION(user_data);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
-  while(priv->messages && priv->messages->position <= len)
+  g_assert(priv->position >= len);
+
+  while(priv->messages != NULL && priv->messages->position <= len)
   {
-    priv->messages->sent_func(xmpp, priv->messages->user_data);
-    inf_xmpp_connection_pop_message(xmpp);
+    if(priv->messages->sent_func != NULL)
+      priv->messages->sent_func(xmpp, priv->messages->user_data);
+
+    /* Note that the sent func might have called _clear() in which case all
+     * messages have already been removed. */
+    if(priv->messages != NULL)
+      inf_xmpp_connection_pop_message(xmpp);
   }
 
   for(message = priv->messages; message != NULL; message = message->next)
     message->position -= len;
+
+  priv->position -= len;
 }
 
 static void
@@ -2565,6 +2589,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
   else if(priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED)
   {
     /* Reinitiate connection after successful authentication */
+    /* TODO: Only do this if status at the beginning of this call was
+     * AUTHENTICATING */
     inf_xmpp_connection_initiate(xmpp);
   }
 }

@@ -40,7 +40,7 @@ typedef enum _InfdXmlServerStatus {
   INFD_XML_SERVER_CLOSING,
   INFD_XML_SERVER_OPEN,
   INFD_XML_SERVER_OPENING
-} InfXmlServerStatus;
+} InfdXmlServerStatus;
 
 struct _InfdXmlServerIface {
   GTypeInterface parent;

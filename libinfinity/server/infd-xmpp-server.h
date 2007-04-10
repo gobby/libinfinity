@@ -19,7 +19,10 @@
 #ifndef __INFD_XMPP_SERVER_H__
 #define __INFD_XMPP_SERVER_H__
 
-#include <libinfinity/common/inf-tcp-connection.h>
+#include <libinfinity/server/infd-tcp-server.h>
+
+#include <gnutls/gnutls.h>
+#include <gsasl.h>
 
 #include <glib-object.h>
 

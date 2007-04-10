@@ -16,20 +16,11 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <libinfinity/server/infd-xmpp-server.h>
 #include <libinfinity/server/infd-tcp-server.h>
-#include <libinfinity/common/inf-ip-address.h>
-#include <libinfinity/common/inf-io.h>
+#include <libinfinity/server/infd-xml-server.h>
+#include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/inf-marshal.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
-
-#include <errno.h>
-#include <string.h>
 
 typedef enum InfdXmppServerStatus_ {
   INFD_XMPP_SERVER_CLOSED,
@@ -40,10 +31,10 @@ typedef struct _InfdXmppServerPrivate InfdXmppServerPrivate;
 struct _InfdXmppServerPrivate {
   InfdTcpServer* tcp;
   InfdXmppServerStatus status;
-  const gchar* jid;
+  gchar* jid;
 
-  gnutls_credentials_t tls_creds;
-  gnutls_credentials_t tls_own_creds;
+  gnutls_certificate_credentials_t tls_creds;
+  gnutls_certificate_credentials_t tls_own_creds;
 
   Gsasl* sasl_context;
   Gsasl* sasl_own_context;
@@ -55,7 +46,7 @@ enum {
   PROP_TCP,
   PROP_JID,
 
-  PROP_TLS_CREDENTIALS,
+  PROP_CREDENTIALS,
   PROP_SASL_CONTEXT,
 
   /* Overridden from XML server */
@@ -73,8 +64,6 @@ enum {
 static GObjectClass* parent_class;
 static guint xmpp_server_signals[LAST_SIGNAL];
 
-static GQuark infd_xmpp_server_error_quark;
-
 static void
 infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
                                    InfTcpConnection* tcp_connection,
@@ -82,14 +71,14 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
 {
   InfdXmppServer* xmpp_server;
   InfdXmppServerPrivate* priv;
-  InfdXmppConnection* xmpp_connection;
+  InfXmppConnection* xmpp_connection;
 
   xmpp_server = INFD_XMPP_SERVER(user_data);
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp_server);
 
-  xmpp_connection = infd_xmpp_connection_new(
+  xmpp_connection = inf_xmpp_connection_new(
     tcp_connection,
-    INFD_XMPP_CONNECTION_SERVER,
+    INF_XMPP_CONNECTION_SERVER,
     priv->jid,
     priv->tls_creds,
     priv->sasl_context
@@ -102,6 +91,8 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
     INFD_XML_SERVER(xmpp_server),
     INF_XML_CONNECTION(xmpp_connection)
   );
+
+  g_object_unref(G_OBJECT(xmpp_connection));
 }
 
 static void
@@ -252,8 +243,8 @@ infd_xmpp_server_sasl_cb(Gsasl* ctx,
   switch(prop)
   {
   case GSASL_ANONYMOUS_TOKEN:
-    gsasl_property_Set(sctx, GSASL_ANONYMOUS_TOKEN, priv->jid);
-    break;
+    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, priv->jid);
+    return GSASL_OK;
   case GSASL_VALIDATE_ANONYMOUS:
     /* Authentaction always successful */
     return GSASL_OK;
@@ -296,7 +287,16 @@ infd_xmpp_server_constructor(GType type,
     gnutls_dh_params_init(&dh_params);
     gnutls_dh_params_generate2(dh_params, xmpp_server_dh_bits);
     gnutls_certificate_set_dh_params(priv->tls_creds, dh_params);
-    g_object_notify(G_OBJECT(xmpp), "credentials");
+
+    /* TODO: Create a new random key/certificate here. */
+    gnutls_certificate_set_x509_key_file(
+      priv->tls_creds,
+      "cert.pem",
+      "key.pem",
+      GNUTLS_X509_FMT_PEM
+    );
+
+    g_object_notify(G_OBJECT(obj), "credentials");
   }
 
   if(priv->sasl_context == NULL)
@@ -310,9 +310,11 @@ infd_xmpp_server_constructor(GType type,
       gsasl_callback_hook_set(priv->sasl_context, obj);
       /* TODO: Only allow ANONYMOUS authentaction. This probably has to be
        * solved via a mechanisms list in XMPP connection. */
-      g_object_notify(G_OBJECT(xmpp), "sasl-context");
+      g_object_notify(G_OBJECT(obj), "sasl-context");
     }
   }
+
+  return obj;
 }
 
 static void
@@ -345,7 +347,7 @@ infd_xmpp_server_dispose(GObject* object)
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
 
   if(priv->status != INFD_XMPP_SERVER_CLOSED)
-    infd_xmpp_server_close(server);
+    infd_xml_server_close(INFD_XML_SERVER(xmpp));
 
   if(priv->tcp != NULL)
     g_object_unref(G_OBJECT(priv->tcp));
@@ -451,7 +453,7 @@ infd_xmpp_server_get_property(GObject* object,
       break;
     default:
       g_assert_not_reached();
-      break
+      break;
     }
 
     break;
@@ -499,7 +501,7 @@ infd_xmpp_server_class_init(gpointer g_class,
                             gpointer class_data)
 {
   GObjectClass* object_class;
-  InfdXmppServerClass* xmpp_server_class;
+  InfdXmppServerClass* xmpp_class;
 
   object_class = G_OBJECT_CLASS(g_class);
   xmpp_class = INFD_XMPP_SERVER_CLASS(g_class);
@@ -515,10 +517,6 @@ infd_xmpp_server_class_init(gpointer g_class,
 
   xmpp_class->error = NULL;
 
-  infd_xmpp_server_error_quark = g_quark_from_static_string(
-    "INFD_XMPP_SERVER_ERROR"
-  );
-
   g_object_class_install_property(
     object_class,
     PROP_TCP,
@@ -527,6 +525,18 @@ infd_xmpp_server_class_init(gpointer g_class,
       "TCP server",
       "Underlaying TCP server",
       INFD_TYPE_TCP_SERVER,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_JID,
+    g_param_spec_string(
+      "jid",
+      "JID",
+      "Jabber ID of the server",
+      "localhost",
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -575,7 +585,7 @@ infd_xmpp_server_xml_server_init(gpointer g_iface,
   InfdXmlServerIface* iface;
   iface = (InfdXmlServerIface*)g_iface;
 
-  iface->close = inf_xmpp_server_xml_server_close;
+  iface->close = infd_xmpp_server_xml_server_close;
 }
 
 GType

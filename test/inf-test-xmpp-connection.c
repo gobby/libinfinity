@@ -79,7 +79,11 @@ int main(int argc, char* argv[])
   gnutls_global_init();
   g_type_init();
 
+#if 0
   addr = inf_ip_address_new_from_string("88.198.49.206"); /* This is jabber.0x539.de aka durotan.0x539.de */
+#else
+  addr = inf_ip_address_new_from_string("127.0.0.1"); /* This is localhost aka loopback */
+#endif
   io = inf_standalone_io_new();
   error = NULL;
 

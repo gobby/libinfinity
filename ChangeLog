@@ -1,3 +1,25 @@
+2007-04-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c: Fixed bugs, server side
+	mostly works.
+
+	* libinfinity/server/infd-xml-server.h: Fixed typo in
+	InfdXmlServerStatus typedef.
+
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c: Build and Runtime fixes, use
+	key.pem and cert.pem as key files for now. This should probably be
+	replaced with a newly-created certificate later.
+
+	* test/inf-test-xmpp-server.c: Added simple XMPP server test.
+
+	* test/inf-test-xmpp-connection.c: Connect to local server instead of
+	jabber.0x539.de.
+
+	* test/key.pem:
+	* test/cert.pem: Temporary example key files, copied from the GnuTLS
+	distribution.
+
 2007-04-08  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c: Notify credentials and
