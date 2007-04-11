@@ -1,3 +1,10 @@
+2007-04-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-server-pool.h:
+	* libinfinity/server/infd-server-pool.c:
+	* libinfinity/server/Makefile.am: Renamed from
+	infd-server.[ch], manages an arbitrary amount of InfdXmlServers.
+
 2007-04-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfintiy/common/inf-connection-manager.h:
