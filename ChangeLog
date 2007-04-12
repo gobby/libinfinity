@@ -1,5 +1,11 @@
 2007-04-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/test/inf-test-daemon.c:
+	* libinfinity/test/Makefile.am: Added test file that launches a simple
+	infinote daemon with a filesystem storage in $HOME/.infinote.
+
+2007-04-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-filesystem-storage.h:
 	* libinfinity/server/infd-filesystem-storage.c:
 	* libinfinity/server/Makefile.am: Added a simple storage
