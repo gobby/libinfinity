@@ -9,6 +9,7 @@ libinfinity_server_ladir = $(includedir)/libinfinity-1.0/infinity/server
 
 libinfinity_server_la_SOURCES = \
 	infd-directory.c \
+	infd-filesystem-storage.c \
 	infd-server-pool.c \
 	infd-session.c \
 	infd-storage.c \
@@ -18,6 +19,7 @@ libinfinity_server_la_SOURCES = \
 
 libinfinity_server_la_HEADERS = \
 	infd-directory.h \
+	infd-filesystem-storage.h \
 	infd-note-plugin.h \
 	infd-server-pool.h \
 	infd-session.h \

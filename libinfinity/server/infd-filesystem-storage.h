@@ -1,0 +1,66 @@
+/* infinote - Collaborative notetaking application
+ * Copyright (C) 2007 Armin Burgmeier
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free
+ * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+#ifndef __INFD_FILESYSTEM_STORAGE_H__
+#define __INFD_FILESYSTEM_STORAGE_H__
+
+#include <libinfinity/server/infd-storage.h>
+#include <libinfinity/server/infd-note-plugin.h>
+#include <libinfinity/server/infd-session.h>
+#include <libinfinity/common/inf-connection-manager.h>
+
+#include <glib-object.h>
+
+G_BEGIN_DECLS
+
+#define INFD_TYPE_FILESYSTEM_STORAGE                 (infd_filesystem_storage_get_type())
+#define INFD_FILESYSTEM_STORAGE(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFD_TYPE_FILESYSTEM_STORAGE, InfdFilesystemStorage))
+#define INFD_FILESYSTEM_STORAGE_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INFD_TYPE_FILESYSTEM_STORAGE, InfdFilesystemStorageClass))
+#define INFD_IS_FILESYSTEM_STORAGE(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFD_TYPE_FILESYSTEM_STORAGE))
+#define INFD_IS_FILESYSTEM_STORAGE_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFD_TYPE_FILESYSTEM_STORAGE))
+#define INFD_FILESYSTEM_STORAGE_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFD_TYPE_FILESYSTEM_STORAGE, InfdFilesystemStorageClass))
+
+#define INFD_TYPE_FILESYSTEM_STORAGE_ITER            (infd_filesystem_storage_iter_get_type())
+
+typedef struct _InfdFilesystemStorage InfdFilesystemStorage;
+typedef struct _InfdFilesystemStorageClass InfdFilesystemStorageClass;
+
+typedef enum _InfdFilesystemStorageError {
+  /* The path contains invalid characters */
+  INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
+
+  INFD_FILESYSTEM_STORAGE_ERROR_FAILED
+} InfdFilesystemStorageError;
+
+struct _InfdFilesystemStorageClass {
+  GObjectClass parent_class;
+};
+
+struct _InfdFilesystemStorage {
+  GObject parent;
+};
+
+GType
+infd_filesystem_storage_get_type(void) G_GNUC_CONST;
+
+InfdFilesystemStorage*
+infd_filesystem_storage_new(const gchar* root_directory);
+
+G_END_DECLS
+
+#endif /* __INFD_FILESYSTEM_STORAGE_H__ */
