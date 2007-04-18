@@ -1,3 +1,21 @@
+2007-04-18  Armin Burgmeier  <armin@arbur.net>
+
+	* configure.ac:
+	* libinfinity/Makefile.am: Added client directory, create
+	libinfinity/client/Makefile.
+
+	* libinfinity/inf-marshal.in: Added VOID:VOID marshaller.
+
+	* libinfinity/common/infd-request.h:
+	* libinfinity/common/infd-request.c:
+	* libinfinity/common/Makefile.am: Added InfcRequest class.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/server/infd-session.c: Replace user_to_xml vfunc by
+	set_xml_user_props, added inf_session_user_to_xml which implements the
+	functionality via the new vfunc.
+
 2007-04-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/test/inf-test-daemon.c:

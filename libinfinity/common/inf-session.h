@@ -120,15 +120,16 @@ struct _InfSessionClass {
                                InfXmlConnection* conn, /* ? */
                                const xmlNodePtr xml);
 
+  void (*set_xml_user_props)(InfSession* session,
+                             const GParameter* params,
+			     guint n_params,
+                             xmlNodePtr xml);
+
   gboolean(*validate_user_props)(InfSession* session,
                                  const GParameter* params,
                                  guint n_params,
                                  InfUser* exclude,
                                  GError** error);
-
-  void(*user_to_xml)(InfSession* session,
-                     InfUser* user,
-                     xmlNodePtr xml);
 
   InfUser*(*user_new)(InfSession* session,
                       const GParameter* params,
@@ -176,6 +177,11 @@ inf_session_status_get_type(void) G_GNUC_CONST;
 
 GType
 inf_session_get_type(void) G_GNUC_CONST;
+
+void
+inf_session_user_to_xml(InfSession* session,
+                        InfUser* user,
+                        xmlNodePtr xml);
 
 void
 inf_session_close(InfSession* session);

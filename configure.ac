@@ -59,8 +59,9 @@ fi
 AC_CONFIG_FILES([
 	Makefile
 		libinfinity/Makefile
-		libinfinity/common/Makefile
-		libinfinity/server/Makefile
+			libinfinity/common/Makefile
+			libinfinity/server/Makefile
+			libinfinity/client/Makefile
 
 		test/Makefile
 ])

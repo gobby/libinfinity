@@ -593,16 +593,14 @@ inf_session_to_xml_sync_impl_foreach_func(gpointer key,
                                           gpointer user_data)
 {
   InfSessionXmlData* data;
-  InfSessionClass* session_class;
+  InfUser* user;
   xmlNodePtr usernode;
 
   data = (InfSessionXmlData*)user_data;
-  session_class = INF_SESSION_GET_CLASS(data->session);
-
-  g_return_if_fail(session_class->user_to_xml != NULL);
+  user = INF_USER(value);
 
   usernode = xmlNewNode(NULL, (const xmlChar*)"sync-user");
-  session_class->user_to_xml(data->session, (InfUser*)value, usernode);
+  inf_session_user_to_xml(data->session, user, usernode);
 
   xmlAddChild(data->xml, usernode);
 }
@@ -635,6 +633,7 @@ inf_session_process_xml_sync_impl(InfSession* session,
   InfSessionClass* session_class;
   GArray* user_props;
   InfUser* user;
+  guint i;
   GError* local_error;
 
   priv = INF_SESSION_PRIVATE(session);
@@ -659,6 +658,9 @@ inf_session_process_xml_sync_impl(InfSession* session,
       user_props->len,
       error
     );
+
+    for(i = 0; i < user_props->len; ++ i)
+      g_value_unset(&g_array_index(user_props, GParameter, i).value);
 
     g_array_free(user_props, TRUE);
 
@@ -741,6 +743,32 @@ inf_session_get_xml_user_props_impl(InfSession* session,
   }
 
   return array;
+}
+
+static void
+inf_session_set_xml_user_props_impl(InfSession* session,
+                                    const GParameter* params,
+				    guint n_params,
+				    xmlNodePtr xml)
+{
+  guint i;
+  gchar id_buf[16];
+  const gchar* name;
+
+  for(i = 0; i < n_params; ++ i)
+  {
+    if(strcmp(params[i].name, "id") == 0)
+    {
+      sprintf(id_buf, "%u", g_value_get_uint(&params[i].value));
+      xmlNewProp(xml, (const xmlChar*)"id", (const xmlChar*)id_buf);
+    }
+    else if(strcmp(params[i].name, "name") == 0)
+    {
+      name = g_value_get_string(&params[i].value);
+      xmlNewProp(xml, (const xmlChar*)"name", (const xmlChar*)name);
+    }
+    /* TODO: User status? */
+  }
 }
 
 static gboolean
@@ -1426,9 +1454,9 @@ inf_session_class_init(gpointer g_class,
   session_class->process_xml_run = NULL;
 
   session_class->get_xml_user_props = inf_session_get_xml_user_props_impl;
+  session_class->set_xml_user_props = inf_session_set_xml_user_props_impl;
   session_class->validate_user_props = inf_session_validate_user_props_impl;
 
-  session_class->user_to_xml = inf_session_user_to_xml_impl;
   session_class->user_new = NULL;
 
   session_class->close = inf_session_close_impl;
@@ -1717,6 +1745,59 @@ inf_session_get_user_property(GArray* array,
 
   parameter->name = name;
   return parameter;
+}
+
+/** inf_session_user_to_xml:
+ *
+ * @session: A #InfSession.
+ * @user: A #InfUser contained in @session.
+ * @xml: An XML node to which to add user information.
+ *
+ * This is a convenience function that queries @user's properties and
+ * calls set_xml_user_props with them. This adds the properties of @user
+ * to @xml.
+ *
+ * An equivalent user object may be built by calling the get_xml_user_props
+ * vfunc on @xml and then calling the user_new vfunc with the resulting
+ * properties.
+ **/
+void
+inf_session_user_to_xml(InfSession* session,
+                        InfUser* user,
+                        xmlNodePtr xml)
+{
+  InfSessionClass* session_class;
+  GParamSpec** pspecs;
+  GParameter* params;
+  guint n_params;
+  guint i;
+
+  g_return_if_fail(INF_IS_SESSION(session));
+  g_return_if_fail(INF_IS_USER(user));
+  g_return_if_fail(xml != NULL);
+
+  session_class = INF_SESSION_GET_CLASS(session);
+  g_return_if_fail(session_class->set_xml_user_props != NULL);
+
+  pspecs = g_object_class_list_properties(
+    G_OBJECT_CLASS(INF_USER_GET_CLASS(user)),
+    &n_params
+  );
+
+  params = g_malloc(n_params * sizeof(GParameter));
+  for(i = 0; i < n_params; ++ i)
+  {
+    params[i].name = pspecs[i]->name;
+    g_object_get_property(G_OBJECT(user), params[i].name, &params[i].value);
+  }
+
+  session_class->set_xml_user_props(session, params, n_params, xml);
+
+  for(i = 0; i < n_params; ++ i)
+    g_value_unset(&params[i].value);
+
+  g_free(params);
+  g_free(pspecs);
 }
 
 /** inf_session_close:

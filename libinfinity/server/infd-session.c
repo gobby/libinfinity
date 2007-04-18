@@ -237,7 +237,6 @@ infd_session_perform_user_join(InfdSession* session,
   session_class = INF_SESSION_GET_CLASS(session);
 
   g_return_val_if_fail(session_class->validate_user_props != NULL, NULL);
-  g_return_val_if_fail(session_class->user_to_xml != NULL, NULL);
   g_return_val_if_fail(session_class->user_new != NULL, NULL);
 
   name_param = inf_session_lookup_user_property(
@@ -377,7 +376,7 @@ infd_session_perform_user_join(InfdSession* session,
     xml = xmlNewNode(NULL, (const xmlChar*)"user-rejoin");
   }
 
-  session_class->user_to_xml(INF_SESSION(session), user, xml);
+  inf_session_user_to_xml(INF_SESSION(session), user, xml);
 
   /* exclude the connection from which the request comes. The reply to it
    * is sent separately telling it that the user join was accepted. */
@@ -409,6 +408,7 @@ infd_session_perform_user_join(InfdSession* session,
   else
   {
     priv->local_users = g_slist_prepend(priv->local_users, user);
+    xmlFreeNode(xml);
   }
 
   return user;
@@ -769,6 +769,7 @@ infd_session_handle_user_join(InfdSession* session,
   InfUser* user;
   xmlNodePtr reply_xml;
   gchar code_buf[16];
+  guint i;
   GError* local_error;
 
   session_class = INF_SESSION_CLASS(session);
@@ -789,6 +790,9 @@ infd_session_handle_user_join(InfdSession* session,
     array,
     &local_error
   );
+
+  for(i = 0; i < array->len; ++ i)
+    g_value_unset(&g_array_index(array, GParameter, i).value);
 
   g_array_free(array, TRUE);
 

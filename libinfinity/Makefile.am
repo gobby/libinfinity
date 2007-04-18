@@ -1,4 +1,4 @@
-SUBDIRS = common server
+SUBDIRS = common server client
 
 lib_LTLIBRARIES = libinfinity-1.0.la
 
@@ -11,7 +11,8 @@ libinfinity_1_0_la_LIBADD = \
 	$(glib_LIBS) \
 	$(infinity_LIBS) \
 	common/libinfinity_common.la \
-	server/libinfinity_server.la
+	server/libinfinity_server.la \
+	client/libinfinity_client.la
 
 dist_pkgdata_DATA = inf-marshal.in
 
