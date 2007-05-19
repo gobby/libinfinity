@@ -47,8 +47,8 @@ struct _InfdSession {
 
 typedef gboolean(*InfdSessionMessageFunc)(InfdSession* session,
                                           InfXmlConnection* connection,
-					  const xmlNodePtr xml,
-					  GError** error);
+                                          xmlNodePtr xml,
+                                          GError** error);
 
 GType
 infd_session_get_type(void) G_GNUC_CONST;

@@ -18,6 +18,34 @@
 
 #include <libinfinity/common/inf-error.h>
 
+GQuark
+inf_request_error_quark(void)
+{
+  return g_quark_from_static_string("INF_REQUEST_ERROR");
+}
+
+const gchar*
+inf_request_strerror(InfRequestError code)
+{
+  switch(code)
+  {
+  case INF_REQUEST_ERROR_SYNCHRONIZING:
+    return "Synchronization is still in progress";
+  case INF_REQUEST_ERROR_UNEXPECTED_MESSAGE:
+    return "Message was not understood";
+  case INF_REQUEST_ERROR_FAILED:
+    return "An unknown request error occured";
+  default:
+    return "An error with unknown error code occured";
+  }
+}
+
+GQuark
+inf_user_join_error_quark(void)
+{
+  return g_quark_from_static_string("INF_USER_JOIN_ERROR");
+}
+
 const gchar*
 inf_user_join_strerror(InfUserJoinError code)
 {
@@ -38,6 +66,12 @@ inf_user_join_strerror(InfUserJoinError code)
   }
 }
 
+GQuark
+inf_user_leave_error_quark(void)
+{
+  return g_quark_from_static_string("INF_USER_LEAVE_ERROR");
+}
+
 const gchar*
 inf_user_leave_strerror(InfUserLeaveError code)
 {
@@ -45,6 +79,8 @@ inf_user_leave_strerror(InfUserLeaveError code)
   {
   case INF_USER_LEAVE_ERROR_ID_NOT_PRESENT:
     return "'id' attribute in request missing";
+  case INF_USER_LEAVE_ERROR_NO_SUCH_USER:
+    return "There is no user with the given ID";
   case INF_USER_LEAVE_ERROR_NOT_JOINED:
     return "User did not join via this connection";
   case INF_USER_LEAVE_ERROR_FAILED:

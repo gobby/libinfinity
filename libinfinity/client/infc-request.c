@@ -23,6 +23,8 @@ typedef struct _InfcRequestPrivate InfcRequestPrivate;
 struct _InfcRequestPrivate {
 };
 
+/* TODO: Add properties for seq and possibly request name */
+
 enum {
   FAILED,
   SUCCEEDED,
@@ -74,9 +76,10 @@ infc_request_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfcRequestClass, succeeded),
     NULL, NULL,
-    inf_marshal_VOID__VOID,
+    inf_marshal_VOID__POINTER,
     G_TYPE_NONE,
-    0
+    1,
+    G_TYPE_POINTER
   );
 }
 
@@ -131,13 +134,15 @@ infc_request_failed(InfcRequest* request,
 /** infc_request_succeeded:
  *
  * @request: A #InfcRequest.
+ * @data: Additional data depending on the actual request.
  *
  * Emits the "succeeded" signal on @request.
  **/
 void
-infc_request_succeeded(InfcRequest* request)
+infc_request_succeeded(InfcRequest* request,
+                       gpointer data)
 {
   g_return_if_fail(INFC_IS_REQUEST(request));
 
-  g_signal_emit(G_OBJECT(request), request_signals[SUCCEEDED], 0);
+  g_signal_emit(G_OBJECT(request), request_signals[SUCCEEDED], 0, data);
 }

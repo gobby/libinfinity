@@ -38,7 +38,7 @@ struct _InfcRequestClass {
 
   /* Signals */
   void (*failed)(InfcRequest* request, GError* error);
-  void (*succeeded)(InfcRequest* request);
+  void (*succeeded)(InfcRequest* request, gpointer data);
 
   void (*unused1)(void);
   void (*usused2)(void);
@@ -56,7 +56,8 @@ infc_request_failed(InfcRequest* request,
                     GError* error);
 
 void
-infc_request_succeeded(InfcRequest* request);
+infc_request_succeeded(InfcRequest* request,
+                       gpointer data);
 
 G_END_DECLS
 

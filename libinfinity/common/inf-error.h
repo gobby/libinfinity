@@ -26,6 +26,15 @@ G_BEGIN_DECLS
 /* These are error codes do not occur directly in libinfinity, but that
  * may be reported and/or need to be understood by both client and server. */
 
+typedef enum _InfRequestError {
+  /* Synchronization is still in progress. */
+  INF_REQUEST_ERROR_SYNCHRONIZING,
+  /* Received an unexpected message */
+  INF_REQUEST_ERROR_UNEXPECTED_MESSAGE,
+
+  INF_REQUEST_ERROR_FAILED
+} InfRequestError;
+
 typedef enum _InfUserJoinError {
   /* The requested name is already in use by another user */
   INF_USER_JOIN_ERROR_NAME_IN_USE,
@@ -43,14 +52,28 @@ typedef enum _InfUserJoinError {
 typedef enum _InfUserLeaveError {
   /* The request does not include an id attribute */
   INF_USER_LEAVE_ERROR_ID_NOT_PRESENT,
+  /* There is no user with the given ID */
+  INF_USER_LEAVE_ERROR_NO_SUCH_USER,
   /* The user did not join from the connection the request comes from */
   INF_USER_LEAVE_ERROR_NOT_JOINED,
 
   INF_USER_LEAVE_ERROR_FAILED
 } InfUserLeaveError;
 
+GQuark
+inf_request_error_quark(void);
+
+const gchar*
+inf_request_strerror(InfRequestError code);
+
+GQuark
+inf_user_join_error_quark(void);
+
 const gchar*
 inf_user_join_strerror(InfUserJoinError code);
+
+GQuark
+inf_user_leave_error_quark(void);
 
 const gchar*
 inf_user_leave_strerror(InfUserLeaveError code);

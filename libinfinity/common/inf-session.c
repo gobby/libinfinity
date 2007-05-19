@@ -742,14 +742,16 @@ inf_session_get_xml_user_props_impl(InfSession* session,
     xmlFree(name);
   }
 
+  /* TODO: User status? */
+
   return array;
 }
 
 static void
 inf_session_set_xml_user_props_impl(InfSession* session,
                                     const GParameter* params,
-				    guint n_params,
-				    xmlNodePtr xml)
+                                    guint n_params,
+                                    xmlNodePtr xml)
 {
   guint i;
   gchar id_buf[16];
@@ -846,6 +848,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   return TRUE;
 }
 
+#if 0
 static void
 inf_session_user_to_xml_impl(InfSession* session,
                              InfUser* user,
@@ -864,6 +867,7 @@ inf_session_user_to_xml_impl(InfSession* session,
 
   /* TODO: user status */
 }
+#endif
 
 static void
 inf_session_close_impl(InfSession* session)
@@ -908,6 +912,8 @@ inf_session_close_impl(InfSession* session)
     g_free(priv->shared.sync.identifier);
     break;
   case INF_SESSION_RUNNING:
+    /* TODO: Set status of all users to unavailable? */
+
     while(priv->shared.run.syncs != NULL)
     {
       sync = (InfSessionSync*)priv->shared.run.syncs->data;

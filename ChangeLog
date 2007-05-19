@@ -1,3 +1,21 @@
+2007-05-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added INF_USER_LEAVE_NO_SUCH_USER
+	error code, InfRequestError codes and public API to access error
+	quarks.
+
+	* libinfinity/server/infd-session.h:
+	* libinfinity/server/infd-session.c: Made xmlNodePtr non-const in
+	InfdSessionMessageFunc because it only makes the pointer const (and
+	not the XML node pointed to).
+
+	* libinfinity/client/infc-request.h:
+	* libinfinity/client/infc-request.c: Added a general request-specific
+	pointer parameter to the succeeded signal.
+
+	* docs/terminology: Added a few words about request and seq.
+
 2007-04-18  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac:

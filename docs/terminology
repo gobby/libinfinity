@@ -53,6 +53,20 @@ Uncategorized:
     rejoin. Note that it is also possible that a client performs multiple
     user joins.
 
+  request
+    A message from client to server or server to client. For
+    example, user-join is a request that requests a join (see above). The
+    server should reply with another request that is either request-failed or
+    user-join. Some requests require a reply from the other end, others do
+    not. Any request may have a seq (see below) and any client request might
+    be replied with request-failed.
+
+  seq
+    seq is a simple number that a client may set for any request it makes. The
+    server has to set the same seq number in the reply that corresponds to the
+    request with the same seq. This way, a client can perform multiple requests
+    and the server does not need to process them in order.
+
 ConnectionManager:
   outer queue:
     The outer queue of the connection manager is a list of messages of a

@@ -22,17 +22,6 @@
 
 #include <string.h>
 
-/* These are only used locally in this file to report errors that occured
- * while processing a client request. */
-typedef enum _InfdSessionMessageError {
-  /* Synchronization is still in progress. */
-  INFD_SESSION_REQUEST_ERROR_SYNCHRONIZING,
-  /* Received an unexpected message */
-  INFD_SESSION_REQUEST_ERROR_UNEXPECTED_MESSAGE,
-
-  INFD_SESSION_REQUEST_ERROR_FAILED
-} InfdSessionMessageError;
-
 typedef struct _InfdSessionMessage InfdSessionMessage;
 struct _InfdSessionMessage {
   InfdSessionMessageFunc func;
@@ -68,12 +57,6 @@ enum {
 #define INFD_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_SESSION, InfdSessionPrivate))
 
 static InfSessionClass* parent_class;
-static GQuark infd_session_request_error_quark;
-
-/* TODO: Move these to libinfinity/inf-error.c, but make sure they get
- * initialized (wrapper function/macro). */
-static GQuark infd_session_user_join_error_quark;
-static GQuark infd_session_user_leave_error_quark;
 
 /*
  * Session messages.
@@ -217,9 +200,14 @@ infd_session_remove_subscription(InfdSession* session,
  * Utility functions.
  */
 
+/* Performs a user join on the given session. If connection is not null, the
+ * user join is made from that connection, otherwise a local user join is
+ * performed. request_seq is the seq of the user join request and used in
+ * the reply. It is ignored when connection is NULL. */
 static InfUser*
 infd_session_perform_user_join(InfdSession* session,
                                InfXmlConnection* connection,
+                               const gchar* request_seq,
                                GArray* user_props,
                                GError** error)
 {
@@ -249,7 +237,7 @@ infd_session_perform_user_join(InfdSession* session,
   {
     g_set_error(
       error,
-      infd_session_user_join_error_quark,
+      inf_user_join_error_quark(),
       INF_USER_JOIN_ERROR_NAME_MISSING,
       "%s",
       inf_user_join_strerror(INF_USER_JOIN_ERROR_NAME_MISSING)
@@ -267,7 +255,7 @@ infd_session_perform_user_join(InfdSession* session,
   {
     g_set_error(
       error,
-      infd_session_user_join_error_quark,
+      inf_user_join_error_quark(),
       INF_USER_JOIN_ERROR_NAME_IN_USE,
       "%s",
       inf_user_join_strerror(INF_USER_JOIN_ERROR_NAME_IN_USE)
@@ -283,7 +271,7 @@ infd_session_perform_user_join(InfdSession* session,
   {
     g_set_error(
       error,
-      infd_session_user_join_error_quark,
+      inf_user_join_error_quark(),
       INF_USER_JOIN_ERROR_ID_PROVIDED,
       "%s",
       inf_user_join_strerror(INF_USER_JOIN_ERROR_ID_PROVIDED)
@@ -309,7 +297,7 @@ infd_session_perform_user_join(InfdSession* session,
   {
     g_set_error(
       error,
-      infd_session_user_join_error_quark,
+      inf_user_join_error_quark(),
       INF_USER_JOIN_ERROR_STATUS_PROVIDED,
       "%s",
       inf_user_join_strerror(INF_USER_JOIN_ERROR_STATUS_PROVIDED)
@@ -388,7 +376,7 @@ infd_session_perform_user_join(InfdSession* session,
 
   if(connection != NULL)
   {
-    xmlNewProp(xml, (const xmlChar*)"self", (const xmlChar*)"true");
+    xmlNewProp(xml, (const xmlChar*)"seq", (const xmlChar*)request_seq);
 
     inf_connection_manager_send(
       inf_session_get_connection_manager(INF_SESSION(session)),
@@ -567,11 +555,14 @@ infd_session_dispose(GObject* object)
 static void
 infd_session_process_xml_run_impl(InfSession* session,
                                   InfXmlConnection* connection,
-                                  const xmlNodePtr xml)
+                                  xmlNodePtr xml)
 {
   InfdSessionClass* sessiond_class;
   InfSessionSyncStatus status;
   InfdSessionMessage* message;
+  xmlNodePtr reply_xml;
+  xmlChar* seq_attr;
+  gchar code_buf[16];
   GError* error;
   gboolean result;
 
@@ -583,9 +574,10 @@ infd_session_process_xml_run_impl(InfSession* session,
     result = FALSE;
     g_set_error(
       &error,
-      infd_session_request_error_quark,
-      INFD_SESSION_REQUEST_ERROR_SYNCHRONIZING,
-      "Synchronization is still in progress"
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_SYNCHRONIZING,
+      "%s",
+      inf_request_strerror(INF_REQUEST_ERROR_SYNCHRONIZING)
     );
   }
   else
@@ -600,9 +592,9 @@ infd_session_process_xml_run_impl(InfSession* session,
       result = FALSE;
       g_set_error(
         &error,
-        infd_session_request_error_quark,
-        INFD_SESSION_REQUEST_ERROR_UNEXPECTED_MESSAGE,
-        "Unexpected message: '%s'",
+        inf_request_error_quark(),
+        INF_REQUEST_ERROR_UNEXPECTED_MESSAGE,
+        "Message '%s' not understood",
         (const gchar*)xml->name
       );
     }
@@ -614,7 +606,34 @@ infd_session_process_xml_run_impl(InfSession* session,
 
   if(result == FALSE && error != NULL)
   {
-    /* TODO: Send error to client? */
+    reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
+    sprintf(code_buf, "%u", error->code);
+
+    xmlNewProp(
+      reply_xml,
+      (const xmlChar*)"code",
+      (const xmlChar*)code_buf
+    );
+
+    xmlNewProp(
+      reply_xml,
+      (const xmlChar*)"domain",
+      (const xmlChar*)g_quark_to_string(error->domain)
+    );
+
+    seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+    if(seq_attr != NULL)
+    {
+      xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+      xmlFree(seq_attr);
+    }
+
+    inf_connection_manager_send(
+      inf_session_get_connection_manager(INF_SESSION(session)),
+      connection,
+      INF_NET_OBJECT(session),
+      reply_xml
+    );
 
     g_warning("Received bad XML request: %s\n", error->message);
     g_error_free(error);
@@ -655,7 +674,7 @@ infd_session_close_impl(InfSession* session)
       inf_connection_manager_send(
         inf_session_get_connection_manager(session),
         subscription->connection,
-	INF_NET_OBJECT(session),
+        INF_NET_OBJECT(session),
         xml
       );
     }
@@ -761,16 +780,14 @@ infd_session_synchronization_failed_impl(InfSession* session,
 static gboolean
 infd_session_handle_user_join(InfdSession* session,
                               InfXmlConnection* connection,
-                              const xmlNodePtr xml,
+                              xmlNodePtr xml,
                               GError** error)
 {
   InfSessionClass* session_class;
   GArray* array;
   InfUser* user;
-  xmlNodePtr reply_xml;
-  gchar code_buf[16];
+  xmlChar* seq_attr;
   guint i;
-  GError* local_error;
 
   session_class = INF_SESSION_CLASS(session);
 
@@ -780,49 +797,24 @@ infd_session_handle_user_join(InfdSession* session,
     xml
   );
 
-  /* Use a local error variable here because we want to handle any
-   * errors (with a user-join-failed reply) instead of propagating them. */
-  local_error = NULL;
-
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
   user = infd_session_perform_user_join(
     session,
     connection,
+    (const gchar*)seq_attr,
     array,
-    &local_error
+    error
   );
+
+  xmlFree(seq_attr);
 
   for(i = 0; i < array->len; ++ i)
     g_value_unset(&g_array_index(array, GParameter, i).value);
 
   g_array_free(array, TRUE);
 
-  /* If error is not set but user is NULL, the error was handled by
-   * infd_session_handle_user_join. */
-  if(user == NULL && local_error != NULL)
-  {
-    sprintf(code_buf, "%u", (unsigned int)local_error->code);
-
-    reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-join-failed");
-    xmlNewProp(reply_xml, (const xmlChar*)"code", (const xmlChar*)code_buf);
-
-    xmlNewProp(
-      reply_xml,
-      (const xmlChar*)"domain",
-      (const xmlChar*)g_quark_to_string(local_error->domain)
-    );
-
-    inf_connection_manager_send(
-      inf_session_get_connection_manager(INF_SESSION(session)),
-      connection,
-      INF_NET_OBJECT(session),
-      reply_xml
-    );
-
-    g_error_free(local_error);
-
-    /* Request failed, but we handled the error. */
+  if(user == NULL)
     return FALSE;
-  }
 
   return TRUE;
 }
@@ -830,12 +822,13 @@ infd_session_handle_user_join(InfdSession* session,
 static gboolean
 infd_session_handle_user_leave(InfdSession* session,
                                InfXmlConnection* connection,
-                               const xmlNodePtr xml,
+                               xmlNodePtr xml,
                                GError** error)
 {
   InfdSessionSubscription* subscription;
   InfUser* user;
   xmlChar* id_attr;
+  xmlChar* seq_attr;
   guint id;
 
   xmlNodePtr reply_xml;
@@ -853,7 +846,7 @@ infd_session_handle_user_leave(InfdSession* session,
   {
     g_set_error(
       error,
-      infd_session_user_leave_error_quark,
+      inf_user_leave_error_quark(),
       INF_USER_LEAVE_ERROR_ID_NOT_PRESENT,
       "%s",
       inf_user_leave_strerror(INF_USER_LEAVE_ERROR_ID_NOT_PRESENT)
@@ -866,11 +859,24 @@ infd_session_handle_user_leave(InfdSession* session,
   xmlFree(id_attr);
 
   user = inf_session_lookup_user_by_id(INF_SESSION(session), id);
+  if(user == NULL)
+  {
+    g_set_error(
+      error,
+      inf_user_leave_error_quark(),
+      INF_USER_LEAVE_ERROR_NO_SUCH_USER,
+      "%s",
+      inf_user_leave_strerror(INF_USER_LEAVE_ERROR_NO_SUCH_USER)
+    );
+
+    return FALSE;
+  }
+
   if(g_slist_find(subscription->users, user) == NULL)
   {
     g_set_error(
       error,
-      infd_session_user_leave_error_quark,
+      inf_user_leave_error_quark(),
       INF_USER_LEAVE_ERROR_NOT_JOINED,
       "%s",
       inf_user_leave_strerror(INF_USER_LEAVE_ERROR_NOT_JOINED)
@@ -883,14 +889,17 @@ infd_session_handle_user_leave(InfdSession* session,
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-leave");
   xmlNewProp(reply_xml, (const xmlChar*)"id", (const xmlChar*)id_buf);
 
-  xmlNewProp(
-    reply_xml,
-    (const xmlChar*)"status",
-    (const xmlChar*)"unavailable"
-  );
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  if(seq_attr != NULL)
+  {
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+    xmlFree(seq_attr);
+  }
 
   infd_session_send_to_subscriptions(session, NULL, reply_xml);
   subscription->users = g_slist_remove(subscription->users, user);
+
+  g_object_set(G_OBJECT(user), "status", INF_USER_UNAVAILABLE, NULL);
 
   return TRUE;
 }
@@ -944,18 +953,6 @@ infd_session_class_init(gpointer g_class,
     infd_session_synchronization_complete_impl;
   session_class->synchronization_failed =
     infd_session_synchronization_failed_impl;
-
-  infd_session_request_error_quark = g_quark_from_static_string(
-    "INFD_REQUEST_ERROR"
-  );
-
-  infd_session_user_join_error_quark = g_quark_from_static_string(
-    "INF_USER_JOIN_ERROR"
-  );
-
-  infd_session_user_leave_error_quark = g_quark_from_static_string(
-    "INF_USER_LEAVE_ERROR"
-  );
 
   g_object_class_install_property(
     object_class,
@@ -1091,8 +1088,8 @@ infd_session_class_register_message(InfdSessionClass* session_class,
 InfUser*
 infd_session_add_user(InfdSession* session,
                       const GParameter* params,
-		      guint n_params,
-		      GError** error)
+                      guint n_params,
+                      GError** error)
 {
   InfUser* user;
   GArray* array;
@@ -1102,7 +1099,7 @@ infd_session_add_user(InfdSession* session,
   array = g_array_sized_new(FALSE, FALSE, sizeof(GParameter), n_params + 2);
   g_array_append_vals(array, params, n_params);
 
-  user = infd_session_perform_user_join(session, NULL, array, error);
+  user = infd_session_perform_user_join(session, NULL, NULL, array, error);
   g_array_free(array, TRUE);
 
   return user;
@@ -1176,19 +1173,19 @@ infd_session_send_to_subscriptions(InfdSession* session,
       if(first == NULL)
       {
         /* Remember first subscription to send the original xml to it
-	 * later. */
+         * later. */
         first = subscription;
       }
       else
       {
         /* Make a copy of xml because we need the original one to send
-	 * to first. */
+         * to first. */
         inf_connection_manager_send(
-	  inf_session_get_connection_manager(INF_SESSION(session)),
-	  subscription->connection,
-	  INF_NET_OBJECT(session),
-	  xmlCopyNode(xml, 1)
-	);
+          inf_session_get_connection_manager(INF_SESSION(session)),
+          subscription->connection,
+          INF_NET_OBJECT(session),
+          xmlCopyNode(xml, 1)
+        );
       }
     }
   }
