@@ -8,7 +8,9 @@ libinfinity_client_la_CPPFLAGS = \
 libinfinity_client_ladir = $(includedir)/libinfinity-1.0/infinity/client
 
 libinfinity_client_la_SOURCES = \
-	infc-request.c
+	infc-request.c \
+	infc-session.c
 
 libinfinity_client_la_HEADERS = \
-	infc-request.h
+	infc-request.h \
+	infc-session.h

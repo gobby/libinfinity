@@ -350,13 +350,7 @@ infd_session_perform_user_join(InfdSession* session,
       /* Don't set name and ID because they did not change, and we are not
        * even allowed to set ID because it is construct only. */
       if(strcmp(param->name, "name") != 0 && strcmp(param->name, "id") != 0)
-      {
-        g_object_set_property(
-          G_OBJECT(user),
-          g_array_index(user_props, GParameter, i).name,
-          &g_array_index(user_props, GParameter, i).value
-        );
-      }
+        g_object_set_property(G_OBJECT(user), param->name, &param->value);
     }
 
     g_object_thaw_notify(G_OBJECT(user));

@@ -51,6 +51,12 @@ struct _InfcRequest {
 GType
 infc_request_get_type(void) G_GNUC_CONST;
 
+guint
+infc_request_get_seq(InfcRequest* request);
+
+const gchar*
+infc_request_get_name(InfcRequest* request);
+
 void
 infc_request_failed(InfcRequest* request,
                     GError* error);

@@ -1,3 +1,17 @@
+2007-05-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added some more error codes. Those
+	are only used on the client side and so should probably moved into
+	somewhere in libinfinity/client.
+
+	* libinfinity/client/infc-request.h:
+	* libinfinity/client/infc-request.c: Added seq and name properties.
+
+	* libinfinity/client/infc-session.h:
+	* libinfinity/client/infc-session.c:
+	* libinfinity/client/Makefile.am: Implemented client-side session.
+
 2007-05-19  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:

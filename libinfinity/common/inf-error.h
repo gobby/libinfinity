@@ -31,6 +31,16 @@ typedef enum _InfRequestError {
   INF_REQUEST_ERROR_SYNCHRONIZING,
   /* Received an unexpected message */
   INF_REQUEST_ERROR_UNEXPECTED_MESSAGE,
+  /* TODO: Those below are client-specific. Should we move them
+   * to infc-session.h? */
+  /* Unknown error domain */
+  INF_REQUEST_ERROR_UNKNOWN_DOMAIN,
+  /* No domain in request-failed request */
+  INF_REQUEST_ERROR_DOMAIN_MISSING,
+  /* No code in request-failed request */
+  INF_REQUEST_ERROR_CODE_MISSING,
+  /* Server reply could not be processed */
+  INF_REQUEST_ERROR_REPLY_UNPROCESSED,
 
   INF_REQUEST_ERROR_FAILED
 } InfRequestError;
@@ -42,6 +52,10 @@ typedef enum _InfUserJoinError {
   INF_USER_JOIN_ERROR_NAME_MISSING,
   /* An id attribute was provided, but the server assigns it */
   INF_USER_JOIN_ERROR_ID_PROVIDED,
+  /* An id attribute was not provided (in case of a server reply) */
+  INF_USER_JOIN_ERROR_ID_NOT_PRESENT,
+  /* User is not present, in case of a user rejoin */
+  INF_USER_JOIN_ERROR_NO_SUCH_USER,
   /* A status attribute was provided, but the status is always
    * 'available' after a user-join. */
   INF_USER_JOIN_ERROR_STATUS_PROVIDED,

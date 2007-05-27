@@ -122,9 +122,11 @@ struct _InfSessionClass {
 
   void (*set_xml_user_props)(InfSession* session,
                              const GParameter* params,
-			     guint n_params,
+                             guint n_params,
                              xmlNodePtr xml);
 
+  /* TODO: Add a parameter what kind of xml user props should be fetched.
+   * From a UserJoin request, from synchronization, or from something else. */
   gboolean(*validate_user_props)(InfSession* session,
                                  const GParameter* params,
                                  guint n_params,

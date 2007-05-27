@@ -33,6 +33,14 @@ inf_request_strerror(InfRequestError code)
     return "Synchronization is still in progress";
   case INF_REQUEST_ERROR_UNEXPECTED_MESSAGE:
     return "Message was not understood";
+  case INF_REQUEST_ERROR_UNKNOWN_DOMAIN:
+    return "Received error from an unknown domain";
+  case INF_REQUEST_ERROR_DOMAIN_MISSING:
+    return "'domain' attribute missing in request";
+  case INF_REQUEST_ERROR_CODE_MISSING:
+    return "'code' attribute missing in request";
+  case INF_REQUEST_ERROR_REPLY_UNPROCESSED:
+    return "Failed to process server reply";
   case INF_REQUEST_ERROR_FAILED:
     return "An unknown request error occured";
   default:
@@ -57,6 +65,10 @@ inf_user_join_strerror(InfUserJoinError code)
     return "'name' attribute in request missing";
   case INF_USER_JOIN_ERROR_ID_PROVIDED:
     return "'id' attribute provided in request";
+  case INF_USER_JOIN_ERROR_ID_NOT_PRESENT:
+    return "'id' attribute in request missing";
+  case INF_USER_JOIN_ERROR_NO_SUCH_USER:
+    return "There is no user with the given ID";
   case INF_USER_JOIN_ERROR_STATUS_PROVIDED:
     return "'status' attribute provided in request";
   case INF_USER_JOIN_ERROR_FAILED:

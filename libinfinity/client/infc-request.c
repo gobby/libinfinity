@@ -21,9 +21,16 @@
 
 typedef struct _InfcRequestPrivate InfcRequestPrivate;
 struct _InfcRequestPrivate {
+  guint seq;
+  gchar* name;
 };
 
-/* TODO: Add properties for seq and possibly request name */
+enum {
+  PROP_0,
+
+  PROP_SEQ,
+  PROP_NAME
+};
 
 enum {
   FAILED,
@@ -46,6 +53,77 @@ infc_request_init(GTypeInstance* instance,
 
   request = INFC_REQUEST(instance);
   priv = INFC_REQUEST_PRIVATE(request);
+
+  priv->seq = 0;
+  priv->name = NULL;
+}
+
+static void
+infc_request_finalize(GObject* object)
+{
+  InfcRequest* request;
+  InfcRequestPrivate* priv;
+
+  request = INFC_REQUEST(object);
+  priv = INFC_REQUEST_PRIVATE(request);
+
+  g_free(priv->name);
+
+  if(parent_class->finalize != NULL)
+    parent_class->finalize(object);
+}
+
+static void
+infc_request_set_property(GObject* object,
+                          guint prop_id,
+                          const GValue* value,
+                          GParamSpec* pspec)
+{
+  InfcRequest* request;
+  InfcRequestPrivate* priv;
+
+  request = INFC_REQUEST(object);
+  priv = INFC_REQUEST_PRIVATE(request);
+
+  switch(prop_id)
+  {
+  case PROP_SEQ:
+    priv->seq = g_value_get_uint(value);
+    break;
+  case PROP_NAME:
+    g_free(priv->name);
+    priv->name = g_value_dup_string(value);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infc_request_get_property(GObject* object,
+                          guint prop_id,
+                          GValue* value,
+                          GParamSpec* pspec)
+{
+  InfcRequest* request;
+  InfcRequestPrivate* priv;
+
+  request = INFC_REQUEST(object);
+  priv = INFC_REQUEST_PRIVATE(request);
+
+  switch(prop_id)
+  {
+  case PROP_SEQ:
+    g_value_set_uint(value, priv->seq);
+    break;
+  case PROP_NAME:
+    g_value_set_string(value, priv->name);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
 }
 
 static void
@@ -57,6 +135,36 @@ infc_request_class_init(gpointer g_class,
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfcRequestPrivate));
+
+  object_class->finalize = infc_request_finalize;
+  object_class->set_property = infc_request_set_property;
+  object_class->get_property = infc_request_get_property;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SEQ,
+    g_param_spec_uint(
+      "seq",
+      "Sequence identifier",
+      "Identifier for this request",
+      0,
+      G_MAXUINT,
+      0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_NAME,
+    g_param_spec_string(
+      "name",
+      "Request name",
+      "Name of the request",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   request_signals[FAILED] = g_signal_new(
     "failed",
@@ -112,6 +220,32 @@ infc_request_get_type(void)
   }
 
   return request_type;
+}
+
+/** infc_request_get_seq:
+ *
+ * @request: A #InfcRequest.
+ *
+ * Returns the sequence identifier for this request.
+ **/
+guint
+infc_request_get_seq(InfcRequest* request)
+{
+  g_return_val_if_fail(INFC_IS_REQUEST(request), 0);
+  return INFC_REQUEST_PRIVATE(request)->seq;
+}
+
+/** infc_request_get_name:
+ *
+ * @request: A #InfcRequest.
+ *
+ * Returns the name of the request.
+ **/
+const gchar*
+infc_request_get_name(InfcRequest* request)
+{
+  g_return_val_if_fail(INFC_IS_REQUEST(request), NULL);
+  return INFC_REQUEST_PRIVATE(request)->name;
 }
 
 /** infc_request_failed:
