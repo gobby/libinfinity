@@ -1051,6 +1051,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 
   for(child = node->shared.subdir.child; child != NULL; child = child->next)
   {
+    /* TODO: keep seq */
     reply_xml = infd_directory_node_register_to_xml(child);
 
     inf_connection_manager_send(
@@ -1150,6 +1151,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     return FALSE;
   }
 
+  /* TODO: keep seq */
   if(plugin == NULL)
   {
     node = infd_directory_node_add_subdirectory(
@@ -1189,6 +1191,7 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
   node = infd_directory_get_node_from_xml(directory, xml, "id", error);
   if(node == NULL) return FALSE;
 
+  /* TODO: Keep seq */
   return infd_directory_node_remove(directory, node, error);
 }
 
@@ -1216,6 +1219,8 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   session = infd_directory_node_get_session(directory, node, error);
   if(session == NULL)
     return FALSE;
+
+  /* TODO: Reply that subscription was successful, tell identifier */
 
   identifier = g_strdup_printf("InfSession_%u", node->id);
   infd_session_subscribe_to(session, connection, identifier);
@@ -1548,6 +1553,8 @@ infd_directory_net_object_received(InfNetObject* net_object,
 
   if(error != NULL)
   {
+    /* TODO: Report back to client as request-failed, with correct seq
+     * applied. */
     g_warning("Received bad XML request: %s\n", error->message);
     g_error_free(error);
   }

@@ -439,8 +439,11 @@ infc_session_close_impl(InfSession* session)
 
     /* If synchronization is still in progress, the close implementation of
      * the base class will cancel the synchronization in which case we do
-     * not need to send an extra session-unsubscribe message. This is why
-     * we do not call infc_session_set_connection here. */
+     * not need to send an extra session-unsubscribe message. */
+    
+    /* However, in case we are in AWAITING_ACK status we send session
+     * unsubscribe because we cannot cancel the synchronization anymore but
+     * the server will go into RUNNING state before receiving this message. */
     if(status != INF_SESSION_SYNC_IN_PROGRESS)
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");

@@ -661,6 +661,12 @@ infd_session_close_impl(InfSession* session)
     /* If synchronization is still in progress, the close implementation of
      * the base class will cancel the synchronization in which case we do
      * not need to send an extra session-close message. */
+
+    /* We also send session-close when we are in AWAITING_ACK status. In
+     * AWAITING_ACK status we cannot cancel the synchronization anymore
+     * because everything has already been sent out. Therefore the client
+     * will eventuelly get in RUNNING state when he receives this message,
+     * and process it correctly. */
     if(status != INF_SESSION_SYNC_IN_PROGRESS)
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-close");

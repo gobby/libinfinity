@@ -30,7 +30,7 @@ struct _InfSessionSync {
   InfXmlConnection* conn;
   guint messages_total;
   guint messages_sent;
-  gboolean end_enqueued;
+  InfSessionSyncStatus status;
 };
 
 typedef struct _InfSessionPrivate InfSessionPrivate;
@@ -634,7 +634,6 @@ inf_session_process_xml_sync_impl(InfSession* session,
   GArray* user_props;
   InfUser* user;
   guint i;
-  GError* local_error;
 
   priv = INF_SESSION_PRIVATE(session);
   session_class = INF_SESSION_GET_CLASS(session);
@@ -666,36 +665,6 @@ inf_session_process_xml_sync_impl(InfSession* session,
 
     if(user == NULL) return FALSE;
     return TRUE;
-  }
-  else if(strcmp((const gchar*)xml->name, "sync-cancel") == 0)
-  {
-    /* Synchronization was cancelled by remote site, so release connection
-     * prior to closure, otherwise we would try to tell the remote site
-     * that the session was closed, but there is no point in this because
-     * it just was the other way around. */
-    local_error = NULL;
-
-    g_set_error(
-      &local_error,
-      inf_session_sync_error_quark,
-      INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
-      "%s",
-      inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_SENDER_CANCELLED)
-    );
-
-    g_signal_emit(
-      G_OBJECT(session),
-      session_signals[SYNCHRONIZATION_FAILED],
-      0,
-      connection,
-      local_error
-    );
-
-    inf_session_close(session);
-    g_error_free(local_error);
-
-    /* Return FALSE, but do not set error because we handled it */
-    return FALSE;
   }
   else
   {
@@ -848,27 +817,6 @@ inf_session_validate_user_props_impl(InfSession* session,
   return TRUE;
 }
 
-#if 0
-static void
-inf_session_user_to_xml_impl(InfSession* session,
-                             InfUser* user,
-                             xmlNodePtr xml)
-{
-  gchar id[16];
-  sprintf(id, "%u", inf_user_get_id(user));
-
-  xmlNewProp(xml, (const xmlChar*)"id", (const xmlChar*)id);
-
-  xmlNewProp(
-    xml,
-    (const xmlChar*)"name",
-    (const xmlChar*)inf_user_get_name(user)
-  );
-
-  /* TODO: user status */
-}
-#endif
-
 static void
 inf_session_close_impl(InfSession* session)
 {
@@ -922,7 +870,7 @@ inf_session_close_impl(InfSession* session)
        * connection manager, we cannot cancel it anymore, so the remote
        * site will receive the full sync nevertheless, so we do not need
        * to cancel anything. */
-      if(sync->end_enqueued == FALSE)
+      if(sync->status == INF_SESSION_SYNC_IN_PROGRESS)
       {
         inf_connection_manager_cancel_outer(
           priv->manager,
@@ -937,21 +885,17 @@ inf_session_close_impl(InfSession* session)
           INF_NET_OBJECT(session),
           xml
         );
+      }
 
-        /* We have to cancel the synchronization, so the synchronization
-         * actually failed. */
-        g_signal_emit(
-          G_OBJECT(session),
-          session_signals[SYNCHRONIZATION_FAILED],
-          0,
-          sync->conn,
-          error
-        );
-      }
-      else
-      {
-        inf_session_release_connection(session, sync->conn);
-      }
+      /* We have to cancel the synchronization, so the synchronization
+       * actually failed. */
+      g_signal_emit(
+        G_OBJECT(session),
+        session_signals[SYNCHRONIZATION_FAILED],
+        0,
+        sync->conn,
+        error
+      );
     }
 
     break;
@@ -980,13 +924,47 @@ inf_session_handle_received_sync_message(InfSession* session,
   InfSessionPrivate* priv;
   xmlChar* num_messages;
   gboolean result;
+  xmlNodePtr xml_reply;
+  GError* local_error;
 
   session_class = INF_SESSION_GET_CLASS(session);
   priv = INF_SESSION_PRIVATE(session);
 
   g_return_val_if_fail(session_class->process_xml_sync != NULL, FALSE);
 
-  if(strcmp((const gchar*)node->name, "sync-begin") == 0)
+  if(strcmp((const gchar*)node->name, "sync-cancel") == 0)
+  {
+    local_error = NULL;
+
+    g_set_error(
+      &local_error,
+      inf_session_sync_error_quark,
+      INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
+      "%s",
+      inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_SENDER_CANCELLED)
+    );
+
+    g_signal_emit(
+      G_OBJECT(session),
+      session_signals[SYNCHRONIZATION_FAILED],
+      0,
+      connection,
+      local_error
+    );
+
+    /* Synchronization was cancelled by remote site, so release connection
+     * prior to closure, otherwise we would try to tell the remote site
+     * that the session was closed, but there is no point in this because
+     * it just was the other way around. */
+    inf_session_close(session);
+    g_error_free(local_error);
+
+    /* Return FALSE, but do not set error because we handled it. Otherwise,
+     * inf_session_net_object_received() would try to send a sync-error
+     * to the synchronizer which is pointless as mentioned above. */
+    return FALSE;
+  }
+  else if(strcmp((const gchar*)node->name, "sync-begin") == 0)
   {
     if(priv->shared.sync.messages_total > 0)
     {
@@ -1065,6 +1043,17 @@ inf_session_handle_received_sync_message(InfSession* session,
     }
     else
     {
+      /* Server is waiting for ACK so that he knows the synchronization cannot
+       * fail anymore. */
+      xml_reply = xmlNewNode(NULL, (const xmlChar*)"sync-ack");
+
+      inf_connection_manager_send(
+        priv->manager,
+        connection,
+        INF_NET_OBJECT(session),
+        xml_reply
+      );
+
       /* Synchronization complete */
       g_signal_emit(
         G_OBJECT(session),
@@ -1137,21 +1126,27 @@ inf_session_net_object_sent(InfNetObject* net_object,
                             InfXmlConnection* connection,
                             const xmlNodePtr node)
 {
+  InfSession* session;
+  InfSessionPrivate* priv;
   InfSessionSync* sync;
 
-  sync = inf_session_find_sync_by_connection(
-    INF_SESSION(net_object),
-    connection
-  );
+  session = INF_SESSION(net_object);
+  priv = INF_SESSION_PRIVATE(session);
 
-  /* This can be any message from some session that is not related to
-   * the synchronization, so do not assert here. */
-  if(sync != NULL)
+  if(priv->status == INF_SESSION_RUNNING)
   {
-    ++ sync->messages_sent;
+    sync = inf_session_find_sync_by_connection(
+      INF_SESSION(net_object),
+      connection
+    );
 
-    if(sync->messages_sent < sync->messages_total)
+    /* This can be any message from some session that is not related to
+     * the synchronization, so do not assert here. */
+    if(sync != NULL)
     {
+      g_assert(sync->messages_sent < sync->messages_total);
+        ++ sync->messages_sent;
+
       g_signal_emit(
         G_OBJECT(net_object),
         session_signals[SYNCHRONIZATION_PROGRESS],
@@ -1159,21 +1154,10 @@ inf_session_net_object_sent(InfNetObject* net_object,
         connection,
         (gdouble)sync->messages_sent / (gdouble)sync->messages_total
       );
-    }
-    else
-    {
-      /* TODO: Actually, we are not sure how far the client is with
-       * processing the sync. He could still detect an error in which case
-       * the whole synchronization process actually failed. Perhaps he should
-       * ACK the end-of-sync before emitting synchronization-complete here. */
-      g_signal_emit(
-        G_OBJECT(net_object),
-        session_signals[SYNCHRONIZATION_COMPLETE],
-        0,
-        connection
-      );
 
-      /* The default signal handler removes this sync from the list */
+      /* We need to wait for the sync-ack before synchronization is
+       * completed so that the synchronizee still has a chance to tell
+       * us if something goes wrong. */
     }
   }
 }
@@ -1198,9 +1182,9 @@ inf_session_net_object_enqueued(InfNetObject* net_object,
      * otherwise most probably someone else sent a sync-end message via
      * this net_object. */
     g_assert(sync != NULL);
-    g_assert(sync->end_enqueued == FALSE);
+    g_assert(sync->status == INF_SESSION_SYNC_IN_PROGRESS);
 
-    sync->end_enqueued = TRUE;
+    sync->status = INF_SESSION_SYNC_AWAITING_ACK;
   }
 }
 
@@ -1212,6 +1196,7 @@ inf_session_net_object_received(InfNetObject* net_object,
   InfSessionClass* session_class;
   InfSession* session;
   InfSessionPrivate* priv;
+  InfSessionSync* sync;
   gboolean result;
   GQuark domain;
   InfSessionSyncError code;
@@ -1254,56 +1239,72 @@ inf_session_net_object_received(InfNetObject* net_object,
 
     break;
   case INF_SESSION_RUNNING:
-    if(strcmp((const gchar*)node->name, "sync-error") == 0)
+    sync = inf_session_find_sync_by_connection(session, connection);
+    if(sync != NULL)
     {
-      /* There was an error during synchronization, cancel remaining
-       * messages. Note that even if the end was already enqueued, this
-       * should do no further harm. */
-      inf_connection_manager_cancel_outer(
-        priv->manager,
-        connection,
-        INF_NET_OBJECT(session)
-      );
-
-      domain_attr = xmlGetProp(node, (const xmlChar*)"domain");
-      code_attr = xmlGetProp(node, (const xmlChar*)"code");
-
-      if(domain_attr != NULL && code_attr != NULL)
+      if(strcmp((const gchar*)node->name, "sync-error") == 0)
       {
-        domain = g_quark_from_string((const gchar*)domain_attr);
-        code = strtoul((const gchar*)code_attr, NULL, 0);
-
-        g_set_error(
-          &error,
-          domain,
-          code,
-          "%s",
-          inf_session_get_sync_error_message(domain, code)
+        /* There was an error during synchronization, cancel remaining
+         * messages. */
+        inf_connection_manager_cancel_outer(
+          priv->manager,
+          connection,
+          INF_NET_OBJECT(session)
         );
+
+        domain_attr = xmlGetProp(node, (const xmlChar*)"domain");
+        code_attr = xmlGetProp(node, (const xmlChar*)"code");
+
+        if(domain_attr != NULL && code_attr != NULL)
+        {
+          domain = g_quark_from_string((const gchar*)domain_attr);
+          code = strtoul((const gchar*)code_attr, NULL, 0);
+
+          g_set_error(
+            &error,
+            domain,
+            code,
+            "%s",
+            inf_session_get_sync_error_message(domain, code)
+          );
+        }
+        else
+        {
+          g_set_error(
+            &error,
+            inf_session_sync_error_quark,
+            INF_SESSION_SYNC_ERROR_FAILED,
+            "%s",
+            inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_FAILED)
+          );
+        }
+
+        if(domain_attr != NULL) xmlFree(domain_attr);
+        if(code_attr != NULL) xmlFree(code_attr);
+
+        g_signal_emit(
+          G_OBJECT(session),
+          session_signals[SYNCHRONIZATION_FAILED],
+          0,
+          connection,
+          error
+        );
+
+        g_error_free(error);
       }
-      else
+      else if(strcmp((const gchar*)node->name, "sync-ack") == 0)
       {
-        g_set_error(
-          &error,
-          inf_session_sync_error_quark,
-          INF_SESSION_SYNC_ERROR_FAILED,
-          "%s",
-          inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_FAILED)
-        );
+        if(sync->status == INF_SESSION_SYNC_AWAITING_ACK)
+        {
+          /* Got ack we were waiting for */
+          g_signal_emit(
+            G_OBJECT(net_object),
+            session_signals[SYNCHRONIZATION_COMPLETE],
+            0,
+            connection
+          );
+        }
       }
-
-      if(domain_attr != NULL) xmlFree(domain_attr);
-      if(code_attr != NULL) xmlFree(code_attr);
-
-      g_signal_emit(
-        G_OBJECT(session),
-        session_signals[SYNCHRONIZATION_FAILED],
-        0,
-        connection,
-        error
-      );
-
-      g_error_free(error);
     }
     else
     {
@@ -2067,7 +2068,7 @@ inf_session_synchronize_to(InfSession* session,
   sync->conn = connection;
   sync->messages_sent = 0;
   sync->messages_total = 2; /* including sync-begin and sync-end */
-  sync->end_enqueued = FALSE;
+  sync->status = INF_SESSION_SYNC_IN_PROGRESS;
 
   g_object_ref(G_OBJECT(connection));
   priv->shared.run.syncs = g_slist_prepend(priv->shared.run.syncs, sync);
@@ -2177,8 +2178,7 @@ inf_session_get_synchronization_status(InfSession* session,
     sync = inf_session_find_sync_by_connection(session, connection);
     if(sync == NULL) return INF_SESSION_SYNC_NONE;
 
-    if(sync->end_enqueued == TRUE) return INF_SESSION_SYNC_END_ENQUEUED;
-    return INF_SESSION_SYNC_IN_PROGRESS;
+    return sync->status;
   case INF_SESSION_CLOSED:
     return INF_SESSION_SYNC_NONE;
   default:

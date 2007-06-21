@@ -54,7 +54,10 @@ typedef enum _InfSessionSyncStatus {
   /* The synchronization is in progress */
   INF_SESSION_SYNC_IN_PROGRESS,
   /* The synchronization is in progress and cannot be cancelled anymore. */
-  INF_SESSION_SYNC_END_ENQUEUED
+  /*INF_SESSION_SYNC_END_ENQUEUED*/
+  /* The synchronization is finished, we are only waiting for the
+   * acknowledgment from the remote site. */
+  INF_SESSION_SYNC_AWAITING_ACK
 } InfSessionSyncStatus;
 
 typedef enum _InfSessionSyncError {
@@ -76,7 +79,7 @@ typedef enum _InfSessionSyncError {
   INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
   /* Got begin-of-sync message, but sync is already in progress */
   INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC,
-  /* The begin-of-sinc message does not contain the number of messages
+  /* The begin-of-sync message does not contain the number of messages
    * to expect */
   INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING,
   /* Got end-of-sync, but sync is still in progress */
