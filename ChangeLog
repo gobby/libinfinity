@@ -1,5 +1,14 @@
 2007-06-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Moved directory error codes to
+	common so they can be checked on client side.
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added correct request handling.
+
+2007-06-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-session.h:
 	* libinfinity/common/inf-session.c: Make sure that the synchronization
 	terminates correctly when both sender and receiver sessions are closed

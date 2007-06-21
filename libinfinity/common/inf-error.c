@@ -62,11 +62,11 @@ inf_user_join_strerror(InfUserJoinError code)
   case INF_USER_JOIN_ERROR_NAME_IN_USE:
     return "Name is already in use";
   case INF_USER_JOIN_ERROR_NAME_MISSING:
-    return "'name' attribute in request missing";
+    return "'name' attribute missing in request";
   case INF_USER_JOIN_ERROR_ID_PROVIDED:
     return "'id' attribute provided in request";
   case INF_USER_JOIN_ERROR_ID_NOT_PRESENT:
-    return "'id' attribute in request missing";
+    return "'id' attribute missing in request";
   case INF_USER_JOIN_ERROR_NO_SUCH_USER:
     return "There is no user with the given ID";
   case INF_USER_JOIN_ERROR_STATUS_PROVIDED:
@@ -90,7 +90,7 @@ inf_user_leave_strerror(InfUserLeaveError code)
   switch(code)
   {
   case INF_USER_LEAVE_ERROR_ID_NOT_PRESENT:
-    return "'id' attribute in request missing";
+    return "'id' attribute missing in request";
   case INF_USER_LEAVE_ERROR_NO_SUCH_USER:
     return "There is no user with the given ID";
   case INF_USER_LEAVE_ERROR_NOT_JOINED:
@@ -101,3 +101,40 @@ inf_user_leave_strerror(InfUserLeaveError code)
     return "An error with unknown error code occured";
   }
 }
+
+GQuark
+inf_directory_error_quark(void)
+{
+  return g_quark_from_static_string("INF_DIRECTORY_ERROR");
+}
+
+static const gchar*
+inf_directory_strerror(InfdDirectoryError code)
+{
+  switch(code)
+  {
+  case INF_DIRECTORY_ERROR_NODE_EXISTS:
+    return "A node with this name exists already";
+  case INF_DIRECTORY_ERROR_NODE_MISSING:
+    return "'node' attribute missing";
+  case INF_DIRECTORY_ERROR_NO_SUCH_NODE:
+    return "Node does not exist";
+  case INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY:
+    return "Node is not a subdirectory";
+  case INF_DIRECTORY_ERROR_NOT_A_NOTE:
+    return "Node is not a note";
+  case INF_DIRECTORY_ERROR_ALREADY_EXPLORED:
+    return "Subdirectory has already been explored";
+  case INF_DIRECTORY_ERROR_TYPE_MISSING:
+    return "'type' attribute missing in request";
+  case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:
+    return "Note type is not supported";
+  case INF_DIRECTORY_ERROR_UNEXPECTED_NODE:
+    return "Unexpected XML node";
+  case INF_DIRECTORY_ERROR_FAILED:
+    return "An unknown directory error has occured";
+  default:
+    return "An error with unknown code has occured";
+  }
+}
+

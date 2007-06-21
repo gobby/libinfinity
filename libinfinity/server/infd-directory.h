@@ -40,34 +40,6 @@ G_BEGIN_DECLS
 typedef struct _InfdDirectory InfdDirectory;
 typedef struct _InfdDirectoryClass InfdDirectoryClass;
 
-/* TODO: The error messages use node for both an XML node and a node
- * in the directory tree. This might be misleading. */
-
-typedef enum _InfdDirectoryError {
-  /* A node with this name exists already */
-  INFD_DIRECTORY_ERROR_NODE_EXISTS,
-  /* Request does not contain a node attribute */
-  INFD_DIRECTORY_ERROR_NODE_MISSING,
-  /* The node referred to does not exist */
-  INFD_DIRECTORY_ERROR_NO_SUCH_NODE,
-  /* The node referred to is not a subdirectory */
-  INFD_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
-  /* The node referred to is not a note */
-  INFD_DIRECTORY_ERROR_NOT_A_NOTE,
-  /* The given subdirectory has already been explored */
-  INFD_DIRECTORY_ERROR_ALREADY_EXPLORED,
-  /* 'type' attribute is missing in XML request */
-  INFD_DIRECTORY_ERROR_TYPE_MISSING,
-  /* There is no plugin that covers the given type */
-  INFD_DIRECTORY_ERROR_TYPE_UNKNOWN,
-  /* 'name' attribute is missing in XML request */
-  INFD_DIRECTORY_ERROR_NAME_MISSING,
-  /* Got unexpected XML node */
-  INFD_DIRECTORY_ERROR_UNEXPECTED_NODE,
-
-  INFD_DIRECTORY_ERROR_FAILED
-} InfdDirectoryError;
-
 typedef struct _InfdDirectoryIter InfdDirectoryIter;
 struct _InfdDirectoryIter {
   guint node_id;

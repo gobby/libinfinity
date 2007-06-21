@@ -20,6 +20,7 @@
 #include <libinfinity/server/infd-session.h>
 
 #include <libinfinity/common/inf-net-object.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <string.h>
@@ -126,42 +127,6 @@ enum {
 
 static GObjectClass* parent_class;
 static guint directory_signals[LAST_SIGNAL];
-
-static GQuark infd_directory_error_quark;
-
-/*
- * Error handling.
- */
-static const gchar*
-infd_directory_strerror(InfdDirectoryError code)
-{
-  switch(code)
-  {
-  case INFD_DIRECTORY_ERROR_NODE_EXISTS:
-    return "A node with this name exists already";
-  case INFD_DIRECTORY_ERROR_NODE_MISSING:
-    return "Request is missing an attribute specifying the node to "
-           "operate on";
-  case INFD_DIRECTORY_ERROR_NO_SUCH_NODE:
-    return "Node does not exist";
-  case INFD_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY:
-    return "Node is not a subdirectory";
-  case INFD_DIRECTORY_ERROR_NOT_A_NOTE:
-    return "Node is not a note";
-  case INFD_DIRECTORY_ERROR_ALREADY_EXPLORED:
-    return "Subdirectory has already been explored";
-  case INFD_DIRECTORY_ERROR_TYPE_MISSING:
-    return "'type' attribute is missing";
-  case INFD_DIRECTORY_ERROR_TYPE_UNKNOWN:
-    return "Note type is not supported";
-  case INFD_DIRECTORY_ERROR_UNEXPECTED_NODE:
-    return "Unexpected XML node";
-  case INFD_DIRECTORY_ERROR_FAILED:
-    return "An unknown directory error has occured";
-  default:
-    return "An error with unknown code has occured";
-  }
-}
 
 /*
  * Path handling.
@@ -525,6 +490,7 @@ infd_directory_node_unregister_to_xml(InfdDirectoryNode* node)
 static void
 infd_directory_send(InfdDirectory* directory,
                     GSList* connections,
+		    InfXmlConnection* exclude,
                     xmlNodePtr xml)
 {
   InfdDirectoryPrivate* priv;
@@ -532,7 +498,8 @@ infd_directory_send(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(connections == NULL)
+  if(connections == NULL ||
+     (connections->data == exclude && connections->next == NULL))
   {
     xmlFreeNode(xml);
   }
@@ -540,7 +507,12 @@ infd_directory_send(InfdDirectory* directory,
   {
     for(item = connections; item != NULL; item = g_slist_next(item))
     {
-      if(item->next != NULL)
+      if(item->data == exclude) continue;
+
+      /* Do not copy this item if it is the last item to be sent because the
+       * connection manager takes ownership */
+      if(item->next != NULL &&
+	 (item->next->data != exclude || item->next->next != NULL))
       {
         inf_connection_manager_send(
           priv->connection_manager,
@@ -567,16 +539,23 @@ infd_directory_send(InfdDirectory* directory,
  * nodes we create (namely not for the root node). */
 static void
 infd_directory_node_register(InfdDirectory* directory,
-                             InfdDirectoryNode* node)
+                             InfdDirectoryNode* node,
+			     InfXmlConnection* seq_conn,
+			     const gchar* seq)
 {
+  InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
   xmlNodePtr xml;
+  xmlNodePtr seq_xml;
 
+#if 0
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(node != NULL);
   g_return_if_fail(node->parent != NULL);
   infd_directory_return_if_subdir_fail(node->parent);
+#endif
 
+  priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
 
@@ -587,6 +566,19 @@ infd_directory_node_register(InfdDirectory* directory,
     &iter
   );
 
+  if(seq_conn != NULL)
+  {
+    seq_xml = xmlCopyNode(xml, 1);
+    xmlNewProp(seq_xml, (const xmlChar*)"seq", (const xmlChar*)seq);
+
+    inf_connection_manager_send(
+      priv->connection_manager,
+      seq_conn,
+      INF_NET_OBJECT(directory),
+      seq_xml
+    );
+  }
+
   if(node->parent->shared.subdir.connections != NULL)
   {
     xml = infd_directory_node_register_to_xml(node);
@@ -594,6 +586,7 @@ infd_directory_node_register(InfdDirectory* directory,
     infd_directory_send(
       directory,
       node->parent->shared.subdir.connections,
+      seq_conn,
       xml
     );
   }
@@ -604,16 +597,23 @@ infd_directory_node_register(InfdDirectory* directory,
  * every subnode if a subdirectory is freed. */
 static void
 infd_directory_node_unregister(InfdDirectory* directory,
-                               InfdDirectoryNode* node)
+                               InfdDirectoryNode* node,
+			       InfXmlConnection* seq_conn,
+			       const gchar* seq)
 {
+  InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
   xmlNodePtr xml;
+  xmlNodePtr seq_xml;
 
+#if 0
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(node != NULL);
   g_return_if_fail(node->parent != NULL);
   infd_directory_return_if_subdir_fail(node->parent);
+#endif
 
+  priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
 
@@ -624,6 +624,19 @@ infd_directory_node_unregister(InfdDirectory* directory,
     &iter
   );
 
+  if(seq_conn != NULL)
+  {
+    seq_xml = xmlCopyNode(xml, 1);
+    xmlNewProp(seq_xml, (const xmlChar*)"seq", (const xmlChar*)seq);
+
+    inf_connection_manager_send(
+      priv->connection_manager,
+      seq_conn,
+      INF_NET_OBJECT(directory),
+      seq_xml
+    );
+  }
+
   if(node->parent->shared.subdir.connections != NULL)
   {
     xml = infd_directory_node_unregister_to_xml(node);
@@ -631,6 +644,7 @@ infd_directory_node_unregister(InfdDirectory* directory,
     infd_directory_send(
       directory,
       node->parent->shared.subdir.connections,
+      seq_conn,
       xml
     );
   }
@@ -738,7 +752,7 @@ infd_directory_node_explore(InfdDirectory* directory,
        * interesting in root folder changes (because they opened the root
        * folder from the old storage). Also, local users might be interested
        * in the new node. */
-      infd_directory_node_register(directory, new_node);
+      infd_directory_node_register(directory, new_node, NULL, NULL);
     }
   }
 
@@ -752,6 +766,8 @@ static InfdDirectoryNode*
 infd_directory_node_add_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
                                      const gchar* name,
+				     InfXmlConnection* seq_conn,
+				     const gchar* seq,
                                      GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -770,10 +786,10 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_NODE_EXISTS,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_EXISTS,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_NODE_EXISTS)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NODE_EXISTS)
     );
 
     return NULL;
@@ -785,7 +801,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
     result = infd_storage_create_subdirectory(priv->storage, path, error);
 
     g_free(path);
-    if(result == FALSE) return FALSE;
+    if(result == FALSE) return NULL;
 
     node = infd_directory_node_new_subdirectory(
       directory,
@@ -793,7 +809,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
       g_strdup(name)
     );
 
-    infd_directory_node_register(directory, node);
+    infd_directory_node_register(directory, node, seq_conn, seq);
     return node;
   }
 }
@@ -803,6 +819,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
                              const gchar* name,
                              InfdNotePlugin* plugin,
+			     InfXmlConnection* seq_conn,
+			     const gchar* seq,
                              GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -820,10 +838,10 @@ infd_directory_node_add_note(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_NODE_EXISTS,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_EXISTS,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_NODE_EXISTS)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NODE_EXISTS)
     );
 
     return NULL;
@@ -845,7 +863,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
     g_assert(node->shared.note.session != NULL);
 
-    infd_directory_node_register(directory, node);
+    infd_directory_node_register(directory, node, seq_conn, seq);
     return node;
   }
 }
@@ -853,6 +871,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
 static gboolean
 infd_directory_node_remove(InfdDirectory* directory,
                            InfdDirectoryNode* node,
+			   InfXmlConnection* seq_conn,
+			   const gchar* seq,
                            GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -869,7 +889,7 @@ infd_directory_node_remove(InfdDirectory* directory,
   if(result == FALSE)
     return FALSE;
 
-  infd_directory_node_unregister(directory, node);
+  infd_directory_node_unregister(directory, node, seq_conn, seq);
   infd_directory_node_free(directory, node, FALSE);
   return TRUE;
 }
@@ -939,10 +959,10 @@ infd_directory_get_node_from_xml(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_NODE_MISSING,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_MISSING,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_NODE_MISSING)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NODE_MISSING)
     );
 
     return NULL;
@@ -956,10 +976,10 @@ infd_directory_get_node_from_xml(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_NO_SUCH_NODE,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_NODE,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_NO_SUCH_NODE)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NO_SUCH_NODE)
     );
 
     return NULL;
@@ -985,20 +1005,20 @@ infd_directory_get_node_from_xml_typed(InfdDirectory* directory,
     case INFD_STORAGE_NODE_SUBDIRECTORY:
       g_set_error(
         error,
-        infd_directory_error_quark,
-        INFD_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
         "%s",
-        infd_directory_strerror(INFD_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY)
+        inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY)
       );
 
       return NULL;
     case INFD_STORAGE_NODE_NOTE:
       g_set_error(
         error,
-        infd_directory_error_quark,
-        INFD_DIRECTORY_ERROR_NOT_A_NOTE,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NOT_A_NOTE,
         "%s",
-        infd_directory_strerror(INFD_DIRECTORY_ERROR_NOT_A_NOTE)
+        inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_A_NOTE)
       );
 
       return NULL;
@@ -1020,6 +1040,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfdDirectoryNode* child;
+  xmlChar* seq_attr;
   xmlNodePtr reply_xml;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -1040,19 +1061,32 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_ALREADY_EXPLORED,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_ALREADY_EXPLORED)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_ALREADY_EXPLORED)
     );
 
     return FALSE;
   }
 
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"explore-begin");
+  if(seq_attr != NULL)
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+
+  inf_connection_manager_send(
+    priv->connection_manager,
+    connection,
+    INF_NET_OBJECT(directory),
+    reply_xml
+  );
+
   for(child = node->shared.subdir.child; child != NULL; child = child->next)
   {
-    /* TODO: keep seq */
     reply_xml = infd_directory_node_register_to_xml(child);
+    if(seq_attr != NULL)
+      xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
     inf_connection_manager_send(
       priv->connection_manager,
@@ -1061,6 +1095,17 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
       reply_xml
     );
   }
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"explore-end");
+  if(seq_attr != NULL)
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+
+  inf_connection_manager_send(
+    priv->connection_manager,
+    connection,
+    INF_NET_OBJECT(directory),
+    reply_xml
+  );
 
   /* Remember that this connection explored that node so that it gets
    * notified when changes occur. */
@@ -1084,6 +1129,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   InfdNotePlugin* plugin;
   xmlChar* name;
   xmlChar* type;
+  xmlChar* seq_attr;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1103,10 +1149,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_TYPE_MISSING,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_TYPE_MISSING,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_TYPE_MISSING)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_TYPE_MISSING)
     );
 
     return FALSE;
@@ -1127,10 +1173,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     {
       g_set_error(
         error,
-        infd_directory_error_quark,
-        INFD_DIRECTORY_ERROR_TYPE_UNKNOWN,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
         "%s",
-        infd_directory_strerror(INFD_DIRECTORY_ERROR_TYPE_UNKNOWN)
+        inf_directory_strerror(INF_DIRECTORY_ERROR_TYPE_UNKNOWN)
       );
 
       return FALSE;
@@ -1142,22 +1188,25 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_NAME_MISSING,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NAME_MISSING,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_NAME_MISSING)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NAME_MISSING)
     );
 
     return FALSE;
   }
 
-  /* TODO: keep seq */
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+
   if(plugin == NULL)
   {
     node = infd_directory_node_add_subdirectory(
       directory,
       parent,
       (const gchar*)name,
+      (seq_attr != NULL) ? connection : NULL,
+      (const gchar*)seq_attr,
       error
     );
   }
@@ -1168,11 +1217,15 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       parent,
       (const gchar*)name,
       plugin,
+      (seq_attr != NULL) ? connection : NULL,
+      (const gchar*)seq_attr,
       error
     );
   }
 
   xmlFree(name);
+  if(seq_attr != NULL)
+    xmlFree(seq_attr);
 
   if(node == NULL)
     return FALSE;
@@ -1187,12 +1240,24 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
                                   GError** error)
 {
   InfdDirectoryNode* node;
+  xmlChar* seq_attr;
+  gboolean result;
 
   node = infd_directory_get_node_from_xml(directory, xml, "id", error);
   if(node == NULL) return FALSE;
 
-  /* TODO: Keep seq */
-  return infd_directory_node_remove(directory, node, error);
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+
+  result = infd_directory_node_remove(
+    directory,
+    node,
+    (seq_attr != NULL) ? connection : NULL,
+    (const gchar*)seq_attr,
+    error
+  );
+
+  if(seq_attr != NULL) xmlFree(seq_attr);
+  return result;
 }
 
 static gboolean
@@ -1201,9 +1266,14 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
                                         const xmlNodePtr xml,
                                         GError** error)
 {
+  InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfdSession* session;
   gchar* identifier;
+  xmlChar* seq_attr;
+  xmlNodePtr reply_xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
   node = infd_directory_get_node_from_xml_typed(
     directory,
@@ -1220,9 +1290,31 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   if(session == NULL)
     return FALSE;
 
-  /* TODO: Reply that subscription was successful, tell identifier */
-
+  /* Reply that subscription was successful (so far, synchronization may
+   * still fail) and tail identifier. */
   identifier = g_strdup_printf("InfSession_%u", node->id);
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"session-subscribe");
+
+  xmlNewProp(
+    reply_xml,
+    (const xmlChar*)"identifier",
+    (const xmlChar*)identifier
+  );
+
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  if(seq_attr != NULL)
+  {
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+    xmlFree(seq_attr);
+  }
+
+  inf_connection_manager_send(
+    priv->connection_manager,
+    connection,
+    INF_NET_OBJECT(directory),
+    reply_xml
+  );
+
   infd_session_subscribe_to(session, connection, identifier);
   return TRUE;
 }
@@ -1302,7 +1394,7 @@ infd_directory_set_storage(InfdDirectory* directory,
        * modifications to the sessions will not be stored. */
       while((child = priv->root->shared.subdir.child) != NULL)
       {
-        infd_directory_node_unregister(directory, child);
+        infd_directory_node_unregister(directory, child, NULL, NULL);
         infd_directory_node_free(directory, child, TRUE);
       }
     }
@@ -1501,7 +1593,15 @@ infd_directory_net_object_received(InfNetObject* net_object,
                                    InfXmlConnection* connection,
                                    const xmlNodePtr node)
 {
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
   GError* error;
+  xmlNodePtr reply_xml;
+  xmlChar* seq_attr;
+  gchar code_str[16];
+
+  directory = INFD_DIRECTORY(net_object);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
   error = NULL;
 
   if(strcmp((const gchar*)node->name, "explore-node") == 0)
@@ -1544,18 +1644,42 @@ infd_directory_net_object_received(InfNetObject* net_object,
   {
     g_set_error(
       &error,
-      infd_directory_error_quark,
-      INFD_DIRECTORY_ERROR_UNEXPECTED_NODE,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
       "%s",
-      infd_directory_strerror(INFD_DIRECTORY_ERROR_UNEXPECTED_NODE)
+      inf_directory_strerror(INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE)
     );
   }
 
   if(error != NULL)
   {
-    /* TODO: Report back to client as request-failed, with correct seq
-     * applied. */
-    g_warning("Received bad XML request: %s\n", error->message);
+    sprintf(code_str, "%u", error->code);
+
+    /* An error happened, so tell the client that the request failed and
+     * what has gone wrong. */
+    reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
+    xmlNewProp(reply_xml, (const xmlChar*)"code", (const xmlChar*)code_str);
+
+    xmlNewProp(
+      reply_xml,
+      (const xmlChar*)"domain",
+      (const xmlChar*)g_quark_to_string(error->domain)
+    );
+
+    seq_attr = xmlGetProp(node, (const xmlChar*)"seq");
+    if(seq_attr != NULL)
+    {
+      xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+      xmlFree(seq_attr);
+    }
+
+    inf_connection_manager_send(
+      priv->connection_manager,
+      connection,
+      INF_NET_OBJECT(directory),
+      reply_xml
+    );
+
     g_error_free(error);
   }
 }
@@ -1582,10 +1706,6 @@ infd_directory_class_init(gpointer g_class,
 
   directory_class->node_added = NULL;
   directory_class->node_removed = NULL;
-
-  infd_directory_error_quark = g_quark_from_static_string(
-    "INFD_DIRECTORY_ERROR"
-  );
 
   g_object_class_install_property(
     object_class,
@@ -2107,6 +2227,8 @@ infd_directory_add_subdirectory(InfdDirectory* directory,
     directory,
     parent->node,
     name,
+    NULL,
+    NULL,
     error
   );
 
@@ -2165,6 +2287,8 @@ infd_directory_add_note(InfdDirectory* directory,
     parent->node,
     name,
     plugin,
+    NULL,
+    NULL,
     error
   );
 
@@ -2201,7 +2325,7 @@ infd_directory_remove_node(InfdDirectory* directory,
   g_return_val_if_fail(iter != NULL, FALSE);
   infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
-  return infd_directory_node_remove(directory, iter->node, error);
+  return infd_directory_node_remove(directory, iter->node, NULL, NULL, error);
 }
 
 /** infd_directory_iter_get_node_type:

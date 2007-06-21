@@ -74,6 +74,31 @@ typedef enum _InfUserLeaveError {
   INF_USER_LEAVE_ERROR_FAILED
 } InfUserLeaveError;
 
+typedef enum _InfDirectoryError {
+  /* A node with this name exists already */
+  INF_DIRECTORY_ERROR_NODE_EXISTS,
+  /* Request does not contain a node attribute */
+  INF_DIRECTORY_ERROR_NODE_MISSING,
+  /* The node referred to does not exist */
+  INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+  /* The node referred to is not a subdirectory */
+  INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
+  /* The node referred to is not a note */
+  INF_DIRECTORY_ERROR_NOT_A_NOTE,
+  /* The given subdirectory has already been explored */
+  INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
+  /* 'type' attribute is missing in XML request */
+  INF_DIRECTORY_ERROR_TYPE_MISSING,
+  /* There is no plugin that covers the given type */
+  INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
+  /* 'name' attribute is missing in XML request */
+  INF_DIRECTORY_ERROR_NAME_MISSING,
+  /* Got unexpected XML message */
+  INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
+
+  INF_DIRECTORY_ERROR_FAILED
+} InfDirectoryError;
+
 GQuark
 inf_request_error_quark(void);
 
@@ -91,6 +116,12 @@ inf_user_leave_error_quark(void);
 
 const gchar*
 inf_user_leave_strerror(InfUserLeaveError code);
+
+GQuark
+inf_directory_error_quark(void);
+
+const gchar*
+inf_directory_strerror(InfDirectoryError code);
 
 G_END_DECLS
 
