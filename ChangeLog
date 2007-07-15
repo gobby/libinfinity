@@ -1,3 +1,7 @@
+2007-07-15  Armin Burgmeier  <armin@arbur.net>
+
+	* artwork/infinote.svg: Added infinote icon by Benjamin Herr.
+
 2007-06-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:
