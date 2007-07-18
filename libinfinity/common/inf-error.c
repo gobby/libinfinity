@@ -41,6 +41,8 @@ inf_request_strerror(InfRequestError code)
     return "'code' attribute missing in request";
   case INF_REQUEST_ERROR_REPLY_UNPROCESSED:
     return "Failed to process server reply";
+  case INF_REQUEST_ERROR_INVALID_SEQ:
+    return "Server reply contains invalid sequence number";
   case INF_REQUEST_ERROR_FAILED:
     return "An unknown request error occured";
   default:
@@ -108,8 +110,8 @@ inf_directory_error_quark(void)
   return g_quark_from_static_string("INF_DIRECTORY_ERROR");
 }
 
-static const gchar*
-inf_directory_strerror(InfdDirectoryError code)
+const gchar*
+inf_directory_strerror(InfDirectoryError code)
 {
   switch(code)
   {
@@ -129,8 +131,12 @@ inf_directory_strerror(InfdDirectoryError code)
     return "'type' attribute missing in request";
   case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:
     return "Note type is not supported";
-  case INF_DIRECTORY_ERROR_UNEXPECTED_NODE:
-    return "Unexpected XML node";
+  case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
+    return "Server sent more explored nodes then announced";
+  case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:
+    return "Server sent not as much explored nodes as announced";
+  case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
+    return "Unexpected XML message";
   case INF_DIRECTORY_ERROR_FAILED:
     return "An unknown directory error has occured";
   default:

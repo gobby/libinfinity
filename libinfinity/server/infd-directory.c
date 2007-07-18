@@ -263,14 +263,6 @@ infd_directory_node_new_common(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
 
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-
-  if(parent != NULL)
-  {
-    infd_directory_return_val_if_subdir_fail(parent, NULL);
-    g_return_val_if_fail(parent->shared.subdir.explored == TRUE, NULL);
-  }
-
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   node = g_slice_new(InfdDirectoryNode);
@@ -280,7 +272,14 @@ infd_directory_node_new_common(InfdDirectory* directory,
   node->name = name;
 
   if(parent != NULL)
+  {
     infd_directory_node_link(node, parent);
+  }
+  else
+  {
+    node->prev = NULL;
+    node->next = NULL;
+  }
 
   g_hash_table_insert(priv->nodes, GUINT_TO_POINTER(node->id), node);
   return node;
@@ -377,6 +376,9 @@ infd_directory_node_free(InfdDirectory* directory,
 
       g_free(path);
     }
+
+    if(node->shared.note.session != NULL)
+      g_object_unref(G_OBJECT(node->shared.note.session));
 
     break;
   default:
@@ -1042,6 +1044,8 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   InfdDirectoryNode* child;
   xmlChar* seq_attr;
   xmlNodePtr reply_xml;
+  guint total;
+  gchar total_str[16];
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1070,8 +1074,14 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     return FALSE;
   }
 
+  total = 0;
+  for(child = node->shared.subdir.child; child != NULL; child = child->next)
+    ++ total;
+  sprintf(total_str, "%u", total);
+
   seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"explore-begin");
+  xmlNewProp(reply_xml, (const xmlChar*)"total", (const xmlChar*)total_str);
   if(seq_attr != NULL)
     xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
@@ -1655,6 +1665,10 @@ infd_directory_net_object_received(InfNetObject* net_object,
   {
     sprintf(code_str, "%u", error->code);
 
+    /* TODO: If error is not from the InfDirectoryError error domain, the
+     * client cannot reconstruct the error because he possibly does not know
+     * the error domain (it might even come from a storage plugin). */
+
     /* An error happened, so tell the client that the request failed and
      * what has gone wrong. */
     reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
@@ -1774,7 +1788,7 @@ infd_directory_iter_get_type(void)
   if(!directory_iter_type)
   {
     directory_iter_type = g_boxed_type_register_static(
-      "InfDirectoryIter",
+      "InfdDirectoryIter",
       (GBoxedCopyFunc)infd_directory_iter_copy,
       (GBoxedFreeFunc)infd_directory_iter_free
     );
@@ -1832,7 +1846,7 @@ infd_directory_get_type(void)
 
 /** infd_directory_iter_copy:
  *
- * @iter: A @InfdDirectoryIter.
+ * @iter: A #InfdDirectoryIter.
  *
  * Makes a dynamically-allocated copy of @iter. This should not be used by
  * applications because you can copy the structs by value.
@@ -1936,7 +1950,7 @@ infd_directory_get_connection_manager(InfdDirectory* directory)
  * of the plugin's type. Only one plugin of each type can be added to the
  * directory.
  *
- * Return Value: Whether the plugin was added successful.
+ * Return Value: Whether the plugin was added successfully.
  **/
 gboolean
 infd_directory_add_plugin(InfdDirectory* directory,

@@ -19,7 +19,7 @@
 #ifndef __INFC_SESSION_H__
 #define __INFC_SESSION_H__
 
-#include <libinfinity/client/infc-request.h>
+#include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/common/inf-session.h>
 
 #include <glib-object.h>
@@ -68,13 +68,13 @@ infc_session_set_connection(InfcSession* session,
                             InfXmlConnection* connection,
                             const gchar* identifier);
 
-InfcRequest*
+InfcUserRequest*
 infc_session_join_user(InfcSession* session,
                        const GParameter* params,
                        guint n_params,
                        GError** error);
 
-InfcRequest*
+InfcUserRequest*
 infc_session_leave_user(InfcSession* session,
                         InfUser* user,
                         GError** error);

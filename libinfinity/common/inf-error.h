@@ -41,6 +41,8 @@ typedef enum _InfRequestError {
   INF_REQUEST_ERROR_CODE_MISSING,
   /* Server reply could not be processed */
   INF_REQUEST_ERROR_REPLY_UNPROCESSED,
+  /* Server reply had invalid sequence number set */
+  INF_REQUEST_ERROR_INVALID_SEQ,
 
   INF_REQUEST_ERROR_FAILED
 } InfRequestError;
@@ -85,6 +87,7 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
   /* The node referred to is not a note */
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
+  /* TODO: Make an own error domain out of the explore errors */
   /* The given subdirectory has already been explored */
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
   /* 'type' attribute is missing in XML request */
@@ -93,6 +96,10 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
   /* 'name' attribute is missing in XML request */
   INF_DIRECTORY_ERROR_NAME_MISSING,
+  /* The server sends more explored children that previously announced */
+  INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
+  /* The server sent explore-end before having sent all children */
+  INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
   /* Got unexpected XML message */
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
 

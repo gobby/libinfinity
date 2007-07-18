@@ -17,6 +17,8 @@
  */
 
 #include <libinfinity/client/infc-session.h>
+#include <libinfinity/client/infc-user-request.h>
+#include <libinfinity/client/infc-request-manager.h>
 
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-connection.h>
@@ -35,7 +37,7 @@ struct _InfcSessionPrivate {
   InfXmlConnection* connection;
 
   guint seq_counter;
-  GSList* requests;
+  InfcRequestManager* request_manager;
 };
 
 #define INFC_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_SESSION, InfcSessionPrivate))
@@ -114,11 +116,7 @@ infc_session_release_connection(InfcSession* session)
   g_assert(priv->connection != NULL);
 
   /* TODO: Emit failed signal with some "cancelled" error? */
-  while(priv->requests != NULL)
-  {
-    g_object_unref(G_OBJECT(priv->requests->data));
-    priv->requests = g_slist_delete_link(priv->requests, priv->requests);
-  }
+  infc_request_manager_clear(priv->request_manager);
 
   /* Set status of all users to unavailable */
   inf_session_foreach_user(
@@ -147,23 +145,28 @@ infc_session_release_connection(InfcSession* session)
 
 /* TODO: These should probably be public, so that they may be used by
  * derived classes */
-static InfcRequest*
-infc_session_create_request(InfcSession* session,
-                            const gchar* name)
+static InfcUserRequest*
+infc_session_create_user_request(InfcSession* session,
+                                 const gchar* name)
 {
   InfcSessionPrivate* priv;
-  InfcRequest* request;
+  InfcUserRequest* request;
 
   priv = INFC_SESSION_PRIVATE(session);
 
   request = g_object_new(
-    INFC_TYPE_REQUEST,
+    INFC_TYPE_USER_REQUEST,
     "seq", ++priv->seq_counter,
     "name", name,
     NULL
   );
 
-  priv->requests = g_slist_prepend(priv->requests, request);
+  infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_REQUEST(request)
+  );
+
+  g_object_unref(G_OBJECT(request));
   return request;
 }
 
@@ -181,15 +184,13 @@ infc_session_request_to_xml(InfcRequest* request)
 }
 
 static void
-infc_session_fail_request(InfcSession* session,
-                          xmlNodePtr xml,
-                          GError* error)
+infc_session_succeed_user_request(InfcSession* session,
+                                  xmlNodePtr xml,
+                                  InfUser* user)
 {
   InfcSessionPrivate* priv;
   xmlChar* seq_attr;
   guint seq;
-
-  GSList* item;
   InfcRequest* request;
 
   priv = INFC_SESSION_PRIVATE(session);
@@ -200,48 +201,17 @@ infc_session_fail_request(InfcSession* session,
     seq = strtoul((const char*)seq_attr, NULL, 0);
     xmlFree(seq_attr);
 
-    for(item = priv->requests; item != NULL; item = item->next)
+    request = infc_request_manager_get_request_by_seq(
+      priv->request_manager,
+      seq
+    );
+
+    /* TODO: Set error when invalid seq was set. Perhaps implement in
+     * request manager. */
+    if(INFC_IS_USER_REQUEST(request))
     {
-      request = INFC_REQUEST(item->data);
-      if(infc_request_get_seq(request) == seq)
-      {
-        infc_request_failed(request, error);
-        priv->requests = g_slist_remove(priv->requests, request);
-        break;
-      }
-    }
-  }
-}
-
-static void
-infc_session_succeed_request(InfcSession* session,
-                             xmlNodePtr xml,
-                             gpointer data)
-{
-  InfcSessionPrivate* priv;
-  xmlChar* seq_attr;
-  guint seq;
-
-  GSList* item;
-  InfcRequest* request;
-
-  priv = INFC_SESSION_PRIVATE(session);
-  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
-
-  if(seq_attr != NULL)
-  {
-    seq = strtoul((const char*)seq_attr, NULL, 0);
-    xmlFree(seq_attr);
-
-    for(item = priv->requests; item != NULL; item = item->next)
-    {
-      request = INFC_REQUEST(item->data);
-      if(infc_request_get_seq(request) == seq)
-      {
-        infc_request_succeeded(request, data);
-        priv->requests = g_slist_remove(priv->requests, request);
-        break;
-      }
+      infc_user_request_finished(INFC_USER_REQUEST(request), user);
+      infc_request_manager_remove_request(priv->request_manager, request);
     }
   }
 }
@@ -261,6 +231,7 @@ infc_session_init(GTypeInstance* instance,
   priv = INFC_SESSION_PRIVATE(session);
 
   priv->connection = NULL;
+  priv->request_manager = infc_request_manager_new();
 }
 
 static void
@@ -321,6 +292,9 @@ infc_session_dispose(GObject* object)
    * and several allocated resources. */
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
+
+  g_object_unref(G_OBJECT(priv->request_manager));
+  priv->request_manager = NULL;
 }
 
 /*
@@ -563,6 +537,8 @@ infc_session_translate_error_impl(InfcSession* session,
   }
   else
   {
+    /* TODO: Check whether a human-readable error string was sent (that
+     * we cannot translate then, of course). */
     g_set_error(
       &error,
       inf_request_error_quark(),
@@ -613,7 +589,7 @@ infc_session_handle_user_join(InfcSession* session,
 
   if(user != NULL)
   {
-    infc_session_succeed_request(session, xml, user);
+    infc_session_succeed_user_request(session, xml, user);
     return TRUE;
   }
   else
@@ -713,6 +689,8 @@ infc_session_handle_user_rejoin(InfcSession* session,
     g_value_unset(&g_array_index(array, GParameter, i).value);
   g_array_free(array, TRUE);
 
+  infc_session_succeed_user_request(session, xml, user);
+
   return TRUE;
 
 error:
@@ -735,6 +713,7 @@ infc_session_handle_request_failed(InfcSession* session,
   xmlChar* code_attr;
   guint code;
   GError* req_error;
+  InfcRequest* request;
 
   priv = INFC_SESSION_PRIVATE(session);
   sessionc_class = INFC_SESSION_GET_CLASS(session);
@@ -771,22 +750,48 @@ infc_session_handle_request_failed(InfcSession* session,
   }
   else
   {
-    code = strtoul((gchar*)code_attr, NULL, 0);
-
-    g_assert(sessionc_class->translate_error != NULL);
-
-    req_error = sessionc_class->translate_error(
-      session,
-      g_quark_from_string((gchar*)domain_attr),
-      code
+    request = infc_request_manager_get_request_by_xml(
+      priv->request_manager,
+      NULL,
+      xml,
+      error
     );
 
-    infc_session_fail_request(session, xml, req_error);
-    g_error_free(req_error);
+    if(request == NULL)
+    {
+      xmlFree(code_attr);
+      xmlFree(domain_attr);
+      /* TODO: Set error if it is not set. This means that the "seq" attribute
+       * was not set, but this does not make any sense for the
+       * "request-failed" request. */
+      return FALSE;
+    }
+    else
+    {
+      code = strtoul((gchar*)code_attr, NULL, 0);
+      xmlFree(code_attr);
 
-    xmlFree(code_attr);
-    xmlFree(domain_attr);
-    return TRUE;
+      g_assert(sessionc_class->translate_error != NULL);
+
+      /* TODO: Add a GError* paramater to translate_error so that an error
+       * can be reported if the error could not be translated. */
+      req_error = sessionc_class->translate_error(
+        session,
+        g_quark_from_string((gchar*)domain_attr),
+        code
+      );
+
+      infc_request_manager_fail_request(
+        priv->request_manager,
+        request,
+        req_error
+      );
+
+      g_error_free(req_error);
+
+      xmlFree(domain_attr);
+      return TRUE;
+    }
   }
 }
 
@@ -1105,10 +1110,10 @@ infc_session_set_connection(InfcSession* session,
  * Requests a user join for a user with the given properties (which must not
  * include ID and status since these are initially set by the server).
  *
- * Return Value: A #InfcRequest object that may be used to get notified when
- * the request succeeds or fails.
+ * Return Value: A #InfcUserRequest object that may be used to get notified
+ * when the request succeeds or fails.
  **/
-InfcRequest*
+InfcUserRequest*
 infc_session_join_user(InfcSession* session,
                        const GParameter* params,
                        guint n_params,
@@ -1117,7 +1122,7 @@ infc_session_join_user(InfcSession* session,
   InfcSessionPrivate* priv;
   InfSessionClass* session_class;
   InfSessionStatus status;
-  InfcRequest* request;
+  InfcUserRequest* request;
   xmlNodePtr xml;
 
   g_return_val_if_fail(INFC_IS_SESSION(session), NULL);
@@ -1133,8 +1138,8 @@ infc_session_join_user(InfcSession* session,
 
   /* TODO: Check params locally */
 
-  request = infc_session_create_request(session, "user-join");
-  xml = infc_session_request_to_xml(request);
+  request = infc_session_create_user_request(session, "user-join");
+  xml = infc_session_request_to_xml(INFC_REQUEST(request));
 
   g_assert(session_class->set_xml_user_props != NULL);
   session_class->set_xml_user_props(
@@ -1163,17 +1168,17 @@ infc_session_join_user(InfcSession* session,
  * Requests a user leave for the given user which must be available and
  * which must have been joined via this session.
  *
- * Return Value: A #InfcRequest object that may be used to get notified when
- * the request succeeds or fails. 
+ * Return Value: A #InfcUserRequest object that may be used to get notified
+ * when the request succeeds or fails. 
  **/
-InfcRequest*
+InfcUserRequest*
 infc_session_leave_user(InfcSession* session,
                         InfUser* user,
                         GError** error)
 {
   InfcSessionPrivate* priv;
   InfSessionStatus status;
-  InfcRequest* request;
+  InfcUserRequest* request;
   xmlNodePtr xml;
   gchar id_buf[16];
 
@@ -1188,8 +1193,8 @@ infc_session_leave_user(InfcSession* session,
 
   /* TODO: Check user locally */
 
-  request = infc_session_create_request(session, "user-leave");
-  xml = infc_session_request_to_xml(request);
+  request = infc_session_create_user_request(session, "user-leave");
+  xml = infc_session_request_to_xml(INFC_REQUEST(request));
 
   sprintf(id_buf, "%u", inf_user_get_id(user));
   xmlNewProp(xml, (const xmlChar*)"id", (const xmlChar*)id_buf);

@@ -1,19 +1,22 @@
 
  1. Components
 
-infinote consists of four parts:
+infinote consists of the following parts:
 
 libinfinity:
-  Library with common functionality for the other three components
-
-libinfinoted:
-  Library containing functionality to set up an infinote server
+  Library implementing the core infinote part
 
 infinoted:
-  Simple stand-alone infinote server application.
+  Simple stand-alone infinote server application
 
-infinote:
-  Client application.
+libinfinity-gtk:
+  Provides glib main loop integration and GTK+ widgets related to libinfinity
+
+inftext:
+  Infinote plugin implementing real-time collaborative text editing
+
+inftext-gtk:
+  Implements the InfTextBuffer interface with a GtkTextBuffer as backend
 
  2. Requirements
 
@@ -21,20 +24,23 @@ libinfinity requires:
  - glib-2.0 >= 2.12
  - gobject-2.0 >= 2.12
  - libxml-2.0
- - gnetwork-0.11
+ - gnutls
+ - gsasl
+ - avahi (optional)
 
-libinfinoted requires:
+infinoted requires:
   - libinfinity
-  - avahi (optional)
 
-infinoted:
-  - libinfinoted
-
-infinote:
+libinfinity-gtk:
   - libinfinity
   - gtk+-2.0 >= 2.10
-  - libinfinoted (optional)
-  - avahi (optional)
+
+inftext:
+  - libinfinity
+
+inftext-gtk:
+  - inftext
+  - gtk+-2.0 >= 2.10
 
  3. Developers
 

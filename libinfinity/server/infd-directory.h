@@ -67,6 +67,7 @@ infd_directory_iter_get_type(void) G_GNUC_CONST;
 GType
 infd_directory_get_type(void) G_GNUC_CONST;
 
+/* TODO: Do these two need to be public? */
 InfdDirectoryIter*
 infd_directory_iter_copy(InfdDirectoryIter* iter);
 

@@ -1,3 +1,44 @@
+2007-07-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:UINT and VOID:UINT,UINT
+	marshallers.
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added INF_REQUEST_ERROR_INVALID_SEQ,
+	INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN and
+	INF_REQUEST_ERROR_TOO_FEW_CHILDREN.
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Removed g_return_if_fail from
+	non-public functions, initialize next and prev fields of root node to
+	NULL, unref session if corresponding node is freed, send number of
+	child nodes in explore-begin.
+
+	* libinfinity/client/infc-request-manager.h:
+	* libinfinity/client/infc-request-manager.c: Added InfcRequestManager
+	class that stores pending requests and provides lookup by seq.
+
+	* libinfinity/client/infc-request.h:
+	* libinfinity/client/infc-request.c: Removed the succeeded signal
+	because it was too specific. It should rather be implemented by
+	subclasses.
+
+	* libinfinity/client/infc-user-request.h:
+	* libinfinity/client/infc-user-request.c:
+	* libinfinity/client/infc-explore-request.h:
+	* libinfinity/client/infc-explore-request.c: Implemented specific
+	requests for those which affect a user and for exploring a
+	subdirectory.
+
+	* libinfinity/client/infc-session.h:
+	* libinfinity/client/infc-session.c: Use request manager instead of
+	managing the requests on our own, use InfcUserRequest in
+	infc_session_join_user and infc_session_leave_user.
+
+	* libinfinity/client/Makefile.am: Added new source files to build.
+
+	* README: Updated dependencies of infinote.
+
 2007-07-15  Armin Burgmeier  <armin@arbur.net>
 
 	* artwork/infinote.svg: Added infinote icon by Benjamin Herr.

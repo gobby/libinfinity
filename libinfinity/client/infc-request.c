@@ -34,7 +34,6 @@ enum {
 
 enum {
   FAILED,
-  SUCCEEDED,
 
   LAST_SIGNAL
 };
@@ -131,7 +130,10 @@ infc_request_class_init(gpointer g_class,
                         gpointer class_data)
 {
   GObjectClass* object_class;
+  InfcRequestClass* request_class;
+
   object_class = G_OBJECT_CLASS(g_class);
+  request_class = INFC_REQUEST_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfcRequestPrivate));
@@ -139,6 +141,8 @@ infc_request_class_init(gpointer g_class,
   object_class->finalize = infc_request_finalize;
   object_class->set_property = infc_request_set_property;
   object_class->get_property = infc_request_get_property;
+
+  request_class->failed = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -176,18 +180,6 @@ infc_request_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* actually a GError* */
-  );
-
-  request_signals[SUCCEEDED] = g_signal_new(
-    "succeeded",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfcRequestClass, succeeded),
-    NULL, NULL,
-    inf_marshal_VOID__POINTER,
-    G_TYPE_NONE,
-    1,
-    G_TYPE_POINTER
   );
 }
 
@@ -263,20 +255,4 @@ infc_request_failed(InfcRequest* request,
   g_return_if_fail(error != NULL);
 
   g_signal_emit(G_OBJECT(request), request_signals[FAILED], 0, error);
-}
-
-/** infc_request_succeeded:
- *
- * @request: A #InfcRequest.
- * @data: Additional data depending on the actual request.
- *
- * Emits the "succeeded" signal on @request.
- **/
-void
-infc_request_succeeded(InfcRequest* request,
-                       gpointer data)
-{
-  g_return_if_fail(INFC_IS_REQUEST(request));
-
-  g_signal_emit(G_OBJECT(request), request_signals[SUCCEEDED], 0, data);
 }
