@@ -31,18 +31,17 @@ typedef enum _InfRequestError {
   INF_REQUEST_ERROR_SYNCHRONIZING,
   /* Received an unexpected message */
   INF_REQUEST_ERROR_UNEXPECTED_MESSAGE,
-  /* TODO: Those below are client-specific. Should we move them
-   * to infc-session.h? */
   /* Unknown error domain */
   INF_REQUEST_ERROR_UNKNOWN_DOMAIN,
-  /* No domain in request-failed request */
-  INF_REQUEST_ERROR_DOMAIN_MISSING,
-  /* No code in request-failed request */
-  INF_REQUEST_ERROR_CODE_MISSING,
   /* Server reply could not be processed */
   INF_REQUEST_ERROR_REPLY_UNPROCESSED,
   /* Server reply had invalid sequence number set */
   INF_REQUEST_ERROR_INVALID_SEQ,
+  /* A required attribute was not set */
+  INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+  /* An attribute expected to contain a number contained something else,
+   * or an overflow occured */
+  INF_REQUEST_ERROR_INVALID_NUMBER,
 
   INF_REQUEST_ERROR_FAILED
 } InfRequestError;
@@ -50,12 +49,8 @@ typedef enum _InfRequestError {
 typedef enum _InfUserJoinError {
   /* The requested name is already in use by another user */
   INF_USER_JOIN_ERROR_NAME_IN_USE,
-  /* The request does not include a name attribute */
-  INF_USER_JOIN_ERROR_NAME_MISSING,
   /* An id attribute was provided, but the server assigns it */
   INF_USER_JOIN_ERROR_ID_PROVIDED,
-  /* An id attribute was not provided (in case of a server reply) */
-  INF_USER_JOIN_ERROR_ID_NOT_PRESENT,
   /* User is not present, in case of a user rejoin */
   INF_USER_JOIN_ERROR_NO_SUCH_USER,
   /* A status attribute was provided, but the status is always
@@ -79,8 +74,6 @@ typedef enum _InfUserLeaveError {
 typedef enum _InfDirectoryError {
   /* A node with this name exists already */
   INF_DIRECTORY_ERROR_NODE_EXISTS,
-  /* Request does not contain a node attribute */
-  INF_DIRECTORY_ERROR_NODE_MISSING,
   /* The node referred to does not exist */
   INF_DIRECTORY_ERROR_NO_SUCH_NODE,
   /* The node referred to is not a subdirectory */
@@ -90,12 +83,8 @@ typedef enum _InfDirectoryError {
   /* TODO: Make an own error domain out of the explore errors */
   /* The given subdirectory has already been explored */
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
-  /* 'type' attribute is missing in XML request */
-  INF_DIRECTORY_ERROR_TYPE_MISSING,
   /* There is no plugin that covers the given type */
   INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
-  /* 'name' attribute is missing in XML request */
-  INF_DIRECTORY_ERROR_NAME_MISSING,
   /* The server sends more explored children that previously announced */
   INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
   /* The server sent explore-end before having sent all children */

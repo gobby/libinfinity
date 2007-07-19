@@ -67,7 +67,7 @@ infc_request_manager_remove_request(InfcRequestManager* manager,
 void
 infc_request_manager_fail_request(InfcRequestManager* manager,
                                   InfcRequest* request,
-				  GError* error);
+                                  GError* error);
 
 void
 infc_request_manager_clear(InfcRequestManager* manager);
@@ -79,8 +79,14 @@ infc_request_manager_get_request_by_seq(InfcRequestManager* manager,
 InfcRequest*
 infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
                                         const gchar* name,
-					xmlNodePtr xml,
-					GError** error);
+                                        xmlNodePtr xml,
+                                        GError** error);
+
+InfcRequest*
+infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
+                                                 const gchar* name,
+                                                 xmlNodePtr xml,
+                                                 GError** error);
 
 void
 infc_request_manager_foreach_request(InfcRequestManager* manager,
@@ -91,7 +97,7 @@ void
 infc_request_manager_foreach_named_request(InfcRequestManager* manager,
                                            const gchar* name,
                                            InfcRequestManagerForeachFunc func,
-					   gpointer user_data);
+                                           gpointer user_data);
 
 G_END_DECLS
 

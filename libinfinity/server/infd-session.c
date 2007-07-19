@@ -237,10 +237,9 @@ infd_session_perform_user_join(InfdSession* session,
   {
     g_set_error(
       error,
-      inf_user_join_error_quark(),
-      INF_USER_JOIN_ERROR_NAME_MISSING,
-      "%s",
-      inf_user_join_strerror(INF_USER_JOIN_ERROR_NAME_MISSING)
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "Request does not contain required attribute 'name'"
     );
 
     return NULL;

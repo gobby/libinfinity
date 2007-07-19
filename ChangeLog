@@ -1,3 +1,22 @@
+2007-07-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Replaced several "this or that
+	attribute is missing" error by a general "No such attribute" error.
+
+	* libinfinity/client/infc-request-manager.h:
+	* libinfinity/client/infc-request-manager.c: Added
+	infc_request_manager_get_request_by_xml_required().
+
+	* libinfinity/common/inf-xml-util.h:
+	* libinfinity/common/inf-xml-util.c:
+	* libinfinity/common/Makefile.am: Added some common helper functions
+	read attributes from a XML node.
+
+	* libinfinity/client/infc-session.c:
+	* libinfinity/server/infd-session.c:
+	* libinfinity/server/infd-directory.c: Make use of them.
+
 2007-07-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:UINT and VOID:UINT,UINT

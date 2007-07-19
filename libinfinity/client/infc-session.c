@@ -20,8 +20,9 @@
 #include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/client/infc-request-manager.h>
 
-#include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-error.h>
 
 #include <libxml/xmlsave.h>
 
@@ -306,15 +307,18 @@ infc_session_process_xml_run_impl(InfSession* session,
                                   InfXmlConnection* connection,
                                   xmlNodePtr xml)
 {
+  InfcSessionPrivate* priv;
   InfcSessionClass* sessionc_class;
   InfSessionSyncStatus status;
   InfcSessionMessage* message;
+  InfcRequest* request;
   GError* error;
   gboolean result;
   xmlBufferPtr buffer;
   xmlSaveCtxtPtr ctx;
   GError* seq_error;
 
+  priv = INFC_SESSION_PRIVATE(session);
   sessionc_class = INFC_SESSION_GET_CLASS(session);
   status = inf_session_get_synchronization_status(session, connection);
   error = NULL;
@@ -374,18 +378,37 @@ infc_session_process_xml_run_impl(InfSession* session,
  
     xmlBufferFree(buffer);
 
-    /* If the request had a seq set, we cancel the corresponding request
-     * because the reply could not be processed. */
-    seq_error = NULL;
-    g_set_error(
-      &seq_error,
-      inf_request_error_quark(),
-      INF_REQUEST_ERROR_REPLY_UNPROCESSED,
-      "Server reply could not be processed: %s",
-      error->message
+    /* If the request had a (valid) seq set, we cancel the corresponding
+     * request because the reply could not be processed. */
+    request = infc_request_manager_get_request_by_xml(
+      priv->request_manager,
+      NULL,
+      xml,
+      NULL
     );
 
-    infc_session_fail_request(INFC_SESSION(session), xml, seq_error);
+    /* TODO: Can't we just pass error to inf_request_manager_fail_request? */
+    if(request == NULL)
+    {
+      /* If the request had a seq set, we cancel the corresponding request
+       * because the reply could not be processed. */
+      seq_error = NULL;
+      g_set_error(
+        &seq_error,
+        inf_request_error_quark(),
+        INF_REQUEST_ERROR_REPLY_UNPROCESSED,
+        "Server reply could not be processed: %s",
+        error->message
+      );
+
+      infc_request_manager_fail_request(
+        priv->request_manager,
+        request,
+        seq_error
+      );
+
+      g_free(seq_error);
+    }
     g_error_free(error);
   }
 
@@ -632,10 +655,9 @@ infc_session_handle_user_rejoin(InfcSession* session,
   {
     g_set_error(
       error,
-      inf_user_join_error_quark(),
-      INF_USER_JOIN_ERROR_ID_NOT_PRESENT,
-      "%s",
-      inf_user_join_strerror(INF_USER_JOIN_ERROR_ID_NOT_PRESENT)
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "Request does not contain required attribute 'id'"
     );
 
     goto error;
@@ -709,8 +731,8 @@ infc_session_handle_request_failed(InfcSession* session,
   InfcSessionPrivate* priv;
   InfcSessionClass* sessionc_class;
 
-  xmlChar* domain_attr;
-  xmlChar* code_attr;
+  xmlChar* domain;
+  gboolean has_code;
   guint code;
   GError* req_error;
   InfcRequest* request;
@@ -718,81 +740,48 @@ infc_session_handle_request_failed(InfcSession* session,
   priv = INFC_SESSION_PRIVATE(session);
   sessionc_class = INFC_SESSION_GET_CLASS(session);
 
-  domain_attr = xmlGetProp(xml, (const xmlChar*)"domain");
-  code_attr = xmlGetProp(xml, (const xmlChar*)"code");
+  has_code = inf_xml_util_get_attribute_uint_required(
+    xml,
+    "code",
+    &code,
+    error
+  );
+
+  if(has_code == FALSE) return FALSE;
+
+  domain = inf_xml_util_get_attribute_required(xml, "domain", error);
+  if(domain == NULL) return FALSE;
+
   req_error = NULL;
+  request = infc_request_manager_get_request_by_xml_required(
+    priv->request_manager,
+    NULL,
+    xml,
+    error
+  );
 
-  if(domain_attr == NULL)
-  {
-    g_set_error(
-      error,
-      inf_request_error_quark(),
-      INF_REQUEST_ERROR_DOMAIN_MISSING,
-      "%s",
-      inf_request_strerror(INF_REQUEST_ERROR_DOMAIN_MISSING)
-    );
+  if(request == NULL) return FALSE;
 
-    if(code_attr != NULL) xmlFree(code_attr);
-    return FALSE;
-  }
-  else if(code_attr  == NULL)
-  {
-    g_set_error(
-      error,
-      inf_request_error_quark(),
-      INF_REQUEST_ERROR_CODE_MISSING,
-      "%s",
-      inf_request_strerror(INF_REQUEST_ERROR_CODE_MISSING)
-    );
+  g_assert(sessionc_class->translate_error != NULL);
 
-    if(domain_attr != NULL) xmlFree(domain_attr);
-    return FALSE;
-  }
-  else
-  {
-    request = infc_request_manager_get_request_by_xml(
-      priv->request_manager,
-      NULL,
-      xml,
-      error
-    );
+  /* TODO: Add a GError* paramater to translate_error so that an error
+   * can be reported if the error could not be translated. */
+  req_error = sessionc_class->translate_error(
+    session,
+    g_quark_from_string((const gchar*)domain),
+    code
+  );
 
-    if(request == NULL)
-    {
-      xmlFree(code_attr);
-      xmlFree(domain_attr);
-      /* TODO: Set error if it is not set. This means that the "seq" attribute
-       * was not set, but this does not make any sense for the
-       * "request-failed" request. */
-      return FALSE;
-    }
-    else
-    {
-      code = strtoul((gchar*)code_attr, NULL, 0);
-      xmlFree(code_attr);
+  infc_request_manager_fail_request(
+    priv->request_manager,
+    request,
+    req_error
+  );
 
-      g_assert(sessionc_class->translate_error != NULL);
+  g_error_free(req_error);
 
-      /* TODO: Add a GError* paramater to translate_error so that an error
-       * can be reported if the error could not be translated. */
-      req_error = sessionc_class->translate_error(
-        session,
-        g_quark_from_string((gchar*)domain_attr),
-        code
-      );
-
-      infc_request_manager_fail_request(
-        priv->request_manager,
-        request,
-        req_error
-      );
-
-      g_error_free(req_error);
-
-      xmlFree(domain_attr);
-      return TRUE;
-    }
-  }
+  xmlFree(domain);
+  return TRUE;
 }
 
 static gboolean
@@ -801,10 +790,14 @@ infc_session_handle_user_leave(InfcSession* session,
                                xmlNodePtr xml,
                                GError** error)
 {
+  InfcSessionPrivate* priv;
+  InfcRequest* request;
   xmlChar* id_attr;
   guint id;
   InfUser* user;
+  GError* local_error;
 
+  priv = INFC_SESSION_PRIVATE(session);
   id_attr = xmlGetProp(xml, (const xmlChar*)"id");
   if(id_attr == NULL)
   {
@@ -836,11 +829,32 @@ infc_session_handle_user_leave(InfcSession* session,
     return FALSE;
   }
 
-  /* Complete request, if any */
-  infc_session_succeed_request(session, xml, user);
-
   /* Do not remove from session to recognize the user on rejoin */
   g_object_set(G_OBJECT(user), "status", INF_USER_UNAVAILABLE, NULL);
+
+  local_error = NULL;
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "user-leave",
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+  else
+  {
+    if(request != NULL)
+    {
+      g_assert(INFC_IS_USER_REQUEST(request));
+      infc_user_request_finished(INFC_USER_REQUEST(request), user);
+      infc_request_manager_remove_request(priv->request_manager, request);
+    }
+  }
+
   return TRUE;
 }
 

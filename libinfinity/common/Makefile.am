@@ -22,6 +22,7 @@ libinfinity_common_la_SOURCES = \
 	inf-tcp-connection.c \
 	inf-user.c \
 	inf-xml-connection.c \
+	inf-xml-util.c \
 	inf-xmpp-connection.c
 
 libinfinity_common_la_HEADERS = \
@@ -37,4 +38,5 @@ libinfinity_common_la_HEADERS = \
 	inf-tcp-connection.h \
 	inf-user.h \
 	inf-xml-connection.h \
+	inf-xml-util.h \
 	inf-xmpp-connection.h

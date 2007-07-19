@@ -21,6 +21,7 @@
 
 #include <libinfinity/common/inf-net-object.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <string.h>
@@ -543,7 +544,7 @@ static void
 infd_directory_node_register(InfdDirectory* directory,
                              InfdDirectoryNode* node,
 			     InfXmlConnection* seq_conn,
-			     const gchar* seq)
+			     guint seq)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
@@ -571,7 +572,7 @@ infd_directory_node_register(InfdDirectory* directory,
   if(seq_conn != NULL)
   {
     seq_xml = xmlCopyNode(xml, 1);
-    xmlNewProp(seq_xml, (const xmlChar*)"seq", (const xmlChar*)seq);
+    inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
     inf_connection_manager_send(
       priv->connection_manager,
@@ -754,7 +755,7 @@ infd_directory_node_explore(InfdDirectory* directory,
        * interesting in root folder changes (because they opened the root
        * folder from the old storage). Also, local users might be interested
        * in the new node. */
-      infd_directory_node_register(directory, new_node, NULL, NULL);
+      infd_directory_node_register(directory, new_node, NULL, 0);
     }
   }
 
@@ -769,7 +770,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
                                      const gchar* name,
 				     InfXmlConnection* seq_conn,
-				     const gchar* seq,
+				     guint seq,
                                      GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -822,7 +823,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
                              const gchar* name,
                              InfdNotePlugin* plugin,
 			     InfXmlConnection* seq_conn,
-			     const gchar* seq,
+			     guint seq,
                              GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -864,6 +865,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
     );
 
     g_assert(node->shared.note.session != NULL);
+
+    /* TODO: Save initial node */
 
     infd_directory_node_register(directory, node, seq_conn, seq);
     return node;
@@ -945,33 +948,25 @@ infd_directory_node_get_session(InfdDirectory* directory,
 
 static InfdDirectoryNode*
 infd_directory_get_node_from_xml(InfdDirectory* directory,
-                                 const xmlNodePtr xml,
+                                 xmlNodePtr xml,
                                  const gchar* attrib,
                                  GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  xmlChar* node_attr;
   guint node_id;
+  gboolean has_node;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  node_attr = xmlGetProp(xml, (const xmlChar*)attrib);
 
-  if(node_attr == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NODE_MISSING,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_NODE_MISSING)
-    );
+  has_node = inf_xml_util_get_attribute_uint_required(
+    xml,
+    attrib,
+    &node_id,
+    error
+  );
 
-    return NULL;
-  }
-
-  node_id = strtoul((const gchar*)node_attr, NULL, 0);
-  xmlFree(node_attr);
+  if(has_node == FALSE) return NULL;
 
   node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
   if(node == NULL)
@@ -992,7 +987,7 @@ infd_directory_get_node_from_xml(InfdDirectory* directory,
 
 static InfdDirectoryNode*
 infd_directory_get_node_from_xml_typed(InfdDirectory* directory,
-                                       const xmlNodePtr xml,
+                                       xmlNodePtr xml,
                                        const gchar* attrib,
                                        InfdStorageNodeType type,
                                        GError** error)
@@ -1139,7 +1134,8 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   InfdNotePlugin* plugin;
   xmlChar* name;
   xmlChar* type;
-  xmlChar* seq_attr;
+  gboolean has_seq;
+  guint seq;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1151,22 +1147,11 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     error
   );
 
-  if(node == NULL)
+  if(parent == NULL)
     return FALSE;
 
-  type = xmlGetProp(xml, (const xmlChar*)"type");
-  if(type == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_TYPE_MISSING,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_TYPE_MISSING)
-    );
-
-    return FALSE;
-  }
+  type = inf_xml_util_get_attribute_required(xml, "type", error);
+  if(type == NULL) return FALSE;
 
   if(strcmp((const gchar*)type, "InfDirectory") == 0)
   {
@@ -1193,30 +1178,21 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     }
   }
 
-  name = xmlGetProp(xml, (const xmlChar*)"name");
-  if(name == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NAME_MISSING,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_NAME_MISSING)
-    );
+  name = inf_xml_util_get_attribute_required(xml, "name", error);
+  if(name == NULL) return FALSE;
 
-    return FALSE;
-  }
+  has_seq = inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
 
-  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
-
+  /* Note that seq is only passed uninitialized here if it is not used
+   * anyway because seq_conn is NULL. */
   if(plugin == NULL)
   {
     node = infd_directory_node_add_subdirectory(
       directory,
       parent,
       (const gchar*)name,
-      (seq_attr != NULL) ? connection : NULL,
-      (const gchar*)seq_attr,
+      (has_seq == TRUE) ? connection : NULL,
+      seq,
       error
     );
   }
@@ -1227,15 +1203,13 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       parent,
       (const gchar*)name,
       plugin,
-      (seq_attr != NULL) ? connection : NULL,
-      (const gchar*)seq_attr,
+      (has_seq == TRUE) ? connection : NULL,
+      seq,
       error
     );
   }
 
   xmlFree(name);
-  if(seq_attr != NULL)
-    xmlFree(seq_attr);
 
   if(node == NULL)
     return FALSE;
@@ -2242,7 +2216,7 @@ infd_directory_add_subdirectory(InfdDirectory* directory,
     parent->node,
     name,
     NULL,
-    NULL,
+    0,
     error
   );
 
@@ -2302,7 +2276,7 @@ infd_directory_add_note(InfdDirectory* directory,
     name,
     plugin,
     NULL,
-    NULL,
+    0,
     error
   );
 

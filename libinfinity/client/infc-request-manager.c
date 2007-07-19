@@ -17,8 +17,11 @@
  */
 
 #include <libinfinity/client/infc-request-manager.h>
+#include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
+
+#include <string.h>
 
 typedef struct _InfcRequestManagerForeachData InfcRequestManagerForeachData;
 struct _InfcRequestManagerForeachData {
@@ -344,7 +347,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
 {
   InfcRequestManagerPrivate* priv;
   InfcRequest* request;
-  xmlChar* seq_attr;
+  gboolean has_seq;
   guint seq;
 
   g_return_val_if_fail(INFC_IS_REQUEST_MANAGER(manager), NULL);
@@ -352,41 +355,85 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
 
   priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
   request = NULL;
-  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
 
-  if(seq_attr != NULL)
+  has_seq = inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
+  if(has_seq == FALSE) return NULL;
+
+  request = infc_request_manager_get_request_by_seq(manager, seq);
+  if(request == NULL)
   {
-    seq = strtoul((const gchar*)seq, NULL, 10);
-    xmlFree(seq_attr);
-
-    request = infc_request_manager_get_request_by_seq(manager, seq);
-    if(request == NULL)
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_SEQ,
+      "The request contains an unknown sequence number"
+    );
+  }
+  else
+  {
+    if(name != NULL &&
+       strcmp(name, infc_request_get_name(request)) != 0)
     {
       g_set_error(
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        "The request contains an unknown sequence number"
+        "The request contains a sequence number refering to a request of "
+        "type '%s', but a request of type '%s' was expected",
+        infc_request_get_name(request),
+        name
       );
-    }
-    else
-    {
-      if(name != NULL &&
-         strcmp(name, infc_request_get_name(request)) != 0)
-      {
-        g_set_error(
-          error,
-          inf_request_error_quark(),
-          INF_REQUEST_ERROR_INVALID_SEQ,
-          "The request contains a sequence number refering to a request of "
-          "type '%s', but a request of type '%s' was expected",
-          infc_request_get_name(request),
-          name
-        );
 
-        request = NULL;
-      }
+      request = NULL;
     }
+  }
+
+  return request;
+}
+
+/** infc_request_manager_get_request_by_xml_required:
+ *
+ * @manager: A #InfcRequestManager.
+ * @name: Name of the expected request. May be %NULL to allow all requests.
+ * @xml: XML node that is supposed to contain a "seq" attribute.
+ * @error: Location to store error information.
+ *
+ * Looks whether there is a "seq" attribute in @xml. If so, it returns the
+ * request with the given seq and name (if any). If the "seq" attribute is
+ * not set or the actual request is not present (or has another name), the
+ * function returns %NULL and @error is set.
+ *
+ * Return Value: The resulting request, or %NULL if an error occured.
+ **/
+InfcRequest*
+infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
+                                                 const gchar* name,
+						 xmlNodePtr xml,
+						 GError** error)
+{
+  InfcRequest* request;
+  GError* own_error;
+
+  own_error = NULL;
+  request = infc_request_manager_get_request_by_xml(
+    manager,
+    name,
+    xml,
+    &own_error
+  );
+
+  if(request == NULL && own_error == NULL)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_SEQ,
+      "The request does not contain a sequence number, but one is required"
+    );
+  }
+  else
+  {
+    g_propagate_error(error, own_error);
   }
 
   return request;

@@ -35,14 +35,14 @@ inf_request_strerror(InfRequestError code)
     return "Message was not understood";
   case INF_REQUEST_ERROR_UNKNOWN_DOMAIN:
     return "Received error from an unknown domain";
-  case INF_REQUEST_ERROR_DOMAIN_MISSING:
-    return "'domain' attribute missing in request";
-  case INF_REQUEST_ERROR_CODE_MISSING:
-    return "'code' attribute missing in request";
   case INF_REQUEST_ERROR_REPLY_UNPROCESSED:
     return "Failed to process server reply";
   case INF_REQUEST_ERROR_INVALID_SEQ:
     return "Server reply contains invalid sequence number";
+  case INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE:
+    return "A required attribute was not set in request";
+  case INF_REQUEST_ERROR_INVALID_NUMBER:
+    return "An attribute contained an invalid number";
   case INF_REQUEST_ERROR_FAILED:
     return "An unknown request error occured";
   default:
@@ -63,12 +63,8 @@ inf_user_join_strerror(InfUserJoinError code)
   {
   case INF_USER_JOIN_ERROR_NAME_IN_USE:
     return "Name is already in use";
-  case INF_USER_JOIN_ERROR_NAME_MISSING:
-    return "'name' attribute missing in request";
   case INF_USER_JOIN_ERROR_ID_PROVIDED:
     return "'id' attribute provided in request";
-  case INF_USER_JOIN_ERROR_ID_NOT_PRESENT:
-    return "'id' attribute missing in request";
   case INF_USER_JOIN_ERROR_NO_SUCH_USER:
     return "There is no user with the given ID";
   case INF_USER_JOIN_ERROR_STATUS_PROVIDED:
@@ -91,8 +87,6 @@ inf_user_leave_strerror(InfUserLeaveError code)
 {
   switch(code)
   {
-  case INF_USER_LEAVE_ERROR_ID_NOT_PRESENT:
-    return "'id' attribute missing in request";
   case INF_USER_LEAVE_ERROR_NO_SUCH_USER:
     return "There is no user with the given ID";
   case INF_USER_LEAVE_ERROR_NOT_JOINED:
@@ -117,8 +111,6 @@ inf_directory_strerror(InfDirectoryError code)
   {
   case INF_DIRECTORY_ERROR_NODE_EXISTS:
     return "A node with this name exists already";
-  case INF_DIRECTORY_ERROR_NODE_MISSING:
-    return "'node' attribute missing";
   case INF_DIRECTORY_ERROR_NO_SUCH_NODE:
     return "Node does not exist";
   case INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY:
@@ -127,8 +119,6 @@ inf_directory_strerror(InfDirectoryError code)
     return "Node is not a note";
   case INF_DIRECTORY_ERROR_ALREADY_EXPLORED:
     return "Subdirectory has already been explored";
-  case INF_DIRECTORY_ERROR_TYPE_MISSING:
-    return "'type' attribute missing in request";
   case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:
     return "Note type is not supported";
   case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
