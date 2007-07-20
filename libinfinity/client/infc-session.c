@@ -36,8 +36,6 @@ struct _InfcSessionMessage {
 typedef struct _InfcSessionPrivate InfcSessionPrivate;
 struct _InfcSessionPrivate {
   InfXmlConnection* connection;
-
-  guint seq_counter;
   InfcRequestManager* request_manager;
 };
 
@@ -142,33 +140,6 @@ infc_session_release_connection(InfcSession* session)
   priv->connection = NULL;
 
   g_object_notify(G_OBJECT(session), "connection");
-}
-
-/* TODO: These should probably be public, so that they may be used by
- * derived classes */
-static InfcUserRequest*
-infc_session_create_user_request(InfcSession* session,
-                                 const gchar* name)
-{
-  InfcSessionPrivate* priv;
-  InfcUserRequest* request;
-
-  priv = INFC_SESSION_PRIVATE(session);
-
-  request = g_object_new(
-    INFC_TYPE_USER_REQUEST,
-    "seq", ++priv->seq_counter,
-    "name", name,
-    NULL
-  );
-
-  infc_request_manager_add_request(
-    priv->request_manager,
-    INFC_REQUEST(request)
-  );
-
-  g_object_unref(G_OBJECT(request));
-  return request;
 }
 
 static xmlNodePtr
@@ -1136,7 +1107,7 @@ infc_session_join_user(InfcSession* session,
   InfcSessionPrivate* priv;
   InfSessionClass* session_class;
   InfSessionStatus status;
-  InfcUserRequest* request;
+  InfcRequest* request;
   xmlNodePtr xml;
 
   g_return_val_if_fail(INFC_IS_SESSION(session), NULL);
@@ -1152,7 +1123,13 @@ infc_session_join_user(InfcSession* session,
 
   /* TODO: Check params locally */
 
-  request = infc_session_create_user_request(session, "user-join");
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_USER_REQUEST,
+    "user-join",
+    NULL
+  );
+
   xml = infc_session_request_to_xml(INFC_REQUEST(request));
 
   g_assert(session_class->set_xml_user_props != NULL);
@@ -1170,7 +1147,7 @@ infc_session_join_user(InfcSession* session,
     xml
   );
 
-  return request;
+  return INFC_USER_REQUEST(request);
 }
 
 /** infc_session_leave_user:
@@ -1192,7 +1169,7 @@ infc_session_leave_user(InfcSession* session,
 {
   InfcSessionPrivate* priv;
   InfSessionStatus status;
-  InfcUserRequest* request;
+  InfcRequest* request;
   xmlNodePtr xml;
   gchar id_buf[16];
 
@@ -1207,7 +1184,13 @@ infc_session_leave_user(InfcSession* session,
 
   /* TODO: Check user locally */
 
-  request = infc_session_create_user_request(session, "user-leave");
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_USER_REQUEST,
+    "user-leave",
+    NULL
+  );
+
   xml = infc_session_request_to_xml(INFC_REQUEST(request));
 
   sprintf(id_buf, "%u", inf_user_get_id(user));
@@ -1220,5 +1203,5 @@ infc_session_leave_user(InfcSession* session,
     xml
   );
 
-  return request;
+  return INFC_USER_REQUEST(request);
 }

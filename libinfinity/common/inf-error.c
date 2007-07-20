@@ -121,6 +121,8 @@ inf_directory_strerror(InfDirectoryError code)
     return "Subdirectory has already been explored";
   case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:
     return "Note type is not supported";
+  case INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED:
+    return "Client is already subscribed to this session";
   case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
     return "Server sent more explored nodes then announced";
   case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:

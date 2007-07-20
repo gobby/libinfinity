@@ -135,6 +135,29 @@ infc_explore_request_get_property(GObject* object,
 }
 
 static void
+infc_explore_request_initiated_impl(InfcExploreRequest* request,
+                                    guint total)
+{
+  InfcExploreRequestPrivate* priv;
+  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+
+  priv->total = total;
+  g_object_notify(G_OBJECT(request), "total");
+}
+
+static void
+infc_explore_request_progress_impl(InfcExploreRequest* request,
+                                   guint current,
+                                   guint total)
+{
+  InfcExploreRequestPrivate* priv;
+  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+
+  priv->current = current;
+  g_object_notify(G_OBJECT(request), "current");
+}
+
+static void
 infc_explore_request_class_init(gpointer g_class,
                                 gpointer class_data)
 {
@@ -151,8 +174,8 @@ infc_explore_request_class_init(gpointer g_class,
   object_class->set_property = infc_explore_request_set_property;
   object_class->get_property = infc_explore_request_get_property;
 
-  request_class->initiated = NULL;
-  request_class->progress = NULL;
+  request_class->initiated = infc_explore_request_initiated_impl;
+  request_class->progress = infc_explore_request_progress_impl;
   request_class->finished = NULL;
 
   g_object_class_install_property(
@@ -332,7 +355,7 @@ infc_explore_request_progress(InfcExploreRequest* request,
       G_OBJECT(request),
       explore_request_signals[PROGRESS],
       0,
-      ++ priv->current,
+      priv->current + 1,
       priv->total
     );
 

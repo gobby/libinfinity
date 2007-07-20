@@ -85,6 +85,8 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
   /* There is no plugin that covers the given type */
   INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
+  /* The client is already subscribed to the session */
+  INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
   /* The server sends more explored children that previously announced */
   INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
   /* The server sent explore-end before having sent all children */

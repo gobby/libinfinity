@@ -22,7 +22,8 @@
 #include <errno.h>
 
 static gboolean
-inf_xml_util_string_to_uint(const xmlChar* value,
+inf_xml_util_string_to_uint(const gchar* attribute, 
+                            const xmlChar* value,
                             guint* output,
                             GError** error)
 {
@@ -105,7 +106,7 @@ inf_xml_util_get_attribute_uint(xmlNodePtr xml,
   value = xmlGetProp(xml, (const xmlChar*)attribute);
   if(value == NULL) return 0;
 
-  retval = inf_xml_util_string_to_uint(value, result, error);
+  retval = inf_xml_util_string_to_uint(attribute, value, result, error);
   xmlFree(value);
   return retval;
 }
@@ -122,7 +123,7 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
   value = inf_xml_util_get_attribute_required(xml, attribute, error);
   if(value == NULL) return FALSE;
 
-  retval = inf_xml_util_string_to_uint(value, result, error);
+  retval = inf_xml_util_string_to_uint(attribute, value, result, error);
   xmlFree(value);
   return retval;
 }

@@ -21,6 +21,8 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
 
+#include <gobject/gvaluecollector.h>
+
 #include <string.h>
 
 typedef struct _InfcRequestManagerForeachData InfcRequestManagerForeachData;
@@ -33,6 +35,7 @@ struct _InfcRequestManagerForeachData {
 typedef struct _InfcRequestManagerPrivate InfcRequestManagerPrivate;
 struct _InfcRequestManagerPrivate {
   GHashTable* requests;
+  guint seq_counter;
 };
 
 enum {
@@ -81,6 +84,8 @@ infc_request_manager_init(GTypeInstance* instance,
     NULL,
     (GDestroyNotify)g_object_unref
   );
+
+  priv->seq_counter = 0;
 }
 
 static void
@@ -222,23 +227,162 @@ infc_request_manager_new(void)
 /** infc_request_manager_add_request:
  *
  * @manager: A #InfcRequestManager.
- * @request: A #infcRequest.
+ * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
+ * @request_name: The name of the request, such as "explore-node" or
+ * "subscribe-session".
+ * @first_property_name: The first property name apart from name and seq to
+ * set for the new request.
+ * @...: The value of the first property, followed optionally by more
+ * name/value pairs, followed by %NULL.
  *
  * Adds a request to the request manager.
+ *
+ * Return Value: The generated #InfcRequest (actually of type @request_type).
  **/
-void
+InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,
-                                 InfcRequest* request)
+                                 GType request_type,
+				 const gchar* request_name,
+				 const gchar* first_property_name,
+				 ...)
 {
-  g_return_if_fail(INFC_IS_REQUEST_MANAGER(manager));
-  g_return_if_fail(INFC_IS_REQUEST(request));
+  InfcRequest* request;
 
-  g_signal_emit(
-    G_OBJECT(manager),
-    request_manager_signals[REQUEST_ADD],
-    0,
-    request
+  va_list arglist;
+  va_start(arglist, first_property_name);
+
+  request = infc_request_manager_add_request_valist(
+    manager,
+    request_type,
+    request_name,
+    first_property_name,
+    arglist
   );
+
+  va_end(arglist);
+  return request;
+}
+
+/** infc_request_manager_add_request_valist:
+ *
+ * @manager: A #InfcRequestManager.
+ * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
+ * @request_name: The name of the request, such as "explore-node" or
+ * "subscribe-session".
+ * @first_property_name: The first property name apart from name and seq to
+ * set for the new request.
+ * @arglist: The value of the first property, followed optionally by more
+ * name/value pairs, followed by %NULL.
+ *
+ * Adds a request to the request manager.
+ *
+ * Return Value: The generated #InfcRequest (actually of type @request_type).
+ **/
+InfcRequest*
+infc_request_manager_add_request_valist(InfcRequestManager* manager,
+                                        GType request_type,
+                                        const gchar* request_name,
+                                        const gchar* first_property_name,
+                                        va_list var_args)
+{
+  InfcRequestManagerPrivate* priv;
+  GObjectClass* request_class;
+  InfcRequest* request;
+  GParameter* params;
+  const gchar* prop_name;
+  gsize param_size;
+  gsize param_alloc;
+  guint seq;
+  gchar* error;
+  GParamSpec* pspec;
+  guint i;
+
+  g_return_val_if_fail(INFC_IS_REQUEST_MANAGER(manager), NULL);
+  g_return_val_if_fail(request_name != NULL, NULL);
+
+  request_class = g_type_class_ref(request_type);
+  g_return_val_if_fail(request_class != NULL, NULL);
+
+  priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
+  seq = priv->seq_counter;
+
+  g_assert(
+    g_hash_table_lookup(priv->requests, GUINT_TO_POINTER(seq)) == NULL
+  );
+
+  param_size = 0;
+  param_alloc = 16;
+  params = g_malloc(param_alloc * sizeof(GParameter));
+
+  params[param_size].name = "name";
+  g_value_init(&params[param_size].value, G_TYPE_STRING);
+  g_value_set_static_string(&params[param_size].value, request_name);
+  ++ param_size;
+
+  params[param_size].name = "seq";
+  g_value_init(&params[param_size].value, G_TYPE_UINT);
+  g_value_set_uint(&params[param_size].value, seq);
+  ++ param_size;
+
+  prop_name = first_property_name;
+  error = NULL;
+
+  while(prop_name != NULL)
+  {
+    pspec = g_object_class_find_property(request_class, prop_name);
+    if(pspec == NULL)
+    {
+      g_warning(
+        "%s: object class `%s' has no attribute named `%s'",
+        G_STRFUNC,
+        g_type_name(request_type),
+        prop_name
+      );
+
+      break;
+    }
+
+    if(param_size >= param_alloc)
+    {
+      param_alloc += 16;
+      params = g_realloc(params, param_alloc * sizeof(GParameter));
+    }
+
+    params[param_size].name = prop_name;
+    g_value_init(&params[param_size].value, G_PARAM_SPEC_VALUE_TYPE(pspec));
+    G_VALUE_COLLECT(&params[param_size].value, var_args, 0, &error);
+    if(error != NULL)
+    {
+      g_warning("%s: %s", G_STRFUNC, error);
+      g_value_unset(&params[param_size].value);
+      g_free(error);
+      break;
+    }
+
+    ++ param_size;
+    prop_name = va_arg(var_args, const gchar*);
+  }
+
+  if(prop_name == NULL)
+  {
+    request = INFC_REQUEST(g_object_newv(request_type, param_size, params));
+    g_hash_table_insert(priv->requests, GUINT_TO_POINTER(seq), request);
+    ++ priv->seq_counter;
+  }
+  else
+  {
+    /* An error occured. We do not use GError here tough, because this is a
+     * most likely a bug in someone's code (if note, it is one in infinote's
+     * code). */
+    request = NULL;
+  }
+
+  for(i = 0; i < param_size; ++ i)
+    g_value_unset(&params[i].value);
+  g_free(params);
+  g_type_class_unref(request_class);
+
+  return request;
 }
 
 /** infc_request_manager_remove_request:
@@ -408,8 +552,8 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
 InfcRequest*
 infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
                                                  const gchar* name,
-						 xmlNodePtr xml,
-						 GError** error)
+                                                 xmlNodePtr xml,
+                                                 GError** error)
 {
   InfcRequest* request;
   GError* own_error;

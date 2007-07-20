@@ -1270,6 +1270,9 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   if(node == NULL)
     return FALSE;
 
+  /* TODO: Bail if this connection is either currently being synchronized to
+   * or is already subscribed */
+
   session = infd_directory_node_get_session(directory, node, error);
   if(session == NULL)
     return FALSE;
@@ -1277,13 +1280,15 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   /* Reply that subscription was successful (so far, synchronization may
    * still fail) and tail identifier. */
   identifier = g_strdup_printf("InfSession_%u", node->id);
-  reply_xml = xmlNewNode(NULL, (const xmlChar*)"session-subscribe");
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"subscribe-session");
 
   xmlNewProp(
     reply_xml,
     (const xmlChar*)"identifier",
     (const xmlChar*)identifier
   );
+
+  inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
 
   seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
   if(seq_attr != NULL)
@@ -1300,6 +1305,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   );
 
   infd_session_subscribe_to(session, connection, identifier);
+  g_free(identifier);
   return TRUE;
 }
 

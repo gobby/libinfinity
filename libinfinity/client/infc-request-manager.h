@@ -56,9 +56,19 @@ infc_request_manager_get_type(void) G_GNUC_CONST;
 InfcRequestManager*
 infc_request_manager_new(void);
 
-void
+InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,
-                                 InfcRequest* request);
+                                 GType request_type,
+                                 const gchar* request_name,
+                                 const gchar* first_property_name,
+                                 ...);
+
+InfcRequest*
+infc_request_manager_add_request_valist(InfcRequestManager* manager,
+                                        GType request_type,
+                                        const gchar* request_name,
+                                        const gchar* first_property_name,
+                                        va_list var_args);
 
 void
 infc_request_manager_remove_request(InfcRequestManager* manager,

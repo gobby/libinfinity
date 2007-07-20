@@ -1,3 +1,40 @@
+2007-07-20  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED.
+
+	* libinfinity/common/inf-xml-util.c: Fixed error formatting for
+	inf_xml_util_string_to_uint().
+
+	* libinfinity/server/infd-directory.c: Changed "subscribe-session"
+	reply request name to from "session-subscribe" to "subscribe-session"
+	and set ID attribute in that request. Don't leak the identifier string
+	in infd_directory_handle_subscribe_session().
+
+	* libinfinity/client/infc-explore-request.c: Implement default signal
+	handlers for the "initiated" and "progress" signals that notify the
+	corresponding properties.
+
+	* libinfinity/client/infc-request-manager.h:
+	* libinfinity/client/infc-request-manager.c: Changed
+	infc_request_manager_add_request(InfcRequestManager*, InfcRequest*) to
+	infc_request_manager_add_request(InfcRequestManager*, GType, const
+	gchar*, const gchar*, ...) and added
+	infc_request_manager_add_request_valist().
+
+	* libinfinity/client/infc-node-request.h:
+	* libinfinity/client/infc-node-request.c: Added another request type
+	that handles request related to nodes in the directory tree.
+
+	* libinfinity/client/infc-browser-iter.h:
+	* libinfinity/client/infc-browser-iter.c:
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Implemented InfcBrowser class
+	that allows browsing a remote directory tree.
+
+	* libinfinity/client/Makefile.am: Build the new files.
+
 2007-07-19  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:
