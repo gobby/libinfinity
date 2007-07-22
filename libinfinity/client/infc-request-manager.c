@@ -130,8 +130,6 @@ infc_request_manager_request_remove(InfcRequestManager* manager,
   priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
   seq = GUINT_TO_POINTER(infc_request_get_seq(request));
 
-  g_object_unref(G_OBJECT(request));
-
   g_assert(g_hash_table_lookup(priv->requests, seq) != NULL);
   g_hash_table_remove(priv->requests, seq);
 }
@@ -312,7 +310,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
 
   param_size = 0;
   param_alloc = 16;
-  params = g_malloc(param_alloc * sizeof(GParameter));
+  params = g_malloc0(param_alloc * sizeof(GParameter));
 
   params[param_size].name = "name";
   g_value_init(&params[param_size].value, G_TYPE_STRING);
@@ -399,12 +397,16 @@ infc_request_manager_remove_request(InfcRequestManager* manager,
   g_return_if_fail(INFC_IS_REQUEST_MANAGER(manager));
   g_return_if_fail(INFC_IS_REQUEST(request));
 
+  g_object_ref(G_OBJECT(request));
+
   g_signal_emit(
     G_OBJECT(manager),
     request_manager_signals[REQUEST_REMOVE],
     0,
     request
   );
+
+  g_object_unref(G_OBJECT(request));
 }
 
 /** infc_request_manager_fail_request:
@@ -566,18 +568,21 @@ infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
     &own_error
   );
 
-  if(request == NULL && own_error == NULL)
+  if(request == NULL)
   {
-    g_set_error(
-      error,
-      inf_request_error_quark(),
-      INF_REQUEST_ERROR_INVALID_SEQ,
-      "The request does not contain a sequence number, but one is required"
-    );
-  }
-  else
-  {
-    g_propagate_error(error, own_error);
+    if(own_error == NULL)
+    {
+      g_set_error(
+        error,
+        inf_request_error_quark(),
+        INF_REQUEST_ERROR_INVALID_SEQ,
+        "The request does not contain a sequence number, but one is required"
+      );
+    }
+    else
+    {
+      g_propagate_error(error, own_error);
+    }
   }
 
   return request;

@@ -202,7 +202,6 @@ void inf_xml_connection_sent(InfXmlConnection* connection,
     G_OBJECT(connection),
     connection_signals[SENT],
     0,
-    connection,
     xml
   );
 }
@@ -225,7 +224,6 @@ void inf_xml_connection_received(InfXmlConnection* connection,
     G_OBJECT(connection),
     connection_signals[RECEIVED],
     0,
-    connection,
     xml
   );
 }

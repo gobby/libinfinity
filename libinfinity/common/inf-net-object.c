@@ -64,9 +64,8 @@ inf_net_object_received(InfNetObject* object,
 
   iface = INF_NET_OBJECT_GET_IFACE(object);
 
-  g_return_if_fail(iface->received != NULL);
-
-  (*iface->received)(object, conn, node);
+  if(iface->received != NULL)
+    (*iface->received)(object, conn, node);
 }
 
 void
@@ -81,9 +80,9 @@ inf_net_object_enqueued(InfNetObject* object,
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);
-  g_return_if_fail(iface->enqueued != NULL);
 
-  (*iface->enqueued)(object, conn, node);
+  if(iface->enqueued != NULL)
+    (*iface->enqueued)(object, conn, node);
 }
 
 void
@@ -94,12 +93,11 @@ inf_net_object_sent(InfNetObject* object,
   InfNetObjectIface* iface;
 
   g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(INF_IS_XML_CONNECTION(object));
+  g_return_if_fail(INF_IS_XML_CONNECTION(conn));
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);
 
-  g_return_if_fail(iface->sent != NULL);
-
-  (*iface->sent)(object, conn, node);
+  if(iface->sent != NULL)
+    (*iface->sent)(object, conn, node);
 }

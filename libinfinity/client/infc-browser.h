@@ -119,6 +119,10 @@ InfcExploreRequest*
 infc_browser_iter_explore(InfcBrowser* browser,
                           InfcBrowserIter* iter);
 
+const gchar*
+infc_browser_iter_get_name(InfcBrowser* browser,
+                           InfcBrowserIter* iter);
+
 InfcNodeRequest*
 infc_browser_add_subdirectory(InfcBrowser* browser,
                               InfcBrowserIter* parent,

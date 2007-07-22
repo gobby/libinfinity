@@ -404,8 +404,8 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
   InfdDirectoryNode* child;
   GSList* item;
 
-  infd_directory_return_if_subdir_fail(node);
-  g_return_if_fail(node->shared.subdir.explored == FALSE);
+  g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(node->shared.subdir.explored == TRUE);
 
   item = g_slist_find(node->shared.subdir.connections, connection);
 
@@ -424,7 +424,11 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
           child != NULL;
           child = child->next)
       {
-        infd_directory_node_remove_connection(child, connection);
+        if(child->type == INFD_STORAGE_NODE_SUBDIRECTORY &&
+	   child->shared.subdir.explored == TRUE)
+	{
+          infd_directory_node_remove_connection(child, connection);
+	}
       }
     }
     else

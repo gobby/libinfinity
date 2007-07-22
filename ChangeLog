@@ -1,3 +1,40 @@
+2007-07-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added
+	infc_browser_iter_get_name().
+
+	* libinfinity/common/inf-xmpp-connection.c: ref/unref the XMPP
+	connection object around callback for sent messages because those
+	callbacks might unref the XMPP connection.
+
+	* libinfinity/common/inf-net-object.c: Don't require virtual functions
+	to be implemented.
+
+	* libinfinity/common/inf-xml-connection.c: Fixed signal emission of
+	sent and received signal, wrong parameter was passed.
+
+	* libinfinity/common/inf-connection-manager.c: Only send further
+	messages if there are any, after previous messages have been sent out.
+
+	* libinfinity/server/infd-filesystem-storage.c: Fixed path to file on
+	disk which was wrong in infd_filesystem_storage_read_subdirectory().
+
+	* libinfinity/server/infd-directory.c: Only call
+	infd_directory_node_remove_connection() for explored subdirectory
+	nodes because only those can have connections that have explored that
+	node.
+
+	* libinfinity/client/infc-request-manager.c: Don't unref the request
+	when removing from the hash table because the hash table already does
+	it via its value_destroy func. Initialize the parameters array with
+	zero in infc_request_manager_add_request_valist() because the GValues
+	therein need to be zero-initialized.
+
+	* test/inf-test-browser.c:
+	* test/Makefile.am: Added (interactive) test for InfcBrowser
+	connecting to a running infinote server.
+
 2007-07-20  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:

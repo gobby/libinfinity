@@ -77,8 +77,8 @@ struct _InfcBrowserPrivate {
 
   GHashTable* plugins; /* Registered plugins */
 
-  InfcBrowserNode* root;
   GHashTable* nodes; /* Mapping from id to node */
+  InfcBrowserNode* root;
 };
 
 #define INFC_BROWSER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_BROWSER, InfcBrowserPrivate))
@@ -290,7 +290,9 @@ infc_browser_node_free(InfcBrowser* browser,
     break;
   }
 
-  infc_browser_node_unlink(node);
+  if(node->parent != NULL)
+    infc_browser_node_unlink(node);
+
   removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
   g_assert(removed == TRUE);
 
@@ -471,8 +473,8 @@ infc_browser_init(GTypeInstance* instance,
   priv->request_manager = infc_request_manager_new();
 
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
-  priv->root = infc_browser_node_new_subdirectory(browser, NULL, 0, NULL);
   priv->nodes = g_hash_table_new(NULL, NULL);
+  priv->root = infc_browser_node_new_subdirectory(browser, NULL, 0, NULL);
 }
 
 static void
@@ -768,7 +770,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   priv = INFC_BROWSER_PRIVATE(browser);
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
-    "explore",
+    "explore-node",
     xml,
     error
   );
@@ -842,7 +844,7 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
   priv = INFC_BROWSER_PRIVATE(browser);
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
-    "explore",
+    "explore-node",
     xml,
     error
   );
@@ -1200,7 +1202,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
 
   error = NULL;
 
-  if(strcmp((const gchar*)node->name, "request-failed"))
+  if(strcmp((const gchar*)node->name, "request-failed") == 0)
   {
     infc_browser_handle_request_failed(
       INFC_BROWSER(net_object),
@@ -1209,7 +1211,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       &error
     );
   }
-  else if(strcmp((const gchar*)node->name, "explore-begin"))
+  else if(strcmp((const gchar*)node->name, "explore-begin") == 0)
   {
     infc_browser_handle_explore_begin(
       INFC_BROWSER(net_object),
@@ -1218,7 +1220,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       &error
     );
   }
-  else if(strcmp((const gchar*)node->name, "explore-end"))
+  else if(strcmp((const gchar*)node->name, "explore-end") == 0)
   {
     infc_browser_handle_explore_end(
       INFC_BROWSER(net_object),
@@ -1227,7 +1229,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       &error
     );
   }
-  else if(strcmp((const gchar*)node->name, "add-node"))
+  else if(strcmp((const gchar*)node->name, "add-node") == 0)
   {
     infc_browser_handle_add_node(
       INFC_BROWSER(net_object),
@@ -1236,7 +1238,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       &error
     );
   }
-  else if(strcmp((const gchar*)node->name, "remove-node"))
+  else if(strcmp((const gchar*)node->name, "remove-node") == 0)
   {
     infc_browser_handle_remove_node(
       INFC_BROWSER(net_object),
@@ -1245,7 +1247,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       &error
     );
   }
-  else if(strcmp((const gchar*)node->name, "subscribe-session"))
+  else if(strcmp((const gchar*)node->name, "subscribe-session") == 0)
   {
     infc_browser_handle_subscribe_session(
       INFC_BROWSER(net_object),
@@ -1387,7 +1389,7 @@ infc_browser_get_type(void)
     };
 
     browser_type = g_type_register_static(
-      INFC_TYPE_BROWSER,
+      G_TYPE_OBJECT,
       "InfcBrowser",
       &browser_type_info,
       0
@@ -1504,8 +1506,8 @@ infc_browser_add_plugin(InfcBrowser* browser,
  * Sets @iter to point to the root node of the browser tree.
  **/
 void
-infc_browser_get_root(InfcBrowser* browser,
-                      InfcBrowserIter* iter)
+infc_browser_iter_get_root(InfcBrowser* browser,
+                           InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
 
@@ -1741,6 +1743,28 @@ infc_browser_iter_explore(InfcBrowser* browser,
   );
 
   return INFC_EXPLORE_REQUEST(request);
+}
+
+/** infc_browser_iter_get_name:
+ *
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a node in @browser.
+ *
+ * Returns the name of the node @iter points to.
+ *
+ * Return Value: The node's name. The returned string must not be freed.
+ **/
+const gchar*
+infc_browser_iter_get_name(InfcBrowser* browser,
+                           InfcBrowserIter* iter)
+{
+  InfcBrowserNode* node;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  node = (InfcBrowserNode*)iter->node;
+  return node->name;
 }
 
 /** infc_browser_add_subdirectory:

@@ -2463,6 +2463,7 @@ inf_xmpp_connection_sent_cb(InfTcpConnection* tcp,
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->position >= len);
+  g_object_ref(G_OBJECT(xmpp));
 
   while(priv->messages != NULL && priv->messages->position <= len)
   {
@@ -2479,6 +2480,7 @@ inf_xmpp_connection_sent_cb(InfTcpConnection* tcp,
     message->position -= len;
 
   priv->position -= len;
+  g_object_unref(G_OBJECT(xmpp));
 }
 
 static void
@@ -2532,7 +2534,7 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
             error
           );
 
-          g_free(error);
+          g_error_free(error);
 
           /* We cannot assume that GnuTLS is working enough to send a
            * final </stream:stream> or something, so just close the

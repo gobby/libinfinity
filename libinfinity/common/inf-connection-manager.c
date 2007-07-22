@@ -88,7 +88,7 @@ inf_connection_manager_object_free(InfConnectionManagerObject* object)
 
   g_free(object->identifier);
 
-  g_object_unref(G_OBJECT(object));
+  g_object_unref(G_OBJECT(object->net_object));
   g_slice_free(InfConnectionManagerObject, object);
 }
 
@@ -182,7 +182,8 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* xml_conn,
       -- object->inner_queue_count;
     }
 
-    if(object->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+    if(object->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT &&
+       object->outer_queue != NULL)
     {
       /* We actually sent some objects, so we have some space in the
        * inner queue again. */

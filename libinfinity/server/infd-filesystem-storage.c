@@ -264,6 +264,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   const gchar* name;
   gchar* converted_name;
   gchar* full_name;
+  gchar* file_path;
   gchar* separator;
   gsize name_len;
 
@@ -281,25 +282,25 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   g_free(converted_name);
 
   dir = g_dir_open(full_name, 0, error);
-  g_free(full_name);
 
   if(dir == NULL)
     return NULL;
 
+  list = NULL;
   for(name = g_dir_read_name(dir); name != NULL; name = g_dir_read_name(dir))
   {
     converted_name = g_filename_to_utf8(name, -1, NULL, &name_len, NULL);
     if(converted_name != NULL)
     {
-      full_name = g_build_filename(path, name, NULL);
-      if(g_file_test(full_name, G_FILE_TEST_IS_DIR))
+      file_path = g_build_filename(full_name, name, NULL);
+      if(g_file_test(file_path, G_FILE_TEST_IS_DIR))
       {
         list = g_slist_prepend(
           list,
           infd_storage_node_new_subdirectory(converted_name)
         );
       }
-      else if(g_file_test(full_name, G_FILE_TEST_IS_REGULAR))
+      else if(g_file_test(file_path, G_FILE_TEST_IS_REGULAR))
       {
         /* The note type identifier is behind the last '.' */
         separator = g_strrstr_len(converted_name, name_len, ".");
@@ -314,11 +315,12 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
       }
 
       g_free(converted_name);
-      g_free(full_name);
+      g_free(file_path);
     }
   }
 
   g_dir_close(dir);
+  g_free(full_name);
   return list;
 }
 
