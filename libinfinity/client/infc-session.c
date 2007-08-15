@@ -559,6 +559,7 @@ infc_session_handle_user_join(InfcSession* session,
   InfSessionClass* session_class;
   GArray* array;
   InfUser* user;
+  GParameter param;
   guint i;
 
   session_class = INF_SESSION_CLASS(session);
@@ -568,6 +569,18 @@ infc_session_handle_user_join(InfcSession* session,
     connection,
     xml
   );
+
+  param.name = "flags";
+  g_value_init(&param.value, INF_TYPE_USER_FLAGS);
+
+  if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
+    g_value_set_flags(&param.value, INF_USER_LOCAL);
+  else
+    g_value_set_flags(&param.value, 0);
+
+  /* Note the GParemeter is copied by value, uninitialization is done when
+   * all the array values are freed. */
+  g_array_append_val(array, param);
 
   /* This validates properties */
   user = inf_session_add_user(
@@ -673,6 +686,12 @@ infc_session_handle_user_rejoin(InfcSession* session,
     if(strcmp(param->name, "id") != 0)
       g_object_set_property(G_OBJECT(user), param->name, &param->value);
   }
+
+  /* Set local flag correctly */
+  if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
+    g_object_set(G_OBJECT(user), "flags", INF_USER_LOCAL, NULL);
+  else
+    g_object_set(G_OBJECT(user), "flags", 0, NULL);
 
   /* TODO: Set user status to available, if the server did not send the
    * status property? Require the status property being set on a rejoin? */

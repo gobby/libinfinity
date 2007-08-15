@@ -173,10 +173,38 @@ inf_test_browser_cmd_explore(InfTestBrowser* test,
   }
 }
 
+static void
+inf_test_browser_cmd_create(InfTestBrowser* test,
+                            const gchar* param)
+{
+  infc_browser_add_subdirectory(test->browser, &test->cwd, param);
+}
+
+static void
+inf_test_browser_cmd_remove(InfTestBrowser* test,
+                            const gchar* param)
+{
+  InfcBrowserIter iter;
+  if(inf_test_browser_find_node(test, param, &iter) == FALSE)
+  {
+    fprintf(
+      stderr,
+      "Directory '%s' does not exist\n",
+      param
+    );
+  }
+  else
+  {
+    infc_browser_remove_node(test->browser, &iter);
+  }
+}
+
 static const InfTestBrowserCmd inf_test_browser_commands[] = {
   { "ls", inf_test_browser_cmd_ls },
   { "cd", inf_test_browser_cmd_cd },
-  { "explore", inf_test_browser_cmd_explore }
+  { "explore", inf_test_browser_cmd_explore },
+  { "create", inf_test_browser_cmd_create },
+  { "remove", inf_test_browser_cmd_remove }
 };
 
 static void

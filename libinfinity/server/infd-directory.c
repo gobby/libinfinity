@@ -198,7 +198,9 @@ infd_directory_node_make_path(InfdDirectoryNode* node,
   str = g_string_sized_new(128);
 
   infd_directory_node_get_path_string(node, str);
-  g_string_append_c(str, '/');
+  if(node->parent != NULL)
+    g_string_append_c(str, '/');
+
   g_string_append(str, name);
 
   *path = str->str;
@@ -553,7 +555,6 @@ infd_directory_node_register(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
   xmlNodePtr xml;
-  xmlNodePtr seq_xml;
 
 #if 0
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
@@ -575,14 +576,14 @@ infd_directory_node_register(InfdDirectory* directory,
 
   if(seq_conn != NULL)
   {
-    seq_xml = xmlCopyNode(xml, 1);
+    xml = infd_directory_node_register_to_xml(node);
     inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
     inf_connection_manager_send(
       priv->connection_manager,
       seq_conn,
       INF_NET_OBJECT(directory),
-      seq_xml
+      xml
     );
   }
 
@@ -606,12 +607,11 @@ static void
 infd_directory_node_unregister(InfdDirectory* directory,
                                InfdDirectoryNode* node,
 			       InfXmlConnection* seq_conn,
-			       const gchar* seq)
+			       guint seq)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
   xmlNodePtr xml;
-  xmlNodePtr seq_xml;
 
 #if 0
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
@@ -633,14 +633,14 @@ infd_directory_node_unregister(InfdDirectory* directory,
 
   if(seq_conn != NULL)
   {
-    seq_xml = xmlCopyNode(xml, 1);
-    xmlNewProp(seq_xml, (const xmlChar*)"seq", (const xmlChar*)seq);
+    xml = infd_directory_node_unregister_to_xml(node);
+    inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
     inf_connection_manager_send(
       priv->connection_manager,
       seq_conn,
       INF_NET_OBJECT(directory),
-      seq_xml
+      xml
     );
   }
 
@@ -881,7 +881,7 @@ static gboolean
 infd_directory_node_remove(InfdDirectory* directory,
                            InfdDirectoryNode* node,
 			   InfXmlConnection* seq_conn,
-			   const gchar* seq,
+			   guint seq,
                            GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -1140,6 +1140,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   xmlChar* type;
   gboolean has_seq;
   guint seq;
+  GError* local_error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1157,7 +1158,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   type = inf_xml_util_get_attribute_required(xml, "type", error);
   if(type == NULL) return FALSE;
 
-  if(strcmp((const gchar*)type, "InfDirectory") == 0)
+  if(strcmp((const gchar*)type, "InfSubdirectory") == 0)
   {
     /* No plugin because we want to create a directory */
     plugin = NULL;
@@ -1182,10 +1183,16 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     }
   }
 
+  local_error = NULL;
+  has_seq = inf_xml_util_get_attribute_uint(xml, "seq", &seq, &local_error);
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
   name = inf_xml_util_get_attribute_required(xml, "name", error);
   if(name == NULL) return FALSE;
-
-  has_seq = inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
 
   /* Note that seq is only passed uninitialized here if it is not used
    * anyway because seq_conn is NULL. */
@@ -1228,23 +1235,25 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
                                   GError** error)
 {
   InfdDirectoryNode* node;
-  xmlChar* seq_attr;
+  guint seq;
   gboolean result;
+  gboolean has_seq;
 
   node = infd_directory_get_node_from_xml(directory, xml, "id", error);
   if(node == NULL) return FALSE;
 
-  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  has_seq = inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
 
+  /* Note that seq is only passed uninitialized here if it is not used
+   * anyway because seq_conn is NULL. */
   result = infd_directory_node_remove(
     directory,
     node,
-    (seq_attr != NULL) ? connection : NULL,
-    (const gchar*)seq_attr,
+    (has_seq == TRUE) ? connection : NULL,
+    seq,
     error
   );
 
-  if(seq_attr != NULL) xmlFree(seq_attr);
   return result;
 }
 
@@ -1388,7 +1397,7 @@ infd_directory_set_storage(InfdDirectory* directory,
        * modifications to the sessions will not be stored. */
       while((child = priv->root->shared.subdir.child) != NULL)
       {
-        infd_directory_node_unregister(directory, child, NULL, NULL);
+        infd_directory_node_unregister(directory, child, NULL, 0);
         infd_directory_node_free(directory, child, TRUE);
       }
     }
@@ -2323,7 +2332,7 @@ infd_directory_remove_node(InfdDirectory* directory,
   g_return_val_if_fail(iter != NULL, FALSE);
   infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
-  return infd_directory_node_remove(directory, iter->node, NULL, NULL, error);
+  return infd_directory_node_remove(directory, iter->node, NULL, 0, error);
 }
 
 /** infd_directory_iter_get_node_type:

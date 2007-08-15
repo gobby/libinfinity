@@ -308,6 +308,17 @@ infd_session_perform_user_join(InfdSession* session,
   g_value_init(&param->value, G_TYPE_ENUM);
   g_value_set_enum(&param->value, INF_USER_AVAILABLE);
 
+  /* flags should not be set by get_xml_user_props, nor given
+   * to infd_session_add_user. */
+  param = inf_session_get_user_property(user_props, "flags");
+  g_assert(!G_IS_VALUE(&param->value));
+
+  g_value_init(&param->value, G_TYPE_FLAGS);
+  if(connection == NULL)
+    g_value_set_flags(&param->value, INF_USER_LOCAL);
+  else
+    g_value_set_flags(&param->value, 0);
+
   if(user == NULL)
   {
     /* This validates properties */
@@ -1095,6 +1106,9 @@ infd_session_add_user(InfdSession* session,
 
   g_return_val_if_fail(INFD_IS_SESSION(session), NULL);
 
+  /* TODO: Make sure values added by infd_session_perform_user_join are
+   * released, for example by inserting copies into the array, and freeing
+   * the values after the call. */
   array = g_array_sized_new(FALSE, FALSE, sizeof(GParameter), n_params + 2);
   g_array_append_vals(array, params, n_params);
 

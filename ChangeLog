@@ -1,3 +1,15 @@
+2007-08-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-user.h:
+	* libinfinity/common/inf-user.c: Added a flags property with user
+	flags with INF_USER_LOCAL being the only user property so far.
+
+	* libinfinity/client/infc-session.c:
+	* libinfinity/server/infd-session.c: Set the INF_USER_LOCAL flag as
+	appropriate.
+
+	* README: Require glib-2.14 to be able to use GSequence.
+
 2007-07-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.h:
@@ -62,7 +74,7 @@
 
 	* libinfinity/client/infc-node-request.h:
 	* libinfinity/client/infc-node-request.c: Added another request type
-	that handles request related to nodes in the directory tree.
+	that handles requests related to nodes in the directory tree.
 
 	* libinfinity/client/infc-browser-iter.h:
 	* libinfinity/client/infc-browser-iter.c:

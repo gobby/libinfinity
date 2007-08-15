@@ -345,7 +345,9 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
   if(converted_name == NULL)
     return FALSE;
 
-  full_name = g_build_filename(converted_name, path, NULL);
+  full_name = g_build_filename(priv->root_directory, converted_name, NULL);
+  g_free(converted_name);
+
   ret = g_mkdir(full_name, 0755);
   g_free(full_name);
 

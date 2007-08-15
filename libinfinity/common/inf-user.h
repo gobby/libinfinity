@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 #define INF_USER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_USER, InfUserClass))
 
 #define INF_TYPE_USER_STATUS          (inf_user_status_get_type())
+#define INF_TYPE_USER_FLAGS           (inf_user_flags_get_type())
 
 typedef struct _InfUser InfUser;
 typedef struct _InfUserClass InfUserClass;
@@ -49,8 +50,15 @@ typedef enum _InfUserStatus {
   /* TODO: Add further status (AWAY, ...) */
 } InfUserStatus;
 
+typedef enum InfUserFlags {
+  INF_USER_LOCAL = 1 << 0
+} InfUserFlags;
+
 GType
 inf_user_status_get_type(void) G_GNUC_CONST;
+
+GType
+inf_user_flags_get_type(void) G_GNUC_CONST;
 
 GType
 inf_user_get_type(void) G_GNUC_CONST;
@@ -63,6 +71,9 @@ inf_user_get_name(const InfUser* user);
 
 InfUserStatus
 inf_user_get_status(const InfUser* user);
+
+InfUserFlags
+inf_user_get_flags(const InfUser* user);
 
 G_END_DECLS
 

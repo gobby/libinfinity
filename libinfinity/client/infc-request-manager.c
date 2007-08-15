@@ -502,7 +502,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
   priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
   request = NULL;
 
-  has_seq = inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
+  has_seq = inf_xml_util_get_attribute_uint(xml, "seq", &seq, error);
   if(has_seq == FALSE) return NULL;
 
   request = infc_request_manager_get_request_by_seq(manager, seq);

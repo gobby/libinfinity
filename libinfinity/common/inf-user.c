@@ -23,6 +23,7 @@ struct _InfUserPrivate {
   guint id;
   gchar* name;
   InfUserStatus status;
+  InfUserFlags flags;
 };
 
 enum {
@@ -30,7 +31,8 @@ enum {
 
   PROP_ID,
   PROP_NAME,
-  PROP_STATUS
+  PROP_STATUS,
+  PROP_FLAGS
 };
 
 #define INF_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
@@ -50,6 +52,7 @@ inf_user_init(GTypeInstance* instance,
   priv->id = 0;
   priv->name = NULL;
   priv->status = INF_USER_UNAVAILABLE;
+  priv->flags = 0;
 }
 
 static void
@@ -99,6 +102,9 @@ inf_user_set_property(GObject* object,
   case PROP_STATUS:
     priv->status = g_value_get_enum(value);
     break;
+  case PROP_FLAGS:
+    priv->flags = g_value_get_flags(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -127,6 +133,9 @@ inf_user_get_property(GObject* object,
     break;
   case PROP_STATUS:
     g_value_set_enum(value, priv->status);
+    break;
+  case PROP_FLAGS:
+    g_value_set_flags(value, priv->flags);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -188,6 +197,47 @@ inf_user_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_FLAGS,
+    g_param_spec_flags(
+      "flags",
+      "Flags",
+      "Flags the user currently has",
+      INF_TYPE_USER_FLAGS,
+      0,
+      G_PARAM_READWRITE
+    )
+  );
+}
+
+GType
+inf_user_flags_get_type(void)
+{
+  static GType user_flags_type = 0;
+
+  if(!user_flags_type)
+  {
+    static const GFlagsValue user_flags_type_values[] = {
+      {
+        INF_USER_LOCAL,
+	"INF_USER_LOCAL",
+	"local"
+      }, {
+        0,
+	NULL,
+	NULL
+      }
+    };
+
+    user_flags_type = g_enum_register_static(
+      "InfUserFlags",
+      user_flags_type_values
+    );
+  }
+
+  return user_flags_type;
 }
 
 GType
@@ -255,7 +305,7 @@ inf_user_get_type(void)
 
 /** inf_user_get_id:
  *
- * @user A #InfUser.
+ * @user: A #InfUser.
  *
  * Returns the ID of the given #InfUser.
  *
@@ -270,7 +320,7 @@ inf_user_get_id(const InfUser* user)
 
 /** inf_user_get_name:
  *
- * @user A #InfUser.
+ * @user: A #InfUser.
  *
  * Returns the name of the given #InfUser.
  *
@@ -285,7 +335,7 @@ inf_user_get_name(const InfUser* user)
 
 /** inf_user_get_status:
  *
- * @user A #InfUser.
+ * @user: A #InfUser.
  *
  * Returns the status of the given #InfUser.
  *
@@ -295,5 +345,20 @@ InfUserStatus
 inf_user_get_status(const InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), INF_USER_UNAVAILABLE);
+  return INF_USER_PRIVATE(user)->status;
+}
+
+/** inf_user_get_flags:
+ *
+ * @user: A #InfUser.
+ *
+ * Returns the flags for the given #INfUser.
+ *
+ * Return Value: The user's flags.
+ **/
+InfUserFlags
+inf_user_get_flags(const InfUser* user)
+{
+  g_return_val_if_fail(INF_IS_USER(user), 0);
   return INF_USER_PRIVATE(user)->status;
 }
