@@ -35,6 +35,8 @@ inf_buffer_base_init(gpointer g_class)
         G_PARAM_READWRITE
       )
     );
+
+    initialized = TRUE;
   }
 }
 

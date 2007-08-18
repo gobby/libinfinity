@@ -19,7 +19,7 @@ AC_PROG_LIBTOOL
 # Check for regular dependencies
 ###################################
 
-PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.12 gobject-2.0 >= 2.12 libxml-2.0 gnutls libgsasl])
+PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 gnutls libgsasl])
 
 ########################
 # Compile time options
@@ -60,6 +60,7 @@ AC_CONFIG_FILES([
 	Makefile
 		libinfinity/Makefile
 			libinfinity/common/Makefile
+			libinfinity/adopted/Makefile
 			libinfinity/server/Makefile
 			libinfinity/client/Makefile
 

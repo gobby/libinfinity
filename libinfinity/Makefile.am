@@ -1,4 +1,4 @@
-SUBDIRS = common server client
+SUBDIRS = common adopted server client
 
 lib_LTLIBRARIES = libinfinity-1.0.la
 
@@ -11,6 +11,7 @@ libinfinity_1_0_la_LIBADD = \
 	$(glib_LIBS) \
 	$(infinity_LIBS) \
 	common/libinfinity_common.la \
+	adopted/libinfinity_adopted.la \
 	server/libinfinity_server.la \
 	client/libinfinity_client.la
 

@@ -4,7 +4,8 @@ AM_CPPFLAGS = \
 	${infinity_CFLAGS}
 
 noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
-	inf-test-tcp-server inf-test-daemon inf-test-browser
+	inf-test-tcp-server inf-test-daemon inf-test-browser \
+	inf-test-state-vector
 
 inf_test_tcp_connection_SOURCES = \
 	inf-test-tcp-connection.c
@@ -34,4 +35,10 @@ inf_test_browser_SOURCES = \
 	inf-test-browser.c
 
 inf_test_browser_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-1.0.la
+
+inf_test_state_vector_SOURCES = \
+	inf-test-state-vector.c
+
+inf_test_state_vector_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la

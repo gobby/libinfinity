@@ -231,7 +231,7 @@ inf_user_flags_get_type(void)
       }
     };
 
-    user_flags_type = g_enum_register_static(
+    user_flags_type = g_flags_register_static(
       "InfUserFlags",
       user_flags_type_values
     );

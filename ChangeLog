@@ -1,3 +1,31 @@
+2007-08-18  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-buffer.c: Set initialized to TRUE in
+	inf_buffer_base_init so the interface is only initialized once.
+
+	* libinfinity/common/inf-user.c: Correctly register user flags type as
+	flags instead of as enum.
+
+	* libinfinity/adopted/inf-adopted-state-vector.h:
+	* libinfinity/adopted/inf-adopted-user.h:
+	* libinfinity/adopted/inf-adopted-operation.h:
+	* libinfinity/adopted/inf-adopted-split-operation.h:
+	* libinfinity/adopted/inf-adopted-no-operation.h:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinfinity/adopted/inf-adopted-user.c:
+	* libinfinity/adopted/inf-adopted-operation.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c:
+	* libinfinity/adopted/inf-adopted-no-operation.c:
+	* libinfinity/adopted/Makefile.am: Implemented some initial types for
+	the yet-to-come adopted implementation.
+
+	* libinfinity/Makefile.am:
+	* configure.ac: Include libinfinity/adopted to build, generate
+	libinfinity/adopted/Makefile.
+
+	* test/inf-test-state-vector.c:
+	* test/Makefile.am: Added simple state vector test.
+
 2007-08-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-user.h:
