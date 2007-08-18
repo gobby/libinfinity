@@ -1,5 +1,19 @@
 2007-08-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-operation.h: Removed superfluous
+	comma at end of enumeration.
+
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-request.c:
+	* libinfinity/adopted/inf-adopted-request-log.c: Implemnted
+	InfAdoptedRequest and InfAdoptedRequestLog, though the latter is still
+	missing can-undo/can-redo tracking.
+
+	* libinfinity/adopted/Makefile.am: Build the new files.
+
+2007-08-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-buffer.c: Set initialized to TRUE in
 	inf_buffer_base_init so the interface is only initialized once.
 

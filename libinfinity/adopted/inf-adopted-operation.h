@@ -37,7 +37,7 @@ typedef struct _InfAdoptedOperation InfAdoptedOperation;
 typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
 
 typedef enum _InfAdoptedOperationFlags {
-  INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0,
+  INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0
 } InfAdoptedOperationFlags;
 
 struct _InfAdoptedOperationIface {
