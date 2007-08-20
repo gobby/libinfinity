@@ -27,26 +27,31 @@
 
 G_BEGIN_DECLS
 
-#define INF_ADOPTED_TYPE_REQUEST            (inf_adopted_request_get_type())
-#define INF_ADOPTED_TYPE_REQUEST_TYPE       (inf_adopted_request_type_get_type())
+#define INF_ADOPTED_TYPE_REQUEST                 (inf_adopted_request_get_type())
+#define INF_ADOPTED_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequest))
+#define INF_ADOPTED_REQUEST_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequestClass))
+#define INF_ADOPTED_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_ADOPTED_TYPE_REQUEST))
+#define INF_ADOPTED_IS_REQUEST_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_ADOPTED_TYPE_REQUEST))
+#define INF_ADOPTED_REQUEST_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequestClass))
+
+#define INF_ADOPTED_TYPE_REQUEST_TYPE            (inf_adopted_request_type_get_type())
+
+typedef struct _InfAdoptedRequest InfAdoptedRequest;
+typedef struct _InfAdoptedRequestClass InfAdoptedRequestClass;
+
+struct _InfAdoptedRequestClass {
+  GObjectClass parent_class;
+};
+
+struct _InfAdoptedRequest {
+  GObject parent;
+};
 
 typedef enum _InfAdoptedRequestType {
   INF_ADOPTED_REQUEST_DO,
   INF_ADOPTED_REQUEST_UNDO,
   INF_ADOPTED_REQUEST_REDO
 } InfAdoptedRequestType;
-
-typedef struct _InfAdoptedRequest InfAdoptedRequest;
-struct _InfAdoptedRequest {
-  /* readonly */
-  InfAdoptedRequestType type;
-  /* readonly, not refed */
-  InfAdoptedUser* user;
-  /* read/write */
-  InfAdoptedStateVector* vector;
-  /* read/write */
-  InfAdoptedOperation* operation;
-};
 
 GType
 inf_adopted_request_type_get_type(void) G_GNUC_CONST;
@@ -55,16 +60,45 @@ GType
 inf_adopted_request_get_type(void) G_GNUC_CONST;
 
 InfAdoptedRequest*
-inf_adopted_request_new(InfAdoptedRequestType type,
-                        InfAdoptedStateVector* vector,
-                        InfAdoptedUser* user,
-                        InfAdoptedOperation* operation);
+inf_adopted_request_new_do(InfAdoptedStateVector* vector,
+                           InfAdoptedUser* user,
+                           InfAdoptedOperation* operation);
+
+InfAdoptedRequest*
+inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
+                             InfAdoptedUser* user);
+
+InfAdoptedRequest*
+inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
+                             InfAdoptedUser* user);
 
 InfAdoptedRequest*
 inf_adopted_request_copy(InfAdoptedRequest* request);
 
+InfAdoptedRequestType
+inf_adopted_request_get_request_type(InfAdoptedRequest* request);
+
+InfAdoptedStateVector*
+inf_adopted_request_get_vector(InfAdoptedRequest* request);
+
+InfAdoptedUser*
+inf_adopted_request_get_user(InfAdoptedRequest* request);
+
+InfAdoptedOperation*
+inf_adopted_request_get_operation(InfAdoptedRequest* request);
+
 void
-inf_adopted_request_free(InfAdoptedRequest* request);
+inf_adopted_request_transform(InfAdoptedRequest* request,
+                              InfAdoptedRequest* against);
+
+void
+inf_adopted_request_mirror(InfAdoptedRequest* request,
+                           guint by);
+
+void
+inf_adopted_request_fold(InfAdoptedRequest* request,
+                         InfAdoptedUser* into,
+                         guint by);
 
 G_END_DECLS
 

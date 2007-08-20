@@ -27,13 +27,15 @@ G_BEGIN_DECLS
 
 #define INF_ADOPTED_TYPE_STATE_VECTOR            (inf_adopted_state_vector_get_type())
 
-/* TODO: Wrap in own struct for type safety? StateVectors are often used
- * and I think it is best if they are as fast as possible. */
+/* TODO: Wrap in own struct for type safety? However, StateVectors are often
+ * used and I think it is best if they are as fast as possible. */
+/* TODO: Only store user ID instead of user object? */
+/* TODO: I think GTree is better suited for what we are looking, but it does
+ * not allow iteration over its elements, required for
+ * inf_adopted_state_vector_compare. */
 typedef GSequence InfAdoptedStateVector;
 
-#if 0
 typedef void(*InfAdoptedStateVectorForeachFunc)(InfUser*, guint, gpointer);
-#endif
 
 GType
 inf_adopted_state_vector_get_type(void) G_GNUC_CONST;
@@ -61,12 +63,18 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
                              InfUser* component,
                              gint value);
 
-#if 0
 void
 inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
                                  InfAdoptedStateVectorForeachFunc func,
                                  gpointer user_data);
-#endif
+
+int
+inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
+                                 InfAdoptedStateVector* second);
+
+gboolean
+inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
+                                         InfAdoptedStateVector* second);
 
 G_END_DECLS
 

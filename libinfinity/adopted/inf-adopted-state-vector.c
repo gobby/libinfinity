@@ -27,7 +27,6 @@
  * performed by each user. This number is called a timestamp, although it has
  * nothing to do with actual time. */
 
-#if 0
 typedef struct _InfAdoptedStateVectorForeachData
   InfAdoptedStateVectorForeachData;
 
@@ -35,7 +34,6 @@ struct _InfAdoptedStateVectorForeachData {
   InfAdoptedStateVectorForeachFunc func;
   gpointer user_data;
 };
-#endif
 
 typedef struct _InfAdoptedStateVectorComponent InfAdoptedStateVectorComponent;
 struct _InfAdoptedStateVectorComponent {
@@ -127,7 +125,6 @@ inf_adopted_state_vector_copy_func(gpointer data,
   g_sequence_append((GSequence*)user_data, new_comp);
 }
 
-#if 0
 static void
 inf_adopted_state_vector_foreach_func(gpointer data,
                                       gpointer user_data)
@@ -140,7 +137,6 @@ inf_adopted_state_vector_foreach_func(gpointer data,
 
   foreach_data->func(comp->user, comp->n, foreach_data->user_data);
 }
-#endif
 
 GType
 inf_adopted_state_vector_get_type(void)
@@ -298,7 +294,6 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
   }
 }
 
-#if 0
 /** inf_adopted_state_vector_foreach:
  *
  * @vec: A #InfAdoptedStateVector.
@@ -323,4 +318,167 @@ inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
 
   g_sequence_foreach(vec, inf_adopted_state_vector_foreach_func, &data);
 }
-#endif
+
+/** inf_adopted_state_vector_compare:
+ *
+ * @first: A #InfAdoptedStateVector.
+ * @second: Another #InfAdoptedStateVector.
+ *
+ * Performs a comparison suited for strict-weak ordering so that state vectors
+ * can be sorted. This function returns -1 if @first compares before @second,
+ * 0 if they compare equal and 1 if @first compares after @second.
+ *
+ * Return Value: -1, 0 or 1.
+ **/
+int
+inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
+                                 InfAdoptedStateVector* second)
+{
+  GSequenceIter* first_iter;
+  GSequenceIter* second_iter;
+  InfAdoptedStateVectorComponent* first_comp;
+  InfAdoptedStateVectorComponent* second_comp;
+
+  g_return_val_if_fail(first != NULL, 0);
+  g_return_val_if_fail(second != NULL, 0);
+
+  /* TODO: Some test that verifies that this function
+   * provides strict weak ordering */
+
+  first_iter = g_sequence_get_begin_iter(first);
+  second_iter = g_sequence_get_begin_iter(second);
+
+  for(;;)
+  {
+    /* Jump over components whose value is 0. This is necessary because
+     * components that are not in the sequence are treated like having the
+     * value zero and should be compared equal. */
+    while(first_iter != g_sequence_get_end_iter(first))
+    {
+      first_comp = g_sequence_get(first_iter);
+      if(first_comp->n > 0)
+        break;
+
+      first_iter = g_sequence_iter_next(first_iter);
+    }
+
+    while(second_iter != g_sequence_get_end_iter(second))
+    {
+      second_comp = g_sequence_get(second_iter);
+      if(second_comp->n > 0)
+        break;
+
+      second_iter = g_sequence_iter_next(second_iter);
+    }
+
+    if(first_iter == g_sequence_get_end_iter(first) ||
+       second_iter == g_sequence_get_end_iter(second))
+    {
+      break;
+    }
+
+    /* first_comp and second_comp are set here */
+
+    if(first_comp->user < second_comp->user)
+    {
+      return -1;
+    }
+    else if(first_comp->user > second_comp->user)
+    {
+      return 1;
+    }
+    else if(first_comp->n < second_comp->n)
+    {
+      return -1;
+    }
+    else if(first_comp->n > second_comp->n)
+    {
+      return 1;
+    }
+
+    /* Component matches, check next */
+
+    first_iter = g_sequence_iter_next(first_iter);
+    second_iter = g_sequence_iter_next(second_iter);
+  }
+
+  if(first_iter == g_sequence_get_end_iter(first) &&
+     second_iter == g_sequence_get_end_iter(second))
+  {
+    return 0; 
+  }
+  else if(first_iter == g_sequence_get_end_iter(first))
+  {
+    return -1;
+  }
+  else
+  {
+    return 1;
+  }
+}
+
+/** inf_adopted_state_vector_causally_before:
+ *
+ * @first: A #InfAdoptedStateVector.
+ * @second: Another #InfAdoptedStateVector.
+ *
+ * Checks whether an event that occured at time @second is causally
+ * dependant on an event that occured at time @first, that is all
+ * components of @first are less or equal to the corresponding component in
+ * @second.
+ *
+ * Return Value: Whether @second depends on @first.
+ **/
+gboolean
+inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
+                                         InfAdoptedStateVector* second)
+{
+  GSequenceIter* first_iter;
+  GSequenceIter* second_iter;
+  InfAdoptedStateVectorComponent* first_comp;
+  InfAdoptedStateVectorComponent* second_comp;
+
+  g_return_val_if_fail(first != NULL, FALSE);
+  g_return_val_if_fail(second != NULL, FALSE);
+
+  first_iter = g_sequence_get_begin_iter(first);
+  second_iter = g_sequence_get_begin_iter(second);
+
+  while(first_iter != g_sequence_get_end_iter(first))
+  {
+    first_comp = g_sequence_get(first_iter);
+    first_iter = g_sequence_iter_next(first_iter);
+
+    if(second_iter == g_sequence_get_end_iter(second))
+    {
+      /* That component is not contained in second (thus 0) */
+      if(first_comp->n > 0)
+        return FALSE;
+    }
+    else
+    {
+      second_comp = g_sequence_get(second_iter);
+      while(second_comp != NULL && first_comp->user > second_comp->user)
+      {
+        second_iter = g_sequence_iter_next(second_iter);
+        if(second_iter != g_sequence_get_end_iter(second))
+          second_comp = g_sequence_get(second_iter);
+        else
+          second_comp = NULL;
+      }
+
+      if(second_comp != NULL && first_comp->user < second_comp->user)
+      {
+        /* That component is not contained in second (thus 0) */
+        if(first_comp->n > 0)
+          return FALSE;
+      }
+
+      g_assert(first_comp->user == second_comp->user);
+      if(first_comp->n > second_comp->n)
+        return FALSE;
+    }
+  }
+
+  return TRUE;
+}

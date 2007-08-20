@@ -1,3 +1,17 @@
+2007-08-20  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-state-vector.h:
+	* libinfinity/adopted/inf-adopted-state-vector.c: Added compare and
+	causal relation functions.
+
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request.c: Made a GObject out of
+	this and implement transfrom, mirror and fold operations.
+
+	* libinfinity/adopted/inf-adopted-request-log.c: Added next-undo and
+	next-redo properties and additional linking between the entries
+	(original, next associated and previous associated request).
+
 2007-08-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-operation.h: Removed superfluous
