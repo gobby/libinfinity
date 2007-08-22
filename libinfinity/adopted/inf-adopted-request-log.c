@@ -709,17 +709,19 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
   return entry->next_associated->request;
 }
 
-/** inf_adopted_request_log_next_associated:
+/** inf_adopted_request_log_prev_associated:
  *
  * @log: A #InfAdoptedRequestLog.
- * @request: A #InfAdoptedRequest contained in @log.
+ * @request: A #InfAdoptedRequest.
  *
  * If @request is of type %INF_ADOPTED_REQUEST_REDO or, this returns the UNDO
  * request that is redone by @request, if @request is a
- * %INF_ADOPTED_REQUEST_UNDO, this returns the request that is undone by
- * @request.
- * if any. If @request is a %INF_ADOPTED_REQUEST UNDO request, this returns
- * a request that redoes @request, if any.
+ * %INF_ADOPTED_REQUEST_UNDO request, this returns the request that is undone
+ * by @request.
+ *
+ * @request must either be contained in @log or the vector time component
+ * of its own user must be equivalent to inf_adopted_request_log_get_end(),
+ * in which case @request is treated as it if was the newest requset in @log.
  *
  * Return Value: The previous associated request of @request, or %NULL.
  **/
@@ -742,22 +744,52 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
   n = inf_adopted_state_vector_get(vector, INF_USER(user));
 
   g_return_val_if_fail(priv->user == user, NULL);
-  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
+  g_return_val_if_fail(n >= priv->begin && n <= priv->end, NULL);
 
-  entry =  priv->entries + priv->offset + n - priv->begin;
-  if(entry->prev_associated == NULL) return NULL;
-  return entry->prev_associated->request;
+  if(n == priv->end)
+  {
+    switch(inf_adopted_request_get_type(request))
+    {
+    case INF_ADOPTED_REQUEST_DO:
+      entry = NULL;
+      break;
+    case INF_ADOPTED_REQUEST_UNDO:
+      entry = priv->next_undo;
+      break;
+    case INF_ADOPTED_REQUEST_REDO:
+      entry = priv->next_redo;
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    if(entry != NULL)
+      return entry->request;
+    else
+      return NULL;
+  }
+  else
+  {
+    entry =  priv->entries + priv->offset + n - priv->begin;
+    if(entry->prev_associated == NULL) return NULL;
+    return entry->prev_associated->request;
+  }
 }
 
 /** inf_adopted_request_log_original_request:
  *
  * @log: A #InfAdoptedRequestLog.
- * @request: A #InfAdoptedRequest contained in @log.
+ * @request: A #InfAdoptedRequest.
  *
  * Returns the most previous associated request for @request, that is,
  * the %INF_ADOPTED_REQUEST_DO request that @request undoes or redoes,
  * respectively. If @request itself is a %INF_ADOPTED_REQUEST_DO request,
  * @request itself is returned.
+ *
+ * @request must either be contained in @log or the vector time component
+ * of its own user must be equivalent to inf_adopted_request_log_get_end(),
+ * in which case @request is treated as it if was the newest requset in @log.
  *
  * Return Value: The original request of @request. This function never
 * returns %NULL.
@@ -781,11 +813,37 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
   n = inf_adopted_state_vector_get(vector, INF_USER(user));
 
   g_return_val_if_fail(priv->user == user, NULL);
-  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
+  g_return_val_if_fail(n >= priv->begin && n <= priv->end, NULL);
 
-  entry =  priv->entries + priv->offset + n - priv->begin;
-  g_assert(entry->original != NULL);
-  return entry->original->request;
+  if(n == priv->end)
+  {
+    switch(inf_adopted_request_get_type(request))
+    {
+    case INF_ADOPTED_REQUEST_DO:
+      entry = NULL;
+      break;
+    case INF_ADOPTED_REQUEST_UNDO:
+      entry = priv->next_undo;
+      break;
+    case INF_ADOPTED_REQUEST_REDO:
+      entry = priv->next_redo;
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    if(entry != NULL)
+      return entry->original->request;
+    else
+      return request;
+  }
+  else
+  {
+    entry =  priv->entries + priv->offset + n - priv->begin;
+    g_assert(entry->original != NULL);
+    return entry->original->request;
+  }
 }
 
 /* vim:set et sw=2 ts=2: */

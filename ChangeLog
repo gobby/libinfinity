@@ -1,5 +1,11 @@
 2007-08-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-request-log.c: Allow the given
+	request to be one past the end of the log in which case it is treated
+	as it was the newest in the log.
+
+2007-08-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-text-chunk.h:
 	* libinfinity/inf-text-chunk.c: Beginning of a InfTextChunk
 	implementation, storing text written by specific users. This will
