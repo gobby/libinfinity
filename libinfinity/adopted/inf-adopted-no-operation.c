@@ -144,3 +144,5 @@ inf_adopted_no_operation_new(void)
   object = g_object_new(INF_ADOPTED_TYPE_NO_OPERATION, NULL);
   return INF_ADOPTED_NO_OPERATION(object);
 }
+
+/* vim:set et sw=2 ts=2: */

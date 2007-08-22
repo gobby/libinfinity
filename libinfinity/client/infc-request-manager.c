@@ -655,3 +655,5 @@ infc_request_manager_foreach_named_request(InfcRequestManager* manager,
     &data
   );
 }
+
+/* vim:set et sw=2 ts=2: */

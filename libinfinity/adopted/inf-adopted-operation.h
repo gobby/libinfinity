@@ -110,3 +110,5 @@ inf_adopted_operation_make_reversible(InfAdoptedOperation* operation,
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_OPERATION_H__ */
+
+/* vim:set et sw=2 ts=2: */

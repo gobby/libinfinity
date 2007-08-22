@@ -82,3 +82,5 @@ inf_tcp_connection_send(InfTcpConnection* connection,
 G_END_DECLS
 
 #endif /* __INF_TCP_CONNECTION_H__ */
+
+/* vim:set et sw=2 ts=2: */

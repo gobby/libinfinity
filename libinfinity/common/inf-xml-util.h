@@ -59,3 +59,5 @@ inf_xml_util_set_attribute_uint(xmlNodePtr xml,
 G_END_DECLS
 
 #endif /* __INF_XML_UTIL_H__ */
+
+/* vim:set et sw=2 ts=2: */

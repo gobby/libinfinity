@@ -221,3 +221,5 @@ inf_discovery_undiscovered(InfDiscovery* discovery,
     info
   );
 }
+
+/* vim:set et sw=2 ts=2: */

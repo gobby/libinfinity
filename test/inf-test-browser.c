@@ -373,3 +373,5 @@ main(int argc, char* argv[])
   g_object_unref(G_OBJECT(test.io));
   return 0;
 }
+
+/* vim:set et sw=2 ts=2: */

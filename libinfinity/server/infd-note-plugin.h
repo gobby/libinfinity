@@ -50,3 +50,5 @@ struct _InfdNotePlugin {
 G_END_DECLS
 
 #endif /* __INFD_NOTE_PLUGIN_H__ */
+
+/* vim:set et sw=2 ts=2: */

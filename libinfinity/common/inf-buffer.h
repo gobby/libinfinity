@@ -43,3 +43,5 @@ inf_buffer_get_type(void) G_GNUC_CONST;
 G_END_DECLS
 
 #endif /* __INF_BUFFER_H__ */
+
+/* vim:set et sw=2 ts=2: */

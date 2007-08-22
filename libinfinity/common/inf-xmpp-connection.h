@@ -139,3 +139,5 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
 G_END_DECLS
 
 #endif /* __INF_XMPP_CONNECTION_H__ */
+
+/* vim:set et sw=2 ts=2: */

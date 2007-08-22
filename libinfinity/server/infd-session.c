@@ -1217,3 +1217,5 @@ infd_session_send_to_subscriptions(InfdSession* session,
     xmlFreeNode(xml);
   }
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -362,3 +362,5 @@ inf_user_get_flags(const InfUser* user)
   g_return_val_if_fail(INF_IS_USER(user), 0);
   return INF_USER_PRIVATE(user)->status;
 }
+
+/* vim:set et sw=2 ts=2: */

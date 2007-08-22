@@ -670,3 +670,122 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
   g_object_notify(G_OBJECT(log), "begin");
   g_object_thaw_notify(G_OBJECT(log));
 }
+
+/** inf_adopted_request_log_next_associated:
+ *
+ * @log: A #InfAdoptedRequestLog.
+ * @request: A #InfAdoptedRequest contained in @log.
+ *
+ * If @request is of type %INF_ADOPTED_REQUEST_DO or
+ * %INF_ADOPTED_REQUEST_REDO, this returns UNDO request that undoes this
+ * request, if any. If @request is a %INF_ADOPTED_REQUEST UNDO request, this
+ * returns a request that redoes @request, if any.
+ *
+ * Return Value: The next associated request of @request, or %NULL.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
+                                        InfAdoptedRequest* request)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedStateVector* vector;
+  InfAdoptedUser* user;
+  guint n;
+  InfAdoptedRequestLogEntry* entry;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  vector = inf_adopted_request_get_vector(request);
+  user = inf_adopted_request_get_user(user);
+  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+
+  g_return_val_if_fail(priv->user == user, NULL);
+  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
+
+  entry =  priv->entries + priv->offset + n - priv->begin;
+  if(entry->next_associated == NULL) return NULL;
+  return entry->next_associated->request;
+}
+
+/** inf_adopted_request_log_next_associated:
+ *
+ * @log: A #InfAdoptedRequestLog.
+ * @request: A #InfAdoptedRequest contained in @log.
+ *
+ * If @request is of type %INF_ADOPTED_REQUEST_REDO or, this returns the UNDO
+ * request that is redone by @request, if @request is a
+ * %INF_ADOPTED_REQUEST_UNDO, this returns the request that is undone by
+ * @request.
+ * if any. If @request is a %INF_ADOPTED_REQUEST UNDO request, this returns
+ * a request that redoes @request, if any.
+ *
+ * Return Value: The previous associated request of @request, or %NULL.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
+                                        InfAdoptedRequest* request)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedStateVector* vector;
+  InfAdoptedUser* user;
+  guint n;
+  InfAdoptedRequestLogEntry* entry;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  vector = inf_adopted_request_get_vector(request);
+  user = inf_adopted_request_get_user(user);
+  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+
+  g_return_val_if_fail(priv->user == user, NULL);
+  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
+
+  entry =  priv->entries + priv->offset + n - priv->begin;
+  if(entry->prev_associated == NULL) return NULL;
+  return entry->prev_associated->request;
+}
+
+/** inf_adopted_request_log_original_request:
+ *
+ * @log: A #InfAdoptedRequestLog.
+ * @request: A #InfAdoptedRequest contained in @log.
+ *
+ * Returns the most previous associated request for @request, that is,
+ * the %INF_ADOPTED_REQUEST_DO request that @request undoes or redoes,
+ * respectively. If @request itself is a %INF_ADOPTED_REQUEST_DO request,
+ * @request itself is returned.
+ *
+ * Return Value: The original request of @request. This function never
+* returns %NULL.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
+                                         InfAdoptedRequest* request)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedStateVector* vector;
+  InfAdoptedUser* user;
+  guint n;
+  InfAdoptedRequestLogEntry* entry;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  vector = inf_adopted_request_get_vector(request);
+  user = inf_adopted_request_get_user(user);
+  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+
+  g_return_val_if_fail(priv->user == user, NULL);
+  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
+
+  entry =  priv->entries + priv->offset + n - priv->begin;
+  g_assert(entry->original != NULL);
+  return entry->original->request;
+}
+
+/* vim:set et sw=2 ts=2: */

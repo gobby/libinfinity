@@ -2009,3 +2009,5 @@ infc_browser_iter_get_session(InfcBrowser* browser,
   if(node->type != INFC_BROWSER_NODE_NOTE_KNOWN) return NULL;
   return node->shared.known.session;
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -73,3 +73,5 @@ infd_tcp_server_close(InfdTcpServer* server);
 G_END_DECLS
 
 #endif /* __INFD_TCP_SERVER_H__ */
+
+/* vim:set et sw=2 ts=2: */

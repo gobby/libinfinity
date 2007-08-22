@@ -77,3 +77,5 @@ infd_session_send_to_subscriptions(InfdSession* session,
 G_END_DECLS
 
 #endif /* __INFD_SESSION_H__ */
+
+/* vim:set et sw=2 ts=2: */

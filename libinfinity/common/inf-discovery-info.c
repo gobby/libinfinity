@@ -113,3 +113,5 @@ inf_discovery_info_get_host_name(InfDiscoveryInfo* info)
 
   return iface->get_host_name(info);
 }
+
+/* vim:set et sw=2 ts=2: */

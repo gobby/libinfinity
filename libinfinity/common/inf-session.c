@@ -2186,3 +2186,5 @@ inf_session_get_synchronization_status(InfSession* session,
     break;
   }
 }
+
+/* vim:set et sw=2 ts=2: */

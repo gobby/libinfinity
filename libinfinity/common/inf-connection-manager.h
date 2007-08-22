@@ -108,3 +108,5 @@ inf_connection_manager_cancel_outer(InfConnectionManager* manager,
 G_END_DECLS
 
 #endif /* __INF_CONNECTION_MANAGER_H__ */
+
+/* vim:set et sw=2 ts=2: */

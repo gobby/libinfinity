@@ -226,3 +226,5 @@ inf_ink_buffer_get_stroke_by_id(InfInkBuffer* buffer,
 
   return iface->get_stroke_by_id(buffer, id);
 }
+
+/* vim:set et sw=2 ts=2: */

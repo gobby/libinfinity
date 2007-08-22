@@ -62,3 +62,5 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
 G_END_DECLS
 
 #endif /* __INFD_XMPP_SERVER_H__ */
+
+/* vim:set et sw=2 ts=2: */

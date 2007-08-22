@@ -1036,3 +1036,5 @@ _inf_tcp_connection_accepted(InfIo* io,
   return connection;
 }
 #endif /* WITH_SERVER */
+
+/* vim:set et sw=2 ts=2: */

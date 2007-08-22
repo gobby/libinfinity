@@ -76,3 +76,5 @@ inf_ip_address_collate(const InfIpAddress* address1,
 G_END_DECLS
 
 #endif /* __INF_IP_ADDRESS_H__ */
+
+/* vim:set et sw=2 ts=2: */

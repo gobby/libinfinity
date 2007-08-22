@@ -57,3 +57,5 @@ infd_server_pool_add_server(InfdServerPool* server_pool,
 G_END_DECLS
 
 #endif /* __INFD_SERVER_POOL_H__ */
+
+/* vim:set et sw=2 ts=2: */

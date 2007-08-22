@@ -66,3 +66,5 @@ inf_standalone_io_loop_running(InfStandaloneIo* io);
 G_END_DECLS
 
 #endif /* __INF_STANDALONE_IO_H__ */
+
+/* vim:set et sw=2 ts=2: */

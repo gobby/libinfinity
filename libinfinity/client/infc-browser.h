@@ -149,3 +149,5 @@ infc_browser_iter_get_session(InfcBrowser* browser,
 G_END_DECLS
 
 #endif /* __INFC_BROWSER_H__ */
+
+/* vim:set et sw=2 ts=2: */

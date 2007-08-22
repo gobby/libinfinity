@@ -55,3 +55,5 @@ inf_discovery_info_get_host_name(InfDiscoveryInfo* info);
 G_END_DECLS
 
 #endif /* __INF_DISCOVERY_INFO_H__ */
+
+/* vim:set et sw=2 ts=2: */

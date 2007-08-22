@@ -72,3 +72,5 @@ inf_buffer_get_type(void)
 
   return buffer_type;
 }
+
+/* vim:set et sw=2 ts=2: */

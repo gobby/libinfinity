@@ -287,3 +287,5 @@ inf_adopted_operation_make_reversible(InfAdoptedOperation* operation,
   else
     return NULL;
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -56,3 +56,5 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation);
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_SPLIT_OPERATION_H__ */
+
+/* vim:set et sw=2 ts=2: */

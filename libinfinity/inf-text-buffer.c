@@ -186,3 +186,5 @@ inf_text_buffer_get_encoding(InfTextBuffer* buffer)
 
   return iface->get_encoding(buffer);
 }
+
+/* vim:set et sw=2 ts=2: */

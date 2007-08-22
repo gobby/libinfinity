@@ -114,3 +114,5 @@ infd_storage_remove_node(InfdStorage* storage,
 G_END_DECLS
 
 #endif /* __INFD_STORAGE_H__ */
+
+/* vim:set et sw=2 ts=2: */

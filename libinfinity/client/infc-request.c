@@ -256,3 +256,5 @@ infc_request_failed(InfcRequest* request,
 
   g_signal_emit(G_OBJECT(request), request_signals[FAILED], 0, error);
 }
+
+/* vim:set et sw=2 ts=2: */

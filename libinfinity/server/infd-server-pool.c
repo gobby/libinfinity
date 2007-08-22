@@ -323,3 +323,5 @@ infd_server_pool_add_server(InfdServerPool* server_pool,
 
   g_object_ref(G_OBJECT(server));
 }
+
+/* vim:set et sw=2 ts=2: */

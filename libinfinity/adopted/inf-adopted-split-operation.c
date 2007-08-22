@@ -454,3 +454,5 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
   inf_adopted_split_operation_unsplit_impl(operation, &result);
   return result;
 }
+
+/* vim:set et sw=2 ts=2: */

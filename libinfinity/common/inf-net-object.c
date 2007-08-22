@@ -101,3 +101,5 @@ inf_net_object_sent(InfNetObject* object,
   if(iface->sent != NULL)
     (*iface->sent)(object, conn, node);
 }
+
+/* vim:set et sw=2 ts=2: */

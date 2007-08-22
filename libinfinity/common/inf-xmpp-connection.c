@@ -3350,3 +3350,5 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
 
   return INF_XMPP_CONNECTION(object);
 }
+
+/* vim:set et sw=2 ts=2: */

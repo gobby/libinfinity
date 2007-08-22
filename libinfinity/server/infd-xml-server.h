@@ -69,3 +69,5 @@ infd_xml_server_new_connection(InfdXmlServer* server,
 G_END_DECLS
 
 #endif /* __INFD_XML_SERVER_H__ */
+
+/* vim:set et sw=2 ts=2: */

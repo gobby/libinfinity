@@ -74,3 +74,5 @@ inf_text_buffer_get_encoding(InfTextBuffer* buffer);
 G_END_DECLS
 
 #endif /* __INF_TEXT_BUFFER_H__ */
+
+/* vim:set et sw=2 ts=2: */

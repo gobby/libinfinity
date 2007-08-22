@@ -146,3 +146,5 @@ inf_xml_util_set_attribute_uint(xmlNodePtr xml,
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
+
+/* vim:set et sw=2 ts=2: */

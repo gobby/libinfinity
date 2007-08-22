@@ -634,3 +634,5 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
   inf_adopted_state_vector_add(priv->vector, INF_USER(into), by);
   g_object_notify(G_OBJECT(request), "vector");
 }
+
+/* vim:set et sw=2 ts=2: */

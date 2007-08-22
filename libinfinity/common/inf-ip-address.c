@@ -331,3 +331,5 @@ inf_ip_address_collate(const InfIpAddress* address1,
    }
   }
 }
+
+/* vim:set et sw=2 ts=2: */

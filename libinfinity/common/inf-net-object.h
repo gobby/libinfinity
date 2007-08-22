@@ -73,3 +73,5 @@ inf_net_object_sent(InfNetObject* object,
 G_END_DECLS
 
 #endif /* __INF_NET_OBJECT_H__ */
+
+/* vim:set et sw=2 ts=2: */

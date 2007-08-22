@@ -731,3 +731,5 @@ infd_tcp_server_close(InfdTcpServer* server)
   priv->status = INFD_TCP_SERVER_CLOSED;
   g_object_notify(G_OBJECT(server), "status");
 }
+
+/* vim:set et sw=2 ts=2: */

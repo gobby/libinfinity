@@ -82,3 +82,5 @@ infc_session_leave_user(InfcSession* session,
 G_END_DECLS
 
 #endif /* __INFC_SESSION_H__ */
+
+/* vim:set et sw=2 ts=2: */

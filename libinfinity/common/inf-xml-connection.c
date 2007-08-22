@@ -227,3 +227,5 @@ void inf_xml_connection_received(InfXmlConnection* connection,
     xml
   );
 }
+
+/* vim:set et sw=2 ts=2: */

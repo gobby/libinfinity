@@ -64,3 +64,5 @@ infd_filesystem_storage_new(const gchar* root_directory);
 G_END_DECLS
 
 #endif /* __INFD_FILESYSTEM_STORAGE_H__ */
+
+/* vim:set et sw=2 ts=2: */

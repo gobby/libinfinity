@@ -70,3 +70,5 @@ infc_browser_iter_free(InfcBrowserIter* iter)
 
   g_slice_free(InfcBrowserIter, iter);
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -61,3 +61,5 @@ inf_adopted_user_set_vector(InfAdoptedUser* user,
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_USER_H__ */
+
+/* vim:set et sw=2 ts=2: */

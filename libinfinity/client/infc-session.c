@@ -1224,3 +1224,5 @@ infc_session_leave_user(InfcSession* session,
 
   return INFC_USER_REQUEST(request);
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -112,3 +112,5 @@ infc_request_manager_foreach_named_request(InfcRequestManager* manager,
 G_END_DECLS
 
 #endif /* __INFC_REQUEST_MANAGER_H__ */
+
+/* vim:set et sw=2 ts=2: */

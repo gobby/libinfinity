@@ -672,3 +672,5 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
 
   return INFD_XMPP_SERVER(object);
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -44,3 +44,5 @@ infc_browser_iter_free(InfcBrowserIter* iter);
 G_END_DECLS
 
 #endif /* __INFC_BROWSER_ITER_H__ */
+
+/* vim:set et sw=2 ts=2: */

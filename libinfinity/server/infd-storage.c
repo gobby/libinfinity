@@ -306,3 +306,5 @@ infd_storage_remove_node(InfdStorage* storage,
 
   return iface->remove_node(storage, path, error);
 }
+
+/* vim:set et sw=2 ts=2: */

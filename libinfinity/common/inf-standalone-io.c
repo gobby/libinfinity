@@ -396,3 +396,5 @@ inf_standalone_io_loop_running(InfStandaloneIo* io)
 
   return priv->loop_running;
 }
+
+/* vim:set et sw=2 ts=2: */

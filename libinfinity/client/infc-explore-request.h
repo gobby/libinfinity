@@ -71,3 +71,5 @@ infc_explore_request_finished(InfcExploreRequest* request,
 G_END_DECLS
 
 #endif /* __INFC_EXPLORE_REQUEST_H__ */
+
+/* vim:set et sw=2 ts=2: */

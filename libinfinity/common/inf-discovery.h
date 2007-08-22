@@ -97,3 +97,5 @@ inf_discovery_undiscovered(InfDiscovery* discovery,
 G_END_DECLS
 
 #endif /* __INF_DISCOVERY_H__ */
+
+/* vim:set et sw=2 ts=2: */

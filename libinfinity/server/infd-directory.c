@@ -2412,3 +2412,5 @@ infd_directory_iter_get_session(InfdDirectory* directory,
 
   return infd_directory_node_get_session(directory, node, error);
 }
+
+/* vim:set et sw=2 ts=2: */

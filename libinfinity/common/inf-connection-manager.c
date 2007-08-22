@@ -970,3 +970,5 @@ inf_connection_manager_cancel_outer(InfConnectionManager* manager,
 
   connobj->outer_queue_last_item = NULL;
 }
+
+/* vim:set et sw=2 ts=2: */

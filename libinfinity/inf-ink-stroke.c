@@ -144,3 +144,5 @@ inf_ink_stroke_free(InfInkStroke* ink_stroke)
   g_free(ink_stroke->points);
   g_free(ink_stroke);
 }
+
+/* vim:set et sw=2 ts=2: */

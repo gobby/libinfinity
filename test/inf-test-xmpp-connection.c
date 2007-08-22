@@ -116,3 +116,5 @@ int main(int argc, char* argv[])
   gnutls_global_deinit();
   return 0;
 }
+
+/* vim:set et sw=2 ts=2: */

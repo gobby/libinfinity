@@ -81,3 +81,5 @@ inf_xml_connection_received(InfXmlConnection* connection,
 G_END_DECLS
 
 #endif /* __INF_XML_CONNECTION_H__ */
+
+/* vim:set et sw=2 ts=2: */

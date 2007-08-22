@@ -175,3 +175,5 @@ infd_xml_server_new_connection(InfdXmlServer* server,
     connection
   );
 }
+
+/* vim:set et sw=2 ts=2: */

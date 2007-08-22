@@ -402,3 +402,5 @@ infc_explore_request_finished(InfcExploreRequest* request,
     return TRUE;
   }
 }
+
+/* vim:set et sw=2 ts=2: */

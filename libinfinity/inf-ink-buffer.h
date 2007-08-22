@@ -77,3 +77,5 @@ inf_ink_buffer_get_stroke_by_id(InfInkBuffer* buffer,
 G_END_DECLS
 
 #endif /* __INF_INK_BUFFER_H__ */
+
+/* vim:set et sw=2 ts=2: */

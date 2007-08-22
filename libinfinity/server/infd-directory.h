@@ -149,3 +149,5 @@ infd_directory_iter_get_session(InfdDirectory* directory,
 G_END_DECLS
 
 #endif /* __INFD_DIRECTORY_H__ */
+
+/* vim:set et sw=2 ts=2: */

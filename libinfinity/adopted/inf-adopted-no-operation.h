@@ -50,3 +50,5 @@ inf_adopted_no_operation_new(void);
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_NO_OPERATION_H__ */
+
+/* vim:set et sw=2 ts=2: */

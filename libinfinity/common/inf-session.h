@@ -228,3 +228,5 @@ inf_session_get_synchronization_status(InfSession* session,
 G_END_DECLS
 
 #endif /* __INF_SESSION_H__ */
+
+/* vim:set et sw=2 ts=2: */

@@ -136,3 +136,5 @@ inf_directory_strerror(InfDirectoryError code)
   }
 }
 
+
+/* vim:set et sw=2 ts=2: */

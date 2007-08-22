@@ -112,3 +112,5 @@ inf_io_watch(InfIo* io,
 
   iface->watch(io, socket, events, func, user_data);
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -510,3 +510,5 @@ infd_filesystem_storage_new(const gchar* root_directory)
 
   return INFD_FILESYSTEM_STORAGE(object);
 }
+
+/* vim:set et sw=2 ts=2: */

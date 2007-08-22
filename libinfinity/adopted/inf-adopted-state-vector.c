@@ -482,3 +482,5 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
 
   return TRUE;
 }
+
+/* vim:set et sw=2 ts=2: */

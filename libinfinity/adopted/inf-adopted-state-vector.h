@@ -79,3 +79,5 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_STATE_VECTOR_H__ */
+
+/* vim:set et sw=2 ts=2: */

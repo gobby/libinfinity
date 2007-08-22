@@ -72,6 +72,20 @@ void
 inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
                                         guint up_to);
 
+InfAdoptedRequest*
+inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
+                                        InfAdoptedRequest* request);
+
+InfAdoptedRequest*
+inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
+                                        InfAdoptedRequest* request);
+
+InfAdoptedRequest*
+inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
+                                         InfAdoptedRequest* request);
+
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_REQUEST_LOG_H__ */
+
+/* vim:set et sw=2 ts=2: */

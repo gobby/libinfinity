@@ -121,3 +121,5 @@ infc_user_request_finished(InfcUserRequest* request,
 {
   g_signal_emit(G_OBJECT(request), user_request_signals[FINISHED], 0, user);
 }
+
+/* vim:set et sw=2 ts=2: */

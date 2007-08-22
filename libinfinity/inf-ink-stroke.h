@@ -67,3 +67,5 @@ inf_ink_stroke_free(InfInkStroke* ink_stroke);
 G_END_DECLS
 
 #endif /* __INF_INK_STROKE_H__ */
+
+/* vim:set et sw=2 ts=2: */

@@ -57,3 +57,5 @@ infc_node_request_finished(InfcNodeRequest* request,
 G_END_DECLS
 
 #endif /* __INFC_NODE_REQUEST_H__ */
+
+/* vim:set et sw=2 ts=2: */

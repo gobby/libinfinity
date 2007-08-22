@@ -122,3 +122,5 @@ infc_node_request_finished(InfcNodeRequest* request,
 {
   g_signal_emit(G_OBJECT(request), node_request_signals[FINISHED], 0, iter);
 }
+
+/* vim:set et sw=2 ts=2: */

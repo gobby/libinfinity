@@ -229,3 +229,5 @@ inf_adopted_user_set_vector(InfAdoptedUser* user,
 
   g_object_notify(G_OBJECT(user), "vector");
 }
+
+/* vim:set et sw=2 ts=2: */
