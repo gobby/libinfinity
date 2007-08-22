@@ -1,3 +1,11 @@
+2007-08-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-text-chunk.h:
+	* libinfinity/inf-text-chunk.c: Beginning of a InfTextChunk
+	implementation, storing text written by specific users. This will
+	probably later be moved into a separate InfText library. This code is
+	partly written by Benjamin Herr <ben@0x539.de>.
+
 2007-08-22  Benjamin Herr  <ben@0x539.de>
 
 	* all source files: Appended vim modelines.
