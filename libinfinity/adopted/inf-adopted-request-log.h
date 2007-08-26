@@ -84,6 +84,16 @@ InfAdoptedRequest*
 inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
                                          InfAdoptedRequest* request);
 
+InfAdoptedRequest*
+inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log);
+
+InfAdoptedRequest*
+inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log);
+
+InfAdoptedRequest*
+inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
+                                      InfAdoptedRequest* request);
+
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_REQUEST_LOG_H__ */

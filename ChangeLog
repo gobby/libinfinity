@@ -1,3 +1,23 @@
+2007-08-26  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:OBJECT,BOOLEAN marshaller.
+
+	* libinfinity/inf-text-chunk.c: Added a comment, and a TODO item.
+
+	* libinfinity/adopted/inf-adopted-operation.h: Added another TODO
+	item.
+
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-request-log.c: Added the
+	inf_adopted_request_log_next_undo(),
+	inf_adopted_request_log_next_redo() and
+	inf_adopted_request_log_upper_related() functions.
+
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c:
+	* libinfinity/adopted/Makefile.am: Implemented the first part of the
+	really dark magic.
+
 2007-08-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-request-log.c: Allow the given

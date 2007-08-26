@@ -24,7 +24,7 @@ typedef struct _InfAdoptedRequestLogEntry InfAdoptedRequestLogEntry;
 struct _InfAdoptedRequestLogEntry {
   InfAdoptedRequest* request;
   InfAdoptedRequestLogEntry* original;
-  /* TODO: Check whether we really need next_associated */
+
   InfAdoptedRequestLogEntry* next_associated;
   InfAdoptedRequestLogEntry* prev_associated;
 };
@@ -120,7 +120,7 @@ inf_adopted_request_log_find_associated(InfAdoptedRequestLog* log,
  * reference non-removed entries with their next_associated / prev_associated
  * fields. This would, in turn, mean, that a non-removed entry would point
  * to an entry that is about to be removed now. In effect, only whole
- * do/undo/redo/undo/redo/etc. can be removed but not be splitted
+ * do/undo/redo/undo/redo/etc. chains can be removed but not be splitted
  * in between. */
 static gboolean
 inf_adopted_request_log_is_related(InfAdoptedRequestLog* log,
@@ -698,7 +698,7 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
   vector = inf_adopted_request_get_vector(request);
-  user = inf_adopted_request_get_user(user);
+  user = inf_adopted_request_get_user(request);
   n = inf_adopted_state_vector_get(vector, INF_USER(user));
 
   g_return_val_if_fail(priv->user == user, NULL);
@@ -740,7 +740,7 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
   vector = inf_adopted_request_get_vector(request);
-  user = inf_adopted_request_get_user(user);
+  user = inf_adopted_request_get_user(request);
   n = inf_adopted_state_vector_get(vector, INF_USER(user));
 
   g_return_val_if_fail(priv->user == user, NULL);
@@ -748,7 +748,7 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
 
   if(n == priv->end)
   {
-    switch(inf_adopted_request_get_type(request))
+    switch(inf_adopted_request_get_request_type(request))
     {
     case INF_ADOPTED_REQUEST_DO:
       entry = NULL;
@@ -809,7 +809,7 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
   vector = inf_adopted_request_get_vector(request);
-  user = inf_adopted_request_get_user(user);
+  user = inf_adopted_request_get_user(request);
   n = inf_adopted_state_vector_get(vector, INF_USER(user));
 
   g_return_val_if_fail(priv->user == user, NULL);
@@ -817,7 +817,7 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
 
   if(n == priv->end)
   {
-    switch(inf_adopted_request_get_type(request))
+    switch(inf_adopted_request_get_request_type(request))
     {
     case INF_ADOPTED_REQUEST_DO:
       entry = NULL;
@@ -844,6 +844,88 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
     g_assert(entry->original != NULL);
     return entry->original->request;
   }
+}
+
+/** inf_adopted_request_log_next_undo:
+ *
+ * @log: A #InfAdoptedRequestLog.
+ *
+ * Returns the request that would be undone if a undo request was added to
+ * the request log.
+ *
+ * Return Value: The next request to be undone, or %NULL.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log)
+{
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->next_undo->request;
+}
+
+/** inf_adopted_request_log_next_redo:
+ *
+ * @log: A #InfAdoptedRequestLog.
+ *
+ * Returns the request that would be redone if a redo request was added to
+ * the request log.
+ *
+ * Return Value: The next request to be redone, or %NULL.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
+{
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->next_redo->request;
+}
+
+/** inf_adopted_request_log_upper_related:
+ *
+ * @log: A #InfAdoptedRequestLog.
+ * @request: A #InfAdoptedRequest contained in @log.
+ *
+ * Returns the newest request in @log that is related to @request. Two
+ * requests are considered related when they are enclosed by a do/undo,
+ * an undo/redo or a redo/undo pair.
+ *
+ * TODO: This function only works if request is the oldest request of a
+ * set of related requests.
+ *
+ * Return Value: The newest request in @log being related to @request.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
+                                      InfAdoptedRequest* request)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedUser* user;
+  InfAdoptedStateVector* vector;
+  guint n;
+  
+  InfAdoptedRequestLogEntry* newest_related;
+  InfAdoptedRequestLogEntry* current;
+  
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  user = inf_adopted_request_get_user(request);
+
+  g_return_val_if_fail(user == priv->user, NULL);
+
+  vector = inf_adopted_request_get_vector(request);
+  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+
+  newest_related = priv->entries + priv->offset + n - priv->begin;
+  for(current = newest_related; current <= newest_related; ++ current)
+  {
+    if(current->next_associated != NULL &&
+       current->next_associated > newest_related)
+    {
+      newest_related = current->next_associated;
+    }
+  }
+
+  return newest_related->request;
 }
 
 /* vim:set et sw=2 ts=2: */

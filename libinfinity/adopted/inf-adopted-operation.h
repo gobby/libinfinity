@@ -36,6 +36,7 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedOperation InfAdoptedOperation;
 typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
 
+/* TODO: Make a flag out of reversible */
 typedef enum _InfAdoptedOperationFlags {
   INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0
 } InfAdoptedOperationFlags;

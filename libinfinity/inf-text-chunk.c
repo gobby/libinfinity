@@ -20,7 +20,7 @@
 
 struct _InfTextChunk {
   GSequence* segments;
-  guint length;
+  guint length; /* in characters */
   const gchar* encoding;
 };
 
@@ -114,6 +114,7 @@ inf_text_chunk_get_segment_at_pos(InfTextChunk* self,
 
     /* This is not "<=" because it should rather find position 0 on the
      * next segment in that case. */
+    /* TODO: I think this has to be <= for the last segment */
     g_assert(pos < inf_text_chunk_next_offset(self, iter));
 
     /* Find byte index in the segment where the specified character starts.
