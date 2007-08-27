@@ -31,6 +31,14 @@ struct _InfStandaloneIoWatch {
   gpointer user_data;
 };
 
+typedef struct _InfStandaloneIoTimeout InfStandaloneIoTimeout;
+struct _InfStandaloneIoTimeout {
+  GTimeVal begin;
+  guint msecs;
+  InfIoTimeoutFunc func;
+  gpointer user_data;
+};
+
 typedef struct _InfStandaloneIoPrivate InfStandaloneIoPrivate;
 struct _InfStandaloneIoPrivate {
   struct pollfd* pfds;
@@ -39,12 +47,27 @@ struct _InfStandaloneIoPrivate {
   guint fd_size;
   guint fd_alloc;
 
+  GList* timeouts;
+
   gboolean loop_running;
 };
 
 #define INF_STANDALONE_IO_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_STANDALONE_IO, InfStandaloneIoPrivate))
 
 static GObjectClass* parent_class;
+
+static guint
+inf_standalone_io_timeval_diff(GTimeVal* first,
+                               GTimeVal* second)
+{
+  g_assert(first->tv_sec > second->tv_sec ||
+           (first->tv_sec == second->tv_sec &&
+            first->tv_usec >= second->tv_usec));
+
+  /* Don't risk overflow, don't need to convert to signed int */
+  return (first->tv_sec - second->tv_sec) * 1000 +
+         (first->tv_usec+500)/1000 - (second->tv_usec+500)/1000;
+}
 
 static void
 inf_standalone_io_iteration_impl(InfStandaloneIo* io,
@@ -55,7 +78,41 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   int result;
   guint i;
 
+  GList* item;
+  GTimeVal current;
+  InfStandaloneIoTimeout* cur_timeout;
+  GList* next_timeout;
+  guint elapsed;
+
   priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  g_get_current_time(&current);
+  next_timeout = NULL;
+
+  for(item = priv->timeouts; item != NULL; item = g_list_next(priv->timeouts))
+  {
+    cur_timeout = item->data;
+    elapsed = inf_standalone_io_timeval_diff(&cur_timeout->begin, &current);
+
+    if(elapsed >= cur_timeout->msecs)
+    {
+      /* already elapsed */
+      /* TODO: Don't even poll */
+      timeout = 0;
+      next_timeout = item;
+
+      /* no need to check other timeouts */
+      break;
+    }
+    else
+    {
+      if(cur_timeout->msecs - elapsed > timeout || timeout < 0)
+      {
+        next_timeout = item;
+        timeout = cur_timeout->msecs - elapsed;
+      }
+    }
+  }
 
   do
   {
@@ -70,34 +127,46 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
 
   g_object_ref(G_OBJECT(io));
 
-  while(result--)
+  if(result == 0 && next_timeout != NULL)
   {
-    for(i = 0; i < priv->fd_size; ++ i)
+    /* No file descriptor is active, but a timeout elapsed */
+    cur_timeout = next_timeout->data;
+    priv->timeouts = g_list_delete_link(priv->timeouts, next_timeout);
+
+    cur_timeout->func(cur_timeout->user_data);
+    g_slice_free(InfStandaloneIoTimeout, cur_timeout);
+  }
+  else if(result > 0)
+  {
+    while(result--)
     {
-      if(priv->pfds[i].revents != 0)
+      for(i = 0; i < priv->fd_size; ++ i)
       {
-        events = 0;
-        if(priv->pfds[i].revents & POLLIN)
-          events |= INF_IO_INCOMING;
-        if(priv->pfds[i].revents & POLLOUT)
-          events |= INF_IO_OUTGOING;
-        /* We treat POLLPRI as error because it should not occur in
-         * infinote. */
-        if(priv->pfds[i].revents & (POLLERR | POLLPRI | POLLHUP | POLLNVAL))
-          events |= INF_IO_ERROR;
-        
-        priv->pfds[i].revents = 0;
+        if(priv->pfds[i].revents != 0)
+        {
+          events = 0;
+          if(priv->pfds[i].revents & POLLIN)
+            events |= INF_IO_INCOMING;
+          if(priv->pfds[i].revents & POLLOUT)
+            events |= INF_IO_OUTGOING;
+          /* We treat POLLPRI as error because it should not occur in
+           * infinote. */
+          if(priv->pfds[i].revents & (POLLERR | POLLPRI | POLLHUP | POLLNVAL))
+            events |= INF_IO_ERROR;
+          
+          priv->pfds[i].revents = 0;
 
-        priv->watches[i].func(
-          priv->watches[i].socket,
-          events,
-          priv->watches[i].user_data
-        );
+          priv->watches[i].func(
+            priv->watches[i].socket,
+            events,
+            priv->watches[i].user_data
+          );
 
-        /* The callback might have done everything, including completly
-         * screwed up the array of file descriptors. This is why we break
-         * here and iterate from the beginning to find the next event. */
-        break;
+          /* The callback might have done everything, including completly
+           * screwed up the array of file descriptors. This is why we break
+           * here and iterate from the beginning to find the next event. */
+          break;
+        }
       }
     }
   }
@@ -227,6 +296,44 @@ inf_standalone_io_io_watch(InfIo* io,
   ++ priv->fd_size;
 }
 
+static gpointer
+inf_standalone_io_io_add_timeout(InfIo* io,
+                                 guint msecs,
+                                 InfIoTimeoutFunc func,
+                                 gpointer user_data)
+{
+  InfStandaloneIoPrivate* priv;
+  InfStandaloneIoTimeout* timeout;
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+  timeout = g_slice_new(InfStandaloneIoTimeout);
+
+  g_get_current_time(&timeout->begin);
+  timeout->msecs = msecs;
+  timeout->func = func;
+  timeout->user_data = user_data;
+
+  return timeout;
+}
+
+static void
+inf_standalone_io_io_remove_timeout(InfIo* io,
+                                    gpointer timeout_handle)
+{
+  InfStandaloneIoPrivate* priv;
+  InfStandaloneIoTimeout* timeout;
+  GList* item;
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+  item = g_list_find(priv->timeouts, timeout_handle);
+  g_assert(item != NULL);
+
+  timeout = item->data;
+  priv->timeouts = g_list_delete_link(priv->timeouts, item);
+
+  g_slice_free(InfStandaloneIoTimeout, timeout);
+}
+
 static void
 inf_standalone_io_class_init(gpointer g_class,
                              gpointer class_data)
@@ -248,6 +355,8 @@ inf_standalone_io_io_init(gpointer g_iface,
   iface = (InfIoIface*)g_iface;
 
   iface->watch = inf_standalone_io_io_watch;
+  iface->add_timeout = inf_standalone_io_io_add_timeout;
+  iface->remove_timeout = inf_standalone_io_io_remove_timeout;
 }
 
 GType

@@ -113,4 +113,55 @@ inf_io_watch(InfIo* io,
   iface->watch(io, socket, events, func, user_data);
 }
 
+/** inf_io_add_timeout:
+ *
+ * @io: A #InfIo.
+ * @msecs: Number of milliseconds after which the timeout should be elapsed.
+ * @func: Function to be called when the timeout elapsed.
+ * @user_data: Extra data to pass to @func.
+ *
+ * Calls @func after at least @msecs milliseconds have elapsed. The timeout
+ * is removed after it has elapsed.
+ *
+ * Return Value: A timeout handle that can be used to remove the timeout.
+ **/
+gpointer
+inf_io_add_timeout(InfIo* io,
+                   guint msecs,
+                   InfIoTimeoutFunc func,
+                   gpointer user_data)
+{
+  InfIoIface* iface;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(func != NULL, NULL);
+
+  iface = INF_IO_GET_IFACE(io);
+  g_return_val_if_fail(iface->add_timeout != NULL, NULL);
+
+  iface->add_timeout(io, msecs, func, user_data);
+}
+
+/** inf_io_remove_timeout:
+ *
+ * @io: A #InfIo.
+ * @timeout: A timeout handle obtained from inf_io_add_timeout().
+ *
+ * Removes the given timeout.
+ **/
+void
+inf_io_remove_timeout(InfIo* io,
+                      gpointer timeout)
+{
+  InfIoIface* iface;
+
+  g_return_if_fail(INF_IS_IO(io));
+  g_return_if_fail(timeout != NULL);
+
+  iface = INF_IO_GET_IFACE(io);
+  g_return_if_fail(iface->remove_timeout != NULL);
+
+  iface->remove_timeout(io, timeout);
+}
+
 /* vim:set et sw=2 ts=2: */

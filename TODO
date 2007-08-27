@@ -1,0 +1,15 @@
+ * Unify InfIo interface (IO):
+   - Rename InfIoFunc to InfIoWatchFunc
+   - Split inf_io_watch into inf_io_add_watch, inf_io_update_watch and
+     inf_io_remove_watch
+ * Implement AdoptedLogRemoval correctly (Adopted)
+ * Implement discovery via avahi (Discovery)
+ * Create certificates if not given (XMPP)
+ * Implement masschat interface, implement for relay and jabber (Transport)
+   - Yet unsure how relay is supposed to work.
+ * Split InfXmppConnection (XMPP)
+   - InfXmppConnection: XMPP core implementation
+   - InfJabberConnection: Connection to jabber server, managing roster, presence, etc. Derives from InfXmppConnection, not used on server side
+   - InfRawXmppConnection: InfXmlConnection implementation by sending raw messages to XMPP server (Derive from InfXmppConnection, make XMPP server create these connections (unsure: rather add a vfunc and subclass InfXmppServer?))
+   - InfJabberUserConnection: Implements InfXmlConnection by sending stuff to a particular Jabber user (owns InfJabberConnection)
+   - InfJabberDiscovery (owns InfJabberConnection)

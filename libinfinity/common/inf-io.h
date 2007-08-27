@@ -42,6 +42,7 @@ typedef enum _InfIoEvent {
 } InfIoEvent;
 
 typedef void(*InfIoFunc)(InfNativeSocket*, InfIoEvent, gpointer);
+typedef void(*InfIoTimeoutFunc)(gpointer);
 
 struct _InfIoIface {
   GTypeInterface parent;
@@ -52,6 +53,14 @@ struct _InfIoIface {
                 InfIoEvent events,
                 InfIoFunc func,
                 gpointer user_data);
+
+  gpointer (*add_timeout)(InfIo* io,
+                          guint msecs,
+                          InfIoTimeoutFunc func,
+                          gpointer user_data);
+
+  void (*remove_timeout)(InfIo* io,
+                         gpointer timeout);
 };
 
 GType
@@ -66,6 +75,16 @@ inf_io_watch(InfIo* io,
              InfIoEvent events,
              InfIoFunc func,
              gpointer user_data);
+
+gpointer
+inf_io_add_timeout(InfIo* io,
+                   guint msecs,
+                   InfIoTimeoutFunc func,
+                   gpointer user_data);
+
+void
+inf_io_remove_timeout(InfIo* io,
+                      gpointer timeout);
 
 G_END_DECLS
 

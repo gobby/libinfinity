@@ -1,3 +1,13 @@
+2007-08-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-io.h:
+	* libinfinity/common/inf-io.c:
+	* libinfinity/common/inf-standalone-io.c: Implemented addition and
+	removal of timeouts for InfIo.
+
+	* TODO: Noted down some basic TODO items that would be nice to have
+	for a first release.
+
 2007-08-26  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:OBJECT,BOOLEAN marshaller.
