@@ -38,6 +38,8 @@ G_BEGIN_DECLS
 typedef struct _InfConnectionManager InfConnectionManager;
 typedef struct _InfConnectionManagerClass InfConnectionManagerClass;
 
+typedef struct _InfConnectionManagerGroup InfConnectionManagerGroup;
+
 struct _InfConnectionManagerClass {
   GObjectClass parent_class;
 };
@@ -52,58 +54,67 @@ inf_connection_manager_get_type(void) G_GNUC_CONST;
 InfConnectionManager*
 inf_connection_manager_new(void);
 
-#if 0
+InfConnectionManagerGroup*
+inf_connection_manager_create_group(InfConnectionManager* manager,
+                                    const gchar* group_name,
+                                    InfNetObject* object);
+
+InfConnectionManagerGroup*
+inf_connection_manager_find_group_by_connection(InfConnectionManager* manager,
+                                                const gchar* group_name,
+                                                InfXmlConnection* connection);
+
 void
-inf_connection_manager_add_connection(InfConnectionManager* manager,
+inf_connection_manager_ref_group(InfConnectionManager* manager,
+                                 InfConnectionManagerGroup* group);
+
+void
+inf_connection_manager_unref_group(InfConnectionManager* manager,
+                                   InfConnectionManagerGroup* group);
+
+void
+inf_connection_manager_ref_connection(InfConnectionManager* manager,
+                                      InfConnectionManagerGroup* group,
                                       InfXmlConnection* connection);
+
+void
+inf_connection_manager_unref_connection(InfConnectionManager* manager,
+                                        InfConnectionManagerGroup* group,
+                                        InfXmlConnection* connection);
+
+InfNetObject*
+inf_connection_manager_group_get_object(InfConnectionManagerGroup* group);
+
+const gchar*
+inf_connection_manager_group_get_name(InfConnectionManagerGroup* group);
 
 gboolean
 inf_connection_manager_has_connection(InfConnectionManager* manager,
+                                      InfConnectionManagerGroup* group,
                                       InfXmlConnection* connection);
 
-GNetworkTcpXmlConnection*
-inf_connection_manager_get_by_address(InfConnectionManager* manager,
-                                      const GNetworkIpAddress* address,
-                                      guint port);
-
-GNetworkTcpXmlConnection*
-inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
-                                       const gchar* hostname,
-                                       guint port);
-#endif
+void
+inf_connection_manager_send_to(InfConnectionManager* manager,
+                               InfConnectionManagerGroup* group,
+                               InfXmlConnection* connection,
+                               xmlNodePtr xml);
 
 void
-inf_connection_manager_add_object(InfConnectionManager* manager,
-                                  InfXmlConnection* xml_conn,
-                                  InfNetObject* object,
-                                  const gchar* identifier);
+inf_connection_manager_send_to_group(InfConnectionManager* manager,
+                                     InfConnectionManagerGroup* group,
+                                     InfXmlConnection* except,
+                                     xmlNodePtr xml);
 
 void
-inf_connection_manager_remove_object(InfConnectionManager* manager,
-                                     InfXmlConnection* xml_conn,
-                                     InfNetObject* object);
-
-gboolean
-inf_connection_manager_has_object(InfConnectionManager* manager,
-                                  InfXmlConnection* xml_conn,
-                                  InfNetObject* object);
-
-void
-inf_connection_manager_send(InfConnectionManager* manager,
-                            InfXmlConnection* xml_conn,
-                            InfNetObject* object,
-                            xmlNodePtr message);
-
-void
-inf_connection_manager_send_multiple(InfConnectionManager* manager,
-                                     InfXmlConnection* xml_conn,
-                                     InfNetObject* object,
-                                     xmlNodePtr messages);
+inf_connection_manager_send_multiple_to(InfConnectionManager* manager,
+                                        InfConnectionManagerGroup* group,
+                                        InfXmlConnection* connection,
+                                        xmlNodePtr xml);
 
 void
 inf_connection_manager_cancel_outer(InfConnectionManager* manager,
-                                    InfXmlConnection* xml_conn,
-                                    InfNetObject* object);
+                                    InfConnectionManagerGroup* group,
+                                    InfXmlConnection* connection);
 
 G_END_DECLS
 

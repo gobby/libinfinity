@@ -1,3 +1,21 @@
+2007-08-31  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c: Redesigned connection
+	manager. Now there are groups of which connections can be a member.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/server/infd-session.h:
+	* libinfinity/server/infd-session.c:
+	* libinfinity/client/infc-session.h:
+	* libinfinity/client/infc-session.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/server/infd-directory.c: Adjusted use.
+
+	* TODO: Added another item about dropping the message table in
+	InfcSession/InfdSession.
+
 2007-08-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-io.h:

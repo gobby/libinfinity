@@ -34,17 +34,17 @@ struct _InfdNotePlugin {
 
   InfdSession*(*session_new)(InfConnectionManager* manager,
                              InfXmlConnection* sync_connection,
-			     const gchar* sync_identifier);
+                             const gchar* sync_identifier);
 
   gboolean(*session_read)(InfdStorage* storage,
                           InfdSession* session,
-			  const gchar* path,
-			  GError** error);
+                          const gchar* path,
+                          GError** error);
 
   gboolean(*session_write)(InfdStorage* storage,
                            InfdSession* session,
-			   const gchar* path,
-			   GError** error);
+                           const gchar* path,
+                           GError** error);
 };
 
 G_END_DECLS

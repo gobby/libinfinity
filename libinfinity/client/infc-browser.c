@@ -71,6 +71,7 @@ struct _InfcBrowserNode {
 typedef struct _InfcBrowserPrivate InfcBrowserPrivate;
 struct _InfcBrowserPrivate {
   InfConnectionManager* connection_manager;
+  InfConnectionManagerGroup* group; /* TODO: This should be a property */
   InfXmlConnection* connection;
 
   InfcRequestManager* request_manager;
@@ -342,12 +343,17 @@ infc_browser_set_connection_manager(InfcBrowser* browser,
   {
     if(priv->connection != NULL)
     {
-      inf_connection_manager_remove_object(
+      inf_connection_manager_unref_connection(
         priv->connection_manager,
-        priv->connection,
-        INF_NET_OBJECT(browser)
+        priv->group,
+        priv->connection
       );
     }
+    
+    inf_connection_manager_unref_group(
+      priv->connection_manager,
+      priv->group
+    );
 
     g_object_unref(G_OBJECT(priv->connection_manager));
   }
@@ -357,15 +363,25 @@ infc_browser_set_connection_manager(InfcBrowser* browser,
   if(manager != NULL)
   {
     g_object_ref(G_OBJECT(manager));
+
+    priv->group = inf_connection_manager_create_group(
+      priv->connection_manager,
+      "InfDirectory",
+      INF_NET_OBJECT(browser)
+    );
+
     if(priv->connection != NULL)
     {
-      inf_connection_manager_add_object(
+      inf_connection_manager_ref_connection(
         priv->connection_manager,
-        priv->connection,
-        INF_NET_OBJECT(browser),
-        "InfDirectory"
+        priv->group,
+        priv->connection
       );
     }
+  }
+  else
+  {
+    priv->group = NULL;
   }
 
   g_object_notify(G_OBJECT(browser), "connection-manager");
@@ -403,10 +419,10 @@ infc_browser_set_connection(InfcBrowser* browser,
 
     if(priv->connection_manager != NULL)
     {
-      inf_connection_manager_remove_object(
+      inf_connection_manager_unref_connection(
         priv->connection_manager,
-        priv->connection,
-        INF_NET_OBJECT(browser)
+        priv->group,
+        priv->connection
       );
     }
 
@@ -418,6 +434,7 @@ infc_browser_set_connection(InfcBrowser* browser,
   if(connection != NULL)
   {
     g_object_ref(G_OBJECT(connection));
+
     g_signal_connect(
       G_OBJECT(connection),
       "notify::status",
@@ -427,13 +444,10 @@ infc_browser_set_connection(InfcBrowser* browser,
 
     if(priv->connection_manager != NULL)
     {
-      inf_connection_manager_add_object(
+      inf_connection_manager_ref_connection(
         priv->connection_manager,
-        priv->connection,
-        INF_NET_OBJECT(browser),
-        /* TODO: Move this magical string into common/ so that both client
-         * and server can use it */
-        "InfDirectory"
+        priv->group,
+        priv->connection
       );
     }
   }
@@ -1735,10 +1749,10 @@ infc_browser_iter_explore(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(browser),
     xml
   );
 
@@ -1813,10 +1827,10 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
   inf_xml_util_set_attribute(xml, "type", "InfSubdirectory");
   inf_xml_util_set_attribute(xml, "name", name);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(browser),
     xml
   );
 
@@ -1870,10 +1884,10 @@ infc_browser_add_note(InfcBrowser* browser,
   inf_xml_util_set_attribute(xml, "type", plugin->identifier);
   inf_xml_util_set_attribute(xml, "name", name);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(browser),
     xml
   );
 
@@ -1919,10 +1933,10 @@ infc_browser_remove_node(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(browser),
     xml
   );
 
@@ -1973,10 +1987,10 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(browser),
     xml
   );
 

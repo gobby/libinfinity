@@ -65,8 +65,8 @@ infc_session_class_register_message(InfcSessionClass* session_class,
 
 void
 infc_session_set_connection(InfcSession* session,
-                            InfXmlConnection* connection,
-                            const gchar* identifier);
+                            const gchar* group_name,
+                            InfXmlConnection* connection);
 
 InfcUserRequest*
 infc_session_join_user(InfcSession* session,

@@ -35,6 +35,7 @@ struct _InfcSessionMessage {
 
 typedef struct _InfcSessionPrivate InfcSessionPrivate;
 struct _InfcSessionPrivate {
+  InfConnectionManagerGroup* group; /* TODO: This should be a property */
   InfXmlConnection* connection;
   InfcRequestManager* request_manager;
 };
@@ -130,11 +131,18 @@ infc_session_release_connection(InfcSession* session)
     session
   );
 
-  inf_connection_manager_remove_object(
+  inf_connection_manager_unref_connection(
     inf_session_get_connection_manager(INF_SESSION(session)),
-    priv->connection,
-    INF_NET_OBJECT(session)
+    priv->group,
+    priv->connection
   );
+  
+  inf_connection_manager_unref_group(
+    inf_session_get_connection_manager(INF_SESSION(session)),
+    priv->group
+  );
+
+  priv->group = NULL;
 
   g_object_unref(G_OBJECT(priv->connection));
   priv->connection = NULL;
@@ -202,6 +210,7 @@ infc_session_init(GTypeInstance* instance,
   session = INFC_SESSION(instance);
   priv = INFC_SESSION_PRIVATE(session);
 
+  priv->group = NULL;
   priv->connection = NULL;
   priv->request_manager = infc_request_manager_new();
 }
@@ -358,7 +367,6 @@ infc_session_process_xml_run_impl(InfSession* session,
       NULL
     );
 
-    /* TODO: Can't we just pass error to inf_request_manager_fail_request? */
     if(request == NULL)
     {
       /* If the request had a seq set, we cancel the corresponding request
@@ -416,10 +424,10 @@ infc_session_close_impl(InfSession* session)
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
 
-      inf_connection_manager_send(
+      inf_connection_manager_send_to(
         inf_session_get_connection_manager(session),
+        priv->group,
         priv->connection,
-        INF_NET_OBJECT(session),
         xml
       );
     }
@@ -1028,9 +1036,9 @@ infc_session_class_register_message(InfcSessionClass* session_class,
 /** infc_session_set_connection:
  *
  * @session: A #InfcSession.
- * @connection: A #InfXmlConnection.
- * @identifier: Identifier for the subscription to use. Ignored when
+ * @group_name: Group name for the subscription to use. Ignored when
  * @connection is %NULL.
+ * @connection: A #InfXmlConnection.
  *
  * Sets the subscription connection for the given session. The subscription
  * connection is the connection through which session requests are transmitted
@@ -1044,15 +1052,15 @@ infc_session_class_register_message(InfcSessionClass* session_class,
  * When the subscription connection is being closed or replaced (by a
  * subsequent call to this function), all pending requests are dropped and
  * all users are set to be unavailable, but the session will not be closed,
- * so it may be reused by setting another subscription connection. Howover,
+ * so it may be reused by setting another subscription connection. However,
  * the session might not be synchronized again, but it is fully okay to close
  * the session by hand (using inf_session_close) and create a new session
  * that is synchronized.
  **/
 void
 infc_session_set_connection(InfcSession* session,
-                            InfXmlConnection* connection,
-                            const gchar* identifier)
+                            const gchar* group_name,
+                            InfXmlConnection* connection)
 {
   InfcSessionPrivate* priv;
   xmlNodePtr xml;
@@ -1066,10 +1074,10 @@ infc_session_set_connection(InfcSession* session,
      * because synchronizations are not cancelled through this call. */
     xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       inf_session_get_connection_manager(INF_SESSION(session)),
+      priv->group,
       priv->connection,
-      INF_NET_OBJECT(session),
       xml
     );
 
@@ -1092,11 +1100,40 @@ infc_session_set_connection(InfcSession* session,
       session
     );
 
-    inf_connection_manager_add_object(
+    /* Try to find group */
+    priv->group = inf_connection_manager_find_group_by_connection(
       inf_session_get_connection_manager(INF_SESSION(session)),
-      connection,
-      INF_NET_OBJECT(session),
-      identifier
+      group_name,
+      connection
+    );
+    
+    if(priv->group != NULL)
+    {
+      /* Object must match, otherwise the group name is not unique for
+       * connection. */
+      g_assert(
+        inf_connection_manager_group_get_object(priv->group) ==
+        INF_NET_OBJECT(session)
+      );
+
+      inf_connection_manager_ref_group(
+        inf_session_get_connection_manager(INF_SESSION(session)),
+        priv->group
+      );
+    }
+    else
+    {
+      priv->group = inf_connection_manager_create_group(
+        inf_session_get_connection_manager(INF_SESSION(session)),
+        group_name,
+        INF_NET_OBJECT(session)
+      );
+    }
+    
+    inf_connection_manager_ref_connection(
+      inf_session_get_connection_manager(INF_SESSION(session)),
+      priv->group,
+      connection
     );
   }
 
@@ -1159,10 +1196,10 @@ infc_session_join_user(InfcSession* session,
     xml
   );
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     inf_session_get_connection_manager(INF_SESSION(session)),
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(session),
     xml
   );
 
@@ -1215,10 +1252,10 @@ infc_session_leave_user(InfcSession* session,
   sprintf(id_buf, "%u", inf_user_get_id(user));
   xmlNewProp(xml, (const xmlChar*)"id", (const xmlChar*)id_buf);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     inf_session_get_connection_manager(INF_SESSION(session)),
+    priv->group,
     priv->connection,
-    INF_NET_OBJECT(session),
     xml
   );
 

@@ -41,7 +41,7 @@ typedef struct _InfcBrowser InfcBrowser;
 typedef struct _InfcBrowserClass InfcBrowserClass;
 
 typedef enum _InfcBrowserNodeStatus {
-  /* The node is in synchronized with the server */
+  /* The node is synchronized with the server */
   INFC_BROWSER_NODE_SYNC,
   /* The node has been deleted locally, but the server has not yet
    * acknowledged the deletion and might still reject the request. */

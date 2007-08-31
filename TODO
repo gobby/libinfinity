@@ -13,3 +13,4 @@
    - InfRawXmppConnection: InfXmlConnection implementation by sending raw messages to XMPP server (Derive from InfXmppConnection, make XMPP server create these connections (unsure: rather add a vfunc and subclass InfXmppServer?))
    - InfJabberUserConnection: Implements InfXmlConnection by sending stuff to a particular Jabber user (owns InfJabberConnection)
    - InfJabberDiscovery (owns InfJabberConnection)
+ * Drop message table in Infc/dSession

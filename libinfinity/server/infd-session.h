@@ -66,8 +66,7 @@ infd_session_add_user(InfdSession* session,
 
 void
 infd_session_subscribe_to(InfdSession* session,
-                          InfXmlConnection* connection,
-                          const gchar* identifier);
+                          InfXmlConnection* connection);
 
 void
 infd_session_send_to_subscriptions(InfdSession* session,

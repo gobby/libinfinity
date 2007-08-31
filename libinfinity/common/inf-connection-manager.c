@@ -17,38 +17,54 @@
  */
 
 #include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/common/inf-xml-util.h>
 
 #include <string.h>
 
-typedef struct _InfConnectionManagerPrivate InfConnectionManagerPrivate;
-struct _InfConnectionManagerPrivate {
-  GSList* connections;
-};
+typedef enum _InfConnectionManagerError {
+  INF_CONNECTION_MANAGER_ERROR_GROUP_NOT_PRESENT,
+  INF_CONNECTION_MANAGER_ERROR_NO_SUCH_GROUP
+} InfConnectionManagerError;
 
-/* object-local stuff of connection */
-typedef struct _InfConnectionManagerObject InfConnectionManagerObject;
-struct _InfConnectionManagerObject {
-  InfNetObject* net_object;
-  gchar* identifier;
+typedef enum _InfConnectionManagerScope {
+  INF_CONNECTION_MANAGER_SCOPE_NONE,
+  /* point-to-point */
+  INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT,
+  /* to all in group */
+  INF_CONNECTION_MANAGER_SCOPE_GROUP
+} InfConnectionManagerScope;
+
+typedef struct _InfConnectionManagerQueue InfConnectionManagerQueue;
+struct _InfConnectionManagerQueue {
+  InfXmlConnection* connection;
   guint ref_count;
 
   xmlNodePtr outer_queue;
   xmlNodePtr outer_queue_last_item;
-  guint inner_queue_count;
+  guint inner_count;
 };
 
-typedef struct _InfConnectionManagerConnection InfConnectionManagerConnection;
-struct _InfConnectionManagerConnection {
-  /* identifier -> InfConnectionManagerObject */
-  GHashTable* identifier_connobj_table;
-  /* NetObject -> InfConnectionManagerObject */
-  GHashTable* object_connobj_table;
+struct _InfConnectionManagerGroup {
+  InfConnectionManager* manager; /* parent manager */
+  InfNetObject* net_object; /* weak-refed as long we have no connections */
+  gchar* name;
+  guint ref_count;
+
+  GList* queues;
+};
+
+typedef struct _InfConnectionManagerPrivate InfConnectionManagerPrivate;
+struct _InfConnectionManagerPrivate {
+  GSList* connections;
+  GSList* groups;
+
+  /* TODO: Add a hash table that maps group name and connection to a group,
+   * for quicker lookup */
 };
 
 #define INF_CONNECTION_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_CONNECTION_MANAGER, InfConnectionManagerPrivate))
 
 static GObjectClass* parent_class;
-static GQuark connection_quark;
 
 /* Maximal number of XML nodes that are sent to a particular netobject A.
  * If more are to be sent, they are kept in an outer queue so that messages
@@ -56,253 +72,508 @@ static GQuark connection_quark;
  * having to wait until all messages from A have been sent. */
 static const guint INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT = 5;
 
-static InfConnectionManagerObject*
-inf_connection_manager_object_new(InfNetObject* net_object,
-                                  const gchar* identifier)
+static int
+inf_connection_manager_cmp_queue_by_conn(gconstpointer queue_,
+                                         gconstpointer conn)
 {
-  InfConnectionManagerObject* object;
-  object = g_slice_new(InfConnectionManagerObject);
+  InfConnectionManagerQueue* queue;
+  queue = (InfConnectionManagerQueue*)queue_;
 
-  object->net_object = net_object;
-  g_object_ref(G_OBJECT(net_object));
-
-  object->identifier = g_strdup(identifier);
-  object->ref_count = 1;
-  object->outer_queue = NULL;
-  object->outer_queue_last_item = NULL;
-  object->inner_queue_count = 0;
-
-  return object;
+  if(queue->connection < (InfXmlConnection*)conn)
+    return -1;
+  else if(queue->connection > (InfXmlConnection*)conn)
+    return 1;
+  else
+    return 0;
 }
 
 static void
-inf_connection_manager_object_free(InfConnectionManagerObject* object)
+inf_connection_manager_object_unrefed(gpointer user_data,
+                                      GObject* where_the_object_was)
+{
+  InfConnectionManagerPrivate* priv;
+  InfConnectionManagerGroup* group;
+  InfConnectionManagerQueue* queue;
+  xmlNodePtr next;
+  GList* item;
+  
+  group = (InfConnectionManagerGroup*)user_data;
+  priv = INF_CONNECTION_MANAGER_PRIVATE(group->manager);
+
+  g_warning(
+    "NetObject of connection manager group '%s' finalized, but group is "
+    "still referenced. Removing group.",
+    group->name
+  );
+  
+  /* Do not use regular free functions, those would try to access
+   * NetObject for reference. */
+
+  for(item = group->queues; item != NULL; item = g_list_next(item))
+  {
+    queue = (InfConnectionManagerQueue*)item->data;
+    for(; queue->outer_queue != NULL; queue->outer_queue = next)
+    {
+      next = queue->outer_queue->next;
+      xmlFreeNode(queue->outer_queue);
+    }
+
+    g_slice_free(InfConnectionManagerQueue, queue);
+  }
+
+  g_list_free(group->queues);
+  g_free(group->name);
+
+  priv->groups = g_slist_remove(priv->groups, group);
+  g_slice_free(InfConnectionManagerGroup, group);
+}
+
+static InfConnectionManagerQueue*
+inf_connection_manager_group_add_queue(InfConnectionManagerGroup* group,
+                                       InfXmlConnection* connection)
+{
+  InfConnectionManagerQueue* queue;
+
+  queue = g_slice_new(InfConnectionManagerQueue);
+  queue->connection = connection;
+  queue->ref_count = 1;
+  queue->outer_queue = NULL;
+  queue->outer_queue_last_item = NULL;
+  queue->inner_count = 0;
+  
+  if(group->queues == NULL)
+  {
+    /* Turn into strong ref again */
+    g_object_ref(G_OBJECT(group->net_object));
+
+    g_object_weak_unref(
+      G_OBJECT(group->net_object),
+      inf_connection_manager_object_unrefed,
+      group
+    );
+  }
+
+  group->queues = g_list_prepend(group->queues, queue);
+  return queue;
+}
+
+static void
+inf_connection_manager_group_remove_queue(InfConnectionManagerGroup* group,
+                                          InfConnectionManagerQueue* queue)
 {
   xmlNodePtr next;
 
-  for(; object->outer_queue != NULL; object->outer_queue = next)
+  if(queue->ref_count > 0)
   {
-    next = object->outer_queue->next;
-    xmlFreeNode(object->outer_queue);
+    g_warning(
+      "Removing a connection with ref_count %u from "
+      "connection manager group '%s'",
+      queue->ref_count,
+      group->name
+    );
   }
 
-  g_free(object->identifier);
+  /* Free scheduled data in outer queue, it will not be sent anymore.
+   * Flush before calling this function if you want it to. */
+  for(; queue->outer_queue != NULL; queue->outer_queue = next)
+  {
+    next = queue->outer_queue->next;
+    xmlFreeNode(queue->outer_queue);
+  }
 
-  g_object_unref(G_OBJECT(object->net_object));
-  g_slice_free(InfConnectionManagerObject, object);
+  group->queues = g_list_remove(group->queues, queue);
+  g_slice_free(InfConnectionManagerQueue, queue);
+
+  if(group->queues == NULL)
+  {
+    /* Turn into weakref when group has no connections, so the netobject
+     * can be freed if noone is interacting with it. */
+    g_object_weak_ref(
+      G_OBJECT(group->net_object),
+      inf_connection_manager_object_unrefed,
+      group
+    );
+
+    g_object_unref(G_OBJECT(group->net_object));
+  }
+}
+
+static InfConnectionManagerGroup*
+inf_connection_manager_group_new(InfConnectionManager* manager,
+                                 const gchar* name,
+                                 InfNetObject* net_object)
+{
+  InfConnectionManagerPrivate* priv;
+  InfConnectionManagerGroup* group;
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+  group = g_slice_new(InfConnectionManagerGroup);
+
+  group->manager = manager;
+  group->net_object = net_object;
+
+  g_object_weak_ref(
+    G_OBJECT(net_object),
+    inf_connection_manager_object_unrefed,
+    group
+  );
+
+  group->name = g_strdup(name);
+  group->ref_count = 1;
+  group->queues = NULL;
+
+  priv->groups = g_slist_prepend(priv->groups, group);
+
+  return group;
+}
+
+static void
+inf_connection_manager_group_free(InfConnectionManagerGroup* group)
+{
+  InfConnectionManagerQueue* queue;
+  GList* item;
+  xmlNodePtr next;
+
+  if(group->ref_count > 0)
+  {
+    g_warning(
+      "Freeing a connection manager group named '%s' with ref_count %u",
+      group->name,
+      group->ref_count
+    );
+  }
+
+  if(group->queues == NULL)
+  {
+    g_object_weak_unref(
+      G_OBJECT(group->net_object),
+      inf_connection_manager_object_unrefed,
+      group
+    );
+  }
+  else
+  {
+    g_warning(
+      "Connection manager group '%s' finally unrefed, but the group "
+      "does still contain connections. Removing connections.",
+      group->name
+    );
+
+    /* Don't just use inf_connection_manager_group_remove_queue() because
+     * that could turn the reference to net_object to a weak reference. If
+     * we held the only strong reference before, this would already lead to
+     * destruction of the group. However, we are already destructing. */
+
+    for(item = group->queues; item != NULL; item = g_list_next(item))
+    {
+      queue = (InfConnectionManagerQueue*)item->data;
+      /* Free scheduled data in outer queue, it will not be sent anymore.
+       * Flush before calling this function if you want it to. */
+      for(; queue->outer_queue != NULL; queue->outer_queue = next)
+      {
+        next = queue->outer_queue->next;
+        xmlFreeNode(queue->outer_queue);
+      }
+    }
+
+    g_list_free(group->queues);
+    g_slice_free(InfConnectionManagerQueue, queue);
+    g_object_unref(G_OBJECT(group->net_object));
+  }
+
+  g_free(group->name);
+  g_slice_free(InfConnectionManagerGroup, group);
+}
+
+static InfConnectionManagerQueue*
+inf_connection_manager_group_get_queue(InfConnectionManagerGroup* group,
+                                       InfXmlConnection* connection)
+{
+  GList* link;
+
+  link = g_list_find_custom(
+    group->queues,
+    connection,
+    inf_connection_manager_cmp_queue_by_conn
+  );
+
+  if(link == NULL) return NULL;
+  return (InfConnectionManagerQueue*)link->data;
+}
+
+static InfConnectionManagerGroup*
+inf_connection_manager_get_group_from_xml(InfConnectionManager* manager,
+                                          InfXmlConnection* connection,
+                                          xmlNodePtr xml,
+                                          GError** error)
+{
+  InfConnectionManagerPrivate* priv;
+  InfConnectionManagerGroup* group;
+  xmlChar* group_name;
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  group_name = xmlGetProp(xml, (const xmlChar*)"name");
+  if(group_name == NULL)
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INF_CONNECTION_MANAGER_ERROR"),
+      INF_CONNECTION_MANAGER_ERROR_GROUP_NOT_PRESENT,
+      "'name' attribute of group tag is missing"
+    );
+
+    return NULL;
+  }
+  else
+  {
+    group = inf_connection_manager_find_group_by_connection(
+      manager,
+      (const gchar*)group_name,
+      connection
+    );
+
+    if(group == NULL)
+    {
+      g_set_error(
+        error,
+        g_quark_from_static_string("INF_CONNECTION_MANAGER_ERROR"),
+        INF_CONNECTION_MANAGER_ERROR_NO_SUCH_GROUP,
+        "No object for group '%s' registered",
+        (const gchar*)group_name
+      );
+
+      xmlFree(group_name);
+      return NULL;
+    }
+    else
+    {
+      xmlFree(group_name);
+      return group;
+    }
+  }
 }
 
 /* Sends a list of xml nodes through connection and returns the new list
  * head. Successfully sent nodes are freed. */
+/* TODO: Don't take connection because we have queue->connection anyway */
 static xmlNodePtr
-inf_connection_manager_object_real_send(InfConnectionManagerObject* connobj,
-                                        InfXmlConnection* xml_conn,
-                                        xmlNodePtr xml,
-                                        guint max_messages)
+inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
+                                       InfConnectionManagerQueue* queue,
+                                       InfXmlConnection* connection,
+                                       xmlNodePtr xml,
+                                       guint max_messages)
 {
+  InfConnectionManagerScope scope;
   xmlNodePtr container;
   xmlNodePtr cur;
 
-  container = xmlNewNode(NULL, (const xmlChar*)"message");
-
-  xmlNewProp(
-    container,
-    (const xmlChar*)"to",
-    (const xmlChar*)connobj->identifier
-  );
+  scope = INF_CONNECTION_MANAGER_SCOPE_NONE;
+  container = NULL;
 
   /* Increase max messages and count down to one instead of zero. This way,
    * max_messages == 0 means no limit. */
   if(max_messages != 0)
     ++ max_messages;
 
+  /* TODO: Don't pack too many messages into the same container, otherwise
+   * the recipient has to receive the whole container before processing
+   * the first request in it.
+   *
+   * An alternative woud be to change the InfXmlConnection interface to be
+   * SAX-like so it can begin to process the first message without the 
+   * container being closed. Hm. This probably doesn't work with XMPP. */
+
   while(xml != NULL && max_messages != 1)
   {
     cur = xml;
     xml = xml->next;
 
+    /* This node has another type then the previous node(s): This means we
+     * need to open a new <group> tag with another type. The current container
+     * can already be sent. */
+    if(GPOINTER_TO_UINT(cur->_private) != scope)
+    {
+      if(container != NULL)
+        inf_xml_connection_send(connection, container);
+
+      scope = GPOINTER_TO_UINT(cur->_private);
+
+      container = xmlNewNode(NULL, (const xmlChar*)"group");
+      inf_xml_util_set_attribute(container, "name", group->name);
+
+      switch(scope)
+      {
+      case INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT:
+        inf_xml_util_set_attribute(container, "scope", "p2p");
+        break;
+      case INF_CONNECTION_MANAGER_SCOPE_GROUP:
+        inf_xml_util_set_attribute(container, "scope", "group");
+        break;
+      case INF_CONNECTION_MANAGER_SCOPE_NONE:
+      default:
+        g_assert_not_reached();
+        break;
+      }
+    }
+
     xmlUnlinkNode(cur);
     xmlAddChild(container, cur);
 
     /* Object was enqueued in inner queue */
-    inf_net_object_enqueued(connobj->net_object, xml_conn, cur);
+    inf_net_object_enqueued(group->net_object, connection, cur);
 
-    ++ connobj->inner_queue_count;
+    ++ queue->inner_count;
     if(max_messages > 1) -- max_messages;
   }
 
-  inf_xml_connection_send(xml_conn, container);
+  /* Send final */
+  inf_xml_connection_send(connection, container);
   return xml;
 }
 
-static InfConnectionManagerObject*
-inf_connection_manager_connection_grab(InfConnectionManagerConnection* conn,
-                                       const xmlNodePtr message)
-{
-  xmlChar* identifier;
-  InfConnectionManagerObject* object;
-
-  object = NULL;
-  if(strcmp((const char*)message->name, "message") == 0)
-  {
-    identifier = xmlGetProp(message, (const xmlChar*)"to");
-    if(identifier != NULL)
-    {
-      object = g_hash_table_lookup(
-        conn->identifier_connobj_table,
-        (const gchar*)identifier
-      );
-
-      xmlFree(identifier);
-    }
-  }
-
-  return object;
-}
-
 static void
-inf_connection_manager_connection_sent_cb(InfXmlConnection* xml_conn,
+inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
                                           const xmlNodePtr xml,
                                           gpointer user_data)
 {
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* object;
+  InfConnectionManager* manager;
+  InfConnectionManagerGroup* group;
+  InfConnectionManagerQueue* queue;
   xmlNodePtr child;
 
-  conn = (InfConnectionManagerConnection*)user_data;
-  object = inf_connection_manager_connection_grab(conn, xml);
+  manager = INF_CONNECTION_MANAGER(user_data);
 
-  /* It may happen that a NetObject sends things but is removed until
-   * the data is really sent out, so do not assert here. */
-  if(object != NULL)
+  if(strcmp((const char*)xml->name, "group") == 0)
   {
-    for(child = xml->children; child != NULL; child = child->next)
+    group = inf_connection_manager_get_group_from_xml(
+      manager,
+      connection,
+      xml,
+      NULL
+    );
+
+    /* It may happen that a NetObject sends things but is removed until
+     * the data is really sent out, so do not assert here. */
+    if(group != NULL)
     {
-      inf_net_object_sent(object->net_object, xml_conn, child);
-      -- object->inner_queue_count;
-    }
+      queue = inf_connection_manager_group_get_queue(group, connection);
 
-    if(object->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT &&
-       object->outer_queue != NULL)
+      /* Again, the connection may have been removed from the group after
+       * sending. */
+      if(queue != NULL)
+      {
+        g_object_ref(G_OBJECT(group->net_object));
+
+        for(child = xml->children; child != NULL; child = child->next)
+        {
+          inf_net_object_sent(group->net_object, connection, child);
+
+          g_assert(queue->inner_count > 0);
+          -- queue->inner_count;
+        }
+
+        if(queue->outer_queue != NULL &&
+           queue->inner_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+        {
+          /* We actually sent some requests, so we have some space in the
+           * inner queue again. */
+          queue->outer_queue = inf_connection_manager_group_real_send(
+            group,
+            queue,
+            connection,
+            queue->outer_queue,
+            INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - queue->inner_count
+          );
+
+          if(queue->outer_queue == NULL)
+            queue->outer_queue_last_item = NULL;
+        }
+
+        g_object_unref(G_OBJECT(group->net_object));
+      }
+    }
+  }
+  else
+  {
+    /* We should not have sent anything else */
+    g_assert_not_reached();
+  }
+}
+
+static void
+inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
+                                              const xmlNodePtr xml,
+                                              gpointer user_data)
+{
+  InfConnectionManager* manager;
+  InfConnectionManagerGroup* group;
+  InfConnectionManagerQueue* queue;
+  xmlNodePtr child;
+  GError* error;
+
+  /* TODO: A virtual function to obtain a human-visible remote address
+   * for InfXmlConnection (IP, JID, etc.) */
+
+  manager = INF_CONNECTION_MANAGER(user_data);
+
+  if(strcmp((const char*)xml->name, "group") == 0)
+  {
+    error = NULL;
+    group = inf_connection_manager_get_group_from_xml(
+      manager,
+      connection,
+      xml,
+      &error
+    );
+
+    if(group == NULL)
     {
-      /* We actually sent some objects, so we have some space in the
-       * inner queue again. */
-      object->outer_queue = inf_connection_manager_object_real_send(
-        object,
-        xml_conn,
-        object->outer_queue,
-        INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - object->inner_queue_count
-      );
-
-      if(object->outer_queue == NULL)
-        object->outer_queue_last_item = NULL;
+      g_warning("Failed to get group to forward received XML: %s", error->message);
     }
+    else
+    {
+      queue = inf_connection_manager_group_get_queue(group, connection);
 
-    g_assert(
-      object->inner_queue_count <= INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT
+      if(queue == NULL)
+      {
+        /* Got something from a connection that is not in the group it sent
+         * something to. */
+        g_warning(
+          "Received XML for connection manager group named '%s' of which the "
+          "connection is not a member",
+          group->name
+        );
+      }
+      else
+      {
+        g_object_ref(G_OBJECT(group->net_object));
+
+        for(child = xml->children; child != NULL; child = child->next)
+        {
+          inf_net_object_received(group->net_object, connection, child);
+        }
+
+        /* TODO: Forward if it is scope="group" */
+
+        g_object_unref(G_OBJECT(group->net_object));
+      }
+    }
+  }
+  else
+  {
+    g_warning(
+      "Received unexpected XML message '%s'",
+      (const gchar*)xml->name
     );
   }
 }
 
-static void
-inf_connection_manager_connection_received_cb(InfXmlConnection* xml_conn,
-                                              const xmlNodePtr xml,
-                                              gpointer user_data)
-{
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* object;
-  xmlNodePtr child;
-
-  conn = (InfConnectionManagerConnection*)user_data;
-  object = inf_connection_manager_connection_grab(conn, xml);
-
-  if(object != NULL)
-  {
-    for(child = xml->children; child != NULL; child = child->next)
-    {
-      inf_net_object_received(object->net_object, xml_conn, child);
-    }
-  }
-}
-
-static void
-inf_connection_manager_connection_unassoc(InfXmlConnection* xml_conn)
-{
-  InfConnectionManagerConnection* conn;
-  conn = g_object_steal_qdata(G_OBJECT(xml_conn), connection_quark);
-
-  g_return_if_fail(conn != NULL);
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(xml_conn),
-    G_CALLBACK(inf_connection_manager_connection_received_cb),
-    conn
-  );
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(xml_conn),
-    G_CALLBACK(inf_connection_manager_connection_sent_cb),
-    conn
-  );
-
-  g_hash_table_destroy(conn->identifier_connobj_table);
-  g_hash_table_destroy(conn->object_connobj_table);
-
-  g_slice_free(InfConnectionManagerConnection, conn);
-}
-
-static InfConnectionManagerConnection*
-inf_connection_manager_connection_assoc(InfXmlConnection* xml_conn)
-{
-  InfConnectionManagerConnection* conn;
-
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  g_return_val_if_fail(conn == NULL, NULL);
-
-  conn = g_slice_new(InfConnectionManagerConnection);
-
-  g_object_set_qdata(
-    G_OBJECT(xml_conn),
-    connection_quark,
-    conn
-  );
-
-  g_signal_connect(
-    G_OBJECT(xml_conn),
-    "received",
-    G_CALLBACK(inf_connection_manager_connection_received_cb),
-    conn
-  );
-
-  g_signal_connect(
-    G_OBJECT(xml_conn),
-    "sent",
-    G_CALLBACK(inf_connection_manager_connection_sent_cb),
-    conn
-  );
-
-  /* This maps from InfNetObject to InfConnectionManagerObject. */
-  conn->object_connobj_table = g_hash_table_new_full(
-    NULL,
-    NULL,
-    NULL,
-    (GDestroyNotify)inf_connection_manager_object_free
-  );
-
-  /* Maps identifier to InfConnectionManagerObject. The identifier given to
-   * the hash table is exactly the same as the one stored in the
-   * InfConnectionManagerObject, so we do not use it as a key_destroy_func,
-   * because it is freed with that object. */
-  conn->identifier_connobj_table = g_hash_table_new(g_str_hash, g_str_equal);
-
-  return conn;
-}
-
 /* Required by inf_connection_manager_connection_notify_status_cb to
- * remove the gnetwork connection if it has been closed. */
+ * the gnetwork connection if it has been closed. */
 static void
-inf_connection_manager_free_connection(InfConnectionManager* manager,
-                                       InfXmlConnection* xml_conn);
+inf_connection_manager_unregister_connection(InfConnectionManager* manager,
+                                             InfXmlConnection* connection);
 
 static void
 inf_connection_manager_connection_notify_status_cb(InfXmlConnection* conn,
@@ -315,59 +586,99 @@ inf_connection_manager_connection_notify_status_cb(InfXmlConnection* conn,
   g_object_get(G_OBJECT(conn), "status", &status, NULL);
 
   /* Remove the connection from the list of connections if it has
-   * been closed. Keep it alive it is already CLOSING to allow it to
+   * been closed. Keep it alive if it is already CLOSING to allow it to
    * properly close the connection. */
   if(status == INF_XML_CONNECTION_CLOSED)
   {
     manager = INF_CONNECTION_MANAGER(user_data);
-    inf_connection_manager_free_connection(manager, conn);
+    inf_connection_manager_unregister_connection(manager, conn);
   }
 }
 
 static void
-inf_connection_manager_free_connection(InfConnectionManager* manager,
-                                       InfXmlConnection* xml_conn)
+inf_connection_manager_unregister_connection_func(gpointer value,
+                                                  gpointer user_data)
 {
-  InfConnectionManagerPrivate* priv;
-  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+  InfConnectionManagerGroup* group;
+  GList* link;
 
-  inf_connection_manager_connection_unassoc(xml_conn);
+  group = value;
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(xml_conn),
-    G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
-    manager
+  link = g_list_find_custom(
+    group->queues,
+    (InfXmlConnection*)user_data,
+    inf_connection_manager_cmp_queue_by_conn
   );
 
-  priv->connections = g_slist_remove(priv->connections, xml_conn);
-  g_object_unref(G_OBJECT(xml_conn));
+  /* Perhaps connection was not in this group */
+  if(link != NULL)
+    inf_connection_manager_group_remove_queue(group, link->data);
 }
 
 static void
-inf_connection_manager_add_connection(InfConnectionManager* manager,
-                                      InfXmlConnection* connection)
+inf_connection_manager_unregister_connection(InfConnectionManager* manager,
+                                             InfXmlConnection* connection)
 {
   InfConnectionManagerPrivate* priv;
-  GSList* item;
-
-  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
-  item = g_slist_find(priv->connections, connection);
 
-  g_return_if_fail(item == NULL);
+  /* Remove connection from groups */
+  g_slist_foreach(
+    priv->groups,
+    inf_connection_manager_unregister_connection_func,
+    connection
+  );
 
-  g_object_ref(G_OBJECT(connection));
-  inf_connection_manager_connection_assoc(connection);
-  priv->connections = g_slist_prepend(priv->connections, connection);
+  priv->connections = g_slist_remove(priv->connections, connection);
 
-  g_signal_connect_after(
+  g_signal_handlers_disconnect_by_func(
     G_OBJECT(connection),
-    "notify::status",
     G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
     manager
   );
+
+  g_object_unref(G_OBJECT(connection));
+}
+
+static void
+inf_connection_manager_register_connection(InfConnectionManager* manager,
+                                           InfXmlConnection* connection)
+{
+  InfConnectionManagerPrivate* priv;
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  /* Only add if not already present */
+  if(g_slist_find(priv->connections, connection) == NULL)
+  {
+    g_object_ref(G_OBJECT(connection));
+    priv->connections = g_slist_prepend(priv->connections, connection);
+
+    /* Connect after so that this callback is called after other signal
+     * handlers of the same signal that might want to remove connection
+     * references. */
+    g_signal_connect_after(
+      G_OBJECT(connection),
+      "notify::status",
+      G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
+      manager
+    );
+
+    g_signal_connect(
+      G_OBJECT(connection),
+      "received",
+      G_CALLBACK(inf_connection_manager_connection_received_cb),
+      manager
+    );
+
+    g_signal_connect(
+      G_OBJECT(connection),
+      "sent",
+      G_CALLBACK(inf_connection_manager_connection_sent_cb),
+      manager
+    );
+  }
 }
 
 static void
@@ -381,6 +692,7 @@ inf_connection_manager_init(GTypeInstance* instance,
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
 
   priv->connections = NULL;
+  priv->groups = NULL;
 }
 
 static void
@@ -388,12 +700,19 @@ inf_connection_manager_dispose(GObject* object)
 {
   InfConnectionManager* manager;
   InfConnectionManagerPrivate* priv;
+  GSList* item;
 
   manager = INF_CONNECTION_MANAGER(object);
   priv = INF_CONNECTION_MANAGER_PRIVATE(object);
 
-  while(priv->connections != NULL)
-    inf_connection_manager_free_connection(manager, priv->connections->data);
+  while(priv->groups != NULL)
+    inf_connection_manager_group_free(priv->groups->data);
+
+  for(item = priv->connections; item != NULL; item = g_slist_next(item))
+    g_object_unref(G_OBJECT(item->data));
+
+  g_slist_free(priv->connections);
+  priv->connections = NULL;
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -407,10 +726,6 @@ inf_connection_manager_class_init(gpointer g_class,
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfConnectionManagerPrivate));
-
-  connection_quark = g_quark_from_static_string(
-    "inf-connection-manager-connection"
-  );
 
   object_class->dispose = inf_connection_manager_dispose;
 }
@@ -462,456 +777,454 @@ inf_connection_manager_new(void)
   return INF_CONNECTION_MANAGER(object);
 }
 
-#if 0
-/** inf_connection_manager_has_connection:
+/** inf_connection_manager_create_group:
  *
  * @manager: A #InfConnectionManager.
- * @connection: A #InfConnection.
+ * @group_name: A name for the new group.
+ * @object: A #InfNetObject.
  *
- * Returns TRUE if @connection was added to @manager and false otherwise.
+ * Creates a new group with name @group_name. A connection cannot be in two
+ * groups with the same name. If a connection within a group receives
+ * data, the XML message is forwarded to @object.
  *
- * Return Value: Whether @connection is managed by @manager.
+ * Return Value: The new #InfConnectionManagerGroup.
  **/
-gboolean
-inf_connection_manager_has_connection(InfConnectionManager* manager,
-                                      InfXmlConnection* connection)
+InfConnectionManagerGroup*
+inf_connection_manager_create_group(InfConnectionManager* manager,
+                                    const gchar* group_name,
+                                    InfNetObject* object)
+{
+  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
+  g_return_val_if_fail(group_name != NULL, NULL);
+  g_return_val_if_fail(INF_IS_NET_OBJECT(object), NULL);
+
+  return inf_connection_manager_group_new(manager, group_name, object);
+}
+
+/** inf_connection_manager_find_group_by_connection:
+ *
+ * @manager: A #InfConnectionManager.
+ * @group_name: A group name.
+ * @connection: A #InfXmlConnection.
+ *
+ * Returns a group with the given name of which @connection is a member.
+ *
+ * Return Value: A #InfConnectionManagerGroup, or %NULL.
+ **/
+InfConnectionManagerGroup*
+inf_connection_manager_find_group_by_connection(InfConnectionManager* manager,
+                                                const gchar* group_name,
+                                                InfXmlConnection* connection)
 {
   InfConnectionManagerPrivate* priv;
+  InfConnectionManagerGroup* group;
+  GSList* item;
 
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), FALSE);
-  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
+  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
+  g_return_val_if_fail(group_name != NULL, NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
 
-  if(g_slist_find(priv->connections, connection) == NULL)
+  for(item = priv->groups; item != NULL; item = g_slist_next(item))
+  {
+    group = (InfConnectionManagerGroup*)item->data;
+    if(strcmp(group->name, group_name) == 0)
+      if(inf_connection_manager_group_get_queue(group, connection) != NULL)
+        return group;
+  }
+
+  return NULL;
+}
+
+/** inf_connection_manager_ref_group:
+ *
+ * @manager: A #InfConnectionManager.
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ *
+ * Increases the reference count of @group. It needs to be unrefed as many
+ * times as it has been refed (plus 1, since it has a already a reference
+ * after creation) to actually remove the group.
+ **/
+void
+inf_connection_manager_ref_group(InfConnectionManager* manager,
+                                 InfConnectionManagerGroup* group)
+{
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(group != NULL);
+
+  ++ group->ref_count;
+}
+
+/** inf_connection_manager_unref_group:
+ *
+ * @manager: A #InfConnectionManager
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ *
+ * Decreases the reference count of @group. If the reference count reaches
+ * zero, the group is removed. In that case, there should not be any
+ * connections anymore in the group, otherwise those are removed even if
+ * they are still referenced.
+ **/
+void
+inf_connection_manager_unref_group(InfConnectionManager* manager,
+                                   InfConnectionManagerGroup* group)
+{
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(group != NULL);
+
+  -- group->ref_count;
+  if(group->ref_count == 0)
+    inf_connection_manager_group_free(group);
+}
+
+/** inf_connection_manager_ref_connection:
+ *
+ * @manager: A #InfConnectionManager
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @connection: A #InfXmlConnection.
+ *
+ * Adds @connection to @group. If a connection is member of a group, the
+ * #InfNetObject of the group
+ * (as given in inf_connection_manager_create_group()) gets notified when
+ * XML messages are sent or received for that group.
+ *
+ * If @connection is already in @group, its reference count is increased. To
+ * remove the connection again, you have to call
+ * inf_connection_manager_unref_connection() one more time.
+ *
+ * A connection cannot be in two groups with the same name.
+ **/
+void
+inf_connection_manager_ref_connection(InfConnectionManager* manager,
+                                      InfConnectionManagerGroup* group,
+                                      InfXmlConnection* connection)
+{
+  InfConnectionManagerQueue* queue;
+
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  queue = inf_connection_manager_group_get_queue(group, connection);
+  if(queue != NULL)
+  {
+    ++ queue->ref_count;
+  }
+  else
+  {
+    g_return_if_fail(
+      inf_connection_manager_find_group_by_connection(
+        manager,
+        group->name,
+        connection
+      ) == NULL
+    );
+
+    inf_connection_manager_register_connection(manager, connection);
+    inf_connection_manager_group_add_queue(group, connection);
+  }
+}
+
+/** inf_connection_manager_unref_connection:
+ *
+ * @manager: A #InfConnectionManager
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @connection: A #InfXmlConnection that is member of @group.
+ *
+ * Decreases the reference count of the membership of @connection in @group.
+ * If the reference count reaches zero, @connection is removed from @group.
+ **/
+void
+inf_connection_manager_unref_connection(InfConnectionManager* manager,
+                                        InfConnectionManagerGroup* group,
+                                        InfXmlConnection* connection)
+{
+  InfConnectionManagerQueue* queue;
+
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  queue = inf_connection_manager_group_get_queue(group, connection);
+  g_return_if_fail(queue != NULL);
+
+  -- queue->ref_count;
+  if(queue->ref_count == 0)
+  {
+    /* Flush pending data. */
+    if(queue->outer_queue != NULL)
+    {
+      /*TODO: Keep the queue alive until everything has been sent */
+      queue->outer_queue = inf_connection_manager_group_real_send(
+        group,
+        queue,
+        connection,
+        queue->outer_queue,
+        0
+      );
+
+      queue->outer_queue_last_item = NULL;
+    }
+
+    inf_connection_manager_group_remove_queue(group, queue);
+  }
+}
+
+/** inf_connection_manager_group_get_object:
+ *
+ * @group: A #InfConnectionManagerGroup.
+ *
+ * Returns the #InfNetObject of @group as given to
+ * inf_connection_manager_create_group().
+ *
+ * Return Value: The #InfNetObject of @group.
+ **/
+InfNetObject*
+inf_connection_manager_group_get_object(InfConnectionManagerGroup* group)
+{
+  g_return_val_if_fail(group != NULL, NULL);
+  return group->net_object;
+}
+
+/** inf_connection_manager_group_get_name:
+ *
+ * @group: A #InfConnectionManagerGroup.
+ *
+ * Returns the name of @group as given to
+ * inf_connection_manager_create_group().
+ *
+ * Return Value: The name of @group.
+ **/
+const gchar*
+inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
+{
+  g_return_val_if_fail(group != NULL, NULL);
+  return group->name;
+}
+
+/** inf_connection_manager_has_connection:
+ *
+ * @manager: A #InfConnectionManager.
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @connection:A #InfXmlConnection.
+ *
+ * Returns whether @connection is a member of @group.
+ *
+ * Return Value: Whether @connection belongs to @group.
+ **/
+gboolean
+inf_connection_manager_has_connection(InfConnectionManager* manager,
+                                      InfConnectionManagerGroup* group,
+                                      InfXmlConnection* connection)
+{
+  InfConnectionManagerQueue* queue;
+
+  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), FALSE);
+  g_return_val_if_fail(group != NULL, FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
+
+  queue = inf_connection_manager_group_get_queue(group, connection);
+
+  if(queue == NULL)
     return FALSE;
   else
     return TRUE;
 }
-#endif
 
-#if 0
-/** inf_connection_manager_get_by_address:
+/** inf_connection_manager_send_to:
  *
  * @manager: A #InfConnectionManager.
- * @address: The IP address to which to fetch a connection
- * @port: The port to which to fetch a connection
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @connection: A #InfXmlConnection that has previously been added via
+ * inf_connection_manager_add_connection().
+ * @xml: A XML message to be sent.
  *
- * This function looks for a connection to the given host and port in the
- * currently open connections the manager manages. If none has been found,
- * a new connection is created. The returned connection might not yet be
- * fully established but yet being opened.
+ * Sends an XML message via @connection to @group. @connection must be a
+ * member of @group. This function takes ownership of @xml and unlinks it
+ * from its current context.
  *
- * Return Value: A #GNetworkTcpConnection to the given address.
- **/
-GNetworkTcpConnection*
-inf_connection_manager_get_by_address(InfConnectionManager* manager,
-                                      const GNetworkIpAddress* address,
-                                      guint port)
-{
-  InfConnectionManagerPrivate* priv;
-  GNetworkTcpConnection* tcp;
-  GNetworkIpAddress list_address;
-  guint list_port;
-  gchar* addr_str;
-  GSList* item;
-
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
-  g_return_val_if_fail(address != NULL, NULL);
-  g_return_val_if_fail(port < 65536, NULL);
-
-  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
-
-  for(item = priv->connections; item != NULL; item = g_slist_next(item))
-  {
-    if(GNETWORK_IS_TCP_CONNECTION(item->data))
-    {
-      tcp = GNETWORK_TCP_CONNECTION(item->data);
-
-      g_object_get(
-        G_OBJECT(tcp),
-        "ip-address", &list_address,
-        "port", &list_port,
-        NULL
-      );
-
-      if(port == list_port)
-        if(gnetwork_ip_address_collate(address, &list_address) == 0)
-          return tcp;
-    }
-  }
-
-  /* No result until now, so try with stringified IP address as hostname.
-   * This will either return a connection attempt to the same address that
-   * has not been translated into a GNetworkIpAddress yet or will attempt
-   * a new connection to the remote host. */
-  addr_str = gnetwork_ip_address_to_string(address);
-  tcp = inf_connection_manager_get_by_hostname(manager, addr_str, port);
-  g_free(addr_str);
-
-  return tcp;
-}
-
-/** inf_connection_manager_get_by_hostname:
- *
- * @manager: A #InfConnectionManager
- * @hostname: The name of the host to which to fetch a connection
- * @port: The port to which to fetch a connection
- *
- * This function looks for a connection to the given host and port in the
- * currently open connections the manager manages. If none has been found,
- * a new connection is created. The returned connection might not yet be
- * fully established but yet being opened.
- *
- * Return Value: A #GNetworkTcpConnection to the given host.
- */
-GNetworkTcpConnection*
-inf_connection_manager_get_by_hostname(InfConnectionManager* manager,
-                                       const gchar* hostname,
-                                       guint port)
-{
-  InfConnectionManagerPrivate* priv;
-  GNetworkTcpConnection* tcp;
-  gchar* list_hostname;
-  guint list_port;
-  GSList* item;
-
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
-  g_return_val_if_fail(hostname != NULL, NULL);
-  g_return_val_if_fail(port < 65536, NULL);
-
-  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
-
-  for(item = priv->connections; item != NULL; item = g_slist_next(item))
-  {
-    if(GNETWORK_IS_TCP_CONNECTION(item->data))
-    {
-      tcp = GNETWORK_TCP_CONNECTION(item->data);
-
-      g_object_get(
-        G_OBJECT(tcp),
-        "address", &list_hostname,
-        "port", &list_port,
-        NULL
-      );
-
-      if(port == list_port)
-      {
-        if(strcmp(hostname, list_hostname) == 0)
-        {
-          g_free(list_hostname);
-          return tcp;
-        }
-      }
-
-      g_free(list_hostname);
-    }
-  }
-
-  /* No connection found, so establish new one */
-  tcp = GNETWORK_TCP_CONNECTION(
-    g_object_new(
-      GNETWORK_TYPE_TCP_CONNECTION,
-      "address", hostname,
-      "port", port,
-      NULL
-    )
-  );
-
-  inf_connection_manager_add_connection(manager, GNETWORK_CONNECTION(tcp));
-  g_object_unref(G_OBJECT(tcp));
-
-  return tcp;
-}
-#endif
-
-/** inf_connection_manager_add_object:
- *
- * @manager: A #InfConnectionManager
- * @inf_conn: A #InfConnection that is managed by @manager
- * @object: An object implementing #InfNetObject
- * @identifier: A unique identifier for @object
- *
- * Adds a #InfNetObject to the given #InfConnection. This allows that
- * messages may be sent to the remote site where a #InfNetObject with the
- * same identifier should be registered. Vice-versa, incoming messages
- * addressed to this #InfNetObject are delivered to @object.
- *
- * If the object is already registered, and the identifier does not match
- * the one with which it was previously registered, the function produces
- * an error. Otherwise, a reference count on that object is increased, so
- * that you have to call inf_connection_manager_remove_object() one more
- * time to actually remove the object from the connection manager.
- *
- * The connection manager will keep the connection alive even if the object
- * is unassociated again. To connection manager releases the connection as
- * soon as it is closed.
- **/
-void
-inf_connection_manager_add_object(InfConnectionManager* manager,
-                                  InfXmlConnection* xml_conn,
-                                  InfNetObject* object,
-                                  const gchar* identifier)
-{
-  InfConnectionManagerPrivate* priv;
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* connobj;
-
-  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
-  g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(identifier != NULL);
-
-  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
-  if(g_slist_find(priv->connections, xml_conn) == NULL)
-    inf_connection_manager_add_connection(manager, xml_conn);
-
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  g_return_if_fail(conn != NULL);
-
-  connobj = g_hash_table_lookup(
-    conn->identifier_connobj_table,
-    identifier
-  );
-
-  if(connobj != NULL)
-  {
-    g_assert(
-      g_hash_table_lookup(conn->object_connobj_table, object) == connobj
-    );
-
-    ++ connobj->ref_count;
-  }
-  else
-  {
-    g_assert(g_hash_table_lookup(conn->object_connobj_table, object) == NULL);
-
-    connobj = inf_connection_manager_object_new(object, identifier);
-
-    g_hash_table_insert(
-      conn->object_connobj_table,
-      object,
-      connobj
-    );
-
-    g_hash_table_insert(
-      conn->identifier_connobj_table,
-      connobj->identifier,
-      connobj
-    );
-  }
-}
-
-/** inf_connection_manager_remove_object:
- *
- * @manager: A #InfConnectionManager.
- * @inf_conn: A #InfConnection that is managed by @manager.
- * @object: A #InfNetObject that has been added to @inf_conn by a call
- *          to inf_connection_manager_add_object().
- *
- * Removes #InfNetObject that has previously been added to a
- * #InfConnection by a call to inf_connection_manager_add_object().
- * After this call, @object no longer receives network input from
- * @inf_conn.
- *
- * This function causes all remaining messages in the outer queue to be
- * flushed, regardless of how many messages are already in the inner queue.
- * If the messages in the outer queue do not need to reach the remote site
- * anymore, you should cancel them before calling this function using
+ * It is not guaranteed that @xml is passed instantly to @connection because
+ * there might be other messages waiting to be sent via @connection.
+ * inf_net_object_enqueued() is called on @group's #InfNetObject as soon as
+ * @xml has been passed to @connection. This also means that the sending of
+ * the message cannot be cancelled anymore with
  * inf_connection_manager_cancel_outer().
  **/
 void
-inf_connection_manager_remove_object(InfConnectionManager* manager,
-                                     InfXmlConnection* xml_conn,
-                                     InfNetObject* object)
+inf_connection_manager_send_to(InfConnectionManager* manager,
+                               InfConnectionManagerGroup* group,
+                               InfXmlConnection* connection,
+                               xmlNodePtr xml)
 {
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* connobj;
+  InfConnectionManagerQueue* queue;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
-  g_return_if_fail(INF_IS_NET_OBJECT(object));
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(xml != NULL);
 
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  g_return_if_fail(conn != NULL);
+  queue = inf_connection_manager_group_get_queue(group, connection);
+  g_return_if_fail(queue != NULL);
 
-  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
-  g_return_if_fail(connobj != NULL);
+  xml->_private =
+    GUINT_TO_POINTER(INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT);
 
-  -- connobj->ref_count;
-  if(connobj->ref_count == 0)
+  if(queue->inner_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
   {
-    if(connobj->outer_queue != NULL)
-    {
-      /* TODO: Do not do this if the queue is big, but we need to find a
-       * way to specify which messages still have to be flushed. */
-      /* Flush outer queue completely */
-      connobj->outer_queue = inf_connection_manager_object_real_send(
-        connobj,
-        xml_conn,
-        connobj->outer_queue,
-        0
-      );
-    }
- 
-    g_hash_table_remove(conn->identifier_connobj_table, connobj->identifier);
-    g_hash_table_remove(conn->object_connobj_table, object);
-  }
-}
-
-/** inf_connection_manager_has_object:
- *
- * @manager: A #InfConnectionManager.
- * @xml_conn: A #InfXmlConnection.
- * @object: A #InfNetObject.
- *
- * Returns whether @object was associated to @xml_conn using
- * inf_connection_manager_add_object().
- *
- * Return Value: Whether @object is registered for @xml_conn.
- **/
-gboolean
-inf_connection_manager_has_object(InfConnectionManager* manager,
-                                  InfXmlConnection* xml_conn,
-                                  InfNetObject* object)
-{
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* connobj;
-
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), FALSE);
-  g_return_val_if_fail(INF_IS_XML_CONNECTION(xml_conn), FALSE);
-  g_return_val_if_fail(INF_IS_NET_OBJECT(object), FALSE);
-
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  if(conn == NULL) return FALSE;
-
-  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
-  if(connobj == NULL) return FALSE;
-
-  return TRUE;
-}
-
-/** inf_connection_manager_send:
- *
- * @manager: A #InfConnectionManager
- * @xml_conn: A #InfConnection managed by @manager
- * @object: A #InfNetObject to which to send a message
- * @message: The message to send
- *
- * This function will send a XML-based message to the other end of
- * @xml_conn. If there is another #InfConnectionManager on the other
- * end it will forward the message to the #InfNetObject with the same
- * identifier (see inf_connection_manager_add_object()).
- *
- * The function takes ownership of @message and unlinks it from its current
- * context.
- **/
-void
-inf_connection_manager_send(InfConnectionManager* manager,
-                            InfXmlConnection* xml_conn,
-                            InfNetObject* object,
-                            xmlNodePtr message)
-{
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* connobj;
-
-  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
-  g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(message != NULL);
-
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  g_return_if_fail(conn != NULL);
-
-  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
-  g_return_if_fail(connobj != NULL);
-
-  if(connobj->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
-  {
-    message = inf_connection_manager_object_real_send(
-      connobj,
-      xml_conn,
-      message,
-      1
-    );
+    inf_connection_manager_group_real_send(group, queue, connection, xml, 1);
   }
   else
   {
-    /* Message was not sent because inner queue is full, so enqueue it to
-     * outer queue and wait until other messages have been sent. */
-    if(message != NULL)
-    {
-      if(connobj->outer_queue_last_item == NULL)
-        connobj->outer_queue = message;
-      else
-        connobj->outer_queue_last_item->next = message;
+    /* Inner queue is full, wait for some messages to be sent */
+    if(queue->outer_queue_last_item == NULL)
+      queue->outer_queue = xml;
+    else
+      queue->outer_queue_last_item->next = xml;
 
-      message->prev = connobj->outer_queue_last_item;
-      message->next = NULL;
-      connobj->outer_queue_last_item = message;
-    }
+    xml->prev = queue->outer_queue_last_item;
+    xml->next = NULL;
+    queue->outer_queue_last_item = xml;
   }
 }
 
-/** inf_connection_manager_send_multiple:
+/** inf_connection_manager_send_to_group:
  *
- * @manager: A #InfConnectionManager
- * @xml_conn: A #InfConnection managed by @manager
- * @object: A #InfNetObject to which to send a message
- * @messages: The messages to send, linked with the next field.
+ * @manager: A #InfConnectionManager.
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @except: A #InfXmlConnection that has previously been added via
+ * inf_connection_manager_add_connection(), or %NULL.
+ * @xml: A XML message to be sent.
  *
- * This function will send multiple XML-based messages to the other end of
- * @xml_conn. If there is another #InfConnectionManager on the other
- * end it will forward the messages to the #InfNetObject with the same
- * identifier (see inf_connection_manager_add_object()).
+ * Sends an XML message to all connections that have been added to @group
+ * except @except (if non-%NULL). This function takes ownership of @xml and
+ * unlinks it from its current context.
  *
- * The function takes ownership of the list of messages and unlinks them
- * from their current context.
+ * See inf_connection_manager_send_to() for why @xml might not instantly be
+ * passed to @connection via inf_xml_connection_send().
  **/
 void
-inf_connection_manager_send_multiple(InfConnectionManager* manager,
-                                     InfXmlConnection* xml_conn,
-                                     InfNetObject* object,
-                                     xmlNodePtr messages)
+inf_connection_manager_send_to_group(InfConnectionManager* manager,
+                                     InfConnectionManagerGroup* group,
+                                     InfXmlConnection* except,
+                                     xmlNodePtr xml)
 {
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* connobj;
-  xmlNodePtr cur;
+  InfConnectionManagerQueue* queue;
+  xmlNodePtr copy_xml;
+  GList* item;
+
+  g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
+  g_return_if_fail(xml != NULL);
+
+  xml->_private = GUINT_TO_POINTER(INF_CONNECTION_MANAGER_SCOPE_GROUP);
+
+  /* TODO: In most situations, we only have to copy xml n-1 times because we
+   * take ownership anyway. */
+
+  for(item = group->queues; item != NULL; item = g_list_next(item))
+  {
+    queue = (InfConnectionManagerQueue*)item->data;
+    if(queue->connection != except)
+    {
+      copy_xml = xmlCopyNode(xml, 1);
+      if(queue->inner_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+      {
+        inf_connection_manager_group_real_send(
+          group,
+          queue,
+          queue->connection,
+          copy_xml,
+          1
+        );
+      }
+      else
+      {
+        /* Inner queue is full, wait for some messages to be sent */
+        if(queue->outer_queue_last_item == NULL)
+          queue->outer_queue = copy_xml;
+        else
+          queue->outer_queue_last_item->next = copy_xml;
+
+        copy_xml->prev = queue->outer_queue_last_item;
+        copy_xml->next = NULL;
+        queue->outer_queue_last_item = copy_xml;
+      }
+    }
+  }
+
+  xmlFreeNode(xml);
+}
+
+/** inf_connection_manager_send_multiple_to:
+ *
+ * @manager: A #InfConnectionManager.
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @connection: A #InfXmlConnection that has previously been added via
+ * inf_connection_manager_add_connection().
+ * @xml: A linked list of XML messages to be sent.
+ *
+ * Sends multiple XML messages via @connection to @group. This function takes
+ * ownership of all the nodes contained in the list @xml and unlinks them
+ * from their current context.
+ *
+ * See inf_connection_manager_send_to() for why @xml might not instantly be
+ * passed to @connection via inf_xml_connection_send().
+ **/
+void
+inf_connection_manager_send_multiple_to(InfConnectionManager* manager,
+                                        InfConnectionManagerGroup* group,
+                                        InfXmlConnection* connection,
+                                        xmlNodePtr xml)
+{
+  InfConnectionManagerQueue* queue;
   xmlNodePtr prev;
+  xmlNodePtr cur;
   xmlNodePtr next;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
-  g_return_if_fail(INF_IS_NET_OBJECT(object));
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(xml != NULL);
 
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  g_return_if_fail(conn != NULL);
+  queue = inf_connection_manager_group_get_queue(group, connection);
+  g_return_if_fail(queue != NULL);
 
-  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
-  g_return_if_fail(connobj != NULL);
+  xml->_private =
+    GUINT_TO_POINTER(INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT);
 
-  if(connobj->inner_queue_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
+  if(queue->inner_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
   {
-    messages = inf_connection_manager_object_real_send(
-      connobj,
-      xml_conn,
-      messages,
-      INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - connobj->inner_queue_count
+    xml = inf_connection_manager_group_real_send(
+      group,
+      queue,
+      connection,
+      xml,
+      INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT - queue->inner_count
     );
   }
 
-  /* Not all messages could be sent, so enqueue in outer queue. */
-  if(messages != NULL)
+  /* Requeue remaining entries */
+  if(xml != NULL)
   {
     /* Detach nodes from their current context, but keep them linked */
     prev = NULL;
-    for(cur = messages; cur != NULL; cur = next)
+    for(cur = xml; cur != NULL; cur = next)
     {
       next = cur->next;
       xmlUnlinkNode(cur);
 
       /* Do not set cur->next because it would be unlinked in the
-       * next iteration, anyway. */
+       * next iteration anyway. */
       cur->prev = prev;
       if(prev != NULL) prev->next = cur;
 
@@ -920,55 +1233,52 @@ inf_connection_manager_send_multiple(InfConnectionManager* manager,
 
     /* prev now contains the last node in the list */
 
-    if(connobj->outer_queue_last_item == NULL)
-      connobj->outer_queue = messages;
+    if(queue->outer_queue_last_item == NULL)
+      queue->outer_queue = xml;
     else
-      connobj->outer_queue_last_item->next = messages;
+      queue->outer_queue_last_item->next = xml;
 
-    messages->prev = connobj->outer_queue_last_item;
+    xml->prev = queue->outer_queue_last_item;
+
     prev->next = NULL;
-    connobj->outer_queue_last_item = prev;
+    queue->outer_queue_last_item = prev;
   }
 }
 
 /** inf_connection_manager_cancel_outer:
  *
  * @manager: A #InfConnectionManager.
- * @xml_conn: A #InfConnection managed by @manager
- * @object: A #InfNetObject.
+ * @group: A #InfConnectionManagerGroup created with
+ * inf_connection_manager_create_group().
+ * @connection: A #InfXmlConnection that has previously been added via
+ * inf_connection_manager_add_connection().
  *
- * Cancels all messages that were registered to be sent by
- * inf_connection_manager_send() or inf_connection_manager_send_multiple()
- * and that have not yet been enqueued. Sending already enqueued messages
- * cannot be cancelled.
+ * Discards all messages that are waiting to be sent via @connection to
+ * @group. These are all messages for which inf_net_object_enqueued() has not
+ * yet been called.
  **/
 void
 inf_connection_manager_cancel_outer(InfConnectionManager* manager,
-                                    InfXmlConnection* xml_conn,
-                                    InfNetObject* object)
+                                    InfConnectionManagerGroup* group,
+                                    InfXmlConnection* connection)
 {
-  InfConnectionManagerConnection* conn;
-  InfConnectionManagerObject* connobj;
+  InfConnectionManagerQueue* queue;
   xmlNodePtr next;
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
-  g_return_if_fail(INF_IS_XML_CONNECTION(xml_conn));
-  g_return_if_fail(INF_IS_NET_OBJECT(object));
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
-  conn = g_object_get_qdata(G_OBJECT(xml_conn), connection_quark);
-  g_return_if_fail(conn != NULL);
+  queue = inf_connection_manager_group_get_queue(group, connection);
+  g_return_if_fail(queue != NULL);
 
-  connobj = g_hash_table_lookup(conn->object_connobj_table, object);
-  g_return_if_fail(connobj != NULL);
-
-  /* Clear outer queue */
-  for(; connobj->outer_queue != NULL; connobj->outer_queue = next)
+  for(; queue->outer_queue != NULL; queue->outer_queue = next)
   {
-    next = connobj->outer_queue->next;
-    xmlFreeNode(connobj->outer_queue);
+    next = queue->outer_queue->next;
+    xmlFreeNode(queue->outer_queue);
   }
 
-  connobj->outer_queue_last_item = NULL;
+  queue->outer_queue_last_item = NULL;
 }
 
 /* vim:set et sw=2 ts=2: */

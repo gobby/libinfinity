@@ -65,8 +65,10 @@ typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfdStorage* storage;
   InfConnectionManager* connection_manager;
+  InfConnectionManagerGroup* group; /* TODO: This should be a property */
 
   GHashTable* plugins; /* Registered plugins */
+ /* TODO: ConnectionManagerGroup has already a connection list */
   GSList* connections;
 
   guint node_counter;
@@ -427,10 +429,10 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
           child = child->next)
       {
         if(child->type == INFD_STORAGE_NODE_SUBDIRECTORY &&
-	   child->shared.subdir.explored == TRUE)
-	{
+           child->shared.subdir.explored == TRUE)
+        {
           infd_directory_node_remove_connection(child, connection);
-	}
+        }
       }
     }
     else
@@ -499,13 +501,15 @@ infd_directory_node_unregister_to_xml(InfdDirectoryNode* node)
 static void
 infd_directory_send(InfdDirectory* directory,
                     GSList* connections,
-		    InfXmlConnection* exclude,
+                    InfXmlConnection* exclude,
                     xmlNodePtr xml)
 {
   InfdDirectoryPrivate* priv;
   GSList* item;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  
+  /* TODO: Use inf_connection_manager_send_to_group() */
 
   if(connections == NULL ||
      (connections->data == exclude && connections->next == NULL))
@@ -521,21 +525,21 @@ infd_directory_send(InfdDirectory* directory,
       /* Do not copy this item if it is the last item to be sent because the
        * connection manager takes ownership */
       if(item->next != NULL &&
-	 (item->next->data != exclude || item->next->next != NULL))
+         (item->next->data != exclude || item->next->next != NULL))
       {
-        inf_connection_manager_send(
+        inf_connection_manager_send_to(
           priv->connection_manager,
+          priv->group,
           INF_XML_CONNECTION(item->data),
-          INF_NET_OBJECT(directory),
           xmlCopyNode(xml, 1)
         );
       }
       else
       {
-        inf_connection_manager_send(
+        inf_connection_manager_send_to(
           priv->connection_manager,
+          priv->group,
           INF_XML_CONNECTION(item->data),
-          INF_NET_OBJECT(directory),
           xml
         );
       }
@@ -549,8 +553,8 @@ infd_directory_send(InfdDirectory* directory,
 static void
 infd_directory_node_register(InfdDirectory* directory,
                              InfdDirectoryNode* node,
-			     InfXmlConnection* seq_conn,
-			     guint seq)
+                             InfXmlConnection* seq_conn,
+                             guint seq)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
@@ -579,10 +583,10 @@ infd_directory_node_register(InfdDirectory* directory,
     xml = infd_directory_node_register_to_xml(node);
     inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       priv->connection_manager,
+      priv->group,
       seq_conn,
-      INF_NET_OBJECT(directory),
       xml
     );
   }
@@ -636,10 +640,10 @@ infd_directory_node_unregister(InfdDirectory* directory,
     xml = infd_directory_node_unregister_to_xml(node);
     inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       priv->connection_manager,
+      priv->group,
       seq_conn,
-      INF_NET_OBJECT(directory),
       xml
     );
   }
@@ -1084,10 +1088,10 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   if(seq_attr != NULL)
     xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     connection,
-    INF_NET_OBJECT(directory),
     reply_xml
   );
 
@@ -1097,10 +1101,10 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     if(seq_attr != NULL)
       xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       priv->connection_manager,
+      priv->group,
       connection,
-      INF_NET_OBJECT(directory),
       reply_xml
     );
   }
@@ -1109,10 +1113,10 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   if(seq_attr != NULL)
     xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     connection,
-    INF_NET_OBJECT(directory),
     reply_xml
   );
 
@@ -1266,7 +1270,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfdSession* session;
-  gchar* identifier;
+  gchar* group;
   xmlChar* seq_attr;
   xmlNodePtr reply_xml;
 
@@ -1292,15 +1296,16 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 
   /* Reply that subscription was successful (so far, synchronization may
    * still fail) and tail identifier. */
-  identifier = g_strdup_printf("InfSession_%u", node->id);
+  g_object_get(G_OBJECT(session), "subscription-group-name", &group, NULL);
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"subscribe-session");
 
   xmlNewProp(
     reply_xml,
-    (const xmlChar*)"identifier",
-    (const xmlChar*)identifier
+    (const xmlChar*)"group",
+    (const xmlChar*)group
   );
-
+  
+  g_free(group);
   inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
 
   seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
@@ -1310,15 +1315,14 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     xmlFree(seq_attr);
   }
 
-  inf_connection_manager_send(
+  inf_connection_manager_send_to(
     priv->connection_manager,
+    priv->group,
     connection,
-    INF_NET_OBJECT(directory),
     reply_xml
   );
 
-  infd_session_subscribe_to(session, connection, identifier);
-  g_free(identifier);
+  infd_session_subscribe_to(session, connection);
   return TRUE;
 }
 
@@ -1358,7 +1362,7 @@ infd_directory_remove_connection(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(priv->root != NULL)
+  if(priv->root != NULL && priv->root->shared.subdir.explored)
   {
     infd_directory_node_remove_connection(priv->root, connection);
   }
@@ -1367,6 +1371,12 @@ infd_directory_remove_connection(InfdDirectory* directory,
     G_OBJECT(connection),
     G_CALLBACK(infd_directory_connection_notify_status_cb),
     directory
+  );
+
+  inf_connection_manager_unref_connection(
+    priv->connection_manager,
+    priv->group,
+    connection
   );
 
   priv->connections = g_slist_remove(priv->connections, connection);
@@ -1440,12 +1450,17 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
      * forward incoming data to us. */
     for(item = priv->connections; item != NULL; item = g_slist_next(item))
     {
-      inf_connection_manager_remove_object(
+      inf_connection_manager_unref_connection(
         priv->connection_manager,
-        INF_XML_CONNECTION(item->data),
-        INF_NET_OBJECT(directory)
+        priv->group,
+        INF_XML_CONNECTION(item->data)
       );
     }
+    
+    inf_connection_manager_unref_group(
+      priv->connection_manager,
+      priv->group
+    );
 
     g_object_unref(G_OBJECT(priv->connection_manager));
   }
@@ -1454,18 +1469,27 @@ infd_directory_set_connection_manager(InfdDirectory* directory,
 
   if(manager != NULL)
   {
+    g_object_ref(G_OBJECT(manager));
+
+    priv->group = inf_connection_manager_create_group(
+      manager,
+      "InfDirectory",
+      INF_NET_OBJECT(directory)
+    );
+
     /* Add connections to the new connection manager. */
     for(item = priv->connections; item != NULL; item = g_slist_next(item))
     {
-      inf_connection_manager_add_object(
+      inf_connection_manager_ref_connection(
         priv->connection_manager,
-        INF_XML_CONNECTION(item->data),
-        INF_NET_OBJECT(directory),
-        "InfDirectory"
+        priv->group,
+        INF_XML_CONNECTION(item->data)
       );
     }
-
-    g_object_ref(G_OBJECT(manager));
+  }
+  else
+  {
+    priv->group = NULL;
   }
 }
 
@@ -1680,10 +1704,10 @@ infd_directory_net_object_received(InfNetObject* net_object,
       xmlFree(seq_attr);
     }
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       priv->connection_manager,
+      priv->group,
       connection,
-      INF_NET_OBJECT(directory),
       reply_xml
     );
 
@@ -1984,14 +2008,13 @@ infd_directory_add_connection(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(priv->connection_manager));
 
-  inf_connection_manager_add_object(
+  inf_connection_manager_ref_connection(
     priv->connection_manager,
-    connection,
-    INF_NET_OBJECT(directory),
-    "InfDirectory"
+    priv->group,
+    connection
   );
 
-  g_signal_connect_after(
+  g_signal_connect(
     G_OBJECT(connection),
     "notify::status",
     G_CALLBACK(infd_directory_connection_notify_status_cb),

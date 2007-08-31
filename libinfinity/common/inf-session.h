@@ -218,8 +218,8 @@ inf_session_foreach_user(InfSession* session,
 
 void
 inf_session_synchronize_to(InfSession* session,
-                           InfXmlConnection* connection,
-                           const gchar* identifier);
+                           const gchar* group_name,
+                           InfXmlConnection* connection);
 
 InfSessionSyncStatus
 inf_session_get_synchronization_status(InfSession* session,

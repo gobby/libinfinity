@@ -35,8 +35,13 @@ struct _InfdSessionSubscription {
 
 typedef struct _InfdSessionPrivate InfdSessionPrivate;
 struct _InfdSessionPrivate {
+  /* Group of session subscriptions */
+  InfConnectionManagerGroup* group; /* TODO: This should be a property */
   GSList* subscriptions;
   guint user_id_counter;
+
+  /* Only relevant until constructor has run */
+  gchar* group_name;
 
   /* Only relevant if we get a session synchronized. This flag tells whether
    * we should subscribe the synchronizing connection after synchronization
@@ -51,6 +56,7 @@ struct _InfdSessionPrivate {
 enum {
   PROP_0,
 
+  PROP_SUBSCRIPTION_GROUP_NAME,
   PROP_SUBSCRIBE_SYNC_CONN
 };
 
@@ -160,10 +166,10 @@ infd_session_release_subscription(InfdSession* session,
     session
   );
 
-  inf_connection_manager_remove_object(
+  inf_connection_manager_unref_connection(
     inf_session_get_connection_manager(INF_SESSION(session)),
-    connection,
-    INF_NET_OBJECT(session)
+    priv->group,
+    connection
   );
 
   priv->subscriptions = g_slist_remove(priv->subscriptions, subscription);
@@ -382,10 +388,10 @@ infd_session_perform_user_join(InfdSession* session,
   {
     xmlNewProp(xml, (const xmlChar*)"seq", (const xmlChar*)request_seq);
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       inf_session_get_connection_manager(INF_SESSION(session)),
+      priv->group,
       connection,
-      INF_NET_OBJECT(session),
       xml
     );
 
@@ -409,8 +415,7 @@ infd_session_perform_user_join(InfdSession* session,
 /* Subscribes the given connection to the session without synchronizing it. */
 static void
 infd_session_subscribe_connection(InfdSession* session,
-                                  InfXmlConnection* connection,
-                                  const gchar* identifier)
+                                  InfXmlConnection* connection)
 {
   InfdSessionPrivate* priv;
   InfdSessionSubscription* subscription;
@@ -421,14 +426,13 @@ infd_session_subscribe_connection(InfdSession* session,
    * then the InfSession has already been the connection in
    * inf_session_synchronize_to(). However, since we want to keep it after
    * the synchronization finishes we have to add another reference here. */
-  inf_connection_manager_add_object(
+  inf_connection_manager_ref_connection(
     inf_session_get_connection_manager(INF_SESSION(session)),
-    connection,
-    INF_NET_OBJECT(session),
-    identifier
+    priv->group,
+    connection
   );
 
-  g_signal_connect_after(
+  g_signal_connect(
     G_OBJECT(connection),
     "notify::status",
     G_CALLBACK(infd_session_connection_notify_status_cb),
@@ -486,8 +490,128 @@ infd_session_init(GTypeInstance* instance,
 
   priv->subscriptions = NULL;
   priv->user_id_counter = 1;
+  priv->group_name = NULL;
   priv->subscribe_sync_conn = FALSE;
   priv->local_users = NULL;
+}
+
+static GObject*
+infd_session_constructor(GType type,
+                         guint n_construct_properties,
+                         GObjectConstructParam* construct_properties)
+{
+  GObject* object;
+  InfdSession* session;
+  InfdSessionPrivate* priv;
+  InfXmlConnection* sync_conn;
+  gchar* sync_group_name;
+
+  object = G_OBJECT_CLASS(parent_class)->constructor(
+    type,
+    n_construct_properties,
+    construct_properties
+  );
+
+  session = INFD_SESSION(object);
+  priv = INFD_SESSION_PRIVATE(session);
+
+  g_assert(priv->group_name != NULL);
+
+  /* Create connection manager group. If there is a connection from which
+   * we get the session initially synchronized, there might be an existing
+   * group created by the parent constructor. If we subscribe that
+   * synchronization connection, then we should use that existing group
+   * so that we don't need to regroup the connection after synchronization
+   * is complete. */
+  if(priv->subscribe_sync_conn == TRUE)
+  {
+    g_object_get(
+      object,
+      "sync-connection", &sync_conn,
+      "sync-group-name", &sync_group_name,
+      NULL
+    );
+
+    g_assert(sync_conn != NULL);
+    g_assert(sync_group_name != NULL);
+
+    /* We cannot use the existing group if the group name does not match
+     * because we are expected to create a group with name priv->group_name.
+     * However, creating an own group is not too much of a problem because
+     * we just add the synchronizing connection to that group after
+     * synchronization is complete. It is just that the client has to know
+     * both the synchronization and the subscription group name then. */
+    if(strcmp(sync_group_name, priv->group_name) == 0)
+    {
+      priv->group = inf_connection_manager_find_group_by_connection(
+        inf_session_get_connection_manager(INF_SESSION(session)),
+        priv->group_name,
+        sync_conn
+      );
+
+      if(priv->group != NULL)
+      {
+        /* Object must match, otherwise we do not receive notification. */
+        g_assert(
+          inf_connection_manager_group_get_object(priv->group) ==
+          INF_NET_OBJECT(session)
+        );
+
+        inf_connection_manager_ref_group(
+          inf_session_get_connection_manager(INF_SESSION(session)),
+          priv->group
+        );
+      }
+      
+      /* Note that we actually add the sync_conn after synchronization is
+       * complete. */
+    }
+
+    g_free(sync_group_name);
+  }
+
+  /* If we did not find an existing group, just create a new one */
+  if(priv->group == NULL)
+  {
+    priv->group = inf_connection_manager_create_group(
+      inf_session_get_connection_manager(INF_SESSION(session)),
+      priv->group_name,
+      INF_NET_OBJECT(session)
+    );
+  }
+
+  g_free(priv->group_name);
+  priv->group_name = NULL;
+
+  return object;
+}
+
+static void
+infd_session_dispose(GObject* object)
+{
+  InfdSession* session;
+  InfdSessionPrivate* priv;
+  InfConnectionManager* manager;
+
+  session = INFD_SESSION(object);
+  priv = INFD_SESSION_PRIVATE(session);
+
+  /* Keep manager for group unref */
+  manager = inf_session_get_connection_manager(INF_SESSION(session));
+  g_object_ref(G_OBJECT(manager));
+
+  /* The base class will call close() in which we remove subscriptions */
+  g_slist_free(priv->local_users);
+  priv->local_users = NULL;
+
+  G_OBJECT_CLASS(parent_class)->dispose(object);
+
+  /* Unref group after base dispose has run because _close(), called by
+   * base class dispose, still accesses the group */
+  inf_connection_manager_unref_group(manager, priv->group);
+  priv->group = NULL;
+
+  g_object_unref(G_OBJECT(manager));
 }
 
 static void
@@ -504,6 +628,9 @@ infd_session_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_SUBSCRIPTION_GROUP_NAME:
+    priv->group_name = g_value_dup_string(value);
+    break;
   case PROP_SUBSCRIBE_SYNC_CONN:
     priv->subscribe_sync_conn = g_value_get_boolean(value);
     break;
@@ -527,6 +654,19 @@ infd_session_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_SUBSCRIPTION_GROUP_NAME:
+    if(priv->group != NULL)
+    {
+      g_value_set_string(
+        value,
+        inf_connection_manager_group_get_name(priv->group)
+      );
+    }
+    else
+    {
+      g_value_set_string(value, priv->group_name);
+    }
+    break;
   case PROP_SUBSCRIBE_SYNC_CONN:
     g_value_set_boolean(value, priv->subscribe_sync_conn);
     break;
@@ -534,22 +674,6 @@ infd_session_get_property(GObject* object,
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
-}
-
-static void
-infd_session_dispose(GObject* object)
-{
-  InfdSession* session;
-  InfdSessionPrivate* priv;
-
-  session = INFD_SESSION(object);
-  priv = INFD_SESSION_PRIVATE(session);
-
-  /* The base class will call close() in which we remove subscriptions */
-  g_slist_free(priv->local_users);
-  priv->local_users = NULL;
-
-  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 /*
@@ -562,6 +686,7 @@ infd_session_process_xml_run_impl(InfSession* session,
                                   xmlNodePtr xml)
 {
   InfdSessionClass* sessiond_class;
+  InfdSessionPrivate* priv;
   InfSessionSyncStatus status;
   InfdSessionMessage* message;
   xmlNodePtr reply_xml;
@@ -571,6 +696,7 @@ infd_session_process_xml_run_impl(InfSession* session,
   gboolean result;
 
   error = NULL;
+  priv = INFD_SESSION_PRIVATE(session);
   status = inf_session_get_synchronization_status(session, connection);
 
   if(session != INF_SESSION_SYNC_NONE)
@@ -632,10 +758,10 @@ infd_session_process_xml_run_impl(InfSession* session,
       xmlFree(seq_attr);
     }
 
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       inf_session_get_connection_manager(INF_SESSION(session)),
+      priv->group,
       connection,
-      INF_NET_OBJECT(session),
       reply_xml
     );
 
@@ -681,16 +807,16 @@ infd_session_close_impl(InfSession* session)
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-close");
 
-      inf_connection_manager_send(
+      inf_connection_manager_send_to(
         inf_session_get_connection_manager(session),
+        priv->group,
         subscription->connection,
-        INF_NET_OBJECT(session),
         xml
       );
     }
 
     /* Do not call remove_subscription because this would try to send
-     * messages about leaving players, but we are sending session-close
+     * messages about leaving users, but we are sending session-close
      * to all subscriptions anyway. */
     infd_session_release_subscription(INFD_SESSION(session), subscription);
   }
@@ -729,16 +855,13 @@ infd_session_synchronization_complete_impl(InfSession* session,
   {
     if(priv->subscribe_sync_conn == TRUE)
     {
-      g_object_get(G_OBJECT(session), "sync-identifier", &identifier, NULL);
-
       /* Do not use subscribe_to here because this would synchronize the
        * session to connection. However, we just got it synchronized the
        * other way around and therefore no further synchronization is
        * required. */
       infd_session_subscribe_connection(
         INFD_SESSION(session),
-        connection,
-        identifier
+        connection
       );
 
       g_free(identifier);
@@ -951,6 +1074,7 @@ infd_session_class_init(gpointer g_class,
   parent_class = INF_SESSION_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfdSessionPrivate));
 
+  object_class->constructor = infd_session_constructor;
   object_class->dispose = infd_session_dispose;
   object_class->set_property = infd_session_set_property;
   object_class->get_property = infd_session_get_property;
@@ -963,6 +1087,18 @@ infd_session_class_init(gpointer g_class,
     infd_session_synchronization_complete_impl;
   session_class->synchronization_failed =
     infd_session_synchronization_failed_impl;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SUBSCRIPTION_GROUP_NAME,
+    g_param_spec_string(
+      "subscription-group-name",
+      "Subscription group name",
+      "The name of the connection manager group of subscribed connections",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   g_object_class_install_property(
     object_class,
@@ -1134,14 +1270,12 @@ infd_session_add_user(InfdSession* session,
  **/
 void
 infd_session_subscribe_to(InfdSession* session,
-                          InfXmlConnection* connection,
-                          const gchar* identifier)
+                          InfXmlConnection* connection)
 {
   InfdSessionPrivate* priv;
 
   g_return_if_fail(INFD_IS_SESSION(session));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
-  g_return_if_fail(identifier != NULL);
 
   g_return_if_fail(
     infd_session_find_subscription_by_connection(session, connection) == NULL
@@ -1149,8 +1283,17 @@ infd_session_subscribe_to(InfdSession* session,
 
   priv = INFD_SESSION_PRIVATE(session);
 
-  inf_session_synchronize_to(INF_SESSION(session), connection, identifier);
-  infd_session_subscribe_connection(session, connection, identifier);
+  /* Directly synchronize within the subscription group so that we do not
+   * need a group change after synchronization, and the connection already
+   * receives requests from other group member to process after
+   * synchronization. */
+  inf_session_synchronize_to(
+    INF_SESSION(session),
+    inf_connection_manager_group_get_name(priv->group),
+    connection
+  );
+
+  infd_session_subscribe_connection(session, connection);
 }
 
 /** infd_session_send_to_subscriptions:
@@ -1177,6 +1320,8 @@ infd_session_send_to_subscriptions(InfdSession* session,
 
   priv = INFD_SESSION_PRIVATE(session);
 
+  /* TODO: Replace this by inf_connection_manager_send_to_group */
+
   first = NULL;
   for(item = priv->subscriptions; item != NULL; item = g_slist_next(item))
   {
@@ -1193,10 +1338,10 @@ infd_session_send_to_subscriptions(InfdSession* session,
       {
         /* Make a copy of xml because we need the original one to send
          * to first. */
-        inf_connection_manager_send(
+        inf_connection_manager_send_to(
           inf_session_get_connection_manager(INF_SESSION(session)),
+          priv->group,
           subscription->connection,
-          INF_NET_OBJECT(session),
           xmlCopyNode(xml, 1)
         );
       }
@@ -1205,10 +1350,10 @@ infd_session_send_to_subscriptions(InfdSession* session,
 
   if(first != NULL)
   {
-    inf_connection_manager_send(
+    inf_connection_manager_send_to(
       inf_session_get_connection_manager(INF_SESSION(session)),
+      priv->group,
       first->connection,
-      INF_NET_OBJECT(session),
       xml
     );
   }
