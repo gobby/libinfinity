@@ -5,7 +5,7 @@
  * Implement AdoptedLogRemoval correctly (Adopted)
  * Implement discovery via avahi (Discovery)
  * Create certificates if not given (XMPP)
- * Implement masschat interface, implement for relay and jabber (Transport)
+ * Define masschat interface, implement for relay and jabber (Transport)
    - Yet unsure how relay is supposed to work.
  * Split InfXmppConnection (XMPP)
    - InfXmppConnection: XMPP core implementation
@@ -14,3 +14,16 @@
    - InfJabberUserConnection: Implements InfXmlConnection by sending stuff to a particular Jabber user (owns InfJabberConnection)
    - InfJabberDiscovery (owns InfJabberConnection)
  * Drop message table in Infc/dSession
+
+ * Make Infc/dSession not inherit from InfSession:
+   - Make close() a signal instead of a vfunc
+   - Make the new Infc/dSession take a subscription group
+     - in ctor for dSession
+     - in set_connection for cSession
+   - Make InfSession not implement NetObject anymore (but c/dSession) and
+     just call a process_xml func.
+   - Make InfSession take a group for initial sync and in synchronize_to() 
+   - InfcBrowser, InfdDirectory do the following when creating a session:
+     - Create subscription group (or synchronization group, if no subscription is performed)
+     - Create session via Infc/dNotePlugin
+     - Create Infc/dSession proxy with subscription group

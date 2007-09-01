@@ -87,6 +87,19 @@ inf_connection_manager_cmp_queue_by_conn(gconstpointer queue_,
     return 0;
 }
 
+static InfConnectionManagerGroup*
+inf_connection_manager_group_boxed_copy(InfConnectionManagerGroup* group)
+{
+  inf_connection_manager_ref_group(group->manager, group);
+  return group;
+}
+
+static void
+inf_connection_manager_group_boxed_free(InfConnectionManagerGroup* group)
+{
+  inf_connection_manager_unref_group(group->manager, group);
+}
+
 static void
 inf_connection_manager_object_unrefed(gpointer user_data,
                                       GObject* where_the_object_was)
@@ -105,6 +118,8 @@ inf_connection_manager_object_unrefed(gpointer user_data,
     "still referenced. Removing group.",
     group->name
   );
+  
+  /* TODO: Keep group alive, just issue warning? */
   
   /* Do not use regular free functions, those would try to access
    * NetObject for reference. */
@@ -141,7 +156,7 @@ inf_connection_manager_group_add_queue(InfConnectionManagerGroup* group,
   queue->outer_queue_last_item = NULL;
   queue->inner_count = 0;
   
-  if(group->queues == NULL)
+  if(group->queues == NULL && group->net_object != NULL)
   {
     /* Turn into strong ref again */
     g_object_ref(G_OBJECT(group->net_object));
@@ -184,7 +199,7 @@ inf_connection_manager_group_remove_queue(InfConnectionManagerGroup* group,
   group->queues = g_list_remove(group->queues, queue);
   g_slice_free(InfConnectionManagerQueue, queue);
 
-  if(group->queues == NULL)
+  if(group->queues == NULL && group->net_object != NULL)
   {
     /* Turn into weakref when group has no connections, so the netobject
      * can be freed if noone is interacting with it. */
@@ -212,11 +227,14 @@ inf_connection_manager_group_new(InfConnectionManager* manager,
   group->manager = manager;
   group->net_object = net_object;
 
-  g_object_weak_ref(
-    G_OBJECT(net_object),
-    inf_connection_manager_object_unrefed,
-    group
-  );
+  if(net_object != NULL)
+  {
+    g_object_weak_ref(
+      G_OBJECT(net_object),
+      inf_connection_manager_object_unrefed,
+      group
+    );
+  }
 
   group->name = g_strdup(name);
   group->ref_count = 1;
@@ -245,11 +263,14 @@ inf_connection_manager_group_free(InfConnectionManagerGroup* group)
 
   if(group->queues == NULL)
   {
-    g_object_weak_unref(
-      G_OBJECT(group->net_object),
-      inf_connection_manager_object_unrefed,
-      group
-    );
+    if(group->net_object != NULL)
+    {
+      g_object_weak_unref(
+        G_OBJECT(group->net_object),
+        inf_connection_manager_object_unrefed,
+        group
+      );
+    }
   }
   else
   {
@@ -371,6 +392,8 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   scope = INF_CONNECTION_MANAGER_SCOPE_NONE;
   container = NULL;
 
+  g_assert(group->net_object != NULL);
+
   /* Increase max messages and count down to one instead of zero. This way,
    * max_messages == 0 means no limit. */
   if(max_messages != 0)
@@ -457,6 +480,7 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
      * the data is really sent out, so do not assert here. */
     if(group != NULL)
     {
+      g_assert(group->net_object != NULL);
       queue = inf_connection_manager_group_get_queue(group, connection);
 
       /* Again, the connection may have been removed from the group after
@@ -533,6 +557,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
     }
     else
     {
+      g_assert(group->net_object != NULL);
       queue = inf_connection_manager_group_get_queue(group, connection);
 
       if(queue == NULL)
@@ -731,6 +756,23 @@ inf_connection_manager_class_init(gpointer g_class,
 }
 
 GType
+inf_connection_manager_group_get_type(void)
+{
+  static GType connection_manager_group_type = 0;
+
+  if(!connection_manager_group_type)
+  {
+    connection_manager_group_type = g_boxed_type_register_static(
+      "InfConnectionManagerGroup",
+      (GBoxedCopyFunc)inf_connection_manager_group_boxed_copy,
+      (GBoxedFreeFunc)inf_connection_manager_group_boxed_free
+    );
+  }
+  
+  return connection_manager_group_type;
+}
+
+GType
 inf_connection_manager_get_type(void)
 {
   static GType connection_manager_type = 0;
@@ -781,11 +823,15 @@ inf_connection_manager_new(void)
  *
  * @manager: A #InfConnectionManager.
  * @group_name: A name for the new group.
- * @object: A #InfNetObject.
+ * @object: A #InfNetObject, or %NULL.
  *
  * Creates a new group with name @group_name. A connection cannot be in two
  * groups with the same name. If a connection within a group receives
  * data, the XML message is forwarded to @object.
+ *
+ * If @object is %NULL, the group is created without an object. In such a
+ * state, you cannot send or receive data from the group. Use
+ * inf_connection_manager_group_set_object() before such an attempt.
  *
  * Return Value: The new #InfConnectionManagerGroup.
  **/
@@ -796,7 +842,7 @@ inf_connection_manager_create_group(InfConnectionManager* manager,
 {
   g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
   g_return_val_if_fail(group_name != NULL, NULL);
-  g_return_val_if_fail(INF_IS_NET_OBJECT(object), NULL);
+  g_return_val_if_fail(object == NULL || INF_IS_NET_OBJECT(object), NULL);
 
   return inf_connection_manager_group_new(manager, group_name, object);
 }
@@ -1007,6 +1053,56 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
   return group->name;
 }
 
+/** inf_connection_manager_group_set_object:
+ *
+ * @group: A #InfConnectionManagerGroup.
+ * @object: A #InfNetObject, or %NULL.
+ *
+ * Changes the #InfNetObject of @group. @object may be %NULL, in which case
+ * no send/receive operation can be issued.
+ **/
+void
+inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
+                                        InfNetObject* object)
+{
+  g_return_if_fail(group != NULL);
+  g_return_if_fail(object == NULL || INF_IS_NET_OBJECT(object));
+
+  if(group->net_object != NULL)
+  {
+    if(group->queues == NULL)
+    {
+      g_object_weak_unref(
+        G_OBJECT(group->net_object),
+        inf_connection_manager_object_unrefed,
+        group
+      );
+    }
+    else
+    {
+      g_object_unref(G_OBJECT(group->net_object));
+    }
+  }
+
+  group->net_object = object;
+
+  if(object != NULL)
+  {
+    if(group->queues == NULL)
+    {
+      g_object_weak_ref(
+        G_OBJECT(object),
+        inf_connection_manager_object_unrefed,
+        group
+      );
+    }
+    else
+    {
+      g_object_ref(G_OBJECT(object));
+    }
+  }
+}
+
 /** inf_connection_manager_has_connection:
  *
  * @manager: A #InfConnectionManager.
@@ -1067,6 +1163,7 @@ inf_connection_manager_send_to(InfConnectionManager* manager,
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(group != NULL);
+  g_return_if_fail(group->net_object != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(xml != NULL);
 
@@ -1122,6 +1219,7 @@ inf_connection_manager_send_to_group(InfConnectionManager* manager,
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(group != NULL);
+  g_return_if_fail(group->net_object != NULL);
   g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
   g_return_if_fail(xml != NULL);
 
@@ -1193,6 +1291,7 @@ inf_connection_manager_send_multiple_to(InfConnectionManager* manager,
 
   g_return_if_fail(INF_IS_CONNECTION_MANAGER(manager));
   g_return_if_fail(group != NULL);
+  g_return_if_fail(group->net_object != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(xml != NULL);
 

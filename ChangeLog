@@ -1,3 +1,13 @@
+2007-09-01  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c: Made
+	InfConnectionManagerGroup a boxed type, allow changing a group's
+	InfNetObject via inf_connection_manager_group_set_object().
+
+	* TODO: Added plans about making InfcSession and InfdSession not
+	inherit from InfSession.
+
 2007-08-31  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.h:

@@ -35,6 +35,8 @@ G_BEGIN_DECLS
 #define INF_IS_CONNECTION_MANAGER_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_CONNECTION_MANAGER))
 #define INF_CONNECTION_MANAGER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_CONNECTION_MANAGER, InfConnectionManagerClass))
 
+#define INF_TYPE_CONNECTION_MANAGER_GROUP           (inf_connection_manager_group_get_type())
+
 typedef struct _InfConnectionManager InfConnectionManager;
 typedef struct _InfConnectionManagerClass InfConnectionManagerClass;
 
@@ -47,6 +49,9 @@ struct _InfConnectionManagerClass {
 struct _InfConnectionManager {
   GObject parent;
 };
+
+GType
+inf_connection_manager_group_get_type(void) G_GNUC_CONST;
 
 GType
 inf_connection_manager_get_type(void) G_GNUC_CONST;
