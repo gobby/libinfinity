@@ -14,7 +14,7 @@ libinfinity_client_la_SOURCES = \
 	infc-node-request.c \
 	infc-request.c \
 	infc-request-manager.c \
-	infc-session.c \
+	infc-session-proxy.c \
 	infc-user-request.c
 
 libinfinity_client_la_HEADERS = \
@@ -25,5 +25,5 @@ libinfinity_client_la_HEADERS = \
 	infc-note-plugin.h \
 	infc-request.h \
 	infc-request-manager.h \
-	infc-session.h \
+	infc-session-proxy.h \
 	infc-user-request.h

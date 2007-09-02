@@ -21,7 +21,7 @@
 
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/server/infd-note-plugin.h>
-#include <libinfinity/server/infd-session.h>
+#include <libinfinity/server/infd-session-proxy.h>
 #include <libinfinity/common/inf-connection-manager.h>
 
 #include <glib-object.h>
@@ -141,7 +141,7 @@ InfdNotePlugin*
 infd_directory_iter_get_plugin(InfdDirectory* directory,
                                InfdDirectoryIter* iter);
 
-InfdSession*
+InfdSessionProxy*
 infd_directory_iter_get_session(InfdDirectory* directory,
                                 InfdDirectoryIter* iter,
                                 GError** error);

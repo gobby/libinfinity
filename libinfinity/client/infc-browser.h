@@ -19,6 +19,7 @@
 #ifndef __INFC_BROWSER_H__
 #define __INFC_BROWSER_H__
 
+#include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/client/infc-browser-iter.h>
 #include <libinfinity/client/infc-explore-request.h>
 #include <libinfinity/client/infc-node-request.h>
@@ -142,7 +143,7 @@ InfcNodeRequest*
 infc_browser_subscribe_session(InfcBrowser* browser,
                                InfcBrowserIter* iter);
 
-InfcSession*
+InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
                               InfcBrowserIter* iter);
 

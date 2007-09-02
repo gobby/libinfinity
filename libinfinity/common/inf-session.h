@@ -140,9 +140,9 @@ struct _InfSessionClass {
                       const GParameter* params,
                       guint n_params);
 
+  /* Signals */
   void(*close)(InfSession* session);
 
-  /* Signals */
   void(*add_user)(InfSession* session,
                   InfUser* user);
 
@@ -218,12 +218,24 @@ inf_session_foreach_user(InfSession* session,
 
 void
 inf_session_synchronize_to(InfSession* session,
-                           const gchar* group_name,
+                           InfConnectionManagerGroup* group,
                            InfXmlConnection* connection);
 
 InfSessionSyncStatus
 inf_session_get_synchronization_status(InfSession* session,
                                        InfXmlConnection* connection);
+
+InfConnectionManagerGroup*
+inf_session_get_subscription_group(InfSession* session);
+
+void
+inf_session_set_subscription_group(InfSession* session,
+                                   InfConnectionManagerGroup* group);
+
+void
+inf_session_send_to_subscriptions(InfSession* session,
+                                  InfXmlConnection* except,
+                                  xmlNodePtr xml);
 
 G_END_DECLS
 

@@ -21,7 +21,7 @@
 
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/server/infd-note-plugin.h>
-#include <libinfinity/server/infd-session.h>
+#include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-connection-manager.h>
 
 #include <glib-object.h>

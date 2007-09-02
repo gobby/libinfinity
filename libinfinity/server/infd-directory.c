@@ -17,8 +17,8 @@
  */
 
 #include <libinfinity/server/infd-directory.h>
-#include <libinfinity/server/infd-session.h>
 
+#include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-net-object.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -42,7 +42,7 @@ struct _InfdDirectoryNode {
   union {
     struct {
       /* Running session, or NULL */
-      InfdSession* session;
+      InfdSessionProxy* session;
       /* Session type */
       InfdNotePlugin* plugin;
     } note;
@@ -374,7 +374,7 @@ infd_directory_node_free(InfdDirectory* directory,
       /* TODO: Error handling */
       node->shared.note.plugin->session_write(
         priv->storage,
-        node->shared.note.session,
+        infd_session_proxy_get_session(node->shared.note.session),
         path,
         NULL
       );
@@ -830,12 +830,15 @@ infd_directory_node_add_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
                              const gchar* name,
                              InfdNotePlugin* plugin,
-			     InfXmlConnection* seq_conn,
-			     guint seq,
+                             InfXmlConnection* seq_conn,
+                             guint seq,
                              GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  InfSession* session;
+  gchar* group_name;
+  InfConnectionManagerGroup* group;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -866,11 +869,33 @@ infd_directory_node_add_note(InfdDirectory* directory,
       plugin
     );
 
-    node->shared.note.session = plugin->session_new(
+    group_name = g_strdup_printf("InfSession_%u", node->id);
+    
+    group = inf_connection_manager_create_group(
       priv->connection_manager,
-      NULL,
+      group_name,
       NULL
     );
+
+    g_free(group_name);
+
+    session  = plugin->session_new(priv->connection_manager, NULL, NULL);
+    g_assert(session != NULL);
+
+    node->shared.note.session = g_object_new(
+      INFD_TYPE_SESSION_PROXY,
+      "session", session,
+      "subscription-group", group,
+      NULL
+    );
+
+    inf_connection_manager_group_set_object(
+      group,
+      INF_NET_OBJECT(node->shared.note.session)
+    );
+
+    g_object_unref(G_OBJECT(session));
+    inf_connection_manager_unref_group(priv->connection_manager, group);
 
     g_assert(node->shared.note.session != NULL);
 
@@ -907,14 +932,17 @@ infd_directory_node_remove(InfdDirectory* directory,
   return TRUE;
 }
 
-static InfdSession*
+static InfdSessionProxy*
 infd_directory_node_get_session(InfdDirectory* directory,
                                 InfdDirectoryNode* node,
                                 GError** error)
 {
   InfdDirectoryPrivate* priv;
+  InfConnectionManagerGroup* group;
+  InfSession* session;
   gchar* path;
   gboolean result;
+  gchar* group_name;
 
   g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
 
@@ -924,17 +952,42 @@ infd_directory_node_get_session(InfdDirectory* directory,
   if(node->shared.note.session != NULL)
     return node->shared.note.session;
 
-  node->shared.note.session = node->shared.note.plugin->session_new(
+  group_name = g_strdup_printf("InfSession_%u", node->id);
+
+  group = inf_connection_manager_create_group(
+    priv->connection_manager,
+    group_name,
+    NULL
+  );
+
+  g_free(group_name);
+
+  session = node->shared.note.plugin->session_new(
     priv->connection_manager,
     NULL,
     NULL
   );
 
+  node->shared.note.session = g_object_new(
+    INFD_TYPE_SESSION_PROXY,
+    "session", session,
+    "subscription-group", group,
+    NULL
+  );
+
+  inf_connection_manager_group_set_object(
+    group,
+    INF_NET_OBJECT(node->shared.note.session)
+  );
+
+  inf_connection_manager_unref_group(priv->connection_manager, group);
+  g_object_unref(G_OBJECT(session));
+
   infd_directory_node_get_path(node, &path, NULL);
 
   result = node->shared.note.plugin->session_read(
     priv->storage,
-    node->shared.note.session,
+    session,
     path,
     error
   );
@@ -1269,8 +1322,8 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfdSession* session;
-  gchar* group;
+  InfdSessionProxy* proxy;
+  InfConnectionManagerGroup* group;
   xmlChar* seq_attr;
   xmlNodePtr reply_xml;
 
@@ -1290,19 +1343,19 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   /* TODO: Bail if this connection is either currently being synchronized to
    * or is already subscribed */
 
-  session = infd_directory_node_get_session(directory, node, error);
-  if(session == NULL)
+  proxy = infd_directory_node_get_session(directory, node, error);
+  if(proxy == NULL)
     return FALSE;
 
   /* Reply that subscription was successful (so far, synchronization may
-   * still fail) and tail identifier. */
-  g_object_get(G_OBJECT(session), "subscription-group-name", &group, NULL);
+   * still fail) and tell identifier. */
+  g_object_get(G_OBJECT(proxy), "subscription-group", &group, NULL);
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"subscribe-session");
 
   xmlNewProp(
     reply_xml,
     (const xmlChar*)"group",
-    (const xmlChar*)group
+    (const xmlChar*)inf_connection_manager_group_get_name(group)
   );
   
   g_free(group);
@@ -1322,7 +1375,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     reply_xml
   );
 
-  infd_session_subscribe_to(session, connection);
+  infd_session_proxy_subscribe_to(proxy, connection);
   return TRUE;
 }
 
@@ -2418,9 +2471,9 @@ infd_directory_iter_get_plugin(InfdDirectory* directory,
  * fail if the loading from the background storage fails. In this case, %NULL
  * is returned and @error is set.
  *
- * Return Value: A #InfdSession for the note @iter points to.
+ * Return Value: A #InfdSessionProxy for the note @iter points to.
  **/
-InfdSession*
+InfdSessionProxy*
 infd_directory_iter_get_session(InfdDirectory* directory,
                                 InfdDirectoryIter* iter,
                                 GError** error)

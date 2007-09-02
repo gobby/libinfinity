@@ -1,3 +1,35 @@
+2007-09-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-session.h:
+	* libinfinity/server/infd-session.c:
+	* libinfinity/client/infc-session.h:
+	* libinfinity/client/infc-session.c: Removed.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added subscription group property.
+
+	* libinfinity/server/infd-session-proxy.h:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/client/infc-session-proxy.h:
+	* libinfinity/client/infc-session-proxy.c: Added InfcSessionProxy and
+	InfdSessionProxy classes. These basically have the same functionality
+	as the old InfcSession and InfdSession but own them rather than
+	inherit from them. This is needed because GObject does not allow
+	multiple inheritance: Other types can now inherit from InfSession
+	while InfcSessionProxy (or InfdSessionProxy, respectively) can still
+	do their job.
+
+	* libinfinity/server/infd-note-plugin.h:
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/Makefile.am:
+	* libinfinity/client/infc-note-plugin.h:
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/Makefile.am: Adjusted accordingly.
+
+	* TODO: Removed finished items
+
 2007-09-01  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.h:

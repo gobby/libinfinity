@@ -49,7 +49,7 @@ struct _InfcBrowserNode {
 
   union {
     struct {
-      InfcSession* session;
+      InfcSessionProxy* session;
       InfcNotePlugin* plugin;
     } known;
 
@@ -1050,10 +1050,12 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
-  InfcSession* session;
+  InfSession* session;
   InfcRequest* request;
   InfcBrowserIter iter;
-  xmlChar* identifier;
+  xmlChar* group_name;
+  InfConnectionManagerGroup* group;
+  InfcSessionProxy* proxy;
 
   node = infc_browser_get_node_from_xml_typed(
     browser,
@@ -1090,26 +1092,40 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     return FALSE;
   }
 
-  identifier = inf_xml_util_get_attribute_required(xml, "identifier", error);
-  if(identifier == NULL) return FALSE;
+  group_name = inf_xml_util_get_attribute_required(xml, "group", error);
+  if(group_name == NULL) return FALSE;
 
   g_assert(node->shared.known.plugin != NULL);
+  
+  group = inf_connection_manager_create_group(
+    priv->connection_manager,
+    (const gchar*)group_name,
+    NULL
+  );
+
+  xmlFree(group_name);
+
   session = node->shared.known.plugin->session_new(
     priv->connection_manager,
-    connection,
-    (const gchar*)identifier
+    group,
+    connection
   );
+
+  proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
+  inf_connection_manager_group_set_object(group, INF_NET_OBJECT(proxy));
+
+  infc_session_proxy_set_connection(proxy, group, connection);
+  g_object_unref(G_OBJECT(session));
+  inf_connection_manager_unref_group(priv->connection_manager, group);
 
   /* TODO: Unref session when it drops its connection (possibly due to
    * unsubscription). */
-
-  xmlFree(identifier);
 
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     "subscribe-session",
     xml,
-    error
+    error /* TODO: Should this by NULL, we are retuning TRUE anyway */
   );
 
   if(request != NULL)
@@ -1121,6 +1137,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
+  node->shared.known.session = proxy;
   return TRUE;
 }
 
@@ -2002,12 +2019,12 @@ infc_browser_subscribe_session(InfcBrowser* browser,
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note in @browser.
  *
- * Returns the #InfcSession representing the subscription to the given note,
- * if the client is subscribed, and %NULL otherwise.
+ * Returns the #InfcSessionProxy representing the subscription to the given
+ * note, if the client is subscribed, and %NULL otherwise.
  *
- * Return Value: A #InfcSession, or %NULL if not subscribed.
+ * Return Value: A #InfcSessionProxy, or %NULL if not subscribed.
  **/
-InfcSession*
+InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
                               InfcBrowserIter* iter)
 {

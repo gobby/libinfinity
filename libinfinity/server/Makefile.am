@@ -11,7 +11,7 @@ libinfinity_server_la_SOURCES = \
 	infd-directory.c \
 	infd-filesystem-storage.c \
 	infd-server-pool.c \
-	infd-session.c \
+	infd-session-proxy.c \
 	infd-storage.c \
 	infd-tcp-server.c \
 	infd-xml-server.c \
@@ -22,7 +22,7 @@ libinfinity_server_la_HEADERS = \
 	infd-filesystem-storage.h \
 	infd-note-plugin.h \
 	infd-server-pool.h \
-	infd-session.h \
+	infd-session-proxy.h \
 	infd-storage.h \
 	infd-tcp-server.h \
 	infd-xml-server.h \

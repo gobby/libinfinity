@@ -87,6 +87,10 @@ inf_connection_manager_unref_connection(InfConnectionManager* manager,
                                         InfConnectionManagerGroup* group,
                                         InfXmlConnection* connection);
 
+void
+inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
+                                        InfNetObject* object);
+
 InfNetObject*
 inf_connection_manager_group_get_object(InfConnectionManagerGroup* group);
 
