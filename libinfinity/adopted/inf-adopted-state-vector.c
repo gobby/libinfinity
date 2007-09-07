@@ -18,10 +18,7 @@
 
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
 
-/* NOTE: We do not reference the user for performance reasons. The user has to
- * make sure to keep the user alive while operating with the state vector.
- * This is ensured automatically if you use InfAdoptedAlgorithm becasue this
- * keeps a reference on all users it will use as state vector component. */
+#include <stdlib.h>
 
 /* NOTE: What the state vector actually counts is the amount of operations
  * performed by each user. This number is called a timestamp, although it has
@@ -37,7 +34,7 @@ struct _InfAdoptedStateVectorForeachData {
 
 typedef struct _InfAdoptedStateVectorComponent InfAdoptedStateVectorComponent;
 struct _InfAdoptedStateVectorComponent {
-  InfUser* user;
+  guint id;
   guint n; /* timestamp */
 };
 
@@ -45,9 +42,9 @@ static gint
 inf_adopted_state_vector_component_cmp(InfAdoptedStateVectorComponent* comp1,
                                        InfAdoptedStateVectorComponent* comp2)
 {
-  if(comp1->user < comp2->user)
+  if(comp1->id < comp2->id)
     return -1;
-  if(comp1->user > comp2->user)
+  if(comp1->id > comp2->id)
     return 1;
   return 0;
 }
@@ -60,12 +57,12 @@ inf_adopted_state_vector_component_free(InfAdoptedStateVectorComponent* comp)
 
 static GSequenceIter*
 inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
-                                InfUser* component)
+                                guint id)
 {
   GSequenceIter* iter;
   InfAdoptedStateVectorComponent comp;
 
-  comp.user = component;
+  comp.id = id;
   /* n is irrelevant for lookup */
 
   iter = g_sequence_search(
@@ -75,14 +72,14 @@ inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
     NULL
   );
 
-  /* Why the heck doesn't g_sequence_search return an iterator pointing to
-   * the queried element if there is one, but behind? */
+  /* g_sequence_search returns an iterator pointing to
+   * the element behind the queried element if there is one */
   if(iter == g_sequence_get_begin_iter(vec))
     return NULL;
 
   iter = g_sequence_iter_prev(iter);
 
-  if(((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->user == component)
+  if(((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->id == id)
     return iter;
 
   return NULL;
@@ -90,13 +87,13 @@ inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
 
 static GSequenceIter*
 inf_adopted_state_vector_push(InfAdoptedStateVector* vec,
-                              InfUser* component,
+                              guint id,
                               guint value)
 {
   InfAdoptedStateVectorComponent* comp;
   comp = g_slice_new(InfAdoptedStateVectorComponent);
 
-  comp->user = component;
+  comp->id = id;
   comp->n = value;
 
   return g_sequence_insert_sorted(
@@ -117,7 +114,7 @@ inf_adopted_state_vector_copy_func(gpointer data,
   comp = data;
   new_comp = g_slice_new(InfAdoptedStateVectorComponent);
 
-  new_comp->user = comp->user;
+  new_comp->id = comp->id;
   new_comp->n = comp->n;
 
   /* Since g_sequence_foreach traverses the original sequence in-order we
@@ -135,7 +132,7 @@ inf_adopted_state_vector_foreach_func(gpointer data,
   comp = (InfAdoptedStateVectorComponent*)data;
   foreach_data = (InfAdoptedStateVectorForeachData*)user_data;
 
-  foreach_data->func(comp->user, comp->n, foreach_data->user_data);
+  foreach_data->func(comp->id, comp->n, foreach_data->user_data);
 }
 
 GType
@@ -153,6 +150,12 @@ inf_adopted_state_vector_get_type(void)
   }
 
   return state_vector_type;
+}
+
+GQuark
+inf_adopted_state_vector_error_quark(void)
+{
+  return g_quark_from_static_string("INF_ADOPTED_STATE_VECTOR_ERROR");
 }
 
 /** inf_adopted_state_vector_new:
@@ -209,23 +212,22 @@ inf_adopted_state_vector_free(InfAdoptedStateVector* vec)
 /** inf_adopted_state_vector_get:
  *
  * @vec: A #InfAdoptedStateVector.
- * @component: The component whose timestamp to look for.
+ * @id: The component whose timestamp to look for.
  *
- * Returns the timestamp for the given component. Implicitely, all users
+ * Returns the timestamp for the given component. Implicitely, all IDs
  * that the vector does not contain are assigned the timestamp 0.
  *
  * Return Value: The @component'th entry in the vector.
  */
 guint
 inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
-                             InfUser* component)
+                             guint id)
 {
   GSequenceIter* iter;
 
   g_return_val_if_fail(vec != NULL, 0);
-  g_return_val_if_fail(INF_IS_USER(component), 0);
 
-  iter = inf_adopted_state_vector_lookup(vec, component);
+  iter = inf_adopted_state_vector_lookup(vec, id);
 
   if(iter == NULL)
     return 0;
@@ -236,24 +238,23 @@ inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
 /** inf_adopted_state_vector_set:
  *
  * @vec: A #InfAdoptedStateVector.
- * @component: The component to change.
+ * @id: The component to change.
  * @value: The value to set the component to.
  *
  * Sets the given component of @vec to @value.
  **/
 void
 inf_adopted_state_vector_set(InfAdoptedStateVector* vec,
-                             InfUser* component,
+                             guint id,
                              guint value)
 {
   GSequenceIter* iter;
 
   g_return_if_fail(vec != NULL);
-  g_return_if_fail(INF_IS_USER(component));
 
-  iter = inf_adopted_state_vector_lookup(vec, component);
+  iter = inf_adopted_state_vector_lookup(vec, id);
   if(iter == NULL)
-    iter = inf_adopted_state_vector_push(vec, component, value);
+    iter = inf_adopted_state_vector_push(vec, id, value);
   else
     ((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->n = value;
 }
@@ -261,7 +262,7 @@ inf_adopted_state_vector_set(InfAdoptedStateVector* vec,
 /** inf_adopted_state_vector_add:
  *
  * @vec: A #InfAdoptedStateVector.
- * @component: The component to change.
+ * @id: The component to change.
  * @value: The value by which to change the component.
  *
  * Adds @value to the current value of @component. @value may be negative in
@@ -270,20 +271,19 @@ inf_adopted_state_vector_set(InfAdoptedStateVector* vec,
  **/
 void
 inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
-                             InfUser* component,
+                             guint id,
                              gint value)
 {
   GSequenceIter* iter;
   InfAdoptedStateVectorComponent* comp;
 
   g_return_if_fail(vec != NULL);
-  g_return_if_fail(INF_IS_USER(component));
 
-  iter = inf_adopted_state_vector_lookup(vec, component);
+  iter = inf_adopted_state_vector_lookup(vec, id);
   if(iter == NULL)
   {
     g_assert(value > 0);
-    iter = inf_adopted_state_vector_push(vec, component, value);
+    iter = inf_adopted_state_vector_push(vec, id, value);
   }
   else
   {
@@ -379,11 +379,11 @@ inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
 
     /* first_comp and second_comp are set here */
 
-    if(first_comp->user < second_comp->user)
+    if(first_comp->id < second_comp->id)
     {
       return -1;
     }
-    else if(first_comp->user > second_comp->user)
+    else if(first_comp->id > second_comp->id)
     {
       return 1;
     }
@@ -458,7 +458,7 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
     else
     {
       second_comp = g_sequence_get(second_iter);
-      while(second_comp != NULL && first_comp->user > second_comp->user)
+      while(second_comp != NULL && first_comp->id > second_comp->id)
       {
         second_iter = g_sequence_iter_next(second_iter);
         if(second_iter != g_sequence_get_end_iter(second))
@@ -467,20 +467,298 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
           second_comp = NULL;
       }
 
-      if(second_comp != NULL && first_comp->user < second_comp->user)
+      if(second_comp != NULL && first_comp->id < second_comp->id)
       {
         /* That component is not contained in second (thus 0) */
         if(first_comp->n > 0)
           return FALSE;
       }
 
-      g_assert(first_comp->user == second_comp->user);
+      g_assert(first_comp->id == second_comp->id);
       if(first_comp->n > second_comp->n)
         return FALSE;
     }
   }
 
   return TRUE;
+}
+
+/** inf_adopted_state_vector_to_string:
+ *
+ * @vec: A #InfAdoptedStateVector.
+ *
+ * Returns a string representation of @vec.
+ *
+ * Return Value: A newly-allocated string to be freed by the caller.
+ **/
+gchar*
+inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec)
+{
+  GString* str;
+  GSequenceIter* iter;
+  InfAdoptedStateVectorComponent* component;
+
+  g_return_val_if_fail(vec != NULL, NULL);
+
+  str = g_string_sized_new(g_sequence_get_length(vec) * 12);
+
+  for(iter = g_sequence_get_begin_iter(vec);
+      iter != g_sequence_get_end_iter(vec);
+      iter = g_sequence_iter_next(iter))
+  {
+    component = (InfAdoptedStateVectorComponent*)g_sequence_get(iter);
+
+    if(component->n > 0)
+    {
+      if(str->len > 0)
+        g_string_append_c(str, ';');
+
+      g_string_append_printf(str, "%u:%u", component->id, component->n);
+    }
+  }
+
+  return g_string_free(str, FALSE);
+}
+
+/** inf_adopted_state_vector_from_string.
+ *
+ * @str: A string representation of a #InfAdoptedStateVector.
+ * @error: Location to place an error, if any.
+ *
+ * Recreates the #InfAdoptedStateVector from its string representation. If
+ * an error occurs, the function returns %NULL and @error is set.
+ *
+ * Return Value: A new #InfAdoptedStateVector, or %NULL.
+ **/
+InfAdoptedStateVector*
+inf_adopted_state_vector_from_string(const gchar* str,
+                                     GError** error)
+{
+  InfAdoptedStateVector* vec;
+  const char* pos;
+  guint id;
+  guint n;
+
+  g_return_val_if_fail(str != NULL, NULL);
+
+  vec = inf_adopted_state_vector_new();
+  pos = str;
+
+  while(*pos)
+  {
+    id = strtoul(pos, (char**)&pos, 10);
+    if(*pos != ':')
+    {
+      g_set_error(
+        error,
+        inf_adopted_state_vector_error_quark(),
+        INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
+        "Expected ':' after ID"
+      );
+
+      inf_adopted_state_vector_free(vec);
+      return NULL;
+    }
+
+    if(inf_adopted_state_vector_lookup(vec, id) != NULL)
+    {
+      g_set_error(
+        error,
+        inf_adopted_state_vector_error_quark(),
+        INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
+        "ID '%u' already occured before",
+        id
+      );
+
+      inf_adopted_state_vector_free(vec);
+      return NULL;
+    }
+
+    ++ pos; /* step over ':' */
+    n = strtoul(pos, (char**)&pos, 10);
+
+    if(*pos != ';' && *pos != '\0')
+    {
+      g_set_error(
+        error,
+        inf_adopted_state_vector_error_quark(),
+        INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
+        "Expected ';' or end of string after component of ID '%u'",
+        id
+      );
+
+      inf_adopted_state_vector_free(vec);
+      return NULL;
+    }
+
+    inf_adopted_state_vector_push(vec, id, n);
+    if(*pos != '\0') ++ pos; /* step over ';' */
+  }
+
+  return vec;
+}
+
+/** inf_adopted_state_vector_to_string_diff:
+ *
+ * @vec: A #InfAdoptedStateVector.
+ * @orig: Another #InfAdoptedStateVector.
+ *
+ * Returns the string representation of a diff between @orig and @vec. This
+ * is possibly smaller than the representation created by
+ * inf_adopted_state_vector_to_string(), but the same @orig vector is needed
+ * to recreate @vec from the string representation. Additionally,
+ * inf_adopted_state_vector_causally_before(@orig, @vec) must hold.
+ *
+ * Return Value: A newly allocated string to be freed by the caller.
+ **/
+gchar*
+inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
+                                        InfAdoptedStateVector* orig)
+{
+  GSequenceIter* vec_iter;
+  GSequenceIter* orig_iter;
+  InfAdoptedStateVectorComponent* vec_comp;
+  InfAdoptedStateVectorComponent* orig_comp;
+  GString* str;
+
+  g_return_val_if_fail(vec != NULL, NULL);
+  g_return_val_if_fail(orig != NULL, NULL);
+
+  g_return_val_if_fail(
+    inf_adopted_state_vector_causally_before(orig, vec) == TRUE,
+    NULL
+  );
+
+  str = g_string_sized_new(g_sequence_get_length(vec) * 12);
+  vec_iter = g_sequence_get_begin_iter(vec);
+
+  for(orig_iter = g_sequence_get_begin_iter(orig);
+      orig_iter != g_sequence_get_end_iter(orig);
+      orig_iter = g_sequence_iter_next(orig_iter))
+  {
+    orig_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+    if(orig_comp->n == 0) continue;
+
+    g_assert(vec_iter != g_sequence_get_end_iter(vec));
+    vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+    while(vec_comp->id < orig_comp->id)
+    {
+      /* There does not seem to be a corresponding entry in orig_comp, so
+       * it is implicitely zero. */
+      if(str->len > 0) g_string_append_c(str, ';');
+      g_string_append_printf(str, "%u:%u", vec_comp->id, vec_comp->n);
+
+      vec_iter = g_sequence_iter_next(vec_iter);
+
+      g_assert(vec_iter != g_sequence_get_end_iter(vec));
+      vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+    }
+
+    /* Otherwise the inf_adopted_state_vector_causally_before test above
+     * should not have passed since orig_comp->n is not 0. */
+    g_assert(vec_comp->id == orig_comp->id);
+    g_assert(vec_comp->n >= orig_comp->n);
+
+    if(vec_comp->n > orig_comp->n)
+    {
+      if(str->len > 0) g_string_append_c(str, ';');
+      g_string_append_printf(
+        str,
+        "%u:%u",
+        vec_comp->id,
+        vec_comp->n - orig_comp->n
+      );
+    }
+
+    vec_iter = g_sequence_iter_next(vec_iter);
+  }
+
+  /* All remaining components in vec have no counterpart in orig, meaning
+   * their values in orig are implicitely zero. */
+  while(vec_iter != g_sequence_get_end_iter(vec))
+  {
+    vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+    if(str->len > 0) g_string_append_c(str, ';');
+    g_string_append_printf(str, "%u:%u", vec_comp->id, vec_comp->n);
+
+    vec_iter = g_sequence_iter_next(vec_iter);
+  }
+
+  return g_string_free(str, FALSE);
+}
+
+/** inf_adopted_state_vector_from_string_diff:
+ *
+ * @str: A string representation of a diff between state vectors.
+ * @orig: The state vector used to create @str in
+ * inf_adopted_state_vector_to_string_diff().
+ * @error: Location to place an error, if any.
+ *
+ * Recreates a vector from its string representation diff and the original
+ * vector. If an error returns, the function returns %NULL and @error is set.
+ *
+ * Return Value:
+ **/
+InfAdoptedStateVector*
+inf_adopted_state_vector_from_string_diff(const gchar* str,
+                                          InfAdoptedStateVector* orig,
+                                          GError** error)
+{
+  InfAdoptedStateVector* vec;
+  GSequenceIter* vec_iter;
+  GSequenceIter* orig_iter;
+  InfAdoptedStateVectorComponent* vec_comp;
+  InfAdoptedStateVectorComponent* orig_comp;
+
+  g_return_val_if_fail(str != NULL, NULL);
+  g_return_val_if_fail(orig != NULL, NULL);
+
+  vec = inf_adopted_state_vector_from_string(str, error);
+  if(vec == NULL) return NULL;
+
+  vec_iter = g_sequence_get_begin_iter(vec);
+
+  for(orig_iter = g_sequence_get_begin_iter(orig);
+      orig_iter != g_sequence_get_end_iter(orig);
+      orig_iter = g_sequence_iter_next(orig_iter))
+  {
+    orig_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+    if(orig_comp->n == 0) continue;
+
+    if(vec_iter == g_sequence_get_end_iter(vec))
+    {
+      inf_adopted_state_vector_push(vec, orig_comp->id, orig_comp->n);
+    }
+    else
+    {
+      vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+      while(vec_comp->id < orig_comp->id)
+      {
+        vec_iter = g_sequence_iter_next(vec_iter);
+        if(vec_iter == g_sequence_get_end_iter(vec))
+        {
+          vec_comp =
+            (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+        }
+        else
+        {
+          break;
+        }
+      }
+
+      if(vec_comp->id == orig_comp->id)
+      {
+        vec_comp->n += orig_comp->n;
+        vec_iter = g_sequence_iter_next(vec_iter);
+      }
+      else
+      {
+        inf_adopted_state_vector_push(vec, orig_comp->id, orig_comp->n);
+      }
+    }
+  }
+
+  return vec;
 }
 
 /* vim:set et sw=2 ts=2: */

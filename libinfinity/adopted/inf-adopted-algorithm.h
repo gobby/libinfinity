@@ -65,8 +65,10 @@ inf_adopted_algorithm_new_full(InfBuffer* buffer,
 
 void
 inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
-                               InfAdoptedUser* user,
-                               InfAdoptedRequestLog* initial_log);
+                               InfAdoptedUser* user);
+
+InfAdoptedStateVector*
+inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm);
 
 InfAdoptedRequest*
 inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,

@@ -22,7 +22,7 @@ typedef struct _InfAdoptedRequestPrivate InfAdoptedRequestPrivate;
 struct _InfAdoptedRequestPrivate {
   InfAdoptedRequestType type;
   InfAdoptedStateVector* vector;
-  InfAdoptedUser* user;
+  guint user_id;
   InfAdoptedOperation* operation;
 };
 
@@ -32,7 +32,7 @@ enum {
   /* construct only */
   PROP_TYPE,
   PROP_VECTOR,
-  PROP_USER,
+  PROP_USER_ID,
   PROP_OPERATION
 };
 
@@ -52,7 +52,7 @@ inf_adopted_request_init(GTypeInstance* instance,
 
   priv->type = INF_ADOPTED_REQUEST_DO;
   priv->vector = NULL;
-  priv->user = NULL;
+  priv->user_id = 0;
   priv->operation = NULL;
 }
 
@@ -69,12 +69,6 @@ inf_adopted_request_dispose(GObject* object)
   {
     g_object_unref(G_OBJECT(priv->operation));
     priv->operation = NULL;
-  }
-
-  if(priv->user != NULL)
-  {
-    g_object_unref(G_OBJECT(priv->user));
-    priv->user = NULL;
   }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -116,13 +110,10 @@ inf_adopted_request_set_property(GObject* object,
     g_assert(priv->vector == NULL); /* construct only */
     priv->vector = g_value_dup_boxed(value);
     break;
-  case PROP_USER:
-    g_assert(priv->user == NULL); /* construct only */
-
-    /* don't ref, we expect the user to exist as long the request exists
-     * (which it does if you use InfAdoptedAlgorithm for all adopted
-     * operations). */
-    priv->user = INF_ADOPTED_USER(g_value_get_object(value));
+  case PROP_USER_ID:
+    g_assert(priv->user_id == 0); /* construct only */
+    g_assert(g_value_get_uint(value) != 0); /* 0 is invalid ID */
+    priv->user_id = g_value_get_uint(value);
     break;
   case PROP_OPERATION:
     g_assert(priv->operation == NULL); /* construct only */
@@ -154,8 +145,8 @@ inf_adopted_request_get_property(GObject* object,
   case PROP_VECTOR:
     g_value_set_boxed(value, priv->vector);
     break;
-  case PROP_USER:
-    g_value_set_object(value, G_OBJECT(priv->user));
+  case PROP_USER_ID:
+    g_value_set_uint(value, priv->user_id);
     break;
   case PROP_OPERATION:
     g_value_set_object(value, G_OBJECT(priv->operation));
@@ -208,12 +199,14 @@ inf_adopted_request_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_USER,
-    g_param_spec_object(
-      "user",
-      "User",
-      "The user that made the request",
-      INF_ADOPTED_TYPE_USER,
+    PROP_USER_ID,
+    g_param_spec_uint(
+      "user-id",
+      "User ID",
+      "The ID of the user that made the request",
+      0,
+      G_MAXUINT,
+      0,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -301,7 +294,7 @@ inf_adopted_request_get_type(void)
 /** inf_adopted_request_new_do:
  *
  * @vector: The vector time at which the request was made.
- * @user: The user that made the request.
+ * @user_id: The ID of the user that made the request.
  * @operation: The operation the user performed.
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_DO.
@@ -310,20 +303,20 @@ inf_adopted_request_get_type(void)
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_do(InfAdoptedStateVector* vector,
-                           InfAdoptedUser* user,
+                           guint user_id,
                            InfAdoptedOperation* operation)
 {
   GObject* object;
 
   g_return_val_if_fail(vector != NULL, NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
+  g_return_val_if_fail(user_id != 0, NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
 
   object = g_object_new(
     INF_ADOPTED_TYPE_REQUEST,
     "type", INF_ADOPTED_REQUEST_DO,
     "vector", vector,
-    "user", user,
+    "user-id", user_id,
     "operation", operation,
     NULL
   );
@@ -334,7 +327,7 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
 /** inf_adopted_request_new_undo:
  *
  * @vector: The vector time at which the request was made.
- * @user: The user that made the request.
+ * @user_id: The ID of the user that made the request.
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_UNDO.
  * The operation performed is implicitely defined by reverting the operation
@@ -345,18 +338,18 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
-                             InfAdoptedUser* user)
+                             guint user_id)
 {
   GObject* object;
 
   g_return_val_if_fail(vector != NULL, NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
+  g_return_val_if_fail(user_id != 0, NULL);
 
   object = g_object_new(
     INF_ADOPTED_TYPE_REQUEST,
     "type", INF_ADOPTED_REQUEST_UNDO,
     "vector", vector,
-    "user", user,
+    "user-id", user_id,
     NULL
   );
   
@@ -366,7 +359,7 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
 /** inf_adopted_request_new_redo:
  *
  * @vector: The vector time at which the request was made.
- * @user: The user that made the request.
+ * @user_id: The ID of the user that made the request.
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_REDO. The
  * operation performed is implicitely defined by reverting the operation of
@@ -377,18 +370,18 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
-                             InfAdoptedUser* user)
+                             guint user_id)
 {
   GObject* object;
   
   g_return_val_if_fail(vector != NULL, NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
+  g_return_val_if_fail(user_id != 0, NULL);
   
   object = g_object_new(
     INF_ADOPTED_TYPE_REQUEST,
     "type", INF_ADOPTED_REQUEST_REDO,
     "vector", vector,
-    "user", user,
+    "user-id", user_id,
     NULL
   );
   
@@ -418,7 +411,7 @@ inf_adopted_request_copy(InfAdoptedRequest* request)
       INF_ADOPTED_TYPE_REQUEST,
       "type", priv->type,
       "vector", priv->vector,
-      "user", priv->user,
+      "user-id", priv->user_id,
       "operation", priv->operation,
       NULL
     );
@@ -429,7 +422,7 @@ inf_adopted_request_copy(InfAdoptedRequest* request)
       INF_ADOPTED_TYPE_REQUEST,
       "type", priv->type,
       "vector", priv->vector,
-      "user", priv->user,
+      "user-id", priv->user_id,
       NULL
     );
   }
@@ -473,19 +466,19 @@ inf_adopted_request_get_vector(InfAdoptedRequest* request)
   return INF_ADOPTED_REQUEST_PRIVATE(request)->vector;
 }
 
-/** inf_adopted_request_get_user:
+/** inf_adopted_request_get_user_id:
  *
  * @request: A #InfAdoptedRequest.
  *
- * Returns the user that issued @request.
+ * Returns the user ID of the user that issued @request.
  *
- * Return Value: The request's user.
+ * Return Value: The request's user ID.
  **/
-InfAdoptedUser*
-inf_adopted_request_get_user(InfAdoptedRequest* request)
+guint
+inf_adopted_request_get_user_id(InfAdoptedRequest* request)
 {
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(request), NULL);
-  return INF_ADOPTED_REQUEST_PRIVATE(request)->user;
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), 0);
+  return INF_ADOPTED_REQUEST_PRIVATE(request)->user_id;
 }
 
 /** inf_adopted_request_get_operation:
@@ -553,7 +546,7 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
 
   inf_adopted_state_vector_add(
     request_priv->vector,
-    INF_USER(against_priv->user),
+    against_priv->user_id,
     1
   );
 
@@ -595,7 +588,7 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
   g_object_unref(G_OBJECT(priv->operation));
   priv->operation = new_operation;
 
-  inf_adopted_state_vector_add(priv->vector, INF_USER(priv->user), by);
+  inf_adopted_state_vector_add(priv->vector, priv->user_id, by);
 
   g_object_notify(G_OBJECT(request), "operation");
   g_object_notify(G_OBJECT(request), "vector");
@@ -619,19 +612,19 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
  **/
 void
 inf_adopted_request_fold(InfAdoptedRequest* request,
-                         InfAdoptedUser* into,
+                         guint into,
                          guint by)
 {
   InfAdoptedRequestPrivate* priv;
 
   g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
-  g_return_if_fail(INF_ADOPTED_IS_USER(into));
+  g_return_if_fail(into != 0);
   g_return_if_fail(by % 2 == 0);
 
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
-  g_return_if_fail(priv->user != into);
+  g_return_if_fail(priv->user_id != into);
 
-  inf_adopted_state_vector_add(priv->vector, INF_USER(into), by);
+  inf_adopted_state_vector_add(priv->vector, into, by);
   g_object_notify(G_OBJECT(request), "vector");
 }
 

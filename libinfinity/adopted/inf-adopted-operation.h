@@ -19,7 +19,11 @@
 #ifndef __INF_ADOPTED_OPERATION_H__
 #define __INF_ADOPTED_OPERATION_H__
 
-#include <libinfinity/adopted/inf-adopted-user.h>
+/* We cannot include inf-adopted-user.h because inf-adopted-user.h includes
+ * us via inf-adopted-request-log.h via inf-adopted-request.h */
+/*#include <libinfinity/adopted/inf-adopted-user.h>*/
+typedef struct _InfAdoptedUser InfAdoptedUser;
+
 #include <libinfinity/common/inf-buffer.h>
 
 #include <glib-object.h>

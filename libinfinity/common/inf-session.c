@@ -21,6 +21,8 @@
 #include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/inf-marshal.h>
 
+#include <libxml/xmlsave.h>
+
 #include <string.h>
 
 /* TODO: Set buffer to non-editable during synchronization */
@@ -743,14 +745,22 @@ inf_session_process_xml_sync_impl(InfSession* session,
   }
 }
 
-static void
+static gboolean
 inf_session_process_xml_run_impl(InfSession* session,
-                                  InfXmlConnection* connection,
-                                  const xmlNodePtr xml)
+                                 InfXmlConnection* connection,
+                                 const xmlNodePtr xml,
+                                 GError** error)
 {
-  /* TODO: Somehow report this to proxy so it can send request-failed
-   * to client. */
-  g_warning("Received unhandled XML message '%s'", (const gchar*)xml->name);
+  /* TODO: Proper error quark and code */
+  g_set_error(
+    error,
+    g_quark_from_static_string("INF_SESSION_ERROR"),
+    0,
+    "Received unhandled XML message '%s'",
+    (const gchar*)xml->name
+  );
+
+  return FALSE;
 }
 
 static GArray*
@@ -1186,6 +1196,9 @@ inf_session_net_object_received(InfNetObject* net_object,
   xmlChar* code_attr;
   GError* error;
 
+  xmlBufferPtr buffer;
+  xmlSaveCtxtPtr ctx;
+
   session = INF_SESSION(net_object);
   priv = INF_SESSION_PRIVATE(session);
 
@@ -1294,7 +1307,30 @@ inf_session_net_object_received(InfNetObject* net_object,
       session_class = INF_SESSION_GET_CLASS(session);
       g_assert(session_class->process_xml_run != NULL);
 
-      session_class->process_xml_run(session, connection, node);
+      if(!session_class->process_xml_run(session, connection, node, &error))
+      {        
+        /* TODO: Send error back to @connection, and process it there with
+         * an equivalent error message. */
+
+        buffer = xmlBufferCreate();
+
+        /* TODO: Use the locale's encoding? */
+        ctx = xmlSaveToBuffer(buffer, "UTF-8", XML_SAVE_FORMAT);
+        xmlSaveTree(ctx, node);
+        xmlSaveClose(ctx);
+
+        g_warning(
+          "Received bad XML request: %s\n\nThe request could not be "
+          "processed, thus the session is no longer guaranteed to be in "
+          "a consistent state. Subsequent requests might therefore fail "
+          "as well. The failed request was:\n\n%s",
+          error->message,
+          (const gchar*)xmlBufferContent(buffer)
+        );
+ 
+        xmlBufferFree(buffer);
+        g_error_free(error);
+      }
     }
 
     break;
@@ -2337,7 +2373,8 @@ inf_session_get_subscription_group(InfSession* session)
  *
  * #InfSession itself does not deal with subscriptions, so it is your job
  * to keep @group up-to-date (for example if you add non-local users to
- * @session).
+ * @session). This is normally done by a so-called session proxy such as
+ * #InfcSessionProxy or #InfdSessionProxy, respectively.
  **/
 void
 inf_session_set_subscription_group(InfSession* session,
@@ -2348,19 +2385,25 @@ inf_session_set_subscription_group(InfSession* session,
   g_return_if_fail(INF_IS_SESSION(session));
 
   priv = INF_SESSION_PRIVATE(session);
-  if(priv->subscription_group != NULL)
-  {
-    inf_connection_manager_unref_group(
-      priv->manager,
-      priv->subscription_group
-    );
-  }
 
-  priv->subscription_group = group;
-
-  if(group != NULL)
+  if(priv->subscription_group != group)
   {
-    inf_connection_manager_ref_group(priv->manager, group);
+    if(priv->subscription_group != NULL)
+    {
+      inf_connection_manager_unref_group(
+        priv->manager,
+        priv->subscription_group
+      );
+    }
+
+    priv->subscription_group = group;
+
+    if(group != NULL)
+    {
+      inf_connection_manager_ref_group(priv->manager, group);
+    }
+
+    g_object_notify(G_OBJECT(session), "subscription-group");
   }
 }
 

@@ -17,6 +17,7 @@
  */
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/adopted/inf-adopted-user.h>
 
 static void
 inf_adopted_operation_base_init(gpointer g_class)

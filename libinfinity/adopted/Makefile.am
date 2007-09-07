@@ -13,6 +13,7 @@ libinfinity_adopted_la_SOURCES = \
 	inf-adopted-operation.c \
 	inf-adopted-request.c \
 	inf-adopted-request-log.c \
+	inf-adopted-session.c \
 	inf-adopted-split-operation.c \
 	inf-adopted-state-vector.c \
 	inf-adopted-user.c
@@ -23,6 +24,7 @@ libinfinity_adopted_la_HEADERS = \
 	inf-adopted-operation.h \
 	inf-adopted-request.h \
 	inf-adopted-request-log.h \
+	inf-adopted-session.h \
 	inf-adopted-split-operation.h \
 	inf-adopted-state-vector.h \
 	inf-adopted-user.h

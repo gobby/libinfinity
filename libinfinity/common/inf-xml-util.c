@@ -86,7 +86,8 @@ inf_xml_util_get_attribute_required(xmlNodePtr xml,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "Request does not contain required attribute '%s'",
+      "Request '%s' does not contain required attribute '%s'",
+      (const gchar*)xml->name,
       attribute
     );
   }

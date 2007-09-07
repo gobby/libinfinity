@@ -22,12 +22,14 @@
 typedef struct _InfAdoptedUserPrivate InfAdoptedUserPrivate;
 struct _InfAdoptedUserPrivate {
   InfAdoptedStateVector* vector;
+  InfAdoptedRequestLog* log;
 };
 
 enum {
   PROP_0,
 
-  PROP_VECTOR
+  PROP_VECTOR,
+  PROP_REQUEST_LOG
 };
 
 #define INF_ADOPTED_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_USER, InfAdoptedUserPrivate))
@@ -45,6 +47,48 @@ inf_adopted_user_init(GTypeInstance* instance,
   priv = INF_ADOPTED_USER_PRIVATE(user);
 
   priv->vector = inf_adopted_state_vector_new();
+  priv->log = NULL;
+}
+
+static GObject*
+inf_adopted_user_constructor(GType type,
+                             guint n_construct_properties,
+                             GObjectConstructParam* construct_properties)
+{
+  GObject* object;
+  InfAdoptedUser* user;
+  InfAdoptedUserPrivate* priv;
+
+  object = G_OBJECT_CLASS(parent_class)->constructor(
+    type,
+    n_construct_properties,
+    construct_properties
+  );
+
+  user = INF_ADOPTED_USER(object);
+  priv = INF_ADOPTED_USER_PRIVATE(user);
+
+  /* Create empty request log if none was set during construction */
+  priv->log = inf_adopted_request_log_new(inf_user_get_id(INF_USER(user)), 0);
+  return object;
+}
+
+static void
+inf_adopted_user_dispose(GObject* object)
+{
+  InfAdoptedUser* user;
+  InfAdoptedUserPrivate* priv;
+
+  user = INF_ADOPTED_USER(object);
+  priv = INF_ADOPTED_USER_PRIVATE(user);
+
+  if(priv->log != NULL)
+  {
+    g_object_unref(G_OBJECT(priv->log));
+    priv->log = NULL;
+  }
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 static void
@@ -69,6 +113,7 @@ inf_adopted_user_set_property(GObject* object,
 {
   InfAdoptedUser* user;
   InfAdoptedUserPrivate* priv;
+  InfAdoptedRequestLog* log;
 
   user = INF_ADOPTED_USER(object);
   priv = INF_ADOPTED_USER_PRIVATE(user);
@@ -78,6 +123,18 @@ inf_adopted_user_set_property(GObject* object,
   case PROP_VECTOR:
     inf_adopted_state_vector_free(priv->vector);
     priv->vector = g_value_dup_boxed(value);
+    break;
+  case PROP_REQUEST_LOG:
+    g_assert(priv->log == NULL); /* construct only */
+    log = INF_ADOPTED_REQUEST_LOG(g_value_get_object(value));
+
+    g_assert(
+      inf_adopted_request_log_get_user_id(log) ==
+      inf_user_get_id(INF_USER(user))
+    );
+
+    priv->log = log;
+    g_object_ref(G_OBJECT(log));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -102,6 +159,9 @@ inf_adopted_user_get_property(GObject* object,
   case PROP_VECTOR:
     g_value_set_boxed(value, priv->vector);
     break;
+  case PROP_REQUEST_LOG:
+    g_value_set_object(value, G_OBJECT(priv->log));
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -118,6 +178,8 @@ inf_adopted_user_class_init(gpointer g_class,
   parent_class = INF_USER_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfAdoptedUserPrivate));
 
+  object_class->constructor = inf_adopted_user_constructor;
+  object_class->dispose = inf_adopted_user_dispose;
   object_class->finalize = inf_adopted_user_finalize;
   object_class->set_property = inf_adopted_user_set_property;
   object_class->get_property = inf_adopted_user_get_property;
@@ -130,6 +192,18 @@ inf_adopted_user_class_init(gpointer g_class,
       "State vector",
       "The state this user is currently at",
       INF_ADOPTED_TYPE_STATE_VECTOR,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_REQUEST_LOG,
+    g_param_spec_object(
+      "request-log",
+      "Request log",
+      "Request log of this user",
+      INF_ADOPTED_TYPE_REQUEST_LOG,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -169,21 +243,21 @@ inf_adopted_user_get_type(void)
 /** inf_adopted_user_get_component:
  *
  * @user: A #InfAdoptedUser.
- * @component: The user component to retrieve.
+ * @id: The component to retrieve.
  *
  * Returns the amount of requests @user is guaranteed to have processed from
- * @component.
+ * the user with ID @id.
  **/
 guint
 inf_adopted_user_get_component(InfAdoptedUser* user,
-                               InfUser* component)
+                               guint id)
 {
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), 0);
-  g_return_val_if_fail(INF_IS_USER(component), 0);
+  g_return_val_if_fail(id != 0, 0);
 
   return inf_adopted_state_vector_get(
     INF_ADOPTED_USER_PRIVATE(user)->vector,
-    component
+    id
   );
 }
 
@@ -228,6 +302,21 @@ inf_adopted_user_set_vector(InfAdoptedUser* user,
   priv->vector = vec;
 
   g_object_notify(G_OBJECT(user), "vector");
+}
+
+/** inf_adopted_user_get_request_log:
+ *
+ * @user: A #InfAdoptedUser.
+ *
+ * Returns the request log of @user.
+ *
+ * Return Value: User's #InfAdoptedRequestLog.
+ **/
+InfAdoptedRequestLog*
+inf_adopted_user_get_request_log(InfAdoptedUser* user)
+{
+  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
+  return INF_ADOPTED_USER_PRIVATE(user)->log;
 }
 
 /* vim:set et sw=2 ts=2: */

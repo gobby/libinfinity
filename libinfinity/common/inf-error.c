@@ -18,6 +18,8 @@
 
 #include <libinfinity/common/inf-error.h>
 
+/* TODO: Cache GQuarks */
+
 GQuark
 inf_request_error_quark(void)
 {

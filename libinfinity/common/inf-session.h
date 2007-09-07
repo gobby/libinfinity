@@ -115,9 +115,10 @@ struct _InfSessionClass {
 
   /* This method is called for every received message while the session is
    * running. */
-  void(*process_xml_run)(InfSession* session,
-                         InfXmlConnection* connection,
-                         const xmlNodePtr xml);
+  gboolean(*process_xml_run)(InfSession* session,
+                             InfXmlConnection* connection,
+                             const xmlNodePtr xml,
+                             GError** error);
 
   GArray*(*get_xml_user_props)(InfSession* session,
                                InfXmlConnection* conn, /* ? */
@@ -128,8 +129,6 @@ struct _InfSessionClass {
                              guint n_params,
                              xmlNodePtr xml);
 
-  /* TODO: Add a parameter what kind of xml user props should be fetched.
-   * From a UserJoin request, from synchronization, or from something else. */
   gboolean(*validate_user_props)(InfSession* session,
                                  const GParameter* params,
                                  guint n_params,

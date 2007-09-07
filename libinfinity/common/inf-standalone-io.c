@@ -106,7 +106,7 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
     }
     else
     {
-      if(cur_timeout->msecs - elapsed > timeout || timeout < 0)
+      if(timeout < 0 ||cur_timeout->msecs - elapsed > (guint)timeout)
       {
         next_timeout = item;
         timeout = cur_timeout->msecs - elapsed;

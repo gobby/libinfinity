@@ -20,7 +20,6 @@
 #define __INF_ADOPTED_REQUEST_H__
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
-#include <libinfinity/adopted/inf-adopted-user.h>
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
 
 #include <glib-object.h>
@@ -61,16 +60,16 @@ inf_adopted_request_get_type(void) G_GNUC_CONST;
 
 InfAdoptedRequest*
 inf_adopted_request_new_do(InfAdoptedStateVector* vector,
-                           InfAdoptedUser* user,
+                           guint user_id,
                            InfAdoptedOperation* operation);
 
 InfAdoptedRequest*
 inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
-                             InfAdoptedUser* user);
+                             guint user_id);
 
 InfAdoptedRequest*
 inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
-                             InfAdoptedUser* user);
+                             guint user_id);
 
 InfAdoptedRequest*
 inf_adopted_request_copy(InfAdoptedRequest* request);
@@ -81,8 +80,8 @@ inf_adopted_request_get_request_type(InfAdoptedRequest* request);
 InfAdoptedStateVector*
 inf_adopted_request_get_vector(InfAdoptedRequest* request);
 
-InfAdoptedUser*
-inf_adopted_request_get_user(InfAdoptedRequest* request);
+guint
+inf_adopted_request_get_user_id(InfAdoptedRequest* request);
 
 InfAdoptedOperation*
 inf_adopted_request_get_operation(InfAdoptedRequest* request);
@@ -97,7 +96,7 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
 
 void
 inf_adopted_request_fold(InfAdoptedRequest* request,
-                         InfAdoptedUser* into,
+                         guint into,
                          guint by);
 
 G_END_DECLS

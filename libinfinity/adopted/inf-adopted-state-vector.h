@@ -19,8 +19,6 @@
 #ifndef __INF_ADOPTED_STATE_VECTOR_H__
 #define __INF_ADOPTED_STATE_VECTOR_H__
 
-#include <libinfinity/common/inf-user.h>
-
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -29,16 +27,24 @@ G_BEGIN_DECLS
 
 /* TODO: Wrap in own struct for type safety? However, StateVectors are often
  * used and I think it is best if they are as fast as possible. */
-/* TODO: Only store user ID instead of user object? */
 /* TODO: I think GTree is better suited for what we are looking, but it does
  * not allow iteration over its elements, required for
  * inf_adopted_state_vector_compare. */
 typedef GSequence InfAdoptedStateVector;
 
-typedef void(*InfAdoptedStateVectorForeachFunc)(InfUser*, guint, gpointer);
+typedef enum _InfAdoptedStateVectorError {
+  INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
+
+  INF_ADOPTED_STATE_VECTOR_FAILED
+} InfAdoptedStateVectorError;
+
+typedef void(*InfAdoptedStateVectorForeachFunc)(guint, guint, gpointer);
 
 GType
 inf_adopted_state_vector_get_type(void) G_GNUC_CONST;
+
+GQuark
+inf_adopted_state_vector_get_quark(void);
 
 InfAdoptedStateVector*
 inf_adopted_state_vector_new(void);
@@ -51,16 +57,16 @@ inf_adopted_state_vector_free(InfAdoptedStateVector* vec);
 
 guint
 inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
-                             InfUser* component);
+                             guint id);
 
 void
 inf_adopted_state_vector_set(InfAdoptedStateVector* vec,
-                             InfUser* component,
+                             guint id,
                              guint value);
 
 void
 inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
-                             InfUser* component,
+                             guint id,
                              gint value);
 
 void
@@ -75,6 +81,22 @@ inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
 gboolean
 inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
                                          InfAdoptedStateVector* second);
+
+gchar*
+inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec);
+
+InfAdoptedStateVector*
+inf_adopted_state_vector_from_string(const gchar* str,
+                                     GError** error);
+
+gchar*
+inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
+                                        InfAdoptedStateVector* orig);
+
+InfAdoptedStateVector*
+inf_adopted_state_vector_from_string_diff(const gchar* str,
+                                          InfAdoptedStateVector* orig,
+                                          GError** error);
 
 G_END_DECLS
 

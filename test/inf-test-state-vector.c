@@ -21,13 +21,13 @@
 
 int main(int argc, char* argv[])
 {
-  InfUser* users[2];
+  guint users[2];
   InfAdoptedStateVector* vec;
 
   g_type_init();
 
-  users[0] = INF_USER(g_object_new(INF_TYPE_USER, "id", 0, NULL));
-  users[1] = INF_USER(g_object_new(INF_TYPE_USER, "id", 1, NULL));
+  users[0] = 1;
+  users[1] = 2;
 
   /* Note we do not need to allocate users since the state vector does not
    * touch them. */
@@ -46,8 +46,6 @@ int main(int argc, char* argv[])
   g_assert(inf_adopted_state_vector_get(vec, users[1]) == 5);
 
   inf_adopted_state_vector_free(vec);
-  g_object_unref(G_OBJECT(users[1]));
-  g_object_unref(G_OBJECT(users[0]));
   return 0;
 }
 

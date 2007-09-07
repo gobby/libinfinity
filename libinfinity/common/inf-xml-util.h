@@ -43,7 +43,7 @@ inf_xml_util_get_attribute_uint(xmlNodePtr xml,
 gboolean
 inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
                                          const gchar* attribute,
-                                        guint* result,
+                                         guint* result,
                                          GError** error);
 
 void

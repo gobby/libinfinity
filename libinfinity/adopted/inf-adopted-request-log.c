@@ -31,7 +31,7 @@ struct _InfAdoptedRequestLogEntry {
 
 typedef struct _InfAdoptedRequestLogPrivate InfAdoptedRequestLogPrivate;
 struct _InfAdoptedRequestLogPrivate {
-  InfAdoptedUser* user;
+  guint user_id;
   InfAdoptedRequestLogEntry* entries;
 
   InfAdoptedRequestLogEntry* next_undo;
@@ -47,7 +47,7 @@ enum {
   PROP_0,
 
   /* construct only */
-  PROP_USER,
+  PROP_USER_ID,
 
   PROP_BEGIN,
   PROP_END,
@@ -165,7 +165,7 @@ inf_adopted_request_log_init(GTypeInstance* instance,
   log = INF_ADOPTED_REQUEST_LOG(instance);
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
-  priv->user = NULL;
+  priv->user_id = 0;
 
   priv->alloc = INF_ADOPTED_REQUEST_LOG_INC;
   priv->entries = g_malloc(priv->alloc * sizeof(InfAdoptedRequestLogEntry));
@@ -189,12 +189,6 @@ inf_adopted_request_log_dispose(GObject* object)
 
   for(i = priv->offset; i < priv->offset + (priv->end - priv->begin); ++ i)
     g_object_unref(G_OBJECT(priv->entries[i].request));
-
-  if(priv->user != NULL)
-  {
-    g_object_unref(G_OBJECT(priv->user));
-    priv->user = NULL;
-  }
 
   priv->begin = 0;
   priv->end = 0;
@@ -231,11 +225,16 @@ inf_adopted_request_log_set_property(GObject* object,
 
   switch(prop_id)
   {
-  case PROP_USER:
-    g_assert(priv->user == NULL); /* construct only */
-    priv->user = INF_ADOPTED_USER(g_value_dup_object(value));
+  case PROP_USER_ID:
+    g_assert(priv->user_id == 0); /* construct only */
+    g_assert(g_value_get_uint(value) != 0); /* 0 is invalid user ID */
+    priv->user_id = g_value_get_uint(value);
     break;
   case PROP_BEGIN:
+    g_assert(priv->begin == 0); /* construct only */
+    priv->begin = g_value_get_uint(value);
+    priv->end = priv->begin;
+    break;
   case PROP_END:
   case PROP_NEXT_UNDO:
   case PROP_NEXT_REDO:
@@ -248,9 +247,9 @@ inf_adopted_request_log_set_property(GObject* object,
 
 static void
 inf_adopted_request_log_get_property(GObject* object,
-                                         guint prop_id,
-                                         GValue* value,
-                                         GParamSpec* pspec)
+                                     guint prop_id,
+                                     GValue* value,
+                                     GParamSpec* pspec)
 {
   InfAdoptedRequestLog* log;
   InfAdoptedRequestLogPrivate* priv;
@@ -260,8 +259,8 @@ inf_adopted_request_log_get_property(GObject* object,
 
   switch(prop_id)
   {
-  case PROP_USER:
-    g_value_set_object(value, G_OBJECT(priv->user));
+  case PROP_USER_ID:
+    g_value_set_uint(value, priv->user_id);
     break;
   case PROP_BEGIN:
     g_value_set_uint(value, priv->begin);
@@ -291,7 +290,7 @@ inf_adopted_request_log_get_property(GObject* object,
 
 static void
 inf_adopted_request_log_class_init(gpointer g_class,
-                                       gpointer class_data)
+                                   gpointer class_data)
 {
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(g_class);
@@ -306,12 +305,14 @@ inf_adopted_request_log_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_USER,
-    g_param_spec_object(
-      "user",
-      "User",
-      "The user whose requests the log contains",
-      INF_ADOPTED_TYPE_USER,
+    PROP_USER_ID,
+    g_param_spec_uint(
+      "user-id",
+      "User ID",
+      "The ID of the user whose requests the log contains",
+      0,
+      G_MAXUINT,
+      0,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -326,7 +327,7 @@ inf_adopted_request_log_class_init(gpointer g_class,
       0,
       G_MAXUINT,
       0,
-      G_PARAM_READABLE
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
 
@@ -402,35 +403,43 @@ inf_adopted_request_log_get_type(void)
 
 /** inf_adopted_request_log_new:
  *
- * @user: The #InfAdoptedUser to create a request log for. The request log
- * only contains requests of that particular user.
+ * @user_id: The ID of the #InfAdoptedUser to create a request log for. The
+ * request log only contains requests of that particular user.
+ * @begin_end: The index of the first request to be inserted.
  *
  * Return Value: A new #InfAdoptedRequestLog.
  **/
 InfAdoptedRequestLog*
-inf_adopted_request_log_new(InfAdoptedUser* user)
+inf_adopted_request_log_new(guint user_id,
+                            guint begin_end)
 {
   GObject* object;
 
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
+  g_return_val_if_fail(user_id != 0, NULL);
 
-  object = g_object_new(INF_ADOPTED_TYPE_REQUEST_LOG, "user", user, NULL);
+  object = g_object_new(
+    INF_ADOPTED_TYPE_REQUEST_LOG,
+    "user-id", user_id,
+    "begin", begin_end,
+    NULL
+  );
+
   return INF_ADOPTED_REQUEST_LOG(object);
 }
 
-/** inf_adopted_request_log_get_user:
+/** inf_adopted_request_log_get_user_id:
  *
  * @log: A #InfAdoptedRequestLog.
  *
- * Returns the user whose requests @log contains.
+ * Returns the ID of the user whose requests @log contains.
  *
- * Return Value: The log's user.
+ * Return Value: The log's user ID.
  **/
-InfAdoptedUser*
-inf_adopted_request_log_get_user(InfAdoptedRequestLog* log)
+guint
+inf_adopted_request_log_get_user_id(InfAdoptedRequestLog* log)
 {
-  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
-  return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->user;
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), 0);
+  return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->user_id;
 }
 
 /** inf_adopted_request_log_get_begin:
@@ -500,8 +509,6 @@ inf_adopted_request_log_get_request(InfAdoptedRequestLog* log,
  * of the request's state vector must match the end index of @log. Also, the
  * user that issued @request must be the same user as the one this request log
  * belongs to.
- *
- * This function takes ownership of @request.
  **/
 void
 inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
@@ -516,12 +523,12 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
-  g_return_if_fail(inf_adopted_request_get_user(request) == priv->user);
+  g_return_if_fail(inf_adopted_request_get_user_id(request) == priv->user_id);
 
   g_return_if_fail(
     inf_adopted_state_vector_get(
       inf_adopted_request_get_vector(request),
-      INF_USER(priv->user)
+      priv->user_id
     ) == priv->end
   );
 
@@ -568,6 +575,7 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
   ++ priv->end;
 
   entry->request = request;
+  g_object_ref(G_OBJECT(request));
 
   switch(inf_adopted_request_get_request_type(request))
   {
@@ -689,7 +697,7 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
 {
   InfAdoptedRequestLogPrivate* priv;
   InfAdoptedStateVector* vector;
-  InfAdoptedUser* user;
+  guint user_id;
   guint n;
   InfAdoptedRequestLogEntry* entry;
 
@@ -698,10 +706,10 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
   vector = inf_adopted_request_get_vector(request);
-  user = inf_adopted_request_get_user(request);
-  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+  user_id = inf_adopted_request_get_user_id(request);
+  n = inf_adopted_state_vector_get(vector, user_id);
 
-  g_return_val_if_fail(priv->user == user, NULL);
+  g_return_val_if_fail(priv->user_id == user_id, NULL);
   g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
 
   entry =  priv->entries + priv->offset + n - priv->begin;
@@ -731,7 +739,7 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
 {
   InfAdoptedRequestLogPrivate* priv;
   InfAdoptedStateVector* vector;
-  InfAdoptedUser* user;
+  guint user_id;
   guint n;
   InfAdoptedRequestLogEntry* entry;
 
@@ -740,10 +748,10 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
   vector = inf_adopted_request_get_vector(request);
-  user = inf_adopted_request_get_user(request);
-  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+  user_id = inf_adopted_request_get_user_id(request);
+  n = inf_adopted_state_vector_get(vector, user_id);
 
-  g_return_val_if_fail(priv->user == user, NULL);
+  g_return_val_if_fail(priv->user_id == user_id, NULL);
   g_return_val_if_fail(n >= priv->begin && n <= priv->end, NULL);
 
   if(n == priv->end)
@@ -800,7 +808,7 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
 {
   InfAdoptedRequestLogPrivate* priv;
   InfAdoptedStateVector* vector;
-  InfAdoptedUser* user;
+  guint user_id;
   guint n;
   InfAdoptedRequestLogEntry* entry;
 
@@ -809,10 +817,10 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
   vector = inf_adopted_request_get_vector(request);
-  user = inf_adopted_request_get_user(request);
-  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+  user_id = inf_adopted_request_get_user_id(request);
+  n = inf_adopted_state_vector_get(vector, user_id);
 
-  g_return_val_if_fail(priv->user == user, NULL);
+  g_return_val_if_fail(priv->user_id == user_id, NULL);
   g_return_val_if_fail(n >= priv->begin && n <= priv->end, NULL);
 
   if(n == priv->end)
@@ -897,7 +905,7 @@ inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
                                       InfAdoptedRequest* request)
 {
   InfAdoptedRequestLogPrivate* priv;
-  InfAdoptedUser* user;
+  guint user_id;
   InfAdoptedStateVector* vector;
   guint n;
   
@@ -908,12 +916,12 @@ inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
-  user = inf_adopted_request_get_user(request);
+  user_id = inf_adopted_request_get_user_id(request);
 
-  g_return_val_if_fail(user == priv->user, NULL);
+  g_return_val_if_fail(user_id == priv->user_id, NULL);
 
   vector = inf_adopted_request_get_vector(request);
-  n = inf_adopted_state_vector_get(vector, INF_USER(user));
+  n = inf_adopted_state_vector_get(vector, user_id);
 
   newest_related = priv->entries + priv->offset + n - priv->begin;
   for(current = newest_related; current <= newest_related; ++ current)

@@ -1,3 +1,51 @@
+2007-09-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-state-vector.h:
+	* libinfinity/adopted/inf-adopted-operation.h:
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinfinity/adopted/inf-adopted-operation.c:
+	* libinfinity/adopted/inf-adopted-request-log.c:
+	* libinfinity/adopted/inf-adopted-request.c:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Made these only have a
+	user ID instead of a user object, so they can exist without actual
+	user objects and InfAdoptedUser can have InfAdoptedRequestLog as
+	property.
+
+	* libinfinity/adopted/inf-adopted-user.h:
+	* libinfinity/adopted/inf-adopted-user.c: Added the request-log
+	property.
+
+	* test/inf-test-state-vector.c: Adjusted for the change mentioned
+	above.
+
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-session.h:
+	* libinfinity/adopted/Makefile.am: Added the InfAdoptedSession class,
+	implementing the other half of the dark magic (although not-so-dark).
+	Timeouts are not yet implemented.
+
+	* libinfinity/common/inf-standalone-io.c: Fixed a compiler warning.
+
+	* libinfinity/common/inf-xml-util.h: Fixed indentation.
+
+	* libinfinity/common/inf-xml-util.c: Changed an error message so that
+	it includes the (errornous) request's name.
+
+	* libinfinity/common/inf-error.c: Added a TODO comment.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added an error parameter to
+	the process_xml_run vfunc.
+
+	* libinfinity/client/infc-session-proxy.c: Set subscription group in
+	infc_session_proxy_set_connection().
+
+	* TODO: Removed finished items, added the addition of a reversible
+	flag for InfAdoptedOperation instead of an extra vfunc.
+
 2007-09-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-session.h:

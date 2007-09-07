@@ -1182,6 +1182,8 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
     );
   }
 
+  inf_session_set_subscription_group(priv->session, priv->subscription_group);
+
   g_object_notify(G_OBJECT(proxy), "connection");
   g_object_notify(G_OBJECT(proxy), "subscription-group");
   g_object_thaw_notify(G_OBJECT(proxy));
