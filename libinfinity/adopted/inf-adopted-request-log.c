@@ -568,6 +568,8 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
         priv->entries,
         priv->alloc * sizeof(InfAdoptedRequestLogEntry)
       );
+      
+      /* TODO: The realloc above could have invalidated several pointers */
     }
   }
 

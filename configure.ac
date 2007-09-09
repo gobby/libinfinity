@@ -20,6 +20,7 @@ AC_PROG_LIBTOOL
 ###################################
 
 PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 gnutls libgsasl])
+PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
 
 ########################
 # Compile time options
@@ -63,6 +64,8 @@ AC_CONFIG_FILES([
 			libinfinity/adopted/Makefile
 			libinfinity/server/Makefile
 			libinfinity/client/Makefile
+
+		libinftext/Makefile
 
 		test/Makefile
 ])

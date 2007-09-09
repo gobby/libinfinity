@@ -19,7 +19,7 @@
 #ifndef __INF_TEXT_CHUNK_H__
 #define __INF_TEXT_CHUNK_H__
 
-#include <libinfinity/common/inf-user.h>
+#include <libxml/tree.h>
 
 #include <glib-object.h>
 

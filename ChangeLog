@@ -1,3 +1,20 @@
+2007-09-09  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-request-log.c: Added a TODO comment
+	about possible memory corruption.
+
+	* libinfinity/inf-text-buffer.h:
+	* libinfinity/inf-text-buffer.c: Removed. InfTextBuffer will get
+	resurrected in the inftext separate module.
+
+	* libinftext/inf-text-chunk.h:
+	* libinftext/inf-text-chunk.c:
+	* libinftext/Makefile.am: Created inftext module with a first boxed
+	type to store and operate on strings with author information.
+
+	* Makefile.am:
+	* configure.ac: Added libinftext to build.
+
 2007-09-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-state-vector.h:

@@ -17,6 +17,9 @@
  */
 
 #include <libinftext/inf-text-chunk.h>
+#include <libinfinity/common/inf-xml-util.h>
+
+#include <string.h>
 
 struct _InfTextChunk {
   GSequence* segments;
@@ -24,6 +27,7 @@ struct _InfTextChunk {
   const gchar* encoding;
 };
 
+typedef struct _InfTextChunkSegment InfTextChunkSegment;
 struct _InfTextChunkSegment {
   guint author;
   /* This is gchar so that we can do pointer arithmetic. It does not
@@ -46,14 +50,14 @@ inf_text_chunk_segment_cmp(gconstpointer first,
                            gconstpointer second,
                            gpointer userdata)
 {
-  const InfTextChunkSegment* first_segment = first;
-  const InfTextChunkSegment* second_segment = second;
+  const InfTextChunkSegment* first_segment = (InfTextChunkSegment*)first;
+  const InfTextChunkSegment* second_segment = (InfTextChunkSegment*)second;
 
   g_return_val_if_fail(second != NULL && first != NULL, 0);
 
-  if (first->offset < second->offset)
+  if (first_segment->offset < second_segment->offset)
     return -1;
-  else if (first->offset == second->offset)
+  else if (first_segment->offset == second_segment->offset)
     return 0;
   else
     return 1;
@@ -65,19 +69,19 @@ inf_text_chunk_next_offset(InfTextChunk* self,
 {
   GSequenceIter* next_iter;
 
-  g_assert(iter != g_sequnce_get_end_iter(self->segments));
+  g_assert(iter != g_sequence_get_end_iter(self->segments));
   
   next_iter = g_sequence_iter_next(iter);
-  if(next_iter == g_sequence_get_end_iter())
+  if(next_iter == g_sequence_get_end_iter(self->segments))
     return self->length;
   else
     return ((InfTextChunkSegment*)g_sequence_get(next_iter))->offset;
 }
 
 static GSequenceIter*
-inf_text_chunk_get_segment_at_pos(InfTextChunk* self,
-                                  guint pos,
-                                  guint* index)
+inf_text_chunk_get_segment(InfTextChunk* self,
+                           guint pos,
+                           guint* index)
 {
   InfTextChunkSegment* found;
   InfTextChunkSegment key;
@@ -133,7 +137,7 @@ inf_text_chunk_get_segment_at_pos(InfTextChunk* self,
       cd = g_iconv_open("UCS-4", self->encoding);
       g_assert(cd != (GIConv)-1);
       
-      inbuf = found->data;
+      inbuf = found->text;
       inlen = found->length;
 
       for(count = 0; count < pos - found->offset; ++ count)
@@ -197,6 +201,8 @@ inf_text_chunk_new(const gchar* encoding)
 
   chunk->length = 0;
   chunk->encoding = encoding;
+
+  return chunk;
 }
 
 /** inf_text_chunk_copy:
@@ -220,8 +226,8 @@ inf_text_chunk_copy(InfTextChunk* self)
   );
   
   for(iter = g_sequence_get_begin_iter(self->segments);
-      iter != g_sequnce_get_end_iter(self->segment);
-      iter = g_sequence_iter_next(self->segment))
+      iter != g_sequence_get_end_iter(self->segments);
+      iter = g_sequence_iter_next(iter))
   {
     InfTextChunkSegment* segment = g_sequence_get(iter);
     InfTextChunkSegment* new_segment = g_slice_new(InfTextChunkSegment);
@@ -229,7 +235,7 @@ inf_text_chunk_copy(InfTextChunk* self)
     new_segment->text = g_memdup(segment->text, segment->length);
     new_segment->length = segment->length;
     new_segment->offset = segment->offset;
-    g_sequnce_append(new_chunk->segments, new_segment);
+    g_sequence_append(new_chunk->segments, new_segment);
   }
 
   new_chunk->length = self->length;
@@ -298,7 +304,7 @@ inf_text_chunk_substring(InfTextChunk* self,
                          guint begin,
                          guint length)
 {
-  GSequenceIter* next_iter;
+  GSequenceIter* begin_iter;
   GSequenceIter* end_iter;
   gsize begin_index;
   gsize end_index;
@@ -313,8 +319,8 @@ inf_text_chunk_substring(InfTextChunk* self,
 
   if(length > 0)
   {
-    begin_iter = get_segment_at_pos(self, begin, &begin_index);
-    end_iter = get_segment_at_pos(self, begin + length, &end_index);
+    begin_iter = inf_text_chunk_get_segment(self, begin, &begin_index);
+    end_iter = inf_text_chunk_get_segment(self, begin + length, &end_index);
 
     if(end_index == 0)
     {
@@ -323,7 +329,7 @@ inf_text_chunk_substring(InfTextChunk* self,
       end_index = ((InfTextChunkSegment*)g_sequence_get(end_iter))->length;
     }
 
-    result = inf_text_chunk_new();
+    result = inf_text_chunk_new(self->encoding);
 
     current_length = 0;
     segment = g_sequence_get(begin_iter);
@@ -333,15 +339,15 @@ inf_text_chunk_substring(InfTextChunk* self,
       new_segment = g_slice_new(InfTextChunkSegment);
       new_segment->author = segment->author;
 
-      new_segment->data = g_memdup(
-        (gchar*)segment->data + begin_index,
+      new_segment->text = g_memdup(
+        segment->text + begin_index,
         segment->length - begin_index
       );
       
       new_segment->length = segment->length - begin_index;
       new_segment->offset = current_length;
 
-      begin_iter = g_sequnce_iter_next(begin_iter);
+      begin_iter = g_sequence_iter_next(begin_iter);
       segment = g_sequence_get(begin_iter);
 
       /* Add (remaining) length of this segment to current length */
@@ -358,8 +364,8 @@ inf_text_chunk_substring(InfTextChunk* self,
     /* Don't forget last segment */
     new_segment = g_slice_new(InfTextChunkSegment);
     new_segment->author = segment->author;
-    new_segment->data = g_memdup(
-      (gchar*)segment->data + begin_index,
+    new_segment->text = g_memdup(
+      segment->text + begin_index,
       end_index - begin_index
     );
     
@@ -377,7 +383,7 @@ inf_text_chunk_substring(InfTextChunk* self,
     g_return_val_if_fail(begin == 0, NULL);
 
     /* New, empty chunk */
-    return inf_text_chunk_new();
+    return inf_text_chunk_new(self->encoding);
   }
 }
 
@@ -406,21 +412,21 @@ inf_text_chunk_insert(InfTextChunk* self,
   InfTextChunkSegment* segment;
   InfTextChunkSegment* new_segment;
 
-  g_return_val_if_fail(self != NULL, NULL);
-  g_return_val_if_fail(offset <= self->length, NULL);
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(offset <= self->length);
 
   if(self->length > 0)
   {
-    iter = get_segment_at_pos(self, offset, &offset_index);
+    iter = inf_text_chunk_get_segment(self, offset, &offset_index);
     segment = (InfTextChunkSegment*)g_sequence_get(iter);
 
     /* Have to split segment, unless it is between two segments in which
      * case we can perhaps append to the previous. */
     if(segment->author != author && offset > 0 && offset_index == 0)
     {
-      g_assert(iter != g_sequence_get_begin_iter(iter));
+      g_assert(iter != g_sequence_get_begin_iter(self->segments));
 
-      iter = g_sequence_prev_iter(iter);
+      iter = g_sequence_iter_prev(iter);
       segment = (InfTextChunkSegment*)g_sequence_get(iter);
       offset_index = segment->length;
     }
@@ -440,7 +446,7 @@ inf_text_chunk_insert(InfTextChunk* self,
         new_segment->length = segment->length - offset_index;
         new_segment->offset = offset;
 
-        iter = g_sequence_next_iter(iter);
+        iter = g_sequence_iter_next(iter);
         g_sequence_insert_before(iter, new_segment);
 
         /* Don't realloc to make smaller */
@@ -450,7 +456,7 @@ inf_text_chunk_insert(InfTextChunk* self,
       else if(offset_index == segment->length)
       {
         /* Insert behind segment */
-        iter = g_sequence_next_iter(iter);
+        iter = g_sequence_iter_next(iter);
       }
 
       new_segment = g_slice_new(InfTextChunkSegment);
@@ -475,15 +481,15 @@ inf_text_chunk_insert(InfTextChunk* self,
       
       memcpy(segment->text + offset_index, text, bytes);
       segment->length += bytes;
-      iter = g_sequence_next_iter(iter);
+      iter = g_sequence_iter_next(iter);
     }
 
     /* Adjust offsets */
     while(iter != g_sequence_get_end_iter(self->segments))
     {
       segment = (InfTextChunkSegment*)g_sequence_get(iter);
-      iter->offset += length;
-      iter = g_sequence_next_iter(iter);
+      segment->offset += length;
+      iter = g_sequence_iter_next(iter);
     }
 
     self->length += length;
@@ -530,10 +536,10 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
   InfTextChunkSegment* last_merge;
   GSequenceIter* beyond;
 
-  g_return_val_if_fail(self != NULL, NULL);
-  g_return_val_if_fail(offset <= self->length, NULL);
-  g_return_val_if_fail(text != NULL, NULL);
-  g_return_val_if_fail(strcmp(self->encoding, text->encoding) == 0, NULL);
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(offset <= self->length);
+  g_return_if_fail(text != NULL);
+  g_return_if_fail(strcmp(self->encoding, text->encoding) == 0);
 
   if(self->length > 0 && text->length > 0)
   {
@@ -552,14 +558,16 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
     }
     else
     {
-      iter = get_segment_at_pos(self, offset, &offset_index);
+      iter = inf_text_chunk_get_segment(self, offset, &offset_index);
       segment = (InfTextChunkSegment*)g_sequence_get(iter);
 
       /* First, we insert the first and last segment of text into self,
        * possibly merging with adjacent segments. Then, the rest is
        * copied. */
-      first_iter = g_sequence_get_begin_iter(text);
-      last_iter = g_sequence_prev_iter(g_sequence_get_end_iter(text));
+      first_iter = g_sequence_get_begin_iter(text->segments);
+      last_iter = g_sequence_iter_prev(
+        g_sequence_get_end_iter(text->segments)
+      );
 
       first = (InfTextChunkSegment*)g_sequence_get(first_iter);
       last = (InfTextChunkSegment*)g_sequence_get(last_iter);
@@ -578,9 +586,9 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
        * segments. */
       if(offset_index == 0 && offset > 0)
       {
-        g_assert(iter != g_sequence_get_begin_iter(self));
+        g_assert(iter != g_sequence_get_begin_iter(self->segments));
 
-        iter = g_sequence_prev_iter(iter);
+        iter = g_sequence_iter_prev(iter);
         first_merge = (InfTextChunkSegment*)g_sequence_get(iter);
         offset_index = first_merge->length;
       }
@@ -588,7 +596,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
       if(offset == 0 || offset == self->length || first_merge != last_merge)
       {
         /* Insert between two segments, or at beginning/end */
-        if(first_merge == first->author && offset > 0)
+        if(first_merge->author == first->author && offset > 0)
         {
           /* Can merge first segment */
           first_merge->length += first->length;
@@ -605,10 +613,10 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
           );
 
           /* Already inserted */
-          first_iter = g_sequence_next_iter(first_iter);
+          first_iter = g_sequence_iter_next(first_iter);
         }
 
-        if(last_merge == last->author && offset < self->length)
+        if(last_merge->author == last->author && offset < self->length)
         {
           /* Can merge last segment */
           last_merge->length += last->length;
@@ -624,19 +632,19 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
           last_merge->offset = offset + last->offset;
 
           /* Already adjusted offset here */
-          beyond = g_sequence_next_iter(beyond);
+          beyond = g_sequence_iter_next(beyond);
         }
         else
         {
           /* We still have to insert last segment */
-          last_iter = g_sequence_next_iter(last_iter);
+          last_iter = g_sequence_iter_next(last_iter);
         }
 
         if(offset > 0)
         {
           /* Pointing to the position before which to insert
            * the rest of text. */
-          iter = g_sequence_next_iter(iter);
+          iter = g_sequence_iter_next(iter);
         }
       }
       else
@@ -655,8 +663,8 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
 
           memcpy(
             new_segment->text + last->length,
-            last_merge->text + index_offset,
-            last_merge->length - index_offset
+            last_merge->text + offset_index,
+            last_merge->length - offset_index
           );
 
           new_segment->offset = offset + last->offset;
@@ -669,14 +677,14 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
 
           memcpy(
             new_segment->text,
-            last_merge->text + index_offset,
+            last_merge->text + offset_index,
             new_segment->length
           );
 
           new_segment->offset = offset + text->length;
 
           /* We still have to insert last segment since we could not merge */
-          last_iter = g_sequence_next_iter(last_iter);
+          last_iter = g_sequence_iter_next(last_iter);
         }
 
         iter = g_sequence_iter_next(iter);
@@ -684,7 +692,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
 
         /* The segment just inserted is the last one being inserted, so
          * we need to adjust beyond that */
-        beyond = g_sequence_next_iter(iter);
+        beyond = g_sequence_iter_next(iter);
 
         /* Note first_merge == last_merge */
         if(first_merge->author == first->author)
@@ -707,7 +715,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
           );
 
           /* Already inserted */
-          first_iter = g_sequence_next_iter(first_iter);
+          first_iter = g_sequence_iter_next(first_iter);
         }
         else
         {
@@ -721,7 +729,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
 
       for(text_iter = first_iter;
           text_iter != last_iter;
-          text_iter = g_sequence_next_iter(text_iter))
+          text_iter = g_sequence_iter_next(text_iter))
       {
         segment = g_sequence_get(text_iter);
         new_segment = g_slice_new(InfTextChunkSegment);
@@ -734,8 +742,8 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
       }
 
       for(iter = beyond;
-          iter != g_sequence_get_end_iter(self);
-          iter = g_sequence_next_iter(iter))
+          iter != g_sequence_get_end_iter(self->segments);
+          iter = g_sequence_iter_next(iter))
       {
         segment = g_sequence_get(iter);
         segment->offset += offset;
@@ -744,9 +752,9 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
   }
   else
   {
-    for(text_iter = g_sequence_get_begin_iter(text);
-        text_iter != g_sequence_get_end_iter(text);
-        text_iter = g_sequence_next_iter(text_iter))
+    for(text_iter = g_sequence_get_begin_iter(text->segments);
+        text_iter != g_sequence_get_end_iter(text->segments);
+        text_iter = g_sequence_iter_next(text_iter))
     {
       segment = (InfTextChunkSegment*)g_sequence_get(text_iter);
       new_segment = g_slice_new(InfTextChunkSegment);
@@ -789,8 +797,8 @@ inf_text_chunk_erase(InfTextChunk* self,
 
   if(self->length > 0 && length > 0)
   {
-    first_iter = get_segment_at_pos(self, begin, &first_iter);
-    last_iter = get_segment_at_pos(self, begin + length, &last_iter);
+    first_iter = inf_text_chunk_get_segment(self, begin, &first_index);
+    last_iter = inf_text_chunk_get_segment(self, begin + length, &last_index);
 
     first = (InfTextChunkSegment*)g_sequence_get(first_iter);
     last = (InfTextChunkSegment*)g_sequence_get(last_iter);
@@ -800,7 +808,7 @@ inf_text_chunk_erase(InfTextChunk* self,
       if(first_index == 0)
       {
         g_assert(first_iter != g_sequence_get_end_iter(self->segments));
-        first_iter = g_sequence_prev_iter(first_iter);
+        first_iter = g_sequence_iter_prev(first_iter);
         first = (InfTextChunkSegment*)g_sequence_get(first_iter);
         first_index = first->length;
       }
@@ -822,7 +830,6 @@ inf_text_chunk_erase(InfTextChunk* self,
         }
         else
         {
-          merged_len = first_index + last->length - last_index;
           if(first->length < first_index + last->length - last_index)
           {
             first->text = g_realloc(
@@ -839,7 +846,7 @@ inf_text_chunk_erase(InfTextChunk* self,
             last->length - last_index
           );
 
-          last_iter = g_sequence_next_iter(last_iter);
+          last_iter = g_sequence_iter_next(last_iter);
           beyond = last_iter;
         }
       }
@@ -867,18 +874,18 @@ inf_text_chunk_erase(InfTextChunk* self,
         last->offset = begin;
 
         /* We already adjusted offset of last, so only adjust behind */
-        beyond = g_sequence_next_iter(last_iter);
+        beyond = g_sequence_iter_next(last_iter);
       }
 
       /* Keep first alive, we merged stuff into it */
-      first_iter = g_sequence_next_iter(first_iter);
+      first_iter = g_sequence_iter_next(first_iter);
     }
     else
     {
       if(begin == 0 && length == self->length)
       {
         /* Erase everything */
-        last_iter = g_sequence_next_iter(last_iter);
+        last_iter = g_sequence_iter_next(last_iter);
         g_assert(last_iter == g_sequence_get_end_iter(self->segments));
 
         beyond = last_iter;
@@ -892,15 +899,15 @@ inf_text_chunk_erase(InfTextChunk* self,
         {
           g_memmove(
             last->text,
-            last->text + last->index,
-            last_length - last_index
+            last->text + last_index,
+            last->length - last_index
           );
 
           last->length -= last_index;
           last->offset = 0;
         }
 
-        beyond = g_sequence_next_iter(last_iter);
+        beyond = g_sequence_iter_next(last_iter);
       }
       else
       {
@@ -916,10 +923,10 @@ inf_text_chunk_erase(InfTextChunk* self,
         {
           /* Cannot erase whole first chunk */
           first->length = first_index;
-          first_iter = g_sequence_next_iter(first_iter);
+          first_iter = g_sequence_iter_next(first_iter);
         }
         
-        last_iter = g_sequence_next_iter(last_iter);
+        last_iter = g_sequence_iter_next(last_iter);
         g_assert(last_iter == g_sequence_get_end_iter(self->segments));
 
         beyond = last_iter;
@@ -935,7 +942,7 @@ inf_text_chunk_erase(InfTextChunk* self,
     /* adjust offsets */
     for(first_iter = beyond;
         first_iter != g_sequence_get_end_iter(self->segments);
-        first_iter = g_sequence_next_iter(self->segments))
+        first_iter = g_sequence_iter_next(first_iter))
     {
       first = (InfTextChunkSegment*)g_sequence_get(first_iter);
       first->offset -= length;
@@ -960,7 +967,7 @@ gchar*
 inf_text_chunk_get_text(InfTextChunk* self,
                         gsize* length)
 {
-  GSequnceIter* iter;
+  GSequenceIter* iter;
   InfTextChunkSegment* segment;
   gsize bytes;
   gsize cur;
@@ -1046,7 +1053,7 @@ inf_text_chunk_to_xml(InfTextChunk* self,
     );
 
     g_free(content);
-    xml_util_set_attribute_uint(child, "author", segment->author);
+    inf_xml_util_set_attribute_uint(child, "author", segment->author);
   }
   
   g_iconv_close(cd);
@@ -1092,7 +1099,7 @@ inf_text_chunk_from_xml(xmlNodePtr xml,
 
   offset = 0;
 
-  for(child = xml->child; child != NULL; child = child->next)
+  for(child = xml->children; child != NULL; child = child->next)
   {
     if(strcmp((const char*)child->name, "segment") == 0)
     {
