@@ -26,10 +26,12 @@ PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
 # Compile time options
 ########################
 
-# TODO: Should this be --enable instead of --with?
-AC_ARG_WITH([server], AC_HELP_STRING([--with-server], [Enables the infinote server [default=yes])]), use_server=$withval, use_server=yes)
+AC_ARG_ENABLE([server],
+              AS_HELP_STRING([--with-server],
+                             [Enables the infinote server [[default=yes]]]),
+              [use_server=$withval], [use_server=yes])
 
-if test $use_server = yes
+if test "x$use_server" = "xyes"
 then
 	AC_DEFINE([WITH_SERVER], 1, [Build the infinote server])
 fi
@@ -38,17 +40,20 @@ fi
 # Check for avahi
 ####################
 
-AC_ARG_WITH([avahi], AC_HELP_STRING([--with-avahi], [Enables avahi support [default=auto])]), use_avahi=$withval, use_avahi=auto)
+AC_ARG_WITH([avahi], AS_HELP_STRING([--with-avahi],
+            [Enables avahi support [[default=auto]]]),
+            [use_avahi=$withval], [use_avahi=auto])
 
-if test $use_avahi = auto 
+if test "x$use_avahi" = "xauto"
 then
-	PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib], use_avahi=yes, use_avahi=no)
-elif test $use_avahi = yes
+	PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib],
+                          [use_avahi=yes], [use_avahi=no])
+elif test "x$use_avahi" = "xyes"
 then
 	PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib])
 fi
 
-if test $use_avahi = yes
+if test "x$use_avahi" = "xyes"
 then
 	AC_DEFINE([HAVE_AVAHI], 1, [Have Avahi])
 fi
@@ -71,3 +76,6 @@ AC_CONFIG_FILES([
 ])
 
 AC_OUTPUT
+
+# vim:set et:
+
