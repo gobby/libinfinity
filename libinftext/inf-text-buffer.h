@@ -19,57 +19,130 @@
 #ifndef __INF_TEXT_BUFFER_H__
 #define __INF_TEXT_BUFFER_H__
 
-#include <libinfinity/inf-user.h>
+#include <libinftext/inf-text-chunk.h>
+#include <libinfinity/common/inf-buffer.h>
+#include <libinfinity/common/inf-user.h>
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INF_TYPE_TEXT_BUFFER                 (inf_text_buffer_get_type())
-#define INF_TEXT_BUFFER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_TEXT_BUFFER, InfTextBuffer))
-#define INF_IS_TEXT_BUFFER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_TEXT_BUFFER))
-#define INF_TEXT_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_TEXT_BUFFER, InfTextBufferIface))
+#define INF_TEXT_TYPE_BUFFER                 (inf_text_buffer_get_type())
+#define INF_TEXT_BUFFER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TEXT_TYPE_BUFFER, InfTextBuffer))
+#define INF_TEXT_IS_BUFFER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TEXT_TYPE_BUFFER))
+#define INF_TEXT_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_BUFFER, InfTextBufferIface))
 
 typedef struct _InfTextBuffer InfTextBuffer;
 typedef struct _InfTextBufferIface InfTextBufferIface;
 
+typedef struct _InfTextBufferIter InfTextBufferIter;
+
 struct _InfTextBufferIface {
-  GTypeInterface parent;
+  InfBufferIface parent;
 
   /* Virtual table */
   const gchar* (*get_encoding)(InfTextBuffer* buffer);
 
+  InfTextChunk*(*get_slice)(InfTextBuffer* buffer,
+                            guint pos,
+                            guint len);
+
+  InfTextBufferIter*(*create_iter)(InfTextBuffer* buffer);
+
+  void(*destroy_iter)(InfTextBuffer* buffer,
+                      InfTextBufferIter* iter);
+
+  gboolean(*iter_next)(InfTextBuffer* buffer,
+                       InfTextBufferIter* iter);
+  
+  gboolean(*iter_prev)(InfTextBuffer* buffer,
+                       InfTextBufferIter* iter);
+
+  gpointer(*iter_get_text)(InfTextBuffer* buffer,
+                           InfTextBufferIter* iter);
+
+  guint(*iter_get_length)(InfTextBuffer* buffer,
+                          InfTextBufferIter* iter);
+
+  gsize(*iter_get_bytes)(InfTextBuffer* buffer,
+                         InfTextBufferIter* iter);
+
+  guint(*iter_get_author)(InfTextBuffer* buffer,
+                          InfTextBufferIter* iter);
+
   /* Signals */
   void(*insert_text)(InfTextBuffer* buffer,
-                     gconstpointer text,
-                     guint len,
-                     guint bytes,
-                     InfUser* author);
+                     guint pos,
+                     InfTextChunk* chunk,
+                     InfUser* user);
 
   void(*erase_text)(InfTextBuffer* buffer,
                     guint pos,
                     guint len,
-                    InfUser* author);
+                    InfUser* user);
 };
 
 GType
 inf_text_buffer_get_type(void) G_GNUC_CONST;
 
+const gchar*
+inf_text_buffer_get_encoding(InfTextBuffer* buffer);
+
+InfTextChunk*
+inf_text_buffer_get_slice(InfTextBuffer* buffer,
+                          guint pos,
+                          guint len);
+
 void
 inf_text_buffer_insert_text(InfTextBuffer* buffer,
+                            guint pos,
                             gconstpointer text,
                             guint len,
                             gsize bytes,
-                            InfUser* author);
+                            InfUser* user);
+
+void
+inf_text_buffer_insert_chunk(InfTextBuffer* buffer,
+                             guint pos,
+                             InfTextChunk* chunk,
+                             InfUser* user);
 
 void
 inf_text_buffer_erase_text(InfTextBuffer* buffer,
                            guint pos,
                            guint len,
-                           InfUser* author);
+                           InfUser* user);
 
-const gchar*
-inf_text_buffer_get_encoding(InfTextBuffer* buffer);
+InfTextBufferIter*
+inf_text_buffer_create_iter(InfTextBuffer* buffer);
+
+void
+inf_text_buffer_destroy_iter(InfTextBuffer* buffer,
+                             InfTextBufferIter* iter);
+
+gboolean
+inf_text_buffer_iter_next(InfTextBuffer* buffer,
+                          InfTextBufferIter* iter);
+
+gboolean
+inf_text_buffer_iter_prev(InfTextBuffer* buffer,
+                          InfTextBufferIter* iter);
+
+gpointer
+inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
+                              InfTextBufferIter* iter);
+
+guint
+inf_text_buffer_iter_get_length(InfTextBuffer* buffer,
+                                InfTextBufferIter* iter);
+
+gsize
+inf_text_buffer_iter_get_bytes(InfTextBuffer* buffer,
+                               InfTextBufferIter* iter);
+
+guint
+inf_text_buffer_iter_get_author(InfTextBuffer* buffer,
+                                InfTextBufferIter* iter);
 
 G_END_DECLS
 

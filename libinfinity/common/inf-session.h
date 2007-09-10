@@ -21,6 +21,7 @@
 
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-buffer.h>
+#include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-xml-connection.h>
 
@@ -142,12 +143,6 @@ struct _InfSessionClass {
   /* Signals */
   void(*close)(InfSession* session);
 
-  void(*add_user)(InfSession* session,
-                  InfUser* user);
-
-  void(*remove_user)(InfSession* session,
-                     InfUser* user);
-
   void(*synchronization_progress)(InfSession* session,
                                   InfXmlConnection* connection,
                                   gdouble percentage);
@@ -196,24 +191,14 @@ inf_session_get_connection_manager(InfSession* session);
 InfBuffer*
 inf_session_get_buffer(InfSession* session);
 
+InfUserTable*
+inf_session_get_user_table(InfSession* session);
+
 InfUser*
 inf_session_add_user(InfSession* session,
                      const GParameter* params,
                      guint n_params,
                      GError** error);
-
-InfUser*
-inf_session_lookup_user_by_id(InfSession* session,
-                              guint user_id);
-
-InfUser*
-inf_session_lookup_user_by_name(InfSession* session,
-                                const gchar* name);
-
-void
-inf_session_foreach_user(InfSession* session,
-                         InfSessionForeachUserFunc func,
-                         gpointer user_data);
 
 void
 inf_session_synchronize_to(InfSession* session,

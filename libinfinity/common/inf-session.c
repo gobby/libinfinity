@@ -43,12 +43,11 @@ typedef struct _InfSessionPrivate InfSessionPrivate;
 struct _InfSessionPrivate {
   InfConnectionManager* manager;
   InfBuffer* buffer;
+  InfUserTable* user_table;
   InfSessionStatus status;
 
   /* Group of subscribed connections */
   InfConnectionManagerGroup* subscription_group;
-
-  GHashTable* user_table;
 
   union {
     /* INF_SESSION_SYNCHRONIZING */
@@ -66,12 +65,6 @@ struct _InfSessionPrivate {
   } shared;
 };
 
-typedef struct _InfSessionForeachUserData InfSessionForeachUserData;
-struct _InfSessionForeachUserData {
-  InfSessionForeachUserFunc func;
-  gpointer user_data;
-};
-
 typedef struct _InfSessionXmlData InfSessionXmlData;
 struct _InfSessionXmlData {
   InfSession* session;
@@ -84,6 +77,7 @@ enum {
   /* construct only */
   PROP_CONNECTION_MANAGER,
   PROP_BUFFER,
+  PROP_USER_TABLE,
 
   PROP_SUBSCRIPTION_GROUP, /* read/write */
 
@@ -96,8 +90,6 @@ enum {
 
 enum {
   CLOSE,
-  ADD_USER,
-  REMOVE_USER,
   SYNCHRONIZATION_PROGRESS,
   SYNCHRONIZATION_COMPLETE,
   SYNCHRONIZATION_FAILED,
@@ -110,33 +102,6 @@ enum {
 static GObjectClass* parent_class;
 static guint session_signals[LAST_SIGNAL];
 static GQuark inf_session_sync_error_quark;
-
-/*
- * User table callbacks.
- */
-
-static gboolean
-inf_session_lookup_user_by_name_func(gpointer key,
-                                     gpointer value,
-                                     gpointer data)
-{
-  const gchar* user_name;
-  user_name = inf_user_get_name(INF_USER(value));
-
-  if(strcmp(user_name, (const gchar*)data) == 0) return TRUE;
-  return FALSE;
-}
-
-static void
-inf_session_foreach_user_func(gpointer key,
-                              gpointer value,
-                              gpointer user_data)
-{
-  InfSessionForeachUserData* data;
-  data = (InfSessionForeachUserData*)user_data;
-
-  data->func(INF_USER(value), data->user_data);
-}
 
 /*
  * Utility functions.
@@ -489,16 +454,33 @@ inf_session_init(GTypeInstance* instance,
 
   priv->manager = NULL;
   priv->buffer = NULL;
+  priv->user_table = NULL;
   priv->status = INF_SESSION_RUNNING;
 
   priv->shared.run.syncs = NULL;
+}
 
-  priv->user_table = g_hash_table_new_full(
-    NULL,
-    NULL,
-    NULL,
-    (GDestroyNotify)g_object_unref
+static GObject*
+inf_session_constructor(GType type,
+                        guint n_construct_properties,
+                        GObjectConstructParam* construct_properties)
+{
+  GObject* object;
+  InfSessionPrivate* priv;
+
+  object = G_OBJECT_CLASS(parent_class)->constructor(
+    type,
+    n_construct_properties,
+    construct_properties
   );
+
+  priv = INF_SESSION_PRIVATE(object);
+
+  /* Create empty user table if property was not initialized */
+  if(priv->user_table == NULL)
+    priv->user_table = inf_user_table_new();
+
+  return object;
 }
 
 static void
@@ -517,7 +499,8 @@ inf_session_dispose(GObject* object)
     inf_session_close(session);
   }
 
-  g_hash_table_remove_all(priv->user_table);
+  g_object_unref(G_OBJECT(priv->user_table));
+  priv->user_table = NULL;
 
   g_object_unref(G_OBJECT(priv->buffer));
   priv->buffer = NULL;
@@ -536,9 +519,6 @@ inf_session_finalize(GObject* object)
 
   session = INF_SESSION(object);
   priv = INF_SESSION_PRIVATE(session);
-
-  g_hash_table_destroy(priv->user_table);
-  priv->user_table = NULL;
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -560,13 +540,17 @@ inf_session_set_property(GObject* object,
   switch(prop_id)
   {
   case PROP_CONNECTION_MANAGER:
-    g_assert(priv->manager == NULL);
+    g_assert(priv->manager == NULL); /* construct only */
     priv->manager = INF_CONNECTION_MANAGER(g_value_dup_object(value));
     inf_session_register_sync(session);
     break;
   case PROP_BUFFER:
-    g_assert(priv->buffer == NULL);
+    g_assert(priv->buffer == NULL); /* construct only */
     priv->buffer = INF_BUFFER(g_value_dup_object(value));
+    break;
+  case PROP_USER_TABLE:
+    g_assert(priv->user_table == NULL); /* construct only */
+    priv->user_table = INF_USER_TABLE(g_value_dup_object(value));
     break;
   case PROP_SUBSCRIPTION_GROUP:
     if(priv->subscription_group != NULL)
@@ -628,6 +612,9 @@ inf_session_get_property(GObject* object,
   case PROP_BUFFER:
     g_value_set_object(value, G_OBJECT(priv->buffer));
     break;
+  case PROP_USER_TABLE:
+    g_value_set_object(value, G_OBJECT(priv->user_table));
+    break;
   case PROP_SUBSCRIPTION_GROUP:
     g_value_set_boxed(value, priv->subscription_group);
     break;
@@ -653,16 +640,13 @@ inf_session_get_property(GObject* object,
  */
 
 static void
-inf_session_to_xml_sync_impl_foreach_func(gpointer key,
-                                          gpointer value,
+inf_session_to_xml_sync_impl_foreach_func(InfUser* user,
                                           gpointer user_data)
 {
   InfSessionXmlData* data;
-  InfUser* user;
   xmlNodePtr usernode;
 
   data = (InfSessionXmlData*)user_data;
-  user = INF_USER(value);
 
   usernode = xmlNewNode(NULL, (const xmlChar*)"sync-user");
   inf_session_user_to_xml(data->session, user, usernode);
@@ -681,7 +665,7 @@ inf_session_to_xml_sync_impl(InfSession* session,
   data.session = session;
   data.xml = parent;
 
-  g_hash_table_foreach(
+  inf_user_table_foreach_user(
     priv->user_table,
     inf_session_to_xml_sync_impl_foreach_func,
     &data
@@ -832,10 +816,13 @@ inf_session_validate_user_props_impl(InfSession* session,
                                      InfUser* exclude,
                                      GError** error)
 {
+  InfSessionPrivate* priv;
   const GParameter* parameter;
   const gchar* name;
   InfUser* user;
   guint id;
+  
+  priv = INF_SESSION_PRIVATE(session);
 
   parameter = inf_session_lookup_user_property(params, n_params, "id");
   if(parameter == NULL)
@@ -852,7 +839,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   }
 
   id = g_value_get_uint(&parameter->value);
-  user = inf_session_lookup_user_by_id(session, id);
+  user = inf_user_table_lookup_user_by_id(priv->user_table, id);
 
   if(user != NULL && user != exclude)
   {
@@ -882,7 +869,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   }
 
   name = g_value_get_string(&parameter->value);
-  user = inf_session_lookup_user_by_name(session, name);
+  user = inf_user_table_lookup_user_by_name(priv->user_table, name);
 
   if(user != NULL && user != exclude)
   {
@@ -1465,49 +1452,6 @@ inf_session_close_handler(InfSession* session)
   g_object_thaw_notify(G_OBJECT(session));
 }
 
-
-static void
-inf_session_add_user_handler(InfSession* session,
-                             InfUser* user)
-{
-  InfSessionPrivate* priv;
-  guint user_id;
-
-  g_return_if_fail(INF_IS_SESSION(session));
-  g_return_if_fail(INF_IS_USER(user));
-
-  user_id = inf_user_get_id(user);
-  g_return_if_fail(user_id > 0);
-
-  priv = INF_SESSION_PRIVATE(session);
-
-  g_return_if_fail(
-    g_hash_table_lookup(priv->user_table, GUINT_TO_POINTER(user_id)) == NULL
-  );
-
-  g_hash_table_insert(priv->user_table, GUINT_TO_POINTER(user_id), user);
-}
-
-static void
-inf_session_remove_user_handler(InfSession* session,
-                                InfUser* user)
-{
-  InfSessionPrivate* priv;
-  guint user_id;
-
-  g_return_if_fail(INF_IS_SESSION(session));
-  g_return_if_fail(INF_IS_USER(user));
-
-  priv = INF_SESSION_PRIVATE(session);
-  user_id = inf_user_get_id(user);
-
-  g_return_if_fail(
-    g_hash_table_lookup(priv->user_table, GUINT_TO_POINTER(user_id)) == user
-  );
-
-  g_hash_table_remove(priv->user_table, GUINT_TO_POINTER(user_id));
-}
-
 static void
 inf_session_synchronization_complete_handler(InfSession* session,
                                              InfXmlConnection* connection)
@@ -1595,6 +1539,7 @@ inf_session_class_init(gpointer g_class,
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfSessionPrivate));
 
+  object_class->constructor = inf_session_constructor;
   object_class->dispose = inf_session_dispose;
   object_class->finalize = inf_session_finalize;
   object_class->set_property = inf_session_set_property;
@@ -1611,8 +1556,6 @@ inf_session_class_init(gpointer g_class,
   session_class->user_new = NULL;
 
   session_class->close = inf_session_close_handler;
-  session_class->add_user = inf_session_add_user_handler;
-  session_class->remove_user = inf_session_remove_user_handler;
   session_class->synchronization_progress = NULL;
   session_class->synchronization_complete =
     inf_session_synchronization_complete_handler;
@@ -1643,6 +1586,18 @@ inf_session_class_init(gpointer g_class,
       "Buffer",
       "The buffer in which the document content is stored",
       INF_TYPE_BUFFER,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_USER_TABLE,
+    g_param_spec_object(
+      "user-table",
+      "User table",
+      "User table containing the users of the session",
+      INF_TYPE_USER_TABLE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1705,30 +1660,6 @@ inf_session_class_init(gpointer g_class,
     inf_marshal_VOID__VOID,
     G_TYPE_NONE,
     0
-  );
-
-  session_signals[ADD_USER] = g_signal_new(
-    "add-user",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfSessionClass, add_user),
-    NULL, NULL,
-    inf_marshal_VOID__OBJECT,
-    G_TYPE_NONE,
-    1,
-    INF_TYPE_USER
-  );
-
-  session_signals[REMOVE_USER] = g_signal_new(
-    "remove-user",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfSessionClass, remove_user),
-    NULL, NULL,
-    inf_marshal_VOID__OBJECT,
-    G_TYPE_NONE,
-    1,
-    INF_TYPE_USER
   );
 
   session_signals[SYNCHRONIZATION_PROGRESS] = g_signal_new(
@@ -2017,6 +1948,21 @@ inf_session_get_buffer(InfSession* session)
   return INF_SESSION_PRIVATE(session)->buffer;
 }
 
+/** inf_session_get_user_table:
+ *
+ * @session:A #InfSession.
+ *
+ * Returns the user table used by @session.
+ *
+ * Return Value: A #InfUserTable.
+ **/
+InfUserTable*
+inf_session_get_user_table(InfSession* session)
+{
+  g_return_val_if_fail(INF_IS_SESSION(session), NULL);
+  return INF_SESSION_PRIVATE(session)->user_table;
+}
+
 /** inf_session_add_user:
  *
  * @session A #InfSession.
@@ -2037,6 +1983,7 @@ inf_session_add_user(InfSession* session,
                      guint n_params,
                      GError** error)
 {
+  InfSessionPrivate* priv;
   InfSessionClass* session_class;
   InfUser* user;
   gboolean result;
@@ -2046,6 +1993,8 @@ inf_session_add_user(InfSession* session,
 
   g_return_val_if_fail(session_class->validate_user_props != NULL, NULL);
   g_return_val_if_fail(session_class->user_new != NULL, NULL);
+
+  priv = INF_SESSION_PRIVATE(session);
 
   result = session_class->validate_user_props(
     session,
@@ -2058,127 +2007,12 @@ inf_session_add_user(InfSession* session,
   if(result == TRUE)
   {
     user = session_class->user_new(session, params, n_params);
-    g_signal_emit(G_OBJECT(session), session_signals[ADD_USER], 0, user);
+    inf_user_table_add_user(priv->user_table, user);
 
     return user;
   }
 
   return NULL;
-}
-
-/** inf_session_remove_user:
- *
- * @session: A #InfSession.
- * @user: A #InfUser contained in @session.
- *
- * Removes @user from @session.
- **/
-void
-inf_session_remove_user(InfSession* session,
-                        InfUser* user)
-{
-  InfSessionPrivate* priv;
-  guint user_id;
-
-  g_return_if_fail(INF_IS_SESSION(session));
-  g_return_if_fail(INF_IS_USER(user));
-
-  priv = INF_SESSION_PRIVATE(session);
-  user_id = inf_user_get_id(user);
-
-  g_return_if_fail(
-    g_hash_table_lookup(priv->user_table, GUINT_TO_POINTER(user_id)) == user
-  );
-
-  g_object_ref(G_OBJECT(user));
-  g_signal_emit(G_OBJECT(session), session_signals[REMOVE_USER], 0, user);
-  g_object_unref(G_OBJECT(user));
-}
-
-/** inf_session_lookup_user_by_id:
- *
- * @session: A #InfSession.
- * @user_id: User ID to lookup.
- *
- * Returns the #InfUser with the given User ID in session.
- *
- * Return Value: A #InfUser, or %NULL.
- **/
-InfUser*
-inf_session_lookup_user_by_id(InfSession* session,
-                              guint user_id)
-{
-  InfSessionPrivate* priv;
-
-  g_return_val_if_fail(INF_IS_SESSION(session), NULL);
-
-  priv = INF_SESSION_PRIVATE(priv);
-
-  return INF_USER(
-    g_hash_table_lookup(priv->user_table, GUINT_TO_POINTER(user_id))
-  );
-}
-
-/** inf_session_lookup_user_by_name:
- *
- * @session: A #InfSession.
- * @name: User name to lookup.
- *
- * Returns an #InfUser with the given name if there is one.
- *
- * Return Value: A #InfUser, or %NULL.
- **/
-InfUser*
-inf_session_lookup_user_by_name(InfSession* session,
-                                const gchar* name)
-{
-  InfSessionPrivate* priv;
-  InfUser* user;
-
-  g_return_val_if_fail(INF_IS_SESSION(session), NULL);
-  g_return_val_if_fail(name != NULL, NULL);
-
-  priv = INF_SESSION_PRIVATE(session);
-
-  user = g_hash_table_find(
-    priv->user_table,
-    inf_session_lookup_user_by_name_func,
-    (gpointer)name
-  );
-
-  return user;
-}
-
-/** inf_session_foreach_user:
- *
- * @session: A #InfSession.
- * @func: The function to call for each user.
- * @user_data: User data to pass to the function.
- *
- * Calls the given function for each user in the session. You should not
- * add or remove users while this function is being executed.
- **/
-void
-inf_session_foreach_user(InfSession* session,
-                         InfSessionForeachUserFunc func,
-                         gpointer user_data)
-{
-  InfSessionPrivate* priv;
-  InfSessionForeachUserData data;
-
-  g_return_if_fail(INF_IS_SESSION(session));
-  g_return_if_fail(func != NULL);
-
-  priv = INF_SESSION_PRIVATE(session);
-
-  data.func = func;
-  data.user_data = user_data;
-
-  g_hash_table_foreach(
-    priv->user_table,
-    inf_session_foreach_user_func,
-    &data
-  );
 }
 
 /** inf_session_synchronize_to:

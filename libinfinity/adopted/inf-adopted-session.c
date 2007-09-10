@@ -167,6 +167,7 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
   InfAdoptedSessionPrivate* priv;
   InfAdoptedStateVector* vector;
   InfAdoptedSessionLocalUser* local;
+  InfUserTable* user_table;
   InfUser* user;
   guint user_id;
   gchar* vec_str;
@@ -176,6 +177,8 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
 
   session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  user_table = inf_session_get_user_table(INF_SESSION(session));
 
   g_assert(session_class->operation_to_xml != NULL);
 
@@ -192,7 +195,7 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
   }
   else
   {
-    user = inf_session_lookup_user_by_id(INF_SESSION(session), user_id);
+    user = inf_user_table_lookup_user_by_id(user_table, user_id);
     g_assert(user != NULL);
 
     local = inf_adopted_session_lookup_local_user(
@@ -246,12 +249,15 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
   InfAdoptedStateVector* vector;
   InfAdoptedOperation* operation;
   InfAdoptedRequest* request;
+  InfUserTable* user_table;
   InfUser* user;
   guint user_id;
   xmlChar* attr;
 
   session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
   g_assert(session_class->xml_to_operation != NULL);
+
+  user_table = inf_session_get_user_table(INF_SESSION(session));
 
   attr = inf_xml_util_get_attribute_required(xml, "type", error);
   if(attr == NULL) return NULL;
@@ -282,7 +288,7 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
   if(!inf_xml_util_get_attribute_uint_required(xml, "user", &user_id, error))
     return FALSE;
 
-  user = inf_session_lookup_user_by_id(INF_SESSION(session), user_id);
+  user = inf_user_table_lookup_user_by_id(user_table, user_id);
 
   if(user == NULL)
   {
@@ -429,6 +435,72 @@ inf_adopted_session_user_notify_flags_cb(GObject* object,
   }
 }
 
+static void
+inf_adopted_session_add_user_cb(InfUserTable* user_table,
+                                InfUser* user,
+                                gpointer user_data)
+{
+  InfAdoptedSession* session;
+  InfAdoptedSessionPrivate* priv;
+  InfSessionStatus status;
+  InfAdoptedSessionLocalUser* local;
+
+  g_assert(INF_ADOPTED_IS_USER(user));
+
+  session = INF_ADOPTED_SESSION(user_data);
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  g_object_get(G_OBJECT(session), "status", &status, NULL);
+
+  switch(status)
+  {
+  case INF_SESSION_SYNCHRONIZING:
+    /* User will be added to algorithm when synchronization is complete,
+     * algorithm does not exist yet */
+    g_assert(priv->algorithm == NULL);
+    /* Cannot be local while synchronizing */
+    g_assert( (inf_user_get_flags(user) & INF_USER_LOCAL) == 0);
+    break;
+  case INF_SESSION_RUNNING:
+    g_assert(priv->algorithm != NULL);
+    inf_adopted_algorithm_add_user(priv->algorithm, INF_ADOPTED_USER(user));
+    if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
+    {
+      local = g_slice_new(InfAdoptedSessionLocalUser);
+
+      /* TODO: This is the same hack as in
+       * inf_adopted_session_user_notify_flags_cb(). */
+      local->last_send_vector = inf_adopted_state_vector_copy(
+        inf_adopted_user_get_vector(INF_ADOPTED_USER(user))
+      );
+
+      /* Set current vector for local user, this is kept up-to-date by
+       * InfAdoptedAlgorithm. TODO: Also do this in InfAdoptedAlgorithm? */
+      inf_adopted_user_set_vector(
+        INF_ADOPTED_USER(user),
+        inf_adopted_algorithm_get_current(priv->algorithm)
+      );
+
+      priv->local_users = g_slist_prepend(priv->local_users, local);
+    }
+
+    break;
+  case INF_SESSION_CLOSED:
+    /* fallthrough */
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  /* TODO: Disconnect this on dispose */
+  g_signal_connect(
+    G_OBJECT(user),
+    "notify::flags",
+    G_CALLBACK(inf_adopted_session_user_notify_flags_cb),
+    session
+  );
+}
+
 /*
  * GObject overrides.
  */
@@ -457,6 +529,7 @@ inf_adopted_session_constructor(GType type,
   InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
   InfSessionStatus status;
+  InfUserTable* user_table;
 
   object = G_OBJECT_CLASS(parent_class)->constructor(
     type,
@@ -489,6 +562,15 @@ inf_adopted_session_constructor(GType type,
     break;
   }
 
+  user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  g_signal_connect(
+    G_OBJECT(user_table),
+    "add-user",
+    G_CALLBACK(inf_adopted_session_add_user_cb),
+    session
+  );
+
   return object;
 }
 
@@ -497,9 +579,18 @@ inf_adopted_session_dispose(GObject* object)
 {
   InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
+  InfUserTable* user_table;
 
   session = INF_ADOPTED_SESSION(object);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(user_table),
+    G_CALLBACK(inf_adopted_session_add_user_cb),
+    session
+  );
 
   /* This calls the close vfunc if the session is running, in which we
    * free the local users. */
@@ -639,8 +730,8 @@ inf_adopted_session_to_xml_sync(InfSession* session,
   foreach_data.session = INF_ADOPTED_SESSION(session);
   foreach_data.parent_xml = parent;
 
-  inf_session_foreach_user(
-    session,
+  inf_user_table_foreach_user(
+    inf_session_get_user_table(session),
     inf_adopted_session_to_xml_sync_foreach_user_func,
     &foreach_data
   );
@@ -668,8 +759,8 @@ inf_adopted_session_process_xml_sync(InfSession* session,
     if(request == NULL) return FALSE;
 
     user = INF_ADOPTED_USER(
-      inf_session_lookup_user_by_id(
-        session,
+      inf_user_table_lookup_user_by_id(
+        inf_session_get_user_table(session),
         inf_adopted_request_get_user_id(request)
       )
     );
@@ -885,78 +976,6 @@ inf_adopted_session_close(InfSession* session)
 }
 
 static void
-inf_adopted_session_add_user(InfSession* session,
-                             InfUser* user)
-{
-  InfAdoptedSessionPrivate* priv;
-  InfSessionStatus status;
-  InfAdoptedSessionLocalUser* local;
-
-  g_assert(INF_ADOPTED_IS_USER(user));
-  priv = INF_ADOPTED_SESSION_PRIVATE(session);
-
-  g_object_get(G_OBJECT(session), "status", &status, NULL);
-
-  switch(status)
-  {
-  case INF_SESSION_SYNCHRONIZING:
-    /* User will be added to algorithm when synchronization is complete,
-     * algorithm does not exist yet */
-    g_assert(priv->algorithm == NULL);
-    /* Cannot be local while synchronizing */
-    g_assert( (inf_user_get_flags(user) & INF_USER_LOCAL) == 0);
-    break;
-  case INF_SESSION_RUNNING:
-    g_assert(priv->algorithm != NULL);
-    inf_adopted_algorithm_add_user(priv->algorithm, INF_ADOPTED_USER(user));
-    if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
-    {
-      local = g_slice_new(InfAdoptedSessionLocalUser);
-
-      /* TODO: This is the same hack as in
-       * inf_adopted_session_user_notify_flags_cb(). */
-      local->last_send_vector = inf_adopted_state_vector_copy(
-        inf_adopted_user_get_vector(INF_ADOPTED_USER(user))
-      );
-
-      /* Set current vector for local user, this is kept up-to-date by
-       * InfAdoptedAlgorithm. TODO: Also do this in InfAdoptedAlgorithm? */
-      inf_adopted_user_set_vector(
-        INF_ADOPTED_USER(user),
-        inf_adopted_algorithm_get_current(priv->algorithm)
-      );
-
-      priv->local_users = g_slist_prepend(priv->local_users, local);
-    }
-
-    break;
-  case INF_SESSION_CLOSED:
-    /* fallthrough */
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  g_signal_connect(
-    G_OBJECT(user),
-    "notify::flags",
-    G_CALLBACK(inf_adopted_session_user_notify_flags_cb),
-    session
-  );
-
-  INF_SESSION_CLASS(parent_class)->add_user(session, user);
-}
-
-static void
-inf_adopted_session_remove_user(InfSession* session,
-                                InfUser* user)
-{
-  /* Users cannot/should not be removed from InfAdoptedSession, their
-   * vector time and request log might still be required */
-  g_assert_not_reached();
-}
-
-static void
 inf_adopted_session_synchronization_complete_foreach_func(InfUser* user,
                                                           gpointer user_data)
 {
@@ -988,8 +1007,8 @@ inf_adopted_session_synchronization_complete(InfSession* session,
     );
 
     /* Add users */
-    inf_session_foreach_user(
-      session,
+    inf_user_table_foreach_user(
+      inf_session_get_user_table(session),
       inf_adopted_session_synchronization_complete_foreach_func,
       session
     );
@@ -1037,8 +1056,6 @@ inf_adopted_session_class_init(gpointer g_class,
     inf_adopted_session_validate_user_props;
 
   session_class->close = inf_adopted_session_close;
-  session_class->add_user = inf_adopted_session_add_user;
-  session_class->remove_user = inf_adopted_session_remove_user;
   
   session_class->synchronization_complete =
     inf_adopted_session_synchronization_complete;

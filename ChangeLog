@@ -1,3 +1,37 @@
+2007-09-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-user-table.h:
+	* libinfinity/common/inf-user-table.c:
+	* libinfinity/common/Makefile.am: Added user table class managing
+	users and providing lookup by ID and name.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Make use of InfUserTable instead
+	of using an own hash table. Removed some API that is not provided by
+	InfUserTable.
+
+	* libinfinity/client/infc-session-proxy.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/adopted/inf-adopted-session.c: Adjusted for API change
+	introduced by the new user table.
+
+	* libinfinity/inf-ink-buffer.h:
+	* libinfinity/inf-ink-stroke.h:
+	* libinfinity/inf-ink-buffer.c:
+	* libinfinity/inf-ink-stroke.c: Removed from repository, InfInk will
+	not be implemented in the short-term.
+
+	* libinftext/inf-text-chunk.h:
+	* libinftext/inf-text-chunk.c: Added InfTextChunkIter API to iterate
+	over segments.
+
+	* libinfinity/inf-marshal.in: Replaced POINTER,UINT,UINT,OBJET byC
+	UINT,BOXED,OBJECT marshaller.
+
+	* libinftext/inf-text-buffer.h:
+	* libinftext/inf-text-buffer.c:
+	* libinftext/Makefile.am: Added InfTextBuffer interface.
+
 2007-09-10  Philipp Kern <phil@0x539.de>
 
 	* configure.ac: some fixes

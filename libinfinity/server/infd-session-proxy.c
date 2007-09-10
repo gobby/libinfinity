@@ -222,8 +222,8 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
     return NULL;
   }
 
-  user = inf_session_lookup_user_by_name(
-    priv->session,
+  user = inf_user_table_lookup_user_by_name(
+    inf_session_get_user_table(priv->session),
     g_value_get_string(&name_param->value)
   );
 
@@ -440,9 +440,9 @@ infd_session_proxy_connection_notify_status_cb(InfXmlConnection* connection,
 }
 
 static void
-infd_session_proxy_session_add_user_cb(InfSession* session,
-                                       InfUser* user,
-                                       gpointer user_data)
+infd_session_proxy_add_user_cb(InfSession* session,
+                               InfUser* user,
+                               gpointer user_data)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
@@ -577,8 +577,8 @@ infd_session_proxy_session_close_cb(InfSession* session,
   );
   
   g_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_session_add_user_cb),
+    G_OBJECT(inf_session_get_user_table(priv->session)),
+    G_CALLBACK(infd_session_proxy_add_user_cb),
     proxy
   );
   
@@ -699,9 +699,9 @@ infd_session_proxy_set_property(GObject* object,
     );
 
     g_signal_connect(
-      G_OBJECT(priv->session),
+      G_OBJECT(inf_session_get_user_table(priv->session)),
       "add-user",
-      G_CALLBACK(infd_session_proxy_session_add_user_cb),
+      G_CALLBACK(infd_session_proxy_add_user_cb),
       proxy
     );
 
@@ -848,7 +848,11 @@ infd_session_proxy_handle_user_leave(InfdSessionProxy* proxy,
   id = strtoul((const gchar*)id_attr, NULL, 0);
   xmlFree(id_attr);
 
-  user = inf_session_lookup_user_by_id(priv->session, id);
+  user = inf_user_table_lookup_user_by_id(
+    inf_session_get_user_table(priv->session),
+    id
+  );
+
   if(user == NULL)
   {
     g_set_error(

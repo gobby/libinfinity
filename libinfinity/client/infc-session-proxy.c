@@ -240,8 +240,8 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
   infc_request_manager_clear(priv->request_manager);
 
   /* Set status of all users to unavailable */
-  inf_session_foreach_user(
-    priv->session,
+  inf_user_table_foreach_user(
+    inf_session_get_user_table(priv->session),
     infc_session_proxy_release_connection_foreach_user_func,
     NULL
   );
@@ -574,7 +574,10 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
   }
 
   id = g_value_get_uint(&idparam->value);
-  user = inf_session_lookup_user_by_id(priv->session, id);
+  user = inf_user_table_lookup_user_by_id(
+    inf_session_get_user_table(priv->session),
+    id
+  );
 
   if(user == NULL)
   {
@@ -731,7 +734,11 @@ infc_session_proxy_handle_user_leave(InfcSessionProxy* proxy,
   id = strtoul((const gchar*)id_attr, NULL, 0);
   xmlFree(id_attr);
 
-  user = inf_session_lookup_user_by_id(priv->session, id);
+  user = inf_user_table_lookup_user_by_id(
+    inf_session_get_user_table(priv->session),
+    id
+  );
+
   if(user == NULL)
   {
     g_set_error(

@@ -387,7 +387,7 @@ inf_text_chunk_substring(InfTextChunk* self,
   }
 }
 
-/** inf_text_chunk_insert:
+/** inf_text_chunk_insert_text:
  *
  * @self: A #InfTextChunk.
  * @offset: Character offset at which to insert text
@@ -400,12 +400,12 @@ inf_text_chunk_substring(InfTextChunk* self,
  * the chunk's encoding.
  **/
 void
-inf_text_chunk_insert(InfTextChunk* self,
-                      guint offset,
-                      const gchar* text,
-                      guint length,
-                      guint bytes,
-                      guint author)
+inf_text_chunk_insert_text(InfTextChunk* self,
+                           guint offset,
+                           gconstpointer text,
+                           guint length,
+                           guint bytes,
+                           guint author)
 {
   GSequenceIter* iter;
   gsize offset_index;
@@ -547,7 +547,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
     {
       segment = g_sequence_get(g_sequence_get_begin_iter(text->segments));
 
-      inf_text_chunk_insert(
+      inf_text_chunk_insert_text(
         self,
         offset,
         segment->text,
@@ -963,7 +963,7 @@ inf_text_chunk_erase(InfTextChunk* self,
  *
  * Return Value: Content of @self. Free with g_free() if no longer in use.
  **/
-gchar*
+gpointer
 inf_text_chunk_get_text(InfTextChunk* self,
                         gsize* length)
 {
@@ -1002,6 +1002,7 @@ inf_text_chunk_get_text(InfTextChunk* self,
   return result;
 }
 
+#if 0
 /** inf_text_chunk_to_xml:
  *
  * @self: A #InfTextChunk.
@@ -1153,6 +1154,163 @@ inf_text_chunk_from_xml(xmlNodePtr xml,
   
   g_iconv_close(cd);
   return chunk;
+}
+#endif
+
+/** inf_text_chunk_iter_init:
+ *
+ * @self: A #InfTextChunk.
+ * @iter: A #InfTextChunkIter.
+ *
+ * Sets @iter to point to the first segment of @self. If there are no
+ * segments (i.e. @self is empty), @iter is left untouched and the function
+ * returns %FALSE.
+ *
+ * Return Value: Whether @iter was set.
+ **/
+gboolean
+inf_text_chunk_iter_init(InfTextChunk* self,
+                         InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(self != NULL, FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  if(self->length > 0)
+  {
+    iter->chunk = self;
+    iter->first = g_sequence_get_begin_iter(self->segments);
+    iter->second = g_sequence_iter_next(iter->first);
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** inf_text_chunk_iter_next:
+ *
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Sets @iter to point to the next segment. If @iter already points to the
+ * last segment, the function returns %FALSE.
+ *
+ * Return Value: Whether @iter was set.
+ **/
+gboolean
+inf_text_chunk_iter_next(InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  if(g_sequence_iter_is_end(iter->second) == FALSE)
+  {
+    iter->first = iter->second;
+    iter->second = g_sequence_iter_next(iter->first);
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** inf_text_chunk_iter_prev:
+ *
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Sets @iter to point to the previous segment. If @iter already points to
+ * the first segment, the function returns %FALSE.
+ **/
+gboolean
+inf_text_chunk_iter_prev(InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  if(g_sequence_iter_is_begin(iter->first) == FALSE)
+  {
+    iter->second = iter->first;
+    iter->first = g_sequence_iter_prev(iter->first);
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/** inf_text_chunk_iter_get_text:
+ *
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Returns the text of the segment @iter points to. The text is in the
+ * underlaying #InfTextChunk's encoding.
+ *
+ * Return Value: The text of the segment @iter points to.
+ **/
+gconstpointer
+inf_text_chunk_iter_get_text(InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(iter != NULL, NULL);
+  return ((InfTextChunkSegment*)g_sequence_get(iter->first))->text;
+}
+
+/** inf_text_chunk_iter_get_length:
+ *
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Returns the number of characters in the segment @iter points to.
+ *
+ * Return Value: The number of characters in the segment @iter points to.
+ **/
+guint
+inf_text_chunk_iter_get_length(InfTextChunkIter* iter)
+{
+  InfTextChunkSegment* first;
+  InfTextChunkSegment* second;
+
+  g_return_val_if_fail(iter != NULL, 0);
+
+  if(g_sequence_iter_is_end(iter->second) == TRUE)
+  {
+    first = (InfTextChunkSegment*)g_sequence_get(iter->first);
+    return iter->chunk->length - first->offset;
+  }
+  else
+  {
+    first = (InfTextChunkSegment*)g_sequence_get(iter->first);
+    second = (InfTextChunkSegment*)g_sequence_get(iter->second);
+    return second->offset - first->offset;
+  }
+}
+
+/** inf_text_chunk_iter_get_bytes:
+ *
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Returns the number of bytes in the segment @iter points to.
+ *
+ * Return Value: The number of bytes in the segment @iter points to.
+ **/
+gsize
+inf_text_chunk_iter_get_bytes(InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(iter != NULL, 0);
+  return ((InfTextChunkSegment*)g_sequence_get(iter->first))->length;
+}
+
+/** inf_text_chunk_iter_get_author:
+ *
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Returns the user ID of the author of the segment @iter points to.
+ *
+ * Return Value: The user ID of the author of the segment @iter points to.
+ **/
+guint
+inf_text_chunk_iter_get_author(InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(iter != NULL, 0);
+  return ((InfTextChunkSegment*)g_sequence_get(iter->first))->author;
 }
 
 /* vim:set et sw=2 ts=2: */

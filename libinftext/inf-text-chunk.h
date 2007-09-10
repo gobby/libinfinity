@@ -29,6 +29,13 @@ G_BEGIN_DECLS
 
 typedef struct _InfTextChunk InfTextChunk;
 
+typedef struct _InfTextChunkIter InfTextChunkIter;
+struct _InfTextChunkIter {
+  InfTextChunk* chunk;
+  GSequenceIter* first;
+  GSequenceIter* second;
+};
+
 GType
 inf_text_chunk_get_type(void) G_GNUC_CONST;
 
@@ -53,12 +60,12 @@ inf_text_chunk_substring(InfTextChunk* self,
                          guint length);
 
 void
-inf_text_chunk_insert(InfTextChunk* self,
-                      guint offset,
-                      const gchar* text,
-                      guint length,
-                      guint bytes,
-                      guint author);
+inf_text_chunk_insert_text(InfTextChunk* self,
+                           guint offset,
+                           gconstpointer text,
+                           guint length,
+                           guint bytes,
+                           guint author);
 
 void
 inf_text_chunk_insert_chunk(InfTextChunk* self,
@@ -70,10 +77,11 @@ inf_text_chunk_erase(InfTextChunk* self,
                      guint begin,
                      guint length);
 
-gchar*
+gpointer
 inf_text_chunk_get_text(InfTextChunk* self,
                         gsize* length);
 
+#if 0
 void
 inf_text_chunk_to_xml(InfTextChunk* self,
                       xmlNodePtr xml);
@@ -82,6 +90,29 @@ InfTextChunk*
 inf_text_chunk_from_xml(xmlNodePtr xml,
                         const gchar* encoding,
                         GError** error);
+#endif
+
+gboolean
+inf_text_chunk_iter_init(InfTextChunk* self,
+                         InfTextChunkIter* iter);
+
+gboolean
+inf_text_chunk_iter_next(InfTextChunkIter* iter);
+
+gboolean
+inf_text_chunk_iter_prev(InfTextChunkIter* iter);
+
+gconstpointer
+inf_text_chunk_iter_get_text(InfTextChunkIter* iter);
+
+guint
+inf_text_chunk_iter_get_length(InfTextChunkIter* iter);
+
+gsize
+inf_text_chunk_iter_get_bytes(InfTextChunkIter* iter);
+
+guint
+inf_text_chunk_iter_get_author(InfTextChunkIter* iter);
 
 G_END_DECLS
 
