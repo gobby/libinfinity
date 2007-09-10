@@ -13,8 +13,10 @@ libinftext_1_0_ladir = $(includedir)/libinftext-1.0/libinftext
 
 libinftext_1_0_la_HEADERS = \
 	inf-text-buffer.h \
-	inf-text-chunk.h
+	inf-text-chunk.h \
+	inf-text-default-buffer.h
 
 libinftext_1_0_la_SOURCES = \
 	inf-text-buffer.c \
-	inf-text-chunk.c
+	inf-text-chunk.c \
+	inf-text-default-buffer.c

@@ -45,7 +45,7 @@ inf_text_buffer_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfTextBufferIface, insert_text),
       NULL, NULL,
-      inf_marshal_VOID__POINTER_UINT_UINT_OBJECT,
+      inf_marshal_VOID__UINT_BOXED_OBJECT,
       G_TYPE_NONE,
       3,
       G_TYPE_UINT,

@@ -1,5 +1,14 @@
 2007-09-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-buffer.c: Fixed a marshaller.
+
+	* libinftext/inf-text-default-buffer.h:
+	* libinftext/inf-text-default-buffer.c:
+	* libinftext/Makefile.am: Added a InfTextBuffer implementation using
+	an underlaying InfTextChunk.
+
+2007-09-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-user-table.h:
 	* libinfinity/common/inf-user-table.c:
 	* libinfinity/common/Makefile.am: Added user table class managing
