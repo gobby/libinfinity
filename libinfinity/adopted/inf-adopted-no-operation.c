@@ -46,7 +46,7 @@ inf_adopted_no_operation_copy(InfAdoptedOperation* operation)
 static InfAdoptedOperationFlags
 inf_adopted_no_operation_get_flags(InfAdoptedOperation* operation)
 {
-  return 0;
+  return INF_ADOPTED_OPERATION_REVERSIBLE;
 }
 
 static void
@@ -55,12 +55,6 @@ inf_adopted_no_operation_apply(InfAdoptedOperation* operation,
                                InfBuffer* buffer)
 {
   /* Does nothing */
-}
-
-static gboolean
-inf_adopted_no_operation_is_reversible(InfAdoptedOperation* operation)
-{
-  return TRUE;
 }
 
 static InfAdoptedOperation*
@@ -80,7 +74,6 @@ inf_adopted_no_operation_operation_init(gpointer g_iface,
   /*iface->copy = inf_adopted_no_operation_copy;*/
   iface->get_flags = inf_adopted_no_operation_get_flags;
   iface->apply = inf_adopted_no_operation_apply;
-  iface->is_reversible = inf_adopted_no_operation_is_reversible;
   iface->revert = inf_adopted_no_operation_revert;
 
   /* should never be called because no_operation is always reversible */

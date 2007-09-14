@@ -1,10 +1,12 @@
- * Unify InfIo interface (IO):
+This is a more-or-less incomplete list of independant tasks that would be nice
+to have done for the first stable release.
+
+* Unify InfIo interface (IO):
    - Rename InfIoFunc to InfIoWatchFunc
    - Split inf_io_watch into inf_io_add_watch, inf_io_update_watch and
      inf_io_remove_watch
  * Implement AdoptedLogRemoval correctly (Adopted)
- * Remove inf_adopted_operation_is_reversible and at this as another operation flag.
- * Implement discovery via avahi (Discovery)
+ * Implement discovery via avahi, implementing the existing interfaces (Discovery)
  * Create certificates if not given (XMPP)
  * Split InfXmppConnection (XMPP)
    - InfXmppConnection: XMPP core implementation
@@ -13,4 +15,9 @@
    - InfJabberUserConnection: Implements InfXmlConnection by sending stuff to a particular Jabber user (owns InfJabberConnection)
    - InfJabberDiscovery (owns InfJabberConnection)
 
- * Unavailable users should not (be able to) have the INF_USER_LOCAL flag.
+ * Unavailable users should not (be able to) have the INF_USER_LOCAL flag set.
+ * Pass concurrency ID to transform so InfTextInsertOperation does not need to store it (Adopted)
+ * Allow operations to alter themselves while transforming (Adopted)
+   - Severall classes currently assume operations are immutable.
+ * Make InfTextChunk reference-counted. It is currently copied way too often. (InfText)
+ * Implement inf_text_chunk_insert_substring, and make use in InfTextDeleteOperation

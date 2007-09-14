@@ -261,6 +261,12 @@ inf_adopted_split_operation_get_flags(InfAdoptedOperation* operation)
     result |= INF_ADOPTED_OPERATION_AFFECTS_BUFFER;
   }
 
+  if( (flags1 & INF_ADOPTED_OPERATION_REVERSIBLE) != 0 &&
+      (flags2 & INF_ADOPTED_OPERATION_REVERSIBLE) != 0)
+  {
+    result |= INF_ADOPTED_OPERATION_REVERSIBLE;
+  }
+
   return result;
 }
 
@@ -282,21 +288,6 @@ inf_adopted_split_operation_apply(InfAdoptedOperation* operation,
   inf_adopted_operation_apply(new_second, by, buffer);
 
   g_object_unref(G_OBJECT(new_second));
-}
-
-static gboolean
-inf_adopted_split_operation_is_reversible(InfAdoptedOperation* operation)
-{
-  InfAdoptedSplitOperation* split;
-  InfAdoptedSplitOperationPrivate* priv;
-
-  split = INF_ADOPTED_SPLIT_OPERATION(operation);
-  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
-
-  if(inf_adopted_operation_is_reversible(priv->first) == FALSE)
-    return FALSE;
-
-  return inf_adopted_operation_is_reversible(priv->second);
 }
 
 static InfAdoptedOperation*
@@ -360,7 +351,6 @@ inf_adopted_split_operation_operation_init(gpointer g_iface,
   /*iface->copy = inf_adopted_split_operation_copy;*/
   iface->get_flags = inf_adopted_split_operation_get_flags;
   iface->apply = inf_adopted_split_operation_apply;
-  iface->is_reversible = inf_adopted_split_operation_is_reversible;
   iface->revert = inf_adopted_split_operation_revert;
   iface->make_reversible = inf_adopted_split_operation_make_reversible;
 }

@@ -203,14 +203,13 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
 gboolean
 inf_adopted_operation_is_reversible(InfAdoptedOperation* operation)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationFlags flags;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), FALSE);
 
-  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
-
-  if(iface->is_reversible != NULL)
-    return (*iface->is_reversible)(operation);
+  flags = inf_adopted_operation_get_flags(operation);
+  if( (flags & INF_ADOPTED_OPERATION_REVERSIBLE) != 0)
+    return TRUE;
   else
     return FALSE;
 }

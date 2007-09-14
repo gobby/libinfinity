@@ -42,7 +42,8 @@ typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
 
 /* TODO: Make a flag out of reversible */
 typedef enum _InfAdoptedOperationFlags {
-  INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0
+  INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0,
+  INF_ADOPTED_OPERATION_REVERSIBLE = 1 << 1
 } InfAdoptedOperationFlags;
 
 struct _InfAdoptedOperationIface {
@@ -62,8 +63,6 @@ struct _InfAdoptedOperationIface {
                 InfAdoptedUser* by,
                 InfBuffer* buffer);
 
-  gboolean (*is_reversible)(InfAdoptedOperation* operation);
-
   InfAdoptedOperation* (*revert)(InfAdoptedOperation* operation);
 
   /* Some operations may not be reversible, but can be made reversible with
@@ -72,7 +71,7 @@ struct _InfAdoptedOperationIface {
    *
    * This function should is only called when the opertaion itself is not yet
    * reversible and should return either a reversible operation or NULL if
-   [* the operation cannot be made reversible. */
+   * the operation cannot be made reversible. */
   InfAdoptedOperation* (*make_reversible)(InfAdoptedOperation* operation,
                                           InfAdoptedOperation* with,
                                           InfBuffer* buffer);

@@ -1,3 +1,25 @@
+2007-09-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-operation.h:
+	* libinfinity/adopted/inf-adopted-operation.c:
+	* libinfinity/adopted/inf-adopted-no-operation.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c: Removed the
+	is_reversible vfunc and added it as an operation flag.
+
+	* libinfinity/server/infd-session-proxy.c: Fixed message handling (the
+	message is called user-join, not join-user).
+
+	* libinftext/inf-text-pword.h:
+	* libinftext/inf-text-insert-operation.h:
+	* libinftext/inf-text-delete-operation.h:
+	* libinftext/inf-text-pword.c:
+	* libinftext/inf-text-insert-operation.c:
+	* libinftext/inf-text-delete-operation.c:
+	* libinftext/Makefile.am: Added the two bosic text operations.
+
+	* TODO: Removed finished tasks, added new ones about making
+	InfTextChunk reference-counted.
+
 2007-09-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-buffer.c: Fixed a marshaller.

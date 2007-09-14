@@ -980,7 +980,7 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
   }
   else
   {
-    if(strcmp((const char*)node->name, "join-user") == 0)
+    if(strcmp((const char*)node->name, "user-join") == 0)
     {
       result = infd_session_proxy_handle_user_join(
         proxy,
@@ -989,7 +989,7 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
         &error
       );
     }
-    else if(strcmp((const char*)node->name, "leave-user") == 0)
+    else if(strcmp((const char*)node->name, "user-leave") == 0)
     {
       result = infd_session_proxy_handle_user_leave(
         proxy,
