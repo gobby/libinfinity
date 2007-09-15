@@ -19,5 +19,6 @@ to have done for the first stable release.
  * Pass concurrency ID to transform so InfTextInsertOperation does not need to store it (Adopted)
  * Allow operations to alter themselves while transforming (Adopted)
    - Severall classes currently assume operations are immutable.
- * Make InfTextChunk reference-counted. It is currently copied way too often. (InfText)
- * Implement inf_text_chunk_insert_substring, and make use in InfTextDeleteOperation
+ * Make InfTextChunk reference-counted, or implement copy-on-write semantics. It is currently copied way too often. (InfText)
+ * Implement inf_text_chunk_insert_substring, and make use in InfTextDeleteOperation (InfText)
+ * Make pword an implementation detail of InfInsertOperation (InfText)

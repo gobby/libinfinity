@@ -1,0 +1,490 @@
+/* infinote - Collaborative notetaking application
+ * Copyright (C) 2007 Armin Burgmeier
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free
+ * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+#include <libinftext/inf-text-move-operation.h>
+#include <libinftext/inf-text-insert-operation.h>
+#include <libinftext/inf-text-delete-operation.h>
+#include <libinftext/inf-text-user.h>
+
+#include <libinfinity/adopted/inf-adopted-operation.h>
+
+typedef struct _InfTextMoveOperationPrivate InfTextMoveOperationPrivate;
+struct _InfTextMoveOperationPrivate {
+  guint position;
+  gint length;
+};
+
+enum {
+  PROP_0,
+
+  PROP_POSITION,
+  PROP_LENGTH
+};
+
+#define INF_TEXT_MOVE_OPERATION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_MOVE_OPERATION, InfTextMoveOperationPrivate))
+
+static GObjectClass* parent_class;
+
+static void
+inf_text_move_operation_init(GTypeInstance* instance,
+                             gpointer g_class)
+{
+  InfTextMoveOperation* operation;
+  InfTextMoveOperationPrivate* priv;
+
+  operation = INF_TEXT_MOVE_OPERATION(instance);
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
+
+  priv->position = 0;
+  priv->length = 0;
+}
+
+static void
+inf_text_move_operation_set_property(GObject* object,
+                                     guint prop_id,
+                                     const GValue* value,
+                                     GParamSpec* pspec)
+{
+  InfTextMoveOperation* operation;
+  InfTextMoveOperationPrivate* priv;
+
+  operation = INF_TEXT_MOVE_OPERATION(object);
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
+
+  switch(prop_id)
+  {
+  case PROP_POSITION:
+    priv->position = g_value_get_uint(value);
+    break;
+  case PROP_LENGTH:
+    priv->length = g_value_get_int(value);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+inf_text_move_operation_get_property(GObject* object,
+                                     guint prop_id,
+                                     GValue* value,
+                                     GParamSpec* pspec)
+{
+  InfTextMoveOperation* operation;
+  InfTextMoveOperationPrivate* priv;
+
+  operation = INF_TEXT_MOVE_OPERATION(object);
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
+
+  switch(prop_id)
+  {
+  case PROP_POSITION:
+    g_value_set_uint(value, priv->position);
+    break;
+  case PROP_LENGTH:
+    g_value_set_int(value, priv->length);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static InfAdoptedOperation*
+inf_text_move_operation_transform_insert(InfTextMoveOperation* operation,
+                                         InfTextInsertOperation* against)
+{
+  InfTextMoveOperationPrivate* priv;
+
+  guint pos;
+  guint len;
+  guint new_pos;
+  gint new_len;
+
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
+
+  pos = inf_text_pword_get_current(
+    inf_text_insert_operation_get_pword(against)
+  );
+
+  len = inf_text_chunk_get_length(
+    inf_text_insert_operation_get_chunk(against)
+  );
+
+  new_pos = priv->position;
+  new_len = priv->length;
+
+  /* Note left gravity */
+  if(pos < priv->position)
+    new_pos += len;
+
+  if(priv->length < 0)
+  {
+    if(pos >= priv->position + priv->length && pos < priv->position)
+      new_len -= len;
+  }
+  else
+  {
+    if(pos >= priv->position && pos < priv->position + priv->length)
+      new_len += len; 
+  }
+
+  return INF_ADOPTED_OPERATION(
+    g_object_new(
+      INF_TEXT_TYPE_MOVE_OPERATION,
+      "position", new_pos,
+      "length", new_len,
+      NULL
+    )
+  );
+}
+
+static InfAdoptedOperation*
+inf_text_move_operation_transform_delete(InfTextMoveOperation* operation,
+                                         InfTextDeleteOperation* against)
+{
+  InfTextMoveOperationPrivate* priv;
+
+  guint pos;
+  guint len;
+  guint new_pos;
+  guint new_len;
+
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
+
+  pos = inf_text_delete_operation_get_position(against);
+  len = inf_text_chunk_get_length(
+    inf_text_delete_operation_get_chunk(against)
+  );
+
+  if(priv->position >= pos + len)
+    new_pos = priv->position - len;
+  else if(priv->position > pos)
+    new_pos = pos;
+  else
+    new_pos = priv->position;
+
+  if(priv->length < 0)
+  {
+    if(pos + len <= priv->position + priv->length)
+    {
+      new_len = priv->length;
+    }
+    else if(pos >= priv->position)
+    {
+      new_len = priv->length;
+    }
+    else if(pos <= priv->position + priv->length &&
+            pos + len >= priv->position)
+    {
+      new_len = 0;
+    }
+    else if(pos <= priv->position + priv->length &&
+            pos + len > priv->position + priv->length)
+    {
+      new_len = priv->position - pos;
+    }
+    else if(pos > priv->position + priv->length &&
+            pos + len > priv->position)
+    {
+      new_len = pos - (priv->position + priv->length);
+    }
+    else if(pos > priv->position + priv->length &&
+            pos + len <= priv->position)
+    {
+      new_len = priv->length - len;
+    }
+    else
+    {
+      g_assert_not_reached();
+    }
+  }
+  else
+  {
+    if(pos + len <= priv->position)
+    {
+      new_len = priv->length;
+    }
+    else if(pos >= priv->position + priv->length)
+    {
+      new_len = priv->length;
+    }
+    else if(pos <= priv->position &&
+            pos + len >= priv->position + priv->length)
+    {
+      new_len = 0;
+    }
+    else if(pos <= priv->position && pos + len > priv->position)
+    {
+      new_len = priv->position + priv->length - pos;
+    }
+    else if(pos > priv->position && pos + len > priv->position + priv->length)
+    {
+      new_len = priv->position - pos;
+    }
+    else if(pos > priv->position &&
+            pos + len <= priv->position + priv->length)
+    {
+      new_len = priv->length - len;
+    }
+    else
+    {
+      g_assert_not_reached();
+    }
+  }
+
+  return INF_ADOPTED_OPERATION(
+    g_object_new(
+      INF_TEXT_TYPE_MOVE_OPERATION,
+      "position", new_pos,
+      "length", new_len,
+      NULL
+    )
+  );
+}
+
+static InfAdoptedOperation*
+inf_text_move_operation_transform(InfAdoptedOperation* operation,
+                                  InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
+
+  if(INF_TEXT_IS_INSERT_OPERATION(against))
+  {
+    return inf_text_move_operation_transform_insert(
+      INF_TEXT_MOVE_OPERATION(operation),
+      INF_TEXT_INSERT_OPERATION(against)
+    );
+  }
+  else if(INF_TEXT_IS_DELETE_OPERATION(against))
+  {
+    return inf_text_move_operation_transform_delete(
+      INF_TEXT_MOVE_OPERATION(operation),
+      INF_TEXT_DELETE_OPERATION(against)
+    );
+  }
+  else
+  {
+    g_assert_not_reached();
+    return NULL;
+  }
+}
+
+static InfAdoptedOperationFlags
+inf_text_move_operation_get_flags(InfAdoptedOperation* operation)
+{
+  /* Does not affect the buffer */
+  return 0;
+}
+
+static void
+inf_text_move_operation_apply(InfAdoptedOperation* operation,
+                              InfAdoptedUser* by,
+                              InfBuffer* buffer)
+{
+  InfTextMoveOperationPrivate* priv;
+
+  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
+  g_assert(INF_TEXT_IS_USER(by));
+
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);  
+
+  inf_text_user_set_selection(
+    INF_TEXT_USER(by),
+    priv->position,
+    priv->length
+  );
+}
+
+static InfAdoptedOperation*
+inf_text_move_operation_revert(InfAdoptedOperation* operation)
+{
+  /* Not reversible */
+  g_assert_not_reached();
+  return NULL;
+}
+
+static InfAdoptedOperation*
+inf_text_move_operation_make_reversible(InfAdoptedOperation* operation,
+                                          InfAdoptedOperation* with,
+                                          InfBuffer* buffer)
+{
+  /* MoveOperation cannot be made reversible */
+  g_assert_not_reached();
+  return NULL;
+}
+
+static void
+inf_text_move_operation_class_init(gpointer g_class,
+                                     gpointer class_data)
+{
+  GObjectClass* object_class;
+  object_class = G_OBJECT_CLASS(g_class);
+
+  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
+  g_type_class_add_private(g_class, sizeof(InfTextMoveOperationPrivate));
+
+  object_class->set_property = inf_text_move_operation_set_property;
+  object_class->get_property = inf_text_move_operation_get_property;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_POSITION,
+    g_param_spec_uint(
+      "position",
+      "Position",
+      "Position where to place the user's caret at",
+      0,
+      G_MAXUINT,
+      0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_LENGTH,
+    g_param_spec_int(
+      "length",
+      "Length",
+      "The number of characters of the selected text",
+      G_MININT,
+      G_MAXINT,
+      0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+}
+
+static void
+inf_text_move_operation_operation_init(gpointer g_iface,
+                                         gpointer iface_data)
+{
+  InfAdoptedOperationIface* iface;
+  iface = (InfAdoptedOperationIface*)g_iface;
+
+  iface->transform = inf_text_move_operation_transform;
+  iface->get_flags = inf_text_move_operation_get_flags;
+  iface->apply = inf_text_move_operation_apply;
+  iface->revert = inf_text_move_operation_revert;
+  iface->make_reversible = inf_text_move_operation_make_reversible;
+}
+
+GType
+inf_text_move_operation_get_type(void)
+{
+  static GType move_operation_type = 0;
+
+  if(!move_operation_type)
+  {
+    static const GTypeInfo move_operation_type_info = {
+      sizeof(InfTextMoveOperationClass),  /* class_size */
+      NULL,                               /* base_init */
+      NULL,                               /* base_finalize */
+      inf_text_move_operation_class_init, /* class_init */
+      NULL,                               /* class_finalize */
+      NULL,                               /* class_data */
+      sizeof(InfTextMoveOperation),       /* instance_size */
+      0,                                  /* n_preallocs */
+      inf_text_move_operation_init,       /* instance_init */
+      NULL                                /* value_table */
+    };
+
+    static const GInterfaceInfo operation_info = {
+      inf_text_move_operation_operation_init,
+      NULL,
+      NULL
+    };
+
+    move_operation_type = g_type_register_static(
+      G_TYPE_OBJECT,
+      "InfTextMoveOperation",
+      &move_operation_type_info,
+      0
+    );
+
+    g_type_add_interface_static(
+      move_operation_type,
+      INF_ADOPTED_TYPE_OPERATION,
+      &operation_info
+    );
+  }
+
+  return move_operation_type;
+}
+
+/** inf_text_move_operation_new:
+ *
+ * @position: The position to place the user's caret at.
+ * @length: The number of characters to select. Negative means selection
+ * towards the beginning of the buffer.
+ *
+ * Creates a new move operation that, when applied, changes the caret and
+ * selection of the applying user.
+ *
+ * Return Value: A new #InfTextMoveOperation.
+ **/
+InfTextMoveOperation*
+inf_text_move_operation_new(guint position,
+                            gint length)
+{
+  GObject* object;
+
+  object = g_object_new(
+    INF_TEXT_TYPE_MOVE_OPERATION,
+    "position", position,
+    "length", length,
+    NULL
+  );
+
+  return INF_TEXT_MOVE_OPERATION(object);
+}
+
+/** inf_text_move_operation_get_position:
+ *
+ * @operation: A #InfTextMoveOperation.
+ *
+ * Returns the position at which @operation places the user's cursor.
+ *
+ * Return Value: The position of @operation.
+ **/
+guint
+inf_text_move_operation_get_pword(InfTextMoveOperation* operation)
+{
+  g_return_val_if_fail(INF_TEXT_IS_MOVE_OPERATION(operation), 0);
+  return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->position;
+}
+
+/** inf_text_move_operation_get_length:
+ *
+ * @operation: A #InfTextMoveOperation.
+ *
+ * Returns the length to which @operation changes the user's selection.
+ * Negative means selection towards the beginning of the buffer.
+ *
+ * Return Value: The length of @operation.
+ **/
+gint
+inf_text_move_operation_get_chunk(InfTextMoveOperation* operation)
+{
+  g_return_val_if_fail(INF_TEXT_IS_MOVE_OPERATION(operation), 0);
+  return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->length;
+}
+
+/* vim:set et sw=2 ts=2: */

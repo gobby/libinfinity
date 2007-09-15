@@ -17,7 +17,10 @@ libinftext_1_0_la_HEADERS = \
 	inf-text-default-buffer.h \
 	inf-text-delete-operation.h \
 	inf-text-insert-operation.h \
-	inf-text-pword.h
+	inf-text-move-operation.h \
+	inf-text-pword.h \
+	inf-text-remote-delete-operation.h \
+	inf-text-user.h
 
 libinftext_1_0_la_SOURCES = \
 	inf-text-buffer.c \
@@ -25,4 +28,7 @@ libinftext_1_0_la_SOURCES = \
 	inf-text-default-buffer.c \
 	inf-text-delete-operation.c \
 	inf-text-insert-operation.c \
-	inf-text-pword.c
+	inf-text-move-operation.c \
+	inf-text-pword.c \
+	inf-text-remote-delete-operation.c \
+	inf-text-user.c

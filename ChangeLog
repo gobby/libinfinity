@@ -1,3 +1,20 @@
+2007-09-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:UINT,INT marshaller.
+
+	* libinftext/inf-text-user.h:
+	* libinftext/inf-text-move-operation.h:
+	* libinftext/inf-text-remote-delete-operation.h:
+	* libinftext/inf-text-user.c:
+	* libinftext/inf-text-move-operation.c:
+	* libinftext/inf-text-remote-delete-operation.c:
+	* libinftext/Makefile.am: Implement InfTextUser (storing cursor and
+	selected text), InfTextMoveOperation (an operation that changes a
+	user's selection and cursor position) and
+	InfTextRemoteDeleteOperation (a delete operation that only saves
+	position and length of the deleted text, but not the actual text that
+	was deleted).
+
 2007-09-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-operation.h:
