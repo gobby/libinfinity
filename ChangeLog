@@ -1,5 +1,16 @@
 2007-09-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-operations.h: File to just forward declare
+	InfTextInsertOperation and InfTextDeleteOperation because their
+	headers both need the two to be declared.
+
+	* libinftext/inf-text-session.h:
+	* libinftext/inf-text-session.c: Implemented InfTextSession.
+
+	* libinftext/Makefile.am: Added the new files to the build.
+
+2007-09-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xml-util.h:
 	* libinfinity/common/inf-xml-util.c: Implemented
 	inf_xml_util_set_attribute_int() and
