@@ -19,8 +19,9 @@
 #ifndef __INF_TEXT_INSERT_OPERATION_H__
 #define __INF_TEXT_INSERT_OPERATION_H__
 
-#include <libinftext/inf-text-chunk.h>
 #include <libinftext/inf-text-pword.h>
+#include <libinftext/inf-text-operations.h>
+#include <libinfinity/adopted/inf-adopted-operation.h>
 
 #include <glib-object.h>
 
@@ -28,38 +29,44 @@ G_BEGIN_DECLS
 
 #define INF_TEXT_TYPE_INSERT_OPERATION                 (inf_text_insert_operation_get_type())
 #define INF_TEXT_INSERT_OPERATION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperation))
-#define INF_TEXT_INSERT_OPERATION_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperationClass))
 #define INF_TEXT_IS_INSERT_OPERATION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TEXT_TYPE_INSERT_OPERATION))
-#define INF_TEXT_IS_INSERT_OPERATION_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TEXT_TYPE_INSERT_OPERATION))
-#define INF_TEXT_INSERT_OPERATION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperationClass))
+#define INF_TEXT_INSERT_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperationIface))
 
-typedef struct _InfTextInsertOperation InfTextInsertOperation;
-typedef struct _InfTextInsertOperationClass InfTextInsertOperationClass;
+typedef struct _InfTextInsertOperationIface InfTextInsertOperationIface;
 
-struct _InfTextInsertOperationClass {
-  GObjectClass parent_class;
-};
+struct _InfTextInsertOperationIface {
+  GTypeInterface parent;
 
-struct _InfTextInsertOperation {
-  GObject parent;
+  /* Virtual table */
+  InfTextPword*(*get_pword)(InfTextInsertOperation* operation);
+
+  guint(*get_length)(InfTextInsertOperation* operation);
+
+  InfTextInsertOperation*(*transform_position)(InfTextInsertOperation* op,
+                                               guint position);
 };
 
 GType
 inf_text_insert_operation_get_type(void) G_GNUC_CONST;
 
-InfTextInsertOperation*
-inf_text_insert_operation_new(guint pos,
-                              InfTextChunk* chunk,
-                              guint concurrency_id);
+guint
+inf_text_insert_operation_get_position(InfTextInsertOperation* operation);
 
 InfTextPword*
 inf_text_insert_operation_get_pword(InfTextInsertOperation* operation);
 
-InfTextChunk*
-inf_text_insert_operation_get_chunk(InfTextInsertOperation* operation);
-
 guint
-inf_text_insert_operation_get_concurrency_id(InfTextInsertOperation* op);
+inf_text_insert_operation_get_length(InfTextInsertOperation* operation);
+
+InfAdoptedOperation*
+inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
+                                           InfTextInsertOperation* against,
+                                           gint concurrency_id);
+
+InfAdoptedOperation*
+inf_text_insert_operation_transform_delete(InfTextInsertOperation* operation,
+                                           InfTextDeleteOperation* against,
+                                           gint concurrency_id);
 
 G_END_DECLS
 

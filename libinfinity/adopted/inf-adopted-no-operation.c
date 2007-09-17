@@ -30,18 +30,17 @@ inf_adopted_no_operation_class_init(gpointer g_class,
 
 static InfAdoptedOperation*
 inf_adopted_no_operation_transform(InfAdoptedOperation* operation,
-                                   InfAdoptedOperation* against)
+                                   InfAdoptedOperation* against,
+                                   gint concurrency_id)
 {
   return INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
 }
 
-#if 0
 static InfAdoptedOperation*
 inf_adopted_no_operation_copy(InfAdoptedOperation* operation)
 {
   return INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
 }
-#endif
 
 static InfAdoptedOperationFlags
 inf_adopted_no_operation_get_flags(InfAdoptedOperation* operation)
@@ -71,7 +70,7 @@ inf_adopted_no_operation_operation_init(gpointer g_iface,
   iface = (InfAdoptedOperationIface*)g_iface;
 
   iface->transform = inf_adopted_no_operation_transform;
-  /*iface->copy = inf_adopted_no_operation_copy;*/
+  iface->copy = inf_adopted_no_operation_copy;
   iface->get_flags = inf_adopted_no_operation_get_flags;
   iface->apply = inf_adopted_no_operation_apply;
   iface->revert = inf_adopted_no_operation_revert;

@@ -38,10 +38,12 @@ typedef struct _InfTextBufferIface InfTextBufferIface;
 typedef struct _InfTextBufferIter InfTextBufferIter;
 
 struct _InfTextBufferIface {
-  InfBufferIface parent;
+  GTypeInterface parent;
 
   /* Virtual table */
   const gchar* (*get_encoding)(InfTextBuffer* buffer);
+
+  guint(*get_length)(InfTextBuffer* buffer);
 
   InfTextChunk*(*get_slice)(InfTextBuffer* buffer,
                             guint pos,
@@ -87,6 +89,9 @@ inf_text_buffer_get_type(void) G_GNUC_CONST;
 
 const gchar*
 inf_text_buffer_get_encoding(InfTextBuffer* buffer);
+
+guint
+inf_text_buffer_get_length(InfTextBuffer* buffer);
 
 InfTextChunk*
 inf_text_buffer_get_slice(InfTextBuffer* buffer,

@@ -66,6 +66,8 @@ inf_text_buffer_base_init(gpointer g_class)
       G_TYPE_UINT,
       INF_TYPE_USER
     );
+
+    initialized = TRUE;
   }
 }
 
@@ -90,13 +92,13 @@ inf_text_buffer_get_type(void)
     };
 
     text_buffer_type = g_type_register_static(
-      INF_TYPE_BUFFER,
+      G_TYPE_INTERFACE,
       "InfTextBuffer",
       &text_buffer_info,
       0
     );
 
-    g_type_interface_add_prerequisite(text_buffer_type, G_TYPE_OBJECT);
+    g_type_interface_add_prerequisite(text_buffer_type, INF_TYPE_BUFFER);
   }
 
   return text_buffer_type;
@@ -123,6 +125,27 @@ inf_text_buffer_get_encoding(InfTextBuffer* buffer)
   g_return_val_if_fail(iface->get_encoding != NULL, NULL);
 
   return iface->get_encoding(buffer);
+}
+
+/** inf_text_buffer_get_length:
+ *
+ * @buffer: A #InfTextBuffer.
+ *
+ * Returns the number of characters in @buffer.
+ *
+ * Return Value: The length of @buffer.
+ **/
+guint
+inf_text_buffer_get_length(InfTextBuffer* buffer)
+{
+  InfTextBufferIface* iface;
+
+  g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
+
+  iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
+  g_return_val_if_fail(iface->get_length != NULL, 0);
+
+  return iface->get_length(buffer);
 }
 
 /** inf_text_buffer_get_slice:

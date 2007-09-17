@@ -51,14 +51,6 @@ InfTextRemoteDeleteOperation*
 inf_text_remote_delete_operation_new(guint position,
                                      guint length);
 
-guint
-inf_text_remote_delete_operation_get_position(
-  InfTextRemoteDeleteOperation* operation);
-
-guint
-inf_text_remote_delete_operation_get_length(
-  InfTextRemoteDeleteOperation* operation);
-
 G_END_DECLS
 
 #endif /* __INF_TEXT_REMOTE_DELETE_OPERATION_H__ */

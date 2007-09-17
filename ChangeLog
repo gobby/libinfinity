@@ -1,3 +1,50 @@
+2007-09-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xml-util.h:
+	* libinfinity/common/inf-xml-util.c: Implemented
+	inf_xml_util_set_attribute_int() and
+	inf_xml_util_set_attribute_int_required().
+
+	* libinfinity/adopted/inf-adopted-operation.h:
+	* libinfinity/adopted/inf-adopted-operation.c: Added concurrency_id
+	paramater to the transform vfunc.
+
+	* libinfinity/adopted/inf-adopted-request.c:
+	* libinfinity/adopted/inf-adopted-no-operation.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c: Adapt to the
+	above API change.
+
+	* libinfinity/adopted/inf-adopted-session.h:
+	* libinfinity/adopted/inf-adopted-session.c: Added InfUser parameter
+	to the xml_to_operation vfunc.
+
+	* libinftext/inf-text-delete-operation.h:
+	* libinftext/inf-text-insert-operation.h:
+	* libinftext/inf-text-delete-operation.c:
+	* libinftext/inf-text-insert-operation.c: Made interfaces out of
+	these, implement transformation.
+
+	* libinftext/inf-text-move-operation.h:
+	* libinftext/inf-text-move-operation.c: Added
+	inf_text_move_operation_transform_insert() and
+	inf_text_move_operation_transform_delete().
+
+	* libinftext/inf-text-buffer.h:
+	* libinftext/inf-text-buffer.c:
+	* libinftext/inf-text-default-buffer.c: Added the get_length vfunc.
+
+	* libinftext/inf-text-default-insert-operation.h:
+	* libinftext/inf-text-default-insert-operation.c:
+	* libinftext/inf-text-default-delete-operation.c:
+	* libinftext/inf-text-default-delete-operation.h:
+	* libinftext/Makefile.am: Readded normal reversible insert and delete
+	operations that were in inf-text-{insert,delete}-operation.[ch]
+	before, and implement the new interface.
+
+	* libinftext/inf-text-remote-delete-operation.h:
+	* libinftext/inf-text-remote-delete-operation.c: Implement the
+	InfTextDeleteOperation interface.
+
 2007-09-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:UINT,INT marshaller.

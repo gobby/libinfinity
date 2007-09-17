@@ -126,6 +126,14 @@ inf_text_default_buffer_buffer_get_encoding(InfTextBuffer* buffer)
   return INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer)->encoding;
 }
 
+static guint
+inf_text_default_buffer_get_length(InfTextBuffer* buffer)
+{
+  InfTextDefaultBufferPrivate* priv;
+  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
+  return inf_text_chunk_get_length(priv->chunk);
+}
+
 static InfTextChunk*
 inf_text_default_buffer_buffer_get_slice(InfTextBuffer* buffer,
                                          guint pos,
@@ -267,6 +275,7 @@ inf_text_default_buffer_buffer_init(gpointer g_iface,
   iface = (InfTextBufferIface*)g_iface;
 
   iface->get_encoding = inf_text_default_buffer_buffer_get_encoding;
+  iface->get_length = inf_text_default_buffer_get_length;
   iface->get_slice = inf_text_default_buffer_buffer_get_slice;
   iface->create_iter = inf_text_default_buffer_buffer_create_iter;
   iface->destroy_iter = inf_text_default_buffer_buffer_destroy_iter;

@@ -17,6 +17,7 @@
  */
 
 #include <libinftext/inf-text-remote-delete-operation.h>
+#include <libinftext/inf-text-default-delete-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-buffer.h>
@@ -275,307 +276,26 @@ inf_text_remote_delete_operation_get_property(GObject* object,
 }
 
 static InfAdoptedOperation*
-inf_text_remote_delete_operation_transform_insert(
-  InfTextRemoteDeleteOperation* operation,
-  InfTextInsertOperation* against)
-{
-  InfTextRemoteDeleteOperationPrivate* priv;
-  InfTextRemoteDeleteOperationPrivate* result_priv;
-  GObject* result;
-
-  /* only required in split case */
-  GObject* first_operation;
-  GObject* second_operation;
-  InfTextRemoteDeleteOperationRecon* recon;
-  InfTextRemoteDeleteOperationRecon* new_recon;
-  GSList* first_recon;
-  GSList* second_recon;
-  guint recon_split_pos;
-  guint recon_cur_len;
-  GSList* item;
-
-  guint pos;
-  guint len;
-  guint other_pos;
-  guint other_len;
-
-  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
-  pos = priv->position;
-  len = priv->length;
-
-  other_pos = inf_text_pword_get_current(
-    inf_text_insert_operation_get_pword(against)
-  );
-
-  other_len = inf_text_chunk_get_length(
-    inf_text_insert_operation_get_chunk(against)
-  );
-
-  if(other_pos >= pos + len)
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", priv->position,
-      "length", priv->length,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    result_priv->recon = inf_text_remote_delete_operation_recon_copy(
-      priv->recon
-    );
-
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  else if(other_pos <= pos)
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", pos + other_len,
-      "length", priv->length,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    result_priv->recon = inf_text_remote_delete_operation_recon_copy(
-      priv->recon
-    );
-  }
-  else
-  {
-    /* Need to split the delete operation and the recon list */
-    first_recon = NULL;
-    second_recon = NULL;
-    recon_split_pos = other_pos - pos;
-    recon_cur_len = 0;
-
-    for(item = priv->recon; item != NULL; item = g_slist_next(item))
-    {
-      recon = (InfTextRemoteDeleteOperationRecon*)item->data;
-      if(recon->position - recon_cur_len <= recon_split_pos)
-      {
-        new_recon = g_slice_new(InfTextRemoteDeleteOperationRecon);
-        new_recon->position = recon->position;
-        new_recon->chunk = inf_text_chunk_copy(recon->chunk);
-        first_recon = g_slist_prepend(first_recon, new_recon);
-      }
-      else
-      {
-        new_recon = g_slice_new(InfTextRemoteDeleteOperationRecon);
-        new_recon->position = recon->position -
-          (recon_split_pos + recon_cur_len);
-        new_recon->chunk = inf_text_chunk_copy(recon->chunk);
-        second_recon = g_slist_prepend(second_recon, new_recon);
-      }
-    }
-
-    first_operation = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", priv->position,
-      "length", other_pos - priv->position,
-      NULL
-    );
-    
-    second_operation = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", other_pos + other_len,
-      "length", pos + len - other_pos,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(first_operation);
-    result_priv->recon = first_recon;
-    result_priv->recon_offset = priv->recon_offset;
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(second_operation);
-    result_priv->recon = second_recon;
-    result_priv->recon_offset = priv->recon_offset + recon_split_pos +
-      recon_cur_len;
-
-    result = G_OBJECT(
-      inf_adopted_split_operation_new(
-        INF_ADOPTED_OPERATION(first_operation),
-        INF_ADOPTED_OPERATION(second_operation)
-      )
-    );
-
-    g_object_unref(G_OBJECT(second_operation));
-    g_object_unref(G_OBJECT(first_operation));
-  }
-
-  return INF_ADOPTED_OPERATION(result);
-}
-
-static InfAdoptedOperation*
-inf_text_remote_delete_operation_transform_delete(
-  InfTextRemoteDeleteOperation* operation,
-  InfTextDeleteOperation* against)
-{
-  InfTextRemoteDeleteOperationPrivate* priv;
-  GObject* result;
-  InfTextRemoteDeleteOperationPrivate* result_priv;
-
-  guint pos;
-  guint len;
-  InfTextChunk* other_chunk;
-  InfTextChunk* recon_chunk;
-  guint other_pos;
-  guint other_len;
-
-  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
-  pos = priv->position;
-  len = priv->length;
-  other_chunk = inf_text_delete_operation_get_chunk(against);
-  other_pos = inf_text_delete_operation_get_position(against);
-  other_len = inf_text_chunk_get_length(other_chunk);
-
-  if(pos + len <= other_pos)
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", priv->position,
-      "length", priv->length,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    result_priv->recon = inf_text_remote_delete_operation_recon_copy(
-      priv->recon
-    );
-
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  else if(pos >= other_pos + other_len)
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", pos - other_len,
-      "length", priv->length,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    result_priv->recon = inf_text_remote_delete_operation_recon_copy(
-      priv->recon
-    );
-
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  /* Somehow overlapping now */
-  else if(other_pos <= pos && other_pos + other_len >= pos + len)
-  {
-    /* zero-length delete operation to keep recon */
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", other_pos,
-      "length", 0,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    recon_chunk = inf_text_chunk_substring(other_chunk, pos - other_pos, len);
-
-    result_priv->recon = inf_text_remote_delete_operation_recon_feed(
-      priv->recon,
-      0,
-      recon_chunk
-    );
-
-    inf_text_chunk_free(recon_chunk);
-
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  else if(other_pos <= pos && other_pos + other_len < pos + len)
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", other_pos,
-      "length", len - (other_pos + other_len - pos),
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    recon_chunk = inf_text_chunk_substring(
-      other_chunk,
-      pos - other_pos,
-      other_len - (pos - other_pos)
-    );
-
-    result_priv->recon = inf_text_remote_delete_operation_recon_feed(
-      priv->recon,
-      0,
-      recon_chunk
-    );
-
-    inf_text_chunk_free(recon_chunk);
-
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  else if(other_pos > pos && other_pos + other_len >= pos + len)
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", pos,
-      "length", other_pos - pos,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    recon_chunk = inf_text_chunk_substring(
-      other_chunk,
-      0,
-      pos + len - other_pos
-    );
-
-    result_priv->recon = inf_text_remote_delete_operation_recon_feed(
-      priv->recon,
-      other_pos - pos,
-      other_chunk
-    );
-
-    inf_text_chunk_free(recon_chunk);
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  else
-  {
-    result = g_object_new(
-      INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-      "position", pos,
-      "length", len - other_len,
-      NULL
-    );
-
-    result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
-    result_priv->recon = inf_text_remote_delete_operation_recon_feed(
-      priv->recon,
-      other_pos - pos,
-      other_chunk
-    );
-
-    result_priv->recon_offset = priv->recon_offset;
-  }
-  
-  return INF_ADOPTED_OPERATION(result);
-}
-
-static InfAdoptedOperation*
 inf_text_remote_delete_operation_transform(InfAdoptedOperation* operation,
-                                           InfAdoptedOperation* against)
+                                           InfAdoptedOperation* against,
+                                           gint concurrency_id)
 {
   g_assert(INF_TEXT_IS_REMOTE_DELETE_OPERATION(operation));
 
   if(INF_TEXT_IS_INSERT_OPERATION(against))
   {
-    return inf_text_remote_delete_operation_transform_insert(
-      INF_TEXT_REMOTE_DELETE_OPERATION(operation),
-      INF_TEXT_INSERT_OPERATION(against)
+    return inf_text_delete_operation_transform_insert(
+      INF_TEXT_DELETE_OPERATION(operation),
+      INF_TEXT_INSERT_OPERATION(against),
+      concurrency_id
     );
   }
   else if(INF_TEXT_IS_REMOTE_DELETE_OPERATION(against))
   {
-    return inf_text_remote_delete_operation_transform_delete(
-      INF_TEXT_REMOTE_DELETE_OPERATION(operation),
-      INF_TEXT_DELETE_OPERATION(against)
+    return inf_text_delete_operation_transform_delete(
+      INF_TEXT_DELETE_OPERATION(operation),
+      INF_TEXT_DELETE_OPERATION(against),
+      concurrency_id
     );
   }
   else
@@ -583,6 +303,32 @@ inf_text_remote_delete_operation_transform(InfAdoptedOperation* operation,
     g_assert_not_reached();
     return NULL;
   }
+}
+
+static InfAdoptedOperation*
+inf_text_remote_delete_operation_copy(InfAdoptedOperation* operation)
+{
+  InfTextRemoteDeleteOperationPrivate* priv;
+  GObject* result;
+  InfTextRemoteDeleteOperationPrivate* result_priv;
+
+  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
+
+  result = g_object_new(
+    INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
+    "position", priv->position,
+    "length", priv->length,
+    NULL
+  );
+
+  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
+
+  result_priv->recon = inf_text_remote_delete_operation_recon_copy(
+    priv->recon
+  );
+
+  result_priv->recon_offset = priv->recon_offset;
+  return INF_ADOPTED_OPERATION(result);
 }
 
 static InfAdoptedOperationFlags
@@ -614,13 +360,6 @@ inf_text_remote_delete_operation_apply(InfAdoptedOperation* operation,
 }
 
 static InfAdoptedOperation*
-inf_text_remote_delete_operation_revert(InfAdoptedOperation* operation)
-{
-  g_assert_not_reached();
-  return NULL;
-}
-
-static InfAdoptedOperation*
 inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
                                                  InfAdoptedOperation* with,
                                                  InfBuffer* buffer)
@@ -632,7 +371,7 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
   GSList* recon_list;
   GSList* recon_item;
   InfTextRemoteDeleteOperationRecon* recon;
-  GObject* result;
+  InfTextDefaultDeleteOperation* result;
 
   g_assert(INF_TEXT_IS_REMOTE_DELETE_OPERATION(op));
   g_assert(INF_TEXT_IS_BUFFER(buffer));
@@ -700,15 +439,175 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
 
   priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(op);
 
-  result = g_object_new(
-    INF_TEXT_TYPE_DELETE_OPERATION,
-    "position", priv->position,
-    "chunk", chunk,
-    NULL
-  );
+  result = inf_text_default_delete_operation_new(priv->position, chunk);
 
   inf_text_chunk_free(chunk);
   return INF_ADOPTED_OPERATION(result);
+}
+
+static guint
+inf_text_remote_delete_operation_get_position(
+  InfTextDeleteOperation* operation)
+{
+  return INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation)->position;
+}
+
+static guint
+inf_text_remote_delete_operation_get_length(InfTextDeleteOperation* operation)
+{
+  return INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation)->length;
+}
+
+static InfTextDeleteOperation*
+inf_text_remote_delete_operation_transform_position(
+  InfTextDeleteOperation* operation,
+  guint position)
+{
+  InfTextRemoteDeleteOperationPrivate* priv;
+  GObject* result;
+  InfTextRemoteDeleteOperationPrivate* result_priv;
+
+  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
+  result = g_object_new(
+    INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
+    "position", position,
+    "length", priv->length,
+    NULL
+  );
+  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
+
+  result_priv->recon = inf_text_remote_delete_operation_recon_copy(
+    priv->recon
+  );
+  result_priv->recon_offset = priv->recon_offset;
+  return INF_TEXT_DELETE_OPERATION(result);
+}
+
+static InfTextDeleteOperation*
+inf_text_remote_delete_operation_transform_overlap(
+  InfTextDeleteOperation* operation,
+  InfTextDeleteOperation* other,
+  guint position,
+  guint begin,
+  guint other_begin,
+  guint length)
+{
+  InfTextRemoteDeleteOperationPrivate* priv;
+  InfTextChunk* chunk;
+  GObject* result;
+  InfTextRemoteDeleteOperationPrivate* result_priv;
+
+
+  /* It is actually possible that two remote delete operations are
+   * transformed against each other (actually the parts of a splitted
+   * remote delete operation). However, they must not overlap. */
+  g_assert(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(other));
+
+  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
+
+  chunk = inf_text_chunk_substring(
+    inf_text_default_delete_operation_get_chunk(
+      INF_TEXT_DEFAULT_DELETE_OPERATION(other)
+    ),
+    other_begin,
+    length
+  );
+
+  result = g_object_new(
+    INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
+    "position", position,
+    "length", priv->length - length,
+    NULL
+  );
+
+  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
+
+  result_priv->recon = inf_text_remote_delete_operation_recon_feed(
+    priv->recon,
+    begin,
+    chunk
+  );
+
+  inf_text_chunk_free(chunk);
+
+  result_priv->recon_offset = priv->recon_offset;
+  return INF_TEXT_DELETE_OPERATION(result);
+}
+
+static InfAdoptedSplitOperation*
+inf_text_remote_delete_operation_transform_split(
+  InfTextDeleteOperation* operation,
+  guint split_pos,
+  guint split_len)
+{
+  /* Need to split the delete operation and the recon list */
+  InfTextRemoteDeleteOperationPrivate* priv;
+  InfAdoptedSplitOperation* result;
+  GObject* first_operation;
+  GObject* second_operation;
+  InfTextRemoteDeleteOperationPrivate* result_priv;
+  InfTextRemoteDeleteOperationRecon* recon;
+  InfTextRemoteDeleteOperationRecon* new_recon;
+  GSList* first_recon;
+  GSList* second_recon;
+  guint recon_cur_len;
+  GSList* item;
+
+  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
+
+  first_recon = NULL;
+  second_recon = NULL;
+  recon_cur_len = 0;
+
+  for(item = priv->recon; item != NULL; item = g_slist_next(item))
+  {
+    recon = (InfTextRemoteDeleteOperationRecon*)item->data;
+    if(recon->position - recon_cur_len <= split_pos)
+    {
+      new_recon = g_slice_new(InfTextRemoteDeleteOperationRecon);
+      new_recon->position = recon->position;
+      new_recon->chunk = inf_text_chunk_copy(recon->chunk);
+      first_recon = g_slist_prepend(first_recon, new_recon);
+    }
+    else
+    {
+      new_recon = g_slice_new(InfTextRemoteDeleteOperationRecon);
+      new_recon->position = recon->position - (split_pos + recon_cur_len);
+      new_recon->chunk = inf_text_chunk_copy(recon->chunk);
+      second_recon = g_slist_prepend(second_recon, new_recon);
+    }
+  }
+
+  first_operation = g_object_new(
+    INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
+    "position", priv->position,
+    "length", split_pos,
+    NULL
+  );
+  
+  second_operation = g_object_new(
+    INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
+    "position", priv->position + split_pos + split_len,
+    "length", priv->length - split_pos,
+    NULL
+  );
+
+  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(first_operation);
+  result_priv->recon = first_recon;
+  result_priv->recon_offset = priv->recon_offset;
+
+  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(second_operation);
+  result_priv->recon = second_recon;
+  result_priv->recon_offset = priv->recon_offset + split_pos + recon_cur_len;
+
+  result = inf_adopted_split_operation_new(
+    INF_ADOPTED_OPERATION(first_operation),
+    INF_ADOPTED_OPERATION(second_operation)
+  );
+
+  g_object_unref(G_OBJECT(second_operation));
+  g_object_unref(G_OBJECT(first_operation));
+  return result;
 }
 
 static void
@@ -762,10 +661,28 @@ inf_text_remote_delete_operation_operation_init(gpointer g_iface,
   iface = (InfAdoptedOperationIface*)g_iface;
 
   iface->transform = inf_text_remote_delete_operation_transform;
+  iface->copy = inf_text_remote_delete_operation_copy;
   iface->get_flags = inf_text_remote_delete_operation_get_flags;
   iface->apply = inf_text_remote_delete_operation_apply;
-  iface->revert = inf_text_remote_delete_operation_revert;
+  /* RemoteDeleteOperation is not reversible */
+  iface->revert = NULL;
   iface->make_reversible = inf_text_remote_delete_operation_make_reversible;
+}
+
+static void
+inf_text_remote_delete_operation_delete_operation_init(gpointer g_iface,
+                                                       gpointer iface_data)
+{
+  InfTextDeleteOperationIface* iface;
+  iface = (InfTextDeleteOperationIface*)g_iface;
+
+  iface->get_position = inf_text_remote_delete_operation_get_position;
+  iface->get_length = inf_text_remote_delete_operation_get_length;
+  iface->transform_position =
+    inf_text_remote_delete_operation_transform_position;
+  iface->transform_overlap =
+    inf_text_remote_delete_operation_transform_overlap;
+  iface->transform_split = inf_text_remote_delete_operation_transform_split;
 }
 
 GType
@@ -794,6 +711,12 @@ inf_text_remote_delete_operation_get_type(void)
       NULL
     };
 
+    static const GInterfaceInfo delete_operation_info = {
+      inf_text_remote_delete_operation_delete_operation_init,
+      NULL,
+      NULL
+    };
+
     remote_delete_operation_type = g_type_register_static(
       G_TYPE_OBJECT,
       "InfTextRemoteDeleteOperation",
@@ -805,6 +728,12 @@ inf_text_remote_delete_operation_get_type(void)
       remote_delete_operation_type,
       INF_ADOPTED_TYPE_OPERATION,
       &operation_info
+    );
+
+    g_type_add_interface_static(
+      remote_delete_operation_type,
+      INF_TEXT_TYPE_DELETE_OPERATION,
+      &delete_operation_info
     );
   }
 
@@ -823,8 +752,8 @@ inf_text_remote_delete_operation_get_type(void)
  * bandwidth usage. The other part can then reconstruct the deleted text
  * using the make_reversible vfunc.
  *
- * However, it is easier to just use #InfTextDeleteOperation if you want the 
- * operation to be reversible.
+ * However, it is easier to just use #InfTextDefaultDeleteOperation if you
+ * want the  operation to be reversible.
  *
  * Return Value: A new #InfTextRemoteDeleteOperation.
  **/
@@ -842,38 +771,6 @@ inf_text_remote_delete_operation_new(guint position,
   );
 
   return INF_TEXT_REMOTE_DELETE_OPERATION(object);
-}
-
-/** inf_text_remote_delete_operation_get_position:
- *
- * @operation: A #InfTextRemoteDeleteOperation.
- *
- * Returns the position at which @operation starts to delete text.
- *
- * Return Value: The position of @operation.
- **/
-guint
-inf_text_remote_delete_operation_get_positino(
-  InfTextRemoteDeleteOperation* operation)
-{
-  g_return_val_if_fail(INF_TEXT_IS_REMOTE_DELETE_OPERATION(operation), 0);
-  return INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation)->position;
-}
-
-/** inf_text_remote_delete_operation_get_length:
- *
- * @operation: A #InfTextRemoteDeleteOperation.
- *
- * Returns the number of characters deleted by @operation.
- *
- * Return Value: The length of @operation.
- **/
-guint
-inf_text_remote_delete_operation_get_chunk(
-  InfTextRemoteDeleteOperation* operation)
-{
-  g_return_val_if_fail(INF_TEXT_IS_REMOTE_DELETE_OPERATION(operation), 0);
-  return INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation)->length;
 }
 
 /* vim:set et sw=2 ts=2: */

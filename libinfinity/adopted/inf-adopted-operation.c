@@ -95,6 +95,8 @@ inf_adopted_operation_get_type(void)
  *
  * @operation: The #InfAdoptedOperation to transform.
  * @against: The operation to transform against.
+ * @concurrency_id: A hint which operation to prefer if both operations are
+ * mutually exclusive. This is always either +1, 0 or -1.
  *
  * Performs an inclusion transformation of @operation against @against,
  * meaning that the effect of @against is included in @operation.
@@ -104,7 +106,8 @@ inf_adopted_operation_get_type(void)
  **/
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
-                                InfAdoptedOperation* against)
+                                InfAdoptedOperation* against,
+                                gint concurrency_id)
 {
   InfAdoptedOperationIface* iface;
 
@@ -114,12 +117,11 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
   iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
 
   if(iface->transform != NULL)
-    return (*iface->transform)(operation, against);
+    return (*iface->transform)(operation, against, concurrency_id);
   else
     return NULL;
 }
 
-#if 0
 /** inf_adopted_operation_copy:
  *
  * @operation: The #InfAdoptedOperation to copy.
@@ -140,7 +142,6 @@ inf_adopted_operation_copy(InfAdoptedOperation* operation)
   g_assert(iface->copy != NULL);
   return (*iface->copy)(operation);
 }
-#endif
 
 /** inf_adopted_operation_get_flags:
  *

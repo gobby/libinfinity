@@ -40,7 +40,6 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedOperation InfAdoptedOperation;
 typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
 
-/* TODO: Make a flag out of reversible */
 typedef enum _InfAdoptedOperationFlags {
   INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0,
   INF_ADOPTED_OPERATION_REVERSIBLE = 1 << 1
@@ -50,12 +49,10 @@ struct _InfAdoptedOperationIface {
   GTypeInterface parent;
 
   InfAdoptedOperation* (*transform)(InfAdoptedOperation* operation,
-                                    InfAdoptedOperation* against);
+                                    InfAdoptedOperation* against,
+                                    gint concurrency_id);
 
-#if 0
-  /* TODO: I am not sure whether we need this */
   InfAdoptedOperation* (*copy)(InfAdoptedOperation* operation);
-#endif
 
   InfAdoptedOperationFlags (*get_flags)(InfAdoptedOperation* operation);
 
@@ -85,12 +82,11 @@ inf_adopted_operation_get_type(void) G_GNUC_CONST;
 
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
-                                InfAdoptedOperation* against);
+                                InfAdoptedOperation* against,
+                                gint concurrency_id);
 
-#if 0
 InfAdoptedOperation*
 inf_adopted_operation_copy(InfAdoptedOperation* operation);
-#endif
 
 InfAdoptedOperationFlags
 inf_adopted_operation_get_flags(InfAdoptedOperation* operation);
@@ -109,7 +105,7 @@ inf_adopted_operation_revert(InfAdoptedOperation* operation);
 InfAdoptedOperation*
 inf_adopted_operation_make_reversible(InfAdoptedOperation* operation,
                                       InfAdoptedOperation* with,
-				      InfBuffer* buffer);
+                                      InfBuffer* buffer);
 
 G_END_DECLS
 

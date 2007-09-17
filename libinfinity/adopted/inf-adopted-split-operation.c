@@ -198,7 +198,8 @@ inf_adopted_split_operation_class_init(gpointer g_class,
 
 static InfAdoptedOperation*
 inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
-                                      InfAdoptedOperation* against)
+                                      InfAdoptedOperation* against,
+                                      gint concurrency_id)
 {
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
@@ -209,8 +210,17 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  new_first = inf_adopted_operation_transform(priv->first, against);
-  new_second = inf_adopted_operation_transform(priv->second, against);
+  new_first = inf_adopted_operation_transform(
+    priv->first,
+    against,
+    concurrency_id
+  );
+
+  new_second = inf_adopted_operation_transform(
+    priv->second,
+    against,
+    concurrency_id
+  );
 
   /* TODO: Check whether one of these is a noop and return only the other
    * one it that case. */
@@ -220,7 +230,6 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   );
 }
 
-#if 0
 static InfAdoptedOperation*
 inf_adopted_split_operation_copy(InfAdoptedOperation* operation)
 {
@@ -237,7 +246,6 @@ inf_adopted_split_operation_copy(InfAdoptedOperation* operation)
     )
   );
 }
-#endif
 
 static InfAdoptedOperationFlags
 inf_adopted_split_operation_get_flags(InfAdoptedOperation* operation)
@@ -282,7 +290,7 @@ inf_adopted_split_operation_apply(InfAdoptedOperation* operation,
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  new_second = inf_adopted_operation_transform(priv->second, priv->first);
+  new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
 
   inf_adopted_operation_apply(priv->first, by, buffer);
   inf_adopted_operation_apply(new_second, by, buffer);
@@ -301,7 +309,7 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  new_second = inf_adopted_operation_transform(priv->second, priv->first);
+  new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
 
   result = inf_adopted_split_operation_new(
     inf_adopted_operation_revert(priv->first),
@@ -348,7 +356,7 @@ inf_adopted_split_operation_operation_init(gpointer g_iface,
   iface = (InfAdoptedOperationIface*)g_iface;
 
   iface->transform = inf_adopted_split_operation_transform;
-  /*iface->copy = inf_adopted_split_operation_copy;*/
+  iface->copy = inf_adopted_split_operation_copy;
   iface->get_flags = inf_adopted_split_operation_get_flags;
   iface->apply = inf_adopted_split_operation_apply;
   iface->revert = inf_adopted_split_operation_revert;

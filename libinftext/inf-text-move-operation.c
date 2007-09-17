@@ -107,176 +107,44 @@ inf_text_move_operation_get_property(GObject* object,
 }
 
 static InfAdoptedOperation*
-inf_text_move_operation_transform_insert(InfTextMoveOperation* operation,
-                                         InfTextInsertOperation* against)
+inf_text_move_operation_transform(InfAdoptedOperation* operation,
+                                  InfAdoptedOperation* against,
+                                  gint concurrency_id)
 {
   InfTextMoveOperationPrivate* priv;
-
-  guint pos;
-  guint len;
   guint new_pos;
   gint new_len;
 
+  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
+
   priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
-
-  pos = inf_text_pword_get_current(
-    inf_text_insert_operation_get_pword(against)
-  );
-
-  len = inf_text_chunk_get_length(
-    inf_text_insert_operation_get_chunk(against)
-  );
-
   new_pos = priv->position;
   new_len = priv->length;
 
-  /* Note left gravity */
-  if(pos < priv->position)
-    new_pos += len;
-
-  if(priv->length < 0)
-  {
-    if(pos >= priv->position + priv->length && pos < priv->position)
-      new_len -= len;
-  }
-  else
-  {
-    if(pos >= priv->position && pos < priv->position + priv->length)
-      new_len += len; 
-  }
-
-  return INF_ADOPTED_OPERATION(
-    g_object_new(
-      INF_TEXT_TYPE_MOVE_OPERATION,
-      "position", new_pos,
-      "length", new_len,
-      NULL
-    )
-  );
-}
-
-static InfAdoptedOperation*
-inf_text_move_operation_transform_delete(InfTextMoveOperation* operation,
-                                         InfTextDeleteOperation* against)
-{
-  InfTextMoveOperationPrivate* priv;
-
-  guint pos;
-  guint len;
-  guint new_pos;
-  guint new_len;
-
-  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
-
-  pos = inf_text_delete_operation_get_position(against);
-  len = inf_text_chunk_get_length(
-    inf_text_delete_operation_get_chunk(against)
-  );
-
-  if(priv->position >= pos + len)
-    new_pos = priv->position - len;
-  else if(priv->position > pos)
-    new_pos = pos;
-  else
-    new_pos = priv->position;
-
-  if(priv->length < 0)
-  {
-    if(pos + len <= priv->position + priv->length)
-    {
-      new_len = priv->length;
-    }
-    else if(pos >= priv->position)
-    {
-      new_len = priv->length;
-    }
-    else if(pos <= priv->position + priv->length &&
-            pos + len >= priv->position)
-    {
-      new_len = 0;
-    }
-    else if(pos <= priv->position + priv->length &&
-            pos + len > priv->position + priv->length)
-    {
-      new_len = priv->position - pos;
-    }
-    else if(pos > priv->position + priv->length &&
-            pos + len > priv->position)
-    {
-      new_len = pos - (priv->position + priv->length);
-    }
-    else if(pos > priv->position + priv->length &&
-            pos + len <= priv->position)
-    {
-      new_len = priv->length - len;
-    }
-    else
-    {
-      g_assert_not_reached();
-    }
-  }
-  else
-  {
-    if(pos + len <= priv->position)
-    {
-      new_len = priv->length;
-    }
-    else if(pos >= priv->position + priv->length)
-    {
-      new_len = priv->length;
-    }
-    else if(pos <= priv->position &&
-            pos + len >= priv->position + priv->length)
-    {
-      new_len = 0;
-    }
-    else if(pos <= priv->position && pos + len > priv->position)
-    {
-      new_len = priv->position + priv->length - pos;
-    }
-    else if(pos > priv->position && pos + len > priv->position + priv->length)
-    {
-      new_len = priv->position - pos;
-    }
-    else if(pos > priv->position &&
-            pos + len <= priv->position + priv->length)
-    {
-      new_len = priv->length - len;
-    }
-    else
-    {
-      g_assert_not_reached();
-    }
-  }
-
-  return INF_ADOPTED_OPERATION(
-    g_object_new(
-      INF_TEXT_TYPE_MOVE_OPERATION,
-      "position", new_pos,
-      "length", new_len,
-      NULL
-    )
-  );
-}
-
-static InfAdoptedOperation*
-inf_text_move_operation_transform(InfAdoptedOperation* operation,
-                                  InfAdoptedOperation* against)
-{
-  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
-
   if(INF_TEXT_IS_INSERT_OPERATION(against))
   {
-    return inf_text_move_operation_transform_insert(
-      INF_TEXT_MOVE_OPERATION(operation),
-      INF_TEXT_INSERT_OPERATION(against)
+    inf_text_move_operation_transform_insert(
+      inf_text_insert_operation_get_position(
+        INF_TEXT_INSERT_OPERATION(against)
+      ),
+      inf_text_insert_operation_get_length(
+        INF_TEXT_INSERT_OPERATION(against)
+      ),
+      &new_pos,
+      &new_len
     );
   }
   else if(INF_TEXT_IS_DELETE_OPERATION(against))
   {
-    return inf_text_move_operation_transform_delete(
-      INF_TEXT_MOVE_OPERATION(operation),
-      INF_TEXT_DELETE_OPERATION(against)
+    inf_text_move_operation_transform_delete(
+      inf_text_delete_operation_get_position(
+        INF_TEXT_DELETE_OPERATION(against)
+      ),
+      inf_text_delete_operation_get_length(
+        INF_TEXT_DELETE_OPERATION(against)
+      ),
+      &new_pos,
+      &new_len
     );
   }
   else
@@ -284,6 +152,15 @@ inf_text_move_operation_transform(InfAdoptedOperation* operation,
     g_assert_not_reached();
     return NULL;
   }
+
+  return INF_ADOPTED_OPERATION(
+    g_object_new(
+      INF_TEXT_TYPE_MOVE_OPERATION,
+      "position", new_pos,
+      "length", new_len,
+      NULL
+    )
+  );
 }
 
 static InfAdoptedOperationFlags
@@ -322,8 +199,8 @@ inf_text_move_operation_revert(InfAdoptedOperation* operation)
 
 static InfAdoptedOperation*
 inf_text_move_operation_make_reversible(InfAdoptedOperation* operation,
-                                          InfAdoptedOperation* with,
-                                          InfBuffer* buffer)
+                                        InfAdoptedOperation* with,
+                                        InfBuffer* buffer)
 {
   /* MoveOperation cannot be made reversible */
   g_assert_not_reached();
@@ -332,7 +209,7 @@ inf_text_move_operation_make_reversible(InfAdoptedOperation* operation,
 
 static void
 inf_text_move_operation_class_init(gpointer g_class,
-                                     gpointer class_data)
+                                   gpointer class_data)
 {
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(g_class);
@@ -374,7 +251,7 @@ inf_text_move_operation_class_init(gpointer g_class,
 
 static void
 inf_text_move_operation_operation_init(gpointer g_iface,
-                                         gpointer iface_data)
+                                       gpointer iface_data)
 {
   InfAdoptedOperationIface* iface;
   iface = (InfAdoptedOperationIface*)g_iface;
@@ -485,6 +362,160 @@ inf_text_move_operation_get_chunk(InfTextMoveOperation* operation)
 {
   g_return_val_if_fail(INF_TEXT_IS_MOVE_OPERATION(operation), 0);
   return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->length;
+}
+
+/** inf_text_move_operation_transform_insert:
+ *
+ * @insert_position: The position at which text is inserted.
+ * @insert_length: The number of inserted characters.
+ * @move_position: Points to the character offset to which the caret is moved.
+ * @move_length: Points to the number of characters selected. Negative means
+ * towards the beginning.
+ *
+ * Changes *@move_position and *@move_length so that they point to the same
+ * region when @insert_length characters are inserted at @insert_position.
+ **/
+void
+inf_text_move_operation_transform_insert(guint insert_position,
+                                         guint insert_length,
+                                         guint* move_position,
+                                         gint* move_length)
+{
+  guint cur_pos;
+  gint cur_len;
+  
+  g_return_if_fail(move_position != NULL);
+  g_return_if_fail(move_length != NULL);
+
+  cur_pos = *move_position;
+  cur_len = *move_length;
+
+  /* Note left gravity */
+  if(insert_position < cur_pos)
+    *move_position = cur_pos + insert_length;
+  else
+    *move_position = cur_pos;
+
+  if(cur_len < 0)
+  {
+    if(insert_position >= cur_pos + cur_len && insert_position < cur_pos)
+      *move_length = cur_len - insert_length;
+    else
+      *move_length = cur_len;
+  }
+  else
+  {
+    if(insert_position >= cur_pos && insert_position < cur_pos + cur_len)
+      *move_length = cur_len + insert_length;
+    else
+      *move_length = cur_len;
+  }
+}
+
+/** inf_text_move_operation_transform_delete:
+ *
+ * @delete_position: The position at which text is deleted.
+ * @delete_length: The number of deleted characters.
+ * @move_position: Points to the character offset to which the caret is moved.
+ * @move_length: Points to the number of characters selected. Negative means
+ * towards the beginning.
+ *
+ * Changes *@move_position and *@move_length so that they point to the same
+ * region when @delete_length characters are deleted starting from
+ * @delete_position.
+ **/
+void
+inf_text_move_operation_transform_delete(guint delete_position,
+                                         guint delete_length,
+                                         guint* move_position,
+                                         gint* move_length)
+{
+  guint cur_pos;
+  gint cur_len;
+
+  g_return_if_fail(move_position != NULL);
+  g_return_if_fail(move_length != NULL);
+
+  cur_pos = *move_position;
+  cur_len = *move_length;
+
+  if(cur_pos >= delete_position + delete_length)
+    *move_position = cur_pos - delete_length;
+  else if(cur_pos > delete_position)
+    *move_position = delete_position;
+  else
+    *move_position = cur_pos;
+
+  if(cur_len < 0)
+  {
+    if(delete_position + delete_length <= cur_pos + cur_len)
+    {
+      *move_length = cur_len;
+    }
+    else if(delete_position >= cur_pos)
+    {
+      *move_length = cur_len;
+    }
+    else if(delete_position <= cur_pos + cur_len &&
+            delete_position + delete_length >= cur_pos)
+    {
+      *move_length = 0;
+    }
+    else if(delete_position <= cur_pos + cur_len &&
+            delete_position + delete_length > cur_pos + cur_len)
+    {
+      *move_length = cur_pos - delete_position;
+    }
+    else if(delete_position > cur_pos + cur_len &&
+            delete_position + delete_length > cur_pos)
+    {
+      *move_length = delete_position - (cur_pos + cur_len);
+    }
+    else if(delete_position > cur_pos + cur_len &&
+            delete_position + delete_length <= cur_pos)
+    {
+      *move_length = cur_len - delete_length;
+    }
+    else
+    {
+      g_assert_not_reached();
+    }
+  }
+  else
+  {
+    if(delete_position + delete_length <= cur_pos)
+    {
+      *move_length = cur_len;
+    }
+    else if(delete_position >= cur_pos + cur_len)
+    {
+      *move_length = cur_len;
+    }
+    else if(delete_position <= cur_pos &&
+            delete_position + delete_length >= cur_pos + cur_len)
+    {
+      *move_length = 0;
+    }
+    else if(delete_position <= cur_pos &&
+            delete_position + delete_length > cur_pos)
+    {
+      *move_length = cur_pos + cur_len - delete_position;
+    }
+    else if(delete_position > cur_pos &&
+             delete_position + delete_length > cur_pos + cur_len)
+    {
+      *move_length = cur_pos - delete_position;
+    }
+    else if(delete_position > cur_pos &&
+            delete_position + delete_length <= cur_pos + cur_len)
+    {
+      *move_length = cur_len - delete_length;
+    }
+    else
+    {
+      g_assert_not_reached();
+    }
+  }
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -61,6 +61,7 @@ struct _InfAdoptedSessionClass {
                                 gboolean for_sync);
 
   InfAdoptedOperation*(*xml_to_operation)(InfAdoptedSession* session,
+                                          InfAdoptedUser* user,
                                           xmlNodePtr xml,
                                           gboolean for_sync,
                                           GError** error);

@@ -49,9 +49,23 @@ InfTextMoveOperation*
 inf_text_move_operation_new(guint position,
                             gint length);
 
-guint inf_text_move_operation_get_position(InfTextMoveOperation* operation);
+guint
+inf_text_move_operation_get_position(InfTextMoveOperation* operation);
 
-guint inf_text_move_operation_get_length(InfTextMoveOperation* operation);
+guint
+inf_text_move_operation_get_length(InfTextMoveOperation* operation);
+
+void
+inf_text_move_operation_transform_insert(guint insert_position,
+                                         guint insert_length,
+                                         guint* move_position,
+                                         gint* move_length);
+
+void
+inf_text_move_operation_transform_delete(guint delete_position,
+                                         guint delete_length,
+                                         guint* move_position,
+                                         gint* move_length);
 
 G_END_DECLS
 

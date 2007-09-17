@@ -347,6 +347,7 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
 
     operation = session_class->xml_to_operation(
       session,
+      INF_ADOPTED_USER(user),
       xml->children,
       for_sync,
       error
@@ -922,8 +923,6 @@ inf_adopted_session_validate_user_props(InfSession* session,
   const GParameter* time;
   gboolean result;
 
-  time = inf_session_lookup_user_property(params, n_params, "vector");
-
   result = INF_SESSION_CLASS(parent_class)->validate_user_props(
     session,
     params,
@@ -934,6 +933,7 @@ inf_adopted_session_validate_user_props(InfSession* session,
 
   if(result == FALSE) return FALSE;
 
+  time = inf_session_lookup_user_property(params, n_params, "vector");
   if(time == NULL)
   {
     g_set_error(

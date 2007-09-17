@@ -528,6 +528,7 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
   
   g_return_if_fail(request_priv->type == INF_ADOPTED_REQUEST_DO);
   g_return_if_fail(against_priv->type == INF_ADOPTED_REQUEST_DO);
+  g_return_if_fail(request_priv->user_id != against_priv->user_id);
   
   g_return_if_fail(
     inf_adopted_state_vector_compare(
@@ -536,10 +537,22 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
     ) == 0
   );
 
-  new_operation = inf_adopted_operation_transform(
-    request_priv->operation,
-    against_priv->operation
-  );
+  if(request_priv->user_id > against_priv->user_id)
+  {
+    new_operation = inf_adopted_operation_transform(
+      request_priv->operation,
+      against_priv->operation,
+      +1
+    );
+  }
+  else
+  {
+    new_operation = inf_adopted_operation_transform(
+      request_priv->operation,
+      against_priv->operation,
+      -1
+    );
+  }
 
   g_object_unref(G_OBJECT(request_priv->operation));
   request_priv->operation = new_operation;
@@ -585,6 +598,7 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
   g_return_if_fail(inf_adopted_operation_is_reversible(priv->operation));
 
   new_operation = inf_adopted_operation_revert(priv->operation);
+
   g_object_unref(G_OBJECT(priv->operation));
   priv->operation = new_operation;
 
