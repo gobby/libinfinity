@@ -238,9 +238,9 @@ inf_text_pword_compare(InfTextPword* first,
   }
 
   if(i == first->size && i < second->size)
-    return 1;
-  else if(i < first->size && i == second->size)
     return -1;
+  else if(i < first->size && i == second->size)
+    return 1;
   else
     return 0;
 }

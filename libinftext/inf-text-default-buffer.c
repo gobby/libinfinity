@@ -19,6 +19,7 @@
 #include <libinftext/inf-text-default-buffer.h>
 #include <libinftext/inf-text-buffer.h>
 #include <libinftext/inf-text-chunk.h>
+#include <libinfinity/common/inf-buffer.h>
 
 struct _InfTextBufferIter {
   InfTextChunkIter chunk_iter;
@@ -271,6 +272,14 @@ static void
 inf_text_default_buffer_buffer_init(gpointer g_iface,
                                     gpointer iface_data)
 {
+  InfBufferIface* iface;
+  iface = (InfBufferIface*)g_iface;
+}
+
+static void
+inf_text_default_buffer_text_buffer_init(gpointer g_iface,
+                                         gpointer iface_data)
+{
   InfTextBufferIface* iface;
   iface = (InfTextBufferIface*)g_iface;
 
@@ -315,6 +324,12 @@ inf_text_default_buffer_get_type(void)
       NULL
     };
 
+    static const GInterfaceInfo text_buffer_info = {
+      inf_text_default_buffer_text_buffer_init,
+      NULL,
+      NULL
+    };
+
     default_buffer_type = g_type_register_static(
       G_TYPE_OBJECT,
       "InfTextDefaultBuffer",
@@ -324,8 +339,14 @@ inf_text_default_buffer_get_type(void)
 
     g_type_add_interface_static(
       default_buffer_type,
-      INF_TEXT_TYPE_BUFFER,
+      INF_TYPE_BUFFER,
       &buffer_info
+    );
+
+    g_type_add_interface_static(
+      default_buffer_type,
+      INF_TEXT_TYPE_BUFFER,
+      &text_buffer_info
     );
   }
 

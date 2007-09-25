@@ -102,8 +102,8 @@ void
 inf_text_buffer_insert_text(InfTextBuffer* buffer,
                             guint pos,
                             gconstpointer text,
-                            guint len,
                             gsize bytes,
+                            guint len,
                             InfUser* user);
 
 void

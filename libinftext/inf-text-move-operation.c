@@ -342,7 +342,7 @@ inf_text_move_operation_new(guint position,
  * Return Value: The position of @operation.
  **/
 guint
-inf_text_move_operation_get_pword(InfTextMoveOperation* operation)
+inf_text_move_operation_get_position(InfTextMoveOperation* operation)
 {
   g_return_val_if_fail(INF_TEXT_IS_MOVE_OPERATION(operation), 0);
   return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->position;
@@ -358,7 +358,7 @@ inf_text_move_operation_get_pword(InfTextMoveOperation* operation)
  * Return Value: The length of @operation.
  **/
 gint
-inf_text_move_operation_get_chunk(InfTextMoveOperation* operation)
+inf_text_move_operation_get_length(InfTextMoveOperation* operation)
 {
   g_return_val_if_fail(INF_TEXT_IS_MOVE_OPERATION(operation), 0);
   return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->length;

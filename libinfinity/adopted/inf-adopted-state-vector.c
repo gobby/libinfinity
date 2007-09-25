@@ -467,11 +467,14 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
           second_comp = NULL;
       }
 
-      if(second_comp != NULL && first_comp->id < second_comp->id)
+      if(second_comp == NULL || first_comp->id < second_comp->id)
       {
         /* That component is not contained in second (thus 0) */
         if(first_comp->n > 0)
           return FALSE;
+        else
+          /* 0 <= 0 */
+          continue;
       }
 
       g_assert(first_comp->id == second_comp->id);
@@ -731,14 +734,14 @@ inf_adopted_state_vector_from_string_diff(const gchar* str,
     }
     else
     {
-      vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+      vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
       while(vec_comp->id < orig_comp->id)
       {
         vec_iter = g_sequence_iter_next(vec_iter);
-        if(vec_iter == g_sequence_get_end_iter(vec))
+        if(vec_iter != g_sequence_get_end_iter(vec))
         {
           vec_comp =
-            (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+            (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
         }
         else
         {

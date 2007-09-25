@@ -304,7 +304,6 @@ inf_text_default_delete_operation_transform_overlap(
   InfTextChunk* chunk;
   GObject* result;
 
-  /* TODO: Return noop if whole chunk is erased? */
   priv = INF_TEXT_DEFAULT_DELETE_OPERATION_PRIVATE(operation);
   chunk = inf_text_chunk_copy(priv->chunk);
   inf_text_chunk_erase(chunk, begin, length);
@@ -352,7 +351,8 @@ inf_text_default_delete_operation_transform_split(
   second = g_object_new(
     INF_TEXT_TYPE_DEFAULT_DELETE_OPERATION,
     "position", priv->position + split_pos + split_len,
-    "chunk", second_chunk
+    "chunk", second_chunk,
+    NULL
   );
 
   inf_text_chunk_free(first_chunk);

@@ -5,7 +5,8 @@ AM_CPPFLAGS = \
 
 noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-tcp-server inf-test-daemon inf-test-browser \
-	inf-test-state-vector
+	inf-test-state-vector inf-test-chunk inf-test-text-operations \
+	inf-test-text-session
 
 inf_test_tcp_connection_SOURCES = \
 	inf-test-tcp-connection.c
@@ -42,3 +43,24 @@ inf_test_state_vector_SOURCES = \
 
 inf_test_state_vector_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la
+
+inf_test_chunk_SOURCES = \
+	inf-test-chunk.c
+
+inf_test_chunk_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	${top_builddir}/libinftext/libinftext-1.0.la
+
+inf_test_text_operations_SOURCES = \
+	inf-test-text-operations.c
+
+inf_test_text_operations_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	${top_builddir}/libinftext/libinftext-1.0.la
+
+inf_test_text_session_SOURCES = \
+	inf-test-text-session.c
+
+inf_test_text_session_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	${top_builddir}/libinftext/libinftext-1.0.la

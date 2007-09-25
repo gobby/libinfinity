@@ -53,6 +53,11 @@ inf_adopted_split_operation_new(InfAdoptedOperation* first,
 GSList*
 inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation);
 
+InfAdoptedOperation*
+inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,
+                                            InfAdoptedOperation* other,
+                                            gint concurrency_id);
+
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_SPLIT_OPERATION_H__ */

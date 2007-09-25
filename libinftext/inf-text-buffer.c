@@ -33,15 +33,12 @@ static void
 inf_text_buffer_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
-  GObjectClass* object_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
 
   if(!initialized)
   {
     text_buffer_signals[INSERT_TEXT] = g_signal_new(
       "insert-text",
-      G_OBJECT_CLASS_TYPE(object_class),
+      INF_TEXT_TYPE_BUFFER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfTextBufferIface, insert_text),
       NULL, NULL,
@@ -55,7 +52,7 @@ inf_text_buffer_base_init(gpointer g_class)
 
     text_buffer_signals[ERASE_TEXT] = g_signal_new(
       "erase-text",
-      G_OBJECT_CLASS_TYPE(object_class),
+      INF_TEXT_TYPE_BUFFER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfTextBufferIface, erase_text),
       NULL, NULL,
@@ -190,8 +187,8 @@ void
 inf_text_buffer_insert_text(InfTextBuffer* buffer,
                             guint pos,
                             gconstpointer text,
-                            guint len,
                             gsize bytes,
+                            guint len,
                             InfUser* user)
 {
   InfTextChunk* chunk;
@@ -206,9 +203,9 @@ inf_text_buffer_insert_text(InfTextBuffer* buffer,
     chunk,
     0,
     text,
-    len,
     bytes,
-    inf_user_get_id(user)
+    len,
+    user == NULL ? 0 : inf_user_get_id(user)
   );
 
   g_signal_emit(

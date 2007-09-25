@@ -18,6 +18,8 @@
 
 #include <libinfinity/common/inf-buffer.h>
 
+/* TODO: editable property and/or set/get_editable */
+
 static void
 inf_buffer_base_init(gpointer g_class)
 {
@@ -25,7 +27,7 @@ inf_buffer_base_init(gpointer g_class)
 
   if(!initialized)
   {
-    g_object_interface_install_property(
+    /*g_object_interface_install_property(
       g_class,
       g_param_spec_boolean(
         "read-only",
@@ -34,7 +36,7 @@ inf_buffer_base_init(gpointer g_class)
         TRUE,
         G_PARAM_READWRITE
       )
-    );
+    );*/
 
     initialized = TRUE;
   }

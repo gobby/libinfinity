@@ -37,6 +37,7 @@
 
 typedef struct _InfTextSessionPrivate InfTextSessionPrivate;
 struct _InfTextSessionPrivate {
+  gboolean dummy;
   /* TODO: Wah, fields? */
 };
 
@@ -444,7 +445,7 @@ inf_text_session_dispose(GObject* object)
     session
   );
 
-  G_OBJECT_CLASS(object)->dispose(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
@@ -965,11 +966,14 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
     if(!inf_xml_util_get_attribute_uint_required(xml, "pos", &pos, error))
       return NULL;
 
+    /* TODO: Use XML_GET_CONTENT to avoid copy? */
+    /* TODO: Can we find out character and byte count in one pass?
+     * g_convert() calls strlen. */
     utf8_text = xmlNodeGetContent(xml);
     length = g_utf8_strlen((const gchar*)utf8_text, -1);
 
     text = g_convert(
-      (const gchar*)text,
+      (const gchar*)utf8_text,
       -1,
       inf_text_buffer_get_encoding(buffer),
       "UTF-8",
@@ -978,7 +982,7 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
       error
     );
 
-    xmlFree(text);
+    xmlFree(utf8_text);
     if(text == NULL) return NULL;
 
     chunk = inf_text_chunk_new(inf_text_buffer_get_encoding(buffer));
@@ -1225,7 +1229,8 @@ inf_text_session_new(InfConnectionManager* manager,
     "buffer", buffer,
     "sync-group", sync_group,
     "sync-connection", sync_connection,
-    "io", io
+    "io", io,
+    NULL
   );
 
   return INF_TEXT_SESSION(object);
@@ -1286,7 +1291,8 @@ inf_text_session_new_with_user_table(InfConnectionManager* manager,
     "user-table", user_table,
     "sync-group", sync_group,
     "sync-connection", sync_connection,
-    "io", io
+    "io", io,
+    NULL
   );
 
   return INF_TEXT_SESSION(object);

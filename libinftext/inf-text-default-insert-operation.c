@@ -79,6 +79,7 @@ inf_text_default_insert_operation_set_property(GObject* object,
 {
   InfTextDefaultInsertOperation* operation;
   InfTextDefaultInsertOperationPrivate* priv;
+  InfTextPword* pword;
 
   operation = INF_TEXT_DEFAULT_INSERT_OPERATION(object);
   priv = INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation);
@@ -247,7 +248,7 @@ inf_text_default_insert_operation_transform_position(
   );
 
   inf_text_pword_free(pword);
-  return INF_ADOPTED_OPERATION(result);
+  return INF_TEXT_INSERT_OPERATION(result);
 }
 
 static void

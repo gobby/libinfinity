@@ -508,7 +508,7 @@ inf_session_dispose(GObject* object)
   g_object_unref(G_OBJECT(priv->manager));
   priv->manager = NULL;
 
-  G_OBJECT_CLASS(object)->dispose(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
@@ -567,23 +567,30 @@ inf_session_set_property(GObject* object,
     break;
   case PROP_SYNC_CONNECTION:
     conn = INF_XML_CONNECTION(g_value_get_object(value));
+    g_assert(priv->shared.sync.conn == NULL); /* construct only */
 
-    inf_session_init_sync(session);
-    g_assert(priv->shared.sync.conn == NULL);
-    priv->shared.sync.conn = conn;
-    g_object_ref(G_OBJECT(priv->shared.sync.conn));
-    inf_session_register_sync(session);
+    if(conn != NULL)
+    {
+      inf_session_init_sync(session);
+      priv->shared.sync.conn = conn;
+      g_object_ref(G_OBJECT(priv->shared.sync.conn));
+      inf_session_register_sync(session);
+    }
 
     break;
   case PROP_SYNC_GROUP:
     group = (InfConnectionManagerGroup*)g_value_get_boxed(value);
-
-    inf_session_init_sync(session);
     g_assert(priv->shared.sync.group == NULL);
-    priv->shared.sync.group = group;
-    /* ref_group is done in register_sync when all components for
-      * initial sync are there */
-    inf_session_register_sync(session);
+
+    if(group != NULL)
+    {
+      inf_session_init_sync(session);
+
+      priv->shared.sync.group = group;
+      /* ref_group is done in register_sync when all components for
+        * initial sync are there */
+      inf_session_register_sync(session);
+    }
 
     break;
   default:
@@ -1295,7 +1302,7 @@ inf_session_net_object_received(InfNetObject* net_object,
       g_assert(session_class->process_xml_run != NULL);
 
       if(!session_class->process_xml_run(session, connection, node, &error))
-      {        
+      {
         /* TODO: Send error back to @connection, and process it there with
          * an equivalent error message. */
 

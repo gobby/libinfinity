@@ -59,7 +59,8 @@ inf_net_object_received(InfNetObject* object,
   InfNetObjectIface* iface;
 
   g_return_if_fail(INF_IS_NET_OBJECT(object));
-  g_return_if_fail(INF_IS_XML_CONNECTION(conn));
+  /* temporary commented-out: */
+  /*g_return_if_fail(INF_IS_XML_CONNECTION(conn));*/
   g_return_if_fail(node != NULL);
 
   iface = INF_NET_OBJECT_GET_IFACE(object);

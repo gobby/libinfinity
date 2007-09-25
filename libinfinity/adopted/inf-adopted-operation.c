@@ -17,6 +17,7 @@
  */
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-user.h>
 
 static void
@@ -66,7 +67,7 @@ inf_adopted_operation_get_type(void)
   if(!adopted_operation_type)
   {
     static const GTypeInfo adopted_operation_info = {
-      sizeof(InfBufferIface),                   /* class_size */
+      sizeof(InfAdoptedOperationIface),         /* class_size */
       inf_adopted_operation_base_init,          /* base_init */
       NULL,                                     /* base_finalize */
       NULL,                                     /* class_init */
@@ -114,12 +115,23 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(against), NULL);
 
-  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
-
-  if(iface->transform != NULL)
-    return (*iface->transform)(operation, against, concurrency_id);
+  /* Transform against both parts of split operation if we are transforming
+   * against split operation. */
+  if(INF_ADOPTED_IS_SPLIT_OPERATION(against))
+  {
+    return inf_adopted_split_operation_transform_other(
+      INF_ADOPTED_SPLIT_OPERATION(against),
+      operation,
+      concurrency_id
+    );
+  }
   else
-    return NULL;
+  {
+    iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
+    g_assert(iface->transform != NULL);
+
+    return (*iface->transform)(operation, against, concurrency_id);
+  }
 }
 
 /** inf_adopted_operation_copy:

@@ -23,6 +23,7 @@ typedef struct _InfAdoptedSplitOperationPrivate InfAdoptedSplitOperationPrivate;
 struct _InfAdoptedSplitOperationPrivate {
   InfAdoptedOperation* first;
   InfAdoptedOperation* second;
+  /* TODO: Cache new_second? We should probably profile before */
 };
 
 enum {
@@ -120,10 +121,12 @@ inf_adopted_split_operation_set_property(GObject* object,
   case PROP_FIRST:
     if(priv->first != NULL) g_object_unref(G_OBJECT(priv->first));
     priv->first = INF_ADOPTED_OPERATION(g_value_dup_object(value));
+    g_assert(priv->first != object);
     break;
   case PROP_SECOND:
     if(priv->second != NULL) g_object_unref(G_OBJECT(priv->second));
     priv->second = INF_ADOPTED_OPERATION(g_value_dup_object(value));
+    g_assert(priv->second != object);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
@@ -206,6 +209,7 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
 
   InfAdoptedOperation* new_first;
   InfAdoptedOperation* new_second;
+  InfAdoptedOperation* result;
 
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
@@ -225,9 +229,12 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   /* TODO: Check whether one of these is a noop and return only the other
    * one it that case. */
 
-  return INF_ADOPTED_OPERATION(
-    inf_adopted_split_operation_new(new_first, new_second)
-  );
+  result = inf_adopted_split_operation_new(new_first, new_second);
+  
+  g_object_unref(G_OBJECT(new_first));
+  g_object_unref(G_OBJECT(new_second));
+
+  return result;
 }
 
 static InfAdoptedOperation*
@@ -450,6 +457,41 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
 
   result = NULL;
   inf_adopted_split_operation_unsplit_impl(operation, &result);
+  return result;
+}
+
+/** inf_adopted_split_operation_transform_other:
+ *
+ * @op: A #InfAdoptedSplitOperation.
+ * @other: An arbitrary #InfAdoptedOperation.
+ * @concurrency_id: The concurrency id for the transformation of
+ * @other against @op.
+ *
+ * Transforms @other against @op.
+ *
+ * Return Value: The transformed operation.
+ **/
+InfAdoptedOperation*
+inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,
+                                            InfAdoptedOperation* other,
+                                            gint concurrency_id)
+{
+  InfAdoptedSplitOperationPrivate* priv;
+  InfAdoptedOperation* tmp;
+  InfAdoptedOperation* new_second;
+  InfAdoptedOperation* result;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_SPLIT_OPERATION(op), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(other), NULL);
+
+  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(op);
+
+  tmp = inf_adopted_operation_transform(other, priv->first, concurrency_id);
+  new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
+  result = inf_adopted_operation_transform(tmp, new_second, concurrency_id);
+
+  g_object_unref(G_OBJECT(tmp));
+  g_object_unref(G_OBJECT(new_second));
   return result;
 }
 

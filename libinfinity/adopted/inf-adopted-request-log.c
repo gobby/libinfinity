@@ -81,7 +81,10 @@ inf_adopted_request_log_find_associated(InfAdoptedRequestLog* log,
     switch(inf_adopted_request_get_request_type(entry->request))
     {
     case INF_ADOPTED_REQUEST_DO:
-      g_assert(type != INF_ADOPTED_REQUEST_REDO);
+      /* There is no Undo to Redo */
+      if(type == INF_ADOPTED_REQUEST_REDO)
+        return NULL;
+
       return entry;
     case INF_ADOPTED_REQUEST_UNDO:
       if(type == INF_ADOPTED_REQUEST_UNDO)
@@ -601,6 +604,12 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
       inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_UNDO);
     priv->next_redo = entry;
 
+    g_assert(priv->next_undo == NULL ||
+             inf_adopted_request_get_request_type(priv->next_undo->request) ==
+             INF_ADOPTED_REQUEST_DO ||
+             inf_adopted_request_get_request_type(priv->next_undo->request) ==
+             INF_ADOPTED_REQUEST_REDO);
+
     break;
   case INF_ADOPTED_REQUEST_REDO:
     g_assert(priv->next_redo != NULL);
@@ -614,6 +623,10 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     priv->next_undo = entry;
     priv->next_redo =
       inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_REDO);
+
+    g_assert(priv->next_redo == NULL ||
+             inf_adopted_request_get_request_type(priv->next_redo->request) ==
+             INF_ADOPTED_REQUEST_UNDO);
 
     break;
   default:
@@ -799,7 +812,7 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
  *
  * @request must either be contained in @log or the vector time component
  * of its own user must be equivalent to inf_adopted_request_log_get_end(),
- * in which case @request is treated as it if was the newest requset in @log.
+ * in which case @request is treated as it if was the newest request in @log.
  *
  * Return Value: The original request of @request. This function never
 * returns %NULL.

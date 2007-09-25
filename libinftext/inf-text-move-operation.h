@@ -52,7 +52,7 @@ inf_text_move_operation_new(guint position,
 guint
 inf_text_move_operation_get_position(InfTextMoveOperation* operation);
 
-guint
+gint
 inf_text_move_operation_get_length(InfTextMoveOperation* operation);
 
 void

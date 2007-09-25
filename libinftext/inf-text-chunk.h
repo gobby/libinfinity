@@ -63,8 +63,8 @@ void
 inf_text_chunk_insert_text(InfTextChunk* self,
                            guint offset,
                            gconstpointer text,
+                           gsize bytes,
                            guint length,
-                           guint bytes,
                            guint author);
 
 void
@@ -80,6 +80,10 @@ inf_text_chunk_erase(InfTextChunk* self,
 gpointer
 inf_text_chunk_get_text(InfTextChunk* self,
                         gsize* length);
+
+gboolean
+inf_text_chunk_equal(InfTextChunk* self,
+                     InfTextChunk* other);
 
 #if 0
 void

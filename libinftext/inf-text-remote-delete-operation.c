@@ -187,6 +187,8 @@ inf_text_remote_delete_operation_recon_feed(GSList* recon_list,
       text_pos,
       inf_text_chunk_get_length(chunk) - text_pos
     );
+
+    new_list = g_slist_append_fast(new_list, &last, new_recon);
   }
 
   return new_list;
@@ -290,7 +292,7 @@ inf_text_remote_delete_operation_transform(InfAdoptedOperation* operation,
       concurrency_id
     );
   }
-  else if(INF_TEXT_IS_REMOTE_DELETE_OPERATION(against))
+  else if(INF_TEXT_IS_DELETE_OPERATION(against))
   {
     return inf_text_delete_operation_transform_delete(
       INF_TEXT_DELETE_OPERATION(operation),
@@ -366,6 +368,7 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
 {
   InfTextRemoteDeleteOperationPrivate* priv;
   InfTextChunk* chunk;
+  InfTextChunk* temp_slice;
   GSList* list;
   GSList* item;
   GSList* recon_list;
@@ -402,15 +405,19 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
 
     if(priv->length > 0)
     {
+      temp_slice = inf_text_buffer_get_slice(
+        INF_TEXT_BUFFER(buffer),
+        priv->position,
+        priv->length
+      );
+
       recon_list = inf_text_remote_delete_operation_recon_feed(
         priv->recon,
         0,
-        inf_text_buffer_get_slice(
-          INF_TEXT_BUFFER(buffer),
-          priv->position,
-          priv->length
-        )
+        temp_slice
       );
+
+      inf_text_chunk_free(temp_slice);
     }
     else
     {
@@ -437,11 +444,13 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
       inf_text_remote_delete_operation_recon_free(recon_list);
   }
 
-  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(op);
+  g_slist_free(list);
 
+  priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(op);
   result = inf_text_default_delete_operation_new(priv->position, chunk);
 
   inf_text_chunk_free(chunk);
+
   return INF_ADOPTED_OPERATION(result);
 }
 
@@ -520,7 +529,7 @@ inf_text_remote_delete_operation_transform_overlap(
     NULL
   );
 
-  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
+  result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(result);
 
   result_priv->recon = inf_text_remote_delete_operation_recon_feed(
     priv->recon,

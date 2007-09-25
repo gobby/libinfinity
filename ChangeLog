@@ -1,3 +1,174 @@
+2007-09-25  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-net-object.c: Allow connection to be NULL in
+	inf_net_object_received for now, so the session test can simulate
+	incoming XML.
+
+	* libinfinity/common/inf-user-table.c: Fixed two typos.
+
+	* libinfinity/common/inf-buffer.c: Removed read-only property. We
+	might re-introduce an editable property later.
+
+	* libinfinity/common/inf-session.c: Cope with NULL group and sync
+	connection in inf_session_set_property().
+
+	* libinfinity/adopted/inf-adopted-request-log.c: Return NULL in
+	inf_adopted_request_log_find_associated() when there is no Undo
+	request associated to a redo request, instead of running in a failed
+	assertion. This is a completely legal case for caching next_undo and
+	next_redo operations.
+
+	* libinfinity/adopted/inf-adopted-user.c: Cope with NULL request log
+	in inf_adopted_user_set_property(), don't copy result in
+	inf_adopted_user_get_vector().
+
+	* libinfinity/adopted/inf-adopted-state-vector.c: Fixed a crash in
+	inf_adopted_state_vector_causally_before() when the highest key
+	in the first vector was not contained in the second. Also fixed a typo
+	leading to a crash in inf_adotped_state_vector_from_string_diff().
+
+	* libinfinity/adopted/inf-adopted-session.c: Include current request
+	in last send vector after having sent the request. Otherwise, we are
+	sending an unnecessary, additional "$id:1" component for each
+	following request. Recognize undo requests by <undo /> child instead
+	of type="undo" attribute, as in the protocol specification. Keep
+	users in the user table in-sync with those in InfAdoptedAlgorithm.
+	Don't leak the request in inf_adopted_session_Process_xml_run().
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Update user vector
+	after having received a request, not only when having processed it.
+	When transforming two operations in the request log, first transform
+	both to the least common successor and then transform both from that
+	point to the final destination. This way, pwords of insert operations
+	are updated correctly. This could lead to a desync. Change the state
+	of undo and redo requests to the same state of the original operation
+	(except the issuing user's component) because they only depend on the
+	original operation.
+
+	* libinfinity/adopted/inf-adopted-split-operation.h:
+	* libinfinity/adopted/inf-adopted-split-operation.c: Added the
+	inf_adopted_split_operation_transform_other() function that transfors
+	an operation against the split operation. Also don't leak the
+	resulting operations in inf_adopted_split_operation_transform().
+
+	* libinfinity/adopted/inf-adopted-operation.c: Use
+	inf_adopted_split_operation_transform_other() in
+	inf_adopted_operation_transform() when against is a
+	InfAdoptedSplitOperation. Fix a copy'n'paste error in the
+	interface's GTypeInfo struct.
+
+	* libinftext/inf-text-move-operation.h:
+	* libinftext/inf-text-move-operation.c: Renamed
+	inf_text_move_operation_get_pword() to
+	inf_text_move_operation_get_position() and
+	inf_text_move_operation_get_chunk() to
+	inf_text_move_operation_get_length(). This was also a copy'n'paste
+	error by copying the file from libinftext/inf-text-insert-operation.c.
+
+	* libinftext/inf-text-chunk.h:
+	* libinftext/inf-text-chunk.c: Added a GString to each chunk that
+	holds the chunk's content without author information for integrity
+	checking (can be disabled by not defining CHUNK_DEBUG). Added
+	the inf_text_chunk_equal() function. Fixed two errors when inserting a
+	chunk into another chunk that broke the chunk's integrity.
+
+	* libinftext/inf-text-buffer.h:
+	* libinftext/inf-text-buffer.c: Reorded bytes and length parameters in
+	inf_text_buffer_insert_text() to match the order of corresponding
+	functions in libinftext. Allow the user parameter to be NULL in which
+	case the text is inserted as author 0.
+
+	* libinftext/inf-text-user.h:
+	* libinftext/inf-text-user.c: Derive from InfAdoptedUser not from
+	InfUser.
+
+	* libinftext/inf-text-default-delete-operation.c: End g_object_new()
+	invocation in inf_text_default_delete_operation_transform_split() with
+	NULL so that g_object_new() does not start reading random memory.
+
+	* libinftext/inf-text-default-insert-operation.c: Cast result to
+	InfTextInsertOperation instead of InfAdoptedOperation in
+	inf_text_default_insert_operation_transform_position().
+
+	* libinftext/inf-text-remote-delete-operation.c: Append final recon
+	chunk to list in inf_text_remote_delete_operation_recon_feed(). Don't
+	leak the InfTextChunk obtained by inf_text_buffer_get_slice() in
+	inf_text_remote_delete_operation_make_reversible(). Don't leak the
+	unsplit list in the same function. Feed recon to the resulting
+	operation in inf_text_remote_delete_operation_transform_overlap(), not
+	to the original operation.
+
+	* libinftext/inf-text-default-buffer.c: Implement the InfBuffer
+	interface.
+
+	* libinftext/inf-text-pword.c: Swapped the result of
+	inf_text_pword_compare() when the two pwords have different length to
+	obtain the intended behaviour.
+
+	* libinftext/inf-text-session.c: Pass correct text to g_convert() and
+	xmlFree() in inf_text_session_xml_to_operation(). Don't forget final
+	NULL in g_object_new() call in inf_text_session_new() and
+	inf_text_session_new_with_user_table().
+
+	* test/inf-test-chunk.c: Test some basic InfTextChunk operations.
+
+	* test/inf-test-text-operations.c: Test C1 and C2 properties of the
+	InfText operations.
+
+	* test/inf-test-text-session.c: Test the implementation of the
+	concurrency control algorithm implemented by InfAdoptedAlgorithm by
+	reading test scenarios from XML files in std/.
+
+	* test/Makefile.am: Added the new files
+
+	* test/std/test-01.xml:
+	* test/std/test-02.xml:
+	* test/std/test-03.xml:
+	* test/std/test-04.xml:
+	* test/std/test-05.xml:
+	* test/std/test-06.xml:
+	* test/std/test-07.xml:
+	* test/std/test-08.xml:
+	* test/std/test-09.xml:
+	* test/std/test-10.xml:
+	* test/std/test-11.xml:
+	* test/std/test-12.xml:
+	* test/std/test-13.xml:
+	* test/std/test-14.xml:
+	* test/std/test-15.xml:
+	* test/std/test-16.xml:
+	* test/std/test-17.xml:
+	* test/std/test-18.xml:
+	* test/std/test-19.xml:
+	* test/std/test-20.xml:
+	* test/std/test-21.xml:
+	* test/std/test-22.xml:
+	* test/std/test-23.xml:
+	* test/std/test-24.xml:
+	* test/std/test-25.xml:
+	* test/std/test-26.xml:
+	* test/std/test-27.xml:
+	* test/std/test-28.xml:
+	* test/std/test-29.xml:
+	* test/std/test-30.xml:
+	* test/std/test-31.xml:
+	* test/std/test-32.xml:
+	* test/std/test-33.xml:
+	* test/std/test-34.xml:
+	* test/std/test-35.xml:
+	* test/std/test-36.xml:
+	* test/std/test-37.xml:
+	* test/std/test-38.xml:
+	* test/std/test-39.xml:
+	* test/std/test-40.xml:
+	* test/std/test-41.xml:
+	* test/std/test-42.xml:
+	* test/std/test-43.xml:
+	* test/std/test-44.xml:
+	* test/std/test-45.xml:
+	* test/std/test-46.xml: Added 46 test files for
+	inf-test-text-session.c.
+
 2007-09-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-operations.h: File to just forward declare

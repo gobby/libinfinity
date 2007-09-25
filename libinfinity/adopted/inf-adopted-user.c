@@ -88,7 +88,7 @@ inf_adopted_user_dispose(GObject* object)
     priv->log = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
@@ -126,15 +126,20 @@ inf_adopted_user_set_property(GObject* object,
     break;
   case PROP_REQUEST_LOG:
     g_assert(priv->log == NULL); /* construct only */
-    log = INF_ADOPTED_REQUEST_LOG(g_value_get_object(value));
 
-    g_assert(
-      inf_adopted_request_log_get_user_id(log) ==
-      inf_user_get_id(INF_USER(user))
-    );
+    if(g_value_get_object(value) != NULL)
+    {
+      log = INF_ADOPTED_REQUEST_LOG(g_value_get_object(value));
 
-    priv->log = log;
-    g_object_ref(G_OBJECT(log));
+      g_assert(
+        inf_adopted_request_log_get_user_id(log) ==
+        inf_user_get_id(INF_USER(user))
+      );
+
+      priv->log = log;
+      g_object_ref(G_OBJECT(log));
+    }
+
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -267,17 +272,13 @@ inf_adopted_user_get_component(InfAdoptedUser* user,
  *
  * Returns the current vector time of @user.
  *
- * Return Value: The current vector time of @user. Free with
- * inf_adopted_state_vector_free() when done.
+ * Return Value: The current vector time of @user.
  **/
 InfAdoptedStateVector*
 inf_adopted_user_get_vector(InfAdoptedUser* user)
 {
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
-
-  return inf_adopted_state_vector_copy(
-    INF_ADOPTED_USER_PRIVATE(user)->vector
-  );
+  return INF_ADOPTED_USER_PRIVATE(user)->vector;
 }
 
 /** inf_adopted_user_set_vector:

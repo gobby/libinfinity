@@ -183,7 +183,6 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
   g_assert(session_class->operation_to_xml != NULL);
 
   vector = inf_adopted_request_get_vector(request);
-
   user_id = inf_adopted_request_get_user_id(request);
 
   inf_xml_util_set_attribute_uint(xml, "user", user_id);
@@ -212,6 +211,9 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
 
     inf_adopted_state_vector_free(local->last_send_vector);
     local->last_send_vector = inf_adopted_state_vector_copy(vector);
+
+    /* Add this request to last send vector. */
+    inf_adopted_state_vector_add(vector, user_id, 1);
   }
 
   inf_xml_util_set_attribute(xml, "time", vec_str);
@@ -252,38 +254,13 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
   InfUserTable* user_table;
   InfUser* user;
   guint user_id;
+  xmlNodePtr child;
   xmlChar* attr;
 
   session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
   g_assert(session_class->xml_to_operation != NULL);
 
   user_table = inf_session_get_user_table(INF_SESSION(session));
-
-  attr = inf_xml_util_get_attribute_required(xml, "type", error);
-  if(attr == NULL) return NULL;
-
-  if(strcmp((const char*)attr, "do") == 0)
-    type = INF_ADOPTED_REQUEST_DO;
-  else if(strcmp((const char*)attr, "undo") == 0)
-    type = INF_ADOPTED_REQUEST_UNDO;
-  else if(strcmp((const char*)attr, "redo") == 0)
-    type = INF_ADOPTED_REQUEST_REDO;
-  else
-  {
-    g_set_error(
-      error,
-      inf_adopted_session_error_quark,
-      INF_ADOPTED_SESSION_ERROR_INVALID_TYPE,
-      "Attribute 'type' in request '%s' is neither "
-      "'do' nor 'undo' nor 'redo'",
-      (const gchar*)xml->name
-    );
-
-    xmlFree(attr);
-    return NULL;
-  }
-
-  xmlFree(attr);
 
   if(!inf_xml_util_get_attribute_uint_required(xml, "user", &user_id, error))
     return FALSE;
@@ -329,26 +306,40 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
     if(vector == NULL) return NULL;
   }
 
-  switch(type)
-  {
-  case INF_ADOPTED_REQUEST_DO:
-    if(xml->children == NULL)
-    {
-      g_set_error(
-        error,
-        inf_adopted_session_error_quark,
-        INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
-        "Operation for 'DO' request missing"
-      );
+  /* Get first child element */
+  child = xml->children;
+  while(child != NULL && child->type != XML_ELEMENT_NODE)
+    child = child->next;
 
-      inf_adopted_state_vector_free(vector);
-      return NULL;
-    }
+  if(child == NULL)
+  {
+    g_set_error(
+      error,
+      inf_adopted_session_error_quark,
+      INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
+      "Operation for request request missing"
+    );
+
+    inf_adopted_state_vector_free(vector);
+    return NULL;
+  }
+
+  if(strcmp((const char*)child->name, "undo") == 0)
+  {
+    type = INF_ADOPTED_REQUEST_UNDO;
+  }
+  else if(strcmp((const char*)child->name, "redo") == 0)
+  {
+    type = INF_ADOPTED_REQUEST_REDO;
+  }
+  else
+  {
+    type = INF_ADOPTED_REQUEST_DO;
 
     operation = session_class->xml_to_operation(
       session,
       INF_ADOPTED_USER(user),
-      xml->children,
+      child,
       for_sync,
       error
     );
@@ -358,7 +349,11 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
       inf_adopted_state_vector_free(vector);
       return NULL;
     }
+  }
 
+  switch(type)
+  {
+  case INF_ADOPTED_REQUEST_DO:
     request = inf_adopted_request_new_do(vector, user_id, operation);
     g_object_unref(G_OBJECT(operation));
     break;
@@ -521,6 +516,19 @@ inf_adopted_session_init(GTypeInstance* instance,
   priv->local_users = NULL;
 }
 
+static void
+inf_adopted_session_constructor_foreach_func(InfUser* user,
+                                             gpointer user_data)
+{
+  InfAdoptedSession* session;
+  InfAdoptedSessionPrivate* priv;
+
+  session = INF_ADOPTED_SESSION(user_data);
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  inf_adopted_algorithm_add_user(priv->algorithm, INF_ADOPTED_USER(user));
+}
+
 static GObject*
 inf_adopted_session_constructor(GType type,
                                 guint n_construct_properties,
@@ -543,6 +551,15 @@ inf_adopted_session_constructor(GType type,
 
   g_object_get(G_OBJECT(session), "status", &status, NULL);
 
+  user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  g_signal_connect(
+    G_OBJECT(user_table),
+    "add-user",
+    G_CALLBACK(inf_adopted_session_add_user_cb),
+    session
+  );
+
   switch(status)
   {
   case INF_SESSION_SYNCHRONIZING:
@@ -555,6 +572,13 @@ inf_adopted_session_constructor(GType type,
       inf_session_get_buffer(INF_SESSION(session))
     );
 
+    /* Add users */
+    inf_user_table_foreach_user(
+      inf_session_get_user_table(INF_SESSION(session)),
+      inf_adopted_session_constructor_foreach_func,
+      session
+    );
+
     break;
   case INF_SESSION_CLOSED:
     /* Session should not be initially closed */
@@ -562,15 +586,6 @@ inf_adopted_session_constructor(GType type,
     g_assert_not_reached();
     break;
   }
-
-  user_table = inf_session_get_user_table(INF_SESSION(session));
-
-  g_signal_connect(
-    G_OBJECT(user_table),
-    "add-user",
-    G_CALLBACK(inf_adopted_session_add_user_cb),
-    session
-  );
 
   return object;
 }
@@ -595,7 +610,7 @@ inf_adopted_session_dispose(GObject* object)
 
   /* This calls the close vfunc if the session is running, in which we
    * free the local users. */
-  G_OBJECT_CLASS(object)->dispose(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 
   g_assert(priv->local_users == NULL);
 
@@ -802,9 +817,11 @@ inf_adopted_session_process_xml_run(InfSession* session,
       error
     );
 
-    if(request == FALSE) return FALSE;
+    if(request == NULL) return FALSE;
 
     inf_adopted_algorithm_receive_request(priv->algorithm, request);
+    g_object_unref(G_OBJECT(request));
+
     return TRUE;
   }
 

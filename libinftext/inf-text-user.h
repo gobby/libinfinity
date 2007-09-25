@@ -36,7 +36,7 @@ typedef struct _InfTextUser InfTextUser;
 typedef struct _InfTextUserClass InfTextUserClass;
 
 struct _InfTextUserClass {
-  InfUserClass parent_class;
+  InfAdoptedUserClass parent_class;
 
   void(*selection_changed)(InfTextUser* user,
                            guint position,
@@ -44,7 +44,7 @@ struct _InfTextUserClass {
 };
 
 struct _InfTextUser {
-  InfUser parent;
+  InfAdoptedUser parent;
 };
 
 GType

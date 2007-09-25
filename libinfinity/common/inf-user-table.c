@@ -99,7 +99,7 @@ inf_user_table_dispose(GObject* object)
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
   g_hash_table_remove_all(priv->table);
-  G_OBJECT_CLASS(object)->dispose(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
@@ -289,7 +289,7 @@ inf_user_table_lookup_user_by_id(InfUserTable* user_table,
 
   g_return_val_if_fail(INF_IS_USER_TABLE(user_table), NULL);
 
-  priv = INF_USER_TABLE_PRIVATE(priv);
+  priv = INF_USER_TABLE_PRIVATE(user_table);
 
   return INF_USER(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)));
 }

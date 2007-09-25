@@ -12,10 +12,10 @@ infinoted:
 libinfinity-gtk:
   Provides glib main loop integration and GTK+ widgets related to libinfinity
 
-inftext:
+libinftext:
   Infinote plugin implementing real-time collaborative text editing
 
-inftext-gtk:
+libinftext-gtk:
   Implements the InfTextBuffer interface with a GtkTextBuffer as backend
 
  2. Requirements
@@ -28,17 +28,17 @@ libinfinity requires:
  - gsasl
  - avahi (optional)
 
-infinoted requires:
+infinoted:
   - libinfinity
 
 libinfinity-gtk:
   - libinfinity
   - gtk+-2.0 >= 2.10
 
-inftext:
+libinftext:
   - libinfinity
 
-inftext-gtk:
+libinftext-gtk:
   - inftext
   - gtk+-2.0 >= 2.10
 

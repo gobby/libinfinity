@@ -159,7 +159,7 @@ inf_text_user_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SELECTION,
-    g_param_spec_uint(
+    g_param_spec_int(
       "selection-length",
       "Selection length",
       "The number of characters of this user's selection",
@@ -205,7 +205,7 @@ inf_text_user_get_type(void)
     };
 
     user_type = g_type_register_static(
-      INF_TYPE_USER,
+      INF_ADOPTED_TYPE_USER,
       "InfTextUser",
       &user_type_info,
       0
