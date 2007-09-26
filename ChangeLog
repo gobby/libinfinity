@@ -1,5 +1,22 @@
 2007-09-25  Armin Burgmeier  <armin@arbur.net>
 
+	* pixmaps/infinote.svg: Moved from artwork/infinote.svg to
+	pixmaps/infinote.svg.
+
+	* pixmaps/Makefile.am: Install the icon into
+	$(datadir)/hicolor/scalable/apps. I am not sure whether this in the
+	correct location, though.
+
+	* libinfinity-1.0.pc.in:
+	* libinftext-1.0.pc.in:
+	* Makefile.am: Added pkgconfig files, added pixmaps subdir.
+
+	* configure.ac: Added new files to output.
+
+	* TODO: Added gettext support to TODO list.
+
+2007-09-25  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-net-object.c: Allow connection to be NULL in
 	inf_net_object_received for now, so the session test can simulate
 	incoming XML.

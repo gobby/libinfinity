@@ -72,7 +72,10 @@ AC_CONFIG_FILES([
 
 		libinftext/Makefile
 
+		pixmaps/Makefile
 		test/Makefile
+	libinfinity-1.0.pc
+	libinftext-1.0.pc
 ])
 
 AC_OUTPUT

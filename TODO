@@ -22,9 +22,8 @@ to have done for the first stable release.
  * Add a selection_changed signal to InfTextBuffer and handle in InfTextSession
  * Add a set_caret paramater to insert_text and erase_text of InfTextBuffer and corresponding properties in the InfText operations, handle in InfTextSession.
  * Pass InfIo object to note plugins
- * Remove the user_id parameter from inf_adopted_operation_revert() in favor of a third delete operation containing position and deleted text (not chunk).
- * Implement cursor and selection adjustments in InfTextSession when someone inserts/removes text
  * InfTextEncoding boxed type
  * unconst "const GParameter* params" parameter to user_new vfunc because g_object_newv wants unconst
  * Create a pseude XML connection implementation, re-enable INF_IS_XML_CONNECTION check in inf_net_object_received
  * Fix memory corruption in InfAdoptedRequestLog
+ * Add gettext support
