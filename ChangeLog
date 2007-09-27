@@ -1,5 +1,11 @@
 2007-09-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c: Set xmpp connection as
+	gsasl session hook so that callback implementations can access the
+	InfXmppConnection object.
+
+2007-09-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.h: Fix indentation.
 
 	* libinfinity/common/inf-xmpp-connection.c: Added a TODO about

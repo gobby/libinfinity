@@ -1396,6 +1396,10 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
   }
   else
   {
+    /* Set XMPP connection as session hook so the callback can access
+     * the XMPP object also when not implemented in this file (e.g. not
+     * using the builtin context). */
+    gsasl_session_hook_set(priv->sasl_session, xmpp);
     priv->status = INF_XMPP_CONNECTION_AUTHENTICATING;
 
     /* Begin on server site */
@@ -3324,7 +3328,9 @@ inf_xmpp_connection_get_type(void)
  * @cred may be %NULL in which case the connection creates the credentials
  * as soon as they are required, however, this might take some time.
  * If @sasl_context is %NULL, #InfXmppConnection uses a built-in context
- * that only supports ANONYMOUS authentication.
+ * that only supports ANONYMOUS authentication. In the @sasl_context's
+ * callback function, the #InfXmppConnection for which the authentication
+ * shall be performed can be retrieved with gsasl_session_hook_get().
  *
  * Return Value: A new #InfXmppConnection.
  **/
