@@ -981,6 +981,39 @@ inf_tcp_connection_send(InfTcpConnection* connection,
   }
 }
 
+/** inf_tcp_connection_get_remote_address:
+ *
+ * @connection: A #InfTcpConnection.
+ *
+ * Returns the IP address of the remote site.
+ *
+ * Return Value: A #InfIpAddress owned by @connection. You do not need to
+ * free it, but need to make your own copy if you want to keep it longer than
+ * @connection's lifetime.
+ **/
+InfIpAddress*
+inf_tcp_connection_get_remote_address(InfTcpConnection* connection)
+{
+  g_return_val_if_fail(INF_TCP_IS_CONNECTION(connection), NULL);
+  return INF_TCP_CONNECTION_PRIVATE(connection)->remote_address;
+}
+
+/** inf_tcp_connection_get_remote_port:
+ *
+ * @connection: A #InfTcpConnection.
+ *
+ * Returns the port of the remote site to which @connection is (or was)
+ * connected or connecting.
+ *
+ * Return Value: The port of the remote site.
+ **/
+guint
+inf_tcp_connection_get_remote_port(InfTcpConnection* connection)
+{
+  g_return_val_if_fail(INF_TCP_IS_CONNECTION(connection), 0);
+  return INF_TCP_CONNECTION_PRIVATE(connection)->remote_port;
+}
+
 #ifdef WITH_SERVER
 /* Creates a new TCP connection from an accepted socket. This is only used
  * by InfdTcpServer and should not be considered regular API. Do not call

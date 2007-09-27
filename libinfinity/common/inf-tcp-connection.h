@@ -19,6 +19,8 @@
 #ifndef __INF_TCP_CONNECTION_H__
 #define __INF_TCP_CONNECTION_H__
 
+#include <libinfinity/common/inf-ip-address.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -78,6 +80,12 @@ void
 inf_tcp_connection_send(InfTcpConnection* connection,
                         gconstpointer data,
                         guint len);
+
+InfIpAddress*
+inf_tcp_connection_get_remote_address(InfTcpConnection* connection);
+
+guint
+inf_tcp_connection_get_remote_port(InfTcpConnection* connection);
 
 G_END_DECLS
 

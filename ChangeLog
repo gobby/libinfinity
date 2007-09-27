@@ -1,3 +1,34 @@
+2007-09-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.h: Fix indentation.
+
+	* libinfinity/common/inf-xmpp-connection.c: Added a TODO about
+	retrieving the server's (or other entity's) JID.
+
+	* libinfinity/common/inf-tcp-connection.h:
+	* libinfinity/common/inf-tcp-connection.c: Added
+	inf_tcp_connection_get_remote_address() and
+	inf_tcp_connection_get_remote_port().
+
+	* libinfinity/common/inf-discovery.h:
+	* libinfinity/common/inf-discovery.c: Added the get_discovered vfunc
+	and inf_discovery_get_discovered().
+
+	* libinfinity/common/inf-xmpp-manager.h:
+	* libinfinity/common/inf-xmpp-manager.c:
+	* libinfinity/common/Makefile.am: Added the InfXmppManager class that
+	manages XMPP connections and provides lookup by IP address and port so
+	that existing connections can be reused.
+
+	* libinfinity/server/infd-storage.h: Added a TODO comment about
+	possible notification when stored items change.
+
+	* libinfgtk/Makefile.am:
+	* libinfgtk-1.0.pc.in:
+	* Makefile.am:
+	* configure.ac: Added libinfgtk component, but there are not yet any
+	source files.
+
 2007-09-25  Armin Burgmeier  <armin@arbur.net>
 
 	* pixmaps/infinote.svg: Moved from artwork/infinote.svg to

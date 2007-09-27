@@ -69,6 +69,7 @@ struct _InfdStorageIface {
                           GError** error);
 
   /* TODO: Add further methods to copy, move and expunge nodes */
+  /* TODO: Notification? */
 };
 
 GType

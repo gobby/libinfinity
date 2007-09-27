@@ -24,7 +24,8 @@ libinfinity_common_la_SOURCES = \
 	inf-user-table.c \
 	inf-xml-connection.c \
 	inf-xml-util.c \
-	inf-xmpp-connection.c
+	inf-xmpp-connection.c \
+	inf-xmpp-manager.c
 
 libinfinity_common_la_HEADERS = \
 	inf-buffer.h \
@@ -41,4 +42,5 @@ libinfinity_common_la_HEADERS = \
 	inf-user-table.h \
 	inf-xml-connection.h \
 	inf-xml-util.h \
-	inf-xmpp-connection.h
+	inf-xmpp-connection.h \
+	inf-xmpp-manager.h

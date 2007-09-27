@@ -129,7 +129,12 @@ inf_discovery_publish(InfDiscovery* discovery,
  *
  * Starts the discovery of the given service type. Whenever a service of
  * this type is discovered, the "discovered" signal is emitted. If the
- * service disappears, the "undiscovered" signal is emitted.
+ * service disappears, the "undiscovered" signal is emitted. This can be
+ * called more than once for the same type, but only the first call has
+ * an effect.
+ *
+ * Note also that implementations of #InfDiscovery might restrict the
+ * service types that can be discovered.
  **/
 void
 inf_discovery_discover(InfDiscovery* discovery,
@@ -144,6 +149,31 @@ inf_discovery_discover(InfDiscovery* discovery,
   g_return_if_fail(iface->discover != NULL);
 
   iface->discover(discovery, type);
+}
+
+/** inf_discovery_get_discovered:
+ *
+ * @discovery: A #InfDiscovery.
+ * @type: The service type of which to get discovered infos for.
+ *
+ * Returns a list of discovered #InfDiscoveryInfo for the given type.
+ *
+ * Return Value: A newly allocated list that needs to be freed with
+ * g_slist_free().
+ **/
+GSList*
+inf_discovery_get_discovered(InfDiscovery* discovery,
+                             const gchar* type)
+{
+  InfDiscoveryIface* iface;
+
+  g_return_val_if_fail(INF_IS_DISCOVERY(discovery), NULL);
+  g_return_val_if_fail(type != NULL, NULL);
+
+  iface = INF_DISCOVERY_GET_IFACE(discovery);
+  g_return_val_if_fail(iface->get_discovered != NULL, NULL);
+
+  iface->get_discovered(discovery, type);
 }
 
 /** inf_discovery_resolve:

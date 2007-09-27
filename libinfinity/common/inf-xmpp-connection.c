@@ -2158,6 +2158,7 @@ inf_xmpp_connection_sax_start_element(void* context,
       {
         /* Got <stream:stream>, wait for <stream:features> now so that
          * we can start TLS or authentication if the server supports it. */
+        /* TODO: Read servers JID */
         if(priv->status == INF_XMPP_CONNECTION_INITIATED)
           priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
         else

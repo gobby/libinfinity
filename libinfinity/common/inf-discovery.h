@@ -40,7 +40,7 @@ typedef void(*InfDiscoveryResolvCompleteFunc)(InfDiscoveryInfo* info,
 
 typedef void(*InfDiscoveryResolvErrorFunc)(InfDiscoveryInfo* info,
                                            GError* error,
-					   gpointer user_data);
+                                           gpointer user_data);
 
 struct _InfDiscoveryIface {
   GTypeInterface parent;
@@ -53,11 +53,14 @@ struct _InfDiscoveryIface {
   void (*discover)(InfDiscovery* discovery,
                    const gchar* type);
 
+  GSList* (*get_discovered)(InfDiscovery* discovery,
+                            const gchar* type);
+
   void (*resolve)(InfDiscovery* discovery,
                   InfDiscoveryInfo* info,
-		  InfDiscoveryResolvCompleteFunc complete_func,
-		  InfDiscoveryResolvErrorFunc error_func,
-		  gpointer user_data);
+                  InfDiscoveryResolvCompleteFunc complete_func,
+                  InfDiscoveryResolvErrorFunc error_func,
+                  gpointer user_data);
 
   /* Signals */
   void (*discovered)(InfDiscovery* discovery,
@@ -79,12 +82,16 @@ void
 inf_discovery_discover(InfDiscovery* discovery,
                        const gchar* type);
 
+GSList*
+inf_discovery_get_discovered(InfDiscovery* discovery,
+                             const gchar* type);
+
 void
 inf_discovery_resolve(InfDiscovery* discovery,
                       InfDiscoveryInfo* info,
-		      InfDiscoveryResolvCompleteFunc complete_func,
-		      InfDiscoveryResolvErrorFunc error_func,
-		      gpointer user_data);
+                      InfDiscoveryResolvCompleteFunc complete_func,
+                      InfDiscoveryResolvErrorFunc error_func,
+                      gpointer user_data);
 
 void
 inf_discovery_discovered(InfDiscovery* discovery,

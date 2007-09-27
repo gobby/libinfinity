@@ -131,10 +131,10 @@ inf_xmpp_connection_get_type(void) G_GNUC_CONST;
 
 InfXmppConnection*
 inf_xmpp_connection_new(InfTcpConnection* tcp,
-			InfXmppConnectionSite site,
-			const gchar* jid,
-			gnutls_certificate_credentials_t cred,
-			Gsasl* sasl_context);
+                        InfXmppConnectionSite site,
+                        const gchar* jid,
+                        gnutls_certificate_credentials_t cred,
+                        Gsasl* sasl_context);
 
 G_END_DECLS
 
