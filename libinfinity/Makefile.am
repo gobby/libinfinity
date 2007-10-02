@@ -10,6 +10,7 @@ libinfinity_1_0_la_CPPFLAGS = \
 libinfinity_1_0_la_LIBADD = \
 	$(glib_LIBS) \
 	$(infinity_LIBS) \
+	$(avahi_LIBS) \
 	common/libinfinity_common.la \
 	adopted/libinfinity_adopted.la \
 	server/libinfinity_server.la \

@@ -1,3 +1,30 @@
+2007-10-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-discovery-info.h:
+	* libinfinity/common/inf-discovery-info.c: Removed, the functioality
+	is incorporated into InfDiscovery.
+
+	* libinfinity/common/inf-local-publisher.h:
+	* libinfinity/common/inf-local-publisher.c:
+	* libinfinity/common/Makefile.am: A new interface that is
+	implemented by objects that can publish services on the local network.
+
+	* libinfinity/common/inf-discovery.h:
+	* libinfinity/common/inf-discovery.c: Removed the publish vfunc in
+	favour of InfLocalPublisher. Added info_get_service_name and
+	info_get_service_type vfuncs.
+
+	* libinfinity/common/inf-discovery-avahi.h:
+	* libinfinity/common/inf-discovery-avahi.c: Class that implements
+	InfDiscovery and InfLocalPublisher by using Avahi.
+
+	* libinfinity/server/infd-server-pool.h:
+	* libinfinity/server/infd-server-pool.c: Added functionality to
+	associate local publishers with servers and automatically publish
+	service when the corresponding server is up.
+
+	* libinfinity/Makefile.am: Build with and link against avahi.
+
 2007-09-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c: Set xmpp connection as

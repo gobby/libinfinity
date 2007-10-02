@@ -19,7 +19,6 @@
 #ifndef __INF_DISCOVERY_H__
 #define __INF_DISCOVERY_H__
 
-#include <libinfinity/common/inf-discovery-info.h>
 #include <libinfinity/common/inf-xml-connection.h>
 
 #include <glib-object.h>
@@ -34,21 +33,19 @@ G_BEGIN_DECLS
 typedef struct _InfDiscovery InfDiscovery;
 typedef struct _InfDiscoveryIface InfDiscoveryIface;
 
+/* TODO: Rename to InfDiscoveryItem */
+typedef struct _InfDiscoveryInfo InfDiscoveryInfo;
+
 typedef void(*InfDiscoveryResolvCompleteFunc)(InfDiscoveryInfo* info,
                                               InfXmlConnection* connection,
                                               gpointer user_data);
 
 typedef void(*InfDiscoveryResolvErrorFunc)(InfDiscoveryInfo* info,
-                                           GError* error,
+                                           const GError* error,
                                            gpointer user_data);
 
 struct _InfDiscoveryIface {
   GTypeInterface parent;
-
-  /* Virtual table */
-  void (*publish)(InfDiscovery* discovery,
-                  const gchar* type,
-                  const gchar* name);
 
   void (*discover)(InfDiscovery* discovery,
                    const gchar* type);
@@ -62,6 +59,12 @@ struct _InfDiscoveryIface {
                   InfDiscoveryResolvErrorFunc error_func,
                   gpointer user_data);
 
+  const gchar*(*info_get_service_name)(InfDiscovery* discovery,
+                                       InfDiscoveryInfo* info);
+
+  const gchar*(*info_get_service_type)(InfDiscovery* discovery,
+                                       InfDiscoveryInfo* info);
+
   /* Signals */
   void (*discovered)(InfDiscovery* discovery,
                      InfDiscoveryInfo* info);
@@ -72,11 +75,6 @@ struct _InfDiscoveryIface {
 
 GType
 inf_discovery_get_type(void) G_GNUC_CONST;
-
-void
-inf_discovery_publish(InfDiscovery* discovery,
-                      const gchar* type,
-                      const gchar* name);
 
 void
 inf_discovery_discover(InfDiscovery* discovery,
@@ -92,6 +90,14 @@ inf_discovery_resolve(InfDiscovery* discovery,
                       InfDiscoveryResolvCompleteFunc complete_func,
                       InfDiscoveryResolvErrorFunc error_func,
                       gpointer user_data);
+
+const gchar*
+inf_discovery_info_get_service_name(InfDiscovery* discovery,
+                                    InfDiscoveryInfo* info);
+
+const gchar*
+inf_discovery_info_get_service_type(InfDiscovery* discovery,
+                                    InfDiscoveryInfo* info);
 
 void
 inf_discovery_discovered(InfDiscovery* discovery,

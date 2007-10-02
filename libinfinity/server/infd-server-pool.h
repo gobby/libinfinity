@@ -20,7 +20,9 @@
 #define __INFD_SERVER_POOL_H__
 
 #include <libinfinity/server/infd-directory.h>
+#include <libinfinity/server/infd-xmpp-server.h>
 #include <libinfinity/server/infd-xml-server.h>
+#include <libinfinity/common/inf-local-publisher.h>
 
 #include <glib-object.h>
 
@@ -53,6 +55,11 @@ infd_server_pool_new(InfdDirectory* directory);
 void
 infd_server_pool_add_server(InfdServerPool* server_pool,
                             InfdXmlServer* server);
+
+void
+infd_server_pool_add_local_publisher(InfdServerPool* server_pool,
+                                     InfdXmppServer* server,
+                                     InfLocalPublisher* publisher);
 
 G_END_DECLS
 

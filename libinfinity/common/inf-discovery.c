@@ -44,10 +44,10 @@ inf_discovery_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
       G_STRUCT_OFFSET(InfDiscoveryIface, discovered),
       NULL, NULL,
-      inf_marshal_VOID__OBJECT,
+      inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
       1,
-      INF_TYPE_DISCOVERY_INFO
+      G_TYPE_POINTER
     );
 
     discovery_signals[UNDISCOVERED] = g_signal_new(
@@ -56,11 +56,13 @@ inf_discovery_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
       G_STRUCT_OFFSET(InfDiscoveryIface, undiscovered),
       NULL, NULL,
-      inf_marshal_VOID__OBJECT,
+      inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
       1,
-      INF_TYPE_DISCOVERY_INFO
+      G_TYPE_POINTER
     );
+
+    initialized = TRUE;
   }
 }
 
@@ -95,31 +97,6 @@ inf_discovery_get_type(void)
   }
 
   return discovery_type;
-}
-
-/** inf_discovery_publish:
- *
- * @discovery: A #InfDiscovery.
- * @type: The service type to publish, such as _http._tcp.
- * @name: The name of the service.
- *
- * Publishes a service through @discovery.
- **/
-void
-inf_discovery_publish(InfDiscovery* discovery,
-                      const gchar* type,
-                      const gchar* name)
-{
-  InfDiscoveryIface* iface;
-
-  g_return_if_fail(INF_IS_DISCOVERY(discovery));
-  g_return_if_fail(type != NULL);
-  g_return_if_fail(name != NULL);
-
-  iface = INF_DISCOVERY_GET_IFACE(discovery);
-  g_return_if_fail(iface->publish != NULL);
-
-  iface->publish(discovery, type, name);
 }
 
 /** inf_discovery_discover:
@@ -200,12 +177,60 @@ inf_discovery_resolve(InfDiscovery* discovery,
   InfDiscoveryIface* iface;
 
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
-  g_return_if_fail(INF_IS_DISCOVERY_INFO(info));
+  g_return_if_fail(info != NULL);
 
   iface = INF_DISCOVERY_GET_IFACE(discovery);
   g_return_if_fail(iface->resolve != NULL);
 
   iface->resolve(discovery, info, complete_func, error_func, user_data);
+}
+
+/** inf_discovery_info_get_service_name:
+ *
+ * @discovery: A #InfDiscovery.
+ * @info: A #InfDiscoveryInfo discovered by @discovery.
+ *
+ * Returns the service name of the discovered @info.
+ *
+ * Return Value: A string owned by @discovery.
+ **/
+const gchar*
+inf_discovery_info_get_service_name(InfDiscovery* discovery,
+                                    InfDiscoveryInfo* info)
+{
+  InfDiscoveryIface* iface;
+
+  g_return_if_fail(INF_IS_DISCOVERY(discovery));
+  g_return_if_fail(info != NULL);
+
+  iface = INF_DISCOVERY_GET_IFACE(discovery);
+  g_return_if_fail(iface->info_get_service_name != NULL);
+
+  return iface->info_get_service_name(discovery, info);
+}
+
+/** inf_discovery_info_get_service_type:
+ *
+ * @discovery: A #InfDiscovery.
+ * @info: A #InfDiscoveryInfo discovered by @discovery.
+ *
+ * Returns the service type of the discovered @info.
+ *
+ * Return Value: A string owned by @discovery.
+ **/
+const gchar*
+inf_discovery_info_get_service_type(InfDiscovery* discovery,
+                                    InfDiscoveryInfo* info)
+{
+  InfDiscoveryIface* iface;
+
+  g_return_if_fail(INF_IS_DISCOVERY(discovery));
+  g_return_if_fail(info != NULL);
+
+  iface = INF_DISCOVERY_GET_IFACE(discovery);
+  g_return_if_fail(iface->info_get_service_type != NULL);
+
+  return iface->info_get_service_type(discovery, info);
 }
 
 /** inf_discovery_discovered:
@@ -220,12 +245,12 @@ inf_discovery_discovered(InfDiscovery* discovery,
                          InfDiscoveryInfo* info)
 {
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
-  g_return_if_fail(INF_IS_DISCOVERY_INFO(info));
+  g_return_if_fail(info != NULL);
 
   g_signal_emit(
     G_OBJECT(discovery),
     discovery_signals[DISCOVERED],
-    g_quark_from_string(inf_discovery_info_get_service_type(info)),
+    g_quark_from_string(inf_discovery_info_get_service_type(discovery, info)),
     info
   );
 }
@@ -242,12 +267,12 @@ inf_discovery_undiscovered(InfDiscovery* discovery,
                            InfDiscoveryInfo* info)
 {
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
-  g_return_if_fail(INF_IS_DISCOVERY_INFO(info));
+  g_return_if_fail(info != NULL);
 
   g_signal_emit(
     G_OBJECT(discovery),
     discovery_signals[UNDISCOVERED],
-    g_quark_from_string(inf_discovery_info_get_service_type(info)),
+    g_quark_from_string(inf_discovery_info_get_service_type(discovery, info)),
     info
   );
 }
