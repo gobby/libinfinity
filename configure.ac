@@ -104,15 +104,12 @@ AC_CONFIG_FILES([
 
 AC_OUTPUT
 
-# TODO: This should appear _after_ all output
 echo "
-
 Build optional packages:
   libinfgtk: $with_infgtk
 
 Enable support for:
   avahi: $use_avahi
-
 "
 
 # vim:set et:

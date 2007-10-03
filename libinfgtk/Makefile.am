@@ -13,6 +13,8 @@ libinfgtk_1_0_la_LIBADD = \
 
 libinfgtk_1_0_ladir = $(includedir)/libinfgtk-1.0/libinfgtk
 
-libinfgtk_1_0_la_HEADERS =
+libinfgtk_1_0_la_HEADERS = \
+	inf-gtk-browser-model.h
 
-libinfgtk_1_0_la_SOURCES = 
+libinfgtk_1_0_la_SOURCES = \
+	inf-gtk-browser-model.c

@@ -1,5 +1,5 @@
-This is a more-or-less incomplete list of independant tasks that would be nice
-to have done for the first stable release.
+This is a more-or-less incomplete list of more or less independant tasks that
+would be nice to have done for the first stable release.
 
 * Unify InfIo interface (IO):
    - Rename InfIoFunc to InfIoWatchFunc
@@ -24,6 +24,6 @@ to have done for the first stable release.
  * Pass InfIo object to note plugins
  * InfTextEncoding boxed type
  * unconst "const GParameter* params" parameter to user_new vfunc because g_object_newv wants unconst
- * Create a pseude XML connection implementation, re-enable INF_IS_XML_CONNECTION check in inf_net_object_received
+ * Create a pseudo XML connection implementation, re-enable INF_IS_XML_CONNECTION check in inf_net_object_received
  * Fix memory corruption in InfAdoptedRequestLog
  * Add gettext support

@@ -1,5 +1,23 @@
 2007-10-03  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/infc-browser.c: Removed a TODO comment that was
+	already done by the last commit.
+
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c:
+	* libinfgtk/Makefile.am: A container for multiple InfcBrowser and
+	InfDiscovery objects that implements GtkTreeModel to be shown by a
+	GtkTreeView.
+
+	* Makefile.am: Changed order of SUBDIRS so that always the library
+	directories are walked first, and then pixmaps/ and test/.
+
+	* configure.ac: Cleaned up final status output. I still don't know why
+	it sometimes appears above the "config.status: Creating Foo/Makfile"
+	output.
+
+2007-10-03  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.h:
 	* libinfinity/client/infc-browser.c: Added
 	infc_browser_iter_get_explore_request(),

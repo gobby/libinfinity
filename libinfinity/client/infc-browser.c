@@ -1703,9 +1703,6 @@ infc_browser_iter_get_parent(InfcBrowser* browser,
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a subdirectory node in @browser.
  *
- * TODO: Let this return an enum that also specifies whether the node
- * is currently being explored.
- *
  * Returns whether the subdirectory node @iter points to has been explored.
  *
  * Return Value: %TRUE if the subdirectory has been explored and %FALSE
