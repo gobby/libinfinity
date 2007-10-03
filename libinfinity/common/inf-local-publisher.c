@@ -101,8 +101,8 @@ inf_local_publisher_publish(InfLocalPublisher* publisher,
  * Unpublishes @item so that it can no longer be found in the network.
  **/
 void
-inf_local_publisher_discover(InfLocalPublisher* publisher,
-                             InfLocalPublisherItem* item)
+inf_local_publisher_unpublish(InfLocalPublisher* publisher,
+                              InfLocalPublisherItem* item)
 {
   InfLocalPublisherIface* iface;
 

@@ -36,6 +36,13 @@ typedef enum _InfcBrowserNodeType {
   INFC_BROWSER_NODE_NOTE_UNKNOWN = 1 << 2
 } InfcBrowserNodeType;
 
+typedef struct _InfcBrowserIterGetExploreRequestForeachData
+  InfcBrowserIterGetExploreRequestForeachData;
+struct _InfcBrowserIterGetExploreRequestForeachData {
+  InfcBrowserIter* iter;
+  InfcExploreRequest* result;
+};
+
 typedef struct _InfcBrowserNode InfcBrowserNode;
 struct _InfcBrowserNode {
   InfcBrowserNode* parent;
@@ -94,6 +101,7 @@ enum {
 enum {
   NODE_ADDED,
   NODE_REMOVED,
+  BEGIN_EXPLORE,
 
   LAST_SIGNAL
 };
@@ -130,6 +138,30 @@ enum {
 
 static GObjectClass* parent_class;
 static guint browser_signals[LAST_SIGNAL];
+
+/*
+ * Callbacks
+ */
+
+static void
+infc_browser_iter_get_explore_request_foreach_func(InfcRequest* request,
+                                                   gpointer user_data)
+{
+  InfcBrowserIterGetExploreRequestForeachData* data;
+  InfcExploreRequest* explore_request;
+  guint node_id;
+
+  data = (InfcBrowserIterGetExploreRequestForeachData*)user_data;
+  g_assert(INFC_IS_EXPLORE_REQUEST(request));
+
+  explore_request = INFC_EXPLORE_REQUEST(request);
+  g_object_get(G_OBJECT(explore_request), "node-id", &node_id, NULL);
+
+  /* TODO: Stop foreach when we found the request. Requires changes is
+   * InfcRequestManager. */
+  if(node_id == data->iter->node_id)
+    data->result = explore_request;
+}
 
 /*
  * Tree handling
@@ -1125,7 +1157,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     priv->request_manager,
     "subscribe-session",
     xml,
-    error /* TODO: Should this by NULL, we are retuning TRUE anyway */
+    error /* TODO: Should this be NULL, we are retuning TRUE anyway */
   );
 
   if(request != NULL)
@@ -1333,6 +1365,7 @@ infc_browser_class_init(gpointer g_class,
 
   browser_class->node_added = NULL;
   browser_class->node_removed = NULL;
+  browser_class->begin_explore = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -1380,6 +1413,18 @@ infc_browser_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
+
+  browser_signals[BEGIN_EXPLORE] = g_signal_new(
+    "begin-explore",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfcBrowserClass, begin_explore),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INFC_TYPE_EXPLORE_REQUEST
   );
 }
 
@@ -1748,12 +1793,10 @@ infc_browser_iter_explore(InfcBrowser* browser,
   node = (InfcBrowserNode*)iter->node;
   infc_browser_return_val_if_subdir_fail(node, NULL);
   g_return_val_if_fail(node->shared.subdir.explored == FALSE, NULL);
+  g_assert(infc_browser_iter_get_explore_request(browser, iter) == NULL);
 
   priv = INFC_BROWSER_PRIVATE(browser);
   g_return_val_if_fail(priv->connection != NULL, NULL);
-
-  /* TODO: Verify that there is not already an exploration request for
-   * that node in enqueued. */
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -1773,7 +1816,90 @@ infc_browser_iter_explore(InfcBrowser* browser,
     xml
   );
 
+  g_signal_emit(
+    G_OBJECT(browser),
+    browser_signals[BEGIN_EXPLORE],
+    0,
+    request
+  );
+
   return INFC_EXPLORE_REQUEST(request);
+}
+
+/** infc_browser_iter_get_explore_request:
+ *
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a subdirectory node in @browser.
+ *
+ * Returns the #InfcExploreRequest with which the node @iter points to is
+ * currenty explored. Returns %NULL if that node is already explored or is
+ * not currently explored.
+ *
+ * Return Value: A #InfcExploreRequest, or %NULL.
+ **/
+InfcExploreRequest*
+infc_browser_iter_get_explore_request(InfcBrowser* browser,
+                                      InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcBrowserIterGetExploreRequestForeachData data;
+
+  data.iter = iter;
+  data.result = NULL;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  node = (InfcBrowserNode*)iter->node;
+  infc_browser_return_val_if_subdir_fail(node, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  infc_request_manager_foreach_named_request(
+    priv->request_manager,
+    "explore-node",
+    infc_browser_iter_get_explore_request_foreach_func,
+    &data
+  );
+
+  return data.result;
+}
+
+/** infc_browser_iter_from_explore_request*
+ *
+ * @browser: A #InfcBrowser.
+ * @request: A #InfcExploreRequest exploring a node in @browser.
+ * @iter: A #InfcBrowserIter.
+ *
+ * Sets @iter to the node @request is currently exploring. If there is no such
+ * node (someone could have deleted it while exploring), the function returns
+ * %FALSE and lets @iter untouched.
+ *
+ * Return Value: %TRUE if @iter was set, %FALSE otherwise.
+ **/
+gboolean
+infc_browser_iter_from_explore_request(InfcBrowser* browser,
+                                       InfcExploreRequest* request,
+                                       InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  guint node_id;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(INFC_IS_EXPLORE_REQUEST(request), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+
+  node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node_id;
+  iter->node = node;
+  return TRUE;
 }
 
 /** infc_browser_iter_get_name:

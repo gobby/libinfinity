@@ -994,7 +994,7 @@ inf_tcp_connection_send(InfTcpConnection* connection,
 InfIpAddress*
 inf_tcp_connection_get_remote_address(InfTcpConnection* connection)
 {
-  g_return_val_if_fail(INF_TCP_IS_CONNECTION(connection), NULL);
+  g_return_val_if_fail(INF_IS_TCP_CONNECTION(connection), NULL);
   return INF_TCP_CONNECTION_PRIVATE(connection)->remote_address;
 }
 
@@ -1010,7 +1010,7 @@ inf_tcp_connection_get_remote_address(InfTcpConnection* connection)
 guint
 inf_tcp_connection_get_remote_port(InfTcpConnection* connection)
 {
-  g_return_val_if_fail(INF_TCP_IS_CONNECTION(connection), 0);
+  g_return_val_if_fail(INF_IS_TCP_CONNECTION(connection), 0);
   return INF_TCP_CONNECTION_PRIVATE(connection)->remote_port;
 }
 

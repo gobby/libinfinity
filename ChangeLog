@@ -1,3 +1,22 @@
+2007-10-03  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added
+	infc_browser_iter_get_explore_request(),
+	infc_browser_iter_from_explore_request() and the begin-explore signal.
+
+	* pixmaps/16x16/infinote.png:
+	* pixmaps/16x16/Makefile.am:
+	* pixmaps/22x22/infinote.png:
+	* pixmaps/22x22/Makefile.am: Added bitmap icons for small sizes.
+
+	* pixmaps/scalable/infinote.svg:
+	* pixmaps/scalable/Makefile.am: Moved from pixmaps/infinote.svg
+
+	* pixmaps/Makefile.am:
+	* configure.ac: Process pixmaps/16x16, pixmaps/22x22 and
+	pixmaps/scalable.
+
 2007-10-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-discovery-info.h:

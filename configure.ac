@@ -92,6 +92,10 @@ AC_CONFIG_FILES([
 		libinfgtk/Makefile
 
 		pixmaps/Makefile
+			pixmaps/16x16/Makefile
+			pixmaps/22x22/Makefile
+			pixmaps/scalable/Makefile
+
 		test/Makefile
 	libinfinity-1.0.pc
 	libinftext-1.0.pc

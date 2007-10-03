@@ -91,8 +91,8 @@ infd_server_pool_entry_publish_with(InfdServerPoolEntry* entry,
 }
 
 static void
-infd_server_pool_entry_unpublish_width(InfdServerPoolEntry* entry,
-                                       InfdServerPoolPublisher* publisher)
+infd_server_pool_entry_unpublish_with(InfdServerPoolEntry* entry,
+                                      InfdServerPoolPublisher* publisher)
 {
   switch(publisher->type)
   {

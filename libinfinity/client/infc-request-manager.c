@@ -240,9 +240,9 @@ infc_request_manager_new(void)
 InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,
                                  GType request_type,
-				 const gchar* request_name,
-				 const gchar* first_property_name,
-				 ...)
+                                 const gchar* request_name,
+                                 const gchar* first_property_name,
+                                 ...)
 {
   InfcRequest* request;
 
@@ -370,7 +370,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
   else
   {
     /* An error occured. We do not use GError here tough, because this is a
-     * most likely a bug in someone's code (if note, it is one in infinote's
+     * most likely a bug in someone's code (if not, it is one in infinote's
      * code). */
     request = NULL;
   }

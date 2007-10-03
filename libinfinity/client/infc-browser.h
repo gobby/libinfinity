@@ -69,6 +69,9 @@ struct _InfcBrowserClass {
 
   void (*node_removed)(InfcBrowser* browser,
                        InfcBrowserIter* iter);
+
+  void (*begin_explore)(InfcBrowser* browser,
+                        InfcExploreRequest* request);
 };
 
 struct _InfcBrowser {
@@ -111,6 +114,15 @@ infc_browser_iter_get_parent(InfcBrowser* browser,
 gboolean
 infc_browser_iter_get_explored(InfcBrowser* browser,
                                InfcBrowserIter* iter);
+
+InfcExploreRequest*
+infc_browser_iter_get_explore_request(InfcBrowser* browser,
+                                      InfcBrowserIter* iter);
+
+gboolean
+infc_browser_iter_from_explore_request(InfcBrowser* browser,
+                                       InfcExploreRequest* request,
+                                       InfcBrowserIter* iter);
 
 gboolean
 infc_browser_iter_get_child(InfcBrowser* browser,
