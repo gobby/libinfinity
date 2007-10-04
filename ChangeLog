@@ -1,3 +1,31 @@
+2007-10-04  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:OBJECT,OBJECT marshaller.
+
+	* libinfinity/common/inf-discovery.c: Fixed return statements in
+	functions returning non-void.
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added the
+	infc_browser_iter_is_subdirectory() function.
+
+	* libinfinity/client/infc-explore-request.h:
+	* libinfinity/client/infc-explore-request.c: Added the
+	infc_explore_request_get_initiated() and
+	infc_explore_request_get_finished() functions.
+
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c: Take InfConnectionManager in
+	constructor, added inf_gtk_browser_model_browser_iter_to_tree_iter()
+	and the INF_GTK_BROWSER_MODEL_COL_DISCOVERY column. Fixed reordering
+	when a resolve yielded an already existing connection.
+
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/Makefile.am: Implemnted InfGtkBrowserView, a widget
+	displaying a InfGtkBrowserModel. Some implementation bits (mostly
+	exploration on expansion) are still missing.
+
 2007-10-03  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/infc-browser.c: Removed a TODO comment that was

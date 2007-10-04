@@ -68,6 +68,12 @@ gboolean
 infc_explore_request_finished(InfcExploreRequest* request,
                               GError** error);
 
+gboolean
+infc_explore_request_get_initiated(InfcExploreRequest* request);
+
+gboolean
+infc_explore_request_get_finished(InfcExploreRequest* request);
+
 G_END_DECLS
 
 #endif /* __INFC_EXPLORE_REQUEST_H__ */

@@ -223,10 +223,6 @@ inf_gtk_browser_model_remove_node_cb(InfcBrowser* browser,
   tree_iter.user_data3 = iter->node;
 
   path = gtk_tree_model_get_path(GTK_TREE_MODEL(model), &tree_iter);
-  /* TODO: The GTK+ docs say we should call this when the row has actually
-   * been removed from the model, but InfcBrowser does this _after_ having
-   * emitted the signal. Probably, it should do it in the default signal
-   * handler, and invalidate the iterator there after the row was removed. */
   gtk_tree_model_row_deleted(GTK_TREE_MODEL(model), path);
   gtk_tree_path_free(path);
 }
@@ -244,6 +240,9 @@ inf_gtk_browser_model_resolv_complete_func(InfDiscoveryInfo* info,
   GtkTreePath* path;
 
   InfGtkBrowserModelItem* cur;
+  InfGtkBrowserModelItem* prev;
+  InfGtkBrowserModelItem* prev_new;
+  InfGtkBrowserModelItem* prev_old;
   gint* order;
   guint count;
   guint new_pos;
@@ -273,24 +272,74 @@ inf_gtk_browser_model_resolv_complete_func(InfDiscoveryInfo* info,
      * and move the existing one to the place of it. */
 
     count = 0;
+    prev = NULL;
+
     for(cur = priv->first_item; cur != NULL; cur = cur->next)
     {
-      if(cur == old_item) old_pos = count;
-      if(cur == new_item) new_pos = count;
+      if(cur == old_item) { old_pos = count; prev_old = prev; }
+      if(cur == new_item) { new_pos = count; prev_new = prev; }
       ++ count;
+      prev = cur;
     }
 
-    order = g_malloc(sizeof(gint) * count);
-    for(i = 0; i < count; ++ i)
-      order[i] = i;
+    inf_gtk_browser_model_remove_item(model, new_item);
+    if(old_pos > new_pos) -- old_pos;
+    else -- new_pos;
+    -- count;
 
-    order[old_pos] = new_pos;
-    order[new_pos] = old_pos;
+    /* Reorder list if the two items were not adjacent */
+    if(new_pos != old_pos)
+    {
+      /* old item is last element, but it is moved elsewhere */
+      if(old_item->next == NULL)
+        priv->last_item = prev_old;
 
-    gtk_tree_model_row_deleted(GTK_TREE_MODEL(model), path);
-    gtk_tree_path_free(path);
-    path = gtk_tree_path_new();
-    gtk_tree_model_rows_reordered(GTK_TREE_MODEL(model), path, NULL, order);
+      /* Unlink old_item */
+      if(prev_old != NULL)
+        prev_old->next = old_item->next;
+      else
+        priv->first_item = old_item->next;
+
+      /* Relink */
+      old_item->next = prev_new->next;
+
+      if(prev_new != NULL)
+        prev_new->next = old_item;
+      else
+        priv->first_item = old_item;
+
+      /* old_item has been moved to end of list */
+      if(old_item->next == NULL)
+        priv->last_item = old_item;
+
+      order = g_malloc(sizeof(gint) * count);
+      if(new_pos < old_pos)
+      {
+        for(i = 0; i < new_pos; ++ i)
+          order[i] = i;
+        order[new_pos] = old_pos;
+        for(i = new_pos + 1; i <= old_pos; ++ i)
+          order[i] = i - 1;
+        for(i = old_pos + 1; i < count; ++ i)
+          order[i] = i;
+      }
+      else
+      {
+        for(i = 0; i < old_pos; ++ i)
+          order[i] = i;
+        for(i = old_pos; i < new_pos; ++ i)
+          order[i] = i + 1;
+        order[new_pos] = old_pos;
+        for(i = new_pos + 1; i < count; ++ i)
+          order[i] = i;
+      }
+
+      gtk_tree_path_free(path);
+      path = gtk_tree_path_new();
+      gtk_tree_model_rows_reordered(GTK_TREE_MODEL(model), path, NULL, order);
+      
+      g_free(order);
+    }
   }
   else
   {
@@ -650,6 +699,8 @@ inf_gtk_browser_model_tree_model_get_column_type(GtkTreeModel* model,
   {
   case INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO:
     return G_TYPE_POINTER;
+  case INF_GTK_BROWSER_MODEL_COL_DISCOVERY:
+    return INF_TYPE_DISCOVERY;
   case INF_GTK_BROWSER_MODEL_COL_BROWSER:
     return INFC_TYPE_BROWSER;
   case INF_GTK_BROWSER_MODEL_COL_STATUS:
@@ -828,6 +879,10 @@ inf_gtk_browser_model_tree_model_get_value(GtkTreeModel* model,
   case INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO:
     g_value_init(value, G_TYPE_POINTER);
     g_value_set_pointer(value, item->info);
+    break;
+  case INF_GTK_BROWSER_MODEL_COL_DISCOVERY:
+    g_value_init(value, G_TYPE_OBJECT);
+    g_value_set_object(value, item->discovery);
     break;
   case INF_GTK_BROWSER_MODEL_COL_BROWSER:
     g_value_init(value, INFC_TYPE_BROWSER);
@@ -1241,15 +1296,24 @@ inf_gtk_browser_model_get_type(void)
 
 /** inf_gtk_browser_model_new:
  *
+ * @connection_manager: The #InfConnectionManager with which to explore
+ * remote directories.
+ *
  * Creates a new #InfGtkBrowserModel.
  *
  * Return Value: A new #InfGtkBrowserModel.
  **/
 InfGtkBrowserModel*
-inf_gtk_browser_model_new(void)
+inf_gtk_browser_model_new(InfConnectionManager* connection_manager)
 {
   GObject* object;
-  object = g_object_new(INF_GTK_TYPE_BROWSER_MODEL, NULL);
+
+  object = g_object_new(
+    INF_GTK_TYPE_BROWSER_MODEL,
+    "connection-manager", connection_manager,
+    NULL
+  );
+
   return INF_GTK_BROWSER_MODEL(object);
 }
 
@@ -1302,8 +1366,9 @@ inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
       NULL
     );
   }
-
   g_slist_free(discovered);
+
+  inf_discovery_discover(discovery, "_infinote._tcp");
 }
 
 /** inf_gtk_browser_model_add_connection:
@@ -1385,6 +1450,45 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
     inf_gtk_browser_model_resolv_error_func,
     model
   );
+}
+
+/** inf_gtk_browser_model_browser_iter_to_tree_iter:
+ *
+ * @model: A #InfGtkBrowserModel.
+ * @browser:  A #InfcBrowser.
+ * @browser_iter: A #InfcBrowserIter pointing into @browser.
+ * @tree_iter: A #GtkTreeIter that will be set by this function.
+ *
+ * Sets @tree_iter to point to the same node @browser_iter refers to
+ * within the model. If @browser is not known to @model, i.e. its connection
+ * was never added to @model, then the function returns %FALSE and
+ * @tree_iter is left untouched.
+ *
+ * Return Value: Whether @tree_iter was set.
+ **/
+gboolean
+inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
+                                                InfcBrowser* browser,
+                                                InfcBrowserIter* browser_iter,
+                                                GtkTreeIter* tree_iter)
+{
+  InfGtkBrowserModelPrivate* priv;
+  InfGtkBrowserModelItem* item;
+
+  g_return_val_if_fail(INF_GTK_IS_BROWSER_MODEL(model), FALSE);
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(browser_iter != NULL, FALSE);
+  g_return_val_if_fail(tree_iter != NULL, FALSE);
+
+  priv = INF_GTK_BROWSER_MODEL_PRIVATE(model);
+  item = inf_gtk_browser_model_find_item_by_browser(model, browser);
+  if(item == NULL) return FALSE;
+
+  tree_iter->stamp = priv->stamp;
+  tree_iter->user_data = item;
+  tree_iter->user_data2 = GUINT_TO_POINTER(browser_iter->node_id);
+  tree_iter->user_data3 = browser_iter->node;
+  return TRUE;
 }
 
 /* vim:set et sw=2 ts=2: */

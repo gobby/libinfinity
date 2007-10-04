@@ -150,7 +150,7 @@ inf_discovery_get_discovered(InfDiscovery* discovery,
   iface = INF_DISCOVERY_GET_IFACE(discovery);
   g_return_val_if_fail(iface->get_discovered != NULL, NULL);
 
-  iface->get_discovered(discovery, type);
+  return iface->get_discovered(discovery, type);
 }
 
 /** inf_discovery_resolve:
@@ -200,11 +200,11 @@ inf_discovery_info_get_service_name(InfDiscovery* discovery,
 {
   InfDiscoveryIface* iface;
 
-  g_return_if_fail(INF_IS_DISCOVERY(discovery));
-  g_return_if_fail(info != NULL);
+  g_return_val_if_fail(INF_IS_DISCOVERY(discovery), NULL);
+  g_return_val_if_fail(info != NULL, NULL);
 
   iface = INF_DISCOVERY_GET_IFACE(discovery);
-  g_return_if_fail(iface->info_get_service_name != NULL);
+  g_return_val_if_fail(iface->info_get_service_name != NULL, NULL);
 
   return iface->info_get_service_name(discovery, info);
 }
@@ -224,11 +224,11 @@ inf_discovery_info_get_service_type(InfDiscovery* discovery,
 {
   InfDiscoveryIface* iface;
 
-  g_return_if_fail(INF_IS_DISCOVERY(discovery));
-  g_return_if_fail(info != NULL);
+  g_return_val_if_fail(INF_IS_DISCOVERY(discovery), NULL);
+  g_return_val_if_fail(info != NULL, NULL);
 
   iface = INF_DISCOVERY_GET_IFACE(discovery);
-  g_return_if_fail(iface->info_get_service_type != NULL);
+  g_return_val_if_fail(iface->info_get_service_type != NULL, NULL);
 
   return iface->info_get_service_type(discovery, info);
 }

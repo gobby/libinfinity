@@ -16,11 +16,14 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INF_GTK_GTK_BROWSER_MODEL_H__
-#define __INF_GTK_GTK_BROWSER_MODEL_H__
+#ifndef __INF_GTK_BROWSER_MODEL_H__
+#define __INF_GTK_BROWSER_MODEL_H__
 
+#include <libinfinity/client/infc-browser.h>
 #include <libinfinity/common/inf-discovery.h>
+#include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-xml-connection.h>
+#include <gtk/gtktreemodel.h>
 
 #include <glib-object.h>
 
@@ -49,6 +52,7 @@ typedef enum _InfGtkBrowserModelStatus {
 /* Note that not all of the columns are valid for all rows */
 typedef enum _InfGtkBrowserModelColumn {
   INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO,
+  INF_GTK_BROWSER_MODEL_COL_DISCOVERY,
   INF_GTK_BROWSER_MODEL_COL_BROWSER,
   INF_GTK_BROWSER_MODEL_COL_STATUS, /* only toplevel */
   INF_GTK_BROWSER_MODEL_COL_ERROR, /* only toplevel */
@@ -72,7 +76,7 @@ GType
 inf_gtk_browser_model_get_type(void) G_GNUC_CONST;
 
 InfGtkBrowserModel*
-inf_gtk_browser_model_new(void);
+inf_gtk_browser_model_new(InfConnectionManager* connection_manager);
 
 void
 inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
@@ -87,8 +91,14 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
                               InfDiscovery* discovery,
                               InfDiscoveryInfo* info);
 
+gboolean
+inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
+                                                InfcBrowser* browser,
+                                                InfcBrowserIter* browser_iter,
+                                                GtkTreeIter* tree_iter);
+
 G_END_DECLS
 
-#endif /* __INF_GTK_GTK_BROWSER_MODEL_H__ */
+#endif /* __INF_GTK_BROWSER_MODEL_H__ */
 
 /* vim:set et sw=2 ts=2: */

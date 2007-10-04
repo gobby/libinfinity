@@ -1863,7 +1863,7 @@ infc_browser_iter_get_explore_request(InfcBrowser* browser,
   return data.result;
 }
 
-/** infc_browser_iter_from_explore_request*
+/** infc_browser_iter_from_explore_request:
  *
  * @browser: A #InfcBrowser.
  * @request: A #InfcExploreRequest exploring a node in @browser.
@@ -1919,6 +1919,31 @@ infc_browser_iter_get_name(InfcBrowser* browser,
 
   node = (InfcBrowserNode*)iter->node;
   return node->name;
+}
+
+/** infc_brawser_iter_is_subdirectory:
+ *
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a node in @browser.
+ *
+ * Returns whether @iter points to a subdirectory node or not.
+ *
+ * Return Value: Whether the node @iter points to is a subdirectory node.
+ **/
+gboolean
+infc_browser_iter_is_subdirectory(InfcBrowser* browser,
+                                  InfcBrowserIter* iter)
+{
+  InfcBrowserNode* node;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  infc_browser_return_val_if_iter_fail(browser, iter, FALSE);
+
+  node = (InfcBrowserNode*)iter->node;
+  if(node->type == INFC_BROWSER_NODE_SUBDIRECTORY)
+    return TRUE;
+
+  return FALSE;
 }
 
 /** infc_browser_add_subdirectory:

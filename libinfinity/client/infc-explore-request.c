@@ -25,6 +25,10 @@ struct _InfcExploreRequestPrivate {
   guint node_id;
   guint current;
   guint total;
+
+  /* TODO: Use an enum instead? */
+  gboolean initiated;
+  gboolean finished;
 };
 
 enum {
@@ -32,7 +36,10 @@ enum {
 
   PROP_NODE_ID,
   PROP_CURRENT,
-  PROP_TOTAL
+  PROP_TOTAL,
+
+  PROP_INITIATED,
+  PROP_FINISHED
 };
 
 enum {
@@ -61,6 +68,9 @@ infc_explore_request_init(GTypeInstance* instance,
   priv->node_id = 0;
   priv->current = 0;
   priv->total = 0;
+
+  priv->initiated = FALSE;
+  priv->finished = FALSE;
 }
 
 static void
@@ -99,6 +109,9 @@ infc_explore_request_set_property(GObject* object,
   case PROP_CURRENT:
     priv->total = g_value_get_uint(value);
     break;
+  case PROP_INITIATED:
+  case PROP_FINISHED:
+    /* readonly */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -128,6 +141,12 @@ infc_explore_request_get_property(GObject* object,
   case PROP_CURRENT:
     g_value_set_uint(value, priv->current);
     break;
+  case PROP_INITIATED:
+    g_value_set_boolean(value, priv->initiated);
+    break;
+  case PROP_FINISHED:
+    g_value_set_finished(value, priv->finished);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -141,8 +160,14 @@ infc_explore_request_initiated_impl(InfcExploreRequest* request,
   InfcExploreRequestPrivate* priv;
   priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
 
+  g_assert(priv->initiated == FALSE);
+  g_assert(priv->finished == FALSE);
+
   priv->total = total;
+  priv->initiated = TRUE;
+
   g_object_notify(G_OBJECT(request), "total");
+  g_object_notify(G_OBJECT(request), "initiated");
 }
 
 static void
@@ -153,8 +178,25 @@ infc_explore_request_progress_impl(InfcExploreRequest* request,
   InfcExploreRequestPrivate* priv;
   priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
 
+  g_assert(priv->initiated == TRUE);
+  g_assert(priv->finished == FALSE);
+  g_assert(total == priv->total);
+
   priv->current = current;
   g_object_notify(G_OBJECT(request), "current");
+}
+
+static void
+infc_explore_request_finished_impl(InfcExploreRequest* request)
+{
+  InfcExploreRequestPrivate* priv;
+  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+
+  g_assert(priv->initiated == TRUE);
+  g_assert(priv->finished == FALSE);
+
+  priv->finished = TRUE;
+  g_object_notify(G_OBJECT(request), "finished");
 }
 
 static void
@@ -176,7 +218,7 @@ infc_explore_request_class_init(gpointer g_class,
 
   request_class->initiated = infc_explore_request_initiated_impl;
   request_class->progress = infc_explore_request_progress_impl;
-  request_class->finished = NULL;
+  request_class->finished = infc_explore_request_finished_impl;
 
   g_object_class_install_property(
     object_class,
@@ -217,6 +259,30 @@ infc_explore_request_class_init(gpointer g_class,
       G_MAXUINT,
       0,
       G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_INITIATED,
+    g_param_spec_boolean(
+      "initiated",
+      "Initiated",
+      "Whether the exploration process was already initiated",
+      FALSE,
+      G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_FINISHED,
+    g_param_spec_boolean(
+      "finished",
+      "Finished",
+      "Whether the exploration process has finished",
+      FALSE,
+      G_PARAM_READABLE
     )
   );
 
@@ -401,6 +467,38 @@ infc_explore_request_finished(InfcExploreRequest* request,
 
     return TRUE;
   }
+}
+
+/** infc_explore_request_get_initiated:
+ *
+ * @request: A #InfcExploreRequest.
+ *
+ * Returns whether the exploration process was already initiated, i.e. the
+ * total number of nodes to explore is known.
+ *
+ * Return Value: Whether the exploration was initiated.
+ **/
+gboolean
+infc_explore_request_get_initiated(InfcExploreRequest* request)
+{
+  g_return_val_if_fail(INFC_IS_EXPLORE_REQUEST(request), FALSE);
+  return INFC_EXPLORE_REQUEST_PRIVATE(request)->initiated;
+}
+
+/** infc_explore_request_get_finished:
+ *
+ * @request: A #InfcExploreRequest.
+ *
+ * Returns whether the exploration process has finished, i.e. the "finished"
+ * signal was emitted.
+ *
+ * Return Value: Whether the exploration has finished.
+ **/
+gboolean
+infc_explore_request_get_finished(InfcExploreRequest* request)
+{
+  g_return_val_if_fail(INFC_IS_EXPLORE_REQUEST(request), FALSE);
+  return INFC_EXPLORE_REQUEST_PRIVATE(request)->finished;
 }
 
 /* vim:set et sw=2 ts=2: */
