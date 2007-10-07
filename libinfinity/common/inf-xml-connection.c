@@ -22,6 +22,7 @@
 enum {
   SENT,
   RECEIVED,
+  ERROR,
 
   LAST_SIGNAL
 };
@@ -59,6 +60,18 @@ inf_xml_connection_base_init(gpointer g_class)
       G_TYPE_POINTER
     );
 
+    connection_signals[ERROR] = g_signal_new(
+      "error",
+      INF_TYPE_XML_CONNECTION,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfXmlConnectionIface, error),
+      NULL, NULL,
+      inf_marshal_VOID__POINTER,
+      G_TYPE_NONE,
+      1,
+      G_TYPE_POINTER
+    );
+
     g_object_interface_install_property(
       g_class,
       g_param_spec_enum(
@@ -67,6 +80,28 @@ inf_xml_connection_base_init(gpointer g_class)
         "The status of the connection.",
         INF_TYPE_XML_CONNECTION_STATUS,
         INF_XML_CONNECTION_CLOSED,
+        G_PARAM_READABLE
+      )
+    );
+
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_string(
+        "local-id",
+        "Local ID",
+        "A unique identification on the network for the local site",
+        NULL,
+        G_PARAM_READABLE
+      )
+    );
+
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_string(
+        "remote-id",
+        "Remote ID",
+        "A unique identification on the network for the remote site",
+        NULL,
         G_PARAM_READABLE
       )
     );
@@ -225,6 +260,36 @@ void inf_xml_connection_received(InfXmlConnection* connection,
     connection_signals[RECEIVED],
     0,
     xml
+  );
+}
+
+/** inf_xml_connection_error:
+ *
+ * @connection: A #InfXmlConnection.
+ * @error: The error that occured.
+ *
+ * Emits the "error" signal on @connection. This will most likely only
+ * be useful to implementors.
+ *
+ * Note that the error may or may not be fatal for the connection. If it
+ * is fatal, then a status notify to %INF_XML_CONNECTION_CLOSING or
+ * %INF_XML_CONNECTION_CLOSED will follow. If you are implementing a custom
+ * class implementing #InfXmlConnection, make sure to always emit the "error"
+ * signal before doing the status notify because many users of the connection
+ * will release their reference when the connection is no longer connected.
+ **/
+void
+inf_xml_connection_error(InfXmlConnection* connection,
+                         const GError* error)
+{
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(error != NULL);
+
+  g_signal_emit(
+    G_OBJECT(connection),
+    connection_signals[ERROR],
+    0,
+    error
   );
 }
 

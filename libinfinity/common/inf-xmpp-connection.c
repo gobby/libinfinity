@@ -126,19 +126,14 @@ enum {
   PROP_SASL_CONTEXT,
 
   /* From InfXmlConnection */
-  PROP_STATUS
-};
-
-enum {
-  ERROR,
-
-  LAST_SIGNAL
+  PROP_STATUS,
+  PROP_LOCAL_ID,
+  PROP_REMOTE_ID
 };
 
 #define INF_XMPP_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_XMPP_CONNECTION, InfXmppConnectionPrivate))
 
 static GObjectClass* parent_class;
-static guint xmpp_connection_signals[LAST_SIGNAL] = { 0 };
 
 static GQuark inf_xmpp_connection_error_quark;
 static GQuark inf_xmpp_connection_stream_error_quark;
@@ -576,13 +571,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
           gnutls_strerror(cur_bytes)
         );
 
-        g_signal_emit(
-          G_OBJECT(xmpp),
-          xmpp_connection_signals[ERROR],
-          0,
-          error
-        );
-
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
         g_error_free(error);
 
         inf_tcp_connection_close(priv->tcp);
@@ -832,7 +821,7 @@ inf_xmpp_connection_emit_auth_error(InfXmppConnection* xmpp,
     inf_xmpp_connection_auth_strerror(code)
   );
 
-  g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+  inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
   g_error_free(error);
 }
 
@@ -882,7 +871,7 @@ inf_xmpp_connection_terminate_error(InfXmppConnection* xmpp,
   inf_xmpp_connection_send_xml(xmpp, node);
   xmlFreeNode(node);
 
-  g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+  inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
   g_error_free(error);
 
   inf_xmpp_connection_terminate(xmpp);
@@ -1018,7 +1007,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
       gnutls_strerror(ret)
     );
 
-    g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+    inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
     g_error_free(error);
 
     gnutls_deinit(priv->session);
@@ -1027,11 +1016,18 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
     switch(priv->site)
     {
     case INF_XMPP_CONNECTION_CLIENT:
+      /* Terminate connection when GnuTLS handshake fails. Don't wait for
+       * </stream:stream> as the server might not be aware of the problem. */
+      inf_xmpp_connection_terminate(xmpp);
+#if 0
       /* Wait for terminating </stream:stream> from server */
       priv->status = INF_XMPP_CONNECTION_CLOSING_STREAM;
       g_object_notify(G_OBJECT(xmpp), "status");
+#endif
       break;
     case INF_XMPP_CONNECTION_SERVER:
+      /* TODO: Just close connection on error, without sending
+       * </stream:stream>, as in the client case? */
       /* So that inf_xmpp_connection_terminate() doesn't get confused, it will
        * be overwritten to CLOSING_GNUTLS anyway. */
       priv->status = INF_XMPP_CONNECTION_INITIATED;
@@ -1161,7 +1157,7 @@ inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
     gsasl_strerror(code)
   );
 
-  g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+  inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
   g_error_free(error);
 
   gsasl_finish(priv->sasl_session);
@@ -1250,7 +1246,7 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
         gsasl_strerror(ret)
       );
 
-      g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
       g_free(error);
 
       inf_xmpp_connection_terminate(xmpp);
@@ -1567,7 +1563,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
     {
       /* Error occured during SASL initialization */
       xmlFreeNode(features);
-      g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
       g_free(error);
       inf_xmpp_connection_terminate(xmpp);
       return;
@@ -1598,13 +1594,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
           gsasl_strerror(ret)
         );
 
-        g_signal_emit(
-          G_OBJECT(xmpp),
-          xmpp_connection_signals[ERROR],
-          0,
-          error
-        );
-
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
         g_free(error);
         inf_xmpp_connection_terminate(xmpp);
         return;
@@ -1764,7 +1754,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         )
       );
 
-      g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
       g_error_free(error);
 
       inf_xmpp_connection_deinitiate(xmpp);
@@ -1800,7 +1790,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         )
       );
 
-      g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
       g_error_free(error);
 
       inf_xmpp_connection_deinitiate(xmpp);
@@ -1860,7 +1850,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
           )
         );
 
-        g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
         g_error_free(error);
 
         inf_xmpp_connection_deinitiate(xmpp);
@@ -1917,7 +1907,7 @@ inf_xmpp_connection_process_encryption(InfXmppConnection* xmpp,
       inf_xmpp_connection_strerror(INF_XMPP_CONNECTION_ERROR_TLS_FAILURE)
     );
 
-    g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+    inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
     g_error_free(error);
 
     /* The server is required to close the stream after failure, so wait
@@ -2063,7 +2053,7 @@ inf_xmpp_connection_process_end_element(InfXmppConnection* xmpp,
 
       /* TODO: Incorporate text child of the stream:error request, if any */
 
-      g_signal_emit(G_OBJECT(xmpp), xmpp_connection_signals[ERROR], 0, error);
+      inf_xml_connection_error(INF_XML_CONNECTION(error), error);
       g_error_free(error);
     }
     else
@@ -2522,29 +2512,27 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
         res = gnutls_record_recv(priv->session, buffer, 2048);
         if(res < 0)
         {
-          /* A TLS error occured. */
-          error = NULL;
-          g_set_error(
-            &error,
-            inf_xmpp_connection_gnutls_error_quark,
-            res,
-            "%s",
-            gnutls_strerror(res)
-          );
+          /* Just try again if we were interrupted */
+          if(res != GNUTLS_E_INTERRUPTED && res != GNUTLS_E_AGAIN)
+          {
+            /* A TLS error occured. */
+            error = NULL;
+            g_set_error(
+              &error,
+              inf_xmpp_connection_gnutls_error_quark,
+              res,
+              "%s",
+              gnutls_strerror(res)
+            );
 
-          g_signal_emit(
-            G_OBJECT(xmpp),
-            xmpp_connection_signals[ERROR],
-            0,
-            error
-          );
+            inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+            g_error_free(error);
 
-          g_error_free(error);
-
-          /* We cannot assume that GnuTLS is working enough to send a
-           * final </stream:stream> or something, so just close the
-           * underlaying TCP connection. */
-          inf_tcp_connection_close(priv->tcp);
+            /* We cannot assume that GnuTLS is working enough to send a
+             * final </stream:stream> or something, so just close the
+             * underlaying TCP connection. */
+            inf_tcp_connection_close(priv->tcp);
+          }
         }
         else if(res == 0)
         {
@@ -2573,9 +2561,9 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
     priv->pull_len = len;
     inf_xmpp_connection_tls_handshake(xmpp);
 
-    /* TODO: Perhaps we should just close the connection in this case so that
-     * evil people cannot trigger this assertion by modified TLS packtes. */
-    g_assert(priv->pull_len == 0);
+    /* Either all data was processed, or the handshake failed */
+    g_assert(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS ||
+             priv->pull_len == 0);
   }
 
   if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
@@ -2609,12 +2597,7 @@ inf_xmpp_connection_error_cb(InfTcpConnection* tcp,
 {
   /* Do not modify status because we get a status change notify from the
    * TCP connection little later anyway. */
-  g_signal_emit(
-    G_OBJECT(user_data),
-    xmpp_connection_signals[ERROR],
-    0,
-    error
-  );
+  inf_xml_connection_error(INF_XML_CONNECTION(user_data), error);
 }
 
 static void
@@ -2811,6 +2794,31 @@ inf_xmpp_connection_get_xml_status(InfXmppConnection* xmpp)
   }
 }
 
+static gchar*
+inf_xmpp_connection_get_address_id(InfIpAddress* addr,
+                                   guint port)
+{
+  gchar* addr_str;
+  gchar* addr_id;
+
+  addr_str = inf_ip_address_to_string(addr);
+  switch(inf_ip_address_get_family(addr))
+  {
+  case INF_IP_ADDRESS_IPV4:
+    addr_id = g_strdup_printf("%s:%u", addr_str, port);
+    break;
+  case INF_IP_ADDRESS_IPV6:
+    addr_id = g_strdup_printf("[%s]:%u", addr_str, port);
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  g_free(addr_str);
+  return addr_id;
+}
+
 /*
  * GObject overrides
  */
@@ -2979,6 +2987,9 @@ inf_xmpp_connection_get_property(GObject* object,
 {
   InfXmppConnection* xmpp;
   InfXmppConnectionPrivate* priv;
+  InfIpAddress* addr;
+  guint port;
+  gchar* id;
 
   xmpp = INF_XMPP_CONNECTION(object);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -3002,6 +3013,27 @@ inf_xmpp_connection_get_property(GObject* object,
     break;
   case PROP_STATUS:
     g_value_set_enum(value, inf_xmpp_connection_get_xml_status(xmpp));
+    break;
+  case PROP_LOCAL_ID:
+    /* TODO: Perhaps we could also use JIDs here, but we have to make sure
+     * then that they are unique within the whole network. */
+    g_object_get(
+      G_OBJECT(priv->tcp),
+      "local-address", &addr,
+      "local-port", &port,
+      NULL
+    );
+
+    id = inf_xmpp_connection_get_address_id(addr, port);
+    inf_ip_address_free(addr);
+
+    g_value_take_string(value, id);
+    break;
+  case PROP_REMOTE_ID:
+    addr = inf_tcp_connection_get_remote_address(priv->tcp);
+    port = inf_tcp_connection_get_remote_port(priv->tcp);
+    id = inf_xmpp_connection_get_address_id(addr, port);
+    g_value_take_string(value, id);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -3125,8 +3157,6 @@ inf_xmpp_connection_class_init(gpointer g_class,
   object_class->set_property = inf_xmpp_connection_set_property;
   object_class->get_property = inf_xmpp_connection_get_property;
 
-  xmpp_class->error = NULL;
-
   inf_xmpp_connection_error_quark = g_quark_from_static_string(
     "INF_XMPP_CONNECTION_ERROR"
   );
@@ -3207,18 +3237,8 @@ inf_xmpp_connection_class_init(gpointer g_class,
   );
 
   g_object_class_override_property(object_class, PROP_STATUS, "status");
-
-  xmpp_connection_signals[ERROR] = g_signal_new(
-    "error",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfXmppConnectionClass, error),
-    NULL, NULL,
-    inf_marshal_VOID__POINTER,
-    G_TYPE_NONE,
-    1,
-    G_TYPE_POINTER /* actually a GError* */
-  );
+  g_object_class_override_property(object_class, PROP_LOCAL_ID, "local-id");
+  g_object_class_override_property(object_class, PROP_REMOTE_ID, "remote-id");
 }
 
 static void

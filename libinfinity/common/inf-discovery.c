@@ -32,15 +32,12 @@ static void
 inf_discovery_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
-  GObjectClass* object_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
 
   if(!initialized)
   {
     discovery_signals[DISCOVERED] = g_signal_new(
       "discovered",
-      G_OBJECT_CLASS_TYPE(object_class),
+      INF_TYPE_DISCOVERY,
       G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
       G_STRUCT_OFFSET(InfDiscoveryIface, discovered),
       NULL, NULL,
@@ -52,7 +49,7 @@ inf_discovery_base_init(gpointer g_class)
 
     discovery_signals[UNDISCOVERED] = g_signal_new(
       "undiscovered",
-      G_OBJECT_CLASS_TYPE(object_class),
+      INF_TYPE_DISCOVERY,
       G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
       G_STRUCT_OFFSET(InfDiscoveryIface, undiscovered),
       NULL, NULL,
@@ -194,7 +191,7 @@ inf_discovery_resolve(InfDiscovery* discovery,
  *
  * Return Value: A string owned by @discovery.
  **/
-const gchar*
+gchar*
 inf_discovery_info_get_service_name(InfDiscovery* discovery,
                                     InfDiscoveryInfo* info)
 {

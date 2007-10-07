@@ -59,8 +59,8 @@ struct _InfDiscoveryIface {
                   InfDiscoveryResolvErrorFunc error_func,
                   gpointer user_data);
 
-  const gchar*(*info_get_service_name)(InfDiscovery* discovery,
-                                       InfDiscoveryInfo* info);
+  gchar*(*info_get_service_name)(InfDiscovery* discovery,
+                                 InfDiscoveryInfo* info);
 
   const gchar*(*info_get_service_type)(InfDiscovery* discovery,
                                        InfDiscoveryInfo* info);
@@ -91,7 +91,7 @@ inf_discovery_resolve(InfDiscovery* discovery,
                       InfDiscoveryResolvErrorFunc error_func,
                       gpointer user_data);
 
-const gchar*
+gchar*
 inf_discovery_info_get_service_name(InfDiscovery* discovery,
                                     InfDiscoveryInfo* info);
 

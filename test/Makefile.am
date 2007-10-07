@@ -3,10 +3,19 @@ AM_CPPFLAGS = \
 	-I${top_builddir} \
 	${infinity_CFLAGS}
 
+if WITH_INFGTK
+AM_CPPFLAGS += \
+	${infgtk_CFLAGS}
+endif
+
 noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-tcp-server inf-test-daemon inf-test-browser \
 	inf-test-state-vector inf-test-chunk inf-test-text-operations \
 	inf-test-text-session
+
+if WITH_INFGTK
+noinst_PROGRAMS += inf-test-gtk-browser
+endif
 
 inf_test_tcp_connection_SOURCES = \
 	inf-test-tcp-connection.c
@@ -64,3 +73,13 @@ inf_test_text_session_SOURCES = \
 inf_test_text_session_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la \
 	${top_builddir}/libinftext/libinftext-1.0.la
+
+if WITH_INFGTK
+inf_test_gtk_browser_SOURCES = \
+	inf-test-gtk-browser.c
+
+inf_test_gtk_browser_LDADD = \
+	${infgtk_LIBS} \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	${top_builddir}/libinfgtk/libinfgtk-1.0.la
+endif

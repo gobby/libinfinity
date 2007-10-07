@@ -433,16 +433,6 @@ infc_browser_set_connection(InfcBrowser* browser,
     /* TODO: Emit failed signal with some "canceled" error? */
     infc_request_manager_clear(priv->request_manager);
 
-    /* Clear tree, priv->root may be NULL if called from dispose */
-    if(priv->root != NULL && priv->root->shared.subdir.explored == TRUE)
-    {
-      while((child = priv->root->shared.subdir.child) != NULL)
-      {
-        /* TODO: Unregister node (signal) */
-        infc_browser_node_free(browser, child);
-      }
-    }
-
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->connection),
       G_CALLBACK(infc_browser_connection_notify_status_cb),
@@ -458,6 +448,9 @@ infc_browser_set_connection(InfcBrowser* browser,
       );
     }
 
+    /* Keep tree so it is still accessible, however, we cannot explore
+     * anything anymore. */
+
     g_object_unref(G_OBJECT(priv->connection));
   }
 
@@ -466,6 +459,17 @@ infc_browser_set_connection(InfcBrowser* browser,
   if(connection != NULL)
   {
     g_object_ref(G_OBJECT(connection));
+
+    /* Clear tree for new connection */
+    g_assert(priv->root != NULL);
+    if(priv->root->shared.subdir.explored == TRUE)
+    {
+      while((child = priv->root->shared.subdir.child) != NULL)
+      {
+        /* TODO: Unregister node (signal) */
+        infc_browser_node_free(browser, child);
+      }
+    }
 
     g_signal_connect(
       G_OBJECT(connection),
@@ -1421,9 +1425,10 @@ infc_browser_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfcBrowserClass, begin_explore),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    inf_marshal_VOID__BOXED_OBJECT,
     G_TYPE_NONE,
-    1,
+    2,
+    INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
     INFC_TYPE_EXPLORE_REQUEST
   );
 }
@@ -1817,6 +1822,7 @@ infc_browser_iter_explore(InfcBrowser* browser,
     G_OBJECT(browser),
     browser_signals[BEGIN_EXPLORE],
     0,
+    iter,
     request
   );
 

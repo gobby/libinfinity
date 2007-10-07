@@ -248,6 +248,7 @@ inf_connection_manager_group_new(InfConnectionManager* manager,
 static void
 inf_connection_manager_group_free(InfConnectionManagerGroup* group)
 {
+  InfConnectionManagerPrivate* priv;
   InfConnectionManagerQueue* queue;
   GList* item;
   xmlNodePtr next;
@@ -301,6 +302,9 @@ inf_connection_manager_group_free(InfConnectionManagerGroup* group)
     g_slice_free(InfConnectionManagerQueue, queue);
     g_object_unref(G_OBJECT(group->net_object));
   }
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(group->manager);
+  priv->groups = g_slist_remove(priv->groups, group);
 
   g_free(group->name);
   g_slice_free(InfConnectionManagerGroup, group);

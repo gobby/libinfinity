@@ -139,7 +139,7 @@ inf_io_add_timeout(InfIo* io,
   iface = INF_IO_GET_IFACE(io);
   g_return_val_if_fail(iface->add_timeout != NULL, NULL);
 
-  iface->add_timeout(io, msecs, func, user_data);
+  return iface->add_timeout(io, msecs, func, user_data);
 }
 
 /** inf_io_remove_timeout:

@@ -42,11 +42,13 @@ inf_xmpp_manager_key_new(InfXmppConnection* connection)
   InfTcpConnection* tcp;
 
   g_object_get(G_OBJECT(connection), "tcp-connection", &tcp, NULL);
+  g_assert(tcp != NULL);
 
   key = g_slice_new(InfXmppManagerKey);
   key->address = inf_tcp_connection_get_remote_address(tcp);
   key->port = inf_tcp_connection_get_remote_port(tcp);
 
+  g_object_unref(G_OBJECT(tcp));
   return key;
 }
 
@@ -73,7 +75,7 @@ inf_xmpp_manager_key_cmp(gconstpointer first,
   else if(first_key->port > second_key->port)
     return 1;
   else
-    inf_ip_address_collate(first_key->address, second_key->address);
+    return inf_ip_address_collate(first_key->address, second_key->address);
 }
 
 static void
@@ -98,9 +100,12 @@ inf_xmpp_manager_notify_status_cb(GObject* object,
      status == INF_XML_CONNECTION_CLOSED)
   {
     g_object_get(G_OBJECT(connection), "tcp-connection", &tcp, NULL);
+    g_assert(tcp != NULL);
+
     key.address = inf_tcp_connection_get_remote_address(tcp);
     key.port = inf_tcp_connection_get_remote_port(tcp);
     g_tree_remove(priv->connections, &key);
+    g_object_unref(G_OBJECT(tcp));
 
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(connection),
@@ -251,7 +256,6 @@ inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
 {
   InfXmppManagerPrivate* priv;
   InfXmppManagerKey key;
-  InfXmppConnection* connection;
 
   g_return_val_if_fail(INF_IS_XMPP_MANAGER(manager), NULL);
   g_return_val_if_fail(address != NULL, NULL);
@@ -285,9 +289,12 @@ inf_xmpp_manager_contains_connection(InfXmppManager* manager,
 
   priv = INF_XMPP_MANAGER_PRIVATE(manager);
   g_object_get(G_OBJECT(connection), "tcp-connection", &tcp, NULL);
+  g_assert(tcp != NULL);
 
   key.address = inf_tcp_connection_get_remote_address(tcp);
   key.port = inf_tcp_connection_get_remote_port(tcp);
+  g_object_unref(G_OBJECT(tcp));
+
   return INF_XMPP_CONNECTION(g_tree_lookup(priv->connections, &key)) != NULL;
 }
 
@@ -307,7 +314,6 @@ inf_xmpp_manager_add_connection(InfXmppManager* manager,
 {
   InfXmppManagerPrivate* priv;
   InfXmlConnectionStatus status;
-  InfTcpConnection* tcp;
   InfXmppManagerKey* key;
 
   g_return_if_fail(INF_IS_XMPP_MANAGER(manager));
@@ -320,13 +326,19 @@ inf_xmpp_manager_add_connection(InfXmppManager* manager,
 
   g_object_get(
     G_OBJECT(connection),
-    "tcp-connection", &tcp,
     "status", &status,
     NULL
   );
 
   g_return_if_fail(status != INF_XML_CONNECTION_CLOSING &&
                    status != INF_XML_CONNECTION_CLOSED);
+
+  g_signal_connect(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(inf_xmpp_manager_notify_status_cb),
+    manager
+  );
 
   key = inf_xmpp_manager_key_new(connection);
   g_tree_insert(priv->connections, key, connection);

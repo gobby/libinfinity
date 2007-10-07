@@ -92,7 +92,7 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   for(item = priv->timeouts; item != NULL; item = g_list_next(priv->timeouts))
   {
     cur_timeout = item->data;
-    elapsed = inf_standalone_io_timeval_diff(&cur_timeout->begin, &current);
+    elapsed = inf_standalone_io_timeval_diff(&current, &cur_timeout->begin);
 
     if(elapsed >= cur_timeout->msecs)
     {
@@ -312,6 +312,7 @@ inf_standalone_io_io_add_timeout(InfIo* io,
   timeout->msecs = msecs;
   timeout->func = func;
   timeout->user_data = user_data;
+  priv->timeouts = g_list_prepend(priv->timeouts, timeout);
 
   return timeout;
 }

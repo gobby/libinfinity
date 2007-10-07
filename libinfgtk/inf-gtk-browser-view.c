@@ -26,9 +26,8 @@
 #include <gtk/gtkcellrendererprogress.h>
 #include <gtk/gtkstock.h>
 
-/* TODO: Explore children when a node is expanded */
-/* TODO: Explore newly added node when its parent is expanded */
-/* TODO: Explore and expand root node when browser gets available */
+#define INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION \
+  "inf-gtk-browser-view-initial-exploration"
 
 typedef struct _InfGtkBrowserViewObject InfGtkBrowserViewObject;
 struct _InfGtkBrowserViewObject {
@@ -172,10 +171,45 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
                                                  guint total,
                                                  gpointer user_data)
 {
-  inf_gtk_browser_view_redraw_node_for_explore_request(
-    INF_GTK_BROWSER_VIEW(user_data),
-    request
+  InfGtkBrowserView* view;
+  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserViewObject* object;
+  GtkTreePath* path;
+  gpointer initial_exploration;
+  gint i;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+
+  i = inf_gtk_browser_view_explore_request_find(view, request);
+  g_assert(i >= 0);
+
+  object = &g_array_index(priv->explore_requests, InfGtkBrowserViewObject, i);
+  path = gtk_tree_row_reference_get_path(object->reference);
+  g_assert(path != NULL);
+
+  inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+
+  initial_exploration = g_object_get_data(
+    G_OBJECT(request),
+    INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION
   );
+
+  /* Expand initial exploration of the root node bcesaue the user double
+   * clicked on it to connect, so he wants most likely to see the remote
+   * directory. */
+  if(GPOINTER_TO_UINT(initial_exploration))
+  {
+    g_object_set_data(
+      G_OBJECT(request),
+      INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION,
+      GUINT_TO_POINTER(0)
+    );
+
+    gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
+  }
+
+  gtk_tree_path_free(path);
 }
 
 /* Required by inf_gtk_browser_view_explore_request_finished_cb */
@@ -218,8 +252,10 @@ inf_gtk_browser_view_explore_request_added(InfGtkBrowserView* view,
     path
   );
 
+  g_assert(object.reference != NULL);
+
   object.iter = *iter;
-  g_array_append_vals(priv->browsers, &object, 1);
+  g_array_append_vals(priv->explore_requests, &object, 1);
 
   g_signal_connect_after(
     G_OBJECT(request),
@@ -333,9 +369,9 @@ inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
 /* This function recursively walks down iter and all its children and
  * inserts running explore requests into the view. */
 static void
-inf_gtk_browser_view_walk_for_explore_requests(InfGtkBrowserView* view,
-                                               InfcBrowser* browser,
-                                               InfcBrowserIter* iter)
+inf_gtk_browser_view_walk_explore_requests(InfGtkBrowserView* view,
+                                           InfcBrowser* browser,
+                                           InfcBrowserIter* iter)
 {
   InfGtkBrowserViewPrivate* priv;
   InfcExploreRequest* request;
@@ -354,11 +390,7 @@ inf_gtk_browser_view_walk_for_explore_requests(InfGtkBrowserView* view,
         result == TRUE;
         result = infc_browser_iter_get_next(browser, &child_iter))
     {
-      inf_gtk_browser_view_walk_for_explore_requests(
-        view,
-        browser,
-        &child_iter
-      );
+      inf_gtk_browser_view_walk_explore_requests(view, browser, &child_iter);
     }
   }
 
@@ -373,7 +405,7 @@ inf_gtk_browser_view_walk_for_explore_requests(InfGtkBrowserView* view,
       iter,
       &tree_iter
     );
-    
+
     path = gtk_tree_model_get_path(model, &tree_iter);
 
     inf_gtk_browser_view_explore_request_added(
@@ -384,6 +416,27 @@ inf_gtk_browser_view_walk_for_explore_requests(InfGtkBrowserView* view,
     );
 
     gtk_tree_path_free(path);
+  }
+}
+
+static void
+inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
+                                          InfcBrowser* browser,
+                                          InfcBrowserIter* browser_iter)
+{
+  InfcExploreRequest* request;
+
+  /* Explore root node if it is not already explored */
+  if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE &&
+     infc_browser_iter_get_explore_request(browser, browser_iter) == NULL)
+  {
+    request = infc_browser_iter_explore(browser, browser_iter);
+
+    g_object_set_data(
+      G_OBJECT(request),
+      INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION,
+      GUINT_TO_POINTER(1)
+    );
   }
 }
 
@@ -398,6 +451,8 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfGtkBrowserViewObject object;
   GtkTreeModel* model;
+  InfXmlConnection* connection;
+  InfXmlConnectionStatus status;
   InfcBrowserIter* browser_iter;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -420,17 +475,31 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
     view
   );
 
-  gtk_tree_model_get(
-    model,
-    iter,
-    INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
-    -1
-  );
+  connection = infc_browser_get_connection(browser);
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  /* Look for running explore requests, insert into array of running
-   * explore requests to show their progress. */
-  inf_gtk_browser_view_walk_for_explore_requests(view, browser, browser_iter);
-  infc_browser_iter_free(browser_iter);
+  /* Initial explore if connection is already open */
+  if(status == INF_XML_CONNECTION_OPEN)
+  {
+    gtk_tree_model_get(
+      model,
+      iter,
+      INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+      -1
+    );
+
+    /* Look for running explore requests, insert into array of running
+     * explore requests to show their progress. */
+    /* TODO: We do not need this anymore when we get insertion callbacks
+     * from the model for each node in the newly added browser. See
+     * inf-gtk-browser-model.c:292. */
+    inf_gtk_browser_view_walk_explore_requests(view, browser, browser_iter);
+
+    /* Explore root node initially if not already explored */
+    inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
+
+    infc_browser_iter_free(browser_iter);
+  }
 }
 
 static void
@@ -473,6 +542,9 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   InfGtkBrowserViewPrivate* priv;
   GtkTreeIter parent_iter;
   InfcBrowser* browser;
+  InfcBrowserIter* browser_iter;
+  GtkTreePath* parent_path;
+  GtkTreeView* treeview;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -494,6 +566,42 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
     if(browser != NULL)
       inf_gtk_browser_view_browser_added(view, path, iter, browser);
   }
+  else
+  {
+    /* Inner node. Explore if the parent node is expanded. */
+    gtk_tree_model_get(
+      model,
+      iter,
+      INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+      INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+      -1
+    );
+
+    g_assert(browser != NULL);
+
+    if(infc_browser_iter_is_subdirectory(browser, browser_iter))
+    {
+      /* TODO: Add explore request to array if this row is currently being
+       * explored. */
+      /* Perhaps some other code already explored this. */
+      if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE &&
+         infc_browser_iter_get_explore_request(browser, browser_iter) == NULL)
+      {
+        treeview = GTK_TREE_VIEW(priv->treeview);
+
+        parent_path = gtk_tree_path_copy(path);
+        gtk_tree_path_up(parent_path);
+
+        if(gtk_tree_view_row_expanded(treeview, parent_path))
+          infc_browser_iter_explore(browser, browser_iter);
+
+        gtk_tree_path_free(parent_path);
+      }
+    }
+
+    infc_browser_iter_free(browser_iter);
+    g_object_unref(G_OBJECT(browser));
+  }
 }
 
 static void
@@ -505,8 +613,10 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
   InfGtkBrowserView* view;
   InfGtkBrowserViewPrivate* priv;
   GtkTreeIter parent_iter;
+  InfGtkBrowserModelStatus status;
 
   InfcBrowser* browser;
+  InfcBrowserIter* browser_iter;
   InfGtkBrowserViewObject* object;
   GtkTreePath* object_path;
   guint i;
@@ -519,10 +629,23 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
     gtk_tree_model_get(
       model,
       iter,
-      INF_GTK_BROWSER_MODEL_COL_BROWSER,
-      &browser,
+      INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+      INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
       -1
     );
+    
+    if(status == INF_GTK_BROWSER_MODEL_CONNECTED)
+    {
+      gtk_tree_model_get(
+        model,
+        iter,
+        INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+        -1
+      );
+
+      inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
+      infc_browser_iter_free(browser_iter);
+    }
 
     for(i = 0; i < priv->browsers->len; ++ i)
     {
@@ -626,55 +749,61 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
   GtkTreePath* path;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  current_model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
+  current_model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
 
   if(current_model != NULL)
   {
-    for(i = 0; i < priv->explore_requests->len; ++ i)
+    if(priv->explore_requests->len > 0)
     {
-      object = &g_array_index(
+      for(i = 0; i < priv->explore_requests->len; ++ i)
+      {
+        object = &g_array_index(
+          priv->explore_requests,
+          InfGtkBrowserViewObject,
+          i
+        );
+
+        inf_gtk_browser_view_explore_request_free(view, object);
+      }
+
+      g_array_remove_range(
         priv->explore_requests,
-        InfGtkBrowserViewObject,
-        i
+        0,
+        priv->explore_requests->len
       );
-
-      inf_gtk_browser_view_explore_request_free(view, object);
     }
 
-    g_array_remove_range(
-      priv->explore_requests,
-      0,
-      priv->explore_requests->len
-    );
-
-    for(i = 0; i < priv->browsers->len; ++ i)
+    if(priv->browsers->len > 0)
     {
-      object = &g_array_index(priv->browsers, InfGtkBrowserViewObject, i);
-      inf_gtk_browser_view_browser_free(view, object);
-    }
+      for(i = 0; i < priv->browsers->len; ++ i)
+      {
+        object = &g_array_index(priv->browsers, InfGtkBrowserViewObject, i);
+        inf_gtk_browser_view_browser_free(view, object);
+      }
 
-    g_array_remove_range(priv->browsers, 0, priv->browsers->len);
+      g_array_remove_range(priv->browsers, 0, priv->browsers->len);
+    }
 
     g_signal_handlers_disconnect_by_func(
-      G_OBJECT(model),
+      G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_row_inserted_cb),
       view
     );
 
     g_signal_handlers_disconnect_by_func(
-      G_OBJECT(model),
+      G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_row_deleted_cb),
       view
     );
 
     g_signal_handlers_disconnect_by_func(
-      G_OBJECT(model),
+      G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_row_changed_cb),
       view
     );
 
     g_signal_handlers_disconnect_by_func(
-      G_OBJECT(model),
+      G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_rows_reordered_cb),
       view
     );
@@ -736,6 +865,89 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
       G_CALLBACK(inf_gtk_browser_view_rows_reordered_cb),
       view
     );
+  }
+}
+
+static void
+inf_gtk_browser_view_row_expanded_cb(GtkTreeView* tree_view,
+                                     GtkTreeIter* iter,
+                                     GtkTreePath* path,
+                                     gpointer user_data)
+{
+  GtkTreeModel* model;
+  InfcBrowser* browser;
+  InfcBrowserIter* browser_iter;
+
+  model = gtk_tree_view_get_model(tree_view);
+
+  gtk_tree_model_get(
+    model,
+    iter,
+    INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+    INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+    -1
+  );
+
+  g_assert(browser != NULL);
+
+  /* Explore all child nodes that are not yet explored */
+  if(infc_browser_iter_get_child(browser, browser_iter))
+  {
+    do
+    {
+      if(infc_browser_iter_is_subdirectory(browser, browser_iter) == TRUE &&
+         infc_browser_iter_get_explored(browser, browser_iter) == FALSE &&
+         infc_browser_iter_get_explore_request(browser, browser_iter) == NULL)
+      {
+        infc_browser_iter_explore(browser, browser_iter);
+      }
+    } while(infc_browser_iter_get_next(browser, browser_iter));
+  }
+
+  infc_browser_iter_free(browser_iter);
+  g_object_unref(G_OBJECT(browser));
+}
+
+static void
+inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
+                                      GtkTreePath* path,
+                                      GtkTreeViewColumn* column,
+                                      gpointer user_data)
+{
+  GtkTreeModel* model;
+  InfGtkBrowserModelStatus status;
+  InfDiscovery* discovery;
+  InfDiscoveryInfo* info;
+  GtkTreeIter iter;
+
+  /* Connect to host, if not already */
+  if(gtk_tree_path_get_depth(path) == 1)
+  {
+    model = gtk_tree_view_get_model(tree_view);
+    gtk_tree_model_get_iter(model, &iter, path);
+
+    gtk_tree_model_get(
+      model,
+      &iter,
+      INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
+      INF_GTK_BROWSER_MODEL_COL_DISCOVERY, &discovery,
+      INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
+      -1
+    );
+
+    if(discovery != NULL)
+    {
+      if(status == INF_GTK_BROWSER_MODEL_DISCOVERED)
+      {
+        inf_gtk_browser_model_resolve(
+          INF_GTK_BROWSER_MODEL(model),
+          discovery,
+          info
+        );
+      }
+
+      g_object_unref(G_OBJECT(discovery));
+    }
   }
 }
 
@@ -856,6 +1068,7 @@ inf_gtk_browser_view_name_data_func(GtkTreeViewColumn* column,
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
   const gchar* name;
+  gchar* service_name;
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
   {
@@ -884,13 +1097,14 @@ inf_gtk_browser_view_name_data_func(GtkTreeViewColumn* column,
       INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
       -1
     );
-    
+
     if(discovery != NULL)
     {
       g_assert(info != NULL);
 
-      name = inf_discovery_info_get_service_name(discovery, info);
-      g_object_set(G_OBJECT(renderer), "text", name, NULL);
+      service_name = inf_discovery_info_get_service_name(discovery, info);
+      g_object_set(G_OBJECT(renderer), "text", service_name, NULL);
+      g_free(service_name);
 
       g_object_unref(G_OBJECT(discovery));
     }
@@ -1043,7 +1257,7 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
       g_object_set(
         G_OBJECT(renderer),
         "text", error->message,
-        "foreground", "dark red",
+        "foreground", "#db1515",
         "visible", TRUE,
         NULL
       );
@@ -1070,6 +1284,7 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   priv->column = gtk_tree_view_column_new();
   
   priv->renderer_icon = gtk_cell_renderer_pixbuf_new();
+  priv->renderer_status_icon = gtk_cell_renderer_pixbuf_new();
   priv->renderer_name = gtk_cell_renderer_text_new();
   priv->renderer_progress = gtk_cell_renderer_progress_new();
   priv->renderer_status = gtk_cell_renderer_text_new();
@@ -1079,12 +1294,8 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   priv->explore_requests =
     g_array_new(FALSE, FALSE, sizeof(InfGtkBrowserViewObject));
 
-  g_object_set(
-    G_OBJECT(priv->renderer_status),
-    "ellipsize", PANGO_ELLIPSIZE_END,
-    "xpad", 10,
-    NULL
-  );
+  g_object_set(G_OBJECT(priv->renderer_status), "xpad", 10, NULL);
+  g_object_set(G_OBJECT(priv->renderer_status_icon), "xpad", 5, NULL);
 
   gtk_tree_view_column_pack_start(priv->column, priv->renderer_icon, FALSE);
 
@@ -1143,8 +1354,24 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
     NULL
   );
 
+  g_signal_connect(
+    GTK_TREE_VIEW(priv->treeview),
+    "row-expanded",
+    G_CALLBACK(inf_gtk_browser_view_row_expanded_cb),
+    view
+  );
+
+  g_signal_connect(
+    GTK_TREE_VIEW(priv->treeview),
+    "row-activated",
+    G_CALLBACK(inf_gtk_browser_view_row_activated_cb),
+    view
+  );
+
   gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), priv->column);
+  gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(priv->treeview), FALSE);
   gtk_container_add(GTK_CONTAINER(view), priv->treeview);
+  gtk_widget_show(priv->treeview);
 }
 
 static void
@@ -1156,7 +1383,11 @@ inf_gtk_browser_view_dispose(GObject* object)
   view = INF_GTK_BROWSER_VIEW(object);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-  inf_gtk_browser_view_set_model(view, NULL);
+  if(priv->treeview != NULL)
+  {
+    inf_gtk_browser_view_set_model(view, NULL);
+    priv->treeview = NULL;
+  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -1176,7 +1407,7 @@ inf_gtk_browser_view_finalize(GObject* object)
   g_array_free(priv->browsers, TRUE);
   g_array_free(priv->explore_requests, TRUE);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 static void
@@ -1234,6 +1465,64 @@ inf_gtk_browser_view_get_property(GObject* object,
 }
 
 static void
+inf_gtk_browser_view_destroy(GtkObject* object)
+{
+  InfGtkBrowserView* view;
+  InfGtkBrowserViewPrivate* priv;
+
+  view = INF_GTK_BROWSER_VIEW(object);
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+
+  if(priv->treeview != NULL)
+  {
+    /* Unset model while treeview is alive */
+    inf_gtk_browser_view_set_model(view, NULL);
+    priv->treeview = NULL;
+  }
+
+  if(GTK_OBJECT_CLASS(parent_class)->destroy)
+    GTK_OBJECT_CLASS(parent_class)->destroy(object);
+}
+
+static void
+inf_gtk_browser_view_size_request(GtkWidget* widget,
+                                  GtkRequisition* requisition)
+{
+  InfGtkBrowserViewPrivate* priv;
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(widget);
+
+  if(priv->treeview != NULL)
+  {
+    gtk_widget_size_request(priv->treeview, requisition);
+  }
+  else
+  {
+    requisition->width = 0;
+    requisition->height = 0;
+  }
+}
+
+static void
+inf_gtk_browser_view_size_allocate(GtkWidget* widget,
+                                   GtkAllocation* allocation)
+{
+  InfGtkBrowserViewPrivate* priv;
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(widget);
+
+  if(priv->treeview != NULL)
+  {
+    gtk_widget_size_allocate(priv->treeview, allocation);
+  }
+  else
+  {
+    allocation->x = 0;
+    allocation->y = 0;
+    allocation->width = 0;
+    allocation->height = 0;
+  }
+}
+
+static void
 inf_gtk_browser_view_set_scroll_adjustments(InfGtkBrowserView* view,
                                             GtkAdjustment* hadj,
                                             GtkAdjustment* vadj)
@@ -1242,17 +1531,21 @@ inf_gtk_browser_view_set_scroll_adjustments(InfGtkBrowserView* view,
   GtkWidgetClass* klass;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  klass = GTK_WIDGET_GET_CLASS(priv->treeview);
 
-  /* Delegate to TreeView */
-  g_assert(klass->set_scroll_adjustments_signal);
-  g_signal_emit(
-    G_OBJECT(priv->treeview),
-    klass->set_scroll_adjustments_signal,
-    0,
-    hadj,
-    vadj
-  );
+  if(priv->treeview != NULL)
+  {
+    klass = GTK_WIDGET_GET_CLASS(priv->treeview);
+
+    /* Delegate to TreeView */
+    g_assert(klass->set_scroll_adjustments_signal);
+    g_signal_emit(
+      G_OBJECT(priv->treeview),
+      klass->set_scroll_adjustments_signal,
+      0,
+      hadj,
+      vadj
+    );
+  }
 }
 
 /*
@@ -1264,10 +1557,12 @@ inf_gtk_browser_view_class_init(gpointer g_class,
                                 gpointer class_data)
 {
   GObjectClass* object_class;
+  GtkObjectClass* gtk_object_class;
   GtkWidgetClass* widget_class;
   InfGtkBrowserViewClass* view_class;
 
   object_class = G_OBJECT_CLASS(g_class);
+  gtk_object_class = GTK_OBJECT_CLASS(g_class);
   widget_class = GTK_WIDGET_CLASS(g_class);
   view_class = INF_GTK_BROWSER_VIEW_CLASS(g_class);
 
@@ -1278,6 +1573,9 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   object_class->finalize = inf_gtk_browser_view_finalize;
   object_class->set_property = inf_gtk_browser_view_set_property;
   object_class->get_property = inf_gtk_browser_view_get_property;
+  gtk_object_class->destroy = inf_gtk_browser_view_destroy;
+  widget_class->size_request = inf_gtk_browser_view_size_request;
+  widget_class->size_allocate = inf_gtk_browser_view_size_allocate;
 
   view_class->set_scroll_adjustments =
     inf_gtk_browser_view_set_scroll_adjustments;

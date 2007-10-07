@@ -104,19 +104,6 @@ typedef enum _InfXmppConnectionAuthError {
 
 struct _InfXmppConnectionClass {
   GObjectClass parent_class;
-
-  /* Signals */
-
-  /* The domain can be either INF_TCP_CONNECTION_ERROR,
-   * INF_XMPP_CONNECTION_ERROR, INF_XMPP_CONNECTION_STREAM_ERROR,
-   * INF_XMPP_CONNECTION_AUTH_ERROR, INF_XMPP_CONNECTION_GNUTLS_ERROR or
-   * INF_XMPP_CONNECTION_GSASL_ERROR. error->code is a GnuTLS error code in
-   * the GNUTLS_ERROR case and a Gsasl error code in the GSASL_ERROR case.
-   * 
-   * An error does not necessarily mean that that the XMPP connection is
-   * closed. If it is, a corresponding status notify follows. */
-  void (*error)(InfXmppConnection* xmpp,
-                GError* error);
 };
 
 struct _InfXmppConnection {

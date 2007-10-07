@@ -1,3 +1,83 @@
+2007-10-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:BOXED,OBJECT marshaller.
+
+	* libinfinity/common/inf-io.c: Return the value returned by the
+	implementation to the caller in inf_io_add_timeout(), instead of
+	nothing.
+
+	* libinfinity/common/inf-standalone-io.c: Fixed two bugs in timeout
+	handling.
+
+	* libinfinity/common/inf-tcp-connection.c: Added the device-index and
+	device-name properties. These are only used in IPv6 to set the scope
+	ID for link-local messaging.
+
+	* libinfinity/common/inf-discovery.h:
+	* libinfinity/common/inf-discovery.c: Make the get_service_name()
+	returned a new string so the implementation does not have to cache the
+	service name.
+
+	* libinfinity/common/inf-xml-connection.h:
+	* libinfinity/common/inf-xml-connection.c: Added an error signal and
+	local-id and remote-id properties.
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Removed error signal
+	because it is now provided by InfXmlConnection, override the local-id
+	and remote-id properties by using the ip/port pair of the underlaying
+	TCP connection. Allow gnutls to return with GNUTLS_E_AGAIN in
+	gnutls_record_recv since it seems to sometimes call the pull function
+	multiple times. Don't wait for terminating </stream:stream>, but just
+	close the connection on failed TLS handshake.
+
+	* libinfinity/common/inf-discovery-avahi.c: Adapt to interface change
+	in InfDiscovery, include device name and protocol in service name
+	output.
+
+	* libinfinity/common/inf-local-publisher.c: Replaced g_return_if_fail
+	by g_return_val_if_fail in function returning non-void.
+
+	* libinfinity/common/inf-xmpp-manager.c: Unref objects retrieved via
+	g_object_get(), connect to every connection's notify::status signal to
+	remove the connection when it is closed.
+
+	* libinfinity/common/inf-connection-manager.c: Remove the group from
+	the list of groups in inf_connection_manager_group_free().
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added an iterator pointing to the
+	subdirectory being explored to the begin-explore signal. Don't clear
+	directory tree when the connection is lost but rather when a new
+	connection is set so we can still browse the explored paths when
+	disconnected.
+
+	* libinfinity/client/infc-explore-request.c: Replaced
+	g_value_set_finished by g_value_set_boolean as it ought to be. I must
+	have been asleep when having coded this.
+
+	* libinfinity/server/infd-server-pool.c: Use username for service name
+	when the real name is not known.
+
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c: Added the INVALID status, keep
+	the item after disconnection so a potential error can still be
+	displayed. Fixed several bugs.
+
+	* libinfgtk/inf-gtk-browser-view.c: Propagate size_request and
+	size_allocate. Implemented exploration and fixed several bugs.
+
+	* libinfgtk/inf-gtk-io.h:
+	* libinfgtk/inf-gtk-io.c:
+	* libinfgtk/Makefile.am: Added a InfIo implementation using the
+	default Glib mainloop.
+
+	* test/inf-test-daemon.c: Publish the infinote service on avahi.
+
+	* test/inf-test-gtk-browser.c:
+	* test/Makefile.am: Added a test showing a InfGtkBrowserView to browse
+	avahi-discovered infinote servers.
+
 2007-10-04  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:OBJECT,OBJECT marshaller.

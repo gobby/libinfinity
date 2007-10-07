@@ -56,6 +56,20 @@ enum {
 
 static GObjectClass* parent_class;
 
+static const gchar*
+infd_server_pool_get_local_service_name(void)
+{
+  /* TODO: It would be nice to have the host name as service name for
+   * dedicated server and user name otherwise */
+  const gchar* name;
+  name = g_get_real_name();
+
+  if(name == NULL || g_ascii_strcasecmp(name, "unknown") == 0)
+    name = g_get_user_name();
+
+  return name;
+}
+
 static void
 infd_server_pool_entry_publish_with(InfdServerPoolEntry* entry,
                                     InfdServerPoolPublisher* publisher)
@@ -76,9 +90,7 @@ infd_server_pool_entry_publish_with(InfdServerPoolEntry* entry,
       publisher->shared.local.item = inf_local_publisher_publish(
         publisher->shared.local.publisher,
         "_infinote._tcp",
-        /* TODO: What does this when there is no real name defined?
-         * Should we fall back to g_get_user_name in this case? */
-        g_get_real_name(),
+        infd_server_pool_get_local_service_name(),
         port
       );
     }
@@ -525,6 +537,9 @@ infd_server_pool_add_local_publisher(InfdServerPool* server_pool,
 
   /* TODO: Bail if we are already publishing via this publisher */
 
+  /* TODO: Only announce on the address family server is listening on.
+   * Otherwise we might announce the service on ipv6 without anyone
+   * listening there. */
   server_pool_publisher = g_slice_new(InfdServerPoolPublisher);
   server_pool_publisher->type = INFD_SERVER_POOL_PUBLISHER_LOCAL;
   server_pool_publisher->shared.local.publisher = publisher;

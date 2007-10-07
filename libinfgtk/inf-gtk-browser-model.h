@@ -42,6 +42,7 @@ typedef struct _InfGtkBrowserModel InfGtkBrowserModel;
 typedef struct _InfGtkBrowserModelClass InfGtkBrowserModelClass;
 
 typedef enum _InfGtkBrowserModelStatus {
+  INF_GTK_BROWSER_MODEL_INVALID,
   INF_GTK_BROWSER_MODEL_DISCOVERED,
   INF_GTK_BROWSER_MODEL_RESOLVING,
   INF_GTK_BROWSER_MODEL_CONNECTING,

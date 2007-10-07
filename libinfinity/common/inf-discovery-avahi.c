@@ -29,6 +29,9 @@
 #include <avahi-common/alternative.h>
 #include <avahi-common/error.h>
 
+#include <net/if.h> /* For if_indextoname */
+#include <string.h>
+
 struct AvahiWatch {
   InfDiscoveryAvahi* avahi;
 
@@ -99,6 +102,8 @@ struct _InfDiscoveryAvahiPrivate {
 };
 
 enum {
+  PROP_0,
+
   /* construct only */
   PROP_XMPP_MANAGER,
   PROP_IO,
@@ -301,6 +306,10 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
       break;
     }
 
+/*    gconstpointer ptr = inf_ip_address_get_raw(inf_addr);
+    ((char*)ptr)[3] = discovery_info->interface;
+    printf("%s\n", inf_ip_address_to_string(inf_addr));*/
+
     discovery_info->resolved = inf_xmpp_manager_lookup_connection_by_address(
       priv->xmpp_manager,
       inf_addr,
@@ -313,31 +322,34 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
 
       tcp = g_object_new(
         INF_TYPE_TCP_CONNECTION,
+        "io", priv->io,
+        "device-index", discovery_info->interface,
         "remote-address", inf_addr,
         "remote-port", port,
         NULL
       );
 
-      /* TODO: Query JID by callback */
-      discovery_info->resolved = inf_xmpp_connection_new(
-        tcp,
-        INF_XMPP_CONNECTION_CLIENT,
-        g_get_user_name(),
-        priv->creds,
-        priv->sasl_context
-      );
-
       error = NULL;
       if(inf_tcp_connection_open(tcp, &error) == FALSE)
       {
-        g_object_unref(G_OBJECT(discovery_info->resolved));
-        discovery_info->resolved = NULL;
-
         inf_discovery_avahi_info_resolv_error(discovery_info, error);
         g_error_free(error);
+
+        g_object_unref(G_OBJECT(tcp));
       }
       else
       {
+        /* TODO: Query JID by callback? */
+        discovery_info->resolved = inf_xmpp_connection_new(
+          tcp,
+          INF_XMPP_CONNECTION_CLIENT,
+          g_get_user_name(),
+          priv->creds,
+          priv->sasl_context
+        );
+
+        g_object_unref(G_OBJECT(tcp));
+
         inf_xmpp_manager_add_connection(
           priv->xmpp_manager,
           discovery_info->resolved
@@ -356,8 +368,6 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
 
         g_object_unref(G_OBJECT(discovery_info->resolved));
       }
-
-      g_object_unref(G_OBJECT(tcp));
     }
     else
     {
@@ -423,6 +433,14 @@ inf_discovery_avahi_service_browser_callback(AvahiServiceBrowser* browser,
     discovery_info = g_slice_new(InfDiscoveryInfo);
     discovery_info->service_name = g_strdup(name);
     discovery_info->service_type = info->type;
+    discovery_info->domain = g_strdup(domain);
+    discovery_info->interface = interface;
+    discovery_info->protocol = protocol;
+
+    discovery_info->service_resolver = NULL;
+    discovery_info->resolved = NULL;
+    discovery_info->resolv = NULL;
+
     info->discovered = g_slist_prepend(info->discovered, discovery_info);
     inf_discovery_discovered(INF_DISCOVERY(avahi), discovery_info);
     break;
@@ -519,7 +537,6 @@ inf_discovery_avahi_perform_publish_item(InfDiscoveryAvahi* avahi,
                                          InfLocalPublisherItem* item)
 {
   InfDiscoveryAvahiPrivate* priv;
-  int ret;
 
   priv = INF_DISCOVERY_AVAHI_PRIVATE(avahi);
 
@@ -714,6 +731,9 @@ inf_discovery_avahi_client_callback(AvahiClient* client,
     /* Wait for client to become running */
     break;
   case AVAHI_CLIENT_S_RUNNING:
+    /* Discovery and publish when running */
+    inf_discovery_avahi_perform_publish_all(avahi);
+    inf_discovery_avahi_perform_discover_all(avahi);
     break;
   case AVAHI_CLIENT_FAILURE:
     inf_discovery_avahi_perform_unpublish_all(avahi);
@@ -892,16 +912,23 @@ inf_discovery_avahi_timeout_new(const AvahiPoll* api,
   timeout->callback = callback;
   timeout->userdata = userdata;
 
-  /* Timeout in the past is triggered instantly */
-  usec = avahi_age(tv);
-  if(usec > 0) usec = 0;
+  if(tv != NULL)
+  {
+    /* Timeout in the past is triggered instantly */
+    usec = avahi_age(tv);
+    if(usec > 0) usec = 0;
 
-  timeout->timeout_handle = inf_io_add_timeout(
-    priv->io,
-    ((-usec) + 500) / 1000,
-    inf_discovery_avahi_timeout_cb,
-    timeout
-  );
+    timeout->timeout_handle = inf_io_add_timeout(
+      priv->io,
+      ((-usec) + 500) / 1000,
+      inf_discovery_avahi_timeout_cb,
+      timeout
+    );
+  }
+  else
+  {
+    timeout->timeout_handle = NULL;
+  }
 
   return timeout;
 }
@@ -917,16 +944,23 @@ inf_discovery_avahi_timeout_update(AvahiTimeout* timeout,
   if(timeout->timeout_handle != NULL)
     inf_io_remove_timeout(priv->io, timeout->timeout_handle);
 
-  /* Timeout in the past is triggered instantly */
-  usec = avahi_age(tv);
-  if(usec > 0) usec = 0;
+  if(tv != NULL)
+  {
+    /* Timeout in the past is triggered instantly */
+    usec = avahi_age(tv);
+    if(usec > 0) usec = 0;
 
-  timeout->timeout_handle = inf_io_add_timeout(
-    priv->io,
-    ((-usec) + 500) / 1000,
-    inf_discovery_avahi_timeout_cb,
-    timeout
-  );
+    timeout->timeout_handle = inf_io_add_timeout(
+      priv->io,
+      ((-usec) + 500) / 1000,
+      inf_discovery_avahi_timeout_cb,
+      timeout
+    );
+  }
+  else
+  {
+    timeout->timeout_handle = NULL;
+  }
 }
 
 static void
@@ -937,6 +971,7 @@ inf_discovery_avahi_timeout_free(AvahiTimeout* timeout)
 
   if(timeout->timeout_handle != NULL)
     inf_io_remove_timeout(priv->io, timeout->timeout_handle);
+
   g_slice_free(AvahiTimeout, timeout);
 }
 
@@ -1079,7 +1114,7 @@ inf_discovery_avahi_set_property(GObject* object,
       (gnutls_certificate_credentials_t)g_value_get_pointer(value);
     break;
   case PROP_SASL_CONTEXT:
-    g_assert(priv->sasl_context != NULL); /* construct only */
+    g_assert(priv->sasl_context == NULL); /* construct only */
     priv->sasl_context = (Gsasl*)g_value_get_pointer(value);
     break;
   default:
@@ -1163,7 +1198,7 @@ inf_discovery_avahi_get_discovered(InfDiscovery* discovery,
 
   priv = INF_DISCOVERY_AVAHI_PRIVATE(discovery);
   info = g_hash_table_lookup(priv->discovered, type);
-  g_assert(info != NULL);
+  if(info == NULL) return NULL;
 
   return g_slist_copy(info->discovered);
 }
@@ -1234,11 +1269,20 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
   }
 }
 
-static const gchar*
+static gchar*
 inf_discovery_avahi_info_get_service_name(InfDiscovery* discovery,
                                           InfDiscoveryInfo* info)
 {
-  return info->service_name;
+  char device_name[IF_NAMESIZE];
+  if(if_indextoname(info->interface, device_name) == NULL)
+    return NULL;
+
+  return g_strdup_printf(
+    "%s (via %s on %s)",
+    info->service_name,
+    device_name,
+    info->protocol == AVAHI_PROTO_INET ? "IPv4" : "IPv6"
+  );
 }
 
 static const gchar*

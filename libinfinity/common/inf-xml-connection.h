@@ -55,6 +55,8 @@ struct _InfXmlConnectionIface {
                const xmlNodePtr xml);
   void (*received)(InfXmlConnection* connection,
                    const xmlNodePtr xml);
+  void (*error)(InfXmlConnection* connection,
+                const GError* error);
 };
 
 GType
@@ -77,6 +79,10 @@ inf_xml_connection_sent(InfXmlConnection* connection,
 void
 inf_xml_connection_received(InfXmlConnection* connection,
                             const xmlNodePtr xml);
+
+void
+inf_xml_connection_error(InfXmlConnection* connection,
+                         const GError* error);
 
 G_END_DECLS
 

@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <net/if.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -45,6 +46,7 @@ struct _InfTcpConnectionPrivate {
 
   InfIpAddress* remote_address;
   guint remote_port;
+  unsigned int device_index;
 
   guint8* queue;
   gsize front_pos;
@@ -62,7 +64,10 @@ enum {
   PROP_REMOTE_ADDRESS,
   PROP_REMOTE_PORT,
   PROP_LOCAL_ADDRESS,
-  PROP_LOCAL_PORT
+  PROP_LOCAL_PORT,
+
+  PROP_DEVICE_INDEX,
+  PROP_DEVICE_NAME
 };
 
 enum {
@@ -337,7 +342,6 @@ inf_tcp_connection_io(InfNativeSocket* socket,
   {
     len = sizeof(int);
     getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, &errcode, &len);
-    /* TODO: Verify that we get senseful error codes here */
     inf_tcp_connection_system_error(connection, errcode);
   }
   else
@@ -376,6 +380,7 @@ inf_tcp_connection_init(GTypeInstance* instance,
 
   priv->remote_address = NULL;
   priv->remote_port = 0;
+  priv->device_index = 0;
 
   priv->queue = g_malloc(1024);
   priv->front_pos = 0;
@@ -429,6 +434,8 @@ inf_tcp_connection_set_property(GObject* object,
 {
   InfTcpConnection* connection;
   InfTcpConnectionPrivate* priv;
+  const gchar* device_string;
+  unsigned int new_index;
 
   connection = INF_TCP_CONNECTION(object);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -450,6 +457,29 @@ inf_tcp_connection_set_property(GObject* object,
     g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
     priv->remote_port = g_value_get_uint(value);
     break;
+  case PROP_DEVICE_INDEX:
+    g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
+    /* TODO: Verify that such a device exists */
+    priv->device_index = g_value_get_uint(value);
+    g_object_notify(G_OBJECT(object), "device-name");
+    break;
+  case PROP_DEVICE_NAME:
+    g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
+    device_string = g_value_get_string(value);
+    if(device_string == NULL) priv->device_index = 0;
+
+    new_index = if_nametoindex(device_string);
+    if(new_index == 0)
+    {
+      g_warning("Interface `%s' does not exist", device_string);
+    }
+    else
+    {
+      priv->device_index = new_index;
+      g_object_notify(G_OBJECT(object), "device-index");
+    }
+
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -466,6 +496,7 @@ inf_tcp_connection_get_property(GObject* object,
   InfTcpConnectionPrivate* priv;
   InfIpAddress* address;
   guint port;
+  char device_name[IF_NAMESIZE];
 
   connection = INF_TCP_CONNECTION(object);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -493,6 +524,35 @@ inf_tcp_connection_get_property(GObject* object,
     g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
     inf_tcp_connection_addr_info(priv->socket, TRUE, NULL, &port);
     g_value_set_uint(value, port);
+    break;
+  case PROP_DEVICE_INDEX:
+    g_value_set_uint(value, priv->device_index);
+    break;
+  case PROP_DEVICE_NAME:
+    if(priv->device_index == 0)
+    {
+      g_value_set_string(value, NULL);
+    }
+    else
+    {
+      if(if_indextoname(priv->device_index, device_name) == NULL)
+      {
+        g_warning(
+          "Failed to get name for device %u: %s",
+          priv->device_index,
+          strerror(errno)
+        );
+        
+        g_value_set_string(value, NULL);
+      }
+      else
+      {
+        g_value_set_string(value, device_name);
+      }
+    }
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -636,6 +696,32 @@ inf_tcp_connection_class_init(gpointer g_class,
     )
   );
 
+  g_object_class_install_property(
+    object_class,
+    PROP_DEVICE_INDEX,
+    g_param_spec_uint(
+      "device-index",
+      "Device index",
+      "The index of the device to use for the connection",
+      0,
+      G_MAXUINT,
+      0,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_DEVICE_NAME,
+    g_param_spec_string(
+      "device-name",
+      "Device name",
+      "The name of the device to use for the connection, such as `eth0'",
+      NULL,
+      G_PARAM_READWRITE
+    )
+  );
+
   tcp_connection_signals[SENT] = g_signal_new(
     "sent",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -760,6 +846,7 @@ inf_tcp_connection_open(InfTcpConnection* connection,
                         GError** error)
 {
   InfTcpConnectionPrivate* priv;
+/*  char device_name[IF_NAMESIZE];*/
   int result;
 
   union {
@@ -809,7 +896,7 @@ inf_tcp_connection_open(InfTcpConnection* connection,
     native_address.in6.sin6_family = AF_INET6;
     native_address.in6.sin6_port = htons(priv->remote_port);
     native_address.in6.sin6_flowinfo = 0;
-    native_address.in6.sin6_scope_id = 0;
+    native_address.in6.sin6_scope_id = priv->device_index;
 
     break;
   default:
@@ -823,6 +910,40 @@ inf_tcp_connection_open(InfTcpConnection* connection,
     return FALSE;
   }
 
+  /* Note: The following requires root permissions. We rather set the
+   * sin6_scope_id (see above) assuming a link-local address. */
+#if 0
+  /* Bind to interface */
+  if(priv->device_index != 0)
+  {
+    if(if_indextoname(priv->device_index, device_name) == NULL)
+    {
+      inf_tcp_connection_make_system_error(errno, error);
+      close(priv->socket);
+      priv->socket = -1;
+    }
+
+    result = setsockopt(
+      priv->socket,
+      SOL_SOCKET,
+      SO_BINDTODEVICE,
+      device_name,
+      strlen(device_name) + 1
+    );
+
+    if(result == -1)
+    {
+      printf("Error here `%s' for device %s\n", strerror(errno), device_name);
+      inf_tcp_connection_make_system_error(errno, error);
+
+      close(priv->socket);
+      priv->socket = -1;
+      return FALSE;
+    }
+  }
+#endif
+
+  /* Set socket non-blocking */
   result = fcntl(priv->socket, F_GETFL);
   if(result == -1)
   {
@@ -842,6 +963,7 @@ inf_tcp_connection_open(InfTcpConnection* connection,
     return FALSE;
   }
 
+  /* Connect */
   do
   {
     result = connect(priv->socket, addr, addrlen);

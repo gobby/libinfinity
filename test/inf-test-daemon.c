@@ -16,6 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <libinfinity/inf-config.h>
 #include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
 #include <libinfinity/server/infd-filesystem-storage.h>
@@ -24,6 +25,10 @@
 #include <libinfinity/server/infd-tcp-server.h>
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-standalone-io.h>
+
+#ifdef HAVE_AVAHI
+#include <libinfinity/common/inf-discovery-avahi.h>
+#endif
 
 int
 main(int argc, char* argv[])
@@ -36,6 +41,10 @@ main(int argc, char* argv[])
   InfdFilesystemStorage* storage;
   InfdDirectory* directory;
   gchar* root_directory;
+#ifdef HAVE_AVAHI
+  InfDiscoveryAvahi* avahi;
+  InfXmppManager* xmpp_manager;
+#endif
   GError* error;
 
   gnutls_global_init();
@@ -74,6 +83,20 @@ main(int argc, char* argv[])
     g_object_unref(G_OBJECT(server));
 
     infd_server_pool_add_server(pool, INFD_XML_SERVER(xmpp));
+
+#ifdef HAVE_AVAHI
+    xmpp_manager = inf_xmpp_manager_new();
+    avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL);
+    g_object_unref(G_OBJECT(xmpp_manager));
+
+    infd_server_pool_add_local_publisher(
+      pool,
+      INFD_XMPP_SERVER(xmpp),
+      INF_LOCAL_PUBLISHER(avahi)
+    );
+
+    g_object_unref(G_OBJECT(avahi));
+#endif
     g_object_unref(G_OBJECT(xmpp));
 
     inf_standalone_io_loop(io);

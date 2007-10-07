@@ -71,6 +71,7 @@ struct _InfcBrowserClass {
                        InfcBrowserIter* iter);
 
   void (*begin_explore)(InfcBrowser* browser,
+                        InfcBrowserIter* iter,
                         InfcExploreRequest* request);
 };
 

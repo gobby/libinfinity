@@ -82,13 +82,13 @@ inf_local_publisher_publish(InfLocalPublisher* publisher,
 {
   InfLocalPublisherIface* iface;
 
-  g_return_if_fail(INF_IS_LOCAL_PUBLISHER(publisher));
-  g_return_if_fail(type != NULL);
-  g_return_if_fail(name != NULL);
-  g_return_if_fail(port != 0);
+  g_return_val_if_fail(INF_IS_LOCAL_PUBLISHER(publisher), NULL);
+  g_return_val_if_fail(type != NULL, NULL);
+  g_return_val_if_fail(name != NULL, NULL);
+  g_return_val_if_fail(port != 0, NULL);
 
   iface = INF_LOCAL_PUBLISHER_GET_IFACE(publisher);
-  g_return_if_fail(iface->publish != NULL);
+  g_return_val_if_fail(iface->publish != NULL, NULL);
 
   return iface->publish(publisher, type, name, port);
 }

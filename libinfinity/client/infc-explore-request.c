@@ -145,7 +145,7 @@ infc_explore_request_get_property(GObject* object,
     g_value_set_boolean(value, priv->initiated);
     break;
   case PROP_FINISHED:
-    g_value_set_finished(value, priv->finished);
+    g_value_set_boolean(value, priv->finished);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
