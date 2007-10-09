@@ -18,12 +18,25 @@
 
 #include <infinoted/infinoted-creds.h>
 
+#include <libinfinity/server/infd-filesystem-storage.h>
+#include <libinfinity/server/infd-server-pool.h>
+#include <libinfinity/server/infd-directory.h>
+#include <libinfinity/server/infd-tcp-server.h>
+#include <libinfinity/server/infd-storage.h>
+#include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/common/inf-xmpp-manager.h>
+#include <libinfinity/common/inf-discovery-avahi.h>
+#include <libinfinity/inf-config.h>
+
 #include <glib-object.h>
 #include <glib/goption.h>
 #include <glib/gstrfuncs.h>
 
+#include <string.h>
 #include <locale.h>
 #include <stdio.h>
+#include <errno.h>
 
 static gchar* key_file = NULL;
 static gchar* cert_file = NULL;
@@ -60,91 +73,257 @@ static const GOptionEntry entries[] =
   }
 };
 
-int
-main(int argc,
-     char* argv[])
+static gboolean
+infinoted_main_create_dirname(const gchar* path,
+                              GError** error)
+{
+  gchar* dirname;
+  int save_errno;
+
+  dirname = g_path_get_dirname(path);
+
+  if(g_mkdir_with_parents(dirname, 0700) != 0)
+  {
+    save_errno = errno;
+
+    g_set_error(
+      error,
+      g_quark_from_static_string("ERRNO_ERROR"),
+      save_errno,
+      "Could not create directory `%s': %s",
+      dirname,
+      strerror(save_errno)
+    );
+    
+    g_free(dirname);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static gboolean
+infinoted_main_run(gnutls_certificate_credentials_t credentials,
+                   guint port,
+                   GError** error)
+{
+  InfStandaloneIo* io;
+  InfdTcpServer* tcp;
+  gchar* root_directory;
+  InfdStorage* storage;
+  InfConnectionManager* connection_manager;
+  InfdDirectory* directory;
+  InfdServerPool* pool;
+  InfdXmppServer* server;
+#ifdef HAVE_AVAHI
+  InfXmppManager* xmpp_manager;
+  InfDiscoveryAvahi* avahi;
+#endif
+
+  io = inf_standalone_io_new();
+  tcp = INFD_TCP_SERVER(
+    g_object_new(INFD_TYPE_TCP_SERVER, "io", io, "local-port", port, NULL)
+  );
+
+  if(infd_tcp_server_open(tcp, error) == FALSE)
+  {
+    g_object_unref(G_OBJECT(io));
+    return FALSE;
+  }
+
+  /* TODO: Allow different storage plugins */
+  root_directory = g_build_filename(g_get_home_dir(), ".infinote", NULL);
+  storage = INFD_STORAGE(infd_filesystem_storage_new(root_directory));
+  g_free(root_directory);
+
+  connection_manager = inf_connection_manager_new();
+  directory = infd_directory_new(storage, connection_manager);
+  g_object_unref(G_OBJECT(storage));
+  g_object_unref(G_OBJECT(connection_manager));
+
+  /* TODO: Load note plugins */
+
+  pool = infd_server_pool_new(directory);
+  g_object_unref(G_OBJECT(directory));
+
+  server = infd_xmpp_server_new(tcp, g_get_host_name(), credentials, NULL);
+  g_object_unref(G_OBJECT(tcp));
+  
+  infd_server_pool_add_server(pool, INFD_XML_SERVER(server));
+
+#ifdef HAVE_AVAHI
+  xmpp_manager = inf_xmpp_manager_new();
+  avahi = inf_discovery_avahi_new(
+    INF_IO(io),
+    xmpp_manager,
+    credentials,
+    NULL
+  );
+  g_object_unref(G_OBJECT(xmpp_manager));
+
+  infd_server_pool_add_local_publisher(
+    pool,
+    server,
+    INF_LOCAL_PUBLISHER(avahi)
+  );
+  g_object_unref(G_OBJECT(avahi));
+#endif
+  g_object_unref(G_OBJECT(server));
+
+  fprintf(stderr, "Server running on port %u\n", port);
+  inf_standalone_io_loop(io);
+
+  g_object_unref(G_OBJECT(pool));
+  g_object_unref(G_OBJECT(io));
+  return TRUE;
+}
+
+static gboolean
+infinoted_main(int argc,
+               char* argv[],
+               GError** error)
 {
   GOptionContext* context;
-  GError* error;
 
   gnutls_x509_privkey_t key;
   gnutls_x509_crt_t cert;
+  gnutls_dh_params_t dh_params;
+  gnutls_certificate_credentials_t credentials;
+  const gchar* key_path;
+  const gchar* cert_path;
+
+  key = NULL;
+  cert = NULL;
+  dh_params = NULL;
+  credentials = NULL;
 
   setlocale(LC_ALL, "");
   context = g_option_context_new("- infinote dedicated server");
   g_option_context_add_main_entries(context, entries, NULL);
 
-  error = NULL;
-  if(g_option_context_parse(context, &argc, &argv, &error) == FALSE)
-  {
-    fprintf(stderr, "%s\n", error->message);
-    g_error_free(error);
-    return -1;
-  }
+  if(g_option_context_parse(context, &argc, &argv, error) == FALSE)
+    goto error;
 
   if(create_key == TRUE && create_certificate == FALSE)
   {
-    fprintf(
-      stderr,
-      "If you want create a new key you also must create a new certificate "
-      "signed with it.\n"
+    g_set_error(
+      error,
+      g_quark_from_static_string("INFINOTED_MAIN_ERROR"),
+      0,
+      "Creating a new private key also requires creating a new certificate "
+      "signed with it."
     );
 
-    return -1;
+    goto error;
   }
-
-  if(key_file == NULL) key_file = g_strdup(DEFAULT_KEYPATH);
-  if(cert_file == NULL) cert_file = g_strdup(DEFAULT_CERTPATH);
 
   g_type_init();
   gnutls_global_init();
+  
+  key_path = DEFAULT_KEYPATH;
+  if(key_file != NULL) key_path = key_file;
+
+  cert_path = DEFAULT_CERTPATH;
+  if(cert_file != NULL) cert_path = cert_file;
 
   if(create_key == TRUE)
   {
-    fprintf(stderr, "Generating 2048 bit RSA key...\n");
-    key = infinoted_creds_create_key(key_file, &error);
+    fprintf(stderr, "Generating 2048 bit RSA private key...\n");
+    key = infinoted_creds_create_key(error);
+
+    if(key != NULL)
+    {
+      if(infinoted_main_create_dirname(key_path, error) == FALSE ||
+         infinoted_creds_write_key(key, key_path, error) == FALSE)
+      {
+        gnutls_x509_privkey_deinit(key);
+        key = NULL;
+      }
+    }
   }
   else
   {
-    key = infinoted_creds_read_key(key_file, &error);
+    key = infinoted_creds_read_key(key_path, error);
   }
 
   g_free(key_file);
-  if(key == NULL)
-  {
-    fprintf(stderr, "%s\n", error->message);
-    g_error_free(error);
-    g_free(cert_file);
-    return -1;
-  }
+  key_file = NULL;
+  if(key == NULL) goto error;
 
   if(create_certificate == TRUE)
   {
     fprintf(stderr, "Generating self-signed certificate...\n");
+    cert = ininoted_creds_create_self_signed_certificate(key, error);
 
-    cert = ininoted_creds_create_self_signed_certificate(
-      key,
-      cert_file,
-      &error
-    );
+    if(cert != NULL)
+    {
+      if(infinoted_main_create_dirname(key_path, error) == FALSE ||
+         infinoted_creds_write_certificate(cert, cert_path, error) == FALSE)
+      {
+        gnutls_x509_crt_deinit(cert);
+        cert = NULL;
+      }
+    }
   }
   else
   {
-    cert = infinoted_creds_read_certificate(cert_file, &error);
+    cert = infinoted_creds_read_certificate(cert_path, error);
   }
 
   g_free(cert_file);
-  if(cert == NULL)
-  {
-    fprintf(stderr, "%s\n", error->message);
-    g_error_free(error);
-    gnutls_x509_privkey_deinit(key);
-    g_free(cert_file);
-    return -1;
-  }
+  cert_file = NULL;
+  if(cert == NULL) goto error;
 
+  fprintf(stderr, "Generating 2048 bit Diffie-Hellman parameters...\n");
+  dh_params = infinoted_creds_create_dh_params(error);
+  if(dh_params == NULL) goto error;
+
+  credentials = infinoted_creds_create_credentials(
+    dh_params,
+    key,
+    cert,
+    error
+  );
+
+  if(credentials == NULL)
+    goto error;
+
+  if(infinoted_main_run(credentials, 6523, error) == FALSE)
+    goto error;
+
+  gnutls_certificate_free_credentials(credentials);
+  gnutls_dh_params_deinit(dh_params);
   gnutls_x509_crt_deinit(cert);
   gnutls_x509_privkey_deinit(key);
   gnutls_global_deinit();
+
+  return TRUE;
+error:
+  if(credentials != NULL) gnutls_certificate_free_credentials(credentials);
+  if(dh_params != NULL) gnutls_dh_params_deinit(dh_params);
+  if(cert != NULL) gnutls_x509_crt_deinit(cert);
+  if(key != NULL) gnutls_x509_privkey_deinit(key);
+  gnutls_global_deinit();
+
+  g_free(key_file);
+  g_free(cert_file);
+
+  return FALSE;
+}
+
+int
+main(int argc,
+     char* argv[])
+{
+  GError* error;
+
+  error = NULL;
+  if(infinoted_main(argc, argv, &error) == FALSE)
+  {
+    fprintf(stderr, "%s\n", error->message);
+    g_error_free(error);
+    return -1;
+  }
+
   return 0;
 }

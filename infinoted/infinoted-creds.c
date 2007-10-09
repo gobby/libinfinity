@@ -25,6 +25,7 @@
 
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 static const unsigned int DAYS = 24 * 60 * 60;
 
@@ -41,74 +42,196 @@ infinoted_creds_gnutls_error(int gnutls_error_code,
   );
 }
 
-/** infinoted_creds_read_key:
- *
- * @key_path: A path to a X.509 private key file
- * @error: Location for error information, if any.
- *
- * Reads the key located at @key_path into a gnutls_x509_privkey_t
- * structure.
- *
- * Return Value: A private key. Free with gnutls_x509_privkey_deinit().
- **/
-gnutls_x509_privkey_t
-infinoted_creds_read_key(const gchar* key_path,
-                         GError** error)
+static int
+infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
+                                                    gnutls_x509_privkey_t key)
 {
-  gnutls_x509_privkey_t key;
-  gnutls_datum_t key_datum;
-  gchar* key_data;
-  gsize key_size;
+  gint32 default_serial;
+  char buffer[20];
+  int res;
+  
+  res = gnutls_x509_crt_set_key(cert, key);
+  if(res != 0) return res;
+
+  default_serial = (gint32)time(NULL);
+  buffer[4] = (default_serial      ) & 0xff;
+  buffer[3] = (default_serial >>  8) & 0xff;
+  buffer[2] = (default_serial >> 16) & 0xff;
+  buffer[1] = (default_serial >> 24) & 0xff;
+  buffer[0] = 0;
+
+  res = gnutls_x509_crt_set_serial(cert, buffer, 5);
+  if(res != 0) return res;
+
+  res = gnutls_x509_crt_set_activation_time(cert, time(NULL));
+  if(res != 0) return res;
+
+  res = gnutls_x509_crt_set_expiration_time(cert, time(NULL) + 365 * DAYS);
+  if(res != 0) return res;
+
+  res = gnutls_x509_crt_set_basic_constraints(cert, 0, -1);
+  if(res != 0) return res;
+
+  res = gnutls_x509_crt_set_key_usage(cert, GNUTLS_KEY_DIGITAL_SIGNATURE);
+  if(res != 0) return res;
+
+  res = gnutls_x509_crt_set_version(cert, 3);
+  if(res != 0) return res;
+
+  res = gnutls_x509_crt_sign2(cert, cert, key, GNUTLS_DIG_SHA1, 0);
+  if(res != 0) return res;
+
+  return 0;
+}
+
+#define READ_FUNC_IMPL(type, path, init_func, deinit_func, import_func) \
+  type obj; \
+  gnutls_datum_t datum; \
+  gchar* data; \
+  gsize size; \
+  int res; \
+  \
+  obj = NULL; \
+  \
+  if(g_file_get_contents(path, &data, &size, error) == FALSE) \
+    return NULL; \
+  \
+  res = init_func(&obj); \
+  if(res != 0) goto error; \
+  \
+  datum.data = (unsigned char*)data; \
+  datum.size = (unsigned int)size; \
+  res = import_func(obj, &datum, GNUTLS_X509_FMT_PEM); \
+  if(res != 0) goto error; \
+  \
+  return obj; \
+error: \
+  if(obj != NULL) deinit_func(obj); \
+  infinoted_creds_gnutls_error(res, error); \
+  return NULL;
+
+#define WRITE_FUNC_IMPL(obj, path, export_func) \
+  unsigned char* data; \
+  size_t size; \
+  int res; \
+  gboolean bres; \
+  \
+  size = 0; \
+  data = NULL; \
+  \
+  res = export_func(obj, GNUTLS_X509_FMT_PEM, NULL, &size); \
+  g_assert(res != 0); /* cannot succeed */ \
+  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER) \
+    goto error; /* real error */ \
+  \
+  data = g_malloc(size); \
+  res = export_func(obj, GNUTLS_X509_FMT_PEM, data, &size); \
+  if(res != 0) goto error; \
+  \
+  bres = g_file_set_contents(path, (gchar*)data, size, error); \
+  g_free(data); \
+  \
+  return bres; \
+error: \
+  if(data != NULL) g_free(data); \
+  infinoted_creds_gnutls_error(res, error); \
+  return FALSE;
+
+/** infinoted_creds_create_dh_params:
+ *
+ * @error: Loctation to store error information, if any.
+ *
+ * Creates new, random Diffie-Hellman parameters.
+ *
+ * Returns: New dhparams to be freed with gnutls_dh_params_deinit(),
+ * or %NULL in case of error.
+ **/
+gnutls_dh_params_t
+infinoted_creds_create_dh_params(GError** error)
+{
+  gnutls_dh_params_t params;
   int res;
 
-  if(g_file_get_contents(key_path, &key_data, &key_size, error) == FALSE)
-    return NULL;
-
-  res = gnutls_x509_privkey_init(&key);
+  params = NULL;
+  res = gnutls_dh_params_init(&params);
+    
   if(res != 0)
   {
     infinoted_creds_gnutls_error(res, error);
-    g_free(key_data);
     return NULL;
   }
-  
-  key_datum.data = (unsigned char*)key_data;
-  key_datum.size = key_size;
 
-  res = gnutls_x509_privkey_import(key, &key_datum, GNUTLS_X509_FMT_PEM);
-  g_free(key_data);
-
+  res = gnutls_dh_params_generate2(params, 2048);
   if(res != 0)
   {
+    gnutls_dh_params_deinit(params);
     infinoted_creds_gnutls_error(res, error);
-    gnutls_x509_privkey_deinit(key);
     return NULL;
   }
 
-  return key;
+  return params;
+}
+
+/** infinoted_creds_read_dh_params:
+ *
+ * @dhparams_path: A path to a DH parameters file.
+ * @error: Location to store error information, if any.
+ *
+ * Reads the Diffie-Hellman parameters located at @dhparams_path into a
+ * gnutls_dh_params_t structure.
+ *
+ * Returns: New dhparams to be freed with gnutls_dh_params_deinit(),
+ * or %NULL in case of error.
+ **/
+gnutls_dh_params_t
+infinoted_creds_read_dh_params(const gchar* dhparams_path,
+                               GError** error)
+{
+  READ_FUNC_IMPL(
+    gnutls_dh_params_t,
+    dhparams_path,
+    gnutls_dh_params_init,
+    gnutls_dh_params_deinit,
+    gnutls_dh_params_import_pkcs3
+  )
+}
+
+/** infinoted_creds_write_dh_params:
+ *
+ * @params: An initialized #gnutls_dh_params_t structure.
+ * @dhparams_path: The path at which so store @params.
+ * @error: Location to store error information, if any.
+ *
+ * Writes the given Diffie-Hellman parameters to the given path on the
+ * filesystem. If an error occurs, @error is set and %FALSE is returned.
+ *
+ * Returns: %TRUE on success, %FALSE otherwise.
+ **/
+gboolean
+infinoted_creds_write_dh_params(gnutls_dh_params_t params,
+                                const gchar* dhparams_path,
+                                GError** error)
+{
+  WRITE_FUNC_IMPL(
+    params,
+    dhparams_path,
+    gnutls_dh_params_export_pkcs3
+  )
 }
 
 /** infinoted_creds_create_key:
  *
- * @key_path: A path to store the generated key at, or %NULL.
  * @error: Location to store error information, if any.
  *
- * Generates a new, random X.509 private key. The created key is stored at
- * @key_path, if @key_path is non-%NULL. Otherwise, the new key is just
- * returned.
+ * Generates a new, random X.509 private key.
  *
- * Return Value: A new key to be freed with gnutls_x509_privkey_deinit(),
+ * Returns: A new key to be freed with gnutls_x509_privkey_deinit(),
  * or %NULL if an error occured.
  **/
 gnutls_x509_privkey_t
-infinoted_creds_create_key(const gchar* key_path,
-                           GError** error)
+infinoted_creds_create_key(GError** error)
 {
   gnutls_x509_privkey_t key;
-  gchar* key_data;
-  size_t output_size;
-  gchar* dirname;
-  int save_errno;
   int res;
 
   res = gnutls_x509_privkey_init(&key);
@@ -126,76 +249,89 @@ infinoted_creds_create_key(const gchar* key_path,
     return NULL;
   }
 
-  if(key_path != NULL)
+  return key;
+}
+
+
+/** infinoted_creds_read_key:
+ *
+ * @key_path: A path to a X.509 private key file
+ * @error: Location for error information, if any.
+ *
+ * Reads the key located at @key_path into a gnutls_x509_privkey_t
+ * structure.
+ *
+ * Returns: A private key. Free with gnutls_x509_privkey_deinit().
+ **/
+gnutls_x509_privkey_t
+infinoted_creds_read_key(const gchar* key_path,
+                         GError** error)
+{
+  READ_FUNC_IMPL(
+    gnutls_x509_privkey_t,
+    key_path,
+    gnutls_x509_privkey_init,
+    gnutls_x509_privkey_deinit,
+    gnutls_x509_privkey_import
+  )
+}
+
+/** infinoted_creds_write_key:
+ *
+ * @key: An initialized #gnutls_x509_privkey_t structure.
+ * @key_path: The path at which so store the key.
+ * @error: Location to store error information, if any.
+ *
+ * Writes @key to the location specified by @key_path on the filesystem.
+ * If an error occurs, the function returns %FALSE and @error is set.
+ *
+ * Returns: %TRUE on success, %FALSE otherwise.
+ **/
+gboolean
+infinoted_creds_write_key(gnutls_x509_privkey_t key,
+                          const gchar* key_path,
+                          GError** error)
+{
+  WRITE_FUNC_IMPL(
+    key,
+    key_path,
+    gnutls_x509_privkey_export
+  )
+}
+
+/** infinoted_creds_create_self_signed_certificate:
+ *
+ * @key: The key with which to sign the certificate.
+ * @error: Location to store error information, if any.
+ *
+ * Creates an new self-signed X.509 certificate signed with @key.
+ *
+ * Returns: A certificate to be freed with gnutls_x509_crt_deinit(),
+ * or %NULL on error.
+ **/
+gnutls_x509_crt_t
+ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
+                                              GError** error)
+{
+  gnutls_x509_crt_t cert;
+  int res;
+
+  res = gnutls_x509_crt_init(&cert);
+  if(res != 0)
   {
-    dirname = g_path_get_dirname(key_path);
-    res = g_mkdir_with_parents(dirname, 0700);
-    save_errno = errno;
-
-    if(res != 0)
-    {
-      gnutls_x509_privkey_deinit(key);
-
-      g_set_error(
-        error,
-        g_quark_from_static_string("ERRNO_ERROR"),
-        save_errno,
-        "Could not create directory `%s': %s",
-        dirname,
-        strerror(save_errno)
-      );
-
-      g_free(dirname);
-      return NULL;
-    }
-
-    g_free(dirname);
-
-    output_size = 0;
-
-    res = gnutls_x509_privkey_export(
-      key,
-      GNUTLS_X509_FMT_PEM,
-      NULL,
-      &output_size
-    );
-
-    g_assert(res != 0); /* cannot succeed */
-    if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
-    {
-      /* Some real error */
-      infinoted_creds_gnutls_error(res, error);
-      gnutls_x509_privkey_deinit(key);
-      return NULL;
-    }
-
-    key_data = g_malloc(output_size);
-    res = gnutls_x509_privkey_export(
-      key,
-      GNUTLS_X509_FMT_PEM,
-      key_data,
-      &output_size
-    );
-
-    if(res != 0)
-    {
-      infinoted_creds_gnutls_error(res, error);
-      g_free(key_data);
-      gnutls_x509_privkey_deinit(key);
-      return NULL;
-    }
-
-    if(g_file_set_contents(key_path, key_data, output_size, error) == FALSE)
-    {
-      g_free(key_data);
-      gnutls_x509_privkey_deinit(key);
-      return NULL;
-    }
-
-    g_free(key_data);
+    infinoted_creds_gnutls_error(res, error);
+    return NULL;
   }
 
-  return key;
+  res = infinoted_creds_create_self_signed_certificate_impl(cert, key);
+  if(res != 0)
+  {
+    gnutls_x509_crt_deinit(cert);
+    infinoted_creds_gnutls_error(res, error);
+    return NULL;
+  }
+
+  return cert;
 }
 
 /** infinoted_creds_read_certificate:
@@ -205,170 +341,84 @@ infinoted_creds_create_key(const gchar* key_path,
  *
  * Reads the certificate at @cert_path into a gnutls_x509_crt_t structure.
  *
- * Return Value: A certificate to be freed with gnutls_x509_crt_deinit(),
+ * Returns: A certificate to be freed with gnutls_x509_crt_deinit(),
  * or %NULL on error.
  **/
 gnutls_x509_crt_t
 infinoted_creds_read_certificate(const gchar* cert_path,
                                  GError** error)
 {
-  gnutls_x509_crt_t cert;
-  gnutls_datum_t cert_datum;
-  gchar* cert_data;
-  gsize cert_size;
-  int res;
-
-  if(g_file_get_contents(cert_path, &cert_data, &cert_size, error) == FALSE)
-    return NULL;
-
-  res = gnutls_x509_crt_init(&cert);
-  if(res != 0)
-  {
-    infinoted_creds_gnutls_error(res, error);
-    g_free(cert_data);
-    return NULL;
-  }
-
-  cert_datum.data = (unsigned char*)cert_data;
-  cert_datum.size = cert_size;
-
-  res = gnutls_x509_crt_import(cert, &cert_datum, GNUTLS_X509_FMT_PEM);
-  g_free(cert_data);
-
-  if(res != 0)
-  {
-    infinoted_creds_gnutls_error(res, error);
-    gnutls_x509_crt_deinit(cert);
-    return NULL;
-  }
-
-  return cert;
+  READ_FUNC_IMPL(
+    gnutls_x509_crt_t,
+    cert_path,
+    gnutls_x509_crt_init,
+    gnutls_x509_crt_deinit,
+    gnutls_x509_crt_import
+  )
 }
 
-/** infinoted_creds_create_self_signed_certificate:
+/** infinoted_creds_write_certificate:
  *
- * @key: The key with which to sign the certificate.
- * @cert_path: A path at which to store the generated certificate.
+ * @cert: An initialized #gnutls_x509_crt_t structure.
+ * @cert_path: The location where to store @cert.
  * @error: Location to store error information, if any.
  *
- * Creates an new self-signed X.509 certificate signed with @key.
- * If @cert_path is non-%NULL, the new certificate is stored at this path,
- * otherwise it is just returned.
+ * Writes @cert to the location specified by @cert_path on the filesystem.
+ * If an error occurs, the function returns %FALSE and @error is set.
  *
- * Return Value: A certificate to be freed with gnutls_x509_crt_deinit(),
- * or %NULL on error.
+ * Return Value: %TRUE on success, %FALSE otherwise.
  **/
-gnutls_x509_crt_t
-ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
-                                              const gchar* cert_path,
-                                              GError** error)
+gboolean
+infinoted_creds_write_certificate(gnutls_x509_crt_t cert,
+                                  const gchar* cert_path,
+                                  GError** error)
 {
-  gnutls_x509_crt_t cert;
-  gint32 default_serial;
-  char buffer[20];
-  gchar* cert_data;
-  gchar* dirname;
-  size_t output_size;
-  int save_errno;
+  WRITE_FUNC_IMPL(
+    cert,
+    cert_path,
+    gnutls_x509_crt_export
+  )
+}
+
+/** infinoted_creds_create_credentials:
+ *
+ * @dh_params: Diffie-Hellman parameters for key exchange.
+ * @key: The X.509 private key to use.
+ * @cert: The X.509 certificate to use.
+ * @error: Location to store error information, if any.
+ *
+ * Creates a new #gnutls_certificate_credentials_t struture suitable for
+ * TLS.
+ *
+ * Return Value: A #gnutls_certificate_credentials_t, to be freed
+ * with gnutls_certificate_free_credentials().
+ **/
+gnutls_certificate_credentials_t
+infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
+                                   gnutls_x509_privkey_t key,
+                                   gnutls_x509_crt_t cert,
+                                   GError** error)
+{
+  gnutls_certificate_credentials_t creds;
   int res;
 
-  cert = NULL;
-  cert_data = NULL;
-
-  res = gnutls_x509_crt_init(&cert);
-  if(res != 0) goto error;
-  
-  res = gnutls_x509_crt_set_key(cert, key);
-  if(res != 0) goto error;
-
-  default_serial = (gint32)time(NULL);
-  buffer[4] = (default_serial      ) & 0xff;
-  buffer[3] = (default_serial >>  8) & 0xff;
-  buffer[2] = (default_serial >> 16) & 0xff;
-  buffer[1] = (default_serial >> 24) & 0xff;
-  buffer[0] = 0;
-
-  res = gnutls_x509_crt_set_serial(cert, buffer, 5);
-  if(res != 0) goto error;
-
-  res = gnutls_x509_crt_set_activation_time(cert, time(NULL));
-  if(res != 0) goto error;
-
-  res = gnutls_x509_crt_set_expiration_time(cert, time(NULL) + 365 * DAYS);
-  if(res != 0) goto error;
-
-  res = gnutls_x509_crt_set_basic_constraints(cert, 0, -1);
-  if(res != 0) goto error;
-
-  res = gnutls_x509_crt_set_key_usage(cert, GNUTLS_KEY_DIGITAL_SIGNATURE);
-  if(res != 0) goto error;
-
-  res = gnutls_x509_crt_set_version(cert, 3);
-  if(res != 0) goto error;
-
-  res = gnutls_x509_crt_sign2(cert, cert, key, GNUTLS_DIG_SHA1, 0);
-  if(res != 0) goto error;
-
-  if(cert_path != NULL)
+  res = gnutls_certificate_allocate_credentials(&creds);
+  if(res != 0)
   {
-    dirname = g_path_get_dirname(cert_path);
-    res = g_mkdir_with_parents(dirname, 0700);
-    save_errno = errno;
-
-    if(res != 0) goto gerror;
-    g_free(dirname);
-
-    output_size = 0;
-    res = gnutls_x509_crt_export(
-      cert,
-      GNUTLS_X509_FMT_PEM,
-      NULL,
-      &output_size
-    );
-
-    g_assert(res != 0); /* cannot succeed */
-    if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
-      goto error; /* real error */
-
-    cert_data = g_malloc(output_size);
-    res = gnutls_x509_crt_export(
-      cert,
-      GNUTLS_X509_FMT_PEM,
-      cert_data,
-      &output_size
-    );
-
-    if(res != 0) goto error;
-
-    if(g_file_set_contents(cert_path, cert_data, output_size, error) == FALSE)
-      goto error;
-
-    g_free(cert_data);
+    infinoted_creds_gnutls_error(res, error);
+    return NULL;
   }
 
-  return cert;
+  res = gnutls_certificate_set_x509_key(creds, &cert, 1, key);
+  if(res != 0)
+  {
+    gnutls_certificate_free_credentials(creds);
+    infinoted_creds_gnutls_error(res, error);
+    return NULL;
+  }
 
-error:
-  if(cert_data != NULL) g_free(cert_data);
-  if(cert != NULL) gnutls_x509_crt_deinit(cert);
-  infinoted_creds_gnutls_error(res, error);
-  return NULL;
-
-gerror:
-  if(cert_data != NULL) g_free(cert_data);
-  if(cert != NULL) gnutls_x509_crt_deinit(cert);
-
-  g_set_error(
-    error,
-    g_quark_from_static_string("ERRNO_ERROR"),
-    save_errno,
-    "Could not create directory `%s': %s",
-    dirname,
-    strerror(save_errno)
-  );
-
-  g_free(dirname);
-  return NULL;
+  gnutls_certificate_set_dh_params(creds, dh_params);
+  return creds;
 }
 
 /* vim:set et sw=2 ts=2: */

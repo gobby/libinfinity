@@ -27,22 +27,48 @@
 
 G_BEGIN_DECLS
 
+gnutls_dh_params_t
+infinoted_creds_create_dh_params(GError** error);
+
+gnutls_dh_params_t
+infinoted_creds_read_dh_params(const gchar* dhparams_path,
+                               GError** error);
+
+gboolean
+infinoted_creds_write_dh_params(gnutls_dh_params_t params,
+                                const gchar* dhparams_path,
+                                GError** error);
+
+gnutls_x509_privkey_t
+infinoted_creds_create_key(GError** error);
+
 gnutls_x509_privkey_t
 infinoted_creds_read_key(const gchar* key_path,
                          GError** error);
 
-gnutls_x509_privkey_t
-infinoted_creds_create_key(const gchar* key_path,
-                           GError** error);
+gboolean
+infinoted_creds_write_key(gnutls_x509_privkey_t key,
+                          const gchar* key_path,
+                          GError** error);
+
+gnutls_x509_crt_t
+ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
+                                              GError** error);
 
 gnutls_x509_crt_t
 infinoted_creds_read_certificate(const gchar* cert_path,
                                  GError** error);
 
-gnutls_x509_crt_t
-ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
-                                              const gchar* cert_path,
-                                              GError** error);
+gboolean
+infinoted_creds_write_certificate(gnutls_x509_crt_t,
+                                  const gchar* cert_path,
+                                  GError** error);
+
+gnutls_certificate_credentials_t
+infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
+                                   gnutls_x509_privkey_t key,
+                                   gnutls_x509_crt_t cert,
+                                   GError** error);
 
 G_END_DECLS
 

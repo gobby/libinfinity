@@ -1,3 +1,9 @@
+2007-10-09  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-creds.c:
+	* infinoted/infinoted-main.c: Made the server actually working.
+
 2007-10-08  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-tcp-connection.c: Don't ifdef out
