@@ -1136,7 +1136,6 @@ inf_tcp_connection_get_remote_port(InfTcpConnection* connection)
   return INF_TCP_CONNECTION_PRIVATE(connection)->remote_port;
 }
 
-#ifdef WITH_SERVER
 /* Creates a new TCP connection from an accepted socket. This is only used
  * by InfdTcpServer and should not be considered regular API. Do not call
  * this function. Language bindings should not wrap it. */
@@ -1190,6 +1189,5 @@ _inf_tcp_connection_accepted(InfIo* io,
   inf_tcp_connection_connected(connection);
   return connection;
 }
-#endif /* WITH_SERVER */
 
 /* vim:set et sw=2 ts=2: */

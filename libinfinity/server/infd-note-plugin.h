@@ -30,7 +30,12 @@ G_BEGIN_DECLS
 
 typedef struct _InfdNotePlugin InfdNotePlugin;
 struct _InfdNotePlugin {
-  const gchar* identifier;
+  /* The typename of the storage backend this plugin can be used with, such
+   * as InfdFilesystemStorage. */
+  const gchar* storage_type;
+
+  /* The note type this plugin handles, such as InfText */
+  const gchar* note_type;
 
   InfSession*(*session_new)(InfConnectionManager* manager,
                             InfConnectionManagerGroup* group,

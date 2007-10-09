@@ -8,4 +8,8 @@ SUBDIRS += libinfgtk
 pkgconfig_DATA += libinfgtk-1.0.pc
 endif
 
+if WITH_INFINOTED
+SUBDIRS += infinoted
+endif
+
 SUBDIRS += pixmaps test

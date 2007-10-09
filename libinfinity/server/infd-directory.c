@@ -466,7 +466,7 @@ infd_directory_node_register_to_xml(InfdDirectoryNode* node)
     typename = "InfSubdirectory";
     break;
   case INFD_STORAGE_NODE_NOTE:
-    typename = node->shared.note.plugin->identifier;
+    typename = node->shared.note.plugin->note_type;
     break;
   default:
     g_assert_not_reached();
@@ -2018,7 +2018,7 @@ infd_directory_get_connection_manager(InfdDirectory* directory)
  *
  * Adds @plugin to @directory. This allows the directory to create sessions
  * of the plugin's type. Only one plugin of each type can be added to the
- * directory.
+ * directory. The plugin's storage_type must match the storage of @directory.
  *
  * Return Value: Whether the plugin was added successfully.
  **/
@@ -2027,16 +2027,22 @@ infd_directory_add_plugin(InfdDirectory* directory,
                           InfdNotePlugin* plugin)
 {
   InfdDirectoryPrivate* priv;
+  const gchar* storage_type;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(plugin != NULL, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  storage_type = g_type_name(G_TYPE_FROM_INSTANCE(priv->storage));
+  g_return_val_if_fail(
+    strcmp(plugin->storage_type, storage_type) == 0,
+    FALSE
+  );
 
-  if(g_hash_table_lookup(priv->plugins, plugin->identifier) != NULL)
+  if(g_hash_table_lookup(priv->plugins, plugin->note_type) != NULL)
     return FALSE;
 
-  g_hash_table_insert(priv->plugins, (gpointer)plugin->identifier, plugin);
+  g_hash_table_insert(priv->plugins, (gpointer)plugin->note_type, plugin);
   return TRUE;
 }
 

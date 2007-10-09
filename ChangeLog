@@ -1,3 +1,29 @@
+2007-10-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-tcp-connection.c: Don't ifdef out
+	_inf_tcp_connection_accepted because libinfinity/server is always
+	built.
+
+	* libinfinity/server/infd-note-plugin.h: Renamed identifier to
+	note_type add added a storage_type member.
+
+	* libinfinity/server/infd-directory.c: Adapt, and check storage type
+	in infd_directory_add_plugin.
+
+	* libinfinity/server/infd-filesystem-storage.h:
+	* libinfinity/server/infd-filesystem-storage.c: Added
+	infd_filesystem_storage_open() function.
+
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-creds.c:
+	* infinoted/infinoted-main.c:
+	* infinoted/Makefile.am: Added code which yields the infinote
+	standalone server one day. Currently it only does certificate
+	handling.
+
+	* Makefile.am:
+	* configure.ac: Build infinoted.
+
 2007-10-07  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:BOXED,OBJECT marshaller.

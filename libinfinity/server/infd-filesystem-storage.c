@@ -334,6 +334,7 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
   gchar* converted_name;
   gchar* full_name;
   int ret;
+  int save_errno;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
@@ -349,11 +350,12 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
   g_free(converted_name);
 
   ret = g_mkdir(full_name, 0755);
-  g_free(full_name);
+  save_errno = errno;
 
+  g_free(full_name);
   if(ret == -1)
   {
-    infd_filesystem_storage_system_error(errno, error);
+    infd_filesystem_storage_system_error(save_errno, error);
     return FALSE;
   }
 
@@ -509,6 +511,54 @@ infd_filesystem_storage_new(const gchar* root_directory)
   );
 
   return INFD_FILESYSTEM_STORAGE(object);
+}
+
+/** infd_filesystem_storage_open:
+ *
+ * @storage:  A #InfdFilesystemStorage.
+ * @path: Tha path to open.
+ * @mode: Either "r" for reading or "w" for writing.
+ * @error: Location to store error information, if any.
+ *
+ * Opens a file in the given path within the storage's root directory. If
+ * the file exists already, and @mode is set to "w", the file is overwritten.
+ *
+ * Return Value: A stream for the open file. Close with fclose().
+ **/
+FILE*
+infd_filesystem_storage_open(InfdFilesystemStorage* storage,
+                             const gchar* path,
+                             const gchar* mode,
+                             GError** error)
+{
+  InfdFilesystemStoragePrivate* priv;
+  gchar* converted_name;
+  gchar* full_name;
+  FILE* res;
+  int save_errno;
+
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
+  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
+    return FALSE;
+
+  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
+  if(converted_name == NULL)
+    return FALSE;
+
+  full_name = g_build_filename(priv->root_directory, converted_name, NULL);
+  g_free(converted_name);
+
+  res = g_fopen(full_name, mode);
+  save_errno = errno;
+  g_free(full_name);
+
+  if(res == NULL)
+  {
+    infd_filesystem_storage_system_error(save_errno, error);
+    return FALSE;
+  }
+
+  return res;
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -15,6 +15,10 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
+# Seems to be required for building a binary from multiple source files
+# automake complains without it in infinoted/.
+AM_PROG_CC_C_O
+
 ###################################
 # Check for regular dependencies
 ###################################
@@ -41,18 +45,14 @@ fi
 AM_CONDITIONAL([WITH_INFGTK], test "x$with_infgtk" = "xyes")
 
 ########################
-# Compile time options
+# infinoted optional package
 ########################
 
-AC_ARG_ENABLE([server],
-              AS_HELP_STRING([--with-server],
-                             [Enables the infinote server [[default=yes]]]),
-              [use_server=$withval], [use_server=yes])
+AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
+            [Build the infinote standalone server [[default=yes]]]),
+            [with_infinoted=$withval], [with_infinoted=yes])
 
-if test "x$use_server" = "xyes"
-then
-	AC_DEFINE([WITH_SERVER], 1, [Build the infinote server])
-fi
+AM_CONDITIONAL([WITH_INFINOTED], test "x$with_infinoted" = "xyes")
 
 ####################
 # Check for avahi
@@ -91,6 +91,8 @@ AC_CONFIG_FILES([
 		libinftext/Makefile
 		libinfgtk/Makefile
 
+		infinoted/Makefile
+
 		pixmaps/Makefile
 			pixmaps/16x16/Makefile
 			pixmaps/22x22/Makefile
@@ -107,10 +109,10 @@ AC_OUTPUT
 echo "
 Build optional packages:
   libinfgtk: $with_infgtk
+  infinoted: $with_infinoted
 
 Enable support for:
   avahi: $use_avahi
 "
 
 # vim:set et:
-
