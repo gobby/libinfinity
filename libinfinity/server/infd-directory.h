@@ -86,7 +86,11 @@ infd_directory_get_connection_manager(InfdDirectory* directory);
 
 gboolean
 infd_directory_add_plugin(InfdDirectory* directory,
-                          InfdNotePlugin* plugin);
+                          const InfdNotePlugin* plugin);
+
+const InfdNotePlugin*
+infd_directory_lookup_plugin(InfdDirectory* directory,
+                             const gchar* note_type);
 
 void
 infd_directory_add_connection(InfdDirectory* directory,

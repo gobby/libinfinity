@@ -2024,7 +2024,7 @@ infd_directory_get_connection_manager(InfdDirectory* directory)
  **/
 gboolean
 infd_directory_add_plugin(InfdDirectory* directory,
-                          InfdNotePlugin* plugin)
+                          const InfdNotePlugin* plugin)
 {
   InfdDirectoryPrivate* priv;
   const gchar* storage_type;
@@ -2042,8 +2042,36 @@ infd_directory_add_plugin(InfdDirectory* directory,
   if(g_hash_table_lookup(priv->plugins, plugin->note_type) != NULL)
     return FALSE;
 
-  g_hash_table_insert(priv->plugins, (gpointer)plugin->note_type, plugin);
+  g_hash_table_insert(
+    priv->plugins,
+    (gpointer)plugin->note_type,
+    (gpointer)plugin
+  );
+
   return TRUE;
+}
+
+/** infd_directory_lookup_plugin:
+ *
+ * @directory: A #InfdDirectory.
+ * @note_type: A note type for which to lookup the plugin.
+ *
+ * Returns the #InfdNotePlugin that handles the given note type, or %NULL
+ * in case no corresponding plugin was added.
+ *
+ * Return Value: A #InfdNotePlugin, or %NULL.
+ **/
+const InfdNotePlugin*
+infd_directory_lookup_plugin(InfdDirectory* directory,
+                             const gchar* note_type)
+{
+  InfdDirectoryPrivate* priv;
+  
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(note_type != NULL, NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  return (const InfdNotePlugin*)g_hash_table_lookup(priv->plugins, note_type);
 }
 
 /**

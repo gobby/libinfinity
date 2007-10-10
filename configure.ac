@@ -52,6 +52,11 @@ AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
             [Build the infinote standalone server [[default=yes]]]),
             [with_infinoted=$withval], [with_infinoted=yes])
 
+if test "x$with_infinoted" = "xyes"
+then
+	PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 gnutls])
+fi
+
 AM_CONDITIONAL([WITH_INFINOTED], test "x$with_infinoted" = "xyes")
 
 ####################

@@ -1,3 +1,16 @@
+2007-10-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added
+	infd_directory_lookup_plugin().
+
+	* infinoted/infinoted-note-plugin.h:
+	* infinoted/infinoted-note-plugin.c:
+	* infinoted/Makefile.am: Added functions to load note plugins from a
+	certain directory.
+
+	* configure.ac: Make infinoted depend on gmodule-2.0.
+
 2007-10-09  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-creds.h:
