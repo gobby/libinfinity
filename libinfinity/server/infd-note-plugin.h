@@ -21,6 +21,7 @@
 
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/common/inf-session.h>
+#include <libinfinity/common/inf-io.h>
 
 #include <glib-object.h>
 
@@ -37,7 +38,8 @@ struct _InfdNotePlugin {
   /* The note type this plugin handles, such as InfText */
   const gchar* note_type;
 
-  InfSession*(*session_new)(InfConnectionManager* manager,
+  InfSession*(*session_new)(InfIo* io,
+                            InfConnectionManager* manager,
                             InfConnectionManagerGroup* group,
                             InfXmlConnection* sync_connection);
 

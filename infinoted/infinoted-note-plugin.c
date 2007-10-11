@@ -63,7 +63,7 @@ infinoted_note_plugin_load(const gchar* plugin_path,
       g_quark_from_static_string("INFINOTED_NOTE_PLUGIN_ERROR"),
       INFINOTED_NOTE_PLUGIN_ERROR_NO_ENTRY_POINT,
       "%s",
-      g_module_error() /* TODO: Do we get the correct error message here? */
+      g_module_error()
     );
     
     g_module_close(module);
@@ -97,7 +97,7 @@ infinoted_note_plugin_load_directory(const gchar* path,
   dir = g_dir_open(path, 0, &error);
   if(dir == NULL)
   {
-    g_warning("Could not open directory `%s': %s", path, error->message);
+    g_warning("%s", error->message);
     g_error_free(error);
   }
   else
@@ -107,14 +107,17 @@ infinoted_note_plugin_load_directory(const gchar* path,
 
     while((filename = g_dir_read_name(dir)) != NULL)
     {
+      /* Ignore libtool ".la" files and other uninteresting stuff */
+      if(!g_str_has_suffix(filename, G_MODULE_SUFFIX))
+        continue;
+
       plugin_path = g_build_filename(path, filename, NULL);
       plugin = infinoted_note_plugin_load(plugin_path, &error);
 
       if(plugin == NULL)
       {
         g_warning(
-          "Failed to load plugin `%s': %s",
-          plugin_path,
+          "%s",
           error->message
         );
 
@@ -142,6 +145,13 @@ infinoted_note_plugin_load_directory(const gchar* path,
           }
           else
           {
+            fprintf(
+              stderr,
+              "Loaded plugin `%s' (%s)\n",
+              plugin_path,
+              plugin->note_type
+            );
+
             infd_directory_add_plugin(directory, plugin);
           }
         }
@@ -151,9 +161,9 @@ infinoted_note_plugin_load_directory(const gchar* path,
 
       g_free(plugin_path);
     }
-  }
 
-  g_dir_close(dir);
+    g_dir_close(dir);
+  }
 }
 
 /* vim:set et sw=2 ts=2: */

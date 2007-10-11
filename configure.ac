@@ -36,10 +36,10 @@ AC_ARG_WITH([infgtk], AS_HELP_STRING([--with-infgtk],
 
 if test "x$with_infgtk" = "xauto"
 then
-	PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.10], [with_infgtk=yes], [with_infgtk=no])
+  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.10], [with_infgtk=yes], [with_infgtk=no])
 elif test "x$with_infgtk" = "xyes"
 then
-	PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.10])
+  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.10])
 fi
 
 AM_CONDITIONAL([WITH_INFGTK], test "x$with_infgtk" = "xyes")
@@ -54,7 +54,7 @@ AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
 
 if test "x$with_infinoted" = "xyes"
 then
-	PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 gnutls])
+  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 gnutls])
 fi
 
 AM_CONDITIONAL([WITH_INFINOTED], test "x$with_infinoted" = "xyes")
@@ -69,16 +69,16 @@ AC_ARG_WITH([avahi], AS_HELP_STRING([--with-avahi],
 
 if test "x$use_avahi" = "xauto"
 then
-	PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib],
+  PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib],
                           [use_avahi=yes], [use_avahi=no])
 elif test "x$use_avahi" = "xyes"
 then
-	PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib])
+  PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib])
 fi
 
 if test "x$use_avahi" = "xyes"
 then
-	AC_DEFINE([HAVE_AVAHI], 1, [Have Avahi])
+  AC_DEFINE([HAVE_AVAHI], 1, [Have Avahi])
 fi
 
 ###########
@@ -86,27 +86,29 @@ fi
 ###########
 
 AC_CONFIG_FILES([
-	Makefile
-		libinfinity/Makefile
-			libinfinity/common/Makefile
-			libinfinity/adopted/Makefile
-			libinfinity/server/Makefile
-			libinfinity/client/Makefile
+  Makefile
+    libinfinity/Makefile
+      libinfinity/common/Makefile
+      libinfinity/adopted/Makefile
+      libinfinity/server/Makefile
+      libinfinity/client/Makefile
 
-		libinftext/Makefile
-		libinfgtk/Makefile
+    libinftext/Makefile
+    libinfgtk/Makefile
 
-		infinoted/Makefile
+    infinoted/Makefile
+      infinoted/note-plugins/Makefile
+        infinoted/note-plugins/text/Makefile
 
-		pixmaps/Makefile
-			pixmaps/16x16/Makefile
-			pixmaps/22x22/Makefile
-			pixmaps/scalable/Makefile
+    pixmaps/Makefile
+      pixmaps/16x16/Makefile
+      pixmaps/22x22/Makefile
+      pixmaps/scalable/Makefile
 
-		test/Makefile
-	libinfinity-1.0.pc
-	libinftext-1.0.pc
-	libinfgtk-1.0.pc
+    test/Makefile
+  libinfinity-1.0.pc
+  libinftext-1.0.pc
+  libinfgtk-1.0.pc
 ])
 
 AC_OUTPUT

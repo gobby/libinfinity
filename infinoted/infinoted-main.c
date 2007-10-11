@@ -17,6 +17,7 @@
  */
 
 #include <infinoted/infinoted-creds.h>
+#include <infinoted/infinoted-note-plugin.h>
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-server-pool.h>
@@ -104,15 +105,11 @@ infinoted_main_create_dirname(const gchar* path,
 
 static gboolean
 infinoted_main_run(gnutls_certificate_credentials_t credentials,
+                   InfdDirectory* directory,
                    guint port,
                    GError** error)
 {
-  InfStandaloneIo* io;
   InfdTcpServer* tcp;
-  gchar* root_directory;
-  InfdStorage* storage;
-  InfConnectionManager* connection_manager;
-  InfdDirectory* directory;
   InfdServerPool* pool;
   InfdXmppServer* server;
 #ifdef HAVE_AVAHI
@@ -120,32 +117,19 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   InfDiscoveryAvahi* avahi;
 #endif
 
-  io = inf_standalone_io_new();
   tcp = INFD_TCP_SERVER(
-    g_object_new(INFD_TYPE_TCP_SERVER, "io", io, "local-port", port, NULL)
+    g_object_new(
+      INFD_TYPE_TCP_SERVER,
+      "io", infd_directory_get_io(directory),
+      "local-port", port,
+      NULL
+    )
   );
 
   if(infd_tcp_server_open(tcp, error) == FALSE)
-  {
-    g_object_unref(G_OBJECT(io));
     return FALSE;
-  }
-
-  /* TODO: Allow different storage plugins */
-  root_directory = g_build_filename(g_get_home_dir(), ".infinote", NULL);
-  storage = INFD_STORAGE(infd_filesystem_storage_new(root_directory));
-  g_free(root_directory);
-
-  connection_manager = inf_connection_manager_new();
-  directory = infd_directory_new(storage, connection_manager);
-  g_object_unref(G_OBJECT(storage));
-  g_object_unref(G_OBJECT(connection_manager));
-
-  /* TODO: Load note plugins */
 
   pool = infd_server_pool_new(directory);
-  g_object_unref(G_OBJECT(directory));
-
   server = infd_xmpp_server_new(tcp, g_get_host_name(), credentials, NULL);
   g_object_unref(G_OBJECT(tcp));
   
@@ -154,7 +138,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
 #ifdef HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
   avahi = inf_discovery_avahi_new(
-    INF_IO(io),
+    infd_directory_get_io(directory),
     xmpp_manager,
     credentials,
     NULL
@@ -171,10 +155,9 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   g_object_unref(G_OBJECT(server));
 
   fprintf(stderr, "Server running on port %u\n", port);
-  inf_standalone_io_loop(io);
+  inf_standalone_io_loop(INF_STANDALONE_IO(infd_directory_get_io(directory)));
 
   g_object_unref(G_OBJECT(pool));
-  g_object_unref(G_OBJECT(io));
   return TRUE;
 }
 
@@ -192,10 +175,17 @@ infinoted_main(int argc,
   const gchar* key_path;
   const gchar* cert_path;
 
+  gchar* root_directory;
+  InfStandaloneIo* io;
+  InfConnectionManager* connection_manager;
+  InfdStorage* storage;
+  InfdDirectory* directory;
+
   key = NULL;
   cert = NULL;
   dh_params = NULL;
   credentials = NULL;
+  directory = NULL;
 
   setlocale(LC_ALL, "");
   context = g_option_context_new("- infinote dedicated server");
@@ -219,7 +209,21 @@ infinoted_main(int argc,
 
   g_type_init();
   gnutls_global_init();
-  
+
+  /* TODO: Allow different storage plugins, allow custom root directory */
+  root_directory = g_build_filename(g_get_home_dir(), ".infinote", NULL);
+  storage = INFD_STORAGE(infd_filesystem_storage_new(root_directory));
+  g_free(root_directory);
+
+  io = inf_standalone_io_new();
+  connection_manager = inf_connection_manager_new();
+  directory = infd_directory_new(INF_IO(io), storage, connection_manager);
+  g_object_unref(G_OBJECT(io));
+  g_object_unref(G_OBJECT(storage));
+  g_object_unref(G_OBJECT(connection_manager));
+
+  infinoted_note_plugin_load_directory(PLUGIN_PATH, directory);
+
   key_path = DEFAULT_KEYPATH;
   if(key_file != NULL) key_path = key_file;
 
@@ -288,13 +292,14 @@ infinoted_main(int argc,
   if(credentials == NULL)
     goto error;
 
-  if(infinoted_main_run(credentials, 6523, error) == FALSE)
+  if(infinoted_main_run(credentials, directory, 6523, error) == FALSE)
     goto error;
 
   gnutls_certificate_free_credentials(credentials);
   gnutls_dh_params_deinit(dh_params);
   gnutls_x509_crt_deinit(cert);
   gnutls_x509_privkey_deinit(key);
+  g_object_unref(G_OBJECT(directory));
   gnutls_global_deinit();
 
   return TRUE;
@@ -303,6 +308,7 @@ error:
   if(dh_params != NULL) gnutls_dh_params_deinit(dh_params);
   if(cert != NULL) gnutls_x509_crt_deinit(cert);
   if(key != NULL) gnutls_x509_privkey_deinit(key);
+  if(directory != NULL) g_object_unref(G_OBJECT(directory));
   gnutls_global_deinit();
 
   g_free(key_file);

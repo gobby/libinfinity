@@ -1,3 +1,27 @@
+2007-10-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added the "io" property and
+	construction paramater.
+
+	* libinfinity/server/infd-note-plugin.h: Take an InfIo in
+	session_new().
+
+	* test/inf-test-daemon.c: Adapt.
+
+	* infinoted/infinoted-note-plugin.c: Ignore all but the platform's
+	module suffix in infinoted_note_plugin_load_directory().
+
+	* infinoted/infinoted-main.c: Load all plugins in
+	${libdir}/infinoted/note-plugins/.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c:
+	* infinoted/note-plugins/text/Makefile.am:
+	* infinoted/note-plugins/Makefile.am:
+	* infinoted/Makefile.am:
+	* configure.ac: Added a text plugin that saves sessions into an XML
+	tree, in a InfdFilesystemStorage.
+
 2007-10-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.h:

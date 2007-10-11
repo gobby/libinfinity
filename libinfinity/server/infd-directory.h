@@ -75,8 +75,12 @@ void
 infd_directory_iter_free(InfdDirectoryIter* iter);
 
 InfdDirectory*
-infd_directory_new(InfdStorage* storage,
+infd_directory_new(InfIo* io,
+                   InfdStorage* storage,
                    InfConnectionManager* connection_manager);
+
+InfIo*
+infd_directory_get_io(InfdDirectory* directory);
 
 InfdStorage*
 infd_directory_get_storage(InfdDirectory* directory);

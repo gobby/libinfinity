@@ -70,7 +70,12 @@ main(int argc, char* argv[])
     root_directory = g_build_filename(g_get_home_dir(), ".infinote", NULL);
     manager = inf_connection_manager_new();
     storage = infd_filesystem_storage_new(root_directory);
-    directory = infd_directory_new(INFD_STORAGE(storage), manager);
+
+    directory = infd_directory_new(
+      INF_IO(io),
+      INFD_STORAGE(storage),
+      manager
+    );
 
     g_free(root_directory);
     g_object_unref(G_OBJECT(storage));

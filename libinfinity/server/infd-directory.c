@@ -63,6 +63,7 @@ struct _InfdDirectoryNode {
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
+  InfIo* io;
   InfdStorage* storage;
   InfConnectionManager* connection_manager;
   InfConnectionManagerGroup* group; /* TODO: This should be a property */
@@ -85,6 +86,7 @@ typedef gboolean(*InfdDirectoryCreateStorageNodeFunc)(InfdDirectoryStorage*,
 enum {
   PROP_0,
 
+  PROP_IO,
   PROP_STORAGE,
   PROP_CONNECTION_MANAGER
 };
@@ -610,8 +612,8 @@ infd_directory_node_register(InfdDirectory* directory,
 static void
 infd_directory_node_unregister(InfdDirectory* directory,
                                InfdDirectoryNode* node,
-			       InfXmlConnection* seq_conn,
-			       guint seq)
+                               InfXmlConnection* seq_conn,
+                               guint seq)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
@@ -879,7 +881,13 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
     g_free(group_name);
 
-    session  = plugin->session_new(priv->connection_manager, NULL, NULL);
+    session  = plugin->session_new(
+      priv->io,
+      priv->connection_manager,
+      NULL,
+      NULL
+    );
+
     g_assert(session != NULL);
 
     node->shared.note.session = g_object_new(
@@ -963,6 +971,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
   g_free(group_name);
 
   session = node->shared.note.plugin->session_new(
+    priv->io,
     priv->connection_manager,
     NULL,
     NULL
@@ -1560,6 +1569,7 @@ infd_directory_init(GTypeInstance* instance,
   directory = INFD_DIRECTORY(instance);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  priv->io = NULL;
   priv->storage = NULL;
   priv->connection_manager = NULL;
 
@@ -1601,6 +1611,12 @@ infd_directory_dispose(GObject* object)
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;
 
+  if(priv->io != NULL)
+  {
+    g_object_unref(G_OBJECT(priv->io));
+    priv->io = NULL;
+  }
+
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
@@ -1618,6 +1634,10 @@ infd_directory_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_assert(priv->io == NULL); /* construct only */
+    priv->io = INF_IO(g_value_dup_object(value));
+    break;
   case PROP_STORAGE:
     infd_directory_set_storage(
       directory,
@@ -1652,6 +1672,9 @@ infd_directory_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_value_set_object(value, G_OBJECT(priv->io));
+    break;
   case PROP_STORAGE:
     g_value_set_object(value, G_OBJECT(priv->storage));
     break;
@@ -1790,6 +1813,18 @@ infd_directory_class_init(gpointer g_class,
 
   directory_class->node_added = NULL;
   directory_class->node_removed = NULL;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_IO,
+    g_param_spec_object(
+      "io",
+      "IO",
+      "IO object to watch sockets and schedule timeouts",
+      INF_TYPE_IO,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   g_object_class_install_property(
     object_class,
@@ -1952,6 +1987,7 @@ infd_directory_iter_free(InfdDirectoryIter* iter)
 
 /** infd_directory_new:
  *
+ * @io: IO object to watch connections and schedule timeouts.
  * @storage: Storage backend that is used to read/write notes from
  * permanent memory into #InfBuffer objects.
  * @connection_manager: A #InfConnectionManager to register added
@@ -1963,7 +1999,8 @@ infd_directory_iter_free(InfdDirectoryIter* iter)
  * Return Value: A new #InfdDirectory.
  **/
 InfdDirectory*
-infd_directory_new(InfdStorage* storage,
+infd_directory_new(InfIo* io,
+                   InfdStorage* storage,
                    InfConnectionManager* connection_manager)
 {
   GObject* object;
@@ -1973,12 +2010,28 @@ infd_directory_new(InfdStorage* storage,
 
   object = g_object_new(
     INFD_TYPE_DIRECTORY,
+    "io", io,
     "storage", storage,
     "connection-manager", connection_manager,
     NULL
   );
 
   return INFD_DIRECTORY(object);
+}
+
+/** infd_directory_get_io:
+ *
+ * @directory: A #InfdDirectory.
+ *
+ * Returns the IO object in use by the directory.
+ *
+ * Return Value: A #InfIo.
+ **/
+InfIo*
+infd_directory_get_io(InfdDirectory* directory)
+{
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  return INFD_DIRECTORY_PRIVATE(directory)->io;
 }
 
 /** infd_directory_get_storage:

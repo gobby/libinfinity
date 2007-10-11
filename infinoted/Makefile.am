@@ -1,9 +1,11 @@
+SUBDIRS = note-plugins
+
 bin_PROGRAMS = infinoted
 
 # TODO: Make these configurable at configure time
 default_keypath = ${sysconfdir}/infinote/key.pem
 default_certpath = ${sysconfdir}/infinote/cert.pem
-plugin_path = ${datadir}/infinote/plugins
+plugin_path = ${libdir}/infinoted/note-plugins
 
 infinoted_CPPFLAGS = \
 	-I${top_srcdir} \
