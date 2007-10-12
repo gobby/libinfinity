@@ -1,3 +1,18 @@
+2007-10-12  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-session.c: Fixed cursor positioning of executing
+	user after deleting text.
+
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c:
+	* libinftextgtk/Makefile.am: Implemented the InfTextBuffer interface
+	using a GtkTextBuffer.
+
+	* Makefile.am:
+	* configure.ac: Build libinftextgtk.
+
+	* README: Update.
+
 2007-10-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.h:

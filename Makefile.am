@@ -8,6 +8,11 @@ SUBDIRS += libinfgtk
 pkgconfig_DATA += libinfgtk-1.0.pc
 endif
 
+if WITH_INFTEXTGTK
+SUBDIRS += libinftextgtk
+pkgconfig_DATA += libinftextgtk-1.0.pc
+endif
+
 if WITH_INFINOTED
 SUBDIRS += infinoted
 endif

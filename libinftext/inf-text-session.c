@@ -332,7 +332,7 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
     &data
   );
 
-  inf_text_user_set_selection(INF_TEXT_USER(user), pos + length, 0);
+  inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
 }
 
 /*

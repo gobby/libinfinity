@@ -27,6 +27,24 @@ PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 g
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
 
 ########################
+# libinftextgtk optional package
+########################
+
+AC_ARG_WITH([inftextgtk], AS_HELP_STRING([--with-inftextgtk],
+            [Builds the libinftextgtk library [[default=auto]]]),
+            [with_inftextgtk=$withval], [with_inftextgtk=auto])
+
+if test "x$with_inftextgtk" = "xauto"
+then
+  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.10], [with_inftextgtk=yes], [with_inftextgtk=no])
+elif test "x$with_inftextgtk" = "xyes"
+then
+  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.10])
+fi
+
+AM_CONDITIONAL([WITH_INFTEXTGTK], test "x$with_inftextgtk" = "xyes")
+
+########################
 # libinfgtk optional package
 ########################
 
@@ -95,6 +113,7 @@ AC_CONFIG_FILES([
 
     libinftext/Makefile
     libinfgtk/Makefile
+    libinftextgtk/Makefile
 
     infinoted/Makefile
       infinoted/note-plugins/Makefile
@@ -109,6 +128,7 @@ AC_CONFIG_FILES([
   libinfinity-1.0.pc
   libinftext-1.0.pc
   libinfgtk-1.0.pc
+  libinftextgtk-1.0.pc
 ])
 
 AC_OUTPUT
@@ -116,6 +136,7 @@ AC_OUTPUT
 echo "
 Build optional packages:
   libinfgtk: $with_infgtk
+  libinftextgtk: $with_inftextgtk
   infinoted: $with_infinoted
 
 Enable support for:
