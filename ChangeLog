@@ -1,3 +1,30 @@
+2007-10-16  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added the
+	inf_session_get_synchronization_progress() and
+	inf_session_get_status() functions.
+
+	* libinfinity/server/infd-directory.c: Fixed a wrong assertion in
+	infd_directory_node_link().
+
+	* libinfinity/client/infc-node-request.c: Added the node-id property.
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Set node-id property on node
+	requests, added the begin_subscribe and subscribe_session signals,
+	added infc_node_iter_get_subscribe_request() and
+	infc_browser_iter_from_node_request() functions.
+
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c: Made error column valid for inner
+	nodes, store errors from explore and subscription requests (We should
+	expand this for all node requests later).
+
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c: Show synchronization progress and
+	errors from inner nodes.
+
 2007-10-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-session.c: Fixed cursor positioning of executing

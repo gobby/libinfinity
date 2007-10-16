@@ -73,6 +73,18 @@ struct _InfcBrowserClass {
   void (*begin_explore)(InfcBrowser* browser,
                         InfcBrowserIter* iter,
                         InfcExploreRequest* request);
+
+  /* Emitted when a subscription request is made */
+  void (*begin_subscribe)(InfcBrowser* browser,
+                          InfcBrowserIter* iter,
+                          InfcNodeRequest* request);
+
+  /* Emitted when we are subscribed to a session. Note the session might
+   * still be in synchronizating state and the synchronization might still
+   * fail. */
+  void (*subscribe_session)(InfcBrowser* browser,
+                            InfcBrowserIter* iter,
+                            InfcSessionProxy* proxy);
 };
 
 struct _InfcBrowser {
@@ -163,6 +175,15 @@ infc_browser_subscribe_session(InfcBrowser* browser,
 InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
                               InfcBrowserIter* iter);
+
+InfcNodeRequest*
+infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
+                                        InfcBrowserIter* iter);
+
+gboolean
+infc_browser_iter_from_node_request(InfcBrowser* browser,
+                                    InfcNodeRequest* request,
+                                    InfcBrowserIter* iter);
 
 G_END_DECLS
 

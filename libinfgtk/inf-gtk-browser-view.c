@@ -16,6 +16,9 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/* TODO: Add a plugin list to whose types the view subscribes when a
+ * corresponding row is activated. */
+
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfinity/inf-marshal.h>
 
@@ -28,6 +31,8 @@
 
 #define INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION \
   "inf-gtk-browser-view-initial-exploration"
+
+#define INF_GTK_BROWSER_VIEW_ERROR_COLOR "#db1515"
 
 typedef struct _InfGtkBrowserViewObject InfGtkBrowserViewObject;
 struct _InfGtkBrowserViewObject {
@@ -51,8 +56,14 @@ struct _InfGtkBrowserViewPrivate {
   GtkCellRenderer* renderer_progress;
   GtkCellRenderer* renderer_status;
 
+  /* This is just bookkeeping because we connect to their signals, and need
+   * to disconnect when the view is disposed, or a browser removed. */
   GArray* browsers;
   GArray* explore_requests;
+
+  /* Note we only keep sessions in INF_SESSION_SYNCHRONIZING state to show
+   * the synchronization progress. */
+  GArray* sessions;
 };
 
 enum {
@@ -71,9 +82,14 @@ enum {
  * Instead, we keep an array of browsers in the model including
  * TreeRowReferences where they are in the tree. When a row is removed, we
  * check which TreeRowReferences got invalid and delete the corresponding
- * browsers from our array. The same holds for explore requests. */
+ * browsers from our array. The same holds for explore requests and
+ * session synchronizations. */
 
 static GObjectClass* parent_class;
+
+/*
+ * Utility functions
+ */
 
 /* Lookup the InfGtkBrowserViewObject index in the priv->explore_requests
  * array for the given request. */
@@ -96,6 +112,28 @@ inf_gtk_browser_view_explore_request_find(InfGtkBrowserView* view,
     );
 
     if(object->object == G_OBJECT(request))
+      return i;
+  }
+
+  return -1;
+}
+
+gint
+inf_gtk_browser_view_session_find(InfGtkBrowserView* view,
+                                  InfSession* session)
+{
+  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserViewObject* object;
+  InfcSessionProxy* proxy;
+  guint i;
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+
+  for(i = 0; i < priv->sessions->len; ++ i)
+  {
+    object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
+    proxy = INFC_SESSION_PROXY(object->object);
+    if(infc_session_proxy_get_session(proxy) == session)
       return i;
   }
 
@@ -152,6 +190,94 @@ inf_gtk_browser_view_redraw_node_for_explore_request(InfGtkBrowserView* view,
 
   inf_gtk_browser_view_redraw_row(view, path, &object->iter);
   gtk_tree_path_free(path);
+}
+
+static void
+inf_gtk_browser_view_redraw_node_for_session(InfGtkBrowserView* view,
+                                             InfSession* session)
+{
+  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserViewObject* object;
+  GtkTreePath* path;
+  gint i;
+
+  /* We could get the iter easily by querying the InfcBrowserIter with
+   * infc_browser_iter_from_explore_request and then obtaining the GtkTreeIter
+   * with inf_gtk_browser_model_browser_iter_to_tree_iter. However, we do not
+   * get the path this way and gtk_tree_model_get_path is expensive.
+   * Therefore, we lookup the InfGtkBrowserViewObject which has both iter
+   * and path (via the GtkTreeRowReference). */
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  i = inf_gtk_browser_view_session_find(view, session);
+  g_assert(i >= 0);
+
+  object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
+  path = gtk_tree_row_reference_get_path(object->reference);
+  g_assert(path != NULL);
+
+  inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+  gtk_tree_path_free(path);
+}
+
+/*
+ * Callbacks from InfGtkBrowserViewObjects
+ */
+
+/* Required by inf_gtk_browser_view_session_synchronization_complete_cb */
+static void
+inf_gtk_browser_view_session_removed(InfGtkBrowserView* view,
+                                     guint i);
+
+/* Required by inf_gtk_browser_view_explore_request_finished_cb */
+static void
+inf_gtk_browser_view_explore_request_removed(InfGtkBrowserView* view,
+                                             guint i);
+
+static void
+inf_gtk_browser_view_session_synchronization_progress_cb(InfSession* session,
+                                                         InfXmlConnection* c,
+                                                         gdouble percentage,
+                                                         gpointer user_data)
+{
+  inf_gtk_browser_view_redraw_node_for_session(
+    INF_GTK_BROWSER_VIEW(user_data),
+    session
+  );
+}
+
+static void
+inf_gtk_browser_view_session_synchronization_complete_cb(InfSession* session,
+                                                         InfXmlConnection* c,
+                                                         gpointer user_data)
+{
+  InfGtkBrowserView* view;
+  gint i;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  i = inf_gtk_browser_view_session_find(view, session);
+  g_assert(i >= 0);
+
+  inf_gtk_browser_view_session_removed(view, i);
+}
+
+static void
+inf_gtk_browser_view_session_synchronization_failed_cb(InfSession* session,
+                                                       InfXmlConnection* c,
+                                                       const GError* error,
+                                                       gpointer user_data)
+{
+  /* TODO: Show the error in the view. I am not completely sure how to
+   * achieve this. Probably, InfGtkBrowserModel needs to handle this signal
+   * and set the error column. */
+  InfGtkBrowserView* view;
+  gint i;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  i = inf_gtk_browser_view_session_find(view, session);
+  g_assert(i >= 0);
+
+  inf_gtk_browser_view_session_removed(view, i);
 }
 
 static void
@@ -212,11 +338,6 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
   gtk_tree_path_free(path);
 }
 
-/* Required by inf_gtk_browser_view_explore_request_finished_cb */
-static void
-inf_gtk_browser_view_explore_request_removed(InfGtkBrowserView* view,
-                                             guint i);
-
 static void
 inf_gtk_browser_view_explore_request_finished_cb(InfcExploreRequest* request,
                                                  gpointer user_data)
@@ -229,6 +350,119 @@ inf_gtk_browser_view_explore_request_finished_cb(InfcExploreRequest* request,
   g_assert(i >= 0);
 
   inf_gtk_browser_view_explore_request_removed(view, i);
+}
+
+/*
+ * InfGtkBrowserViewObject management
+ */
+
+static void
+inf_gtk_browser_view_session_added(InfGtkBrowserView* view,
+                                   GtkTreePath* path,
+                                   GtkTreeIter* iter,
+                                   InfcSessionProxy* proxy)
+{
+  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserViewObject object;
+  InfSession* session;
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  session = infc_session_proxy_get_session(proxy);
+
+  g_assert(inf_gtk_browser_view_session_find(view, session) == -1);
+  g_assert(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING);
+
+  object.object = G_OBJECT(proxy);
+  g_object_ref(G_OBJECT(proxy));
+
+  object.reference = gtk_tree_row_reference_new_proxy(
+    G_OBJECT(priv->column),
+    gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview)),
+    path
+  );
+
+  g_assert(object.reference != NULL);
+
+  object.iter = *iter;
+  g_array_append_vals(priv->sessions, &object, 1);
+
+  g_signal_connect_after(
+    G_OBJECT(session),
+    "synchronization-progress",
+    G_CALLBACK(inf_gtk_browser_view_session_synchronization_progress_cb),
+    view
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(session),
+    "synchronization-complete",
+    G_CALLBACK(inf_gtk_browser_view_session_synchronization_complete_cb),
+    view
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(session),
+    "synchronization-failed",
+    G_CALLBACK(inf_gtk_browser_view_session_synchronization_failed_cb),
+    view
+  );
+
+  inf_gtk_browser_view_redraw_row(view, path, iter);
+}
+
+/* Just free data allocated by object */
+static void
+inf_gtk_browser_view_session_free(InfGtkBrowserView* view,
+                                  InfGtkBrowserViewObject* object)
+{
+  g_assert(INFC_IS_SESSION_PROXY(object->object));
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(object->object),
+    G_CALLBACK(inf_gtk_browser_view_session_synchronization_progress_cb),
+    view
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(object->object),
+    G_CALLBACK(inf_gtk_browser_view_session_synchronization_complete_cb),
+    view
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(object->object),
+    G_CALLBACK(inf_gtk_browser_view_session_synchronization_failed_cb),
+    view
+  );
+
+  gtk_tree_row_reference_free(object->reference);
+  g_object_unref(G_OBJECT(object->object));
+}
+
+/* Unlink from view */
+static void
+inf_gtk_browser_view_session_removed(InfGtkBrowserView* view,
+                                     guint i)
+{
+  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserViewObject* object;
+  GtkTreePath* path;
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
+
+  /* Redraw if the reference is still valid. Note that if the node is removed
+   * while the corresponding session is synchronized the reference is not
+   * valid at this point. */
+  path = gtk_tree_row_reference_get_path(object->reference);
+  if(path != NULL)
+  {
+    inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+    gtk_tree_path_free(path);
+  }
+
+  inf_gtk_browser_view_session_free(view, object);
+  g_array_remove_index_fast(priv->sessions, i);
 }
 
 static void
@@ -335,6 +569,10 @@ inf_gtk_browser_view_explore_request_removed(InfGtkBrowserView* view,
   g_array_remove_index_fast(priv->explore_requests, i);
 }
 
+/*
+ * Callbacks from browser
+ */
+
 static void
 inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
                                       InfcBrowserIter* iter,
@@ -366,15 +604,57 @@ inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
   gtk_tree_path_free(path); 
 }
 
-/* This function recursively walks down iter and all its children and
- * inserts running explore requests into the view. */
 static void
-inf_gtk_browser_view_walk_explore_requests(InfGtkBrowserView* view,
-                                           InfcBrowser* browser,
-                                           InfcBrowserIter* iter)
+inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
+                                          InfcBrowserIter* iter,
+                                          InfcSessionProxy* proxy,
+                                          gpointer user_data)
+{
+  InfGtkBrowserView* view;
+  InfGtkBrowserViewPrivate* priv;
+  InfSession* session;
+  GtkTreeModel* model;
+  GtkTreeIter tree_iter;
+  GtkTreePath* path;
+  gboolean result;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+
+  session = infc_session_proxy_get_session(proxy);
+  if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
+  {
+    result = inf_gtk_browser_model_browser_iter_to_tree_iter(
+      INF_GTK_BROWSER_MODEL(model),
+      browser,
+      iter,
+      &tree_iter
+    );
+
+    g_assert(result == TRUE);
+
+    path = gtk_tree_model_get_path(model, &tree_iter);
+    inf_gtk_browser_view_session_added(view, path, &tree_iter, proxy);
+    gtk_tree_path_free(path); 
+  }
+}
+
+/*
+ * Browser management
+ */
+
+/* This function recursively walks down iter and all its children and
+ * inserts running explore requests and synchronizations into the view. */
+static void
+inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
+                                   InfcBrowser* browser,
+                                   InfcBrowserIter* iter)
 {
   InfGtkBrowserViewPrivate* priv;
   InfcExploreRequest* request;
+  InfcSessionProxy* proxy;
+  InfSession* session;
   GtkTreeModel* model;
   GtkTreeIter tree_iter;
   GtkTreePath* path;
@@ -383,39 +663,72 @@ inf_gtk_browser_view_walk_explore_requests(InfGtkBrowserView* view,
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-  if(infc_browser_iter_get_explored(browser, iter))
+  /* TODO: Carry path and iter through the recursion, so we do not need to
+   * make expensive gtk_tree_model_get_path calls */
+  if(infc_browser_iter_is_subdirectory(browser, iter))
   {
-    child_iter = *iter;
-    for(result = infc_browser_iter_get_child(browser, &child_iter);
-        result == TRUE;
-        result = infc_browser_iter_get_next(browser, &child_iter))
+    if(infc_browser_iter_get_explored(browser, iter))
     {
-      inf_gtk_browser_view_walk_explore_requests(view, browser, &child_iter);
+      child_iter = *iter;
+      if(infc_browser_iter_get_child(browser, &child_iter))
+      {
+        do
+        {
+          inf_gtk_browser_view_walk_requests(view, browser, &child_iter);
+        } while(infc_browser_iter_get_next(browser, &child_iter));
+      }
+    }
+
+    request = infc_browser_iter_get_explore_request(browser, iter);
+    if(request != NULL)
+    {
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+
+      result = inf_gtk_browser_model_browser_iter_to_tree_iter(
+        INF_GTK_BROWSER_MODEL(model),
+        browser,
+        iter,
+        &tree_iter
+      );
+
+      g_assert(result == TRUE);
+
+      path = gtk_tree_model_get_path(model, &tree_iter);
+
+      inf_gtk_browser_view_explore_request_added(
+        view,
+        path,
+        &tree_iter,
+        request
+      );
+
+      gtk_tree_path_free(path);
     }
   }
-
-  request = infc_browser_iter_get_explore_request(browser, iter);
-  if(request != NULL)
+  else
   {
-    model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+    proxy = infc_browser_iter_get_session(browser, iter);
+    if(proxy != NULL)
+    {
+      session = infc_session_proxy_get_session(proxy);
+      if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
+      {
+        model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
 
-    result = inf_gtk_browser_model_browser_iter_to_tree_iter(
-      INF_GTK_BROWSER_MODEL(model),
-      browser,
-      iter,
-      &tree_iter
-    );
+        result = inf_gtk_browser_model_browser_iter_to_tree_iter(
+          INF_GTK_BROWSER_MODEL(model),
+          browser,
+          iter,
+          &tree_iter
+        );
 
-    path = gtk_tree_model_get_path(model, &tree_iter);
+        g_assert(result == TRUE);
 
-    inf_gtk_browser_view_explore_request_added(
-      view,
-      path,
-      &tree_iter,
-      request
-    );
-
-    gtk_tree_path_free(path);
+        path = gtk_tree_model_get_path(model, &tree_iter);
+        inf_gtk_browser_view_session_added(view, path, &tree_iter, proxy);
+        gtk_tree_path_free(path);
+      }
+    }
   }
 }
 
@@ -475,6 +788,13 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
     view
   );
 
+  g_signal_connect_after(
+    G_OBJECT(browser),
+    "session-subscribe",
+    G_CALLBACK(inf_gtk_browser_view_session_subscribe_cb),
+    view
+  );
+
   connection = infc_browser_get_connection(browser);
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
@@ -493,7 +813,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
     /* TODO: We do not need this anymore when we get insertion callbacks
      * from the model for each node in the newly added browser. See
      * inf-gtk-browser-model.c:292. */
-    inf_gtk_browser_view_walk_explore_requests(view, browser, browser_iter);
+    inf_gtk_browser_view_walk_requests(view, browser, browser_iter);
 
     /* Explore root node initially if not already explored */
     inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
@@ -512,6 +832,12 @@ inf_gtk_browser_view_browser_free(InfGtkBrowserView* view,
     view
   );
 
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(object->object),
+    G_CALLBACK(inf_gtk_browser_view_session_subscribe_cb),
+    view
+  );
+
   gtk_tree_row_reference_free(object->reference);
   g_object_unref(G_OBJECT(object->object));
 }
@@ -526,11 +852,16 @@ inf_gtk_browser_view_browser_removed(InfGtkBrowserView* view,
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   object = &g_array_index(priv->browsers, InfGtkBrowserViewObject, index);
 
-  /* TODO: Also remove any explore requests belonging to this browser */
+  /* TODO: Also remove any explore requests and sessions belonging
+   * to this browser */
 
   inf_gtk_browser_view_browser_free(view, object);
   g_array_remove_index_fast(priv->browsers, index);
 }
+
+/*
+ * TreeModel callbacks
+ */
 
 static void
 inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
@@ -545,6 +876,9 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   InfcBrowserIter* browser_iter;
   GtkTreePath* parent_path;
   GtkTreeView* treeview;
+
+  InfcSessionProxy* proxy;
+  InfSession* session;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -596,6 +930,16 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
           infc_browser_iter_explore(browser, browser_iter);
 
         gtk_tree_path_free(parent_path);
+      }
+    }
+    else
+    {
+      proxy = infc_browser_iter_get_session(browser, browser_iter);
+      if(proxy != NULL)
+      {
+        session = infc_session_proxy_get_session(proxy);
+        if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
+          inf_gtk_browser_view_session_added(view, path, iter, proxy);
       }
     }
 
@@ -713,6 +1057,14 @@ inf_gtk_browser_view_row_deleted_cb(GtkTreeModel* model,
       inf_gtk_browser_view_explore_request_removed(view, i);
     }
   }
+
+  /* As well as synchronizing sessions */
+  for(i = 0; i < priv->sessions->len; ++ i)
+  {
+    object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
+    if(gtk_tree_row_reference_valid(object->reference) == FALSE)
+      inf_gtk_browser_view_session_removed(view, i);
+  }
 }
 
 static void
@@ -736,6 +1088,10 @@ inf_gtk_browser_view_rows_reordered_cb(GtkTreeModel* model,
   );
 }
 
+/*
+ * TreeModel management
+ */
+
 static void
 inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
                                InfGtkBrowserModel* model)
@@ -753,6 +1109,25 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
 
   if(current_model != NULL)
   {
+    /* TODO: We could also only free the browsers, which in turn would
+     * release their corresponding explore requests and sessions. This would
+     * lean to less code in this function, but would probably have a
+     * slightly greater runtime overhead. Note however that the todo item in
+     * inf_gtk_browser_view_browser_removed() needs to be implemented first
+     * for this anyway. */
+
+    /* Remove sessions */
+    if(priv->sessions->len > 0)
+    {
+      for(i = 0; i < priv->sessions->len; ++ i)
+      {
+        object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
+        inf_gtk_browser_view_session_free(view, object);
+      }
+
+      g_array_remove_range(priv->sessions, 0, priv->sessions->len);
+    }
+
     if(priv->explore_requests->len > 0)
     {
       for(i = 0; i < priv->explore_requests->len; ++ i)
@@ -868,6 +1243,9 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
   }
 }
 
+/*
+ * TreeView callbacks */
+
 static void
 inf_gtk_browser_view_row_expanded_cb(GtkTreeView* tree_view,
                                      GtkTreeIter* iter,
@@ -920,6 +1298,9 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
   InfDiscoveryInfo* info;
   GtkTreeIter iter;
 
+  InfcBrowser* browser;
+  InfcBrowserIter* browser_iter;
+
   /* Connect to host, if not already */
   if(gtk_tree_path_get_depth(path) == 1)
   {
@@ -949,7 +1330,15 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
       g_object_unref(G_OBJECT(discovery));
     }
   }
+  else
+  {
+    /* TODO: Expand subdirectory / subscribe session */
+  }
 }
+
+/*
+ * CellDataFuncs
+ */
 
 static void
 inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
@@ -973,6 +1362,8 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
       INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
       -1
     );
+
+    /* TODO: Set error icon if an error occured? */
 
     /* TODO: Set icon depending on note type, perhaps also on whether
      * we are subscribed or not. */
@@ -1080,6 +1471,9 @@ inf_gtk_browser_view_name_data_func(GtkTreeViewColumn* column,
       INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
       -1
     );
+    
+    /* TODO: Use another foreground color (or even background color?) when
+     * we are subscribed or have sent a subscription request. */
 
     name = infc_browser_iter_get_name(browser, browser_iter);
     g_object_set(G_OBJECT(renderer), "text", name, NULL);
@@ -1126,10 +1520,14 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
   InfcExploreRequest* request;
+  InfcSessionProxy* proxy;
+  InfSession* session;
   guint current;
   guint total;
+  gdouble progress;
+  gboolean progress_set;
 
-  /* TODO: This could later also show synchronization progress */
+  progress_set = FALSE;
 
   gtk_tree_model_get(
     model,
@@ -1177,19 +1575,49 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
             NULL
           );
 
-          return;
+          progress_set = TRUE;
+        }
+      }
+    }
+    else
+    {
+      proxy = infc_browser_iter_get_session(browser, browser_iter);
+      if(proxy != NULL)
+      {
+        session = infc_session_proxy_get_session(proxy);
+        if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
+        {
+          g_assert(infc_browser_get_connection(browser) != NULL);
+
+          progress = inf_session_get_synchronization_progress(
+            session,
+            infc_browser_get_connection(browser)
+          );
+
+          g_object_set(
+            G_OBJECT(renderer),
+            "visible", TRUE,
+            "value", (gint)(progress * 100),
+            "text", "Synchronizing...",
+            NULL
+          );
+
+          progress_set = TRUE;
         }
       }
     }
 
     g_object_unref(G_OBJECT(browser));
   }
-  
-  g_object_set(
-    G_OBJECT(renderer),
-    "visible", FALSE,
-    NULL
-  );
+
+  if(!progress_set)
+  {
+    g_object_set(
+      G_OBJECT(renderer),
+      "visible", FALSE,
+      NULL
+    );
+  }
 }
 
 static void
@@ -1205,8 +1633,27 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
   {
-    /* Status is currrently only shown for toplevel items */
-    g_object_set(G_OBJECT(renderer), "visible", FALSE, NULL);
+    gtk_tree_model_get(
+      model,
+      iter,
+      INF_GTK_BROWSER_MODEL_COL_ERROR, &error,
+      -1
+    );
+
+    if(error != NULL)
+    {
+      g_object_set(
+        G_OBJECT(renderer),
+        "text", error->message,
+        "foreground", INF_GTK_BROWSER_VIEW_ERROR_COLOR,
+        "visible", TRUE,
+        NULL
+      );
+    }
+    else
+    {
+      g_object_set(G_OBJECT(renderer), "visible", FALSE, NULL);
+    }
   }
   else
   {
@@ -1257,7 +1704,7 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
       g_object_set(
         G_OBJECT(renderer),
         "text", error->message,
-        "foreground", "#db1515",
+        "foreground", INF_GTK_BROWSER_VIEW_ERROR_COLOR,
         "visible", TRUE,
         NULL
       );
@@ -1269,6 +1716,10 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
     }
   }
 }
+
+/*
+ * GObject overrides
+ */
 
 static void
 inf_gtk_browser_view_init(GTypeInstance* instance,
@@ -1463,6 +1914,9 @@ inf_gtk_browser_view_get_property(GObject* object,
     break;
   }
 }
+
+/*
+ * GtkObject / GtkWidget overrides */
 
 static void
 inf_gtk_browser_view_destroy(GtkObject* object)

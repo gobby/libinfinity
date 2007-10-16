@@ -194,6 +194,9 @@ inf_session_get_buffer(InfSession* session);
 InfUserTable*
 inf_session_get_user_table(InfSession* session);
 
+InfSessionStatus
+inf_session_get_status(InfSession* session);
+
 InfUser*
 inf_session_add_user(InfSession* session,
                      const GParameter* params,
@@ -208,6 +211,10 @@ inf_session_synchronize_to(InfSession* session,
 InfSessionSyncStatus
 inf_session_get_synchronization_status(InfSession* session,
                                        InfXmlConnection* connection);
+
+gdouble
+inf_session_get_synchronization_progress(InfSession* session,
+                                         InfXmlConnection* connection);
 
 InfConnectionManagerGroup*
 inf_session_get_subscription_group(InfSession* session);

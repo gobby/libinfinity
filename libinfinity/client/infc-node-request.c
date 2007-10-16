@@ -20,6 +20,17 @@
 #include <libinfinity/client/infc-node-request.h>
 #include <libinfinity/inf-marshal.h>
 
+typedef struct _InfcNodeRequestPrivate InfcNodeRequestPrivate;
+struct _InfcNodeRequestPrivate {
+  guint node_id;
+};
+
+enum {
+  PROP_0,
+
+  PROP_NODE_ID
+};
+
 enum {
   FINISHED,
 
@@ -33,10 +44,15 @@ static guint node_request_signals[LAST_SIGNAL];
 
 static void
 infc_node_request_init(GTypeInstance* instance,
-                          gpointer g_class)
+                       gpointer g_class)
 {
   InfcNodeRequest* node_request;
+  InfcNodeRequestPrivate* priv;
+
   node_request = INFC_NODE_REQUEST(instance);
+  priv = INFC_NODE_REQUEST_PRIVATE(node_request);
+
+  priv->node_id = 0;
 }
 
 static void
@@ -47,6 +63,52 @@ infc_node_request_finalize(GObject* object)
 
   if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
     G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
+static void
+infc_node_request_set_property(GObject* object,
+                               guint prop_id,
+                               const GValue* value,
+                               GParamSpec* pspec)
+{
+  InfcNodeRequest* request;
+  InfcNodeRequestPrivate* priv;
+
+  request = INFC_NODE_REQUEST(object);
+  priv = INFC_NODE_REQUEST_PRIVATE(request);
+
+  switch(prop_id)
+  {
+  case PROP_NODE_ID:
+    priv->node_id = g_value_get_uint(value);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infc_node_request_get_property(GObject* object,
+                               guint prop_id,
+                               GValue* value,
+                               GParamSpec* pspec)
+{
+  InfcNodeRequest* request;
+  InfcNodeRequestPrivate* priv;
+
+  request = INFC_NODE_REQUEST(object);
+  priv = INFC_NODE_REQUEST_PRIVATE(request);
+
+  switch(prop_id)
+  {
+  case PROP_NODE_ID:
+    g_value_set_uint(value, priv->node_id);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
 }
 
 static void
@@ -62,8 +124,24 @@ infc_node_request_class_init(gpointer g_class,
   parent_class = INFC_REQUEST_CLASS(g_type_class_peek_parent(g_class));
 
   object_class->finalize = infc_node_request_finalize;
+  object_class->set_property = infc_node_request_set_property;
+  object_class->get_property = infc_node_request_get_property;
 
   request_class->finished = NULL;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_NODE_ID,
+    g_param_spec_uint(
+      "node-id",
+      "Node ID",
+      "The ID of the node affected by the request",
+      0,
+      G_MAXUINT,
+      0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   node_request_signals[FINISHED] = g_signal_new(
     "finished",

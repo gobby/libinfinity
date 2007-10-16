@@ -1970,6 +1970,21 @@ inf_session_get_user_table(InfSession* session)
   return INF_SESSION_PRIVATE(session)->user_table;
 }
 
+/** inf_session_get_status:
+ *
+ * @session: A #InfSession.
+ *
+ * Returns the session's status.
+ *
+ * Return Value: The status of @session.
+ **/
+InfSessionStatus
+inf_session_get_status(InfSession* session)
+{
+  g_return_val_if_fail(INF_IS_SESSION(session), INF_SESSION_CLOSED);
+  return INF_SESSION_PRIVATE(session)->status;
+}
+
 /** inf_session_add_user:
  *
  * @session A #InfSession.
@@ -2136,7 +2151,7 @@ inf_session_synchronize_to(InfSession* session,
 /** inf_session_get_synchronization_status:
  *
  * @session: A #InfSession.
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  *
  * If @session is in status %INF_SESSION_SYNCHRONIZING, this always returns
  * %INF_SESSION_SYNC_IN_PROGRESS if @connection is the connection with which
@@ -2146,8 +2161,10 @@ inf_session_synchronize_to(InfSession* session,
  * of the synchronization to @connection. %INF_SESSION_SYNC_NONE is returned,
  * when there is currently no synchronization ongoing to @connection,
  * %INF_SESSION_SYNC_IN_PROGRESS is returned, if there is one, and
- * %INF_SESSION_SYNC_END_ENQUEUED is returned if the synchronization can no
- * longer be cancelled but is not yet complete and might still fail.
+ * %INF_SESSION_SYNC_AWAITING_ACK if the synchronization is finished but we
+ * are waiting for the acknowledgement from the remote site that all
+ * synchronization data has been progressed successfully. The synchronization
+ * can still fail in this state but it can no longer by cancelled.
  *
  * If @session is in status $INF_SESSION_CLOSED, this always returns
  * %INF_SESSION_SYNC_NONE.
@@ -2186,6 +2203,64 @@ inf_session_get_synchronization_status(InfSession* session,
   default:
     g_assert_not_reached();
     break;
+  }
+}
+
+/** inf_session_get_synchronization_progress:
+ *
+ * @session: A #InfSession.
+ * @connection: A #InfXmlConnection.
+ *
+ * This function requires that the synchronization status of @connection
+ * is %INF_SESSION_SYNC_IN_PROGRESS or %INF_SESSION_SYNC_AWAITING_ACK
+ * (see inf_session_get_synchronization_status()). Then, it returns a value
+ * between 0.0 and 1.0 specifying how much synchronization data has already
+ * been transferred to the remote site.
+ *
+ * Note that if the session is in status %INF_SESSION_RUNNING, it is
+ * possible that this function returns 1.0 (i.e. all data has been
+ * transmitted) but the synchronization is not yet complete, because the
+ * remote site must still acknowledge the synchronization. The synchronization
+ * then is in status %INF_SESSION_SYNC_AWAITING_ACK.
+ *
+ * Return Value: A value between 0.0 and 1.0.
+ **/
+gdouble
+inf_session_get_synchronization_progress(InfSession* session,
+                                         InfXmlConnection* connection)
+{
+  InfSessionPrivate* priv;
+  InfSessionSync* sync;
+
+  g_return_val_if_fail(INF_IS_SESSION(session), 0.0);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), 0.0);
+
+  g_return_val_if_fail(
+    inf_session_get_synchronization_status(
+      session,
+      connection
+    ) != INF_SESSION_SYNC_NONE,
+    0.0
+  );
+
+  priv = INF_SESSION_PRIVATE(session);
+
+  switch(priv->status)
+  {
+  case INF_SESSION_SYNCHRONIZING:
+    g_assert(connection == priv->shared.sync.conn);
+    return (gdouble)priv->shared.sync.messages_received /
+           (gdouble)priv->shared.sync.messages_total;
+
+  case INF_SESSION_RUNNING:
+    sync = inf_session_find_sync_by_connection(session, connection);
+    g_assert(sync != NULL);
+
+    return (gdouble)sync->messages_sent / (gdouble)sync->messages_total;
+  case INF_SESSION_CLOSED:
+  default:
+    g_assert_not_reached();
+    return 0.0;
   }
 }
 

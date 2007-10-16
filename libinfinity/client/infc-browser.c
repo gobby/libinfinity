@@ -43,6 +43,13 @@ struct _InfcBrowserIterGetExploreRequestForeachData {
   InfcExploreRequest* result;
 };
 
+typedef struct _InfcBrowserIterGetNodeRequestForeachData
+  InfcBrowserIterGetNodeRequestForeachData;
+struct _InfcBrowserIterGetNodeRequestForeachData {
+  InfcBrowserIter* iter;
+  InfcNodeRequest* result;
+};
+
 typedef struct _InfcBrowserNode InfcBrowserNode;
 struct _InfcBrowserNode {
   InfcBrowserNode* parent;
@@ -102,6 +109,8 @@ enum {
   NODE_ADDED,
   NODE_REMOVED,
   BEGIN_EXPLORE,
+  BEGIN_SUBSCRIBE,
+  SUBSCRIBE_SESSION,
 
   LAST_SIGNAL
 };
@@ -157,10 +166,30 @@ infc_browser_iter_get_explore_request_foreach_func(InfcRequest* request,
   explore_request = INFC_EXPLORE_REQUEST(request);
   g_object_get(G_OBJECT(explore_request), "node-id", &node_id, NULL);
 
-  /* TODO: Stop foreach when we found the request. Requires changes is
+  /* TODO: Stop foreach when we found the request. Requires changes in
    * InfcRequestManager. */
   if(node_id == data->iter->node_id)
     data->result = explore_request;
+}
+
+static void
+infc_browser_iter_get_node_request_foreach_func(InfcRequest* request,
+                                                gpointer user_data)
+{
+  InfcBrowserIterGetNodeRequestForeachData* data;
+  InfcNodeRequest* node_request;
+  guint node_id;
+
+  data = (InfcBrowserIterGetNodeRequestForeachData*)user_data;
+  g_assert(INFC_IS_NODE_REQUEST(request));
+
+  node_request = INFC_NODE_REQUEST(request);
+  g_object_get(G_OBJECT(node_request), "node-id", &node_id, NULL);
+
+  /* TODO: Stop foreach when we found the request. Requires changes in
+   * InfcRequestManager. */
+  if(node_id == data->iter->node_id)
+    data->result = node_request;
 }
 
 /*
@@ -1155,13 +1184,13 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
   inf_connection_manager_unref_group(priv->connection_manager, group);
 
   /* TODO: Unref session when it drops its connection (possibly due to
-   * unsubscription). */
+   * unsubscription), or failed synchronization. */
 
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     "subscribe-session",
     xml,
-    error /* TODO: Should this be NULL, we are retuning TRUE anyway */
+    NULL
   );
 
   if(request != NULL)
@@ -1173,7 +1202,17 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
-  node->shared.known.session = proxy;
+  g_signal_emit(
+    G_OBJECT(browser),
+    browser_signals[SUBSCRIBE_SESSION],
+    0,
+    &iter,
+    proxy
+  );
+
+  /* The default handler refs the proxy */
+  g_object_unref(G_OBJECT(proxy));
+
   return TRUE;
 }
 
@@ -1347,6 +1386,33 @@ infc_browser_net_object_received(InfNetObject* net_object,
 }
 
 /*
+ * Default signal handlers
+ */
+
+static void
+infc_browser_subscribe_session_impl(InfcBrowser* browser,
+                                    InfcBrowserIter* iter,
+                                    InfcSessionProxy* proxy)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = (InfcBrowserNode*)iter->node;
+  
+  g_assert(
+    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) ==
+    node
+  );
+
+  g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
+  g_assert(node->shared.known.session == NULL);
+
+  node->shared.known.session = proxy;
+  g_object_ref(G_OBJECT(proxy));
+}
+
+/*
  * GType registration.
  */
 
@@ -1370,6 +1436,8 @@ infc_browser_class_init(gpointer g_class,
   browser_class->node_added = NULL;
   browser_class->node_removed = NULL;
   browser_class->begin_explore = NULL;
+  browser_class->begin_subscribe = NULL;
+  browser_class->subscribe_session = infc_browser_subscribe_session_impl;
 
   g_object_class_install_property(
     object_class,
@@ -1430,6 +1498,32 @@ infc_browser_class_init(gpointer g_class,
     2,
     INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
     INFC_TYPE_EXPLORE_REQUEST
+  );
+
+  browser_signals[BEGIN_SUBSCRIBE] = g_signal_new(
+    "begin-subscribe",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfcBrowserClass, begin_subscribe),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INFC_TYPE_NODE_REQUEST
+  );
+
+  browser_signals[SUBSCRIBE_SESSION] = g_signal_new(
+    "subscribe-session",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfcBrowserClass, subscribe_session),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INFC_TYPE_SESSION_PROXY
   );
 }
 
@@ -1967,7 +2061,7 @@ infc_browser_iter_is_subdirectory(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_add_subdirectory(InfcBrowser* browser,
-                              InfcBrowserIter* iter,
+                              InfcBrowserIter* parent,
                               const gchar* name)
 {
   InfcBrowserPrivate* priv;
@@ -1976,10 +2070,10 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
   xmlNodePtr xml;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
-  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+  infc_browser_return_val_if_iter_fail(browser, parent, NULL);
   g_return_val_if_fail(name != NULL, NULL);
 
-  node = (InfcBrowserNode*)iter->node;
+  node = (InfcBrowserNode*)parent->node;
   infc_browser_return_val_if_subdir_fail(node, NULL);
   g_return_val_if_fail(node->shared.subdir.explored == TRUE, NULL);
 
@@ -1990,6 +2084,7 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "add-node",
+    "node-id", parent->node_id,
     NULL
   );
 
@@ -2047,6 +2142,7 @@ infc_browser_add_note(InfcBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "add-node",
+    "node-id", parent->node_id,
     NULL
   );
 
@@ -2098,6 +2194,7 @@ infc_browser_remove_node(InfcBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "remove-node",
+    "node-id", iter->node_id,
     NULL
   );
 
@@ -2128,8 +2225,8 @@ infc_browser_remove_node(InfcBrowser* browser,
  * the request finishes or fails.
  **/
 InfcNodeRequest*
-infc_browser_subscribe_session(InfcBrowser* browser,
-                               InfcBrowserIter* iter)
+infc_browser_iter_subscribe_session(InfcBrowser* browser,
+                                    InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -2152,6 +2249,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "subscribe-session",
+    "node-id", iter->node_id,
     NULL
   );
 
@@ -2163,6 +2261,14 @@ infc_browser_subscribe_session(InfcBrowser* browser,
     priv->group,
     priv->connection,
     xml
+  );
+
+  g_signal_emit(
+    G_OBJECT(browser),
+    browser_signals[BEGIN_SUBSCRIBE],
+    0,
+    iter,
+    request
   );
 
   return INFC_NODE_REQUEST(request);
@@ -2193,6 +2299,84 @@ infc_browser_iter_get_session(InfcBrowser* browser,
 
   if(node->type != INFC_BROWSER_NODE_NOTE_KNOWN) return NULL;
   return node->shared.known.session;
+}
+
+/** infc_browser_iter_get_subscribe_request:
+ *
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a note in @browser.
+ *
+ * Returns the #InfcNodeRequest that represents the subscription request sent
+ * for the note @iter points to. Returns %NULL if we are already subscribed
+ * to that node, or no subscription request has been sent. In the former
+ * case infc_browser_iter_get_session() will return the #InfcSessionProxy for
+ * the subscription.
+ *
+ * Return Value: A #InfcNodeRequest, or %NULL.
+ **/
+InfcNodeRequest*
+infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
+                                        InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcBrowserIterGetNodeRequestForeachData data;
+
+  data.iter = iter;
+  data.result = NULL;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  node = (InfcBrowserNode*)iter->node;
+  infc_browser_return_val_if_subdir_fail(node, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  infc_request_manager_foreach_named_request(
+    priv->request_manager,
+    "subscribe-session",
+    infc_browser_iter_get_node_request_foreach_func,
+    &data
+  );
+
+  return data.result;
+}
+
+/** infc_browser_iter_from_node_request:
+ *
+ * @browser: A #InfcBrowser.
+ * @request: A #InfcNodeRequest issued by @browser.
+ * @iter: A #InfcBrowserIter.
+ *
+ * Sets @iter to point to the node @request is related to. If there is no such
+ * node (someone could have deleted it while the request is still running),
+ * the function returns %FALSE and @iter is unchanged.
+ *
+ * Return Value: %TRUE if @iter was set, %FALSE otherwise.
+ **/
+gboolean
+infc_browser_iter_from_node_request(InfcBrowser* browser,
+                                    InfcNodeRequest* request,
+                                    InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  guint node_id;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(INFC_IS_NODE_REQUEST(request), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+
+  node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node_id;
+  iter->node = node;
+  return TRUE;
 }
 
 /* vim:set et sw=2 ts=2: */

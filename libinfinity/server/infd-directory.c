@@ -224,7 +224,7 @@ infd_directory_node_link(InfdDirectoryNode* node,
 {
   g_return_if_fail(node != NULL);
   g_return_if_fail(parent != NULL);
-  infd_directory_return_if_subdir_fail(node);
+  infd_directory_return_if_subdir_fail(parent);
 
   node->prev = NULL;
   if(parent->shared.subdir.child != NULL)
