@@ -537,6 +537,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
   InfConnectionManager* manager;
   InfConnectionManagerGroup* group;
   InfConnectionManagerQueue* queue;
+  InfNetObject* object;
   xmlNodePtr child;
   GError* error;
 
@@ -557,11 +558,16 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
 
     if(group == NULL)
     {
-      g_warning("Failed to get group to forward received XML: %s", error->message);
+      /*g_warning(
+        "Failed to get group to forward received XML: %s",
+        error->message
+      );*/
     }
     else
     {
-      g_assert(group->net_object != NULL);
+      object = group->net_object;
+      g_assert(object != NULL);
+
       queue = inf_connection_manager_group_get_queue(group, connection);
 
       if(queue == NULL)
@@ -576,7 +582,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
       }
       else
       {
-        g_object_ref(G_OBJECT(group->net_object));
+        g_object_ref(object);
 
         for(child = xml->children; child != NULL; child = child->next)
         {
@@ -585,7 +591,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
 
         /* TODO: Forward if it is scope="group" */
 
-        g_object_unref(G_OBJECT(group->net_object));
+        g_object_unref(object);
       }
     }
   }

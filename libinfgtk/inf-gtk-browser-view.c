@@ -753,8 +753,6 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
   }
 }
 
-/* Called whenever a browser is added to a node. The browser is expected
- * to be already refed. */
 static void
 inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
                                    GtkTreePath* path,
@@ -771,6 +769,12 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
   object.object = G_OBJECT(browser);
+  g_object_ref(G_OBJECT(browser));
+
+  /* TODO: I don't think we need to take track of all the browsers in an
+   * extra array. We get reliable notification in the "set-browser" handlers,
+   * and we can walk topmost layer of the model in case we need to remove
+   * all browsers but keep the model alive. */
 
   object.reference = gtk_tree_row_reference_new_proxy(
     G_OBJECT(priv->column),
@@ -790,7 +794,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
 
   g_signal_connect_after(
     G_OBJECT(browser),
-    "session-subscribe",
+    "subscribe-session",
     G_CALLBACK(inf_gtk_browser_view_session_subscribe_cb),
     view
   );
@@ -812,7 +816,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
      * explore requests to show their progress. */
     /* TODO: We do not need this anymore when we get insertion callbacks
      * from the model for each node in the newly added browser. See
-     * inf-gtk-browser-model.c:292. */
+     * inf_gtk_browser_model_set_browser_impl() in inf-gtk-browser-model.c. */
     inf_gtk_browser_view_walk_requests(view, browser, browser_iter);
 
     /* Explore root node initially if not already explored */
@@ -864,6 +868,60 @@ inf_gtk_browser_view_browser_removed(InfGtkBrowserView* view,
  */
 
 static void
+inf_gtk_browser_view_set_browser_cb_before(InfGtkBrowserModel* model,
+                                           GtkTreePath* path,
+                                           GtkTreeIter* iter,
+                                           InfcBrowser* new_browser,
+                                           gpointer user_data)
+{
+  InfGtkBrowserView* view;
+  InfGtkBrowserViewPrivate* priv;
+  InfcBrowser* browser;
+  InfGtkBrowserViewObject* object;
+  guint i;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+
+  gtk_tree_model_get(
+    GTK_TREE_MODEL(model),
+    iter,
+    INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+    -1
+  );
+
+  /* Old browser was removed */
+  if(browser != NULL)
+  {
+    for(i = 0; i < priv->browsers->len; ++ i)
+    {
+      object = &g_array_index(priv->browsers, InfGtkBrowserViewObject, i);
+      if(INFC_BROWSER(object->object) == browser)
+      {
+        inf_gtk_browser_view_browser_removed(view, i);
+        break;
+      }
+    }
+
+    g_object_unref(G_OBJECT(browser));
+  }
+}
+
+static void
+inf_gtk_browser_view_set_browser_cb_after(InfGtkBrowserModel* model,
+                                          GtkTreePath* path,
+                                          GtkTreeIter* iter,
+                                          InfcBrowser* new_browser,
+                                          gpointer user_data)
+{
+  InfGtkBrowserView* view;
+  view = INF_GTK_BROWSER_VIEW(user_data);
+
+  if(new_browser != NULL)
+    inf_gtk_browser_view_browser_added(view, path, iter, new_browser);
+}
+
+static void
 inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
                                      GtkTreePath* path,
                                      GtkTreeIter* iter,
@@ -885,22 +943,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
 
   gtk_tree_row_reference_inserted(G_OBJECT(priv->column), path);
 
-  if(gtk_tree_model_iter_parent(model, &parent_iter, iter) == FALSE)
-  {
-    /* No parent, so iter is top-level. Check if
-     * it has a browser associated. */
-    gtk_tree_model_get(
-      model,
-      iter,
-      INF_GTK_BROWSER_MODEL_COL_BROWSER,
-      &browser,
-      -1
-    );
-
-    if(browser != NULL)
-      inf_gtk_browser_view_browser_added(view, path, iter, browser);
-  }
-  else
+  if(gtk_tree_model_iter_parent(model, &parent_iter, iter) == TRUE)
   {
     /* Inner node. Explore if the parent node is expanded. */
     gtk_tree_model_get(
@@ -961,9 +1004,6 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
 
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
-  InfGtkBrowserViewObject* object;
-  GtkTreePath* object_path;
-  guint i;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -977,7 +1017,8 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
       INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
       -1
     );
-    
+
+    /* Explore root node as soon as the connection is ready */
     if(status == INF_GTK_BROWSER_MODEL_CONNECTED)
     {
       gtk_tree_model_get(
@@ -990,26 +1031,6 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
       inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
       infc_browser_iter_free(browser_iter);
     }
-
-    for(i = 0; i < priv->browsers->len; ++ i)
-    {
-      object = &g_array_index(priv->browsers, InfGtkBrowserViewObject, i);
-      object_path = gtk_tree_row_reference_get_path(object->reference);
-      if(gtk_tree_path_compare(path, object_path) == 0)
-      {
-        gtk_tree_path_free(object_path);
-        break;
-      }
-
-      gtk_tree_path_free(object_path);
-    }
-
-    if(browser == NULL && i < priv->browsers->len)
-      inf_gtk_browser_view_browser_removed(view, i);
-    else if(browser != NULL && i == priv->browsers->len)
-      inf_gtk_browser_view_browser_added(view, path, iter, browser);
-    else if(browser != NULL) /* already added */
-      g_object_unref(G_OBJECT(browser));
   }
 }
 
@@ -1182,6 +1203,18 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
       G_CALLBACK(inf_gtk_browser_view_rows_reordered_cb),
       view
     );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(current_model),
+      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_before),
+      view
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(current_model),
+      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_after),
+      view
+    );
   }
 
   gtk_tree_view_set_model(
@@ -1209,6 +1242,7 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
         if(browser != NULL)
           inf_gtk_browser_view_browser_added(view, path, &iter, browser);
 
+        g_object_unref(G_OBJECT(browser));
         gtk_tree_path_next(path);
       } while(gtk_tree_model_iter_next(GTK_TREE_MODEL(model), &iter) == TRUE);
     }
@@ -1240,11 +1274,26 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
       G_CALLBACK(inf_gtk_browser_view_rows_reordered_cb),
       view
     );
+    
+    g_signal_connect(
+      G_OBJECT(model),
+      "set-browser",
+      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_before),
+      view
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(model),
+      "set-browser",
+      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_after),
+      view
+    );
   }
 }
 
 /*
- * TreeView callbacks */
+ * TreeView callbacks
+ */
 
 static void
 inf_gtk_browser_view_row_expanded_cb(GtkTreeView* tree_view,
@@ -1332,7 +1381,34 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
   }
   else
   {
-    /* TODO: Expand subdirectory / subscribe session */
+    model = gtk_tree_view_get_model(tree_view);
+    gtk_tree_model_get_iter(model, &iter, path);
+
+    gtk_tree_model_get(
+      model,
+      &iter,
+      INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+      INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+      -1
+    );
+
+    if(infc_browser_iter_is_subdirectory(browser, browser_iter))
+    {
+      /* TODO: Expand this directory, if not already? */
+    }
+    else
+    {
+      /* Subscribe, if possible and not already */
+      if(!infc_browser_iter_get_session(browser, browser_iter) &&
+         !infc_browser_iter_get_subscribe_request(browser, browser_iter) &&
+         infc_browser_iter_get_plugin(browser, browser_iter) != NULL)
+      {
+        infc_browser_iter_subscribe_session(browser, browser_iter);
+      }
+    }
+
+    infc_browser_iter_free(browser_iter);
+    g_object_unref(G_OBJECT(browser));
   }
 }
 
@@ -1566,11 +1642,19 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
               NULL
             );
           }
-          
+
+          /* It is possible that the exploration request has been initiated,
+           * but not yet finished, and the total number of items in the
+           * folder is zero. */
+          if(total == 0)
+            progress = 1.0;
+          else
+            progress = (gdouble)current / (gdouble)total;
+
           g_object_set(
             G_OBJECT(renderer),
             "visible", TRUE,
-            "value", current * 100 / total,
+            "value", (gint)(progress * 100 + 0.5),
             "text", "Exploring...",
             NULL
           );
@@ -1597,7 +1681,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
           g_object_set(
             G_OBJECT(renderer),
             "visible", TRUE,
-            "value", (gint)(progress * 100),
+            "value", (gint)(progress * 100 + 0.5),
             "text", "Synchronizing...",
             NULL
           );
@@ -1744,6 +1828,8 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
     g_array_new(FALSE, FALSE, sizeof(InfGtkBrowserViewObject));
   priv->explore_requests =
     g_array_new(FALSE, FALSE, sizeof(InfGtkBrowserViewObject));
+  priv->sessions =
+    g_array_new(FALSE, FALSE, sizeof(InfGtkBrowserViewObject));
 
   g_object_set(G_OBJECT(priv->renderer_status), "xpad", 10, NULL);
   g_object_set(G_OBJECT(priv->renderer_status_icon), "xpad", 5, NULL);
@@ -1854,9 +1940,11 @@ inf_gtk_browser_view_finalize(GObject* object)
 
   g_assert(priv->browsers->len == 0);
   g_assert(priv->explore_requests->len == 0);
+  g_assert(priv->sessions->len == 0);
 
   g_array_free(priv->browsers, TRUE);
   g_array_free(priv->explore_requests, TRUE);
+  g_array_free(priv->sessions, TRUE);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }

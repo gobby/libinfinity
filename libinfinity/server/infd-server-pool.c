@@ -86,6 +86,7 @@ infd_server_pool_entry_publish_with(InfdServerPoolEntry* entry,
     {
       g_object_get(G_OBJECT(entry->server), "tcp-server", &tcp, NULL);
       g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
+      g_object_unref(G_OBJECT(tcp));
 
       publisher->shared.local.item = inf_local_publisher_publish(
         publisher->shared.local.publisher,

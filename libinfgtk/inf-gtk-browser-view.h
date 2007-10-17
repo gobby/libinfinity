@@ -45,10 +45,9 @@ struct _InfGtkBrowserViewClass {
                                  GtkAdjustment* hadjustment,
                                  GtkAdjustment* vadjustment);
 
-  /* TODO: Add add-browser, remove-browser and subscribe-session. Note that
-   * the latter is only called for sessions subscribed via this view. If you
-   * want to get notified for any sessions a browser subscribes, connect
-   * to the "subscribe-session" signal of InfcBrowser. */
+  /* subscribe-session. Note that this is only called for sessions subscribed
+   * via this view. If you want to get notified for any sessions a browser
+   * subscribes, connect to the "subscribe-session" signal of InfcBrowser. */
 };
 
 struct _InfGtkBrowserView {

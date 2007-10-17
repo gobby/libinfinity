@@ -64,6 +64,11 @@ typedef enum _InfGtkBrowserModelColumn {
 
 struct _InfGtkBrowserModelClass {
   GObjectClass parent_class;
+
+  void(*set_browser)(InfGtkBrowserModel* model,
+                     GtkTreePath* path,
+                     GtkTreeIter* iter,
+                     InfcBrowser* browser);
 };
 
 struct _InfGtkBrowserModel {
@@ -77,7 +82,8 @@ GType
 inf_gtk_browser_model_get_type(void) G_GNUC_CONST;
 
 InfGtkBrowserModel*
-inf_gtk_browser_model_new(InfConnectionManager* connection_manager);
+inf_gtk_browser_model_new(InfIo* io,
+                          InfConnectionManager* connection_manager);
 
 void
 inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,

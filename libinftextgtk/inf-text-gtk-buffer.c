@@ -919,7 +919,7 @@ inf_text_gtk_buffer_get_type(void)
 
     g_type_add_interface_static(
       buffer_type,
-      INF_TEXT_GTK_TYPE_BUFFER,
+      INF_TEXT_TYPE_BUFFER,
       &text_buffer_info
     );
   }
@@ -950,6 +950,21 @@ inf_text_gtk_buffer_new(GtkTextBuffer* buffer)
   );
 
   return INF_TEXT_GTK_BUFFER(object);
+}
+
+/** inf_text_gtk_buffer_get_text_buffer:
+ *
+ * @buffer: A #InfTextGtkBuffer.
+ *
+ * Returns the underlaying #GtkTextBuffer.
+ *
+ * Return Value: A #GtkTextBuffer.
+ **/
+GtkTextBuffer*
+inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), NULL);
+  return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->buffer;
 }
 
 /** inf_text_gtk_buffer_set_active_user:

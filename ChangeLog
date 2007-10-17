@@ -1,3 +1,81 @@
+2007-10-17  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-main.c: Added --port-number command line option
+	and load/save diffie-hellman parameters to current directory. This is
+	just temporary to ease testing for me, so I don't have to wait too
+	long when I need to restart the server again.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c: Allow author of
+	segments to be 0, adapt to infd_filesystem_storage_open() API change.
+
+	* libinfinity/inf-marshal.in: Added VOID:BOXED,BOXED,OBJECT
+	marshaller.
+
+	* libinfinity/common/inf-connection-manager.c: Allow
+	inf_net_object_received() to remove itself from the connection manager
+	group through which the message was passed, don't print a warning if a
+	message for a nonexistant group is received.
+
+	* libinfinity/common/inf-session.c: Only unref connection manager
+	group in inf_session_release_connection() when it is set.
+
+	* libinfinity/server/infd-filesystem-storage.h:
+	* libinfinity/server/infd-filesystem-storage.c: Added note type
+	parameter to infd_filesystem_storage_open(), and address correctly the
+	file on disk.
+
+	* libinfinity/server/infd-session-proxy.c: Keep session when it is
+	closed, release in disponse().
+
+	* libinfinity/server/infd-directory.c: Correctly unref
+	InfConnectionManagerGroup (can't be freed with g_free()) in
+	infd_directory_node_add_note().
+
+	* libinfinity/server/infd-server-pool.c: Release reference on
+	InfdTcpServer in infd_server_pool_entry_publish_with().
+
+	* libinfinity/client/infc-note-plugin.h: Added an IO parameter to
+	session_new().
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added
+	infc_browser_iter_get_note_type(), infc_browser_iter_get_plugin() and
+	renamed -infc_browser_subscribe_session() to
+	infc_browser_iter_subscribe_session(). Also take an IO parameter in
+	infc_browser_new().
+
+	* libinfinity/client/infc-node-request.c: Register private struct in
+	class_init.
+
+	* libinftext/inf-text-session.c: Allow user to be NULL in text buffer
+	signal handlers, swap code and domain in invocation of g_set_error in
+	inf_text_session_process_xml_sync() which were the other way around.
+
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c: Take an IO parameter in
+	inf_gtk_browser_model_new() for the browsers to create, added the
+	set-browser signal in whose default handler the browser is associated
+	with the InfGtkBrowserModelItem and signal handlers are registered.
+
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c: Use the new "set-browser" signal
+	of the model to connect to browser's signals, subscribe to sessions
+	when a non-subdirectory node is activated and a plugin present.
+
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added
+	inf_text_gtk_buffer_get_text_buffer(), fixed interface registration
+	(implement INF_TEXT_TYPE_BUFFER, not INF_TEXT_GTK_TYPE_BUFFER which is
+	not even an interface).
+
+	* test/inf-test-gtk-browser.c: Added support for subscribing to
+	text sessions.
+
+	* test/inf-test-browser.c: Pass IO to InfcBrowser.
+
+	* test/Makefile.am: Link inf-test-gtk-browser against InfText and
+	InfTextGtk.
+
 2007-10-16  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-session.h:

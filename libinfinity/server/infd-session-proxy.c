@@ -558,7 +558,7 @@ infd_session_proxy_session_close_cb(InfSession* session,
     }
 
     /* Do not call remove_subscription because this would try to send
-     * messages about leaving users, but we are sending session_proxy-close
+     * messages about leaving users, but we are sending session-close
      * to all subscriptions anyway. */
     infd_session_proxy_release_subscription(proxy, subscription);
   }
@@ -569,33 +569,6 @@ infd_session_proxy_session_close_cb(InfSession* session,
   );
 
   priv->subscription_group = NULL;
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_session_close_cb),
-    proxy
-  );
-  
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(inf_session_get_user_table(priv->session)),
-    G_CALLBACK(infd_session_proxy_add_user_cb),
-    proxy
-  );
-  
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_session_synchronization_complete_cb),
-    proxy
-  );
-  
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_session_synchronization_failed_cb),
-    proxy
-  );
-
-  g_object_unref(priv->session);
-  priv->session = NULL;
 }
 
 /*
@@ -650,17 +623,47 @@ infd_session_proxy_constructor(GType type,
 static void
 infd_session_proxy_dispose(GObject* object)
 {
-  InfdSessionProxy* session_proxy;
+  InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
   InfConnectionManager* manager;
 
-  session_proxy = INFD_SESSION_PROXY(object);
-  priv = INFD_SESSION_PROXY_PRIVATE(session_proxy);
+  proxy = INFD_SESSION_PROXY(object);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
+  manager = inf_session_get_connection_manager(priv->session);
   g_object_ref(G_OBJECT(manager));
 
   g_slist_free(priv->local_users);
   priv->local_users = NULL;
+
+  /* We need to close the session explicitely before we unref so that
+   * the signal handler for the close signal is called. */
+  if(inf_session_get_status(priv->session) != INF_SESSION_CLOSED)
+    inf_session_close(priv->session);
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->session),
+    G_CALLBACK(infd_session_proxy_session_close_cb),
+    proxy
+  );
+  
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(inf_session_get_user_table(priv->session)),
+    G_CALLBACK(infd_session_proxy_add_user_cb),
+    proxy
+  );
+  
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->session),
+    G_CALLBACK(infd_session_proxy_session_synchronization_complete_cb),
+    proxy
+  );
+  
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->session),
+    G_CALLBACK(infd_session_proxy_session_synchronization_failed_cb),
+    proxy
+  );
 
   /* Note this emits the close signal, removing all subscriptions and
    * the subscription group */

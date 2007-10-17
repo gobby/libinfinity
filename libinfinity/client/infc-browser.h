@@ -95,7 +95,8 @@ GType
 infc_browser_get_type(void) G_GNUC_CONST;
 
 InfcBrowser*
-infc_browser_new(InfConnectionManager* connection_manager,
+infc_browser_new(InfIo* io,
+                 InfConnectionManager* connection_manager,
                  InfXmlConnection* connection);
 
 InfConnectionManager*
@@ -106,7 +107,11 @@ infc_browser_get_connection(InfcBrowser* browser);
 
 gboolean
 infc_browser_add_plugin(InfcBrowser* browser,
-                        InfcNotePlugin* plugin);
+                        const InfcNotePlugin* plugin);
+
+const InfcNotePlugin*
+infc_browser_lookup_plugin(InfcBrowser* browser,
+                           const gchar* note_type);
 
 void
 infc_browser_iter_get_root(InfcBrowser* browser,
@@ -168,9 +173,17 @@ InfcNodeRequest*
 infc_browser_remove_node(InfcBrowser* browser,
                          InfcBrowserIter* iter);
 
+const gchar*
+infc_browser_iter_get_note_type(InfcBrowser* browser,
+                                InfcBrowserIter* iter);
+
+const InfcNotePlugin*
+infc_browser_iter_get_plugin(InfcBrowser* browser,
+                             InfcBrowserIter* iter);
+
 InfcNodeRequest*
-infc_browser_subscribe_session(InfcBrowser* browser,
-                               InfcBrowserIter* iter);
+infc_browser_iter_subscribe_session(InfcBrowser* browser,
+                                    InfcBrowserIter* iter);
 
 InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,

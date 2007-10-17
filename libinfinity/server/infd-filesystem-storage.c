@@ -527,12 +527,14 @@ infd_filesystem_storage_new(const gchar* root_directory)
  **/
 FILE*
 infd_filesystem_storage_open(InfdFilesystemStorage* storage,
+                             const gchar* identifier,
                              const gchar* path,
                              const gchar* mode,
                              GError** error)
 {
   InfdFilesystemStoragePrivate* priv;
   gchar* converted_name;
+  gchar* disk_name;
   gchar* full_name;
   FILE* res;
   int save_errno;
@@ -545,8 +547,11 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   if(converted_name == NULL)
     return FALSE;
 
-  full_name = g_build_filename(priv->root_directory, converted_name, NULL);
+  disk_name = g_strconcat(converted_name, ".", identifier, NULL);
   g_free(converted_name);
+
+  full_name = g_build_filename(priv->root_directory, disk_name, NULL);
+  g_free(disk_name);
 
   res = g_fopen(full_name, mode);
   save_errno = errno;

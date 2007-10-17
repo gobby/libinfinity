@@ -63,6 +63,7 @@ infd_filesystem_storage_new(const gchar* root_directory);
 
 FILE*
 infd_filesystem_storage_open(InfdFilesystemStorage* storage,
+                             const gchar* identifier,
                              const gchar* path,
                              const gchar* mode,
                              GError** error);

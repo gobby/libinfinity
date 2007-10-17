@@ -43,6 +43,7 @@ static gchar* key_file = NULL;
 static gchar* cert_file = NULL;
 static gboolean create_key = FALSE;
 static gboolean create_certificate = FALSE;
+static gint port_number = 6523;
 
 static const GOptionEntry entries[] = 
 {
@@ -66,6 +67,11 @@ static const GOptionEntry entries[] =
     0,
     G_OPTION_ARG_NONE, &create_certificate,
     "Creates a new self-signed certificate using the given key", 0
+  }, {
+    "port-number", 'p',
+    0,
+    G_OPTION_ARG_INT, &port_number,
+    "The port number to listen on", "PORT"
   }, {
     NULL, 0,
     0,
@@ -278,9 +284,17 @@ infinoted_main(int argc,
   cert_file = NULL;
   if(cert == NULL) goto error;
 
-  fprintf(stderr, "Generating 2048 bit Diffie-Hellman parameters...\n");
-  dh_params = infinoted_creds_create_dh_params(error);
-  if(dh_params == NULL) goto error;
+  /* TODO: Later we should probably always generate new params, or store
+   * an expiry date with them. */
+  dh_params = infinoted_creds_read_dh_params("dh.pem", NULL);
+  if(dh_params == NULL)
+  {
+    fprintf(stderr, "Generating 2048 bit Diffie-Hellman parameters...\n");
+    dh_params = infinoted_creds_create_dh_params(error);
+    if(dh_params == NULL) goto error;
+
+    infinoted_creds_write_dh_params(dh_params, "dh.pem", NULL);
+  }
 
   credentials = infinoted_creds_create_credentials(
     dh_params,
@@ -292,7 +306,7 @@ infinoted_main(int argc,
   if(credentials == NULL)
     goto error;
 
-  if(infinoted_main_run(credentials, directory, 6523, error) == FALSE)
+  if(infinoted_main_run(credentials, directory, port_number, error) == FALSE)
     goto error;
 
   gnutls_certificate_free_credentials(credentials);

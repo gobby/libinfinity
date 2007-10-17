@@ -20,6 +20,7 @@
 #define __INFC_NOTE_PLUGIN_H__
 
 #include <libinfinity/common/inf-session.h>
+#include <libinfinity/common/inf-io.h>
 
 #include <glib-object.h>
 
@@ -29,10 +30,11 @@ G_BEGIN_DECLS
 
 typedef struct _InfcNotePlugin InfcNotePlugin;
 struct _InfcNotePlugin {
-  const gchar* identifier;
+  const gchar* note_type;
 
-  InfSession*(*session_new)(InfConnectionManager* manager,
-                            InfConnectionManagerGroup* group,
+  InfSession*(*session_new)(InfIo* io,
+                            InfConnectionManager* manager,
+                            InfConnectionManagerGroup* sync_group,
                             InfXmlConnection* sync_connection);
 };
 

@@ -192,9 +192,10 @@ infd_note_plugin_text_read_buffer(InfSession* session,
         break;
       }
 
-      user = inf_user_table_lookup_user_by_id(table, author);
-      if(user == NULL)
+      if(author != 0)
       {
+        user = inf_user_table_lookup_user_by_id(table, author);
+
         g_set_error(
           error,
           g_quark_from_static_string("INF_NOTE_PLUGIN_TEXT_ERROR"),
@@ -208,24 +209,26 @@ infd_note_plugin_text_read_buffer(InfSession* session,
       }
       else
       {
-        content = xmlNodeGetContent(child);
-        if(content != NULL)
-        {
-          if(*content != '\0')
-          {
-            /* TODO: Use inf_text_buffer_append when we have it */
-            inf_text_buffer_insert_text(
-              buffer,
-              inf_text_buffer_get_length(buffer),
-              content,
-              strlen((const char*)content),
-              g_utf8_strlen((const gchar*)content, -1),
-              user
-            );
-          }
+        user = NULL;
+      }
 
-          xmlFree(content);
+      content = xmlNodeGetContent(child);
+      if(content != NULL)
+      {
+        if(*content != '\0')
+        {
+          /* TODO: Use inf_text_buffer_append when we have it */
+          inf_text_buffer_insert_text(
+            buffer,
+            inf_text_buffer_get_length(buffer),
+            content,
+            strlen((const char*)content),
+            g_utf8_strlen((const gchar*)content, -1),
+            user
+          );
         }
+
+        xmlFree(content);
       }
     }
     else
@@ -262,6 +265,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
   /* TODO: Use a SAX parser for better performance */
   stream = infd_filesystem_storage_open(
     INFD_FILESYSTEM_STORAGE(storage),
+    "InfText",
     path,
     "r",
     error
@@ -277,10 +281,6 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     "UTF-8",
     XML_PARSE_NOWARNING | XML_PARSE_NOERROR
   );
-
-  /* xmlReadIO should already have closed this */
-  res = fclose(stream);
-  g_assert(res == -1);
 
   /* TODO: Make sure user table is empty. This requires API in InfUserTable */
 
@@ -302,7 +302,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
   else
   {
     root = xmlDocGetRootElement(doc);
-    if(strcmp((const char*)root->name, "inf-text-session") == 0)
+    if(strcmp((const char*)root->name, "inf-text-session") != 0)
     {
       g_set_error(
         error,
@@ -397,6 +397,7 @@ infd_note_plugin_text_session_write(InfdStorage* storage,
    * catched earlier. */
   stream = infd_filesystem_storage_open(
     INFD_FILESYSTEM_STORAGE(storage),
+    "InfText",
     path,
     "w",
     error

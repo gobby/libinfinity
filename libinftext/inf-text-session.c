@@ -160,7 +160,9 @@ inf_text_session_buffer_insert_text_cb_before(InfTextBuffer* buffer,
   InfAdoptedAlgorithm* algorithm;
   InfAdoptedRequest* request;
 
-  if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
+  /* TODO: Always broadcast, but block signal handler when the insertion
+   * happend in synchronization or during a remote request. */
+  if(user != NULL && (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
   {
     g_assert(INF_TEXT_IS_USER(user));
 
@@ -304,11 +306,14 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
     &data
   );
 
-  inf_text_user_set_selection(
-    INF_TEXT_USER(user),
-    pos + inf_text_chunk_get_length(chunk),
-    0
-  );
+  if(user != NULL)
+  {
+    inf_text_user_set_selection(
+      INF_TEXT_USER(user),
+      pos + inf_text_chunk_get_length(chunk),
+      0
+    );
+  }
 }
 
 static void
@@ -332,7 +337,8 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
     &data
   );
 
-  inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
+  if(user != NULL)
+    inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
 }
 
 /*
@@ -600,8 +606,8 @@ inf_text_session_process_xml_sync(InfSession* session,
 
       g_set_error(
         error,
-        INF_TEXT_SESSION_ERROR_NO_SUCH_USER,
         inf_text_session_error_quark,
+        INF_TEXT_SESSION_ERROR_NO_SUCH_USER,
         "No such user with ID '%u'",
         author
       );

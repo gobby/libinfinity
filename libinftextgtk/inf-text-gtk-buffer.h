@@ -52,6 +52,9 @@ inf_text_gtk_buffer_get_type(void) G_GNUC_CONST;
 InfTextGtkBuffer*
 inf_text_gtk_buffer_new(GtkTextBuffer* buffer);
 
+GtkTextBuffer*
+inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer);
+
 void
 inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
                                     InfTextUser* user);

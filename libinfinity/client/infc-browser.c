@@ -64,7 +64,7 @@ struct _InfcBrowserNode {
   union {
     struct {
       InfcSessionProxy* session;
-      InfcNotePlugin* plugin;
+      const InfcNotePlugin* plugin;
     } known;
 
     struct {
@@ -84,6 +84,7 @@ struct _InfcBrowserNode {
 
 typedef struct _InfcBrowserPrivate InfcBrowserPrivate;
 struct _InfcBrowserPrivate {
+  InfIo* io;
   InfConnectionManager* connection_manager;
   InfConnectionManagerGroup* group; /* TODO: This should be a property */
   InfXmlConnection* connection;
@@ -101,6 +102,7 @@ struct _InfcBrowserPrivate {
 enum {
   PROP_0,
 
+  PROP_IO,
   PROP_CONNECTION_MANAGER,
   PROP_CONNECTION
 };
@@ -314,10 +316,15 @@ infc_browser_node_new_note(InfcBrowser* browser,
     name
   );
 
-  if(plugin == NULL)
+  if(plugin != NULL)
+  {
     node->shared.known.plugin = plugin;
+    node->shared.known.session = NULL;
+  }
   else
+  {
     node->shared.unknown.type = g_strdup(type);
+  }
 
   return node;
 }
@@ -547,6 +554,7 @@ infc_browser_init(GTypeInstance* instance,
   browser = INFC_BROWSER(instance);
   priv = INFC_BROWSER_PRIVATE(browser);
 
+  priv->io = NULL;
   priv->connection_manager = NULL;
   priv->connection = NULL;
   priv->request_manager = infc_request_manager_new();
@@ -570,6 +578,10 @@ infc_browser_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_assert(priv->io == NULL); /* construct only */
+    priv->io = INF_IO(g_value_dup_object(value));
+    break;
   case PROP_CONNECTION_MANAGER:
     infc_browser_set_connection_manager(
       browser,
@@ -602,6 +614,9 @@ infc_browser_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_value_set_object(value, G_OBJECT(priv->io));
+    break;
   case PROP_CONNECTION_MANAGER:
     g_value_set_object(value, G_OBJECT(priv->connection_manager));
     break;
@@ -637,6 +652,12 @@ infc_browser_dispose(GObject* object)
 
   g_object_unref(G_OBJECT(priv->request_manager));
   priv->request_manager = NULL;
+
+  if(priv->io != NULL)
+  {
+    g_object_unref(G_OBJECT(priv->io));
+    priv->io = NULL;
+  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -1122,6 +1143,8 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
   InfConnectionManagerGroup* group;
   InfcSessionProxy* proxy;
 
+  priv = INFC_BROWSER_PRIVATE(browser);
+
   node = infc_browser_get_node_from_xml_typed(
     browser,
     xml,
@@ -1171,6 +1194,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
   xmlFree(group_name);
 
   session = node->shared.known.plugin->session_new(
+    priv->io,
     priv->connection_manager,
     group,
     connection
@@ -1441,6 +1465,18 @@ infc_browser_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_IO,
+    g_param_spec_object(
+      "io",
+      "IO",
+      "The InfIo to schedule timeouts",
+      INF_TYPE_IO,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_CONNECTION_MANAGER,
     g_param_spec_object(
       "connection-manager",
@@ -1586,6 +1622,7 @@ infc_browser_get_type(void)
 
 /** infc_browser_new:
  *
+ * @io: A #InfIo object used to schedule timeouts.
  * @connection_manager: A #InfConnectionManager to register the server
  * connection and which forwards incoming data to the blowser or running
  * sessions.
@@ -1596,16 +1633,19 @@ infc_browser_get_type(void)
  * Return Value: A new #InfcBrowser.
  **/
 InfcBrowser*
-infc_browser_new(InfConnectionManager* manager,
+infc_browser_new(InfIo* io,
+                 InfConnectionManager* manager,
                  InfXmlConnection* connection)
 {
   GObject* object;
 
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
 
   object = g_object_new(
     INFC_TYPE_BROWSER,
+    "io", io,
     "connection-manager", manager,
     "connection", connection,
     NULL
@@ -1657,20 +1697,51 @@ infc_browser_get_connection(InfcBrowser* browser)
  **/
 gboolean
 infc_browser_add_plugin(InfcBrowser* browser,
-                        InfcNotePlugin* plugin)
+                        const InfcNotePlugin* plugin)
 {
   InfcBrowserPrivate* priv;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(plugin != NULL, FALSE);
 
-  if(g_hash_table_lookup(priv->plugins, plugin->identifier) != NULL)
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  if(g_hash_table_lookup(priv->plugins, plugin->note_type) != NULL)
     return FALSE;
 
-  g_hash_table_insert(priv->plugins, (gpointer)plugin->identifier, plugin);
+  g_hash_table_insert(
+    priv->plugins,
+    (gpointer)plugin->note_type,
+    (gpointer)plugin
+  );
+
   /* TODO: Check for yet unknown note types and make them known if they
    * match this plugin. */
+
   return TRUE;
+}
+
+/** infc_browser_lookup_plugin:
+ *
+ * @browser: A #InfcBrowser.
+ * @note_type: A note type, such as "InfText".
+ *
+ * Returns a previously registered plugin (see infc_browser_add_plugin()) for
+ * the given note type, or %NULL if there is no such plugin.
+ *
+ * Return Value: A #InfcNotePlugin, or %NULL.
+ **/
+const InfcNotePlugin*
+infc_browser_lookup_plugin(InfcBrowser* browser,
+                           const gchar* note_type)
+{
+  InfcBrowserPrivate* priv;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(note_type != NULL, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  return (const InfcNotePlugin*)g_hash_table_lookup(priv->plugins, note_type);
 }
 
 /** infc_browser_iter_get_root:
@@ -2148,7 +2219,7 @@ infc_browser_add_note(InfcBrowser* browser,
 
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "parent", node->id);
-  inf_xml_util_set_attribute(xml, "type", plugin->identifier);
+  inf_xml_util_set_attribute(xml, "type", plugin->note_type);
   inf_xml_util_set_attribute(xml, "name", name);
 
   inf_connection_manager_send_to(
@@ -2211,7 +2282,84 @@ infc_browser_remove_node(InfcBrowser* browser,
   return INFC_NODE_REQUEST(request);
 }
 
-/** infc_browser_subscribe_session:
+/** infc_browser_iter_get_note_type:
+ *
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a note inside @browser.
+ *
+ * Returns the  type of the note @iter points to. This must not be a
+ * subdirectory node.
+ *
+ * Return Value: The note's type.
+ **/
+const gchar*
+infc_browser_iter_get_note_type(InfcBrowser* browser,
+                                InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = (InfcBrowserNode*)iter->node;
+
+  switch(node->type)
+  {
+  case INFC_BROWSER_NODE_SUBDIRECTORY:
+    g_return_val_if_reached(NULL);
+    return NULL;
+  case INFC_BROWSER_NODE_NOTE_KNOWN:
+    return node->shared.known.plugin->note_type;
+  case INFC_BROWSER_NODE_NOTE_UNKNOWN:
+    return node->shared.unknown.type;
+  default:
+    g_assert_not_reached();
+    return NULL;
+  }
+}
+
+/** infc_browser_iter_get_plugin:
+ *
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a note inside @browser.
+ *
+ * Returns the #InfcNodePlugin that is used for subscriptions to the note
+ * @iter points to, or %NULL if no plugin for the note's type has been
+ * registered.
+ *
+ * Return Value: A #InfcNotePlugin, or %NULL.
+ **/
+const InfcNotePlugin*
+infc_browser_iter_get_plugin(InfcBrowser* browser,
+                             InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = (InfcBrowserNode*)iter->node;
+
+  switch(node->type)
+  {
+  case INFC_BROWSER_NODE_SUBDIRECTORY:
+    g_return_val_if_reached(NULL);
+    return NULL;
+  case INFC_BROWSER_NODE_NOTE_KNOWN:
+    return node->shared.known.plugin;
+  case INFC_BROWSER_NODE_NOTE_UNKNOWN:
+    return NULL;
+  default:
+    g_assert_not_reached();
+    return NULL;
+  }
+}
+
+/** infc_browser_iter_subscribe_session:
  *
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note inside @browser.
@@ -2219,7 +2367,7 @@ infc_browser_remove_node(InfcBrowser* browser,
  * Subscribes to the given note. When the request has finished (which does
  * not mean that the subscription has finished, but the server is ready to
  * perform the subscription), infc_browser_iter_get_session() can be used
- * to access the #InfcSession object representing the subscription.
+ * to access the #InfcSessionProxy object representing the subscription.
  *
  * Return Value: A #InfcNodeRequest that may be used to get notified when
  * the request finishes or fails.
@@ -2241,9 +2389,12 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
 
   g_return_val_if_fail(priv->connection != NULL, NULL);
   g_return_val_if_fail(node->type == INFC_BROWSER_NODE_NOTE_KNOWN, NULL);
-  g_return_val_if_fail(node->shared.known.session != NULL, NULL);
+  g_return_val_if_fail(node->shared.known.session == NULL, NULL);
 
-  /* TODO: Check that there is not a subscription request already enqueued. */
+  g_return_val_if_fail(
+    infc_browser_iter_get_subscribe_request(browser, iter) == NULL,
+    NULL
+  );
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -2329,8 +2480,6 @@ infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
   infc_browser_return_val_if_iter_fail(browser, iter, NULL);
 
   node = (InfcBrowserNode*)iter->node;
-  infc_browser_return_val_if_subdir_fail(node, NULL);
-
   priv = INFC_BROWSER_PRIVATE(browser);
 
   infc_request_manager_foreach_named_request(

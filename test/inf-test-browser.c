@@ -360,7 +360,11 @@ main(int argc, char* argv[])
     g_object_unref(G_OBJECT(tcp_conn));
 
     manager = inf_connection_manager_new();
-    test.browser = infc_browser_new(manager, INF_XML_CONNECTION(test.conn));
+    test.browser = infc_browser_new(
+      INF_IO(test.io),
+      manager,
+      INF_XML_CONNECTION(test.conn)
+    );
 
     inf_standalone_io_loop(test.io);
     g_object_unref(G_OBJECT(manager));

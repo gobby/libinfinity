@@ -230,7 +230,12 @@ inf_session_release_connection(InfSession* session,
         connection
       );
     }
-    
+
+    inf_connection_manager_unref_group(
+      priv->manager,
+      priv->shared.sync.group
+    );
+
     priv->shared.sync.conn = NULL;
     priv->shared.sync.group = NULL;
     break;
@@ -254,7 +259,7 @@ inf_session_release_connection(InfSession* session,
         connection
       );
     }
-    
+
     inf_connection_manager_unref_group(
       priv->manager,
       sync->group
@@ -1214,6 +1219,8 @@ inf_session_net_object_received(InfNetObject* net_object,
     {
       inf_session_send_sync_error(session, error);
 
+      /* Note the default handler resets shared->sync.conn and
+       * shared->sync.group. */
       g_signal_emit(
         G_OBJECT(session),
         session_signals[SYNCHRONIZATION_FAILED],
@@ -1385,12 +1392,12 @@ inf_session_close_handler(InfSession* session)
         priv->shared.sync.group,
         priv->shared.sync.conn
       );
-    }
 
-    inf_connection_manager_unref_group(
-      priv->manager,
-      priv->shared.sync.group
-    );
+      inf_connection_manager_unref_group(
+        priv->manager,
+        priv->shared.sync.group
+      );
+    }
 
     break;
   case INF_SESSION_RUNNING:
@@ -2106,7 +2113,7 @@ inf_session_synchronize_to(InfSession* session,
 
   /* Name is irrelevant because the node is only used to collect the child
    * nodes via the to_xml_sync vfunc. */
-  messages = xmlNewNode(NULL, NULL);
+  messages = xmlNewNode(NULL, (const xmlChar*)"sync-container");
   session_class->to_xml_sync(session, messages);
 
   for(xml = messages->children; xml != NULL; xml = xml->next)

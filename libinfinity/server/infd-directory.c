@@ -872,7 +872,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
     );
 
     group_name = g_strdup_printf("InfSession_%u", node->id);
-    
+
     group = inf_connection_manager_create_group(
       priv->connection_manager,
       group_name,
@@ -1366,8 +1366,8 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     (const xmlChar*)"group",
     (const xmlChar*)inf_connection_manager_group_get_name(group)
   );
-  
-  g_free(group);
+
+  inf_connection_manager_unref_group(priv->connection_manager, group);
   inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
 
   seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");

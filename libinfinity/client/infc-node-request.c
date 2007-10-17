@@ -122,6 +122,7 @@ infc_node_request_class_init(gpointer g_class,
   request_class = INFC_NODE_REQUEST_CLASS(g_class);
 
   parent_class = INFC_REQUEST_CLASS(g_type_class_peek_parent(g_class));
+  g_type_class_add_private(g_class, sizeof(InfcNodeRequestPrivate));
 
   object_class->finalize = infc_node_request_finalize;
   object_class->set_property = infc_node_request_set_property;
