@@ -1244,6 +1244,8 @@ inf_connection_manager_send_to_group(InfConnectionManager* manager,
     if(queue->connection != except)
     {
       copy_xml = xmlCopyNode(xml, 1);
+      copy_xml->_private = xml->_private;
+
       if(queue->inner_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
       {
         inf_connection_manager_group_real_send(
@@ -1308,8 +1310,11 @@ inf_connection_manager_send_multiple_to(InfConnectionManager* manager,
   queue = inf_connection_manager_group_get_queue(group, connection);
   g_return_if_fail(queue != NULL);
 
-  xml->_private =
-    GUINT_TO_POINTER(INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT);
+  for(cur = xml; cur != NULL; cur = cur->next)
+  {
+    cur->_private =
+      GUINT_TO_POINTER(INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT);
+  }
 
   if(queue->inner_count < INF_CONNECTION_MANAGER_INNER_QUEUE_LIMIT)
   {

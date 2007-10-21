@@ -1,3 +1,59 @@
+2007-10-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-user.c: Return flags instead of status in
+	inf_user_get_flags.
+
+	* libinfinity/common/inf-connection-manager.c: Flag all messages as
+	point-to-point in inf_connection_manager_send_multiple_to(), instead
+	of just the first one. Also copy _private the private field in
+	inf_connection_manager_send_to_group() because xmlCopyNode does not
+	already do this.
+
+	* libinfinity/common/inf-session.c: Correctly initialize GValue with
+	zeroes before calling g_value_init(), implemented status user
+	property. Emit close signal in synchronization failed default handler.
+
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-request-log.c: Don't take log_begin
+	parameter in inf_adopted_request_log_new(), return NULL instead of
+	crashing in inf_adopted_request_log_next_undo() and
+	inf_adopted_request_log_next_redo() when there is no next undo or redo
+	request, respectively.
+
+	* libinfinity/adopted/inf-adopted-user.c: Adapt to API change in
+	InfAdoptedRequestLog.
+
+	* libinfinity/adopted/inf-adopted-session.c: Increase last send vector
+	instead of request's vector in inf_adopted_session_request_to_xml()
+	(as originally intended). Initialize user field when creating
+	InfAdoptedSessionLocalUser. Removed log-begin user property as in the
+	spec.
+
+	* libinfinity/server/infd-session-proxy.c: Use INF_SESSION_GET_CLASS
+	instead of INF_SESSION_CLASS in infd_session_proxy_handle_user_join,
+	initialize GValues correctly.
+
+	* libinfinity/client/infc-session-proxy.c: Correctly set flags on user
+	(re)join, don't release session when when it is closed so it is still
+	accessible.
+
+	* libinftext/inf-text-user.c: Don't make the caret-position and
+	selection-length properties construct only.
+
+	* libinftext/inf-text-session.c: Deal with author_id=0 in
+	inf_text_session_process_xml_sync().
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Fixed assertions in
+	inf_text_gtk_buffer_set_active_user(), fixed potential endless loops
+	in inf_text_gtk_buffer_iter_prev_author_toggle(),
+	inf_text_gtk_buffer_iter_next_author_toggle() and
+	inf_text_gtk_buffer_buffer_get_slice(), connect to text buffer's
+	signals when the buffer property is set, stop emission in
+	inf_text_gtk_buffer_delete_range_cb() and
+	inf_text_gtk_buffer_insert_text_cb() on the correct object.
+
+	* test/inf-test-gtk-browser.c: Set vector property for join request.
+
 2007-10-17  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-main.c: Added --port-number command line option

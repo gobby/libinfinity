@@ -594,25 +594,32 @@ inf_text_session_process_xml_sync(InfSession* session,
 
     if(text == NULL) return FALSE;
 
-    /* TODO: inf_user_table_lookup_user_by_id_required, with error. */
-    user = inf_user_table_lookup_user_by_id(
-      inf_session_get_user_table(session),
-      author
-    );
-
-    if(user == NULL)
+    if(author != 0)
     {
-      g_free(text);
-
-      g_set_error(
-        error,
-        inf_text_session_error_quark,
-        INF_TEXT_SESSION_ERROR_NO_SUCH_USER,
-        "No such user with ID '%u'",
+      /* TODO: inf_user_table_lookup_user_by_id_required, with error. */
+      user = inf_user_table_lookup_user_by_id(
+        inf_session_get_user_table(session),
         author
       );
 
-      return FALSE;
+      if(user == NULL)
+      {
+        g_free(text);
+
+        g_set_error(
+          error,
+          inf_text_session_error_quark,
+          INF_TEXT_SESSION_ERROR_NO_SUCH_USER,
+          "No such user with ID '%u'",
+          author
+        );
+
+        return FALSE;
+      }
+    }
+    else
+    {
+      user = NULL;
     }
 
     inf_text_buffer_insert_text(
@@ -901,6 +908,10 @@ inf_text_session_operation_to_xml(InfAdoptedSession* session,
     }
     else
     {
+      chunk = inf_text_default_delete_operation_get_chunk(
+        INF_TEXT_DEFAULT_DELETE_OPERATION(operation)
+      );
+
       /* Just transmit position and length, the other site generates a
        * InfTextRemoteDeleteOperation from that and is able to restore the
        * deleted text for potential Undo. */

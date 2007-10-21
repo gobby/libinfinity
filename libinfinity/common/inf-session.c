@@ -19,6 +19,7 @@
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-buffer.h>
+#include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <libxml/xmlsave.h>
@@ -56,6 +57,7 @@ struct _InfSessionPrivate {
       InfXmlConnection* conn;
       guint messages_total;
       guint messages_received;
+      gboolean closing;
     } sync;
 
     /* INF_SESSION_RUNNING */
@@ -366,7 +368,9 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
         error
       );
 
-      inf_session_close(session);
+      /* This is already done by the synchronization failed default signal
+       * handler: */
+/*      inf_session_close(session);*/
       break;
     case INF_SESSION_RUNNING:
       g_assert(
@@ -410,6 +414,7 @@ inf_session_init_sync(InfSession* session)
     priv->shared.sync.messages_total = 0;
     priv->shared.sync.messages_received = 0;
     priv->shared.sync.group = NULL;
+    priv->shared.sync.closing = FALSE;
   }
 }
 
@@ -768,16 +773,18 @@ inf_session_get_xml_user_props_impl(InfSession* session,
   GParameter* parameter;
   xmlChar* name;
   xmlChar* id;
+  xmlChar* status;
 
   array = g_array_sized_new(FALSE, FALSE, sizeof(GParameter), 16);
 
   name = xmlGetProp(xml, (const xmlChar*)"name");
   id = xmlGetProp(xml, (const xmlChar*)"id");
+  status = xmlGetProp(xml, (const xmlChar*)"status");
 
   if(id != NULL)
   {
     parameter = inf_session_get_user_property(array, "id");
-    g_value_init(&parameter->value, G_TYPE_INT);
+    g_value_init(&parameter->value, G_TYPE_UINT);
     g_value_set_uint(&parameter->value, strtoul((const gchar*)id, NULL, 10));
     xmlFree(id);
   }
@@ -790,7 +797,17 @@ inf_session_get_xml_user_props_impl(InfSession* session,
     xmlFree(name);
   }
 
-  /* TODO: User status? */
+  if(status != NULL)
+  {
+    parameter = inf_session_get_user_property(array, "status");
+    g_value_init(&parameter->value, INF_TYPE_USER_STATUS);
+
+    if(strcmp((const char*)status, "available") == 0)
+      g_value_set_enum(&parameter->value, INF_USER_AVAILABLE);
+    else
+      /* TODO: Error reporting for get_xml_user_props */
+      g_value_set_enum(&parameter->value, INF_USER_UNAVAILABLE);
+  }
 
   return array;
 }
@@ -804,6 +821,7 @@ inf_session_set_xml_user_props_impl(InfSession* session,
   guint i;
   gchar id_buf[16];
   const gchar* name;
+  InfUserStatus status;
 
   for(i = 0; i < n_params; ++ i)
   {
@@ -817,7 +835,22 @@ inf_session_set_xml_user_props_impl(InfSession* session,
       name = g_value_get_string(&params[i].value);
       xmlNewProp(xml, (const xmlChar*)"name", (const xmlChar*)name);
     }
-    /* TODO: User status? */
+    else if(strcmp(params[i].name, "status") == 0)
+    {
+      status = g_value_get_enum(&params[i].value);
+      switch(status)
+      {
+      case INF_USER_AVAILABLE:
+        inf_xml_util_set_attribute(xml, "status", "available");
+        break;
+      case INF_USER_UNAVAILABLE:
+        inf_xml_util_set_attribute(xml, "status", "unavailable");
+        break;
+      default:
+        g_assert_not_reached();
+        break;
+      }
+    }
   }
 }
 
@@ -941,6 +974,7 @@ inf_session_handle_received_sync_message(InfSession* session,
       local_error
     );
 
+#if 0
     /* Synchronization was cancelled by remote site, so release connection
      * prior to closure, otherwise we would try to tell the remote site
      * that the session was closed, but there is no point in this because
@@ -948,6 +982,7 @@ inf_session_handle_received_sync_message(InfSession* session,
     /* Note: This is actually done by the default handler of the 
      * synchronization-failed signal. */
     inf_session_close(session);
+#endif
     g_error_free(local_error);
 
     /* Return FALSE, but do not set error because we handled it. Otherwise,
@@ -1018,7 +1053,8 @@ inf_session_handle_received_sync_message(InfSession* session,
   else if(strcmp((const gchar*)node->name, "sync-end") == 0)
   {
     ++ priv->shared.sync.messages_received;
-    if(priv->shared.sync.messages_received != priv->shared.sync.messages_total)
+    if(priv->shared.sync.messages_received !=
+       priv->shared.sync.messages_total)
     {
       g_set_error(
         error,
@@ -1230,7 +1266,7 @@ inf_session_net_object_received(InfNetObject* net_object,
       );
 
       g_error_free(error);
-      inf_session_close(session);
+/*      inf_session_close(session);*/
     }
 
     break;
@@ -1371,12 +1407,14 @@ inf_session_close_handler(InfSession* session)
   switch(priv->status)
   {
   case INF_SESSION_SYNCHRONIZING:
-    /* If we are getting the session synchronized and shared.sync.conn is
-     * still set (it is not when a different error occured and the session
-     * is therefore closed, see inf_session_net_object_received), then tell
-     * the synchronizer. */
-    if(priv->shared.sync.conn != NULL)
+    if(priv->shared.sync.closing == FALSE)
     {
+      /* So that the "synchronization-failed" default signal handler does
+       * does not emit the close signal again: */
+      /* TODO: Perhaps we should introduce a INF_SESSION_CLOSING status for
+       * that. */
+      priv->shared.sync.closing = TRUE;
+
       inf_session_send_sync_error(session, error);
 
       g_signal_emit(
@@ -1386,18 +1424,18 @@ inf_session_close_handler(InfSession* session)
         priv->shared.sync.conn,
         error
       );
-
-      inf_connection_manager_unref_connection(
-        priv->manager,
-        priv->shared.sync.group,
-        priv->shared.sync.conn
-      );
-
-      inf_connection_manager_unref_group(
-        priv->manager,
-        priv->shared.sync.group
-      );
     }
+
+    inf_connection_manager_unref_connection(
+      priv->manager,
+      priv->shared.sync.group,
+      priv->shared.sync.conn
+    );
+
+    inf_connection_manager_unref_group(
+      priv->manager,
+      priv->shared.sync.group
+    );
 
     break;
   case INF_SESSION_RUNNING:
@@ -1480,11 +1518,6 @@ inf_session_synchronization_complete_handler(InfSession* session,
 
     inf_session_release_connection(session, connection);
 
-    inf_connection_manager_unref_group(
-      priv->manager,
-      priv->shared.sync.group
-    );
-
     priv->status = INF_SESSION_RUNNING;
     priv->shared.run.syncs = NULL;
 
@@ -1516,11 +1549,14 @@ inf_session_synchronization_failed_handler(InfSession* session,
   {
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
+    if(priv->shared.sync.closing == FALSE)
+    {
+      /* So that the "close" default signal handler does not emit the 
+       * "synchronization failed" signal again. */
+      priv->shared.sync.closing = TRUE;
+      inf_session_close(session);
+    }
 
-    inf_session_release_connection(session, connection);
-    /* TODO: Think about calling inf_session_close here. However, make sure
-     * that this works even if inf_session_close emitted the
-     * synchronization_failed signal. */
     break;
   case INF_SESSION_RUNNING:
     g_assert(
@@ -1862,6 +1898,7 @@ inf_session_get_user_property(GArray* array,
   parameter = &g_array_index(array, GParameter, array->len - 1);
 
   parameter->name = name;
+  memset(&parameter->value, 0, sizeof(GValue));
   return parameter;
 }
 
@@ -1906,6 +1943,8 @@ inf_session_user_to_xml(InfSession* session,
   for(i = 0; i < n_params; ++ i)
   {
     params[i].name = pspecs[i]->name;
+    memset(&params[i].value, 0, sizeof(GValue));
+    g_value_init(&params[i].value, pspecs[i]->value_type);
     g_object_get_property(G_OBJECT(user), params[i].name, &params[i].value);
   }
 

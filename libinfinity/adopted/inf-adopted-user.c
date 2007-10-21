@@ -69,7 +69,7 @@ inf_adopted_user_constructor(GType type,
   priv = INF_ADOPTED_USER_PRIVATE(user);
 
   /* Create empty request log if none was set during construction */
-  priv->log = inf_adopted_request_log_new(inf_user_get_id(INF_USER(user)), 0);
+  priv->log = inf_adopted_request_log_new(inf_user_get_id(INF_USER(user)));
   return object;
 }
 

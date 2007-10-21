@@ -49,8 +49,7 @@ GType
 inf_adopted_request_log_get_type(void) G_GNUC_CONST;
 
 InfAdoptedRequestLog*
-inf_adopted_request_log_new(guint user_id,
-                            guint begin_end);
+inf_adopted_request_log_new(guint user_id);
 
 guint
 inf_adopted_request_log_get_user_id(InfAdoptedRequestLog* log);

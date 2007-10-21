@@ -282,7 +282,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
     return NULL;
   }
 
-  g_value_init(&param->value, G_TYPE_ENUM);
+  g_value_init(&param->value, INF_TYPE_USER_STATUS);
   g_value_set_enum(&param->value, INF_USER_AVAILABLE);
 
   /* flags should not be set by get_xml_user_props, nor given
@@ -290,7 +290,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   param = inf_session_get_user_property(user_props, "flags");
   g_assert(!G_IS_VALUE(&param->value));
 
-  g_value_init(&param->value, G_TYPE_FLAGS);
+  g_value_init(&param->value, INF_TYPE_USER_FLAGS);
   if(connection == NULL)
     g_value_set_flags(&param->value, INF_USER_LOCAL);
   else
@@ -784,7 +784,7 @@ infd_session_proxy_handle_user_join(InfdSessionProxy* proxy,
   guint i;
 
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
-  session_class = INF_SESSION_CLASS(priv->session);
+  session_class = INF_SESSION_GET_CLASS(priv->session);
 
   array = session_class->get_xml_user_props(
     priv->session,

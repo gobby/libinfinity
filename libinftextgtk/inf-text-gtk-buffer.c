@@ -134,7 +134,7 @@ hsv_to_rgb (gdouble *h,
 }
 
 /* Maps a user ID to a hue value for its user color */
-gdouble
+static gdouble
 inf_text_gtk_buffer_id_to_hue(guint id)
 {
   gdouble hue;
@@ -273,6 +273,9 @@ inf_text_gtk_buffer_iter_next_author_toggle(GtkTextIter* iter)
 {
   do
   {
+    /* We get endless loops without these. I am not sure why. */
+    if(gtk_text_iter_is_end(iter)) return;
+
     if(gtk_text_iter_forward_to_tag_toggle(iter, NULL) == FALSE)
       return;
   } while(inf_text_gtk_buffer_iter_is_author_toggle(iter) == FALSE);
@@ -283,6 +286,9 @@ inf_text_gtk_buffer_iter_prev_author_toggle(GtkTextIter* iter)
 {
   do
   {
+    /* We get endless loops without this. I am not sure why. */
+    if(gtk_text_iter_is_start(iter)) return;
+
     if(gtk_text_iter_backward_to_tag_toggle(iter, NULL) == FALSE)
       return;
   } while(inf_text_gtk_buffer_iter_is_author_toggle(iter) == FALSE);
@@ -312,7 +318,7 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
    * However, it is required so that signal handlers of the "insert-text"
    * signal of InfTextGtkBuffer that connected with the AFTER flag find the
    * text already inserted into the buffer. */
-  g_signal_stop_emission_by_name(G_OBJECT(buffer), "insert-text");
+  g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "insert-text");
 
   inf_text_buffer_insert_text(
     INF_TEXT_BUFFER(buffer),
@@ -347,7 +353,7 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
    * However, it is required so that signal handlers of the "erase-text"
    * signal of InfTextGtkBuffer that connected with the AFTER flag find the
    * text already removed from buffer. */
-  g_signal_stop_emission_by_name(G_OBJECT(buffer), "delete-range");
+  g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "delete-range");
 
   inf_text_buffer_erase_text(
     INF_TEXT_BUFFER(buffer),
@@ -474,7 +480,11 @@ inf_text_gtk_buffer_set_property(GObject* object,
   {
   case PROP_BUFFER:
     g_assert(priv->buffer == NULL); /* construct only */
-    priv->buffer = GTK_TEXT_BUFFER(g_value_dup_object(value));
+    inf_text_gtk_buffer_set_buffer(
+      buffer,
+      GTK_TEXT_BUFFER(g_value_get_object(value))
+    );
+
     break;
   case PROP_ACTIVE_USER:
     inf_text_gtk_buffer_set_active_user(
@@ -572,6 +582,7 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
       author_id
     );
 
+    remaining -= size;
     g_free(text);
   }
 
@@ -991,11 +1002,11 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
   g_return_if_fail(INF_TEXT_IS_USER(user));
   
   g_return_if_fail(
-    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) == 0
+    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0
   );
 
   g_return_if_fail(
-    inf_user_get_status(INF_USER(user)) == INF_USER_UNAVAILABLE
+    inf_user_get_status(INF_USER(user)) != INF_USER_UNAVAILABLE
   );
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);

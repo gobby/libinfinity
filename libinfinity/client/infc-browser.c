@@ -1207,9 +1207,6 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
   g_object_unref(G_OBJECT(session));
   inf_connection_manager_unref_group(priv->connection_manager, group);
 
-  /* TODO: Unref session when it drops its connection (possibly due to
-   * unsubscription), or failed synchronization. */
-
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     "subscribe-session",
@@ -1420,6 +1417,7 @@ infc_browser_subscribe_session_impl(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
+  InfSession* session;
 
   priv = INFC_BROWSER_PRIVATE(browser);
   node = (InfcBrowserNode*)iter->node;
@@ -1434,6 +1432,16 @@ infc_browser_subscribe_session_impl(InfcBrowser* browser,
 
   node->shared.known.session = proxy;
   g_object_ref(G_OBJECT(proxy));
+
+  session = infc_session_proxy_get_session(proxy);
+
+  /* TODO: Connect to close, drop proxy? */
+
+#if 0
+  g_signal_connect(
+    G_OBJECT(
+  );
+#endif
 }
 
 /*

@@ -606,7 +606,7 @@ inf_adopted_algorithm_update_local_user_times(InfAdoptedAlgorithm* algorithm)
     local = item->data;
 
     inf_adopted_user_set_vector(
-      ((InfAdoptedAlgorithmLocalUser*)item->data)->user,
+      local->user,
       inf_adopted_state_vector_copy(priv->current)
     );
   }
@@ -1699,7 +1699,7 @@ inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
 
   inf_adopted_algorithm_update_request_logs(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
-  
+
   return request;
 }
 

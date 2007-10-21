@@ -127,17 +127,21 @@ on_synchronization_complete(InfSession* session,
 {
   InfTestGtkBrowserWindow* test;
   InfcUserRequest* request;
+  InfAdoptedStateVector* v;
   GError* error;
-  GParameter params[1];
+  GParameter params[2] = { { "name", { 0 } }, { "vector", { 0 } } };
 
-  /* TODO: Add a convenience function for this, in InfText */
-  params[0].name = "name";
   g_value_init(&params[0].value, G_TYPE_STRING);
+  g_value_init(&params[1].value, INF_ADOPTED_TYPE_STATE_VECTOR);
+
   g_value_set_static_string(&params[0].value, g_get_user_name());
+
+  v = inf_adopted_state_vector_new();
+  g_value_take_boxed(&params[1].value, v);
 
   test = (InfTestGtkBrowserWindow*)user_data;
   error = NULL;
-  request = infc_session_proxy_join_user(test->proxy, params, 1, &error);
+  request = infc_session_proxy_join_user(test->proxy, params, 2, &error);
 
   if(request == NULL)
   {

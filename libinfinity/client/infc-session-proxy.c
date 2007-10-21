@@ -175,7 +175,7 @@ infc_session_proxy_session_close_cb(InfSession* session,
      * handler in InfSession the base class will cancel the synchronization in
      * which case we do not need to send an extra session-unsubscribe
      * message. */
-    
+
     /* However, in case we are in AWAITING_ACK status we send session
      * unsubscribe because we cannot cancel the synchronization anymore but
      * the server will go into RUNNING state before receiving this message. */
@@ -194,6 +194,8 @@ infc_session_proxy_session_close_cb(InfSession* session,
     infc_session_proxy_release_connection(proxy);
   }
 
+  /* Don't release connection so others can still access */
+#if 0
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infc_session_proxy_session_close_cb),
@@ -214,6 +216,7 @@ infc_session_proxy_session_close_cb(InfSession* session,
 
   g_object_unref(G_OBJECT(priv->session));
   priv->session = NULL;
+#endif
 }
 
 /*
@@ -339,6 +342,48 @@ infc_session_proxy_init(GTypeInstance* instance,
 }
 
 static void
+infc_session_proxy_dispose(GObject* object)
+{
+  InfcSessionProxy* proxy;
+  InfcSessionProxyPrivate* priv;
+
+  proxy = INFC_SESSION_PROXY(object);
+  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
+
+  /* The base class will call close() in which we remove the connection
+   * and several allocated resources. */
+  G_OBJECT_CLASS(parent_class)->dispose(object);
+
+  /* Release session */
+  if(priv->session != NULL)
+  {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->session),
+      G_CALLBACK(infc_session_proxy_session_close_cb),
+      proxy
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->session),
+      G_CALLBACK(infc_session_proxy_session_synchronization_complete_cb),
+      proxy
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->session),
+      G_CALLBACK(infc_session_proxy_session_synchronization_failed_cb),
+      proxy
+    );
+
+    g_object_unref(G_OBJECT(priv->session));
+    priv->session = NULL;
+  }
+
+  g_object_unref(G_OBJECT(priv->request_manager));
+  priv->request_manager = NULL;
+}
+
+static void
 infc_session_proxy_set_property(GObject* object,
                                 guint prop_id,
                                 const GValue* value,
@@ -376,8 +421,6 @@ infc_session_proxy_set_property(GObject* object,
       G_CALLBACK(infc_session_proxy_session_synchronization_failed_cb),
       proxy
     );
-
-    /* TODO: Connect signals */
 
     break;
   case PROP_SUBSCRIPTION_GROUP:
@@ -417,24 +460,6 @@ infc_session_proxy_get_property(GObject* object,
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
-}
-
-static void
-infc_session_proxy_dispose(GObject* object)
-{
-  InfcSessionProxy* session;
-  InfcSessionProxyPrivate* priv;
-
-  session = INFC_SESSION_PROXY(object);
-  priv = INFC_SESSION_PROXY_PRIVATE(session);
-
-  /* The base class will call close() in which we remove the connection
-   * and several allocated resources. */
-
-  G_OBJECT_CLASS(parent_class)->dispose(object);
-
-  g_object_unref(G_OBJECT(priv->request_manager));
-  priv->request_manager = NULL;
 }
 
 static GError*
@@ -490,25 +515,24 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   InfSessionClass* session_class;
   GArray* array;
   InfUser* user;
-  GParameter param;
+  GParameter* param;
   guint i;
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  session_class = INF_SESSION_CLASS(priv->session);
+  session_class = INF_SESSION_GET_CLASS(priv->session);
 
   array = session_class->get_xml_user_props(priv->session, connection, xml);
 
-  param.name = "flags";
-  g_value_init(&param.value, INF_TYPE_USER_FLAGS);
+  /* Set local flag if the join was requested by us (seq is present in
+   * server response). */
+  param = inf_session_get_user_property(array, "flags");
+  g_assert(!G_IS_VALUE(&param->value)); /* must not have been set already */
 
+  g_value_init(&param->value, INF_TYPE_USER_FLAGS);
   if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
-    g_value_set_flags(&param.value, INF_USER_LOCAL);
+    g_value_set_flags(&param->value, INF_USER_LOCAL);
   else
-    g_value_set_flags(&param.value, 0);
-
-  /* Note the GParameter is copied by value, uninitialization is done when
-   * all the array values are freed. */
-  g_array_append_val(array, param);
+    g_value_set_flags(&param->value, 0);
 
   /* This validates properties */
   user = inf_session_add_user(
@@ -550,7 +574,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
   guint i;
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  session_class = INF_SESSION_CLASS(priv->session);
+  session_class = INF_SESSION_GET_CLASS(priv->session);
 
   array = session_class->get_xml_user_props(priv->session, connection, xml);
 
@@ -592,6 +616,17 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
     goto error;
   }
 
+  /* Set local flag if the join was requested by us (seq is present in
+   * server response). */
+  param = inf_session_get_user_property(array, "flags");
+  g_assert(!G_IS_VALUE(&param->value)); /* must not have been set already */
+
+  g_value_init(&param->value, INF_TYPE_USER_FLAGS);
+  if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
+    g_value_set_flags(&param->value, INF_USER_LOCAL);
+  else
+    g_value_set_flags(&param->value, 0);
+
   result = session_class->validate_user_props(
     priv->session,
     (const GParameter*)array->data,
@@ -616,11 +651,13 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
       g_object_set_property(G_OBJECT(user), param->name, &param->value);
   }
 
+#if 0
   /* Set local flag correctly */
   if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
     g_object_set(G_OBJECT(user), "flags", INF_USER_LOCAL, NULL);
   else
     g_object_set(G_OBJECT(user), "flags", 0, NULL);
+#endif
 
   /* TODO: Set user status to available, if the server did not send the
    * status property? Require the status property being set on a rejoin? */
@@ -859,6 +896,9 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
   proxy_class = INFC_SESSION_PROXY_GET_CLASS(proxy);
   status = inf_session_get_synchronization_status(priv->session, connection);
   error = NULL;
+
+  g_assert(priv->connection != NULL && priv->connection == connection);
+  g_assert(inf_session_get_status(priv->session) != INF_SESSION_CLOSED);
 
   if(status != INF_SESSION_SYNC_NONE)
   { 

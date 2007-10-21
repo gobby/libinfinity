@@ -408,13 +408,11 @@ inf_adopted_request_log_get_type(void)
  *
  * @user_id: The ID of the #InfAdoptedUser to create a request log for. The
  * request log only contains requests of that particular user.
- * @begin_end: The index of the first request to be inserted.
  *
  * Return Value: A new #InfAdoptedRequestLog.
  **/
 InfAdoptedRequestLog*
-inf_adopted_request_log_new(guint user_id,
-                            guint begin_end)
+inf_adopted_request_log_new(guint user_id)
 {
   GObject* object;
 
@@ -423,7 +421,6 @@ inf_adopted_request_log_new(guint user_id,
   object = g_object_new(
     INF_ADOPTED_TYPE_REQUEST_LOG,
     "user-id", user_id,
-    "begin", begin_end,
     NULL
   );
 
@@ -527,6 +524,8 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
   g_return_if_fail(inf_adopted_request_get_user_id(request) == priv->user_id);
+
+  /* TODO: Allow arbitrary ID for first request */
 
   g_return_if_fail(
     inf_adopted_state_vector_get(
@@ -881,8 +880,14 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
 InfAdoptedRequest*
 inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log)
 {
+  InfAdoptedRequestLogPrivate* priv;
+
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
-  return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->next_undo->request;
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  if(priv->next_undo == NULL) return NULL;
+
+  return priv->next_undo->request;
 }
 
 /** inf_adopted_request_log_next_redo:
@@ -897,8 +902,14 @@ inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log)
 InfAdoptedRequest*
 inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
 {
+  InfAdoptedRequestLogPrivate* priv;
+
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
-  return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->next_redo->request;
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  if(priv->next_redo == NULL) return NULL;
+
+  return priv->next_redo->request;
 }
 
 /** inf_adopted_request_log_upper_related:

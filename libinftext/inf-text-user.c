@@ -152,7 +152,7 @@ inf_text_user_class_init(gpointer g_class,
       0,
       G_MAXUINT,
       0,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE
     )
   );
 
@@ -166,7 +166,7 @@ inf_text_user_class_init(gpointer g_class,
       G_MININT,
       G_MAXINT,
       0,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE
     )
   );
 

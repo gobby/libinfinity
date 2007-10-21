@@ -213,7 +213,7 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
     local->last_send_vector = inf_adopted_state_vector_copy(vector);
 
     /* Add this request to last send vector. */
-    inf_adopted_state_vector_add(vector, user_id, 1);
+    inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
   }
 
   inf_xml_util_set_attribute(xml, "time", vec_str);
@@ -400,6 +400,7 @@ inf_adopted_session_user_notify_flags_cb(GObject* object,
     if(local == NULL)
     {
       local = g_slice_new(InfAdoptedSessionLocalUser);
+      local->user = INF_ADOPTED_USER(object);
 
       /* TODO: This is a rather bad hack: On session join (the only place
        * where the INF_USER_LOCAL flag can be turned on), the vector property
@@ -414,7 +415,9 @@ inf_adopted_session_user_notify_flags_cb(GObject* object,
        * InfAdoptedAlgorithm. TODO: Also do this in InfAdoptedAlgorithm? */
       inf_adopted_user_set_vector(
         INF_ADOPTED_USER(object),
-        inf_adopted_algorithm_get_current(priv->algorithm)
+        inf_adopted_state_vector_copy(
+          inf_adopted_algorithm_get_current(priv->algorithm)
+        )
       );
 
       priv->local_users = g_slist_prepend(priv->local_users, local);
@@ -463,6 +466,7 @@ inf_adopted_session_add_user_cb(InfUserTable* user_table,
     if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
     {
       local = g_slice_new(InfAdoptedSessionLocalUser);
+      local->user = user;
 
       /* TODO: This is the same hack as in
        * inf_adopted_session_user_notify_flags_cb(). */
@@ -474,7 +478,9 @@ inf_adopted_session_add_user_cb(InfUserTable* user_table,
        * InfAdoptedAlgorithm. TODO: Also do this in InfAdoptedAlgorithm? */
       inf_adopted_user_set_vector(
         INF_ADOPTED_USER(user),
-        inf_adopted_algorithm_get_current(priv->algorithm)
+        inf_adopted_state_vector_copy(
+          inf_adopted_algorithm_get_current(priv->algorithm)
+        )
       );
 
       priv->local_users = g_slist_prepend(priv->local_users, local);
@@ -868,6 +874,8 @@ inf_adopted_session_get_xml_user_props(InfSession* session,
     }
   }
 
+  /* log-begin is not in the  spec */
+#if 0
   /* Initial request log, only if ID is also given */
   id_param = inf_session_lookup_user_property(
     (const GParameter*)array->data,
@@ -887,6 +895,7 @@ inf_adopted_session_get_xml_user_props(InfSession* session,
     g_value_init(&parameter->value, INF_ADOPTED_TYPE_REQUEST_LOG);
     g_value_take_object(&parameter->value, log);
   }
+#endif
 
   return array;
 }
@@ -919,6 +928,8 @@ inf_adopted_session_set_xml_user_props(InfSession* session,
     g_free(time_string);
   }
 
+  /* log-begin is not in the spec */
+#if 0
   log = inf_session_lookup_user_property(params, n_params, "request-log");
   if(log != NULL)
   {
@@ -928,6 +939,7 @@ inf_adopted_session_set_xml_user_props(InfSession* session,
 
     inf_xml_util_set_attribute_uint(xml, "log-begin", log_begin);
   }
+#endif
 }
 
 static gboolean
@@ -962,9 +974,6 @@ inf_adopted_session_validate_user_props(InfSession* session,
 
     return FALSE;
   }
-
-  /* Don't check log-begin because it is valid to be missing on user join
-   * (not on sync however, but we cannot (yet?) distinguish here. */
 
   return TRUE;
 }
