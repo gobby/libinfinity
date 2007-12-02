@@ -568,7 +568,15 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
     inf_text_gtk_buffer_iter_next_author_toggle(&iter);
 
     size = gtk_text_iter_get_offset(&iter) - gtk_text_iter_get_offset(&begin);
-    if(size > remaining) size = remaining;
+
+    /* Not the whole segment if region to slice ends before segment end */
+    if(size > remaining)
+    {
+      size = remaining;
+      iter = begin;
+      gtk_text_iter_forward_chars(&iter, size);
+    }
+
     author_id = inf_text_gtk_buffer_iter_get_author(&begin);
     text = gtk_text_buffer_get_slice(priv->buffer, &begin, &iter, TRUE);
 

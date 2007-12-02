@@ -540,6 +540,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
   InfNetObject* object;
   xmlNodePtr child;
   GError* error;
+  xmlChar* scope;
 
   /* TODO: A virtual function to obtain a human-visible remote address
    * for InfXmlConnection (IP, JID, etc.) */
@@ -548,50 +549,38 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
 
   if(strcmp((const char*)xml->name, "group") == 0)
   {
-    error = NULL;
-    group = inf_connection_manager_get_group_from_xml(
-      manager,
-      connection,
-      xml,
-      &error
-    );
-
-    if(group == NULL)
+    for(child = xml->children; child != NULL; child = child->next)
     {
-      /*g_warning(
-        "Failed to get group to forward received XML: %s",
-        error->message
-      );*/
-    }
-    else
-    {
-      object = group->net_object;
-      g_assert(object != NULL);
+      group = inf_connection_manager_get_group_from_xml(
+        manager,
+        connection,
+        xml,
+        NULL
+      );
 
-      queue = inf_connection_manager_group_get_queue(group, connection);
-
-      if(queue == NULL)
+      /* Ignore if there is no such group. */
+      if(group != NULL)
       {
-        /* Got something from a connection that is not in the group it sent
-         * something to. */
-        g_warning(
-          "Received XML for connection manager group named '%s' of which the "
-          "connection is not a member",
-          group->name
-        );
-      }
-      else
-      {
-        g_object_ref(object);
+        object = group->net_object;
+        g_assert(object != NULL);
 
-        for(child = xml->children; child != NULL; child = child->next)
+        queue = inf_connection_manager_group_get_queue(group, connection);
+
+        if(queue == NULL)
         {
-          inf_net_object_received(group->net_object, connection, child);
+          /* Got something from a connection that is not in the group it sent
+           * something to. */
+          g_warning(
+            "Received XML for connection manager group named '%s' of which "
+            "the connection is not a member",
+            group->name
+          );
         }
-
-        /* TODO: Forward if it is scope="group" */
-
-        g_object_unref(object);
+        else
+        {
+          inf_net_object_received(object, connection, child);
+          /* TODO: Forward if it is scope="group" */
+        }
       }
     }
   }
@@ -605,7 +594,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
 }
 
 /* Required by inf_connection_manager_connection_notify_status_cb to
- * the gnetwork connection if it has been closed. */
+ * the xml connection if it has been closed. */
 static void
 inf_connection_manager_unregister_connection(InfConnectionManager* manager,
                                              InfXmlConnection* connection);

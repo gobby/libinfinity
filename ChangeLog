@@ -1,3 +1,16 @@
+2007-12-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-request-log.c:
+	* libinfinity/adopted/inf-adopted-session.c: Allow arbitrary ID
+	for first request.
+
+	* libinfinity/common/inf-connection-manager.c: Re-lookup NetObject for
+	every request in group message.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Fixed
+	inf_text_gtk_buffer_buffer_get_slice if region to slice ends before
+	segment ends.
+
 2007-10-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-user.c: Return flags instead of status in

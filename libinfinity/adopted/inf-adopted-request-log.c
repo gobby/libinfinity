@@ -525,14 +525,22 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
 
   g_return_if_fail(inf_adopted_request_get_user_id(request) == priv->user_id);
 
-  /* TODO: Allow arbitrary ID for first request */
-
-  g_return_if_fail(
-    inf_adopted_state_vector_get(
+  if(priv->begin != priv->end)
+  {
+    g_return_if_fail(
+      inf_adopted_state_vector_get(
+        inf_adopted_request_get_vector(request),
+        priv->user_id
+      ) == priv->end
+    );
+  }
+  else
+  {
+    priv->end = inf_adopted_state_vector_get(
       inf_adopted_request_get_vector(request),
       priv->user_id
-    ) == priv->end
-  );
+    );
+  }
 
   if(priv->offset + (priv->end - priv->begin) == priv->alloc)
   {

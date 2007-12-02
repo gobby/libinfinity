@@ -94,11 +94,19 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
   guint user_id;
   guint n;
 
+  guint begin;
+  guint end;
+
   vector = inf_adopted_request_get_vector(request);
   user_id = inf_adopted_request_get_user_id(request);
   n = inf_adopted_state_vector_get(vector, user_id);
+  
+  begin = inf_adopted_request_log_get_begin(log);
+  end = inf_adopted_request_log_get_end(log);
 
-  if(inf_adopted_request_log_get_end(log) != n)
+  /* TODO: Actually, begin != end is only relevant for the first request
+   * in request log. */
+  if(end != n && begin != end)
   {
     g_set_error(
       error,
