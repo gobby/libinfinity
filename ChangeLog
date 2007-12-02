@@ -1,5 +1,9 @@
 2007-12-02  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk-1.0.pc.in: Added missing file.
+
+2007-12-02  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-request-log.c:
 	* libinfinity/adopted/inf-adopted-session.c: Allow arbitrary ID
 	for first request.
