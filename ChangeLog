@@ -1,5 +1,10 @@
 2007-12-04  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac:
+	* README: Require gnutls >= 1.7.2 and gsasl >= 0.2.21.
+
+2007-12-04  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac: Define INFINOTE_HAVE_AVAHI instead of HAVE_AVAHI to
 	not conflict with other packages. We probably still need to get rid
 	of autoheader to remove the default defines from inf-config.h.

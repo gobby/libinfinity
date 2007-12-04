@@ -23,7 +23,7 @@ AM_PROG_CC_C_O
 # Check for regular dependencies
 ###################################
 
-PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 gnutls libgsasl])
+PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21])
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
 
 ########################
@@ -72,7 +72,7 @@ AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
 
 if test "x$with_infinoted" = "xyes"
 then
-  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 gnutls])
+  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 gnutls >= 1.7.2])
 fi
 
 AM_CONDITIONAL([WITH_INFINOTED], test "x$with_infinoted" = "xyes")

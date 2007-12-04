@@ -24,8 +24,8 @@ libinfinity requires:
  - glib-2.0 >= 2.14
  - gobject-2.0 >= 2.14
  - libxml-2.0
- - gnutls
- - gsasl
+ - gnutls >= 1.7.2
+ - gsasl >= 0.2.21
  - avahi (optional)
 
 infinoted:
