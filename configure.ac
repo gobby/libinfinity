@@ -96,7 +96,7 @@ fi
 
 if test "x$use_avahi" = "xyes"
 then
-  AC_DEFINE([HAVE_AVAHI], 1, [Have Avahi])
+  AC_DEFINE([INFINOTE_HAVE_AVAHI], 1, [Whether avahi support is enabled])
 fi
 
 ###########

@@ -118,7 +118,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   InfdTcpServer* tcp;
   InfdServerPool* pool;
   InfdXmppServer* server;
-#ifdef HAVE_AVAHI
+#ifdef INFINOTE_HAVE_AVAHI
   InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
 #endif
@@ -141,7 +141,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   
   infd_server_pool_add_server(pool, INFD_XML_SERVER(server));
 
-#ifdef HAVE_AVAHI
+#ifdef INFINOTE_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
   avahi = inf_discovery_avahi_new(
     infd_directory_get_io(directory),

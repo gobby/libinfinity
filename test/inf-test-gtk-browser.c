@@ -279,9 +279,11 @@ main(int argc,
      char* argv[])
 {
   InfGtkIo* io;
-  InfXmppManager* xmpp_manager;
   InfConnectionManager* connection_manager;
+#ifdef INFINOTE_HAVE_AVAHI
+  InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
+#endif
   InfGtkBrowserModel* model;
   GtkWidget* view;
   GtkWidget* scroll;
@@ -291,14 +293,16 @@ main(int argc,
   gnutls_global_init();
 
   io = inf_gtk_io_new();
+#ifdef INFINOTE_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
   avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL);
   g_object_unref(G_OBJECT(xmpp_manager));
-  g_object_unref(G_OBJECT(io));
+#endif
 
   connection_manager = inf_connection_manager_new();
   model = inf_gtk_browser_model_new(INF_IO(io), connection_manager);
   g_object_unref(G_OBJECT(connection_manager));
+  g_object_unref(G_OBJECT(io));
 
   g_signal_connect(
     G_OBJECT(model),
@@ -307,8 +311,10 @@ main(int argc,
     NULL
   );
 
+#ifdef INFINOTE_HAVE_AVAHI
   inf_gtk_browser_model_add_discovery(model, INF_DISCOVERY(avahi));
   g_object_unref(G_OBJECT(avahi));
+#endif
 
   view = inf_gtk_browser_view_new_with_model(model);
   g_object_unref(G_OBJECT(model));
