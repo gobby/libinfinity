@@ -24,6 +24,7 @@
 #include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/common/inf-xmpp-manager.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
+#include <libinfinity/common/inf-error.h>
 
 #include <gtk/gtkmain.h>
 #include <gtk/gtkscrolledwindow.h>
@@ -88,16 +89,6 @@ set_error(InfTestGtkBrowserWindow* test,
 }
 
 static void
-on_join_failed(InfcRequest* request,
-               const GError* error,
-               gpointer user_data)
-{
-  InfTestGtkBrowserWindow* test;
-  test = (InfTestGtkBrowserWindow*)user_data;
-  set_error(test, "User join failed", error->message);
-}
-
-static void
 on_join_finished(InfcUserRequest* request,
                  InfUser* user,
                  gpointer user_data)
@@ -110,22 +101,36 @@ on_join_finished(InfcUserRequest* request,
 }
 
 static void
-on_synchronization_failed(InfSession* session,
-                          InfXmlConnection* connection,
-                          const GError* error,
-                          gpointer user_data)
+request_join(InfTestGtkBrowserWindow* test,
+             const gchar* user_name);
+
+static void
+on_join_failed(InfcRequest* request,
+               const GError* error,
+               gpointer user_data)
 {
   InfTestGtkBrowserWindow* test;
+  gchar* new_name;
+
   test = (InfTestGtkBrowserWindow*)user_data;
-  set_error(test, "Synchronization failed", error->message);
+
+  if(error->domain == inf_user_join_error_quark() &&
+     error->code == INF_USER_JOIN_ERROR_NAME_IN_USE)
+  {
+    new_name = g_strdup_printf("%s%d", g_get_user_name(), 2);
+    request_join(test, new_name);
+    g_free(new_name);
+  }
+  else
+  {
+    set_error(test, "User join failed", error->message);
+  }
 }
 
 static void
-on_synchronization_complete(InfSession* session,
-                            InfXmlConnection* connection,
-                            gpointer user_data)
+request_join(InfTestGtkBrowserWindow* test,
+             const gchar* user_name)
 {
-  InfTestGtkBrowserWindow* test;
   InfcUserRequest* request;
   InfAdoptedStateVector* v;
   GError* error;
@@ -134,12 +139,19 @@ on_synchronization_complete(InfSession* session,
   g_value_init(&params[0].value, G_TYPE_STRING);
   g_value_init(&params[1].value, INF_ADOPTED_TYPE_STATE_VECTOR);
 
-  g_value_set_static_string(&params[0].value, g_get_user_name());
+  g_value_set_static_string(&params[0].value, user_name);
 
-  v = inf_adopted_state_vector_new();
+  /* Use current state vector. Infinote should already do this. */
+  v = inf_adopted_state_vector_copy(
+    inf_adopted_algorithm_get_current(
+      inf_adopted_session_get_algorithm(
+        INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy))
+      )
+    )
+  );
+
   g_value_take_boxed(&params[1].value, v);
 
-  test = (InfTestGtkBrowserWindow*)user_data;
   error = NULL;
   request = infc_session_proxy_join_user(test->proxy, params, 2, &error);
 
@@ -163,6 +175,28 @@ on_synchronization_complete(InfSession* session,
       test
     );
   }
+}
+
+static void
+on_synchronization_failed(InfSession* session,
+                          InfXmlConnection* connection,
+                          const GError* error,
+                          gpointer user_data)
+{
+  InfTestGtkBrowserWindow* test;
+  test = (InfTestGtkBrowserWindow*)user_data;
+  set_error(test, "Synchronization failed", error->message);
+}
+
+static void
+on_synchronization_complete(InfSession* session,
+                            InfXmlConnection* connection,
+                            gpointer user_data)
+{
+  InfTestGtkBrowserWindow* test;
+
+  test = (InfTestGtkBrowserWindow*)user_data;
+  request_join(test, g_get_user_name());
 }
 
 static void

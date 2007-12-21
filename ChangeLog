@@ -1,3 +1,12 @@
+2007-12-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.c: Forward scope="group"
+	messages.
+
+	* test/inf-test-gtk-browser.c: Retry user join with another name if
+	the name is already in use, use algorithm's current vector time as
+	initial time.
+
 2007-12-04  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac:

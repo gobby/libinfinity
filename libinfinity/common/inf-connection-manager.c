@@ -120,6 +120,7 @@ inf_connection_manager_object_unrefed(gpointer user_data,
   );
   
   /* TODO: Keep group alive, just issue warning? */
+  /* I think it is better if people take care about this. */
   
   /* Do not use regular free functions, those would try to access
    * NetObject for reference. */
@@ -544,6 +545,8 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
 
   /* TODO: A virtual function to obtain a human-visible remote address
    * for InfXmlConnection (IP, JID, etc.) */
+  /* Note: We have this by now. We should format error messages
+   * accordingly. */
 
   manager = INF_CONNECTION_MANAGER(user_data);
 
@@ -579,7 +582,22 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
         else
         {
           inf_net_object_received(object, connection, child);
-          /* TODO: Forward if it is scope="group" */
+
+          scope = xmlGetProp(xml, (const xmlChar*)"scope");
+          if(scope != NULL)
+          {
+            if(strcmp((const char*)scope, "group") == 0)
+            {
+              /* TODO: Don't copy child, but remove it
+               * from original context? */
+              inf_connection_manager_send_to_group(
+                manager,
+                group,
+                connection,
+                xmlCopyNode(child, 1)
+              );
+            }
+          }
         }
       }
     }
