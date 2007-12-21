@@ -28,6 +28,7 @@ int main()
   inf_text_chunk_insert_text(chunk2, 0, "a", 1, 1, 500);
   inf_text_chunk_insert_text(chunk2, 0, "b", 1, 1, 501);
   inf_text_chunk_insert_text(chunk2, 0, "c", 1, 1, 502);
+  inf_text_chunk_insert_text(chunk2, 3, "ü", 2, 1, 503);
   chunk = inf_text_chunk_substring(chunk2, 0, 3);
 
   return 0;

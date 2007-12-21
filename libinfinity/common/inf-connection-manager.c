@@ -628,7 +628,7 @@ inf_connection_manager_connection_notify_status_cb(InfXmlConnection* conn,
   g_object_get(G_OBJECT(conn), "status", &status, NULL);
 
   /* Remove the connection from the list of connections if it has
-   * been closed. Keep it alive if it is already CLOSING to allow it to
+   * been closed. Keep it alive if it is only CLOSING to allow it to
    * properly close the connection. */
   if(status == INF_XML_CONNECTION_CLOSED)
   {

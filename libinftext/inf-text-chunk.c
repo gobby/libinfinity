@@ -21,15 +21,12 @@
 
 #include <string.h>
 
-#define CHUNK_DEBUG
+#define CHUNK_CHECK_INTEGRITY
 
 struct _InfTextChunk {
   GSequence* segments;
   guint length; /* in characters */
   GQuark encoding;
-#ifdef CHUNK_DEBUG
-  GString* str;
-#endif
 };
 
 typedef struct _InfTextChunkSegment InfTextChunkSegment;
@@ -40,7 +37,7 @@ struct _InfTextChunkSegment {
    * encoding specified in the InfTextChunk. */
   gchar* text;
   gsize length; /* in bytes */
-  guint offset; /* absolute to chunk begin in characters */
+  guint offset; /* absolute to chunk begin in characters, sort criteria */
 };
 
 static void
@@ -83,6 +80,7 @@ inf_text_chunk_next_offset(InfTextChunk* self,
     return ((InfTextChunkSegment*)g_sequence_get(next_iter))->offset;
 }
 
+#ifdef CHUNK_CHECK_INTEGRITY
 static gboolean
 inf_text_chunk_check_integrity(InfTextChunk* self)
 {
@@ -93,16 +91,6 @@ inf_text_chunk_check_integrity(InfTextChunk* self)
 
   gsize bytes;
   gchar* text;
-
-#ifdef CHUNK_DEBUG
-  text = inf_text_chunk_get_text(self, &bytes);
-  if(memcmp(self->str->str, text, bytes) != 0 || bytes != self->str->len)
-  {
-    g_free(text);
-    return FALSE;
-  }
-  g_free(text);
-#endif
 
   offset = 0;
 
@@ -118,8 +106,7 @@ inf_text_chunk_check_integrity(InfTextChunk* self)
     if(new_offset <= offset)
       return FALSE;
 
-    /* TODO: This only holds for ASCII. Should be >. */
-    if(new_offset - offset != segment->length)
+    if(new_offset - offset > segment->length)
       return FALSE;
 
     offset = new_offset;
@@ -127,6 +114,7 @@ inf_text_chunk_check_integrity(InfTextChunk* self)
 
   return TRUE;
 }
+#endif
 
 static GSequenceIter*
 inf_text_chunk_get_segment(InfTextChunk* self,
@@ -258,10 +246,6 @@ inf_text_chunk_new(const gchar* encoding)
   chunk->length = 0;
   chunk->encoding = g_quark_from_string(encoding);
 
-#ifdef CHUNK_DEBUG
-  chunk->str = g_string_new("");
-#endif
-
   return chunk;
 }
 
@@ -302,9 +286,6 @@ inf_text_chunk_copy(InfTextChunk* self)
   new_chunk->length = self->length;
   new_chunk->encoding = self->encoding;
 
-#ifdef CHUNK_DEBUG
-  new_chunk->str = g_string_new(self->str->str);
-#endif
   return new_chunk;
 }
 
@@ -319,9 +300,6 @@ void
 inf_text_chunk_free(InfTextChunk* self)
 {
   g_return_if_fail(self != NULL);
-#ifdef CHUNK_DEBUG
-  g_string_free(self->str, TRUE);
-#endif
   g_sequence_free(self->segments);
   g_slice_free(InfTextChunk, self);
 }
@@ -444,10 +422,6 @@ inf_text_chunk_substring(InfTextChunk* self,
 
     result->length = length;
     result->encoding = self->encoding;
-
-#ifdef CHUNK_DEBUG
-    g_string_append_len(result->str, self->str->str + begin, length);
-#endif
   }
   else
   {
@@ -457,7 +431,10 @@ inf_text_chunk_substring(InfTextChunk* self,
     result = inf_text_chunk_new(g_quark_to_string(self->encoding));
   }
 
+#ifdef CHUNK_CHECK_INTEGRITY
   g_assert(inf_text_chunk_check_integrity(result) == TRUE);
+#endif
+
   return result;
 }
 
@@ -580,12 +557,9 @@ inf_text_chunk_insert_text(InfTextChunk* self,
     self->length = length;
   }
 
-
-#ifdef CHUNK_DEBUG
-  g_string_insert_len(self->str, offset, text, bytes);
-#endif
-
+#ifdef CHUNK_CHECK_INTEGRITY
   g_assert(inf_text_chunk_check_integrity(self) == TRUE);
+#endif
 }
 
 /** inf_text_chunk_insert_chunk:
@@ -632,8 +606,8 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
         self,
         offset,
         segment->text,
-        text->length,
         segment->length,
+        text->length,
         segment->author
       );
     }
@@ -834,9 +808,6 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
       }
 
       self->length += text->length;
-#ifdef CHUNK_DEBUG
-      g_string_insert_len(self->str, offset, text->str->str, text->str->len);
-#endif
     }
   }
   else
@@ -857,12 +828,11 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
     }
 
     self->length += text->length;
-#ifdef CHUNK_DEBUG
-    g_string_insert_len(self->str, offset, text->str->str, text->str->len);
-#endif
   }
 
+#ifdef CHUNK_CHECK_INTEGRITY
   g_assert(inf_text_chunk_check_integrity(self) == TRUE);
+#endif
 }
 
 /** inf_text_chunk_erase:
@@ -1050,11 +1020,9 @@ inf_text_chunk_erase(InfTextChunk* self,
 
   self->length -= length;
 
-#ifdef CHUNK_DEBUG
-  g_string_erase(self->str, begin, length);
-#endif
-
+#ifdef CHUNK_CHECK_INTEGRITY
   g_assert(inf_text_chunk_check_integrity(self) == TRUE);
+#endif
 }
 
 /** inf_text_chunk_get_text:

@@ -31,3 +31,4 @@ would be nice to have done for the first stable release.
  * Add append() and clear() virtual methods to InfTextBuffer. These may not have to be implemented since a default implementation can be used if no special one is provided, but it could help to speed up special operations. Make use in infd_note_plugin_text.
  * Make InfcExploreRequest derive from InfcNodeRequest. This saves some code duplication in InfcBrowser.
  * Don't use autoheader for the libinfinity/inf-config.h
+ * connection-closed signal for connection manager, where other objects (esp. session, session proxy, directory, browser) can dro their references to that connection

@@ -626,8 +626,8 @@ inf_text_session_process_xml_sync(InfSession* session,
       buffer,
       inf_text_buffer_get_length(buffer),
       text,
-      length,
       bytes,
+      length,
       user
     );
 

@@ -1,5 +1,19 @@
 2007-12-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-chunk.c:
+	* libinftext/inf-text-session.c: Swapped bytes/length arguments to
+	inf_text_chunk_insert_text to fix handling of non-ASCII chars.
+
+	* test/inf-test-chunk.c: Add an umlaut to the chunk to check UTF-8.
+
+	* libinfinity/common/inf-session.c: Fixed signature of
+	inf_session_connection_notify_status_cb().
+
+	* TODO: Added a note about adding a connection-closed signal to
+	connection manager.
+
+2007-12-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c: Forward scope="group"
 	messages.
 

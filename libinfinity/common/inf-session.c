@@ -195,7 +195,7 @@ inf_session_find_sync_by_connection(InfSession* session,
 /* Required by inf_session_release_connection() */
 static void
 inf_session_connection_notify_status_cb(InfXmlConnection* connection,
-                                        const gchar* property,
+                                        GParamSpec* pspec,
                                         gpointer user_data);
 
 static void
@@ -223,7 +223,8 @@ inf_session_release_connection(InfSession* session,
 
     /* If the connection was closed, the connection manager removes the
      * connection from itself automatically, so make sure that it has not
-     * already done so. */
+     * already done so. TODO: The connection does this in _after, so we
+     * should always be able to do this. */
     if(has_connection == TRUE)
     {
       inf_connection_manager_unref_connection(
@@ -326,7 +327,7 @@ inf_session_send_sync_error(InfSession* session,
  */
 static void
 inf_session_connection_notify_status_cb(InfXmlConnection* connection,
-                                        const gchar* property,
+                                        GParamSpec* pspec,
                                         gpointer user_data)
 {
   InfSession* session;
