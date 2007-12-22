@@ -106,6 +106,7 @@ infinoted_main_create_dirname(const gchar* path,
     return FALSE;
   }
 
+  g_free(dirname);
   return TRUE;
 }
 

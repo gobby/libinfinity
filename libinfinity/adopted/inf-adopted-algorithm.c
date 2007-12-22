@@ -639,6 +639,7 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
       inf_user_get_id(INF_USER(component))
     );
 
+    /* TODO: Should this be n == inf_adopted_request_log_get_end(log)? */
     if(n == 0) return TRUE;
 
     request = inf_adopted_request_log_get_request(log, n - 1);
@@ -1571,11 +1572,9 @@ inf_adopted_algorithm_new_full(InfBuffer* buffer,
  * @user: The #InfAdoptedUser to add to @algorithm.
  *
  * Adds a user to the algorithm so that it can process requests (or generate
- * some, if it is a local user) from that user.
- *
- * The latest request in @user's request log is assumed to be the last one
- * retrieved from that user and the new user's component in the current vector
- * time is set to the value from the same component in that request.
+ * some, if it is a local user) from that user. The new user's component in
+ * the current vector time is set from the same component of the new user's
+ * vector.
  **/
 void
 inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
@@ -1584,6 +1583,7 @@ inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedRequestLog* initial_log;
   InfAdoptedAlgorithmLocalUser* local;
+  InfAdoptedStateVector* time;
 
   g_return_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm));
   g_return_if_fail(INF_ADOPTED_IS_USER(user));
@@ -1593,16 +1593,17 @@ inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
   g_return_if_fail(g_hash_table_lookup(priv->request_logs, user) == NULL);
 
   initial_log = inf_adopted_user_get_request_log(user);
-  g_object_ref(G_OBJECT(initial_log));
+  time = inf_adopted_user_get_vector(user);
 
   inf_adopted_state_vector_set(
     priv->current,
     inf_user_get_id(INF_USER(user)),
-    inf_adopted_request_log_get_end(initial_log)
+    inf_adopted_state_vector_get(time, inf_user_get_id(INF_USER(user)))
   );
 
   g_hash_table_insert(priv->request_logs, user, initial_log);
-  
+  g_object_ref(G_OBJECT(initial_log));
+
   if((inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0 &&
      inf_user_get_status(INF_USER(user)) != INF_USER_UNAVAILABLE)
   {

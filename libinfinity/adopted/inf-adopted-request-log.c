@@ -536,10 +536,14 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
   }
   else
   {
+    /* No entry yet, so set begin/end according to the first request. */
+    /* TODO: We should only allow this for the first request added to log. */
     priv->end = inf_adopted_state_vector_get(
       inf_adopted_request_get_vector(request),
       priv->user_id
     );
+
+    priv->begin = priv->end;
   }
 
   if(priv->offset + (priv->end - priv->begin) == priv->alloc)

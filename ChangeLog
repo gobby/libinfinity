@@ -1,3 +1,22 @@
+2007-12-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session.c: Correctly pass for_sync
+	to inf_adopted_session_xml_to_request() in
+	inf_adopted_session_process_xml_sync(). This fixes editing documents
+	with non-empty history.
+
+	* libinfinity/adopted/inf-adopted-request-log.c: Adjust log begin when
+	adding first entry to request log and that entry has non-zero vector
+	time for the log's user.
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Initialize new user's
+	component of current vector time with the corresponding component of
+	its vector time instead of the end of its request log because the
+	request log might be empty.
+
+	* infinoted/infinoted-main.c: Don't leak dirname in
+	infinoted_main_create_dirname() in case of success.
+
 2007-12-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-chunk.c:

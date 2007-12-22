@@ -295,7 +295,7 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
 
   if(for_sync == TRUE)
   {
-    /* TODO: diff to previous request, if any */
+    /* TODO: diff to previous request, if any? */
     vector = inf_adopted_state_vector_from_string((const gchar*)attr, error);
     xmlFree(attr);
 
@@ -474,7 +474,7 @@ inf_adopted_session_add_user_cb(InfUserTable* user_table,
     if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
     {
       local = g_slice_new(InfAdoptedSessionLocalUser);
-      local->user = user;
+      local->user = INF_ADOPTED_USER(user);
 
       /* TODO: This is the same hack as in
        * inf_adopted_session_user_notify_flags_cb(). */
@@ -782,7 +782,7 @@ inf_adopted_session_process_xml_sync(InfSession* session,
     request = inf_adopted_session_xml_to_request(
       INF_ADOPTED_SESSION(session),
       xml,
-      FALSE,
+      TRUE,
       error
     );
 
