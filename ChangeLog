@@ -1,5 +1,23 @@
 2007-12-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-error.c:
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/client/infc-session-proxy.c: Replaced user-leave by
+	user-status-change request, which is more general.
+
+	* libinfinity/server/infd-directory.c: Indentation fixes, fixed a
+	memory leak in infd_directory_handle_explore_node().
+
+	* libinftext/inf-text-session.c: Fixed an infinite loop when writing
+	delete operations to XML.
+
+	* infinoted/infinoted-creds.c: Include <glib.h> for glib 2.15
+	compatibility.
+
+2007-12-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-session.c: Correctly pass for_sync
 	to inf_adopted_session_xml_to_request() in
 	inf_adopted_session_process_xml_sync(). This fixes editing documents

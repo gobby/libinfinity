@@ -22,6 +22,7 @@
 #include <glib/gutils.h>
 #include <glib/gmem.h>
 #include <glib/gmessages.h>
+#include <glib.h> /* We do not get g_assert with glib 2.15.0 otherwise */
 
 #include <string.h>
 #include <errno.h>

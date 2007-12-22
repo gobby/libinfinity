@@ -779,8 +779,8 @@ static InfdDirectoryNode*
 infd_directory_node_add_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
                                      const gchar* name,
-				     InfXmlConnection* seq_conn,
-				     guint seq,
+                                     InfXmlConnection* seq_conn,
+                                     guint seq,
                                      GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -917,8 +917,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
 static gboolean
 infd_directory_node_remove(InfdDirectory* directory,
                            InfdDirectoryNode* node,
-			   InfXmlConnection* seq_conn,
-			   guint seq,
+                           InfXmlConnection* seq_conn,
+                           guint seq,
                            GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -1172,8 +1172,12 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   }
 
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"explore-end");
+
   if(seq_attr != NULL)
+  {
     xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+    xmlFree(seq_attr);
+  }
 
   inf_connection_manager_send_to(
     priv->connection_manager,

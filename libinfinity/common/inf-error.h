@@ -60,16 +60,16 @@ typedef enum _InfUserJoinError {
   INF_USER_JOIN_ERROR_FAILED
 } InfUserJoinError;
 
-typedef enum _InfUserLeaveError {
-  /* The request does not include an id attribute */
-  INF_USER_LEAVE_ERROR_ID_NOT_PRESENT,
+typedef enum _InfUserStatusChangeError {
   /* There is no user with the given ID */
-  INF_USER_LEAVE_ERROR_NO_SUCH_USER,
+  INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER,
   /* The user did not join from the connection the request comes from */
-  INF_USER_LEAVE_ERROR_NOT_JOINED,
+  INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED,
+  /* An invalid status was given */
+  INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS,
 
-  INF_USER_LEAVE_ERROR_FAILED
-} InfUserLeaveError;
+  INF_USER_STATUS_CHANGE_ERROR_FAILED
+} InfUserStatusChangeError;
 
 typedef enum _InfDirectoryError {
   /* A node with this name exists already */
@@ -110,10 +110,10 @@ const gchar*
 inf_user_join_strerror(InfUserJoinError code);
 
 GQuark
-inf_user_leave_error_quark(void);
+inf_user_status_change_error_quark(void);
 
 const gchar*
-inf_user_leave_strerror(InfUserLeaveError code);
+inf_user_status_change_strerror(InfUserStatusChangeError code);
 
 GQuark
 inf_directory_error_quark(void);

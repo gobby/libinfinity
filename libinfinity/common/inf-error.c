@@ -79,21 +79,23 @@ inf_user_join_strerror(InfUserJoinError code)
 }
 
 GQuark
-inf_user_leave_error_quark(void)
+inf_user_status_change_error_quark(void)
 {
-  return g_quark_from_static_string("INF_USER_LEAVE_ERROR");
+  return g_quark_from_static_string("INF_USER_STATUS_CHANGE_ERROR");
 }
 
 const gchar*
-inf_user_leave_strerror(InfUserLeaveError code)
+inf_user_status_change_strerror(InfUserStatusChangeError code)
 {
   switch(code)
   {
-  case INF_USER_LEAVE_ERROR_NO_SUCH_USER:
+  case INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER:
     return "There is no user with the given ID";
-  case INF_USER_LEAVE_ERROR_NOT_JOINED:
+  case INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED:
     return "User did not join via this connection";
-  case INF_USER_LEAVE_ERROR_FAILED:
+  case INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS:
+    return "'status' attribute has invalid value";
+  case INF_USER_STATUS_CHANGE_ERROR_FAILED:
     return "An unknown user leave error occured";
   default:
     return "An error with unknown error code occured";

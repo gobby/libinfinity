@@ -902,6 +902,8 @@ inf_text_session_operation_to_xml(InfAdoptedSession* session,
             inf_text_chunk_iter_get_author(&iter)
           );
         }
+
+        result = inf_text_chunk_iter_next(&iter);
       }
 
       g_iconv_close(cd);

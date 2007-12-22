@@ -2378,7 +2378,7 @@ inf_session_set_subscription_group(InfSession* session,
  *
  * Sends a XML message to the all members of @session's subscription group,
  * except @except. This function can only be called if the subscription group
- * is non-%NULL. If takes ownership of @xml.
+ * is non-%NULL. It takes ownership of @xml.
  **/
 void
 inf_session_send_to_subscriptions(InfSession* session,

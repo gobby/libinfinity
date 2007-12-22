@@ -815,16 +815,17 @@ infd_session_proxy_handle_user_join(InfdSessionProxy* proxy,
 }
 
 static gboolean
-infd_session_proxy_handle_user_leave(InfdSessionProxy* proxy,
-                                     InfXmlConnection* connection,
-                                     xmlNodePtr xml,
-                                     GError** error)
+infd_session_proxy_handle_user_status_change(InfdSessionProxy* proxy,
+                                             InfXmlConnection* connection,
+                                             xmlNodePtr xml,
+                                             GError** error)
 {
   InfdSessionProxyPrivate* priv;
   InfdSessionProxySubscription* subscription;
   InfUser* user;
-  xmlChar* id_attr;
   xmlChar* seq_attr;
+  xmlChar* status_attr;
+  InfUserStatus status;
   guint id;
 
   xmlNodePtr reply_xml;
@@ -834,22 +835,8 @@ infd_session_proxy_handle_user_leave(InfdSessionProxy* proxy,
   subscription = infd_session_proxy_find_subscription(proxy, connection);
   g_assert(subscription != NULL);
 
-  id_attr = xmlGetProp(xml, (const xmlChar*)"id");
-  if(id_attr == NULL)
-  {
-    g_set_error(
-      error,
-      inf_user_leave_error_quark(),
-      INF_USER_LEAVE_ERROR_ID_NOT_PRESENT,
-      "%s",
-      inf_user_leave_strerror(INF_USER_LEAVE_ERROR_ID_NOT_PRESENT)
-    );
-
+  if(!inf_xml_util_get_attribute_uint_required(xml, "id", &id, error))
     return FALSE;
-  }
-
-  id = strtoul((const gchar*)id_attr, NULL, 0);
-  xmlFree(id_attr);
 
   user = inf_user_table_lookup_user_by_id(
     inf_session_get_user_table(priv->session),
@@ -860,10 +847,10 @@ infd_session_proxy_handle_user_leave(InfdSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_leave_error_quark(),
-      INF_USER_LEAVE_ERROR_NO_SUCH_USER,
+      inf_user_status_change_error_quark(),
+      INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER,
       "%s",
-      inf_user_leave_strerror(INF_USER_LEAVE_ERROR_NO_SUCH_USER)
+      inf_user_status_change_strerror(INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER)
     );
 
     return FALSE;
@@ -873,19 +860,50 @@ infd_session_proxy_handle_user_leave(InfdSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_leave_error_quark(),
-      INF_USER_LEAVE_ERROR_NOT_JOINED,
+      inf_user_status_change_error_quark(),
+      INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED,
       "%s",
-      inf_user_leave_strerror(INF_USER_LEAVE_ERROR_NOT_JOINED)
+      inf_user_status_change_strerror(INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED)
     );
 
     return FALSE;
   }
+  
+  status_attr = inf_xml_util_get_attribute_required(xml, "status", error);
+  if(status_attr == NULL)
+    return FALSE;
 
-  reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-leave");
+  /* TODO: Add inf_user_string_to_status and vice versa */
+  if(strcmp((const char*)status_attr, "available") == 0)
+    status = INF_USER_AVAILABLE;
+  else if(strcmp((const char*)status_attr, "unavailable") == 0)
+    status = INF_USER_UNAVAILABLE;
+  else
+  {
+    g_set_error(
+      error,
+      inf_user_status_change_error_quark(),
+      INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS,
+      "Invalid status '%s'",
+      (const char*)status_attr
+    );
+    
+    xmlFree(status_attr);
+    return FALSE;
+  }
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-status-change");
   inf_xml_util_set_attribute_uint(reply_xml, "id", id);
+  xmlNewProp(reply_xml, (const xmlChar*)"status", status_attr);
+  xmlFree(status_attr);
 
-  /* TODO: Only send seq back to the user that made the request */
+  inf_session_send_to_subscriptions(
+    priv->session,
+    connection,
+    xmlCopyNode(reply_xml, 1)
+  );
+
+  /* Send back to original connection with seq set */
   seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
   if(seq_attr != NULL)
   {
@@ -893,10 +911,16 @@ infd_session_proxy_handle_user_leave(InfdSessionProxy* proxy,
     xmlFree(seq_attr);
   }
 
-  inf_session_send_to_subscriptions(priv->session, NULL, reply_xml);
-  subscription->users = g_slist_remove(subscription->users, user);
+  inf_connection_manager_send_to(
+    inf_session_get_connection_manager(priv->session),
+    inf_session_get_subscription_group(priv->session),
+    connection,
+    reply_xml
+  );
 
-  g_object_set(G_OBJECT(user), "status", INF_USER_UNAVAILABLE, NULL);
+  g_object_set(G_OBJECT(user), "status", status, NULL);
+  if(status == INF_USER_UNAVAILABLE)
+    subscription->users = g_slist_remove(subscription->users, user);
 
   return TRUE;
 }
@@ -992,9 +1016,9 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
         &error
       );
     }
-    else if(strcmp((const char*)node->name, "user-leave") == 0)
+    else if(strcmp((const char*)node->name, "user-status-change") == 0)
     {
-      result = infd_session_proxy_handle_user_leave(
+      result = infd_session_proxy_handle_user_status_change(
         proxy,
         connection,
         node,

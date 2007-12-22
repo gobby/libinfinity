@@ -474,8 +474,8 @@ infc_session_proxy_translate_error_impl(InfcSessionProxy* proxy,
     error_msg = inf_request_strerror(code);
   else if(domain == inf_user_join_error_quark())
     error_msg = inf_user_join_strerror(code);
-  else if(domain == inf_user_leave_error_quark())
-    error_msg = inf_user_leave_strerror(code);
+  else if(domain == inf_user_status_change_error_quark())
+    error_msg = inf_user_status_change_strerror(code);
   else
     error_msg = NULL;
 
@@ -741,35 +741,22 @@ infc_session_proxy_handle_request_failed(InfcSessionProxy* proxy,
 }
 
 static gboolean
-infc_session_proxy_handle_user_leave(InfcSessionProxy* proxy,
-                                     InfXmlConnection* connection,
-                                     xmlNodePtr xml,
-                                     GError** error)
+infc_session_proxy_handle_user_status_change(InfcSessionProxy* proxy,
+                                             InfXmlConnection* connection,
+                                             xmlNodePtr xml,
+                                             GError** error)
 {
   InfcSessionProxyPrivate* priv;
   InfcRequest* request;
-  xmlChar* id_attr;
   guint id;
+  xmlChar* status_attr;
+  InfUserStatus status;
   InfUser* user;
   GError* local_error;
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  id_attr = xmlGetProp(xml, (const xmlChar*)"id");
-  if(id_attr == NULL)
-  {
-    g_set_error(
-      error,
-      inf_user_leave_error_quark(),
-      INF_USER_LEAVE_ERROR_ID_NOT_PRESENT,
-      "%s",
-      inf_user_leave_strerror(INF_USER_LEAVE_ERROR_ID_NOT_PRESENT)
-    );
-
+  if(!inf_xml_util_get_attribute_uint_required(xml, "id", &id, error))
     return FALSE;
-  }
-
-  id = strtoul((const gchar*)id_attr, NULL, 0);
-  xmlFree(id_attr);
 
   user = inf_user_table_lookup_user_by_id(
     inf_session_get_user_table(priv->session),
@@ -780,22 +767,45 @@ infc_session_proxy_handle_user_leave(InfcSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_leave_error_quark(),
-      INF_USER_LEAVE_ERROR_NO_SUCH_USER,
+      inf_user_status_change_error_quark(),
+      INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER,
       "%s",
-      inf_user_leave_strerror(INF_USER_LEAVE_ERROR_NO_SUCH_USER)
+      inf_user_status_change_strerror(INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER)
     );
 
     return FALSE;
   }
 
+  /* TODO: Verify that user is not unavailable */
+
+  status_attr = xmlGetProp(xml, (const xmlChar*)"status");
+  if(strcmp( (const char*)status_attr, "available") == 0)
+    status = INF_USER_AVAILABLE;
+  else if(strcmp( (const char*)status_attr, "unavailable") == 0)
+    status = INF_USER_UNAVAILABLE;
+  else
+  {
+    g_set_error(
+      error,
+      inf_user_status_change_error_quark(),
+      INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS,
+      "Invalid status '%s'",
+      (const char*)status_attr
+    );
+    
+    xmlFree(status_attr);
+    return FALSE;
+  }
+
+  xmlFree(status_attr);
+
   /* Do not remove from session to recognize the user on rejoin */
-  g_object_set(G_OBJECT(user), "status", INF_USER_UNAVAILABLE, NULL);
+  g_object_set(G_OBJECT(user), "status", status, NULL);
 
   local_error = NULL;
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
-    "user-leave",
+    "user-status-change",
     xml,
     &local_error
   );
@@ -934,9 +944,9 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
         &error
       );
     }
-    else if(strcmp((const char*)node->name, "user-leave") == 0)
+    else if(strcmp((const char*)node->name, "user-status-change") == 0)
     {
-      result = infc_session_proxy_handle_user_leave(
+      result = infc_session_proxy_handle_user_status_change(
         proxy,
         connection,
         node,
@@ -1336,13 +1346,14 @@ infc_session_proxy_leave_user(InfcSessionProxy* proxy,
   request = infc_request_manager_add_request(
     priv->request_manager,
     INFC_TYPE_USER_REQUEST,
-    "user-leave",
+    "user-status-change",
     NULL
   );
 
   xml = infc_session_proxy_request_to_xml(INFC_REQUEST(request));
 
   inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
+  xmlNewProp(xml, (const xmlChar*)"status", (const xmlChar*)"unavailable");
 
   inf_connection_manager_send_to(
     inf_session_get_connection_manager(priv->session),
