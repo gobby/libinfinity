@@ -89,9 +89,6 @@ inf_text_chunk_check_integrity(InfTextChunk* self)
   guint offset;
   guint new_offset;
 
-  gsize bytes;
-  gchar* text;
-
   offset = 0;
 
   for(iter = g_sequence_get_begin_iter(self->segments);
@@ -119,7 +116,7 @@ inf_text_chunk_check_integrity(InfTextChunk* self)
 static GSequenceIter*
 inf_text_chunk_get_segment(InfTextChunk* self,
                            guint pos,
-                           guint* index)
+                           gsize* index)
 {
   InfTextChunkSegment* found;
   InfTextChunkSegment key;

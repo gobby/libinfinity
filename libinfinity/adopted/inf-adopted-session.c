@@ -856,9 +856,6 @@ inf_adopted_session_get_xml_user_props(InfSession* session,
   GParameter* parameter;
   InfAdoptedStateVector* vector;
   xmlChar* time;
-  guint log_begin;
-  InfAdoptedRequestLog* log;
-  const GParameter* id_param;
 
   array = INF_SESSION_CLASS(parent_class)->get_xml_user_props(
     session,
@@ -915,10 +912,8 @@ inf_adopted_session_set_xml_user_props(InfSession* session,
                                        xmlNodePtr xml)
 {
   const GParameter* time;
-  const GParameter* log;
   InfAdoptedStateVector* vector;
   gchar* time_string;
-  guint log_begin;
 
   INF_SESSION_CLASS(parent_class)->set_xml_user_props(
     session,

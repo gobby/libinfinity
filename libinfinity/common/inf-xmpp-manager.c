@@ -67,8 +67,8 @@ inf_xmpp_manager_key_cmp(gconstpointer first,
   const InfXmppManagerKey* first_key;
   const InfXmppManagerKey* second_key;
 
-  first_key = (InfXmppManagerKey*)first;
-  second_key = (InfXmppManagerKey*)second;
+  first_key = (const InfXmppManagerKey*)first;
+  second_key = (const InfXmppManagerKey*)second;
 
   if(first_key->port < second_key->port)
     return -1;

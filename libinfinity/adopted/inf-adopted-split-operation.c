@@ -121,12 +121,12 @@ inf_adopted_split_operation_set_property(GObject* object,
   case PROP_FIRST:
     if(priv->first != NULL) g_object_unref(G_OBJECT(priv->first));
     priv->first = INF_ADOPTED_OPERATION(g_value_dup_object(value));
-    g_assert(priv->first != object);
+    g_assert(priv->first != operation);
     break;
   case PROP_SECOND:
     if(priv->second != NULL) g_object_unref(G_OBJECT(priv->second));
     priv->second = INF_ADOPTED_OPERATION(g_value_dup_object(value));
-    g_assert(priv->second != object);
+    g_assert(priv->second != operation);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
@@ -229,8 +229,10 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   /* TODO: Check whether one of these is a noop and return only the other
    * one it that case. */
 
-  result = inf_adopted_split_operation_new(new_first, new_second);
-  
+  result = INF_ADOPTED_OPERATION(
+    inf_adopted_split_operation_new(new_first, new_second)
+  );
+
   g_object_unref(G_OBJECT(new_first));
   g_object_unref(G_OBJECT(new_second));
 

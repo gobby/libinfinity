@@ -253,7 +253,6 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
 {
   FILE* stream;
   xmlDocPtr doc;
-  int res;
   xmlErrorPtr xmlerror;
   xmlNodePtr root;
   xmlNodePtr child;

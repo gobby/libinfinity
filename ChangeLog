@@ -1,5 +1,18 @@
 2007-12-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-chunk.c: Fixed a crash on amd64.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c:
+	* libinfinity/common/inf-xmpp-manager.c:
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinftext/inf-text-default-insert-operation.c:
+	* test/inf-test-chunk.c: Fixed several warnings.
+
+2007-12-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c: Changed scope for point
 	to point connections from "p2p" to "ptp", as in the spec.
 

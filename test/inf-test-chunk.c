@@ -16,7 +16,7 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinftext/inf-text-chunk.c>
+#include <libinftext/inf-text-chunk.h>
 
 int main()
 {

@@ -547,7 +547,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
-  printf("\033[00;34m%.*s\033[00;00m\n", (int)len, data);
+  printf("\033[00;34m%.*s\033[00;00m\n", (int)len, (const char*)data);
 
   if(priv->session != NULL)
   {
@@ -2550,7 +2550,7 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
     else
     {
       /* Feed input directly into XML parser */
-      printf("\033[00;31m%.*s\033[00;00m\n", (int)len, data);
+      printf("\033[00;31m%.*s\033[00;00m\n", (int)len, (const char*)data);
       xmlParseChunk(priv->parser, data, len, 0);
     }
   }

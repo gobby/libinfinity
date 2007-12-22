@@ -46,7 +46,7 @@ struct _InfConnectionManagerQueue {
 
 struct _InfConnectionManagerGroup {
   InfConnectionManager* manager; /* parent manager */
-  InfNetObject* net_object; /* weak-refed as long we have no connections */
+  InfNetObject* net_object; /* weak-refed as long as we have no connections */
   gchar* name;
   guint ref_count;
 
@@ -540,7 +540,6 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
   InfConnectionManagerQueue* queue;
   InfNetObject* object;
   xmlNodePtr child;
-  GError* error;
   xmlChar* scope;
 
   /* TODO: A virtual function to obtain a human-visible remote address
