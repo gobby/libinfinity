@@ -26,7 +26,7 @@
  * probably be used from gobby. Note gobby is GPL, but I am the author of
  * that code anyway :-). armin.
  *
- * Actually, this could already work since we deny the first (directy)
+ * Actually, this could already work since we deny the first (direct)
  * insertion but insert then manually again, see
  * inf_text_gtk_buffer_insert_text_cb(). */
 
@@ -35,6 +35,14 @@
 struct _InfTextBufferIter {
   GtkTextIter begin;
   GtkTextIter end;
+};
+
+typedef struct _InfTextGtkBufferTagRemove InfTextGtkBufferTagRemove;
+struct _InfTextGtkBufferTagRemove {
+  GtkTextBuffer* buffer;
+  GtkTextIter begin_iter;
+  GtkTextIter end_iter;
+  GtkTextTag* ignore_tag;
 };
 
 typedef struct _InfTextGtkBufferPrivate InfTextGtkBufferPrivate;
@@ -736,6 +744,24 @@ inf_text_gtk_buffer_buffer_iter_get_author(InfTextBuffer* buffer,
 }
 
 static void
+inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func(GtkTextTag* tag,
+                                                              gpointer data)
+{
+  InfTextGtkBufferTagRemove* tag_remove;
+  tag_remove = (InfTextGtkBufferTagRemove*)data;
+
+  if(tag != tag_remove->ignore_tag)
+  {
+    gtk_text_buffer_remove_tag(
+      tag_remove->buffer,
+      tag,
+      &tag_remove->begin_iter,
+      &tag_remove->end_iter
+    );
+  }
+}
+
+static void
 inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
                                        guint pos,
                                        InfTextChunk* chunk,
@@ -743,10 +769,10 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
 {
   InfTextGtkBufferPrivate* priv;
   InfTextChunkIter chunk_iter;
-  GtkTextIter text_iter;
-  GtkTextTag* tag;
+  InfTextGtkBufferTagRemove tag_remove;
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  tag_remove.buffer = priv->buffer;
 
   g_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
@@ -756,22 +782,44 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
 
   if(inf_text_chunk_iter_init(chunk, &chunk_iter))
   {
-    gtk_text_buffer_get_iter_at_offset(priv->buffer, &text_iter, pos);
+    gtk_text_buffer_get_iter_at_offset(
+      priv->buffer,
+      &tag_remove.end_iter,
+      pos
+    );
 
     do
     {
-      tag = inf_text_gtk_buffer_get_user_tag(
+      tag_remove.ignore_tag = inf_text_gtk_buffer_get_user_tag(
         INF_TEXT_GTK_BUFFER(buffer),
         inf_text_chunk_iter_get_author(&chunk_iter)
       );
 
       gtk_text_buffer_insert_with_tags(
-        priv->buffer,
-        &text_iter,
+        tag_remove.buffer,
+        &tag_remove.end_iter,
         inf_text_chunk_iter_get_text(&chunk_iter),
         inf_text_chunk_iter_get_bytes(&chunk_iter),
-        tag,
+        tag_remove.ignore_tag,
         NULL
+      );
+
+      /* Remove other user tags. If we inserted the new text within another
+       * user's text, GtkTextBuffer automatically applies that tag to the
+       * new text. */
+
+      /* TODO: We could probably look for the tag that we have to remove
+       * before inserting text, to optimize this a bit. */
+      tag_remove.begin_iter = tag_remove.end_iter;
+      gtk_text_iter_backward_chars(
+        &tag_remove.begin_iter,
+        inf_text_chunk_get_length(chunk)
+      );
+
+      gtk_text_tag_table_foreach(
+        gtk_text_buffer_get_tag_table(tag_remove.buffer),
+        inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func,
+        &tag_remove
       );
 
     } while(inf_text_chunk_iter_next(&chunk_iter));

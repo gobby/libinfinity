@@ -1,5 +1,13 @@
 2007-12-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c: Changed scope for point
+	to point connections from "p2p" to "ptp", as in the spec.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Make sure only one user color
+	tag is applied at once.
+
+2007-12-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-error.c:
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-session.c:

@@ -433,7 +433,7 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
       switch(scope)
       {
       case INF_CONNECTION_MANAGER_SCOPE_POINT_TO_POINT:
-        inf_xml_util_set_attribute(container, "scope", "p2p");
+        inf_xml_util_set_attribute(container, "scope", "ptp");
         break;
       case INF_CONNECTION_MANAGER_SCOPE_GROUP:
         inf_xml_util_set_attribute(container, "scope", "group");
