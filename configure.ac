@@ -23,7 +23,7 @@ AM_PROG_CC_C_O
 # Check for regular dependencies
 ###################################
 
-PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21])
+PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21])
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
 
 ########################
@@ -110,6 +110,8 @@ AC_CONFIG_FILES([
       libinfinity/adopted/Makefile
       libinfinity/server/Makefile
       libinfinity/client/Makefile
+      libinfinity/methods/Makefile
+        libinfinity/methods/local-central/Makefile
 
     libinftext/Makefile
     libinfgtk/Makefile

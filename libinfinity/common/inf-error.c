@@ -131,6 +131,11 @@ inf_directory_strerror(InfDirectoryError code)
     return "Server sent more explored nodes then announced";
   case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:
     return "Server sent not as much explored nodes as announced";
+  case INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED:
+    return "The session does not support the network through which the "
+           "connection attempt is being made.";
+  case INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED:
+    return "The session uses an unsupported communication method";
   case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
     return "Unexpected XML message";
   case INF_DIRECTORY_ERROR_FAILED:

@@ -224,7 +224,7 @@ infinoted_main(int argc,
 
   io = inf_standalone_io_new();
   connection_manager = inf_connection_manager_new();
-  directory = infd_directory_new(INF_IO(io), storage, connection_manager);
+  directory = infd_directory_new(INF_IO(io), storage, connection_manager, NULL);
   g_object_unref(G_OBJECT(io));
   g_object_unref(G_OBJECT(storage));
   g_object_unref(G_OBJECT(connection_manager));

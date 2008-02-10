@@ -1,8 +1,12 @@
 INCLUDES = -I${top_srcdir}
 
+# TODO: Make this configurable at configure time
+methods_path = ${libdir}/infinote/method-plugins
+
 libinfinity_common_la_CPPFLAGS = \
 	$(infinity_CFLAGS) \
-	$(avahi_CFLAGS)
+	$(avahi_CFLAGS) \
+	-DMETHODS_PATH=\"${methods_path}\"
 
 noinst_LTLIBRARIES = libinfinity_common.la
 
@@ -17,6 +21,7 @@ libinfinity_common_la_SOURCES = \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
+	inf-method-manager.c \
 	inf-net-object.c \
 	inf-session.c \
 	inf-standalone-io.c \
@@ -37,6 +42,7 @@ libinfinity_common_la_HEADERS = \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \
+	inf-method-manager.h \
 	inf-net-object.h \
 	inf-session.h \
 	inf-standalone-io.h \

@@ -74,7 +74,8 @@ main(int argc, char* argv[])
     directory = infd_directory_new(
       INF_IO(io),
       INFD_STORAGE(storage),
-      manager
+      manager,
+      NULL
     );
 
     g_free(root_directory);

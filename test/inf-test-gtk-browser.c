@@ -134,10 +134,18 @@ request_join(InfTestGtkBrowserWindow* test,
   InfcUserRequest* request;
   InfAdoptedStateVector* v;
   GError* error;
-  GParameter params[2] = { { "name", { 0 } }, { "vector", { 0 } } };
+  GtkTextBuffer* buffer;
+  GtkTextMark* mark;
+  GtkTextIter iter;
+  GParameter params[3] = {
+    { "name", { 0 } },
+    { "vector", { 0 } },
+    { "caret-position", { 0 } }
+  };
 
   g_value_init(&params[0].value, G_TYPE_STRING);
   g_value_init(&params[1].value, INF_ADOPTED_TYPE_STATE_VECTOR);
+  g_value_init(&params[2].value, G_TYPE_UINT);
 
   g_value_set_static_string(&params[0].value, user_name);
 
@@ -152,8 +160,15 @@ request_join(InfTestGtkBrowserWindow* test,
 
   g_value_take_boxed(&params[1].value, v);
 
+  buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(test->textview));
+  mark = gtk_text_buffer_get_insert(buffer);
+  gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
+  g_value_set_uint(&params[2].value, gtk_text_iter_get_offset(&iter));
+
   error = NULL;
-  request = infc_session_proxy_join_user(test->proxy, params, 2, &error);
+  request = infc_session_proxy_join_user(test->proxy, params, 3, &error);
+
+  /* TODO: Free GValues? */
 
   if(request == NULL)
   {
@@ -334,7 +349,7 @@ main(int argc,
 #endif
 
   connection_manager = inf_connection_manager_new();
-  model = inf_gtk_browser_model_new(INF_IO(io), connection_manager);
+  model = inf_gtk_browser_model_new(INF_IO(io), connection_manager, NULL);
   g_object_unref(G_OBJECT(connection_manager));
   g_object_unref(G_OBJECT(io));
 

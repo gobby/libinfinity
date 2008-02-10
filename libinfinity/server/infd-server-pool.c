@@ -199,6 +199,9 @@ infd_server_pool_new_connection_cb(InfdXmlServer* server,
   server_pool = INFD_SERVER_POOL(user_data);
   priv = INFD_SERVER_POOL_PRIVATE(server_pool);
 
+  /* If the addition fails, then the directory does not ref the connection and
+   * it will be unrefed (and therefore be closed) right after this function
+   * terminates. */
   if(priv->directory != NULL)
     infd_directory_add_connection(priv->directory, connection);
 }

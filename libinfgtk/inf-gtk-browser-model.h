@@ -83,7 +83,8 @@ inf_gtk_browser_model_get_type(void) G_GNUC_CONST;
 
 InfGtkBrowserModel*
 inf_gtk_browser_model_new(InfIo* io,
-                          InfConnectionManager* connection_manager);
+                          InfConnectionManager* connection_manager,
+                          InfMethodManager* method_manager);
 
 void
 inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,

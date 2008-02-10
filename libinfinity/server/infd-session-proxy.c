@@ -138,8 +138,10 @@ infd_session_proxy_release_subscription(InfdSessionProxy* proxy,
     proxy
   );
 
-  inf_connection_manager_unref_connection(
-    inf_session_get_connection_manager(priv->session),
+  /* TODO: Cancel synchronization if the synchronization to this subscription
+   * did not yet finish. */
+
+  inf_connection_manager_group_remove_connection(
     priv->subscription_group,
     connection
   );
@@ -222,6 +224,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
     return NULL;
   }
 
+  /* TODO: Isn't this already done in validate_user_props? */
   user = inf_user_table_lookup_user_by_name(
     inf_session_get_user_table(priv->session),
     g_value_get_string(&name_param->value)
@@ -296,6 +299,13 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   else
     g_value_set_flags(&param->value, 0);
 
+
+  /* same with connection */
+  param = inf_session_get_user_property(user_props, "connection");
+  g_assert(!G_IS_VALUE(&param->value));
+  g_value_init(&param->value, INF_TYPE_XML_CONNECTION);
+  g_value_set_object(&param->value, G_OBJECT(connection));
+
   if(user == NULL)
   {
     /* This validates properties */
@@ -347,6 +357,9 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
 
   inf_session_user_to_xml(priv->session, user, xml);
 
+  /* TODO: Send with "connection" to subscriptions that are in the same
+   * network, and that are non-local. */
+
   /* exclude the connection from which the request comes. The reply to it
    * is sent separately telling it that the user join was accepted. */
   inf_session_send_to_subscriptions(
@@ -359,8 +372,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   {
     xmlNewProp(xml, (const xmlChar*)"seq", (const xmlChar*)request_seq);
 
-    inf_connection_manager_send_to(
-      inf_session_get_connection_manager(priv->session),
+    inf_connection_manager_group_send_to_connection(
       priv->subscription_group,
       connection,
       xml
@@ -390,13 +402,8 @@ infd_session_proxy_subscribe_connection(InfdSessionProxy* proxy,
 
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
-  /* Note that if this is called from (the public)
-   * infd_session_proxy_subscribe_to, then the InfSession has already
-   * refed the connection in inf_session_synchronize_to(). However, since we
-   * want to keep it after the synchronization finishes we have to add
-   * another reference here. */
-  inf_connection_manager_ref_connection(
-    inf_session_get_connection_manager(priv->session),
+  /* Add connection to subscription group. */
+  inf_connection_manager_group_add_connection(
     priv->subscription_group,
     connection
   );
@@ -549,8 +556,7 @@ infd_session_proxy_session_close_cb(InfSession* session,
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-close");
 
-      inf_connection_manager_send_to(
-        inf_session_get_connection_manager(priv->session),
+      inf_connection_manager_group_send_to_connection(
         priv->subscription_group,
         subscription->connection,
         xml
@@ -563,11 +569,7 @@ infd_session_proxy_session_close_cb(InfSession* session,
     infd_session_proxy_release_subscription(proxy, subscription);
   }
 
-  inf_connection_manager_unref_group(
-    inf_session_get_connection_manager(priv->session),
-    priv->subscription_group
-  );
-
+  inf_connection_manager_group_unref(priv->subscription_group);
   priv->subscription_group = NULL;
 }
 
@@ -911,8 +913,7 @@ infd_session_proxy_handle_user_status_change(InfdSessionProxy* proxy,
     xmlFree(seq_attr);
   }
 
-  inf_connection_manager_send_to(
-    inf_session_get_connection_manager(priv->session),
+  inf_connection_manager_group_send_to_connection(
     inf_session_get_subscription_group(priv->session),
     connection,
     reply_xml
@@ -978,16 +979,16 @@ infd_session_proxy_net_object_enqueued(InfNetObject* net_object,
   inf_net_object_enqueued(INF_NET_OBJECT(priv->session), connection, node);
 }
 
-static void
+static gboolean
 infd_session_proxy_net_object_received(InfNetObject* net_object,
                                        InfXmlConnection* connection,
-                                       xmlNodePtr node)
+                                       xmlNodePtr node,
+                                       GError** error)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
   InfSessionSyncStatus status;
-  GError* error;
-  gboolean result;
+  GError* local_error;
   xmlNodePtr reply_xml;
   xmlChar* seq_attr;
 
@@ -998,64 +999,67 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
 
   g_assert(priv->session != NULL);
   status = inf_session_get_synchronization_status(priv->session, connection);
-  error = NULL;
+  local_error = NULL;
 
   if(status != INF_SESSION_SYNC_NONE)
   {
-    inf_net_object_received(INF_NET_OBJECT(priv->session), connection, node);
-    result = TRUE;
+    return inf_net_object_received(
+      INF_NET_OBJECT(priv->session),
+      connection,
+      node,
+      error
+    );
   }
   else
   {
     if(strcmp((const char*)node->name, "user-join") == 0)
     {
-      result = infd_session_proxy_handle_user_join(
+      infd_session_proxy_handle_user_join(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else if(strcmp((const char*)node->name, "user-status-change") == 0)
     {
-      result = infd_session_proxy_handle_user_status_change(
+      infd_session_proxy_handle_user_status_change(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else if(strcmp((const char*)node->name, "session-unsubscribe") == 0)
     {
-      result = infd_session_proxy_handle_session_unsubscribe(
+      infd_session_proxy_handle_session_unsubscribe(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else
     {
-      inf_net_object_received(
+      return inf_net_object_received(
         INF_NET_OBJECT(priv->session),
         connection,
-        node
+        node,
+        error
       );
-
-      result = TRUE;
     }
   }
 
-  if(result == FALSE && error != NULL)
+  if(local_error != NULL)
   {
     /* Only send request-failed when it was a proxy-related request */
     reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
-    inf_xml_util_set_attribute_uint(reply_xml, "code", error->code);
+    inf_xml_util_set_attribute_uint(reply_xml, "code", local_error->code);
 
     xmlNewProp(
       reply_xml,
       (const xmlChar*)"domain",
-      (const xmlChar*)g_quark_to_string(error->domain)
+      (const xmlChar*)g_quark_to_string(local_error->domain)
     );
 
     seq_attr = xmlGetProp(node, (const xmlChar*)"seq");
@@ -1065,15 +1069,17 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
       xmlFree(seq_attr);
     }
 
-    inf_connection_manager_send_to(
-      inf_session_get_connection_manager(priv->session),
+    inf_connection_manager_group_send_to_connection(
       priv->subscription_group,
       connection,
       reply_xml
     );
 
-    g_error_free(error);
-  }  
+    g_propagate_error(error, local_error);
+  }
+
+  /* Don't forward proxy-related messages */
+  return FALSE;
 }
 
 /*
@@ -1281,6 +1287,8 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_return_if_fail(priv->session != NULL);
 
+  infd_session_proxy_subscribe_connection(proxy, connection);
+
   /* Directly synchronize within the subscription group so that we do not
    * need a group change after synchronization, and the connection already
    * receives requests from other group member to process after
@@ -1290,8 +1298,6 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
     priv->subscription_group,
     connection
   );
-
-  infd_session_proxy_subscribe_connection(proxy, connection);
 }
 
 /* vim:set et sw=2 ts=2: */

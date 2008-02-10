@@ -115,16 +115,19 @@ struct _InfSessionClass {
                               GError** error);
 
   /* This method is called for every received message while the session is
-   * running. */
+   * running. Return TRUE if forward is allowed. */
   gboolean(*process_xml_run)(InfSession* session,
                              InfXmlConnection* connection,
                              const xmlNodePtr xml,
                              GError** error);
 
+  /* Creates a list of parameters from an XML node. */
   GArray*(*get_xml_user_props)(InfSession* session,
-                               InfXmlConnection* conn, /* ? */
+                               InfXmlConnection* conn,
                                const xmlNodePtr xml);
 
+  /* This turns a list of parameters (user properties) back into an XML node
+   * to be sent through the network. */
   void (*set_xml_user_props)(InfSession* session,
                              const GParameter* params,
                              guint n_params,

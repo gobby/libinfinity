@@ -824,6 +824,8 @@ inf_adopted_session_process_xml_run(InfSession* session,
 
   if(strcmp((const char*)xml->name, "request") == 0)
   {
+    /* TODO: Check user! */
+
     request = inf_adopted_session_xml_to_request(
       INF_ADOPTED_SESSION(session),
       xml,
@@ -836,6 +838,7 @@ inf_adopted_session_process_xml_run(InfSession* session,
     inf_adopted_algorithm_receive_request(priv->algorithm, request);
     g_object_unref(G_OBJECT(request));
 
+    /* Requests can always be forwarded since user is given. */
     return TRUE;
   }
 

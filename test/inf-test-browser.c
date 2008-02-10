@@ -363,6 +363,7 @@ main(int argc, char* argv[])
     test.browser = infc_browser_new(
       INF_IO(test.io),
       manager,
+      NULL,
       INF_XML_CONNECTION(test.conn)
     );
 

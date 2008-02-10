@@ -21,6 +21,8 @@
 
 #include <glib-object.h>
 
+#include <libinfinity/common/inf-xml-connection.h>
+
 G_BEGIN_DECLS
 
 #define INF_TYPE_USER                 (inf_user_get_type())
@@ -74,6 +76,9 @@ inf_user_get_status(const InfUser* user);
 
 InfUserFlags
 inf_user_get_flags(const InfUser* user);
+
+InfXmlConnection*
+inf_user_get_connection(InfUser* user);
 
 G_END_DECLS
 

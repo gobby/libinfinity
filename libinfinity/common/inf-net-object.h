@@ -39,36 +39,38 @@ struct _InfNetObjectIface {
   GTypeInterface parent;
 
   /* Virtual Table */
-  void (*received)(InfNetObject* object,
-                   InfXmlConnection* conn,
-                   const xmlNodePtr node);
+  gboolean (*received)(InfNetObject* object,
+                       InfXmlConnection* conn,
+                       xmlNodePtr node,
+                       GError** error);
 
   void (*enqueued)(InfNetObject* object,
                    InfXmlConnection* conn,
-                   const xmlNodePtr node);
+                   xmlNodePtr node);
 
   void (*sent)(InfNetObject* object,
                InfXmlConnection* conn,
-               const xmlNodePtr node);
+               xmlNodePtr node);
 };
 
 GType
 inf_net_object_get_type(void) G_GNUC_CONST;
 
-void
+gboolean
 inf_net_object_received(InfNetObject* object,
                         InfXmlConnection* conn,
-                        const xmlNodePtr node);
+                        xmlNodePtr node,
+                        GError** error);
 
 void
 inf_net_object_enqueued(InfNetObject* object,
                         InfXmlConnection* conn,
-                        const xmlNodePtr node);
+                        xmlNodePtr node);
 
 void
 inf_net_object_sent(InfNetObject* object,
                     InfXmlConnection* conn,
-                    const xmlNodePtr node);
+                    xmlNodePtr node);
 
 G_END_DECLS
 

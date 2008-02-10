@@ -127,6 +127,7 @@ enum {
 
   /* From InfXmlConnection */
   PROP_STATUS,
+  PROP_NETWORK,
   PROP_LOCAL_ID,
   PROP_REMOTE_ID
 };
@@ -826,7 +827,7 @@ inf_xmpp_connection_emit_auth_error(InfXmppConnection* xmpp,
 }
 
 /* This sends a <stream:error> and then terminates the session using
- * the inf_xmpp_connection_terminate. text may be NULL. */
+ * the inf_xmpp_connection_terminate. message may be NULL. */
 static void
 inf_xmpp_connection_terminate_error(InfXmppConnection* xmpp,
                                     InfXmppConnectionStreamError code,
@@ -1489,7 +1490,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   g_assert(priv->status == INF_XMPP_CONNECTION_CONNECTED ||
            priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED);
 
-  /* Find from attribute from incoming stream to use as to attribute in
+  /* Find from attribute from incoming stream to use as "to" attribute in
    * outgoing stream. */
   to_attr = NULL;
   if(attrs != NULL)
@@ -3014,6 +3015,9 @@ inf_xmpp_connection_get_property(GObject* object,
   case PROP_STATUS:
     g_value_set_enum(value, inf_xmpp_connection_get_xml_status(xmpp));
     break;
+  case PROP_NETWORK:
+    g_value_set_static_string(value, "local");
+    break;
   case PROP_LOCAL_ID:
     /* TODO: Perhaps we could also use JIDs here, but we have to make sure
      * then that they are unique within the whole network. */
@@ -3237,6 +3241,7 @@ inf_xmpp_connection_class_init(gpointer g_class,
   );
 
   g_object_class_override_property(object_class, PROP_STATUS, "status");
+  g_object_class_override_property(object_class, PROP_NETWORK, "network");
   g_object_class_override_property(object_class, PROP_LOCAL_ID, "local-id");
   g_object_class_override_property(object_class, PROP_REMOTE_ID, "remote-id");
 }

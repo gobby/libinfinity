@@ -71,6 +71,7 @@ struct _InfGtkBrowserModelPrivate {
 
   InfIo* io;
   InfConnectionManager* connection_manager;
+  InfMethodManager* method_manager;
 
   GSList* discoveries;
   InfGtkBrowserModelItem* first_item;
@@ -81,7 +82,8 @@ enum {
   PROP_0,
 
   PROP_IO,
-  PROP_CONNECTION_MANAGER
+  PROP_CONNECTION_MANAGER,
+  PROP_METHOD_MANAGER
 };
 
 enum {
@@ -426,10 +428,16 @@ inf_gtk_browser_model_add_item(InfGtkBrowserModel* model,
     browser = infc_browser_new(
       priv->io,
       priv->connection_manager,
+      priv->method_manager,
       connection
     );
 
-    inf_gtk_browser_model_item_set_browser(model, item, path, browser);
+    /* The connection is not set if the browser could not find a "central"
+     * method for the connection's network. */
+    /* TODO: Set error */
+    if(infc_browser_get_connection(browser) != NULL)
+      inf_gtk_browser_model_item_set_browser(model, item, path, browser);
+
     g_object_unref(G_OBJECT(browser));
   }
 
@@ -907,10 +915,16 @@ inf_gtk_browser_model_resolv_complete_func(InfDiscoveryInfo* info,
     browser = infc_browser_new(
       priv->io,
       priv->connection_manager,
+      priv->method_manager,
       connection
     );
 
-    inf_gtk_browser_model_item_set_browser(model, new_item, path, browser);
+    /* The connection is not set if the browser could not find a "central"
+     * method for the connection's network. */
+    /* TODO: Set error */
+    if(infc_browser_get_connection(browser) != NULL)
+      inf_gtk_browser_model_item_set_browser(model, new_item, path, browser);
+
     g_object_unref(G_OBJECT(browser));
     gtk_tree_path_free(path);
   }
@@ -963,6 +977,7 @@ inf_gtk_browser_model_init(GTypeInstance* instance,
   priv->stamp = g_random_int();
   priv->io = NULL;
   priv->connection_manager = NULL;
+  priv->method_manager = NULL;
   priv->discoveries = NULL;
   priv->first_item = NULL;
   priv->last_item = NULL;
@@ -1001,6 +1016,12 @@ inf_gtk_browser_model_dispose(GObject* object)
 
   g_slist_free(priv->discoveries);
   priv->discoveries = NULL;
+
+  if(priv->method_manager != NULL)
+  {
+    g_object_unref(priv->method_manager);
+    priv->method_manager = NULL;
+  }
 
   if(priv->connection_manager != NULL)
   {
@@ -1041,6 +1062,10 @@ inf_gtk_browser_model_set_property(GObject* object,
       INF_CONNECTION_MANAGER(g_value_dup_object(value));
   
     break;
+  case PROP_METHOD_MANAGER:
+    g_assert(priv->method_manager == NULL); /* construct/only */
+    priv->method_manager = INF_METHOD_MANAGER(g_value_dup_object(value));
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -1066,6 +1091,9 @@ inf_gtk_browser_model_get_property(GObject* object,
     break;
   case PROP_CONNECTION_MANAGER:
     g_value_set_object(value, G_OBJECT(priv->connection_manager));
+    break;
+  case PROP_METHOD_MANAGER:
+    g_value_set_object(value, G_OBJECT(priv->method_manager));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1889,6 +1917,18 @@ inf_gtk_browser_model_class_init(gpointer g_class,
     )
   );
 
+  g_object_class_install_property(
+    object_class,
+    PROP_METHOD_MANAGER,
+    g_param_spec_object(
+      "method-manager",
+      "Method manager",
+      "The method manager used for browsing remote directories",
+      INF_TYPE_METHOD_MANAGER,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
   browser_model_signals[SET_BROWSER] = g_signal_new(
     "set-browser",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -2017,6 +2057,8 @@ inf_gtk_browser_model_get_type(void)
  * @io: A #InfIo object for the created #InfcBrowser to schedule timeouts.
  * @connection_manager: The #InfConnectionManager with which to explore
  * remote directories.
+ * @method_manager: The #InfMethodManager with which to explore remote
+ * directories, or %NULL to use the default method manager.
  *
  * Creates a new #InfGtkBrowserModel.
  *
@@ -2024,7 +2066,8 @@ inf_gtk_browser_model_get_type(void)
  **/
 InfGtkBrowserModel*
 inf_gtk_browser_model_new(InfIo* io,
-                          InfConnectionManager* connection_manager)
+                          InfConnectionManager* connection_manager,
+                          InfMethodManager* method_manager)
 {
   GObject* object;
 
@@ -2032,6 +2075,7 @@ inf_gtk_browser_model_new(InfIo* io,
     INF_GTK_TYPE_BROWSER_MODEL,
     "io", io,
     "connection-manager", connection_manager,
+    "method-manager", method_manager,
     NULL
   );
 

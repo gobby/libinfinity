@@ -1,3 +1,57 @@
+2008-02-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c: Rewrite connection
+	manager to allow different publishers for groups with the same name,
+	as in the spec. Also support dynamic loading of additional
+	communication methods.
+
+	* libinfinity/common/Makefile.am
+	* libinfinity/common/inf-method-manager.h:
+	* libinfinity/common/inf-method-manager.c: New InfMethodManager class
+	to manage available communication methods.
+
+	* libinfinity/Makefile.am
+	* libinfinity/methods/Makefile.am:
+	* libinfinity/methods/local-central/Makefile.am:
+	* libinfinity/methods/local-central/inf-method-local-central.c: Simple
+	"central" method for local networks that uses the publisher as server
+	through which all messages are relayed.
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-net-object.h:
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-user.h:
+	* libinfinity/common/inf-error.c:
+	* libinfinity/common/inf-net-object.c:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/common/inf-user.c:
+	* libinfinity/common/inf-xml-connection.c:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c:
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-server-pool.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/infc-session-proxy.c:
+
+	* test/inf-test-browser.c:
+	* test/inf-test-daemon.c:
+	* test/inf-test-text-session.c:
+	* test/inf-test-gtk-browser.c:
+
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c:
+	* libinftext/inf-text-session.c:
+	* infinoted/infinoted-main.c: Adapt to API changes.
+
+	* configure.ac: Generate Makefiles in newly added directories.
+
+	* INSTALL: Autotools seemed to update this.
+
 2007-12-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-chunk.c: Fixed a crash on amd64.

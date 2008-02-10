@@ -23,6 +23,7 @@
 #include <libinfinity/server/infd-note-plugin.h>
 #include <libinfinity/server/infd-session-proxy.h>
 #include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/common/inf-method-manager.h>
 
 #include <glib-object.h>
 
@@ -77,7 +78,8 @@ infd_directory_iter_free(InfdDirectoryIter* iter);
 InfdDirectory*
 infd_directory_new(InfIo* io,
                    InfdStorage* storage,
-                   InfConnectionManager* connection_manager);
+                   InfConnectionManager* connection_manager,
+                   InfMethodManager* method_manager);
 
 InfIo*
 infd_directory_get_io(InfdDirectory* directory);
@@ -96,7 +98,7 @@ const InfdNotePlugin*
 infd_directory_lookup_plugin(InfdDirectory* directory,
                              const gchar* note_type);
 
-void
+gboolean
 infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection);
 

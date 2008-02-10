@@ -778,6 +778,8 @@ inf_text_session_validate_user_props(InfSession* session,
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
       "'caret' attribute in user message is missing"
     );
+
+    return FALSE;
   }
 
   /* Selection is optional and 0 if not given */

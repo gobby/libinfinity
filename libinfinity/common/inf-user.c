@@ -24,6 +24,7 @@ struct _InfUserPrivate {
   gchar* name;
   InfUserStatus status;
   InfUserFlags flags;
+  InfXmlConnection* connection;
 };
 
 enum {
@@ -32,7 +33,8 @@ enum {
   PROP_ID,
   PROP_NAME,
   PROP_STATUS,
-  PROP_FLAGS
+  PROP_FLAGS,
+  PROP_CONNECTION
 };
 
 #define INF_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
@@ -53,6 +55,7 @@ inf_user_init(GTypeInstance* instance,
   priv->name = NULL;
   priv->status = INF_USER_UNAVAILABLE;
   priv->flags = 0;
+  priv->connection = NULL;
 }
 
 static void
@@ -89,6 +92,19 @@ inf_user_set_property(GObject* object,
 
   user = INF_USER(object);
   priv = INF_USER_PRIVATE(user);
+  
+  /* TODO: Check if properties are still valid.
+   * There are several combinations possible:
+   *
+   * Status  | Flags | Connection | Desc
+   * UNAVAIL |   0   |   unset    | User not available, was non-local last time
+   *  AVAIL  |   0   |   unset    | INVALID
+   * UNAVAIL | LOCAL |   unset    | User not available, was local last time
+   *  AVAIL  | LOCAL |   unset    | User is available, and local
+   * UNAVAIL |   0   |    set     | INVALID
+   *  AVAIL  |   0   |    set     | User is available, non-local
+   * UNAVAIL | LOCAL |    set     | INVALID
+   *  AVAIL  | LOCAL |    set     | INVALID */
 
   switch(prop_id)
   {
@@ -104,6 +120,11 @@ inf_user_set_property(GObject* object,
     break;
   case PROP_FLAGS:
     priv->flags = g_value_get_flags(value);
+    break;
+  case PROP_CONNECTION:
+    /* TODO: Automatically set unavailable when connection is closed? */
+    if(priv->connection != NULL) g_object_unref(priv->connection);
+    priv->connection = INF_XML_CONNECTION(g_value_dup_object(value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -136,6 +157,9 @@ inf_user_get_property(GObject* object,
     break;
   case PROP_FLAGS:
     g_value_set_flags(value, priv->flags);
+    break;
+  case PROP_CONNECTION:
+    g_value_set_object(value, G_OBJECT(priv->connection));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -210,6 +234,18 @@ inf_user_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_CONNECTION,
+    g_param_spec_object(
+      "connection",
+      "Connection",
+      "Connection to the user",
+      INF_TYPE_XML_CONNECTION,
+      G_PARAM_READWRITE
+    )
+  );
 }
 
 GType
@@ -222,12 +258,12 @@ inf_user_flags_get_type(void)
     static const GFlagsValue user_flags_type_values[] = {
       {
         INF_USER_LOCAL,
-	"INF_USER_LOCAL",
-	"local"
+        "INF_USER_LOCAL",
+        "local"
       }, {
         0,
-	NULL,
-	NULL
+        NULL,
+        NULL
       }
     };
 
@@ -361,6 +397,31 @@ inf_user_get_flags(const InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), 0);
   return INF_USER_PRIVATE(user)->flags;
+}
+
+/** inf_user_get_connection:
+ *
+ * @user: A #InfUser.
+ *
+ * Returns a connection to the given #InfUser, or %NULL. If a non-%NULL
+ * connection is returned, then this is the connection through which records
+ * from that user come from. This means that, when this connection is closed,
+ * then the user is no longer available. However, you cannot send something
+ * to this connection expecting the user will receive it. For example,
+ * in central messaging mode, this connection is always the publisher, because
+ * all records from the user are relayed via the publisher.
+ *
+ * If this functions returns %NULL, this either means @user is a local user
+ * (%INF_USER_LOCAL flag set) or it is not available (status is
+ * %INF_USER_UNAVAILBALE).
+ *
+ * Return Value: A #InfXmlConnection, or %NULL.
+ **/
+InfXmlConnection*
+inf_user_get_connection(InfUser* user)
+{
+  g_return_val_if_fail(INF_IS_USER(user), NULL);
+  return INF_USER_PRIVATE(user)->connection;
 }
 
 /* vim:set et sw=2 ts=2: */

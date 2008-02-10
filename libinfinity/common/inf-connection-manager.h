@@ -42,6 +42,57 @@ typedef struct _InfConnectionManagerClass InfConnectionManagerClass;
 
 typedef struct _InfConnectionManagerGroup InfConnectionManagerGroup;
 
+typedef struct _InfConnectionManagerMethod InfConnectionManagerMethod;
+typedef struct _InfConnectionManagerMethodDesc InfConnectionManagerMethodDesc;
+
+typedef enum _InfConnectionManagerScope {
+  INF_CONNECTION_MANAGER_POINT_TO_POINT,
+  INF_CONNECTION_MANAGER_NETWORK,
+  INF_CONNECTION_MANAGER_GROUP
+} InfConnectionManagerScope;
+
+struct _InfConnectionManagerMethodDesc {
+  const gchar* network;
+  const gchar* name;
+
+  InfConnectionManagerMethod*(*open)(const InfConnectionManagerMethodDesc* dc,
+                                     InfConnectionManagerGroup* group);
+  InfConnectionManagerMethod*(*join)(const InfConnectionManagerMethodDesc* dc,
+                                     InfConnectionManagerGroup* group,
+                                     InfXmlConnection* publisher_conn);
+
+  void (*finalize)(InfConnectionManagerMethod* instance);
+
+  /* can_forward specifies whether we can forward this message to other group
+   * members. Normally, messages that should only be processed by the
+   * recipient should not be forwarded, even if the sender requests this
+   * explicitely via scope="group". I'm still wondering whether there are
+   * methods that would need to know can_forward. */
+  void (*receive_msg)(InfConnectionManagerMethod* instance,
+                      InfConnectionManagerScope scope,
+                      gboolean can_forward,
+                      InfXmlConnection* connection,
+                      xmlNodePtr xml);
+  void (*receive_ctrl)(InfConnectionManagerMethod* instance,
+                       InfXmlConnection* connection,
+                       xmlNodePtr xml);
+
+  void (*add_connection)(InfConnectionManagerMethod* instance,
+                         InfXmlConnection* connection);
+  void (*remove_connection)(InfConnectionManagerMethod* instance,
+                            InfXmlConnection* connection);
+
+  /* TODO: Remove this and just rely on registered connections? */
+  gboolean (*has_connection)(InfConnectionManagerMethod* instance,
+                             InfXmlConnection* connection);
+  InfXmlConnection* (*lookup_connection)(InfConnectionManagerMethod* instance,
+                                         const gchar* id);
+
+  void (*send_to_net)(InfConnectionManagerMethod* instance,
+                      InfXmlConnection* except,
+                      xmlNodePtr xml);
+};
+
 struct _InfConnectionManagerClass {
   GObjectClass parent_class;
 };
@@ -60,70 +111,101 @@ InfConnectionManager*
 inf_connection_manager_new(void);
 
 InfConnectionManagerGroup*
-inf_connection_manager_create_group(InfConnectionManager* manager,
-                                    const gchar* group_name,
-                                    InfNetObject* object);
+inf_connection_manager_open_group(InfConnectionManager* manager,
+                                  const gchar* group_name,
+                                  InfNetObject* net_object,
+                                  InfConnectionManagerMethodDesc** methods);
 
 InfConnectionManagerGroup*
-inf_connection_manager_find_group_by_connection(InfConnectionManager* manager,
-                                                const gchar* group_name,
-                                                InfXmlConnection* connection);
+inf_connection_manager_join_group(InfConnectionManager* manager,
+                                  const gchar* group_name,
+                                  InfXmlConnection* publisher_conn,
+                                  InfNetObject* object,
+                                  const InfConnectionManagerMethodDesc* meth);
+
+InfConnectionManagerGroup*
+inf_connection_manager_lookup_group(InfConnectionManager* manager,
+                                    const gchar* group_name,
+                                    InfXmlConnection* publisher);
+
+InfConnectionManagerGroup*
+inf_connection_manager_lookup_group_by_id(InfConnectionManager* manager,
+                                          const gchar* group_name,
+                                          const gchar* publisher_id);
 
 void
-inf_connection_manager_ref_group(InfConnectionManager* manager,
-                                 InfConnectionManagerGroup* group);
+inf_connection_manager_group_ref(InfConnectionManagerGroup* group);
 
 void
-inf_connection_manager_unref_group(InfConnectionManager* manager,
-                                   InfConnectionManagerGroup* group);
+inf_connection_manager_group_unref(InfConnectionManagerGroup* group);
 
-void
-inf_connection_manager_ref_connection(InfConnectionManager* manager,
-                                      InfConnectionManagerGroup* group,
-                                      InfXmlConnection* connection);
-
-void
-inf_connection_manager_unref_connection(InfConnectionManager* manager,
-                                        InfConnectionManagerGroup* group,
-                                        InfXmlConnection* connection);
+const InfConnectionManagerMethodDesc*
+inf_connection_manager_group_get_method_for_network(InfConnectionManagerGroup* g,
+                                                    const gchar* network);
 
 void
 inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
                                         InfNetObject* object);
 
-InfNetObject*
-inf_connection_manager_group_get_object(InfConnectionManagerGroup* group);
+InfXmlConnection*
+inf_connection_manager_group_get_publisher(InfConnectionManagerGroup* group);
+
+const gchar*
+inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp);
+
+gboolean
+inf_connection_manager_group_has_connection(InfConnectionManagerGroup* group,
+                                            InfXmlConnection* conn);
 
 const gchar*
 inf_connection_manager_group_get_name(InfConnectionManagerGroup* group);
 
 gboolean
-inf_connection_manager_has_connection(InfConnectionManager* manager,
-                                      InfConnectionManagerGroup* group,
-                                      InfXmlConnection* connection);
+inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
+                                            InfXmlConnection* conn);
 
 void
-inf_connection_manager_send_to(InfConnectionManager* manager,
-                               InfConnectionManagerGroup* group,
-                               InfXmlConnection* connection,
-                               xmlNodePtr xml);
+inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
+                                               InfXmlConnection* conn);
+
+InfXmlConnection*
+inf_connection_manager_group_lookup_connection(InfConnectionManagerGroup* grp,
+                                               const gchar* network,
+                                               const gchar* id);
 
 void
-inf_connection_manager_send_to_group(InfConnectionManager* manager,
-                                     InfConnectionManagerGroup* group,
-                                     InfXmlConnection* except,
-                                     xmlNodePtr xml);
+inf_connection_manager_group_send_to_connection(InfConnectionManagerGroup* g,
+                                                InfXmlConnection* connection,
+                                                xmlNodePtr xml);
 
 void
-inf_connection_manager_send_multiple_to(InfConnectionManager* manager,
-                                        InfConnectionManagerGroup* group,
-                                        InfXmlConnection* connection,
-                                        xmlNodePtr xml);
+inf_connection_manager_group_send_to_group(InfConnectionManagerGroup* group,
+                                           InfXmlConnection* except,
+                                           xmlNodePtr xml);
 
 void
-inf_connection_manager_cancel_outer(InfConnectionManager* manager,
-                                    InfConnectionManagerGroup* group,
-                                    InfXmlConnection* connection);
+inf_connection_manager_group_clear_queue(InfConnectionManagerGroup* group,
+                                         InfXmlConnection* connection);
+
+/* semi-private: */
+void
+inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
+                                           InfXmlConnection* connection);
+
+void
+inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
+                                             InfXmlConnection* connection);
+
+void
+inf_connection_manager_send_msg(InfConnectionManagerGroup* group,
+                                InfXmlConnection* connection,
+                                InfConnectionManagerScope scope,
+                                xmlNodePtr xml);
+
+void
+inf_connection_manager_send_ctrl(InfConnectionManagerGroup* group,
+                                 InfXmlConnection* connection,
+                                 xmlNodePtr xml);
 
 G_END_DECLS
 

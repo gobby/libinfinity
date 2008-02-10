@@ -25,6 +25,7 @@
 #include <libinfinity/client/infc-node-request.h>
 #include <libinfinity/client/infc-note-plugin.h>
 #include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/common/inf-method-manager.h>
 #include <libinfinity/common/inf-xml-connection.h>
 
 #include <glib-object.h>
@@ -97,6 +98,7 @@ infc_browser_get_type(void) G_GNUC_CONST;
 InfcBrowser*
 infc_browser_new(InfIo* io,
                  InfConnectionManager* connection_manager,
+                 InfMethodManager* method_manager,
                  InfXmlConnection* connection);
 
 InfConnectionManager*

@@ -24,8 +24,6 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 
-#include <libxml/xmlsave.h>
-
 #include <string.h>
 
 typedef struct _InfcSessionProxyPrivate InfcSessionProxyPrivate;
@@ -183,8 +181,7 @@ infc_session_proxy_session_close_cb(InfSession* session,
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
 
-      inf_connection_manager_send_to(
-        inf_session_get_connection_manager(session),
+      inf_connection_manager_group_send_to_connection(
         priv->subscription_group,
         priv->connection,
         xml
@@ -255,17 +252,7 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
     proxy
   );
 
-  inf_connection_manager_unref_connection(
-    inf_session_get_connection_manager(priv->session),
-    priv->subscription_group,
-    priv->connection
-  );
-  
-  inf_connection_manager_unref_group(
-    inf_session_get_connection_manager(priv->session),
-    priv->subscription_group
-  );
-
+  inf_connection_manager_group_unref(priv->subscription_group);
   priv->subscription_group = NULL;
 
   g_object_unref(G_OBJECT(priv->connection));
@@ -534,6 +521,8 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   else
     g_value_set_flags(&param->value, 0);
 
+  /* TODO: Add connection property if set */
+
   /* This validates properties */
   user = inf_session_add_user(
     priv->session,
@@ -626,6 +615,8 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
     g_value_set_flags(&param->value, INF_USER_LOCAL);
   else
     g_value_set_flags(&param->value, 0);
+
+  /* TODO: Add connection property if set */
 
   result = session_class->validate_user_props(
     priv->session,
@@ -884,116 +875,100 @@ infc_session_proxy_net_object_enqueued(InfNetObject* net_object,
   inf_net_object_enqueued(INF_NET_OBJECT(priv->session), connection, node);
 }
 
-static void
+static gboolean
 infc_session_proxy_net_object_received(InfNetObject* net_object,
                                        InfXmlConnection* connection,
-                                       xmlNodePtr node)
+                                       xmlNodePtr node,
+                                       GError** error)
 {
   InfcSessionProxy* proxy;
   InfcSessionProxyPrivate* priv;
   InfcSessionProxyClass* proxy_class;
   InfSessionSyncStatus status;
-  GError* error;
-  gboolean result;
+  GError* local_error;
 
   InfcRequest* request;
-  xmlBufferPtr buffer;
-  xmlSaveCtxtPtr ctx;
   GError* seq_error;
 
   proxy = INFC_SESSION_PROXY(net_object);
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
   proxy_class = INFC_SESSION_PROXY_GET_CLASS(proxy);
   status = inf_session_get_synchronization_status(priv->session, connection);
-  error = NULL;
+  local_error = NULL;
 
   g_assert(priv->connection != NULL && priv->connection == connection);
   g_assert(inf_session_get_status(priv->session) != INF_SESSION_CLOSED);
 
   if(status != INF_SESSION_SYNC_NONE)
-  { 
-    inf_net_object_received(INF_NET_OBJECT(priv->session), connection, node);
-    result = TRUE;
+  {
+    /* Direct delegate during synchronization */
+    return inf_net_object_received(
+      INF_NET_OBJECT(priv->session),
+      connection,
+      node,
+      error
+    );
   }
   else
   {
     if(strcmp((const char*)node->name, "user-join") == 0)
     {
-      result = infc_session_proxy_handle_user_join(
+      infc_session_proxy_handle_user_join(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else if(strcmp((const char*)node->name, "user-rejoin") == 0)
     {
-      result = infc_session_proxy_handle_user_rejoin(
+      infc_session_proxy_handle_user_rejoin(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else if(strcmp((const char*)node->name, "request-failed") == 0)
     {
-      result = infc_session_proxy_handle_request_failed(
+      infc_session_proxy_handle_request_failed(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else if(strcmp((const char*)node->name, "user-status-change") == 0)
     {
-      result = infc_session_proxy_handle_user_status_change(
+      infc_session_proxy_handle_user_status_change(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else if(strcmp((const char*)node->name, "session-close") == 0)
     {
-      result = infc_session_proxy_handle_session_close(
+      infc_session_proxy_handle_session_close(
         proxy,
         connection,
         node,
-        &error
+        &local_error
       );
     }
     else
     {
-      inf_net_object_received(
+      return inf_net_object_received(
         INF_NET_OBJECT(priv->session),
         connection,
-        node
+        node,
+        error
       );
-
-      result = TRUE;
     }
   }
 
-  if(result == FALSE && error != NULL)
+  if(local_error != NULL)
   {
-    buffer = xmlBufferCreate();
-
-    /* TODO: Use the locale's encoding? */
-    ctx = xmlSaveToBuffer(buffer, "UTF-8", XML_SAVE_FORMAT);
-    xmlSaveTree(ctx, node);
-    xmlSaveClose(ctx);
-
-    g_warning(
-      "Received bad XML request: %s\n\nThe request could not be "
-      "processed, thus the session is no longer guaranteed to be in "
-      "a consistent state. Subsequent requests might therefore fail "
-      "as well. The failed request was:\n\n%s",
-      error->message,
-      (const gchar*)xmlBufferContent(buffer)
-    );
- 
-    xmlBufferFree(buffer);
-
     /* If the request had a (valid) seq set, we cancel the corresponding
      * request because the reply could not be processed. */
     request = infc_request_manager_get_request_by_xml(
@@ -1003,7 +978,7 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
       NULL
     );
 
-    if(request == NULL)
+    if(request != NULL)
     {
       /* If the request had a seq set, we cancel the corresponding request
        * because the reply could not be processed. */
@@ -1013,7 +988,7 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_REPLY_UNPROCESSED,
         "Server reply could not be processed: %s",
-        error->message
+        local_error->message
       );
 
       infc_request_manager_fail_request(
@@ -1025,8 +1000,11 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
       g_error_free(seq_error);
     }
 
-    g_error_free(error);
+    g_propagate_error(error, local_error);
   }
+
+  /* Don't forward any of the handled messages */
+  return FALSE;
 }
 
 /*
@@ -1198,8 +1176,7 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
      * because synchronizations are not cancelled through this call. */
     xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
 
-    inf_connection_manager_send_to(
-      inf_session_get_connection_manager(priv->session),
+    inf_connection_manager_group_send_to_connection(
       priv->subscription_group,
       priv->connection,
       xml
@@ -1224,19 +1201,9 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
       proxy
     );
 
-    /* Try to find group */
+    /* Set new group */
     priv->subscription_group = group;
-
-    inf_connection_manager_ref_group(
-      inf_session_get_connection_manager(priv->session),
-      priv->subscription_group
-    );
-
-    inf_connection_manager_ref_connection(
-      inf_session_get_connection_manager(priv->session),
-      priv->subscription_group,
-      connection
-    );
+    inf_connection_manager_group_ref(priv->subscription_group);
   }
 
   inf_session_set_subscription_group(priv->session, priv->subscription_group);
@@ -1298,8 +1265,7 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
   g_assert(session_class->set_xml_user_props != NULL);
   session_class->set_xml_user_props(priv->session, params, n_params, xml);
 
-  inf_connection_manager_send_to(
-    inf_session_get_connection_manager(priv->session),
+  inf_connection_manager_group_send_to_connection(
     priv->subscription_group,
     priv->connection,
     xml
@@ -1355,8 +1321,7 @@ infc_session_proxy_leave_user(InfcSessionProxy* proxy,
   inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
   xmlNewProp(xml, (const xmlChar*)"status", (const xmlChar*)"unavailable");
 
-  inf_connection_manager_send_to(
-    inf_session_get_connection_manager(priv->session),
+  inf_connection_manager_group_send_to_connection(
     priv->subscription_group,
     priv->connection,
     xml

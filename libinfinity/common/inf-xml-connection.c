@@ -84,6 +84,22 @@ inf_xml_connection_base_init(gpointer g_class)
       )
     );
 
+    /* The network of a connection should not change through lifetime. All
+     * users on a given network should be able to create direct connections
+     * between each user. For example, 'jabber' might be such a network,
+     * 'local' another one. All jabber user can have connections to other
+     * jabber users, but not to those on a local network. */
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_string(
+        "network",
+        "Network",
+        "An identifier for the type of network this connection is on",
+        NULL,
+        G_PARAM_READABLE
+      )
+    );
+
     g_object_interface_install_property(
       g_class,
       g_param_spec_string(

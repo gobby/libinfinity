@@ -22,8 +22,6 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-marshal.h>
 
-#include <libxml/xmlsave.h>
-
 #include <string.h>
 
 /* TODO: Set buffer to non-editable during synchronization */
@@ -84,6 +82,11 @@ enum {
   PROP_SUBSCRIPTION_GROUP, /* read/write */
 
   /* initial sync, construct only */
+  /* TODO: Remove this property, since this is already implied by group as
+   * soon as we use a separate group for synchronization. This group than has
+   * to contain excatly one connection (but it doesn't matter how is publisher)
+   * that will be used. We can perhaps even use send_to_group, though that
+   * seems a bit unclean. */
   PROP_SYNC_CONNECTION,
   PROP_SYNC_GROUP,
 
@@ -205,7 +208,7 @@ inf_session_release_connection(InfSession* session,
   InfSessionPrivate* priv;
   InfSessionSync* sync;
   GSList* item;
-  gboolean has_connection;
+/*  gboolean has_connection;*/
 
   priv = INF_SESSION_PRIVATE(session);
 
@@ -215,6 +218,7 @@ inf_session_release_connection(InfSession* session,
     g_assert(priv->shared.sync.conn == connection);
     g_assert(priv->shared.sync.group != NULL);
 
+#if 0
     has_connection = inf_connection_manager_has_connection(
       priv->manager,
       priv->shared.sync.group,
@@ -233,11 +237,9 @@ inf_session_release_connection(InfSession* session,
         connection
       );
     }
+#endif
 
-    inf_connection_manager_unref_group(
-      priv->manager,
-      priv->shared.sync.group
-    );
+    inf_connection_manager_group_unref(priv->shared.sync.group);
 
     priv->shared.sync.conn = NULL;
     priv->shared.sync.group = NULL;
@@ -248,6 +250,7 @@ inf_session_release_connection(InfSession* session,
 
     sync = item->data;
 
+#if 0
     has_connection = inf_connection_manager_has_connection(
       priv->manager,
       sync->group,
@@ -262,11 +265,9 @@ inf_session_release_connection(InfSession* session,
         connection
       );
     }
+#endif
 
-    inf_connection_manager_unref_group(
-      priv->manager,
-      sync->group
-    );
+    inf_connection_manager_group_unref(sync->group);
 
     g_slice_free(InfSessionSync, sync);
     priv->shared.run.syncs = g_slist_delete_link(
@@ -314,8 +315,7 @@ inf_session_send_sync_error(InfSession* session,
   sprintf(code_buf, "%u", (unsigned int)error->code);
   xmlNewProp(node, (const xmlChar*)"code", (const xmlChar*)code_buf);
 
-  inf_connection_manager_send_to(
-    priv->manager,
+  inf_connection_manager_group_send_to_connection(
     priv->shared.sync.group,
     priv->shared.sync.conn,
     node
@@ -433,16 +433,13 @@ inf_session_register_sync(InfSession* session)
      priv->shared.sync.conn != NULL &&
      priv->shared.sync.group != NULL)
   {
-    inf_connection_manager_ref_group(
-      priv->manager,
-      priv->shared.sync.group
-    );
+    inf_connection_manager_group_ref(priv->shared.sync.group);
 
-    inf_connection_manager_ref_connection(
+/*    inf_connection_manager_ref_connection(
       priv->manager,
       priv->shared.sync.group,
       priv->shared.sync.conn
-    );
+    );*/
 
     g_signal_connect(
       G_OBJECT(priv->shared.sync.conn),
@@ -565,12 +562,7 @@ inf_session_set_property(GObject* object,
     break;
   case PROP_SUBSCRIPTION_GROUP:
     if(priv->subscription_group != NULL)
-    {
-      inf_connection_manager_unref_group(
-        priv->manager,
-        priv->subscription_group
-      );
-    }
+      inf_connection_manager_group_unref(priv->subscription_group);
 
     priv->subscription_group =
       (InfConnectionManagerGroup*)g_value_dup_boxed(value);
@@ -770,17 +762,26 @@ inf_session_get_xml_user_props_impl(InfSession* session,
                                     InfXmlConnection* conn,
                                     const xmlNodePtr xml)
 {
+  InfSessionPrivate* priv;
   GArray* array;
   GParameter* parameter;
   xmlChar* name;
   xmlChar* id;
   xmlChar* status;
+#if 0
+  xmlChar* connection;
+  InfXmlConnection* real_conn;
+#endif
 
+  priv = INF_SESSION_PRIVATE(session);
   array = g_array_sized_new(FALSE, FALSE, sizeof(GParameter), 16);
 
   name = xmlGetProp(xml, (const xmlChar*)"name");
   id = xmlGetProp(xml, (const xmlChar*)"id");
   status = xmlGetProp(xml, (const xmlChar*)"status");
+#if 0
+  connection = xmlGetProp(xml, (const xmlChar*)"connection");
+#endif
 
   if(id != NULL)
   {
@@ -810,6 +811,27 @@ inf_session_get_xml_user_props_impl(InfSession* session,
       g_value_set_enum(&parameter->value, INF_USER_UNAVAILABLE);
   }
 
+#if 0
+  if(connection != NULL)
+  {
+    real_conn = inf_connection_manager_group_lookup_connection(
+      priv->subscription_group,
+      connection
+    );
+
+    if(real_conn != NULL)
+    {
+      parameter = inf_session_get_user_property(array, "connection");
+      g_value_init(&parameter->value, INF_TYPE_XML_CONNECTION);
+      g_value_set_object(&parameter->value, G_OBJECT(real_conn));
+    }
+    else
+    {
+      /* TODO: This should be an error. */
+    }
+  }
+#endif
+
   return array;
 }
 
@@ -823,6 +845,10 @@ inf_session_set_xml_user_props_impl(InfSession* session,
   gchar id_buf[16];
   const gchar* name;
   InfUserStatus status;
+#if 0
+  InfXmlConnection* conn;
+  gchar* remote_address;
+#endif
 
   for(i = 0; i < n_params; ++ i)
   {
@@ -852,6 +878,19 @@ inf_session_set_xml_user_props_impl(InfSession* session,
         break;
       }
     }
+/*    else if(strcmp(params[i].name, "connection") == 0)
+    {
+      connection = INF_XML_CONNECTION(g_value_get_object(&params[i].value));
+
+      g_object_get_property(
+        G_OBJECT(connection),
+        "remote-address",
+        &remote_address,
+        NULL
+      );
+
+      g_free(addr);
+    }*/
   }
 }
 
@@ -1075,8 +1114,8 @@ inf_session_handle_received_sync_message(InfSession* session,
        * fail anymore. */
       xml_reply = xmlNewNode(NULL, (const xmlChar*)"sync-ack");
 
-      inf_connection_manager_send_to(
-        priv->manager,
+      inf_connection_manager_group_send_to_connection(
+/*        priv->manager,*/
         priv->shared.sync.group,
         connection,
         xml_reply
@@ -1216,10 +1255,11 @@ inf_session_net_object_enqueued(InfNetObject* net_object,
   }
 }
 
-static void
+static gboolean
 inf_session_net_object_received(InfNetObject* net_object,
                                 InfXmlConnection* connection,
-                                const xmlNodePtr node)
+                                const xmlNodePtr node,
+                                GError** error)
 {
   InfSessionClass* session_class;
   InfSession* session;
@@ -1230,31 +1270,27 @@ inf_session_net_object_received(InfNetObject* net_object,
   InfSessionSyncError code;
   xmlChar* domain_attr;
   xmlChar* code_attr;
-  GError* error;
-
-  xmlBufferPtr buffer;
-  xmlSaveCtxtPtr ctx;
+  GError* local_error;
 
   session = INF_SESSION(net_object);
   priv = INF_SESSION_PRIVATE(session);
-
-  error = NULL;
 
   switch(priv->status)
   {
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
 
+    local_error = NULL;
     result = inf_session_handle_received_sync_message(
       session,
       connection,
       node,
-      &error
+      &local_error
     );
 
-    if(result == FALSE && error != NULL)
+    if(result == FALSE && local_error != NULL)
     {
-      inf_session_send_sync_error(session, error);
+      inf_session_send_sync_error(session, local_error);
 
       /* Note the default handler resets shared->sync.conn and
        * shared->sync.group. */
@@ -1263,27 +1299,25 @@ inf_session_net_object_received(InfNetObject* net_object,
         session_signals[SYNCHRONIZATION_FAILED],
         0,
         connection,
-        error
+        local_error
       );
 
-      g_error_free(error);
-/*      inf_session_close(session);*/
+      g_error_free(local_error);
     }
 
-    break;
+    /* Synchronization is always ptp only, don't forward */
+    return FALSE;
   case INF_SESSION_RUNNING:
     sync = inf_session_find_sync_by_connection(session, connection);
     if(sync != NULL)
     {
       if(strcmp((const gchar*)node->name, "sync-error") == 0)
       {
+        local_error = NULL;
+
         /* There was an error during synchronization, cancel remaining
          * messages. */
-        inf_connection_manager_cancel_outer(
-          priv->manager,
-          sync->group,
-          connection
-        );
+        inf_connection_manager_group_clear_queue(sync->group, connection);
 
         domain_attr = xmlGetProp(node, (const xmlChar*)"domain");
         code_attr = xmlGetProp(node, (const xmlChar*)"code");
@@ -1294,7 +1328,7 @@ inf_session_net_object_received(InfNetObject* net_object,
           code = strtoul((const gchar*)code_attr, NULL, 0);
 
           g_set_error(
-            &error,
+            &local_error,
             domain,
             code,
             "%s",
@@ -1304,7 +1338,7 @@ inf_session_net_object_received(InfNetObject* net_object,
         else
         {
           g_set_error(
-            &error,
+            &local_error,
             inf_session_sync_error_quark,
             INF_SESSION_SYNC_ERROR_FAILED,
             "%s",
@@ -1321,10 +1355,10 @@ inf_session_net_object_received(InfNetObject* net_object,
           session_signals[SYNCHRONIZATION_FAILED],
           0,
           connection,
-          error
+          local_error
         );
 
-        g_error_free(error);
+        g_error_free(local_error);
       }
       else if(strcmp((const gchar*)node->name, "sync-ack") == 0)
       {
@@ -1339,36 +1373,16 @@ inf_session_net_object_received(InfNetObject* net_object,
           );
         }
       }
+
+      /* Synchronization is always ptp only, don't forward */
+      return FALSE;
     }
     else
     {
       session_class = INF_SESSION_GET_CLASS(session);
       g_assert(session_class->process_xml_run != NULL);
 
-      if(!session_class->process_xml_run(session, connection, node, &error))
-      {
-        /* TODO: Send error back to @connection, and process it there with
-         * an equivalent error message. */
-
-        buffer = xmlBufferCreate();
-
-        /* TODO: Use the locale's encoding? */
-        ctx = xmlSaveToBuffer(buffer, "UTF-8", XML_SAVE_FORMAT);
-        xmlSaveTree(ctx, node);
-        xmlSaveClose(ctx);
-
-        g_warning(
-          "Received bad XML request: %s\n\nThe request could not be "
-          "processed, thus the session is no longer guaranteed to be in "
-          "a consistent state. Subsequent requests might therefore fail "
-          "as well. The failed request was:\n\n%s",
-          error->message,
-          (const gchar*)xmlBufferContent(buffer)
-        );
- 
-        xmlBufferFree(buffer);
-        g_error_free(error);
-      }
+      return session_class->process_xml_run(session, connection, node, error);
     }
 
     break;
@@ -1427,16 +1441,7 @@ inf_session_close_handler(InfSession* session)
       );
     }
 
-    inf_connection_manager_unref_connection(
-      priv->manager,
-      priv->shared.sync.group,
-      priv->shared.sync.conn
-    );
-
-    inf_connection_manager_unref_group(
-      priv->manager,
-      priv->shared.sync.group
-    );
+    inf_connection_manager_group_unref(priv->shared.sync.group);
 
     break;
   case INF_SESSION_RUNNING:
@@ -1452,15 +1457,10 @@ inf_session_close_handler(InfSession* session)
        * to cancel anything. */
       if(sync->status == INF_SESSION_SYNC_IN_PROGRESS)
       {
-        inf_connection_manager_cancel_outer(
-          priv->manager,
-          sync->group,
-          sync->conn
-        );
+        inf_connection_manager_group_clear_queue(sync->group, sync->conn);
 
         xml = xmlNewNode(NULL, (const xmlChar*)"sync-cancel");
-        inf_connection_manager_send_to(
-          priv->manager,
+        inf_connection_manager_group_send_to_connection(
           sync->group,
           sync->conn,
           xml
@@ -1477,7 +1477,8 @@ inf_session_close_handler(InfSession* session)
         error
       );
 
-      /* TODO: Actually remove that sync!? */
+      /* TODO: Actually remove that sync!? (Or, is this done in the
+       * synchronization failed default handler?) */
     }
 
     break;
@@ -1489,12 +1490,9 @@ inf_session_close_handler(InfSession* session)
 
   if(priv->subscription_group != NULL)
   {
-    inf_connection_manager_unref_group(
-      priv->manager,
-      priv->subscription_group
-    );
-
+    inf_connection_manager_group_unref(priv->subscription_group);
     priv->subscription_group = NULL;
+
     g_object_notify(G_OBJECT(session), "subscription-group");
   }
 
@@ -2095,7 +2093,9 @@ inf_session_add_user(InfSession* session,
  * construction properties set should have been created. @group is used
  * as a group in the connection manager. It is allowed for @group to have
  * another #InfNetObject than @session, however, you should forward the
- * #InfNetObject messages your object receives to @session then.
+ * #InfNetObject messages your object receives to @session then. Also,
+ * @connection must already be present in @group, and should not be removed
+ * until synchronization finished.
  *
  * A synchronization can only be initiated if @session is in state
  * %INF_SESSION_RUNNING.
@@ -2109,6 +2109,7 @@ inf_session_synchronize_to(InfSession* session,
   InfSessionClass* session_class;
   InfSessionSync* sync;
   xmlNodePtr messages;
+  xmlNodePtr next;
   xmlNodePtr xml;
   gchar num_messages_buf[16];
 
@@ -2143,12 +2144,11 @@ inf_session_synchronize_to(InfSession* session,
   );
 
   sync->group = group;
-  inf_connection_manager_ref_group(priv->manager, sync->group);
+  inf_connection_manager_group_ref(sync->group);
 
-  inf_connection_manager_ref_connection(
-    priv->manager,
-    sync->group,
-    connection
+  /* The group needs to contain that connection, of course. */
+  g_assert(
+    inf_connection_manager_group_has_connection(sync->group, connection)
   );
 
   /* Name is irrelevant because the node is only used to collect the child
@@ -2169,26 +2169,30 @@ inf_session_synchronize_to(InfSession* session,
     (const xmlChar*)num_messages_buf
   );
 
-  inf_connection_manager_send_to(
-    priv->manager,
+  inf_connection_manager_group_send_to_connection(
     sync->group,
     connection,
     xml
   );
 
-  inf_connection_manager_send_multiple_to(
-    priv->manager,
-    sync->group,
-    connection,
-    messages->children
-  );
+  /* TODO: Add a function that can send multiple messages */
+  for(xml = messages->children; xml != NULL; xml = next)
+  {
+    next = xml->next;
+    xmlUnlinkNode(xml);
+
+    inf_connection_manager_group_send_to_connection(
+      sync->group,
+      connection,
+      xml
+    );
+  }
 
   xmlFreeNode(messages);
 
   xml = xmlNewNode(NULL, (const xmlChar*)"sync-end");
 
-  inf_connection_manager_send_to(
-    priv->manager,
+  inf_connection_manager_group_send_to_connection(
     sync->group,
     connection,
     xml
@@ -2352,19 +2356,12 @@ inf_session_set_subscription_group(InfSession* session,
   if(priv->subscription_group != group)
   {
     if(priv->subscription_group != NULL)
-    {
-      inf_connection_manager_unref_group(
-        priv->manager,
-        priv->subscription_group
-      );
-    }
+      inf_connection_manager_group_unref(priv->subscription_group);
 
     priv->subscription_group = group;
 
     if(group != NULL)
-    {
-      inf_connection_manager_ref_group(priv->manager, group);
-    }
+      inf_connection_manager_group_ref(group);
 
     g_object_notify(G_OBJECT(session), "subscription-group");
   }
@@ -2394,8 +2391,7 @@ inf_session_send_to_subscriptions(InfSession* session,
   priv = INF_SESSION_PRIVATE(session);
   g_return_if_fail(priv->subscription_group != NULL);
 
-  inf_connection_manager_send_to_group(
-    priv->manager,
+  inf_connection_manager_group_send_to_group(
     priv->subscription_group,
     except,
     xml

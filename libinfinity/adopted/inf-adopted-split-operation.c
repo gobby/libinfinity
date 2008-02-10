@@ -121,12 +121,12 @@ inf_adopted_split_operation_set_property(GObject* object,
   case PROP_FIRST:
     if(priv->first != NULL) g_object_unref(G_OBJECT(priv->first));
     priv->first = INF_ADOPTED_OPERATION(g_value_dup_object(value));
-    g_assert(priv->first != operation);
+    g_assert(priv->first != INF_ADOPTED_OPERATION(operation));
     break;
   case PROP_SECOND:
     if(priv->second != NULL) g_object_unref(G_OBJECT(priv->second));
     priv->second = INF_ADOPTED_OPERATION(g_value_dup_object(value));
-    g_assert(priv->second != operation);
+    g_assert(priv->second != INF_ADOPTED_OPERATION(operation));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
