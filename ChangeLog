@@ -1,3 +1,9 @@
+2008-02-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session.c: Send undo and redo
+	operations as child of the <request> element instead of as an
+	attribute of it. This is how the receiving code expects it.
+
 2008-02-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.h:

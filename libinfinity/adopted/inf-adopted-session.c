@@ -232,15 +232,17 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
   case INF_ADOPTED_REQUEST_DO:
     operation = inf_adopted_request_get_operation(request);
 
-    inf_xml_util_set_attribute(xml, "type", "do");
+    /*inf_xml_util_set_attribute(xml, "type", "do");*/
     op_xml = session_class->operation_to_xml(session, operation, for_sync);
     xmlAddChild(xml, op_xml);
     break;
   case INF_ADOPTED_REQUEST_UNDO:
-    inf_xml_util_set_attribute(xml, "type", "undo");
+    op_xml = xmlNewNode(NULL, (const xmlChar*)"undo");
+    xmlAddChild(xml, op_xml);
     break;
   case INF_ADOPTED_REQUEST_REDO:
-    inf_xml_util_set_attribute(xml, "type", "redo");
+    op_xml = xmlNewNode(NULL, (const xmlChar*)"redo");
+    xmlAddChild(xml, op_xml);
     break;
   default:
     g_assert_not_reached();
