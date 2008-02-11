@@ -39,7 +39,9 @@ typedef struct _InfAdoptedAlgorithmClass InfAdoptedAlgorithmClass;
 
 struct _InfAdoptedAlgorithmClass {
   GObjectClass parent_class;
-  
+
+  /* Signals */
+
   void(*can_undo_changed)(InfAdoptedAlgorithm* algorithm,
                           InfAdoptedUser* user,
                           gboolean can_undo);
@@ -47,6 +49,10 @@ struct _InfAdoptedAlgorithmClass {
   void(*can_redo_changed)(InfAdoptedAlgorithm* algorithm,
                           InfAdoptedUser* user,
                           gboolean can_redo);
+
+  void(*apply_request)(InfAdoptedAlgorithm* algorithm,
+                       InfAdoptedUser* user,
+                       InfAdoptedRequest* request);
 };
 
 struct _InfAdoptedAlgorithm {
@@ -91,6 +97,14 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
 void
 inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
                                       InfAdoptedRequest* request);
+
+gboolean
+inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
+                               InfAdoptedUser* user);
+
+gboolean
+inf_adopted_algorithm_can_redo(InfAdoptedAlgorithm* algorithm,
+                               InfAdoptedUser* user);
 
 G_END_DECLS
 

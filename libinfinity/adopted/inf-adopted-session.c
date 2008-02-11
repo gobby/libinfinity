@@ -1219,4 +1219,50 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
   inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
 }
 
+/** inf_adopted_session_undo:
+ *
+ * @session: A #InfAdoptedSession.
+ * @user: A local #InfAdoptedUser.
+ *
+ * This is a shortcut for creating an undo request and broadcasting it.
+ **/
+void
+inf_adopted_session_undo(InfAdoptedSession* session,
+                         InfAdoptedUser* user)
+{
+  InfAdoptedSessionPrivate* priv;
+  InfAdoptedRequest* request;
+
+  g_return_if_fail(INF_ADOPTED_IS_SESSION(session));
+  g_return_if_fail(INF_ADOPTED_IS_USER(user));
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  request = inf_adopted_algorithm_generate_undo(priv->algorithm, user);
+  inf_adopted_session_broadcast_request(session, request);
+  g_object_unref(request);  
+}
+
+/** inf_adopted_session_redo:
+ *
+ * @session: A #InfAdoptedSession.
+ * @user: A local #InfAdoptedUser.
+ *
+ * This is a shortcut for creating a redo request and broadcasting it.
+ **/
+void
+inf_adopted_session_redo(InfAdoptedSession* session,
+                         InfAdoptedUser* user)
+{
+  InfAdoptedSessionPrivate* priv;
+  InfAdoptedRequest* request;
+
+  g_return_if_fail(INF_ADOPTED_IS_SESSION(session));
+  g_return_if_fail(INF_ADOPTED_IS_USER(user));
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  request = inf_adopted_algorithm_generate_redo(priv->algorithm, user);
+  inf_adopted_session_broadcast_request(session, request);
+  g_object_unref(request);  
+}
+
 /* vim:set et sw=2 ts=2: */

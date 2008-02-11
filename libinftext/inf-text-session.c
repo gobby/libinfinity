@@ -160,35 +160,30 @@ inf_text_session_buffer_insert_text_cb_before(InfTextBuffer* buffer,
   InfAdoptedAlgorithm* algorithm;
   InfAdoptedRequest* request;
 
-  /* TODO: Always broadcast, but block signal handler when the insertion
-   * happend in synchronization or during a remote request. */
-  if(user != NULL && (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
-  {
-    g_assert(INF_TEXT_IS_USER(user));
+  g_assert(INF_TEXT_IS_USER(user));
 
-    session = INF_TEXT_SESSION(user_data);
+  session = INF_TEXT_SESSION(user_data);
 
-    operation = INF_ADOPTED_OPERATION(
-      inf_text_default_insert_operation_new(pos, chunk)
-    );
+  operation = INF_ADOPTED_OPERATION(
+    inf_text_default_insert_operation_new(pos, chunk)
+  );
 
-    algorithm = inf_adopted_session_get_algorithm(
-      INF_ADOPTED_SESSION(session)
-    );
+  algorithm = inf_adopted_session_get_algorithm(
+    INF_ADOPTED_SESSION(session)
+  );
 
-    request = inf_adopted_algorithm_generate_request_noexec(
-      algorithm,
-      INF_ADOPTED_USER(user),
-      operation
-    );
+  request = inf_adopted_algorithm_generate_request_noexec(
+    algorithm,
+    INF_ADOPTED_USER(user),
+    operation
+  );
 
-    inf_adopted_session_broadcast_request(
-      INF_ADOPTED_SESSION(session),
-      request
-    );
+  inf_adopted_session_broadcast_request(
+    INF_ADOPTED_SESSION(session),
+    request
+  );
 
-    g_object_unref(G_OBJECT(request));
-  }
+  g_object_unref(G_OBJECT(request));
 }
 
 static void
@@ -285,6 +280,8 @@ inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
   }
 }
 
+/* The after handlers readjust the caret and selection properties of the
+ * users. */
 static void
 inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
                                              guint pos,
@@ -341,6 +338,111 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
     inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
 }
 
+/* Block above before handlers when the adopted algorithm applies a request.
+ * This way, we don't re-broadcast incoming requests, and we don't broadcast
+ * the effect of an Undo if the user calls inf_adopted_session_undo(). */
+static void
+inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
+                                         InfAdoptedUser* user,
+                                         InfAdoptedRequest* request,
+                                         gpointer user_data)
+{
+  InfSession* session;
+  InfTextBuffer* buffer;
+  
+  session = INF_SESSION(user_data);
+  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
+
+  g_signal_handlers_block_by_func(
+    G_OBJECT(buffer),
+    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
+    session
+  );
+  
+  g_signal_handlers_block_by_func(
+    G_OBJECT(buffer),
+    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
+    session
+  );
+}
+
+static void
+inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
+                                         InfAdoptedUser* user,
+                                         InfAdoptedRequest* request,
+                                         gpointer user_data)
+{
+  InfSession* session;
+  InfTextBuffer* buffer;
+  
+  session = INF_SESSION(user_data);
+  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(buffer),
+    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
+    session
+  );
+  
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(buffer),
+    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
+    session
+  );
+}
+
+static void
+inf_text_session_init_text_handlers(InfTextSession* session)
+{
+  InfTextBuffer* buffer;
+  InfAdoptedAlgorithm* algorithm;
+
+  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+
+  g_signal_connect(
+    G_OBJECT(buffer),
+    "insert-text",
+    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
+    session
+  );
+
+  g_signal_connect(
+    G_OBJECT(buffer),
+    "erase-text",
+    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
+    session
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(buffer),
+    "insert-text",
+    G_CALLBACK(inf_text_session_buffer_insert_text_cb_after),
+    session
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(buffer),
+    "erase-text",
+    G_CALLBACK(inf_text_session_buffer_erase_text_cb_after),
+    session
+  );
+
+  g_signal_connect(
+    G_OBJECT(algorithm),
+    "apply-request",
+    G_CALLBACK(inf_text_session_apply_request_cb_before),
+    session
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(algorithm),
+    "apply-request",
+    G_CALLBACK(inf_text_session_apply_request_cb_after),
+    session
+  );
+}
+
 /*
  * GObject overrides.
  */
@@ -379,38 +481,19 @@ inf_text_session_constructor(GType type,
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
   g_object_get(G_OBJECT(session), "status", &status, NULL);
 
+  /* We can either be already synchronized in which case we use the given
+   * buffer as initial buffer. This is used to initiate a new session with
+   * predefined content. In that case, we can directly start through. In the
+   * other case we are getting synchronized in which case the buffer must be
+   * empty (we will fill it during synchronization). Text handlers are
+   * connected when synchronization is complete. */
   g_assert(
     status != INF_SESSION_SYNCHRONIZING ||
     inf_text_buffer_get_length(buffer) == 0
   );
 
-  g_signal_connect(
-    G_OBJECT(buffer),
-    "insert-text",
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
-    session
-  );
-
-  g_signal_connect(
-    G_OBJECT(buffer),
-    "erase-text",
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
-    session
-  );
-
-  g_signal_connect(
-    G_OBJECT(buffer),
-    "insert-text",
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_after),
-    session
-  );
-
-  g_signal_connect(
-    G_OBJECT(buffer),
-    "erase-text",
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_after),
-    session
-  );
+  if(status != INF_SESSION_SYNCHRONIZING)
+    inf_text_session_init_text_handlers(session);
 
   return object;
 }
@@ -1129,6 +1212,27 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
   }
 }
 
+static void
+inf_text_session_synchronization_complete(InfSession* session,
+                                          InfXmlConnection* connection)
+{
+  InfSessionStatus status;
+  status = inf_session_get_status(session);
+
+  INF_SESSION_CLASS(parent_class)->synchronization_complete(
+    session,
+    connection
+  );
+
+  /* init_text_handlers needs to access the algorithm which is created in the
+   * parent class default signal handler which is why we call this afterwards.
+   * Note that we need to query status before, so we know whether the session
+   * itself was synchronized (status == SYNCHRONIZING) or whether we just
+   * synchronized the session to someone else (status == RUNNING). */
+  if(status == INF_SESSION_SYNCHRONIZING)
+    inf_text_session_init_text_handlers(INF_TEXT_SESSION(session));
+}
+
 /*
  * Gype registration.
  */
@@ -1161,6 +1265,8 @@ inf_text_session_class_init(gpointer g_class,
   session_class->set_xml_user_props = inf_text_session_set_xml_user_props;
   session_class->validate_user_props = inf_text_session_validate_user_props;
   session_class->user_new = inf_text_session_user_new;
+  session_class->synchronization_complete =
+    inf_text_session_synchronization_complete;
 
   adopted_session_class->xml_to_operation = inf_text_session_xml_to_operation;
   adopted_session_class->operation_to_xml = inf_text_session_operation_to_xml;

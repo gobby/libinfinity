@@ -1,5 +1,21 @@
 2008-02-11  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Added
+	inf_adopted_algorithm_can_undo() and inf_adopted_algorithm_can_redo()
+	and the apply-request signal.
+
+	* libinfinity/adopted/inf-adopted-session.h:
+	* libinfinity/adopted/inf-adopted-session.c: Added
+	inf_adopted_session_undo() and inf_adopted_session_redo().
+
+	* libinftext/inf-text-session.c: Don't broadcast while the algorithm
+	itself is applying a request.
+
+	* test/inf-test-gtk-browser.c: Added GUI for undo/redo.
+
+2008-02-11  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-session.c: Send undo and redo
 	operations as child of the <request> element instead of as an
 	attribute of it. This is how the receiving code expects it.

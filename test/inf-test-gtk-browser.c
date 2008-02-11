@@ -27,15 +27,23 @@
 #include <libinfinity/common/inf-error.h>
 
 #include <gtk/gtkmain.h>
+#include <gtk/gtkbutton.h>
+#include <gtk/gtkhbbox.h>
+#include <gtk/gtkvbox.h>
 #include <gtk/gtkscrolledwindow.h>
 #include <gtk/gtktextview.h>
 #include <gtk/gtkwindow.h>
+#include <gtk/gtkstock.h>
 
 typedef struct _InfTestGtkBrowserWindow InfTestGtkBrowserWindow;
 struct _InfTestGtkBrowserWindow {
   GtkWidget* textview;
+  GtkWidget* undo_button;
+  GtkWidget* redo_button;
+
   InfTextGtkBuffer* buffer;
   InfcSessionProxy* proxy;
+  InfUser* user;
 };
 
 static InfSession*
@@ -89,15 +97,79 @@ set_error(InfTestGtkBrowserWindow* test,
 }
 
 static void
+on_undo_button_clicked(GtkButton* button,
+                       gpointer user_data)
+{
+  InfTestGtkBrowserWindow* test;
+  InfAdoptedSession* session;
+
+  test = (InfTestGtkBrowserWindow*)user_data;
+  session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
+  inf_adopted_session_undo(session, INF_ADOPTED_USER(test->user));
+}
+
+static void
+on_redo_button_clicked(GtkButton* button,
+                       gpointer user_data)
+{
+  InfTestGtkBrowserWindow* test;
+  InfAdoptedSession* session;
+
+  test = (InfTestGtkBrowserWindow*)user_data;
+  session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
+  inf_adopted_session_redo(session, INF_ADOPTED_USER(test->user));
+}
+
+static void
+on_can_undo_changed(InfAdoptedAlgorithm* algorithm,
+                    InfAdoptedUser* user,
+                    gboolean can_undo,
+                    gpointer user_data)
+{
+  InfTestGtkBrowserWindow* test;
+  test = (InfTestGtkBrowserWindow*)user_data;
+
+  gtk_widget_set_sensitive(test->undo_button, can_undo);
+}
+
+static void
+on_can_redo_changed(InfAdoptedAlgorithm* algorithm,
+                    InfAdoptedUser* user,
+                    gboolean can_redo,
+                    gpointer user_data)
+{
+  InfTestGtkBrowserWindow* test;
+  test = (InfTestGtkBrowserWindow*)user_data;
+
+  gtk_widget_set_sensitive(test->redo_button, can_redo);
+}
+
+static void
 on_join_finished(InfcUserRequest* request,
                  InfUser* user,
                  gpointer user_data)
 {
   InfTestGtkBrowserWindow* test;
+  InfAdoptedSession* session;
+  InfAdoptedAlgorithm* algorithm;
+  gboolean undo;
+  gboolean redo;
+
   test = (InfTestGtkBrowserWindow*)user_data;
 
   inf_text_gtk_buffer_set_active_user(test->buffer, INF_TEXT_USER(user));
   gtk_text_view_set_editable(GTK_TEXT_VIEW(test->textview), TRUE);
+
+  test->user = user;
+
+  session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
+  algorithm = inf_adopted_session_get_algorithm(session);
+
+  undo = inf_adopted_algorithm_can_undo(algorithm, INF_ADOPTED_USER(user));
+  redo = inf_adopted_algorithm_can_redo(algorithm, INF_ADOPTED_USER(user));
+
+  gtk_widget_set_sensitive(test->undo_button, undo);
+  gtk_widget_set_sensitive(test->redo_button, redo);
 }
 
 static void
@@ -209,8 +281,26 @@ on_synchronization_complete(InfSession* session,
                             gpointer user_data)
 {
   InfTestGtkBrowserWindow* test;
+  InfAdoptedAlgorithm* algorithm;
 
   test = (InfTestGtkBrowserWindow*)user_data;
+  session = infc_session_proxy_get_session(test->proxy);
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+
+  g_signal_connect(
+    G_OBJECT(algorithm),
+    "can-undo-changed",
+    G_CALLBACK(on_can_undo_changed),
+    test
+  );
+
+  g_signal_connect(
+    G_OBJECT(algorithm),
+    "can-redo-changed",
+    G_CALLBACK(on_can_redo_changed),
+    test
+  );
+
   request_join(test, g_get_user_name());
 }
 
@@ -231,6 +321,10 @@ on_subscribe_session(InfcBrowser* browser,
   GtkWidget* window;
   GtkWidget* scroll;
   GtkWidget* textview;
+  GtkWidget* vbox;
+  GtkWidget* hbox;
+  GtkWidget* undo_button;
+  GtkWidget* redo_button;
   InfSession* session;
   InfTextGtkBuffer* buffer;
   GtkTextBuffer* textbuffer;
@@ -245,6 +339,10 @@ on_subscribe_session(InfcBrowser* browser,
   gtk_widget_show(textview);
 
   scroll = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_shadow_type(
+    GTK_SCROLLED_WINDOW(scroll),
+    GTK_SHADOW_IN
+  );
 
   gtk_scrolled_window_set_policy(
     GTK_SCROLLED_WINDOW(scroll),
@@ -254,6 +352,23 @@ on_subscribe_session(InfcBrowser* browser,
 
   gtk_container_add(GTK_CONTAINER(scroll), textview);
   gtk_widget_show(scroll);
+
+  undo_button = gtk_button_new_from_stock(GTK_STOCK_UNDO);
+  redo_button = gtk_button_new_from_stock(GTK_STOCK_REDO);
+  gtk_widget_set_sensitive(undo_button, FALSE);
+  gtk_widget_set_sensitive(redo_button, FALSE);
+  gtk_widget_show(undo_button);
+  gtk_widget_show(redo_button);
+
+  hbox = gtk_hbutton_box_new();
+  gtk_box_pack_start(GTK_BOX(hbox), undo_button, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(hbox), redo_button, FALSE, FALSE, 0);
+  gtk_widget_show(hbox);
+
+  vbox = gtk_vbox_new(FALSE, 6);
+  gtk_box_pack_start(GTK_BOX(vbox), scroll, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+  gtk_widget_show(vbox);
 
   window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
@@ -265,13 +380,16 @@ on_subscribe_session(InfcBrowser* browser,
   gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
   gtk_window_set_icon_name(GTK_WINDOW(window), "infinote");
   gtk_container_set_border_width(GTK_CONTAINER(window), 6);
-  gtk_container_add(GTK_CONTAINER(window), scroll);
+  gtk_container_add(GTK_CONTAINER(window), vbox);
   gtk_widget_show(window);
 
   test = g_slice_new(InfTestGtkBrowserWindow);
   test->textview = textview;
+  test->undo_button = undo_button;
+  test->redo_button = redo_button;
   test->buffer = buffer;
   test->proxy = proxy;
+  test->user = NULL;
 
   g_signal_connect_after(
     G_OBJECT(session),
@@ -293,6 +411,20 @@ on_subscribe_session(InfcBrowser* browser,
     G_CALLBACK(on_text_window_destroy),
     test
   );
+
+  g_signal_connect(
+    G_OBJECT(undo_button),
+    "clicked",
+    G_CALLBACK(on_undo_button_clicked),
+    test
+  );
+
+  g_signal_connect(
+    G_OBJECT(redo_button),
+    "clicked",
+    G_CALLBACK(on_redo_button_clicked),
+    test
+  );
 }
 
 static void
@@ -306,7 +438,7 @@ on_set_browser(InfGtkBrowserModel* model,
   {
     infc_browser_add_plugin(browser, &INF_TEST_GTK_BROWSER_TEXT_PLUGIN);
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(browser),
       "subscribe-session",
       G_CALLBACK(on_subscribe_session),

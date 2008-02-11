@@ -84,6 +84,14 @@ void
 inf_adopted_session_broadcast_request(InfAdoptedSession* session,
                                       InfAdoptedRequest* request);
 
+void
+inf_adopted_session_undo(InfAdoptedSession* session,
+                         InfAdoptedUser* user);
+
+void
+inf_adopted_session_redo(InfAdoptedSession* session,
+                         InfAdoptedUser* user);
+
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_SESSION_H__ */

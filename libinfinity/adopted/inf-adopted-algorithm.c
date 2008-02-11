@@ -75,6 +75,7 @@ enum {
 enum {
   CAN_UNDO_CHANGED,
   CAN_REDO_CHANGED,
+  APPLY_REQUEST,
 
   LAST_SIGNAL
 };
@@ -502,6 +503,26 @@ inf_adopted_algorithm_update_undo_redo(InfAdoptedAlgorithm* algorithm)
       );
     }
   }
+}
+
+static InfAdoptedAlgorithmLocalUser*
+inf_adopted_algorithm_find_local_user(InfAdoptedAlgorithm* algorithm,
+                                      InfAdoptedUser* user)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  GSList* item;
+  InfAdoptedAlgorithmLocalUser* local;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+  {
+    local = (InfAdoptedAlgorithmLocalUser*)item->data;
+    if(local->user == user)
+      return local;
+  }
+
+  return NULL;
 }
 
 /* Required by inf_adopted_algorithm_user_notify_cb */
@@ -1238,10 +1259,12 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   if(apply == TRUE)
   {
-    inf_adopted_operation_apply(
-      inf_adopted_request_get_operation(translated),
+    g_signal_emit(
+      G_OBJECT(algorithm),
+      algorithm_signals[APPLY_REQUEST],
+      0,
       user,
-      priv->buffer
+      translated
     );
   }
 
@@ -1402,6 +1425,21 @@ inf_adopted_algorithm_can_redo_changed(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
+inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
+                                    InfAdoptedUser* user,
+                                    InfAdoptedRequest* request)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  inf_adopted_operation_apply(
+    inf_adopted_request_get_operation(request),
+    user,
+    priv->buffer
+  );
+}
+
+static void
 inf_adopted_algorithm_class_init(gpointer g_class,
                                  gpointer class_data)
 {
@@ -1421,6 +1459,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
 
   algorithm_class->can_undo_changed = inf_adopted_algorithm_can_undo_changed;
   algorithm_class->can_redo_changed = inf_adopted_algorithm_can_redo_changed;
+  algorithm_class->apply_request = inf_adopted_algorithm_apply_request;
 
   g_object_class_install_property(
     object_class,
@@ -1472,6 +1511,19 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     2,
     INF_ADOPTED_TYPE_USER,
     G_TYPE_BOOLEAN
+  );
+
+  algorithm_signals[APPLY_REQUEST] = g_signal_new(
+    "apply-request",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, apply_request),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_ADOPTED_TYPE_USER,
+    INF_ADOPTED_TYPE_REQUEST
   );
 }
 
@@ -1537,7 +1589,7 @@ inf_adopted_algorithm_new(InfBuffer* buffer)
  * processed by all users, the sum of all requests in the logs is guaranteed
  * to be lower or equal to this value. (TODO: I am not sure this is right 
  * since DO requests have to be kept if their associated requests (if any) are
- * still needed for other user's transformation.
+ * still needed for other user's transformation).
  *
  * Set to 0 to disable limitation. In theory, this would allow everyone to
  * undo every operation up to the first one ever made. In practise, this
@@ -1775,6 +1827,7 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
     (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0,
     NULL
   );
+  g_return_val_if_fail(inf_adopted_algorithm_can_undo(algorithm, user), NULL);
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
@@ -1817,6 +1870,7 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
     (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0,
     NULL
   );
+  g_return_val_if_fail(inf_adopted_algorithm_can_redo(algorithm, user), NULL);
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
@@ -1929,6 +1983,54 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
 
   inf_adopted_algorithm_update_request_logs(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
+}
+
+/** inf_adopted_algorithm_can_undo:
+ *
+ * @algorithm: A #InfAdoptedAlgorithm.
+ * @user: A local #InfAdoptedUser.
+ *
+ * Returns whether @user can issue an undo request in the current state.
+ *
+ * Return Value: %TRUE if Undo is possible, %FALSE otherwise.
+ **/
+gboolean
+inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
+                               InfAdoptedUser* user)
+{
+  InfAdoptedAlgorithmLocalUser* local;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), FALSE);
+  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), FALSE);
+
+  local = inf_adopted_algorithm_find_local_user(algorithm, user);
+  g_return_val_if_fail(local != NULL, FALSE);
+
+  return local->can_undo;
+}
+
+/** inf_adopted_algorithm_can_redo:
+ *
+ * @algorithm: A #InfAdoptedAlgorithm.
+ * @user: A local #InfAdoptedUser.
+ *
+ * Returns whether @user can issue a redo request in the current state.
+ *
+ * Return Value: %TRUE if Redo is possible, %FALSE otherwise.
+ **/
+gboolean
+inf_adopted_algorithm_can_redo(InfAdoptedAlgorithm* algorithm,
+                               InfAdoptedUser* user)
+{
+  InfAdoptedAlgorithmLocalUser* local;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), FALSE);
+  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), FALSE);
+
+  local = inf_adopted_algorithm_find_local_user(algorithm, user);
+  g_return_val_if_fail(local != NULL, FALSE);
+
+  return local->can_redo;
 }
 
 /* vim:set et sw=2 ts=2: */
