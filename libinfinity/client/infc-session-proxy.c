@@ -642,14 +642,6 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
       g_object_set_property(G_OBJECT(user), param->name, &param->value);
   }
 
-#if 0
-  /* Set local flag correctly */
-  if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
-    g_object_set(G_OBJECT(user), "flags", INF_USER_LOCAL, NULL);
-  else
-    g_object_set(G_OBJECT(user), "flags", 0, NULL);
-#endif
-
   /* TODO: Set user status to available, if the server did not send the
    * status property? Require the status property being set on a rejoin? */
 

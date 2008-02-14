@@ -18,6 +18,7 @@
 
 /* TODO: Noop requests for local users after not having sent something for some time */
 /* TODO: warning if no update from a particular non-local user for some time */
+/* TODO: Use InfUserTable's add-local-user and remove-local-user signals */
 
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -220,8 +221,10 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
     inf_adopted_state_vector_free(local->last_send_vector);
     local->last_send_vector = inf_adopted_state_vector_copy(vector);
 
-    /* Add this request to last send vector. */
-    inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
+    /* Add this request to last send vector if it increases vector time
+     * (-> affects buffer). */
+    if(inf_adopted_request_affects_buffer(request) == TRUE)
+      inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
   }
 
   inf_xml_util_set_attribute(xml, "time", vec_str);

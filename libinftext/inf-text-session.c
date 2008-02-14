@@ -160,6 +160,11 @@ inf_text_session_buffer_insert_text_cb_before(InfTextBuffer* buffer,
   InfAdoptedAlgorithm* algorithm;
   InfAdoptedRequest* request;
 
+  /* Hack: Don't do anything while loading from storage. This is just for
+   * testing. We should change the loading process so that it loads the
+   * buffer before passing it to session. */
+  /*if(user == NULL) return;*/
+
   g_assert(INF_TEXT_IS_USER(user));
 
   session = INF_TEXT_SESSION(user_data);
@@ -199,35 +204,120 @@ inf_text_session_buffer_erase_text_cb_before(InfTextBuffer* buffer,
   InfAdoptedRequest* request;
   InfTextChunk* erased_chunk;
 
-  if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
-  {
-    g_assert(INF_TEXT_IS_USER(user));
-    session = INF_TEXT_SESSION(user_data);
+  g_assert(INF_TEXT_IS_USER(user));
+  session = INF_TEXT_SESSION(user_data);
 
-    erased_chunk = inf_text_buffer_get_slice(buffer, pos, len);
-    operation = INF_ADOPTED_OPERATION(
-      inf_text_default_delete_operation_new(pos, erased_chunk)
-    );
+  erased_chunk = inf_text_buffer_get_slice(buffer, pos, len);
+  operation = INF_ADOPTED_OPERATION(
+    inf_text_default_delete_operation_new(pos, erased_chunk)
+  );
 
-    inf_text_chunk_free(erased_chunk);
+  inf_text_chunk_free(erased_chunk);
 
-    algorithm = inf_adopted_session_get_algorithm(
-      INF_ADOPTED_SESSION(session)
-    );
+  algorithm = inf_adopted_session_get_algorithm(
+    INF_ADOPTED_SESSION(session)
+  );
 
-    request = inf_adopted_algorithm_generate_request_noexec(
-      algorithm,
-      INF_ADOPTED_USER(user),
-      operation
-    );
+  request = inf_adopted_algorithm_generate_request_noexec(
+    algorithm,
+    INF_ADOPTED_USER(user),
+    operation
+  );
 
-    inf_adopted_session_broadcast_request(
-      INF_ADOPTED_SESSION(session),
-      request
-    );
+  inf_adopted_session_broadcast_request(
+    INF_ADOPTED_SESSION(session),
+    request
+  );
 
-    g_object_unref(G_OBJECT(request));
-  }
+  g_object_unref(G_OBJECT(request));
+}
+
+static void
+inf_text_session_selection_changed_cb(InfUser* user,
+                                      guint position,
+                                      gint sel,
+                                      gpointer user_data)
+{
+  /* TODO: Delay broadcast if too frequent */
+
+  InfTextSession* session;
+  InfAdoptedOperation* operation;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedRequest* request;
+
+  g_assert(INF_TEXT_IS_USER(user));
+  session = INF_TEXT_SESSION(user_data);
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+
+  operation = INF_ADOPTED_OPERATION(
+    inf_text_move_operation_new(position, sel)
+  );
+
+  request = inf_adopted_algorithm_generate_request_noexec(
+    algorithm,
+    INF_ADOPTED_USER(user),
+    operation
+  );
+
+  inf_adopted_session_broadcast_request(
+    INF_ADOPTED_SESSION(session),
+    request
+  );
+
+  g_object_unref(G_OBJECT(request));
+}
+
+static void
+inf_text_session_local_user_added_cb(InfUserTable* user_table,
+                                     InfUser* user,
+                                     gpointer user_data)
+{
+  InfSession* session;
+  session = INF_SESSION(user_data);
+
+  g_signal_connect(
+    G_OBJECT(user),
+    "selection-changed",
+    G_CALLBACK(inf_text_session_selection_changed_cb),
+    session
+  );
+}
+
+static void
+inf_text_session_local_user_removed_cb(InfUserTable* user_table,
+                                       InfUser* user,
+                                       gpointer user_data)
+{
+  InfSession* session;
+  session = INF_SESSION(user_data);
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(user),
+    G_CALLBACK(inf_text_session_selection_changed_cb),
+    session
+  );
+}
+
+static void
+inf_text_session_block_local_users_selection_changed_func(InfUser* user,
+                                                          gpointer user_data)
+{
+  g_signal_handlers_block_by_func(
+    G_OBJECT(user),
+    G_CALLBACK(inf_text_session_selection_changed_cb),
+    user_data
+  );
+}
+
+static void
+inf_text_session_unblock_local_users_selection_changed_func(InfUser* user,
+                                                            gpointer data)
+{
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(user),
+    G_CALLBACK(inf_text_session_selection_changed_cb),
+    data
+  );
 }
 
 static void
@@ -281,7 +371,7 @@ inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
 }
 
 /* The after handlers readjust the caret and selection properties of the
- * users. */
+ * users. Block handlers so we don't broadcast this. */
 static void
 inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
                                              guint pos,
@@ -289,13 +379,21 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
                                              InfUser* user,
                                              gpointer user_data)
 {
+  InfSession* session;
   InfUserTable* user_table;
   InfTextSessionInsertForeachData data;
 
-  user_table = inf_session_get_user_table(INF_SESSION(user_data));
+  session = INF_SESSION(user_data);
+  user_table = inf_session_get_user_table(session);
   data.position = pos;
   data.chunk = chunk;
   data.user = user;
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_block_local_users_selection_changed_func,
+    session
+  );
 
   inf_user_table_foreach_user(
     user_table,
@@ -311,6 +409,12 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
       0
     );
   }
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_unblock_local_users_selection_changed_func,
+    session
+  );
 }
 
 static void
@@ -320,13 +424,21 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
                                             InfUser* user,
                                             gpointer user_data)
 {
+  InfSession* session;
   InfUserTable* user_table;
   InfTextSessionEraseForeachData data;
 
-  user_table = inf_session_get_user_table(INF_SESSION(user_data));
+  session = INF_SESSION(user_data);
+  user_table = inf_session_get_user_table(session);
   data.position = pos;
   data.length = length;
   data.user = user;
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_block_local_users_selection_changed_func,
+    session
+  );
 
   inf_user_table_foreach_user(
     user_table,
@@ -336,11 +448,18 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
 
   if(user != NULL)
     inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_unblock_local_users_selection_changed_func,
+    session
+  );
 }
 
-/* Block above before handlers when the adopted algorithm applies a request.
- * This way, we don't re-broadcast incoming requests, and we don't broadcast
- * the effect of an Undo if the user calls inf_adopted_session_undo(). */
+/* Block above before handlers and selection_changed handlers when the adopted
+ * algorithm applies a request. This way, we don't re-broadcast incoming
+ * requests, and we don't broadcast the effect of an Undo if the user calls
+ * inf_adopted_session_undo(). */
 static void
 inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
                                          InfAdoptedUser* user,
@@ -349,19 +468,27 @@ inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
 {
   InfSession* session;
   InfTextBuffer* buffer;
+  InfUserTable* user_table;
   
   session = INF_SESSION(user_data);
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
+  user_table = inf_session_get_user_table(session);
 
   g_signal_handlers_block_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
     session
   );
-  
+
   g_signal_handlers_block_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
+    session
+  );
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_block_local_users_selection_changed_func,
     session
   );
 }
@@ -374,9 +501,11 @@ inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
 {
   InfSession* session;
   InfTextBuffer* buffer;
+  InfUserTable* user_table;
   
   session = INF_SESSION(user_data);
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
+  user_table = inf_session_get_user_table(session);
 
   g_signal_handlers_unblock_by_func(
     G_OBJECT(buffer),
@@ -389,6 +518,28 @@ inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
     G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
     session
   );
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_unblock_local_users_selection_changed_func,
+    session
+  );
+}
+
+
+static void
+inf_text_session_init_text_handlers_user_foreach_func(InfUser* user,
+                                                      gpointer user_data)
+{
+  InfSession* session;
+  session = INF_SESSION(user_data);
+
+  g_signal_connect(
+    G_OBJECT(user),
+    "selection-changed",
+    G_CALLBACK(inf_text_session_selection_changed_cb),
+    session
+  );
 }
 
 static void
@@ -396,9 +547,11 @@ inf_text_session_init_text_handlers(InfTextSession* session)
 {
   InfTextBuffer* buffer;
   InfAdoptedAlgorithm* algorithm;
+  InfUserTable* user_table;
 
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
   algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+  user_table = inf_session_get_user_table(INF_SESSION(session));
 
   g_signal_connect(
     G_OBJECT(buffer),
@@ -429,6 +582,20 @@ inf_text_session_init_text_handlers(InfTextSession* session)
   );
 
   g_signal_connect(
+    G_OBJECT(user_table),
+    "add-local-user",
+    G_CALLBACK(inf_text_session_local_user_added_cb),
+    session
+  );
+
+  g_signal_connect(
+    G_OBJECT(user_table),
+    "remove-local-user",
+    G_CALLBACK(inf_text_session_local_user_removed_cb),
+    session
+  );
+
+  g_signal_connect(
     G_OBJECT(algorithm),
     "apply-request",
     G_CALLBACK(inf_text_session_apply_request_cb_before),
@@ -439,6 +606,12 @@ inf_text_session_init_text_handlers(InfTextSession* session)
     G_OBJECT(algorithm),
     "apply-request",
     G_CALLBACK(inf_text_session_apply_request_cb_after),
+    session
+  );
+
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_text_session_init_text_handlers_user_foreach_func,
     session
   );
 }
@@ -510,6 +683,7 @@ inf_text_session_dispose(GObject* object)
 
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
 
+  /* TODO: Disconnect from local users, user table and algorithm */
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),

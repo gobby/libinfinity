@@ -94,17 +94,14 @@ infd_note_plugin_text_session_unexpected_node(xmlNodePtr node,
 }
 
 static gboolean
-infd_note_plugin_text_read_user(InfSession* session,
+infd_note_plugin_text_read_user(InfUserTable* user_table,
                                 xmlNodePtr node,
                                 GError** error)
 {
-  InfUserTable* table;
   guint id;
   xmlChar* name;
   gboolean result;
   InfUser* user;
-
-  table = inf_session_get_user_table(session);
 
   if(!inf_xml_util_get_attribute_uint_required(node, "id", &id, error))
     return FALSE;
@@ -113,7 +110,7 @@ infd_note_plugin_text_read_user(InfSession* session,
   if(name == NULL)
     return FALSE;
 
-  if(inf_user_table_lookup_user_by_id(table, id) != NULL)
+  if(inf_user_table_lookup_user_by_id(user_table, id) != NULL)
   {
     g_set_error(
       error,
@@ -127,7 +124,7 @@ infd_note_plugin_text_read_user(InfSession* session,
   }
   else
   {
-    if(inf_user_table_lookup_user_by_name(table, (const gchar*)name) != NULL)
+    if(inf_user_table_lookup_user_by_name(user_table, (const gchar*)name))
     {
       g_set_error(
         error,
@@ -145,7 +142,7 @@ infd_note_plugin_text_read_user(InfSession* session,
         g_object_new(INF_TEXT_TYPE_USER, "id", id, "name", name, NULL)
       );
 
-      inf_user_table_add_user(table, user);
+      inf_user_table_add_user(user_table, user);
       result = TRUE;
     }
   }
@@ -155,21 +152,18 @@ infd_note_plugin_text_read_user(InfSession* session,
 }
 
 static gboolean
-infd_note_plugin_text_read_buffer(InfSession* session,
+infd_note_plugin_text_read_buffer(InfTextBuffer* buffer,
+                                  InfUserTable* user_table,
                                   xmlNodePtr node,
                                   GError** error)
 {
   xmlNodePtr child;
   guint author;
-  InfTextBuffer* buffer;
   xmlChar* content;
   gboolean result;
   gboolean res;
-  InfUserTable* table;
   InfUser* user;
 
-  table = inf_session_get_user_table(session);
-  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
   g_assert(inf_text_buffer_get_length(buffer) == 0);
 
   for(child = node->children; child != NULL; child = child->next)
@@ -194,7 +188,7 @@ infd_note_plugin_text_read_buffer(InfSession* session,
 
       if(author != 0)
       {
-        user = inf_user_table_lookup_user_by_id(table, author);
+        user = inf_user_table_lookup_user_by_id(user_table, author);
 
         g_set_error(
           error,
@@ -245,12 +239,17 @@ infd_note_plugin_text_read_buffer(InfSession* session,
   return result;
 }
 
-static gboolean
+static InfSession*
 infd_note_plugin_text_session_read(InfdStorage* storage,
-                                   InfSession* session,
+                                   InfIo* io,
+                                   InfConnectionManager* manager,
                                    const gchar* path,
                                    GError** error)
 {
+  InfUserTable* user_table;
+  InfTextBuffer* buffer;
+  InfTextSession* session;
+
   FILE* stream;
   xmlDocPtr doc;
   xmlErrorPtr xmlerror;
@@ -259,7 +258,9 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
   gboolean result;
 
   g_assert(INFD_IS_FILESYSTEM_STORAGE(storage));
-  g_assert(INF_TEXT_IS_SESSION(session));
+
+  user_table = inf_user_table_new();
+  buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
 
   /* TODO: Use a SAX parser for better performance */
   stream = infd_filesystem_storage_open(
@@ -280,8 +281,6 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     "UTF-8",
     XML_PARSE_NOWARNING | XML_PARSE_NOERROR
   );
-
-  /* TODO: Make sure user table is empty. This requires API in InfUserTable */
 
   if(doc == NULL)
   {
@@ -322,7 +321,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
 
         if(strcmp((const char*)child->name, "user") == 0)
         {
-          if(!infd_note_plugin_text_read_user(session, child, error))
+          if(!infd_note_plugin_text_read_user(user_table, child, error))
           {
             result = FALSE;
             break;
@@ -330,7 +329,8 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
         }
         else if(strcmp((const char*)child->name, "buffer") == 0)
         {
-          if(!infd_note_plugin_text_read_buffer(session, child, error))
+          if(!infd_note_plugin_text_read_buffer(buffer, user_table,
+                                                child, error))
           {
             result = FALSE;
             break;
@@ -351,7 +351,19 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     xmlFreeDoc(doc);
   }
 
-  return result;
+  if(result == FALSE)
+    return NULL;
+
+  session = inf_text_session_new_with_user_table(
+    manager,
+    buffer,
+    io,
+    user_table,
+    NULL,
+    NULL
+  );
+
+  return INF_SESSION(session);
 }
 
 static void

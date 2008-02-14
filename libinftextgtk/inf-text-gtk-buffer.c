@@ -372,6 +372,47 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
 }
 
 static void
+inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
+                                GtkTextIter* location,
+                                GtkTextMark* mark,
+                                gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  GtkTextMark* insert_mark;
+  GtkTextMark* sel_mark;
+  GtkTextIter insert_iter;
+  GtkTextIter sel_iter;
+
+  guint offset;
+  int sel;
+
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  insert_mark = gtk_text_buffer_get_insert(gtk_buffer);
+  sel_mark = gtk_text_buffer_get_selection_bound(gtk_buffer);
+
+  if(mark == insert_mark || mark == sel_mark)
+  {
+    /* Move cursor of active user */
+    g_assert(priv->active_user != NULL);
+    
+    gtk_text_buffer_get_iter_at_mark(gtk_buffer, &insert_iter, insert_mark);
+    gtk_text_buffer_get_iter_at_mark(gtk_buffer, &sel_iter, sel_mark);
+
+    offset = gtk_text_iter_get_offset(&insert_iter);
+    sel = gtk_text_iter_get_offset(&sel_iter) - offset;
+
+    if(inf_text_user_get_caret_position(priv->active_user) != offset ||
+       inf_text_user_get_selection_length(priv->active_user) != sel)
+    {
+      inf_text_user_set_selection(priv->active_user, offset, sel);
+    }
+  }
+}
+
+static void
 inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
                                GtkTextBuffer* gtk_buffer)
 {
@@ -389,6 +430,12 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
+      buffer
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
       buffer
     );
 
@@ -412,6 +459,13 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
       G_OBJECT(gtk_buffer),
       "delete-range",
       G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
+      buffer
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(gtk_buffer),
+      "mark-set",
+      G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
       buffer
     );
   }

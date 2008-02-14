@@ -40,11 +40,18 @@ typedef struct _InfUserTableClass InfUserTableClass;
 struct _InfUserTableClass {
   GObjectClass parent_class;
 
+  /* Signals */
   void(*add_user)(InfUserTable* user_table,
                   InfUser* user);
 
   void(*remove_user)(InfUserTable* user_table,
                      InfUser* user);
+
+  void(*add_local_user)(InfUserTable* user_table,
+                        InfUser* user);
+
+  void(*remove_local_user)(InfUserTable* user_tabel,
+                           InfUser* user);
 };
 
 struct _InfUserTable {
@@ -79,6 +86,11 @@ void
 inf_user_table_foreach_user(InfUserTable* user_table,
                             InfUserTableForeachUserFunc func,
                             gpointer user_data);
+
+void
+inf_user_table_foreach_local_user(InfUserTable* user_table,
+                                  InfUserTableForeachUserFunc func,
+                                  gpointer user_data);
 
 G_END_DECLS
 

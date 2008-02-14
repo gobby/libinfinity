@@ -30,11 +30,15 @@ struct _InfUserTableForeachUserData {
 typedef struct _InfUserTablePrivate InfUserTablePrivate;
 struct _InfUserTablePrivate {
   GHashTable* table;
+  GSList* locals;
 };
 
 enum {
   ADD_USER,
   REMOVE_USER,
+
+  ADD_LOCAL_USER,
+  REMOVE_LOCAL_USER,
 
   LAST_SIGNAL
 };
@@ -43,6 +47,73 @@ enum {
 
 static GObjectClass* parent_class;
 static guint user_table_signals[LAST_SIGNAL];
+
+static gboolean
+inf_user_table_is_local(InfUser* user)
+{
+  /* User counts as local when it has the local flag set and is available */
+  if( (inf_user_get_flags(user) & INF_USER_LOCAL) == 0)
+    return FALSE;
+  if(inf_user_get_status(user) == INF_USER_UNAVAILABLE)
+    return FALSE;
+
+  return TRUE;
+}
+
+static void
+inf_user_table_check_local_cb(GObject* object,
+                              GParamSpec* pspec,
+                              gpointer user_data)
+{
+  InfUserTable* user_table;
+  InfUserTablePrivate* priv;
+  GSList* item;
+
+  user_table = INF_USER_TABLE(user_data);
+  priv = INF_USER_TABLE_PRIVATE(user_table);
+  item = g_slist_find(priv->locals, INF_USER(object));
+
+  if(inf_user_table_is_local(INF_USER(object)) && item == NULL)
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[ADD_LOCAL_USER],
+      0,
+      INF_USER(object)
+    );
+  }
+  
+  if(!inf_user_table_is_local(INF_USER(object)) && item != NULL)
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[REMOVE_LOCAL_USER],
+      0,
+      INF_USER(object)
+    );
+  }
+}
+
+static void
+inf_user_table_unref_user(InfUserTable* user_table,
+                          InfUser* user)
+{
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(user),
+    inf_user_table_check_local_cb,
+    user_table
+  );
+
+  g_object_unref(user);
+}
+
+static void
+inf_user_table_dispose_foreach_func(gpointer key,
+                                    gpointer value,
+                                    gpointer user_data)
+{
+  inf_user_table_unref_user(INF_USER_TABLE(user_data), INF_USER(value));
+}
 
 /*
  * User table callbacks.
@@ -81,12 +152,8 @@ inf_user_table_init(GTypeInstance* instance,
   user_table = INF_USER_TABLE(instance);
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
-  priv->table = g_hash_table_new_full(
-    NULL,
-    NULL,
-    NULL,
-    (GDestroyNotify)g_object_unref
-  );
+  priv->table = g_hash_table_new_full(NULL, NULL, NULL, NULL);
+  priv->locals = NULL;
 }
 
 static void
@@ -97,6 +164,15 @@ inf_user_table_dispose(GObject* object)
 
   user_table = INF_USER_TABLE(object);
   priv = INF_USER_TABLE_PRIVATE(user_table);
+
+  g_slist_free(priv->locals);
+  priv->locals = NULL;
+
+  g_hash_table_foreach(
+    priv->table,
+    inf_user_table_dispose_foreach_func,
+    user_table
+  );
 
   g_hash_table_remove_all(priv->table);
   G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -130,6 +206,30 @@ inf_user_table_add_user_handler(InfUserTable* user_table,
   g_assert(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)) == NULL);
 
   g_hash_table_insert(priv->table, GUINT_TO_POINTER(id), user);
+
+  g_signal_connect(
+    G_OBJECT(user),
+    "notify::status",
+    G_CALLBACK(inf_user_table_check_local_cb),
+    user_table
+  );
+
+  g_signal_connect(
+    G_OBJECT(user),
+    "notify::flags",
+    G_CALLBACK(inf_user_table_check_local_cb),
+    user_table
+  );
+
+  if(inf_user_table_is_local(user))
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[ADD_LOCAL_USER],
+      0,
+      user
+    );
+  }
 }
 
 static void
@@ -142,8 +242,41 @@ inf_user_table_remove_user_handler(InfUserTable* user_table,
   priv = INF_USER_TABLE_PRIVATE(user_table);
   id = inf_user_get_id(user);
 
+  if(inf_user_table_is_local(user))
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[REMOVE_LOCAL_USER],
+      0,
+      user
+    );
+  }
+
+  inf_user_table_unref_user(user_table, user);
   g_assert(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)) == user);
   g_hash_table_remove(priv->table, GUINT_TO_POINTER(id));
+}
+
+static void
+inf_user_table_add_local_user(InfUserTable* user_table,
+                              InfUser* user)
+{
+  InfUserTablePrivate* priv;
+  priv = INF_USER_TABLE_PRIVATE(user_table);
+
+  g_assert(g_slist_find(priv->locals, user) == NULL);
+  priv->locals = g_slist_prepend(priv->locals, user);
+}
+
+static void
+inf_user_table_remove_local_user(InfUserTable* user_table,
+                                 InfUser* user)
+{
+  InfUserTablePrivate* priv;
+  priv = INF_USER_TABLE_PRIVATE(user_table);
+
+  g_assert(g_slist_find(priv->locals, user) != NULL);
+  priv->locals = g_slist_remove(priv->locals, user);
 }
 
 static void
@@ -164,6 +297,8 @@ inf_user_table_class_init(gpointer g_class,
 
   user_table_class->add_user = inf_user_table_add_user_handler;
   user_table_class->remove_user = inf_user_table_remove_user_handler;
+  user_table_class->add_local_user = inf_user_table_add_local_user;
+  user_table_class->remove_local_user = inf_user_table_remove_local_user;
 
   user_table_signals[ADD_USER] = g_signal_new(
     "add-user",
@@ -182,6 +317,30 @@ inf_user_table_class_init(gpointer g_class,
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, remove_user),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_USER
+  );
+
+  user_table_signals[ADD_LOCAL_USER] = g_signal_new(
+    "add-local-user",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfUserTableClass, add_local_user),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_USER
+  );
+
+  user_table_signals[REMOVE_LOCAL_USER] = g_signal_new(
+    "remove-local-user",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfUserTableClass, remove_local_user),
     NULL, NULL,
     inf_marshal_VOID__OBJECT,
     G_TYPE_NONE,
@@ -354,6 +513,34 @@ inf_user_table_foreach_user(InfUserTable* user_table,
     inf_user_table_foreach_user_func,
     &data
   );
+}
+
+/** inf_user_table_foreach_local_user:
+ *
+ * @user_table: A #InfUserTable.
+ * @func: The function to call for each user.
+ * @user_data: User data to pass to the function.
+ *
+ * Calls the given function for each local user in the user_table. A local
+ * user is a user that has the %INF_USER_LOCAL flag set and that has not
+ * status %INF_USER_UNAVAILABLE. You should not add or remove users while this
+ * function is being executed.
+ **/
+void
+inf_user_table_foreach_local_user(InfUserTable* user_table,
+                                  InfUserTableForeachUserFunc func,
+                                  gpointer user_data)
+{
+  InfUserTablePrivate* priv;
+  GSList* item;
+
+  g_return_if_fail(INF_IS_USER_TABLE(user_table));
+  g_return_if_fail(func != NULL);
+
+  priv = INF_USER_TABLE_PRIVATE(user_table);
+  
+  for(item = priv->locals; item != NULL; item = g_slist_next(item))
+    func(INF_USER(item->data), user_data);
 }
 
 /* vim:set et sw=2 ts=2: */

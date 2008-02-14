@@ -1,3 +1,37 @@
+2008-02-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-user-table.h:
+	* libinfinity/common/inf-user-table.c: Added add-local-user and
+	remove-local-user signals, and inf_user_table_foreach_local_user().
+
+	* libinfinity/server/infd-note-plugin.h:
+	* libinfinity/server/infd-directory.c: Changed note plugin API so that
+	read_session() creates the session instead of filling an existing
+	session object.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c: Adapt.
+
+	* libinfinity/client/infc-session-proxy.c: Removed some commented-out
+	code.
+
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request.c: Added
+	inf_adopte_request_affects_buffer().
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Don't increase vector
+	time of an incoming request's user if the request does not affect the
+	buffer.
+
+	* libinfinity/adopted/inf-adopted-session.c: Don't increase the last
+	send vector if the sent request does not affect the buffer.
+
+	* libinftext/inf-text-session.c: Broadcast cursor positions and
+	selections.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Update active user's cursor
+	position when the "insert" or "selection-bound" mark is moved in the
+	buffer.
+
 2008-02-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.h:

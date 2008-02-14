@@ -32,6 +32,11 @@
  * is achieved.
  */
 
+/* TODO: Take UserTable, remove inf_adopted_algorithm_add_user(). This also
+ * allows us to remove our own code handling detection of local users
+ * because the user tabel has add-local-user and remove-local-user
+ * signals. */
+
 typedef struct _InfAdoptedAlgorithmLocalUser InfAdoptedAlgorithmLocalUser;
 struct _InfAdoptedAlgorithmLocalUser {
   InfAdoptedUser* user;
@@ -1129,6 +1134,9 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   /* TODO: We can save some copies here since translate_request does another
   * copy in some circumstances (temp.type != DO). */
+
+  /* Adjust vector time for Undo/Redo operations because they only depend on
+   * their original operation. */
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
   {
     original = inf_adopted_request_log_original_request(log, request);
@@ -1174,8 +1182,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     log_request = request;
   }
 
-  /* Adjust vector time for Undo/Redo operations because they only depend on
-   * their original operation. */
   temp = inf_adopted_request_copy(log_request);
 
   translated = inf_adopted_algorithm_translate_request(
@@ -1939,7 +1945,8 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
   g_return_if_fail( ((inf_user_get_flags(user)) & INF_USER_LOCAL) == 0);
 
   /* Update user vector if this is the newest request from that user. */
-  if(inf_adopted_state_vector_causally_before(user_vector, vector))
+  if(inf_adopted_request_affects_buffer(request) &&
+     inf_adopted_state_vector_causally_before(user_vector, vector))
   {
     /* Update remote user's vector: We know which requests the remote user
      * already has processed. */

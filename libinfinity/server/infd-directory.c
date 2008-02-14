@@ -970,7 +970,6 @@ infd_directory_node_get_session(InfdDirectory* directory,
   InfConnectionManagerGroup* group;
   InfSession* session;
   gchar* path;
-  gboolean result;
   gchar* group_name;
 
   g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
@@ -992,12 +991,18 @@ infd_directory_node_get_session(InfdDirectory* directory,
 
   g_free(group_name);
 
-  session = node->shared.note.plugin->session_new(
+  infd_directory_node_get_path(node, &path, NULL);
+  session = node->shared.note.plugin->session_read(
+    priv->storage,
     priv->io,
     priv->connection_manager,
-    NULL,
-    NULL
+    path,
+    error
   );
+  g_free(path);
+
+  if(session == NULL)
+    return NULL;
 
   node->shared.note.session = g_object_new(
     INFD_TYPE_SESSION_PROXY,
@@ -1012,24 +1017,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
   );
 
   inf_connection_manager_group_unref(group);
-  g_object_unref(G_OBJECT(session));
-
-  infd_directory_node_get_path(node, &path, NULL);
-
-  result = node->shared.note.plugin->session_read(
-    priv->storage,
-    session,
-    path,
-    error
-  );
-
-  g_free(path);
-
-  if(result == FALSE)
-  {
-    g_object_unref(G_OBJECT(node->shared.note.session));
-    node->shared.note.session = NULL;
-  }
+  g_object_unref(session);
 
   return node->shared.note.session;
 }
@@ -2270,11 +2258,11 @@ infd_directory_add_connection(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   gboolean result;
 
-  g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_return_if_fail(INF_IS_CONNECTION_MANAGER(priv->connection_manager));
+  g_return_val_if_fail(priv->connection_manager != NULL, FALSE);
 
   result = inf_connection_manager_group_add_connection(
     priv->group,

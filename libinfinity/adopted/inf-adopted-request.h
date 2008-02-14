@@ -99,6 +99,9 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
                          guint into,
                          guint by);
 
+gboolean
+inf_adopted_request_affects_buffer(InfAdoptedRequest* request);
+
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_REQUEST_H__ */

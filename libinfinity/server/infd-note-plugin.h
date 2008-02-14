@@ -43,10 +43,11 @@ struct _InfdNotePlugin {
                             InfConnectionManagerGroup* group,
                             InfXmlConnection* sync_connection);
 
-  gboolean(*session_read)(InfdStorage* storage,
-                          InfSession* session,
-                          const gchar* path,
-                          GError** error);
+  InfSession*(*session_read)(InfdStorage* storage,
+                             InfIo* io,
+                             InfConnectionManager* manager,
+                             const gchar* path,
+                             GError** error);
 
   gboolean(*session_write)(InfdStorage* storage,
                            InfSession* session,

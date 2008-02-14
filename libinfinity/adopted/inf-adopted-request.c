@@ -642,4 +642,46 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
   g_object_notify(G_OBJECT(request), "vector");
 }
 
+/** inf_adopted_request_affects_buffer:
+ *
+ * @request: A #InfAdoptedRequest.
+ *
+ * Returns whether this request, when applied, changes the content of the
+ * buffer. If this is a %INF_ADOPTED_REQUEST_UNDO or %INF_ADOPTED_REQUEST_REDO
+ * request, than it always affects the buffer, because only requests that
+ * affect the buffer can be undone or redone. If it is a
+ * %INF_ADOPTED_REQUEST_DO request, than it returns whether its operation
+ * has the %INF_ADOPTED_OPERATION_AFFECTS_BUFFER flag set.
+ *
+ * Returns: Whether @request affects the session's buffer.
+ **/
+gboolean
+inf_adopted_request_affects_buffer(InfAdoptedRequest* request)
+{
+  InfAdoptedRequestPrivate* priv;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), FALSE);
+  priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+
+  switch(priv->type)
+  {
+  case INF_ADOPTED_REQUEST_DO:
+    if(inf_adopted_operation_get_flags(priv->operation) &
+       INF_ADOPTED_OPERATION_AFFECTS_BUFFER)
+    {
+      return TRUE;
+    }
+    else
+    {
+      return FALSE;
+    }
+  case INF_ADOPTED_REQUEST_UNDO:
+  case INF_ADOPTED_REQUEST_REDO:
+    return TRUE;
+  default:
+    g_assert_not_reached();
+    return FALSE;
+  }
+}
+
 /* vim:set et sw=2 ts=2: */
