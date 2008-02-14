@@ -1,5 +1,10 @@
 2008-02-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c: Fixed a bug introduced
+	with the last commit that broke collaboration.
+
+2008-02-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-user-table.h:
 	* libinfinity/common/inf-user-table.c: Added add-local-user and
 	remove-local-user signals, and inf_user_table_foreach_local_user().

@@ -1941,17 +1941,17 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
   vector = inf_adopted_request_get_vector(request);
   user_vector = inf_adopted_user_get_vector(INF_ADOPTED_USER(user));
 
-  /* TODO: Why was this disabled? */
   g_return_if_fail( ((inf_user_get_flags(user)) & INF_USER_LOCAL) == 0);
 
   /* Update user vector if this is the newest request from that user. */
-  if(inf_adopted_request_affects_buffer(request) &&
-     inf_adopted_state_vector_causally_before(user_vector, vector))
+  if(inf_adopted_state_vector_causally_before(user_vector, vector))
   {
     /* Update remote user's vector: We know which requests the remote user
      * already has processed. */
     user_vector = inf_adopted_state_vector_copy(vector);
-    inf_adopted_state_vector_add(user_vector, inf_user_get_id(user), 1);
+    if(inf_adopted_request_affects_buffer(request))
+      inf_adopted_state_vector_add(user_vector, inf_user_get_id(user), 1);
+
     inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
   }
   
