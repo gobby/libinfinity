@@ -745,10 +745,96 @@ inf_adopted_algorithm_translate_find_func(gpointer key,
   return FALSE;
 }
 
+/* Required by inf_adopted_algorithm_transform() */
+static InfAdoptedRequest*
+inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
+                                        InfAdoptedRequest* request,
+                                        InfAdoptedStateVector* to);
+
+/* Translates two requests to state at and then transforms them against each
+ * other. Returns transformed @request. Might or might not be the same
+ * object. */
+static InfAdoptedRequest*
+inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
+                                        InfAdoptedRequest* request,
+                                        InfAdoptedRequest* against,
+                                        InfAdoptedStateVector* at)
+{
+  InfAdoptedStateVector* lcs;
+  InfAdoptedRequest* lcs_against;
+  InfAdoptedRequest* lcs_request;
+  InfAdoptedRequest* against_copy;
+  InfAdoptedRequest* result;
+
+  g_assert(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(request),
+      at
+    )
+  );
+
+  g_assert(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(against),
+      at
+    )
+  );
+
+  /* Find least common successor and transform both requests
+   * through that point. */
+  lcs = inf_adopted_algorithm_least_common_successor(
+    algorithm,
+    inf_adopted_request_get_vector(request),
+    inf_adopted_request_get_vector(against)
+  );
+
+  g_assert(inf_adopted_state_vector_causally_before(lcs, at));
+
+  /* We do not modify against, so we copy before. We can perhaps change that
+   * later when translate_request guarantees to always copy. */
+  against_copy = inf_adopted_request_copy(against);
+
+  lcs_against = inf_adopted_algorithm_translate_request(
+    algorithm,
+    against_copy,
+    lcs
+  );
+
+  lcs_request = inf_adopted_algorithm_translate_request(
+    algorithm,
+    request,
+    lcs
+  );
+
+  inf_adopted_state_vector_free(lcs);
+  g_object_unref(against_copy);
+
+  against_copy = inf_adopted_algorithm_translate_request(
+    algorithm,
+    lcs_against,
+    at
+  );
+
+  g_object_unref(lcs_against);
+
+  result = inf_adopted_algorithm_translate_request(
+    algorithm,
+    lcs_request,
+    at
+  );
+
+  g_object_unref(lcs_request);
+
+  inf_adopted_request_transform(result, against_copy);
+  g_object_unref(against_copy);
+
+  return result;
+}
+
 /* This function may change request, but it may also return a new request,
  * depending on what is necessary to do the translation. In any case, the
  * function adds a reference to the return value (which may or may not
- * be request) which you have to unref when you are finished with it */
+ * be request) which you have to unref when you are finished with it. */
 /* TODO: Split this into multiple subroutines */
 static InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
@@ -771,7 +857,6 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedStateVector* lcs;
   InfAdoptedRequest* lcs_result;
   InfAdoptedRequest* lcs_against;
-  
 
   GList* keys;
   GList* item;
@@ -932,62 +1017,12 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       inf_adopted_state_vector_set(v, user_id, n - 1);
       if(inf_adopted_algorithm_is_reachable(algorithm, v))
       {
-        /* TODO: We already have this from line 857 */
-        associated = inf_adopted_request_log_get_request(log, n - 1);
-        associated = inf_adopted_request_copy(associated);
-
-        g_assert(inf_adopted_state_vector_causally_before(vector, v));
-
-        g_assert(
-          inf_adopted_state_vector_causally_before(
-            inf_adopted_request_get_vector(associated),
-            v
-          )
-        );
-
-        /* Find least common successor and transform both requests
-         * through that point. */
-        lcs = inf_adopted_algorithm_least_common_successor(
-          algorithm,
-          inf_adopted_request_get_vector(request),
-          inf_adopted_request_get_vector(associated)
-        );
-
-        g_assert(inf_adopted_state_vector_causally_before(lcs, v) == TRUE);
-
-        lcs_against = inf_adopted_algorithm_translate_request(
-          algorithm,
-          associated,
-          lcs
-        );
-
-        lcs_result = inf_adopted_algorithm_translate_request(
+        result = inf_adopted_algorithm_transform_request(
           algorithm,
           request,
-          lcs
-        );
-
-        inf_adopted_state_vector_free(lcs);
-        g_object_unref(G_OBJECT(associated));
-
-        against = inf_adopted_algorithm_translate_request(
-          algorithm,
-          lcs_against,
+          associated,
           v
         );
-
-        g_object_unref(G_OBJECT(lcs_against));
-
-        result = inf_adopted_algorithm_translate_request(
-          algorithm,
-          lcs_result,
-          v
-        );
-
-        g_object_unref(G_OBJECT(lcs_result));
-
-        inf_adopted_request_transform(result, against);
-        g_object_unref(G_OBJECT(against));
 
         goto done;
       }
@@ -1019,60 +1054,13 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       if(inf_adopted_algorithm_is_reachable(algorithm, v))
       {
         associated = inf_adopted_request_log_get_request(log, n - 1);
-        associated = inf_adopted_request_copy(associated);
 
-        g_assert(inf_adopted_state_vector_causally_before(vector, v));
-
-        g_assert(
-          inf_adopted_state_vector_causally_before(
-            inf_adopted_request_get_vector(associated),
-            v
-          )
-        );
-
-        /* Find least common successor and transform both requests
-         * through that point. */
-        lcs = inf_adopted_algorithm_least_common_successor(
-          algorithm,
-          inf_adopted_request_get_vector(request),
-          inf_adopted_request_get_vector(associated)
-        );
-
-        g_assert(inf_adopted_state_vector_causally_before(lcs, v) == TRUE);
-
-        lcs_against = inf_adopted_algorithm_translate_request(
-          algorithm,
-          associated,
-          lcs
-        );
-
-        lcs_result = inf_adopted_algorithm_translate_request(
+        result = inf_adopted_algorithm_transform_request(
           algorithm,
           request,
-          lcs
-        );
-
-        inf_adopted_state_vector_free(lcs);
-        g_object_unref(G_OBJECT(associated));
-
-        against = inf_adopted_algorithm_translate_request(
-          algorithm,
-          lcs_against,
+          associated,
           v
         );
-
-        g_object_unref(G_OBJECT(lcs_against));
-
-        result = inf_adopted_algorithm_translate_request(
-          algorithm,
-          lcs_result,
-          v
-        );
-
-        g_object_unref(G_OBJECT(lcs_result));
-
-        inf_adopted_request_transform(result, against);
-        g_object_unref(G_OBJECT(against));
 
         goto done;
       }
@@ -1133,7 +1121,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   g_assert(log != NULL);
 
   /* TODO: We can save some copies here since translate_request does another
-  * copy in some circumstances (temp.type != DO). */
+   * copy in some circumstances (temp.type != DO). */
 
   /* Adjust vector time for Undo/Redo operations because they only depend on
    * their original operation. */

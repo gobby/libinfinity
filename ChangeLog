@@ -1,3 +1,9 @@
+2008-02-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Split the
+	transformation part of inf_adopted_algorithm_translate_request() into
+	a separate function inf_adopted_algorithm_transform_request().
+
 2008-02-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.c: Fixed a bug introduced
