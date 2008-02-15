@@ -32,11 +32,6 @@
  * is achieved.
  */
 
-/* TODO: Take UserTable, remove inf_adopted_algorithm_add_user(). This also
- * allows us to remove our own code handling detection of local users
- * because the user tabel has add-local-user and remove-local-user
- * signals. */
-
 typedef struct _InfAdoptedAlgorithmLocalUser InfAdoptedAlgorithmLocalUser;
 struct _InfAdoptedAlgorithmLocalUser {
   InfAdoptedUser* user;
@@ -58,8 +53,9 @@ struct _InfAdoptedAlgorithmPrivate {
   guint max_total_log_size;
 
   InfAdoptedStateVector* current;
+  InfUserTable* user_table;
   InfBuffer* buffer;
-  /* double-linked so we can easily remove an element from the middle */
+  /* doubly-linked so we can easily remove an element from the middle */
   GList* queue;
   GHashTable* request_logs; /* TODO: This is not necessary anymore */
 
@@ -73,8 +69,12 @@ enum {
   PROP_0,
 
   /* construct only */
+  PROP_USER_TABLE,
   PROP_BUFFER,
-  PROP_MAX_TOTAL_LOG_SIZE
+  PROP_MAX_TOTAL_LOG_SIZE,
+  
+  /* read/only */
+  PROP_CURRENT_STATE
 };
 
 enum {
@@ -530,71 +530,6 @@ inf_adopted_algorithm_find_local_user(InfAdoptedAlgorithm* algorithm,
   return NULL;
 }
 
-/* Required by inf_adopted_algorithm_user_notify_cb */
-static void
-inf_adopted_algorithm_local_user_free(InfAdoptedAlgorithm* algorithm,
-                                      InfAdoptedAlgorithmLocalUser* local);
-
-static void
-inf_adopted_algorithm_user_notify_cb(GObject* object,
-                                     GParamSpec* pspec,
-                                     gpointer user_data)
-{
-  InfAdoptedAlgorithm* algorithm;
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedUser* user;
-  InfAdoptedAlgorithmLocalUser* local;
-  InfAdoptedRequestLog* log;
-  GSList* item;
-
-  algorithm = INF_ADOPTED_ALGORITHM(user_data);
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  user = INF_ADOPTED_USER(object);
-
-  /* Find existing local user */
-  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
-    if(((InfAdoptedAlgorithmLocalUser*)item->data)->user == user)
-      break;
-
-  /* Update priv->local_users list. Unavailable users do not count. */
-  if((inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0 &&
-     inf_user_get_status(INF_USER(user)) != INF_USER_UNAVAILABLE)
-  {
-    log = g_hash_table_lookup(priv->request_logs, user);
-    g_assert(log != NULL);
-
-    if(item == NULL)
-    {
-      /* TODO: Set vector time of local user to current? This is currently
-       * done by InfAdoptedSession. */
-
-      local = g_slice_new(InfAdoptedAlgorithmLocalUser);
-      local->user = user;
-
-      local->can_undo = inf_adopted_algorithm_can_undo_redo(
-        algorithm,
-        log,
-        inf_adopted_request_log_next_undo(log)
-      );
-
-      local->can_redo = inf_adopted_algorithm_can_undo_redo(
-        algorithm,
-        log,
-        inf_adopted_request_log_next_redo(log)
-      );
-
-      priv->local_users = g_slist_prepend(priv->local_users, local);
-    }
-  }
-  else
-  {
-    if(item != NULL)
-    {
-      inf_adopted_algorithm_local_user_free(algorithm, item->data);
-    }
-  }
-}
-
 static void
 inf_adopted_algorithm_local_user_free(InfAdoptedAlgorithm* algorithm,
                                       InfAdoptedAlgorithmLocalUser* local)
@@ -602,14 +537,102 @@ inf_adopted_algorithm_local_user_free(InfAdoptedAlgorithm* algorithm,
   InfAdoptedAlgorithmPrivate* priv;
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(local->user),
-    G_CALLBACK(inf_adopted_algorithm_user_notify_cb),
-    algorithm
-  );
-
   priv->local_users = g_slist_remove(priv->local_users, local);
   g_slice_free(InfAdoptedAlgorithmLocalUser, local);
+}
+
+static void
+inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
+                               InfAdoptedUser* user)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedRequestLog* log;
+  InfAdoptedStateVector* time;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  g_assert(g_hash_table_lookup(priv->request_logs, user) == NULL);
+
+  log = inf_adopted_user_get_request_log(user);
+  time = inf_adopted_user_get_vector(user);
+
+  inf_adopted_state_vector_set(
+    priv->current,
+    inf_user_get_id(INF_USER(user)),
+    inf_adopted_state_vector_get(time, inf_user_get_id(INF_USER(user)))
+  );
+
+  g_hash_table_insert(priv->request_logs, user, log);
+  g_object_ref(G_OBJECT(log));
+}
+
+static void
+inf_adopted_algorithm_add_local_user(InfAdoptedAlgorithm* algorithm,
+                                     InfAdoptedUser* user)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedAlgorithmLocalUser* local;
+  InfAdoptedRequestLog* log;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  local = g_slice_new(InfAdoptedAlgorithmLocalUser);
+  local->user = user;
+  log = inf_adopted_user_get_request_log(user);
+
+  local->can_undo = inf_adopted_algorithm_can_undo_redo(
+    algorithm,
+    log,
+    inf_adopted_request_log_next_undo(log)
+  );
+
+  local->can_redo = inf_adopted_algorithm_can_undo_redo(
+    algorithm,
+    log,
+    inf_adopted_request_log_next_redo(log)
+  );
+
+  priv->local_users = g_slist_prepend(priv->local_users, local);
+}
+
+static void
+inf_adopted_algorithm_add_user_cb(InfUserTable* user_table,
+                                  InfUser* user,
+                                  gpointer user_data)
+{
+  InfAdoptedAlgorithm* algorithm;
+  algorithm = INF_ADOPTED_ALGORITHM(user_data);
+
+  g_assert(INF_ADOPTED_IS_USER(user));
+  inf_adopted_algorithm_add_user(algorithm, INF_ADOPTED_USER(user));
+}
+
+static void
+inf_adopted_algorithm_add_local_user_cb(InfUserTable* user_table,
+                                        InfUser* user,
+                                        gpointer user_data)
+{
+  InfAdoptedAlgorithm* algorithm;
+  algorithm = INF_ADOPTED_ALGORITHM(user_data);
+
+  g_assert(INF_ADOPTED_IS_USER(user));
+  inf_adopted_algorithm_add_local_user(algorithm, INF_ADOPTED_USER(user));
+}
+
+static void
+inf_adopted_algorithm_remove_local_user_cb(InfUserTable* user_table,
+                                           InfUser* user,
+                                           gpointer user_data)
+{
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedAlgorithmLocalUser* local;
+
+  algorithm = INF_ADOPTED_ALGORITHM(user_data);
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  local =
+    inf_adopted_algorithm_find_local_user(algorithm, INF_ADOPTED_USER(user));
+
+  g_assert(local != NULL);
+  inf_adopted_algorithm_local_user_free(algorithm, local);
 }
 
 static void
@@ -745,7 +768,7 @@ inf_adopted_algorithm_translate_find_func(gpointer key,
   return FALSE;
 }
 
-/* Required by inf_adopted_algorithm_transform() */
+/* Required by inf_adopted_algorithm_transform_request() */
 static InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
@@ -848,15 +871,10 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedStateVector* vector; /* always points to request's vector */
   InfAdoptedStateVector* original_vector;
 
-  InfAdoptedRequest* associated; /* TODO: Rename this as it is not only used for associated requests */
-  InfAdoptedRequest* against; /* Transformation partner */
+  InfAdoptedRequest* associated;
   InfAdoptedRequest* original;
   InfAdoptedRequest* result;
   InfAdoptedStateVector* v;
-
-  InfAdoptedStateVector* lcs;
-  InfAdoptedRequest* lcs_result;
-  InfAdoptedRequest* lcs_against;
 
   GList* keys;
   GList* item;
@@ -1278,6 +1296,7 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   priv->max_total_log_size = 2048;
 
   priv->current = inf_adopted_state_vector_new();
+  priv->user_table = NULL;
   priv->buffer = NULL;
   priv->queue = NULL;
 
@@ -1291,6 +1310,62 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   );
 
   priv->local_users = NULL;
+}
+
+static void
+inf_adopted_algorithm_constructor_foreach_user_func(InfUser* user,
+                                                    gpointer user_data)
+{
+  InfAdoptedAlgorithm* algorithm;
+  algorithm = INF_ADOPTED_ALGORITHM(user_data);
+
+  g_assert(INF_ADOPTED_IS_USER(user));
+  inf_adopted_algorithm_add_user(algorithm, INF_ADOPTED_USER(user));
+}
+
+static void
+inf_adopted_algorithm_constructor_foreach_local_user_func(InfUser* user,
+                                                          gpointer user_data)
+{
+  InfAdoptedAlgorithm* algorithm;
+  algorithm = INF_ADOPTED_ALGORITHM(user_data);
+
+  g_assert(INF_ADOPTED_IS_USER(user));
+  inf_adopted_algorithm_add_local_user(algorithm, INF_ADOPTED_USER(user));
+}
+
+static GObject*
+inf_adopted_algorithm_constructor(GType type,
+                                  guint n_construct_properties,
+                                  GObjectConstructParam* construct_properties)
+{
+  GObject* object;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedAlgorithmPrivate* priv;
+
+  object = G_OBJECT_CLASS(parent_class)->constructor(
+    type,
+    n_construct_properties,
+    construct_properties
+  );
+
+  algorithm = INF_ADOPTED_ALGORITHM(object);
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  /* Add initial users */
+  inf_user_table_foreach_user(
+    priv->user_table,
+    inf_adopted_algorithm_constructor_foreach_user_func,
+    algorithm
+  );
+  
+  inf_user_table_foreach_local_user(
+    priv->user_table,
+    inf_adopted_algorithm_constructor_foreach_local_user_func,
+    algorithm
+  );
+
+  return object;
 }
 
 static void
@@ -1315,8 +1390,32 @@ inf_adopted_algorithm_dispose(GObject* object)
 
   if(priv->buffer != NULL)
   {
-    g_object_unref(G_OBJECT(priv->buffer));
+    g_object_unref(priv->buffer);
     priv->buffer = NULL;
+  }
+
+  if(priv->user_table != NULL)
+  {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->user_table),
+      G_CALLBACK(inf_adopted_algorithm_add_user_cb),
+      algorithm
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->user_table),
+      G_CALLBACK(inf_adopted_algorithm_add_local_user_cb),
+      algorithm
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->user_table),
+      G_CALLBACK(inf_adopted_algorithm_remove_local_user_cb),
+      algorithm
+    );
+
+    g_object_unref(priv->user_table);
+    priv->user_table = NULL;
   }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -1351,6 +1450,32 @@ inf_adopted_algorithm_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_USER_TABLE:
+    g_assert(priv->user_table == NULL); /* construct/only */
+    priv->user_table = INF_USER_TABLE(g_value_dup_object(value));
+    
+    g_signal_connect(
+      G_OBJECT(priv->user_table),
+      "add-user",
+      G_CALLBACK(inf_adopted_algorithm_add_user_cb),
+      algorithm
+    );
+
+    g_signal_connect(
+      G_OBJECT(priv->user_table),
+      "add-local-user",
+      G_CALLBACK(inf_adopted_algorithm_add_local_user_cb),
+      algorithm
+    );
+
+    g_signal_connect(
+      G_OBJECT(priv->user_table),
+      "remove-local-user",
+      G_CALLBACK(inf_adopted_algorithm_remove_local_user_cb),
+      algorithm
+    );
+
+    break;
   case PROP_BUFFER:
     g_assert(priv->buffer == NULL); /* construct only */
     priv->buffer = INF_BUFFER(g_value_dup_object(value));
@@ -1358,6 +1483,8 @@ inf_adopted_algorithm_set_property(GObject* object,
   case PROP_MAX_TOTAL_LOG_SIZE:
     priv->max_total_log_size = g_value_get_uint(value);
     break;
+  case PROP_CURRENT_STATE:
+    /* read/only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -1378,11 +1505,17 @@ inf_adopted_algorithm_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_USER_TABLE:
+    g_value_set_object(value, G_OBJECT(priv->user_table));
+    break;
   case PROP_BUFFER:
     g_value_set_object(value, G_OBJECT(priv->buffer));
     break;
   case PROP_MAX_TOTAL_LOG_SIZE:
     g_value_set_uint(value, priv->max_total_log_size);
+    break;
+  case PROP_CURRENT_STATE:
+    g_value_set_boxed(value, priv->current);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1446,6 +1579,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfAdoptedAlgorithmPrivate));
 
+  object_class->constructor = inf_adopted_algorithm_constructor;
   object_class->dispose = inf_adopted_algorithm_dispose;
   object_class->finalize = inf_adopted_algorithm_finalize;
   object_class->set_property = inf_adopted_algorithm_set_property;
@@ -1454,6 +1588,18 @@ inf_adopted_algorithm_class_init(gpointer g_class,
   algorithm_class->can_undo_changed = inf_adopted_algorithm_can_undo_changed;
   algorithm_class->can_redo_changed = inf_adopted_algorithm_can_redo_changed;
   algorithm_class->apply_request = inf_adopted_algorithm_apply_request;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_USER_TABLE,
+    g_param_spec_object(
+      "user-table",
+      "User table",
+      "The user table",
+      INF_TYPE_USER_TABLE,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   g_object_class_install_property(
     object_class,
@@ -1478,6 +1624,18 @@ inf_adopted_algorithm_class_init(gpointer g_class,
       G_MAXUINT,
       2048,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_CURRENT_STATE,
+    g_param_spec_boxed(
+      "current-state",
+      "Current state",
+      "The state vector describing the current document state",
+      INF_ADOPTED_TYPE_STATE_VECTOR,
+      G_PARAM_READABLE
     )
   );
 
@@ -1554,6 +1712,7 @@ inf_adopted_algorithm_get_type(void)
 
 /** inf_adopted_algorithm_new:
  *
+ * @user_table: The table of participating users.
  * @buffer: The buffer to apply operations to.
  *
  * Creates a #InfAdoptedAlgorithm.
@@ -1561,18 +1720,26 @@ inf_adopted_algorithm_get_type(void)
  * Return Value: A new #InfAdoptedAlgorithm.
  **/
 InfAdoptedAlgorithm*
-inf_adopted_algorithm_new(InfBuffer* buffer)
+inf_adopted_algorithm_new(InfUserTable* user_table,
+                          InfBuffer* buffer)
 {
   GObject* object;
 
   g_return_val_if_fail(INF_IS_BUFFER(buffer), NULL);
 
-  object = g_object_new(INF_ADOPTED_TYPE_ALGORITHM, "buffer", buffer, NULL);
+  object = g_object_new(
+    INF_ADOPTED_TYPE_ALGORITHM,
+    "user-table", user_table,
+    "buffer", buffer,
+    NULL
+  );
+
   return INF_ADOPTED_ALGORITHM(object);
 }
 
 /** inf_adopted_algorithm_new_full:
  *
+ * @user_table: The table of participating users.
  * @buffer: The buffer to apply operations to.
  * @max_total_log_size: The maxmimum number of operations to keep in all
  * user's request logs.
@@ -1595,7 +1762,8 @@ inf_adopted_algorithm_new(InfBuffer* buffer)
  * Return Value: A new #InfAdoptedAlgorithm.
  **/
 InfAdoptedAlgorithm*
-inf_adopted_algorithm_new_full(InfBuffer* buffer,
+inf_adopted_algorithm_new_full(InfUserTable* user_table,
+                               InfBuffer* buffer,
                                guint max_total_log_size)
 {
   GObject* object;
@@ -1604,86 +1772,13 @@ inf_adopted_algorithm_new_full(InfBuffer* buffer,
 
   object = g_object_new(
     INF_ADOPTED_TYPE_ALGORITHM,
+    "user-table", user_table,
     "buffer", buffer,
     "max-total-log-size", max_total_log_size,
     NULL
   );
 
   return INF_ADOPTED_ALGORITHM(object);
-}
-
-/** inf_adopted_algorithm_add_user:
- *
- * @algorithm: A #InfAdoptedAlgorithm.
- * @user: The #InfAdoptedUser to add to @algorithm.
- *
- * Adds a user to the algorithm so that it can process requests (or generate
- * some, if it is a local user) from that user. The new user's component in
- * the current vector time is set from the same component of the new user's
- * vector.
- **/
-void
-inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
-                               InfAdoptedUser* user)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequestLog* initial_log;
-  InfAdoptedAlgorithmLocalUser* local;
-  InfAdoptedStateVector* time;
-
-  g_return_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm));
-  g_return_if_fail(INF_ADOPTED_IS_USER(user));
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  g_return_if_fail(g_hash_table_lookup(priv->request_logs, user) == NULL);
-
-  initial_log = inf_adopted_user_get_request_log(user);
-  time = inf_adopted_user_get_vector(user);
-
-  inf_adopted_state_vector_set(
-    priv->current,
-    inf_user_get_id(INF_USER(user)),
-    inf_adopted_state_vector_get(time, inf_user_get_id(INF_USER(user)))
-  );
-
-  g_hash_table_insert(priv->request_logs, user, initial_log);
-  g_object_ref(G_OBJECT(initial_log));
-
-  if((inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0 &&
-     inf_user_get_status(INF_USER(user)) != INF_USER_UNAVAILABLE)
-  {
-    local = g_slice_new(InfAdoptedAlgorithmLocalUser);
-    local->user = user;
-
-    local->can_undo = inf_adopted_algorithm_can_undo_redo(
-      algorithm,
-      initial_log,
-      inf_adopted_request_log_next_undo(initial_log)
-    );
-
-    local->can_redo = inf_adopted_algorithm_can_undo_redo(
-      algorithm,
-      initial_log,
-      inf_adopted_request_log_next_redo(initial_log)
-    );
-
-    priv->local_users = g_slist_prepend(priv->local_users, local);
-  }
-
-  g_signal_connect(
-    G_OBJECT(user),
-    "notify::status",
-    G_CALLBACK(inf_adopted_algorithm_user_notify_cb),
-    algorithm
-  );
-  
-  g_signal_connect(
-    G_OBJECT(user),
-    "notify::flags",
-    G_CALLBACK(inf_adopted_algorithm_user_notify_cb),
-    algorithm
-  );
 }
 
 /** inf_adopted_algorithm_get_current()

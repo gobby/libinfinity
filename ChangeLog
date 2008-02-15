@@ -1,5 +1,14 @@
 2008-02-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Read participating
+	users directly from user table, remove
+	inf_adopted_algorithm_add_user().
+
+	* libinfinity/adopted/inf-adopted-session.c: Adapt to API change.
+
+2008-02-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c: Split the
 	transformation part of inf_adopted_algorithm_translate_request() into
 	a separate function inf_adopted_algorithm_transform_request().

@@ -475,7 +475,7 @@ inf_adopted_session_add_user_cb(InfUserTable* user_table,
     break;
   case INF_SESSION_RUNNING:
     g_assert(priv->algorithm != NULL);
-    inf_adopted_algorithm_add_user(priv->algorithm, INF_ADOPTED_USER(user));
+
     if( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0)
     {
       local = g_slice_new(InfAdoptedSessionLocalUser);
@@ -535,19 +535,6 @@ inf_adopted_session_init(GTypeInstance* instance,
   priv->local_users = NULL;
 }
 
-static void
-inf_adopted_session_constructor_foreach_func(InfUser* user,
-                                             gpointer user_data)
-{
-  InfAdoptedSession* session;
-  InfAdoptedSessionPrivate* priv;
-
-  session = INF_ADOPTED_SESSION(user_data);
-  priv = INF_ADOPTED_SESSION_PRIVATE(session);
-
-  inf_adopted_algorithm_add_user(priv->algorithm, INF_ADOPTED_USER(user));
-}
-
 static GObject*
 inf_adopted_session_constructor(GType type,
                                 guint n_construct_properties,
@@ -588,14 +575,8 @@ inf_adopted_session_constructor(GType type,
   case INF_SESSION_RUNNING:
     g_assert(inf_session_get_buffer(INF_SESSION(session)) != NULL);
     priv->algorithm = inf_adopted_algorithm_new(
+      user_table,
       inf_session_get_buffer(INF_SESSION(session))
-    );
-
-    /* Add users */
-    inf_user_table_foreach_user(
-      inf_session_get_user_table(INF_SESSION(session)),
-      inf_adopted_session_constructor_foreach_func,
-      session
     );
 
     break;
@@ -1013,19 +994,6 @@ inf_adopted_session_close(InfSession* session)
 }
 
 static void
-inf_adopted_session_synchronization_complete_foreach_func(InfUser* user,
-                                                          gpointer user_data)
-{
-  InfAdoptedSession* session;
-  InfAdoptedSessionPrivate* priv;
-
-  session = INF_ADOPTED_SESSION(user_data);
-  priv = INF_ADOPTED_SESSION_PRIVATE(session);
-
-  inf_adopted_algorithm_add_user(priv->algorithm, INF_ADOPTED_USER(user));
-}
-
-static void
 inf_adopted_session_synchronization_complete(InfSession* session,
                                              InfXmlConnection* connection)
 {
@@ -1040,14 +1008,8 @@ inf_adopted_session_synchronization_complete(InfSession* session,
     /* Create adOPTed algorithm upon successful synchronization */
     g_assert(priv->algorithm == NULL);
     priv->algorithm = inf_adopted_algorithm_new(
-      inf_session_get_buffer(session)
-    );
-
-    /* Add users */
-    inf_user_table_foreach_user(
       inf_session_get_user_table(session),
-      inf_adopted_session_synchronization_complete_foreach_func,
-      session
+      inf_session_get_buffer(session)
     );
 
     g_object_notify(G_OBJECT(session), "algorithm");
@@ -1265,7 +1227,7 @@ inf_adopted_session_redo(InfAdoptedSession* session,
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   request = inf_adopted_algorithm_generate_redo(priv->algorithm, user);
   inf_adopted_session_broadcast_request(session, request);
-  g_object_unref(request);  
+  g_object_unref(request);
 }
 
 /* vim:set et sw=2 ts=2: */

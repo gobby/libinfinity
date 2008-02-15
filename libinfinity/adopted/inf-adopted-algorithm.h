@@ -21,6 +21,7 @@
 
 #include <libinfinity/adopted/inf-adopted-request-log.h>
 #include <libinfinity/adopted/inf-adopted-user.h>
+#include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-buffer.h>
 
 #include <glib-object.h>
@@ -63,15 +64,13 @@ GType
 inf_adopted_algorithm_get_type(void) G_GNUC_CONST;
 
 InfAdoptedAlgorithm*
-inf_adopted_algorithm_new(InfBuffer* buffer);
+inf_adopted_algorithm_new(InfUserTable* user_table,
+                          InfBuffer* buffer);
 
 InfAdoptedAlgorithm*
-inf_adopted_algorithm_new_full(InfBuffer* buffer,
+inf_adopted_algorithm_new_full(InfUserTable* user_table,
+                               InfBuffer* buffer,
                                guint max_total_log_size);
-
-void
-inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
-                               InfAdoptedUser* user);
 
 InfAdoptedStateVector*
 inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm);
