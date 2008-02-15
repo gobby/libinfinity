@@ -1,5 +1,12 @@
 2008-02-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-request-log.c: Fixed possible memory
+	corruption when entries need to be reallocated.
+
+	* TODO: Update.
+
+2008-02-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c: Replaced user_id ->
 	requset log hash table by a user array, hopefully making some loops
 	faster.

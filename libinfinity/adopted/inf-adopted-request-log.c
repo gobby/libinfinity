@@ -516,6 +516,7 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
 {
   InfAdoptedRequestLogPrivate* priv;
   InfAdoptedRequestLogEntry* entry;
+  InfAdoptedRequestLogEntry* old_entries;
   guint i;
 
   g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
@@ -576,14 +577,41 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     }
     else
     {
+      old_entries = priv->entries;
       priv->alloc += INF_ADOPTED_REQUEST_LOG_INC;
 
       priv->entries = g_realloc(
         priv->entries,
         priv->alloc * sizeof(InfAdoptedRequestLogEntry)
       );
-      
-      /* TODO: The realloc above could have invalidated several pointers */
+
+      if(priv->entries != old_entries)
+      {
+        /* The realloc above could have invalidated several pointers */
+        for(i = 0; i < priv->end - priv->begin; ++ i)
+        {
+          g_assert(priv->entries[i].original != NULL);
+          priv->entries[i].original =
+            priv->entries + (priv->entries[i].original - old_entries);
+
+          if(priv->entries[i].next_associated != NULL)
+          {
+            priv->entries[i].next_associated = priv->entries +
+              (priv->entries[i].next_associated - old_entries);
+          }
+
+          if(priv->entries[i].prev_associated != NULL)
+          {
+            priv->entries[i].prev_associated = priv->entries +
+              (priv->entries[i].prev_associated - old_entries);
+          }
+        }
+
+        if(priv->next_undo != NULL)
+          priv->next_undo = priv->entries + (priv->next_undo - old_entries);
+        if(priv->next_redo != NULL)
+          priv->next_redo = priv->entries + (priv->next_redo - old_entries);
+      }
     }
   }
 

@@ -14,18 +14,17 @@ would be nice to have done for the first stable release.
    - InfRawXmppConnection: InfXmlConnection implementation by sending raw messages to XMPP server (Derive from InfXmppConnection, make XMPP server create these connections (unsure: rather add a vfunc and subclass InfXmppServer?))
    - InfJabberUserConnection: Implements InfXmlConnection by sending stuff to a particular Jabber user (owns InfJabberConnection)
    - InfJabberDiscovery (owns InfJabberConnection)
- * Unavailable users should not (be able to) have the INF_USER_LOCAL flag set.
  * Allow operations to alter themselves while transforming (Adopted)
    - Severall classes currently assume operations are immutable.
+   - Perhaps this isn't even a good idea after all if we are implementing
+     caching in InfAdoptedAlgorithm. We should rather think about making
+     InfAdoptedRequest immutable.
  * Make InfTextChunk reference-counted, or implement copy-on-write semantics. It is currently copied way too often. (InfText)
  * Implement inf_text_chunk_insert_substring, and make use in InfTextDeleteOperation (InfText)
- * Add a selection_changed signal to InfTextBuffer and handle in InfTextSession
  * Add a set_caret paramater to insert_text and erase_text of InfTextBuffer and corresponding properties in the InfText operations, handle in InfTextSession.
- * Pass InfIo object to note plugins
  * InfTextEncoding boxed type
  * unconst "const GParameter* params" parameter to user_new vfunc because g_object_newv wants unconst
  * Create a pseudo XML connection implementation, re-enable INF_IS_XML_CONNECTION check in inf_net_object_received
- * Fix memory corruption in InfAdoptedRequestLog
  * Add gettext support
  * Add accessor API in InfGtkBrowserModel, so InfGtkBrowserView does not need to call gtk_tree_model_get all the time (which unnecssarily dups/refs)
  * Add append() and clear() virtual methods to InfTextBuffer. These may not have to be implemented since a default implementation can be used if no special one is provided, but it could help to speed up special operations. Make use in infd_note_plugin_text.
