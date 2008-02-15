@@ -1,5 +1,11 @@
 2008-02-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c: Replaced user_id ->
+	requset log hash table by a user array, hopefully making some loops
+	faster.
+
+2008-02-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.h:
 	* libinfinity/adopted/inf-adopted-algorithm.c: Read participating
 	users directly from user table, remove

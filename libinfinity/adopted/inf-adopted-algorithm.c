@@ -57,10 +57,11 @@ struct _InfAdoptedAlgorithmPrivate {
   InfBuffer* buffer;
   /* doubly-linked so we can easily remove an element from the middle */
   GList* queue;
-  GHashTable* request_logs; /* TODO: This is not necessary anymore */
 
-  /* TODO: Cache g_hash_table_get_keys(request_logs). Those are used
-   * just everywhere. */
+  /* Users in user table. We need to iterate over them very often, so we
+   * keep them as array here. */
+  InfAdoptedUser** users_begin;
+  InfAdoptedUser** users_end;
 
   GSList* local_users;
 };
@@ -100,25 +101,22 @@ inf_adopted_algorithm_state_vector_vdiff(InfAdoptedAlgorithm* algorithm,
                                          InfAdoptedStateVector* second)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  GList* keys;
-  GList* item;
+  InfAdoptedUser** user;
   guint result;
   guint id;
 
   g_assert(inf_adopted_state_vector_causally_before(first, second) == TRUE);
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  keys = g_hash_table_get_keys(priv->request_logs);
   result = 0;
 
-  for(item = keys; item != NULL; item = g_list_next(item))
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
-    id = inf_user_get_id(INF_USER(item->data));
+    id = inf_user_get_id(INF_USER(*user));
     result += (inf_adopted_state_vector_get(second, id) -
       inf_adopted_state_vector_get(first, id));
   }
 
-  g_list_free(keys);
   return result;
 }
 
@@ -133,18 +131,16 @@ inf_adopted_algorithm_least_common_successor(InfAdoptedAlgorithm* algorithm,
                                              InfAdoptedStateVector* second)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  GList* keys;
-  GList* item;
+  InfAdoptedUser** user;
   InfAdoptedStateVector* result;
   guint id;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  keys = g_hash_table_get_keys(priv->request_logs);
   result = inf_adopted_state_vector_new();
 
-  for(item = keys; item != NULL; item = g_list_next(item))
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
-    id = inf_user_get_id(INF_USER(item->data));
+    id = inf_user_get_id(INF_USER(*user));
     inf_adopted_state_vector_set(
       result,
       id,
@@ -155,7 +151,6 @@ inf_adopted_algorithm_least_common_successor(InfAdoptedAlgorithm* algorithm,
     );
   }
 
-  g_list_free(keys);
   return result;
 }
 
@@ -211,8 +206,7 @@ inf_adopted_algorithm_find_blockers(InfAdoptedAlgorithm* algorithm,
                                     GSList* removals)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  GList* keys;
-  GList* key_item;
+  InfAdoptedUser** user;
   GSList* rem_item;
 
   InfAdoptedAlgorithmLogRemoval* removal;
@@ -227,7 +221,6 @@ inf_adopted_algorithm_find_blockers(InfAdoptedAlgorithm* algorithm,
   InfAdoptedStateVector* vector;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  keys = g_hash_table_get_keys(priv->request_logs);
  
   for(rem_item = removals;
       rem_item != NULL;
@@ -244,10 +237,9 @@ inf_adopted_algorithm_find_blockers(InfAdoptedAlgorithm* algorithm,
     );
 
     /* Check potential blockers */
-    for(key_item = keys; key_item != NULL; key_item = g_list_next(key_item))
+    for(user = priv->users_begin; user != priv->users_end; ++ user)
     {
-      log = g_hash_table_lookup(priv->request_logs, key_item->data);
-      g_assert(log != NULL);
+      log = inf_adopted_user_get_request_log(*user);
 
       begin = inf_adopted_request_log_get_begin(log);
       end = inf_adopted_request_log_get_end(log);
@@ -286,8 +278,6 @@ inf_adopted_algorithm_find_blockers(InfAdoptedAlgorithm* algorithm,
       }
     }
   }
-
-  g_list_free(keys);
 }
 
 /* Creates a list of removals. All requests that are too old
@@ -299,22 +289,19 @@ inf_adopted_algorithm_create_removals(InfAdoptedAlgorithm* algorithm)
   InfAdoptedRequestLog* log;
   InfAdoptedRequest* request;
   InfAdoptedAlgorithmLogRemoval* removal;
-  GList* keys;
-  GList* item;
-  GList* item2;
+  InfAdoptedUser** user;
+  InfAdoptedUser** user2;
   guint vdiff;
   guint min_vdiff;
   GSList* result;
   gboolean test;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  keys = g_hash_table_get_keys(priv->request_logs);
   result = NULL;
 
-  for(item = keys; item != NULL; item = g_list_next(item))
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
-    log = g_hash_table_lookup(priv->request_logs, item->data);
-    g_assert(log != NULL);
+    log = inf_adopted_user_get_request_log(*user);
 
     /* No entry in log */
     if(inf_adopted_request_log_get_begin(log) ==
@@ -329,28 +316,14 @@ inf_adopted_algorithm_create_removals(InfAdoptedAlgorithm* algorithm)
     );
 
     /* Find vdiff from oldest request in log to every user's current state */
+    /* TODO: Can't we do this just once before the outer loop? It does not
+     * depend on user. */
     min_vdiff = G_MAXUINT;
-    for(item2 = keys; item2 != NULL; item2 = g_list_next(item2))
+    for(user2 = priv->users_begin; user2 != priv->users_end; ++ user2)
     {
-      /* We should not have deleted a previous request in the log if this
-       * does not hold. */
-      /* TODO: Consider 3 users. The first makes a request. Then, the second
-       * makes another request. The time of this request is 1:1;2:0;3:0.
-       * However, the third user is still (known to be) at 1:0;2:0;3:0.
-       * In this case this assertion does not hold. Probably, excess
-       * components should be treated as 0 in the vdiff (since in the
-       * worst case that component in the user's vector just climbs up to be
-       * equal to the request's component. */
-      /*g_assert(
-        inf_adopted_state_vector_causally_before(
-          inf_adopted_request_get_vector(request),
-          inf_adopted_user_get_vector(INF_ADOPTED_USER(item2->data))
-        ) == TRUE
-      );*/
-
       test = inf_adopted_state_vector_causally_before(
         inf_adopted_request_get_vector(request),
-        inf_adopted_user_get_vector(INF_ADOPTED_USER(item2->data))
+        inf_adopted_user_get_vector(*user2)
       );
 
       if(test == TRUE)
@@ -358,7 +331,7 @@ inf_adopted_algorithm_create_removals(InfAdoptedAlgorithm* algorithm)
         vdiff = inf_adopted_algorithm_state_vector_vdiff(
           algorithm,
           inf_adopted_request_get_vector(request),
-          inf_adopted_user_get_vector(INF_ADOPTED_USER(item2->data))
+          inf_adopted_user_get_vector(*user2)
         );
       }
       else
@@ -383,8 +356,6 @@ inf_adopted_algorithm_create_removals(InfAdoptedAlgorithm* algorithm)
       /* TODO: Detect blockers here. */
     }
   }
-
-  g_list_free(keys);
 
   inf_adopted_algorithm_find_blockers(algorithm, result);
   return result;
@@ -471,8 +442,7 @@ inf_adopted_algorithm_update_undo_redo(InfAdoptedAlgorithm* algorithm)
   for(item = priv->local_users; item != NULL; item = g_slist_next(item))
   {
     local = item->data;
-    log = g_hash_table_lookup(priv->request_logs, local->user);
-    g_assert(log != NULL);
+    log = inf_adopted_user_get_request_log(local->user);
 
     can_undo = inf_adopted_algorithm_can_undo_redo(
       algorithm,
@@ -548,9 +518,9 @@ inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedRequestLog* log;
   InfAdoptedStateVector* time;
+  guint user_count;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  g_assert(g_hash_table_lookup(priv->request_logs, user) == NULL);
 
   log = inf_adopted_user_get_request_log(user);
   time = inf_adopted_user_get_vector(user);
@@ -561,8 +531,11 @@ inf_adopted_algorithm_add_user(InfAdoptedAlgorithm* algorithm,
     inf_adopted_state_vector_get(time, inf_user_get_id(INF_USER(user)))
   );
 
-  g_hash_table_insert(priv->request_logs, user, log);
-  g_object_ref(G_OBJECT(log));
+  user_count = (priv->users_end - priv->users_begin) + 1;
+  priv->users_begin =
+    g_realloc(priv->users_begin, sizeof(InfAdoptedUser*) * user_count);
+  priv->users_end = priv->users_begin + user_count;
+  priv->users_begin[user_count - 1] = user;
 }
 
 static void
@@ -677,7 +650,7 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
   guint n;
   
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  log = g_hash_table_lookup(priv->request_logs, component);
+  log = inf_adopted_user_get_request_log(component);
   current = v;
   g_assert(log != NULL);
 
@@ -727,10 +700,7 @@ inf_adopted_algorithm_is_reachable(InfAdoptedAlgorithm* algorithm,
                                    InfAdoptedStateVector* v)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedUser* user;
-  GList* keys;
-  GList* item;
-  gboolean result;
+  InfAdoptedUser** user;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
@@ -738,34 +708,11 @@ inf_adopted_algorithm_is_reachable(InfAdoptedAlgorithm* algorithm,
     inf_adopted_state_vector_causally_before(v, priv->current) == TRUE
   );
 
-  /* TODO: Perhaps the keys should be given to this function so it does not
-   * need to allocate them every time when called more than once. */
-  keys = g_hash_table_get_keys(priv->request_logs);
-  for(item = keys; item != NULL; item = g_list_next(item))
-  {
-    user = INF_ADOPTED_USER(item->data);
-    result = inf_adopted_algorithm_is_component_reachable(algorithm, v, user);
-
-    if(result == FALSE)
-    {
-      g_list_free(keys);
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
+    if(!inf_adopted_algorithm_is_component_reachable(algorithm, v, *user))
       return FALSE;
-    }
-  }
   
-  g_list_free(keys);
   return TRUE;
-}
-
-static gboolean
-inf_adopted_algorithm_translate_find_func(gpointer key,
-                                          gpointer value,
-                                          gpointer user_data)
-{
-  if(inf_user_get_id(INF_USER(key)) == GPOINTER_TO_UINT(user_data))
-    return TRUE;
-
-  return FALSE;
 }
 
 /* Required by inf_adopted_algorithm_transform_request() */
@@ -865,7 +812,8 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedStateVector* to)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  InfUser* user; /* points to current user */
+  InfAdoptedUser** user_it; /* user iterator */
+  InfUser* user; /* points to current user (mostly *user_it) */
   guint user_id; /* Corresponding ID */
   InfAdoptedRequestLog* log; /* points to current log */
   InfAdoptedStateVector* vector; /* always points to request's vector */
@@ -876,24 +824,14 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* result;
   InfAdoptedStateVector* v;
 
-  GList* keys;
-  GList* item;
   guint n;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  user = NULL;
   user_id = inf_adopted_request_get_user_id(request);
+  user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
+  g_assert(user != NULL);
 
-  /* TODO: Replace that hash table by a simply linked list, or possibly
-   * a hash table from user ID to request log and/or user. */
-  log = g_hash_table_find(
-    priv->request_logs,
-    inf_adopted_algorithm_translate_find_func,
-    GUINT_TO_POINTER(user_id)
-  );
-
-  g_assert(log != NULL);
-
+  log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
   original = inf_adopted_request_log_original_request(log, request);
   original_vector = inf_adopted_request_get_vector(original);
 
@@ -903,7 +841,6 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 
   vector = inf_adopted_request_get_vector(request);
   v = inf_adopted_state_vector_copy(to);
-  keys = NULL;
 
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
   {
@@ -966,22 +903,16 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     }
   }
 
-  /* TODO: It is stupid to allocate these keys for every recursive
-   * translate_request call. We should do it once in execute_request and
-   * pass to translate_request. */
-  keys = g_hash_table_get_keys(priv->request_logs);
-
-  for(item = keys; item != NULL; item = g_list_next(item))
+  for(user_it = priv->users_begin; user_it != priv->users_end; ++ user_it)
   {
-    user = INF_USER(item->data);
+    user = INF_USER(*user_it);
     user_id = inf_user_get_id(user);
     if(user_id == inf_adopted_request_get_user_id(request)) continue;
 
     n = inf_adopted_state_vector_get(v, user_id);
     if(n == 0) continue;
 
-    log = g_hash_table_lookup(priv->request_logs, user);
-    g_assert(log != NULL);
+    log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
 
     /* Fold late, if possible */
     associated = inf_adopted_request_log_get_request(log, n - 1);
@@ -1029,7 +960,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       }
     }
     /* Transform into direction we are not going to fold later */
-    else if(inf_adopted_state_vector_get(/*original_*/vector, user_id) <
+    else if(inf_adopted_state_vector_get(vector, user_id) <
             inf_adopted_state_vector_get(to, user_id))
     {
       inf_adopted_state_vector_set(v, user_id, n - 1);
@@ -1053,19 +984,18 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   }
 
   /* Last resort: Transform always */
-  for(item = keys; item != NULL; item = g_list_next(item))
+  for(user_it = priv->users_begin; user_it != priv->users_end; ++ user_it)
   {
-    user = INF_USER(item->data);
+    user = INF_USER(*user_it);
     user_id = inf_user_get_id(user);
     if(user_id == inf_adopted_request_get_user_id(request)) continue;
 
     n = inf_adopted_state_vector_get(v, user_id);
     if(n == 0) continue;
 
-    log = g_hash_table_lookup(priv->request_logs, user);
-    g_assert(log != NULL);
+    log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
 
-    if(inf_adopted_state_vector_get(/*original_*/vector, user_id) <
+    if(inf_adopted_state_vector_get(vector, user_id) <
        inf_adopted_state_vector_get(to, user_id))
     {
       inf_adopted_state_vector_set(v, user_id, n - 1);
@@ -1093,7 +1023,6 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   g_assert_not_reached();
 
 done:
-  g_list_free(keys);
   inf_adopted_state_vector_free(v);
   return result;
 }
@@ -1115,9 +1044,8 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* original;
   InfAdoptedStateVector* v;
 
-  GList* keys;
-  GList* item;
   InfAdoptedUser* user;
+  guint user_id;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
@@ -1128,15 +1056,12 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     ) == TRUE
   );
 
-  /* TODO: Replace that hash table by a simply linked list, or possibly
-   * a hash table from user ID to request log and/or user. */
-  log = g_hash_table_find(
-    priv->request_logs,
-    inf_adopted_algorithm_translate_find_func,
-    GUINT_TO_POINTER(inf_adopted_request_get_user_id(request))
+  user_id = inf_adopted_request_get_user_id(request);
+  user = INF_ADOPTED_USER(
+    inf_user_table_lookup_user_by_id(priv->user_table, user_id)
   );
-
-  g_assert(log != NULL);
+  g_assert(user != NULL);
+  log = inf_adopted_user_get_request_log(user);
 
   /* TODO: We can save some copies here since translate_request does another
    * copy in some circumstances (temp.type != DO). */
@@ -1197,23 +1122,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   );
 
   g_object_unref(G_OBJECT(temp));
-
-  /* TODO: Replace that hash table by a simply linked list, or possibly
-    * a hash table from user ID to request log and/or user. */
-  user = NULL;
-  keys = g_hash_table_get_keys(priv->request_logs);
-  for(item = keys; item != NULL; item = g_list_next(item))
-  {
-    if(inf_user_get_id(INF_USER(item->data)) ==
-       inf_adopted_request_get_user_id(request))
-    {
-      user = INF_ADOPTED_USER(item->data);
-      break;
-    }
-  }
-
-  g_assert(user != NULL);
-  g_list_free(keys);
 
   if(inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO)
   {
@@ -1302,12 +1210,8 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
 
   /* Lookup by user, user is not refed because the request log holds a 
    * reference anyway. */
-  priv->request_logs = g_hash_table_new_full(
-    NULL,
-    NULL,
-    NULL,
-    (GDestroyNotify)g_object_unref
-  );
+  priv->users_begin = NULL;
+  priv->users_end = NULL;
 
   priv->local_users = NULL;
 }
@@ -1386,7 +1290,7 @@ inf_adopted_algorithm_dispose(GObject* object)
   g_list_free(priv->queue);
   priv->queue = NULL;
 
-  g_hash_table_remove_all(priv->request_logs);
+  g_free(priv->users_begin);
 
   if(priv->buffer != NULL)
   {
@@ -1430,7 +1334,6 @@ inf_adopted_algorithm_finalize(GObject* object)
   algorithm = INF_ADOPTED_ALGORITHM(object);
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
-  g_hash_table_unref(priv->request_logs);
   inf_adopted_state_vector_free(priv->current);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -1996,7 +1899,6 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
   guint user_id;
   InfUser* user;
 
-  GList* keys;
   GList* item;
 
   g_return_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm));
@@ -2004,26 +1906,11 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
   user_id = inf_adopted_request_get_user_id(request);
-
-  /* TODO: Replace by user table: */
-  user = NULL;
-  keys = g_hash_table_get_keys(priv->request_logs);
-
-  for(item = keys; item != NULL; item = g_list_next(item))
-  {
-    if(inf_user_get_id(INF_USER(item->data)) == user_id)
-    {
-      user = INF_USER(item->data);
-      break;
-    }
-  }
-
-  g_list_free(keys);
-  g_assert(user != NULL);
+  user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
+  g_return_if_fail(user != NULL);
 
   vector = inf_adopted_request_get_vector(request);
   user_vector = inf_adopted_user_get_vector(INF_ADOPTED_USER(user));
-
   g_return_if_fail( ((inf_user_get_flags(user)) & INF_USER_LOCAL) == 0);
 
   /* Update user vector if this is the newest request from that user. */
