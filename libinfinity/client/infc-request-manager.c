@@ -210,6 +210,7 @@ infc_request_manager_get_type(void)
 
 /**
  * infc_request_manager_new:
+ *
  * Creates a new #InfcRequestManager.
  *
  * Return Value: A newly allocated #InfcRequestManager.
@@ -265,8 +266,8 @@ infc_request_manager_add_request(InfcRequestManager* manager,
  * infc_request_manager_add_request_valist:
  * @manager: A #InfcRequestManager.
  * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
- * @request_name: The name of the request, such as "explore-node" or
- * "subscribe-session".
+ * @request_name: The name of the request, such as &quot;explore-node&quot; or
+ * &quot;subscribe-session&quot;
  * @first_property_name: The first property name apart from name and seq to
  * set for the new request.
  * @arglist: The value of the first property, followed optionally by more
@@ -275,13 +276,13 @@ infc_request_manager_add_request(InfcRequestManager* manager,
  * Adds a request to the request manager.
  *
  * Return Value: The generated #InfcRequest (actually of type @request_type).
- **/
+ */
 InfcRequest*
 infc_request_manager_add_request_valist(InfcRequestManager* manager,
                                         GType request_type,
                                         const gchar* request_name,
                                         const gchar* first_property_name,
-                                        va_list var_args)
+                                        va_list arglist)
 {
   InfcRequestManagerPrivate* priv;
   GObjectClass* request_class;
@@ -348,7 +349,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
 
     params[param_size].name = prop_name;
     g_value_init(&params[param_size].value, G_PARAM_SPEC_VALUE_TYPE(pspec));
-    G_VALUE_COLLECT(&params[param_size].value, var_args, 0, &error);
+    G_VALUE_COLLECT(&params[param_size].value, arglist, 0, &error);
     if(error != NULL)
     {
       g_warning("%s: %s", G_STRFUNC, error);
@@ -358,7 +359,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
     }
 
     ++ param_size;
-    prop_name = va_arg(var_args, const gchar*);
+    prop_name = va_arg(arglist, const gchar*);
   }
 
   if(prop_name == NULL)

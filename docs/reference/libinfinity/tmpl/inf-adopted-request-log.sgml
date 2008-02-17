@@ -22,31 +22,7 @@ InfAdoptedRequestLog
 
 </para>
 
-
-<!-- ##### ARG InfAdoptedRequestLog:begin ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedRequestLog:end ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedRequestLog:next-redo ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedRequestLog:next-undo ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedRequestLog:user-id ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### FUNCTION inf_adopted_request_log_new ##### -->
 <para>

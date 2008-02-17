@@ -36,31 +36,7 @@ InfUser
 
 </para>
 
-
-<!-- ##### ARG InfUser:connection ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfUser:flags ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfUser:id ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfUser:name ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfUser:status ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### ENUM InfUserStatus ##### -->
 <para>

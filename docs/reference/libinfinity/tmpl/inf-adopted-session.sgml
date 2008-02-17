@@ -41,16 +41,7 @@ InfAdoptedSession
 
 </para>
 
-
-<!-- ##### ARG InfAdoptedSession:algorithm ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedSession:io ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### FUNCTION inf_adopted_session_get_io ##### -->
 <para>

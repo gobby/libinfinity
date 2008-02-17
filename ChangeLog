@@ -1,3 +1,23 @@
+2008-02-17  Benjamin Herr <ben@0x539.de>
+
+	* libinfinity/adopted/inf-adopted-no-operation.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c:
+	* libinfinity/server/infd-storage.c:
+	* libinfinity/server/infd-storage.h:
+	* libinfinity/common/inf-net-object.c:
+	* libinfinity/common/inf-standalone-io.c:
+	* libinfinity/common/inf-user-table.c:
+	* libinfinity/common/inf-method-manager.c:
+	* libinfinity/common/inf-ip-address.c:
+	* libinfinity/common/inf-xmpp-manager.c:
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/client/infc-request-manager.c:
+	* libinfinity/client/infc-request-manager.h:
+
+	Solved minor documentation generation errors/warnings
+
+
 2008-02-17  Armin Burgmeier  <armin@arbur.net>
 
 	* docs/reference/libinfinity/tmpl/*.sgml: Committed SGML files

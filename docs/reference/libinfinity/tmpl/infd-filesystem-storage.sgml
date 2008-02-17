@@ -37,11 +37,7 @@ InfdFilesystemStorage
 
 </para>
 
-
-<!-- ##### ARG InfdFilesystemStorage:root-directory ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### FUNCTION infd_filesystem_storage_new ##### -->
 <para>

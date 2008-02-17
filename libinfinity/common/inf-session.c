@@ -1847,7 +1847,9 @@ inf_session_get_type(void)
 
 /**
  * inf_session_lookup_user_property:
- * @array: A #GArray containing #GParameter values.
+ * @params: A pointer to an array of containing #GParameter values.
+ * @n_params: The number of elements in the aforementioned array
+ * @name: Name to look up
  *
  * Looks up the parameter with the given name in @array.
  *
@@ -2032,7 +2034,7 @@ inf_session_get_status(InfSession* session)
 
 /**
  * inf_session_add_user:
- * @session A #InfSession.
+ * @session: A #InfSession.
  * @params: Construction parameters for the #InfUser (or derived) object.
  * @n_params: Number of parameters.
  * @error: Location to store error information.

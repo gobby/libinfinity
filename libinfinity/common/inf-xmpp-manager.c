@@ -225,6 +225,7 @@ inf_xmpp_manager_get_type(void)
 
 /**
  * inf_xmpp_manager_new:
+ *
  * Creates a new xmpp manager.
  *
  * Return Value: A new #InfXmppManager.

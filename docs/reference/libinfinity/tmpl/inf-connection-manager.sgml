@@ -68,6 +68,7 @@ InfConnectionManager
 
 </para>
 
+@parent: 
 
 <!-- ##### FUNCTION inf_connection_manager_get_type ##### -->
 <para>

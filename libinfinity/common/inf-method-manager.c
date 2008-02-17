@@ -269,6 +269,7 @@ inf_method_manager_get_type(void)
 
 /**
  * inf_method_manager_get_default:
+ *
  * Returns the default method manager with a standard search path.
  *
  * Returns: A #InfMethodManager.

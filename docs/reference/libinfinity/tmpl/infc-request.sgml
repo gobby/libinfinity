@@ -22,24 +22,7 @@ InfcRequest
 
 </para>
 
-
-<!-- ##### SIGNAL InfcRequest::failed ##### -->
-<para>
-
-</para>
-
-@infcrequest: the object which received the signal.
-@arg1: 
-
-<!-- ##### ARG InfcRequest:name ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfcRequest:seq ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### FUNCTION infc_request_get_seq ##### -->
 <para>

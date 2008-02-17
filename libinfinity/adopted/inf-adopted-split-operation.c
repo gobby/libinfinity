@@ -417,6 +417,9 @@ inf_adopted_split_operation_get_type(void)
 
 /**
  * inf_adopted_split_operation_new:
+ * @first: one of the #InfAdoptedOperation<!-- -->s to be wrapped
+ * @second: the other #InfAdoptedOperation to be wrapped
+ *
  * Creates a new #InfAdoptedSplitOperation. A split operation is simply a
  * wrapper around two operations (which may in turn be split operations).
  *

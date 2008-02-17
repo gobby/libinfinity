@@ -23,22 +23,6 @@ inf-discovery
 </para>
 
 
-<!-- ##### SIGNAL InfDiscovery::discovered ##### -->
-<para>
-
-</para>
-
-@infdiscovery: the object which received the signal.
-@arg1: 
-
-<!-- ##### SIGNAL InfDiscovery::undiscovered ##### -->
-<para>
-
-</para>
-
-@infdiscovery: the object which received the signal.
-@arg1: 
-
 <!-- ##### STRUCT InfDiscoveryIface ##### -->
 <para>
 

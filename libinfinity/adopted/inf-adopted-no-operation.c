@@ -124,6 +124,7 @@ inf_adopted_no_operation_get_type(void)
 
 /**
  * inf_adopted_no_operation_new:
+ *
  * Creates a new #InfAdoptedNoOperation. A no operation is an operation
  * that does nothing, but might be the result of a transformation.
  *

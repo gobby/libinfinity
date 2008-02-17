@@ -112,16 +112,16 @@ infd_storage_get_type(void)
  * Return Value: A new #InfdStorageNode.
  **/
 InfdStorageNode*
-infd_storage_node_new_subdirectory(const gchar* name)
+infd_storage_node_new_subdirectory(const gchar* path)
 {
   InfdStorageNode* node;
 
-  g_return_val_if_fail(name != NULL, NULL);
+  g_return_val_if_fail(path != NULL, NULL);
 
   node = g_slice_new(InfdStorageNode);
 
   node->type = INFD_STORAGE_NODE_SUBDIRECTORY;
-  node->name = g_strdup(name);
+  node->name = g_strdup(path);
 
   return node;
 }
@@ -140,18 +140,18 @@ infd_storage_node_new_subdirectory(const gchar* name)
  * Return Value: A new #InfdStorageNode.
  **/
 InfdStorageNode*
-infd_storage_node_new_note(const gchar* name,
+infd_storage_node_new_note(const gchar* path,
                            const gchar* identifier)
 {
   InfdStorageNode* node;
 
-  g_return_val_if_fail(name != NULL, NULL);
+  g_return_val_if_fail(path != NULL, NULL);
   g_return_val_if_fail(identifier != NULL, NULL);
 
   node = g_slice_new(InfdStorageNode);
 
   node->type = INFD_STORAGE_NODE_NOTE;
-  node->name = g_strdup(name);
+  node->name = g_strdup(path);
   node->identifier = g_strdup(identifier);
 
   return node;
@@ -203,8 +203,8 @@ infd_storage_node_free(InfdStorageNode* node)
 }
 
 /**
- * infd_storage_free_node_list:
- * @node_list A list of #InfdStorageNode objects.
+ * infd_storage_node_list_free:
+ * @node_list: A list of #InfdStorageNode objects.
  *
  * Frees a singly-linked list of #InfdStorageNode as returned by
  * infd_storage_read_subdirectory().

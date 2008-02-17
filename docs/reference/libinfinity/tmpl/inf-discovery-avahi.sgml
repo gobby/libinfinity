@@ -22,26 +22,7 @@ InfDiscoveryAvahi
 
 </para>
 
-
-<!-- ##### ARG InfDiscoveryAvahi:credentials ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfDiscoveryAvahi:io ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfDiscoveryAvahi:sasl-context ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfDiscoveryAvahi:xmpp-manager ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### FUNCTION inf_discovery_avahi_new ##### -->
 <para>

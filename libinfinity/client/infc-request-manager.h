@@ -68,7 +68,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
                                         GType request_type,
                                         const gchar* request_name,
                                         const gchar* first_property_name,
-                                        va_list var_args);
+                                        va_list arglist);
 
 void
 infc_request_manager_remove_request(InfcRequestManager* manager,

@@ -405,6 +405,7 @@ inf_standalone_io_get_type(void)
 
 /**
  * inf_standalone_io_new:
+ *
  * Creates a new #InfStandaloneIo.
  **/
 InfStandaloneIo*

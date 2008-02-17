@@ -85,7 +85,7 @@ infd-storage
 
 </para>
 
-@name: 
+@path: 
 @Returns: 
 
 
@@ -94,7 +94,7 @@ infd-storage
 
 </para>
 
-@name: 
+@path: 
 @identifier: 
 @Returns: 
 

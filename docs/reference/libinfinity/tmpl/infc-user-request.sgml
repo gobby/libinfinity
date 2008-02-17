@@ -22,14 +22,7 @@ InfcUserRequest
 
 </para>
 
-
-<!-- ##### SIGNAL InfcUserRequest::finished ##### -->
-<para>
-
-</para>
-
-@infcuserrequest: the object which received the signal.
-@arg1: 
+@parent: 
 
 <!-- ##### FUNCTION infc_user_request_finished ##### -->
 <para>

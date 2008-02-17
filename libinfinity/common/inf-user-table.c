@@ -382,6 +382,7 @@ inf_user_table_get_type(void)
 
 /**
  * inf_user_table_new:
+ *
  * Creates a new, empty user table.
  *
  * Return Value: A #InfUserTable.

@@ -29,72 +29,7 @@ InfTcpConnection
 
 </para>
 
-
-<!-- ##### SIGNAL InfTcpConnection::error ##### -->
-<para>
-
-</para>
-
-@inftcpconnection: the object which received the signal.
-@arg1: 
-
-<!-- ##### SIGNAL InfTcpConnection::received ##### -->
-<para>
-
-</para>
-
-@inftcpconnection: the object which received the signal.
-@arg1: 
-@arg2: 
-
-<!-- ##### SIGNAL InfTcpConnection::sent ##### -->
-<para>
-
-</para>
-
-@inftcpconnection: the object which received the signal.
-@arg1: 
-@arg2: 
-
-<!-- ##### ARG InfTcpConnection:device-index ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:device-name ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:io ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:local-address ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:local-port ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:remote-address ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:remote-port ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfTcpConnection:status ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### ENUM InfTcpConnectionStatus ##### -->
 <para>

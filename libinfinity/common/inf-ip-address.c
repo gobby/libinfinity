@@ -112,6 +112,7 @@ inf_ip_address_new_raw4(guint32 address)
 
 /**
  * inf_ip_address_new_loopback4:
+ *
  * Creates a new IPv4 address that contains the local host's IP address
  * ("127.0.0.1").
  *
@@ -142,6 +143,7 @@ inf_ip_address_new_raw6(const guint8 address[16])
 
 /**
  * inf_ip_address_new_loopback6:
+ *
  * Creates a new IPv6 address that contains the local host's IP address
  * ("::1").
  *

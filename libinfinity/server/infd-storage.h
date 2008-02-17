@@ -82,10 +82,10 @@ GType
 infd_storage_get_type(void) G_GNUC_CONST;
 
 InfdStorageNode*
-infd_storage_node_new_subdirectory(const gchar* name);
+infd_storage_node_new_subdirectory(const gchar* path);
 
 InfdStorageNode*
-infd_storage_node_new_note(const gchar* name,
+infd_storage_node_new_note(const gchar* path,
                            const gchar* identifier);
 
 InfdStorageNode*

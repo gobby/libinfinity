@@ -68,12 +68,13 @@ inf_net_object_get_type(void)
  * original sender (but just the forwarding host), forwarding arbitrary
  * messages could lead to a security problem in the worst case.
  *
- * For example, if, in central mode, a client sends an (invalid) <add-node>
- * request to the whole (#InfDirectory) group, and the server forwarded
- * this to all clients, those clients would try to create a new node although
- * the server rejected the request. In decentral mode, this is not a problem
- * since every client sees where the message comes from, and can reject all
- * messages not coming from the server theirselves.
+ *
+ * For example, if, in central mode, a client sends an (invalid)
+ * &lt;add-node&gt; request to the whole (#InfDirectory) group, and the server
+ * forwarded this to all clients, those clients would try to create a new node
+ * although the server rejected the request. In decentral mode, this is not a
+ * problem since every client sees where the message comes from, and can
+ * himself reject all messages not coming from the server.
  *
  * Return Value: %TRUE if the message is allowed to be forwarded,
  * %FALSE if not.

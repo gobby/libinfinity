@@ -22,53 +22,7 @@ InfAdoptedAlgorithm
 
 </para>
 
-
-<!-- ##### SIGNAL InfAdoptedAlgorithm::apply-request ##### -->
-<para>
-
-</para>
-
-@infadoptedalgorithm: the object which received the signal.
-@arg1: 
-@arg2: 
-
-<!-- ##### SIGNAL InfAdoptedAlgorithm::can-redo-changed ##### -->
-<para>
-
-</para>
-
-@infadoptedalgorithm: the object which received the signal.
-@arg1: 
-@arg2: 
-
-<!-- ##### SIGNAL InfAdoptedAlgorithm::can-undo-changed ##### -->
-<para>
-
-</para>
-
-@infadoptedalgorithm: the object which received the signal.
-@arg1: 
-@arg2: 
-
-<!-- ##### ARG InfAdoptedAlgorithm:buffer ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedAlgorithm:current-state ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedAlgorithm:max-total-log-size ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedAlgorithm:user-table ##### -->
-<para>
-
-</para>
+@parent: 
 
 <!-- ##### FUNCTION inf_adopted_algorithm_new ##### -->
 <para>

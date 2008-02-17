@@ -16,7 +16,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/** SECTION:infconnectionmanager
+/**
+ * SECTION:infconnectionmanager
  * @short_description: Infinote connection manager
  * @include: libinfinity/common/inf-connection-manager.h
  * @see_also: #InfConnectionManager
@@ -779,6 +780,7 @@ inf_connection_manager_get_type(void)
 
 /**
  * inf_connection_manager_new:
+ *
  * Creates a new #InfConnectionManager object.
  *
  * Returns: A #InfConnectionManager.
@@ -1038,7 +1040,8 @@ inf_connection_manager_group_ref(InfConnectionManagerGroup* group)
  * is no longer part of that group. If the local host was publisher, then
  * the group name can be reused (although it should not, since the old
  * group can still continue to exist without publisher if the method
- * allows). */
+ * allows).
+ */
 void
 inf_connection_manager_group_unref(InfConnectionManagerGroup* group)
 {
