@@ -1,3 +1,8 @@
+2008-02-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-split-operation.c:
+	* libinfinity/common/inf-ip-address.c: More documentation.
+
 2008-02-17  Benjamin Herr <ben@0x539.de>
 
 	* libinfinity/common/inf-discovery.c

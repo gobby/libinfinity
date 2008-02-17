@@ -16,6 +16,18 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-ip-address
+ * @title: InfIpAddress
+ * @short_description: IPv4 and IPv6 addresses
+ * @see_also: #InfTcpConnection
+ * @include: libinfinity/common/inf-ip-address.h
+ * @stability: Unstable
+ *
+ * A #InfIpAddress represents an IPv4 or an IPv6 address. Use
+ * inf_ip_address_get_family() to find out the type of a specific address.
+ **/
+
 #include <libinfinity/common/inf-ip-address.h>
 
 #include <sys/types.h>

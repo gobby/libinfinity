@@ -16,6 +16,18 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-adopted-split-operation
+ * @short_description: Operation wrapping two operations
+ * @include: libinfinity/adopted/inf-adopted-split-operation.h
+ * @stability: Unstable
+ *
+ * #InfAdoptedSplitOperation is a wrapper around that two
+ * #InfAdoptedOperation<!-- -->s. This is normally not required directly but
+ * may be a result of some transformation.
+ **/
+
+
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
 
