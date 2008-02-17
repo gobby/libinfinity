@@ -17,13 +17,6 @@ InfdDirectory
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INFD_TYPE_DIRECTORY_ITER ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfdDirectoryIter ##### -->
 <para>
 
@@ -37,7 +30,42 @@ InfdDirectory
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfdDirectory::node-added ##### -->
+<para>
+
+</para>
+
+@infddirectory: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfdDirectory::node-removed ##### -->
+<para>
+
+</para>
+
+@infddirectory: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfdDirectory:connection-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdDirectory:io ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdDirectory:method-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdDirectory:storage ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infd_directory_get_type ##### -->
 <para>

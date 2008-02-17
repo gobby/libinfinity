@@ -16,6 +16,20 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-io
+ * @title: InfIo
+ * @short_description: Event loop abstraction
+ * @include: libinfinity/common/inf-io.h
+ * @see_also: #InfStandaloneIo
+ *
+ * The #InfIo interface is used to schedule timeouts and to watch sockets for
+ * events to occur. An actual implementation usually integrates this into the
+ * application main loop, such as #GMainLoop. There is also a standalone
+ * implementation, #InfStandaloneIo, that can directly be used as the
+ * application's main loop.
+ **/
+
 #include <libinfinity/common/inf-io.h>
 
 GType

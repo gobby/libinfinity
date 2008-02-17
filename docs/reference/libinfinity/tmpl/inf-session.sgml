@@ -67,7 +67,74 @@ InfSession
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfSession::close ##### -->
+<para>
+
+</para>
+
+@infsession: the object which received the signal.
+
+<!-- ##### SIGNAL InfSession::synchronization-complete ##### -->
+<para>
+
+</para>
+
+@infsession: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfSession::synchronization-failed ##### -->
+<para>
+
+</para>
+
+@infsession: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### SIGNAL InfSession::synchronization-progress ##### -->
+<para>
+
+</para>
+
+@infsession: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### ARG InfSession:buffer ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfSession:connection-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfSession:status ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfSession:subscription-group ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfSession:sync-connection ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfSession:sync-group ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfSession:user-table ##### -->
+<para>
+
+</para>
 
 <!-- ##### USER_FUNCTION InfSessionForeachUserFunc ##### -->
 <para>

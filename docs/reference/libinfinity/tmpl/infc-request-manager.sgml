@@ -22,7 +22,22 @@ InfcRequestManager
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfcRequestManager::request-add ##### -->
+<para>
+
+</para>
+
+@infcrequestmanager: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfcRequestManager::request-remove ##### -->
+<para>
+
+</para>
+
+@infcrequestmanager: the object which received the signal.
+@arg1: 
 
 <!-- ##### USER_FUNCTION InfcRequestManagerForeachFunc ##### -->
 <para>

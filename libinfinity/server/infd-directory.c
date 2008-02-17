@@ -16,6 +16,23 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:infd-directory
+ * @short_description: Directory of published documents
+ * @see_also: #InfcBrowser, #InfdStorage
+ * @include: libinfinity/server/infd-directory.h
+ * @stability: Unstable
+ *
+ * The #InfdDirectory manages a directory of documents. An item in the
+ * directory is also called &quot;node&quot;. A node may either be a
+ * subdirectory or a document (also called "note"). Notes may be of
+ * different type - there may be plain text notes, rich text notes,
+ * graphics notes, etc.
+ *
+ * #InfdStorage defines where the directory structure and the notes are read
+ * from and how there are permanently stored.
+ **/
+
 #include <libinfinity/server/infd-directory.h>
 
 #include <libinfinity/common/inf-session.h>
@@ -1954,6 +1971,16 @@ infd_directory_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfdDirectory::node-added:
+   * @directory: The #InfdDirectory emitting the signal.
+   * @iter: A #InfdDirectoryIter pointing to the added node.
+   *
+   * This signal is emitted when a new node has been created. It can either
+   * be created by API calls such as infd_directory_add_note() and
+   * infd_directory_add_subdirectory() or by a client making a corresponding
+   * request.
+   **/
   directory_signals[NODE_ADDED] = g_signal_new(
     "node-added",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1966,6 +1993,16 @@ infd_directory_class_init(gpointer g_class,
     INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
   );
 
+  /**
+   * InfdDirectory::node-removed:
+   * @directory: The #InfdDirectory emitting the signal.
+   * @iter: A #InfdDirectoryIter pointing to the removed node.
+   *
+   * This signal is emitted when a node has been removed. If a subdirectory
+   * node is removed, all contained nodes are removed as well. Node removal
+   * can either happen through a call to infd_directory_remove_node(), or by
+   * a client making a corresponding request.
+   **/
   directory_signals[NODE_REMOVED] = g_signal_new(
     "node-removed",
     G_OBJECT_CLASS_TYPE(object_class),

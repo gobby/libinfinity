@@ -22,7 +22,21 @@ InfcSessionProxy
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfcSessionProxy:connection ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcSessionProxy:session ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcSessionProxy:subscription-group ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infc_session_proxy_set_connection ##### -->
 <para>

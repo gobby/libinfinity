@@ -16,6 +16,25 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:infc-request
+ * @short_description: Requests sent to server
+ * @see_also: #InfcUserRequest, #InfcNodeRequest, #InfcExploreRequest
+ * @include: libinfinity/client/infc-request.h
+ * @stability: Unstable
+ *
+ * A #InfcRequest represents a request that was sent to the server. It can
+ * be used to get information related to that request and to be notified
+ * when the request fails or finishes.
+ *
+ * #InfcRequest is the base class for other requests and only has the
+ * #InfcRequest::failed signal. Use signals from specific requests such as
+ * #InfcNodeRequest to get further notification. Every request has a name
+ * and a sequence number. The sequence number is used in the server reply to
+ * refer to a specific request and normally of no use for developers using
+ * the infinote API.
+ **/
+
 #include <libinfinity/client/infc-request.h>
 #include <libinfinity/inf-marshal.h>
 
@@ -170,6 +189,14 @@ infc_request_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfcRequest::failed:
+   * @request: The failed #InfcRequest.
+   * @error: A pointer to a #GError object with details on the error.
+   *
+   * Emitted when the request could not be processed on the server side.
+   * @error holds additional information on why the request failed.
+   **/
   request_signals[FAILED] = g_signal_new(
     "failed",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -219,6 +246,8 @@ infc_request_get_type(void)
  * @request: A #InfcRequest.
  *
  * Returns the sequence identifier for this request.
+ *
+ * Returns: The sequence number for #request.
  **/
 guint
 infc_request_get_seq(InfcRequest* request)
@@ -232,6 +261,8 @@ infc_request_get_seq(InfcRequest* request)
  * @request: A #InfcRequest.
  *
  * Returns the name of the request.
+ *
+ * Returns: The name of @request.
  **/
 const gchar*
 infc_request_get_name(InfcRequest* request)

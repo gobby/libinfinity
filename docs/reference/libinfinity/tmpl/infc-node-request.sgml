@@ -22,7 +22,19 @@ InfcNodeRequest
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfcNodeRequest::finished ##### -->
+<para>
+
+</para>
+
+@infcnoderequest: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfcNodeRequest:node-id ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infc_node_request_finished ##### -->
 <para>

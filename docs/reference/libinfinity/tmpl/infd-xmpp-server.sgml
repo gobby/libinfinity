@@ -22,7 +22,34 @@ InfdXmppServer
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfdXmppServer::error ##### -->
+<para>
+
+</para>
+
+@infdxmppserver: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfdXmppServer:credentials ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdXmppServer:jid ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdXmppServer:sasl-context ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdXmppServer:tcp-server ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infd_xmpp_server_new ##### -->
 <para>

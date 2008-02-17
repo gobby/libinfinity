@@ -30,6 +30,50 @@ inf-xml-connection
 </para>
 
 
+<!-- ##### SIGNAL InfXmlConnection::error ##### -->
+<para>
+
+</para>
+
+@infxmlconnection: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfXmlConnection::received ##### -->
+<para>
+
+</para>
+
+@infxmlconnection: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfXmlConnection::sent ##### -->
+<para>
+
+</para>
+
+@infxmlconnection: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfXmlConnection:local-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmlConnection:network ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmlConnection:remote-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmlConnection:status ##### -->
+<para>
+
+</para>
+
 <!-- ##### STRUCT InfXmlConnectionIface ##### -->
 <para>
 

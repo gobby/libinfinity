@@ -41,8 +41,21 @@ typedef enum _InfIoEvent {
   INF_IO_ERROR    = 1 << 2
 } InfIoEvent;
 
-typedef void(*InfIoFunc)(InfNativeSocket*, InfIoEvent, gpointer);
-typedef void(*InfIoTimeoutFunc)(gpointer);
+/**
+ * InfIoFunc:
+ * @socket: The socket on which an event occured.
+ * @event: A bitmask of the events that occured.
+ * @user_data: User-defined data specified in inf_io_watch().
+ */
+typedef void(*InfIoFunc)(InfNativeSocket* socket,
+                         InfIoEvent event,
+                         gpointer user_data);
+
+/**
+ * InfIoTimeoutFunc:
+ * @user_data: User-defined data specified in inf_io_add_timeout().
+ */
+typedef void(*InfIoTimeoutFunc)(gpointer user_data);
 
 struct _InfIoIface {
   GTypeInterface parent;

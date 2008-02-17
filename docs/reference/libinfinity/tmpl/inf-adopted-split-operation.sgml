@@ -22,7 +22,16 @@ InfAdoptedSplitOperation
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfAdoptedSplitOperation:first ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedSplitOperation:second ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION inf_adopted_split_operation_new ##### -->
 <para>

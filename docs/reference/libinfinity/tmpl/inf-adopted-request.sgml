@@ -29,7 +29,26 @@ InfAdoptedRequest
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfAdoptedRequest:operation ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequest:type ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequest:user-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequest:vector ##### -->
+<para>
+
+</para>
 
 <!-- ##### ENUM InfAdoptedRequestType ##### -->
 <para>

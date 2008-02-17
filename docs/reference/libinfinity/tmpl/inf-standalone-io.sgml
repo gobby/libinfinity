@@ -22,7 +22,6 @@ InfStandaloneIo
 
 </para>
 
-@parent: 
 
 <!-- ##### FUNCTION inf_standalone_io_new ##### -->
 <para>

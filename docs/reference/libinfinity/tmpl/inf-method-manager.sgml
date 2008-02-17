@@ -29,7 +29,11 @@ InfMethodManager
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfMethodManager:search-path ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION inf_method_manager_get_default ##### -->
 <para>

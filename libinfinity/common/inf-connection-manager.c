@@ -17,10 +17,10 @@
  */
 
 /**
- * SECTION:infconnectionmanager
- * @short_description: Infinote connection manager
+ * SECTION:inf-connection-manager
+ * @short_description: Sharing connections by mulitple sessions
  * @include: libinfinity/common/inf-connection-manager.h
- * @see_also: #InfConnectionManager
+ * @see_also: #InfNetObject
  *
  * The connection manager handles all connections used in the infinote
  * framework. It allows sharing a connection for different (internal)
@@ -1137,13 +1137,15 @@ inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp)
 }
 
 /**
- * inf_connection_manager_has_connection:
+ * inf_connection_manager_group_has_connection:
  * @group: A #InfConnectionManagerGroup.
  * @conn: A #InfXmlConnection.
  *
  * Returns whether @connection is a member of @group (see 
  * inf_connection_manager_group_add_connection() and
  * inf_connection_manager_group_remove_connection()).
+ *
+ * Returns: Whether @connection is in @group.
  **/
 gboolean
 inf_connection_manager_group_has_connection(InfConnectionManagerGroup* group,

@@ -34,7 +34,69 @@ InfcBrowser
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfcBrowser::begin-explore ##### -->
+<para>
+
+</para>
+
+@infcbrowser: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### SIGNAL InfcBrowser::begin-subscribe ##### -->
+<para>
+
+</para>
+
+@infcbrowser: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### SIGNAL InfcBrowser::node-added ##### -->
+<para>
+
+</para>
+
+@infcbrowser: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfcBrowser::node-removed ##### -->
+<para>
+
+</para>
+
+@infcbrowser: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfcBrowser::subscribe-session ##### -->
+<para>
+
+</para>
+
+@infcbrowser: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### ARG InfcBrowser:connection ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcBrowser:connection-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcBrowser:io ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcBrowser:method-manager ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infc_browser_new ##### -->
 <para>

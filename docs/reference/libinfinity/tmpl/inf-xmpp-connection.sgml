@@ -93,7 +93,31 @@ InfXmppConnection
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfXmppConnection:credentials ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmppConnection:jid ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmppConnection:sasl-context ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmppConnection:site ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmppConnection:tcp-connection ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION inf_xmpp_connection_get_type ##### -->
 <para>

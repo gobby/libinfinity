@@ -22,7 +22,21 @@ InfdSessionProxy
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfdSessionProxy:session ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdSessionProxy:subscribe-sync-connection ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdSessionProxy:subscription-group ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infd_session_proxy_get_session ##### -->
 <para>

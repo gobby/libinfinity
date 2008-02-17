@@ -22,7 +22,55 @@ InfcExploreRequest
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfcExploreRequest::finished ##### -->
+<para>
+
+</para>
+
+@infcexplorerequest: the object which received the signal.
+
+<!-- ##### SIGNAL InfcExploreRequest::initiated ##### -->
+<para>
+
+</para>
+
+@infcexplorerequest: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfcExploreRequest::progress ##### -->
+<para>
+
+</para>
+
+@infcexplorerequest: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### ARG InfcExploreRequest:current ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcExploreRequest:finished ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcExploreRequest:initiated ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcExploreRequest:node-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcExploreRequest:total ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infc_explore_request_get_node_id ##### -->
 <para>

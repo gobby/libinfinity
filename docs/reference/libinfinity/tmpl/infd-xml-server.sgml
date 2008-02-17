@@ -30,6 +30,19 @@ infd-xml-server
 </para>
 
 
+<!-- ##### SIGNAL InfdXmlServer::new-connection ##### -->
+<para>
+
+</para>
+
+@infdxmlserver: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfdXmlServer:status ##### -->
+<para>
+
+</para>
+
 <!-- ##### STRUCT InfdXmlServerIface ##### -->
 <para>
 

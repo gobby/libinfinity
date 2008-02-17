@@ -29,7 +29,38 @@ InfUserTable
 
 </para>
 
-@parent: 
+
+<!-- ##### SIGNAL InfUserTable::add-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::add-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::remove-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::remove-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
 
 <!-- ##### USER_FUNCTION InfUserTableForeachUserFunc ##### -->
 <para>

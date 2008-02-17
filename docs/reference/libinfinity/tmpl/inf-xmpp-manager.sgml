@@ -22,7 +22,6 @@ InfXmppManager
 
 </para>
 
-@parent: 
 
 <!-- ##### FUNCTION inf_xmpp_manager_new ##### -->
 <para>

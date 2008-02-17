@@ -16,6 +16,23 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-net-object
+ * @title: InfNetObject
+ * @short_description: Network request destinations
+ * @see_also: #InfConnectionManager
+ * @include: libinfinity/common/inf-net-object.h
+ * @stability: Unstable
+ *
+ * A #InfNetObject is the destination of network requests sent through the
+ * #InfConnectionManager. Each #InfConnectionManagerGroup is associated with
+ * a #InfNetObject. Requests received by that group are reported to the
+ * #InfNetObject by calling inf_net_object_received() on it. Messages sent
+ * to a member of that group
+ * (via inf_connection_manager_group_send_to_connection()) are also reported
+ * by calling inf_net_object_sent().
+ **/
+
 #include <libinfinity/common/inf-net-object.h>
 
 GType
@@ -67,7 +84,6 @@ inf_net_object_get_type(void)
  * group members. Since recipients of forwarded messages don't see the
  * original sender (but just the forwarding host), forwarding arbitrary
  * messages could lead to a security problem in the worst case.
- *
  *
  * For example, if, in central mode, a client sends an (invalid)
  * &lt;add-node&gt; request to the whole (#InfDirectory) group, and the server

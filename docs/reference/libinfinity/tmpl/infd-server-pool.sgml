@@ -22,7 +22,11 @@ InfdServerPool
 
 </para>
 
-@parent: 
+
+<!-- ##### ARG InfdServerPool:directory ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION infd_server_pool_new ##### -->
 <para>
