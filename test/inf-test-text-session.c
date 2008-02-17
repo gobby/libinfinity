@@ -28,7 +28,7 @@
 
 #include <string.h>
 
-#define NUM_PERMUTATIONS 1000
+#define NUM_PERMUTATIONS 100
 
 typedef struct {
   guint total;

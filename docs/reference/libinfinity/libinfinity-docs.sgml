@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
+  <!ENTITY version SYSTEM "../version.xml">
+]>
+
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>libinfinity Reference Manual</title>
+    <releaseinfo>
+      for libinfinity &version;
+      The latest version of this documentation can be found on-line at
+      <ulink role="online-location" url="http://arbur.net/libinfinity/reference/">http://arbur.net/libinfinity/reference/</ulink>.
+    </releaseinfo>
+  </bookinfo>
+
+  <chapter>
+    <title>Common infinote API</title>
+    <xi:include href="xml/inf-session.xml"/>
+    <xi:include href="xml/inf-user-table.xml"/>
+    <xi:include href="xml/inf-buffer.xml"/>
+    <xi:include href="xml/inf-io.xml"/>
+    <xi:include href="xml/inf-standalone-io.xml"/>
+    <xi:include href="xml/inf-connection-manager.xml"/>
+    <xi:include href="xml/inf-net-object.xml"/>
+    <xi:include href="xml/inf-local-publisher.xml"/>
+    <xi:include href="xml/inf-tcp-connection.xml"/>
+    <xi:include href="xml/inf-method-manager.xml"/>
+    <xi:include href="xml/inf-discovery-avahi.xml"/>
+    <xi:include href="xml/inf-user.xml"/>
+    <xi:include href="xml/inf-discovery.xml"/>
+    <xi:include href="xml/inf-xmpp-manager.xml"/>
+    <xi:include href="xml/inf-xmpp-connection.xml"/>
+    <xi:include href="xml/inf-xml-connection.xml"/>
+    <xi:include href="xml/inf-ip-address.xml"/>
+    <xi:include href="xml/inf-xml-util.xml"/>
+    <xi:include href="xml/inf-error.xml"/>
+    <xi:include href="xml/infc-browser.xml"/>
+    <xi:include href="xml/infc-explore-request.xml"/>
+    <xi:include href="xml/infc-node-request.xml"/>
+    <xi:include href="xml/infc-request-manager.xml"/>
+    <xi:include href="xml/infc-session-proxy.xml"/>
+    <xi:include href="xml/infc-request.xml"/>
+    <xi:include href="xml/infc-user-request.xml"/>
+    <xi:include href="xml/inf-adopted-session.xml"/>
+    <xi:include href="xml/inf-adopted-operation.xml"/>
+    <xi:include href="xml/inf-adopted-user.xml"/>
+    <xi:include href="xml/inf-adopted-request.xml"/>
+    <xi:include href="xml/inf-adopted-algorithm.xml"/>
+    <xi:include href="xml/inf-adopted-split-operation.xml"/>
+    <xi:include href="xml/inf-adopted-no-operation.xml"/>
+    <xi:include href="xml/inf-adopted-request-log.xml"/>
+    <xi:include href="xml/infd-xmpp-server.xml"/>
+    <xi:include href="xml/infd-server-pool.xml"/>
+    <xi:include href="xml/infd-directory.xml"/>
+    <xi:include href="xml/infd-xml-server.xml"/>
+    <xi:include href="xml/infd-tcp-server.xml"/>
+    <xi:include href="xml/infd-storage.xml"/>
+    <xi:include href="xml/infd-session-proxy.xml"/>
+    <xi:include href="xml/infd-filesystem-storage.xml"/>
+    <xi:include href="xml/infc-note-plugin.xml"/>
+    <xi:include href="xml/infc-browser-iter.xml"/>
+  </chapter>
+
+  <chapter>
+    <title>Infinote adOPTed implementation</title>
+    <xi:include href="xml/inf-adopted-state-vector.xml"/>
+    <xi:include href="xml/infd-note-plugin.xml"/>
+  </chapter>
+</book>

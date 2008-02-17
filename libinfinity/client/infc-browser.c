@@ -16,6 +16,17 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:infc-browser
+ * @short_description: Browse remote directories
+ * @see_also: #InfdDirectory
+ * @include: libinfinity/client/infc-browser.h
+ * @stability: Unstable
+ *
+ * The #InfcBrowser is used to browse a remote directory and can be used
+ * to subscribe to sessions.
+ **/
+
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
@@ -1531,6 +1542,16 @@ infc_browser_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfcBrowser::node-added:
+   * @browser: The #InfcBrowser emitting the siganl.
+   * @iter: A #InfcBrowserIter pointing to the created node.
+   *
+   * Emitted when a new node was added in the browser. This can happen either
+   * while exploring a subdirectory, or when a new node was added on the
+   * server. In the latter case the signal is only emitted when the
+   * parent directory of the newly created node is already explored.
+   **/
   browser_signals[NODE_ADDED] = g_signal_new(
     "node-added",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1543,6 +1564,17 @@ infc_browser_class_init(gpointer g_class,
     INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
   );
 
+  /**
+   * InfcBrowser::node-removed:
+   * @browser: The #InfcBrowser emitting the siganl.
+   * @iter: A #InfcBrowserIter pointing to the removed node.
+   *
+   * This signal is emitted every time a node is removed from the browser.
+   * This happens when the corresponding node is removed at the server. The
+   * signal is emitted only when the parent directory of the removed node
+   * is already explored. The signal can also be emitted on non-empty
+   * subdirectory nodes in which case all children are also removed.
+   **/
   browser_signals[NODE_REMOVED] = g_signal_new(
     "node-removed",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1555,6 +1587,15 @@ infc_browser_class_init(gpointer g_class,
     INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
   );
 
+  /**
+   * InfcBrowser::begin-explore:
+   * @browser: The #InfcBrowser emitting the siganl.
+   * @iter: A #InfcBrowserIter pointing to the node being explored.
+   * @request: A #InfcExploreRequest for the operation.
+   *
+   * This signal is emitted when a subdirectory is started to be explored.
+   * @request can be used to get notified when the exploration was finished.
+   **/
   browser_signals[BEGIN_EXPLORE] = g_signal_new(
     "begin-explore",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1568,6 +1609,18 @@ infc_browser_class_init(gpointer g_class,
     INFC_TYPE_EXPLORE_REQUEST
   );
 
+  /**
+   * InfcBrowser::begin-subscribe:
+   * @browser: The #InfcBrowser emitting the siganl.
+   * @iter: A #InfcBrowserIter pointing to the node to which the subscription
+   * starts.
+   * @request: A #InfcNodeRequest for the operation.
+   *
+   * This signal is emitted whenever a subscription request for a
+   * (non-subdirectory) node is made. Note that the subscription may still
+   * fail (connect to #InfcNodeRequest::finished and #InfcRequest::failed
+   * to be notified).
+   **/
   browser_signals[BEGIN_SUBSCRIBE] = g_signal_new(
     "begin-subscribe",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1581,6 +1634,17 @@ infc_browser_class_init(gpointer g_class,
     INFC_TYPE_NODE_REQUEST
   );
 
+  /**
+   * InfcBrowser::subscribe-session:
+   * @browser: The #InfcBrowser emitting the siganl.
+   * @iter: A #InfcBrowserIter pointing to the subscribed node.
+   * @proxy: A #InfcSessionProxy for the subscribed session.
+   *
+   * Emitted when subscribed to a session. The subscription was successful,
+   * but the synchronization (the server sending the initial session state)
+   * might still fail. Use #InfSession::synchronization-complete and
+   * #InfSession::synchronization-failed to be notified.
+   **/
   browser_signals[SUBSCRIBE_SESSION] = g_signal_new(
     "subscribe-session",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1652,8 +1716,8 @@ infc_browser_get_type(void)
  * Public API.
  */
 
-/** infc_browser_new:
- *
+/**
+ * infc_browser_new:
  * @io: A #InfIo object used to schedule timeouts.
  * @connection_manager: A #InfConnectionManager to register the server
  * connection and which forwards incoming data to the blowser or running
@@ -1692,8 +1756,8 @@ infc_browser_new(InfIo* io,
   return INFC_BROWSER(object);
 }
 
-/** infc_browser_get_connection_manager:
- *
+/**
+ * infc_browser_get_connection_manager:
  * @browser: A #InfcBrowser.
  *
  * Returns the connection manager of this browser.
@@ -1707,8 +1771,8 @@ infc_browser_get_connection_manager(InfcBrowser* browser)
   return INFC_BROWSER_PRIVATE(browser)->connection_manager;
 }
 
-/** infc_browser_get_connection:
- *
+/**
+ * infc_browser_get_connection:
  * @browser: A #InfcBrowser.
  *
  * Returns the connection to the server.
@@ -1722,8 +1786,8 @@ infc_browser_get_connection(InfcBrowser* browser)
   return INFC_BROWSER_PRIVATE(browser)->connection;
 }
 
-/** infc_browser_add_plugin:
- *
+/**
+ * infc_browser_add_plugin:
  * @browser: A #InfcBrowser.
  * @plugin: A #InfcNotePlugin.
  *
@@ -1759,8 +1823,8 @@ infc_browser_add_plugin(InfcBrowser* browser,
   return TRUE;
 }
 
-/** infc_browser_lookup_plugin:
- *
+/**
+ * infc_browser_lookup_plugin:
  * @browser: A #InfcBrowser.
  * @note_type: A note type, such as "InfText".
  *
@@ -1782,8 +1846,8 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
   return (const InfcNotePlugin*)g_hash_table_lookup(priv->plugins, note_type);
 }
 
-/** infc_browser_iter_get_root:
- *
+/**
+ * infc_browser_iter_get_root:
  * @browser: A #InfcBrowser.
  * @iter: An uninitialized #InfcBrowserIter.
  *
@@ -1805,8 +1869,8 @@ infc_browser_iter_get_root(InfcBrowser* browser,
   iter->node = priv->root;
 }
 
-/** infc_browser_iter_get_next:
- *
+/**
+ * infc_browser_iter_get_next:
  * @browser: A #InfcBrowser
  * @iter: A #InfcBrowserIter pointing to a node in @browser.
  *
@@ -1839,8 +1903,8 @@ infc_browser_iter_get_next(InfcBrowser* browser,
   }
 }
 
-/** infc_browser_iter_get_prev:
- *
+/**
+ * infc_browser_iter_get_prev:
  * @browser: A #InfcBrowser
  * @iter: A #InfcBrowserIter pointing to a node in @browser.
  *
@@ -1873,8 +1937,8 @@ infc_browser_iter_get_prev(InfcBrowser* browser,
   }
 }
 
-/** infc_browser_iter_get_parent:
- *
+/**
+ * infc_browser_iter_get_parent:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a node in @browser.
  *
@@ -1906,8 +1970,8 @@ infc_browser_iter_get_parent(InfcBrowser* browser,
   }
 }
 
-/** infc_browser_iter_get_explored:
- *
+/**
+ * infc_browser_iter_get_explored:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a subdirectory node in @browser.
  *
@@ -1931,8 +1995,8 @@ infc_browser_iter_get_explored(InfcBrowser* browser,
   return node->shared.subdir.explored;
 }
 
-/** infc_browser_iter_get_child:
- *
+/**
+ * infc_browser_iter_get_child:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a subdirectory node in @brwoser that
  * has already been explored.
@@ -1969,8 +2033,8 @@ infc_browser_iter_get_child(InfcBrowser* browser,
   }
 }
 
-/** infc_browser_iter_explore:
- *
+/**
+ * infc_browser_iter_explore:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a subdirectory node in @browser that
  * has not yet been explored.
@@ -2031,8 +2095,8 @@ infc_browser_iter_explore(InfcBrowser* browser,
   return INFC_EXPLORE_REQUEST(request);
 }
 
-/** infc_browser_iter_get_explore_request:
- *
+/**
+ * infc_browser_iter_get_explore_request:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a subdirectory node in @browser.
  *
@@ -2071,8 +2135,8 @@ infc_browser_iter_get_explore_request(InfcBrowser* browser,
   return data.result;
 }
 
-/** infc_browser_iter_from_explore_request:
- *
+/**
+ * infc_browser_iter_from_explore_request:
  * @browser: A #InfcBrowser.
  * @request: A #InfcExploreRequest exploring a node in @browser.
  * @iter: A #InfcBrowserIter.
@@ -2107,8 +2171,8 @@ infc_browser_iter_from_explore_request(InfcBrowser* browser,
   return TRUE;
 }
 
-/** infc_browser_iter_get_name:
- *
+/**
+ * infc_browser_iter_get_name:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a node in @browser.
  *
@@ -2129,8 +2193,8 @@ infc_browser_iter_get_name(InfcBrowser* browser,
   return node->name;
 }
 
-/** infc_brawser_iter_is_subdirectory:
- *
+/**
+ * infc_browser_iter_is_subdirectory:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a node in @browser.
  *
@@ -2154,8 +2218,8 @@ infc_browser_iter_is_subdirectory(InfcBrowser* browser,
   return FALSE;
 }
 
-/** infc_browser_add_subdirectory:
- *
+/**
+ * infc_browser_add_subdirectory:
  * @browser: A #InfcBrowser.
  * @parent: A #InfcBrowserIter pointing to an explored subdirectory in which
  * to create the new subdirectory.
@@ -2210,8 +2274,8 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
   return INFC_NODE_REQUEST(request);
 }
 
-/** infc_browser_add_note:
- *
+/**
+ * infc_browser_add_note:
  * @browser: A #InfcBrowser.
  * @parent: A #InfcBrowserIter pointing to an explored subdirectory.
  * @name: Name for the new node.
@@ -2267,8 +2331,8 @@ infc_browser_add_note(InfcBrowser* browser,
   return INFC_NODE_REQUEST(request);
 }
 
-/** infc_browser_remove_node:
- *
+/**
+ * infc_browser_remove_node:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a node in @browser.
  *
@@ -2316,8 +2380,8 @@ infc_browser_remove_node(InfcBrowser* browser,
   return INFC_NODE_REQUEST(request);
 }
 
-/** infc_browser_iter_get_note_type:
- *
+/**
+ * infc_browser_iter_get_note_type:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note inside @browser.
  *
@@ -2354,8 +2418,8 @@ infc_browser_iter_get_note_type(InfcBrowser* browser,
   }
 }
 
-/** infc_browser_iter_get_plugin:
- *
+/**
+ * infc_browser_iter_get_plugin:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note inside @browser.
  *
@@ -2393,8 +2457,8 @@ infc_browser_iter_get_plugin(InfcBrowser* browser,
   }
 }
 
-/** infc_browser_iter_subscribe_session:
- *
+/**
+ * infc_browser_iter_subscribe_session:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note inside @browser.
  *
@@ -2458,8 +2522,8 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
   return INFC_NODE_REQUEST(request);
 }
 
-/** infc_browser_iter_get_session:
- *
+/**
+ * infc_browser_iter_get_session:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note in @browser.
  *
@@ -2485,8 +2549,8 @@ infc_browser_iter_get_session(InfcBrowser* browser,
   return node->shared.known.session;
 }
 
-/** infc_browser_iter_get_subscribe_request:
- *
+/**
+ * infc_browser_iter_get_subscribe_request:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note in @browser.
  *
@@ -2525,8 +2589,8 @@ infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
   return data.result;
 }
 
-/** infc_browser_iter_from_node_request:
- *
+/**
+ * infc_browser_iter_from_node_request:
  * @browser: A #InfcBrowser.
  * @request: A #InfcNodeRequest issued by @browser.
  * @iter: A #InfcBrowserIter.

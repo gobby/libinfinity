@@ -1,9 +1,14 @@
+m4_define([infinote_version], [0.1.0])
+
 AC_PREREQ(2.59)
-AC_INIT([infinote], [0.1.0], [armin@arbur.net])
-AM_INIT_AUTOMAKE([1.9 check-news])
+AC_INIT([infinote], [infinote_version], [armin@arbur.net])
+AM_INIT_AUTOMAKE([-Wall dist-bzip2])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-net-object.h])
 AC_CONFIG_HEADER([libinfinity/inf-config.h])
+
+INFINOTE_VERSION=infinote_version
+AC_SUBST(INFINOTE_VERSION)
 
 AC_CANONICAL_HOST
 
@@ -18,6 +23,13 @@ AC_PROG_LIBTOOL
 # Seems to be required for building a binary from multiple source files
 # automake complains without it in infinoted/.
 AM_PROG_CC_C_O
+
+###################################
+# Gtk-Doc
+###################################
+
+AC_CONFIG_MACRO_DIR(m4)
+GTK_DOC_CHECK(1.4)
 
 ###################################
 # Check for regular dependencies
@@ -127,6 +139,12 @@ AC_CONFIG_FILES([
       pixmaps/scalable/Makefile
 
     test/Makefile
+
+    docs/Makefile
+      docs/reference/version.xml
+      docs/reference/Makefile
+        docs/reference/libinfinity/Makefile
+
   libinfinity-1.0.pc
   libinftext-1.0.pc
   libinfgtk-1.0.pc

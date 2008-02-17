@@ -16,6 +16,29 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:infc-browser-iter
+ * @title: InfcBrowserIter
+ * @short_description: Iterating through browsed nodes
+ * @see_also: #InfcBrowser
+ * @include: libinfinity/client/infc-browser-iter.h
+ * @stability: Unstable
+ *
+ * The #InfcBrowserIter is used to iterate through the nodes of a
+ * #InfcBrowser. Normally, #InfcBrowserIter is allocated on the stack and
+ * initialized by a #InfcBrowser API call, such as
+ * infc_browser_iter_get_root(). You can also safely copy the struct by
+ * value to create a copy. It is not necessary to free it.
+ *
+ * Most operations are done via the #InfcBrowser API. These methods could be
+ * useful to language bindings.
+ *
+ * An initialized #InfcBrowserIter always points to a node within the
+ * #InfcBrowser. It stays valid as long as the node it points to is not
+ * removed from the browser (if it is, the #InfcBrowser::node-removed) signal
+ * is emitted.
+ **/
+
 #include <libinfinity/client/infc-browser-iter.h>
 
 GType
@@ -35,8 +58,8 @@ infc_browser_iter_get_type(void)
   return browser_iter_type;
 }
 
-/** infc_browser_iter_copy:
- *
+/**
+ * infc_browser_iter_copy:
  * @iter: A #InfcBrowserIter.
  *
  * Makes a dynamically allocated copy of @iter. This should not be used by
@@ -57,8 +80,8 @@ infc_browser_iter_copy(InfcBrowserIter* iter)
   return new_iter;
 }
 
-/** infc_browser_iter_free:
- *
+/**
+ * infc_browser_iter_free:
  * @iter: A #InfcBrowserIter.
  *
  * Frees a #InfcBrowserIter allocated by infc_browser_iter_copy().

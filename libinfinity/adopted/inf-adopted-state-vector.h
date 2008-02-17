@@ -38,13 +38,21 @@ typedef enum _InfAdoptedStateVectorError {
   INF_ADOPTED_STATE_VECTOR_FAILED
 } InfAdoptedStateVectorError;
 
-typedef void(*InfAdoptedStateVectorForeachFunc)(guint, guint, gpointer);
+/**
+ * InfAdoptedStateVectorForeachFunc:
+ * @id: The ID of the entry.
+ * @value: The value of the entry.
+ * @user_data: The user data passed to inf_adopted_state_vector_foreach().
+ */
+typedef void(*InfAdoptedStateVectorForeachFunc)(guint id,
+                                                guint value,
+                                                gpointer user_data);
 
 GType
 inf_adopted_state_vector_get_type(void) G_GNUC_CONST;
 
 GQuark
-inf_adopted_state_vector_get_quark(void);
+inf_adopted_state_vector_error_quark(void);
 
 InfAdoptedStateVector*
 inf_adopted_state_vector_new(void);

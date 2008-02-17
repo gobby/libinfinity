@@ -16,6 +16,19 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-adopted-state-vector
+ * @title: InfAdoptedStateVector
+ * @short_description: Represents a state in the interaction model
+ * @see_also: #InfAdoptedAlgorithm
+ * @include: libinfinity/adopted/inf-adopted-state-vector.h
+ * @stability: Unstable
+ *
+ * The #InfAdoptedStateVector represents a state in the current state space.
+ * It basically maps user IDs to operation counts and states how many
+ * operations of the corresponding user have already been performed.
+ **/
+
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
 
 #include <stdlib.h>
@@ -152,13 +165,21 @@ inf_adopted_state_vector_get_type(void)
   return state_vector_type;
 }
 
+/**
+ * inf_adopted_state_vector_error_quark:
+ *
+ * The domain for #InfAdoptedStateVectorError errors.
+ *
+ * Returns: A #GQuark for that domain.
+ **/
 GQuark
 inf_adopted_state_vector_error_quark(void)
 {
   return g_quark_from_static_string("INF_ADOPTED_STATE_VECTOR_ERROR");
 }
 
-/** inf_adopted_state_vector_new:
+/**
+ * inf_adopted_state_vector_new:
  *
  * Returns a new state vector with all components set to zero.
  *
@@ -172,8 +193,8 @@ inf_adopted_state_vector_new(void)
   );
 }
 
-/** inf_adopted_state_vector_copy:
- *
+/**
+ * inf_adopted_state_vector_copy:
  * @vec: The #InfAdoptedStateVector to copy
  *
  * Returns a copy of @vec.
@@ -195,8 +216,8 @@ inf_adopted_state_vector_copy(InfAdoptedStateVector* vec)
   return new_vec;
 }
 
-/** inf_adopted_state_vector_free:
- *
+/**
+ * inf_adopted_state_vector_free:
  * @vec: A #InfAdoptedStateVector.
  *
  * Frees a state vector allocated by inf_adopted_state_vector_new() or
@@ -209,8 +230,8 @@ inf_adopted_state_vector_free(InfAdoptedStateVector* vec)
   g_sequence_free(vec);
 }
 
-/** inf_adopted_state_vector_get:
- *
+/**
+ * inf_adopted_state_vector_get:
  * @vec: A #InfAdoptedStateVector.
  * @id: The component whose timestamp to look for.
  *
@@ -235,8 +256,8 @@ inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
   return ((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->n;
 }
 
-/** inf_adopted_state_vector_set:
- *
+/**
+ * inf_adopted_state_vector_set:
  * @vec: A #InfAdoptedStateVector.
  * @id: The component to change.
  * @value: The value to set the component to.
@@ -259,8 +280,8 @@ inf_adopted_state_vector_set(InfAdoptedStateVector* vec,
     ((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->n = value;
 }
 
-/** inf_adopted_state_vector_add:
- *
+/**
+ * inf_adopted_state_vector_add:
  * @vec: A #InfAdoptedStateVector.
  * @id: The component to change.
  * @value: The value by which to change the component.
@@ -294,8 +315,8 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
   }
 }
 
-/** inf_adopted_state_vector_foreach:
- *
+/**
+ * inf_adopted_state_vector_foreach:
  * @vec: A #InfAdoptedStateVector.
  * @func: The function to call.
  * @user_data: Additional data to pass to @func.
@@ -319,8 +340,8 @@ inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
   g_sequence_foreach(vec, inf_adopted_state_vector_foreach_func, &data);
 }
 
-/** inf_adopted_state_vector_compare:
- *
+/**
+ * inf_adopted_state_vector_compare:
  * @first: A #InfAdoptedStateVector.
  * @second: Another #InfAdoptedStateVector.
  *
@@ -417,8 +438,8 @@ inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
   }
 }
 
-/** inf_adopted_state_vector_causally_before:
- *
+/**
+ * inf_adopted_state_vector_causally_before:
  * @first: A #InfAdoptedStateVector.
  * @second: Another #InfAdoptedStateVector.
  *
@@ -486,8 +507,8 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
   return TRUE;
 }
 
-/** inf_adopted_state_vector_to_string:
- *
+/**
+ * inf_adopted_state_vector_to_string:
  * @vec: A #InfAdoptedStateVector.
  *
  * Returns a string representation of @vec.
@@ -523,8 +544,8 @@ inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec)
   return g_string_free(str, FALSE);
 }
 
-/** inf_adopted_state_vector_from_string.
- *
+/**
+ * inf_adopted_state_vector_from_string.
  * @str: A string representation of a #InfAdoptedStateVector.
  * @error: Location to place an error, if any.
  *
@@ -601,8 +622,8 @@ inf_adopted_state_vector_from_string(const gchar* str,
   return vec;
 }
 
-/** inf_adopted_state_vector_to_string_diff:
- *
+/**
+ * inf_adopted_state_vector_to_string_diff:
  * @vec: A #InfAdoptedStateVector.
  * @orig: Another #InfAdoptedStateVector.
  *
@@ -690,8 +711,8 @@ inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
   return g_string_free(str, FALSE);
 }
 
-/** inf_adopted_state_vector_from_string_diff:
- *
+/**
+ * inf_adopted_state_vector_from_string_diff:
  * @str: A string representation of a diff between state vectors.
  * @orig: The state vector used to create @str in
  * inf_adopted_state_vector_to_string_diff().

@@ -1,3 +1,33 @@
+2008-02-17  Armin Burgmeier  <armin@arbur.net>
+
+	* autogen.sh: Added autogen.sh which also calls gtkdocize in addition
+	to creating all the necessary build files.
+
+	* configure.ac: Added gtk-doc support.
+	* Makefile.am: Added docs to subdirs.
+
+	* libinfinity/adopted/inf-adopted-state-vector.h:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinfinity/client/infc-browser-iter.c:
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Documentation fixes.
+
+	* m4: Added m4 directory as required by some new configure macro.
+
+	* docs/Makefile.am:
+	* docs/reference/Makefile.am:
+	* docs/reference/libinfinity/Makefile.am:
+	* docs/reference/version.xml.in:
+	* docs/reference/libinfinity/libinfinity-sections.txt:
+	* docs/reference/libinfinity/libinfinity-docs.sgml:
+	* docs/reference/libinfinity/libinfinity-overrides.txt: Added initial
+	gtk-doc files to create documentation. Perhaps some more are required
+	which I will commit when someone misses them. I just don't want to
+	check in generated files.
+
+	* test/inf-test-text-session.c: Reduced permutations to 100 so that it
+	finishes earlier.
+
 2008-02-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-request-log.c: Fixed possible memory
