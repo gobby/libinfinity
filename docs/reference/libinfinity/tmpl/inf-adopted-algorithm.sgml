@@ -55,17 +55,7 @@ InfAdoptedAlgorithm
 
 </para>
 
-<!-- ##### ARG InfAdoptedAlgorithm:current-state ##### -->
-<para>
-
-</para>
-
 <!-- ##### ARG InfAdoptedAlgorithm:max-total-log-size ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG InfAdoptedAlgorithm:user-table ##### -->
 <para>
 
 </para>

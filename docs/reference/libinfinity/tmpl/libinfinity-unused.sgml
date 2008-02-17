@@ -1,3 +1,15 @@
+<!-- ##### ARG InfAdoptedAlgorithm:current-state ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedAlgorithm:user-table ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### STRUCT InfAdoptedUser ##### -->
 <para>
 
@@ -15,6 +27,22 @@
 
 </para>
 
+
+<!-- ##### SIGNAL InfUserTable::add-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::remove-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
 
 <!-- ##### FUNCTION inf_adopted_state_vector_foobar ##### -->
 <para>

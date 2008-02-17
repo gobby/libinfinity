@@ -60,9 +60,9 @@ inf-io
 
 </para>
 
-@socket: 
-@event: 
-@user_data: 
+@Param1: 
+@Param2: 
+@Param3: 
 
 
 <!-- ##### USER_FUNCTION InfIoTimeoutFunc ##### -->
@@ -70,7 +70,7 @@ inf-io
 
 </para>
 
-@user_data: 
+@Param1: 
 
 
 <!-- ##### FUNCTION inf_io_get_type ##### -->

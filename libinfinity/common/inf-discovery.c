@@ -35,6 +35,16 @@ inf_discovery_base_init(gpointer g_class)
 
   if(!initialized)
   {
+    /**
+     * InfDiscovery::discovered:
+     * @discoverer: The #InfDiscovery object discovering something
+     * @info: The #InfDiscoveryInfo describing the discovered service
+     *
+     * This signal is detailed. The detail is the name of the service that has
+     * been discovered, so you can connect to
+     * &quot;discovered::<emphasis>my-service-name</emphasis>&quot; if you are
+     * only interested in a particular service.
+     */
     discovery_signals[DISCOVERED] = g_signal_new(
       "discovered",
       INF_TYPE_DISCOVERY,
@@ -44,9 +54,22 @@ inf_discovery_base_init(gpointer g_class)
       inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
       1,
-      G_TYPE_POINTER
+      G_TYPE_POINTER /* InfDiscoveryInfo* */
     );
 
+    /**
+     * InfDiscovery::undiscovered:
+     * @discoverer: The #InfDiscovery object undiscovering something
+     * @info: The #InfDiscoveryInfo describing the undiscovered service
+     * 
+     * This signal is emitted if a previously discovered service is no longer
+     * available.
+     *
+     * This signal is detailed. The detail is the name of the service that has
+     * been undiscovered, so you can connect to
+     * &quot;undiscovered::<emphasis>my-service-name</emphasis>&quot; if you
+     * are only interested in a particular service.
+     */
     discovery_signals[UNDISCOVERED] = g_signal_new(
       "undiscovered",
       INF_TYPE_DISCOVERY,

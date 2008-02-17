@@ -1700,6 +1700,15 @@ inf_session_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfSession::close:
+   * @session: The #InfSession that is being closed
+   *
+   * This signal is emitted if the session is closed. Note that this signal
+   * is not called as a client if the connection to the sessions has merely
+   * been lost, only the relevant #InfXmlConnection has its status property
+   * changed and the related signal is emitted.
+   */
   session_signals[CLOSE] = g_signal_new(
     "close",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1711,6 +1720,21 @@ inf_session_class_init(gpointer g_class,
     0
   );
 
+  /**
+   * InfSession::synchronization-progress:
+   * @session: The #InfSession that is synchronizing or being synchronized
+   * @connection: The #InfXmlConnection through which progress is made
+   * @progress: A #gdouble value ranging from 0.0 to 1.0.
+   *
+   * This signal is emitted whenever a new XML node has been sent or received
+   * over @connection as part of a synchronization. The process is completed
+   * when @progress reaches the value 1.0. At this point,
+   * #InfSession::synchronisation-complete is also emitted.
+   *
+   * If @sessions&apos;s status is %INF_SESSION_SYNCHRONIZING, the local
+   * side is being synchronized by the remote side. If the status is
+   * %INF_SESSION_RUNNING, the local side is updating the remote side.
+   */
   session_signals[SYNCHRONIZATION_PROGRESS] = g_signal_new(
     "synchronization-progress",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1724,6 +1748,20 @@ inf_session_class_init(gpointer g_class,
     G_TYPE_DOUBLE
   );
 
+  /**
+   * InfSession::synchronization-complete:
+   * @session: The #InfSession that has or was synchronized
+   * @connection: The #InfXmlConnection through which synchronization happened
+   *
+   * This signal is emitted when synchronization has completed, in addition
+   * to #InfSession::synchronization-progress with a progress value of 1.0.
+   *
+   * If a callback is connected before the default handler, it can find out
+   * whether the remote side is synchronizing the local side by comparing
+   * @sessions&apos;s status with %INF_SESSION_SYNCHRONIZING. The default
+   * signal handler sets the status to %INF_SESSION_RUNNING, so checking
+   * afterwards is not too useful.
+   */
   session_signals[SYNCHRONIZATION_COMPLETE] = g_signal_new(
     "synchronization-complete",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1736,6 +1774,18 @@ inf_session_class_init(gpointer g_class,
     INF_TYPE_XML_CONNECTION
   );
 
+  /**
+   * InfSession::synchronization-complete:
+   * @session: The #InfSession that failed to synchronize or be synchronized
+   * @connection: The #InfXmlConnection through which synchronization happened
+   * @error: A pointer to a #GError object with details on the error
+   *
+   * This signal is emitted when synchronization has failed before its
+   * completion due to malformed data from the other side or network failure.
+   *
+   * If this happens during initial synchronization, #InfSession::close is
+   * emitted as well at this point.
+   */
   session_signals[SYNCHRONIZATION_FAILED] = g_signal_new(
     "synchronization-failed",
     G_OBJECT_CLASS_TYPE(object_class),
