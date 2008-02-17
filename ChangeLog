@@ -1,5 +1,14 @@
 2008-02-17  Benjamin Herr <ben@0x539.de>
 
+	* libinfinity/common/inf-user-table.c:
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/common/inf-xml-connection.c:
+
+	Added preliminary documentation to a few signals.
+
+
+2008-02-17  Benjamin Herr <ben@0x539.de>
+
 	* libinfinity/adopted/inf-adopted-no-operation.c:
 	* libinfinity/adopted/inf-adopted-split-operation.c:
 	* libinfinity/server/infd-storage.c:

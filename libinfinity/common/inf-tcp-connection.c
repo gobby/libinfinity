@@ -722,6 +722,12 @@ inf_tcp_connection_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfTcpConnection::sent:
+   * @connection: The #InfTcpConnection through which the data has been sent
+   * @data: A #gpointer refering to the data that has been sent
+   * @length: A #guint holding the number of bytes that has been sent
+   */
   tcp_connection_signals[SENT] = g_signal_new(
     "sent",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -735,6 +741,12 @@ inf_tcp_connection_class_init(gpointer g_class,
     G_TYPE_UINT
   );
 
+  /**
+   * InfTcpConnection::received:
+   * @connection: The #InfTcpConnection through which the data has been received
+   * @data: A #gpointer refering to the data that has been received
+   * @length: A #guint holding the number of bytes that has been received
+   */
   tcp_connection_signals[RECEIVED] = g_signal_new(
     "received",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -748,6 +760,11 @@ inf_tcp_connection_class_init(gpointer g_class,
     G_TYPE_UINT
   );
 
+  /**
+   * InfTcpConnection::error:
+   * @connection: The erroneous #InfTcpConnection
+   * @error: A pointer to a #GError object with details on the error
+   */
   tcp_connection_signals[ERROR] = g_signal_new(
     "error",
     G_OBJECT_CLASS_TYPE(object_class),

@@ -36,6 +36,11 @@ inf_xml_connection_base_init(gpointer g_class)
 
   if(!initialized)
   {
+    /**
+     * InfXmlConnection::sent:
+     * @connection: The #InfXmlConnection through which @node has been sent 
+     * @node: An #xmlNodePtr refering to the XML node that has been sent
+     */
     connection_signals[SENT] = g_signal_new(
       "sent",
       INF_TYPE_XML_CONNECTION,
@@ -48,6 +53,11 @@ inf_xml_connection_base_init(gpointer g_class)
       G_TYPE_POINTER
     );
 
+    /**
+     * InfXmlConnection::received:
+     * @connection: The #InfXmlConnection through which @node has been received
+     * @node: An #xmlNodePtr refering to the XML node that has been received
+     */
     connection_signals[RECEIVED] = g_signal_new(
       "received",
       INF_TYPE_XML_CONNECTION,
@@ -60,6 +70,11 @@ inf_xml_connection_base_init(gpointer g_class)
       G_TYPE_POINTER
     );
 
+    /**
+     * InfXmlConnection::error:
+     * @connection: The erroneous #InfXmlConnection
+     * @error: A pointer to a #GError object with details on the error
+     */
     connection_signals[ERROR] = g_signal_new(
       "error",
       INF_TYPE_XML_CONNECTION,
@@ -69,7 +84,7 @@ inf_xml_connection_base_init(gpointer g_class)
       inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
       1,
-      G_TYPE_POINTER
+      G_TYPE_POINTER /* actually a GError */
     );
 
     g_object_interface_install_property(

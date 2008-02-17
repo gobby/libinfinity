@@ -300,6 +300,18 @@ inf_user_table_class_init(gpointer g_class,
   user_table_class->add_local_user = inf_user_table_add_local_user;
   user_table_class->remove_local_user = inf_user_table_remove_local_user;
 
+  /**
+   * InfUserTable::add-user:
+   * @user_table: The #InfUserTable into which @user has been added
+   * @user: The #InfUser that has been added into @user_table
+   *
+   * This signal is emitted when inf_user_table_add_user() is called. Note
+   * that this does not happen if @user rejoins the session and has already
+   * been added to @user_table previously.
+   *
+   * #InfUserTable::add-local-user may also be emitted at this point if
+   * @user has the %INF_USER_LOCAL flag set.
+   */
   user_table_signals[ADD_USER] = g_signal_new(
     "add-user",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -312,6 +324,18 @@ inf_user_table_class_init(gpointer g_class,
     INF_TYPE_USER
   );
 
+  /**
+   * InfUserTable::remove-user:
+   * @user_table: The #InfUserTable from which @user has been remove
+   * @user: The #InfUser that has been removed from @user_table
+   *
+   * This signal is emitted when inf_user_table_remove_user() is called. This
+   * does not usually happen, as users leaving a session do not get removed
+   * from the table.
+   *
+   * #InfUserTable::remove-local-user may also be emitted at this point if
+   * @user has the %INF_USER_LOCAL flag set.
+   */
   user_table_signals[REMOVE_USER] = g_signal_new(
     "remove-user",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -324,6 +348,21 @@ inf_user_table_class_init(gpointer g_class,
     INF_TYPE_USER
   );
 
+  /**
+   * InfUserTable::add-local-user:
+   * @user_table: The #InfUserTable in which @user has been set as local
+   * @user: The #InfUser that has set as local
+   *
+   * This signal is emitted when a user is added to the user table and has the
+   * %INF_USER_LOCAL flag set. In this case, #InfUserTable::add-user is
+   * emitted as well.
+   *
+   * This signal is also emitted when an existing user receives the
+   * %INF_USER_LOCAL flag. This occurs when a user rejoins locally after
+   * leaving the session (possibly having the %INF_USER_LOCAL flag removed
+   * during their absence). #InfUserTable::add-user is not emitted in this
+   * case.
+   */
   user_table_signals[ADD_LOCAL_USER] = g_signal_new(
     "add-local-user",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -336,6 +375,20 @@ inf_user_table_class_init(gpointer g_class,
     INF_TYPE_USER
   );
 
+  /**
+   * InfUserTable::remove-local-user:
+   * @user_table: The #InfUserTable in which @user is no longer local
+   * @user: The #InfUser that is no longer local
+   *
+   * This signal is emitted when a user is removed from the user table and
+   * had the %INF_USER_LOCAL flag set. In this case,
+   * #InfUserTable::remove-user is emitted as well.
+   *
+   * This signal is also emitted when @user loses the %INF_USER_LOCAL flag.
+   * This occurs when the local @user leaves the session.
+   * #InfUserTable::remove-user is not emitted and the status of @user is set
+   * to %INF_USER_UNAVAILABLE.
+   */
   user_table_signals[REMOVE_LOCAL_USER] = g_signal_new(
     "remove-local-user",
     G_OBJECT_CLASS_TYPE(object_class),
