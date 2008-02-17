@@ -1,0 +1,65 @@
+<!-- ##### SECTION Title ##### -->
+InfdXmppServer
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfdXmppServer ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfdXmppServer::error ##### -->
+<para>
+
+</para>
+
+@infdxmppserver: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfdXmppServer:credentials ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdXmppServer:jid ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdXmppServer:sasl-context ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdXmppServer:tcp-server ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION infd_xmpp_server_new ##### -->
+<para>
+
+</para>
+
+@tcp: 
+@jid: 
+@cred: 
+@sasl_context: 
+@Returns: 
+
+

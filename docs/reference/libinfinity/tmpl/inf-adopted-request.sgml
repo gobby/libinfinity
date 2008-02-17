@@ -1,0 +1,182 @@
+<!-- ##### SECTION Title ##### -->
+InfAdoptedRequest
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_REQUEST_TYPE ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfAdoptedRequest ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedRequest:operation ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequest:type ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequest:user-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequest:vector ##### -->
+<para>
+
+</para>
+
+<!-- ##### ENUM InfAdoptedRequestType ##### -->
+<para>
+
+</para>
+
+@INF_ADOPTED_REQUEST_DO: 
+@INF_ADOPTED_REQUEST_UNDO: 
+@INF_ADOPTED_REQUEST_REDO: 
+
+<!-- ##### FUNCTION inf_adopted_request_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_new_do ##### -->
+<para>
+
+</para>
+
+@vector: 
+@user_id: 
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_new_undo ##### -->
+<para>
+
+</para>
+
+@vector: 
+@user_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_new_redo ##### -->
+<para>
+
+</para>
+
+@vector: 
+@user_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_copy ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_get_request_type ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_get_vector ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_get_user_id ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_get_operation ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_transform ##### -->
+<para>
+
+</para>
+
+@request: 
+@against: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_mirror ##### -->
+<para>
+
+</para>
+
+@request: 
+@by: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_fold ##### -->
+<para>
+
+</para>
+
+@request: 
+@into: 
+@by: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_affects_buffer ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+

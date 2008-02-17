@@ -1,0 +1,173 @@
+<!-- ##### SECTION Title ##### -->
+InfAdoptedAlgorithm
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfAdoptedAlgorithm ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfAdoptedAlgorithm::apply-request ##### -->
+<para>
+
+</para>
+
+@infadoptedalgorithm: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### SIGNAL InfAdoptedAlgorithm::can-redo-changed ##### -->
+<para>
+
+</para>
+
+@infadoptedalgorithm: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### SIGNAL InfAdoptedAlgorithm::can-undo-changed ##### -->
+<para>
+
+</para>
+
+@infadoptedalgorithm: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### ARG InfAdoptedAlgorithm:buffer ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedAlgorithm:current-state ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedAlgorithm:max-total-log-size ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedAlgorithm:user-table ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_adopted_algorithm_new ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@buffer: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_new_full ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@buffer: 
+@max_total_log_size: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_get_current ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_generate_request_noexec ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@user: 
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_generate_request ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@user: 
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_generate_undo ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@user: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_generate_redo ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@user: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_receive_request ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@request: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_can_undo ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@user: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_algorithm_can_redo ##### -->
+<para>
+
+</para>
+
+@algorithm: 
+@user: 
+@Returns: 
+
+

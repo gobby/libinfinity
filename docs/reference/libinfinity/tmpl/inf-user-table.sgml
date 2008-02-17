@@ -1,0 +1,139 @@
+<!-- ##### SECTION Title ##### -->
+InfUserTable
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_TYPE_USER_TABLE_STATUS ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfUserTable ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfUserTable::add-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::add-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::remove-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::remove-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### USER_FUNCTION InfUserTableForeachUserFunc ##### -->
+<para>
+
+</para>
+
+@Param1: 
+@Param2: 
+
+
+<!-- ##### FUNCTION inf_user_table_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_table_add_user ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@user: 
+
+
+<!-- ##### FUNCTION inf_user_table_remove_user ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@user: 
+
+
+<!-- ##### FUNCTION inf_user_table_lookup_user_by_id ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_table_lookup_user_by_name ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_table_foreach_user ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@func: 
+@user_data: 
+
+
+<!-- ##### FUNCTION inf_user_table_foreach_local_user ##### -->
+<para>
+
+</para>
+
+@user_table: 
+@func: 
+@user_data: 
+
+

@@ -1,0 +1,82 @@
+<!-- ##### SECTION Title ##### -->
+InfcSessionProxy
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfcSessionProxy ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfcSessionProxy:connection ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcSessionProxy:session ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcSessionProxy:subscription-group ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION infc_session_proxy_set_connection ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@group: 
+@connection: 
+
+
+<!-- ##### FUNCTION infc_session_proxy_join_user ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@params: 
+@n_params: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_session_proxy_leave_user ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@user: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_session_proxy_get_session ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@Returns: 
+
+

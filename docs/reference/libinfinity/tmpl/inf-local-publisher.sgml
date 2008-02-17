@@ -1,0 +1,61 @@
+<!-- ##### SECTION Title ##### -->
+inf-local-publisher
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfLocalPublisher ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfLocalPublisherIface ##### -->
+<para>
+
+</para>
+
+@parent: 
+@publish: 
+@unpublish: 
+
+<!-- ##### STRUCT InfLocalPublisherItem ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_local_publisher_publish ##### -->
+<para>
+
+</para>
+
+@publisher: 
+@type: 
+@name: 
+@port: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_local_publisher_unpublish ##### -->
+<para>
+
+</para>
+
+@publisher: 
+@item: 
+
+

@@ -1,0 +1,51 @@
+<!-- ##### SECTION Title ##### -->
+infc-browser-iter
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INFC_TYPE_BROWSER_ITER ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfcBrowserIter ##### -->
+<para>
+
+</para>
+
+@node_id: 
+@node: 
+
+<!-- ##### FUNCTION infc_browser_iter_copy ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_browser_iter_free ##### -->
+<para>
+
+</para>
+
+@iter: 
+
+

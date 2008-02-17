@@ -1,0 +1,118 @@
+<!-- ##### SECTION Title ##### -->
+inf-xml-util
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute_required ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute_int ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@result: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute_int_required ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@result: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute_uint ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@result: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute_uint_required ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@result: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_set_attribute ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@value: 
+
+
+<!-- ##### FUNCTION inf_xml_util_set_attribute_int ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@value: 
+
+
+<!-- ##### FUNCTION inf_xml_util_set_attribute_uint ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@value: 
+
+

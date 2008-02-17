@@ -1,0 +1,45 @@
+<!-- ##### STRUCT InfAdoptedUser ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedUser:request-log ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedUser:vector ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_foobar ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_get_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_adopted_state_vector_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION infc_browser_iter_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+

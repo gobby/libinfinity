@@ -1,0 +1,129 @@
+<!-- ##### SECTION Title ##### -->
+inf-adopted-operation
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_OPERATION_FLAGS ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfAdoptedOperation ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfAdoptedOperationIface ##### -->
+<para>
+
+</para>
+
+@parent: 
+@transform: 
+@copy: 
+@get_flags: 
+@apply: 
+@revert: 
+@make_reversible: 
+
+<!-- ##### ENUM InfAdoptedOperationFlags ##### -->
+<para>
+
+</para>
+
+@INF_ADOPTED_OPERATION_AFFECTS_BUFFER: 
+@INF_ADOPTED_OPERATION_REVERSIBLE: 
+
+<!-- ##### FUNCTION inf_adopted_operation_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_transform ##### -->
+<para>
+
+</para>
+
+@operation: 
+@against: 
+@concurrency_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_copy ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_get_flags ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_apply ##### -->
+<para>
+
+</para>
+
+@operation: 
+@by: 
+@buffer: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_is_reversible ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_revert ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_operation_make_reversible ##### -->
+<para>
+
+</para>
+
+@operation: 
+@with: 
+@buffer: 
+@Returns: 
+
+

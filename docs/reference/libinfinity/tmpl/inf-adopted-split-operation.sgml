@@ -1,0 +1,65 @@
+<!-- ##### SECTION Title ##### -->
+InfAdoptedSplitOperation
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfAdoptedSplitOperation ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedSplitOperation:first ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedSplitOperation:second ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_adopted_split_operation_new ##### -->
+<para>
+
+</para>
+
+@first: 
+@second: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_split_operation_unsplit ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_split_operation_transform_other ##### -->
+<para>
+
+</para>
+
+@op: 
+@other: 
+@concurrency_id: 
+@Returns: 
+
+

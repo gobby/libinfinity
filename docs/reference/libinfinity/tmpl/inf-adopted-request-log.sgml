@@ -1,0 +1,172 @@
+<!-- ##### SECTION Title ##### -->
+InfAdoptedRequestLog
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfAdoptedRequestLog ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedRequestLog:begin ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequestLog:end ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequestLog:next-redo ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequestLog:next-undo ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedRequestLog:user-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_adopted_request_log_new ##### -->
+<para>
+
+</para>
+
+@user_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_get_user_id ##### -->
+<para>
+
+</para>
+
+@log: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_get_begin ##### -->
+<para>
+
+</para>
+
+@log: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_get_end ##### -->
+<para>
+
+</para>
+
+@log: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_get_request ##### -->
+<para>
+
+</para>
+
+@log: 
+@n: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_add_request ##### -->
+<para>
+
+</para>
+
+@log: 
+@request: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_remove_requests ##### -->
+<para>
+
+</para>
+
+@log: 
+@up_to: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_next_associated ##### -->
+<para>
+
+</para>
+
+@log: 
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_prev_associated ##### -->
+<para>
+
+</para>
+
+@log: 
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_original_request ##### -->
+<para>
+
+</para>
+
+@log: 
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_next_undo ##### -->
+<para>
+
+</para>
+
+@log: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_next_redo ##### -->
+<para>
+
+</para>
+
+@log: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_request_log_upper_related ##### -->
+<para>
+
+</para>
+
+@log: 
+@request: 
+@Returns: 
+
+

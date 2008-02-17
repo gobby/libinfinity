@@ -1,0 +1,63 @@
+<!-- ##### SECTION Title ##### -->
+InfXmppManager
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfXmppManager ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_xmpp_manager_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xmpp_manager_lookup_connection_by_address ##### -->
+<para>
+
+</para>
+
+@manager: 
+@address: 
+@port: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xmpp_manager_contains_connection ##### -->
+<para>
+
+</para>
+
+@manager: 
+@connection: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xmpp_manager_add_connection ##### -->
+<para>
+
+</para>
+
+@manager: 
+@connection: 
+
+

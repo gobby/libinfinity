@@ -1,0 +1,67 @@
+<!-- ##### SECTION Title ##### -->
+inf-net-object
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfNetObject ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfNetObjectIface ##### -->
+<para>
+
+</para>
+
+@parent: 
+@received: 
+@enqueued: 
+@sent: 
+
+<!-- ##### FUNCTION inf_net_object_received ##### -->
+<para>
+
+</para>
+
+@object: 
+@conn: 
+@node: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_net_object_enqueued ##### -->
+<para>
+
+</para>
+
+@object: 
+@conn: 
+@node: 
+
+
+<!-- ##### FUNCTION inf_net_object_sent ##### -->
+<para>
+
+</para>
+
+@object: 
+@conn: 
+@node: 
+
+

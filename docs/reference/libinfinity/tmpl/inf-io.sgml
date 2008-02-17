@@ -1,0 +1,116 @@
+<!-- ##### SECTION Title ##### -->
+inf-io
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_TYPE_IO_EVENT ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfIo ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfIoIface ##### -->
+<para>
+
+</para>
+
+@parent: 
+@watch: 
+@add_timeout: 
+@remove_timeout: 
+
+<!-- ##### TYPEDEF InfNativeSocket ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ENUM InfIoEvent ##### -->
+<para>
+
+</para>
+
+@INF_IO_INCOMING: 
+@INF_IO_OUTGOING: 
+@INF_IO_ERROR: 
+
+<!-- ##### USER_FUNCTION InfIoFunc ##### -->
+<para>
+
+</para>
+
+@Param1: 
+@Param2: 
+@Param3: 
+
+
+<!-- ##### USER_FUNCTION InfIoTimeoutFunc ##### -->
+<para>
+
+</para>
+
+@Param1: 
+
+
+<!-- ##### FUNCTION inf_io_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_io_watch ##### -->
+<para>
+
+</para>
+
+@io: 
+@socket: 
+@events: 
+@func: 
+@user_data: 
+
+
+<!-- ##### FUNCTION inf_io_add_timeout ##### -->
+<para>
+
+</para>
+
+@io: 
+@msecs: 
+@func: 
+@user_data: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_io_remove_timeout ##### -->
+<para>
+
+</para>
+
+@io: 
+@timeout: 
+
+

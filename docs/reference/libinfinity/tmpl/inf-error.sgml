@@ -1,0 +1,141 @@
+<!-- ##### SECTION Title ##### -->
+inf-error
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### ENUM InfRequestError ##### -->
+<para>
+
+</para>
+
+@INF_REQUEST_ERROR_SYNCHRONIZING: 
+@INF_REQUEST_ERROR_UNEXPECTED_MESSAGE: 
+@INF_REQUEST_ERROR_UNKNOWN_DOMAIN: 
+@INF_REQUEST_ERROR_REPLY_UNPROCESSED: 
+@INF_REQUEST_ERROR_INVALID_SEQ: 
+@INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE: 
+@INF_REQUEST_ERROR_INVALID_NUMBER: 
+@INF_REQUEST_ERROR_FAILED: 
+
+<!-- ##### ENUM InfUserJoinError ##### -->
+<para>
+
+</para>
+
+@INF_USER_JOIN_ERROR_NAME_IN_USE: 
+@INF_USER_JOIN_ERROR_ID_PROVIDED: 
+@INF_USER_JOIN_ERROR_NO_SUCH_USER: 
+@INF_USER_JOIN_ERROR_STATUS_PROVIDED: 
+@INF_USER_JOIN_ERROR_FAILED: 
+
+<!-- ##### ENUM InfUserStatusChangeError ##### -->
+<para>
+
+</para>
+
+@INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER: 
+@INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED: 
+@INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS: 
+@INF_USER_STATUS_CHANGE_ERROR_FAILED: 
+
+<!-- ##### ENUM InfDirectoryError ##### -->
+<para>
+
+</para>
+
+@INF_DIRECTORY_ERROR_NODE_EXISTS: 
+@INF_DIRECTORY_ERROR_NO_SUCH_NODE: 
+@INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY: 
+@INF_DIRECTORY_ERROR_NOT_A_NOTE: 
+@INF_DIRECTORY_ERROR_ALREADY_EXPLORED: 
+@INF_DIRECTORY_ERROR_TYPE_UNKNOWN: 
+@INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN: 
+@INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN: 
+@INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED: 
+@INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED: 
+@INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED: 
+@INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE: 
+@INF_DIRECTORY_ERROR_FAILED: 
+
+<!-- ##### FUNCTION inf_request_error_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_request_strerror ##### -->
+<para>
+
+</para>
+
+@code: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_join_error_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_join_strerror ##### -->
+<para>
+
+</para>
+
+@code: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_status_change_error_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_user_status_change_strerror ##### -->
+<para>
+
+</para>
+
+@code: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_directory_error_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_directory_strerror ##### -->
+<para>
+
+</para>
+
+@code: 
+@Returns: 
+
+

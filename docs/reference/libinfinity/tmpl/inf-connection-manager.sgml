@@ -1,0 +1,304 @@
+<!-- ##### SECTION Title ##### -->
+InfConnectionManager
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_TYPE_CONNECTION_MANAGER_GROUP ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfConnectionManagerGroup ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfConnectionManagerMethod ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfConnectionManagerMethodDesc ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@open: 
+@join: 
+@finalize: 
+@receive_msg: 
+@receive_ctrl: 
+@add_connection: 
+@remove_connection: 
+@has_connection: 
+@lookup_connection: 
+@send_to_net: 
+
+<!-- ##### ENUM InfConnectionManagerScope ##### -->
+<para>
+
+</para>
+
+@INF_CONNECTION_MANAGER_POINT_TO_POINT: 
+@INF_CONNECTION_MANAGER_NETWORK: 
+@INF_CONNECTION_MANAGER_GROUP: 
+
+<!-- ##### STRUCT InfConnectionManager ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_connection_manager_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_open_group ##### -->
+<para>
+
+</para>
+
+@manager: 
+@group_name: 
+@net_object: 
+@methods: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_join_group ##### -->
+<para>
+
+</para>
+
+@manager: 
+@group_name: 
+@publisher_conn: 
+@object: 
+@meth: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_lookup_group ##### -->
+<para>
+
+</para>
+
+@manager: 
+@group_name: 
+@publisher: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_lookup_group_by_id ##### -->
+<para>
+
+</para>
+
+@manager: 
+@group_name: 
+@publisher_id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_ref ##### -->
+<para>
+
+</para>
+
+@group: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_unref ##### -->
+<para>
+
+</para>
+
+@group: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_get_method_for_network ##### -->
+<para>
+
+</para>
+
+@g: 
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_set_object ##### -->
+<para>
+
+</para>
+
+@group: 
+@object: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_get_publisher ##### -->
+<para>
+
+</para>
+
+@group: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_get_publisher_id ##### -->
+<para>
+
+</para>
+
+@grp: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_has_connection ##### -->
+<para>
+
+</para>
+
+@group: 
+@conn: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_get_name ##### -->
+<para>
+
+</para>
+
+@group: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_add_connection ##### -->
+<para>
+
+</para>
+
+@group: 
+@conn: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_remove_connection ##### -->
+<para>
+
+</para>
+
+@grp: 
+@conn: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_lookup_connection ##### -->
+<para>
+
+</para>
+
+@grp: 
+@network: 
+@id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_send_to_connection ##### -->
+<para>
+
+</para>
+
+@g: 
+@connection: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_send_to_group ##### -->
+<para>
+
+</para>
+
+@group: 
+@except: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_group_clear_queue ##### -->
+<para>
+
+</para>
+
+@group: 
+@connection: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_register_connection ##### -->
+<para>
+
+</para>
+
+@group: 
+@connection: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_unregister_connection ##### -->
+<para>
+
+</para>
+
+@group: 
+@connection: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_send_msg ##### -->
+<para>
+
+</para>
+
+@group: 
+@connection: 
+@scope: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_connection_manager_send_ctrl ##### -->
+<para>
+
+</para>
+
+@group: 
+@connection: 
+@xml: 
+
+

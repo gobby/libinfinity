@@ -1,0 +1,166 @@
+<!-- ##### SECTION Title ##### -->
+InfcRequestManager
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfcRequestManager ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfcRequestManager::request-add ##### -->
+<para>
+
+</para>
+
+@infcrequestmanager: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfcRequestManager::request-remove ##### -->
+<para>
+
+</para>
+
+@infcrequestmanager: the object which received the signal.
+@arg1: 
+
+<!-- ##### USER_FUNCTION InfcRequestManagerForeachFunc ##### -->
+<para>
+
+</para>
+
+@Param1: 
+@Param2: 
+
+
+<!-- ##### FUNCTION infc_request_manager_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_manager_add_request ##### -->
+<para>
+
+</para>
+
+@manager: 
+@request_type: 
+@request_name: 
+@first_property_name: 
+@Varargs: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_manager_add_request_valist ##### -->
+<para>
+
+</para>
+
+@manager: 
+@request_type: 
+@request_name: 
+@first_property_name: 
+@var_args: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_manager_remove_request ##### -->
+<para>
+
+</para>
+
+@manager: 
+@request: 
+
+
+<!-- ##### FUNCTION infc_request_manager_fail_request ##### -->
+<para>
+
+</para>
+
+@manager: 
+@request: 
+@error: 
+
+
+<!-- ##### FUNCTION infc_request_manager_clear ##### -->
+<para>
+
+</para>
+
+@manager: 
+
+
+<!-- ##### FUNCTION infc_request_manager_get_request_by_seq ##### -->
+<para>
+
+</para>
+
+@manager: 
+@seq: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_manager_get_request_by_xml ##### -->
+<para>
+
+</para>
+
+@manager: 
+@name: 
+@xml: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_manager_get_request_by_xml_required ##### -->
+<para>
+
+</para>
+
+@manager: 
+@name: 
+@xml: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_manager_foreach_request ##### -->
+<para>
+
+</para>
+
+@manager: 
+@func: 
+@user_data: 
+
+
+<!-- ##### FUNCTION infc_request_manager_foreach_named_request ##### -->
+<para>
+
+</para>
+
+@manager: 
+@name: 
+@func: 
+@user_data: 
+
+

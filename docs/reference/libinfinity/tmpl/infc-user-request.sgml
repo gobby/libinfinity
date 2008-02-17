@@ -1,0 +1,42 @@
+<!-- ##### SECTION Title ##### -->
+InfcUserRequest
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfcUserRequest ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfcUserRequest::finished ##### -->
+<para>
+
+</para>
+
+@infcuserrequest: the object which received the signal.
+@arg1: 
+
+<!-- ##### FUNCTION infc_user_request_finished ##### -->
+<para>
+
+</para>
+
+@request: 
+@user: 
+
+

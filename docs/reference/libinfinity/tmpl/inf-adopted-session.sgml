@@ -1,0 +1,99 @@
+<!-- ##### SECTION Title ##### -->
+InfAdoptedSession
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_SESSION_STATUS ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### ENUM InfAdoptedSessionError ##### -->
+<para>
+
+</para>
+
+@INF_ADOPTED_SESSION_ERROR_INVALID_TYPE: 
+@INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER: 
+@INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION: 
+@INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST: 
+@INF_ADOPTED_SESSION_ERROR_MISSING_STATE_VECTOR: 
+@INF_ADOPTED_SESSION_ERROR_FAILED: 
+
+<!-- ##### STRUCT InfAdoptedSession ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedSession:algorithm ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedSession:io ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_adopted_session_get_io ##### -->
+<para>
+
+</para>
+
+@session: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_session_get_algorithm ##### -->
+<para>
+
+</para>
+
+@session: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_session_broadcast_request ##### -->
+<para>
+
+</para>
+
+@session: 
+@request: 
+
+
+<!-- ##### FUNCTION inf_adopted_session_undo ##### -->
+<para>
+
+</para>
+
+@session: 
+@user: 
+
+
+<!-- ##### FUNCTION inf_adopted_session_redo ##### -->
+<para>
+
+</para>
+
+@session: 
+@user: 
+
+

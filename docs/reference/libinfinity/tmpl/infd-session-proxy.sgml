@@ -1,0 +1,70 @@
+<!-- ##### SECTION Title ##### -->
+InfdSessionProxy
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfdSessionProxy ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfdSessionProxy:session ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdSessionProxy:subscribe-sync-connection ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdSessionProxy:subscription-group ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION infd_session_proxy_get_session ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_session_proxy_add_user ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@params: 
+@n_params: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_session_proxy_subscribe_to ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@connection: 
+
+

@@ -1,0 +1,70 @@
+<!-- ##### SECTION Title ##### -->
+InfcRequest
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfcRequest ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfcRequest::failed ##### -->
+<para>
+
+</para>
+
+@infcrequest: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfcRequest:name ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfcRequest:seq ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION infc_request_get_seq ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_get_name ##### -->
+<para>
+
+</para>
+
+@request: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_request_failed ##### -->
+<para>
+
+</para>
+
+@request: 
+@error: 
+
+

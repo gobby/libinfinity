@@ -1,0 +1,183 @@
+<!-- ##### SECTION Title ##### -->
+inf-adopted-state-vector
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_STATE_VECTOR ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### TYPEDEF InfAdoptedStateVector ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ENUM InfAdoptedStateVectorError ##### -->
+<para>
+
+</para>
+
+@INF_ADOPTED_STATE_VECTOR_BAD_FORMAT: 
+@INF_ADOPTED_STATE_VECTOR_FAILED: 
+
+<!-- ##### USER_FUNCTION InfAdoptedStateVectorForeachFunc ##### -->
+<para>
+
+</para>
+
+@id: 
+@value: 
+@user_data: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_error_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_copy ##### -->
+<para>
+
+</para>
+
+@vec: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_free ##### -->
+<para>
+
+</para>
+
+@vec: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_get ##### -->
+<para>
+
+</para>
+
+@vec: 
+@id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_set ##### -->
+<para>
+
+</para>
+
+@vec: 
+@id: 
+@value: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_add ##### -->
+<para>
+
+</para>
+
+@vec: 
+@id: 
+@value: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_foreach ##### -->
+<para>
+
+</para>
+
+@vec: 
+@func: 
+@user_data: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_compare ##### -->
+<para>
+
+</para>
+
+@first: 
+@second: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_causally_before ##### -->
+<para>
+
+</para>
+
+@first: 
+@second: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_to_string ##### -->
+<para>
+
+</para>
+
+@vec: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_from_string ##### -->
+<para>
+
+</para>
+
+@str: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_to_string_diff ##### -->
+<para>
+
+</para>
+
+@vec: 
+@orig: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_state_vector_from_string_diff ##### -->
+<para>
+
+</para>
+
+@str: 
+@orig: 
+@error: 
+@Returns: 
+
+

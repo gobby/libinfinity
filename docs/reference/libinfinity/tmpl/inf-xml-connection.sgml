@@ -1,0 +1,150 @@
+<!-- ##### SECTION Title ##### -->
+inf-xml-connection
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_TYPE_XML_CONNECTION_STATUS ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfXmlConnection ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfXmlConnection::error ##### -->
+<para>
+
+</para>
+
+@infxmlconnection: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfXmlConnection::received ##### -->
+<para>
+
+</para>
+
+@infxmlconnection: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfXmlConnection::sent ##### -->
+<para>
+
+</para>
+
+@infxmlconnection: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfXmlConnection:local-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmlConnection:network ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmlConnection:remote-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfXmlConnection:status ##### -->
+<para>
+
+</para>
+
+<!-- ##### STRUCT InfXmlConnectionIface ##### -->
+<para>
+
+</para>
+
+@parent: 
+@close: 
+@send: 
+@sent: 
+@received: 
+@error: 
+
+<!-- ##### ENUM InfXmlConnectionStatus ##### -->
+<para>
+
+</para>
+
+@INF_XML_CONNECTION_CLOSED: 
+@INF_XML_CONNECTION_CLOSING: 
+@INF_XML_CONNECTION_OPEN: 
+@INF_XML_CONNECTION_OPENING: 
+
+<!-- ##### FUNCTION inf_xml_connection_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_connection_close ##### -->
+<para>
+
+</para>
+
+@connection: 
+
+
+<!-- ##### FUNCTION inf_xml_connection_send ##### -->
+<para>
+
+</para>
+
+@connection: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_xml_connection_sent ##### -->
+<para>
+
+</para>
+
+@connection: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_xml_connection_received ##### -->
+<para>
+
+</para>
+
+@connection: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_xml_connection_error ##### -->
+<para>
+
+</para>
+
+@connection: 
+@error: 
+
+

@@ -1,0 +1,289 @@
+<!-- ##### SECTION Title ##### -->
+InfdDirectory
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INFD_TYPE_DIRECTORY_ITER ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfdDirectoryIter ##### -->
+<para>
+
+</para>
+
+@node_id: 
+@node: 
+
+<!-- ##### STRUCT InfdDirectory ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfdDirectory::node-added ##### -->
+<para>
+
+</para>
+
+@infddirectory: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfdDirectory::node-removed ##### -->
+<para>
+
+</para>
+
+@infddirectory: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfdDirectory:connection-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdDirectory:io ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdDirectory:method-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfdDirectory:storage ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION infd_directory_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_copy ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_free ##### -->
+<para>
+
+</para>
+
+@iter: 
+
+
+<!-- ##### FUNCTION infd_directory_new ##### -->
+<para>
+
+</para>
+
+@io: 
+@storage: 
+@connection_manager: 
+@method_manager: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_get_io ##### -->
+<para>
+
+</para>
+
+@directory: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_get_storage ##### -->
+<para>
+
+</para>
+
+@directory: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_get_connection_manager ##### -->
+<para>
+
+</para>
+
+@directory: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_add_plugin ##### -->
+<para>
+
+</para>
+
+@directory: 
+@plugin: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_lookup_plugin ##### -->
+<para>
+
+</para>
+
+@directory: 
+@note_type: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_add_connection ##### -->
+<para>
+
+</para>
+
+@directory: 
+@connection: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_root ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_next ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_prev ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_parent ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_child ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_add_subdirectory ##### -->
+<para>
+
+</para>
+
+@directory: 
+@parent: 
+@name: 
+@iter: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_add_note ##### -->
+<para>
+
+</para>
+
+@directory: 
+@parent: 
+@name: 
+@plugin: 
+@iter: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_remove_node ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_node_type ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_plugin ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_directory_iter_get_session ##### -->
+<para>
+
+</para>
+
+@directory: 
+@iter: 
+@error: 
+@Returns: 
+
+

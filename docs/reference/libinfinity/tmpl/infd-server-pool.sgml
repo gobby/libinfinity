@@ -1,0 +1,58 @@
+<!-- ##### SECTION Title ##### -->
+InfdServerPool
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfdServerPool ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfdServerPool:directory ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION infd_server_pool_new ##### -->
+<para>
+
+</para>
+
+@directory: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_server_pool_add_server ##### -->
+<para>
+
+</para>
+
+@server_pool: 
+@server: 
+
+
+<!-- ##### FUNCTION infd_server_pool_add_local_publisher ##### -->
+<para>
+
+</para>
+
+@server_pool: 
+@server: 
+@publisher: 
+
+

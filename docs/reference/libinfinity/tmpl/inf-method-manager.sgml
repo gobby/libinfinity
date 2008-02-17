@@ -1,0 +1,103 @@
+<!-- ##### SECTION Title ##### -->
+InfMethodManager
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO INF_TYPE_METHOD_MANAGER_STATUS ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### STRUCT InfMethodManager ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfMethodManager:search-path ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_method_manager_get_default ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_method_manager_new ##### -->
+<para>
+
+</para>
+
+@search_path: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_method_manager_add_method ##### -->
+<para>
+
+</para>
+
+@manager: 
+@method: 
+
+
+<!-- ##### FUNCTION inf_method_manager_lookup_method ##### -->
+<para>
+
+</para>
+
+@manager: 
+@network: 
+@method_name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_method_manager_list_methods_with_name ##### -->
+<para>
+
+</para>
+
+@manager: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_method_manager_list_methods_with_network ##### -->
+<para>
+
+</para>
+
+@manager: 
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_method_manager_list_all_methods ##### -->
+<para>
+
+</para>
+
+@manager: 
+@Returns: 
+
+

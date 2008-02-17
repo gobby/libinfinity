@@ -1,0 +1,75 @@
+<!-- ##### SECTION Title ##### -->
+InfStandaloneIo
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfStandaloneIo ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_standalone_io_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_standalone_io_iteration ##### -->
+<para>
+
+</para>
+
+@io: 
+
+
+<!-- ##### FUNCTION inf_standalone_io_iteration_timeout ##### -->
+<para>
+
+</para>
+
+@io: 
+@timeout: 
+
+
+<!-- ##### FUNCTION inf_standalone_io_loop ##### -->
+<para>
+
+</para>
+
+@io: 
+
+
+<!-- ##### FUNCTION inf_standalone_io_loop_quit ##### -->
+<para>
+
+</para>
+
+@io: 
+
+
+<!-- ##### FUNCTION inf_standalone_io_loop_running ##### -->
+<para>
+
+</para>
+
+@io: 
+@Returns: 
+
+

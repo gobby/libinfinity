@@ -1,0 +1,56 @@
+<!-- ##### SECTION Title ##### -->
+InfAdoptedUser
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### FUNCTION inf_adopted_user_get_component ##### -->
+<para>
+
+</para>
+
+@user: 
+@id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_user_get_vector ##### -->
+<para>
+
+</para>
+
+@user: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_user_set_vector ##### -->
+<para>
+
+</para>
+
+@user: 
+@vec: 
+
+
+<!-- ##### FUNCTION inf_adopted_user_get_request_log ##### -->
+<para>
+
+</para>
+
+@user: 
+@Returns: 
+
+
