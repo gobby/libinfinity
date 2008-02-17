@@ -404,8 +404,8 @@ inf_adopted_request_log_get_type(void)
   return request_log_type;
 }
 
-/** inf_adopted_request_log_new:
- *
+/**
+ * inf_adopted_request_log_new:
  * @user_id: The ID of the #InfAdoptedUser to create a request log for. The
  * request log only contains requests of that particular user.
  *
@@ -427,8 +427,8 @@ inf_adopted_request_log_new(guint user_id)
   return INF_ADOPTED_REQUEST_LOG(object);
 }
 
-/** inf_adopted_request_log_get_user_id:
- *
+/**
+ * inf_adopted_request_log_get_user_id:
  * @log: A #InfAdoptedRequestLog.
  *
  * Returns the ID of the user whose requests @log contains.
@@ -442,8 +442,8 @@ inf_adopted_request_log_get_user_id(InfAdoptedRequestLog* log)
   return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->user_id;
 }
 
-/** inf_adopted_request_log_get_begin:
- *
+/**
+ * inf_adopted_request_log_get_begin:
  * @log: A #InfAdoptedRequestLog.
  *
  * Returns the first index (i.e. the index of the oldest request) in the log.
@@ -457,8 +457,8 @@ inf_adopted_request_log_get_begin(InfAdoptedRequestLog* log)
   return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->begin;
 }
 
-/** inf_adopted_request_log_get_end:
- *
+/**
+ * inf_adopted_request_log_get_end:
  * @log: A #InfAdoptedRequestLog.
  *
  * Returns the index a newly inserted request would have (i.e. one past the
@@ -475,8 +475,8 @@ inf_adopted_request_log_get_end(InfAdoptedRequestLog* log)
   return INF_ADOPTED_REQUEST_LOG_PRIVATE(log)->end;
 }
 
-/** inf_adopted_request_log_get_request:
- *
+/**
+ * inf_adopted_request_log_get_request:
  * @log: A #InfAdoptedRequestLog.
  * @n: The index of a request contained in @log.
  *
@@ -500,8 +500,8 @@ inf_adopted_request_log_get_request(InfAdoptedRequestLog* log,
   return priv->entries[priv->offset + n - priv->begin].request;
 }
 
-/** inf_adopted_request_add_request:
- *
+/**
+ * inf_adopted_request_add_request:
  * @log: A #InfAdoptedRequestLog.
  * @request: A #InfAdoptedRequest.
  *
@@ -679,8 +679,8 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
   g_object_notify(G_OBJECT(log), "end");
 }
 
-/** inf_adopted_request_log_remove_requests:
- *
+/**
+ * inf_adopted_request_log_remove_requests:
  * @log: A #InfAdoptedRequestLog.
  * @up_to: The index of the first request not to remove.
  *
@@ -733,8 +733,8 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
   g_object_thaw_notify(G_OBJECT(log));
 }
 
-/** inf_adopted_request_log_next_associated:
- *
+/**
+ * inf_adopted_request_log_next_associated:
  * @log: A #InfAdoptedRequestLog.
  * @request: A #InfAdoptedRequest contained in @log.
  *
@@ -771,8 +771,8 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
   return entry->next_associated->request;
 }
 
-/** inf_adopted_request_log_prev_associated:
- *
+/**
+ * inf_adopted_request_log_prev_associated:
  * @log: A #InfAdoptedRequestLog.
  * @request: A #InfAdoptedRequest.
  *
@@ -839,8 +839,8 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
   }
 }
 
-/** inf_adopted_request_log_original_request:
- *
+/**
+ * inf_adopted_request_log_original_request:
  * @log: A #InfAdoptedRequestLog.
  * @request: A #InfAdoptedRequest.
  *
@@ -908,8 +908,8 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
   }
 }
 
-/** inf_adopted_request_log_next_undo:
- *
+/**
+ * inf_adopted_request_log_next_undo:
  * @log: A #InfAdoptedRequestLog.
  *
  * Returns the request that would be undone if a undo request was added to
@@ -930,8 +930,8 @@ inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log)
   return priv->next_undo->request;
 }
 
-/** inf_adopted_request_log_next_redo:
- *
+/**
+ * inf_adopted_request_log_next_redo:
  * @log: A #InfAdoptedRequestLog.
  *
  * Returns the request that would be redone if a redo request was added to
@@ -952,8 +952,8 @@ inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
   return priv->next_redo->request;
 }
 
-/** inf_adopted_request_log_upper_related:
- *
+/**
+ * inf_adopted_request_log_upper_related:
  * @log: A #InfAdoptedRequestLog.
  * @request: A #InfAdoptedRequest contained in @log.
  *

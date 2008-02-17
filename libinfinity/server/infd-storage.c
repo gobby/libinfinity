@@ -100,8 +100,8 @@ infd_storage_get_type(void)
   return storage_type;
 }
 
-/** infd_storage_node_new_subdirectory:
- *
+/**
+ * infd_storage_node_new_subdirectory:
  * @path: Path to the node.
  *
  * Creates a new #InfdStorageNode with type
@@ -126,8 +126,8 @@ infd_storage_node_new_subdirectory(const gchar* name)
   return node;
 }
 
-/** infd_storage_node_new_note:
- *
+/**
+ * infd_storage_node_new_note:
  * @path: Path to the node.
  * @identifier: Identifier of the note type, for example 'InfText' for text
  * notes.
@@ -157,8 +157,8 @@ infd_storage_node_new_note(const gchar* name,
   return node;
 }
 
-/** infd_storage_node_copy:
- *
+/**
+ * infd_storage_node_copy:
  * @node: Node from which to make a copy.
  *
  * Creates a copy of a #InfdStorageNode object.
@@ -182,8 +182,8 @@ infd_storage_node_copy(InfdStorageNode* node)
   return new_node;
 }
 
-/** infd_storage_node_free:
- *
+/**
+ * infd_storage_node_free:
  * @node: A #InfdStorageNode.
  *
  * Frees a #InfdStorageNode allocated with
@@ -202,8 +202,8 @@ infd_storage_node_free(InfdStorageNode* node)
   g_slice_free(InfdStorageNode, node);
 }
 
-/** infd_storage_free_node_list:
- *
+/**
+ * infd_storage_free_node_list:
  * @node_list A list of #InfdStorageNode objects.
  *
  * Frees a singly-linked list of #InfdStorageNode as returned by
@@ -224,8 +224,8 @@ infd_storage_node_list_free(GSList* node_list)
   }
 }
 
-/** infd_directory_read_subdirectory:
- *
+/**
+ * infd_directory_read_subdirectory:
  * @storage: A #InfdStorage
  * @path: A path pointing to a subdirectory node.
  * @error: Location to store error information.
@@ -254,8 +254,8 @@ infd_storage_read_subdirectory(InfdStorage* storage,
   return iface->read_subdirectory(storage, path, error);
 }
 
-/** infd_storage_create_subdirectory:
- *
+/**
+ * infd_storage_create_subdirectory:
  * @storage: A #InfdStorage.
  * @path: A path pointing to non-existing node.
  * @error: Location to store error information.
@@ -280,8 +280,8 @@ infd_storage_create_subdirectory(InfdStorage* storage,
   return iface->create_subdirectory(storage, path, error);
 }
 
-/** infd_storage_remove_node:
- *
+/**
+ * infd_storage_remove_node:
  * @storage: A #InfdStorage
  * @path: A path pointing to an existing node.
  * @error: Location to store error information.

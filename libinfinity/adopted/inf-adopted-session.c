@@ -1126,8 +1126,8 @@ inf_adopted_session_get_type(void)
  * Public API.
  */
 
-/** inf_adopted_session_get_io:
- *
+/**
+ * inf_adopted_session_get_io:
  * @session: A #InfAdoptedSession.
  *
  * Returns the #InfIo object of @session.
@@ -1141,8 +1141,8 @@ inf_adopted_session_get_io(InfAdoptedSession* session)
   return INF_ADOPTED_SESSION_PRIVATE(session)->io;
 }
 
-/** inf_adopted_session_get_algorithm:
- *
+/**
+ * inf_adopted_session_get_algorithm:
  * @session: A #InfAdoptedSession.
  *
  * Returns the #InfAlgorithm object of @session. Returns %NULL if @session
@@ -1158,8 +1158,8 @@ inf_adopted_session_get_algorithm(InfAdoptedSession* session)
   return INF_ADOPTED_SESSION_PRIVATE(session)->algorithm;
 }
 
-/** inf_adopted_session_broadcast_request:
- *
+/**
+ * inf_adopted_session_broadcast_request:
  * @session: A #InfAdoptedSession.
  * @request: A #InfAdoptedRequest obtained from @session's algorithm.
  *
@@ -1184,8 +1184,8 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
   inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
 }
 
-/** inf_adopted_session_undo:
- *
+/**
+ * inf_adopted_session_undo:
  * @session: A #InfAdoptedSession.
  * @user: A local #InfAdoptedUser.
  *
@@ -1207,8 +1207,8 @@ inf_adopted_session_undo(InfAdoptedSession* session,
   g_object_unref(request);  
 }
 
-/** inf_adopted_session_redo:
- *
+/**
+ * inf_adopted_session_redo:
  * @session: A #InfAdoptedSession.
  * @user: A local #InfAdoptedUser.
  *

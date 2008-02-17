@@ -415,8 +415,8 @@ inf_adopted_split_operation_get_type(void)
   return split_operation_type;
 }
 
-/** inf_adopted_split_operation_new:
- *
+/**
+ * inf_adopted_split_operation_new:
  * Creates a new #InfAdoptedSplitOperation. A split operation is simply a
  * wrapper around two operations (which may in turn be split operations).
  *
@@ -441,8 +441,8 @@ inf_adopted_split_operation_new(InfAdoptedOperation* first,
   return INF_ADOPTED_SPLIT_OPERATION(object);
 }
 
-/** inf_adopted_split_operation_unsplit:
- *
+/**
+ * inf_adopted_split_operation_unsplit:
  * @operation: A #InfAdoptedSplitOperation.
  *
  * Returns a list of the operations contained by the split operation. If the
@@ -462,8 +462,8 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
   return result;
 }
 
-/** inf_adopted_split_operation_transform_other:
- *
+/**
+ * inf_adopted_split_operation_transform_other:
  * @op: A #InfAdoptedSplitOperation.
  * @other: An arbitrary #InfAdoptedOperation.
  * @concurrency_id: The concurrency id for the transformation of

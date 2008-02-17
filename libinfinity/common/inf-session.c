@@ -1845,8 +1845,8 @@ inf_session_get_type(void)
  * Public API.
  */
 
-/** inf_session_lookup_user_property:
- *
+/**
+ * inf_session_lookup_user_property:
  * @array: A #GArray containing #GParameter values.
  *
  * Looks up the parameter with the given name in @array.
@@ -1870,8 +1870,8 @@ inf_session_lookup_user_property(const GParameter* params,
   return NULL;
 }
 
-/** inf_session_get_user_property:
- *
+/**
+ * inf_session_get_user_property:
  * @array: A #GArray containing #GParameter values.
  *
  * Looks up the paremeter with the given name in @array. If there is no such
@@ -1901,8 +1901,8 @@ inf_session_get_user_property(GArray* array,
   return parameter;
 }
 
-/** inf_session_user_to_xml:
- *
+/**
+ * inf_session_user_to_xml:
  * @session: A #InfSession.
  * @user: A #InfUser contained in @session.
  * @xml: An XML node to which to add user information.
@@ -1956,8 +1956,8 @@ inf_session_user_to_xml(InfSession* session,
   g_free(pspecs);
 }
 
-/** inf_session_close:
- *
+/**
+ * inf_session_close:
  * @session: A #InfSession.
  *
  * Closes a running session. When a session is closed, it unrefs all
@@ -1970,8 +1970,8 @@ inf_session_close(InfSession* session)
   g_signal_emit(G_OBJECT(session), session_signals[CLOSE], 0);
 }
 
-/** inf_session_get_connection_manager:
- *
+/**
+ * inf_session_get_connection_manager:
  * @session: A #InfSession.
  *
  * Returns the connection manager for @session.
@@ -1985,8 +1985,8 @@ inf_session_get_connection_manager(InfSession* session)
   return INF_SESSION_PRIVATE(session)->manager;
 }
 
-/** inf_session_get_buffer:
- *
+/**
+ * inf_session_get_buffer:
  * @session: A #InfSession.
  *
  * Returns the buffer used by @session.
@@ -2000,8 +2000,8 @@ inf_session_get_buffer(InfSession* session)
   return INF_SESSION_PRIVATE(session)->buffer;
 }
 
-/** inf_session_get_user_table:
- *
+/**
+ * inf_session_get_user_table:
  * @session:A #InfSession.
  *
  * Returns the user table used by @session.
@@ -2015,8 +2015,8 @@ inf_session_get_user_table(InfSession* session)
   return INF_SESSION_PRIVATE(session)->user_table;
 }
 
-/** inf_session_get_status:
- *
+/**
+ * inf_session_get_status:
  * @session: A #InfSession.
  *
  * Returns the session's status.
@@ -2030,8 +2030,8 @@ inf_session_get_status(InfSession* session)
   return INF_SESSION_PRIVATE(session)->status;
 }
 
-/** inf_session_add_user:
- *
+/**
+ * inf_session_add_user:
  * @session A #InfSession.
  * @params: Construction parameters for the #InfUser (or derived) object.
  * @n_params: Number of parameters.
@@ -2082,8 +2082,8 @@ inf_session_add_user(InfSession* session,
   return NULL;
 }
 
-/** inf_session_synchronize_to:
- *
+/**
+ * inf_session_synchronize_to:
  * @session: A #InfSession with state %INF_SESSION_RUNNING.
  * @group: A #InfConnectionManagerGroup.
  * @connection: A #InfConnection.
@@ -2199,8 +2199,8 @@ inf_session_synchronize_to(InfSession* session,
   );
 }
 
-/** inf_session_get_synchronization_status:
- *
+/**
+ * inf_session_get_synchronization_status:
  * @session: A #InfSession.
  * @connection: A #InfXmlConnection.
  *
@@ -2257,8 +2257,8 @@ inf_session_get_synchronization_status(InfSession* session,
   }
 }
 
-/** inf_session_get_synchronization_progress:
- *
+/**
+ * inf_session_get_synchronization_progress:
  * @session: A #InfSession.
  * @connection: A #InfXmlConnection.
  *
@@ -2315,8 +2315,8 @@ inf_session_get_synchronization_progress(InfSession* session,
   }
 }
 
-/** inf_session_get_subscription_group:
- *
+/**
+ * inf_session_get_subscription_group:
  * @session: A #InfSession.
  *
  * Returns the subscription group for @session, if any.
@@ -2330,8 +2330,8 @@ inf_session_get_subscription_group(InfSession* session)
   return INF_SESSION_PRIVATE(session)->subscription_group;
 }
 
-/** inf_session_set_subscription_group:
- *
+/**
+ * inf_session_set_subscription_group:
  * @session: A #InfSession.
  * @group: A #InfConnectionManagerGroup.
  *
@@ -2367,8 +2367,8 @@ inf_session_set_subscription_group(InfSession* session,
   }
 }
 
-/** inf_session_send_to_subscriptions:
- *
+/**
+ * inf_session_send_to_subscriptions:
  * @session: A #InfSession.
  * @except: A #InfXmlConnection, or %NULL.
  * @xml: The message to send.

@@ -61,8 +61,8 @@ inf_local_publisher_get_type(void)
   return local_publisher_type;
 }
 
-/** inf_local_publisher_publish:
- *
+/**
+ * inf_local_publisher_publish:
  * @publisher: A #InfLocalPublisher.
  * @type: The service type to publish, such as _http._tcp.
  * @name: The name of the service.
@@ -93,8 +93,8 @@ inf_local_publisher_publish(InfLocalPublisher* publisher,
   return iface->publish(publisher, type, name, port);
 }
 
-/** inf_local_publisher_unpublish:
- *
+/**
+ * inf_local_publisher_unpublish:
  * @publisher: A #InfLocalPublisher.
  * @item: A published item obtained from inf_local_publisher_publish().
  *

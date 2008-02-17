@@ -45,8 +45,8 @@ inf_text_pword_get_type(void)
   return pword_type;
 }
 
-/** inf_text_pword_new:
- *
+/**
+ * inf_text_pword_new:
  * @initial: Initial position of the pword.
  *
  * Creates a new #InfTextPword with @initial as initial position.
@@ -63,8 +63,8 @@ inf_text_pword_new(guint initial)
   return pword;
 }
 
-/** inf_text_pword_new_proceed:
- *
+/**
+ * inf_text_pword_new_proceed:
  * @pword: A #InfTextPword.
  * @next: Next position.
  *
@@ -102,8 +102,8 @@ inf_text_pword_new_proceed(InfTextPword* pword,
   return new_pword;
 }
 
-/** inf_text_pword_copy:
- *
+/**
+ * inf_text_pword_copy:
  * @pword: A #InfTextPword.
  *
  * Creates a copy of @pword.
@@ -135,8 +135,8 @@ inf_text_pword_copy(InfTextPword* pword)
   return new_pword;
 }
 
-/** inf_text_pword_free:
- *
+/**
+ * inf_text_pword_free:
  * @pword: A #InfTextPword.
  *
  * Frees a #InfTextPword.
@@ -151,8 +151,8 @@ inf_text_pword_free(InfTextPword* pword)
   g_slice_free(InfTextPword, pword);
 }
 
-/** inf_text_pword_get_size:
- *
+/**
+ * inf_text_pword_get_size:
  * @pword: A #InfTextPword.
  *
  * Returns the number of positions @pword stores.
@@ -166,8 +166,8 @@ inf_text_pword_get_size(InfTextPword* pword)
   return pword->size;
 }
 
-/** inf_text_pword_get_current:
- *
+/**
+ * inf_text_pword_get_current:
  * @pword: A #InfTextPword.
  *
  * Returns the newest position in @pword.
@@ -184,8 +184,8 @@ inf_text_pword_get_current(InfTextPword* pword)
     return GPOINTER_TO_UINT(pword->data);
 }
 
-/** inf_text_pword_get_origin:
- *
+/**
+ * inf_text_pword_get_origin:
  * @pword: A #InfTextPword.
  *
  * Returns the oldest position in @pword.
@@ -202,8 +202,8 @@ inf_text_pword_get_origin(InfTextPword* pword)
     return GPOINTER_TO_UINT(pword->data);
 }
 
-/** inf_text_pword_compare:
- *
+/**
+ * inf_text_pword_compare:
  * @first: A #InfTextPword.
  * @second: Another #InfTextPword.
  *

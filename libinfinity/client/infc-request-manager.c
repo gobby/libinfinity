@@ -208,8 +208,8 @@ infc_request_manager_get_type(void)
   return request_manager_type;
 }
 
-/** infc_request_manager_new:
- *
+/**
+ * infc_request_manager_new:
  * Creates a new #InfcRequestManager.
  *
  * Return Value: A newly allocated #InfcRequestManager.
@@ -222,8 +222,8 @@ infc_request_manager_new(void)
   return INFC_REQUEST_MANAGER(object);
 }
 
-/** infc_request_manager_add_request:
- *
+/**
+ * infc_request_manager_add_request:
  * @manager: A #InfcRequestManager.
  * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
  * @request_name: The name of the request, such as "explore-node" or
@@ -261,8 +261,8 @@ infc_request_manager_add_request(InfcRequestManager* manager,
   return request;
 }
 
-/** infc_request_manager_add_request_valist:
- *
+/**
+ * infc_request_manager_add_request_valist:
  * @manager: A #InfcRequestManager.
  * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
  * @request_name: The name of the request, such as "explore-node" or
@@ -383,8 +383,8 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
   return request;
 }
 
-/** infc_request_manager_remove_request:
- *
+/**
+ * infc_request_manager_remove_request:
  * @manager: A #InfcRequestManager.
  * @request: A #InfcRequest that has previously been added to @manager.
  *
@@ -409,8 +409,8 @@ infc_request_manager_remove_request(InfcRequestManager* manager,
   g_object_unref(G_OBJECT(request));
 }
 
-/** infc_request_manager_fail_request:
- *
+/**
+ * infc_request_manager_fail_request:
  * @manager: A #InfcRequestManager.
  * @request: A #InfcRequest that has previously been added to @manager.
  * @error: Error information why the request failed.
@@ -431,8 +431,8 @@ infc_request_manager_fail_request(InfcRequestManager* manager,
   infc_request_manager_remove_request(manager, request);
 }
 
-/** infc_request_manager_clear:
- *
+/**
+ * infc_request_manager_clear:
  * @manager: A #InfcRequestManager.
  *
  * Removes all the requests in @manager.
@@ -444,8 +444,8 @@ infc_request_manager_clear(InfcRequestManager* manager)
   g_hash_table_remove_all(INFC_REQUEST_MANAGER_PRIVATE(manager)->requests);
 }
 
-/** infc_request_manager_get_request_by_seq:
- *
+/**
+ * infc_request_manager_get_request_by_seq:
  * @manager: A #InfcRequestManager.
  * @seq: The sequence number to which the request should be retrieved.
  *
@@ -469,8 +469,8 @@ infc_request_manager_get_request_by_seq(InfcRequestManager* manager,
   );
 }
 
-/** infc_request_manager_get_request_by_xml:
- *
+/**
+ * infc_request_manager_get_request_by_xml:
  * @manager: A #InfcRequestManager.
  * @name: Name of the expected request. May be %NULL to allow all requests.
  * @xml: XML node that is supposed to contain a "seq" attribute.
@@ -537,8 +537,8 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
   return request;
 }
 
-/** infc_request_manager_get_request_by_xml_required:
- *
+/**
+ * infc_request_manager_get_request_by_xml_required:
  * @manager: A #InfcRequestManager.
  * @name: Name of the expected request. May be %NULL to allow all requests.
  * @xml: XML node that is supposed to contain a "seq" attribute.
@@ -588,8 +588,8 @@ infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
   return request;
 }
 
-/** infc_request_manager_foreach_request:
- *
+/**
+ * infc_request_manager_foreach_request:
  * @manager: A #InfcRequestManager.
  * @func: The function to be called.
  * @user_data: Arbitrary data to be passed to @func.
@@ -621,8 +621,8 @@ infc_request_manager_foreach_request(InfcRequestManager* manager,
   );
 }
 
-/** infc_request_manager_foreach_named_request:
- *
+/**
+ * infc_request_manager_foreach_named_request:
  * @manager: A #InfcRequestManager.
  * @name: The name of the request to look for.
  * @func: The function to be called.

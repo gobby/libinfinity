@@ -214,8 +214,8 @@ infc_request_get_type(void)
   return request_type;
 }
 
-/** infc_request_get_seq:
- *
+/**
+ * infc_request_get_seq:
  * @request: A #InfcRequest.
  *
  * Returns the sequence identifier for this request.
@@ -227,8 +227,8 @@ infc_request_get_seq(InfcRequest* request)
   return INFC_REQUEST_PRIVATE(request)->seq;
 }
 
-/** infc_request_get_name:
- *
+/**
+ * infc_request_get_name:
  * @request: A #InfcRequest.
  *
  * Returns the name of the request.
@@ -240,8 +240,8 @@ infc_request_get_name(InfcRequest* request)
   return INFC_REQUEST_PRIVATE(request)->name;
 }
 
-/** infc_request_failed:
- *
+/**
+ * infc_request_failed:
  * @request: A #InfcRequest.
  * @error: A #GError.
  *

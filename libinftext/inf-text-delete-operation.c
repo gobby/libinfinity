@@ -66,8 +66,8 @@ inf_text_delete_operation_get_type(void)
   return delete_operation_type;
 }
 
-/** inf_text_delete_operation_get_position:
- *
+/**
+ * inf_text_delete_operation_get_position:
  * @operation: A #InfTextDeleteOperation.
  *
  * Returns the position at which @operation starts to delete dext.
@@ -87,8 +87,8 @@ inf_text_delete_operation_get_position(InfTextDeleteOperation* operation)
   return iface->get_position(operation);
 }
 
-/** inf_text_delete_operation_get_length:
- *
+/**
+ * inf_text_delete_operation_get_length:
  * @operation: A #InfTextDeleteOperation.
  *
  * Returns the number of characters deleted by @operation.
@@ -108,8 +108,8 @@ inf_text_delete_operation_get_length(InfTextDeleteOperation* operation)
   return iface->get_length(operation);
 }
 
-/** inf_text_delete_operation_transform_insert:
- *
+/**
+ * inf_text_delete_operation_transform_insert:
  * @operation: A #InfTextDeleteOperation.
  * @against: A #InfTextInsertOperation.
  * @concurrency_id: The concurrency ID for the transformation.
@@ -160,8 +160,8 @@ inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
   }
 }
 
-/** inf_text_delete_operation_transform_delete:
- *
+/**
+ * inf_text_delete_operation_transform_delete:
  * @operation: A #InfTextDeleteOperation.
  * @against: Another #InfTextDeleteOperation.
  * @concurrency_id: The concurrency ID for the transformation.

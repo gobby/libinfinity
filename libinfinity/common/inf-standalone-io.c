@@ -403,8 +403,8 @@ inf_standalone_io_get_type(void)
   return standalone_io_type;
 }
 
-/** inf_standalone_io_new:
- *
+/**
+ * inf_standalone_io_new:
  * Creates a new #InfStandaloneIo.
  **/
 InfStandaloneIo*
@@ -415,8 +415,8 @@ inf_standalone_io_new(void)
   return INF_STANDALONE_IO(object);
 }
 
-/** inf_standalone_io_iteration:
- *
+/**
+ * inf_standalone_io_iteration:
  * @io: A #InfStandaloneIo.
  *
  * Performs a single iteration of @io. The call will block until a first
@@ -429,8 +429,8 @@ inf_standalone_io_iteration(InfStandaloneIo* io)
   inf_standalone_io_iteration_impl(io, -1);
 }
 
-/** inf_standalone_io_iteration_timeout:
- *
+/**
+ * inf_standalone_io_iteration_timeout:
  * @io: A #InfStandaloneIo.
  * @timeout: Maximum number of milliseconds to block.
  *
@@ -446,8 +446,8 @@ inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
   inf_standalone_io_iteration_impl(io, (int)timeout);
 }
 
-/** inf_standalone_io_loop:
- *
+/**
+ * inf_standalone_io_loop:
  * @io: A #InfStandaloneIo.
  *
  * This call will cause @io to wait for events and process them, but not
@@ -468,8 +468,8 @@ inf_standalone_io_loop(InfStandaloneIo* io)
     inf_standalone_io_iteration_impl(io, -1);
 }
 
-/** inf_standalone_io_loop_quit:
- *
+/**
+ * inf_standalone_io_loop_quit:
  * @io: A #InfStandaloneIo.
  *
  * Exits a loop in which @io is running through a call to
@@ -487,8 +487,8 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
   priv->loop_running = FALSE;
 }
 
-/** inf_standalone_io_loop_running:
- *
+/**
+ * inf_standalone_io_loop_running:
  * @io: A #InfStandaloneIo.
  *
  * Returns whether @io runs currently in a loop initiated with

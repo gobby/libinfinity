@@ -378,8 +378,8 @@ inf_text_default_insert_operation_get_type(void)
   return default_insert_operation_type;
 }
 
-/** inf_text_default_insert_operation_new:
- *
+/**
+ * inf_text_default_insert_operation_new:
  * @pos: The position at which to insert text.
  * @chunk: The text to insert.
  *
@@ -410,8 +410,8 @@ inf_text_default_insert_operation_new(guint pos,
   return INF_TEXT_DEFAULT_INSERT_OPERATION(object);
 }
 
-/** inf_text_default_insert_operation_get_chunk:
- *
+/**
+ * inf_text_default_insert_operation_get_chunk:
  * @operation: A #InfTextDefaultInsertOperation.
  *
  * Returns the text inserted by @operation.

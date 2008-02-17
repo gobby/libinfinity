@@ -108,8 +108,8 @@ infc_user_request_get_type(void)
   return user_request_type;
 }
 
-/** infc_user_request_finished:
- *
+/**
+ * infc_user_request_finished:
  * @request: A #InfcUserRequest.
  * @user: The #InfUser affected by the request.
  *

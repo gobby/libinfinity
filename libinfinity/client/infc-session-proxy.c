@@ -1118,8 +1118,8 @@ infc_session_proxy_get_type(void)
  * Public API.
  */
 
-/** infc_session_proxy_set_connection:
- *
+/**
+ * infc_session_proxy_set_connection:
  * @proxy: A #InfcSessionProxy.
  * @group: A #InfConnectionManagerGroup of subscribed connections. Ignored if
  * @connection is %NULL.
@@ -1205,8 +1205,8 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
   g_object_thaw_notify(G_OBJECT(proxy));
 }
 
-/** infc_session_proxy_join_user:
- *
+/**
+ * infc_session_proxy_join_user:
  * @proxy: A #InfcSessionProxy.
  * @params: Construction properties for the InfUser (or derived) object.
  * @n_params: Number of parameters.
@@ -1266,8 +1266,8 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
   return INFC_USER_REQUEST(request);
 }
 
-/** infc_session_proxy_leave_user:
- *
+/**
+ * infc_session_proxy_leave_user:
  * @proxy: A #InfcSessionProxy.
  * @user: A #InfUser with status %INF_USER_AVAILABLE.
  * @error: Location to store error information.
@@ -1322,8 +1322,8 @@ infc_session_proxy_leave_user(InfcSessionProxy* proxy,
   return INFC_USER_REQUEST(request);
 }
 
-/** infc_session_proxy_get_session:
- *
+/**
+ * infc_session_proxy_get_session:
  * @proxy: A #InfcSessionProxy.
  *
  * Returns the session proxied by @proxy, or %NULL if the session has been

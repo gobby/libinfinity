@@ -96,8 +96,8 @@ inf_discovery_get_type(void)
   return discovery_type;
 }
 
-/** inf_discovery_discover:
- *
+/**
+ * inf_discovery_discover:
  * @discovery: A #InfDiscovery.
  * @type: The service type to discover.
  *
@@ -125,8 +125,8 @@ inf_discovery_discover(InfDiscovery* discovery,
   iface->discover(discovery, type);
 }
 
-/** inf_discovery_get_discovered:
- *
+/**
+ * inf_discovery_get_discovered:
  * @discovery: A #InfDiscovery.
  * @type: The service type of which to get discovered infos for.
  *
@@ -150,8 +150,8 @@ inf_discovery_get_discovered(InfDiscovery* discovery,
   return iface->get_discovered(discovery, type);
 }
 
-/** inf_discovery_resolve:
- *
+/**
+ * inf_discovery_resolve:
  * @discovery: A #InfDiscovery.
  * @info: A #InfDiscoveryInfo discovered by @discovery.
  * @complete_func: A callback that will be called when the resolving process
@@ -182,8 +182,8 @@ inf_discovery_resolve(InfDiscovery* discovery,
   iface->resolve(discovery, info, complete_func, error_func, user_data);
 }
 
-/** inf_discovery_info_get_service_name:
- *
+/**
+ * inf_discovery_info_get_service_name:
  * @discovery: A #InfDiscovery.
  * @info: A #InfDiscoveryInfo discovered by @discovery.
  *
@@ -206,8 +206,8 @@ inf_discovery_info_get_service_name(InfDiscovery* discovery,
   return iface->info_get_service_name(discovery, info);
 }
 
-/** inf_discovery_info_get_service_type:
- *
+/**
+ * inf_discovery_info_get_service_type:
  * @discovery: A #InfDiscovery.
  * @info: A #InfDiscoveryInfo discovered by @discovery.
  *
@@ -230,8 +230,8 @@ inf_discovery_info_get_service_type(InfDiscovery* discovery,
   return iface->info_get_service_type(discovery, info);
 }
 
-/** inf_discovery_discovered:
- *
+/**
+ * inf_discovery_discovered:
  * @discovery: A #InfDiscovery.
  * @info: The discovered #InfDiscoveryInfo.
  *
@@ -252,8 +252,8 @@ inf_discovery_discovered(InfDiscovery* discovery,
   );
 }
 
-/** inf_discovery_undiscovered:
- *
+/**
+ * inf_discovery_undiscovered:
  * @discovery: A #InfDiscovery.
  * @info: The undiscovered @InfDiscoveryInfo.
  *

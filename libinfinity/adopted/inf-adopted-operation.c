@@ -92,8 +92,8 @@ inf_adopted_operation_get_type(void)
   return adopted_operation_type;
 }
 
-/** inf_adopted_operation_transform:
- *
+/**
+ * inf_adopted_operation_transform:
  * @operation: The #InfAdoptedOperation to transform.
  * @against: The operation to transform against.
  * @concurrency_id: A hint which operation to prefer if both operations are
@@ -134,8 +134,8 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
   }
 }
 
-/** inf_adopted_operation_copy:
- *
+/**
+ * inf_adopted_operation_copy:
  * @operation: The #InfAdoptedOperation to copy.
  *
  * Returns a copy of @operation.
@@ -155,8 +155,8 @@ inf_adopted_operation_copy(InfAdoptedOperation* operation)
   return (*iface->copy)(operation);
 }
 
-/** inf_adopted_operation_get_flags:
- *
+/**
+ * inf_adopted_operation_get_flags:
  * @operation: A #InfAdoptedOperation.
  *
  * Returns the flags for @operation.
@@ -178,8 +178,8 @@ inf_adopted_operation_get_flags(InfAdoptedOperation* operation)
     return 0;
 }
 
-/** inf_adopted_operation_apply:
- *
+/**
+ * inf_adopted_operation_apply:
  * @operation: A #InfAdoptedOperation.
  * @by: A #InfAdoptedUser.
  * @buffer: The #InfBuffer to apply the operation to.
@@ -205,8 +205,8 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
   (*iface->apply)(operation, by, buffer);
 }
 
-/** inf_adopted_operation_is_reversible:
- *
+/**
+ * inf_adopted_operation_is_reversible:
  * @operation: A #InfAdoptedOperation.
  *
  * Returns whether @operation is reversible.
@@ -227,8 +227,8 @@ inf_adopted_operation_is_reversible(InfAdoptedOperation* operation)
     return FALSE;
 }
 
-/** inf_adopted_operation_revert:
- *
+/**
+ * inf_adopted_operation_revert:
  * @operation: A #InfAdoptedOperation.
  *
  * Returns a new #InfAdoptedOperation that undoes the effect of @operation. If
@@ -256,8 +256,8 @@ inf_adopted_operation_revert(InfAdoptedOperation* operation)
   return (*iface->revert)(operation);
 }
 
-/** inf_adopted_operation_make_reversible:
- *
+/**
+ * inf_adopted_operation_make_reversible:
  * @operation: A #InfAdoptedOperation.
  * @with: Another #InfAdoptedOperation that emerged from @operation by
  * transforming it.

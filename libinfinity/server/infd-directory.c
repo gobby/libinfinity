@@ -2053,8 +2053,8 @@ infd_directory_get_type(void)
  * Public API.
  */
 
-/** infd_directory_iter_copy:
- *
+/**
+ * infd_directory_iter_copy:
  * @iter: A #InfdDirectoryIter.
  *
  * Makes a dynamically-allocated copy of @iter. This should not be used by
@@ -2075,8 +2075,8 @@ infd_directory_iter_copy(InfdDirectoryIter* iter)
   return new_iter;
 }
 
-/** infd_directory_iter_free:
- *
+/**
+ * infd_directory_iter_free:
  * @iter: A #InfdDirectoryIter.
  *
  * Frees a #InfdDirectoryIter allocated with infd_directory_iter_copy().
@@ -2089,8 +2089,8 @@ infd_directory_iter_free(InfdDirectoryIter* iter)
   g_slice_free(InfdDirectoryIter, iter);
 }
 
-/** infd_directory_new:
- *
+/**
+ * infd_directory_new:
  * @io: IO object to watch connections and schedule timeouts.
  * @storage: Storage backend that is used to read/write notes from
  * permanent memory into #InfBuffer objects.
@@ -2130,8 +2130,8 @@ infd_directory_new(InfIo* io,
   return INFD_DIRECTORY(object);
 }
 
-/** infd_directory_get_io:
- *
+/**
+ * infd_directory_get_io:
  * @directory: A #InfdDirectory.
  *
  * Returns the IO object in use by the directory.
@@ -2145,8 +2145,8 @@ infd_directory_get_io(InfdDirectory* directory)
   return INFD_DIRECTORY_PRIVATE(directory)->io;
 }
 
-/** infd_directory_get_storage:
- *
+/**
+ * infd_directory_get_storage:
  * @directory: A #InfdDirectory:
  *
  * Returns the storage backend in use by the directory.
@@ -2160,8 +2160,8 @@ infd_directory_get_storage(InfdDirectory* directory)
   return INFD_DIRECTORY_PRIVATE(directory)->storage;
 }
 
-/** infd_directory_get_connection_manager:
- *
+/**
+ * infd_directory_get_connection_manager:
  * @directory: A #InfdDirectory.
  *
  * Returns the connection manager of the directory.
@@ -2175,8 +2175,8 @@ infd_directory_get_connection_manager(InfdDirectory* directory)
   return INFD_DIRECTORY_PRIVATE(directory)->connection_manager;
 }
 
-/** infd_directory_add_plugin:
- *
+/**
+ * infd_directory_add_plugin:
  * @directory: A #InfdDirectory.
  * @plugin: A #InfdNotePlugin.
  *
@@ -2215,8 +2215,8 @@ infd_directory_add_plugin(InfdDirectory* directory,
   return TRUE;
 }
 
-/** infd_directory_lookup_plugin:
- *
+/**
+ * infd_directory_lookup_plugin:
  * @directory: A #InfdDirectory.
  * @note_type: A note type for which to lookup the plugin.
  *
@@ -2285,8 +2285,8 @@ infd_directory_add_connection(InfdDirectory* directory,
   return TRUE;
 }
 
-/** infd_directory_iter_get_root:
- *
+/**
+ * infd_directory_iter_get_root:
  * @directory: A #InfdDirectory
  * @iter An uninitalized #InfdDirectoryIter.
  *
@@ -2308,8 +2308,8 @@ infd_directory_iter_get_root(InfdDirectory* directory,
   iter->node = priv->root;
 }
 
-/** infd_directory_iter_get_next:
- *
+/**
+ * infd_directory_iter_get_next:
  * @directory: A #InfdDirectory.
  * @iter: A #InfdDirectoryIter pointing to some node in @directory.
  *
@@ -2345,8 +2345,8 @@ infd_directory_iter_get_next(InfdDirectory* directory,
   }
 }
 
-/** infd_directory_iter_get_prev:
- *
+/**
+ * infd_directory_iter_get_prev:
  * @directory: A #InfdDirectory.
  * @iter: A #InfdDirectoryIter pointing to some node in @directory.
  *
@@ -2383,8 +2383,8 @@ infd_directory_iter_get_prev(InfdDirectory* directory,
   }
 }
 
-/** infd_directory_iter_get_parent:
- *
+/**
+ * infd_directory_iter_get_parent:
  * @directory: A #InfdDirectory.
  * @iter: A #InfdDirectoryIter pointing to some node in @directory.
  *
@@ -2421,8 +2421,8 @@ infd_directory_iter_get_parent(InfdDirectory* directory,
   }
 }
 
-/** infd_directory_iter_get_child:
- *
+/**
+ * infd_directory_iter_get_child:
  * @directory: A #InfdDirectory.
  * @iter: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
  * @error: Location to store error information.
@@ -2474,8 +2474,8 @@ infd_directory_iter_get_child(InfdDirectory* directory,
   }
 }
 
-/** infd_directory_add_subdirectory:
- *
+/**
+ * infd_directory_add_subdirectory:
  * @directory: A #InfdDirectory.
  * @parent: A #InfdDirectoryIter pointing to a subdirectory node
  * in @directory.
@@ -2534,8 +2534,8 @@ infd_directory_add_subdirectory(InfdDirectory* directory,
   return TRUE;
 }
 
-/** infd_directory_add_note:
- *
+/**
+ * infd_directory_add_note:
  * @directory: A #InfdDirectory.
  * @parent: A #InfdDirectoryIter pointing to a subdirectory node
  * in @directory.
@@ -2594,8 +2594,8 @@ infd_directory_add_note(InfdDirectory* directory,
   return TRUE;
 }
 
-/** infd_directory_remove_node:
- *
+/**
+ * infd_directory_remove_node:
  * @directory: A #InfdDirectory
  * @iter: A #InfdDirectoryIter pointing to some node in @directory.
  * @error: Location to store error information.
@@ -2618,8 +2618,8 @@ infd_directory_remove_node(InfdDirectory* directory,
   return infd_directory_node_remove(directory, iter->node, NULL, 0, error);
 }
 
-/** infd_directory_iter_get_node_type:
- *
+/**
+ * infd_directory_iter_get_node_type:
  * @directory: A #InfdDirectory.
  * @iter: A #InfdDirectoryIter pointing to some node in @directory.
  *
@@ -2642,8 +2642,8 @@ infd_directory_iter_get_node_type(InfdDirectory* directory,
   return ((InfdDirectoryNode*)iter->node)->type;
 }
 
-/** infd_directory_iter_get_plugin:
- *
+/**
+ * infd_directory_iter_get_plugin:
  * @directory: A #InfdDirectory.
  * @iter: a #InfdDirectoryIter pointing to a note in @directory.
  *
@@ -2667,8 +2667,8 @@ infd_directory_iter_get_plugin(InfdDirectory* directory,
   return node->shared.note.plugin;
 }
 
-/** infd_directory_iter_get_session:
- *
+/**
+ * infd_directory_iter_get_session:
  * @directory: A #InfdDirectory.
  * @iter: A #InfdDirectoryIter pointing to a note in @directory.
  * @error: Location to store error information.

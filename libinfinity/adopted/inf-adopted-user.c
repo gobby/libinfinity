@@ -245,8 +245,8 @@ inf_adopted_user_get_type(void)
   return user_type;
 }
 
-/** inf_adopted_user_get_component:
- *
+/**
+ * inf_adopted_user_get_component:
  * @user: A #InfAdoptedUser.
  * @id: The component to retrieve.
  *
@@ -266,8 +266,8 @@ inf_adopted_user_get_component(InfAdoptedUser* user,
   );
 }
 
-/** inf_adopted_user_get_vector:
- *
+/**
+ * inf_adopted_user_get_vector:
  * @user: A #InfAdoptedUser.
  *
  * Returns the current vector time of @user.
@@ -281,8 +281,8 @@ inf_adopted_user_get_vector(InfAdoptedUser* user)
   return INF_ADOPTED_USER_PRIVATE(user)->vector;
 }
 
-/** inf_adopted_user_set_vector:
- *
+/**
+ * inf_adopted_user_set_vector:
  * @user: A #InfAdoptedUser.
  * @vec: A #InfAdoptedStateVector.
  *
@@ -305,8 +305,8 @@ inf_adopted_user_set_vector(InfAdoptedUser* user,
   g_object_notify(G_OBJECT(user), "vector");
 }
 
-/** inf_adopted_user_get_request_log:
- *
+/**
+ * inf_adopted_user_get_request_log:
  * @user: A #InfAdoptedUser.
  *
  * Returns the request log of @user.

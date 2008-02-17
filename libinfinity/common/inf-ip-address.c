@@ -93,8 +93,8 @@ inf_ip_address_get_type(void)
   return ip_address_type;
 }
 
-/** inf_ip_address_new_raw4:
- *
+/**
+ * inf_ip_address_new_raw4:
  * @address: An IPv4 address in network byte order.
  *
  * Creates a new IPv4 address.
@@ -110,8 +110,8 @@ inf_ip_address_new_raw4(guint32 address)
   return addr;
 }
 
-/** inf_ip_address_new_loopback4:
- *
+/**
+ * inf_ip_address_new_loopback4:
  * Creates a new IPv4 address that contains the local host's IP address
  * ("127.0.0.1").
  *
@@ -123,8 +123,8 @@ inf_ip_address_new_loopback4(void)
   return inf_ip_address_new_raw4(htonl(INADDR_LOOPBACK));
 }
 
-/** inf_ip_address_new_raw6:
- *
+/**
+ * inf_ip_address_new_raw6:
  * @address: An IPv6 address in network bype order.
  *
  * Creates a new IPv6 address.
@@ -140,8 +140,8 @@ inf_ip_address_new_raw6(const guint8 address[16])
   return addr;
 }
 
-/** inf_ip_address_new_loopback6:
- *
+/**
+ * inf_ip_address_new_loopback6:
  * Creates a new IPv6 address that contains the local host's IP address
  * ("::1").
  *
@@ -153,8 +153,8 @@ inf_ip_address_new_loopback6(void)
   return inf_ip_address_new_raw6(in6addr_loopback.s6_addr);
 }
 
-/** inf_ip_address_new_from_string:
- *
+/**
+ * inf_ip_address_new_from_string:
  * @str: A string containing an IPv4 or IPv6 address in standard dots
  * notation.
  *
@@ -185,8 +185,8 @@ inf_ip_address_new_from_string(const gchar* str)
   return addr;
 }
 
-/** inf_ip_address_copy:
- *
+/**
+ * inf_ip_address_copy:
  * @address: A #InfIpAddress.
  *
  * Creates a new #InfIpAddress that contains the same address as @address.
@@ -208,8 +208,8 @@ inf_ip_address_copy(const InfIpAddress* address)
   }
 }
 
-/** inf_ip_address_free:
- *
+/**
+ * inf_ip_address_free:
  * @address: A #InfIpAddress.
  *
  * Frees @address.
@@ -220,8 +220,8 @@ inf_ip_address_free(InfIpAddress* address)
   g_slice_free(InfIpAddress, address);
 }
 
-/** inf_ip_address_get_family:
- *
+/**
+ * inf_ip_address_get_family:
  * @address: A #InfIpAddress.
  *
  * Returns the address family of @address.
@@ -234,8 +234,8 @@ inf_ip_address_get_family(const InfIpAddress* address)
   return address->family;
 }
 
-/** inf_ip_address_get_raw:
- *
+/**
+ * inf_ip_address_get_raw:
  * @address: A #InfIpAddress.
  *
  * Returns either 32 bit (IPv4) or 128 bit (IPv6) raw address data in host
@@ -258,8 +258,8 @@ inf_ip_address_get_raw(const InfIpAddress* address)
   }
 }
 
-/** inf_ip_address_to_string:
- *
+/**
+ * inf_ip_address_to_string:
  * @address: A #InfIpAddress.
  *
  * Returns a string representation of @address in standard dots format (like
@@ -288,8 +288,8 @@ inf_ip_address_to_string(const InfIpAddress* address)
   }
 }
 
-/** inf_ip_address_collate:
- *
+/**
+ * inf_ip_address_collate:
  * @address1: First address.
  * @address2: Second address.
  *

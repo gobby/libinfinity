@@ -1498,8 +1498,8 @@ inf_discovery_avahi_get_type(void)
  * Public API.
  */
 
-/** inf_discovery_avahi_new:
- *
+/**
+ * inf_discovery_avahi_new:
  * @io: A #InfIo object used for watching sockets and timeouts.
  * @manager: A #InfXmppManager.
  * @creds: The certificate credentials used for GnuTLS encryption.

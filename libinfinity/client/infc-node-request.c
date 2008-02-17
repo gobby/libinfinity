@@ -188,8 +188,8 @@ infc_node_request_get_type(void)
   return node_request_type;
 }
 
-/** infc_node_request_finished:
- *
+/**
+ * infc_node_request_finished:
  * @request: A #InfcNodeRequest.
  * @iter: A #InfcBrowserIter pointing to a node affected by the request.
  *

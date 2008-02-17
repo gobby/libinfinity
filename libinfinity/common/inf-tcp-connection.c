@@ -828,8 +828,8 @@ inf_tcp_connection_get_type(void)
   return tcp_connection_type;
 }
 
-/** inf_tcp_connection_open:
- *
+/**
+ * inf_tcp_connection_open:
  * @connection: A #InfTcpConnection.
  * #error: Location to store error information.
  *
@@ -1003,8 +1003,8 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   return TRUE;
 }
 
-/** inf_tcp_connection_close:
- *
+/**
+ * inf_tcp_connection_close:
  * @connection: A #InfTcpConnection.
  *
  * Closes a TCP connection that is either open or currently connecting.
@@ -1036,8 +1036,8 @@ inf_tcp_connection_close(InfTcpConnection* connection)
   g_object_notify(G_OBJECT(connection), "status");
 }
 
-/** inf_tcp_connection_send:
- *
+/**
+ * inf_tcp_connection_send:
  * @connection: A #InfTcpConnection with status %INF_TCP_CONNECTION_CONNECTED.
  * @data: The data to send.
  * @len: Number of bytes to send.
@@ -1103,8 +1103,8 @@ inf_tcp_connection_send(InfTcpConnection* connection,
   }
 }
 
-/** inf_tcp_connection_get_remote_address:
- *
+/**
+ * inf_tcp_connection_get_remote_address:
  * @connection: A #InfTcpConnection.
  *
  * Returns the IP address of the remote site.
@@ -1120,8 +1120,8 @@ inf_tcp_connection_get_remote_address(InfTcpConnection* connection)
   return INF_TCP_CONNECTION_PRIVATE(connection)->remote_address;
 }
 
-/** inf_tcp_connection_get_remote_port:
- *
+/**
+ * inf_tcp_connection_get_remote_port:
  * @connection: A #InfTcpConnection.
  *
  * Returns the port of the remote site to which @connection is (or was)

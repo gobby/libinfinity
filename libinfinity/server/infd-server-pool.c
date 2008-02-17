@@ -439,8 +439,8 @@ infd_server_pool_get_type(void)
   return server_pool_type;
 }
 
-/** infd_server_pool_new:
- *
+/**
+ * infd_server_pool_new:
  * @directory: A #InfdDirectory to which to add incoming connections.
  *
  * Creates a new #InfdServerPool.
@@ -463,8 +463,8 @@ infd_server_pool_new(InfdDirectory* directory)
   return INFD_SERVER_POOL(object);
 }
 
-/** infd_server_pool_add_server:
- *
+/**
+ * infd_server_pool_add_server:
  * @server_pool: A #InfdServerPool.
  * @server: A #InfdXmlServer.
  *
@@ -510,8 +510,8 @@ infd_server_pool_add_server(InfdServerPool* server_pool,
   g_object_ref(G_OBJECT(server));
 }
 
-/** inf_server_pool_add_local_publisher:
- *
+/**
+ * inf_server_pool_add_local_publisher:
  * @server_pool: A #InfdServerPool.
  * @server: A #InfdXmppServer added to @server_pool.
  * @publisher: A #InfLocalPublisher.

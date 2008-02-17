@@ -2052,8 +2052,8 @@ inf_gtk_browser_model_get_type(void)
  * Public API.
  */
 
-/** inf_gtk_browser_model_new:
- *
+/**
+ * inf_gtk_browser_model_new:
  * @io: A #InfIo object for the created #InfcBrowser to schedule timeouts.
  * @connection_manager: The #InfConnectionManager with which to explore
  * remote directories.
@@ -2082,8 +2082,8 @@ inf_gtk_browser_model_new(InfIo* io,
   return INF_GTK_BROWSER_MODEL(object);
 }
 
-/** inf_gtk_browser_model_add_discovery:
- *
+/**
+ * inf_gtk_browser_model_add_discovery:
  * @model: A #InfGtkBrowserModel.
  * @discovery: A #InfDiscovery not yet added to @model.
  *
@@ -2136,8 +2136,8 @@ inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
   inf_discovery_discover(discovery, "_infinote._tcp");
 }
 
-/** inf_gtk_browser_model_add_connection:
- *
+/**
+ * inf_gtk_browser_model_add_connection:
  * @model: A #InfGtkBrowserModel.
  * @connection: A #InfXmlConnection.
  *
@@ -2165,8 +2165,8 @@ inf_gtk_browser_model_add_connection(InfGtkBrowserModel* model,
     inf_gtk_browser_model_add_item(model, NULL, NULL, connection);
 }
 
-/** inf_gtk_browser_model_resolve:
- *
+/**
+ * inf_gtk_browser_model_resolve:
  * @model: A #InfGtkBrowserModel.
  * @discovery: A #InfDiscovery added to @model.
  * @info: A #InfDiscoveryInfo discovered by @discovery.
@@ -2217,8 +2217,8 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
   );
 }
 
-/** inf_gtk_browser_model_browser_iter_to_tree_iter:
- *
+/**
+ * inf_gtk_browser_model_browser_iter_to_tree_iter:
  * @model: A #InfGtkBrowserModel.
  * @browser:  A #InfcBrowser.
  * @browser_iter: A #InfcBrowserIter pointing into @browser.

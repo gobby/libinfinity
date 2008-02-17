@@ -380,8 +380,8 @@ inf_user_table_get_type(void)
   return user_table_type;
 }
 
-/** inf_user_table_new:
- *
+/**
+ * inf_user_table_new:
  * Creates a new, empty user table.
  *
  * Return Value: A #InfUserTable.
@@ -392,8 +392,8 @@ inf_user_table_new(void)
   return INF_USER_TABLE(g_object_new(INF_TYPE_USER_TABLE, NULL));
 }
 
-/** inf_user_table_add_user:
- *
+/**
+ * inf_user_table_add_user:
  * @user_table: A #InfUserTable.
  * @user: A #InfUser not already contained in @user_table.
  *
@@ -409,8 +409,8 @@ inf_user_table_add_user(InfUserTable* user_table,
   g_signal_emit(G_OBJECT(user_table), user_table_signals[ADD_USER], 0, user);
 }
 
-/** inf_user_table_remove_user:
- *
+/**
+ * inf_user_table_remove_user:
  * @user_table: A #InfUserTable.
  * @user: A #InfUser contained in @table.
  *
@@ -431,8 +431,8 @@ inf_user_table_remove_user(InfUserTable* user_table,
   );
 }
 
-/** inf_user_table_lookup_user_by_id:
- *
+/**
+ * inf_user_table_lookup_user_by_id:
  * @user_table: A #InfUserTable.
  * @id: User ID to lookup.
  *
@@ -453,8 +453,8 @@ inf_user_table_lookup_user_by_id(InfUserTable* user_table,
   return INF_USER(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)));
 }
 
-/** inf_user_table_lookup_user_by_name:
- *
+/**
+ * inf_user_table_lookup_user_by_name:
  * @user_table: A #InfUserTable.
  * @name: User name to lookup.
  *
@@ -483,8 +483,8 @@ inf_user_table_lookup_user_by_name(InfUserTable* user_table,
   return user;
 }
 
-/** inf_user_table_foreach:
- *
+/**
+ * inf_user_table_foreach:
  * @user_table: A #InfUserTable.
  * @func: The function to call for each user.
  * @user_data: User data to pass to the function.
@@ -515,8 +515,8 @@ inf_user_table_foreach_user(InfUserTable* user_table,
   );
 }
 
-/** inf_user_table_foreach_local_user:
- *
+/**
+ * inf_user_table_foreach_local_user:
  * @user_table: A #InfUserTable.
  * @func: The function to call for each user.
  * @user_data: User data to pass to the function.

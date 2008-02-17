@@ -1613,8 +1613,8 @@ inf_adopted_algorithm_get_type(void)
   return algorithm_type;
 }
 
-/** inf_adopted_algorithm_new:
- *
+/**
+ * inf_adopted_algorithm_new:
  * @user_table: The table of participating users.
  * @buffer: The buffer to apply operations to.
  *
@@ -1640,8 +1640,8 @@ inf_adopted_algorithm_new(InfUserTable* user_table,
   return INF_ADOPTED_ALGORITHM(object);
 }
 
-/** inf_adopted_algorithm_new_full:
- *
+/**
+ * inf_adopted_algorithm_new_full:
  * @user_table: The table of participating users.
  * @buffer: The buffer to apply operations to.
  * @max_total_log_size: The maxmimum number of operations to keep in all
@@ -1699,8 +1699,8 @@ inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm)
   return INF_ADOPTED_ALGORITHM_PRIVATE(algorithm)->current;
 }
 
-/** inf_adopted_algorithm_generate_request_noexec:
- *
+/**
+ * inf_adopted_algorithm_generate_request_noexec:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  * @operation: A #InfAdoptedOperation.
@@ -1748,8 +1748,8 @@ inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
   return request;
 }
 
-/** inf_adopted_algorithm_generate_request:
- *
+/**
+ * inf_adopted_algorithm_generate_request:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  * @operation: A #InfAdoptedOperation.
@@ -1793,8 +1793,8 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
   return request;
 }
 
-/** inf_adopted_algorithm_generate_undo:
- *
+/**
+ * inf_adopted_algorithm_generate_undo:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  *
@@ -1836,8 +1836,8 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
   return request;
 }
 
-/** inf_adopted_algorithm_generate_redo:
- *
+/**
+ * inf_adopted_algorithm_generate_redo:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  *
@@ -1879,8 +1879,8 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
   return request;
 }
 
-/** inf_adopted_algorithm_receive_request:
- *
+/**
+ * inf_adopted_algorithm_receive_request:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @request:  A #InfAdoptedRequest from a non-local user.
  *
@@ -1962,8 +1962,8 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
   inf_adopted_algorithm_update_undo_redo(algorithm);
 }
 
-/** inf_adopted_algorithm_can_undo:
- *
+/**
+ * inf_adopted_algorithm_can_undo:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  *
@@ -1986,8 +1986,8 @@ inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
   return local->can_undo;
 }
 
-/** inf_adopted_algorithm_can_redo:
- *
+/**
+ * inf_adopted_algorithm_can_redo:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  *

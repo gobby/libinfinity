@@ -222,8 +222,8 @@ inf_text_chunk_get_type(void)
   return chunk_type;
 }
 
-/** inf_text_chunk_new:
- *
+/**
+ * inf_text_chunk_new:
  * @encoding: A content encoding, such as "UTF-8" or "LATIN1".
  *
  * Creates a new #InfTextChunk with no initial content that holds text
@@ -246,8 +246,8 @@ inf_text_chunk_new(const gchar* encoding)
   return chunk;
 }
 
-/** inf_text_chunk_copy:
- *
+/**
+ * inf_text_chunk_copy:
  * @self: A #InfTextChunk.
  *
  * Returns a copy of @self.
@@ -286,8 +286,8 @@ inf_text_chunk_copy(InfTextChunk* self)
   return new_chunk;
 }
 
-/** inf_text_chunk_free:
- *
+/**
+ * inf_text_chunk_free:
  * @self: A #InfTextChunk.
  *
  * Frees a #InfTextChunk allocated with inf_text_chunk_new(),
@@ -301,8 +301,8 @@ inf_text_chunk_free(InfTextChunk* self)
   g_slice_free(InfTextChunk, self);
 }
 
-/** inf_text_chunk_get_encoding:
- *
+/**
+ * inf_text_chunk_get_encoding:
  * @self: A #InfTextChunk.
  *
  * Returns the character encoding in which the content of @self is encoded.
@@ -316,8 +316,8 @@ inf_text_chunk_get_encoding(InfTextChunk* self)
   return g_quark_to_string(self->encoding);
 }
 
-/** inf_text_chunk_get_length:
- *
+/**
+ * inf_text_chunk_get_length:
  * @self: A #InfTextChunk.
  *
  * Returns the number of characters contained in @self.
@@ -331,8 +331,8 @@ inf_text_chunk_get_length(InfTextChunk* self)
   return self->length;
 }
 
-/** inf_text_chunk_substring:
- *
+/**
+ * inf_text_chunk_substring:
  * @self: A #InfTextChunk.
  * @begin: A character offset into @self.
  * @length: The length of the text to extract.
@@ -435,8 +435,8 @@ inf_text_chunk_substring(InfTextChunk* self,
   return result;
 }
 
-/** inf_text_chunk_insert_text:
- *
+/**
+ * inf_text_chunk_insert_text:
  * @self: A #InfTextChunk.
  * @offset: Character offset at which to insert text
  * @text: Text to insert.
@@ -559,8 +559,8 @@ inf_text_chunk_insert_text(InfTextChunk* self,
 #endif
 }
 
-/** inf_text_chunk_insert_chunk:
- *
+/**
+ * inf_text_chunk_insert_chunk:
  * @self: A #InfTextChunk.
  * @offset: Character offset at which to insert text.
  * @text: Chunk to insert into @self.
@@ -832,8 +832,8 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
 #endif
 }
 
-/** inf_text_chunk_erase:
- *
+/**
+ * inf_text_chunk_erase:
  * @self: A #InfTextChunk.
  * @begin: A character offset into @self.
  * @length: Number of characters to erase.
@@ -1022,8 +1022,8 @@ inf_text_chunk_erase(InfTextChunk* self,
 #endif
 }
 
-/** inf_text_chunk_get_text:
- *
+/**
+ * inf_text_chunk_get_text:
  * @self: A #InfTextChunk.
  * @length: Location to write the number of bytes to, or %NULL.
  *
@@ -1072,8 +1072,8 @@ inf_text_chunk_get_text(InfTextChunk* self,
   return result;
 }
 
-/** inf_text_chunk_equal:
- *
+/**
+ * inf_text_chunk_equal:
  * @self: A #InfTextChunk.
  * @other: Another #InfTextChunk.
  *
@@ -1124,8 +1124,8 @@ inf_text_chunk_equal(InfTextChunk* self,
 }
 
 #if 0
-/** inf_text_chunk_to_xml:
- *
+/**
+ * inf_text_chunk_to_xml:
  * @self: A #InfTextChunk.
  * @xml: XML node to write into.
  *
@@ -1181,8 +1181,8 @@ inf_text_chunk_to_xml(InfTextChunk* self,
   g_iconv_close(cd);
 }
 
-/** inf_text_chunk_from_xml:
- *
+/**
+ * inf_text_chunk_from_xml:
  * @xml: A XML node.
  * @encoding: Character encoding for the new text chunk.
  * @error: Location to store error information, or %NULL.
@@ -1278,8 +1278,8 @@ inf_text_chunk_from_xml(xmlNodePtr xml,
 }
 #endif
 
-/** inf_text_chunk_iter_init:
- *
+/**
+ * inf_text_chunk_iter_init:
  * @self: A #InfTextChunk.
  * @iter: A #InfTextChunkIter.
  *
@@ -1309,8 +1309,8 @@ inf_text_chunk_iter_init(InfTextChunk* self,
   }
 }
 
-/** inf_text_chunk_iter_next:
- *
+/**
+ * inf_text_chunk_iter_next:
  * @iter: An initialized #InfTextChunkIter.
  *
  * Sets @iter to point to the next segment. If @iter already points to the
@@ -1335,8 +1335,8 @@ inf_text_chunk_iter_next(InfTextChunkIter* iter)
   }
 }
 
-/** inf_text_chunk_iter_prev:
- *
+/**
+ * inf_text_chunk_iter_prev:
  * @iter: An initialized #InfTextChunkIter.
  *
  * Sets @iter to point to the previous segment. If @iter already points to
@@ -1359,8 +1359,8 @@ inf_text_chunk_iter_prev(InfTextChunkIter* iter)
   }
 }
 
-/** inf_text_chunk_iter_get_text:
- *
+/**
+ * inf_text_chunk_iter_get_text:
  * @iter: An initialized #InfTextChunkIter.
  *
  * Returns the text of the segment @iter points to. The text is in the
@@ -1375,8 +1375,8 @@ inf_text_chunk_iter_get_text(InfTextChunkIter* iter)
   return ((InfTextChunkSegment*)g_sequence_get(iter->first))->text;
 }
 
-/** inf_text_chunk_iter_get_length:
- *
+/**
+ * inf_text_chunk_iter_get_length:
  * @iter: An initialized #InfTextChunkIter.
  *
  * Returns the number of characters in the segment @iter points to.
@@ -1404,8 +1404,8 @@ inf_text_chunk_iter_get_length(InfTextChunkIter* iter)
   }
 }
 
-/** inf_text_chunk_iter_get_bytes:
- *
+/**
+ * inf_text_chunk_iter_get_bytes:
  * @iter: An initialized #InfTextChunkIter.
  *
  * Returns the number of bytes in the segment @iter points to.
@@ -1419,8 +1419,8 @@ inf_text_chunk_iter_get_bytes(InfTextChunkIter* iter)
   return ((InfTextChunkSegment*)g_sequence_get(iter->first))->length;
 }
 
-/** inf_text_chunk_iter_get_author:
- *
+/**
+ * inf_text_chunk_iter_get_author:
  * @iter: An initialized #InfTextChunkIter.
  *
  * Returns the user ID of the author of the segment @iter points to.

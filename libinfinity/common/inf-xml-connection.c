@@ -195,8 +195,8 @@ inf_xml_connection_get_type(void)
   return xml_connection_type;
 }
 
-/** inf_xml_connection_close:
- *
+/**
+ * inf_xml_connection_close:
  * @connection: A #InfXmlConnection.
  *
  * Closes the given connection.
@@ -214,8 +214,8 @@ inf_xml_connection_close(InfXmlConnection* connection)
   iface->close(connection);
 }
 
-/** inf_xml_connection_send:
- *
+/**
+ * inf_xml_connection_send:
  * @connection: A #InfXmlConnection.
  * @xml: A XML message to send. The function takes ownership of the XML node.
  *
@@ -235,8 +235,8 @@ void inf_xml_connection_send(InfXmlConnection* connection,
   iface->send(connection, xml);
 }
 
-/** inf_xml_connection_sent:
- *
+/**
+ * inf_xml_connection_sent:
  * @connection: A #InfXmlConnection.
  * @xml: The XML message that has been sent.
  *
@@ -257,8 +257,8 @@ void inf_xml_connection_sent(InfXmlConnection* connection,
   );
 }
 
-/** inf_xml_connection_received:
- *
+/**
+ * inf_xml_connection_received:
  * @connection: A #InfXmlConnection.
  * @xml: The XML message that has been received.
  *
@@ -279,8 +279,8 @@ void inf_xml_connection_received(InfXmlConnection* connection,
   );
 }
 
-/** inf_xml_connection_error:
- *
+/**
+ * inf_xml_connection_error:
  * @connection: A #InfXmlConnection.
  * @error: The error that occured.
  *

@@ -1048,8 +1048,8 @@ inf_text_gtk_buffer_get_type(void)
   return buffer_type;
 }
 
-/** inf_text_gtk_buffer_new:
- *
+/**
+ * inf_text_gtk_buffer_new:
  * @buffer: The underlaying #GtkTextBuffer.
  *
  * Creates a new #InfTextGtkBuffer wrapping @buffer. It implements the
@@ -1073,8 +1073,8 @@ inf_text_gtk_buffer_new(GtkTextBuffer* buffer)
   return INF_TEXT_GTK_BUFFER(object);
 }
 
-/** inf_text_gtk_buffer_get_text_buffer:
- *
+/**
+ * inf_text_gtk_buffer_get_text_buffer:
  * @buffer: A #InfTextGtkBuffer.
  *
  * Returns the underlaying #GtkTextBuffer.
@@ -1088,8 +1088,8 @@ inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer)
   return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->buffer;
 }
 
-/** inf_text_gtk_buffer_set_active_user:
- *
+/**
+ * inf_text_gtk_buffer_set_active_user:
  * @buffer: A #InfTextGtkBuffer.
  * @user: A #InfTextUser.
  *
@@ -1132,8 +1132,8 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
   g_object_notify(G_OBJECT(buffer), "active-user");
 }
 
-/** inf_text_gtk_buffer_get_active_user:
- *
+/**
+ * inf_text_gtk_buffer_get_active_user:
  * @buffer: A #InfTextGtkBuffer.
  *
  * Returns the current active user for @buffer.

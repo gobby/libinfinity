@@ -496,8 +496,8 @@ inf_text_default_delete_operation_get_type(void)
   return default_delete_operation_type;
 }
 
-/** inf_text_default_delete_operation_new:
- *
+/**
+ * inf_text_default_delete_operation_new:
  * @position: The position at which to delete text.
  * @chunk: The text to delete.
  *
@@ -526,8 +526,8 @@ inf_text_default_delete_operation_new(guint position,
   return INF_TEXT_DEFAULT_DELETE_OPERATION(object);
 }
 
-/** inf_text_default_delete_operation_get_chunk:
- *
+/**
+ * inf_text_default_delete_operation_get_chunk:
  * @operation: A #InfTextDefaultDeleteOperation.
  *
  * Returns the text deleted by @operation.

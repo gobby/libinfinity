@@ -138,8 +138,8 @@ error: \
   infinoted_creds_gnutls_error(res, error); \
   return FALSE;
 
-/** infinoted_creds_create_dh_params:
- *
+/**
+ * infinoted_creds_create_dh_params:
  * @error: Loctation to store error information, if any.
  *
  * Creates new, random Diffie-Hellman parameters.
@@ -173,8 +173,8 @@ infinoted_creds_create_dh_params(GError** error)
   return params;
 }
 
-/** infinoted_creds_read_dh_params:
- *
+/**
+ * infinoted_creds_read_dh_params:
  * @dhparams_path: A path to a DH parameters file.
  * @error: Location to store error information, if any.
  *
@@ -197,8 +197,8 @@ infinoted_creds_read_dh_params(const gchar* dhparams_path,
   )
 }
 
-/** infinoted_creds_write_dh_params:
- *
+/**
+ * infinoted_creds_write_dh_params:
  * @params: An initialized #gnutls_dh_params_t structure.
  * @dhparams_path: The path at which so store @params.
  * @error: Location to store error information, if any.
@@ -220,8 +220,8 @@ infinoted_creds_write_dh_params(gnutls_dh_params_t params,
   )
 }
 
-/** infinoted_creds_create_key:
- *
+/**
+ * infinoted_creds_create_key:
  * @error: Location to store error information, if any.
  *
  * Generates a new, random X.509 private key.
@@ -254,8 +254,8 @@ infinoted_creds_create_key(GError** error)
 }
 
 
-/** infinoted_creds_read_key:
- *
+/**
+ * infinoted_creds_read_key:
  * @key_path: A path to a X.509 private key file
  * @error: Location for error information, if any.
  *
@@ -277,8 +277,8 @@ infinoted_creds_read_key(const gchar* key_path,
   )
 }
 
-/** infinoted_creds_write_key:
- *
+/**
+ * infinoted_creds_write_key:
  * @key: An initialized #gnutls_x509_privkey_t structure.
  * @key_path: The path at which so store the key.
  * @error: Location to store error information, if any.
@@ -300,8 +300,8 @@ infinoted_creds_write_key(gnutls_x509_privkey_t key,
   )
 }
 
-/** infinoted_creds_create_self_signed_certificate:
- *
+/**
+ * infinoted_creds_create_self_signed_certificate:
  * @key: The key with which to sign the certificate.
  * @error: Location to store error information, if any.
  *
@@ -335,8 +335,8 @@ ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
   return cert;
 }
 
-/** infinoted_creds_read_certificate:
- *
+/**
+ * infinoted_creds_read_certificate:
  * @cert_path: A path to a X.509 certificate file.
  * @error: Location to store error information, if any.
  *
@@ -358,8 +358,8 @@ infinoted_creds_read_certificate(const gchar* cert_path,
   )
 }
 
-/** infinoted_creds_write_certificate:
- *
+/**
+ * infinoted_creds_write_certificate:
  * @cert: An initialized #gnutls_x509_crt_t structure.
  * @cert_path: The location where to store @cert.
  * @error: Location to store error information, if any.
@@ -381,8 +381,8 @@ infinoted_creds_write_certificate(gnutls_x509_crt_t cert,
   )
 }
 
-/** infinoted_creds_create_credentials:
- *
+/**
+ * infinoted_creds_create_credentials:
  * @dh_params: Diffie-Hellman parameters for key exchange.
  * @key: The X.509 private key to use.
  * @cert: The X.509 certificate to use.

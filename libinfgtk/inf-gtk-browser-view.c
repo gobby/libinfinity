@@ -2183,8 +2183,8 @@ inf_gtk_browser_view_get_type(void)
  * Public API.
  */
 
-/** inf_gtk_browser_view_new:
- *
+/**
+ * inf_gtk_browser_view_new:
  * Creates a new #InfGtkBrowserView.
  *
  * Return Value: A new #InfGtkBrowserView.
@@ -2197,8 +2197,8 @@ inf_gtk_browser_view_new(void)
   return GTK_WIDGET(object);
 }
 
-/** inf_gtk_browser_view_new_with_model:
- *
+/**
+ * inf_gtk_browser_view_new_with_model:
  * @model: A #InfGtkBrowserModel.
  *
  * Creates a new #InfGtkBrowserView showing @model.

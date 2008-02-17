@@ -777,8 +777,8 @@ inf_connection_manager_get_type(void)
   return connection_manager_type;
 }
 
-/** inf_connection_manager_new:
- *
+/**
+ * inf_connection_manager_new:
  * Creates a new #InfConnectionManager object.
  *
  * Returns: A #InfConnectionManager.
@@ -791,8 +791,8 @@ inf_connection_manager_new(void)
   return INF_CONNECTION_MANAGER(object);
 }
 
-/** inf_connection_manager_open_group:
- *
+/**
+ * inf_connection_manager_open_group:
  * @manager: A #InfConnectionManager.
  * @group_name: A name for the group to open.
  * @net_object: A #InfNetObject to receive messages, or %NULL.
@@ -862,8 +862,8 @@ inf_connection_manager_open_group(InfConnectionManager* manager,
   return group;
 }
 
-/** inf_connection_manager_join_group:
- *
+/**
+ * inf_connection_manager_join_group:
  * @manager: A #InfConnectionManager.
  * @group_name: The name of the group to join.
  * @publisher_conn: A #InfXmlConnection to the publisher.
@@ -935,8 +935,8 @@ inf_connection_manager_join_group(InfConnectionManager* manager,
   return group;
 }
 
-/** inf_connection_manager_lookup_group:
- *
+/**
+ * inf_connection_manager_lookup_group:
  * @manager: A #InfConnectionManager.
  * @group_name: The name of the group to lookup.
  * @publisher: A connection to the publisher of the group, or %NULL.
@@ -980,8 +980,8 @@ inf_connection_manager_lookup_group(InfConnectionManager* manager,
   return (InfConnectionManagerGroup*)result;
 }
 
-/** inf_connection_manager_lookup_group_by_id:
- *
+/**
+ * inf_connection_manager_lookup_group_by_id:
  * @manager: A #InfConnectionManager.
  * @group_name: The name of the group to lookup.
  * @publisher_id: The ID of the connection to the publisher.
@@ -1017,8 +1017,8 @@ inf_connection_manager_lookup_group_by_id(InfConnectionManager* manager,
   return (InfConnectionManagerGroup*)g_tree_lookup(priv->groups, &key);
 }
 
-/** inf_connection_manager_group_ref:
- *
+/**
+ * inf_connection_manager_group_ref:
  * @group: A #InfConnectionManagerGroup.
  *
  * Increases the reference count of @group by one.
@@ -1029,8 +1029,8 @@ inf_connection_manager_group_ref(InfConnectionManagerGroup* group)
   ++ group->ref_count;
 }
 
-/** inf_connection_manager_group_unref:
- *
+/**
+ * inf_connection_manager_group_unref:
  * @group: A #InfConnectionManagerGroup.
  *
  * Decreases the reference count of @group by one. If the reference count
@@ -1050,8 +1050,8 @@ inf_connection_manager_group_unref(InfConnectionManagerGroup* group)
     g_tree_remove(priv->groups, &group->key);
 }
 
-/** inf_connection_manager_group_get_method_for_network:
- *
+/**
+ * inf_connection_manager_group_get_method_for_network:
  * @g: A #InfConnectionManagerGroup.
  * @network: A network identifier, such as "local" or "jabber".
  *
@@ -1074,8 +1074,8 @@ inf_connection_manager_group_get_method_for_network(InfConnectionManagerGroup* g
   return instance->desc;
 }
 
-/** inf_connection_manager_group_set_object:
- *
+/**
+ * inf_connection_manager_group_set_object:
  * @group: A #InfConnectionManagerGroup.
  * @object: A #InfNetObject.
  *
@@ -1100,8 +1100,8 @@ inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
   );
 }
 
-/** inf_connection_manager_group_get_publisher:
- *
+/**
+ * inf_connection_manager_group_get_publisher:
  * @group: A #InfConnectionManagerGroup.
  *
  * Returns a connection to the publisher of @group, or %NULL if the
@@ -1116,8 +1116,8 @@ inf_connection_manager_group_get_publisher(InfConnectionManagerGroup* group)
   return group->publisher_conn;
 }
 
-/** inf_connection_manager_group_get_publisher_id:
- *
+/**
+ * inf_connection_manager_group_get_publisher_id:
  * @grp: A #InfConnectionManagerGroup.
  *
  * Returns the connection ID of the publisher of @group, or %NULL if the local
@@ -1133,8 +1133,8 @@ inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp)
   return grp->key.publisher_id;
 }
 
-/** inf_connection_manager_has_connection:
- *
+/**
+ * inf_connection_manager_has_connection:
  * @group: A #InfConnectionManagerGroup.
  * @conn: A #InfXmlConnection.
  *
@@ -1155,8 +1155,8 @@ inf_connection_manager_group_has_connection(InfConnectionManagerGroup* group,
   return instance->desc->has_connection(instance->method, conn);
 }
 
-/** inf_connection_manager_group_get_name:
- *
+/**
+ * inf_connection_manager_group_get_name:
  * @group: A #InfConnectionManagerGroup.
  *
  * Returns the name of @group.
@@ -1170,8 +1170,8 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
   return group->key.group_name;
 }
 
-/** inf_connection_manager_group_add_connection:
- *
+/**
+ * inf_connection_manager_group_add_connection:
  * @group: A #InfConnectionManagerGroup.
  * @conn: A #InfXmlConnection.
  *
@@ -1203,8 +1203,8 @@ inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
   return TRUE;
 }
 
-/** inf_connection_manager_group_remove_connection:
- *
+/**
+ * inf_connection_manager_group_remove_connection:
  * @grp: A #InfConnectionManagerGroup.
  * @conn: A #InfXmlConnection.
  *
@@ -1238,8 +1238,8 @@ inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
   instance->desc->remove_connection(instance->method, conn);
 }
 
-/** inf_connection_manager_group_lookup_connection:
- *
+/**
+ * inf_connection_manager_group_lookup_connection:
  * @grp: A @InfConnectionManagerGroup.
  * @network: The network in which to find the connection.
  * @id: A connection ID.
@@ -1264,8 +1264,8 @@ inf_connection_manager_group_lookup_connection(InfConnectionManagerGroup* grp,
   return instance->desc->lookup_connection(instance->method, id);
 }
 
-/** inf_connection_manager_group_send_to_connection:
- *
+/**
+ * inf_connection_manager_group_send_to_connection:
  * @g: A #InfConnectionManagerGroup.
  * @connection: A #InfXmlConnection.
  * @xml: The message to send.
@@ -1304,8 +1304,8 @@ inf_connection_manager_group_send_to_connection(InfConnectionManagerGroup* g,
   );
 }
 
-/** inf_connection_manager_group_send_to_group:
- *
+/**
+ * inf_connection_manager_group_send_to_group:
  * @group: A #InfConnectionManagerGroup.
  * @except: A connection not to send the message to, or %NULL.
  * @xml: The message to send.
@@ -1339,8 +1339,8 @@ inf_connection_manager_group_send_to_group(InfConnectionManagerGroup* group,
   }
 }
 
-/** inf_connection_manager_group_clear_queue:
- *
+/**
+ * inf_connection_manager_group_clear_queue:
  * @group: A #InfConnectionManagerGroup.
  * @connection: A #InfXmlConnection.
  *
@@ -1368,8 +1368,8 @@ inf_connection_manager_group_clear_queue(InfConnectionManagerGroup* group,
   }
 }
 
-/** inf_connection_manager_register_connection:
- *
+/**
+ * inf_connection_manager_register_connection:
  * @group: A #InfConnectionManagerGroup.
  * @connection: A #InfXmlConnection.
  *
@@ -1431,8 +1431,8 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
   );
 }
 
-/** inf_connection_manager_unregister_connection:
- *
+/**
+ * inf_connection_manager_unregister_connection:
  * @group: A #InfConnectionManagerGroup.
  * @connection: A #InfXmlConnection.
  *
@@ -1501,8 +1501,8 @@ inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
   g_slice_free(InfConnectionManagerQueue, queue);
 }
 
-/** inf_connection_manager_send_msg:
- *
+/**
+ * inf_connection_manager_send_msg:
  * @group: A #InfConnectionManagerGroup.
  * @connection: A registered #InfXmlConnection.
  * @scope: A #InfConnectionManagerScope.
@@ -1555,8 +1555,8 @@ inf_connection_manager_send_msg(InfConnectionManagerGroup* group,
   }
 }
 
-/** inf_connection_manager_send_ctrl:
- *
+/**
+ * inf_connection_manager_send_ctrl:
  * @group: A #InfConnectionManagerGroup.
  * @connection: A #InfXmlConnection.
  * @xml: The message to send.

@@ -215,8 +215,8 @@ inf_text_user_get_type(void)
   return user_type;
 }
 
-/** inf_text_user_get_caret_position:
- *
+/**
+ * inf_text_user_get_caret_position:
  * @user: A #InfTextUser.
  *
  * Returns the position of @user's caret.
@@ -230,8 +230,8 @@ inf_text_user_get_caret_position(InfTextUser* user)
   return INF_TEXT_USER_PRIVATE(user)->caret;
 }
 
-/** inf_text_user_get_selection_length:
- *
+/**
+ * inf_text_user_get_selection_length:
  * @user: A #InfTextUser.
  *
  * Returns the number of characters this user has selected, starting from
@@ -247,8 +247,8 @@ inf_text_user_get_selection_length(InfTextUser* user)
   return INF_TEXT_USER_PRIVATE(user)->selection;
 }
 
-/** inf_text_user_set_selection:
- *
+/**
+ * inf_text_user_set_selection:
  * @user: A #InfTextUser.
  * @position: The new position for the user's caret.
  * @length: The number of characters to select. Negative numbers mean

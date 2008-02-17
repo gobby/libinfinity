@@ -1198,8 +1198,8 @@ infd_session_proxy_get_type(void)
  * Public API.
  */
 
-/** inf_session_proxy_get_session:
- *
+/**
+ * inf_session_proxy_get_session:
  * @proxy: A #InfdSessionProxy.
  *
  * Returns the session proxied by @proxy. Returns %NULL if the session was
@@ -1214,8 +1214,8 @@ infd_session_proxy_get_session(InfdSessionProxy* proxy)
   return INFD_SESSION_PROXY_PRIVATE(proxy)->session;
 }
 
-/** infd_session_proxy_add_user:
- *
+/**
+ * infd_session_proxy_add_user:
  * @proxy: A #InfdSessionProxy.
  * @params: Construction properties for the #InfUser (or derived) object.
  * @n_params: Number of parameters.
@@ -1259,8 +1259,8 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
   return user;
 }
 
-/** infd_session_proxy_subscribe_to:
- *
+/**
+ * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy whose session is in state %INF_SESSION_RUNNING.
  * @connection: A #InfConnection that is not yet subscribed.
  *

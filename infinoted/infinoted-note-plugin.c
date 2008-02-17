@@ -22,8 +22,8 @@
 
 #include <string.h>
 
-/** infinoted_note_plugin_load:
- *
+/**
+ * infinoted_note_plugin_load:
  * @plugin_path: Path to a note plugin.
  * @error: Location to store error information, if any.
  *
@@ -75,8 +75,8 @@ infinoted_note_plugin_load(const gchar* plugin_path,
   return plugin;
 }
 
-/** infinoted_note_plugin_load_directory:
- *
+/**
+ * infinoted_note_plugin_load_directory:
  * Loads a directory that contains note plugins and adds them to the given
  * @directory. The directory should only contain valid plugins. A warning for
  * each plugin that could not be load is issued.

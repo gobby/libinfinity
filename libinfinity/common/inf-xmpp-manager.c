@@ -223,8 +223,8 @@ inf_xmpp_manager_get_type(void)
   return xmpp_manager_type;
 }
 
-/** inf_xmpp_manager_new:
- *
+/**
+ * inf_xmpp_manager_new:
  * Creates a new xmpp manager.
  *
  * Return Value: A new #InfXmppManager.
@@ -239,8 +239,8 @@ inf_xmpp_manager_new(void)
   return INF_XMPP_MANAGER(object);
 }
 
-/** inf_xmpp_manager_lookup_connection_by_address:
- *
+/**
+ * inf_xmpp_manager_lookup_connection_by_address:
  * @manager: A #InfConnectionManager.
  * @address: The remote #InfIpAddress of the connection to look for.
  * @port: The remote port number of the connection to look for.
@@ -266,8 +266,8 @@ inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
   return INF_XMPP_CONNECTION(g_tree_lookup(priv->connections, &key));
 }
 
-/** inf_xmpp_manager_contains_connection:
- *
+/**
+ * inf_xmpp_manager_contains_connection:
  * @manager: A #InfXmppManager.
  * @connection: A #InfXmppConnection.
  *
@@ -298,8 +298,8 @@ inf_xmpp_manager_contains_connection(InfXmppManager* manager,
   return INF_XMPP_CONNECTION(g_tree_lookup(priv->connections, &key)) != NULL;
 }
 
-/** inf_xmpp_manager_add_connection:
- *
+/**
+ * inf_xmpp_manager_add_connection:
  * @manager: A #InfXmppManager.
  * @connection: A #InfXmppConnection not yet contained in @manager.
  *

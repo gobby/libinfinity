@@ -291,8 +291,8 @@ inf_adopted_request_get_type(void)
   return request_type;
 }
 
-/** inf_adopted_request_new_do:
- *
+/**
+ * inf_adopted_request_new_do:
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  * @operation: The operation the user performed.
@@ -324,8 +324,8 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
   return INF_ADOPTED_REQUEST(object);
 }
 
-/** inf_adopted_request_new_undo:
- *
+/**
+ * inf_adopted_request_new_undo:
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  *
@@ -356,8 +356,8 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
   return INF_ADOPTED_REQUEST(object);
 }
 
-/** inf_adopted_request_new_redo:
- *
+/**
+ * inf_adopted_request_new_redo:
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  *
@@ -388,8 +388,8 @@ inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
   return INF_ADOPTED_REQUEST(object);
 }
 
-/** inf_adopted_request_copy:
- *
+/**
+ * inf_adopted_request_copy:
  * @request: The #InfAdoptedRequest to copy.
  *
  * Creates a copy of @request with an initial reference count of 1.
@@ -430,8 +430,8 @@ inf_adopted_request_copy(InfAdoptedRequest* request)
   return INF_ADOPTED_REQUEST(object);
 }
 
-/** inf_adopted_request_get_request_type:
- *
+/**
+ * inf_adopted_request_get_request_type:
  * @request: A #InfAdoptedRequest.
  *
  * Returns the request type of @request.
@@ -449,8 +449,8 @@ inf_adopted_request_get_request_type(InfAdoptedRequest* request)
   return INF_ADOPTED_REQUEST_PRIVATE(request)->type;
 }
 
-/** inf_adopted_request_get_vector:
- *
+/**
+ * inf_adopted_request_get_vector:
  * @request: A #InfAdoptedRequest.
  *
  * Returns the vector time the request was made i.e. its operation can be
@@ -466,8 +466,8 @@ inf_adopted_request_get_vector(InfAdoptedRequest* request)
   return INF_ADOPTED_REQUEST_PRIVATE(request)->vector;
 }
 
-/** inf_adopted_request_get_user_id:
- *
+/**
+ * inf_adopted_request_get_user_id:
  * @request: A #InfAdoptedRequest.
  *
  * Returns the user ID of the user that issued @request.
@@ -481,8 +481,8 @@ inf_adopted_request_get_user_id(InfAdoptedRequest* request)
   return INF_ADOPTED_REQUEST_PRIVATE(request)->user_id;
 }
 
-/** inf_adopted_request_get_operation:
- *
+/**
+ * inf_adopted_request_get_operation:
  * @request: A #InfAdoptedRequest.
  *
  * Returns the operation carried by the request. This can only be called if
@@ -503,8 +503,8 @@ inf_adopted_request_get_operation(InfAdoptedRequest* request)
   return priv->operation;
 }
 
-/** inf_adopted_request_transform:
- *
+/**
+ * inf_adopted_request_transform:
  * @request: The request to transform.
  * @against: The request to transform against.
  *
@@ -567,8 +567,8 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
   g_object_notify(G_OBJECT(request), "vector");
 }
 
-/** inf_adopted_request_mirror:
- *
+/**
+ * inf_adopted_request_mirror:
  * @request: A #InfAdoptedRequest.
  * @by: The number of requests between the original and the mirrored
  * operation.
@@ -609,8 +609,8 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
 
 }
 
-/** inf_adopted_request_fold:
- *
+/**
+ * inf_adopted_request_fold:
  * @request: A #InfAdoptedRequest.
  * @into: The direction into which to fold.
  * @by: The number of operations between the original and the fold request.
@@ -642,8 +642,8 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
   g_object_notify(G_OBJECT(request), "vector");
 }
 
-/** inf_adopted_request_affects_buffer:
- *
+/**
+ * inf_adopted_request_affects_buffer:
  * @request: A #InfAdoptedRequest.
  *
  * Returns whether this request, when applied, changes the content of the

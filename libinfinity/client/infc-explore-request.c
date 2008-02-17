@@ -354,8 +354,8 @@ infc_explore_request_get_type(void)
   return explore_request_type;
 }
 
-/** infc_explore_request_get_node_id:
- *
+/**
+ * infc_explore_request_get_node_id:
  * @request: An #InfcExploreRequest.
  *
  * Returns the ID of the node to be explored.
@@ -368,8 +368,8 @@ infc_explore_request_get_node_id(InfcExploreRequest* request)
   return INFC_EXPLORE_REQUEST_PRIVATE(request)->node_id;
 }
 
-/** infc_explore_request_initiated:
- *
+/**
+ * infc_explore_request_initiated:
  * @request: An #InfcExploreRequest.
  *
  * Emits the "initiated" signal on @request. An explore request is considered
@@ -387,8 +387,8 @@ infc_explore_request_initiated(InfcExploreRequest* request,
   );
 }
 
-/** infc_explore_request_progress:
- *
+/**
+ * infc_explore_request_progress:
  * @request: A #InfcExploreRequest.
  * @error: Location to store error information.
  *
@@ -429,8 +429,8 @@ infc_explore_request_progress(InfcExploreRequest* request,
   }
 }
 
-/** infc_explore_request_finished:
- *
+/**
+ * infc_explore_request_finished:
  * @request: A #InfcExploreRequest.
  * @error: Location to store error information.
  *
@@ -469,8 +469,8 @@ infc_explore_request_finished(InfcExploreRequest* request,
   }
 }
 
-/** infc_explore_request_get_initiated:
- *
+/**
+ * infc_explore_request_get_initiated:
  * @request: A #InfcExploreRequest.
  *
  * Returns whether the exploration process was already initiated, i.e. the
@@ -485,8 +485,8 @@ infc_explore_request_get_initiated(InfcExploreRequest* request)
   return INFC_EXPLORE_REQUEST_PRIVATE(request)->initiated;
 }
 
-/** infc_explore_request_get_finished:
- *
+/**
+ * infc_explore_request_get_finished:
  * @request: A #InfcExploreRequest.
  *
  * Returns whether the exploration process has finished, i.e. the "finished"

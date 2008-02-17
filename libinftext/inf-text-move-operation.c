@@ -306,8 +306,8 @@ inf_text_move_operation_get_type(void)
   return move_operation_type;
 }
 
-/** inf_text_move_operation_new:
- *
+/**
+ * inf_text_move_operation_new:
  * @position: The position to place the user's caret at.
  * @length: The number of characters to select. Negative means selection
  * towards the beginning of the buffer.
@@ -333,8 +333,8 @@ inf_text_move_operation_new(guint position,
   return INF_TEXT_MOVE_OPERATION(object);
 }
 
-/** inf_text_move_operation_get_position:
- *
+/**
+ * inf_text_move_operation_get_position:
  * @operation: A #InfTextMoveOperation.
  *
  * Returns the position at which @operation places the user's cursor.
@@ -348,8 +348,8 @@ inf_text_move_operation_get_position(InfTextMoveOperation* operation)
   return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->position;
 }
 
-/** inf_text_move_operation_get_length:
- *
+/**
+ * inf_text_move_operation_get_length:
  * @operation: A #InfTextMoveOperation.
  *
  * Returns the length to which @operation changes the user's selection.
@@ -364,8 +364,8 @@ inf_text_move_operation_get_length(InfTextMoveOperation* operation)
   return INF_TEXT_MOVE_OPERATION_PRIVATE(operation)->length;
 }
 
-/** inf_text_move_operation_transform_insert:
- *
+/**
+ * inf_text_move_operation_transform_insert:
  * @insert_position: The position at which text is inserted.
  * @insert_length: The number of inserted characters.
  * @move_position: Points to the character offset to which the caret is moved.
@@ -412,8 +412,8 @@ inf_text_move_operation_transform_insert(guint insert_position,
   }
 }
 
-/** inf_text_move_operation_transform_delete:
- *
+/**
+ * inf_text_move_operation_transform_delete:
  * @delete_position: The position at which text is deleted.
  * @delete_length: The number of deleted characters.
  * @move_position: Points to the character offset to which the caret is moved.

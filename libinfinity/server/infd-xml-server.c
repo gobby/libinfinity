@@ -135,8 +135,8 @@ infd_xml_server_get_type(void)
   return xml_server_type;
 }
 
-/** infd_xml_server_close:
- *
+/**
+ * infd_xml_server_close:
  * @server: A #InfdXmlServer.
  *
  * Closes @server.
@@ -154,8 +154,8 @@ infd_xml_server_close(InfdXmlServer* server)
   iface->close(server);
 }
 
-/** infd_xml_server_new_connection:
- *
+/**
+ * infd_xml_server_new_connection:
  * @server: A #InfdXmlServer.
  * @connection: A #InfXmlConnection.
  *

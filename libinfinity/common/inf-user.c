@@ -339,8 +339,8 @@ inf_user_get_type(void)
   return user_type;
 }
 
-/** inf_user_get_id:
- *
+/**
+ * inf_user_get_id:
  * @user: A #InfUser.
  *
  * Returns the ID of the given #InfUser.
@@ -354,8 +354,8 @@ inf_user_get_id(const InfUser* user)
   return INF_USER_PRIVATE(user)->id;
 }
 
-/** inf_user_get_name:
- *
+/**
+ * inf_user_get_name:
  * @user: A #InfUser.
  *
  * Returns the name of the given #InfUser.
@@ -369,8 +369,8 @@ inf_user_get_name(const InfUser* user)
   return INF_USER_PRIVATE(user)->name;
 }
 
-/** inf_user_get_status:
- *
+/**
+ * inf_user_get_status:
  * @user: A #InfUser.
  *
  * Returns the status of the given #InfUser.
@@ -384,8 +384,8 @@ inf_user_get_status(const InfUser* user)
   return INF_USER_PRIVATE(user)->status;
 }
 
-/** inf_user_get_flags:
- *
+/**
+ * inf_user_get_flags:
  * @user: A #InfUser.
  *
  * Returns the flags for the given #INfUser.
@@ -399,8 +399,8 @@ inf_user_get_flags(const InfUser* user)
   return INF_USER_PRIVATE(user)->flags;
 }
 
-/** inf_user_get_connection:
- *
+/**
+ * inf_user_get_connection:
  * @user: A #InfUser.
  *
  * Returns a connection to the given #InfUser, or %NULL. If a non-%NULL

@@ -353,8 +353,8 @@ inf_text_default_buffer_get_type(void)
   return default_buffer_type;
 }
 
-/** inf_text_default_buffer_new:
- *
+/**
+ * inf_text_default_buffer_new:
  * @encoding: The character encoding to use for the buffer.
  *
  * Creates a new, empty #InfTextDefaultBuffer.

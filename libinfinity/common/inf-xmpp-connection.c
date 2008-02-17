@@ -3336,8 +3336,8 @@ inf_xmpp_connection_get_type(void)
  * Public API
  */
 
-/** inf_xmpp_connection_new:
- *
+/**
+ * inf_xmpp_connection_new:
  * @tcp: The underlaying TCP connection to use.
  * @site: Whether this is a XMPP client or server.
  * @jid: The JID of the local entity.

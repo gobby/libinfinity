@@ -537,8 +537,8 @@ infd_tcp_server_get_type(void)
   return tcp_server_type;
 }
 
-/** infd_tcp_server_open:
- *
+/**
+ * infd_tcp_server_open:
  * @server: A #InfdTcpServer.
  * @error: Location to store error information.
  *
@@ -701,8 +701,8 @@ infd_tcp_server_open(InfdTcpServer* server,
   return TRUE;
 }
 
-/** infd_tcp_server_close:
- *
+/**
+ * infd_tcp_server_close:
  * @server: A #InfdTcpServer.
  *
  * Closes a TCP server that is open.

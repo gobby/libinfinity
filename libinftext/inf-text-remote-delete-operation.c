@@ -749,8 +749,8 @@ inf_text_remote_delete_operation_get_type(void)
   return remote_delete_operation_type;
 }
 
-/** inf_text_remote_delete_operation_new:
- *
+/**
+ * inf_text_remote_delete_operation_new:
  * @position: The position at which to delete text.
  * @length: The number of characters to delete.
  *

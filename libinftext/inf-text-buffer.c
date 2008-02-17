@@ -101,8 +101,8 @@ inf_text_buffer_get_type(void)
   return text_buffer_type;
 }
 
-/** inf_text_buffer_get_encoding:
- *
+/**
+ * inf_text_buffer_get_encoding:
  * @buffer: A #InfTextBuffer.
  *
  * Returns the character encoding that the buffer uses. This means that all
@@ -124,8 +124,8 @@ inf_text_buffer_get_encoding(InfTextBuffer* buffer)
   return iface->get_encoding(buffer);
 }
 
-/** inf_text_buffer_get_length:
- *
+/**
+ * inf_text_buffer_get_length:
  * @buffer: A #InfTextBuffer.
  *
  * Returns the number of characters in @buffer.
@@ -145,8 +145,8 @@ inf_text_buffer_get_length(InfTextBuffer* buffer)
   return iface->get_length(buffer);
 }
 
-/** inf_text_buffer_get_slice:
- *
+/**
+ * inf_text_buffer_get_slice:
  * @buffer: A #InfTextBuffer.
  * @pos: Character offset of where to start extracting.
  * @len: Number of characters to extract.
@@ -171,8 +171,8 @@ inf_text_buffer_get_slice(InfTextBuffer* buffer,
   return iface->get_slice(buffer, pos, len);
 }
 
-/** inf_text_buffer_insert_text:
- *
+/**
+ * inf_text_buffer_insert_text:
  * @buffer: A #InfTextBuffer.
  * @pos: A character offset into @buffer.
  * @text: A pointer to the text to insert.
@@ -220,8 +220,8 @@ inf_text_buffer_insert_text(InfTextBuffer* buffer,
   inf_text_chunk_free(chunk);
 }
 
-/** inf_text_buffer_insert_chunk:
- *
+/**
+ * inf_text_buffer_insert_chunk:
  * @buffer: A #InfTextBuffer.
  * @pos: A character offset into @buffer.
  * @chunk: A #InfTextChunk.
@@ -251,8 +251,8 @@ inf_text_buffer_insert_chunk(InfTextBuffer* buffer,
   );
 }
 
-/** inf_text_buffer_erase_text:
- *
+/**
+ * inf_text_buffer_erase_text:
  * @buffer: A #InfTextBuffer.
  * @pos: The position to begin deleting characters from.
  * @len: The amount of characters to delete.
@@ -279,8 +279,8 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
   );
 }
 
-/** inf_text_buffer_create_iter:
- *
+/**
+ * inf_text_buffer_create_iter:
  * @buffer: A #InfTextBuffer.
  *
  * Creates a #InfTextBufferIter pointing to the first segmnet of @buffer.
@@ -307,8 +307,8 @@ inf_text_buffer_create_iter(InfTextBuffer* buffer)
   return iface->create_iter(buffer);
 }
 
-/** inf_text_buffer_destroy_iter:
- *
+/**
+ * inf_text_buffer_destroy_iter:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
@@ -329,8 +329,8 @@ inf_text_buffer_destroy_iter(InfTextBuffer* buffer,
   iface->destroy_iter(buffer, iter);
 }
 
-/** inf_text_buffer_iter_next:
- *
+/**
+ * inf_text_buffer_iter_next:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
@@ -355,8 +355,8 @@ inf_text_buffer_iter_next(InfTextBuffer* buffer,
   return iface->iter_next(buffer, iter);
 }
 
-/** inf_text_buffer_iter_prev:
- *
+/**
+ * inf_text_buffer_iter_prev:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
@@ -381,8 +381,8 @@ inf_text_buffer_iter_prev(InfTextBuffer* buffer,
   return iface->iter_prev(buffer, iter);
 }
 
-/** inf_text_buffer_iter_get_text:
- *
+/**
+ * inf_text_buffer_iter_get_text:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
@@ -407,8 +407,8 @@ inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
   return iface->iter_get_text(buffer, iter);
 }
 
-/** inf_text_buffer_iter_get_length:
- *
+/**
+ * inf_text_buffer_iter_get_length:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
@@ -431,8 +431,8 @@ inf_text_buffer_iter_get_length(InfTextBuffer* buffer,
   return iface->iter_get_length(buffer, iter);
 }
 
-/** inf_text_buffer_iter_get_bytes:
- *
+/**
+ * inf_text_buffer_iter_get_bytes:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
@@ -455,8 +455,8 @@ inf_text_buffer_iter_get_bytes(InfTextBuffer* buffer,
   return iface->iter_get_bytes(buffer, iter);
 }
 
-/** inf_text_buffer_iter_get_author:
- *
+/**
+ * inf_text_buffer_iter_get_author:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *

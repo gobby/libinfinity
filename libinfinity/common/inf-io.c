@@ -83,8 +83,8 @@ inf_io_get_type(void)
   return io_type;
 }
 
-/** inf_io_watch:
- *
+/**
+ * inf_io_watch:
  * @io: A #InfIo.
  * @socket: The socket to watch.
  * @events: Events to watch for.
@@ -113,8 +113,8 @@ inf_io_watch(InfIo* io,
   iface->watch(io, socket, events, func, user_data);
 }
 
-/** inf_io_add_timeout:
- *
+/**
+ * inf_io_add_timeout:
  * @io: A #InfIo.
  * @msecs: Number of milliseconds after which the timeout should be elapsed.
  * @func: Function to be called when the timeout elapsed.
@@ -142,8 +142,8 @@ inf_io_add_timeout(InfIo* io,
   return iface->add_timeout(io, msecs, func, user_data);
 }
 
-/** inf_io_remove_timeout:
- *
+/**
+ * inf_io_remove_timeout:
  * @io: A #InfIo.
  * @timeout: A timeout handle obtained from inf_io_add_timeout().
  *

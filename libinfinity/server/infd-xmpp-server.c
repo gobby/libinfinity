@@ -631,8 +631,8 @@ infd_xmpp_server_get_type(void)
   return xmpp_server_type;
 }
 
-/** infd_xmpp_server_new:
- *
+/**
+ * infd_xmpp_server_new:
  * @tcp: A #InfdTcpServer.
  * @jid: The JID of the server entity, for example "jabber.org".
  * @cred: Certificate credentials used to secure any communication.

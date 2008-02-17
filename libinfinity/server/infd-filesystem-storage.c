@@ -489,8 +489,8 @@ infd_filesystem_storage_get_type(void)
   return filesystem_storage_type;
 }
 
-/** infd_filesystem_storage_new:
- *
+/**
+ * infd_filesystem_storage_new:
  * @root_directory: A directory name in UTF-8.
  *
  * Creates a new #InfdFilesystemStorage that stores its nodes in the
@@ -513,8 +513,8 @@ infd_filesystem_storage_new(const gchar* root_directory)
   return INFD_FILESYSTEM_STORAGE(object);
 }
 
-/** infd_filesystem_storage_open:
- *
+/**
+ * infd_filesystem_storage_open:
  * @storage:  A #InfdFilesystemStorage.
  * @path: Tha path to open.
  * @mode: Either "r" for reading or "w" for writing.

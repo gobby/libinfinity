@@ -267,8 +267,8 @@ inf_method_manager_get_type(void)
   return method_manager_type;
 }
 
-/** inf_method_manager_get_default:
- *
+/**
+ * inf_method_manager_get_default:
  * Returns the default method manager with a standard search path.
  *
  * Returns: A #InfMethodManager.
@@ -285,8 +285,8 @@ inf_method_manager_get_default(void)
   return manager;
 }
 
-/** inf_method_manager_new:
- *
+/**
+ * inf_method_manager_new:
  * @search_path: The path to search for method modules, or %NULL.
  *
  * Creates a new #InfMethodManager loading its modules from @search_path.
@@ -309,8 +309,8 @@ inf_method_manager_new(const gchar* search_path)
   return INF_METHOD_MANAGER(object);
 }
 
-/** inf_method_manager_add_method:
- *
+/**
+ * inf_method_manager_add_method:
  * @manager: A #InfMethodManager.
  * @method: A #InfConnectionManagerMethodDesc.
  *
@@ -337,8 +337,8 @@ inf_method_manager_add_method(InfMethodManager* manager,
   priv->methods = g_slist_prepend(priv->methods, (gpointer)method);
 }
 
-/** inf_connection_manager_lookup_method:
- *
+/**
+ * inf_connection_manager_lookup_method:
  * @manager: A #InfMethodManager.
  * @network: The network for which to find a method.
  * @method_name: The name of the method to look up.
@@ -376,8 +376,8 @@ inf_method_manager_lookup_method(InfMethodManager* manager,
   return NULL;
 }
 
-/** inf_connection_manager_list_methods_with_name:
- *
+/**
+ * inf_connection_manager_list_methods_with_name:
  * @manager: A #InfMethodManager.
  * @name: A method name.
  *
@@ -411,8 +411,8 @@ inf_method_manager_list_methods_with_name(InfMethodManager* manager,
   return result;
 }
 
-/** inf_connection_manager_list_methods_with_network:
- *
+/**
+ * inf_connection_manager_list_methods_with_network:
  * @manager: A #InfMethodManager.
  * @network: A network name.
  *
@@ -447,8 +447,8 @@ inf_method_manager_list_methods_with_network(InfMethodManager* manager,
   return result;
 }
 
-/** inf_connection_manager_list_all_methods:
- *
+/**
+ * inf_connection_manager_list_all_methods:
  * @manager: A #InfMethodManager.
  *
  * List all available methods.

@@ -1485,8 +1485,8 @@ inf_text_session_get_type(void)
  * Public API.
  */
 
-/** inf_text_session_new:
- *
+/**
+ * inf_text_session_new:
  * @manager: A #InfConnectionManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
@@ -1537,8 +1537,8 @@ inf_text_session_new(InfConnectionManager* manager,
   return INF_TEXT_SESSION(object);
 }
 
-/** inf_text_session_new_with_user_table:
- *
+/**
+ * inf_text_session_new_with_user_table:
  * @manager: A #InfConnectionManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.

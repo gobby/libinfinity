@@ -66,8 +66,8 @@ inf_text_insert_operation_get_type(void)
   return insert_operation_type;
 }
 
-/** inf_text_insert_operation_get_position:
- *
+/**
+ * inf_text_insert_operation_get_position:
  * @operation: A #InfTextInsertOperation.
  *
  * Returns the position at which @operation inserts text.
@@ -87,8 +87,8 @@ inf_text_insert_operation_get_position(InfTextInsertOperation* operation)
   return inf_text_pword_get_current(iface->get_pword(operation));
 }
 
-/** inf_text_insert_operation_get_pword:
- *
+/**
+ * inf_text_insert_operation_get_pword:
  * @operation: A #InfTextInsertOperation.
  *
  * Returns the #InfTextPword of @operation which contains the current
@@ -110,8 +110,8 @@ inf_text_insert_operation_get_pword(InfTextInsertOperation* operation)
   return iface->get_pword(operation);
 }
 
-/** inf_text_insert_operation_get_length:
- *
+/**
+ * inf_text_insert_operation_get_length:
  * @operation: A #InfTextInsertOperation.
  *
  * Returns the length of the text inserted by @operation.
@@ -131,8 +131,8 @@ inf_text_insert_operation_get_length(InfTextInsertOperation* operation)
   return iface->get_length(operation);
 }
 
-/** inf_text_insert_operation_transform_insert:
- *
+/**
+ * inf_text_insert_operation_transform_insert:
  * @operation: A #InfTextInsertOperation.
  * @against: Another #InfTextInsertOperation.
  * @concurrency_id: The concurrency ID for the transformation.
@@ -191,8 +191,8 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
   }
 }
 
-/** inf_text_insert_operation_transform_delete:
- *
+/**
+ * inf_text_insert_operation_transform_delete:
  * @operation: A #InfTextInsertOperation.
  * @against: A #InfTextDeleteOperation.
  * @concurrency_id: The concurrency ID for the transformation.

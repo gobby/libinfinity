@@ -51,8 +51,8 @@ inf_net_object_get_type(void)
   return net_object_type;
 }
 
-/** inf_net_object_received:
- *
+/**
+ * inf_net_object_received:
  * @object: A #InfNetObject.
  * @conn: The #InfXmlConnection data was received from.
  * @node: The received data.
@@ -99,8 +99,8 @@ inf_net_object_received(InfNetObject* object,
   return FALSE;
 }
 
-/** inf_net_object_enqueued:
- *
+/**
+ * inf_net_object_enqueued:
  * @object: A #InfNetObject.
  * @conn: A #InfXmlConnection.
  * @node: The XML data.
@@ -127,8 +127,8 @@ inf_net_object_enqueued(InfNetObject* object,
     (*iface->enqueued)(object, conn, node);
 }
 
-/** inf_net_object_sent:
- *
+/**
+ * inf_net_object_sent:
  * @object: A #InfNetObject.
  * @conn: A #InfXmlConnection.
  * @node: The sent data.
