@@ -16,6 +16,44 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-session
+ * @title: InfSession
+ * @short_description: Basic session object and synchronization
+ * @include: libinfinity/common/inf-session.h
+ *
+ * #InfSession represents an editing session. The actual type of document that
+ * is edited is not specified, so instantiating #InfSession does not make
+ * any sense. You rather want to use a derived class such as #InfTextSession.
+ * Normally, the #InfcBrowser or #InfdDirectory, respectively, already take
+ * care of instantiating the correct #InfSession.
+ *
+ * A session basically consists of the document being edited (also called
+ * buffer, see #InfBuffer) and the users that are working on the document,
+ * see #InfUserTable.
+ *
+ * A session can either start in %INF_SESSION_RUNNING state, in which it
+ * is created with the initial buffer and user table. It may also start in
+ * %INF_SESSION_SYNCHRONIZING state. In this case, both buffer and user table
+ * are initially empty and are copied from another system over the network.
+ * When the copy is complete, the session enters %INF_SESSION_RUNNING state.
+ *
+ * To be notified about changes other users make to a session, you need to
+ * subscribe to the session (on client side), or wait for incoming
+ * subscriptions (on server side). This is normally done by
+ * infc_browser_subscribe_session(). The first action that is performed upon
+ * subscription is a synchronization as described above. When the
+ * synchronization is complete, the #InfSession::synchronization-complete signal
+ * is emitted.
+ *
+ * After subscription, one can observe modifications other users make, but it is
+ * not possible to make own modifications. Before doing so, a #InfUser needs to
+ * be joined. This is done by client/server specific API such as
+ * infc_session_proxy_join_user() or infd_session_proxy_join_user(). The
+ * required parameters still depend on the actual note type, which is why most
+ * note implementations offer their own API to join a user.
+ **/
+
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-buffer.h>
@@ -84,9 +122,9 @@ enum {
   /* initial sync, construct only */
   /* TODO: Remove this property, since this is already implied by group as
    * soon as we use a separate group for synchronization. This group than has
-   * to contain excatly one connection (but it doesn't matter how is publisher)
+   * to contain excatly one connection (but it doesn't matter who is publisher)
    * that will be used. We can perhaps even use send_to_group, though that
-   * seems a bit unclean. */
+   * seems a bit unclean. TODO: Does this hold for subscribe-sync-conn? */
   PROP_SYNC_CONNECTION,
   PROP_SYNC_GROUP,
 
@@ -1775,7 +1813,7 @@ inf_session_class_init(gpointer g_class,
   );
 
   /**
-   * InfSession::synchronization-complete:
+   * InfSession::synchronization-failed:
    * @session: The #InfSession that failed to synchronize or be synchronized
    * @connection: The #InfXmlConnection through which synchronization happened
    * @error: A pointer to a #GError object with details on the error

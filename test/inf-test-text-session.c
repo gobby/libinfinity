@@ -574,10 +574,13 @@ int main(int argc, char* argv[])
   GError* error;
   test_result result;
   unsigned int rseed;
+  int dirarg;
 
+  dirarg = 1;
   if(argc > 1)
   {
     rseed = atoi(argv[1]);
+    if(rseed > 0) dirarg = 2;
   }
   else
   {
@@ -588,8 +591,8 @@ int main(int argc, char* argv[])
   srand(rseed);
   g_type_init();
 
-  if(argc > 1)
-    dir = argv[1];
+  if(argc > dirarg)
+    dir = argv[dirarg];
   else
     dir = "std";
 

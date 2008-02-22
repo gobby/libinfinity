@@ -2277,7 +2277,6 @@ infd_directory_lookup_plugin(InfdDirectory* directory,
 
 /**
  * infd_directory_add_connection:
- *
  * @directory: A #InfdDirectory.
  * @connection: A #InfConnection.
  *

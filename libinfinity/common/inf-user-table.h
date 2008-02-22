@@ -32,8 +32,6 @@ G_BEGIN_DECLS
 #define INF_IS_USER_TABLE_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_USER_TABLE))
 #define INF_USER_TABLE_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_USER_TABLE, InfUserTableClass))
 
-#define INF_TYPE_USER_TABLE_STATUS          (inf_user_table_status_get_type())
-
 typedef struct _InfUserTable InfUserTable;
 typedef struct _InfUserTableClass InfUserTableClass;
 

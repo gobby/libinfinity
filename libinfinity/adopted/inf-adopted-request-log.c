@@ -684,7 +684,10 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
  * @log: A #InfAdoptedRequestLog.
  * @up_to: The index of the first request not to remove.
  *
- * Removes all requests with index lower than @up_to.
+ * Removes all requests with index lower than @up_to. This function only works
+ * if the request before @up_to is an "upper related" request.
+ * See inf_adopted_request_log_upper_related(). This condition guarantees
+ * that remaining requests do not refer to removed ones.
  **/
 void
 inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
@@ -955,39 +958,39 @@ inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
 /**
  * inf_adopted_request_log_upper_related:
  * @log: A #InfAdoptedRequestLog.
- * @request: A #InfAdoptedRequest contained in @log.
+ * @n: Index of the first request in a set of related requests.
  *
- * Returns the newest request in @log that is related to @request. Two
- * requests are considered related when they are enclosed by a do/undo,
- * an undo/redo or a redo/undo pair.
+ * Returns the newest request in @log that is related to @n<!-- -->th request
+ * in log. requests are considered related when they are enclosed by a
+ * do/undo, an undo/redo or a redo/undo pair.
  *
- * TODO: This function only works if request is the oldest request of a
- * set of related requests.
+ * In other words, the "upper related" request of a given request A is the
+ * first request newer than A so that all requests before the "upper related"
+ * request can be removed without any remaining request in the log still
+ * refering to a removed one.
+ *
+ * Note that the sets of related requests within a request log are
+ * disjoint.
+ *
+ * <note><para>
+ * This function only works if request is the oldest request of a
+ * set of related requests. This could be changed in later versions.
+ * </para></note>
  *
  * Return Value: The newest request in @log being related to @request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
-                                      InfAdoptedRequest* request)
+                                      guint n)
 {
   InfAdoptedRequestLogPrivate* priv;
-  guint user_id;
-  InfAdoptedStateVector* vector;
-  guint n;
   
   InfAdoptedRequestLogEntry* newest_related;
   InfAdoptedRequestLogEntry* current;
   
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
-  user_id = inf_adopted_request_get_user_id(request);
-
-  g_return_val_if_fail(user_id == priv->user_id, NULL);
-
-  vector = inf_adopted_request_get_vector(request);
-  n = inf_adopted_state_vector_get(vector, user_id);
 
   newest_related = priv->entries + priv->offset + n - priv->begin;
   for(current = newest_related; current <= newest_related; ++ current)

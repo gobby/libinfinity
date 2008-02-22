@@ -35,8 +35,6 @@ G_BEGIN_DECLS
 #define INF_ADOPTED_IS_SESSION_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_ADOPTED_TYPE_SESSION))
 #define INF_ADOPTED_SESSION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_ADOPTED_TYPE_SESSION, InfAdoptedSessionClass))
 
-#define INF_ADOPTED_TYPE_SESSION_STATUS          (inf_adopted_session_status_get_type())
-
 typedef struct _InfAdoptedSession InfAdoptedSession;
 typedef struct _InfAdoptedSessionClass InfAdoptedSessionClass;
 

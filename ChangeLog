@@ -1,3 +1,36 @@
+2008-02-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-request-log.c: Changed
+	inf_adopted_request_log_upper_related() to take the request index
+	instead of the request itself.
+
+	* libinfinity/common/inf-method-manager.h:
+	* libinfinity/common/inf-user-table.h:
+	* libinfinity/adopted/inf-adopted-session.h: Removed superflous
+	#defines, resulting from cut'n'pasted code.
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Implemented caching for
+	translated requests. This speeds up translation of undo requests that
+	need to be transformed against several requests of others. This breaks
+	test #25. However, the problem seems not to be with the cache but with
+	the transformation function. I need to investigate this separately.
+	Also simplified cleanup of request logs.
+
+	* libinfinity/common/inf-buffer.c:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/adopted/inf-adopted-user.c:
+	* libinfinity/server/infd-directory.c:
+	* docs/reference/libinfinity/libinfinity-sections.txt: Documentation
+	fixes.
+
+	* test/inf-test-text-session.c: Don't interpret given random seed as
+	test directory.
+
+	* test/std/test-47.xml: Added new test transforming ten undo requests
+	against ten requests from another user. This is unacceptably slow
+	without the request cache mentioned above.
+
 2008-02-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-split-operation.c:

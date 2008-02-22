@@ -252,6 +252,8 @@ inf_adopted_user_get_type(void)
  *
  * Returns the amount of requests @user is guaranteed to have processed from
  * the user with ID @id.
+ *
+ * Returns: The number of requests @user has processed from @id.
  **/
 guint
 inf_adopted_user_get_component(InfAdoptedUser* user,

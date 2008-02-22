@@ -1,6 +1,22 @@
 This is a more-or-less incomplete list of more or less independant tasks that
 would be nice to have done for the first stable release.
 
+'Milestone' 1:
+  - 2008-03-18
+  - Undo efficient
+  - Server side save
+  - Gobby using infinote (color selection)
+
+  - [x] 22: request cache (test25 doesn't pass with cache. That's probably a bigger issue. Address in milestone 2)
+  - [ ] 24: server side save, auto & cmd
+  - [ ] 26: noop requests, delay caret updates
+  - [ ] 28: color field in text user
+  - [ ]  1: cleanup tests
+
+'Milestone' 2:
+  - 2008-xx-xx
+  - Fix test25 (LSP?)
+
 * Unify InfIo interface (IO):
    - Rename InfIoFunc to InfIoWatchFunc
    - Split inf_io_watch into inf_io_add_watch, inf_io_update_watch and

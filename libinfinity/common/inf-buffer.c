@@ -16,6 +16,21 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-buffer
+ * @title: InfBuffer
+ * @short_description: Abstract document interface
+ * @include: libinfinity/common/inf-buffer.h
+ *
+ * #InfBuffer represents a document containing a session's content. It does
+ * not cope with keeping its content in-sync with other participants but just
+ * offers an interface to modify the document.
+ *
+ * The #InfBuffer interface itself is probably not too useful, but actual
+ * documents implementing functionality (such as text editing or graphics
+ * editing) need to implement this interface to be passed to #InfSession.
+ **/
+
 #include <libinfinity/common/inf-buffer.h>
 
 /* TODO: editable property and/or set/get_editable */

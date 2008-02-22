@@ -32,8 +32,6 @@ G_BEGIN_DECLS
 #define INF_IS_METHOD_MANAGER_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TYPE_METHOD_MANAGER))
 #define INF_METHOD_MANAGER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_METHOD_MANAGER, InfMethodManagerClass))
 
-#define INF_TYPE_METHOD_MANAGER_STATUS          (inf_method_manager_status_get_type())
-
 typedef struct _InfMethodManager InfMethodManager;
 typedef struct _InfMethodManagerClass InfMethodManagerClass;
 

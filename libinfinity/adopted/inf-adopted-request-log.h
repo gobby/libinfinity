@@ -23,8 +23,6 @@
 
 #include <glib-object.h>
 
-/* TODO: can-undo / can-redo tracking */
-
 G_BEGIN_DECLS
 
 #define INF_ADOPTED_TYPE_REQUEST_LOG                 (inf_adopted_request_log_get_type())
@@ -92,7 +90,7 @@ inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log);
 
 InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
-                                      InfAdoptedRequest* request);
+                                      guint n);
 
 G_END_DECLS
 
