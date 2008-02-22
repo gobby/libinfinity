@@ -89,8 +89,10 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
   /* The server sent explore-end before having sent all children */
   INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
-  /* The client is already subscribed to the session */
+  /* The connection is already subscribed to the session */
   INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
+  /* The connection is not subscribed to the session */
+  INF_DIRECTORY_ERROR_UNSUBSCRIBED,
   /* Session does not support the network of the requesting connection */
   INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
   /* Session uses unsupported communication method */

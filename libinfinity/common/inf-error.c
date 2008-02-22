@@ -126,7 +126,9 @@ inf_directory_strerror(InfDirectoryError code)
   case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:
     return "Note type is not supported";
   case INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED:
-    return "Client is already subscribed to this session";
+    return "Connection is already subscribed to this session";
+  case INF_DIRECTORY_ERROR_UNSUBSCRIBED:
+    return "The requesting connection is not subscribed to the session";
   case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
     return "Server sent more explored nodes then announced";
   case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:

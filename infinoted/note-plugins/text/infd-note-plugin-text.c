@@ -190,16 +190,19 @@ infd_note_plugin_text_read_buffer(InfTextBuffer* buffer,
       {
         user = inf_user_table_lookup_user_by_id(user_table, author);
 
-        g_set_error(
-          error,
-          g_quark_from_static_string("INF_NOTE_PLUGIN_TEXT_ERROR"),
-          INFD_NOTE_PLUGIN_TEXT_ERROR_NO_SUCH_USER,
-          "User with ID %u does not exist",
-          author
-        );
+        if(user == NULL)
+        {
+          g_set_error(
+            error,
+            g_quark_from_static_string("INF_NOTE_PLUGIN_TEXT_ERROR"),
+            INFD_NOTE_PLUGIN_TEXT_ERROR_NO_SUCH_USER,
+            "User with ID %u does not exist",
+            author
+          );
 
-        result = FALSE;
-        break;
+          result = FALSE;
+          break;
+        }
       }
       else
       {

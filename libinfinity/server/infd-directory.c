@@ -43,9 +43,6 @@
 
 #include <string.h>
 
-/* TODO: Close and store sessions when there are no available users for
- * some time. */
-
 typedef struct _InfdDirectoryNode InfdDirectoryNode;
 struct _InfdDirectoryNode {
   InfdDirectoryNode* parent;
@@ -62,6 +59,15 @@ struct _InfdDirectoryNode {
       InfdSessionProxy* session;
       /* Session type */
       InfdNotePlugin* plugin;
+      /* Timeout to save the session when inactive for some time */
+      gpointer save_timeout;
+      /* For the timeout callback to access the directory. */
+      /* TODO: This is a kind of hack. We should pass a g_slice_new'ed struct
+       * with directory and node, but we would need
+       * inf_io_timeout_get_user_data() to free it. This is only used for
+       * the save_timeout and not guaranteed to contain a valid pointer but
+       * in the timeout callback. */
+      InfdDirectory* directory;
     } note;
 
     struct {
@@ -152,6 +158,13 @@ enum {
 
 static GObjectClass* parent_class;
 static guint directory_signals[LAST_SIGNAL];
+static GQuark infd_directory_node_id_quark;
+
+/* Time a session needs to be idled before it is unloaded from RAM */
+/* TODO: Unloading should emit a signal, so that others can drop their
+ * references. */
+/* TODO: This should be a property: */
+static const guint INFD_DIRECTORY_SAVE_TIMEOUT = 60000;
 
 /*
  * Path handling.
@@ -235,6 +248,102 @@ infd_directory_node_make_path(InfdDirectoryNode* node,
 }
 
 /*
+ * Save timeout
+ */
+
+/* Required by infd_directory_session_save_timeout_func() */
+static void
+infd_directory_node_unlink_session(InfdDirectory* directory,
+                                   InfdDirectoryNode* node);
+
+static void
+infd_directory_session_save_timeout_func(gpointer user_data)
+{
+  InfdDirectoryNode* node;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  GError* error;
+  gchar* path;
+  gboolean result;
+
+  node = (InfdDirectoryNode*)user_data;
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.save_timeout != NULL);
+  directory = node->shared.note.directory;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  error = NULL;
+
+  infd_directory_node_get_path(node, &path, NULL);
+  result = node->shared.note.plugin->session_write(
+    priv->storage,
+    infd_session_proxy_get_session(node->shared.note.session),
+    path,
+    &error
+  );
+
+  /* The timeout is removed automatically after it has elapsed */
+  node->shared.note.save_timeout = NULL;
+
+  if(result == FALSE)
+  {
+    g_warning(
+      "Failed to save note `%s': %s\n\nKeeping it in memory. Another save "
+      "attempt will be made when the server is shut down.",
+      path,
+      error->message
+    );
+
+    g_error_free(error);
+  }
+  else
+  {
+    infd_directory_node_unlink_session(directory, node);
+  }
+
+  g_free(path);
+}
+
+static void
+infd_directory_session_idle_notify_cb(GObject* object,
+                                      GParamSpec* pspec,
+                                      gpointer user_data)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  gpointer node_id;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(user_data);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node_id = g_object_get_qdata(object, infd_directory_node_id_quark);
+  node = g_hash_table_lookup(priv->nodes, node_id);
+  g_assert(node != NULL);
+
+  /* Drop session from memory if it remains idle */
+  if(infd_session_proxy_is_idle(INFD_SESSION_PROXY(object)))
+  {
+    if(node->shared.note.save_timeout == NULL)
+    {
+      node->shared.note.directory = directory;
+      node->shared.note.save_timeout = inf_io_add_timeout(
+        priv->io,
+        INFD_DIRECTORY_SAVE_TIMEOUT,
+        infd_directory_session_save_timeout_func,
+        node
+      );
+    }
+  }
+  else
+  {
+    if(node->shared.note.save_timeout != NULL)
+    {
+      inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
+      node->shared.note.save_timeout = NULL;
+    }
+  }
+}
+
+/*
  * Node construction and removal
  */
 
@@ -278,6 +387,106 @@ infd_directory_node_unlink(InfdDirectoryNode* node)
 
   if(node->next != NULL)
     node->next->prev = node->prev;
+}
+
+static void
+infd_directory_node_link_session(InfdDirectory* directory,
+                                 InfdDirectoryNode* node,
+                                 InfSession* session)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* group_name;
+  InfConnectionManagerGroup* group;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session == NULL);
+
+  group_name = g_strdup_printf("InfSession_%u", node->id);
+
+  /* Open group */
+  group = inf_connection_manager_open_group(
+    priv->connection_manager,
+    group_name,
+    NULL, /* net_object */
+    (InfConnectionManagerMethodDesc**)priv->session_methods->pdata
+  );
+
+  g_free(group_name);
+
+  node->shared.note.session = g_object_new(
+    INFD_TYPE_SESSION_PROXY,
+    "session", session,
+    "subscription-group", group,
+    NULL
+  );
+
+  inf_connection_manager_group_set_object(
+    group,
+    INF_NET_OBJECT(node->shared.note.session)
+  );
+
+  g_object_set_qdata(
+    G_OBJECT(node->shared.note.session),
+    infd_directory_node_id_quark,
+    GUINT_TO_POINTER(node->id)
+  );
+
+  g_signal_connect(
+    G_OBJECT(node->shared.note.session),
+    "notify::idle",
+    G_CALLBACK(infd_directory_session_idle_notify_cb),
+    directory
+  );
+
+  inf_connection_manager_group_unref(group);
+
+  if(infd_session_proxy_is_idle(node->shared.note.session))
+  {
+    node->shared.note.directory = directory;
+    node->shared.note.save_timeout = inf_io_add_timeout(
+      priv->io,
+      INFD_DIRECTORY_SAVE_TIMEOUT,
+      infd_directory_session_save_timeout_func,
+      node
+    );
+  }
+}
+
+static void
+infd_directory_node_unlink_session(InfdDirectory* directory,
+                                   InfdDirectoryNode* node)
+{
+  InfdDirectoryPrivate* priv;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session != NULL);
+
+  if(node->shared.note.save_timeout != NULL)
+  {
+    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
+    node->shared.note.save_timeout = NULL;
+  }
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(node->shared.note.session),
+    G_CALLBACK(infd_directory_session_idle_notify_cb),
+    directory
+  );
+
+  g_object_set_qdata(
+    G_OBJECT(node->shared.note.session),
+    infd_directory_node_id_quark,
+    NULL
+  );
+
+  /* TODO: We could still weakref the session, to continue using it if
+   * others need it anyway. We just need to strongref it again if it becomes
+   * non-idle. */
+
+  g_object_unref(node->shared.note.session);
+  node->shared.note.session = NULL;
 }
 
 /* This function takes ownership of name */
@@ -350,6 +559,7 @@ infd_directory_node_new_note(InfdDirectory* directory,
 
   node->shared.note.session = NULL;
   node->shared.note.plugin = plugin;
+  node->shared.note.save_timeout = NULL;
 
   return node;
 }
@@ -363,6 +573,7 @@ infd_directory_node_free(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   gchar* path;
   gboolean removed;
+  GError* error;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(node != NULL);
@@ -391,21 +602,36 @@ infd_directory_node_free(InfdDirectory* directory,
   case INFD_STORAGE_NODE_NOTE:
     if(save_notes == TRUE && node->shared.note.session != NULL)
     {
-      infd_directory_node_get_path(node->parent, &path, NULL);
+      infd_directory_node_get_path(node, &path, NULL);
 
-      /* TODO: Error handling */
+      error = NULL;
       node->shared.note.plugin->session_write(
         priv->storage,
         infd_session_proxy_get_session(node->shared.note.session),
         path,
-        NULL
+        &error
       );
+
+      if(error != NULL)
+      {
+        /* There is not really anything we could do about it here. Of course,
+         * any application should save the sessions explicitely before
+         * shutting the directory down, so that it has the chance to cancel
+         * the shutdown if the session could not be saved. */
+        g_warning(
+          "Could not write session `%s' to storage: %s\n\nChanges since the "
+          "last save are lost.",
+          path, error->message
+        );
+
+        g_error_free(error);
+      }
 
       g_free(path);
     }
 
     if(node->shared.note.session != NULL)
-      g_object_unref(G_OBJECT(node->shared.note.session));
+      infd_directory_node_unlink_session(directory, node);
 
     break;
   default:
@@ -877,8 +1103,6 @@ infd_directory_node_add_note(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfSession* session;
-  gchar* group_name;
-  InfConnectionManagerGroup* group;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -907,45 +1131,18 @@ infd_directory_node_add_note(InfdDirectory* directory,
       plugin
     );
 
-    group_name = g_strdup_printf("InfSession_%u", node->id);
-
-    /* Open group */
-    group = inf_connection_manager_open_group(
-      priv->connection_manager,
-      group_name,
-      NULL, /* net_object */
-      (InfConnectionManagerMethodDesc**)priv->session_methods->pdata
-    );
-
-    g_free(group_name);
-
     session = plugin->session_new(
       priv->io,
       priv->connection_manager,
       NULL,
       NULL
     );
-
     g_assert(session != NULL);
+    infd_directory_node_link_session(directory, node, session);
 
-    node->shared.note.session = g_object_new(
-      INFD_TYPE_SESSION_PROXY,
-      "session", session,
-      "subscription-group", group,
-      NULL
-    );
+    g_object_unref(session);
 
-    inf_connection_manager_group_set_object(
-      group,
-      INF_NET_OBJECT(node->shared.note.session)
-    );
-
-    g_object_unref(G_OBJECT(session));
-    inf_connection_manager_group_unref(group);
-
-    g_assert(node->shared.note.session != NULL);
-
-    /* TODO: Save initial node */
+    /* TODO: Save initial node? */
 
     infd_directory_node_register(directory, node, seq_conn, seq);
     return node;
@@ -987,7 +1184,6 @@ infd_directory_node_get_session(InfdDirectory* directory,
   InfConnectionManagerGroup* group;
   InfSession* session;
   gchar* path;
-  gchar* group_name;
 
   g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
 
@@ -996,17 +1192,6 @@ infd_directory_node_get_session(InfdDirectory* directory,
 
   if(node->shared.note.session != NULL)
     return node->shared.note.session;
-
-  group_name = g_strdup_printf("InfSession_%u", node->id);
-
-  group = inf_connection_manager_open_group(
-    priv->connection_manager,
-    group_name,
-    NULL,
-    (InfConnectionManagerMethodDesc**)priv->session_methods->pdata
-  );
-
-  g_free(group_name);
 
   infd_directory_node_get_path(node, &path, NULL);
   session = node->shared.note.plugin->session_read(
@@ -1017,25 +1202,10 @@ infd_directory_node_get_session(InfdDirectory* directory,
     error
   );
   g_free(path);
+  if(session == NULL) return NULL;
 
-  if(session == NULL)
-    return NULL;
-
-  node->shared.note.session = g_object_new(
-    INFD_TYPE_SESSION_PROXY,
-    "session", session,
-    "subscription-group", group,
-    NULL
-  );
-
-  inf_connection_manager_group_set_object(
-    group,
-    INF_NET_OBJECT(node->shared.note.session)
-  );
-
-  inf_connection_manager_group_unref(group);
+  infd_directory_node_link_session(directory, node, session);
   g_object_unref(session);
-
   return node->shared.note.session;
 }
 
@@ -1446,6 +1616,99 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   return TRUE;
 }
 
+static gboolean
+infd_directory_handle_save_session(InfdDirectory* directory,
+                                   InfXmlConnection* connection,
+                                   const xmlNodePtr xml,
+                                   GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  xmlChar* seq_attr;
+  xmlNodePtr reply_xml;
+  gchar* path;
+  gboolean result;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_assert(priv->storage != NULL);
+
+  /* TODO: Authentication, we could also allow specific connections to save
+   * without being subscribed. */
+  node = infd_directory_get_node_from_xml_typed(
+    directory,
+    xml,
+    "id",
+    INFD_STORAGE_NODE_NOTE,
+    error
+  );
+
+  if(node->shared.note.session == NULL ||
+     !infd_session_proxy_is_subscribed(node->shared.note.session, connection))
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_UNSUBSCRIBED,
+      "The requesting connection is not subscribed to the session"
+    );
+
+    return FALSE;
+  }
+
+  /* We only need this if we are saving asynchronously: */
+  /* TODO: Which we should do, of course. */
+#if 0
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"session-save-in-progress");
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  if(seq_attr != NULL)
+  {
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+    xmlFree(seq_attr);
+  }
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    connection,
+    reply_xml
+  );
+#endif
+
+  infd_directory_node_get_path(node, &path, NULL);
+
+  result = node->shared.note.plugin->session_write(
+    priv->storage,
+    infd_session_proxy_get_session(node->shared.note.session),
+    path,
+    error
+  );
+
+  /* The timeout should only be set when there aren't any connections
+   * subscribed, however we just made sure that the connection the request
+   * comes from is subscribed. */
+  g_assert(node->shared.note.save_timeout == NULL);
+
+  g_free(path);
+
+  if(result == FALSE)
+    return FALSE;
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"session-saved");
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  if(seq_attr != NULL)
+  {
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+    xmlFree(seq_attr);
+  }
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    connection,
+    reply_xml
+  );
+
+  return TRUE;
+}
+
 /*
  * Signal handlers.
  */
@@ -1849,6 +2112,15 @@ infd_directory_net_object_received(InfNetObject* net_object,
       &local_error
     );
   }
+  else if(strcmp((const gchar*)node->name, "save-session") == 0)
+  {
+    infd_directory_handle_save_session(
+      INFD_DIRECTORY(net_object),
+      connection,
+      node,
+      &local_error
+    );
+  }
   else
   {
     g_set_error(
@@ -1922,6 +2194,9 @@ infd_directory_class_init(gpointer g_class,
 
   directory_class->node_added = NULL;
   directory_class->node_removed = NULL;
+
+  infd_directory_node_id_quark =
+    g_quark_from_static_string("INFD_DIRECTORY_NODE_ID");
 
   g_object_class_install_property(
     object_class,

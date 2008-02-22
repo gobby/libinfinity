@@ -37,6 +37,13 @@ typedef struct _InfdSessionProxyClass InfdSessionProxyClass;
 
 struct _InfdSessionProxyClass {
   GObjectClass parent_class;
+
+  /* Signals */
+  void (*add_subscription)(InfdSessionProxy* proxy,
+                           InfXmlConnection* connection);
+
+  void (*remove_subscription)(InfdSessionProxy* proxy,
+                              InfXmlConnection* connection);
 };
 
 struct _InfdSessionProxy {
@@ -58,6 +65,16 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection);
+
+gboolean
+infd_session_proxy_has_subscriptions(InfdSessionProxy* proxy);
+
+gboolean
+infd_session_proxy_is_subscribed(InfdSessionProxy* proxy,
+                                 InfXmlConnection* connection);
+
+gboolean
+infd_session_proxy_is_idle(InfdSessionProxy* proxy);
 
 G_END_DECLS
 

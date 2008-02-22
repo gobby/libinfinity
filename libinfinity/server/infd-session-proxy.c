@@ -21,6 +21,8 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 
+#include <libinfinity/inf-marshal.h>
+
 #include <string.h>
 
 typedef struct _InfdSessionProxySubscription InfdSessionProxySubscription;
@@ -45,19 +47,34 @@ struct _InfdSessionProxyPrivate {
 
   /* Local users that do not belong to a particular connection */
   GSList* local_users;
+
+  /* Whether there are any subscriptions / synchronizations */
+  gboolean idle;
 };
 
 enum {
   PROP_0,
 
+  /* construct/only */
   PROP_SESSION,
   PROP_SUBSCRIPTION_GROUP,
-  PROP_SUBSCRIBE_SYNC_CONN
+  PROP_SUBSCRIBE_SYNC_CONN,
+
+  /* read/only */
+  PROP_IDLE
+};
+
+enum {
+  ADD_SUBSCRIPTION,
+  REMOVE_SUBSCRIPTION,
+  
+  LAST_SIGNAL
 };
 
 #define INFD_SESSION_PROXY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_SESSION_PROXY, InfdSessionProxyPrivate))
 
 static GObjectClass* parent_class;
+static guint session_proxy_signals[LAST_SIGNAL];
 
 /*
  * SessionProxy subscriptions.
@@ -132,22 +149,12 @@ infd_session_proxy_release_subscription(InfdSessionProxy* proxy,
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   connection = subscr->connection;
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(connection),
-    G_CALLBACK(infd_session_proxy_connection_notify_status_cb),
-    proxy
-  );
-
-  /* TODO: Cancel synchronization if the synchronization to this subscription
-   * did not yet finish. */
-
-  inf_connection_manager_group_remove_connection(
-    priv->subscription_group,
+  g_signal_emit(
+    G_OBJECT(proxy),
+    session_proxy_signals[REMOVE_SUBSCRIPTION],
+    0,
     connection
   );
-
-  priv->subscriptions = g_slist_remove(priv->subscriptions, subscr);
-  infd_session_proxy_subscription_free(subscr);
 }
 
 static void
@@ -392,33 +399,6 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   return user;
 }
 
-/* Subscribes the given connection to the session without synchronizing it. */
-static void
-infd_session_proxy_subscribe_connection(InfdSessionProxy* proxy,
-                                        InfXmlConnection* connection)
-{
-  InfdSessionProxyPrivate* priv;
-  InfdSessionProxySubscription* subscription;
-
-  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
-
-  /* Add connection to subscription group. */
-  inf_connection_manager_group_add_connection(
-    priv->subscription_group,
-    connection
-  );
-
-  g_signal_connect(
-    G_OBJECT(connection),
-    "notify::status",
-    G_CALLBACK(infd_session_proxy_connection_notify_status_cb),
-    proxy
-  );
-
-  subscription = infd_session_proxy_subscription_new(connection);
-  priv->subscriptions = g_slist_prepend(priv->subscriptions, subscription);
-}
-
 /*
  * Signal handlers.
  */
@@ -484,7 +464,12 @@ infd_session_proxy_session_synchronization_complete_cb(InfSession* session,
        * session to conn. However, we just got it synchronized the
        * other way around and therefore no further synchronization is
        * required. */
-      infd_session_proxy_subscribe_connection(proxy, conn);
+      g_signal_emit(
+        G_OBJECT(proxy),
+        session_proxy_signals[ADD_SUBSCRIPTION],
+        0,
+        conn
+      );
     }
   }
 }
@@ -592,6 +577,7 @@ infd_session_proxy_init(GTypeInstance* instance,
   priv->user_id_counter = 1;
   priv->subscribe_sync_conn = FALSE;
   priv->local_users = NULL;
+  priv->idle = TRUE;
 }
 
 static GObject*
@@ -614,6 +600,8 @@ infd_session_proxy_constructor(GType type,
 
   g_assert(priv->subscription_group != NULL);
   g_assert(priv->session != NULL);
+
+  /* TODO: Set unidle when session is currently being synchronized */
 
   /* TODO: We could perhaps optimize by only setting the subscription
    * group when there are subscribed connections. */
@@ -733,6 +721,8 @@ infd_session_proxy_set_property(GObject* object,
   case PROP_SUBSCRIBE_SYNC_CONN:
     priv->subscribe_sync_conn = g_value_get_boolean(value);
     break;
+  case PROP_IDLE:
+    /* read/only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -762,9 +752,85 @@ infd_session_proxy_get_property(GObject* object,
   case PROP_SUBSCRIBE_SYNC_CONN:
     g_value_set_boolean(value, priv->subscribe_sync_conn);
     break;
+  case PROP_IDLE:
+    g_value_set_boolean(value, priv->idle);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
+  }
+}
+
+/*
+ * Default signal handlers
+ */
+
+static void
+infd_session_proxy_add_subscription_handler(InfdSessionProxy* proxy,
+                                            InfXmlConnection* connection)
+{
+  InfdSessionProxyPrivate* priv;
+  InfdSessionProxySubscription* subscription;
+
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+  g_assert(infd_session_proxy_find_subscription(proxy, connection) == NULL);
+
+  inf_connection_manager_group_add_connection(
+    priv->subscription_group,
+    connection
+  );
+
+  g_signal_connect(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(infd_session_proxy_connection_notify_status_cb),
+    proxy
+  );
+
+  subscription = infd_session_proxy_subscription_new(connection);
+  priv->subscriptions = g_slist_prepend(priv->subscriptions, subscription);
+
+  if(priv->idle)
+  {
+    priv->idle = FALSE;
+    g_object_notify(G_OBJECT(proxy), "idle");
+  }
+}
+
+static void
+infd_session_proxy_remove_subscription_handler(InfdSessionProxy* proxy,
+                                               InfXmlConnection* connection)
+{
+  InfdSessionProxyPrivate* priv;
+  InfdSessionProxySubscription* subscr;
+
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+  subscr = infd_session_proxy_find_subscription(proxy, connection);
+
+  g_assert(subscr != NULL);
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(connection),
+    G_CALLBACK(infd_session_proxy_connection_notify_status_cb),
+    proxy
+  );
+
+  /* TODO: Cancel synchronization if the synchronization to this subscription
+   * did not yet finish. */
+
+  inf_connection_manager_group_remove_connection(
+    priv->subscription_group,
+    connection
+  );
+
+  priv->subscriptions = g_slist_remove(priv->subscriptions, subscr);
+  infd_session_proxy_subscription_free(subscr);
+
+  if(!priv->idle && priv->subscriptions == NULL)
+  {
+    /* TODO: Don't set idle when there are ongoing synchronizations */
+    priv->idle = TRUE;
+    g_object_notify(G_OBJECT(proxy), "idle");
   }
 }
 
@@ -1091,7 +1157,10 @@ infd_session_proxy_class_init(gpointer g_class,
                               gpointer class_data)
 {
   GObjectClass* object_class;
+  InfdSessionProxyClass* proxy_class;
+
   object_class = G_OBJECT_CLASS(g_class);
+  proxy_class = INFD_SESSION_PROXY_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfdSessionProxyPrivate));
@@ -1100,6 +1169,10 @@ infd_session_proxy_class_init(gpointer g_class,
   object_class->dispose = infd_session_proxy_dispose;
   object_class->set_property = infd_session_proxy_set_property;
   object_class->get_property = infd_session_proxy_get_property;
+
+  proxy_class->add_subscription = infd_session_proxy_add_subscription_handler;
+  proxy_class->remove_subscription =
+    infd_session_proxy_remove_subscription_handler;
 
   g_object_class_install_property(
     object_class,
@@ -1136,6 +1209,58 @@ infd_session_proxy_class_init(gpointer g_class,
       FALSE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_IDLE,
+    g_param_spec_boolean(
+      "idle",
+      "Idle",
+      "The session is considered idle when are no subscriptions and no "
+      "synchronizations",
+      TRUE,
+      G_PARAM_READABLE
+    )
+  );
+
+  /**
+   * InfdSessionProxy::add-subscription:
+   * @proxy: The #InfdSessionProxy emitting the signal.
+   * @connection: The subscribed #InfXmlConnection.
+   *
+   * Emitted every time a connection is subscribed to the session.
+   **/
+  session_proxy_signals[ADD_SUBSCRIPTION] = g_signal_new(
+    "add-subscription",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdSessionProxyClass, add_subscription),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XML_CONNECTION
+  );
+
+  /**
+   * InfdSessionProxy::remove-subscription:
+   * @proxy: The #InfdSessionProxy emitting the signal.
+   * @connection: The unsubscribed #InfXmlConnection.
+   *
+   * Emitted every time a connection is unsubscribed to the session, or a
+   * subscription is removed because the session is closed.
+   **/
+  session_proxy_signals[REMOVE_SUBSCRIPTION] = g_signal_new(
+    "remove-subscription",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdSessionProxyClass, remove_subscription),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XML_CONNECTION
   );
 }
 
@@ -1287,7 +1412,12 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_return_if_fail(priv->session != NULL);
 
-  infd_session_proxy_subscribe_connection(proxy, connection);
+  g_signal_emit(
+    G_OBJECT(proxy),
+    session_proxy_signals[ADD_SUBSCRIPTION],
+    0,
+    connection
+  );
 
   /* Directly synchronize within the subscription group so that we do not
    * need a group change after synchronization, and the connection already
@@ -1298,6 +1428,67 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
     priv->subscription_group,
     connection
   );
+}
+
+/**
+ * infd_session_proxy_has_subscriptions:
+ * @proxy: A #InfdSessionProxy.
+ *
+ * Returns whether there are subscribed connections to the session.
+ *
+ * Returns: Whether there are subscribed connections.
+ **/
+gboolean
+infd_session_proxy_has_subscriptions(InfdSessionProxy* proxy)
+{
+  InfdSessionProxyPrivate* priv;
+
+  g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), FALSE);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  if(priv->subscriptions == NULL)
+    return FALSE;
+
+  return TRUE;
+}
+
+/**
+ * infd_session_proxy_is_subscribed:
+ * @proxy: A #InfdSessionProxy.
+ * @connection: The connection to check for being subscribed.
+ *
+ * Returns %TRUE when @connection is subscribed to the session and %FALSE
+ * otherwise.
+ *
+ * Returns: Whether @connection is subscribed.
+ **/
+gboolean
+infd_session_proxy_is_subscribed(InfdSessionProxy* proxy,
+                                 InfXmlConnection* connection)
+{
+  g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
+
+  if(infd_session_proxy_find_subscription(proxy, connection) == NULL)
+    return FALSE;
+
+  return TRUE;
+}
+
+/**
+ * infd_session_proxy_is_idle:
+ * @proxy: A #InfdSessionProxy.
+ *
+ * Returns whether the session is idle. The session is considered idle when
+ * there are no subscriptions and no synchronizations (in either direction).
+ *
+ * Returns: Whether the session is idle.
+ **/
+gboolean
+infd_session_proxy_is_idle(InfdSessionProxy* proxy)
+{
+  g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), FALSE);
+  return INFD_SESSION_PROXY_PRIVATE(proxy)->idle;
 }
 
 /* vim:set et sw=2 ts=2: */

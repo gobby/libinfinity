@@ -9,6 +9,8 @@ would be nice to have done for the first stable release.
 
   - [x] 22: request cache (test25 doesn't pass with cache. That's probably a bigger issue. Address in milestone 2)
   - [ ] 24: server side save, auto & cmd
+    - Browser API
+    - Session proxy idle property 
   - [ ] 26: noop requests, delay caret updates
   - [ ] 28: color field in text user
   - [ ]  1: cleanup tests
@@ -49,3 +51,4 @@ would be nice to have done for the first stable release.
  * connection-closed signal for connection manager, where other objects (esp. session, session proxy, directory, browser) can dro their references to that connection
  * Remove has_connection, lookup_connection from methods, rely on registered connections
  * Think about how to do method initialization
+ * Change the storage interface to be asynchronous

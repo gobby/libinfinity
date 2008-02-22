@@ -1,5 +1,24 @@
 2008-02-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-directory.c: Handle <save-session> request,
+	automatically store idle sessions into storage, unload from RAM.
+
+	* libinfinity/server/infd-session-proxy.h:
+	* libinfinity/server/infd-session-proxy.c: Added the "idle" property,
+	the "add-subscription" and "remove-subscription" signals and
+	infd_session_proxy_has_subscriptions(),
+	infd_session_proxy_is_subscribed() and infd_session_proxy_is_idle().
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_UNSUBSCRIBED.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c: Fix a bug (an
+	error was reported when everything was OK) when loading user-modified
+	text.
+
+2008-02-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-request-log.h:
 	* libinfinity/adopted/inf-adopted-request-log.c: Changed
 	inf_adopted_request_log_upper_related() to take the request index
