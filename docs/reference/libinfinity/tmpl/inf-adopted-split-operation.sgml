@@ -17,6 +17,13 @@ InfAdoptedSplitOperation
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfAdoptedSplitOperationClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### STRUCT InfAdoptedSplitOperation ##### -->
 <para>
 

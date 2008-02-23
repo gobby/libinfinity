@@ -17,12 +17,25 @@ InfUserTable
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_USER_TABLE_STATUS ##### -->
+<!-- ##### USER_FUNCTION InfUserTableForeachUserFunc ##### -->
 <para>
 
 </para>
 
+@Param1: 
+@Param2: 
 
+
+<!-- ##### STRUCT InfUserTableClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@add_user: 
+@remove_user: 
+@add_local_user: 
+@remove_local_user: 
 
 <!-- ##### STRUCT InfUserTable ##### -->
 <para>
@@ -30,7 +43,23 @@ InfUserTable
 </para>
 
 
+<!-- ##### SIGNAL InfUserTable::add-local-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
 <!-- ##### SIGNAL InfUserTable::add-user ##### -->
+<para>
+
+</para>
+
+@infusertable: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfUserTable::remove-local-user ##### -->
 <para>
 
 </para>
@@ -45,15 +74,6 @@ InfUserTable
 
 @infusertable: the object which received the signal.
 @arg1: 
-
-<!-- ##### USER_FUNCTION InfUserTableForeachUserFunc ##### -->
-<para>
-
-</para>
-
-@Param1: 
-@Param2: 
-
 
 <!-- ##### FUNCTION inf_user_table_new ##### -->
 <para>

@@ -17,13 +17,6 @@ infd-xml-server
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INFD_TYPE_XML_SERVER_STATUS ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfdXmlServer ##### -->
 <para>
 
@@ -61,14 +54,6 @@ infd-xml-server
 @INFD_XML_SERVER_CLOSING: 
 @INFD_XML_SERVER_OPEN: 
 @INFD_XML_SERVER_OPENING: 
-
-<!-- ##### FUNCTION infd_xml_server_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION infd_xml_server_close ##### -->
 <para>

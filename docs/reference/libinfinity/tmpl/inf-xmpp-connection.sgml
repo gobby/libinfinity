@@ -17,13 +17,6 @@ InfXmppConnection
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_XMPP_CONNECTION_SITE ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### ENUM InfXmppConnectionSite ##### -->
 <para>
 
@@ -88,6 +81,13 @@ InfXmppConnection
 @INF_XMPP_CONNECTION_AUTH_ERROR_TEMPORARY_AUTH_FAILURE: 
 @INF_XMPP_CONNECTION_AUTH_ERROR_FAILED: 
 
+<!-- ##### STRUCT InfXmppConnectionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### STRUCT InfXmppConnection ##### -->
 <para>
 
@@ -118,14 +118,6 @@ InfXmppConnection
 <para>
 
 </para>
-
-<!-- ##### FUNCTION inf_xmpp_connection_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION inf_xmpp_connection_new ##### -->
 <para>

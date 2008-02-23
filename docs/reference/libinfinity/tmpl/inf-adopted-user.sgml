@@ -17,6 +17,29 @@ InfAdoptedUser
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfAdoptedUserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfAdoptedUser ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfAdoptedUser:request-log ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedUser:vector ##### -->
+<para>
+
+</para>
+
 <!-- ##### FUNCTION inf_adopted_user_get_component ##### -->
 <para>
 

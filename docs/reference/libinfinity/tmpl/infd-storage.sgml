@@ -17,20 +17,6 @@ infd-storage
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INFD_TYPE_STORAGE_NODE_TYPE ##### -->
-<para>
-
-</para>
-
-
-
-<!-- ##### MACRO INFD_TYPE_STORAGE_NODE ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfdStorage ##### -->
 <para>
 
@@ -63,22 +49,6 @@ infd-storage
 @type: 
 @name: 
 @identifier: 
-
-<!-- ##### FUNCTION infd_storage_node_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-
-<!-- ##### FUNCTION infd_storage_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION infd_storage_node_new_subdirectory ##### -->
 <para>

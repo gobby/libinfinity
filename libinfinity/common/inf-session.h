@@ -146,6 +146,10 @@ struct _InfSessionClass {
   /* Signals */
   void(*close)(InfSession* session);
 
+  void(*synchronization_begin)(InfSession* session,
+                               InfConnectionManagerGroup* group,
+                               InfXmlConnection* connection);
+
   void(*synchronization_progress)(InfSession* session,
                                   InfXmlConnection* connection,
                                   gdouble percentage);
@@ -218,6 +222,9 @@ inf_session_get_synchronization_status(InfSession* session,
 gdouble
 inf_session_get_synchronization_progress(InfSession* session,
                                          InfXmlConnection* connection);
+
+gboolean
+inf_session_has_synchronizations(InfSession* session);
 
 InfConnectionManagerGroup*
 inf_session_get_subscription_group(InfSession* session);

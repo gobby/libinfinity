@@ -17,12 +17,12 @@ InfMethodManager
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_METHOD_MANAGER_STATUS ##### -->
+<!-- ##### STRUCT InfMethodManagerClass ##### -->
 <para>
 
 </para>
 
-
+@parent_class: 
 
 <!-- ##### STRUCT InfMethodManager ##### -->
 <para>

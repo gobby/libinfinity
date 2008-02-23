@@ -17,6 +17,14 @@ InfcUserRequest
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfcUserRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@finished: 
+
 <!-- ##### STRUCT InfcUserRequest ##### -->
 <para>
 

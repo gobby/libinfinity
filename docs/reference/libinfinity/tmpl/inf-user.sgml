@@ -17,19 +17,27 @@ InfUser
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_USER_STATUS ##### -->
+<!-- ##### ENUM InfUserStatus ##### -->
 <para>
 
 </para>
 
+@INF_USER_AVAILABLE: 
+@INF_USER_UNAVAILABLE: 
 
-
-<!-- ##### MACRO INF_TYPE_USER_FLAGS ##### -->
+<!-- ##### ENUM InfUserFlags ##### -->
 <para>
 
 </para>
 
+@INF_USER_LOCAL: 
 
+<!-- ##### STRUCT InfUserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
 
 <!-- ##### STRUCT InfUser ##### -->
 <para>
@@ -61,37 +69,6 @@ InfUser
 <para>
 
 </para>
-
-<!-- ##### ENUM InfUserStatus ##### -->
-<para>
-
-</para>
-
-@INF_USER_AVAILABLE: 
-@INF_USER_UNAVAILABLE: 
-
-<!-- ##### ENUM InfUserFlags ##### -->
-<para>
-
-</para>
-
-@INF_USER_LOCAL: 
-
-<!-- ##### FUNCTION inf_user_flags_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-
-<!-- ##### FUNCTION inf_user_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION inf_user_get_id ##### -->
 <para>

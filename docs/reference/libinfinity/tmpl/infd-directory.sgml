@@ -25,6 +25,15 @@ InfdDirectory
 @node_id: 
 @node: 
 
+<!-- ##### STRUCT InfdDirectoryClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@node_added: 
+@node_removed: 
+
 <!-- ##### STRUCT InfdDirectory ##### -->
 <para>
 
@@ -66,14 +75,6 @@ InfdDirectory
 <para>
 
 </para>
-
-<!-- ##### FUNCTION infd_directory_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION infd_directory_iter_copy ##### -->
 <para>

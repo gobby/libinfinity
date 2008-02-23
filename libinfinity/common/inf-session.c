@@ -119,12 +119,7 @@ enum {
 
   PROP_SUBSCRIPTION_GROUP, /* read/write */
 
-  /* initial sync, construct only */
-  /* TODO: Remove this property, since this is already implied by group as
-   * soon as we use a separate group for synchronization. This group than has
-   * to contain excatly one connection (but it doesn't matter who is publisher)
-   * that will be used. We can perhaps even use send_to_group, though that
-   * seems a bit unclean. TODO: Does this hold for subscribe-sync-conn? */
+  /* initial sync, construct/only */
   PROP_SYNC_CONNECTION,
   PROP_SYNC_GROUP,
 
@@ -133,6 +128,7 @@ enum {
 
 enum {
   CLOSE,
+  SYNCHRONIZATION_BEGIN,
   SYNCHRONIZATION_PROGRESS,
   SYNCHRONIZATION_COMPLETE,
   SYNCHRONIZATION_FAILED,
@@ -1250,7 +1246,7 @@ inf_session_net_object_sent(InfNetObject* net_object,
     if(sync != NULL)
     {
       g_assert(sync->messages_sent < sync->messages_total);
-        ++ sync->messages_sent;
+      ++ sync->messages_sent;
 
       g_signal_emit(
         G_OBJECT(net_object),
@@ -1542,6 +1538,99 @@ inf_session_close_handler(InfSession* session)
 }
 
 static void
+inf_session_synchronization_begin_handler(InfSession* session,
+                                          InfConnectionManagerGroup* group,
+                                          InfXmlConnection* connection)
+{
+  InfSessionPrivate* priv;
+  InfSessionClass* session_class;
+  InfSessionSync* sync;
+  xmlNodePtr messages;
+  xmlNodePtr next;
+  xmlNodePtr xml;
+  gchar num_messages_buf[16];
+
+  priv = INF_SESSION_PRIVATE(session);
+
+  g_assert(priv->status == INF_SESSION_RUNNING);
+  g_assert(inf_session_find_sync_by_connection(session, connection) == NULL);
+
+  session_class = INF_SESSION_GET_CLASS(session);
+  g_return_if_fail(session_class->to_xml_sync != NULL);
+
+  sync = g_slice_new(InfSessionSync);
+  sync->conn = connection;
+  sync->messages_sent = 0;
+  sync->messages_total = 2; /* including sync-begin and sync-end */
+  sync->status = INF_SESSION_SYNC_IN_PROGRESS;
+
+  g_object_ref(G_OBJECT(connection));
+  priv->shared.run.syncs = g_slist_prepend(priv->shared.run.syncs, sync);
+
+  g_signal_connect_after(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(inf_session_connection_notify_status_cb),
+    session
+  );
+
+  sync->group = group;
+  inf_connection_manager_group_ref(sync->group);
+
+  /* The group needs to contain that connection, of course. */
+  g_assert(
+    inf_connection_manager_group_has_connection(sync->group, connection)
+  );
+
+  /* Name is irrelevant because the node is only used to collect the child
+   * nodes via the to_xml_sync vfunc. */
+  messages = xmlNewNode(NULL, (const xmlChar*)"sync-container");
+  session_class->to_xml_sync(session, messages);
+
+  for(xml = messages->children; xml != NULL; xml = xml->next)
+    ++ sync->messages_total;
+
+  sprintf(num_messages_buf, "%u", sync->messages_total - 2);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"sync-begin");
+
+  xmlNewProp(
+    xml,
+    (const xmlChar*)"num-messages",
+    (const xmlChar*)num_messages_buf
+  );
+
+  inf_connection_manager_group_send_to_connection(
+    sync->group,
+    connection,
+    xml
+  );
+
+  /* TODO: Add a function that can send multiple messages */
+  for(xml = messages->children; xml != NULL; xml = next)
+  {
+    next = xml->next;
+    xmlUnlinkNode(xml);
+
+    inf_connection_manager_group_send_to_connection(
+      sync->group,
+      connection,
+      xml
+    );
+  }
+
+  xmlFreeNode(messages);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"sync-end");
+
+  inf_connection_manager_group_send_to_connection(
+    sync->group,
+    connection,
+    xml
+  );
+}
+
+static void
 inf_session_synchronization_complete_handler(InfSession* session,
                                              InfXmlConnection* connection)
 {
@@ -1643,6 +1732,8 @@ inf_session_class_init(gpointer g_class,
   session_class->user_new = NULL;
 
   session_class->close = inf_session_close_handler;
+  session_class->synchronization_begin =
+    inf_session_synchronization_begin_handler;
   session_class->synchronization_progress = NULL;
   session_class->synchronization_complete =
     inf_session_synchronization_complete_handler;
@@ -1744,8 +1835,8 @@ inf_session_class_init(gpointer g_class,
    *
    * This signal is emitted if the session is closed. Note that this signal
    * is not called as a client if the connection to the sessions has merely
-   * been lost, only the relevant #InfXmlConnection has its status property
-   * changed and the related signal is emitted.
+   * been lost, only the relevant #InfXmlConnection has its
+   * #InfXmlConnection:status property changed.
    */
   session_signals[CLOSE] = g_signal_new(
     "close",
@@ -1756,6 +1847,34 @@ inf_session_class_init(gpointer g_class,
     inf_marshal_VOID__VOID,
     G_TYPE_NONE,
     0
+  );
+
+  /**
+   * InfSession::synchronization-begin:
+   * @session: The #InfSession that is synchronizing.
+   * @group: The #InfConnectionManagerGroup used for synchronization.
+   * @connection: The #InfXmlConnection to which the session is synchronized.
+   *
+   * This signal is emitted whenever the session is started to be synchronized
+   * to another connection. Note that, in contrast to
+   * #InfSession::synchronization-progress,
+   * #InfSession::synchronization-failed and
+   * #InfSession::synchronization-complete it cannot happen that the signal
+   * is emitted when @session is being synchronized itself, because that can
+   * happen at construction time only when no one had a chance to connect
+   * signal handlers anyway.
+   **/
+  session_signals[SYNCHRONIZATION_BEGIN] = g_signal_new(
+    "synchronization-begin",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfSessionClass, synchronization_progress),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_CONNECTION_MANAGER_GROUP | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_XML_CONNECTION
   );
 
   /**
@@ -2195,97 +2314,21 @@ inf_session_synchronize_to(InfSession* session,
                            InfConnectionManagerGroup* group,
                            InfXmlConnection* connection)
 {
-  InfSessionPrivate* priv;
-  InfSessionClass* session_class;
-  InfSessionSync* sync;
-  xmlNodePtr messages;
-  xmlNodePtr next;
-  xmlNodePtr xml;
-  gchar num_messages_buf[16];
-
   g_return_if_fail(INF_IS_SESSION(session));
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
-  priv = INF_SESSION_PRIVATE(session);
-
-  g_return_if_fail(priv->status == INF_SESSION_RUNNING);
+  g_return_if_fail(inf_session_get_status(session) == INF_SESSION_RUNNING);
   g_return_if_fail(
     inf_session_find_sync_by_connection(session, connection) == NULL
   );
 
-  session_class = INF_SESSION_GET_CLASS(session);
-  g_return_if_fail(session_class->to_xml_sync != NULL);
-
-  sync = g_slice_new(InfSessionSync);
-  sync->conn = connection;
-  sync->messages_sent = 0;
-  sync->messages_total = 2; /* including sync-begin and sync-end */
-  sync->status = INF_SESSION_SYNC_IN_PROGRESS;
-
-  g_object_ref(G_OBJECT(connection));
-  priv->shared.run.syncs = g_slist_prepend(priv->shared.run.syncs, sync);
-
-  g_signal_connect_after(
-    G_OBJECT(connection),
-    "notify::status",
-    G_CALLBACK(inf_session_connection_notify_status_cb),
-    session
-  );
-
-  sync->group = group;
-  inf_connection_manager_group_ref(sync->group);
-
-  /* The group needs to contain that connection, of course. */
-  g_assert(
-    inf_connection_manager_group_has_connection(sync->group, connection)
-  );
-
-  /* Name is irrelevant because the node is only used to collect the child
-   * nodes via the to_xml_sync vfunc. */
-  messages = xmlNewNode(NULL, (const xmlChar*)"sync-container");
-  session_class->to_xml_sync(session, messages);
-
-  for(xml = messages->children; xml != NULL; xml = xml->next)
-    ++ sync->messages_total;
-
-  sprintf(num_messages_buf, "%u", sync->messages_total - 2);
-
-  xml = xmlNewNode(NULL, (const xmlChar*)"sync-begin");
-
-  xmlNewProp(
-    xml,
-    (const xmlChar*)"num-messages",
-    (const xmlChar*)num_messages_buf
-  );
-
-  inf_connection_manager_group_send_to_connection(
-    sync->group,
-    connection,
-    xml
-  );
-
-  /* TODO: Add a function that can send multiple messages */
-  for(xml = messages->children; xml != NULL; xml = next)
-  {
-    next = xml->next;
-    xmlUnlinkNode(xml);
-
-    inf_connection_manager_group_send_to_connection(
-      sync->group,
-      connection,
-      xml
-    );
-  }
-
-  xmlFreeNode(messages);
-
-  xml = xmlNewNode(NULL, (const xmlChar*)"sync-end");
-
-  inf_connection_manager_group_send_to_connection(
-    sync->group,
-    connection,
-    xml
+  g_signal_emit(
+    G_OBJECT(session),
+    session_signals[SYNCHRONIZATION_BEGIN],
+    0,
+    group,
+    connection
   );
 }
 
@@ -2402,6 +2445,43 @@ inf_session_get_synchronization_progress(InfSession* session,
   default:
     g_assert_not_reached();
     return 0.0;
+  }
+}
+
+/**
+ * inf_session_has_synchronizations:
+ * @session: A #InfSession.
+ *
+ * Returns whether there are currently ongoing synchronizations. If the
+ * session is in status %INF_SESSION_SYNCHRONIZING, then this returns always
+ * %TRUE, if it is in %INF_SESSION_CLOSED, then it returns always %FALSE.
+ * If the session is in status %INF_SESSION_RUNNING, then it returns %TRUE
+ * when the session is currently at least synchronized to one connection and
+ * %FALSE otherwise.
+ *
+ * Returns: Whether there are ongoing synchronizations.
+ **/
+gboolean
+inf_session_has_synchronizations(InfSession* session)
+{
+  InfSessionPrivate* priv;
+  g_return_val_if_fail(INF_IS_SESSION(session), FALSE);
+  priv = INF_SESSION_PRIVATE(session);
+
+  switch(priv->status)
+  {
+  case INF_SESSION_SYNCHRONIZING:
+    return TRUE;
+  case INF_SESSION_RUNNING:
+    if(priv->shared.run.syncs == NULL)
+      return FALSE;
+    else
+      return TRUE;
+  case INF_SESSION_CLOSED:
+    return FALSE;
+  default:
+    g_assert_not_reached();
+    return FALSE;
   }
 }
 

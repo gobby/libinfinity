@@ -17,13 +17,6 @@ inf-adopted-operation
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_ADOPTED_TYPE_OPERATION_FLAGS ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfAdoptedOperation ##### -->
 <para>
 
@@ -50,14 +43,6 @@ inf-adopted-operation
 
 @INF_ADOPTED_OPERATION_AFFECTS_BUFFER: 
 @INF_ADOPTED_OPERATION_REVERSIBLE: 
-
-<!-- ##### FUNCTION inf_adopted_operation_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION inf_adopted_operation_transform ##### -->
 <para>

@@ -17,13 +17,6 @@ InfConnectionManager
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_CONNECTION_MANAGER_GROUP ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfConnectionManagerGroup ##### -->
 <para>
 
@@ -63,18 +56,17 @@ InfConnectionManager
 @INF_CONNECTION_MANAGER_NETWORK: 
 @INF_CONNECTION_MANAGER_GROUP: 
 
+<!-- ##### STRUCT InfConnectionManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### STRUCT InfConnectionManager ##### -->
 <para>
 
 </para>
-
-
-<!-- ##### FUNCTION inf_connection_manager_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
 
 
 <!-- ##### FUNCTION inf_connection_manager_new ##### -->

@@ -17,6 +17,16 @@ InfcRequest
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfcRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@failed: 
+@unused1: 
+@usused2: 
+
 <!-- ##### STRUCT InfcRequest ##### -->
 <para>
 

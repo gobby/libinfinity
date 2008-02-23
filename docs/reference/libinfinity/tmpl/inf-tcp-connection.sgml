@@ -17,12 +17,24 @@ InfTcpConnection
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_TCP_CONNECTION_STATUS ##### -->
+<!-- ##### ENUM InfTcpConnectionStatus ##### -->
 <para>
 
 </para>
 
+@INF_TCP_CONNECTION_CONNECTING: 
+@INF_TCP_CONNECTION_CONNECTED: 
+@INF_TCP_CONNECTION_CLOSED: 
 
+<!-- ##### STRUCT InfTcpConnectionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@sent: 
+@received: 
+@error: 
 
 <!-- ##### STRUCT InfTcpConnection ##### -->
 <para>
@@ -95,23 +107,6 @@ InfTcpConnection
 <para>
 
 </para>
-
-<!-- ##### ENUM InfTcpConnectionStatus ##### -->
-<para>
-
-</para>
-
-@INF_TCP_CONNECTION_CONNECTING: 
-@INF_TCP_CONNECTION_CONNECTED: 
-@INF_TCP_CONNECTION_CLOSED: 
-
-<!-- ##### FUNCTION inf_tcp_connection_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION inf_tcp_connection_open ##### -->
 <para>

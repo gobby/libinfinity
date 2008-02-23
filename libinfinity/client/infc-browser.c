@@ -1270,6 +1270,87 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_save_session_in_progress(InfcBrowser* browser,
+                                             InfXmlConnection* connection,
+                                             xmlNodePtr xml,
+                                             GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcRequest* request;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  node = infc_browser_get_node_from_xml_typed(
+    browser,
+    xml,
+    "id",
+    INFC_BROWSER_NODE_NOTE_KNOWN,
+    error
+  );
+
+  if(node == NULL) return FALSE;
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "save-session",
+    xml,
+    NULL
+  );
+
+  if(request != NULL)
+  {
+    g_assert(INFC_IS_NODE_REQUEST(request));
+    /* TODO: Make a special save request that could now emit
+     * an in-progress signal */
+  }
+
+  return TRUE;
+}
+
+static gboolean
+infc_browser_handle_saved_session(InfcBrowser* browser,
+                                  InfXmlConnection* connection,
+                                  xmlNodePtr xml,
+                                  GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcRequest* request;
+  InfcBrowserIter iter;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  node = infc_browser_get_node_from_xml_typed(
+    browser,
+    xml,
+    "id",
+    INFC_BROWSER_NODE_NOTE_KNOWN,
+    error
+  );
+
+  if(node == NULL) return FALSE;
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "save-session",
+    xml,
+    NULL
+  );
+
+  if(request != NULL)
+  {
+    g_assert(INFC_IS_NODE_REQUEST(request));
+    iter.node_id = node->id;
+    iter.node = node;
+    infc_node_request_finished(INFC_NODE_REQUEST(request), &iter);
+    infc_request_manager_remove_request(priv->request_manager, request);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_request_failed(InfcBrowser* browser,
                                    InfXmlConnection* connection,
                                    xmlNodePtr xml,
@@ -1406,6 +1487,24 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "subscribe-session") == 0)
   {
     infc_browser_handle_subscribe_session(
+      INFC_BROWSER(net_object),
+      connection,
+      node,
+      error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "save-session-in-progress") == 0)
+  {
+    infc_browser_handle_save_session_in_progress(
+      INFC_BROWSER(net_object),
+      connection,
+      node,
+      error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "saved-session") == 0)
+  {
+    infc_browser_handle_saved_session(
       INFC_BROWSER(net_object),
       connection,
       node,
@@ -2517,6 +2616,58 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
     0,
     iter,
     request
+  );
+
+  return INFC_NODE_REQUEST(request);
+}
+
+/**
+ * infc_browser_iter_save_session:
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a note in @browser.
+ *
+ * Requests that the server saves the note pointed to by @iter into its
+ * background storage. Normally, the server only does this when it is either
+ * shut down or when the there are no more subscriptions to the note. Note that
+ * this is merely a request and the server might decide not to save the
+ * session for whatever reason.
+ *
+ * Return Value: A #InfcNodeRequest that may be used to get notified when
+ * the request finishes or fails.
+ **/
+InfcNodeRequest*
+infc_browser_iter_save_session(InfcBrowser* browser,
+                               InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = (InfcBrowserNode*)iter->node;
+
+  g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(node->type == INFC_BROWSER_NODE_NOTE_KNOWN, NULL);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_NODE_REQUEST,
+    "save-session",
+    "node-id", iter->node_id,
+    NULL
+  );
+
+  xml = infc_browser_request_to_xml(request);
+  inf_xml_util_set_attribute_uint(xml, "id", node->id);
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    priv->connection,
+    xml
   );
 
   return INFC_NODE_REQUEST(request);

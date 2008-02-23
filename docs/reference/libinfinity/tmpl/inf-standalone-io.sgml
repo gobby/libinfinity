@@ -17,6 +17,13 @@ InfStandaloneIo
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfStandaloneIoClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### STRUCT InfStandaloneIo ##### -->
 <para>
 

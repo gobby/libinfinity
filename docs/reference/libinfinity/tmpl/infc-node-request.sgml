@@ -17,6 +17,14 @@ InfcNodeRequest
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfcNodeRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@finished: 
+
 <!-- ##### STRUCT InfcNodeRequest ##### -->
 <para>
 

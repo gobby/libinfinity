@@ -23,6 +23,27 @@ InfdSessionProxy
 </para>
 
 
+<!-- ##### SIGNAL InfdSessionProxy::add-subscription ##### -->
+<para>
+
+</para>
+
+@infdsessionproxy: the object which received the signal.
+@arg1: 
+
+<!-- ##### SIGNAL InfdSessionProxy::remove-subscription ##### -->
+<para>
+
+</para>
+
+@infdsessionproxy: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG InfdSessionProxy:idle ##### -->
+<para>
+
+</para>
+
 <!-- ##### ARG InfdSessionProxy:session ##### -->
 <para>
 
@@ -37,6 +58,15 @@ InfdSessionProxy
 <para>
 
 </para>
+
+<!-- ##### STRUCT InfdSessionProxyClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@add_subscription: 
+@remove_subscription: 
 
 <!-- ##### FUNCTION infd_session_proxy_get_session ##### -->
 <para>
@@ -66,5 +96,33 @@ InfdSessionProxy
 
 @proxy: 
 @connection: 
+
+
+<!-- ##### FUNCTION infd_session_proxy_has_subscriptions ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_session_proxy_is_subscribed ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@connection: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infd_session_proxy_is_idle ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@Returns: 
 
 

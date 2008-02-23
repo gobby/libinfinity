@@ -8,7 +8,7 @@ would be nice to have done for the first stable release.
   - Gobby using infinote (color selection)
 
   - [x] 22: request cache (test25 doesn't pass with cache. That's probably a bigger issue. Address in milestone 2)
-  - [ ] 24: server side save, auto & cmd
+  - [x] 24: server side save, auto & cmd
     - Browser API
     - Session proxy idle property 
   - [ ] 26: noop requests, delay caret updates

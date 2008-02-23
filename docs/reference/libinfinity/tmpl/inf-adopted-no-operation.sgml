@@ -17,6 +17,13 @@ InfAdoptedNoOperation
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfAdoptedNoOperationClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### STRUCT InfAdoptedNoOperation ##### -->
 <para>
 

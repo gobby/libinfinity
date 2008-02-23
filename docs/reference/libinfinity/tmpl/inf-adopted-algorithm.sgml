@@ -17,6 +17,16 @@ InfAdoptedAlgorithm
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfAdoptedAlgorithmClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@can_undo_changed: 
+@can_redo_changed: 
+@apply_request: 
+
 <!-- ##### STRUCT InfAdoptedAlgorithm ##### -->
 <para>
 
@@ -55,7 +65,17 @@ InfAdoptedAlgorithm
 
 </para>
 
+<!-- ##### ARG InfAdoptedAlgorithm:current-state ##### -->
+<para>
+
+</para>
+
 <!-- ##### ARG InfAdoptedAlgorithm:max-total-log-size ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfAdoptedAlgorithm:user-table ##### -->
 <para>
 
 </para>

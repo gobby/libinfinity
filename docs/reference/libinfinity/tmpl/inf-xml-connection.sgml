@@ -17,13 +17,6 @@ inf-xml-connection
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_XML_CONNECTION_STATUS ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfXmlConnection ##### -->
 <para>
 
@@ -95,14 +88,6 @@ inf-xml-connection
 @INF_XML_CONNECTION_CLOSING: 
 @INF_XML_CONNECTION_OPEN: 
 @INF_XML_CONNECTION_OPENING: 
-
-<!-- ##### FUNCTION inf_xml_connection_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION inf_xml_connection_close ##### -->
 <para>

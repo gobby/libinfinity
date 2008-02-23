@@ -443,9 +443,28 @@ infd_session_proxy_add_user_cb(InfSession* session,
 }
 
 static void
-infd_session_proxy_session_synchronization_complete_cb(InfSession* session,
-                                                       InfXmlConnection* conn,
-                                                       gpointer user_data)
+infd_session_proxy_synchronization_begin_cb(InfSession* session,
+                                            InfConnectionManagerGroup* group,
+                                            InfXmlConnection* connection,
+                                            gpointer user_data)
+{
+  InfdSessionProxy* proxy;
+  InfdSessionProxyPrivate* priv;
+
+  proxy = INFD_SESSION_PROXY(user_data);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  if(priv->idle)
+  {
+    priv->idle = FALSE;
+    g_object_notify(G_OBJECT(proxy), "idle");
+  }
+}
+
+static void
+infd_session_proxy_synchronization_complete_cb_before(InfSession* session,
+                                                      InfXmlConnection* conn,
+                                                      gpointer user_data)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
@@ -475,10 +494,30 @@ infd_session_proxy_session_synchronization_complete_cb(InfSession* session,
 }
 
 static void
-infd_session_proxy_session_synchronization_failed_cb(InfSession* session,
+infd_session_proxy_synchronization_complete_cb_after(InfSession* session,
                                                      InfXmlConnection* conn,
-                                                     const GError* error,
                                                      gpointer user_data)
+{
+  InfdSessionProxy* proxy;
+  InfdSessionProxyPrivate* priv;
+
+  proxy = INFD_SESSION_PROXY(user_data);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  /* Set idle if no more synchronizations are running */
+  if(!priv->idle && priv->subscriptions == NULL &&
+     !inf_session_has_synchronizations(session))
+  {
+    priv->idle = TRUE;
+    g_object_notify(G_OBJECT(proxy), "idle");
+  }
+}
+
+static void
+infd_session_proxy_synchronization_failed_cb_before(InfSession* session,
+                                                    InfXmlConnection* conn,
+                                                    const GError* error,
+                                                    gpointer user_data)
 {
   InfdSessionProxy* proxy;
   InfSessionStatus status;
@@ -503,6 +542,27 @@ infd_session_proxy_session_synchronization_failed_cb(InfSession* session,
        * because it was not yet synchronized. */
       infd_session_proxy_release_subscription(proxy, subscription);
     }
+  }
+}
+
+static void
+infd_session_proxy_synchronization_failed_cb_after(InfSession* session,
+                                                   InfXmlConnection* conn,
+                                                   const GError* error,
+                                                   gpointer user_data)
+{
+  InfdSessionProxy* proxy;
+  InfdSessionProxyPrivate* priv;
+
+  proxy = INFD_SESSION_PROXY(user_data);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  /* Set idle if no more synchronizations are running */
+  if(!priv->idle && priv->subscriptions == NULL &&
+     !inf_session_has_synchronizations(session))
+  {
+    priv->idle = TRUE;
+    g_object_notify(G_OBJECT(proxy), "idle");
   }
 }
 
@@ -601,7 +661,9 @@ infd_session_proxy_constructor(GType type,
   g_assert(priv->subscription_group != NULL);
   g_assert(priv->session != NULL);
 
-  /* TODO: Set unidle when session is currently being synchronized */
+  /* Set unidle when session is currently being synchronized */
+  if(inf_session_get_status(priv->session) == INF_SESSION_SYNCHRONIZING)
+    priv->idle = FALSE;
 
   /* TODO: We could perhaps optimize by only setting the subscription
    * group when there are subscribed connections. */
@@ -636,22 +698,40 @@ infd_session_proxy_dispose(GObject* object)
     G_CALLBACK(infd_session_proxy_session_close_cb),
     proxy
   );
-  
+
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(inf_session_get_user_table(priv->session)),
     G_CALLBACK(infd_session_proxy_add_user_cb),
     proxy
   );
-  
+
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_session_synchronization_complete_cb),
+    G_CALLBACK(infd_session_proxy_synchronization_begin_cb),
     proxy
   );
-  
+
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_session_synchronization_failed_cb),
+    G_CALLBACK(infd_session_proxy_synchronization_complete_cb_before),
+    proxy
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->session),
+    G_CALLBACK(infd_session_proxy_synchronization_complete_cb_after),
+    proxy
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->session),
+    G_CALLBACK(infd_session_proxy_synchronization_failed_cb_before),
+    proxy
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->session),
+    G_CALLBACK(infd_session_proxy_synchronization_failed_cb_after),
     proxy
   );
 
@@ -698,17 +778,38 @@ infd_session_proxy_set_property(GObject* object,
       proxy
     );
 
+    g_signal_connect_after(
+      G_OBJECT(priv->session),
+      "synchronization-begin",
+      G_CALLBACK(infd_session_proxy_synchronization_begin_cb),
+      proxy
+    );
+
     g_signal_connect(
       G_OBJECT(priv->session),
       "synchronization-complete",
-      G_CALLBACK(infd_session_proxy_session_synchronization_complete_cb),
+      G_CALLBACK(infd_session_proxy_synchronization_complete_cb_before),
+      proxy
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(priv->session),
+      "synchronization-complete",
+      G_CALLBACK(infd_session_proxy_synchronization_complete_cb_after),
       proxy
     );
 
     g_signal_connect(
       G_OBJECT(priv->session),
       "synchronization-failed",
-      G_CALLBACK(infd_session_proxy_session_synchronization_failed_cb),
+      G_CALLBACK(infd_session_proxy_synchronization_failed_cb_before),
+      proxy
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(priv->session),
+      "synchronization-failed",
+      G_CALLBACK(infd_session_proxy_synchronization_failed_cb_after),
       proxy
     );
 
@@ -826,7 +927,8 @@ infd_session_proxy_remove_subscription_handler(InfdSessionProxy* proxy,
   priv->subscriptions = g_slist_remove(priv->subscriptions, subscr);
   infd_session_proxy_subscription_free(subscr);
 
-  if(!priv->idle && priv->subscriptions == NULL)
+  if(!priv->idle && priv->subscriptions == NULL &&
+     !inf_session_has_synchronizations(priv->session))
   {
     /* TODO: Don't set idle when there are ongoing synchronizations */
     priv->idle = TRUE;

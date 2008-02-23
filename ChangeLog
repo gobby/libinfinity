@@ -1,3 +1,16 @@
+2008-02-23  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added
+	infc_browser_iter_save_session().
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added the synchronization-begin
+	signal.
+
+	* libinfinity/server/infd-session-proxy.c: Don't consider the session
+	idle when there are ongoing synchronizations.
+
 2008-02-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.c: Handle <save-session> request,

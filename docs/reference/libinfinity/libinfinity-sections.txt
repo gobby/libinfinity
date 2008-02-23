@@ -47,6 +47,7 @@ infc_browser_remove_node
 infc_browser_iter_get_note_type
 infc_browser_iter_get_plugin
 infc_browser_iter_subscribe_session
+infc_browser_iter_save_session
 infc_browser_iter_get_session
 infc_browser_iter_get_subscribe_request
 infc_browser_iter_from_node_request
@@ -419,6 +420,7 @@ inf_session_add_user
 inf_session_synchronize_to
 inf_session_get_synchronization_status
 inf_session_get_synchronization_progress
+inf_session_has_synchronizations
 inf_session_get_subscription_group
 inf_session_set_subscription_group
 inf_session_send_to_subscriptions
@@ -843,6 +845,9 @@ InfdSessionProxyClass
 infd_session_proxy_get_session
 infd_session_proxy_add_user
 infd_session_proxy_subscribe_to
+infd_session_proxy_has_subscriptions
+infd_session_proxy_is_subscribed
+infd_session_proxy_is_idle
 <SUBSECTION Standard>
 INFD_SESSION_PROXY
 INFD_IS_SESSION_PROXY

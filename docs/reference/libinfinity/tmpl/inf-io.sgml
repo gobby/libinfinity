@@ -17,13 +17,6 @@ inf-io
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_TYPE_IO_EVENT ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### STRUCT InfIo ##### -->
 <para>
 
@@ -60,9 +53,9 @@ inf-io
 
 </para>
 
-@Param1: 
-@Param2: 
-@Param3: 
+@socket: 
+@event: 
+@user_data: 
 
 
 <!-- ##### USER_FUNCTION InfIoTimeoutFunc ##### -->
@@ -70,15 +63,7 @@ inf-io
 
 </para>
 
-@Param1: 
-
-
-<!-- ##### FUNCTION inf_io_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
+@user_data: 
 
 
 <!-- ##### FUNCTION inf_io_watch ##### -->

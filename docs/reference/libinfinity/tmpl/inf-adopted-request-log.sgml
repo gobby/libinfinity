@@ -17,6 +17,13 @@ InfAdoptedRequestLog
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### STRUCT InfAdoptedRequestLogClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### STRUCT InfAdoptedRequestLog ##### -->
 <para>
 
@@ -166,7 +173,7 @@ InfAdoptedRequestLog
 </para>
 
 @log: 
-@request: 
+@n: 
 @Returns: 
 
 

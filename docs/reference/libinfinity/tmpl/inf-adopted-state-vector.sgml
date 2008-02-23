@@ -17,13 +17,6 @@ inf-adopted-state-vector
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_ADOPTED_TYPE_STATE_VECTOR ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### TYPEDEF InfAdoptedStateVector ##### -->
 <para>
 

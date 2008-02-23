@@ -17,6 +17,24 @@ InfcRequestManager
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### USER_FUNCTION InfcRequestManagerForeachFunc ##### -->
+<para>
+
+</para>
+
+@Param1: 
+@Param2: 
+
+
+<!-- ##### STRUCT InfcRequestManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@request_add: 
+@request_remove: 
+
 <!-- ##### STRUCT InfcRequestManager ##### -->
 <para>
 
@@ -38,15 +56,6 @@ InfcRequestManager
 
 @infcrequestmanager: the object which received the signal.
 @arg1: 
-
-<!-- ##### USER_FUNCTION InfcRequestManagerForeachFunc ##### -->
-<para>
-
-</para>
-
-@Param1: 
-@Param2: 
-
 
 <!-- ##### FUNCTION infc_request_manager_new ##### -->
 <para>

@@ -17,13 +17,6 @@ InfdTcpServer
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INFD_TYPE_TCP_SERVER_STATUS ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### ENUM InfdTcpServerStatus ##### -->
 <para>
 
@@ -31,6 +24,15 @@ InfdTcpServer
 
 @INFD_TCP_SERVER_CLOSED: 
 @INFD_TCP_SERVER_OPEN: 
+
+<!-- ##### STRUCT InfdTcpServerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@new_connection: 
+@error: 
 
 <!-- ##### STRUCT InfdTcpServer ##### -->
 <para>
@@ -73,14 +75,6 @@ InfdTcpServer
 <para>
 
 </para>
-
-<!-- ##### FUNCTION infd_tcp_server_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION infd_tcp_server_open ##### -->
 <para>

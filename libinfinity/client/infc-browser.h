@@ -183,6 +183,10 @@ InfcNodeRequest*
 infc_browser_iter_subscribe_session(InfcBrowser* browser,
                                     InfcBrowserIter* iter);
 
+InfcNodeRequest*
+infc_browser_iter_save_session(InfcBrowser* browser,
+                               InfcBrowserIter* iter);
+
 InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
                               InfcBrowserIter* iter);

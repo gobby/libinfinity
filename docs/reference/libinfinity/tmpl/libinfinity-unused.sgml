@@ -1,48 +1,148 @@
-<!-- ##### ARG InfAdoptedAlgorithm:current-state ##### -->
+<!-- ##### MACRO INFC_TYPE_BROWSER_ITER ##### -->
 <para>
 
 </para>
 
 
-<!-- ##### ARG InfAdoptedAlgorithm:user-table ##### -->
+<!-- ##### MACRO INFD_TYPE_FILESYSTEM_STORAGE_ITER ##### -->
 <para>
 
 </para>
 
 
-<!-- ##### STRUCT InfAdoptedUser ##### -->
+<!-- ##### MACRO INFD_TYPE_STORAGE_NODE ##### -->
 <para>
 
 </para>
 
 
-<!-- ##### ARG InfAdoptedUser:request-log ##### -->
+<!-- ##### MACRO INFD_TYPE_STORAGE_NODE_TYPE ##### -->
 <para>
 
 </para>
 
 
-<!-- ##### ARG InfAdoptedUser:vector ##### -->
+<!-- ##### MACRO INFD_TYPE_TCP_SERVER_STATUS ##### -->
 <para>
 
 </para>
 
 
-<!-- ##### SIGNAL InfUserTable::add-local-user ##### -->
+<!-- ##### MACRO INFD_TYPE_XML_SERVER_STATUS ##### -->
 <para>
 
 </para>
 
-@infusertable: the object which received the signal.
-@arg1: 
 
-<!-- ##### SIGNAL InfUserTable::remove-local-user ##### -->
+<!-- ##### MACRO INF_ADOPTED_TYPE_OPERATION_FLAGS ##### -->
 <para>
 
 </para>
 
-@infusertable: the object which received the signal.
-@arg1: 
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_REQUEST_TYPE ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_SESSION_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_ADOPTED_TYPE_STATE_VECTOR ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_CONNECTION_MANAGER_GROUP ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_IO_EVENT ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_IP_ADDRESS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_IP_ADDRESS_FAMILY ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_METHOD_MANAGER_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_SESSION_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_TCP_CONNECTION_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_USER_FLAGS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_USER_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_USER_TABLE_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_XML_CONNECTION_STATUS ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO INF_TYPE_XMPP_CONNECTION_SITE ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_adopted_operation_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_adopted_request_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
 
 <!-- ##### FUNCTION inf_adopted_state_vector_foobar ##### -->
 <para>
@@ -64,7 +164,112 @@
 
 @Returns: 
 
+<!-- ##### FUNCTION inf_connection_manager_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_io_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_ip_address_family_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_ip_address_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_session_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_tcp_connection_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_user_flags_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_user_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_xml_connection_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION inf_xmpp_connection_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
 <!-- ##### FUNCTION infc_browser_iter_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION infd_directory_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION infd_storage_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION infd_storage_node_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION infd_tcp_server_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION infd_xml_server_get_type ##### -->
 <para>
 
 </para>

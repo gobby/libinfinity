@@ -17,13 +17,6 @@ InfdFilesystemStorage
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INFD_TYPE_FILESYSTEM_STORAGE_ITER ##### -->
-<para>
-
-</para>
-
-
-
 <!-- ##### ENUM InfdFilesystemStorageError ##### -->
 <para>
 
@@ -31,6 +24,13 @@ InfdFilesystemStorage
 
 @INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH: 
 @INFD_FILESYSTEM_STORAGE_ERROR_FAILED: 
+
+<!-- ##### STRUCT InfdFilesystemStorageClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
 
 <!-- ##### STRUCT InfdFilesystemStorage ##### -->
 <para>

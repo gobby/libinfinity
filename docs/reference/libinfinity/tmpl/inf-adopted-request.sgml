@@ -17,12 +17,21 @@ InfAdoptedRequest
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO INF_ADOPTED_TYPE_REQUEST_TYPE ##### -->
+<!-- ##### ENUM InfAdoptedRequestType ##### -->
 <para>
 
 </para>
 
+@INF_ADOPTED_REQUEST_DO: 
+@INF_ADOPTED_REQUEST_UNDO: 
+@INF_ADOPTED_REQUEST_REDO: 
 
+<!-- ##### STRUCT InfAdoptedRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
 
 <!-- ##### STRUCT InfAdoptedRequest ##### -->
 <para>
@@ -49,23 +58,6 @@ InfAdoptedRequest
 <para>
 
 </para>
-
-<!-- ##### ENUM InfAdoptedRequestType ##### -->
-<para>
-
-</para>
-
-@INF_ADOPTED_REQUEST_DO: 
-@INF_ADOPTED_REQUEST_UNDO: 
-@INF_ADOPTED_REQUEST_REDO: 
-
-<!-- ##### FUNCTION inf_adopted_request_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 
 <!-- ##### FUNCTION inf_adopted_request_new_do ##### -->
 <para>
