@@ -1868,7 +1868,7 @@ inf_session_class_init(gpointer g_class,
     "synchronization-begin",
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfSessionClass, synchronization_progress),
+    G_STRUCT_OFFSET(InfSessionClass, synchronization_begin),
     NULL, NULL,
     inf_marshal_VOID__BOXED_OBJECT,
     G_TYPE_NONE,
@@ -2433,6 +2433,13 @@ inf_session_get_synchronization_progress(InfSession* session,
   {
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
+
+    /* messages_total is still zero in case we did not yet even receive
+     * sync-begin. We are at the very beginning of the synchronization in
+     * that case. */
+    if(priv->shared.sync.messages_total == 0)
+      return 0.0;
+
     return (gdouble)priv->shared.sync.messages_received /
            (gdouble)priv->shared.sync.messages_total;
 

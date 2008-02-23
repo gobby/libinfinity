@@ -1,5 +1,14 @@
 2008-02-23  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-session.c:
+	inf_session_get_synchronization_progress(): Don't divide by zero if
+	the initial sync-begin was not yet received.
+
+	* libinfinity/adopted/inf-adopted-session.c: Send noop request after
+	15 seconds of inactivity.
+
+2008-02-23  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.h:
 	* libinfinity/client/infc-browser.c: Added
 	infc_browser_iter_save_session().
