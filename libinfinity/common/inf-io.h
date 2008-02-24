@@ -65,12 +65,14 @@ struct _InfIoIface {
                 InfNativeSocket* socket,
                 InfIoEvent events,
                 InfIoFunc func,
-                gpointer user_data);
+                gpointer user_data,
+                GDestroyNotify notify);
 
   gpointer (*add_timeout)(InfIo* io,
                           guint msecs,
                           InfIoTimeoutFunc func,
-                          gpointer user_data);
+                          gpointer user_data,
+                          GDestroyNotify notify);
 
   void (*remove_timeout)(InfIo* io,
                          gpointer timeout);
@@ -87,13 +89,15 @@ inf_io_watch(InfIo* io,
              InfNativeSocket* socket,
              InfIoEvent events,
              InfIoFunc func,
-             gpointer user_data);
+             gpointer user_data,
+             GDestroyNotify notify);
 
 gpointer
 inf_io_add_timeout(InfIo* io,
                    guint msecs,
                    InfIoTimeoutFunc func,
-                   gpointer user_data);
+                   gpointer user_data,
+                   GDestroyNotify notify);
 
 void
 inf_io_remove_timeout(InfIo* io,

@@ -356,7 +356,8 @@ infd_tcp_server_error(InfdTcpServer* server,
       &priv->socket,
       0,
       infd_tcp_server_io,
-      server
+      server,
+      NULL
     );
   }
 
@@ -685,7 +686,8 @@ infd_tcp_server_open(InfdTcpServer* server,
     &priv->socket,
     INF_IO_INCOMING | INF_IO_ERROR,
     infd_tcp_server_io,
-    server
+    server,
+    NULL
   );
 
   priv->status = INFD_TCP_SERVER_OPEN;
@@ -722,7 +724,8 @@ infd_tcp_server_close(InfdTcpServer* server)
     &priv->socket,
     0,
     infd_tcp_server_io,
-    server
+    server,
+    NULL
   );
 
   close(priv->socket);

@@ -481,7 +481,8 @@ inf_adopted_session_reschedule_noop_timer(InfAdoptedSession* session)
       priv->io,
       next * 1000,
       inf_adopted_session_noop_timeout_func,
-      session
+      session,
+      NULL
     );
   }
 }

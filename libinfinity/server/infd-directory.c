@@ -61,13 +61,6 @@ struct _InfdDirectoryNode {
       InfdNotePlugin* plugin;
       /* Timeout to save the session when inactive for some time */
       gpointer save_timeout;
-      /* For the timeout callback to access the directory. */
-      /* TODO: This is a kind of hack. We should pass a g_slice_new'ed struct
-       * with directory and node, but we would need
-       * inf_io_timeout_get_user_data() to free it. This is only used for
-       * the save_timeout and not guaranteed to contain a valid pointer but
-       * in the timeout callback. */
-      InfdDirectory* directory;
     } note;
 
     struct {
@@ -82,6 +75,13 @@ struct _InfdDirectoryNode {
       gboolean explored;
     } subdir;
   } shared;
+};
+
+typedef struct _InfdDirectorySessionSaveTimeoutData
+  InfdDirectorySessionSaveTimeoutData;
+struct _InfdDirectorySessionSaveTimeoutData {
+  InfdDirectory* directory;
+  InfdDirectoryNode* node;
 };
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
@@ -257,32 +257,37 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
                                    InfdDirectoryNode* node);
 
 static void
+infd_directory_session_save_timeout_data_free(gpointer data)
+{
+  g_slice_free(InfdDirectorySessionSaveTimeoutData, data);
+}
+
+static void
 infd_directory_session_save_timeout_func(gpointer user_data)
 {
-  InfdDirectoryNode* node;
-  InfdDirectory* directory;
+  InfdDirectorySessionSaveTimeoutData* timeout_data;
   InfdDirectoryPrivate* priv;
   GError* error;
   gchar* path;
   gboolean result;
 
-  node = (InfdDirectoryNode*)user_data;
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
-  g_assert(node->shared.note.save_timeout != NULL);
-  directory = node->shared.note.directory;
-  priv = INFD_DIRECTORY_PRIVATE(directory);
+  timeout_data = (InfdDirectorySessionSaveTimeoutData*)user_data;
+
+  g_assert(timeout_data->node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(timeout_data->node->shared.note.save_timeout != NULL);
+  priv = INFD_DIRECTORY_PRIVATE(timeout_data->directory);
   error = NULL;
 
-  infd_directory_node_get_path(node, &path, NULL);
-  result = node->shared.note.plugin->session_write(
+  infd_directory_node_get_path(timeout_data->node, &path, NULL);
+  result = timeout_data->node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(node->shared.note.session),
+    infd_session_proxy_get_session(timeout_data->node->shared.note.session),
     path,
     &error
   );
 
   /* The timeout is removed automatically after it has elapsed */
-  node->shared.note.save_timeout = NULL;
+  timeout_data->node->shared.note.save_timeout = NULL;
 
   if(result == FALSE)
   {
@@ -297,10 +302,34 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   }
   else
   {
-    infd_directory_node_unlink_session(directory, node);
+    infd_directory_node_unlink_session(
+      timeout_data->directory,
+      timeout_data->node
+    );
   }
 
   g_free(path);
+}
+
+static void
+infd_directory_start_session_save_timeout(InfdDirectory* directory,
+                                          InfdDirectoryNode* node)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectorySessionSaveTimeoutData* timeout_data;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  timeout_data = g_slice_new(InfdDirectorySessionSaveTimeoutData);
+  timeout_data->directory = directory;
+  timeout_data->node = node;
+
+  node->shared.note.save_timeout = inf_io_add_timeout(
+    priv->io,
+    INFD_DIRECTORY_SAVE_TIMEOUT,
+    infd_directory_session_save_timeout_func,
+    timeout_data,
+    infd_directory_session_save_timeout_data_free
+  );
 }
 
 static void
@@ -324,13 +353,7 @@ infd_directory_session_idle_notify_cb(GObject* object,
   {
     if(node->shared.note.save_timeout == NULL)
     {
-      node->shared.note.directory = directory;
-      node->shared.note.save_timeout = inf_io_add_timeout(
-        priv->io,
-        INFD_DIRECTORY_SAVE_TIMEOUT,
-        infd_directory_session_save_timeout_func,
-        node
-      );
+      infd_directory_start_session_save_timeout(directory, node);
     }
   }
   else
@@ -443,13 +466,7 @@ infd_directory_node_link_session(InfdDirectory* directory,
 
   if(infd_session_proxy_is_idle(node->shared.note.session))
   {
-    node->shared.note.directory = directory;
-    node->shared.note.save_timeout = inf_io_add_timeout(
-      priv->io,
-      INFD_DIRECTORY_SAVE_TIMEOUT,
-      infd_directory_session_save_timeout_func,
-      node
-    );
+    infd_directory_start_session_save_timeout(directory, node);
   }
 }
 
@@ -1181,7 +1198,6 @@ infd_directory_node_get_session(InfdDirectory* directory,
                                 GError** error)
 {
   InfdDirectoryPrivate* priv;
-  InfConnectionManagerGroup* group;
   InfSession* session;
   gchar* path;
 

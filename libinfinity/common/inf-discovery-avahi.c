@@ -851,7 +851,8 @@ inf_discovery_avahi_watch_new(const AvahiPoll* api,
     &watch->socket,
     inf_discovery_avahi_to_io_event(event),
     inf_discovery_avahi_watch_cb,
-    watch
+    watch,
+    NULL
   );
 
   return watch;
@@ -869,7 +870,8 @@ inf_discovery_avahi_watch_update(AvahiWatch* watch,
     &watch->socket,
     inf_discovery_avahi_to_io_event(event),
     inf_discovery_avahi_watch_cb,
-    watch
+    watch,
+    NULL
   );
 }
 
@@ -889,6 +891,7 @@ inf_discovery_avahi_watch_free(AvahiWatch* watch)
     priv->io,
     &watch->socket,
     0,
+    NULL,
     NULL,
     NULL
   );
@@ -925,7 +928,8 @@ inf_discovery_avahi_timeout_new(const AvahiPoll* api,
       priv->io,
       ((-usec) + 500) / 1000,
       inf_discovery_avahi_timeout_cb,
-      timeout
+      timeout,
+      NULL
     );
   }
   else
@@ -957,7 +961,8 @@ inf_discovery_avahi_timeout_update(AvahiTimeout* timeout,
       priv->io,
       ((-usec) + 500) / 1000,
       inf_discovery_avahi_timeout_cb,
-      timeout
+      timeout,
+      NULL
     );
   }
   else

@@ -1,3 +1,23 @@
+2008-02-24  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-session.c: Delay caret updates if too frequent.
+
+	* libinfinity/common/inf-io.h:
+	* libinfinity/common/inf-io.c: Added a GDestroyNotify parameter to
+	inf_io_watch() and inf_io_add_timeout().
+
+	* libinfinity/common/inf-standalone-io.c
+	* libinfgtk/inf-gtk-io.c: Adapt implementation.
+	
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/server/infd-tcp-server.c:
+	* test/inf-test-browser.c: Adapt usage.
+
+	* libinfinity/server/infd-directory.c: Make use of the notify to get
+	rid of an unpleasant hack.
+
 2008-02-23  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-session.c:

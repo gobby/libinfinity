@@ -11,7 +11,7 @@ would be nice to have done for the first stable release.
   - [x] 24: server side save, auto & cmd
     - Browser API
     - Session proxy idle property 
-  - [ ] 26: noop requests, delay caret updates
+  - [x] 26: noop requests, delay caret updates
   - [ ] 28: color field in text user
   - [ ]  1: cleanup tests
 

@@ -181,7 +181,8 @@ inf_tcp_connection_connected(InfTcpConnection* connection)
     &priv->socket,
     priv->events,
     inf_tcp_connection_io,
-    connection
+    connection,
+    NULL
   );
 
   g_object_freeze_notify(G_OBJECT(connection));
@@ -308,7 +309,8 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
             &priv->socket,
             priv->events,
             inf_tcp_connection_io,
-            connection
+            connection,
+            NULL
           );
         }
       }
@@ -576,7 +578,8 @@ inf_tcp_connection_error(InfTcpConnection* connection,
       &priv->socket,
       priv->events,
       inf_tcp_connection_io,
-      connection
+      connection,
+      NULL
     );
   }
 
@@ -1010,7 +1013,8 @@ inf_tcp_connection_open(InfTcpConnection* connection,
       &priv->socket,
       priv->events,
       inf_tcp_connection_io,
-      connection
+      connection,
+      NULL
     );
 
     priv->status = INF_TCP_CONNECTION_CONNECTING;
@@ -1043,7 +1047,8 @@ inf_tcp_connection_close(InfTcpConnection* connection)
     &priv->socket,
     priv->events,
     inf_tcp_connection_io,
-    connection
+    connection,
+    NULL
   );
 
   close(priv->socket);
@@ -1115,7 +1120,8 @@ inf_tcp_connection_send(InfTcpConnection* connection,
       &priv->socket,
       priv->events,
       inf_tcp_connection_io,
-      connection
+      connection,
+      NULL
     );
   }
 }

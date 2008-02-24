@@ -283,7 +283,8 @@ inf_test_browser_notify_status_cb(GObject* object,
       &test->input_fd,
       INF_IO_INCOMING | INF_IO_ERROR,
       inf_test_browser_input_cb,
-      test
+      test,
+      NULL
     );
 
     /* Explore root node */

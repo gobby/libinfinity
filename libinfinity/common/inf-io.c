@@ -104,6 +104,8 @@ inf_io_get_type(void)
  * @events: Events to watch for.
  * @func: Function to be called when one of the events occurs.
  * @user_data: Extra data to pass to @func.
+ * @notify: A #GDestroyNotify that is called when @user_data is no longer
+ * needed, or %NULL.
  *
  * Monitors the given socket for activity and calls @func if one of the
  * events specified in @events occurs.
@@ -113,7 +115,8 @@ inf_io_watch(InfIo* io,
              InfNativeSocket* socket,
              InfIoEvent events,
              InfIoFunc func,
-             gpointer user_data)
+             gpointer user_data,
+             GDestroyNotify notify)
 {
   InfIoIface* iface;
 
@@ -124,7 +127,7 @@ inf_io_watch(InfIo* io,
   iface = INF_IO_GET_IFACE(io);
   g_return_if_fail(iface->watch != NULL);
 
-  iface->watch(io, socket, events, func, user_data);
+  iface->watch(io, socket, events, func, user_data, notify);
 }
 
 /**
@@ -133,6 +136,8 @@ inf_io_watch(InfIo* io,
  * @msecs: Number of milliseconds after which the timeout should be elapsed.
  * @func: Function to be called when the timeout elapsed.
  * @user_data: Extra data to pass to @func.
+ * @notify: A #GDestroyNotify that is called when @user_data is no longer
+ * needed, or %NULL.
  *
  * Calls @func after at least @msecs milliseconds have elapsed. The timeout
  * is removed after it has elapsed.
@@ -143,7 +148,8 @@ gpointer
 inf_io_add_timeout(InfIo* io,
                    guint msecs,
                    InfIoTimeoutFunc func,
-                   gpointer user_data)
+                   gpointer user_data,
+                   GDestroyNotify notify)
 {
   InfIoIface* iface;
 
@@ -153,7 +159,7 @@ inf_io_add_timeout(InfIo* io,
   iface = INF_IO_GET_IFACE(io);
   g_return_val_if_fail(iface->add_timeout != NULL, NULL);
 
-  return iface->add_timeout(io, msecs, func, user_data);
+  return iface->add_timeout(io, msecs, func, user_data, notify);
 }
 
 /**

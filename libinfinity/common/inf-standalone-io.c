@@ -29,6 +29,7 @@ struct _InfStandaloneIoWatch {
   InfNativeSocket* socket;
   InfIoFunc func;
   gpointer user_data;
+  GDestroyNotify notify;
 };
 
 typedef struct _InfStandaloneIoTimeout InfStandaloneIoTimeout;
@@ -37,6 +38,7 @@ struct _InfStandaloneIoTimeout {
   guint msecs;
   InfIoTimeoutFunc func;
   gpointer user_data;
+  GDestroyNotify notify;
 };
 
 typedef struct _InfStandaloneIoPrivate InfStandaloneIoPrivate;
@@ -134,6 +136,8 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
     priv->timeouts = g_list_delete_link(priv->timeouts, next_timeout);
 
     cur_timeout->func(cur_timeout->user_data);
+    if(cur_timeout->notify)
+      cur_timeout->notify(cur_timeout->user_data);
     g_slice_free(InfStandaloneIoTimeout, cur_timeout);
   }
   else if(result > 0)
@@ -163,7 +167,7 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
           );
 
           /* The callback might have done everything, including completly
-           * screwed up the array of file descriptors. This is why we break
+           * screwing up the array of file descriptors. This is why we break
            * here and iterate from the beginning to find the next event. */
           break;
         }
@@ -198,12 +202,27 @@ inf_standalone_io_finalize(GObject* object)
 {
   InfStandaloneIo* io;
   InfStandaloneIoPrivate* priv;
+  guint i;
+  GList* item;
+  InfStandaloneIoTimeout* timeout;
 
   io = INF_STANDALONE_IO(object);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
+  for(i = 0; i < priv->fd_size; ++ i)
+    if(priv->watches[i].notify)
+      priv->watches[i].notify(priv->watches[i].user_data);
+
+  for(item = priv->timeouts; item != NULL; item = g_list_next(item))
+  {
+    timeout = (InfStandaloneIoTimeout*)item->data;
+    if(timeout->notify)
+      timeout->notify(timeout->user_data);
+  }
+
   g_free(priv->pfds);
   g_free(priv->watches);
+  g_list_free(priv->timeouts);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -213,7 +232,8 @@ inf_standalone_io_io_watch(InfIo* io,
                            InfNativeSocket* socket,
                            InfIoEvent events,
                            InfIoFunc func,
-                           gpointer user_data)
+                           gpointer user_data,
+                           GDestroyNotify notify)
 {
   InfStandaloneIoPrivate* priv;
   int pevents;
@@ -235,6 +255,10 @@ inf_standalone_io_io_watch(InfIo* io,
     {
       if(events == 0)
       {
+        /* Free user_data */
+        if(priv->watches[i].notify)
+          priv->watches[i].notify(priv->watches[i].user_data);
+
         /* Remove watch by replacing it by the last pollfd/watch */
         if(i != priv->fd_size - 1)
         {
@@ -257,11 +281,16 @@ inf_standalone_io_io_watch(InfIo* io,
       }
       else
       {
+        /* Free userdata before update */
+        if(priv->watches[i].notify)
+          priv->watches[i].notify(priv->watches[i].user_data);
+
         /* Update */
         priv->pfds[i].events = pevents;
 
         priv->watches[i].func = func;
         priv->watches[i].user_data = user_data;
+        priv->watches[i].notify = notify;
       }
 
       return;
@@ -292,6 +321,7 @@ inf_standalone_io_io_watch(InfIo* io,
   priv->watches[priv->fd_size].socket = socket;
   priv->watches[priv->fd_size].func = func;
   priv->watches[priv->fd_size].user_data = user_data;
+  priv->watches[priv->fd_size].notify = notify;
 
   ++ priv->fd_size;
 }
@@ -300,7 +330,8 @@ static gpointer
 inf_standalone_io_io_add_timeout(InfIo* io,
                                  guint msecs,
                                  InfIoTimeoutFunc func,
-                                 gpointer user_data)
+                                 gpointer user_data,
+                                 GDestroyNotify notify)
 {
   InfStandaloneIoPrivate* priv;
   InfStandaloneIoTimeout* timeout;
@@ -312,6 +343,7 @@ inf_standalone_io_io_add_timeout(InfIo* io,
   timeout->msecs = msecs;
   timeout->func = func;
   timeout->user_data = user_data;
+  timeout->notify = notify;
   priv->timeouts = g_list_prepend(priv->timeouts, timeout);
 
   return timeout;
@@ -331,6 +363,9 @@ inf_standalone_io_io_remove_timeout(InfIo* io,
 
   timeout = item->data;
   priv->timeouts = g_list_delete_link(priv->timeouts, item);
+
+  if(timeout->notify)
+    timeout->notify(timeout->user_data);
 
   g_slice_free(InfStandaloneIoTimeout, timeout);
 }

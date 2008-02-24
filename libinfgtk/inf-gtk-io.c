@@ -25,6 +25,7 @@ struct _InfGtkIoWatch {
   guint id;
   InfIoFunc func;
   gpointer user_data;
+  GDestroyNotify notify;
 };
 
 typedef struct _InfGtkIoTimeout InfGtkIoTimeout;
@@ -33,6 +34,7 @@ struct _InfGtkIoTimeout {
   guint id;
   InfIoTimeoutFunc func;
   gpointer user_data;
+  GDestroyNotify notify;
 };
 
 typedef struct _InfGtkIoPrivate InfGtkIoPrivate;
@@ -50,7 +52,8 @@ static GObjectClass* parent_class;
 static InfGtkIoWatch*
 inf_gtk_io_watch_new(InfNativeSocket* socket,
                      InfIoFunc func,
-                     gpointer user_data)
+                     gpointer user_data,
+                     GDestroyNotify notify)
 {
   InfGtkIoWatch* watch;
   watch = g_slice_new(InfGtkIoWatch);
@@ -58,6 +61,7 @@ inf_gtk_io_watch_new(InfNativeSocket* socket,
   watch->id = 0;
   watch->func = func;
   watch->user_data = user_data;
+  watch->notify = notify;
   return watch;
 }
 
@@ -66,6 +70,8 @@ inf_gtk_io_watch_free(InfGtkIoWatch* watch)
 {
   if(watch->id != 0)
     g_source_remove(watch->id);
+  if(watch->notify)
+    watch->notify(watch->user_data);
 
   g_slice_free(InfGtkIoWatch, watch);
 }
@@ -73,7 +79,8 @@ inf_gtk_io_watch_free(InfGtkIoWatch* watch)
 static InfGtkIoTimeout*
 inf_gtk_io_timeout_new(InfGtkIo* io,
                        InfIoTimeoutFunc func,
-                       gpointer user_data)
+                       gpointer user_data,
+                       GDestroyNotify notify)
 {
   InfGtkIoTimeout* timeout;
   timeout = g_slice_new(InfGtkIoTimeout);
@@ -82,6 +89,7 @@ inf_gtk_io_timeout_new(InfGtkIo* io,
   timeout->id = 0;
   timeout->func = func;
   timeout->user_data = user_data;
+  timeout->notify = notify;
   return timeout;
 }
 
@@ -90,6 +98,8 @@ inf_gtk_io_timeout_free(InfGtkIoTimeout* timeout)
 {
   if(timeout->id != 0)
     g_source_remove(timeout->id);
+  if(timeout->notify)
+    timeout->notify(timeout->user_data);
 
   g_slice_free(InfGtkIoTimeout, timeout);
 }
@@ -121,6 +131,7 @@ inf_gtk_io_init(GTypeInstance* instance,
   priv = INF_GTK_IO_PRIVATE(io);
 
   priv->watches = NULL;
+  priv->timeouts = NULL;
 }
 
 static void
@@ -215,7 +226,8 @@ inf_gtk_io_io_watch(InfIo* io,
                     InfNativeSocket* socket,
                     InfIoEvent events,
                     InfIoFunc func,
-                    gpointer user_data)
+                    gpointer user_data,
+                    GDestroyNotify notify)
 {
   InfGtkIoPrivate* priv;
   InfGtkIoWatch* watch;
@@ -228,7 +240,7 @@ inf_gtk_io_io_watch(InfIo* io,
   {
     if(events != 0)
     {
-      watch = inf_gtk_io_watch_new(socket, func, user_data);
+      watch = inf_gtk_io_watch_new(socket, func, user_data, notify);
       priv->watches = g_slist_prepend(priv->watches, watch);
     }
   }
@@ -266,13 +278,14 @@ static gpointer
 inf_gtk_io_io_add_timeout(InfIo* io,
                           guint msecs,
                           InfIoTimeoutFunc func,
-                          gpointer user_data)
+                          gpointer user_data,
+                          GDestroyNotify notify)
 {
   InfGtkIoPrivate* priv;
   InfGtkIoTimeout* timeout;
 
   priv = INF_GTK_IO_PRIVATE(io);
-  timeout = inf_gtk_io_timeout_new(INF_GTK_IO(io), func, user_data);
+  timeout = inf_gtk_io_timeout_new(INF_GTK_IO(io), func, user_data, notify);
   timeout->id = g_timeout_add(msecs, inf_gtk_io_timeout_func, timeout);
   priv->timeouts = g_slist_prepend(priv->timeouts, timeout);
 
