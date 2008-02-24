@@ -86,6 +86,30 @@ inf-xml-util
 @Returns: 
 
 
+<!-- ##### FUNCTION inf_xml_util_get_attribute_double ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@result: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_xml_util_get_attribute_double_required ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@result: 
+@error: 
+@Returns: 
+
+
 <!-- ##### FUNCTION inf_xml_util_set_attribute ##### -->
 <para>
 
@@ -107,6 +131,16 @@ inf-xml-util
 
 
 <!-- ##### FUNCTION inf_xml_util_set_attribute_uint ##### -->
+<para>
+
+</para>
+
+@xml: 
+@attribute: 
+@value: 
+
+
+<!-- ##### FUNCTION inf_xml_util_set_attribute_double ##### -->
 <para>
 
 </para>

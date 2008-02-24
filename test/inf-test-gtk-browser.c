@@ -53,16 +53,19 @@ inf_test_gtk_browser_session_new(InfIo* io,
                                  InfXmlConnection* sync_connection)
 {
   InfTextGtkBuffer* buffer;
+  InfUserTable* user_table;
   GtkTextBuffer* textbuffer;
   InfTextSession* session;
 
   textbuffer = gtk_text_buffer_new(NULL);
-  buffer = inf_text_gtk_buffer_new(textbuffer);
+  user_table = inf_user_table_new();
+  buffer = inf_text_gtk_buffer_new(textbuffer, user_table);
 
-  session = inf_text_session_new(
+  session = inf_text_session_new_with_user_table(
     manager,
     INF_TEXT_BUFFER(buffer),
     io,
+    user_table,
     sync_group,
     sync_connection
   );

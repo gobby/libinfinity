@@ -61,6 +61,9 @@ inf_text_user_set_selection(InfTextUser* user,
                             guint position,
                             gint length);
 
+gdouble
+inf_text_user_get_hue(InfTextUser* user);
+
 G_END_DECLS
 
 #endif /* __INF_TEXT_USER_H__ */

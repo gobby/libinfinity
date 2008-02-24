@@ -1104,6 +1104,7 @@ inf_text_session_get_xml_user_props(InfSession* session,
   GParameter* parameter;
   guint caret;
   gint selection;
+  gdouble hue;
 
   g_assert(INF_SESSION_CLASS(parent_class)->get_xml_user_props != NULL);
 
@@ -1127,6 +1128,15 @@ inf_text_session_get_xml_user_props(InfSession* session,
     g_value_init(&parameter->value, G_TYPE_INT);
     g_value_set_int(&parameter->value, selection);
   }
+
+  parameter = inf_session_get_user_property(array, "hue");
+  g_value_init(&parameter->value, G_TYPE_DOUBLE);
+
+  /* Use a random hue if none set */
+  if(inf_xml_util_get_attribute_double(xml, "hue", &hue, NULL))
+    g_value_set_double(&parameter->value, hue);
+  else
+    g_value_set_double(&parameter->value, g_random_double());
 
   return array;
 }
@@ -1173,6 +1183,21 @@ inf_text_session_set_xml_user_props(InfSession* session,
       xml,
       "selection",
       g_value_get_int(&param->value)
+    );
+  }
+
+  param = inf_session_lookup_user_property(
+    params,
+    n_params,
+    "hue"
+  );
+
+  if(param != NULL)
+  {
+    inf_xml_util_set_attribute_double(
+      xml,
+      "hue",
+      g_value_get_double(&param->value)
     );
   }
 }

@@ -23,13 +23,15 @@ typedef struct _InfTextUserPrivate InfTextUserPrivate;
 struct _InfTextUserPrivate {
   guint caret;
   gint selection;
+  gdouble hue;
 };
 
 enum {
   PROP_0,
 
   PROP_CARET,
-  PROP_SELECTION
+  PROP_SELECTION,
+  PROP_HUE
 };
 
 enum {
@@ -55,6 +57,7 @@ inf_text_user_init(GTypeInstance* instance,
 
   priv->caret = 0;
   priv->selection = 0;
+  priv->hue = 0.0;
 }
 
 static void
@@ -76,6 +79,9 @@ inf_text_user_set_property(GObject* object,
     break;
   case PROP_SELECTION:
     priv->selection = g_value_get_int(value);
+    break;
+  case PROP_HUE:
+    priv->hue = g_value_get_double(value);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -102,6 +108,9 @@ inf_text_user_get_property(GObject* object,
     break;
   case PROP_SELECTION:
     g_value_set_int(value, priv->selection);
+    break;
+  case PROP_HUE:
+    g_value_set_double(value, priv->hue);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -152,7 +161,7 @@ inf_text_user_class_init(gpointer g_class,
       0,
       G_MAXUINT,
       0,
-      G_PARAM_READWRITE
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -166,7 +175,22 @@ inf_text_user_class_init(gpointer g_class,
       G_MININT,
       G_MAXINT,
       0,
-      G_PARAM_READWRITE
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_HUE,
+    g_param_spec_double(
+      "hue",
+      "Hue",
+      "The hue value of the user's color. saturation and lightness are set "
+      "by each client individually.",
+      0.0,
+      1.0,
+      0.0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -269,6 +293,23 @@ inf_text_user_set_selection(InfTextUser* user,
     position,
     length
   );
+}
+
+/**
+ * inf_text_user_get_hue:
+ * @user: A #InfTextUser.
+ *
+ * Returns the hue of the user's color as a double ranging from 0 to 1.
+ * The other components (saturation and lightness) are not specific to the
+ * user and may be chosen indivudually to optimize the actual visual display.
+ *
+ * Returns: The hue of the @user's color.
+ **/
+gdouble
+inf_text_user_get_hue(InfTextUser* user)
+{
+  g_return_val_if_fail(INF_TEXT_IS_USER(user), 0.0);
+  return INF_TEXT_USER_PRIVATE(user)->hue;
 }
 
 /* vim:set et sw=2 ts=2: */

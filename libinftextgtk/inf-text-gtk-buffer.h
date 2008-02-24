@@ -20,6 +20,7 @@
 #define __INF_TEXT_GTK_BUFFER_H__
 
 #include <libinftext/inf-text-user.h>
+#include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-user.h>
 
 #include <gtk/gtktextbuffer.h>
@@ -50,7 +51,8 @@ GType
 inf_text_gtk_buffer_get_type(void) G_GNUC_CONST;
 
 InfTextGtkBuffer*
-inf_text_gtk_buffer_new(GtkTextBuffer* buffer);
+inf_text_gtk_buffer_new(GtkTextBuffer* buffer,
+                        InfUserTable* user_table);
 
 GtkTextBuffer*
 inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer);

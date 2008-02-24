@@ -99,11 +99,15 @@ infd_note_plugin_text_read_user(InfUserTable* user_table,
                                 GError** error)
 {
   guint id;
+  gdouble hue;
   xmlChar* name;
   gboolean result;
   InfUser* user;
 
   if(!inf_xml_util_get_attribute_uint_required(node, "id", &id, error))
+    return FALSE;
+
+  if(!inf_xml_util_get_attribute_double_required(node, "hue", &hue, error))
     return FALSE;
 
   name = inf_xml_util_get_attribute_required(node, "name", error);
@@ -139,7 +143,13 @@ infd_note_plugin_text_read_user(InfUserTable* user_table,
     else
     {
       user = INF_USER(
-        g_object_new(INF_TEXT_TYPE_USER, "id", id, "name", name, NULL)
+        g_object_new(
+          INF_TEXT_TYPE_USER,
+          "id", id,
+          "name", name,
+          "hue", hue,
+          NULL
+        )
       );
 
       inf_user_table_add_user(user_table, user);
@@ -381,6 +391,11 @@ infd_note_plugin_text_session_write_foreach_user_func(InfUser* user,
 
   inf_xml_util_set_attribute_uint(node, "id", inf_user_get_id(user));
   inf_xml_util_set_attribute(node, "name", inf_user_get_name(user));
+  inf_xml_util_set_attribute_double(
+    node,
+    "hue",
+    inf_text_user_get_hue(INF_TEXT_USER(user))
+  );
 }
 
 static gboolean

@@ -19,6 +19,8 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 
+#include <stdlib.h>
+#include <math.h> /* HUGE_VAL */
 #include <errno.h>
 
 static gboolean
@@ -124,6 +126,64 @@ inf_xml_util_string_to_uint(const gchar* attribute,
   }
 }
 
+static gboolean
+inf_xml_util_string_to_double(const gchar* attribute,
+                              const xmlChar* value,
+                              gdouble* output,
+                              GError** error)
+{
+  double converted;
+  char* endptr;
+
+  errno = 0;
+  converted = g_ascii_strtod((const char*)value, &endptr);
+
+  if(*value == '\0' || *endptr != '\0')
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      "Attribute '%s' does not contain a valid number",
+      attribute
+    );
+
+    return FALSE;
+  }
+  else if(errno == ERANGE &&
+          (converted == HUGE_VAL || converted == -HUGE_VAL))
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      "Attribute '%s' causes overflow (%s)",
+      attribute,
+      (const gchar*)value
+    );
+
+    return FALSE;
+  }
+  else if(errno == ERANGE && converted == 0.0)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      "Attribute '%s' causes underflow (%s)",
+      attribute,
+      (const gchar*)value
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    *output = converted;
+    return TRUE;
+  }
+}
+
 xmlChar*
 inf_xml_util_get_attribute(xmlNodePtr xml,
                            const gchar* attribute)
@@ -222,6 +282,40 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
   return retval;
 }
 
+gboolean
+inf_xml_util_get_attribute_double(xmlNodePtr xml,
+                                  const gchar* attribute,
+                                  gdouble* result,
+                                  GError** error)
+{
+  xmlChar* value;
+  gboolean retval;
+
+  value = xmlGetProp(xml, (const xmlChar*)attribute);
+  if(value == NULL) return FALSE;
+
+  retval = inf_xml_util_string_to_double(attribute, value, result, error);
+  xmlFree(value);
+  return retval;
+}
+
+gboolean
+inf_xml_util_get_attribute_double_required(xmlNodePtr xml,
+                                           const gchar* attribute,
+                                           gdouble* result,
+                                           GError** error)
+{
+  xmlChar* value;
+  gboolean retval;
+
+  value = inf_xml_util_get_attribute_required(xml, attribute, error);
+  if(value == NULL) return FALSE;
+
+  retval = inf_xml_util_string_to_double(attribute, value, result, error);
+  xmlFree(value);
+  return retval;
+}
+
 void
 inf_xml_util_set_attribute(xmlNodePtr xml,
                            const gchar* attribute,
@@ -249,6 +343,16 @@ inf_xml_util_set_attribute_uint(xmlNodePtr xml,
   char buffer[24];
   sprintf(buffer, "%u", value);
 
+  xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
+}
+
+void
+inf_xml_util_set_attribute_double(xmlNodePtr xml,
+                                  const gchar* attribute,
+                                  gdouble value)
+{
+  char buffer[G_ASCII_DTOSTR_BUF_SIZE];
+  g_ascii_dtostr(buffer, G_ASCII_DTOSTR_BUF_SIZE, value);
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
 

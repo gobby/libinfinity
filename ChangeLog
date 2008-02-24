@@ -1,3 +1,27 @@
+2008-08-24  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xml-util.h:
+	* libinfinity/common/inf-xml-util.c: Added
+	inf_xml_util_get_attribute_double(),
+	inf_xml_util_get_attribute_double_required() and
+	inf_xml_util_set_attribute_double().
+
+	* libinftext/inf-text-user.h:
+	* libinftext/inf-text-user.c: Added the "hue" property.
+
+	* libinftext/inf-text-session.c: Adapted get_xml_user_props and
+	set_xml_user_props.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c: Save hue
+	property in filesystem storage.
+
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Set tag background color
+	according tu hue property of author, added the "user-table" property,
+	take in inf_text_gtk_buffer_new().
+
+	* test/inf-test-gtk-browser.c: Adapt to API change.
+
 2008-02-24  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-session.c: Delay caret updates if too frequent.
@@ -950,7 +974,7 @@
 	following request. Recognize undo requests by <undo /> child instead
 	of type="undo" attribute, as in the protocol specification. Keep
 	users in the user table in-sync with those in InfAdoptedAlgorithm.
-	Don't leak the request in inf_adopted_session_Process_xml_run().
+	Don't leak the request in inf_adopted_session_process_xml_run().
 
 	* libinfinity/adopted/inf-adopted-algorithm.c: Update user vector
 	after having received a request, not only when having processed it.

@@ -58,6 +58,18 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
                                          guint* result,
                                          GError** error);
 
+gboolean
+inf_xml_util_get_attribute_double(xmlNodePtr xml,
+                                  const gchar* attribute,
+                                  gdouble* result,
+                                  GError** error);
+
+gboolean
+inf_xml_util_get_attribute_double_required(xmlNodePtr xml,
+                                           const gchar* attribute,
+                                           gdouble* result,
+                                           GError** error);
+
 void
 inf_xml_util_set_attribute(xmlNodePtr xml,
                            const gchar* attribute,
@@ -72,6 +84,11 @@ void
 inf_xml_util_set_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
                                 guint value);
+
+void
+inf_xml_util_set_attribute_double(xmlNodePtr xml,
+                                  const gchar* attribute,
+                                  gdouble value);
 
 G_END_DECLS
 

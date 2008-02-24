@@ -943,9 +943,12 @@ inf_xml_util_get_attribute_int
 inf_xml_util_get_attribute_int_required
 inf_xml_util_get_attribute_uint
 inf_xml_util_get_attribute_uint_required
+inf_xml_util_get_attribute_double
+inf_xml_util_get_attribute_double_required
 inf_xml_util_set_attribute
 inf_xml_util_set_attribute_int
 inf_xml_util_set_attribute_uint
+inf_xml_util_set_attribute_double
 </SECTION>
 
 <SECTION>

@@ -12,7 +12,7 @@ would be nice to have done for the first stable release.
     - Browser API
     - Session proxy idle property 
   - [x] 26: noop requests, delay caret updates
-  - [ ] 28: color field in text user
+  - [x] 28: color field in text user
   - [ ]  1: cleanup tests
 
 'Milestone' 2:

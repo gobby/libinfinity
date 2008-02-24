@@ -22,16 +22,6 @@
 #include <math.h> /* for cos() */
 #include <string.h> /* for strlen() */
 
-/* TODO: Remove tags when copy+pasting or drag+droping text. Code can
- * probably be used from gobby. Note gobby is GPL, but I am the author of
- * that code anyway :-). armin.
- *
- * Actually, this could already work since we deny the first (direct)
- * insertion but insert then manually again, see
- * inf_text_gtk_buffer_insert_text_cb(). */
-
-/* TODO: Watch active user's caret and selection */
-
 struct _InfTextBufferIter {
   GtkTextIter begin;
   GtkTextIter end;
@@ -48,6 +38,7 @@ struct _InfTextGtkBufferTagRemove {
 typedef struct _InfTextGtkBufferPrivate InfTextGtkBufferPrivate;
 struct _InfTextGtkBufferPrivate {
   GtkTextBuffer* buffer;
+  InfUserTable* user_table;
   GHashTable* user_tags;
   InfTextUser* active_user;
   gboolean custom_edit;
@@ -57,6 +48,7 @@ enum {
   PROP_0,
 
   PROP_BUFFER,
+  PROP_USER_TABLE,
   PROP_ACTIVE_USER
 };
 
@@ -141,32 +133,6 @@ hsv_to_rgb (gdouble *h,
   }
 }
 
-/* Maps a user ID to a hue value for its user color */
-static gdouble
-inf_text_gtk_buffer_id_to_hue(guint id)
-{
-  gdouble hue;
-  gdouble mod;
-
-  if(id == 0) return 0.0;
-
-  hue = 0.5;
-  mod = hue / 2.0;
-
-  while(id > 1)
-  {
-    if(id % 2)
-      hue += mod;
-    else
-      hue -= mod;
-
-    mod /= 2.0;
-    id /= 2;
-  }
-
-  return hue;
-}
-
 static GtkTextTag*
 inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
                                  guint user_id)
@@ -175,6 +141,7 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
   GtkTextTagTable* table;
   GtkTextTag* tag;
   gchar* tag_name;
+  InfTextUser* user;
 
   gdouble hue;
   gdouble saturation;
@@ -204,17 +171,29 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
       GUINT_TO_POINTER(user_id)
     );
 
-    hue = inf_text_gtk_buffer_id_to_hue(user_id);
-    saturation = 0.35 + 0.15 * cos((gdouble)user_id / 16.0 * G_PI);
-    value = 1.0;
+    /* Unowned text has a user tag, but with no background color assigned */
+    if(user_id != 0)
+    {
+      user = INF_TEXT_USER(
+        inf_user_table_lookup_user_by_id(priv->user_table, user_id)
+      );
+      g_assert(user != NULL);
 
-    hsv_to_rgb(&hue, &saturation, &value);
+      hue = inf_text_user_get_hue(user);
+      /* TODO: Choose these to also fit a dark theme. Perhaps make a property
+       * out of them if we can't find out here. */
+      saturation = 0.35;
+      value = 1.0;
 
-    color.red = hue * 0xffff;
-    color.green = saturation * 0xffff;
-    color.blue = value * 0xffff;
+      hsv_to_rgb(&hue, &saturation, &value);
 
-    g_object_set(G_OBJECT(tag), "background-gdk", &color, NULL);
+      color.red = hue * 0xffff;
+      color.green = saturation * 0xffff;
+      color.blue = value * 0xffff;
+
+      g_object_set(G_OBJECT(tag), "background-gdk", &color, NULL);
+    }
+
     return tag;
   }
 }
@@ -484,6 +463,7 @@ inf_text_gtk_buffer_init(GTypeInstance* instance,
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
   priv->buffer = NULL;
+  priv->user_table = NULL;
 
   priv->user_tags = g_hash_table_new_full(
     NULL,
@@ -508,6 +488,7 @@ inf_text_gtk_buffer_dispose(GObject* object)
 
   inf_text_gtk_buffer_set_buffer(buffer, NULL);
   inf_text_gtk_buffer_set_active_user(buffer, NULL);
+  g_object_unref(priv->user_table);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -548,6 +529,10 @@ inf_text_gtk_buffer_set_property(GObject* object,
     );
 
     break;
+  case PROP_USER_TABLE:
+    g_assert(priv->user_table == NULL); /* construct/only */
+    priv->user_table = INF_USER_TABLE(g_value_dup_object(value));
+    break;
   case PROP_ACTIVE_USER:
     inf_text_gtk_buffer_set_active_user(
       buffer,
@@ -577,6 +562,9 @@ inf_text_gtk_buffer_get_property(GObject* object,
   {
   case PROP_BUFFER:
     g_value_set_object(value, G_OBJECT(priv->buffer));
+    break;
+  case PROP_USER_TABLE:
+    g_value_set_object(value, G_OBJECT(priv->user_table));
     break;
   case PROP_ACTIVE_USER:
     g_value_set_object(value, G_OBJECT(priv->active_user));
@@ -952,6 +940,18 @@ inf_text_gtk_buffer_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_USER_TABLE,
+    g_param_spec_object(
+      "user-table",
+      "User table",
+      "A user table of the participating users",
+      INF_TYPE_USER_TABLE,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_ACTIVE_USER,
     g_param_spec_object(
       "active-user",
@@ -1051,22 +1051,27 @@ inf_text_gtk_buffer_get_type(void)
 /**
  * inf_text_gtk_buffer_new:
  * @buffer: The underlaying #GtkTextBuffer.
+ * @user_table: The #InfUserTable containing the participating users.
  *
  * Creates a new #InfTextGtkBuffer wrapping @buffer. It implements the
- * #InfTextBuffer interface by using @buffer to store the text.
+ * #InfTextBuffer interface by using @buffer to store the text. User colors
+ * are read from the users from @user_table.
  *
  * Return Value: A #InfTextGtkBuffer.
  **/
 InfTextGtkBuffer*
-inf_text_gtk_buffer_new(GtkTextBuffer* buffer)
+inf_text_gtk_buffer_new(GtkTextBuffer* buffer,
+                        InfUserTable* user_table)
 {
   GObject* object;
 
   g_return_val_if_fail(GTK_IS_TEXT_BUFFER(buffer), NULL);
+  g_return_val_if_fail(INF_IS_USER_TABLE(user_table), NULL);
 
   object = g_object_new(
     INF_TEXT_GTK_TYPE_BUFFER,
     "buffer", buffer,
+    "user-table", user_table,
     NULL
   );
 
