@@ -27,7 +27,7 @@ inf-marshal.c: inf-marshal.in
 BUILT_SOURCES = inf-marshal.h inf-marshal.c
 CLEANFILES = inf-marshal.h inf-marshal.c
 
-libinfinity_1_0_ladir = $(includedir)/libinfinity-1.0/infinity
+libinfinity_1_0_ladir = $(includedir)/libinfinity-1.0/libinfinity
 
 # TODO: Do not install these two files
 libinfinity_1_0_la_HEADERS = \

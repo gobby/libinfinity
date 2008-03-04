@@ -10,7 +10,7 @@ libinfinity_common_la_CPPFLAGS = \
 
 noinst_LTLIBRARIES = libinfinity_common.la
 
-libinfinity_common_ladir = $(includedir)/libinfinity-1.0/infinity/common
+libinfinity_common_ladir = $(includedir)/libinfinity-1.0/libinfinity/common
 
 libinfinity_common_la_SOURCES = \
 	inf-buffer.c \

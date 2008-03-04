@@ -5,7 +5,7 @@ libinfinity_adopted_la_CPPFLAGS = \
 
 noinst_LTLIBRARIES = libinfinity_adopted.la
 
-libinfinity_adopted_ladir = $(includedir)/libinfinity-1.0/infinity/adopted
+libinfinity_adopted_ladir = $(includedir)/libinfinity-1.0/libinfinity/adopted
 
 libinfinity_adopted_la_SOURCES = \
 	inf-adopted-algorithm.c \

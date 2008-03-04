@@ -5,7 +5,7 @@ noinst_LTLIBRARIES = libinfinity_server.la
 libinfinity_server_la_CPPFLAGS = \
 	$(infinity_CFLAGS)
 
-libinfinity_server_ladir = $(includedir)/libinfinity-1.0/infinity/server
+libinfinity_server_ladir = $(includedir)/libinfinity-1.0/libinfinity/server
 
 libinfinity_server_la_SOURCES = \
 	infd-directory.c \

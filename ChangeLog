@@ -1,5 +1,14 @@
 2008-03-04  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/Makefile.am:
+	* libinfinity/common/Makefile.am:
+	* libinfinity/adopted/Makefile.am:
+	* libinfinity/client/Makefile.am:
+	* libinfinity/server/Makefile.am: Fixed include files installation
+	path.
+
+2008-03-04  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-view.h:
 	* libinfgtk/inf-gtk-browser-view.c: Don't subscribe on row activation,
 	but emit an activate signal so that client code can subscribe.
