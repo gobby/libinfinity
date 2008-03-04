@@ -1,3 +1,11 @@
+2008-03-04  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c: Don't subscribe on row activation,
+	but emit an activate signal so that client code can subscribe.
+
+	* test/inf-test-gtk-browser.c: Adapt.
+
 2008-08-24  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xml-util.h:

@@ -431,6 +431,34 @@ on_subscribe_session(InfcBrowser* browser,
 }
 
 static void
+on_activate(InfGtkBrowserView* view,
+            GtkTreeIter* iter,
+            gpointer user_data)
+{
+  InfcBrowser* browser;
+  InfcBrowserIter* browser_iter;
+
+  gtk_tree_model_get(
+    GTK_TREE_MODEL(inf_gtk_browser_view_get_model(view)),
+    iter,
+    INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+    INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+    -1
+  );
+
+  /* Subscribe, if possible and not already */
+  if(!infc_browser_iter_get_session(browser, browser_iter) &&
+     !infc_browser_iter_get_subscribe_request(browser, browser_iter) &&
+     infc_browser_iter_get_plugin(browser, browser_iter) != NULL)
+  {
+    infc_browser_iter_subscribe_session(browser, browser_iter);
+  }
+
+  infc_browser_iter_free(browser_iter);
+  g_object_unref(browser);
+}
+
+static void
 on_set_browser(InfGtkBrowserModel* model,
                GtkTreePath* path,
                GtkTreeIter* iter,
@@ -503,6 +531,13 @@ main(int argc,
   view = inf_gtk_browser_view_new_with_model(model);
   g_object_unref(G_OBJECT(model));
   gtk_widget_show(view);
+
+  g_signal_connect(
+    G_OBJECT(view),
+    "activate",
+    G_CALLBACK(on_activate),
+    NULL
+  );
 
   scroll = gtk_scrolled_window_new(NULL, NULL);
 

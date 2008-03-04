@@ -41,6 +41,9 @@ typedef struct _InfGtkBrowserViewClass InfGtkBrowserViewClass;
 struct _InfGtkBrowserViewClass {
   GtkBinClass parent_class;
 
+  void (*activate)(InfGtkBrowserView* view,
+                   GtkTreeIter* iter);
+
   void (*set_scroll_adjustments)(InfGtkBrowserView* view,
                                  GtkAdjustment* hadjustment,
                                  GtkAdjustment* vadjustment);
@@ -62,6 +65,9 @@ inf_gtk_browser_view_new(void);
 
 GtkWidget*
 inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model);
+
+InfGtkBrowserModel*
+inf_gtk_browser_view_get_model(InfGtkBrowserView* view);
 
 G_END_DECLS
 

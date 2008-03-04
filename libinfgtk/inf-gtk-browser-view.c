@@ -72,6 +72,12 @@ enum {
   PROP_MODEL
 };
 
+enum {
+  ACTIVATE,
+
+  LAST_SIGNAL
+};
+
 #define INF_GTK_BROWSER_VIEW_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_BROWSER_VIEW, InfGtkBrowserViewPrivate))
 
 /* We do some rather complex stuff here because we don't get the iter when
@@ -86,6 +92,7 @@ enum {
  * session synchronizations. */
 
 static GObjectClass* parent_class;
+static guint view_signals[LAST_SIGNAL];
 
 /*
  * Utility functions
@@ -1341,6 +1348,7 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
                                       GtkTreeViewColumn* column,
                                       gpointer user_data)
 {
+  InfGtkBrowserView* view;
   GtkTreeModel* model;
   InfGtkBrowserModelStatus status;
   InfDiscovery* discovery;
@@ -1349,6 +1357,8 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
 
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
 
   /* Connect to host, if not already */
   if(gtk_tree_path_get_depth(path) == 1)
@@ -1398,13 +1408,13 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
     }
     else
     {
-      /* Subscribe, if possible and not already */
-      if(!infc_browser_iter_get_session(browser, browser_iter) &&
-         !infc_browser_iter_get_subscribe_request(browser, browser_iter) &&
-         infc_browser_iter_get_plugin(browser, browser_iter) != NULL)
-      {
-        infc_browser_iter_subscribe_session(browser, browser_iter);
-      }
+      /* Notify */
+      g_signal_emit(
+        G_OBJECT(view),
+        view_signals[ACTIVATE],
+        0,
+        &iter
+      );
     }
 
     infc_browser_iter_free(browser_iter);
@@ -2119,6 +2129,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   widget_class->size_request = inf_gtk_browser_view_size_request;
   widget_class->size_allocate = inf_gtk_browser_view_size_allocate;
 
+  view_class->activate = NULL;
   view_class->set_scroll_adjustments =
     inf_gtk_browser_view_set_scroll_adjustments;
 
@@ -2132,6 +2143,18 @@ inf_gtk_browser_view_class_init(gpointer g_class,
       INF_GTK_TYPE_BROWSER_MODEL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
+  );
+
+  view_signals[ACTIVATE] = g_signal_new(
+    "activate",
+    G_TYPE_FROM_CLASS(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfGtkBrowserViewClass, activate),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED,
+    G_TYPE_NONE,
+    1,
+    GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
   );
 
   widget_class->set_scroll_adjustments_signal = g_signal_new(
@@ -2211,6 +2234,28 @@ inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model)
   GObject* object;
   object = g_object_new(INF_GTK_TYPE_BROWSER_VIEW, "model", model, NULL);
   return GTK_WIDGET(object);
+}
+
+/**
+ * inf_gtk_browser_view_get_model:
+ * @view: A #InfGtkBrowserView.
+ *
+ * Returns the model displayed by @view.
+ * 
+ * Returns: A #InfGtkBrowserModel.
+ **/
+InfGtkBrowserModel*
+inf_gtk_browser_view_get_model(InfGtkBrowserView* view)
+{
+  InfGtkBrowserViewPrivate* priv;
+  GtkTreeView* treeview;
+
+  g_return_val_if_fail(INF_GTK_IS_BROWSER_VIEW(view), NULL);
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  treeview = GTK_TREE_VIEW(priv->treeview);
+
+  return INF_GTK_BROWSER_MODEL(gtk_tree_view_get_model(treeview));
 }
 
 /* vim:set et sw=2 ts=2: */
