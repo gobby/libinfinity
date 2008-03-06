@@ -1,5 +1,14 @@
 2008-03-06  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/Makefile.am: Build methods after having built
+	libinfinity, so they can link against it.
+
+	* libinfinity/methods/local-central/Makefile.am: Link against
+	libinfinity-1.0 instead of libinfinity_common so that the marshal
+	functions are not undefined.
+
+2008-03-06  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-model.h:
 	* libinfgtk/inf-gtk-browser-model.c: Added a "name" column for
 	toplevel items, to support sensible item names for direct connections.

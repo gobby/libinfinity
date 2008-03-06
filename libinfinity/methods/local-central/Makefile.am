@@ -11,7 +11,7 @@ libinf_method_local_central_la_CPPFLAGS = \
 
 libinf_method_local_central_la_LIBADD = \
 	$(infinity_LIBS) \
-	${top_builddir}/libinfinity/common/libinfinity_common.la
+	${top_builddir}/libinfinity/libinfinity-1.0.la
 
 libinf_method_local_central_la_SOURCES = \
 	inf-method-local-central.c

@@ -1,4 +1,4 @@
-SUBDIRS = common adopted server client methods
+SUBDIRS = common adopted server client . methods
 
 lib_LTLIBRARIES = libinfinity-1.0.la
 
