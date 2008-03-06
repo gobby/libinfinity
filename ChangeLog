@@ -1,3 +1,17 @@
+2008-03-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-config.h.in: Configuration file that only contains
+	prefixed defines, so it is safe to be installed.
+
+	* libinfinity/Makefile.am: Noted that inf-config.h should be
+	installed, in contrast to inf-marshal.h.
+
+	* configure.ac: Let autoheader generate config.h, not
+	libinfinity/inf-config.h.
+
+	* libinfinity/common/inf-tcp-connection.c: Fixed a typo (#error ->
+	@error).
+
 2008-03-04  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/Makefile.am:

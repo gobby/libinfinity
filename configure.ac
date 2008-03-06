@@ -5,7 +5,7 @@ AC_INIT([infinote], [infinote_version], [armin@arbur.net])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-net-object.h])
-AC_CONFIG_HEADER([libinfinity/inf-config.h])
+AC_CONFIG_HEADER([config.h libinfinity/inf-config.h])
 
 INFINOTE_VERSION=infinote_version
 AC_SUBST(INFINOTE_VERSION)

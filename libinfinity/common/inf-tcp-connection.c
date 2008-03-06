@@ -851,7 +851,7 @@ inf_tcp_connection_get_type(void)
 /**
  * inf_tcp_connection_open:
  * @connection: A #InfTcpConnection.
- * #error: Location to store error information.
+ * @error: Location to store error information.
  *
  * Attempts to open @connection. Make sure to have set the "remote-address"
  * and "remote-port" property before calling this function. If an error
@@ -860,6 +860,8 @@ inf_tcp_connection_get_type(void)
  * (check the "status" property if you need to know). If an asynchronous
  * error occurs while the connection is being opened, the "error" signal
  * is emitted.
+ *
+ * Returns: %FALSE if an error occured and %TRUE otherwise.
  **/
 gboolean
 inf_tcp_connection_open(InfTcpConnection* connection,

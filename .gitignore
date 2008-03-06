@@ -14,6 +14,7 @@ config.status
 config.guess
 missing
 stamp-h1
+stamp-h2
 *.la
 install-sh
 gtk-doc.make
@@ -23,3 +24,5 @@ compile
 aclocal.m4
 autom4te.cache
 *.swp
+config.h
+config.h.in
