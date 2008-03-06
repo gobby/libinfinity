@@ -35,6 +35,7 @@
 
 typedef struct _InfGtkBrowserModelItem InfGtkBrowserModelItem;
 struct _InfGtkBrowserModelItem {
+  gchar* name;
   InfDiscovery* discovery;
   InfDiscoveryInfo* info;
 
@@ -363,11 +364,13 @@ inf_gtk_browser_model_item_set_browser(InfGtkBrowserModel* model,
   );
 }
 
+/* takes ownership of name */
 static InfGtkBrowserModelItem*
 inf_gtk_browser_model_add_item(InfGtkBrowserModel* model,
                                InfDiscovery* discovery,
                                InfDiscoveryInfo* info,
-                               InfXmlConnection* connection)
+                               InfXmlConnection* connection,
+                               gchar* name)
 {
   InfGtkBrowserModelPrivate* priv;
   InfGtkBrowserModelItem* item;
@@ -384,6 +387,7 @@ inf_gtk_browser_model_add_item(InfGtkBrowserModel* model,
 
   priv = INF_GTK_BROWSER_MODEL_PRIVATE(model);
   item = g_slice_new(InfGtkBrowserModelItem);
+  item->name = name;
   item->discovery = discovery;
   item->info = info;
   item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
@@ -502,6 +506,7 @@ inf_gtk_browser_model_remove_item(InfGtkBrowserModel* model,
     g_error_free(item->error);
 
   g_hash_table_unref(item->node_errors);
+  g_free(item->name);
   g_slice_free(InfGtkBrowserModelItem, item);
 }
 
@@ -518,7 +523,8 @@ inf_gtk_browser_model_discovered_cb(InfDiscovery* discovery,
     INF_GTK_BROWSER_MODEL(user_data),
     discovery,
     info,
-    NULL
+    NULL,
+    inf_discovery_info_get_service_name(discovery, info)
   );
 }
 
@@ -904,7 +910,10 @@ inf_gtk_browser_model_resolv_complete_func(InfDiscoveryInfo* info,
       path = gtk_tree_path_new();
       gtk_tree_model_rows_reordered(GTK_TREE_MODEL(model), path, NULL, order);
       gtk_tree_path_free(path);
-      
+
+      /* TODO: Perhaps we should emit a signal so that the view can
+       * highlight and scroll to the existing item. */
+
       g_free(order);
     }
   }
@@ -1333,6 +1342,11 @@ inf_gtk_browser_model_tree_model_get_value(GtkTreeModel* model,
     g_value_init(value, INF_GTK_TYPE_BROWSER_MODEL_STATUS);
     g_value_set_enum(value, item->status);
     break;
+  case INF_GTK_BROWSER_MODEL_COL_NAME:
+    g_assert(browser_iter.node == NULL); /* only toplevel */
+    g_value_init(value, G_TYPE_STRING);
+    g_value_set_string(value, item->name);
+    break;
   case INF_GTK_BROWSER_MODEL_COL_ERROR:
     if(browser_iter.node == NULL)
     {
@@ -1514,7 +1528,7 @@ inf_gtk_browser_model_tree_model_iter_n_children(GtkTreeModel* model,
   guint n;
 
   priv = INF_GTK_BROWSER_MODEL_PRIVATE(model);
-  g_assert(iter->stamp == priv->stamp);
+  g_assert(iter == NULL || iter->stamp == priv->stamp);
 
   if(iter == NULL)
   {
@@ -2097,6 +2111,7 @@ inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
   InfGtkBrowserModelPrivate* priv;
   GSList* discovered;
   GSList* item;
+  InfDiscoveryInfo* info;
 
   g_return_if_fail(INF_GTK_IS_BROWSER_MODEL(model));
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
@@ -2124,11 +2139,14 @@ inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
   discovered = inf_discovery_get_discovered(discovery, "_infinote._tcp");
   for(item = discovered; item != NULL; item = g_slist_next(item))
   {
+    info = (InfDiscoveryInfo*)item->data;
+
     inf_gtk_browser_model_add_item(
       model,
       discovery,
-      (InfDiscoveryInfo*)item->data,
-      NULL
+      info,
+      NULL,
+      inf_discovery_info_get_service_name(discovery, info)
     );
   }
   g_slist_free(discovered);
@@ -2140,29 +2158,61 @@ inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
  * inf_gtk_browser_model_add_connection:
  * @model: A #InfGtkBrowserModel.
  * @connection: A #InfXmlConnection.
+ * @name: Name for the item, or %NULL.
  *
  * This function adds a connection to the @model. @model will show up
  * an item for the connection if there is not already one. This allows to
- * browse the explored parts of the directory of the remote site.
+ * browse the explored parts of the directory of the remote site. If @name
+ * is %NULL, then the #InfXmlConnection:remote-id of the connection will be
+ * used.
  *
  * @connection must be in %INF_XML_CONNECTION_OPEN or
  * %INF_XML_CONNECTION_OPENING status.
  **/
 void
 inf_gtk_browser_model_add_connection(InfGtkBrowserModel* model,
-                                     InfXmlConnection* connection)
+                                     InfXmlConnection* connection,
+                                     const gchar* name)
 {
   InfGtkBrowserModelPrivate* priv;
   InfGtkBrowserModelItem* item;
+  InfXmlConnectionStatus status;
+  gchar* remote_id;
 
   g_return_if_fail(INF_GTK_IS_BROWSER_MODEL(model));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+  g_return_if_fail(status == INF_XML_CONNECTION_OPENING ||
+                   status == INF_XML_CONNECTION_OPEN);
 
   priv = INF_GTK_BROWSER_MODEL_PRIVATE(model);
   item = inf_gtk_browser_model_find_item_by_connection(model, connection);
 
   if(item == NULL)
-    inf_gtk_browser_model_add_item(model, NULL, NULL, connection);
+  {
+    if(name == NULL)
+    {
+      g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
+      inf_gtk_browser_model_add_item(
+        model,
+        NULL,
+        NULL,
+        connection,
+        remote_id
+      );
+    }
+    else
+    {
+      inf_gtk_browser_model_add_item(
+        model,
+        NULL,
+        NULL,
+        connection,
+        g_strdup(name)
+      );
+    }
+  }
 }
 
 /**

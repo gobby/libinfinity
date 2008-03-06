@@ -1545,6 +1545,7 @@ inf_gtk_browser_view_name_data_func(GtkTreeViewColumn* column,
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
   const gchar* name;
+  gchar* top_name;
   gchar* service_name;
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
@@ -1573,26 +1574,12 @@ inf_gtk_browser_view_name_data_func(GtkTreeViewColumn* column,
     gtk_tree_model_get(
       model,
       iter,
-      INF_GTK_BROWSER_MODEL_COL_DISCOVERY, &discovery,
-      INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
+      INF_GTK_BROWSER_MODEL_COL_NAME, &top_name,
       -1
     );
 
-    if(discovery != NULL)
-    {
-      g_assert(info != NULL);
-
-      service_name = inf_discovery_info_get_service_name(discovery, info);
-      g_object_set(G_OBJECT(renderer), "text", service_name, NULL);
-      g_free(service_name);
-
-      g_object_unref(G_OBJECT(discovery));
-    }
-    else
-    {
-      /* TODO: Display remote address */
-      g_object_set(G_OBJECT(renderer), "text", "Direct connection", NULL);
-    }
+    g_object_set(G_OBJECT(renderer), "text", top_name, NULL);
+    g_free(top_name);
   }
 }
 

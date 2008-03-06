@@ -309,10 +309,6 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
       break;
     }
 
-/*    gconstpointer ptr = inf_ip_address_get_raw(inf_addr);
-    ((char*)ptr)[3] = discovery_info->interface;
-    printf("%s\n", inf_ip_address_to_string(inf_addr));*/
-
     discovery_info->resolved = inf_xmpp_manager_lookup_connection_by_address(
       priv->xmpp_manager,
       inf_addr,
@@ -374,6 +370,12 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
     }
     else
     {
+      g_object_weak_ref(
+        G_OBJECT(discovery_info->resolved),
+        inf_discovery_avahi_discovery_info_resolved_destroy_cb,
+        discovery_info
+      );
+
       inf_discovery_avahi_info_resolv_complete(discovery_info);
     }
     

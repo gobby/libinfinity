@@ -340,7 +340,6 @@ inf_connection_manager_group_free(gpointer group_)
   group = (InfConnectionManagerGroup*)group_;
   g_assert(group->ref_count == 0);
 
-
   for(item = group->methods; item != NULL; item = g_slist_next(item))
   {
     instance = (InfConnectionManagerMethodInstance*)item->data;
@@ -834,6 +833,10 @@ inf_connection_manager_open_group(InfConnectionManager* manager,
     NULL
   );
   g_return_val_if_fail(methods != NULL && *methods != NULL, NULL);
+  g_return_val_if_fail(
+    inf_connection_manager_lookup_group(manager, group_name, NULL) == NULL,
+    NULL
+  );
   
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
   group = g_slice_new(InfConnectionManagerGroup);
@@ -903,6 +906,14 @@ inf_connection_manager_join_group(InfConnectionManager* manager,
   g_return_val_if_fail(INF_IS_XML_CONNECTION(publisher_conn), NULL);
   g_return_val_if_fail(object == NULL || INF_IS_NET_OBJECT(object), NULL);
   g_return_val_if_fail(meth != NULL, NULL);
+  g_return_val_if_fail(
+    inf_connection_manager_lookup_group(
+      manager,
+      group_name,
+      publisher_conn
+    ) == NULL,
+    NULL
+  );
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
   group = g_slice_new(InfConnectionManagerGroup);

@@ -56,6 +56,7 @@ typedef enum _InfGtkBrowserModelColumn {
   INF_GTK_BROWSER_MODEL_COL_DISCOVERY,
   INF_GTK_BROWSER_MODEL_COL_BROWSER,
   INF_GTK_BROWSER_MODEL_COL_STATUS, /* only toplevel */
+  INF_GTK_BROWSER_MODEL_COL_NAME, /* only toplevel */
   INF_GTK_BROWSER_MODEL_COL_ERROR,
   INF_GTK_BROWSER_MODEL_COL_NODE,
 
@@ -92,7 +93,8 @@ inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
 
 void
 inf_gtk_browser_model_add_connection(InfGtkBrowserModel* model,
-                                     InfXmlConnection* connection);
+                                     InfXmlConnection* connection,
+                                     const gchar* name);
 
 void
 inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,

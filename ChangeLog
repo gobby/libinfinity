@@ -1,5 +1,21 @@
 2008-03-06  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c: Added a "name" column for
+	toplevel items, to support sensible item names for direct connections.
+
+	* libinfgtk/inf-gtk-browser-view.c: Show that name.
+
+	* libinfinity/common/inf-connection-manager.c: Check that such a group
+	is not already present in inf_connection_manager_create_group() and
+	inf_connection_manager_join_group().
+
+	* libinfinity/common/inf-discovery-avahi.c: Also weakref discovered
+	XMPP connection when we did not need to create it. We don't strongref
+	it here neither, and must get notified when to invalidate the cache.
+
+2008-03-06  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-config.h.in: Configuration file that only contains
 	prefixed defines, so it is safe to be installed.
 
