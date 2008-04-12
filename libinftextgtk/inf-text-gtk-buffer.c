@@ -372,11 +372,8 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
   insert_mark = gtk_text_buffer_get_insert(gtk_buffer);
   sel_mark = gtk_text_buffer_get_selection_bound(gtk_buffer);
 
-  if(mark == insert_mark || mark == sel_mark)
+  if( (mark == insert_mark || mark == sel_mark) && priv->active_user != NULL)
   {
-    /* Move cursor of active user */
-    g_assert(priv->active_user != NULL);
-    
     gtk_text_buffer_get_iter_at_mark(gtk_buffer, &insert_iter, insert_mark);
     gtk_text_buffer_get_iter_at_mark(gtk_buffer, &sel_iter, sel_mark);
 

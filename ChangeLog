@@ -1,5 +1,10 @@
 2008-04-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c: Allow moving the text buffer's
+	cursor and selection without active user.
+
+2008-04-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c: Emit the subscribe-session signal
 	before finishing a pending request, so that signal handlers of
 	InfcNodeRequest::finished can access the newly created session via
