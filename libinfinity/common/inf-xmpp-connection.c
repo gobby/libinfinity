@@ -1460,6 +1460,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
                                       const xmlChar** attrs)
 {
   /* TODO: xml:lang and id field are missing here */
+  /* TODO: We SHOULD NOT send a 'to' field here, according to the RFC */
   static const gchar xmpp_connection_initial_request_to[] =
     "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" "
     "xmlns=\"jabber:client\" version=\"1.0\" from=\"%s\" to=\"%s\">";
@@ -2153,7 +2154,8 @@ inf_xmpp_connection_sax_start_element(void* context,
       {
         /* Got <stream:stream>, wait for <stream:features> now so that
          * we can start TLS or authentication if the server supports it. */
-        /* TODO: Read servers JID */
+        /* TODO: Read servers JID, if a from field is given? However, the RFC
+         * suggests we SHOULD silently ignore it. */
         if(priv->status == INF_XMPP_CONNECTION_INITIATED)
           priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
         else
@@ -2378,6 +2380,8 @@ static xmlSAXHandler inf_xmpp_connection_handler = {
 static void
 inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
 {
+  /* TODO: We MUST set a to field here, and we SHOULD NOT set a from field,
+   * according to the RFC 3920. */
   static const gchar xmpp_connection_initial_request[] =
     "<stream:stream version=\"1.0\" xmlns=\"jabber:client\" "
     "xmlns:stream=\"http://etherx.jabber.org/streams\" from=\"%s\">";
@@ -3020,7 +3024,8 @@ inf_xmpp_connection_get_property(GObject* object,
     break;
   case PROP_LOCAL_ID:
     /* TODO: Perhaps we could also use JIDs here, but we have to make sure
-     * then that they are unique within the whole network. */
+     * then that they are unique within the whole network, which is
+     * not so easy, and address/port serves the purpose equally well. */
     g_object_get(
       G_OBJECT(priv->tcp),
       "local-address", &addr,

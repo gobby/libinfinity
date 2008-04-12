@@ -1246,14 +1246,8 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     NULL
   );
 
-  if(request != NULL)
-  {
-    g_assert(INFC_IS_NODE_REQUEST(request));
-    iter.node_id = node->id;
-    iter.node = node;
-    infc_node_request_finished(INFC_NODE_REQUEST(request), &iter);
-    infc_request_manager_remove_request(priv->request_manager, request);
-  }
+  iter.node_id = node->id;
+  iter.node = node;
 
   g_signal_emit(
     G_OBJECT(browser),
@@ -1262,6 +1256,17 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     &iter,
     proxy
   );
+
+  /* We do this after having emitted the "subscribe-session" signal so that
+   * the handlers of the InfcNodeRequest::finished signal can access the
+   * new session via infc_browser_iter_get_session(), which is set by
+   * the default signal handler of InfcBrowser::subscribe-session. */
+  if(request != NULL)
+  {
+    g_assert(INFC_IS_NODE_REQUEST(request));
+    infc_node_request_finished(INFC_NODE_REQUEST(request), &iter);
+    infc_request_manager_remove_request(priv->request_manager, request);
+  }
 
   /* The default handler refs the proxy */
   g_object_unref(G_OBJECT(proxy));

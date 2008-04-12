@@ -1,3 +1,13 @@
+2008-04-12  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.c: Emit the subscribe-session signal
+	before finishing a pending request, so that signal handlers of
+	InfcNodeRequest::finished can access the newly created session via
+	infc_browser_iter_get_session().
+
+	* libinfinity/common/inf-xmpp-connection.c: Added some more comments
+	about RFC compliance.
+
 2008-03-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/Makefile.am: Build methods after having built
