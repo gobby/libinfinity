@@ -269,6 +269,11 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
       }
     }
 
+    /* We need to reset the _private field before we allow the node to be
+     * destroyed, otherwise libxml++ (if linked in) thinks it points to the
+     * C++ wrapper and tries to delete it. */
+    cur->_private = NULL;
+
     xmlAddChild(container, cur);
     inf_net_object_enqueued(group->object, connection, cur);
     ++ queue->inner_count;
@@ -1369,6 +1374,7 @@ inf_connection_manager_group_clear_queue(InfConnectionManagerGroup* group,
                                          InfXmlConnection* connection)
 {
   InfConnectionManagerQueue* queue;
+  xmlNode* cur;
 
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -1378,6 +1384,11 @@ inf_connection_manager_group_clear_queue(InfConnectionManagerGroup* group,
 
   if(queue->first_item != NULL)
   {
+    /* We need to reset the _private field to NULL before destruction to be
+     * compatible with libxml++, and perhaps other libxml2 wrappers. */
+    for(cur = queue->first_item; cur != NULL; cur = cur->next)
+      cur->_private = NULL;
+
     xmlFreeNodeList(queue->first_item);
     queue->first_item = NULL;
     queue->last_item = NULL;

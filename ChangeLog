@@ -1,3 +1,9 @@
+2008-04-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.c: Reset the _private
+	field of queued xmlNodePtr, so that libxml++ (when linked in) does not
+	assume that's the C++ wrapper for the node (it tries to delete it).
+
 2008-04-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.c: Allow moving the text buffer's
