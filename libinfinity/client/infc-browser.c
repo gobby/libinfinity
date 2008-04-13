@@ -162,6 +162,7 @@ enum {
 
 static GObjectClass* parent_class;
 static guint browser_signals[LAST_SIGNAL];
+static GQuark infc_browser_session_proxy_quark;
 
 /*
  * Callbacks
@@ -342,6 +343,38 @@ infc_browser_node_new_note(InfcBrowser* browser,
   return node;
 }
 
+/* Required by infc_browser_session_remove_session */
+static void
+infc_browser_session_close_cb(InfSession* session,
+                              gpointer user_data);
+
+static void
+infc_browser_session_remove_session(InfcBrowser* browser,
+                                    InfcBrowserNode* node)
+{
+  InfSession* session;
+
+  g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
+  g_assert(node->shared.known.session != NULL);
+
+  session = infc_session_proxy_get_session(node->shared.known.session);
+
+  g_signal_handlers_disconnect_by_func(
+    session,
+    G_CALLBACK(infc_browser_session_close_cb),
+    browser
+  );
+
+  g_object_set_qdata(
+    G_OBJECT(session),
+    infc_browser_session_proxy_quark,
+    NULL
+  );
+
+  g_object_unref(node->shared.known.session);
+  node->shared.known.session = NULL;
+}
+
 static void
 infc_browser_node_free(InfcBrowser* browser,
                        InfcBrowserNode* node)
@@ -361,7 +394,7 @@ infc_browser_node_free(InfcBrowser* browser,
     break;
   case INFC_BROWSER_NODE_NOTE_KNOWN:
     if(node->shared.known.session != NULL)
-      g_object_unref(G_OBJECT(node->shared.known.session));
+      infc_browser_session_remove_session(browser, node);
 
     break;
   case INFC_BROWSER_NODE_NOTE_UNKNOWN:
@@ -385,6 +418,38 @@ infc_browser_node_free(InfcBrowser* browser,
 /*
  * Signal handlers
  */
+
+static void
+infc_browser_session_close_cb(InfSession* session,
+                              gpointer user_data)
+{
+  InfcBrowser* browser;
+  InfcBrowserIter* iter;
+  InfcBrowserNode* node;
+
+  browser = INFC_BROWSER(user_data);
+  iter = (InfcBrowserIter*)g_object_get_qdata(
+    G_OBJECT(session),
+    infc_browser_session_proxy_quark
+  );
+
+  g_assert(iter != NULL);
+  g_assert(
+    g_hash_table_lookup(
+      INFC_BROWSER_PRIVATE(browser)->nodes, GUINT_TO_POINTER(iter->node_id)
+    ) == iter->node
+  );
+
+  node = (InfcBrowserNode*)iter->node;
+
+  g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
+  g_assert(node->shared.known.session != NULL);
+  g_assert(
+    infc_session_proxy_get_session(node->shared.known.session) == session
+  );
+
+  infc_browser_session_remove_session(browser, node);
+}
 
 /* Required by infc_browser_release_connection() */
 static void
@@ -1557,17 +1622,30 @@ infc_browser_subscribe_session_impl(InfcBrowser* browser,
   g_assert(node->shared.known.session == NULL);
 
   node->shared.known.session = proxy;
+
   g_object_ref(G_OBJECT(proxy));
 
   session = infc_session_proxy_get_session(proxy);
 
-  /* TODO: Connect to close, drop proxy? */
-
-#if 0
-  g_signal_connect(
-    G_OBJECT(
+  /* Associate the iter to the session so that we can remove the proxy
+   * from that item when the session is closed. */
+  g_object_set_qdata_full(
+    G_OBJECT(session),
+    infc_browser_session_proxy_quark,
+    infc_browser_iter_copy(iter),
+    (GDestroyNotify)infc_browser_iter_free
   );
-#endif
+
+  /* connect_after so that we release the reference to the object after it
+   * was closed. Otherwise, we would trigger another close signal when
+   * disposing the session before the default handler of the "close" signal
+   * ran. */
+  g_signal_connect_after(
+    session,
+    "close",
+    G_CALLBACK(infc_browser_session_close_cb),
+    browser
+  );
 }
 
 /*
@@ -1597,6 +1675,10 @@ infc_browser_class_init(gpointer g_class,
   browser_class->begin_explore = NULL;
   browser_class->begin_subscribe = NULL;
   browser_class->subscribe_session = infc_browser_subscribe_session_impl;
+
+  infc_browser_session_proxy_quark = g_quark_from_static_string(
+    "infc-browser-session-proxy-quark"
+  );
 
   g_object_class_install_property(
     object_class,
