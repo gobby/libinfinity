@@ -1243,6 +1243,11 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
       reply_xml
     );
 
+    /* TODO: Only propagate on fatal errors. If a user join fails because
+     * a user name is already in use or something, we do not need the
+     * connection manager to print a warning that the session might have
+     * become inconsistent. */
+
     g_propagate_error(error, local_error);
   }
 

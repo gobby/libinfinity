@@ -303,7 +303,8 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
       error,
       g_quark_from_static_string("LIBXML2_PARSER_ERROR"),
       xmlerror->code,
-      "[%d]: %s",
+      "Error parsing XML in file '%s': [%d]: %s",
+      path,
       xmlerror->line,
       xmlerror->message
     );
@@ -319,7 +320,8 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
         error,
         g_quark_from_static_string("INF_NOTE_PLUGIN_TEXT_ERROR"),
         INFD_NOTE_PLUGIN_TEXT_ERROR_NOT_A_TEXT_SESSION,
-        "%s",
+        "Error processing file '%s': %s",
+        path,
         "The document is not a text session"
       );
 
@@ -336,6 +338,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
         {
           if(!infd_note_plugin_text_read_user(user_table, child, error))
           {
+            g_prefix_error(error, "Error processing file '%s': ", path);
             result = FALSE;
             break;
           }
@@ -345,6 +348,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
           if(!infd_note_plugin_text_read_buffer(buffer, user_table,
                                                 child, error))
           {
+            g_prefix_error(error, "Error processing file '%s': ", path);
             result = FALSE;
             break;
           }
@@ -352,6 +356,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
         else
         {
           infd_note_plugin_text_session_unexpected_node(child, error);
+          g_prefix_error(error, "Error processing file '%s': ", path);
           result = FALSE;
           break;
         }

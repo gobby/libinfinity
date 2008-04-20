@@ -1,3 +1,12 @@
+2008-04-20  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c:
+	* libinfinity/common/inf-connection-manager.c: Improved error
+	messages.
+
+	* libinfinity/server/infd-session-proxy.c: Added a TODO comment about
+	not propagating non-fatal errors to the connection manager.
+
 2008-04-13  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.c: Remove the session proxy
