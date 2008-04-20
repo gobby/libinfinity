@@ -21,8 +21,7 @@
 
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/common/inf-discovery.h>
-#include <libinfinity/common/inf-connection-manager.h>
-#include <libinfinity/common/inf-xml-connection.h>
+
 #include <gtk/gtktreemodel.h>
 
 #include <glib-object.h>
@@ -31,15 +30,13 @@ G_BEGIN_DECLS
 
 #define INF_GTK_TYPE_BROWSER_MODEL                 (inf_gtk_browser_model_get_type())
 #define INF_GTK_BROWSER_MODEL(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModel))
-#define INF_GTK_BROWSER_MODEL_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModelClass))
 #define INF_GTK_IS_BROWSER_MODEL(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_GTK_TYPE_BROWSER_MODEL))
-#define INF_GTK_IS_BROWSER_MODEL_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_GTK_TYPE_BROWSER_MODEL))
-#define INF_GTK_BROWSER_MODEL_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModelClass))
+#define INF_GTK_BROWSER_MODEL_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModelIface))
 
 #define INF_GTK_TYPE_BROWSER_MODEL_STATUS          (inf_gtk_browser_model_status_get_type())
 
 typedef struct _InfGtkBrowserModel InfGtkBrowserModel;
-typedef struct _InfGtkBrowserModelClass InfGtkBrowserModelClass;
+typedef struct _InfGtkBrowserModelIface InfGtkBrowserModelIface;
 
 typedef enum _InfGtkBrowserModelStatus {
   INF_GTK_BROWSER_MODEL_INVALID,
@@ -63,13 +60,24 @@ typedef enum _InfGtkBrowserModelColumn {
   INF_GTK_BROWSER_MODEL_NUM_COLS
 } InfGtkBrowserModelSite;
 
-struct _InfGtkBrowserModelClass {
-  GObjectClass parent_class;
+struct _InfGtkBrowserModelIface {
+  GTypeInterface parent;
 
+  /* signals */
   void(*set_browser)(InfGtkBrowserModel* model,
                      GtkTreePath* path,
                      GtkTreeIter* iter,
                      InfcBrowser* browser);
+
+  /* virtual functions */
+  void(*resolve)(InfGtkBrowserModel* model,
+                 InfDiscovery* discovery,
+                 InfDiscoveryInfo* info);
+
+  gboolean(*browser_iter_to_tree_iter)(InfGtkBrowserModel* model,
+                                       InfcBrowser* browser,
+                                       InfcBrowserIter* browser_iter,
+                                       GtkTreeIter* tree_iter);
 };
 
 struct _InfGtkBrowserModel {
@@ -82,19 +90,11 @@ inf_gtk_browser_model_status_get_type(void) G_GNUC_CONST;
 GType
 inf_gtk_browser_model_get_type(void) G_GNUC_CONST;
 
-InfGtkBrowserModel*
-inf_gtk_browser_model_new(InfIo* io,
-                          InfConnectionManager* connection_manager,
-                          InfMethodManager* method_manager);
-
 void
-inf_gtk_browser_model_add_discovery(InfGtkBrowserModel* model,
-                                    InfDiscovery* discovery);
-
-void
-inf_gtk_browser_model_add_connection(InfGtkBrowserModel* model,
-                                     InfXmlConnection* connection,
-                                     const gchar* name);
+inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
+                                  GtkTreePath* path,
+                                  GtkTreeIter* iter,
+                                  InfcBrowser* browser);
 
 void
 inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,

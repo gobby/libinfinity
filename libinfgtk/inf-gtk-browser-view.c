@@ -20,6 +20,7 @@
  * corresponding row is activated. */
 
 #include <libinfgtk/inf-gtk-browser-view.h>
+#include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <gtk/gtktreeview.h>
@@ -1540,13 +1541,10 @@ inf_gtk_browser_view_name_data_func(GtkTreeViewColumn* column,
                                     gpointer user_data)
 {
   GtkTreeIter iter_parent;
-  InfDiscovery* discovery;
-  InfDiscoveryInfo* info;
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
   const gchar* name;
   gchar* top_name;
-  gchar* service_name;
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
   {

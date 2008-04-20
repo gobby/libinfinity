@@ -1,5 +1,23 @@
 2008-04-20  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-model.c:
+	* Makefile.am: Changed this class to an interface with a resolve() and
+	browser_iter_to_tree_iter() virtual function, to allow custom models
+	to be given to InfGtkBrowserView.
+
+	* libinfgtk/inf-gtk-browser-store.h:
+	* libinfgtk/inf-gtk-browser-store.c: Moved the original
+	InfGtkBrowserModel class to InfGtkBrowserStore, implementing the new
+	interface.
+
+	* libinfgtk/inf-gtk-browser-view.c: Added a missing include, remove
+	some unused variables.
+
+	* test/inf-test-gtk-browser.c: Adapt to the new API.
+
+2008-04-20  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/note-plugins/text/infd-note-plugin-text.c:
 	* libinfinity/common/inf-connection-manager.c: Improved error
 	messages.

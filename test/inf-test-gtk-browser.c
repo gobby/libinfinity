@@ -18,7 +18,7 @@
 
 #include <libinftextgtk/inf-text-gtk-buffer.h>
 #include <libinfgtk/inf-gtk-browser-view.h>
-#include <libinfgtk/inf-gtk-browser-model.h>
+#include <libinfgtk/inf-gtk-browser-store.h>
 #include <libinfgtk/inf-gtk-io.h>
 #include <libinftext/inf-text-session.h>
 #include <libinfinity/client/infc-session-proxy.h>
@@ -496,7 +496,7 @@ main(int argc,
   InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
 #endif
-  InfGtkBrowserModel* model;
+  InfGtkBrowserStore* store;
   GtkWidget* view;
   GtkWidget* scroll;
   GtkWidget* window;
@@ -512,24 +512,24 @@ main(int argc,
 #endif
 
   connection_manager = inf_connection_manager_new();
-  model = inf_gtk_browser_model_new(INF_IO(io), connection_manager, NULL);
+  store = inf_gtk_browser_store_new(INF_IO(io), connection_manager, NULL);
   g_object_unref(G_OBJECT(connection_manager));
   g_object_unref(G_OBJECT(io));
 
   g_signal_connect(
-    G_OBJECT(model),
+    G_OBJECT(store),
     "set-browser",
     G_CALLBACK(on_set_browser),
     NULL
   );
 
 #ifdef INFINOTE_HAVE_AVAHI
-  inf_gtk_browser_model_add_discovery(model, INF_DISCOVERY(avahi));
+  inf_gtk_browser_store_add_discovery(store, INF_DISCOVERY(avahi));
   g_object_unref(G_OBJECT(avahi));
 #endif
 
-  view = inf_gtk_browser_view_new_with_model(model);
-  g_object_unref(G_OBJECT(model));
+  view = inf_gtk_browser_view_new_with_model(INF_GTK_BROWSER_MODEL(store));
+  g_object_unref(G_OBJECT(store));
   gtk_widget_show(view);
 
   g_signal_connect(
