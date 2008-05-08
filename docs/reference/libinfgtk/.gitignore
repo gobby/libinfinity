@@ -8,3 +8,4 @@ libinfgtk.hierarchy
 libinfgtk.interfaces
 libinfgtk.prerequisites
 libinfgtk.signals
+*.bak

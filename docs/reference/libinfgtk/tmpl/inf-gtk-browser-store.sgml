@@ -68,13 +68,3 @@ InfGtkBrowserStore
 @name: 
 
 
-<!-- ##### FUNCTION inf_gtk_browser_store_resolve ##### -->
-<para>
-
-</para>
-
-@store: 
-@discovery: 
-@info: 
-
-

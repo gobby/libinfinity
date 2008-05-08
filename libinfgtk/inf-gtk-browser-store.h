@@ -64,11 +64,6 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
                                      InfXmlConnection* connection,
                                      const gchar* name);
 
-void
-inf_gtk_browser_store_resolve(InfGtkBrowserStore* store,
-                              InfDiscovery* discovery,
-                              InfDiscoveryInfo* info);
-
 G_END_DECLS
 
 #endif /* __INF_GTK_BROWSER_STORE_H__ */

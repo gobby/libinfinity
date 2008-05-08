@@ -1,5 +1,13 @@
 2008-05-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-store.h: Removed declaration of
+	inf_gtk_browser_store_resolve().
+
+	* libinfgtk/inf-gtk-browser-model.c: Adjusted reference from
+	inf_gtk_browser_store_resove() to inf_gtk_browser_model_resolve().
+
+2008-05-08  Armin Burgmeier  <armin@arbur.net>
+
 	* docs/reference/libinfinity/libinfinity-docs.sgml: Reordered, added a
 	separate section for each sub-library (common, adopted, client,
 	server).

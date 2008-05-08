@@ -44,8 +44,8 @@ inf_gtk_browser_model_base_init(gpointer g_class)
      *
      * This signal is emitted every time a new browser is inserted to the
      * model. This means either that a completely new item was inserted, or
-     * that an item providing only a discovery has been resolved (see for
-     * example inf_gtk_browser_store_resolve()).
+     * that an item providing only a discovery has been resolved (see
+     * inf_gtk_browser_model_resolve()).
      */
     browser_model_signals[SET_BROWSER] = g_signal_new(
       "set-browser",
