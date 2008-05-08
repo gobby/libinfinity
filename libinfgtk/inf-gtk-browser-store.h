@@ -48,9 +48,6 @@ struct _InfGtkBrowserStore {
 };
 
 GType
-inf_gtk_browser_store_status_get_type(void) G_GNUC_CONST;
-
-GType
 inf_gtk_browser_store_get_type(void) G_GNUC_CONST;
 
 InfGtkBrowserStore*

@@ -1,3 +1,13 @@
+2008-05-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-store.h: Removed two declarations that are
+	already in inf-gtk-browser-model.h.
+
+	* libinfgtk/inf-gtk-browser-model-sort.h:
+	* libinfgtk/inf-gtk-browser-model-sort.c:
+	* libinfgtk/Makefile: Added a new class deriving from GtkTreeModelSort
+	that implements InfGtkBrowserModel.
+
 2008-04-20  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-model.h:
