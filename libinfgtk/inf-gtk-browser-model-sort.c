@@ -157,41 +157,6 @@ inf_gtk_browser_model_sort_dispose(GObject* object)
  */
 
 static void
-inf_gtk_browser_model_sort_set_browser(InfGtkBrowserModel* model,
-                                       GtkTreePath* path,
-                                       GtkTreeIter* tree_iter,
-                                       InfcBrowser* browser)
-{
-  InfGtkBrowserModelSortPrivate* priv;
-  GtkTreeModel* child_model;
-  GtkTreePath* child_path;
-  GtkTreeIter child_iter;
-
-  priv = INF_GTK_BROWSER_MODEL_SORT_PRIVATE(model);
-  child_model = gtk_tree_model_sort_get_model(GTK_TREE_MODEL_SORT(model));
-
-  child_path = gtk_tree_model_sort_convert_path_to_child_path(
-    GTK_TREE_MODEL_SORT(model),
-    path
-  );
-
-  gtk_tree_model_sort_convert_iter_to_child_iter(
-    GTK_TREE_MODEL_SORT(model),
-    &child_iter,
-    tree_iter
-  );
-
-  inf_gtk_browser_model_set_browser(
-    INF_GTK_BROWSER_MODEL(child_model),
-    child_path,
-    &child_iter,
-    browser
-  );
-
-  gtk_tree_path_free(child_path);
-}
-
-static void
 inf_gtk_browser_model_sort_resolve(InfGtkBrowserModel* model,
                                    InfDiscovery* discovery,
                                    InfDiscoveryInfo* info)
@@ -269,7 +234,7 @@ inf_gtk_browser_model_sort_browser_model_init(gpointer g_iface,
   InfGtkBrowserModelIface* iface;
   iface = (InfGtkBrowserModelIface*)g_iface;
 
-  iface->set_browser = inf_gtk_browser_model_sort_set_browser;
+  iface->set_browser = NULL;
   iface->resolve = inf_gtk_browser_model_sort_resolve;
   /* inf_gtk_browser_model_sort_browser_model_browser_iter_to_tree_iter would
    * be consistent, but a _bit_ too long to fit properly into 80 chars ;) */

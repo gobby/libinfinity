@@ -15,6 +15,7 @@ libinfgtk_1_0_ladir = $(includedir)/libinfgtk-1.0/libinfgtk
 
 libinfgtk_1_0_la_HEADERS = \
 	inf-gtk-browser-model.h \
+	inf-gtk-browser-model-filter.h \
 	inf-gtk-browser-model-sort.h \
 	inf-gtk-browser-store.h \
 	inf-gtk-browser-view.h \
@@ -22,6 +23,7 @@ libinfgtk_1_0_la_HEADERS = \
 
 libinfgtk_1_0_la_SOURCES = \
 	inf-gtk-browser-model.c \
+	inf-gtk-browser-model-filter.c \
 	inf-gtk-browser-model-sort.c \
 	inf-gtk-browser-store.c \
 	inf-gtk-browser-view.c \
