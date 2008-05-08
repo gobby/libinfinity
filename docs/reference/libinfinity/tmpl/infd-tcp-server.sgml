@@ -25,15 +25,6 @@ InfdTcpServer
 @INFD_TCP_SERVER_CLOSED: 
 @INFD_TCP_SERVER_OPEN: 
 
-<!-- ##### STRUCT InfdTcpServerClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@new_connection: 
-@error: 
-
 <!-- ##### STRUCT InfdTcpServer ##### -->
 <para>
 

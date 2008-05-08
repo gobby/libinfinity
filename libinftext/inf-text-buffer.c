@@ -178,7 +178,7 @@ inf_text_buffer_get_slice(InfTextBuffer* buffer,
  * @text: A pointer to the text to insert.
  * @len: The length (in characters) of @text.
  * @bytes: The length (in bytes) of @text.
- * @author: A #InfUser that has inserted the new text, or %NULL.
+ * @user: A #InfUser that has inserted the new text, or %NULL.
  *
  * Inserts @text into @buffer as written by @author. @text must be encoded in
  * the character encoding of the buffer, see inf_text_buffer_get_encoding().

@@ -17,13 +17,6 @@ InfDiscoveryAvahi
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfDiscoveryAvahiClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfDiscoveryAvahi ##### -->
 <para>
 

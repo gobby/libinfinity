@@ -17,14 +17,6 @@ InfcSessionProxy
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfcSessionProxyClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@translate_error: 
-
 <!-- ##### STRUCT InfcSessionProxy ##### -->
 <para>
 

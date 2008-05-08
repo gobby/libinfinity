@@ -17,13 +17,6 @@ InfAdoptedUser
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfAdoptedUserClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfAdoptedUser ##### -->
 <para>
 

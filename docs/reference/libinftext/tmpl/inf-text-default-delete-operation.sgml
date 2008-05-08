@@ -1,0 +1,54 @@
+<!-- ##### SECTION Title ##### -->
+InfTextDefaultDeleteOperation
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfTextDefaultDeleteOperation ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfTextDefaultDeleteOperation:chunk ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfTextDefaultDeleteOperation:position ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_text_default_delete_operation_new ##### -->
+<para>
+
+</para>
+
+@position: 
+@chunk: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_default_delete_operation_get_chunk ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+

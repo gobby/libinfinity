@@ -17,16 +17,6 @@ InfcExploreRequest
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfcExploreRequestClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@initiated: 
-@progress: 
-@finished: 
-
 <!-- ##### STRUCT InfcExploreRequest ##### -->
 <para>
 

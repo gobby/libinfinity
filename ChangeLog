@@ -1,5 +1,45 @@
 2008-05-08  Armin Burgmeier  <armin@arbur.net>
 
+	* docs/reference/libinfinity/libinfinity-docs.sgml: Reordered, added a
+	separate section for each sub-library (common, adopted, client,
+	server).
+
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinftext/tmpl/*.sgml:
+	* docs/reference/libinftext/libinftext-docs.sgml:
+	* docs/reference/libinftext/libinftext-overrides.txt:
+	* docs/reference/libinftext/libinftext-sections.txt:
+	* docs/reference/libinftext/libinftext.types:
+	* docs/reference/Makefile.am:
+	* configure.ac: Added gtk-doc documentation for libinftext.
+
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinfgtk/tmpl/*.sgml:
+	* docs/reference/libinfgtk/libinfgtk-docs.sgml:
+	* docs/reference/libinfgtk/libinfgtk-overrides.txt:
+	* docs/reference/libinfgtk/libinfgtk-sections.txt:
+	* docs/reference/libinfgtk/libinfgtk.types:
+	* docs/reference/Makefile.am:
+	* configure.ac: Added gtk-doc documentation for libinfgtk.
+
+	* docs/reference/libinftextgtk/Makefile.am:
+	* docs/reference/libinftextgtk/tmpl/*.sgml:
+	* docs/reference/libinftextgtk/libinftextgtk-docs.sgml:
+	* docs/reference/libinftextgtk/libinftextgtk-overrides.txt:
+	* docs/reference/libinftextgtk/libinftextgtk-sections.txt:
+	* docs/reference/libinftextgtk/libinftextgtk.types:
+	* docs/reference/Makefile.am:
+	* configure.ac: Added gtk-doc documentation for libinftextgtk.
+
+	* libinftext/inf-text-buffer.c:
+	* libinftext/inf-text-chunk.c:
+	* libinfgtk/inf-gtk-browser-model.c:
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/inf-gtk-io.c: Fixed minor documentation errors.
+
+2008-05-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-model-sort.c: Don't call
 	inf_gtk_browser_model_set_browser() on child model in default signal
 	handler of set_browser. This would lead to endless recursion.

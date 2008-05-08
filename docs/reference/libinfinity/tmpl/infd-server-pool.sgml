@@ -17,13 +17,6 @@ InfdServerPool
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfdServerPoolClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfdServerPool ##### -->
 <para>
 

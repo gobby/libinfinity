@@ -17,13 +17,6 @@ InfXmppManager
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfXmppManagerClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfXmppManager ##### -->
 <para>
 

@@ -444,7 +444,7 @@ inf_text_chunk_substring(InfTextChunk* self,
  * @bytes: Number of bytes of @text.
  * @author: User that wrote @text.
  *
- * Inserts text written by @author into @self. @text is exepected to be in
+ * Inserts text written by @author into @self. @text is expected to be in
  * the chunk's encoding.
  **/
 void
@@ -1129,8 +1129,8 @@ inf_text_chunk_equal(InfTextChunk* self,
  * @self: A #InfTextChunk.
  * @xml: XML node to write into.
  *
- * Serializes @self into an XML node. This adds <author> child nodes to @xml,
- * with text written by the respective author as content.
+ * Serializes @self into an XML node. This adds &lt;author&gt; child nodes to
+ * @xml, with text written by the respective author as content.
  **/
 void
 inf_text_chunk_to_xml(InfTextChunk* self,
@@ -1341,6 +1341,8 @@ inf_text_chunk_iter_next(InfTextChunkIter* iter)
  *
  * Sets @iter to point to the previous segment. If @iter already points to
  * the first segment, the function returns %FALSE.
+ *
+ * Returns: Whether @iter has changed.
  **/
 gboolean
 inf_text_chunk_iter_prev(InfTextChunkIter* iter)

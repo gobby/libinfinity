@@ -35,7 +35,8 @@ inf_gtk_browser_model_base_init(gpointer g_class)
 
   if(!initialized)
   {
-    /** InfGtkBrowserModel::set-browser:
+    /**
+     * InfGtkBrowserModel::set-browser:
      * @model: The #InfGtkBrowserModel emitting the signal.
      * @path: A #GtkTreePath pointing to the newly created browser.
      * @iter: A #GtkTreeIter pointing to the newly created browser.
@@ -140,7 +141,8 @@ inf_gtk_browser_model_get_type()
   return browser_model_type;
 }
 
-/** inf_gtk_browser_model_set_browser:
+/**
+ * inf_gtk_browser_model_set_browser:
  * @model: A #InfGtkBrowserModel.
  * @path: A #GtkTreePath to a top-level row.
  * @iter: A #GtkTreeIter pointing to the same row.
@@ -180,7 +182,8 @@ inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
  * Resolves @info and adds the resulting connection to the model. If that
  * connection is already contained, the original (newly resolved) entry
  * is removed in favor of the existing entry whose browser might already
- * have explored (parts of) the server's directory. */
+ * have explored (parts of) the server's directory.
+ */
 void
 inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
                               InfDiscovery* discovery,

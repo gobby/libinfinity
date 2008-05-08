@@ -17,13 +17,6 @@ InfMethodManager
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfMethodManagerClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfMethodManager ##### -->
 <para>
 

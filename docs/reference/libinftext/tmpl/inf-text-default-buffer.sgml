@@ -1,0 +1,39 @@
+<!-- ##### SECTION Title ##### -->
+InfTextDefaultBuffer
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfTextDefaultBuffer ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfTextDefaultBuffer:encoding ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_text_default_buffer_new ##### -->
+<para>
+
+</para>
+
+@encoding: 
+@Returns: 
+
+

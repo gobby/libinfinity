@@ -1,0 +1,10 @@
+libinfgtk-decl-list.txt
+libinfgtk-decl.txt
+libinfgtk-undeclared.txt
+libinfgtk-undocumented.txt
+libinfgtk-unused.txt
+libinfgtk.args
+libinfgtk.hierarchy
+libinfgtk.interfaces
+libinfgtk.prerequisites
+libinfgtk.signals

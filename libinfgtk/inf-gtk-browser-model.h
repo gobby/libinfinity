@@ -58,7 +58,7 @@ typedef enum _InfGtkBrowserModelColumn {
   INF_GTK_BROWSER_MODEL_COL_NODE,
 
   INF_GTK_BROWSER_MODEL_NUM_COLS
-} InfGtkBrowserModelSite;
+} InfGtkBrowserModelColumn;
 
 struct _InfGtkBrowserModelIface {
   GTypeInterface parent;

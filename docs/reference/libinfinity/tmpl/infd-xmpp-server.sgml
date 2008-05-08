@@ -17,14 +17,6 @@ InfdXmppServer
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfdXmppServerClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@error: 
-
 <!-- ##### STRUCT InfdXmppServer ##### -->
 <para>
 

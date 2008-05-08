@@ -1,0 +1,85 @@
+<!-- ##### SECTION Title ##### -->
+InfTextMoveOperation
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfTextMoveOperation ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfTextMoveOperation:length ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfTextMoveOperation:position ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_text_move_operation_new ##### -->
+<para>
+
+</para>
+
+@position: 
+@length: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_move_operation_get_position ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_move_operation_get_length ##### -->
+<para>
+
+</para>
+
+@operation: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_move_operation_transform_insert ##### -->
+<para>
+
+</para>
+
+@insert_position: 
+@insert_length: 
+@move_position: 
+@move_length: 
+
+
+<!-- ##### FUNCTION inf_text_move_operation_transform_delete ##### -->
+<para>
+
+</para>
+
+@delete_position: 
+@delete_length: 
+@move_position: 
+@move_length: 
+
+

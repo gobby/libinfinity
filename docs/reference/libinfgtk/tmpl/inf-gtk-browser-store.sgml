@@ -1,0 +1,80 @@
+<!-- ##### SECTION Title ##### -->
+InfGtkBrowserStore
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfGtkBrowserStore ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfGtkBrowserStore:connection-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfGtkBrowserStore:io ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfGtkBrowserStore:method-manager ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_gtk_browser_store_new ##### -->
+<para>
+
+</para>
+
+@io: 
+@connection_manager: 
+@method_manager: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_gtk_browser_store_add_discovery ##### -->
+<para>
+
+</para>
+
+@store: 
+@discovery: 
+
+
+<!-- ##### FUNCTION inf_gtk_browser_store_add_connection ##### -->
+<para>
+
+</para>
+
+@store: 
+@connection: 
+@name: 
+
+
+<!-- ##### FUNCTION inf_gtk_browser_store_resolve ##### -->
+<para>
+
+</para>
+
+@store: 
+@discovery: 
+@info: 
+
+

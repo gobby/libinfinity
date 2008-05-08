@@ -144,6 +144,9 @@ AC_CONFIG_FILES([
       docs/reference/version.xml
       docs/reference/Makefile
         docs/reference/libinfinity/Makefile
+        docs/reference/libinftext/Makefile
+        docs/reference/libinfgtk/Makefile
+        docs/reference/libinftextgtk/Makefile
 
   libinfinity-1.0.pc
   libinftext-1.0.pc

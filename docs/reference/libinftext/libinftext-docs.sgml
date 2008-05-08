@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
+  <!ENTITY version SYSTEM "../version.xml">
+]>
+
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>libinftext Reference Manual</title>
+    <releaseinfo>
+      for libinftext &version;
+      The latest version of this documentation can be found on-line at
+      <ulink role="online-location" url="http://arbur.net/libinftext/reference/index.html">http://arbur.net/libinftext/reference/</ulink>.
+    </releaseinfo>
+  </bookinfo>
+
+  <chapter>
+    <title>libinftext API reference</title>
+    <xi:include href="xml/inf-text-session.xml"/>
+    <xi:include href="xml/inf-text-buffer.xml"/>
+    <xi:include href="xml/inf-text-user.xml"/>
+    <xi:include href="xml/inf-text-chunk.xml"/>
+    <xi:include href="xml/inf-text-default-buffer.xml"/>
+    <xi:include href="xml/inf-text-operations.xml"/>
+    <xi:include href="xml/inf-text-insert-operation.xml"/>
+    <xi:include href="xml/inf-text-delete-operation.xml"/>
+    <xi:include href="xml/inf-text-default-delete-operation.xml"/>
+    <xi:include href="xml/inf-text-default-insert-operation.xml"/>
+    <xi:include href="xml/inf-text-remote-delete-operation.xml"/>
+    <xi:include href="xml/inf-text-move-operation.xml"/>
+    <xi:include href="xml/inf-text-pword.xml"/>
+  </chapter>
+</book>

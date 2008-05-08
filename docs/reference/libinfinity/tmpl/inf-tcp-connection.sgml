@@ -26,16 +26,6 @@ InfTcpConnection
 @INF_TCP_CONNECTION_CONNECTED: 
 @INF_TCP_CONNECTION_CLOSED: 
 
-<!-- ##### STRUCT InfTcpConnectionClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@sent: 
-@received: 
-@error: 
-
 <!-- ##### STRUCT InfTcpConnection ##### -->
 <para>
 

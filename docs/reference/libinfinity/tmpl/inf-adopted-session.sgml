@@ -29,15 +29,6 @@ InfAdoptedSession
 @INF_ADOPTED_SESSION_ERROR_MISSING_STATE_VECTOR: 
 @INF_ADOPTED_SESSION_ERROR_FAILED: 
 
-<!-- ##### STRUCT InfAdoptedSessionClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@operation_to_xml: 
-@xml_to_operation: 
-
 <!-- ##### STRUCT InfAdoptedSession ##### -->
 <para>
 

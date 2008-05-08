@@ -1,0 +1,226 @@
+<!-- ##### SECTION Title ##### -->
+inf-text-chunk
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfTextChunk ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT InfTextChunkIter ##### -->
+<para>
+
+</para>
+
+@chunk: 
+@first: 
+@second: 
+
+<!-- ##### FUNCTION inf_text_chunk_new ##### -->
+<para>
+
+</para>
+
+@encoding: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_copy ##### -->
+<para>
+
+</para>
+
+@self: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_free ##### -->
+<para>
+
+</para>
+
+@self: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_get_encoding ##### -->
+<para>
+
+</para>
+
+@self: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_get_length ##### -->
+<para>
+
+</para>
+
+@self: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_substring ##### -->
+<para>
+
+</para>
+
+@self: 
+@begin: 
+@length: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_insert_text ##### -->
+<para>
+
+</para>
+
+@self: 
+@offset: 
+@text: 
+@bytes: 
+@length: 
+@author: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_insert_chunk ##### -->
+<para>
+
+</para>
+
+@self: 
+@offset: 
+@text: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_erase ##### -->
+<para>
+
+</para>
+
+@self: 
+@begin: 
+@length: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_get_text ##### -->
+<para>
+
+</para>
+
+@self: 
+@length: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_equal ##### -->
+<para>
+
+</para>
+
+@self: 
+@other: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_to_xml ##### -->
+<para>
+
+</para>
+
+@self: 
+@xml: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_from_xml ##### -->
+<para>
+
+</para>
+
+@xml: 
+@encoding: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_init ##### -->
+<para>
+
+</para>
+
+@self: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_next ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_prev ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_get_text ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_get_length ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_get_bytes ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_chunk_iter_get_author ##### -->
+<para>
+
+</para>
+
+@iter: 
+@Returns: 
+
+

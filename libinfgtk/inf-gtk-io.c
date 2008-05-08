@@ -378,6 +378,7 @@ inf_gtk_io_get_type(void)
 
 /**
  * inf_gtk_io_new:
+ *
  * Creates a new #InfGtkIo.
  **/
 InfGtkIo*

@@ -1,0 +1,10 @@
+libinfinity-decl-list.txt
+libinfinity-decl.txt
+libinfinity-undeclared.txt
+libinfinity-undocumented.txt
+libinfinity-unused.txt
+libinfinity.args
+libinfinity.hierarchy
+libinfinity.interfaces
+libinfinity.prerequisites
+libinfinity.signals

@@ -1,0 +1,86 @@
+<!-- ##### SECTION Title ##### -->
+InfTextUser
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfTextUser ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL InfTextUser::selection-changed ##### -->
+<para>
+
+</para>
+
+@inftextuser: the object which received the signal.
+@arg1: 
+@arg2: 
+
+<!-- ##### ARG InfTextUser:caret-position ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfTextUser:hue ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfTextUser:selection-length ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_text_user_get_caret_position ##### -->
+<para>
+
+</para>
+
+@user: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_user_get_selection_length ##### -->
+<para>
+
+</para>
+
+@user: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_user_set_selection ##### -->
+<para>
+
+</para>
+
+@user: 
+@position: 
+@length: 
+
+
+<!-- ##### FUNCTION inf_text_user_get_hue ##### -->
+<para>
+
+</para>
+
+@user: 
+@Returns: 
+
+

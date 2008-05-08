@@ -32,13 +32,6 @@ InfUser
 
 @INF_USER_LOCAL: 
 
-<!-- ##### STRUCT InfUserClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfUser ##### -->
 <para>
 

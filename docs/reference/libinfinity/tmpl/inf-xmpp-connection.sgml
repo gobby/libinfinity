@@ -81,13 +81,6 @@ InfXmppConnection
 @INF_XMPP_CONNECTION_AUTH_ERROR_TEMPORARY_AUTH_FAILURE: 
 @INF_XMPP_CONNECTION_AUTH_ERROR_FAILED: 
 
-<!-- ##### STRUCT InfXmppConnectionClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfXmppConnection ##### -->
 <para>
 

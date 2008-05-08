@@ -29,18 +29,6 @@ InfcBrowser
 @INFC_BROWSER_NODE_COPIED: 
 @INFC_BROWSER_NODE_INHERIT: 
 
-<!-- ##### STRUCT InfcBrowserClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@node_added: 
-@node_removed: 
-@begin_explore: 
-@begin_subscribe: 
-@subscribe_session: 
-
 <!-- ##### STRUCT InfcBrowser ##### -->
 <para>
 

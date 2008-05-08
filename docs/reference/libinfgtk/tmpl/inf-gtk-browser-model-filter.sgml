@@ -1,0 +1,34 @@
+<!-- ##### SECTION Title ##### -->
+InfGtkBrowserModelFilter
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfGtkBrowserModelFilter ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION inf_gtk_browser_model_filter_new ##### -->
+<para>
+
+</para>
+
+@child_model: 
+@Returns: 
+
+

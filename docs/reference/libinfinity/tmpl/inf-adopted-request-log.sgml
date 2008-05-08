@@ -17,13 +17,6 @@ InfAdoptedRequestLog
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfAdoptedRequestLogClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfAdoptedRequestLog ##### -->
 <para>
 

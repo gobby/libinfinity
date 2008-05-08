@@ -130,6 +130,263 @@
 </para>
 
 
+<!-- ##### STRUCT InfAdoptedAlgorithmClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@can_undo_changed: 
+@can_redo_changed: 
+@apply_request: 
+
+<!-- ##### STRUCT InfAdoptedNoOperationClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfAdoptedRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfAdoptedRequestLogClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfAdoptedSessionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@operation_to_xml: 
+@xml_to_operation: 
+
+<!-- ##### STRUCT InfAdoptedSplitOperationClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfAdoptedUserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfConnectionManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfDiscoveryAvahiClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfMethodManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfSessionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@to_xml_sync: 
+@process_xml_sync: 
+@process_xml_run: 
+@get_xml_user_props: 
+@set_xml_user_props: 
+@validate_user_props: 
+@user_new: 
+@close: 
+@synchronization_begin: 
+@synchronization_progress: 
+@synchronization_complete: 
+@synchronization_failed: 
+
+<!-- ##### STRUCT InfStandaloneIoClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfTcpConnectionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@sent: 
+@received: 
+@error: 
+
+<!-- ##### STRUCT InfUserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfUserTableClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@add_user: 
+@remove_user: 
+@add_local_user: 
+@remove_local_user: 
+
+<!-- ##### STRUCT InfXmppConnectionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfXmppManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfcBrowserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@node_added: 
+@node_removed: 
+@begin_explore: 
+@begin_subscribe: 
+@subscribe_session: 
+
+<!-- ##### STRUCT InfcExploreRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@initiated: 
+@progress: 
+@finished: 
+
+<!-- ##### STRUCT InfcNodeRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@finished: 
+
+<!-- ##### STRUCT InfcRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@failed: 
+@unused1: 
+@usused2: 
+
+<!-- ##### STRUCT InfcRequestManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@request_add: 
+@request_remove: 
+
+<!-- ##### STRUCT InfcSessionProxyClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@translate_error: 
+
+<!-- ##### STRUCT InfcUserRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@finished: 
+
+<!-- ##### STRUCT InfdDirectoryClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@node_added: 
+@node_removed: 
+
+<!-- ##### STRUCT InfdFilesystemStorageClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfdServerPoolClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
+<!-- ##### STRUCT InfdSessionProxyClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@add_subscription: 
+@remove_subscription: 
+
+<!-- ##### STRUCT InfdTcpServerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@new_connection: 
+@error: 
+
+<!-- ##### STRUCT InfdXmppServerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@error: 
+
 <!-- ##### FUNCTION inf_adopted_operation_get_type ##### -->
 <para>
 

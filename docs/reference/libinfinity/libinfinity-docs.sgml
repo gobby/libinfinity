@@ -36,13 +36,11 @@
     <xi:include href="xml/inf-ip-address.xml"/>
     <xi:include href="xml/inf-xml-util.xml"/>
     <xi:include href="xml/inf-error.xml"/>
-    <xi:include href="xml/infc-browser.xml"/>
-    <xi:include href="xml/infc-explore-request.xml"/>
-    <xi:include href="xml/infc-node-request.xml"/>
-    <xi:include href="xml/infc-request-manager.xml"/>
-    <xi:include href="xml/infc-session-proxy.xml"/>
-    <xi:include href="xml/infc-request.xml"/>
-    <xi:include href="xml/infc-user-request.xml"/>
+  </chapter>
+
+  <chapter>
+    <title>Infinote adOPTed implementation</title>
+    <xi:include href="xml/inf-adopted-state-vector.xml"/>
     <xi:include href="xml/inf-adopted-session.xml"/>
     <xi:include href="xml/inf-adopted-operation.xml"/>
     <xi:include href="xml/inf-adopted-user.xml"/>
@@ -51,6 +49,23 @@
     <xi:include href="xml/inf-adopted-split-operation.xml"/>
     <xi:include href="xml/inf-adopted-no-operation.xml"/>
     <xi:include href="xml/inf-adopted-request-log.xml"/>
+  </chapter>
+
+  <chapter>
+    <title>Infinote client side API</title>
+    <xi:include href="xml/infc-browser.xml"/>
+    <xi:include href="xml/infc-explore-request.xml"/>
+    <xi:include href="xml/infc-node-request.xml"/>
+    <xi:include href="xml/infc-request-manager.xml"/>
+    <xi:include href="xml/infc-session-proxy.xml"/>
+    <xi:include href="xml/infc-request.xml"/>
+    <xi:include href="xml/infc-user-request.xml"/>
+    <xi:include href="xml/infc-browser-iter.xml"/>
+    <xi:include href="xml/infc-note-plugin.xml"/>
+  </chapter>
+
+  <chapter>
+    <title>Infinote server side API</title>
     <xi:include href="xml/infd-xmpp-server.xml"/>
     <xi:include href="xml/infd-server-pool.xml"/>
     <xi:include href="xml/infd-directory.xml"/>
@@ -59,13 +74,6 @@
     <xi:include href="xml/infd-storage.xml"/>
     <xi:include href="xml/infd-session-proxy.xml"/>
     <xi:include href="xml/infd-filesystem-storage.xml"/>
-    <xi:include href="xml/infc-note-plugin.xml"/>
-    <xi:include href="xml/infc-browser-iter.xml"/>
-  </chapter>
-
-  <chapter>
-    <title>Infinote adOPTed implementation</title>
-    <xi:include href="xml/inf-adopted-state-vector.xml"/>
     <xi:include href="xml/infd-note-plugin.xml"/>
   </chapter>
 </book>

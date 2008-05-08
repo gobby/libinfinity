@@ -26,13 +26,6 @@ InfAdoptedRequest
 @INF_ADOPTED_REQUEST_UNDO: 
 @INF_ADOPTED_REQUEST_REDO: 
 
-<!-- ##### STRUCT InfAdoptedRequestClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfAdoptedRequest ##### -->
 <para>
 

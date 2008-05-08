@@ -26,17 +26,6 @@ InfUserTable
 @Param2: 
 
 
-<!-- ##### STRUCT InfUserTableClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@add_user: 
-@remove_user: 
-@add_local_user: 
-@remove_local_user: 
-
 <!-- ##### STRUCT InfUserTable ##### -->
 <para>
 

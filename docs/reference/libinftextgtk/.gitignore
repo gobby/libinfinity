@@ -1,0 +1,10 @@
+libinftextgtk-decl-list.txt
+libinftextgtk-decl.txt
+libinftextgtk-undeclared.txt
+libinftextgtk-undocumented.txt
+libinftextgtk-unused.txt
+libinftextgtk.args
+libinftextgtk.hierarchy
+libinftextgtk.interfaces
+libinftextgtk.prerequisites
+libinftextgtk.signals

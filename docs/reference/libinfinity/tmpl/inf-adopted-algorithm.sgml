@@ -17,16 +17,6 @@ InfAdoptedAlgorithm
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### STRUCT InfAdoptedAlgorithmClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@can_undo_changed: 
-@can_redo_changed: 
-@apply_request: 
-
 <!-- ##### STRUCT InfAdoptedAlgorithm ##### -->
 <para>
 

@@ -56,13 +56,6 @@ InfConnectionManager
 @INF_CONNECTION_MANAGER_NETWORK: 
 @INF_CONNECTION_MANAGER_GROUP: 
 
-<!-- ##### STRUCT InfConnectionManagerClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-
 <!-- ##### STRUCT InfConnectionManager ##### -->
 <para>
 

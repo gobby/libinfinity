@@ -26,15 +26,6 @@ InfcRequestManager
 @Param2: 
 
 
-<!-- ##### STRUCT InfcRequestManagerClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@request_add: 
-@request_remove: 
-
 <!-- ##### STRUCT InfcRequestManager ##### -->
 <para>
 

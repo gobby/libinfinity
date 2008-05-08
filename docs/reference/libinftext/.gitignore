@@ -1,0 +1,10 @@
+libinftext-decl-list.txt
+libinftext-decl.txt
+libinftext-undeclared.txt
+libinftext-undocumented.txt
+libinftext-unused.txt
+libinftext.args
+libinftext.hierarchy
+libinftext.interfaces
+libinftext.prerequisites
+libinftext.signals

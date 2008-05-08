@@ -25,15 +25,6 @@ InfdDirectory
 @node_id: 
 @node: 
 
-<!-- ##### STRUCT InfdDirectoryClass ##### -->
-<para>
-
-</para>
-
-@parent_class: 
-@node_added: 
-@node_removed: 
-
 <!-- ##### STRUCT InfdDirectory ##### -->
 <para>
 

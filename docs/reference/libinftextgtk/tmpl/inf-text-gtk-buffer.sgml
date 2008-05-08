@@ -1,0 +1,77 @@
+<!-- ##### SECTION Title ##### -->
+InfTextGtkBuffer
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT InfTextGtkBuffer ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG InfTextGtkBuffer:active-user ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfTextGtkBuffer:buffer ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG InfTextGtkBuffer:user-table ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION inf_text_gtk_buffer_new ##### -->
+<para>
+
+</para>
+
+@buffer: 
+@user_table: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_gtk_buffer_get_text_buffer ##### -->
+<para>
+
+</para>
+
+@buffer: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_text_gtk_buffer_set_active_user ##### -->
+<para>
+
+</para>
+
+@buffer: 
+@user: 
+
+
+<!-- ##### FUNCTION inf_text_gtk_buffer_get_active_user ##### -->
+<para>
+
+</para>
+
+@buffer: 
+@Returns: 
+
+
