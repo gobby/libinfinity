@@ -91,7 +91,7 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   g_get_current_time(&current);
   next_timeout = NULL;
 
-  for(item = priv->timeouts; item != NULL; item = g_list_next(priv->timeouts))
+  for(item = priv->timeouts; item != NULL; item = g_list_next(item))
   {
     cur_timeout = item->data;
     elapsed = inf_standalone_io_timeval_diff(&current, &cur_timeout->begin);
