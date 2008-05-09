@@ -229,7 +229,7 @@ inf_gtk_browser_model_filter_browser_iter_to_tree_iter(InfGtkBrowserModel* m,
   if(result == TRUE)
   {
     return gtk_tree_model_filter_convert_child_iter_to_iter(
-      GTK_TREE_MODEL_FILTER(child_model),
+      GTK_TREE_MODEL_FILTER(m),
       tree_iter,
       &child_iter
     );

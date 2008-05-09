@@ -39,7 +39,7 @@ struct _InfGtkBrowserViewObject {
 
   /* This is valid as long as the TreeRowReference above is valid, but we
    * still need the TreeRowReference to know when it becomes invalid */
-  GtkTreeIter iter;
+  /*GtkTreeIter iter;*/
 };
 
 typedef struct _InfGtkBrowserViewPrivate InfGtkBrowserViewPrivate;
@@ -177,14 +177,9 @@ inf_gtk_browser_view_redraw_node_for_explore_request(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfGtkBrowserViewObject* object;
   GtkTreePath* path;
+  GtkTreeModel* model;
+  GtkTreeIter iter;
   gint i;
-
-  /* We could get the iter easily by querying the InfcBrowserIter with
-   * infc_browser_iter_from_explore_request and then obtaining the GtkTreeIter
-   * with inf_gtk_browser_model_browser_iter_to_tree_iter. However, we do not
-   * get the path this way and gtk_tree_model_get_path is expensive.
-   * Therefore, we lookup the InfGtkBrowserViewObject which has both iter
-   * and path (via the GtkTreeRowReference). */
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   i = inf_gtk_browser_view_explore_request_find(view, req);
@@ -194,7 +189,9 @@ inf_gtk_browser_view_redraw_node_for_explore_request(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(object->reference);
   g_assert(path != NULL);
 
-  inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  gtk_tree_model_get_iter(model, &iter, path);
+  inf_gtk_browser_view_redraw_row(view, path, &iter);
   gtk_tree_path_free(path);
 }
 
@@ -205,14 +202,9 @@ inf_gtk_browser_view_redraw_node_for_session(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfGtkBrowserViewObject* object;
   GtkTreePath* path;
+  GtkTreeModel* model;
+  GtkTreeIter iter;
   gint i;
-
-  /* We could get the iter easily by querying the InfcBrowserIter with
-   * infc_browser_iter_from_explore_request and then obtaining the GtkTreeIter
-   * with inf_gtk_browser_model_browser_iter_to_tree_iter. However, we do not
-   * get the path this way and gtk_tree_model_get_path is expensive.
-   * Therefore, we lookup the InfGtkBrowserViewObject which has both iter
-   * and path (via the GtkTreeRowReference). */
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   i = inf_gtk_browser_view_session_find(view, session);
@@ -222,7 +214,9 @@ inf_gtk_browser_view_redraw_node_for_session(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(object->reference);
   g_assert(path != NULL);
 
-  inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  gtk_tree_model_get_iter(model, &iter, path);
+  inf_gtk_browser_view_redraw_row(view, path, &iter);
   gtk_tree_path_free(path);
 }
 
@@ -305,13 +299,16 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
 {
   InfGtkBrowserView* view;
   InfGtkBrowserViewPrivate* priv;
+  GtkTreeModel* model;
   InfGtkBrowserViewObject* object;
   GtkTreePath* path;
+  GtkTreeIter iter;
   gpointer initial_exploration;
   gint i;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
 
   i = inf_gtk_browser_view_explore_request_find(view, request);
   g_assert(i >= 0);
@@ -320,7 +317,8 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
   path = gtk_tree_row_reference_get_path(object->reference);
   g_assert(path != NULL);
 
-  inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+  gtk_tree_model_get_iter(model, &iter, path);
+  inf_gtk_browser_view_redraw_row(view, path, &iter);
 
   initial_exploration = g_object_get_data(
     G_OBJECT(request),
@@ -389,7 +387,6 @@ inf_gtk_browser_view_session_added(InfGtkBrowserView* view,
 
   g_assert(object.reference != NULL);
 
-  object.iter = *iter;
   g_array_append_vals(priv->sessions, &object, 1);
 
   g_signal_connect_after(
@@ -453,6 +450,8 @@ inf_gtk_browser_view_session_removed(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfGtkBrowserViewObject* object;
   GtkTreePath* path;
+  GtkTreeModel* model;
+  GtkTreeIter iter;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
@@ -463,7 +462,9 @@ inf_gtk_browser_view_session_removed(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(object->reference);
   if(path != NULL)
   {
-    inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+    gtk_tree_model_get_iter(model, &iter, path);
+    inf_gtk_browser_view_redraw_row(view, path, &iter);
     gtk_tree_path_free(path);
   }
 
@@ -494,7 +495,6 @@ inf_gtk_browser_view_explore_request_added(InfGtkBrowserView* view,
 
   g_assert(object.reference != NULL);
 
-  object.iter = *iter;
   g_array_append_vals(priv->explore_requests, &object, 1);
 
   g_signal_connect_after(
@@ -558,6 +558,8 @@ inf_gtk_browser_view_explore_request_removed(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfGtkBrowserViewObject* object;
   GtkTreePath* path;
+  GtkTreeModel* model;
+  GtkTreeIter iter;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   object = &g_array_index(priv->explore_requests, InfGtkBrowserViewObject, i);
@@ -567,7 +569,9 @@ inf_gtk_browser_view_explore_request_removed(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(object->reference);
   if(path != NULL)
   {
-    inf_gtk_browser_view_redraw_row(view, path, &object->iter);
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+    gtk_tree_model_get_iter(model, &iter, path);
+    inf_gtk_browser_view_redraw_row(view, path, &iter);
     gtk_tree_path_free(path);
   }
 
@@ -788,7 +792,6 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
     path
   );
 
-  object.iter = *iter;
   g_array_append_vals(priv->browsers, &object, 1);
 
   g_signal_connect(

@@ -215,7 +215,7 @@ inf_gtk_browser_model_sort_browser_iter_to_tree_iter(InfGtkBrowserModel* mdl,
   if(result == TRUE)
   {
     gtk_tree_model_sort_convert_child_iter_to_iter(
-      GTK_TREE_MODEL_SORT(child_model),
+      GTK_TREE_MODEL_SORT(mdl),
       tree_iter,
       &child_iter
     );

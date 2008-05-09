@@ -1,5 +1,15 @@
 2008-05-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-model-sort.c:
+	* libinfgtk/inf-gtk-browser-model-filter.c: Fix call to
+	gtk_tree_model_{filter,sort}_convert_child_iter_to_iter() in
+	browser_iter_to_tree_iter.
+
+	* libinfgtk/inf-gtk-browser-view.c: Don't rely on the model to have
+	GTK_TREE_MODEL_ITERS_PERSIST set.
+
+2008-05-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-standalone-io.c: Fixed endless loop when two
 	or more timeouts have been registered.
 
