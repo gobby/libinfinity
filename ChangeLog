@@ -1,5 +1,11 @@
 2008-05-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c: Added the "selection_changed"
+	signal.
+
+2008-05-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-model-filter.c:
 	(inf_gtk_browser_model_filter_new): Fixed property name in
 	g_object_new which is "child-model" instead of "model" for

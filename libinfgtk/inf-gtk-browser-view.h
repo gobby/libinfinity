@@ -41,16 +41,16 @@ typedef struct _InfGtkBrowserViewClass InfGtkBrowserViewClass;
 struct _InfGtkBrowserViewClass {
   GtkBinClass parent_class;
 
+  /* signals */
   void (*activate)(InfGtkBrowserView* view,
                    GtkTreeIter* iter);
+
+  void (*selection_changed)(InfGtkBrowserView* view,
+                            GtkTreeIter* iter);
 
   void (*set_scroll_adjustments)(InfGtkBrowserView* view,
                                  GtkAdjustment* hadjustment,
                                  GtkAdjustment* vadjustment);
-
-  /* subscribe-session. Note that this is only called for sessions subscribed
-   * via this view. If you want to get notified for any sessions a browser
-   * subscribes, connect to the "subscribe-session" signal of InfcBrowser. */
 };
 
 struct _InfGtkBrowserView {

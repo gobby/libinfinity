@@ -16,9 +16,6 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-/* TODO: Add a plugin list to whose types the view subscribes when a
- * corresponding row is activated. */
-
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/inf-marshal.h>
@@ -75,6 +72,7 @@ enum {
 
 enum {
   ACTIVATE,
+  SELECTION_CHANGED,
 
   LAST_SIGNAL
 };
@@ -1248,9 +1246,11 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
         );
 
         if(browser != NULL)
+        {
           inf_gtk_browser_view_browser_added(view, path, &iter, browser);
+          g_object_unref(browser);
+        }
 
-        g_object_unref(G_OBJECT(browser));
         gtk_tree_path_next(path);
       } while(gtk_tree_model_iter_next(GTK_TREE_MODEL(model), &iter) == TRUE);
     }
@@ -1421,6 +1421,20 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
     infc_browser_iter_free(browser_iter);
     g_object_unref(G_OBJECT(browser));
   }
+}
+
+static void
+inf_gtk_browser_view_selection_changed_cb(GtkTreeSelection* selection,
+                                          gpointer user_data)
+{
+  InfGtkBrowserView* view;
+  GtkTreeIter selected_iter;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  if(gtk_tree_selection_get_selected(selection, NULL, &selected_iter))
+    g_signal_emit(view, view_signals[SELECTION_CHANGED], 0, &selected_iter);
+  else
+    g_signal_emit(view, view_signals[SELECTION_CHANGED], 0, NULL);
 }
 
 /*
@@ -1806,12 +1820,14 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
 {
   InfGtkBrowserView* view;
   InfGtkBrowserViewPrivate* priv;
+  GtkTreeSelection* selection;
 
   view = INF_GTK_BROWSER_VIEW(instance);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
   priv->treeview = gtk_tree_view_new();
   priv->column = gtk_tree_view_column_new();
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->treeview));
   
   priv->renderer_icon = gtk_cell_renderer_pixbuf_new();
   priv->renderer_status_icon = gtk_cell_renderer_pixbuf_new();
@@ -1887,16 +1903,23 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   );
 
   g_signal_connect(
-    GTK_TREE_VIEW(priv->treeview),
+    G_OBJECT(priv->treeview),
     "row-expanded",
     G_CALLBACK(inf_gtk_browser_view_row_expanded_cb),
     view
   );
 
   g_signal_connect(
-    GTK_TREE_VIEW(priv->treeview),
+    G_OBJECT(priv->treeview),
     "row-activated",
     G_CALLBACK(inf_gtk_browser_view_row_activated_cb),
+    view
+  );
+
+  g_signal_connect(
+    selection,
+    "changed",
+    G_CALLBACK(inf_gtk_browser_view_selection_changed_cb),
     view
   );
 
@@ -2115,6 +2138,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   widget_class->size_allocate = inf_gtk_browser_view_size_allocate;
 
   view_class->activate = NULL;
+  view_class->selection_changed = NULL;
   view_class->set_scroll_adjustments =
     inf_gtk_browser_view_set_scroll_adjustments;
 
@@ -2135,6 +2159,18 @@ inf_gtk_browser_view_class_init(gpointer g_class,
     G_TYPE_FROM_CLASS(object_class),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkBrowserViewClass, activate),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED,
+    G_TYPE_NONE,
+    1,
+    GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
+
+  view_signals[SELECTION_CHANGED] = g_signal_new(
+    "selection-changed",
+    G_TYPE_FROM_CLASS(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfGtkBrowserViewClass, selection_changed),
     NULL, NULL,
     inf_marshal_VOID__BOXED,
     G_TYPE_NONE,
