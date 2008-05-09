@@ -2244,4 +2244,30 @@ inf_gtk_browser_view_get_model(InfGtkBrowserView* view)
   return INF_GTK_BROWSER_MODEL(gtk_tree_view_get_model(treeview));
 }
 
+/**
+ * inf_gtk_browser_view_get_selected:
+ * @view: A #InfGtkBrowserView.
+ * @iter: An uninitialized #GtkTreeIter.
+ *
+ * Sets @iter to point to the currently selected row in the browser view. If
+ * no row is selected, @iter is left untouched and %FALSE is returned.
+ *
+ * Returns: Whether @iter was set.
+ **/
+gboolean
+inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
+                                  GtkTreeIter* iter)
+{
+  InfGtkBrowserViewPrivate* priv;
+  GtkTreeView* treeview;
+  GtkTreeSelection* selection;
+
+  g_return_val_if_fail(INF_GTK_IS_BROWSER_VIEW(view), FALSE);
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  treeview = GTK_TREE_VIEW(priv->treeview);
+  selection = gtk_tree_view_get_selection(treeview);
+  return gtk_tree_selection_get_selected(selection, NULL, iter);
+}
+
 /* vim:set et sw=2 ts=2: */

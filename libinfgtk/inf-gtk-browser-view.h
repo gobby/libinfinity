@@ -69,6 +69,10 @@ inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model);
 InfGtkBrowserModel*
 inf_gtk_browser_view_get_model(InfGtkBrowserView* view);
 
+gboolean
+inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
+                                  GtkTreeIter* iter);
+
 G_END_DECLS
 
 #endif /* __INF_GTK_BROWSER_VIEW_H__ */
