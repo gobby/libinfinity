@@ -165,7 +165,7 @@ InfcNodeRequest*
 infc_browser_add_note(InfcBrowser* browser,
                       InfcBrowserIter* parent,
                       const gchar* name,
-                      InfcNotePlugin* plugin);
+                      const InfcNotePlugin* plugin);
 
 InfcNodeRequest*
 infc_browser_remove_node(InfcBrowser* browser,

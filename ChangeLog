@@ -1,5 +1,11 @@
 2008-05-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Made the plugin parameter to
+	infc_browser_add_note() const.
+
+2008-05-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-view.h:
 	* libinfgtk/inf-gtk-browser-view.c: Added
 	inf_gtk_browser_view_get_selected().

@@ -2476,7 +2476,7 @@ InfcNodeRequest*
 infc_browser_add_note(InfcBrowser* browser,
                       InfcBrowserIter* parent,
                       const gchar* name,
-                      InfcNotePlugin* plugin)
+                      const InfcNotePlugin* plugin)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
