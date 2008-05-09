@@ -607,11 +607,19 @@ inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
     &tree_iter
   );
 
-  g_assert(result == TRUE);
-
-  path = gtk_tree_model_get_path(model, &tree_iter);
-  inf_gtk_browser_view_explore_request_added(view, path, &tree_iter, request);
-  gtk_tree_path_free(path); 
+  /* The model might be a filter model that does not contain the session
+   * being synchronized, so do not assert here. */
+  if(request == TRUE)
+  {
+    path = gtk_tree_model_get_path(model, &tree_iter);
+    inf_gtk_browser_view_explore_request_added(
+      view,
+      path,
+      &tree_iter,
+      request
+    );
+    gtk_tree_path_free(path); 
+  }
 }
 
 static void
@@ -642,11 +650,14 @@ inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
       &tree_iter
     );
 
-    g_assert(result == TRUE);
-
-    path = gtk_tree_model_get_path(model, &tree_iter);
-    inf_gtk_browser_view_session_added(view, path, &tree_iter, proxy);
-    gtk_tree_path_free(path); 
+    /* The model might be a filter model that does not contain the session
+     * being synchronized, so do not assert here. */
+    if(result == TRUE)
+    {
+      path = gtk_tree_model_get_path(model, &tree_iter);
+      inf_gtk_browser_view_session_added(view, path, &tree_iter, proxy);
+      gtk_tree_path_free(path); 
+    }
   }
 }
 
@@ -701,18 +712,21 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
         &tree_iter
       );
 
-      g_assert(result == TRUE);
+      /* The model might be a filter model that does not contain the session
+       * being synchronized, so do not assert here. */
+      if(result == TRUE)
+      {
+        path = gtk_tree_model_get_path(model, &tree_iter);
 
-      path = gtk_tree_model_get_path(model, &tree_iter);
+        inf_gtk_browser_view_explore_request_added(
+          view,
+          path,
+          &tree_iter,
+          request
+        );
 
-      inf_gtk_browser_view_explore_request_added(
-        view,
-        path,
-        &tree_iter,
-        request
-      );
-
-      gtk_tree_path_free(path);
+        gtk_tree_path_free(path);
+      }
     }
   }
   else
@@ -732,11 +746,14 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
           &tree_iter
         );
 
-        g_assert(result == TRUE);
-
-        path = gtk_tree_model_get_path(model, &tree_iter);
-        inf_gtk_browser_view_session_added(view, path, &tree_iter, proxy);
-        gtk_tree_path_free(path);
+        /* The model might be a filter model that does not contain the session
+         * being synchronized, so do not assert here. */
+        if(result == TRUE)
+        {
+          path = gtk_tree_model_get_path(model, &tree_iter);
+          inf_gtk_browser_view_session_added(view, path, &tree_iter, proxy);
+          gtk_tree_path_free(path);
+        }
       }
     }
   }
