@@ -81,7 +81,7 @@ inf_gtk_browser_model_sort_sync_child_model(InfGtkBrowserModelSort* model,
       G_OBJECT(child_model),
       "set-browser",
       G_CALLBACK(inf_gtk_browser_model_sort_set_browser_cb),
-      child_model
+      model
     );
   }
 }
@@ -124,9 +124,30 @@ inf_gtk_browser_model_sort_init(GTypeInstance* instance,
     G_CALLBACK(inf_gtk_browser_model_sort_notify_model_cb),
     NULL
   );
+}
 
-  /* TODO: Check whether we get notified if the property is set during
-   * construction, and sync in constructor if not. */
+static GObject*
+inf_gtk_browser_model_sort_constructor(GType type,
+                                       guint n_construct_properties,
+                                       GObjectConstructParam* properties)
+{
+  GObject* object;
+
+  object = G_OBJECT_CLASS(parent_class)->constructor(
+    type,
+    n_construct_properties,
+    properties
+  );
+
+  /* Set initial model, we do not get notified for this */
+  inf_gtk_browser_model_sort_sync_child_model(
+    INF_GTK_BROWSER_MODEL_SORT(object),
+    INF_GTK_BROWSER_MODEL(
+      gtk_tree_model_sort_get_model(GTK_TREE_MODEL_SORT(object))
+    )
+  );
+
+  return object;
 }
 
 static void
@@ -224,6 +245,7 @@ inf_gtk_browser_model_sort_class_init(gpointer g_class,
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfGtkBrowserModelSortPrivate));
 
+  object_class->constructor = inf_gtk_browser_model_sort_constructor;
   object_class->dispose = inf_gtk_browser_model_sort_dispose;
 }
 
