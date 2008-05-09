@@ -317,7 +317,7 @@ inf_gtk_browser_model_filter_new(InfGtkBrowserModel* child_model)
 
   object = g_object_new(
     INF_GTK_TYPE_BROWSER_MODEL_FILTER,
-    "model", child_model,
+    "child-model", child_model,
     NULL
   );
 
