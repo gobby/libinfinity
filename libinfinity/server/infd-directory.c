@@ -58,7 +58,7 @@ struct _InfdDirectoryNode {
       /* Running session, or NULL */
       InfdSessionProxy* session;
       /* Session type */
-      InfdNotePlugin* plugin;
+      const InfdNotePlugin* plugin;
       /* Timeout to save the session when inactive for some time */
       gpointer save_timeout;
     } note;
@@ -84,6 +84,16 @@ struct _InfdDirectorySessionSaveTimeoutData {
   InfdDirectoryNode* node;
 };
 
+typedef struct _InfdDirectorySyncIn InfdDirectorySyncIn;
+struct _InfdDirectorySyncIn {
+  InfdDirectory* directory;
+  InfdDirectoryNode* parent;
+  guint node_id;
+  gchar* name;
+  const InfdNotePlugin* plugin;
+  InfdSessionProxy* proxy;
+};
+
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfIo* io;
@@ -100,6 +110,8 @@ struct _InfdDirectoryPrivate {
   guint node_counter;
   GHashTable* nodes; /* Mapping from id to node */
   InfdDirectoryNode* root;
+
+  GSList* sync_ins;
 };
 
 #if 0
@@ -370,64 +382,23 @@ infd_directory_session_idle_notify_cb(GObject* object,
  * Node construction and removal
  */
 
-static void
-infd_directory_node_link(InfdDirectoryNode* node,
-                         InfdDirectoryNode* parent)
-{
-  g_return_if_fail(node != NULL);
-  g_return_if_fail(parent != NULL);
-  infd_directory_return_if_subdir_fail(parent);
-
-  node->prev = NULL;
-  if(parent->shared.subdir.child != NULL)
-  {
-    parent->shared.subdir.child->prev = node;
-    node->next = parent->shared.subdir.child;
-  }
-  else
-  {
-    node->next = NULL;
-  }
-
-  parent->shared.subdir.child = node;
-}
-
-static void
-infd_directory_node_unlink(InfdDirectoryNode* node)
-{
-  g_return_if_fail(node != NULL);
-  g_return_if_fail(node->parent != NULL);
-
-  if(node->prev != NULL)
-  {
-    node->prev->next = node->next;
-  }
-  else 
-  {
-    g_assert(node->parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
-    node->parent->shared.subdir.child = node->next;
-  }
-
-  if(node->next != NULL)
-    node->next->prev = node->prev;
-}
-
-static void
-infd_directory_node_link_session(InfdDirectory* directory,
-                                 InfdDirectoryNode* node,
-                                 InfSession* session)
+/* Creates a InfdSessionProxy for a InfSession by creating the subscription
+ * group with name "InfSession_%u", %u being the node id. The ID should be
+ * unique. */
+static InfdSessionProxy*
+infd_directory_create_session_proxy(InfdDirectory* directory,
+                                    guint node_id,
+                                    InfSession* session)
 {
   InfdDirectoryPrivate* priv;
   gchar* group_name;
   InfConnectionManagerGroup* group;
+  InfdSessionProxy* proxy;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
-  g_assert(node->shared.note.session == NULL);
 
-  group_name = g_strdup_printf("InfSession_%u", node->id);
+  group_name = g_strdup_printf("InfSession_%u", node_id);
 
-  /* Open group */
   group = inf_connection_manager_open_group(
     priv->connection_manager,
     group_name,
@@ -437,20 +408,92 @@ infd_directory_node_link_session(InfdDirectory* directory,
 
   g_free(group_name);
 
-  node->shared.note.session = g_object_new(
-    INFD_TYPE_SESSION_PROXY,
-    "session", session,
-    "subscription-group", group,
-    NULL
+  proxy = INFD_SESSION_PROXY(
+    g_object_new(
+      INFD_TYPE_SESSION_PROXY,
+      "session", session,
+      "subscription-group", group,
+      NULL
+    )
   );
 
-  inf_connection_manager_group_set_object(
-    group,
-    INF_NET_OBJECT(node->shared.note.session)
+  inf_connection_manager_group_set_object(group, INF_NET_OBJECT(proxy));
+  inf_connection_manager_group_unref(group);
+  return proxy;
+}
+
+/* Creates a InfdSessionProxy and an InfSession by creating the subscription
+ * group. The InfSession is initially synchronized from sync_conn. If
+ * sync_g is NULL, then the subscription group is used for
+ * synchronization. The ID should be unique. */
+static InfdSessionProxy*
+infd_directory_create_session_proxy_sync(InfdDirectory* directory,
+                                         guint node_id,
+                                         const InfdNotePlugin* plugin,
+                                         InfConnectionManagerGroup* sync_g,
+                                         InfXmlConnection* sync_conn,
+                                         gboolean subscribe_sync_conn)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* group_name;
+  InfConnectionManagerGroup* group;
+  InfSession* session;
+  InfdSessionProxy* proxy;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  group_name = g_strdup_printf("InfSession_%u", node_id);
+
+  group = inf_connection_manager_open_group(
+    priv->connection_manager,
+    group_name,
+    NULL, /* net_object */
+    (InfConnectionManagerMethodDesc**)priv->session_methods->pdata
   );
+
+  g_free(group_name);
+
+  session = plugin->session_new(
+    priv->io,
+    priv->connection_manager,
+    (sync_g == NULL) ? group : sync_g,
+    sync_conn
+  );
+
+  proxy = INFD_SESSION_PROXY(
+    g_object_new(
+      INFD_TYPE_SESSION_PROXY,
+      "session", session,
+      "subscription-group", group,
+      NULL
+    )
+  );
+
+  inf_connection_manager_group_set_object(group, INF_NET_OBJECT(proxy));
+  if(sync_g != NULL)
+    inf_connection_manager_group_set_object(sync_g, INF_NET_OBJECT(proxy));
+  inf_connection_manager_group_unref(group);
+  return proxy;
+
+}
+
+/* Links a InfdSessionProxy with a InfdDirectoryNode */
+static void
+infd_directory_node_link_session(InfdDirectory* directory,
+                                 InfdDirectoryNode* node,
+                                 InfdSessionProxy* proxy)
+{
+  InfdDirectoryPrivate* priv;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session == NULL);
+
+  node->shared.note.session = proxy;
+  g_object_ref(proxy);
 
   g_object_set_qdata(
-    G_OBJECT(node->shared.note.session),
+    G_OBJECT(proxy),
     infd_directory_node_id_quark,
     GUINT_TO_POINTER(node->id)
   );
@@ -461,8 +504,6 @@ infd_directory_node_link_session(InfdDirectory* directory,
     G_CALLBACK(infd_directory_session_idle_notify_cb),
     directory
   );
-
-  inf_connection_manager_group_unref(group);
 
   if(infd_session_proxy_is_idle(node->shared.note.session))
   {
@@ -506,11 +547,54 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
   node->shared.note.session = NULL;
 }
 
+static void
+infd_directory_node_link(InfdDirectoryNode* node,
+                         InfdDirectoryNode* parent)
+{
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(parent != NULL);
+  infd_directory_return_if_subdir_fail(parent);
+
+  node->prev = NULL;
+  if(parent->shared.subdir.child != NULL)
+  {
+    parent->shared.subdir.child->prev = node;
+    node->next = parent->shared.subdir.child;
+  }
+  else
+  {
+    node->next = NULL;
+  }
+
+  parent->shared.subdir.child = node;
+}
+
+static void
+infd_directory_node_unlink(InfdDirectoryNode* node)
+{
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(node->parent != NULL);
+
+  if(node->prev != NULL)
+  {
+    node->prev->next = node->next;
+  }
+  else 
+  {
+    g_assert(node->parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+    node->parent->shared.subdir.child = node->next;
+  }
+
+  if(node->next != NULL)
+    node->next->prev = node->prev;
+}
+
 /* This function takes ownership of name */
 static InfdDirectoryNode*
 infd_directory_node_new_common(InfdDirectory* directory,
                                InfdDirectoryNode* parent,
                                InfdStorageNodeType type,
+                               guint node_id,
                                gchar* name)
 {
   InfdDirectoryPrivate* priv;
@@ -518,10 +602,14 @@ infd_directory_node_new_common(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  g_assert(
+    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id)) == NULL
+  );
+
   node = g_slice_new(InfdDirectoryNode);
   node->parent = parent;
   node->type = type;
-  node->id = priv->node_counter ++;
+  node->id = node_id;
   node->name = name;
 
   if(parent != NULL)
@@ -541,6 +629,7 @@ infd_directory_node_new_common(InfdDirectory* directory,
 static InfdDirectoryNode*
 infd_directory_node_new_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
+                                     guint node_id,
                                      gchar* name)
 {
   InfdDirectoryNode* node;
@@ -549,6 +638,7 @@ infd_directory_node_new_subdirectory(InfdDirectory* directory,
     directory,
     parent,
     INFD_STORAGE_NODE_SUBDIRECTORY,
+    node_id,
     name
   );
 
@@ -562,8 +652,9 @@ infd_directory_node_new_subdirectory(InfdDirectory* directory,
 static InfdDirectoryNode*
 infd_directory_node_new_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
+                             guint node_id,
                              gchar* name,
-                             InfdNotePlugin* plugin)
+                             const InfdNotePlugin* plugin)
 {
   InfdDirectoryNode* node;
 
@@ -571,6 +662,7 @@ infd_directory_node_new_note(InfdDirectory* directory,
     directory,
     parent,
     INFD_STORAGE_NODE_NOTE,
+    node_id,
     name
   );
 
@@ -580,6 +672,11 @@ infd_directory_node_new_note(InfdDirectory* directory,
 
   return node;
 }
+
+/* Required by infd_directory_node_free() */
+static void
+infd_directory_remove_sync_in(InfdDirectory* directory,
+                              InfdDirectorySyncIn* sync_in);
 
 /* Notes are saved into the storage when save_notes is TRUE. */
 static void
@@ -591,6 +688,10 @@ infd_directory_node_free(InfdDirectory* directory,
   gchar* path;
   gboolean removed;
   GError* error;
+
+  GSList* item;
+  GSList* next;
+  InfdDirectorySyncIn* sync_in;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(node != NULL);
@@ -659,6 +760,15 @@ infd_directory_node_free(InfdDirectory* directory,
   if(node->parent != NULL)
     infd_directory_node_unlink(node);
 
+  /* Remove sync-ins whose parent is gone */
+  for(item = priv->sync_ins; item != NULL; item = next)
+  {
+    next = item->next;
+    sync_in = (InfdDirectorySyncIn*)item->data;
+    if(sync_in->parent == node)
+      infd_directory_remove_sync_in(directory, sync_in);
+  }
+
   removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
   g_assert(removed == TRUE);
 
@@ -725,7 +835,7 @@ infd_directory_find_session_method_for_network(InfdDirectory* directory,
     method = g_ptr_array_index(priv->session_methods, i);
     if(method == NULL) return NULL; /* array is null-terminated */
 
-    if(strcmp(method->network, "network") == 0)
+    if(strcmp(method->network, network) == 0)
       return method;
   }
 
@@ -945,6 +1055,199 @@ infd_directory_node_unregister(InfdDirectory* directory,
 }
 
 /*
+ * Sync-In
+ */
+
+static void
+infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
+                                                 InfXmlConnection* connection,
+                                                 gpointer user_data)
+{
+  /* Synchronization failed. We simple remove the sync-in. There is no further
+   * notification required since the synchronization failed on the remote site
+   * as well. */
+  InfdDirectorySyncIn* sync_in;
+  sync_in = (InfdDirectorySyncIn*)user_data;
+
+  infd_directory_remove_sync_in(sync_in->directory, sync_in);
+}
+
+static void
+infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
+                                                   InfXmlConnection* conn,
+                                                   gpointer user_data)
+{
+  /* Synchronization done. We can now safely create the node in the directory
+   * tree. */
+  InfdDirectorySyncIn* sync_in;
+  InfdDirectory* directory;
+  InfdDirectoryNode* node;
+  InfdDirectoryIter iter;
+  xmlNodePtr xml;
+
+  sync_in = (InfdDirectorySyncIn*)user_data;
+  directory = sync_in->directory;
+
+  node = infd_directory_node_new_note(
+    directory,
+    sync_in->parent,
+    sync_in->node_id,
+    sync_in->name,
+    sync_in->plugin
+  );
+
+  infd_directory_node_link_session(directory, node, sync_in->proxy);
+
+  /* TODO: Save initial node? */
+
+  sync_in->name = NULL; /* Don't free, we passed ownership */
+  infd_directory_remove_sync_in(directory, sync_in);
+
+  /* We don't use infd_directory_node_register directly here since it
+   * also registers to the synchronizing connection. However, than connection
+   * already knows that the node has been inserted, because of the
+   * successful synchronization. */
+  iter.node_id = node->id;
+  iter.node = node;
+
+  g_signal_emit(
+    G_OBJECT(sync_in->directory),
+    directory_signals[NODE_ADDED],
+    0,
+    &iter
+  );
+
+  xml = infd_directory_node_register_to_xml(node);
+
+  infd_directory_send(
+    directory,
+    node->parent->shared.subdir.connections,
+    conn,
+    xml
+  );
+}
+
+static InfdDirectorySyncIn*
+infd_directory_add_sync_in(InfdDirectory* directory,
+                           InfdDirectoryNode* parent,
+                           const gchar* name,
+                           const InfdNotePlugin* plugin,
+                           InfXmlConnection* sync_conn,
+                           gboolean subscribe_sync_conn)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectorySyncIn* sync_in;
+  InfConnectionManagerGroup* synchronization_group;
+  gchar* sync_group_name;
+  guint node_id;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node_id = priv->node_counter ++;
+
+  sync_in = g_slice_new(InfdDirectorySyncIn);
+
+  sync_in->directory = directory;
+  sync_in->parent = parent;
+  sync_in->node_id = node_id;
+  sync_in->name = g_strdup(name);
+  sync_in->plugin = plugin;
+
+  /* Synchronize in own group if we are not subscribing the synchronizing
+   * connection. */
+  if(subscribe_sync_conn == FALSE)
+  {
+    sync_group_name = g_strdup_printf("InfSession_SyncIn_%u", node_id);
+
+    synchronization_group = inf_connection_manager_open_group(
+      priv->connection_manager,
+      sync_group_name,
+      NULL,
+      (InfConnectionManagerMethodDesc**)priv->directory_methods->pdata
+    );
+
+    g_free(sync_group_name);
+  }
+  else
+  {
+    synchronization_group = NULL;
+  }
+
+  sync_in->proxy = infd_directory_create_session_proxy_sync(
+    directory,
+    node_id,
+    plugin,
+    synchronization_group,
+    sync_conn,
+    subscribe_sync_conn
+  );
+
+  g_signal_connect(
+    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    "synchronization-failed",
+    G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
+    sync_in
+  );
+
+  g_signal_connect(
+    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    "synchronization-complete",
+    G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
+    sync_in
+  );
+
+  priv->sync_ins = g_slist_prepend(priv->sync_ins, sync_in);
+  return sync_in;
+}
+
+static void
+infd_directory_remove_sync_in(InfdDirectory* directory,
+                              InfdDirectorySyncIn* sync_in)
+{
+  InfdDirectoryPrivate* priv;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
+    sync_in
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
+    sync_in
+  );
+
+  /* This cancels the synchronization: */
+  g_object_unref(sync_in->proxy);
+
+  g_free(sync_in->name);
+  g_slice_free(InfdDirectorySyncIn, sync_in);
+
+  priv->sync_ins = g_slist_remove(priv->sync_ins, sync_in);
+}
+
+static InfdDirectorySyncIn*
+infd_directory_find_sync_in_by_name(InfdDirectory* directory,
+                                    InfdDirectoryNode* parent,
+                                    const gchar* name)
+{
+  InfdDirectoryPrivate* priv;
+  GSList* item;
+  InfdDirectorySyncIn* sync_in;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  for(item = priv->sync_ins; item != NULL; item = item->next)
+  {
+    sync_in = (InfdDirectorySyncIn*)item->data;
+    if(sync_in->parent == parent && strcmp(sync_in->name, name) == 0)
+      return sync_in;
+  }
+
+  return NULL;
+}
+
+/*
  * Directory tree operations.
  */
 
@@ -1011,6 +1314,7 @@ infd_directory_node_explore(InfdDirectory* directory,
       new_node = infd_directory_node_new_subdirectory(
         directory,
         node,
+        priv->node_counter ++,
         g_strdup(storage_node->name)
       );
       
@@ -1024,6 +1328,7 @@ infd_directory_node_explore(InfdDirectory* directory,
         new_node = infd_directory_node_new_note(
           directory,
           node,
+          priv->node_counter ++,
           g_strdup(storage_node->name),
           plugin
         );
@@ -1075,8 +1380,8 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_assert(priv->storage != NULL);
 
-  node = infd_directory_node_find_child_by_name(parent, name);
-  if(node != NULL)
+  if(infd_directory_node_find_child_by_name(parent, name) != NULL ||
+     infd_directory_find_sync_in_by_name(directory, parent, name) != NULL)
   {
     g_set_error(
       error,
@@ -1100,6 +1405,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
     node = infd_directory_node_new_subdirectory(
       directory,
       parent,
+      priv->node_counter ++,
       g_strdup(name)
     );
 
@@ -1120,14 +1426,15 @@ infd_directory_node_add_note(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfSession* session;
+  InfdSessionProxy* proxy;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   infd_directory_return_val_if_subdir_fail(parent, NULL);
   g_return_val_if_fail(parent->shared.subdir.explored == TRUE, NULL);
 
-  node = infd_directory_node_find_child_by_name(parent, name);
-  if(node != NULL)
+  if(infd_directory_node_find_child_by_name(parent, name) != NULL ||
+     infd_directory_find_sync_in_by_name(directory, parent, name) != NULL)
   {
     g_set_error(
       error,
@@ -1144,6 +1451,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
     node = infd_directory_node_new_note(
       directory,
       parent,
+      priv->node_counter++,
       g_strdup(name),
       plugin
     );
@@ -1155,9 +1463,11 @@ infd_directory_node_add_note(InfdDirectory* directory,
       NULL
     );
     g_assert(session != NULL);
-    infd_directory_node_link_session(directory, node, session);
 
+    proxy = infd_directory_create_session_proxy(directory, node->id, session);
     g_object_unref(session);
+    infd_directory_node_link_session(directory, node, proxy);
+    g_object_unref(proxy);
 
     /* TODO: Save initial node? */
 
@@ -1192,6 +1502,102 @@ infd_directory_node_remove(InfdDirectory* directory,
   return TRUE;
 }
 
+static InfdDirectorySyncIn*
+infd_directory_node_add_sync_in(InfdDirectory* directory,
+                                InfdDirectoryNode* parent,
+                                const gchar* name,
+                                InfdNotePlugin* plugin,
+                                InfXmlConnection* sync_conn,
+                                gboolean subscribe_sync_conn,
+                                guint seq,
+                                GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectorySyncIn* sync_in;
+  InfConnectionManagerGroup* sync_group;
+  xmlNodePtr xml;
+  gchar* network;
+  const InfConnectionManagerMethodDesc* method;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(infd_directory_node_find_child_by_name(parent, name) != NULL ||
+     infd_directory_find_sync_in_by_name(directory, parent, name) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_EXISTS,
+      "%s",
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NODE_EXISTS)
+    );
+
+    return NULL;
+  }
+
+  sync_in = infd_directory_add_sync_in(
+    directory,
+    parent,
+    name,
+    plugin,
+    sync_conn,
+    subscribe_sync_conn
+  );
+
+  g_object_get(
+    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    "sync-group", &sync_group,
+    NULL
+  );
+  g_object_get(G_OBJECT(sync_conn), "network", &network, NULL);
+
+  method = inf_connection_manager_group_get_method_for_network(
+    sync_group,
+    network
+  );
+
+  if(method == NULL)
+  {
+    xmlFreeNode(xml);
+    infd_directory_remove_sync_in(directory, sync_in);
+
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
+      "The session does not support network '%s'.",
+      network
+    );
+
+    g_free(network);
+    return NULL;
+  }
+
+  g_free(network);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
+  inf_xml_util_set_attribute_uint(xml, "id", sync_in->node_id);
+
+  inf_xml_util_set_attribute(
+    xml,
+    "group",
+    inf_connection_manager_group_get_name(sync_group)
+  );
+
+  inf_connection_manager_group_unref(sync_group);
+
+  inf_xml_util_set_attribute(xml, "method", method->name);
+  if(seq != 0) inf_xml_util_set_attribute_uint(xml, "seq", seq);
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    sync_conn,
+    xml
+  );
+
+  return sync_in;
+}
+
 static InfdSessionProxy*
 infd_directory_node_get_session(InfdDirectory* directory,
                                 InfdDirectoryNode* node,
@@ -1199,6 +1605,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfSession* session;
+  InfdSessionProxy* proxy;
   gchar* path;
 
   g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
@@ -1220,8 +1627,11 @@ infd_directory_node_get_session(InfdDirectory* directory,
   g_free(path);
   if(session == NULL) return NULL;
 
-  infd_directory_node_link_session(directory, node, session);
+  proxy = infd_directory_create_session_proxy(directory, node->id, session);
   g_object_unref(session);
+  infd_directory_node_link_session(directory, node, proxy);
+  g_object_unref(proxy);
+
   return node->shared.note.session;
 }
 
@@ -1422,6 +1832,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   guint seq;
   GError* local_error;
 
+  xmlNodePtr child;
+  gboolean sync_in;
+  gboolean subscribe_sync_conn;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   parent = infd_directory_get_node_from_xml_typed(
@@ -1486,26 +1900,70 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       seq,
       error
     );
+
+    if(node == NULL) return FALSE;
+    return TRUE;
   }
   else
   {
-    node = infd_directory_node_add_note(
-      directory,
-      parent,
-      (const gchar*)name,
-      plugin,
-      (has_seq == TRUE) ? connection : NULL,
-      seq,
-      error
-    );
+    /* Check for sync-in/subscribe flags */
+    sync_in = subscribe_sync_conn = FALSE;
+    for(child = xml->children; child != NULL; child = child->next)
+    {
+      if(strcmp((const char*)child->name, "sync-in") == 0)
+        sync_in = TRUE;
+      else if(strcmp((const char*)child->name, "subscribe") == 0)
+        subscribe_sync_conn = TRUE;
+    }
+
+    if(sync_in == FALSE)
+    {
+      node = infd_directory_node_add_note(
+        directory,
+        parent,
+        (const gchar*)name,
+        plugin,
+        (has_seq == TRUE) ? connection : NULL,
+        seq,
+        error
+      );
+
+      xmlFree(name);
+      if(node == NULL) return FALSE;
+
+      if(subscribe_sync_conn)
+      {
+        /* The session should be set by infd_directory_node_add_note() */
+        g_assert(node->shared.note.session != NULL);
+
+        infd_session_proxy_subscribe_to(
+          node->shared.note.session,
+          connection,
+          FALSE
+        );
+      }
+
+      return TRUE;
+    }
+    else
+    {
+      infd_directory_node_add_sync_in(
+        directory,
+        parent,
+        (const char*)name,
+        plugin,
+        connection,
+        subscribe_sync_conn,
+        (has_seq == TRUE) ? seq : 0,
+        error
+      );
+
+      /* Note: The sync-in can still fail for various reasons. The
+       * synchronization may fail or the parent folder might be removed. */
+
+      return TRUE;
+    }
   }
-
-  xmlFree(name);
-
-  if(node == NULL)
-    return FALSE;
-
-  return TRUE;
 }
 
 static gboolean
@@ -1628,7 +2086,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     reply_xml
   );
 
-  infd_session_proxy_subscribe_to(proxy, connection);
+  infd_session_proxy_subscribe_to(proxy, connection, TRUE);
   return TRUE;
 }
 
@@ -1908,11 +2366,12 @@ infd_directory_init(GTypeInstance* instance,
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->connections = NULL;
 
-  priv->node_counter = 0;
+  priv->node_counter = 1;
   priv->nodes = g_hash_table_new(NULL, NULL);
 
   /* The root node has no name. */
-  priv->root = infd_directory_node_new_subdirectory(directory, NULL, NULL);
+  priv->root = infd_directory_node_new_subdirectory(directory, NULL, 0, NULL);
+  priv->sync_ins = NULL;
 }
 
 static GObject*
@@ -1963,6 +2422,10 @@ infd_directory_dispose(GObject* object)
 
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Cancel sync-ins */
+  while(priv->sync_ins != NULL)
+    infd_directory_remove_sync_in(directory, priv->sync_ins->data);
 
   /* This frees the complete directory tree and saves sessions into the
    * storage. */
@@ -2979,7 +3442,7 @@ infd_directory_iter_get_node_type(InfdDirectory* directory,
  *
  * Return Value: The plugin for the note @iter points to.
  **/
-InfdNotePlugin*
+const InfdNotePlugin*
 infd_directory_iter_get_plugin(InfdDirectory* directory,
                                InfdDirectoryIter* iter)
 {

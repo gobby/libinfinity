@@ -476,21 +476,8 @@ infd_session_proxy_synchronization_complete_cb_before(InfSession* session,
   g_object_get(session, "status", &status, NULL);
 
   if(status == INF_SESSION_SYNCHRONIZING)
-  {
     if(priv->subscribe_sync_conn == TRUE)
-    {
-      /* Do not use subscribe_to here because this would synchronize the
-       * session to conn. However, we just got it synchronized the
-       * other way around and therefore no further synchronization is
-       * required. */
-      g_signal_emit(
-        G_OBJECT(proxy),
-        session_proxy_signals[ADD_SUBSCRIPTION],
-        0,
-        conn
-      );
-    }
-  }
+      infd_session_proxy_subscribe_to(proxy, conn, FALSE);
 }
 
 static void
@@ -1495,17 +1482,28 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy whose session is in state %INF_SESSION_RUNNING.
  * @connection: A #InfConnection that is not yet subscribed.
+ * @synchronize: If %TRUE, then synchronize the session to @connection first.
  *
  * Subscribes @connection to @proxy's session. The first thing that will be
  * done is a synchronization (see inf_session_synchronize_to()). Then, all
  * changes to the session are propagated to @connection.
+ *
+ * Normally, you want to set @synchronize to %TRUE in which case the whole
+ * session state will be synchronized to @connection (within the subscription
+ * group). However, if for whatever reason the remote site already has a
+ * copy of the session, then you may set @synchronize to %FALSE to skip
+ * synchronization. This happens for example for newly created documents, or
+ * when the remote site synchronized the local session and wants to be
+ * initially subscribed (handled by the
+ * #InfdSessionProxy:subscribe-sync-connection property).
  *
  * A subscription can only be initialted if @proxy's session is in state
  * %INF_SESSION_RUNNING.
  **/
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
-                                InfXmlConnection* connection)
+                                InfXmlConnection* connection,
+                                gboolean synchronize)
 {
   InfdSessionProxyPrivate* priv;
 
@@ -1526,15 +1524,18 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
     connection
   );
 
-  /* Directly synchronize within the subscription group so that we do not
-   * need a group change after synchronization, and the connection already
-   * receives requests from other group member to process after
-   * synchronization. */
-  inf_session_synchronize_to(
-    priv->session,
-    priv->subscription_group,
-    connection
-  );
+  if(synchronize)
+  {
+    /* Directly synchronize within the subscription group so that we do not
+     * need a group change after synchronization, and the connection already
+     * receives requests from other group member to process after
+     * synchronization. */
+    inf_session_synchronize_to(
+      priv->session,
+      priv->subscription_group,
+      connection
+    );
+  }
 }
 
 /**

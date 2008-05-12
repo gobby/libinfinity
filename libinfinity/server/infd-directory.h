@@ -147,7 +147,7 @@ InfdStorageNodeType
 infd_directory_iter_get_node_type(InfdDirectory* directory,
                                   InfdDirectoryIter* iter);
 
-InfdNotePlugin*
+const InfdNotePlugin*
 infd_directory_iter_get_plugin(InfdDirectory* directory,
                                InfdDirectoryIter* iter);
 

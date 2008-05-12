@@ -1,3 +1,15 @@
+2008-05-12  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-session-proxy.h:
+	* libinfinity/server/infd-session-proxy.c: Added a synchronize
+	parameter to infd_session_proxy_subscribe_to, that specifies whether
+	to synchronize the session before subscription.
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added support for so-called
+	Sync-Ins. Sync-Ins are nodes created upon a client request that have
+	initial content synchronized from the client.
+
 2008-05-09  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-view.c: Don't rely on the underlying model

@@ -64,7 +64,8 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
-                                InfXmlConnection* connection);
+                                InfXmlConnection* connection,
+                                gboolean synchronize);
 
 gboolean
 infd_session_proxy_has_subscriptions(InfdSessionProxy* proxy);
