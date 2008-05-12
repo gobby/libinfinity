@@ -1,5 +1,10 @@
 2008-05-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session.c: Correctly remove noop
+	timer when the session is destroyed.
+
+2008-05-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-session-proxy.h:
 	* libinfinity/server/infd-session-proxy.c: Added a synchronize
 	parameter to infd_session_proxy_subscribe_to, that specifies whether

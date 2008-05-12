@@ -477,7 +477,7 @@ inf_adopted_session_reschedule_noop_timer(InfAdoptedSession* session)
 
     /* TODO: Add API that can be implemented using g_timeout_add_seconds for
      * timers with only second resolution */
-    inf_io_add_timeout(
+    priv->noop_timeout = inf_io_add_timeout(
       priv->io,
       next * 1000,
       inf_adopted_session_noop_timeout_func,
