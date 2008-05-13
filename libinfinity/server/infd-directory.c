@@ -179,6 +179,43 @@ static GQuark infd_directory_node_id_quark;
 static const guint INFD_DIRECTORY_SAVE_TIMEOUT = 60000;
 
 /*
+ * Utility functions
+ */
+
+static const InfConnectionManagerMethodDesc*
+infd_directory_find_method_for_connection(InfdDirectory* directory,
+                                          InfConnectionManagerGroup* group,
+                                          InfXmlConnection* connection,
+                                          GError** error)
+{
+  gchar* network;
+  const InfConnectionManagerMethodDesc* method;
+
+  g_object_get(G_OBJECT(connection), "network", &network, NULL);  
+  method = inf_connection_manager_group_get_method_for_network(
+    group,
+    network
+  );
+
+  if(method == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
+      "The session does not support network '%s'.",
+      network
+    );
+
+    g_free(network);
+    return NULL;
+  }
+
+  g_free(network);
+  return method;
+}
+
+/*
  * Path handling.
  */
 
@@ -948,8 +985,7 @@ infd_directory_send(InfdDirectory* directory,
 static void
 infd_directory_node_register(InfdDirectory* directory,
                              InfdDirectoryNode* node,
-                             InfXmlConnection* seq_conn,
-                             guint seq)
+                             InfXmlConnection* except)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryIter iter;
@@ -973,6 +1009,7 @@ infd_directory_node_register(InfdDirectory* directory,
     &iter
   );
 
+#if 0
   if(seq_conn != NULL)
   {
     xml = infd_directory_node_register_to_xml(node);
@@ -984,6 +1021,7 @@ infd_directory_node_register(InfdDirectory* directory,
       xml
     );
   }
+#endif
 
   if(node->parent->shared.subdir.connections != NULL)
   {
@@ -992,10 +1030,100 @@ infd_directory_node_register(InfdDirectory* directory,
     infd_directory_send(
       directory,
       node->parent->shared.subdir.connections,
-      seq_conn,
+      except,
       xml
     );
   }
+}
+
+/* Announces the presence of a new node as a reply to an add-node request
+ * from connection with given seq. */
+static void
+infd_directory_node_register_reply(InfdDirectory* directory,
+                                   InfdDirectoryNode* node,
+                                   InfXmlConnection* connection,
+                                   guint seq)
+{
+  InfdDirectoryPrivate* priv;
+  xmlNodePtr xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  infd_directory_node_register(directory, node, connection);
+
+  xml = infd_directory_node_register_to_xml(node);
+  inf_xml_util_set_attribute_uint(xml, "seq", seq);
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    connection,
+    xml
+  );
+}
+
+/* Announces the presence of a new node as a reply to an add-node request
+ * with subscribing the initiating connection. Note that an error can occur
+ * if no method of connection's network can be used to join the subscription
+ * group. */
+static gboolean
+infd_directory_node_register_reply_subscription(InfdDirectory* directory,
+                                                InfdDirectoryNode* node,
+                                                InfXmlConnection* connection,
+                                                guint seq,
+                                                GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfConnectionManagerGroup* group;
+  const InfConnectionManagerMethodDesc* method;
+  xmlNodePtr xml;
+  xmlNodePtr child;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session != NULL);
+
+  g_object_get(
+    G_OBJECT(infd_session_proxy_get_session(node->shared.note.session)),
+    "subscription-group", &group,
+    NULL
+  );
+
+  g_assert(group != NULL);
+
+  method = infd_directory_find_method_for_connection(
+    directory,
+    group,
+    connection,
+    error
+  );
+
+  if(method == NULL)
+  {
+    inf_connection_manager_group_unref(group);
+    return FALSE;
+  }
+
+  infd_directory_node_register(directory, node, connection);
+  xml = infd_directory_node_register_to_xml(node);
+  inf_xml_util_set_attribute_uint(xml, "seq", seq);
+
+  child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
+  inf_xml_util_set_attribute(
+    child,
+    "group",
+    inf_connection_manager_group_get_name(group)
+  );
+
+  inf_xml_util_set_attribute(child, "method", method->name);
+  inf_connection_manager_group_unref(group);
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    connection,
+    xml
+  );
+
+  return TRUE;
 }
 
 /* Announces that a node is removed. Again, this is not done in
@@ -1082,8 +1210,6 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   InfdDirectorySyncIn* sync_in;
   InfdDirectory* directory;
   InfdDirectoryNode* node;
-  InfdDirectoryIter iter;
-  xmlNodePtr xml;
 
   sync_in = (InfdDirectorySyncIn*)user_data;
   directory = sync_in->directory;
@@ -1103,28 +1229,9 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   sync_in->name = NULL; /* Don't free, we passed ownership */
   infd_directory_remove_sync_in(directory, sync_in);
 
-  /* We don't use infd_directory_node_register directly here since it
-   * also registers to the synchronizing connection. However, than connection
-   * already knows that the node has been inserted, because of the
-   * successful synchronization. */
-  iter.node_id = node->id;
-  iter.node = node;
-
-  g_signal_emit(
-    G_OBJECT(sync_in->directory),
-    directory_signals[NODE_ADDED],
-    0,
-    &iter
-  );
-
-  xml = infd_directory_node_register_to_xml(node);
-
-  infd_directory_send(
-    directory,
-    node->parent->shared.subdir.connections,
-    conn,
-    xml
-  );
+  /* Don't send to conn since the completed subscription already lets the
+   * remote site know that the node was inserted. */
+  infd_directory_node_register(directory, node, conn);
 }
 
 static InfdDirectorySyncIn*
@@ -1351,7 +1458,7 @@ infd_directory_node_explore(InfdDirectory* directory,
        * interesting in root folder changes (because they opened the root
        * folder from the old storage). Also, local users might be interested
        * in the new node. */
-      infd_directory_node_register(directory, new_node, NULL, 0);
+      infd_directory_node_register(directory, new_node, NULL);
     }
   }
 
@@ -1409,7 +1516,11 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
       g_strdup(name)
     );
 
-    infd_directory_node_register(directory, node, seq_conn, seq);
+    if(seq_conn != NULL)
+      infd_directory_node_register_reply(directory, node, seq_conn, seq);
+    else
+      infd_directory_node_register(directory, node, NULL);
+
     return node;
   }
 }
@@ -1421,6 +1532,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
                              InfdNotePlugin* plugin,
                              InfXmlConnection* seq_conn,
                              guint seq,
+                             gboolean subscribe_seq_conn,
                              GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -1471,7 +1583,28 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
     /* TODO: Save initial node? */
 
-    infd_directory_node_register(directory, node, seq_conn, seq);
+    if(seq_conn != NULL && subscribe_seq_conn == FALSE)
+    {
+      infd_directory_node_register_reply(directory, node, seq_conn, seq);
+    }
+    /* If there is no method for connection to join the subscription group
+     * (which is the only error that can occur), then we still create the
+     * node. We perhaps should check this before creating the node. */
+    else if(seq_conn != NULL && subscribe_seq_conn == TRUE)
+    {
+      infd_directory_node_register_reply_subscription(
+        directory,
+        node,
+        seq_conn,
+        seq,
+        error
+      );
+    }
+    else
+    {
+      infd_directory_node_register(directory, node, NULL);
+    }
+
     return node;
   }
 }
@@ -1516,7 +1649,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
   InfdDirectorySyncIn* sync_in;
   InfConnectionManagerGroup* sync_group;
   xmlNodePtr xml;
-  gchar* network;
+  xmlNodePtr child;
   const InfConnectionManagerMethodDesc* method;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -1549,31 +1682,20 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     "sync-group", &sync_group,
     NULL
   );
-  g_object_get(G_OBJECT(sync_conn), "network", &network, NULL);
 
-  method = inf_connection_manager_group_get_method_for_network(
+  method = infd_directory_find_method_for_connection(
+    directory,
     sync_group,
-    network
+    sync_conn,
+    error
   );
 
   if(method == NULL)
   {
     xmlFreeNode(xml);
     infd_directory_remove_sync_in(directory, sync_in);
-
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
-      "The session does not support network '%s'.",
-      network
-    );
-
-    g_free(network);
     return NULL;
   }
-
-  g_free(network);
 
   xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
   inf_xml_util_set_attribute_uint(xml, "id", sync_in->node_id);
@@ -1584,10 +1706,24 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     inf_connection_manager_group_get_name(sync_group)
   );
 
-  inf_connection_manager_group_unref(sync_group);
-
   inf_xml_util_set_attribute(xml, "method", method->name);
   if(seq != 0) inf_xml_util_set_attribute_uint(xml, "seq", seq);
+
+  if(subscribe_sync_conn)
+  {
+    /* Note that if subscribe_sync_conn is set, then sync_group is the same
+     * as the subscription group, so we don't need to query the subscription
+     * group here. */
+    child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
+    inf_xml_util_set_attribute(child, "method", method->name);
+    inf_xml_util_set_attribute(
+      child,
+      "group",
+      inf_connection_manager_group_get_name(sync_group)
+    );
+  }
+
+  inf_connection_manager_group_unref(sync_group);
 
   inf_connection_manager_group_send_to_connection(
     priv->group,
@@ -1833,8 +1969,9 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   GError* local_error;
 
   xmlNodePtr child;
-  gboolean sync_in;
+  gboolean perform_sync_in;
   gboolean subscribe_sync_conn;
+  InfdDirectorySyncIn* sync_in;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1907,16 +2044,16 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   else
   {
     /* Check for sync-in/subscribe flags */
-    sync_in = subscribe_sync_conn = FALSE;
+    perform_sync_in = subscribe_sync_conn = FALSE;
     for(child = xml->children; child != NULL; child = child->next)
     {
       if(strcmp((const char*)child->name, "sync-in") == 0)
-        sync_in = TRUE;
+        perform_sync_in = TRUE;
       else if(strcmp((const char*)child->name, "subscribe") == 0)
         subscribe_sync_conn = TRUE;
     }
 
-    if(sync_in == FALSE)
+    if(perform_sync_in == FALSE)
     {
       node = infd_directory_node_add_note(
         directory,
@@ -1925,29 +2062,47 @@ infd_directory_handle_add_node(InfdDirectory* directory,
         plugin,
         (has_seq == TRUE) ? connection : NULL,
         seq,
-        error
+        subscribe_sync_conn,
+        &local_error
       );
 
       xmlFree(name);
-      if(node == NULL) return FALSE;
+      if(node == NULL)
+      {
+        g_propagate_error(error, local_error);
+        return FALSE;
+      }
 
+      /* Note that local_error can only be set if subscribe_sync_conn is set,
+       * so we don't need to check it in case subscribe_sync_conn is not
+       * set. */
       if(subscribe_sync_conn)
       {
-        /* The session should be set by infd_directory_node_add_note() */
-        g_assert(node->shared.note.session != NULL);
-
-        infd_session_proxy_subscribe_to(
-          node->shared.note.session,
-          connection,
-          FALSE
-        );
+        if(local_error != NULL)
+        {
+          /* The only error that can occur here (note that the node was
+           * already successfully created) is that the subscription
+           * failed. We just don't subscribe the client in that case. */
+          g_error_free(local_error);
+        }
+        else
+        {
+          /* The session should be set by infd_directory_node_add_note() */
+          g_assert(node->shared.note.session != NULL);
+ 
+         infd_session_proxy_subscribe_to(
+            node->shared.note.session,
+            connection,
+            FALSE
+          );
+        }
       }
 
       return TRUE;
     }
     else
     {
-      infd_directory_node_add_sync_in(
+      sync_in = infd_directory_node_add_sync_in(
         directory,
         parent,
         (const char*)name,
@@ -1957,6 +2112,9 @@ infd_directory_handle_add_node(InfdDirectory* directory,
         (has_seq == TRUE) ? seq : 0,
         error
       );
+
+      if(sync_in == NULL)
+        return FALSE;
 
       /* Note: The sync-in can still fail for various reasons. The
        * synchronization may fail or the parent folder might be removed. */
@@ -2005,7 +2163,6 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   InfdDirectoryNode* node;
   InfdSessionProxy* proxy;
   InfConnectionManagerGroup* group;
-  gchar* network;
   const InfConnectionManagerMethodDesc* method;
   xmlChar* seq_attr;
   xmlNodePtr reply_xml;
@@ -2031,28 +2188,20 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     return FALSE;
 
   g_object_get(G_OBJECT(proxy), "subscription-group", &group, NULL);
-  g_object_get(G_OBJECT(connection), "network", &network, NULL);
 
-  method = inf_connection_manager_group_get_method_for_network(group, network);
+  method = infd_directory_find_method_for_connection(
+    directory,
+    group,
+    connection,
+    error
+  );
+
   if(method == NULL)
   {
     /* Session does not support connection's network. */
-
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
-      "The session does not support network '%s'.",
-      network
-    );
-
     inf_connection_manager_group_unref(group);
-    g_free(network);
-
     return FALSE;
   }
-
-  g_free(network);
 
   /* Reply that subscription was successful (so far, synchronization may
    * still fail) and tell identifier. */
@@ -3369,6 +3518,7 @@ infd_directory_add_note(InfdDirectory* directory,
     plugin,
     NULL,
     0,
+    FALSE,
     error
   );
 

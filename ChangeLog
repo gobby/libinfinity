@@ -1,3 +1,9 @@
+2008-05-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c: Added <subscribe> child tags
+	into <add-node> replies that have a <subscribe> child set, telling
+	group name and method of subscription group.
+
 2008-05-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-session.c: Correctly remove noop
