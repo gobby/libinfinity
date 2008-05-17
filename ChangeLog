@@ -1,5 +1,13 @@
 2008-05-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Replaced the "begin-sync-in"
+	signal and the infc_browser_iter_get_sync_in_requests() method by a
+	infc_browser_iter_get_sync_in() method that provides the same
+	information.
+
+2008-05-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-error.c: Added
 	INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN error code.

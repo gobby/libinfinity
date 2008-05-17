@@ -79,13 +79,11 @@ struct _InfcBrowserClass {
                         InfcBrowserIter* iter,
                         InfcExploreRequest* request);
 
+  /* TODO: Does anyone actually use this signal? I can't imagine any
+   * senseful use of it. */
   void (*begin_subscribe)(InfcBrowser* browser,
                           InfcBrowserIter* iter,
                           InfcNodeRequest* request);
-
-  void (*begin_sync_in)(InfcBrowser* browser,
-                        InfcBrowserIter* iter,
-                        InfcNodeRequest* request);
 };
 
 struct _InfcBrowser {
@@ -195,6 +193,10 @@ InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
                               InfcBrowserIter* iter);
 
+InfcSessionProxy*
+infc_browser_iter_get_sync_in(InfcBrowser* browser,
+                              InfcBrowserIter* iter);
+
 InfcNodeRequest*
 infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
                                         InfcBrowserIter* iter);
@@ -202,10 +204,6 @@ infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
 InfcExploreRequest*
 infc_browser_iter_get_explore_request(InfcBrowser* browser,
                                       InfcBrowserIter* iter);
-
-GSList*
-infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
-                                       InfcBrowserIter* iter);
 
 gboolean
 infc_browser_iter_from_node_request(InfcBrowser* browser,

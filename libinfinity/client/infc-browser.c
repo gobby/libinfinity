@@ -145,7 +145,6 @@ enum {
   SUBSCRIBE_SESSION,
   BEGIN_EXPLORE,
   BEGIN_SUBSCRIBE,
-  BEGIN_SYNC_IN,
 
   LAST_SIGNAL
 };
@@ -1619,6 +1618,8 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   inf_session_synchronize_to(session, sync_group, connection);
   g_object_unref(session);
 
+  infc_browser_add_sync_in(browser, node, connection, proxy);
+
   node = infc_browser_node_add_note(
     browser,
     parent,
@@ -1649,7 +1650,6 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
     );
   }
 
-  infc_browser_add_sync_in(browser, node, connection, proxy);
   g_object_unref(proxy);
 
   /* TODO: Emit a signal, so that others are notified that a sync-in begins
@@ -2307,35 +2307,6 @@ infc_browser_class_init(gpointer g_class,
     INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
     INFC_TYPE_NODE_REQUEST
   );
-
-  /**
-   * InfcBrowser::begin-sync-in:
-   * @browser: The #InfcBrowser emitting the signal.
-   * @iter: A #InfcBrowserIter pointing to the parent node into which a new
-   * node is inserted.
-   * @request: A #InfcNodeRequest for the operation.
-   *
-   * This signal is emitted whenever a request to add a new node with initial
-   * content is made, see infc_browser_add_note_with_content(). @iter points
-   * to the parent node into which the new node shall be inserted. The request
-   * might fail in which case the node is not created. Otherwise, when the
-   * request finishes, you can access the #InfSession for that node and watch
-   * its synchronization progress (which might still fail as well, in which
-   * case the node is removed again). Connect to #InfcNodeRequest::finished
-   * and #InfcRequest::failed to be notified about the result of the request.
-   **/
-  browser_signals[BEGIN_SYNC_IN] = g_signal_new(
-    "begin-sync-in",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfcBrowserClass, begin_sync_in),
-    NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
-    G_TYPE_NONE,
-    2,
-    INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-    INFC_TYPE_NODE_REQUEST
-  );
 }
 
 static void
@@ -2974,7 +2945,7 @@ infc_browser_add_note(InfcBrowser* browser,
  * You can safely unref session after having called this function. If the
  * request or the synchronization fails, the session will be discarded in
  * that case. When the returned request finishes, you can use
- * infc_browser_iter_get_session() to get the session again.
+ * infc_browser_iter_get_sync_in() to get the session again.
  *
  * If @initial_subscribe is set, then, when the returned request finishes,
  * you might call infc_browser_iter_get_session() on the resulting
@@ -3053,14 +3024,6 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
     G_OBJECT(request),
     infc_browser_sync_in_plugin_quark,
     (gpointer)plugin
-  );
-
-  g_signal_emit(
-    G_OBJECT(browser),
-    browser_signals[BEGIN_SYNC_IN],
-    0,
-    parent,
-    request
   );
 
   return INFC_NODE_REQUEST(request);
@@ -3334,6 +3297,45 @@ infc_browser_iter_get_session(InfcBrowser* browser,
 
   if(node->type != INFC_BROWSER_NODE_NOTE_KNOWN) return NULL;
   return node->shared.known.session;
+}
+
+/**
+ * infc_browser_iter_get_sync_in:
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a note in @browser.
+ *
+ * Returns the #InfcSessionProxy that is used to synchronize the note @iter
+ * points to to the server. Such a node is created by
+ * infc_browser_iter_add_note_with_content(). If the client is subscribed to
+ * this note, then this returns the same session as
+ * infc_browser_iter_get_session(). However, it is possible that we
+ * synchronize this node to the server without being subscribed to it. In
+ * this case, this function returns the session that does the synchronization,
+ * while infc_browser_iter_get_session() would return %NULL.
+ *
+ * Return Value: A #InfcSessionProxy, or %NULL if we are currently not
+ * synchronizing this node to the server.
+ **/
+InfcSessionProxy*
+infc_browser_iter_get_sync_in(InfcBrowser* browser,
+                              InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  GSList* item;
+  InfcBrowserSyncIn* sync_in;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  for(item = priv->sync_ins; item != NULL; item = item->next)
+  {
+    sync_in = (InfcBrowserSyncIn*)item->data;
+    if(sync_in->node == iter->node)
+      return sync_in->proxy;
+  }
+
+  return NULL;
 }
 
 /**
