@@ -1,3 +1,18 @@
+2008-05-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN error code.
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added support for Sync-Ins,
+	resulting in these new methods: infc_browser_add_note_with_content(),
+	infc_browser_iter_get_sync_in_requests(), and the "begin-sync-in"
+	signal.
+
+	* libinfinity/server/infd-directory.c: Added node name and node type
+	in the <sync-in> reply.
+
 2008-05-13  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.c: Added <subscribe> child tags

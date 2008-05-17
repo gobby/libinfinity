@@ -138,6 +138,8 @@ inf_directory_strerror(InfDirectoryError code)
            "connection attempt is being made.";
   case INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED:
     return "The session uses an unsupported communication method";
+  case INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN:
+    return "Received sync-in message without having requested a sync-in";
   case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
     return "Unexpected XML message";
   case INF_DIRECTORY_ERROR_FAILED:

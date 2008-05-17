@@ -97,6 +97,8 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
   /* Session uses unsupported communication method */
   INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
+  /* A sync-in was received without having requested one */
+  INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
   /* Got unexpected XML message */
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
 

@@ -1189,6 +1189,7 @@ infd_directory_node_unregister(InfdDirectory* directory,
 static void
 infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
                                                  InfXmlConnection* connection,
+                                                 const GError* error,
                                                  gpointer user_data)
 {
   /* Synchronization failed. We simple remove the sync-in. There is no further
@@ -1708,6 +1709,9 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
   inf_xml_util_set_attribute(xml, "method", method->name);
   if(seq != 0) inf_xml_util_set_attribute_uint(xml, "seq", seq);
+
+  inf_xml_util_set_attribute(xml, "name", name);
+  inf_xml_util_set_attribute(xml, "type", plugin->note_type);
 
   if(subscribe_sync_conn)
   {

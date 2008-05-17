@@ -55,7 +55,7 @@ typedef enum _InfcBrowserNodeStatus {
    * acknowledged the move and might still reject the request. */
   INFC_BROWSER_NODE_MOVED,
   /* The node has been copied locally, but the server has not yet
-   * acknowledget the copy and might still reject the request. */
+   * acknowledged the copy and might still reject the request. */
   INFC_BROWSER_NODE_COPIED,
   /* Inherit status from parent node (used internally) */
   INFC_BROWSER_NODE_INHERIT
@@ -71,6 +71,10 @@ struct _InfcBrowserClass {
   void (*node_removed)(InfcBrowser* browser,
                        InfcBrowserIter* iter);
 
+  void (*subscribe_session)(InfcBrowser* browser,
+                            InfcBrowserIter* iter,
+                            InfcSessionProxy* proxy);
+
   void (*begin_explore)(InfcBrowser* browser,
                         InfcBrowserIter* iter,
                         InfcExploreRequest* request);
@@ -79,9 +83,9 @@ struct _InfcBrowserClass {
                           InfcBrowserIter* iter,
                           InfcNodeRequest* request);
 
-  void (*subscribe_session)(InfcBrowser* browser,
-                            InfcBrowserIter* iter,
-                            InfcSessionProxy* proxy);
+  void (*begin_sync_in)(InfcBrowser* browser,
+                        InfcBrowserIter* iter,
+                        InfcNodeRequest* request);
 };
 
 struct _InfcBrowser {
@@ -131,15 +135,6 @@ gboolean
 infc_browser_iter_get_explored(InfcBrowser* browser,
                                InfcBrowserIter* iter);
 
-InfcExploreRequest*
-infc_browser_iter_get_explore_request(InfcBrowser* browser,
-                                      InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_from_explore_request(InfcBrowser* browser,
-                                       InfcExploreRequest* request,
-                                       InfcBrowserIter* iter);
-
 gboolean
 infc_browser_iter_get_child(InfcBrowser* browser,
                             InfcBrowserIter* iter);
@@ -165,7 +160,16 @@ InfcNodeRequest*
 infc_browser_add_note(InfcBrowser* browser,
                       InfcBrowserIter* parent,
                       const gchar* name,
-                      const InfcNotePlugin* plugin);
+                      const InfcNotePlugin* plugin,
+                      gboolean initial_subscribe);
+
+InfcNodeRequest*
+infc_browser_add_note_with_content(InfcBrowser* browser,
+                                   InfcBrowserIter* parent,
+                                   const gchar* name,
+                                   const InfcNotePlugin* plugin,
+                                   InfSession* session,
+                                   gboolean initial_subscribe);
 
 InfcNodeRequest*
 infc_browser_remove_node(InfcBrowser* browser,
@@ -195,10 +199,23 @@ InfcNodeRequest*
 infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
                                         InfcBrowserIter* iter);
 
+InfcExploreRequest*
+infc_browser_iter_get_explore_request(InfcBrowser* browser,
+                                      InfcBrowserIter* iter);
+
+GSList*
+infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
+                                       InfcBrowserIter* iter);
+
 gboolean
 infc_browser_iter_from_node_request(InfcBrowser* browser,
                                     InfcNodeRequest* request,
                                     InfcBrowserIter* iter);
+
+gboolean
+infc_browser_iter_from_explore_request(InfcBrowser* browser,
+                                       InfcExploreRequest* request,
+                                       InfcBrowserIter* iter);
 
 G_END_DECLS
 
