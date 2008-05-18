@@ -1,3 +1,12 @@
+2008-05-18  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.c: Added two assertions in
+	infc_browser_handle_sync_in() and infc_browser_add_note_with_content()
+	that make sure that the provided session is not yet subscribed in case
+	the the client wants to subscribe to the newly created node.
+
+	* libinfgtk/inf-gtk-browser-view.c: Show progress of sync-ins.
+
 2008-05-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.h:

@@ -1636,6 +1636,9 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
 
   if(child != NULL)
   {
+    /* Make sure the session is not yet subscribed */
+    g_assert(inf_session_get_subscription_group(session) == NULL);
+
     /* Subscribe to the newly created node. We don't need to do all the
      * stuff infc_browser_subscribe_session() does since we already created
      * the session, proxy and group. */
@@ -2976,6 +2979,13 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
 
   g_return_val_if_fail(
     inf_session_get_status(session) == INF_SESSION_RUNNING,
+    NULL
+  );
+
+  /* Can only subscribe if that session is not already subscribed elsewhere */
+  g_return_val_if_fail(
+    !initial_subscribe ||
+    inf_session_get_subscription_group(session) == NULL,
     NULL
   );
 
