@@ -23,6 +23,7 @@
 struct _InfConnectionManagerMethod {
   InfConnectionManagerGroup* group;
   GSList* connections;
+  gboolean publisher; /* Whether the local host is publisher of the group */
 };
 
 static InfConnectionManagerMethod*
@@ -34,6 +35,7 @@ inf_method_local_central_open(const InfConnectionManagerMethodDesc* dc,
 
   method->group = group;
   method->connections = NULL;
+  method->publisher = TRUE;
 
   return method;
 }
@@ -48,6 +50,7 @@ inf_method_local_central_join(const InfConnectionManagerMethodDesc* dc,
 
   method->group = group;
   method->connections = g_slist_prepend(NULL, publisher_conn);
+  method->publisher = FALSE;
   inf_connection_manager_register_connection(group, publisher_conn);
   g_object_ref(publisher_conn);
 
@@ -83,7 +86,7 @@ inf_method_local_central_receive_msg(InfConnectionManagerMethod* instance,
 
   /* Forward group messages to group if we are publisher */
   if(scope == INF_CONNECTION_MANAGER_GROUP && can_forward == TRUE &&
-     inf_connection_manager_group_get_publisher_id(instance->group) == NULL)
+     instance->publisher == TRUE)
   {
     for(item = instance->connections; item != NULL; item = g_slist_next(item))
     {

@@ -147,11 +147,13 @@ void
 inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
                                         InfNetObject* object);
 
+#if 0
 InfXmlConnection*
 inf_connection_manager_group_get_publisher(InfConnectionManagerGroup* group);
 
 const gchar*
 inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp);
+#endif
 
 gboolean
 inf_connection_manager_group_has_connection(InfConnectionManagerGroup* group,
@@ -168,10 +170,12 @@ void
 inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
                                                InfXmlConnection* conn);
 
+#if 0
 InfXmlConnection*
 inf_connection_manager_group_lookup_connection(InfConnectionManagerGroup* grp,
                                                const gchar* network,
                                                const gchar* id);
+#endif
 
 void
 inf_connection_manager_group_send_to_connection(InfConnectionManagerGroup* g,

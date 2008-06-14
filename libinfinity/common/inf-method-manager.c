@@ -120,6 +120,10 @@ inf_method_manager_constructor(GType type,
 
           g_module_close(module);
         }
+        else
+        {
+          g_warning("Failed to load module `%s': %s", path, g_module_error());
+        }
 
         g_free(path);
       }

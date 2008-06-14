@@ -28,13 +28,11 @@
  * send and receive data from other collaborators.
  *
  * The key concept is that of so-called (connection manager) groups. A group
- * is identified by its name and its publisher. Hosts can create and join
+ * is identified by its name and its publisher id. Hosts can create and join
  * groups within the network, and send messages to others within the same
- * group. The publisher of a group is the host that created the group and
- * is identified by a string representation of its (unique) address in that
- * network (this is IP address/Port number with TCP, or JID and resource in
- * the jabber network). The connection manager allows lookup by that address
- * within a group and a network.
+ * group. The publisher id is a string uniquely identifying a host in the
+ * network. This is supposed to be some form of UUID since clients cannot join
+ * two groups with both same name and same publisher id.
  *
  * Messages can either be sent to a single group member or to the whole
  * group.
@@ -57,8 +55,12 @@
 #include <libinfinity/common/inf-xml-util.h>
 
 #include <libxml/xmlsave.h>
+#include <uuid/uuid.h>
 
 #include <string.h>
+
+/* Length of a UUID in normalized form: */
+#define PUBLISHER_ID_LENGTH 36
 
 typedef enum _InfConnectionManagerMsgType {
   INF_CONNECTION_MANAGER_MESSAGE,
@@ -67,13 +69,19 @@ typedef enum _InfConnectionManagerMsgType {
 
 /* These are only used internally */
 typedef enum _InfConnectionManagerError {
-  INF_CONNECTION_MANAGER_ERROR_UNEXPECTED_MESSAGE
+  INF_CONNECTION_MANAGER_ERROR_UNEXPECTED_MESSAGE,
+  INF_CONNECTION_MANAGER_ERROR_INVALID_PUBLISHER_ID,
+  INF_CONNECTION_MANAGER_ERROR_PUBLISHER_ID_KNOWN,
+  INF_CONNECTION_MANAGER_ERROR_PUBLISHER_ID_IN_USE
 } InfConnectionManagerError;
 
 typedef struct _InfConnectionManagerKey InfConnectionManagerKey;
 struct _InfConnectionManagerKey {
   gchar* group_name;
+  /* publisher_id might be zero, if not yet known.
+   * In that case, we sort by publisher_conn */
   gchar* publisher_id;
+  InfXmlConnection* publisher_conn;
 };
 
 typedef struct _InfConnectionManagerMethodInstance
@@ -92,6 +100,17 @@ struct _InfConnectionManagerQueue {
   guint inner_count;
 };
 
+typedef struct _InfConnectionManagerRegistration
+  InfConnectionManagerRegistration;
+struct _InfConnectionManagerRegistration {
+  guint registration_count;
+  gboolean publisher_id_known;
+  gboolean publisher_id_sent;
+
+  /* has only senseful content in case publisher_id_known is TRUE */
+  gchar publisher_id[PUBLISHER_ID_LENGTH];
+};
+
 struct _InfConnectionManagerGroup {
   InfConnectionManagerKey key;
 
@@ -99,7 +118,6 @@ struct _InfConnectionManagerGroup {
   guint ref_count;
 
   InfNetObject* object;
-  InfXmlConnection* publisher_conn;
 
   GSList* methods;
   GSList* queues;
@@ -107,8 +125,17 @@ struct _InfConnectionManagerGroup {
 
 typedef struct _InfConnectionManagerPrivate InfConnectionManagerPrivate;
 struct _InfConnectionManagerPrivate {
+  /* uuid_unparse_lower insists on adding a trailing NUL byte */
+  gchar own_publisher_id[PUBLISHER_ID_LENGTH + 1];
   GHashTable* registered_connections;
   GTree* groups;
+};
+
+typedef struct _InfConnectionManagerRegroupData
+  InfConnectionManagerRegroupData;
+struct _InfConnectionManagerRegroupData {
+  InfXmlConnection* publisher_conn;
+  GSList* groups;
 };
 
 #define INF_CONNECTION_MANAGER_PRIVATE(obj) ( \
@@ -151,20 +178,39 @@ inf_connection_manager_key_cmp(gconstpointer first,
   first_key = (InfConnectionManagerKey*)first;
   second_key = (InfConnectionManagerKey*)second;
 
+  /* First by group name */
   res = strcmp(first_key->group_name, second_key->group_name);
   if(res != 0) return res;
 
-  if(first_key->publisher_id == NULL)
+  /* Groups with known publisher id come first */
+  if(first_key->publisher_id != NULL)
   {
-    if(second_key->publisher_id == NULL)
-      return 0;
+    if(second_key->publisher_id != NULL)
+    {
+      return memcmp(
+        first_key->publisher_id,
+        second_key->publisher_id,
+        PUBLISHER_ID_LENGTH
+      );
+    }
     else
+    {
       return -1;
+    }
   }
-  else if(second_key->publisher_id == NULL)
+  else if(second_key->publisher_id != NULL)
+  {
     return 1;
+  }
   else
-    return strcmp(first_key->publisher_id, second_key->publisher_id);
+  {
+    /* Both publisher keys are zero */
+    if(first_key->publisher_conn < second_key->publisher_conn)
+      return -1;
+    if(first_key->publisher_conn > second_key->publisher_conn)
+      return 1;
+    return 0;
+  }
 }
 
 static void
@@ -183,6 +229,59 @@ inf_connection_manager_object_weak_unrefed(gpointer user_data,
   );
 }
 
+static guint
+inf_connection_manager_group_queue_capacity(InfConnectionManagerGroup* group,
+                                            InfConnectionManagerQueue* queue)
+{
+  InfConnectionManagerPrivate* priv;
+  InfConnectionManagerRegistration* registration;
+  guint limit;
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(group->manager);
+
+  /* Determine maximum queued items */
+  limit = INNER_QUEUE_LIMIT;
+  /* We can't queue anything as long as we don't know the publisher ID
+   * of the group since we need this to send things. */
+  if(group->key.publisher_id == NULL)
+    limit = 0;
+  /* We can't queue anything as long as the connection is not yet
+   * fully established (<=> we did not sent out our publisher ID yet, which
+   * is the first thing we do when the connection is ready). */
+  registration =
+    g_hash_table_lookup(priv->registered_connections, queue->connection);
+  g_assert(registration != NULL);
+  if(!registration->publisher_id_sent)
+    limit = 0;
+
+  g_assert(queue->inner_count <= limit);
+  return limit - queue->inner_count;
+}
+
+static void
+inf_connection_manager_announce_registration(InfConnectionManager* manager,
+                                             InfXmlConnection* connection)
+{
+  InfConnectionManagerPrivate* priv;
+  InfConnectionManagerRegistration* registration;
+  xmlNodePtr id_announce;
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  registration =
+    g_hash_table_lookup(priv->registered_connections, connection);
+  g_assert(registration != NULL);
+  g_assert(registration->publisher_id_sent == FALSE);
+
+  /* Announce our publisher ID to the remote site so that locally created
+   * groups can be joined by that connection. */
+  id_announce = xmlNewNode(NULL, (const xmlChar*)"connection");
+  inf_xml_util_set_attribute(id_announce, "id", priv->own_publisher_id);
+  inf_xml_connection_send(connection, id_announce);
+
+  registration->publisher_id_sent = TRUE;
+}
+
 static xmlNodePtr
 inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
                                        InfConnectionManagerQueue* queue,
@@ -198,22 +297,12 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   InfConnectionManagerMsgType cur_type;
 
   const gchar* publisher_id;
-  gchar* own_publisher_id;
 
   g_assert(group->object != NULL);
   connection = queue->connection;
 
-  /* TODO: Cache in queue? */
-  if(group->key.publisher_id != NULL)
-  {
-    own_publisher_id = NULL;
-    publisher_id = group->key.publisher_id;
-  }
-  else
-  {
-    g_object_get(G_OBJECT(connection), "local-id", &own_publisher_id, NULL);
-    publisher_id = own_publisher_id;
-  }
+  g_assert(group->key.publisher_id != NULL);
+  publisher_id = group->key.publisher_id;
 
   /* max==0 means all messages */
   if(max == 0) max = ~(guint)0;
@@ -282,7 +371,6 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   if(container != NULL)
     inf_xml_connection_send(connection, container);
 
-  g_free(own_publisher_id);
   return xml;
 }
 
@@ -379,13 +467,176 @@ inf_connection_manager_group_free(gpointer group_)
     );
   }
 
-  if(group->publisher_conn != NULL)
-    g_object_unref(group->publisher_conn);
-
   g_free(group->key.publisher_id);
   g_free(group->key.group_name);
 
   g_slice_free(InfConnectionManagerGroup, group);
+}
+
+static gboolean
+inf_connection_manager_handle_connection_regroup_func(gpointer key,
+                                                      gpointer value,
+                                                      gpointer data)
+{
+  InfConnectionManagerKey* tree_key;
+  InfConnectionManagerRegroupData* regroup_data;
+
+  tree_key = (InfConnectionManagerKey*)key;
+  regroup_data = (InfConnectionManagerRegroupData*)data;
+
+  if(tree_key->publisher_id == NULL &&
+     tree_key->publisher_conn == regroup_data->publisher_conn)
+  {
+    regroup_data->groups = g_slist_prepend(regroup_data->groups, value);
+  }
+
+  return FALSE;
+}
+
+static gboolean
+inf_connection_manager_handle_connection(InfConnectionManager* manager,
+                                         InfXmlConnection* connection,
+                                         xmlNodePtr xml,
+                                         GError** error)
+{
+  InfConnectionManagerPrivate* priv;
+  InfConnectionManagerRegistration* registration;
+  xmlChar* publisher_id;
+  gchar* conn_id;
+  InfConnectionManagerRegroupData data;
+  InfConnectionManagerGroup* group;
+  InfConnectionManagerGroup* other_group;
+  InfConnectionManagerQueue* queue;
+  GSList* item;
+  GSList* queue_item;
+  guint capacity;
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  registration = g_hash_table_lookup(
+    priv->registered_connections,
+    connection
+  );
+
+  /* This can only be called if the connection was registered */
+  g_assert(registration != NULL);
+  
+  if(registration->publisher_id_known == TRUE)
+  {
+    g_object_get(G_OBJECT(connection), "remote-id", &conn_id, NULL);
+
+    g_set_error(
+      error,
+      inf_connection_manager_error_quark,
+      INF_CONNECTION_MANAGER_ERROR_PUBLISHER_ID_KNOWN,
+      "Publisher ID of connection '%s' is already known",
+      conn_id
+    );
+
+    g_free(conn_id);
+    return FALSE;
+  }
+
+  /* Set publisher ID for yet unknown connection */
+  publisher_id = inf_xml_util_get_attribute_required(xml, "id", error);
+  if(publisher_id == NULL) return FALSE;
+
+  if(strlen((const char*)publisher_id) != PUBLISHER_ID_LENGTH)
+  {
+    g_set_error(
+      error,
+      inf_connection_manager_error_quark,
+      INF_CONNECTION_MANAGER_ERROR_INVALID_PUBLISHER_ID,
+      "Publisher ID '%s' has incorrect length",
+      (const gchar*)publisher_id
+    );
+
+    xmlFree(publisher_id);
+    return FALSE;
+  }
+
+  registration->publisher_id_known = TRUE;
+  memcpy(registration->publisher_id, publisher_id, PUBLISHER_ID_LENGTH);
+  xmlFree(publisher_id);
+
+  /* Reinsert groups that do not have a publisher id, but this publisher
+   * connection. */
+  data.publisher_conn = connection;
+  data.groups = NULL;
+
+  g_tree_foreach(
+    priv->groups,
+    inf_connection_manager_handle_connection_regroup_func,
+    &data
+  );
+  
+  for(item = data.groups; item != NULL; item = g_slist_next(item))
+  {
+    group = (InfConnectionManagerGroup*)item->data;
+    g_tree_steal(priv->groups, &group->key);
+
+    /* We do not let this point to registration->publisher_id since the
+     * registered connection could be closed before we are done with the
+     * group. Also, we need it NULL terminated to pass to xmlSetProp. */
+    group->key.publisher_id = g_malloc(PUBLISHER_ID_LENGTH + 1);
+    memcpy(
+      group->key.publisher_id,
+      registration->publisher_id,
+      PUBLISHER_ID_LENGTH
+    );
+    group->key.publisher_id[PUBLISHER_ID_LENGTH] = '\0';
+
+    /* safety, we should never access this anymore anyway: */
+    group->key.publisher_conn = NULL;
+    
+    other_group = g_tree_lookup(priv->groups, &group->key);
+    if(other_group != NULL)
+    {
+      g_set_error(
+        error,
+        inf_connection_manager_error_quark,
+        INF_CONNECTION_MANAGER_ERROR_PUBLISHER_ID_IN_USE,
+        "Publisher ID '%s' is already in use",
+        group->key.publisher_id
+      );
+
+      /* Panique, this seems like another publisher has the same UUID
+       * as the one that currently sent us its UUID, and additionally has
+       * opened a group with the same name. */
+
+      /* TODO: Emit some signal that the group no longer exists */
+      /*inf_connection_manager_group_free(group);*/
+      return FALSE;
+    }
+    else
+    {
+      g_tree_insert(priv->groups, &group->key, group);
+
+      for(queue_item = group->queues;
+          queue_item != NULL;
+          queue_item = g_slist_next(queue_item))
+      {
+        queue = (InfConnectionManagerQueue*)queue_item->data;
+        capacity = inf_connection_manager_group_queue_capacity(group, queue);
+
+        if(capacity > 0)
+        {
+          queue->first_item = inf_connection_manager_group_real_send(
+            group,
+            queue,
+            queue->first_item,
+            capacity
+          );
+
+          if(queue->first_item == NULL)
+            queue->last_item = NULL;
+        }
+      }
+    }
+  }
+
+  g_slist_free(data.groups);
+  return TRUE;
 }
 
 static gboolean
@@ -407,7 +658,6 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
   xmlChar* group_name;
   xmlChar* publisher;
   xmlChar* scope_attr;
-  gchar* own_id;
   gchar* other_id;
 
   gboolean can_forward;
@@ -442,15 +692,9 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
   publisher = inf_xml_util_get_attribute_required(xml, "publisher", error);
   if(publisher == NULL) { xmlFree(group_name); return FALSE; }
 
-  /* Create key to lookup group, publisher must be NULL if local host is
-   * the publisher. */
-  g_object_get(G_OBJECT(connection), "local-id", &own_id, NULL);
-  if(strcmp((const char*)publisher, own_id) == 0)
-    key.publisher_id = NULL;
-  else
-    key.publisher_id = (gchar*)publisher;
+  /* Create key to lookup group */
   key.group_name = (gchar*)group_name;
-  g_free(own_id);
+  key.publisher_id = (gchar*)publisher;
 
   /* Find scope */
   switch(msg_type)
@@ -594,7 +838,19 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
   error = NULL;
   
-  inf_connection_manager_handle_message(manager, connection, xml, &error);
+  if(strcmp((const char*)xml->name, "connection") == 0)
+  {
+    inf_connection_manager_handle_connection(
+      manager,
+      connection,
+      xml,
+      &error
+    );
+  }
+  else
+  {
+    inf_connection_manager_handle_message(manager, connection, xml, &error);
+  }
 
   if(error != NULL)
   {
@@ -624,8 +880,8 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
   xmlNodePtr child;
   xmlChar* group_name;
   xmlChar* publisher;
-  gchar* own_id;
   guint messages_sent;
+  guint capacity;
 
   manager = INF_CONNECTION_MANAGER(user_data);
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
@@ -634,6 +890,8 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
     msg_type = INF_CONNECTION_MANAGER_MESSAGE;
   else if(strcmp((const char*)xml->name, "control") == 0)
     msg_type = INF_CONNECTION_MANAGER_CONTROL;
+  else if(strcmp((const char*)xml->name, "connection") == 0)
+    return;
   else
     /* We should not have sent such nonsense */
     g_assert_not_reached();
@@ -643,13 +901,8 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
   /* We should not have sent such nonsense: */
   g_assert(group_name != NULL && publisher != NULL);
 
-  g_object_get(G_OBJECT(connection), "local-id", &own_id, NULL);
-  if(strcmp((const char*)publisher, own_id) == 0)
-    key.publisher_id = NULL;
-  else
-    key.publisher_id = (gchar*)publisher;
   key.group_name = (gchar*)group_name;
-  g_free(own_id);
+  key.publisher_id = (gchar*)publisher;
 
   messages_sent = 0;
   group = g_tree_lookup(priv->groups, &key);
@@ -671,15 +924,99 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
       }
 
       queue->inner_count -= messages_sent;
+      capacity = inf_connection_manager_group_queue_capacity(group, queue);
+
       queue->first_item = inf_connection_manager_group_real_send(
         group,
         queue,
         queue->first_item,
-        INNER_QUEUE_LIMIT - queue->inner_count
+        capacity
       );
+
       if(queue->first_item == NULL)
         queue->last_item = NULL;
     }
+  }
+}
+
+static gboolean
+inf_connection_manager_connection_notify_cb_foreach_func(gpointer key,
+                                                         gpointer value,
+                                                         gpointer data)
+{
+  InfConnectionManagerGroup* group;
+  InfXmlConnection* connection;
+  GSList* item;
+  InfConnectionManagerQueue* queue;
+  guint capacity;
+
+  group = (InfConnectionManagerGroup*)value;
+  connection = (InfXmlConnection*)data;
+
+  for(item = group->queues; item != NULL; item = g_slist_next(item))
+  {
+    queue = (InfConnectionManagerQueue*)item->data;
+    if(queue->connection == connection)
+    {
+      capacity = inf_connection_manager_group_queue_capacity(group, queue);
+
+      if(capacity > 0)
+      {
+        queue->first_item = inf_connection_manager_group_real_send(
+          group,
+          queue,
+          queue->first_item,
+          capacity
+        );
+
+        if(queue->first_item == NULL)
+          queue->last_item = NULL;
+      }
+    }
+  }
+
+  return FALSE;
+}
+
+static void
+inf_connection_manager_connection_notify_status_cb(GObject* object,
+                                                   GParamSpec* pspec,
+                                                   gpointer user_data)
+{
+  InfXmlConnection* connection;
+  InfConnectionManager* manager;
+  InfConnectionManagerPrivate* priv;
+  InfXmlConnectionStatus status;
+
+  connection = INF_XML_CONNECTION(object);
+  manager = INF_CONNECTION_MANAGER(user_data);
+  priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+
+  switch(status)
+  {
+  case INF_XML_CONNECTION_OPEN:
+    inf_connection_manager_announce_registration(manager, connection);
+
+    /* Begin to send queued stuff, now that our own publisher
+     * ID has been sent. */
+    g_tree_foreach(
+      priv->groups,
+      inf_connection_manager_connection_notify_cb_foreach_func,
+      connection
+    );
+
+    break;
+  case INF_XML_CONNECTION_CLOSING:
+  case INF_XML_CONNECTION_CLOSED:
+    /* TODO: Free all queues using that connection? */
+    break;
+  case INF_XML_CONNECTION_OPENING:
+    /* Nothing special */
+    break;
+  default:
+    g_assert_not_reached();
+    break;
   }
 }
 
@@ -689,9 +1026,13 @@ inf_connection_manager_init(GTypeInstance* instance,
 {
   InfConnectionManager* manager;
   InfConnectionManagerPrivate* priv;
+  uuid_t uuid;
 
   manager = INF_CONNECTION_MANAGER(instance);
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
+
+  uuid_generate(uuid);
+  uuid_unparse_lower(uuid, priv->own_publisher_id);
 
   priv->registered_connections = g_hash_table_new(NULL, NULL);
 
@@ -713,6 +1054,7 @@ inf_connection_manager_dispose(GObject* object)
   priv = INF_CONNECTION_MANAGER_PRIVATE(object);
 
   g_tree_destroy(priv->groups);
+  g_assert(g_hash_table_size(priv->registered_connections) == 0);
   g_hash_table_unref(priv->registered_connections);
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -847,11 +1189,12 @@ inf_connection_manager_open_group(InfConnectionManager* manager,
   group = g_slice_new(InfConnectionManagerGroup);
 
   group->key.group_name = g_strdup(group_name);
-  group->key.publisher_id = NULL;
+  group->key.publisher_id =
+    g_strndup(priv->own_publisher_id, PUBLISHER_ID_LENGTH);
+  group->key.publisher_conn = NULL; /* safety */
 
   group->manager = manager;
   group->ref_count = 1;
-  group->publisher_conn = NULL;
 
   group->object = NULL;
   if(net_object != NULL)
@@ -905,6 +1248,7 @@ inf_connection_manager_join_group(InfConnectionManager* manager,
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerGroup* group;
   InfConnectionManagerMethodInstance* instance;
+  InfConnectionManagerRegistration* registration;
   
   g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
   g_return_val_if_fail(group_name != NULL, NULL);
@@ -923,18 +1267,28 @@ inf_connection_manager_join_group(InfConnectionManager* manager,
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
   group = g_slice_new(InfConnectionManagerGroup);
 
-  group->key.group_name = g_strdup(group_name);
-  g_object_get(
-    G_OBJECT(publisher_conn),
-    "remote-id",
-    &group->key.publisher_id,
-    NULL
+  registration = g_hash_table_lookup(
+    priv->registered_connections,
+    publisher_conn
   );
+
+  group->key.group_name = g_strdup(group_name);
+  if(registration == NULL || !registration->publisher_id_known)
+  {
+    group->key.publisher_id = NULL;
+    /* TODO: This relies on join() to register the publisher_conn. We should
+     * perhaps ref it until the key does not need it any longer. */
+    group->key.publisher_conn = publisher_conn;
+  }
+  else
+  {
+    group->key.publisher_id =
+      g_strndup(registration->publisher_id, PUBLISHER_ID_LENGTH);
+    group->key.publisher_conn = NULL; /* safety */
+  }
 
   group->manager = manager;
   group->ref_count = 1;
-  group->publisher_conn = publisher_conn;
-  g_object_ref(publisher_conn);
 
   group->object = NULL;
   if(object != NULL) inf_connection_manager_group_set_object(group, object);
@@ -975,6 +1329,7 @@ inf_connection_manager_lookup_group(InfConnectionManager* manager,
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerKey key;
+  InfConnectionManagerRegistration* registration;
   gpointer result;
 
   g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
@@ -988,13 +1343,30 @@ inf_connection_manager_lookup_group(InfConnectionManager* manager,
   key.group_name = (gchar*)group_name;
 
   if(publisher != NULL)
-    g_object_get(G_OBJECT(publisher), "remote-id", &key.publisher_id, NULL);
+  {
+    registration = g_hash_table_lookup(
+      priv->registered_connections,
+      publisher
+    );
+
+    if(registration == NULL || !registration->publisher_id_known)
+    {
+      key.publisher_id = NULL;
+      key.publisher_conn = publisher;
+    }
+    else
+    {
+      key.publisher_id = registration->publisher_id;
+      key.publisher_conn = NULL;
+    }
+  }
   else
-    key.publisher_id = NULL;
+  {
+    key.publisher_id = priv->own_publisher_id;
+    key.publisher_conn = NULL;
+  }
 
   result = g_tree_lookup(priv->groups, &key);
-  g_free(key.publisher_id);
-
   return (InfConnectionManagerGroup*)result;
 }
 
@@ -1004,14 +1376,12 @@ inf_connection_manager_lookup_group(InfConnectionManager* manager,
  * @group_name: The name of the group to lookup.
  * @publisher_id: The ID of the connection to the publisher.
  *
- * If @publisher_id is non-%NULL, then this function tries to find a joined
- * group (i.e. one that was created with a previous call to 
- * inf_connection_manager_join_group()) with the given name and whose publisher
- * connection has the given ID. In contrast to
+ * If @publisher_id is non-%NULL, then this function tries to find a group
+ * with the given name and publisher ID. In contrast to
  * inf_connection_manager_lookup_group() this still works when the publisher
  * connection is no longer available.
  *
- * If @publisher is %NULL, then it tries to find a group of which the local
+ * If @publisher_id is %NULL, then it tries to find a group of which the local
  * host is publisher (i.e. that has previously been opened with
  * inf_connection_manager_open_group()).
  *
@@ -1119,6 +1489,7 @@ inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
   );
 }
 
+#if 0
 /**
  * inf_connection_manager_group_get_publisher:
  * @group: A #InfConnectionManagerGroup.
@@ -1151,6 +1522,7 @@ inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp)
   g_return_val_if_fail(grp != NULL, NULL);
   return grp->key.publisher_id;
 }
+#endif
 
 /**
  * inf_connection_manager_group_has_connection:
@@ -1211,11 +1583,21 @@ gboolean
 inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
                                             InfXmlConnection* conn)
 {
+  InfConnectionManagerPrivate* priv;
   InfConnectionManagerMethodInstance* instance;
 
   g_return_val_if_fail(group != NULL, FALSE);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(conn), FALSE);
-  g_return_val_if_fail(group->key.publisher_id == NULL, FALSE);
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(group->manager);
+  g_return_val_if_fail(
+    memcmp(
+      group->key.publisher_id,
+      priv->own_publisher_id,
+      PUBLISHER_ID_LENGTH
+    ) == 0,
+    FALSE
+  );
 
   instance = inf_connection_manager_get_method_by_connection(group, conn);
   if(instance == NULL) return FALSE;
@@ -1246,11 +1628,24 @@ void
 inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
                                                InfXmlConnection* conn)
 {
+  InfConnectionManagerPrivate* priv;
   InfConnectionManagerMethodInstance* instance;
 
   g_return_if_fail(grp != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(conn));
-  g_return_if_fail(grp->key.publisher_id == NULL);
+
+  priv = INF_CONNECTION_MANAGER_PRIVATE(grp->manager);
+  
+  /* TODO: Allow the call when the publisher conn is no longer available
+   * (<=> there is no connection with grp->key.publisher_id in registered
+   * connections). */
+  g_return_if_fail(
+    memcmp(
+      grp->key.publisher_id,
+      priv->own_publisher_id,
+      PUBLISHER_ID_LENGTH
+    ) == 0
+  );
 
   instance = inf_connection_manager_get_method_by_connection(grp, conn);
   /* We could not have added the connection otherwise: */
@@ -1259,6 +1654,7 @@ inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
   instance->desc->remove_connection(instance->method, conn);
 }
 
+#if 0
 /**
  * inf_connection_manager_group_lookup_connection:
  * @grp: A @InfConnectionManagerGroup.
@@ -1284,6 +1680,7 @@ inf_connection_manager_group_lookup_connection(InfConnectionManagerGroup* grp,
   instance = inf_connection_manager_get_method_by_network(grp, network);
   return instance->desc->lookup_connection(instance->method, id);
 }
+#endif
 
 /**
  * inf_connection_manager_group_send_to_connection:
@@ -1413,7 +1810,8 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerQueue* queue;
-  gpointer regcount;
+  InfConnectionManagerRegistration* registration;
+  InfXmlConnectionStatus status;
 
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -1430,11 +1828,24 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
   queue->last_item = NULL;
   queue->inner_count = 0;
   group->queues = g_slist_prepend(group->queues, queue);
-
-  regcount = g_hash_table_lookup(priv->registered_connections, connection);
-  if(regcount == NULL || GPOINTER_TO_UINT(regcount) == 0)
+  
+  registration =
+    g_hash_table_lookup(priv->registered_connections, connection);
+  if(registration == NULL)
   {
-    regcount = GUINT_TO_POINTER(0);
+    g_object_ref(connection);
+
+    registration = g_slice_new(InfConnectionManagerRegistration);
+    registration->registration_count = 1;
+    /*registration->connection = connection;*/
+    registration->publisher_id_known = FALSE;
+    registration->publisher_id_sent = FALSE;
+
+    g_hash_table_insert(
+      priv->registered_connections,
+      connection,
+      registration
+    );
 
     g_signal_connect(
       G_OBJECT(connection),
@@ -1449,13 +1860,23 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
       G_CALLBACK(inf_connection_manager_connection_sent_cb),
       group->manager
     );
-  }
 
-  g_hash_table_insert(
-    priv->registered_connections,
-    connection,
-    GUINT_TO_POINTER(GPOINTER_TO_UINT(regcount) + 1)
-  );
+    g_signal_connect(
+      G_OBJECT(connection),
+      "notify::status",
+      G_CALLBACK(inf_connection_manager_connection_notify_status_cb),
+      group->manager
+    );
+
+    g_object_get(G_OBJECT(connection), "status", &status, NULL);
+    if(status == INF_XML_CONNECTION_OPEN)
+    {
+      inf_connection_manager_announce_registration(
+        group->manager,
+        connection
+      );
+    }
+  }
 }
 
 /**
@@ -1474,8 +1895,8 @@ inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerQueue* queue;
+  InfConnectionManagerRegistration* registration;
   InfXmlConnectionStatus status;
-  gpointer regcount;
 
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -1500,14 +1921,15 @@ inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
     );
   }
 
-  regcount = g_hash_table_lookup(priv->registered_connections, connection);
-  g_assert(regcount != NULL && GPOINTER_TO_UINT(regcount) > 0);
+  registration =
+    g_hash_table_lookup(priv->registered_connections, connection);
+  g_assert(registration != NULL);
 
-  regcount = GUINT_TO_POINTER(GPOINTER_TO_UINT(regcount) - 1);
-  if(GPOINTER_TO_UINT(regcount) == 0)
+  -- registration->registration_count;
+  if(registration->registration_count == 0)
   {
     g_hash_table_remove(priv->registered_connections, connection);
-    
+
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(connection),
       G_CALLBACK(inf_connection_manager_connection_received_cb),
@@ -1519,10 +1941,9 @@ inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
       G_CALLBACK(inf_connection_manager_connection_sent_cb),
       group->manager
     );
-  }
-  else
-  {
-    g_hash_table_insert(priv->registered_connections, connection, regcount);
+
+    g_object_unref(connection);
+    g_slice_free(InfConnectionManagerRegistration, registration);
   }
 
   g_slice_free(InfConnectionManagerQueue, queue);
@@ -1553,6 +1974,7 @@ inf_connection_manager_send_msg(InfConnectionManagerGroup* group,
                                 xmlNodePtr xml)
 {
   InfConnectionManagerQueue* queue;
+  guint capacity;
 
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -1567,8 +1989,10 @@ inf_connection_manager_send_msg(InfConnectionManagerGroup* group,
 
   /* Just to be sure: */
   xmlUnlinkNode(xml);
+  
+  capacity = inf_connection_manager_group_queue_capacity(group, queue);
 
-  if(queue->inner_count < INNER_QUEUE_LIMIT)
+  if(capacity > 0)
   {
     inf_connection_manager_group_real_send(group, queue, xml, 1);
   }
@@ -1602,6 +2026,7 @@ inf_connection_manager_send_ctrl(InfConnectionManagerGroup* group,
                                  xmlNodePtr xml)
 {
   InfConnectionManagerQueue* queue;
+  guint capacity;
 
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -1618,7 +2043,9 @@ inf_connection_manager_send_ctrl(InfConnectionManagerGroup* group,
   /* Just to be sure: */
   xmlUnlinkNode(xml);
 
-  if(queue->inner_count < INNER_QUEUE_LIMIT)
+  capacity = inf_connection_manager_group_queue_capacity(group, queue);
+
+  if(capacity > 0)
   {
     inf_connection_manager_group_real_send(group, queue, xml, 1);
   }

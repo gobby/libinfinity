@@ -45,6 +45,9 @@ static gboolean create_key = FALSE;
 static gboolean create_certificate = FALSE;
 static gint port_number = 6523;
 
+static const guint8 IPV6_ANY_ADDR[16] =
+  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
 static const GOptionEntry entries[] = 
 {
   {
@@ -119,22 +122,36 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   InfdTcpServer* tcp;
   InfdServerPool* pool;
   InfdXmppServer* server;
+  InfIpAddress* address;
 #ifdef INFINOTE_HAVE_AVAHI
   InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
 #endif
 
+  address = inf_ip_address_new_raw6(IPV6_ANY_ADDR);
+
   tcp = INFD_TCP_SERVER(
     g_object_new(
       INFD_TYPE_TCP_SERVER,
       "io", infd_directory_get_io(directory),
+      "local-address", address,
       "local-port", port,
       NULL
     )
   );
 
-  if(infd_tcp_server_open(tcp, error) == FALSE)
-    return FALSE;
+  inf_ip_address_free(address);
+
+  if(infd_tcp_server_open(tcp, NULL) == FALSE)
+  {
+    /* IPv6 failed, try IPv4 */
+    g_object_set(G_OBJECT(tcp), "local-address", NULL, NULL);
+    if(infd_tcp_server_open(tcp, error) == FALSE)
+    {
+      g_object_unref(tcp);
+      return FALSE;
+    }
+  }
 
   pool = infd_server_pool_new(directory);
   server = infd_xmpp_server_new(tcp, g_get_host_name(), credentials, NULL);

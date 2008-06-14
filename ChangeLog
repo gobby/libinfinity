@@ -1,3 +1,23 @@
+2008-06-14  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-text-operations.c: Remove an unused variable.
+
+	* infinoted/infinoted-main.c: Listen on IPv6, fall back to IPv4 if
+	that fails.
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c: Do no longer rely on
+	the local/remote address for publisher identification, but use a
+	host-local UUID for this.
+
+	* libinfinity/common/inf-method-manager.c: Print error message when a
+	method could not be loaded.
+
+	* libinfinity/methods/local-central/inf-method-local-central.c:
+
+	* README:
+	* configure.ac: Depend on libuuid.
+
 2008-05-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.c: Added two assertions in

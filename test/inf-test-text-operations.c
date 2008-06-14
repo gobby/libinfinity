@@ -64,7 +64,7 @@ static const operation_def OPERATIONS[] = {
 static const gchar EXAMPLE_DOCUMENT[] = "abcdefghijklmnopqrstuvwxyz";
 
 /* Useful for debugging in gdb */
-static void
+static G_GNUC_UNUSED void
 print_op(InfAdoptedOperation* op)
 {
   InfAdoptedOperation* first;

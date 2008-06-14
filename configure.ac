@@ -35,7 +35,7 @@ GTK_DOC_CHECK(1.4)
 # Check for regular dependencies
 ###################################
 
-PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21])
+PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21 uuid])
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
 
 ########################
