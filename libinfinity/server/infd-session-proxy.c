@@ -477,7 +477,7 @@ infd_session_proxy_synchronization_complete_cb_before(InfSession* session,
 
   if(status == INF_SESSION_SYNCHRONIZING)
     if(priv->subscribe_sync_conn == TRUE)
-      infd_session_proxy_subscribe_to(proxy, conn, FALSE);
+      infd_session_proxy_subscribe_to(proxy, conn, NULL, FALSE);
 }
 
 static void
@@ -862,11 +862,6 @@ infd_session_proxy_add_subscription_handler(InfdSessionProxy* proxy,
 
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_assert(infd_session_proxy_find_subscription(proxy, connection) == NULL);
-
-  inf_connection_manager_group_add_connection(
-    priv->subscription_group,
-    connection
-  );
 
   g_signal_connect(
     G_OBJECT(connection),
@@ -1482,6 +1477,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy whose session is in state %INF_SESSION_RUNNING.
  * @connection: A #InfConnection that is not yet subscribed.
+ * @parent_group: A #InfConnectionManagerGroup, or %NULL.
  * @synchronize: If %TRUE, then synchronize the session to @connection first.
  *
  * Subscribes @connection to @proxy's session. The first thing that will be
@@ -1497,12 +1493,21 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * initially subscribed (handled by the
  * #InfdSessionProxy:subscribe-sync-connection property).
  *
+ * If you told @connection about the subscription in some
+ * #InfConnectionManagerGroup, then pass that group as the @parent_group
+ * parameter to this function so that synchronization or subscription
+ * messages are kept back until all messages in @parent_queue to @connection
+ * have been sent, so that @connection knows about the subscription before
+ * the first synchronization or subscription message arrives. See also
+ * inf_connection_manager_add_connection().
+ *
  * A subscription can only be initialted if @proxy's session is in state
  * %INF_SESSION_RUNNING.
  **/
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection,
+                                InfConnectionManagerGroup* parent_group,
                                 gboolean synchronize)
 {
   InfdSessionProxyPrivate* priv;
@@ -1517,12 +1522,24 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_return_if_fail(priv->session != NULL);
 
+  /* Note we can't do this in the default signal handler since it doesn't
+   * know the parent group. */
+  inf_connection_manager_group_add_connection(
+    priv->subscription_group,
+    connection,
+    parent_group
+  );
+
   g_signal_emit(
     G_OBJECT(proxy),
     session_proxy_signals[ADD_SUBSCRIPTION],
     0,
     connection
   );
+
+  /* Make sure the default handler ran. Stopping the signal emission before
+   * would leave us in an inconsistens state. */
+  g_assert(infd_session_proxy_find_subscription(proxy, connection) != NULL);
 
   if(synchronize)
   {

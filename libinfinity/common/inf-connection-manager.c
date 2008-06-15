@@ -98,6 +98,18 @@ struct _InfConnectionManagerQueue {
   xmlNodePtr first_item;
   xmlNodePtr last_item;
   guint inner_count;
+
+  InfConnectionManagerQueue* parent_queue;
+  xmlNodePtr parent_queue_item;
+
+  /* Note that we actually refer to child queues, although we are storing
+   * groups in this list. We always mean the queue within that group with
+   * the same connection as this group (if such a queue does not exist, then
+   * something went wrong). We just can't store pointers to those queues
+   * directly since we need the group in
+   * inf_connection_manager_group_real_send(). Perhaps we should just store a
+   * group pointer in every queue instead. */
+  GSList* children_groups;
 };
 
 typedef struct _InfConnectionManagerRegistration
@@ -229,6 +241,55 @@ inf_connection_manager_object_weak_unrefed(gpointer user_data,
   );
 }
 
+static InfConnectionManagerQueue*
+inf_connection_manager_group_lookup_queue(InfConnectionManagerGroup* group,
+                                          InfXmlConnection* connection)
+{
+  GSList* item;
+  InfConnectionManagerQueue* queue;
+
+  for(item = group->queues; item != NULL; item = g_slist_next(item))
+  {
+    queue = (InfConnectionManagerQueue*)item->data;
+    if(queue->connection == connection)
+      return queue;
+  }
+
+  return NULL;
+}
+
+static InfConnectionManagerMethodInstance*
+inf_connection_manager_get_method_by_network(InfConnectionManagerGroup* group,
+                                             const gchar* network)
+{
+  GSList* item;
+  InfConnectionManagerMethodInstance* instance;
+
+  for(item = group->methods; item != NULL; item = g_slist_next(item))
+  {
+    instance = (InfConnectionManagerMethodInstance*)item->data;
+    if(strcmp(network, instance->desc->network) == 0)
+      return instance;
+  }
+
+  return NULL;
+}
+
+/* Get by connection's network */
+static InfConnectionManagerMethodInstance*
+inf_connection_manager_get_method_by_connection(InfConnectionManagerGroup* g,
+                                                InfXmlConnection* conn)
+{
+  gchar* network;
+  InfConnectionManagerMethodInstance* instance;
+
+  g_object_get(G_OBJECT(conn), "network", &network, NULL);
+  instance = inf_connection_manager_get_method_by_network(g, network);
+  g_free(network);
+
+  return instance;
+}
+
 static guint
 inf_connection_manager_group_queue_capacity(InfConnectionManagerGroup* group,
                                             InfConnectionManagerQueue* queue)
@@ -252,6 +313,10 @@ inf_connection_manager_group_queue_capacity(InfConnectionManagerGroup* group,
     g_hash_table_lookup(priv->registered_connections, queue->connection);
   g_assert(registration != NULL);
   if(!registration->publisher_id_sent)
+    limit = 0;
+  /* We don't want to queue anything as long as the parent_queue_item has
+   * not yet been sent. */
+  if(queue->parent_queue_item != NULL)
     limit = 0;
 
   g_assert(queue->inner_count <= limit);
@@ -295,8 +360,13 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   InfConnectionManagerScope cur_scope;
   InfConnectionManagerMsgType type;
   InfConnectionManagerMsgType cur_type;
-
   const gchar* publisher_id;
+
+  GSList* released_groups;
+  GSList* item;
+  InfConnectionManagerGroup* child_group;
+  InfConnectionManagerQueue* child_queue;
+  guint capacity;
 
   g_assert(group->object != NULL);
   connection = queue->connection;
@@ -307,6 +377,7 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   /* max==0 means all messages */
   if(max == 0) max = ~(guint)0;
 
+  released_groups = NULL;
   container = NULL;
   while(xml != NULL && max > 0)
   {
@@ -314,6 +385,27 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
     xml = xml->next;
     -- max;
     xmlUnlinkNode(cur);
+
+    /* If we have children groups, then the queue for the same connection in
+     * these children groups wait for us to send something before they start
+     * sending themselves. If they wait for the packet we are currently
+     * sending, then remember the queue to unfreeze later. Don't unfreezed
+     * now since we did not yet have sent the message. */
+    for(item = queue->children_groups; item != NULL; item = item->next)
+    {
+      child_group = (InfConnectionManagerGroup*)item->data;
+      child_queue = inf_connection_manager_group_lookup_queue(
+        child_group,
+        queue->connection
+      );
+
+      g_assert(child_queue != NULL);
+      g_assert(child_queue->parent_queue == queue);
+      g_assert(child_queue->parent_queue_item != NULL);
+
+      if(child_queue->parent_queue_item == cur)
+        released_groups = g_slist_prepend(released_groups, child_group);
+    }
 
     cur_scope = GPOINTER_TO_UINT(cur->_private) & 0xff;
     cur_type = GPOINTER_TO_UINT(cur->_private) >> 8;
@@ -371,56 +463,46 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   if(container != NULL)
     inf_xml_connection_send(connection, container);
 
+  /* Unfreeze queues that were waiting for a parent message to be sent */
+  for(item = released_groups; item != NULL; item = g_slist_next(item))
+  {
+    child_group = (InfConnectionManagerGroup*)item->data;
+    child_queue = inf_connection_manager_group_lookup_queue(
+      child_group,
+      queue->connection
+    );
+    g_assert(child_queue != NULL);
+    g_assert(child_queue->parent_queue == queue);
+
+    queue->children_groups = g_slist_remove(
+      queue->children_groups,
+      child_group
+    );
+
+    child_queue->parent_queue = NULL;
+    child_queue->parent_queue_item = NULL;
+
+    /* TODO: Write a method to send exactly the amount of messages that
+     * capacity yields: */
+    capacity =
+      inf_connection_manager_group_queue_capacity(child_group, child_queue);
+
+    if(capacity > 0)
+    {
+      child_queue->first_item = inf_connection_manager_group_real_send(
+        child_group,
+        child_queue,
+        child_queue->first_item,
+        capacity
+      );
+
+      if(child_queue->first_item == NULL)
+        child_queue->last_item = NULL;
+    }
+  }
+
+  g_slist_free(released_groups);
   return xml;
-}
-
-static InfConnectionManagerQueue*
-inf_connection_manager_group_lookup_queue(InfConnectionManagerGroup* group,
-                                          InfXmlConnection* connection)
-{
-  GSList* item;
-  InfConnectionManagerQueue* queue;
-
-  for(item = group->queues; item != NULL; item = g_slist_next(item))
-  {
-    queue = (InfConnectionManagerQueue*)item->data;
-    if(queue->connection == connection)
-      return queue;
-  }
-
-  return NULL;
-}
-
-static InfConnectionManagerMethodInstance*
-inf_connection_manager_get_method_by_network(InfConnectionManagerGroup* group,
-                                             const gchar* network)
-{
-  GSList* item;
-  InfConnectionManagerMethodInstance* instance;
-
-  for(item = group->methods; item != NULL; item = g_slist_next(item))
-  {
-    instance = (InfConnectionManagerMethodInstance*)item->data;
-    if(strcmp(network, instance->desc->network) == 0)
-      return instance;
-  }
-
-  return NULL;
-}
-
-/* Get by connection's network */
-static InfConnectionManagerMethodInstance*
-inf_connection_manager_get_method_by_connection(InfConnectionManagerGroup* g,
-                                                InfXmlConnection* conn)
-{
-  gchar* network;
-  InfConnectionManagerMethodInstance* instance;
-
-  g_object_get(G_OBJECT(conn), "network", &network, NULL);
-  instance = inf_connection_manager_get_method_by_network(g, network);
-  g_free(network);
-
-  return instance;
 }
 
 static void
@@ -1567,6 +1649,7 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
  * inf_connection_manager_group_add_connection:
  * @group: A #InfConnectionManagerGroup.
  * @conn: A #InfXmlConnection.
+ * @parent: A #InfXmlConnectionManagerGroup, or %NULL.
  *
  * This must be called whenever a remote host joins this group.
  *
@@ -1576,12 +1659,19 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
  * Note that it is therefore impossible to join a group that has lost its
  * publisher.
  *
+ * If @parent is non-%NULL, then messages sent to @conn via @group are queued
+ * until all queued messages to @conn via @parent have been sent. Always
+ * use this when transmitting the new group name in @parent to @conn, to make
+ * sure the client has joined the group before the first messages in @group
+ * arrives.
+ *
  * Returns: %TRUE if the connection was added, or %FALSE if no method for
  * the connection's network was found.
  **/
 gboolean
 inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
-                                            InfXmlConnection* conn)
+                                            InfXmlConnection* conn,
+                                            InfConnectionManagerGroup* parent)
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerMethodInstance* instance;
@@ -1599,10 +1689,17 @@ inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
     FALSE
   );
 
+  g_return_val_if_fail(
+    parent == NULL ||
+    inf_connection_manager_group_lookup_queue(parent, conn),
+    FALSE
+  );
+
   instance = inf_connection_manager_get_method_by_connection(group, conn);
   if(instance == NULL) return FALSE;
 
   instance->desc->add_connection(instance->method, conn);
+  inf_connection_manager_register_connection(group, conn, parent);
   return TRUE;
 }
 
@@ -1652,6 +1749,7 @@ inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
   g_assert(instance != NULL);
 
   instance->desc->remove_connection(instance->method, conn);
+  inf_connection_manager_unregister_connection(grp, conn);
 }
 
 #if 0
@@ -1796,22 +1894,31 @@ inf_connection_manager_group_clear_queue(InfConnectionManagerGroup* group,
  * inf_connection_manager_register_connection:
  * @group: A #InfConnectionManagerGroup.
  * @connection: A #InfXmlConnection.
+ * @parent: A #InfConnectionManagerGroup, or %NULL.
  *
  * Registers @connection with @group. When a connection is registered, the
  * connection manager forwards incoming messages to the method to process,
  * and allows sending messages via inf_connection_manager_send_msg() and
  * inf_connection_manager_send_ctrl().
  *
+ * If @parent is non-%NULL, then messages sent to @connection via @group are
+ * queued until all queued messages to @connection via @parent (at the point
+ * of this call) have been sent. Always use this when transmitting the new
+ * group name in @parent to @connection, to make sure the client has joined
+ * the group before the first messages in @group arrives.
+ *
  * This function should only be used by method implementations. 
  **/
 void
 inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
-                                           InfXmlConnection* connection)
+                                           InfXmlConnection* connection,
+                                           InfConnectionManagerGroup* parent)
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerQueue* queue;
   InfConnectionManagerRegistration* registration;
   InfXmlConnectionStatus status;
+  InfConnectionManagerQueue* parent_queue;
 
   g_return_if_fail(group != NULL);
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -1822,11 +1929,33 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
 
   priv = INF_CONNECTION_MANAGER_PRIVATE(group->manager);
 
+  if(parent != NULL)
+  {
+    parent_queue =
+      inf_connection_manager_group_lookup_queue(parent, connection);
+    g_return_if_fail(parent_queue != NULL);
+  }
+  else
+  {
+    parent_queue = NULL;
+  }
+
   queue = g_slice_new(InfConnectionManagerQueue);
   queue->connection = connection;
   queue->first_item = NULL;
   queue->last_item = NULL;
   queue->inner_count = 0;
+  if(parent_queue && parent_queue->last_item)
+  {
+    queue->parent_queue = parent_queue;
+    queue->parent_queue_item = parent_queue->last_item;
+  }
+  else
+  {
+    queue->parent_queue = NULL;
+    queue->parent_queue_item = NULL;
+  }
+  queue->children_groups = NULL;
   group->queues = g_slist_prepend(group->queues, queue);
   
   registration =
@@ -1919,6 +2048,14 @@ inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
       queue->first_item,
       0
     );
+  }
+
+  /* After having sent everything, all children should have been released */
+  g_assert(queue->children_groups == NULL);
+  if(queue->parent_queue != NULL)
+  {
+    queue->parent_queue->children_groups =
+      g_slist_remove(queue->parent_queue->children_groups, group);
   }
 
   registration =

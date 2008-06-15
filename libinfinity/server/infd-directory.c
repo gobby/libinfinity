@@ -1727,6 +1727,10 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     );
   }
 
+  /* TODO: Add connection to sync group?
+   * (if it is not the subscription group?)
+   * (do after send_to_connection below, with correct parent) */
+
   inf_connection_manager_group_unref(sync_group);
 
   inf_connection_manager_group_send_to_connection(
@@ -2097,6 +2101,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
          infd_session_proxy_subscribe_to(
             node->shared.note.session,
             connection,
+            priv->group,
             FALSE
           );
         }
@@ -2239,7 +2244,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     reply_xml
   );
 
-  infd_session_proxy_subscribe_to(proxy, connection, TRUE);
+  infd_session_proxy_subscribe_to(proxy, connection, priv->group, TRUE);
   return TRUE;
 }
 
@@ -3209,7 +3214,8 @@ infd_directory_add_connection(InfdDirectory* directory,
 
   result = inf_connection_manager_group_add_connection(
     priv->group,
-    connection
+    connection,
+    NULL
   );
 
   if(result == FALSE)

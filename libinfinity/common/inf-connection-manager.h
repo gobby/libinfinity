@@ -82,7 +82,7 @@ struct _InfConnectionManagerMethodDesc {
   void (*remove_connection)(InfConnectionManagerMethod* instance,
                             InfXmlConnection* connection);
 
-  /* TODO: Remove this and just rely on registered connections? */
+  /* TODO: Remove this and just rely on registered connections. */
   gboolean (*has_connection)(InfConnectionManagerMethod* instance,
                              InfXmlConnection* connection);
   InfXmlConnection* (*lookup_connection)(InfConnectionManagerMethod* instance,
@@ -164,7 +164,8 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group);
 
 gboolean
 inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
-                                            InfXmlConnection* conn);
+                                            InfXmlConnection* conn,
+                                            InfConnectionManagerGroup* prnt);
 
 void
 inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
@@ -194,7 +195,8 @@ inf_connection_manager_group_clear_queue(InfConnectionManagerGroup* group,
 /* semi-private: */
 void
 inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
-                                           InfXmlConnection* connection);
+                                           InfXmlConnection* connection,
+                                           InfConnectionManagerGroup* parent);
 
 void
 inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,

@@ -1,3 +1,20 @@
+2008-06-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c: Added parent parameter
+	for inf_connection_manager_add_connection() and
+	inf_connection_manager_register_connection().
+
+	* libinfinity/server/infd-session-proxy.h:
+	* libinfinity/server/infd-session-proxy.c: Added parent_group
+	parameter for infd_session_proxy_subscribe_to(), making sure the first
+	message in the subscription group is sent after the client knows about
+	the subscription (group).
+
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/methods/local-central/inf-method-local-central.c: Adapt
+	to API changes.
+
 2008-06-14  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-text-operations.c: Remove an unused variable.

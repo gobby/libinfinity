@@ -51,7 +51,7 @@ inf_method_local_central_join(const InfConnectionManagerMethodDesc* dc,
   method->group = group;
   method->connections = g_slist_prepend(NULL, publisher_conn);
   method->publisher = FALSE;
-  inf_connection_manager_register_connection(group, publisher_conn);
+  inf_connection_manager_register_connection(group, publisher_conn, NULL);
   g_object_ref(publisher_conn);
 
   return method;
@@ -116,7 +116,7 @@ inf_method_local_central_add_connection(InfConnectionManagerMethod* instance,
                                         InfXmlConnection* connection)
 {
   instance->connections = g_slist_prepend(instance->connections, connection);
-  inf_connection_manager_register_connection(instance->group, connection);
+  /*inf_connection_manager_register_connection(instance->group, connection);*/
   g_object_ref(connection);
 }
 
@@ -125,7 +125,7 @@ inf_method_local_central_remove_connection(InfConnectionManagerMethod* inst,
                                            InfXmlConnection* connection)
 {
   inst->connections = g_slist_remove(inst->connections, connection);
-  inf_connection_manager_unregister_connection(inst->group, connection);
+  /*inf_connection_manager_unregister_connection(inst->group, connection);*/
   g_object_unref(connection);
 }
 
