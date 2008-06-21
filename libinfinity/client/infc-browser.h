@@ -145,6 +145,10 @@ const gchar*
 infc_browser_iter_get_name(InfcBrowser* browser,
                            InfcBrowserIter* iter);
 
+gchar*
+infc_browser_iter_get_path(InfcBrowser* browser,
+                           InfcBrowserIter* iter);
+
 gboolean
 infc_browser_iter_is_subdirectory(InfcBrowser* browser,
                                   InfcBrowserIter* iter);

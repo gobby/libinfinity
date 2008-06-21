@@ -37,6 +37,7 @@ infc_browser_iter_get_explored
 infc_browser_iter_get_child
 infc_browser_iter_explore
 infc_browser_iter_get_name
+infc_browser_iter_get_path
 infc_browser_iter_is_subdirectory
 infc_browser_add_subdirectory
 infc_browser_add_note

@@ -238,7 +238,7 @@ infc_browser_iter_get_sync_in_requests_foreach_func(InfcRequest* request,
   InfSession* session;
   guint node_id;
 
-  data = (InfcBrowserIterGetNodeRequestForeachData*)user_data;
+  data = (InfcBrowserIterGetSyncInRequestsForeachData*)user_data;
   g_assert(INFC_IS_NODE_REQUEST(request));
 
   /* This is only a sync-in request if we assigned a session to sync with */
@@ -254,6 +254,60 @@ infc_browser_iter_get_sync_in_requests_foreach_func(InfcRequest* request,
     if(node_id == data->iter->node_id)
       data->result = g_slist_prepend(data->result, node_request);
   }
+}
+
+/*
+ * Path handling
+ */
+
+/* Returns the complete path to this node in the given GString */
+static void
+infc_browser_node_get_path_string(InfcBrowserNode* node,
+                                   GString* string)
+{
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(string != NULL);
+
+  if(node->parent != NULL)
+  {
+    /* Each node except the root node has a name */
+    g_assert(node->name != NULL);
+
+    /* Make sure to not recurse if our parent is the root node because
+     * this would add an additional slash */
+    if(node->parent->parent != NULL)
+      infc_browser_node_get_path_string(node->parent, string);
+ 
+    g_string_append_c(string, '/');
+    g_string_append(string, node->name);
+  }
+  else
+  {
+    /* This node has no parent, so it is the root node */
+    g_assert(node->name == NULL);
+    g_string_append_c(string, '/');
+  }
+}
+
+static void
+infc_browser_node_get_path(InfcBrowserNode* node,
+                           gchar** path,
+                           gsize* len)
+{
+  GString* str;
+
+  g_return_if_fail(node != NULL);
+  g_return_if_fail(path != NULL);
+
+  str = g_string_sized_new(128);
+
+  infc_browser_node_get_path_string(node, str);
+  *path = str->str;
+
+  if(len != NULL)
+    *len = str->len;
+
+  g_string_free(str, FALSE);
 }
 
 /*
@@ -2768,6 +2822,32 @@ infc_browser_iter_get_name(InfcBrowser* browser,
 
   node = (InfcBrowserNode*)iter->node;
   return node->name;
+}
+
+/**
+ * infc_browser_iter_get_path:
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter pointing to a node in @browser.
+ *
+ * Returns the complete path to the node @iter points to. The path to a node
+ * is the name of the node and the name of all parent nodes separated by '/',
+ * as a filesystem path on Unix.
+ *
+ * Return Value: The node's path. Free with g_free() when no longer in use.
+ **/
+gchar*
+infc_browser_iter_get_path(InfcBrowser* browser,
+                           InfcBrowserIter* iter)
+{
+  InfcBrowserNode* node;
+  gchar* path;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+
+  node = (InfcBrowserNode*)iter->node;
+  infc_browser_node_get_path(node, &path, NULL);
+  return path;
 }
 
 /**

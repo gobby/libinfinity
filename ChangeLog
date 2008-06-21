@@ -1,3 +1,9 @@
+2008-06-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added
+	infc_browser_iter_get_path().
+
 2008-06-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.h:
