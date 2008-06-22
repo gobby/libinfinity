@@ -737,8 +737,8 @@ inf_text_gtk_buffer_buffer_iter_get_bytes(InfTextBuffer* buffer,
 
   walk = iter->begin;
   bytes = 0;
-  remaining = gtk_text_iter_get_offset(&walk) -
-    gtk_text_iter_get_offset(&iter->end);
+  remaining = gtk_text_iter_get_offset(&iter->end) -
+    gtk_text_iter_get_offset(&walk);
   end = gtk_text_iter_get_offset(&iter->end);
 
   while(remaining > 0)
@@ -746,7 +746,7 @@ inf_text_gtk_buffer_buffer_iter_get_bytes(InfTextBuffer* buffer,
     line_chars = gtk_text_iter_get_chars_in_line(&walk) -
       gtk_text_iter_get_line_offset(&walk);
 
-    if(line_chars + gtk_text_iter_get_offset(&walk) > end)
+    if(line_chars + gtk_text_iter_get_offset(&walk) < end)
     {
       /* Need whole line */
       line_bytes = gtk_text_iter_get_bytes_in_line(&walk) -

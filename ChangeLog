@@ -1,5 +1,11 @@
 2008-06-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c
+	(inf_text_gtk_buffer_buffer_iter_get_bytes): Fix two logic errors so
+	that the function behaves as expected.
+
+2008-06-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c (infc_browser_handle_sync_in):
 	Free type after it has been used, not before, and add the sync in
 	after having created the node, because the sync-in needs to know the
