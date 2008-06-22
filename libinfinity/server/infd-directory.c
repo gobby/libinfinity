@@ -1704,6 +1704,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
   xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
   inf_xml_util_set_attribute_uint(xml, "id", sync_in->node_id);
+  inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
 
   inf_xml_util_set_attribute(
     xml,
@@ -1731,17 +1732,26 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     );
   }
 
-  /* TODO: Add connection to sync group?
-   * (if it is not the subscription group?)
-   * (do after send_to_connection below, with correct parent) */
-
-  inf_connection_manager_group_unref(sync_group);
-
   inf_connection_manager_group_send_to_connection(
     priv->group,
     sync_conn,
     xml
   );
+
+  /* Add connection to synchronization group if the synchronization group is
+   * not the subscription group (if it is, then a call to
+   * infd_session_proxy_subscribe_to was already performed, which already
+   * added the connection). */
+  if(!subscribe_sync_conn)
+  {
+    inf_connection_manager_group_add_connection(
+      sync_group,
+      sync_conn,
+      priv->group
+    );
+  }
+
+  inf_connection_manager_group_unref(sync_group);
 
   return sync_in;
 }

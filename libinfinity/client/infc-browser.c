@@ -1577,7 +1577,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
 
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
-    "add-note",
+    "add-node",
     xml,
     error
   );
@@ -1629,7 +1629,6 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
     xmlFree(type);
     goto error_session;
   }
-  xmlFree(type);
 
   method_name = inf_xml_util_get_attribute_required(xml, "method", error);
   if(method_name == NULL) { g_object_unref(session); return FALSE; }
@@ -1672,8 +1671,6 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   inf_session_synchronize_to(session, sync_group, connection);
   g_object_unref(session);
 
-  infc_browser_add_sync_in(browser, node, connection, proxy);
-
   node = infc_browser_node_add_note(
     browser,
     parent,
@@ -1684,6 +1681,12 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   );
 
   xmlFree(name);
+  xmlFree(type);
+
+  /* TODO: Add connection and proxy to add_note so that it can call
+   * infc_browser_add_sync_in on its own, before emitting ADD_NODE, so
+   * that InfGtkBrowserView can show progress. */
+  infc_browser_add_sync_in(browser, node, connection, proxy);
 
   iter.node_id = node->id;
   iter.node = node;
@@ -1707,6 +1710,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
     );
   }
 
+  inf_connection_manager_group_unref(sync_group);
   g_object_unref(proxy);
 
   /* TODO: Emit a signal, so that others are notified that a sync-in begins

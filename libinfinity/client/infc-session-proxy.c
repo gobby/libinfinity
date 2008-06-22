@@ -888,7 +888,7 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
   status = inf_session_get_synchronization_status(priv->session, connection);
   local_error = NULL;
 
-  g_assert(priv->connection != NULL && priv->connection == connection);
+  g_assert(status != INF_SESSION_SYNC_NONE || priv->connection == connection);
   g_assert(inf_session_get_status(priv->session) != INF_SESSION_CLOSED);
 
   if(status != INF_SESSION_SYNC_NONE)

@@ -1,5 +1,24 @@
 2008-06-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.c (infc_browser_handle_sync_in):
+	Free type after it has been used, not before, and add the sync in
+	after having created the node, because the sync-in needs to know the
+	node.
+
+	* libinfinity/client/infc-session-proxy.c
+	(infc_session_proxy_net_object_received): Fix an assertion so that
+	synchronization messages are passed to the underlying InfSession even
+	when they do not come from the subscription connection.
+
+	* libinfinity/server/infd-directory.c
+	(infd_directory_node_add_sync_in): Send parent node of sync-in, add
+	connection to sync group if it is not the subscription group.
+
+	* libinfgtk/inf-gtk-browser-view.c: Added two TODO comments about
+	watching a signal to get notified when a sync-in begins.
+
+2008-06-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-session.c (inf_session_close_handler): Check
 	that the connection is still open before calling
 	inf_session_send_sync_error(). This fails otherwise if the session
