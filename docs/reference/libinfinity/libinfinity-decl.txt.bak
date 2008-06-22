@@ -190,7 +190,7 @@ InfcBrowser* browser,InfcBrowserIter* parent,const gchar* name
 <FUNCTION>
 <NAME>infc_browser_add_note</NAME>
 <RETURNS>InfcNodeRequest *</RETURNS>
-InfcBrowser* browser,InfcBrowserIter* parent,const gchar* name,InfcNotePlugin* plugin
+InfcBrowser* browser,InfcBrowserIter* parent,const gchar* name,const InfcNotePlugin* plugin
 </FUNCTION>
 <FUNCTION>
 <NAME>infc_browser_remove_node</NAME>

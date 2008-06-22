@@ -197,27 +197,6 @@ InfcBrowser
 @Returns: 
 
 
-<!-- ##### FUNCTION infc_browser_iter_get_explore_request ##### -->
-<para>
-
-</para>
-
-@browser: 
-@iter: 
-@Returns: 
-
-
-<!-- ##### FUNCTION infc_browser_iter_from_explore_request ##### -->
-<para>
-
-</para>
-
-@browser: 
-@request: 
-@iter: 
-@Returns: 
-
-
 <!-- ##### FUNCTION infc_browser_iter_get_child ##### -->
 <para>
 
@@ -239,6 +218,16 @@ InfcBrowser
 
 
 <!-- ##### FUNCTION infc_browser_iter_get_name ##### -->
+<para>
+
+</para>
+
+@browser: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_browser_iter_get_path ##### -->
 <para>
 
 </para>
@@ -278,6 +267,21 @@ InfcBrowser
 @parent: 
 @name: 
 @plugin: 
+@initial_subscribe: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_browser_add_note_with_content ##### -->
+<para>
+
+</para>
+
+@browser: 
+@parent: 
+@name: 
+@plugin: 
+@session: 
+@initial_subscribe: 
 @Returns: 
 
 
@@ -341,6 +345,16 @@ InfcBrowser
 @Returns: 
 
 
+<!-- ##### FUNCTION infc_browser_iter_get_sync_in ##### -->
+<para>
+
+</para>
+
+@browser: 
+@iter: 
+@Returns: 
+
+
 <!-- ##### FUNCTION infc_browser_iter_get_subscribe_request ##### -->
 <para>
 
@@ -351,7 +365,28 @@ InfcBrowser
 @Returns: 
 
 
+<!-- ##### FUNCTION infc_browser_iter_get_explore_request ##### -->
+<para>
+
+</para>
+
+@browser: 
+@iter: 
+@Returns: 
+
+
 <!-- ##### FUNCTION infc_browser_iter_from_node_request ##### -->
+<para>
+
+</para>
+
+@browser: 
+@request: 
+@iter: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_browser_iter_from_explore_request ##### -->
 <para>
 
 </para>

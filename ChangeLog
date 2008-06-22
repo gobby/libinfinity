@@ -1,3 +1,27 @@
+2008-06-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-session.c (inf_session_close_handler): Check
+	that the connection is still open before calling
+	inf_session_send_sync_error(). This fails otherwise if the session
+	was closed explictely in response to the status change notify of
+	the underlaying connection.
+	(inf_session_synchronization_failed_handler): Don't assert on
+	INF_SESSION_CLOSED since the session could be closed between the
+	beginning of the signal emission and the run of the default handler.
+
+	* libinfinity/client/infc-browser.c
+	(infc_browser_net_object_received): If an error was set, and the node
+	had a seq set, then fail the corresponding request since the server
+	reply could not be processed.
+
+	* libinfinity/server/infd-directory.c (infd_directory_add_sync_in):
+	Unref the synchronization group after having passed it to
+	_create_session_proxy().
+
+	* libinftextgtk/inf-text-gtk-buffer.c
+	(inf_text_gtk_buffer_set_active_user): Allow the new active user to be
+	NULL to unset the active user, as used in _dispose().
+
 2008-06-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.h:

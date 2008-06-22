@@ -2012,13 +2012,21 @@ infc_browser_net_object_received(InfNetObject* net_object,
                                  xmlNodePtr node,
                                  GError** error)
 {
+  InfcBrowserPrivate* priv;
+  GError* local_error;
+  GError* seq_error;
+  InfcRequest* request;
+
+  priv = INFC_BROWSER_PRIVATE(net_object);
+  local_error = NULL;
+
   if(strcmp((const gchar*)node->name, "request-failed") == 0)
   {
     infc_browser_handle_request_failed(
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "explore-begin") == 0)
@@ -2027,7 +2035,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "explore-end") == 0)
@@ -2036,7 +2044,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "add-node") == 0)
@@ -2045,7 +2053,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "sync-in") == 0)
@@ -2054,7 +2062,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "remove-node") == 0)
@@ -2063,7 +2071,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "subscribe-session") == 0)
@@ -2072,7 +2080,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "save-session-in-progress") == 0)
@@ -2081,7 +2089,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else if(strcmp((const gchar*)node->name, "saved-session") == 0)
@@ -2090,18 +2098,52 @@ infc_browser_net_object_received(InfNetObject* net_object,
       INFC_BROWSER(net_object),
       connection,
       node,
-      error
+      &local_error
     );
   }
   else
   {
     g_set_error(
-      error,
+      &local_error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
       "%s",
       inf_directory_strerror(INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE)
     );
+  }
+
+  if(local_error != NULL)
+  {
+    /* If the request had a (valid) seq set, we cancel the corresponding
+     * request because the reply could not be processed. */
+    request = infc_request_manager_get_request_by_xml(
+      priv->request_manager,
+      NULL,
+      node,
+      NULL
+    );
+
+    if(request != NULL)
+    {
+      seq_error = NULL;
+      g_set_error(
+        &seq_error,
+        inf_request_error_quark(),
+        INF_REQUEST_ERROR_REPLY_UNPROCESSED,
+        "Server reply could not be processed: %s",
+        local_error->message
+      );
+
+      infc_request_manager_fail_request(
+        priv->request_manager,
+        request,
+        seq_error
+      );
+
+      g_error_free(seq_error);
+    }
+
+    g_propagate_error(error, local_error);
   }
 
   /* Browser is client-side anyway, so we should not even need to forward

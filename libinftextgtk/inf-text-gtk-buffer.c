@@ -1093,7 +1093,7 @@ inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer)
 /**
  * inf_text_gtk_buffer_set_active_user:
  * @buffer: A #InfTextGtkBuffer.
- * @user: A #InfTextUser.
+ * @user: A #InfTextUser, or %NULL.
  *
  * Sets the active user for @buffer. The active user is the user by which
  * edits not issued through the #InfTextBuffer interface are performed (for
@@ -1111,13 +1111,15 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
   InfTextGtkBufferPrivate* priv;
 
   g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
-  g_return_if_fail(INF_TEXT_IS_USER(user));
+  g_return_if_fail(user == NULL || INF_TEXT_IS_USER(user));
   
   g_return_if_fail(
+    user == NULL ||
     (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0
   );
 
   g_return_if_fail(
+    user == NULL ||
     inf_user_get_status(INF_USER(user)) != INF_USER_UNAVAILABLE
   );
 

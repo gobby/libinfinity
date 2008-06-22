@@ -1289,6 +1289,10 @@ infd_directory_add_sync_in(InfdDirectory* directory,
     subscribe_sync_conn
   );
 
+  /* The above call refed the group: */
+  if(!subscribe_sync_conn)
+    inf_connection_manager_group_unref(synchronization_group);
+
   g_signal_connect(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
     "synchronization-failed",

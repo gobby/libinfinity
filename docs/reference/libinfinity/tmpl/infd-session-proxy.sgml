@@ -87,6 +87,8 @@ InfdSessionProxy
 
 @proxy: 
 @connection: 
+@parent_group: 
+@synchronize: 
 
 
 <!-- ##### FUNCTION infd_session_proxy_has_subscriptions ##### -->

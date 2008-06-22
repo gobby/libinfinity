@@ -196,6 +196,7 @@ InfConnectionManager
 
 @group: 
 @conn: 
+@prnt: 
 @Returns: 
 
 
@@ -255,6 +256,7 @@ InfConnectionManager
 
 @group: 
 @connection: 
+@parent: 
 
 
 <!-- ##### FUNCTION inf_connection_manager_unregister_connection ##### -->

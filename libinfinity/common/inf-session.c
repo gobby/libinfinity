@@ -322,7 +322,7 @@ inf_session_release_connection(InfSession* session,
     session
   );
 
-  g_object_unref(G_OBJECT(connection));
+  g_object_unref(connection);
 }
 
 static void
@@ -468,12 +468,6 @@ inf_session_register_sync(InfSession* session)
      priv->shared.sync.group != NULL)
   {
     inf_connection_manager_group_ref(priv->shared.sync.group);
-
-/*    inf_connection_manager_ref_connection(
-      priv->manager,
-      priv->shared.sync.group,
-      priv->shared.sync.conn
-    );*/
 
     g_signal_connect(
       G_OBJECT(priv->shared.sync.conn),
@@ -1438,6 +1432,7 @@ inf_session_close_handler(InfSession* session)
   InfSessionSync* sync;
   xmlNodePtr xml;
   GError* error;
+  InfXmlConnectionStatus status;
 
   priv = INF_SESSION_PRIVATE(session);
 
@@ -1464,7 +1459,16 @@ inf_session_close_handler(InfSession* session)
        * that. */
       priv->shared.sync.closing = TRUE;
 
-      inf_session_send_sync_error(session, error);
+      /* If the connection was closed, another signal handler could close()
+       * the session explicitely (for example by disposing it), in which case
+       * we cannot send anything anymore through the connection even though
+       * sync.closing was not set already. */
+      g_object_get(G_OBJECT(priv->shared.sync.conn), "status", &status, NULL);
+      if(status != INF_XML_CONNECTION_CLOSING &&
+         status != INF_XML_CONNECTION_CLOSED)
+      {
+        inf_session_send_sync_error(session, error);
+      }
 
       g_signal_emit(
         G_OBJECT(session),
@@ -1475,8 +1479,7 @@ inf_session_close_handler(InfSession* session)
       );
     }
 
-    inf_connection_manager_group_unref(priv->shared.sync.group);
-
+    inf_session_release_connection(session, priv->shared.sync.conn);
     break;
   case INF_SESSION_RUNNING:
     /* TODO: Set status of all users (except local) to unavailable? */
@@ -1692,6 +1695,10 @@ inf_session_synchronization_failed_handler(InfSession* session,
     inf_session_release_connection(session, connection);
     break;
   case INF_SESSION_CLOSED:
+    /* Don't assert, some signal handler could have called inf_session_close()
+     * between the start of the signal emission and the run of the default
+     * handler. */
+    break;
   default:
     g_assert_not_reached();
     break;
