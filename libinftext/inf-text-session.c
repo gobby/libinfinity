@@ -31,6 +31,7 @@
 
 #include <libxml/tree.h>
 #include <string.h>
+#include <errno.h>
 
 /* TODO: Optionally broadcast operations delayed to merge adjacent operations
  * and send as a single request. */
@@ -127,7 +128,7 @@ inf_text_session_segment_to_xml(GIConv* cd,
   );
 
   /* Conversion into UTF-8 should always succeed */
-  g_assert(result == 0);
+  g_assert(result == 0 || errno == E2BIG);
 
   xmlNodeAddContentLen(xml, (const xmlChar*)utf8_text, 1024 - bytes_left);
   inf_xml_util_set_attribute_uint(xml, "author", author);
@@ -266,7 +267,8 @@ inf_text_session_selection_changed_cb(InfUser* user,
 }
 
 static void
-inf_text_session_selection_changed_data_free(gpointer data)
+inf_text_session_selection_changed_data_free(gpointer data,
+                                             GClosure* closure)
 {
   InfTextSessionSelectionChangedData* selection_data;
   selection_data = (InfTextSessionSelectionChangedData*)data;

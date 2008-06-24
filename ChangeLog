@@ -1,3 +1,16 @@
+2007-06-24  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_register_connection): Fixed a severe reference
+	counting issue: Registering a connection multiple times did not
+	increase the reference count.
+
+	* libinftext/inf-text-session.c
+	(inf_text_session_selection_changed_data_free): Fixed the function
+	signature to match GClosureNotify.
+	(inf_text_session_segment_to_xml): Don't assert if the input text is
+	too large, this will be handled in a second run.
+
 2008-06-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.c
@@ -2603,3 +2616,9 @@
 	* infinity/inf-config.h.in:
 	* infinity/inf-netobject.h:
 	* infinity/inf-netobject.c: Initial revision.
+# On branch master
+# Changed but not updated:
+#   (use "git add <file>..." to update what will be committed)
+#
+#
+no changes added to commit (use "git add" and/or "git commit -a")

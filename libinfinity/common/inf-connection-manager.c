@@ -2006,6 +2006,10 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
       );
     }
   }
+  else
+  {
+    ++ registration->registration_count;
+  }
 }
 
 /**
