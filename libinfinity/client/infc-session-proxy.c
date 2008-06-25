@@ -46,12 +46,51 @@ enum {
   PROP_CONNECTION
 };
 
+static void
+infc_session_proxy_release_connection(InfcSessionProxy* proxy);
+
+static void
+infc_session_proxy_unsubscribe_connection(InfcSessionProxy* proxy)
+{
+  InfcSessionProxyPrivate* priv;
+  InfXmlConnectionStatus status;
+  xmlNodePtr xml;
+
+  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
+
+  g_assert(priv->connection != NULL);
+  g_assert(priv->session != NULL);
+
+  status = inf_session_get_synchronization_status(
+    priv->session,
+    priv->connection
+  );
+
+  /* If synchronization is still in progress, the close default signal
+   * handler in InfSession the base class will cancel the synchronization in
+   * which case we do not need to send an extra session-unsubscribe
+   * message. */
+
+  /* However, in case we are in AWAITING_ACK status we send session
+   * unsubscribe because we cannot cancel the synchronization anymore but
+   * the server will go into RUNNING state before receiving this message. */
+  if(status != INF_SESSION_SYNC_IN_PROGRESS)
+  {
+    xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
+
+    inf_connection_manager_group_send_to_connection(
+      priv->subscription_group,
+      priv->connection,
+      xml
+    );
+  }
+
+  infc_session_proxy_release_connection(proxy);
+}
+
 /*
  * Signal handlers
  */
-
-static void
-infc_session_proxy_release_connection(InfcSessionProxy* session);
 
 static void
 infc_session_proxy_connection_notify_status_cb(InfXmlConnection* connection,
@@ -156,42 +195,14 @@ infc_session_proxy_session_close_cb(InfSession* session,
 {
   InfcSessionProxy* proxy;
   InfcSessionProxyPrivate* priv;
-  InfSessionSyncStatus status;
-  xmlNodePtr xml;
 
   proxy = INFC_SESSION_PROXY(user_data);
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
 
   if(priv->connection != NULL)
-  {
-    status = inf_session_get_synchronization_status(
-      session,
-      priv->connection
-    );
+    infc_session_proxy_unsubscribe_connection(proxy);
 
-    /* If synchronization is still in progress, the close default signal
-     * handler in InfSession the base class will cancel the synchronization in
-     * which case we do not need to send an extra session-unsubscribe
-     * message. */
-
-    /* However, in case we are in AWAITING_ACK status we send session
-     * unsubscribe because we cannot cancel the synchronization anymore but
-     * the server will go into RUNNING state before receiving this message. */
-    if(status != INF_SESSION_SYNC_IN_PROGRESS)
-    {
-      xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
-
-      inf_connection_manager_group_send_to_connection(
-        priv->subscription_group,
-        priv->connection,
-        xml
-      );
-    }
-
-    infc_session_proxy_release_connection(proxy);
-  }
-
-  /* Don't release connection so others can still access */
+  /* Don't release session so others can still access */
 #if 0
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
@@ -337,9 +348,8 @@ infc_session_proxy_dispose(GObject* object)
   proxy = INFC_SESSION_PROXY(object);
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
 
-  /* The base class will call close() in which we remove the connection
-   * and several allocated resources. */
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  if(priv->connection)
+    infc_session_proxy_unsubscribe_connection(proxy);
 
   /* Release session */
   if(priv->session != NULL)
@@ -368,6 +378,8 @@ infc_session_proxy_dispose(GObject* object)
 
   g_object_unref(G_OBJECT(priv->request_manager));
   priv->request_manager = NULL;
+
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void

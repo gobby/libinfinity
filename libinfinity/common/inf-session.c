@@ -1514,8 +1514,8 @@ inf_session_close_handler(InfSession* session)
         error
       );
 
-      /* TODO: Actually remove that sync!? (Or, is this done in the
-       * synchronization failed default handler?) */
+      /* Note that the synchronization_failed default handler actualy
+       * removes the sync. */
     }
 
     break;

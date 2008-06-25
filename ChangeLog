@@ -1,3 +1,14 @@
+2007-06-25  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/infc-session-proxy.c
+	(infc_session_proxy_dispose): Properly release connection on dispose,
+	chain to base class after having unrefed the session, so that weak
+	references are notified after object has been fully disposed. This
+	fixes a warning when a successful sync-in is removed.
+
+	* libinfinity/common/inf-session.c (inf_session_close_handler):
+	Changed a comment to make clear how synchronizations are removed.
+
 2007-06-24  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.c
