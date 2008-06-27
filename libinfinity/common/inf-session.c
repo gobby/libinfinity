@@ -166,7 +166,7 @@ inf_session_sync_strerror(InfSessionSyncError errcode)
   case INF_SESSION_SYNC_ERROR_SENDER_CANCELLED:
     return "The sender cancelled the synchronization";
   case INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED:
-    return "The receiver cancelled teh synchronization";
+    return "The receiver cancelled the synchronization";
   case INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC:
     return "Got begin-of-sync message, but synchronization is already "
            "in progress";
@@ -721,6 +721,8 @@ inf_session_process_xml_sync_impl(InfSession* session,
   GArray* user_props;
   InfUser* user;
   guint i;
+  const GParameter* param;
+  GParameter* connparam;
 
   priv = INF_SESSION_PRIVATE(session);
   session_class = INF_SESSION_GET_CLASS(session);
@@ -737,6 +739,25 @@ inf_session_process_xml_sync_impl(InfSession* session,
       connection,
       xml
     );
+
+    param = inf_session_lookup_user_property(
+      user_props->data,
+      user_props->len,
+      "status"
+    );
+
+    if(param != NULL && g_value_get_enum(&param->value) == INF_USER_AVAILABLE)
+    {
+      /* Assume that the connection for this available user is the one that
+       * the synchronization comes from if the "connection" property is
+       * not given. */
+      connparam = inf_session_get_user_property(user_props, "connection");
+      if(!G_IS_VALUE(&connparam->value))
+      {
+        g_value_init(&connparam->value, INF_TYPE_XML_CONNECTION);
+        g_value_set_object(&connparam->value, G_OBJECT(connection));
+      }
+    }
 
     user = inf_session_add_user(
       session,
@@ -1199,6 +1220,11 @@ inf_session_handle_received_sync_message(InfSession* session,
       );
 
       if(result == FALSE) return FALSE;
+
+      /* Some callback could have cancelled the synchronization via
+       * inf_session_cancel_synchronization. */
+      if(priv->status == INF_SESSION_CLOSED)
+        return TRUE;
 
       ++ priv->shared.sync.messages_received;
 

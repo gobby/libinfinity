@@ -1538,14 +1538,14 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
   );
 
   /* Make sure the default handler ran. Stopping the signal emission before
-   * would leave us in an inconsistens state. */
+   * would leave us in an inconsistent state. */
   g_assert(infd_session_proxy_find_subscription(proxy, connection) != NULL);
 
   if(synchronize)
   {
     /* Directly synchronize within the subscription group so that we do not
      * need a group change after synchronization, and the connection already
-     * receives requests from other group member to process after
+     * receives requests from other group members to process after
      * synchronization. */
     inf_session_synchronize_to(
       priv->session,

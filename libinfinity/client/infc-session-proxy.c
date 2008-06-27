@@ -533,7 +533,8 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   else
     g_value_set_flags(&param->value, 0);
 
-  /* TODO: Add connection property if set */
+  /* TODO: Add connection property if set, otherwise set sending connection as
+   * connection property. */
 
   /* This validates properties */
   user = inf_session_add_user(

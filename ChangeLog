@@ -1,4 +1,22 @@
-2007-06-25  Armin Burgmeier  <armin@arbur.net>
+2008-06-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-session.c (inf_session_sync_strerror): Fix a
+	typo.
+	(inf_session_process_xml_sync_impl): Set connection property to the
+	synchronizing connection if not given.
+	(inf_session_handle_received_sync_message): Cope with the fact that
+	some callback in process_xml_sync could have cancelled the
+	synchronization.
+
+	* libinfinity/server/infd-directory.c: Make sure that available users
+	in a synced-in session are from the synchronizing connection, and
+	only allow them if the synchronizing connection is subscribed.
+	Otherwise, close the session which effectively cancels the sync-in.
+
+	* libinfinity/server/infd-session-proxy.c: Fixed two typos in
+	comments.
+
+2008-06-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/infc-session-proxy.c
 	(infc_session_proxy_dispose): Properly release connection on dispose,
@@ -9,7 +27,7 @@
 	* libinfinity/common/inf-session.c (inf_session_close_handler):
 	Changed a comment to make clear how synchronizations are removed.
 
-2007-06-24  Armin Burgmeier  <armin@arbur.net>
+2008-06-24  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.c
 	(inf_connection_manager_register_connection): Fixed a severe reference
@@ -2627,9 +2645,3 @@
 	* infinity/inf-config.h.in:
 	* infinity/inf-netobject.h:
 	* infinity/inf-netobject.c: Initial revision.
-# On branch master
-# Changed but not updated:
-#   (use "git add <file>..." to update what will be committed)
-#
-#
-no changes added to commit (use "git add" and/or "git commit -a")

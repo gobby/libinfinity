@@ -92,6 +92,7 @@ struct _InfdDirectorySyncIn {
   gchar* name;
   const InfdNotePlugin* plugin;
   InfdSessionProxy* proxy;
+  gboolean subscribe_sync_conn;
 };
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
@@ -1187,6 +1188,37 @@ infd_directory_node_unregister(InfdDirectory* directory,
  */
 
 static void
+infd_directory_sync_in_add_user_cb(InfUserTable* user_table,
+                                   InfUser* user,
+                                   gpointer user_data)
+{
+  InfdDirectorySyncIn* sync_in;
+  InfSession* session;
+  InfXmlConnection* connection;
+
+  sync_in = (InfdDirectorySyncIn*)user_data;
+
+  if(inf_user_get_status(user) == INF_USER_AVAILABLE)
+  {
+    session = infd_session_proxy_get_session(sync_in->proxy);
+    g_object_get(G_OBJECT(session), "sync-connection", &connection, NULL);
+    g_assert(connection != NULL);
+
+    if(inf_user_get_connection(user) != connection ||
+       !sync_in->subscribe_sync_conn)
+    {
+      /* We don't support sync-in of sessions that already have subscribed
+       * users from different connections than the synchronizing one. */
+
+      /* This will trigger the synchronization-failed signal: */
+      inf_session_close(session);
+    }
+
+    g_object_unref(connection);
+  }
+}
+
+static void
 infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
                                                  InfXmlConnection* connection,
                                                  const GError* error,
@@ -1246,6 +1278,7 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
   InfConnectionManagerGroup* synchronization_group;
+  InfUserTable* user_table;
   gchar* sync_group_name;
   guint node_id;
 
@@ -1259,6 +1292,7 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->node_id = node_id;
   sync_in->name = g_strdup(name);
   sync_in->plugin = plugin;
+  sync_in->subscribe_sync_conn = subscribe_sync_conn;
 
   /* Synchronize in own group if we are not subscribing the synchronizing
    * connection. */
@@ -1289,6 +1323,9 @@ infd_directory_add_sync_in(InfdDirectory* directory,
     subscribe_sync_conn
   );
 
+  /* TODO: Call infd_session_proxy_subscribe_to if subscribe_sync_conn
+   * is set. */
+
   /* The above call refed the group: */
   if(!subscribe_sync_conn)
     inf_connection_manager_group_unref(synchronization_group);
@@ -1307,6 +1344,17 @@ infd_directory_add_sync_in(InfdDirectory* directory,
     sync_in
   );
 
+  user_table = inf_session_get_user_table(
+    infd_session_proxy_get_session(sync_in->proxy)
+  );
+
+  g_signal_connect(
+    G_OBJECT(user_table),
+    "add-user",
+    G_CALLBACK(infd_directory_sync_in_add_user_cb),
+    sync_in
+  );
+
   priv->sync_ins = g_slist_prepend(priv->sync_ins, sync_in);
   return sync_in;
 }
@@ -1317,6 +1365,7 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  InfUserTable* user_table;
 
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
@@ -1327,6 +1376,16 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
+    sync_in
+  );
+
+  user_table = inf_session_get_user_table(
+    infd_session_proxy_get_session(sync_in->proxy)
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(user_table),
+    G_CALLBACK(infd_directory_sync_in_add_user_cb),
     sync_in
   );
 
