@@ -153,6 +153,7 @@ infd_note_plugin_text_read_user(InfUserTable* user_table,
       );
 
       inf_user_table_add_user(user_table, user);
+      g_object_unref(user);
       result = TRUE;
     }
   }

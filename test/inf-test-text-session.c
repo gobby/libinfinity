@@ -304,6 +304,7 @@ perform_single_test(InfTextChunk* initial,
 
     g_free(user_name);
     inf_user_table_add_user(user_table, INF_USER(user));
+    g_object_unref(user);
   }
 
   session = inf_text_session_new_with_user_table(

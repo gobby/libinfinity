@@ -1,5 +1,43 @@
 2008-06-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session.c
+	(inf_adopted_session_constructor): Add initial local users to the list
+	of local users.
+
+	* libinfinity/client/infc-browser.c (infc_browser_handle_add_node):
+	Fix the check for a <subscribe/> child being present.
+
+	* libinfinity/common/inf-user-table.c
+	(inf_user_table_add_user_handler): Ref users put into the user table.
+
+	* libinfinity/common/inf-session.c (inf_session_net_object_sent):
+	Don't assert that the sent message was a synchronization message if we
+	found a synchronization to the connection since we could already have
+	sent stuff that is meant to be processed after the synchronization.
+	(inf_session_add_user): Unref user after having put it into the user
+	table.
+
+	* libinfinity/server/infd-directory.c: Removed the check that
+	available users in a synced-session need to be from the synchronizing
+	connections since that check has been moved to InfdSessionProxy.
+
+	* libinfinity/server/infd-session-proxy.c: Added the mentioned check
+	here, and additionally add the user to the list of subscribed users
+	for that connection so that, when the connection unbsubscribes again,
+	the user will be set to unavailable. Also removed the
+	subscribe-sync-conn property, instead allow calling
+	infd_session_proxy_subscribe_to() when the session is in
+	INF_SESSION_SYNCHRONIZING state.
+
+	* test/inf-test-text-session.c: Unref user after having put in into
+	the user table.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c
+	(infd_note_plugin_text_read_user): Unref user after having put it into
+	the user table.
+
+2008-06-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-session.c (inf_session_sync_strerror): Fix a
 	typo.
 	(inf_session_process_xml_sync_impl): Set connection property to the
@@ -137,7 +175,7 @@
 	* libinfinity/client/infc-browser.c: Added two assertions in
 	infc_browser_handle_sync_in() and infc_browser_add_note_with_content()
 	that make sure that the provided session is not yet subscribed in case
-	the the client wants to subscribe to the newly created node.
+	that the client wants to subscribe to the newly created node.
 
 	* libinfgtk/inf-gtk-browser-view.c: Show progress of sync-ins.
 

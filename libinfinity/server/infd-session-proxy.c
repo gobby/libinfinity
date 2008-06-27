@@ -39,11 +39,13 @@ struct _InfdSessionProxyPrivate {
   GSList* subscriptions;
   guint user_id_counter;
 
+#if 0
   /* Only relevant if we get a session synchronized. This flag tells whether
    * we should subscribe the synchronizing connection after synchronization
    * is complete, so we do not have to synchronize the session the other way
    * around if that connection wants to be subscribed. */
   gboolean subscribe_sync_conn;
+#endif
 
   /* Local users that do not belong to a particular connection */
   GSList* local_users;
@@ -58,7 +60,9 @@ enum {
   /* construct/only */
   PROP_SESSION,
   PROP_SUBSCRIPTION_GROUP,
+#if 0
   PROP_SUBSCRIBE_SYNC_CONN,
+#endif
 
   /* read/only */
   PROP_IDLE
@@ -427,12 +431,14 @@ infd_session_proxy_connection_notify_status_cb(InfXmlConnection* connection,
 }
 
 static void
-infd_session_proxy_add_user_cb(InfSession* session,
+infd_session_proxy_add_user_cb(InfUserTable* user_table,
                                InfUser* user,
                                gpointer user_data)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
+  InfXmlConnection* sync_conn;
+  InfdSessionProxySubscription* subscription;
 
   proxy = INFD_SESSION_PROXY(user_data);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
@@ -440,6 +446,37 @@ infd_session_proxy_add_user_cb(InfSession* session,
   /* Make sure that we generate a non-existing user ID for the next user. */
   if(priv->user_id_counter <= inf_user_get_id(user))
     priv->user_id_counter = inf_user_get_id(user) + 1;
+
+  if(inf_session_get_status(priv->session) == INF_SESSION_SYNCHRONIZING)
+  {
+    if(inf_user_get_status(user) == INF_USER_AVAILABLE)
+    {
+      g_object_get(
+        G_OBJECT(priv->session),
+        "sync-connection",
+        &sync_conn,
+        NULL
+      );
+
+      g_assert(sync_conn != NULL);
+      subscription = infd_session_proxy_find_subscription(proxy, sync_conn);
+
+      /* During synchronization, available users are always considered to
+       * belong to the synchronizing connection. Everything else is just not
+       * supported and causes session closure. */
+      if(sync_conn != inf_user_get_connection(user) || subscription == NULL)
+      {
+        /* This actually cancels the synchronization: */
+        inf_session_close(priv->session);
+      }
+      else
+      {
+        subscription->users = g_slist_prepend(subscription->users, user);
+      }
+
+      g_object_unref(sync_conn);
+    }
+  }
 }
 
 static void
@@ -475,9 +512,11 @@ infd_session_proxy_synchronization_complete_cb_before(InfSession* session,
 
   g_object_get(session, "status", &status, NULL);
 
+#if 0
   if(status == INF_SESSION_SYNCHRONIZING)
     if(priv->subscribe_sync_conn == TRUE)
       infd_session_proxy_subscribe_to(proxy, conn, NULL, FALSE);
+#endif
 }
 
 static void
@@ -622,7 +661,9 @@ infd_session_proxy_init(GTypeInstance* instance,
   priv->subscriptions = NULL;
   priv->subscription_group = NULL;
   priv->user_id_counter = 1;
+#if 0
   priv->subscribe_sync_conn = FALSE;
+#endif
   priv->local_users = NULL;
   priv->idle = TRUE;
 }
@@ -806,9 +847,11 @@ infd_session_proxy_set_property(GObject* object,
     priv->subscription_group =
       (InfConnectionManagerGroup*)g_value_dup_boxed(value);
     break;
+#if 0
   case PROP_SUBSCRIBE_SYNC_CONN:
     priv->subscribe_sync_conn = g_value_get_boolean(value);
     break;
+#endif
   case PROP_IDLE:
     /* read/only */
   default:
@@ -837,9 +880,11 @@ infd_session_proxy_get_property(GObject* object,
   case PROP_SUBSCRIPTION_GROUP:
     g_value_set_boxed(value, priv->subscription_group);
     break;
+#if 0
   case PROP_SUBSCRIBE_SYNC_CONN:
     g_value_set_boolean(value, priv->subscribe_sync_conn);
     break;
+#endif
   case PROP_IDLE:
     g_value_set_boolean(value, priv->idle);
     break;
@@ -1287,6 +1332,7 @@ infd_session_proxy_class_init(gpointer g_class,
     )
   );
 
+#if 0
   g_object_class_install_property(
     object_class,
     PROP_SUBSCRIBE_SYNC_CONN,
@@ -1299,6 +1345,7 @@ infd_session_proxy_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
+#endif
 
   g_object_class_install_property(
     object_class,
@@ -1475,7 +1522,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 
 /**
  * infd_session_proxy_subscribe_to:
- * @proxy: A #InfdSessionProxy whose session is in state %INF_SESSION_RUNNING.
+ * @proxy: A #InfdSessionProxy.
  * @connection: A #InfConnection that is not yet subscribed.
  * @parent_group: A #InfConnectionManagerGroup, or %NULL.
  * @synchronize: If %TRUE, then synchronize the session to @connection first.
@@ -1490,8 +1537,15 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * copy of the session, then you may set @synchronize to %FALSE to skip
  * synchronization. This happens for example for newly created documents, or
  * when the remote site synchronized the local session and wants to be
- * initially subscribed (handled by the
- * #InfdSessionProxy:subscribe-sync-connection property).
+ * initially subscribed.
+ *
+ * If @proxy's session is not in %INF_SESSION_RUNNING status, but in
+ * %INF_SESSION_SYNCHRONIZING, then @connection must be the connection that
+ * synchronizes the session and @synchronize needs to be set to %FALSE. This
+ * causes the synchronizing connection to initially be subscribed. This
+ * needs to be called directly after having created the session proxy (i.e.
+ * without returning to the main loop before) so that the synchronization
+ * connection is added to the subscription group for synchronization.
  *
  * If you told @connection about the subscription in some
  * #InfConnectionManagerGroup, then pass that group as the @parent_group
@@ -1521,6 +1575,12 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
 
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_return_if_fail(priv->session != NULL);
+
+  /* TODO: Also check connection against sync-conn in synchronizing case: */
+  g_return_if_fail(
+    inf_session_get_status(priv->session) == INF_SESSION_RUNNING ||
+    (synchronize == FALSE)
+  );
 
   /* Note we can't do this in the default signal handler since it doesn't
    * know the parent group. */

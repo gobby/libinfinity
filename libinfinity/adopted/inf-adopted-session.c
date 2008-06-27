@@ -17,6 +17,8 @@
  */
 
 /* TODO: warning if no update from a particular non-local user for some time */
+/* TODO: Reenable noop timer only after first processed request, so that we
+ * don't waste bandwidth when the session is completely idle. */
 
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
@@ -488,6 +490,46 @@ inf_adopted_session_reschedule_noop_timer(InfAdoptedSession* session)
 }
 
 static void
+inf_adopted_session_local_user_added(InfAdoptedSession* session,
+                                     InfAdoptedUser* user)
+{
+  InfAdoptedSessionPrivate* priv;
+  InfSessionStatus status;
+  InfAdoptedSessionLocalUser* local;
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  status = inf_session_get_status(INF_SESSION(session));
+
+  /* Cannot be local while synchronizing */
+  g_assert(status == INF_SESSION_RUNNING);
+
+  local = g_slice_new(InfAdoptedSessionLocalUser);
+  local->user = user;
+
+  local->last_send_vector = inf_adopted_state_vector_copy(
+    inf_adopted_user_get_vector(user)
+  );
+
+  /* Set current vector for local user, this is kept up-to-date by
+   * InfAdoptedAlgorithm. TODO: Also do this in InfAdoptedAlgorithm? */
+  inf_adopted_user_set_vector(
+    user,
+    inf_adopted_state_vector_copy(
+      inf_adopted_algorithm_get_current(priv->algorithm)
+    )
+  );
+
+  local->noop_time = time(NULL);
+
+  priv->local_users = g_slist_prepend(priv->local_users, local);
+
+  /* Start noop timer */
+  if(priv->noop_timeout == NULL)
+    inf_adopted_session_reschedule_noop_timer(session);
+
+}
+
+static void
 inf_adopted_session_remove_local_user_cb(InfUserTable* user_table,
                                          InfUser* user,
                                          gpointer user_data)
@@ -517,45 +559,24 @@ inf_adopted_session_add_local_user_cb(InfUserTable* user_table,
                                       InfUser* user,
                                       gpointer user_data)
 {
-  InfAdoptedSession* session;
-  InfAdoptedSessionPrivate* priv;
-  InfSessionStatus status;
-  InfAdoptedSessionLocalUser* local;
-
   g_assert(INF_ADOPTED_IS_USER(user));
 
-  session = INF_ADOPTED_SESSION(user_data);
-  priv = INF_ADOPTED_SESSION_PRIVATE(session);
-  status = inf_session_get_status(INF_SESSION(session));
-
-  /* Cannot be local while synchronizing */
-  g_assert(status == INF_SESSION_RUNNING);
-
-  local = g_slice_new(InfAdoptedSessionLocalUser);
-  local->user = INF_ADOPTED_USER(user);
-
-  /* TODO: This is the same hack as in
-   * inf_adopted_session_user_notify_flags_cb(). */
-  local->last_send_vector = inf_adopted_state_vector_copy(
-    inf_adopted_user_get_vector(INF_ADOPTED_USER(user))
+  inf_adopted_session_local_user_added(
+    INF_ADOPTED_SESSION(user_data),
+    INF_ADOPTED_USER(user)
   );
+}
 
-  /* Set current vector for local user, this is kept up-to-date by
-   * InfAdoptedAlgorithm. TODO: Also do this in InfAdoptedAlgorithm? */
-  inf_adopted_user_set_vector(
-    INF_ADOPTED_USER(user),
-    inf_adopted_state_vector_copy(
-      inf_adopted_algorithm_get_current(priv->algorithm)
-    )
+static void
+inf_adopted_session_constructor_foreach_local_user_func(InfUser* user,
+                                                        gpointer user_data)
+{
+  g_assert(INF_ADOPTED_IS_USER(user));
+
+  inf_adopted_session_local_user_added(
+    INF_ADOPTED_SESSION(user_data),
+    INF_ADOPTED_USER(user)
   );
-
-  local->noop_time = time(NULL);
-
-  priv->local_users = g_slist_prepend(priv->local_users, local);
-
-  /* Start noop timer */
-  if(priv->noop_timeout == NULL)
-    inf_adopted_session_reschedule_noop_timer(session);
 }
 
 /*
@@ -637,6 +658,14 @@ inf_adopted_session_constructor(GType type,
     g_assert_not_reached();
     break;
   }
+
+  /* Add initial local users. Note that this requires the algorithm to exist, 
+   * though in synchronizing state no local users can exist. */
+  inf_user_table_foreach_local_user(
+    user_table,
+    inf_adopted_session_constructor_foreach_local_user_func,
+    session
+  );
 
   return object;
 }

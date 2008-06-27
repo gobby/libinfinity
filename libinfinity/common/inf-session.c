@@ -1262,10 +1262,12 @@ inf_session_net_object_sent(InfNetObject* net_object,
     );
 
     /* This can be any message from some session that is not related to
-     * the synchronization, so do not assert here. */
-    if(sync != NULL)
+     * the synchronization, so do not assert here. Also, we might already have
+     * sent stuff that is meant to be processed after the synchronization, so
+     * make sure here that this messages still belongs to the
+     * synchronization. */
+    if(sync != NULL && sync->messages_sent < sync->messages_total)
     {
-      g_assert(sync->messages_sent < sync->messages_total);
       ++ sync->messages_sent;
 
       g_signal_emit(
@@ -2317,6 +2319,7 @@ inf_session_add_user(InfSession* session,
   {
     user = session_class->user_new(session, params, n_params);
     inf_user_table_add_user(priv->user_table, user);
+    g_object_unref(user); /* We rely on the usertable holding a reference */
 
     return user;
   }

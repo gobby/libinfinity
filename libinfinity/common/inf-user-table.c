@@ -206,6 +206,7 @@ inf_user_table_add_user_handler(InfUserTable* user_table,
   g_assert(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)) == NULL);
 
   g_hash_table_insert(priv->table, GUINT_TO_POINTER(id), user);
+  g_object_ref(user);
 
   g_signal_connect(
     G_OBJECT(user),

@@ -1444,7 +1444,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
   else
   {
     for(child = xml->children; child != NULL; child = child->next)
-      if(strcmp((const char*)child->name, "subscribe"))
+      if(strcmp((const char*)child->name, "subscribe") == 0)
         break;
 
     node = infc_browser_node_add_note(
