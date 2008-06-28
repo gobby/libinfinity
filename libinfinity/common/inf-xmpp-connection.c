@@ -2055,7 +2055,7 @@ inf_xmpp_connection_process_end_element(InfXmppConnection* xmpp,
 
       /* TODO: Incorporate text child of the stream:error request, if any */
 
-      inf_xml_connection_error(INF_XML_CONNECTION(error), error);
+      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
       g_error_free(error);
     }
     else
@@ -2409,6 +2409,21 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
   {
     priv->buf = xmlBufferCreate();
     priv->doc = xmlNewDoc((const xmlChar*)"1.0");
+
+    /* Doesn't work: I wanted this to replace '\a' by &bell; in outgoing
+     * XML. */
+#if 0
+    xmlCreateIntSubset(priv->doc, "infinote", NULL, NULL);
+
+    printf("%p\n", xmlAddDocEntity(
+      priv->doc,
+      "bell",
+      XML_INTERNAL_GENERAL_ENTITY /* (?) */,
+      NULL,
+      NULL,
+      "\a"
+    ));
+#endif
   }
 
   if(priv->site == INF_XMPP_CONNECTION_CLIENT)

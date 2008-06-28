@@ -361,6 +361,12 @@
 
 @parent_class: 
 
+<!-- ##### ARG InfdSessionProxy:subscribe-sync-connection ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### STRUCT InfdSessionProxyClass ##### -->
 <para>
 

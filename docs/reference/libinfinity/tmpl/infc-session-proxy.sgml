@@ -80,3 +80,21 @@ InfcSessionProxy
 @Returns: 
 
 
+<!-- ##### FUNCTION infc_session_proxy_get_connection ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@Returns: 
+
+
+<!-- ##### FUNCTION infc_session_proxy_get_subscription_group ##### -->
+<para>
+
+</para>
+
+@proxy: 
+@Returns: 
+
+

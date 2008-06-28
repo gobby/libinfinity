@@ -1,3 +1,14 @@
+2008-06-28  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c: Fixed a crash when
+	<stream:error> was received.
+
+	* libinfinity/client/infc-session-proxy.h:
+	* libinfinity/client/infc-session-proxy.c: Added
+	infc_session_proxy_get_connection and
+	infc_session_proxy_get_subscription_group, correctly unset underlying
+	session's subscription group when the connection is released.
+
 2008-06-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-session.c

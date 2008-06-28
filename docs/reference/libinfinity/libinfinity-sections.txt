@@ -136,6 +136,8 @@ infc_session_proxy_set_connection
 infc_session_proxy_join_user
 infc_session_proxy_leave_user
 infc_session_proxy_get_session
+infc_session_proxy_get_connection
+infc_session_proxy_get_subscription_group
 <SUBSECTION Standard>
 InfcSessionProxyClass
 INFC_SESSION_PROXY

@@ -31,6 +31,7 @@ would be nice to have done for the first stable release.
  * Remove has_connection, lookup_connection from methods, rely on registered connections
  * Think about how to do method initialization
  * Change the storage interface to be asynchronous
- * Show progress of sync-in in InfGtkBrowserView. This requires:
-   - Add relevant code in InfGtkBrowserView
  * Replace the various begin-foo signals in InfcBrowser by a begin-operation with iter and request as parameters, detailed on the operation type (add-node, remove-node, subscribe-session etc.). Similar with the infc_browser_iter_get_foo_request functions (replacy by a generic infc_browser_iter_get_pending_request function).
+ * Support sending some special characters like bell ('\a') through XML. I had
+   an approach of defining custom entities for those (see inf-xmpp-connection.c
+   in inf_xmpp_connection_initiate()), though this didn't seem to work.

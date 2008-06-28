@@ -8,3 +8,4 @@ libinfinity.hierarchy
 libinfinity.interfaces
 libinfinity.prerequisites
 libinfinity.signals
+*.bak

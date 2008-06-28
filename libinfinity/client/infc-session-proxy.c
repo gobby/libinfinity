@@ -163,9 +163,11 @@ infc_session_proxy_session_synchronization_failed_cb(InfSession* session,
                                                      gpointer user_data)
 {
   InfcSessionProxy* proxy;
+  InfcSessionProxyPrivate* priv;
   InfSessionStatus status;
   
   proxy = INFC_SESSION_PROXY(user_data);
+  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
 
   g_object_get(G_OBJECT(session), "status", &status, NULL);
 
@@ -180,7 +182,12 @@ infc_session_proxy_session_synchronization_failed_cb(InfSession* session,
     /* We do not need to send an explicit session-unsubscribe, because the
      * failed synchronization should already let the host know that
      * subscription makes no sense anymore. */
-    infc_session_proxy_release_connection(proxy);
+
+    /* If the synchronization failed because the connection was closed, then
+     * the connection might not exist anymore at this point since the
+     * notify::status handler ran before this handler. */
+    if(priv->connection != NULL)
+      infc_session_proxy_release_connection(proxy);
     break;
   case INF_SESSION_CLOSED:
   default:
@@ -251,6 +258,7 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
   infc_request_manager_clear(priv->request_manager);
 
   /* Set status of all users to unavailable */
+  /* TODO: Keep local users available */
   inf_user_table_foreach_user(
     inf_session_get_user_table(priv->session),
     infc_session_proxy_release_connection_foreach_user_func,
@@ -262,6 +270,8 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
     G_CALLBACK(infc_session_proxy_connection_notify_status_cb),
     proxy
   );
+
+  inf_session_set_subscription_group(priv->session, NULL);
 
   inf_connection_manager_group_unref(priv->subscription_group);
   priv->subscription_group = NULL;
@@ -1173,7 +1183,8 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
   g_return_if_fail(priv->session != NULL);
 
-  g_object_freeze_notify(G_OBJECT(proxy));  
+  g_object_freeze_notify(G_OBJECT(proxy));
+  g_object_freeze_notify(G_OBJECT(priv->session));
 
   if(priv->connection != NULL)
   {
@@ -1188,7 +1199,8 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
     );
 
     /* Note that this would cause a notify on the connection property, but
-     * notifications have been freezed until the end of this function call. */
+     * notifications have been freezed until the end of this function call.
+     * Same with the subscription-group property of priv->session. */
     infc_session_proxy_release_connection(proxy);
   }
 
@@ -1215,6 +1227,7 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
 
   g_object_notify(G_OBJECT(proxy), "connection");
   g_object_notify(G_OBJECT(proxy), "subscription-group");
+  g_object_freeze_notify(G_OBJECT(priv->session));
   g_object_thaw_notify(G_OBJECT(proxy));
 }
 
@@ -1349,6 +1362,38 @@ infc_session_proxy_get_session(InfcSessionProxy* proxy)
 {
   g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
   return INFC_SESSION_PROXY_PRIVATE(proxy)->session;
+}
+
+/**
+ * infc_session_proxy_get_connection:
+ * @proxy: A #InfcSessionProxy.
+ *
+ * Returns the connection that is used to transmit requests to the publisher
+ * of the session, or %NULL if the session is not subscribed.
+ *
+ * Returns: A #InfXmlConnection, or %NULL.
+ **/
+InfXmlConnection*
+infc_session_proxy_get_connection(InfcSessionProxy* proxy)
+{
+  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
+  return INFC_SESSION_PROXY_PRIVATE(proxy)->connection;
+}
+
+/**
+ * infc_session_proxy_get_group:
+ * @proxy: A #InfcSessionProxy.
+ *
+ * Returns the group with all subscribed connections to the session, or %NULL
+ * if the session is not subscribed.
+ *
+ * Returns: A #InfConnectionManagerGroup, or %NULL.
+ **/
+InfConnectionManagerGroup*
+infc_session_proxy_get_subscription_group(InfcSessionProxy* proxy)
+{
+  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
+  return INFC_SESSION_PROXY_PRIVATE(proxy)->subscription_group;
 }
 
 /* vim:set et sw=2 ts=2: */

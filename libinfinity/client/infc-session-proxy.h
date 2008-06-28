@@ -70,6 +70,12 @@ infc_session_proxy_leave_user(InfcSessionProxy* proxy,
 InfSession*
 infc_session_proxy_get_session(InfcSessionProxy* proxy);
 
+InfXmlConnection*
+infc_session_proxy_get_connection(InfcSessionProxy* proxy);
+
+InfConnectionManagerGroup*
+infc_session_proxy_get_subscription_group(InfcSessionProxy* proxy);
+
 G_END_DECLS
 
 #endif /* __INFC_SESSION_PROXY_H__ */
