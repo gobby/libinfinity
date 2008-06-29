@@ -775,6 +775,20 @@ infd_session_proxy_dispose(GObject* object)
 }
 
 static void
+infd_session_proxy_session_init_user_func(InfUser* user,
+                                          gpointer user_data)
+{
+  InfdSessionProxy* proxy;
+  InfdSessionProxyPrivate* priv;
+
+  proxy = INFD_SESSION_PROXY(user_data);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  if(priv->user_id_counter <= inf_user_get_id(user))
+    priv->user_id_counter = inf_user_get_id(user) + 1;
+}
+
+static void
 infd_session_proxy_set_property(GObject* object,
                                 guint prop_id,
                                 const GValue* value,
@@ -791,6 +805,13 @@ infd_session_proxy_set_property(GObject* object,
   case PROP_SESSION:
     g_assert(priv->session == NULL); /* construct only */
     priv->session = INF_SESSION(g_value_dup_object(value));
+
+    /* Adjust user id counter so the next joining user gets a free ID */
+    inf_user_table_foreach_user(
+      inf_session_get_user_table(priv->session),
+      infd_session_proxy_session_init_user_func,
+      proxy
+    );
 
     g_signal_connect(
       G_OBJECT(priv->session),

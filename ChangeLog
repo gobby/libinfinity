@@ -1,3 +1,8 @@
+2008-06-29  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-session-proxy.c: Don't assign user IDs that
+	are already in use by users that were already in the initial session.
+
 2008-06-28  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c: Fixed a crash when
