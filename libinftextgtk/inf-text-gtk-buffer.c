@@ -290,6 +290,8 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
 {
   InfTextGtkBuffer* buffer;
   InfTextGtkBufferPrivate* priv;
+  guint location_offset;
+  guint text_len;
 
   buffer = INF_TEXT_GTK_BUFFER(user_data);
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
@@ -307,14 +309,21 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
    * text already inserted into the buffer. */
   g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "insert-text");
 
+  location_offset = gtk_text_iter_get_offset(location);
+  text_len = g_utf8_strlen(text, len);
+
   inf_text_buffer_insert_text(
     INF_TEXT_BUFFER(buffer),
-    gtk_text_iter_get_offset(location),
+    location_offset,
     text,
     len,
-    g_utf8_strlen(text, len),
+    text_len,
     INF_USER(priv->active_user)
   );
+
+  /* Revalidate iterator */
+  gtk_text_buffer_get_iter_at_offset(priv->buffer, location,
+                                     location_offset + text_len);
 }
 
 static void
@@ -325,6 +334,7 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
 {
   InfTextGtkBuffer* buffer;
   InfTextGtkBufferPrivate* priv;
+  guint begin_offset;
 
   buffer = INF_TEXT_GTK_BUFFER(user_data);
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
@@ -342,12 +352,18 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
    * text already removed from buffer. */
   g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "delete-range");
 
+  begin_offset = gtk_text_iter_get_offset(begin);
+
   inf_text_buffer_erase_text(
     INF_TEXT_BUFFER(buffer),
-    gtk_text_iter_get_offset(begin),
-    gtk_text_iter_get_offset(end) - gtk_text_iter_get_offset(begin),
+    begin_offset,
+    gtk_text_iter_get_offset(end) - begin_offset,
     INF_USER(priv->active_user)
   );
+
+  /* Revalidate iterators */
+  gtk_text_buffer_get_iter_at_offset(priv->buffer, begin, begin_offset);
+  *end = *begin;
 }
 
 static void

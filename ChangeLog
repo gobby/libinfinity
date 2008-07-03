@@ -1,3 +1,11 @@
+2008-07-03  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.c
+	(inf_text_gtk_buffer_insert_text_cb,
+	inf_text_gtk_buffer_delete_range_cb): Revalidate iterators at the end,
+	so that others can call gtk_text_buffer_insert and
+	gtk_text_buffer_delete with normal semantics.
+
 2008-06-29  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-session-proxy.c: Don't assign user IDs that
