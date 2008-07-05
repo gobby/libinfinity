@@ -218,6 +218,9 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
     {
       request = inf_adopted_request_log_original_request(log, request);
 
+      /* TODO: Perhaps we should do the vdiff against the user's vector
+       * instead of priv->current (which is the same for local users) so we
+       * can check whether the user is allowed to issue in Undo or not. */
       diff = inf_adopted_algorithm_state_vector_vdiff(
         algorithm,
         inf_adopted_request_get_vector(request),
@@ -389,6 +392,8 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
    * TODO: We could try out GHashTable instead which has
    * g_hash_table_foreach_remove() allowing this to be implemented in O(n).
    * We should still do good profiling, though. */
+  /* TODO: We can also do this in an idle handler, and only process a couple
+   * requests at a time. */
   g_tree_foreach(
     priv->cache,
     inf_adopted_algorithm_cleanup_cache_traverse_func,
@@ -1965,6 +1970,7 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
     inf_adopted_algorithm_execute_request(algorithm, request, TRUE);
 
     /* process queued requests that might have become executable now. */
+    /* TODO: Do this in an idle handler, to stay responsive. */
     do
     {
       for(item = priv->queue; item != NULL; item = g_list_next(item))
@@ -1999,6 +2005,15 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
  *
  * Returns whether @user can issue an undo request in the current state.
  *
+ * Note that if @user is a non-local user, then a Undo request from that user
+ * may still be valid even though this function returns false if the Undo
+ * requests was generated in another document state at the remote site. This
+ * means that this function cannot be used to check whether an Undo request
+ * received by a non-local user can be applied or not. It only checks whether
+ * that remote user could do an Undo request if it was in the same state or
+ * not. This behaviour might change in the future, see also the internal
+ * function inf_adopted_algorithm_can_undo_redo().
+ *
  * Return Value: %TRUE if Undo is possible, %FALSE otherwise.
  **/
 gboolean
@@ -2006,14 +2021,26 @@ inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
                                InfAdoptedUser* user)
 {
   InfAdoptedAlgorithmLocalUser* local;
+  InfAdoptedRequestLog* log;
 
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), FALSE);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), FALSE);
 
   local = inf_adopted_algorithm_find_local_user(algorithm, user);
-  g_return_val_if_fail(local != NULL, FALSE);
+  if(local != NULL)
+  {
+    return local->can_undo;
+  }
+  else
+  {
+    log = inf_adopted_user_get_request_log(user);
 
-  return local->can_undo;
+    return inf_adopted_algorithm_can_undo_redo(
+      algorithm,
+      log,
+      inf_adopted_request_log_next_undo(log)
+    );
+  }
 }
 
 /**
@@ -2023,6 +2050,15 @@ inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
  *
  * Returns whether @user can issue a redo request in the current state.
  *
+ * Note that if @user is a non-local user, then a Redo request from that user
+ * may still be valid even though this function returns false if the Redo
+ * requests was generated in another document state at the remote site. This
+ * means that this function cannot be used to check whether an Redo request
+ * received by a non-local user can be applied or not. It only checks whether
+ * that remote user could do an Redo request if it was in the same state or
+ * not. This behaviour might change in the future, see also the internal
+ * function inf_adopted_algorithm_can_undo_redo().
+ *
  * Return Value: %TRUE if Redo is possible, %FALSE otherwise.
  **/
 gboolean
@@ -2030,12 +2066,26 @@ inf_adopted_algorithm_can_redo(InfAdoptedAlgorithm* algorithm,
                                InfAdoptedUser* user)
 {
   InfAdoptedAlgorithmLocalUser* local;
+  InfAdoptedRequestLog* log;
 
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), FALSE);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), FALSE);
 
   local = inf_adopted_algorithm_find_local_user(algorithm, user);
-  g_return_val_if_fail(local != NULL, FALSE);
+  if(local != NULL)
+  {
+    return local->can_redo;
+  }
+  else
+  {
+    log = inf_adopted_user_get_request_log(user);
+
+    return inf_adopted_algorithm_can_undo_redo(
+      algorithm,
+      log,
+      inf_adopted_request_log_next_redo(log)
+    );
+  }
 
   return local->can_redo;
 }

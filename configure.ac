@@ -140,6 +140,8 @@ AC_CONFIG_FILES([
 
     test/Makefile
       test/util/Makefile
+      test/session/Makefile
+      test/cleanup/Makefile
 
     docs/Makefile
       docs/reference/version.xml

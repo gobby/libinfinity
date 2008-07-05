@@ -79,7 +79,7 @@ expand_content_files=
 # e.g. INCLUDES=-I$(top_srcdir) -I$(top_builddir) $(GTK_DEBUG_FLAGS)
 # e.g. GTKDOC_LIBS=$(top_builddir)/gtk/$(gtktargetlib)
 #INCLUDES=$(infinity_CFLAGS)
-AM_CPPFLAGS=#(infinity_CFLAGS)
+AM_CPPFLAGS=$(infinity_CFLAGS)
 GTKDOC_LIBS=$(infinity_LIBS) $(top_builddir)/libinfinity/libinfinity-1.0.la
 
 # This includes the standard gtk-doc make rules, copied by gtkdocize.

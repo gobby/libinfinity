@@ -45,6 +45,11 @@ InfAdoptedSession
 
 </para>
 
+<!-- ##### ARG InfAdoptedSession:max-total-log-size ##### -->
+<para>
+
+</para>
+
 <!-- ##### FUNCTION inf_adopted_session_get_io ##### -->
 <para>
 

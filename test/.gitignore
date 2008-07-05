@@ -5,6 +5,7 @@ inf-test-daemon
 inf-test-tcp-connection
 inf-test-text-operations
 inf-test-text-session
+inf-test-text-cleanup
 inf-test-xmpp-connection
 inf-test-state-vector
 inf-test-tcp-server

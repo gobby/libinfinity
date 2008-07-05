@@ -44,6 +44,7 @@ struct _InfAdoptedSessionLocalUser {
 typedef struct _InfAdoptedSessionPrivate InfAdoptedSessionPrivate;
 struct _InfAdoptedSessionPrivate {
   InfIo* io;
+  guint max_total_log_size;
 
   InfAdoptedAlgorithm* algorithm;
   GSList* local_users; /* having zero or one item in 99.9% of all cases */
@@ -57,6 +58,7 @@ enum {
 
   /* construct only */
   PROP_IO,
+  PROP_MAX_TOTAL_LOG_SIZE,
 
   /* read only */
   PROP_ALGORITHM
@@ -594,6 +596,7 @@ inf_adopted_session_init(GTypeInstance* instance,
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
   priv->io = NULL;
+  priv->max_total_log_size = 2048;
   priv->algorithm = NULL;
   priv->local_users = NULL;
   priv->noop_timeout = NULL;
@@ -646,9 +649,10 @@ inf_adopted_session_constructor(GType type,
     break;
   case INF_SESSION_RUNNING:
     g_assert(inf_session_get_buffer(INF_SESSION(session)) != NULL);
-    priv->algorithm = inf_adopted_algorithm_new(
+    priv->algorithm = inf_adopted_algorithm_new_full(
       user_table,
-      inf_session_get_buffer(INF_SESSION(session))
+      inf_session_get_buffer(INF_SESSION(session)),
+      priv->max_total_log_size
     );
 
     break;
@@ -752,6 +756,9 @@ inf_adopted_session_set_property(GObject* object,
     g_assert(priv->io == NULL); /* construct only */
     priv->io = INF_IO(g_value_dup_object(value));
     break;
+  case PROP_MAX_TOTAL_LOG_SIZE:
+    priv->max_total_log_size = g_value_get_uint(value);
+    break;
   case PROP_ALGORITHM:
     /* read only */
   default:
@@ -776,6 +783,9 @@ inf_adopted_session_get_property(GObject* object,
   {
   case PROP_IO:
     g_value_set_object(value, G_OBJECT(priv->io));
+    break;
+  case PROP_MAX_TOTAL_LOG_SIZE:
+    g_value_set_uint(value, priv->max_total_log_size);
     break;
   case PROP_ALGORITHM:
     g_value_set_object(value, G_OBJECT(priv->algorithm));
@@ -1099,9 +1109,10 @@ inf_adopted_session_synchronization_complete(InfSession* session,
   {
     /* Create adOPTed algorithm upon successful synchronization */
     g_assert(priv->algorithm == NULL);
-    priv->algorithm = inf_adopted_algorithm_new(
+    priv->algorithm = inf_adopted_algorithm_new_full(
       inf_session_get_user_table(session),
-      inf_session_get_buffer(session)
+      inf_session_get_buffer(session),
+      priv->max_total_log_size
     );
 
     g_object_notify(G_OBJECT(session), "algorithm");
@@ -1166,6 +1177,20 @@ inf_adopted_session_class_init(gpointer g_class,
       "IO",
       "The IO object used for timeouts",
       INF_TYPE_IO,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_MAX_TOTAL_LOG_SIZE,
+    g_param_spec_uint(
+      "max-total-log-size",
+      "Maxmimum total log size",
+      "The maximum number of requests to keep in all user's logs",
+      0,
+      G_MAXUINT,
+      2048,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );

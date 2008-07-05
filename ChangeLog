@@ -1,5 +1,35 @@
 2008-07-05  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c
+	(inf_adopted_algorithm_can_undo, inf_adopted_algorithm_can_redo):
+	Added support for returning undo/redo status for non-local users.
+	However, this currently returns whether those users can issue
+	undo/redo in the algorithm's current state. This especially means that
+	a request received from such a non-local user may be valid even if
+	this function returns false, if the request was generated at another
+	state. This will probably be changed in the future to return whether
+	the given user can issue an Undo/Redo request in its own state
+	(as known to the local site).
+
+	* libinfinity/adopted/inf-adopted-session.c: Added the
+	"max-total-log-size" property that is delegated to the construction of
+	the algorithm.
+
+	* test/inf-test-text-cleanup.c: Added a test that reads XML files
+	specifying test scenarios from test/cleanup to test whether the
+	algorithm's cleanup routines (correctly shrink request logs, correctly
+	issue can-undo/can-redo) work.
+
+	* test/cleanup/cleanup-01.xml: First simple cleanup test.
+
+	* test/session/Makefile.am:
+	* test/cleanup/Makefile.am:
+	* configure.ac: Add the test files to the distribution.
+
+	* test/Makefile.am: Add the new file to the build.
+
+2008-07-05  Armin Burgmeier  <armin@arbur.net>
+
 	* test/session/: Renamed from test/std/.
 
 	* docs/reference/libinfgtk/Makefile.am:
