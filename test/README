@@ -1,0 +1,44 @@
+These are various applications to test different aspects of the infinote API.
+They are different in nature and depend on each other (meaning that if
+inf-test-browser fails, inf-test-gtk-browser probably won't work either).
+
+Here is a rough overview of the tests:
+
+(NI=Non-Interactive, I=Interactive)
+
+NI inf-test-state-vector:
+   Verifies that basic inf_adopted_state_vector functions work.
+
+I  inf-test-tcp-connection:
+   Connects to localhost on port 5223, sending "Hello World" and printing
+   everything it receives to stdout.
+
+I  inf-test-tcp-server:
+   Listens on 5223, accepting every connection and printing anything it
+   receives from all connections.
+
+I  inf-test-browser:
+   Connects to a infinote server at localhost on port 6523, providing a simple
+   command line interface to list, explore, add and remove subdirectory nodes
+   on the server.
+
+NI inf-test-chunk:
+   Verifies that basic InfTextChunk operations do not cause a segfault.
+
+NI inf-test-text-session:
+   Reads all test files in the session/ subdirectory and performs the tests.
+   The test files contain a number of requests from different users, a
+   beginning state and an end state of the text buffer. It applies all requests
+   from all users in a random order to the beginning buffer and verifies that
+   at the end the buffer matches the end state.
+
+NI inf-test-text-cleanup:
+   Performs all test files in the cleanup/ subdirectory. This basically checks
+   that cleaning up the request log works correctly in certain situations.
+   Again, the test files contain a number of requests from different users.
+   This time, however, they are always applied in order. In between the
+   requests, there are <verify/> tags that verify that the request log
+   of the given user has a specified size or that the user can or can not
+   issue Undo/Redo in the current situation. This is to ensure that the 
+   algorithm correctly shrinks the request log.
+
