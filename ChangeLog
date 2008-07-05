@@ -1,3 +1,30 @@
+2008-07-05  Armin Burgmeier  <armin@arbur.net>
+
+	* test/session/: Renamed from test/std/.
+
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinfinity/Makefile.am:
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am:
+	* libinfgtk/Makefile.am:
+	* libinfinity/Makefile.am:
+	* libinfinity/adopted/Makefile.am:
+	* libinfinity/client/Makefile.am:
+	* libinfinity/common/Makefile.am:
+	* libinfinity/server/Makefile.am:
+	* libinftext/Makefile.am:
+	* libinftextgtk/Makefile.am: Use AM_CPPFLAGS instead of INCLUDES which
+	is deprecated.
+
+	* test/util/inf-test-util.h:
+	* test/util/inf-test-util.c: Moved some common functions used in
+	multiple tests here for code reuse.
+
+	* test/Makefile.am:
+	* configure.ac: Add to build.
+
+	* test/inf-test-text-session.c: Use the new test functions.
+
 2008-07-03  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.c

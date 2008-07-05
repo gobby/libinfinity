@@ -1,6 +1,6 @@
 lib_LTLIBRARIES = libinftext-1.0.la
 
-INCLUDES = -I${top_srcdir}
+AM_CPPFLAGS = -I${top_srcdir}
 
 libinftext_1_0_la_CPPFLAGS = \
 	$(inftext_CFLAGS)

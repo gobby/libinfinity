@@ -1,3 +1,5 @@
+SUBDIRS = util
+
 AM_CPPFLAGS = \
 	-I${top_srcdir} \
 	-I${top_builddir} \
@@ -77,7 +79,8 @@ inf_test_text_session_SOURCES = \
 
 inf_test_text_session_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la
+	${top_builddir}/libinftext/libinftext-1.0.la \
+	util/libinftestutil.a
 
 if WITH_INFTEXTGTK
 inf_test_gtk_browser_SOURCES = \

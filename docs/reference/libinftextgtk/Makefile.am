@@ -70,7 +70,8 @@ expand_content_files=
 # signals and properties.
 # e.g. INCLUDES=-I$(top_srcdir) -I$(top_builddir) $(GTK_DEBUG_FLAGS)
 # e.g. GTKDOC_LIBS=$(top_builddir)/gtk/$(gtktargetlib)
-INCLUDES=$(inftextgtk_CFLAGS)
+#INCLUDES=$(inftextgtk_CFLAGS)
+AM_CPPFLAGS=$(inftextgtk_CFLAGS)
 GTKDOC_LIBS = \
 	$(inftextgtk_LIBS) \
 	$(top_builddir)/libinfinity/libinfinity-1.0.la \

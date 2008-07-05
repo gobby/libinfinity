@@ -1,4 +1,4 @@
-INCLUDES = -I${top_srcdir}
+AM_CPPFLAGS = -I${top_srcdir}
 
 # TODO: Make this configurable at configure time
 methods_path = ${libdir}/infinote/method-plugins

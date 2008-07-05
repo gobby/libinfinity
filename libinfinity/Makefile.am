@@ -2,7 +2,7 @@ SUBDIRS = common adopted server client . methods
 
 lib_LTLIBRARIES = libinfinity-1.0.la
 
-INCLUDES = -I${top_srcdir}
+AM_CPPFLAGS = -I${top_srcdir}
 
 libinfinity_1_0_la_CPPFLAGS = \
 	$(infinity_CFLAGS)

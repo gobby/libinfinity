@@ -139,6 +139,7 @@ AC_CONFIG_FILES([
       pixmaps/scalable/Makefile
 
     test/Makefile
+      test/util/Makefile
 
     docs/Makefile
       docs/reference/version.xml
