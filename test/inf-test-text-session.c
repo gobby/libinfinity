@@ -258,6 +258,10 @@ foreach_test_func(const gchar* testfile,
   GSList* users;
   GError* error;
 
+  /* Only process XML files, not the Makefiles or other stuff */
+  if(!g_str_has_suffix(testfile, ".xml"))
+    return;
+
   result = (test_result*)user_data;
   doc = xmlParseFile(testfile);
 

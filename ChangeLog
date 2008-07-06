@@ -1,3 +1,13 @@
+2008-07-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Use G_MAXUINT instead
+	of 0 for max-total-log-size to mean unlimited, so a max-total-log-size
+	of 0 is allowed.
+
+	* test/inf-test-text-cleanup.c:
+	* test/inf-test-text-session.c: Only process XML files in the
+	subdirectories, not Makefiles and other stuff.
+
 2008-07-05  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.c

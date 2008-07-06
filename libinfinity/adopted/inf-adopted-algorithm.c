@@ -214,7 +214,7 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
 
   if(request != NULL)
   {
-    if(priv->max_total_log_size > 0)
+    if(priv->max_total_log_size != G_MAXUINT)
     {
       request = inf_adopted_request_log_original_request(log, request);
 
@@ -258,6 +258,8 @@ inf_adopted_algorithm_cleanup_cache_traverse_func(gpointer key,
   request_key = (InfAdoptedAlgorithmRequestKey*)key;
   cleanup_data = (InfAdoptedAlgorithmCacheCleanupData*)data;
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(cleanup_data->algorithm);
+
+  g_assert(priv->max_total_log_size != G_MAXUINT);
 
   /* TODO: Save vdiff-to-zero of lcs in cache data and vdiff-to-zero in
    * request key. We could then get the final vdiff by just subtracting them,
@@ -305,7 +307,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
 
   /* We don't do cleanup in case the total log size is zero, which means we
    * keep all requests without limit. */
-  if(priv->max_total_log_size == 0)
+  if(priv->max_total_log_size == G_MAXUINT)
     return;
 
   /* We remove every request whose "upper related" request has a greater
@@ -1690,9 +1692,9 @@ inf_adopted_algorithm_new(InfUserTable* user_table,
  * since DO requests have to be kept if their associated requests (if any) are
  * still needed for other user's transformation).
  *
- * Set to 0 to disable limitation. In theory, this would allow everyone to
- * undo every operation up to the first one ever made. In practise, this
- * issues a huge amount of data that needs to be synchronized on user
+ * Set to %G_MAXUINT to disable limitation. In theory, this would allow
+ * everyone to undo every operation up to the first one ever made. In practise,
+ * this issues a huge amount of data that needs to be synchronized on user
  * join and is too expensive to compute anyway.
  *
  * The default value is 2048.
