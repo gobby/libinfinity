@@ -238,10 +238,11 @@ inf_adopted_algorithm_least_common_predecessor(InfAdoptedAlgorithm* algorithm,
  * compute the Undo operation). */
 static gboolean
 inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
-                                    InfAdoptedRequestLog* log,
+                                    InfAdoptedUser* user,
                                     InfAdoptedRequest* request)
 {
   InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedRequestLog* log;
   guint diff;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
@@ -250,15 +251,13 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
   {
     if(priv->max_total_log_size != G_MAXUINT)
     {
+      log = inf_adopted_user_get_request_log(user);
       request = inf_adopted_request_log_original_request(log, request);
 
-      /* TODO: Perhaps we should do the vdiff against the user's vector
-       * instead of priv->current (which is the same for local users) so we
-       * can check whether the user is allowed to issue in Undo or not. */
       diff = inf_adopted_algorithm_state_vector_vdiff(
         algorithm,
         inf_adopted_request_get_vector(request),
-        priv->current
+        inf_adopted_user_get_vector(user)
       );
 
       if(diff >= priv->max_total_log_size)
@@ -368,10 +367,8 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
    * are additional conditions. However, in the current case, some requests
    * are just kept a bit longer than necessary, in favor of simplicity. */
 
-  /* TODO: We should create tests with low max-total-log-size and have
-   * specific tests that verify that the cleanup algorithms work as expected.
-   * We could then also more easily try out some optimizations as the one
-   * mentioned above. */
+  /* TODO: Only take available users into account here, otherwise unavailable
+   * users prevent cleanup. */
   cleanup_data.lcp = inf_adopted_state_vector_copy(priv->current);
   for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
@@ -494,13 +491,13 @@ inf_adopted_algorithm_update_undo_redo(InfAdoptedAlgorithm* algorithm)
 
     can_undo = inf_adopted_algorithm_can_undo_redo(
       algorithm,
-      log,
+      local->user,
       inf_adopted_request_log_next_undo(log)
     );
 
     can_redo = inf_adopted_algorithm_can_undo_redo(
       algorithm,
-      log,
+      local->user,
       inf_adopted_request_log_next_redo(log)
     );
 
@@ -601,13 +598,13 @@ inf_adopted_algorithm_add_local_user(InfAdoptedAlgorithm* algorithm,
 
   local->can_undo = inf_adopted_algorithm_can_undo_redo(
     algorithm,
-    log,
+    user,
     inf_adopted_request_log_next_undo(log)
   );
 
   local->can_redo = inf_adopted_algorithm_can_undo_redo(
     algorithm,
-    log,
+    user,
     inf_adopted_request_log_next_redo(log)
   );
 
@@ -2021,7 +2018,11 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
 
     inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
   }
-  
+
+  /* TODO: Errorcheck that we can apply the request. That means: If it's a
+   * DO request, check vector timestamps, if it's an undo or redo request,
+   * then check can_undo/can_redo. */
+
   if(inf_adopted_state_vector_causally_before(vector, priv->current) == FALSE)
   {
     priv->queue = g_list_prepend(priv->queue, request);
@@ -2065,16 +2066,12 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  *
- * Returns whether @user can issue an undo request in the current state.
- *
- * Note that if @user is a non-local user, then a Undo request from that user
- * may still be valid even though this function returns false if the Undo
- * requests was generated in another document state at the remote site. This
- * means that this function cannot be used to check whether an Undo request
- * received by a non-local user can be applied or not. It only checks whether
- * that remote user could do an Undo request if it was in the same state or
- * not. This behaviour might change in the future, see also the internal
- * function inf_adopted_algorithm_can_undo_redo().
+ * Returns whether @user can issue an undo request in the current state. Note
+ * that if @user is non-local, then the result of this function does not
+ * depend on the current state but on the state that we know @user is
+ * guaranteed to have reached. This is because @user might still issue an
+ * Undo request even if the max-total-log-size is already exceeded if @user
+ * does not know yet that it is exceeded.
  *
  * Return Value: %TRUE if Undo is possible, %FALSE otherwise.
  **/
@@ -2099,7 +2096,7 @@ inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
 
     return inf_adopted_algorithm_can_undo_redo(
       algorithm,
-      log,
+      user,
       inf_adopted_request_log_next_undo(log)
     );
   }
@@ -2110,16 +2107,12 @@ inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
  * @algorithm: A #InfAdoptedAlgorithm.
  * @user: A local #InfAdoptedUser.
  *
- * Returns whether @user can issue a redo request in the current state.
- *
- * Note that if @user is a non-local user, then a Redo request from that user
- * may still be valid even though this function returns false if the Redo
- * requests was generated in another document state at the remote site. This
- * means that this function cannot be used to check whether an Redo request
- * received by a non-local user can be applied or not. It only checks whether
- * that remote user could do an Redo request if it was in the same state or
- * not. This behaviour might change in the future, see also the internal
- * function inf_adopted_algorithm_can_undo_redo().
+ * Returns whether @user can issue a redo request in the current state. Note
+ * that if @user is non-local, then the result of this function does not
+ * depend on the current state but on the state that we know @user is
+ * guaranteed to have reached. This is because @user might still issue a
+ * Redo request even if the max-total-log-size is already exceeded if @user
+ * does not know yet that it is exceeded.
  *
  * Return Value: %TRUE if Redo is possible, %FALSE otherwise.
  **/
@@ -2144,7 +2137,7 @@ inf_adopted_algorithm_can_redo(InfAdoptedAlgorithm* algorithm,
 
     return inf_adopted_algorithm_can_undo_redo(
       algorithm,
-      log,
+      user,
       inf_adopted_request_log_next_redo(log)
     );
   }

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<infinote-cleanup-test>
+ <log size="2" />
+ <user id="1" />
+ <user id="2" />
+
+ <initial-buffer />
+
+ <request time="" user="1"><insert pos="0">c</insert></request>
+ <request time="" user="2"><insert pos="0">a</insert></request>
+
+ <verify user="1" log-size="1" can-undo="1" can-redo="0" />
+ <verify user="2" log-size="1" can-undo="1" can-redo="0" />
+
+ <request time="2:1" user="1"><no-op /></request>
+
+ <!-- We need to keep the request from user 1 in the log since user 2 could
+      still issue a request that depends on it. -->
+ <verify user="1" log-size="1" can-undo="0" can-redo="0" />
+
+ <!-- We also need to keep the request from user 2 in the log since user 2
+      has not yet processed the request from user 1 (or, we don't know
+      about it), so user 2 might not yet have exceeded the max-total-log-site
+      locally and therefore still issue an Undo request. -->
+ <verify user="2" log-size="1" can-undo="1" can-redo="0" />
+ 
+ <request time="1:1" user="2"><no-op /></request>
+
+ <verify user="1" log-size="0" can-undo="0" can-redo="0" />
+ <verify user="2" log-size="0" can-undo="0" can-redo="0" />
+
+</infinote-cleanup-test>

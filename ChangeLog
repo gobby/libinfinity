@@ -1,6 +1,22 @@
 2008-07-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.c
+	(inf_adopted_algorithm_can_undo_redo): Changed semantics of this
+	function for non-local users so that it returns whether the user in
+	question can issue an Undo or Redo command in its own current state
+	(as known to the locals site).
+
+	* test/inf-test-text-cleanup.c: Allow can-undo and can-redo
+	verifications when the user's vector does not match the current one
+	from the algorithm.
+
+	* test/cleanup/cleanup-05.xml:
+	* test/cleanup/cleanup-06.xml:
+	* test/cleanup/cleanup-07.xml: Yet another three tests.
+
+2008-07-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-algorithm.c
 	(inf_adopted_algorithm_cleanup): Don't use least common successor but
 	least common predecessor as reference when cleaning up requests. This
 	was always meant to be the predecessor, but used the successor until

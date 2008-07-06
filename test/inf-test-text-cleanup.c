@@ -75,9 +75,6 @@ perform_test(guint max_total_log_size,
   gint verify_can_undo;
   gint verify_can_redo;
 
-  InfAdoptedStateVector* user_vector;
-  InfAdoptedStateVector* cur_vector;
-
   InfAdoptedRequestLog* log;
   guint log_size;
 
@@ -215,25 +212,6 @@ perform_test(guint max_total_log_size,
 
       if(result)
       {
-        /* TODO: Support this, see InfAdoptedAlgorithm */
-        user_vector = inf_adopted_user_get_vector(verify_user);
-        cur_vector = inf_adopted_algorithm_get_current(algorithm);
-        result =
-          (inf_adopted_state_vector_compare(user_vector, cur_vector) == 0);
-
-        if(result == FALSE)
-        {
-          g_set_error(
-            error,
-            inf_test_text_cleanup_error_quark(),
-            INF_TEST_TEXT_CLEANUP_UNSUPPORTED,
-            "User's state vector does not match local vector, can-undo "
-            "verification is currently unsupported"
-          );
-
-          goto fail;
-        }
-
         result = inf_adopted_algorithm_can_undo(algorithm, verify_user);
         if(result != verify_can_undo)
         {
@@ -261,25 +239,6 @@ perform_test(guint max_total_log_size,
 
       if(result)
       {
-        /* TODO: Support this, see InfAdoptedAlgorithm */
-        user_vector = inf_adopted_user_get_vector(verify_user);
-        cur_vector = inf_adopted_algorithm_get_current(algorithm);
-        result =
-          (inf_adopted_state_vector_compare(user_vector, cur_vector) == 0);
-
-        if(result == FALSE)
-        {
-          g_set_error(
-            error,
-            inf_test_text_cleanup_error_quark(),
-            INF_TEST_TEXT_CLEANUP_UNSUPPORTED,
-            "User's state vector does not match local vector, can-redo "
-            "verification is currently unsupported"
-          );
-
-          goto fail;
-        }
-
         result = inf_adopted_algorithm_can_redo(algorithm, verify_user);
         if(result != verify_can_redo)
         {
