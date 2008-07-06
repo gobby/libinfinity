@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<infinote-cleanup-test>
+ <log size="0" />
+ <user id="1" />
+ <user id="2" />
+
+ <initial-buffer />
+
+ <request time="" user="1"><insert pos="0">c</insert></request>
+ <!-- The request needs to be kept because the second user could
+      still issue a request at time 1:0;2:0. Undo is still disallowed, since
+      this would require others to have that request present, but they
+      may already have dropped it if they have newer status from user 2. -->
+ <verify user="1" log-size="1" can-undo="0" can-redo="0" />
+
+ <request time="1:1" user="2"><no-op /></request>
+
+ <!-- Now we got a status update from user 2, so we can safely drop
+      the request. -->
+ <verify user="1" log-size="0" can-undo="0" can-redo="0" />
+
+</infinote-cleanup-test>

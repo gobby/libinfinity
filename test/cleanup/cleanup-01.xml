@@ -3,9 +3,7 @@
  <log size="0" />
  <user id="1" />
 
- <initial-buffer>
-  <segment author="0">ab</segment>
- </initial-buffer>
+ <initial-buffer />
 
  <request time="" user="1"><insert pos="0">c</insert></request>
  <verify user="1" log-size="0" can-undo="0" can-redo="0" />

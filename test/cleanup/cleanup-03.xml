@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<infinote-cleanup-test>
+ <log size="2" />
+ <user id="1" />
+
+ <initial-buffer />
+
+ <request time="" user="1"><insert pos="0">c</insert></request>
+
+ <verify user="1" log-size="1" can-undo="1" can-redo="0" />
+
+ <request time="" user="1"><undo /></request>
+
+ <!-- log-size is zero again here since all requests of the set have been
+      processed by all sites (haha!), and we another undo/redo (which would
+      be the only reason to keep it in the logs, now) would already exceed
+      the log size. -->
+ <verify user="1" log-size="0" can-undo="0" can-redo="0" />
+
+</infinote-cleanup-test>

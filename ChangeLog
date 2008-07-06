@@ -1,5 +1,26 @@
 2008-07-06  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c
+	(inf_adopted_algorithm_cleanup): Don't use least common successor but
+	least common predecessor as reference when cleaning up requests. This
+	was always meant to be the predecessor, but used the successor until
+	now because of me being stupid. Also fixed the cleanup process so that
+	when all sites processed all operations the max total log size really
+	is not exceeded.
+
+	* libinfinity/adopted/inf-adopted-request-log.c
+	(inf_adopted_request_log_remove_requests): Don't touch next-undo or
+	next-redo when no requests are removed.
+
+	* test/cleanup/cleanup-01.xml: Empty the initial buffer for
+	simplicity.
+
+	* test/cleanup/cleanup-02.xml:
+	* test/cleanup/cleanup-03.xml:
+	* test/cleanup/cleanup-04.xml: Three more cleanup tests.
+
+2008-07-06  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c: Use G_MAXUINT instead
 	of 0 for max-total-log-size to mean unlimited, so a max-total-log-size
 	of 0 is allowed.

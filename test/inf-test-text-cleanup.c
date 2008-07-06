@@ -141,7 +141,7 @@ perform_test(guint max_total_log_size,
         &local_error
       );
       
-      if(!result)
+      if(local_error != NULL)
         goto fail;
     }
     else

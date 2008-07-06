@@ -45,7 +45,7 @@ typedef struct _InfAdoptedAlgorithmCacheCleanupData
   InfAdoptedAlgorithmCacheCleanupData;
 struct _InfAdoptedAlgorithmCacheCleanupData {
   InfAdoptedAlgorithm* algorithm;
-  InfAdoptedStateVector* lcs;
+  InfAdoptedStateVector* lcp;
   GSList* rem_keys;
 };
 
@@ -160,12 +160,10 @@ inf_adopted_algorithm_state_vector_vdiff(InfAdoptedAlgorithm* algorithm,
 }
 
 /* Returns a new state vector v so that both first and second are causally
- * before v and so that there is no other state vector that is causally before
- * v which is also causally before first and second. */
+ * before v and so that there is no other state vector with the same property
+ * that is causally before v. */
 /* TODO: Move this to state vector, possibly with a faster O(n)
  * implementation (This is O(n log n), at best) */
-/* TODO: A version modifying first instead of returning a new result,
- * use in inf_adopted_algorithm_cleanup(). */
 static InfAdoptedStateVector*
 inf_adopted_algorithm_least_common_successor(InfAdoptedAlgorithm* algorithm,
                                              InfAdoptedStateVector* first,
@@ -186,6 +184,42 @@ inf_adopted_algorithm_least_common_successor(InfAdoptedAlgorithm* algorithm,
       result,
       id,
       MAX(
+        inf_adopted_state_vector_get(first, id),
+        inf_adopted_state_vector_get(second, id)
+      )
+    );
+  }
+
+  return result;
+}
+
+/* Returns a new state vector v so that v is both causally before first and
+ * second and so that there is no other state vector with the same property
+ * so that v is causally before that vector. */
+/* TODO: Move this to state vector, possibly with a faster O(n)
+ * implementation (This is O(n log n), at best) */
+/* TODO: A version modifying first instead of returning a new result,
+ * use in inf_adopted_algorithm_cleanup(). */
+static InfAdoptedStateVector*
+inf_adopted_algorithm_least_common_predecessor(InfAdoptedAlgorithm* algorithm,
+                                               InfAdoptedStateVector* first,
+                                               InfAdoptedStateVector* second)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedUser** user;
+  InfAdoptedStateVector* result;
+  guint id;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  result = inf_adopted_state_vector_new();
+
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
+  {
+    id = inf_user_get_id(INF_USER(*user));
+    inf_adopted_state_vector_set(
+      result,
+      id,
+      MIN(
         inf_adopted_state_vector_get(first, id),
         inf_adopted_state_vector_get(second, id)
       )
@@ -261,16 +295,16 @@ inf_adopted_algorithm_cleanup_cache_traverse_func(gpointer key,
 
   g_assert(priv->max_total_log_size != G_MAXUINT);
 
-  /* TODO: Save vdiff-to-zero of lcs in cache data and vdiff-to-zero in
+  /* TODO: Save vdiff-to-zero of lcp in cache data and vdiff-to-zero in
    * request key. We could then get the final vdiff by just subtracting them,
    * saving an exepensive inf_adopted_state_vector_vdiff() call. */
   if(inf_adopted_state_vector_causally_before(request_key->vector,
-                                              cleanup_data->lcs))
+                                              cleanup_data->lcp))
   {
     vdiff = inf_adopted_algorithm_state_vector_vdiff(
       cleanup_data->algorithm,
       request_key->vector,
-      cleanup_data->lcs
+      cleanup_data->lcp
     );
 
     if(vdiff > priv->max_total_log_size)
@@ -296,7 +330,10 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
   InfAdoptedRequestLog* log;
   InfAdoptedRequest* req;
   InfAdoptedStateVector* req_vec;
+  InfAdoptedStateVector* low_vec;
+  InfAdoptedStateVector* cmp_vec;
   guint n;
+  guint id;
   guint vdiff;
 
   InfAdoptedAlgorithmCacheCleanupData cleanup_data;
@@ -305,19 +342,19 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
   g_assert(priv->users_begin != priv->users_end);
 
-  /* We don't do cleanup in case the total log size is zero, which means we
-   * keep all requests without limit. */
+  /* We don't do cleanup in case the total log size is G_MAXUINT, which
+   * means we keep all requests without limit. */
   if(priv->max_total_log_size == G_MAXUINT)
     return;
 
-  /* We remove every request whose "upper related" request has a greater
-   * vdiff to the lcs then max-total-log-size from from both request logs and
-   * the request cache. The lcs is a common state that _all_ sites are
-   * guaranteed to have reached. Requests not causally before lcs are
-   * always kept. This should not happen if max-total-log-size is reasonably
-   * high and the network latency reasonably low, but we can't guarentee it
-   * does not happen. It just means we can't drop a request that another site
-   * has not yet processed, although it is old enough.*/
+  /* We remove every request whose "lower related" request has a greater
+   * vdiff to the lcp then max-total-log-size from both request log and
+   * the request cache. The lcp is a common state that _all_ sites are
+   * guaranteed to have reached. Related requests not causally before lcp are
+   * always kept, though. This should not happen if max-total-log-size is
+   * reasonably high and the network latency reasonably low, but we can't
+   * guarentee it does not happen. It just means we can't drop a request that
+   * another site has not yet processed, although it is old enough.*/
 
   /* The "upper related" request of a request A is the next-newer request so
    * that all requests before the "upper related" request can be removed
@@ -335,50 +372,77 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
    * specific tests that verify that the cleanup algorithms work as expected.
    * We could then also more easily try out some optimizations as the one
    * mentioned above. */
-  cleanup_data.lcs = inf_adopted_state_vector_copy(priv->current);
+  cleanup_data.lcp = inf_adopted_state_vector_copy(priv->current);
   for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
-    temp = inf_adopted_algorithm_least_common_successor(
+    temp = inf_adopted_algorithm_least_common_predecessor(
       algorithm,
-      cleanup_data.lcs,
+      cleanup_data.lcp,
       inf_adopted_user_get_vector(*user)
     );
 
-    inf_adopted_state_vector_free(cleanup_data.lcs);
-    cleanup_data.lcs = temp;
+    inf_adopted_state_vector_free(cleanup_data.lcp);
+    cleanup_data.lcp = temp;
   }
 
   for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
+    id = inf_user_get_id(INF_USER(*user));
     log = inf_adopted_user_get_request_log(*user);
     n = inf_adopted_request_log_get_begin(log);
 
     /* Remove all sets of related requests whose upper related request has
-     * a large enough vdiff to vcs. */ 
+     * a large enough vdiff to lcp. */ 
     while(n < inf_adopted_request_log_get_end(log))
     {
       req = inf_adopted_request_log_upper_related(log, n);
       req_vec = inf_adopted_request_get_vector(req);
 
-      /* We can only remove requests that are causally before lcs,
-       * as explained above. */
-      if(!inf_adopted_state_vector_causally_before(req_vec, cleanup_data.lcs))
+      /* We can only remove requests that are causally before lcp,
+       * as explained above. We need to compare the target vector time of the
+       * request, though, and not the source which is why we increase the
+       * request's user's component by one. This is because of the fact that
+       * the request needs to be available to reach its target vector time. */
+
+      /* TODO: Avoid doing a copy here, perhaps by a special
+       * inf_adopted_state_vector_causally_before method. We could also make
+       * use of this in reachable. */
+      cmp_vec = inf_adopted_state_vector_copy(req_vec);
+      inf_adopted_state_vector_add(cmp_vec, id, 1);
+      if(!inf_adopted_state_vector_causally_before(cmp_vec, cleanup_data.lcp))
+      {
+        inf_adopted_state_vector_free(cmp_vec);
         break;
+      }
+
+      inf_adopted_state_vector_free(cmp_vec);
+
+      /* TODO: Experimentally, I try using the lower related for the vdiff
+       * here. If it doesn't work out, then we will need to use the upper
+       * related. Note that changing this requires changing the cleanup
+       * tests, too. */
+      low_vec = inf_adopted_request_get_vector(
+        inf_adopted_request_log_get_request(log, n)
+      );
 
       vdiff = inf_adopted_algorithm_state_vector_vdiff(
         algorithm,
-        req_vec,
-        cleanup_data.lcs
+        low_vec,
+        cleanup_data.lcp
       );
 
-      if(vdiff <= priv->max_total_log_size)
+      /* TODO: Again, I experimentally changed <= to < here. If the vdiff is
+       * equal to the log size, then nobody can do anything with the request
+       * set anymore: Everybody already processed every request in the set
+       * (otherwise, the causally_before_ check above would have failed), and
+       * the user in question cannot Undo anymore since this would require one
+       * too much request in the request log. Note again that changing this
+       * requires changing the cleanup tests, too. */
+      if(vdiff < priv->max_total_log_size)
         break;
 
       /* Check next set of related requests */
-      n = inf_adopted_state_vector_get(
-        req_vec,
-        inf_user_get_id(INF_USER(*user))
-      ) + 1;
+      n = inf_adopted_state_vector_get(req_vec, id) + 1;
     }
 
     inf_adopted_request_log_remove_requests(log, n);
@@ -406,7 +470,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
     g_tree_remove(priv->cache, item->data);
 
   g_slist_free(cleanup_data.rem_keys);
-  inf_adopted_state_vector_free(cleanup_data.lcs);
+  inf_adopted_state_vector_free(cleanup_data.lcp);
 }
 
 /* Updates the can_undo and can_redo fields of the
@@ -645,8 +709,8 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
       inf_user_get_id(INF_USER(component))
     );
 
-    /* TODO: Should this be n == inf_adopted_request_log_get_end(log)? */
-    if(n == 0) return TRUE;
+    g_assert(n >= inf_adopted_request_log_get_begin(log));
+    if(n == inf_adopted_request_log_get_begin(log)) return TRUE;
 
     request = inf_adopted_request_log_get_request(log, n - 1);
     type = inf_adopted_request_get_request_type(request);
@@ -719,33 +783,29 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
                                         gboolean can_cache)
 {
   InfAdoptedStateVector* lcs;
+  InfAdoptedStateVector* request_vec;
+  InfAdoptedStateVector* against_vec;
   InfAdoptedRequest* lcs_against;
   InfAdoptedRequest* lcs_request;
   InfAdoptedRequest* against_copy;
   InfAdoptedRequest* result;
 
-  g_assert(
-    inf_adopted_state_vector_causally_before(
-      inf_adopted_request_get_vector(request),
-      at
-    )
-  );
+  request_vec = inf_adopted_request_get_vector(request); 
+  against_vec = inf_adopted_request_get_vector(against);
 
-  g_assert(
-    inf_adopted_state_vector_causally_before(
-      inf_adopted_request_get_vector(against),
-      at
-    )
-  );
+  g_assert(inf_adopted_state_vector_causally_before(request_vec, at));
+  g_assert(inf_adopted_state_vector_causally_before(against_vec, at));
 
   /* Find least common successor and transform both requests
    * through that point. */
   lcs = inf_adopted_algorithm_least_common_successor(
     algorithm,
-    inf_adopted_request_get_vector(request),
-    inf_adopted_request_get_vector(against)
+    request_vec,
+    against_vec
   );
 
+  g_assert(inf_adopted_state_vector_causally_before(request_vec, lcs));
+  g_assert(inf_adopted_state_vector_causally_before(against_vec, lcs));
   g_assert(inf_adopted_state_vector_causally_before(lcs, at));
 
   /* TODO: Compare lcs against at? */
@@ -907,9 +967,10 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     if(user_id == inf_adopted_request_get_user_id(request)) continue;
 
     n = inf_adopted_state_vector_get(v, user_id);
-    if(n == 0) continue;
-
     log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
+
+    g_assert(n >= inf_adopted_request_log_get_begin(log));
+    if(n == inf_adopted_request_log_get_begin(log)) continue;
 
     /* Fold late, if possible */
     associated = inf_adopted_request_log_get_request(log, n - 1);
@@ -993,9 +1054,10 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     if(user_id == inf_adopted_request_get_user_id(request)) continue;
 
     n = inf_adopted_state_vector_get(v, user_id);
-    if(n == 0) continue;
-
     log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
+
+    g_assert(n >= inf_adopted_request_log_get_begin(log));
+    if(n == inf_adopted_request_log_get_begin(log)) continue;
 
     if(inf_adopted_state_vector_get(vector, user_id) <
        inf_adopted_state_vector_get(to, user_id))
@@ -1688,9 +1750,7 @@ inf_adopted_algorithm_new(InfUserTable* user_table,
  * @max_total_log_size in high-latency situations or when a user does not send
  * status updates frequently. However, when all requests have been
  * processed by all users, the sum of all requests in the logs is guaranteed
- * to be lower or equal to this value. (TODO: I am not sure this is right 
- * since DO requests have to be kept if their associated requests (if any) are
- * still needed for other user's transformation).
+ * to be lower or equal to this value.
  *
  * Set to %G_MAXUINT to disable limitation. In theory, this would allow
  * everyone to undo every operation up to the first one ever made. In practise,

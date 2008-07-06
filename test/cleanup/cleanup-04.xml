@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<infinote-cleanup-test>
+ <log size="3" />
+ <user id="1" />
+
+ <initial-buffer />
+
+ <request time="" user="1"><insert pos="0">c</insert></request>
+
+ <verify user="1" log-size="1" can-undo="1" can-redo="0" />
+
+ <request time="" user="1"><undo /></request>
+
+ <verify user="1" log-size="2" can-undo="0" can-redo="1" />
+
+ <request time="" user="1"><redo /></request>
+
+ <verify user="1" log-size="0" can-undo="0" can-redo="0" />
+ 
+ <request time="" user="1"><insert pos="1">d</insert></request>
+ 
+ <verify user="1" log-size="1" can-undo="1" can-redo="0" />
+
+</infinote-cleanup-test>

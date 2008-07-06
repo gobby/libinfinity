@@ -713,7 +713,7 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
    * newest one in the log */
   if(priv->next_undo != NULL)
   {
-    if(priv->next_undo < priv->entries + priv->offset + up_to)
+    if(priv->next_undo < priv->entries + priv->offset + (up_to - priv->begin))
     {
       priv->next_undo = NULL;
       g_object_notify(G_OBJECT(log), "next-undo");
@@ -722,7 +722,7 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
 
   if(priv->next_redo != NULL)
   {
-    if(priv->next_redo < priv->entries + priv->offset + up_to)
+    if(priv->next_redo < priv->entries + priv->offset + (up_to - priv->begin))
     {
       priv->next_redo = NULL;
       g_object_notify(G_OBJECT(log), "next-redo");
