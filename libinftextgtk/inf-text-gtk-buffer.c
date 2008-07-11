@@ -133,6 +133,50 @@ hsv_to_rgb (gdouble *h,
   }
 }
 
+static void
+inf_text_gtk_update_tag_color(InfTextGtkBuffer* buffer,
+                              GtkTextTag* tag,
+                              InfTextUser* user)
+{
+  gdouble hue;
+  gdouble saturation;
+  gdouble value;
+  GdkColor color;
+
+  hue = inf_text_user_get_hue(user);
+  /* TODO: Choose these to also fit a dark theme. Perhaps make a property
+   * out of them if we can't find out here. */
+  saturation = 0.35;
+  value = 1.0;
+
+  hsv_to_rgb(&hue, &saturation, &value);
+
+  color.red = hue * 0xffff;
+  color.green = saturation * 0xffff;
+  color.blue = value * 0xffff;
+
+  g_object_set(G_OBJECT(tag), "background-gdk", &color, NULL);
+}
+
+static void
+inf_text_gtk_user_notify_hue_cb(GObject* object,
+                                GParamSpec* pspec,
+                                gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  guint user_id;
+  GtkTextTag* tag;
+
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  user_id = inf_user_get_id(INF_USER(object));
+  tag = g_hash_table_lookup(priv->user_tags, GUINT_TO_POINTER(user_id));
+  g_assert(tag != NULL);
+
+  inf_text_gtk_update_tag_color(buffer, tag, INF_TEXT_USER(object));
+}
+
 static GtkTextTag*
 inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
                                  guint user_id)
@@ -142,11 +186,6 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
   GtkTextTag* tag;
   gchar* tag_name;
   InfTextUser* user;
-
-  gdouble hue;
-  gdouble saturation;
-  gdouble value;
-  GdkColor color;
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
@@ -179,19 +218,12 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
       );
       g_assert(user != NULL);
 
-      hue = inf_text_user_get_hue(user);
-      /* TODO: Choose these to also fit a dark theme. Perhaps make a property
-       * out of them if we can't find out here. */
-      saturation = 0.35;
-      value = 1.0;
+      /* TODO: Disconnect from that some time later */
+      g_signal_connect(
+        G_OBJECT(user), "notify::hue",
+        G_CALLBACK(inf_text_gtk_user_notify_hue_cb), buffer);
 
-      hsv_to_rgb(&hue, &saturation, &value);
-
-      color.red = hue * 0xffff;
-      color.green = saturation * 0xffff;
-      color.blue = value * 0xffff;
-
-      g_object_set(G_OBJECT(tag), "background-gdk", &color, NULL);
+      inf_text_gtk_update_tag_color(buffer, tag, user);
     }
 
     return tag;

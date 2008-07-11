@@ -1,3 +1,8 @@
+2008-07-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Update user tag
+	"background-color" property on user color change.
+
 2008-07-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.c
