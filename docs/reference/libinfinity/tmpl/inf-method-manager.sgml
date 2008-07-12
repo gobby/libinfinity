@@ -28,6 +28,13 @@ InfMethodManager
 
 </para>
 
+<!-- ##### STRUCT InfMethodManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_method_manager_get_default ##### -->
 <para>
 

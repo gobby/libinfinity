@@ -48,6 +48,15 @@ InfcRequestManager
 @infcrequestmanager: the object which received the signal.
 @arg1: 
 
+<!-- ##### STRUCT InfcRequestManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@request_add: 
+@request_remove: 
+
 <!-- ##### FUNCTION infc_request_manager_new ##### -->
 <para>
 

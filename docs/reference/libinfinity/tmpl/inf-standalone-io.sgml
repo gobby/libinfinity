@@ -23,6 +23,13 @@ InfStandaloneIo
 </para>
 
 
+<!-- ##### STRUCT InfStandaloneIoClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_standalone_io_new ##### -->
 <para>
 

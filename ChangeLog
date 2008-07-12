@@ -1,5 +1,21 @@
 2008-07-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c:
+	* libinfinity/adopted/inf-adopted-no-operation.h:
+	* libinfinity/adopted/inf-adopted-no-operation.c:
+	* libinfinity/adopted/inf-adopted-operation.h:
+	* libinfinity/adopted/inf-adopted-operation.c:
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request.c:
+	* libinfinity/common/inf-user-table.h:
+	* libinfinity/common/inf-user-table.c:
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-io.c:
+	* libinfinity/common/inf-session.c: Added/Fixed documentation.
+
+2008-07-12  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-text-cleanup.c (perform_test): Terminate the call to
 	g_object_new that creates the InfTextSession with NULL, preventing
 	memory corruption.

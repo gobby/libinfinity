@@ -48,6 +48,13 @@ InfAdoptedRequestLog
 
 </para>
 
+<!-- ##### STRUCT InfAdoptedRequestLogClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_adopted_request_log_new ##### -->
 <para>
 

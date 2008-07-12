@@ -70,6 +70,15 @@ InfAdoptedAlgorithm
 
 </para>
 
+<!-- ##### STRUCT InfAdoptedAlgorithmClass ##### -->
+<para>
+
+</para>
+
+@can_undo_changed: 
+@can_redo_changed: 
+@apply_request: 
+
 <!-- ##### FUNCTION inf_adopted_algorithm_new ##### -->
 <para>
 

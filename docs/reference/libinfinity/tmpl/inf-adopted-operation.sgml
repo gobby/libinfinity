@@ -28,7 +28,6 @@ inf-adopted-operation
 
 </para>
 
-@parent: 
 @transform: 
 @copy: 
 @get_flags: 

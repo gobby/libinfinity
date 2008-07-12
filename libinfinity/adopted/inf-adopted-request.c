@@ -18,6 +18,24 @@
 
 #include <libinfinity/adopted/inf-adopted-request.h>
 
+/**
+ * SECTION:inf-adopted-request
+ * @title: InfAdoptedRequest
+ * @short_description: Request processed by #InfAdoptedAlgorithm.
+ * @include: libinfinity/adopted/inf-adopted-request.h
+ * @see_also: #InfAdoptedAlgorithm
+ * @stability: Unstable
+ *
+ * An #InfAdoptedRequest is basically an #InfAdoptedOperation with some
+ * metadata used by #InfAdoptedAlgorithm to determine which operations to
+ * transform against each other. If the type of the request is
+ * %INF_ADOPTED_REQUEST_DO, then it contains the operation to perform,
+ * otherwise it does not because the request does not know the operation, it
+ * is computed by #InfAdoptedAlgorithm when required. A #InfAdoptedRequest
+ * also contains the state in which the operation can be applied to the
+ * buffer and the user ID of the #InfAdoptedUser having generated the request.
+ */
+
 typedef struct _InfAdoptedRequestPrivate InfAdoptedRequestPrivate;
 struct _InfAdoptedRequestPrivate {
   InfAdoptedRequestType type;

@@ -98,6 +98,18 @@ InfcBrowser
 
 </para>
 
+<!-- ##### STRUCT InfcBrowserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@node_added: 
+@node_removed: 
+@subscribe_session: 
+@begin_explore: 
+@begin_subscribe: 
+
 <!-- ##### FUNCTION infc_browser_new ##### -->
 <para>
 

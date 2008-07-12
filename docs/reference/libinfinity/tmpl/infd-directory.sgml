@@ -67,6 +67,15 @@ InfdDirectory
 
 </para>
 
+<!-- ##### STRUCT InfdDirectoryClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@node_added: 
+@node_removed: 
+
 <!-- ##### FUNCTION infd_directory_iter_copy ##### -->
 <para>
 

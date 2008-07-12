@@ -54,6 +54,15 @@ InfdSessionProxy
 
 </para>
 
+<!-- ##### STRUCT InfdSessionProxyClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@add_subscription: 
+@remove_subscription: 
+
 <!-- ##### FUNCTION infd_session_proxy_get_session ##### -->
 <para>
 

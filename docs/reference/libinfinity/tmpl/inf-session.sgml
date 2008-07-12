@@ -147,6 +147,25 @@ InfSession
 
 </para>
 
+<!-- ##### STRUCT InfSessionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@to_xml_sync: 
+@process_xml_sync: 
+@process_xml_run: 
+@get_xml_user_props: 
+@set_xml_user_props: 
+@validate_user_props: 
+@user_new: 
+@close: 
+@synchronization_begin: 
+@synchronization_progress: 
+@synchronization_complete: 
+@synchronization_failed: 
+
 <!-- ##### FUNCTION inf_session_lookup_user_property ##### -->
 <para>
 

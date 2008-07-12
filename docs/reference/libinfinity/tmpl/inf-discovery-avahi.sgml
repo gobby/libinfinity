@@ -43,6 +43,13 @@ InfDiscoveryAvahi
 
 </para>
 
+<!-- ##### STRUCT InfDiscoveryAvahiClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_discovery_avahi_new ##### -->
 <para>
 

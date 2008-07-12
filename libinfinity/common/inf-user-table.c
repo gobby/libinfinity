@@ -21,6 +21,20 @@
 
 #include <string.h>
 
+/**
+ * SECTION:inf-user-table
+ * @title: InfUserTable
+ * @short_description: User information storage
+ * @include: libinfinity/common/inf-user-table.h
+ * @see_also: #InfUser, #InfSession
+ * @stability: Unstable
+ *
+ * #InfUserTable manages multiple #InfUser objects and provides an easy way to
+ * look up users by their ID and name. All users within a user table must have
+ * a unique ID and name. The user table is used by #InfSession to store the
+ * users within the session.
+ */
+
 typedef struct _InfUserTableForeachUserData InfUserTableForeachUserData;
 struct _InfUserTableForeachUserData {
   InfUserTableForeachUserFunc func;

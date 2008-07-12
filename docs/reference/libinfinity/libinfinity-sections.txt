@@ -3,13 +3,13 @@
 <TITLE>InfAdoptedSession</TITLE>
 InfAdoptedSessionError
 InfAdoptedSession
+InfAdoptedSessionClass
 inf_adopted_session_get_io
 inf_adopted_session_get_algorithm
 inf_adopted_session_broadcast_request
 inf_adopted_session_undo
 inf_adopted_session_redo
 <SUBSECTION Standard>
-InfAdoptedSessionClass
 INF_ADOPTED_SESSION
 INF_ADOPTED_IS_SESSION
 INF_ADOPTED_TYPE_SESSION
@@ -24,6 +24,7 @@ INF_ADOPTED_SESSION_GET_CLASS
 <TITLE>InfcBrowser</TITLE>
 InfcBrowserNodeStatus
 InfcBrowser
+InfcBrowserClass
 infc_browser_new
 infc_browser_get_connection_manager
 infc_browser_get_connection
@@ -54,7 +55,6 @@ infc_browser_iter_get_explore_request
 infc_browser_iter_from_node_request
 infc_browser_iter_from_explore_request
 <SUBSECTION Standard>
-InfcBrowserClass
 INFC_BROWSER
 INFC_IS_BROWSER
 INFC_TYPE_BROWSER
@@ -68,6 +68,7 @@ INFC_BROWSER_GET_CLASS
 <FILE>infc-explore-request</FILE>
 <TITLE>InfcExploreRequest</TITLE>
 InfcExploreRequest
+InfcExploreRequestClass
 infc_explore_request_get_node_id
 infc_explore_request_initiated
 infc_explore_request_progress
@@ -75,7 +76,6 @@ infc_explore_request_finished
 infc_explore_request_get_initiated
 infc_explore_request_get_finished
 <SUBSECTION Standard>
-InfcExploreRequestClass
 INFC_EXPLORE_REQUEST
 INFC_IS_EXPLORE_REQUEST
 INFC_TYPE_EXPLORE_REQUEST
@@ -89,9 +89,9 @@ INFC_EXPLORE_REQUEST_GET_CLASS
 <FILE>infc-node-request</FILE>
 <TITLE>InfcNodeRequest</TITLE>
 InfcNodeRequest
+InfcNodeRequestClass
 infc_node_request_finished
 <SUBSECTION Standard>
-InfcNodeRequestClass
 INFC_NODE_REQUEST
 INFC_IS_NODE_REQUEST
 INFC_TYPE_NODE_REQUEST
@@ -106,6 +106,7 @@ INFC_NODE_REQUEST_GET_CLASS
 <TITLE>InfcRequestManager</TITLE>
 InfcRequestManagerForeachFunc
 InfcRequestManager
+InfcRequestManagerClass
 infc_request_manager_new
 infc_request_manager_add_request
 infc_request_manager_add_request_valist
@@ -118,7 +119,6 @@ infc_request_manager_get_request_by_xml_required
 infc_request_manager_foreach_request
 infc_request_manager_foreach_named_request
 <SUBSECTION Standard>
-InfcRequestManagerClass
 INFC_REQUEST_MANAGER
 INFC_IS_REQUEST_MANAGER
 INFC_TYPE_REQUEST_MANAGER
@@ -132,6 +132,7 @@ INFC_REQUEST_MANAGER_GET_CLASS
 <FILE>infc-session-proxy</FILE>
 <TITLE>InfcSessionProxy</TITLE>
 InfcSessionProxy
+InfcSessionProxyClass
 infc_session_proxy_set_connection
 infc_session_proxy_join_user
 infc_session_proxy_leave_user
@@ -139,7 +140,6 @@ infc_session_proxy_get_session
 infc_session_proxy_get_connection
 infc_session_proxy_get_subscription_group
 <SUBSECTION Standard>
-InfcSessionProxyClass
 INFC_SESSION_PROXY
 INFC_IS_SESSION_PROXY
 INFC_TYPE_SESSION_PROXY
@@ -153,11 +153,11 @@ INFC_SESSION_PROXY_GET_CLASS
 <FILE>infc-request</FILE>
 <TITLE>InfcRequest</TITLE>
 InfcRequest
+InfcRequestClass
 infc_request_get_seq
 infc_request_get_name
 infc_request_failed
 <SUBSECTION Standard>
-InfcRequestClass
 INFC_REQUEST
 INFC_IS_REQUEST
 INFC_TYPE_REQUEST
@@ -171,9 +171,9 @@ INFC_REQUEST_GET_CLASS
 <FILE>infc-user-request</FILE>
 <TITLE>InfcUserRequest</TITLE>
 InfcUserRequest
+InfcUserRequestClass
 infc_user_request_finished
 <SUBSECTION Standard>
-InfcUserRequestClass
 INFC_USER_REQUEST
 INFC_IS_USER_REQUEST
 INFC_TYPE_USER_REQUEST
@@ -204,13 +204,13 @@ INF_LOCAL_PUBLISHER_GET_IFACE
 <TITLE>InfTcpConnection</TITLE>
 InfTcpConnectionStatus
 InfTcpConnection
+InfTcpConnectionClass
 inf_tcp_connection_open
 inf_tcp_connection_close
 inf_tcp_connection_send
 inf_tcp_connection_get_remote_address
 inf_tcp_connection_get_remote_port
 <SUBSECTION Standard>
-InfTcpConnectionClass
 INF_TCP_CONNECTION
 INF_IS_TCP_CONNECTION
 INF_TYPE_TCP_CONNECTION
@@ -239,6 +239,7 @@ INF_BUFFER_GET_IFACE
 <FILE>inf-method-manager</FILE>
 <TITLE>InfMethodManager</TITLE>
 InfMethodManager
+InfMethodManagerClass
 inf_method_manager_get_default
 inf_method_manager_new
 inf_method_manager_add_method
@@ -247,7 +248,6 @@ inf_method_manager_list_methods_with_name
 inf_method_manager_list_methods_with_network
 inf_method_manager_list_all_methods
 <SUBSECTION Standard>
-InfMethodManagerClass
 INF_METHOD_MANAGER
 INF_IS_METHOD_MANAGER
 INF_TYPE_METHOD_MANAGER
@@ -261,6 +261,7 @@ INF_METHOD_MANAGER_GET_CLASS
 <FILE>inf-standalone-io</FILE>
 <TITLE>InfStandaloneIo</TITLE>
 InfStandaloneIo
+InfStandaloneIoClass
 inf_standalone_io_new
 inf_standalone_io_iteration
 inf_standalone_io_iteration_timeout
@@ -268,7 +269,6 @@ inf_standalone_io_loop
 inf_standalone_io_loop_quit
 inf_standalone_io_loop_running
 <SUBSECTION Standard>
-InfStandaloneIoClass
 INF_STANDALONE_IO
 INF_IS_STANDALONE_IO
 INF_TYPE_STANDALONE_IO
@@ -282,9 +282,9 @@ INF_STANDALONE_IO_GET_CLASS
 <FILE>inf-discovery-avahi</FILE>
 <TITLE>InfDiscoveryAvahi</TITLE>
 InfDiscoveryAvahi
+InfDiscoveryAvahiClass
 inf_discovery_avahi_new
 <SUBSECTION Standard>
-InfDiscoveryAvahiClass
 INF_DISCOVERY_AVAHI
 INF_IS_DISCOVERY_AVAHI
 INF_TYPE_DISCOVERY_AVAHI
@@ -300,13 +300,13 @@ INF_DISCOVERY_AVAHI_GET_CLASS
 InfUserStatus
 InfUserFlags
 InfUser
+InfUserClass
 inf_user_get_id
 inf_user_get_name
 inf_user_get_status
 inf_user_get_flags
 inf_user_get_connection
 <SUBSECTION Standard>
-InfUserClass
 INF_USER
 INF_IS_USER
 INF_TYPE_USER
@@ -348,6 +348,7 @@ INF_DISCOVERY_GET_IFACE
 <TITLE>InfUserTable</TITLE>
 InfUserTableForeachUserFunc
 InfUserTable
+InfUserTableClass
 inf_user_table_new
 inf_user_table_add_user
 inf_user_table_remove_user
@@ -356,7 +357,6 @@ inf_user_table_lookup_user_by_name
 inf_user_table_foreach_user
 inf_user_table_foreach_local_user
 <SUBSECTION Standard>
-InfUserTableClass
 INF_USER_TABLE
 INF_IS_USER_TABLE
 INF_TYPE_USER_TABLE
@@ -412,6 +412,7 @@ InfSessionSyncStatus
 InfSessionSyncError
 InfSessionForeachUserFunc
 InfSession
+InfSessionClass
 inf_session_lookup_user_property
 inf_session_get_user_property
 inf_session_user_to_xml
@@ -429,7 +430,6 @@ inf_session_get_subscription_group
 inf_session_set_subscription_group
 inf_session_send_to_subscriptions
 <SUBSECTION Standard>
-InfSessionClass
 INF_SESSION
 INF_IS_SESSION
 INF_TYPE_SESSION
@@ -445,12 +445,12 @@ INF_TYPE_SESSION_STATUS
 <FILE>inf-xmpp-manager</FILE>
 <TITLE>InfXmppManager</TITLE>
 InfXmppManager
+InfXmppManagerClass
 inf_xmpp_manager_new
 inf_xmpp_manager_lookup_connection_by_address
 inf_xmpp_manager_contains_connection
 inf_xmpp_manager_add_connection
 <SUBSECTION Standard>
-InfXmppManagerClass
 INF_XMPP_MANAGER
 INF_IS_XMPP_MANAGER
 INF_TYPE_XMPP_MANAGER
@@ -468,9 +468,9 @@ InfXmppConnectionError
 InfXmppConnectionStreamError
 InfXmppConnectionAuthError
 InfXmppConnection
+InfXmppConnectionClass
 inf_xmpp_connection_new
 <SUBSECTION Standard>
-InfXmppConnectionClass
 INF_XMPP_CONNECTION
 INF_IS_XMPP_CONNECTION
 INF_TYPE_XMPP_CONNECTION
@@ -511,6 +511,7 @@ InfConnectionManagerMethod
 InfConnectionManagerMethodDesc
 InfConnectionManagerScope
 InfConnectionManager
+InfConnectionManagerClass
 inf_connection_manager_new
 inf_connection_manager_open_group
 inf_connection_manager_join_group
@@ -535,7 +536,6 @@ inf_connection_manager_unregister_connection
 inf_connection_manager_send_msg
 inf_connection_manager_send_ctrl
 <SUBSECTION Standard>
-InfConnectionManagerClass
 INF_CONNECTION_MANAGER
 INF_IS_CONNECTION_MANAGER
 INF_TYPE_CONNECTION_MANAGER
@@ -574,12 +574,12 @@ INF_ADOPTED_TYPE_OPERATION_FLAGS
 <FILE>inf-adopted-user</FILE>
 <TITLE>InfAdoptedUser</TITLE>
 InfAdoptedUser
+InfAdoptedUserClass
 inf_adopted_user_get_component
 inf_adopted_user_get_vector
 inf_adopted_user_set_vector
 inf_adopted_user_get_request_log
 <SUBSECTION Standard>
-InfAdoptedUserClass
 INF_ADOPTED_USER
 INF_ADOPTED_IS_USER
 INF_ADOPTED_TYPE_USER
@@ -594,6 +594,7 @@ INF_ADOPTED_USER_GET_CLASS
 <TITLE>InfAdoptedRequest</TITLE>
 InfAdoptedRequestType
 InfAdoptedRequest
+InfAdoptedRequestClass
 inf_adopted_request_new_do
 inf_adopted_request_new_undo
 inf_adopted_request_new_redo
@@ -607,7 +608,6 @@ inf_adopted_request_mirror
 inf_adopted_request_fold
 inf_adopted_request_affects_buffer
 <SUBSECTION Standard>
-InfAdoptedRequestClass
 INF_ADOPTED_REQUEST
 INF_ADOPTED_IS_REQUEST
 INF_ADOPTED_TYPE_REQUEST
@@ -623,6 +623,7 @@ INF_ADOPTED_TYPE_REQUEST_TYPE
 <FILE>inf-adopted-algorithm</FILE>
 <TITLE>InfAdoptedAlgorithm</TITLE>
 InfAdoptedAlgorithm
+InfAdoptedAlgorithmClass
 inf_adopted_algorithm_new
 inf_adopted_algorithm_new_full
 inf_adopted_algorithm_get_current
@@ -634,7 +635,6 @@ inf_adopted_algorithm_receive_request
 inf_adopted_algorithm_can_undo
 inf_adopted_algorithm_can_redo
 <SUBSECTION Standard>
-InfAdoptedAlgorithmClass
 INF_ADOPTED_ALGORITHM
 INF_ADOPTED_IS_ALGORITHM
 INF_ADOPTED_TYPE_ALGORITHM
@@ -648,11 +648,11 @@ INF_ADOPTED_ALGORITHM_GET_CLASS
 <FILE>inf-adopted-split-operation</FILE>
 <TITLE>InfAdoptedSplitOperation</TITLE>
 InfAdoptedSplitOperation
+InfAdoptedSplitOperationClass
 inf_adopted_split_operation_new
 inf_adopted_split_operation_unsplit
 inf_adopted_split_operation_transform_other
 <SUBSECTION Standard>
-InfAdoptedSplitOperationClass
 INF_ADOPTED_SPLIT_OPERATION
 INF_ADOPTED_IS_SPLIT_OPERATION
 INF_ADOPTED_TYPE_SPLIT_OPERATION
@@ -666,9 +666,9 @@ INF_ADOPTED_SPLIT_OPERATION_GET_CLASS
 <FILE>inf-adopted-no-operation</FILE>
 <TITLE>InfAdoptedNoOperation</TITLE>
 InfAdoptedNoOperation
+InfAdoptedNoOperationClass
 inf_adopted_no_operation_new
 <SUBSECTION Standard>
-InfAdoptedNoOperationClass
 INF_ADOPTED_NO_OPERATION
 INF_ADOPTED_IS_NO_OPERATION
 INF_ADOPTED_TYPE_NO_OPERATION
@@ -682,6 +682,7 @@ INF_ADOPTED_NO_OPERATION_GET_CLASS
 <FILE>inf-adopted-request-log</FILE>
 <TITLE>InfAdoptedRequestLog</TITLE>
 InfAdoptedRequestLog
+InfAdoptedRequestLogClass
 inf_adopted_request_log_new
 inf_adopted_request_log_get_user_id
 inf_adopted_request_log_get_begin
@@ -696,7 +697,6 @@ inf_adopted_request_log_next_undo
 inf_adopted_request_log_next_redo
 inf_adopted_request_log_upper_related
 <SUBSECTION Standard>
-InfAdoptedRequestLogClass
 INF_ADOPTED_REQUEST_LOG
 INF_ADOPTED_IS_REQUEST_LOG
 INF_ADOPTED_TYPE_REQUEST_LOG
@@ -710,9 +710,9 @@ INF_ADOPTED_REQUEST_LOG_GET_CLASS
 <FILE>infd-xmpp-server</FILE>
 <TITLE>InfdXmppServer</TITLE>
 InfdXmppServer
+InfdXmppServerClass
 infd_xmpp_server_new
 <SUBSECTION Standard>
-InfdXmppServerClass
 INFD_XMPP_SERVER
 INFD_IS_XMPP_SERVER
 INFD_TYPE_XMPP_SERVER
@@ -726,11 +726,11 @@ INFD_XMPP_SERVER_GET_CLASS
 <FILE>infd-server-pool</FILE>
 <TITLE>InfdServerPool</TITLE>
 InfdServerPool
+InfdServerPoolClass
 infd_server_pool_new
 infd_server_pool_add_server
 infd_server_pool_add_local_publisher
 <SUBSECTION Standard>
-InfdServerPoolClass
 INFD_SERVER_POOL
 INFD_IS_SERVER_POOL
 INFD_TYPE_SERVER_POOL
@@ -745,6 +745,7 @@ INFD_SERVER_POOL_GET_CLASS
 <TITLE>InfdDirectory</TITLE>
 InfdDirectoryIter
 InfdDirectory
+InfdDirectoryClass
 infd_directory_iter_copy
 infd_directory_iter_free
 infd_directory_new
@@ -766,7 +767,6 @@ infd_directory_iter_get_node_type
 infd_directory_iter_get_plugin
 infd_directory_iter_get_session
 <SUBSECTION Standard>
-InfdDirectoryClass
 INFD_DIRECTORY
 INFD_IS_DIRECTORY
 INFD_TYPE_DIRECTORY
@@ -801,10 +801,10 @@ INFD_TYPE_XML_SERVER_STATUS
 <TITLE>InfdTcpServer</TITLE>
 InfdTcpServerStatus
 InfdTcpServer
+InfdTcpServerClass
 infd_tcp_server_open
 infd_tcp_server_close
 <SUBSECTION Standard>
-InfdTcpServerClass
 INFD_TCP_SERVER
 INFD_IS_TCP_SERVER
 INFD_TYPE_TCP_SERVER
@@ -846,6 +846,7 @@ INFD_TYPE_STORAGE_NODE
 <FILE>infd-session-proxy</FILE>
 <TITLE>InfdSessionProxy</TITLE>
 InfdSessionProxy
+InfdSessionProxyClass
 infd_session_proxy_get_session
 infd_session_proxy_add_user
 infd_session_proxy_subscribe_to
@@ -853,7 +854,6 @@ infd_session_proxy_has_subscriptions
 infd_session_proxy_is_subscribed
 infd_session_proxy_is_idle
 <SUBSECTION Standard>
-InfdSessionProxyClass
 INFD_SESSION_PROXY
 INFD_IS_SESSION_PROXY
 INFD_TYPE_SESSION_PROXY
@@ -868,10 +868,10 @@ INFD_SESSION_PROXY_GET_CLASS
 <TITLE>InfdFilesystemStorage</TITLE>
 InfdFilesystemStorageError
 InfdFilesystemStorage
+InfdFilesystemStorageClass
 infd_filesystem_storage_new
 infd_filesystem_storage_open
 <SUBSECTION Standard>
-InfdFilesystemStorageClass
 INFD_FILESYSTEM_STORAGE
 INFD_IS_FILESYSTEM_STORAGE
 INFD_TYPE_FILESYSTEM_STORAGE

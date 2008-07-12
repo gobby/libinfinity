@@ -38,6 +38,14 @@ InfcSessionProxy
 
 </para>
 
+<!-- ##### STRUCT InfcSessionProxyClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@translate_error: 
+
 <!-- ##### FUNCTION infc_session_proxy_set_connection ##### -->
 <para>
 

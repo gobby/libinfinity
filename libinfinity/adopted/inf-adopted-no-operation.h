@@ -33,11 +33,24 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedNoOperation InfAdoptedNoOperation;
 typedef struct _InfAdoptedNoOperationClass InfAdoptedNoOperationClass;
 
+/**
+ * InfAdoptedNoOperationClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfAdoptedNoOperationClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfAdoptedNoOperation:
+ *
+ * #InfAdoptedNoOperation is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfAdoptedNoOperation {
+  /*< private >*/
   GObject parent;
 };
 

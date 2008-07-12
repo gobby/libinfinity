@@ -38,11 +38,24 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedAlgorithm InfAdoptedAlgorithm;
 typedef struct _InfAdoptedAlgorithmClass InfAdoptedAlgorithmClass;
 
+/**
+ * InfAdoptedAlgorithmClass:
+ * @can_undo_changed: Default signal handler for the
+ * #InfAdoptedAlgorithm::can_undo_changed signal.
+ * @can_redo_changed: Default signal handler for the
+ * #InfAdoptedAlgorithm::can_redo_changed signal.
+ * @apply_request: Default signal handler for the
+ * #InfAdoptedAlgorithm::apply_request signal.
+ *
+ * Signals for the #InfAdoptedAlgorithm class.
+ */
 struct _InfAdoptedAlgorithmClass {
+  /*< private >*/
   GObjectClass parent_class;
 
   /* Signals */
 
+  /*< public >*/
   void(*can_undo_changed)(InfAdoptedAlgorithm* algorithm,
                           InfAdoptedUser* user,
                           gboolean can_undo);
@@ -56,7 +69,14 @@ struct _InfAdoptedAlgorithmClass {
                        InfAdoptedRequest* request);
 };
 
+/**
+ * InfAdoptedAlgorithm:
+ *
+ * #InfAdoptedAlgorithm is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfAdoptedAlgorithm {
+  /*< private >*/
   GObject parent;
 };
 

@@ -112,6 +112,13 @@ InfXmppConnection
 
 </para>
 
+<!-- ##### STRUCT InfXmppConnectionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_xmpp_connection_new ##### -->
 <para>
 

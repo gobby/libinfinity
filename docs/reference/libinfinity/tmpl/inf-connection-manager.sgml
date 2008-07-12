@@ -62,6 +62,13 @@ InfConnectionManager
 </para>
 
 
+<!-- ##### STRUCT InfConnectionManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_connection_manager_new ##### -->
 <para>
 

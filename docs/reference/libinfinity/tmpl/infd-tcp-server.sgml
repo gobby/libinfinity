@@ -67,6 +67,15 @@ InfdTcpServer
 
 </para>
 
+<!-- ##### STRUCT InfdTcpServerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@new_connection: 
+@error: 
+
 <!-- ##### FUNCTION infd_tcp_server_open ##### -->
 <para>
 

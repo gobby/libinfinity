@@ -72,6 +72,16 @@ InfcExploreRequest
 
 </para>
 
+<!-- ##### STRUCT InfcExploreRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@initiated: 
+@progress: 
+@finished: 
+
 <!-- ##### FUNCTION infc_explore_request_get_node_id ##### -->
 <para>
 

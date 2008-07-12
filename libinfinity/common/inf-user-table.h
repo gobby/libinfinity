@@ -35,10 +35,24 @@ G_BEGIN_DECLS
 typedef struct _InfUserTable InfUserTable;
 typedef struct _InfUserTableClass InfUserTableClass;
 
+/**
+ * InfUserTableClass:
+ * @add_user: Default signal handler for the #InfUserTable::add_user signal.
+ * @remove_user: Default signal handler for the #InfUserTable::remove_user
+ * signal.
+ * @add_local_user: Default signal handler for the
+ * #InfUserTable::add_local_user signal.
+ * @remove_local_user: Default signal handler for the
+ * #InfUserTable::remove_local_user signal.
+ *
+ * Signals for the #InfUserTable class.
+ */
 struct _InfUserTableClass {
+  /*< private >*/
+
   GObjectClass parent_class;
 
-  /* Signals */
+  /*< public >*/
   void(*add_user)(InfUserTable* user_table,
                   InfUser* user);
 
@@ -48,15 +62,31 @@ struct _InfUserTableClass {
   void(*add_local_user)(InfUserTable* user_table,
                         InfUser* user);
 
-  void(*remove_local_user)(InfUserTable* user_tabel,
+  void(*remove_local_user)(InfUserTable* user_table,
                            InfUser* user);
 };
 
+/**
+ * InfUserTable:
+ *
+ * #InfUserTable is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfUserTable {
+  /*< private >*/
   GObject parent;
 };
 
-typedef void(*InfUserTableForeachUserFunc)(InfUser*, gpointer);
+/**
+ * InfUserTableForeachUserFunc:
+ * @user: The #InfUser for the current iteration.
+ * @user_data: The user_data passed to inf_user_table_foreach_user() or
+ * inf_user_table_foreach_local_user().
+ *
+ * This callback is called for every user iterated by
+ * inf_user_table_foreach_user() or inf_user_table_foreach_local_user().
+ */
+typedef void(*InfUserTableForeachUserFunc)(InfUser* user, gpointer user_data);
 
 GType
 inf_user_table_get_type(void) G_GNUC_CONST;

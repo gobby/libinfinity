@@ -36,6 +36,13 @@ InfdFilesystemStorage
 
 </para>
 
+<!-- ##### STRUCT InfdFilesystemStorageClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION infd_filesystem_storage_new ##### -->
 <para>
 

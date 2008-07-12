@@ -23,6 +23,13 @@ InfXmppManager
 </para>
 
 
+<!-- ##### STRUCT InfXmppManagerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_xmpp_manager_new ##### -->
 <para>
 

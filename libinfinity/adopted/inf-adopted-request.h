@@ -38,14 +38,37 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedRequest InfAdoptedRequest;
 typedef struct _InfAdoptedRequestClass InfAdoptedRequestClass;
 
+/**
+ * InfAdoptedRequestClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfAdoptedRequestClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfAdoptedRequest:
+ *
+ * #InfAdoptedRequest is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfAdoptedRequest {
+  /*< private >*/
   GObject parent;
 };
 
+/**
+ * InfAdoptedRequestType:
+ * @INF_ADOPTED_REQUEST_DO: A request that performs an operation.
+ * @INF_ADOPTED_REQUEST_UNDO: A request that undoes a previously applied
+ * request.
+ * @INF_ADOPTED_REQUEST_REDO: A request that redoes a previously undone
+ * request.
+ *
+ * Possible types for an #InfAdoptedRequest.
+ */
 typedef enum _InfAdoptedRequestType {
   INF_ADOPTED_REQUEST_DO,
   INF_ADOPTED_REQUEST_UNDO,

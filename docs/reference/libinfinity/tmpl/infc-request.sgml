@@ -41,6 +41,16 @@ InfcRequest
 
 </para>
 
+<!-- ##### STRUCT InfcRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@failed: 
+@unused1: 
+@usused2: 
+
 <!-- ##### FUNCTION infc_request_get_seq ##### -->
 <para>
 

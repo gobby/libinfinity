@@ -98,6 +98,16 @@ InfTcpConnection
 
 </para>
 
+<!-- ##### STRUCT InfTcpConnectionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@sent: 
+@received: 
+@error: 
+
 <!-- ##### FUNCTION inf_tcp_connection_open ##### -->
 <para>
 

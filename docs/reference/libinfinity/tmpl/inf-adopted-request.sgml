@@ -52,6 +52,12 @@ InfAdoptedRequest
 
 </para>
 
+<!-- ##### STRUCT InfAdoptedRequestClass ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### FUNCTION inf_adopted_request_new_do ##### -->
 <para>
 

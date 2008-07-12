@@ -1649,7 +1649,7 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
  * inf_connection_manager_group_add_connection:
  * @group: A #InfConnectionManagerGroup.
  * @conn: A #InfXmlConnection.
- * @parent: A #InfXmlConnectionManagerGroup, or %NULL.
+ * @prnt: A #InfXmlConnectionManagerGroup, or %NULL.
  *
  * This must be called whenever a remote host joins this group.
  *
@@ -1671,7 +1671,7 @@ inf_connection_manager_group_get_name(InfConnectionManagerGroup* group)
 gboolean
 inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
                                             InfXmlConnection* conn,
-                                            InfConnectionManagerGroup* parent)
+                                            InfConnectionManagerGroup* prnt)
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerMethodInstance* instance;
@@ -1690,8 +1690,8 @@ inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
   );
 
   g_return_val_if_fail(
-    parent == NULL ||
-    inf_connection_manager_group_lookup_queue(parent, conn),
+    prnt == NULL ||
+    inf_connection_manager_group_lookup_queue(prnt, conn),
     FALSE
   );
 
@@ -1699,7 +1699,7 @@ inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
   if(instance == NULL) return FALSE;
 
   instance->desc->add_connection(instance->method, conn);
-  inf_connection_manager_register_connection(group, conn, parent);
+  inf_connection_manager_register_connection(group, conn, prnt);
   return TRUE;
 }
 

@@ -19,6 +19,38 @@
 #include <libinfinity/adopted/inf-adopted-algorithm.h>
 #include <libinfinity/inf-marshal.h>
 
+/**
+ * SECTION:inf-adopted-algorithm
+ * @title: InfAdoptedAlgorithm
+ * @short_description: adOPTed implementation
+ * @include: libinfinity/adopted/inf-adopted-algorithm.h
+ * @stability: Unstable
+ * @see_also: #InfAdoptedSession
+ *
+ * #InfAdoptedAlgorithm implements the adOPTed algorithm for concurrency
+ * control as described in the paper "An integrating, transformation-oriented
+ * approach to concurrency control and undo in group editors" by Matthias
+ * Ressel, Doris Nitsche-Ruhland and Rul Gunzenhäuser
+ * (http://portal.acm.org/citation.cfm?id=240305).
+ *
+ * It is based on requests, represented by the #InfAdoptedRequest class. If
+ * there is at least one local #InfUser in the algorithm's user table, then
+ * you can create own reequests by the functions
+ * inf_adopted_algorithm_generate_request(),
+ * inf_adopted_algorithm_generate_request_noexec(),
+ * inf_adopted_algorithm_generate_undo() and
+ * inf_adopted_algorithm_generate_redo(). Remote requests can be applied via
+ * inf_adopted_algorithm_receive_request(). This class does not take care of
+ * transfering the generated requests to other users which is the scope of
+ * #InfAdoptedSession.
+ *
+ * The implementation is not tied to text editing. It can handle any
+ * operations implementing #InfAdoptedOperation as long as they define
+ * sufficient transformation functions. The libinftext library provides
+ * operations for text editing, see #InfTextInsertOperation and
+ * #InfTextDeleteOperation.
+ **/
+
 /* This class implements the adOPTed algorithm as described in the paper
  * "An integrating, transformation-oriented approach to concurrency control
  * and undo in group editors" by Matthias Ressel, Doris Nitsche-Ruhland
@@ -1638,6 +1670,20 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfAdoptedAlgorithm::can-undo-changed:
+   * @algorithm: The #InfAdopedAlgorithm for which a user's
+   * can-undo state changed.
+   * @user: The #InfAdoptedUser whose can-undo state has changed.
+   * @can_undo: Whether @user can issue an undo request in the current
+   * state or not.
+   *
+   * This signal is emitted every time the can-undo state of a local user
+   * in @algorithm's user table changed. The can-undo state defines whether
+   * @user can generate an undo request
+   * (via inf_adopted_algorithm_generate_undo()) in the current situation, see
+   * also inf_adopted_algorithm_can_undo().
+   */
   algorithm_signals[CAN_UNDO_CHANGED] = g_signal_new(
     "can-undo-changed",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1651,6 +1697,20 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     G_TYPE_BOOLEAN
   );
 
+  /**
+   * InfAdoptedAlgorithm::can-redo-changed:
+   * @algorithm: The #InfAdopedAlgorithm for which a user's
+   * can-redo state changed.
+   * @user: The #InfAdoptedUser whose can-redo state has changed.
+   * @can_undo: Whether @user can issue a redo request in the current
+   * state or not.
+   *
+   * This signal is emitted every time the can-redo state of a local user
+   * in @algorithm's user table changed. The can-redo state defines whether
+   * @user can generate a redo request
+   * (via inf_adopted_algorithm_generate_redo()) in the current situation, see
+   * also inf_adopted_algorithm_can_redo().
+   */
   algorithm_signals[CAN_REDO_CHANGED] = g_signal_new(
     "can-redo-changed",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -1664,6 +1724,26 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     G_TYPE_BOOLEAN
   );
 
+  /**
+   * InfAdoptedAlgorithm::apply-request:
+   * @algorithm: The #InfAdopedAlgorithm applying a request.
+   * @user: The #InfAdoptedUser applying the request.
+   * @request: The #InfAdoptedRequest being applied.
+   *
+   * This signal is emitted every time the algorithm applies a request.
+   *
+   * Note a call to inf_adopted_algorithm_generate_request(),
+   * inf_adopted_algorithm_generate_undo()
+   * or inf_adopted_algorithm_generate_redo() always applies the generated
+   * request. In contrast, inf_adopted_algorithm_receive_request() might not
+   * apply the given request (if requests it depends upon have not yet
+   * received) or might apply multiple request (if the provided request
+   * fulfills the dependencies of queued requests).
+   *
+   * Note also that the signal is not emitted for every request processed by
+   * #InfAdoptedAlgorithm since inf_adopted_algorthm_generate_request_noexec()
+   * generates a request but does not apply it.
+   */
   algorithm_signals[APPLY_REQUEST] = g_signal_new(
     "apply-request",
     G_OBJECT_CLASS_TYPE(object_class),

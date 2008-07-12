@@ -19,6 +19,23 @@
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
 
+/**
+ * SECTION:inf-adopted-no-operation
+ * @title: InfAdoptedNoOperation
+ * @short_description: An operation not doing anything.
+ * @include: libinfinity/adopted/inf-adopted-no-operation.h
+ * @stability: Unstable
+ * @see_also: #InfAdoptedOperation
+ *
+ * #InfAdoptedNoOperation is an operation that does nothing when applied to
+ * the buffer. This might be the result of an operation transformation, for
+ * example if a request is received that is supposed to delete text that was
+ * already deleted by the local site. It is also used by #InfAdoptedSession to
+ * send the current state to other users in case the user being idle, so that
+ * others keep knowing the current state of that user (this is especially
+ * required for cleanup of request logs and caches).
+ **/
+
 static GObjectClass* parent_class;
 
 static void

@@ -40,14 +40,55 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedOperation InfAdoptedOperation;
 typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
 
+/**
+ * InfAdoptedOperationFlags:
+ * @INF_ADOPTED_OPERATION_AFFECTS_BUFFER: The operation changes the content of
+ * the buffer.
+ * @INF_ADOPTED_OPERATION_REVERSIBLE: The operation is reversible, which means
+ * that inf_adopted_operation_revert() can be called to generate an operation
+ * that undoes the effect of the operation.
+ *
+ * Various flags for #InfAdoptedOperation.
+ */
 typedef enum _InfAdoptedOperationFlags {
   INF_ADOPTED_OPERATION_AFFECTS_BUFFER = 1 << 0,
   INF_ADOPTED_OPERATION_REVERSIBLE = 1 << 1
 } InfAdoptedOperationFlags;
 
+/**
+ * InfAdoptedOperationIface:
+ * @transform: Virtual function that transform @operation against @against and
+ * returns a new #InfAdoptedOperation as the result of the transformation.
+ * @concurrency_id is either 1 or -1 and can be used to make a decision in
+ * case there is no other criteria to decide how to do the transformation, for
+ * example when both @operation and @against are inserting text at the same
+ * position in the buffer.
+ * @copy: Virtual function that returns a copy of the operation.
+ * @get_flags: Virtual function that returns the flags of the operation,
+ * see #InfAdoptedOperationFlags.
+ * @apply: Virtual function that applies the operation to the buffer. @by is
+ * the user that applies the operation.
+ * @revert: Virtual function that creates a new operation that undoes the
+ * effect of the operation. If @get_flags does never return the
+ * %INF_ADOPTED_OPERATION_REVERSIBLE flag set, then this is allowed to be
+ * %NULL.
+ * @make_reversible: Virtual function that creates a reversible operation out
+ * of the operation itself. If @get_flags does always return the
+ * %INF_ADOPTED_OPERATION_REVERSIBLE flag set, then this is allowed to be
+ * %NULL. Some operations may not be reversible, but can be made reversible
+ * with some extra information such as another operation that collected
+ * information while being transformed, or the current buffer. This function
+ * should return either a new, reversible operation that has the same effect
+ * on a buffer, or %NULL if the operation cannot be made reversible.
+ *
+ * The virtual methods that need to be implemented by an operation to be used
+ * with #InfAdoptedAlgorithm.
+ */
 struct _InfAdoptedOperationIface {
+  /*< private >*/
   GTypeInterface parent;
 
+  /*< public >*/
   InfAdoptedOperation* (*transform)(InfAdoptedOperation* operation,
                                     InfAdoptedOperation* against,
                                     gint concurrency_id);
@@ -62,17 +103,17 @@ struct _InfAdoptedOperationIface {
 
   InfAdoptedOperation* (*revert)(InfAdoptedOperation* operation);
 
-  /* Some operations may not be reversible, but can be made reversible with
-   * some extra information such as another operation that collected
-   * information while being transformed and the current buffer.
-   *
-   * This function should is only called when the opertaion itself is not yet
-   * reversible and should return either a reversible operation or NULL if
-   * the operation cannot be made reversible. */
   InfAdoptedOperation* (*make_reversible)(InfAdoptedOperation* operation,
                                           InfAdoptedOperation* with,
                                           InfBuffer* buffer);
 };
+
+/**
+ * InfAdoptedOperation:
+ *
+ * #InfAdoptedOperation is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 
 GType
 inf_adopted_operation_flags_get_type(void) G_GNUC_CONST;

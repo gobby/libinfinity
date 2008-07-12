@@ -28,6 +28,13 @@ InfdServerPool
 
 </para>
 
+<!-- ##### STRUCT InfdServerPoolClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION infd_server_pool_new ##### -->
 <para>
 

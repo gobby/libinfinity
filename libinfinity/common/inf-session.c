@@ -21,6 +21,7 @@
  * @title: InfSession
  * @short_description: Basic session object and synchronization
  * @include: libinfinity/common/inf-session.h
+ * @stability: Unstable
  *
  * #InfSession represents an editing session. The actual type of document that
  * is edited is not specified, so instantiating #InfSession does not make
@@ -2094,7 +2095,7 @@ inf_session_get_type(void)
  * inf_session_lookup_user_property:
  * @params: A pointer to an array of containing #GParameter values.
  * @n_params: The number of elements in the aforementioned array
- * @name: Name to look up
+ * @name: Name to look up.
  *
  * Looks up the parameter with the given name in @array.
  *
@@ -2120,6 +2121,7 @@ inf_session_lookup_user_property(const GParameter* params,
 /**
  * inf_session_get_user_property:
  * @array: A #GArray containing #GParameter values.
+ * @name: Name to look up.
  *
  * Looks up the paremeter with the given name in @array. If there is no such
  * parameter, a new one will be created.

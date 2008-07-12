@@ -36,6 +36,14 @@ InfcNodeRequest
 
 </para>
 
+<!-- ##### STRUCT InfcNodeRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@finished: 
+
 <!-- ##### FUNCTION infc_node_request_finished ##### -->
 <para>
 

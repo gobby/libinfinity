@@ -51,6 +51,14 @@ InfdXmppServer
 
 </para>
 
+<!-- ##### STRUCT InfdXmppServerClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@error: 
+
 <!-- ##### FUNCTION infd_xmpp_server_new ##### -->
 <para>
 

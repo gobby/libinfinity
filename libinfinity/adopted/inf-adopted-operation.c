@@ -20,6 +20,20 @@
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-user.h>
 
+/**
+ * SECTION:inf-adopted-operation
+ * @title: InfAdoptedOperation
+ * @short_description: Operation that can be processed by
+ * #InfAdoptedAlgorithm.
+ * @include: libinfinity/adopted/inf-adopted-operation.h
+ * @see_also: #InfAdoptedRequest, #InfAdoptedAlgorithm
+ * @stability: Unstable
+ *
+ * The #InfAdoptedOperation interface must be implemented by operations that
+ * are supposed to be used by #InfAdoptedAlgorithm. They basically need to
+ * define transformation rules for transformation against other operations.
+ **/
+
 static void
 inf_adopted_operation_base_init(gpointer g_class)
 {

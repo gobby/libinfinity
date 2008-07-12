@@ -22,8 +22,8 @@ InfUserTable
 
 </para>
 
-@Param1: 
-@Param2: 
+@user: 
+@user_data: 
 
 
 <!-- ##### STRUCT InfUserTable ##### -->
@@ -63,6 +63,16 @@ InfUserTable
 
 @infusertable: the object which received the signal.
 @arg1: 
+
+<!-- ##### STRUCT InfUserTableClass ##### -->
+<para>
+
+</para>
+
+@add_user: 
+@remove_user: 
+@add_local_user: 
+@remove_local_user: 
 
 <!-- ##### FUNCTION inf_user_table_new ##### -->
 <para>

@@ -50,6 +50,15 @@ InfAdoptedSession
 
 </para>
 
+<!-- ##### STRUCT InfAdoptedSessionClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@operation_to_xml: 
+@xml_to_operation: 
+
 <!-- ##### FUNCTION inf_adopted_session_get_io ##### -->
 <para>
 

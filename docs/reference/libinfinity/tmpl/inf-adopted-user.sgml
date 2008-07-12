@@ -33,6 +33,13 @@ InfAdoptedUser
 
 </para>
 
+<!-- ##### STRUCT InfAdoptedUserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_adopted_user_get_component ##### -->
 <para>
 

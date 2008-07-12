@@ -63,6 +63,13 @@ InfUser
 
 </para>
 
+<!-- ##### STRUCT InfUserClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+
 <!-- ##### FUNCTION inf_user_get_id ##### -->
 <para>
 

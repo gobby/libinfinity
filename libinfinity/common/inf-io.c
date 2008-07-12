@@ -22,6 +22,7 @@
  * @short_description: Event loop abstraction
  * @include: libinfinity/common/inf-io.h
  * @see_also: #InfStandaloneIo
+ * @stability: Unstable
  *
  * The #InfIo interface is used to schedule timeouts and to watch sockets for
  * events to occur. An actual implementation usually integrates this into the

@@ -31,6 +31,14 @@ InfcUserRequest
 @infcuserrequest: the object which received the signal.
 @arg1: 
 
+<!-- ##### STRUCT InfcUserRequestClass ##### -->
+<para>
+
+</para>
+
+@parent_class: 
+@finished: 
+
 <!-- ##### FUNCTION infc_user_request_finished ##### -->
 <para>
 
