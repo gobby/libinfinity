@@ -113,7 +113,8 @@ perform_test(guint max_total_log_size,
       "buffer", buffer,
       "io", io,
       "user_table", user_table,
-      "max-total-log-size", max_total_log_size
+      "max-total-log-size", max_total_log_size,
+      NULL
     )
   );
   

@@ -1,5 +1,11 @@
 2008-07-12  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-text-cleanup.c (perform_test): Terminate the call to
+	g_object_new that creates the InfTextSession with NULL, preventing
+	memory corruption.
+
+2008-07-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c
 	(infc_session_proxy_set_connection): Correctly thaw the notification
 	queue of the session at the end of the function.

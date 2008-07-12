@@ -1510,7 +1510,10 @@ inf_session_close_handler(InfSession* session)
     inf_session_release_connection(session, priv->shared.sync.conn);
     break;
   case INF_SESSION_RUNNING:
-    /* TODO: Set status of all users (except local) to unavailable? */
+    /* TODO: Set status of all users (except local) to unavailable? We
+     * probably should do that here instead of in the session proxies,
+     * or at least in addition (InfcSessionProxy needs to do it anway,
+     * because it keeps the running state even on disconnection...) */
 
     while(priv->shared.run.syncs != NULL)
     {
