@@ -31,7 +31,9 @@
 
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
 
+#include <glib.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* NOTE: What the state vector actually counts is the amount of operations
  * performed by each user. This number is called a timestamp, although it has
@@ -53,89 +55,92 @@ struct _InfAdoptedStateVectorForeachData {
 
 
 struct _InfAdoptedStateVector {
-  InfAdoptedStateVectorComponent* data;
   gsize size;
   gsize max_size;
+  InfAdoptedStateVectorComponent* data;
 };
 
-static gint
-inf_adopted_state_vector_component_cmp(InfAdoptedStateVectorComponent* comp1,
-                                       InfAdoptedStateVectorComponent* comp2)
+static gsize
+inf_adopted_state_vector_find_insert_pos(InfAdoptedStateVector* vec,
+                                         guint id)
 {
-  if(comp1->id < comp2->id)
-    return -1;
-  if(comp1->id > comp2->id)
-    return 1;
-  return 0;
-}
+  /* mostly like lookup */
+  gsize begin;
+  gsize end;
+  gsize middle;
+  InfAdoptedStateVectorComponent* comp;
 
-static void
-inf_adopted_state_vector_component_free(InfAdoptedStateVectorComponent* comp)
-{
-  g_slice_free(InfAdoptedStateVectorComponent, comp);
+  if(vec->size == 0) return 0;
+
+  begin = 0;
+  end = vec->size;
+
+  while(begin != end)
+  {
+    middle = begin + (end - begin) / 2;
+    comp = vec->data + middle;
+    if (comp->id == id)
+    {
+      return middle;
+    }
+
+    if (comp->id < id)
+    {
+      begin = middle + 1;
+    }
+    else
+    {
+      end = middle;
+    }
+  }
+  return begin;
 }
 
 static InfAdoptedStateVectorComponent*
 inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
-                                guint id)
+                                      guint id)
 {
-  for (gsize i = 0; i < vec->size; ++i)
-  {
-    InfAdoptedStateVectorComponent* comp = vec->data + i;
-    if (comp->id = id) return comp;
-  }
+  /* The vector is sorted, so we perform a binary search */
+  gsize pos;
 
+  pos = inf_adopted_state_vector_find_insert_pos(vec, id);
+  if(pos < vec->size && vec->data[pos].id == id)
+    return vec->data + pos;
   return NULL;
 }
 
-static GSequenceIter*
-inf_adopted_state_vector_push(InfAdoptedStateVector* vec,
-                              guint id,
-                              guint value)
+static InfAdoptedStateVectorComponent*
+inf_adopted_state_vector_insert(InfAdoptedStateVector* vec,
+                                guint id,
+                                guint value,
+                                gsize insert_pos)
 {
   InfAdoptedStateVectorComponent* comp;
-  comp = g_slice_new(InfAdoptedStateVectorComponent);
 
+  if(vec->max_size <= vec->size)
+  {
+    vec->max_size += 5;
+    vec->data = g_realloc(vec->data,
+                vec->max_size * sizeof(InfAdoptedStateVectorComponent));
+  }
+
+  comp = vec->data + insert_pos;
+  if(insert_pos < vec->size)
+  {
+    gsize move_count;
+
+    g_assert(comp->id != id);
+
+    move_count = (vec->size - insert_pos);
+    g_memmove(comp + 1, comp,
+              move_count * sizeof(InfAdoptedStateVectorComponent));
+  }
+
+  ++vec->size;
   comp->id = id;
   comp->n = value;
 
-  return g_sequence_insert_sorted(
-    vec,
-    comp,
-    (GCompareDataFunc)inf_adopted_state_vector_component_cmp,
-    NULL
-  );
-}
-
-static void
-inf_adopted_state_vector_copy_func(gpointer data,
-                                   gpointer user_data)
-{
-  InfAdoptedStateVectorComponent* comp;
-  InfAdoptedStateVectorComponent* new_comp;
-
-  comp = data;
-  new_comp = g_slice_new(InfAdoptedStateVectorComponent);
-
-  new_comp->id = comp->id;
-  new_comp->n = comp->n;
-
-  /* Since g_sequence_foreach traverses the original sequence in-order we
-   * keep the sorting even though we only use append here. */
-  g_sequence_append((GSequence*)user_data, new_comp);
-}
-
-static void
-inf_adopted_state_vector_foreach_func(gpointer data,
-                                      gpointer user_data)
-{
-  InfAdoptedStateVectorComponent* comp;
-  InfAdoptedStateVectorForeachData* foreach_data;
-
-  comp = (InfAdoptedStateVectorComponent*)data;
-  foreach_data = (InfAdoptedStateVectorForeachData*)user_data;
-
-  foreach_data->func(comp->id, comp->n, foreach_data->user_data);
+  return comp;
 }
 
 GType
@@ -178,9 +183,14 @@ inf_adopted_state_vector_error_quark(void)
 InfAdoptedStateVector*
 inf_adopted_state_vector_new(void)
 {
-  return g_sequence_new(
-    (GDestroyNotify)inf_adopted_state_vector_component_free
-  );
+  InfAdoptedStateVector* vec;
+
+  vec = g_slice_new(InfAdoptedStateVector);
+  vec->size = 0;
+  vec->max_size = 0;
+  vec->data = NULL;
+
+  return vec;
 }
 
 /**
@@ -198,11 +208,22 @@ inf_adopted_state_vector_copy(InfAdoptedStateVector* vec)
 
   g_return_val_if_fail(vec != NULL, NULL);
 
-  new_vec = g_sequence_new(
-    (GDestroyNotify)inf_adopted_state_vector_component_free
-  );
+  new_vec = g_slice_new(InfAdoptedStateVector);
+  new_vec->size = vec->size;
+  new_vec->max_size = vec->max_size;
 
-  g_sequence_foreach(vec, inf_adopted_state_vector_copy_func, new_vec);
+  if(new_vec->max_size == 0)
+  {
+    new_vec->data = NULL;
+  }
+  else
+  {
+    new_vec->data =
+      g_malloc(new_vec->max_size * sizeof(InfAdoptedStateVectorComponent));
+    memcpy(new_vec->data, vec->data,
+           new_vec->size * sizeof(InfAdoptedStateVectorComponent));
+  }
+
   return new_vec;
 }
 
@@ -217,7 +238,9 @@ void
 inf_adopted_state_vector_free(InfAdoptedStateVector* vec)
 {
   g_return_if_fail(vec != NULL);
-  g_sequence_free(vec);
+
+  g_free(vec->data);
+  g_slice_free(InfAdoptedStateVector, vec);
 }
 
 /**
@@ -234,16 +257,16 @@ guint
 inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
                              guint id)
 {
-  GSequenceIter* iter;
+  InfAdoptedStateVectorComponent* comp;
 
   g_return_val_if_fail(vec != NULL, 0);
 
-  iter = inf_adopted_state_vector_lookup(vec, id);
+  comp = inf_adopted_state_vector_lookup(vec, id);
 
-  if(iter == NULL)
+  if(comp == NULL)
     return 0;
 
-  return ((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->n;
+  return comp->n;
 }
 
 /**
@@ -259,15 +282,15 @@ inf_adopted_state_vector_set(InfAdoptedStateVector* vec,
                              guint id,
                              guint value)
 {
-  GSequenceIter* iter;
+  gsize pos;
 
   g_return_if_fail(vec != NULL);
 
-  iter = inf_adopted_state_vector_lookup(vec, id);
-  if(iter == NULL)
-    iter = inf_adopted_state_vector_push(vec, id, value);
+  pos = inf_adopted_state_vector_find_insert_pos(vec, id);
+  if(pos < vec->size && vec->data[pos].id == id)
+    vec->data[pos].n = value;
   else
-    ((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->n = value;
+    inf_adopted_state_vector_insert(vec, id, value, pos);
 }
 
 /**
@@ -285,20 +308,20 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
                              guint id,
                              gint value)
 {
-  GSequenceIter* iter;
   InfAdoptedStateVectorComponent* comp;
+  gsize pos;
 
   g_return_if_fail(vec != NULL);
 
-  iter = inf_adopted_state_vector_lookup(vec, id);
-  if(iter == NULL)
+  pos = inf_adopted_state_vector_find_insert_pos(vec, id);
+  comp = vec->data + pos;
+  if(pos == vec->size || comp->id != id)
   {
     g_assert(value > 0);
-    iter = inf_adopted_state_vector_push(vec, id, value);
+    comp = inf_adopted_state_vector_insert(vec, id, value, pos);
   }
   else
   {
-    comp = ((InfAdoptedStateVectorComponent*)g_sequence_get(iter));
     g_assert(value > 0 || comp->n > (guint)-value);
 
     comp->n += value;
@@ -319,15 +342,15 @@ inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
                                  InfAdoptedStateVectorForeachFunc func,
                                  gpointer user_data)
 {
-  InfAdoptedStateVectorForeachData data;
+  gsize pos;
 
   g_return_if_fail(vec != NULL);
   g_return_if_fail(func != NULL);
 
-  data.func = func;
-  data.user_data = user_data;
-
-  g_sequence_foreach(vec, inf_adopted_state_vector_foreach_func, &data);
+  for(pos = 0; pos < vec->size; ++pos)
+  {
+    func(vec->data[pos].id, vec->data[pos].n, user_data);
+  }
 }
 
 /**
@@ -345,45 +368,42 @@ int
 inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
                                  InfAdoptedStateVector* second)
 {
-  GSequenceIter* first_iter;
-  GSequenceIter* second_iter;
+  gsize first_pos;
+  gsize second_pos;
   InfAdoptedStateVectorComponent* first_comp;
   InfAdoptedStateVectorComponent* second_comp;
 
   g_return_val_if_fail(first != NULL, 0);
   g_return_val_if_fail(second != NULL, 0);
 
+  first_pos = 0;
+  second_pos = 0;
+
   /* TODO: Some test that verifies that this function
    * provides strict weak ordering */
-
-  first_iter = g_sequence_get_begin_iter(first);
-  second_iter = g_sequence_get_begin_iter(second);
 
   for(;;)
   {
     /* Jump over components whose value is 0. This is necessary because
      * components that are not in the sequence are treated like having the
      * value zero and should be compared equal. */
-    while(first_iter != g_sequence_get_end_iter(first))
+    while(first_pos < first->size)
     {
-      first_comp = g_sequence_get(first_iter);
+      first_comp = first->data + first_pos;
       if(first_comp->n > 0)
         break;
-
-      first_iter = g_sequence_iter_next(first_iter);
+      ++first_pos;
     }
-
-    while(second_iter != g_sequence_get_end_iter(second))
+    
+    while(second_pos < second->size)
     {
-      second_comp = g_sequence_get(second_iter);
+      second_comp = second->data + second_pos;
       if(second_comp->n > 0)
         break;
-
-      second_iter = g_sequence_iter_next(second_iter);
+      ++second_pos;
     }
 
-    if(first_iter == g_sequence_get_end_iter(first) ||
-       second_iter == g_sequence_get_end_iter(second))
+    if(first_pos == first->size || second_pos == second->size)
     {
       break;
     }
@@ -409,16 +429,15 @@ inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
 
     /* Component matches, check next */
 
-    first_iter = g_sequence_iter_next(first_iter);
-    second_iter = g_sequence_iter_next(second_iter);
+    ++first_pos;
+    ++second_pos;
   }
 
-  if(first_iter == g_sequence_get_end_iter(first) &&
-     second_iter == g_sequence_get_end_iter(second))
+  if(first_pos == first->size && second_pos == second->size)
   {
     return 0; 
   }
-  else if(first_iter == g_sequence_get_end_iter(first))
+  else if(first_pos == first->size)
   {
     return -1;
   }
@@ -444,23 +463,22 @@ gboolean
 inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
                                          InfAdoptedStateVector* second)
 {
-  GSequenceIter* first_iter;
-  GSequenceIter* second_iter;
+  gsize first_pos;
+  gsize second_pos;
   InfAdoptedStateVectorComponent* first_comp;
   InfAdoptedStateVectorComponent* second_comp;
 
   g_return_val_if_fail(first != NULL, FALSE);
   g_return_val_if_fail(second != NULL, FALSE);
 
-  first_iter = g_sequence_get_begin_iter(first);
-  second_iter = g_sequence_get_begin_iter(second);
+  first_pos = 0;
+  second_pos = 0;
 
-  while(first_iter != g_sequence_get_end_iter(first))
+  while(first_pos < first->size)
   {
-    first_comp = g_sequence_get(first_iter);
-    first_iter = g_sequence_iter_next(first_iter);
+    first_comp = first->data + first_pos++;
 
-    if(second_iter == g_sequence_get_end_iter(second))
+    if(second_pos == second->size)
     {
       /* That component is not contained in second (thus 0) */
       if(first_comp->n > 0)
@@ -468,12 +486,12 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
     }
     else
     {
-      second_comp = g_sequence_get(second_iter);
+      second_comp = second->data + second_pos;
       while(second_comp != NULL && first_comp->id > second_comp->id)
       {
-        second_iter = g_sequence_iter_next(second_iter);
-        if(second_iter != g_sequence_get_end_iter(second))
-          second_comp = g_sequence_get(second_iter);
+        ++second_pos;
+        if(second_pos != second->size)
+          second_comp = second->data + second_pos;
         else
           second_comp = NULL;
       }
@@ -509,18 +527,16 @@ gchar*
 inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec)
 {
   GString* str;
-  GSequenceIter* iter;
+  gsize pos;
   InfAdoptedStateVectorComponent* component;
 
   g_return_val_if_fail(vec != NULL, NULL);
 
-  str = g_string_sized_new(g_sequence_get_length(vec) * 12);
+  str = g_string_sized_new(vec->size * 12);
 
-  for(iter = g_sequence_get_begin_iter(vec);
-      iter != g_sequence_get_end_iter(vec);
-      iter = g_sequence_iter_next(iter))
+  for(pos = 0; pos < vec->size; ++pos)
   {
-    component = (InfAdoptedStateVectorComponent*)g_sequence_get(iter);
+    component = vec->data + pos;
 
     if(component->n > 0)
     {
@@ -549,19 +565,20 @@ inf_adopted_state_vector_from_string(const gchar* str,
                                      GError** error)
 {
   InfAdoptedStateVector* vec;
-  const char* pos;
+  const char* strpos;
+  gsize pos;
   guint id;
   guint n;
 
   g_return_val_if_fail(str != NULL, NULL);
 
   vec = inf_adopted_state_vector_new();
-  pos = str;
+  strpos = str;
 
-  while(*pos)
+  while(*strpos)
   {
-    id = strtoul(pos, (char**)&pos, 10);
-    if(*pos != ':')
+    id = strtoul(strpos, (char**)&strpos, 10);
+    if(*strpos != ':')
     {
       g_set_error(
         error,
@@ -574,7 +591,8 @@ inf_adopted_state_vector_from_string(const gchar* str,
       return NULL;
     }
 
-    if(inf_adopted_state_vector_lookup(vec, id) != NULL)
+    pos = inf_adopted_state_vector_find_insert_pos(vec, id);
+    if(pos < vec->size && vec->data[pos].id == id)
     {
       g_set_error(
         error,
@@ -588,10 +606,10 @@ inf_adopted_state_vector_from_string(const gchar* str,
       return NULL;
     }
 
-    ++ pos; /* step over ':' */
-    n = strtoul(pos, (char**)&pos, 10);
+    ++ strpos; /* step over ':' */
+    n = strtoul(strpos, (char**)&strpos, 10);
 
-    if(*pos != ';' && *pos != '\0')
+    if(*strpos != ';' && *strpos != '\0')
     {
       g_set_error(
         error,
@@ -605,8 +623,8 @@ inf_adopted_state_vector_from_string(const gchar* str,
       return NULL;
     }
 
-    inf_adopted_state_vector_push(vec, id, n);
-    if(*pos != '\0') ++ pos; /* step over ';' */
+    inf_adopted_state_vector_insert(vec, id, n, pos);
+    if(*strpos != '\0') ++ strpos; /* step over ';' */
   }
 
   return vec;
@@ -629,8 +647,8 @@ gchar*
 inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
                                         InfAdoptedStateVector* orig)
 {
-  GSequenceIter* vec_iter;
-  GSequenceIter* orig_iter;
+  gsize vec_pos;
+  gsize orig_pos;
   InfAdoptedStateVectorComponent* vec_comp;
   InfAdoptedStateVectorComponent* orig_comp;
   GString* str;
@@ -643,18 +661,16 @@ inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
     NULL
   );
 
-  str = g_string_sized_new(g_sequence_get_length(vec) * 12);
-  vec_iter = g_sequence_get_begin_iter(vec);
+  str = g_string_sized_new(vec->size * 12);
+  vec_pos = 0;
 
-  for(orig_iter = g_sequence_get_begin_iter(orig);
-      orig_iter != g_sequence_get_end_iter(orig);
-      orig_iter = g_sequence_iter_next(orig_iter))
+  for(orig_pos = 0; orig_pos < orig->size; ++orig_pos)
   {
-    orig_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+    orig_comp = orig->data + orig_pos;
     if(orig_comp->n == 0) continue;
 
-    g_assert(vec_iter != g_sequence_get_end_iter(vec));
-    vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+    g_assert(vec_pos != vec->size);
+    vec_comp = vec->data + vec_pos;
     while(vec_comp->id < orig_comp->id)
     {
       /* There does not seem to be a corresponding entry in orig_comp, so
@@ -662,10 +678,10 @@ inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
       if(str->len > 0) g_string_append_c(str, ';');
       g_string_append_printf(str, "%u:%u", vec_comp->id, vec_comp->n);
 
-      vec_iter = g_sequence_iter_next(vec_iter);
+      ++vec_pos;
 
-      g_assert(vec_iter != g_sequence_get_end_iter(vec));
-      vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+      g_assert(vec_pos != vec->size);
+      vec_comp = vec->data + vec_pos;
     }
 
     /* Otherwise the inf_adopted_state_vector_causally_before test above
@@ -684,18 +700,21 @@ inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
       );
     }
 
-    vec_iter = g_sequence_iter_next(vec_iter);
+    ++vec_pos;
   }
 
   /* All remaining components in vec have no counterpart in orig, meaning
    * their values in orig are implicitely zero. */
-  while(vec_iter != g_sequence_get_end_iter(vec))
+  while(vec_pos != vec->size)
   {
-    vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
-    if(str->len > 0) g_string_append_c(str, ';');
-    g_string_append_printf(str, "%u:%u", vec_comp->id, vec_comp->n);
+    vec_comp = vec->data + vec_pos;
+    if (vec_comp->n > 0)
+    {
+      if(str->len > 0) g_string_append_c(str, ';');
+      g_string_append_printf(str, "%u:%u", vec_comp->id, vec_comp->n);
+    }
 
-    vec_iter = g_sequence_iter_next(vec_iter);
+    ++vec_pos;
   }
 
   return g_string_free(str, FALSE);
@@ -719,8 +738,8 @@ inf_adopted_state_vector_from_string_diff(const gchar* str,
                                           GError** error)
 {
   InfAdoptedStateVector* vec;
-  GSequenceIter* vec_iter;
-  GSequenceIter* orig_iter;
+  gsize vec_pos;
+  gsize orig_pos;
   InfAdoptedStateVectorComponent* vec_comp;
   InfAdoptedStateVectorComponent* orig_comp;
 
@@ -730,29 +749,26 @@ inf_adopted_state_vector_from_string_diff(const gchar* str,
   vec = inf_adopted_state_vector_from_string(str, error);
   if(vec == NULL) return NULL;
 
-  vec_iter = g_sequence_get_begin_iter(vec);
+  vec_pos = 0;
 
-  for(orig_iter = g_sequence_get_begin_iter(orig);
-      orig_iter != g_sequence_get_end_iter(orig);
-      orig_iter = g_sequence_iter_next(orig_iter))
+  for(orig_pos = 0; orig_pos < orig->size; ++orig_pos)
   {
-    orig_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(orig_iter);
+    orig_comp = orig->data + orig_pos;
     if(orig_comp->n == 0) continue;
 
-    if(vec_iter == g_sequence_get_end_iter(vec))
+    if(vec_pos == vec->size)
     {
-      inf_adopted_state_vector_push(vec, orig_comp->id, orig_comp->n);
+      inf_adopted_state_vector_insert(vec, orig_comp->id, orig_comp->n, vec_pos);
     }
     else
     {
-      vec_comp = (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+      vec_comp = vec->data + vec_pos;
       while(vec_comp->id < orig_comp->id)
       {
-        vec_iter = g_sequence_iter_next(vec_iter);
-        if(vec_iter != g_sequence_get_end_iter(vec))
+        ++vec_pos;
+        if(vec_pos < vec->size)
         {
-          vec_comp =
-            (InfAdoptedStateVectorComponent*)g_sequence_get(vec_iter);
+          vec_comp = vec->data + vec_pos;
         }
         else
         {
@@ -763,11 +779,11 @@ inf_adopted_state_vector_from_string_diff(const gchar* str,
       if(vec_comp->id == orig_comp->id)
       {
         vec_comp->n += orig_comp->n;
-        vec_iter = g_sequence_iter_next(vec_iter);
+        ++vec_pos;
       }
       else
       {
-        inf_adopted_state_vector_push(vec, orig_comp->id, orig_comp->n);
+        inf_adopted_state_vector_insert(vec, orig_comp->id, orig_comp->n, vec_pos);
       }
     }
   }

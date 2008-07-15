@@ -25,14 +25,7 @@ G_BEGIN_DECLS
 
 #define INF_ADOPTED_TYPE_STATE_VECTOR            (inf_adopted_state_vector_get_type())
 
-/* TODO: Wrap in own struct for type safety? However, StateVectors are often
- * used and I think it is best if they are as fast as possible. */
-/* TODO: I think GTree is better suited for what we are looking, but it does
- * not allow iteration over its elements, required for
- * inf_adopted_state_vector_compare. */
 typedef struct _InfAdoptedStateVector InfAdoptedStateVector;
-
-/* typedef GSequence InfAdoptedStateVector; */
 
 typedef enum _InfAdoptedStateVectorError {
   INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
