@@ -1,6 +1,22 @@
 This is a more-or-less incomplete list of more or less independant tasks that
 would be nice to have done for the first stable release.
 
+Performance (Some ideas to improve performance, profile to verify!):
+  * Cache private ptr to not need to call g_type_instance_get_private all the
+    time (this eats 10% of the overall time currently!)
+  * Move state vector helper functions in algorithm to InfAdoptedStateVector,
+    with a better O(n) implementation.
+  * inf_adopted_state_vector_causally_before version that compares two vectors,
+    but adds 1 to one component of the first vector. This avoids a copy in
+    cleanup and component_reachable.
+  * Cache request.vector[request.user] in every request, this seems to be
+    used pretty often.
+  * Make InfAdoptedRequest immutable, since InfAdoptedRequest is cached anyway
+    this should not matter too much, and avoid some copies that are currently
+    made.
+
+Others:
+
 * Unify InfIo interface (IO):
    - Rename InfIoFunc to InfIoWatchFunc
    - Split inf_io_watch into inf_io_add_watch, inf_io_update_watch and

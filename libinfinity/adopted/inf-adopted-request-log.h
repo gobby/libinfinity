@@ -35,11 +35,24 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedRequestLog InfAdoptedRequestLog;
 typedef struct _InfAdoptedRequestLogClass InfAdoptedRequestLogClass;
 
+/**
+ * InfAdoptedRequestLogClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfAdoptedRequestLogClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfAdoptedRequestLog:
+ *
+ * #InfAdoptedRequestLog is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfAdoptedRequestLog {
+  /*< private >*/
   GObject parent;
 };
 

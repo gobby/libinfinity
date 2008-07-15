@@ -18,7 +18,26 @@
 
 #include <libinfinity/adopted/inf-adopted-request-log.h>
 
-#include <string.h> /* (g_)memmove */
+#include <string.h> /* For (g_)memmove */
+
+/**
+ * SECTION:inf-adopted-request-log
+ * @title: InfAdoptedRequestLog
+ * @short_description: History of requests
+ * @include: libinfinity/adopted/inf-adopted-request-log.h
+ * @see_also: #InfAdoptedRequest, #InfAdoptedAlgorithm
+ * @stability: Unstable
+ *
+ * #InfAdoptedRequestLog stores all requests by a particular user. These need
+ * to be looked up by #InfAdoptedAlgorithm to perform transformations of
+ * older requests to the current state. It also adds relations between the 
+ * requests so that is easy to find the request that an Undo request undoes,
+ * or the Undo request undoing a given request, if available.
+ *
+ * When requests are no longer needed, then they can also be removed again
+ * from the log, however requests can only be removed so that remaining Undo
+ * or Redo requests do not refer to some request that is about to be removed.
+ */
 
 typedef struct _InfAdoptedRequestLogEntry InfAdoptedRequestLogEntry;
 struct _InfAdoptedRequestLogEntry {

@@ -64,7 +64,6 @@ static gsize
 inf_adopted_state_vector_find_insert_pos(InfAdoptedStateVector* vec,
                                          guint id)
 {
-  /* mostly like lookup */
   gsize begin;
   gsize end;
   gsize middle;
@@ -75,6 +74,7 @@ inf_adopted_state_vector_find_insert_pos(InfAdoptedStateVector* vec,
   begin = 0;
   end = vec->size;
 
+  /* The vector is sorted, so we perform a binary search */
   while(begin != end)
   {
     middle = begin + (end - begin) / 2;
@@ -100,7 +100,6 @@ static InfAdoptedStateVectorComponent*
 inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
                                       guint id)
 {
-  /* The vector is sorted, so we perform a binary search */
   gsize pos;
 
   pos = inf_adopted_state_vector_find_insert_pos(vec, id);
@@ -758,7 +757,12 @@ inf_adopted_state_vector_from_string_diff(const gchar* str,
 
     if(vec_pos == vec->size)
     {
-      inf_adopted_state_vector_insert(vec, orig_comp->id, orig_comp->n, vec_pos);
+      inf_adopted_state_vector_insert(
+        vec,
+        orig_comp->id,
+        orig_comp->n,
+        vec_pos
+      );
     }
     else
     {
@@ -783,7 +787,12 @@ inf_adopted_state_vector_from_string_diff(const gchar* str,
       }
       else
       {
-        inf_adopted_state_vector_insert(vec, orig_comp->id, orig_comp->n, vec_pos);
+        inf_adopted_state_vector_insert(
+          vec,
+          orig_comp->id,
+          orig_comp->n,
+          vec_pos
+        );
       }
     }
   }
