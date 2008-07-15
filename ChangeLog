@@ -1,3 +1,10 @@
+2008-07-15  Benjamin Herr  <ben@0x539.de>
+	* libinfinity/adopted/inf-state-vector.h: Changed state vector typedef from
+	GSequence to an opaque type.
+	* libinfinity/adopted/inf-state-vector.c: Changed state vector to use an
+	array of ids and timestamps instead of a GSequence.
+	* tests/inf-test-state-vector.c: Added a bunch of poorly-thought-out tests.
+
 2008-07-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.h:
