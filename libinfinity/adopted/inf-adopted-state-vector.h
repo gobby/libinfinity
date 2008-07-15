@@ -30,7 +30,9 @@ G_BEGIN_DECLS
 /* TODO: I think GTree is better suited for what we are looking, but it does
  * not allow iteration over its elements, required for
  * inf_adopted_state_vector_compare. */
-typedef GSequence InfAdoptedStateVector;
+typedef struct _InfAdoptedStateVector InfAdoptedStateVector;
+
+/* typedef GSequence InfAdoptedStateVector; */
 
 typedef enum _InfAdoptedStateVectorError {
   INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,

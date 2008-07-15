@@ -37,6 +37,12 @@
  * performed by each user. This number is called a timestamp, although it has
  * nothing to do with actual time. */
 
+typedef struct _InfAdoptedStateVectorComponent InfAdoptedStateVectorComponent;
+struct _InfAdoptedStateVectorComponent {
+  guint id;
+  guint n; /* timestamp */
+};
+
 typedef struct _InfAdoptedStateVectorForeachData
   InfAdoptedStateVectorForeachData;
 
@@ -45,10 +51,11 @@ struct _InfAdoptedStateVectorForeachData {
   gpointer user_data;
 };
 
-typedef struct _InfAdoptedStateVectorComponent InfAdoptedStateVectorComponent;
-struct _InfAdoptedStateVectorComponent {
-  guint id;
-  guint n; /* timestamp */
+
+struct _InfAdoptedStateVector {
+  InfAdoptedStateVectorComponent* data;
+  gsize size;
+  gsize max_size;
 };
 
 static gint
@@ -68,32 +75,15 @@ inf_adopted_state_vector_component_free(InfAdoptedStateVectorComponent* comp)
   g_slice_free(InfAdoptedStateVectorComponent, comp);
 }
 
-static GSequenceIter*
+static InfAdoptedStateVectorComponent*
 inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
                                 guint id)
 {
-  GSequenceIter* iter;
-  InfAdoptedStateVectorComponent comp;
-
-  comp.id = id;
-  /* n is irrelevant for lookup */
-
-  iter = g_sequence_search(
-    vec,
-    &comp,
-    (GCompareDataFunc)inf_adopted_state_vector_component_cmp,
-    NULL
-  );
-
-  /* g_sequence_search returns an iterator pointing to
-   * the element behind the queried element if there is one */
-  if(iter == g_sequence_get_begin_iter(vec))
-    return NULL;
-
-  iter = g_sequence_iter_prev(iter);
-
-  if(((InfAdoptedStateVectorComponent*)g_sequence_get(iter))->id == id)
-    return iter;
+  for (gsize i = 0; i < vec->size; ++i)
+  {
+    InfAdoptedStateVectorComponent* comp = vec->data + i;
+    if (comp->id = id) return comp;
+  }
 
   return NULL;
 }
