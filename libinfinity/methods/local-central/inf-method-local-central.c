@@ -129,6 +129,7 @@ inf_method_local_central_remove_connection(InfConnectionManagerMethod* inst,
   g_object_unref(connection);
 }
 
+#if 0
 static gboolean
 inf_method_local_central_has_connection(InfConnectionManagerMethod* instance,
                                         InfXmlConnection* connection)
@@ -164,6 +165,7 @@ inf_method_local_central_lookup_connection(InfConnectionManagerMethod* inst,
 
   return NULL;
 }
+#endif
 
 static void
 inf_method_local_central_send_to_net(InfConnectionManagerMethod* instance,
@@ -212,8 +214,10 @@ const InfConnectionManagerMethodDesc INF_METHOD_PLUGIN = {
   inf_method_local_central_receive_ctrl,
   inf_method_local_central_add_connection,
   inf_method_local_central_remove_connection,
+#if 0
   inf_method_local_central_has_connection,
   inf_method_local_central_lookup_connection,
+#endif
   inf_method_local_central_send_to_net
 };
 

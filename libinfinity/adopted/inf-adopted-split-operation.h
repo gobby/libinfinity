@@ -35,11 +35,24 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedSplitOperation InfAdoptedSplitOperation;
 typedef struct _InfAdoptedSplitOperationClass InfAdoptedSplitOperationClass;
 
+/**
+ * InfAdoptedSplitOperationClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfAdoptedSplitOperationClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfAdoptedSplitOperation:
+ *
+ * #InfAdoptedSplitOperation is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfAdoptedSplitOperation {
+  /*< private >*/
   GObject parent;
 };
 

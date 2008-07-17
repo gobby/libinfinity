@@ -45,12 +45,59 @@ typedef struct _InfConnectionManagerGroup InfConnectionManagerGroup;
 typedef struct _InfConnectionManagerMethod InfConnectionManagerMethod;
 typedef struct _InfConnectionManagerMethodDesc InfConnectionManagerMethodDesc;
 
+/**
+ * InfConnectionManagerScope:
+ * @INF_CONNECTION_MANAGER_POINT_TO_POINT: The message has only a single
+ * recipient.
+ * @INF_CONNECTION_MANAGER_NETWORK: The message is sent to all group members
+ * that are on the same network.
+ * @INF_CONNECTION_MANAGER_GROUP: The message is sent to all group members.
+ *
+ * #InfConnectionManagerScope defines the scope of a message sent through the
+ * network.
+ */
 typedef enum _InfConnectionManagerScope {
   INF_CONNECTION_MANAGER_POINT_TO_POINT,
   INF_CONNECTION_MANAGER_NETWORK,
   INF_CONNECTION_MANAGER_GROUP
 } InfConnectionManagerScope;
 
+/**
+ * InfConnectionManagerMethodDesc:
+ * @network: The name of the network the method operates on, such as "local"
+ * or "jabber". Note that "local" is used for direct TCP connections which
+ * might as well be used in a WAN, so that name is slightly misleading.
+ * @name: The name of the method. This should be unique for all methods on
+ * @network as it is used to identify the method.
+ * @open: This is called to create a new #InfConnectionManagerMethod that
+ * handles all connections in @group for the method's network. This is called
+ * when the local host has created a new group.
+ * @join: This is also called to create a new #InfConnectionManagerMethod
+ * to handle all connections in @group for the method's network, but it is
+ * called when a group opened by another host is joined. @publisher_conn is
+ * an open connection to the host publishing the group.
+ * @finalize: This is called when the local host leaves the group. It is
+ * supposed to do any necessary cleanup.
+ * @receive_msg: This is called for every message received by a registered
+ * connection. If @can_forward is %TRUE, and the scope of the message is
+ * %INF_CONNECTION_MANAGER_GROUP, then this method should make sure that
+ * everyone in the group receives the message, relaying the message to other
+ * hosts if necessary.
+ * @receive_ctrl: This is called for every control message received by a
+ * registered connection. Control messages can be used internally by the
+ * method.
+ * @add_connection: Called when a new connection on method's network
+ * is added to the group. This is only called if the local host is publisher,
+ * which means the method has been created via @open.
+ * @remove_connection: Called when a connection from method's network is
+ * removed from the group. This is only called if the local host is publisher,
+ * or the connection to the publisher is no longer available.
+ * @send_to_net: Send a message to all connections on the network.
+ *
+ * This interface needs to be implemented by connection manager methods. A
+ * connection manager method defines how messages are sent to other group
+ * members in the same network.
+ */
 struct _InfConnectionManagerMethodDesc {
   const gchar* network;
   const gchar* name;
@@ -83,21 +130,43 @@ struct _InfConnectionManagerMethodDesc {
                             InfXmlConnection* connection);
 
   /* TODO: Remove this and just rely on registered connections. */
+  /*
   gboolean (*has_connection)(InfConnectionManagerMethod* instance,
                              InfXmlConnection* connection);
   InfXmlConnection* (*lookup_connection)(InfConnectionManagerMethod* instance,
                                          const gchar* id);
+  */
 
   void (*send_to_net)(InfConnectionManagerMethod* instance,
                       InfXmlConnection* except,
                       xmlNodePtr xml);
 };
 
+/**
+ * InfConnectionManagerMethod:
+ *
+ * This is an opaque data structure representing an instantiation of a
+ * connection manager method, see #InfConnectionManagerMethodDesc.
+ */
+
+/**
+ * InfConnectionManagerClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfConnectionManagerClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfConnectionManager:
+ *
+ * #InfConnectionManager is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfConnectionManager {
+  /*< private >*/
   GObject parent;
 };
 

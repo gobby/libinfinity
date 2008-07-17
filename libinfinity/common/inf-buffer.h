@@ -33,9 +33,22 @@ G_BEGIN_DECLS
 typedef struct _InfBuffer InfBuffer;
 typedef struct _InfBufferIface InfBufferIface;
 
+/**
+ * InfBufferIface:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfBufferIface {
+  /*< private >*/
   GTypeInterface parent;
 };
+
+/**
+ * InfBuffer:
+ *
+ * #InfBuffer is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 
 GType
 inf_buffer_get_type(void) G_GNUC_CONST;

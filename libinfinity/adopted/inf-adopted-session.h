@@ -38,8 +38,24 @@ G_BEGIN_DECLS
 typedef struct _InfAdoptedSession InfAdoptedSession;
 typedef struct _InfAdoptedSessionClass InfAdoptedSessionClass;
 
+/**
+ * InfAdoptedSessionError:
+ * @INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER: The "user" field in a request
+ * message does not contain a valid user ID.
+ * @INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION: A request message does not
+ * contain an operation.
+ * @INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST: A request in a synchronized
+ * request log is invalid. Invalid means that it is not the request that
+ * was issued after the previous request in the log, or that it is an Undo
+ * or Redo request without a request to Undo or Redo, respectively.
+ * @INF_ADOPTED_SESSION_ERROR_MISSING_STATE_VECTOR: A synchronized user does
+ * not contain that the state that user currently is in.
+ * @INF_ADOPTED_SESSION_ERROR_FAILED: No further specified error code.
+ *
+ * Error codes for #InfAdoptedSession. These only occur when invalid requests
+ * are received from the network.
+ */
 typedef enum _InfAdoptedSessionError {
-  INF_ADOPTED_SESSION_ERROR_INVALID_TYPE,
   INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER,
   INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
   INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
@@ -49,11 +65,22 @@ typedef enum _InfAdoptedSessionError {
   INF_ADOPTED_SESSION_ERROR_FAILED
 } InfAdoptedSessionError;
 
+/**
+ * InfAdoptedSessionClass:
+ * @operation_to_xml: Virtual function to serialize an #InfAdoptedOperation
+ * to XML.
+ * @xml_to_operation: Virtual function to deserialize an #InfAdoptedOperation
+ * from XML.
+ *
+ * Virtual functions for #InfAdoptedSession.
+ */
 struct _InfAdoptedSessionClass {
+  /*< private >*/
   InfSessionClass parent_class;
 
   /* Virtual table */
 
+  /*< public >*/
   xmlNodePtr(*operation_to_xml)(InfAdoptedSession* session,
                                 InfAdoptedOperation* operation,
                                 gboolean for_sync);
@@ -65,7 +92,14 @@ struct _InfAdoptedSessionClass {
                                           GError** error);
 };
 
+/**
+ * InfAdoptedSession:
+ *
+ * #InfAdoptedSession is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfAdoptedSession {
+  /*< private >*/
   InfSession parent;
 };
 

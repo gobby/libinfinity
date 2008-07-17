@@ -22,7 +22,6 @@ InfAdoptedSession
 
 </para>
 
-@INF_ADOPTED_SESSION_ERROR_INVALID_TYPE: 
 @INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER: 
 @INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION: 
 @INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST: 
@@ -55,7 +54,6 @@ InfAdoptedSession
 
 </para>
 
-@parent_class: 
 @operation_to_xml: 
 @xml_to_operation: 
 

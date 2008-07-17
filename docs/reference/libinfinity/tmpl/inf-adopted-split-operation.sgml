@@ -38,7 +38,6 @@ InfAdoptedSplitOperation
 
 </para>
 
-@parent_class: 
 
 <!-- ##### FUNCTION inf_adopted_split_operation_new ##### -->
 <para>

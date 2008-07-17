@@ -25,8 +25,24 @@ G_BEGIN_DECLS
 
 #define INF_ADOPTED_TYPE_STATE_VECTOR            (inf_adopted_state_vector_get_type())
 
+/**
+ * InfAdoptedStateVector:
+ *
+ * #InfAdoptedStateVector is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfAdoptedStateVector InfAdoptedStateVector;
 
+/**
+ * InfAdoptedStateVectorError:
+ * @INF_ADOPTED_STATE_VECTOR_BAD_FORMAT: A string representation of an
+ * #InfAdoptedStateVector as required by
+ * inf_adopted_state_vector_from_string() or
+ * inf_adopted_state_vector_from_string_diff() is invalid.
+ * @INF_ADOPTED_STATE_VECTOR_FAILED: No further specified error code.
+ *
+ * Error codes for #InfAdoptedStateVector.
+ */
 typedef enum _InfAdoptedStateVectorError {
   INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
 
@@ -38,6 +54,9 @@ typedef enum _InfAdoptedStateVectorError {
  * @id: The ID of the entry.
  * @value: The value of the entry.
  * @user_data: The user data passed to inf_adopted_state_vector_foreach().
+ *
+ * This function is called for every component in the state vector during
+ * the invocation of inf_adopted_state_vector_foreach().
  */
 typedef void(*InfAdoptedStateVectorForeachFunc)(guint id,
                                                 guint value,

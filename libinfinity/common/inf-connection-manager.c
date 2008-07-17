@@ -1621,13 +1621,14 @@ gboolean
 inf_connection_manager_group_has_connection(InfConnectionManagerGroup* group,
                                             InfXmlConnection* conn)
 {
-  InfConnectionManagerMethodInstance* instance;
+  InfConnectionManagerQueue* queue;
 
   g_return_val_if_fail(group != NULL, FALSE);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(conn), FALSE);
 
-  instance = inf_connection_manager_get_method_by_connection(group, conn);
-  return instance->desc->has_connection(instance->method, conn);
+  queue = inf_connection_manager_group_lookup_queue(group, conn);
+  if(queue != NULL) return TRUE;
+  return FALSE;
 }
 
 /**

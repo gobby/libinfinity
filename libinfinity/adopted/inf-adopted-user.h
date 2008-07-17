@@ -39,10 +39,22 @@ G_BEGIN_DECLS
 /*typedef struct _InfAdoptedUser InfAdoptedUser;*/
 typedef struct _InfAdoptedUserClass InfAdoptedUserClass;
 
+/**
+ * InfAdoptedUserClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfAdoptedUserClass {
+  /*< private >*/
   InfUserClass parent_class;
 };
 
+/**
+ * InfAdoptedUser:
+ *
+ * #InfAdoptedUser is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfAdoptedUser {
   InfUser parent;
 };

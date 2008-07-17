@@ -43,8 +43,6 @@ InfConnectionManager
 @receive_ctrl: 
 @add_connection: 
 @remove_connection: 
-@has_connection: 
-@lookup_connection: 
 @send_to_net: 
 
 <!-- ##### ENUM InfConnectionManagerScope ##### -->
@@ -67,7 +65,6 @@ InfConnectionManager
 
 </para>
 
-@parent_class: 
 
 <!-- ##### FUNCTION inf_connection_manager_new ##### -->
 <para>

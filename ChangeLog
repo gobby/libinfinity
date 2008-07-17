@@ -1,3 +1,21 @@
+2008-07-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c: Added documentation,
+	removed has_connection and lookup_connection functions from
+	InfConnectionManagerMethodDesc, we just rely on the registered
+	connections for this.
+
+	* libinfinity/methods/local-central/inf-method-local-central.c: Adapt
+	to the API change.
+
+	* libinfinity/adopted/inf-adopted-session.h:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-split-operation.h:
+	* libinfinity/adopted/inf-adopted-state-vector.h:
+	* libinfinity/adopted/inf-adopted-user.h:
+	* libinfinity/common/inf-buffer.h: Added some more documentation.
+
 2008-07-16  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.h:

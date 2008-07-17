@@ -27,6 +27,24 @@
 #include <string.h>
 #include <time.h>
 
+/**
+ * SECTION:inf-adopted-session
+ * @title: InfAdoptedSession
+ * @short_description: Session handling concurrency control via the adOPTed
+ * algorithm.
+ * @include: libinfinity/adopted/inf-adopted-session.h
+ * @see_also: #InfSession, #InfAdoptedAlgorithm
+ * @stability: Unstable
+ *
+ * #InfAdoptedSession handles concurrency control with an #InfAdoptedAlgorithm
+ * on top of a #InfSession. It takes care of sending all necessary information
+ * to joining users, receives requests from the network (passing them to
+ * #InfAdoptedAlgorithm) and transfers local requests to the other users. It
+ * also makes sure to periodically send the state the local host is in to
+ * other uses even if the local users are idle (which is required for others
+ * to cleanup their request logs and request caches).
+ */
+
 typedef struct _InfAdoptedSessionToXmlSyncForeachData
   InfAdoptedSessionToXmlSyncForeachData;
 struct _InfAdoptedSessionToXmlSyncForeachData {
@@ -213,6 +231,8 @@ inf_adopted_session_request_to_xml(InfAdoptedSession* session,
   }
   else
   {
+    /* TODO: Handle non-local users here. Note this only works if request has
+     * not yet been applied. */
     user = inf_user_table_lookup_user_by_id(user_table, user_id);
     g_assert(user != NULL);
 
