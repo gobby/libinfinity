@@ -50,6 +50,15 @@ InfAdoptedAlgorithm
 @arg1: 
 @arg2: 
 
+<!-- ##### SIGNAL InfAdoptedAlgorithm::execute-request ##### -->
+<para>
+
+</para>
+
+@infadoptedalgorithm: the object which received the signal.
+@arg1: 
+@arg2: 
+
 <!-- ##### ARG InfAdoptedAlgorithm:buffer ##### -->
 <para>
 
@@ -77,6 +86,7 @@ InfAdoptedAlgorithm
 
 @can_undo_changed: 
 @can_redo_changed: 
+@execute_request: 
 @apply_request: 
 
 <!-- ##### FUNCTION inf_adopted_algorithm_new ##### -->

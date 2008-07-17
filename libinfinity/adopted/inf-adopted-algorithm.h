@@ -44,6 +44,8 @@ typedef struct _InfAdoptedAlgorithmClass InfAdoptedAlgorithmClass;
  * #InfAdoptedAlgorithm::can_undo_changed signal.
  * @can_redo_changed: Default signal handler for the
  * #InfAdoptedAlgorithm::can_redo_changed signal.
+ * @execute_request: Default signal handler for the
+ * #InfAdoptedAlgorithm::execute_request signal.
  * @apply_request: Default signal handler for the
  * #InfAdoptedAlgorithm::apply_request signal.
  *
@@ -64,6 +66,11 @@ struct _InfAdoptedAlgorithmClass {
                           InfAdoptedUser* user,
                           gboolean can_redo);
 
+  void(*execute_request)(InfAdoptedAlgorithm* algorithm,
+                         InfAdoptedRequest* request,
+                         gboolean apply);
+
+  /* TODO: Remove user here? */
   void(*apply_request)(InfAdoptedAlgorithm* algorithm,
                        InfAdoptedUser* user,
                        InfAdoptedRequest* request);

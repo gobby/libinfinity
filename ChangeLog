@@ -1,3 +1,9 @@
+2008-07-16  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Added "execute-request"
+	signal that is emitted every time a request is executed.
+
 2008-07-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-request-log.h:
