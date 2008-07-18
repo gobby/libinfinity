@@ -194,6 +194,43 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
   }
 }
 
+static InfAdoptedUser*
+inf_adopted_session_user_from_request_xml(InfAdoptedSession* session,
+                                          xmlNodePtr xml,
+                                          GError** error)
+{
+  InfUserTable* user_table;
+  InfUser* user;
+  guint user_id;
+
+  user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  if(!inf_xml_util_get_attribute_uint_required(xml, "user", &user_id, error))
+    return FALSE;
+
+  /* User ID 0 means no user */
+  if(user_id == 0) return NULL;
+
+  user = inf_user_table_lookup_user_by_id(user_table, user_id);
+
+  if(user == NULL)
+  {
+    g_set_error(
+      error,
+      inf_adopted_session_error_quark,
+      INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER,
+      "No such user with user ID '%u'",
+      user_id
+    );
+
+    return NULL;
+  }
+
+  g_assert(INF_ADOPTED_IS_USER(user));
+  return INF_ADOPTED_USER(user);
+}
+
+#if 0
 static void
 inf_adopted_session_request_to_xml(InfAdoptedSession* session,
                                    InfAdoptedRequest* request,
@@ -414,6 +451,7 @@ inf_adopted_session_xml_to_request(InfAdoptedSession* session,
   inf_adopted_state_vector_free(vector);
   return request;
 }
+#endif
 
 /*
  * Signal handlers and noop timer
@@ -826,6 +864,7 @@ inf_adopted_session_to_xml_sync_foreach_user_func(InfUser* user,
 {
   InfAdoptedRequestLog* log;
   InfAdoptedSessionToXmlSyncForeachData* data;
+  InfAdoptedSessionClass* session_class;
   guint i;
   guint end;
   xmlNodePtr xml;
@@ -836,6 +875,8 @@ inf_adopted_session_to_xml_sync_foreach_user_func(InfUser* user,
   data = (InfAdoptedSessionToXmlSyncForeachData*)user_data;
   log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
   end = inf_adopted_request_log_get_end(log);
+  session_class = INF_ADOPTED_SESSION_GET_CLASS(data->session);
+  g_assert(session_class->request_to_xml != NULL);
 
   for(i = inf_adopted_request_log_get_begin(log); i < end; ++ i)
   {
@@ -848,7 +889,8 @@ inf_adopted_session_to_xml_sync_foreach_user_func(InfUser* user,
       NULL
     );
 
-    inf_adopted_session_request_to_xml(data->session, request, xml, TRUE);
+    /* TODO: Diff to previous request? */
+    session_class->request_to_xml(data->session, xml, request, NULL, TRUE);
     xmlAddChild(data->parent_xml, xml);
   }
 }
@@ -881,15 +923,20 @@ inf_adopted_session_process_xml_sync(InfSession* session,
                                      const xmlNodePtr xml,
                                      GError** error)
 {
+  InfAdoptedSessionClass* session_class;
   InfAdoptedRequest* request;
   InfAdoptedUser* user;
   InfAdoptedRequestLog* log;
 
   if(strcmp((const char*)xml->name, "sync-request") == 0)
   {
-    request = inf_adopted_session_xml_to_request(
+    session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
+    g_assert(session_class->xml_to_request != NULL);
+
+    request = session_class->xml_to_request(
       INF_ADOPTED_SESSION(session),
       xml,
+      NULL, /* TODO: Diff to previous request, if any. */
       TRUE,
       error
     );
@@ -926,17 +973,30 @@ inf_adopted_session_process_xml_run(InfSession* session,
                                     GError** error)
 {
   InfAdoptedSessionPrivate* priv;
+  InfAdoptedSessionClass* session_class;
   InfAdoptedRequest* request;
+  InfAdoptedUser* user;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
   if(strcmp((const char*)xml->name, "request") == 0)
   {
-    /* TODO: Check user! */
+    session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
+    g_assert(session_class->xml_to_request != NULL);
 
-    request = inf_adopted_session_xml_to_request(
+    user = inf_adopted_session_user_from_request_xml(
       INF_ADOPTED_SESSION(session),
       xml,
+      error
+    );
+    if(user == NULL) return FALSE;
+
+    /* TODO: Check user connection! */
+
+    request = session_class->xml_to_request(
+      INF_ADOPTED_SESSION(session),
+      xml,
+      inf_adopted_user_get_vector(user),
       FALSE,
       error
     );
@@ -1182,8 +1242,8 @@ inf_adopted_session_class_init(gpointer g_class,
   session_class->synchronization_complete =
     inf_adopted_session_synchronization_complete;
 
-  adopted_session_class->xml_to_operation = NULL;
-  adopted_session_class->operation_to_xml = NULL;
+  adopted_session_class->xml_to_request = NULL;
+  adopted_session_class->request_to_xml = NULL;
 
   inf_adopted_session_error_quark = g_quark_from_static_string(
     "INF_ADOPTED_SESSION_ERROR"
@@ -1311,6 +1371,7 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
                                       InfAdoptedRequest* request)
 {
   InfAdoptedSessionPrivate* priv;
+  InfAdoptedSessionClass* session_class;
   InfUserTable* user_table;
   guint user_id;
   InfUser* user;
@@ -1321,6 +1382,9 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
   g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
+  g_assert(session_class->request_to_xml != NULL);
+
   user_table = inf_session_get_user_table(INF_SESSION(session));
   user_id = inf_adopted_request_get_user_id(request);
   user = inf_user_table_lookup_user_by_id(user_table, user_id);
@@ -1336,9 +1400,26 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
   inf_adopted_session_reschedule_noop_timer(session);
 
   xml = xmlNewNode(NULL, (const xmlChar*)"request");
-  inf_adopted_session_request_to_xml(session, request, xml, FALSE);
+
+  session_class->request_to_xml(
+    session,
+    xml,
+    request,
+    local->last_send_vector,
+    FALSE
+  );
 
   inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+
+  inf_adopted_state_vector_free(local->last_send_vector);
+  local->last_send_vector = inf_adopted_state_vector_copy(
+    inf_adopted_request_get_vector(request)
+  );
+
+  /* Add this request to last send vector if it increases vector time
+   * (-> affects buffer). */
+  if(inf_adopted_request_affects_buffer(request) == TRUE)
+    inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
 }
 
 /**
@@ -1385,6 +1466,187 @@ inf_adopted_session_redo(InfAdoptedSession* session,
   request = inf_adopted_algorithm_generate_redo(priv->algorithm, user);
   inf_adopted_session_broadcast_request(session, request);
   g_object_unref(request);
+}
+
+/**
+ * inf_adopted_session_read_request_info:
+ * @session: A #InfAdoptedSession.
+ * @xml: The XML to read the data from.
+ * @diff_vec: The reference vector of the time vector of the request, or
+ * %NULL.
+ * @user: Location to store the user of the request, or %NULL.
+ * @time: Location to store the state the request was made, or %NULL.
+ * @operation: Location to store the operation of the request, or %NULL.
+ * @error: Location to place an error, if any.
+ *
+ * This function reads common information such as the state vector the request
+ * was made and the user that made the request from XML. It is most likely to
+ * be used by implementations of the xml_to_request virtual function.
+ *
+ * Returns: %TRUE if the data could be read successfully, %FALSE if the XML
+ * request does not contain valid request data, in which case @error is set.
+ */
+gboolean
+inf_adopted_session_read_request_info(InfAdoptedSession* session,
+                                      xmlNodePtr xml,
+                                      InfAdoptedStateVector* diff_vec,
+                                      InfAdoptedUser** user,
+                                      InfAdoptedStateVector** time,
+                                      xmlNodePtr* operation,
+                                      GError** error)
+{
+  xmlChar* attr;
+  xmlNodePtr child;
+
+  if(user != NULL)
+  {
+    *user = inf_adopted_session_user_from_request_xml(session, xml, error);
+    if(*user == NULL) return FALSE;
+  }
+  
+  if(time != NULL)
+  {
+    attr = inf_xml_util_get_attribute_required(xml, "time", error);
+    if(attr == NULL) return FALSE;
+    
+    if(diff_vec == NULL)
+    {
+      *time = inf_adopted_state_vector_from_string((const gchar*)attr, error);
+    }
+    else
+    {
+      *time = inf_adopted_state_vector_from_string_diff(
+        (const gchar*)attr,
+        diff_vec,
+        error
+      );
+    }
+
+    xmlFree(attr);
+    if(*time == NULL) return FALSE;
+  }
+
+  if(operation != NULL)
+  {
+    /* Get first child element */
+    child = xml->children;
+    while(child != NULL && child->type != XML_ELEMENT_NODE)
+      child = child->next;
+
+    if(child == NULL)
+    {
+      g_set_error(
+        error,
+        inf_adopted_session_error_quark,
+        INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
+        "Operation for request request missing"
+      );
+
+      if(time) inf_adopted_state_vector_free(*time);
+      return FALSE;
+    }
+
+    *operation = child;
+  }
+  
+  return TRUE;
+}
+
+#if 0
+  if(strcmp((const char*)child->name, "undo") == 0)
+  {
+    type = INF_ADOPTED_REQUEST_UNDO;
+  }
+  else if(strcmp((const char*)child->name, "redo") == 0)
+  {
+    type = INF_ADOPTED_REQUEST_REDO;
+  }
+  else
+  {
+    type = INF_ADOPTED_REQUEST_DO;
+
+    operation = session_class->xml_to_operation(
+      session,
+      INF_ADOPTED_USER(user),
+      child,
+      for_sync,
+      error
+    );
+
+    if(operation == NULL)
+    {
+      inf_adopted_state_vector_free(vector);
+      return NULL;
+    }
+  }
+
+  switch(type)
+  {
+  case INF_ADOPTED_REQUEST_DO:
+    request = inf_adopted_request_new_do(vector, user_id, operation);
+    g_object_unref(G_OBJECT(operation));
+    break;
+  case INF_ADOPTED_REQUEST_UNDO:
+    request = inf_adopted_request_new_undo(vector, user_id);
+    break;
+  case INF_ADOPTED_REQUEST_REDO:
+    request = inf_adopted_request_new_redo(vector, user_id);
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  inf_adopted_state_vector_free(vector);
+  return request;
+}
+#endif
+
+/**
+ * inf_adopted_session_write_request_info:
+ * @session: A #InfAdoptedSession.
+ * @diff_vec: A reference state vector, or %NULL.
+ * @request: The #InfAdoptedRequest whose info to write.
+ * @xml: The XML node to write the data into.
+ * @operation: An XML node representing the operation of the request, or
+ * %NULL.
+ *
+ * This function writes common data from @request, such as the user that
+ * issued the request and the state in which the request was made into @xml.
+ * If @diff_vec is given, then the state is written as a diff to this vector,
+ * see inf_adopted_state_vector_to_string_diff(). Deserializing this data
+ * again (via inf_adopted_session_read_request_info()) requires the same
+ * @diff_vec then.
+ *
+ * This function is most likely to be used by implementations of the
+ * request_to_xml virtual function.
+ */
+void
+inf_adopted_session_write_request_info(InfAdoptedSession* session,
+                                       InfAdoptedRequest* request,
+                                       InfAdoptedStateVector* diff_vec,
+                                       xmlNodePtr xml,
+                                       xmlNodePtr operation)
+{
+  InfAdoptedStateVector* vector;
+  guint user_id;
+  gchar* vec_str;
+
+  vector = inf_adopted_request_get_vector(request);
+  user_id = inf_adopted_request_get_user_id(request);
+
+  inf_xml_util_set_attribute_uint(xml, "user", user_id);
+
+  if(diff_vec == NULL)
+    vec_str = inf_adopted_state_vector_to_string(vector);
+  else
+    vec_str = inf_adopted_state_vector_to_string_diff(vector, diff_vec);
+
+  inf_xml_util_set_attribute(xml, "time", vec_str);
+  g_free(vec_str);
+  
+  if(operation != NULL)
+    xmlAddChild(xml, operation);
 }
 
 /* vim:set et sw=2 ts=2: */

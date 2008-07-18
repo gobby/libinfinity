@@ -67,10 +67,13 @@ typedef enum _InfAdoptedSessionError {
 
 /**
  * InfAdoptedSessionClass:
- * @operation_to_xml: Virtual function to serialize an #InfAdoptedOperation
- * to XML.
- * @xml_to_operation: Virtual function to deserialize an #InfAdoptedOperation
- * from XML.
+ * @xml_to_request: Virtual function to deserialize an #InfAdoptedRequest
+ * from XML. The implementation of this function can use
+ * inf_adopted_session_read_request_info() to read the common info.
+ * @request_to_xml: Virtual function to serialize an #InfAdoptedRequest
+ * to XML. This function should add properties and children to the given XML
+ * node. At might use inf_adopted_session_write_request_info() to write the
+ * common info.
  *
  * Virtual functions for #InfAdoptedSession.
  */
@@ -81,15 +84,17 @@ struct _InfAdoptedSessionClass {
   /* Virtual table */
 
   /*< public >*/
-  xmlNodePtr(*operation_to_xml)(InfAdoptedSession* session,
-                                InfAdoptedOperation* operation,
-                                gboolean for_sync);
+  InfAdoptedRequest*(*xml_to_request)(InfAdoptedSession* session,
+                                      xmlNodePtr xml,
+                                      InfAdoptedStateVector* diff_vec,
+                                      gboolean for_sync,
+                                      GError** error);
 
-  InfAdoptedOperation*(*xml_to_operation)(InfAdoptedSession* session,
-                                          InfAdoptedUser* user,
-                                          xmlNodePtr xml,
-                                          gboolean for_sync,
-                                          GError** error);
+  void(*request_to_xml)(InfAdoptedSession* session,
+                        xmlNodePtr xml,
+                        InfAdoptedRequest* request,
+                        InfAdoptedStateVector* diff_vec,
+                        gboolean for_sync);
 };
 
 /**
@@ -123,6 +128,22 @@ inf_adopted_session_undo(InfAdoptedSession* session,
 void
 inf_adopted_session_redo(InfAdoptedSession* session,
                          InfAdoptedUser* user);
+
+gboolean
+inf_adopted_session_read_request_info(InfAdoptedSession* session,
+                                      xmlNodePtr xml,
+                                      InfAdoptedStateVector* diff_vec,
+                                      InfAdoptedUser** user,
+                                      InfAdoptedStateVector** time,
+                                      xmlNodePtr* operation,
+                                      GError** error);
+
+void
+inf_adopted_session_write_request_info(InfAdoptedSession* session,
+                                       InfAdoptedRequest* request,
+                                       InfAdoptedStateVector* diff_vec,
+                                       xmlNodePtr xml,
+                                       xmlNodePtr operation);
 
 G_END_DECLS
 

@@ -1,3 +1,17 @@
+2008-08-18  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session.h:
+	* libinfinity/adopted/inf-adopted-session.c: Changed the
+	xml_to_operation and operation_to_xml vfuncs to xml_to_request and
+	request_to_xml, to allow generation of custom requests, and to
+	decouple the update of local user's last send vector from the
+	serialization of a request. Added
+	inf_adopted_session_read_request_info() and
+	inf_adopted_session_write_request_info() to ease implementation by
+	derived classes.
+
+	* libinftext/inf-text-session.c: Adapted to API change.
+
 2008-07-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.h:

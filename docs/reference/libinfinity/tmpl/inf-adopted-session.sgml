@@ -54,8 +54,8 @@ InfAdoptedSession
 
 </para>
 
-@operation_to_xml: 
-@xml_to_operation: 
+@xml_to_request: 
+@request_to_xml: 
 
 <!-- ##### FUNCTION inf_adopted_session_get_io ##### -->
 <para>
@@ -100,5 +100,32 @@ InfAdoptedSession
 
 @session: 
 @user: 
+
+
+<!-- ##### FUNCTION inf_adopted_session_read_request_info ##### -->
+<para>
+
+</para>
+
+@session: 
+@xml: 
+@diff_vec: 
+@user: 
+@time: 
+@operation: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION inf_adopted_session_write_request_info ##### -->
+<para>
+
+</para>
+
+@session: 
+@request: 
+@diff_vec: 
+@xml: 
+@operation: 
 
 

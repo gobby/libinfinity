@@ -9,6 +9,8 @@ inf_adopted_session_get_algorithm
 inf_adopted_session_broadcast_request
 inf_adopted_session_undo
 inf_adopted_session_redo
+inf_adopted_session_read_request_info
+inf_adopted_session_write_request_info
 <SUBSECTION Standard>
 INF_ADOPTED_SESSION
 INF_ADOPTED_IS_SESSION

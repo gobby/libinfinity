@@ -1257,15 +1257,17 @@ inf_text_session_user_new(InfSession* session,
   return INF_USER(object);
 }
 
-static xmlNodePtr
-inf_text_session_operation_to_xml(InfAdoptedSession* session,
-                                  InfAdoptedOperation* operation,
-                                  gboolean for_sync)
+static void
+inf_text_session_request_to_xml(InfAdoptedSession* session,
+                                xmlNodePtr xml,
+                                InfAdoptedRequest* request,
+                                InfAdoptedStateVector* diff_vec,
+                                gboolean for_sync)
 {
   InfTextChunk* chunk;
   InfTextChunkIter iter;
   gboolean result;
-  xmlNodePtr xml;
+  xmlNodePtr op_xml;
 
   gchar* utf8_text;
   gsize bytes_read;
@@ -1277,152 +1279,185 @@ inf_text_session_operation_to_xml(InfAdoptedSession* session,
   gsize total_bytes;
   gsize bytes_left;
 
-  if(INF_TEXT_IS_INSERT_OPERATION(operation))
+  InfAdoptedOperation* operation;
+
+  switch(inf_adopted_request_get_request_type(request))
   {
-    xml = xmlNewNode(NULL, (const xmlChar*)"insert-caret");
-
-    inf_xml_util_set_attribute_uint(
-      xml,
-      "pos",
-      inf_text_insert_operation_get_position(
-        INF_TEXT_INSERT_OPERATION(operation)
-      )
-    );
-
-    /* Must be default insert operation so we get the inserted text */
-    g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
-
-    chunk = inf_text_default_insert_operation_get_chunk(
-      INF_TEXT_DEFAULT_INSERT_OPERATION(operation)
-    );
-
-    result = inf_text_chunk_iter_init(chunk, &iter);
-    g_assert(result == TRUE);
-
-    utf8_text = g_convert(
-      inf_text_chunk_iter_get_text(&iter),
-      inf_text_chunk_iter_get_bytes(&iter),
-      "UTF-8",
-      inf_text_chunk_get_encoding(chunk),
-      &bytes_read,
-      &bytes_written,
-      NULL
-    );
-
-    /* Conversion to UTF-8 should always succeed */
-    g_assert(utf8_text != NULL);
-    g_assert(bytes_read == inf_text_chunk_iter_get_bytes(&iter));
-
-    xmlNodeAddContentLen(xml, (const xmlChar*)utf8_text, bytes_written);
-    g_free(utf8_text);
-
-    /* We only allow a single segment because the whole inserted text must
-     * be written by a single user. */
-    g_assert(inf_text_chunk_iter_next(&iter) == FALSE);
-  }
-  else if(INF_TEXT_IS_DELETE_OPERATION(operation))
-  {
-    xml = xmlNewNode(NULL, (const xmlChar*)"delete-caret");
-
-    inf_xml_util_set_attribute_uint(
-      xml,
-      "pos",
-      inf_text_delete_operation_get_position(
-        INF_TEXT_DELETE_OPERATION(operation)
-      )
-    );
-
-    if(for_sync == TRUE)
+  case INF_ADOPTED_REQUEST_DO:
+    if(INF_TEXT_IS_INSERT_OPERATION(operation))
     {
-      /* Must be default delete operation so we get chunk */
-      g_assert(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(operation));
+      op_xml = xmlNewNode(NULL, (const xmlChar*)"insert-caret");
 
-      chunk = inf_text_default_delete_operation_get_chunk(
-        INF_TEXT_DEFAULT_DELETE_OPERATION(operation)
+      inf_xml_util_set_attribute_uint(
+        xml,
+        "pos",
+        inf_text_insert_operation_get_position(
+          INF_TEXT_INSERT_OPERATION(operation)
+        )
       );
 
-      /* Need to transmit all deleted data */
-      cd = g_iconv_open("UTF-8", inf_text_chunk_get_encoding(chunk));
+      /* Must be default insert operation so we get the inserted text */
+      g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
+
+      chunk = inf_text_default_insert_operation_get_chunk(
+        INF_TEXT_DEFAULT_INSERT_OPERATION(operation)
+      );
+
       result = inf_text_chunk_iter_init(chunk, &iter);
-
-      /* Should delete something, otherwise we could also use noop */
       g_assert(result == TRUE);
-      while(result == TRUE)
-      {
-        text = inf_text_chunk_iter_get_text(&iter);
-        total_bytes = inf_text_chunk_iter_get_bytes(&iter);
-        bytes_left = total_bytes;
-        child = xmlNewChild(xml, NULL, (const xmlChar*)"segment", NULL);
 
-        while(bytes_left > 0)
+      utf8_text = g_convert(
+        inf_text_chunk_iter_get_text(&iter),
+        inf_text_chunk_iter_get_bytes(&iter),
+        "UTF-8",
+        inf_text_chunk_get_encoding(chunk),
+        &bytes_read,
+        &bytes_written,
+        NULL
+      );
+
+      /* Conversion to UTF-8 should always succeed */
+      g_assert(utf8_text != NULL);
+      g_assert(bytes_read == inf_text_chunk_iter_get_bytes(&iter));
+
+      xmlNodeAddContentLen(op_xml, (const xmlChar*)utf8_text, bytes_written);
+      g_free(utf8_text);
+
+      /* We only allow a single segment because the whole inserted text must
+       * be written by a single user. */
+      g_assert(inf_text_chunk_iter_next(&iter) == FALSE);
+    }
+    else if(INF_TEXT_IS_DELETE_OPERATION(operation))
+    {
+      op_xml = xmlNewNode(NULL, (const xmlChar*)"delete-caret");
+
+      inf_xml_util_set_attribute_uint(
+        op_xml,
+        "pos",
+        inf_text_delete_operation_get_position(
+          INF_TEXT_DELETE_OPERATION(operation)
+        )
+      );
+
+      if(for_sync == TRUE)
+      {
+        /* Must be default delete operation so we get chunk */
+        g_assert(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(operation));
+
+        chunk = inf_text_default_delete_operation_get_chunk(
+          INF_TEXT_DEFAULT_DELETE_OPERATION(operation)
+        );
+
+        /* Need to transmit all deleted data */
+        cd = g_iconv_open("UTF-8", inf_text_chunk_get_encoding(chunk));
+        result = inf_text_chunk_iter_init(chunk, &iter);
+
+        /* Should delete something, otherwise we could also use noop */
+        g_assert(result == TRUE);
+        while(result == TRUE)
         {
-          inf_text_session_segment_to_xml(
-            &cd,
-            child,
-            text + total_bytes - bytes_left,
-            &bytes_left,
-            inf_text_chunk_iter_get_author(&iter)
-          );
+          text = inf_text_chunk_iter_get_text(&iter);
+          total_bytes = inf_text_chunk_iter_get_bytes(&iter);
+          bytes_left = total_bytes;
+          child = xmlNewChild(op_xml, NULL, (const xmlChar*)"segment", NULL);
+
+          while(bytes_left > 0)
+          {
+            inf_text_session_segment_to_xml(
+              &cd,
+              child,
+              text + total_bytes - bytes_left,
+              &bytes_left,
+              inf_text_chunk_iter_get_author(&iter)
+            );
+          }
+
+          result = inf_text_chunk_iter_next(&iter);
         }
 
-        result = inf_text_chunk_iter_next(&iter);
+        g_iconv_close(cd);
       }
+      else
+      {
+        chunk = inf_text_default_delete_operation_get_chunk(
+          INF_TEXT_DEFAULT_DELETE_OPERATION(operation)
+        );
 
-      g_iconv_close(cd);
+        /* Just transmit position and length, the other site generates a
+         * InfTextRemoteDeleteOperation from that and is able to restore the
+         * deleted text for potential Undo. */
+        inf_xml_util_set_attribute_uint(
+          op_xml,
+          "len",
+          inf_text_chunk_get_length(chunk)
+        );
+      }
+    }
+    else if(for_sync == FALSE && INF_TEXT_IS_MOVE_OPERATION(operation))
+    {
+      op_xml = xmlNewNode(NULL, (const xmlChar*)"move");
+
+      inf_xml_util_set_attribute_uint(
+        xml,
+        "caret",
+        inf_text_move_operation_get_position(
+          INF_TEXT_MOVE_OPERATION(operation)
+        )
+      );
+
+      inf_xml_util_set_attribute_int(
+        xml,
+        "selection",
+        inf_text_move_operation_get_length(INF_TEXT_MOVE_OPERATION(operation))
+      );
+    }
+    else if(for_sync == FALSE && INF_ADOPTED_IS_NO_OPERATION(operation))
+    {
+      op_xml = xmlNewNode(NULL, (const xmlChar*)"no-op");
     }
     else
     {
-      chunk = inf_text_default_delete_operation_get_chunk(
-        INF_TEXT_DEFAULT_DELETE_OPERATION(operation)
-      );
-
-      /* Just transmit position and length, the other site generates a
-       * InfTextRemoteDeleteOperation from that and is able to restore the
-       * deleted text for potential Undo. */
-      inf_xml_util_set_attribute_uint(
-        xml,
-        "len",
-        inf_text_chunk_get_length(chunk)
-      );
+      g_assert_not_reached();
     }
-  }
-  else if(for_sync == FALSE && INF_TEXT_IS_MOVE_OPERATION(operation))
-  {
-    xml = xmlNewNode(NULL, (const xmlChar*)"move");
 
-    inf_xml_util_set_attribute_uint(
-      xml,
-      "caret",
-      inf_text_move_operation_get_position(INF_TEXT_MOVE_OPERATION(operation))
-    );
-
-    inf_xml_util_set_attribute_int(
-      xml,
-      "selection",
-      inf_text_move_operation_get_length(INF_TEXT_MOVE_OPERATION(operation))
-    );
-  }
-  else if(for_sync == FALSE && INF_ADOPTED_IS_NO_OPERATION(operation))
-  {
-    xml = xmlNewNode(NULL, (const xmlChar*)"no-op");
-  }
-  else
-  {
+    break;
+  case INF_ADOPTED_REQUEST_UNDO:
+    op_xml = xmlNewNode(NULL, (const xmlChar*)"undo");
+    break;
+  case INF_ADOPTED_REQUEST_REDO:
+    op_xml = xmlNewNode(NULL, (const xmlChar*)"redo");
+    break;
+  default:
     g_assert_not_reached();
+    break;
   }
 
-  return xml;
+  g_assert(op_xml != NULL);
+
+  inf_adopted_session_write_request_info(
+    session,
+    request,
+    diff_vec,
+    xml,
+    op_xml
+  );
 }
 
-static InfAdoptedOperation*
-inf_text_session_xml_to_operation(InfAdoptedSession* session,
-                                  InfAdoptedUser* user,
-                                  xmlNodePtr xml,
-                                  gboolean for_sync,
-                                  GError** error)
+static InfAdoptedRequest*
+inf_text_session_xml_to_request(InfAdoptedSession* session,
+                                xmlNodePtr xml,
+                                InfAdoptedStateVector* diff_vec,
+                                gboolean for_sync,
+                                GError** error)
 {
   InfTextBuffer* buffer;
-  InfAdoptedOperation* result;
+  InfAdoptedUser* user;
+  guint user_id;
+  InfAdoptedStateVector* vector;
+  xmlNodePtr op_xml;
+  InfAdoptedOperation* operation;
+  InfAdoptedRequestType type;
+  InfAdoptedRequest* request;
 
   guint pos;
   gchar* text;
@@ -1441,16 +1476,31 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
 
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
 
-  if(strcmp((const char*)xml->name, "insert") == 0 ||
-     strcmp((const char*)xml->name, "insert-caret") == 0)
+  cmp = inf_adopted_session_read_request_info(
+    session,
+    xml,
+    diff_vec,
+    &user,
+    &vector,
+    &op_xml,
+    error
+  );
+
+  if(cmp == FALSE) return FALSE;
+  user_id = (user == NULL) ? 0 : inf_user_get_id(INF_USER(user));
+
+  if(strcmp((const char*)op_xml->name, "insert") == 0 ||
+     strcmp((const char*)op_xml->name, "insert-caret") == 0)
   {
-    if(!inf_xml_util_get_attribute_uint_required(xml, "pos", &pos, error))
-      return NULL;
+    type = INF_ADOPTED_REQUEST_DO;
+
+    if(!inf_xml_util_get_attribute_uint_required(op_xml, "pos", &pos, error))
+      goto fail;
 
     /* TODO: Use XML_GET_CONTENT to avoid copy? */
     /* TODO: Can we find out character and byte count in one pass?
      * g_convert() calls strlen. */
-    utf8_text = xmlNodeGetContent(xml);
+    utf8_text = xmlNodeGetContent(op_xml);
     length = g_utf8_strlen((const gchar*)utf8_text, -1);
 
     text = g_convert(
@@ -1464,33 +1514,25 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
     );
 
     xmlFree(utf8_text);
-    if(text == NULL) return NULL;
+    if(text == NULL) goto fail;
 
     chunk = inf_text_chunk_new(inf_text_buffer_get_encoding(buffer));
-
-    inf_text_chunk_insert_text(
-      chunk,
-      0,
-      text,
-      bytes,
-      length,
-      (user == NULL) ? 0 : inf_user_get_id(INF_USER(user))
-    );
-
+    inf_text_chunk_insert_text(chunk, 0, text, bytes, length, user_id);
     g_free(text);
 
-    result = INF_ADOPTED_OPERATION(
+    operation = INF_ADOPTED_OPERATION(
       inf_text_default_insert_operation_new(pos, chunk)
     );
 
     inf_text_chunk_free(chunk);
-    return result;
   }
-  else if(strcmp((const char*)xml->name, "delete") == 0 ||
-          strcmp((const char*)xml->name, "delete-caret") == 0)
+  else if(strcmp((const char*)op_xml->name, "delete") == 0 ||
+          strcmp((const char*)op_xml->name, "delete-caret") == 0)
   {
-    if(!inf_xml_util_get_attribute_uint_required(xml, "pos", &pos, error))
-      return NULL;
+    type = INF_ADOPTED_REQUEST_DO;
+
+    if(!inf_xml_util_get_attribute_uint_required(op_xml, "pos", &pos, error))
+      goto fail;
 
     if(for_sync == TRUE)
     {
@@ -1515,7 +1557,7 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
           {
             inf_text_chunk_free(chunk);
             g_iconv_close(cd);
-            return NULL;
+            goto fail;
           }
           else
           {
@@ -1539,54 +1581,98 @@ inf_text_session_xml_to_operation(InfAdoptedSession* session,
 
       g_iconv_close(cd);
 
-      result = INF_ADOPTED_OPERATION(
+      operation = INF_ADOPTED_OPERATION(
         inf_text_default_delete_operation_new(pos, chunk)
       );
 
       inf_text_chunk_free(chunk);
-      return result;
     }
     else
     {
       cmp = inf_xml_util_get_attribute_uint_required(
-        xml,
+        op_xml,
         "len",
         &length,
         error
       );
 
-      if(cmp == FALSE) return NULL;
+      if(cmp == FALSE) goto fail;
 
-      return INF_ADOPTED_OPERATION(
+      operation = INF_ADOPTED_OPERATION(
         inf_text_remote_delete_operation_new(pos, length)
       );
     }
   }
-  else if(strcmp((const char*)xml->name, "move") == 0)
+  else if(strcmp((const char*)op_xml->name, "move") == 0)
   {
-    cmp = inf_xml_util_get_attribute_uint_required(xml, "caret", &pos, error);
-    if(cmp == FALSE) return NULL;
+    type = INF_ADOPTED_REQUEST_DO;
+
+    cmp = inf_xml_util_get_attribute_uint_required(
+      op_xml,
+      "caret",
+      &pos,
+      error
+    );
+
+    if(cmp == FALSE) goto fail;
 
     cmp = inf_xml_util_get_attribute_int_required(
-      xml,
+      op_xml,
       "selection",
       &selection,
       error
     );
 
-    if(cmp == FALSE) return NULL;
+    if(cmp == FALSE) goto fail;
 
-    return INF_ADOPTED_OPERATION(inf_text_move_operation_new(pos, selection));
+    operation = INF_ADOPTED_OPERATION(
+      inf_text_move_operation_new(pos, selection)
+    );
   }
-  else if(strcmp((const char*)xml->name, "no-op") == 0)
+  else if(strcmp((const char*)op_xml->name, "no-op") == 0)
   {
-    return INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
+    type = INF_ADOPTED_REQUEST_DO;
+    operation = INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
+  }
+  else if(strcmp((const char*)op_xml->name, "undo") == 0 ||
+          strcmp((const char*)op_xml->name, "undo-caret") == 0)
+  {
+    type = INF_ADOPTED_REQUEST_UNDO;
+  }
+  else if(strcmp((const char*)op_xml->name, "redo") == 0 ||
+          strcmp((const char*)op_xml->name, "redo-caret") == 0)
+  {
+    type = INF_ADOPTED_REQUEST_REDO;
   }
   else
   {
     /* TODO: Error */
-    return NULL;
+    goto fail;
   }
+
+  switch(type)
+  {
+  case INF_ADOPTED_REQUEST_DO:
+    g_assert(operation != NULL);
+    request = inf_adopted_request_new_do(vector, user_id, operation);
+    break;
+  case INF_ADOPTED_REQUEST_UNDO:
+    request = inf_adopted_request_new_undo(vector, user_id);
+    break;
+  case INF_ADOPTED_REQUEST_REDO:
+    request = inf_adopted_request_new_redo(vector, user_id);
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  inf_adopted_state_vector_free(vector);
+  return request;
+
+fail:
+  inf_adopted_state_vector_free(vector);
+  return NULL;
 }
 
 static void
@@ -1645,8 +1731,8 @@ inf_text_session_class_init(gpointer g_class,
   session_class->synchronization_complete =
     inf_text_session_synchronization_complete;
 
-  adopted_session_class->xml_to_operation = inf_text_session_xml_to_operation;
-  adopted_session_class->operation_to_xml = inf_text_session_operation_to_xml;
+  adopted_session_class->xml_to_request = inf_text_session_xml_to_request;
+  adopted_session_class->request_to_xml = inf_text_session_request_to_xml;
 
   inf_text_session_error_quark = g_quark_from_static_string(
     "INF_TEXT_SESSION_ERROR"
