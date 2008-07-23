@@ -1284,6 +1284,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
   switch(inf_adopted_request_get_request_type(request))
   {
   case INF_ADOPTED_REQUEST_DO:
+    operation = inf_adopted_request_get_operation(request);
     if(INF_TEXT_IS_INSERT_OPERATION(operation))
     {
       op_xml = xmlNewNode(NULL, (const xmlChar*)"insert-caret");

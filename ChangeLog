@@ -1,4 +1,10 @@
-2008-08-18  Armin Burgmeier  <armin@arbur.net>
+2008-07-23  Benjamin Herr  <ben@0x539.de>
+
+	* libinftext/inf-text-session.c: Properly initialised operation
+	variable before accessing it.
+	* ChangeLog: Fixed date of preceeding change log entry.
+
+2008-07-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-session.h:
 	* libinfinity/adopted/inf-adopted-session.c: Changed the
