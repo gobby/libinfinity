@@ -1290,7 +1290,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
       op_xml = xmlNewNode(NULL, (const xmlChar*)"insert-caret");
 
       inf_xml_util_set_attribute_uint(
-        xml,
+        op_xml,
         "pos",
         inf_text_insert_operation_get_position(
           INF_TEXT_INSERT_OPERATION(operation)
@@ -1399,7 +1399,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
       op_xml = xmlNewNode(NULL, (const xmlChar*)"move");
 
       inf_xml_util_set_attribute_uint(
-        xml,
+        op_xml,
         "caret",
         inf_text_move_operation_get_position(
           INF_TEXT_MOVE_OPERATION(operation)
@@ -1407,7 +1407,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
       );
 
       inf_xml_util_set_attribute_int(
-        xml,
+        op_xml,
         "selection",
         inf_text_move_operation_get_length(INF_TEXT_MOVE_OPERATION(operation))
       );

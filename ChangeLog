@@ -1,5 +1,10 @@
 2008-07-23  Benjamin Herr  <ben@0x539.de>
 
+	* libinftext/inf-text-session.c: Apply attributes to operation xml
+	element instead of its parent.
+
+2008-07-23  Benjamin Herr  <ben@0x539.de>
+
 	* libinftext/inf-text-session.c: Properly initialised operation
 	variable before accessing it.
 	* ChangeLog: Fixed date of preceeding change log entry.
