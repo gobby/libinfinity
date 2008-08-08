@@ -1,5 +1,10 @@
 2008-08-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c: Call base class dispose instead of
+	finalize, on dispose.
+
+2008-08-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-model.h
 	* libinfgtk/inf-gtk-browser-store.c
 	* libinfgtk/inf-gtk-browser-view.c: Fix searching in browser view by

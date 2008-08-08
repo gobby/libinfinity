@@ -535,7 +535,7 @@ inf_text_gtk_buffer_dispose(GObject* object)
   inf_text_gtk_buffer_set_active_user(buffer, NULL);
   g_object_unref(priv->user_table);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void
