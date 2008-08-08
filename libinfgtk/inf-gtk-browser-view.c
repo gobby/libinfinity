@@ -1252,6 +1252,11 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
 
   if(model != NULL)
   {
+    gtk_tree_view_set_search_column(
+      GTK_TREE_VIEW(priv->treeview),
+      INF_GTK_BROWSER_MODEL_COL_NAME
+    );
+
     /* Add initial browsers */
     if(gtk_tree_model_get_iter_first(GTK_TREE_MODEL(model), &iter) == TRUE)
     {

@@ -1335,9 +1335,18 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
     g_value_set_enum(value, item->status);
     break;
   case INF_GTK_BROWSER_MODEL_COL_NAME:
-    g_assert(browser_iter.node == NULL); /* only toplevel */
     g_value_init(value, G_TYPE_STRING);
-    g_value_set_string(value, item->name);
+    if(browser_iter.node == NULL)
+    {
+      g_value_set_string(value, item->name);
+    }
+    else
+    {
+      g_value_set_string(
+        value,
+        infc_browser_iter_get_name(item->browser, &browser_iter)
+      );
+    }
     break;
   case INF_GTK_BROWSER_MODEL_COL_ERROR:
     if(browser_iter.node == NULL)
