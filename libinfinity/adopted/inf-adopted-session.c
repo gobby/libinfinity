@@ -17,8 +17,6 @@
  */
 
 /* TODO: warning if no update from a particular non-local user for some time */
-/* TODO: Reenable noop timer only after first processed request, so that we
- * don't waste bandwidth when the session is completely idle. */
 
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
@@ -69,6 +67,8 @@ struct _InfAdoptedSessionPrivate {
 
   /* Timeout for sending noop with our current vector time */
   gpointer noop_timeout;
+  /* User to send the time for */
+  InfAdoptedSessionLocalUser* next_noop_user;
 };
 
 enum {
@@ -87,7 +87,7 @@ enum {
 static InfSessionClass* parent_class;
 static GQuark inf_adopted_session_error_quark;
 /* TODO: This should perhaps be a property: */
-static const int INF_ADOPTED_SESSION_NOOP_INTERVAL = 15;
+static const int INF_ADOPTED_SESSION_NOOP_INTERVAL = 30;
 
 /*
  * Utility functions.
@@ -230,231 +230,8 @@ inf_adopted_session_user_from_request_xml(InfAdoptedSession* session,
   return INF_ADOPTED_USER(user);
 }
 
-#if 0
-static void
-inf_adopted_session_request_to_xml(InfAdoptedSession* session,
-                                   InfAdoptedRequest* request,
-                                   xmlNodePtr xml,
-                                   gboolean for_sync)
-{
-  InfAdoptedSessionClass* session_class;
-  InfAdoptedSessionPrivate* priv;
-  InfAdoptedStateVector* vector;
-  InfAdoptedSessionLocalUser* local;
-  InfUserTable* user_table;
-  InfUser* user;
-  guint user_id;
-  gchar* vec_str;
-
-  InfAdoptedOperation* operation;
-  xmlNodePtr op_xml;
-
-  session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
-  priv = INF_ADOPTED_SESSION_PRIVATE(session);
-
-  user_table = inf_session_get_user_table(INF_SESSION(session));
-
-  g_assert(session_class->operation_to_xml != NULL);
-
-  vector = inf_adopted_request_get_vector(request);
-  user_id = inf_adopted_request_get_user_id(request);
-
-  inf_xml_util_set_attribute_uint(xml, "user", user_id);
-
-  if(for_sync)
-  {
-    /* TODO: diff to previous request, if any */
-    vec_str = inf_adopted_state_vector_to_string(vector);
-  }
-  else
-  {
-    /* TODO: Handle non-local users here. Note this only works if request has
-     * not yet been applied. */
-    user = inf_user_table_lookup_user_by_id(user_table, user_id);
-    g_assert(user != NULL);
-
-    local = inf_adopted_session_lookup_local_user(
-      session,
-      INF_ADOPTED_USER(user)
-    );
-
-    g_assert(local != NULL);
-
-    vec_str = inf_adopted_state_vector_to_string_diff(
-      vector,
-      local->last_send_vector
-    );
-
-    inf_adopted_state_vector_free(local->last_send_vector);
-    local->last_send_vector = inf_adopted_state_vector_copy(vector);
-
-    /* Add this request to last send vector if it increases vector time
-     * (-> affects buffer). */
-    if(inf_adopted_request_affects_buffer(request) == TRUE)
-      inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
-  }
-
-  inf_xml_util_set_attribute(xml, "time", vec_str);
-  g_free(vec_str);
-
-  switch(inf_adopted_request_get_request_type(request))
-  {
-  case INF_ADOPTED_REQUEST_DO:
-    operation = inf_adopted_request_get_operation(request);
-
-    /*inf_xml_util_set_attribute(xml, "type", "do");*/
-    op_xml = session_class->operation_to_xml(session, operation, for_sync);
-    xmlAddChild(xml, op_xml);
-    break;
-  case INF_ADOPTED_REQUEST_UNDO:
-    op_xml = xmlNewNode(NULL, (const xmlChar*)"undo");
-    xmlAddChild(xml, op_xml);
-    break;
-  case INF_ADOPTED_REQUEST_REDO:
-    op_xml = xmlNewNode(NULL, (const xmlChar*)"redo");
-    xmlAddChild(xml, op_xml);
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-}
-
-static InfAdoptedRequest*
-inf_adopted_session_xml_to_request(InfAdoptedSession* session,
-                                   xmlNodePtr xml,
-                                   gboolean for_sync,
-                                   GError** error)
-{
-  InfAdoptedSessionClass* session_class;
-  InfAdoptedRequestType type;
-  InfAdoptedStateVector* vector;
-  InfAdoptedOperation* operation;
-  InfAdoptedRequest* request;
-  InfUserTable* user_table;
-  InfUser* user;
-  guint user_id;
-  xmlNodePtr child;
-  xmlChar* attr;
-
-  session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
-  g_assert(session_class->xml_to_operation != NULL);
-
-  user_table = inf_session_get_user_table(INF_SESSION(session));
-
-  if(!inf_xml_util_get_attribute_uint_required(xml, "user", &user_id, error))
-    return FALSE;
-
-  user = inf_user_table_lookup_user_by_id(user_table, user_id);
-
-  if(user == NULL)
-  {
-    g_set_error(
-      error,
-      inf_adopted_session_error_quark,
-      INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER,
-      "No such user with user ID '%u'",
-      user_id
-    );
-
-    return NULL;
-  }
-
-  g_assert(INF_ADOPTED_IS_USER(user));
-
-  attr = inf_xml_util_get_attribute_required(xml, "time", error);
-  if(attr == NULL) return NULL;
-
-  if(for_sync == TRUE)
-  {
-    /* TODO: diff to previous request, if any? */
-    vector = inf_adopted_state_vector_from_string((const gchar*)attr, error);
-    xmlFree(attr);
-
-    if(vector == NULL) return NULL;
-  }
-  else
-  {
-    vector = inf_adopted_state_vector_from_string_diff(
-      (const gchar*)attr,
-      inf_adopted_user_get_vector(INF_ADOPTED_USER(user)),
-      error
-     );
-
-    xmlFree(attr);
-
-    if(vector == NULL) return NULL;
-  }
-
-  /* Get first child element */
-  child = xml->children;
-  while(child != NULL && child->type != XML_ELEMENT_NODE)
-    child = child->next;
-
-  if(child == NULL)
-  {
-    g_set_error(
-      error,
-      inf_adopted_session_error_quark,
-      INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
-      "Operation for request request missing"
-    );
-
-    inf_adopted_state_vector_free(vector);
-    return NULL;
-  }
-
-  if(strcmp((const char*)child->name, "undo") == 0)
-  {
-    type = INF_ADOPTED_REQUEST_UNDO;
-  }
-  else if(strcmp((const char*)child->name, "redo") == 0)
-  {
-    type = INF_ADOPTED_REQUEST_REDO;
-  }
-  else
-  {
-    type = INF_ADOPTED_REQUEST_DO;
-
-    operation = session_class->xml_to_operation(
-      session,
-      INF_ADOPTED_USER(user),
-      child,
-      for_sync,
-      error
-    );
-
-    if(operation == NULL)
-    {
-      inf_adopted_state_vector_free(vector);
-      return NULL;
-    }
-  }
-
-  switch(type)
-  {
-  case INF_ADOPTED_REQUEST_DO:
-    request = inf_adopted_request_new_do(vector, user_id, operation);
-    g_object_unref(G_OBJECT(operation));
-    break;
-  case INF_ADOPTED_REQUEST_UNDO:
-    request = inf_adopted_request_new_undo(vector, user_id);
-    break;
-  case INF_ADOPTED_REQUEST_REDO:
-    request = inf_adopted_request_new_redo(vector, user_id);
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  inf_adopted_state_vector_free(vector);
-  return request;
-}
-#endif
-
 /*
- * Signal handlers and noop timer
+ * Noop timer
  */
 
 static void
@@ -462,86 +239,79 @@ inf_adopted_session_noop_timeout_func(gpointer user_data)
 {
   InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
-  time_t current;
-  GSList* item;
-  InfAdoptedSessionLocalUser* local;
   InfAdoptedOperation* op;
   InfAdoptedRequest* request;
 
   session = INF_ADOPTED_SESSION(user_data);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   priv->noop_timeout = NULL;
+  g_assert(priv->next_noop_user != NULL);
 
-  /* Broadcast noop request for the first user that did not send something
-   * since at least INF_ADOPTED_SESSION_NOOP_TIMEOUT seconds. If there are
-   * are more users, then inf_adopted_session_broadcast_request() will
-   * restart the timer which will elapse in 0 seconds, immediately resulting
-   * in another call to this function. */
-  current = time(NULL);
+  op = INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
+  request = inf_adopted_algorithm_generate_request_noexec(
+    priv->algorithm,
+    priv->next_noop_user->user,
+    op
+  );
+  g_object_unref(op);
 
-  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
-  {
-    local = (InfAdoptedSessionLocalUser*)item->data;
-    g_assert(current >= local->noop_time);
-    if(current - local->noop_time >= INF_ADOPTED_SESSION_NOOP_INTERVAL)
-    {
-      op = INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
-      request = inf_adopted_algorithm_generate_request_noexec(
-        priv->algorithm,
-        local->user,
-        op
-      );
-      g_object_unref(op);
-
-      inf_adopted_session_broadcast_request(session, request);
-      g_object_unref(request);
-      break;
-    }
-  }
+  /* This resets noop_time for this user, determines the next user for
+   * which to generate a noop request and schedules the new timeout. */
+  inf_adopted_session_broadcast_request(session, request);
+  g_object_unref(request);
 }
 
-static void
-inf_adopted_session_reschedule_noop_timer(InfAdoptedSession* session)
+static InfAdoptedSessionLocalUser*
+inf_adopted_session_find_next_noop_user(InfAdoptedSession* session)
 {
   InfAdoptedSessionPrivate* priv;
   GSList* item;
   InfAdoptedSessionLocalUser* local;
-  time_t next;
+  InfAdoptedSessionLocalUser* next_user;
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  next_user = NULL;
+
+  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+  {
+    local = (InfAdoptedSessionLocalUser*)item->data;
+    if(local->noop_time != 0)
+      if(next_user == NULL || local->noop_time < next_user->noop_time)
+        next_user = local;
+  }
+
+  return next_user;
+}
+
+static void
+inf_adopted_session_schedule_noop_timer(InfAdoptedSession* session)
+{
+  InfAdoptedSessionPrivate* priv;
   time_t current;
+  time_t sched;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
-  /* Cancel current timer, if any */
   if(priv->noop_timeout != NULL)
   {
     inf_io_remove_timeout(priv->io, priv->noop_timeout);
     priv->noop_timeout = NULL;
   }
 
-  /* The next timeout is for the user with oldest noop time */
-  if(priv->local_users != NULL)
+  if(priv->next_noop_user != NULL)
   {
-    next = ((InfAdoptedSessionLocalUser*)priv->local_users->data)->noop_time;
-    for(item = priv->local_users->next; item != NULL; item = item->next)
-    {
-      local = (InfAdoptedSessionLocalUser*)item->data;
-      if(local->noop_time < next)
-        next = local->noop_time;
-    }
-
-    next += INF_ADOPTED_SESSION_NOOP_INTERVAL;
     current = time(NULL);
+    sched =
+      priv->next_noop_user->noop_time + INF_ADOPTED_SESSION_NOOP_INTERVAL;
 
-    if(next > current)
-      next -= current;
+    if(sched >= current)
+      sched -= current;
     else
-      next = 0;
+      sched = 0;
 
-    /* TODO: Add API that can be implemented using g_timeout_add_seconds for
-     * timers with only second resolution */
     priv->noop_timeout = inf_io_add_timeout(
       priv->io,
-      next * 1000,
+      sched * 1000,
       inf_adopted_session_noop_timeout_func,
       session,
       NULL
@@ -550,12 +320,58 @@ inf_adopted_session_reschedule_noop_timer(InfAdoptedSession* session)
 }
 
 static void
+inf_adopted_session_start_noop_timer(InfAdoptedSession* session,
+                                     InfAdoptedSessionLocalUser* local)
+{
+  InfAdoptedSessionPrivate* priv;
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  g_assert(local->noop_time == 0);
+  local->noop_time = time(NULL);
+
+  if(priv->noop_timeout == NULL)
+  {
+    priv->next_noop_user = inf_adopted_session_find_next_noop_user(session);
+    g_assert(priv->next_noop_user != NULL);
+
+    inf_adopted_session_schedule_noop_timer(session);
+  }
+}
+
+static void
+inf_adopted_session_stop_noop_timer(InfAdoptedSession* session,
+                                    InfAdoptedSessionLocalUser* local)
+{
+  InfAdoptedSessionPrivate* priv;
+  InfAdoptedSessionLocalUser* next_noop_user;
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  if(local->noop_time > 0)
+  {
+    local->noop_time = 0;
+
+    next_noop_user = inf_adopted_session_find_next_noop_user(session);
+    if(next_noop_user != priv->next_noop_user)
+    {
+      priv->next_noop_user = next_noop_user;
+      inf_adopted_session_schedule_noop_timer(session);
+    }
+  }
+}
+
+/*
+ * Signal handlers
+ */
+
+static void
 inf_adopted_session_local_user_added(InfAdoptedSession* session,
                                      InfAdoptedUser* user)
 {
   InfAdoptedSessionPrivate* priv;
   InfSessionStatus status;
   InfAdoptedSessionLocalUser* local;
+  InfAdoptedStateVector* current_state;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   status = inf_session_get_status(INF_SESSION(session));
@@ -579,14 +395,14 @@ inf_adopted_session_local_user_added(InfAdoptedSession* session,
     )
   );
 
-  local->noop_time = time(NULL);
+  local->noop_time = 0;
 
   priv->local_users = g_slist_prepend(priv->local_users, local);
 
-  /* Start noop timer */
-  if(priv->noop_timeout == NULL)
-    inf_adopted_session_reschedule_noop_timer(session);
-
+  /* Start noop timer if user is not up to date */
+  current_state = inf_adopted_algorithm_get_current(priv->algorithm);
+  if(inf_adopted_state_vector_compare(current_state, local->last_send_vector))
+    inf_adopted_session_start_noop_timer(session, local);
 }
 
 static void
@@ -607,11 +423,10 @@ inf_adopted_session_remove_local_user_cb(InfUserTable* user_table,
   );
   g_assert(local != NULL);
 
+  inf_adopted_session_stop_noop_timer(session, local);
   inf_adopted_state_vector_free(local->last_send_vector);
   priv->local_users = g_slist_remove(priv->local_users, local);
   g_slice_free(InfAdoptedSessionLocalUser, local);
-
-  inf_adopted_session_reschedule_noop_timer(session);
 }
 
 static void
@@ -639,6 +454,70 @@ inf_adopted_session_constructor_foreach_local_user_func(InfUser* user,
   );
 }
 
+static void
+inf_adopted_session_execute_request_cb(InfAdoptedAlgorithm* algorithm,
+                                       InfAdoptedRequest* request,
+                                       gboolean apply,
+                                       gpointer user_data)
+{
+  InfAdoptedSession* session;
+  InfAdoptedSessionPrivate* priv;
+  GSList* item;
+  InfAdoptedSessionLocalUser* local;
+  guint id;
+
+  session = INF_ADOPTED_SESSION(user_data);
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  if(inf_adopted_request_affects_buffer(request))
+  {
+    id = inf_adopted_request_get_user_id(request);
+
+    /* A request has been executed, meaning we are no longer up to date. Send
+     * a noop in some time, so that others know what we already processed. */
+    for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+    {
+      local = (InfAdoptedSessionLocalUser*)item->data;
+      if(local->noop_time == 0)
+        /* Except we issued the request ourselves, of course. */
+        if(inf_user_get_id(INF_USER(local->user)) != id)
+          inf_adopted_session_start_noop_timer(session, local);
+    }
+  }
+}
+
+/*
+ * Helper functions
+ */
+
+static void
+inf_adopted_session_create_algorithm(InfAdoptedSession* session)
+{
+  InfAdoptedSessionPrivate* priv;
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  g_assert(priv->algorithm == NULL);
+
+  g_assert(
+    inf_session_get_status(INF_SESSION(session)) == INF_SESSION_RUNNING
+  );
+
+  priv->algorithm = inf_adopted_algorithm_new_full(
+    inf_session_get_user_table(INF_SESSION(session)),
+    inf_session_get_buffer(INF_SESSION(session)),
+    priv->max_total_log_size
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->algorithm),
+    "execute-request",
+    G_CALLBACK(inf_adopted_session_execute_request_cb),
+    session
+  );
+
+  g_object_notify(G_OBJECT(session), "algorithm");
+}
+
 /*
  * GObject overrides.
  */
@@ -658,6 +537,7 @@ inf_adopted_session_init(GTypeInstance* instance,
   priv->algorithm = NULL;
   priv->local_users = NULL;
   priv->noop_timeout = NULL;
+  priv->next_noop_user = NULL;
 }
 
 static GObject*
@@ -707,11 +587,7 @@ inf_adopted_session_constructor(GType type,
     break;
   case INF_SESSION_RUNNING:
     g_assert(inf_session_get_buffer(INF_SESSION(session)) != NULL);
-    priv->algorithm = inf_adopted_algorithm_new_full(
-      user_table,
-      inf_session_get_buffer(INF_SESSION(session)),
-      priv->max_total_log_size
-    );
+    inf_adopted_session_create_algorithm(session);
 
     break;
   case INF_SESSION_CLOSED:
@@ -770,6 +646,12 @@ inf_adopted_session_dispose(GObject* object)
 
   if(priv->algorithm != NULL)
   {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->algorithm),
+      G_CALLBACK(inf_adopted_session_execute_request_cb),
+      session
+    );
+
     g_object_unref(G_OBJECT(priv->algorithm));
     priv->algorithm = NULL;
   }
@@ -1185,23 +1067,17 @@ inf_adopted_session_synchronization_complete(InfSession* session,
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   g_object_get(G_OBJECT(session), "status", &status, NULL);
 
-  if(status == INF_SESSION_SYNCHRONIZING)
-  {
-    /* Create adOPTed algorithm upon successful synchronization */
-    g_assert(priv->algorithm == NULL);
-    priv->algorithm = inf_adopted_algorithm_new_full(
-      inf_session_get_user_table(session),
-      inf_session_get_buffer(session),
-      priv->max_total_log_size
-    );
-
-    g_object_notify(G_OBJECT(session), "algorithm");
-  }
-
   INF_SESSION_CLASS(parent_class)->synchronization_complete(
     session,
     connection
   );
+
+  if(status == INF_SESSION_SYNCHRONIZING)
+  {
+    /* Create adOPTed algorithm upon successful synchronization */
+    g_assert(priv->algorithm == NULL);
+    inf_adopted_session_create_algorithm(INF_ADOPTED_SESSION(session));
+  }
 }
 
 /*
@@ -1396,9 +1272,6 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
   );
   g_return_if_fail(local != NULL);
 
-  local->noop_time = time(NULL);
-  inf_adopted_session_reschedule_noop_timer(session);
-
   xml = xmlNewNode(NULL, (const xmlChar*)"request");
 
   session_class->request_to_xml(
@@ -1420,6 +1293,8 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
    * (-> affects buffer). */
   if(inf_adopted_request_affects_buffer(request) == TRUE)
     inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
+
+  inf_adopted_session_stop_noop_timer(session, local);
 }
 
 /**
@@ -1551,56 +1426,6 @@ inf_adopted_session_read_request_info(InfAdoptedSession* session,
   
   return TRUE;
 }
-
-#if 0
-  if(strcmp((const char*)child->name, "undo") == 0)
-  {
-    type = INF_ADOPTED_REQUEST_UNDO;
-  }
-  else if(strcmp((const char*)child->name, "redo") == 0)
-  {
-    type = INF_ADOPTED_REQUEST_REDO;
-  }
-  else
-  {
-    type = INF_ADOPTED_REQUEST_DO;
-
-    operation = session_class->xml_to_operation(
-      session,
-      INF_ADOPTED_USER(user),
-      child,
-      for_sync,
-      error
-    );
-
-    if(operation == NULL)
-    {
-      inf_adopted_state_vector_free(vector);
-      return NULL;
-    }
-  }
-
-  switch(type)
-  {
-  case INF_ADOPTED_REQUEST_DO:
-    request = inf_adopted_request_new_do(vector, user_id, operation);
-    g_object_unref(G_OBJECT(operation));
-    break;
-  case INF_ADOPTED_REQUEST_UNDO:
-    request = inf_adopted_request_new_undo(vector, user_id);
-    break;
-  case INF_ADOPTED_REQUEST_REDO:
-    request = inf_adopted_request_new_redo(vector, user_id);
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  inf_adopted_state_vector_free(vector);
-  return request;
-}
-#endif
 
 /**
  * inf_adopted_session_write_request_info:
