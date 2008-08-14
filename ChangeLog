@@ -1,5 +1,12 @@
 2008-08-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session-record.h:
+	* libinfinity/adopted/inf-adopted-session-record.c:
+	* libinfinity/adopted/Makefile.am: Introduced InfAdoptedSessionRecord,
+	a class to record sessions to replay later.
+
+2008-08-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-session.c: Double the interval
 	within which noop requests are sent, and only send a noop if a remote
 	request has been executed since the last request was sent.

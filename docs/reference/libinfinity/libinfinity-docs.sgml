@@ -42,13 +42,14 @@
     <title>Infinote adOPTed implementation</title>
     <xi:include href="xml/inf-adopted-state-vector.xml"/>
     <xi:include href="xml/inf-adopted-session.xml"/>
-    <xi:include href="xml/inf-adopted-operation.xml"/>
     <xi:include href="xml/inf-adopted-user.xml"/>
-    <xi:include href="xml/inf-adopted-request.xml"/>
+    <xi:include href="xml/inf-adopted-session-record.xml"/>
     <xi:include href="xml/inf-adopted-algorithm.xml"/>
+    <xi:include href="xml/inf-adopted-request.xml"/>
+    <xi:include href="xml/inf-adopted-request-log.xml"/>
+    <xi:include href="xml/inf-adopted-operation.xml"/>
     <xi:include href="xml/inf-adopted-split-operation.xml"/>
     <xi:include href="xml/inf-adopted-no-operation.xml"/>
-    <xi:include href="xml/inf-adopted-request-log.xml"/>
   </chapter>
 
   <chapter>

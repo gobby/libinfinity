@@ -22,6 +22,25 @@ INF_ADOPTED_SESSION_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-adopted-session-record</FILE>
+<TITLE>InfAdoptedSessionRecord</TITLE>
+InfAdoptedSessionRecord
+InfAdoptedSessionRecordClass
+inf_adopted_session_record_new
+inf_adopted_session_record_start_recording
+inf_adopted_session_record_stop_recording
+inf_adopted_session_record_is_recording
+<SUBSECTION Standard>
+INF_ADOPTED_SESSION_RECORD
+INF_ADOPTED_IS_SESSION_RECORD
+INF_ADOPTED_TYPE_SESSION_RECORD
+inf_adopted_session_record_get_type
+INF_ADOPTED_SESSION_RECORD_CLASS
+INF_ADOPTED_IS_SESSION_RECORD_CLASS
+INF_ADOPTED_SESSION_RECORD_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>infc-browser</FILE>
 <TITLE>InfcBrowser</TITLE>
 InfcBrowserNodeStatus
