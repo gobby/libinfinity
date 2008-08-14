@@ -794,7 +794,7 @@ inf_text_gtk_buffer_buffer_iter_get_bytes(InfTextBuffer* buffer,
     line_chars = gtk_text_iter_get_chars_in_line(&walk) -
       gtk_text_iter_get_line_offset(&walk);
 
-    if(line_chars + gtk_text_iter_get_offset(&walk) < end)
+    if(line_chars + gtk_text_iter_get_offset(&walk) <= end)
     {
       /* Need whole line */
       line_bytes = gtk_text_iter_get_bytes_in_line(&walk) -
@@ -806,7 +806,7 @@ inf_text_gtk_buffer_buffer_iter_get_bytes(InfTextBuffer* buffer,
       result = gtk_text_iter_forward_line(&walk);
       /* We cannot be in last line, because the end iterator would have to
        * be past the last line then. */
-      g_assert(result == TRUE);
+      g_assert(remaining == 0 || result == TRUE);
     }
     else
     {
