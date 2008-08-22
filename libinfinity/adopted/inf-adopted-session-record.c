@@ -216,7 +216,10 @@ inf_adopted_session_record_real_start(InfAdoptedSessionRecord* record)
   InfAdoptedAlgorithm* algorithm;
   InfUserTable* user_table;
   xmlNodePtr xml;
+  xmlNodePtr child;
+  xmlNodePtr cur;
   int result;
+  guint total;
 
   InfSessionClass* session_class;
 
@@ -264,8 +267,18 @@ inf_adopted_session_record_real_start(InfAdoptedSessionRecord* record)
   result = xmlTextWriterWriteString(priv->writer, (const xmlChar*)"\n  ");
   if(result < 0) inf_adopted_session_record_handle_xml_error(record);
 
+  /* TODO: Have someone else inserting sync-begin and sync-end... that's quite
+   * hacky here. */
   xml = xmlNewNode(NULL, (const xmlChar*)"initial");
+  child = xmlNewChild(xml, NULL, (const xmlChar*)"sync-begin", NULL);
   session_class->to_xml_sync(INF_SESSION(priv->session), xml);
+  xmlNewChild(xml, NULL, (const xmlChar*)"sync-end", NULL);
+
+  total = 0;
+  for(cur = child; cur != NULL; cur = cur->next)
+    ++ total;
+  inf_xml_util_set_attribute_uint(child, "num-messages", total - 2);
+
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
 }

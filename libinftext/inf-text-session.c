@@ -868,17 +868,21 @@ inf_text_session_dispose(GObject* object)
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(algorithm),
-    G_CALLBACK(inf_text_session_apply_request_cb_before),
-    session
-  );
+  /* Algorithm may be NULL if we were still synchronizing */
+  if(algorithm != NULL)
+  {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(algorithm),
+      G_CALLBACK(inf_text_session_apply_request_cb_before),
+      session
+    );
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(algorithm),
-    G_CALLBACK(inf_text_session_apply_request_cb_after),
-    session
-  );
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(algorithm),
+      G_CALLBACK(inf_text_session_apply_request_cb_after),
+      session
+    );
+  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }

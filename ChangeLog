@@ -1,5 +1,31 @@
 2008-08-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-simulated-connection.h:
+	* libinfinity/common/inf-simulated-connection.c:
+	* libinfinity/common/Makefile.am: Added InfSimulatedConnection, an
+	InfXmlConnection implementation that sends XML data from one simulated
+	connection to another.
+
+	* libinfinity/adopted/inf-adopted-session-record.c: Add sync-begin
+	and sync-end to initial, so that the content can directly be fed to an
+	InfSession in INF_SESSION_SYNCHRONIZING state on replay.
+
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_open_group): Added correct const qualifiers
+	to methods parameter.
+
+	* libinftext/inf-text-session.c: Don't disconnect from algorithm's
+	signals in INF_SESSION_SYNCHRONIZING state, because we don't have an
+	algorithm yet at that point. This prevents glib warnings.
+
+	* test/inf-test-text-replay.c:
+	* test/Makefile.am: Added test that replays a record from
+	InfAdoptedSessionRecord internally (without visualization). This can
+	be used to reproduce libinfinity bugs.
+
+2008-08-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-marshal.in: Added VOID:OBJECT,OBJECT,BOOLEAN
 	marshaller.
 

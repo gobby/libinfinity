@@ -18,7 +18,7 @@ endif
 noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-tcp-server inf-test-daemon inf-test-browser \
 	inf-test-state-vector inf-test-chunk inf-test-text-operations \
-	inf-test-text-session inf-test-text-cleanup
+	inf-test-text-session inf-test-text-cleanup inf-test-text-replay
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
@@ -86,6 +86,14 @@ inf_test_text_cleanup_SOURCES = \
 	inf-test-text-cleanup.c
 
 inf_test_text_cleanup_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	${top_builddir}/libinftext/libinftext-1.0.la \
+	util/libinftestutil.a
+
+inf_test_text_replay_SOURCES = \
+	inf-test-text-replay.c
+
+inf_test_text_replay_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la \
 	${top_builddir}/libinftext/libinftext-1.0.la \
 	util/libinftestutil.a

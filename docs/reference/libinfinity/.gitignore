@@ -9,3 +9,4 @@ libinfinity.interfaces
 libinfinity.prerequisites
 libinfinity.signals
 tmpl
+*.bak

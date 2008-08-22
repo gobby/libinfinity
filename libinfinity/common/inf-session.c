@@ -620,7 +620,7 @@ inf_session_set_property(GObject* object,
 
       priv->shared.sync.group = group;
       /* ref_group is done in register_sync when all components for
-        * initial sync are there */
+       * initial sync are there */
       inf_session_register_sync(session);
     }
 

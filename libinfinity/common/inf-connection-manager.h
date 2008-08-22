@@ -183,7 +183,8 @@ InfConnectionManagerGroup*
 inf_connection_manager_open_group(InfConnectionManager* manager,
                                   const gchar* group_name,
                                   InfNetObject* net_object,
-                                  InfConnectionManagerMethodDesc** methods);
+                                  const InfConnectionManagerMethodDesc* const*
+                                          methods);
 
 InfConnectionManagerGroup*
 inf_connection_manager_join_group(InfConnectionManager* manager,

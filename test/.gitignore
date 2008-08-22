@@ -3,9 +3,10 @@ inf-test-browser
 inf-test-chunk
 inf-test-daemon
 inf-test-tcp-connection
+inf-test-text-cleanup
 inf-test-text-operations
 inf-test-text-session
-inf-test-text-cleanup
+inf-test-text-replay
 inf-test-xmpp-connection
 inf-test-state-vector
 inf-test-tcp-server

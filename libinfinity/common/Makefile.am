@@ -25,6 +25,7 @@ libinfinity_common_la_SOURCES = \
 	inf-method-manager.c \
 	inf-net-object.c \
 	inf-session.c \
+	inf-simulated-connection.c \
 	inf-standalone-io.c \
 	inf-tcp-connection.c \
 	inf-user.c \
@@ -47,6 +48,7 @@ libinfinity_common_la_HEADERS = \
 	inf-method-manager.h \
 	inf-net-object.h \
 	inf-session.h \
+	inf-simulated-connection.h \
 	inf-standalone-io.h \
 	inf-tcp-connection.h \
 	inf-user.h \

@@ -525,6 +525,28 @@ INF_TYPE_XML_CONNECTION_STATUS
 </SECTION>
 
 <SECTION>
+<FILE>inf-simulated-connection</FILE>
+<TITLE>InfSimulatedConnection</TITLE>
+InfSimulatedConnection
+InfSimulatedConnectionClass
+InfSimulatedConnectionMode
+inf_simulated_connection_new
+inf_simulated_connection_connect
+inf_simulated_connection_set_mode
+inf_simulated_connection_flush
+<SUBSECTION Standard>
+INF_SIMULATED_CONNECTION
+INF_IS_SIMULATED_CONNECTION
+INF_TYPE_SIMULATED_CONNECTION
+inf_simulated_connection_get_type
+INF_SIMULATED_CONNECTION_CLASS
+INF_IS_SIMULATED_CONNECTION_CLASS
+INF_SIMULATED_CONNECTION_GET_CLASS
+inf_simulated_connection_mode_get_type
+INF_TYPE_SIMULATED_CONNECTION_MODE
+</SECTION>
+
+<SECTION>
 <FILE>inf-connection-manager</FILE>
 <TITLE>InfConnectionManager</TITLE>
 InfConnectionManagerGroup
@@ -566,6 +588,19 @@ INF_CONNECTION_MANAGER_CLASS
 INF_IS_CONNECTION_MANAGER_CLASS
 INF_CONNECTION_MANAGER_GET_CLASS
 INF_TYPE_CONNECTION_MANAGER_GROUP
+</SECTION>
+
+<SECTION>
+<FILE>inf-central-method</FILE>
+<TITLE>InfCentralMethod</TITLE>
+inf_central_method_open
+inf_central_method_join
+inf_central_method_finalize
+inf_central_method_receive_msg
+inf_central_method_receive_ctrl
+inf_central_method_add_connection
+inf_central_method_remove_connection
+inf_central_method_send_to_net
 </SECTION>
 
 <SECTION>
@@ -922,7 +957,7 @@ INFC_TYPE_BROWSER_ITER
 
 <SECTION>
 <FILE>inf-error</FILE>
-<TITLE>Common error codes</TITLE>
+<TITLE>InfError</TITLE>
 InfRequestError
 InfUserJoinError
 InfUserStatusChangeError
@@ -962,7 +997,7 @@ INF_TYPE_IP_ADDRESS_FAMILY
 
 <SECTION>
 <FILE>inf-xml-util</FILE>
-<TITLE>XML utility functions</TITLE>
+<TITLE>InfXmlUtil</TITLE>
 inf_xml_util_get_attribute
 inf_xml_util_get_attribute_required
 inf_xml_util_get_attribute_int

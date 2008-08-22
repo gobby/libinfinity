@@ -1248,11 +1248,12 @@ InfConnectionManagerGroup*
 inf_connection_manager_open_group(InfConnectionManager* manager,
                                   const gchar* group_name,
                                   InfNetObject* net_object,
-                                  InfConnectionManagerMethodDesc** methods)
+                                  const InfConnectionManagerMethodDesc* const*
+                                          methods)
 {
   InfConnectionManagerPrivate* priv;
   InfConnectionManagerGroup* group;
-  InfConnectionManagerMethodDesc** desc;
+  const InfConnectionManagerMethodDesc* const* desc;
   InfConnectionManagerMethodInstance* instance;
   
   g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
