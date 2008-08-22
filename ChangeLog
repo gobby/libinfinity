@@ -1,3 +1,15 @@
+2008-08-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-central-method.h:
+	* libinfinity/inf-central-method.c: Moved the implementation of a
+	method implementing central communication into the public libinfinity
+	API, so that it can be used by different networks.
+
+	* libinfinity/method/local-central/inf-method-local-central.c: Use the
+	InfCentralMethod API.
+
+	* libinfinity/Makefile.am: Added InfCentralMethod to the build.
+
 2008-08-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.c
