@@ -42,11 +42,16 @@
  * test suite.
  */
 
+/* TODO: Record user join/leave events, and update last send vectors on
+ * rejoin. */
+
 typedef struct _InfAdoptedSessionRecordPrivate InfAdoptedSessionRecordPrivate;
 struct _InfAdoptedSessionRecordPrivate {
   InfAdoptedSession* session;
   xmlTextWriterPtr writer;
   gchar* filename;
+
+  GHashTable* last_send_table;
 };
 
 enum {
@@ -120,7 +125,22 @@ inf_adopted_session_record_write_node(InfAdoptedSessionRecord* record,
 }
 
 static void
+inf_adopted_session_record_user_joined(InfAdoptedSessionRecord* record,
+                                       InfAdoptedUser* user)
+{
+  InfAdoptedSessionRecordPrivate* priv;
+  priv = INF_ADOPTED_SESSION_RECORD_PRIVATE(record);
+
+  g_hash_table_insert(
+    priv->last_send_table,
+    user,
+    inf_adopted_state_vector_copy(inf_adopted_user_get_vector(user))
+  );
+}
+
+static void
 inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
+                                              InfAdoptedUser* user,
                                               InfAdoptedRequest* request,
                                               gboolean apply,
                                               gpointer user_data)
@@ -128,6 +148,7 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   InfAdoptedSessionRecord* record;
   InfAdoptedSessionRecordPrivate* priv;
   InfAdoptedSessionClass* session_class;
+  InfAdoptedStateVector* previous;
   xmlNodePtr xml;
   int result;
 
@@ -139,10 +160,19 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   if(result < 0) inf_adopted_session_record_handle_xml_error(record);
 
   xml = xmlNewNode(NULL, (const xmlChar*)"request");
-  /* TODO: Diff to previous */
-  session_class->request_to_xml(priv->session, xml, request, NULL, FALSE);
+  previous = g_hash_table_lookup(priv->last_send_table, user);
+  g_assert(previous != NULL);
+
+  session_class->request_to_xml(priv->session, xml, request, previous, FALSE);
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
+
+  /* Update last send entry */
+  previous =
+    inf_adopted_state_vector_copy(inf_adopted_request_get_vector(request));
+  if(inf_adopted_request_affects_buffer(request))
+    inf_adopted_state_vector_add(previous, inf_user_get_id(INF_USER(user)), 1);
+  g_hash_table_insert(priv->last_send_table, user, previous);
 }
 
 static void
@@ -158,6 +188,8 @@ inf_adopted_session_record_add_user_cb(InfUserTable* user_table,
   record = INF_ADOPTED_SESSION_RECORD(user_data);
   priv = INF_ADOPTED_SESSION_RECORD_PRIVATE(record);
 
+  inf_adopted_session_record_user_joined(record, INF_ADOPTED_USER(user));
+
   result = xmlTextWriterWriteString(priv->writer, (const xmlChar*)"\n  ");
   if(result < 0) inf_adopted_session_record_handle_xml_error(record);
 
@@ -165,6 +197,16 @@ inf_adopted_session_record_add_user_cb(InfUserTable* user_table,
   inf_session_user_to_xml(INF_SESSION(priv->session), user, xml);
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
+}
+
+static void
+inf_adopted_session_record_start_foreach_user_func(InfUser* user,
+                                                   gpointer user_data)
+{
+  inf_adopted_session_record_user_joined(
+    INF_ADOPTED_SESSION_RECORD(user_data),
+    INF_ADOPTED_USER(user)
+  );
 }
 
 static void
@@ -194,6 +236,19 @@ inf_adopted_session_record_real_start(InfAdoptedSessionRecord* record)
     G_OBJECT(user_table),
     "add-user",
     G_CALLBACK(inf_adopted_session_record_add_user_cb),
+    record
+  );
+
+  priv->last_send_table = g_hash_table_new_full(
+    NULL,
+    NULL,
+    NULL,
+    (GDestroyNotify)inf_adopted_state_vector_free
+  );
+
+  inf_user_table_foreach_user(
+    inf_session_get_user_table(INF_SESSION(priv->session)),
+    inf_adopted_session_record_start_foreach_user_func,
     record
   );
 
@@ -249,6 +304,7 @@ inf_adopted_session_record_init(GTypeInstance* instance,
   priv->session = NULL;
   priv->writer = NULL;
   priv->filename = NULL;
+  priv->last_send_table = NULL;
 }
 
 static void
@@ -599,6 +655,9 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
   g_free(priv->filename);
   priv->filename = NULL;
 
+  g_hash_table_unref(priv->last_send_table);
+  priv->last_send_table = NULL;
+
   return result >= 0;
 }
 
@@ -616,3 +675,5 @@ inf_adopted_session_record_is_recording(InfAdoptedSessionRecord* record)
   g_return_val_if_fail(INF_ADOPTED_IS_SESSION_RECORD(record), FALSE);
   return INF_ADOPTED_SESSION_RECORD_PRIVATE(record)->writer != NULL;
 }
+
+/* vim:set et sw=2 ts=2: */

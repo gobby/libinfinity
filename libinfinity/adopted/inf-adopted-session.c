@@ -456,6 +456,7 @@ inf_adopted_session_constructor_foreach_local_user_func(InfUser* user,
 
 static void
 inf_adopted_session_execute_request_cb(InfAdoptedAlgorithm* algorithm,
+                                       InfAdoptedUser* user,
                                        InfAdoptedRequest* request,
                                        gboolean apply,
                                        gpointer user_data)

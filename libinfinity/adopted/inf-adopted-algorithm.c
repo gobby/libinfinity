@@ -1408,6 +1408,7 @@ inf_adopted_algorithm_can_redo_changed(InfAdoptedAlgorithm* algorithm,
  * modify it anymore after having emitted execute_request. */
 static void
 inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
+                                      InfAdoptedUser* user,
                                       InfAdoptedRequest* request,
                                       gboolean apply)
 {
@@ -1423,9 +1424,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* original;
   InfAdoptedStateVector* v;
 
-  InfAdoptedUser* user;
-  guint user_id;
-
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
   g_assert(
@@ -1435,11 +1433,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     ) == TRUE
   );
 
-  user_id = inf_adopted_request_get_user_id(request);
-  user = INF_ADOPTED_USER(
-    inf_user_table_lookup_user_by_id(priv->user_table, user_id)
-  );
-  g_assert(user != NULL);
   log = inf_adopted_user_get_request_log(user);
 
   /* TODO: We can save some copies here since translate_request does another
@@ -1746,9 +1739,10 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, execute_request),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_BOOLEAN,
+    inf_marshal_VOID__OBJECT_OBJECT_BOOLEAN,
     G_TYPE_NONE,
-    2,
+    3,
+    INF_ADOPTED_TYPE_USER,
     INF_ADOPTED_TYPE_REQUEST,
     G_TYPE_BOOLEAN
   );
@@ -1947,6 +1941,7 @@ inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
     G_OBJECT(algorithm),
     algorithm_signals[EXECUTE_REQUEST],
     0,
+    user,
     request,
     FALSE
   );
@@ -1998,6 +1993,7 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
     G_OBJECT(algorithm),
     algorithm_signals[EXECUTE_REQUEST],
     0,
+    user,
     request,
     TRUE
   );
@@ -2047,6 +2043,7 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
     G_OBJECT(algorithm),
     algorithm_signals[EXECUTE_REQUEST],
     0,
+    user,
     request,
     TRUE
   );
@@ -2096,6 +2093,7 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
     G_OBJECT(algorithm),
     algorithm_signals[EXECUTE_REQUEST],
     0,
+    user,
     request,
     TRUE
   );
@@ -2168,6 +2166,7 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
       G_OBJECT(algorithm),
       algorithm_signals[EXECUTE_REQUEST],
       0,
+      user,
       request,
       TRUE
     );
@@ -2182,10 +2181,15 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
         vector = inf_adopted_request_get_vector(queued_request);
         if(inf_adopted_state_vector_causally_before(vector, priv->current))
         {
+          user_id = inf_adopted_request_get_user_id(queued_request);
+          user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
+          g_assert(user != NULL);
+
           g_signal_emit(
             G_OBJECT(algorithm),
             algorithm_signals[EXECUTE_REQUEST],
             0,
+            user,
             queued_request,
             TRUE
           );

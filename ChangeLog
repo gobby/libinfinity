@@ -1,5 +1,20 @@
 2008-08-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-marshal.in: Added VOID:OBJECT,OBJECT,BOOLEAN
+	marshaller.
+
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Added user parameter
+	for the "execute-request" signal.
+
+	* libinfinity/adopted/inf-adopted-session.c: Adapt.
+
+	* libinfinity/adopted/inf-adopted-session-record.c: Store vector time
+	diffs between requests of the same user, so that the XML can be given
+	directly to InfAdoptedSession for replay.
+
+2008-08-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-central-method.h:
 	* libinfinity/inf-central-method.c: Moved the implementation of a
 	method implementing central communication into the public libinfinity

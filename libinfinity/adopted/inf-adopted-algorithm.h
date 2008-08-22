@@ -67,10 +67,10 @@ struct _InfAdoptedAlgorithmClass {
                           gboolean can_redo);
 
   void(*execute_request)(InfAdoptedAlgorithm* algorithm,
+                         InfAdoptedUser* user,
                          InfAdoptedRequest* request,
                          gboolean apply);
 
-  /* TODO: Remove user here? */
   void(*apply_request)(InfAdoptedAlgorithm* algorithm,
                        InfAdoptedUser* user,
                        InfAdoptedRequest* request);
