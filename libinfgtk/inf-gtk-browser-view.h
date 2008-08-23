@@ -21,6 +21,7 @@
 
 #include <libinfgtk/inf-gtk-browser-model.h>
 #include <gtk/gtkbin.h>
+#include <gtk/gtkmenu.h>
 
 #include <glib-object.h>
 
@@ -47,6 +48,9 @@ struct _InfGtkBrowserViewClass {
 
   void (*selection_changed)(InfGtkBrowserView* view,
                             GtkTreeIter* iter);
+
+  void (*populate_popup)(InfGtkBrowserView* view,
+                         GtkMenu* menu);
 
   void (*set_scroll_adjustments)(InfGtkBrowserView* view,
                                  GtkAdjustment* hadjustment,

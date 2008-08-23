@@ -26,7 +26,10 @@
 #include <gtk/gtkcellrendererpixbuf.h>
 #include <gtk/gtkcellrenderertext.h>
 #include <gtk/gtkcellrendererprogress.h>
+#include <gtk/gtkimagemenuitem.h>
 #include <gtk/gtkstock.h>
+
+#include <gdk/gdkkeysyms.h>
 
 #define INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION \
   "inf-gtk-browser-view-initial-exploration"
@@ -89,6 +92,7 @@ enum {
 enum {
   ACTIVATE,
   SELECTION_CHANGED,
+  POPULATE_POPUP,
 
   LAST_SIGNAL
 };
@@ -1465,6 +1469,211 @@ inf_gtk_browser_view_selection_changed_cb(GtkTreeSelection* selection,
 }
 
 /*
+ * Popup menu
+ */
+
+static void
+inf_gtk_browser_view_popup_menu_detach_func(GtkWidget* attach_widget,
+                                            GtkMenu* menu)
+{
+}
+
+static void
+inf_gtk_browser_view_popup_menu_position_func(GtkMenu* menu,
+                                              gint* x,
+                                              gint* y,
+                                              gboolean* push_in,
+                                              gpointer user_data)
+{
+  InfGtkBrowserView* view;
+  InfGtkBrowserViewPrivate* priv;
+  GdkWindow* bin_window;
+  GdkScreen* screen;
+  GtkRequisition menu_req;
+  GdkRectangle monitor;
+  gint monitor_num;
+  gint orig_x;
+  gint orig_y;
+  gint height;
+
+  GtkTreeSelection* selection;
+  GtkTreeModel* model;
+  GtkTreeIter selected_iter;
+  GtkTreePath* selected_path;
+  GdkRectangle cell_area;
+
+  view = INF_GTK_BROWSER_VIEW(user_data);
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+
+  /* Place menu below currently selected row */
+
+  bin_window = gtk_tree_view_get_bin_window(GTK_TREE_VIEW(priv->treeview));
+  gdk_window_get_origin(bin_window, &orig_x, &orig_y);
+
+  screen = gtk_widget_get_screen(GTK_WIDGET(view));
+  monitor_num = gdk_screen_get_monitor_at_window(screen, bin_window);
+  if(monitor_num < 0) monitor_num = 0;
+  gtk_menu_set_monitor(menu, monitor_num);
+
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &monitor);
+  gtk_widget_size_request(GTK_WIDGET(menu), &menu_req);
+  gdk_drawable_get_size(GDK_DRAWABLE(bin_window), NULL, &height);
+
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->treeview));
+  gtk_tree_selection_get_selected(selection, &model, &selected_iter);
+  selected_path = gtk_tree_model_get_path(model, &selected_iter);
+  gtk_tree_view_get_cell_area(
+    GTK_TREE_VIEW(priv->treeview),
+    selected_path,
+    priv->column,
+    &cell_area
+  );
+  gtk_tree_path_free(selected_path);
+
+  g_assert(cell_area.height > 0);
+
+  if(gtk_widget_get_direction(GTK_WIDGET(view)) == GTK_TEXT_DIR_LTR)
+    *x = orig_x + cell_area.x + cell_area.width - menu_req.width;
+  else
+    *x = orig_x + cell_area.x;
+
+  *y = orig_y + cell_area.y + cell_area.height;
+
+  /* Keep within widget */
+  if(*y < orig_y)
+    *y = orig_y;
+  if(*y > orig_y + height)
+    *y = orig_y + height;
+
+  /* Keep on screen */
+  if(*y + menu_req.height > monitor.y + monitor.height)
+    *y = monitor.y + monitor.height - menu_req.height;
+  if(*y < monitor.y)
+    *y = monitor.y;
+
+  *push_in = FALSE;
+}
+
+static gboolean
+inf_gtk_browser_view_show_popup(InfGtkBrowserView* view,
+                                guint button, /* 0 if triggered by keyboard */
+                                guint32 time)
+{
+  GtkWidget* menu;
+  GList* children;
+  gboolean result;
+
+  menu = gtk_menu_new();
+
+  gtk_menu_attach_to_widget(
+    GTK_MENU(menu),
+    GTK_WIDGET(view),
+    inf_gtk_browser_view_popup_menu_detach_func
+  );
+
+  g_signal_emit(view, view_signals[POPULATE_POPUP], 0, menu);
+
+  /* Only show menu if items have been added to it */
+  children = gtk_container_get_children(GTK_CONTAINER(menu));
+  if(children != NULL)
+  {
+    result = TRUE;
+
+    if(button)
+    {
+      gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, time);
+    }
+    else
+    {
+      gtk_menu_popup(
+        GTK_MENU(menu),
+        NULL,
+        NULL,
+        inf_gtk_browser_view_popup_menu_position_func,
+        view,
+        button,
+        time
+      );
+
+      gtk_menu_shell_select_first(GTK_MENU_SHELL(menu), FALSE);
+    }
+  }
+  else
+  {
+    result = FALSE;
+    gtk_widget_destroy(menu);
+  }
+
+  g_list_free(children);
+  return result;
+}
+
+static gboolean
+inf_gtk_browser_view_button_press_event_cb(GtkTreeView* treeview,
+                                           GdkEventButton* event,
+                                           gpointer user_data)
+{
+  GtkTreePath* path;
+  gboolean has_path;
+
+  if(event->button == 3 &&
+     event->window == gtk_tree_view_get_bin_window(treeview))
+  {
+    has_path = gtk_tree_view_get_path_at_pos(
+      treeview,
+      event->x,
+      event->y,
+      &path,
+      NULL,
+      NULL,
+      NULL
+    );
+
+    if(has_path)
+    {
+      gtk_tree_selection_select_path(
+        gtk_tree_view_get_selection(treeview),
+        path
+      );
+
+      gtk_tree_path_free(path);
+
+      return inf_gtk_browser_view_show_popup(
+        INF_GTK_BROWSER_VIEW(user_data),
+        event->button,
+        event->time
+      );
+    }
+  }
+
+  return FALSE;
+}
+
+static gboolean
+inf_gtk_browser_view_key_press_event_cb(GtkTreeView* treeview,
+                                        GdkEventKey* event,
+                                        gpointer user_data)
+{
+  GtkTreeSelection* selection;
+  GtkTreeIter iter;
+
+  if(event->keyval == GDK_Menu)
+  {
+    selection = gtk_tree_view_get_selection(treeview);
+    if(gtk_tree_selection_get_selected(selection, NULL, &iter))
+    {
+      return inf_gtk_browser_view_show_popup(
+        INF_GTK_BROWSER_VIEW(user_data),
+        0,
+        event->time
+      );
+    }
+  }
+
+  return FALSE;
+}
+
+/*
  * CellDataFuncs
  */
 
@@ -1949,6 +2158,20 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   );
 
   g_signal_connect(
+    priv->treeview,
+    "button-press-event",
+    G_CALLBACK(inf_gtk_browser_view_button_press_event_cb),
+    view
+  );
+
+  g_signal_connect(
+    priv->treeview,
+    "key-press-event",
+    G_CALLBACK(inf_gtk_browser_view_key_press_event_cb),
+    view
+  );
+
+  g_signal_connect(
     selection,
     "changed",
     G_CALLBACK(inf_gtk_browser_view_selection_changed_cb),
@@ -2166,6 +2389,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
 
   view_class->activate = NULL;
   view_class->selection_changed = NULL;
+  view_class->populate_popup = NULL;
   view_class->set_scroll_adjustments =
     inf_gtk_browser_view_set_scroll_adjustments;
 
@@ -2203,6 +2427,18 @@ inf_gtk_browser_view_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
+
+  view_signals[POPULATE_POPUP] = g_signal_new(
+    "populate-popup",
+    G_TYPE_FROM_CLASS(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfGtkBrowserViewClass, populate_popup),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    GTK_TYPE_MENU
   );
 
   widget_class->set_scroll_adjustments_signal = g_signal_new(

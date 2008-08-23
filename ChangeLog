@@ -1,3 +1,10 @@
+2008-08-23  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c: Added the "populate-popup" signal.
+	If signal handlers add menu items to the popup menu, then a popup menu
+	is displayed.
+
 2008-08-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-simulated-connection.h:

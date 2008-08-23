@@ -31,6 +31,14 @@ InfGtkBrowserView
 @infgtkbrowserview: the object which received the signal.
 @arg1: 
 
+<!-- ##### SIGNAL InfGtkBrowserView::populate-popup ##### -->
+<para>
+
+</para>
+
+@infgtkbrowserview: the object which received the signal.
+@arg1: 
+
 <!-- ##### SIGNAL InfGtkBrowserView::selection-changed ##### -->
 <para>
 
