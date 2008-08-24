@@ -9,6 +9,12 @@
 
 	* libinfinity/server/infd-directory.c: Adapt to API change.
 
+2008-08-24  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c: Added
+	inf_gtk_browser_view_set_selected().
+
 2008-08-23  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-view.h:

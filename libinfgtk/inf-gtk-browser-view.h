@@ -77,6 +77,10 @@ gboolean
 inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
                                   GtkTreeIter* iter);
 
+void
+inf_gtk_browser_view_set_selected(InfGtkBrowserView* view,
+                                  GtkTreeIter* iter);
+
 G_END_DECLS
 
 #endif /* __INF_GTK_BROWSER_VIEW_H__ */

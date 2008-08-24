@@ -75,6 +75,7 @@ inf_gtk_browser_view_new
 inf_gtk_browser_view_new_with_model
 inf_gtk_browser_view_get_model
 inf_gtk_browser_view_get_selected
+inf_gtk_browser_view_set_selected
 <SUBSECTION Standard>
 InfGtkBrowserViewClass
 INF_GTK_BROWSER_VIEW
