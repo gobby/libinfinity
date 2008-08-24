@@ -2569,4 +2569,39 @@ inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
   return gtk_tree_selection_get_selected(selection, NULL, iter);
 }
 
+/**
+ * inf_gtk_browser_view_set_selected:
+ * @view: A #InfGtkBrowserView.
+ * @iter: A #GtkTreeIter pointing to a row in @view.
+ *
+ * Sets the currently selected row to be @iter. If necessary, rows will be
+ * expanded so that @iter is visible.
+ */
+void
+inf_gtk_browser_view_set_selected(InfGtkBrowserView* view,
+                                  GtkTreeIter* iter)
+{
+  InfGtkBrowserViewPrivate* priv;
+  GtkTreeView* treeview;
+  GtkTreeSelection* selection;
+  GtkTreePath* path;
+
+  g_return_if_fail(INF_GTK_IS_BROWSER_VIEW(view));
+  g_return_if_fail(iter != NULL);
+
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  treeview = GTK_TREE_VIEW(priv->treeview);
+  selection = gtk_tree_view_get_selection(treeview);
+
+  path =
+    gtk_tree_model_get_path(gtk_tree_view_get_model(priv->treeview), iter);
+  g_assert(path != NULL);
+
+  gtk_tree_view_expand_to_path(treeview, path);
+  gtk_tree_view_scroll_to_cell(treeview, path, NULL, FALSE, 0.0f, 0.0f);
+  gtk_tree_path_free(path);
+
+  gtk_tree_selection_select_iter(selection, iter);
+}
+
 /* vim:set et sw=2 ts=2: */

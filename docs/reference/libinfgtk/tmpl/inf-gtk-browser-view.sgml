@@ -97,3 +97,12 @@ InfGtkBrowserView
 @Returns: 
 
 
+<!-- ##### FUNCTION inf_gtk_browser_view_set_selected ##### -->
+<para>
+
+</para>
+
+@view: 
+@iter: 
+
+
