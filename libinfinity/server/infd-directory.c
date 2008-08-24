@@ -1698,7 +1698,15 @@ infd_directory_node_remove(InfdDirectory* directory,
   g_assert(priv->storage != NULL);
 
   infd_directory_node_get_path(node, &path, NULL);
-  result = infd_storage_remove_node(priv->storage, path, error);
+  result = infd_storage_remove_node(
+    priv->storage,
+    node->type == INFD_STORAGE_NODE_NOTE ?
+      node->shared.note.plugin->note_type :
+      NULL,
+    path,
+    error
+  );
+
   g_free(path);
 
   if(result == FALSE)

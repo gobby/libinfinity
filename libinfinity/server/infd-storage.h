@@ -65,6 +65,7 @@ struct _InfdStorageIface {
                                   GError** error);
 
   gboolean (*remove_node)(InfdStorage* storage,
+                          const gchar* identifier,
                           const gchar* path,
                           GError** error);
 
@@ -109,6 +110,7 @@ infd_storage_create_subdirectory(InfdStorage* storage,
 
 gboolean
 infd_storage_remove_node(InfdStorage* storage,
+                         const gchar* identifier,
                          const gchar* path,
                          GError** error);
 

@@ -266,8 +266,8 @@ infd_storage_read_subdirectory(InfdStorage* storage,
  **/
 gboolean
 infd_storage_create_subdirectory(InfdStorage* storage,
-                                           const gchar* path,
-                                           GError** error)
+                                 const gchar* path,
+                                 GError** error)
 {
   InfdStorageIface* iface;
 
@@ -283,6 +283,8 @@ infd_storage_create_subdirectory(InfdStorage* storage,
 /**
  * infd_storage_remove_node:
  * @storage: A #InfdStorage
+ * @identifier: The type of the node to remove, or %NULL to remove a
+ * subdirectory (TODO: This shouldn't be necessary).
  * @path: A path pointing to an existing node.
  * @error: Location to store error information.
  *
@@ -293,8 +295,9 @@ infd_storage_create_subdirectory(InfdStorage* storage,
  **/
 gboolean
 infd_storage_remove_node(InfdStorage* storage,
-                                   const gchar* path,
-                                   GError** error)
+                         const gchar* identifier,
+                         const gchar* path,
+                         GError** error)
 {
   InfdStorageIface* iface;
 
@@ -304,7 +307,7 @@ infd_storage_remove_node(InfdStorage* storage,
   iface = INFD_STORAGE_GET_IFACE(storage);
   g_return_val_if_fail(iface->remove_node != NULL, FALSE);
 
-  return iface->remove_node(storage, path, error);
+  return iface->remove_node(storage, identifier, path, error);
 }
 
 /* vim:set et sw=2 ts=2: */

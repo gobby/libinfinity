@@ -365,12 +365,14 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
 
 static gboolean
 infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
+                                            const gchar* identifier,
                                             const gchar* path,
                                             GError** error)
 {
   InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
   gchar* converted_name;
+  gchar* disk_name;
   gchar* full_name;
   gboolean ret;
 
@@ -384,8 +386,18 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   if(converted_name == NULL)
     return FALSE;
 
-  full_name = g_build_filename(priv->root_directory, converted_name, NULL);
-  g_free(converted_name);
+  if(identifier != NULL)
+  {
+    disk_name = g_strconcat(converted_name, ".", identifier, NULL);
+    g_free(converted_name);
+  }
+  else
+  {
+    disk_name = converted_name;
+  }
+
+  full_name = g_build_filename(priv->root_directory, disk_name, NULL);
+  g_free(disk_name);
 
   ret = infd_filesystem_storage_remove_rec(full_name, error);
   g_free(full_name);

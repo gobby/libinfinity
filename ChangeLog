@@ -1,3 +1,14 @@
+2008-08-24  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-storage.h:
+	* libinfinity/server/infd-storage.c: Make the remove_node function
+	take an identifier, so that it knows what node to remove.
+
+	* libinfinity/server/infd-filesystem-storage.c: Implemented
+	accordingly.
+
+	* libinfinity/server/infd-directory.c: Adapt to API change.
+
 2008-08-23  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-view.h:
