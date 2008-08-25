@@ -1,3 +1,28 @@
+2008-08-25  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-user.h:
+	* libinfinity/common/inf-user.c: Replaced INF_USER_AVAILABLE status by
+	INF_USER_ACTIVE and INF_USER_INACTIVE, added
+	inf_user_status_to_string() and inf_user_status_from_string().
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Merged InfUserJoinError and
+	InfUserStatusChangeError to InfUserError.
+
+	* libinfinity/adopted/inf-adopted-session.c: Automatically set
+	inactive users active when they issue non-noop requests.
+
+	* libinfinity/client/infc-session-proxy.h:
+	* libinfinity/client/infc-session-proxy.c: Replaced
+	infc_session_proxy_leave_user() by
+	infc_session_proxy_set_user_status().
+
+	* libinfinity/common/inf-session.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* test/inf-test-gtk-browser.c:
+	* test/inf-test-text-cleanup.c:
+	* test/inf-test-text-session.c: Adapt to API changes.
+
 2008-08-24  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-storage.h:

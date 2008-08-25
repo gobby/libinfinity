@@ -156,7 +156,7 @@ InfcSessionProxy
 InfcSessionProxyClass
 infc_session_proxy_set_connection
 infc_session_proxy_join_user
-infc_session_proxy_leave_user
+infc_session_proxy_set_user_status
 infc_session_proxy_get_session
 infc_session_proxy_get_connection
 infc_session_proxy_get_subscription_group
@@ -327,6 +327,8 @@ inf_user_get_name
 inf_user_get_status
 inf_user_get_flags
 inf_user_get_connection
+inf_user_status_to_string
+inf_user_status_from_string
 <SUBSECTION Standard>
 INF_USER
 INF_IS_USER
@@ -959,15 +961,12 @@ INFC_TYPE_BROWSER_ITER
 <FILE>inf-error</FILE>
 <TITLE>InfError</TITLE>
 InfRequestError
-InfUserJoinError
-InfUserStatusChangeError
+InfUserError
 InfDirectoryError
 inf_request_error_quark
 inf_request_strerror
-inf_user_join_error_quark
-inf_user_join_strerror
-inf_user_status_change_error_quark
-inf_user_status_change_strerror
+inf_user_error_quark
+inf_user_strerror
 inf_directory_error_quark
 inf_directory_strerror
 </SECTION>

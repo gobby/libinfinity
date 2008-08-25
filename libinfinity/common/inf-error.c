@@ -53,50 +53,30 @@ inf_request_strerror(InfRequestError code)
 }
 
 GQuark
-inf_user_join_error_quark(void)
+inf_user_error_quark(void)
 {
-  return g_quark_from_static_string("INF_USER_JOIN_ERROR");
+  return g_quark_from_static_string("INF_USER_ERROR");
 }
 
 const gchar*
-inf_user_join_strerror(InfUserJoinError code)
+inf_user_strerror(InfUserError code)
 {
   switch(code)
   {
-  case INF_USER_JOIN_ERROR_NAME_IN_USE:
+  case INF_USER_ERROR_NAME_IN_USE:
     return "Name is already in use";
-  case INF_USER_JOIN_ERROR_ID_PROVIDED:
+  case INF_USER_ERROR_ID_PROVIDED:
     return "'id' attribute provided in request";
-  case INF_USER_JOIN_ERROR_NO_SUCH_USER:
+  case INF_USER_ERROR_NO_SUCH_USER:
     return "There is no user with the given ID";
-  case INF_USER_JOIN_ERROR_STATUS_PROVIDED:
-    return "'status' attribute provided in request";
-  case INF_USER_JOIN_ERROR_FAILED:
-    return "An unknown user join error occured";
-  default:
-    return "An error with unknown error code occured";
-  }
-}
-
-GQuark
-inf_user_status_change_error_quark(void)
-{
-  return g_quark_from_static_string("INF_USER_STATUS_CHANGE_ERROR");
-}
-
-const gchar*
-inf_user_status_change_strerror(InfUserStatusChangeError code)
-{
-  switch(code)
-  {
-  case INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER:
-    return "There is no user with the given ID";
-  case INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED:
+  case INF_USER_ERROR_STATUS_UNAVAILABLE:
+    return "'status' attribute is 'unavailable' in join or rejoin request";
+  case INF_USER_ERROR_NOT_JOINED:
     return "User did not join via this connection";
-  case INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS:
+  case INF_USER_ERROR_INVALID_STATUS:
     return "'status' attribute has invalid value";
-  case INF_USER_STATUS_CHANGE_ERROR_FAILED:
-    return "An unknown user leave error occured";
+  case INF_USER_ERROR_FAILED:
+    return "An unknown user error occured";
   default:
     return "An error with unknown error code occured";
   }

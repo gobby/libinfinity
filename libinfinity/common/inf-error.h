@@ -46,30 +46,22 @@ typedef enum _InfRequestError {
   INF_REQUEST_ERROR_FAILED
 } InfRequestError;
 
-typedef enum _InfUserJoinError {
+typedef enum _InfUserError {
   /* The requested name is already in use by another user */
-  INF_USER_JOIN_ERROR_NAME_IN_USE,
-  /* An id attribute was provided, but the server assigns it */
-  INF_USER_JOIN_ERROR_ID_PROVIDED,
-  /* User is not present, in case of a user rejoin */
-  INF_USER_JOIN_ERROR_NO_SUCH_USER,
-  /* A status attribute was provided, but the status is always
-   * 'available' after a user-join. */
-  INF_USER_JOIN_ERROR_STATUS_PROVIDED,
-
-  INF_USER_JOIN_ERROR_FAILED
-} InfUserJoinError;
-
-typedef enum _InfUserStatusChangeError {
-  /* There is no user with the given ID */
-  INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER,
+  INF_USER_ERROR_NAME_IN_USE,
+  /* An id attribute was provided on a join or rejoin request */
+  INF_USER_ERROR_ID_PROVIDED,
+  /* User is not present, in case of a user rejoin or user status change */
+  INF_USER_ERROR_NO_SUCH_USER,
+  /* Status was given as unavailable during join or rejoin */
+  INF_USER_ERROR_STATUS_UNAVAILABLE,
   /* The user did not join from the connection the request comes from */
-  INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED,
+  INF_USER_ERROR_NOT_JOINED,
   /* An invalid status was given */
-  INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS,
+  INF_USER_ERROR_INVALID_STATUS,
 
-  INF_USER_STATUS_CHANGE_ERROR_FAILED
-} InfUserStatusChangeError;
+  INF_USER_ERROR_FAILED
+} InfUserError;
 
 typedef enum _InfDirectoryError {
   /* A node with this name exists already */
@@ -112,16 +104,10 @@ const gchar*
 inf_request_strerror(InfRequestError code);
 
 GQuark
-inf_user_join_error_quark(void);
+inf_user_error_quark(void);
 
 const gchar*
-inf_user_join_strerror(InfUserJoinError code);
-
-GQuark
-inf_user_status_change_error_quark(void);
-
-const gchar*
-inf_user_status_change_strerror(InfUserStatusChangeError code);
+inf_user_strerror(InfUserError code);
 
 GQuark
 inf_directory_error_quark(void);

@@ -742,12 +742,13 @@ inf_session_process_xml_sync_impl(InfSession* session,
     );
 
     param = inf_session_lookup_user_property(
-      user_props->data,
+      (const GParameter*)user_props->data,
       user_props->len,
       "status"
     );
 
-    if(param != NULL && g_value_get_enum(&param->value) == INF_USER_AVAILABLE)
+    if(param != NULL &&
+       g_value_get_enum(&param->value) != INF_USER_UNAVAILABLE)
     {
       /* Assume that the connection for this available user is the one that
        * the synchronization comes from if the "connection" property is
@@ -854,8 +855,10 @@ inf_session_get_xml_user_props_impl(InfSession* session,
     parameter = inf_session_get_user_property(array, "status");
     g_value_init(&parameter->value, INF_TYPE_USER_STATUS);
 
-    if(strcmp((const char*)status, "available") == 0)
-      g_value_set_enum(&parameter->value, INF_USER_AVAILABLE);
+    if(strcmp((const char*)status, "active") == 0)
+      g_value_set_enum(&parameter->value, INF_USER_ACTIVE);
+    else if(strcmp((const char*)status, "inactive") == 0)
+      g_value_set_enum(&parameter->value, INF_USER_INACTIVE);
     else
       /* TODO: Error reporting for get_xml_user_props */
       g_value_set_enum(&parameter->value, INF_USER_UNAVAILABLE);
@@ -915,18 +918,12 @@ inf_session_set_xml_user_props_impl(InfSession* session,
     else if(strcmp(params[i].name, "status") == 0)
     {
       status = g_value_get_enum(&params[i].value);
-      switch(status)
-      {
-      case INF_USER_AVAILABLE:
-        inf_xml_util_set_attribute(xml, "status", "available");
-        break;
-      case INF_USER_UNAVAILABLE:
-        inf_xml_util_set_attribute(xml, "status", "unavailable");
-        break;
-      default:
-        g_assert_not_reached();
-        break;
-      }
+
+      inf_xml_util_set_attribute(
+        xml,
+        "status",
+        inf_user_status_to_string(status)
+      );
     }
 /*    else if(strcmp(params[i].name, "connection") == 0)
     {

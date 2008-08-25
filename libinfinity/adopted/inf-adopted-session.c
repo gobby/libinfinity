@@ -485,6 +485,17 @@ inf_adopted_session_execute_request_cb(InfAdoptedAlgorithm* algorithm,
           inf_adopted_session_start_noop_timer(session, local);
     }
   }
+
+  /* Mark inactive users active if they do something */
+  /* Note: This behaviour is implicitly performed by both client and server,
+   * and requires no further network traffic. However, users explictely have
+   * to be set inactive. */
+  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO ||
+     !INF_ADOPTED_IS_NO_OPERATION(inf_adopted_request_get_operation(request)))
+  {
+    if(inf_user_get_status(INF_USER(user)) == INF_USER_INACTIVE)
+      g_object_set(G_OBJECT(user), "status", INF_USER_ACTIVE, NULL);
+  }
 }
 
 /*

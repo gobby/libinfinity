@@ -95,7 +95,7 @@ perform_test(guint max_total_log_size,
         INF_TEXT_TYPE_USER,
         "id", GPOINTER_TO_UINT(item->data),
         "name", user_name,
-        "status", INF_USER_AVAILABLE,
+        "status", INF_USER_ACTIVE,
         "flags", 0,
         NULL
       )

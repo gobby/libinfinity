@@ -189,8 +189,8 @@ on_join_failed(InfcRequest* request,
 
   test = (InfTestGtkBrowserWindow*)user_data;
 
-  if(error->domain == inf_user_join_error_quark() &&
-     error->code == INF_USER_JOIN_ERROR_NAME_IN_USE)
+  if(error->domain == inf_user_error_quark() &&
+     error->code == INF_USER_ERROR_NAME_IN_USE)
   {
     new_name = g_strdup_printf("%s%d", g_get_user_name(), 2);
     request_join(test, new_name);

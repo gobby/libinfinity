@@ -47,9 +47,9 @@ struct _InfUser {
 };
 
 typedef enum _InfUserStatus {
-  INF_USER_AVAILABLE,
+  INF_USER_ACTIVE,
+  INF_USER_INACTIVE,
   INF_USER_UNAVAILABLE
-  /* TODO: Add further status (AWAY, ...) */
 } InfUserStatus;
 
 typedef enum InfUserFlags {
@@ -79,6 +79,14 @@ inf_user_get_flags(const InfUser* user);
 
 InfXmlConnection*
 inf_user_get_connection(InfUser* user);
+
+const gchar*
+inf_user_status_to_string(InfUserStatus status);
+
+gboolean
+inf_user_status_from_string(const gchar* string,
+                            InfUserStatus* status,
+                            GError** error);
 
 G_END_DECLS
 

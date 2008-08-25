@@ -481,10 +481,8 @@ infc_session_proxy_translate_error_impl(InfcSessionProxy* proxy,
 
   if(domain == inf_request_error_quark())
     error_msg = inf_request_strerror(code);
-  else if(domain == inf_user_join_error_quark())
-    error_msg = inf_user_join_strerror(code);
-  else if(domain == inf_user_status_change_error_quark())
-    error_msg = inf_user_status_change_strerror(code);
+  else if(domain == inf_user_error_quark())
+    error_msg = inf_user_strerror(code);
   else
     error_msg = NULL;
 
@@ -619,10 +617,10 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_join_error_quark(),
-      INF_USER_JOIN_ERROR_NO_SUCH_USER,
-      "%s",
-      inf_user_join_strerror(INF_USER_JOIN_ERROR_NO_SUCH_USER)
+      inf_user_error_quark(),
+      INF_USER_ERROR_NO_SUCH_USER,
+      "No such user with ID %u",
+      id
     );
 
     goto error;
@@ -666,7 +664,8 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
   }
 
   /* TODO: Set user status to available, if the server did not send the
-   * status property? Require the status property being set on a rejoin? */
+   * status property? Require the status property being set on a rejoin?
+   * Make sure it is not unavailable? */
 
   g_object_thaw_notify(G_OBJECT(user));
   for(i = 0; i < array->len; ++ i)
@@ -759,6 +758,7 @@ infc_session_proxy_handle_user_status_change(InfcSessionProxy* proxy,
   InfUserStatus status;
   InfUser* user;
   GError* local_error;
+  gboolean has_status;
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
   if(!inf_xml_util_get_attribute_uint_required(xml, "id", &id, error))
@@ -773,10 +773,10 @@ infc_session_proxy_handle_user_status_change(InfcSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_status_change_error_quark(),
-      INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER,
-      "%s",
-      inf_user_status_change_strerror(INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER)
+      inf_user_error_quark(),
+      INF_USER_ERROR_NO_SUCH_USER,
+      "No such user with ID %u",
+      id
     );
 
     return FALSE;
@@ -785,25 +785,11 @@ infc_session_proxy_handle_user_status_change(InfcSessionProxy* proxy,
   /* TODO: Verify that user is not unavailable */
 
   status_attr = xmlGetProp(xml, (const xmlChar*)"status");
-  if(strcmp( (const char*)status_attr, "available") == 0)
-    status = INF_USER_AVAILABLE;
-  else if(strcmp( (const char*)status_attr, "unavailable") == 0)
-    status = INF_USER_UNAVAILABLE;
-  else
-  {
-    g_set_error(
-      error,
-      inf_user_status_change_error_quark(),
-      INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS,
-      "Invalid status '%s'",
-      (const char*)status_attr
-    );
-    
-    xmlFree(status_attr);
-    return FALSE;
-  }
+  has_status =
+    inf_user_status_from_string( (const char*)status_attr, &status, error);
 
   xmlFree(status_attr);
+  if(!has_status) return FALSE;
 
   /* Do not remove from session to recognize the user on rejoin */
   g_object_set(G_OBJECT(user), "status", status, NULL);
@@ -1293,24 +1279,28 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
 }
 
 /**
- * infc_session_proxy_leave_user:
+ * infc_session_proxy_set_user_status:
  * @proxy: A #InfcSessionProxy.
- * @user: A #InfUser with status %INF_USER_AVAILABLE.
+ * @user: A #InfUser with flag %INF_USER_LOCAL set and status not being
+ * %INF_USER_UNAVAILABLE.
+ * @status: The #InfUserStatus to change user's status to.
  * @error: Location to store error information.
  *
- * Requests a user leave for the given user which must be available and
- * which must have been joined via this session.
+ * Requests a user status change for the given user which must be available
+ * and which must have been joined via this session. If the status is changed
+ * to %INF_USER_UNAVAILABLE, then the user leaves the session. It can
+ * rejoin via infc_session_proxy_join_user().
  *
  * Return Value: A #InfcUserRequest object that may be used to get notified
  * when the request succeeds or fails. 
  **/
 InfcUserRequest*
-infc_session_proxy_leave_user(InfcSessionProxy* proxy,
-                              InfUser* user,
-                              GError** error)
+infc_session_proxy_set_user_status(InfcSessionProxy* proxy,
+                                   InfUser* user,
+                                   InfUserStatus status,
+                                   GError** error)
 {
   InfcSessionProxyPrivate* priv;
-  InfSessionStatus status;
   InfcRequest* request;
   xmlNodePtr xml;
 
@@ -1321,11 +1311,13 @@ infc_session_proxy_leave_user(InfcSessionProxy* proxy,
   g_return_val_if_fail(priv->session != NULL, NULL);
 
   /* Make sure we are subscribed */
-  g_object_get(G_OBJECT(priv->session), "status", &status, NULL);
-  g_return_val_if_fail(status == INF_SESSION_RUNNING, NULL);
+  g_return_val_if_fail(
+    inf_session_get_status(priv->session) == INF_SESSION_RUNNING,
+    NULL
+  );
   g_return_val_if_fail(priv->connection != NULL, NULL);
 
-  /* TODO: Check user locally */
+  /* TODO: Check that user is local and not unavailable */
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -1337,7 +1329,12 @@ infc_session_proxy_leave_user(InfcSessionProxy* proxy,
   xml = infc_session_proxy_request_to_xml(INFC_REQUEST(request));
 
   inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
-  xmlNewProp(xml, (const xmlChar*)"status", (const xmlChar*)"unavailable");
+
+  xmlNewProp(
+    xml,
+    (const xmlChar*)"status",
+    (const xmlChar*)inf_user_status_to_string(status)
+  );
 
   inf_connection_manager_group_send_to_connection(
     priv->subscription_group,

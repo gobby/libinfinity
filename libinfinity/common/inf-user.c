@@ -17,6 +17,9 @@
  */
 
 #include <libinfinity/common/inf-user.h>
+#include <libinfinity/common/inf-error.h>
+
+#include <string.h>
 
 typedef struct _InfUserPrivate InfUserPrivate;
 struct _InfUserPrivate {
@@ -285,9 +288,13 @@ inf_user_status_get_type(void)
   {
     static const GEnumValue user_status_type_values[] = {
       {
-        INF_USER_AVAILABLE,
-        "INF_USER_AVAILABLE",
-        "available"
+        INF_USER_ACTIVE,
+        "INF_USER_ACTIVE",
+        "active"
+      }, {
+        INF_USER_INACTIVE,
+        "INF_USER_INACTIVE",
+        "inactive"
       }, {
         INF_USER_UNAVAILABLE,
         "INF_USER_UNAVAILABLE",
@@ -422,6 +429,73 @@ inf_user_get_connection(InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), NULL);
   return INF_USER_PRIVATE(user)->connection;
+}
+
+/**
+ * inf_user_status_to_string:
+ * @status: A value from the #InfUserStatus enumeration.
+ *
+ * Returns a non-localized string identifying the given status. This is not
+ * meant to be shown to a user, but rather to serialize a user status, for
+ * example to store it in XML.
+ *
+ * Returns: A static string representation of @status.
+ */
+const gchar*
+inf_user_status_to_string(InfUserStatus status)
+{
+  switch(status)
+  {
+  case INF_USER_ACTIVE: return "active";
+  case INF_USER_INACTIVE: return "inactive";
+  case INF_USER_UNAVAILABLE: return "unavailable";
+  default: g_assert_not_reached();
+  }
+}
+
+/**
+ * inf_user_status_from_string:
+ * @string: A string representation of a #InfUserStatus.
+ * @status: A pointer to a #InfUserStatus value, or %NULL.
+ * @error: Location to store error information, if any.
+ *
+ * This function does the opposite of inf_user_status_to_string(). It turns
+ * the given string back to a #InfUserStatus, storing the result in @status
+ * if @status is non-%NULL. If @string is invalid, then @status is left
+ * untouched, @error is set and %FALSE is returned. Otherwise, the function
+ * returns %TRUE.
+ *
+ * Returns: When an error occured during the conversion, %FALSE is returned,
+ * and %TRUE otherwise.
+ */
+gboolean
+inf_user_status_from_string(const gchar* string,
+                            InfUserStatus* status,
+                            GError** error)
+{
+  InfUserStatus tmp_status;
+
+  if(strcmp(string, "active") == 0)
+    tmp_status = INF_USER_ACTIVE;
+  else if(strcmp(string, "inactive") == 0)
+    tmp_status = INF_USER_INACTIVE;
+  else if(strcmp(string, "unavailable") == 0)
+    tmp_status = INF_USER_UNAVAILABLE;
+  else
+  {
+    g_set_error(
+      error,
+      inf_user_error_quark(),
+      INF_USER_ERROR_INVALID_STATUS,
+      "Invalid user status: '%s'",
+      string
+    );
+
+    return FALSE;
+  }
+
+  if(status) *status = tmp_status;
+  return TRUE;
 }
 
 /* vim:set et sw=2 ts=2: */

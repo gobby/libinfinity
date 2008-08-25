@@ -78,7 +78,7 @@ perform_single_test(InfTextChunk* initial,
         INF_TEXT_TYPE_USER,
         "id", GPOINTER_TO_UINT(item->data),
         "name", user_name,
-        "status", INF_USER_AVAILABLE,
+        "status", INF_USER_ACTIVE,
         "flags", 0,
         NULL
       )

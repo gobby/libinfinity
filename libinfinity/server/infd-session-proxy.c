@@ -245,10 +245,10 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_join_error_quark(),
-      INF_USER_JOIN_ERROR_NAME_IN_USE,
-      "%s",
-      inf_user_join_strerror(INF_USER_JOIN_ERROR_NAME_IN_USE)
+      inf_user_error_quark(),
+      INF_USER_ERROR_NAME_IN_USE,
+      "Name '%s' already in use",
+      g_value_get_string(&name_param->value)
     );
 
     return NULL;
@@ -261,10 +261,10 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_join_error_quark(),
-      INF_USER_JOIN_ERROR_ID_PROVIDED,
+      inf_user_error_quark(),
+      INF_USER_ERROR_ID_PROVIDED,
       "%s",
-      inf_user_join_strerror(INF_USER_JOIN_ERROR_ID_PROVIDED)
+      inf_user_strerror(INF_USER_ERROR_ID_PROVIDED)
     );
 
     return NULL;
@@ -280,24 +280,27 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   else
     g_value_set_uint(&param->value, priv->user_id_counter);
 
-  /* Again, if a user joins, the status is always available, so it should
-   * not be already provided. */
+  /* Check user status. It must not be unavailable on join/rejoin */
   param = inf_session_get_user_property(user_props, "status");
   if(G_IS_VALUE(&param->value))
   {
-    g_set_error(
-      error,
-      inf_user_join_error_quark(),
-      INF_USER_JOIN_ERROR_STATUS_PROVIDED,
-      "%s",
-      inf_user_join_strerror(INF_USER_JOIN_ERROR_STATUS_PROVIDED)
-    );
+    if(g_value_get_enum(&param->value) == INF_USER_UNAVAILABLE)
+    {
+      g_set_error(
+        error,
+        inf_user_error_quark(),
+        INF_USER_ERROR_STATUS_UNAVAILABLE,
+        "'status' attribute is 'unavailable' in user join request"
+      );
 
-    return NULL;
+      return NULL;
+    }
   }
-
-  g_value_init(&param->value, INF_TYPE_USER_STATUS);
-  g_value_set_enum(&param->value, INF_USER_AVAILABLE);
+  else
+  {
+    g_value_init(&param->value, INF_TYPE_USER_STATUS);
+    g_value_set_enum(&param->value, INF_USER_ACTIVE);
+  }
 
   /* flags should not be set by get_xml_user_props, nor given
    * to infd_session_proxy_add_user. */
@@ -449,7 +452,7 @@ infd_session_proxy_add_user_cb(InfUserTable* user_table,
 
   if(inf_session_get_status(priv->session) == INF_SESSION_SYNCHRONIZING)
   {
-    if(inf_user_get_status(user) == INF_USER_AVAILABLE)
+    if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
     {
       g_object_get(
         G_OBJECT(priv->session),
@@ -1065,10 +1068,10 @@ infd_session_proxy_handle_user_status_change(InfdSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_status_change_error_quark(),
-      INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER,
-      "%s",
-      inf_user_status_change_strerror(INF_USER_STATUS_CHANGE_ERROR_NO_SUCH_USER)
+      inf_user_error_quark(),
+      INF_USER_ERROR_NO_SUCH_USER,
+      "No such user with ID %u",
+      id
     );
 
     return FALSE;
@@ -1078,10 +1081,9 @@ infd_session_proxy_handle_user_status_change(InfdSessionProxy* proxy,
   {
     g_set_error(
       error,
-      inf_user_status_change_error_quark(),
-      INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED,
-      "%s",
-      inf_user_status_change_strerror(INF_USER_STATUS_CHANGE_ERROR_NOT_JOINED)
+      inf_user_error_quark(),
+      INF_USER_ERROR_NOT_JOINED,
+      "User did not join from that connection"
     );
 
     return FALSE;
@@ -1091,21 +1093,8 @@ infd_session_proxy_handle_user_status_change(InfdSessionProxy* proxy,
   if(status_attr == NULL)
     return FALSE;
 
-  /* TODO: Add inf_user_string_to_status and vice versa */
-  if(strcmp((const char*)status_attr, "available") == 0)
-    status = INF_USER_AVAILABLE;
-  else if(strcmp((const char*)status_attr, "unavailable") == 0)
-    status = INF_USER_UNAVAILABLE;
-  else
+  if(!inf_user_status_from_string((const char*)status_attr, &status, error))
   {
-    g_set_error(
-      error,
-      inf_user_status_change_error_quark(),
-      INF_USER_STATUS_CHANGE_ERROR_INVALID_STATUS,
-      "Invalid status '%s'",
-      (const char*)status_attr
-    );
-    
     xmlFree(status_attr);
     return FALSE;
   }
