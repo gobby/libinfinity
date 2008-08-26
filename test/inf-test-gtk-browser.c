@@ -50,7 +50,8 @@ static InfSession*
 inf_test_gtk_browser_session_new(InfIo* io,
                                  InfConnectionManager* manager,
                                  InfConnectionManagerGroup* sync_group,
-                                 InfXmlConnection* sync_connection)
+                                 InfXmlConnection* sync_connection,
+                                 gpointer user_data)
 {
   InfTextGtkBuffer* buffer;
   InfUserTable* user_table;
@@ -74,6 +75,7 @@ inf_test_gtk_browser_session_new(InfIo* io,
 }
 
 static const InfcNotePlugin INF_TEST_GTK_BROWSER_TEXT_PLUGIN = {
+  NULL,
   "InfText",
   inf_test_gtk_browser_session_new
 };

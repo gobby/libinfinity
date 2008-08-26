@@ -43,7 +43,8 @@ static InfSession*
 infd_note_plugin_text_session_new(InfIo* io,
                                   InfConnectionManager* manager,
                                   InfConnectionManagerGroup* sync_group,
-                                  InfXmlConnection* sync_connection)
+                                  InfXmlConnection* sync_connection,
+                                  gpointer user_data)
 {
   InfTextSession* session;
 
@@ -258,6 +259,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
                                    InfIo* io,
                                    InfConnectionManager* manager,
                                    const gchar* path,
+                                   gpointer user_data,
                                    GError** error)
 {
   InfUserTable* user_table;
@@ -408,6 +410,7 @@ static gboolean
 infd_note_plugin_text_session_write(InfdStorage* storage,
                                     InfSession* session,
                                     const gchar* path,
+                                    gpointer user_data,
                                     GError** error)
 {
   InfUserTable* table;
@@ -502,6 +505,7 @@ infd_note_plugin_text_session_write(InfdStorage* storage,
 }
 
 const InfdNotePlugin INFD_NOTE_PLUGIN = {
+  NULL,
   "InfdFilesystemStorage",
   "InfText",
   infd_note_plugin_text_session_new,

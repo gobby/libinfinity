@@ -335,6 +335,7 @@ infd_directory_session_save_timeout_func(gpointer user_data)
     priv->storage,
     infd_session_proxy_get_session(timeout_data->node->shared.note.session),
     path,
+    timeout_data->node->shared.note.plugin->user_data,
     &error
   );
 
@@ -497,7 +498,8 @@ infd_directory_create_session_proxy_sync(InfdDirectory* directory,
     priv->io,
     priv->connection_manager,
     (sync_g == NULL) ? group : sync_g,
-    sync_conn
+    sync_conn,
+    plugin->user_data
   );
 
   proxy = INFD_SESSION_PROXY(
@@ -767,6 +769,7 @@ infd_directory_node_free(InfdDirectory* directory,
         priv->storage,
         infd_session_proxy_get_session(node->shared.note.session),
         path,
+        node->shared.note.plugin->user_data,
         &error
       );
 
@@ -1646,7 +1649,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
       priv->io,
       priv->connection_manager,
       NULL,
-      NULL
+      NULL,
+      plugin->user_data
     );
     g_assert(session != NULL);
 
@@ -1867,6 +1871,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
     priv->io,
     priv->connection_manager,
     path,
+    node->shared.note.plugin->user_data,
     error
   );
   g_free(path);
@@ -2412,6 +2417,7 @@ infd_directory_handle_save_session(InfdDirectory* directory,
     priv->storage,
     infd_session_proxy_get_session(node->shared.note.session),
     path,
+    node->shared.note.plugin->user_data,
     error
   );
 

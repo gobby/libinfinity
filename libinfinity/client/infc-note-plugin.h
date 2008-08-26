@@ -30,12 +30,15 @@ G_BEGIN_DECLS
 
 typedef struct _InfcNotePlugin InfcNotePlugin;
 struct _InfcNotePlugin {
+  gpointer user_data;
+
   const gchar* note_type;
 
   InfSession*(*session_new)(InfIo* io,
                             InfConnectionManager* manager,
                             InfConnectionManagerGroup* sync_group,
-                            InfXmlConnection* sync_connection);
+                            InfXmlConnection* sync_connection,
+                            gpointer user_data);
 };
 
 G_END_DECLS

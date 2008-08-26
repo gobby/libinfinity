@@ -31,6 +31,8 @@ G_BEGIN_DECLS
 
 typedef struct _InfdNotePlugin InfdNotePlugin;
 struct _InfdNotePlugin {
+  gpointer user_data;
+
   /* The typename of the storage backend this plugin can be used with, such
    * as InfdFilesystemStorage. */
   const gchar* storage_type;
@@ -41,17 +43,20 @@ struct _InfdNotePlugin {
   InfSession*(*session_new)(InfIo* io,
                             InfConnectionManager* manager,
                             InfConnectionManagerGroup* group,
-                            InfXmlConnection* sync_connection);
+                            InfXmlConnection* sync_connection,
+                            gpointer user_data);
 
   InfSession*(*session_read)(InfdStorage* storage,
                              InfIo* io,
                              InfConnectionManager* manager,
                              const gchar* path,
+                             gpointer user_data,
                              GError** error);
 
   gboolean(*session_write)(InfdStorage* storage,
                            InfSession* session,
                            const gchar* path,
+                           gpointer user_data,
                            GError** error);
 };
 

@@ -1237,7 +1237,8 @@ infc_browser_subscribe_session(InfcBrowser* browser,
       priv->io,
       priv->connection_manager,
       group,
-      connection
+      connection,
+      node->shared.known.plugin->user_data
     );
   }
   else
@@ -1246,7 +1247,8 @@ infc_browser_subscribe_session(InfcBrowser* browser,
       priv->io,
       priv->connection_manager,
       NULL,
-      NULL
+      NULL,
+      node->shared.known.plugin->user_data
     );
   }
 

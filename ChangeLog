@@ -1,3 +1,15 @@
+2008-08-26  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-note-plugin.h:
+	* libinfinity/client/infc-note-plugin.h: Added a user_data parameter
+	to the structs and the callback functions, to ease wrapping
+	InfcNotePlugin and InfdNotePlugin by language bindings.
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/server/infd-directory.c:
+	* test/inf-test-gtk-browser.c: Adapt to API changes.
+
 2008-08-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-user.h:
