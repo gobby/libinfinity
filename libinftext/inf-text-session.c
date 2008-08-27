@@ -1545,7 +1545,7 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
       cd = g_iconv_open(inf_text_buffer_get_encoding(buffer), "UTF-8");
       g_assert(cd != (GIConv)(-1));
 
-      for(child = xml->children; child != NULL; child = child->next)
+      for(child = op_xml->children; child != NULL; child = child->next)
       {
         if(strcmp((const char*)child->name, "segment") == 0)
         {

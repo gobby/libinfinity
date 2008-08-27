@@ -1,3 +1,8 @@
+2008-08-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-session.c: Correctly read synchronized delete
+	requests, instead of only creating an empty one.
+
 2008-08-26  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-note-plugin.h:
