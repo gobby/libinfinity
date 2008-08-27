@@ -1,5 +1,12 @@
 2008-08-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c inf_text_session_request_to_xml():
+	Don't require a delete operation to be a InfTextDefaultDeleteOperation
+	when for_sync is FALSE, because we only need the length of the
+	operation anyway then. This fixes records of remote delete operations.
+
+2008-08-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-request-log.c: Correctly subtract
 	begin index from end index before dereferencing.
 

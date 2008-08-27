@@ -1384,17 +1384,15 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
       }
       else
       {
-        chunk = inf_text_default_delete_operation_get_chunk(
-          INF_TEXT_DEFAULT_DELETE_OPERATION(operation)
-        );
-
         /* Just transmit position and length, the other site generates a
          * InfTextRemoteDeleteOperation from that and is able to restore the
          * deleted text for potential Undo. */
         inf_xml_util_set_attribute_uint(
           op_xml,
           "len",
-          inf_text_chunk_get_length(chunk)
+          inf_text_delete_operation_get_length(
+            INF_TEXT_DELETE_OPERATION(operation)
+          )
         );
       }
     }
