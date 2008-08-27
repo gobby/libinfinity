@@ -1,5 +1,10 @@
 2008-08-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-request-log.c: Correctly subtract
+	begin index from end index before dereferencing.
+
+2008-08-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-session.c: Correctly read synchronized delete
 	requests, instead of only creating an empty one.
 

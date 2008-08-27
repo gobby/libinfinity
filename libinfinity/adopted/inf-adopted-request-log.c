@@ -93,7 +93,7 @@ inf_adopted_request_log_find_associated(InfAdoptedRequestLog* log,
   
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
-  entry = priv->entries + priv->offset + priv->end - 1;
+  entry = priv->entries + priv->offset + (priv->end - priv->begin) - 1;
 
   while(entry >= priv->entries + priv->offset)
   {
