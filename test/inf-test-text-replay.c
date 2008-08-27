@@ -406,6 +406,8 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
   if(!inf_test_text_replay_skip_whitespace_required(reader, error))
     return FALSE;
 
+  /* TODO: Allow EOF here in case the record was suddenly interrupted, for
+   * example when infinote crashed. */
   if(xmlTextReaderNodeType(reader) != XML_READER_TYPE_END_ELEMENT)
   {
     g_set_error(
