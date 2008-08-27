@@ -55,3 +55,4 @@ Others:
  * Fix coloring when pasting text, undoing large blocks of deleted text in
    libinftextgtk
  * GtkSourceView bracket highlights are hidden behind user colors
+ * ERROR:(inf-discovery-avahi.c:1055):inf_discovery_avahi_constructor: assertion failed: (priv->client != NULL)
