@@ -43,11 +43,15 @@ Others:
  * Add accessor API in InfGtkBrowserModel, so InfGtkBrowserView does not need to call gtk_tree_model_get all the time (which unnecssarily dups/refs)
  * Add append() and clear() virtual methods to InfTextBuffer. These may not have to be implemented since a default implementation can be used if no special one is provided, but it could help to speed up special operations. Make use in infd_note_plugin_text.
  * Make InfcExploreRequest derive from InfcNodeRequest. This saves some code duplication in InfcBrowser.
- * connection-closed signal for connection manager, where other objects (esp. session, session proxy, directory, browser) can dro their references to that connection
- * Remove has_connection, lookup_connection from methods, rely on registered connections
+ * connection-closed signal for connection manager, where other objects (esp. session, session proxy, directory, browser) can drop their references to that connection. InfGtkBrowserStore can merge connections.
  * Think about how to do method initialization
  * Change the storage interface to be asynchronous
  * Replace the various begin-foo signals in InfcBrowser by a begin-operation with iter and request as parameters, detailed on the operation type (add-node, remove-node, subscribe-session etc.). Similar with the infc_browser_iter_get_foo_request functions (replacy by a generic infc_browser_iter_get_pending_request function).
  * Support sending some special characters like bell ('\a') through XML. I had
    an approach of defining custom entities for those (see inf-xmpp-connection.c
    in inf_xmpp_connection_initiate()), though this didn't seem to work.
+
+ * Allow runtime color changes
+ * Fix coloring when pasting text, undoing large blocks of deleted text in
+   libinftextgtk
+ * GtkSourceView bracket highlights are hidden behind user colors

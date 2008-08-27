@@ -1,5 +1,10 @@
 2008-08-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session-record.c: Flush record file
+	after every request written, so that we don't miss any when we crash.
+
+2008-08-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-session.c inf_text_session_request_to_xml():
 	Don't require a delete operation to be a InfTextDefaultDeleteOperation
 	when for_sync is FALSE, because we only need the length of the

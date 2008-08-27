@@ -20,6 +20,11 @@
 #include <libinfinity/common/inf-xml-util.h>
 
 #include <libxml/xmlwriter.h>
+#include <errno.h>
+
+/* TODO: Better error handling; we should have a proper InfErrnoError
+ * (or InfSystemError or something), and we should check the fflush error
+ * codes. */
 
 /**
  * SECTION:inf-adopted-session-record
@@ -49,6 +54,7 @@ typedef struct _InfAdoptedSessionRecordPrivate InfAdoptedSessionRecordPrivate;
 struct _InfAdoptedSessionRecordPrivate {
   InfAdoptedSession* session;
   xmlTextWriterPtr writer;
+  FILE* file;
   gchar* filename;
 
   GHashTable* last_send_table;
@@ -156,9 +162,6 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   priv = INF_ADOPTED_SESSION_RECORD_PRIVATE(record);
   session_class = INF_ADOPTED_SESSION_GET_CLASS(priv->session);
 
-  result = xmlTextWriterWriteString(priv->writer, (const xmlChar*)"\n  ");
-  if(result < 0) inf_adopted_session_record_handle_xml_error(record);
-
   xml = xmlNewNode(NULL, (const xmlChar*)"request");
   previous = g_hash_table_lookup(priv->last_send_table, user);
   g_assert(previous != NULL);
@@ -166,6 +169,10 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   session_class->request_to_xml(priv->session, xml, request, previous, FALSE);
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
+
+  result = xmlTextWriterFlush(priv->writer);
+  if(result < 0) inf_adopted_session_record_handle_xml_error(record);
+  fflush(priv->file);
 
   /* Update last send entry */
   previous =
@@ -197,6 +204,10 @@ inf_adopted_session_record_add_user_cb(InfUserTable* user_table,
   inf_session_user_to_xml(INF_SESSION(priv->session), user, xml);
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
+
+  result = xmlTextWriterFlush(priv->writer);
+  if(result < 0) inf_adopted_session_record_handle_xml_error(record);
+  fflush(priv->file);
 }
 
 static void
@@ -264,9 +275,6 @@ inf_adopted_session_record_real_start(InfAdoptedSessionRecord* record)
   );
   if(result < 0) inf_adopted_session_record_handle_xml_error(record);
 
-  result = xmlTextWriterWriteString(priv->writer, (const xmlChar*)"\n  ");
-  if(result < 0) inf_adopted_session_record_handle_xml_error(record);
-
   /* TODO: Have someone else inserting sync-begin and sync-end... that's quite
    * hacky here. */
   xml = xmlNewNode(NULL, (const xmlChar*)"initial");
@@ -281,6 +289,10 @@ inf_adopted_session_record_real_start(InfAdoptedSessionRecord* record)
 
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
+
+  result = xmlTextWriterFlush(priv->writer);
+  if(result < 0) inf_adopted_session_record_handle_xml_error(record);
+  fflush(priv->file);
 }
 
 static void
@@ -316,6 +328,7 @@ inf_adopted_session_record_init(GTypeInstance* instance,
 
   priv->session = NULL;
   priv->writer = NULL;
+  priv->file = NULL;
   priv->filename = NULL;
   priv->last_send_table = NULL;
 }
@@ -533,8 +546,10 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
 {
   InfAdoptedSessionRecordPrivate* priv;
   InfSessionStatus status;
+  xmlOutputBufferPtr buffer;
   xmlErrorPtr xmlerror;
   gchar* uri;
+  int errcode;
 
   g_return_val_if_fail(INF_ADOPTED_IS_SESSION_RECORD(record), FALSE);
   g_return_val_if_fail(filename != NULL, FALSE);
@@ -546,14 +561,28 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
   g_return_val_if_fail(priv->writer == NULL, FALSE);
   g_return_val_if_fail(status != INF_SESSION_CLOSED, FALSE);
 
-  uri = g_filename_to_uri(filename, NULL, error);
-  if(uri == NULL) return FALSE;
-
-  priv->writer = xmlNewTextWriterFilename(uri, 0);
-  g_free(uri);
-
-  if(priv->writer == NULL)
+  priv->file = fopen(filename, "w");
+  if(priv->file == NULL)
   {
+    errcode = errno;
+
+    g_set_error(
+      error,
+      g_quark_from_static_string("ERRNO_ERROR"),
+      errcode,
+      "%s",
+      strerror(errcode)
+    );
+
+    return FALSE;
+  }
+
+  buffer = xmlOutputBufferCreateFile(priv->file, NULL);
+  if(buffer == NULL)
+  {
+    fclose(priv->file);
+    priv->file = NULL;
+
     xmlerror = xmlGetLastError();
 
     g_set_error(
@@ -566,6 +595,28 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
 
     return FALSE;
   }
+
+  priv->writer = xmlNewTextWriter(buffer);
+  if(priv->writer == NULL)
+  {
+    /* TODO: Does this also fclose our file? */
+    xmlOutputBufferClose(buffer);
+    priv->file = NULL;
+
+    xmlerror = xmlGetLastError();
+
+    g_set_error(
+      error,
+      libxml2_writer_error_quark,
+      xmlerror->code,
+      "%s",
+      xmlerror->message
+    );
+
+    return FALSE;
+  }
+
+  xmlTextWriterSetIndent(priv->writer, 1);
 
   switch(status)
   {
@@ -662,8 +713,10 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
     return FALSE;
   }
 
+  /* TODO: Does this fclose our file? */
   xmlFreeTextWriter(priv->writer);
   priv->writer = NULL;
+  priv->file = NULL;
 
   g_free(priv->filename);
   priv->filename = NULL;
