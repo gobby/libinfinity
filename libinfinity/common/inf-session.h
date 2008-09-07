@@ -211,6 +211,11 @@ inf_session_add_user(InfSession* session,
                      GError** error);
 
 void
+inf_session_set_user_status(InfSession* session,
+                            InfUser* user,
+                            InfUserStatus status);
+
+void
 inf_session_synchronize_to(InfSession* session,
                            InfConnectionManagerGroup* group,
                            InfXmlConnection* connection);

@@ -62,12 +62,6 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
                              guint n_params,
                              GError** error);
 
-InfcUserRequest*
-infc_session_proxy_set_user_status(InfcSessionProxy* proxy,
-                                   InfUser* user,
-                                   InfUserStatus status,
-                                   GError** error);
-
 InfSession*
 infc_session_proxy_get_session(InfcSessionProxy* proxy);
 

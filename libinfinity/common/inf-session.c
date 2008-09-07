@@ -59,6 +59,7 @@
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <string.h>
@@ -675,6 +676,66 @@ inf_session_get_property(GObject* object,
 }
 
 /*
+ * Network messages
+ */
+
+static gboolean
+inf_session_handle_user_status_change(InfSession* session,
+                                      InfXmlConnection* connection,
+                                      xmlNodePtr xml,
+                                      GError** error)
+{
+  InfSessionPrivate* priv;
+  InfUser* user;
+  guint id;
+  xmlChar* status_attr;
+  gboolean has_status;
+  InfUserStatus status;
+
+  priv = INF_SESSION_PRIVATE(session);
+  if(!inf_xml_util_get_attribute_uint_required(xml, "id", &id, error))
+    return FALSE;
+
+  user = inf_user_table_lookup_user_by_id(priv->user_table, id);
+  if(user == NULL)
+  {
+    g_set_error(
+      error,
+      inf_user_error_quark(),
+      INF_USER_ERROR_NO_SUCH_USER,
+      "No such user with ID %u",
+      id
+    );
+
+    return FALSE;
+  }
+
+  if(inf_user_get_status(user) == INF_USER_UNAVAILABLE ||
+     inf_user_get_connection(user) != connection)
+  {
+    g_set_error(
+      error,
+      inf_user_error_quark(),
+      INF_USER_ERROR_NOT_JOINED,
+      "User did not join from this connection"
+    );
+
+    return FALSE;
+  }
+
+  status_attr = xmlGetProp(xml, (const xmlChar*)"status");
+  has_status =
+    inf_user_status_from_string((const char*)status_attr, &status, error);
+  xmlFree(status_attr);
+  if(!has_status) return FALSE;
+
+  if(inf_user_get_status(user) != status)
+    g_object_set(G_OBJECT(user), "status", status, NULL);
+
+  return TRUE;
+}
+
+/*
  * VFunc implementations.
  */
 
@@ -796,16 +857,28 @@ inf_session_process_xml_run_impl(InfSession* session,
                                  const xmlNodePtr xml,
                                  GError** error)
 {
-  /* TODO: Proper error quark and code */
-  g_set_error(
-    error,
-    g_quark_from_static_string("INF_SESSION_ERROR"),
-    0,
-    "Received unhandled XML message '%s'",
-    (const gchar*)xml->name
-  );
+  if(strcmp((const char*)xml->name, "user-status-change") == 0)
+  {
+    return inf_session_handle_user_status_change(
+      session,
+      connection,
+      xml,
+      error
+    );
+  }
+  else
+  {
+    /* TODO: Proper error quark and code */
+    g_set_error(
+      error,
+      g_quark_from_static_string("INF_SESSION_ERROR"),
+      0,
+      "Received unhandled XML message '%s'",
+      (const gchar*)xml->name
+    );
 
-  return FALSE;
+    return FALSE;
+  }
 }
 
 static GArray*
@@ -2288,6 +2361,13 @@ inf_session_get_status(InfSession* session)
  * object by default, but may be overridden by subclasses to create
  * different kinds of users.
  *
+ * Note that this function does not tell the other participants that the
+ * user was added. To avoid conflicts, normally only the publisher of the
+ * session can add users and notifies others accordingly. This is handled
+ * by #InfdSessionProxy or #InfcSessionProxy, respectively.
+ *
+ * You should not call this function unless you know what you are doing.
+ *
  * Return Value: The new #InfUser, or %NULL in case of an error.
  **/
 InfUser*
@@ -2327,6 +2407,51 @@ inf_session_add_user(InfSession* session,
   }
 
   return NULL;
+}
+
+/**
+ * inf_session_set_user_status:
+ * @session: A #InfSession.
+ * @user: A local #InfUser from @session's user table.
+ * @status: New status for @user.
+ *
+ * Changes the status of the given @user which needs to have the
+ * %INF_USER_LOCAL flag set for this function to be called. If the status
+ * is changed to %INF_USER_UNAVAILABLE, then the user leaves the session. To
+ * rejoin use infc_session_proxy_join_user or infd_session_proxy_join_user,
+ * respectively for a proxy proxying @session.
+ **/
+void
+inf_session_set_user_status(InfSession* session,
+                            InfUser* user,
+                            InfUserStatus status)
+{
+  InfSessionPrivate* priv;
+  xmlNodePtr xml;
+
+  g_return_if_fail(INF_IS_SESSION(session));
+  g_return_if_fail(INF_IS_USER(user));
+  g_return_if_fail(inf_user_get_status(user) != INF_USER_UNAVAILABLE);
+  g_return_if_fail( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0);
+
+  priv = INF_SESSION_PRIVATE(session);
+
+  if(inf_user_get_status(user) != status)
+  {
+    xml = xmlNewNode(NULL, (const xmlChar*)"user-status-change");
+    inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
+
+    inf_xml_util_set_attribute(
+      xml,
+      "status",
+      inf_user_status_to_string(status)
+    );
+
+    if(priv->subscription_group != NULL)
+      inf_session_send_to_subscriptions(session, NULL, xml);
+
+    g_object_set(G_OBJECT(user), "status", status, NULL);
+  }
 }
 
 /**

@@ -746,81 +746,6 @@ infc_session_proxy_handle_request_failed(InfcSessionProxy* proxy,
 }
 
 static gboolean
-infc_session_proxy_handle_user_status_change(InfcSessionProxy* proxy,
-                                             InfXmlConnection* connection,
-                                             xmlNodePtr xml,
-                                             GError** error)
-{
-  InfcSessionProxyPrivate* priv;
-  InfcRequest* request;
-  guint id;
-  xmlChar* status_attr;
-  InfUserStatus status;
-  InfUser* user;
-  GError* local_error;
-  gboolean has_status;
-
-  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  if(!inf_xml_util_get_attribute_uint_required(xml, "id", &id, error))
-    return FALSE;
-
-  user = inf_user_table_lookup_user_by_id(
-    inf_session_get_user_table(priv->session),
-    id
-  );
-
-  if(user == NULL)
-  {
-    g_set_error(
-      error,
-      inf_user_error_quark(),
-      INF_USER_ERROR_NO_SUCH_USER,
-      "No such user with ID %u",
-      id
-    );
-
-    return FALSE;
-  }
-
-  /* TODO: Verify that user is not unavailable */
-
-  status_attr = xmlGetProp(xml, (const xmlChar*)"status");
-  has_status =
-    inf_user_status_from_string( (const char*)status_attr, &status, error);
-
-  xmlFree(status_attr);
-  if(!has_status) return FALSE;
-
-  /* Do not remove from session to recognize the user on rejoin */
-  g_object_set(G_OBJECT(user), "status", status, NULL);
-
-  local_error = NULL;
-  request = infc_request_manager_get_request_by_xml(
-    priv->request_manager,
-    "user-status-change",
-    xml,
-    &local_error
-  );
-
-  if(local_error != NULL)
-  {
-    g_propagate_error(error, local_error);
-    return FALSE;
-  }
-  else
-  {
-    if(request != NULL)
-    {
-      g_assert(INFC_IS_USER_REQUEST(request));
-      infc_user_request_finished(INFC_USER_REQUEST(request), user);
-      infc_request_manager_remove_request(priv->request_manager, request);
-    }
-  }
-
-  return TRUE;
-}
-
-static gboolean
 infc_session_proxy_handle_session_close(InfcSessionProxy* proxy,
                                         InfXmlConnection* connection,
                                         xmlNodePtr xml,
@@ -933,15 +858,6 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
     else if(strcmp((const char*)node->name, "request-failed") == 0)
     {
       infc_session_proxy_handle_request_failed(
-        proxy,
-        connection,
-        node,
-        &local_error
-      );
-    }
-    else if(strcmp((const char*)node->name, "user-status-change") == 0)
-    {
-      infc_session_proxy_handle_user_status_change(
         proxy,
         connection,
         node,
@@ -1268,73 +1184,6 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
 
   g_assert(session_class->set_xml_user_props != NULL);
   session_class->set_xml_user_props(priv->session, params, n_params, xml);
-
-  inf_connection_manager_group_send_to_connection(
-    priv->subscription_group,
-    priv->connection,
-    xml
-  );
-
-  return INFC_USER_REQUEST(request);
-}
-
-/**
- * infc_session_proxy_set_user_status:
- * @proxy: A #InfcSessionProxy.
- * @user: A #InfUser with flag %INF_USER_LOCAL set and status not being
- * %INF_USER_UNAVAILABLE.
- * @status: The #InfUserStatus to change user's status to.
- * @error: Location to store error information.
- *
- * Requests a user status change for the given user which must be available
- * and which must have been joined via this session. If the status is changed
- * to %INF_USER_UNAVAILABLE, then the user leaves the session. It can
- * rejoin via infc_session_proxy_join_user().
- *
- * Return Value: A #InfcUserRequest object that may be used to get notified
- * when the request succeeds or fails. 
- **/
-InfcUserRequest*
-infc_session_proxy_set_user_status(InfcSessionProxy* proxy,
-                                   InfUser* user,
-                                   InfUserStatus status,
-                                   GError** error)
-{
-  InfcSessionProxyPrivate* priv;
-  InfcRequest* request;
-  xmlNodePtr xml;
-
-  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
-  g_return_val_if_fail(INF_IS_USER(user), NULL);
-
-  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  g_return_val_if_fail(priv->session != NULL, NULL);
-
-  /* Make sure we are subscribed */
-  g_return_val_if_fail(
-    inf_session_get_status(priv->session) == INF_SESSION_RUNNING,
-    NULL
-  );
-  g_return_val_if_fail(priv->connection != NULL, NULL);
-
-  /* TODO: Check that user is local and not unavailable */
-
-  request = infc_request_manager_add_request(
-    priv->request_manager,
-    INFC_TYPE_USER_REQUEST,
-    "user-status-change",
-    NULL
-  );
-
-  xml = infc_session_proxy_request_to_xml(INFC_REQUEST(request));
-
-  inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
-
-  xmlNewProp(
-    xml,
-    (const xmlChar*)"status",
-    (const xmlChar*)inf_user_status_to_string(status)
-  );
 
   inf_connection_manager_group_send_to_connection(
     priv->subscription_group,

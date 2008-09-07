@@ -156,7 +156,6 @@ InfcSessionProxy
 InfcSessionProxyClass
 infc_session_proxy_set_connection
 infc_session_proxy_join_user
-infc_session_proxy_set_user_status
 infc_session_proxy_get_session
 infc_session_proxy_get_connection
 infc_session_proxy_get_subscription_group
@@ -445,6 +444,7 @@ inf_session_get_buffer
 inf_session_get_user_table
 inf_session_get_status
 inf_session_add_user
+inf_session_set_user_status
 inf_session_synchronize_to
 inf_session_get_synchronization_status
 inf_session_get_synchronization_progress

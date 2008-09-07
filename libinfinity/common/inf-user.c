@@ -125,7 +125,6 @@ inf_user_set_property(GObject* object,
     priv->flags = g_value_get_flags(value);
     break;
   case PROP_CONNECTION:
-    /* TODO: Automatically set unavailable when connection is closed? */
     if(priv->connection != NULL) g_object_unref(priv->connection);
     priv->connection = INF_XML_CONNECTION(g_value_dup_object(value));
     break;

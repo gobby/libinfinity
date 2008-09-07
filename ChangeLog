@@ -1,3 +1,18 @@
+2008-09-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-session-proxy.h:
+	* libinfinity/client/infc-session-proxy.c: Removed
+	infc_session_proxy_set_user_status(), don't handle user-status-change
+	request anymore.
+
+	* libinfinity/server/infd-session-proxy.c: Don't handle
+	user-status-change anymore, update subscription lists on user status
+	notify.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added
+	inf_session_set_user_status(), handle user-status-change requests.
+
 2008-08-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-session-record.c: Flush record file
