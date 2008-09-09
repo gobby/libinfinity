@@ -14,5 +14,6 @@
   <chapter>
     <title>[Insert title here]</title>
     <xi:include href="xml/inf-text-gtk-buffer.xml"/>
+    <xi:include href="xml/inf-text-gtk-hue-chooser.xml"/>
   </chapter>
 </book>

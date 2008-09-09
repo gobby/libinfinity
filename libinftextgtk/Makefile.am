@@ -17,7 +17,9 @@ libinftextgtk_1_0_la_LIBADD = \
 libinftextgtk_1_0_ladir = $(includedir)/libinftextgtk-1.0/libinftextgtk
 
 libinftextgtk_1_0_la_HEADERS = \
-	inf-text-gtk-buffer.h
+	inf-text-gtk-buffer.h \
+	inf-text-gtk-hue-chooser.h
 
 libinftextgtk_1_0_la_SOURCES = \
-	inf-text-gtk-buffer.c
+	inf-text-gtk-buffer.c \
+	inf-text-gtk-hue-chooser.c

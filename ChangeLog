@@ -1,3 +1,18 @@
+2008-09-09  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:DOUBLE and VOID:ENUM
+	marshallers.
+
+	* libinftextgtk/inf-text-gtk-hue-chooser.h:
+	* libinftextgtk/inf-text-gtk-hue-chooser.c: Added a new class to
+	choose a hue value. This is basically the same as GtkHSV without the
+	inner triangle.
+
+	* libinftextgtk/Makefile.am: Added the new files to the build.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Added a TODO comment about
+	using gtk_hsv_to_rgb from GTK+ 2.14.
+
 2008-09-07  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-session-proxy.h:

@@ -17,3 +17,22 @@ INF_TEXT_GTK_IS_BUFFER_CLASS
 INF_TEXT_GTK_BUFFER_GET_CLASS
 </SECTION>
 
+<SECTION>
+<FILE>inf-text-gtk-hue-chooser</FILE>
+<TITLE>InfTextGtkHueChooser</TITLE>
+InfTextGtkHueChooser
+inf_text_gtk_hue_chooser_new
+inf_text_gtk_hue_chooser_new_with_hue
+inf_text_gtk_hue_chooser_set_hue
+inf_text_gtk_hue_chooser_get_hue
+<SUBSECTION Standard>
+InfTextGtkHueChooserClass
+INF_TEXT_GTK_HUE_CHOOSER
+INF_TEXT_GTK_IS_HUE_CHOOSER
+INF_TEXT_GTK_TYPE_HUE_CHOOSER
+inf_text_gtk_hue_chooser_get_type
+INF_TEXT_GTK_HUE_CHOOSER_CLASS
+INF_TEXT_GTK_IS_HUE_CHOOSER_CLASS
+INF_TEXT_GTK_HUE_CHOOSER_GET_CLASS
+</SECTION>
+

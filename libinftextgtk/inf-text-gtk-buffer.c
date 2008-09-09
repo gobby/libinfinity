@@ -58,7 +58,7 @@ static GObjectClass* parent_class;
 static GQuark inf_text_gtk_buffer_tag_user_quark;
 
 /* This function is stolen from gtkhsv.c from GTK+ */
-
+/* TODO: Use gtk_hsv_to_rgb from GTK+ 2.14 instead */
 /* Converts from HSV to RGB */
 static void
 hsv_to_rgb (gdouble *h,

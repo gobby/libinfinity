@@ -56,3 +56,4 @@ Others:
    libinftextgtk
  * GtkSourceView bracket highlights are hidden behind user colors
  * ERROR:(inf-discovery-avahi.c:1055):inf_discovery_avahi_constructor: assertion failed: (priv->client != NULL)
+ * correct certificate handling in infinoted (cafile), trustfile on client side, certificate verification
