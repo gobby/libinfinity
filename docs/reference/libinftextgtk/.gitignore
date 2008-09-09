@@ -8,3 +8,5 @@ libinftextgtk.hierarchy
 libinftextgtk.interfaces
 libinftextgtk.prerequisites
 libinftextgtk.signals
+*.sgml
+*.bak
