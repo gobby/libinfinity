@@ -1,5 +1,10 @@
 2008-09-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-session-proxy.c: Notify clients when a
+	connection with subscribed users has unsubscribed.
+
+2008-09-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-session.h:
 	* libinftext/inf-text-session.c: Added
 	inf_text_session_set_user_color(), and handle on remote site.

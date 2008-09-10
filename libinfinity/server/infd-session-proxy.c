@@ -226,6 +226,7 @@ infd_session_proxy_remove_subscription(InfdSessionProxy* proxy,
 
     /* The actual status change is performed in the default signal handler
      * of the remove-subscription signal. */
+    inf_session_send_to_subscriptions(priv->session, subscr->connection, xml);
   }
 
   infd_session_proxy_release_subscription(proxy, subscr);
