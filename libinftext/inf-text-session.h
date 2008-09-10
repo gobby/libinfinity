@@ -21,6 +21,7 @@
 
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-buffer.h>
+#include <libinftext/inf-text-user.h>
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/common/inf-connection-manager.h>
 
@@ -41,7 +42,7 @@ typedef struct _InfTextSession InfTextSession;
 typedef struct _InfTextSessionClass InfTextSessionClass;
 
 typedef enum _InfTextSessionError {
-  INF_TEXT_SESSION_ERROR_NO_SUCH_USER,
+  INF_TEXT_SESSION_ERROR_INVALID_HUE,
 
   INF_TEXT_SESSION_ERROR_FAILED
 } InfTextSessionError;
@@ -71,6 +72,11 @@ inf_text_session_new_with_user_table(InfConnectionManager* manager,
                                      InfUserTable* user_table,
                                      InfConnectionManagerGroup* sync_group,
                                      InfXmlConnection* sync_connection);
+
+void
+inf_text_session_set_user_color(InfTextSession* session,
+                                InfTextUser* user,
+                                gdouble hue);
 
 G_END_DECLS
 

@@ -54,6 +54,7 @@ InfTextSessionError
 InfTextSession
 inf_text_session_new
 inf_text_session_new_with_user_table
+inf_text_session_set_user_color
 <SUBSECTION Standard>
 InfTextSessionClass
 INF_TEXT_SESSION

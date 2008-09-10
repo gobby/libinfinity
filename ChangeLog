@@ -1,5 +1,11 @@
 2008-09-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.h:
+	* libinftext/inf-text-session.c: Added
+	inf_text_session_set_user_color(), and handle on remote site.
+
+2008-09-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-session-proxy.c: Set connection of joining
 	users to the publisher connection if none was specified.
 

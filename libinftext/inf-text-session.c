@@ -946,7 +946,78 @@ inf_text_session_get_property(GObject* object,
 }
 
 /*
- * VFunc implementations.
+ * Network command handlers
+ */
+
+static gboolean
+inf_text_session_handle_user_color_change(InfTextSession* session,
+                                          InfXmlConnection* connection,
+                                          xmlNodePtr xml,
+                                          GError** error)
+{
+  InfUserTable* user_table;
+  guint user_id;
+  InfUser* user;
+  gdouble hue;
+
+  user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  if(!inf_xml_util_get_attribute_uint_required(xml, "id", &user_id, error))
+    return FALSE;
+  if(!inf_xml_util_get_attribute_double_required(xml, "hue", &hue, error))
+    return FALSE;
+
+  /* TODO: A public function in InfSession that does the following two checks
+   * (and returns the user). This can also be used in
+   * inf_session_handle_user_status_change */
+  user = inf_user_table_lookup_user_by_id(user_table, user_id);
+  if(user == NULL)
+  {
+    g_set_error(
+      error,
+      inf_user_error_quark(),
+      INF_USER_ERROR_NO_SUCH_USER,
+      "No such user with ID '%u'",
+      user_id
+    );
+
+    return FALSE;
+  }
+
+  if(inf_user_get_status(user) == INF_USER_UNAVAILABLE ||
+     inf_user_get_connection(user) != connection)
+  {
+    g_set_error(
+      error,
+      inf_user_error_quark(),
+      INF_USER_ERROR_NOT_JOINED,
+      "User did not join from this connection"
+    );
+
+    return FALSE;
+  }
+
+  g_assert(INF_TEXT_IS_USER(user));
+
+  if(hue < 0.0 || hue > 1.0)
+  {
+    g_set_error(
+      error,
+      inf_text_session_error_quark,
+      INF_TEXT_SESSION_ERROR_INVALID_HUE,
+      "Invalid hue value: '%g'",
+      hue
+    );
+
+    return FALSE;
+  }
+
+  g_object_set(G_OBJECT(user), "hue", hue, NULL);
+  return TRUE;
+}
+
+/*
+ * InfSession overrides
  */
 
 static void
@@ -1047,8 +1118,8 @@ inf_text_session_process_xml_sync(InfSession* session,
 
         g_set_error(
           error,
-          inf_text_session_error_quark,
-          INF_TEXT_SESSION_ERROR_NO_SUCH_USER,
+          inf_user_error_quark(),
+          INF_USER_ERROR_NO_SUCH_USER,
           "No such user with ID '%u'",
           author
         );
@@ -1093,12 +1164,24 @@ inf_text_session_process_xml_run(InfSession* session,
 {
   g_assert(INF_SESSION_CLASS(parent_class)->process_xml_run != NULL);
 
-  return INF_SESSION_CLASS(parent_class)->process_xml_run(
-    session,
-    connection,
-    xml,
-    error
-  );
+  if(strcmp((const char*)xml->name, "user-color-change") == 0)
+  {
+    return inf_text_session_handle_user_color_change(
+      session,
+      connection,
+      xml,
+      error
+    );
+  }
+  else
+  {
+    return INF_SESSION_CLASS(parent_class)->process_xml_run(
+      session,
+      connection,
+      xml,
+      error
+    );
+  }
 }
 
 static GArray*
@@ -1260,6 +1343,31 @@ inf_text_session_user_new(InfSession* session,
   object = g_object_newv(INF_TEXT_TYPE_USER, n_params, (GParameter*)params);
   return INF_USER(object);
 }
+
+static void
+inf_text_session_synchronization_complete(InfSession* session,
+                                          InfXmlConnection* connection)
+{
+  InfSessionStatus status;
+  status = inf_session_get_status(session);
+
+  INF_SESSION_CLASS(parent_class)->synchronization_complete(
+    session,
+    connection
+  );
+
+  /* init_text_handlers needs to access the algorithm which is created in the
+   * parent class default signal handler which is why we call this afterwards.
+   * Note that we need to query status before, so we know whether the session
+   * itself was synchronized (status == SYNCHRONIZING) or whether we just
+   * synchronized the session to someone else (status == RUNNING). */
+  if(status == INF_SESSION_SYNCHRONIZING)
+    inf_text_session_init_text_handlers(INF_TEXT_SESSION(session));
+}
+
+/*
+ * InfAdoptedSession overrides
+ */
 
 static void
 inf_text_session_request_to_xml(InfAdoptedSession* session,
@@ -1678,27 +1786,6 @@ fail:
   return NULL;
 }
 
-static void
-inf_text_session_synchronization_complete(InfSession* session,
-                                          InfXmlConnection* connection)
-{
-  InfSessionStatus status;
-  status = inf_session_get_status(session);
-
-  INF_SESSION_CLASS(parent_class)->synchronization_complete(
-    session,
-    connection
-  );
-
-  /* init_text_handlers needs to access the algorithm which is created in the
-   * parent class default signal handler which is why we call this afterwards.
-   * Note that we need to query status before, so we know whether the session
-   * itself was synchronized (status == SYNCHRONIZING) or whether we just
-   * synchronized the session to someone else (status == RUNNING). */
-  if(status == INF_SESSION_SYNCHRONIZING)
-    inf_text_session_init_text_handlers(INF_TEXT_SESSION(session));
-}
-
 /*
  * Gype registration.
  */
@@ -1903,6 +1990,41 @@ inf_text_session_new_with_user_table(InfConnectionManager* manager,
   );
 
   return INF_TEXT_SESSION(object);
+}
+
+/**
+ * inf_text_session_set_user_color:
+ * @session: A #InfTextSession.
+ * @user: A local #InfTextUser from @session's user table.
+ * @hue: New hue value for @user's color. Ranges from 0.0 (red) to 1.0 (red).
+ *
+ * Changes the user color of @user. @user must have the %INF_USER_LOCAL flag
+ * set.
+ */
+void
+inf_text_session_set_user_color(InfTextSession* session,
+                                InfTextUser* user,
+                                gdouble hue)
+{
+  xmlNodePtr xml;
+
+  g_return_if_fail(INF_TEXT_IS_SESSION(session));
+  g_return_if_fail(INF_TEXT_IS_USER(user));
+  g_return_if_fail(hue >= 0.0 && hue <= 1.0);
+
+  g_return_if_fail(
+    inf_user_get_status(INF_USER(user)) != INF_USER_UNAVAILABLE
+  );
+  g_return_if_fail(
+    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0
+  );
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"user-color-change");
+  inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(INF_USER(user)));
+  inf_xml_util_set_attribute_double(xml, "hue", hue);
+
+  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+  g_object_set(G_OBJECT(user), "hue", hue, NULL);
 }
 
 /* vim:set et sw=2 ts=2: */
