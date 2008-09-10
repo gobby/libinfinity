@@ -8,3 +8,5 @@ libinftext.hierarchy
 libinftext.interfaces
 libinftext.prerequisites
 libinftext.signals
+tmpl
+*.bak
