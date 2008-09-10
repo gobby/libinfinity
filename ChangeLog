@@ -1,5 +1,11 @@
 2008-09-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c: Fixed a bug causing wrong text
+	colors when undoing a delete operation having erased text from
+	multiple users.
+
+2008-09-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-session-proxy.c: Notify clients when a
 	connection with subscribed users has unsubscribed.
 

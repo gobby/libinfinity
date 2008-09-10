@@ -900,7 +900,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
       tag_remove.begin_iter = tag_remove.end_iter;
       gtk_text_iter_backward_chars(
         &tag_remove.begin_iter,
-        inf_text_chunk_get_length(chunk)
+        inf_text_chunk_iter_get_length(&chunk_iter)
       );
 
       gtk_text_tag_table_foreach(
