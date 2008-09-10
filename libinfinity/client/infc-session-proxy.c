@@ -541,8 +541,13 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   else
     g_value_set_flags(&param->value, 0);
 
-  /* TODO: Add connection property if set, otherwise set sending connection as
-   * connection property. */
+  /* Set connection. If none was given, use publisher connection */
+  param = inf_session_get_user_property(array, "connection");
+  if(!G_IS_VALUE(&param->value))
+  {
+    g_value_init(&param->value, INF_TYPE_XML_CONNECTION);
+    g_value_set_object(&param->value, G_OBJECT(connection));
+  }
 
   /* This validates properties */
   user = inf_session_add_user(
@@ -637,7 +642,13 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
   else
     g_value_set_flags(&param->value, 0);
 
-  /* TODO: Add connection property if set */
+  /* Set connection. If none was given, use publisher connection */
+  param = inf_session_get_user_property(array, "connection");
+  if(!G_IS_VALUE(&param->value))
+  {
+    g_value_init(&param->value, INF_TYPE_XML_CONNECTION);
+    g_value_set_object(&param->value, G_OBJECT(connection));
+  }
 
   result = session_class->validate_user_props(
     priv->session,

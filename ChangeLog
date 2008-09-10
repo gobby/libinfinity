@@ -1,3 +1,8 @@
+2008-09-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-session-proxy.c: Set connection of joining
+	users to the publisher connection if none was specified.
+
 2008-09-09  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:DOUBLE and VOID:ENUM
