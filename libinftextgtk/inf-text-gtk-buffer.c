@@ -858,12 +858,23 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
   InfTextChunkIter chunk_iter;
   InfTextGtkBufferTagRemove tag_remove;
 
+  GtkTextMark* mark;
+  GtkTextIter insert_iter;
+  gboolean insert_at_cursor;
+  gboolean insert_at_selection_bound;
+
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
   tag_remove.buffer = priv->buffer;
 
   g_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
+    buffer
+  );
+
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
     buffer
   );
 
@@ -910,11 +921,63 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
       );
 
     } while(inf_text_chunk_iter_next(&chunk_iter));
+
+    /* Fix left gravity of own cursor on remote insert */
+    if(user != priv->active_user || user == NULL)
+    {
+      mark = gtk_text_buffer_get_insert(priv->buffer);
+      gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
+
+      if(gtk_text_iter_equal(&insert_iter, &tag_remove.end_iter))
+        insert_at_cursor = TRUE;
+      else
+        insert_at_cursor = FALSE;
+
+      mark = gtk_text_buffer_get_selection_bound(priv->buffer);
+      gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
+
+      if(gtk_text_iter_equal(&insert_iter, &tag_remove.end_iter))
+        insert_at_selection_bound = TRUE;
+      else
+        insert_at_selection_bound = FALSE;
+
+      if(insert_at_cursor || insert_at_selection_bound)
+      {
+        gtk_text_iter_backward_chars(
+          &tag_remove.end_iter,
+          inf_text_chunk_get_length(chunk)
+        );
+
+        if(insert_at_cursor)
+        {
+          gtk_text_buffer_move_mark(
+            priv->buffer,
+            gtk_text_buffer_get_insert(priv->buffer),
+            &tag_remove.end_iter
+          );
+        }
+
+        if(insert_at_selection_bound)
+        {
+          gtk_text_buffer_move_mark(
+            priv->buffer,
+            gtk_text_buffer_get_selection_bound(priv->buffer),
+            &tag_remove.end_iter
+          );
+        }
+      }
+    }
   }
 
   g_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
+    buffer
+  );
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
     buffer
   );
 }

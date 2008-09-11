@@ -1,3 +1,9 @@
+2008-09-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Don't move own cursor or
+	selection bound if a remote insert operation occurs at the same
+	position.
+
 2008-09-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.c: Fixed a bug causing wrong text
