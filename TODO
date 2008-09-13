@@ -17,11 +17,10 @@ Performance (Some ideas to improve performance, profile to verify!):
 
 Others:
 
-* Unify InfIo interface (IO):
+ * Unify InfIo interface (IO):
    - Rename InfIoFunc to InfIoWatchFunc
    - Split inf_io_watch into inf_io_add_watch, inf_io_update_watch and
      inf_io_remove_watch
- * Implement AdoptedLogRemoval correctly (Adopted)
  * Split InfXmppConnection (XMPP)
    - InfXmppConnection: XMPP core implementation
    - InfJabberConnection: Connection to jabber server, managing roster, presence, etc. Derives from InfXmppConnection, not used on server side
@@ -51,9 +50,6 @@ Others:
    an approach of defining custom entities for those (see inf-xmpp-connection.c
    in inf_xmpp_connection_initiate()), though this didn't seem to work.
 
- * Allow runtime color changes
- * Fix coloring when pasting text, undoing large blocks of deleted text in
-   libinftextgtk
  * GtkSourceView bracket highlights are hidden behind user colors
  * ERROR:(inf-discovery-avahi.c:1055):inf_discovery_avahi_constructor: assertion failed: (priv->client != NULL)
  * correct certificate handling in infinoted (cafile), trustfile on client side, certificate verification

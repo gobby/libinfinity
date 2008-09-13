@@ -21,6 +21,8 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/inf-marshal.h>
 
+#include <gnutls/x509.h>
+
 #include <errno.h>
 #include <string.h>
 
@@ -81,9 +83,12 @@ typedef struct _InfXmppConnectionPrivate InfXmppConnectionPrivate;
 struct _InfXmppConnectionPrivate {
   InfTcpConnection* tcp;
   InfXmppConnectionSite site;
-  gchar* jid;
+  gchar* local_hostname;
+  gchar* remote_hostname;
 
   InfXmppConnectionStatus status;
+  InfXmppConnectionCrtCallback certificate_callback;
+  gpointer certificate_callback_user_data;
 
   /* The number of chars given to the TCP connection 
    * waiting for being sent. */
@@ -118,7 +123,8 @@ enum {
 
   PROP_TCP,
   PROP_SITE,
-  PROP_JID,
+  PROP_LOCAL_HOSTNAME,
+  PROP_REMOTE_HOSTNAME,
 
   /* gnutls_certificate_credentials_t */
   PROP_CREDENTIALS,
@@ -463,6 +469,8 @@ inf_xmpp_connection_strerror(InfXmppConnectionError code)
     return "The server does not support transport layer security";
   case INF_XMPP_CONNECTION_ERROR_TLS_FAILURE:
     return "The server cannot perform the TLS handshake";
+  case INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED:
+    return "The server certificate is not trusted";
   case INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED:
     return "The server does not provide any authentication mechanism";
   case INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM:
@@ -765,7 +773,8 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
    * _clear() if the status changes to CLOSING_GNUTLS. Make sure to call
    * _clear() on your own if you call _terminate() outside of received_cb().
    * The only point were the current code needs to do this is in
-   * inf_xmpp_connection_xml_connection_close() */
+   * inf_xmpp_connection_xml_connection_close() and
+   * inf_xmpp_connection_certificate_verify_cancel() */
   /*inf_xmpp_connection_clear(xmpp);*/
 
   /* The Change from CLOSING_STREAM to CLOSING_GNUTLS does not change
@@ -982,6 +991,12 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
   int ret;
   GError* error;
 
+  unsigned int i;
+  unsigned int list_size;
+  int result;
+  const gnutls_datum_t* server_certs_raw;
+  gnutls_x509_crt_t* certs;
+
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->status == INF_XMPP_CONNECTION_HANDSHAKING);
   g_assert(priv->session != NULL);
@@ -995,8 +1010,45 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
   case 0:
     /* Handshake finished successfully */
     priv->status = INF_XMPP_CONNECTION_CONNECTED;
-    /* Reinitiate stream */
-    inf_xmpp_connection_initiate(xmpp);
+    if(priv->site == INF_XMPP_CONNECTION_SERVER ||
+       priv->certificate_callback == NULL)
+    {
+      /* Reinitiate stream */
+      inf_xmpp_connection_initiate(xmpp);
+    }
+    else
+    {
+      server_certs_raw = gnutls_certificate_get_peers(
+        priv->session,
+        &list_size
+      );
+
+      /* TODO: Allow no certificate being used? */
+      g_assert(server_certs_raw != NULL);
+
+      certs = g_malloc(list_size * sizeof(gnutls_x509_crt_t));
+
+      result = gnutls_x509_crt_list_import(
+        certs,
+        &list_size,
+        server_certs_raw,
+        GNUTLS_X509_FMT_DER,
+        0
+      );
+
+      g_assert(result >= 0);
+
+      priv->certificate_callback(
+        xmpp,
+        certs,
+        list_size,
+        priv->certificate_callback_user_data
+      );
+
+      for(i = 0; i < list_size; ++ i)
+        gnutls_x509_crt_deinit(certs[i]);
+      g_free(certs);
+    }
     break;
   default:
     error = NULL;
@@ -1211,7 +1263,7 @@ inf_xmpp_connection_sasl_cb(Gsasl* ctx,
   switch(prop)
   {
   case GSASL_ANONYMOUS_TOKEN:
-    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, priv->jid);
+    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, g_get_user_name());
     return GSASL_OK;
   case GSASL_VALIDATE_ANONYMOUS:
     /* Authentication always successful */
@@ -1460,12 +1512,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
                                       const xmlChar** attrs)
 {
   /* TODO: xml:lang and id field are missing here */
-  /* TODO: We SHOULD NOT send a 'to' field here, according to the RFC */
-  static const gchar xmpp_connection_initial_request_to[] =
-    "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" "
-    "xmlns=\"jabber:client\" version=\"1.0\" from=\"%s\" to=\"%s\">";
-
-  static const gchar xmpp_connection_initial_request_noto[] = 
+  static const gchar xmpp_connection_initial_request[] = 
     "<stream:stream xmlns:stream=\"http://etherx.jabber.org/streams\" "
     "xmlns=\"jabber:client\" version=\"1.0\" from=\"%s\">";
 
@@ -1476,7 +1523,6 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   int ret;
 
   gchar* reply;
-  const xmlChar** to_attr;
 
   xmlNodePtr features;
   xmlNodePtr starttls;
@@ -1491,41 +1537,10 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   g_assert(priv->status == INF_XMPP_CONNECTION_CONNECTED ||
            priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED);
 
-  /* Find from attribute from incoming stream to use as "to" attribute in
-   * outgoing stream. */
-  to_attr = NULL;
-  if(attrs != NULL)
-  {
-    to_attr = attrs;
-    while(*to_attr != NULL)
-    {
-      if(strcmp((const gchar*)*to_attr, "from") == 0)
-      {
-        ++ to_attr;
-        break;
-      }
-      else 
-      {
-        to_attr += 2;
-      }
-    }
-  }
-
-  if(to_attr == NULL || *to_attr == NULL)
-  {  
-    reply = g_strdup_printf(
-      xmpp_connection_initial_request_noto,
-      priv->jid
-    );
-  }
-  else
-  {
-    reply = g_strdup_printf(
-      xmpp_connection_initial_request_to,
-      priv->jid,
-      (const gchar*)*to_attr
-    );
-  }
+  reply = g_strdup_printf(
+    xmpp_connection_initial_request,
+    priv->local_hostname
+  );
 
   inf_xmpp_connection_send_chars(xmpp, reply, strlen(reply));
   g_free(reply);
@@ -2380,11 +2395,9 @@ static xmlSAXHandler inf_xmpp_connection_handler = {
 static void
 inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
 {
-  /* TODO: We MUST set a to field here, and we SHOULD NOT set a from field,
-   * according to the RFC 3920. */
   static const gchar xmpp_connection_initial_request[] =
     "<stream:stream version=\"1.0\" xmlns=\"jabber:client\" "
-    "xmlns:stream=\"http://etherx.jabber.org/streams\" from=\"%s\">";
+    "xmlns:stream=\"http://etherx.jabber.org/streams\" to=\"%s\">";
 
   InfXmppConnectionPrivate* priv;
   gchar* request;
@@ -2428,7 +2441,11 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
 
   if(priv->site == INF_XMPP_CONNECTION_CLIENT)
   {
-    request = g_strdup_printf(xmpp_connection_initial_request, priv->jid);
+    request = g_strdup_printf(
+      xmpp_connection_initial_request,
+      priv->remote_hostname
+    );
+
     inf_xmpp_connection_send_chars(xmpp, request, strlen(request));
     g_free(request);
 
@@ -2856,7 +2873,11 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->tcp = NULL;
   priv->site = INF_XMPP_CONNECTION_CLIENT;
   priv->status = INF_XMPP_CONNECTION_CLOSED;
-  priv->jid = g_strdup(g_get_host_name());
+  priv->local_hostname = NULL;
+  priv->remote_hostname = NULL;
+
+  priv->certificate_callback = NULL;
+  priv->certificate_callback_user_data = NULL;
 
   priv->position = 0;
   priv->messages = NULL;
@@ -2898,6 +2919,10 @@ inf_xmpp_connection_constructor(GType type,
   priv = INF_XMPP_CONNECTION_PRIVATE(obj);
 
   g_assert(priv->tcp != NULL);
+
+  if(priv->local_hostname == NULL)
+    priv->local_hostname = g_strdup(g_get_host_name());
+
   g_object_get(G_OBJECT(priv->tcp), "status", &status, NULL);
 
   /* Initiate stream if connection is already established */
@@ -2936,6 +2961,21 @@ inf_xmpp_connection_dispose(GObject* object)
 }
 
 static void
+inf_xmpp_connection_finalize(GObject* object)
+{
+  InfXmppConnection* xmpp;
+  InfXmppConnectionPrivate* priv;
+
+  xmpp = INF_XMPP_CONNECTION(object);
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  g_free(priv->local_hostname);
+  g_free(priv->remote_hostname);
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
+static void
 inf_xmpp_connection_set_property(GObject* object,
                                  guint prop_id,
                                  const GValue* value,
@@ -2965,9 +3005,27 @@ inf_xmpp_connection_set_property(GObject* object,
 
     priv->site = g_value_get_enum(value);
     break;
-  case PROP_JID:
-    g_free(priv->jid);
-    priv->jid = g_value_dup_string(value);
+  case PROP_LOCAL_HOSTNAME:
+    /* Can only change this if the initial <stream:stream> has not
+     * yet been sent. */
+    g_assert(priv->status == INF_XMPP_CONNECTION_CONNECTING ||
+             priv->status == INF_XMPP_CONNECTION_CONNECTED ||
+             priv->status == INF_XMPP_CONNECTION_CLOSED);
+
+    g_free(priv->local_hostname);
+    priv->local_hostname = g_value_dup_string(value);
+    if(priv->local_hostname == NULL)
+      priv->local_hostname = g_strdup(g_get_host_name());
+    break;
+  case PROP_REMOTE_HOSTNAME:
+    /* Can only change this if the initial <stream:stream> has not
+     * yet been sent. */
+    g_assert(priv->status == INF_XMPP_CONNECTION_CONNECTING ||
+             priv->status == INF_XMPP_CONNECTION_CONNECTED ||
+             priv->status == INF_XMPP_CONNECTION_CLOSED);
+
+    g_free(priv->remote_hostname);
+    priv->remote_hostname = g_value_dup_string(value);
     break;
   case PROP_CREDENTIALS:
     /* Cannot change credentials when currently in use */
@@ -3022,8 +3080,11 @@ inf_xmpp_connection_get_property(GObject* object,
   case PROP_SITE:
     g_value_set_enum(value, priv->site);
     break;
-  case PROP_JID:
-    g_value_set_string(value, priv->jid);
+  case PROP_LOCAL_HOSTNAME:
+    g_value_set_string(value, priv->local_hostname);
+    break;
+  case PROP_REMOTE_HOSTNAME:
+    g_value_set_string(value, priv->remote_hostname);
     break;
   case PROP_CREDENTIALS:
     g_value_set_pointer(value, priv->cred);
@@ -3104,6 +3165,8 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
     inf_xmpp_connection_terminate(INF_XMPP_CONNECTION(connection));
     /* This is not in a XML callback, so we need to call clear explicitely */
     inf_xmpp_connection_clear(INF_XMPP_CONNECTION(connection));
+    /* TODO: Shouldn't we close the TCP connection here, as in
+     * inf_xmpp_connection_received_cb()? */
     break;
   case INF_XMPP_CONNECTION_HANDSHAKING:
   case INF_XMPP_CONNECTION_ENCRYPTION_REQUESTED:
@@ -3126,6 +3189,8 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
     inf_xmpp_connection_terminate(INF_XMPP_CONNECTION(connection));
     /* This is not in a XML callback, so we need to call clear explicitely */
     inf_xmpp_connection_clear(INF_XMPP_CONNECTION(connection));
+    /* TODO: Shouldn't we close the TCP connection here, as in
+     * inf_xmpp_connection_received_cb()? */
     break;
   case INF_XMPP_CONNECTION_INITIATED:
   case INF_XMPP_CONNECTION_AUTH_INITIATED:
@@ -3228,12 +3293,24 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_JID,
+    PROP_LOCAL_HOSTNAME,
     g_param_spec_string(
-      "jid",
-      "JID",
-      "JID of the local entity",
-      "localhost",
+      "local-hostname",
+      "Local hostname",
+      "The hostname of the local host",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_REMOTE_HOSTNAME,
+    g_param_spec_string(
+      "remote-hostname",
+      "Remote hostname",
+      "The hostname of the remote host",
+      NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -3360,7 +3437,8 @@ inf_xmpp_connection_get_type(void)
  * inf_xmpp_connection_new:
  * @tcp: The underlaying TCP connection to use.
  * @site: Whether this is a XMPP client or server.
- * @jid: The JID of the local entity.
+ * @local_hostname: The hostname of the local host, or %NULL.
+ * @remote_hostname: The hostname of the remote host.
  * @cred: Certificate credentials used to secure the communication.
  * @sasl_context: A SASL context used for authentication.
  *
@@ -3369,6 +3447,12 @@ inf_xmpp_connection_get_type(void)
  * communication is initiated as soon as @tcp gets into
  * %INF_TCP_CONNECTION_CONNECTED state, so you might still open it
  * lateron yourself.
+ *
+ * @local_hostname specifies the hostname of the local host, and
+ * @remote_hostname specifies the hostname of the remote host, as known to
+ * the caller. These can be a string representation of the IP address of
+ * @tcp, or a DNS name such as "example.com". @local_hostname can be %NULL
+ * in which case the host name as reported by g_get_host_name() is used.
  *
  * @cred may be %NULL in which case the connection creates the credentials
  * as soon as they are required, however, this might take some time.
@@ -3382,7 +3466,8 @@ inf_xmpp_connection_get_type(void)
 InfXmppConnection*
 inf_xmpp_connection_new(InfTcpConnection* tcp,
                         InfXmppConnectionSite site,
-                        const gchar* jid,
+                        const gchar* local_hostname,
+                        const gchar* remote_hostname,
                         gnutls_certificate_credentials_t cred,
                         Gsasl* sasl_context)
 {
@@ -3394,13 +3479,105 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
     INF_TYPE_XMPP_CONNECTION,
     "tcp-connection", tcp,
     "site", site,
-    "jid", jid,
+    "local-hostname", local_hostname,
+    "remote-hostname", remote_hostname,
     "credentials", cred,
     "sasl-context", sasl_context,
     NULL
   );
 
   return INF_XMPP_CONNECTION(object);
+}
+
+/**
+ * inf_xmpp_connection_set_certificate_callback:
+ * @xmpp: A #InfXmppConnection.
+ * @cb: Function to be called to verify the server certificate, or %NULL.
+ * @user_data: Additional data to pass to the callback function.
+ *
+ * This function sets a callback that is called when the connection needs to
+ * verify the server's certificate. It does not need to respond immediately,
+ * but can, for example, show a dialog to a user and continue when the user
+ * finished with it.
+ *
+ * When the certificate is trusted, then call
+ * inf_xmpp_connection_certificate_verify_continue(),
+ * otherwise inf_xmpp_connection_certificate_verify_cancel(). This can happen
+ * in the callback or some time later. The connection process is stopped until
+ * either of these functions is called.
+ *
+ * If @cb is %NULL, or this function has not been called before a certificate
+ * needs to be verified, then the certificate is always trusted.
+ */
+void
+inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
+                                             InfXmppConnectionCrtCallback cb,
+                                             gpointer user_data)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_if_fail(INF_IS_XMPP_CONNECTION(xmpp));
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  priv->certificate_callback = cb;
+  priv->certificate_callback_user_data = user_data;
+}
+
+/**
+ * inf_xmpp_connection_certificate_verify_continue:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Call this function when your callback set in
+ * inf_xmpp_connection_set_certificate_callback() was called and you do trust
+ * the server's certificate. The connection process will then continue.
+ */
+void
+inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_if_fail(INF_IS_XMPP_CONNECTION(xmpp));
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  g_return_if_fail(priv->status == INF_XMPP_CONNECTION_CONNECTED);
+  g_return_if_fail(priv->session != NULL);
+
+  inf_xmpp_connection_initiate(xmpp);
+}
+
+/**
+ * inf_xmpp_connection_certificate_verify_cancel:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Call this function when your callback set in
+ * inf_xmpp_connection_set_certificate_callback() was called and you do not
+ * trust the server's certificate. The connection will then be closed with a
+ * corresponding error.
+ */
+void
+inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+  GError* error;
+
+  g_return_if_fail(INF_IS_XMPP_CONNECTION(xmpp));
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  g_return_if_fail(priv->status == INF_XMPP_CONNECTION_CONNECTED);
+  g_return_if_fail(priv->session != NULL);
+
+  error = NULL;
+  g_set_error(
+    &error,
+    inf_xmpp_connection_error_quark,
+    INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+    "The server certificate is not trusted"
+  );
+
+  inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+  g_error_free(error);
+
+  inf_xml_connection_close(INF_XML_CONNECTION(xmpp));
 }
 
 /* vim:set et sw=2 ts=2: */

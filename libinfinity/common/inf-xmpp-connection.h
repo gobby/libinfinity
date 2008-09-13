@@ -50,6 +50,8 @@ typedef enum _InfXmppConnectionError {
   INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
   /* Got <failure> as response to <starttls> */
   INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
+  /* The server certificate is not trusted */
+  INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
   /* Server does not provide authentication mechanisms */
   INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED,
   /* Server does not offer a suitable machnism */
@@ -110,6 +112,11 @@ struct _InfXmppConnection {
   GObject parent;
 };
 
+typedef void(*InfXmppConnectionCrtCallback)(InfXmppConnection* xmpp,
+                                            gnutls_x509_crt_t* certs,
+                                            guint n_certs,
+                                            gpointer user_data);
+
 GType
 inf_xmpp_connection_site_get_type(void) G_GNUC_CONST;
 
@@ -119,9 +126,21 @@ inf_xmpp_connection_get_type(void) G_GNUC_CONST;
 InfXmppConnection*
 inf_xmpp_connection_new(InfTcpConnection* tcp,
                         InfXmppConnectionSite site,
-                        const gchar* jid,
+                        const gchar* local_hostname,
+                        const gchar* remote_hostname,
                         gnutls_certificate_credentials_t cred,
                         Gsasl* sasl_context);
+
+void
+inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
+                                             InfXmppConnectionCrtCallback cb,
+                                             gpointer user_data);
+
+void
+inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp);
+
+void
+inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp);
 
 G_END_DECLS
 

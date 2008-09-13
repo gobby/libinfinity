@@ -1,3 +1,21 @@
+2008-09-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Make InfXmppConnection
+	take local and remote server address instead of local jid only, and
+	send correct <stream:stream> header as required by the RFC. Added
+	support for verification of server's certificate, via a callback.
+
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c:
+	* libinfinity/common/inf-discovery-avahi.c: Set remote server name
+	appropriately.
+
+	* infinoted/infinoted-main.c:
+	* test/inf-test-browser.c:
+	* test/inf-test-daemon.c:
+	* test/inf-test-xmpp-connection.c: Adapt to API change.
+
 2008-09-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.c: Don't move own cursor or

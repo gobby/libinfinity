@@ -31,7 +31,7 @@ typedef struct _InfdXmppServerPrivate InfdXmppServerPrivate;
 struct _InfdXmppServerPrivate {
   InfdTcpServer* tcp;
   InfdXmppServerStatus status;
-  gchar* jid;
+  gchar* local_hostname;
 
   gnutls_certificate_credentials_t tls_creds;
   gnutls_certificate_credentials_t tls_own_creds;
@@ -44,7 +44,7 @@ enum {
   PROP_0,
 
   PROP_TCP,
-  PROP_JID,
+  PROP_LOCAL_HOSTNAME,
 
   PROP_CREDENTIALS,
   PROP_SASL_CONTEXT,
@@ -72,17 +72,28 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
   InfdXmppServer* xmpp_server;
   InfdXmppServerPrivate* priv;
   InfXmppConnection* xmpp_connection;
+  InfIpAddress* addr;
+  gchar* addr_str;
 
   xmpp_server = INFD_XMPP_SERVER(user_data);
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp_server);
 
+  /* TODO: We could perform a reverse DNS lookup to find the client hostname
+   * here. */
+  g_object_get(G_OBJECT(tcp_connection), "remote-address", &addr, NULL);
+  addr_str = inf_ip_address_to_string(addr);
+  inf_ip_address_free(addr);
+
   xmpp_connection = inf_xmpp_connection_new(
     tcp_connection,
     INF_XMPP_CONNECTION_SERVER,
-    priv->jid,
+    priv->local_hostname,
+    addr_str,
     priv->tls_creds,
     priv->sasl_context
   );
+
+  g_free(addr_str);
 
   /* We could, alternatively, keep the connection around until authentication
    * has completed and emit the new_connection signal after that, to guarantee
@@ -243,7 +254,7 @@ infd_xmpp_server_sasl_cb(Gsasl* ctx,
   switch(prop)
   {
   case GSASL_ANONYMOUS_TOKEN:
-    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, priv->jid);
+    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, priv->local_hostname);
     return GSASL_OK;
   case GSASL_VALIDATE_ANONYMOUS:
     /* Authentaction always successful */
@@ -329,7 +340,7 @@ infd_xmpp_server_init(GTypeInstance* instance,
 
   priv->tcp = NULL;
   priv->status = INFD_XMPP_SERVER_CLOSED;
-  priv->jid = g_strdup(g_get_host_name());
+  priv->local_hostname = g_strdup(g_get_host_name());
 
   priv->tls_creds = NULL;
   priv->tls_own_creds = NULL;
@@ -364,7 +375,7 @@ infd_xmpp_server_finalize(GObject* object)
   xmpp = INFD_XMPP_SERVER(object);
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
 
-  g_free(priv->jid);
+  g_free(priv->local_hostname);
 
   if(priv->sasl_own_context != NULL)
     gsasl_done(priv->sasl_own_context);
@@ -396,9 +407,11 @@ infd_xmpp_server_set_property(GObject* object,
     );
 
     break;
-  case PROP_JID:
-    g_free(priv->jid);
-    priv->jid = g_value_dup_string(value);
+  case PROP_LOCAL_HOSTNAME:
+    g_free(priv->local_hostname);
+    priv->local_hostname = g_value_dup_string(value);
+    if(priv->local_hostname == NULL)
+      priv->local_hostname = g_strdup(g_get_host_name());
     break;
   case PROP_CREDENTIALS:
     /* TODO: Make sure that the credentials are no longer in use by a XMPP
@@ -460,8 +473,8 @@ infd_xmpp_server_get_property(GObject* object,
   case PROP_TCP:
     g_value_set_object(value, priv->tcp);
     break;
-  case PROP_JID:
-    g_value_set_string(value, priv->jid);
+  case PROP_LOCAL_HOSTNAME:
+    g_value_set_string(value, priv->local_hostname);
     break;
   case PROP_CREDENTIALS:
     g_value_set_pointer(value, priv->tls_creds);
@@ -531,12 +544,12 @@ infd_xmpp_server_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_JID,
+    PROP_LOCAL_HOSTNAME,
     g_param_spec_string(
-      "jid",
-      "JID",
-      "Jabber ID of the server",
-      "localhost",
+      "local-hostname",
+      "Local hostname",
+      "Hostname of the server",
+      NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -634,7 +647,6 @@ infd_xmpp_server_get_type(void)
 /**
  * infd_xmpp_server_new:
  * @tcp: A #InfdTcpServer.
- * @jid: The JID of the server entity, for example "jabber.org".
  * @cred: Certificate credentials used to secure any communication.
  * @sasl_context: A SASL context used for authentication.
  *
@@ -653,7 +665,6 @@ infd_xmpp_server_get_type(void)
  **/
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
-                     const gchar* jid,
                      gnutls_certificate_credentials_t cred,
                      Gsasl* sasl_context)
 {
@@ -664,7 +675,6 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
   object = g_object_new(
     INFD_TYPE_XMPP_SERVER,
     "tcp-server", tcp,
-    "jid", jid,
     "credentials", cred,
     "sasl-context", sasl_context,
     NULL

@@ -339,7 +339,8 @@ main(int argc, char* argv[])
     test.conn = inf_xmpp_connection_new(
       tcp_conn,
       INF_XMPP_CONNECTION_CLIENT,
-      "ck@localhost",
+      NULL,
+      "localhost",
       NULL,
       NULL
     );

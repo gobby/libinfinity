@@ -486,6 +486,7 @@ INF_XMPP_MANAGER_GET_CLASS
 <SECTION>
 <FILE>inf-xmpp-connection</FILE>
 <TITLE>InfXmppConnection</TITLE>
+InfXmppConnectionCrtCallback
 InfXmppConnectionSite
 InfXmppConnectionError
 InfXmppConnectionStreamError
@@ -493,6 +494,9 @@ InfXmppConnectionAuthError
 InfXmppConnection
 InfXmppConnectionClass
 inf_xmpp_connection_new
+inf_xmpp_connection_set_certificate_callback
+inf_xmpp_connection_certificate_verify_continue
+inf_xmpp_connection_certificate_verify_cancel
 <SUBSECTION Standard>
 INF_XMPP_CONNECTION
 INF_IS_XMPP_CONNECTION

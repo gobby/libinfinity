@@ -154,7 +154,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   }
 
   pool = infd_server_pool_new(directory);
-  server = infd_xmpp_server_new(tcp, g_get_host_name(), credentials, NULL);
+  server = infd_xmpp_server_new(tcp, credentials, NULL);
   g_object_unref(G_OBJECT(tcp));
   
   infd_server_pool_add_server(pool, INFD_XML_SERVER(server));

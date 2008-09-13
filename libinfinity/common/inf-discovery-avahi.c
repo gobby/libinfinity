@@ -338,11 +338,11 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
       }
       else
       {
-        /* TODO: Query JID by callback? */
         discovery_info->resolved = inf_xmpp_connection_new(
           tcp,
           INF_XMPP_CONNECTION_CLIENT,
-          g_get_user_name(),
+          NULL,
+          host_name,
           priv->creds,
           priv->sasl_context
         );
