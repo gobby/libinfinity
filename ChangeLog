@@ -1,5 +1,16 @@
 2008-09-16  Armin Burgmeier  <armin@arbur.net>
 
+	* infinited/infinoted/creds.h:
+	* infinited/infinoted/creds.c: Include <gnutls/x509.h> only in the
+	source file not in the header, it is not needed for the declarations.
+	Also set the common name of a generated self-signed certificate to
+	g_get_host_name().
+
+	* infinoted/infinoted/main.c: Include <gnutls/x509.h> since it is no
+	longer included by including infinoted/creds.h.
+
+2008-09-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-view.h:
 	* libinfgtk/inf-gtk-certificate-view.c: Added a widget that shows a
 	certificate.

@@ -34,6 +34,8 @@
 #include <glib/goption.h>
 #include <glib/gstrfuncs.h>
 
+#include <gnutls/x509.h>
+
 #include <string.h>
 #include <locale.h>
 #include <stdio.h>

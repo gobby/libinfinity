@@ -18,11 +18,9 @@
 
 #include <infinoted/infinoted-creds.h>
 
-#include <glib/gfileutils.h>
-#include <glib/gutils.h>
-#include <glib/gmem.h>
-#include <glib/gmessages.h>
-#include <glib.h> /* We do not get g_assert with glib 2.15.0 otherwise */
+#include <glib.h>
+
+#include <gnutls/x509.h>
 
 #include <string.h>
 #include <errno.h>
@@ -49,6 +47,7 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
 {
   gint32 default_serial;
   char buffer[20];
+  const gchar* hostname;
   int res;
   
   res = gnutls_x509_crt_set_key(cert, key);
@@ -77,6 +76,16 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   if(res != 0) return res;
 
   res = gnutls_x509_crt_set_version(cert, 3);
+  if(res != 0) return res;
+
+  hostname = g_get_host_name();
+  res = gnutls_x509_crt_set_dn_by_oid(
+    cert,
+    GNUTLS_OID_X520_COMMON_NAME,
+    0,
+    hostname,
+    strlen(hostname)
+  );
   if(res != 0) return res;
 
   res = gnutls_x509_crt_sign2(cert, cert, key, GNUTLS_DIG_SHA1, 0);

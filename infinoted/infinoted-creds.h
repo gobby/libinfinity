@@ -22,7 +22,6 @@
 #include <glib/gtypes.h>
 #include <glib/gerror.h>
 
-#include <gnutls/x509.h>
 #include <gnutls/gnutls.h>
 
 G_BEGIN_DECLS
