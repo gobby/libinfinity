@@ -10,3 +10,6 @@ inf-test-text-replay
 inf-test-xmpp-connection
 inf-test-state-vector
 inf-test-tcp-server
+*.prof
+callgrind.*
+*.out
