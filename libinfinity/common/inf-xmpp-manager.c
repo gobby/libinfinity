@@ -20,6 +20,8 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-tcp-connection.h>
 
+#include <libinfinity/inf-marshal.h>
+
 typedef struct _InfXmppManagerKey InfXmppManagerKey;
 struct _InfXmppManagerKey {
   InfIpAddress* address; /* owned by connection */
@@ -31,9 +33,16 @@ struct _InfXmppManagerPrivate {
   GTree* connections;
 };
 
+enum {
+  ADD_CONNECTION,
+
+  LAST_SIGNAL
+};
+
 #define INF_XMPP_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_XMPP_MANAGER, InfXmppManagerPrivate))
 
 static GObjectClass* parent_class;
+static guint xmpp_manager_signals[LAST_SIGNAL];
 
 static InfXmppManagerKey*
 inf_xmpp_manager_key_new(InfXmppConnection* connection)
@@ -180,16 +189,54 @@ inf_xmpp_manager_dispose(GObject* object)
 }
 
 static void
+inf_xmpp_manager_add_connection_handler(InfXmppManager* xmpp_manager,
+                                        InfXmppConnection* connection)
+{
+  InfXmppManagerPrivate* priv;
+  InfXmppManagerKey* key;
+
+  priv = INF_XMPP_MANAGER_PRIVATE(xmpp_manager);
+
+  g_signal_connect(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(inf_xmpp_manager_notify_status_cb),
+    xmpp_manager
+  );
+
+  key = inf_xmpp_manager_key_new(connection);
+  g_tree_insert(priv->connections, key, connection);
+  g_object_ref(G_OBJECT(connection));
+}
+
+static void
 inf_xmpp_manager_class_init(gpointer g_class,
                             gpointer class_data)
 {
   GObjectClass* object_class;
+  InfXmppManagerClass* xmpp_manager_class;
+
   object_class = G_OBJECT_CLASS(g_class);
+  xmpp_manager_class = INF_XMPP_MANAGER_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfXmppManagerPrivate));
 
   object_class->dispose = inf_xmpp_manager_dispose;
+  xmpp_manager_class->add_connection =
+    inf_xmpp_manager_add_connection_handler;
+
+  xmpp_manager_signals[ADD_CONNECTION] = g_signal_new(
+    "add-connection",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfXmppManagerClass, add_connection),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XMPP_CONNECTION
+  );
 }
 
 GType
@@ -313,17 +360,13 @@ void
 inf_xmpp_manager_add_connection(InfXmppManager* manager,
                                 InfXmppConnection* connection)
 {
-  InfXmppManagerPrivate* priv;
   InfXmlConnectionStatus status;
-  InfXmppManagerKey* key;
 
   g_return_if_fail(INF_IS_XMPP_MANAGER(manager));
   g_return_if_fail(INF_IS_XMPP_CONNECTION(connection));
   g_return_if_fail(
     inf_xmpp_manager_contains_connection(manager, connection) == FALSE
   );
-
-  priv = INF_XMPP_MANAGER_PRIVATE(manager);
 
   g_object_get(
     G_OBJECT(connection),
@@ -334,16 +377,12 @@ inf_xmpp_manager_add_connection(InfXmppManager* manager,
   g_return_if_fail(status != INF_XML_CONNECTION_CLOSING &&
                    status != INF_XML_CONNECTION_CLOSED);
 
-  g_signal_connect(
-    G_OBJECT(connection),
-    "notify::status",
-    G_CALLBACK(inf_xmpp_manager_notify_status_cb),
-    manager
+  g_signal_emit(
+    G_OBJECT(manager),
+    xmpp_manager_signals[ADD_CONNECTION],
+    0,
+    connection
   );
-
-  key = inf_xmpp_manager_key_new(connection);
-  g_tree_insert(priv->connections, key, connection);
-  g_object_ref(G_OBJECT(connection));
 }
 
 /* vim:set et sw=2 ts=2: */

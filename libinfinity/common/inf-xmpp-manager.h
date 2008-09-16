@@ -37,6 +37,9 @@ typedef struct _InfXmppManagerClass InfXmppManagerClass;
 
 struct _InfXmppManagerClass {
   GObjectClass parent_class;
+
+  void(*add_connection)(InfXmppManager* manager,
+                        InfXmppConnection* connection);
 };
 
 struct _InfXmppManager {

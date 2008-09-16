@@ -996,6 +996,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
   int result;
   const gnutls_datum_t* server_certs_raw;
   gnutls_x509_crt_t* certs;
+  InfCertificateChain* chain;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->status == INF_XMPP_CONNECTION_HANDSHAKING);
@@ -1023,6 +1024,8 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
         &list_size
       );
 
+      printf("List size: %d\n", list_size);
+
       /* TODO: Allow no certificate being used? */
       g_assert(server_certs_raw != NULL);
 
@@ -1036,18 +1039,19 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
         0
       );
 
+      printf("List size: %d\n", list_size);
+
       g_assert(result >= 0);
+
+      chain = inf_certificate_chain_new(certs, list_size);
 
       priv->certificate_callback(
         xmpp,
-        certs,
-        list_size,
+        chain,
         priv->certificate_callback_user_data
       );
 
-      for(i = 0; i < list_size; ++ i)
-        gnutls_x509_crt_deinit(certs[i]);
-      g_free(certs);
+      inf_certificate_chain_unref(chain);
     }
     break;
   default:

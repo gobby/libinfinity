@@ -999,6 +999,36 @@ INF_TYPE_IP_ADDRESS_FAMILY
 </SECTION>
 
 <SECTION>
+<FILE>inf-certificate-chain</FILE>
+<TITLE>InfCertificateChain</TITLE>
+InfCertificateChain
+inf_certificate_chain_new
+inf_certificate_chain_ref
+inf_certificate_chain_unref
+inf_certificate_chain_get_raw
+inf_certificate_chain_get_root_certificate
+inf_certificate_chain_get_own_certificate
+inf_certificate_chain_get_nth_certificate
+inf_certificate_chain_get_n_certificates
+<SUBSECTION Standard>
+inf_certificate_chain_get_type
+INF_TYPE_CERTIFICATE_CHAIN
+</SECTION>
+
+<SECTION>
+<FILE>inf-cert-util</FILE>
+<TITLE>InfCertUtil</TITLE>
+inf_cert_util_copy
+inf_cert_util_get_dn_by_oid
+inf_cert_util_get_issuer_dn_by_oid
+inf_cert_util_get_hostname
+inf_cert_util_get_activation_time
+inf_cert_util_get_expiration_time
+inf_cert_util_get_fingerprint
+inf_cert_util_get_serial_number
+</SECTION>
+
+<SECTION>
 <FILE>inf-xml-util</FILE>
 <TITLE>InfXmlUtil</TITLE>
 inf_xml_util_get_attribute

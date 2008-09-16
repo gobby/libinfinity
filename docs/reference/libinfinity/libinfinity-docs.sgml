@@ -35,7 +35,9 @@
     <xi:include href="xml/inf-simulated-connection.xml"/>
     <xi:include href="xml/inf-xmpp-connection.xml"/>
     <xi:include href="xml/inf-ip-address.xml"/>
+    <xi:include href="xml/inf-certificate-chain.xml"/>
     <xi:include href="xml/inf-xml-util.xml"/>
+    <xi:include href="xml/inf-cert-util.xml"/>
     <xi:include href="xml/inf-error.xml"/>
     <xi:include href="xml/inf-central-method.xml"/>
   </chapter>

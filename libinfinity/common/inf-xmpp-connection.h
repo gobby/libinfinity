@@ -20,6 +20,7 @@
 #define __INF_XMPP_CONNECTION_H__
 
 #include <libinfinity/common/inf-tcp-connection.h>
+#include <libinfinity/common/inf-certificate-chain.h>
 
 #include <gnutls/gnutls.h>
 #include <gsasl.h>
@@ -113,8 +114,7 @@ struct _InfXmppConnection {
 };
 
 typedef void(*InfXmppConnectionCrtCallback)(InfXmppConnection* xmpp,
-                                            gnutls_x509_crt_t* certs,
-                                            guint n_certs,
+                                            InfCertificateChain* chain,
                                             gpointer user_data);
 
 GType

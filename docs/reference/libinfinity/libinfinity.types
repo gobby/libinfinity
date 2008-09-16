@@ -25,6 +25,7 @@ inf_session_status_get_type
 inf_session_get_type
 inf_ip_address_family_get_type
 inf_ip_address_get_type
+inf_certificate_chain_get_type
 inf_xmpp_manager_get_type
 inf_xmpp_connection_site_get_type
 inf_xmpp_connection_get_type

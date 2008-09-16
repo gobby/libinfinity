@@ -1,3 +1,26 @@
+2008-09-16  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-cert-util.h:
+	* libinfinity/common/inf-cert-util.c: New file containing a few
+	convenience functions to deal with .X509 certificates.
+
+	* libinfinity/common/inf-certificate-chain.h:
+	* libinfinity/common/inf-certificate-chain.c: Very thin wrapper around
+	an array of gnutls_x509_crt_t to ref-count it and integrate it into
+	the gobject type system.
+
+	* libinfinity/common/Makefile.am: Added the new files to the build.
+
+	* libinfinity/common/inf-xmpp-manager.h:
+	* libinfinity/common/inf-xmpp-manager.c: Added a "add-connection"
+	signal that is emitted when a new connection has been added to the
+	manager.
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Query server
+	certificate(s) if we are client, and call a callback to decide whether
+	to accpet the certificate or not.
+
 2008-09-13  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.h:

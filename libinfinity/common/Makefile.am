@@ -15,6 +15,8 @@ libinfinity_common_ladir = $(includedir)/libinfinity-1.0/libinfinity/common
 libinfinity_common_la_SOURCES = \
 	inf-buffer.c \
 	inf-central-method.c \
+	inf-certificate-chain.c \
+	inf-cert-util.c \
 	inf-connection-manager.c \
 	inf-discovery-avahi.c \
 	inf-discovery.c \
@@ -38,6 +40,8 @@ libinfinity_common_la_SOURCES = \
 libinfinity_common_la_HEADERS = \
 	inf-buffer.h \
 	inf-central-method.h \
+	inf-certificate-chain.h \
+	inf-cert-util.h \
 	inf-connection-manager.h \
 	inf-discovery.h \
 	inf-discovery-avahi.h \
