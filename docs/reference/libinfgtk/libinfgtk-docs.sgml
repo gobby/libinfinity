@@ -20,6 +20,8 @@
     <xi:include href="xml/inf-gtk-browser-store.xml"/>
     <xi:include href="xml/inf-gtk-browser-model-filter.xml"/>
     <xi:include href="xml/inf-gtk-browser-model-sort.xml"/>
-    <xi:include href="xml/inf-gtk-io.xml"/>
+    <xi:include href="xml/inf-gtk-certificate-manager.xml"/>
+    <xi:include href="xml/inf-gtk-certificate-dialog.xml"/>
+    <xi:include href="xml/inf-gtk-certificate-view.xml"/>
   </chapter>
 </book>

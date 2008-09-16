@@ -19,6 +19,9 @@ libinfgtk_1_0_la_HEADERS = \
 	inf-gtk-browser-model-sort.h \
 	inf-gtk-browser-store.h \
 	inf-gtk-browser-view.h \
+	inf-gtk-certificate-dialog.h \
+	inf-gtk-certificate-manager.h \
+	inf-gtk-certificate-view.h \
 	inf-gtk-io.h
 
 libinfgtk_1_0_la_SOURCES = \
@@ -27,4 +30,7 @@ libinfgtk_1_0_la_SOURCES = \
 	inf-gtk-browser-model-sort.c \
 	inf-gtk-browser-store.c \
 	inf-gtk-browser-view.c \
+	inf-gtk-certificate-dialog.c \
+	inf-gtk-certificate-manager.c \
+	inf-gtk-certificate-view.c \
 	inf-gtk-io.c

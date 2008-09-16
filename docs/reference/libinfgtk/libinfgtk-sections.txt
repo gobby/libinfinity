@@ -104,3 +104,56 @@ INF_GTK_IS_IO_CLASS
 INF_GTK_IO_GET_CLASS
 </SECTION>
 
+<SECTION>
+<FILE>inf-gtk-certificate-dialog</FILE>
+<TITLE>InfGtkCertificateDialog</TITLE>
+InfGtkCertificateDialog
+InfGtkCertificateDialogFlags
+inf_gtk_certificate_dialog_new
+<SUBSECTION Standard>
+InfGtkCertificateDialogClass
+INF_GTK_CERTIFICATE_DIALOG
+INF_GTK_CERTIFICATE_DIALOG_CLASS
+INF_GTK_CERTIFICATE_DIALOG_GET_CLASS
+INF_GTK_IS_CERTIFICATE_DIALOG
+INF_GTK_IS_CERTIFICATE_DIALOG_CLASS
+INF_GTK_TYPE_CERTIFICATE_DIALOG
+INF_GTK_TYPE_CERTIFICATE_DIALOG_FLAGS
+inf_gtk_certificate_dialog_flags_get_type
+inf_gtk_certificate_dialog_get_type
+</SECTION>
+
+<SECTION>
+<FILE>inf-gtk-certificate-manager</FILE>
+<TITLE>InfGtkCertificateManager</TITLE>
+InfGtkCertificateManager
+inf_gtk_certificate_manager_new
+<SUBSECTION Standard>
+InfGtkCertificateManagerClass
+INF_GTK_CERTIFICATE_MANAGER
+INF_GTK_CERTIFICATE_MANAGER_CLASS
+INF_GTK_CERTIFICATE_MANAGER_GET_CLASS
+INF_GTK_IS_CERTIFICATE_MANAGER
+INF_GTK_IS_CERTIFICATE_MANAGER_CLASS
+INF_GTK_TYPE_CERTIFICATE_MANAGER
+inf_gtk_certificate_manager_get_type
+</SECTION>
+
+<SECTION>
+<FILE>inf-gtk-certificate-view</FILE>
+<TITLE>InfGtkCertificateView</TITLE>
+InfGtkCertificateView
+inf_gtk_certificate_view_new
+inf_gtk_certificate_view_new_with_certificate
+inf_gtk_certificate_view_set_certificate
+<SUBSECTION Standard>
+InfGtkCertificateViewClass
+INF_GTK_CERTIFICATE_VIEW
+INF_GTK_CERTIFICATE_VIEW_CLASS
+INF_GTK_CERTIFICATE_VIEW_GET_CLASS
+INF_GTK_IS_CERTIFICATE_VIEW
+INF_GTK_IS_CERTIFICATE_VIEW_CLASS
+INF_GTK_TYPE_CERTIFICATE_VIEW
+INF_GTK_TYPE_CERTIFICATE_VIEW_FLAGS
+inf_gtk_certificate_view_get_type
+</SECTION>

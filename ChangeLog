@@ -1,5 +1,24 @@
 2008-09-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-certificate-view.h:
+	* libinfgtk/inf-gtk-certificate-view.c: Added a widget that shows a
+	certificate.
+
+	* libinfgtk/inf-gtk-certificate-dialog.h:
+	* libinfgtk/inf-gtk-certificate-dialog.c: Added a dialog that warns
+	the user when certain things are wrong with a certificate, such as
+	when the issuer is not trusted, the hostname does not match or the
+	certificate expired.
+
+	* libinfgtk/inf-gtk-certificate-manager.h:
+	* libinfgtk/inf-gtk-certificate-manager.c: Added a class that verifies
+	the certificates of all client connections of a InfXmppManager, and
+	shows InfGtkCertificateDialogs if necessary.
+
+	* libinfgtk/Makefile.am: Added the new files to the build.
+
+2008-09-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-cert-util.h:
 	* libinfinity/common/inf-cert-util.c: New file containing a few
 	convenience functions to deal with .X509 certificates.
