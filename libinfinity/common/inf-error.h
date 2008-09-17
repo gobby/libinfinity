@@ -115,6 +115,13 @@ inf_directory_error_quark(void);
 const gchar*
 inf_directory_strerror(InfDirectoryError code);
 
+GQuark
+inf_gnutls_error_quark(void);
+
+void
+inf_gnutls_set_error(GError** error,
+                     int error_code);
+
 G_END_DECLS
 
 #endif /* __INF_ERROR_H__ */

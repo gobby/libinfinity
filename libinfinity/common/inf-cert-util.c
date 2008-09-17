@@ -73,6 +73,15 @@ inf_cert_util_format_hexadecimal(const guchar* data,
   return formatted;
 }
 
+static void
+inf_cert_util_free_array(GPtrArray* array)
+{
+  guint i;
+  for(i = 0; i < array->len; ++ i)
+    gnutls_x509_crt_deinit((gnutls_x509_crt_t)g_ptr_array_index(array, i));
+  g_ptr_array_free(array, TRUE);
+}
+
 gboolean
 inf_cert_util_save_file(gnutls_x509_crt_t* certs,
                         guint n_certs,
@@ -115,16 +124,7 @@ inf_cert_util_save_file(gnutls_x509_crt_t* certs,
     if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
     {
       g_io_channel_unref(channel);
-
-      /* TODO: Move this to inf-error, adapt InfXmppConnection */
-      g_set_error(
-        error,
-        g_quark_from_static_string("INF_GNUTLS_ERROR"),
-        res,
-        "%s",
-        gnutls_strerror(res)
-      );
-
+      inf_gnutls_set_error(error, res);
       return FALSE;
     }
 
@@ -134,15 +134,7 @@ inf_cert_util_save_file(gnutls_x509_crt_t* certs,
     {
       g_free(buffer);
       g_io_channel_unref(channel);
-
-      g_set_error(
-        error,
-        g_quark_from_static_string("INF_GNUTLS_ERROR"),
-        res,
-        "%s",
-        gnutls_strerror(res)
-      );
-
+      inf_gnutls_set_error(error, res);
       return FALSE;
     }
 
@@ -202,16 +194,21 @@ inf_cert_util_load_file(const gchar* file,
     import_data.data = (unsigned char*)begin;
     import_data.size = end - begin;
 
-    /* We don't generate an error here but just use the certificates already
-     * loaded. TODO: We probably should create one. */
     ret = gnutls_x509_crt_init(&crt);
-    if(ret != GNUTLS_E_SUCCESS) break;
+    if(ret != GNUTLS_E_SUCCESS)
+    {
+      inf_cert_util_free_array(result);
+      inf_gnutls_set_error(error, ret);
+      return NULL;
+    }
 
     ret = gnutls_x509_crt_import(crt, &import_data, GNUTLS_X509_FMT_PEM);
     if(ret != GNUTLS_E_SUCCESS)
     {
       gnutls_x509_crt_deinit(crt);
-      break;
+      inf_cert_util_free_array(result);
+      inf_gnutls_set_error(error, ret);
+      return NULL;
     }
 
     g_ptr_array_add(result, crt);
@@ -232,7 +229,7 @@ inf_cert_util_copy(gnutls_x509_crt_t* dest,
 
   ret = gnutls_x509_crt_export(src, GNUTLS_X509_FMT_DER, NULL, &der_size);
   if (ret != GNUTLS_E_SHORT_MEMORY_BUFFER)
-      return ret;
+    return ret;
 
   data = g_malloc(der_size);
 

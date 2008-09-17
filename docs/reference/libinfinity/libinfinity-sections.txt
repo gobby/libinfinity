@@ -973,6 +973,8 @@ inf_user_error_quark
 inf_user_strerror
 inf_directory_error_quark
 inf_directory_strerror
+inf_gnutls_error_quark
+inf_gnutls_set_error
 </SECTION>
 
 <SECTION>

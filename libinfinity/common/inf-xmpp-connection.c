@@ -145,7 +145,6 @@ static GObjectClass* parent_class;
 static GQuark inf_xmpp_connection_error_quark;
 static GQuark inf_xmpp_connection_stream_error_quark;
 static GQuark inf_xmpp_connection_auth_error_quark;
-static GQuark inf_xmpp_connection_gnutls_error_quark;
 static GQuark inf_xmpp_connection_gsasl_error_quark;
 
 /*
@@ -572,14 +571,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
          * </stream:stream> or a gnutls bye here, since this would again
          * have to go through GnuTLS, which would fail again, and so on. */
         error = NULL;
-        g_set_error(
-          &error,
-          inf_xmpp_connection_gnutls_error_quark,
-          cur_bytes,
-          "%s",
-          gnutls_strerror(cur_bytes)
-        );
-
+        inf_gnutls_set_error(&error, cur_bytes);
         inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
         g_error_free(error);
 
@@ -1024,8 +1016,6 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
         &list_size
       );
 
-      printf("List size: %d\n", list_size);
-
       /* TODO: Allow no certificate being used? */
       g_assert(server_certs_raw != NULL);
 
@@ -1056,14 +1046,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
     break;
   default:
     error = NULL;
-    g_set_error(
-      &error,
-      inf_xmpp_connection_gnutls_error_quark,
-      ret,
-      "%s",
-      gnutls_strerror(ret)
-    );
-
+    inf_gnutls_set_error(&error, ret);
     inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
     g_error_free(error);
 
@@ -2558,14 +2541,7 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
           {
             /* A TLS error occured. */
             error = NULL;
-            g_set_error(
-              &error,
-              inf_xmpp_connection_gnutls_error_quark,
-              res,
-              "%s",
-              gnutls_strerror(res)
-            );
-
+            inf_gnutls_set_error(&error, res);
             inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
             g_error_free(error);
 
@@ -3260,10 +3236,6 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   inf_xmpp_connection_auth_error_quark = g_quark_from_static_string(
     "INF_XMPP_CONNECTION_AUTH_ERROR"
-  );
-
-  inf_xmpp_connection_gnutls_error_quark = g_quark_from_static_string(
-    "INF_XMPP_CONNECTION_GNUTLS_ERROR"
   );
 
   inf_xmpp_connection_gsasl_error_quark = g_quark_from_static_string(

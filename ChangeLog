@@ -1,5 +1,15 @@
 2008-09-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added inf_gnutls_error_quark() and
+	inf_gnutls_set_error() to convert a gnutls error code into a GError.
+
+	* libinfinity/common/inf-cert-util.c:
+	* libinfinity/common/inf-xmpp-connection.c: Make use of the new
+	functions, to simplify the code.
+
+2008-09-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-cert-util.h:
 	* libinfinity/common/inf-cert-util.c: Added inf_cert_util_load_file
 	and inf_cert_util_save_file to load or save a certificate list.

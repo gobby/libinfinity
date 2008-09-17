@@ -129,5 +129,24 @@ inf_directory_strerror(InfDirectoryError code)
   }
 }
 
+GQuark
+inf_gnutls_error_quark(void)
+{
+  return g_quark_from_static_string("INF_GNUTLS_ERROR");
+}
+
+void
+inf_gnutls_set_error(GError** error,
+                     int error_code)
+{
+  if(error != NULL)
+  {
+    *error = g_error_new_literal(
+      inf_gnutls_error_quark(),
+      error_code,
+      gnutls_strerror(error_code)
+    );
+  }
+}
 
 /* vim:set et sw=2 ts=2: */
