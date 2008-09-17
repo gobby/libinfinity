@@ -51,6 +51,8 @@ typedef enum _InfXmppConnectionError {
   INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
   /* Got <failure> as response to <starttls> */
   INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
+  /* The server did not provide a certificate */
+  INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
   /* The server certificate is not trusted */
   INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
   /* Server does not provide authentication mechanisms */

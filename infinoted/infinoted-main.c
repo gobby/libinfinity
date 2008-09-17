@@ -28,6 +28,7 @@
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-xmpp-manager.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
+#include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/inf-config.h>
 
 #include <glib-object.h>
@@ -84,6 +85,15 @@ static const GOptionEntry entries[] =
     NULL, 0
   }
 };
+
+static void
+infinoted_free_certificate_array(GPtrArray* array)
+{
+  guint i;
+  for(i = 0; i < array->len; ++ i)
+    gnutls_x509_crt_deinit((gnutls_x509_crt_t)g_ptr_array_index(array, i));
+  g_ptr_array_free(array, TRUE);
+}
 
 static gboolean
 infinoted_main_create_dirname(const gchar* path,
@@ -195,6 +205,7 @@ infinoted_main(int argc,
   GOptionContext* context;
 
   gnutls_x509_privkey_t key;
+  GPtrArray* certs;
   gnutls_x509_crt_t cert;
   gnutls_dh_params_t dh_params;
   gnutls_certificate_credentials_t credentials;
@@ -208,6 +219,7 @@ infinoted_main(int argc,
   InfdDirectory* directory;
 
   key = NULL;
+  certs = NULL;
   cert = NULL;
   dh_params = NULL;
   credentials = NULL;
@@ -288,21 +300,27 @@ infinoted_main(int argc,
     if(cert != NULL)
     {
       if(infinoted_main_create_dirname(key_path, error) == FALSE ||
-         infinoted_creds_write_certificate(cert, cert_path, error) == FALSE)
+         inf_cert_util_save_file(&cert, 1, cert_path, error) == FALSE)
       {
         gnutls_x509_crt_deinit(cert);
         cert = NULL;
+      }
+      else
+      {
+        certs = g_ptr_array_new();
+        g_ptr_array_add(certs, cert);
+	cert = NULL;
       }
     }
   }
   else
   {
-    cert = infinoted_creds_read_certificate(cert_path, error);
+    certs = inf_cert_util_load_file(cert_path, error);
   }
 
   g_free(cert_file);
   cert_file = NULL;
-  if(cert == NULL) goto error;
+  if(certs == NULL) goto error;
 
   /* TODO: Later we should probably always generate new params, or store
    * an expiry date with them. */
@@ -319,7 +337,8 @@ infinoted_main(int argc,
   credentials = infinoted_creds_create_credentials(
     dh_params,
     key,
-    cert,
+    (gnutls_x509_crt_t*)certs->pdata,
+    certs->len,
     error
   );
 
@@ -331,7 +350,7 @@ infinoted_main(int argc,
 
   gnutls_certificate_free_credentials(credentials);
   gnutls_dh_params_deinit(dh_params);
-  gnutls_x509_crt_deinit(cert);
+  infinoted_free_certificate_array(certs);
   gnutls_x509_privkey_deinit(key);
   g_object_unref(G_OBJECT(directory));
   gnutls_global_deinit();
@@ -340,7 +359,7 @@ infinoted_main(int argc,
 error:
   if(credentials != NULL) gnutls_certificate_free_credentials(credentials);
   if(dh_params != NULL) gnutls_dh_params_deinit(dh_params);
-  if(cert != NULL) gnutls_x509_crt_deinit(cert);
+  if(certs != NULL) infinoted_free_certificate_array(certs);
   if(key != NULL) gnutls_x509_privkey_deinit(key);
   if(directory != NULL) g_object_unref(G_OBJECT(directory));
   gnutls_global_deinit();

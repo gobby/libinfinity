@@ -48,10 +48,10 @@ AC_ARG_WITH([inftextgtk], AS_HELP_STRING([--with-inftextgtk],
 
 if test "x$with_inftextgtk" = "xauto"
 then
-  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.10], [with_inftextgtk=yes], [with_inftextgtk=no])
+  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.12], [with_inftextgtk=yes], [with_inftextgtk=no])
 elif test "x$with_inftextgtk" = "xyes"
 then
-  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.10])
+  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.12])
 fi
 
 AM_CONDITIONAL([WITH_INFTEXTGTK], test "x$with_inftextgtk" = "xyes")
@@ -66,10 +66,10 @@ AC_ARG_WITH([infgtk], AS_HELP_STRING([--with-infgtk],
 
 if test "x$with_infgtk" = "xauto"
 then
-  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.10], [with_infgtk=yes], [with_infgtk=no])
+  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.12], [with_infgtk=yes], [with_infgtk=no])
 elif test "x$with_infgtk" = "xyes"
 then
-  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.10])
+  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.12])
 fi
 
 AM_CONDITIONAL([WITH_INFGTK], test "x$with_infgtk" = "xyes")

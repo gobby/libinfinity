@@ -19,7 +19,7 @@
 /**
  * SECTION:inf-certificate-chain
  * @title: InfCertificateChain
- * @short_description: .X509 certificate chains
+ * @short_description: X.509 certificate chains
  * @see_also: #InfXmppConnection
  * @include: libinfinity/common/inf-certificate-chain.h
  * @stability: Unstable
@@ -131,14 +131,14 @@ inf_certificate_chain_get_raw(const InfCertificateChain* chain)
  * inf_certificate_chain_get_root_certificate:
  * @chain: A #InfCertificateChain.
  *
- * Returns the first certificate in the chain.
+ * Returns the last certificate in the chain.
  *
- * Returns: The first certificate in the chain.
+ * Returns: The last certificate in the chain.
  */
 gnutls_x509_crt_t
 inf_certificate_chain_get_root_certificate(const InfCertificateChain* chain)
 {
-  return chain->certs[0];
+  return chain->certs[chain->n_certs - 1];
 }
 
 /**
@@ -147,14 +147,14 @@ inf_certificate_chain_get_root_certificate(const InfCertificateChain* chain)
  *
  * TODO: Rename this function into something more appropriate.
  *
- * Returns the last certificate in the chain.
+ * Returns the first certificate in the chain.
  *
- * Returns: The last certificate in the chain.
+ * Returns: The first certificate in the chain.
  */
 gnutls_x509_crt_t
 inf_certificate_chain_get_own_certificate(const InfCertificateChain* chain)
 {
-  return chain->certs[chain->n_certs - 1];
+  return chain->certs[0];
 }
 
 /**

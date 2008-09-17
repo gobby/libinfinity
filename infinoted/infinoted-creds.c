@@ -345,56 +345,13 @@ ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
 }
 
 /**
- * infinoted_creds_read_certificate:
- * @cert_path: A path to a X.509 certificate file.
- * @error: Location to store error information, if any.
- *
- * Reads the certificate at @cert_path into a gnutls_x509_crt_t structure.
- *
- * Returns: A certificate to be freed with gnutls_x509_crt_deinit(),
- * or %NULL on error.
- **/
-gnutls_x509_crt_t
-infinoted_creds_read_certificate(const gchar* cert_path,
-                                 GError** error)
-{
-  READ_FUNC_IMPL(
-    gnutls_x509_crt_t,
-    cert_path,
-    gnutls_x509_crt_init,
-    gnutls_x509_crt_deinit,
-    gnutls_x509_crt_import
-  )
-}
-
-/**
- * infinoted_creds_write_certificate:
- * @cert: An initialized #gnutls_x509_crt_t structure.
- * @cert_path: The location where to store @cert.
- * @error: Location to store error information, if any.
- *
- * Writes @cert to the location specified by @cert_path on the filesystem.
- * If an error occurs, the function returns %FALSE and @error is set.
- *
- * Return Value: %TRUE on success, %FALSE otherwise.
- **/
-gboolean
-infinoted_creds_write_certificate(gnutls_x509_crt_t cert,
-                                  const gchar* cert_path,
-                                  GError** error)
-{
-  WRITE_FUNC_IMPL(
-    cert,
-    cert_path,
-    gnutls_x509_crt_export
-  )
-}
-
-/**
  * infinoted_creds_create_credentials:
  * @dh_params: Diffie-Hellman parameters for key exchange.
  * @key: The X.509 private key to use.
- * @cert: The X.509 certificate to use.
+ * @certs: An array of X.509 certificates to use. The first certificate is the
+ * server's certificate, the second the issuer's, the third the issuer's
+ * issuer's, etc.
+ * @n_certs: Number of certificates in @certs.
  * @error: Location to store error information, if any.
  *
  * Creates a new #gnutls_certificate_credentials_t struture suitable for
@@ -406,7 +363,8 @@ infinoted_creds_write_certificate(gnutls_x509_crt_t cert,
 gnutls_certificate_credentials_t
 infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
                                    gnutls_x509_privkey_t key,
-                                   gnutls_x509_crt_t cert,
+                                   gnutls_x509_crt_t* certs,
+                                   guint n_certs,
                                    GError** error)
 {
   gnutls_certificate_credentials_t creds;
@@ -419,7 +377,7 @@ infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
     return NULL;
   }
 
-  res = gnutls_certificate_set_x509_key(creds, &cert, 1, key);
+  res = gnutls_certificate_set_x509_key(creds, certs, n_certs, key);
   if(res != 0)
   {
     gnutls_certificate_free_credentials(creds);

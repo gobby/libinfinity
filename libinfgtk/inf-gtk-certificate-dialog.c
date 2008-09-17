@@ -253,6 +253,7 @@ inf_gtk_certificate_dialog_set_chain(InfGtkCertificateDialog* dialog,
   InfGtkCertificateDialogPrivate* priv;
   guint i;
   gnutls_x509_crt_t crt;
+  GtkTreeIter prev_row;
   GtkTreeIter new_row;
   GtkTreeIter* parent;
   GtkTreePath* path;
@@ -275,12 +276,14 @@ inf_gtk_certificate_dialog_set_chain(InfGtkCertificateDialog* dialog,
   {
     inf_certificate_chain_ref(chain);
 
-    for(i = 0; i < inf_certificate_chain_get_n_certificates(chain); ++ i)
+    for(i = inf_certificate_chain_get_n_certificates(chain); i > 0; -- i)
     {
-      crt = inf_certificate_chain_get_nth_certificate(chain, i);
+      crt = inf_certificate_chain_get_nth_certificate(chain, i - 1);
       gtk_tree_store_append(priv->certificate_tree_store, &new_row, parent);
       gtk_tree_store_set(priv->certificate_tree_store, &new_row, 0, crt, -1);
-      parent = &new_row;
+
+      prev_row = new_row;
+      parent = &prev_row;
     }
 
     path = gtk_tree_model_get_path(
@@ -482,6 +485,16 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
     column
   );
 
+  gtk_tree_view_set_show_expanders(
+    GTK_TREE_VIEW(priv->certificate_tree_view),
+    FALSE
+  );
+
+  gtk_tree_view_set_level_indentation(
+    GTK_TREE_VIEW(priv->certificate_tree_view),
+    12
+  );
+
   selection =
     gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->certificate_tree_view));
   gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
@@ -528,7 +541,8 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
 
   gtk_widget_show(hbox);
 
-  priv->certificate_expander = gtk_expander_new("View Certificate");
+  priv->certificate_expander =
+    gtk_expander_new_with_mnemonic("_View Certificate");
   gtk_expander_set_spacing(GTK_EXPANDER(priv->certificate_expander), 6);
   gtk_container_add(GTK_CONTAINER(priv->certificate_expander), hbox);
 

@@ -19,6 +19,7 @@
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-ip-address.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <gnutls/x509.h>
@@ -456,29 +457,6 @@ inf_xmpp_connection_auth_strerror(InfXmppConnectionAuthError code)
   default:
     g_assert_not_reached();
     return NULL;
-  }
-}
-
-static const gchar*
-inf_xmpp_connection_strerror(InfXmppConnectionError code)
-{
-  switch(code)
-  {
-  case INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED:
-    return "The server does not support transport layer security";
-  case INF_XMPP_CONNECTION_ERROR_TLS_FAILURE:
-    return "The server cannot perform the TLS handshake";
-  case INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED:
-    return "The server certificate is not trusted";
-  case INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED:
-    return "The server does not provide any authentication mechanism";
-  case INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM:
-    return "The server does not offer a suitable authentication mechanism";
-  case INF_XMPP_CONNECTION_ERROR_FAILED:
-    return "An unknown XMPP error occured";
-  default:
-    g_assert_not_reached();
-    break;
   }
 }
 
@@ -976,19 +954,71 @@ inf_xmpp_connection_tls_pull(gnutls_transport_ptr_t ptr,
   }
 }
 
+static InfCertificateChain*
+inf_xmpp_connection_tls_import_server_certificate(InfXmppConnection* xmpp,
+                                                  GError** error)
+{
+  InfXmppConnectionPrivate* priv;
+  const gnutls_datum_t* server_certs_raw;
+  unsigned int list_size;
+  gnutls_x509_crt_t* certs;
+  unsigned int i;
+  int res;
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  server_certs_raw = gnutls_certificate_get_peers(priv->session, &list_size);
+
+  if(server_certs_raw == NULL)
+  {
+    g_set_error(
+      error,
+      inf_xmpp_connection_error_quark,
+      INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
+      "The server did not provide a certificate"
+    );
+
+    return NULL;
+  }
+
+  certs = g_malloc(list_size * sizeof(gnutls_x509_crt_t));
+
+  for(i = 0; i < list_size; ++ i)
+  {
+    res = gnutls_x509_crt_init(&certs[i]);
+
+    if(res == GNUTLS_E_SUCCESS)
+    {
+      res = gnutls_x509_crt_import(
+        certs[i],
+        server_certs_raw + i,
+        GNUTLS_X509_FMT_DER
+      );
+
+      if(res != GNUTLS_E_SUCCESS)
+        gnutls_x509_crt_deinit(certs[i]);
+    }
+
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      for(; i > 0; -- i)
+        gnutls_x509_crt_deinit(certs[i - 1]);
+      g_free(certs);
+      inf_gnutls_set_error(error, res);
+      return NULL;
+    }
+  }
+
+  return inf_certificate_chain_new(certs, list_size);
+}
+
 static void
 inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
 {
   InfXmppConnectionPrivate* priv;
   int ret;
-  GError* error;
 
-  unsigned int i;
-  unsigned int list_size;
-  int result;
-  const gnutls_datum_t* server_certs_raw;
-  gnutls_x509_crt_t* certs;
   InfCertificateChain* chain;
+  GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->status == INF_XMPP_CONNECTION_HANDSHAKING);
@@ -1011,37 +1041,25 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
     }
     else
     {
-      server_certs_raw = gnutls_certificate_get_peers(
-        priv->session,
-        &list_size
-      );
+      error = NULL;
+      chain = inf_xmpp_connection_tls_import_server_certificate(xmpp, &error);
 
-      /* TODO: Allow no certificate being used? */
-      g_assert(server_certs_raw != NULL);
+      if(chain == NULL)
+      {
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+        g_error_free(error);
+        inf_xmpp_connection_terminate(xmpp);
+      }
+      else
+      {
+        priv->certificate_callback(
+          xmpp,
+          chain,
+          priv->certificate_callback_user_data
+        );
 
-      certs = g_malloc(list_size * sizeof(gnutls_x509_crt_t));
-
-      result = gnutls_x509_crt_list_import(
-        certs,
-        &list_size,
-        server_certs_raw,
-        GNUTLS_X509_FMT_DER,
-        0
-      );
-
-      printf("List size: %d\n", list_size);
-
-      g_assert(result >= 0);
-
-      chain = inf_certificate_chain_new(certs, list_size);
-
-      priv->certificate_callback(
-        xmpp,
-        chain,
-        priv->certificate_callback_user_data
-      );
-
-      inf_certificate_chain_unref(chain);
+        inf_certificate_chain_unref(chain);
+      }
     }
     break;
   default:
@@ -1752,10 +1770,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         &error,
         inf_xmpp_connection_error_quark,
         INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
-        "%s",
-        inf_xmpp_connection_strerror(
-          INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED
-        )
+        "The server does not support transport layer security (TLS)"
       );
 
       inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -1788,10 +1803,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         &error,
         inf_xmpp_connection_error_quark,
         INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED,
-        "%s",
-        inf_xmpp_connection_strerror(
-          INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED
-        )
+        "The server does not provide any authentication mechanism"
       );
 
       inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -1848,10 +1860,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
           &error,
           inf_xmpp_connection_error_quark,
           INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM,
-          "%s",
-          inf_xmpp_connection_strerror(
-            INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM
-          )
+          "The server does not offer a suitable authentication mechanism"
         );
 
         inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -1907,8 +1916,7 @@ inf_xmpp_connection_process_encryption(InfXmppConnection* xmpp,
       &error,
       inf_xmpp_connection_error_quark,
       INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
-      "%s",
-      inf_xmpp_connection_strerror(INF_XMPP_CONNECTION_ERROR_TLS_FAILURE)
+      "The server cannot perform the TLS handshake"
     );
 
     inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -3223,6 +3231,7 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   object_class->constructor = inf_xmpp_connection_constructor;
   object_class->dispose = inf_xmpp_connection_dispose;
+  object_class->finalize = inf_xmpp_connection_finalize;
   object_class->set_property = inf_xmpp_connection_set_property;
   object_class->get_property = inf_xmpp_connection_get_property;
 

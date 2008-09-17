@@ -34,14 +34,14 @@ infinoted:
 
 libinfgtk:
   - libinfinity
-  - gtk+-2.0 >= 2.10
+  - gtk+-2.0 >= 2.12
 
 libinftext:
   - libinfinity
 
 libinftextgtk:
   - libinftext
-  - gtk+-2.0 >= 2.10
+  - gtk+-2.0 >= 2.12
 
  3. Developers
 

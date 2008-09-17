@@ -1,5 +1,31 @@
 2008-09-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Correctly import
+	certificate chains, produce an error if the server does not provide a
+	certificate.
+
+	* libinfinity/common/inf-certificate-chain.c: Changed direction so
+	that the first certificate is the server's and the last certificate is
+	the root's, since this how we get the list from GnuTLS.
+
+	* libinfgtk/inf-gtk-certificate-dialog.c: Fixed showing certificate
+	chains consisting of more than one certificate.
+
+	* infinoted/infinoted-main.c: Fixed using a whole certificate chain
+	for the server.
+
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-creds.c: Removed
+	infinoted_creds_read_certificate and infinoted_creds_write_certificate
+	since we use the inf_cert_util functions instead.
+
+	* configure.ac:
+	* README: Raise required GTK+ version to 2.12, since we use
+	gtk_tree_view_set_show_expanders() which is only available since 2.12.
+
+2008-09-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c: Fixed warnings about
 	incompatible pointer type in calls to
 	inf_connection_manager_open_group().
@@ -61,7 +87,7 @@
 
 	* libinfinity/common/inf-cert-util.h:
 	* libinfinity/common/inf-cert-util.c: New file containing a few
-	convenience functions to deal with .X509 certificates.
+	convenience functions to deal with X.509 certificates.
 
 	* libinfinity/common/inf-certificate-chain.h:
 	* libinfinity/common/inf-certificate-chain.c: Very thin wrapper around
