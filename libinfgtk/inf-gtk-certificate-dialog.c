@@ -393,7 +393,7 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
   GtkCellRenderer* renderer;
   GtkTreeSelection* selection;
   GtkIconTheme* theme;
-  gboolean has_icon;
+  GtkIconInfo* icon_info;
 
   InfGtkCertificateDialog* dialog;
   InfGtkCertificateDialogPrivate* priv;
@@ -436,14 +436,14 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
 
   renderer = gtk_cell_renderer_pixbuf_new();
   theme = gtk_icon_theme_get_default();
-  has_icon = gtk_icon_theme_lookup_icon(
+  icon_info = gtk_icon_theme_lookup_icon(
     theme,
     "application-certificate",
     GTK_ICON_SIZE_MENU,
     GTK_ICON_LOOKUP_USE_BUILTIN
   );
 
-  if(has_icon)
+  if(icon_info != NULL)
   {
     g_object_set(
       G_OBJECT(renderer),

@@ -1,7 +1,20 @@
+2008-09-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-cert-util.h:
+	* libinfinity/common/inf-cert-util.c: Added inf_cert_util_load_file
+	and inf_cert_util_save_file to load or save a certificate list.
+
+	* libinfgtk/inf-gtk-certificate-manager.c: Use these functions instead
+	of the private inf_gtk_certificate_manager_load_certificate_file and
+	inf_gtk_certificate_manager_save_certificate_file.
+
+	* libinfgtk/inf-gtk-certificate-dialog.c: Fixed usage of the return
+	value of gtk_icon_theme_lookup_icon.
+
 2008-09-16  Armin Burgmeier  <armin@arbur.net>
 
-	* infinited/infinoted/creds.h:
-	* infinited/infinoted/creds.c: Include <gnutls/x509.h> only in the
+	* infinoted/infinoted/creds.h:
+	* infinoted/infinoted/creds.c: Include <gnutls/x509.h> only in the
 	source file not in the header, it is not needed for the declarations.
 	Also set the common name of a generated self-signed certificate to
 	g_get_host_name().

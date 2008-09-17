@@ -22,6 +22,12 @@
 
 #include <gnutls/x509.h>
 
+#define X509_BEGIN_1 "-----BEGIN CERTIFICATE-----"
+#define X509_BEGIN_2 "-----BEGIN X509 CERTIFICATE-----"
+
+#define X509_END_1   "-----END CERTIFICATE-----"
+#define X509_END_2   "-----END X509 CERTIFICATE----"
+
 static gchar*
 inf_cert_util_format_time(time_t time)
 {
@@ -65,6 +71,154 @@ inf_cert_util_format_hexadecimal(const guchar* data,
 
   cur[-1] = '\0';
   return formatted;
+}
+
+gboolean
+inf_cert_util_save_file(gnutls_x509_crt_t* certs,
+                        guint n_certs,
+                        const gchar* file,
+                        GError** error)
+{
+  GIOChannel* channel;
+  guint i;
+  gnutls_x509_crt_t cert;
+  int res;
+  size_t size;
+  gchar* buffer;
+  GIOStatus status;
+
+  channel = g_io_channel_new_file(file, "w", error);
+  if(channel == NULL) return FALSE;
+
+  status = g_io_channel_set_encoding(channel, NULL, error);
+  if(status != G_IO_STATUS_NORMAL)
+  {
+    g_io_channel_unref(channel);
+    return FALSE;
+  }
+
+  for(i = 0; i < n_certs; ++ i)
+  {
+    if(i > 0)
+    {
+      status = g_io_channel_write_chars(channel, "\n", 2, NULL, error);
+      if(status != G_IO_STATUS_NORMAL)
+      {
+        g_io_channel_unref(channel);
+        return FALSE;
+      }
+    }
+
+    cert = (gnutls_x509_crt_t)certs[i];
+    size = 0;
+    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &size);
+    if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+    {
+      g_io_channel_unref(channel);
+
+      /* TODO: Move this to inf-error, adapt InfXmppConnection */
+      g_set_error(
+        error,
+        g_quark_from_static_string("INF_GNUTLS_ERROR"),
+        res,
+        "%s",
+        gnutls_strerror(res)
+      );
+
+      return FALSE;
+    }
+
+    buffer = g_malloc(size);
+    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, buffer, &size);
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      g_free(buffer);
+      g_io_channel_unref(channel);
+
+      g_set_error(
+        error,
+        g_quark_from_static_string("INF_GNUTLS_ERROR"),
+        res,
+        "%s",
+        gnutls_strerror(res)
+      );
+
+      return FALSE;
+    }
+
+    status = g_io_channel_write_chars(channel, buffer, size, NULL, error);
+    g_free(buffer);
+
+    if(status != G_IO_STATUS_NORMAL)
+    {
+      g_io_channel_unref(channel);
+      return FALSE;
+    }
+  }
+
+  g_io_channel_unref(channel);
+  return TRUE;
+}
+
+GPtrArray*
+inf_cert_util_load_file(const gchar* file,
+                        GError** error)
+{
+  gchar* contents;
+  gsize length;
+  GPtrArray* result;
+
+  gchar* begin;
+  gchar* end;
+
+  int ret;
+  gnutls_datum_t import_data;
+  gnutls_x509_crt_t crt;
+
+  if(!g_file_get_contents(file, &contents, &length, error))
+    return NULL;
+
+  result = g_ptr_array_new();
+
+  end = contents;
+  for(;;)
+  {
+    begin = g_strstr_len(end, length - (end - contents), X509_BEGIN_1);
+    if(begin)
+    {
+      end = g_strstr_len(begin, length - (begin - contents), X509_END_1);
+      if(!end) break;
+      end += sizeof(X509_END_1);
+    }
+    else
+    {
+      begin = g_strstr_len(end, length - (end - contents), X509_BEGIN_2);
+      if(!begin) break;
+      end = g_strstr_len(begin, length - (begin - contents), X509_END_2);
+      if(!end) break;
+      end += sizeof(X509_END_2);
+    }
+
+    import_data.data = (unsigned char*)begin;
+    import_data.size = end - begin;
+
+    /* We don't generate an error here but just use the certificates already
+     * loaded. TODO: We probably should create one. */
+    ret = gnutls_x509_crt_init(&crt);
+    if(ret != GNUTLS_E_SUCCESS) break;
+
+    ret = gnutls_x509_crt_import(crt, &import_data, GNUTLS_X509_FMT_PEM);
+    if(ret != GNUTLS_E_SUCCESS)
+    {
+      gnutls_x509_crt_deinit(crt);
+      break;
+    }
+
+    g_ptr_array_add(result, crt);
+  }
+
+  g_free(contents);
+  return result;
 }
 
 int

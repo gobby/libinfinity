@@ -1018,6 +1018,8 @@ INF_TYPE_CERTIFICATE_CHAIN
 <SECTION>
 <FILE>inf-cert-util</FILE>
 <TITLE>InfCertUtil</TITLE>
+inf_cert_util_load_file
+inf_cert_util_save_file
 inf_cert_util_copy
 inf_cert_util_get_dn_by_oid
 inf_cert_util_get_issuer_dn_by_oid

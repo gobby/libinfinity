@@ -25,6 +25,16 @@
 
 G_BEGIN_DECLS
 
+GPtrArray*
+inf_cert_util_load_file(const gchar* filename,
+                        GError** error);
+
+gboolean
+inf_cert_util_save_file(gnutls_x509_crt_t* certs,
+                        guint n_certs,
+                        const gchar* file,
+                        GError** error);
+
 int
 inf_cert_util_copy(gnutls_x509_crt_t* dest,
                    gnutls_x509_crt_t src);
