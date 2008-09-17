@@ -1,5 +1,11 @@
 2008-09-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-directory.c: Fixed warnings about
+	incompatible pointer type in calls to
+	inf_connection_manager_open_group().
+
+2008-09-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-error.c: Added inf_gnutls_error_quark() and
 	inf_gnutls_set_error() to convert a gnutls error code into a GError.

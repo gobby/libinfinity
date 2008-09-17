@@ -444,7 +444,8 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
     priv->connection_manager,
     group_name,
     NULL, /* net_object */
-    (InfConnectionManagerMethodDesc**)priv->session_methods->pdata
+    (const InfConnectionManagerMethodDesc* const*)
+      priv->session_methods->pdata
   );
 
   g_free(group_name);
@@ -489,7 +490,8 @@ infd_directory_create_session_proxy_sync(InfdDirectory* directory,
     priv->connection_manager,
     group_name,
     NULL, /* net_object */
-    (InfConnectionManagerMethodDesc**)priv->session_methods->pdata
+    (const InfConnectionManagerMethodDesc* const*)
+      priv->session_methods->pdata
   );
 
   g_free(group_name);
@@ -1315,7 +1317,8 @@ infd_directory_add_sync_in(InfdDirectory* directory,
       priv->connection_manager,
       sync_group_name,
       NULL,
-      (InfConnectionManagerMethodDesc**)priv->directory_methods->pdata
+      (const InfConnectionManagerMethodDesc* const*)
+        priv->directory_methods->pdata
     );
 
     g_free(sync_group_name);
@@ -2672,7 +2675,8 @@ infd_directory_constructor(GType type,
     priv->connection_manager,
     "InfDirectory",
     INF_NET_OBJECT(directory),
-    (InfConnectionManagerMethodDesc**)priv->directory_methods->pdata
+    (const InfConnectionManagerMethodDesc* const*)
+      priv->directory_methods->pdata
   );
 
   g_assert(priv->connections == NULL);
