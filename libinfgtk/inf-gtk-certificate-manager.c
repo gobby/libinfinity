@@ -24,6 +24,7 @@
 
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gnutls/x509.h>
 
@@ -525,7 +526,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
     button = gtk_dialog_add_button(
       GTK_DIALOG(query->dialog),
-      "_Cancel connection",
+      _("_Cancel connection"),
       GTK_RESPONSE_REJECT
     );
 
@@ -536,7 +537,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
     button = gtk_dialog_add_button(
       GTK_DIALOG(query->dialog),
-      "C_ontinue connection",
+      _("C_ontinue connection"),
       GTK_RESPONSE_ACCEPT
     );
 
@@ -545,7 +546,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     /* TODO: Do we want a default response here? Which one? */
 
     text = g_strdup_printf(
-      "Do you want to continue the connection to host %s?",
+      _("Do you want to continue the connection to host %s?"),
       hostname
     );
 
@@ -563,7 +564,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     );
 
     text = g_strdup_printf(
-      "Remember the answer for future connections to host %s",
+      _("Remember the answer for future connections to host %s"),
       hostname
     );
 

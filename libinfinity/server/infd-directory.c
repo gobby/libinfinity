@@ -40,6 +40,7 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -206,7 +207,7 @@ infd_directory_find_method_for_connection(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
-      "The session does not support network '%s'.",
+      _("The session does not support network '%s'"),
       network
     );
 
@@ -2390,7 +2391,7 @@ infd_directory_handle_save_session(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNSUBSCRIBED,
-      "The requesting connection is not subscribed to the session"
+      _("The requesting connection is not subscribed to the session")
     );
 
     return FALSE;

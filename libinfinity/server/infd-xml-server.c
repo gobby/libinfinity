@@ -50,11 +50,11 @@ infd_xml_server_base_init(gpointer g_class)
       g_class,
       g_param_spec_enum(
         "status",
-	"XmlServer Status",
-	"The status of the server",
-	INFD_TYPE_XML_SERVER_STATUS,
-	INFD_XML_SERVER_CLOSED,
-	G_PARAM_READABLE
+        "XmlServer Status",
+        "The status of the server",
+        INFD_TYPE_XML_SERVER_STATUS,
+        INFD_XML_SERVER_CLOSED,
+        G_PARAM_READABLE
       )
     );
 
@@ -80,12 +80,12 @@ infd_xml_server_status_get_type(void)
         "closing"
       }, {
         INFD_XML_SERVER_OPEN,
-	"INFD_XML_SERVER_OPEN",
-	"open"
+        "INFD_XML_SERVER_OPEN",
+        "open"
       }, {
         INFD_XML_SERVER_OPENING,
-	"INFD_XML_SERVER_OPENING",
-	"opening"
+        "INFD_XML_SERVER_OPENING",
+        "opening"
       }, {
         0,
         NULL,

@@ -17,6 +17,6 @@ if WITH_INFINOTED
 SUBDIRS += infinoted
 endif
 
-SUBDIRS += pixmaps test docs
+SUBDIRS += pixmaps test docs po
 
 DISTCHECK_CONFIGURE_FLAGS=--enable-gtk-doc

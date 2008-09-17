@@ -23,6 +23,7 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -499,7 +500,7 @@ infc_session_proxy_translate_error_impl(InfcSessionProxy* proxy,
       &error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_UNKNOWN_DOMAIN,
-      "Error comes from unknown error domain '%s' (code %u)",
+      _("Error comes from unknown error domain '%s' (code %u)"),
       g_quark_to_string(domain),
       (guint)code
     );
@@ -606,7 +607,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "Request does not contain required attribute 'id'"
+      _("Request does not contain required attribute 'id'")
     );
 
     goto error;
@@ -624,7 +625,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NO_SUCH_USER,
-      "No such user with ID %u",
+      _("No such user with ID %u"),
       id
     );
 
@@ -915,7 +916,7 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
         &seq_error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_REPLY_UNPROCESSED,
-        "Server reply could not be processed: %s",
+        _("Server reply could not be processed: %s"),
         local_error->message
       );
 

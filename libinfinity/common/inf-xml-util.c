@@ -18,6 +18,7 @@
 
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <stdlib.h>
 #include <math.h> /* HUGE_VAL */
@@ -41,7 +42,7 @@ inf_xml_util_string_to_int(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' does not contain a valid number",
+      _("Attribute '%s' does not contain a valid number"),
       attribute
     );
 
@@ -54,7 +55,7 @@ inf_xml_util_string_to_int(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' causes overflow (%s)",
+      _("Attribute '%s' causes overflow (%s)"),
       attribute,
       (const gchar*)value
     );
@@ -68,7 +69,7 @@ inf_xml_util_string_to_int(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' causes underflow (%s)",
+      _("Attribute '%s' causes underflow (%s)"),
       attribute,
       (const gchar*)value
     );
@@ -100,7 +101,7 @@ inf_xml_util_string_to_uint(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' does not contain a valid number",
+      _("Attribute '%s' does not contain a valid number"),
       attribute
     );
 
@@ -112,7 +113,7 @@ inf_xml_util_string_to_uint(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' causes overflow (%s)",
+      _("Attribute '%s' causes overflow (%s)"),
       attribute,
       (const gchar*)value
     );
@@ -144,7 +145,7 @@ inf_xml_util_string_to_double(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' does not contain a valid number",
+      _("Attribute '%s' does not contain a valid number"),
       attribute
     );
 
@@ -157,7 +158,7 @@ inf_xml_util_string_to_double(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' causes overflow (%s)",
+      _("Attribute '%s' causes overflow (%s)"),
       attribute,
       (const gchar*)value
     );
@@ -170,7 +171,7 @@ inf_xml_util_string_to_double(const gchar* attribute,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "Attribute '%s' causes underflow (%s)",
+      _("Attribute '%s' causes underflow (%s)"),
       attribute,
       (const gchar*)value
     );
@@ -205,7 +206,7 @@ inf_xml_util_get_attribute_required(xmlNodePtr xml,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "Request '%s' does not contain required attribute '%s'",
+      _("Request '%s' does not contain required attribute '%s'"),
       (const gchar*)xml->name,
       attribute
     );

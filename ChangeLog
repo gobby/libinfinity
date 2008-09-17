@@ -1,5 +1,49 @@
 2008-09-17  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac:
+	* Makefile.am: Added gettext support.
+
+	* libinfinity/inf-i18n.h:
+	* libinfinity/inf-i18n.c: New files containing the common _() macro
+	and a wrapper function to initialize gettext before the first string
+	is translated.
+
+	* libinfinity/Makefile.am: Add the new files to the build.
+
+	* libinfinity/common/inf-cert-util.c:
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/common/inf-error.c:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/common/inf-user.c:
+	* libinfinity/common/inf-xml-util.c:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/infc-request-manager.c:
+	* libinfinity/client/infc-session-proxy.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-filesystem-storage.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/server/infd-xml-server.c:
+	* libinfinity/adopted/inf-adopted-session-record.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinftext/inf-text-session.c:
+	* libinfgtk/inf-gtk-browser-store.c:
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/inf-gtk-certificate-dialog.c:
+	* libinfgtk/inf-gtk-certificate-manager.c:
+	* libinfgtk/inf-gtk-certificate-view.c:
+	* libinftextgtk/inf-text-gtk-buffer.c:
+
+	* infinoted/infinoted-main.c:
+	* infinoted/infinoted-note-plugin.c: Mark all translatable strings.
+	Strings in g_warning() have been omitted, but it might make sense to
+	mark them, too, or at least some of them.
+
+2008-09-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.h:
 	* libinfinity/common/inf-xmpp-connection.c: Correctly import
 	certificate chains, produce an error if the server does not provide a

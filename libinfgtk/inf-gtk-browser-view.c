@@ -19,6 +19,7 @@
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gtk/gtktreeview.h>
 #include <gtk/gtktreeviewcolumn.h>
@@ -1901,7 +1902,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
             G_OBJECT(renderer),
             "visible", TRUE,
             "value", (gint)(progress * 100 + 0.5),
-            "text", "Exploring...",
+            "text", _("Exploring..."),
             NULL
           );
 
@@ -1935,7 +1936,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
             G_OBJECT(renderer),
             "visible", TRUE,
             "value", (gint)(progress * 100 + 0.5),
-            "text", "Synchronizing...",
+            "text", _("Synchronizing..."),
             NULL
           );
 
@@ -2007,7 +2008,7 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
     case INF_GTK_BROWSER_MODEL_DISCOVERED:
       g_object_set(
         G_OBJECT(renderer),
-        "text", "Not connected",
+        "text", _("Not connected"),
         "foreground", "black",
         "visible", FALSE, /* Don't show */
         NULL
@@ -2018,7 +2019,7 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
     case INF_GTK_BROWSER_MODEL_CONNECTING:
       g_object_set(
         G_OBJECT(renderer),
-        "text", "Connecting...",
+        "text", _("Connecting..."),
         "foreground", "black",
         "visible", TRUE,
         NULL
@@ -2028,7 +2029,7 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
     case INF_GTK_BROWSER_MODEL_CONNECTED:
       g_object_set(
         G_OBJECT(renderer),
-        "text", "Connected",
+        "text", _("Connected"),
         "foreground", "black",
         "visible", FALSE, /* Don't show */
         NULL

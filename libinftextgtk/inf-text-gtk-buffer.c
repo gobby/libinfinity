@@ -19,7 +19,6 @@
 #include <libinftextgtk/inf-text-gtk-buffer.h>
 #include <libinftext/inf-text-buffer.h>
 
-#include <math.h> /* for cos() */
 #include <string.h> /* for strlen() */
 
 struct _InfTextBufferIter {

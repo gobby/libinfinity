@@ -18,6 +18,7 @@
 
 #include <libinfgtk/inf-gtk-certificate-view.h>
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gnutls/x509.h>
 #include <time.h>
@@ -68,7 +69,7 @@ inf_gtk_certificate_view_set_label(GtkLabel* label,
   }
   else
   {
-    text = "<Not part of certificate>";
+    text = _("<Not part of certificate>");
     markup = g_markup_printf_escaped("<i>%s</i>", text);
     gtk_label_set_markup(label, markup);
     g_free(markup);
@@ -216,39 +217,39 @@ inf_gtk_certificate_view_init(GTypeInstance* instance,
   inf_gtk_certificate_view_add_section(
     priv->general_size_group,
     GTK_VBOX(priv->general_vbox),
-    "Issued To",
-    "Common Name:", &priv->common_name,
-    "Organization:", &priv->organization,
-    "Organizational Unit:", &priv->organizational_unit,
-    "Serial Number:", &priv->serial_number,
+    _("Issued To"),
+    _("Common Name:"), &priv->common_name,
+    _("Organization:"), &priv->organization,
+    _("Organizational Unit:"), &priv->organizational_unit,
+    _("Serial Number:"), &priv->serial_number,
     NULL
   );
 
   inf_gtk_certificate_view_add_section(
     priv->general_size_group,
     GTK_VBOX(priv->general_vbox),
-    "Issued By",
-    "Common Name:", &priv->issuer_common_name,
-    "Organization:", &priv->issuer_organization,
-    "Organizational Unit:", &priv->issuer_organizational_unit,
+    _("Issued By"),
+    _("Common Name:"), &priv->issuer_common_name,
+    _("Organization:"), &priv->issuer_organization,
+    _("Organizational Unit:"), &priv->issuer_organizational_unit,
     NULL
   );
 
   inf_gtk_certificate_view_add_section(
     priv->general_size_group,
     GTK_VBOX(priv->general_vbox),
-    "Validity",
-    "Issued On:", &priv->activation_time,
-    "Expires On:", &priv->expiration_time,
+    _("Validity"),
+    _("Issued On:"), &priv->activation_time,
+    _("Expires On:"), &priv->expiration_time,
     NULL
   );
 
   inf_gtk_certificate_view_add_section(
     priv->general_size_group,
     GTK_VBOX(priv->general_vbox),
-    "Fingerprints",
-    "SHA1 Fingerprint:", &priv->sha1_fingerprint,
-    "MD5 Fingerprint:", &priv->md5_fingerprint
+    _("Fingerprints"),
+    _("SHA1 Fingerprint:"), &priv->sha1_fingerprint,
+    _("MD5 Fingerprint:"), &priv->md5_fingerprint
   );
 
   size = pango_font_description_get_size(priv->serial_number->style->font_desc);
@@ -265,7 +266,7 @@ inf_gtk_certificate_view_init(GTypeInstance* instance,
   gtk_notebook_append_page(
     GTK_NOTEBOOK(view),
     priv->general_vbox,
-    gtk_label_new("General")
+    gtk_label_new(_("General"))
   );
 
   gtk_widget_show(priv->general_vbox);

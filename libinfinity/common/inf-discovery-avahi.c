@@ -19,6 +19,7 @@
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/common/inf-local-publisher.h>
+#include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h> /* INFINOTE_HAVE_AVAHI */
 
 #ifdef INFINOTE_HAVE_AVAHI
@@ -1288,10 +1289,13 @@ inf_discovery_avahi_info_get_service_name(InfDiscovery* discovery,
     return NULL;
 
   return g_strdup_printf(
-    "%s (via %s on %s)",
+    info->protocol == AVAHI_PROTO_INET ?
+    /* Translators: This is "<Service Name> (via <Network Interface> on
+     * <address family>)", for example "ck (via eth0 on IPv4)". */
+      _("%s (via %s on IPv4)") :
+      _("%s (via %s on IPv6)"),
     info->service_name,
-    device_name,
-    info->protocol == AVAHI_PROTO_INET ? "IPv4" : "IPv6"
+    device_name
   );
 }
 

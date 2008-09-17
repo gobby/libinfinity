@@ -53,6 +53,7 @@
 
 #include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <libxml/xmlsave.h>
 #include <uuid/uuid.h>
@@ -611,7 +612,7 @@ inf_connection_manager_handle_connection(InfConnectionManager* manager,
       error,
       inf_connection_manager_error_quark,
       INF_CONNECTION_MANAGER_ERROR_PUBLISHER_ID_KNOWN,
-      "Publisher ID of connection '%s' is already known",
+      _("Publisher ID of connection '%s' is already known"),
       conn_id
     );
 
@@ -629,7 +630,7 @@ inf_connection_manager_handle_connection(InfConnectionManager* manager,
       error,
       inf_connection_manager_error_quark,
       INF_CONNECTION_MANAGER_ERROR_INVALID_PUBLISHER_ID,
-      "Publisher ID '%s' has incorrect length",
+      _("Publisher ID '%s' has incorrect length"),
       (const gchar*)publisher_id
     );
 
@@ -678,7 +679,7 @@ inf_connection_manager_handle_connection(InfConnectionManager* manager,
         error,
         inf_connection_manager_error_quark,
         INF_CONNECTION_MANAGER_ERROR_PUBLISHER_ID_IN_USE,
-        "Publisher ID '%s' is already in use",
+        _("Publisher ID '%s' is already in use"),
         group->key.publisher_id
       );
 
@@ -761,7 +762,7 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
       error,
       inf_connection_manager_error_quark,
       INF_CONNECTION_MANAGER_ERROR_UNEXPECTED_MESSAGE,
-      "Received unexpected message '%s'",
+      _("Received unexpected message '%s'"),
       (const gchar*)xml->name
     );
     
@@ -938,7 +939,7 @@ inf_connection_manager_connection_received_cb(InfXmlConnection* connection,
   {
     g_object_get(G_OBJECT(connection), "remote-id", &other_id, NULL);
     g_warning(
-      "Received bad XML request from %s: %s",
+      _("Received bad XML request from %s: %s"),
       other_id,
       error->message
     );

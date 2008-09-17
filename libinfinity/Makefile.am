@@ -29,10 +29,13 @@ CLEANFILES = inf-marshal.h inf-marshal.c
 
 libinfinity_1_0_ladir = $(includedir)/libinfinity-1.0/libinfinity
 
-# TODO: Do not install inf-marshal.h
 libinfinity_1_0_la_HEADERS = \
-	inf-config.h \
+	inf-config.h
+
+noinst_HEADERS = \
+	inf-i18n.h \
 	inf-marshal.h
 
 libinfinity_1_0_la_SOURCES = \
+	inf-i18n.c \
 	inf-marshal.c

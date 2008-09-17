@@ -29,7 +29,7 @@
 #include <libinfinity/common/inf-xmpp-manager.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-cert-util.h>
-#include <libinfinity/inf-config.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <glib-object.h>
 #include <glib/goption.h>
@@ -41,6 +41,8 @@
 #include <locale.h>
 #include <stdio.h>
 #include <errno.h>
+
+#include "config.h" /* For GETTEXT_PACKAGE */
 
 static gchar* key_file = NULL;
 static gchar* cert_file = NULL;
@@ -57,27 +59,27 @@ static const GOptionEntry entries[] =
     "key-file", 'k',
     0,
     G_OPTION_ARG_FILENAME, &key_file,
-    "The server's private key", "KEY-FILE"
+    N_("The server's private key"), "KEY-FILE"
   }, {
     "certificate-file", 'c',
     0,
     G_OPTION_ARG_FILENAME, &cert_file,
-    "The server's certificate", "CERTIFICATE-FILE"
+    N_("The server's certificate"), "CERTIFICATE-FILE"
   }, {
     "create-key", 0,
     0,
     G_OPTION_ARG_NONE, &create_key,
-    "Creates a new random private key", NULL
+    N_("Creates a new random private key"), NULL
   }, {
     "create-certificate", 0,
     0,
     G_OPTION_ARG_NONE, &create_certificate,
-    "Creates a new self-signed certificate using the given key", 0
+    N_("Creates a new self-signed certificate using the given key"), 0
   }, {
     "port-number", 'p',
     0,
     G_OPTION_ARG_INT, &port_number,
-    "The port number to listen on", "PORT"
+    N_("The port number to listen on"), "PORT"
   }, {
     NULL, 0,
     0,
@@ -112,7 +114,7 @@ infinoted_main_create_dirname(const gchar* path,
       error,
       g_quark_from_static_string("ERRNO_ERROR"),
       save_errno,
-      "Could not create directory `%s': %s",
+      _("Could not create directory `%s': %s"),
       dirname,
       strerror(save_errno)
     );
@@ -190,7 +192,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
 #endif
   g_object_unref(G_OBJECT(server));
 
-  fprintf(stderr, "Server running on port %u\n", port);
+  fprintf(stderr, _("Server running on port %u\n"), port);
   inf_standalone_io_loop(INF_STANDALONE_IO(infd_directory_get_io(directory)));
 
   g_object_unref(G_OBJECT(pool));
@@ -226,8 +228,8 @@ infinoted_main(int argc,
   directory = NULL;
 
   setlocale(LC_ALL, "");
-  context = g_option_context_new("- infinote dedicated server");
-  g_option_context_add_main_entries(context, entries, NULL);
+  context = g_option_context_new(_("- infinote dedicated server"));
+  g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
 
   if(g_option_context_parse(context, &argc, &argv, error) == FALSE)
     goto error;
@@ -238,8 +240,8 @@ infinoted_main(int argc,
       error,
       g_quark_from_static_string("INFINOTED_MAIN_ERROR"),
       0,
-      "Creating a new private key also requires creating a new certificate "
-      "signed with it."
+      _("Creating a new private key also requires creating a new certificate "
+        "signed with it.")
     );
 
     goto error;
@@ -270,7 +272,7 @@ infinoted_main(int argc,
 
   if(create_key == TRUE)
   {
-    fprintf(stderr, "Generating 2048 bit RSA private key...\n");
+    fprintf(stderr, _("Generating 2048 bit RSA private key...\n"));
     key = infinoted_creds_create_key(error);
 
     if(key != NULL)
@@ -294,7 +296,7 @@ infinoted_main(int argc,
 
   if(create_certificate == TRUE)
   {
-    fprintf(stderr, "Generating self-signed certificate...\n");
+    fprintf(stderr, _("Generating self-signed certificate...\n"));
     cert = ininoted_creds_create_self_signed_certificate(key, error);
 
     if(cert != NULL)
@@ -327,7 +329,7 @@ infinoted_main(int argc,
   dh_params = infinoted_creds_read_dh_params("dh.pem", NULL);
   if(dh_params == NULL)
   {
-    fprintf(stderr, "Generating 2048 bit Diffie-Hellman parameters...\n");
+    fprintf(stderr, _("Generating 2048 bit Diffie-Hellman parameters...\n"));
     dh_params = infinoted_creds_create_dh_params(error);
     if(dh_params == NULL) goto error;
 

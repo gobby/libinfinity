@@ -19,6 +19,7 @@
 #include <libinfgtk/inf-gtk-certificate-dialog.h>
 #include <libinfgtk/inf-gtk-certificate-view.h>
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gnutls/x509.h>
 #include <time.h>
@@ -82,7 +83,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       inf_certificate_chain_get_own_certificate(priv->certificate_chain);
 
     text = g_strdup_printf(
-      "The connection to host \"%s\" is not considered secure",
+      _("The connection to host \"%s\" is not considered secure"),
       priv->hostname
     );
 
@@ -111,7 +112,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
     if(priv->certificate_flags &
        INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
     {
-      ctext = "The certificate of the host has changed!";
+      ctext = _("The certificate of the host has changed!");
       markup = g_markup_printf_escaped("<b>%s</b>", ctext);
 
       g_string_append(info_text, markup);
@@ -123,17 +124,17 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       {
         g_string_append(
           info_text,
-          "It is possible that the connection to the server is being "
-          "hijacked. It is also possible that the host just has got a new "
-          "certificate. However, please only continue the connection if you "
-          "expected this warning."
+          _("It is possible that the connection to the server is being "
+            "hijacked. It is also possible that the host just has got a new "
+            "certificate. However, please only continue the connection if "
+            "you expected this warning.")
         );
       }
       else
       {
         g_string_append(
           info_text,
-          "The previous certificate of the server has expired."
+          _("The previous certificate of the server has expired.")
         );
       }
     }
@@ -146,13 +147,13 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
       g_string_append(
         info_text,
-        "The certificate issuer is not trusted."
+        _("The certificate issuer is not trusted.")
       );
 
       if(gnutls_x509_crt_check_issuer(own_cert, own_cert))
       {
         g_string_append_c(info_text, ' ');
-        g_string_append(info_text, "The certificate is self-signed.");
+        g_string_append(info_text, _("The certificate is self-signed."));
       }
     }
 
@@ -162,7 +163,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       if(info_text->len > 0)
         g_string_append(info_text, "\n\n");
 
-      ctext = "The certificate is invalid!";
+      ctext = _("The certificate is invalid!");
       markup = g_markup_printf_escaped("<b>%s</b>", ctext);
       g_string_append(info_text, markup);
       g_free(markup);
@@ -178,8 +179,8 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
       g_string_append_printf(
         info_text,
-        "The hostname of the server, \"%s\", does not match the hostname "
-        "the certificate is issued to, \"%s\".",
+        _("The hostname of the server, \"%s\", does not match the hostname "
+          "the certificate is issued to, \"%s\"."),
         priv->hostname,
         text
       );
@@ -197,7 +198,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
       g_string_append_printf(
         info_text,
-        "The certificate has expired. The expiration date was %s",
+        _("The certificate has expired. The expiration date was %s"),
         text
       );
 
@@ -214,7 +215,8 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
       g_string_append_printf(
         info_text,
-        "The certificate has not yet been activated. Activation date is %s",
+        _("The certificate has not yet been activated. "
+          "Activation date is %s"),
         text
       );
 
@@ -379,7 +381,7 @@ inf_gtk_certificate_dialog_chain_data_func(GtkTreeViewColumn* column,
   if(common_name != NULL)
     g_value_take_string(&value, common_name);
   else
-    g_value_set_static_string(&value, "<Unknown Certificate Holder>");
+    g_value_set_static_string(&value, _("<Unknown Certificate Holder>"));
 
   g_object_set_property(G_OBJECT(renderer), "text", &value);
   g_value_unset(&value);
@@ -434,7 +436,7 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
 
   /* Certificate info */
   column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, "Certificate Chain");
+  gtk_tree_view_column_set_title(column, _("Certificate Chain"));
   gtk_tree_view_column_set_spacing(column, 6);
 
   renderer = gtk_cell_renderer_pixbuf_new();
@@ -542,7 +544,7 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
   gtk_widget_show(hbox);
 
   priv->certificate_expander =
-    gtk_expander_new_with_mnemonic("_View Certificate");
+    gtk_expander_new_with_mnemonic(_("_View Certificate"));
   gtk_expander_set_spacing(GTK_EXPANDER(priv->certificate_expander), 6);
   gtk_container_add(GTK_CONTAINER(priv->certificate_expander), hbox);
 
@@ -579,7 +581,7 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
 
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
   gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
-  gtk_window_set_title(GTK_WINDOW(dialog), "Connection not secure");
+  gtk_window_set_title(GTK_WINDOW(dialog), _("Connection not secure"));
 }
 
 static void

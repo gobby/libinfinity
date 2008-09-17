@@ -111,6 +111,19 @@ then
   AC_DEFINE([INFINOTE_HAVE_AVAHI], 1, [Whether avahi support is enabled])
 fi
 
+############
+# gettext
+############
+
+GETTEXT_PACKAGE=infinote10
+AC_SUBST(GETTEXT_PACKAGE)
+AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE], ["$GETTEXT_PACKAGE"],
+                   [The domain name to use with gettext.])
+
+ALL_LINGUAS="de"
+AM_GLIB_GNU_GETTEXT
+AM_GLIB_DEFINE_LOCALEDIR(INF_LOCALEDIR)
+
 ###########
 # Output
 ###########
@@ -150,6 +163,8 @@ AC_CONFIG_FILES([
         docs/reference/libinftext/Makefile
         docs/reference/libinfgtk/Makefile
         docs/reference/libinftextgtk/Makefile
+
+    po/Makefile.in
 
   libinfinity-1.0.pc
   libinftext-1.0.pc

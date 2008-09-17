@@ -18,6 +18,7 @@
 
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -486,7 +487,7 @@ inf_user_status_from_string(const gchar* string,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_INVALID_STATUS,
-      "Invalid user status: '%s'",
+      _("Invalid user status: '%s'"),
       string
     );
 

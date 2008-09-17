@@ -28,6 +28,7 @@
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <libxml/tree.h>
 #include <string.h>
@@ -977,7 +978,7 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NO_SUCH_USER,
-      "No such user with ID '%u'",
+      _("No such user with ID '%u'"),
       user_id
     );
 
@@ -991,7 +992,7 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
-      "User did not join from this connection"
+      _("User did not join from this connection")
     );
 
     return FALSE;
@@ -1005,7 +1006,7 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       error,
       inf_text_session_error_quark,
       INF_TEXT_SESSION_ERROR_INVALID_HUE,
-      "Invalid hue value: '%g'",
+      _("Invalid hue value: '%g'"),
       hue
     );
 
@@ -1120,7 +1121,7 @@ inf_text_session_process_xml_sync(InfSession* session,
           error,
           inf_user_error_quark(),
           INF_USER_ERROR_NO_SUCH_USER,
-          "No such user with ID '%u'",
+          _("No such user with ID '%u'"),
           author
         );
 
@@ -1323,7 +1324,7 @@ inf_text_session_validate_user_props(InfSession* session,
       error,
       inf_text_session_error_quark,
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "'caret' attribute in user message is missing"
+      _("'caret' attribute in user message is missing")
     );
 
     return FALSE;

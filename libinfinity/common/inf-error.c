@@ -17,6 +17,7 @@
  */
 
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 /* TODO: Cache GQuarks */
 
@@ -32,23 +33,23 @@ inf_request_strerror(InfRequestError code)
   switch(code)
   {
   case INF_REQUEST_ERROR_SYNCHRONIZING:
-    return "Synchronization is still in progress";
+    return _("Synchronization is still in progress");
   case INF_REQUEST_ERROR_UNEXPECTED_MESSAGE:
-    return "Message was not understood";
+    return _("Message was not understood");
   case INF_REQUEST_ERROR_UNKNOWN_DOMAIN:
-    return "Received error from an unknown domain";
+    return _("Received error from an unknown domain");
   case INF_REQUEST_ERROR_REPLY_UNPROCESSED:
-    return "Failed to process server reply";
+    return _("Failed to process server reply");
   case INF_REQUEST_ERROR_INVALID_SEQ:
-    return "Server reply contains invalid sequence number";
+    return _("Server reply contains invalid sequence number");
   case INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE:
-    return "A required attribute was not set in request";
+    return _("A required attribute was not set in request");
   case INF_REQUEST_ERROR_INVALID_NUMBER:
-    return "An attribute contained an invalid number";
+    return _("An attribute contained an invalid number");
   case INF_REQUEST_ERROR_FAILED:
-    return "An unknown request error occured";
+    return _("An unknown request error occured");
   default:
-    return "An error with unknown error code occured";
+    return _("An error with unknown error code occured");
   }
 }
 
@@ -64,21 +65,21 @@ inf_user_strerror(InfUserError code)
   switch(code)
   {
   case INF_USER_ERROR_NAME_IN_USE:
-    return "Name is already in use";
+    return _("Name is already in use");
   case INF_USER_ERROR_ID_PROVIDED:
-    return "'id' attribute provided in request";
+    return _("'id' attribute provided in request");
   case INF_USER_ERROR_NO_SUCH_USER:
-    return "There is no user with the given ID";
+    return _("There is no user with the given ID");
   case INF_USER_ERROR_STATUS_UNAVAILABLE:
-    return "'status' attribute is 'unavailable' in join or rejoin request";
+    return _("'status' attribute is 'unavailable' in join or rejoin request");
   case INF_USER_ERROR_NOT_JOINED:
-    return "User did not join via this connection";
+    return _("User did not join via this connection");
   case INF_USER_ERROR_INVALID_STATUS:
-    return "'status' attribute has invalid value";
+    return _("'status' attribute has invalid value");
   case INF_USER_ERROR_FAILED:
-    return "An unknown user error occured";
+    return _("An unknown user error occured");
   default:
-    return "An error with unknown error code occured";
+    return _("An error with unknown error code occured");
   }
 }
 
@@ -94,38 +95,38 @@ inf_directory_strerror(InfDirectoryError code)
   switch(code)
   {
   case INF_DIRECTORY_ERROR_NODE_EXISTS:
-    return "A node with this name exists already";
+    return _("A node with this name exists already");
   case INF_DIRECTORY_ERROR_NO_SUCH_NODE:
-    return "Node does not exist";
+    return _("Node does not exist");
   case INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY:
-    return "Node is not a subdirectory";
+    return _("Node is not a subdirectory");
   case INF_DIRECTORY_ERROR_NOT_A_NOTE:
-    return "Node is not a note";
+    return _("Node is not a note");
   case INF_DIRECTORY_ERROR_ALREADY_EXPLORED:
-    return "Subdirectory has already been explored";
+    return _("Subdirectory has already been explored");
   case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:
-    return "Note type is not supported";
+    return _("Note type is not supported");
   case INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED:
-    return "Connection is already subscribed to this session";
+    return _("Connection is already subscribed to this session");
   case INF_DIRECTORY_ERROR_UNSUBSCRIBED:
-    return "The requesting connection is not subscribed to the session";
+    return _("The requesting connection is not subscribed to the session");
   case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
-    return "Server sent more explored nodes then announced";
+    return _("Server sent more explored nodes then announced");
   case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:
-    return "Server sent not as much explored nodes as announced";
+    return _("Server sent not as much explored nodes as announced");
   case INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED:
-    return "The session does not support the network through which the "
-           "connection attempt is being made.";
+    return _("The session does not support the network through which the "
+             "connection attempt is being made.");
   case INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED:
-    return "The session uses an unsupported communication method";
+    return _("The session uses an unsupported communication method");
   case INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN:
-    return "Received sync-in message without having requested a sync-in";
+    return _("Received sync-in message without having requested a sync-in");
   case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
-    return "Unexpected XML message";
+    return _("Unexpected XML message");
   case INF_DIRECTORY_ERROR_FAILED:
-    return "An unknown directory error has occured";
+    return _("An unknown directory error has occured");
   default:
-    return "An error with unknown code has occured";
+    return _("An error with unknown code has occured");
   }
 }
 

@@ -22,6 +22,7 @@
 #include <libinfinity/common/inf-error.h>
 
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -275,7 +276,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "Request does not contain required attribute 'name'"
+      _("Request does not contain required attribute 'name'")
     );
 
     return NULL;
@@ -293,7 +294,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NAME_IN_USE,
-      "Name '%s' already in use",
+      _("Name '%s' already in use"),
       g_value_get_string(&name_param->value)
     );
 
@@ -336,7 +337,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
         error,
         inf_user_error_quark(),
         INF_USER_ERROR_STATUS_UNAVAILABLE,
-        "'status' attribute is 'unavailable' in user join request"
+        _("'status' attribute is 'unavailable' in user join request")
       );
 
       return NULL;

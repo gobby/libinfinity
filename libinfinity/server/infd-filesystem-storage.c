@@ -18,6 +18,7 @@
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-storage.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <glib/gstdio.h>
 
@@ -58,7 +59,7 @@ infd_filesystem_storage_verify_path(const gchar* path,
         error,
         infd_filesystem_storage_error_quark,
         INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
-        "The path contains invalid components"
+        _("The path contains invalid components")
       );
 
       g_strfreev(components);
@@ -115,7 +116,8 @@ static void
 infd_filesystem_storage_system_error(int code,
                                      GError** error)
 {
-  /* TODO: Use FormatMessage or something on Win32 */
+  /* TODO_Win32: Use FormatMessage or something on Win32,
+   * or probably better g_win32_error_message(). */
   g_set_error(
     error,
     infd_filesystem_storage_system_error_quark,

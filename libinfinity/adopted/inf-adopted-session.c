@@ -21,6 +21,7 @@
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 #include <time.h>
@@ -141,7 +142,7 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
       error,
       inf_adopted_session_error_quark,
       INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
-      "Request has index '%u', but index '%u' was expected",
+      _("Request has index '%u', but index '%u' was expected"),
       n,
       inf_adopted_request_log_get_end(log)
     );
@@ -162,7 +163,7 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
           error,
           inf_adopted_session_error_quark,
           INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
-          "Undo received, but no previous request found" /* powered by pkern */
+          _("Undo received, but no previous request found")
         );
 
         return FALSE;
@@ -178,7 +179,7 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
           error,
           inf_adopted_session_error_quark,
           INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
-          "Redo received, but no previous request found" /* powered by pkern */
+          _("Redo received, but no previous request found")
         );
 
         return FALSE;
@@ -219,7 +220,7 @@ inf_adopted_session_user_from_request_xml(InfAdoptedSession* session,
       error,
       inf_adopted_session_error_quark,
       INF_ADOPTED_SESSION_ERROR_NO_SUCH_USER,
-      "No such user with user ID '%u'",
+      _("No such user with user ID '%u'"),
       user_id
     );
 
@@ -1037,7 +1038,7 @@ inf_adopted_session_validate_user_props(InfSession* session,
       error,
       inf_adopted_session_error_quark,
       INF_ADOPTED_SESSION_ERROR_MISSING_STATE_VECTOR,
-      "'time' attribute in user message is missing"
+      _("'time' attribute in user message is missing")
     );
 
     return FALSE;
@@ -1426,7 +1427,7 @@ inf_adopted_session_read_request_info(InfAdoptedSession* session,
         error,
         inf_adopted_session_error_quark,
         INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
-        "Operation for request request missing"
+        _("Operation for request missing")
       );
 
       if(time) inf_adopted_state_vector_free(*time);

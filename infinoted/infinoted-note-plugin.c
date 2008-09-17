@@ -17,6 +17,7 @@
  */
 
 #include <infinoted/infinoted-note-plugin.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gmodule.h>
 
@@ -128,7 +129,8 @@ infinoted_note_plugin_load_directory(const gchar* path,
         if(infd_directory_lookup_plugin(directory, plugin->note_type) != NULL)
         {
           g_warning(
-            "Failed to load plugin `%s': Note type `%s' is already handled",
+            _("Failed to load plugin `%s': Note type `%s' is "
+              "already handled"),
             plugin_path,
             plugin->note_type
           );
@@ -138,7 +140,7 @@ infinoted_note_plugin_load_directory(const gchar* path,
           if(strcmp(storage_type, plugin->storage_type) != 0)
           {
             g_warning(
-              "Failed to plugin `%s': Storage type `%s' does not match",
+              _("Failed to plugin `%s': Storage type `%s' does not match"),
               plugin_path,
               plugin->storage_type
             );
@@ -147,7 +149,7 @@ infinoted_note_plugin_load_directory(const gchar* path,
           {
             fprintf(
               stderr,
-              "Loaded plugin `%s' (%s)\n",
+              _("Loaded plugin `%s' (%s)\n"),
               plugin_path,
               plugin->note_type
             );

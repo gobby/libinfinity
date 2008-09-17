@@ -61,6 +61,7 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -154,39 +155,40 @@ inf_session_sync_strerror(InfSessionSyncError errcode)
   switch(errcode)
   {
   case INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE:
-    return "Got unexpected XML node during synchronization";
+    return _("Got unexpected XML node during synchronization");
   case INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT:
-    return "'id' attribute in user message is missing";
+    return _("'id' attribute in user message is missing");
   case INF_SESSION_SYNC_ERROR_ID_IN_USE:
-    return "User ID is already in use";
+    return _("User ID is already in use");
   case INF_SESSION_SYNC_ERROR_NAME_NOT_PRESENT:
-    return "'name' attribute in user message is missing";
+    return _("'name' attribute in user message is missing");
   case INF_SESSION_SYNC_ERROR_NAME_IN_USE:
-    return "User Name is already in use";
+    return _("User Name is already in use");
   case INF_SESSION_SYNC_ERROR_CONNECTION_CLOSED:
-    return "The connection was closed unexpectedly";
+    return _("The connection was closed unexpectedly");
   case INF_SESSION_SYNC_ERROR_SENDER_CANCELLED:
-    return "The sender cancelled the synchronization";
+    return _("The sender cancelled the synchronization");
   case INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED:
-    return "The receiver cancelled the synchronization";
+    return _("The receiver cancelled the synchronization");
   case INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC:
-    return "Got begin-of-sync message, but synchronization is already "
-           "in progress";
+    return _("Got begin-of-sync message, but synchronization is already "
+             "in progress");
   case INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING:
-    return "begin-of-sync message does not contain the number of messages "
-           "to expect";
+    return _("begin-of-sync message does not contain the number of messages "
+             "to expect");
   case INF_SESSION_SYNC_ERROR_UNEXPECTED_END_OF_SYNC:
-    return "Got end-of-sync message, but synchronization is still in progress";
+    return _("Got end-of-sync message, but synchronization is still in "
+             "progress");
   case INF_SESSION_SYNC_ERROR_EXPECTED_BEGIN_OF_SYNC:
-    return "Expected begin-of-sync message as first message during "
-           "synchronization";
+    return _("Expected begin-of-sync message as first message during "
+             "synchronization");
   case INF_SESSION_SYNC_ERROR_EXPECTED_END_OF_SYNC:
-    return "Expected end-of-sync message as last message during "
-           "synchronization";
+    return _("Expected end-of-sync message as last message during "
+             "synchronization");
   case INF_SESSION_SYNC_ERROR_FAILED:
-    return "An unknown synchronization error has occured";
+    return _("An unknown synchronization error has occured");
   default:
-    return "An error with unknown error code occured";
+    return _("An error with unknown error code occured");
   }
 }
 
@@ -197,7 +199,7 @@ inf_session_get_sync_error_message(GQuark domain,
   if(domain == inf_session_sync_error_quark)
     return inf_session_sync_strerror(code);
 
-  return "An error with unknown error domain occured";
+  return _("An error with unknown error domain occured");
 }
 
 static GSList*
@@ -703,7 +705,7 @@ inf_session_handle_user_status_change(InfSession* session,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NO_SUCH_USER,
-      "No such user with ID %u",
+      _("No such user with ID %u"),
       id
     );
 
@@ -717,7 +719,7 @@ inf_session_handle_user_status_change(InfSession* session,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
-      "User did not join from this connection"
+      _("User did not join from this connection")
     );
 
     return FALSE;
@@ -873,7 +875,7 @@ inf_session_process_xml_run_impl(InfSession* session,
       error,
       g_quark_from_static_string("INF_SESSION_ERROR"),
       0,
-      "Received unhandled XML message '%s'",
+      _("Received unhandled XML message '%s'"),
       (const gchar*)xml->name
     );
 

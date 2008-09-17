@@ -58,7 +58,8 @@ CFILE_GLOB = \
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
 IGNORE_HFILES = \
 	inf-marshal.h \
-	inf-config.h
+	inf-config.h \
+	inf-i18n.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

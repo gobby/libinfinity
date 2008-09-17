@@ -128,7 +128,7 @@ static void
 inf_tcp_connection_make_system_error(int code,
                                      GError** error)
 {
-  /* TODO: This must be WSAGetLastError on Win32 */
+  /* TODO_Win32: This must be WSAGetLastError on Win32 */
 
   g_set_error(
     error,

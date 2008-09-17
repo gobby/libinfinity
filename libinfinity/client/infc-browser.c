@@ -34,6 +34,7 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <libinfinity/inf-marshal.h>
 
@@ -674,8 +675,8 @@ infc_browser_lookup_named_method(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
-      "This session requires communication method `%s' which is not "
-      "installed for network `%s'",
+      _("This session requires communication method `%s' which is not "
+        "installed for network `%s'"),
       method_name,
       network
     );
@@ -938,7 +939,7 @@ infc_browser_node_add_subdirectory(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NODE_EXISTS,
-      "Node with ID '%u' exists already",
+      _("Node with ID '%u' exists already"),
       id
     );
 
@@ -973,7 +974,7 @@ infc_browser_node_add_note(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NODE_EXISTS,
-      "Node with ID '%u' exists already",
+      _("Node with ID '%u' exists already"),
       id
     );
 
@@ -1318,7 +1319,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-      "Node to explore does no longer exist"
+      _("Node to explore does no longer exist")
     );
 
     return FALSE;
@@ -1329,7 +1330,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
-      "Node to explore is not a subdirectory"
+      _("Node to explore is not a subdirectory")
     );
 
     return FALSE;
@@ -1340,7 +1341,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
-      "Node to explore is already explored"
+      _("Node to explore is already explored")
     );
 
     return FALSE;
@@ -1522,9 +1523,9 @@ infc_browser_handle_add_node(InfcBrowser* browser,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        "The request contains a sequence number refering to a request of "
-        "type '%s', but a request of either 'explore' or 'add-node' was "
-        "expected.",
+        _("The request contains a sequence number refering to a request of "
+          "type '%s', but a request of either 'explore' or 'add-node' was "
+          "expected."),
         infc_request_get_name(request)
       );
 
@@ -1605,7 +1606,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
-      "Received sync-in without having requested one"
+      _("Received sync-in without having requested one")
     );
 
     return FALSE;
@@ -1623,7 +1624,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
-      "Expected note type `%s' for sync-in, but received `%s'",
+      _("Expected note type `%s' for sync-in, but received `%s'"),
       plugin->note_type,
       (const gchar*)type
     );
@@ -1798,7 +1799,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
-      "Note type '%s' is not supported",
+      _("Note type '%s' is not supported"),
       node->shared.unknown.type
     );
 
@@ -1811,7 +1812,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
-      "Already subscribed to this session"
+      _("Already subscribed to this session")
     );
 
     return FALSE;
@@ -1990,7 +1991,7 @@ infc_browser_handle_request_failed(InfcBrowser* browser,
       &req_error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_UNKNOWN_DOMAIN,
-      "Error comes from unknown error domain '%s' (code %u)",
+      _("Error comes from unknown error domain '%s' (code %u)"),
       (const gchar*)domain,
       code
     );
@@ -2136,7 +2137,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
         &seq_error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_REPLY_UNPROCESSED,
-        "Server reply could not be processed: %s",
+        _("Server reply could not be processed: %s"),
         local_error->message
       );
 

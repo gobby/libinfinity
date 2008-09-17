@@ -30,6 +30,7 @@
  **/
 
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <glib.h>
 #include <stdlib.h>
@@ -583,7 +584,7 @@ inf_adopted_state_vector_from_string(const gchar* str,
         error,
         inf_adopted_state_vector_error_quark(),
         INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
-        "Expected ':' after ID"
+        _("Expected ':' after ID")
       );
 
       inf_adopted_state_vector_free(vec);
@@ -597,7 +598,7 @@ inf_adopted_state_vector_from_string(const gchar* str,
         error,
         inf_adopted_state_vector_error_quark(),
         INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
-        "ID '%u' already occured before",
+        _("ID '%u' already occured before"),
         id
       );
 
@@ -614,7 +615,7 @@ inf_adopted_state_vector_from_string(const gchar* str,
         error,
         inf_adopted_state_vector_error_quark(),
         INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
-        "Expected ';' or end of string after component of ID '%u'",
+        _("Expected ';' or end of string after component of ID '%u'"),
         id
       );
 

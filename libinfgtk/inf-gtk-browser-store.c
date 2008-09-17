@@ -20,6 +20,7 @@
 #include <libinfgtk/inf-gtk-browser-model.h>
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gtk/gtktreemodel.h>
 
@@ -623,7 +624,7 @@ inf_gtk_browser_store_connection_notify_status_cb(GObject* object,
         &item->error,
         g_quark_from_static_string("INF_GTK_BROWSER_STORE_ERROR"),
         0,
-        "Disconnected"
+        _("Disconnected")
       );
     }
 

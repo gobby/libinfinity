@@ -1,0 +1,6 @@
+2008-09-17  Armin Burgmeier  <armin@arbur.net>
+
+	* de.po: Initial German translation with a single string translated...
+	only used to test gettext usage in infinote.
+
+	* POTFILES.in: List all files containing translatable strings.

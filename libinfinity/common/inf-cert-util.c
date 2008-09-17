@@ -34,6 +34,7 @@ inf_cert_util_format_time(time_t time)
   struct tm* tm;
   gsize alloc;
   gchar* result;
+  gchar* converted;
   size_t ret;
 
   tm = localtime(&time);
@@ -48,7 +49,13 @@ inf_cert_util_format_time(time_t time)
     alloc *= 2;
   } while(ret == 0);
 
-  return result;
+  converted = g_locale_to_utf8(result, -1, NULL, NULL, NULL);
+  g_free(result);
+
+  /* The conversion sequence should be always valid, otherwise strftime
+   * is screwed!? */
+  g_assert(converted != NULL);
+  return converted;
 }
 
 static gchar*

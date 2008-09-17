@@ -20,6 +20,7 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gobject/gvaluecollector.h>
 
@@ -513,7 +514,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
-      "The request contains an unknown sequence number"
+      _("The request contains an unknown sequence number")
     );
   }
   else
@@ -525,8 +526,8 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        "The request contains a sequence number refering to a request of "
-        "type '%s', but a request of type '%s' was expected",
+        _("The request contains a sequence number refering to a request of "
+          "type '%s', but a request of type '%s' was expected"),
         infc_request_get_name(request),
         name
       );
@@ -577,7 +578,8 @@ infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        "The request does not contain a sequence number, but one is required"
+        _("The request does not contain a sequence number, but one "
+          "is required")
       );
     }
     else

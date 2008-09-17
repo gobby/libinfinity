@@ -20,7 +20,9 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-error.h>
+
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gnutls/x509.h>
 
@@ -309,84 +311,84 @@ inf_xmpp_connection_stream_strerror(InfXmppConnectionStreamError code)
   switch(code)
   {
   case INF_XMPP_CONNECTION_STREAM_ERROR_BAD_FORMAT:
-    return "The entity has sent XML that cannot be processed";
+    return _("The entity has sent XML that cannot be processed");
   case INF_XMPP_CONNECTION_STREAM_ERROR_BAD_NAMESPACE_PREFIX:
-    return "The entity has sent a namespace prefix that is unsupported, or "
-           "has sent no namespace prefix on an element that requires such a "
-           "prefix";
+    return _("The entity has sent a namespace prefix that is unsupported, or "
+             "has sent no namespace prefix on an element that requires such "
+             "a prefix");
   case INF_XMPP_CONNECTION_STREAM_ERROR_CONFLICT:
-    return "The server is closing the active stream for this entity because "
-           "a new stream has been initiated that conflicts with the existing "
-           "stream";
+    return _("The server is closing the active stream for this entity "
+             "because a new stream has been initiated that conflicts with "
+             "the existing stream");
   case INF_XMPP_CONNECTION_STREAM_ERROR_CONNECTION_TIMEOUT:
-    return "The entity has not generated any traffic over the stream for "
-           "some period of time";
+    return _("The entity has not generated any traffic over the stream for "
+             "some period of time");
   case INF_XMPP_CONNECTION_STREAM_ERROR_HOST_GONE:
-    return "The value of the 'to' attribute provided by the initiating "
-           "entity in the stream header corresponds to a hostname that is "
-           "no longer hosted by the server";
+    return _("The value of the 'to' attribute provided by the initiating "
+             "entity in the stream header corresponds to a hostname that is "
+             "no longer hosted by the server");
   case INF_XMPP_CONNECTION_STREAM_ERROR_HOST_UNKNOWN:
-    return "The value of the 'to' attribute provided by the initiating "
-           "entity  in the stream header does not correspond to a hostname "
-           "that is hosted by the server";
+    return _("The value of the 'to' attribute provided by the initiating "
+             "entity  in the stream header does not correspond to a hostname "
+             "that is hosted by the server");
   case INF_XMPP_CONNECTION_STREAM_ERROR_IMPROPER_ADDRESSING:
-    return "A stanza sent between two servers lacks a 'to' or 'from'"
-           "attribute";
+    return _("A stanza sent between two servers lacks a 'to' or 'from'"
+             "attribute");
   case INF_XMPP_CONNECTION_STREAM_ERROR_INTERNAL_SERVER_ERROR:
-    return "The server has experienced a misconfiguration or an otherwise-"
-           "undefined internal error that prevents it from servicing "
-           "the stream";
+    return _("The server has experienced a misconfiguration or an otherwise-"
+             "undefined internal error that prevents it from servicing "
+             "the stream");
   case INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_FROM:
-    return "The JID or hostname provided in a 'from' address does not match "
-           "an authorized JID or validated domain negotiated between servers "
-           "via SASL or dialback, or between a client and a server via "
-           "authentication and resource binding";
+    return _("The JID or hostname provided in a 'from' address does not "
+             "match an authorized JID or validated domain negotiated between "
+             "servers via SASL or dialback, or between a client and a "
+             "server via authentication and resource binding");
   case INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_ID:
-    return "The stream ID or dialback ID is invalid or does not match an ID "
-           "previously provided";
+    return _("The stream ID or dialback ID is invalid or does not match an "
+             "ID previously provided");
   case INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_NAMESPACE:
-    return "The streams namespace is something other than "
-           "\"http://etherx.jabber.org/streams\" or the dialback namespace "
-           "name is something other than \"jabber:server:dialback\"";
+    return _("The streams namespace is something other than "
+             "\"http://etherx.jabber.org/streams\" or the dialback namespace "
+             "name is something other than \"jabber:server:dialback\"");
   case INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_XML:
-    return "The entity has sent invalid XML over the stream to a server "
-           "that performs validation";
+    return _("The entity has sent invalid XML over the stream to a server "
+             "that performs validation");
   case INF_XMPP_CONNECTION_STREAM_ERROR_NOT_AUTHORIZED:
-    return "The entity has attempted to send data before the stream has "
-           "been authenticated, or otherwise is not authorized to perform "
-           "an action related to stream negotiation";
+    return _("The entity has attempted to send data before the stream has "
+             "been authenticated, or otherwise is not authorized to perform "
+             "an action related to stream negotiation");
   case INF_XMPP_CONNECTION_STREAM_ERROR_POLICY_VIOLATION:
-    return "The entity has violated some local service policy";
+    return _("The entity has violated some local service policy");
   case INF_XMPP_CONNECTION_STREAM_ERROR_REMOTE_CONNECTION_FAILED:
-    return "The server is unable to property connect to a remote entity "
-           "that is required for authentication or authorization";
+    return _("The server is unable to property connect to a remote entity "
+             "that is required for authentication or authorization");
   case INF_XMPP_CONNECTION_STREAM_ERROR_RESOURCE_CONSTRAINT:
-    return "The server lacks the system resources necessary to service the "
-           "stream";
+    return _("The server lacks the system resources necessary to service the "
+             "stream");
   case INF_XMPP_CONNECTION_STREAM_ERROR_RESTRICTED_XML:
-    return "The entity has attempted to send restricted XML features";
+    return _("The entity has attempted to send restricted XML features");
   case INF_XMPP_CONNECTION_STREAM_ERROR_SEE_OTHER_HOST:
-    return "The server will not provide service to the initiating "
-           "entity but is redirecting traffic to another host";
+    return _("The server will not provide service to the initiating "
+             "entity but is redirecting traffic to another host");
   case INF_XMPP_CONNECTION_STREAM_ERROR_SYSTEM_SHUTDOWN:
-    return "The server is being shut down and all active streams are being "
-           "closed";
+    return _("The server is being shut down and all active streams are being "
+             "closed");
   case INF_XMPP_CONNECTION_STREAM_ERROR_UNDEFINED_CONDITION:
   case INF_XMPP_CONNECTION_STREAM_ERROR_FAILED:
-    return "The error condition is not one of those defined by the other "
-           "conditions";
+    return _("The error condition is not one of those defined by the other "
+             "conditions");
   case INF_XMPP_CONNECTION_STREAM_ERROR_UNSUPPORTED_ENCODING:
-    return "The initiating entity has encoded the stream in an encoding "
-           "that is not supported by the server";
+    return _("The initiating entity has encoded the stream in an encoding "
+             "that is not supported by the server");
   case INF_XMPP_CONNECTION_STREAM_ERROR_UNSUPPORTED_STANZA_TYPE:
-    return "The initiating entity has sent a first-level child of the stream "
-           "that is not supported by the server.";
+    return _("The initiating entity has sent a first-level child of the "
+             "stream that is not supported by the server.");
   case INF_XMPP_CONNECTION_STREAM_ERROR_UNSUPPORTED_VERSION:
-    return "The value of the 'version' attribute provided by the initiating "
-           "entity in the stream header specifies a version of XMPP that is "
-           "not supported by the server";
+    return _("The value of the 'version' attribute provided by the "
+             "initiating entity in the stream header specifies a version of "
+             "XMPP that is not supported by the server");
   case INF_XMPP_CONNECTION_STREAM_ERROR_XML_NOT_WELL_FORMED:
-    return "The initiating entity has sent XML that is not well-formed";
+    return _("The initiating entity has sent XML that is not well-formed");
   default:
     g_assert_not_reached();
     break;
@@ -431,29 +433,30 @@ inf_xmpp_connection_auth_strerror(InfXmppConnectionAuthError code)
   switch(code)
   {
   case INF_XMPP_CONNECTION_AUTH_ERROR_ABORTED:
-    return "The receiving entity acknowledged an <abort/> element sent by "
-           "the initiating entity";
+    return _("The receiving entity acknowledged an <abort/> element sent by "
+             "the initiating entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_INCORRECT_ENCODING:
-    return "The data provided by the initiating entity could not be "
-           "processed because the Base64 encoding is incorrect";
+    return _("The data provided by the initiating entity could not be "
+             "processed because the Base64 encoding is incorrect");
   case INF_XMPP_CONNECTION_AUTH_ERROR_INVALID_AUTHZID:
-    return "The authzid provided by the initiating entity is invalid, "
-           "either because it is incorrectly formatted or because the "
-           "initiating entity does not have permissions to authorize that ID";
+    return _("The authzid provided by the initiating entity is invalid, "
+             "either because it is incorrectly formatted or because the "
+             "initiating entity does not have permissions to authorize "
+             "that ID");
   case INF_XMPP_CONNECTION_AUTH_ERROR_INVALID_MECHANISM:
-    return "The initiating entity did not provide a mechanism or requested "
-           "a mechanism that is not supported by the receiving entity";
+    return _("The initiating entity did not provide a mechanism or requested "
+             "a mechanism that is not supported by the receiving entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_MECHANISM_TOO_WEAK:
-    return "The mechanism requsted by the initiating entity is weaker than "
-           "server policy permits for that initiating entity";
+    return _("The mechanism requsted by the initiating entity is weaker than "
+             "server policy permits for that initiating entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED:
-    return "The authentication failed because the initiating entity did not "
-           "provide valid credentials";
+    return _("The authentication failed because the initiating entity did "
+             "not provide valid credentials");
   case INF_XMPP_CONNECTION_AUTH_ERROR_TEMPORARY_AUTH_FAILURE:
-    return "The authentication failed because of a temporary error condition "
-           "within the receiving entity";
+    return _("The authentication failed because of a temporary error condition "
+             "within the receiving entity");
   case INF_XMPP_CONNECTION_AUTH_ERROR_FAILED:
-    return "An unknown authentication error has occured";
+    return _("An unknown authentication error has occured");
   default:
     g_assert_not_reached();
     return NULL;
@@ -974,7 +977,7 @@ inf_xmpp_connection_tls_import_server_certificate(InfXmppConnection* xmpp,
       error,
       inf_xmpp_connection_error_quark,
       INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
-      "The server did not provide a certificate"
+      _("The server did not provide a certificate")
     );
 
     return NULL;
@@ -1686,7 +1689,7 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
       inf_xmpp_connection_terminate_error(
         xmpp,
         INF_XMPP_CONNECTION_STREAM_ERROR_NOT_AUTHORIZED,
-        "Stream is not yet secured with TLS"
+        _("Stream is not yet secured with TLS")
       );
     }
   }
@@ -1726,7 +1729,7 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
       inf_xmpp_connection_terminate_error(
         xmpp,
         INF_XMPP_CONNECTION_STREAM_ERROR_NOT_AUTHORIZED,
-        "Stream is not yet authorized"
+        _("Stream is not yet authorized")
       );
     }
   }
@@ -1770,7 +1773,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         &error,
         inf_xmpp_connection_error_quark,
         INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
-        "The server does not support transport layer security (TLS)"
+        _("The server does not support transport layer security (TLS)")
       );
 
       inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -1803,7 +1806,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         &error,
         inf_xmpp_connection_error_quark,
         INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED,
-        "The server does not provide any authentication mechanism"
+        _("The server does not provide any authentication mechanism")
       );
 
       inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -1860,7 +1863,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
           &error,
           inf_xmpp_connection_error_quark,
           INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM,
-          "The server does not offer a suitable authentication mechanism"
+          _("The server does not offer a suitable authentication mechanism")
         );
 
         inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -1916,7 +1919,7 @@ inf_xmpp_connection_process_encryption(InfXmppConnection* xmpp,
       &error,
       inf_xmpp_connection_error_quark,
       INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
-      "The server cannot perform the TLS handshake"
+      _("The server cannot perform the TLS handshake")
     );
 
     inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
@@ -3556,7 +3559,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
     &error,
     inf_xmpp_connection_error_quark,
     INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
-    "The server certificate is not trusted"
+    _("The server certificate is not trusted")
   );
 
   inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);

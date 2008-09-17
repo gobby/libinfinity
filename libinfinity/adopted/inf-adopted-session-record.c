@@ -25,6 +25,7 @@
 /* TODO: Better error handling; we should have a proper InfErrnoError
  * (or InfSystemError or something), and we should check the fflush error
  * codes. */
+/* TODO: Or just use GIOChannel here... */
 
 /**
  * SECTION:inf-adopted-session-record
