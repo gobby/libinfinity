@@ -1,5 +1,10 @@
 2008-09-18  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-main.c: Added --require-tls and --no-tls command
+	line options.
+
+2008-09-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c infd_directory_node_explore():
 	Prevent a crash when exploring an unknown note type from the storage.
 

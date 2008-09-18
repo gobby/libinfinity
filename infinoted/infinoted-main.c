@@ -49,6 +49,8 @@ static gchar* cert_file = NULL;
 static gboolean create_key = FALSE;
 static gboolean create_certificate = FALSE;
 static gint port_number = 6523;
+static gboolean require_tls = FALSE;
+static gboolean no_tls = FALSE;
 
 static const guint8 IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -80,6 +82,16 @@ static const GOptionEntry entries[] =
     0,
     G_OPTION_ARG_INT, &port_number,
     N_("The port number to listen on"), "PORT"
+  }, {
+    "require-tls", 0,
+    0,
+    G_OPTION_ARG_NONE, &require_tls,
+    N_("Require client connections to use TLS"), NULL
+  }, {
+    "no-tls", 0,
+    0,
+    G_OPTION_ARG_NONE, &no_tls,
+    N_("Don't use TLS at all"), NULL
   }, {
     NULL, 0,
     0,
@@ -131,6 +143,7 @@ static gboolean
 infinoted_main_run(gnutls_certificate_credentials_t credentials,
                    InfdDirectory* directory,
                    guint port,
+		   InfXmppConnectionSecurityPolicy policy,
                    GError** error)
 {
   InfdTcpServer* tcp;
@@ -169,6 +182,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
 
   pool = infd_server_pool_new(directory);
   server = infd_xmpp_server_new(tcp, credentials, NULL);
+  infd_xmpp_server_set_security_policy(server, policy);
   g_object_unref(G_OBJECT(tcp));
   
   infd_server_pool_add_server(pool, INFD_XML_SERVER(server));
@@ -199,6 +213,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   return TRUE;
 }
 
+/* TODO: Split this into multiple subroutines */
 static gboolean
 infinoted_main(int argc,
                char* argv[],
@@ -216,9 +231,12 @@ infinoted_main(int argc,
 
   gchar* root_directory;
   InfStandaloneIo* io;
+  InfXmppConnectionSecurityPolicy policy;
   InfConnectionManager* connection_manager;
   InfdStorage* storage;
   InfdDirectory* directory;
+
+  gboolean result;
 
   key = NULL;
   certs = NULL;
@@ -234,7 +252,30 @@ infinoted_main(int argc,
   if(g_option_context_parse(context, &argc, &argv, error) == FALSE)
     goto error;
 
-  if(create_key == TRUE && create_certificate == FALSE)
+  /* Check for command line conistency */
+  if(require_tls && no_tls)
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INFINOTED_MAIN_ERROR"),
+      0,
+      _("--require-tls cannot be used together with --no-tls")
+    );
+
+    goto error;
+  }
+  else if(no_tls && (cert_file != NULL || key_file != NULL))
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INFINOTED_MAIN_ERROR"),
+      0,
+      _("When not using TLS, no private key or certificate is required")
+    );
+
+    goto error;
+  }
+  else if(create_key == TRUE && create_certificate == FALSE)
   {
     g_set_error(
       error,
@@ -264,96 +305,123 @@ infinoted_main(int argc,
 
   infinoted_note_plugin_load_directory(PLUGIN_PATH, directory);
 
-  key_path = DEFAULT_KEYPATH;
-  if(key_file != NULL) key_path = key_file;
-
-  cert_path = DEFAULT_CERTPATH;
-  if(cert_file != NULL) cert_path = cert_file;
-
-  if(create_key == TRUE)
+  if(!no_tls)
   {
-    fprintf(stderr, _("Generating 2048 bit RSA private key...\n"));
-    key = infinoted_creds_create_key(error);
+    key_path = DEFAULT_KEYPATH;
+    if(key_file != NULL) key_path = key_file;
 
-    if(key != NULL)
+    cert_path = DEFAULT_CERTPATH;
+    if(cert_file != NULL) cert_path = cert_file;
+
+    if(create_key == TRUE)
     {
-      if(infinoted_main_create_dirname(key_path, error) == FALSE ||
-         infinoted_creds_write_key(key, key_path, error) == FALSE)
+      fprintf(stderr, _("Generating 2048 bit RSA private key...\n"));
+      key = infinoted_creds_create_key(error);
+
+      if(key != NULL)
       {
-        gnutls_x509_privkey_deinit(key);
-        key = NULL;
+        if(infinoted_main_create_dirname(key_path, error) == FALSE ||
+           infinoted_creds_write_key(key, key_path, error) == FALSE)
+        {
+          gnutls_x509_privkey_deinit(key);
+          key = NULL;
+        }
       }
     }
+    else
+    {
+      key = infinoted_creds_read_key(key_path, error);
+    }
+
+    g_free(key_file);
+    key_file = NULL;
+    if(key == NULL) goto error;
+
+    if(create_certificate == TRUE)
+    {
+      fprintf(stderr, _("Generating self-signed certificate...\n"));
+      cert = ininoted_creds_create_self_signed_certificate(key, error);
+
+      if(cert != NULL)
+      {
+        if(infinoted_main_create_dirname(key_path, error) == FALSE ||
+           inf_cert_util_save_file(&cert, 1, cert_path, error) == FALSE)
+        {
+          gnutls_x509_crt_deinit(cert);
+          cert = NULL;
+        }
+        else
+        {
+          certs = g_ptr_array_new();
+          g_ptr_array_add(certs, cert);
+          cert = NULL;
+        }
+      }
+    }
+    else
+    {
+      certs = inf_cert_util_load_file(cert_path, error);
+    }
+
+    g_free(cert_file);
+    cert_file = NULL;
+    if(certs == NULL) goto error;
+
+    /* TODO: Later we should probably always generate new params, or store
+     * an expiry date with them. */
+    dh_params = infinoted_creds_read_dh_params("dh.pem", NULL);
+    if(dh_params == NULL)
+    {
+      fprintf(stderr, _("Generating 2048 bit Diffie-Hellman parameters...\n"));
+      dh_params = infinoted_creds_create_dh_params(error);
+      if(dh_params == NULL) goto error;
+
+      infinoted_creds_write_dh_params(dh_params, "dh.pem", NULL);
+    }
+
+    credentials = infinoted_creds_create_credentials(
+      dh_params,
+      key,
+      (gnutls_x509_crt_t*)certs->pdata,
+      certs->len,
+      error
+    );
+
+    if(credentials == NULL)
+      goto error;
   }
   else
   {
-    key = infinoted_creds_read_key(key_path, error);
+    credentials = NULL;
   }
 
-  g_free(key_file);
-  key_file = NULL;
-  if(key == NULL) goto error;
-
-  if(create_certificate == TRUE)
-  {
-    fprintf(stderr, _("Generating self-signed certificate...\n"));
-    cert = ininoted_creds_create_self_signed_certificate(key, error);
-
-    if(cert != NULL)
-    {
-      if(infinoted_main_create_dirname(key_path, error) == FALSE ||
-         inf_cert_util_save_file(&cert, 1, cert_path, error) == FALSE)
-      {
-        gnutls_x509_crt_deinit(cert);
-        cert = NULL;
-      }
-      else
-      {
-        certs = g_ptr_array_new();
-        g_ptr_array_add(certs, cert);
-	cert = NULL;
-      }
-    }
-  }
+  if(require_tls)
+    policy = INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
+  else if(no_tls)
+    policy = INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED;
   else
-  {
-    certs = inf_cert_util_load_file(cert_path, error);
-  }
+    policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
 
-  g_free(cert_file);
-  cert_file = NULL;
-  if(certs == NULL) goto error;
 
-  /* TODO: Later we should probably always generate new params, or store
-   * an expiry date with them. */
-  dh_params = infinoted_creds_read_dh_params("dh.pem", NULL);
-  if(dh_params == NULL)
-  {
-    fprintf(stderr, _("Generating 2048 bit Diffie-Hellman parameters...\n"));
-    dh_params = infinoted_creds_create_dh_params(error);
-    if(dh_params == NULL) goto error;
-
-    infinoted_creds_write_dh_params(dh_params, "dh.pem", NULL);
-  }
-
-  credentials = infinoted_creds_create_credentials(
-    dh_params,
-    key,
-    (gnutls_x509_crt_t*)certs->pdata,
-    certs->len,
+  result = infinoted_main_run(
+    credentials,
+    directory,
+    port_number,
+    policy,
     error
   );
 
-  if(credentials == NULL)
+  if(result == FALSE)
     goto error;
 
-  if(infinoted_main_run(credentials, directory, port_number, error) == FALSE)
-    goto error;
+  if(!no_tls)
+  {
+    gnutls_certificate_free_credentials(credentials);
+    gnutls_dh_params_deinit(dh_params);
+    infinoted_free_certificate_array(certs);
+    gnutls_x509_privkey_deinit(key);
+  }
 
-  gnutls_certificate_free_credentials(credentials);
-  gnutls_dh_params_deinit(dh_params);
-  infinoted_free_certificate_array(certs);
-  gnutls_x509_privkey_deinit(key);
   g_object_unref(G_OBJECT(directory));
   gnutls_global_deinit();
 
