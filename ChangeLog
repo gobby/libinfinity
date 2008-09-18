@@ -1,5 +1,10 @@
 2008-09-18  Armin Burgmeier  <armin@arbur.net>
 
+	* update-potfiles: Added a small script to generate the
+	po/POTFILES.in. It is simple, but enough for our needs.
+
+2008-09-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c:
 	* libinfinity/common/inf-discovery-avahi.c:
 	* libinfinity/common/inf-method-manager.c:

@@ -51,4 +51,3 @@ Others:
 
  * GtkSourceView bracket highlights are hidden behind user colors
  * ERROR:(inf-discovery-avahi.c:1055):inf_discovery_avahi_constructor: assertion failed: (priv->client != NULL)
- * grep for g_warning, mark several for translation (remember updating POTFILES.in)
