@@ -17,6 +17,7 @@
  */
 
 #include <libinfinity/common/inf-method-manager.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gmodule.h>
 
@@ -109,8 +110,8 @@ inf_method_manager_constructor(GType type,
             else
             {
               g_warning(
-                "Failed to load method `%s': Method with network `%s' and "
-                "name `%s' already loaded.",
+                _("Failed to load method `%s': Method with network `%s' and "
+                  "name `%s' already loaded."),
                 path,
                 existing_desc->network,
                 existing_desc->name
@@ -122,7 +123,11 @@ inf_method_manager_constructor(GType type,
         }
         else
         {
-          g_warning("Failed to load module `%s': %s", path, g_module_error());
+          g_warning(
+            _("Failed to load module `%s': %s"),
+            path,
+            g_module_error()
+          );
         }
 
         g_free(path);

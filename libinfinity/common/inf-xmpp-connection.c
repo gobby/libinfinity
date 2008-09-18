@@ -2373,7 +2373,8 @@ inf_xmpp_connection_sax_warning(void* context,
   warn_str = g_strdup_vprintf(msg, arglist);
   va_end(arglist);
 
-  fprintf(stderr, "XML warning from %s: %s\n", addr_str, warn_str);
+  /* XML Warning from <IP Address>: <Warning Text> */
+  g_warning(_("XML warning from %s: %s\n"), addr_str, warn_str);
   g_free(addr_str);
   g_free(warn_str);
 }

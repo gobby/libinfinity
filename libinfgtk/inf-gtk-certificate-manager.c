@@ -281,7 +281,7 @@ inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
       {
         /* TODO_Win32: Is the error code also in errno on Windows? */
         g_warning(
-          "Failed to save known hosts file: %s\n",
+          _("Failed to save known hosts file: %s\n"),
           strerror(save_errno)
         );
       }
@@ -297,7 +297,10 @@ inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
 
         if(ret == FALSE)
         {
-          g_warning("Failed to save known hosts file: %s\n", error->message);
+          g_warning(
+            _("Failed to save known hosts file: %s\n"),
+            error->message
+          );
           g_error_free(error);
         }
       }
@@ -355,7 +358,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     priv->ca_certs = inf_cert_util_load_file(priv->trust_file, &error);
     if(priv->ca_certs == NULL)
     {
-      g_warning("Could not load trust file: %s", error->message);
+      g_warning(_("Could not load trust file: %s"), error->message);
       g_error_free(error);
 
       g_free(priv->trust_file);
@@ -384,7 +387,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       if(error->domain != g_file_error_quark() ||
          error->code != G_FILE_ERROR_NOENT)
       {
-        g_warning("Could not load known hosts file: %s", error->message);
+        g_warning(_("Could not load known hosts file: %s"), error->message);
 
         g_free(priv->known_hosts_file);
         priv->known_hosts_file = NULL;
@@ -427,7 +430,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
   if(ret < 0)
   {
-    g_warning("Could not verify certificate: %s", gnutls_strerror(ret));
+    g_warning(_("Could not verify certificate: %s"), gnutls_strerror(ret));
     inf_xmpp_connection_certificate_verify_cancel(connection);
   }
   else

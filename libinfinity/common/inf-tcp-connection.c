@@ -20,8 +20,9 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-i18n.h>
 
-#include <libinfinity/inf-config.h>
+#include "config.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -473,7 +474,7 @@ inf_tcp_connection_set_property(GObject* object,
     new_index = if_nametoindex(device_string);
     if(new_index == 0)
     {
-      g_warning("Interface `%s' does not exist", device_string);
+      g_warning(_("Interface `%s' does not exist"), device_string);
     }
     else
     {
@@ -540,7 +541,8 @@ inf_tcp_connection_get_property(GObject* object,
       if(if_indextoname(priv->device_index, device_name) == NULL)
       {
         g_warning(
-          "Failed to get name for device %u: %s",
+          /* Failed to get name for device <Index>: <Reason> */
+          _("Failed to get name for device %u: %s"),
           priv->device_index,
           strerror(errno)
         );

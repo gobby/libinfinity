@@ -476,10 +476,9 @@ inf_discovery_avahi_service_browser_callback(AvahiServiceBrowser* browser,
     /* Ignore */
     break;
   case AVAHI_BROWSER_FAILURE:
-    fprintf(
-      stderr,
-      "Avahi service browser is in failure state. Services of type '%s' are "
-      "no longer discovered.\n\nThe failure was: %s\n",
+    g_warning(
+      _("Avahi service browser is in failure state. Services of type '%s' "
+        "are no longer discovered.\n\nThe failure was: %s\n"),
       info->type,
       avahi_strerror(
         avahi_client_errno(avahi_service_browser_get_client(browser))
@@ -525,10 +524,9 @@ inf_discovery_avahi_entry_group_callback(AvahiEntryGroup* group,
     avahi_entry_group_commit(item->entry_group);
     break;
   case AVAHI_ENTRY_GROUP_FAILURE:
-    fprintf(
-      stderr,
-      "Avahi entry group is in failure state. The service '%s' of type '%s' "
-      "is no longer published.\n\nThe failure was: %s\n",
+    g_warning(
+      _("Avahi entry group is in failure state. The service '%s' of type "
+        "'%s' is no longer published.\n\nThe failure was: %s\n"),
       item->name,
       item->type,
       avahi_strerror(avahi_client_errno(avahi_entry_group_get_client(group)))
@@ -765,10 +763,10 @@ inf_discovery_avahi_client_callback(AvahiClient* client,
     }
     else
     {
-      fprintf(
-        stderr,
-        "Avahi client is in failure state. Service discovery and "
-        "publishing is no longer possible.\n\nThe occured failure was: %s\n",
+      g_warning(
+        _("Avahi client is in failure state. Service discovery and "
+          "publishing is no longer possible.\n\nThe occured failure "
+          "was: %s\n"),
         avahi_strerror(avahi_client_errno(client))
       );
     }

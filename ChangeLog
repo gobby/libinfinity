@@ -1,5 +1,19 @@
 2008-09-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/common/inf-method-manager.c:
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-filesystem-storage.c:
+	* libinfinity/adopted/inf-adopted-session-record.c:
+	* libinfgtk/inf-gtk-certificate-manager.c: Marked a few more strings
+	for translation.
+
+2008-09-18  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-main.c: Added --require-tls and --no-tls command
 	line options.
 

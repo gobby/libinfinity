@@ -18,6 +18,7 @@
 
 #include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <libxml/xmlwriter.h>
 #include <errno.h>
@@ -83,7 +84,8 @@ inf_adopted_session_record_handle_xml_error(InfAdoptedSessionRecord* record)
   xmlerror = xmlGetLastError();
 
   g_warning(
-    "Error writing record '%s': %s",
+    /* Error writing record `<filename>': <Reason> */
+    _("Error writing record `%s': %s"),
     priv->filename,
     xmlerror->message
   );
@@ -353,7 +355,8 @@ inf_adopted_session_record_dispose(GObject* object)
       g_assert(priv->filename != NULL);
 
       g_warning(
-        "Error while finishing record '%s': %s",
+        /* Error while finishing record `<Filename>': <Reason> */
+        "Error while finishing record `%s': %s",
         priv->filename,
         error->message
       );

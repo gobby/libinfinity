@@ -346,8 +346,8 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   if(result == FALSE)
   {
     g_warning(
-      "Failed to save note `%s': %s\n\nKeeping it in memory. Another save "
-      "attempt will be made when the server is shut down.",
+      _("Failed to save note `%s': %s\n\nKeeping it in memory. Another save "
+        "attempt will be made when the server is shut down."),
       path,
       error->message
     );
@@ -782,9 +782,11 @@ infd_directory_node_free(InfdDirectory* directory,
          * any application should save the sessions explicitely before
          * shutting the directory down, so that it has the chance to cancel
          * the shutdown if the session could not be saved. */
+        /* TODO: We could try saving the session somewhere in /tmp, for
+         * example via to_xml_sync. */
         g_warning(
-          "Could not write session `%s' to storage: %s\n\nChanges since the "
-          "last save are lost.",
+          _("Could not write session `%s' to storage: %s\n\nChanges since "
+            "the last save are lost."),
           path, error->message
         );
 

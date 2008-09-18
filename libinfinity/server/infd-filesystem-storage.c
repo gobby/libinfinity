@@ -89,7 +89,7 @@ infd_filesystem_storage_set_root_directory(InfdFilesystemStorage* storage,
   if(converted == NULL)
   {
     g_warning(
-      "Failed to convert root directory to filename encoding: %s",
+      _("Failed to convert root directory to filename encoding: %s"),
       error->message
     );
 
@@ -101,8 +101,8 @@ infd_filesystem_storage_set_root_directory(InfdFilesystemStorage* storage,
     if(ret == -1)
     {
       g_warning(
-        "Failed to create root directory: %s\n"
-        "Subsequent storage operations will most likely fail\n",
+        _("Failed to create root directory: %s\n"
+          "Subsequent storage operations will most likely fail\n"),
         strerror(errno)
       );
     }

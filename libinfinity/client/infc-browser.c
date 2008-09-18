@@ -767,8 +767,8 @@ infc_browser_constructor(GType type,
     infc_browser_release_connection(browser);
 
     g_warning(
-      "Cannot connect to server since the \"central\" method could not be "
-      "found for network \"%s\"",
+      _("Cannot connect to server since the \"central\" method could not be "
+        "found for network \"%s\""),
       network
     );
   }

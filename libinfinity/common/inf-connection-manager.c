@@ -875,10 +875,10 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
             g_object_get(G_OBJECT(connection), "remote-id", &other_id, NULL);
 
             g_warning(
-              "Request from %s caused error: %s\n\nThe request could not "
-              "be processed, thus the session is no longer guaranteed to be "
-              "in a consistent state. Subsequent requests might therefore "
-              "fail as well. The failed request was:\n\n%s\n\n",
+              _("Request from %s caused error: %s\n\nThe request could not "
+                "be processed, thus the session is no longer guaranteed to be "
+                "in a consistent state. Subsequent requests might therefore "
+                "fail as well. The failed request was:\n\n%s\n\n"),
               other_id,
               local_error->message,
               (const gchar*)xmlBufferContent(buffer)
