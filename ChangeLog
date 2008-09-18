@@ -1,5 +1,10 @@
 2008-09-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-directory.c infd_directory_node_explore():
+	Prevent a crash when exploring an unknown note type from the storage.
+
+2008-09-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.h:
 	* libinfinity/common/inf-xmpp-connection.c: Added a security-policy
 	property that specifies how to decide whether to use TLS or not. This

@@ -1493,6 +1493,7 @@ infd_directory_node_explore(InfdDirectory* directory,
   for(item = list; item != NULL; item = g_slist_next(item))
   {
     storage_node = (InfdStorageNode*)item->data;
+    new_node = NULL;
 
     /* TODO: Transfer ownership of storade_node->name to
      * infd_directory_new_*? */
