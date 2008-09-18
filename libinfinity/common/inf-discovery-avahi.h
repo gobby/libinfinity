@@ -58,6 +58,13 @@ inf_discovery_avahi_new(InfIo* io,
                         gnutls_certificate_credentials_t creds,
                         Gsasl* sasl_context);
 
+void
+inf_discovery_avahi_set_security_policy(InfDiscoveryAvahi* discovery,
+                                        InfXmppConnectionSecurityPolicy plcy);
+
+InfXmppConnectionSecurityPolicy
+inf_discovery_avahi_get_security_policy(InfDiscoveryAvahi* discovery);
+
 G_END_DECLS
 
 #endif /* INFINOTE_HAVE_AVAHI */

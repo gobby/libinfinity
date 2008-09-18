@@ -37,6 +37,7 @@ G_BEGIN_DECLS
 #define INF_XMPP_CONNECTION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TYPE_XMPP_CONNECTION, InfXmppConnectionClass))
 
 #define INF_TYPE_XMPP_CONNECTION_SITE            (inf_xmpp_connection_site_get_type())
+#define INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY (inf_xmpp_connection_security_policy_get_type())
 
 typedef struct _InfXmppConnection InfXmppConnection;
 typedef struct _InfXmppConnectionClass InfXmppConnectionClass;
@@ -46,9 +47,26 @@ typedef enum _InfXmppConnectionSite {
   INF_XMPP_CONNECTION_CLIENT
 } InfXmppConnectionSite;
 
+typedef enum _InfXmppConnectionSecurityPolicy {
+  /* Server: Do not offer TLS.
+   * Client: Only connect if TLS is not required. */
+  INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
+  /* Server: Require TLS.
+   * Client: Only connect if TLS is available. */
+  INF_XMPP_CONNECTION_SECURITY_ONLY_TLS,
+  /* Server: Offer both.
+   * Client: Use unsecured communication unless TLS is required */
+  INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED,
+  /* Server: Offer both.
+   * Client: Use TLS-secured communication unless TLS is not available. */
+  INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS
+} InfXmppConnectionSecurityPolicy;
+
 typedef enum _InfXmppConnectionError {
   /* Server does not support TLS */
   INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
+  /* The server requires TLS, but we don't want TLS */
+  INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED,
   /* Got <failure> as response to <starttls> */
   INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
   /* The server did not provide a certificate */
@@ -120,6 +138,9 @@ typedef void(*InfXmppConnectionCrtCallback)(InfXmppConnection* xmpp,
                                             gpointer user_data);
 
 GType
+inf_xmpp_connection_security_policy_get_type(void) G_GNUC_CONST;
+
+GType
 inf_xmpp_connection_site_get_type(void) G_GNUC_CONST;
 
 GType
@@ -130,6 +151,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         InfXmppConnectionSite site,
                         const gchar* local_hostname,
                         const gchar* remote_hostname,
+                        InfXmppConnectionSecurityPolicy security_policy,
                         gnutls_certificate_credentials_t cred,
                         Gsasl* sasl_context);
 

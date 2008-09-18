@@ -20,6 +20,7 @@
 #define __INFD_XMPP_SERVER_H__
 
 #include <libinfinity/server/infd-tcp-server.h>
+#include <libinfinity/common/inf-xmpp-connection.h>
 
 #include <gnutls/gnutls.h>
 #include <gsasl.h>
@@ -57,6 +58,13 @@ InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      gnutls_certificate_credentials_t cred,
                      Gsasl* sasl_context);
+
+void
+infd_xmpp_server_set_security_policy(InfdXmppServer* server,
+                                     InfXmppConnectionSecurityPolicy policy);
+
+InfXmppConnectionSecurityPolicy
+infd_xmpp_server_get_security_policy(InfdXmppServer* server);
 
 G_END_DECLS
 

@@ -32,6 +32,7 @@ struct _InfdXmppServerPrivate {
   InfdTcpServer* tcp;
   InfdXmppServerStatus status;
   gchar* local_hostname;
+  InfXmppConnectionSecurityPolicy security_policy;
 
   gnutls_certificate_credentials_t tls_creds;
   gnutls_certificate_credentials_t tls_own_creds;
@@ -48,6 +49,8 @@ enum {
 
   PROP_CREDENTIALS,
   PROP_SASL_CONTEXT,
+
+  PROP_SECURITY_POLICY,
 
   /* Overridden from XML server */
   PROP_STATUS
@@ -89,6 +92,7 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
     INF_XMPP_CONNECTION_SERVER,
     priv->local_hostname,
     addr_str,
+    priv->security_policy,
     priv->tls_creds,
     priv->sasl_context
   );
@@ -299,7 +303,11 @@ infd_xmpp_server_constructor(GType type,
     gnutls_dh_params_generate2(dh_params, xmpp_server_dh_bits);
     gnutls_certificate_set_dh_params(priv->tls_creds, dh_params);
 
-    /* TODO: Create a new random key/certificate here. */
+    /* TODO: That makes no sense. We should either don't allow omitting
+     * the credentials, or use a default ad-hoc certificate that is known
+     * as such, and therefore not considered secure. See also
+     * inf-xmpp-connection.c in inf_xmpp_connection_tls_init() and
+     * inf_xmpp_connection_process_initiated(). */
     gnutls_certificate_set_x509_key_file(
       priv->tls_creds,
       "cert.pem",
@@ -341,6 +349,7 @@ infd_xmpp_server_init(GTypeInstance* instance,
   priv->tcp = NULL;
   priv->status = INFD_XMPP_SERVER_CLOSED;
   priv->local_hostname = g_strdup(g_get_host_name());
+  priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
 
   priv->tls_creds = NULL;
   priv->tls_own_creds = NULL;
@@ -435,6 +444,9 @@ infd_xmpp_server_set_property(GObject* object,
     
     priv->sasl_context = g_value_get_pointer(value);
     break;
+  case PROP_SECURITY_POLICY:
+    priv->security_policy = g_value_get_enum(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -481,6 +493,9 @@ infd_xmpp_server_get_property(GObject* object,
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, priv->sasl_context);
+    break;
+  case PROP_SECURITY_POLICY:
+    g_value_set_enum(value, priv->security_policy);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -573,6 +588,19 @@ infd_xmpp_server_class_init(gpointer g_class,
       "GnuSASL context",
       "The GnuSASL context used for authentaction",
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SECURITY_POLICY,
+    g_param_spec_enum(
+      "security-policy",
+      "Security policy",
+      "Whether to offer or require TLS",
+      INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY,
+      INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+      G_PARAM_READWRITE
     )
   );
 
@@ -681,6 +709,42 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
   );
 
   return INFD_XMPP_SERVER(object);
+}
+
+/**
+ * infd_xmpp_server_set_security_policy:
+ * @server: A #InfdXmppServer.
+ * @policy: The new security policy.
+ *
+ * Sets the security policy for newly accepted #InfXmppConnection<!-- -->s.
+ * Does not already established connections.
+ */
+void
+infd_xmpp_server_set_security_policy(InfdXmppServer* server,
+                                     InfXmppConnectionSecurityPolicy policy)
+{
+  g_return_if_fail(INFD_IS_XMPP_SERVER(server));
+  INFD_XMPP_SERVER_PRIVATE(server)->security_policy = policy;
+}
+
+/**
+ * infd_xmpp_server_get_security_policy:
+ * @server: A #InfdXmppServer.
+ *
+ * Returns the current security policy for newly accepted
+ * #InfXmppConnection<!-- -->s.
+ *
+ * Returns: The current security policy.
+ */
+InfXmppConnectionSecurityPolicy
+infd_xmpp_server_get_security_policy(InfdXmppServer* server)
+{
+  g_return_val_if_fail(
+    INFD_IS_XMPP_SERVER(server),
+    INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS
+  );
+
+  return INFD_XMPP_SERVER_PRIVATE(server)->security_policy;
 }
 
 /* vim:set et sw=2 ts=2: */

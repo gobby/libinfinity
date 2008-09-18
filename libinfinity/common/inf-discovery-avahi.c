@@ -96,6 +96,7 @@ struct _InfDiscoveryAvahiPrivate {
 
   InfIo* io;
   InfXmppManager* xmpp_manager;
+  InfXmppConnectionSecurityPolicy security_policy;
   gnutls_certificate_credentials_t creds;
   Gsasl* sasl_context;
 
@@ -112,7 +113,10 @@ enum {
   PROP_XMPP_MANAGER,
   PROP_IO,
   PROP_CREDENTIALS,
-  PROP_SASL_CONTEXT
+  PROP_SASL_CONTEXT,
+
+  /* read/write */
+  PROP_SECURITY_POLICY
 };
 
 #define INF_DISCOVERY_AVAHI_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_DISCOVERY_AVAHI, InfDiscoveryAvahiPrivate))
@@ -344,6 +348,7 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
           INF_XMPP_CONNECTION_CLIENT,
           NULL,
           host_name,
+          priv->security_policy,
           priv->creds,
           priv->sasl_context
         );
@@ -1011,6 +1016,7 @@ inf_discovery_avahi_init(GTypeInstance* instance,
 
   priv->io = NULL;
   priv->xmpp_manager = NULL;
+  priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
   priv->creds = NULL;
   priv->sasl_context = NULL;
 
@@ -1128,6 +1134,9 @@ inf_discovery_avahi_set_property(GObject* object,
     g_assert(priv->sasl_context == NULL); /* construct only */
     priv->sasl_context = (Gsasl*)g_value_get_pointer(value);
     break;
+  case PROP_SECURITY_POLICY:
+    priv->security_policy = g_value_get_enum(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -1159,6 +1168,9 @@ inf_discovery_avahi_get_property(GObject* object,
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, (gpointer)priv->sasl_context);
+    break;
+  case PROP_SECURITY_POLICY:
+    g_value_set_enum(value, priv->security_policy);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1421,6 +1433,19 @@ inf_discovery_avahi_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SECURITY_POLICY,
+    g_param_spec_enum(
+      "security-policy",
+      "Security policy",
+      "How to decide whether to use TLS",
+      INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY,
+      INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+      G_PARAM_READWRITE
+    )
+  );
 }
 
 static void
@@ -1548,6 +1573,43 @@ inf_discovery_avahi_new(InfIo* io,
   );
 
   return INF_DISCOVERY_AVAHI(object);
+}
+
+/**
+ * inf_discovery_avahi_set_security_policy:
+ * @discovery: A #InfDiscoveryAvahi.
+ * @plcy: The new security policy.
+ *
+ * Sets the #InfXmppConnectionSecurityPolicy for newly created
+ * #InfXmppConnection<!-- -->s. It does not affect already existing
+ * connections.
+ */
+void
+inf_discovery_avahi_set_security_policy(InfDiscoveryAvahi* discovery,
+                                        InfXmppConnectionSecurityPolicy plcy)
+{
+  g_return_if_fail(INF_IS_DISCOVERY_AVAHI(discovery));
+  INF_DISCOVERY_AVAHI_PRIVATE(discovery)->security_policy = plcy;
+}
+
+/**
+ * inf_discovery_avahi_get_security_policy:
+ * @discovery: A #InfDiscoveryAvahi.
+ *
+ * Returns the current security policy used for new
+ * #InfXmppConnection<!-- -->s.
+ *
+ * Returns: The current security policy.
+ */
+InfXmppConnectionSecurityPolicy
+inf_discovery_avahi_get_security_policy(InfDiscoveryAvahi* discovery)
+{
+  g_return_val_if_fail(
+    INF_IS_DISCOVERY_AVAHI(discovery),
+    INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS
+  );
+
+  return INF_DISCOVERY_AVAHI_PRIVATE(discovery)->security_policy;
 }
 
 #endif /* INFINOTE_HAVE_AVAHI */

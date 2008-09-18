@@ -304,6 +304,8 @@ INF_STANDALONE_IO_GET_CLASS
 InfDiscoveryAvahi
 InfDiscoveryAvahiClass
 inf_discovery_avahi_new
+inf_discovery_avahi_set_security_policy
+inf_discovery_avahi_get_security_policy
 <SUBSECTION Standard>
 INF_DISCOVERY_AVAHI
 INF_IS_DISCOVERY_AVAHI
@@ -488,6 +490,7 @@ INF_XMPP_MANAGER_GET_CLASS
 <TITLE>InfXmppConnection</TITLE>
 InfXmppConnectionCrtCallback
 InfXmppConnectionSite
+InfXmppConnectionSecurityPolicy
 InfXmppConnectionError
 InfXmppConnectionStreamError
 InfXmppConnectionAuthError
@@ -502,11 +505,13 @@ INF_XMPP_CONNECTION
 INF_IS_XMPP_CONNECTION
 INF_TYPE_XMPP_CONNECTION
 inf_xmpp_connection_site_get_type
+inf_xmpp_connection_security_policy_get_type
 INF_XMPP_CONNECTION_CLASS
 INF_IS_XMPP_CONNECTION_CLASS
 INF_XMPP_CONNECTION_GET_CLASS
 inf_xmpp_connection_get_type
 INF_TYPE_XMPP_CONNECTION_SITE
+INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY
 </SECTION>
 
 <SECTION>
@@ -774,6 +779,8 @@ INF_ADOPTED_REQUEST_LOG_GET_CLASS
 InfdXmppServer
 InfdXmppServerClass
 infd_xmpp_server_new
+infd_xmpp_server_set_security_policy
+infd_xmpp_server_get_security_policy
 <SUBSECTION Standard>
 INFD_XMPP_SERVER
 INFD_IS_XMPP_SERVER

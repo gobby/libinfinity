@@ -1,3 +1,19 @@
+2008-09-18  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Added a security-policy
+	property that specifies how to decide whether to use TLS or not. This
+	allows not to use TLS for specific purposes.
+
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c:
+	* libinfinity/common/inf-discovery-avahi.h:
+	* libinfinity/common/inf-discovery-avahi.c: Added the same property
+	that is delegated to created XMPP connections.
+
+	* test/inf-test-browser.c:
+	* test/inf-test-xmpp-connection.c: Adapted to API change.
+
 2008-09-17  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac:

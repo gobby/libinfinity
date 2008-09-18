@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
     INF_TYPE_TCP_CONNECTION,
     "io", io,
     "remote-address", addr,
-    "remote-port", 5222,
+    "remote-port", 5223,
     NULL
   );
 
@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
   }
   else
   {
-    xmpp = inf_xmpp_connection_new(connection, INF_XMPP_CONNECTION_CLIENT, NULL, "jabber.0x539.de", NULL, NULL);
+    xmpp = inf_xmpp_connection_new(connection, INF_XMPP_CONNECTION_CLIENT, NULL, "jabber.0x539.de", INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS, NULL, NULL);
     g_signal_connect(G_OBJECT(xmpp), "error", G_CALLBACK(error_cb), io);
     g_signal_connect(G_OBJECT(xmpp), "notify::status", G_CALLBACK(notify_status_cb), io);
     inf_standalone_io_loop(io);

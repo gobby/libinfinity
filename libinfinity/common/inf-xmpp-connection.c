@@ -60,7 +60,8 @@ typedef enum _InfXmppConnectionStatus {
    * from the other site */
   INF_XMPP_CONNECTION_CLOSING_STREAM,
   /* Connection is being closed, we got </stream:stream> but are still
-   * waiting for the GnuTLS bye to be sent out. */
+   * waiting for any final data to be sent. */
+  /* TODO: Rename this. */
   INF_XMPP_CONNECTION_CLOSING_GNUTLS,
   /* Connection is closed */
   INF_XMPP_CONNECTION_CLOSED
@@ -88,6 +89,7 @@ struct _InfXmppConnectionPrivate {
   InfXmppConnectionSite site;
   gchar* local_hostname;
   gchar* remote_hostname;
+  InfXmppConnectionSecurityPolicy security_policy;
 
   InfXmppConnectionStatus status;
   InfXmppConnectionCrtCallback certificate_callback;
@@ -128,6 +130,7 @@ enum {
   PROP_SITE,
   PROP_LOCAL_HOSTNAME,
   PROP_REMOTE_HOSTNAME,
+  PROP_SECURITY_POLICY,
 
   /* gnutls_certificate_credentials_t */
   PROP_CREDENTIALS,
@@ -904,6 +907,17 @@ inf_xmpp_connection_deinitiate(InfXmppConnection* xmpp)
 static void
 inf_xmpp_connection_initiate(InfXmppConnection* xmpp);
 
+static gboolean
+inf_xmpp_connection_prefers_tls(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  return
+    priv->security_policy == INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS ||
+    priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
+}
+
 static ssize_t
 inf_xmpp_connection_tls_push(gnutls_transport_ptr_t ptr,
                              const void* data,
@@ -1136,6 +1150,8 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
 
     if(priv->site == INF_XMPP_CONNECTION_SERVER)
     {
+      /* TODO: Should we error out here? This won't work anyway
+       * without certificate. */
       gnutls_dh_params_init(&dh_params);
       gnutls_dh_params_generate2(dh_params, xmpp_connection_dh_bits);
       gnutls_certificate_set_dh_params(priv->cred, dh_params);
@@ -1569,11 +1585,17 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
 
   features = xmlNewNode(NULL, (const xmlChar*)"stream:features");
 
-  if(priv->session == NULL)
+  /* Don't offer TLS if we have already authenticated. It's pointless now. */
+  if(priv->session == NULL &&
+     priv->status != INF_XMPP_CONNECTION_AUTH_INITIATED)
   {
-    starttls = inf_xmpp_connection_node_new_tls("starttls");
-    xmlAddChild(features, starttls);
-    xmlNewChild(starttls, NULL, (const xmlChar*)"required", NULL);
+    if(priv->security_policy != INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
+    {
+      starttls = inf_xmpp_connection_node_new_tls("starttls");
+      xmlAddChild(features, starttls);
+      if(priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_TLS)
+        xmlNewChild(starttls, NULL, (const xmlChar*)"required", NULL);
+    }
   }
 
   if(priv->status == INF_XMPP_CONNECTION_INITIATED)
@@ -1674,7 +1696,16 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
   g_assert(priv->site == INF_XMPP_CONNECTION_SERVER);
   g_assert(priv->status == INF_XMPP_CONNECTION_INITIATED);
 
-  if(priv->session == NULL)
+  /* TODO: Actually, RFC 3920 specifies in 5.1.3 that we MUST offer the
+   * starttls attribute if the client's stream version is at least 1.0. We
+   * don't do so if security_policy is
+   * INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED to allow ad-hoc unsecured
+   * infinote sessions that don't need all this certificate stuff. */
+
+  /* I'm not totally sure how to do this in full compliance with the RFC.
+   * Maybe we can ship with a simple self-signed ad-hoc certificate. */
+  if(priv->session == NULL &&
+     priv->security_policy != INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
     if(strcmp((const gchar*)xml->name, "starttls") == 0)
     {
@@ -1684,7 +1715,7 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
 
       inf_xmpp_connection_tls_init(xmpp);
     }
-    else
+    else if(priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_TLS)
     {
       inf_xmpp_connection_terminate_error(
         xmpp,
@@ -1693,7 +1724,10 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
       );
     }
   }
-  else
+
+  /* If we handled one of the cases above, then we don't want to check for
+   * authentication here. In that case, the status has already changed. */
+  if(priv->status == INF_XMPP_CONNECTION_INITIATED)
   {
     /* This should already have been allocated before having sent the list
      * of mechanisms to the client. */
@@ -1741,6 +1775,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
 {
   InfXmppConnectionPrivate* priv;
   xmlNodePtr child;
+  xmlNodePtr req;
   xmlNodePtr starttls;
   xmlNodePtr auth;
   xmlNodePtr mechanisms;
@@ -1758,15 +1793,20 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
   {
     /* Server sent something else. Don't know what it is, so let us ignore it.
      * Perhaps the <stream:features> we are waiting for follows later. */
+    return;
   }
-  else if(priv->session == NULL)
+  /* Don't try TLS anymore if we are already authenticated. This can happen
+   * if the server only offers TLS after authentication, but that's stupid. */
+  else if(priv->status == INF_XMPP_CONNECTION_AWAITING_FEATURES &&
+          priv->session == NULL)
   {
     for(child = xml->children; child != NULL; child = child->next)
       if(strcmp((const gchar*)child->name, "starttls") == 0)
         break;
 
     /* Server has no StartTLS feature. We don't like that. */
-    if(child == NULL)
+    if(child == NULL &&
+       priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_TLS)
     {
       error = NULL;
       g_set_error(
@@ -1781,17 +1821,43 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
 
       inf_xmpp_connection_deinitiate(xmpp);
     }
-    else
+    else if(child != NULL)
     {
-      /* Server supports TLS, and this is what we are going to request now */
-      starttls = inf_xmpp_connection_node_new_tls("starttls");
-      inf_xmpp_connection_send_xml(xmpp, starttls);
-      xmlFreeNode(starttls);
+      for(req = child->children; req != NULL; req = req->next)
+        if(strcmp((const gchar*)req->name, "required") == 0)
+          break;
 
-      priv->status = INF_XMPP_CONNECTION_ENCRYPTION_REQUESTED;
+      if(req != NULL &&
+         priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
+      {
+        error = NULL;
+        g_set_error(
+          &error,
+          inf_xmpp_connection_error_quark,
+          INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED,
+          _("The server requires transport layer security (TLS)")
+        );
+
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+        g_error_free(error);
+
+        inf_xmpp_connection_deinitiate(xmpp);
+      }
+      /* The server supports TLS. Now, request TLS if it's required or if
+       * we do prefer it. */
+      else if(req != NULL || inf_xmpp_connection_prefers_tls(xmpp))
+      {
+        starttls = inf_xmpp_connection_node_new_tls("starttls");
+        inf_xmpp_connection_send_xml(xmpp, starttls);
+        xmlFreeNode(starttls);
+
+        priv->status = INF_XMPP_CONNECTION_ENCRYPTION_REQUESTED;
+      }
     }
   }
-  else if(priv->status == INF_XMPP_CONNECTION_AWAITING_FEATURES)
+
+  /* If we did not request TLS above, then go on with authentication */
+  if(priv->status == INF_XMPP_CONNECTION_AWAITING_FEATURES)
   {
     for(child = xml->children; child != NULL; child = child->next)
       if(strcmp((const gchar*)child->name, "mechanisms") == 0)
@@ -1888,7 +1954,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
       }
     }
   }
-  else
+  else if(priv->status == INF_XMPP_CONNECTION_AUTH_AWAITING_FEATURES)
   {
     priv->status = INF_XMPP_CONNECTION_READY;
     g_object_notify(G_OBJECT(xmpp), "status");
@@ -2533,6 +2599,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
   if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
     return;
 
+  g_object_ref(xmpp);
+
   g_assert(priv->parser != NULL);
 
   if(priv->status != INF_XMPP_CONNECTION_HANDSHAKING)
@@ -2616,6 +2684,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
      * AUTHENTICATING */
     inf_xmpp_connection_initiate(xmpp);
   }
+
+  g_object_unref(xmpp);
 }
 
 static void
@@ -2866,6 +2936,7 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->status = INF_XMPP_CONNECTION_CLOSED;
   priv->local_hostname = NULL;
   priv->remote_hostname = NULL;
+  priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
 
   priv->certificate_callback = NULL;
   priv->certificate_callback_user_data = NULL;
@@ -3018,6 +3089,9 @@ inf_xmpp_connection_set_property(GObject* object,
     g_free(priv->remote_hostname);
     priv->remote_hostname = g_value_dup_string(value);
     break;
+  case PROP_SECURITY_POLICY:
+    priv->security_policy = g_value_get_enum(value);
+    break;
   case PROP_CREDENTIALS:
     /* Cannot change credentials when currently in use */
     g_assert(priv->session == NULL);
@@ -3076,6 +3150,9 @@ inf_xmpp_connection_get_property(GObject* object,
     break;
   case PROP_REMOTE_HOSTNAME:
     g_value_set_string(value, priv->remote_hostname);
+    break;
+  case PROP_SECURITY_POLICY:
+    g_value_set_enum(value, priv->security_policy);
     break;
   case PROP_CREDENTIALS:
     g_value_set_pointer(value, priv->cred);
@@ -3305,6 +3382,19 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_SECURITY_POLICY,
+    g_param_spec_enum(
+      "security-policy",
+      "Security policy",
+      "How to choose whether to use (or offer, as a server) TLS",
+      INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY,
+      INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_CREDENTIALS,
     g_param_spec_pointer(
       "credentials",
@@ -3375,6 +3465,46 @@ inf_xmpp_connection_site_get_type(void)
 }
 
 GType
+inf_xmpp_connection_security_policy_get_type(void)
+{
+  static GType xmpp_connection_security_policy_type = 0;
+
+  if(!xmpp_connection_security_policy_type)
+  {
+    static const GEnumValue xmpp_connection_security_policy_values[] = {
+      {
+        INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
+        "INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED",
+        "only-unsecured"
+      }, {
+        INF_XMPP_CONNECTION_SECURITY_ONLY_TLS,
+        "INF_XMPP_CONNECTION_SECURITY_ONLY_TLS",
+        "only-tls"
+      }, {
+        INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED,
+        "INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED",
+        "both-prefer-unsecured"
+      }, {
+        INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+        "INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS",
+        "both-prefer-tls"
+      }, {
+        0,
+        NULL,
+        NULL
+      }
+    };
+
+    xmpp_connection_security_policy_type = g_enum_register_static(
+      "InfXmppConnectionSecurityPolicy",
+      xmpp_connection_security_policy_values
+    );
+  }
+
+  return xmpp_connection_security_policy_type;
+}
+
+GType
 inf_xmpp_connection_get_type(void)
 {
   static GType xmpp_connection_type = 0;
@@ -3427,6 +3557,8 @@ inf_xmpp_connection_get_type(void)
  * @site: Whether this is a XMPP client or server.
  * @local_hostname: The hostname of the local host, or %NULL.
  * @remote_hostname: The hostname of the remote host.
+ * @security_policy: Whether to use (or offer, as a server) TLS. See
+ * #InfXmppConnectionSecurityPolicy for the meaning of this parameter.
  * @cred: Certificate credentials used to secure the communication.
  * @sasl_context: A SASL context used for authentication.
  *
@@ -3443,7 +3575,15 @@ inf_xmpp_connection_get_type(void)
  * in which case the host name as reported by g_get_host_name() is used.
  *
  * @cred may be %NULL in which case the connection creates the credentials
- * as soon as they are required, however, this might take some time.
+ * as soon as they are required. However, this only works if
+ * @site is %INF_XMPP_CONNECTION_CLIENT or @security_policy is
+ * %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED (or both, of course).
+ * Otherwise, the server needs a valid certificate in the credentials. We
+ * could create a self-signed one on the fly (which would also take some
+ * time because of the private key generation), but this does not make much
+ * sense because we would need to use the same certificate for all future
+ * server connections.
+ *
  * If @sasl_context is %NULL, #InfXmppConnection uses a built-in context
  * that only supports ANONYMOUS authentication. In the @sasl_context's
  * callback function, the #InfXmppConnection for which the authentication
@@ -3456,6 +3596,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         InfXmppConnectionSite site,
                         const gchar* local_hostname,
                         const gchar* remote_hostname,
+                        InfXmppConnectionSecurityPolicy security_policy,
                         gnutls_certificate_credentials_t cred,
                         Gsasl* sasl_context)
 {
@@ -3469,6 +3610,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
     "site", site,
     "local-hostname", local_hostname,
     "remote-hostname", remote_hostname,
+    "security-policy", security_policy,
     "credentials", cred,
     "sasl-context", sasl_context,
     NULL
