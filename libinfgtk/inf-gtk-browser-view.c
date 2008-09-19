@@ -1088,7 +1088,6 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
     gtk_tree_model_get(
       model,
       iter,
-      INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
       INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
       -1
     );
@@ -1099,12 +1098,14 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
       gtk_tree_model_get(
         model,
         iter,
+        INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
         INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
         -1
       );
 
       inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
       infc_browser_iter_free(browser_iter);
+      g_object_unref(browser);
     }
   }
 }

@@ -1,5 +1,13 @@
 2008-09-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-store.c: Fixed a crash when the network
+	interface used goes suddenly down.
+
+	* libinfgtk/inf-gtk-browser-view.c: Fixed a reference counting
+	problem.
+
+2008-09-19  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-view.c: Fixed a crash when
 	instantiating InfGtkCertificateView.
 

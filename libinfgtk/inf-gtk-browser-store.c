@@ -1838,10 +1838,6 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     /* TODO: Walk browser for requests */
   }
 
-  /* TODO: Emit row_inserted for the whole tree in browser, and
-   * row-has-child-toggled where appropriate. */
-  gtk_tree_model_row_changed(GTK_TREE_MODEL(model), path, tree_iter);
-
   /* Set status to invalid if there aren't any connection information anymore.
    * Keep the item if an error is set, so it can be displayed. */
   if(item->browser == NULL && item->info == NULL && item->error == NULL)
@@ -1884,6 +1880,10 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     /* Error needs to be set in error status */
     g_assert(item->error != NULL);
   }
+
+  /* TODO: Emit row_inserted for the whole tree in browser, and
+   * row-has-child-toggled where appropriate. */
+  gtk_tree_model_row_changed(GTK_TREE_MODEL(model), path, tree_iter);
 }
 
 static void
