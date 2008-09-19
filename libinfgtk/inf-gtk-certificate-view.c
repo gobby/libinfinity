@@ -249,7 +249,8 @@ inf_gtk_certificate_view_init(GTypeInstance* instance,
     GTK_VBOX(priv->general_vbox),
     _("Fingerprints"),
     _("SHA1 Fingerprint:"), &priv->sha1_fingerprint,
-    _("MD5 Fingerprint:"), &priv->md5_fingerprint
+    _("MD5 Fingerprint:"), &priv->md5_fingerprint,
+    NULL
   );
 
   size = pango_font_description_get_size(priv->serial_number->style->font_desc);

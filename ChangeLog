@@ -1,3 +1,8 @@
+2008-09-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-certificate-view.c: Fixed a crash when
+	instantiating InfGtkCertificateView.
+
 2008-09-18  Armin Burgmeier  <armin@arbur.net>
 
 	* update-potfiles: Added a small script to generate the
