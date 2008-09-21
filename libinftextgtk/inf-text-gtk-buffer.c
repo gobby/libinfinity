@@ -40,7 +40,6 @@ struct _InfTextGtkBufferPrivate {
   InfUserTable* user_table;
   GHashTable* user_tags;
   InfTextUser* active_user;
-  gboolean custom_edit;
 };
 
 enum {
@@ -188,6 +187,9 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
+  if(user_id == 0)
+    return NULL;
+
   tag = g_hash_table_lookup(priv->user_tags, GUINT_TO_POINTER(user_id));
   if(tag != NULL)
   {
@@ -203,47 +205,63 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
     gtk_text_tag_table_add(table, tag);
     g_hash_table_insert(priv->user_tags, GUINT_TO_POINTER(user_id), tag);
 
+    /* Set lowest priority for author tags, so GtkSourceView's bracket
+     * matching highlight tags and highlight of FIXME and such in comments is
+     * shown instead of the user color. */
+    gtk_text_tag_set_priority(tag, 0);
+
     g_object_set_qdata(
       G_OBJECT(tag),
       inf_text_gtk_buffer_tag_user_quark,
       GUINT_TO_POINTER(user_id)
     );
 
-    /* Unowned text has a user tag, but with no background color assigned */
-    if(user_id != 0)
-    {
-      user = INF_TEXT_USER(
-        inf_user_table_lookup_user_by_id(priv->user_table, user_id)
-      );
-      g_assert(user != NULL);
+    user = INF_TEXT_USER(
+      inf_user_table_lookup_user_by_id(priv->user_table, user_id)
+    );
+    g_assert(user != NULL);
 
-      /* TODO: Disconnect from that some time later */
-      g_signal_connect(
-        G_OBJECT(user), "notify::hue",
-        G_CALLBACK(inf_text_gtk_user_notify_hue_cb), buffer);
+    /* TODO: Disconnect from that some time later */
+    g_signal_connect(
+      G_OBJECT(user),
+      "notify::hue",
+      G_CALLBACK(inf_text_gtk_user_notify_hue_cb),
+      buffer
+    );
 
-      inf_text_gtk_update_tag_color(buffer, tag, user);
-    }
+    inf_text_gtk_update_tag_color(buffer, tag, user);
 
     return tag;
   }
 }
 
+/* Returns G_MAXUINT if tag is not an author tag */
+static guint
+inf_text_gtk_buffer_author_from_tag(GtkTextTag* tag)
+{
+  gpointer author_ptr;
+  guint author_id;
+
+  author_ptr = g_object_get_qdata(
+    G_OBJECT(tag),
+    inf_text_gtk_buffer_tag_user_quark
+  );
+
+  author_id = GPOINTER_TO_UINT(author_ptr);
+  return author_id;
+}
+
+/* Returns G_MAXUINT if list does not contain an author tag */
 static guint
 inf_text_gtk_buffer_iter_list_contains_author_tag(GSList* tag_list)
 {
   GSList* item;
-  gpointer author;
+  guint author;
 
   for(item = tag_list; item != NULL; item = g_slist_next(item))
   {
-    author = g_object_get_qdata(
-      G_OBJECT(item->data),
-      inf_text_gtk_buffer_tag_user_quark
-    );
-
-    if(author != NULL)
-      return GPOINTER_TO_UINT(author);
+    author = inf_text_gtk_buffer_author_from_tag(GTK_TEXT_TAG(item->data));
+    if(author != 0) return author;
   }
 
   return 0;
@@ -259,6 +277,7 @@ inf_text_gtk_buffer_iter_get_author(GtkTextIter* location)
   author = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
   g_slist_free(tag_list);
 
+  /* Author tag must always be set on text */
   return author;
 }
 
@@ -268,16 +287,16 @@ inf_text_gtk_buffer_iter_is_author_toggle(GtkTextIter* iter)
   GSList* tag_list;
   guint author_id;
 
-  /* We need to check both the tags that are toggled on and the tags that
-   * are toggled off at this point, because text that is not written by
-   * anyone specific (author NULL) is not tagged at all. */
   tag_list = gtk_text_iter_get_toggled_tags(iter, TRUE);
   author_id = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
   g_slist_free(tag_list);
 
+  /* We need to check both the tags that are toggled on and the tags that
+   * are toggled off at this point, because text that is not written by
+   * anyone specific (author NULL) does not count as author tag. */
   if(author_id == 0)
   {
-    tag_list = gtk_text_iter_get_toggled_tags(iter, TRUE);
+    tag_list = gtk_text_iter_get_toggled_tags(iter, FALSE);
     author_id = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
     g_slist_free(tag_list);
   }
@@ -310,6 +329,17 @@ inf_text_gtk_buffer_iter_prev_author_toggle(GtkTextIter* iter)
     if(gtk_text_iter_backward_to_tag_toggle(iter, NULL) == FALSE)
       return;
   } while(inf_text_gtk_buffer_iter_is_author_toggle(iter) == FALSE);
+}
+
+static void
+inf_text_gtk_buffer_ensure_author_tags_priority_foreach_func(GtkTextTag* tag,
+                                                             gpointer data)
+{
+  guint author;
+  author = inf_text_gtk_buffer_author_from_tag(tag);
+
+  if(author != 0)
+    gtk_text_tag_set_priority(tag, 0);
 }
 
 static void
@@ -836,7 +866,8 @@ inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func(GtkTextTag* tag,
   InfTextGtkBufferTagRemove* tag_remove;
   tag_remove = (InfTextGtkBufferTagRemove*)data;
 
-  if(tag != tag_remove->ignore_tag)
+  if(tag != tag_remove->ignore_tag &&
+     inf_text_gtk_buffer_author_from_tag(tag) != G_MAXUINT)
   {
     gtk_text_buffer_remove_tag(
       tag_remove->buffer,
@@ -922,7 +953,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
     } while(inf_text_chunk_iter_next(&chunk_iter));
 
     /* Fix left gravity of own cursor on remote insert */
-    if(user != priv->active_user || user == NULL)
+    if(user != INF_USER(priv->active_user) || user == NULL)
     {
       mark = gtk_text_buffer_get_insert(priv->buffer);
       gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
@@ -1259,6 +1290,34 @@ inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer)
 {
   g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), NULL);
   return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->active_user;
+}
+
+/**
+ * inf_text_gtk_buffer_ensure_author_tags_priority:
+ * @buffer: A #InfTextGtkBuffer.
+ *
+ * Ensures that all author tags have the lowest priority of all tags in the
+ * underlying #GtkTextBuffer's tag table. Normally you do not need to use
+ * this function if you do not set the priority for your tags explicitely.
+ * However, if you do (or are forced to do, because you are using a library
+ * that does this, like GtkSourceView), then you can call this function
+ * afterwards to make sure all the user tags have the lowest priority.
+ */
+void
+inf_text_gtk_buffer_ensure_author_tags_priority(InfTextGtkBuffer* buffer)
+{
+  InfTextGtkBufferPrivate* priv;
+  GtkTextTagTable* tag_table;
+
+  g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  tag_table = gtk_text_buffer_get_tag_table(priv->buffer);
+  gtk_text_tag_table_foreach(
+    tag_table,
+    inf_text_gtk_buffer_ensure_author_tags_priority_foreach_func,
+    buffer
+  );
 }
 
 /* vim:set et sw=2 ts=2: */

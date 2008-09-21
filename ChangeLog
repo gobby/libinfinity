@@ -1,5 +1,11 @@
 2008-09-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added
+	inf_text_gtk_buffer_ensure_author_tags_priority().
+
+2008-09-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-manager.c: Fixed a crash when setting
 	a new trust file.
 
