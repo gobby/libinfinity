@@ -1,3 +1,10 @@
+2008-09-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c: Save new and synced-in sessions
+	initially to storage, to prevent later data loss and to avoid a
+	failure when a user deletes a newly added document (It has not
+	yet been saved to storage, so the deletion of it caused an error).
+
 2008-09-19  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-store.c: Fixed a crash when the network

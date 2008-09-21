@@ -346,8 +346,8 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   if(result == FALSE)
   {
     g_warning(
-      _("Failed to save note `%s': %s\n\nKeeping it in memory. Another save "
-        "attempt will be made when the server is shut down."),
+      _("Failed to save note \"%s\": %s\n\nKeeping it in memory. Another "
+        "save attempt will be made when the server is shut down."),
       path,
       error->message
     );
@@ -785,7 +785,7 @@ infd_directory_node_free(InfdDirectory* directory,
         /* TODO: We could try saving the session somewhere in /tmp, for
          * example via to_xml_sync. */
         g_warning(
-          _("Could not write session `%s' to storage: %s\n\nChanges since "
+          _("Could not write session \"%s\" to storage: %s\n\nChanges since "
             "the last save are lost."),
           path, error->message
         );
@@ -1254,10 +1254,15 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
    * tree. */
   InfdDirectorySyncIn* sync_in;
   InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  gchar* path;
+  gboolean ret;
+  GError* error;
 
   sync_in = (InfdDirectorySyncIn*)user_data;
   directory = sync_in->directory;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
   node = infd_directory_node_new_note(
     directory,
@@ -1269,7 +1274,38 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
 
   infd_directory_node_link_session(directory, node, sync_in->proxy);
 
-  /* TODO: Save initial node? */
+  /* Save session initially */
+  infd_directory_node_get_path(node, &path, NULL);
+
+  error = NULL;
+  ret = sync_in->plugin->session_write(
+    priv->storage,
+    session,
+    path,
+    sync_in->plugin->user_data,
+    &error
+  );
+
+  if(ret == FALSE)
+  {
+    /* TODO: It would be better not to create the node if it cannot be saved.
+     * This prevents possible data loss later, and deleting the node does not
+     * result in failure (because the storage cannot find the node).
+     * However, we need a way to notify the client about this, ideally with
+     * an error message, so we can't simply use remove-node. Maybe a new
+     * <sync-in-failed> message. */
+    g_warning(
+      _("Session \"%s\" could not be saved: %s\nAnother attempt will "
+        "be made when the session is unused for a while or the server is "
+        "shut down."),
+      path,
+      error->message
+    );
+
+    g_error_free(error);
+  }
+
+  g_free(path);
 
   sync_in->name = NULL; /* Don't free, we passed ownership */
   infd_directory_remove_sync_in(directory, sync_in);
@@ -1623,6 +1659,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
   InfdDirectoryNode* node;
   InfSession* session;
   InfdSessionProxy* proxy;
+  gchar* path;
+  gboolean ret;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1644,14 +1682,6 @@ infd_directory_node_add_note(InfdDirectory* directory,
   }
   else
   {
-    node = infd_directory_node_new_note(
-      directory,
-      parent,
-      priv->node_counter++,
-      g_strdup(name),
-      plugin
-    );
-
     session = plugin->session_new(
       priv->io,
       priv->connection_manager,
@@ -1661,12 +1691,36 @@ infd_directory_node_add_note(InfdDirectory* directory,
     );
     g_assert(session != NULL);
 
+    /* Save session initially */
+    infd_directory_node_make_path(parent, name, &path, NULL);
+
+    ret = plugin->session_write(
+      priv->storage,
+      session,
+      path,
+      plugin->user_data,
+      error
+    );
+
+    g_free(path);
+    if(ret == FALSE)
+    {
+      g_object_unref(session);
+      return NULL;
+    }
+
+    node = infd_directory_node_new_note(
+      directory,
+      parent,
+      priv->node_counter++,
+      g_strdup(name),
+      plugin
+    );
+
     proxy = infd_directory_create_session_proxy(directory, node->id, session);
     g_object_unref(session);
     infd_directory_node_link_session(directory, node, proxy);
     g_object_unref(proxy);
-
-    /* TODO: Save initial node? */
 
     if(seq_conn != NULL && subscribe_seq_conn == FALSE)
     {
