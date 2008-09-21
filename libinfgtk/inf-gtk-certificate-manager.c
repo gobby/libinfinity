@@ -725,7 +725,10 @@ inf_gtk_certificate_manager_set_property(GObject* object,
     g_free(priv->trust_file);
     priv->trust_file = g_value_dup_string(value);
     if(priv->ca_certs != NULL)
+    {
       inf_gtk_certificate_manager_free_certificate_array(priv->ca_certs);
+      priv->ca_certs = NULL;
+    }
     break;
   case PROP_KNOWN_HOSTS_FILE:
     inf_gtk_certificate_manager_set_known_hosts(
