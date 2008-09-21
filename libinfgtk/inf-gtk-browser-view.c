@@ -1411,7 +1411,8 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
 
     if(discovery != NULL)
     {
-      if(status == INF_GTK_BROWSER_MODEL_DISCOVERED)
+      if(status == INF_GTK_BROWSER_MODEL_DISCOVERED ||
+         status == INF_GTK_BROWSER_MODEL_ERROR)
       {
         inf_gtk_browser_model_resolve(
           INF_GTK_BROWSER_MODEL(model),

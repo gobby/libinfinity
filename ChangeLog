@@ -1,5 +1,12 @@
 2008-09-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-store.c:
+	* libinfgtk/inf-gtk-browser-view.c: Allow activating an item with
+	error status and discovery set in which case another connection
+	attempt is made.
+
+2008-09-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-discovery-avahi.c: Fixed usage of alternative
 	service name on collision.
 

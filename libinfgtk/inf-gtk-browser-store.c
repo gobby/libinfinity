@@ -1905,12 +1905,24 @@ inf_gtk_browser_store_browser_model_resolve(InfGtkBrowserModel* model,
   );
 
   g_assert(item != NULL);
+  g_assert(
+    item->status == INF_GTK_BROWSER_MODEL_DISCOVERED ||
+    item->status == INF_GTK_BROWSER_MODEL_ERROR
+  );    
 
-  /* TODO: Also allow resolve in error status to retry. Clear error before
-   * retry though. */
-  g_assert(item->status == INF_GTK_BROWSER_MODEL_DISCOVERED);
+  if(item->status == INF_GTK_BROWSER_MODEL_ERROR)
+  {
+    g_assert(item->error != NULL);
+    g_error_free(item->error);
+    item->error = NULL;
 
-  item->status = INF_GTK_BROWSER_MODEL_RESOLVING;
+    item->status = INF_GTK_BROWSER_MODEL_RESOLVING;
+  }
+  else
+  {
+    item->status = INF_GTK_BROWSER_MODEL_RESOLVING;
+  }
+
   tree_iter.stamp = priv->stamp;
   tree_iter.user_data = item;
   tree_iter.user_data2 = GUINT_TO_POINTER(0);
