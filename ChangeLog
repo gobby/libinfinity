@@ -1,5 +1,10 @@
 2008-09-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-discovery-avahi.c: Fixed usage of alternative
+	service name on collision.
+
+2008-09-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c: Save new and synced-in sessions
 	initially to storage, to prevent later data loss and to avoid a
 	failure when a user deletes a newly added document (It has not

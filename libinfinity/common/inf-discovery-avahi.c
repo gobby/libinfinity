@@ -494,6 +494,24 @@ inf_discovery_avahi_service_browser_callback(AvahiServiceBrowser* browser,
 }
 
 static void
+inf_discovery_avahi_entry_group_add_service(InfLocalPublisherItem* item)
+{
+  /* TODO: Error handling */
+  avahi_entry_group_add_service(
+    item->entry_group,
+    AVAHI_IF_UNSPEC,
+    AVAHI_PROTO_UNSPEC,
+    0,
+    item->name,
+    item->type,
+    NULL,
+    NULL,
+    item->port,
+    NULL
+  );
+}
+
+static void
 inf_discovery_avahi_entry_group_callback(AvahiEntryGroup* group,
                                          AvahiEntryGroupState state,
                                          void* userdata)
@@ -520,7 +538,9 @@ inf_discovery_avahi_entry_group_callback(AvahiEntryGroup* group,
     avahi_free(item->name);
     item->name = new_name;
 
-    /* TODO: Do we need to recreate the entry group in this case? */
+    /* TODO: Error handling */
+    avahi_entry_group_reset(item->entry_group);
+    inf_discovery_avahi_entry_group_add_service(item);
     avahi_entry_group_commit(item->entry_group);
     break;
   case AVAHI_ENTRY_GROUP_FAILURE:
@@ -558,18 +578,7 @@ inf_discovery_avahi_perform_publish_item(InfDiscoveryAvahi* avahi,
       item
     );
 
-    avahi_entry_group_add_service(
-      item->entry_group,
-      AVAHI_IF_UNSPEC,
-      AVAHI_PROTO_UNSPEC,
-      0,
-      item->name,
-      item->type,
-      NULL,
-      NULL,
-      item->port,
-      NULL
-    );
+    inf_discovery_avahi_entry_group_add_service(item);
 
     avahi_entry_group_commit(item->entry_group);
   }
