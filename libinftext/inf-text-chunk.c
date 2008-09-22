@@ -903,7 +903,7 @@ inf_text_chunk_erase(InfTextChunk* self,
 
           memcpy(
             first->text + first_index,
-            last->text,
+            last->text + last_index,
             last->length - last_index
           );
 

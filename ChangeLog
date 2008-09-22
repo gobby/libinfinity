@@ -1,5 +1,16 @@
 2008-09-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-chunk.c (inf_text_chunk_erase): Fixed a problem
+	that the erase operation did not produce a correct result when both
+	the first and the last segment of the erasure bounds were in
+	different segments of the same author.
+
+	* test/inf-test-text-replay.c: Added code to set a breakpoint just
+	before the algorithm applies a request, to be able to debug the
+	InfTextChunk internals.
+
+2008-09-22  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-text-replay.c: Added functionality to check for
 	InfTextChunk errors by performing all the buffer operations on an
 	(ascii-only) GString and comparing the result with the buffer.

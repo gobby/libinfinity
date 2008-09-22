@@ -18,6 +18,8 @@
 
 /* TODO: Add some of the replay logic as public libinfinity API */
 
+#include "util/inf-test-util.h"
+
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-default-buffer.h>
 #include <libinftext/inf-text-default-insert-operation.h>
@@ -181,16 +183,6 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
   }
 }
 
-static void
-inf_test_text_replay_print_buffer(InfTextBuffer* buffer)
-{
-  GString* text;
-  text = inf_test_text_replay_load_buffer(buffer);
-
-  printf("%s\n", text->str);
-  g_string_free(text, TRUE);
-}
-
 static xmlNodePtr
 inf_test_text_replay_read_current(xmlTextReaderPtr reader,
                                   GError** error)
@@ -309,12 +301,35 @@ inf_test_text_replay_advance_skip_whitespace_required(xmlTextReaderPtr reader,
 }
 
 static void
-inf_test_text_replay_apply_request_cb(InfAdoptedAlgorithm* algorithm,
-                                      InfAdoptedUser* user,
-                                      InfAdoptedRequest* request,
-                                      gpointer user_data)
+inf_test_text_replay_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
+                                             InfAdoptedUser* user,
+                                             InfAdoptedRequest* request,
+                                             gpointer user_data)
+{
+  InfAdoptedOperation* operation;
+
+  g_assert(
+    inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
+  );
+
+  operation = inf_adopted_request_get_operation(request);
+  /* This can be used to set a breakpoint if the operation meats special
+   * conditions when debugging a specific problem. */
+#if 0
+  if(INF_TEXT_IS_DELETE_OPERATION(operation))
+    if(inf_text_delete_operation_get_position(INF_TEXT_DELETE_OPERATION(operation)) == 2473)
+      printf("tada\n");
+#endif
+}
+
+static void
+inf_test_text_replay_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
+                                            InfAdoptedUser* user,
+                                            InfAdoptedRequest* request,
+                                            gpointer user_data)
 {
   InfTextBuffer* buffer;
+  InfAdoptedOperation* operation;
   GString* own_content;
   GString* buffer_content;
 
@@ -325,11 +340,10 @@ inf_test_text_replay_apply_request_cb(InfAdoptedAlgorithm* algorithm,
     inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
   );
 
+  operation = inf_adopted_request_get_operation(request);
+
   /* Apply operation to own string */
-  inf_test_text_replay_apply_operation_to_string(
-    own_content,
-    inf_adopted_request_get_operation(request)
-  );
+  inf_test_text_replay_apply_operation_to_string(own_content, operation);
 
   /* Compare with buffer content */
   buffer_content = inf_test_text_replay_load_buffer(buffer);
@@ -522,10 +536,17 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
     INF_TEXT_BUFFER(inf_session_get_buffer(session))
   );
 
+  g_signal_connect(
+    G_OBJECT(inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))),
+    "apply-request",
+    G_CALLBACK(inf_test_text_replay_apply_request_cb_before),
+    content
+  );
+
   g_signal_connect_after(
     G_OBJECT(inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))),
     "apply-request",
-    G_CALLBACK(inf_test_text_replay_apply_request_cb),
+    G_CALLBACK(inf_test_text_replay_apply_request_cb_after),
     content
   );
 
@@ -680,7 +701,8 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
   }
   else
   {
-    inf_test_text_replay_print_buffer(buffer);
+    inf_test_util_print_buffer(buffer);
+    /*inf_test_text_replay_print_buffer(buffer);*/
     printf("Replayed record successfully\n");
   }
 
