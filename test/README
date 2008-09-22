@@ -42,3 +42,7 @@ NI inf-test-text-cleanup:
    issue Undo/Redo in the current situation. This is to ensure that the 
    algorithm correctly shrinks the request log.
 
+NI inf-test-text-replay
+   Replays a record as recorded with InfAdoptedSessionRecord. A few records
+   that should play without problems are contained in the replay/
+   subdirectory.

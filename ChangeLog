@@ -1,5 +1,18 @@
 2008-09-22  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-text-replay.c: Added functionality to check for
+	InfTextChunk errors by performing all the buffer operations on an
+	(ascii-only) GString and comparing the result with the buffer.
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Documented a missing
+	parameter in InfAdoptedAlgorithm::execute-request.
+
+	* test/replay/replay-01.record.xml:
+	* test/replay/replay-02.record.xml: Added two records that currently
+	fail to replay correctly.
+
+2008-09-22  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-session.h:
 	* libinftext/inf-text-session.c: Reorganized the code a bit, added
 	inf_text_session_flush_requests_for_user().

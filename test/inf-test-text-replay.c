@@ -20,6 +20,9 @@
 
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-default-buffer.h>
+#include <libinftext/inf-text-default-insert-operation.h>
+#include <libinftext/inf-text-insert-operation.h>
+#include <libinftext/inf-text-delete-operation.h>
 #include <libinftext/inf-text-buffer.h>
 
 #include <libinfinity/common/inf-connection-manager.h>
@@ -99,6 +102,94 @@ G_DEFINE_TYPE_WITH_CODE(
     inf_test_text_replay_object_net_object_init
   )
 )
+
+/* TODO: These functions assume that the buffer contains ASCII-only text.
+ * It will fail with UTF-8! */
+static GString*
+inf_test_text_replay_load_buffer(InfTextBuffer* buffer)
+{
+  InfTextBufferIter* iter;
+  GString* result;
+  gchar* text;
+  gsize bytes;
+
+  result = g_string_sized_new(inf_text_buffer_get_length(buffer));
+
+  iter = inf_text_buffer_create_iter(buffer);
+  if(iter != NULL)
+  {
+    do
+    {
+      text = inf_text_buffer_iter_get_text(buffer, iter);
+      bytes = inf_text_buffer_iter_get_bytes(buffer, iter);
+      g_string_append_len(result, text, bytes);
+      g_free(text);
+    } while(inf_text_buffer_iter_next(buffer, iter));
+
+    inf_text_buffer_destroy_iter(buffer, iter);
+  }
+
+  return result;
+}
+
+static void
+inf_test_text_replay_apply_operation_to_string(GString* string,
+                                               InfAdoptedOperation* operation)
+{
+  InfTextChunk* chunk;
+  InfTextChunkIter iter;
+  guint position;
+
+  if(INF_TEXT_IS_INSERT_OPERATION(operation))
+  {
+    g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
+
+    chunk = inf_text_default_insert_operation_get_chunk(
+      INF_TEXT_DEFAULT_INSERT_OPERATION(operation)
+    );
+
+    position = inf_text_insert_operation_get_position(
+      INF_TEXT_INSERT_OPERATION(operation)
+    );
+
+    if(inf_text_chunk_iter_init(chunk, &iter))
+    {
+      do
+      {
+        g_string_insert_len(
+          string,
+          position,
+          inf_text_chunk_iter_get_text(&iter),
+          inf_text_chunk_iter_get_bytes(&iter)
+        );
+
+        position += inf_text_chunk_iter_get_bytes(&iter);
+      } while(inf_text_chunk_iter_next(&iter));
+    }
+  }
+  else if(INF_TEXT_IS_DELETE_OPERATION(operation))
+  {
+    g_string_erase(
+      string,
+      inf_text_delete_operation_get_position(
+        INF_TEXT_DELETE_OPERATION(operation)
+      ),
+      inf_text_delete_operation_get_length(
+        INF_TEXT_DELETE_OPERATION(operation)
+      )
+    );
+  }
+}
+
+static void
+inf_test_text_replay_print_buffer(InfTextBuffer* buffer)
+{
+  GString* text;
+  text = inf_test_text_replay_load_buffer(buffer);
+
+  printf("%s\n", text->str);
+  g_string_free(text, TRUE);
+}
 
 static xmlNodePtr
 inf_test_text_replay_read_current(xmlTextReaderPtr reader,
@@ -217,6 +308,37 @@ inf_test_text_replay_advance_skip_whitespace_required(xmlTextReaderPtr reader,
   return TRUE;
 }
 
+static void
+inf_test_text_replay_apply_request_cb(InfAdoptedAlgorithm* algorithm,
+                                      InfAdoptedUser* user,
+                                      InfAdoptedRequest* request,
+                                      gpointer user_data)
+{
+  InfTextBuffer* buffer;
+  GString* own_content;
+  GString* buffer_content;
+
+  g_object_get(G_OBJECT(algorithm), "buffer", &buffer, NULL);
+  own_content = (GString*)user_data;
+
+  g_assert(
+    inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
+  );
+
+  /* Apply operation to own string */
+  inf_test_text_replay_apply_operation_to_string(
+    own_content,
+    inf_adopted_request_get_operation(request)
+  );
+
+  /* Compare with buffer content */
+  buffer_content = inf_test_text_replay_load_buffer(buffer);
+  g_object_unref(buffer);
+
+  g_assert(strcmp(buffer_content->str, own_content->str) == 0);
+  g_string_free(buffer_content, TRUE);
+}
+
 static gboolean
 inf_test_text_replay_play_initial(xmlTextReaderPtr reader,
                                   InfConnectionManagerGroup* publisher_group,
@@ -308,7 +430,7 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
         inf_test_text_replay_error_quark,
         INF_TEST_TEXT_REPLAY_UNEXPECTED_NODE,
         "Unexpected node: '%s'",
-	cur->name
+        cur->name
       );
 
       return FALSE;
@@ -328,10 +450,13 @@ static gboolean
 inf_test_text_replay_play(xmlTextReaderPtr reader,
                           InfSession* session,
                           InfConnectionManagerGroup* publisher_group,
-			  InfXmlConnection* publisher,
-			  GError** error)
+                          InfXmlConnection* publisher,
+                          GError** error)
 {
   gboolean result;
+
+  /* Used to find InfTextChunk errors */
+  GString* content;
 
   /* Advance to root node */
   if(xmlTextReaderNodeType(reader) != XML_READER_TYPE_ELEMENT)
@@ -393,6 +518,17 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
   if(!inf_test_text_replay_advance_skip_whitespace_required(reader, error))
     return FALSE;
 
+  content = inf_test_text_replay_load_buffer(
+    INF_TEXT_BUFFER(inf_session_get_buffer(session))
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))),
+    "apply-request",
+    G_CALLBACK(inf_test_text_replay_apply_request_cb),
+    content
+  );
+
   result = inf_test_text_replay_play_requests(
     reader,
     session,
@@ -400,6 +536,8 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
     publisher,
     error
   );
+
+  g_string_free(content, TRUE);
 
   if(!result) return FALSE;
 
@@ -492,7 +630,6 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
     INF_XML_CONNECTION(client)
   );
 
-  g_object_unref(buffer);
   g_object_unref(io);
 
   inf_connection_manager_group_set_object(
@@ -543,8 +680,11 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
   }
   else
   {
+    inf_test_text_replay_print_buffer(buffer);
     printf("Replayed record successfully\n");
   }
+
+  g_object_unref(buffer);
 }
 
 int main(int argc, char* argv[])
@@ -584,3 +724,4 @@ int main(int argc, char* argv[])
   xmlFreeTextReader(reader);
   return 0;
 }
+/* vim:set et sw=2 ts=2: */

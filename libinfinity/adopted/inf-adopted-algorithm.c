@@ -1723,6 +1723,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
   /**
    * InfAdoptedAlgorithm::execute-request:
    * @algorithm: The #InfAdoptedAlgorithm executing a request.
+   * @user: The #InfAdoptedUser executing the request.
    * @request: The #InfAdoptedRequest being executed.
    * @apply: Whether the request will be applied after execution.
    *
