@@ -1,3 +1,9 @@
+2008-09-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-session.h:
+	* libinftext/inf-text-session.c: Reorganized the code a bit, added
+	inf_text_session_flush_requests_for_user().
+
 2008-09-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.h:

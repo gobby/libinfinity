@@ -55,6 +55,7 @@ InfTextSession
 inf_text_session_new
 inf_text_session_new_with_user_table
 inf_text_session_set_user_color
+inf_text_session_flush_requests_for_user
 <SUBSECTION Standard>
 InfTextSessionClass
 INF_TEXT_SESSION

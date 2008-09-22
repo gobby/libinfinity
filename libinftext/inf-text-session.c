@@ -37,9 +37,18 @@
 /* TODO: Optionally broadcast operations delayed to merge adjacent operations
  * and send as a single request. */
 
+typedef struct _InfTextSessionLocalUser InfTextSessionLocalUser;
+struct _InfTextSessionLocalUser {
+  InfTextSession* session;
+  InfTextUser* user;
+  GTimeVal last_caret_update;
+  gpointer caret_timeout;
+};
+
 typedef struct _InfTextSessionPrivate InfTextSessionPrivate;
 struct _InfTextSessionPrivate {
   guint caret_update_interval;
+  GSList* local_users;
 };
 
 enum {
@@ -63,15 +72,6 @@ struct _InfTextSessionEraseForeachData {
   guint position;
   guint length;
   InfUser* user;
-};
-
-typedef struct _InfTextSessionSelectionChangedData
-  InfTextSessionSelectionChangedData;
-struct _InfTextSessionSelectionChangedData {
-  InfTextSession* session;
-  InfTextUser* user;
-  GTimeVal last_caret_update;
-  gpointer caret_timeout;
 };
 
 #define INF_TEXT_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_SESSION, InfTextSessionPrivate))
@@ -172,9 +172,29 @@ inf_text_session_segment_from_xml(GIConv* cd,
  * Caret/Selection handling
  */
 
+static InfTextSessionLocalUser*
+inf_text_session_find_local_user(InfTextSession* session,
+                                 InfTextUser* user)
+{
+  InfTextSessionPrivate* priv;
+  GSList* item;
+  InfTextSessionLocalUser* local;
+
+  priv = INF_TEXT_SESSION_PRIVATE(session);
+
+  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+  {
+    local = (InfTextSessionLocalUser*)item->data;
+    if(local->user == user)
+      return local;
+  }
+
+  return NULL;
+}
+
 static void
 inf_text_session_broadcast_caret_selection(InfTextSession* session,
-                                           InfTextUser* user)
+                                           InfTextSessionLocalUser* local)
 {
   InfAdoptedOperation* operation;
   InfAdoptedAlgorithm* algorithm;
@@ -183,8 +203,8 @@ inf_text_session_broadcast_caret_selection(InfTextSession* session,
   int sel;
 
   algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
-  position = inf_text_user_get_caret_position(user);
-  sel = inf_text_user_get_selection_length(user);
+  position = inf_text_user_get_caret_position(local->user);
+  sel = inf_text_user_get_selection_length(local->user);
 
   operation = INF_ADOPTED_OPERATION(
     inf_text_move_operation_new(position, sel)
@@ -192,7 +212,7 @@ inf_text_session_broadcast_caret_selection(InfTextSession* session,
 
   request = inf_adopted_algorithm_generate_request_noexec(
     algorithm,
-    INF_ADOPTED_USER(user),
+    INF_ADOPTED_USER(local->user),
     operation
   );
 
@@ -204,108 +224,111 @@ inf_text_session_broadcast_caret_selection(InfTextSession* session,
   );
 
   g_object_unref(request);
+
+  g_get_current_time(&local->last_caret_update);
+
+  if(local->caret_timeout != NULL)
+  {
+    inf_io_remove_timeout(
+      inf_adopted_session_get_io(INF_ADOPTED_SESSION(session)),
+      local->caret_timeout
+    );
+
+    local->caret_timeout = NULL;
+  }
 }
 
 static void
 inf_text_session_caret_update_timeout_func(gpointer user_data)
 {
-  InfTextSessionSelectionChangedData* selection_data;
-  selection_data = (InfTextSessionSelectionChangedData*)user_data;
+  InfTextSessionLocalUser* local;
+  local = (InfTextSessionLocalUser*)user_data;
 
-  inf_text_session_broadcast_caret_selection(
-    selection_data->session,
-    selection_data->user
-  );
-
-  selection_data->caret_timeout = NULL;
-  g_get_current_time(&selection_data->last_caret_update);
+  local->caret_timeout = NULL;
+  inf_text_session_broadcast_caret_selection(local->session, local);
 }
 
 static void
-inf_text_session_selection_changed_cb(InfUser* user,
+inf_text_session_selection_changed_cb(InfTextUser* user,
                                       guint position,
                                       gint sel,
                                       gpointer user_data)
 {
-  InfTextSessionSelectionChangedData* selection_data;
+  InfTextSession* session;
   InfTextSessionPrivate* priv;
+  InfTextSessionLocalUser* local;
   GTimeVal current;
   guint diff;
 
-  selection_data = (InfTextSessionSelectionChangedData*)user_data;
-  priv = INF_TEXT_SESSION_PRIVATE(selection_data->session);
+  session = INF_TEXT_SESSION(user_data);
+  priv = INF_TEXT_SESSION_PRIVATE(session);
+  local = inf_text_session_find_local_user(session, user);
+
   g_get_current_time(&current);
-  diff = inf_text_session_timeval_diff(
-    &current,
-    &selection_data->last_caret_update
-  );
-  g_assert(INF_USER(selection_data->user) == user);
+  diff = inf_text_session_timeval_diff(&current, &local->last_caret_update);
 
   if(diff < priv->caret_update_interval)
   {
-    if(selection_data->caret_timeout == NULL)
+    if(local->caret_timeout == NULL)
     {
-      selection_data->caret_timeout = inf_io_add_timeout(
-        inf_adopted_session_get_io(
-          INF_ADOPTED_SESSION(selection_data->session)
-        ),
+      local->caret_timeout = inf_io_add_timeout(
+        inf_adopted_session_get_io(INF_ADOPTED_SESSION(local->session)),
         priv->caret_update_interval - diff,
         inf_text_session_caret_update_timeout_func,
-        selection_data,
+        local,
         NULL
       );
     }
   }
   else
   {
-    inf_text_session_broadcast_caret_selection(
-      selection_data->session,
-      selection_data->user
-    );
-
-    g_get_current_time(&selection_data->last_caret_update);
+    inf_text_session_broadcast_caret_selection(session, local);
   }
 }
 
 static void
-inf_text_session_selection_changed_data_free(gpointer data,
-                                             GClosure* closure)
+inf_text_session_add_local_user(InfTextSession* session,
+                                InfTextUser* user)
 {
-  InfTextSessionSelectionChangedData* selection_data;
-  selection_data = (InfTextSessionSelectionChangedData*)data;
+  InfTextSessionPrivate* priv;
+  InfTextSessionLocalUser* local;
 
-  if(selection_data->caret_timeout != NULL)
-  {
-    inf_io_remove_timeout(
-      inf_adopted_session_get_io(
-        INF_ADOPTED_SESSION(selection_data->session)
-      ),
-      selection_data->caret_timeout
-    );
-  }
+  priv = INF_TEXT_SESSION_PRIVATE(session);
 
-  g_slice_free(InfTextSessionSelectionChangedData, data);
-}
+  local = g_slice_new(InfTextSessionLocalUser);
+  local->session = session;
+  local->user = user;
+  g_get_current_time(&local->last_caret_update);
+  local->caret_timeout = NULL;
 
-static void
-inf_text_session_connect_selection_changed(InfTextSession* session,
-                                           InfTextUser* user)
-{
-  InfTextSessionSelectionChangedData* selection_data;
-  selection_data = g_slice_new(InfTextSessionSelectionChangedData);
-  selection_data->session = session;
-  selection_data->user = user;
-  g_get_current_time(&selection_data->last_caret_update);
-  selection_data->caret_timeout = NULL;
+  priv->local_users = g_slist_prepend(priv->local_users, local);
 
-  g_signal_connect_data(
+  g_signal_connect_after(
     G_OBJECT(user),
     "selection-changed",
     G_CALLBACK(inf_text_session_selection_changed_cb),
-    selection_data,
-    inf_text_session_selection_changed_data_free,
-    G_CONNECT_AFTER
+    session
   );
+}
+
+static void
+inf_text_session_remove_local_user(InfTextSession* session,
+                                   InfTextSessionLocalUser* local)
+{
+  InfTextSessionPrivate* priv;
+
+  priv = INF_TEXT_SESSION_PRIVATE(session);
+
+  if(local->caret_timeout != NULL)
+  {
+    inf_io_remove_timeout(
+      inf_adopted_session_get_io(INF_ADOPTED_SESSION(session)),
+      local->caret_timeout
+    );
+  }
+
+  g_slice_free(InfTextSessionLocalUser, local);
+  priv->local_users = g_slist_remove(priv->local_users, local);
 }
 
 static void
@@ -314,7 +337,11 @@ inf_text_session_local_user_added_cb(InfUserTable* user_table,
                                      gpointer user_data)
 {
   g_assert(INF_TEXT_IS_USER(user));
-  inf_text_session_connect_selection_changed(INF_TEXT_SESSION(user_data), INF_TEXT_USER(user));
+
+  inf_text_session_add_local_user(
+    INF_TEXT_SESSION(user_data),
+    INF_TEXT_USER(user)
+  );
 }
 
 static void
@@ -322,48 +349,58 @@ inf_text_session_local_user_removed_cb(InfUserTable* user_table,
                                        InfUser* user,
                                        gpointer user_data)
 {
-  InfSession* session;
-  session = INF_SESSION(user_data);
+  InfTextSession* session;
+  InfTextSessionLocalUser* local;
 
-  g_signal_handlers_disconnect_matched(
-    G_OBJECT(user),
-    G_SIGNAL_MATCH_FUNC,
-    0,
-    0,
-    NULL,
-    G_CALLBACK(inf_text_session_selection_changed_cb),
-    NULL
-  );
+  g_assert(INF_TEXT_IS_USER(user));
+
+  session = INF_TEXT_SESSION(user_data);
+  local = inf_text_session_find_local_user(session, INF_TEXT_USER(user));
+  g_assert(local != NULL);
+
+  inf_text_session_remove_local_user(session, local);
 }
 
 static void
-inf_text_session_block_local_users_selection_changed_func(InfUser* user,
-                                                          gpointer user_data)
+inf_text_session_block_local_users_selection_changed(InfTextSession* session)
 {
-  g_signal_handlers_block_matched(
-    G_OBJECT(user),
-    G_SIGNAL_MATCH_FUNC,
-    0,
-    0,
-    NULL,
-    G_CALLBACK(inf_text_session_selection_changed_cb),
-    NULL
-  );
+  InfTextSessionPrivate* priv;
+  GSList* item;
+  InfTextSessionLocalUser* local;
+
+  priv = INF_TEXT_SESSION_PRIVATE(session);
+
+  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+  {
+    local = (InfTextSessionLocalUser*)item->data;
+
+    g_signal_handlers_block_by_func(
+      G_OBJECT(local->user),
+      G_CALLBACK(inf_text_session_selection_changed_cb),
+      session
+    );
+  }
 }
 
 static void
-inf_text_session_unblock_local_users_selection_changed_func(InfUser* user,
-                                                            gpointer data)
+inf_text_session_unblock_local_users_selection_changed(InfTextSession* sess)
 {
-  g_signal_handlers_unblock_matched(
-    G_OBJECT(user),
-    G_SIGNAL_MATCH_FUNC,
-    0,
-    0,
-    NULL,
-    G_CALLBACK(inf_text_session_selection_changed_cb),
-    NULL
-  );
+  InfTextSessionPrivate* priv;
+  GSList* item;
+  InfTextSessionLocalUser* local;
+
+  priv = INF_TEXT_SESSION_PRIVATE(sess);
+
+  for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+  {
+    local = (InfTextSessionLocalUser*)item->data;
+
+    g_signal_handlers_unblock_by_func(
+      G_OBJECT(local->user),
+      G_CALLBACK(inf_text_session_selection_changed_cb),
+      sess
+    );
+  }
 }
 
 static void
@@ -425,21 +462,17 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
                                              InfUser* user,
                                              gpointer user_data)
 {
-  InfSession* session;
+  InfTextSession* session;
   InfUserTable* user_table;
   InfTextSessionInsertForeachData data;
 
-  session = INF_SESSION(user_data);
-  user_table = inf_session_get_user_table(session);
+  session = INF_TEXT_SESSION(user_data);
+  user_table = inf_session_get_user_table(INF_SESSION(session));
   data.position = pos;
   data.chunk = chunk;
   data.user = user;
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_block_local_users_selection_changed_func,
-    session
-  );
+  inf_text_session_block_local_users_selection_changed(session);
 
   inf_user_table_foreach_user(
     user_table,
@@ -456,11 +489,7 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
     );
   }
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_unblock_local_users_selection_changed_func,
-    session
-  );
+  inf_text_session_unblock_local_users_selection_changed(session);
 }
 
 static void
@@ -470,21 +499,17 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
                                             InfUser* user,
                                             gpointer user_data)
 {
-  InfSession* session;
+  InfTextSession* session;
   InfUserTable* user_table;
   InfTextSessionEraseForeachData data;
 
-  session = INF_SESSION(user_data);
-  user_table = inf_session_get_user_table(session);
+  session = INF_TEXT_SESSION(user_data);
+  user_table = inf_session_get_user_table(INF_SESSION(session));
   data.position = pos;
   data.length = length;
   data.user = user;
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_block_local_users_selection_changed_func,
-    session
-  );
+  inf_text_session_block_local_users_selection_changed(session);
 
   inf_user_table_foreach_user(
     user_table,
@@ -495,11 +520,7 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
   if(user != NULL)
     inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_unblock_local_users_selection_changed_func,
-    session
-  );
+  inf_text_session_unblock_local_users_selection_changed(session);
 }
 
 /*
@@ -595,13 +616,11 @@ inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
                                          InfAdoptedRequest* request,
                                          gpointer user_data)
 {
-  InfSession* session;
+  InfTextSession* session;
   InfTextBuffer* buffer;
-  InfUserTable* user_table;
-  
-  session = INF_SESSION(user_data);
-  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
-  user_table = inf_session_get_user_table(session);
+
+  session = INF_TEXT_SESSION(user_data);
+  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
 
   g_signal_handlers_block_by_func(
     G_OBJECT(buffer),
@@ -615,26 +634,20 @@ inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
     session
   );
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_block_local_users_selection_changed_func,
-    session
-  );
+  inf_text_session_block_local_users_selection_changed(session);
 }
 
 static void
 inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
-                                         InfAdoptedUser* user,
-                                         InfAdoptedRequest* request,
-                                         gpointer user_data)
+                                        InfAdoptedUser* user,
+                                        InfAdoptedRequest* request,
+                                        gpointer user_data)
 {
-  InfSession* session;
+  InfTextSession* session;
   InfTextBuffer* buffer;
-  InfUserTable* user_table;
   
-  session = INF_SESSION(user_data);
-  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
-  user_table = inf_session_get_user_table(session);
+  session = INF_TEXT_SESSION(user_data);
+  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
 
   g_signal_handlers_unblock_by_func(
     G_OBJECT(buffer),
@@ -648,11 +661,7 @@ inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
     session
   );
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_unblock_local_users_selection_changed_func,
-    session
-  );
+  inf_text_session_unblock_local_users_selection_changed(session);
 }
 
 static void
@@ -660,7 +669,11 @@ inf_text_session_init_text_handlers_user_foreach_func(InfUser* user,
                                                       gpointer user_data)
 {
   g_assert(INF_TEXT_IS_USER(user));
-  inf_text_session_connect_selection_changed(INF_TEXT_SESSION(user_data), INF_TEXT_USER(user));
+
+  inf_text_session_add_local_user(
+    INF_TEXT_SESSION(user_data),
+    INF_TEXT_USER(user)
+  );
 }
 
 static void
@@ -794,7 +807,7 @@ inf_text_session_constructor(GType type,
   return object;
 }
 
-static void
+/*static void
 inf_text_session_dispose_foreach_local_user_func(InfUser* user,
                                                  gpointer user_data)
 {
@@ -809,7 +822,7 @@ inf_text_session_dispose_foreach_local_user_func(InfUser* user,
     G_CALLBACK(inf_text_session_selection_changed_cb),
     NULL
   );
-}
+}*/
 
 static void
 inf_text_session_dispose(GObject* object)
@@ -827,11 +840,13 @@ inf_text_session_dispose(GObject* object)
   user_table = inf_session_get_user_table(INF_SESSION(session));
   algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
 
-  inf_user_table_foreach_local_user(
-    user_table,
-    inf_text_session_dispose_foreach_local_user_func,
-    NULL
-  );
+  while(priv->local_users != NULL)
+  {
+    inf_text_session_remove_local_user(
+      session,
+      (InfTextSessionLocalUser*)priv->local_users->data
+    );
+  }
 
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
@@ -1168,7 +1183,7 @@ inf_text_session_process_xml_run(InfSession* session,
   if(strcmp((const char*)xml->name, "user-color-change") == 0)
   {
     return inf_text_session_handle_user_color_change(
-      session,
+      INF_TEXT_SESSION(session),
       connection,
       xml,
       error
@@ -2026,6 +2041,42 @@ inf_text_session_set_user_color(InfTextSession* session,
 
   inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
   g_object_set(G_OBJECT(user), "hue", hue, NULL);
+}
+
+/**
+ * inf_text_session_flush_requests_for_user:
+ * @session: A #InfTextSession.
+ * @user: The #InfTextUser for which to flush messages.
+ *
+ * This function sends all pending requests for @user immediately. Requests
+ * that modify the buffer are not queued normally, but cursor movement
+ * requests are delayed in case are issued frequently, to save bandwidth.
+ *
+ * The main purpose of this function is to send all pending requests before
+ * changing a user's status to inactive or unavailable since inactive users
+ * are automatically activated as soon as they issue a request.
+ *
+ * TODO: We should probably detect this automatically, without requiring
+ * people to call this function.
+ *
+ * @user must have the %INF_USER_LOCAL flag set.
+ */
+void
+inf_text_session_flush_requests_for_user(InfTextSession* session,
+                                         InfTextUser* user)
+{
+  InfTextSessionLocalUser* local;
+
+  g_return_if_fail(INF_TEXT_IS_SESSION(session));
+  g_return_if_fail(INF_TEXT_IS_USER(user));
+
+  local = inf_text_session_find_local_user(session, user);
+  g_assert(local != NULL);
+
+  if(local->caret_timeout != NULL)
+  {
+    inf_text_session_broadcast_caret_selection(session, local);
+  }
 }
 
 /* vim:set et sw=2 ts=2: */

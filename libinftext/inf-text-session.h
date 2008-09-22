@@ -78,6 +78,10 @@ inf_text_session_set_user_color(InfTextSession* session,
                                 InfTextUser* user,
                                 gdouble hue);
 
+void
+inf_text_session_flush_requests_for_user(InfTextSession* session,
+                                         InfTextUser* user);
+
 G_END_DECLS
 
 #endif /* __INF_TEXT_SESSION_H__ */
