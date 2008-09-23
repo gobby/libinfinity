@@ -313,11 +313,11 @@ inf_test_text_replay_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
   );
 
   operation = inf_adopted_request_get_operation(request);
+#if 0
   /* This can be used to set a breakpoint if the operation meats special
    * conditions when debugging a specific problem. */
-#if 0
-  if(INF_TEXT_IS_DELETE_OPERATION(operation))
-    if(inf_text_delete_operation_get_position(INF_TEXT_DELETE_OPERATION(operation)) == 2473)
+  if(INF_TEXT_IS_INSERT_OPERATION(operation))
+    if(inf_text_insert_operation_get_position(INF_TEXT_INSERT_OPERATION(operation)) == 1730)
       printf("tada\n");
 #endif
 }

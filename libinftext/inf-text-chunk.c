@@ -630,10 +630,6 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
       last_merge = segment;
       first_merge = segment;
 
-      /* beyond points to the first segment that needs offset adjustment
-       * after insertion */
-      beyond = iter;
-
       /* Try merge with end of previous segment if inserting inbetween two
        * segments. */
       if(offset_index == 0 && offset > 0)
@@ -644,6 +640,10 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
         first_merge = (InfTextChunkSegment*)g_sequence_get(iter);
         offset_index = first_merge->length;
       }
+
+      /* beyond points to the first segment that needs offset adjustment
+       * after insertion */
+      beyond = iter;
 
       if(offset == 0 || offset == self->length || first_merge != last_merge)
       {
@@ -688,14 +688,15 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
         }
         else
         {
-          /* We still have to insert last segment */
+          /* Could not merge last segment, so we have to insert it. Therefore,
+           * make last_iter point to the end of the sequence. */
           last_iter = g_sequence_iter_next(last_iter);
 
-          if(offset > 0) /* TODO: Does this need to be offset_index == segment->length? */
+          if(offset_index > 0) /* Note: This is only false for offset == 0 */
             beyond = g_sequence_iter_next(beyond);
         }
 
-        if(offset > 0)
+        if(offset_index > 0) /* Note: This is only false for offset == 0 */
         {
           /* Pointing to the position before which to insert
            * the rest of text. */
@@ -704,7 +705,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
       }
       else
       {
-        /* Insert within a segment, split segment*/
+        /* Insert within a segment, split segment */
 
         new_segment = g_slice_new(InfTextChunkSegment);
         new_segment->author = last_merge->author;
@@ -712,7 +713,9 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
         if(last_merge->author == last->author)
         {
           /* Merge last part into new segment */
-          new_segment->length = last_merge->length - offset_index + last->length;
+          new_segment->length = last_merge->length - offset_index +
+            last->length;
+
           new_segment->text = g_malloc(new_segment->length);
           memcpy(new_segment->text, last->text, last->length);
 
