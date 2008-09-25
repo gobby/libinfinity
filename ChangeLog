@@ -1,3 +1,13 @@
+2008-09-25  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-chunk.c: Fixed another problem when a chunk was
+	inserted into another chunk between two segments when the last part
+	could be merged.
+
+	* test/replay/replay-03.record.xml:
+	* test/replay/replay-04.record.xml: Added two new records, to test the
+	the InfTextChunk.
+
 2008-09-23  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-chunk.c: Fixed a problem when a chunk was
