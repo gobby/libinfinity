@@ -1,3 +1,8 @@
+2008-09-29  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-cert-util.c (inf_cert_util_save_file): Fixed
+	storage of more than one certificate.
+
 2008-09-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-chunk.c: Fixed another problem when a chunk was

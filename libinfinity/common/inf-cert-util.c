@@ -117,7 +117,7 @@ inf_cert_util_save_file(gnutls_x509_crt_t* certs,
   {
     if(i > 0)
     {
-      status = g_io_channel_write_chars(channel, "\n", 2, NULL, error);
+      status = g_io_channel_write_chars(channel, "\n", 1, NULL, error);
       if(status != G_IO_STATUS_NORMAL)
       {
         g_io_channel_unref(channel);
