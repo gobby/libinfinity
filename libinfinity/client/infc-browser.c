@@ -1653,6 +1653,8 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   if(group_name == NULL) { xmlFree(name); goto error_session; }
 
   /* TODO: The server might specify a different subscription group & method */
+  /* (Set synchronization group as parent of subscription group, to prevent
+   * sending requests prematurely?) */
   for(child = xml->children; child != NULL; child = child->next)
     if(strcmp((const char*)child->name, "subscribe") == 0)
       break;
@@ -1719,7 +1721,6 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   /* TODO: Emit a signal, so that others are notified that a sync-in begins
    * and can show progress or something. */
 
-  /* Don't finish request yet, wait for successful synchronization */
   infc_node_request_finished(INFC_NODE_REQUEST(request), &iter);
   infc_request_manager_remove_request(priv->request_manager, request);
 
