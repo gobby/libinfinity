@@ -35,8 +35,8 @@ GTK_DOC_CHECK(1.4)
 # Check for regular dependencies
 ###################################
 
-PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21 uuid])
-PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0])
+PKG_CHECK_MODULES([infinity], [glib-2.0 >= 2.16 gobject-2.0 >= 2.16 gmodule-2.0 >= 2.16 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21 uuid])
+PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.16 gobject-2.0 >= 2.16 libxml-2.0])
 
 ########################
 # libinftextgtk optional package
@@ -84,7 +84,7 @@ AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
 
 if test "x$with_infinoted" = "xyes"
 then
-  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.14 gobject-2.0 >= 2.14 gmodule-2.0 >= 2.14 gnutls >= 1.7.2])
+  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.16 gobject-2.0 >= 2.16 gmodule-2.0 >= 2.14 gnutls >= 1.7.2])
 fi
 
 AM_CONDITIONAL([WITH_INFINOTED], test "x$with_infinoted" = "xyes")

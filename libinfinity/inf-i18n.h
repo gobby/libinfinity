@@ -29,6 +29,7 @@
 # define N_(String) (String)
 #endif
 
+void _inf_gettext_init(void);
 const char* _inf_gettext(const char* msgid);
 
 #endif /* __INF_I18N_H__ */

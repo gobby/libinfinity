@@ -1,3 +1,26 @@
+2008-10-01  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-i18n.h:
+	* libinfinity/inf-i18n.c: Added _inf_gettext_init() in case somebody
+	needs the infinote gettext translation domain being set without having
+	called _inf_gettext() before.
+
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-creds.c: Fixed a typo.
+
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-startup.c: New files, containing some
+	functionality from infinoted-main.c, due to code refactorings.
+
+	* infinoted/infinoted-main.c: Adapt.
+
+	* infinoted/Makefile.am: Build the new files.
+
+	* README:
+	* configure.ac: Require at least glib 2.16.
+
 2008-09-29  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-cert-util.c (inf_cert_util_save_file): Fixed

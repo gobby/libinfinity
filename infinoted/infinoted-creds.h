@@ -51,8 +51,8 @@ infinoted_creds_write_key(gnutls_x509_privkey_t key,
                           GError** error);
 
 gnutls_x509_crt_t
-ininoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
-                                              GError** error);
+infinoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
+                                               GError** error);
 
 gnutls_certificate_credentials_t
 infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
