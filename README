@@ -22,8 +22,8 @@ libinftextgtk:
 
 libinfinity requires:
  - libuuid
- - glib-2.0 >= 2.14
- - gobject-2.0 >= 2.14
+ - glib-2.0 >= 2.16
+ - gobject-2.0 >= 2.16
  - libxml-2.0
  - gnutls >= 1.7.2
  - gsasl >= 0.2.21

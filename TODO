@@ -15,6 +15,9 @@ Performance (Some ideas to improve performance, profile to verify!):
     this should not matter too much, and avoid some copies that are currently
     made.
 
+Memory:
+  * replay-01 leaks about 4 megabytes of memory
+
 Others:
 
  * Unify InfIo interface (IO):

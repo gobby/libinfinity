@@ -630,6 +630,10 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
       last_merge = segment;
       first_merge = segment;
 
+      /* beyond points to the first segment that needs offset adjustment
+       * after insertion */
+      beyond = iter;
+
       /* Try merge with end of previous segment if inserting inbetween two
        * segments. */
       if(offset_index == 0 && offset > 0)
@@ -640,10 +644,6 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
         first_merge = (InfTextChunkSegment*)g_sequence_get(iter);
         offset_index = first_merge->length;
       }
-
-      /* beyond points to the first segment that needs offset adjustment
-       * after insertion */
-      beyond = iter;
 
       if(offset == 0 || offset == self->length || first_merge != last_merge)
       {
@@ -683,7 +683,8 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
           memcpy(last_merge->text, last->text, last->length);
           last_merge->offset = offset + last->offset;
 
-          /* Already adjusted offset here */
+          /* Merged with last, so don't need to adjust last_merge->offset
+           * anymore, continue behind with offset adjustment. */
           beyond = g_sequence_iter_next(beyond);
         }
         else
@@ -693,7 +694,7 @@ inf_text_chunk_insert_chunk(InfTextChunk* self,
           last_iter = g_sequence_iter_next(last_iter);
 
           if(offset_index > 0) /* Note: This is only false for offset == 0 */
-            beyond = g_sequence_iter_next(beyond);
+            beyond = g_sequence_iter_next(iter);
         }
 
         if(offset_index > 0) /* Note: This is only false for offset == 0 */

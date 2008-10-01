@@ -1,4 +1,3 @@
-/* libinfinity/inf-config.h.  Generated from inf-config.h.in by configure.  */
 /* infinote - Collaborative notetaking application
  * Copyright (C) 2007 Armin Burgmeier
  *
@@ -17,32 +16,38 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-i18n.h>
+#ifndef __INFINOTED_STARTUP_H__
+#define __INFINOTED_STARTUP_H__
+
+#include <infinoted/infinoted-options.h>
+
+#include <libinfinity/server/infd-directory.h>
 
 #include <glib.h>
 
-#include "config.h"
+G_BEGIN_DECLS
+
+typedef struct _InfinotedStartup InfinotedStartup;
+struct _InfinotedStartup {
+  InfinotedOptions* options;
+  gnutls_x509_privkey_t private_key;
+  gnutls_x509_crt_t* certificates;
+  gnutls_dh_params_t dh_params;
+  guint n_certificates;
+  gnutls_certificate_credentials_t credentials;
+  InfdDirectory* directory;
+};
+
+InfinotedStartup*
+infinoted_startup_new(int* argc,
+                      char*** argv,
+                      GError** error);
 
 void
-_inf_gettext_init(void)
-{
-	/* TODO: GOnce */
-	static gboolean gettext_initialized = FALSE;
-	if(G_UNLIKELY(!gettext_initialized))
-	{
-		gettext_initialized = TRUE;
+infinoted_startup_free(InfinotedStartup* startup);
 
-		bindtextdomain(GETTEXT_PACKAGE, INF_LOCALEDIR);
-		bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-	}
-}
+G_END_DECLS
 
-const char*
-_inf_gettext(const char* msgid)
-{
-	/* I don't want to introduce a generic inf_init() function just because
-	 * of gettext. However, if we need one some day, then we can move
-	 * gettext initialization there. */
-	_inf_gettext_init();
-	return dgettext(GETTEXT_PACKAGE, msgid);
-}
+#endif /* __INFINOTED_STARTUP_H__ */
+
+/* vim:set et sw=2 ts=2: */
