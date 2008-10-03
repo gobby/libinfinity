@@ -1,3 +1,8 @@
+2008-10-03  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-algorithm.c
+	(inf_adopted_algorithm_translate_request): Simplified the code a bit.
+
 2008-10-01  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-i18n.h:

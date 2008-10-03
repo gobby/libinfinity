@@ -838,7 +838,7 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
   g_assert(inf_adopted_state_vector_causally_before(against_vec, lcs));
   g_assert(inf_adopted_state_vector_causally_before(lcs, at));
 
-  /* TODO: Compare lcs against at? */
+#if 1
   lcs_against = inf_adopted_algorithm_translate_request(
     algorithm,
     against,
@@ -852,7 +852,10 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
     lcs,
     can_cache
   );
-
+#else
+  lcs_against = against;
+  lcs_request = request;
+#endif
   inf_adopted_state_vector_free(lcs);
 
   against_copy = inf_adopted_algorithm_translate_request(
@@ -1051,13 +1054,16 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
         );
       }
     }
+
     /* Transform into direction we are not going to fold later */
-    else if(inf_adopted_state_vector_get(vector, user_id) <
-            inf_adopted_state_vector_get(to, user_id))
+    if(inf_adopted_state_vector_get(vector, user_id) <
+       inf_adopted_state_vector_get(to, user_id))
     {
       inf_adopted_state_vector_set(v, user_id, n - 1);
       if(inf_adopted_algorithm_is_reachable(algorithm, v))
       {
+        associated = inf_adopted_request_log_get_request(log, n - 1);
+
         result = inf_adopted_algorithm_transform_request(
           algorithm,
           request,
@@ -1076,6 +1082,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     }
   }
 
+#if 0
   /* Last resort: Transform always */
   for(user_it = priv->users_begin; user_it != priv->users_end; ++ user_it)
   {
@@ -1114,17 +1121,21 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       }
     }
   }
+#endif
 
   g_assert_not_reached();
 
 done:
+    g_assert(inf_adopted_state_vector_compare(inf_adopted_request_get_vector(result), to) == 0);
   if(can_cache)
   {
     insert_key = g_slice_new(InfAdoptedAlgorithmRequestKey);
     insert_key->vector = inf_adopted_request_get_vector(result);
     insert_key->user_id = inf_adopted_request_get_user_id(result);
     g_assert(g_tree_lookup(priv->cache, insert_key) == NULL);
+#if 1
     g_tree_replace(priv->cache, insert_key, result);
+#endif
   }
 
   inf_adopted_state_vector_free(v);
