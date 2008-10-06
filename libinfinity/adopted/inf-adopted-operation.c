@@ -46,6 +46,42 @@ inf_adopted_operation_base_init(gpointer g_class)
 }
 
 GType
+inf_adopted_concurrency_id_get_type(void)
+{
+  static GType concurrency_id_type = 0;
+
+  if(!concurrency_id_type)
+  {
+    static const GEnumValue concurrency_id_type_values[] = {
+      {
+        INF_ADOPTED_CONCURRENCY_SELF,
+        "INF_ADOPTED_CONCURRENCY_SELF",
+        "self"
+      }, {
+        INF_ADOPTED_CONCURRENCY_NONE,
+        "INF_ADOPTED_CONCURRENCY_NONE",
+        "none"
+      }, {
+        INF_ADOPTED_CONCURRENCY_OTHER,
+        "INF_ADOPTED_CONCURRENCY_OTHER",
+        "other"
+      }, {
+        0,
+        NULL,
+        NULL
+      }
+    };
+
+    concurrency_id_type = g_enum_register_static(
+      "InfAdoptedConcurrencyId",
+      concurrency_id_type_values
+    );
+  }
+
+  return concurrency_id_type;
+}
+
+GType
 inf_adopted_operation_flags_get_type(void)
 {
   static GType operation_flags_type = 0;
@@ -57,6 +93,10 @@ inf_adopted_operation_flags_get_type(void)
         INF_ADOPTED_OPERATION_AFFECTS_BUFFER,
         "INF_ADOPTED_OPERATION_AFFECTS_BUFFER",
         "affects_buffer",
+      }, {
+        INF_ADOPTED_OPERATION_REVERSIBLE,
+        "INF_ADOPTED_OPERATION_REVERSIBLE",
+        "reversible",
       }, {
         0,
         NULL,
@@ -107,14 +147,87 @@ inf_adopted_operation_get_type(void)
 }
 
 /**
+ * inf_adopted_operation_need_concurrency_id:
+ * @operation: The #InfAdoptedOperation to transform.
+ * @against: The operation to transform against.
+ *
+ * This function returns whether transforming @operation against @against
+ * is not defined unambiguously. In that case, transformation requires a
+ * so-called concurrency ID which determines which of the two operations
+ * is transformed.
+ *
+ * Returns: Whether transformation of @operation against @against requires a
+ * concurrency ID to be defined.
+ */
+gboolean
+inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
+                                          InfAdoptedOperation* against)
+{
+  InfAdoptedOperationIface* iface;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), FALSE);
+  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(against), FALSE);
+
+  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
+  g_assert(iface->need_concurrency_id != NULL);
+
+  return iface->need_concurrency_id(operation, against);
+}
+
+/**
+ * inf_adopted_operation_get_concurrency_id:
+ * @operation: The #InfAdoptedOperation to transform.
+ * @against: The operation to transform against.
+ *
+ * This function returns a concurrency ID for transformation of @operation
+ * against @against. It always returns %INF_ADOPTED_CONCURRENCY_NONE when
+ * inf_adopted_operation_need_concurrency_id() returns %TRUE for
+ * @operation and @against (but that's not necessarily true the other way
+ * around), since it is not possible to decide which operation to transform
+ * without any additional information.
+ *
+ * However, the function can be called on the same operations in a previous
+ * state. In some cases, a decision can be made based on those previous
+ * operations. This can then be used as concurrency ID to call
+ * inf_adopted_operation_transform().
+ *
+ * Returns: A concurrency ID between @operation and @against. Can be
+ * %INF_ADOPTED_CONCURRENCY_NONE in case no decision can be made.
+ */
+InfAdoptedConcurrencyId
+inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
+                                         InfAdoptedOperation* against)
+{
+  InfAdoptedOperationIface* iface;
+
+  g_return_val_if_fail(
+    INF_ADOPTED_IS_OPERATION(operation),
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+  g_return_val_if_fail(
+    INF_ADOPTED_IS_OPERATION(against),
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+
+  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
+  g_assert(iface->get_concurrency_id != NULL);
+
+  return iface->get_concurrency_id(operation, against);
+}
+
+
+/**
  * inf_adopted_operation_transform:
  * @operation: The #InfAdoptedOperation to transform.
  * @against: The operation to transform against.
- * @concurrency_id: A hint which operation to prefer if both operations are
- * mutually exclusive. This is always either +1, 0 or -1.
+ * @concurrency_id: The concurrency ID for the transformation.
  *
  * Performs an inclusion transformation of @operation against @against,
  * meaning that the effect of @against is included in @operation.
+ *
+ * If inf_adopted_operation_need_concurrency_id() returns %TRUE for @operation
+ * and @against, then @concurrency_id must not be
+ * %INF_ADOPTED_CONCURRENCY_NONE. Otherwise, the parameter is ignored.
  *
  * Return Value: The transformed #InfAdoptedOperation, or %NULL if the
  * transformation failed.
@@ -122,7 +235,7 @@ inf_adopted_operation_get_type(void)
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
                                 InfAdoptedOperation* against,
-                                gint concurrency_id)
+                                InfAdoptedConcurrencyId concurrency_id)
 {
   InfAdoptedOperationIface* iface;
 

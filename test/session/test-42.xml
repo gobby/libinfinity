@@ -10,25 +10,21 @@
  </initial-buffer>
 
  <request time="" user="1">
-  <insert pos="0">a</insert>
+  <insert pos="0">ABCDE</insert>
+ </request>
+
+ <request time="1:1" user="2">
+  <delete pos="2" len="2" />
  </request>
 
  <request time="" user="2">
-  <insert pos="0">b</insert>
+  <undo />
  </request>
 
- <request time="" user="3">
-  <insert pos="0">c</insert>
- </request>
-
- <request time="" user="4">
-  <insert pos="0">d</insert>
+ <request time="2:2" user="1">
+  <undo />
  </request>
 
  <final-buffer>
-  <segment author="1">a</segment>
-  <segment author="2">b</segment>
-  <segment author="3">c</segment>
-  <segment author="4">d</segment>
  </final-buffer>
 </infinote-test>

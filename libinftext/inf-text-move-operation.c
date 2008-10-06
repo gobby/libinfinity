@@ -22,6 +22,7 @@
 #include <libinftext/inf-text-user.h>
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
 
 typedef struct _InfTextMoveOperationPrivate InfTextMoveOperationPrivate;
 struct _InfTextMoveOperationPrivate {
@@ -106,6 +107,23 @@ inf_text_move_operation_get_property(GObject* object,
   }
 }
 
+static gboolean
+inf_text_move_operation_need_concurrency_id(InfAdoptedOperation* operation,
+                                            InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
+  return FALSE;
+}
+
+static InfAdoptedConcurrencyId
+inf_text_move_operation_get_concurrency_id(InfAdoptedOperation* operation,
+                                           InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
+  _inf_adopted_concurrency_warning(INF_TEXT_TYPE_MOVE_OPERATION);
+  return INF_ADOPTED_CONCURRENCY_NONE;
+}
+
 static InfAdoptedOperation*
 inf_text_move_operation_transform(InfAdoptedOperation* operation,
                                   InfAdoptedOperation* against,
@@ -161,6 +179,26 @@ inf_text_move_operation_transform(InfAdoptedOperation* operation,
       NULL
     )
   );
+}
+
+static InfAdoptedOperation*
+inf_text_move_operation_copy(InfAdoptedOperation* operation)
+{
+  InfTextMoveOperationPrivate* priv;
+  GObject* object;
+
+  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
+
+  priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
+
+  object = g_object_new(
+    INF_TEXT_TYPE_MOVE_OPERATION,
+    "position", priv->position,
+    "length", priv->length,
+    NULL
+  );
+
+  return INF_ADOPTED_OPERATION(object);
 }
 
 static InfAdoptedOperationFlags
@@ -256,7 +294,10 @@ inf_text_move_operation_operation_init(gpointer g_iface,
   InfAdoptedOperationIface* iface;
   iface = (InfAdoptedOperationIface*)g_iface;
 
+  iface->need_concurrency_id = inf_text_move_operation_need_concurrency_id;
+  iface->get_concurrency_id = inf_text_move_operation_get_concurrency_id;
   iface->transform = inf_text_move_operation_transform;
+  iface->copy = inf_text_move_operation_copy;
   iface->get_flags = inf_text_move_operation_get_flags;
   iface->apply = inf_text_move_operation_apply;
   iface->revert = inf_text_move_operation_revert;

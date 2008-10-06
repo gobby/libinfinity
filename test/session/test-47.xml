@@ -7,127 +7,28 @@
  <user id="5" />
 
  <initial-buffer>
+  <segment author="0">abcd</segment>
  </initial-buffer>
 
- <request time="" user="1">
-  <insert pos="0">a</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="1">b</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="2">c</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="3">d</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="4">e</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="5">f</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="6">g</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="7">h</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="8">i</insert>
- </request>
-
- <request time="" user="1">
-  <insert pos="9">j</insert>
- </request>
-
- <request time="1:10" user="2">
-  <insert pos="10">a</insert>
- </request>
-
  <request time="" user="2">
-  <insert pos="11">b</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="12">c</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="13">d</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="14">e</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="15">f</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="16">g</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="17">h</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="18">i</insert>
- </request>
-
- <request time="" user="2">
-  <insert pos="19">j</insert>
- </request>
-
- <request time="2:10" user="1">
-  <undo />
+  <delete pos="1" len="1" />
  </request>
 
  <request time="" user="1">
-  <undo />
+  <insert pos="4">x</insert>
  </request>
 
- <request time="" user="1">
-  <undo />
+ <request time="" user="4">
+  <insert pos="4">x</insert>
  </request>
 
- <request time="" user="1">
-  <undo />
+ <request time="" user="5">
+  <delete pos="3" len="1" />
  </request>
 
- <request time="" user="1">
-  <undo />
- </request>
- <request time="" user="1">
-  <undo />
- </request>
-
- <request time="" user="1">
-  <undo />
- </request>
-
- <request time="" user="1">
-  <undo />
- </request>
-
- <request time="" user="1">
-  <undo />
- </request>
-
- <request time="" user="1">
-  <undo />
- </request>
  <final-buffer>
-  <segment author="2">abcdefghij</segment>
+  <segment author="0">ac</segment>
+  <segment author="4">x</segment>
+  <segment author="1">x</segment>
  </final-buffer>
 </infinote-test>

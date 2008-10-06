@@ -522,17 +522,145 @@ inf_adopted_request_get_operation(InfAdoptedRequest* request)
 }
 
 /**
+ * inf_adopted_request_need_concurrency_id:
+ * @request: The request to transform.
+ * @against: The request to transform against.
+ *
+ * Returns whether transforming @request against @against requires a
+ * concurrency ID. You can still call inf_adopted_request_transform() with
+ * a concurrency ID of %INF_ADOPTED_CONCURRENCY_NONE even if this function
+ * returns %TRUE if you don't have another possibility to find a
+ * concurrency ID in which case user IDs are used to determine which request
+ * to transform.
+ *
+ * Both request need to be of type %INF_ADOPTED_REQUEST_DO, and their state
+ * vectors must be the same.
+ *
+ * Returns: Whether transformation of @request against @against requires a
+ * concurrency ID.
+ */
+gboolean
+inf_adopted_request_need_concurrency_id(InfAdoptedRequest* request,
+                                        InfAdoptedRequest* against)
+{
+  InfAdoptedRequestPrivate* request_priv;
+  InfAdoptedRequestPrivate* against_priv;
+  
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), FALSE);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(against), FALSE);
+  
+  request_priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+  against_priv = INF_ADOPTED_REQUEST_PRIVATE(against);
+  
+  g_return_val_if_fail(request_priv->type == INF_ADOPTED_REQUEST_DO, FALSE);
+  g_return_val_if_fail(against_priv->type == INF_ADOPTED_REQUEST_DO, FALSE);
+  g_return_val_if_fail(request_priv->user_id != against_priv->user_id, FALSE);
+  
+  g_return_val_if_fail(
+    inf_adopted_state_vector_compare(
+      request_priv->vector,
+      against_priv->vector
+    ) == 0,
+    FALSE
+  );
+
+  return inf_adopted_operation_need_concurrency_id(
+    request_priv->operation,
+    against_priv->operation
+  );
+}
+
+/**
+ * inf_adopted_request_get_concurrency_id:
+ * @request: The request to transform.
+ * @against: The request to transform against.
+ *
+ * Returns a concurrency ID for transformation of @operation against @against.
+ * It always returns %INF_ADOPTED_CONCURRENCY_NONE when
+ * inf_adopted_request_need_concurrency_id() returns %TRUE (but that's not
+ * necessarily true the other way around), since it is not possible to decide
+ * which operation to transform without any additional information.
+ *
+ * However, the function can be called on the same requests in a previous
+ * state. In some cases, a decision can be made based on these previous
+ * requests. This can be used as a concurrency ID for a call to
+ * inf_adopted_request_transform(). If this does not yield a decision, it is
+ * still possible to call inf_adopted_request_transform() with
+ * %INF_ADOPTED_CONCURRENCY_NONE as concurrency ID in which case an arbitrary
+ * request will be transformed, based on the user IDs of the requests.
+ *
+ * Both requests must be of type %INF_ADOPTED_REQUEST_DO, and their state
+ * vectors must be the same.
+ *
+ * Returns: A concurrency ID between @operation and @against. Can be
+ * %INF_ADOPTED_CONCURRENCY_NONE in case no decision can be made.
+ */
+InfAdoptedConcurrencyId
+inf_adopted_request_get_concurrency_id(InfAdoptedRequest* request,
+                                       InfAdoptedRequest* against)
+{
+  InfAdoptedRequestPrivate* request_priv;
+  InfAdoptedRequestPrivate* against_priv;
+  
+  g_return_val_if_fail(
+    INF_ADOPTED_IS_REQUEST(request),
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+  g_return_val_if_fail(
+    INF_ADOPTED_IS_REQUEST(against),
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+  
+  request_priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+  against_priv = INF_ADOPTED_REQUEST_PRIVATE(against);
+  
+  g_return_val_if_fail(
+    request_priv->type == INF_ADOPTED_REQUEST_DO,
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+  g_return_val_if_fail(
+    against_priv->type == INF_ADOPTED_REQUEST_DO,
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+  g_return_val_if_fail(
+    request_priv->user_id != against_priv->user_id,
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+  
+  g_return_val_if_fail(
+    inf_adopted_state_vector_compare(
+      request_priv->vector,
+      against_priv->vector
+    ) == 0,
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
+
+  return inf_adopted_operation_get_concurrency_id(
+    request_priv->operation,
+    against_priv->operation
+  );
+}
+
+/**
  * inf_adopted_request_transform:
  * @request: The request to transform.
  * @against: The request to transform against.
+ * @concurrency_id: A concurrency ID for the transformation.
  *
  * Transforms the operation of @request against the operation of @against.
  * Both requests must be of type %INF_ADOPTED_REQUEST_DO, and their state
  * vectors must be the same.
+ *
+ * @concurrency_id can be %INF_ADOPTED_CONCURRENCY_NONE even if the
+ * transformation requires a concurrency ID (see
+ * inf_adopted_request_need_concurrency_id()). In that case, it is assumed
+ * that it does not matter which operation to transform, and user IDs are
+ * used to determine a concurrency ID for the transformation.
  **/
 void
 inf_adopted_request_transform(InfAdoptedRequest* request,
-                              InfAdoptedRequest* against)
+                              InfAdoptedRequest* against,
+                              InfAdoptedConcurrencyId concurrency_id)
 {
   InfAdoptedRequestPrivate* request_priv;
   InfAdoptedRequestPrivate* against_priv;
@@ -555,12 +683,20 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
     ) == 0
   );
 
-  if(request_priv->user_id > against_priv->user_id)
+  if(concurrency_id != INF_ADOPTED_CONCURRENCY_NONE)
   {
     new_operation = inf_adopted_operation_transform(
       request_priv->operation,
       against_priv->operation,
-      +1
+      concurrency_id
+    );
+  }
+  else if(request_priv->user_id > against_priv->user_id)
+  {
+    new_operation = inf_adopted_operation_transform(
+      request_priv->operation,
+      against_priv->operation,
+      INF_ADOPTED_CONCURRENCY_OTHER
     );
   }
   else
@@ -568,7 +704,7 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
     new_operation = inf_adopted_operation_transform(
       request_priv->operation,
       against_priv->operation,
-      -1
+      INF_ADOPTED_CONCURRENCY_SELF
     );
   }
 

@@ -45,4 +45,8 @@ EXTRA_DIST = \
 	test-44.xml \
 	test-45.xml \
 	test-46.xml \
-	test-47.xml
+	test-47.xml \
+	test-48.xml \
+	test-49.xml \
+	test-50.xml \
+	test-51.xml

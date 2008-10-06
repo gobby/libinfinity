@@ -19,7 +19,6 @@ INF_TEXT_DEFAULT_DELETE_OPERATION_GET_CLASS
 <FILE>inf-text-insert-operation</FILE>
 InfTextInsertOperationIface
 inf_text_insert_operation_get_position
-inf_text_insert_operation_get_pword
 inf_text_insert_operation_get_length
 inf_text_insert_operation_transform_insert
 inf_text_insert_operation_transform_delete
@@ -180,22 +179,6 @@ inf_text_move_operation_get_type
 INF_TEXT_MOVE_OPERATION_CLASS
 INF_TEXT_IS_MOVE_OPERATION_CLASS
 INF_TEXT_MOVE_OPERATION_GET_CLASS
-</SECTION>
-
-<SECTION>
-<FILE>inf-text-pword</FILE>
-InfTextPword
-inf_text_pword_new
-inf_text_pword_new_proceed
-inf_text_pword_copy
-inf_text_pword_free
-inf_text_pword_get_size
-inf_text_pword_get_current
-inf_text_pword_get_origin
-inf_text_pword_compare
-<SUBSECTION Standard>
-INF_TEXT_TYPE_PWORD
-inf_text_pword_get_type
 </SECTION>
 
 <SECTION>

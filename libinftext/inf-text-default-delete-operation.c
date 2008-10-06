@@ -164,10 +164,36 @@ inf_text_default_delete_operation_get_property(GObject* object,
   }
 }
 
+static gboolean
+inf_text_default_delete_operation_need_concurrency_id(
+  InfAdoptedOperation* operation,
+  InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(operation));
+
+  return inf_text_delete_operation_need_concurrency_id(
+    INF_TEXT_DELETE_OPERATION(operation),
+    against
+  );
+}
+
+static InfAdoptedConcurrencyId
+inf_text_default_delete_operation_get_concurrency_id(
+  InfAdoptedOperation* operation,
+  InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(operation));
+
+  return inf_text_delete_operation_get_concurrency_id(
+    INF_TEXT_DELETE_OPERATION(operation),
+    against
+  );
+}
+
 static InfAdoptedOperation*
 inf_text_default_delete_operation_transform(InfAdoptedOperation* operation,
                                             InfAdoptedOperation* against,
-                                            gint concurrency_id)
+                                            InfAdoptedConcurrencyId cid)
 {
   g_assert(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(operation));
 
@@ -176,7 +202,7 @@ inf_text_default_delete_operation_transform(InfAdoptedOperation* operation,
     return inf_text_delete_operation_transform_insert(
       INF_TEXT_DELETE_OPERATION(operation),
       INF_TEXT_INSERT_OPERATION(against),
-      concurrency_id
+      cid
     );
   }
   else if(INF_TEXT_IS_DELETE_OPERATION(against))
@@ -184,7 +210,7 @@ inf_text_default_delete_operation_transform(InfAdoptedOperation* operation,
     return inf_text_delete_operation_transform_delete(
       INF_TEXT_DELETE_OPERATION(operation),
       INF_TEXT_DELETE_OPERATION(against),
-      concurrency_id
+      cid
     );
   }
   else
@@ -416,6 +442,10 @@ inf_text_default_delete_operation_operation_init(gpointer g_iface,
   InfAdoptedOperationIface* iface;
   iface = (InfAdoptedOperationIface*)g_iface;
 
+  iface->need_concurrency_id =
+    inf_text_default_delete_operation_need_concurrency_id;
+  iface->get_concurrency_id =
+    inf_text_default_delete_operation_get_concurrency_id;
   iface->transform = inf_text_default_delete_operation_transform;
   iface->copy = inf_text_default_delete_operation_copy;
   iface->get_flags = inf_text_default_delete_operation_get_flags;

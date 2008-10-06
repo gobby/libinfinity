@@ -223,6 +223,8 @@ inf_adopted_algorithm_least_common_successor(InfAdoptedAlgorithm* algorithm,
     );
   }
 
+  g_assert(inf_adopted_state_vector_causally_before(first, result));
+  g_assert(inf_adopted_state_vector_causally_before(second, result));
   return result;
 }
 
@@ -286,6 +288,10 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
     {
       log = inf_adopted_user_get_request_log(user);
       request = inf_adopted_request_log_original_request(log, request);
+
+      /* TODO: If other requests need to be undone or redone before request
+       * can be undone or redone, then we need to include these in the
+       * vdiff. */
 
       diff = inf_adopted_algorithm_state_vector_vdiff(
         algorithm,
@@ -794,6 +800,8 @@ inf_adopted_algorithm_is_reachable(InfAdoptedAlgorithm* algorithm,
 }
 
 /* Required by inf_adopted_algorithm_transform_request() */
+/* TODO: Remove can_cache parameter, but just check whether request both
+ * affects the buffer and is reversible? */
 static InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
@@ -812,70 +820,89 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedStateVector* at,
                                         gboolean can_cache)
 {
+  InfAdoptedRequest* request_at;
+  InfAdoptedRequest* against_at;
+  InfAdoptedConcurrencyId concurrency_id;
   InfAdoptedStateVector* lcs;
-  InfAdoptedStateVector* request_vec;
-  InfAdoptedStateVector* against_vec;
   InfAdoptedRequest* lcs_against;
   InfAdoptedRequest* lcs_request;
-  InfAdoptedRequest* against_copy;
+  InfAdoptedRequest* request_copy;
   InfAdoptedRequest* result;
 
-  request_vec = inf_adopted_request_get_vector(request); 
-  against_vec = inf_adopted_request_get_vector(against);
-
-  g_assert(inf_adopted_state_vector_causally_before(request_vec, at));
-  g_assert(inf_adopted_state_vector_causally_before(against_vec, at));
-
-  /* Find least common successor and transform both requests
-   * through that point. */
-  lcs = inf_adopted_algorithm_least_common_successor(
-    algorithm,
-    request_vec,
-    against_vec
+  g_assert(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(request),
+      at
+    )
+  );
+  g_assert(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(against),
+      at
+    )
   );
 
-  g_assert(inf_adopted_state_vector_causally_before(request_vec, lcs));
-  g_assert(inf_adopted_state_vector_causally_before(against_vec, lcs));
-  g_assert(inf_adopted_state_vector_causally_before(lcs, at));
+  /* TODO: We wouldn't need this copy any longer when requests were
+   * immutable. But we need to profile that. */
+  request_copy = inf_adopted_request_copy(request);
 
-#if 1
-  lcs_against = inf_adopted_algorithm_translate_request(
+  against_at = inf_adopted_algorithm_translate_request(
     algorithm,
     against,
-    lcs,
+    at,
     TRUE
   );
 
-  lcs_request = inf_adopted_algorithm_translate_request(
+  request_at = inf_adopted_algorithm_translate_request(
     algorithm,
     request,
-    lcs,
-    can_cache
-  );
-#else
-  lcs_against = against;
-  lcs_request = request;
-#endif
-  inf_adopted_state_vector_free(lcs);
-
-  against_copy = inf_adopted_algorithm_translate_request(
-    algorithm,
-    lcs_against,
-    at,
-    TRUE
-  );
-
-  result = inf_adopted_algorithm_translate_request(
-    algorithm,
-    lcs_request,
     at,
     can_cache
   );
+
+  concurrency_id = INF_ADOPTED_CONCURRENCY_NONE;
+  if(inf_adopted_request_need_concurrency_id(request_at, against_at) == TRUE)
+  {
+    lcs = inf_adopted_algorithm_least_common_successor(
+      algorithm,
+      inf_adopted_request_get_vector(request_copy),
+      inf_adopted_request_get_vector(against)
+    );
+
+    g_assert(inf_adopted_state_vector_causally_before(lcs, at));
+
+    if(inf_adopted_state_vector_compare(lcs, at) != 0)
+    {
+      lcs_against = inf_adopted_algorithm_translate_request(
+        algorithm,
+        against,
+        lcs,
+        TRUE
+      );
+
+      lcs_request = inf_adopted_algorithm_translate_request(
+        algorithm,
+        request_copy,
+        lcs,
+        can_cache
+      );
+
+      concurrency_id =
+        inf_adopted_request_get_concurrency_id(lcs_request, lcs_against);
+      /*printf("cid: %d\n", concurrency_id);*/
+    }
+
+    inf_adopted_state_vector_free(lcs);
+  }
+
+  g_object_unref(request_copy);
 
   if(can_cache)
-    result = inf_adopted_request_copy(result);
+    result = inf_adopted_request_copy(request_at);
+  else
+    result = request_at;
 
-  inf_adopted_request_transform(result, against_copy);
+  inf_adopted_request_transform(result, against_at, concurrency_id);
   return result;
 }
 

@@ -27,14 +27,14 @@
 typedef struct _InfTextDefaultInsertOperationPrivate
   InfTextDefaultInsertOperationPrivate;
 struct _InfTextDefaultInsertOperationPrivate {
-  InfTextPword* pword;
+  guint position;
   InfTextChunk* chunk;
 };
 
 enum {
   PROP_0,
 
-  PROP_PWORD,
+  PROP_POSITION,
   PROP_CHUNK
 };
 
@@ -52,7 +52,7 @@ inf_text_default_insert_operation_init(GTypeInstance* instance,
   operation = INF_TEXT_DEFAULT_INSERT_OPERATION(instance);
   priv = INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation);
 
-  priv->pword = NULL;
+  priv->position = 0;
   priv->chunk = NULL;
 }
 
@@ -66,7 +66,6 @@ inf_text_default_insert_operation_finalize(GObject* object)
   priv = INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation);
 
   inf_text_chunk_free(priv->chunk);
-  inf_text_pword_free(priv->pword);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -85,9 +84,8 @@ inf_text_default_insert_operation_set_property(GObject* object,
 
   switch(prop_id)
   {
-  case PROP_PWORD:
-    g_assert(priv->pword == NULL); /* construct only */
-    priv->pword = (InfTextPword*)g_value_dup_boxed(value);
+  case PROP_POSITION:
+    priv->position = g_value_get_uint(value);
     break;
   case PROP_CHUNK:
     g_assert(priv->chunk == NULL); /* construct only */
@@ -113,8 +111,8 @@ inf_text_default_insert_operation_get_property(GObject* object,
 
   switch(prop_id)
   {
-  case PROP_PWORD:
-    g_value_set_boxed(value, priv->pword);
+  case PROP_POSITION:
+    g_value_set_uint(value, priv->position);
     break;
   case PROP_CHUNK:
     g_value_set_boxed(value, priv->chunk);
@@ -125,10 +123,37 @@ inf_text_default_insert_operation_get_property(GObject* object,
   }
 }
 
+static gboolean
+inf_text_default_insert_operation_need_concurrency_id(
+  InfAdoptedOperation* operation,
+  InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
+
+  return inf_text_insert_operation_need_concurrency_id(
+    INF_TEXT_INSERT_OPERATION(operation),
+    against
+  );
+}
+
+static InfAdoptedConcurrencyId
+inf_text_default_insert_operation_get_concurrency_id(
+  InfAdoptedOperation* operation,
+  InfAdoptedOperation* against)
+{
+  g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
+
+  return inf_text_insert_operation_get_concurrency_id(
+    INF_TEXT_INSERT_OPERATION(operation),
+    against
+  );
+}
+
+
 static InfAdoptedOperation*
 inf_text_default_insert_operation_transform(InfAdoptedOperation* operation,
                                             InfAdoptedOperation* against,
-                                            gint concurrency_id)
+                                            InfAdoptedConcurrencyId cid)
 {
   g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
 
@@ -137,7 +162,7 @@ inf_text_default_insert_operation_transform(InfAdoptedOperation* operation,
     return inf_text_insert_operation_transform_insert(
       INF_TEXT_INSERT_OPERATION(operation),
       INF_TEXT_INSERT_OPERATION(against),
-      concurrency_id
+      cid
     );
   }
   else if(INF_TEXT_IS_DELETE_OPERATION(against))
@@ -145,7 +170,7 @@ inf_text_default_insert_operation_transform(InfAdoptedOperation* operation,
     return inf_text_insert_operation_transform_delete(
       INF_TEXT_INSERT_OPERATION(operation),
       INF_TEXT_DELETE_OPERATION(against),
-      concurrency_id
+      cid
     );
   }
   else
@@ -164,7 +189,7 @@ inf_text_default_insert_operation_copy(InfAdoptedOperation* operation)
   return INF_ADOPTED_OPERATION(
     g_object_new(
       INF_TEXT_TYPE_DEFAULT_INSERT_OPERATION,
-      "pword", priv->pword,
+      "position", priv->position,
       "chunk", priv->chunk,
       NULL
     )
@@ -192,7 +217,7 @@ inf_text_default_insert_operation_apply(InfAdoptedOperation* operation,
 
   inf_text_buffer_insert_chunk(
     INF_TEXT_BUFFER(buffer),
-    inf_text_pword_get_current(priv->pword),
+    priv->position,
     priv->chunk,
     INF_USER(by)
   );
@@ -205,17 +230,14 @@ inf_text_default_insert_operation_revert(InfAdoptedOperation* operation)
   priv = INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation);
 
   return INF_ADOPTED_OPERATION(
-    inf_text_default_delete_operation_new(
-      inf_text_pword_get_current(priv->pword),
-      priv->chunk
-    )
+    inf_text_default_delete_operation_new(priv->position, priv->chunk)
   );
 }
 
-static InfTextPword*
-inf_text_default_insert_operation_get_pword(InfTextInsertOperation* operation)
+static guint
+inf_text_default_insert_operation_get_position(InfTextInsertOperation* op)
 {
-  return INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation)->pword;
+  return INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(op)->position;
 }
 
 static guint
@@ -233,20 +255,17 @@ inf_text_default_insert_operation_transform_position(
   guint position)
 {
   InfTextDefaultInsertOperationPrivate* priv;
-  InfTextPword* pword;
   GObject* result;
 
   priv = INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation);
-  pword = inf_text_pword_new_proceed(priv->pword, position);
 
   result = g_object_new(
     INF_TEXT_TYPE_DEFAULT_INSERT_OPERATION,
-    "pword", pword,
+    "position", position,
     "chunk", priv->chunk,
     NULL
   );
 
-  inf_text_pword_free(pword);
   return INF_TEXT_INSERT_OPERATION(result);
 }
 
@@ -271,12 +290,14 @@ inf_text_default_insert_operation_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_PWORD,
-    g_param_spec_boxed(
-      "pword",
-      "Pword",
-      "Insert position and transformation history",
-      INF_TEXT_TYPE_PWORD,
+    PROP_POSITION,
+    g_param_spec_uint(
+      "position",
+      "Position",
+      "Insertion position",
+      0,
+      G_MAXUINT,
+      0,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -301,6 +322,10 @@ inf_text_default_insert_operation_operation_init(gpointer g_iface,
   InfAdoptedOperationIface* iface;
   iface = (InfAdoptedOperationIface*)g_iface;
 
+  iface->need_concurrency_id =
+    inf_text_default_insert_operation_need_concurrency_id;
+  iface->get_concurrency_id =
+    inf_text_default_insert_operation_get_concurrency_id;
   iface->transform = inf_text_default_insert_operation_transform;
   iface->copy = inf_text_default_insert_operation_copy;
   iface->get_flags = inf_text_default_insert_operation_get_flags;
@@ -317,7 +342,7 @@ inf_text_default_insert_operation_insert_operation_init(gpointer g_iface,
   InfTextInsertOperationIface* iface;
   iface = (InfTextInsertOperationIface*)g_iface;
 
-  iface->get_pword = inf_text_default_insert_operation_get_pword;
+  iface->get_position = inf_text_default_insert_operation_get_position;
   iface->get_length = inf_text_default_insert_operation_get_length;
   iface->transform_position =
     inf_text_default_insert_operation_transform_position;
@@ -393,20 +418,16 @@ inf_text_default_insert_operation_new(guint pos,
                                       InfTextChunk* chunk)
 {
   GObject* object;
-  InfTextPword* pword;
 
   g_return_val_if_fail(chunk != NULL, NULL);
 
-  pword = inf_text_pword_new(pos);
-
   object = g_object_new(
     INF_TEXT_TYPE_DEFAULT_INSERT_OPERATION,
-    "pword", pword,
+    "position", pos,
     "chunk", chunk,
     NULL
   );
 
-  inf_text_pword_free(pword);
   return INF_TEXT_DEFAULT_INSERT_OPERATION(object);
 }
 

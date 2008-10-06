@@ -18,6 +18,7 @@
 
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
 
 /**
  * SECTION:inf-adopted-no-operation
@@ -43,6 +44,21 @@ inf_adopted_no_operation_class_init(gpointer g_class,
                                     gpointer class_data)
 {
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
+}
+
+static gboolean
+inf_adopted_no_operation_need_concurrency_id(InfAdoptedOperation* operation,
+                                             InfAdoptedOperation* against)
+{
+  return FALSE;
+}
+
+static InfAdoptedConcurrencyId
+inf_adopted_no_operation_get_concurrency_id(InfAdoptedOperation* operation,
+                                            InfAdoptedOperation* against)
+{
+  _inf_adopted_concurrency_warning(INF_ADOPTED_TYPE_NO_OPERATION);
+  return INF_ADOPTED_CONCURRENCY_NONE;
 }
 
 static InfAdoptedOperation*
@@ -86,6 +102,8 @@ inf_adopted_no_operation_operation_init(gpointer g_iface,
   InfAdoptedOperationIface* iface;
   iface = (InfAdoptedOperationIface*)g_iface;
 
+  iface->need_concurrency_id = inf_adopted_no_operation_need_concurrency_id;
+  iface->get_concurrency_id = inf_adopted_no_operation_get_concurrency_id;
   iface->transform = inf_adopted_no_operation_transform;
   iface->copy = inf_adopted_no_operation_copy;
   iface->get_flags = inf_adopted_no_operation_get_flags;

@@ -1,4 +1,3 @@
-inf_text_pword_get_type
 inf_text_default_delete_operation_get_type
 inf_text_insert_operation_get_type
 inf_text_remote_delete_operation_get_type

@@ -27,9 +27,10 @@
  * may be a result of some transformation.
  **/
 
-
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
+
+#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
 
 typedef struct _InfAdoptedSplitOperationPrivate InfAdoptedSplitOperationPrivate;
 struct _InfAdoptedSplitOperationPrivate {
@@ -211,10 +212,32 @@ inf_adopted_split_operation_class_init(gpointer g_class,
   );
 }
 
+static gboolean
+inf_adopted_split_operation_need_concurrency_id(InfAdoptedOperation* op,
+                                                InfAdoptedOperation* against)
+{
+  InfAdoptedSplitOperation* split;
+  InfAdoptedSplitOperationPrivate* priv;
+
+  split = INF_ADOPTED_SPLIT_OPERATION(op);
+  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
+
+  return inf_adopted_operation_need_concurrency_id(priv->first, against) ||
+         inf_adopted_operation_need_concurrency_id(priv->second, against);
+}
+
+static InfAdoptedConcurrencyId
+inf_adopted_split_operation_get_concurrency_id(InfAdoptedOperation* operation,
+                                               InfAdoptedOperation* against)
+{
+  _inf_adopted_concurrency_warning(INF_ADOPTED_TYPE_SPLIT_OPERATION);
+  return INF_ADOPTED_CONCURRENCY_NONE;
+}
+
 static InfAdoptedOperation*
 inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
                                       InfAdoptedOperation* against,
-                                      gint concurrency_id)
+                                      InfAdoptedConcurrencyId concurrency_id)
 {
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
@@ -376,6 +399,9 @@ inf_adopted_split_operation_operation_init(gpointer g_iface,
   InfAdoptedOperationIface* iface;
   iface = (InfAdoptedOperationIface*)g_iface;
 
+  iface->need_concurrency_id =
+    inf_adopted_split_operation_need_concurrency_id;
+  iface->get_concurrency_id = inf_adopted_split_operation_get_concurrency_id;
   iface->transform = inf_adopted_split_operation_transform;
   iface->copy = inf_adopted_split_operation_copy;
   iface->get_flags = inf_adopted_split_operation_get_flags;

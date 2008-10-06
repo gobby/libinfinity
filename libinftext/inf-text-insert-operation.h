@@ -19,7 +19,6 @@
 #ifndef __INF_TEXT_INSERT_OPERATION_H__
 #define __INF_TEXT_INSERT_OPERATION_H__
 
-#include <libinftext/inf-text-pword.h>
 #include <libinftext/inf-text-operations.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
 
@@ -38,7 +37,7 @@ struct _InfTextInsertOperationIface {
   GTypeInterface parent;
 
   /* Virtual table */
-  InfTextPword*(*get_pword)(InfTextInsertOperation* operation);
+  guint(*get_position)(InfTextInsertOperation* operation);
 
   guint(*get_length)(InfTextInsertOperation* operation);
 
@@ -52,21 +51,26 @@ inf_text_insert_operation_get_type(void) G_GNUC_CONST;
 guint
 inf_text_insert_operation_get_position(InfTextInsertOperation* operation);
 
-InfTextPword*
-inf_text_insert_operation_get_pword(InfTextInsertOperation* operation);
-
 guint
 inf_text_insert_operation_get_length(InfTextInsertOperation* operation);
+
+gboolean
+inf_text_insert_operation_need_concurrency_id(InfTextInsertOperation* op,
+                                              InfAdoptedOperation* against);
+
+InfAdoptedConcurrencyId
+inf_text_insert_operation_get_concurrency_id(InfTextInsertOperation* op,
+                                             InfAdoptedOperation* against);
 
 InfAdoptedOperation*
 inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
                                            InfTextInsertOperation* against,
-                                           gint concurrency_id);
+                                           InfAdoptedConcurrencyId cid);
 
 InfAdoptedOperation*
 inf_text_insert_operation_transform_delete(InfTextInsertOperation* operation,
                                            InfTextDeleteOperation* against,
-                                           gint concurrency_id);
+                                           InfAdoptedConcurrencyId cid);
 
 G_END_DECLS
 

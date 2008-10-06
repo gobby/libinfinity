@@ -109,9 +109,18 @@ inf_adopted_request_get_user_id(InfAdoptedRequest* request);
 InfAdoptedOperation*
 inf_adopted_request_get_operation(InfAdoptedRequest* request);
 
+gboolean
+inf_adopted_request_need_concurrency_id(InfAdoptedRequest* request,
+                                        InfAdoptedRequest* against);
+
+InfAdoptedConcurrencyId
+inf_adopted_request_get_concurrency_id(InfAdoptedRequest* request,
+                                       InfAdoptedRequest* against);
+
 void
 inf_adopted_request_transform(InfAdoptedRequest* request,
-                              InfAdoptedRequest* against);
+                              InfAdoptedRequest* against,
+                              InfAdoptedConcurrencyId concurrency_id);
 
 void
 inf_adopted_request_mirror(InfAdoptedRequest* request,

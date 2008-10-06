@@ -41,6 +41,21 @@ typedef struct _InfAdoptedOperation InfAdoptedOperation;
 typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
 
 /**
+ * InfAdoptedConcurrencyId:
+ * @INF_ADOPTED_CONCURRENCY_SELF: Transform the operation itself.
+ * @INF_ADOPTED_CONCURRENCY_NONE: Unspecified which operation to transform.
+ * @INF_ADOPTED_CONCURRENCY_OTHER: Transform the other operation.
+ *
+ * A concurrency ID is used to determine which operation to transform in case
+ * two similar operations are transformed against each other.
+ */
+typedef enum _InfAdoptedConcurrencyId {
+  INF_ADOPTED_CONCURRENCY_SELF = 1,
+  INF_ADOPTED_CONCURRENCY_NONE = 0,
+  INF_ADOPTED_CONCURRENCY_OTHER = -1
+} InfAdoptedConcurrencyId;
+
+/**
  * InfAdoptedOperationFlags:
  * @INF_ADOPTED_OPERATION_AFFECTS_BUFFER: The operation changes the content of
  * the buffer.
@@ -57,6 +72,12 @@ typedef enum _InfAdoptedOperationFlags {
 
 /**
  * InfAdoptedOperationIface:
+ * @need_concurrency_id: Virtual function to determine whether a concurrency
+ * ID is required to transform @operation against @against. <!-- The function
+ * is considered to return always %FALSE if not implemented. -->
+ * @get_concurrency_id: Virtual function to obtain a concurrency ID for
+ * transforming @op against @against. <!-- The function is considered to
+ * always return %INF_ADOPTED_CONCURRENCY_NONE if not implemented. -->
  * @transform: Virtual function that transform @operation against @against and
  * returns a new #InfAdoptedOperation as the result of the transformation.
  * @concurrency_id is either 1 or -1 and can be used to make a decision in
@@ -89,9 +110,15 @@ struct _InfAdoptedOperationIface {
   GTypeInterface parent;
 
   /*< public >*/
+  gboolean (*need_concurrency_id)(InfAdoptedOperation* operation,
+                                  InfAdoptedOperation* against);
+
+  InfAdoptedConcurrencyId (*get_concurrency_id)(InfAdoptedOperation* op,
+                                                InfAdoptedOperation* against);
+
   InfAdoptedOperation* (*transform)(InfAdoptedOperation* operation,
                                     InfAdoptedOperation* against,
-                                    gint concurrency_id);
+                                    InfAdoptedConcurrencyId concurrency_id);
 
   InfAdoptedOperation* (*copy)(InfAdoptedOperation* operation);
 
@@ -116,11 +143,21 @@ struct _InfAdoptedOperationIface {
  */
 
 GType
+inf_adopted_concurrency_id_get_type(void) G_GNUC_CONST;
+
+GType
 inf_adopted_operation_flags_get_type(void) G_GNUC_CONST;
 
 GType
 inf_adopted_operation_get_type(void) G_GNUC_CONST;
 
+gboolean
+inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
+                                          InfAdoptedOperation* against);
+
+InfAdoptedConcurrencyId
+inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
+                                         InfAdoptedOperation* against);
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
                                 InfAdoptedOperation* against,

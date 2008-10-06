@@ -13,16 +13,24 @@
   <insert pos="0">a</insert>
  </request>
 
- <request time="" user="1">
+ <request time="" user="2">
   <insert pos="0">b</insert>
  </request>
 
- <request time="1:1" user="2">
+ <request time="" user="1">
   <delete pos="0" len="1" />
  </request>
 
- <request time="1:1" user="2">
-  <delete pos="0" len="1" />
+ <request time="" user="1">
+  <undo />
+ </request>
+
+ <request time="" user="1">
+  <undo />
+ </request>
+
+ <request time="" user="2">
+  <undo />
  </request>
 
  <final-buffer>

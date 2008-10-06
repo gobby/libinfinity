@@ -14,14 +14,22 @@
  </request>
 
  <request time="" user="1">
-  <delete pos="0" len="1" />
+  <delete pos="0" len="0" />
  </request>
 
- <request time="1:2" user="2">
+ <request time="" user="2">
   <insert pos="0">a</insert>
  </request>
 
- <request time="2:1" user="1">
+ <request time="" user="2">
+  <undo />
+ </request>
+
+ <request time="" user="2">
+  <redo />
+ </request>
+
+ <request time="" user="1">
   <undo />
  </request>
 

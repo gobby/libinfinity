@@ -10,19 +10,19 @@
  </initial-buffer>
 
  <request time="" user="1">
-  <insert pos="0">ABCDE</insert>
+  <insert pos="0">a</insert>
+ </request>
+
+ <request time="" user="1">
+  <insert pos="0">b</insert>
  </request>
 
  <request time="1:1" user="2">
-  <delete pos="2" len="2" />
+  <delete pos="0" len="1" />
  </request>
 
- <request time="" user="2">
-  <undo />
- </request>
-
- <request time="2:2" user="1">
-  <undo />
+ <request time="1:1" user="2">
+  <delete pos="0" len="1" />
  </request>
 
  <final-buffer>

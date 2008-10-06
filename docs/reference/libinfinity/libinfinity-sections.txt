@@ -620,6 +620,9 @@ inf_central_method_send_to_net
 InfAdoptedOperation
 InfAdoptedOperationIface
 InfAdoptedOperationFlags
+InfAdoptedConcurrencyId
+inf_adopted_operation_need_concurrency_id
+inf_adopted_operation_get_concurrency_id
 inf_adopted_operation_transform
 inf_adopted_operation_copy
 inf_adopted_operation_get_flags
@@ -635,6 +638,7 @@ inf_adopted_operation_flags_get_type
 INF_ADOPTED_OPERATION_GET_IFACE
 inf_adopted_operation_get_type
 INF_ADOPTED_TYPE_OPERATION_FLAGS
+inf_adopted_concurrency_id_get_type
 </SECTION>
 
 <SECTION>
@@ -670,6 +674,8 @@ inf_adopted_request_get_request_type
 inf_adopted_request_get_vector
 inf_adopted_request_get_user_id
 inf_adopted_request_get_operation
+inf_adopted_request_need_concurrency_id
+inf_adopted_request_get_concurrency_id
 inf_adopted_request_transform
 inf_adopted_request_mirror
 inf_adopted_request_fold

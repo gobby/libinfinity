@@ -1,5 +1,68 @@
 2008-10-06  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-operation.h:
+	* libinfinity/adopted/inf-adopted-operation.c: Added two new virtual
+	functions, need_concurrency_id() and get_concurrency_id(). These are
+	used to correctly handle situations when two requests insert text at
+	the same position concurrently.
+
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request.c: Added
+	inf_adopted_request_need_concurrency_id() and
+	inf_adopted_request_get_concurrency_id() which are simple wrapper
+	functions for the underlying operation functions.
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: If a concurrency ID is
+	needed during transformation, then acquire one from the same requests
+	in a previous state.
+
+	* libinfinity/adopted/inf-adopted-no-operation.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c: Implement the two
+	new virtual functions.
+
+	* libinftext/inf-text-pword.h:
+	* libinftext/inf-text-pword.c: Removed, since pwords are no longer
+	used. These did not handle the situation described above well enough,
+	since the algorithm did not pass one of the tests in test/session
+	since the request cache has been introduced (see my change from
+	2008-02-22). The test in question is now test #28.
+	
+	Also, the adOPTed algorithm relies on the fact that it must not matter
+	on which path a request has been transformed to reach a certain state.
+	The pword concept did not fulfill this requirement.
+
+	* libinftext/Makefile.am: Removed the files from the build.
+
+	* libinftext/inf-text-insert-operation.h:
+	* libinftext/inf-text-insert-operation.c: Added
+	inf_text_insert_operation_need_concurrency_id() and
+	inf_text_insert_operation_get_concurrency_id(), and replaced the
+	get_pword() virtual function by get_position().
+
+	* libinftext/inf-text-delete-operation.h:
+	* libinftext/inf-text-delete-operation.c: Added
+	inf_text_delete_operation_need_concurrency_id() and
+	inf_text_delete_operation_get_concurrency_id().
+
+	* libinftext/inf-text-default-insert-operation.c:
+	* libinftext/inf-text-default-delete-operation.c:
+	* libinftext/inf-text-remote-delete-operation.c:
+	* libinftext/inf-text-move-operation.c: Implement the two new
+	virtual functions from InfAdoptedOperation, and adapt to the
+	get_pword() -> get_position() change in InfTextDefaultInsertOperation.
+
+	* test/inf-test-text-operations.c: Correctly supply concurrency IDs
+	for the C2 tests to pass.
+
+	* test/inf-test-text-session.c: Always show the random seed used, also
+	if given.
+
+	* test/session/*.xml: Regenerated tests.
+
+	* test/session/Makefile.am: Added the new files to the distribution.
+
+2008-10-06  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-i18n.h:
 	* libinfinity/inf-i18n.c: Added vim modelines.
 

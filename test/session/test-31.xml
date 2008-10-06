@@ -7,26 +7,24 @@
  <user id="5" />
 
  <initial-buffer>
-  <segment author="0">ab</segment>
  </initial-buffer>
 
  <request time="" user="1">
-  <delete pos="0" len="1" />
+  <insert pos="0">a</insert>
  </request>
 
- <request time="1:1" user="2">
-  <delete pos="0" len="1" />
+ <request time="" user="1">
+  <insert pos="0">b</insert>
  </request>
 
- <request time="2:1" user="1">
+ <request time="" user="1">
   <undo />
  </request>
 
- <request time="1:1" user="2">
+ <request time="" user="1">
   <undo />
  </request>
 
  <final-buffer>
-  <segment author="0">ab</segment>
  </final-buffer>
 </infinote-test>

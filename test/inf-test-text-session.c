@@ -368,15 +368,17 @@ int main(int argc, char* argv[])
   {
     rseed = atoi(argv[1]);
     if(rseed > 0) dirarg = 2;
+    else rseed = time(NULL);
   }
   else
   {
     rseed = time(NULL);
-    printf("Using random seed %u\n", rseed);
   }
 
-  srand(rseed);
+  printf("Using random seed %u\n", rseed);
+
   g_type_init();
+  srand(rseed);
 
   if(argc > dirarg)
     dir = argv[dirarg];

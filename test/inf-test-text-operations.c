@@ -23,7 +23,6 @@
 #include <libinftext/inf-text-default-buffer.h>
 #include <libinftext/inf-text-buffer.h>
 #include <libinftext/inf-text-chunk.h>
-#include <libinftext/inf-text-pword.h>
 #include <libinftext/inf-text-user.h>
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
@@ -52,54 +51,16 @@ static const operation_def OPERATIONS[] = {
   { OP_INS, 4, "b" },
   { OP_INS, 4, "c" },
   { OP_INS, 4, "a" },
-  { OP_INS, 2, "ac" }, /* ! */
+  { OP_INS, 2, "ac" },
   { OP_INS, 3, "bc" },
   { OP_INS, 2, "gro" },
   { OP_DEL, 0, GUINT_TO_POINTER(1) },
   { OP_DEL, 0, GUINT_TO_POINTER(5) },
-  { OP_DEL, 2, GUINT_TO_POINTER(7) }, /* ! */
-  { OP_DEL, 1, GUINT_TO_POINTER(9) } /* ! */
+  { OP_DEL, 2, GUINT_TO_POINTER(7) },
+  { OP_DEL, 1, GUINT_TO_POINTER(9) }
 };
 
 static const gchar EXAMPLE_DOCUMENT[] = "abcdefghijklmnopqrstuvwxyz";
-
-/* Useful for debugging in gdb */
-static G_GNUC_UNUSED void
-print_op(InfAdoptedOperation* op)
-{
-  InfAdoptedOperation* first;
-  InfAdoptedOperation* second;
-
-  if(INF_TEXT_IS_INSERT_OPERATION(op))
-  {
-    printf(
-      "insert(%u, [chunk])\n",
-      inf_text_insert_operation_get_position(INF_TEXT_INSERT_OPERATION(op))
-    );
-  }
-  else if(INF_TEXT_IS_DELETE_OPERATION(op))
-  {
-    printf(
-      "delete(%u/%u)\n",
-      inf_text_delete_operation_get_position(INF_TEXT_DELETE_OPERATION(op)),
-      inf_text_delete_operation_get_length(INF_TEXT_DELETE_OPERATION(op))
-    );
-  }
-  else if(INF_ADOPTED_IS_SPLIT_OPERATION(op))
-  {
-    g_object_get(G_OBJECT(op), "first", &first, "second", &second, NULL);
-
-    printf("split(");
-    print_op(first);
-    printf(", ");
-    print_op(second);
-    printf(")\n");
-  }
-  else
-  {
-    g_assert_not_reached();
-  }
-}
 
 static InfAdoptedOperation*
 def_to_operation(const operation_def* def,
@@ -153,19 +114,21 @@ static gboolean
 insert_operation_equal(InfTextDefaultInsertOperation* op1,
                        InfAdoptedOperation* op2)
 {
-  InfTextPword* pw1;
-  InfTextPword* pw2;
+  guint pos1;
+  guint pos2;
   int result;
 
   if(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(op2))
   {
-    pw1 = inf_text_insert_operation_get_pword(INF_TEXT_INSERT_OPERATION(op1));
-    pw2 = inf_text_insert_operation_get_pword(INF_TEXT_INSERT_OPERATION(op2));
+    pos1 = inf_text_insert_operation_get_position(
+      INF_TEXT_INSERT_OPERATION(op1)
+    );
+    pos2 = inf_text_insert_operation_get_position(
+      INF_TEXT_INSERT_OPERATION(op2)
+    );
 
-    if(inf_text_pword_get_current(pw1) != inf_text_pword_get_current(pw2))
-    {
+    if(pos1 != pos2)
       return FALSE;
-    }
     
     result = inf_text_chunk_equal(
       inf_text_default_insert_operation_get_chunk(op1),
@@ -254,7 +217,9 @@ split_operation_equal(InfAdoptedSplitOperation* op1,
   }
 
   /* Order in split operations does not matter. */
-  for(first_item = first_list; first_item != NULL; first_item = g_slist_next(first_item))
+  for(first_item = first_list;
+      first_item != NULL;
+      first_item = g_slist_next(first_item))
   {
     first_op = first_item->data;
 
@@ -334,7 +299,7 @@ test_c1(InfAdoptedOperation* op1,
         InfAdoptedOperation* op2,
         InfAdoptedUser* user1,
         InfAdoptedUser* user2,
-        gint cid12)
+        InfAdoptedConcurrencyId cid12)
 {
   InfTextDefaultBuffer* first;
   InfTextDefaultBuffer* second;
@@ -399,25 +364,40 @@ static gboolean
 test_c2(InfAdoptedOperation* op1,
         InfAdoptedOperation* op2,
         InfAdoptedOperation* op3,
-        int cid12,
-        int cid13,
-        int cid23)
+        InfAdoptedConcurrencyId cid12,
+        InfAdoptedConcurrencyId cid13,
+        InfAdoptedConcurrencyId cid23)
 {
   InfAdoptedOperation* temp1;
   InfAdoptedOperation* temp2;
   InfAdoptedOperation* result1;
   InfAdoptedOperation* result2;
+  InfAdoptedConcurrencyId cid;
   gboolean retval;
 
   temp1 = inf_adopted_operation_transform(op2, op1, -cid12);
   temp2 = inf_adopted_operation_transform(op3, op1, -cid13);
-  result1 = inf_adopted_operation_transform(temp2, temp1, -cid23);
+
+  cid = INF_ADOPTED_CONCURRENCY_NONE;
+  if(inf_adopted_operation_need_concurrency_id(temp2, temp1))
+    cid = inf_adopted_operation_get_concurrency_id(op3, op2);
+  if(cid == INF_ADOPTED_CONCURRENCY_NONE)
+    cid = -cid23;
+
+  result1 = inf_adopted_operation_transform(temp2, temp1, cid);
   g_object_unref(G_OBJECT(temp1));
   g_object_unref(G_OBJECT(temp2));
 
   temp1 = inf_adopted_operation_transform(op1, op2, cid12);
   temp2 = inf_adopted_operation_transform(op3, op2, -cid23);
-  result2 = inf_adopted_operation_transform(temp2, temp1, -cid13);
+
+  cid = INF_ADOPTED_CONCURRENCY_NONE;
+  if(inf_adopted_operation_need_concurrency_id(temp2, temp1))
+    cid = inf_adopted_operation_get_concurrency_id(op3, op1);
+  if(cid == INF_ADOPTED_CONCURRENCY_NONE)
+    cid = -cid13;
+
+  result2 = inf_adopted_operation_transform(temp2, temp1, cid);
   g_object_unref(G_OBJECT(temp1));
   g_object_unref(G_OBJECT(temp2));
 
@@ -428,14 +408,14 @@ test_c2(InfAdoptedOperation* op1,
   return retval;
 }
 
-static int
+static InfAdoptedConcurrencyId
 cid(InfAdoptedOperation** first,
     InfAdoptedOperation** second)
 {
   if(first > second)
-    return 1;
+    return INF_ADOPTED_CONCURRENCY_SELF;
   else if(first < second)
-    return -1;
+    return INF_ADOPTED_CONCURRENCY_OTHER;
   else
     g_assert_not_reached();
 }
