@@ -46,3 +46,5 @@ _inf_gettext(const char* msgid)
 	_inf_gettext_init();
 	return dgettext(GETTEXT_PACKAGE, msgid);
 }
+
+/* vim:set et sw=2 ts=2: */

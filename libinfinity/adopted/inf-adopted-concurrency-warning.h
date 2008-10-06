@@ -1,4 +1,3 @@
-/* libinfinity/inf-config.h.  Generated from inf-config.h.in by configure.  */
 /* infinote - Collaborative notetaking application
  * Copyright (C) 2007 Armin Burgmeier
  *
@@ -17,21 +16,19 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INF_I18N_H__
-#define __INF_I18N_H__
+#ifndef __INF_ADOPTED_CONCURRENCY_WARNING_H__
+#define __INF_ADOPTED_CONCURRENCY_WARNING_H__
 
-#include <libintl.h>
+#include <glib-object.h>
 
-#define _(String) _inf_gettext(String)
-#ifdef gettext_noop
-# define N_(String) gettext_noop(String)
-#else
-# define N_(String) (String)
-#endif
+G_BEGIN_DECLS
 
-void _inf_gettext_init(void);
-const char* _inf_gettext(const char* msgid);
+/*< private >*/
+void
+_inf_adopted_concurrency_warning(GType for_type);
 
-#endif /* __INF_I18N_H__ */
+G_END_DECLS
+
+#endif /* __INF_ADOPTED_CONCURRENCY_WARNING_H__ */
 
 /* vim:set et sw=2 ts=2: */

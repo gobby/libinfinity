@@ -1,4 +1,3 @@
-/* libinfinity/inf-config.h.  Generated from inf-config.h.in by configure.  */
 /* infinote - Collaborative notetaking application
  * Copyright (C) 2007 Armin Burgmeier
  *
@@ -17,21 +16,25 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INF_I18N_H__
-#define __INF_I18N_H__
+#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
+#include <libinfinity/inf-i18n.h>
 
-#include <libintl.h>
-
-#define _(String) _inf_gettext(String)
-#ifdef gettext_noop
-# define N_(String) gettext_noop(String)
-#else
-# define N_(String) (String)
-#endif
-
-void _inf_gettext_init(void);
-const char* _inf_gettext(const char* msgid);
-
-#endif /* __INF_I18N_H__ */
+/* This function is only used internally. Please don't wrap it for language
+ * bindings. */
+void
+_inf_adopted_concurrency_warning(GType for_type)
+{
+  g_warning(
+    _("%s was called for %s. This means that you hit an unforseen "
+      "situation in libinfinity. The session could become inconsistent "
+      "because of this. If you were using Gobby, please notify me (Armin "
+      "Burgmeier, armin@arbur.net) about this, and attach the contents of "
+      "the ~/.infinote-records folder, or just the record of the session "
+      "that triggered this error if you know which one. I hope I can fix "
+      "this problem with that information in future versions."),
+    "get_concurrency_id",
+    g_type_name(for_type)
+  );
+}
 
 /* vim:set et sw=2 ts=2: */

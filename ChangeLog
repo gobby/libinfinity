@@ -1,3 +1,16 @@
+2008-10-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-i18n.h:
+	* libinfinity/inf-i18n.c: Added vim modelines.
+
+	* libinfinity/adopted/inf-adopted-concurrency-warning.h:
+	* libinfinity/adopted/inf-adopted-concurrency-warning.c: Helper files
+	that contain a function to print a warning used in the upcoming
+	modification of the algorithm when a concurrency ID is requested for
+	types that don't support it yet.
+
+	* libinfinity/adopted/Makefile.am: Add the files to the build.
+
 2008-10-03  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-algorithm.c
