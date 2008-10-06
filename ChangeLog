@@ -1,5 +1,15 @@
 2008-10-06  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session-record.c: Fixed a few
+	warnings.
+
+	* configure.ac: Added check-news to AM_INIT_AUTOMAKE.
+
+	* NEWS: Removed the dummy entry, so I don't forget to create a real
+	one for the release.
+
+2008-10-06  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-operation.h:
 	* libinfinity/adopted/inf-adopted-operation.c: Added two new virtual
 	functions, need_concurrency_id() and get_concurrency_id(). These are

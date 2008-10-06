@@ -2,7 +2,7 @@ m4_define([infinote_version], [0.1.0])
 
 AC_PREREQ(2.59)
 AC_INIT([infinote], [infinote_version], [armin@arbur.net])
-AM_INIT_AUTOMAKE([-Wall dist-bzip2])
+AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-net-object.h])
 AC_CONFIG_HEADER([config.h libinfinity/inf-config.h])

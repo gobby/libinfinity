@@ -21,7 +21,9 @@
 #include <libinfinity/inf-i18n.h>
 
 #include <libxml/xmlwriter.h>
+
 #include <errno.h>
+#include <string.h>
 
 /* TODO: Better error handling; we should have a proper InfErrnoError
  * (or InfSystemError or something), and we should check the fflush error
@@ -552,7 +554,6 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
   InfSessionStatus status;
   xmlOutputBufferPtr buffer;
   xmlErrorPtr xmlerror;
-  gchar* uri;
   int errcode;
 
   g_return_val_if_fail(INF_ADOPTED_IS_SESSION_RECORD(record), FALSE);

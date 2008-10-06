@@ -52,5 +52,4 @@ Others:
    an approach of defining custom entities for those (see inf-xmpp-connection.c
    in inf_xmpp_connection_initiate()), though this didn't seem to work.
 
- * GtkSourceView bracket highlights are hidden behind user colors
  * ERROR:(inf-discovery-avahi.c:1055):inf_discovery_avahi_constructor: assertion failed: (priv->client != NULL)
