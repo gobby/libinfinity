@@ -1,5 +1,14 @@
 2008-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-state-vector.c: Fixed an assertion
+	in inf_adopted_state_vector_add().
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Cleaned up the code in
+	inf_adopted_translate_request(), don't make a copy of the 'to'
+	parameter anymore.
+
+2008-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c
 	(inf_adopted_algorithm_translate_request): Don't leak v when a cached
 	request is returned.

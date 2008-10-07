@@ -826,8 +826,6 @@ inf_adopted_algorithm_can_cache(InfAdoptedRequest* request)
 }
 
 /* Required by inf_adopted_algorithm_transform_request() */
-/* TODO: Remove can_cache parameter, but just check whether request both
- * affects the buffer and is reversible? */
 static InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
@@ -835,7 +833,6 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 
 /* Translates two requests to state at and then transforms them against each
  * other. The result needs to be unref()ed. */
-/* can_cache refers to request. against is always cachable. */
 static InfAdoptedRequest*
 inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
@@ -923,11 +920,12 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
   return result;
 }
 
-/* The result needs to be unref()ed. */
+/* This should only ever be called by
+ * inf_adopted_algorithm_translate_request() after it did the cache checks */
 static InfAdoptedRequest*
-inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
-                                        InfAdoptedRequest* request,
-                                        InfAdoptedStateVector* to)
+inf_adopted_algorithm_translate_request_nocache(InfAdoptedAlgorithm* algorithm,
+                                                InfAdoptedRequest* request,
+                                                InfAdoptedStateVector* to)
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedUser** user_it; /* user iterator */
@@ -935,16 +933,12 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   guint user_id; /* Corresponding ID */
   InfAdoptedRequestLog* log; /* points to current log */
   InfAdoptedStateVector* vector; /* always points to request's vector */
-  InfAdoptedStateVector* original_vector;
 
   InfAdoptedRequest* associated;
   InfAdoptedRequest* translated;
-  InfAdoptedRequest* original;
   InfAdoptedRequest* result;
-  InfAdoptedStateVector* v;
-
-  InfAdoptedAlgorithmRequestKey lookup_key;
-  InfAdoptedAlgorithmRequestKey* insert_key;
+  /*InfAdoptedStateVector* v;*/
+  gint by;
   guint n;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
@@ -953,29 +947,21 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   g_assert(user != NULL);
 
   log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
-  original = inf_adopted_request_log_original_request(log, request);
-  original_vector = inf_adopted_request_get_vector(original);
 
   g_assert(inf_adopted_state_vector_causally_before(to, priv->current));
-  g_assert(inf_adopted_state_vector_causally_before(original_vector, to));
+  g_assert(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(
+        inf_adopted_request_log_original_request(log, request)
+      ),
+      to
+    )
+  );
   g_assert(inf_adopted_algorithm_is_reachable(algorithm, to) == TRUE);
 
-  /* If the request itself is cachable, then check in the cache. Otherwise,
-   * we won't find anything anyway. */
-  if(inf_adopted_request_affects_buffer(request))
-  {
-    lookup_key.vector = to;
-    lookup_key.user_id = user_id;
-    result = g_tree_lookup(priv->cache, &lookup_key);
-    if(result != NULL)
-    {
-      g_object_ref(result);
-      return result;
-    }
-  }
-
   vector = inf_adopted_request_get_vector(request);
-  v = inf_adopted_state_vector_copy(to);
+  /*v = inf_adopted_state_vector_copy(to);*/
+  result = NULL;
 
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
   {
@@ -983,43 +969,30 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     associated = inf_adopted_request_log_prev_associated(log, request);
     g_assert(associated != NULL);
 
-    inf_adopted_state_vector_set(
-      v,
-      user_id,
-      inf_adopted_state_vector_get(
-        inf_adopted_request_get_vector(associated),
-        user_id
-      )
+    n = inf_adopted_state_vector_get(to, user_id);
+    by = n - inf_adopted_state_vector_get(
+      inf_adopted_request_get_vector(associated),
+      user_id
     );
 
-    if(inf_adopted_algorithm_is_reachable(algorithm, v))
+    inf_adopted_state_vector_add(to, user_id, -by);
+
+    if(inf_adopted_algorithm_is_reachable(algorithm, to))
     {
       translated = inf_adopted_algorithm_translate_request(
         algorithm,
         associated,
-        v
+        to
       );
 
-      result = inf_adopted_request_mirror(
-        translated,
-        inf_adopted_state_vector_get(to, user_id) -
-          inf_adopted_state_vector_get(v, user_id)
-      );
+      result = inf_adopted_request_mirror(translated, by);
 
       g_object_unref(translated);
+    }
 
-      /* We can cache the result since it is not the original request */
-      goto done;
-    }
-    else
-    {
-      /* Reset v for other routines to use */
-      inf_adopted_state_vector_set(
-        v,
-        user_id,
-        inf_adopted_state_vector_get(to, user_id)
-      );
-    }
+    /* Reset to for other routines to use */
+    inf_adopted_state_vector_set(to, user_id, n);
+    if(result) return result;
   }
   else
   {
@@ -1027,10 +1000,8 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
      * already at the state we are supposed to translate request to. */
     if(inf_adopted_state_vector_compare(vector, to) == 0)
     {
-      /* Return original if we can't cache */
-      result = request;
-      g_object_ref(result);
-      goto done;
+      g_object_ref(request);
+      return request;
     }
   }
 
@@ -1040,7 +1011,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     user_id = inf_user_get_id(user);
     if(user_id == inf_adopted_request_get_user_id(request)) continue;
 
-    n = inf_adopted_state_vector_get(v, user_id);
+    n = inf_adopted_state_vector_get(to, user_id);
     log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
 
     g_assert(n >= inf_adopted_request_log_get_begin(log));
@@ -1054,51 +1025,42 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       associated = inf_adopted_request_log_prev_associated(log, associated);
       g_assert(associated != NULL);
 
-      inf_adopted_state_vector_set(
-        v,
-        user_id,
-        inf_adopted_state_vector_get(
-          inf_adopted_request_get_vector(associated),
-          user_id
-        )
+      by = n - inf_adopted_state_vector_get(
+        inf_adopted_request_get_vector(associated),
+        user_id
       );
 
-      if(inf_adopted_algorithm_is_reachable(algorithm, v) &&
-         inf_adopted_state_vector_causally_before(vector, v) == TRUE)
+      inf_adopted_state_vector_add(to, user_id, -by);
+
+      if(inf_adopted_algorithm_is_reachable(algorithm, to) &&
+         inf_adopted_state_vector_causally_before(vector, to) == TRUE)
       {
         translated = inf_adopted_algorithm_translate_request(
           algorithm,
           request,
-          v
+          to
         );
 
         result = inf_adopted_request_fold(
           translated,
           user_id,
-          inf_adopted_state_vector_get(to, user_id) -
-            inf_adopted_state_vector_get(v, user_id)
+          by
         );
 
         g_object_unref(translated);
-        goto done;
       }
-      else
-      {
-        /* Reset v to be reused */
-        inf_adopted_state_vector_set(
-          v,
-          user_id,
-          inf_adopted_state_vector_get(to, user_id)
-        );
-      }
+
+      /* Reset to for other routines to use */
+      inf_adopted_state_vector_set(to, user_id, n);
+      if(result) return result;
     }
 
     /* Transform into direction we are not going to fold later */
-    if(inf_adopted_state_vector_get(vector, user_id) <
-       inf_adopted_state_vector_get(to, user_id))
+    if(inf_adopted_state_vector_get(vector, user_id) < n)
+/*       inf_adopted_state_vector_get(to, user_id))*/
     {
-      inf_adopted_state_vector_set(v, user_id, n - 1);
-      if(inf_adopted_algorithm_is_reachable(algorithm, v))
+      inf_adopted_state_vector_set(to, user_id, n - 1);
+      if(inf_adopted_algorithm_is_reachable(algorithm, to))
       {
         associated = inf_adopted_request_log_get_request(log, n - 1);
 
@@ -1106,16 +1068,13 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
           algorithm,
           request,
           associated,
-          v
+          to
         );
+      }
 
-        goto done;
-      }
-      else
-      {
-        /* Reset to be reused */
-        inf_adopted_state_vector_set(v, user_id, n);
-      }
+      /* Reset to be reused */
+      inf_adopted_state_vector_set(to, user_id, n);
+      if(result) return result;
     }
   }
 
@@ -1160,8 +1119,46 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 #endif
 
   g_assert_not_reached();
+  return NULL;
+}
 
-done:
+/* The result needs to be unref()ed. */
+static InfAdoptedRequest*
+inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
+                                        InfAdoptedRequest* request,
+                                        InfAdoptedStateVector* to)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  guint user_id;
+
+  InfAdoptedRequest* result;
+
+  InfAdoptedAlgorithmRequestKey lookup_key;
+  InfAdoptedAlgorithmRequestKey* insert_key;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  user_id = inf_adopted_request_get_user_id(request);
+
+  /* If the request affects the buffer, then it might have been cached
+   * earlier. */
+  if(inf_adopted_request_affects_buffer(request))
+  {
+    lookup_key.vector = to;
+    lookup_key.user_id = user_id;
+    result = g_tree_lookup(priv->cache, &lookup_key);
+    if(result != NULL)
+    {
+      g_object_ref(result);
+      return result;
+    }
+  }
+
+  result = inf_adopted_algorithm_translate_request_nocache(
+    algorithm,
+    request,
+    to
+  );
+
   g_assert(
     inf_adopted_state_vector_compare(
       inf_adopted_request_get_vector(result),
@@ -1173,15 +1170,12 @@ done:
   {
     insert_key = g_slice_new(InfAdoptedAlgorithmRequestKey);
     insert_key->vector = inf_adopted_request_get_vector(result);
-    insert_key->user_id = inf_adopted_request_get_user_id(result);
+    insert_key->user_id = user_id;
     g_assert(g_tree_lookup(priv->cache, insert_key) == NULL);
-#if 1
     g_tree_replace(priv->cache, insert_key, result);
     g_object_ref(result);
-#endif
   }
 
-  inf_adopted_state_vector_free(v);
   return result;
 }
 

@@ -322,7 +322,7 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
   }
   else
   {
-    g_assert(value > 0 || comp->n > (guint)-value);
+    g_assert(value > 0 || comp->n >= (guint)-value);
 
     comp->n += value;
   }
