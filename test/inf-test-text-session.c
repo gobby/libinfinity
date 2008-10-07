@@ -33,15 +33,18 @@
 #define NUM_PERMUTATIONS 100
 
 typedef struct {
+  GRand* rand;
   guint total;
   guint passed;
+  gdouble time;
 } test_result;
 
 static gboolean
 perform_single_test(InfTextChunk* initial,
                     InfTextChunk* final,
                     GSList* users,
-                    GSList* requests)
+                    GSList* requests,
+                    gdouble* time)
 {
   InfTextBuffer* buffer;
   InfConnectionManager* manager;
@@ -61,6 +64,8 @@ perform_single_test(InfTextChunk* initial,
   gchar* second;
   gsize first_bytes;
   gsize second_bytes;
+
+  GTimer* timer;
 
   buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
   inf_text_buffer_insert_chunk(buffer, 0, initial, NULL);
@@ -102,6 +107,7 @@ perform_single_test(InfTextChunk* initial,
   g_object_unref(G_OBJECT(manager));
   g_object_unref(G_OBJECT(user_table));
 
+  timer = g_timer_new();
   for(item = requests; item != NULL; item = item->next)
   {
     request = (xmlNodePtr)item->data;
@@ -114,6 +120,9 @@ perform_single_test(InfTextChunk* initial,
       NULL
     );
   }
+
+  *time = g_timer_elapsed(timer, NULL);
+  g_timer_destroy(timer);
 
   test_chunk = inf_text_buffer_get_slice(
     buffer,
@@ -143,7 +152,9 @@ static gboolean
 perform_test(InfTextChunk* initial,
              InfTextChunk* final,
              GSList* users,
-             GSList* requests)
+             GSList* requests,
+             GRand* rand,
+             gdouble* time)
 {
   GSList* permutation;
   GSList* item;
@@ -154,6 +165,7 @@ perform_test(InfTextChunk* initial,
   unsigned int rval;
   gpointer temp;
   gboolean retval;
+  gdouble local_time;
 
   guint user;
   guint user2;
@@ -187,6 +199,7 @@ perform_test(InfTextChunk* initial,
 
   inf_adopted_state_vector_free(v);
 
+  *time = 0.0;
   for(i = 0; i < NUM_PERMUTATIONS; ++ i)
   {
     dist = 0;
@@ -196,8 +209,8 @@ perform_test(InfTextChunk* initial,
     for(item = permutation->next; item != NULL; item = g_slist_next(item))
     {
       ++ dist;
-      dist_item = g_slist_nth(permutation, rand() % (dist + 1));
-      rval = rand() % (dist + 1);
+      dist_item = g_slist_nth(permutation, g_rand_int(rand) % (dist + 1));
+      rval = g_rand_int(rand) % (dist + 1);
 
       temp = item->data;
       item->data = dist_item->data;
@@ -229,14 +242,23 @@ perform_test(InfTextChunk* initial,
       }
     }
 
-    if(i % (MAX(NUM_PERMUTATIONS/40, 1)) == 0)
+    if(i % (MAX(NUM_PERMUTATIONS/30, 1)) == 0)
     {
       printf(".");
       fflush(stdout);
     }
 
-    retval = perform_single_test(initial, final, users, permutation);
+    retval = perform_single_test(
+      initial,
+      final,
+      users,
+      permutation,
+      &local_time
+    );
+
     if(!retval) break;
+
+    *time += local_time;
   }
 
   g_slist_free(permutation);
@@ -257,6 +279,9 @@ foreach_test_func(const gchar* testfile,
   InfTextChunk* final;
   GSList* users;
   GError* error;
+  gboolean retval;
+
+  gdouble local_time;
 
   /* Only process XML files, not the Makefiles or other stuff */
   if(!g_str_has_suffix(testfile, ".xml"))
@@ -335,10 +360,21 @@ foreach_test_func(const gchar* testfile,
       g_assert(final != NULL);
 
       requests = g_slist_reverse(requests);
-      if(perform_test(initial, final, users, requests) == TRUE)
+
+      retval = perform_test(
+        initial,
+        final,
+        users,
+        requests,
+        result->rand,
+        &local_time
+      );
+      
+      if(retval == TRUE)
       {
         ++ result->passed;
-        printf("OK\n");
+        printf("OK (%g secs)\n", local_time);
+        result->time += local_time;
       }
       else
       {
@@ -362,6 +398,9 @@ int main(int argc, char* argv[])
   test_result result;
   unsigned int rseed;
   int dirarg;
+  gboolean retval;
+  GTimer* timer;
+  gdouble elapsed;
 
   dirarg = 1;
   if(argc > 1)
@@ -378,28 +417,47 @@ int main(int argc, char* argv[])
   printf("Using random seed %u\n", rseed);
 
   g_type_init();
-  srand(rseed);
 
   if(argc > dirarg)
     dir = argv[dirarg];
   else
     dir = "session";
 
+  result.rand = g_rand_new_with_seed(rseed);
   result.total = 0;
   result.passed = 0;
+  result.time = 0.0;
 
   error = NULL;
-  if(inf_test_util_dir_foreach(dir, foreach_test_func, &result, &error) ==
-     FALSE)
+  timer = g_timer_new();
+  retval = inf_test_util_dir_foreach(
+    dir,
+    foreach_test_func,
+    &result,
+    &error
+  );
+
+  g_timer_stop(timer);
+  elapsed = g_timer_elapsed(timer, NULL);
+  g_rand_free(result.rand);
+  g_timer_destroy(timer);
+
+  if(retval == FALSE)
   {
     fprintf(stderr, "%s\n", error->message);
     g_error_free(error);
     return -1;
   }
 
-  printf("%u out of %u tests passed\n", result.passed, result.total);
+  printf(
+    "%u out of %u tests passed (real %g secs, algo %g secs)\n",
+    result.passed, result.total, elapsed, result.time
+  );
+
   if(result.passed < result.total)
     return -1;
 
   return 0;
 }
+
+/* vim:set et sw=2 ts=2: */

@@ -26,6 +26,13 @@
 
 #include <string.h>
 
+static int
+inf_test_util_dir_foreach_sort_func(gconstpointer first,
+                                    gconstpointer second)
+{
+  return strcmp(first, second);
+}
+
 GQuark
 inf_test_util_parse_error_quark(void)
 {
@@ -130,41 +137,55 @@ inf_test_util_print_buffer(InfTextBuffer* buffer)
 
 gboolean
 inf_test_util_dir_foreach(const char* dirname,
-            void(*callback)(const char*, gpointer),
-            gpointer user_data,
-            GError** error)
+                          void(*callback)(const char*, gpointer),
+                          gpointer user_data,
+                          GError** error)
 {
   GDir* dir;
   const gchar* entry;
   gchar* path;
+  GSList* items;
+  GSList* item;
+  gboolean result;
 
   dir = g_dir_open(dirname, 0, error);
   if(dir == NULL) return FALSE;
 
+  items = NULL;
   for(entry = g_dir_read_name(dir); entry != NULL; entry = g_dir_read_name(dir))
   {
     /* Ignore hidden files */
     if(entry[0] == '.') continue;
 
     path = g_build_filename(dirname, entry, NULL);
+    items = g_slist_prepend(items, path);
+  }
+
+  g_dir_close(dir);
+
+  items = g_slist_sort(items, inf_test_util_dir_foreach_sort_func);
+
+  result = TRUE;
+  for(item = items; item != NULL; item = g_slist_next(item))
+  {
+    path = (gchar*)item->data;
     if(g_file_test(path, G_FILE_TEST_IS_DIR))
     {
       if(inf_test_util_dir_foreach(path, callback, user_data, error) == FALSE)
       {
-        g_free(path);
-        g_dir_close(dir);
-        return FALSE;
+        result = FALSE;
       }
     }
     else if(g_file_test(path, G_FILE_TEST_IS_REGULAR))
     {
       callback(path, user_data);
     }
+
     g_free(path);
   }
 
-  g_dir_close(dir);
-  return TRUE;
+  g_slist_free(items);
+  return result;
 }
 
 InfTextChunk*
@@ -245,3 +266,5 @@ inf_test_util_parse_user(xmlNodePtr xml,
   *users = g_slist_prepend(*users, GUINT_TO_POINTER(id));
   return TRUE;
 }
+
+/* vim:set et sw=2 ts=2: */

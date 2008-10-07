@@ -1,3 +1,11 @@
+2008-10-07  Armin Burgmeier  <armin@arbur.net>
+
+	* test/util/inf-test-util.c (inf_test_dir_util_foreach): Iterate
+	alphabetically through the file names.
+
+	* test/inf-test-text-session.c: Actually make setting a random seed
+	work, added time measurement.
+
 2008-10-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-session-record.c: Fixed a few
