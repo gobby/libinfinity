@@ -109,6 +109,10 @@ inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
                                              InfAdoptedStateVector* second,
                                              guint inc_component);
 
+guint
+inf_adopted_state_vector_vdiff(InfAdoptedStateVector* first,
+                               InfAdoptedStateVector* second);
+
 gchar*
 inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec);
 

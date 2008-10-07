@@ -163,35 +163,6 @@ inf_adopted_algorithm_request_key_free(gpointer key)
   g_slice_free(InfAdoptedAlgorithmRequestKey, key);
 }
 
-/* Computes a vdiff between two vectors first and second with first <= second.
- * The vdiff is the sum of the differences of all vector components. */
-/* TODO: Move this to state vector, possibly with a faster O(n)
- * implementation (This is O(n log n), at best) */
-static guint
-inf_adopted_algorithm_state_vector_vdiff(InfAdoptedAlgorithm* algorithm,
-                                         InfAdoptedStateVector* first,
-                                         InfAdoptedStateVector* second)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedUser** user;
-  guint result;
-  guint id;
-
-  g_assert(inf_adopted_state_vector_causally_before(first, second) == TRUE);
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  result = 0;
-
-  for(user = priv->users_begin; user != priv->users_end; ++ user)
-  {
-    id = inf_user_get_id(INF_USER(*user));
-    result += (inf_adopted_state_vector_get(second, id) -
-      inf_adopted_state_vector_get(first, id));
-  }
-
-  return result;
-}
-
 /* Returns a new state vector v so that both first and second are causally
  * before v and so that there is no other state vector with the same property
  * that is causally before v. */
@@ -293,8 +264,7 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
        * can be undone or redone, then we need to include these in the
        * vdiff. */
 
-      diff = inf_adopted_algorithm_state_vector_vdiff(
-        algorithm,
+      diff = inf_adopted_state_vector_vdiff(
         inf_adopted_request_get_vector(request),
         inf_adopted_user_get_vector(user)
       );
@@ -339,8 +309,7 @@ inf_adopted_algorithm_cleanup_cache_traverse_func(gpointer key,
   if(inf_adopted_state_vector_causally_before(request_key->vector,
                                               cleanup_data->lcp))
   {
-    vdiff = inf_adopted_algorithm_state_vector_vdiff(
-      cleanup_data->algorithm,
+    vdiff = inf_adopted_state_vector_vdiff(
       request_key->vector,
       cleanup_data->lcp
     );
@@ -456,11 +425,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
         inf_adopted_request_log_get_request(log, n)
       );
 
-      vdiff = inf_adopted_algorithm_state_vector_vdiff(
-        algorithm,
-        low_vec,
-        cleanup_data.lcp
-      );
+      vdiff = inf_adopted_state_vector_vdiff(low_vec, cleanup_data.lcp);
 
       /* TODO: Again, I experimentally changed <= to < here. If the vdiff is
        * equal to the log size, then nobody can do anything with the request

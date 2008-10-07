@@ -635,6 +635,40 @@ inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
 }
 
 /**
+ * inf_adopted_state_vector_vdiff:
+ * @first: A #InfAdoptedStateVector.
+ * @second: Another #InfAdoptedStateVector.
+ *
+ * This function returns the sum of the differences between each component
+ * of @first and @second. This function can only be called if
+ * inf_adopted_state_vector_causally_before() returns %TRUE.
+ *
+ * Returns: The sum of the differences between each component of @first and
+ * @second.
+ */
+guint
+inf_adopted_state_vector_vdiff(InfAdoptedStateVector* first,
+                               InfAdoptedStateVector* second)
+{
+  gsize n;
+  guint first_sum;
+  guint second_sum;
+
+  g_assert(inf_adopted_state_vector_causally_before(first, second) == TRUE);
+
+  first_sum = 0;
+  second_sum = 0;
+
+  for(n = 0; n < first->size; ++ n)
+    first_sum += first->data[n].n;
+  for(n = 0; n < second->size; ++ n)
+    second_sum += second->data[n].n;
+
+  g_assert(second_sum >= first_sum);
+  return second_sum - first_sum;
+}
+
+/**
  * inf_adopted_state_vector_to_string:
  * @vec: A #InfAdoptedStateVector.
  *

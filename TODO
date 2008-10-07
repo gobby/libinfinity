@@ -6,11 +6,13 @@ Performance (Some ideas to improve performance, profile to verify!):
     time (this eats 10% of the overall time currently!)
   * Move state vector helper functions in algorithm to InfAdoptedStateVector,
     with a better O(n) implementation.
-  * inf_adopted_state_vector_causally_before version that compares two vectors,
-    but adds 1 to one component of the first vector. This avoids a copy in
-    cleanup and component_reachable.
   * Cache request.vector[request.user] in every request, this seems to be
     used pretty often.
+  * Optionally compile with
+    - G_DISABLE_CAST_CHECKS
+    - G_DISABLE_ASSERT
+    - G_DISABLE_CHECKS
+    defined.
 
 Memory:
   * replay-01 leaks about 4 megabytes of memory
