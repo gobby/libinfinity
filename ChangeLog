@@ -1,5 +1,18 @@
 2008-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-state-vector.h:
+	* libinfinity/adopted/inf-adopted-state-vector.c: Added
+	inf_adopted_state_vector_causally_before_inc().
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Use this new function,
+	to save some copies.
+
+	* test/inf-test-state-vector.c: Verify that
+	inf_adopted_state_vector_causally_before_inc(<empty state vector>,
+	<empty state vector>, 1) yields FALSE.
+
+2008-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-state-vector.c: Fixed an assertion
 	in inf_adopted_state_vector_add().
 

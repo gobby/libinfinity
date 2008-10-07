@@ -369,7 +369,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
   InfAdoptedRequest* req;
   InfAdoptedStateVector* req_vec;
   InfAdoptedStateVector* low_vec;
-  InfAdoptedStateVector* cmp_vec;
+  gboolean req_before_lcp;
   guint n;
   guint id;
   guint vdiff;
@@ -439,19 +439,14 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
        * request, though, and not the source which is why we increase the
        * request's user's component by one. This is because of the fact that
        * the request needs to be available to reach its target vector time. */
+      req_before_lcp = inf_adopted_state_vector_causally_before_inc(
+        req_vec,
+        cleanup_data.lcp,
+        id
+      );
 
-      /* TODO: Avoid doing a copy here, perhaps by a special
-       * inf_adopted_state_vector_causally_before method. We could also make
-       * use of this in reachable. */
-      cmp_vec = inf_adopted_state_vector_copy(req_vec);
-      inf_adopted_state_vector_add(cmp_vec, id, 1);
-      if(!inf_adopted_state_vector_causally_before(cmp_vec, cleanup_data.lcp))
-      {
-        inf_adopted_state_vector_free(cmp_vec);
+      if(!req_before_lcp)
         break;
-      }
-
-      inf_adopted_state_vector_free(cmp_vec);
 
       /* TODO: Experimentally, I try using the lower related for the vdiff
        * here. If it doesn't work out, then we will need to use the upper
@@ -729,7 +724,6 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* request;
   InfAdoptedRequestType type;
   InfAdoptedStateVector* current;
-  InfAdoptedStateVector* w;
   gboolean result;
   guint n;
   
@@ -753,22 +747,11 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
 
     if(type == INF_ADOPTED_REQUEST_DO)
     {
-      /* TODO: Can we also use inf_adopted_request_get_vector(request)
-       * directly? Tests still seem to pass. */
-      w = inf_adopted_state_vector_copy(
-        inf_adopted_request_get_vector(request)
+      return inf_adopted_state_vector_causally_before_inc(
+        inf_adopted_request_get_vector(request),
+        v,
+        inf_adopted_request_get_user_id(request)
       );
-
-      inf_adopted_state_vector_add(
-        w,
-        inf_adopted_request_get_user_id(request),
-        1
-      );
-
-      result = inf_adopted_state_vector_causally_before(w, v);
-
-      inf_adopted_state_vector_free(w);
-      return result;
     }
     else
     {
@@ -883,7 +866,6 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
 
     g_assert(inf_adopted_state_vector_causally_before(lcs, at));
 
-    /* TODO: Remove that check? */
     if(inf_adopted_state_vector_compare(lcs, at) != 0)
     {
       lcs_against = inf_adopted_algorithm_translate_request(

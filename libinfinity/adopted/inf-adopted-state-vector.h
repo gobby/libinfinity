@@ -104,6 +104,11 @@ gboolean
 inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
                                          InfAdoptedStateVector* second);
 
+gboolean
+inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
+                                             InfAdoptedStateVector* second,
+                                             guint inc_component);
+
 gchar*
 inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec);
 

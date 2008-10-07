@@ -516,6 +516,125 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
 }
 
 /**
+ * inf_adopted_state_vector_causally_before_inc:
+ * @first: A #InfAdoptedStateVector.
+ * @second: Another #InfAdoptedStateVector.
+ * @inc_component: The component to increment before comparing.
+ *
+ * This function does the equivalent of
+ *
+ * |[
+ * inf_adopted_state_vector_add(first, inc_component, 1);
+ * gboolean result = inf_adopted_state_vector_causally_before(first, second);
+ * inf_adopted_state_vector_add(first, inc_component, -1);
+ * return result;
+ * ]|
+ *
+ * But it is more efficient.
+ *
+ * Return Value: Whether @second depends on @first with the
+ * @inc_component<!-- -->th component increased by one.
+ **/
+gboolean
+inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
+                                             InfAdoptedStateVector* second,
+                                             guint inc_component)
+{
+  gsize first_pos;
+  gsize second_pos;
+  gboolean inc_comp_seen;
+
+  InfAdoptedStateVectorComponent* first_comp;
+  InfAdoptedStateVectorComponent* second_comp;
+  InfAdoptedStateVectorComponent inc_comp;
+
+  g_return_val_if_fail(first != NULL, FALSE);
+  g_return_val_if_fail(second != NULL, FALSE);
+
+  first_pos = 0;
+  second_pos = 0;
+  inc_comp.id = inc_component;
+  inc_comp_seen = FALSE;
+
+  while(first_pos < first->size || !inc_comp_seen)
+  {
+    /* Set first_comp as if there was inc_component increased by one */
+    if(!inc_comp_seen)
+    {
+      if(first_pos < first->size)
+      {
+        first_comp = first->data + first_pos;
+        if(first_comp->id < inc_component)
+        {
+          ++ first_pos;
+        }
+        else if(first_comp->id == inc_component)
+        {
+          inc_comp.n = first_comp->n + 1;
+          first_comp = &inc_comp;
+          inc_comp_seen = TRUE;
+          ++ first_pos;
+        }
+        else
+        {
+          inc_comp.n = 1;
+          first_comp = &inc_comp;
+          inc_comp_seen = TRUE;
+        }
+      }
+      else
+      {
+        /* inc_comp is the only component of first */
+        inc_comp.n = 1;
+        first_comp = &inc_comp;
+        inc_comp_seen = TRUE;
+      }
+    }
+    else
+    {
+      /* inc_comp already handled, business as usual */
+      first_comp = first->data + first_pos;
+      ++ first_pos;
+    }
+
+    if(second_pos == second->size)
+    {
+      /* That component is not contained in second (thus 0) */
+      if(first_comp->n > 0)
+        return FALSE;
+    }
+    else
+    {
+      second_comp = second->data + second_pos;
+      while(second_comp != NULL && first_comp->id > second_comp->id)
+      {
+        ++second_pos;
+        if(second_pos != second->size)
+          second_comp = second->data + second_pos;
+        else
+          second_comp = NULL;
+      }
+
+      if(second_comp == NULL || first_comp->id < second_comp->id)
+      {
+        /* That component is not contained in second (thus 0) */
+        if(first_comp->n > 0)
+          return FALSE;
+        else
+          /* 0 <= 0 */
+          continue;
+      }
+
+      g_assert(first_comp->id == second_comp->id);
+      if(first_comp->n > second_comp->n)
+        return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+/**
  * inf_adopted_state_vector_to_string:
  * @vec: A #InfAdoptedStateVector.
  *

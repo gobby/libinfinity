@@ -130,6 +130,7 @@ int main(int argc, char* argv[])
 {
   guint users[2];
   InfAdoptedStateVector* vec;
+  InfAdoptedStateVector* vec2;
 
   g_type_init();
 
@@ -140,6 +141,10 @@ int main(int argc, char* argv[])
    * touch them. */
 
   vec = inf_adopted_state_vector_new();
+  vec2 = inf_adopted_state_vector_new();
+  g_assert(inf_adopted_state_vector_causally_before_inc(vec, vec2, 1) == FALSE);
+  inf_adopted_state_vector_free(vec2);
+
   inf_adopted_state_vector_set(vec, users[0], 2);
   g_assert(inf_adopted_state_vector_get(vec, users[0]) == 2);
 
