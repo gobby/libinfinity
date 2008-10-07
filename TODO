@@ -11,9 +11,6 @@ Performance (Some ideas to improve performance, profile to verify!):
     cleanup and component_reachable.
   * Cache request.vector[request.user] in every request, this seems to be
     used pretty often.
-  * Make InfAdoptedRequest immutable, since InfAdoptedRequest is cached anyway
-    this should not matter too much, and avoid some copies that are currently
-    made.
 
 Memory:
   * replay-01 leaks about 4 megabytes of memory

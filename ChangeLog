@@ -1,5 +1,12 @@
 2008-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c: Removed the ugly
+	can_cache paramatere for inf_adopted_algorithm_translate_request() and
+	inf_adopted_algorithm_transform_request(). Instead, translate_request
+	checks itself whether a request is cachable or not.
+
+2008-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-request.h:
 	* libinfinity/adopted/inf-adopted-request.c: Made InfAdoptedRequest
 	immutable, which means that the request cannot be altered anymore once

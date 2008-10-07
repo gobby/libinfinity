@@ -799,14 +799,39 @@ inf_adopted_algorithm_is_reachable(InfAdoptedAlgorithm* algorithm,
   return TRUE;
 }
 
+/* We can cache requests if:
+ * a) they are reversible. If they are not, they will be made reversible
+ * later (see inf_adopted_algorithm_execute_request), but the algorithm relies
+ * on cached requests being reversible.
+ * b) they affect the buffer. If they do not, then they will not be used for
+ * later transformations anyway.
+ */
+static gboolean
+inf_adopted_algorithm_can_cache(InfAdoptedRequest* request)
+{
+  InfAdoptedOperation* operation;
+  InfAdoptedOperationFlags flags;
+
+#define INF_ADOPTED_OPERATION_CACHABLE \
+  (INF_ADOPTED_OPERATION_AFFECTS_BUFFER | INF_ADOPTED_OPERATION_REVERSIBLE)
+
+  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
+    return TRUE;
+
+  operation = inf_adopted_request_get_operation(request);
+  flags = inf_adopted_operation_get_flags(operation) &
+    INF_ADOPTED_OPERATION_CACHABLE;
+
+  return flags == INF_ADOPTED_OPERATION_CACHABLE;
+}
+
 /* Required by inf_adopted_algorithm_transform_request() */
 /* TODO: Remove can_cache parameter, but just check whether request both
  * affects the buffer and is reversible? */
 static InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
-                                        InfAdoptedStateVector* to,
-                                        gboolean can_cache);
+                                        InfAdoptedStateVector* to);
 
 /* Translates two requests to state at and then transforms them against each
  * other. The result needs to be unref()ed. */
@@ -815,8 +840,7 @@ static InfAdoptedRequest*
 inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
                                         InfAdoptedRequest* against,
-                                        InfAdoptedStateVector* at,
-                                        gboolean can_cache)
+                                        InfAdoptedStateVector* at)
 {
   InfAdoptedRequest* request_at;
   InfAdoptedRequest* against_at;
@@ -842,15 +866,13 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
   against_at = inf_adopted_algorithm_translate_request(
     algorithm,
     against,
-    at,
-    TRUE
+    at
   );
 
   request_at = inf_adopted_algorithm_translate_request(
     algorithm,
     request,
-    at,
-    can_cache
+    at
   );
 
   concurrency_id = INF_ADOPTED_CONCURRENCY_NONE;
@@ -870,15 +892,13 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
       lcs_against = inf_adopted_algorithm_translate_request(
         algorithm,
         against,
-        lcs,
-        TRUE
+        lcs
       );
 
       lcs_request = inf_adopted_algorithm_translate_request(
         algorithm,
         request,
-        lcs,
-        can_cache
+        lcs
       );
 
       concurrency_id =
@@ -907,8 +927,7 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
 static InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
-                                        InfAdoptedStateVector* to,
-                                        gboolean can_cache)
+                                        InfAdoptedStateVector* to)
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedUser** user_it; /* user iterator */
@@ -944,7 +963,10 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   vector = inf_adopted_request_get_vector(request);
   v = inf_adopted_state_vector_copy(to);
 
-  if(can_cache)
+  /* If the request itself is cachable, then check in the cache. Otherwise,
+   * we won't find anything anyway. */
+  /*if(inf_adopted_algorithm_can_cache(request))*/
+  if(inf_adopted_request_affects_buffer(request))
   {
     lookup_key.vector = to;
     lookup_key.user_id = user_id;
@@ -958,9 +980,6 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
   {
-    /* Undo/Redo requests can always be cached */
-    g_assert(can_cache == TRUE);
-
     /* Try late mirror if this is not a do request */
     associated = inf_adopted_request_log_prev_associated(log, request);
     g_assert(associated != NULL);
@@ -979,8 +998,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       translated = inf_adopted_algorithm_translate_request(
         algorithm,
         associated,
-        v,
-        TRUE
+        v
       );
 
       result = inf_adopted_request_mirror(
@@ -1052,8 +1070,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
         translated = inf_adopted_algorithm_translate_request(
           algorithm,
           request,
-          v,
-          can_cache
+          v
         );
 
         result = inf_adopted_request_fold(
@@ -1090,8 +1107,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
           algorithm,
           request,
           associated,
-          v,
-          can_cache
+          v
         );
 
         goto done;
@@ -1130,8 +1146,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
           algorithm,
           request,
           associated,
-          v,
-          can_cache
+          v
         );
 
         goto done;
@@ -1148,8 +1163,14 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   g_assert_not_reached();
 
 done:
-    g_assert(inf_adopted_state_vector_compare(inf_adopted_request_get_vector(result), to) == 0);
-  if(can_cache)
+  g_assert(
+    inf_adopted_state_vector_compare(
+      inf_adopted_request_get_vector(result),
+      to
+    ) == 0
+  );
+
+  if(inf_adopted_algorithm_can_cache(result))
   {
     insert_key = g_slice_new(InfAdoptedAlgorithmRequestKey);
     insert_key->vector = inf_adopted_request_get_vector(result);
@@ -1451,7 +1472,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedOperation* operation;
   InfAdoptedOperation* reversible_operation;
   InfAdoptedOperationFlags flags;
-  gboolean can_cache;
 
   InfAdoptedRequest* original;
   InfAdoptedStateVector* v;
@@ -1508,21 +1528,17 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     }
 
     inf_adopted_state_vector_free(v);
-    can_cache = TRUE;
   }
   else
   {
     log_request = request;
     g_object_ref(log_request);
-    /* We can't cache this request since it might not be reversible. */
-    can_cache = FALSE;
   }
 
   translated = inf_adopted_algorithm_translate_request(
     algorithm,
     log_request,
-    priv->current,
-    can_cache
+    priv->current
   );
 
   if(inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO)
