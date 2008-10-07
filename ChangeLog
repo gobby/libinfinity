@@ -1,5 +1,18 @@
 2008-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request.c: Made InfAdoptedRequest
+	immutable, which means that the request cannot be altered anymore once
+	created. The functions inf_adopted_request_transform(),
+	inf_adopted_request_mirror() and inf_adopted_request_fold() now return
+	new requests instead of modifying the given one.
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Adapt to that change.
+	Given that requests are now immutable, we can save a few copies. This
+	speeds up inf-test-text-session about 11%.
+
+2008-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* test/util/inf-test-util.c (inf_test_dir_util_foreach): Iterate
 	alphabetically through the file names.
 

@@ -656,8 +656,10 @@ inf_adopted_request_get_concurrency_id(InfAdoptedRequest* request,
  * inf_adopted_request_need_concurrency_id()). In that case, it is assumed
  * that it does not matter which operation to transform, and user IDs are
  * used to determine a concurrency ID for the transformation.
+ *
+ * Returns: A new #InfAdoptedRequest, the result of the transformation.
  **/
-void
+InfAdoptedRequest*
 inf_adopted_request_transform(InfAdoptedRequest* request,
                               InfAdoptedRequest* against,
                               InfAdoptedConcurrencyId concurrency_id)
@@ -665,22 +667,24 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
   InfAdoptedRequestPrivate* request_priv;
   InfAdoptedRequestPrivate* against_priv;
   InfAdoptedOperation* new_operation;
+  InfAdoptedStateVector* new_vector;
+  InfAdoptedRequest* new_request;
   
-  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
-  g_return_if_fail(INF_ADOPTED_IS_REQUEST(against));
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(against), NULL);
   
   request_priv = INF_ADOPTED_REQUEST_PRIVATE(request);
   against_priv = INF_ADOPTED_REQUEST_PRIVATE(against);
   
-  g_return_if_fail(request_priv->type == INF_ADOPTED_REQUEST_DO);
-  g_return_if_fail(against_priv->type == INF_ADOPTED_REQUEST_DO);
-  g_return_if_fail(request_priv->user_id != against_priv->user_id);
+  g_return_val_if_fail(request_priv->type == INF_ADOPTED_REQUEST_DO, NULL);
+  g_return_val_if_fail(against_priv->type == INF_ADOPTED_REQUEST_DO, NULL);
+  g_return_val_if_fail(request_priv->user_id != against_priv->user_id, NULL);
   
-  g_return_if_fail(
+  g_return_val_if_fail(
     inf_adopted_state_vector_compare(
       request_priv->vector,
       against_priv->vector
-    ) == 0
+    ) == 0, NULL
   );
 
   if(concurrency_id != INF_ADOPTED_CONCURRENCY_NONE)
@@ -708,17 +712,17 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
     );
   }
 
-  g_object_unref(G_OBJECT(request_priv->operation));
-  request_priv->operation = new_operation;
+  new_vector = inf_adopted_state_vector_copy(request_priv->vector);
+  inf_adopted_state_vector_add(new_vector, against_priv->user_id, 1);
 
-  inf_adopted_state_vector_add(
-    request_priv->vector,
-    against_priv->user_id,
-    1
+  new_request = inf_adopted_request_new_do(
+    new_vector,
+    request_priv->user_id,
+    new_operation
   );
 
-  g_object_notify(G_OBJECT(request), "operation");
-  g_object_notify(G_OBJECT(request), "vector");
+  inf_adopted_state_vector_free(new_vector);
+  return new_request;
 }
 
 /**
@@ -736,31 +740,40 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
  *
  * @request must be of type %INF_ADOPTED_REQUEST_DO and its operation must
  * be reversible.
+ *
+ * Returns: The mirrored request as a new #InfAdoptedRequest.
  **/
-void
+InfAdoptedRequest*
 inf_adopted_request_mirror(InfAdoptedRequest* request,
                            guint by)
 {
   InfAdoptedRequestPrivate* priv;
   InfAdoptedOperation* new_operation;
+  InfAdoptedStateVector* new_vector;
+  InfAdoptedRequest* new_request;
 
-  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
-  g_return_if_fail(by % 2 == 1);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+  g_return_val_if_fail(by % 2 == 1, NULL);
   
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
-  g_return_if_fail(priv->type == INF_ADOPTED_REQUEST_DO);
-  g_return_if_fail(inf_adopted_operation_is_reversible(priv->operation));
+  g_return_val_if_fail(priv->type == INF_ADOPTED_REQUEST_DO, NULL);
+  g_return_val_if_fail(
+    inf_adopted_operation_is_reversible(priv->operation),
+    NULL
+  );
 
   new_operation = inf_adopted_operation_revert(priv->operation);
+  new_vector = inf_adopted_state_vector_copy(priv->vector);
+  inf_adopted_state_vector_add(new_vector, priv->user_id, by);
 
-  g_object_unref(G_OBJECT(priv->operation));
-  priv->operation = new_operation;
+  new_request = inf_adopted_request_new_do(
+    new_vector,
+    priv->user_id,
+    new_operation
+  );
 
-  inf_adopted_state_vector_add(priv->vector, priv->user_id, by);
-
-  g_object_notify(G_OBJECT(request), "operation");
-  g_object_notify(G_OBJECT(request), "vector");
-
+  inf_adopted_state_vector_free(new_vector);
+  return new_request;
 }
 
 /**
@@ -777,23 +790,55 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
  * the fold request, and thus equivalent to 2j in the paper's definition.
  *
  * @into must not be the same user as the one that issued @request.
+ *
+ * Returns: The folded request as a new #InfAdoptedRequest.
  **/
-void
+InfAdoptedRequest*
 inf_adopted_request_fold(InfAdoptedRequest* request,
                          guint into,
                          guint by)
 {
   InfAdoptedRequestPrivate* priv;
+  InfAdoptedStateVector* new_vector;
+  InfAdoptedRequest* new_request;
 
-  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
-  g_return_if_fail(into != 0);
-  g_return_if_fail(by % 2 == 0);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+  g_return_val_if_fail(into != 0, NULL);
+  g_return_val_if_fail(by % 2 == 0, NULL);
 
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
-  g_return_if_fail(priv->user_id != into);
+  g_return_val_if_fail(priv->user_id != into, NULL);
 
-  inf_adopted_state_vector_add(priv->vector, into, by);
-  g_object_notify(G_OBJECT(request), "vector");
+  new_vector = inf_adopted_state_vector_copy(priv->vector);
+  inf_adopted_state_vector_add(new_vector, into, by);
+
+  if(priv->type == INF_ADOPTED_REQUEST_DO)
+  {
+    new_request = INF_ADOPTED_REQUEST(
+      g_object_new(
+        INF_ADOPTED_TYPE_REQUEST,
+        "type", priv->type,
+        "operation", priv->operation,
+        "vector", new_vector,
+        "user-id", priv->user_id,
+        NULL
+      )
+    );
+  }
+  else
+  {
+    new_request = INF_ADOPTED_REQUEST(
+      g_object_new(
+        INF_ADOPTED_TYPE_REQUEST,
+        "type", priv->type,
+        "vector", new_vector,
+        "user-id", priv->user_id
+      )
+    );
+  }
+
+  inf_adopted_state_vector_free(new_vector);
+  return new_request;
 }
 
 /**

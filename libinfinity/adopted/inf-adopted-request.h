@@ -117,16 +117,16 @@ InfAdoptedConcurrencyId
 inf_adopted_request_get_concurrency_id(InfAdoptedRequest* request,
                                        InfAdoptedRequest* against);
 
-void
+InfAdoptedRequest*
 inf_adopted_request_transform(InfAdoptedRequest* request,
                               InfAdoptedRequest* against,
                               InfAdoptedConcurrencyId concurrency_id);
 
-void
+InfAdoptedRequest*
 inf_adopted_request_mirror(InfAdoptedRequest* request,
                            guint by);
 
-void
+InfAdoptedRequest*
 inf_adopted_request_fold(InfAdoptedRequest* request,
                          guint into,
                          guint by);
