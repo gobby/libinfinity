@@ -960,12 +960,8 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   g_assert(inf_adopted_state_vector_causally_before(original_vector, to));
   g_assert(inf_adopted_algorithm_is_reachable(algorithm, to) == TRUE);
 
-  vector = inf_adopted_request_get_vector(request);
-  v = inf_adopted_state_vector_copy(to);
-
   /* If the request itself is cachable, then check in the cache. Otherwise,
    * we won't find anything anyway. */
-  /*if(inf_adopted_algorithm_can_cache(request))*/
   if(inf_adopted_request_affects_buffer(request))
   {
     lookup_key.vector = to;
@@ -977,6 +973,9 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
       return result;
     }
   }
+
+  vector = inf_adopted_request_get_vector(request);
+  v = inf_adopted_state_vector_copy(to);
 
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
   {
@@ -1543,13 +1542,13 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   if(inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO)
   {
+    g_assert(log_request == request);
+
     operation = inf_adopted_request_get_operation(request);
     flags = inf_adopted_operation_get_flags(operation);
 
     if( (flags & INF_ADOPTED_OPERATION_AFFECTS_BUFFER) != 0)
     {
-      log_request = request; /* TODO: log_request is always request here(?) */
-
       if(inf_adopted_operation_is_reversible(operation) == FALSE)
       {
         reversible_operation = inf_adopted_operation_make_reversible(
@@ -1560,6 +1559,8 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
         if(reversible_operation != NULL)
         {
+          g_object_unref(log_request);
+
           log_request = inf_adopted_request_new_do(
             inf_adopted_request_get_vector(request),
             inf_adopted_request_get_user_id(request),

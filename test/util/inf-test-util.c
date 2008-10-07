@@ -221,6 +221,8 @@ inf_test_util_parse_buffer(xmlNodePtr xml,
         strlen((const char*)content),
         author
       );
+
+      xmlFree(content);
     }
     else
     {

@@ -1782,6 +1782,7 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
   case INF_ADOPTED_REQUEST_DO:
     g_assert(operation != NULL);
     request = inf_adopted_request_new_do(vector, user_id, operation);
+    g_object_unref(operation);
     break;
   case INF_ADOPTED_REQUEST_UNDO:
     request = inf_adopted_request_new_undo(vector, user_id);

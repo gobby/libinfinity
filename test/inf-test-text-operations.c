@@ -531,6 +531,7 @@ int main()
   }
 
   g_free(operations);
+  g_free(users);
 
   return retval;
 }

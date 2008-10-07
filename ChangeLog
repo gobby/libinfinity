@@ -1,5 +1,27 @@
 2008-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c
+	(inf_adopted_algorithm_translate_request): Don't leak v when a cached
+	request is returned.
+	(inf_adopted_algorithm_execute_request): Don't leak log_request when
+	the request must be made reversible.
+
+	* libinfinity/adopted/inf-adopted-request.c
+	(inf_adopted_request_transform), (inf_adopted_request_mirror): Don't
+	leak the newly created operations.
+
+	* libinftext/inf-text-session.c (inf_text_session_xml_to_request):
+	Don't leak the parsed operation.
+
+	* test/inf-test-chunk.c: Don't leak the two chunks.
+
+	* test/inf-test-text-operations.c: Don't leak the users array.
+
+	* test/util/inf-test-util.c: Don't leak the XML content of <segment>
+	nodes for buffers.
+
+2008-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c: Removed the ugly
 	can_cache paramatere for inf_adopted_algorithm_translate_request() and
 	inf_adopted_algorithm_transform_request(). Instead, translate_request

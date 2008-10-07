@@ -31,5 +31,8 @@ int main()
   inf_text_chunk_insert_text(chunk2, 3, "ü", 2, 1, 503);
   chunk = inf_text_chunk_substring(chunk2, 0, 3);
 
+  inf_text_chunk_free(chunk);
+  inf_text_chunk_free(chunk2);
+
   return 0;
 }

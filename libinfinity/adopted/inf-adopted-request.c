@@ -721,6 +721,7 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
     new_operation
   );
 
+  g_object_unref(new_operation);
   inf_adopted_state_vector_free(new_vector);
   return new_request;
 }
@@ -772,6 +773,7 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
     new_operation
   );
 
+  g_object_unref(new_operation);
   inf_adopted_state_vector_free(new_vector);
   return new_request;
 }
