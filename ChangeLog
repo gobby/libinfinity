@@ -1,5 +1,11 @@
 2008-10-08  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-creds.c: Set the subject alternatime name to
+	hostname.local for newly created self-signed certificates, because
+	this is what avahi discovers in a local network.
+
+2008-10-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-dialog.c: Fixed messages when the
 	certificate has changed. The normal message and the one shown when the
 	old certificate has expired were swapped.
