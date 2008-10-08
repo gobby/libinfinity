@@ -494,107 +494,115 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     if(i == priv->known_hosts->len)
       known = NULL;
 
-    query = g_slice_new(InfGtkCertificateManagerQuery);
-    query->manager = manager;
-    query->connection = connection;
-    query->dialog = inf_gtk_certificate_dialog_new(
-      priv->parent_window,
-      GTK_DIALOG_NO_SEPARATOR,
-      flags,
-      hostname,
-      chain
-    );
-    query->certificate_chain = chain;
-    query->old_certificate = known;
-
-    g_object_ref(query->connection);
-    inf_certificate_chain_ref(chain);
-
-    g_signal_connect(
-      G_OBJECT(connection),
-      "notify::status",
-      G_CALLBACK(inf_gtk_certificate_manager_notify_status_cb),
-      query
-    );
-
-    g_signal_connect(
-      G_OBJECT(query->dialog),
-      "response",
-      G_CALLBACK(inf_gtk_certificate_manager_response_cb),
-      query
-    );
-
-    image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
-    gtk_widget_show(image);
-
-    button = gtk_dialog_add_button(
-      GTK_DIALOG(query->dialog),
-      _("_Cancel connection"),
-      GTK_RESPONSE_REJECT
-    );
-
-    gtk_button_set_image(GTK_BUTTON(button), image);
-
-    image = gtk_image_new_from_stock(GTK_STOCK_CONNECT, GTK_ICON_SIZE_BUTTON);
-    gtk_widget_show(image);
-
-    button = gtk_dialog_add_button(
-      GTK_DIALOG(query->dialog),
-      _("C_ontinue connection"),
-      GTK_RESPONSE_ACCEPT
-    );
-
-    gtk_button_set_image(GTK_BUTTON(button), image);
-
-    /* TODO: Do we want a default response here? Which one? */
-
-    text = g_strdup_printf(
-      _("Do you want to continue the connection to host %s?"),
-      hostname
-    );
-
-    label = gtk_label_new(text);
-    gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
-    gtk_widget_show(label);
-    g_free(text);
-
-    gtk_box_pack_start(
-      GTK_BOX(GTK_DIALOG(query->dialog)->vbox),
-      label,
-      FALSE,
-      FALSE,
-      0
-    );
-
-    text = g_strdup_printf(
-      _("Remember the answer for future connections to host %s"),
-      hostname
-    );
-
-    query->checkbutton = gtk_check_button_new_with_label(text);
-
-    /* TODO: Be able remember any answer, not only the one to
-     * "issuer not trusted" */
-    if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED ||
-       flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
+    if(flags == 0)
     {
-      gtk_widget_show(query->checkbutton);
+      /* Nothing to complain about, continue connection immediately. */
+      inf_xmpp_connection_certificate_verify_continue(connection);
     }
+    else
+    {
+      query = g_slice_new(InfGtkCertificateManagerQuery);
+      query->manager = manager;
+      query->connection = connection;
+      query->dialog = inf_gtk_certificate_dialog_new(
+        priv->parent_window,
+        GTK_DIALOG_NO_SEPARATOR,
+        flags,
+        hostname,
+        chain
+      );
+      query->certificate_chain = chain;
+      query->old_certificate = known;
 
-    g_free(text);
+      g_object_ref(query->connection);
+      inf_certificate_chain_ref(chain);
 
-    gtk_box_pack_start(
-      GTK_BOX(GTK_DIALOG(query->dialog)->vbox),
-      query->checkbutton,
-      FALSE,
-      FALSE,
-      0
-    );
+      g_signal_connect(
+        G_OBJECT(connection),
+        "notify::status",
+        G_CALLBACK(inf_gtk_certificate_manager_notify_status_cb),
+        query
+      );
 
-    /* TODO: In which cases should the checkbutton be checked by default? */
+      g_signal_connect(
+        G_OBJECT(query->dialog),
+        "response",
+        G_CALLBACK(inf_gtk_certificate_manager_response_cb),
+        query
+      );
 
-    priv->queries = g_slist_prepend(priv->queries, query);
-    gtk_window_present(GTK_WINDOW(query->dialog));
+      image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
+      gtk_widget_show(image);
+
+      button = gtk_dialog_add_button(
+        GTK_DIALOG(query->dialog),
+        _("_Cancel connection"),
+        GTK_RESPONSE_REJECT
+      );
+
+      gtk_button_set_image(GTK_BUTTON(button), image);
+
+      image = gtk_image_new_from_stock(GTK_STOCK_CONNECT, GTK_ICON_SIZE_BUTTON);
+      gtk_widget_show(image);
+
+      button = gtk_dialog_add_button(
+        GTK_DIALOG(query->dialog),
+        _("C_ontinue connection"),
+        GTK_RESPONSE_ACCEPT
+      );
+
+      gtk_button_set_image(GTK_BUTTON(button), image);
+
+      /* TODO: Do we want a default response here? Which one? */
+
+      text = g_strdup_printf(
+        _("Do you want to continue the connection to host %s?"),
+        hostname
+      );
+
+      label = gtk_label_new(text);
+      gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
+      gtk_widget_show(label);
+      g_free(text);
+
+      gtk_box_pack_start(
+        GTK_BOX(GTK_DIALOG(query->dialog)->vbox),
+        label,
+        FALSE,
+        FALSE,
+        0
+      );
+
+      text = g_strdup_printf(
+        _("Remember the answer for future connections to host %s"),
+        hostname
+      );
+
+      query->checkbutton = gtk_check_button_new_with_label(text);
+
+      /* TODO: Be able remember any answer, not only the one to
+       * "issuer not trusted" */
+      if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED ||
+         flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
+      {
+        gtk_widget_show(query->checkbutton);
+      }
+
+      g_free(text);
+
+      gtk_box_pack_start(
+        GTK_BOX(GTK_DIALOG(query->dialog)->vbox),
+        query->checkbutton,
+        FALSE,
+        FALSE,
+        0
+      );
+
+      /* TODO: In which cases should the checkbutton be checked by default? */
+
+      priv->queries = g_slist_prepend(priv->queries, query);
+      gtk_window_present(GTK_WINDOW(query->dialog));
+    }
   }
 
   g_free(hostname);
