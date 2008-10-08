@@ -32,7 +32,8 @@ enum {
   PROP_REQUEST_LOG
 };
 
-#define INF_ADOPTED_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_USER, InfAdoptedUserPrivate))
+#define INF_ADOPTED_USER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_USER, InfAdoptedUserPrivate))
+#define INF_ADOPTED_USER_PRIVATE(obj)     ((InfAdoptedUserPrivate*)(obj)->priv)
 
 static InfUserClass* parent_class;
 
@@ -44,6 +45,7 @@ inf_adopted_user_init(GTypeInstance* instance,
   InfAdoptedUserPrivate* priv;
 
   user = INF_ADOPTED_USER(instance);
+  user->priv = INF_ADOPTED_USER_GET_PRIVATE(user);
   priv = INF_ADOPTED_USER_PRIVATE(user);
 
   priv->vector = inf_adopted_state_vector_new();

@@ -56,7 +56,9 @@ struct _InfAdoptedUserClass {
  * via the public API functions.
  */
 struct _InfAdoptedUser {
+  /*< private >*/
   InfUser parent;
+  gpointer priv;
 };
 
 GType

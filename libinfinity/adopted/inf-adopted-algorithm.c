@@ -133,7 +133,8 @@ enum {
   LAST_SIGNAL
 };
 
-#define INF_ADOPTED_ALGORITHM_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_ALGORITHM, InfAdoptedAlgorithmPrivate))
+#define INF_ADOPTED_ALGORITHM_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_ALGORITHM, InfAdoptedAlgorithmPrivate))
+#define INF_ADOPTED_ALGORITHM_PRIVATE(obj)     ((InfAdoptedAlgorithmPrivate*)(obj)->priv)
 
 static GObjectClass* parent_class;
 static guint algorithm_signals[LAST_SIGNAL];
@@ -1134,6 +1135,7 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   InfAdoptedAlgorithmPrivate* priv;
 
   algorithm = INF_ADOPTED_ALGORITHM(instance);
+  algorithm->priv = INF_ADOPTED_ALGORITHM_GET_PRIVATE(algorithm);
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
   priv->max_total_log_size = 2048;

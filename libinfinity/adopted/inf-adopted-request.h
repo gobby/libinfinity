@@ -57,6 +57,7 @@ struct _InfAdoptedRequestClass {
 struct _InfAdoptedRequest {
   /*< private >*/
   GObject parent;
+  gpointer priv;
 };
 
 /**

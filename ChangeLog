@@ -1,5 +1,21 @@
 2008-10-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-user.h:
+	* libinfinity/adopted/inf-adopted-user.h:
+	* libinfinity/adopted/inf-adopted-request.h:
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/common/inf-user.c:
+	* libinfinity/adopted/inf-adopted-user.c:
+	* libinfinity/adopted/inf-adopted-request.c:
+	* libinfinity/adopted/inf-adopted-request-log.c:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Added a priv pointer to
+	the instance struct, initialize it in instance_init and use this
+	instead of of calling g_type_instance_get_private all the time. This
+	gets us a performance gain of about 9%.
+
+2008-10-08  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-creds.c: Set the subject alternatime name to
 	hostname.local for newly created self-signed certificates, because
 	this is what avahi discovers in a local network.

@@ -75,7 +75,8 @@ enum {
   PROP_NEXT_REDO
 };
 
-#define INF_ADOPTED_REQUEST_LOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST_LOG, InfAdoptedRequestLogPrivate))
+#define INF_ADOPTED_REQUEST_LOG_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST_LOG, InfAdoptedRequestLogPrivate))
+#define INF_ADOPTED_REQUEST_LOG_PRIVATE(obj)     ((InfAdoptedRequestLogPrivate*)(obj)->priv)
 
 static GObjectClass* parent_class;
 static const guint INF_ADOPTED_REQUEST_LOG_INC = 0x80;
@@ -185,6 +186,7 @@ inf_adopted_request_log_init(GTypeInstance* instance,
   InfAdoptedRequestLogPrivate* priv;
 
   log = INF_ADOPTED_REQUEST_LOG(instance);
+  log->priv = INF_ADOPTED_REQUEST_LOG_GET_PRIVATE(log);
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
   priv->user_id = 0;

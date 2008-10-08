@@ -54,6 +54,7 @@ struct _InfAdoptedRequestLogClass {
 struct _InfAdoptedRequestLog {
   /*< private >*/
   GObject parent;
+  gpointer priv;
 };
 
 GType

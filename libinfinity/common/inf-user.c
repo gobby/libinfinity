@@ -41,7 +41,8 @@ enum {
   PROP_CONNECTION
 };
 
-#define INF_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
+#define INF_USER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
+#define INF_USER_PRIVATE(obj)     ((InfUserPrivate*)(obj)->priv)
 
 static GObjectClass* parent_class;
 
@@ -53,6 +54,7 @@ inf_user_init(GTypeInstance* instance,
   InfUserPrivate* priv;
 
   user = INF_USER(instance);
+  user->priv = INF_USER_GET_PRIVATE(user);
   priv = INF_USER_PRIVATE(user);
 
   priv->id = 0;

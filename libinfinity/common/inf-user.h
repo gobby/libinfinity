@@ -44,6 +44,7 @@ struct _InfUserClass {
 
 struct _InfUser {
   GObject parent;
+  gpointer priv;
 };
 
 typedef enum _InfUserStatus {

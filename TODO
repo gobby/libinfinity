@@ -2,8 +2,11 @@ This is a more-or-less incomplete list of more or less independant tasks that
 would be nice to have done for the first stable release.
 
 Performance (Some ideas to improve performance, profile to verify!):
-  * Cache private ptr to not need to call g_type_instance_get_private all the
-    time (this eats 10% of the overall time currently!)
+  * callgrind suggests g_object_new requires much time, especially for objects
+    that are often instantianted, such as InfAdoptedRequest,
+    InfTextDefaultInsertOperation and InfTextDefaultDeleteOperation. Maybe we
+    can improve this by not initializing the member variables by properties,
+    but by setting them after the g_object_new() call.
   * Move state vector helper functions in algorithm to InfAdoptedStateVector,
     with a better O(n) implementation.
   * Cache request.vector[request.user] in every request, this seems to be

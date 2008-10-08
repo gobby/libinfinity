@@ -54,7 +54,8 @@ enum {
   PROP_OPERATION
 };
 
-#define INF_ADOPTED_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequestPrivate))
+#define INF_ADOPTED_REQUEST_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequestPrivate))
+#define INF_ADOPTED_REQUEST_PRIVATE(obj)     ((InfAdoptedRequestPrivate*)(obj)->priv)
 
 static GObjectClass* parent_class;
 
@@ -66,6 +67,7 @@ inf_adopted_request_init(GTypeInstance* instance,
   InfAdoptedRequestPrivate* priv;
 
   request = INF_ADOPTED_REQUEST(instance);
+  request->priv = INF_ADOPTED_REQUEST_GET_PRIVATE(request);
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
 
   priv->type = INF_ADOPTED_REQUEST_DO;

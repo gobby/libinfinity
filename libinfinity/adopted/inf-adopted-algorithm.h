@@ -85,6 +85,7 @@ struct _InfAdoptedAlgorithmClass {
 struct _InfAdoptedAlgorithm {
   /*< private >*/
   GObject parent;
+  gpointer priv;
 };
 
 GType
