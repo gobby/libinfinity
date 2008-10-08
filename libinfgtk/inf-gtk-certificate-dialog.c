@@ -124,17 +124,17 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       {
         g_string_append(
           info_text,
-          _("It is possible that the connection to the server is being "
-            "hijacked. It is also possible that the host just has got a new "
-            "certificate. However, please only continue the connection if "
-            "you expected this warning.")
+          _("The previous certificate of the server has expired.")
         );
       }
       else
       {
         g_string_append(
           info_text,
-          _("The previous certificate of the server has expired.")
+          _("It is possible that the connection to the server is being "
+            "hijacked. It is also possible that the host just has got a new "
+            "certificate. However, please only continue the connection if "
+            "you expected this warning.")
         );
       }
     }

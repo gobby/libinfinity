@@ -1,5 +1,11 @@
 2008-10-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-certificate-dialog.c: Fixed messages when the
+	certificate has changed. The normal message and the one shown when the
+	old certificate has expired were swapped.
+
+2008-10-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-manager.c: Don't crash when no
 	certificate warnings are shown, but just go on without showing a
 	dialog.
