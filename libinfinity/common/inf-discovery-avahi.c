@@ -462,7 +462,12 @@ inf_discovery_avahi_service_browser_callback(AvahiServiceBrowser* browser,
     for(item = info->discovered; item != NULL; item = g_slist_next(item))
     {
       discovery_info = (InfDiscoveryInfo*)item->data;
-      if(strcmp(discovery_info->service_type, type) == 0)
+      g_assert(strcmp(discovery_info->service_type, type) == 0);
+
+      /* TODO: Do we need to compare domain? */
+      if(strcmp(discovery_info->service_name, name) == 0 &&
+         discovery_info->interface == interface &&
+         discovery_info->protocol == protocol)
       {
         inf_discovery_undiscovered(INF_DISCOVERY(avahi), discovery_info);
         info->discovered = g_slist_remove(info->discovered, discovery_info);
