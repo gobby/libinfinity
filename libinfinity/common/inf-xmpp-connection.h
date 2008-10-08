@@ -153,7 +153,8 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         const gchar* remote_hostname,
                         InfXmppConnectionSecurityPolicy security_policy,
                         gnutls_certificate_credentials_t cred,
-                        Gsasl* sasl_context);
+                        Gsasl* sasl_context,
+                        const gchar* sasl_mechanisms);
 
 void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,

@@ -509,7 +509,7 @@ main(int argc,
   io = inf_gtk_io_new();
 #ifdef INFINOTE_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
-  avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL);
+  avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL, NULL);
   g_object_unref(G_OBJECT(xmpp_manager));
 #endif
 

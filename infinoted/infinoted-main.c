@@ -80,7 +80,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
   }
 
   pool = infd_server_pool_new(directory);
-  server = infd_xmpp_server_new(tcp, credentials, NULL);
+  server = infd_xmpp_server_new(tcp, credentials, NULL, NULL);
   infd_xmpp_server_set_security_policy(server, policy);
   g_object_unref(G_OBJECT(tcp));
   
@@ -92,6 +92,7 @@ infinoted_main_run(gnutls_certificate_credentials_t credentials,
     infd_directory_get_io(directory),
     xmpp_manager,
     credentials,
+    NULL,
     NULL
   );
   g_object_unref(G_OBJECT(xmpp_manager));

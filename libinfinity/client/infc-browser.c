@@ -738,7 +738,10 @@ infc_browser_constructor(GType type,
   priv = INFC_BROWSER_PRIVATE(browser);
 
   if(priv->method_manager == NULL)
+  {
     priv->method_manager = inf_method_manager_get_default();
+    g_object_ref(priv->method_manager);
+  }
 
   g_assert(priv->connection_manager != NULL);
   g_assert(priv->connection != NULL);

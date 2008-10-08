@@ -121,6 +121,7 @@ struct _InfXmppConnectionPrivate {
   Gsasl* sasl_context;
   Gsasl* sasl_own_context;
   Gsasl_session* sasl_session;
+  gchar* sasl_mechanisms;
 };
 
 enum {
@@ -136,6 +137,7 @@ enum {
   PROP_CREDENTIALS,
   /* Gsasl* */
   PROP_SASL_CONTEXT,
+  PROP_SASL_MECHANISMS,
 
   /* From InfXmlConnection */
   PROP_STATUS,
@@ -1150,7 +1152,7 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
 
     if(priv->site == INF_XMPP_CONNECTION_SERVER)
     {
-      /* TODO: Should we error out here? This won't work anyway
+      /* TODO: Should we error out here instead? This won't work anyway
        * without certificate. */
       gnutls_dh_params_init(&dh_params);
       gnutls_dh_params_generate2(dh_params, xmpp_connection_dh_bits);
@@ -1211,6 +1213,23 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
 /*
  * Gsasl setup
  */
+
+static gboolean
+inf_xmpp_connection_sasl_has_mechanism(const char* mechlist,
+                                       const char* mechanism)
+{
+  size_t len;
+  const char* res;
+
+  len = strlen(mechanism);
+  res = strstr(mechlist, mechanism);
+
+  if( (res == mechlist  || isspace(res[ -1])) &&
+      (res[len] == '\0' || isspace(res[len])))
+    return TRUE;
+
+  return FALSE;
+}
 
 /* Emits the error signal for the given SASL error code and sends an
  * authentication failure to the other site. */
@@ -1552,6 +1571,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   xmlNodePtr starttls;
   xmlNodePtr mechanisms;
   xmlNodePtr mechanism;
+  gchar* mechanism_dup;
   GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1610,9 +1630,6 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
     {
       /* Error occured during SASL initialization */
       xmlFreeNode(features);
-      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-      g_free(error);
-      inf_xmpp_connection_terminate(xmpp);
       return;
     }
     else if(priv->sasl_own_context != NULL)
@@ -1627,35 +1644,42 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
     }
     else
     {
-      ret = gsasl_server_mechlist(priv->sasl_context, &mech_list);
-      if(ret != GSASL_OK)
+      if(priv->sasl_mechanisms == NULL)
       {
-        xmlFreeNode(features);
-        error = NULL;
+        ret = gsasl_server_mechlist(priv->sasl_context, &mech_list);
+        if(ret != GSASL_OK)
+        {
+          xmlFreeNode(features);
+          error = NULL;
 
-        g_set_error(
-          &error,
-          inf_xmpp_connection_gsasl_error_quark,
-          ret,
-          "%s",
-          gsasl_strerror(ret)
-        );
+          g_set_error(
+            &error,
+            inf_xmpp_connection_gsasl_error_quark,
+            ret,
+            "%s",
+            gsasl_strerror(ret)
+          );
 
-        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-        g_free(error);
-        inf_xmpp_connection_terminate(xmpp);
-        return;
+          inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+          g_error_free(error);
+          inf_xmpp_connection_terminate(xmpp);
+          return;
+        }
       }
       else
       {
-        begin = end = mech_list;
-        while(*end != '\0')
-        {
-          end = strchr(begin, ' ');
-          if(end == NULL) end = begin + strlen(begin);
+        mech_list = priv->sasl_mechanisms;
+      }
 
-          /* Cannot use content parameter of xmlNewChild because it does not
-           * support the length parameter. */
+      begin = end = mech_list;
+      while(*end != '\0')
+      {
+        end = strpbrk(begin, " \t\r\n");
+        if(end == NULL) end = begin + strlen(begin);
+        mechanism_dup = g_strndup(begin, end - begin);
+
+        if(gsasl_server_support_p(priv->sasl_context, mechanism_dup))
+        {
           mechanism = xmlNewChild(
             mechanisms,
             NULL,
@@ -1664,12 +1688,14 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
           );
 
           xmlNodeAddContentLen(mechanism, (const xmlChar*)begin, end - begin);
-
-          begin = end + 1;
         }
 
-        free(mech_list);
+        g_free(mechanism_dup);
+        begin = end + 1;
       }
+
+      if(priv->sasl_mechanisms == NULL)
+        gsasl_free(mech_list);
     }
   }
 
@@ -1780,8 +1806,9 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
   xmlNodePtr auth;
   xmlNodePtr mechanisms;
   GString* mechanisms_string;
-  const gchar* content;
+  xmlChar* content;
   const char* suggestion;
+  gboolean has_mechanism;
   GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1893,9 +1920,10 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         {
           if(strcmp((const gchar*)child->name, "mechanism") == 0)
           {
-            content = (const gchar*)xmlNodeGetContent(child);
+            content = xmlNodeGetContent(child);
             if(strcmp(content, "ANONYMOUS") == 0)
               suggestion = "ANONYMOUS";
+            xmlFree(content);
           }
         }
       }
@@ -1906,17 +1934,44 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
         {
           if(strcmp((const gchar*)child->name, "mechanism") == 0)
           {
-            if(mechanisms_string->len > 0)
-              g_string_append_c(mechanisms_string, ' ');
+            content = xmlNodeGetContent(child);
 
-            g_string_append(mechanisms_string, (const gchar*)content);
+            has_mechanism = gsasl_client_support_p(
+              priv->sasl_context,
+              (const char*)content
+            );
+
+            if(has_mechanism == TRUE && priv->sasl_mechanisms != NULL)
+            {
+              has_mechanism = inf_xmpp_connection_sasl_has_mechanism(
+                priv->sasl_mechanisms,
+                (const gchar*)content
+              );
+            }
+
+            if(has_mechanism == TRUE)
+            {
+              if(mechanisms_string->len > 0)
+                g_string_append_c(mechanisms_string, ' ');
+
+              g_string_append(mechanisms_string, (const gchar*)content);
+            }
+
+            xmlFree(content);
           }
         }
 
-        suggestion = gsasl_client_suggest_mechanism(
-          priv->sasl_context,
-          mechanisms_string->str
-        );
+        if(mechanisms_string->len > 0)
+        {
+          suggestion = gsasl_client_suggest_mechanism(
+            priv->sasl_context,
+            mechanisms_string->str
+          );
+        }
+        else
+        {
+          suggestion = NULL;
+        }
 
         g_string_free(mechanisms_string, TRUE);
       }
@@ -2962,6 +3017,7 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->sasl_context = NULL;
   priv->sasl_own_context = NULL;
   priv->sasl_session = NULL;
+  priv->sasl_mechanisms = NULL;
 }
 
 static GObject*
@@ -3034,6 +3090,7 @@ inf_xmpp_connection_finalize(GObject* object)
 
   g_free(priv->local_hostname);
   g_free(priv->remote_hostname);
+  g_free(priv->sasl_mechanisms);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -3117,6 +3174,10 @@ inf_xmpp_connection_set_property(GObject* object,
 
     priv->sasl_context = g_value_get_pointer(value);
     break;
+  case PROP_SASL_MECHANISMS:
+    g_free(priv->sasl_mechanisms);
+    priv->sasl_mechanisms = g_value_dup_string(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -3160,6 +3221,9 @@ inf_xmpp_connection_get_property(GObject* object,
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, priv->sasl_context);
+    break;
+  case PROP_SASL_MECHANISMS:
+    g_value_set_string(value, priv->sasl_mechanisms);
     break;
   case PROP_STATUS:
     g_value_set_enum(value, inf_xmpp_connection_get_xml_status(xmpp));
@@ -3416,6 +3480,18 @@ inf_xmpp_connection_class_init(gpointer g_class,
     )
   );
 
+  g_object_class_install_property(
+    object_class,
+    PROP_SASL_MECHANISMS,
+    g_param_spec_string(
+      "sasl-mechanisms",
+      "SASL Mechanisms",
+      "Whitespace separated list of SASL mechanisms to accept/offer",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
   g_object_class_override_property(object_class, PROP_STATUS, "status");
   g_object_class_override_property(object_class, PROP_NETWORK, "network");
   g_object_class_override_property(object_class, PROP_LOCAL_ID, "local-id");
@@ -3562,6 +3638,8 @@ inf_xmpp_connection_get_type(void)
  * #InfXmppConnectionSecurityPolicy for the meaning of this parameter.
  * @cred: Certificate credentials used to secure the communication.
  * @sasl_context: A SASL context used for authentication.
+ * @sasl_mechanisms: A whitespace-separated list of SASL mechanisms to
+ * accept/offer, or %NULL.
  *
  * Creates a new #InfXmppConnection with @tcp as communication channel. No
  * attempt is being made to open @tcp, if it is not already open. However,
@@ -3590,6 +3668,14 @@ inf_xmpp_connection_get_type(void)
  * callback function, the #InfXmppConnection for which the authentication
  * shall be performed can be retrieved with gsasl_session_hook_get().
  *
+ * If @sasl_context is not %NULL, then the @sasl_mechanisms parameter defines
+ * what SASL mechanisms are used. On the server side, these are the mechanisms
+ * offered to the client, and on the client side, these are the accepted
+ * mechanisms (meaning that if a server does not offer any of these, the
+ * connection will be closed). If @sasl_context is %NULL, then this parameter
+ * is ignored. @sasl_mechanisms can be %NULL in which case all available
+ * mechanisms are accepted or offered, respectively.
+ *
  * Return Value: A new #InfXmppConnection.
  **/
 InfXmppConnection*
@@ -3599,7 +3685,8 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         const gchar* remote_hostname,
                         InfXmppConnectionSecurityPolicy security_policy,
                         gnutls_certificate_credentials_t cred,
-                        Gsasl* sasl_context)
+                        Gsasl* sasl_context,
+                        const gchar* sasl_mechanisms)
 {
   GObject* object;
 
@@ -3614,6 +3701,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
     "security-policy", security_policy,
     "credentials", cred,
     "sasl-context", sasl_context,
+    "sasl-mechanisms", sasl_mechanisms,
     NULL
   );
 

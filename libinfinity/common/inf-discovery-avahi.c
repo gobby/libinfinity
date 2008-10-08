@@ -99,6 +99,7 @@ struct _InfDiscoveryAvahiPrivate {
   InfXmppConnectionSecurityPolicy security_policy;
   gnutls_certificate_credentials_t creds;
   Gsasl* sasl_context;
+  gchar* sasl_mechanisms;
 
   AvahiClient* client;
 
@@ -114,6 +115,7 @@ enum {
   PROP_IO,
   PROP_CREDENTIALS,
   PROP_SASL_CONTEXT,
+  PROP_SASL_MECHANISMS,
 
   /* read/write */
   PROP_SECURITY_POLICY
@@ -350,7 +352,8 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
           host_name,
           priv->security_policy,
           priv->creds,
-          priv->sasl_context
+          priv->sasl_context,
+          priv->sasl_context == NULL ? NULL : priv->sasl_mechanisms
         );
 
         g_object_unref(G_OBJECT(tcp));
@@ -1026,6 +1029,7 @@ inf_discovery_avahi_init(GTypeInstance* instance,
   priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
   priv->creds = NULL;
   priv->sasl_context = NULL;
+  priv->sasl_mechanisms = NULL;
 
   priv->client = NULL;
   priv->published = NULL;
@@ -1111,6 +1115,20 @@ inf_discovery_avahi_dispose(GObject* object)
 }
 
 static void
+inf_discovery_avahi_finalize(GObject* object)
+{
+  InfDiscoveryAvahi* avahi;
+  InfDiscoveryAvahiPrivate* priv;
+
+  avahi = INF_DISCOVERY_AVAHI(object);
+  priv = INF_DISCOVERY_AVAHI_PRIVATE(avahi);
+
+  g_free(priv->sasl_mechanisms);
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
+static void
 inf_discovery_avahi_set_property(GObject* object,
                                  guint prop_id,
                                  const GValue* value,
@@ -1140,6 +1158,10 @@ inf_discovery_avahi_set_property(GObject* object,
   case PROP_SASL_CONTEXT:
     g_assert(priv->sasl_context == NULL); /* construct only */
     priv->sasl_context = (Gsasl*)g_value_get_pointer(value);
+    break;
+  case PROP_SASL_MECHANISMS:
+    g_free(priv->sasl_mechanisms);
+    priv->sasl_mechanisms = g_value_dup_string(value);
     break;
   case PROP_SECURITY_POLICY:
     priv->security_policy = g_value_get_enum(value);
@@ -1175,6 +1197,9 @@ inf_discovery_avahi_get_property(GObject* object,
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, (gpointer)priv->sasl_context);
+    break;
+  case PROP_SASL_MECHANISMS:
+    g_value_set_string(value, priv->sasl_mechanisms);
     break;
   case PROP_SECURITY_POLICY:
     g_value_set_enum(value, priv->security_policy);
@@ -1387,7 +1412,7 @@ inf_discovery_avahi_class_init(gpointer g_class,
 
   object_class->constructor = inf_discovery_avahi_constructor;
   object_class->dispose = inf_discovery_avahi_dispose;
-  /*object_class->finalize = inf_discovery_avahi_finalize;*/
+  object_class->finalize = inf_discovery_avahi_finalize;
   object_class->set_property = inf_discovery_avahi_set_property;
   object_class->get_property = inf_discovery_avahi_get_property;
 
@@ -1437,6 +1462,18 @@ inf_discovery_avahi_class_init(gpointer g_class,
       "sasl-context",
       "SASL context",
       "The Gsasl context used for authentication",
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SASL_MECHANISMS,
+    g_param_spec_string(
+      "sasl-mechanisms",
+      "SASL mechanisms",
+      "The accepted SASL mechanisms for authentication",
+      NULL,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1547,6 +1584,8 @@ inf_discovery_avahi_get_type(void)
  * @manager: A #InfXmppManager.
  * @creds: The certificate credentials used for GnuTLS encryption.
  * @sasl_context: A Gsasl context used for authentication.
+ * @sasl_mechanisms: A whitespace-separated list of accepted SASL mechanisms,
+ * or %NULL.
  *
  * Created a new #InfDiscoveryAvahi object which can be used to publish and
  * discovery Infinote services on the local network. When resolving a
@@ -1557,13 +1596,18 @@ inf_discovery_avahi_get_type(void)
  * These may be %NULL in which case #InfXmppConnection uses builtin
  * credentials or a builtin context, respectively.
  *
+ * @sasl_mechanisms specifies allowed mechanisms used for authentication with
+ * the server. It can be %NULL, in which case all available mechanisms are
+ * accepted.
+ *
  * Return Value: A new #InfDiscoveryAvahi.
  **/
 InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,
                         InfXmppManager* manager,
                         gnutls_certificate_credentials_t creds,
-                        Gsasl* sasl_context)
+                        Gsasl* sasl_context,
+                        const gchar* sasl_mechanisms)
 {
   GObject* object;
 
@@ -1576,6 +1620,7 @@ inf_discovery_avahi_new(InfIo* io,
     "xmpp-manager", manager,
     "credentials", creds,
     "sasl-context", sasl_context,
+    "sasl-mechanisms", sasl_mechanisms,
     NULL
   );
 

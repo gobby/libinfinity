@@ -57,7 +57,8 @@ infd_xmpp_server_get_type(void) G_GNUC_CONST;
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      gnutls_certificate_credentials_t cred,
-                     Gsasl* sasl_context);
+                     Gsasl* sasl_context,
+                     const gchar* sasl_mechanisms);
 
 void
 infd_xmpp_server_set_security_policy(InfdXmppServer* server,

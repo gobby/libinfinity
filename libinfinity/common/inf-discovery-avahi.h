@@ -56,7 +56,8 @@ InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,
                         InfXmppManager* manager,
                         gnutls_certificate_credentials_t creds,
-                        Gsasl* sasl_context);
+                        Gsasl* sasl_context,
+                        const gchar* sasl_mechanisms);
 
 void
 inf_discovery_avahi_set_security_policy(InfDiscoveryAvahi* discovery,

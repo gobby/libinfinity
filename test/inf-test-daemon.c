@@ -85,14 +85,14 @@ main(int argc, char* argv[])
     pool = infd_server_pool_new(directory);
     g_object_unref(G_OBJECT(directory));
 
-    xmpp = infd_xmpp_server_new(server, NULL, NULL);
+    xmpp = infd_xmpp_server_new(server, NULL, NULL, NULL);
     g_object_unref(G_OBJECT(server));
 
     infd_server_pool_add_server(pool, INFD_XML_SERVER(xmpp));
 
 #ifdef INFINOTE_HAVE_AVAHI
     xmpp_manager = inf_xmpp_manager_new();
-    avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL);
+    avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL, NULL);
     g_object_unref(G_OBJECT(xmpp_manager));
 
     infd_server_pool_add_local_publisher(

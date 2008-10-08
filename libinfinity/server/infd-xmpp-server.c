@@ -39,6 +39,7 @@ struct _InfdXmppServerPrivate {
 
   Gsasl* sasl_context;
   Gsasl* sasl_own_context;
+  gchar* sasl_mechanisms;
 };
 
 enum {
@@ -49,6 +50,7 @@ enum {
 
   PROP_CREDENTIALS,
   PROP_SASL_CONTEXT,
+  PROP_SASL_MECHANISMS,
 
   PROP_SECURITY_POLICY,
 
@@ -94,7 +96,8 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
     addr_str,
     priv->security_policy,
     priv->tls_creds,
-    priv->sasl_context
+    priv->sasl_context,
+    priv->sasl_own_context != NULL ? "ANONYMOUS" : priv->sasl_mechanisms
   );
 
   g_free(addr_str);
@@ -271,6 +274,28 @@ infd_xmpp_server_sasl_cb(Gsasl* ctx,
   }
 }
 
+static void
+infd_xmpp_server_init(GTypeInstance* instance,
+                      gpointer g_class)
+{
+  InfdXmppServer* xmpp;
+  InfdXmppServerPrivate* priv;
+
+  xmpp = INFD_XMPP_SERVER(instance);
+  priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
+
+  priv->tcp = NULL;
+  priv->status = INFD_XMPP_SERVER_CLOSED;
+  priv->local_hostname = g_strdup(g_get_host_name());
+  priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
+
+  priv->tls_creds = NULL;
+  priv->tls_own_creds = NULL;
+  priv->sasl_context = NULL;
+  priv->sasl_own_context = NULL;
+  priv->sasl_mechanisms = NULL;
+}
+
 static GObject*
 infd_xmpp_server_constructor(GType type,
                              guint n_construct_properties,
@@ -327,34 +352,11 @@ infd_xmpp_server_constructor(GType type,
       priv->sasl_context = priv->sasl_own_context;
       gsasl_callback_set(priv->sasl_context, infd_xmpp_server_sasl_cb);
       gsasl_callback_hook_set(priv->sasl_context, obj);
-      /* TODO: Only allow ANONYMOUS authentaction. This probably has to be
-       * solved via a mechanisms list in XMPP connection. */
       g_object_notify(G_OBJECT(obj), "sasl-context");
     }
   }
 
   return obj;
-}
-
-static void
-infd_xmpp_server_init(GTypeInstance* instance,
-                      gpointer g_class)
-{
-  InfdXmppServer* xmpp;
-  InfdXmppServerPrivate* priv;
-
-  xmpp = INFD_XMPP_SERVER(instance);
-  priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
-
-  priv->tcp = NULL;
-  priv->status = INFD_XMPP_SERVER_CLOSED;
-  priv->local_hostname = g_strdup(g_get_host_name());
-  priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
-
-  priv->tls_creds = NULL;
-  priv->tls_own_creds = NULL;
-  priv->sasl_context = NULL;
-  priv->sasl_own_context = NULL;
 }
 
 static void
@@ -391,6 +393,8 @@ infd_xmpp_server_finalize(GObject* object)
 
   if(priv->tls_own_creds != NULL)
     gnutls_certificate_free_credentials(priv->tls_own_creds);
+
+  g_free(priv->sasl_mechanisms);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -444,6 +448,10 @@ infd_xmpp_server_set_property(GObject* object,
     
     priv->sasl_context = g_value_get_pointer(value);
     break;
+  case PROP_SASL_MECHANISMS:
+    g_free(priv->sasl_mechanisms);
+    priv->sasl_mechanisms = g_value_dup_string(value);
+    break;
   case PROP_SECURITY_POLICY:
     priv->security_policy = g_value_get_enum(value);
     break;
@@ -493,6 +501,9 @@ infd_xmpp_server_get_property(GObject* object,
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, priv->sasl_context);
+    break;
+  case PROP_SASL_MECHANISMS:
+    g_value_set_string(value, priv->sasl_mechanisms);
     break;
   case PROP_SECURITY_POLICY:
     g_value_set_enum(value, priv->security_policy);
@@ -593,6 +604,18 @@ infd_xmpp_server_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_SASL_MECHANISMS,
+    g_param_spec_string(
+      "sasl-mechanisms",
+      "SASL mechanisms",
+      "The SASL mechanisms offered to the client for authentication",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_SECURITY_POLICY,
     g_param_spec_enum(
       "security-policy",
@@ -677,6 +700,7 @@ infd_xmpp_server_get_type(void)
  * @tcp: A #InfdTcpServer.
  * @cred: Certificate credentials used to secure any communication.
  * @sasl_context: A SASL context used for authentication.
+ * @sasl_mechanisms: A whitespace-sparated list of SASL mechanisms.
  *
  * Creates a new #InfdXmppServer with @tcp as underlaying TCP server object.
  * No attempt is being made to open @tcp, if it is not already open. When a
@@ -689,12 +713,18 @@ infd_xmpp_server_get_type(void)
  * however, this might take some time. If @sasl_context is %NULL, the server
  * uses a built-in context that only supports ANONYMOUS authentication.
  *
+ * If @sasl_context is not %NULL, then @sasl_mechanisms specifies the
+ * mechanisms offered to clients. If @sasl_mechanisms is %NULL, then all
+ * available mechanims will be offered. If @sasl_context is %NULL, then this
+ * parameter is ignored.
+ *
  * Return Value: A new #InfdXmppServer.
  **/
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      gnutls_certificate_credentials_t cred,
-                     Gsasl* sasl_context)
+                     Gsasl* sasl_context,
+                     const gchar* sasl_mechanisms)
 {
   GObject* object;
 
@@ -705,6 +735,7 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
     "tcp-server", tcp,
     "credentials", cred,
     "sasl-context", sasl_context,
+    "sasl-mechanisms", sasl_mechanisms,
     NULL
   );
 

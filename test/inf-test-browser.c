@@ -343,6 +343,7 @@ main(int argc, char* argv[])
       "localhost",
       INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
       NULL,
+      NULL,
       NULL
     );
 
