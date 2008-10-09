@@ -1549,10 +1549,10 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
 
     break;
   case INF_ADOPTED_REQUEST_UNDO:
-    op_xml = xmlNewNode(NULL, (const xmlChar*)"undo");
+    op_xml = xmlNewNode(NULL, (const xmlChar*)"undo-caret");
     break;
   case INF_ADOPTED_REQUEST_REDO:
-    op_xml = xmlNewNode(NULL, (const xmlChar*)"redo");
+    op_xml = xmlNewNode(NULL, (const xmlChar*)"redo-caret");
     break;
   default:
     g_assert_not_reached();

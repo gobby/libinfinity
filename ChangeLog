@@ -1,5 +1,14 @@
 2008-10-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c: Send undo-caret and redo-caret. We
+	still don't make a difference internally, but let's be gentle to
+	implementations which do.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Update "insert" and
+	"selection-bound" markers when the active user's selection changes.
+
+2008-10-09  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-run.h:
 	* infinoted/infinoted-run.c: Moved server running code from
 	infinoted-main.c to a new file.
@@ -1633,8 +1642,8 @@
 
 2008-02-17  Benjamin Herr <ben@0x539.de>
 
-	* libinfinity/common/inf-discovery.c
-	* libinfinity/common/inf-session.c
+	* libinfinity/common/inf-discovery.c:
+	* libinfinity/common/inf-session.c:
 
 	Added some more completely made-up documentation!
 
@@ -1655,7 +1664,7 @@
 2008-02-17  Benjamin Herr <ben@0x539.de>
 
 	* libinfinity/common/inf-user-table.c:
-	* libinfinity/common/inf-tcp-connection.c::
+	* libinfinity/common/inf-tcp-connection.c:
 	* libinfinity/common/inf-xml-connection.c:
 
 	Added preliminary documentation to a few signals.

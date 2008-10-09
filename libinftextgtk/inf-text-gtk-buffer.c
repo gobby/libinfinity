@@ -427,6 +427,13 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
   *end = *begin;
 }
 
+/* Required by inf_text_gtk_buffer_mark_set_cb() */
+static void
+inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
+                                                     guint position,
+                                                     gint length,
+                                                     gpointer user_data);
+
 static void
 inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
                                 GtkTextIter* location,
@@ -460,9 +467,58 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
     if(inf_text_user_get_caret_position(priv->active_user) != offset ||
        inf_text_user_get_selection_length(priv->active_user) != sel)
     {
+      g_signal_handlers_block_by_func(
+        G_OBJECT(priv->active_user),
+        G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+        buffer
+      );
+
       inf_text_user_set_selection(priv->active_user, offset, sel);
+
+      g_signal_handlers_unblock_by_func(
+        G_OBJECT(priv->active_user),
+        G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+        buffer
+      );
     }
   }
+}
+
+static void
+inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
+                                                     guint position,
+                                                     gint selection_length,
+                                                     gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  GtkTextIter insert;
+  GtkTextIter selection_bound;
+
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+    buffer
+  );
+
+  gtk_text_buffer_get_iter_at_offset(priv->buffer, &insert, position);
+
+  gtk_text_buffer_get_iter_at_offset(
+    priv->buffer,
+    &selection_bound,
+    position + selection_length
+  );
+
+  gtk_text_buffer_select_range(priv->buffer, &insert, &selection_bound);
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+    buffer
+  );
 }
 
 static void
@@ -1267,12 +1323,31 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
   if(priv->active_user != NULL)
+  {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->active_user),
+      G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+      buffer
+    );
+
     g_object_unref(G_OBJECT(priv->active_user));
+  }
 
   priv->active_user = user;
 
   if(user != NULL)
+  {
+    /* TODO: Set cursor and selection of new user */
+
     g_object_ref(G_OBJECT(user));
+
+    g_signal_connect(
+      G_OBJECT(user),
+      "selection-changed",
+      G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+      buffer
+    );
+  }
 
   g_object_notify(G_OBJECT(buffer), "active-user");
 }
