@@ -1,5 +1,10 @@
 2008-10-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.c: Don't let unavailable
+	users prevent cleanup.
+
+2008-10-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-session.c: Send undo-caret and redo-caret. We
 	still don't make a difference internally, but let's be gentle to
 	implementations which do.

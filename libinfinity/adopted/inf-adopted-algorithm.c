@@ -376,19 +376,20 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
    * are additional conditions. However, in the current case, some requests
    * are just kept a bit longer than necessary, in favor of simplicity. */
 
-  /* TODO: Only take available users into account here, otherwise unavailable
-   * users prevent cleanup. */
   cleanup_data.lcp = inf_adopted_state_vector_copy(priv->current);
   for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
-    temp = inf_adopted_algorithm_least_common_predecessor(
-      algorithm,
-      cleanup_data.lcp,
-      inf_adopted_user_get_vector(*user)
-    );
+    if(inf_user_get_status(INF_USER(*user)) != INF_USER_UNAVAILABLE)
+    {
+      temp = inf_adopted_algorithm_least_common_predecessor(
+        algorithm,
+        cleanup_data.lcp,
+        inf_adopted_user_get_vector(*user)
+      );
 
-    inf_adopted_state_vector_free(cleanup_data.lcp);
-    cleanup_data.lcp = temp;
+      inf_adopted_state_vector_free(cleanup_data.lcp);
+      cleanup_data.lcp = temp;
+    }
   }
 
   for(user = priv->users_begin; user != priv->users_end; ++ user)
