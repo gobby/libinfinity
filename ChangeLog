@@ -1,5 +1,12 @@
 2008-10-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-discovery-avahi.c: Don't assert when the
+	avahi client could not be created. Even though we pass
+	AVAHI_CLIENT_NO_FAIL, sometimes the client still can't be created it
+	seems.
+
+2008-10-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-state-vector.c
 	(inf_adopted_state_vector_vdiff): Changed an assertion that
 	effectively checks an input parameter to a g_return_val_if_fail.

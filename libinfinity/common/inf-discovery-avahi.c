@@ -736,6 +736,40 @@ inf_discovery_avahi_perform_undiscover_all(InfDiscoveryAvahi* avahi)
   );
 }
 
+/* Required by inf_discovery_avahi_create_client() */
+static void
+inf_discovery_avahi_client_callback(AvahiClient* client,
+                                    AvahiClientState state,
+                                    void* userdata);
+
+static void
+inf_discovery_avahi_create_client(InfDiscoveryAvahi* discovery)
+{
+  InfDiscoveryAvahiPrivate* priv;
+  int error;
+
+  priv = INF_DISCOVERY_AVAHI_PRIVATE(discovery);
+
+  priv->client = avahi_client_new(
+    &priv->poll,
+    AVAHI_CLIENT_NO_FAIL,
+    inf_discovery_avahi_client_callback,
+    discovery,
+    NULL
+  );
+
+  /* This still seems to happen sometimes, even though we pass
+   * AVAHI_CLIENT_NO_FAIL */
+  if(priv->client == NULL)
+  {
+    g_warning(_
+      ("Failed to start Avahi client. Service discovery or publishing "
+       "will not be possible.\n\nThe occurred failure was: %s"),
+      avahi_strerror(error)
+    );
+  }
+}
+
 static void
 inf_discovery_avahi_client_callback(AvahiClient* client,
                                     AvahiClientState state,
@@ -743,6 +777,7 @@ inf_discovery_avahi_client_callback(AvahiClient* client,
 {
   InfDiscoveryAvahi* avahi;
   InfDiscoveryAvahiPrivate* priv;
+  int error;
 
   avahi = INF_DISCOVERY_AVAHI(userdata);
   priv = INF_DISCOVERY_AVAHI_PRIVATE(avahi);
@@ -767,21 +802,12 @@ inf_discovery_avahi_client_callback(AvahiClient* client,
 
     if(avahi_client_errno(client) != AVAHI_ERR_DISCONNECTED)
     {
-      priv->client = avahi_client_new(
-        &priv->poll,
-        AVAHI_CLIENT_NO_FAIL,
-        inf_discovery_avahi_client_callback,
-        avahi,
-        NULL
-      );
-
-      /* Since we passed AVAHI_CLIENT_NO_FAIL */
-      g_assert(priv->client != NULL);
+      inf_discovery_avahi_create_client(avahi);
     }
     else
     {
       g_warning(
-        _("Avahi client is in failure state. Service discovery and "
+        _("Avahi client is in failure state. Service discovery or "
           "publishing is no longer possible.\n\nThe occured failure "
           "was: %s\n"),
         avahi_strerror(avahi_client_errno(client))
@@ -1066,17 +1092,7 @@ inf_discovery_avahi_constructor(GType type,
   /* Must have been set as construct only property */
   g_assert(priv->io != NULL);
 
-  priv->client = avahi_client_new(
-    &priv->poll,
-    AVAHI_CLIENT_NO_FAIL,
-    inf_discovery_avahi_client_callback,
-    INF_DISCOVERY_AVAHI(object),
-    NULL
-  );
-
-  /* Since we passed AVAHI_CLIENT_NO_FAIL */
-  g_assert(priv->client != NULL);
-
+  inf_discovery_avahi_create_client(INF_DISCOVERY_AVAHI(object));
   return object;
 }
 
