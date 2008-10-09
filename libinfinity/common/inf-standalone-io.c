@@ -116,14 +116,13 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
     }
   }
 
-  do
-  {
-    result = poll(priv->pfds, (nfds_t)priv->fd_size, timeout);
-  } while(result == -1 && errno == EINTR);
+  result = poll(priv->pfds, (nfds_t)priv->fd_size, timeout);
 
   if(result == -1)
   {
-    g_warning("poll() failed: %s\n", strerror(errno));
+    if(errno != EINTR)
+      g_warning("poll() failed: %s\n", strerror(errno));
+
     return;
   }
 

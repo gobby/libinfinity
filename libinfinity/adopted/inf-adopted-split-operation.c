@@ -262,7 +262,7 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   );
 
   /* TODO: Check whether one of these is a noop and return only the other
-   * one it that case. */
+   * one in that case. */
 
   result = INF_ADOPTED_OPERATION(
     inf_adopted_split_operation_new(new_first, new_second)

@@ -22,10 +22,14 @@ infinoted_SOURCES = \
 	infinoted-main.c \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
+	infinoted-run.c \
+	infinoted-signal.c \
 	infinoted-startup.c
 
 noinst_HEADERS = \
 	infinoted-creds.h \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
+	infinoted-run.h \
+	infinoted-signal.h \
 	infinoted-startup.h

@@ -1392,7 +1392,7 @@ inf_discovery_avahi_unpublish(InfLocalPublisher* publisher,
   InfDiscoveryAvahiPrivate* priv;
   priv = INF_DISCOVERY_AVAHI_PRIVATE(publisher);
 
-  g_assert(g_slist_find(priv->published, item) == NULL);
+  g_assert(g_slist_find(priv->published, item) != NULL);
 
   inf_discovery_avahi_publisher_item_free(item);
   priv->published = g_slist_remove(priv->published, item);

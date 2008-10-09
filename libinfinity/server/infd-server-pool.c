@@ -119,6 +119,8 @@ infd_server_pool_entry_unpublish_with(InfdServerPoolEntry* entry,
 
       publisher->shared.local.item = NULL;
     }
+
+    break;
   default:
     g_assert_not_reached();
     break;
