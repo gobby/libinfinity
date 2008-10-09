@@ -28,6 +28,9 @@
 
 #include <string.h>
 
+/* Don't check text match in stable releases */
+/* #define DELETE_OPERATION_CHECK_TEXT_MATCH */
+
 typedef struct _InfTextDefaultDeleteOperationPrivate InfTextDefaultDeleteOperationPrivate;
 struct _InfTextDefaultDeleteOperationPrivate {
   guint position;
@@ -45,6 +48,7 @@ enum {
 
 static GObjectClass* parent_class;
 
+#ifdef DELETE_OPERATION_CHECK_TEXT_MATCH
 static gboolean
 inf_text_default_delete_operation_text_match(
   InfTextDefaultDeleteOperation* operation,
@@ -82,6 +86,7 @@ inf_text_default_delete_operation_text_match(
 
   return result == 0;
 }
+#endif /* DELETE_OPERATION_CHECK_TEXT_MATCH */
 
 static void
 inf_text_default_delete_operation_init(GTypeInstance* instance,
@@ -254,12 +259,15 @@ inf_text_default_delete_operation_apply(InfAdoptedOperation* operation,
   g_assert(INF_TEXT_IS_BUFFER(buffer));
 
   priv = INF_TEXT_DEFAULT_DELETE_OPERATION_PRIVATE(operation);
+
+#ifdef DELETE_OPERATION_CHECK_TEXT_MATCH
   g_assert(
     inf_text_default_delete_operation_text_match(
       INF_TEXT_DEFAULT_DELETE_OPERATION(operation),
       INF_TEXT_BUFFER(buffer)
     )
   );
+#endif /* DELETE_OPERATION_CHECK_TEXT_MATCH */
 
   inf_text_buffer_erase_text(
     INF_TEXT_BUFFER(buffer),

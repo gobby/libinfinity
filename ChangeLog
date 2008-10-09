@@ -1,5 +1,17 @@
 2008-10-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-state-vector.c
+	(inf_adopted_state_vector_vdiff): Changed an assertion that
+	effectively checks an input parameter to a g_return_val_if_fail.
+
+	* libinftext/inf-text-chunk.c: Disable chunk integrity check by
+	default.
+
+	* libinftext/inf-text-default-delete-operation.c: Disable text match
+	check by default.
+
+2008-10-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c: Don't let unavailable
 	users prevent cleanup.
 

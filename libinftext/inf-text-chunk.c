@@ -21,7 +21,8 @@
 
 #include <string.h>
 
-#define CHUNK_CHECK_INTEGRITY
+/* Don't check integrity in stable releases */
+/*#define CHUNK_CHECK_INTEGRITY*/
 
 struct _InfTextChunk {
   GSequence* segments;

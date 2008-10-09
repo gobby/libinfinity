@@ -654,7 +654,10 @@ inf_adopted_state_vector_vdiff(InfAdoptedStateVector* first,
   guint first_sum;
   guint second_sum;
 
-  g_assert(inf_adopted_state_vector_causally_before(first, second) == TRUE);
+  g_return_val_if_fail(
+    inf_adopted_state_vector_causally_before(first, second) == TRUE,
+    0
+  );
 
   first_sum = 0;
   second_sum = 0;
