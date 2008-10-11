@@ -1118,6 +1118,7 @@ inf_text_session_process_xml_sync(InfSession* session,
       error
     );
 
+    g_iconv_close(cd);
     if(text == NULL) return FALSE;
 
     if(author != 0)
@@ -1157,6 +1158,7 @@ inf_text_session_process_xml_sync(InfSession* session,
       user
     );
 
+    g_free(text);
     return TRUE;
   }
   else

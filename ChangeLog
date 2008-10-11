@@ -1,3 +1,25 @@
+2008-10-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session.c
+	(inf_adopted_session_process_xml_sync): Don't leak the processed
+	request.
+
+	* inf_adopted_split_operation_revert
+	(inf_adopted_split_operation_revert): Don't leak the two reverted
+	child operations.
+
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_group_free): Don't leak the
+	InfConnectionManagerMethodInstance instance.
+	(inf_connection_manager_handle_message): Don't leak scope_attr.
+
+	* libinfinity/common/inf-session.c
+	(inf_session_get_xml_user_props_impl): Don't leak status.
+
+	* libinftext/inf-text-session.c (inf_text_session_process_xml_sync):
+	Don't leak the GIconv conversion descriptor.
+	(inf_text_session_process_xml_sync): Don't leak text.
+
 2008-10-09  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-discovery-avahi.c: Don't assert when the

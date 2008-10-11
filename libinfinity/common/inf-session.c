@@ -937,6 +937,8 @@ inf_session_get_xml_user_props_impl(InfSession* session,
     else
       /* TODO: Error reporting for get_xml_user_props */
       g_value_set_enum(&parameter->value, INF_USER_UNAVAILABLE);
+
+    xmlFree(status);
   }
 
 #if 0

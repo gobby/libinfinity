@@ -847,9 +847,14 @@ inf_adopted_session_process_xml_sync(InfSession* session,
 
     log = inf_adopted_user_get_request_log(user);
     if(inf_adopted_session_validate_request(log, request, error) == FALSE)
+    {
+      g_object_unref(request);
       return FALSE;
+    }
 
     inf_adopted_request_log_add_request(log, request);
+    g_object_unref(request);
+
     return TRUE;
   }
 

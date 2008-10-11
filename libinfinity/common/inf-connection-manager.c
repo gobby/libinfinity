@@ -520,6 +520,7 @@ inf_connection_manager_group_free(gpointer group_)
   {
     instance = (InfConnectionManagerMethodInstance*)item->data;
     instance->desc->finalize(instance->method);
+    g_slice_free(InfConnectionManagerMethodInstance, instance);
   }
   g_slist_free(group->methods);
 
@@ -792,6 +793,8 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
         scope = INF_CONNECTION_MANAGER_GROUP;
       else
         scope = INF_CONNECTION_MANAGER_POINT_TO_POINT;
+
+      xmlFree(scope_attr);
     }
     else
     {

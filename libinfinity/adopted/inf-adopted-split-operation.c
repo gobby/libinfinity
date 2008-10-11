@@ -348,6 +348,9 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
   InfAdoptedOperation* new_second;
+
+  InfAdoptedOperation* revert_first;
+  InfAdoptedOperation* revert_second;
   InfAdoptedSplitOperation* result;
 
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
@@ -355,12 +358,15 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
 
   new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
 
-  result = inf_adopted_split_operation_new(
-    inf_adopted_operation_revert(priv->first),
-    inf_adopted_operation_revert(new_second)
-  );
+  revert_first = inf_adopted_operation_revert(priv->first);
+  revert_second = inf_adopted_operation_revert(new_second);
+  g_object_unref(new_second);
 
-  g_object_unref(G_OBJECT(new_second));
+  result = inf_adopted_split_operation_new(revert_first, revert_second);
+
+  g_object_unref(revert_first);
+  g_object_unref(revert_second);
+
   return INF_ADOPTED_OPERATION(result);
 }
 
