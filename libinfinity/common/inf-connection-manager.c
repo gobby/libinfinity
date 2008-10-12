@@ -1523,7 +1523,17 @@ inf_connection_manager_group_unref(InfConnectionManagerGroup* group)
 
   -- group->ref_count;
   if(group->ref_count == 0)
-    g_tree_remove(priv->groups, &group->key);
+  {
+    /* It can happen that the group is not in the tree, because a group with
+     * the same key exists already. This check should no longer be necessary
+     * when we directly remove such groups in
+     * inf_connection_manager_handle_connection(), see also the todo comment
+     * there. */
+    if(g_tree_lookup(priv->groups, &group->key) == group)
+      g_tree_remove(priv->groups, &group->key);
+    else
+      inf_connection_manager_group_free(group);
+  }
 }
 
 /**

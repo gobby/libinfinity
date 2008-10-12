@@ -1,5 +1,12 @@
 2008-10-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_group_unref): Allow final unref of groups not
+	in the tree (because of duplicate IDs). This is a temporary workaround
+	until the handling of such groups has been fixed.
+
+2008-10-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-store.c: Removed an unnecessary
 	gtk_tree_model_row_changed() call.
 
