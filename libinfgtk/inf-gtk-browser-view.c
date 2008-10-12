@@ -32,7 +32,7 @@
 
 #include <gdk/gdkkeysyms.h>
 
-#define INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION \
+#define INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION \
   "inf-gtk-browser-view-initial-exploration"
 
 #define INF_GTK_BROWSER_VIEW_ERROR_COLOR "#db1515"
@@ -45,6 +45,9 @@ struct _InfGtkBrowserViewBrowser {
 
   GSList* explores;
   GSList* syncs;
+
+  /* Whether we expand the root node automatically */
+  gboolean initial_root_expansion;
 };
 
 typedef struct _InfGtkBrowserViewExplore InfGtkBrowserViewExplore;
@@ -79,9 +82,8 @@ struct _InfGtkBrowserViewPrivate {
    * to disconnect when the view is disposed, or a browser removed. */
   GSList* browsers;
 
-  /* More bookkeeping for objects we show progress for. */
-  GSList* explore_requests;
-  GSList* syncs;
+  /* Pending discovery info resolves */
+  GSList* info_resolvs;
 };
 
 enum {
@@ -200,23 +202,39 @@ inf_gtk_browser_view_redraw_row(InfGtkBrowserView* view,
                                 GtkTreePath* path,
                                 GtkTreeIter* iter)
 {
-  /* TODO: Is there a better way to do this? Calling gtk_tree_model_changed is
-   * not good:
-   *
-   * The actual data in the model has not been changed, otherwise the model
-   * would have emitted the signal. What actually has changed is just what we
+  InfGtkBrowserViewPrivate* priv;
+  GdkRectangle cell_area;
+
+  /* The actual data in the model has not been changed, otherwise the model
+   * would have emitted the row-changed signal and the treeview would redraw
+   * itself automatically. What actually has changed is just what we
    * display, for example the progress bar of the exploration of a node. This
    * does not belong to the model because the model does not care about
    * exploration progress, but we want to show it to the user nevertheless.
    * I am not sure whether this is a problem in our design or a limitation
    * in the GTK+ treeview and friends. */
-  gtk_tree_model_row_changed(
-    gtk_tree_view_get_model(
-      GTK_TREE_VIEW(INF_GTK_BROWSER_VIEW_PRIVATE(view)->treeview)
-    ),
-    path,
-    iter
-  );
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+
+  if(GTK_WIDGET_REALIZED(priv->treeview))
+  {
+    gtk_tree_view_get_cell_area(
+      GTK_TREE_VIEW(priv->treeview),
+      path,
+      priv->column,
+      &cell_area
+    );
+
+    if(cell_area.height != 0)
+    {
+      gtk_widget_queue_draw_area(
+        INF_GTK_BROWSER_VIEW_PRIVATE(view)->treeview,
+        cell_area.x,
+        cell_area.y,
+        cell_area.width,
+        cell_area.height
+      );
+    }
+  }
 }
 
 static void
@@ -319,7 +337,7 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
   GtkTreeModel* model;
   GtkTreePath* path;
   GtkTreeIter iter;
-  gpointer initial_exploration;
+  gpointer initial_expansion;
 
   explore = (InfGtkBrowserViewExplore*)user_data;
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(explore->view_browser->view);
@@ -331,20 +349,27 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
   gtk_tree_model_get_iter(model, &iter, path);
   inf_gtk_browser_view_redraw_row(explore->view_browser->view, path, &iter);
 
-  initial_exploration = g_object_get_data(
-    G_OBJECT(explore->request),
-    INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION
+  initial_expansion = g_object_get_data(
+      G_OBJECT(explore->request),
+      INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
   );
 
-  /* Expand initial exploration of the root node bcesaue the user double
-   * clicked on it to connect, so he wants most likely to see the remote
-   * directory. */
-  if(GPOINTER_TO_UINT(initial_exploration))
+  /*printf("progress-cb on view %p, initial expansion %p\n", explore->view_browser->view, initial_expansion);*/
+
+  /* Expand initial exploration of the root node if we are told to
+   * do so. This is the case if we issued the discovery resolv. */
+  /* The model might be a filter model in which case the first discovered
+   * node might not be contained in the model. We expand as soon as we have
+   * any children. If we don't have any, then we can't expand of course. The
+   * extra g_object_set_data does not need to be undone since the request
+   * most likely vanishes anyway after exploration. */
+  if(initial_expansion == explore->view_browser->view &&
+     gtk_tree_model_iter_has_child(model, &iter))
   {
     g_object_set_data(
       G_OBJECT(explore->request),
-      INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION,
-      GUINT_TO_POINTER(0)
+      INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
+      NULL
     );
 
     gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
@@ -615,6 +640,8 @@ inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
     &tree_iter
   );
 
+  /*printf("Begin-explore cb for view %p, result %d\n", view_browser->view, result);*/
+
   /* The model might be a filter model that does not contain the node
    * being explored, so do not assert here. */
   if(result == TRUE)
@@ -652,7 +679,7 @@ inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
   session = infc_session_proxy_get_session(proxy);
 
   /* Note that we do not check sync-ins here. This is because sync-ins can
-   * only be created along with new nodes, in which case we already at the
+   * only be created along with new nodes, in which case we already add the
    * synchronization in row_inserted_cb(). Perhaps we could still
    * double-check here, just to be sure, though... */
   if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
@@ -795,23 +822,77 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
 
 static void
 inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
-                                          InfcBrowser* browser,
-                                          InfcBrowserIter* browser_iter)
+                                          GtkTreePath* path,
+                                          GtkTreeIter* iter)
 {
+  InfGtkBrowserViewPrivate* priv;
   InfcExploreRequest* request;
+  InfGtkBrowserViewBrowser* view_browser;
+  GtkTreeModel* model;
+  InfcBrowser* browser;
+  InfcBrowserIter* browser_iter;
 
-  /* Explore root node if it is not already explored */
-  if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE &&
-     infc_browser_iter_get_explore_request(browser, browser_iter) == NULL)
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+
+  gtk_tree_model_get(
+    model,
+    iter,
+    INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
+    INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
+    -1
+  );
+
+  view_browser = inf_gtk_browser_view_find_view_browser(view, browser);
+  g_assert(view_browser != NULL);
+
+  if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE)
   {
-    request = infc_browser_iter_explore(browser, browser_iter);
+    request = infc_browser_iter_get_explore_request(browser, browser_iter);
+    /* Explore root node if it is not already explored */
+    if(request == NULL)
+      request = infc_browser_iter_explore(browser, browser_iter);
 
-    g_object_set_data(
-      G_OBJECT(request),
-      INF_GTK_BROWSER_VIEW_INITIAL_EXPLORATION,
-      GUINT_TO_POINTER(1)
-    );
+    if(view_browser->initial_root_expansion == TRUE)
+    {
+      /* There should always only be one view to do initial root expansion
+       * because only one view can have issued the resolv. */
+      g_assert(
+        g_object_get_data(
+          G_OBJECT(request),
+          INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
+        ) == NULL
+      );
+
+      /* Remember to do initial root expansion when the node has been
+       * explored. */
+      /*printf("Initial root exansion was set, set on request for view %p\n", view);*/
+      g_object_set_data(
+        G_OBJECT(request),
+        INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
+        view
+      );
+
+      /* Handled expansion flag, so unset, could otherwise lead to another
+       * try of expanding the root node. */
+      view_browser->initial_root_expansion = FALSE;
+    }
   }
+  else
+  {
+    if(view_browser->initial_root_expansion == TRUE)
+    {
+      /*printf("Direct expansion for view %p\n", view);*/
+      gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
+
+      /* Handled expansion flag, so unset, could otherwise lead to another
+       * try of expanding the root node. */
+      view_browser->initial_root_expansion = FALSE;
+    }
+  }
+
+  infc_browser_iter_free(browser_iter);
+  g_object_unref(browser);
 }
 
 static void
@@ -826,6 +907,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
   InfXmlConnection* connection;
   InfXmlConnectionStatus status;
   InfcBrowserIter* browser_iter;
+  InfDiscoveryInfo* info;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
@@ -837,6 +919,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
 
   view_browser->explores = NULL;
   view_browser->syncs = NULL;
+  view_browser->initial_root_expansion = FALSE;
 
   view_browser->reference = gtk_tree_row_reference_new_proxy(
     G_OBJECT(priv->column),
@@ -862,6 +945,21 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
 
   /* TODO: Watch a signal to be notified when a sync-in begins. */
 
+  gtk_tree_model_get(
+    model,
+    iter,
+    INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
+    -1
+  );
+
+  /* Initially expand the root node in this view if we resolved it. */
+  if(info != NULL && g_slist_find(priv->info_resolvs, info) != NULL)
+  {
+    /*printf("Set initial root expansion for view %p\n", view);*/
+    view_browser->initial_root_expansion = TRUE;
+    priv->info_resolvs = g_slist_remove(priv->info_resolvs, info);
+  }
+
   connection = infc_browser_get_connection(browser);
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
@@ -879,11 +977,11 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
      * explore requests to show their progress. */
     /* TODO: We do not need this anymore when we get insertion callbacks
      * from the model for each node in the newly added browser. See
-     * inf_gtk_browser_model_set_browser_impl() in inf-gtk-browser-model.c. */
+     * inf_gtk_browser_store_set_browser_impl() in inf-gtk-browser-store.c. */
     inf_gtk_browser_view_walk_requests(view, browser, browser_iter);
 
     /* Explore root node initially if not already explored */
-    inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
+    inf_gtk_browser_view_initial_root_explore(view, path, iter);
 
     infc_browser_iter_free(browser_iter);
   }
@@ -983,6 +1081,8 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
   InfcExploreRequest* explore_request;
+  InfGtkBrowserViewBrowser* view_browser;
+  InfGtkBrowserViewExplore* explore;
   GtkTreePath* parent_path;
   GtkTreeView* treeview;
 
@@ -1031,13 +1131,29 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
       }
       else
       {
-        inf_gtk_browser_view_explore_added(
+        view_browser = inf_gtk_browser_view_find_view_browser(view, browser);
+        g_assert(view_browser != NULL);
+
+        explore = inf_gtk_browser_view_find_explore(
           view,
-          browser,
-          explore_request,
-          path,
-          iter
+          view_browser,
+          explore_request
         );
+
+        /* TODO: The correct way to do this would probably be to ignore
+         * the begin-explore signal of the browser if row-inserted for the
+         * row being explored has not yet been received by the view. We
+         * could then omit this nasty check. */
+        if(explore == NULL)
+        {
+          inf_gtk_browser_view_explore_added(
+            view,
+            browser,
+            explore_request,
+            path,
+            iter
+          );
+        }
       }
     }
     else
@@ -1076,6 +1192,7 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
   InfGtkBrowserViewPrivate* priv;
   GtkTreeIter parent_iter;
   InfGtkBrowserModelStatus status;
+  InfDiscoveryInfo* info;
 
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
@@ -1089,24 +1206,21 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
       model,
       iter,
       INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
+      INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
       -1
     );
 
     /* Explore root node as soon as the connection is ready */
     if(status == INF_GTK_BROWSER_MODEL_CONNECTED)
     {
-      gtk_tree_model_get(
-        model,
-        iter,
-        INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
-        INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,
-        -1
-      );
-
-      inf_gtk_browser_view_initial_root_explore(view, browser, browser_iter);
-      infc_browser_iter_free(browser_iter);
-      g_object_unref(browser);
+      inf_gtk_browser_view_initial_root_explore(view, path, iter);
     }
+
+    /* Remove pending resolv when there was an error while resolving. On
+     * success, a browser will be created and we remove the pending resolve
+     * in the set-browser signal handler. */
+    if(info != NULL && status == INF_GTK_BROWSER_MODEL_ERROR)
+      priv->info_resolvs = g_slist_remove(priv->info_resolvs, info);
   }
 }
 
@@ -1213,6 +1327,10 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
   {
     while(priv->browsers != NULL)
       inf_gtk_browser_view_browser_removed(view, priv->browsers->data);
+
+    /* We are no longer waiting for resolvs from that model */
+    g_slist_free(priv->info_resolvs);
+    priv->info_resolvs = NULL;
 
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
@@ -1383,6 +1501,7 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
                                       gpointer user_data)
 {
   InfGtkBrowserView* view;
+  InfGtkBrowserViewPrivate* priv;
   GtkTreeModel* model;
   InfGtkBrowserModelStatus status;
   InfDiscovery* discovery;
@@ -1393,6 +1512,7 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
   InfcBrowserIter* browser_iter;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
+  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
   /* Connect to host, if not already */
   if(gtk_tree_path_get_depth(path) == 1)
@@ -1419,6 +1539,11 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
           discovery,
           info
         );
+
+        /* Remember that we resolved that info, to do the initial root node
+         * expansion. */
+        priv->info_resolvs = g_slist_prepend(priv->info_resolvs, info);
+        /*printf("Add info %p to info resolvs of view %p\n", info, view);*/
       }
 
       g_object_unref(G_OBJECT(discovery));
@@ -2083,8 +2208,7 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   priv->renderer_status = gtk_cell_renderer_text_new();
 
   priv->browsers = NULL;
-  priv->explore_requests = NULL;
-  priv->syncs = NULL;
+  priv->info_resolvs = NULL;
 
   g_object_set(G_OBJECT(priv->renderer_status), "xpad", 10, NULL);
   g_object_set(G_OBJECT(priv->renderer_status_icon), "xpad", 5, NULL);
@@ -2596,8 +2720,10 @@ inf_gtk_browser_view_set_selected(InfGtkBrowserView* view,
   treeview = GTK_TREE_VIEW(priv->treeview);
   selection = gtk_tree_view_get_selection(treeview);
 
-  path =
-    gtk_tree_model_get_path(gtk_tree_view_get_model(priv->treeview), iter);
+  path = gtk_tree_model_get_path(
+    gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview)),
+    iter
+  );
   g_assert(path != NULL);
 
   gtk_tree_view_expand_to_path(treeview, path);
