@@ -1,5 +1,11 @@
 2008-10-13  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c: Make sure only one author tag
+	can be applied to a range of text. Applying multiple tags could still
+	occur when copying and pasting text from the same buffer.
+
+2008-10-13  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c
 	(inf_connection_manager_handle_message): Keep a reference on the
 	group that is currently processed, and unref at the end. This prevents
