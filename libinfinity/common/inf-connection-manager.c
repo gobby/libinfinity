@@ -817,6 +817,9 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
     group = g_tree_lookup(priv->groups, &key);
     if(group != NULL)
     {
+      /* Group ref since net_object_received could do a final unref */
+      inf_connection_manager_group_ref(group);
+
       /* Must have been registered to be processed: */
       queue = inf_connection_manager_group_lookup_queue(group, connection);
       if(queue != NULL)
@@ -901,6 +904,8 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
           break;
         }
       }
+
+      inf_connection_manager_group_unref(group);
     }
   }
 
