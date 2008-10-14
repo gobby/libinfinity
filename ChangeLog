@@ -1,3 +1,13 @@
+2008-10-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added
+	inf_text_gtk_buffer_get_wake_on_cursor_movement() and
+	inf_text_gtk_buffer_set_wake_on_cursor_movement(). This setting
+	specifies whether to make inactive users active when the cursor
+	position of the underlying TextBuffer changes, or to resync when the
+	user is explicitely set to be active.
+
 2008-10-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.c

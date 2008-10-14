@@ -65,6 +65,13 @@ InfTextUser*
 inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer);
 
 void
+inf_text_gtk_buffer_set_wake_on_cursor_movement(InfTextGtkBuffer* buffer,
+                                                gboolean wake);
+
+gboolean
+inf_text_gtk_buffer_get_wake_on_cursor_movement(InfTextGtkBuffer* buffer);
+
+void
 inf_text_gtk_buffer_ensure_author_tags_priority(InfTextGtkBuffer* buffer);
 
 G_END_DECLS

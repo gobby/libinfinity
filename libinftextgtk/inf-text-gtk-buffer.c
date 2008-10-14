@@ -39,7 +39,9 @@ struct _InfTextGtkBufferPrivate {
   GtkTextBuffer* buffer;
   InfUserTable* user_table;
   GHashTable* user_tags;
+
   InfTextUser* active_user;
+  gboolean wake_on_cursor_movement;
 };
 
 enum {
@@ -47,7 +49,8 @@ enum {
 
   PROP_BUFFER,
   PROP_USER_TABLE,
-  PROP_ACTIVE_USER
+  PROP_ACTIVE_USER,
+  PROP_WAKE_ON_CURSOR_MOVEMENT
 };
 
 #define INF_TEXT_GTK_BUFFER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_BUFFER, InfTextGtkBufferPrivate))
@@ -342,6 +345,20 @@ inf_text_gtk_buffer_ensure_author_tags_priority_foreach_func(GtkTextTag* tag,
     gtk_text_tag_set_priority(tag, 0);
 }
 
+/* Required by inf_text_gtk_buffer_mark_set_cb() */
+static void
+inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
+                                                     guint position,
+                                                     gint length,
+                                                     gpointer user_data);
+
+/* Required by inf_text_gtk_buffer_insert_text_cb(),
+ * inf_text_gtk_buffer_delete_range_cb(), inf_text_gtk_buffer_mark_set_cb() */
+static void
+inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
+                                                 GParamSpec* pspec,
+                                                 gpointer user_data);
+
 static void
 inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
                                    GtkTextIter* location,
@@ -373,6 +390,16 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
   location_offset = gtk_text_iter_get_offset(location);
   text_len = g_utf8_strlen(text, len);
 
+  /* Block the notify_status signal handler of the active user. That signal
+   * handler syncs the cursor position of the user to the insertion mark of
+   * the TextBuffer when the user becomes active again. However, when we
+   * insert text, then this will be updated anyway. */
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+    buffer
+  );
+
   inf_text_buffer_insert_text(
     INF_TEXT_BUFFER(buffer),
     location_offset,
@@ -380,6 +407,12 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
     len,
     text_len,
     INF_USER(priv->active_user)
+  );
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+    buffer
   );
 
   /* Revalidate iterator */
@@ -415,6 +448,16 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
 
   begin_offset = gtk_text_iter_get_offset(begin);
 
+  /* Block the notify_status signal handler of the active user. That signal
+   * handler syncs the cursor position of the user to the insertion mark of
+   * the TextBuffer when the user becomes active again. However, when we
+   * erase text, then this will be updated anyway. */
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+    buffer
+  );
+
   inf_text_buffer_erase_text(
     INF_TEXT_BUFFER(buffer),
     begin_offset,
@@ -422,17 +465,16 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
     INF_USER(priv->active_user)
   );
 
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+    buffer
+  );
+
   /* Revalidate iterators */
   gtk_text_buffer_get_iter_at_offset(priv->buffer, begin, begin_offset);
   *end = *begin;
 }
-
-/* Required by inf_text_gtk_buffer_mark_set_cb() */
-static void
-inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
-                                                     guint position,
-                                                     gint length,
-                                                     gpointer user_data);
 
 static void
 inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
@@ -458,8 +500,89 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
 
   if( (mark == insert_mark || mark == sel_mark) && priv->active_user != NULL)
   {
-    gtk_text_buffer_get_iter_at_mark(gtk_buffer, &insert_iter, insert_mark);
-    gtk_text_buffer_get_iter_at_mark(gtk_buffer, &sel_iter, sel_mark);
+    /* Don't send status updates for inactive users as these would make it
+     * active. Instead, we send one update when the user becomes active
+     * again. */
+    if(inf_user_get_status(INF_USER(priv->active_user)) == INF_USER_ACTIVE ||
+       priv->wake_on_cursor_movement == TRUE)
+    {
+      gtk_text_buffer_get_iter_at_mark(gtk_buffer, &insert_iter, insert_mark);
+      gtk_text_buffer_get_iter_at_mark(gtk_buffer, &sel_iter, sel_mark);
+
+      offset = gtk_text_iter_get_offset(&insert_iter);
+      sel = gtk_text_iter_get_offset(&sel_iter) - offset;
+
+      if(inf_text_user_get_caret_position(priv->active_user) != offset ||
+         inf_text_user_get_selection_length(priv->active_user) != sel)
+      {
+        /* Block the notify_status signal handler of the active user. That
+         * signal handler syncs the cursor position of the user to the
+         * insertion mark of the TextBuffer when the user becomes active
+         * again. However, when we move the cursor, then this will be updated
+         * anyway. */
+        g_signal_handlers_block_by_func(
+          G_OBJECT(priv->active_user),
+          G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+          buffer
+        );
+
+        g_signal_handlers_block_by_func(
+          G_OBJECT(priv->active_user),
+          G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+          buffer
+        );
+
+        inf_text_user_set_selection(priv->active_user, offset, sel);
+
+        g_signal_handlers_unblock_by_func(
+          G_OBJECT(priv->active_user),
+          G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+          buffer
+        );
+
+        g_signal_handlers_unblock_by_func(
+          G_OBJECT(priv->active_user),
+          G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+          buffer
+        );
+      }
+    }
+  }
+}
+
+static void
+inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
+                                                 GParamSpec* pspec,
+                                                 gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  GtkTextMark* insert_mark;
+  GtkTextMark* sel_mark;
+  GtkTextIter insert_iter;
+  GtkTextIter sel_iter;
+  guint offset;
+  int sel;
+
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  g_assert(INF_TEXT_USER(object) == priv->active_user);
+
+  switch(inf_user_get_status(INF_USER(object)))
+  {
+  case INF_USER_ACTIVE:
+    /* User became active: Sync user selection and the insertion mark of the
+     * TextBuffer. They can get out of sync while the user is inactive, and
+     * wake-on-cursor-movement is FALSE. For example text can selected in
+     * an inactive document, and then the user decides to select something
+     * else, erasing the previous selection. */
+
+    insert_mark = gtk_text_buffer_get_insert(priv->buffer);
+    sel_mark = gtk_text_buffer_get_selection_bound(priv->buffer);
+
+    gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, insert_mark);
+    gtk_text_buffer_get_iter_at_mark(priv->buffer, &sel_iter, sel_mark);
 
     offset = gtk_text_iter_get_offset(&insert_iter);
     sel = gtk_text_iter_get_offset(&sel_iter) - offset;
@@ -481,6 +604,11 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
         buffer
       );
     }
+
+    break;
+  default:
+    /* Not of interest. */
+    break;
   }
 }
 
@@ -603,6 +731,7 @@ inf_text_gtk_buffer_init(GTypeInstance* instance,
   );
 
   priv->active_user = NULL;
+  priv->wake_on_cursor_movement = FALSE;
 }
 
 static void
@@ -670,6 +799,9 @@ inf_text_gtk_buffer_set_property(GObject* object,
     );
 
     break;
+  case PROP_WAKE_ON_CURSOR_MOVEMENT:
+    priv->wake_on_cursor_movement = g_value_get_boolean(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
     break;
@@ -698,6 +830,9 @@ inf_text_gtk_buffer_get_property(GObject* object,
     break;
   case PROP_ACTIVE_USER:
     g_value_set_object(value, G_OBJECT(priv->active_user));
+    break;
+  case PROP_WAKE_ON_CURSOR_MOVEMENT:
+    g_value_set_boolean(value, G_OBJECT(priv->wake_on_cursor_movement));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1155,6 +1290,19 @@ inf_text_gtk_buffer_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_WAKE_ON_CURSOR_MOVEMENT,
+    g_param_spec_boolean(
+      "wake-on-cursor-movement",
+      "Wake on cursor movement",
+      "Whether to make inactive users active when the insertion mark in the "
+      "TextBuffer moves",
+      FALSE,
+      G_PARAM_READWRITE
+    )
+  );
 }
 
 static void
@@ -1326,6 +1474,12 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
   {
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->active_user),
+      G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+      buffer
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->active_user),
       G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
       buffer
     );
@@ -1340,6 +1494,13 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
     /* TODO: Set cursor and selection of new user */
 
     g_object_ref(G_OBJECT(user));
+
+    g_signal_connect(
+      G_OBJECT(user),
+      "notify::status",
+      G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+      buffer
+    );
 
     g_signal_connect(
       G_OBJECT(user),
@@ -1368,6 +1529,52 @@ inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer)
 }
 
 /**
+ * inf_text_gtk_buffer_set_wake_on_cursor_movement:
+ * @buffer: A #InfTextGtkBuffer.
+ * @wake: Whether to make inactive users active on cursor movement.
+ *
+ * This function spcecifies whether movement of the insertion point or
+ * selection bound of the underlying text buffer causes the active user
+ * (see inf_text_gtk_buffer_set_active_user()) to become active when its
+ * status is %INF_USER_STATUS_INACTIVE.
+ *
+ * If @wake is %TRUE, then the user status changes to %INF_USER_STATUS_ACTIVE
+ * in that case. If @wake is %FALSE, then the user status stays
+ * %INF_USER_STATUS_INACTIVE, and its caret-position and selection-length
+ * properties will be no longer be synchronized to the buffer marks until
+ * the user is set active again.
+ */
+
+void
+inf_text_gtk_buffer_set_wake_on_cursor_movement(InfTextGtkBuffer* buffer,
+                                                gboolean wake)
+{                                                
+  g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
+  INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->wake_on_cursor_movement = wake;
+  g_object_notify(G_OBJECT(buffer), "wake-on-cursor-movement");
+}
+
+/**
+ * inf_text_gtk_buffer_get_wake_on_cursor_movement:
+ * @buffer: A #InfTextGtkBuffer.
+ *
+ * Returns whether movement of the insertion point or selection bound of the
+ * underlying text buffer causes whether the active user (see
+ * inf_text_gtk_buffer_set_active_user()) to become active when its status
+ * is %INF_USER_STATUS_INACTIVE. See also
+ * inf_text_gtk_buffer_set_wake_on_cursor_movement().
+ *
+ * Returns: Whether to make inactive users active when the insertion mark
+ * is moved.
+ */
+gboolean
+inf_text_gtk_buffer_get_wake_on_cursor_movement(InfTextGtkBuffer* buffer)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), FALSE);
+  return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->wake_on_cursor_movement;
+}
+
+/**
  * inf_text_gtk_buffer_ensure_author_tags_priority:
  * @buffer: A #InfTextGtkBuffer.
  *
@@ -1375,7 +1582,7 @@ inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer)
  * underlying #GtkTextBuffer's tag table. Normally you do not need to use
  * this function if you do not set the priority for your tags explicitely.
  * However, if you do (or are forced to do, because you are using a library
- * that does this, like GtkSourceView), then you can call this function
+ * that does this, such as GtkSourceView), then you can call this function
  * afterwards to make sure all the user tags have the lowest priority.
  */
 void
