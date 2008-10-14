@@ -17,6 +17,7 @@
 
   <chapter>
     <title>Common infinote API</title>
+    <xi:include href="xml/inf-init.xml"/>
     <xi:include href="xml/inf-session.xml"/>
     <xi:include href="xml/inf-user-table.xml"/>
     <xi:include href="xml/inf-buffer.xml"/>

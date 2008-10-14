@@ -71,7 +71,6 @@ main(int argc,
   GError* error;
 
   setlocale(LC_ALL, "");
-  _inf_gettext_init();
 
   error = NULL;
   if(infinoted_main(argc, argv, &error) == FALSE)

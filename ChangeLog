@@ -1,5 +1,22 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-init.h:
+	* libinfinity/common/inf-init.c
+	* libinfinity/common/Makefile.am: New file that contains a function to
+	initialize the library.
+
+	* infinoted/infinoted-main.c: Don't call g_type_init() anymore in
+	main().
+
+	* infinoted/infinoted-startup.c: Instead, call inf_init() which does
+	g_type_init in startup.
+
+	* libinfinity/inf-i18n.h:
+	* libinfinity/inf-i18n.c: Rely on gettext being initialized all the
+	time. This means inf_init() needs to have been called before.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.h:
 	* libinftextgtk/inf-text-gtk-buffer.c: Added
 	inf_text_gtk_buffer_get_wake_on_cursor_movement() and

@@ -1,4 +1,3 @@
-/* libinfinity/inf-config.h.  Generated from inf-config.h.in by configure.  */
 /* infinote - Collaborative notetaking application
  * Copyright (C) 2007 Armin Burgmeier
  *
@@ -17,23 +16,23 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <libinfinity/inf-i18n.h>
+#ifndef __INF_INIT_H__
+#define __INF_INIT_H__
 
-#include <glib.h>
+#include <glib/gtypes.h>
+#include <glib/gerror.h>
+#include <libxml/tree.h>
 
-#include "config.h"
+G_BEGIN_DECLS
+
+gboolean
+inf_init(GError** error);
 
 void
-_inf_gettext_init(void)
-{
-  bindtextdomain(GETTEXT_PACKAGE, INF_LOCALEDIR);
-  bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-}
+inf_deinit(void);
 
-const char*
-_inf_gettext(const char* msgid)
-{
-  return dgettext(GETTEXT_PACKAGE, msgid);
-}
+G_END_DECLS
+
+#endif /* __INF_INIT_H__ */
 
 /* vim:set et sw=2 ts=2: */

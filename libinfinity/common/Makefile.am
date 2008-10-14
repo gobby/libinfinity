@@ -21,6 +21,7 @@ libinfinity_common_la_SOURCES = \
 	inf-discovery-avahi.c \
 	inf-discovery.c \
 	inf-error.c \
+	inf-init.c \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
@@ -46,6 +47,7 @@ libinfinity_common_la_HEADERS = \
 	inf-discovery.h \
 	inf-discovery-avahi.h \
 	inf-error.h \
+	inf-init.h \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \

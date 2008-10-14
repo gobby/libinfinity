@@ -1046,6 +1046,13 @@ inf_cert_util_get_serial_number
 </SECTION>
 
 <SECTION>
+<FILE>inf-init</FILE>
+<TITLE>InfInit</TITLE>
+inf_init
+inf_deinit
+</SECTION>
+
+<SECTION>
 <FILE>inf-xml-util</FILE>
 <TITLE>InfXmlUtil</TITLE>
 inf_xml_util_get_attribute

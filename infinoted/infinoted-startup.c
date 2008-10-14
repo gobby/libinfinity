@@ -22,6 +22,7 @@
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/common/inf-init.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <glib/gstdio.h>
@@ -340,8 +341,8 @@ infinoted_startup_new(int* argc,
   InfinotedStartup* startup;
   gboolean result;
 
-  g_type_init();
-  gnutls_global_init();
+  if(!inf_init(error))
+    return NULL;
 
   startup = g_slice_new(InfinotedStartup);
   startup->options = NULL;
@@ -390,8 +391,7 @@ infinoted_startup_free(InfinotedStartup* startup)
   if(startup->private_key != NULL)
     gnutls_x509_privkey_deinit(startup->private_key);
 
-  g_slice_free(InfinotedStartup, startup);
-  gnutls_global_deinit();
+  inf_deinit();
 }
 
 /* vim:set et sw=2 ts=2: */
