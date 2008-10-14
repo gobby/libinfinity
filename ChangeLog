@@ -1,5 +1,12 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* po/LINGUAS: Added a file that lists all languages, as required by
+	`make dist'.
+
+	* configure.ac: Use that file to set ALL_LINGUAS.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-init.h:
 	* libinfinity/common/inf-init.c
 	* libinfinity/common/Makefile.am: New file that contains a function to
