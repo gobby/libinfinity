@@ -238,7 +238,6 @@ inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
   }
 }
 
-/* Returns G_MAXUINT if tag is not an author tag */
 static guint
 inf_text_gtk_buffer_author_from_tag(GtkTextTag* tag)
 {
@@ -254,7 +253,6 @@ inf_text_gtk_buffer_author_from_tag(GtkTextTag* tag)
   return author_id;
 }
 
-/* Returns G_MAXUINT if list does not contain an author tag */
 static guint
 inf_text_gtk_buffer_iter_list_contains_author_tag(GSList* tag_list)
 {
@@ -358,6 +356,20 @@ static void
 inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
                                                  GParamSpec* pspec,
                                                  gpointer user_data);
+
+static void
+inf_text_gtk_buffer_apply_tag_cb(GtkTextBuffer* gtk_buffer,
+                                 GtkTextTag* tag,
+                                 GtkTextIter* start,
+                                 GtkTextIter* end,
+                                 gpointer user_data)
+{
+  /* Don't allow auhtor tags to be applied by default. GTK+ seems to do this
+   * when copy+pasting text from the text buffer itself, but we want to make
+   * sure that a given segment of text has always a unique author set. */
+  if(inf_text_gtk_buffer_author_from_tag(tag) != 0)
+    g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "apply-tag");
+}
 
 static void
 inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
@@ -660,6 +672,12 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
   {
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+      buffer
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
       buffer
     );
@@ -685,6 +703,13 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
   {
     g_object_ref(G_OBJECT(gtk_buffer));
     
+    g_signal_connect(
+      G_OBJECT(gtk_buffer),
+      "apply-tag",
+      G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+      buffer
+    );
+
     g_signal_connect(
       G_OBJECT(gtk_buffer),
       "insert-text",
@@ -1087,6 +1112,13 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
   tag_remove.buffer = priv->buffer;
 
+  /* Allow author tag changes within this function: */
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+    buffer
+  );
+
   g_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
@@ -1140,7 +1172,6 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
         inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func,
         &tag_remove
       );
-
     } while(inf_text_chunk_iter_next(&chunk_iter));
 
     /* Fix left gravity of own cursor on remote insert */
@@ -1189,6 +1220,12 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
       }
     }
   }
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+    buffer
+  );
 
   g_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
