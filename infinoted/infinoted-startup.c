@@ -18,6 +18,7 @@
 
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-creds.h>
+#include <infinoted/infinoted-note-plugin.h>
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/common/inf-standalone-io.h>
@@ -26,7 +27,10 @@
 #include <libinfinity/inf-i18n.h>
 
 #include <glib/gstdio.h>
+#include <gnutls/x509.h>
 #include <sys/stat.h>
+
+#include <string.h>
 #include <errno.h>
 
 static void
@@ -339,7 +343,6 @@ infinoted_startup_new(int* argc,
                       GError** error)
 {
   InfinotedStartup* startup;
-  gboolean result;
 
   if(!inf_init(error))
     return NULL;

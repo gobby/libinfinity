@@ -1,5 +1,10 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-startup.c: Fixed a few warnings.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* po/LINGUAS: Added a file that lists all languages, as required by
 	`make dist'.
 

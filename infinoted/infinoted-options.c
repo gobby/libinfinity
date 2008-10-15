@@ -21,6 +21,7 @@
 
 #include <glib.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "config.h"
 
@@ -527,7 +528,6 @@ infinoted_options_new(const gchar* const* config_files,
                       GError** error)
 {
   InfinotedOptions* options;
-  const gchar* const* file;
 
   options = g_slice_new(InfinotedOptions);
 
