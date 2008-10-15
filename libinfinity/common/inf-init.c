@@ -19,6 +19,13 @@
 #include <libinfinity/common/inf-init.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <gnutls/gnutls.h>
+#include <glib-object.h>
+
+#ifdef G_OS_WIN32
+# include <winsock2.h>
+#endif
+
 static guint inf_init_counter = 0;
 
 /**
@@ -34,8 +41,32 @@ static guint inf_init_counter = 0;
 gboolean
 inf_init(GError** error)
 {
+#ifdef G_OS_WIN32
+  WSADATA data;
+  int result;
+  gchar* error_message;
+#endif
+
   if(inf_init_counter == 0)
   {
+#ifdef G_OS_WIN32
+    result = WSAStartup(MAKEWORD(2, 2), &data);
+    if(result != 0)
+    {
+      error_message = g_win32_error_message(result);
+      g_set_error(
+        error,
+        g_quark_from_static_string("INF_INIT_ERROR"),
+        0,
+        "%s",
+        error_message
+      );
+
+      g_free(error_message);
+
+      return FALSE;
+    }
+#endif
     g_type_init();
     gnutls_global_init();
     _inf_gettext_init();
@@ -57,5 +88,12 @@ void
 inf_deinit(void)
 {
   if(--inf_init_counter == 0)
+  {
     gnutls_global_deinit();
+#ifdef G_OS_WIN32
+    WSACleanup();
+#endif
+  }
 }
+
+/* vim:set et sw=2 ts=2: */

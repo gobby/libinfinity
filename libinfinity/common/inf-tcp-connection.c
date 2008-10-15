@@ -24,18 +24,36 @@
 
 #include "config.h"
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
+#ifndef G_OS_WIN32
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <net/if.h>
+# include <arpa/inet.h>
+# include <unistd.h>
+# include <fcntl.h>
 
-#include <errno.h>
-#include <string.h>
+# include <errno.h>
+# include <string.h>
+#else
+# include <ws2tcpip.h>
+#endif
 
-/* TODO: Win32 support */
+#ifdef G_OS_WIN32
+# define INF_TCP_CONNECTION_SENDRECV_FLAGS 0
+# define INF_TCP_CONNECTION_LAST_ERROR     WSAGetLastError()
+# define INF_TCP_CONNECTION_EINTR          WSAEINTR
+# define INF_TCP_CONNECTION_EAGAIN         WSAEWOULDBLOCK
+# define INF_TCP_CONNECTION_EINPROGRESS    WSAEINPROGRESS
+#else
+# define INF_TCP_CONNECTION_SENDRECV_FLAGS MSG_NOSIGNAL
+# define INF_TCP_CONNECTION_LAST_ERROR     errno
+# define INF_TCP_CONNECTION_EINTR          EINTR
+# define INF_TCP_CONNECTION_EAGAIN         EAGAIN
+# define INF_TCP_CONNECTION_EINPROGRESS    EINPROGRESS
+# define closesocket(s) close(s)
+# define INVALID_SOCKET -1
+#endif
 
 typedef struct _InfTcpConnectionPrivate InfTcpConnectionPrivate;
 struct _InfTcpConnectionPrivate {
@@ -74,7 +92,7 @@ enum {
 enum {
   SENT,
   RECEIVED,
-  ERROR,
+  ERROR_, /* ERROR is a #define on Win32 */
 
   LAST_SIGNAL
 };
@@ -129,8 +147,20 @@ static void
 inf_tcp_connection_make_system_error(int code,
                                      GError** error)
 {
-  /* TODO_Win32: This must be WSAGetLastError on Win32 */
+#ifdef G_OS_WIN32
+  gchar* error_message;
+  error_message = g_win32_error_message(code);
 
+  g_set_error(
+    error,
+    inf_tcp_connection_error_quark,
+    code,
+    "%s",
+    error_message
+  );
+
+  g_free(error_message);
+#else
   g_set_error(
     error,
     inf_tcp_connection_error_quark,
@@ -138,6 +168,7 @@ inf_tcp_connection_make_system_error(int code,
     "%s",
     strerror(code)
   );
+#endif
 }
 
 static void
@@ -151,7 +182,7 @@ inf_tcp_connection_system_error(InfTcpConnection* connection,
 
   g_signal_emit(
     G_OBJECT(connection),
-    tcp_connection_signals[ERROR],
+    tcp_connection_signals[ERROR_],
     0,
     error
   );
@@ -207,16 +238,12 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
 
   do
   {
-    result = recv(
-      priv->socket,
-      buf,
-      2048,
-      MSG_NOSIGNAL
-    );
+    result = recv(priv->socket, buf, 2048, INF_TCP_CONNECTION_SENDRECV_FLAGS);
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
 
-    errcode = errno;
-
-    if(result < 0 && errcode != EINTR && errcode != EAGAIN)
+    if(result < 0 &&
+       errcode != INF_TCP_CONNECTION_EINTR &&
+       errcode != INF_TCP_CONNECTION_EAGAIN)
     {
       inf_tcp_connection_system_error(connection, errcode);
     }
@@ -234,8 +261,9 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
         (guint)result
       );
     }
-  } while( ((result > 0) || (result < 0 && errcode == EINTR)) &&
-           (priv->socket != -1));
+  } while( ((result > 0) ||
+            (result < 0 && errcode == INF_TCP_CONNECTION_EINTR)) &&
+           (priv->socket != INVALID_SOCKET));
 }
 
 static void
@@ -251,7 +279,11 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
   {
   case INF_TCP_CONNECTION_CONNECTING:
     len = sizeof(int);
+#ifdef G_OS_WIN32
+    getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, (char*)&errcode, &len);
+#else
     getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, &errcode, &len);
+#endif
 
     if(errcode == 0)
     {
@@ -272,13 +304,15 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
         priv->socket,
         priv->queue + priv->back_pos,
         priv->front_pos - priv->back_pos,
-        MSG_NOSIGNAL
+        INF_TCP_CONNECTION_SENDRECV_FLAGS
       );
 
-      /* Preserve errno so that it is not modified by future calls */
-      errcode = errno;
+      /* Preserve error code so that it is not modified by future calls */
+      errcode = INF_TCP_CONNECTION_LAST_ERROR;
 
-      if(result < 0 && errcode != EINTR && errcode != EAGAIN)
+      if(result < 0 &&
+         errcode != INF_TCP_CONNECTION_EINTR &&
+         errcode != INF_TCP_CONNECTION_EAGAIN)
       {
         inf_tcp_connection_system_error(connection, errcode);
       }
@@ -316,8 +350,9 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
         }
       }
     } while( (priv->events & INF_IO_OUTGOING) &&
-             (result > 0 || (result < 0 && errcode == EINTR)) &&
-             (priv->socket != -1));
+             (result > 0 ||
+              (result < 0 && errcode == INF_TCP_CONNECTION_EINTR)) &&
+             (priv->socket != INVALID_SOCKET));
 
     break;
   case INF_TCP_CONNECTION_CLOSED:
@@ -344,7 +379,11 @@ inf_tcp_connection_io(InfNativeSocket* socket,
   if(events & INF_IO_ERROR)
   {
     len = sizeof(int);
+#ifdef G_OS_WIN32
+    getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, (char*)&errcode, &len);
+#else
     getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, &errcode, &len);
+#endif
     inf_tcp_connection_system_error(connection, errcode);
   }
   else
@@ -379,7 +418,7 @@ inf_tcp_connection_init(GTypeInstance* instance,
   priv->io = NULL;
   priv->events = 0;
   priv->status = INF_TCP_CONNECTION_CLOSED;
-  priv->socket = -1;
+  priv->socket = INVALID_SOCKET;
 
   priv->remote_address = NULL;
   priv->remote_port = 0;
@@ -467,6 +506,10 @@ inf_tcp_connection_set_property(GObject* object,
     g_object_notify(G_OBJECT(object), "device-name");
     break;
   case PROP_DEVICE_NAME:
+#ifdef G_OS_WIN32
+    /* TODO: We can probably implement this using GetInterfaceInfo() */
+    g_warning("The device-name property is not implemented on Win32");
+#else
     g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
     device_string = g_value_get_string(value);
     if(device_string == NULL) priv->device_index = 0;
@@ -481,7 +524,7 @@ inf_tcp_connection_set_property(GObject* object,
       priv->device_index = new_index;
       g_object_notify(G_OBJECT(object), "device-index");
     }
-
+#endif
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -499,7 +542,9 @@ inf_tcp_connection_get_property(GObject* object,
   InfTcpConnectionPrivate* priv;
   InfIpAddress* address;
   guint port;
+#ifndef G_OS_WIN32
   char device_name[IF_NAMESIZE];
+#endif
 
   connection = INF_TCP_CONNECTION(object);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -532,6 +577,11 @@ inf_tcp_connection_get_property(GObject* object,
     g_value_set_uint(value, priv->device_index);
     break;
   case PROP_DEVICE_NAME:
+#ifdef G_OS_WIN32
+    /* TODO: We can probably implement this using GetInterfaceInfo() */
+    g_warning("The device-name property is not implemented on Win32");
+    g_value_set_string(value, NULL);
+#else
     if(priv->device_index == 0)
     {
       g_value_set_string(value, NULL);
@@ -554,6 +604,7 @@ inf_tcp_connection_get_property(GObject* object,
         g_value_set_string(value, device_name);
       }
     }
+#endif
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -585,10 +636,10 @@ inf_tcp_connection_error(InfTcpConnection* connection,
     );
   }
 
-  if(priv->socket != -1)
+  if(priv->socket != INVALID_SOCKET)
   {
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
   }
 
   if(priv->status != INF_TCP_CONNECTION_CLOSED)
@@ -770,7 +821,7 @@ inf_tcp_connection_class_init(gpointer g_class,
    * @connection: The erroneous #InfTcpConnection
    * @error: A pointer to a #GError object with details on the error
    */
-  tcp_connection_signals[ERROR] = g_signal_new(
+  tcp_connection_signals[ERROR_] = g_signal_new(
     "error",
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
@@ -871,7 +922,10 @@ inf_tcp_connection_open(InfTcpConnection* connection,
 {
   InfTcpConnectionPrivate* priv;
 /*  char device_name[IF_NAMESIZE];*/
-  int result;
+
+#ifdef G_OS_WIN32
+  u_long argp;
+#endif
 
   union {
     struct sockaddr_in in;
@@ -880,6 +934,8 @@ inf_tcp_connection_open(InfTcpConnection* connection,
 
   struct sockaddr* addr;
   socklen_t addrlen;
+  int result;
+  int errcode;
 
   g_return_val_if_fail(INF_IS_TCP_CONNECTION(connection), FALSE);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -928,79 +984,68 @@ inf_tcp_connection_open(InfTcpConnection* connection,
     break;
   }
 
-  if(priv->socket == -1)
+  if(priv->socket == INVALID_SOCKET)
   {
-    inf_tcp_connection_make_system_error(errno, error);
+    inf_tcp_connection_make_system_error(
+      INF_TCP_CONNECTION_LAST_ERROR,
+      error
+    );
+
     return FALSE;
   }
 
-  /* Note: The following requires root permissions. We rather set the
-   * sin6_scope_id (see above) assuming a link-local address. */
-#if 0
-  /* Bind to interface */
-  if(priv->device_index != 0)
-  {
-    if(if_indextoname(priv->device_index, device_name) == NULL)
-    {
-      inf_tcp_connection_make_system_error(errno, error);
-      close(priv->socket);
-      priv->socket = -1;
-    }
-
-    result = setsockopt(
-      priv->socket,
-      SOL_SOCKET,
-      SO_BINDTODEVICE,
-      device_name,
-      strlen(device_name) + 1
-    );
-
-    if(result == -1)
-    {
-      printf("Error here `%s' for device %s\n", strerror(errno), device_name);
-      inf_tcp_connection_make_system_error(errno, error);
-
-      close(priv->socket);
-      priv->socket = -1;
-      return FALSE;
-    }
-  }
-#endif
-
   /* Set socket non-blocking */
+#ifndef G_OS_WIN32
   result = fcntl(priv->socket, F_GETFL);
-  if(result == -1)
+  if(result == INVALID_SOCKET)
   {
-    inf_tcp_connection_make_system_error(errno, error);
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(errcode, error);
 
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
     return FALSE;
   }
 
   if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
-    inf_tcp_connection_make_system_error(errno, error);
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(errcode, error);
 
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
     return FALSE;
   }
+#else
+  argp = 1;
+  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
+  {
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(errcode, error);
+
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+    return FALSE;
+  }
+#endif
 
   /* Connect */
   do
   {
     result = connect(priv->socket, addr, addrlen);
-    if(result == -1 && errno != EINTR && errno != EINPROGRESS)
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    if(result == -1 &&
+       errcode != INF_TCP_CONNECTION_EINTR &&
+       errcode != INF_TCP_CONNECTION_EINPROGRESS)
     {
-      inf_tcp_connection_make_system_error(errno, error);
+      inf_tcp_connection_make_system_error(errcode, error);
 
-      close(priv->socket);
-      priv->socket = -1;
+      closesocket(priv->socket);
+      priv->socket = INVALID_SOCKET;
 
       return FALSE;
     }
-  } while(result == -1 && errno != EINPROGRESS);
+  } while(result == -1 && errcode != INF_TCP_CONNECTION_EINPROGRESS);
 
   if(result == 0)
   {
@@ -1055,8 +1100,8 @@ inf_tcp_connection_close(InfTcpConnection* connection)
     NULL
   );
 
-  close(priv->socket);
-  priv->socket = -1;
+  closesocket(priv->socket);
+  priv->socket = INVALID_SOCKET;
 
   priv->status = INF_TCP_CONNECTION_CLOSED;
   g_object_notify(G_OBJECT(connection), "status");
@@ -1173,26 +1218,44 @@ _inf_tcp_connection_accepted(InfIo* io,
 {
   InfTcpConnection* connection;
   InfTcpConnectionPrivate* priv;
+  int errcode;
+
+#ifdef G_OS_WIN32
+  u_long argp;
+#else
   int result;
+#endif
 
   InfIpAddress* address;
   guint port;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
-  g_return_val_if_fail(socket != -1, NULL);
+  g_return_val_if_fail(socket != INVALID_SOCKET, NULL);
 
+#ifndef G_OS_WIN32
   result = fcntl(socket, F_GETFL);
   if(result == -1)
   {
-    inf_tcp_connection_make_system_error(errno, error);
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(errcode, error);
     return NULL;
   }
 
   if(fcntl(socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
-    inf_tcp_connection_make_system_error(errno, error);
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(errcode, error);
     return NULL;
   }
+#else
+  argp = 1;
+  if(ioctlsocket(socket, FIONBIO, &argp) != 0)
+  {
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(errcode, error);
+    return NULL;
+  }
+#endif
 
   inf_tcp_connection_addr_info(socket, FALSE, &address, &port);
   g_return_val_if_fail(address != NULL, NULL);

@@ -19,9 +19,19 @@
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>
 
+/* TODO: Implement InfStandaloneIo on Win32, probably using WSAEventSelect.
+ * The implementations should be in separate files, with this functions just
+ * being forwarders. */
+
+#ifndef G_OS_WIN32
+
 #include <poll.h>
 #include <errno.h>
 #include <string.h>
+
+#endif /* !G_OS_WIN32 */
+
+#ifndef G_OS_WIN32
 
 typedef struct _InfStandaloneIoWatch InfStandaloneIoWatch;
 struct _InfStandaloneIoWatch {
@@ -41,8 +51,11 @@ struct _InfStandaloneIoTimeout {
   GDestroyNotify notify;
 };
 
+#endif /* !G_OS_WIN32 */
+
 typedef struct _InfStandaloneIoPrivate InfStandaloneIoPrivate;
 struct _InfStandaloneIoPrivate {
+#ifndef G_OS_WIN32
   struct pollfd* pfds;
   InfStandaloneIoWatch* watches;
 
@@ -52,11 +65,14 @@ struct _InfStandaloneIoPrivate {
   GList* timeouts;
 
   gboolean loop_running;
+#endif /* !G_OS_WIN32 */
 };
 
 #define INF_STANDALONE_IO_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_STANDALONE_IO, InfStandaloneIoPrivate))
 
 static GObjectClass* parent_class;
+
+#ifndef G_OS_WIN32
 
 static guint
 inf_standalone_io_timeval_diff(GTimeVal* first,
@@ -177,6 +193,8 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   g_object_unref(G_OBJECT(io));
 }
 
+#endif /* !G_OS_WIN32 */
+
 static void
 inf_standalone_io_init(GTypeInstance* instance,
                        gpointer g_class)
@@ -187,6 +205,7 @@ inf_standalone_io_init(GTypeInstance* instance,
   io = INF_STANDALONE_IO(instance);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
+#ifndef G_OS_WIN32
   priv->pfds = g_malloc(sizeof(struct pollfd) * 4);
   priv->watches = g_malloc(sizeof(InfStandaloneIoWatch) * 4);
 
@@ -194,6 +213,7 @@ inf_standalone_io_init(GTypeInstance* instance,
   priv->fd_alloc = 4;
 
   priv->loop_running = FALSE;
+#endif /* !G_OS_WIN32 */
 }
 
 static void
@@ -201,13 +221,16 @@ inf_standalone_io_finalize(GObject* object)
 {
   InfStandaloneIo* io;
   InfStandaloneIoPrivate* priv;
+#ifndef G_OS_WIN32
   guint i;
   GList* item;
   InfStandaloneIoTimeout* timeout;
+#endif /* !G_OS_WIN32 */
 
   io = INF_STANDALONE_IO(object);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
+#ifndef G_OS_WIN32
   for(i = 0; i < priv->fd_size; ++ i)
     if(priv->watches[i].notify)
       priv->watches[i].notify(priv->watches[i].user_data);
@@ -222,6 +245,7 @@ inf_standalone_io_finalize(GObject* object)
   g_free(priv->pfds);
   g_free(priv->watches);
   g_list_free(priv->timeouts);
+#endif /* !G_OS_WIN32 */
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -234,6 +258,7 @@ inf_standalone_io_io_watch(InfIo* io,
                            gpointer user_data,
                            GDestroyNotify notify)
 {
+#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
   int pevents;
   guint i;
@@ -323,6 +348,9 @@ inf_standalone_io_io_watch(InfIo* io,
   priv->watches[priv->fd_size].notify = notify;
 
   ++ priv->fd_size;
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+#endif
 }
 
 static gpointer
@@ -332,6 +360,7 @@ inf_standalone_io_io_add_timeout(InfIo* io,
                                  gpointer user_data,
                                  GDestroyNotify notify)
 {
+#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
   InfStandaloneIoTimeout* timeout;
 
@@ -346,12 +375,17 @@ inf_standalone_io_io_add_timeout(InfIo* io,
   priv->timeouts = g_list_prepend(priv->timeouts, timeout);
 
   return timeout;
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+  return NULL;
+#endif
 }
 
 static void
 inf_standalone_io_io_remove_timeout(InfIo* io,
                                     gpointer timeout_handle)
 {
+#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
   InfStandaloneIoTimeout* timeout;
   GList* item;
@@ -367,6 +401,9 @@ inf_standalone_io_io_remove_timeout(InfIo* io,
     timeout->notify(timeout->user_data);
 
   g_slice_free(InfStandaloneIoTimeout, timeout);
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+#endif
 }
 
 static void
@@ -445,9 +482,14 @@ inf_standalone_io_get_type(void)
 InfStandaloneIo*
 inf_standalone_io_new(void)
 {
+#ifndef G_OS_WIN32
   GObject* object;
   object = g_object_new(INF_TYPE_STANDALONE_IO, NULL);
   return INF_STANDALONE_IO(object);
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+  return NULL;
+#endif
 }
 
 /**
@@ -460,8 +502,12 @@ inf_standalone_io_new(void)
 void
 inf_standalone_io_iteration(InfStandaloneIo* io)
 {
+#ifndef G_OS_WIN32
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
   inf_standalone_io_iteration_impl(io, -1);
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+#endif
 }
 
 /**
@@ -477,8 +523,12 @@ void
 inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
                                     guint timeout)
 {
+#ifndef G_OS_WIN32
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
   inf_standalone_io_iteration_impl(io, (int)timeout);
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+#endif
 }
 
 /**
@@ -491,6 +541,7 @@ inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
 void
 inf_standalone_io_loop(InfStandaloneIo* io)
 {
+#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
 
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
@@ -501,6 +552,9 @@ inf_standalone_io_loop(InfStandaloneIo* io)
 
   while(priv->loop_running == TRUE)
     inf_standalone_io_iteration_impl(io, -1);
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+#endif
 }
 
 /**
@@ -513,6 +567,7 @@ inf_standalone_io_loop(InfStandaloneIo* io)
 void
 inf_standalone_io_loop_quit(InfStandaloneIo* io)
 {
+#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
 
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
@@ -520,6 +575,9 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
 
   g_return_if_fail(priv->loop_running == TRUE);
   priv->loop_running = FALSE;
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+#endif
 }
 
 /**
@@ -534,12 +592,17 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
 gboolean
 inf_standalone_io_loop_running(InfStandaloneIo* io)
 {
+#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
 
   g_return_val_if_fail(INF_IS_STANDALONE_IO(io), FALSE);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
   return priv->loop_running;
+#else /* !G_OS_WIN32 */
+  g_warning("InfStandaloneIo is not implemented on Win32");
+  return FALSE;
+#endif
 }
 
 /* vim:set et sw=2 ts=2: */

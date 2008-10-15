@@ -19,6 +19,8 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <gnutls/gnutls.h>
+
 /* TODO: Cache GQuarks */
 
 GQuark

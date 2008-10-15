@@ -1,5 +1,23 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-error.c:
+	* libinfinity/common/inf-init.c:
+	* libinfinity/common/inf-io.h:
+	* libinfinity/common/inf-ip-address.c:
+	* libinfinity/common/inf-standalone-io.c:
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/server/infd-tcp-server.c: Fixed the build on Windows.
+	InfStandaloneIo only has a stub implementation for now. GtkIo does not
+	work correctly with glib 2.18, though I believe that's a regression in
+	glib because it works with glib 2.16. Let's see whether I can track
+	that down.
+
+	* configure.ac: Don't require libuuid on Windows since we use native
+	Windows API there.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-init.h: Include only <glib.h> for
 	G_BEGIN_DECLS and G_END_DECLS, removed inculdes that we don't need in
 	inf-init.h.

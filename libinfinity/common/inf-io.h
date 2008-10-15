@@ -21,6 +21,10 @@
 
 #include <glib-object.h>
 
+#ifdef G_OS_WIN32
+#include <winsock2.h>
+#endif
+
 G_BEGIN_DECLS
 
 #define INF_TYPE_IO                 (inf_io_get_type())
@@ -33,7 +37,11 @@ G_BEGIN_DECLS
 typedef struct _InfIo InfIo;
 typedef struct _InfIoIface InfIoIface;
 
+#ifdef G_OS_WIN32
+typedef SOCKET InfNativeSocket;
+#else
 typedef int InfNativeSocket;
+#endif
 
 typedef enum _InfIoEvent {
   INF_IO_INCOMING = 1 << 0,

@@ -21,15 +21,31 @@
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
+#ifndef G_OS_WIN32
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
+# include <unistd.h>
+# include <fcntl.h>
 
-#include <errno.h>
-#include <string.h>
+# include <errno.h>
+# include <string.h>
+#else
+# include <ws2tcpip.h>
+#endif
+
+#ifdef G_OS_WIN32
+# define INFD_TCP_SERVER_LAST_ERROR WSAGetLastError()
+# define INFD_TCP_SERVER_EINTR      WSAEINTR
+# define INFD_TCP_SERVER_EAGAIN     WSAEWOULDBLOCK
+#else
+# define INFD_TCP_SERVER_LAST_ERROR errno
+# define INFD_TCP_SERVER_EINTR      EINTR
+# define INFD_TCP_SERVER_EAGAIN     EAGAIN
+# define closesocket(s) close(s)
+# define INVALID_SOCKET -1
+#endif
 
 typedef struct _InfdTcpServerPrivate InfdTcpServerPrivate;
 struct _InfdTcpServerPrivate {
@@ -55,7 +71,7 @@ enum {
 
 enum {
   NEW_CONNECTION,
-  ERROR,
+  ERROR_, /* ERROR is a #define on WIN32 */
 
   LAST_SIGNAL
 };
@@ -122,8 +138,20 @@ static void
 infd_tcp_server_make_system_error(int code,
                                   GError** error)
 {
-  /* TODO: This must be WSAGetLastError on Win32 */
+#ifdef G_OS_WIN32
+  gchar* error_message;
+  error_message = g_win32_error_message(code);
 
+  g_set_error(
+    error,
+    infd_tcp_server_error_quark,
+    code,
+    "%s",
+    error_message
+  );
+
+  g_free(error_message);
+#else
   g_set_error(
     error,
     infd_tcp_server_error_quark,
@@ -131,6 +159,7 @@ infd_tcp_server_make_system_error(int code,
     "%s",
     strerror(code)
   );
+#endif
 }
 
 static void
@@ -142,7 +171,7 @@ infd_tcp_server_system_error(InfdTcpServer* server,
 
   infd_tcp_server_make_system_error(code, &error);
 
-  g_signal_emit(G_OBJECT(server), tcp_server_signals[ERROR], 0, error);
+  g_signal_emit(G_OBJECT(server), tcp_server_signals[ERROR_], 0, error);
   g_error_free(error);
 }
 
@@ -166,7 +195,11 @@ infd_tcp_server_io(InfNativeSocket* socket,
   if(events & INF_IO_ERROR)
   {
     len = sizeof(int);
+#ifdef G_OS_WIN32
+    getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, (char*)&errcode, &len);
+#else
     getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, &errcode, &len);
+#endif
     /* TODO: Verify that we get senseful error codes here */
     infd_tcp_server_system_error(server, errcode);
   }
@@ -175,13 +208,15 @@ infd_tcp_server_io(InfNativeSocket* socket,
     do
     {
       new_socket = accept(priv->socket, NULL, NULL);
-      errcode = errno;
+      errcode = INFD_TCP_SERVER_LAST_ERROR;
 
-      if(new_socket == -1 && errcode != EINTR && errcode != EAGAIN)
+      if(new_socket == INVALID_SOCKET &&
+         errcode != INFD_TCP_SERVER_EINTR &&
+         errcode != INFD_TCP_SERVER_EAGAIN)
       {
         infd_tcp_server_system_error(server, errcode);
       }
-      else if(new_socket != -1)
+      else if(new_socket != INVALID_SOCKET)
       {
         error = NULL;
         connection = _inf_tcp_connection_accepted(
@@ -205,7 +240,7 @@ infd_tcp_server_io(InfNativeSocket* socket,
         {
           g_signal_emit(
             G_OBJECT(server),
-            tcp_server_signals[ERROR],
+            tcp_server_signals[ERROR_],
             0,
             error
           );
@@ -213,8 +248,10 @@ infd_tcp_server_io(InfNativeSocket* socket,
           g_error_free(error);
         }
       }
-    } while( (new_socket != -1 || (new_socket == -1 && errcode == EINTR)) &&
-             (priv->socket != -1));
+    } while( (new_socket != INVALID_SOCKET ||
+              (new_socket == INVALID_SOCKET &&
+               errcode == INFD_TCP_SERVER_EINTR)) &&
+             (priv->socket != INVALID_SOCKET));
   }
 
   g_object_unref(G_OBJECT(server));
@@ -232,7 +269,7 @@ infd_tcp_server_init(GTypeInstance* instance,
 
   priv->io = NULL;
 
-  priv->socket = -1;
+  priv->socket = INVALID_SOCKET;
   priv->status = INFD_TCP_SERVER_CLOSED;
 
   priv->local_address = NULL;
@@ -361,10 +398,10 @@ infd_tcp_server_error(InfdTcpServer* server,
     );
   }
 
-  if(priv->socket != -1)
+  if(priv->socket != INVALID_SOCKET)
   {
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
   }
 
   if(priv->status != INFD_TCP_SERVER_CLOSED)
@@ -462,7 +499,7 @@ infd_tcp_server_class_init(gpointer g_class,
     INF_TYPE_TCP_CONNECTION
   );
 
-  tcp_server_signals[ERROR] = g_signal_new(
+  tcp_server_signals[ERROR_] = g_signal_new(
     "error",
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
@@ -563,6 +600,10 @@ infd_tcp_server_open(InfdTcpServer* server,
   struct sockaddr* addr;
   socklen_t addrlen;
 
+#ifdef G_OS_WIN32
+  u_long argp;
+#endif
+
   g_return_val_if_fail(INFD_IS_TCP_SERVER(server), FALSE);
   priv = INFD_TCP_SERVER_PRIVATE(server);
 
@@ -619,46 +660,58 @@ infd_tcp_server_open(InfdTcpServer* server,
     }
   }
 
-  if(priv->socket == -1)
+  if(priv->socket == INVALID_SOCKET)
   {
-    infd_tcp_server_make_system_error(errno, error);
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
     return FALSE;
   }
 
+#ifndef G_OS_WIN32
   result = fcntl(priv->socket, F_GETFL);
   if(result == -1)
   {
-    infd_tcp_server_make_system_error(errno, error);
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
 
-    close(priv->socket);
+    closesocket(priv->socket);
     priv->socket = -1;
     return FALSE;
   }
 
   if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
-    infd_tcp_server_make_system_error(errno, error);
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
 
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
     return FALSE;
   }
+#else
+  argp = 1;
+  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
+  {
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+    return FALSE;
+  }
+#endif
 
   if(bind(priv->socket, addr, addrlen) == -1)
   {
-    infd_tcp_server_make_system_error(errno, error);
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
 
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
     return FALSE;
   }
 
   if(listen(priv->socket, 5) == -1)
   {
-    infd_tcp_server_make_system_error(errno, error);
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
 
-    close(priv->socket);
-    priv->socket = -1;
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
     return FALSE;
   }
 
@@ -728,8 +781,8 @@ infd_tcp_server_close(InfdTcpServer* server)
     NULL
   );
 
-  close(priv->socket);
-  priv->socket = -1;
+  closesocket(priv->socket);
+  priv->socket = INVALID_SOCKET;
 
   priv->status = INFD_TCP_SERVER_CLOSED;
   g_object_notify(G_OBJECT(server), "status");

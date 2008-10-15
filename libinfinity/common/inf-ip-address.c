@@ -30,11 +30,15 @@
 
 #include <libinfinity/common/inf-ip-address.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#ifdef G_OS_WIN32
+# include <ws2tcpip.h>
+#else
+# include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in_systm.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
+#endif
 
 #include <string.h>
 
@@ -180,8 +184,59 @@ InfIpAddress*
 inf_ip_address_new_from_string(const gchar* str)
 {
   InfIpAddress* addr;
+
+#ifdef G_OS_WIN32
+  /* inet_pton only exists since Windows Vista, so we use
+   * WSAStringToAddress */
+  union {
+    struct sockaddr_in addr4;
+    struct sockaddr_in6 addr6;
+  } shared;
+
+  int len;
+  int ret;
+#endif
+
   addr = g_slice_new(InfIpAddress);
 
+#ifdef G_OS_WIN32
+  len = sizeof(struct sockaddr_in);
+  ret = WSAStringToAddress(
+    (char*)str,
+    AF_INET,
+    NULL,
+    (struct sockaddr*)&shared.addr4,
+    &len
+  );
+
+  if(ret == 0)
+  {
+    addr->family = INF_IP_ADDRESS_IPV4;
+    addr->shared.addr4.s_addr = shared.addr4.sin_addr.s_addr;
+  }
+  else
+  {
+    len = sizeof(struct sockaddr_in6);
+    ret = WSAStringToAddress(
+      (char*)str,
+      AF_INET6,
+      NULL,
+      (struct sockaddr*)&shared.addr6,
+      &len
+    );
+
+    if(ret == 0)
+    {
+      addr->family = INF_IP_ADDRESS_IPV6;
+      memcpy(addr->shared.addr6.s6_addr, shared.addr6.sin6_addr.s6_addr, 16);
+    }
+    else
+    {
+      g_slice_free(InfIpAddress, addr);
+      addr = NULL;
+    }
+  }
+#else
   if(inet_pton(AF_INET, str, &addr->shared.addr4) > 0)
   {
     addr->family = INF_IP_ADDRESS_IPV4;
@@ -195,6 +250,7 @@ inf_ip_address_new_from_string(const gchar* str)
     g_slice_free(InfIpAddress, addr);
     addr = NULL;
   }
+#endif
 
   return addr;
 }
@@ -285,7 +341,63 @@ gchar*
 inf_ip_address_to_string(const InfIpAddress* address)
 {
   gchar* retval;
+#ifdef G_OS_WIN32
+  /* inet_ntop only exists since Windows Vista, so we use
+   * WSAAddressToString */
+  union {
+    struct sockaddr_in addr4;
+    struct sockaddr_in6 addr6;
+  } shared;
 
+  struct sockaddr* inaddr;
+  char dummy;
+  DWORD addr_len;
+  DWORD str_len;
+  int res;
+#endif
+
+#ifdef G_OS_WIN32
+  switch(address->family)
+  {
+  case INF_IP_ADDRESS_IPV4:
+    shared.addr4.sin_family = AF_INET;
+    shared.addr4.sin_addr.s_addr = address->shared.addr4.s_addr;
+    shared.addr4.sin_port = htons(0);
+    inaddr = (struct sockaddr*)&shared.addr4;
+    addr_len = sizeof(struct sockaddr_in);
+    break;
+  case INF_IP_ADDRESS_IPV6:
+    shared.addr6.sin6_family = AF_INET6;
+    memcpy(shared.addr6.sin6_addr.s6_addr, address->shared.addr6.s6_addr, 16);
+    shared.addr6.sin6_port = htons(0);
+    shared.addr6.sin6_flowinfo = 0;
+    shared.addr6.sin6_scope_id = 0;
+    inaddr = (struct sockaddr*)&shared.addr6;
+    addr_len = sizeof(struct sockaddr_in6);
+    break;
+  default:
+    g_assert_not_reached();
+    return NULL;
+  }
+
+  str_len = 0;
+  res = WSAAddressToString(inaddr, addr_len, NULL, &dummy, &str_len);
+  g_assert(res != 0);
+
+  if(WSAGetLastError() != WSAEFAULT)
+    return NULL;
+
+  retval = g_malloc(str_len);
+  res = WSAAddressToString(inaddr, addr_len, NULL, retval, &str_len);
+
+  if(res < 0)
+  {
+    g_free(retval);
+    return NULL;
+  }
+
+  return retval;
+#else
   switch(address->family)
   {
   case INF_IP_ADDRESS_IPV4:
@@ -300,6 +412,7 @@ inf_ip_address_to_string(const InfIpAddress* address)
     g_assert_not_reached();
     return NULL;
   }
+#endif
 }
 
 /**

@@ -56,7 +56,12 @@
 #include <libinfinity/inf-i18n.h>
 
 #include <libxml/xmlsave.h>
+
+#ifdef G_OS_WIN32
+#include <rpc.h>
+#else
 #include <uuid/uuid.h>
+#endif
 
 #include <string.h>
 
@@ -1117,13 +1122,34 @@ inf_connection_manager_init(GTypeInstance* instance,
 {
   InfConnectionManager* manager;
   InfConnectionManagerPrivate* priv;
+#ifdef G_OS_WIN32
+  UUID uuid;
+  unsigned char* temp_uuid_str;
+#else
   uuid_t uuid;
+#endif
 
   manager = INF_CONNECTION_MANAGER(instance);
   priv = INF_CONNECTION_MANAGER_PRIVATE(manager);
 
+#ifdef G_OS_WIN32
+  temp_uuid_str = NULL;
+  /* MinGW doesn't seem to have this, so we use UuidCreate instead */
+  /* UuidCreateSequential(&uuid); */
+  UuidCreate(&uuid);
+  UuidToString(&uuid, &temp_uuid_str);
+
+  /* TODO: Fall back to create a provider id using rand() or something? */
+  g_assert(temp_uuid_str != NULL);
+  if(temp_uuid_str != NULL)
+  {
+    memcpy(priv->own_publisher_id, temp_uuid_str, PUBLISHER_ID_LENGTH);
+    priv->own_publisher_id[PUBLISHER_ID_LENGTH] = '\0';
+  }
+#else
   uuid_generate(uuid);
   uuid_unparse_lower(uuid, priv->own_publisher_id);
+#endif
 
   priv->registered_connections = g_hash_table_new(NULL, NULL);
 
