@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-14 22:43+0200\n"
+"POT-Creation-Date: 2008-10-16 01:55+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -29,6 +29,121 @@ msgstr ""
 #: infinoted/infinoted-note-plugin.c:152
 #, c-format
 msgid "Loaded plugin `%s' (%s)\n"
+msgstr ""
+
+#: infinoted/infinoted-options.c:78
+#, c-format
+msgid ""
+"\"%s\" is not a valid security policy. Allowed values are \"no-tls\", "
+"\"allow-tls\" or \"require-tls\""
+msgstr ""
+
+#: infinoted/infinoted-options.c:107
+#, c-format
+msgid "\"%d\" is not a valid port number. Port numbers range from 1 to 65535"
+msgstr ""
+
+#: infinoted/infinoted-options.c:360
+#, c-format
+msgid ""
+"Creating a new private key also requires creating a new certificate signed "
+"with it."
+msgstr ""
+
+#: infinoted/infinoted-options.c:373
+#, c-format
+msgid ""
+"No private key file given. If you don't have a suitable key file, either "
+"create one using the --create-key command line argument, or disable TLS by "
+"setting the security policy to \"no-tls\"."
+msgstr ""
+
+#: infinoted/infinoted-options.c:387
+#, c-format
+msgid ""
+"No certificate file given. If you don't have a suitable certificate file, "
+"either create one using the --create-certificate command line agument, or "
+"disable TLS via by setting the security policy to \"no-tls\"."
+msgstr ""
+
+#: infinoted/infinoted-options.c:420
+#, fuzzy
+msgid "The server's private key"
+msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
+
+#: infinoted/infinoted-options.c:420
+msgid "KEY-FILE"
+msgstr ""
+
+#: infinoted/infinoted-options.c:423
+#, fuzzy
+msgid "The server's certificate"
+msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
+
+#: infinoted/infinoted-options.c:423
+msgid "CERTIFICATE-FILE"
+msgstr ""
+
+#: infinoted/infinoted-options.c:426
+msgid "Creates a new random private key"
+msgstr ""
+
+#: infinoted/infinoted-options.c:429
+msgid "Creates a new self-signed certificate using the given key"
+msgstr ""
+
+#: infinoted/infinoted-options.c:432
+msgid "The port number to listen on"
+msgstr ""
+
+#: infinoted/infinoted-options.c:432
+msgid "PORT"
+msgstr ""
+
+#: infinoted/infinoted-options.c:435
+msgid "How to decide whether to use TLS"
+msgstr ""
+
+#: infinoted/infinoted-options.c:438
+msgid "The directory to store documents into"
+msgstr ""
+
+#: infinoted/infinoted-options.c:438
+msgid "DIRECTORY"
+msgstr ""
+
+#: infinoted/infinoted-options.c:441
+msgid "Display version information and exit"
+msgstr ""
+
+#: infinoted/infinoted-options.c:466
+msgid "infinote dedicated server"
+msgstr ""
+
+#: infinoted/infinoted-run.c:129
+#, c-format
+msgid "Server running on port %u\n"
+msgstr ""
+
+#: infinoted/infinoted-startup.c:63
+#, c-format
+msgid "Could not create directory \"%s\": %s"
+msgstr ""
+
+#. TODO: Open the key file beforehand
+#: infinoted/infinoted-startup.c:118
+#, c-format
+msgid "Generating 2048 bit RSA private key...\n"
+msgstr ""
+
+#: infinoted/infinoted-startup.c:154
+#, c-format
+msgid "Generating self-signed certificate...\n"
+msgstr ""
+
+#: infinoted/infinoted-startup.c:202
+#, c-format
+msgid "Generating 2048 bit Diffie-Hellman parameters...\n"
 msgstr ""
 
 #: libinfgtk/inf-gtk-browser-store.c:627
@@ -222,6 +337,17 @@ msgstr ""
 msgid "General"
 msgstr ""
 
+#: libinfinity/adopted/inf-adopted-concurrency-warning.c:28
+#, c-format
+msgid ""
+"%s was called for %s. This means that you hit an unforseen situation in "
+"libinfinity. The session could become inconsistent because of this. If you "
+"were using Gobby, please notify me (Armin Burgmeier, armin@arbur.net) about "
+"this, and attach the contents of the ~/.infinote-records folder, or just the "
+"record of the session that triggered this error if you know which one. I "
+"hope I can fix this problem with that information in future versions."
+msgstr ""
+
 #: libinfinity/adopted/inf-adopted-session.c:145
 #, c-format
 msgid "Request has index '%u', but index '%u' was expected"
@@ -374,27 +500,27 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:616
+#: libinfinity/common/inf-connection-manager.c:660
 #, c-format
 msgid "Publisher ID of connection '%s' is already known"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:634
+#: libinfinity/common/inf-connection-manager.c:678
 #, c-format
 msgid "Publisher ID '%s' has incorrect length"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:683
+#: libinfinity/common/inf-connection-manager.c:727
 #, c-format
 msgid "Publisher ID '%s' is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:766
+#: libinfinity/common/inf-connection-manager.c:802
 #, c-format
 msgid "Received unexpected message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:884
+#: libinfinity/common/inf-connection-manager.c:920
 #, c-format
 msgid ""
 "Request from %s caused error: %s\n"
@@ -407,7 +533,7 @@ msgid ""
 "\n"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:950
+#: libinfinity/common/inf-connection-manager.c:986
 #, c-format
 msgid "Received bad XML request from %s: %s"
 msgstr ""
@@ -460,146 +586,146 @@ msgstr ""
 msgid "%s (via %s on IPv6)"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:36
+#: libinfinity/common/inf-error.c:38
 msgid "Synchronization is still in progress"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:38
+#: libinfinity/common/inf-error.c:40
 msgid "Message was not understood"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:40
+#: libinfinity/common/inf-error.c:42
 msgid "Received error from an unknown domain"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:42
+#: libinfinity/common/inf-error.c:44
 msgid "Failed to process server reply"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:44
+#: libinfinity/common/inf-error.c:46
 msgid "Server reply contains invalid sequence number"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:46
+#: libinfinity/common/inf-error.c:48
 msgid "A required attribute was not set in request"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:48
+#: libinfinity/common/inf-error.c:50
 msgid "An attribute contained an invalid number"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:50
+#: libinfinity/common/inf-error.c:52
 msgid "An unknown request error occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:52 libinfinity/common/inf-error.c:82
+#: libinfinity/common/inf-error.c:54 libinfinity/common/inf-error.c:84
 #: libinfinity/common/inf-session.c:191
 msgid "An error with unknown error code occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:68
+#: libinfinity/common/inf-error.c:70
 msgid "Name is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:70
+#: libinfinity/common/inf-error.c:72
 msgid "'id' attribute provided in request"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:72
+#: libinfinity/common/inf-error.c:74
 msgid "There is no user with the given ID"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:74
+#: libinfinity/common/inf-error.c:76
 msgid "'status' attribute is 'unavailable' in join or rejoin request"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:76
+#: libinfinity/common/inf-error.c:78
 msgid "User did not join via this connection"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:78
+#: libinfinity/common/inf-error.c:80
 msgid "'status' attribute has invalid value"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:80
+#: libinfinity/common/inf-error.c:82
 msgid "An unknown user error occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:98
+#: libinfinity/common/inf-error.c:100
 msgid "A node with this name exists already"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:100
+#: libinfinity/common/inf-error.c:102
 msgid "Node does not exist"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:102
+#: libinfinity/common/inf-error.c:104
 msgid "Node is not a subdirectory"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:104
+#: libinfinity/common/inf-error.c:106
 msgid "Node is not a note"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:106
+#: libinfinity/common/inf-error.c:108
 msgid "Subdirectory has already been explored"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:108
+#: libinfinity/common/inf-error.c:110
 msgid "Note type is not supported"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:110
+#: libinfinity/common/inf-error.c:112
 msgid "Connection is already subscribed to this session"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:112 libinfinity/server/infd-directory.c:2451
+#: libinfinity/common/inf-error.c:114 libinfinity/server/infd-directory.c:2451
 #, c-format
 msgid "The requesting connection is not subscribed to the session"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:114
+#: libinfinity/common/inf-error.c:116
 msgid "Server sent more explored nodes then announced"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:116
+#: libinfinity/common/inf-error.c:118
 msgid "Server sent not as much explored nodes as announced"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:118
+#: libinfinity/common/inf-error.c:120
 msgid ""
 "The session does not support the network through which the connection "
 "attempt is being made."
 msgstr ""
 
-#: libinfinity/common/inf-error.c:121
+#: libinfinity/common/inf-error.c:123
 msgid "The session uses an unsupported communication method"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:123
+#: libinfinity/common/inf-error.c:125
 msgid "Received sync-in message without having requested a sync-in"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:125
+#: libinfinity/common/inf-error.c:127
 msgid "Unexpected XML message"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:127
+#: libinfinity/common/inf-error.c:129
 msgid "An unknown directory error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:129
+#: libinfinity/common/inf-error.c:131
 msgid "An error with unknown code has occured"
 msgstr ""
 
-#: libinfinity/common/inf-method-manager.c:113
+#: libinfinity/common/inf-method-manager.c:114
 #, c-format
 msgid ""
 "Failed to load method `%s': Method with network `%s' and name `%s' already "
 "loaded."
 msgstr ""
 
-#: libinfinity/common/inf-method-manager.c:127
+#: libinfinity/common/inf-method-manager.c:128
 #, c-format
 msgid "Failed to load module `%s': %s"
 msgstr ""
@@ -674,13 +800,13 @@ msgstr ""
 msgid "Received unhandled XML message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-tcp-connection.c:477
+#: libinfinity/common/inf-tcp-connection.c:562
 #, c-format
 msgid "Interface `%s' does not exist"
 msgstr ""
 
 #. Failed to get name for device <Index>: <Reason>
-#: libinfinity/common/inf-tcp-connection.c:545
+#: libinfinity/common/inf-tcp-connection.c:637
 #, c-format
 msgid "Failed to get name for device %u: %s"
 msgstr ""
@@ -1018,7 +1144,3 @@ msgstr ""
 #, c-format
 msgid "'caret' attribute in user message is missing"
 msgstr ""
-
-#, fuzzy
-#~ msgid "The server's certificate"
-#~ msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"

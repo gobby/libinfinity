@@ -1,10 +1,13 @@
-infinoted/infinoted-main.c
 infinoted/infinoted-note-plugin.c
+infinoted/infinoted-options.c
+infinoted/infinoted-run.c
+infinoted/infinoted-startup.c
 libinfgtk/inf-gtk-browser-store.c
 libinfgtk/inf-gtk-browser-view.c
 libinfgtk/inf-gtk-certificate-dialog.c
 libinfgtk/inf-gtk-certificate-manager.c
 libinfgtk/inf-gtk-certificate-view.c
+libinfinity/adopted/inf-adopted-concurrency-warning.c
 libinfinity/adopted/inf-adopted-session.c
 libinfinity/adopted/inf-adopted-session-record.c
 libinfinity/adopted/inf-adopted-state-vector.c
