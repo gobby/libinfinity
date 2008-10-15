@@ -1,5 +1,11 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/methods/local-central/Makefile.am:
+	* infinoted/note-plugins/text/Makefile.am: Added -avoid-version,
+	-module and -no-undefined LDFLAGS. Also fixed the linking order.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-options.c:
 	* infinoted/infinoted-startup.c: Fixed a few warnings.
 

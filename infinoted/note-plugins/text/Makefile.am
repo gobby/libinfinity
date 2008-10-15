@@ -7,16 +7,19 @@ plugindir = ${libdir}/infinoted/note-plugins
 libinfd_note_plugin_text_la_CPPFLAGS = \
 	-I${top_srcdir} \
 	-I${top_builddir} \
-	$(infinity_CFLAGS) \
 	$(infinoted_CFLAGS) \
-	$(inftext_CFLAGS)
+	$(inftext_CFLAGS) \
+	$(infinity_CFLAGS)
+
+libinfd_note_plugin_text_la_LDFLAGS = \
+	-avoid-version -module -no-undefined
 
 libinfd_note_plugin_text_la_LIBADD = \
-	$(infinity_LIBS) \
+	${top_builddir}/libinftext/libinftext-1.0.la \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
 	$(infinoted_LIBS) \
 	$(inftext_LIBS) \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la
+	$(infinity_LIBS)
 
 libinfd_note_plugin_text_la_SOURCES = \
 	infd-note-plugin-text.c
