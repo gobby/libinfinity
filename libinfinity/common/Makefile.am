@@ -1,12 +1,12 @@
 AM_CPPFLAGS = -I${top_srcdir}
 
-# TODO: Make this configurable at configure time
-methods_path = ${libdir}/infinote/method-plugins
+methods_base = infinote/method-plugins
 
 libinfinity_common_la_CPPFLAGS = \
 	$(infinity_CFLAGS) \
 	$(avahi_CFLAGS) \
-	-DMETHODS_PATH=\"${methods_path}\"
+	-DMETHODS_LIBDIR=\"${libdir}\" \
+	-DMETHODS_BASEDIR=\"${methods_base}\"
 
 noinst_LTLIBRARIES = libinfinity_common.la
 

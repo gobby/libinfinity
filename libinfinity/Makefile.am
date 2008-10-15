@@ -36,9 +36,11 @@ libinfinity_1_0_la_HEADERS = \
 	inf-config.h
 
 noinst_HEADERS = \
+	inf-dll.h \
 	inf-i18n.h \
 	inf-marshal.h
 
 libinfinity_1_0_la_SOURCES = \
+	inf-dll.c \
 	inf-i18n.c \
 	inf-marshal.c

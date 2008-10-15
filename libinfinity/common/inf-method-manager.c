@@ -18,6 +18,7 @@
 
 #include <libinfinity/common/inf-method-manager.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-dll.h>
 
 #include <gmodule.h>
 
@@ -287,10 +288,27 @@ InfMethodManager*
 inf_method_manager_get_default(void)
 {
   static InfMethodManager* manager = NULL;
+  gchar* path;
+
+#ifdef G_OS_WIN32
+  gchar* module_path;
+#endif
 
   /* TODO: Thread safety */
   if(manager == NULL)
-    manager = inf_method_manager_new(METHODS_PATH);
+  {
+#ifdef G_OS_WIN32
+    module_path =
+      g_win32_get_package_installation_directory_of_module(_inf_dll_handle);
+
+    path = g_build_filename(module_path, "lib", METHODS_BASEDIR, NULL);
+    g_free(module_path);
+#else
+    path = g_build_filename(METHODS_LIBDIR, METHODS_BASEDIR, NULL);
+#endif
+    manager = inf_method_manager_new(path);
+    g_free(path);
+  }
 
   return manager;
 }

@@ -1,5 +1,25 @@
 2008-10-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-dll.h:
+	* libinfinity/inf-dll.c:
+	* libinfinity/Makefile.am: Added new files that implement DllMain() on
+	Windows, to save the DLL Handle. This can be used with
+	g_win32_get_package_installation_directory_of_module().
+
+	* libinfinity/common/Makefile.am: Split the METHODS_PATH define in
+	METHODS_LIBDIR and METHODS_BASEDIR, where METHODS_BASEDIR is the
+	application-specific part of the path.
+
+	* libinfinity/common/inf-method-manager.c: On Windows, locate the
+	methods relative to the libinfinity DLL instead of using a hardcoded
+	path.
+
+	* libinfinity/methods/local-central/Makefile.am: Added a comment about
+	renaming renaming the directory into which the methods are stored.
+	However, this doesn't work yet because of some evil libtool weirdness.
+
+2008-10-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-i18n.h: Fixed a misleading comment in the first
 	line, originating from a copy+paste from inf-config.h.
 
