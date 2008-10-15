@@ -578,8 +578,8 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
   }
   else
   {
-    inf_tcp_connection_send(priv->tcp, data, len);
     priv->position += len;
+    inf_tcp_connection_send(priv->tcp, data, len);
   }
 }
 
@@ -931,8 +931,8 @@ inf_xmpp_connection_tls_push(gnutls_transport_ptr_t ptr,
   xmpp = INF_XMPP_CONNECTION(ptr);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
-  inf_tcp_connection_send(priv->tcp, data, len);
   priv->position += len;
+  inf_tcp_connection_send(priv->tcp, data, len);
 
   return len;
 }

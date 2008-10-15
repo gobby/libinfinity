@@ -44,8 +44,8 @@
 # define INF_TCP_CONNECTION_LAST_ERROR     WSAGetLastError()
 # define INF_TCP_CONNECTION_EINTR          WSAEINTR
 # define INF_TCP_CONNECTION_EAGAIN         WSAEWOULDBLOCK
-/* This is not a typo: connect() returns WSAEWOULDBLOCK on Windows for
- * non-blocking sockets. */
+/* This is not a typo here. On Windows, connect() returns WSAEWOULDBLOCK on
+ * a non-blocking socket. */
 # define INF_TCP_CONNECTION_EINPROGRESS    WSAEWOULDBLOCK
 #else
 # define INF_TCP_CONNECTION_SENDRECV_FLAGS MSG_NOSIGNAL
@@ -192,6 +192,73 @@ inf_tcp_connection_system_error(InfTcpConnection* connection,
   g_error_free(error);
 }
 
+static gboolean
+inf_tcp_connection_send_real(InfTcpConnection* connection,
+                             gconstpointer* data,
+                             guint* len)
+{
+  InfTcpConnectionPrivate* priv;
+  gconstpointer send_data;
+  guint send_len;
+  int errcode;
+  ssize_t result;
+
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+  g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
+
+  g_assert(data != NULL);
+  g_assert(len != NULL);
+
+  send_data = *data;
+  send_len = *len;
+
+  do
+  {
+    result = send(
+      priv->socket,
+      send_data,
+      send_len,
+      INF_TCP_CONNECTION_SENDRECV_FLAGS
+    );
+
+    /* Preserve error code so that it is not modified by future calls */
+    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+
+    if(result < 0 &&
+       errcode != INF_TCP_CONNECTION_EINTR &&
+       errcode != INF_TCP_CONNECTION_EAGAIN)
+    {
+      inf_tcp_connection_system_error(connection, errcode);
+      return FALSE;
+    }
+    else if(result == 0)
+    {
+      inf_tcp_connection_close(connection);
+      return FALSE;
+    }
+    else if(result > 0)
+    {
+      send_data = (char*)send_data + result;
+      send_len -= result;
+    }
+  } while( (send_len > 0) &&
+           (result > 0 || errcode == INF_TCP_CONNECTION_EINTR) &&
+           (priv->socket != INVALID_SOCKET) );
+
+  g_signal_emit(
+    G_OBJECT(connection),
+    tcp_connection_signals[SENT],
+    0,
+    *data,
+    *len - send_len
+  );
+
+  *data = send_data;
+  *len = send_len;
+
+  return TRUE;
+}
+
 /* Required by inf_tcp_connection_connected */
 static void
 inf_tcp_connection_io(InfNativeSocket* socket,
@@ -272,9 +339,12 @@ static void
 inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
 {
   InfTcpConnectionPrivate* priv;
+
   socklen_t len;
   int errcode;
-  ssize_t result;
+
+  gconstpointer data;
+  guint data_len;
 
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
   switch(priv->status)
@@ -299,62 +369,32 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
     break;
   case INF_TCP_CONNECTION_CONNECTED:
     g_assert(priv->back_pos < priv->front_pos);
+    g_assert(priv->events & INF_IO_OUTGOING);
 
-    do
+    data = priv->queue + priv->back_pos;
+    data_len = priv->front_pos - priv->back_pos;
+    if(inf_tcp_connection_send_real(connection, &data, &data_len) == TRUE)
     {
-      result = send(
-        priv->socket,
-        priv->queue + priv->back_pos,
-        priv->front_pos - priv->back_pos,
-        INF_TCP_CONNECTION_SENDRECV_FLAGS
-      );
+      priv->back_pos = priv->front_pos - data_len;
 
-      /* Preserve error code so that it is not modified by future calls */
-      errcode = INF_TCP_CONNECTION_LAST_ERROR;
+      if(data_len == 0)
+      {
+        /* Sent everything */
+        priv->front_pos = 0;
+        priv->back_pos = 0;
 
-      if(result < 0 &&
-         errcode != INF_TCP_CONNECTION_EINTR &&
-         errcode != INF_TCP_CONNECTION_EAGAIN)
-      {
-        inf_tcp_connection_system_error(connection, errcode);
-      }
-      else if(result == 0)
-      {
-        inf_tcp_connection_close(connection);
-      }
-      else if(result > 0)
-      {
-        g_signal_emit(
-          G_OBJECT(connection),
-          tcp_connection_signals[SENT],
-          0,
-          priv->queue + priv->back_pos,
-          (guint)result
+        priv->events &= ~INF_IO_OUTGOING;
+
+        inf_io_watch(
+          priv->io,
+          &priv->socket,
+          priv->events,
+          inf_tcp_connection_io,
+          connection,
+          NULL
         );
-
-        priv->back_pos += result;
-        if(priv->back_pos == priv->front_pos)
-        {
-          /* Sent everything */
-          priv->front_pos = 0;
-          priv->back_pos = 0;
-
-          priv->events &= ~INF_IO_OUTGOING;
-
-          inf_io_watch(
-            priv->io,
-            &priv->socket,
-            priv->events,
-            inf_tcp_connection_io,
-            connection,
-            NULL
-          );
-        }
       }
-    } while( (priv->events & INF_IO_OUTGOING) &&
-             (result > 0 ||
-              (result < 0 && errcode == INF_TCP_CONNECTION_EINTR)) &&
-             (priv->socket != INVALID_SOCKET));
+    }
 
     break;
   case INF_TCP_CONNECTION_CLOSED:
@@ -1105,6 +1145,9 @@ inf_tcp_connection_close(InfTcpConnection* connection)
   closesocket(priv->socket);
   priv->socket = INVALID_SOCKET;
 
+  priv->front_pos = 0;
+  priv->back_pos = 0;
+
   priv->status = INF_TCP_CONNECTION_CLOSED;
   g_object_notify(G_OBJECT(connection), "status");
 }
@@ -1133,48 +1176,76 @@ inf_tcp_connection_send(InfTcpConnection* connection,
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
   g_return_if_fail(priv->status == INF_TCP_CONNECTION_CONNECTED);
 
-  /* Move queue data back onto the beginning of the queue, if not already */
-  if(priv->alloc - priv->front_pos < len && priv->back_pos > 0)
-  {
-    memmove(
-      priv->queue,
-      priv->queue + priv->back_pos,
-      priv->front_pos - priv->back_pos
-    );
+  g_object_ref(connection);
 
-    priv->front_pos -= priv->back_pos;
-    priv->back_pos = 0;
+  /* Check whether we have data currently queued. If we have, then we need
+   * to wait until that data has been sent before sending the new data. */
+  if(priv->front_pos == priv->back_pos)
+  {
+    /* Must not be set, because otherwise we would need something to send,
+     * but there is nothing in the queue. */
+    g_assert(~priv->events & INF_IO_OUTGOING);
+
+    /* Nothing in queue, send data directly. */
+    if(inf_tcp_connection_send_real(connection, &data, &len) == TRUE)
+    {
+      /* We have data remaining to be sent. Enqueue, and wait until we can
+       * send it. */
+      if(len > 0)
+      {
+        priv->events |= INF_IO_OUTGOING;
+
+        inf_io_watch(
+          priv->io,
+          &priv->socket,
+          priv->events,
+          inf_tcp_connection_io,
+          connection,
+          NULL
+        );
+      }
+    }
+    else
+    {
+      /* Sending failed. The error signal has been emitted. */
+      /* Set len to zero so that we don't enqueue data. */
+      len = 0;
+    }
   }
 
-  /* Allocate more memory if there is still not enough space */
-  if(priv->alloc - priv->front_pos < len)
+  if(len > 0)
   {
-    /* Make sure we allocate enough */
-    priv->alloc = priv->front_pos + len;
+    /* Move queue data back onto the beginning of the queue, if not already */
+    if(priv->alloc - priv->front_pos < len && priv->back_pos > 0)
+    {
+      memmove(
+        priv->queue,
+        priv->queue + priv->back_pos,
+        priv->front_pos - priv->back_pos
+      );
 
-    /* Always allocate a multiple of 1024 */
-    if(priv->alloc % 1024 != 0)
-      priv->alloc = priv->alloc + (1024 - priv->alloc % 1024);
+      priv->front_pos -= priv->back_pos;
+      priv->back_pos = 0;
+    }
 
-    priv->queue = g_realloc(priv->queue, priv->alloc);
+    /* Allocate more memory if there is still not enough space */
+    if(priv->alloc - priv->front_pos < len)
+    {
+      /* Make sure we allocate enough */
+      priv->alloc = priv->front_pos + len;
+
+      /* Always allocate a multiple of 1024 */
+      if(priv->alloc % 1024 != 0)
+        priv->alloc = priv->alloc + (1024 - priv->alloc % 1024);
+
+      priv->queue = g_realloc(priv->queue, priv->alloc);
+    }
+
+    memcpy(priv->queue + priv->front_pos, data, len);
+    priv->front_pos += len;
   }
 
-  memcpy(priv->queue + priv->front_pos, data, len);
-  priv->front_pos += len;
-
-  if(~priv->events & INF_IO_OUTGOING)
-  {
-    priv->events |= INF_IO_OUTGOING;
-
-    inf_io_watch(
-      priv->io,
-      &priv->socket,
-      priv->events,
-      inf_tcp_connection_io,
-      connection,
-      NULL
-    );
-  }
+  g_object_unref(connection);
 }
 
 /**

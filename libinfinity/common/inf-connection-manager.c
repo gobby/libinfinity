@@ -103,6 +103,7 @@ struct _InfConnectionManagerQueue {
 
   xmlNodePtr first_item;
   xmlNodePtr last_item;
+  xmlNodePtr send_item;
   guint inner_count;
 
   InfConnectionManagerQueue* parent_queue;
@@ -348,24 +349,28 @@ inf_connection_manager_announce_registration(InfConnectionManager* manager,
    * groups can be joined by that connection. */
   id_announce = xmlNewNode(NULL, (const xmlChar*)"connection");
   inf_xml_util_set_attribute(id_announce, "id", priv->own_publisher_id);
-  inf_xml_connection_send(connection, id_announce);
-
   registration->publisher_id_sent = TRUE;
+
+  inf_xml_connection_send(connection, id_announce);
 }
 
-static xmlNodePtr
+static void
 inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
                                        InfConnectionManagerQueue* queue,
-                                       xmlNodePtr xml,
                                        guint max)
 {
   xmlNodePtr cur;
-  xmlNodePtr container;
+  xmlNodePtr cont;
+  xmlNodePtr container_list;
+  xmlNodePtr new_container;
+
   InfXmlConnection* connection;
+
   InfConnectionManagerScope scope;
   InfConnectionManagerScope cur_scope;
   InfConnectionManagerMsgType type;
   InfConnectionManagerMsgType cur_type;
+
   const gchar* publisher_id;
 
   GSList* released_groups;
@@ -380,75 +385,72 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   g_assert(group->key.publisher_id != NULL);
   publisher_id = group->key.publisher_id;
 
-  /* max==0 means all messages */
+  /* max==0 means all messages in queue */
   if(max == 0) max = ~(guint)0;
 
   released_groups = NULL;
-  container = NULL;
-  while(xml != NULL && max > 0)
+
+  /* Append all messages to be sent to the queue->send_item list. This is
+   * used to ensure order in recursive calls to this function. */
+  container_list = NULL;
+
+  /* Collect messages that we want to send, and put them into the container
+   * list. Don't issue any callbacks here. */
+  while(queue->first_item != NULL && max > 0)
   {
-    cur = xml;
-    xml = xml->next;
+    cur = queue->first_item;
+    queue->first_item = queue->first_item->next;
+    if(queue->first_item == NULL)
+      queue->last_item = NULL;
+    ++ queue->inner_count;
+
     -- max;
     xmlUnlinkNode(cur);
-
-    /* If we have children groups, then the queue for the same connection in
-     * these children groups wait for us to send something before they start
-     * sending themselves. If they wait for the packet we are currently
-     * sending, then remember the queue to unfreeze later. Don't unfreezed
-     * now since we did not yet have sent the message. */
-    for(item = queue->children_groups; item != NULL; item = item->next)
-    {
-      child_group = (InfConnectionManagerGroup*)item->data;
-      child_queue = inf_connection_manager_group_lookup_queue(
-        child_group,
-        queue->connection
-      );
-
-      g_assert(child_queue != NULL);
-      g_assert(child_queue->parent_queue == queue);
-      g_assert(child_queue->parent_queue_item != NULL);
-
-      if(child_queue->parent_queue_item == cur)
-        released_groups = g_slist_prepend(released_groups, child_group);
-    }
 
     cur_scope = GPOINTER_TO_UINT(cur->_private) & 0xff;
     cur_type = GPOINTER_TO_UINT(cur->_private) >> 8;
 
-    if(container == NULL || scope != cur_scope || type != cur_type)
+    if(queue->send_item == NULL || scope != cur_scope || type != cur_type)
     {
-      if(container != NULL)
-        inf_xml_connection_send(connection, container);
-
       type = cur_type;
       scope = cur_scope;
 
       switch(cur_type)
       {
       case INF_CONNECTION_MANAGER_MESSAGE:
-        container = xmlNewNode(NULL, (const xmlChar*)"group");
+        new_container = xmlNewNode(NULL, (const xmlChar*)"group");
         break;
       case INF_CONNECTION_MANAGER_CONTROL:
-        container = xmlNewNode(NULL, (const xmlChar*)"control");
+        new_container = xmlNewNode(NULL, (const xmlChar*)"control");
         break;
       default:
         g_assert_not_reached();
         break;
       }
 
-      inf_xml_util_set_attribute(container, "publisher", publisher_id);
-      inf_xml_util_set_attribute(container, "name", group->key.group_name);
+      if(queue->send_item)
+        queue->send_item->next = new_container;
+      else
+        container_list = new_container;
+      queue->send_item = new_container;
+
+      inf_xml_util_set_attribute(queue->send_item, "publisher", publisher_id);
+
+      inf_xml_util_set_attribute(
+        queue->send_item,
+        "name",
+        group->key.group_name
+      );
 
       switch(cur_scope)
       {
       case INF_CONNECTION_MANAGER_POINT_TO_POINT:
         break;
       case INF_CONNECTION_MANAGER_NETWORK:
-        inf_xml_util_set_attribute(container, "scope", "net");
+        inf_xml_util_set_attribute(queue->send_item, "scope", "net");
         break;
       case INF_CONNECTION_MANAGER_GROUP:
-        inf_xml_util_set_attribute(container, "scope", "group");
+        inf_xml_util_set_attribute(queue->send_item, "scope", "group");
         break;
       default:
         g_assert_not_reached();
@@ -461,15 +463,59 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
      * C++ wrapper and tries to delete it. */
     cur->_private = NULL;
 
-    xmlAddChild(container, cur);
-    inf_net_object_enqueued(group->object, connection, cur);
-    ++ queue->inner_count;
+    xmlAddChild(queue->send_item, cur);
   }
 
-  if(container != NULL)
-    inf_xml_connection_send(connection, container);
+  /* Now we have all messages that we are about to send. There are two cases
+   * here: Either this is the first call to send_real. In that case,
+   * queue->send_item was NULL before the call, and we set container_list
+   * to point to the messages to send. However, if this is a recursive call,
+   * then queue->send_item is set. In that case, we appended the messages
+   * we would like to send to queue->send_item and return immediately now
+   * because container_list is not set. The call before ours will take care
+   * of sending everything in the correct order. */
+  if(container_list != NULL)
+  {
+    g_assert(queue->send_item != NULL);
+    for(cont = container_list; cont != NULL; cont = cont->next)
+    {
+      for(cur = cont->children; cur != NULL; cur = cur->next)
+      {
+        /* If we have children groups, then the queue for the same connection
+         * in these children groups wait for us to send something before they
+         * start sending themselves. If they wait for the packet we are
+         * currently sending, then remember the queue to unfreeze later. Don't
+         * unfreeze now since we did not yet have sent the message (and we
+         * can't check after sending since inf_xml_connection_send takes
+         * ownership of cur eventually). */
+        for(item = queue->children_groups; item != NULL; item = item->next)
+        {
+          child_group = (InfConnectionManagerGroup*)item->data;
+          child_queue = inf_connection_manager_group_lookup_queue(
+            child_group,
+            queue->connection
+          );
+
+          g_assert(child_queue != NULL);
+          g_assert(child_queue->parent_queue == queue);
+          g_assert(child_queue->parent_queue_item != NULL);
+
+          if(child_queue->parent_queue_item == cur)
+            released_groups = g_slist_prepend(released_groups, child_group);
+        }
+
+        inf_net_object_enqueued(group->object, connection, cur);
+      }
+
+      inf_xml_connection_send(connection, cont);
+    }
+
+    queue->send_item = NULL;
+  }
 
   /* Unfreeze queues that were waiting for a parent message to be sent */
+  /* TODO: Should we ref the groups above, to make sure the callbacks in
+   * between do not finally unref them? */
   for(item = released_groups; item != NULL; item = g_slist_next(item))
   {
     child_group = (InfConnectionManagerGroup*)item->data;
@@ -488,27 +534,20 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
     child_queue->parent_queue = NULL;
     child_queue->parent_queue_item = NULL;
 
-    /* TODO: Write a method to send exactly the amount of messages that
-     * capacity yields: */
     capacity =
       inf_connection_manager_group_queue_capacity(child_group, child_queue);
 
     if(capacity > 0)
     {
-      child_queue->first_item = inf_connection_manager_group_real_send(
+      inf_connection_manager_group_real_send(
         child_group,
         child_queue,
-        child_queue->first_item,
         capacity
       );
-
-      if(child_queue->first_item == NULL)
-        child_queue->last_item = NULL;
     }
   }
 
   g_slist_free(released_groups);
-  return xml;
 }
 
 static void
@@ -710,15 +749,7 @@ inf_connection_manager_handle_connection(InfConnectionManager* manager,
 
         if(capacity > 0)
         {
-          queue->first_item = inf_connection_manager_group_real_send(
-            group,
-            queue,
-            queue->first_item,
-            capacity
-          );
-
-          if(queue->first_item == NULL)
-            queue->last_item = NULL;
+          inf_connection_manager_group_real_send(group, queue, capacity);
         }
       }
     }
@@ -1015,22 +1046,15 @@ inf_connection_manager_connection_sent_cb(InfXmlConnection* connection,
       {
         g_assert(group->object);
         inf_net_object_sent(group->object, connection, child);
-        /* TODO: Check that group still exists, and that it is the same */
+        /* TODO: Check that group still exists, and that it is the same,
+         * maybe we should simply ref it. */
         ++ messages_sent;
       }
 
       queue->inner_count -= messages_sent;
       capacity = inf_connection_manager_group_queue_capacity(group, queue);
 
-      queue->first_item = inf_connection_manager_group_real_send(
-        group,
-        queue,
-        queue->first_item,
-        capacity
-      );
-
-      if(queue->first_item == NULL)
-        queue->last_item = NULL;
+      inf_connection_manager_group_real_send(group, queue, capacity);
     }
   }
 }
@@ -1058,12 +1082,7 @@ inf_connection_manager_connection_notify_cb_foreach_func(gpointer key,
 
       if(capacity > 0)
       {
-        queue->first_item = inf_connection_manager_group_real_send(
-          group,
-          queue,
-          queue->first_item,
-          capacity
-        );
+        inf_connection_manager_group_real_send(group, queue, capacity);
 
         if(queue->first_item == NULL)
           queue->last_item = NULL;
@@ -1991,6 +2010,7 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
   queue->connection = connection;
   queue->first_item = NULL;
   queue->last_item = NULL;
+  queue->send_item = NULL;
   queue->inner_count = 0;
   if(parent_queue && parent_queue->last_item)
   {
@@ -2093,12 +2113,7 @@ inf_connection_manager_unregister_connection(InfConnectionManagerGroup* group,
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
   if(status == INF_XML_CONNECTION_OPEN && queue->first_item != NULL)
   {
-    inf_connection_manager_group_real_send(
-      group,
-      queue,
-      queue->first_item,
-      0
-    );
+    inf_connection_manager_group_real_send(group, queue, 0);
   }
 
   /* After having sent everything, all children should have been released */
@@ -2180,17 +2195,16 @@ inf_connection_manager_send_msg(InfConnectionManagerGroup* group,
   
   capacity = inf_connection_manager_group_queue_capacity(group, queue);
 
+  if(queue->last_item != NULL)
+    queue->last_item->next = xml;
+  else
+    queue->first_item = xml;
+  queue->last_item = xml;
+
   if(capacity > 0)
   {
-    inf_connection_manager_group_real_send(group, queue, xml, 1);
-  }
-  else
-  {
-    if(queue->last_item != NULL)
-      queue->last_item->next = xml;
-    else
-      queue->first_item = xml;
-    queue->last_item = xml;
+    g_assert(queue->first_item == xml);
+    inf_connection_manager_group_real_send(group, queue, 1);
   }
 }
 
@@ -2233,17 +2247,16 @@ inf_connection_manager_send_ctrl(InfConnectionManagerGroup* group,
 
   capacity = inf_connection_manager_group_queue_capacity(group, queue);
 
+  if(queue->last_item != NULL)
+    queue->last_item->next = xml;
+  else
+    queue->first_item = xml;
+  queue->last_item = xml;
+
   if(capacity > 0)
   {
-    inf_connection_manager_group_real_send(group, queue, xml, 1);
-  }
-  else
-  {
-    if(queue->last_item != NULL)
-      queue->last_item->next = xml;
-    else
-      queue->first_item = xml;
-    queue->last_item = xml;
+    g_assert(queue->first_item = xml);
+    inf_connection_manager_group_real_send(group, queue, 1);
   }
 }
 
