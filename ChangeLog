@@ -1,5 +1,10 @@
 2008-10-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.c: Make sure signals are emitted
+	before data any is sent out for various operations.
+
+2008-10-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-tcp-connection.c: Only queue new data if it
 	can't be sent directly. This allows a call to
 	inf_tcp_connection_send() to emit the "sent" signal directly.

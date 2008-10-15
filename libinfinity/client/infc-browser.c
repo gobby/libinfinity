@@ -2838,18 +2838,18 @@ infc_browser_iter_explore(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
-    priv->connection,
-    xml
-  );
-
   g_signal_emit(
     G_OBJECT(browser),
     browser_signals[BEGIN_EXPLORE],
     0,
     iter,
     request
+  );
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    priv->connection,
+    xml
   );
 
   return INFC_EXPLORE_REQUEST(request);
@@ -3140,6 +3140,20 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
     NULL
   );
 
+  g_object_ref(session);
+  g_object_set_qdata_full(
+    G_OBJECT(request),
+    infc_browser_sync_in_session_quark,
+    session,
+    g_object_unref
+  );
+
+  g_object_set_qdata(
+    G_OBJECT(request),
+    infc_browser_sync_in_plugin_quark,
+    (gpointer)plugin
+  );
+
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "parent", node->id);
   inf_xml_util_set_attribute(xml, "type", plugin->note_type);
@@ -3153,20 +3167,6 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
     priv->group,
     priv->connection,
     xml
-  );
-
-  g_object_ref(session);
-  g_object_set_qdata_full(
-    G_OBJECT(request),
-    infc_browser_sync_in_session_quark,
-    session,
-    g_object_unref
-  );
-
-  g_object_set_qdata(
-    G_OBJECT(request),
-    infc_browser_sync_in_plugin_quark,
-    (gpointer)plugin
   );
 
   return INFC_NODE_REQUEST(request);
@@ -3346,18 +3346,18 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
-    priv->connection,
-    xml
-  );
-
   g_signal_emit(
     G_OBJECT(browser),
     browser_signals[BEGIN_SUBSCRIBE],
     0,
     iter,
     request
+  );
+
+  inf_connection_manager_group_send_to_connection(
+    priv->group,
+    priv->connection,
+    xml
   );
 
   return INFC_NODE_REQUEST(request);
