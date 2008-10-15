@@ -1,5 +1,11 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection.c: Changed
+	INF_TCP_CONNECTION_EINPROGRESS to be WSAEWOULDBLOCK on Windows because
+	this is what connect() yields for non-blocking sockets.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c:
 	* libinfinity/common/inf-error.c:
 	* libinfinity/common/inf-init.c:
