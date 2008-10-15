@@ -19,9 +19,7 @@
 #ifndef __INF_INIT_H__
 #define __INF_INIT_H__
 
-#include <glib/gtypes.h>
-#include <glib/gerror.h>
-#include <libxml/tree.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 

@@ -1,5 +1,11 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-init.h: Include only <glib.h> for
+	G_BEGIN_DECLS and G_END_DECLS, removed inculdes that we don't need in
+	inf-init.h.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/Makefile.am:
 	* libinftext/Makefile.am:
 	* libinfgtk/Makefile.am:
