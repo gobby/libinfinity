@@ -1,4 +1,3 @@
-/* libinfinity/inf-config.h.  Generated from inf-config.h.in by configure.  */
 /* infinote - Collaborative notetaking application
  * Copyright (C) 2007 Armin Burgmeier
  *

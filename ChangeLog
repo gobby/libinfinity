@@ -1,5 +1,10 @@
 2008-10-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-i18n.h: Fixed a misleading comment in the first
+	line, originating from a copy+paste from inf-config.h.
+
+2008-10-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c: Make sure signals are emitted
 	before data any is sent out for various operations.
 
