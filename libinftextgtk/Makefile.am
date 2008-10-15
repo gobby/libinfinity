@@ -3,16 +3,19 @@ lib_LTLIBRARIES = libinftextgtk-1.0.la
 AM_CPPFLAGS = -I${top_srcdir}
 
 libinftextgtk_1_0_la_CPPFLAGS = \
-	$(infinity_CFLAGS) \
+	$(inftextgtk_CFLAGS) \
 	$(inftext_CFLAGS) \
-	$(inftextgtk_CFLAGS)
+	$(infinity_CFLAGS)
+
+libinftextgtk_1_0_la_LDFLAGS = \
+	-no-undefined
 
 libinftextgtk_1_0_la_LIBADD = \
-	${top_srcdir}/libinfinity/libinfinity-1.0.la \
 	${top_srcdir}/libinftext/libinftext-1.0.la \
-	$(infinity_LIBS) \
+	${top_srcdir}/libinfinity/libinfinity-1.0.la \
+	$(inftextgtk_LIBS) \
 	$(inftext_LIBS) \
-	$(inftextgtk_LIBS)
+	$(infinity_LIBS)
 
 libinftextgtk_1_0_ladir = $(includedir)/libinftextgtk-1.0/libinftextgtk
 

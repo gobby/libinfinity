@@ -64,48 +64,48 @@ inf_test_chunk_SOURCES = \
 	inf-test-chunk.c
 
 inf_test_chunk_LDADD = \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la
+	${top_builddir}/libinftext/libinftext-1.0.la \
+	${top_builddir}/libinfinity/libinfinity-1.0.la
 
 inf_test_text_operations_SOURCES = \
 	inf-test-text-operations.c
 
 inf_test_text_operations_LDADD = \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la
+	${top_builddir}/libinftext/libinftext-1.0.la \
+	${top_builddir}/libinfinity/libinfinity-1.0.la
 
 inf_test_text_session_SOURCES = \
 	inf-test-text-session.c
 
 inf_test_text_session_LDADD = \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	util/libinftestutil.a \
 	${top_builddir}/libinftext/libinftext-1.0.la \
-	util/libinftestutil.a
+	${top_builddir}/libinfinity/libinfinity-1.0.la
 
 inf_test_text_cleanup_SOURCES = \
 	inf-test-text-cleanup.c
 
 inf_test_text_cleanup_LDADD = \
+	util/libinftestutil.a \
 	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la \
-	util/libinftestutil.a
+	${top_builddir}/libinftext/libinftext-1.0.la
 
 inf_test_text_replay_SOURCES = \
 	inf-test-text-replay.c
 
 inf_test_text_replay_LDADD = \
+	util/libinftestutil.a \
 	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la \
-	util/libinftestutil.a
+	${top_builddir}/libinftext/libinftext-1.0.la
 
 if WITH_INFTEXTGTK
 inf_test_gtk_browser_SOURCES = \
 	inf-test-gtk-browser.c
 
 inf_test_gtk_browser_LDADD = \
-	${infgtk_LIBS} \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la \
+	${top_builddir}/libinftextgtk/libinftextgtk-1.0.la \
 	${top_builddir}/libinfgtk/libinfgtk-1.0.la \
-	${top_builddir}/libinftextgtk/libinftextgtk-1.0.la
+	${top_builddir}/libinftext/libinftext-1.0.la \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
+	${infgtk_LIBS}
 endif

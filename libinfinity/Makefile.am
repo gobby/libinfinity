@@ -7,14 +7,17 @@ AM_CPPFLAGS = -I${top_srcdir}
 libinfinity_1_0_la_CPPFLAGS = \
 	$(infinity_CFLAGS)
 
+libinfinity_1_0_la_LDFLAGS = \
+	-no-undefined
+
 libinfinity_1_0_la_LIBADD = \
-	$(glib_LIBS) \
-	$(infinity_LIBS) \
-	$(avahi_LIBS) \
-	common/libinfinity_common.la \
-	adopted/libinfinity_adopted.la \
 	server/libinfinity_server.la \
-	client/libinfinity_client.la
+	client/libinfinity_client.la \
+	adopted/libinfinity_adopted.la \
+	common/libinfinity_common.la \
+	$(infinity_LIBS) \
+	$(glib_LIBS) \
+	$(avahi_LIBS)
 
 dist_pkgdata_DATA = inf-marshal.in
 

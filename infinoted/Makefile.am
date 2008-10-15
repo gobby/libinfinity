@@ -8,14 +8,14 @@ plugin_path = ${libdir}/infinoted/note-plugins
 infinoted_CPPFLAGS = \
 	-I${top_srcdir} \
 	-I${top_builddir} \
-	$(infinity_CFLAGS) \
 	$(infinoted_CFLAGS) \
+	$(infinity_CFLAGS) \
 	-DPLUGIN_PATH=\"${plugin_path}\"
 
 infinoted_LDADD = \
-	$(infinity_LIBS) \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
 	$(infinoted_LIBS) \
-	${top_builddir}/libinfinity/libinfinity-1.0.la
+	$(infinity_LIBS)
 
 infinoted_SOURCES = \
 	infinoted-creds.c \

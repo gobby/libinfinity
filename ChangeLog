@@ -1,5 +1,15 @@
 2008-10-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/Makefile.am:
+	* libinftext/Makefile.am:
+	* libinfgtk/Makefile.am:
+	* libinftextgtk/Makefile.am:
+	* infinoted/Makefile.am:
+	* libinftextgtk/Makefile.am: Fixed linking order so that libraries
+	that depend on others appear first in the command line.
+
+2008-10-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/methods/local-central/Makefile.am:
 	* infinoted/note-plugins/text/Makefile.am: Added -avoid-version,
 	-module and -no-undefined LDFLAGS. Also fixed the linking order.
