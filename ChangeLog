@@ -1,5 +1,10 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c: Fixed a stupid type error in
+	the setter for the wake-on-cursor-movement property.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/Makefile.am:
 	* libinfinity/common/Makefile.am:
 	* libinfinity/adopted/Makefile.am:

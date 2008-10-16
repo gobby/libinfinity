@@ -857,7 +857,7 @@ inf_text_gtk_buffer_get_property(GObject* object,
     g_value_set_object(value, G_OBJECT(priv->active_user));
     break;
   case PROP_WAKE_ON_CURSOR_MOVEMENT:
-    g_value_set_boolean(value, G_OBJECT(priv->wake_on_cursor_movement));
+    g_value_set_boolean(value, priv->wake_on_cursor_movement);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
