@@ -175,6 +175,10 @@ infinoted_note_plugin_load_directory(const gchar* path,
       g_warning(_("Path \"%s\" does not contain any note plugins"), path);
       return FALSE;
     }
+    else
+    {
+      return TRUE;
+    }
   }
 }
 

@@ -1,5 +1,11 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-note-plugin.c
+	(infinoted_note_plugin_load_directory): Added missing return value in
+	success case.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.c: Fixed a stupid type error in
 	the setter for the wake-on-cursor-movement property.
 
