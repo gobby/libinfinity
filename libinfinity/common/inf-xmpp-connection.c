@@ -29,6 +29,8 @@
 #include <errno.h>
 #include <string.h>
 
+/*#define INF_XMPP_CONNECTION_PRINT_TRAFFIC*/
+
 /* This is an implementation of the XMPP protocol as specified in RFC 3920.
  * Note that it is neither complete nor very standard-compliant at this time.
  */
@@ -541,7 +543,10 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
+
+#ifdef INF_XMPP_CONNECTION_PRINT_TRAFFIC
   printf("\033[00;34m%.*s\033[00;00m\n", (int)len, (const char*)data);
+#endif /* INF_XMPP_CONECTION_PRINT_TRAFFIC */
 
   if(priv->session != NULL)
   {
@@ -2694,7 +2699,9 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
         else
         {
           /* Feed decoded data into XML parser */
+#ifdef INF_XMPP_CONNECTION_PRINT_TRAFFIC
           printf("\033[00;32m%.*s\033[00;00m\n", (int)res, buffer);
+#endif /* INF_XMPP_CONECTION_PRINT_TRAFFIC */
           xmlParseChunk(priv->parser, buffer, res, 0);
         }
       }
@@ -2702,7 +2709,9 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
     else
     {
       /* Feed input directly into XML parser */
+#ifdef INF_XMPP_CONNECTION_PRINT_TRAFFIC
       printf("\033[00;31m%.*s\033[00;00m\n", (int)len, (const char*)data);
+#endif /* INF_XMPP_CONECTION_PRINT_TRAFFIC */
       xmlParseChunk(priv->parser, data, len, 0);
     }
   }

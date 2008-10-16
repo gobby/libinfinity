@@ -1,5 +1,10 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c: Removed network traffic
+	output.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* all source files: Fixed copyright period in GPL header, and changed
 	the package description.
 
