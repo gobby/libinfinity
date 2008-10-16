@@ -20,9 +20,9 @@
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/common/inf-local-publisher.h>
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-config.h> /* INFINOTE_HAVE_AVAHI */
+#include <libinfinity/inf-config.h> /* LIBINFINITY_HAVE_AVAHI */
 
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
 
 #include <avahi-client/client.h>
 #include <avahi-client/lookup.h>
@@ -1685,6 +1685,6 @@ inf_discovery_avahi_get_security_policy(InfDiscoveryAvahi* discovery)
   return INF_DISCOVERY_AVAHI_PRIVATE(discovery)->security_policy;
 }
 
-#endif /* INFINOTE_HAVE_AVAHI */
+#endif /* LIBINFINITY_HAVE_AVAHI */
 
 /* vim:set et sw=2 ts=2: */

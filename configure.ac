@@ -1,14 +1,14 @@
-m4_define([infinote_version], [0.1.0])
+m4_define([libinfinity_version], [0.1.0])
 
 AC_PREREQ(2.59)
-AC_INIT([infinote], [infinote_version], [armin@arbur.net])
+AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-net-object.h])
 AC_CONFIG_HEADER([config.h libinfinity/inf-config.h])
 
-INFINOTE_VERSION=infinote_version
-AC_SUBST(INFINOTE_VERSION)
+LIBINFINITY_VERSION=libinfinity_version
+AC_SUBST(LIBINFINITY_VERSION)
 
 AC_CANONICAL_HOST
 
@@ -133,14 +133,14 @@ fi
 
 if test "x$use_avahi" = "xyes"
 then
-  AC_DEFINE([INFINOTE_HAVE_AVAHI], 1, [Whether avahi support is enabled])
+  AC_DEFINE([LIBINFINITY_HAVE_AVAHI], 1, [Whether avahi support is enabled])
 fi
 
 ############
 # gettext
 ############
 
-GETTEXT_PACKAGE=infinote10
+GETTEXT_PACKAGE=libinfinity10
 AC_SUBST(GETTEXT_PACKAGE)
 AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE], ["$GETTEXT_PACKAGE"],
                    [The domain name to use with gettext.])

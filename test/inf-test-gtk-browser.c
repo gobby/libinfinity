@@ -494,7 +494,7 @@ main(int argc,
 {
   InfGtkIo* io;
   InfConnectionManager* connection_manager;
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
   InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
 #endif
@@ -507,7 +507,7 @@ main(int argc,
   gnutls_global_init();
 
   io = inf_gtk_io_new();
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
   avahi = inf_discovery_avahi_new(INF_IO(io), xmpp_manager, NULL, NULL, NULL);
   g_object_unref(G_OBJECT(xmpp_manager));
@@ -525,7 +525,7 @@ main(int argc,
     NULL
   );
 
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
   inf_gtk_browser_store_add_discovery(store, INF_DISCOVERY(avahi));
   g_object_unref(G_OBJECT(avahi));
 #endif

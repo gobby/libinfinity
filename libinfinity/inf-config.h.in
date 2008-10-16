@@ -17,8 +17,8 @@
  */
 
 /* Defines representing support for what features has been compiled into
- * infinote. All these defines are prefixed, so it is safe to be installed
+ * libinfinity. All these defines are prefixed, so it is safe to be installed
  * and used by other packages. */
 
 /* Whether avahi support is enabled */
-#undef INFINOTE_HAVE_AVAHI
+#undef LIBINFINITY_HAVE_AVAHI

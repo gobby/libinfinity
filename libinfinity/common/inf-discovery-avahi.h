@@ -21,13 +21,13 @@
 
 #include <libinfinity/common/inf-xmpp-manager.h>
 #include <libinfinity/common/inf-io.h>
-#include <libinfinity/inf-config.h> /* For INFINOTE_HAVE_AVAHI */
+#include <libinfinity/inf-config.h> /* For LIBINFINITY_HAVE_AVAHI */
 
 #include <libxml/tree.h>
 
 #include <glib-object.h>
 
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
 
 G_BEGIN_DECLS
 
@@ -68,7 +68,7 @@ inf_discovery_avahi_get_security_policy(InfDiscoveryAvahi* discovery);
 
 G_END_DECLS
 
-#endif /* INFINOTE_HAVE_AVAHI */
+#endif /* LIBINFINITY_HAVE_AVAHI */
 
 #endif /* __INF_DISCOVERY_AVAHI_H__ */
 

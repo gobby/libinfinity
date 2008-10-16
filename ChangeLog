@@ -1,5 +1,19 @@
 2008-10-15  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Changed some occurences of infinote to libinfinity
+	where the implementation rather than the protocol is meant. This
+	changes the INFINOTE_HAVE_AVAHI define to LIBINFINITY_HAVE_AVAHI.
+
+	* libinfinity/inf-config.h.in:
+	* libinfinity/common/inf-discovery-avahi.h:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* infinoted/infinoted-run.c:
+	* test/inf-test-daemon.c:
+	* test/inf-test-gtk-browser.c:
+	* doc/reference/version.xml.in: Adapt to the changes.
+
+2008-10-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/inf-dll.h:
 	* libinfinity/inf-dll.c:
 	* libinfinity/Makefile.am: Added new files that implement DllMain() on

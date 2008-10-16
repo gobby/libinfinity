@@ -49,7 +49,7 @@ infinoted_run_new(InfinotedStartup* startup,
   InfIpAddress* address;
   InfdTcpServer* tcp;
   InfdXmppServer* xmpp;
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
   InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
 #endif
@@ -103,7 +103,7 @@ infinoted_run_new(InfinotedStartup* startup,
 
   infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));
 
-#ifdef INFINOTE_HAVE_AVAHI
+#ifdef LIBINFINITY_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
 
   avahi = inf_discovery_avahi_new(
