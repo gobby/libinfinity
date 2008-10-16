@@ -1,5 +1,9 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* NEWS: Update for initial release.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Removed network traffic
 	output.
 

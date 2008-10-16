@@ -1,0 +1,4 @@
+libinfinity 0.1.0:
+
+	* Initial release of libinfinity
+	* Provides an API for real-time collaboration on plain text documents

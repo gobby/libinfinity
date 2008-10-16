@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-16 01:55+0200\n"
+"POT-Creation-Date: 2008-10-16 19:00+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -838,52 +838,52 @@ msgstr ""
 msgid "Request '%s' does not contain required attribute '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:319
+#: libinfinity/common/inf-xmpp-connection.c:321
 msgid "The entity has sent XML that cannot be processed"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:321
+#: libinfinity/common/inf-xmpp-connection.c:323
 msgid ""
 "The entity has sent a namespace prefix that is unsupported, or has sent no "
 "namespace prefix on an element that requires such a prefix"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:325
+#: libinfinity/common/inf-xmpp-connection.c:327
 msgid ""
 "The server is closing the active stream for this entity because a new stream "
 "has been initiated that conflicts with the existing stream"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:329
+#: libinfinity/common/inf-xmpp-connection.c:331
 msgid ""
 "The entity has not generated any traffic over the stream for some period of "
 "time"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:332
+#: libinfinity/common/inf-xmpp-connection.c:334
 msgid ""
 "The value of the 'to' attribute provided by the initiating entity in the "
 "stream header corresponds to a hostname that is no longer hosted by the "
 "server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:336
+#: libinfinity/common/inf-xmpp-connection.c:338
 msgid ""
 "The value of the 'to' attribute provided by the initiating entity  in the "
 "stream header does not correspond to a hostname that is hosted by the server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:340
+#: libinfinity/common/inf-xmpp-connection.c:342
 msgid "A stanza sent between two servers lacks a 'to' or 'from'attribute"
 msgstr "A stanza sent between two servers lacks a 'to' or 'from'attribute"
 
-#: libinfinity/common/inf-xmpp-connection.c:343
+#: libinfinity/common/inf-xmpp-connection.c:345
 msgid ""
 "The server has experienced a misconfiguration or an otherwise-undefined "
 "internal error that prevents it from servicing the stream"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:347
+#: libinfinity/common/inf-xmpp-connection.c:349
 msgid ""
 "The JID or hostname provided in a 'from' address does not match an "
 "authorized JID or validated domain negotiated between servers via SASL or "
@@ -891,179 +891,179 @@ msgid ""
 "binding"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:352
+#: libinfinity/common/inf-xmpp-connection.c:354
 msgid ""
 "The stream ID or dialback ID is invalid or does not match an ID previously "
 "provided"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:355
+#: libinfinity/common/inf-xmpp-connection.c:357
 msgid ""
 "The streams namespace is something other than \"http://etherx.jabber.org/"
 "streams\" or the dialback namespace name is something other than \"jabber:"
 "server:dialback\""
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:359
+#: libinfinity/common/inf-xmpp-connection.c:361
 msgid ""
 "The entity has sent invalid XML over the stream to a server that performs "
 "validation"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:362
+#: libinfinity/common/inf-xmpp-connection.c:364
 msgid ""
 "The entity has attempted to send data before the stream has been "
 "authenticated, or otherwise is not authorized to perform an action related "
 "to stream negotiation"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:366
+#: libinfinity/common/inf-xmpp-connection.c:368
 msgid "The entity has violated some local service policy"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:368
+#: libinfinity/common/inf-xmpp-connection.c:370
 msgid ""
 "The server is unable to property connect to a remote entity that is required "
 "for authentication or authorization"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:371
+#: libinfinity/common/inf-xmpp-connection.c:373
 msgid "The server lacks the system resources necessary to service the stream"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:374
+#: libinfinity/common/inf-xmpp-connection.c:376
 msgid "The entity has attempted to send restricted XML features"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:376
+#: libinfinity/common/inf-xmpp-connection.c:378
 msgid ""
 "The server will not provide service to the initiating entity but is "
 "redirecting traffic to another host"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:379
+#: libinfinity/common/inf-xmpp-connection.c:381
 msgid "The server is being shut down and all active streams are being closed"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:383
+#: libinfinity/common/inf-xmpp-connection.c:385
 msgid "The error condition is not one of those defined by the other conditions"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:386
+#: libinfinity/common/inf-xmpp-connection.c:388
 msgid ""
 "The initiating entity has encoded the stream in an encoding that is not "
 "supported by the server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:389
+#: libinfinity/common/inf-xmpp-connection.c:391
 msgid ""
 "The initiating entity has sent a first-level child of the stream that is not "
 "supported by the server."
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:392
+#: libinfinity/common/inf-xmpp-connection.c:394
 msgid ""
 "The value of the 'version' attribute provided by the initiating entity in "
 "the stream header specifies a version of XMPP that is not supported by the "
 "server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:396
+#: libinfinity/common/inf-xmpp-connection.c:398
 msgid "The initiating entity has sent XML that is not well-formed"
 msgstr "The initiating entity has sent XML that is not well-formed"
 
-#: libinfinity/common/inf-xmpp-connection.c:441
+#: libinfinity/common/inf-xmpp-connection.c:443
 msgid ""
 "The receiving entity acknowledged an <abort/> element sent by the initiating "
 "entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:444
+#: libinfinity/common/inf-xmpp-connection.c:446
 msgid ""
 "The data provided by the initiating entity could not be processed because "
 "the Base64 encoding is incorrect"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:447
+#: libinfinity/common/inf-xmpp-connection.c:449
 msgid ""
 "The authzid provided by the initiating entity is invalid, either because it "
 "is incorrectly formatted or because the initiating entity does not have "
 "permissions to authorize that ID"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:452
+#: libinfinity/common/inf-xmpp-connection.c:454
 msgid ""
 "The initiating entity did not provide a mechanism or requested a mechanism "
 "that is not supported by the receiving entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:455
+#: libinfinity/common/inf-xmpp-connection.c:457
 msgid ""
 "The mechanism requsted by the initiating entity is weaker than server policy "
 "permits for that initiating entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:458
+#: libinfinity/common/inf-xmpp-connection.c:460
 msgid ""
 "The authentication failed because the initiating entity did not provide "
 "valid credentials"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:461
+#: libinfinity/common/inf-xmpp-connection.c:463
 msgid ""
 "The authentication failed because of a temporary error condition within the "
 "receiving entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:464
+#: libinfinity/common/inf-xmpp-connection.c:466
 msgid "An unknown authentication error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:996
+#: libinfinity/common/inf-xmpp-connection.c:1001
 #, c-format
 msgid "The server did not provide a certificate"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1749
+#: libinfinity/common/inf-xmpp-connection.c:1754
 msgid "Stream is not yet secured with TLS"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1792
+#: libinfinity/common/inf-xmpp-connection.c:1797
 msgid "Stream is not yet authorized"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1843
+#: libinfinity/common/inf-xmpp-connection.c:1848
 #, c-format
 msgid "The server does not support transport layer security (TLS)"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1865
+#: libinfinity/common/inf-xmpp-connection.c:1870
 #, c-format
 msgid "The server requires transport layer security (TLS)"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1902
+#: libinfinity/common/inf-xmpp-connection.c:1907
 #, c-format
 msgid "The server does not provide any authentication mechanism"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1987
+#: libinfinity/common/inf-xmpp-connection.c:1992
 #, c-format
 msgid "The server does not offer a suitable authentication mechanism"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:2043
+#: libinfinity/common/inf-xmpp-connection.c:2048
 #, c-format
 msgid "The server cannot perform the TLS handshake"
 msgstr ""
 
 #. XML Warning from <IP Address>: <Warning Text>
-#: libinfinity/common/inf-xmpp-connection.c:2432
+#: libinfinity/common/inf-xmpp-connection.c:2437
 #, c-format
 msgid "XML warning from %s: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:3793
+#: libinfinity/common/inf-xmpp-connection.c:3802
 #, c-format
 msgid "The server certificate is not trusted"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
