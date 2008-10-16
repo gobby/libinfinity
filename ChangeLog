@@ -1,5 +1,11 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_received_cb): Don't call gnutls_record_recv with
+	a NULL session when a TLS error occured.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-note-plugin.c
 	(infinoted_note_plugin_load_directory): Added missing return value in
 	success case.

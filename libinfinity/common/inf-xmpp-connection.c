@@ -2651,6 +2651,7 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
   gchar buffer[2048];
   ssize_t res;
   GError* error;
+  gboolean receiving;
 
   xmpp = INF_XMPP_CONNECTION(user_data);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -2671,7 +2672,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
       priv->pull_data = data;
       priv->pull_len = len;
 
-      while(priv->pull_len > 0)
+      receiving = TRUE;
+      while(receiving && priv->pull_len > 0)
       {
         res = gnutls_record_recv(priv->session, buffer, 2048);
         if(res < 0)
@@ -2689,12 +2691,14 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
              * final </stream:stream> or something, so just close the
              * underlaying TCP connection. */
             inf_tcp_connection_close(priv->tcp);
+            receiving = FALSE;
           }
         }
         else if(res == 0)
         {
           /* Remote site sent gnutls_bye. This involves session closure. */
           inf_tcp_connection_close(priv->tcp);
+          receiving = FALSE;
         }
         else
         {
