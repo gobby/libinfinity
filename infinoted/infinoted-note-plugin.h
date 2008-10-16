@@ -34,7 +34,7 @@ const InfdNotePlugin*
 infinoted_note_plugin_load(const gchar* plugin_path,
                            GError** error);
 
-void
+gboolean
 infinoted_note_plugin_load_directory(const gchar* path,
                                      InfdDirectory* directory);
 

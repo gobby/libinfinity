@@ -82,7 +82,7 @@ infinoted_note_plugin_load(const gchar* plugin_path,
  * @directory. The directory should only contain valid plugins. A warning for
  * each plugin that could not be load is issued.
  **/
-void
+gboolean
 infinoted_note_plugin_load_directory(const gchar* path,
                                      InfdDirectory* directory)
 {
@@ -93,6 +93,7 @@ infinoted_note_plugin_load_directory(const gchar* path,
   const gchar* filename;
   const InfdNotePlugin* plugin;
   gchar* plugin_path;
+  gboolean has_plugins;
 
   error = NULL;
   dir = g_dir_open(path, 0, &error);
@@ -100,11 +101,13 @@ infinoted_note_plugin_load_directory(const gchar* path,
   {
     g_warning("%s", error->message);
     g_error_free(error);
+    return FALSE;
   }
   else
   {
     storage = infd_directory_get_storage(directory);
     storage_type = g_type_name(G_TYPE_FROM_INSTANCE(storage));
+    has_plugins = FALSE;
 
     while((filename = g_dir_read_name(dir)) != NULL)
     {
@@ -155,6 +158,7 @@ infinoted_note_plugin_load_directory(const gchar* path,
             );
 
             infd_directory_add_plugin(directory, plugin);
+            has_plugins = TRUE;
           }
         }
 
@@ -165,6 +169,12 @@ infinoted_note_plugin_load_directory(const gchar* path,
     }
 
     g_dir_close(dir);
+
+    if(has_plugins == FALSE)
+    {
+      g_warning(_("Path \"%s\" does not contain any note plugins"), path);
+      return FALSE;
+    }
   }
 }
 

@@ -97,7 +97,21 @@ infinoted_startup_load_directory(InfinotedStartup* startup,
   g_object_unref(storage);
   g_object_unref(connection_manager);
 
-  infinoted_note_plugin_load_directory(PLUGIN_PATH, startup->directory);
+  if(!infinoted_note_plugin_load_directory(PLUGIN_PATH, startup->directory))
+  {
+    g_object_unref(startup->directory);
+    startup->directory = NULL;
+
+    g_set_error(
+      error,
+      g_quark_from_static_string("INFINOTED_STARTUP_ERROR"),
+      0,
+      "Failed to load note plugins"
+    );
+
+    return FALSE;
+  }
+
   return TRUE;
 }
 

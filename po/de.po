@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-16 19:00+0200\n"
+"POT-Creation-Date: 2008-10-16 20:51+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -16,19 +16,24 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: infinoted/infinoted-note-plugin.c:132
+#: infinoted/infinoted-note-plugin.c:135
 #, c-format
 msgid "Failed to load plugin `%s': Note type `%s' is already handled"
 msgstr ""
 
-#: infinoted/infinoted-note-plugin.c:143
+#: infinoted/infinoted-note-plugin.c:146
 #, c-format
 msgid "Failed to plugin `%s': Storage type `%s' does not match"
 msgstr ""
 
-#: infinoted/infinoted-note-plugin.c:152
+#: infinoted/infinoted-note-plugin.c:155
 #, c-format
 msgid "Loaded plugin `%s' (%s)\n"
+msgstr ""
+
+#: infinoted/infinoted-note-plugin.c:175
+#, c-format
+msgid "Path \"%s\" does not contain any note plugins"
 msgstr ""
 
 #: infinoted/infinoted-options.c:78
@@ -131,17 +136,17 @@ msgid "Could not create directory \"%s\": %s"
 msgstr ""
 
 #. TODO: Open the key file beforehand
-#: infinoted/infinoted-startup.c:118
+#: infinoted/infinoted-startup.c:132
 #, c-format
 msgid "Generating 2048 bit RSA private key...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:154
+#: infinoted/infinoted-startup.c:168
 #, c-format
 msgid "Generating self-signed certificate...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:202
+#: infinoted/infinoted-startup.c:216
 #, c-format
 msgid "Generating 2048 bit Diffie-Hellman parameters...\n"
 msgstr ""
