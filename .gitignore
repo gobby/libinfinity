@@ -28,6 +28,6 @@ config.h
 config.h.in
 infwc
 inftodo
-infinote-*.tar.bz2
-infinote-*.tar.gz
+libinfinity-*.tar.bz2
+libinfinity-*.tar.gz
 mkinstalldirs
