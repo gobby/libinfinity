@@ -1,5 +1,11 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection.c (inf_tcp_connection_send):
+	Always queue data we could not sent immediately. There was a bug that
+	data wasn't queued if more than the half of it has been sent already.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c
 	(inf_xmpp_connection_received_cb): Don't call gnutls_record_recv with
 	a NULL session when a TLS error occured.

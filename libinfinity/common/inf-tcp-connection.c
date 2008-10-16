@@ -1210,7 +1210,7 @@ inf_tcp_connection_send(InfTcpConnection* connection,
   }
 
   /* If we couldn't send all the data... */
-  if(sent_len < len)
+  if(len > 0)
   {
     /* If we have not enough space for the new data, move queue data back
      * onto the beginning of the queue, if not already */
