@@ -1,5 +1,33 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/Makefile.am:
+	* libinfinity/common/Makefile.am:
+	* libinfinity/adopted/Makefile.am:
+	* libinfinity/client/Makefile.am:
+	* libinfinity/server/Makefile.am:
+	* libinfinity/methods/local-central/Makefile.am:
+	* libinftext/Makefile.am:
+	* libinfgtk/Makefile.am:
+	* libinftextgtk/Makefile.am:
+	* infinoted/Makefile.am:
+	* infinoted/note-plugins/text/Makefile.am:
+	* test/Makefile.am: Moved -I$(top_srcdir) from AM_CPPFLAGS to
+	$lib_CPPFLAGS, because the former is not used when the latter is
+	present. This is required for `make distcheck'.
+
+	* docs/reference/Makefile.am: Added version.xml.in to EXTRA_DIST.
+
+	* docs/reference/libinfinity/Makefile.am:
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am: Added ../version.xml to
+	content_files, to fix `make distcheck'.
+
+	* docs/reference/libinfinity/libinfinity-docs.sgml: Reordered
+	documentation sections.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-tcp-connection.c: Make sure that calling
 	inf_tcp_connection_send() in a SENT callback does send things in a
 	different order, or even breaks consistency of the queue.

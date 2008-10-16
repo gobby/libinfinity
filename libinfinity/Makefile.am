@@ -2,9 +2,8 @@ SUBDIRS = common adopted server client . methods
 
 lib_LTLIBRARIES = libinfinity-1.0.la
 
-AM_CPPFLAGS = -I${top_srcdir}
-
 libinfinity_1_0_la_CPPFLAGS = \
+	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
 libinfinity_1_0_la_LDFLAGS = \

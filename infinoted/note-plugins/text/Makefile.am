@@ -5,8 +5,7 @@ plugindir = ${libdir}/infinoted/note-plugins
 # I don't know how to achieve this, though.
 
 libinfd_note_plugin_text_la_CPPFLAGS = \
-	-I${top_srcdir} \
-	-I${top_builddir} \
+	-I$(top_srcdir) \
 	$(infinoted_CFLAGS) \
 	$(inftext_CFLAGS) \
 	$(infinity_CFLAGS)

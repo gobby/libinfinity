@@ -1,6 +1,5 @@
-AM_CPPFLAGS = -I${top_srcdir}
-
 libinfinity_adopted_la_CPPFLAGS = \
+	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
 noinst_LTLIBRARIES = libinfinity_adopted.la

@@ -2,7 +2,6 @@ SUBDIRS = util session cleanup
 
 AM_CPPFLAGS = \
 	-I${top_srcdir} \
-	-I${top_builddir} \
 	${infinity_CFLAGS}
 
 if WITH_INFGTK

@@ -1,8 +1,7 @@
 lib_LTLIBRARIES = libinftext-1.0.la
 
-AM_CPPFLAGS = -I${top_srcdir}
-
 libinftext_1_0_la_CPPFLAGS = \
+	-I$(top_srcdir) \
 	$(inftext_CFLAGS) \
 	$(infinity_CFLAGS)
 
@@ -10,7 +9,7 @@ libinftext_1_0_la_LDFLAGS = \
 	-no-undefined
 
 libinftext_1_0_la_LIBADD = \
-	${top_srcdir}/libinfinity/libinfinity-1.0.la \
+	${top_builddir}/libinfinity/libinfinity-1.0.la \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 

@@ -1,8 +1,7 @@
-AM_CPPFLAGS = -I${top_srcdir}
-
 noinst_LTLIBRARIES = libinfinity_client.la
 
 libinfinity_client_la_CPPFLAGS = \
+	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
 libinfinity_client_ladir = $(includedir)/libinfinity-1.0/libinfinity/client

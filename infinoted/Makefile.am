@@ -7,7 +7,6 @@ plugin_path = ${libdir}/infinoted/note-plugins
 
 infinoted_CPPFLAGS = \
 	-I${top_srcdir} \
-	-I${top_builddir} \
 	$(infinoted_CFLAGS) \
 	$(infinity_CFLAGS) \
 	-DPLUGIN_PATH=\"${plugin_path}\"

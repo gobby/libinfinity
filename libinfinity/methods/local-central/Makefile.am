@@ -17,8 +17,7 @@ methodsdir = ${libdir}/infinote/method-plugins
 # I don't know how to achieve this, though.
 
 libinf_method_local_central_la_CPPFLAGS = \
-	-I${top_srcdir} \
-	-I${top_builddir} \
+	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
 libinf_method_local_central_la_LDFLAGS = \

@@ -1,8 +1,7 @@
-AM_CPPFLAGS = -I${top_srcdir}
-
 methods_base = infinote/method-plugins
 
 libinfinity_common_la_CPPFLAGS = \
+	-I$(top_srcdir) \
 	$(infinity_CFLAGS) \
 	$(avahi_CFLAGS) \
 	-DMETHODS_LIBDIR=\"${libdir}\" \

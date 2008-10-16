@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-16 20:51+0200\n"
+"POT-Creation-Date: 2008-10-16 21:43+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -505,27 +505,27 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:660
+#: libinfinity/common/inf-connection-manager.c:663
 #, c-format
 msgid "Publisher ID of connection '%s' is already known"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:678
+#: libinfinity/common/inf-connection-manager.c:681
 #, c-format
 msgid "Publisher ID '%s' has incorrect length"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:727
+#: libinfinity/common/inf-connection-manager.c:730
 #, c-format
 msgid "Publisher ID '%s' is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:802
+#: libinfinity/common/inf-connection-manager.c:805
 #, c-format
 msgid "Received unexpected message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:920
+#: libinfinity/common/inf-connection-manager.c:923
 #, c-format
 msgid ""
 "Request from %s caused error: %s\n"
@@ -538,7 +538,7 @@ msgid ""
 "\n"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:986
+#: libinfinity/common/inf-connection-manager.c:989
 #, c-format
 msgid "Received bad XML request from %s: %s"
 msgstr ""
@@ -805,13 +805,13 @@ msgstr ""
 msgid "Received unhandled XML message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-tcp-connection.c:562
+#: libinfinity/common/inf-tcp-connection.c:560
 #, c-format
 msgid "Interface `%s' does not exist"
 msgstr ""
 
 #. Failed to get name for device <Index>: <Reason>
-#: libinfinity/common/inf-tcp-connection.c:637
+#: libinfinity/common/inf-tcp-connection.c:635
 #, c-format
 msgid "Failed to get name for device %u: %s"
 msgstr ""
