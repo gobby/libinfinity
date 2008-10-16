@@ -772,6 +772,7 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
   InfConnectionManagerGroup* group;
   InfConnectionManagerQueue* queue;
   InfConnectionManagerKey key;
+  InfNetObject* object;
 
   InfConnectionManagerMethodInstance* instance;
   InfConnectionManagerMsgType msg_type;
@@ -859,6 +860,12 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
       /* Group ref since net_object_received could do a final unref */
       inf_connection_manager_group_ref(group);
 
+      /* Also ref object, otherwise object might get unreferenced while group
+       * is still alive. */
+      object = group->object;
+      g_assert(object != NULL);
+      g_object_ref(object);
+
       /* Must have been registered to be processed: */
       queue = inf_connection_manager_group_lookup_queue(group, connection);
       if(queue != NULL)
@@ -869,14 +876,13 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
         );
 
         g_assert(instance != NULL);
-        g_assert(group->object != NULL);
 
         switch(msg_type)
         {
         case INF_CONNECTION_MANAGER_MESSAGE:
           local_error = NULL;
           can_forward = inf_net_object_received(
-            group->object,
+            object,
             connection,
             child,
             &local_error
@@ -945,6 +951,7 @@ inf_connection_manager_handle_message(InfConnectionManager* manager,
       }
 
       inf_connection_manager_group_unref(group);
+      g_object_unref(object);
     }
   }
 
