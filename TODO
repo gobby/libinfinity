@@ -29,14 +29,9 @@ Others:
    - InfRawXmppConnection: InfXmlConnection implementation by sending raw messages to XMPP server (Derive from InfXmppConnection, make XMPP server create these connections (unsure: rather add a vfunc and subclass InfXmppServer?))
    - InfJabberUserConnection: Implements InfXmlConnection by sending stuff to a particular Jabber user (owns InfJabberConnection)
    - InfJabberDiscovery (owns InfJabberConnection)
- * Allow operations to alter themselves while transforming (Adopted)
-   - Severall classes currently assume operations are immutable.
-   - Perhaps this isn't even a good idea after all if we are implementing
-     caching in InfAdoptedAlgorithm. We should rather think about making
-     InfAdoptedRequest immutable.
  * Make InfTextChunk reference-counted, or implement copy-on-write semantics. It is currently copied way too often. (InfText)
  * Implement inf_text_chunk_insert_substring, and make use in InfTextDeleteOperation (InfText)
- * Add a set_caret paramater to insert_text and erase_text of InfTextBuffer and corresponding properties in the InfText operations, handle in InfTextSession.
+ * Add a set_caret paramater to insert_text and erase_text of InfTextBuffer and derive a InfTextRequest with a "set-caret" flag.
  * InfTextEncoding boxed type
  * unconst "const GParameter* params" parameter to user_new vfunc because g_object_newv wants unconst
  * Create a pseudo XML connection implementation, re-enable INF_IS_XML_CONNECTION check in inf_net_object_received
@@ -46,7 +41,12 @@ Others:
  * connection-closed signal for connection manager, where other objects (esp. session, session proxy, directory, browser) can drop their references to that connection. InfGtkBrowserStore can merge connections.
  * Think about how to do method initialization
  * Change the storage interface to be asynchronous
- * Replace the various begin-foo signals in InfcBrowser by a begin-operation with iter and request as parameters, detailed on the operation type (add-node, remove-node, subscribe-session etc.). Similar with the infc_browser_iter_get_foo_request functions (replacy by a generic infc_browser_iter_get_pending_request function).
+ * Replace the various begin-foo signals in InfcBrowser by a begin-operation
+   with iter and request as parameters, detailed on the operation type
+   (add-node, remove-node, subscribe-session etc.). Similar with the
+   infc_browser_iter_get_foo_request functions (replace by a generic
+   infc_browser_iter_get_pending_request function).
  * Support sending some special characters like bell ('\a') through XML. I had
    an approach of defining custom entities for those (see inf-xmpp-connection.c
-   in inf_xmpp_connection_initiate()), though this didn't seem to work.
+   in inf_xmpp_connection_initiate()), though this didn't seem to work, and
+   does not seem to be allowed in XML.
