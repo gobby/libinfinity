@@ -1,5 +1,11 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-session.c (inf_session_close): Make sure the
+	session's status is not already closed via a g_return_if_fail(), to
+	prevent a failing assertion in the default handler.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c
 	(inf_connection_manager_handle_message): Make sure a group's object is
 	only finalized after we have unrefed the group, to prevent warnings

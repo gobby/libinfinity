@@ -2290,6 +2290,7 @@ void
 inf_session_close(InfSession* session)
 {
   g_return_if_fail(INF_IS_SESSION(session));
+  g_return_if_fail(inf_session_get_status(session) != INF_SESSION_CLOSED);
   g_signal_emit(G_OBJECT(session), session_signals[CLOSE], 0);
 }
 
