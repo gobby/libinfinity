@@ -1,3 +1,8 @@
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
+	* all source files: Fixed copyright period in GPL header, and changed
+	the package description.
+
 2008-10-15  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Changed some occurences of infinote to libinfinity
