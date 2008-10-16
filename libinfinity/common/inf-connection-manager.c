@@ -361,6 +361,7 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
 {
   xmlNodePtr cur;
   xmlNodePtr cont;
+  xmlNodePtr next;
   xmlNodePtr container_list;
   xmlNodePtr new_container;
 
@@ -477,8 +478,10 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   if(container_list != NULL)
   {
     g_assert(queue->send_item != NULL);
-    for(cont = container_list; cont != NULL; cont = cont->next)
+    for(cont = container_list; cont != NULL; cont = next)
     {
+      next = cont->next;
+
       for(cur = cont->children; cur != NULL; cur = cur->next)
       {
         /* If we have children groups, then the queue for the same connection

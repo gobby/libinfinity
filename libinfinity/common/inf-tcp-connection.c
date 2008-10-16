@@ -194,7 +194,7 @@ inf_tcp_connection_system_error(InfTcpConnection* connection,
 
 static gboolean
 inf_tcp_connection_send_real(InfTcpConnection* connection,
-                             gconstpointer* data,
+                             gconstpointer data,
                              guint* len)
 {
   InfTcpConnectionPrivate* priv;
@@ -209,7 +209,7 @@ inf_tcp_connection_send_real(InfTcpConnection* connection,
   g_assert(data != NULL);
   g_assert(len != NULL);
 
-  send_data = *data;
+  send_data = data;
   send_len = *len;
 
   do
@@ -245,17 +245,7 @@ inf_tcp_connection_send_real(InfTcpConnection* connection,
            (result > 0 || errcode == INF_TCP_CONNECTION_EINTR) &&
            (priv->socket != INVALID_SOCKET) );
 
-  g_signal_emit(
-    G_OBJECT(connection),
-    tcp_connection_signals[SENT],
-    0,
-    *data,
-    *len - send_len
-  );
-
-  *data = send_data;
-  *len = send_len;
-
+  *len -= send_len;
   return TRUE;
 }
 
@@ -373,13 +363,13 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
 
     data = priv->queue + priv->back_pos;
     data_len = priv->front_pos - priv->back_pos;
-    if(inf_tcp_connection_send_real(connection, &data, &data_len) == TRUE)
+    if(inf_tcp_connection_send_real(connection, data, &data_len) == TRUE)
     {
-      priv->back_pos = priv->front_pos - data_len;
+      priv->back_pos += data_len;
 
-      if(data_len == 0)
+      if(priv->front_pos == priv->back_pos)
       {
-        /* Sent everything */
+        /* sent everything */
         priv->front_pos = 0;
         priv->back_pos = 0;
 
@@ -394,6 +384,14 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
           NULL
         );
       }
+
+      g_signal_emit(
+        G_OBJECT(connection),
+        tcp_connection_signals[SENT],
+        0,
+        data,
+        data_len
+      );
     }
 
     break;
@@ -1169,6 +1167,8 @@ inf_tcp_connection_send(InfTcpConnection* connection,
                         guint len)
 {
   InfTcpConnectionPrivate* priv;
+  gconstpointer sent_data;
+  guint sent_len;
 
   g_return_if_fail(INF_IS_TCP_CONNECTION(connection));
   g_return_if_fail(len == 0 || data != NULL);
@@ -1187,35 +1187,33 @@ inf_tcp_connection_send(InfTcpConnection* connection,
     g_assert(~priv->events & INF_IO_OUTGOING);
 
     /* Nothing in queue, send data directly. */
-    if(inf_tcp_connection_send_real(connection, &data, &len) == TRUE)
-    {
-      /* We have data remaining to be sent. Enqueue, and wait until we can
-       * send it. */
-      if(len > 0)
-      {
-        priv->events |= INF_IO_OUTGOING;
+    sent_len = len;
+    sent_data = data;
 
-        inf_io_watch(
-          priv->io,
-          &priv->socket,
-          priv->events,
-          inf_tcp_connection_io,
-          connection,
-          NULL
-        );
-      }
+    if(inf_tcp_connection_send_real(connection, data, &sent_len) == TRUE)
+    {
+      data = (char*)data + sent_len;
+      len -= sent_len;
     }
     else
     {
       /* Sending failed. The error signal has been emitted. */
       /* Set len to zero so that we don't enqueue data. */
       len = 0;
+      sent_len = 0;
     }
   }
-
-  if(len > 0)
+  else
   {
-    /* Move queue data back onto the beginning of the queue, if not already */
+    /* Nothing sent */
+    sent_len = 0;
+  }
+
+  /* If we couldn't send all the data... */
+  if(sent_len < len)
+  {
+    /* If we have not enough space for the new data, move queue data back
+     * onto the beginning of the queue, if not already */
     if(priv->alloc - priv->front_pos < len && priv->back_pos > 0)
     {
       memmove(
@@ -1243,6 +1241,31 @@ inf_tcp_connection_send(InfTcpConnection* connection,
 
     memcpy(priv->queue + priv->front_pos, data, len);
     priv->front_pos += len;
+
+    if(~priv->events & INF_IO_OUTGOING)
+    {
+      priv->events |= INF_IO_OUTGOING;
+
+      inf_io_watch(
+        priv->io,
+        &priv->socket,
+        priv->events,
+        inf_tcp_connection_io,
+        connection,
+        NULL
+      );
+    }
+  }
+
+  if(sent_len > 0)
+  {
+    g_signal_emit(
+      G_OBJECT(connection),
+      tcp_connection_signals[SENT],
+      0,
+      sent_data,
+      sent_len
+    );
   }
 
   g_object_unref(connection);

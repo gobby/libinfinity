@@ -1,5 +1,15 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection.c: Make sure that calling
+	inf_tcp_connection_send() in a SENT callback does send things in a
+	different order, or even breaks consistency of the queue.
+
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_group_real_send): Fixed a memory corruption
+	problem.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-note-plugin.h:
 	* infinoted/infinoted-note-plugin.c: Print a warning when no note
 	plugins could be loaded.
