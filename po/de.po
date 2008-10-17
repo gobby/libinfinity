@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-17 13:57+0200\n"
+"POT-Creation-Date: 2008-10-18 01:06+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -506,27 +506,27 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:679
+#: libinfinity/common/inf-connection-manager.c:678
 #, c-format
 msgid "Publisher ID of connection '%s' is already known"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:697
+#: libinfinity/common/inf-connection-manager.c:696
 #, c-format
 msgid "Publisher ID '%s' has incorrect length"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:746
+#: libinfinity/common/inf-connection-manager.c:745
 #, c-format
 msgid "Publisher ID '%s' is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:822
+#: libinfinity/common/inf-connection-manager.c:821
 #, c-format
 msgid "Received unexpected message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:945
+#: libinfinity/common/inf-connection-manager.c:944
 #, c-format
 msgid ""
 "Request from %s caused error: %s\n"
@@ -539,7 +539,7 @@ msgid ""
 "\n"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:1012
+#: libinfinity/common/inf-connection-manager.c:1011
 #, c-format
 msgid "Received bad XML request from %s: %s"
 msgstr ""
@@ -571,7 +571,7 @@ msgid ""
 "The occurred failure was: %s"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:810
+#: libinfinity/common/inf-discovery-avahi.c:809
 #, c-format
 msgid ""
 "Avahi client is in failure state. Service discovery or publishing is no "
@@ -582,12 +582,12 @@ msgstr ""
 
 #. Translators: This is "<Service Name> (via <Network Interface> on
 #. * <address family>)", for example "ck (via eth0 on IPv4)".
-#: libinfinity/common/inf-discovery-avahi.c:1360
+#: libinfinity/common/inf-discovery-avahi.c:1359
 #, c-format
 msgid "%s (via %s on IPv4)"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:1361
+#: libinfinity/common/inf-discovery-avahi.c:1360
 #, c-format
 msgid "%s (via %s on IPv6)"
 msgstr ""

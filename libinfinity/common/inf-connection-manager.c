@@ -402,7 +402,6 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
    * list. Don't issue any callbacks here. */
   for(i = 0; queue->first_item != NULL && i < max; ++ i)
   {
-    static guint32 bla = 0;
     cur = queue->first_item;
     queue->first_item = queue->first_item->next;
     if(queue->first_item == NULL)
@@ -2282,7 +2281,7 @@ inf_connection_manager_send_ctrl(InfConnectionManagerGroup* group,
 
   if(capacity > 0)
   {
-    g_assert(queue->first_item = xml);
+    g_assert(queue->first_item == xml);
     inf_connection_manager_group_real_send(group, queue, 1);
   }
 }

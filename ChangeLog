@@ -1,5 +1,15 @@
 2008-10-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_send_ctrl): Fixed an assignment in an
+	assertion that should be a comparison.
+	(inf_connection_manager_group_real_send): Removed an unused variable.
+
+	* libinfinity/common/inf-discovery-avahi.c
+	(inf_discovery_avahi_client_callback): Removed an unused variable.
+
+2008-10-17  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac: Don't require avahi-glib for avahi support, as we
 	don't use it.
 

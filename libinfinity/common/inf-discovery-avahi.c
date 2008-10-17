@@ -777,7 +777,6 @@ inf_discovery_avahi_client_callback(AvahiClient* client,
 {
   InfDiscoveryAvahi* avahi;
   InfDiscoveryAvahiPrivate* priv;
-  int error;
 
   avahi = INF_DISCOVERY_AVAHI(userdata);
   priv = INF_DISCOVERY_AVAHI_PRIVATE(avahi);
