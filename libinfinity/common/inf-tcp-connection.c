@@ -424,7 +424,16 @@ inf_tcp_connection_io(InfNativeSocket* socket,
 #else
     getsockopt(priv->socket, SOL_SOCKET, SO_ERROR, &errcode, &len);
 #endif
-    inf_tcp_connection_system_error(connection, errcode);
+
+    /* On Windows, we get INF_IO_ERROR on disconnection (at least with the
+     * InfGtkIo, because FD_CLOSE is mapped to G_IO_HUP) with errcode
+     * being 0. */
+    /* TODO: Maybe we should change this by mapping G_IO_HUP to
+     * INF_IO_INCOMING, hoping recv() does the right thing then. */
+    if(errcode != 0)
+      inf_tcp_connection_system_error(connection, errcode);
+    else
+      inf_tcp_connection_close(connection);
   }
   else
   {

@@ -166,7 +166,7 @@ inf_gtk_io_inf_events_to_glib_events(InfIoEvent events)
   if(events & INF_IO_OUTGOING)
     cond |= G_IO_OUT;
   if(events & INF_IO_ERROR)
-    cond |= G_IO_ERR;
+    cond |= (G_IO_ERR | G_IO_HUP);
 
   return cond;
 }

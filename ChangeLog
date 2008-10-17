@@ -1,5 +1,15 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection.c: Consider INF_IO_ERROR with
+	no error code as an ordinary disconnection. This is currently the way
+	to be notified about disconnection on Windows, because InfGtkIo maps
+	G_IO_HUP to INF_IO_ERROR.
+
+	* libinfgtk/inf-gtk-io.c: Also watch for G_IO_HUP in addition to
+	G_IO_ERR when INF_IO_ERROR is requested.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c
 	(inf_connection_manager_group_real_send): Make sure all queued
 	messages are sent, even if the callback for the last item adds new
