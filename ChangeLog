@@ -1,5 +1,18 @@
 2008-10-17  Armin Burgmeier  <armin@arbur.net>
 
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am: Added underlying libraries
+	as --extra-dir to FIXXREF_ARGS.
+
+	* docs/reference/libinfinity/libinfinity-docs.sgml:
+	* docs/reference/libinftext/libinftext-docs.sgml:
+	* docs/reference/libinfgtk/libinfgtk-docs.sgml:
+	* docs/reference/libinftextgtk/libinftextgtk-docs.sgml: Adjust online
+	location.
+
+2008-10-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c: Add sync-in before emitting the
 	NODE_ADDED signal, so that the signal handler can access the sync-in
 	via infc_browser_iter_get_sync_in(). This allows InfGtkBrowserView to
