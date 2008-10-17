@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-17 12:38+0200\n"
+"POT-Creation-Date: 2008-10-17 13:57+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -48,14 +48,14 @@ msgstr ""
 msgid "\"%d\" is not a valid port number. Port numbers range from 1 to 65535"
 msgstr ""
 
-#: infinoted/infinoted-options.c:360
+#: infinoted/infinoted-options.c:374
 #, c-format
 msgid ""
 "Creating a new private key also requires creating a new certificate signed "
 "with it."
 msgstr ""
 
-#: infinoted/infinoted-options.c:373
+#: infinoted/infinoted-options.c:387
 #, c-format
 msgid ""
 "No private key file given. If you don't have a suitable key file, either "
@@ -63,7 +63,7 @@ msgid ""
 "setting the security policy to \"no-tls\"."
 msgstr ""
 
-#: infinoted/infinoted-options.c:387
+#: infinoted/infinoted-options.c:401
 #, c-format
 msgid ""
 "No certificate file given. If you don't have a suitable certificate file, "
@@ -71,57 +71,57 @@ msgid ""
 "disable TLS via by setting the security policy to \"no-tls\"."
 msgstr ""
 
-#: infinoted/infinoted-options.c:420
+#: infinoted/infinoted-options.c:434
 #, fuzzy
 msgid "The server's private key"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: infinoted/infinoted-options.c:420
+#: infinoted/infinoted-options.c:434
 msgid "KEY-FILE"
 msgstr ""
 
-#: infinoted/infinoted-options.c:423
+#: infinoted/infinoted-options.c:437
 #, fuzzy
 msgid "The server's certificate"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: infinoted/infinoted-options.c:423
+#: infinoted/infinoted-options.c:437
 msgid "CERTIFICATE-FILE"
 msgstr ""
 
-#: infinoted/infinoted-options.c:426
+#: infinoted/infinoted-options.c:440
 msgid "Creates a new random private key"
 msgstr ""
 
-#: infinoted/infinoted-options.c:429
+#: infinoted/infinoted-options.c:443
 msgid "Creates a new self-signed certificate using the given key"
 msgstr ""
 
-#: infinoted/infinoted-options.c:432
+#: infinoted/infinoted-options.c:446
 msgid "The port number to listen on"
 msgstr ""
 
-#: infinoted/infinoted-options.c:432
+#: infinoted/infinoted-options.c:446
 msgid "PORT"
 msgstr ""
 
-#: infinoted/infinoted-options.c:435
+#: infinoted/infinoted-options.c:449
 msgid "How to decide whether to use TLS"
 msgstr ""
 
-#: infinoted/infinoted-options.c:438
+#: infinoted/infinoted-options.c:452
 msgid "The directory to store documents into"
 msgstr ""
 
-#: infinoted/infinoted-options.c:438
+#: infinoted/infinoted-options.c:452
 msgid "DIRECTORY"
 msgstr ""
 
-#: infinoted/infinoted-options.c:441
+#: infinoted/infinoted-options.c:455
 msgid "Display version information and exit"
 msgstr ""
 
-#: infinoted/infinoted-options.c:466
+#: infinoted/infinoted-options.c:480
 msgid "infinote dedicated server"
 msgstr ""
 
@@ -156,23 +156,23 @@ msgstr ""
 msgid "Disconnected"
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2032
+#: libinfgtk/inf-gtk-browser-view.c:2030
 msgid "Exploring..."
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2066
+#: libinfgtk/inf-gtk-browser-view.c:2064
 msgid "Synchronizing..."
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2138
+#: libinfgtk/inf-gtk-browser-view.c:2136
 msgid "Not connected"
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2149
+#: libinfgtk/inf-gtk-browser-view.c:2147
 msgid "Connecting..."
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2159
+#: libinfgtk/inf-gtk-browser-view.c:2157
 msgid "Connected"
 msgstr ""
 
@@ -418,60 +418,61 @@ msgid ""
 "network \"%s\""
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:945 libinfinity/client/infc-browser.c:980
+#: libinfinity/client/infc-browser.c:1056
+#: libinfinity/client/infc-browser.c:1094
 #, c-format
 msgid "Node with ID '%u' exists already"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1325
+#: libinfinity/client/infc-browser.c:1344
 #, c-format
 msgid "Node to explore does no longer exist"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1336
+#: libinfinity/client/infc-browser.c:1355
 #, c-format
 msgid "Node to explore is not a subdirectory"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1347
+#: libinfinity/client/infc-browser.c:1366
 #, c-format
 msgid "Node to explore is already explored"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1529
+#: libinfinity/client/infc-browser.c:1549
 #, c-format
 msgid ""
 "The request contains a sequence number refering to a request of type '%s', "
 "but a request of either 'explore' or 'add-node' was expected."
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1612
+#: libinfinity/client/infc-browser.c:1632
 #, c-format
 msgid "Received sync-in without having requested one"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1630
+#: libinfinity/client/infc-browser.c:1650
 #, c-format
 msgid "Expected note type `%s' for sync-in, but received `%s'"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1806
+#: libinfinity/client/infc-browser.c:1822
 #, c-format
 msgid "Note type '%s' is not supported"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1819
+#: libinfinity/client/infc-browser.c:1835
 #, c-format
 msgid "Already subscribed to this session"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1998
+#: libinfinity/client/infc-browser.c:2014
 #: libinfinity/client/infc-session-proxy.c:503
 #, c-format
 msgid "Error comes from unknown error domain '%s' (code %u)"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:2144
+#: libinfinity/client/infc-browser.c:2160
 #: libinfinity/client/infc-session-proxy.c:919
 #, c-format
 msgid "Server reply could not be processed: %s"
@@ -505,27 +506,27 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:686
+#: libinfinity/common/inf-connection-manager.c:679
 #, c-format
 msgid "Publisher ID of connection '%s' is already known"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:704
+#: libinfinity/common/inf-connection-manager.c:697
 #, c-format
 msgid "Publisher ID '%s' has incorrect length"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:753
+#: libinfinity/common/inf-connection-manager.c:746
 #, c-format
 msgid "Publisher ID '%s' is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:829
+#: libinfinity/common/inf-connection-manager.c:822
 #, c-format
 msgid "Received unexpected message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:952
+#: libinfinity/common/inf-connection-manager.c:945
 #, c-format
 msgid ""
 "Request from %s caused error: %s\n"
@@ -538,7 +539,7 @@ msgid ""
 "\n"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:1019
+#: libinfinity/common/inf-connection-manager.c:1012
 #, c-format
 msgid "Received bad XML request from %s: %s"
 msgstr ""
