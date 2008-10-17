@@ -124,11 +124,11 @@ AC_ARG_WITH([avahi], AS_HELP_STRING([--with-avahi],
 
 if test "x$use_avahi" = "xauto"
 then
-  PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib],
+  PKG_CHECK_MODULES([avahi], [avahi-client],
                           [use_avahi=yes], [use_avahi=no])
 elif test "x$use_avahi" = "xyes"
 then
-  PKG_CHECK_MODULES([avahi], [avahi-client avahi-glib])
+  PKG_CHECK_MODULES([avahi], [avahi-client])
 fi
 
 if test "x$use_avahi" = "xyes"

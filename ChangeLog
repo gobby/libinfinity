@@ -1,5 +1,10 @@
 2008-10-17  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Don't require avahi-glib for avahi support, as we
+	don't use it.
+
+2008-10-17  Armin Burgmeier  <armin@arbur.net>
+
 	* docs/reference/libinftext/Makefile.am:
 	* docs/reference/libinfgtk/Makefile.am:
 	* docs/reference/libinftextgtk/Makefile.am: Added underlying libraries
