@@ -120,6 +120,10 @@ static gboolean
 infinoted_options_propagate_key_file_error(GError** error,
                                            GError* key_file_error)
 {
+  /* No error, always good */
+  if(key_file_error == NULL)
+    return TRUE;
+
   if(key_file_error->domain == G_KEY_FILE_ERROR &&
      (key_file_error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND ||
       key_file_error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND))
@@ -246,6 +250,8 @@ infinoted_options_load_key_file(const GOptionEntry* entries,
 
         break;
       case G_OPTION_ARG_STRING:
+        string = NULL;
+
         result = infinoted_options_key_file_get_string(
           key_file,
           entry->long_name,
@@ -255,7 +261,10 @@ infinoted_options_load_key_file(const GOptionEntry* entries,
 
         if(result == TRUE)
         {
-          if(entry->arg_data)
+          /* Can return TRUE without having string set, for example in case
+           * the key is not set at all, in which case we just don't overwrite
+           * the existing value. */
+          if(entry->arg_data && string != NULL)
           {
             g_free(*(gchar**)entry->arg_data);
             *(gchar**)entry->arg_data = string;
@@ -268,6 +277,8 @@ infinoted_options_load_key_file(const GOptionEntry* entries,
 
         break;
       case G_OPTION_ARG_FILENAME:
+        string = NULL;
+
         result = infinoted_options_key_file_get_string(
           key_file,
           entry->long_name,
@@ -277,7 +288,10 @@ infinoted_options_load_key_file(const GOptionEntry* entries,
 
         if(result == TRUE)
         {
-          if(entry->arg_data != NULL)
+          /* Can return TRUE without having string set, for example in case
+           * the key is not set at all, in which case we just don't overwrite
+           * the existing value. */
+          if(entry->arg_data != NULL && string != NULL)
           {
             filename = g_filename_from_utf8(string, -1, NULL, NULL, error);
             if(filename == NULL)

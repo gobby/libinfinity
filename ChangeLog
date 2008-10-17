@@ -1,5 +1,10 @@
 2008-10-17  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-options.c: Don't crash when reading options from
+	config files.
+
+2008-10-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c
 	(inf_connection_manager_group_real_send): Removed debug logs.
 
