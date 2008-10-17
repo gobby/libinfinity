@@ -1,3 +1,8 @@
+2008-10-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_group_real_send): Removed debug logs.
+
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-tcp-connection.c: Consider INF_IO_ERROR with

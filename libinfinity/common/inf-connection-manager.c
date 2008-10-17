@@ -492,13 +492,6 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
 
       for(cur = cont->children; cur != NULL; cur = cur->next)
       {
-        static guint32 sync_msg = 0;
-        if(strncmp((const char*)cur->name, "sync", 4) == 0)
-        {
-          ++ sync_msg;
-          printf("sent: %u\n", sync_msg);
-        }
-
         /* If we have children groups, then the queue for the same connection
          * in these children groups wait for us to send something before they
          * start sending themselves. If they wait for the packet we are

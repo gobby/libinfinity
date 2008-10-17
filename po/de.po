@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-16 21:43+0200\n"
+"POT-Creation-Date: 2008-10-17 12:38+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -505,27 +505,27 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:663
+#: libinfinity/common/inf-connection-manager.c:686
 #, c-format
 msgid "Publisher ID of connection '%s' is already known"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:681
+#: libinfinity/common/inf-connection-manager.c:704
 #, c-format
 msgid "Publisher ID '%s' has incorrect length"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:730
+#: libinfinity/common/inf-connection-manager.c:753
 #, c-format
 msgid "Publisher ID '%s' is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:805
+#: libinfinity/common/inf-connection-manager.c:829
 #, c-format
 msgid "Received unexpected message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:923
+#: libinfinity/common/inf-connection-manager.c:952
 #, c-format
 msgid ""
 "Request from %s caused error: %s\n"
@@ -538,7 +538,7 @@ msgid ""
 "\n"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:989
+#: libinfinity/common/inf-connection-manager.c:1019
 #, c-format
 msgid "Received bad XML request from %s: %s"
 msgstr ""
@@ -805,13 +805,13 @@ msgstr ""
 msgid "Received unhandled XML message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-tcp-connection.c:560
+#: libinfinity/common/inf-tcp-connection.c:569
 #, c-format
 msgid "Interface `%s' does not exist"
 msgstr ""
 
 #. Failed to get name for device <Index>: <Reason>
-#: libinfinity/common/inf-tcp-connection.c:635
+#: libinfinity/common/inf-tcp-connection.c:644
 #, c-format
 msgid "Failed to get name for device %u: %s"
 msgstr ""
@@ -1068,7 +1068,7 @@ msgstr ""
 msgid "XML warning from %s: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:3802
+#: libinfinity/common/inf-xmpp-connection.c:3806
 #, c-format
 msgid "The server certificate is not trusted"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
