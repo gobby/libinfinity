@@ -103,8 +103,10 @@ struct _InfConnectionManagerQueue {
 
   xmlNodePtr first_item;
   xmlNodePtr last_item;
-  xmlNodePtr send_item;
   guint inner_count;
+
+  xmlNodePtr first_send_item;
+  xmlNodePtr last_send_item;
 
   InfConnectionManagerQueue* parent_queue;
   xmlNodePtr parent_queue_item;
@@ -359,10 +361,9 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
                                        InfConnectionManagerQueue* queue,
                                        guint max)
 {
+  guint32 i;
   xmlNodePtr cur;
   xmlNodePtr cont;
-  xmlNodePtr next;
-  xmlNodePtr container_list;
   xmlNodePtr new_container;
 
   InfXmlConnection* connection;
@@ -373,6 +374,7 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
   InfConnectionManagerMsgType cur_type;
 
   const gchar* publisher_id;
+  gboolean send_self;
 
   GSList* released_groups;
   GSList* item;
@@ -391,27 +393,30 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
 
   released_groups = NULL;
 
-  /* Append all messages to be sent to the queue->send_item list. This is
-   * used to ensure order in recursive calls to this function. */
-  container_list = NULL;
+  /* If last_send_item is set, then this is a recursive call, and we don't
+   * send the stuff ourselves, but append things to last_send_item for the
+   * upper call to send it in the correct order. */
+  send_self = (queue->last_send_item == NULL);
 
   /* Collect messages that we want to send, and put them into the container
    * list. Don't issue any callbacks here. */
-  while(queue->first_item != NULL && max > 0)
+  for(i = 0; queue->first_item != NULL && i < max; ++ i)
   {
+    static guint32 bla = 0;
     cur = queue->first_item;
     queue->first_item = queue->first_item->next;
     if(queue->first_item == NULL)
       queue->last_item = NULL;
     ++ queue->inner_count;
 
-    -- max;
     xmlUnlinkNode(cur);
 
     cur_scope = GPOINTER_TO_UINT(cur->_private) & 0xff;
     cur_type = GPOINTER_TO_UINT(cur->_private) >> 8;
 
-    if(queue->send_item == NULL || scope != cur_scope || type != cur_type)
+    /* TODO: Append to last_send_item if it is not currently being sent by
+     * an underlying call. */
+    if(i == 0 || scope != cur_scope || type != cur_type)
     {
       type = cur_type;
       scope = cur_scope;
@@ -429,16 +434,20 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
         break;
       }
 
-      if(queue->send_item)
-        queue->send_item->next = new_container;
+      if(queue->first_send_item)
+        queue->last_send_item->next = new_container;
       else
-        container_list = new_container;
-      queue->send_item = new_container;
-
-      inf_xml_util_set_attribute(queue->send_item, "publisher", publisher_id);
+        queue->first_send_item = new_container;
+      queue->last_send_item = new_container;
 
       inf_xml_util_set_attribute(
-        queue->send_item,
+        queue->last_send_item,
+        "publisher",
+        publisher_id
+      );
+
+      inf_xml_util_set_attribute(
+        queue->last_send_item,
         "name",
         group->key.group_name
       );
@@ -448,10 +457,10 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
       case INF_CONNECTION_MANAGER_POINT_TO_POINT:
         break;
       case INF_CONNECTION_MANAGER_NETWORK:
-        inf_xml_util_set_attribute(queue->send_item, "scope", "net");
+        inf_xml_util_set_attribute(queue->last_send_item, "scope", "net");
         break;
       case INF_CONNECTION_MANAGER_GROUP:
-        inf_xml_util_set_attribute(queue->send_item, "scope", "group");
+        inf_xml_util_set_attribute(queue->last_send_item, "scope", "group");
         break;
       default:
         g_assert_not_reached();
@@ -463,27 +472,33 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
      * destroyed, otherwise libxml++ (if linked in) thinks it points to the
      * C++ wrapper and tries to delete it. */
     cur->_private = NULL;
-
-    xmlAddChild(queue->send_item, cur);
+    xmlAddChild(queue->last_send_item, cur);
   }
 
   /* Now we have all messages that we are about to send. There are two cases
    * here: Either this is the first call to send_real. In that case,
-   * queue->send_item was NULL before the call, and we set container_list
+   * queue->first_send_item was NULL before the call,
    * to point to the messages to send. However, if this is a recursive call,
    * then queue->send_item is set. In that case, we appended the messages
    * we would like to send to queue->send_item and return immediately now
    * because container_list is not set. The call before ours will take care
    * of sending everything in the correct order. */
-  if(container_list != NULL)
+  if(send_self)
   {
-    g_assert(queue->send_item != NULL);
-    for(cont = container_list; cont != NULL; cont = next)
+    while(queue->first_send_item != NULL)
     {
-      next = cont->next;
+      cont = queue->first_send_item;
+      queue->first_send_item = queue->first_send_item->next;
 
       for(cur = cont->children; cur != NULL; cur = cur->next)
       {
+        static guint32 sync_msg = 0;
+        if(strncmp((const char*)cur->name, "sync", 4) == 0)
+        {
+          ++ sync_msg;
+          printf("sent: %u\n", sync_msg);
+        }
+
         /* If we have children groups, then the queue for the same connection
          * in these children groups wait for us to send something before they
          * start sending themselves. If they wait for the packet we are
@@ -510,10 +525,18 @@ inf_connection_manager_group_real_send(InfConnectionManagerGroup* group,
         inf_net_object_enqueued(group->object, connection, cur);
       }
 
+      /* Note that although queue->first_send_item may be NULL here when this
+       * is the last item to send, queue->last_send_item is not NULL, and is
+       * used in recursive calls to find out whether they should append stuff
+       * to the queue. This means that even if queue->first_send_item is
+       * NULL here, a callback of the sent signal might trigger another
+       * send_real and set queue->first_send_item again, in which case we
+       * continue to send. */
+
       inf_xml_connection_send(connection, cont);
     }
 
-    queue->send_item = NULL;
+    queue->last_send_item = NULL;
   }
 
   /* Unfreeze queues that were waiting for a parent message to be sent */
@@ -2020,7 +2043,8 @@ inf_connection_manager_register_connection(InfConnectionManagerGroup* group,
   queue->connection = connection;
   queue->first_item = NULL;
   queue->last_item = NULL;
-  queue->send_item = NULL;
+  queue->first_send_item = NULL;
+  queue->last_send_item = NULL;
   queue->inner_count = 0;
   if(parent_queue && parent_queue->last_item)
   {

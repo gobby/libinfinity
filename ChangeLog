@@ -1,5 +1,12 @@
 2008-10-16  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c
+	(inf_connection_manager_group_real_send): Make sure all queued
+	messages are sent, even if the callback for the last item adds new
+	messages to the queue.
+
+2008-10-16  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-session.c (inf_session_close): Make sure the
 	session's status is not already closed via a g_return_if_fail(), to
 	prevent a failing assertion in the default handler.
