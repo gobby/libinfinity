@@ -1158,8 +1158,6 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
     }
     else
     {
-      /* TODO: This will probably never really work since the sync-in
-       * is not yet added to the node at this point. */
       proxy = infc_browser_iter_get_sync_in(browser, browser_iter);
       if(!proxy) proxy = infc_browser_iter_get_session(browser, browser_iter);
 

@@ -900,6 +900,7 @@ infc_browser_get_property(GObject* object,
 /*
  * Directory tree operations.
  */
+
 static void
 infc_browser_node_register(InfcBrowser* browser,
                            InfcBrowserNode* node)
@@ -920,75 +921,6 @@ infc_browser_node_unregister(InfcBrowser* browser,
   iter.node = node;
 
   g_signal_emit(G_OBJECT(browser), browser_signals[NODE_REMOVED], 0, &iter);
-}
-
-static InfcBrowserNode*
-infc_browser_node_add_subdirectory(InfcBrowser* browser,
-                                   InfcBrowserNode* parent,
-                                   guint id,
-                                   const gchar* name,
-                                   GError** error)
-{
-  InfcBrowserPrivate* priv;
-  InfcBrowserNode* node;
-
-  g_assert(parent->type == INFC_BROWSER_NODE_SUBDIRECTORY);
-  g_assert(parent->shared.subdir.explored == TRUE);
-
-  priv = INFC_BROWSER_PRIVATE(browser);
-  if(g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(id)) != NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NODE_EXISTS,
-      _("Node with ID '%u' exists already"),
-      id
-    );
-
-    return NULL;
-  }
-  else
-  {
-    node = infc_browser_node_new_subdirectory(browser, parent, id, name);
-    infc_browser_node_register(browser, node);
-    return node;
-  }
-}
-
-static InfcBrowserNode*
-infc_browser_node_add_note(InfcBrowser* browser,
-                           InfcBrowserNode* parent,
-                           guint id,
-                           const gchar* name,
-                           const gchar* type,
-                           GError** error)
-{
-  InfcBrowserPrivate* priv;
-  InfcBrowserNode* node;
-
-  g_assert(parent->type == INFC_BROWSER_NODE_SUBDIRECTORY);
-  g_assert(parent->shared.subdir.explored == TRUE);
-
-  priv = INFC_BROWSER_PRIVATE(browser);
-  if(g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(id)) != NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NODE_EXISTS,
-      _("Node with ID '%u' exists already"),
-      id
-    );
-
-    return NULL;
-  }
-  else
-  {
-    node = infc_browser_node_new_note(browser, parent, id, name, type);
-    infc_browser_node_register(browser, node);
-    return node;
-  }
 }
 
 static gboolean
@@ -1095,6 +1027,93 @@ infc_browser_remove_sync_in(InfcBrowser* browser,
   g_slice_free(InfcBrowserSyncIn, sync_in);
 
   priv->sync_ins = g_slist_remove(priv->sync_ins, sync_in);
+}
+
+/*
+ * Node creation
+ */
+
+static InfcBrowserNode*
+infc_browser_node_add_subdirectory(InfcBrowser* browser,
+                                   InfcBrowserNode* parent,
+                                   guint id,
+                                   const gchar* name,
+                                   GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+
+  g_assert(parent->type == INFC_BROWSER_NODE_SUBDIRECTORY);
+  g_assert(parent->shared.subdir.explored == TRUE);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  if(g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(id)) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_EXISTS,
+      _("Node with ID '%u' exists already"),
+      id
+    );
+
+    return NULL;
+  }
+  else
+  {
+    node = infc_browser_node_new_subdirectory(browser, parent, id, name);
+    infc_browser_node_register(browser, node);
+    return node;
+  }
+}
+
+static InfcBrowserNode*
+infc_browser_node_add_note(InfcBrowser* browser,
+                           InfcBrowserNode* parent,
+                           guint id,
+                           const gchar* name,
+                           const gchar* type,
+                           InfcSessionProxy* sync_in_session,
+                           GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+
+  g_assert(parent->type == INFC_BROWSER_NODE_SUBDIRECTORY);
+  g_assert(parent->shared.subdir.explored == TRUE);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  g_assert(priv->connection != NULL);
+
+  if(g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(id)) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_EXISTS,
+      _("Node with ID '%u' exists already"),
+      id
+    );
+
+    return NULL;
+  }
+  else
+  {
+    node = infc_browser_node_new_note(browser, parent, id, name, type);
+
+    if(sync_in_session != NULL)
+    {
+      infc_browser_add_sync_in(
+        browser,
+        node,
+        priv->connection,
+        sync_in_session
+      );
+    }
+
+    infc_browser_node_register(browser, node);
+    return node;
+  }
 }
 
 /*
@@ -1459,6 +1478,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
       id,
       (const gchar*)name,
       (const gchar*)type,
+      NULL,
       error
     );
 
@@ -1685,16 +1705,12 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
     id,
     (const gchar*)name,
     (const gchar*)type,
+    proxy,
     error
   );
 
   xmlFree(name);
   xmlFree(type);
-
-  /* TODO: Add connection and proxy to add_note so that it can call
-   * infc_browser_add_sync_in on its own, before emitting ADD_NODE, so
-   * that InfGtkBrowserView can show progress. */
-  infc_browser_add_sync_in(browser, node, connection, proxy);
 
   iter.node_id = node->id;
   iter.node = node;
