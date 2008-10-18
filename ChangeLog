@@ -1,5 +1,9 @@
 2008-10-18  Armin Burgmeier  <armin@arbur.net>
 
+	* === Released 0.1.0 ===
+
+2008-10-18  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-creds.c: Don't set the SAN to $hostname.local
 	since the common name is no longer checked when a SAN is present.
 

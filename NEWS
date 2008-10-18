@@ -1,6 +1,7 @@
 libinfinity 0.1.0:
 
-	* This in an UNSTABLE release! Both API and ABI are about to change
-	  in future versions.
 	* Initial release of libinfinity
 	* Provides an API for real-time collaboration on plain text documents
+	* This in an UNSTABLE release! Both API and ABI are about to change
+	  in future versions. The 0.1.x line is guaranteed to be stable,
+	  though.
