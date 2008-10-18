@@ -167,6 +167,7 @@ infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
 
     printf(_("Generating self-signed certificate...\n"));
     cert = infinoted_creds_create_self_signed_certificate(key, error);
+    if(cert == NULL) return NULL;
 
     if(inf_cert_util_save_file(&cert, 1, certificate_file, error) == FALSE)
     {

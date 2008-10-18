@@ -89,6 +89,7 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   );
   if(res != 0) return res;
 
+#if 0
   /* TODO: We set the alternative name always to hostname.local, because this
    * is what avahi yields when resolving that host. However, we rather should
    * find out the real DNS name, perhaps by doing a reverse DNS resolve
@@ -102,6 +103,15 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
 
   g_free(dnsname);
   if(res != 0) return res;
+#else
+  res = gnutls_x509_crt_set_subject_alternative_name(
+    cert,
+    GNUTLS_SAN_DNSNAME,
+    g_get_host_name()
+  );
+
+  if(res != 0) return res;
+#endif
 
   res = gnutls_x509_crt_sign2(cert, cert, key, GNUTLS_DIG_SHA1, 0);
   if(res != 0) return res;

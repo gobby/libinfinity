@@ -1,3 +1,11 @@
+2008-10-18  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-creds.c: Don't set the SAN to $hostname.local
+	since the common name is no longer checked when a SAN is present.
+
+	* infinoted/infinoted-startup.c (infinoted_startup_load_certificate):
+	Error out if a self-signed certificate could not be created.
+
 2008-10-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.c

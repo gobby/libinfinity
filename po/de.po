@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-18 01:06+0200\n"
+"POT-Creation-Date: 2008-10-18 15:58+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -146,7 +146,7 @@ msgstr ""
 msgid "Generating self-signed certificate...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:216
+#: infinoted/infinoted-startup.c:217
 #, c-format
 msgid "Generating 2048 bit Diffie-Hellman parameters...\n"
 msgstr ""
