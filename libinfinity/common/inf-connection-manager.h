@@ -40,6 +40,12 @@ G_BEGIN_DECLS
 typedef struct _InfConnectionManager InfConnectionManager;
 typedef struct _InfConnectionManagerClass InfConnectionManagerClass;
 
+/**
+ * InfConnectionManagerGroup:
+ *
+ * #InfConnectionManagerGroup is an opaque data type. You should only access
+ * it via the public API functions.
+ */
 typedef struct _InfConnectionManagerGroup InfConnectionManagerGroup;
 
 typedef struct _InfConnectionManagerMethod InfConnectionManagerMethod;
@@ -129,14 +135,6 @@ struct _InfConnectionManagerMethodDesc {
   void (*remove_connection)(InfConnectionManagerMethod* instance,
                             InfXmlConnection* connection);
 
-  /* TODO: Remove this and just rely on registered connections. */
-  /*
-  gboolean (*has_connection)(InfConnectionManagerMethod* instance,
-                             InfXmlConnection* connection);
-  InfXmlConnection* (*lookup_connection)(InfConnectionManagerMethod* instance,
-                                         const gchar* id);
-  */
-
   void (*send_to_net)(InfConnectionManagerMethod* instance,
                       InfXmlConnection* except,
                       xmlNodePtr xml);
@@ -217,14 +215,6 @@ void
 inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
                                         InfNetObject* object);
 
-#if 0
-InfXmlConnection*
-inf_connection_manager_group_get_publisher(InfConnectionManagerGroup* group);
-
-const gchar*
-inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp);
-#endif
-
 gboolean
 inf_connection_manager_group_has_connection(InfConnectionManagerGroup* group,
                                             InfXmlConnection* conn);
@@ -240,13 +230,6 @@ inf_connection_manager_group_add_connection(InfConnectionManagerGroup* group,
 void
 inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
                                                InfXmlConnection* conn);
-
-#if 0
-InfXmlConnection*
-inf_connection_manager_group_lookup_connection(InfConnectionManagerGroup* grp,
-                                               const gchar* network,
-                                               const gchar* id);
-#endif
 
 void
 inf_connection_manager_group_send_to_connection(InfConnectionManagerGroup* g,

@@ -16,6 +16,16 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-error
+ * @short_description: Common error codes
+ * @include: libinfinity/common/inf-error.h
+ * @stability: Unstable
+ *
+ * This section defines some common error codes that are used on both client
+ * and server side in infinote, and maps these to #GError<!-- -->s.
+ **/
+
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -23,21 +33,33 @@
 
 /* TODO: Cache GQuarks */
 
+/**
+ * inf_request_error_quark:
+ *
+ * Error domain for request errors. Errors in this domain will be from the
+ * #InfRequestError enumeration. See #GError for information on error domains.
+ *
+ * Returns: A GQuark.
+ */
 GQuark
 inf_request_error_quark(void)
 {
   return g_quark_from_static_string("INF_REQUEST_ERROR");
 }
 
+/**
+ * inf_request_strerror:
+ * @code: An error code from the #InfRequestError enumeration.
+ *
+ * Returns a human-readable string for the given error code.
+ *
+ * Returns: A static string that must not be freed.
+ */
 const gchar*
 inf_request_strerror(InfRequestError code)
 {
   switch(code)
   {
-  case INF_REQUEST_ERROR_SYNCHRONIZING:
-    return _("Synchronization is still in progress");
-  case INF_REQUEST_ERROR_UNEXPECTED_MESSAGE:
-    return _("Message was not understood");
   case INF_REQUEST_ERROR_UNKNOWN_DOMAIN:
     return _("Received error from an unknown domain");
   case INF_REQUEST_ERROR_REPLY_UNPROCESSED:
@@ -55,12 +77,29 @@ inf_request_strerror(InfRequestError code)
   }
 }
 
+/**
+ * inf_user_error_quark:
+ *
+ * Error domain for user-related errors. Errors in this domain will be from
+ * the #InfUserError enumeration. See #GError for information on error
+ * domains.
+ *
+ * Returns: A GQuark.
+ */
 GQuark
 inf_user_error_quark(void)
 {
   return g_quark_from_static_string("INF_USER_ERROR");
 }
 
+/**
+ * inf_user_strerror:
+ * @code: An error code from the #InfUserError enumeration.
+ *
+ * Returns a human-readable string for the given error code.
+ *
+ * Returns: A static string that must not be freed.
+ */
 const gchar*
 inf_user_strerror(InfUserError code)
 {
@@ -85,12 +124,29 @@ inf_user_strerror(InfUserError code)
   }
 }
 
+/**
+ * inf_directory_error_quark:
+ *
+ * Error domain for directory errors. Errors in this domain will be from the
+ * #InfDirectoryError enumeration. See #GError for information on error
+ * domains.
+ *
+ * Returns: A GQuark.
+ */
 GQuark
 inf_directory_error_quark(void)
 {
   return g_quark_from_static_string("INF_DIRECTORY_ERROR");
 }
 
+/**
+ * inf_directory_strerror:
+ * @code: An error code from the #InfDirectoryError enumeration.
+ *
+ * Returns a human-readable string for the given error code.
+ *
+ * Returns: A static string that must not be freed.
+ */
 const gchar*
 inf_directory_strerror(InfDirectoryError code)
 {
@@ -132,12 +188,27 @@ inf_directory_strerror(InfDirectoryError code)
   }
 }
 
+/**
+ * inf_gnutls_error_quark:
+ *
+ * Error domain for GnuTLS errors. Errors in this domain will be GnuTLS error
+ * codes. See #GError for information on error domains.
+ *
+ * Returns: A GQuark.
+ */
 GQuark
 inf_gnutls_error_quark(void)
 {
   return g_quark_from_static_string("INF_GNUTLS_ERROR");
 }
 
+/**
+ * inf_gnutls_set_error:
+ * @error: Location to store the error, or %NULL.
+ * @error_code: A GnuTLS error code.
+ *
+ * Sets a #GError from a GnuTLS error code. If @error is %NULL, does nothing.
+ */
 void
 inf_gnutls_set_error(GError** error,
                      int error_code)

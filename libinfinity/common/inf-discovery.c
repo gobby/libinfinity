@@ -16,6 +16,20 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-discovery
+ * @short_description: Discovery of remote services
+ * @include: libinfinity/common/inf-discovery.h
+ * @see_also: #InfDiscoveryAvahi
+ *
+ * #InfDiscovery provides a common interface for the discovery of services.
+ * Discovered services are represented by #InfDiscoveryInfo<!-- --> objects
+ * and can be used to query the name of the discovered service.
+ *
+ * To create a connection to the host providing a discovered service, use
+ * inf_discovery_resolve().
+ */
+
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/inf-marshal.h>
 

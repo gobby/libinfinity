@@ -41,11 +41,24 @@ G_BEGIN_DECLS
 typedef struct _InfDiscoveryAvahi InfDiscoveryAvahi;
 typedef struct _InfDiscoveryAvahiClass InfDiscoveryAvahiClass;
 
+/**
+ * InfDiscoveryAvahiClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfDiscoveryAvahiClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfDiscoveryAvahi:
+ *
+ * #InfDiscoveryAvahi is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfDiscoveryAvahi {
+  /*< private >*/
   GObject parent;
 };
 

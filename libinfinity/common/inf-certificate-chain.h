@@ -27,6 +27,12 @@ G_BEGIN_DECLS
 
 #define INF_TYPE_CERTIFICATE_CHAIN                 (inf_certificate_chain_get_type())
 
+/**
+ * InfCertificateChain:
+ *
+ * #InfCertifiacteChain is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfCertificateChain InfCertificateChain;
 
 GType

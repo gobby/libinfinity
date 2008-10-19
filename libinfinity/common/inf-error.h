@@ -23,75 +23,125 @@
 
 G_BEGIN_DECLS
 
-/* These are error codes do not occur directly in libinfinity, but that
+/* These are error codes do not occur directly in common/, but that
  * may be reported and/or need to be understood by both client and server. */
 
+/**
+ * InfRequestError:
+ * @INF_REQUEST_ERROR_UNKNOWN_DOMAIN: The server sent <request-failed/> with
+ * an unknown error domain.
+ * @INF_REQUEST_ERROR_REPLY_UNPROCESSED: An error occured while processing the
+ * server reply for a request.
+ * @INF_REQUEST_ERROR_INVALID_SEQ: The server sent an invalid sequence number
+ * in a reply to a request.
+ * @INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE: A request did not contain a XML
+ * attribute that is required to complete the request.
+ * @INF_REQUEST_ERROR_INVALID_NUMBER: A number in a request was invalid.
+ * Either it was not numerical, or it produced an underflow or an overflow.
+ * @INF_REQUEST_ERROR_FAILED: Generic error code when no further reason of
+ * failure is known.
+ *
+ * These are general request errors that all #InfcRequest<!-- -->s can
+ * fail with. Specific requests may also fail with more errors, such as
+ * #InfDirectoryError.
+ */
 typedef enum _InfRequestError {
-  /* Synchronization is still in progress. */
-  INF_REQUEST_ERROR_SYNCHRONIZING,
-  /* Received an unexpected message */
-  INF_REQUEST_ERROR_UNEXPECTED_MESSAGE,
-  /* Unknown error domain */
   INF_REQUEST_ERROR_UNKNOWN_DOMAIN,
-  /* Server reply could not be processed */
   INF_REQUEST_ERROR_REPLY_UNPROCESSED,
-  /* Server reply had invalid sequence number set */
   INF_REQUEST_ERROR_INVALID_SEQ,
-  /* A required attribute was not set */
   INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-  /* An attribute expected to contain a number contained something else,
-   * or an overflow occured */
   INF_REQUEST_ERROR_INVALID_NUMBER,
 
   INF_REQUEST_ERROR_FAILED
 } InfRequestError;
 
+/**
+ * InfUserError:
+ * @INF_USER_ERROR_NAME_IN_USE: The requested name is already in use by
+ * another user.
+ * @INF_USER_ERROR_ID_PROVIDED: The client provided a user ID field in a
+ * user join request, but it's the server's job to find an ID.
+ * @INF_USER_ERROR_NO_SUCH_USER: A request referred to a user ID that no user
+ * is associated with.
+ * @INF_USER_ERROR_STATUS_UNAVAILABLE: The initial user status was given as
+ * unavailable during user join or rejoin.
+ * @INF_USER_ERROR_NOT_JOINED: The user did not join from the connection the
+ * request comes from. For example, a user status change can only be requested
+ * from the same connection that joined the user.
+ * @INF_USER_ERROR_INVALID_STATUS: An invalid status was used in a XML
+ * request. Allowed status values are "unavailable", "inactive" or "active".
+ * @INF_USER_ERROR_FAILED: Generic error code when no further reason of
+ * failure is known.
+ *
+ * These are errors related to users. They may occur during user join or
+ * during processing a user-related message, such as a user status change
+ * message in an #InfSession.
+ */
 typedef enum _InfUserError {
-  /* The requested name is already in use by another user */
   INF_USER_ERROR_NAME_IN_USE,
-  /* An id attribute was provided on a join or rejoin request */
   INF_USER_ERROR_ID_PROVIDED,
-  /* User is not present, in case of a user rejoin or user status change */
   INF_USER_ERROR_NO_SUCH_USER,
-  /* Status was given as unavailable during join or rejoin */
   INF_USER_ERROR_STATUS_UNAVAILABLE,
-  /* The user did not join from the connection the request comes from */
   INF_USER_ERROR_NOT_JOINED,
-  /* An invalid status was given */
   INF_USER_ERROR_INVALID_STATUS,
 
   INF_USER_ERROR_FAILED
 } InfUserError;
 
+/**
+ * InfDirectoryError:
+ * @INF_DIRECTORY_ERROR_NODE_EXISTS: A node with the given name exists
+ * already in that subdirectory (in response to node creation requests).
+ * @INF_DIRECTORY_ERROR_NO_SUCH_NODE: The node refered to in a request does
+ * not exist in the directory (anymore).
+ * @INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY: The node refered to in a request
+ * is not a subdirectory node, but the requested operation requires one.
+ * @INF_DIRECTORY_ERROR_NOT_A_NOTE: The node refered to in a request is not
+ * a note (non-subdirectory) node, but the requested operations requires one.
+ * @INF_DIRECTORY_ERROR_ALREADY_EXPLORED: The node given in an exploration
+ * request has already been explored earlier.
+ * @INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN: Exploration yields more children
+ * than announced at the beginning of the exploration.
+ * @INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN: Exploration yields less children
+ * than announced at the beginning of the exploration.
+ * @INF_DIRECTORY_ERROR_TYPE_UNKNOWN: The type of a note is not known.
+ * @INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED: The connection already subscribed
+ * to the node refered to, but the requested operation requires it to be
+ * unsubscribed.
+ * @INF_DIRECTORY_ERROR_UNSUBSCRIBED: The connection is not subscribed to the
+ * node refered to, but the requested operation requires it to be subscribed.
+ * @INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED: The server does not support the
+ * network of the incoming connection for the requested operation. For
+ * example, subscribing to a session might require a network that has a
+ * peer-to-peer communication method, but there is no implementation of that
+ * method for the connection's network.
+ * @INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED: The server requested a
+ * communaction method for subscription or synchronization that is not
+ * supported by the client.
+ * @INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN: A client received a <sync-in/>
+ * without having requested one. The client has no data to sync to the server.
+ * @INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE: A message that is not understood
+ * was received.
+ * @INF_DIRECTORY_ERROR_FAILED: Generic error code when no further reason of
+ * failure is known.
+ *
+ * These are errors related to the directory of documents. These errors can
+ * be reason why requests created by #InfcBrowser fail.
+ */
 typedef enum _InfDirectoryError {
-  /* A node with this name exists already */
   INF_DIRECTORY_ERROR_NODE_EXISTS,
-  /* The node referred to does not exist */
   INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-  /* The node referred to is not a subdirectory */
   INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
-  /* The node referred to is not a note */
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
-  /* TODO: Make an own error domain out of the explore errors */
-  /* The given subdirectory has already been explored */
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
-  /* There is no plugin that covers the given type */
-  INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
-  /* The server sends more explored children that previously announced */
   INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
-  /* The server sent explore-end before having sent all children */
   INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
-  /* The connection is already subscribed to the session */
+  INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
   INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
-  /* The connection is not subscribed to the session */
   INF_DIRECTORY_ERROR_UNSUBSCRIBED,
-  /* Session does not support the network of the requesting connection */
   INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
-  /* Session uses unsupported communication method */
   INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
-  /* A sync-in was received without having requested one */
   INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
-  /* Got unexpected XML message */
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
 
   INF_DIRECTORY_ERROR_FAILED

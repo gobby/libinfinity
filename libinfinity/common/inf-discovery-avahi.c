@@ -16,6 +16,17 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-discovery-avahi
+ * @short_description: Service Discovery via Avahi
+ * @include: libinfinity/common/inf-discovery-avahi.h
+ * @see_also: #InfDiscovery
+ *
+ * #InfDiscoveryAvahi implements the #InfDiscovery and #InfLocalPublisher
+ * interfaces on top of avahi. It resolves services to client-side
+ * #InfXmppConnection<!-- -->s.
+ */
+
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/common/inf-local-publisher.h>

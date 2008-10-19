@@ -1661,41 +1661,6 @@ inf_connection_manager_group_set_object(InfConnectionManagerGroup* group,
   );
 }
 
-#if 0
-/**
- * inf_connection_manager_group_get_publisher:
- * @group: A #InfConnectionManagerGroup.
- *
- * Returns a connection to the publisher of @group, or %NULL if the
- * publisher is no longer available or the local host is the publisher.
- *
- * Return Value: A #InfXmlConnection, or %NULL.
- **/
-InfXmlConnection*
-inf_connection_manager_group_get_publisher(InfConnectionManagerGroup* group)
-{
-  g_return_val_if_fail(group != NULL, NULL);
-  return group->publisher_conn;
-}
-
-/**
- * inf_connection_manager_group_get_publisher_id:
- * @grp: A #InfConnectionManagerGroup.
- *
- * Returns the connection ID of the publisher of @group, or %NULL if the local
- * host is the publisher. This still returns a sensible value when the
- * publisher is no longer available.
- *
- * Return Value: A publisher's ID, or %NULL.
- **/
-const gchar*
-inf_connection_manager_group_get_publisher_id(InfConnectionManagerGroup* grp)
-{
-  g_return_val_if_fail(grp != NULL, NULL);
-  return grp->key.publisher_id;
-}
-#endif
-
 /**
  * inf_connection_manager_group_has_connection:
  * @group: A #InfConnectionManagerGroup.
@@ -1842,34 +1807,6 @@ inf_connection_manager_group_remove_connection(InfConnectionManagerGroup* grp,
   instance->desc->remove_connection(instance->method, conn);
   inf_connection_manager_unregister_connection(grp, conn);
 }
-
-#if 0
-/**
- * inf_connection_manager_group_lookup_connection:
- * @grp: A @InfConnectionManagerGroup.
- * @network: The network in which to find the connection.
- * @id: A connection ID.
- *
- * Returns the connection whose remote id matches @id, or %NULL if there
- * is no such connection within @grp, or @network is not supported by @grp.
- *
- * Return Value: A #InfXmlConnection, or %NULL.
- **/
-InfXmlConnection*
-inf_connection_manager_group_lookup_connection(InfConnectionManagerGroup* grp,
-                                               const gchar* network,
-                                               const gchar* id)
-{
-  InfConnectionManagerMethodInstance* instance;
-  
-  g_return_val_if_fail(grp != NULL, FALSE);
-  g_return_val_if_fail(network != NULL, FALSE);
-  g_return_val_if_fail(id != NULL, NULL);
-
-  instance = inf_connection_manager_get_method_by_network(grp, network);
-  return instance->desc->lookup_connection(instance->method, id);
-}
-#endif
 
 /**
  * inf_connection_manager_group_send_to_connection:

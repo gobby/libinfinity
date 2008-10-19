@@ -1,3 +1,20 @@
+2008-10-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-connection-manager.h: Removed some obsolete
+	commented-out code.
+
+	* libinfinity/common/inf-certificate-chain.h: Document the
+	InfCertificateChain symbol.
+
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/common/inf-discovery-avahi.h:
+	* libinfinity/common/inf-discovery.c:
+	* libinfinity/common/inf-discovery.c:
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.h: Added class and section
+	documentation.
+
 2008-10-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-i18n.c: Set localedir relative to libinfinity DLL on
