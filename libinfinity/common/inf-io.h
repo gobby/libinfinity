@@ -34,15 +34,38 @@ G_BEGIN_DECLS
 
 #define INF_TYPE_IO_EVENT           (inf_io_event_get_type())
 
+/**
+ * InfIo:
+ *
+ * #InfIo is an opaque data type. You should only access it via the public
+ * API functions.
+ */
 typedef struct _InfIo InfIo;
 typedef struct _InfIoIface InfIoIface;
 
+/**
+ * InfNativeSocket:
+ *
+ * Native socket type on the target platform. This typedef is a simple #int
+ * on Unix and a #SOCKET on Windows.
+ */
 #ifdef G_OS_WIN32
 typedef SOCKET InfNativeSocket;
 #else
 typedef int InfNativeSocket;
 #endif
 
+/**
+ * InfIoEvent:
+ * @INF_IO_INCOMING: Data can be read from the socket without blocking, or
+ * the connection has been closed (which is the case when recv() returns 0).
+ * @INF_IO_OUTGOING: Data can be sent without blocking.
+ * @INF_IO_ERROR: An error with the socket occured, or the connection has
+ * been closed. Use getsockopt() to read do %SO_ERROR option to find out what
+ * the problem is.
+ *
+ * This enumeration specifies events that can be watched.
+ */
 typedef enum _InfIoEvent {
   INF_IO_INCOMING = 1 << 0,
   INF_IO_OUTGOING = 1 << 1,
@@ -54,6 +77,8 @@ typedef enum _InfIoEvent {
  * @socket: The socket on which an event occured.
  * @event: A bitmask of the events that occured.
  * @user_data: User-defined data specified in inf_io_watch().
+ *
+ * Callback function that is called when an event occurs on a watched socket.
  */
 typedef void(*InfIoFunc)(InfNativeSocket* socket,
                          InfIoEvent event,
@@ -62,13 +87,29 @@ typedef void(*InfIoFunc)(InfNativeSocket* socket,
 /**
  * InfIoTimeoutFunc:
  * @user_data: User-defined data specified in inf_io_add_timeout().
+ *
+ * Callback function that is called when a timeout has elapsed.
  */
 typedef void(*InfIoTimeoutFunc)(gpointer user_data);
 
+/**
+ * InfIoIface:
+ * @watch: Changes the events the given socket is watched for. If @events is
+ * 0, removes the watch for @socket.
+ * @add_timeout: Schedules @func to be called at least @msecs milliseconds
+ * in the future.
+ * @remove_timeout: Removes a scheduled timeout again. The timeout is
+ * removed automatically when it has elapsed, so there is no need to call
+ * this function in that case.
+ *
+ * The virtual methods of #InfIo. These allow to set up socket watches and
+ * timeouts.
+ */
 struct _InfIoIface {
+  /*< private >*/
   GTypeInterface parent;
 
-  /* Virtual table */
+  /*< public >*/
   void (*watch)(InfIo* io,
                 InfNativeSocket* socket,
                 InfIoEvent events,

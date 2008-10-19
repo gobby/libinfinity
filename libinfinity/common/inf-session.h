@@ -43,91 +43,165 @@ G_BEGIN_DECLS
 typedef struct _InfSession InfSession;
 typedef struct _InfSessionClass InfSessionClass;
 
+/**
+ * InfSessionStatus:
+ * @INF_SESSION_SYNCHRONIZING: The session is currently being synchronized
+ * from a remote host. When done synchronizing, it will enter into
+ * %INF_SESSION_RUNNING state.
+ * @INF_SESSION_RUNNING: The session is running and ready to synchronize
+ * other hosts. If a subscription group is set
+ * (see inf_session_set_subscription_group()), then changes to the
+ * underlying buffer are transmitted to all subscribed connections.
+ * @INF_SESSION_CLOSED: The session is closed and can no longer be used. The
+ * session enters this state if the synchronization fails in
+ * %INF_SESSION_SYNCHRONIZING state or inf_session_close() is called.
+ *
+ * #InfSessionStatus defines in what state a session is in.
+ */
 typedef enum _InfSessionStatus {
   INF_SESSION_SYNCHRONIZING,
   INF_SESSION_RUNNING,
   INF_SESSION_CLOSED
 } InfSessionStatus;
 
+/**
+ * InfSessionSyncStatus:
+ * @INF_SESSION_SYNC_NONE: No synchronization is ongoing.
+ * @INF_SESSION_SYNC_IN_PROGRESS: Synchronization is currently in progress.
+ * @INF_SESSION_SYNC_AWAITING_ACK: All synchronization data has been sent
+ * (progress is 1.0), but we are still waiting for an acknowledgment from the
+ * remote site. Synchronization can no longer be cancelled, but it can stiff
+ * fail.
+ *
+ * #InfSessionSyncStatus represents the status of a synchronization. It is
+ * used by inf_session_get_synchronization_status().
+ */
 typedef enum _InfSessionSyncStatus {
-  /* No synchronization in progress */
   INF_SESSION_SYNC_NONE,
-  /* The synchronization is in progress */
   INF_SESSION_SYNC_IN_PROGRESS,
-  /* The synchronization is in progress and cannot be cancelled anymore. */
-  /*INF_SESSION_SYNC_END_ENQUEUED*/
-  /* The synchronization is finished, we are only waiting for the
-   * acknowledgment from the remote site. */
   INF_SESSION_SYNC_AWAITING_ACK
 } InfSessionSyncStatus;
 
+/**
+ * InfSessionSyncError:
+ * @INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE: A message has been received that
+ * was not understood.
+ * @INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT: An ID was not provided for a user
+ * in the session.
+ * @INF_SESSION_SYNC_ERROR_ID_IN_USE: The ID of a user is already in use by
+ * another user.
+ * @INF_SESSION_SYNC_ERROR_NAME_NOT_PRESENT: A name was not provided for a
+ * user in the session.
+ * @INF_SESSION_SYNC_ERROR_NAME_IN_USE: The name of a user is already in use
+ * by another user.
+ * @INF_SESSION_SYNC_ERROR_CONNECTION_CLOSED: The synchronization connection
+ * has been closed.
+ * @INF_SESSION_SYNC_ERROR_SENDER_CANCELLED: The sender has cancelled the
+ * synchronization.
+ * @INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED: The receiver has cancelled the
+ * synchronization.
+ * @INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC: Received
+ * &lt;sync-begin/&gt;
+ * not a the beginning of the synchronization.
+ * @INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING: The &lt;sync-begin/&gt;
+ * message does not contain the number of synchronization messages to expect.
+ * @INF_SESSION_SYNC_ERROR_UNEXPECTED_END_OF_SYNC: The &lt;sync-end/&gt;
+ * message was not received at the end of the synchronization.
+ * @INF_SESSION_SYNC_ERROR_EXPECTED_BEGIN_OF_SYNC: The &lt;sync-begin/&gt;
+ * message was not received at the beginning of the synchronization.
+ * @INF_SESSION_SYNC_ERROR_EXPECTED_END_OF_SYNC: The &lt;sync-end/&gt; message
+ * was not received at the end of the synchronization.
+ * @INF_SESSION_SYNC_ERROR_FAILED: Generic error code when no further reason
+ * of failure is known.
+ *
+ * These are errors that can occur during a synchronization of a session.
+ * Additional errors may occur depending on the session type.
+ */
 typedef enum _InfSessionSyncError {
-  /* Got unexpected XML node during synchronization */
   INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
-  /* id attribute not present in XML node */
   INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT,
-  /* The ID is already in use by another user */
   INF_SESSION_SYNC_ERROR_ID_IN_USE,
-  /* name attribute not present in XML node */
   INF_SESSION_SYNC_ERROR_NAME_NOT_PRESENT,
-  /* The name is already in use by another user */
   INF_SESSION_SYNC_ERROR_NAME_IN_USE,
-  /* The underlaying connection has been closed */
   INF_SESSION_SYNC_ERROR_CONNECTION_CLOSED,
-  /* The sender has cancelled the synchronization */
   INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
-  /* The receiver has cancelled the synchronization */
   INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
-  /* Got begin-of-sync message, but sync is already in progress */
   INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC,
-  /* The begin-of-sync message does not contain the number of messages
-   * to expect */
   INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING,
-  /* Got end-of-sync, but sync is still in progress */
   INF_SESSION_SYNC_ERROR_UNEXPECTED_END_OF_SYNC,
-  /* Sync has just started, but first message was not begin-of-sync */
   INF_SESSION_SYNC_ERROR_EXPECTED_BEGIN_OF_SYNC,
-  /* Last sync message shoud be end-of-sync, but it is not */
   INF_SESSION_SYNC_ERROR_EXPECTED_END_OF_SYNC,
 
   INF_SESSION_SYNC_ERROR_FAILED
 } InfSessionSyncError;
 
+/**
+ * InfSessionClass:
+ * @to_xml_sync: Virtual function that saves the session within a XML
+ * document. @parent is the root node of the document. It should create as
+ * much nodes as possible within that root node and not in sub-nodes because
+ * these are sent to a client and it is not allowed that other traffic is put
+ * in between those nodes. This way, communication through the same connection
+ * does not hang just because a large session is synchronized.
+ * @process_xml_sync: Virtual function that is called for every node in the
+ * XML document created by @to_xml_sync. It is supposed to reconstruct the
+ * session content from the XML data.
+ * @process_xml_run: Virtual function that is called for every received
+ * message while the session is running. Return %TRUE if forwarding the
+ * message is allowed (see also inf_net_object_received() on this topic).
+ * @get_xml_user_props: Virtual function that creates a list of
+ * #GParameter<!-- -->s for use with g_object_newv() from a XML node.
+ * @set_xml_user_props: Virtual function that writes the passed user
+ * properties into a XML node.
+ * @validate_user_props: Virtual function that checks whether the given user
+ * properties are valid for a user join. This prevents a user join if there is
+ * already a user with the same name. If @exclude is not %NULL, then the 
+ * function does ignore it when validating.
+ * @user_new: Virtual function that creates a new user object with the given
+ * properties.
+ * @close: Default signal handler for the #InfSession::close signal. This
+ * cancels currently running synchronization in #InfSession.
+ * @synchronization_begin: Default signal handler for the
+ * #InfSession::synchronization-begin signal. The default handler queues the
+ * synchronization messages.
+ * @synchronization_progress: Default signal handler for the
+ * #InfSession::synchronization-progress signal.
+ * @synchronization_complete: Default signal handler for the
+ * #InfSession::synchronization-complete signal. If the session itself got
+ * synchronized (and did not synchronize another session), then the default
+ * handler changes status to %INF_SESSION_RUNNING.
+ * @synchronization_failed: Default signal handler for the
+ * #InfSession::synchronization-failed signal. If the session itself got
+ * synchronized (and did not synchronize another session), then the default
+ * handler changes status to %INF_SESSION_CLOSED.
+ *
+ * This structure contains the virtual functions and default signal handlers
+ * of #InfSession.
+ */
 struct _InfSessionClass {
+  /*< private >*/
   GObjectClass parent_class;
 
-  /* Virtual table */
+  /*< public >*/
 
-  /* This should save the session within a XML document. parent is the root
-   * node of the document. It should create as much nodes as possible within
-   * that root node and not in sub-nodes because these are sent to the client
-   * and it is allowed that other traffic is put inbetween those notes. This
-   * way, communication through the same connection does not hang just because
-   * a large document is synchronized. */
+  /* Virtual table */
   void(*to_xml_sync)(InfSession* session,
                      xmlNodePtr parent);
 
-  /* This method is called for every node in the XML document created above
-   * on the other site. It should reconstruct the session. */
   gboolean(*process_xml_sync)(InfSession* session,
                               InfXmlConnection* connection,
                               const xmlNodePtr xml,
                               GError** error);
 
-  /* This method is called for every received message while the session is
-   * running. Return TRUE if forward is allowed. */
   gboolean(*process_xml_run)(InfSession* session,
                              InfXmlConnection* connection,
                              const xmlNodePtr xml,
                              GError** error);
 
-  /* Creates a list of parameters from an XML node. */
   GArray*(*get_xml_user_props)(InfSession* session,
                                InfXmlConnection* conn,
                                const xmlNodePtr xml);
 
-  /* This turns a list of parameters (user properties) back into an XML node
-   * to be sent through the network. */
   void (*set_xml_user_props)(InfSession* session,
                              const GParameter* params,
                              guint n_params,
@@ -162,12 +236,16 @@ struct _InfSessionClass {
                                 const GError* error);
 };
 
+/**
+ * InfSession:
+ *
+ * #InfSession is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfSession {
+  /*< private >*/
   GObject parent;
 };
-
-typedef void(*InfSessionForeachUserFunc)(InfUser* user,
-                                         gpointer user_data);
 
 const GParameter*
 inf_session_lookup_user_property(const GParameter* params,

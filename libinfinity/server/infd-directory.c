@@ -2649,6 +2649,7 @@ infd_directory_set_method_manager(InfdDirectory* directory,
   list = inf_method_manager_list_all_methods(manager);
   for( ; list != NULL; list = g_slist_next(list))
   {
+    /* Always use central method for directory operations */
     desc = (const InfConnectionManagerMethodDesc*)list->data;
     if(strcmp(desc->name, "central") == 0)
       g_ptr_array_add(priv->directory_methods, (gpointer)desc);

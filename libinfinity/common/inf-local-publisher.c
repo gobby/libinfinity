@@ -16,6 +16,16 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-local-publisher
+ * @short_description: Publish services on the local network
+ * @include: libinfinity/common/inf-local-publisher.h
+ * @see_also: #InfDiscoveryAvahi
+ *
+ * #InfLocalPublisher provides a common interface to publish services on the
+ * local network.
+ */
+
 #include <libinfinity/common/inf-local-publisher.h>
 
 static void

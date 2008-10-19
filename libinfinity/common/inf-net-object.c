@@ -19,12 +19,12 @@
 /**
  * SECTION:inf-net-object
  * @title: InfNetObject
- * @short_description: Network request destinations
+ * @short_description: Network message destinations
  * @see_also: #InfConnectionManager
  * @include: libinfinity/common/inf-net-object.h
  * @stability: Unstable
  *
- * A #InfNetObject is the destination of network requests sent through the
+ * A #InfNetObject is the destination of network messages sent through the
  * #InfConnectionManager. Each #InfConnectionManagerGroup is associated with
  * a #InfNetObject. Requests received by that group are reported to the
  * #InfNetObject by calling inf_net_object_received() on it. Messages sent

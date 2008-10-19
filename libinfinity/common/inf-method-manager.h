@@ -35,11 +35,24 @@ G_BEGIN_DECLS
 typedef struct _InfMethodManager InfMethodManager;
 typedef struct _InfMethodManagerClass InfMethodManagerClass;
 
+/**
+ * InfMethodManagerClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfMethodManagerClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfMethodManager:
+ *
+ * #InfMethodManager is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfMethodManager {
+  /*< private >*/
   GObject parent;
 };
 

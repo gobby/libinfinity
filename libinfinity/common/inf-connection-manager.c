@@ -20,7 +20,7 @@
  * SECTION:inf-connection-manager
  * @short_description: Sharing connections by mulitple sessions
  * @include: libinfinity/common/inf-connection-manager.h
- * @see_also: #InfNetObject
+ * @see_also: #InfNetObject, #InfMethodManager
  *
  * The connection manager handles all connections used in the infinote
  * framework. It allows sharing a connection for different (internal)

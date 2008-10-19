@@ -99,6 +99,7 @@ struct _InfDiscoveryIface {
   /*< private >*/
   GTypeInterface parent;
 
+  /*< public >*/
   void (*discover)(InfDiscovery* discovery,
                    const gchar* type);
 

@@ -26,8 +26,21 @@ G_BEGIN_DECLS
 #define INF_TYPE_IP_ADDRESS                 (inf_ip_address_get_type())
 #define INF_TYPE_IP_ADDRESS_FAMILY          (inf_ip_address_family_get_type())
 
+/**
+ * InfIpAddress:
+ *
+ * #InfIpAddress is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfIpAddress InfIpAddress;
 
+/**
+ * InfIpAddressFamily:
+ * @INF_IP_ADDRESS_IPV4: This specifies an IPv4 address.
+ * @INF_IP_ADDRESS_IPV6: This specifies an IPv6 address.
+ *
+ * This enumeration specifies different types of IP addresses.
+ */
 typedef enum _InfIpAddressFamily {
   INF_IP_ADDRESS_IPV4,
   INF_IP_ADDRESS_IPV6

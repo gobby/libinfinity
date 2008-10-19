@@ -17,6 +17,11 @@ Performance (Some ideas to improve performance, profile to verify!):
     - G_DISABLE_CHECKS
     defined.
 
+Bandwidth usage optimizations:
+ * Check whether we can get rid of the scope field in <group> messages PT/BR
+ * Send multiple messages in the same <group> container
+ * Allow to omit publisher if target host is publisher PT/BR
+
 Others:
 
  * Unify InfIo interface (IO):
@@ -50,3 +55,10 @@ Others:
    an approach of defining custom entities for those (see inf-xmpp-connection.c
    in inf_xmpp_connection_initiate()), though this didn't seem to work, and
    does not seem to be allowed in XML.
+ * Make InfLocalPublisher take a InfdXmlServer instead of a port number. Maybe
+   even rename to InfPublisher, with InfDiscoveryAvahi assuming an
+   InfdXmppServer. Or, consider simply removing the interface, and require
+   people to use InfDiscoveryAvahi directly (check how well that works with
+   InfdServerPool).
+ * Rename local network, to maybe tcp (also adapt DOCS!)
+

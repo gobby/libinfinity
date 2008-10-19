@@ -16,6 +16,29 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-method-manager
+ * @short_description: Communication method loading
+ * @include: libinfinity/common/inf-method-manager.h
+ * @see_also: #InfConnectionManager
+ *
+ * #InfMethodManager loads communication methods to be used with
+ * #InfConnectionManager as plugins from shared libraries. It is given a
+ * search path in which it looks for modules to load. Those modules need to
+ * contain a symbol called %INF_METHOD_PLUGIN which is a
+ * #InfConnectionManagerMethodDesc, implementing a communication method.
+ *
+ * Normally, you don't need to instantiate a method manager on your own, but
+ * can just use inf_method_manager_get_default() which yields a method manager
+ * with modules loaded from a standard search path.
+ *
+ * Each method specifies a network it works on by its name (such as "local")
+ * which in fact defines the connections it works with
+ * (see #InfXmlConnection:network property) and the method name
+ * (which is arbitrary, but #InfdDirectory for example always uses the
+ * "central" method for connections browsing it).
+ */
+
 #include <libinfinity/common/inf-method-manager.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-dll.h>

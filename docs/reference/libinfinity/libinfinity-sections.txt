@@ -434,7 +434,6 @@ INF_TYPE_IO_EVENT
 InfSessionStatus
 InfSessionSyncStatus
 InfSessionSyncError
-InfSessionForeachUserFunc
 InfSession
 InfSessionClass
 inf_session_lookup_user_property

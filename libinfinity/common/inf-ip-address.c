@@ -24,7 +24,7 @@
  * @include: libinfinity/common/inf-ip-address.h
  * @stability: Unstable
  *
- * A #InfIpAddress represents an IPv4 or an IPv6 address. Use
+ * A #InfIpAddress represents an IPv4 or an IPv6 network address. Use
  * inf_ip_address_get_family() to find out the type of a specific address.
  **/
 

@@ -1033,6 +1033,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   
   priv = INF_SESSION_PRIVATE(session);
 
+  /* TODO: Use InfSessionError and/or InfRequestError here */
   parameter = inf_session_lookup_user_property(params, n_params, "id");
   if(parameter == NULL)
   {

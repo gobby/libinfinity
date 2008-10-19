@@ -30,12 +30,36 @@ G_BEGIN_DECLS
 #define INF_IS_LOCAL_PUBLISHER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_LOCAL_PUBLISHER))
 #define INF_LOCAL_PUBLISHER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_LOCAL_PUBLISHER, InfLocalPublisherIface))
 
+/**
+ * InfLocalPublisher:
+ *
+ * #InfLocalPublisher is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfLocalPublisher InfLocalPublisher;
 typedef struct _InfLocalPublisherIface InfLocalPublisherIface;
 
+/**
+ * InfLocalPublisherItem:
+ *
+ * #InfLocalPublisherItem is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfLocalPublisherItem InfLocalPublisherItem;
 
+/**
+ * InfLocalPublisherIface:
+ * @publish: Virtual function to announce a service of the given type with
+ * the given name on the given port. The returned #InfLocalPublisherItem is
+ * valid as long as the service is published and the #InfLocalPublisher is
+ * alive. It can be used to unpublish the service again using the
+ * @unpublish function.
+ * @unpublish: Virtual function to unpublish a previously published service.
+ *
+ * Virtual functions for #InfLocalPublisher.
+ */
 struct _InfLocalPublisherIface {
+  /*< private >*/
   GTypeInterface parent;
 
   /* Virtual table */

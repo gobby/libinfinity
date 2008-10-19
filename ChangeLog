@@ -1,5 +1,33 @@
 2008-10-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-connection-manager.c: Added #InfMethodManager
+	to @see_also in section documentation.
+
+	* libinfinity/common/inf-discovery-avahi.c: Added #InfLocalPublisher
+	to @see_also in section documentation.
+
+	* libinfinity/common/inf-discovery.h: Make virtual functions of the
+	InfDiscoveryIface struct appear in the documentation.
+
+	* libinfinity/server/infd-directory.c
+	(infd_directory_set_method_manager): Added a clarifying comment.
+
+	* libinfinity/common/inf-io.h:
+	* libinfinity/common/inf-io.c:
+	* libinfinity/common/inf-ip-address.h:
+	* libinfinity/common/inf-ip-address.c:
+	* libinfinity/common/inf-local-publisher.h:
+	* libinfinity/common/inf-local-publisher.c:
+	* libinfinity/common/inf-method-manager.h:
+	* libinfinity/common/inf-method-manager.c:
+	* libinfinity/common/inf-net-object.h:
+	* libinfinity/common/inf-net-object.c:
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added class and section
+	documentation.
+
+2008-10-19  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-connection-manager.c:
 	* libinfinity/common/inf-connection-manager.h: Removed some obsolete
 	commented-out code.
@@ -7,12 +35,12 @@
 	* libinfinity/common/inf-certificate-chain.h: Document the
 	InfCertificateChain symbol.
 
-	* libinfinity/common/inf-discovery-avahi.c:
 	* libinfinity/common/inf-discovery-avahi.h:
-	* libinfinity/common/inf-discovery.c:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/common/inf-discovery.h:
 	* libinfinity/common/inf-discovery.c:
 	* libinfinity/common/inf-error.h:
-	* libinfinity/common/inf-error.h: Added class and section
+	* libinfinity/common/inf-error.c: Added class and section
 	documentation.
 
 2008-10-18  Armin Burgmeier  <armin@arbur.net>

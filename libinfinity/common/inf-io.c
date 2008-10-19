@@ -29,6 +29,10 @@
  * application main loop, such as #GMainLoop. There is also a standalone
  * implementation, #InfStandaloneIo, that can directly be used as the
  * application's main loop.
+ *
+ * Every object in Libinfinity that needs to schedule timeouts or watches
+ * sockets uses a InfIo to do so. This allows to use libinfinity with
+ * different main event loops, not only Glib's one.
  **/
 
 #include <libinfinity/common/inf-io.h>
