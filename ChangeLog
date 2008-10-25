@@ -1,3 +1,9 @@
+2008-10-25  Philipp Kern  <phil@0x539.de>
+
+	* configure.ac: check for MSG_NOSIGNAL
+	* libinfinity/common/inf-tcp-connection.c: conditionally define
+	INF_TCP_CONNECTION_SENDRECV_FLAGS
+
 2008-10-19  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-connection-manager.c: Added #InfMethodManager

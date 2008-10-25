@@ -44,6 +44,16 @@ case "$host_os" in
   ;;
 esac        
 
+# Check for MSG_NOSIGNAL
+AC_MSG_CHECKING(for MSG_NOSIGNAL)
+AC_TRY_COMPILE([#include <sys/socket.h>],
+	       [ int f = MSG_NOSIGNAL; ],
+	       [ AC_MSG_RESULT(yes)
+	         AC_DEFINE(HAVE_MSG_NOSIGNAL, 1,
+			   [Define this symbol if you have MSG_NOSIGNAL]) ],
+ 	       [ AC_MSG_RESULT(no)]
+)
+
 ###################################
 # Check for regular dependencies
 ###################################
