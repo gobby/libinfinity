@@ -1448,7 +1448,6 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
   InfcBrowserIter browser_iter;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
-  g_assert(parent->stamp == priv->stamp);
 
   if(parent == NULL)
   {
@@ -1463,6 +1462,8 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
   }
   else
   {
+    g_assert(parent->stamp == priv->stamp);
+
     item = (InfGtkBrowserStoreItem*)parent->user_data;
     if(item->browser == NULL)
       return FALSE;
