@@ -1,3 +1,11 @@
+2008-10-30  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-store.c
+	(inf_gtk_browser_store_tree_model_iter_children): Make sure parent is
+	not dereferenced for an assertion check if it is NULL, preventing a
+	crash when this function was called with NULL parent and assertions
+	enabled (#388).
+
 2008-10-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-i18n.c: Set localedir relative to libinfinity DLL on
