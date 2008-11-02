@@ -23,11 +23,19 @@ DOC_SOURCE_DIR=$(top_srcdir)/libinfinity
 # Extra options to pass to gtkdoc-scangobj. Not normally needed.
 SCANGOBJ_OPTIONS=
 
-# Extra options to supply to gtkdoc-scan.
-# e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
-SCAN_OPTIONS=
+# Header files to ignore when scanning.
+# e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
+if LIBINFINITY_HAVE_AVAHI
+IGNORE_HFILES="inf-marshal.h inf-i18n.h inf-config.h"
+else
+IGNORE_HFILES="inf-marshal.h inf-i18n.h inf-config.h inf-discovery-avahi.h"
+endif
 
 # Extra options to supply to gtkdoc-mkdb.
+# Extra options to supply to gtkdoc-scan.
+# e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
+SCAN_OPTIONS=--rebuild-types --ignore-headers=$(IGNORE_HFILES)
+
 # e.g. MKDB_OPTIONS=--sgml-mode --output-format=xml
 MKDB_OPTIONS=--sgml-mode --output-format=xml
 
@@ -53,13 +61,6 @@ CFILE_GLOB = \
         $(top_srcdir)/libinfinity/adopted/*.c \
 	$(top_srcdir)/libinfinity/client/*.c \
         $(top_srcdir)/libinfinity/server/*.c
-
-# Header files to ignore when scanning.
-# e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES = \
-	inf-marshal.h \
-	inf-config.h \
-	inf-i18n.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
@@ -94,7 +95,7 @@ EXTRA_DIST +=
 # Files not to distribute
 # for --rebuild-types in $(SCAN_OPTIONS), e.g. $(DOC_MODULE).types
 # for --rebuild-sections in $(SCAN_OPTIONS) e.g. $(DOC_MODULE)-sections.txt
-#DISTCLEANFILES +=
+DISTCLEANFILES = libinfinity.types
 
 # Comment this out if you want your docs-status tested during 'make check'
 #TESTS = $(GTKDOC_CHECK)
