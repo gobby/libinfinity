@@ -1,4 +1,4 @@
-methods_base = infinote/method-plugins
+methods_base = libinfinity-1.0/method-plugins
 
 libinfinity_common_la_CPPFLAGS = \
 	-I$(top_srcdir) \

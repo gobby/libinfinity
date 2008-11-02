@@ -1,8 +1,5 @@
 plugin_LTLIBRARIES = libinfd-note-plugin-text.la
-plugindir = ${libdir}/infinoted/note-plugins
-
-# TODO: Actually we only want to install the .so file, and nothing else.
-# I don't know how to achieve this, though.
+plugindir = ${libdir}/infinoted-1.0/note-plugins
 
 libinfd_note_plugin_text_la_CPPFLAGS = \
 	-I$(top_srcdir) \

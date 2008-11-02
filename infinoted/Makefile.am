@@ -2,8 +2,7 @@ SUBDIRS = note-plugins
 
 bin_PROGRAMS = infinoted
 
-# TODO: Make these configurable at configure time
-plugin_path = ${libdir}/infinoted/note-plugins
+plugin_path = ${libdir}/infinoted-1.0/note-plugins
 
 infinoted_CPPFLAGS = \
 	-I${top_srcdir} \

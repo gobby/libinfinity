@@ -1,3 +1,13 @@
+2008-11-02  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/note-plugins/text/Makefile.am:
+	* libinfinity/methods/local-central/Makefile.am: Changed module
+	installation path to be versioned.
+
+	* infinoted/Makefile.am:
+	* libinfinity/common/Makefile.am: Adapt module lookup path
+	accordingly.
+
 2008-10-30  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-store.c
