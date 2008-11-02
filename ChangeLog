@@ -1,5 +1,11 @@
 2008-11-02  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-discovery-avahi.c: Added a documentation note
+	that this class is only available when LIBINFINITY_HAVE_AVAHI is
+	defined.
+
+2008-11-02  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac: Add LIBINFINITY_HAVI_AVAHI as an AM_CONDITIONAL.
 
 	* docs/reference/libinfinity/Makefile.am: Add inf-discovery-avahi.h to

@@ -25,6 +25,9 @@
  * #InfDiscoveryAvahi implements the #InfDiscovery and #InfLocalPublisher
  * interfaces on top of avahi. It resolves services to client-side
  * #InfXmppConnection<!-- -->s.
+ *
+ * This class is only available if the macro
+ * <literal>LIBINFINITY_HAVE_AVAHI</literal> is defined.
  */
 
 #include <libinfinity/common/inf-discovery-avahi.h>
