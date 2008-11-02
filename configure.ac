@@ -146,6 +146,8 @@ then
   AC_DEFINE([LIBINFINITY_HAVE_AVAHI], 1, [Whether avahi support is enabled])
 fi
 
+AM_CONDITIONAL([LIBINFINITY_HAVE_AVAHI], test "x$use_avahi" = "xyes")
+
 ############
 # gettext
 ############
