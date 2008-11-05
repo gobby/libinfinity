@@ -412,6 +412,14 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
     buffer
   );
 
+  /* Block selection-changed of active user. This would try to resync the 
+   * buffer markers, but GtkTextBuffer already does this for us. */
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+    buffer
+  );
+
   inf_text_buffer_insert_text(
     INF_TEXT_BUFFER(buffer),
     location_offset,
@@ -424,6 +432,12 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
   g_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+    buffer
+  );
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
   );
 
@@ -470,6 +484,14 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
     buffer
   );
 
+  /* Block selection-changed of active user. This would try to resync the 
+   * buffer markers, but GtkTextBuffer already does this for us. */
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
+    buffer
+  );
+
   inf_text_buffer_erase_text(
     INF_TEXT_BUFFER(buffer),
     begin_offset,
@@ -480,6 +502,12 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
   g_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
+    buffer
+  );
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->active_user),
+    G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
   );
 
@@ -586,7 +614,7 @@ inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
   case INF_USER_ACTIVE:
     /* User became active: Sync user selection and the insertion mark of the
      * TextBuffer. They can get out of sync while the user is inactive, and
-     * wake-on-cursor-movement is FALSE. For example text can selected in
+     * wake-on-cursor-movement is FALSE. For example text can be selected in
      * an inactive document, and then the user decides to select something
      * else, erasing the previous selection. */
 
@@ -1125,12 +1153,6 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
     buffer
   );
 
-  g_signal_handlers_block_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
-    buffer
-  );
-
   if(inf_text_chunk_iter_init(chunk, &chunk_iter))
   {
     gtk_text_buffer_get_iter_at_offset(
@@ -1175,6 +1197,10 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
     } while(inf_text_chunk_iter_next(&chunk_iter));
 
     /* Fix left gravity of own cursor on remote insert */
+
+    /* TODO: We could also do this by simply resyncing the text buffer marks
+     * to the active user's caret and selection properties. But then we
+     * wouldn't have left gravtiy if no active user was present. */
     if(user != INF_USER(priv->active_user) || user == NULL)
     {
       mark = gtk_text_buffer_get_insert(priv->buffer);
@@ -1195,6 +1221,12 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
 
       if(insert_at_cursor || insert_at_selection_bound)
       {
+        g_signal_handlers_block_by_func(
+          G_OBJECT(priv->buffer),
+          G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+          buffer
+        );
+
         gtk_text_iter_backward_chars(
           &tag_remove.end_iter,
           inf_text_chunk_get_length(chunk)
@@ -1217,6 +1249,12 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
             &tag_remove.end_iter
           );
         }
+
+        g_signal_handlers_unblock_by_func(
+          G_OBJECT(priv->buffer),
+          G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+          buffer
+        );
       }
     }
   }
@@ -1230,12 +1268,6 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
   g_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
-    buffer
-  );
-
-  g_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
     buffer
   );
 }

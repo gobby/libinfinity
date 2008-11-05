@@ -59,7 +59,8 @@ void
 inf_text_move_operation_transform_insert(guint insert_position,
                                          guint insert_length,
                                          guint* move_position,
-                                         gint* move_length);
+                                         gint* move_length,
+                                         gboolean left_gravity);
 
 void
 inf_text_move_operation_transform_delete(guint delete_position,

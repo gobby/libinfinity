@@ -1,3 +1,23 @@
+2008-11-05  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-move-operation.h:
+	* libinftext/inf-text-move-operation.c: Added a left_gravity parameter
+	to inf_text_move_operation_transform_insert(). Always set it to TRUE
+	in inf_text_move_operation_transform(), assuming a remote operation.
+
+	* libinftext/inf-text-session.c: Interpret all requests as non-caret
+	versions by default. Use right gravity when adjusting the author's
+	cursor on an insert operation.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Block selection-changed signal
+	handler of active user in inf_text_gtk_buffer_insert_text_cb() and
+	inf_text_gtk_buffer_delete_range_cb() since GtkTextBuffer already
+	takes care of adjusting the buffer marks in response to index changes
+	on insert or delete operations.
+
+	These changes fix pasting text over selected text (#390, Georg
+	Kapeller).
+
 2008-11-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-discovery-avahi.c: Added a documentation note

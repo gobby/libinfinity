@@ -271,6 +271,8 @@ inf_text_session_selection_changed_cb(InfTextUser* user,
   {
     if(local->caret_timeout == NULL)
     {
+      /* TODO: Interrupt timeout if a -caret request is sent from that
+       * local user. */
       local->caret_timeout = inf_io_add_timeout(
         inf_adopted_session_get_io(INF_ADOPTED_SESSION(local->session)),
         priv->caret_update_interval - diff,
@@ -412,7 +414,7 @@ inf_text_session_buffer_insert_text_cb_after_foreach_func(InfUser* user,
   gint length;
 
   data = (InfTextSessionInsertForeachData*)user_data;
-  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE && user != data->user)
+  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
   {
     position = inf_text_user_get_caret_position(INF_TEXT_USER(user));
     length = inf_text_user_get_selection_length(INF_TEXT_USER(user));
@@ -421,7 +423,9 @@ inf_text_session_buffer_insert_text_cb_after_foreach_func(InfUser* user,
       data->position,
       inf_text_chunk_get_length(data->chunk),
       &position,
-      &length
+      &length,
+      /* Right gravity for local insertions, left gravity for remote ones */
+      user == data->user ? FALSE : TRUE
     );
 
     inf_text_user_set_selection(INF_TEXT_USER(user), position, length);
@@ -437,7 +441,7 @@ inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
   gint length;
 
   data = (InfTextSessionEraseForeachData*)user_data;
-  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE && user != data->user)
+  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
   {
     position = inf_text_user_get_caret_position(INF_TEXT_USER(user));
     length = inf_text_user_get_selection_length(INF_TEXT_USER(user));
@@ -480,6 +484,8 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
     &data
   );
 
+#if 0
+  /* TODO: If that was an insert-caret request, then do this: */
   if(user != NULL)
   {
     inf_text_user_set_selection(
@@ -488,6 +494,7 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
       0
     );
   }
+#endif
 
   inf_text_session_unblock_local_users_selection_changed(session);
 }
@@ -517,8 +524,12 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
     &data
   );
 
+  /* TODO: If that was an erase-caret request, then do this: */
+
+#if 0
   if(user != NULL)
     inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
+#endif
 
   inf_text_session_unblock_local_users_selection_changed(session);
 }

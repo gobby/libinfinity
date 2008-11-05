@@ -149,7 +149,8 @@ inf_text_move_operation_transform(InfAdoptedOperation* operation,
         INF_TEXT_INSERT_OPERATION(against)
       ),
       &new_pos,
-      &new_len
+      &new_len,
+      TRUE /* left gravity */
     );
   }
   else if(INF_TEXT_IS_DELETE_OPERATION(against))
@@ -412,45 +413,45 @@ inf_text_move_operation_get_length(InfTextMoveOperation* operation)
  * @move_position: Points to the character offset to which the caret is moved.
  * @move_length: Points to the number of characters selected. Negative means
  * towards the beginning.
+ * @left_gravity: Whether the move position and length have left gravity.
  *
  * Changes *@move_position and *@move_length so that they point to the same
  * region when @insert_length characters are inserted at @insert_position.
+ *
+ * If text is inserted at the same position as @move_position, then
+ * @move_position is kept at the position it currently is, otherwise it is
+ * shifted to the right.
  **/
 void
 inf_text_move_operation_transform_insert(guint insert_position,
                                          guint insert_length,
                                          guint* move_position,
-                                         gint* move_length)
+                                         gint* move_length,
+                                         gboolean left_gravity)
 {
   guint cur_pos;
-  gint cur_len;
+  guint cur_bound;
   
   g_return_if_fail(move_position != NULL);
   g_return_if_fail(move_length != NULL);
 
   cur_pos = *move_position;
-  cur_len = *move_length;
+  cur_bound = *move_position + *move_length;
 
-  /* Note left gravity */
-  if(insert_position < cur_pos)
-    *move_position = cur_pos + insert_length;
-  else
-    *move_position = cur_pos;
+  if( (insert_position < cur_pos) ||
+      (insert_position == cur_pos && !left_gravity))
+  {
+    cur_pos += insert_length;
+  }
 
-  if(cur_len < 0)
+  if( (insert_position < cur_bound) ||
+      (insert_position == cur_bound && !left_gravity))
   {
-    if(insert_position >= cur_pos + cur_len && insert_position < cur_pos)
-      *move_length = cur_len - insert_length;
-    else
-      *move_length = cur_len;
+    cur_bound += insert_length;
   }
-  else
-  {
-    if(insert_position >= cur_pos && insert_position < cur_pos + cur_len)
-      *move_length = cur_len + insert_length;
-    else
-      *move_length = cur_len;
-  }
+
+  *move_position = cur_pos;
+  *move_length = (gint)cur_bound - (gint)cur_pos;
 }
 
 /**
