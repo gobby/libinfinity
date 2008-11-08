@@ -1,3 +1,12 @@
+libinfinity 0.1.1:
+
+	* Made libinfinity properly relocatable on Windows
+	* Fixed the documentation build when avahi is disabled (#386,
+	  Gregory Haynes)
+	* Fixed a segfault when showing the file list (#388, Georg)
+	* Fixed pasting a lot amount of text (#387, Benjamin Herr)
+	* Fixed connection to server with much history (#389, Matthias Prinz)
+
 libinfinity 0.1.0:
 
 	* Initial release of libinfinity

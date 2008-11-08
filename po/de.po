@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-18 15:58+0200\n"
+"POT-Creation-Date: 2008-11-08 23:58+0100\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -378,7 +378,7 @@ msgstr ""
 msgid "'time' attribute in user message is missing"
 msgstr ""
 
-#: libinfinity/adopted/inf-adopted-session.c:1435
+#: libinfinity/adopted/inf-adopted-session.c:1463
 #, c-format
 msgid "Operation for request missing"
 msgstr ""
@@ -1025,51 +1025,51 @@ msgstr ""
 msgid "An unknown authentication error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1001
+#: libinfinity/common/inf-xmpp-connection.c:999
 #, c-format
 msgid "The server did not provide a certificate"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1754
+#: libinfinity/common/inf-xmpp-connection.c:1752
 msgid "Stream is not yet secured with TLS"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1797
+#: libinfinity/common/inf-xmpp-connection.c:1795
 msgid "Stream is not yet authorized"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1848
+#: libinfinity/common/inf-xmpp-connection.c:1846
 #, c-format
 msgid "The server does not support transport layer security (TLS)"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1870
+#: libinfinity/common/inf-xmpp-connection.c:1868
 #, c-format
 msgid "The server requires transport layer security (TLS)"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1907
+#: libinfinity/common/inf-xmpp-connection.c:1905
 #, c-format
 msgid "The server does not provide any authentication mechanism"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1992
+#: libinfinity/common/inf-xmpp-connection.c:1990
 #, c-format
 msgid "The server does not offer a suitable authentication mechanism"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:2048
+#: libinfinity/common/inf-xmpp-connection.c:2046
 #, c-format
 msgid "The server cannot perform the TLS handshake"
 msgstr ""
 
 #. XML Warning from <IP Address>: <Warning Text>
-#: libinfinity/common/inf-xmpp-connection.c:2437
+#: libinfinity/common/inf-xmpp-connection.c:2435
 #, c-format
 msgid "XML warning from %s: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:3806
+#: libinfinity/common/inf-xmpp-connection.c:3808
 #, c-format
 msgid "The server certificate is not trusted"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"

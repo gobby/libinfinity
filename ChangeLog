@@ -1,5 +1,11 @@
 2008-11-08  Armin Burgmeier  <armin@arbur.net>
 
+	* === Released 0.1.1 ===
+
+	* NEWS: Updated for release.
+
+2008-11-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-request-log.h:
 	* libinfinity/adopted/inf-adopted-request-log.c: Added
 	inf_adopted_request_log_set_begin() and
