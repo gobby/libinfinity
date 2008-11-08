@@ -497,6 +497,71 @@ inf_adopted_request_log_get_end(InfAdoptedRequestLog* log)
 }
 
 /**
+ * inf_adopted_request_log_is_empty:
+ * @log: A #InfAdoptedRequestLog.
+ *
+ * Returns whether @log is empty. A log is empty if it does not contain any
+ * requsets.
+ *
+ * Returns: Whether @log is empty.
+ */
+gboolean
+inf_adopted_request_log_is_empty(InfAdoptedRequestLog* log)
+{
+  InfAdoptedRequestLogPrivate* priv;
+
+  g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+
+  if(priv->begin == priv->end)
+    return TRUE;
+
+  return FALSE;
+}
+
+/**
+ * inf_adopted_request_log_set_begin:
+ * @log: A #InfAdoptedRequestLog.
+ * @n: The index of the first request to be added to the log.
+ *
+ * This function sets the index of the first log that will be added to @log.
+ * For a new request log, this is set to 0. If you intend to insert a request
+ * sequence into @log that does not start with 0, then you can call this
+ * function with the desired start index, so that
+ * inf_adopted_request_log_get_begin() and inf_adopted_request_log_get_end()
+ * return the correct value.
+ *
+ * If you don't need inf_adopted_request_log_get_begin() or
+ * inf_adopted_request_log_get_end() before adding the first request to the
+ * log, then you don't need to call this function, since
+ * inf_adopted_request_log_add_request() will do it implicitely based on the
+ * request's vector time component for the request log's user.
+ *
+ * This function can only be called if the request log is empty, see
+ * inf_adopted_request_log_is_empty().
+ */
+void
+inf_adopted_request_log_set_begin(InfAdoptedRequestLog* log,
+                                  guint n)
+{
+  InfAdoptedRequestLogPrivate* priv;
+
+  g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  g_return_if_fail(priv->begin == priv->end);
+
+  if(priv->begin != n)
+  {
+    priv->begin = n;
+    priv->end = n;
+
+    g_object_notify(G_OBJECT(log), "begin");
+    g_object_notify(G_OBJECT(log), "end");
+  }
+}
+
+/**
  * inf_adopted_request_log_get_request:
  * @log: A #InfAdoptedRequestLog.
  * @n: The index of a request contained in @log.
@@ -527,9 +592,9 @@ inf_adopted_request_log_get_request(InfAdoptedRequestLog* log,
  * @request: A #InfAdoptedRequest.
  *
  * Inserts @request into @log. The component represented by the log's user
- * of the request's state vector must match the end index of @log. Also, the
- * user that issued @request must be the same user as the one this request log
- * belongs to.
+ * of the request's state vector must match the end index of @log if @log
+ * is not empty. Also, the user that issued @request must be the same user as
+ * the one this request log belongs to.
  **/
 void
 inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
@@ -547,26 +612,13 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
 
   g_return_if_fail(inf_adopted_request_get_user_id(request) == priv->user_id);
 
-  if(priv->begin != priv->end)
-  {
-    g_return_if_fail(
-      inf_adopted_state_vector_get(
-        inf_adopted_request_get_vector(request),
-        priv->user_id
-      ) == priv->end
-    );
-  }
-  else
-  {
-    /* No entry yet, so set begin/end according to the first request. */
-    /* TODO: We should only allow this for the first request added to log. */
-    priv->end = inf_adopted_state_vector_get(
+  g_return_if_fail(
+    priv->begin == priv->end ||
+    inf_adopted_state_vector_get(
       inf_adopted_request_get_vector(request),
       priv->user_id
-    );
-
-    priv->begin = priv->end;
-  }
+    ) == priv->end
+  );
 
   if(priv->offset + (priv->end - priv->begin) == priv->alloc)
   {
@@ -636,8 +688,22 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     }
   }
 
+  g_object_freeze_notify(log);
+
+  if(priv->begin == priv->end)
+  {
+    priv->begin = inf_adopted_state_vector_get(
+      inf_adopted_request_get_vector(request),
+      priv->user_id
+    );
+
+    priv->end = priv->begin;
+  }
+
   entry = &priv->entries[priv->offset + (priv->end - priv->begin)];
   ++ priv->end;
+
+  g_object_notify(G_OBJECT(log), "end");
 
   entry->request = request;
   g_object_ref(G_OBJECT(request));
@@ -649,7 +715,14 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     entry->next_associated = NULL;
     entry->prev_associated = NULL;
     priv->next_undo = entry;
-    priv->next_redo = NULL;
+    g_object_notify(G_OBJECT(log), "next-undo");
+
+    if(priv->next_redo != NULL)
+    {
+      priv->next_redo = NULL;
+      g_object_notify(G_OBJECT(log), "next-redo");
+    }
+
     break;
   case INF_ADOPTED_REQUEST_UNDO:
     g_assert(priv->next_undo != NULL);
@@ -662,7 +735,10 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
 
     priv->next_undo =
       inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_UNDO);
+    g_object_notify(G_OBJECT(log), "next-undo");
+
     priv->next_redo = entry;
+    g_object_notify(G_OBJECT(log), "next-redo");
 
     g_assert(priv->next_undo == NULL ||
              inf_adopted_request_get_request_type(priv->next_undo->request) ==
@@ -681,8 +757,11 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     entry->original = entry->prev_associated->original;
 
     priv->next_undo = entry;
+    g_object_notify(G_OBJECT(log), "next-undo");
+
     priv->next_redo =
       inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_REDO);
+    g_object_notify(G_OBJECT(log), "next-redo");
 
     g_assert(priv->next_redo == NULL ||
              inf_adopted_request_get_request_type(priv->next_redo->request) ==
@@ -694,10 +773,7 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     break;
   }
 
-  /* TODO: Only notify if they really changed */
-  g_object_notify(G_OBJECT(log), "next-undo");
-  g_object_notify(G_OBJECT(log), "next-redo");
-  g_object_notify(G_OBJECT(log), "end");
+  g_object_thaw_notify(G_OBJECT(log));
 }
 
 /**

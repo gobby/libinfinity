@@ -72,6 +72,13 @@ inf_adopted_request_log_get_begin(InfAdoptedRequestLog* log);
 guint
 inf_adopted_request_log_get_end(InfAdoptedRequestLog* log);
 
+gboolean
+inf_adopted_request_log_is_empty(InfAdoptedRequestLog* log);
+
+void
+inf_adopted_request_log_set_begin(InfAdoptedRequestLog* log,
+                                  guint n);
+
 InfAdoptedRequest*
 inf_adopted_request_log_get_request(InfAdoptedRequestLog* log,
                                     guint n);

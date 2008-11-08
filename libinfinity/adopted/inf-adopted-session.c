@@ -1076,6 +1076,28 @@ inf_adopted_session_close(InfSession* session)
 }
 
 static void
+inf_adopted_session_synchronization_complete_foreach_user_func(InfUser* user,
+                                                               gpointer data)
+{
+  InfAdoptedRequestLog* log;
+  log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
+
+  /* Set begin index of empty request logs. Algorithm relies on
+   * inf_adopted_request_log_get_begin() to return the index of the request
+   * that will first be added to the request log. */
+  if(inf_adopted_request_log_is_empty(log))
+  {
+    inf_adopted_request_log_set_begin(
+      log,
+      inf_adopted_state_vector_get(
+        inf_adopted_user_get_vector(INF_ADOPTED_USER(user)),
+        inf_user_get_id(user)
+      )
+    );
+  }
+}
+
+static void
 inf_adopted_session_synchronization_complete(InfSession* session,
                                              InfXmlConnection* connection)
 {
@@ -1092,6 +1114,12 @@ inf_adopted_session_synchronization_complete(InfSession* session,
 
   if(status == INF_SESSION_SYNCHRONIZING)
   {
+    inf_user_table_foreach_user(
+      inf_session_get_user_table(session),
+      inf_adopted_session_synchronization_complete_foreach_user_func,
+      NULL
+    );
+
     /* Create adOPTed algorithm upon successful synchronization */
     g_assert(priv->algorithm == NULL);
     inf_adopted_session_create_algorithm(INF_ADOPTED_SESSION(session));
