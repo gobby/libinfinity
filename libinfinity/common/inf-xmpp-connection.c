@@ -536,7 +536,6 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
                                guint len)
 {
   InfXmppConnectionPrivate* priv;
-  guint bytes;
   ssize_t cur_bytes;
   GError* error;
 
@@ -550,8 +549,6 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
 
   if(priv->session != NULL)
   {
-    bytes = 0;
-
     do
     {
       cur_bytes = gnutls_record_send(priv->session, data, len);
@@ -577,9 +574,10 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
       }
       else
       {
-        bytes += cur_bytes;
+        data += cur_bytes;
+        len -= cur_bytes;
       }
-    } while(bytes < len);
+    } while(len > 0);
   }
   else
   {
@@ -2669,6 +2667,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
   {
     if(priv->session != NULL)
     {
+      g_assert(priv->pull_len == 0);
+
       priv->pull_data = data;
       priv->pull_len = len;
 
@@ -2721,6 +2721,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
   }
   else
   {
+    g_assert(priv->pull_len == 0);
+
     /* Perform TLS handshake */
     priv->pull_data = data;
     priv->pull_len = len;
