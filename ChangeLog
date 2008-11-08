@@ -1,3 +1,8 @@
+2008-11-08  Benjamin Herr  <ben@0x539.de>
+
+	* libinfinity/inf-xmpp-connection.h: Properly advance data pointer
+	on partial writes (fixed bug #387).
+
 2008-11-02  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Add LIBINFINITY_HAVI_AVAHI as an AM_CONDITIONAL.
