@@ -553,7 +553,7 @@ inf_user_table_lookup_user_by_name(InfUserTable* user_table,
 }
 
 /**
- * inf_user_table_foreach:
+ * inf_user_table_foreach_user:
  * @user_table: A #InfUserTable.
  * @func: The function to call for each user.
  * @user_data: User data to pass to the function.
