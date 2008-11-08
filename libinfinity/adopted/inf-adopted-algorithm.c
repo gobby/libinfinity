@@ -707,6 +707,9 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
     );
 
     g_assert(n >= inf_adopted_request_log_get_begin(log));
+    /* Can be equal to end if the corresponding request is not yet
+     * inserted in the log. */
+    g_assert(n <= inf_adopted_request_log_get_end(log));
     if(n == inf_adopted_request_log_get_begin(log)) return TRUE;
 
     request = inf_adopted_request_log_get_request(log, n - 1);

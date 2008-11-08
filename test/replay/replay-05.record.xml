@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<infinote-adopted-session-record>
+ <initial>
+  <sync-begin num-messages="6"/>
+  <sync-user id="1" name="der große augomamotor" status="unavailable" time="1:2" caret="489" selection="0" hue="0.045165200000000003"/>
+  <sync-user id="2" name="Der Tögi" status="active" time="1:2;2:892;3:2002;5:87;6:16" caret="48317" selection="0" hue="0.106236"/>
+  <sync-user id="3" name="der grosse reale matthias" status="unavailable" time="1:2;2:619;3:2002;5:87;6:16" caret="0" selection="0" hue="0.355182"/>
+  <sync-user id="4" name="the real matthias" status="unavailable" time="1:2;2:46;3:1692;5:87" caret="40221" selection="0" hue="0.045165200000000003"/>
+  <sync-user id="5" name="the one and only markus" status="unavailable" time="1:2;2:619;3:2002;5:87;6:16" caret="0" selection="0" hue="0.13153599999999999"/>
+  <sync-user id="6" name="the real matthias 2" status="inactive" time="1:2;2:892;3:2002;5:87;6:16" caret="1369" selection="0" hue="0.045165200000000003"/>
+  <sync-end/>
+ </initial>
+ <request user="3" time="2:273;4:0">
+  <move caret="0" selection="0"/>
+ </request>
+</infinote-adopted-session-record>
