@@ -1,3 +1,8 @@
+2008-11-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-hue-chooser.c: Don't use
+	cairo_format_stride_for_width, so we don't need cairo 1.6 (Bug #393).
+
 2008-11-08  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-request-log.h:

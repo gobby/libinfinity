@@ -218,7 +218,6 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
   gdouble b;
   cairo_surface_t* source;
   cairo_t* source_cr;
-  gint stride;
   gint focus_width;
   gint focus_pad;
 
@@ -239,8 +238,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
   
   /* Create an image initialized with the ring colors */
   
-  stride = cairo_format_stride_for_width(CAIRO_FORMAT_RGB24, width);
-  buf = g_new(guint32, height * stride / 4);
+  buf = g_new(guint32, width * height);
   
   for(yy = 0; yy < height; yy++)
   {
@@ -281,7 +279,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
     CAIRO_FORMAT_RGB24,
     width,
     height,
-    stride
+    4 * width
   );
 
   /* Now draw the value marker onto the source image, so that it
