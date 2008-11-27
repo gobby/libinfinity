@@ -839,6 +839,7 @@ infd_directory_remove_node
 infd_directory_iter_get_node_type
 infd_directory_iter_get_plugin
 infd_directory_iter_get_session
+infd_directory_iter_save_session
 <SUBSECTION Standard>
 INFD_DIRECTORY
 INFD_IS_DIRECTORY

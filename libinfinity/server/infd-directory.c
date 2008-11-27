@@ -93,9 +93,6 @@ struct _InfdDirectorySyncIn {
   gchar* name;
   const InfdNotePlugin* plugin;
   InfdSessionProxy* proxy;
-#if 0
-  gboolean subscribe_sync_conn;
-#endif
 };
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
@@ -118,12 +115,6 @@ struct _InfdDirectoryPrivate {
   GSList* sync_ins;
 };
 
-#if 0
-typedef gboolean(*InfdDirectoryCreateStorageNodeFunc)(InfdDirectoryStorage*,
-                                                      const gchar*,
-                                                      GError**);
-#endif
-
 enum {
   PROP_0,
 
@@ -136,6 +127,8 @@ enum {
 enum {
   NODE_ADDED,
   NODE_REMOVED,
+  ADD_SESSION,
+  REMOVE_SESSION,
 
   LAST_SIGNAL
 };
@@ -529,31 +522,23 @@ infd_directory_node_link_session(InfdDirectory* directory,
                                  InfdSessionProxy* proxy)
 {
   InfdDirectoryPrivate* priv;
+  InfdDirectoryIter iter;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
   g_assert(node->shared.note.session == NULL);
 
-  node->shared.note.session = proxy;
-  g_object_ref(proxy);
+  iter.node = node;
+  iter.node_id = node->id;
 
-  g_object_set_qdata(
-    G_OBJECT(proxy),
-    infd_directory_node_id_quark,
-    GUINT_TO_POINTER(node->id)
+  g_signal_emit(
+    G_OBJECT(directory),
+    directory_signals[ADD_SESSION],
+    0,
+    &iter,
+    proxy
   );
-
-  g_signal_connect(
-    G_OBJECT(node->shared.note.session),
-    "notify::idle",
-    G_CALLBACK(infd_directory_session_idle_notify_cb),
-    directory
-  );
-
-  if(infd_session_proxy_is_idle(node->shared.note.session))
-  {
-    infd_directory_start_session_save_timeout(directory, node);
-  }
 }
 
 static void
@@ -561,35 +546,104 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
                                    InfdDirectoryNode* node)
 {
   InfdDirectoryPrivate* priv;
+  InfdDirectoryIter iter;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
   g_assert(node->shared.note.session != NULL);
 
-  if(node->shared.note.save_timeout != NULL)
-  {
-    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
-    node->shared.note.save_timeout = NULL;
-  }
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(node->shared.note.session),
-    G_CALLBACK(infd_directory_session_idle_notify_cb),
-    directory
-  );
-
-  g_object_set_qdata(
-    G_OBJECT(node->shared.note.session),
-    infd_directory_node_id_quark,
-    NULL
-  );
+  iter.node = node;
+  iter.node_id = node->id;
 
   /* TODO: We could still weakref the session, to continue using it if
    * others need it anyway. We just need to strongref it again if it becomes
    * non-idle. */
 
-  g_object_unref(node->shared.note.session);
-  node->shared.note.session = NULL;
+  g_signal_emit(
+    G_OBJECT(directory),
+    directory_signals[REMOVE_SESSION],
+    0,
+    &iter,
+    node->shared.note.session
+  );
+}
+
+static void
+infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
+                                          InfdDirectoryNode* node,
+                                          gboolean save_notes)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* child;
+  gchar* path;
+  GError* error;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  switch(node->type)
+  {
+  case INFD_STORAGE_NODE_SUBDIRECTORY:
+    if(node->shared.subdir.explored == TRUE)
+    {
+      for(child = node->shared.subdir.child;
+          child != NULL;
+          child = child->next)
+      {
+        infd_directory_node_unlink_child_sessions(
+          directory,
+          child,
+          save_notes
+        );
+      }
+    }
+
+    break;
+  case INFD_STORAGE_NODE_NOTE:
+    if(node->shared.note.session != NULL)
+    {
+      if(save_notes)
+      {
+        infd_directory_node_get_path(node, &path, NULL);
+
+        error = NULL;
+        node->shared.note.plugin->session_write(
+          priv->storage,
+          infd_session_proxy_get_session(node->shared.note.session),
+          path,
+          node->shared.note.plugin->user_data,
+          &error
+        );
+
+        if(error != NULL)
+        {
+          /* There is not really anything we could do about it here. Of
+           * course, any application should save the sessions explicitely
+           * before shutting the directory down, so that it has the chance to
+           * cancel the shutdown if the session could not be saved. */
+          /* TODO: We could try saving the session somewhere in /tmp, for
+           * example via to_xml_sync. */
+          g_warning(
+            _("Could not write session \"%s\" to storage: %s\n\nAll changes "
+              "since the document das been saved are lost."),
+            path,
+            error->message
+          );
+
+          g_error_free(error);
+        }
+
+        g_free(path);
+      }
+
+      infd_directory_node_unlink_session(directory, node);
+    }
+
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
 }
 
 static void
@@ -726,13 +780,10 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
 /* Notes are saved into the storage when save_notes is TRUE. */
 static void
 infd_directory_node_free(InfdDirectory* directory,
-                         InfdDirectoryNode* node,
-                         gboolean save_notes)
+                         InfdDirectoryNode* node)
 {
   InfdDirectoryPrivate* priv;
-  gchar* path;
   gboolean removed;
-  GError* error;
 
   GSList* item;
   GSList* next;
@@ -753,52 +804,16 @@ infd_directory_node_free(InfdDirectory* directory,
     {
       while(node->shared.subdir.child != NULL)
       {
-        infd_directory_node_free(
-          directory,
-          node->shared.subdir.child,
-          save_notes
-        );
+        infd_directory_node_free(directory, node->shared.subdir.child);
       }
     }
 
     break;
   case INFD_STORAGE_NODE_NOTE:
-    if(save_notes == TRUE && node->shared.note.session != NULL)
-    {
-      infd_directory_node_get_path(node, &path, NULL);
-
-      error = NULL;
-      node->shared.note.plugin->session_write(
-        priv->storage,
-        infd_session_proxy_get_session(node->shared.note.session),
-        path,
-        node->shared.note.plugin->user_data,
-        &error
-      );
-
-      if(error != NULL)
-      {
-        /* There is not really anything we could do about it here. Of course,
-         * any application should save the sessions explicitely before
-         * shutting the directory down, so that it has the chance to cancel
-         * the shutdown if the session could not be saved. */
-        /* TODO: We could try saving the session somewhere in /tmp, for
-         * example via to_xml_sync. */
-        g_warning(
-          _("Could not write session \"%s\" to storage: %s\n\nChanges since "
-            "the last save are lost."),
-          path, error->message
-        );
-
-        g_error_free(error);
-      }
-
-      g_free(path);
-    }
-
-    if(node->shared.note.session != NULL)
-      infd_directory_node_unlink_session(directory, node);
-
+    /* Sessions must have been explicitely unlinked before, so that the
+     * remove-session signal was emitted before any children already have been
+     * removed. */
+    g_assert(node->shared.note.session == NULL);
     break;
   default:
     g_assert_not_reached();
@@ -1002,13 +1017,6 @@ infd_directory_node_register(InfdDirectory* directory,
   InfdDirectoryIter iter;
   xmlNodePtr xml;
 
-#if 0
-  g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(node != NULL);
-  g_return_if_fail(node->parent != NULL);
-  infd_directory_return_if_subdir_fail(node->parent);
-#endif
-
   priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
@@ -1019,20 +1027,6 @@ infd_directory_node_register(InfdDirectory* directory,
     0,
     &iter
   );
-
-#if 0
-  if(seq_conn != NULL)
-  {
-    xml = infd_directory_node_register_to_xml(node);
-    inf_xml_util_set_attribute_uint(xml, "seq", seq);
-
-    inf_connection_manager_group_send_to_connection(
-      priv->group,
-      seq_conn,
-      xml
-    );
-  }
-#endif
 
   if(node->parent->shared.subdir.connections != NULL)
   {
@@ -1150,13 +1144,6 @@ infd_directory_node_unregister(InfdDirectory* directory,
   InfdDirectoryIter iter;
   xmlNodePtr xml;
 
-#if 0
-  g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(node != NULL);
-  g_return_if_fail(node->parent != NULL);
-  infd_directory_return_if_subdir_fail(node->parent);
-#endif
-
   priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
@@ -1196,39 +1183,6 @@ infd_directory_node_unregister(InfdDirectory* directory,
 /*
  * Sync-In
  */
-
-#if 0
-static void
-infd_directory_sync_in_add_user_cb(InfUserTable* user_table,
-                                   InfUser* user,
-                                   gpointer user_data)
-{
-  InfdDirectorySyncIn* sync_in;
-  InfSession* session;
-  InfXmlConnection* connection;
-
-  sync_in = (InfdDirectorySyncIn*)user_data;
-
-  if(inf_user_get_status(user) == INF_USER_AVAILABLE)
-  {
-    session = infd_session_proxy_get_session(sync_in->proxy);
-    g_object_get(G_OBJECT(session), "sync-connection", &connection, NULL);
-    g_assert(connection != NULL);
-
-    if(inf_user_get_connection(user) != connection ||
-       !sync_in->subscribe_sync_conn)
-    {
-      /* We don't support sync-in of sessions that already have subscribed
-       * users from different connections than the synchronizing one. */
-
-      /* This will trigger the synchronization-failed signal: */
-      inf_session_close(session);
-    }
-
-    g_object_unref(connection);
-  }
-}
-#endif
 
 static void
 infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
@@ -1326,9 +1280,6 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
   InfConnectionManagerGroup* synchronization_group;
-#if 0
-  InfUserTable* user_table;
-#endif
   gchar* sync_group_name;
   guint node_id;
 
@@ -1342,9 +1293,6 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->node_id = node_id;
   sync_in->name = g_strdup(name);
   sync_in->plugin = plugin;
-#if 0
-  sync_in->subscribe_sync_conn = subscribe_sync_conn;
-#endif
 
   /* Synchronize in own group if we are not subscribing the synchronizing
    * connection. */
@@ -1394,18 +1342,6 @@ infd_directory_add_sync_in(InfdDirectory* directory,
     sync_in
   );
 
-#if 0
-  user_table = inf_session_get_user_table(
-    infd_session_proxy_get_session(sync_in->proxy)
-  );
-
-  g_signal_connect(
-    G_OBJECT(user_table),
-    "add-user",
-    G_CALLBACK(infd_directory_sync_in_add_user_cb),
-    sync_in
-  );
-#endif
   priv->sync_ins = g_slist_prepend(priv->sync_ins, sync_in);
   return sync_in;
 }
@@ -1415,9 +1351,6 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
                               InfdDirectorySyncIn* sync_in)
 {
   InfdDirectoryPrivate* priv;
-#if 0
-  InfUserTable* user_table;
-#endif
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_signal_handlers_disconnect_by_func(
@@ -1431,18 +1364,6 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
     sync_in
   );
-
-#if 0
-  user_table = inf_session_get_user_table(
-    infd_session_proxy_get_session(sync_in->proxy)
-  );
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(user_table),
-    G_CALLBACK(infd_directory_sync_in_add_user_cb),
-    sync_in
-  );
-#endif
 
   /* This cancels the synchronization: */
   g_object_unref(sync_in->proxy);
@@ -1777,8 +1698,12 @@ infd_directory_node_remove(InfdDirectory* directory,
   if(result == FALSE)
     return FALSE;
 
+  /* Need to unlink child sessions explicitely before unregistering, so
+   * remove-session is emitted before node-removed. Don't save changes since
+   * we just removed the note anyway. */
+  infd_directory_node_unlink_child_sessions(directory, node, FALSE);
   infd_directory_node_unregister(directory, node, seq_conn, seq);
-  infd_directory_node_free(directory, node, FALSE);
+  infd_directory_node_free(directory, node);
   return TRUE;
 }
 
@@ -2265,7 +2190,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
           /* The session should be set by infd_directory_node_add_note() */
           g_assert(node->shared.note.session != NULL);
  
-         infd_session_proxy_subscribe_to(
+          infd_session_proxy_subscribe_to(
             node->shared.note.session,
             connection,
             priv->group,
@@ -2581,12 +2506,13 @@ infd_directory_set_storage(InfdDirectory* directory,
     if(priv->root != NULL && priv->root->shared.subdir.explored == TRUE)
     {
       /* Clear directory tree. This will cause all sessions to be saved in
-       * storage. Note that sessions are not closed and further
-       * modifications to the sessions will not be stored. */
+       * storage. Note that sessions are not closed, but further
+       * modifications to the sessions will not be stored in storage. */
       while((child = priv->root->shared.subdir.child) != NULL)
       {
+        infd_directory_node_unlink_child_sessions(directory, child, TRUE);
         infd_directory_node_unregister(directory, child, NULL, 0);
-        infd_directory_node_free(directory, child, TRUE);
+        infd_directory_node_free(directory, child);
       }
     }
 
@@ -2757,7 +2683,8 @@ infd_directory_dispose(GObject* object)
 
   /* This frees the complete directory tree and saves sessions into the
    * storage. */
-  infd_directory_node_free(directory, priv->root, TRUE);
+  infd_directory_node_unlink_child_sessions(directory, priv->root, TRUE);
+  infd_directory_node_free(directory, priv->root);
   priv->root = NULL;
 
   g_hash_table_destroy(priv->nodes);
@@ -2860,6 +2787,82 @@ infd_directory_get_property(GObject* object,
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
+}
+
+/*
+ * Default signal handler implementation.
+ */
+static void
+infd_directory_add_session(InfdDirectory* directory,
+                           InfdDirectoryIter* iter,
+                           InfdSessionProxy* session)
+{
+  InfdDirectoryNode* node;
+
+  infd_directory_return_if_iter_fail(directory, iter);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session == NULL);
+  
+  node->shared.note.session = session;
+  g_object_ref(session);
+
+  g_object_set_qdata(
+    G_OBJECT(session),
+    infd_directory_node_id_quark,
+    GUINT_TO_POINTER(node->id)
+  );
+
+  g_signal_connect(
+    G_OBJECT(session),
+    "notify::idle",
+    G_CALLBACK(infd_directory_session_idle_notify_cb),
+    directory
+  );
+
+  if(infd_session_proxy_is_idle(node->shared.note.session))
+  {
+    infd_directory_start_session_save_timeout(directory, node);
+  }
+}
+
+static void
+infd_directory_remove_session(InfdDirectory* directory,
+                              InfdDirectoryIter* iter,
+                              InfdSessionProxy* session)
+{
+  InfdDirectoryNode* node;
+  InfdDirectoryPrivate* priv;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_if_iter_fail(directory, iter);
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session == session);
+
+  if(node->shared.note.save_timeout != NULL)
+  {
+    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
+    node->shared.note.save_timeout = NULL;
+  }
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(session),
+    G_CALLBACK(infd_directory_session_idle_notify_cb),
+    directory
+  );
+
+  g_object_set_qdata(
+    G_OBJECT(session),
+    infd_directory_node_id_quark,
+    NULL
+  );
+
+  g_object_unref(session);
+  node->shared.note.session = NULL;
 }
 
 /*
@@ -3001,6 +3004,8 @@ infd_directory_class_init(gpointer g_class,
 
   directory_class->node_added = NULL;
   directory_class->node_removed = NULL;
+  directory_class->add_session = infd_directory_add_session;
+  directory_class->remove_session = infd_directory_remove_session;
 
   infd_directory_node_id_quark =
     g_quark_from_static_string("INFD_DIRECTORY_NODE_ID");
@@ -3095,6 +3100,56 @@ infd_directory_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
+
+  /**
+   * InfdDirectory::add-session:
+   * @directory: The #InfdDirectory emitting the signal.
+   * @iter: A #InfdDirectoryIter pointing to the affected node.
+   * @session: The #InfdSessionProxy proxying the added session.
+   *
+   * This signal is emitted, when a session has been associated with a node.
+   * This happens when infd_directory_iter_get_session() is called on a node,
+   * when a remote client subscribes to a session or a new node was created.
+   *
+   * When a session has been created for a node, the session is kept until it
+   * is idle for some time. Then, it is removed again after having been stored
+   * into the background storage.
+   */
+  directory_signals[ADD_SESSION] = g_signal_new(
+    "add-session",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdDirectoryClass, add_session),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INFD_TYPE_SESSION_PROXY
+  );
+
+  /**
+   * InfdDirectory::remove-session:
+   * @directory: The #InfdDirectory emitting the signal.
+   * @iter: A #InfdDirectoryIter pointing to the affected node.
+   * @session: The #InfdSessionProxy proxying the removed session.
+   *
+   * This signal is emitted when a previously added session was removed. This
+   * happens when a session is idle for some time, or when the corresponding
+   * node has been removed.
+   */
+  directory_signals[REMOVE_SESSION] = g_signal_new(
+    "remove-session",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdDirectoryClass, remove_session),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INFD_TYPE_SESSION_PROXY
   );
 }
 
@@ -3814,6 +3869,48 @@ infd_directory_iter_get_session(InfdDirectory* directory,
   g_return_val_if_fail(node->type != INFD_STORAGE_NODE_NOTE, NULL);
 
   return infd_directory_node_get_session(directory, node, error);
+}
+
+/**
+ * infd_directory_iter_save_session:
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a note in @directory.
+ * @error: Location to store error information.
+ *
+ * Attempts to store the session the node @iter points to represents into the
+ * background storage.
+ *
+ * Return Value: %TRUE if the operation succeeded, %FALSE otherwise.
+ */
+gboolean
+infd_directory_iter_save_session(InfdDirectory* directory,
+                                 InfdDirectoryIter* iter,
+                                 GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  gchar* path;
+  gboolean result;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type != INFD_STORAGE_NODE_NOTE, FALSE);
+
+  infd_directory_node_get_path(node, &path, NULL);
+
+  result = node->shared.note.plugin->session_write(
+    priv->storage,
+    infd_session_proxy_get_session(node->shared.note.session),
+    path,
+    node->shared.note.plugin->user_data,
+    error
+  );
+
+  g_free(path);
+  return result;
 }
 
 /* vim:set et sw=2 ts=2: */

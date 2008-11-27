@@ -56,6 +56,14 @@ struct _InfdDirectoryClass {
 
   void (*node_removed)(InfdDirectory* directory,
                        InfdDirectoryIter* iter);
+
+  void (*add_session)(InfdDirectory* directory,
+                      InfdDirectoryIter* iter,
+                      InfdSessionProxy* session);
+
+  void (*remove_session)(InfdDirectory* directory,
+                         InfdDirectoryIter* iter,
+                         InfdSessionProxy* session);
 };
 
 struct _InfdDirectory {
@@ -155,6 +163,11 @@ InfdSessionProxy*
 infd_directory_iter_get_session(InfdDirectory* directory,
                                 InfdDirectoryIter* iter,
                                 GError** error);
+
+gboolean
+infd_directory_iter_save_session(InfdDirectory* directory,
+                                 InfdDirectoryIter* iter,
+                                 GError** error);
 
 G_END_DECLS
 

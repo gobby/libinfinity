@@ -1,3 +1,10 @@
+2008-11-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added
+	infd_directory_iter_save_session(), and the "add-session" and
+	"remove-session" signals.
+
 2008-11-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-hue-chooser.c: Don't use
