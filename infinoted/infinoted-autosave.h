@@ -16,43 +16,34 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INFINOTED_RUN_H__
-#define __INFINOTED_RUN_H__
+#ifndef __INFINOTED_AUTOSAVE_H__
+#define __INFINOTED_AUTOSAVE_H__
 
-#include <infinoted/infinoted-startup.h>
-#include <infinoted/infinoted-autosave.h>
-
-#include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
-#include <libinfinity/common/inf-standalone-io.h>
 
 #include <glib.h>
 
 G_BEGIN_DECLS
 
-typedef struct _InfinotedRun InfinotedRun;
-struct _InfinotedRun {
-  InfStandaloneIo* io;
+typedef struct _InfinotedAutosave InfinotedAutosave;
+struct _InfinotedAutosave {
   InfdDirectory* directory;
-  InfdServerPool* pool;
-  InfinotedAutosave* autosave;
+  unsigned int autosave_interval;
+  GSList* sessions;
 };
 
-InfinotedRun*
-infinoted_run_new(InfinotedStartup* startup,
-                  GError** error);
+InfinotedAutosave*
+infinoted_autosave_new(InfdDirectory* directory,
+                       unsigned int autosave_interval);
 
 void
-infinoted_run_free(InfinotedRun* run);
+infinoted_autosave_free(InfinotedAutosave* autosave);
 
 void
-infinoted_run_start(InfinotedRun* run);
-
-void
-infinoted_run_stop(InfinotedRun* run);
+infinoted_autosave_save_immediately(InfinotedAutosave* autosave);
 
 G_END_DECLS
 
-#endif /* __INFINOTED_RUN_H__ */
+#endif /* __INFINOTED_AUTOSAVE_H__ */
 
 /* vim:set et sw=2 ts=2: */

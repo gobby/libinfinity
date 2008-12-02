@@ -94,9 +94,30 @@ infinoted_options_port_to_integer(guint port)
 }
 
 static gboolean
+infinoted_options_autosave_interval_from_integer(gint value,
+                                                 guint* result,
+                                                 GError** error)
+{
+  if(value < 0)
+  {
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_INTERVAL,
+      _("Autosave interval must not be negative")
+    );
+
+    return FALSE;
+  }
+
+  *result = value;
+  return TRUE;
+}
+
+static gboolean
 infinoted_options_port_from_integer(gint value,
                                     guint* port,
-                                    GError **error)
+                                    GError** error)
 {
   if(value <= 0 || value > 0xffff)
   {
@@ -422,6 +443,7 @@ infinoted_options_load(InfinotedOptions* options,
   gchar* security_policy;
   gint port_number;
   gboolean display_version;
+  gint autosave_interval;
 
   gboolean result;
 
@@ -450,6 +472,10 @@ infinoted_options_load(InfinotedOptions* options,
     { "root-directory", 'r', 0,
       G_OPTION_ARG_FILENAME, &options->root_directory,
       N_("The directory to store documents into"), N_("DIRECTORY") },
+    { "autosave-interval", 0, 0,
+      G_OPTION_ARG_INT, &autosave_interval,
+      N_("Interval within which to save documents, in seconds, or 0 to "
+         "disable autosave"), N_("INTERVAL") },
     { "version", 'v', G_OPTION_FLAG_NO_CONFIG_FILE,
       G_OPTION_ARG_NONE, &display_version,
       N_("Display version information and exit"), NULL },
@@ -463,6 +489,7 @@ infinoted_options_load(InfinotedOptions* options,
     options->security_policy
   );
   port_number = infinoted_options_port_to_integer(options->port);
+  autosave_interval = options->autosave_interval;
 
   if(config_files)
   {
@@ -513,6 +540,13 @@ infinoted_options_load(InfinotedOptions* options,
   );
   if(!result) return FALSE;
 
+  result = infinoted_options_autosave_interval_from_integer(
+    autosave_interval,
+    &options->autosave_interval,
+    error
+  );
+  if(!result) return FALSE;
+
   return infinoted_options_validate(options, error);
 }
 
@@ -554,6 +588,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
+  options->autosave_interval = 0;
 
   if(!infinoted_options_load(options, config_files, argc, argv, error))
   {

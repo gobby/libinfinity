@@ -91,6 +91,18 @@ infinoted_run_new(InfinotedStartup* startup,
   g_object_ref(run->io);
   g_object_ref(run->directory);
 
+  if(startup->options->autosave_interval > 0)
+  {
+    run->autosave = infinoted_autosave_new(
+      run->directory,
+      startup->options->autosave_interval
+    );
+  }
+  else
+  {
+    run->autosave = NULL;
+  }
+
   run->pool = infd_server_pool_new(startup->directory);
   xmpp = infd_xmpp_server_new(tcp, startup->credentials, NULL, NULL);
 
@@ -141,6 +153,9 @@ infinoted_run_free(InfinotedRun* run)
 {
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
+
+  if(run->autosave != NULL)
+    infinoted_autosave_free(run->autosave);
 
   g_object_unref(run->io);
   g_object_unref(run->directory);

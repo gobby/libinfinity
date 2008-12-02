@@ -29,10 +29,14 @@ typedef struct _InfTextDefaultBufferPrivate InfTextDefaultBufferPrivate;
 struct _InfTextDefaultBufferPrivate {
   gchar* encoding;
   InfTextChunk* chunk;
+  gboolean modified;
 };
 
 enum {
   PROP_0,
+
+  /* overwritten */
+  PROP_MODIFIED,
 
   PROP_ENCODING
 };
@@ -53,6 +57,7 @@ inf_text_default_buffer_init(GTypeInstance* instance,
 
   priv->encoding = NULL;
   priv->chunk = NULL;
+  priv->modified = FALSE;
 }
 
 static void
@@ -92,6 +97,9 @@ inf_text_default_buffer_set_property(GObject* object,
     priv->encoding = g_value_dup_string(value);
     priv->chunk = inf_text_chunk_new(priv->encoding);
     break;
+  case PROP_MODIFIED:
+    priv->modified = g_value_get_boolean(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
     break;
@@ -115,9 +123,35 @@ inf_text_default_buffer_get_property(GObject* object,
   case PROP_ENCODING:
     g_value_set_string(value, priv->encoding);
     break;
+  case PROP_MODIFIED:
+    g_value_set_boolean(value, priv->modified);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
+  }
+}
+
+static gboolean
+inf_text_default_buffer_buffer_get_modified(InfBuffer* buffer)
+{
+  return INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer)->modified;
+}
+
+static void
+inf_text_default_buffer_buffer_set_modified(InfBuffer* buffer,
+                                            gboolean modified)
+{
+  InfTextDefaultBuffer* default_buffer;
+  InfTextDefaultBufferPrivate* priv;
+
+  default_buffer = INF_TEXT_DEFAULT_BUFFER(buffer);
+  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(default_buffer);
+
+  if(priv->modified != modified)
+  {
+    priv->modified = modified;
+    g_object_notify(G_OBJECT(buffer), "modified");
   }
 }
 
@@ -227,6 +261,12 @@ inf_text_default_buffer_buffer_insert_text(InfTextBuffer* buffer,
   priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
 
   inf_text_chunk_insert_chunk(priv->chunk, pos, chunk);
+
+  if(priv->modified == FALSE)
+  {
+    priv->modified = TRUE;
+    g_object_notify(G_OBJECT(buffer), "modified");
+  }
 }
 
 static void
@@ -239,6 +279,12 @@ inf_text_default_buffer_buffer_erase_text(InfTextBuffer* buffer,
   priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
 
   inf_text_chunk_erase(priv->chunk, pos, len);
+
+  if(priv->modified == FALSE)
+  {
+    priv->modified = TRUE;
+    g_object_notify(G_OBJECT(buffer), "modified");
+  }
 }
 
 static void
@@ -254,6 +300,8 @@ inf_text_default_buffer_class_init(gpointer g_class,
   object_class->finalize = inf_text_default_buffer_finalize;
   object_class->set_property = inf_text_default_buffer_set_property;
   object_class->get_property = inf_text_default_buffer_get_property;
+
+  g_object_class_override_property(object_class, PROP_MODIFIED, "modified");
 
   g_object_class_install_property(
     object_class,
@@ -274,6 +322,9 @@ inf_text_default_buffer_buffer_init(gpointer g_iface,
 {
   InfBufferIface* iface;
   iface = (InfBufferIface*)g_iface;
+
+  iface->get_modified = inf_text_default_buffer_buffer_get_modified;
+  iface->set_modified = inf_text_default_buffer_buffer_set_modified;
 }
 
 static void

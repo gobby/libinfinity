@@ -34,11 +34,13 @@ struct _InfinotedOptions {
   guint port;
   InfXmppConnectionSecurityPolicy security_policy;
   gchar* root_directory;
+  guint autosave_interval;
 };
 
 typedef enum _InfinotedOptionsError {
   INFINOTED_OPTIONS_ERROR_INVALID_SECURITY_POLICY,
   INFINOTED_OPTIONS_ERROR_INVALID_PORT,
+  INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_INTERVAL,
   INFINOTED_OPTIONS_ERROR_INVALID_CREATE_OPTIONS,
   INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
   INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE

@@ -94,6 +94,8 @@ struct _InfAdoptedAlgorithmPrivate {
   guint max_total_log_size;
 
   InfAdoptedStateVector* current;
+  InfAdoptedStateVector* buffer_modified_time;
+
   InfUserTable* user_table;
   InfBuffer* buffer;
   /* doubly-linked so we can easily remove an element from the middle */
@@ -121,7 +123,8 @@ enum {
   PROP_MAX_TOTAL_LOG_SIZE,
   
   /* read/only */
-  PROP_CURRENT_STATE
+  PROP_CURRENT_STATE,
+  PROP_BUFFER_MODIFIED_STATE
 };
 
 enum {
@@ -654,6 +657,114 @@ inf_adopted_algorithm_remove_local_user_cb(InfUserTable* user_table,
   inf_adopted_algorithm_local_user_free(algorithm, local);
 }
 
+/* Checks whether two states are equivalent, meaning one can be reached from
+ * the other just by folding. */
+static gboolean
+inf_adopted_algorithm_buffer_states_equivalent(InfAdoptedAlgorithm* algorithm,
+                                               InfAdoptedStateVector* first,
+                                               InfAdoptedStateVector* second)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedUser** user_it;
+  InfAdoptedUser* user;
+  InfAdoptedRequest* request;
+  InfAdoptedRequestLog* log;
+
+  guint user_id;
+  guint first_n;
+  guint second_n;
+
+  g_assert(inf_adopted_state_vector_causally_before(first, second));
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  for(user_it = priv->users_begin; user_it != priv->users_end; ++ user_it)
+  {
+    user = *user_it;
+    user_id = inf_user_get_id(INF_USER(user));
+    log = inf_adopted_user_get_request_log(user);
+
+    first_n = inf_adopted_state_vector_get(first, user_id);
+    second_n = inf_adopted_state_vector_get(second, user_id);
+
+    /* TODO: This algorithm can probably be optimized by moving it into 
+     * request log. Note the similarity to is_component_reachable. */
+    while(second_n > first_n)
+    {
+      /* If we dropped too much state, then we can't say whether the two
+       * states are equivalent. Assume they aren't. */
+      if(second_n <= inf_adopted_request_log_get_begin(log))
+        return FALSE;
+      request = inf_adopted_request_log_get_request(log, second_n - 1);
+
+      if(inf_adopted_request_get_request_type(request) ==
+         INF_ADOPTED_REQUEST_DO)
+      {
+        return FALSE;
+      }
+      else
+      {
+        request = inf_adopted_request_log_prev_associated(log, request);
+
+        second_n = inf_adopted_state_vector_get(
+          inf_adopted_request_get_vector(request),
+          user_id
+        );
+      }
+    }
+
+    if(second_n < first_n)
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
+static void
+inf_adopted_algorithm_buffer_notify_modified_cb(GObject* object,
+                                                GParamSpec* pspec,
+                                                gpointer user_data)
+{
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedAlgorithmPrivate* priv;
+  gboolean equivalent;
+
+  algorithm = INF_ADOPTED_ALGORITHM(user_data);
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  if(inf_buffer_get_modified(INF_BUFFER(object)))
+  {
+    if(priv->buffer_modified_time != NULL)
+    {
+      /* If the current state is equivalent to the one the buffer has changed
+       * the modified flag the last time, then the modified flag actually
+       * changed. Otherwise, we got notified without the flag actually
+       * changing. This should not happen normally, but we would lose
+       * information about when the buffer has been non-modified the last
+       * time otherwise. */
+      equivalent = inf_adopted_algorithm_buffer_states_equivalent(
+        algorithm,
+        priv->buffer_modified_time,
+        priv->current
+      );
+
+      if(equivalent == TRUE)
+      {
+        inf_adopted_state_vector_free(priv->buffer_modified_time);
+        priv->buffer_modified_time = NULL;
+      }
+    }
+  }
+  else
+  {
+    if(priv->buffer_modified_time != NULL)
+      inf_adopted_state_vector_free(priv->buffer_modified_time);
+
+    /* Buffer is not modified anymore */
+    priv->buffer_modified_time = inf_adopted_state_vector_copy(priv->current);
+  }
+}
+
 static void
 inf_adopted_algorithm_update_local_user_times(InfAdoptedAlgorithm* algorithm)
 {
@@ -691,7 +802,6 @@ inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* request;
   InfAdoptedRequestType type;
   InfAdoptedStateVector* current;
-  gboolean result;
   guint n;
   
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
@@ -1145,6 +1255,7 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   priv->max_total_log_size = 2048;
 
   priv->current = inf_adopted_state_vector_new();
+  priv->buffer_modified_time = NULL;
   priv->user_table = NULL;
   priv->buffer = NULL;
   priv->queue = NULL;
@@ -1194,6 +1305,7 @@ inf_adopted_algorithm_constructor(GType type,
   GObject* object;
   InfAdoptedAlgorithm* algorithm;
   InfAdoptedAlgorithmPrivate* priv;
+  gboolean modified;
 
   object = G_OBJECT_CLASS(parent_class)->constructor(
     type,
@@ -1216,6 +1328,12 @@ inf_adopted_algorithm_constructor(GType type,
     inf_adopted_algorithm_constructor_foreach_local_user_func,
     algorithm
   );
+
+  g_object_get(G_OBJECT(priv->buffer), "modified", &modified, NULL);
+  if(modified == FALSE)
+  {
+    priv->buffer_modified_time = inf_adopted_state_vector_copy(priv->current);
+  }
 
   return object;
 }
@@ -1245,6 +1363,12 @@ inf_adopted_algorithm_dispose(GObject* object)
 
   if(priv->buffer != NULL)
   {
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+      algorithm
+    );
+
     g_object_unref(priv->buffer);
     priv->buffer = NULL;
   }
@@ -1332,12 +1456,23 @@ inf_adopted_algorithm_set_property(GObject* object,
     break;
   case PROP_BUFFER:
     g_assert(priv->buffer == NULL); /* construct only */
+    g_assert(priv->buffer_modified_time == NULL);
+
     priv->buffer = INF_BUFFER(g_value_dup_object(value));
+
+    g_signal_connect(
+      G_OBJECT(priv->buffer),
+      "notify::modified",
+      G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+      algorithm
+    );
+
     break;
   case PROP_MAX_TOTAL_LOG_SIZE:
     priv->max_total_log_size = g_value_get_uint(value);
     break;
   case PROP_CURRENT_STATE:
+  case PROP_BUFFER_MODIFIED_STATE:
     /* read/only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1370,6 +1505,9 @@ inf_adopted_algorithm_get_property(GObject* object,
     break;
   case PROP_CURRENT_STATE:
     g_value_set_boxed(value, priv->current);
+    break;
+  case PROP_BUFFER_MODIFIED_STATE:
+    g_value_set_boxed(value, priv->buffer_modified_time);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1421,6 +1559,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   InfAdoptedRequest* original;
   InfAdoptedStateVector* v;
+  gboolean equivalent;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
@@ -1540,6 +1679,12 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     g_object_unref(log_request);
   }
 
+  g_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+    algorithm
+  );
+
   if(apply == TRUE)
   {
     g_signal_emit(
@@ -1550,6 +1695,43 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
       translated
     );
   }
+
+  /* TODO: We only need to do this if we changed the current state vector
+   * time <=> if the current request was added to the log */
+  if(priv->buffer_modified_time != NULL)
+  {
+    equivalent = inf_adopted_algorithm_buffer_states_equivalent(
+      algorithm,
+      priv->buffer_modified_time,
+      priv->current
+    );
+
+    if(equivalent == TRUE)
+    {
+      inf_buffer_set_modified(priv->buffer, FALSE);
+      inf_adopted_state_vector_free(priv->buffer_modified_time);
+      priv->buffer_modified_time =
+        inf_adopted_state_vector_copy(priv->current);
+    }
+    else
+    {
+      /* The buffer does this automatically when applying an operation: */
+      /*inf_buffer_set_modified(priv->buffer, TRUE);*/
+    }
+  }
+  else
+  {
+    /* When the modified flag is set to false, then we create the
+     * buffer_modified_time, so when it is unset, the flag needs to be set.
+     * Otherwise, we didn't get notified correctly. */
+    g_assert(inf_buffer_get_modified(priv->buffer) == TRUE);
+  }
+
+  g_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+    algorithm
+  );
 
   g_object_unref(translated);
 }
@@ -1638,6 +1820,18 @@ inf_adopted_algorithm_class_init(gpointer g_class,
       "current-state",
       "Current state",
       "The state vector describing the current document state",
+      INF_ADOPTED_TYPE_STATE_VECTOR,
+      G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_BUFFER_MODIFIED_STATE,
+    g_param_spec_boxed(
+      "buffer-modified-state",
+      "Buffer modified state",
+      "The state in which the buffer is considered not being modified",
       INF_ADOPTED_TYPE_STATE_VECTOR,
       G_PARAM_READABLE
     )

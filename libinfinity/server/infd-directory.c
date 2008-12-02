@@ -333,6 +333,8 @@ infd_directory_session_save_timeout_func(gpointer user_data)
     &error
   );
 
+  /* TODO: Unset modified flag of buffer if result == TRUE */
+
   /* The timeout is removed automatically after it has elapsed */
   timeout_data->node->shared.note.save_timeout = NULL;
 
@@ -614,6 +616,8 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
           node->shared.note.plugin->user_data,
           &error
         );
+
+        /* TODO: Unset modified flag of buffer if result == TRUE */
 
         if(error != NULL)
         {
@@ -1843,7 +1847,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
   InfdSessionProxy* proxy;
   gchar* path;
 
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_assert(priv->storage != NULL);
@@ -1862,6 +1866,10 @@ infd_directory_node_get_session(InfdDirectory* directory,
   );
   g_free(path);
   if(session == NULL) return NULL;
+
+  /* Buffer might have been marked as modified while reading the session, but
+   * as we just read it from the storage, we don't consider it modified. */
+  inf_buffer_set_modified(inf_session_get_buffer(session), FALSE);
 
   proxy = infd_directory_create_session_proxy(directory, node->id, session);
   g_object_unref(session);
@@ -2406,6 +2414,8 @@ infd_directory_handle_save_session(InfdDirectory* directory,
     node->shared.note.plugin->user_data,
     error
   );
+
+  /* TODO: unset modified flag of buffer if result == TRUE */
 
   /* The timeout should only be set when there aren't any connections
    * subscribed, however we just made sure that the connection the request
@@ -3460,6 +3470,62 @@ infd_directory_add_connection(InfdDirectory* directory,
 }
 
 /**
+ * infd_directory_iter_get_name:
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a node in @directory.
+ *
+ * Returns the name of the node @iter points to.
+ *
+ * Returns: The node's name. The returned string must not be freed.
+ */
+const gchar*
+infd_directory_iter_get_name(InfdDirectory* directory,
+                             InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  return node->name;
+}
+
+/**
+ * infd_directory_iter_get_path:
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a node in @directory.
+ *
+ * Returns the complete path to the node @iter points to. The path to a node
+ * is the name of the node and the name of all parent nodes separated by '/',
+ * as a filesystem path on Unix.
+ *
+ * Returns: The node's path. Free with g_free() when no longer in use.
+ */
+gchar*
+infd_directory_iter_get_path(InfdDirectory* directory,
+                             InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  gchar* path;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  infd_directory_node_get_path(node, &path, NULL);
+  return path;
+}
+
+/**
  * infd_directory_iter_get_root:
  * @directory: A #InfdDirectory
  * @iter An uninitalized #InfdDirectoryIter.
@@ -3609,6 +3675,10 @@ infd_directory_iter_get_parent(InfdDirectory* directory,
  * from the background storage and an error occurs while reading them. In
  * this case, %FALSE is returned and @error is set.
  *
+ * The function guarantees not to set @error if the node is already explored,
+ * i.e. infd_directory_iter_get_explored() returns %TRUE for @directory and
+ * @iter.
+ *
  * Return Value: %TRUE, if @iter was set. 
  **/
 gboolean
@@ -3646,6 +3716,35 @@ infd_directory_iter_get_child(InfdDirectory* directory,
   {
     return FALSE;
   }
+}
+
+/**
+ * infd_directory_iter_get_explored:
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
+ *
+ * Returns whether the subdirectory node pointed to by @iter has already
+ * been read from the background storage. If not, then no connections can
+ * be subscribed to any child nodes.
+ *
+ * Returns: Whether the node @iter points to has been explored.
+ */
+gboolean
+infd_directory_iter_get_explored(InfdDirectory* directory,
+                                 InfdDirectoryIter* iter)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+  infd_directory_return_val_if_subdir_fail(iter->node, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  return node->shared.subdir.explored;
 }
 
 /**
@@ -3866,9 +3965,35 @@ infd_directory_iter_get_session(InfdDirectory* directory,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type != INFD_STORAGE_NODE_NOTE, NULL);
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
 
   return infd_directory_node_get_session(directory, node, error);
+}
+
+/**
+ * infd_directory_iter_peek_session:
+ * @directory: A #InfdDirectory.
+ * @iter: A #InfdDirectoryIter pointing to a note in @directory.
+ *
+ * Returns the running session in which the note @iter points to is currently
+ * edited. If the session does not exist because nobody is editing it at the
+ * moment, the function returns %NULL.
+ *
+ * Return Value: A #InfdSessionProxy for the note @iter points to, or %NULL.
+ */
+InfdSessionProxy*
+infd_directory_iter_peek_session(InfdDirectory* directory,
+                                 InfdDirectoryIter* iter)
+{
+  InfdDirectoryNode* node;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
+
+  return node->shared.note.session;
 }
 
 /**
@@ -3897,7 +4022,7 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type != INFD_STORAGE_NODE_NOTE, FALSE);
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, FALSE);
 
   infd_directory_node_get_path(node, &path, NULL);
 
@@ -3908,6 +4033,8 @@ infd_directory_iter_save_session(InfdDirectory* directory,
     node->shared.note.plugin->user_data,
     error
   );
+
+  /* TODO: Unset modified flag of buffer if result == TRUE */
 
   g_free(path);
   return result;

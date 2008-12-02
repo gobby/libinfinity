@@ -19,8 +19,6 @@
 #ifndef __INF_BUFFER_H__
 #define __INF_BUFFER_H__
 
-#include <libinfinity/common/inf-user.h>
-
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -35,12 +33,21 @@ typedef struct _InfBufferIface InfBufferIface;
 
 /**
  * InfBufferIface:
+ * @get_modified: Returns whether the buffer has been modified since the last
+ * call to @set_modified set modified flag to %FALSE.
+ * @set_modified: Set the current modified state of the buffer.
  *
- * This structure does not contain any public fields.
+ * The virtual methods of #InfBuffer.
  */
 struct _InfBufferIface {
   /*< private >*/
   GTypeInterface parent;
+
+  /*< public >*/
+  gboolean (*get_modified)(InfBuffer* buffer);
+
+  void (*set_modified)(InfBuffer* buffer,
+                       gboolean modified);
 };
 
 /**
@@ -52,6 +59,13 @@ struct _InfBufferIface {
 
 GType
 inf_buffer_get_type(void) G_GNUC_CONST;
+
+gboolean
+inf_buffer_get_modified(InfBuffer* buffer);
+
+void
+inf_buffer_set_modified(InfBuffer* buffer,
+                        gboolean modified);
 
 G_END_DECLS
 

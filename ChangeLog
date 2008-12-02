@@ -1,3 +1,40 @@
+2008-12-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-buffer.h:
+	* libinfinity/common/inf-buffer.c: Added a "modified" property, and
+	get_modified/set_modified accessors.
+
+	* libinftext/inf-text-default-buffer.c: Implement the property of the
+	InfBuffer interface.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Implement the "modified"
+	property, keep it synchronized with the GtkTextBuffer's "modified"
+	property.
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added
+	infd_directory_iter_peek_session(), infd_directory_iter_get_name() and
+	infd_directory_iter_get_path().
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Track modification
+	status of the buffer. If the buffer is considered not modified in a
+	certain state, then set it modified if the buffer changes, but set it
+	non-modified again when all users undid their changes since the last
+	time when the buffer was considered non-modified.
+
+	* infinoted/infinoted-autosave.h:
+	* infinoted/infinoted-autosave.c:
+	* infinoted/Makefile.am: Added an autosaver for infinoted.
+
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c: Added an autosave-interval option.
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Instantiate the autosaver when the
+	autosave-interval is nonzero.
+
+	* infinoted/infinoted-main.c: Added vim modelines.
+
 2008-11-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.h:

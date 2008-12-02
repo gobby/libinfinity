@@ -110,6 +110,14 @@ gboolean
 infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection);
 
+const gchar*
+infd_directory_iter_get_name(InfdDirectory* directory,
+                             InfdDirectoryIter* iter);
+
+gchar*
+infd_directory_iter_get_path(InfdDirectory* directory,
+                             InfdDirectoryIter* iter);
+
 void
 infd_directory_iter_get_root(InfdDirectory* directory,
                              InfdDirectoryIter* iter);
@@ -130,6 +138,10 @@ gboolean
 infd_directory_iter_get_child(InfdDirectory* directory,
                               InfdDirectoryIter* iter,
                               GError** error);
+
+gboolean
+infd_directory_iter_get_explored(InfdDirectory* directory,
+                                 InfdDirectoryIter* iter);
 
 gboolean
 infd_directory_add_subdirectory(InfdDirectory* directory,
@@ -163,6 +175,10 @@ InfdSessionProxy*
 infd_directory_iter_get_session(InfdDirectory* directory,
                                 InfdDirectoryIter* iter,
                                 GError** error);
+
+InfdSessionProxy*
+infd_directory_iter_peek_session(InfdDirectory* directory,
+                                 InfdDirectoryIter* iter);
 
 gboolean
 infd_directory_iter_save_session(InfdDirectory* directory,

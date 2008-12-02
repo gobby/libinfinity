@@ -16,6 +16,7 @@ infinoted_LDADD = \
 	$(infinity_LIBS)
 
 infinoted_SOURCES = \
+	infinoted-autosave.c \
 	infinoted-creds.c \
 	infinoted-main.c \
 	infinoted-note-plugin.c \
@@ -25,6 +26,7 @@ infinoted_SOURCES = \
 	infinoted-startup.c
 
 noinst_HEADERS = \
+	infinoted-autosave.h \
 	infinoted-creds.h \
 	infinoted-note-plugin.h \
 	infinoted-options.h \

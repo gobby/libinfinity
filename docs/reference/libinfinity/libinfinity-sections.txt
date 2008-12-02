@@ -247,6 +247,8 @@ INF_TYPE_TCP_CONNECTION_STATUS
 <TITLE>InfBuffer</TITLE>
 InfBuffer
 InfBufferIface
+inf_buffer_get_modified
+inf_buffer_set_modified
 <SUBSECTION Standard>
 INF_BUFFER
 INF_IS_BUFFER
@@ -828,17 +830,21 @@ infd_directory_get_connection_manager
 infd_directory_add_plugin
 infd_directory_lookup_plugin
 infd_directory_add_connection
+infd_directory_iter_get_name
+infd_directory_iter_get_path
 infd_directory_iter_get_root
 infd_directory_iter_get_next
 infd_directory_iter_get_prev
 infd_directory_iter_get_parent
 infd_directory_iter_get_child
+infd_directory_iter_get_explored
 infd_directory_add_subdirectory
 infd_directory_add_note
 infd_directory_remove_node
 infd_directory_iter_get_node_type
 infd_directory_iter_get_plugin
 infd_directory_iter_get_session
+infd_directory_iter_peek_session
 infd_directory_iter_save_session
 <SUBSECTION Standard>
 INFD_DIRECTORY

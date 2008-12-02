@@ -50,7 +50,10 @@ enum {
   PROP_BUFFER,
   PROP_USER_TABLE,
   PROP_ACTIVE_USER,
-  PROP_WAKE_ON_CURSOR_MOVEMENT
+  PROP_WAKE_ON_CURSOR_MOVEMENT,
+
+  /* overriden */
+  PROP_MODIFIED
 };
 
 #define INF_TEXT_GTK_BUFFER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_BUFFER, InfTextGtkBufferPrivate))
@@ -690,6 +693,38 @@ inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
 }
 
 static void
+inf_text_gtk_buffer_modified_changed_cb(GtkTextBuffer* buffer,
+                                        gpointer user_data)
+{
+  g_object_notify(G_OBJECT(user_data), "modified");
+}
+
+static void
+inf_text_gtk_buffer_set_modified(InfTextGtkBuffer* buffer,
+                                 gboolean modified)
+{
+  InfTextGtkBufferPrivate* priv;
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  if(priv->buffer != NULL)
+  {
+    g_signal_handlers_block_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
+      buffer
+    );
+
+    gtk_text_buffer_set_modified(priv->buffer, modified);
+
+    g_signal_handlers_unblock_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
+      buffer
+    );
+  }
+}
+
+static void
 inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
                                GtkTextBuffer* gtk_buffer)
 {
@@ -719,6 +754,12 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+      buffer
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
       buffer
     );
 
@@ -758,9 +799,18 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
       G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
       buffer
     );
+
+    g_signal_connect_after(
+      G_OBJECT(gtk_buffer),
+      "modified-changed",
+      G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
+      buffer
+    );
   }
 
   g_object_notify(G_OBJECT(buffer), "buffer");
+
+  /* TODO: Notify modified, if it changed */
 }
 
 static void
@@ -855,6 +905,9 @@ inf_text_gtk_buffer_set_property(GObject* object,
   case PROP_WAKE_ON_CURSOR_MOVEMENT:
     priv->wake_on_cursor_movement = g_value_get_boolean(value);
     break;
+  case PROP_MODIFIED:
+    inf_text_gtk_buffer_set_modified(buffer, g_value_get_boolean(value));
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
     break;
@@ -887,10 +940,39 @@ inf_text_gtk_buffer_get_property(GObject* object,
   case PROP_WAKE_ON_CURSOR_MOVEMENT:
     g_value_set_boolean(value, priv->wake_on_cursor_movement);
     break;
+  case PROP_MODIFIED:
+    if(priv->buffer != NULL)
+      g_value_set_boolean(value, gtk_text_buffer_get_modified(priv->buffer));
+    else
+      g_value_set_boolean(value, FALSE);
+
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
+}
+
+static gboolean
+inf_text_gtk_buffer_buffer_get_modified(InfBuffer* buffer)
+{
+  InfTextGtkBuffer* gtk_buffer;
+  InfTextGtkBufferPrivate* priv;
+
+  gtk_buffer = INF_TEXT_GTK_BUFFER(buffer);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(gtk_buffer);
+
+  if(priv->buffer != NULL)
+    return gtk_text_buffer_get_modified(priv->buffer);
+  else
+    return FALSE;
+}
+
+static void
+inf_text_gtk_buffer_buffer_set_modified(InfBuffer* buffer,
+                                        gboolean modified)
+{
+  inf_text_gtk_buffer_set_modified(INF_TEXT_GTK_BUFFER(buffer), modified);
 }
 
 static const gchar*
@@ -1372,6 +1454,8 @@ inf_text_gtk_buffer_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
+
+  g_object_class_override_property(object_class, PROP_MODIFIED, "modified");
 }
 
 static void
