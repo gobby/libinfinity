@@ -1,3 +1,8 @@
+2008-12-07  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-run.c: Record sessions into
+	~/.infinoted-records.
+
 2008-12-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-buffer.h:
@@ -1526,7 +1531,7 @@
 	(inf_adopted_algorithm_can_undo_redo): Changed semantics of this
 	function for non-local users so that it returns whether the user in
 	question can issue an Undo or Redo command in its own current state
-	(as known to the locals site).
+	(as known to the local site).
 
 	* test/inf-test-text-cleanup.c: Allow can-undo and can-redo
 	verifications when the user's vector does not match the current one
