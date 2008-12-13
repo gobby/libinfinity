@@ -701,9 +701,8 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
   }
   else
   {
-    inf_test_util_print_buffer(buffer);
-    /*inf_test_text_replay_print_buffer(buffer);*/
-    printf("Replayed record successfully\n");
+    /*inf_test_util_print_buffer(buffer);*/
+    fprintf(stderr, "Replayed record successfully\n");
   }
 
   g_object_unref(buffer);
@@ -712,6 +711,7 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
 int main(int argc, char* argv[])
 {
   xmlTextReaderPtr reader;
+  int i;
 
   g_type_init();
   inf_test_text_replay_error_quark =
@@ -719,31 +719,38 @@ int main(int argc, char* argv[])
 
   if(argc < 2)
   {
-    fprintf(stderr, "Usage: %s <record-file>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <record-file1> <record-file2> ...\n", argv[0]);
     return -1;
   }
 
-  reader = xmlReaderForFile(
-    argv[1],
-    NULL,
-    XML_PARSE_NOERROR | XML_PARSE_NOWARNING
-  );
-
-  if(!reader)
+  for(i = 1; i < argc; ++ i)
   {
-    fprintf(stderr, "%s\n", xmlGetLastError()->message);
-    return -1;
+    fprintf(stderr, "%s...", argv[i]);
+    fflush(stderr);
+
+    reader = xmlReaderForFile(
+      argv[i],
+      NULL,
+      XML_PARSE_NOERROR | XML_PARSE_NOWARNING
+    );
+
+    if(!reader)
+    {
+      fprintf(stderr, "%s\n", xmlGetLastError()->message);
+      return -1;
+    }
+
+    inf_test_text_replay_process(reader);
+
+    if(xmlTextReaderClose(reader) == -1)
+    {
+      fprintf(stderr, "%s\n", xmlGetLastError()->message);
+      return -1;
+    }
+
+    xmlFreeTextReader(reader);
   }
 
-  inf_test_text_replay_process(reader);
-
-  if(xmlTextReaderClose(reader) == -1)
-  {
-    fprintf(stderr, "%s\n", xmlGetLastError()->message);
-    return -1;
-  }
-
-  xmlFreeTextReader(reader);
   return 0;
 }
 /* vim:set et sw=2 ts=2: */
