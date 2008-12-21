@@ -58,7 +58,7 @@ struct _InfCommunicationFactoryIface {
   InfCommunicationMethod* instantiate(InfCommunicationFactory* factory,
                                       const gchar* network,
                                       const gchar* method_name,
-                                      InfCommunicationManager* manager,
+                                      InfCommunicationRegistry* registry,
                                       InfCommunicationGroup* group);
 };
 
@@ -74,7 +74,7 @@ InfCommunicationMethod*
 inf_communication_factory_instantiate(InfCommunicationFactory* factory,
                                       const gchar* network,
                                       const gchar* method_name,
-                                      InfCommunicationManager* manager,
+                                      InfCommunicationRegistry* registry,
                                       InfCommunicationGroup* group);
 
 G_END_DECLS

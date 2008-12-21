@@ -39,6 +39,7 @@ typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
 
 /**
  * InfCommunicationMethodIface:
+ * @get_method_name: Returns the method name of the method.
  * @send_single: Sends a message to a single registered connection. Takes
  * ownership of @xml.
  * @send_all: Sends a message to all group members, except @except. Takes
@@ -56,6 +57,8 @@ struct _InfCommunicationMethodIface {
   GTypeInterface parent;
 
   /*< public >*/
+  const gchar (*get_method_name)(InfCommunicationMethod* method);
+
   void (*send_single)(InfCommunicationMethod* method,
                       InfXmlConnection* connection,
                       xmlNodePtr xml);
@@ -70,8 +73,19 @@ struct _InfCommunicationMethodIface {
                xmlNodePtr xml);
 };
 
+/*
+ * Operations for which we need access to group:
+register-connection
+unregister-connection
+send-registered
+received-registered (NetObject call + forward)
+*/
+
 GType
 inf_communication_method_get_type(void) G_GNUC_CONST;
+
+const gchar*
+inf_communication_group_get_method_name(InfCommunicationMethod* method);
 
 void
 inf_communication_method_send_single(InfCommunicationMethod* method,
