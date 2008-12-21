@@ -28,6 +28,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 /*#define INF_XMPP_CONNECTION_PRINT_TRAFFIC*/
 
