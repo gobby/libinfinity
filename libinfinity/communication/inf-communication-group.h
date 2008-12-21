@@ -20,6 +20,7 @@
 #define __INF_COMMUNICATION_GROUP_H__
 
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/communication/inf-communication-object.h>
 
 #include <glib-object.h>
 
@@ -71,9 +72,15 @@ struct _InfCommunicationGroup {
 GType
 inf_communication_group_get_type(void) G_GNUC_CONST;
 
+const gchar*
+inf_communication_group_get_name(InfCommunicationGroup* group);
+
+InfCommunicationObject*
+inf_communication_group_get_target(InfCommunicationGroup* group);
+
 void
 inf_communication_group_set_target(InfCommunicationGroup* group,
-                                   InfXmlConnection* connection);
+                                   InfCommunicationObject* target);
 
 gboolean
 inf_communication_group_is_member(InfCommunicationGroup* group,
@@ -92,6 +99,14 @@ inf_communication_group_send_group_message(InfCommunicationGroup* group,
 void
 inf_communication_group_cancel_messages(InfCommunicationGroup* group,
                                         InfXmlConnection* connection);
+
+const gchar*
+inf_communication_group_get_method_for_network(InfCommunicationGroup* group,
+                                               const gchar* network);
+
+const gchar*
+inf_communication_group_get_method_for_connection(InfCommunicationGroup* grp,
+                                                  InfXmlConnection* conn);
 
 G_END_DECLS
 

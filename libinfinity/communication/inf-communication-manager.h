@@ -61,6 +61,9 @@ struct _InfCommunicationManager {
 GType
 inf_communication_manager_get_type(void) G_GNUC_CONST;
 
+InfCommunicationManager*
+inf_communication_manager_new(void);
+
 InfCommunicationHostedGroup*
 inf_communication_manager_open_group(InfCommunicationManager* manager,
                                      const gchar* group_name,
