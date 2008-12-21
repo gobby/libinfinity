@@ -56,8 +56,8 @@
  **/
 
 #include <libinfinity/common/inf-session.h>
-#include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-buffer.h>
+#include <libinfinity/common/inf-net-object.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
@@ -71,7 +71,7 @@
 
 typedef struct _InfSessionSync InfSessionSync;
 struct _InfSessionSync {
-  InfConnectionManagerGroup* group;
+  InfCommunicationGroup* group;
   InfXmlConnection* conn;
 
   guint messages_total;
@@ -81,18 +81,18 @@ struct _InfSessionSync {
 
 typedef struct _InfSessionPrivate InfSessionPrivate;
 struct _InfSessionPrivate {
-  InfConnectionManager* manager;
+  InfCommunicationManager* manager;
   InfBuffer* buffer;
   InfUserTable* user_table;
   InfSessionStatus status;
 
   /* Group of subscribed connections */
-  InfConnectionManagerGroup* subscription_group;
+  InfCommunicationGroup* subscription_group;
 
   union {
     /* INF_SESSION_SYNCHRONIZING */
     struct {
-      InfConnectionManagerGroup* group;
+      InfCommunicationGroup* group;
       InfXmlConnection* conn;
       guint messages_total;
       guint messages_received;
@@ -116,7 +116,7 @@ enum {
   PROP_0,
 
   /* construct only */
-  PROP_CONNECTION_MANAGER,
+  PROP_COMMUNICATION_MANAGER,
   PROP_BUFFER,
   PROP_USER_TABLE,
 
@@ -277,7 +277,7 @@ inf_session_release_connection(InfSession* session,
     }
 #endif
 
-    inf_connection_manager_group_unref(priv->shared.sync.group);
+    g_object_unref(priv->shared.sync.group);
 
     priv->shared.sync.conn = NULL;
     priv->shared.sync.group = NULL;
@@ -305,7 +305,7 @@ inf_session_release_connection(InfSession* session,
     }
 #endif
 
-    inf_connection_manager_group_unref(sync->group);
+    g_object_unref(sync->group);
 
     g_slice_free(InfSessionSync, sync);
     priv->shared.run.syncs = g_slist_delete_link(
@@ -353,7 +353,7 @@ inf_session_send_sync_error(InfSession* session,
   sprintf(code_buf, "%u", (unsigned int)error->code);
   xmlNewProp(node, (const xmlChar*)"code", (const xmlChar*)code_buf);
 
-  inf_connection_manager_group_send_to_connection(
+  inf_communication_group_send_group_message(
     priv->shared.sync.group,
     priv->shared.sync.conn,
     node
@@ -471,7 +471,7 @@ inf_session_register_sync(InfSession* session)
      priv->shared.sync.conn != NULL &&
      priv->shared.sync.group != NULL)
   {
-    inf_connection_manager_group_ref(priv->shared.sync.group);
+    g_object_ref(priv->shared.sync.group);
 
     g_signal_connect(
       G_OBJECT(priv->shared.sync.conn),
@@ -572,16 +572,16 @@ inf_session_set_property(GObject* object,
   InfSession* session;
   InfSessionPrivate* priv;
   InfXmlConnection* conn;
-  InfConnectionManagerGroup* group;
+  InfCommunicationGroup* group;
 
   session = INF_SESSION(object);
   priv = INF_SESSION_PRIVATE(session);
 
   switch(prop_id)
   {
-  case PROP_CONNECTION_MANAGER:
+  case PROP_COMMUNICATION_MANAGER:
     g_assert(priv->manager == NULL); /* construct only */
-    priv->manager = INF_CONNECTION_MANAGER(g_value_dup_object(value));
+    priv->manager = INF_COMMUNICATION_MANAGER(g_value_dup_object(value));
     inf_session_register_sync(session);
     break;
   case PROP_BUFFER:
@@ -594,10 +594,10 @@ inf_session_set_property(GObject* object,
     break;
   case PROP_SUBSCRIPTION_GROUP:
     if(priv->subscription_group != NULL)
-      inf_connection_manager_group_unref(priv->subscription_group);
+      g_object_unref(priv->subscription_group);
 
     priv->subscription_group =
-      (InfConnectionManagerGroup*)g_value_dup_boxed(value);
+      INF_COMMUNICATION_GROUP(g_value_dup_object(value));
 
     break;
   case PROP_SYNC_CONNECTION:
@@ -614,7 +614,7 @@ inf_session_set_property(GObject* object,
 
     break;
   case PROP_SYNC_GROUP:
-    group = (InfConnectionManagerGroup*)g_value_get_boxed(value);
+    group = INF_COMMUNICATION_GROUP(g_value_get_object(value));
     g_assert(priv->shared.sync.group == NULL);
 
     if(group != NULL)
@@ -648,7 +648,7 @@ inf_session_get_property(GObject* object,
 
   switch(prop_id)
   {
-  case PROP_CONNECTION_MANAGER:
+  case PROP_COMMUNICATION_MANAGER:
     g_value_set_object(value, G_OBJECT(priv->manager));
     break;
   case PROP_BUFFER:
@@ -658,7 +658,7 @@ inf_session_get_property(GObject* object,
     g_value_set_object(value, G_OBJECT(priv->user_table));
     break;
   case PROP_SUBSCRIPTION_GROUP:
-    g_value_set_boxed(value, priv->subscription_group);
+    g_value_set_object(value, G_OBJECT(priv->subscription_group));
     break;
   case PROP_SYNC_CONNECTION:
     g_assert(priv->status == INF_SESSION_SYNCHRONIZING);
@@ -666,7 +666,7 @@ inf_session_get_property(GObject* object,
     break;
   case PROP_SYNC_GROUP:
     g_assert(priv->status == INF_SESSION_SYNCHRONIZING);
-    g_value_set_boxed(value, priv->shared.sync.group);
+    g_value_set_object(value, priv->shared.sync.group);
     break;
   case PROP_STATUS:
     g_value_set_enum(value, priv->status);
@@ -1239,8 +1239,7 @@ inf_session_handle_received_sync_message(InfSession* session,
        * fail anymore. */
       xml_reply = xmlNewNode(NULL, (const xmlChar*)"sync-ack");
 
-      inf_connection_manager_group_send_to_connection(
-/*        priv->manager,*/
+      inf_communication_group_send_group_message(
         priv->shared.sync.group,
         connection,
         xml_reply
@@ -1449,7 +1448,7 @@ inf_session_net_object_received(InfNetObject* net_object,
 
         /* There was an error during synchronization, cancel remaining
          * messages. */
-        inf_connection_manager_group_clear_queue(sync->group, connection);
+        inf_communication_group_cancel_messages(sync->group, connection);
 
         domain_attr = xmlGetProp(node, (const xmlChar*)"domain");
         code_attr = xmlGetProp(node, (const xmlChar*)"code");
@@ -1601,14 +1600,10 @@ inf_session_close_handler(InfSession* session)
        * to cancel anything. */
       if(sync->status == INF_SESSION_SYNC_IN_PROGRESS)
       {
-        inf_connection_manager_group_clear_queue(sync->group, sync->conn);
+        inf_communication_group_cancel_messages(sync->group, sync->conn);
 
         xml = xmlNewNode(NULL, (const xmlChar*)"sync-cancel");
-        inf_connection_manager_group_send_to_connection(
-          sync->group,
-          sync->conn,
-          xml
-        );
+        inf_communication_group_send_message(sync->group, sync->conn, xml);
       }
 
       /* We had to cancel the synchronization, so the synchronization
@@ -1634,7 +1629,7 @@ inf_session_close_handler(InfSession* session)
 
   if(priv->subscription_group != NULL)
   {
-    inf_connection_manager_group_unref(priv->subscription_group);
+    g_object_unref(priv->subscription_group);
     priv->subscription_group = NULL;
 
     g_object_notify(G_OBJECT(session), "subscription-group");
@@ -1649,7 +1644,7 @@ inf_session_close_handler(InfSession* session)
 
 static void
 inf_session_synchronization_begin_handler(InfSession* session,
-                                          InfConnectionManagerGroup* group,
+                                          InfCommunicationGroup* group,
                                           InfXmlConnection* connection)
 {
   InfSessionPrivate* priv;
@@ -1685,12 +1680,10 @@ inf_session_synchronization_begin_handler(InfSession* session,
   );
 
   sync->group = group;
-  inf_connection_manager_group_ref(sync->group);
+  g_object_ref(sync->group);
 
   /* The group needs to contain that connection, of course. */
-  g_assert(
-    inf_connection_manager_group_has_connection(sync->group, connection)
-  );
+  g_assert(inf_communication_group_is_member(sync->group, connection));
 
   /* Name is irrelevant because the node is only used to collect the child
    * nodes via the to_xml_sync vfunc. */
@@ -1710,11 +1703,7 @@ inf_session_synchronization_begin_handler(InfSession* session,
     (const xmlChar*)num_messages_buf
   );
 
-  inf_connection_manager_group_send_to_connection(
-    sync->group,
-    connection,
-    xml
-  );
+  inf_communication_group_send_message(sync->group, connection, xml);
 
   /* TODO: Add a function that can send multiple messages */
   for(xml = messages->children; xml != NULL; xml = next)
@@ -1722,22 +1711,12 @@ inf_session_synchronization_begin_handler(InfSession* session,
     next = xml->next;
     xmlUnlinkNode(xml);
 
-    inf_connection_manager_group_send_to_connection(
-      sync->group,
-      connection,
-      xml
-    );
+    inf_communication_group_send_message(sync->group, connection, xml);
   }
 
   xmlFreeNode(messages);
-
   xml = xmlNewNode(NULL, (const xmlChar*)"sync-end");
-
-  inf_connection_manager_group_send_to_connection(
-    sync->group,
-    connection,
-    xml
-  );
+  inf_communication_group_send_message(sync->group, connection, xml);
 }
 
 static void
@@ -1860,12 +1839,12 @@ inf_session_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_CONNECTION_MANAGER,
+    PROP_COMMUNICATION_MANAGER,
     g_param_spec_object(
-      "connection-manager",
-      "Connection manager",
-      "The connection manager used for sending requests",
-      INF_TYPE_CONNECTION_MANAGER,
+      "communication-manager",
+      "Communication manager",
+      "The communication manager used for sending requests",
+      INF_COMMUNICATION_TYPE_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1897,11 +1876,11 @@ inf_session_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SUBSCRIPTION_GROUP,
-    g_param_spec_boxed(
+    g_param_spec_object(
       "subscription-group",
       "Subscription group",
-      "Connection manager group of subscribed connections",
-      INF_TYPE_CONNECTION_MANAGER_GROUP,
+      "Communication group of subscribed connections",
+      INF_COMMUNICATION_TYPE_GROUP,
       G_PARAM_READWRITE
     )
   );
@@ -1921,11 +1900,11 @@ inf_session_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SYNC_GROUP,
-    g_param_spec_boxed(
+    g_param_spec_object(
       "sync-group",
       "Synchronization group",
-      "Connection manager group in which to perform synchronization",
-      INF_TYPE_CONNECTION_MANAGER_GROUP,
+      "Communication group in which to perform synchronization",
+      INF_COMMUNICATION_TYPE_GROUP,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1966,7 +1945,7 @@ inf_session_class_init(gpointer g_class,
   /**
    * InfSession::synchronization-begin:
    * @session: The #InfSession that is synchronizing.
-   * @group: The #InfConnectionManagerGroup used for synchronization.
+   * @group: The #InfCommunicationGroup used for synchronization.
    * @connection: The #InfXmlConnection to which the session is synchronized.
    *
    * This signal is emitted whenever the session is started to be synchronized
@@ -1984,10 +1963,10 @@ inf_session_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, synchronization_begin),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    inf_marshal_VOID__OBJECT_OBJECT,
     G_TYPE_NONE,
     2,
-    INF_TYPE_CONNECTION_MANAGER_GROUP | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_COMMUNICATION_TYPE_GROUP,
     INF_TYPE_XML_CONNECTION
   );
 
@@ -2301,9 +2280,9 @@ inf_session_close(InfSession* session)
  *
  * Returns the connection manager for @session.
  *
- * Return Value: A #InfConnectionManager.
+ * Return Value: A #InfCommunicationManager.
  **/
-InfConnectionManager*
+InfCommunicationManager*
 inf_session_get_connection_manager(InfSession* session)
 {
   g_return_val_if_fail(INF_IS_SESSION(session), NULL);
@@ -2463,7 +2442,7 @@ inf_session_set_user_status(InfSession* session,
 /**
  * inf_session_synchronize_to:
  * @session: A #InfSession with state %INF_SESSION_RUNNING.
- * @group: A #InfConnectionManagerGroup.
+ * @group: A #InfCommunicationGroup.
  * @connection: A #InfConnection.
  *
  * Initiates a synchronization to @connection. On the other end of
@@ -2480,7 +2459,7 @@ inf_session_set_user_status(InfSession* session,
  **/
 void
 inf_session_synchronize_to(InfSession* session,
-                           InfConnectionManagerGroup* group,
+                           InfCommunicationGroup* group,
                            InfXmlConnection* connection)
 {
   g_return_if_fail(INF_IS_SESSION(session));
@@ -2667,9 +2646,9 @@ inf_session_has_synchronizations(InfSession* session)
  *
  * Returns the subscription group for @session, if any.
  *
- * Return Value: A #InfConnectionManagerGroup, or %NULL.
+ * Return Value: A #InfCommunicationGroup, or %NULL.
  **/
-InfConnectionManagerGroup*
+InfCommunicationGroup*
 inf_session_get_subscription_group(InfSession* session)
 {
   g_return_val_if_fail(INF_IS_SESSION(session), NULL);
@@ -2679,7 +2658,7 @@ inf_session_get_subscription_group(InfSession* session)
 /**
  * inf_session_set_subscription_group:
  * @session: A #InfSession.
- * @group: A #InfConnectionManagerGroup.
+ * @group: A #InfCommunicationGroup.
  *
  * Sets the subscription group for @session. The subscription group is the
  * group in which all connections subscribed to the session are a member of.
@@ -2691,7 +2670,7 @@ inf_session_get_subscription_group(InfSession* session)
  **/
 void
 inf_session_set_subscription_group(InfSession* session,
-                                   InfConnectionManagerGroup* group)
+                                   InfCommunicationGroup* group)
 {
   InfSessionPrivate* priv;
 
@@ -2702,12 +2681,12 @@ inf_session_set_subscription_group(InfSession* session,
   if(priv->subscription_group != group)
   {
     if(priv->subscription_group != NULL)
-      inf_connection_manager_group_unref(priv->subscription_group);
+      g_object_unref(priv->subscription_group);
 
     priv->subscription_group = group;
 
     if(group != NULL)
-      inf_connection_manager_group_ref(group);
+      g_object_ref(group);
 
     g_object_notify(G_OBJECT(session), "subscription-group");
   }
@@ -2737,7 +2716,7 @@ inf_session_send_to_subscriptions(InfSession* session,
   priv = INF_SESSION_PRIVATE(session);
   g_return_if_fail(priv->subscription_group != NULL);
 
-  inf_connection_manager_group_send_to_group(
+  inf_communication_group_send_group_message(
     priv->subscription_group,
     except,
     xml

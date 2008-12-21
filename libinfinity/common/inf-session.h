@@ -19,11 +19,12 @@
 #ifndef __INF_SESSION_H__
 #define __INF_SESSION_H__
 
-#include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/communication/inf-communication-manager.h>
+#include <libinfinity/communication/inf-communication-group.h>
 
 #include <libxml/tree.h>
 
@@ -221,7 +222,7 @@ struct _InfSessionClass {
   void(*close)(InfSession* session);
 
   void(*synchronization_begin)(InfSession* session,
-                               InfConnectionManagerGroup* group,
+                               InfCommunicationGroup* group,
                                InfXmlConnection* connection);
 
   void(*synchronization_progress)(InfSession* session,
@@ -270,8 +271,8 @@ inf_session_user_to_xml(InfSession* session,
 void
 inf_session_close(InfSession* session);
 
-InfConnectionManager*
-inf_session_get_connection_manager(InfSession* session);
+InfCommunicationManager*
+inf_session_get_communication_manager(InfSession* session);
 
 InfBuffer*
 inf_session_get_buffer(InfSession* session);
@@ -295,7 +296,7 @@ inf_session_set_user_status(InfSession* session,
 
 void
 inf_session_synchronize_to(InfSession* session,
-                           InfConnectionManagerGroup* group,
+                           InfCommunicationGroup* group,
                            InfXmlConnection* connection);
 
 InfSessionSyncStatus
@@ -309,12 +310,12 @@ inf_session_get_synchronization_progress(InfSession* session,
 gboolean
 inf_session_has_synchronizations(InfSession* session);
 
-InfConnectionManagerGroup*
+InfCommunicationGroup*
 inf_session_get_subscription_group(InfSession* session);
 
 void
 inf_session_set_subscription_group(InfSession* session,
-                                   InfConnectionManagerGroup* group);
+                                   InfCommunicationGroup* group);
 
 void
 inf_session_send_to_subscriptions(InfSession* session,
