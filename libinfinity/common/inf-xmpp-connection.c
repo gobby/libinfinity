@@ -575,7 +575,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
       }
       else
       {
-        data += cur_bytes;
+        *((char**)&data) += cur_bytes;
         len -= cur_bytes;
       }
     } while(len > 0);
@@ -1925,7 +1925,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
           if(strcmp((const gchar*)child->name, "mechanism") == 0)
           {
             content = xmlNodeGetContent(child);
-            if(strcmp(content, "ANONYMOUS") == 0)
+            if(strcmp((const char*)content, "ANONYMOUS") == 0)
               suggestion = "ANONYMOUS";
             xmlFree(content);
           }

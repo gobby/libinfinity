@@ -1,5 +1,13 @@
 2008-12-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_send_chars): Fix a warning caused by += being
+	used on a void pointer.
+	(inf_xmpp_connection_process_features): Cast a xmlChar* to const char*
+	before passing to strcmp(), to avoid a warning.
+
+2008-12-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Added ctype.h inclusion.
 
 2008-12-13  Armin Burgmeier  <armin@arbur.net>
