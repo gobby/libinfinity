@@ -13,10 +13,8 @@ libinfinity_common_ladir = $(includedir)/libinfinity-1.0/libinfinity/common
 
 libinfinity_common_la_SOURCES = \
 	inf-buffer.c \
-	inf-central-method.c \
 	inf-certificate-chain.c \
 	inf-cert-util.c \
-	inf-connection-manager.c \
 	inf-discovery-avahi.c \
 	inf-discovery.c \
 	inf-error.c \
@@ -24,7 +22,6 @@ libinfinity_common_la_SOURCES = \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
-	inf-method-manager.c \
 	inf-net-object.c \
 	inf-session.c \
 	inf-simulated-connection.c \
@@ -39,10 +36,8 @@ libinfinity_common_la_SOURCES = \
 
 libinfinity_common_la_HEADERS = \
 	inf-buffer.h \
-	inf-central-method.h \
 	inf-certificate-chain.h \
 	inf-cert-util.h \
-	inf-connection-manager.h \
 	inf-discovery.h \
 	inf-discovery-avahi.h \
 	inf-error.h \
@@ -50,7 +45,6 @@ libinfinity_common_la_HEADERS = \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \
-	inf-method-manager.h \
 	inf-net-object.h \
 	inf-session.h \
 	inf-simulated-connection.h \
