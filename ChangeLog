@@ -1,5 +1,16 @@
 2008-12-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-cert-util.c: Include inf-error.h to avoid a
+	warning.
+
+	* libinfinity/adopted/inf-adopted-request-log.c
+	(inf_adopted_request_log_is_empty): Use g_return_val_if_reached
+	instead of g_return_if_reached, to avoid a warning.
+	(inf_adopted_request_log_add_request): Cast the log to GObject before
+	calling g_object_notify_freeze, to avoid a warning.
+
+2008-12-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c
 	(inf_xmpp_connection_send_chars): Fix a warning caused by += being
 	used on a void pointer.

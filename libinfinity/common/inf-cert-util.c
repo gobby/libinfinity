@@ -17,6 +17,7 @@
  */
 
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/common/inf-error.h>
 
 #include <glib/gstdio.h>
 

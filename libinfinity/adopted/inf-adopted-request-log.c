@@ -510,7 +510,7 @@ inf_adopted_request_log_is_empty(InfAdoptedRequestLog* log)
 {
   InfAdoptedRequestLogPrivate* priv;
 
-  g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), TRUE);
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
   if(priv->begin == priv->end)
@@ -688,7 +688,7 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     }
   }
 
-  g_object_freeze_notify(log);
+  g_object_freeze_notify(G_OBJECT(log));
 
   if(priv->begin == priv->end)
   {
