@@ -72,6 +72,14 @@ GType
 inf_communication_group_get_type(void) G_GNUC_CONST;
 
 void
+inf_communication_group_set_target(InfCommunicationGroup* group,
+                                   InfXmlConnection* connection);
+
+gboolean
+inf_communication_group_is_member(InfCommunicationGroup* group,
+                                  InfXmlConnection* connection);
+
+void
 inf_communication_group_send_message(InfCommunicationGroup* group,
                                      InfXmlConnection* connection,
                                      xmlNodePtr xml);
@@ -80,6 +88,10 @@ void
 inf_communication_group_send_group_message(InfCommunicationGroup* group,
                                            InfXmlConnection* except,
                                            xmlNodePtr xml);
+
+void
+inf_communication_group_cancel_messages(InfCommunicationGroup* group,
+                                        InfXmlConnection* connection);
 
 G_END_DECLS
 

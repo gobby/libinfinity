@@ -43,25 +43,44 @@ typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
 
 /**
  * InfCommunicationMethodIface:
+ * @add_member: Default signal handler of the
+ * #InfCommunicationMethod::add-member signal.
+ * @remove_member: Default signal handler of the
+ * #InfCommunicationMethod::remove-member signal.
  * @get_method_name: Returns the method name of the method.
- * @send_single: Sends a message to a single registered connection. Takes
- * ownership of @xml.
+ * @is_member: Returns whether the given connection is a member of the group.
+ * @send_single: Sends a message to a single connection. Takes ownership of
+ * @xml.
  * @send_all: Sends a message to all group members, except @except. Takes
  * ownership of @xml.
+ * @cancel_messages: Cancel sending messages that have not yet been sent
+ * to the given connection.
  * @received: Handles reception of a message from a registered connection.
  * This normally includes informing a group's NetObject and forwarding the
  * message to other group members.
+ * @enqueued: Handles when a message has been enqueued to be sent on a
+ * registered connection.
  * @sent: Handles when a message has been sent to a registered connection.
  *
- * The virtual methods of #InfCommunicationMethod. These handle sending and
- * receiving messages for a #InfCommunicationGroup.
+ * The default signal handlers of virtual methods of #InfCommunicationMethod.
+ * These implement communication within a #InfCommunicationGroup.
  */
 struct _InfCommunicationMethodIface {
   /*< private >*/
   GTypeInterface parent;
 
   /*< public >*/
+  /* Signals */
+  void (*add_member)(InfCommunicationMethod* method,
+                     InfXmlConnection* connection);
+  void (*remove_member)(InfCommunicationMethod* method,
+                        InfXmlConnection* connection);
+
+  /* Virtual functions */
   const gchar* (*get_method_name)(InfCommunicationMethod* method);
+  
+  gboolean (*is_member)(InfCommunicationMethod* method,
+                        InfXmlConnection* connection);
 
   void (*send_single)(InfCommunicationMethod* method,
                       InfXmlConnection* connection,
@@ -69,7 +88,13 @@ struct _InfCommunicationMethodIface {
   void (*send_all)(InfCommunicationMethod* method,
                    InfXmlConnection* except,
                    xmlNodePtr xml);
+  void (*cancel_messages)(InfCommunicationMethod* method,
+                          InfXmlConnection* connection);
+
   void (*received)(InfCommunicationMethod* method,
+                   InfXmlConnection* connection,
+                   xmlNodePtr xml);
+  void (*enqueued)(InfCommunicationMethod* method,
                    InfXmlConnection* connection,
                    xmlNodePtr xml);
   void (*sent)(InfCommunicationMethod* method,
@@ -77,19 +102,23 @@ struct _InfCommunicationMethodIface {
                xmlNodePtr xml);
 };
 
-/*
- * Operations for which we need access to group:
-register-connection
-unregister-connection
-send-registered
-received-registered (NetObject call + forward)
-*/
-
 GType
 inf_communication_method_get_type(void) G_GNUC_CONST;
 
 const gchar*
 inf_communication_group_get_method_name(InfCommunicationMethod* method);
+
+void
+inf_communication_method_add_member(InfCommunicationMethod* method,
+                                    InfXmlConnection* connection);
+
+void
+inf_communication_method_remove_member(InfCommunicationMethod* method,
+                                       InfXmlConnection* connection);
+
+gboolean
+inf_communication_method_is_member(InfCommunicationMethod* method,
+                                   InfXmlConnection* connection);
 
 void
 inf_communication_method_send_single(InfCommunicationMethod* method,
@@ -100,6 +129,10 @@ void
 inf_communication_method_send_all(InfCommunicationMethod* method,
                                   InfXmlConnection* except,
                                   xmlNodePtr xml);
+
+void
+inf_communication_method_cancel_messages(InfCommunicationMethod* method,
+                                         InfXmlConnection* connection);
 
 void
 inf_communication_method_received(InfCommunicationMethod* method,
