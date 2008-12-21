@@ -3257,7 +3257,7 @@ inf_xmpp_connection_get_property(GObject* object,
     g_value_set_enum(value, inf_xmpp_connection_get_xml_status(xmpp));
     break;
   case PROP_NETWORK:
-    g_value_set_static_string(value, "local");
+    g_value_set_static_string(value, "tcp/ip");
     break;
   case PROP_LOCAL_ID:
     /* TODO: Perhaps we could also use JIDs here, but we have to make sure
