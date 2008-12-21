@@ -19,19 +19,23 @@
 #ifndef __INF_COMMUNICATION_MANAGER_H__
 #define __INF_COMMUNICATION_MANAGER_H__
 
+#include <libinfinity/communication/inf-communication-hosted-group.h>
+#include <libinfinity/communication/inf-communication-joined-group.h>
+#include <libinfinity/communication/inf-communication-factory.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INF_COMMUNICTATION_TYPE_MANAGER                (inf_communication_manager_get_type())
+#define INF_COMMUNICATION_TYPE_MANAGER                 (inf_communication_manager_get_type())
 #define INF_COMMUNICATION_MANAGER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_MANAGER, InfCommunicationManager))
 #define INF_COMMUNICATION_MANAGER_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_COMMUNICATION_TYPE_MANAGER, InfCommunicationManagerClass))
 #define INF_COMMUNICATION_IS_MANAGER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_MANAGER))
 #define INF_COMMUNICATION_IS_MANAGER_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_COMMUNICATION_TYPE_MANAGER))
 #define INF_COMMUNICATION_MANAGER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_COMMUNICATION_TYPE_MANAGER, InfCommunicationManagerClass))
 
-typedef struct _InfCommunicationManager InfCommunicationGroup;
-typedef struct _InfCommunicationManagerClass InfCommunicationGroupClass;
+typedef struct _InfCommunicationManager InfCommunicationManager;
+typedef struct _InfCommunicationManagerClass InfCommunicationManagerClass;
 
 /**
  * InfCommunicationManagerClass:

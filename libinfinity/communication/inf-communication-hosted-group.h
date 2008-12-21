@@ -19,11 +19,13 @@
 #ifndef __INF_COMMUNICATION_HOSTED_GROUP_H__
 #define __INF_COMMUNICATION_HOSTED_GROUP_H__
 
+#include <libinfinity/communication/inf-communication-group.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INF_COMMUNICTATION_TYPE_HOSTED_GROUP                (inf_communication_group_get_type())
+#define INF_COMMUNICATION_TYPE_HOSTED_GROUP                 (inf_communication_group_get_type())
 #define INF_COMMUNICATION_HOSTED_GROUP(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_HOSTED_GROUP, InfCommunicationHostedGroup))
 #define INF_COMMUNICATION_HOSTED_GROUP_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_COMMUNICATION_TYPE_HOSTED_GROUP, InfCommunicationHostedGroupClass))
 #define INF_COMMUNICATION_IS_HOSTED_GROUP(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_HOSTED_GROUP))

@@ -19,11 +19,15 @@
 #ifndef __INF_COMMUNICATION_METHOD_H__
 #define __INF_COMMUNICATION_METHOD_H__
 
+#include <libinfinity/common/inf-xml-connection.h>
+
 #include <glib-object.h>
+
+#include <libxml/tree.h>
 
 G_BEGIN_DECLS
 
-#define INF_COMMUNICTATION_TYPE_METHOD                (inf_communication_method_get_type())
+#define INF_COMMUNICATION_TYPE_METHOD                 (inf_communication_method_get_type())
 #define INF_COMMUNICATION_METHOD(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_METHOD, InfCommunicationMethod))
 #define INF_COMMUNICATION_IS_METHOD(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_METHOD))
 #define INF_COMMUNICATION_METHOD_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_METHOD, InfCommunicationMethodIface))
@@ -57,7 +61,7 @@ struct _InfCommunicationMethodIface {
   GTypeInterface parent;
 
   /*< public >*/
-  const gchar (*get_method_name)(InfCommunicationMethod* method);
+  const gchar* (*get_method_name)(InfCommunicationMethod* method);
 
   void (*send_single)(InfCommunicationMethod* method,
                       InfXmlConnection* connection,

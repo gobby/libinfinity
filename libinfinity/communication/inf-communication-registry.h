@@ -19,19 +19,21 @@
 #ifndef __INF_COMMUNICATION_REGISTRY_H__
 #define __INF_COMMUNICATION_REGISTRY_H__
 
+#include <libinfinity/communication/inf-communication-group.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INF_COMMUNICTATION_TYPE_REGISTRY                (inf_communication_registry_get_type())
+#define INF_COMMUNICATION_TYPE_REGISTRY                 (inf_communication_registry_get_type())
 #define INF_COMMUNICATION_REGISTRY(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_REGISTRY, InfCommunicationRegistry))
 #define INF_COMMUNICATION_REGISTRY_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_COMMUNICATION_TYPE_REGISTRY, InfCommunicationRegistryClass))
 #define INF_COMMUNICATION_IS_REGISTRY(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_REGISTRY))
 #define INF_COMMUNICATION_IS_REGISTRY_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_COMMUNICATION_TYPE_REGISTRY))
 #define INF_COMMUNICATION_REGISTRY_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_COMMUNICATION_TYPE_REGISTRY, InfCommunicationRegistryClass))
 
-typedef struct _InfCommunicationRegistry InfCommunicationGroup;
-typedef struct _InfCommunicationRegistryClass InfCommunicationGroupClass;
+typedef struct _InfCommunicationRegistry InfCommunicationRegistry;
+typedef struct _InfCommunicationRegistryClass InfCommunicationRegistryClass;
 
 /**
  * InfCommunicationRegistryClass:
@@ -59,16 +61,16 @@ inf_communication_registry_get_type(void) G_GNUC_CONST;
 
 void
 inf_communication_registry_register(InfCommunicationRegistry* registry,
-                                    InfCommunicationGroup* group);
-                                    InfXmlConnection* connection,
+                                    InfCommunicationGroup* group,
+                                    InfXmlConnection* connection);
 
 void
 inf_communication_registry_unregister(InfCommunicationRegistry* registry,
-                                      InfCommunicationGroup* group);
-                                      InfXmlConnection* connection,
+                                      InfCommunicationGroup* group,
+                                      InfXmlConnection* connection);
 
 void
-inf_communication_registry_send(InfCommunicationRegsitry* registry,
+inf_communication_registry_send(InfCommunicationRegistry* registry,
                                 InfCommunicationGroup* group,
                                 InfXmlConnection* connection,
                                 xmlNodePtr xml);

@@ -19,11 +19,14 @@
 #ifndef __INF_COMMUNICATION_FACTORY_H__
 #define __INF_COMMUNICATION_FACTORY_H__
 
+#include <libinfinity/communication/inf-communication-method.h>
+#include <libinfinity/communication/inf-communication-registry.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INF_COMMUNICTATION_TYPE_FACTORY                (inf_communication_factory_get_type())
+#define INF_COMMUNICATION_TYPE_FACTORY                 (inf_communication_factory_get_type())
 #define INF_COMMUNICATION_FACTORY(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_FACTORY, InfCommunicationFactory))
 #define INF_COMMUNICATION_IS_FACTORY(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_FACTORY))
 #define INF_COMMUNICATION_FACTORY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_FACTORY, InfCommunicationFactoryIface))
@@ -51,22 +54,22 @@ struct _InfCommunicationFactoryIface {
   /*< private >*/
   GTypeInterface parent;
 
-  gboolean supports_method(InfCommunicationFactory* factory,
-                           const gchar* network,
-                           const gchar* method_name);
+  gboolean (*supports_method)(InfCommunicationFactory* factory,
+                              const gchar* network,
+                              const gchar* method_name);
 
-  InfCommunicationMethod* instantiate(InfCommunicationFactory* factory,
-                                      const gchar* network,
-                                      const gchar* method_name,
-                                      InfCommunicationRegistry* registry,
-                                      InfCommunicationGroup* group);
+  InfCommunicationMethod* (*instantiate)(InfCommunicationFactory* factory,
+                                         const gchar* network,
+                                         const gchar* method_name,
+                                         InfCommunicationRegistry* registry,
+                                         InfCommunicationGroup* group);
 };
 
 GType
 inf_communication_factory_get_type(void) G_GNUC_CONST;
 
 gboolean
-inf_communication_factory_supports_method(InfCommunicationFactor* factory,
+inf_communication_factory_supports_method(InfCommunicationFactory* factory,
                                           const gchar* network,
                                           const gchar* method_name);
 
