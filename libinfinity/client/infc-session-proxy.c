@@ -30,7 +30,7 @@
 typedef struct _InfcSessionProxyPrivate InfcSessionProxyPrivate;
 struct _InfcSessionProxyPrivate {
   InfSession* session;
-  InfConnectionManagerGroup* subscription_group;
+  InfCommunicationJoinedGroup* subscription_group;
   InfXmlConnection* connection;
   InfcRequestManager* request_manager;
 };
@@ -79,8 +79,8 @@ infc_session_proxy_unsubscribe_connection(InfcSessionProxy* proxy)
   {
     xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
 
-    inf_connection_manager_group_send_to_connection(
-      priv->subscription_group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->subscription_group),
       priv->connection,
       xml
     );
@@ -274,7 +274,7 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
 
   inf_session_set_subscription_group(priv->session, NULL);
 
-  inf_connection_manager_group_unref(priv->subscription_group);
+  g_object_unref(priv->subscription_group);
   priv->subscription_group = NULL;
 
   g_object_unref(G_OBJECT(priv->connection));
@@ -780,44 +780,54 @@ infc_session_proxy_handle_session_close(InfcSessionProxy* proxy,
  */
 
 static void
-infc_session_proxy_net_object_sent(InfNetObject* net_object,
-                                   InfXmlConnection* connection,
-                                   xmlNodePtr node)
+infc_session_proxy_communication_object_sent(InfCommunicationObject* object,
+                                             InfXmlConnection* connection,
+                                             xmlNodePtr node)
 {
   InfcSessionProxy* proxy;
   InfcSessionProxyPrivate* priv;
 
-  proxy = INFC_SESSION_PROXY(net_object);
+  proxy = INFC_SESSION_PROXY(object);
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
 
   /* TODO: Don't forward for messages the proxy issued */
 
   g_assert(priv->session != NULL);
-  inf_net_object_sent(INF_NET_OBJECT(priv->session), connection, node);
+
+  inf_communication_object_sent(
+    INF_COMMUNICATION_OBJECT(priv->session),
+    connection,
+    node
+  );
 }
 
 static void
-infc_session_proxy_net_object_enqueued(InfNetObject* net_object,
-                                       InfXmlConnection* connection,
-                                       xmlNodePtr node)
+infc_session_proxy_communication_object_enqueued(InfCommunicationObject* obj,
+                                                 InfXmlConnection* connection,
+                                                 xmlNodePtr node)
 {
   InfcSessionProxy* proxy;
   InfcSessionProxyPrivate* priv;
 
-  proxy = INFC_SESSION_PROXY(net_object);
+  proxy = INFC_SESSION_PROXY(obj);
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
 
   /* TODO: Don't forward for messages the proxy issued */
 
   g_assert(priv->session != NULL);
-  inf_net_object_enqueued(INF_NET_OBJECT(priv->session), connection, node);
+
+  inf_communication_object_enqueued(
+    INF_COMMUNICATION_OBJECT(priv->session),
+    connection,
+    node
+  );
 }
 
-static gboolean
-infc_session_proxy_net_object_received(InfNetObject* net_object,
-                                       InfXmlConnection* connection,
-                                       xmlNodePtr node,
-                                       GError** error)
+static InfCommunicationScope
+infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
+                                                 InfXmlConnection* connection,
+                                                 xmlNodePtr node,
+                                                 GError** error)
 {
   InfcSessionProxy* proxy;
   InfcSessionProxyPrivate* priv;
@@ -828,7 +838,7 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
   InfcRequest* request;
   GError* seq_error;
 
-  proxy = INFC_SESSION_PROXY(net_object);
+  proxy = INFC_SESSION_PROXY(obj);
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
   proxy_class = INFC_SESSION_PROXY_GET_CLASS(proxy);
   status = inf_session_get_synchronization_status(priv->session, connection);
@@ -840,8 +850,8 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
   if(status != INF_SESSION_SYNC_NONE)
   {
     /* Direct delegate during synchronization */
-    return inf_net_object_received(
-      INF_NET_OBJECT(priv->session),
+    return inf_communication_object_received(
+      INF_COMMUNICATION_OBJECT(priv->session),
       connection,
       node,
       error
@@ -887,8 +897,8 @@ infc_session_proxy_net_object_received(InfNetObject* net_object,
     }
     else
     {
-      return inf_net_object_received(
-        INF_NET_OBJECT(priv->session),
+      return inf_communication_object_received(
+        INF_COMMUNICATION_OBJECT(priv->session),
         connection,
         node,
         error
@@ -974,11 +984,11 @@ infc_session_proxy_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SUBSCRIPTION_GROUP,
-    g_param_spec_boxed(
+    g_param_spec_object(
       "subscription-group",
       "Subscription group",
-      "The connection manager group of subscribed connections",
-      INF_TYPE_CONNECTION_MANAGER_GROUP,
+      "The communication group of subscribed connections",
+      INF_COMMUNICATION_TYPE_JOINED_GROUP,
       G_PARAM_READABLE
     )
   );
@@ -997,15 +1007,15 @@ infc_session_proxy_class_init(gpointer g_class,
 }
 
 static void
-infc_session_proxy_net_object_init(gpointer g_iface,
-                                   gpointer iface_data)
+infc_session_proxy_communication_object_init(gpointer g_iface,
+                                             gpointer iface_data)
 {
-  InfNetObjectIface* iface;
-  iface = (InfNetObjectIface*)g_iface;
+  InfCommunicationObjectIface* iface;
+  iface = (InfCommunicationObjectIface*)g_iface;
 
-  iface->sent = infc_session_proxy_net_object_sent;
-  iface->enqueued = infc_session_proxy_net_object_enqueued;
-  iface->received = infc_session_proxy_net_object_received;
+  iface->sent = infc_session_proxy_communication_object_sent;
+  iface->enqueued = infc_session_proxy_communication_object_enqueued;
+  iface->received = infc_session_proxy_communication_object_received;
 }
 
 GType
@@ -1028,8 +1038,8 @@ infc_session_proxy_get_type(void)
       NULL                              /* value_table */
     };
 
-    static const GInterfaceInfo net_object_info = {
-      infc_session_proxy_net_object_init,
+    static const GInterfaceInfo communication_object_info = {
+      infc_session_proxy_communication_object_init,
       NULL,
       NULL
     };
@@ -1043,8 +1053,8 @@ infc_session_proxy_get_type(void)
 
     g_type_add_interface_static(
       session_proxy_type,
-      INF_TYPE_NET_OBJECT,
-      &net_object_info
+      INF_COMMUNICATION_TYPE_OBJECT,
+      &communication_object_info
     );
   }
 
@@ -1058,8 +1068,8 @@ infc_session_proxy_get_type(void)
 /**
  * infc_session_proxy_set_connection:
  * @proxy: A #InfcSessionProxy.
- * @group: A #InfConnectionManagerGroup of subscribed connections. Ignored if
- * @connection is %NULL.
+ * @group: A #InfCommunicationJoinedGroup of subscribed connections. Ignored
+ * if * @connection is %NULL.
  * @connection: A #InfXmlConnection.
  *
  * Sets the subscription connection for the given session. The subscription
@@ -1081,7 +1091,7 @@ infc_session_proxy_get_type(void)
  **/
 void
 infc_session_proxy_set_connection(InfcSessionProxy* proxy,
-                                  InfConnectionManagerGroup* group,
+                                  InfCommunicationJoinedGroup* group,
                                   InfXmlConnection* connection)
 {
   InfcSessionProxyPrivate* priv;
@@ -1091,7 +1101,7 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
   g_return_if_fail(connection == NULL || INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(
     (group == NULL && connection == NULL) ||
-    (group != NULL && connection != NULL)
+    (INF_COMMUNICATION_IS_JOINED_GROUP(group) && connection != NULL)
   );
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
@@ -1106,8 +1116,8 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
      * because synchronizations are not cancelled through this call. */
     xml = xmlNewNode(NULL, (const xmlChar*)"session-unsubscribe");
 
-    inf_connection_manager_group_send_to_connection(
-      priv->subscription_group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->subscription_group),
       priv->connection,
       xml
     );
@@ -1134,10 +1144,13 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
 
     /* Set new group */
     priv->subscription_group = group;
-    inf_connection_manager_group_ref(priv->subscription_group);
+    g_object_ref(priv->subscription_group);
   }
 
-  inf_session_set_subscription_group(priv->session, priv->subscription_group);
+  inf_session_set_subscription_group(
+    priv->session,
+    INF_COMMUNICATION_GROUP(priv->subscription_group)
+  );
 
   g_object_notify(G_OBJECT(proxy), "connection");
   g_object_notify(G_OBJECT(proxy), "subscription-group");
@@ -1197,8 +1210,8 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
   g_assert(session_class->set_xml_user_props != NULL);
   session_class->set_xml_user_props(priv->session, params, n_params, xml);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->subscription_group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->subscription_group),
     priv->connection,
     xml
   );
@@ -1245,9 +1258,9 @@ infc_session_proxy_get_connection(InfcSessionProxy* proxy)
  * Returns the group with all subscribed connections to the session, or %NULL
  * if the session is not subscribed.
  *
- * Returns: A #InfConnectionManagerGroup, or %NULL.
+ * Returns: A #InfCommunicationJoinedGroup, or %NULL.
  **/
-InfConnectionManagerGroup*
+InfCommunicationJoinedGroup*
 infc_session_proxy_get_subscription_group(InfcSessionProxy* proxy)
 {
   g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);

@@ -31,7 +31,6 @@
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
 
-#include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
@@ -114,9 +113,8 @@ struct _InfcBrowserSyncIn {
 typedef struct _InfcBrowserPrivate InfcBrowserPrivate;
 struct _InfcBrowserPrivate {
   InfIo* io;
-  InfConnectionManager* connection_manager;
-  InfMethodManager* method_manager;
-  InfConnectionManagerGroup* group; /* TODO: This should be a property */
+  InfCommunicationManager* communication_manager;
+  InfCommunicationJoinedGroup* group; /* TODO: This should be a property */
   InfXmlConnection* connection;
 
   InfcRequestManager* request_manager;
@@ -135,8 +133,7 @@ enum {
   PROP_0,
 
   PROP_IO,
-  PROP_CONNECTION_MANAGER,
-  PROP_METHOD_MANAGER,
+  PROP_COMMUNICATION_MANAGER,
   PROP_CONNECTION
 };
 
@@ -603,7 +600,7 @@ infc_browser_release_connection(InfcBrowser* browser)
   {
     /* Reset group since the browser's connection
      * is always the publisher. */
-    inf_connection_manager_group_unref(priv->group);
+    g_object_unref(priv->group);
     priv->group = NULL;
   }
 
@@ -650,43 +647,26 @@ infc_browser_request_to_xml(InfcRequest* request)
   return xml;
 }
 
-const InfConnectionManagerMethodDesc*
-infc_browser_lookup_named_method(InfcBrowser* browser,
-                                 InfXmlConnection* connection,
-                                 const gchar* method_name,
-                                 GError** error)
+static GError*
+infc_browser_method_unsupported_error(const gchar* method_name,
+                                      InfXmlConnection* connection)
 {
-  InfcBrowserPrivate* priv;
+  GError* error;
   gchar* network;
-  const InfConnectionManagerMethodDesc* method;
 
-  priv = INFC_BROWSER_PRIVATE(browser);
   g_object_get(G_OBJECT(connection), "network", &network, NULL);
 
-  method = inf_method_manager_lookup_method(
-    priv->method_manager,
-    network,
-    method_name
+  error = g_error_new(
+    inf_directory_error_quark(),
+    INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
+    _("This session requires communication method `%s' which is not "
+      "installed for network `%s'"),
+    method_name,
+    network
   );
 
-  if(method == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
-      _("This session requires communication method `%s' which is not "
-        "installed for network `%s'"),
-      method_name,
-      network
-    );
-
-    g_free(network);
-    return NULL;
-  }
-
   g_free(network);
-  return method;
+  return error;
 }
 
 /*
@@ -704,8 +684,7 @@ infc_browser_init(GTypeInstance* instance,
   priv = INFC_BROWSER_PRIVATE(browser);
 
   priv->io = NULL;
-  priv->connection_manager = NULL;
-  priv->method_manager = NULL;
+  priv->communication_manager = NULL;
   priv->connection = NULL;
   priv->request_manager = infc_request_manager_new();
 
@@ -725,9 +704,6 @@ infc_browser_constructor(GType type,
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
 
-  gchar* network;
-  const InfConnectionManagerMethodDesc* method;
-
   object = G_OBJECT_CLASS(parent_class)->constructor(
     type,
     n_construct_properties,
@@ -737,46 +713,26 @@ infc_browser_constructor(GType type,
   browser = INFC_BROWSER(object);
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  if(priv->method_manager == NULL)
-  {
-    priv->method_manager = inf_method_manager_get_default();
-    g_object_ref(priv->method_manager);
-  }
-
-  g_assert(priv->connection_manager != NULL);
+  g_assert(priv->communication_manager != NULL);
   g_assert(priv->connection != NULL);
 
-  g_object_get(priv->connection, "network", &network, NULL);
-
-  method = inf_method_manager_lookup_method(
-    priv->method_manager,
-    network,
+  /* Join directory group of server */
+  /* directory group always uses central method */
+  priv->group = inf_communication_manager_join_group(
+    priv->communication_manager,
+    "InfDirectory",
+    priv->connection,
     "central"
   );
 
-  if(method != NULL)
-  {
-    /* Join directory group of server */
-    priv->group = inf_connection_manager_join_group(
-      priv->connection_manager,
-      "InfDirectory",
-      priv->connection,
-      INF_NET_OBJECT(browser),
-      method
-    );
-  }
-  else
-  {
-    infc_browser_release_connection(browser);
+  /* "central" method should always be available */
+  g_assert(priv->group != NULL);
 
-    g_warning(
-      _("Cannot connect to server since the \"central\" method could not be "
-        "found for network \"%s\""),
-      network
-    );
-  }
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(priv->group),
+    INF_COMMUNICATION_OBJECT(browser)
+  );
 
-  g_free(network);
   return object;
 }
 
@@ -801,11 +757,8 @@ infc_browser_dispose(GObject* object)
   /* Should have been freed by infc_browser_release_connection */
   g_assert(priv->sync_ins == NULL);
 
-  g_object_unref(priv->connection_manager);
-  priv->connection_manager = NULL;
-
-  g_object_unref(priv->method_manager);
-  priv->method_manager = NULL;
+  g_object_unref(priv->communication_manager);
+  priv->communication_manager = NULL;
 
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;
@@ -840,10 +793,10 @@ infc_browser_set_property(GObject* object,
     g_assert(priv->io == NULL); /* construct only */
     priv->io = INF_IO(g_value_dup_object(value));
     break;
-  case PROP_CONNECTION_MANAGER:
-    g_assert(priv->connection_manager == NULL); /* construct/only */
-    priv->connection_manager =
-      INF_CONNECTION_MANAGER(g_value_dup_object(value));
+  case PROP_COMMUNICATION_MANAGER:
+    g_assert(priv->communication_manager == NULL); /* construct/only */
+    priv->communication_manager =
+      INF_COMMUNICATION_MANAGER(g_value_dup_object(value));
 
     break;
   case PROP_CONNECTION:
@@ -857,10 +810,6 @@ infc_browser_set_property(GObject* object,
       browser
     );
 
-    break;
-  case PROP_METHOD_MANAGER:
-    g_assert(priv->method_manager == NULL);
-    priv->method_manager = INF_METHOD_MANAGER(g_value_dup_object(value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -885,8 +834,8 @@ infc_browser_get_property(GObject* object,
   case PROP_IO:
     g_value_set_object(value, G_OBJECT(priv->io));
     break;
-  case PROP_CONNECTION_MANAGER:
-    g_value_set_object(value, G_OBJECT(priv->connection_manager));
+  case PROP_COMMUNICATION_MANAGER:
+    g_value_set_object(value, G_OBJECT(priv->communication_manager));
     break;
   case PROP_CONNECTION:
     g_value_set_object(value, G_OBJECT(priv->connection));
@@ -1215,9 +1164,8 @@ infc_browser_subscribe_session(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   xmlChar* method_name;
-  const InfConnectionManagerMethodDesc* method;
   xmlChar* group_name;
-  InfConnectionManagerGroup* group;
+  InfCommunicationJoinedGroup* group;
   InfcSessionProxy* proxy;
   InfcBrowserIter iter;
   InfSession* session;
@@ -1230,35 +1178,40 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   method_name = inf_xml_util_get_attribute_required(xml, "method", error);
   if(method_name == NULL) return FALSE;
 
-  method = infc_browser_lookup_named_method(
-    browser,
-    connection,
-    (const gchar*)method_name,
-    error
-  );
-
-  xmlFree(method_name);
-  if(method == NULL) return FALSE;
-
   group_name = inf_xml_util_get_attribute_required(xml, "group", error);
-  if(group_name == NULL) return FALSE;
+  if(group_name == NULL) { xmlFree(method_name); return FALSE; }
 
   /* Server is publisher */
-  group = inf_connection_manager_join_group(
-    priv->connection_manager,
+  group = inf_communication_manager_join_group(
+    priv->communication_manager,
     (const gchar*)group_name,
     connection,
-    NULL,
-    method
+    (const gchar*)method_name
   );
 
   xmlFree(group_name);
+
+  if(!group)
+  {
+    g_propagate_error(
+      error,
+      infc_browser_method_unsupported_error(
+        (const gchar*)method_name,
+        connection
+      )
+    );
+
+    xmlFree(method_name);
+    return FALSE;
+  }
+
+  xmlFree(method_name);
 
   if(initial_sync)
   {
     session = node->shared.known.plugin->session_new(
       priv->io,
-      priv->connection_manager,
+      priv->communication_manager,
       group,
       connection,
       node->shared.known.plugin->user_data
@@ -1268,7 +1221,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   {
     session = node->shared.known.plugin->session_new(
       priv->io,
-      priv->connection_manager,
+      priv->communication_manager,
       NULL,
       NULL,
       node->shared.known.plugin->user_data
@@ -1276,11 +1229,16 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   }
 
   proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
-  inf_connection_manager_group_set_object(group, INF_NET_OBJECT(proxy));
+
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(group),
+    INF_COMMUNICATION_OBJECT(proxy)
+  );
+
   infc_session_proxy_set_connection(proxy, group, connection);
 
   g_object_unref(session);
-  inf_connection_manager_group_unref(group);
+  g_object_unref(group);
 
   iter.node_id = node->id;
   iter.node = node;
@@ -1574,9 +1532,8 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   InfcRequest* request;
   InfSession* session;
   const InfcNotePlugin* plugin;
-  InfConnectionManagerGroup* sync_group;
+  InfCommunicationJoinedGroup* sync_group;
   InfcSessionProxy* proxy;
-  const InfConnectionManagerMethodDesc* method;
   InfcBrowserNode* node;
   InfcBrowserIter iter;
 
@@ -1657,23 +1614,27 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
   }
 
   method_name = inf_xml_util_get_attribute_required(xml, "method", error);
-  if(method_name == NULL) { g_object_unref(session); return FALSE; }
+  if(method_name == NULL) goto error_session;
 
-  method = infc_browser_lookup_named_method(
+/*  method = infc_browser_lookup_named_method(
     browser,
     connection,
     (const gchar*)method_name,
     error
   );
 
-  xmlFree(method_name);
-  if(method == NULL) goto error_session;
+  if(method == NULL) goto error_session;*/
 
   name = inf_xml_util_get_attribute_required(xml, "name", error);
-  if(name == NULL) goto error_session;
+  if(name == NULL) { xmlFree(method_name); goto error_session; }
 
   group_name = inf_xml_util_get_attribute_required(xml, "group", error);
-  if(group_name == NULL) { xmlFree(name); goto error_session; }
+  if(group_name == NULL)
+  {
+    xmlFree(name);
+    xmlFree(method_name);
+    goto error_session;
+  }
 
   /* TODO: The server might specify a different subscription group & method */
   /* (Set synchronization group as parent of subscription group, to prevent
@@ -1683,20 +1644,46 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       break;
 
   /* Server is publisher */
-  sync_group = inf_connection_manager_join_group(
-    priv->connection_manager,
+  sync_group = inf_communication_manager_join_group(
+    priv->communication_manager,
     (const gchar*)group_name,
     connection,
-    NULL,
-    method
+    (const gchar*)method_name
   );
 
   xmlFree(group_name);
 
-  proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
-  inf_connection_manager_group_set_object(sync_group, INF_NET_OBJECT(proxy));
+  if(sync_group == NULL)
+  {
+    g_propagate_error(
+      error,
+      infc_browser_method_unsupported_error(
+        (const gchar*)method_name,
+        connection
+      )
+    );
 
-  inf_session_synchronize_to(session, sync_group, connection);
+    xmlFree(method_name);
+    g_free(name);
+
+    goto error_session;
+  }
+
+  xmlFree(method_name);
+
+  proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
+
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(sync_group),
+    INF_COMMUNICATION_OBJECT(proxy)
+  );
+
+  inf_session_synchronize_to(
+    session,
+    INF_COMMUNICATION_GROUP(sync_group),
+    connection
+  );
+
   g_object_unref(session);
 
   node = infc_browser_node_add_note(
@@ -1734,7 +1721,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
     );
   }
 
-  inf_connection_manager_group_unref(sync_group);
+  g_object_unref(sync_group);
   g_object_unref(proxy);
 
   /* TODO: Emit a signal, so that others are notified that a sync-in begins
@@ -2033,24 +2020,26 @@ infc_browser_handle_request_failed(InfcBrowser* browser,
  * InfNetObject implementation
  */
 
-static gboolean
-infc_browser_net_object_received(InfNetObject* net_object,
-                                 InfXmlConnection* connection,
-                                 xmlNodePtr node,
-                                 GError** error)
+static InfCommunicationScope
+infc_browser_communication_object_received(InfCommunicationObject* object,
+                                           InfXmlConnection* connection,
+                                           xmlNodePtr node,
+                                           GError** error)
 {
+  InfcBrowser* browser;
   InfcBrowserPrivate* priv;
   GError* local_error;
   GError* seq_error;
   InfcRequest* request;
 
-  priv = INFC_BROWSER_PRIVATE(net_object);
+  browser = INFC_BROWSER(object);
+  priv = INFC_BROWSER_PRIVATE(browser);
   local_error = NULL;
 
   if(strcmp((const gchar*)node->name, "request-failed") == 0)
   {
     infc_browser_handle_request_failed(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2059,7 +2048,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "explore-begin") == 0)
   {
     infc_browser_handle_explore_begin(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2068,7 +2057,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "explore-end") == 0)
   {
     infc_browser_handle_explore_end(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2077,7 +2066,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "add-node") == 0)
   {
     infc_browser_handle_add_node(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2086,7 +2075,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "sync-in") == 0)
   {
     infc_browser_handle_sync_in(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2095,7 +2084,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "remove-node") == 0)
   {
     infc_browser_handle_remove_node(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2104,7 +2093,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "subscribe-session") == 0)
   {
     infc_browser_handle_subscribe_session(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2113,7 +2102,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "save-session-in-progress") == 0)
   {
     infc_browser_handle_save_session_in_progress(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2122,7 +2111,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "saved-session") == 0)
   {
     infc_browser_handle_saved_session(
-      INFC_BROWSER(net_object),
+      browser,
       connection,
       node,
       &local_error
@@ -2175,7 +2164,7 @@ infc_browser_net_object_received(InfNetObject* net_object,
 
   /* Browser is client-side anyway, so we should not even need to forward
    * anything. */
-  return FALSE;
+  return INF_COMMUNICATION_SCOPE_PTP;
 }
 
 /*
@@ -2283,12 +2272,12 @@ infc_browser_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_CONNECTION_MANAGER,
+    PROP_COMMUNICATION_MANAGER,
     g_param_spec_object(
-      "connection-manager",
-      "Connection manager",
-      "The connection manager for the browser",
-      INF_TYPE_CONNECTION_MANAGER,
+      "communication-manager",
+      "Communication manager",
+      "The communication manager for the browser",
+      INF_COMMUNICATION_TYPE_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -2301,18 +2290,6 @@ infc_browser_class_init(gpointer g_class,
       "Server connection",
       "Connection to the server exposing the directory to browse",
       INF_TYPE_XML_CONNECTION,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
-    PROP_METHOD_MANAGER,
-    g_param_spec_object(
-      "method-manager",
-      "Method manager",
-      "Method manager to load communication methods from",
-      INF_TYPE_METHOD_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -2436,13 +2413,13 @@ infc_browser_class_init(gpointer g_class,
 }
 
 static void
-infc_browser_net_object_init(gpointer g_iface,
-                             gpointer iface_data)
+infc_browser_communication_object_init(gpointer g_iface,
+                                       gpointer iface_data)
 {
-  InfNetObjectIface* iface;
-  iface = (InfNetObjectIface*)g_iface;
+  InfCommunicationObjectIface* iface;
+  iface = (InfCommunicationObjectIface*)g_iface;
 
-  iface->received = infc_browser_net_object_received;
+  iface->received = infc_browser_communication_object_received;
 }
 
 GType
@@ -2465,8 +2442,8 @@ infc_browser_get_type(void)
       NULL                         /* value_table */
     };
 
-    static const GInterfaceInfo net_object_info = {
-      infc_browser_net_object_init,
+    static const GInterfaceInfo communication_object_info = {
+      infc_browser_communication_object_init,
       NULL,
       NULL
     };
@@ -2480,8 +2457,8 @@ infc_browser_get_type(void)
 
     g_type_add_interface_static(
       browser_type,
-      INF_TYPE_NET_OBJECT,
-      &net_object_info
+      INF_COMMUNICATION_TYPE_OBJECT,
+      &communication_object_info
     );
   }
 
@@ -2495,11 +2472,8 @@ infc_browser_get_type(void)
 /**
  * infc_browser_new:
  * @io: A #InfIo object used to schedule timeouts.
- * @connection_manager: A #InfConnectionManager to register the server
- * connection and which forwards incoming data to the blowser or running
- * sessions.
- * @method_manager: A #InfMethodManager to lookup required communication
- * methods.
+ * @comm_manager: A #InfCommunicationManager to register the server connection
+ * and which forwards incoming data to the browser or running sessions.
  * @connection: Connection to the server.
  *
  * Creates a new #InfcBrowser.
@@ -2508,23 +2482,19 @@ infc_browser_get_type(void)
  **/
 InfcBrowser*
 infc_browser_new(InfIo* io,
-                 InfConnectionManager* manager,
-                 InfMethodManager* method_manager,
+                 InfCommunicationManager* comm_manager,
                  InfXmlConnection* connection)
 {
   GObject* object;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
-  g_return_val_if_fail(method_manager == NULL ||
-                       INF_IS_METHOD_MANAGER(method_manager), NULL);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(comm_manager), NULL);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
 
   object = g_object_new(
     INFC_TYPE_BROWSER,
     "io", io,
-    "connection-manager", manager,
-    "method-manager", method_manager,
+    "connection-manager", comm_manager,
     "connection", connection,
     NULL
   );
@@ -2536,15 +2506,15 @@ infc_browser_new(InfIo* io,
  * infc_browser_get_connection_manager:
  * @browser: A #InfcBrowser.
  *
- * Returns the connection manager of this browser.
+ * Returns the communication manager of this browser.
  *
- * Return Value: A #InfConnectionManager.
+ * Return Value: A #InfCommunicationManager.
  **/
-InfConnectionManager*
+InfCommunicationManager*
 infc_browser_get_connection_manager(InfcBrowser* browser)
 {
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
-  return INFC_BROWSER_PRIVATE(browser)->connection_manager;
+  return INFC_BROWSER_PRIVATE(browser)->communication_manager;
 }
 
 /**
@@ -2862,8 +2832,8 @@ infc_browser_iter_explore(InfcBrowser* browser,
     request
   );
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );
@@ -2991,8 +2961,8 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
   inf_xml_util_set_attribute(xml, "type", "InfSubdirectory");
   inf_xml_util_set_attribute(xml, "name", name);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );
@@ -3060,8 +3030,8 @@ infc_browser_add_note(InfcBrowser* browser,
   if(initial_subscribe != FALSE)
     xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );
@@ -3179,8 +3149,8 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
     xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
   xmlNewChild(xml, NULL, (const xmlChar*)"sync-in", NULL);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );
@@ -3228,8 +3198,8 @@ infc_browser_remove_node(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );
@@ -3370,8 +3340,8 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
     request
   );
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );
@@ -3422,8 +3392,8 @@ infc_browser_iter_save_session(InfcBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     priv->connection,
     xml
   );

@@ -35,8 +35,8 @@ struct _InfcNotePlugin {
   const gchar* note_type;
 
   InfSession*(*session_new)(InfIo* io,
-                            InfConnectionManager* manager,
-                            InfConnectionManagerGroup* sync_group,
+                            InfCommunicationManager* manager,
+                            InfCommunicationJoinedGroup* sync_group,
                             InfXmlConnection* sync_connection,
                             gpointer user_data);
 };

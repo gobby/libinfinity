@@ -21,8 +21,8 @@
 
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/common/inf-discovery.h>
-#include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 #include <gtk/gtktreemodel.h>
 
 #include <glib-object.h>
@@ -52,8 +52,7 @@ inf_gtk_browser_store_get_type(void) G_GNUC_CONST;
 
 InfGtkBrowserStore*
 inf_gtk_browser_store_new(InfIo* io,
-                          InfConnectionManager* connection_manager,
-                          InfMethodManager* method_manager);
+                          InfCommunicationManager* comm_manager);
 
 void
 inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,

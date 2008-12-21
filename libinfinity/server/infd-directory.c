@@ -36,9 +36,9 @@
 #include <libinfinity/server/infd-directory.h>
 
 #include <libinfinity/common/inf-session.h>
-#include <libinfinity/common/inf-net-object.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -99,13 +99,11 @@ typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfIo* io;
   InfdStorage* storage;
-  GPtrArray* directory_methods;
-  GPtrArray* session_methods;
-  InfConnectionManager* connection_manager;
-  InfConnectionManagerGroup* group; /* TODO: This should be a property */
+  InfCommunicationManager* communication_manager;
+  InfCommunicationHostedGroup* group; /* TODO: This should be a property */
 
   GHashTable* plugins; /* Registered plugins */
- /* TODO: ConnectionManagerGroup has already a connection list */
+ /* TODO: CommunicationManagerGroup has already a connection list */
   GSList* connections;
 
   guint node_counter;
@@ -120,8 +118,7 @@ enum {
 
   PROP_IO,
   PROP_STORAGE,
-  PROP_CONNECTION_MANAGER,
-  PROP_METHOD_MANAGER
+  PROP_COMMUNICATION_MANAGER
 };
 
 enum {
@@ -174,43 +171,6 @@ static GQuark infd_directory_node_id_quark;
  * references. */
 /* TODO: This should be a property: */
 static const guint INFD_DIRECTORY_SAVE_TIMEOUT = 60000;
-
-/*
- * Utility functions
- */
-
-static const InfConnectionManagerMethodDesc*
-infd_directory_find_method_for_connection(InfdDirectory* directory,
-                                          InfConnectionManagerGroup* group,
-                                          InfXmlConnection* connection,
-                                          GError** error)
-{
-  gchar* network;
-  const InfConnectionManagerMethodDesc* method;
-
-  g_object_get(G_OBJECT(connection), "network", &network, NULL);  
-  method = inf_connection_manager_group_get_method_for_network(
-    group,
-    network
-  );
-
-  if(method == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
-      _("The session does not support network '%s'"),
-      network
-    );
-
-    g_free(network);
-    return NULL;
-  }
-
-  g_free(network);
-  return method;
-}
 
 /*
  * Path handling.
@@ -429,19 +389,20 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   gchar* group_name;
-  InfConnectionManagerGroup* group;
+  InfCommunicationHostedGroup* group;
   InfdSessionProxy* proxy;
+  /* TODO: For the moment, there only exist central methods anyway. In the
+   * long term, this should probably be a property, though. */
+  static const gchar* const methods[] = { "central", NULL };
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   group_name = g_strdup_printf("InfSession_%u", node_id);
 
-  group = inf_connection_manager_open_group(
-    priv->connection_manager,
+  group = inf_communication_manager_open_group(
+    priv->communication_manager,
     group_name,
-    NULL, /* net_object */
-    (const InfConnectionManagerMethodDesc* const*)
-      priv->session_methods->pdata
+    methods
   );
 
   g_free(group_name);
@@ -455,8 +416,13 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
     )
   );
 
-  inf_connection_manager_group_set_object(group, INF_NET_OBJECT(proxy));
-  inf_connection_manager_group_unref(group);
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(group),
+    INF_COMMUNICATION_OBJECT(proxy)
+  );
+
+  g_object_unref(group);
+
   return proxy;
 }
 
@@ -468,33 +434,34 @@ static InfdSessionProxy*
 infd_directory_create_session_proxy_sync(InfdDirectory* directory,
                                          guint node_id,
                                          const InfdNotePlugin* plugin,
-                                         InfConnectionManagerGroup* sync_g,
+                                         InfCommunicationHostedGroup* sync_g,
                                          InfXmlConnection* sync_conn,
                                          gboolean subscribe_sync_conn)
 {
   InfdDirectoryPrivate* priv;
   gchar* group_name;
-  InfConnectionManagerGroup* group;
+  InfCommunicationHostedGroup* group;
   InfSession* session;
   InfdSessionProxy* proxy;
+  /* TODO: For the moment, there only exist central methods anyway. In the
+   * long term, this should probably be a property, though. */
+  static const gchar* const methods[] = { "central", NULL };
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   group_name = g_strdup_printf("InfSession_%u", node_id);
 
-  group = inf_connection_manager_open_group(
-    priv->connection_manager,
+  group = inf_communication_manager_open_group(
+    priv->communication_manager,
     group_name,
-    NULL, /* net_object */
-    (const InfConnectionManagerMethodDesc* const*)
-      priv->session_methods->pdata
+    methods
   );
 
   g_free(group_name);
 
   session = plugin->session_new(
     priv->io,
-    priv->connection_manager,
+    priv->communication_manager,
     (sync_g == NULL) ? group : sync_g,
     sync_conn,
     plugin->user_data
@@ -509,10 +476,20 @@ infd_directory_create_session_proxy_sync(InfdDirectory* directory,
     )
   );
 
-  inf_connection_manager_group_set_object(group, INF_NET_OBJECT(proxy));
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(group),
+    INF_COMMUNICATION_OBJECT(proxy)
+  );
+
   if(sync_g != NULL)
-    inf_connection_manager_group_set_object(sync_g, INF_NET_OBJECT(proxy));
-  inf_connection_manager_group_unref(group);
+  {
+    inf_communication_group_set_target(
+      INF_COMMUNICATION_GROUP(sync_g),
+      INF_COMMUNICATION_OBJECT(proxy)
+    );
+  }
+
+  g_object_unref(group);
   return proxy;
 
 }
@@ -888,27 +865,6 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
  * Node synchronization.
  */
 
-static const InfConnectionManagerMethodDesc*
-infd_directory_find_session_method_for_network(InfdDirectory* directory,
-                                               const gchar* network)
-{
-  InfdDirectoryPrivate* priv;
-  InfConnectionManagerMethodDesc* method;
-  guint i;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  for(i = 0; i < priv->session_methods->len; ++ i)
-  {
-    method = g_ptr_array_index(priv->session_methods, i);
-    if(method == NULL) return NULL; /* array is null-terminated */
-
-    if(strcmp(method->network, network) == 0)
-      return method;
-  }
-
-  return NULL;
-}
-
 /* Creates XML request to tell someone about a new node */
 static xmlNodePtr
 infd_directory_node_register_to_xml(InfdDirectoryNode* node)
@@ -991,16 +947,16 @@ infd_directory_send(InfdDirectory* directory,
       if(item->next != NULL &&
          (item->next->data != exclude || item->next->next != NULL))
       {
-        inf_connection_manager_group_send_to_connection(
-          priv->group,
+        inf_communication_group_send_message(
+          INF_COMMUNICATION_GROUP(priv->group),
           INF_XML_CONNECTION(item->data),
           xmlCopyNode(xml, 1)
         );
       }
       else
       {
-        inf_connection_manager_group_send_to_connection(
-          priv->group,
+        inf_communication_group_send_message(
+          INF_COMMUNICATION_GROUP(priv->group),
           INF_XML_CONNECTION(item->data),
           xml
         );
@@ -1062,27 +1018,24 @@ infd_directory_node_register_reply(InfdDirectory* directory,
   xml = infd_directory_node_register_to_xml(node);
   inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     connection,
     xml
   );
 }
 
 /* Announces the presence of a new node as a reply to an add-node request
- * with subscribing the initiating connection. Note that an error can occur
- * if no method of connection's network can be used to join the subscription
- * group. */
-static gboolean
+ * with subscribing the initiating connection. */
+static void
 infd_directory_node_register_reply_subscription(InfdDirectory* directory,
                                                 InfdDirectoryNode* node,
                                                 InfXmlConnection* connection,
-                                                guint seq,
-                                                GError** error)
+                                                guint seq)
 {
   InfdDirectoryPrivate* priv;
-  InfConnectionManagerGroup* group;
-  const InfConnectionManagerMethodDesc* method;
+  InfCommunicationGroup* group;
+  const gchar* method;
   xmlNodePtr xml;
   xmlNodePtr child;
 
@@ -1099,18 +1052,14 @@ infd_directory_node_register_reply_subscription(InfdDirectory* directory,
 
   g_assert(group != NULL);
 
-  method = infd_directory_find_method_for_connection(
-    directory,
+  
+  method = inf_communication_group_get_method_for_connection(
     group,
-    connection,
-    error
+    connection
   );
 
-  if(method == NULL)
-  {
-    inf_connection_manager_group_unref(group);
-    return FALSE;
-  }
+  /* "central" should always be used as a fallback */
+  g_assert(method == NULL);
 
   infd_directory_node_register(directory, node, connection);
   xml = infd_directory_node_register_to_xml(node);
@@ -1120,19 +1069,17 @@ infd_directory_node_register_reply_subscription(InfdDirectory* directory,
   inf_xml_util_set_attribute(
     child,
     "group",
-    inf_connection_manager_group_get_name(group)
+    inf_communication_group_get_name(group)
   );
 
-  inf_xml_util_set_attribute(child, "method", method->name);
-  inf_connection_manager_group_unref(group);
+  inf_xml_util_set_attribute(child, "method", method);
+  g_object_unref(group);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     connection,
     xml
   );
-
-  return TRUE;
 }
 
 /* Announces that a node is removed. Again, this is not done in
@@ -1164,8 +1111,8 @@ infd_directory_node_unregister(InfdDirectory* directory,
     xml = infd_directory_node_unregister_to_xml(node);
     inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
-    inf_connection_manager_group_send_to_connection(
-      priv->group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
       seq_conn,
       xml
     );
@@ -1283,9 +1230,12 @@ infd_directory_add_sync_in(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
-  InfConnectionManagerGroup* synchronization_group;
+  InfCommunicationHostedGroup* synchronization_group;
   gchar* sync_group_name;
   guint node_id;
+  /* Synchronization is always between only two peers, so central method
+   * is fully OK. */
+  static const gchar* const sync_methods[] = { "central", NULL };
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node_id = priv->node_counter ++;
@@ -1304,12 +1254,10 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   {
     sync_group_name = g_strdup_printf("InfSession_SyncIn_%u", node_id);
 
-    synchronization_group = inf_connection_manager_open_group(
-      priv->connection_manager,
+    synchronization_group = inf_communication_manager_open_group(
+      priv->communication_manager,
       sync_group_name,
-      NULL,
-      (const InfConnectionManagerMethodDesc* const*)
-        priv->directory_methods->pdata
+      sync_methods
     );
 
     g_free(sync_group_name);
@@ -1330,7 +1278,7 @@ infd_directory_add_sync_in(InfdDirectory* directory,
 
   /* The above call refed the group: */
   if(!subscribe_sync_conn)
-    inf_connection_manager_group_unref(synchronization_group);
+    g_object_unref(synchronization_group);
 
   g_signal_connect(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
@@ -1608,7 +1556,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
   {
     session = plugin->session_new(
       priv->io,
-      priv->connection_manager,
+      priv->communication_manager,
       NULL,
       NULL,
       plugin->user_data
@@ -1650,17 +1598,13 @@ infd_directory_node_add_note(InfdDirectory* directory,
     {
       infd_directory_node_register_reply(directory, node, seq_conn, seq);
     }
-    /* If there is no method for connection to join the subscription group
-     * (which is the only error that can occur), then we still create the
-     * node. We perhaps should check this before creating the node. */
     else if(seq_conn != NULL && subscribe_seq_conn == TRUE)
     {
       infd_directory_node_register_reply_subscription(
         directory,
         node,
         seq_conn,
-        seq,
-        error
+        seq
       );
     }
     else
@@ -1722,10 +1666,10 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
-  InfConnectionManagerGroup* sync_group;
+  InfCommunicationHostedGroup* sync_group;
   xmlNodePtr xml;
   xmlNodePtr child;
-  const InfConnectionManagerMethodDesc* method;
+  const gchar* method;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1758,11 +1702,10 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     NULL
   );
 
-  method = infd_directory_find_method_for_connection(
-    directory,
-    sync_group,
-    sync_conn,
-    error
+  /* This is always "central" anyway... */
+  method = inf_communication_group_get_method_for_connection(
+    INF_COMMUNICATION_GROUP(sync_group),
+    sync_conn
   );
 
   if(method == NULL)
@@ -1779,10 +1722,10 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
   inf_xml_util_set_attribute(
     xml,
     "group",
-    inf_connection_manager_group_get_name(sync_group)
+    inf_communication_group_get_name(INF_COMMUNICATION_GROUP(sync_group))
   );
 
-  inf_xml_util_set_attribute(xml, "method", method->name);
+  inf_xml_util_set_attribute(xml, "method", method);
   if(seq != 0) inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
   inf_xml_util_set_attribute(xml, "name", name);
@@ -1794,16 +1737,16 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
      * as the subscription group, so we don't need to query the subscription
      * group here. */
     child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
-    inf_xml_util_set_attribute(child, "method", method->name);
+    inf_xml_util_set_attribute(child, "method", method);
     inf_xml_util_set_attribute(
       child,
       "group",
-      inf_connection_manager_group_get_name(sync_group)
+      inf_communication_group_get_name(INF_COMMUNICATION_GROUP(sync_group))
     );
   }
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     sync_conn,
     xml
   );
@@ -1815,10 +1758,10 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
    * we can correctly specify the parent group here. */
   if(!subscribe_sync_conn)
   {
-    inf_connection_manager_group_add_connection(
+    inf_communication_hosted_group_add_member(
       sync_group,
-      sync_conn,
-      priv->group
+      INF_COMMUNICATION_GROUP(priv->group),
+      sync_conn
     );
   }
   else
@@ -1826,12 +1769,12 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     infd_session_proxy_subscribe_to(
       sync_in->proxy,
       sync_conn,
-      priv->group,
+      INF_COMMUNICATION_GROUP(priv->group),
       FALSE
     );
   }
 
-  inf_connection_manager_group_unref(sync_group);
+  g_object_unref(sync_group);
 
   return sync_in;
 }
@@ -1858,7 +1801,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
   session = node->shared.note.plugin->session_read(
     priv->storage,
     priv->io,
-    priv->connection_manager,
+    priv->communication_manager,
     path,
     node->shared.note.plugin->user_data,
     error
@@ -2016,8 +1959,8 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   if(seq_attr != NULL)
     xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     connection,
     reply_xml
   );
@@ -2028,8 +1971,8 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     if(seq_attr != NULL)
       xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
 
-    inf_connection_manager_group_send_to_connection(
-      priv->group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
       connection,
       reply_xml
     );
@@ -2043,8 +1986,8 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     xmlFree(seq_attr);
   }
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     connection,
     reply_xml
   );
@@ -2200,7 +2143,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
           infd_session_proxy_subscribe_to(
             node->shared.note.session,
             connection,
-            priv->group,
+            INF_COMMUNICATION_GROUP(priv->group),
             FALSE
           );
         }
@@ -2270,8 +2213,8 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfdSessionProxy* proxy;
-  InfConnectionManagerGroup* group;
-  const InfConnectionManagerMethodDesc* method;
+  InfCommunicationGroup* group;
+  const gchar* method;
   xmlChar* seq_attr;
   xmlNodePtr reply_xml;
 
@@ -2297,19 +2240,13 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 
   g_object_get(G_OBJECT(proxy), "subscription-group", &group, NULL);
 
-  method = infd_directory_find_method_for_connection(
-    directory,
+  method = inf_communication_group_get_method_for_connection(
     group,
-    connection,
-    error
+    connection
   );
 
-  if(method == NULL)
-  {
-    /* Session does not support connection's network. */
-    inf_connection_manager_group_unref(group);
-    return FALSE;
-  }
+  /* We should always be able to fallback to "central" */
+  g_assert(method != NULL);
 
   /* Reply that subscription was successful (so far, synchronization may
    * still fail) and tell identifier. */
@@ -2318,16 +2255,16 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   xmlNewProp(
     reply_xml,
     (const xmlChar*)"group",
-    (const xmlChar*)inf_connection_manager_group_get_name(group)
+    (const xmlChar*)inf_communication_group_get_name(group)
   );
   
   xmlNewProp(
     reply_xml,
     (const xmlChar*)"method",
-    (const xmlChar*)method->name
+    (const xmlChar*)method
   );
 
-  inf_connection_manager_group_unref(group);
+  g_object_unref(group);
   inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
 
   seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
@@ -2337,13 +2274,19 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     xmlFree(seq_attr);
   }
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     connection,
     reply_xml
   );
 
-  infd_session_proxy_subscribe_to(proxy, connection, priv->group, TRUE);
+  infd_session_proxy_subscribe_to(
+    proxy,
+    connection,
+    INF_COMMUNICATION_GROUP(priv->group),
+    TRUE
+  );
+
   return TRUE;
 }
 
@@ -2434,8 +2377,8 @@ infd_directory_handle_save_session(InfdDirectory* directory,
     xmlFree(seq_attr);
   }
 
-  inf_connection_manager_group_send_to_connection(
-    priv->group,
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
     connection,
     reply_xml
   );
@@ -2490,7 +2433,7 @@ infd_directory_remove_connection(InfdDirectory* directory,
     directory
   );
 
-  inf_connection_manager_group_remove_connection(priv->group, connection);
+  inf_communication_hosted_group_remove_member(priv->group, connection);
   priv->connections = g_slist_remove(priv->connections, connection);
   g_object_unref(G_OBJECT(connection));
 }
@@ -2549,60 +2492,17 @@ infd_directory_set_storage(InfdDirectory* directory,
 }
 
 static void
-infd_directory_set_connection_manager(InfdDirectory* directory,
-                                      InfConnectionManager* manager)
+infd_directory_set_communication_manager(InfdDirectory* directory,
+                                         InfCommunicationManager* manager)
 {
   InfdDirectoryPrivate* priv;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   /* construct/only */
-  g_assert(priv->connection_manager == NULL);
-  priv->connection_manager = manager;
+  g_assert(priv->communication_manager == NULL);
+  priv->communication_manager = manager;
   g_object_ref(manager);
-}
-
-static void
-infd_directory_set_method_manager(InfdDirectory* directory,
-                                  InfMethodManager* manager)
-{
-  InfdDirectoryPrivate* priv;
-  const InfConnectionManagerMethodDesc* desc;
-  const InfConnectionManagerMethodDesc* existing_desc;
-  
-  GSList* list;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-
-  /* construct/only */
-  g_assert(priv->directory_methods == NULL);
-  g_assert(priv->session_methods == NULL);
-  
-  priv->directory_methods = g_ptr_array_new();
-  priv->session_methods = g_ptr_array_new();
-
-  list = inf_method_manager_list_all_methods(manager);
-  for( ; list != NULL; list = g_slist_next(list))
-  {
-    /* Always use central method for directory operations */
-    desc = (const InfConnectionManagerMethodDesc*)list->data;
-    if(strcmp(desc->name, "central") == 0)
-      g_ptr_array_add(priv->directory_methods, (gpointer)desc);
-
-    /* TODO: Use first method for session methods. We should do something more
-     * intelligent here. */
-    existing_desc = infd_directory_find_session_method_for_network(
-      directory,
-      desc->network
-    );
-
-    if(existing_desc == NULL)
-      g_ptr_array_add(priv->session_methods, (gpointer)desc);
-  }
-
-  /* null-terminate */
-  g_ptr_array_add(priv->directory_methods, NULL);
-  g_ptr_array_add(priv->session_methods, NULL);
 }
 
 /*
@@ -2621,9 +2521,7 @@ infd_directory_init(GTypeInstance* instance,
 
   priv->io = NULL;
   priv->storage = NULL;
-  priv->connection_manager = NULL;
-  priv->directory_methods = NULL;
-  priv->session_methods = NULL;
+  priv->communication_manager = NULL;
 
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->connections = NULL;
@@ -2645,6 +2543,9 @@ infd_directory_constructor(GType type,
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
 
+  /* We only use central method for directory handling */
+  static const gchar* const methods[] = { "centrol", NULL };
+
   object = G_OBJECT_CLASS(parent_class)->constructor(
     type,
     n_construct_properties,
@@ -2655,22 +2556,17 @@ infd_directory_constructor(GType type,
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   /* TODO: Use default connection manager in case none is set */
-  g_assert(priv->connection_manager != NULL);
+  g_assert(priv->communication_manager != NULL);
   
-  if(priv->directory_methods == NULL)
-  {
-    infd_directory_set_method_manager(
-      directory,
-      inf_method_manager_get_default()
-    );
-  }
-
-  priv->group = inf_connection_manager_open_group(
-    priv->connection_manager,
+  priv->group = inf_communication_manager_open_group(
+    priv->communication_manager,
     "InfDirectory",
-    INF_NET_OBJECT(directory),
-    (const InfConnectionManagerMethodDesc* const*)
-      priv->directory_methods->pdata
+    methods
+  );
+
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(priv->group),
+    INF_COMMUNICATION_OBJECT(directory)
   );
 
   g_assert(priv->connections == NULL);
@@ -2705,12 +2601,9 @@ infd_directory_dispose(GObject* object)
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
 
-  inf_connection_manager_group_unref(priv->group);
-  g_object_unref(G_OBJECT(priv->connection_manager));
+  g_object_unref(priv->group);
+  g_object_unref(priv->communication_manager);
   infd_directory_set_storage(directory, NULL);
-
-  g_ptr_array_free(priv->session_methods, TRUE);
-  g_ptr_array_free(priv->directory_methods, TRUE);
 
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;
@@ -2732,7 +2625,6 @@ infd_directory_set_property(GObject* object,
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
-  InfMethodManager* manager;
 
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -2750,16 +2642,12 @@ infd_directory_set_property(GObject* object,
     );
 
     break;
-  case PROP_CONNECTION_MANAGER:
-    infd_directory_set_connection_manager(
+  case PROP_COMMUNICATION_MANAGER:
+    infd_directory_set_communication_manager(
       directory,
-      INF_CONNECTION_MANAGER(g_value_get_object(value))
+      INF_COMMUNICATION_MANAGER(g_value_get_object(value))
     );
 
-    break;
-  case PROP_METHOD_MANAGER:
-    manager = INF_METHOD_MANAGER(g_value_get_object(value));
-    if(manager != NULL) infd_directory_set_method_manager(directory, manager);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -2787,11 +2675,9 @@ infd_directory_get_property(GObject* object,
   case PROP_STORAGE:
     g_value_set_object(value, G_OBJECT(priv->storage));
     break;
-  case PROP_CONNECTION_MANAGER:
-    g_value_set_object(value, G_OBJECT(priv->connection_manager));
+  case PROP_COMMUNICATION_MANAGER:
+    g_value_set_object(value, G_OBJECT(priv->communication_manager));
     break;
-  case PROP_METHOD_MANAGER:
-    /* write/only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -2875,30 +2761,29 @@ infd_directory_remove_session(InfdDirectory* directory,
 }
 
 /*
- * InfNetObject implementation.
+ * InfCommunicationObject implementation.
  */
 
-static gboolean
-infd_directory_net_object_received(InfNetObject* net_object,
-                                   InfXmlConnection* connection,
-                                   const xmlNodePtr node,
-                                   GError** error)
+static InfCommunicationScope
+infd_directory_communication_object_received(InfCommunicationObject* object,
+                                             InfXmlConnection* connection,
+                                             const xmlNodePtr node,
+                                             GError** error)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   GError* local_error;
   xmlNodePtr reply_xml;
   xmlChar* seq_attr;
-  gchar code_str[16];
 
-  directory = INFD_DIRECTORY(net_object);
+  directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
   local_error = NULL;
 
   if(strcmp((const gchar*)node->name, "explore-node") == 0)
   {
     infd_directory_handle_explore_node(
-      INFD_DIRECTORY(net_object),
+      directory,
       connection,
       node,
       &local_error
@@ -2907,7 +2792,7 @@ infd_directory_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "add-node") == 0)
   {
     infd_directory_handle_add_node(
-      INFD_DIRECTORY(net_object),
+      directory,
       connection,
       node,
       &local_error
@@ -2916,7 +2801,7 @@ infd_directory_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "remove-node") == 0)
   {
     infd_directory_handle_remove_node(
-      INFD_DIRECTORY(net_object),
+      directory,
       connection,
       node,
       &local_error
@@ -2925,7 +2810,7 @@ infd_directory_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "subscribe-session") == 0)
   {
     infd_directory_handle_subscribe_session(
-      INFD_DIRECTORY(net_object),
+      directory,
       connection,
       node,
       &local_error
@@ -2934,7 +2819,7 @@ infd_directory_net_object_received(InfNetObject* net_object,
   else if(strcmp((const gchar*)node->name, "save-session") == 0)
   {
     infd_directory_handle_save_session(
-      INFD_DIRECTORY(net_object),
+      directory,
       connection,
       node,
       &local_error
@@ -2953,8 +2838,6 @@ infd_directory_net_object_received(InfNetObject* net_object,
 
   if(local_error != NULL)
   {
-    sprintf(code_str, "%u", local_error->code);
-
     /* TODO: If error is not from the InfDirectoryError error domain, the
      * client cannot reconstruct the error because he possibly does not know
      * the error domain (it might even come from a storage plugin). */
@@ -2962,7 +2845,7 @@ infd_directory_net_object_received(InfNetObject* net_object,
     /* An error happened, so tell the client that the request failed and
      * what has gone wrong. */
     reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
-    xmlNewProp(reply_xml, (const xmlChar*)"code", (const xmlChar*)code_str);
+    inf_xml_util_set_attribute_uint(reply_xml, "code", local_error->code);
 
     xmlNewProp(
       reply_xml,
@@ -2977,8 +2860,8 @@ infd_directory_net_object_received(InfNetObject* net_object,
       xmlFree(seq_attr);
     }
 
-    inf_connection_manager_group_send_to_connection(
-      priv->group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
       connection,
       reply_xml
     );
@@ -2987,7 +2870,7 @@ infd_directory_net_object_received(InfNetObject* net_object,
   }
 
   /* Never forward directory messages */
-  return FALSE;
+  return INF_COMMUNICATION_SCOPE_PTP;
 }
 
 /*
@@ -3045,25 +2928,13 @@ infd_directory_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_CONNECTION_MANAGER,
+    PROP_COMMUNICATION_MANAGER,
     g_param_spec_object(
-      "connection-manager",
-      "Connection manager",
-      "The connection manager for the directory",
-      INF_TYPE_CONNECTION_MANAGER,
+      "communication-manager",
+      "Communication manager",
+      "The communication manager for the directory",
+      INF_COMMUNICATION_TYPE_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
-    PROP_METHOD_MANAGER,
-    g_param_spec_object(
-      "method-manager",
-      "Method manager",
-      "The method manager to get communication methods from",
-      INF_TYPE_METHOD_MANAGER,
-      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY
     )
   );
 
@@ -3163,13 +3034,13 @@ infd_directory_class_init(gpointer g_class,
 }
 
 static void
-infd_directory_net_object_init(gpointer g_iface,
-                               gpointer iface_data)
+infd_directory_communication_object_init(gpointer g_iface,
+                                         gpointer iface_data)
 {
-  InfNetObjectIface* iface;
-  iface = (InfNetObjectIface*)g_iface;
+  InfCommunicationObjectIface* iface;
+  iface = (InfCommunicationObjectIface*)g_iface;
 
-  iface->received = infd_directory_net_object_received;
+  iface->received = infd_directory_communication_object_received;
 }
 
 GType
@@ -3209,8 +3080,8 @@ infd_directory_get_type(void)
       NULL                         /* value_table */
     };
 
-    static const GInterfaceInfo net_object_info = {
-      infd_directory_net_object_init,
+    static const GInterfaceInfo communication_object_info = {
+      infd_directory_communication_object_init,
       NULL,
       NULL
     };
@@ -3224,8 +3095,8 @@ infd_directory_get_type(void)
 
     g_type_add_interface_static(
       directory_type,
-      INF_TYPE_NET_OBJECT,
-      &net_object_info
+      INF_COMMUNICATION_TYPE_OBJECT,
+      &communication_object_info
     );
   }
 
@@ -3277,11 +3148,9 @@ infd_directory_iter_free(InfdDirectoryIter* iter)
  * @io: IO object to watch connections and schedule timeouts.
  * @storage: Storage backend that is used to read/write notes from
  * permanent memory into #InfBuffer objects.
- * @connection_manager: A #InfConnectionManager to register added
+ * @comm_manager: A #InfCommunicationManager to register added
  * connections to and which forwards incoming data to the directory
  * or running sessions.
- * @method_manager: A #InfMethodManager to load communication methods from,
- * or %NULL to use the default one.
  *
  * Creates a new #InfdDirectory.
  *
@@ -3290,23 +3159,19 @@ infd_directory_iter_free(InfdDirectoryIter* iter)
 InfdDirectory*
 infd_directory_new(InfIo* io,
                    InfdStorage* storage,
-                   InfConnectionManager* connection_manager,
-                   InfMethodManager* method_manager)
+                   InfCommunicationManager* comm_manager)
 {
   GObject* object;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(INFD_IS_STORAGE(storage), NULL);
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(connection_manager), NULL);
-  g_return_val_if_fail(method_manager == NULL ||
-                       INF_IS_METHOD_MANAGER(method_manager), NULL);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(comm_manager), NULL);
 
   object = g_object_new(
     INFD_TYPE_DIRECTORY,
     "io", io,
     "storage", storage,
-    "connection-manager", connection_manager,
-    "method-manager", method_manager,
+    "communication-manager", comm_manager,
     NULL
   );
 
@@ -3344,18 +3209,18 @@ infd_directory_get_storage(InfdDirectory* directory)
 }
 
 /**
- * infd_directory_get_connection_manager:
+ * infd_directory_get_communication_manager:
  * @directory: A #InfdDirectory.
  *
  * Returns the connection manager of the directory.
  *
- * Return Value: An #InfConnectionManager.
+ * Return Value: An #InfCommunicationManager.
  **/
-InfConnectionManager*
-infd_directory_get_connection_manager(InfdDirectory* directory)
+InfCommunicationManager*
+infd_directory_get_communication_manager(InfdDirectory* directory)
 {
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  return INFD_DIRECTORY_PRIVATE(directory)->connection_manager;
+  return INFD_DIRECTORY_PRIVATE(directory)->communication_manager;
 }
 
 /**
@@ -3438,23 +3303,16 @@ infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection)
 {
   InfdDirectoryPrivate* priv;
-  gboolean result;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_return_val_if_fail(priv->connection_manager != NULL, FALSE);
+  g_return_val_if_fail(priv->communication_manager != NULL, FALSE);
 
-  result = inf_connection_manager_group_add_connection(
-    priv->group,
-    connection,
-    NULL
-  );
+  inf_communication_hosted_group_add_member(priv->group, NULL, connection);
 
-  if(result == FALSE)
-    return FALSE;
-
+  /* TODO: Listen instead on group's member-removed */
   g_signal_connect(
     G_OBJECT(connection),
     "notify::status",

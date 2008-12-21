@@ -16,8 +16,8 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef __INF_NET_OBJECT_H__
-#define __INF_NET_OBJECT_H__
+#ifndef __INF_COMMUNICATION_OBJECT_H__
+#define __INF_COMMUNICATION_OBJECT_H__
 
 #include <libinfinity/common/inf-xml-connection.h>
 
@@ -27,73 +27,88 @@
 
 G_BEGIN_DECLS
 
-#define INF_TYPE_NET_OBJECT                 (inf_net_object_get_type())
-#define INF_NET_OBJECT(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_NET_OBJECT, InfNetObject))
-#define INF_IS_NET_OBJECT(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_NET_OBJECT))
-#define INF_NET_OBJECT_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_NET_OBJECT, InfNetObjectIface))
+#define INF_COMMUNICATION_TYPE_OBJECT                 (inf_communication_object_get_type())
+#define INF_COMMUNICATION_OBJECT(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_OBJECT, InfCommunicationObject))
+#define INF_COMMUNICATION_IS_OBJECT(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_OBJECT))
+#define INF_COMMUNICATION_OBJECT_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_OBJECT, InfCommunicationObjectIface))
+
+#define INF_COMMUNICATION_TYPE_SCOPE                  (inf_communication_scope_get_type())
 
 /**
- * InfNetObject:
+ * InfCommunicationScope:
+ * @INF_COMMUNICATION_SCOPE_PTP: The message is sent from one group member to
+ * another.
+ * @INF_COMMUNICATION_SCOPE_GROUP: The message is sent to all group members.
  *
- * #InfNetObject is an opaque data type. You should only access it
+ * #InfCommunicationScope specifies to which hosts a message belongs.
+ */
+typedef enum _InfCommunicationScope {
+  INF_COMMUNICATION_SCOPE_PTP,
+  INF_COMMUNICATION_SCOPE_GROUP
+} InfCommunicationScope;
+
+/**
+ * InfCommunicationObject:
+ *
+ * #InfCommunicationObject is an opaque data type. You should only access it
  * via the public API functions.
  */
-typedef struct _InfNetObject InfNetObject;
-typedef struct _InfNetObjectIface InfNetObjectIface;
+typedef struct _InfCommunicationObject InfCommunicationObject;
+typedef struct _InfCommunicationObjectIface InfCommunicationObjectIface;
 
 /**
- * InfNetObjectIface:
+ * InfCommunicationObjectIface:
  * @received: Called when a message for the group related to this
- * #InfNetObject was received.
+ * #InfCommunicationObject was received.
  * @enqueued: Called when a message to be sent to another group member has
  * been enqueued, which means sending it can no longer be cancelled via
  * inf_connection_manager_group_clear_queue().
  * @sent: Called when a message has been sent to another group member of the
- * group related no this #InfNetObject.
+ * group related no this #InfCommunicationObject.
  *
- * The virtual methods of #InfNetObject. These are called by the
+ * The virtual methods of #InfCommunicationObject. These are called by the
  * #InfConnectionManager when appropriate.
  */
-struct _InfNetObjectIface {
+struct _InfCommunicationObjectIface {
   /*< private >*/
   GTypeInterface parent;
 
   /*< public >*/
-  gboolean (*received)(InfNetObject* object,
-                       InfXmlConnection* conn,
-                       xmlNodePtr node,
-                       GError** error);
+  InfCommunicationScope (*received)(InfCommunicationObject* object,
+                                    InfXmlConnection* conn,
+                                    xmlNodePtr node,
+                                    GError** error);
 
-  void (*enqueued)(InfNetObject* object,
+  void (*enqueued)(InfCommunicationObject* object,
                    InfXmlConnection* conn,
                    xmlNodePtr node);
 
-  void (*sent)(InfNetObject* object,
+  void (*sent)(InfCommunicationObject* object,
                InfXmlConnection* conn,
                xmlNodePtr node);
 };
 
 GType
-inf_net_object_get_type(void) G_GNUC_CONST;
+inf_communication_object_get_type(void) G_GNUC_CONST;
 
-gboolean
-inf_net_object_received(InfNetObject* object,
-                        InfXmlConnection* conn,
-                        xmlNodePtr node,
-                        GError** error);
-
-void
-inf_net_object_enqueued(InfNetObject* object,
-                        InfXmlConnection* conn,
-                        xmlNodePtr node);
+InfCommunicationScope
+inf_communication_object_received(InfCommunicationObject* object,
+                                  InfXmlConnection* conn,
+                                  xmlNodePtr node,
+                                  GError** error);
 
 void
-inf_net_object_sent(InfNetObject* object,
-                    InfXmlConnection* conn,
-                    xmlNodePtr node);
+inf_communication_object_enqueued(InfCommunicationObject* object,
+                                  InfXmlConnection* conn,
+                                  xmlNodePtr node);
+
+void
+inf_communication_object_sent(InfCommunicationObject* object,
+                              InfXmlConnection* conn,
+                              xmlNodePtr node);
 
 G_END_DECLS
 
-#endif /* __INF_NET_OBJECT_H__ */
+#endif /* __INF_COMMUNICATION_OBJECT_H__ */
 
 /* vim:set et sw=2 ts=2: */

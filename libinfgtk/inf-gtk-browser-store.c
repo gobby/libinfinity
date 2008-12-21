@@ -73,8 +73,7 @@ struct _InfGtkBrowserStorePrivate {
   gint stamp;
 
   InfIo* io;
-  InfConnectionManager* connection_manager;
-  InfMethodManager* method_manager;
+  InfCommunicationManager* communication_manager;
 
   GSList* discoveries;
   InfGtkBrowserStoreItem* first_item;
@@ -85,8 +84,7 @@ enum {
   PROP_0,
 
   PROP_IO,
-  PROP_CONNECTION_MANAGER,
-  PROP_METHOD_MANAGER
+  PROP_COMMUNICATION_MANAGER
 };
 
 #define INF_GTK_BROWSER_STORE_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_BROWSER_STORE, InfGtkBrowserStorePrivate))
@@ -424,8 +422,7 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
   {
     browser = infc_browser_new(
       priv->io,
-      priv->connection_manager,
-      priv->method_manager,
+      priv->communication_manager,
       connection
     );
 
@@ -917,8 +914,7 @@ inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
 
     browser = infc_browser_new(
       priv->io,
-      priv->connection_manager,
-      priv->method_manager,
+      priv->communication_manager,
       connection
     );
 
@@ -979,8 +975,7 @@ inf_gtk_browser_store_init(GTypeInstance* instance,
 
   priv->stamp = g_random_int();
   priv->io = NULL;
-  priv->connection_manager = NULL;
-  priv->method_manager = NULL;
+  priv->communication_manager = NULL;
   priv->discoveries = NULL;
   priv->first_item = NULL;
   priv->last_item = NULL;
@@ -1020,16 +1015,10 @@ inf_gtk_browser_store_dispose(GObject* object)
   g_slist_free(priv->discoveries);
   priv->discoveries = NULL;
 
-  if(priv->method_manager != NULL)
+  if(priv->communication_manager != NULL)
   {
-    g_object_unref(priv->method_manager);
-    priv->method_manager = NULL;
-  }
-
-  if(priv->connection_manager != NULL)
-  {
-    g_object_unref(G_OBJECT(priv->connection_manager));
-    priv->connection_manager = NULL;
+    g_object_unref(priv->communication_manager);
+    priv->communication_manager = NULL;
   }
 
   if(priv->io != NULL)
@@ -1059,15 +1048,11 @@ inf_gtk_browser_store_set_property(GObject* object,
     g_assert(priv->io == NULL); /* construct only */
     priv->io = INF_IO(g_value_dup_object(value));
     break;
-  case PROP_CONNECTION_MANAGER: 
-    g_assert(priv->connection_manager == NULL); /* construct only */
-    priv->connection_manager =
-      INF_CONNECTION_MANAGER(g_value_dup_object(value));
+  case PROP_COMMUNICATION_MANAGER: 
+    g_assert(priv->communication_manager == NULL); /* construct only */
+    priv->communication_manager =
+      INF_COMMUNICATION_MANAGER(g_value_dup_object(value));
   
-    break;
-  case PROP_METHOD_MANAGER:
-    g_assert(priv->method_manager == NULL); /* construct/only */
-    priv->method_manager = INF_METHOD_MANAGER(g_value_dup_object(value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1090,13 +1075,10 @@ inf_gtk_browser_store_get_property(GObject* object,
   switch(prop_id)
   {
   case PROP_IO:
-    g_value_set_object(value, G_OBJECT(priv->io));
+    g_value_set_object(value, priv->io);
     break;
-  case PROP_CONNECTION_MANAGER:
-    g_value_set_object(value, G_OBJECT(priv->connection_manager));
-    break;
-  case PROP_METHOD_MANAGER:
-    g_value_set_object(value, G_OBJECT(priv->method_manager));
+  case PROP_COMMUNICATION_MANAGER:
+    g_value_set_object(value, priv->communication_manager);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -2008,24 +1990,12 @@ inf_gtk_browser_store_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_CONNECTION_MANAGER,
+    PROP_COMMUNICATION_MANAGER,
     g_param_spec_object(
-      "connection-manager",
-      "Connection manager", 
-      "The connection manager used for browsing remote directories",
-      INF_TYPE_CONNECTION_MANAGER,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
-    PROP_METHOD_MANAGER,
-    g_param_spec_object(
-      "method-manager",
-      "Method manager",
-      "The method manager used for browsing remote directories",
-      INF_TYPE_METHOD_MANAGER,
+      "communication-manager",
+      "Communication manager", 
+      "The communication manager used for browsing remote directories",
+      INF_COMMUNICATION_TYPE_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -2129,10 +2099,8 @@ inf_gtk_browser_store_get_type(void)
 /**
  * inf_gtk_browser_store_new:
  * @io: A #InfIo object for the created #InfcBrowser to schedule timeouts.
- * @connection_manager: The #InfConnectionManager with which to explore
+ * @comm_manager: The #InfCommunicationManager with which to explore
  * remote directories.
- * @method_manager: The #InfMethodManager with which to explore remote
- * directories, or %NULL to use the default method manager.
  *
  * Creates a new #InfGtkBrowserStore.
  *
@@ -2140,16 +2108,14 @@ inf_gtk_browser_store_get_type(void)
  **/
 InfGtkBrowserStore*
 inf_gtk_browser_store_new(InfIo* io,
-                          InfConnectionManager* connection_manager,
-                          InfMethodManager* method_manager)
+                          InfCommunicationManager* comm_manager)
 {
   GObject* object;
 
   object = g_object_new(
     INF_GTK_TYPE_BROWSER_STORE,
     "io", io,
-    "connection-manager", connection_manager,
-    "method-manager", method_manager,
+    "communication-manager", comm_manager,
     NULL
   );
 

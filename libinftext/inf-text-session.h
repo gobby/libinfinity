@@ -23,7 +23,7 @@
 #include <libinftext/inf-text-buffer.h>
 #include <libinftext/inf-text-user.h>
 #include <libinfinity/adopted/inf-adopted-session.h>
-#include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 
 #include <glib-object.h>
 
@@ -59,18 +59,18 @@ GType
 inf_text_session_get_type(void);
 
 InfTextSession*
-inf_text_session_new(InfConnectionManager* manager,
+inf_text_session_new(InfCommunicationManager* manager,
                      InfTextBuffer* buffer,
                      InfIo* io,
-                     InfConnectionManagerGroup* sync_group,
+                     InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection);
 
 InfTextSession*
-inf_text_session_new_with_user_table(InfConnectionManager* manager,
+inf_text_session_new_with_user_table(InfCommunicationManager* manager,
                                      InfTextBuffer* buffer,
                                      InfIo* io,
                                      InfUserTable* user_table,
-                                     InfConnectionManagerGroup* sync_group,
+                                     InfCommunicationGroup* sync_group,
                                      InfXmlConnection* sync_connection);
 
 void

@@ -19,12 +19,9 @@
 #ifndef __INFD_FILESYSTEM_STORAGE_H__
 #define __INFD_FILESYSTEM_STORAGE_H__
 
-#include <libinfinity/server/infd-storage.h>
-#include <libinfinity/server/infd-note-plugin.h>
-#include <libinfinity/common/inf-session.h>
-#include <libinfinity/common/inf-connection-manager.h>
-
 #include <glib-object.h>
+
+#include <stdio.h>
 
 G_BEGIN_DECLS
 

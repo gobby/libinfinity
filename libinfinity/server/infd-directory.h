@@ -22,8 +22,7 @@
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/server/infd-note-plugin.h>
 #include <libinfinity/server/infd-session-proxy.h>
-#include <libinfinity/common/inf-connection-manager.h>
-#include <libinfinity/common/inf-method-manager.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 
 #include <glib-object.h>
 
@@ -86,8 +85,7 @@ infd_directory_iter_free(InfdDirectoryIter* iter);
 InfdDirectory*
 infd_directory_new(InfIo* io,
                    InfdStorage* storage,
-                   InfConnectionManager* connection_manager,
-                   InfMethodManager* method_manager);
+                   InfCommunicationManager* comm_manager);
 
 InfIo*
 infd_directory_get_io(InfdDirectory* directory);
@@ -95,8 +93,8 @@ infd_directory_get_io(InfdDirectory* directory);
 InfdStorage*
 infd_directory_get_storage(InfdDirectory* directory);
 
-InfConnectionManager*
-infd_directory_get_connection_manager(InfdDirectory* directory);
+InfCommunicationManager*
+infd_directory_get_communication_manager(InfdDirectory* directory);
 
 gboolean
 infd_directory_add_plugin(InfdDirectory* directory,

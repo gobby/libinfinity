@@ -1,4 +1,4 @@
-This is a more-or-less incomplete list of more or less independant tasks that
+This is a more or less incomplete list of more or less independant tasks that
 would be nice to have done for the first stable release.
 
 Performance (Some ideas to improve performance, profile to verify!):
@@ -18,9 +18,7 @@ Performance (Some ideas to improve performance, profile to verify!):
     defined.
 
 Bandwidth usage optimizations:
- * Check whether we can get rid of the scope field in <group> messages PT/BR
  * Send multiple messages in the same <group> container
- * Allow to omit publisher if target host is publisher PT/BR
 
 Others:
 
@@ -38,13 +36,11 @@ Others:
  * Implement inf_text_chunk_insert_substring, and make use in InfTextDeleteOperation (InfText)
  * Add a set_caret paramater to insert_text and erase_text of InfTextBuffer and derive a InfTextRequest with a "set-caret" flag.
  * InfTextEncoding boxed type
- * unconst "const GParameter* params" parameter to user_new vfunc because g_object_newv wants unconst
  * Create a pseudo XML connection implementation, re-enable INF_IS_XML_CONNECTION check in inf_net_object_received
  * Add accessor API in InfGtkBrowserModel, so InfGtkBrowserView does not need to call gtk_tree_model_get all the time (which unnecssarily dups/refs)
  * Add append() and clear() virtual methods to InfTextBuffer. These may not have to be implemented since a default implementation can be used if no special one is provided, but it could help to speed up special operations. Make use in infd_note_plugin_text.
  * Make InfcExploreRequest derive from InfcNodeRequest. This saves some code duplication in InfcBrowser.
  * connection-closed signal for connection manager, where other objects (esp. session, session proxy, directory, browser) can drop their references to that connection. InfGtkBrowserStore can merge connections.
- * Think about how to do method initialization
  * Change the storage interface to be asynchronous
  * Replace the various begin-foo signals in InfcBrowser by a begin-operation
    with iter and request as parameters, detailed on the operation type
@@ -60,5 +56,3 @@ Others:
    InfdXmppServer. Or, consider simply removing the interface, and require
    people to use InfDiscoveryAvahi directly (check how well that works with
    InfdServerPool).
- * Rename local network, to maybe tcp (also adapt DOCS!)
-

@@ -20,9 +20,9 @@
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/common/inf-session.h>
-#include <libinfinity/common/inf-connection-manager.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-default-buffer.h>
@@ -41,8 +41,8 @@ typedef enum InfdNotePluginTextError {
 
 static InfSession*
 infd_note_plugin_text_session_new(InfIo* io,
-                                  InfConnectionManager* manager,
-                                  InfConnectionManagerGroup* sync_group,
+                                  InfCommunicationManager* manager,
+                                  InfCommunicationHostedGroup* sync_group,
                                   InfXmlConnection* sync_connection,
                                   gpointer user_data)
 {
@@ -52,7 +52,7 @@ infd_note_plugin_text_session_new(InfIo* io,
     manager,
     INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8")),
     io,
-    sync_group,
+    INF_COMMUNICATION_GROUP(sync_group),
     sync_connection
   );
 
@@ -257,7 +257,7 @@ infd_note_plugin_text_read_buffer(InfTextBuffer* buffer,
 static InfSession*
 infd_note_plugin_text_session_read(InfdStorage* storage,
                                    InfIo* io,
-                                   InfConnectionManager* manager,
+                                   InfCommunicationManager* manager,
                                    const gchar* path,
                                    gpointer user_data,
                                    GError** error)

@@ -148,8 +148,9 @@ typedef enum _InfSessionSyncError {
  * XML document created by @to_xml_sync. It is supposed to reconstruct the
  * session content from the XML data.
  * @process_xml_run: Virtual function that is called for every received
- * message while the session is running. Return %TRUE if forwarding the
- * message is allowed (see also inf_net_object_received() on this topic).
+ * message while the session is running. Return %INF_COMMUNICATION_SCOPE_GROUP
+ * if the message is designated for all group members (see also
+ * inf_net_object_received() on this topic).
  * @get_xml_user_props: Virtual function that creates a list of
  * #GParameter<!-- -->s for use with g_object_newv() from a XML node.
  * @set_xml_user_props: Virtual function that writes the passed user
@@ -191,17 +192,17 @@ struct _InfSessionClass {
 
   gboolean(*process_xml_sync)(InfSession* session,
                               InfXmlConnection* connection,
-                              const xmlNodePtr xml,
+                              xmlNodePtr xml,
                               GError** error);
 
-  gboolean(*process_xml_run)(InfSession* session,
-                             InfXmlConnection* connection,
-                             const xmlNodePtr xml,
-                             GError** error);
+  InfCommunicationScope(*process_xml_run)(InfSession* session,
+                                          InfXmlConnection* connection,
+                                          xmlNodePtr xml,
+                                          GError** error);
 
   GArray*(*get_xml_user_props)(InfSession* session,
                                InfXmlConnection* conn,
-                               const xmlNodePtr xml);
+                               xmlNodePtr xml);
 
   void (*set_xml_user_props)(InfSession* session,
                              const GParameter* params,
@@ -215,7 +216,7 @@ struct _InfSessionClass {
                                  GError** error);
 
   InfUser*(*user_new)(InfSession* session,
-                      const GParameter* params,
+                      GParameter* params,
                       guint n_params);
 
   /* Signals */

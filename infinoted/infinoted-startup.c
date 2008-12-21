@@ -80,22 +80,22 @@ infinoted_startup_load_directory(InfinotedStartup* startup,
   /* TODO: Allow different storage plugins */
   InfdFilesystemStorage* storage;
   InfStandaloneIo* io;
-  InfConnectionManager* connection_manager;
+  InfCommunicationManager* communication_manager;
 
   storage = infd_filesystem_storage_new(startup->options->root_directory);
 
   io = inf_standalone_io_new();
-  connection_manager = inf_connection_manager_new();
+  communication_manager = inf_communication_manager_new();
+
   startup->directory = infd_directory_new(
     INF_IO(io),
     INFD_STORAGE(storage),
-    connection_manager,
-    NULL
+    communication_manager
   );
 
   g_object_unref(io);
   g_object_unref(storage);
-  g_object_unref(connection_manager);
+  g_object_unref(communication_manager);
 
   if(!infinoted_note_plugin_load_directory(PLUGIN_PATH, startup->directory))
   {

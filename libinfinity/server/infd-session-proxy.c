@@ -35,7 +35,7 @@ struct _InfdSessionProxySubscription {
 typedef struct _InfdSessionProxyPrivate InfdSessionProxyPrivate;
 struct _InfdSessionProxyPrivate {
   InfSession* session;
-  InfConnectionManagerGroup* subscription_group;
+  InfCommunicationHostedGroup* subscription_group;
 
   GSList* subscriptions;
   guint user_id_counter;
@@ -440,8 +440,8 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   {
     xmlNewProp(xml, (const xmlChar*)"seq", (const xmlChar*)request_seq);
 
-    inf_connection_manager_group_send_to_connection(
-      priv->subscription_group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->subscription_group),
       connection,
       xml
     );
@@ -547,7 +547,7 @@ infd_session_proxy_add_user_cb(InfUserTable* user_table,
 
 static void
 infd_session_proxy_synchronization_begin_cb(InfSession* session,
-                                            InfConnectionManagerGroup* group,
+                                            InfCommunicationGroup* group,
                                             InfXmlConnection* connection,
                                             gpointer user_data)
 {
@@ -695,8 +695,8 @@ infd_session_proxy_session_close_cb(InfSession* session,
     {
       xml = xmlNewNode(NULL, (const xmlChar*)"session-close");
 
-      inf_connection_manager_group_send_to_connection(
-        priv->subscription_group,
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->subscription_group),
         subscription->connection,
         xml
       );
@@ -708,7 +708,7 @@ infd_session_proxy_session_close_cb(InfSession* session,
     infd_session_proxy_release_subscription(proxy, subscription);
   }
 
-  inf_connection_manager_group_unref(priv->subscription_group);
+  g_object_unref(priv->subscription_group);
   priv->subscription_group = NULL;
 }
 
@@ -763,7 +763,10 @@ infd_session_proxy_constructor(GType type,
 
   /* TODO: We could perhaps optimize by only setting the subscription
    * group when there are subscribed connections. */
-  inf_session_set_subscription_group(priv->session, priv->subscription_group);
+  inf_session_set_subscription_group(
+    priv->session,
+    INF_COMMUNICATION_GROUP(priv->subscription_group)
+  );
 
   return object;
 }
@@ -773,13 +776,13 @@ infd_session_proxy_dispose(GObject* object)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
-  InfConnectionManager* manager;
+  InfCommunicationManager* manager;
 
   proxy = INFD_SESSION_PROXY(object);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
-  manager = inf_session_get_connection_manager(priv->session);
-  g_object_ref(G_OBJECT(manager));
+  manager = inf_session_get_communication_manager(priv->session);
+  g_object_ref(manager);
 
   g_slist_free(priv->local_users);
   priv->local_users = NULL;
@@ -833,13 +836,13 @@ infd_session_proxy_dispose(GObject* object)
     proxy
   );
 
-  g_object_unref(G_OBJECT(priv->session));
+  g_object_unref(priv->session);
   priv->session = NULL;
 
   g_assert(priv->subscription_group == NULL);
   g_assert(priv->subscriptions == NULL);
 
-  g_object_unref(G_OBJECT(manager));
+  g_object_unref(manager);
 }
 
 static void
@@ -936,7 +939,7 @@ infd_session_proxy_set_property(GObject* object,
   case PROP_SUBSCRIPTION_GROUP:
     g_assert(priv->subscription_group == NULL); /* construct only */
     priv->subscription_group =
-      (InfConnectionManagerGroup*)g_value_dup_boxed(value);
+      INF_COMMUNICATION_HOSTED_GROUP(g_value_dup_object(value));
     break;
 #if 0
   case PROP_SUBSCRIBE_SYNC_CONN:
@@ -966,10 +969,10 @@ infd_session_proxy_get_property(GObject* object,
   switch(prop_id)
   {
   case PROP_SESSION:
-    g_value_set_object(value, G_OBJECT(priv->session));
+    g_value_set_object(value, priv->session);
     break;
   case PROP_SUBSCRIPTION_GROUP:
-    g_value_set_boxed(value, priv->subscription_group);
+    g_value_set_object(value, priv->subscription_group);
     break;
 #if 0
   case PROP_SUBSCRIBE_SYNC_CONN:
@@ -1037,7 +1040,7 @@ infd_session_proxy_remove_subscription_handler(InfdSessionProxy* proxy,
   /* TODO: Cancel synchronization if the synchronization to this subscription
    * did not yet finish. */
 
-  inf_connection_manager_group_remove_connection(
+  inf_communication_hosted_group_remove_member(
     priv->subscription_group,
     connection
   );
@@ -1128,48 +1131,58 @@ infd_session_proxy_handle_session_unsubscribe(InfdSessionProxy* proxy,
 }
 
 /*
- * InfNetObject implementation
+ * InfCommunicationObject implementation
  */
 
 static void
-infd_session_proxy_net_object_sent(InfNetObject* net_object,
-                                   InfXmlConnection* connection,
-                                   xmlNodePtr node)
+infd_session_proxy_communication_object_sent(InfCommunicationObject* object,
+                                             InfXmlConnection* connection,
+                                             xmlNodePtr node)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
 
-  proxy = INFD_SESSION_PROXY(net_object);
+  proxy = INFD_SESSION_PROXY(object);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
   /* TODO: Don't forward for messages the proxy issued */
 
   g_assert(priv->session != NULL);
-  inf_net_object_sent(INF_NET_OBJECT(priv->session), connection, node);
+
+  inf_communication_object_sent(
+    INF_COMMUNICATION_OBJECT(priv->session),
+    connection,
+    node
+  );
 }
 
 static void
-infd_session_proxy_net_object_enqueued(InfNetObject* net_object,
-                                       InfXmlConnection* connection,
-                                       xmlNodePtr node)
+infd_session_proxy_communication_object_enqueued(InfCommunicationObject* obj,
+                                                 InfXmlConnection* connection,
+                                                 xmlNodePtr node)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
 
-  proxy = INFD_SESSION_PROXY(net_object);
+  proxy = INFD_SESSION_PROXY(obj);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
   /* TODO: Don't forward for messages the proxy issued */
 
   g_assert(priv->session != NULL);
-  inf_net_object_enqueued(INF_NET_OBJECT(priv->session), connection, node);
+
+  inf_communication_object_enqueued(
+    INF_COMMUNICATION_OBJECT(priv->session),
+    connection,
+    node
+  );
 }
 
-static gboolean
-infd_session_proxy_net_object_received(InfNetObject* net_object,
-                                       InfXmlConnection* connection,
-                                       xmlNodePtr node,
-                                       GError** error)
+static InfCommunicationScope
+infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
+                                                 InfXmlConnection* connection,
+                                                 xmlNodePtr node,
+                                                 GError** error)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
@@ -1178,7 +1191,7 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
   xmlNodePtr reply_xml;
   xmlChar* seq_attr;
 
-  proxy = INFD_SESSION_PROXY(net_object);
+  proxy = INFD_SESSION_PROXY(obj);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
   /* TODO: Don't forward for messages the proxy issued */
@@ -1189,8 +1202,8 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
 
   if(status != INF_SESSION_SYNC_NONE)
   {
-    return inf_net_object_received(
-      INF_NET_OBJECT(priv->session),
+    return inf_communication_object_received(
+      INF_COMMUNICATION_OBJECT(priv->session),
       connection,
       node,
       error
@@ -1219,8 +1232,8 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
     }
     else
     {
-      return inf_net_object_received(
-        INF_NET_OBJECT(priv->session),
+      return inf_communication_object_received(
+        INF_COMMUNICATION_OBJECT(priv->session),
         connection,
         node,
         error
@@ -1247,15 +1260,15 @@ infd_session_proxy_net_object_received(InfNetObject* net_object,
       xmlFree(seq_attr);
     }
 
-    inf_connection_manager_group_send_to_connection(
-      priv->subscription_group,
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->subscription_group),
       connection,
       reply_xml
     );
 
     /* TODO: Only propagate on fatal errors. If a user join fails because
      * a user name is already in use or something, we do not need the
-     * connection manager to print a warning that the session might have
+     * communication manager to print a warning that the session might have
      * become inconsistent. */
 
     g_propagate_error(error, local_error);
@@ -1306,11 +1319,11 @@ infd_session_proxy_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SUBSCRIPTION_GROUP,
-    g_param_spec_boxed(
+    g_param_spec_object(
       "subscription-group",
       "Subscription group",
-      "The connection manager group of subscribed connections",
-      INF_TYPE_CONNECTION_MANAGER_GROUP,
+      "The communication manager group of subscribed connections",
+      INF_COMMUNICATION_TYPE_HOSTED_GROUP,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1384,15 +1397,15 @@ infd_session_proxy_class_init(gpointer g_class,
 }
 
 static void
-infd_session_proxy_net_object_init(gpointer g_iface,
-                                   gpointer iface_data)
+infd_session_proxy_communication_object_init(gpointer g_iface,
+                                             gpointer iface_data)
 {
-  InfNetObjectIface* iface;
-  iface = (InfNetObjectIface*)g_iface;
+  InfCommunicationObjectIface* iface;
+  iface = (InfCommunicationObjectIface*)g_iface;
 
-  iface->sent = infd_session_proxy_net_object_sent;
-  iface->enqueued = infd_session_proxy_net_object_enqueued;
-  iface->received = infd_session_proxy_net_object_received;
+  iface->sent = infd_session_proxy_communication_object_sent;
+  iface->enqueued = infd_session_proxy_communication_object_enqueued;
+  iface->received = infd_session_proxy_communication_object_received;
 }
 
 GType
@@ -1415,8 +1428,8 @@ infd_session_proxy_get_type(void)
       NULL                              /* value_table */
     };
 
-    static const GInterfaceInfo net_object_info = {
-      infd_session_proxy_net_object_init,
+    static const GInterfaceInfo communication_object_info = {
+      infd_session_proxy_communication_object_init,
       NULL,
       NULL
     };
@@ -1430,8 +1443,8 @@ infd_session_proxy_get_type(void)
 
     g_type_add_interface_static(
       session_proxy_type,
-      INF_TYPE_NET_OBJECT,
-      &net_object_info
+      INF_COMMUNICATION_TYPE_OBJECT,
+      &communication_object_info
     );
   }
 
@@ -1507,7 +1520,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy.
  * @connection: A #InfConnection that is not yet subscribed.
- * @parent_group: A #InfConnectionManagerGroup, or %NULL.
+ * @parent_group: A #InfCommunicationGroup, or %NULL.
  * @synchronize: If %TRUE, then synchronize the session to @connection first.
  *
  * Subscribes @connection to @proxy's session. The first thing that will be
@@ -1519,7 +1532,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * group). However, if for whatever reason the remote site already has a
  * copy of the session, then you may set @synchronize to %FALSE to skip
  * synchronization. This happens for example for newly created documents, or
- * when the remote site synchronized the local session and wants to be
+ * when the remote site synchronized the local site and wants to be
  * initially subscribed.
  *
  * If @proxy's session is not in %INF_SESSION_RUNNING status, but in
@@ -1531,12 +1544,12 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * connection is added to the subscription group for synchronization.
  *
  * If you told @connection about the subscription in some
- * #InfConnectionManagerGroup, then pass that group as the @parent_group
+ * #InfCommunicationGroup, then pass that group as the @parent_group
  * parameter to this function so that synchronization or subscription
  * messages are kept back until all messages in @parent_queue to @connection
  * have been sent, so that @connection knows about the subscription before
  * the first synchronization or subscription message arrives. See also
- * inf_connection_manager_add_connection().
+ * inf_communication_hosted_group_add_member().
  *
  * A subscription can only be initialted if @proxy's session is in state
  * %INF_SESSION_RUNNING.
@@ -1544,7 +1557,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection,
-                                InfConnectionManagerGroup* parent_group,
+                                InfCommunicationGroup* parent_group,
                                 gboolean synchronize)
 {
   InfdSessionProxyPrivate* priv;
@@ -1567,10 +1580,10 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
 
   /* Note we can't do this in the default signal handler since it doesn't
    * know the parent group. */
-  inf_connection_manager_group_add_connection(
+  inf_communication_hosted_group_add_member(
     priv->subscription_group,
-    connection,
-    parent_group
+    parent_group,
+    connection
   );
 
   g_signal_emit(
@@ -1592,7 +1605,7 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
      * synchronization. */
     inf_session_synchronize_to(
       priv->session,
-      priv->subscription_group,
+      INF_COMMUNICATION_GROUP(priv->subscription_group),
       connection
     );
   }

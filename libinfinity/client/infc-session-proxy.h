@@ -21,6 +21,7 @@
 
 #include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/common/inf-session.h>
+#include <libinfinity/communication/inf-communication-joined-group.h>
 
 #include <glib-object.h>
 
@@ -53,7 +54,7 @@ infc_session_proxy_get_type(void) G_GNUC_CONST;
 
 void
 infc_session_proxy_set_connection(InfcSessionProxy* proxy,
-                                  InfConnectionManagerGroup* group,
+                                  InfCommunicationJoinedGroup* group,
                                   InfXmlConnection* connection);
 
 InfcUserRequest*
@@ -68,7 +69,7 @@ infc_session_proxy_get_session(InfcSessionProxy* proxy);
 InfXmlConnection*
 infc_session_proxy_get_connection(InfcSessionProxy* proxy);
 
-InfConnectionManagerGroup*
+InfCommunicationJoinedGroup*
 infc_session_proxy_get_subscription_group(InfcSessionProxy* proxy);
 
 G_END_DECLS

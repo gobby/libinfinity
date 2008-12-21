@@ -57,9 +57,9 @@
 
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-buffer.h>
-#include <libinfinity/common/inf-net-object.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -464,8 +464,8 @@ inf_session_register_sync(InfSession* session)
   InfSessionPrivate* priv;
   priv = INF_SESSION_PRIVATE(session);
 
-  /* Register NetObject when all requirements for initial synchronization
-   * are met. */
+  /* Register CommunicationObject when all requirements for initial
+   * synchronization are met. */
   if(priv->status == INF_SESSION_SYNCHRONIZING &&
      priv->manager != NULL &&
      priv->shared.sync.conn != NULL &&
@@ -681,7 +681,7 @@ inf_session_get_property(GObject* object,
  * Network messages
  */
 
-static gboolean
+static InfCommunicationScope
 inf_session_handle_user_status_change(InfSession* session,
                                       InfXmlConnection* connection,
                                       xmlNodePtr xml,
@@ -696,7 +696,7 @@ inf_session_handle_user_status_change(InfSession* session,
 
   priv = INF_SESSION_PRIVATE(session);
   if(!inf_xml_util_get_attribute_uint_required(xml, "id", &id, error))
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
 
   user = inf_user_table_lookup_user_by_id(priv->user_table, id);
   if(user == NULL)
@@ -709,7 +709,7 @@ inf_session_handle_user_status_change(InfSession* session,
       id
     );
 
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 
   if(inf_user_get_status(user) == INF_USER_UNAVAILABLE ||
@@ -722,7 +722,7 @@ inf_session_handle_user_status_change(InfSession* session,
       _("User did not join from this connection")
     );
 
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 
   status_attr = xmlGetProp(xml, (const xmlChar*)"status");
@@ -734,7 +734,7 @@ inf_session_handle_user_status_change(InfSession* session,
   if(inf_user_get_status(user) != status)
     g_object_set(G_OBJECT(user), "status", status, NULL);
 
-  return TRUE;
+  return INF_COMMUNICATION_SCOPE_GROUP;
 }
 
 /*
@@ -853,7 +853,7 @@ inf_session_process_xml_sync_impl(InfSession* session,
   }
 }
 
-static gboolean
+static InfCommunicationScope
 inf_session_process_xml_run_impl(InfSession* session,
                                  InfXmlConnection* connection,
                                  const xmlNodePtr xml,
@@ -879,7 +879,7 @@ inf_session_process_xml_run_impl(InfSession* session,
       (const gchar*)xml->name
     );
 
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 }
 
@@ -1098,7 +1098,7 @@ inf_session_validate_user_props_impl(InfSession* session,
 }
 
 /*
- * InfNetObject implementation.
+ * InfCommunicationObject implementation.
  */
 static gboolean
 inf_session_handle_received_sync_message(InfSession* session,
@@ -1151,8 +1151,9 @@ inf_session_handle_received_sync_message(InfSession* session,
     g_error_free(local_error);
 
     /* Return FALSE, but do not set error because we handled it. Otherwise,
-     * inf_session_net_object_received() would try to send a sync-error
-     * to the synchronizer which is pointless as mentioned above. */
+     * inf_session_communication_object_received() would try to send a
+     * sync-error to the synchronizer which is pointless as mentioned
+     * above. */
     return FALSE;
   }
   else if(strcmp((const gchar*)node->name, "sync-begin") == 0)
@@ -1318,23 +1319,20 @@ inf_session_handle_received_sync_message(InfSession* session,
 }
 
 static void
-inf_session_net_object_sent(InfNetObject* net_object,
-                            InfXmlConnection* connection,
-                            const xmlNodePtr node)
+inf_session_communication_object_sent(InfCommunicationObject* comm_object,
+                                      InfXmlConnection* connection,
+                                      const xmlNodePtr node)
 {
   InfSession* session;
   InfSessionPrivate* priv;
   InfSessionSync* sync;
 
-  session = INF_SESSION(net_object);
+  session = INF_SESSION(comm_object);
   priv = INF_SESSION_PRIVATE(session);
 
   if(priv->status == INF_SESSION_RUNNING)
   {
-    sync = inf_session_find_sync_by_connection(
-      INF_SESSION(net_object),
-      connection
-    );
+    sync = inf_session_find_sync_by_connection(session, connection);
 
     /* This can be any message from some session that is not related to
      * the synchronization, so do not assert here. Also, we might already have
@@ -1346,7 +1344,7 @@ inf_session_net_object_sent(InfNetObject* net_object,
       ++ sync->messages_sent;
 
       g_signal_emit(
-        G_OBJECT(net_object),
+        G_OBJECT(comm_object),
         session_signals[SYNCHRONIZATION_PROGRESS],
         0,
         connection,
@@ -1361,9 +1359,9 @@ inf_session_net_object_sent(InfNetObject* net_object,
 }
 
 static void
-inf_session_net_object_enqueued(InfNetObject* net_object,
-                                InfXmlConnection* connection,
-                                const xmlNodePtr node)
+inf_session_communication_object_enqueued(InfCommunicationObject* comm_object,
+                                          InfXmlConnection* connection,
+                                          const xmlNodePtr node)
 {
   InfSessionSync* sync;
 
@@ -1372,13 +1370,13 @@ inf_session_net_object_enqueued(InfNetObject* net_object,
     /* Remember when the last synchronization messages is enqueued because
      * we cannot cancel any synchronizations beyond that point. */
     sync = inf_session_find_sync_by_connection(
-      INF_SESSION(net_object),
+      INF_SESSION(comm_object),
       connection
     );
 
     /* This should really be in the list if the node's name is sync-end,
      * otherwise most probably someone else sent a sync-end message via
-     * this net_object. */
+     * this communication object. */
     g_assert(sync != NULL);
     g_assert(sync->status == INF_SESSION_SYNC_IN_PROGRESS);
 
@@ -1386,10 +1384,10 @@ inf_session_net_object_enqueued(InfNetObject* net_object,
   }
 }
 
-static gboolean
-inf_session_net_object_received(InfNetObject* net_object,
-                                InfXmlConnection* connection,
-                                const xmlNodePtr node,
+static InfCommunicationScope
+inf_session_communication_object_received(InfCommunicationObject* comm_object,
+                                          InfXmlConnection* connection,
+                                          const xmlNodePtr node,
                                 GError** error)
 {
   InfSessionClass* session_class;
@@ -1403,7 +1401,7 @@ inf_session_net_object_received(InfNetObject* net_object,
   xmlChar* code_attr;
   GError* local_error;
 
-  session = INF_SESSION(net_object);
+  session = INF_SESSION(comm_object);
   priv = INF_SESSION_PRIVATE(session);
 
   switch(priv->status)
@@ -1437,7 +1435,7 @@ inf_session_net_object_received(InfNetObject* net_object,
     }
 
     /* Synchronization is always ptp only, don't forward */
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   case INF_SESSION_RUNNING:
     sync = inf_session_find_sync_by_connection(session, connection);
     if(sync != NULL)
@@ -1497,7 +1495,7 @@ inf_session_net_object_received(InfNetObject* net_object,
         {
           /* Got ack we were waiting for */
           g_signal_emit(
-            G_OBJECT(net_object),
+            G_OBJECT(comm_object),
             session_signals[SYNCHRONIZATION_COMPLETE],
             0,
             connection
@@ -1506,7 +1504,7 @@ inf_session_net_object_received(InfNetObject* net_object,
       }
 
       /* Synchronization is always ptp only, don't forward */
-      return FALSE;
+      return INF_COMMUNICATION_SCOPE_PTP;
     }
     else
     {
@@ -2051,15 +2049,15 @@ inf_session_class_init(gpointer g_class,
 }
 
 static void
-inf_session_net_object_init(gpointer g_iface,
-                            gpointer iface_data)
+inf_session_communication_object_init(gpointer g_iface,
+                                      gpointer iface_data)
 {
-  InfNetObjectIface* iface;
-  iface = (InfNetObjectIface*)g_iface;
+  InfCommunicationObjectIface* iface;
+  iface = (InfCommunicationObjectIface*)g_iface;
 
-  iface->sent = inf_session_net_object_sent;
-  iface->enqueued = inf_session_net_object_enqueued;
-  iface->received = inf_session_net_object_received;
+  iface->sent = inf_session_communication_object_sent;
+  iface->enqueued = inf_session_communication_object_enqueued;
+  iface->received = inf_session_communication_object_received;
 }
 
 GType
@@ -2118,8 +2116,8 @@ inf_session_get_type(void)
       NULL                      /* value_table */
     };
 
-    static const GInterfaceInfo net_object_info = {
-      inf_session_net_object_init,
+    static const GInterfaceInfo communication_object_info = {
+      inf_session_communication_object_init,
       NULL,
       NULL
     };
@@ -2133,8 +2131,8 @@ inf_session_get_type(void)
 
     g_type_add_interface_static(
       session_type,
-      INF_TYPE_NET_OBJECT,
-      &net_object_info
+      INF_COMMUNICATION_TYPE_OBJECT,
+      &communication_object_info
     );
   }
 
@@ -2384,7 +2382,8 @@ inf_session_add_user(InfSession* session,
 
   if(result == TRUE)
   {
-    user = session_class->user_new(session, params, n_params);
+    /* No idea why g_object_newv wants unconst GParameter list */
+    user = session_class->user_new(session, (GParameter*)params, n_params);
     inf_user_table_add_user(priv->user_table, user);
     g_object_unref(user); /* We rely on the usertable holding a reference */
 
@@ -2449,10 +2448,10 @@ inf_session_set_user_status(InfSession* session,
  * @connection, a new session with the sync-connection and sync-group
  * construction properties set should have been created. @group is used
  * as a group in the connection manager. It is allowed for @group to have
- * another #InfNetObject than @session, however, you should forward the
- * #InfNetObject messages your object receives to @session then. Also,
- * @connection must already be present in @group, and should not be removed
- * until synchronization finished.
+ * another #InfCommunicationObject than @session, however, you should forward
+ * the #InfCommunicationObject messages your object receives to @session then.
+ * Also, @connection must already be present in @group, and should not be
+ * removed until synchronization finished.
  *
  * A synchronization can only be initiated if @session is in state
  * %INF_SESSION_RUNNING.

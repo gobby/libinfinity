@@ -976,7 +976,7 @@ inf_text_session_get_property(GObject* object,
  * Network command handlers
  */
 
-static gboolean
+static InfCommunicationScope
 inf_text_session_handle_user_color_change(InfTextSession* session,
                                           InfXmlConnection* connection,
                                           xmlNodePtr xml,
@@ -990,9 +990,9 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
   user_table = inf_session_get_user_table(INF_SESSION(session));
 
   if(!inf_xml_util_get_attribute_uint_required(xml, "id", &user_id, error))
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   if(!inf_xml_util_get_attribute_double_required(xml, "hue", &hue, error))
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
 
   /* TODO: A public function in InfSession that does the following two checks
    * (and returns the user). This can also be used in
@@ -1008,7 +1008,7 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       user_id
     );
 
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 
   if(inf_user_get_status(user) == INF_USER_UNAVAILABLE ||
@@ -1021,7 +1021,7 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       _("User did not join from this connection")
     );
 
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 
   g_assert(INF_TEXT_IS_USER(user));
@@ -1036,11 +1036,11 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       hue
     );
 
-    return FALSE;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 
   g_object_set(G_OBJECT(user), "hue", hue, NULL);
-  return TRUE;
+  return INF_COMMUNICATION_SCOPE_GROUP;
 }
 
 /*
@@ -1185,7 +1185,7 @@ inf_text_session_process_xml_sync(InfSession* session,
   }
 }
 
-static gboolean
+static InfCommunicationScope
 inf_text_session_process_xml_run(InfSession* session,
                                  InfXmlConnection* connection,
                                  const xmlNodePtr xml,
@@ -1365,11 +1365,11 @@ inf_text_session_validate_user_props(InfSession* session,
 
 static InfUser*
 inf_text_session_user_new(InfSession* session,
-                          const GParameter* params,
+                          GParameter* params,
                           guint n_params)
 {
   GObject* object;
-  object = g_object_newv(INF_TEXT_TYPE_USER, n_params, (GParameter*)params);
+  object = g_object_newv(INF_TEXT_TYPE_USER, n_params, params);
   return INF_USER(object);
 }
 
@@ -1910,15 +1910,15 @@ inf_text_session_get_type(void)
 
 /**
  * inf_text_session_new:
- * @manager: A #InfConnectionManager.
+ * @manager: A #InfCommunicationManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
  * @sync_group: A group in which the session is synchronized, or %NULL.
  * @sync_connection: A connection to synchronize the session from. Ignored if
  * @sync_group is %NULL.
  *
- * Creates a new #InfTextSession. The connection manager is used to send and
- * receive requests from subscription and synchronization. @buffer will be
+ * Creates a new #InfTextSession. The communication manager is used to send
+ * and receive requests from subscription and synchronization. @buffer will be
  * set to be initially empty if the session is initially synchronized
  * (see below). @io is required to trigger timeouts.
  *
@@ -1930,20 +1930,22 @@ inf_text_session_get_type(void)
  * Return Value: A new #InfTextSession.
  **/
 InfTextSession*
-inf_text_session_new(InfConnectionManager* manager,
+inf_text_session_new(InfCommunicationManager* manager,
                      InfTextBuffer* buffer,
                      InfIo* io,
-                     InfConnectionManagerGroup* sync_group,
+                     InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection)
 {
   GObject* object;
 
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(manager), NULL);
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
   g_return_val_if_fail(INF_IS_IO(io), NULL);
 
   g_return_val_if_fail(
-    sync_group == NULL || INF_IS_XML_CONNECTION(sync_connection),
+    sync_group == NULL || 
+    (INF_COMMUNICATION_IS_GROUP(sync_group) &&
+     INF_IS_XML_CONNECTION(sync_connection)),
     NULL
   );
 
@@ -1962,7 +1964,7 @@ inf_text_session_new(InfConnectionManager* manager,
 
 /**
  * inf_text_session_new_with_user_table:
- * @manager: A #InfConnectionManager.
+ * @manager: A #InfCommunicationManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
  * @user_table: A #InfUserTable.
@@ -1989,22 +1991,24 @@ inf_text_session_new(InfConnectionManager* manager,
  * Return Value: A new #InfTextSession.
  **/
 InfTextSession*
-inf_text_session_new_with_user_table(InfConnectionManager* manager,
+inf_text_session_new_with_user_table(InfCommunicationManager* manager,
                                      InfTextBuffer* buffer,
                                      InfIo* io,
                                      InfUserTable* user_table,
-                                     InfConnectionManagerGroup* sync_group,
+                                     InfCommunicationGroup* sync_group,
                                      InfXmlConnection* sync_connection)
 {
   GObject* object;
 
-  g_return_val_if_fail(INF_IS_CONNECTION_MANAGER(manager), NULL);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(manager), NULL);
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(INF_IS_USER_TABLE(user_table), NULL);
 
   g_return_val_if_fail(
-    sync_group == NULL || INF_IS_XML_CONNECTION(sync_connection),
+    sync_group == NULL ||
+    (INF_COMMUNICATION_IS_GROUP(sync_group) &&
+     INF_IS_XML_CONNECTION(sync_connection)),
     NULL
   );
 
