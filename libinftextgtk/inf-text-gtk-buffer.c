@@ -1464,6 +1464,9 @@ inf_text_gtk_buffer_buffer_init(gpointer g_iface,
 {
   InfBufferIface* iface;
   iface = (InfBufferIface*)g_iface;
+
+  iface->get_modified = inf_text_gtk_buffer_buffer_get_modified;
+  iface->set_modified = inf_text_gtk_buffer_buffer_set_modified;
 }
 
 static void

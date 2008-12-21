@@ -1,5 +1,25 @@
 2008-12-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-view.c
+	(inf_gtk_browser_view_row_changed_cb): Removed two unused variables.
+
+	* libinftextgtk/inf-text-gtk-buffer.c
+	(inf_text_gtk_buffer_buffer_init): Connect the get_modified and
+	set_modified buffer implementations to the InfBufferIface.
+
+	* libinftextgtk/inf-text-gtk-hue-chooser.c:
+	(inf_text_gtk_hue_chooser_class_init): Install the dispose and
+	finalize handlers.
+
+	* infinoted/infinoted-creds.c
+	(infinoted_creds_create_self_signed_certificate_impl): Removed an
+	unused variable.
+
+	* infinoted/infinoted-main.c (infinoted_main): Removed an unused
+	variable.
+
+2008-12-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-cert-util.c: Include inf-error.h to avoid a
 	warning.
 

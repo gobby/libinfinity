@@ -48,7 +48,6 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   gint32 default_serial;
   char buffer[20];
   const gchar* hostname;
-  gchar* dnsname;
   int res;
   
   res = gnutls_x509_crt_set_key(cert, key);

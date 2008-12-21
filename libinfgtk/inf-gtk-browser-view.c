@@ -1192,9 +1192,6 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
   InfGtkBrowserModelStatus status;
   InfDiscoveryInfo* info;
 
-  InfcBrowser* browser;
-  InfcBrowserIter* browser_iter;
-
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 

@@ -50,7 +50,6 @@ infinoted_main(int argc,
                GError** error)
 {
   InfinotedStartup* startup;
-  InfinotedRun* run;
   gboolean result;
 
   startup = infinoted_startup_new(&argc, &argv, error);

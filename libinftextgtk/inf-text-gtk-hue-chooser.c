@@ -824,6 +824,8 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
   parent_class = GTK_WIDGET_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfTextGtkHueChooserPrivate));
 
+  gobject_class->dispose = inf_text_gtk_hue_chooser_dispose;
+  gobject_class->finalize = inf_text_gtk_hue_chooser_finalize;
   gobject_class->set_property = inf_text_gtk_hue_chooser_set_property;
   gobject_class->get_property = inf_text_gtk_hue_chooser_get_property;
 
