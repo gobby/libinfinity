@@ -57,6 +57,10 @@ inf_io_event_get_type(void)
         INF_IO_ERROR,
         "INF_IO_ERROR",
         "error"
+      }, {
+        0,
+        NULL,
+        NULL
       }
     };
 
