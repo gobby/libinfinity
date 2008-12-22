@@ -33,7 +33,7 @@
  * by calling inf_communication_object_sent().
  **/
 
-#include <libinfinity/common/inf-net-object.h>
+#include <libinfinity/communication/inf-communication-object.h>
 
 GType
 inf_communication_scope_get_type(void)
@@ -140,7 +140,7 @@ inf_communication_object_received(InfCommunicationObject* object,
 {
   InfCommunicationObjectIface* iface;
 
-  g_return_val_if_fail(INF_IS_COMMUNICATION_OBJECT(object), FALSE);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_OBJECT(object), FALSE);
   /* temporarily commented-out: */
   /*g_return_val_if_fail(INF_IS_XML_CONNECTION(conn), FALSE);*/
   g_return_val_if_fail(node != NULL, FALSE);

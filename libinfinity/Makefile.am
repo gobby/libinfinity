@@ -1,4 +1,4 @@
-SUBDIRS = common adopted server client .
+SUBDIRS = communication common adopted server client .
 
 lib_LTLIBRARIES = libinfinity-1.0.la
 
@@ -14,6 +14,7 @@ libinfinity_1_0_la_LIBADD = \
 	client/libinfinity_client.la \
 	adopted/libinfinity_adopted.la \
 	common/libinfinity_common.la \
+	communication/libinfinity_communication.la \
 	$(infinity_LIBS) \
 	$(glib_LIBS) \
 	$(avahi_LIBS)

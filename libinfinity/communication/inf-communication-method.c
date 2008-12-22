@@ -31,6 +31,8 @@
 
 #include <libinfinity/communication/inf-communication-method.h>
 
+#include <libinfinity/inf-marshal.h>
+
 enum {
   ADD_MEMBER,
   REMOVE_MEMBER,

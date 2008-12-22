@@ -1,11 +1,7 @@
-methods_base = libinfinity-1.0/method-plugins
-
 libinfinity_common_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinity_CFLAGS) \
-	$(avahi_CFLAGS) \
-	-DMETHODS_LIBDIR=\"${libdir}\" \
-	-DMETHODS_BASEDIR=\"${methods_base}\"
+	$(avahi_CFLAGS)
 
 noinst_LTLIBRARIES = libinfinity_common.la
 
