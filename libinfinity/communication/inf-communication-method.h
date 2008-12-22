@@ -146,6 +146,11 @@ inf_communication_method_received(InfCommunicationMethod* method,
                                   xmlNodePtr xml);
 
 void
+inf_communication_method_enqueued(InfCommunicationMethod* method,
+                                  InfXmlConnection* connection,
+                                  xmlNodePtr xml);
+
+void
 inf_communication_method_sent(InfCommunicationMethod* method,
                               InfXmlConnection* connection,
                               xmlNodePtr xml);
