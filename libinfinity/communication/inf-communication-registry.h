@@ -62,11 +62,13 @@ inf_communication_registry_get_type(void) G_GNUC_CONST;
 void
 inf_communication_registry_register(InfCommunicationRegistry* registry,
                                     InfCommunicationGroup* group,
+                                    InfCommunicationMethod* method,
                                     InfXmlConnection* connection);
 
 void
 inf_communication_registry_unregister(InfCommunicationRegistry* registry,
                                       InfCommunicationGroup* group,
+                                      InfCommunicationMethod* method,
                                       InfXmlConnection* connection);
 
 void
