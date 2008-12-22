@@ -1,3 +1,8 @@
+2008-12-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-io.c (inf_io_event_get_type): Null-terminate
+	the list of flags values.
+
 2008-11-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-hue-chooser.c: Don't use
