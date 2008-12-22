@@ -32,10 +32,6 @@
     <xi:include href="xml/inf-xmpp-manager.xml"/>
     <xi:include href="xml/inf-io.xml"/>
     <xi:include href="xml/inf-standalone-io.xml"/>
-    <xi:include href="xml/inf-connection-manager.xml"/>
-    <xi:include href="xml/inf-method-manager.xml"/>
-    <xi:include href="xml/inf-central-method.xml"/>
-    <xi:include href="xml/inf-net-object.xml"/>
     <xi:include href="xml/inf-certificate-chain.xml"/>
     <xi:include href="xml/inf-xml-util.xml"/>
     <xi:include href="xml/inf-cert-util.xml"/>
@@ -81,5 +77,18 @@
     <xi:include href="xml/infd-xml-server.xml"/>
     <xi:include href="xml/infd-xmpp-server.xml"/>
     <xi:include href="xml/infd-server-pool.xml"/>
+  </chapter>
+
+  <chapter>
+    <title>Network abstraction</title>
+    <!-- TODO: People almost never need to use this API directly -->
+    <xi:include href="xml/inf-communication-manager.xml"/>
+    <xi:include href="xml/inf-communication-object.xml"/>
+    <xi:include href="xml/inf-communication-group.xml"/>
+    <xi:include href="xml/inf-communication-hosted-group.xml"/>
+    <xi:include href="xml/inf-communication-joined-group.xml"/>
+    <xi:include href="xml/inf-communication-factory.xml"/>
+    <xi:include href="xml/inf-communication-method.xml"/>
+    <xi:include href="xml/inf-communication-registry.xml"/>
   </chapter>
 </book>

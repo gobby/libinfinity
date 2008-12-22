@@ -51,12 +51,14 @@ FIXXREF_OPTIONS=
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
 HFILE_GLOB = \
+	$(top_srcdir)/libinfinity/communication/*.h \
 	$(top_srcdir)/libinfinity/common/*.h \
         $(top_srcdir)/libinfinity/adopted/*.h \
 	$(top_srcdir)/libinfinity/client/*.h \
         $(top_srcdir)/libinfinity/server/*.h
 
 CFILE_GLOB = \
+	$(top_srcdir)/libinfinity/communication/*.c \
 	$(top_srcdir)/libinfinity/common/*.c \
         $(top_srcdir)/libinfinity/adopted/*.c \
 	$(top_srcdir)/libinfinity/client/*.c \

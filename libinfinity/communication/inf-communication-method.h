@@ -47,7 +47,9 @@ typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
  * #InfCommunicationMethod::add-member signal.
  * @remove_member: Default signal handler of the
  * #InfCommunicationMethod::remove-member signal.
- * @get_method_name: Returns the name of the method.
+#if 0
+ * @get_name: Returns the name of the method.
+#endif
  * @is_member: Returns whether the given connection is a member of the group.
  * @send_single: Sends a message to a single connection. Takes ownership of
  * @xml.
