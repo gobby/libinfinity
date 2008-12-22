@@ -2273,15 +2273,15 @@ inf_session_close(InfSession* session)
 }
 
 /**
- * inf_session_get_connection_manager:
+ * inf_session_get_communication_manager:
  * @session: A #InfSession.
  *
- * Returns the connection manager for @session.
+ * Returns the communication manager for @session.
  *
  * Return Value: A #InfCommunicationManager.
  **/
 InfCommunicationManager*
-inf_session_get_connection_manager(InfSession* session)
+inf_session_get_communication_manager(InfSession* session)
 {
   g_return_val_if_fail(INF_IS_SESSION(session), NULL);
   return INF_SESSION_PRIVATE(session)->manager;
