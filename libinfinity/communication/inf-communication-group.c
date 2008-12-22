@@ -74,6 +74,34 @@ static guint session_signals[LAST_SIGNAL];
 
 /* TODO: Can we strong-ref the communicationmanager? */
 
+static InfCommunicationMethod*
+inf_communication_group_lookup_method_for_network(InfCommunicationGroup* grp,
+                                                  const gchar* network)
+{
+  InfCommunicationGroupPrivate* priv;
+  InfCommunicationMethod* method;
+
+  priv = INF_COMMUNICATION_GROUP_PRIVATE(grp);
+  method = g_hash_table_lookup(priv->methods, network);
+
+  return method;
+}
+
+static InfCommunicationMethod*
+inf_communication_group_lookup_method_for_connection(InfCommunicationGroup* g,
+                                                     InfXmlConnection* conn)
+{
+  InfCommunicationMethod* method;
+  gchar* network;
+
+  g_object_get(G_OBJECT(conn), "network", &network, NULL);
+
+  method = inf_communication_group_lookup_method_for_network(g, network);
+  g_free(network);
+
+  return method;
+}
+
 static void
 inf_communication_group_target_unrefed(gpointer data,
                                        GObject* where_the_object_was)
@@ -498,7 +526,26 @@ inf_communication_group_set_target(InfCommunicationGroup* group,
  *
  * Returns: %TRUE if @connection is a member of @group, %FALSE otherwise.
  */
+gboolean
+inf_communication_group_is_member(InfCommunicationGroup* group,
+                                  InfXmlConnection* connection)
+{
+  InfCommunicationGroupPrivate* priv;
+  InfCommunicationMethod* method;
 
+  g_return_val_if_fail(INF_COMMUNICATION_IS_GROUP(group), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
+
+  method = inf_communication_group_lookup_method_for_connection(
+    group,
+    connection
+  );
+
+  if(method != NULL)
+    return inf_communication_method_is_member(method, connection);
+  else
+    return FALSE;
+}
 
 /**
  * inf_communication_group_send_message:
@@ -509,6 +556,26 @@ inf_communication_group_set_target(InfCommunicationGroup* group,
  * Sends a message @connection which must be a member of @group. @connection
  * needs to be a member of this group. This function takes ownership of @xml.
  */
+void
+inf_communication_group_send_message(InfCommunicationGroup* group,
+                                     InfXmlConnection* connection,
+                                     xmlNodePtr xml)
+{
+  InfCommunicationMethod* method;
+
+  g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(xml != NULL);
+
+  method = inf_communication_group_lookup_method_for_connection(
+    group,
+    connection
+  );
+
+  g_return_if_fail(method != NULL);
+
+  inf_communication_method_send_single(method, connection, xml);
+}
 
 /**
  * inf_communication_group_send_group_message:
@@ -519,6 +586,45 @@ inf_communication_group_set_target(InfCommunicationGroup* group,
  * Sends a message to all members of @group, except @except. This function
  * takes ownership of @xml.
  */
+void
+inf_communication_group_send_group_message(InfCommunicationGroup* group,
+                                           InfXmlConnection* except,
+                                           xmlNodePtr xml)
+{
+  InfCommunicationGroupPrivate* priv;
+  GHashTableIter iter;
+  gpointer value;
+  InfCommunicationMethod* method;
+  gboolean has_next;
+
+  g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
+  g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
+  g_return_if_fail(xml != NULL);
+
+  priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
+  g_hash_table_iter_init(priv->methods, &iter);
+
+  has_next = g_hash_table_iter_next(&iter, NULL, &value);
+
+  if(!has_next)
+  {
+    xmlFreeNode(xml);
+  }
+  else
+  {
+    do
+    {
+      method = INF_COMMUNICATION_METHOD(value);
+      has_next = g_hash_table_iter_next(&iter, NULL, &value);
+
+      inf_communication_method_send_all(
+        method,
+        except,
+        has_next ? xmlCopyNode(xml, 1) : xml
+      );
+    } while(has_next);
+  }
+}
 
 /**
  * inf_communication_group_cancel_messages:
@@ -529,6 +635,23 @@ inf_communication_group_set_target(InfCommunicationGroup* group,
  * Messages for which inf_communication_object_enqueued() has already been
  * called cannot be cancelled anymore.
  */
+void
+inf_communication_group_cancel_messages(InfCommunicationGroup* group,
+                                        InfXmlConnection* connection)
+{
+  InfCommunicationMethod* method;
+
+  g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  method = inf_communication_group_lookup_method_for_connection(
+    group,
+    connection
+  );
+
+  g_return_if_fail(method != NULL);
+  inf_communication_method_cancel_messages(method, connection);
+}
 
 /**
  * inf_communication_group_get_method_for_network:
