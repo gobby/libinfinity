@@ -44,6 +44,7 @@ typedef struct _InfCommunicationGroupClass InfCommunicationGroupClass;
  * #InfCommunicationGroup::member-added signal.
  * @member_removed: Default signal handler of the
  * #InfCommunicationGroup::member-removed signal.
+ * @get_method: Virtual function to determine the method to use
  *
  * The virtual methods and default signal handlers of #InfCommunicationGroup.
  */
@@ -51,11 +52,16 @@ struct _InfCommunicationGroupClass {
   /*< private >*/
   GObjectClass parent;
 
+  /*< public >*/
   /* Signals */
   void (*member_added)(InfCommunicationGroup* group,
                        InfXmlConnection* connection);
   void (*member_removed)(InfCommunicationGroup* group,
                          InfXmlConnection* connection);
+
+  /* Virtual functions */
+  const gchar* (*get_method)(InfCommunicationGroup* group,
+                             unsigned int index);
 };
 
 /**
