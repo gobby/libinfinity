@@ -36,6 +36,39 @@
 #include <libinfinity/common/inf-net-object.h>
 
 GType
+inf_communication_scope_get_type(void)
+{
+  static GType scope_type = 0;
+
+  if(!scope_type)
+  {
+    static const GEnumValue scope_values[] = {
+      {
+        INF_COMMUNICATION_SCOPE_PTP,
+        "INF_COMMUNICATION_SCOPE_PTP",
+        "ptp"
+      }, {
+        INF_COMMUNICATION_SCOPE_GROUP,
+        "INF_COMMUNICATION_SCOPE_GROUP",
+        "group",
+      }, {
+        0,
+        NULL,
+        NULL
+      }
+    };
+
+    scope_type = g_enum_register_static(
+      "InfCommunicationScope",
+      scope_values
+    );
+  }
+
+  return scope_type;
+}
+
+
+GType
 inf_communication_object_get_type(void)
 {
   static GType communication_object_type = 0;
@@ -127,8 +160,8 @@ inf_communication_object_received(InfCommunicationObject* object,
  * @node: The XML data.
  *
  * This function is called, when an XML message scheduled to be sent via
- * inf_connection_manager_group_send_to_connection() or
- * inf_connection_manager_group_send_to_group() cannot be cancelled anymore,
+ * inf_communication_group_send_message() or
+ * inf_communication_group_send_group_message() cannot be cancelled anymore,
  * because it was already passed to @conn.
  **/
 void
@@ -155,8 +188,8 @@ inf_communication_object_enqueued(InfCommunicationObject* object,
  * @node: The sent data.
  *
  * This function is called when a XML message sent via
- * inf_connection_manager_group_send_to_connection() or
- * inf_connection_manager_group_send_to_group() has actually been sent out.
+ * inf_communication_group_send_message() or
+ * inf_communication_group_send_group_message() has actually been sent out.
  **/
 void
 inf_communication_object_sent(InfCommunicationObject* object,
