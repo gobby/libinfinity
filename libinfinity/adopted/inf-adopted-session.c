@@ -866,7 +866,7 @@ inf_adopted_session_process_xml_sync(InfSession* session,
   );
 }
 
-static gboolean
+static InfCommunicationScope
 inf_adopted_session_process_xml_run(InfSession* session,
                                     InfXmlConnection* connection,
                                     const xmlNodePtr xml,
@@ -889,7 +889,9 @@ inf_adopted_session_process_xml_run(InfSession* session,
       xml,
       error
     );
-    if(user == NULL) return FALSE;
+
+    if(user == NULL)
+      return INF_COMMUNICATION_SCOPE_PTP;
 
     /* TODO: Check user connection! */
 
@@ -901,13 +903,14 @@ inf_adopted_session_process_xml_run(InfSession* session,
       error
     );
 
-    if(request == NULL) return FALSE;
+    if(request == NULL)
+      return INF_COMMUNICATION_SCOPE_PTP;
 
     inf_adopted_algorithm_receive_request(priv->algorithm, request);
     g_object_unref(G_OBJECT(request));
 
     /* Requests can always be forwarded since user is given. */
-    return TRUE;
+    return INF_COMMUNICATION_SCOPE_GROUP;
   }
 
   return INF_SESSION_CLASS(parent_class)->process_xml_run(
