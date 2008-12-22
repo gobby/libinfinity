@@ -4,7 +4,7 @@ AC_PREREQ(2.59)
 AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news])
 AM_MAINTAINER_MODE
-AC_CONFIG_SRCDIR([libinfinity/common/inf-net-object.h])
+AC_CONFIG_SRCDIR([libinfinity/common/inf-init.c])
 AC_CONFIG_HEADER([config.h libinfinity/inf-config.h])
 
 LIBINFINITY_VERSION=libinfinity_version
