@@ -1,5 +1,13 @@
 2008-12-23  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-certificate-chain.h:
+	* libinfinity/common/inf-certificate-chain.c: Made
+	inf_certificate_chain_ref return the passed chain, so the function
+	fulfills the requirements for a GBoxedCopyFunc. This lead to a crash
+	with optimization enabled.
+
+2008-12-23  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-dialog.c
 	(inf_gtk_certificate_dialog_init): Free the icon_info so that we don't
 	leak it.
