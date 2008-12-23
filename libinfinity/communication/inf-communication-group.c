@@ -19,7 +19,7 @@
 /**
  * SECTION:inf-communication-group
  * @title: InfCommunicationGroup
- * @short_description: Communication groups 
+ * @short_description: Communication channel for mulitple connections
  * @include: libinfinity/communication/inf-communication-group.h
  * @stability: Unstable
  *
@@ -38,9 +38,13 @@
  * case of a jabber network, use jabber groupchat functionality.
  **/
 
+#include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/communication/inf-communication-group.h>
+#include <libinfinity/inf-marshal.h>
 
-typedef struct _InfCommunicationGroupPrivate InfCommunicaitonGroupPrivate;
+#include <string.h>
+
+typedef struct _InfCommunicationGroupPrivate InfCommunicationGroupPrivate;
 struct _InfCommunicationGroupPrivate {
   InfCommunicationManager* communication_manager;
   gchar* name;
@@ -67,7 +71,7 @@ enum {
   LAST_SIGNAL
 };
 
-#define INF_COMMUNICATION_GROUP_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_SESSION, InfCommunicationGroupPrivate))
+#define INF_COMMUNICATION_GROUP_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_GROUP, InfCommunicationGroupPrivate))
 
 static GObjectClass* parent_class;
 static guint session_signals[LAST_SIGNAL];
@@ -158,7 +162,7 @@ inf_communication_group_set_manager(InfCommunicationGroup* group,
     );
   }
 
-  priv->communicaiton_manager = manager;
+  priv->communication_manager = manager;
 
   if(manager != NULL)
   {
@@ -323,6 +327,7 @@ inf_communication_group_class_init(gpointer g_class,
 
   group_class->add_member = NULL;
   group_class->remove_member = NULL;
+  group_class->get_method = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -530,7 +535,6 @@ gboolean
 inf_communication_group_is_member(InfCommunicationGroup* group,
                                   InfXmlConnection* connection)
 {
-  InfCommunicationGroupPrivate* priv;
   InfCommunicationMethod* method;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_GROUP(group), FALSE);
@@ -602,7 +606,7 @@ inf_communication_group_send_group_message(InfCommunicationGroup* group,
   g_return_if_fail(xml != NULL);
 
   priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
-  g_hash_table_iter_init(priv->methods, &iter);
+  g_hash_table_iter_init(&iter, priv->methods);
 
   has_next = g_hash_table_iter_next(&iter, NULL, &value);
 
@@ -680,7 +684,7 @@ inf_communication_group_get_method_for_network(InfCommunicationGroup* group,
 
   priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
   klass = INF_COMMUNICATION_GROUP_GET_CLASS(group);
-  g_return_val_if_fail(klass->get_method != NULL);
+  g_return_val_if_fail(klass->get_method != NULL, NULL);
 
   i = 0;
   for(i = 0; (method_name = klass->get_method(group, i)) != NULL; ++ i)
@@ -688,7 +692,7 @@ inf_communication_group_get_method_for_network(InfCommunicationGroup* group,
     split_pos = strstr(method_name, "::");
     if(split_pos != NULL)
     {
-      if(strnchr(method_name, network, split_pos - method_name) != 0)
+      if(strncmp(method_name, network, split_pos - method_name) != 0)
         continue;
       method_name = split_pos + 2;
     }
