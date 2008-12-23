@@ -2067,6 +2067,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
       }
     }
 
+    infc_browser_iter_free(browser_iter);
     g_object_unref(G_OBJECT(browser));
   }
 
