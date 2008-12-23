@@ -72,6 +72,7 @@ inf_communication_manager_open_group(InfCommunicationManager* manager,
 
 InfCommunicationJoinedGroup*
 inf_communication_manager_join_group(InfCommunicationManager* manager,
+                                     InfCommunicationGroup* parent_group,
                                      const gchar* group_name,
                                      InfXmlConnection* publisher_conn,
                                      const gchar* method);
@@ -79,6 +80,11 @@ inf_communication_manager_join_group(InfCommunicationManager* manager,
 void
 inf_communication_manager_add_factory(InfCommunicationManager* manager,
                                       InfCommunicationFactory* factory);
+
+InfCommunicationFactory*
+inf_communication_manager_get_factory_for(InfCommunicationManager* manager,
+                                          const gchar* network,
+                                          const gchar* method_name);
 
 G_END_DECLS
 

@@ -664,10 +664,52 @@ inf_communication_group_cancel_messages(InfCommunicationGroup* group,
  * Returns: A method name. The string is owned by the group, you don't need
  * to free it.
  */
+const gchar*
+inf_communication_group_get_method_for_network(InfCommunicationGroup* group,
+                                               const gchar* network)
+{
+  InfCommunicationGroupPrivate* priv;
+  InfCommunicationGroupClass* klass;
+  const gchar* method_name;
+  const gchar* split_pos;
+  unsigned int i;
+  InfCommunicationFactory* factory;
+
+  g_return_val_if_fail(INF_COMMUNICATION_IS_GROUP(group), NULL);
+  g_return_val_if_fail(network != NULL, NULL);
+
+  priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
+  klass = INF_COMMUNICATION_GROUP_GET_CLASS(group);
+  g_return_val_if_fail(klass->get_method != NULL);
+
+  i = 0;
+  for(i = 0; (method_name = klass->get_method(group, i)) != NULL; ++ i)
+  {
+    split_pos = strstr(method_name, "::");
+    if(split_pos != NULL)
+    {
+      if(strnchr(method_name, network, split_pos - method_name) != 0)
+        continue;
+      method_name = split_pos + 2;
+    }
+
+    /* Check for support */
+    factory = inf_communication_manager_get_factory_for(
+      priv->communication_manager,
+      network,
+      method_name
+    );
+
+    if(factory != NULL)
+      return method_name;
+  }
+
+  return NULL;
+}
 
 /**
  * inf_communication_group_get_method_for_connection:
- * @group: A #InfCommunicationGroup.
+ * @grp: A #InfCommunicationGroup.
  * @conn: The #InfXmlConnection for which to retrieve the method.
  *
  * Returns the method name of the method used for communication on @conn's
@@ -676,5 +718,21 @@ inf_communication_group_cancel_messages(InfCommunicationGroup* group,
  * Returns: A method name. The string is owned by the group, you don't need
  * to free it.
  */
+const gchar*
+inf_communication_group_get_method_for_connection(InfCommunicationGroup* grp,
+                                                  InfXmlConnection* conn)
+{
+  gchar* network;
+  const gchar* method;
+
+  g_return_val_if_fail(INF_COMMUNICATION_IS_GROUP(grp), NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(conn), NULL);
+
+  g_object_get(G_OBJECT(conn), "network", &network, NULL);
+  method = inf_communication_group_get_method_for_network(grp, network);
+  g_free(network);
+
+  return method;
+}
 
 /* vim:set et sw=2 ts=2: */
