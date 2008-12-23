@@ -42,7 +42,7 @@ InfCertificateChain*
 inf_certificate_chain_new(gnutls_x509_crt_t* certs,
                           guint n_certs);
 
-void
+InfCertificateChain*
 inf_certificate_chain_ref(InfCertificateChain* chain);
 
 void

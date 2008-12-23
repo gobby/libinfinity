@@ -84,11 +84,14 @@ inf_certificate_chain_new(gnutls_x509_crt_t* certs,
  * @chain: A #InfCertificateChain:
  *
  * Increases the reference count of @chain by one.
+ *
+ * Returns: The same @chain.
  */
-void
+InfCertificateChain*
 inf_certificate_chain_ref(InfCertificateChain* chain)
 {
   ++ chain->ref_count;
+  return chain;
 }
 
 /**
