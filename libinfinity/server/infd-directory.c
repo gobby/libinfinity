@@ -95,6 +95,18 @@ struct _InfdDirectorySyncIn {
   InfdSessionProxy* proxy;
 };
 
+/* TODO: Rename to SubscriptionReply? */
+typedef struct _InfdDirectorySubscriptionRequest
+  InfdDirectorySubscriptionRequest;
+struct _InfdDirectorySubscriptionRequest {
+  InfXmlConnection* connection;
+  InfdSessionProxy* session;
+  gboolean synchronize;
+
+  const char* request_type;
+  guint node_id;
+};
+
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfIo* io;
@@ -111,6 +123,7 @@ struct _InfdDirectoryPrivate {
   InfdDirectoryNode* root;
 
   GSList* sync_ins;
+  GSList* subscription_requests;
 };
 
 enum {
@@ -1347,6 +1360,58 @@ infd_directory_find_sync_in_by_name(InfdDirectory* directory,
 }
 
 /*
+ * Subscription requests.
+ */
+
+/* This adds a subscription requests. A subscription requests is basically a
+ * scheduled infd_session_proxy_subscribe_to() call. However, in several
+ * situations infd_session_proxy_subscribe_to() can't be called directly
+ * because otherwise messages in the subscription group might not reach the
+ * client if it has not yet joined the group. By making sure we subscribe the
+ * client after having sent him subscription information, we can be sure the
+ * group has joined the group on subscription. */
+static InfdDirectorySubscriptionRequest*
+infd_directory_add_subscription_request(InfdDirectory* directory,
+                                        InfXmlConnection* connection,
+                                        InfdSessionProxy* session,
+                                        gboolean synchronize,
+                                        const char* request_type,
+                                        guint node_id)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectorySubscriptionRequest* request;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  request = g_slice_new(InfdDirectorySubscriptionRequest);
+
+  request->connection = connection;
+  request->session = session;
+  request->synchronize = synchronize;
+  request->request_type = request_type;
+  request->node_id = node_id;
+
+  g_object_ref(session);
+  priv->subscription_requests =
+    g_slist_prepend(priv->subscription_requests, request);
+
+  return request;
+}
+
+static void
+infd_directory_remove_subscription_request(InfdDirectory* directory,
+                                           InfdDirectorySubscriptionRequest* r)
+{
+  InfdDirectoryPrivate* priv;
+
+  g_object_unref(r->session);
+  g_slice_free(InfdDirectorySubscriptionRequest, r);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  priv->subscription_requests =
+    g_slist_remove(priv->subscription_requests, r);
+}
+
+/*
  * Directory tree operations.
  */
 
@@ -1758,19 +1823,20 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
    * we can correctly specify the parent group here. */
   if(!subscribe_sync_conn)
   {
-    inf_communication_hosted_group_add_member(
-      sync_group,
-      INF_COMMUNICATION_GROUP(priv->group),
-      sync_conn
-    );
+    /* TODO: Does this need to be scheduled, so that it is executed after
+     * the above message has actually been sent? If so, do we also need to
+     * schedule a call to synchronize_to()? */
+    inf_communication_hosted_group_add_member(sync_group, sync_conn);
   }
   else
   {
-    infd_session_proxy_subscribe_to(
-      sync_in->proxy,
+    infd_directory_add_subscription_request(
+      directory,
       sync_conn,
-      INF_COMMUNICATION_GROUP(priv->group),
-      FALSE
+      sync_in->proxy,
+      FALSE,
+      "sync-in",
+      sync_in->node_id
     );
   }
 
@@ -2140,11 +2206,13 @@ infd_directory_handle_add_node(InfdDirectory* directory,
           /* The session should be set by infd_directory_node_add_note() */
           g_assert(node->shared.note.session != NULL);
  
-          infd_session_proxy_subscribe_to(
-            node->shared.note.session,
+          infd_directory_add_subscription_request(
+            directory,
             connection,
-            INF_COMMUNICATION_GROUP(priv->group),
-            FALSE
+            node->shared.note.session,
+            FALSE,
+            "add-node",
+            node->id
           );
         }
       }
@@ -2233,6 +2301,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 
   /* TODO: Bail if this connection is either currently being synchronized to
    * or is already subscribed */
+  /* TODO: Bail if a subscription request for this connection is present. */
 
   proxy = infd_directory_node_get_session(directory, node, error);
   if(proxy == NULL)
@@ -2280,11 +2349,13 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     reply_xml
   );
 
-  infd_session_proxy_subscribe_to(
-    proxy,
+  infd_directory_add_subscription_request(
+    directory,
     connection,
-    INF_COMMUNICATION_GROUP(priv->group),
-    TRUE
+    proxy,
+    TRUE,
+    "subscribe-session",
+    node->id
   );
 
   return TRUE;
@@ -2419,6 +2490,8 @@ infd_directory_remove_connection(InfdDirectory* directory,
                                  InfXmlConnection* connection)
 {
   InfdDirectoryPrivate* priv;
+  GSList* item;
+  InfdDirectorySubscriptionRequest* request;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -2432,6 +2505,17 @@ infd_directory_remove_connection(InfdDirectory* directory,
     G_CALLBACK(infd_directory_connection_notify_status_cb),
     directory
   );
+
+  /* Remove all subscription requests for this connection */
+  item = priv->subscription_requests;
+  while(item != NULL)
+  {
+    request = (InfdDirectorySubscriptionRequest*)item->data;
+    item = item->next;
+
+    if(request->connection == connection)
+      infd_directory_remove_subscription_request(directory, request);
+  }
 
   inf_communication_hosted_group_remove_member(priv->group, connection);
   priv->connections = g_slist_remove(priv->connections, connection);
@@ -2532,6 +2616,7 @@ infd_directory_init(GTypeInstance* instance,
   /* The root node has no name. */
   priv->root = infd_directory_node_new_subdirectory(directory, NULL, 0, NULL);
   priv->sync_ins = NULL;
+  priv->subscription_requests = NULL;
 }
 
 static GObject*
@@ -2597,6 +2682,9 @@ infd_directory_dispose(GObject* object)
 
   while(priv->connections != NULL)
     infd_directory_remove_connection(directory, priv->connections->data);
+
+  /* Should have been cleared by removing all connections */
+  g_assert(priv->subscription_requests == NULL);
 
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
@@ -2873,6 +2961,50 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
   return INF_COMMUNICATION_SCOPE_PTP;
 }
 
+static void
+infd_directory_communication_object_sent(InfCommunicationObject* object,
+                                         InfXmlConnection* connection,
+                                         xmlNodePtr xml)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  GSList* item;
+  InfdDirectorySubscriptionRequest* request;
+  guint node_id;
+
+  directory = INFD_DIRECTORY(object);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Subscribe connections if reply to subscription request has been sent. */
+  for(item = priv->subscription_requests; item != NULL; item = item->next)
+  {
+    request = (InfdDirectorySubscriptionRequest*)item->data;
+    if(request->connection == connection)
+    {
+      if(strcmp((const char*)xml->name, request->request_type) == 0)
+      {
+        if(inf_xml_util_get_attribute_uint(xml, "id", &node_id, NULL))
+        {
+          if(node_id == request->node_id)
+          {
+            infd_session_proxy_subscribe_to(
+              request->session,
+              connection,
+              request->synchronize
+            );
+
+            infd_directory_remove_subscription_request(directory, request);
+
+            /* Assume there is only one subscription request per connection
+             * and message sent. */
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
 /*
  * GType registration.
  */
@@ -3041,6 +3173,7 @@ infd_directory_communication_object_init(gpointer g_iface,
   iface = (InfCommunicationObjectIface*)g_iface;
 
   iface->received = infd_directory_communication_object_received;
+  iface->sent = infd_directory_communication_object_sent;
 }
 
 GType
@@ -3310,7 +3443,7 @@ infd_directory_add_connection(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_return_val_if_fail(priv->communication_manager != NULL, FALSE);
 
-  inf_communication_hosted_group_add_member(priv->group, NULL, connection);
+  inf_communication_hosted_group_add_member(priv->group, connection);
 
   /* TODO: Listen instead on group's member-removed */
   g_signal_connect(

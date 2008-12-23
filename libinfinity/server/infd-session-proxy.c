@@ -1520,7 +1520,6 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy.
  * @connection: A #InfConnection that is not yet subscribed.
- * @parent_group: A #InfCommunicationGroup, or %NULL.
  * @synchronize: If %TRUE, then synchronize the session to @connection first.
  *
  * Subscribes @connection to @proxy's session. The first thing that will be
@@ -1543,21 +1542,12 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * without returning to the main loop before) so that the synchronization
  * connection is added to the subscription group for synchronization.
  *
- * If you told @connection about the subscription in some
- * #InfCommunicationGroup, then pass that group as the @parent_group
- * parameter to this function so that synchronization or subscription
- * messages are kept back until all messages in @parent_queue to @connection
- * have been sent, so that @connection knows about the subscription before
- * the first synchronization or subscription message arrives. See also
- * inf_communication_hosted_group_add_member().
- *
  * A subscription can only be initialted if @proxy's session is in state
  * %INF_SESSION_RUNNING.
  **/
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection,
-                                InfCommunicationGroup* parent_group,
                                 gboolean synchronize)
 {
   InfdSessionProxyPrivate* priv;
@@ -1582,7 +1572,6 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
    * know the parent group. */
   inf_communication_hosted_group_add_member(
     priv->subscription_group,
-    parent_group,
     connection
   );
 

@@ -72,7 +72,6 @@ inf_communication_manager_open_group(InfCommunicationManager* manager,
 
 InfCommunicationJoinedGroup*
 inf_communication_manager_join_group(InfCommunicationManager* manager,
-                                     InfCommunicationGroup* parent_group,
                                      const gchar* group_name,
                                      InfXmlConnection* publisher_conn,
                                      const gchar* method);

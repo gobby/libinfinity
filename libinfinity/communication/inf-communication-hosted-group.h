@@ -62,7 +62,6 @@ inf_communication_hosted_group_get_type(void) G_GNUC_CONST;
 
 void
 inf_communication_hosted_group_add_member(InfCommunicationHostedGroup* group,
-                                          InfCommunicationGroup* parent_group,
                                           InfXmlConnection* connection);
 
 void
