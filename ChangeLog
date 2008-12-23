@@ -1,5 +1,11 @@
 2008-12-23  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-certificate-dialog.c
+	(inf_gtk_certificate_dialog_init): Free the icon_info so that we don't
+	leak it.
+
+2008-12-23  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-view.c
 	(inf_gtk_browser_view_progress_data_func): Free browser_iter to avoid
 	a memory leak.
