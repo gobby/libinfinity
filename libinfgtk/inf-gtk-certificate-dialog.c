@@ -455,6 +455,8 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
       "icon-name", "application-certificate",
       NULL
     );
+
+    gtk_icon_info_free(icon_info);
   }
   else
   {
