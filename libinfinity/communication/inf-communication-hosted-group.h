@@ -61,6 +61,10 @@ GType
 inf_communication_hosted_group_get_type(void) G_GNUC_CONST;
 
 void
+inf_communication_hosted_group_add_method(InfCommunicationHostedGroup* group,
+                                          const gchar* method);
+
+void
 inf_communication_hosted_group_add_member(InfCommunicationHostedGroup* group,
                                           InfXmlConnection* connection);
 

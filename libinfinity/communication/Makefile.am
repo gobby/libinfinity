@@ -10,6 +10,8 @@ libinfinity_communication_ladir = \
 
 libinfinity_communication_la_SOURCES = \
 	inf-communication-factory.c \
+	inf-communication-group.c \
+	inf-communication-hosted-group.c \
 	inf-communication-method.c \
 	inf-communication-object.c
 
@@ -20,5 +22,5 @@ libinfinity_communication_la_HEADERS = \
 	inf-communication-joined-group.h \
 	inf-communication-manager.h \
 	inf-communication-method.h \
-	inf-communication-object.c
+	inf-communication-object.h \
 	inf-communication-registry.h
