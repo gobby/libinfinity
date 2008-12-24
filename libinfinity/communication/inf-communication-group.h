@@ -63,6 +63,8 @@ struct _InfCommunicationGroupClass {
   /* TODO: Should this be const gchar* const* get_methods? */
   const gchar* (*get_method)(InfCommunicationGroup* group,
                              unsigned int index);
+  gchar* (*get_publisher_id)(InfCommunicationGroup* group,
+                             InfXmlConnection* for_connection);
 };
 
 /**
@@ -114,6 +116,10 @@ inf_communication_group_get_method_for_network(InfCommunicationGroup* group,
 const gchar*
 inf_communication_group_get_method_for_connection(InfCommunicationGroup* grp,
                                                   InfXmlConnection* conn);
+
+gchar*
+inf_communication_group_get_publisher_id(InfCommunicationGroup* group,
+                                         InfXmlConnection* for_connection);
 
 G_END_DECLS
 

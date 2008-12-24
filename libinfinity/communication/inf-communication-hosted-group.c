@@ -22,7 +22,7 @@
  * @short_description: Communication group opened by the local host
  * @include: libinfinity/communication/inf-communication-hosted-group.h
  * @stability: Unstable
- * @see_also: #InfCommunicationHostedGroup, #InfCommunicationManager
+ * @see_also: #InfCommunicationGroup, #InfCommunicationManager
  *
  * #InfCommunicationHostedGroup is a #InfCommunicationHostedGroup opened on the
  * local host. It allows adding other hosts to the group via
@@ -61,6 +61,15 @@ inf_communication_hosted_group_get_method(InfCommunicationGroup* group,
     return "central";
 
   return NULL;
+}
+
+static gchar*
+inf_communication_hosted_group_get_publisher_id(InfCommunicationGroup* group,
+                                                InfXmlConnection* for_conn)
+{
+  gchar* local_id;
+  g_object_get(G_OBJECT(for_conn), "local-id", &local_id, NULL);
+  return local_id;
 }
 
 /*
@@ -121,6 +130,8 @@ inf_communication_hosted_group_class_init(gpointer g_class,
   object_class->finalize = inf_communication_hosted_group_finalize;
 
   group_class->get_method = inf_communication_hosted_group_get_method;
+  group_class->get_publisher_id =
+    inf_communication_hosted_group_get_publisher_id;
 }
 
 GType

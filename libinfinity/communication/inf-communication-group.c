@@ -480,6 +480,7 @@ inf_communication_group_class_init(gpointer g_class,
   group_class->member_added = NULL;
   group_class->member_removed = NULL;
   group_class->get_method = NULL;
+  group_class->get_publisher_id = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -880,6 +881,34 @@ inf_communication_group_get_method_for_connection(InfCommunicationGroup* grp,
   g_free(network);
 
   return method;
+}
+
+/**
+ * inf_communication_group_get_publisher_id:
+ * @group: A #InfCommunicationGroup.
+ * @for_connection: A #InfXmlConnection.
+ *
+ * Returns a host identifier for the group's publisher (see
+ * #InfXmlConnection::local-id and #InfXmlConnection::remote-id). If the local
+ * host is the publisher, then this will simply return @for_connection's
+ * local ID, otherwise the remote ID of the connection to the publisher on
+ * @for_connection's network is returned.
+ *
+ * Returns: The publisher's host ID. Free with g_free().
+ */
+gchar*
+inf_communication_group_get_publisher_id(InfCommunicationGroup* group,
+                                         InfXmlConnection* for_connection)
+{
+  InfCommunicationGroupClass* group_class;
+
+  g_return_val_if_fail(INF_COMMUNICATION_IS_GROUP(group), NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(for_connection), NULL);
+
+  group_class = INF_COMMUNICATION_GROUP_GET_CLASS(group);
+  g_return_val_if_fail(group_class->get_publisher_id != NULL, NULL);
+
+  return group_class->get_publisher_id(group, for_connection);
 }
 
 /*
