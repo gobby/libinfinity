@@ -89,6 +89,9 @@ struct _InfCommunicationObjectIface {
 };
 
 GType
+inf_communication_scope_get_type(void) G_GNUC_CONST;
+
+GType
 inf_communication_object_get_type(void) G_GNUC_CONST;
 
 InfCommunicationScope

@@ -171,7 +171,7 @@ inf_communication_object_enqueued(InfCommunicationObject* object,
 {
   InfCommunicationObjectIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_OBJECT(object));
+  g_return_if_fail(INF_COMMUNICATION_IS_OBJECT(object));
   g_return_if_fail(INF_IS_XML_CONNECTION(conn));
   g_return_if_fail(node != NULL);
 
@@ -198,7 +198,7 @@ inf_communication_object_sent(InfCommunicationObject* object,
 {
   InfCommunicationObjectIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_OBJECT(object));
+  g_return_if_fail(INF_COMMUNICATION_IS_OBJECT(object));
   g_return_if_fail(INF_IS_XML_CONNECTION(conn));
   g_return_if_fail(node != NULL);
 

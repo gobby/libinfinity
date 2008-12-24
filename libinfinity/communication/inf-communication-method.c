@@ -142,7 +142,7 @@ void
 inf_communication_method_add_member(InfCommunicationMethod* method,
                                     InfXmlConnection* connection)
 {
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(!inf_communication_method_is_member(method, connection));
 
@@ -166,7 +166,7 @@ void
 inf_communication_method_remove_member(InfCommunicationMethod* method,
                                        InfXmlConnection* connection)
 {
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(inf_communication_method_is_member(method, connection));
 
@@ -194,7 +194,7 @@ inf_communication_method_is_member(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_val_if_fail(INF_IS_COMMUNICATION_METHOD(method), FALSE);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_METHOD(method), FALSE);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
 
   iface = INF_COMMUNICATION_METHOD_GET_IFACE(method);
@@ -218,7 +218,7 @@ inf_communication_method_send_single(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(inf_communication_method_is_member(method, connection));
   g_return_if_fail(xml != NULL);
@@ -245,7 +245,7 @@ inf_communication_method_send_all(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
   g_return_if_fail(xml != NULL);
 
@@ -269,7 +269,7 @@ inf_communication_method_cancel_messages(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
   iface = INF_COMMUNICATION_METHOD_GET_IFACE(method);
@@ -295,7 +295,7 @@ inf_communication_method_received(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(inf_communication_method_is_member(method, connection));
   g_return_if_fail(xml != NULL);
@@ -323,7 +323,7 @@ inf_communication_method_enqueued(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(inf_communication_method_is_member(method, connection));
   g_return_if_fail(xml != NULL);
@@ -350,7 +350,7 @@ inf_communication_method_sent(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_IS_COMMUNICATION_METHOD(method));
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(inf_communication_method_is_member(method, connection));
   g_return_if_fail(xml != NULL);
