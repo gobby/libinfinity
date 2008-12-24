@@ -31,6 +31,7 @@
  **/
 
 #include <libinfinity/communication/inf-communication-hosted-group.h>
+#include <libinfinity/communication/inf-communication-group-private.h>
 
 typedef struct _InfCommunicationHostedGroupPrivate
   InfCommunicationHostedGroupPrivate;
@@ -209,7 +210,10 @@ inf_communication_hosted_group_add_member(InfCommunicationHostedGroup* group,
     )
   );
 
-  /* TODO: Do some InfCommunicationMethod magic */
+  _inf_communication_group_add_member(
+    INF_COMMUNICATION_GROUP(group),
+    connection
+  );
 }
 
 /**
@@ -234,7 +238,10 @@ inf_communication_hosted_group_remove_member(InfCommunicationHostedGroup* grp,
     )
   );
 
-  /* TODO: Do some InfCommunicationMethod magic */
+  _inf_communication_group_remove_member(
+    INF_COMMUNICATION_GROUP(grp),
+    connection
+  );
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -40,10 +40,10 @@ typedef struct _InfCommunicationGroupClass InfCommunicationGroupClass;
 
 /**
  * InfCommunicationGroupClass:
- * @add_member: Default signal handler of the
- * #InfCommunicationGroup::add-member signal.
- * @remove_member: Default signal handler of the
- * #InfCommunicationGroup::remove-member signal.
+ * @member_added: Default signal handler of the
+ * #InfCommunicationGroup::member-added signal.
+ * @member_removed: Default signal handler of the
+ * #InfCommunicationGroup::member-removed signal.
  * @get_method: Virtual function to determine the method to use
  *
  * The virtual methods and default signal handlers of #InfCommunicationGroup.
@@ -54,10 +54,10 @@ struct _InfCommunicationGroupClass {
 
   /*< public >*/
   /* Signals */
-  void (*add_member)(InfCommunicationGroup* group,
-                     InfXmlConnection* connection);
-  void (*remove_member)(InfCommunicationGroup* group,
-                        InfXmlConnection* connection);
+  void (*member_added)(InfCommunicationGroup* group,
+                       InfXmlConnection* connection);
+  void (*member_removed)(InfCommunicationGroup* group,
+                         InfXmlConnection* connection);
 
   /* Virtual functions */
   /* TODO: Should this be const gchar* const* get_methods? */

@@ -24,3 +24,6 @@ libinfinity_communication_la_HEADERS = \
 	inf-communication-method.h \
 	inf-communication-object.h \
 	inf-communication-registry.h
+
+noinst_HEADERS = \
+	inf-communication-group-private.h
