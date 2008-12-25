@@ -13,6 +13,7 @@ libinfinity_communication_la_SOURCES = \
 	inf-communication-group.c \
 	inf-communication-hosted-group.c \
 	inf-communication-joined-group.c \
+	inf-communication-manager.c \
 	inf-communication-method.c \
 	inf-communication-object.c
 
