@@ -68,7 +68,6 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
 void
 inf_communication_registry_unregister(InfCommunicationRegistry* registry,
                                       InfCommunicationGroup* group,
-                                      InfCommunicationMethod* method,
                                       InfXmlConnection* connection);
 
 void
@@ -76,6 +75,11 @@ inf_communication_registry_send(InfCommunicationRegistry* registry,
                                 InfCommunicationGroup* group,
                                 InfXmlConnection* connection,
                                 xmlNodePtr xml);
+
+void
+inf_communication_registry_cancel_messages(InfCommunicationRegistry* registry,
+                                           InfCommunicationGroup* group,
+                                           InfXmlConnection* connection);
 
 G_END_DECLS
 
