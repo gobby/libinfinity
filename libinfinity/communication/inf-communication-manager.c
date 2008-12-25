@@ -214,6 +214,9 @@ inf_communication_manager_dispose(GObject* object)
     g_warning("Communication manager containing joined groups was unrefed");
   }
 
+  g_hash_table_unref(priv->hosted_groups);
+  g_hash_table_unref(priv->joined_groups);
+
   g_ptr_array_foreach(priv->factories, (GFunc)g_object_unref, NULL);
   g_ptr_array_free(priv->factories, TRUE);
 
