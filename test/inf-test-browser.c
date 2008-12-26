@@ -17,7 +17,7 @@
  */
 
 #include <libinfinity/client/infc-browser.h>
-#include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-ip-address.h>
@@ -304,7 +304,7 @@ main(int argc, char* argv[])
 {
   InfTestBrowser test;
   InfIpAddress* address;
-  InfConnectionManager* manager;
+  InfCommunicationManager* manager;
   InfTcpConnection* tcp_conn;
   GError* error;
 
@@ -363,11 +363,10 @@ main(int argc, char* argv[])
 
     g_object_unref(G_OBJECT(tcp_conn));
 
-    manager = inf_connection_manager_new();
+    manager = inf_communication_manager_new();
     test.browser = infc_browser_new(
       INF_IO(test.io),
       manager,
-      NULL,
       INF_XML_CONNECTION(test.conn)
     );
 

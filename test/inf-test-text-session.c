@@ -47,7 +47,7 @@ perform_single_test(InfTextChunk* initial,
                     gdouble* time)
 {
   InfTextBuffer* buffer;
-  InfConnectionManager* manager;
+  InfCommunicationManager* manager;
   InfIo* io;
   InfTextSession* session;
 
@@ -70,7 +70,7 @@ perform_single_test(InfTextChunk* initial,
   buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
   inf_text_buffer_insert_chunk(buffer, 0, initial, NULL);
 
-  manager = inf_connection_manager_new();
+  manager = inf_communication_manager_new();
   io = INF_IO(inf_standalone_io_new());
   user_table = inf_user_table_new();
 
@@ -113,8 +113,8 @@ perform_single_test(InfTextChunk* initial,
     request = (xmlNodePtr)item->data;
 
     /* TODO: Check error? */
-    inf_net_object_received(
-      INF_NET_OBJECT(session),
+    inf_communication_object_received(
+      INF_COMMUNICATION_OBJECT(session),
       NULL,
       request,
       NULL

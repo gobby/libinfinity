@@ -23,7 +23,7 @@
 #include <libinfinity/server/infd-xmpp-server.h>
 #include <libinfinity/server/infd-xml-server.h>
 #include <libinfinity/server/infd-tcp-server.h>
-#include <libinfinity/common/inf-connection-manager.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/common/inf-standalone-io.h>
 
 #ifdef LIBINFINITY_HAVE_AVAHI
@@ -36,7 +36,7 @@ main(int argc, char* argv[])
   InfStandaloneIo* io;
   InfdTcpServer* server;
   InfdXmppServer* xmpp;
-  InfConnectionManager* manager;
+  InfCommunicationManager* manager;
   InfdServerPool* pool;
   InfdFilesystemStorage* storage;
   InfdDirectory* directory;
@@ -68,14 +68,13 @@ main(int argc, char* argv[])
   else
   {
     root_directory = g_build_filename(g_get_home_dir(), ".infinote", NULL);
-    manager = inf_connection_manager_new();
+    manager = inf_communication_manager_new();
     storage = infd_filesystem_storage_new(root_directory);
 
     directory = infd_directory_new(
       INF_IO(io),
       INFD_STORAGE(storage),
-      manager,
-      NULL
+      manager
     );
 
     g_free(root_directory);

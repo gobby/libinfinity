@@ -55,7 +55,7 @@ perform_test(guint max_total_log_size,
              GError** error)
 {
   InfTextBuffer* buffer;
-  InfConnectionManager* manager;
+  InfCommunicationManager* manager;
   InfIo* io;
   InfTextSession* session;
   InfAdoptedAlgorithm* algorithm;
@@ -81,7 +81,7 @@ perform_test(guint max_total_log_size,
   buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
   inf_text_buffer_insert_chunk(buffer, 0, initial, NULL);
 
-  manager = inf_connection_manager_new();
+  manager = inf_communication_manager_new();
   io = INF_IO(inf_standalone_io_new());
   user_table = inf_user_table_new();
   local_error = NULL;
@@ -132,8 +132,8 @@ perform_test(guint max_total_log_size,
     if(strcmp((const char*)request->name, "request") == 0)
     {
       /* Request */
-      result = inf_net_object_received(
-        INF_NET_OBJECT(session),
+      result = inf_communication_object_received(
+        INF_COMMUNICATION_OBJECT(session),
         NULL,
         request,
         &local_error

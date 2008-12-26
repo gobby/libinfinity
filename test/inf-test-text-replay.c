@@ -27,8 +27,7 @@
 #include <libinftext/inf-text-delete-operation.h>
 #include <libinftext/inf-text-buffer.h>
 
-#include <libinfinity/common/inf-connection-manager.h>
-#include <libinfinity/common/inf-central-method.h>
+#include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/common/inf-simulated-connection.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>
@@ -41,23 +40,8 @@
 #define XML_READER_TYPE_SIGNIFICANT_WHITESPACE 14
 #define XML_READER_TYPE_END_ELEMENT 15
 
-static const InfConnectionManagerMethodDesc SIMULATED_CENTRAL_METHOD = {
-  "simulated",
-  "central",
-  inf_central_method_open,
-  inf_central_method_join,
-  inf_central_method_finalize,
-  inf_central_method_receive_msg,
-  inf_central_method_receive_ctrl,
-  inf_central_method_add_connection,
-  inf_central_method_remove_connection,
-  inf_central_method_send_to_net
-};
-
-static const InfConnectionManagerMethodDesc* const METHODS[] = {
-  &SIMULATED_CENTRAL_METHOD,
-  NULL
-};
+/* TODO: Get rid of replay object, we don't need it as NULL target is
+ * allowed for CommunicationGroup. */
 
 static GQuark inf_test_text_replay_error_quark;
 
@@ -79,6 +63,10 @@ struct _InfTestTextReplayObjectClass {
 #define INF_TEST_TYPE_TEXT_REPLAY_OBJECT \
   (inf_test_text_replay_object_get_type())
 
+/* To make gcc silent */
+GType
+inf_test_text_replay_object_get_type(void) G_GNUC_CONST;
+
 static void
 inf_test_text_replay_object_init(InfTestTextReplayObject* self)
 {
@@ -90,7 +78,8 @@ inf_test_text_replay_object_class_init(InfTestTextReplayObjectClass* klass)
 }
 
 static void
-inf_test_text_replay_object_net_object_init(InfNetObjectIface* iface)
+inf_test_text_replay_object_communication_object_init(
+  InfCommunicationObjectIface* iface)
 {
 }
 
@@ -100,8 +89,8 @@ G_DEFINE_TYPE_WITH_CODE(
   inf_test_text_replay_object,
   G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE(
-    INF_TYPE_NET_OBJECT,
-    inf_test_text_replay_object_net_object_init
+    INF_COMMUNICATION_TYPE_OBJECT,
+    inf_test_text_replay_object_communication_object_init
   )
 )
 
@@ -355,7 +344,7 @@ inf_test_text_replay_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
 
 static gboolean
 inf_test_text_replay_play_initial(xmlTextReaderPtr reader,
-                                  InfConnectionManagerGroup* publisher_group,
+                                  InfCommunicationGroup* publisher_group,
                                   InfXmlConnection* publisher,
                                   GError** error)
 {
@@ -369,7 +358,7 @@ inf_test_text_replay_play_initial(xmlTextReaderPtr reader,
     cur = inf_test_text_replay_read_current(reader, error);
     if(cur == NULL) return FALSE;
 
-    inf_connection_manager_group_send_to_connection(
+    inf_communication_group_send_group_message(
       publisher_group,
       publisher,
       xmlCopyNode(cur, 1)
@@ -391,7 +380,7 @@ inf_test_text_replay_play_initial(xmlTextReaderPtr reader,
 static gboolean
 inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
                                    InfSession* session,
-                                   InfConnectionManagerGroup* publisher_group,
+                                   InfCommunicationGroup* publisher_group,
                                    InfXmlConnection* publisher,
                                    GError** error)
 {
@@ -410,7 +399,7 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
 
     if(strcmp((const char*)cur->name, "request") == 0)
     {
-      inf_connection_manager_group_send_to_group(
+      inf_communication_group_send_group_message(
         publisher_group,
         NULL,
         xmlCopyNode(cur, 1)
@@ -463,7 +452,7 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
 static gboolean
 inf_test_text_replay_play(xmlTextReaderPtr reader,
                           InfSession* session,
-                          InfConnectionManagerGroup* publisher_group,
+                          InfCommunicationGroup* publisher_group,
                           InfXmlConnection* publisher,
                           GError** error)
 {
@@ -585,11 +574,11 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
 static void
 inf_test_text_replay_process(xmlTextReaderPtr reader)
 {
-  InfConnectionManager* publisher_manager;
-  InfConnectionManager* client_manager;
+  InfCommunicationManager* publisher_manager;
+  InfCommunicationManager* client_manager;
 
-  InfConnectionManagerGroup* publisher_group;
-  InfConnectionManagerGroup* client_group;
+  InfCommunicationHostedGroup* publisher_group;
+  InfCommunicationJoinedGroup* client_group;
 
   InfSimulatedConnection* publisher;
   InfSimulatedConnection* client;
@@ -615,29 +604,26 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
     INF_SIMULATED_CONNECTION_DELAYED
   );
 
-  publisher_manager = inf_connection_manager_new();
+  publisher_manager = inf_communication_manager_new();
 
-  publisher_group = inf_connection_manager_open_group(
+  publisher_group = inf_communication_manager_open_group(
     publisher_manager,
     "InfAdoptedSessionReplay",
-    NULL,
-    METHODS
-  );
-
-  inf_connection_manager_group_add_connection(
-    publisher_group,
-    INF_XML_CONNECTION(publisher),
     NULL
   );
 
-  client_manager = inf_connection_manager_new();
+  inf_communication_hosted_group_add_member(
+    publisher_group,
+    INF_XML_CONNECTION(publisher)
+  );
 
-  client_group = inf_connection_manager_join_group(
+  client_manager = inf_communication_manager_new();
+
+  client_group = inf_communication_manager_join_group(
     client_manager,
     "InfAdoptedSessionReplay",
     INF_XML_CONNECTION(client),
-    NULL,
-    &SIMULATED_CENTRAL_METHOD
+    "central"
   );
 
   buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
@@ -647,21 +633,21 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
     client_manager,
     buffer,
     io,
-    client_group,
+    INF_COMMUNICATION_GROUP(client_group),
     INF_XML_CONNECTION(client)
   );
 
   g_object_unref(io);
 
-  inf_connection_manager_group_set_object(
-    client_group,
-    INF_NET_OBJECT(session)
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(client_group),
+    INF_COMMUNICATION_OBJECT(session)
   );
 
   replay_object = g_object_new(INF_TEST_TYPE_TEXT_REPLAY_OBJECT, NULL);
-  inf_connection_manager_group_set_object(
-    publisher_group,
-    INF_NET_OBJECT(replay_object)
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(publisher_group),
+    INF_COMMUNICATION_OBJECT(replay_object)
   );
 
   inf_simulated_connection_flush(publisher);
@@ -671,13 +657,13 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
   inf_test_text_replay_play(
     reader,
     INF_SESSION(session),
-    publisher_group,
+    INF_COMMUNICATION_GROUP(publisher_group),
     INF_XML_CONNECTION(publisher),
     &error
   );
 
-  inf_connection_manager_group_unref(client_group);
-  inf_connection_manager_group_unref(publisher_group);
+  g_object_unref(client_group);
+  g_object_unref(publisher_group);
 
   g_object_unref(replay_object);
   g_object_unref(session);

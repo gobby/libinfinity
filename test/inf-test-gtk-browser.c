@@ -48,8 +48,8 @@ struct _InfTestGtkBrowserWindow {
 
 static InfSession*
 inf_test_gtk_browser_session_new(InfIo* io,
-                                 InfConnectionManager* manager,
-                                 InfConnectionManagerGroup* sync_group,
+                                 InfCommunicationManager* manager,
+                                 InfCommunicationJoinedGroup* sync_group,
                                  InfXmlConnection* sync_connection,
                                  gpointer user_data)
 {
@@ -67,7 +67,7 @@ inf_test_gtk_browser_session_new(InfIo* io,
     INF_TEXT_BUFFER(buffer),
     io,
     user_table,
-    sync_group,
+    INF_COMMUNICATION_GROUP(sync_group),
     sync_connection
   );
 
@@ -493,7 +493,7 @@ main(int argc,
      char* argv[])
 {
   InfGtkIo* io;
-  InfConnectionManager* connection_manager;
+  InfCommunicationManager* communication_manager;
 #ifdef LIBINFINITY_HAVE_AVAHI
   InfXmppManager* xmpp_manager;
   InfDiscoveryAvahi* avahi;
@@ -513,9 +513,9 @@ main(int argc,
   g_object_unref(G_OBJECT(xmpp_manager));
 #endif
 
-  connection_manager = inf_connection_manager_new();
-  store = inf_gtk_browser_store_new(INF_IO(io), connection_manager, NULL);
-  g_object_unref(G_OBJECT(connection_manager));
+  communication_manager = inf_communication_manager_new();
+  store = inf_gtk_browser_store_new(INF_IO(io), communication_manager);
+  g_object_unref(communication_manager);
   g_object_unref(G_OBJECT(io));
 
   g_signal_connect(
