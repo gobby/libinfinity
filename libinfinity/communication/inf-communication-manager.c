@@ -53,7 +53,7 @@ struct _InfCommunicationManagerPrivate {
   GHashTable* joined_groups;
 };
 
-#define INF_COMMUNICATION_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_GROUP, InfCommunicationManagerPrivate))
+#define INF_COMMUNICATION_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_MANAGER, InfCommunicationManagerPrivate))
 
 static GObjectClass* parent_class;
 
@@ -197,11 +197,11 @@ inf_communication_manager_init(GTypeInstance* instance,
 static void
 inf_communication_manager_dispose(GObject* object)
 {
-  InfCommunicationManager* group;
+  InfCommunicationManager* manager;
   InfCommunicationManagerPrivate* priv;
 
-  group = INF_COMMUNICATION_MANAGER(object);
-  priv = INF_COMMUNICATION_MANAGER_PRIVATE(group);
+  manager = INF_COMMUNICATION_MANAGER(object);
+  priv = INF_COMMUNICATION_MANAGER_PRIVATE(manager);
 
   /* TODO: weak unref the groups */
   if(g_hash_table_size(priv->hosted_groups) > 0)
@@ -529,3 +529,5 @@ inf_communication_manager_get_factory_for(InfCommunicationManager* manager,
 
   return NULL;
 }
+
+/* vim:set et sw=2 ts=2: */

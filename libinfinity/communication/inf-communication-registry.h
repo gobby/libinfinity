@@ -20,6 +20,7 @@
 #define __INF_COMMUNICATION_REGISTRY_H__
 
 #include <libinfinity/communication/inf-communication-group.h>
+#include <libinfinity/communication/inf-communication-method.h>
 
 #include <glib-object.h>
 

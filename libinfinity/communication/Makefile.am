@@ -15,7 +15,8 @@ libinfinity_communication_la_SOURCES = \
 	inf-communication-joined-group.c \
 	inf-communication-manager.c \
 	inf-communication-method.c \
-	inf-communication-object.c
+	inf-communication-object.c \
+	inf-communication-registry.c
 
 libinfinity_communication_la_HEADERS = \
 	inf-communication-factory.h \
