@@ -1472,7 +1472,7 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
   );
 
   /* Note we can't do this in the default signal handler since it doesn't
-   * know the parent group. */
+   * know the parent group. TODO: We can, meanwhile. */
   inf_communication_hosted_group_add_member(
     priv->subscription_group,
     connection
