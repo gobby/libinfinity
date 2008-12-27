@@ -9,6 +9,8 @@ libinfinity_communication_ladir = \
 	$(includedir)/libinfinity-1.0/libinfinity/communication
 
 libinfinity_communication_la_SOURCES = \
+	inf-communication-central-factory.c \
+	inf-communication-central-method.c \
 	inf-communication-factory.c \
 	inf-communication-group.c \
 	inf-communication-hosted-group.c \
@@ -19,6 +21,8 @@ libinfinity_communication_la_SOURCES = \
 	inf-communication-registry.c
 
 libinfinity_communication_la_HEADERS = \
+	inf-communication-central-factory.h \
+	inf-communication-central-method.h \
 	inf-communication-factory.h \
 	inf-communication-group.h \
 	inf-communication-hosted-group.h \
