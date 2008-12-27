@@ -81,7 +81,7 @@
 
   <chapter>
     <title>Network abstraction</title>
-    <!-- TODO: People almost never need to use this API directly -->
+    <!-- TODO: Mention people almost never need to use this API directly -->
     <xi:include href="xml/inf-communication-manager.xml"/>
     <xi:include href="xml/inf-communication-object.xml"/>
     <xi:include href="xml/inf-communication-group.xml"/>
@@ -90,5 +90,7 @@
     <xi:include href="xml/inf-communication-factory.xml"/>
     <xi:include href="xml/inf-communication-method.xml"/>
     <xi:include href="xml/inf-communication-registry.xml"/>
+    <xi:include href="xml/inf-communication-central-factory.xml"/>
+    <xi:include href="xml/inf-communication-central-method.xml"/>
   </chapter>
 </book>

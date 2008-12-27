@@ -1172,3 +1172,35 @@ INF_COMMUNICATION_METHOD_GET_IFACE
 inf_communication_method_get_type
 </SECTION>
 
+<SECTION>
+<FILE>inf-communication-central-factory</FILE>
+<TITLE>InfCommunicationCentralFactory</TITLE>
+InfCommunicationCentralFactory
+InfCommunicationCentralFactoryClass
+inf_communication_central_factory_get_default
+<SUBSECTION Standard>
+INF_COMMUNICATION_CENTRAL_FACTORY
+INF_COMMUNICATION_CENTRAL_FACTORY_CLASS
+INF_COMMUNICATION_CENTRAL_FACTORY_GET_CLASS
+INF_COMMUNICATION_IS_CENTRAL_FACTORY
+INF_COMMUNICATION_IS_CENTRAL_FACTORY_CLASS
+INF_COMMUNICATION_TYPE_CENTRAL_FACTORY
+inf_communication_central_factory_get_type
+</SECTION>
+
+<SECTION>
+<FILE>inf-communication-central-method</FILE>
+<TITLE>InfCommunicationCentralMethod</TITLE>
+InfCommunicationCentralMethod
+InfCommunicationCentralMethodClass
+<SUBSECTION Standard>
+INF_COMMUNICATION_CENTRAL_METHOD
+INF_COMMUNICATION_CENTRAL_METHOD_CLASS
+INF_COMMUNICATION_CENTRAL_METHOD_GET_CLASS
+INF_COMMUNICATION_IS_CENTRAL_METHOD
+INF_COMMUNICATION_IS_CENTRAL_METHOD_CLASS
+INF_COMMUNICATION_TYPE_CENTRAL_METHOD
+inf_communication_central_method_get_type
+</SECTION>
+
+
