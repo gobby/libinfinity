@@ -63,6 +63,7 @@ inf_communication_central_method_add_member(InfCommunicationMethod* method,
   InfCommunicationCentralMethodPrivate* priv;
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
+  /* TODO: Auto-remove connection on closure */
   priv->connections = g_slist_prepend(priv->connections, connection);
 
   inf_communication_registry_register(
@@ -78,13 +79,21 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
                                                InfXmlConnection* connection)
 {
   InfCommunicationCentralMethodPrivate* priv;
+  InfXmlConnectionStatus status;
+
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
-  inf_communication_registry_unregister(
-    priv->registry,
-    priv->group,
-    connection
-  );
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+
+  if(status != INF_XML_CONNECTION_CLOSING &&
+     status != INF_XML_CONNECTION_CLOSED)
+  {
+    inf_communication_registry_unregister(
+      priv->registry,
+      priv->group,
+      connection
+    );
+  }
 
   priv->connections = g_slist_remove(priv->connections, connection);
 }

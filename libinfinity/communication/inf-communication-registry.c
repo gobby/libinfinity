@@ -456,7 +456,7 @@ inf_communication_registry_notify_status_cb_foreach_remove_func(gpointer key,
   InfCommunicationRegistryEntry* entry;
   entry = (InfCommunicationRegistryEntry*)data;
 
-  if(entry->registered == FALSE && entry->key.connection == conn)
+  if(entry->key.connection == conn)
     return TRUE;
   return FALSE;
 }
@@ -860,6 +860,10 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
  * Unregisters @connection from @group. Incoming messages are no longer
  * reported to group's method, and inf_communication_registry_send() can
  * no longer be called for @connection.
+ *
+ * If a registered connection changes status to %INF_XML_CONNECTION_CLOSING
+ * or %INF_XML_CONNECTION_CLOSED it is unregistered automatically. This
+ * function must not be called for such a connection.
  */
 void
 inf_communication_registry_unregister(InfCommunicationRegistry* registry,
@@ -876,6 +880,13 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
   g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+
+  /* We unregister automatically in case the connection was closed, so it
+   * is not allowed to call this on a closed connection. */
+  g_return_if_fail(status == INF_XML_CONNECTION_OPEN ||
+                   status == INF_XML_CONNECTION_OPENING);
+
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
 
   key.connection = connection;
@@ -886,10 +897,7 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
   entry = g_hash_table_lookup(priv->entries, &key);
   g_assert(entry != NULL && entry->registered == TRUE);
 
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
-  if( (entry->queue_end != NULL || entry->inner_count > 0) &&
-      (status != INF_XML_CONNECTION_CLOSING) &&
-      (status != INF_XML_CONNECTION_CLOSED))
+  if(entry->queue_end != NULL || entry->inner_count > 0)
   {
     /* The entry has still messages to send, so don't remove it right now
      * but wait until all scheduled messages have been sent. */
