@@ -1240,7 +1240,7 @@ inf_session_handle_received_sync_message(InfSession* session,
        * fail anymore. */
       xml_reply = xmlNewNode(NULL, (const xmlChar*)"sync-ack");
 
-      inf_communication_group_send_group_message(
+      inf_communication_group_send_message(
         priv->shared.sync.group,
         connection,
         xml_reply
