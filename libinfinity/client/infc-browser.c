@@ -2494,7 +2494,7 @@ infc_browser_new(InfIo* io,
   object = g_object_new(
     INFC_TYPE_BROWSER,
     "io", io,
-    "connection-manager", comm_manager,
+    "communication-manager", comm_manager,
     "connection", connection,
     NULL
   );

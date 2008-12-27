@@ -109,7 +109,7 @@ perform_test(guint max_total_log_size,
   session = INF_TEXT_SESSION(
     g_object_new(
       INF_TEXT_TYPE_SESSION,
-      "connection-manager", manager,
+      "communication-manager", manager,
       "buffer", buffer,
       "io", io,
       "user_table", user_table,

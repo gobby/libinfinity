@@ -1951,7 +1951,7 @@ inf_text_session_new(InfCommunicationManager* manager,
 
   object = g_object_new(
     INF_TEXT_TYPE_SESSION,
-    "connection-manager", manager,
+    "communication-manager", manager,
     "buffer", buffer,
     "sync-group", sync_group,
     "sync-connection", sync_connection,
@@ -2014,7 +2014,7 @@ inf_text_session_new_with_user_table(InfCommunicationManager* manager,
 
   object = g_object_new(
     INF_TEXT_TYPE_SESSION,
-    "connection-manager", manager,
+    "communication-manager", manager,
     "buffer", buffer,
     "user-table", user_table,
     "sync-group", sync_group,
