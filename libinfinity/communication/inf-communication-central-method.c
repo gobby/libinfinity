@@ -305,7 +305,12 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
 
     if(priv->is_publisher && scope == INF_COMMUNICATION_SCOPE_GROUP)
     {
-      inf_communication_central_method_send_all(method, connection, xml);
+      inf_communication_central_method_send_all(
+        method,
+        connection,
+        xmlCopyNode(xml, 1)
+      );
+
       /* TODO: Forward to other methods of same group */
     }
   }
