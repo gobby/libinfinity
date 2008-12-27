@@ -2461,50 +2461,23 @@ infd_directory_handle_save_session(InfdDirectory* directory,
  * Signal handlers.
  */
 
-/* Required by infd_directory_connection_notify_status_cb() */
 static void
-infd_directory_remove_connection(InfdDirectory* directory,
-                                 InfXmlConnection* connection);
-
-static void
-infd_directory_connection_notify_status_cb(InfXmlConnection* connection,
-                                           const gchar* property,
-                                           gpointer user_data)
+infd_directory_member_removed_cb(InfCommunicationGroup* group,
+                                 InfXmlConnection* connection,
+                                 gpointer user_data)
 {
   InfdDirectory* directory;
-  InfXmlConnectionStatus status;
-
-  directory = INFD_DIRECTORY(user_data);
-
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
-
-  if(status == INF_XML_CONNECTION_CLOSING ||
-     status == INF_XML_CONNECTION_CLOSED)
-  {
-    infd_directory_remove_connection(directory, connection);
-  }
-}
-
-static void
-infd_directory_remove_connection(InfdDirectory* directory,
-                                 InfXmlConnection* connection)
-{
   InfdDirectoryPrivate* priv;
   GSList* item;
   InfdDirectorySubscriptionRequest* request;
 
+  directory = INFD_DIRECTORY(user_data);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   if(priv->root != NULL && priv->root->shared.subdir.explored)
   {
     infd_directory_node_remove_connection(priv->root, connection);
   }
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(connection),
-    G_CALLBACK(infd_directory_connection_notify_status_cb),
-    directory
-  );
 
   /* Remove all subscription requests for this connection */
   item = priv->subscription_requests;
@@ -2517,7 +2490,6 @@ infd_directory_remove_connection(InfdDirectory* directory,
       infd_directory_remove_subscription_request(directory, request);
   }
 
-  inf_communication_hosted_group_remove_member(priv->group, connection);
   priv->connections = g_slist_remove(priv->connections, connection);
   g_object_unref(G_OBJECT(connection));
 }
@@ -2649,6 +2621,13 @@ infd_directory_constructor(GType type,
     methods
   );
 
+  g_signal_connect(
+    G_OBJECT(priv->group),
+    "member-removed",
+    G_CALLBACK(infd_directory_member_removed_cb),
+    directory
+  );
+
   inf_communication_group_set_target(
     INF_COMMUNICATION_GROUP(priv->group),
     INF_COMMUNICATION_OBJECT(directory)
@@ -2681,13 +2660,24 @@ infd_directory_dispose(GObject* object)
   priv->nodes = NULL;
 
   while(priv->connections != NULL)
-    infd_directory_remove_connection(directory, priv->connections->data);
+  {
+    inf_communication_hosted_group_remove_member(
+      priv->group,
+      priv->connections->data
+    );
+  }
 
   /* Should have been cleared by removing all connections */
   g_assert(priv->subscription_requests == NULL);
 
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->group),
+    G_CALLBACK(infd_directory_member_removed_cb),
+    directory
+  );
 
   g_object_unref(priv->group);
   g_object_unref(priv->communication_manager);
@@ -3444,14 +3434,6 @@ infd_directory_add_connection(InfdDirectory* directory,
   g_return_val_if_fail(priv->communication_manager != NULL, FALSE);
 
   inf_communication_hosted_group_add_member(priv->group, connection);
-
-  /* TODO: Listen instead on group's member-removed */
-  g_signal_connect(
-    G_OBJECT(connection),
-    "notify::status",
-    G_CALLBACK(infd_directory_connection_notify_status_cb),
-    directory
-  );
 
   priv->connections = g_slist_prepend(priv->connections, connection);
   g_object_ref(G_OBJECT(connection));

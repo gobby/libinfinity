@@ -40,14 +40,6 @@ struct _InfdSessionProxyPrivate {
   GSList* subscriptions;
   guint user_id_counter;
 
-#if 0
-  /* Only relevant if we get a session synchronized. This flag tells whether
-   * we should subscribe the synchronizing connection after synchronization
-   * is complete, so we do not have to synchronize the session the other way
-   * around if that connection wants to be subscribed. */
-  gboolean subscribe_sync_conn;
-#endif
-
   /* Local users that do not belong to a particular connection */
   GSList* local_users;
 
@@ -61,9 +53,6 @@ enum {
   /* construct/only */
   PROP_SESSION,
   PROP_SUBSCRIPTION_GROUP,
-#if 0
-  PROP_SUBSCRIBE_SYNC_CONN,
-#endif
 
   /* read/only */
   PROP_IDLE
@@ -170,67 +159,6 @@ infd_session_proxy_user_notify_status_cb(InfUser* user,
       proxy
     );
   }
-}
-
-/* Required by infd_session_proxy_release_connection() */
-static void
-infd_session_proxy_connection_notify_status_cb(InfXmlConnection* connection,
-                                               const gchar* property,
-                                               gpointer user_data);
-
-/* Unlinks a subscription connection from the session. */
-static void
-infd_session_proxy_release_subscription(InfdSessionProxy* proxy,
-                                        InfdSessionProxySubscription* subscr)
-{
-  InfdSessionProxyPrivate* priv;
-  InfXmlConnection* connection;
-
-  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
-  connection = subscr->connection;
-
-  g_signal_emit(
-    G_OBJECT(proxy),
-    session_proxy_signals[REMOVE_SUBSCRIPTION],
-    0,
-    connection
-  );
-}
-
-static void
-infd_session_proxy_remove_subscription(InfdSessionProxy* proxy,
-                                       InfdSessionProxySubscription* subscr)
-{
-  InfdSessionProxyPrivate* priv;
-  xmlNodePtr xml;
-  GSList* item;
-  InfUser* user;
-
-  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
-
-  for(item = subscr->users; item != NULL; item = g_slist_next(item))
-  {
-    user = INF_USER(item->data);
-
-    /* Send user-status-change to remaining subscriptions. */
-    /* Note: We cannot simply use inf_session_set_user_status because it
-     * would also try to send the status change to the subscription we are
-     * removing, and because it only works for local users. */
-    xml = xmlNewNode(NULL, (const xmlChar*)"user-status-change");
-    inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
-
-    inf_xml_util_set_attribute(
-      xml,
-      "status",
-      inf_user_status_to_string(INF_USER_UNAVAILABLE)
-    );
-
-    /* The actual status change is performed in the default signal handler
-     * of the remove-subscription signal. */
-    inf_session_send_to_subscriptions(priv->session, subscr->connection, xml);
-  }
-
-  infd_session_proxy_release_subscription(proxy, subscr);
 }
 
 /*
@@ -465,28 +393,57 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
  */
 
 static void
-infd_session_proxy_connection_notify_status_cb(InfXmlConnection* connection,
-                                               const gchar* property,
-                                               gpointer user_data)
+infd_session_proxy_member_removed_cb(InfCommunicationGroup* group,
+                                     InfXmlConnection* connection,
+                                     gpointer user_data)
 {
   InfdSessionProxy* proxy;
+  InfdSessionProxyPrivate* priv;
   InfdSessionProxySubscription* subscription;
-  InfXmlConnectionStatus status;
+  xmlNodePtr xml;
+  GSList* item;
+  InfUser* user;
 
   proxy = INFD_SESSION_PROXY(user_data);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+  subscription = infd_session_proxy_find_subscription(proxy, connection);
+  g_assert(subscription != NULL);
 
-  if(status == INF_XML_CONNECTION_CLOSED ||
-     status == INF_XML_CONNECTION_CLOSING)
+  /* TODO: Only send user-status-change to users that don't have a direct
+   * connection to the closed connection. */
+  for(item = subscription->users; item != NULL; item = g_slist_next(item))
   {
-    subscription = infd_session_proxy_find_subscription(proxy, connection);
-    g_assert(subscription != NULL);
+    user = INF_USER(item->data);
 
-    /* TODO: Only send user-status-change to users that don't have a direct
-     * connection to the closed connection. */
-    infd_session_proxy_remove_subscription(proxy, subscription);
+    /* Send user-status-change to remaining subscriptions. */
+    /* Note: We cannot simply use inf_session_set_user_status because it
+     * would also try to send the status change to the subscription we are
+     * removing, and because it only works for local users. */
+    xml = xmlNewNode(NULL, (const xmlChar*)"user-status-change");
+    inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(user));
+
+    inf_xml_util_set_attribute(
+      xml,
+      "status",
+      inf_user_status_to_string(INF_USER_UNAVAILABLE)
+    );
+
+    /* The actual status change is performed in the default signal handler
+     * of the remove-subscription signal. */
+    inf_session_send_to_subscriptions(
+      priv->session,
+      subscription->connection,
+      xml
+    );
   }
+
+  g_signal_emit(
+    proxy,
+    session_proxy_signals[REMOVE_SUBSCRIPTION],
+    0,
+    connection
+  );
 }
 
 static void
@@ -565,32 +522,9 @@ infd_session_proxy_synchronization_begin_cb(InfSession* session,
 }
 
 static void
-infd_session_proxy_synchronization_complete_cb_before(InfSession* session,
-                                                      InfXmlConnection* conn,
-                                                      gpointer user_data)
-{
-  InfdSessionProxy* proxy;
-  InfdSessionProxyPrivate* priv;
-#if 0
-  InfSessionStatus status;
-#endif
-
-  proxy = INFD_SESSION_PROXY(user_data);
-  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
-
-#if 0
-  g_object_get(session, "status", &status, NULL);
-
-  if(status == INF_SESSION_SYNCHRONIZING)
-    if(priv->subscribe_sync_conn == TRUE)
-      infd_session_proxy_subscribe_to(proxy, conn, NULL, FALSE);
-#endif
-}
-
-static void
-infd_session_proxy_synchronization_complete_cb_after(InfSession* session,
-                                                     InfXmlConnection* conn,
-                                                     gpointer user_data)
+infd_session_proxy_synchronization_complete_cb(InfSession* session,
+                                               InfXmlConnection* conn,
+                                               gpointer user_data)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
@@ -614,10 +548,12 @@ infd_session_proxy_synchronization_failed_cb_before(InfSession* session,
                                                     gpointer user_data)
 {
   InfdSessionProxy* proxy;
+  InfdSessionProxyPrivate* priv;
   InfSessionStatus status;
   InfdSessionProxySubscription* subscription;
 
   proxy = INFD_SESSION_PROXY(user_data);
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
   g_object_get(session, "status", &status, NULL);
 
@@ -626,15 +562,14 @@ infd_session_proxy_synchronization_failed_cb_before(InfSession* session,
 
   if(status == INF_SESSION_RUNNING)
   {
+    /* Remove from subscription group if the connection was subscribed */
     subscription = infd_session_proxy_find_subscription(proxy, conn);
     if(subscription != NULL)
     {
-      /* Note that it should not matter whether we call
-       * infd_session_proxy_release_subscription or
-       * infd_session_proxy_remove_subscription
-       * because there cannot be any users joined via the connection anyway,
-       * because it was not yet synchronized. */
-      infd_session_proxy_release_subscription(proxy, subscription);
+      inf_communication_hosted_group_remove_member(
+        priv->subscription_group,
+        conn
+      );
     }
   }
 }
@@ -673,6 +608,12 @@ infd_session_proxy_session_close_cb(InfSession* session,
   proxy = INFD_SESSION_PROXY(user_data);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->subscription_group),
+    G_CALLBACK(infd_session_proxy_member_removed_cb),
+    proxy
+  );
+
   while(priv->subscriptions != NULL)
   {
     subscription = (InfdSessionProxySubscription*)priv->subscriptions->data;
@@ -702,10 +643,20 @@ infd_session_proxy_session_close_cb(InfSession* session,
       );
     }
 
-    /* Do not call remove_subscription because this would try to send
-     * messages about leaving users, but we are sending session-close
-     * to all subscriptions anyway. */
-    infd_session_proxy_release_subscription(proxy, subscription);
+    /* Note that this does not call our signal handler because we already
+     * disconnected it. This way, we make sure not to send user status updates
+     * which would be pointless since we are closing the group anyway. */
+    inf_communication_hosted_group_remove_member(
+      priv->subscription_group,
+      subscription->connection
+    );
+
+    g_signal_emit(
+      proxy,
+      session_proxy_signals[REMOVE_SUBSCRIPTION],
+      0,
+      subscription->connection
+    );
   }
 
   g_object_unref(priv->subscription_group);
@@ -729,9 +680,6 @@ infd_session_proxy_init(GTypeInstance* instance,
   priv->subscriptions = NULL;
   priv->subscription_group = NULL;
   priv->user_id_counter = 1;
-#if 0
-  priv->subscribe_sync_conn = FALSE;
-#endif
   priv->local_users = NULL;
   priv->idle = TRUE;
 }
@@ -814,13 +762,7 @@ infd_session_proxy_dispose(GObject* object)
 
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_synchronization_complete_cb_before),
-    proxy
-  );
-
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->session),
-    G_CALLBACK(infd_session_proxy_synchronization_complete_cb_after),
+    G_CALLBACK(infd_session_proxy_synchronization_complete_cb),
     proxy
   );
 
@@ -907,17 +849,10 @@ infd_session_proxy_set_property(GObject* object,
       proxy
     );
 
-    g_signal_connect(
-      G_OBJECT(priv->session),
-      "synchronization-complete",
-      G_CALLBACK(infd_session_proxy_synchronization_complete_cb_before),
-      proxy
-    );
-
     g_signal_connect_after(
       G_OBJECT(priv->session),
       "synchronization-complete",
-      G_CALLBACK(infd_session_proxy_synchronization_complete_cb_after),
+      G_CALLBACK(infd_session_proxy_synchronization_complete_cb),
       proxy
     );
 
@@ -940,12 +875,15 @@ infd_session_proxy_set_property(GObject* object,
     g_assert(priv->subscription_group == NULL); /* construct only */
     priv->subscription_group =
       INF_COMMUNICATION_HOSTED_GROUP(g_value_dup_object(value));
+
+    g_signal_connect(
+      G_OBJECT(priv->subscription_group),
+      "member-removed",
+      G_CALLBACK(infd_session_proxy_member_removed_cb),
+      proxy
+    );
+
     break;
-#if 0
-  case PROP_SUBSCRIBE_SYNC_CONN:
-    priv->subscribe_sync_conn = g_value_get_boolean(value);
-    break;
-#endif
   case PROP_IDLE:
     /* read/only */
   default:
@@ -974,11 +912,6 @@ infd_session_proxy_get_property(GObject* object,
   case PROP_SUBSCRIPTION_GROUP:
     g_value_set_object(value, priv->subscription_group);
     break;
-#if 0
-  case PROP_SUBSCRIBE_SYNC_CONN:
-    g_value_set_boolean(value, priv->subscribe_sync_conn);
-    break;
-#endif
   case PROP_IDLE:
     g_value_set_boolean(value, priv->idle);
     break;
@@ -993,21 +926,14 @@ infd_session_proxy_get_property(GObject* object,
  */
 
 static void
-infd_session_proxy_add_subscription_handler(InfdSessionProxy* proxy,
-                                            InfXmlConnection* connection)
+infd_session_proxy_add_subscription(InfdSessionProxy* proxy,
+                                    InfXmlConnection* connection)
 {
   InfdSessionProxyPrivate* priv;
   InfdSessionProxySubscription* subscription;
 
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_assert(infd_session_proxy_find_subscription(proxy, connection) == NULL);
-
-  g_signal_connect(
-    G_OBJECT(connection),
-    "notify::status",
-    G_CALLBACK(infd_session_proxy_connection_notify_status_cb),
-    proxy
-  );
 
   subscription = infd_session_proxy_subscription_new(connection);
   priv->subscriptions = g_slist_prepend(priv->subscriptions, subscription);
@@ -1020,8 +946,8 @@ infd_session_proxy_add_subscription_handler(InfdSessionProxy* proxy,
 }
 
 static void
-infd_session_proxy_remove_subscription_handler(InfdSessionProxy* proxy,
-                                               InfXmlConnection* connection)
+infd_session_proxy_remove_subscription(InfdSessionProxy* proxy,
+                                       InfXmlConnection* connection)
 {
   InfdSessionProxyPrivate* priv;
   InfdSessionProxySubscription* subscr;
@@ -1031,19 +957,8 @@ infd_session_proxy_remove_subscription_handler(InfdSessionProxy* proxy,
 
   g_assert(subscr != NULL);
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(connection),
-    G_CALLBACK(infd_session_proxy_connection_notify_status_cb),
-    proxy
-  );
-
   /* TODO: Cancel synchronization if the synchronization to this subscription
    * did not yet finish. */
-
-  inf_communication_hosted_group_remove_member(
-    priv->subscription_group,
-    connection
-  );
 
   while(subscr->users)
   {
@@ -1121,12 +1036,16 @@ infd_session_proxy_handle_session_unsubscribe(InfdSessionProxy* proxy,
                                               const xmlNodePtr xml,
                                               GError** error)
 {
-  InfdSessionProxySubscription* subscription;
+  InfdSessionProxyPrivate* priv;
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
-  subscription = infd_session_proxy_find_subscription(proxy, connection);
-  g_assert(subscription != NULL);
+  g_assert(infd_session_proxy_find_subscription(proxy, connection) != NULL);
 
-  infd_session_proxy_remove_subscription(proxy, subscription);
+  inf_communication_hosted_group_remove_member(
+    priv->subscription_group,
+    connection
+  );
+
   return TRUE;
 }
 
@@ -1300,9 +1219,8 @@ infd_session_proxy_class_init(gpointer g_class,
   object_class->set_property = infd_session_proxy_set_property;
   object_class->get_property = infd_session_proxy_get_property;
 
-  proxy_class->add_subscription = infd_session_proxy_add_subscription_handler;
-  proxy_class->remove_subscription =
-    infd_session_proxy_remove_subscription_handler;
+  proxy_class->add_subscription = infd_session_proxy_add_subscription;
+  proxy_class->remove_subscription = infd_session_proxy_remove_subscription;
 
   g_object_class_install_property(
     object_class,
@@ -1327,21 +1245,6 @@ infd_session_proxy_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
-
-#if 0
-  g_object_class_install_property(
-    object_class,
-    PROP_SUBSCRIBE_SYNC_CONN,
-    g_param_spec_boolean(
-      "subscribe-sync-connection",
-      "Subscribe synchronizing connection",
-      "Whether to subscribe the initial synchronizing connection after "
-      "successful synchronization",
-      FALSE,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-    )
-  );
-#endif
 
   g_object_class_install_property(
     object_class,
