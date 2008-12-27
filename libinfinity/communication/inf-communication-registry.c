@@ -591,13 +591,15 @@ inf_communication_registry_group_unrefed(gpointer user_data,
                                          GObject* where_the_object_was)
 {
   InfCommunicationRegistryEntry* entry;
+  InfCommunicationRegistry* registry;
   InfCommunicationRegistryPrivate* priv;
   GHashTableIter iter;
   gpointer value;
   InfXmlConnection* connection;
 
   entry = (InfCommunicationRegistryEntry*)user_data;
-  priv = INF_COMMUNICATION_REGISTRY_PRIVATE(entry->registry);
+  registry = entry->registry;
+  priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
 
   /* This is completely valid if the connection was unregistered, only
    * sending final scheduled messages. */
@@ -618,11 +620,7 @@ inf_communication_registry_group_unrefed(gpointer user_data,
       entry->group = NULL;
       g_hash_table_iter_remove(&iter);
 
-      inf_communication_registry_remove_connection(
-        entry->registry,
-        connection
-      );
-
+      inf_communication_registry_remove_connection(registry, connection);
       break;
     }
   }
