@@ -1,5 +1,20 @@
 2008-12-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-server-pool.c (infd_server_pool_entry_free):
+	Free the InfdServerPoolPublisher struct for each publisher.
+
+	* libinfinity/server/infd-directory.c (infd_directory_node_explore):
+	Don't leak the path variable.
+
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_process_authentication): Free the result of
+	xmlNodeGetContent() as we are supposed to.
+
+	* libinfinity/adopted/inf-adopted-algorithm.c
+	(inf_adopted_algorithm_dispose): Don't leak the buffer_modified_time.
+
+2008-12-27  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-options.c (infinoted_options_load): Don't leak
 	default security_policy if overwritten by command line.
 

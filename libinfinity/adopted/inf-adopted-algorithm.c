@@ -1373,6 +1373,9 @@ inf_adopted_algorithm_dispose(GObject* object)
     priv->buffer = NULL;
   }
 
+  if(priv->buffer_modified_time != NULL)
+    inf_adopted_state_vector_free(priv->buffer_modified_time);
+
   if(priv->user_table != NULL)
   {
     g_signal_handlers_disconnect_by_func(
