@@ -986,9 +986,9 @@ _inf_communication_group_remove_member(InfCommunicationGroup* group,
   InfCommunicationMethod* method;
 
   priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
-  g_object_get(G_OBJECT(connection), "network", network, NULL);
+  g_object_get(G_OBJECT(connection), "network", &network, NULL);
 
-  method = g_hash_table_lookup(priv->methods, "network");
+  method = g_hash_table_lookup(priv->methods, network);
   g_free(network);
 
   g_assert(method != NULL);
