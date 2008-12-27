@@ -778,6 +778,7 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
   InfCommunicationRegistryPrivate* priv;
   InfCommunicationRegistryKey key;
   InfCommunicationRegistryEntry* entry;
+  InfXmlConnectionStatus status;
   gchar* local_id;
   gchar* remote_id;
 
@@ -785,6 +786,9 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
   g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+  g_return_if_fail(status == INF_XML_CONNECTION_OPEN);
 
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
   key.connection = connection;

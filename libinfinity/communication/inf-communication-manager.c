@@ -380,8 +380,9 @@ inf_communication_manager_open_group(InfCommunicationManager* manager,
  * @method: The communication method to use.
  *
  * Joins a communication group published by a remote host. @publisher_conn
- * needs to be an open connection to the publishing host. @group_name
- * specifies the name of the group to join.
+ * needs to be a to the publishing host with status %INF_XML_CONNECTION_OPEN
+ * or %INF_XML_CONNECTION_OPENING. @group_name specifies the name of the group
+ * to join.
  *
  * @method specifies the communication method to use. It must match the
  * communication method the publisher has chosen for @publisher_conn's network
@@ -421,7 +422,8 @@ inf_communication_manager_join_group(InfCommunicationManager* manager,
     NULL
   );
 
-  if(status != INF_XML_CONNECTION_OPEN)
+  if(status == INF_XML_CONNECTION_CLOSING ||
+     status == INF_XML_CONNECTION_CLOSED)
   {
     g_free(network);
     g_free(publisher_id);
