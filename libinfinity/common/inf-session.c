@@ -1388,7 +1388,7 @@ static InfCommunicationScope
 inf_session_communication_object_received(InfCommunicationObject* comm_object,
                                           InfXmlConnection* connection,
                                           const xmlNodePtr node,
-                                GError** error)
+                                          GError** error)
 {
   InfSessionClass* session_class;
   InfSession* session;
