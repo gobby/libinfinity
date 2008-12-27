@@ -98,7 +98,7 @@ infc_browser_new(InfIo* io,
                  InfXmlConnection* connection);
 
 InfCommunicationManager*
-infc_browser_get_connection_manager(InfcBrowser* browser);
+infc_browser_get_communication_manager(InfcBrowser* browser);
 
 InfXmlConnection*
 infc_browser_get_connection(InfcBrowser* browser);
@@ -206,6 +206,10 @@ infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
 InfcExploreRequest*
 infc_browser_iter_get_explore_request(InfcBrowser* browser,
                                       InfcBrowserIter* iter);
+
+GSList*
+infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
+                                       InfcBrowserIter* iter);
 
 gboolean
 infc_browser_iter_from_node_request(InfcBrowser* browser,

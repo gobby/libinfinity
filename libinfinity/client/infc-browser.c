@@ -2503,7 +2503,7 @@ infc_browser_new(InfIo* io,
 }
 
 /**
- * infc_browser_get_connection_manager:
+ * infc_browser_get_communication_manager:
  * @browser: A #InfcBrowser.
  *
  * Returns the communication manager of this browser.
@@ -2511,7 +2511,7 @@ infc_browser_new(InfIo* io,
  * Return Value: A #InfCommunicationManager.
  **/
 InfCommunicationManager*
-infc_browser_get_connection_manager(InfcBrowser* browser)
+infc_browser_get_communication_manager(InfcBrowser* browser)
 {
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   return INFC_BROWSER_PRIVATE(browser)->communication_manager;
