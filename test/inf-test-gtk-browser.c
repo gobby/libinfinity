@@ -166,6 +166,7 @@ on_join_finished(InfcUserRequest* request,
   gtk_text_view_set_editable(GTK_TEXT_VIEW(test->textview), TRUE);
 
   test->user = user;
+  g_object_ref(user);
 
   session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
   algorithm = inf_adopted_session_get_algorithm(session);
@@ -313,8 +314,29 @@ static void
 on_text_window_destroy(GtkWindow* window,
                        gpointer user_data)
 {
-  /* TODO: Close session */
-  g_slice_free(InfTestGtkBrowserWindow, user_data);
+  InfTestGtkBrowserWindow* test;
+  InfSession* session;
+
+  test = (InfTestGtkBrowserWindow*)user_data;
+  session = infc_session_proxy_get_session(test->proxy);
+
+  g_signal_handlers_disconnect_by_func(
+    session,
+    G_CALLBACK(on_synchronization_complete),
+    test
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    session,
+    G_CALLBACK(on_synchronization_failed),
+    test
+  );
+
+  if(test->proxy != NULL) g_object_unref(test->proxy);
+  if(test->buffer != NULL) g_object_unref(test->buffer);
+  if(test->user !=NULL) g_object_unref(test->user);
+
+  g_slice_free(InfTestGtkBrowserWindow, test);
 }
 
 static void
@@ -395,6 +417,7 @@ on_subscribe_session(InfcBrowser* browser,
   test->buffer = buffer;
   test->proxy = proxy;
   test->user = NULL;
+  g_object_ref(proxy);
 
   g_signal_connect_after(
     G_OBJECT(session),
