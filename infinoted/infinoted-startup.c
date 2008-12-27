@@ -409,6 +409,10 @@ infinoted_startup_free(InfinotedStartup* startup)
   if(startup->private_key != NULL)
     gnutls_x509_privkey_deinit(startup->private_key);
 
+  if(startup->options != NULL)
+    infinoted_options_free(startup->options);
+
+  g_slice_free(InfinotedStartup, startup);
   inf_deinit();
 }
 
