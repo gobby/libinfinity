@@ -2068,6 +2068,7 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
   InfXmppConnectionPrivate* priv;
   InfXmppConnectionAuthError auth_code;
   xmlNodePtr child;
+  xmlChar* content;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
@@ -2077,10 +2078,9 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
     if(strcmp((const gchar*)xml->name, "challenge") == 0)
     {
       /* Process challenge from server */
-      inf_xmpp_connection_sasl_request(
-        xmpp,
-        (const gchar*)xmlNodeGetContent(xml)
-      );
+      content = xmlNodeGetContent(xml);
+      inf_xmpp_connection_sasl_request(xmpp, (const gchar*)content);
+      xmlFree(content);
     }
     else if(strcmp((const gchar*)xml->name, "failure") == 0)
     {
@@ -2121,10 +2121,9 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
     if(strcmp((const gchar*)xml->name, "response") == 0)
     {
       /* Process client reponse */
-      inf_xmpp_connection_sasl_request(
-        xmpp,
-        (const gchar*)xmlNodeGetContent(xml)
-      );
+      content = xmlNodeGetContent(xml);
+      inf_xmpp_connection_sasl_request(xmpp, (const gchar*)content);
+      xmlFree(content);
     }
     else if(strcmp((const gchar*)xml->name, "abort") == 0)
     {

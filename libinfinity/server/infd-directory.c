@@ -1516,11 +1516,10 @@ infd_directory_node_explore(InfdDirectory* directory,
   g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
   g_assert(node->shared.subdir.explored == FALSE);
 
-  infd_directory_node_get_path(node, &path, &len);
-
   local_error = NULL;
-
+  infd_directory_node_get_path(node, &path, &len);
   list = infd_storage_read_subdirectory(priv->storage, path, &local_error);
+  g_free(path);
 
   if(local_error != NULL)
   {

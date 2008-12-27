@@ -240,6 +240,8 @@ infd_server_pool_entry_free(InfdServerPool* server_pool,
       g_assert_not_reached();
       break;
     }
+
+    g_slice_free(InfdServerPoolPublisher, publisher);
   }
   
   g_slist_free(entry->publishers);
