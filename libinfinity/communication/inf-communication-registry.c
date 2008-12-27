@@ -766,6 +766,8 @@ inf_communication_registry_get_type(void)
  * Registers connection with @group. This allows sending messages to
  * @connection via inf_communication_registry_send(). For received messages,
  * inf_communication_method_received() is called on @method.
+ *
+ * @connection must have status %INF_XML_CONNECTION_OPEN.
  */
 void
 inf_communication_registry_register(InfCommunicationRegistry* registry,
