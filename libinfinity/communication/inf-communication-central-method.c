@@ -57,21 +57,76 @@ enum {
 static GObjectClass* parent_class;
 
 static void
+inf_communication_central_method_notify_status_cb(GObject* object,
+                                                  GParamSpec* pspec,
+                                                  gpointer user_data)
+{
+  InfCommunicationCentralMethod* method;
+  InfCommunicationCentralMethodPrivate* priv;
+  InfXmlConnectionStatus status;
+
+  method = INF_COMMUNICATION_CENTRAL_METHOD(user_data);
+  priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
+  g_object_get(object, "status", &status, NULL);
+
+  switch(status)
+  {
+  case INF_XML_CONNECTION_OPENING:
+    break;
+  case INF_XML_CONNECTION_OPEN:
+    inf_communication_registry_register(
+      priv->registry,
+      priv->group,
+      INF_COMMUNICATION_METHOD(method),
+      INF_XML_CONNECTION(object)
+    );
+
+    break;
+  case INF_XML_CONNECTION_CLOSING:
+  case INF_XML_CONNECTION_CLOSED:
+    inf_communication_method_remove_member(
+      INF_COMMUNICATION_METHOD(method),
+      INF_XML_CONNECTION(object)
+    );
+
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+}
+
+static void
 inf_communication_central_method_add_member(InfCommunicationMethod* method,
                                             InfXmlConnection* connection)
 {
   InfCommunicationCentralMethodPrivate* priv;
-  priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
+  InfXmlConnectionStatus status;
 
-  /* TODO: Auto-remove connection on closure */
+  priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+
+  g_assert(status != INF_XML_CONNECTION_CLOSING && 
+           status != INF_XML_CONNECTION_CLOSED);
+
   priv->connections = g_slist_prepend(priv->connections, connection);
 
-  inf_communication_registry_register(
-    priv->registry,
-    priv->group,
-    method,
-    connection
+  g_signal_connect(
+    connection,
+    "notify::status",
+    G_CALLBACK(inf_communication_central_method_notify_status_cb),
+    method
   );
+
+  if(status == INF_XML_CONNECTION_OPEN)
+  {
+    inf_communication_registry_register(
+      priv->registry,
+      priv->group,
+      method,
+      connection
+    );
+  }
 }
 
 static void
@@ -94,6 +149,12 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
       connection
     );
   }
+
+  g_signal_handlers_disconnect_by_func(
+    connection,
+    G_CALLBACK(inf_communication_central_method_notify_status_cb),
+    method
+  );
 
   priv->connections = g_slist_remove(priv->connections, connection);
 }
