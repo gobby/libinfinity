@@ -47,9 +47,6 @@ typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
  * #InfCommunicationMethod::add-member signal.
  * @remove_member: Default signal handler of the
  * #InfCommunicationMethod::remove-member signal.
-#if 0
- * @get_name: Returns the name of the method.
-#endif
  * @is_member: Returns whether the given connection is a member of the group.
  * @send_single: Sends a message to a single connection. Takes ownership of
  * @xml.
@@ -78,11 +75,7 @@ struct _InfCommunicationMethodIface {
   void (*remove_member)(InfCommunicationMethod* method,
                         InfXmlConnection* connection);
 
-#if 0
   /* Virtual functions */
-  const gchar* (*get_name)(InfCommunicationMethod* method);
-#endif
-
   gboolean (*is_member)(InfCommunicationMethod* method,
                         InfXmlConnection* connection);
 
@@ -108,11 +101,6 @@ struct _InfCommunicationMethodIface {
 
 GType
 inf_communication_method_get_type(void) G_GNUC_CONST;
-
-#if 0
-const gchar*
-inf_communication_method_get_name(InfCommunicationMethod* method);
-#endif
 
 void
 inf_communication_method_add_member(InfCommunicationMethod* method,

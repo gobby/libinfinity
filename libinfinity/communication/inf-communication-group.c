@@ -889,7 +889,7 @@ inf_communication_group_get_method_for_connection(InfCommunicationGroup* grp,
  * @for_connection: A #InfXmlConnection.
  *
  * Returns a host identifier for the group's publisher (see
- * #InfXmlConnection::local-id and #InfXmlConnection::remote-id). If the local
+ * #InfXmlConnection:local-id and #InfXmlConnection:remote-id). If the local
  * host is the publisher, then this will simply return @for_connection's
  * local ID, otherwise the remote ID of the connection to the publisher on
  * @for_connection's network is returned.

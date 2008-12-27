@@ -44,7 +44,10 @@ typedef struct _InfCommunicationGroupClass InfCommunicationGroupClass;
  * #InfCommunicationGroup::member-added signal.
  * @member_removed: Default signal handler of the
  * #InfCommunicationGroup::member-removed signal.
- * @get_method: Virtual function to determine the method to use
+ * @get_method: Virtual function to determine the methods to use for the
+ * group, in order of priority.
+ * @get_publisher_id: Virtual function to obtain the ID of the publishing
+ * host of this group.
  *
  * The virtual methods and default signal handlers of #InfCommunicationGroup.
  */
