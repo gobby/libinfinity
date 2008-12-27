@@ -132,9 +132,9 @@ inf_communication_central_method_send_all(InfCommunicationMethod* method,
   drop_xml = FALSE;
   for(item = priv->connections; item != NULL; item = next)
   {
+    next = item->next;
     if(item->data == except) continue;
 
-    next = item->next;
     if(next == NULL || (next->data == except && next->next == NULL))
     {
       g_assert(drop_xml == FALSE);
@@ -408,12 +408,7 @@ inf_communication_central_method_dispose(GObject* object)
   }
 
   inf_communication_central_method_set_group(method, NULL);
-
-  if(priv->registry != NULL)
-  {
-    g_object_unref(priv->registry);
-    priv->registry = NULL;
-  }
+  inf_communication_central_method_set_registry(method, NULL);
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }

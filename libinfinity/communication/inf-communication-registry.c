@@ -782,7 +782,7 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
   g_return_if_fail(INF_COMMUNICATION_IS_REGISTRY(registry));
   g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
-  g_return_if_fail(INF_IS_XML_CONNECTION(method));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
   key.connection = connection;
@@ -807,12 +807,6 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
   }
   else
   {
-    g_object_weak_ref(
-      G_OBJECT(group),
-      inf_communication_registry_group_unrefed,
-      entry
-    );
-
     entry = g_slice_new(InfCommunicationRegistryEntry);
     entry->registry = registry;
     entry->key = key;
@@ -846,6 +840,12 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
 
     entry->enqueued_list = NULL;
     entry->sent_list = NULL;
+
+    g_object_weak_ref(
+      G_OBJECT(group),
+      inf_communication_registry_group_unrefed,
+      entry
+    );
 
     g_hash_table_insert(priv->entries, &entry->key, entry);
   }

@@ -25,7 +25,7 @@
 
 G_BEGIN_DECLS
 
-#define INF_COMMUNICATION_TYPE_JOINED_GROUP                 (inf_communication_group_get_type())
+#define INF_COMMUNICATION_TYPE_JOINED_GROUP                 (inf_communication_joined_group_get_type())
 #define INF_COMMUNICATION_JOINED_GROUP(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_JOINED_GROUP, InfCommunicationJoinedGroup))
 #define INF_COMMUNICATION_JOINED_GROUP_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INF_COMMUNICATION_TYPE_JOINED_GROUP, InfCommunicationJoinedGroupClass))
 #define INF_COMMUNICATION_IS_JOINED_GROUP(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_JOINED_GROUP))

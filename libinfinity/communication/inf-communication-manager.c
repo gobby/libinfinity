@@ -198,7 +198,7 @@ inf_communication_manager_init(GTypeInstance* instance,
    * hosted groups. */
   g_ptr_array_add(
     priv->factories,
-    inf_communication_central_factory_get_default()
+    g_object_ref(inf_communication_central_factory_get_default())
   );
 }
 
