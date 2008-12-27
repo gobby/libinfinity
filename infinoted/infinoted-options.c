@@ -485,9 +485,7 @@ infinoted_options_load(InfinotedOptions* options,
   };
 
   display_version = FALSE;
-  security_policy = infinoted_options_policy_to_string(
-    options->security_policy
-  );
+  security_policy = NULL;
   port_number = infinoted_options_port_to_integer(options->port);
   autosave_interval = options->autosave_interval;
 
@@ -524,14 +522,17 @@ infinoted_options_load(InfinotedOptions* options,
 
   g_option_context_free(context);
 
-  result = infinoted_options_policy_from_string(
-    security_policy,
-    &options->security_policy,
-    error
-  );
+  if(security_policy != NULL)
+  {
+    result = infinoted_options_policy_from_string(
+      security_policy,
+      &options->security_policy,
+      error
+    );
 
-  g_free(security_policy);
-  if(!result) return FALSE;
+    g_free(security_policy);
+    if(!result) return FALSE;
+  }
 
   result = infinoted_options_port_from_integer(
     port_number,

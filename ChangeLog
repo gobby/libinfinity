@@ -1,5 +1,13 @@
 2008-12-27  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-options.c (infinoted_options_load): Don't leak
+	default security_policy if overwritten by command line.
+
+	* infinoted/infinoted-startup.c (infinoted_startup_free): Don't leak
+	options and the startup struct.
+
+2008-12-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Improved error message
 	when the remote site seems not to be an XMPP server.
 
