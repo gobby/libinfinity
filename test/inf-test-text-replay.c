@@ -358,7 +358,7 @@ inf_test_text_replay_play_initial(xmlTextReaderPtr reader,
     cur = inf_test_text_replay_read_current(reader, error);
     if(cur == NULL) return FALSE;
 
-    inf_communication_group_send_group_message(
+    inf_communication_group_send_message(
       publisher_group,
       publisher,
       xmlCopyNode(cur, 1)
