@@ -1665,6 +1665,15 @@ infd_directory_node_add_note(InfdDirectory* directory,
     }
     else if(seq_conn != NULL && subscribe_seq_conn == TRUE)
     {
+      infd_directory_add_subscription_request(
+        directory,
+        seq_conn,
+        node->shared.note.session,
+        FALSE,
+        "add-node",
+        node->id
+      );
+
       infd_directory_node_register_reply_subscription(
         directory,
         node,
@@ -1810,12 +1819,6 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     );
   }
 
-  inf_communication_group_send_message(
-    INF_COMMUNICATION_GROUP(priv->group),
-    sync_conn,
-    xml
-  );
-
   /* Add connection to synchronization group if the synchronization group is
    * not the subscription group (if it is, then a call to
    * infd_session_proxy_subscribe_to adds the connection). Note this can't be
@@ -1824,7 +1827,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
   if(!subscribe_sync_conn)
   {
     /* TODO: Does this need to be scheduled, so that it is executed after
-     * the above message has actually been sent? If so, do we also need to
+     * the message below has actually been sent? If so, do we also need to
      * schedule a call to synchronize_to()? */
     inf_communication_hosted_group_add_member(sync_group, sync_conn);
   }
@@ -1839,6 +1842,12 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
       sync_in->node_id
     );
   }
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    sync_conn,
+    xml
+  );
 
   g_object_unref(sync_group);
 
@@ -2179,43 +2188,12 @@ infd_directory_handle_add_node(InfdDirectory* directory,
         (has_seq == TRUE) ? connection : NULL,
         seq,
         subscribe_sync_conn,
-        &local_error
+        error
       );
 
       xmlFree(name);
       if(node == NULL)
-      {
-        g_propagate_error(error, local_error);
         return FALSE;
-      }
-
-      /* Note that local_error can only be set if subscribe_sync_conn is set,
-       * so we don't need to check it in case subscribe_sync_conn is not
-       * set. */
-      if(subscribe_sync_conn)
-      {
-        if(local_error != NULL)
-        {
-          /* The only error that can occur here (note that the node was
-           * already successfully created) is that the subscription
-           * failed. We just don't subscribe the client in that case. */
-          g_error_free(local_error);
-        }
-        else
-        {
-          /* The session should be set by infd_directory_node_add_note() */
-          g_assert(node->shared.note.session != NULL);
- 
-          infd_directory_add_subscription_request(
-            directory,
-            connection,
-            node->shared.note.session,
-            FALSE,
-            "add-node",
-            node->id
-          );
-        }
-      }
 
       return TRUE;
     }
@@ -2343,12 +2321,6 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     xmlFree(seq_attr);
   }
 
-  inf_communication_group_send_message(
-    INF_COMMUNICATION_GROUP(priv->group),
-    connection,
-    reply_xml
-  );
-
   infd_directory_add_subscription_request(
     directory,
     connection,
@@ -2356,6 +2328,12 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     TRUE,
     "subscribe-session",
     node->id
+  );
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
   );
 
   return TRUE;
