@@ -470,7 +470,7 @@ inf_simulated_connection_connect(InfSimulatedConnection* connection,
  * connection are received by the target during the call to
  * inf_xml_connection_send().
  *
- * In %INF_SIMULATED_CONNECTION_DELAYED, messages sent are queued and
+ * In %INF_SIMULATED_CONNECTION_DELAYED mode, messages sent are queued and
  * received by the target when inf_simulated_connection_flush() is called.
  *
  * When changing the mode from %INF_SIMULATED_CONNECTION_DELAYED to
