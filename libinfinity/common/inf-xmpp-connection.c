@@ -2268,6 +2268,7 @@ inf_xmpp_connection_sax_start_element(void* context,
     if(strcmp((const gchar*)name, "stream:stream") != 0)
     {
       /* Did not get <stream:stream>, but something else. */
+      /* TODO: Produce an error here, so the user knows what happened */
       inf_xmpp_connection_terminate(xmpp);
     }
     else
@@ -2291,7 +2292,7 @@ inf_xmpp_connection_sax_start_element(void* context,
       {
         /* Got <stream:stream>, wait for <stream:features> now so that
          * we can start TLS or authentication if the server supports it. */
-        /* TODO: Read servers JID, if a from field is given? However, the RFC
+        /* TODO: Read server's JID, if a from field is given? However, the RFC
          * suggests we SHOULD silently ignore it. */
         if(priv->status == INF_XMPP_CONNECTION_INITIATED)
           priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
@@ -2446,6 +2447,7 @@ inf_xmpp_connection_sax_error(void* context,
   InfXmppConnectionPrivate* priv;
   InfXmppConnectionStreamError stream_code;
   xmlErrorPtr error_xml;
+  const gchar* message;
 
   xmpp = INF_XMPP_CONNECTION(context);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -2466,11 +2468,19 @@ inf_xmpp_connection_sax_error(void* context,
     /* TODO: Get more accurate error information from stream error */
     stream_code = INF_XMPP_CONNECTION_STREAM_ERROR_BAD_FORMAT;
 
-    inf_xmpp_connection_terminate_error(
-      xmpp,
-      stream_code,
-      error_xml->message
-    );
+    if(error_xml->domain == XML_FROM_PARSER &&
+       error_xml->code == XML_ERR_DOCUMENT_EMPTY)
+    {
+      /* The server sent something which is not XML */
+      message = _("Remote site is not an XMPP server");
+    }
+    else
+    {
+      /* TODO: Strip leading and trailing whitespace from message */
+      message = error_xml->message;
+    }
+
+    inf_xmpp_connection_terminate_error(xmpp, stream_code, message);
   }
   else
   {

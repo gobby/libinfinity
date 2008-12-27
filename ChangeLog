@@ -1,3 +1,8 @@
+2008-12-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c: Improved error message
+	when the remote site seems not to be an XMPP server.
+
 2008-12-23  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-certificate-chain.h:
