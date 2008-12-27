@@ -30,6 +30,7 @@
  **/
 
 #include <libinfinity/communication/inf-communication-manager.h>
+#include <libinfinity/communication/inf-communication-central-factory.h>
 
 #include <string.h>
 
@@ -191,6 +192,13 @@ inf_communication_manager_init(GTypeInstance* instance,
     inf_communication_manager_joined_key_equal,
     inf_communication_manager_joined_key_free,
     NULL
+  );
+
+  /* We always support the "central" method. This is used as a fallback for
+   * hosted groups. */
+  g_ptr_array_add(
+    priv->factories,
+    inf_communication_central_factory_get_default()
   );
 }
 
@@ -388,8 +396,8 @@ inf_communication_manager_open_group(InfCommunicationManager* manager,
 InfCommunicationJoinedGroup*
 inf_communication_manager_join_group(InfCommunicationManager* manager,
                                      const gchar* group_name,
-				     InfXmlConnection* publisher_conn,
-				     const gchar* method)
+                                     InfXmlConnection* publisher_conn,
+                                     const gchar* method)
 {
   InfCommunicationManagerPrivate* priv;
   InfCommunicationManagerJoinedKey* key;
@@ -501,7 +509,7 @@ inf_communication_manager_add_factory(InfCommunicationManager* manager,
 InfCommunicationFactory*
 inf_communication_manager_get_factory_for(InfCommunicationManager* manager,
                                           const gchar* network,
-					  const gchar* method_name)
+                                          const gchar* method_name)
 {
   InfCommunicationManagerPrivate* priv;
   InfCommunicationFactory* factory;
