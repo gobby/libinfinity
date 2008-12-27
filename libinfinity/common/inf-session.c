@@ -796,7 +796,7 @@ inf_session_process_xml_sync_impl(InfSession* session,
   g_return_val_if_fail(priv->status == INF_SESSION_SYNCHRONIZING, FALSE);
   g_return_val_if_fail(connection == priv->shared.sync.conn, FALSE);
 
-  if(strcmp((const gchar*)xml->name, "sync-user") == 0)
+  if(strcmp((const char*)xml->name, "sync-user") == 0)
   {
     user_props = session_class->get_xml_user_props(
       session,
@@ -845,8 +845,8 @@ inf_session_process_xml_sync_impl(InfSession* session,
       error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
-      "%s",
-      inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE)
+      "Received unexpected XML message \"%s\" during synchronization",
+      (const gchar*)xml->name
     );
 
     return FALSE;
@@ -1489,18 +1489,26 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
 
         g_error_free(local_error);
       }
-      else if(strcmp((const gchar*)node->name, "sync-ack") == 0)
+      else if(strcmp((const gchar*)node->name, "sync-ack") == 0 &&
+              sync->status == INF_SESSION_SYNC_AWAITING_ACK)
       {
-        if(sync->status == INF_SESSION_SYNC_AWAITING_ACK)
-        {
-          /* Got ack we were waiting for */
-          g_signal_emit(
-            G_OBJECT(comm_object),
-            session_signals[SYNCHRONIZATION_COMPLETE],
-            0,
-            connection
-          );
-        }
+        /* Got ack we were waiting for */
+        g_signal_emit(
+          G_OBJECT(comm_object),
+          session_signals[SYNCHRONIZATION_COMPLETE],
+          0,
+          connection
+        );
+      }
+      else
+      {
+        g_set_error(
+          error,
+          inf_session_sync_error_quark,
+          INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
+          _("Received unexpected XML message \"%s\" while synchronizing"),
+          (const gchar*)node->name
+        );
       }
 
       /* Synchronization is always ptp only, don't forward */
