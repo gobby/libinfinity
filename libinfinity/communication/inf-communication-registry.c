@@ -448,6 +448,11 @@ inf_communication_registry_sent_cb(InfXmlConnection* connection,
   xmlFree(group_name);
 }
 
+/* Required by inf_communication_registry_notify_status_cb() */
+static void
+inf_communication_registry_remove_connection(InfCommunicationRegistry* rgstry,
+                                             InfXmlConnection* connection);
+
 static void
 inf_communication_registry_notify_status_cb(GObject* object,
                                             GParamSpec* pspec,
@@ -486,6 +491,8 @@ inf_communication_registry_notify_status_cb(GObject* object,
         if(entry->registered == TRUE)
           inf_communication_method_unregistered(entry->method, connection);
         g_hash_table_iter_remove(&iter);
+
+        inf_communication_registry_remove_connection(registry, connection);
 
         g_object_unref(group);
       }
