@@ -1164,6 +1164,7 @@ inf_communication_method_cancel_messages
 inf_communication_method_received
 inf_communication_method_enqueued
 inf_communication_method_sent
+inf_communication_method_unregistered
 <SUBSECTION Standard>
 INF_COMMUNICATION_METHOD
 INF_COMMUNICATION_IS_METHOD

@@ -69,33 +69,14 @@ inf_communication_central_method_notify_status_cb(GObject* object,
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
   g_object_get(object, "status", &status, NULL);
 
-  switch(status)
+  if(status == INF_XML_CONNECTION_OPEN)
   {
-  case INF_XML_CONNECTION_OPENING:
-    break;
-  case INF_XML_CONNECTION_OPEN:
     inf_communication_registry_register(
       priv->registry,
       priv->group,
       INF_COMMUNICATION_METHOD(method),
       INF_XML_CONNECTION(object)
     );
-
-    break;
-  case INF_XML_CONNECTION_CLOSING:
-  case INF_XML_CONNECTION_CLOSED:
-    g_object_ref(priv->group);
-
-    inf_communication_method_remove_member(
-      INF_COMMUNICATION_METHOD(method),
-      INF_XML_CONNECTION(object)
-    );
-
-    g_object_unref(priv->group);
-    break;
-  default:
-    g_assert_not_reached();
-    break;
   }
 }
 
@@ -347,6 +328,13 @@ inf_communication_central_method_sent(InfCommunicationMethod* method,
 
   if(target != NULL)
     inf_communication_object_sent(target, connection, xml);
+}
+
+static void
+inf_communication_central_method_unregistered(InfCommunicationMethod* method,
+                                              InfXmlConnection* connection)
+{
+  inf_communication_method_remove_member(method, connection);
 }
 
 /* Weakref handling. Both group and registry should never be unrefed before
@@ -617,6 +605,7 @@ inf_communication_central_method_method_init(gpointer g_iface,
   iface->received = inf_communication_central_method_received;
   iface->enqueued = inf_communication_central_method_enqueued;
   iface->sent = inf_communication_central_method_sent;
+  iface->unregistered = inf_communication_central_method_unregistered;
 }
 
 GType

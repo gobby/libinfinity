@@ -361,4 +361,28 @@ inf_communication_method_sent(InfCommunicationMethod* method,
   iface->sent(method, connection, xml);
 }
 
+/**
+ * inf_communication_method_unregistered:
+ * @method: A #InfCommunicationMethod.
+ * @connection: A #InfXmlConnection.
+ *
+ * This function is called by the #InfCommunicationRegistry if @connection
+ * has been unregistered from the registry because @connection was closed.
+ */
+void
+inf_communication_method_unregistered(InfCommunicationMethod* method,
+                                      InfXmlConnection* connection)
+{
+  InfCommunicationMethodIface* iface;
+
+  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(inf_communication_method_is_member(method, connection));
+
+  iface = INF_COMMUNICATION_METHOD_GET_IFACE(method);
+  g_return_if_fail(iface->unregistered != NULL);
+
+  iface->unregistered(method, connection);
+}
+
 /* vim:set et sw=2 ts=2: */

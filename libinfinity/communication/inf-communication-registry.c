@@ -448,19 +448,6 @@ inf_communication_registry_sent_cb(InfXmlConnection* connection,
   xmlFree(group_name);
 }
 
-static gboolean
-inf_communication_registry_notify_status_cb_foreach_remove_func(gpointer key,
-                                                                gpointer data,
-                                                                gpointer conn)
-{
-  InfCommunicationRegistryEntry* entry;
-  entry = (InfCommunicationRegistryEntry*)data;
-
-  if(entry->key.connection == conn)
-    return TRUE;
-  return FALSE;
-}
-
 static void
 inf_communication_registry_notify_status_cb(GObject* object,
                                             GParamSpec* pspec,
@@ -469,21 +456,40 @@ inf_communication_registry_notify_status_cb(GObject* object,
   InfCommunicationRegistry* registry;
   InfCommunicationRegistryPrivate* priv;
   InfXmlConnectionStatus status;
+  InfXmlConnection* connection;
+  GHashTableIter iter;
+  gpointer value;
+  InfCommunicationRegistryEntry* entry;
+  InfCommunicationGroup* group;
 
   registry = INF_COMMUNICATION_REGISTRY(user_data);
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
 
+  connection = INF_XML_CONNECTION(object);
+  g_object_get(object, "status", &status, NULL);
+
   /* Free all entries that have been unregistered if the connection was
    * closed. */
-  g_object_get(object, "status", &status, NULL);
   if(status == INF_XML_CONNECTION_CLOSING ||
      status == INF_XML_CONNECTION_CLOSED)
   {
-    g_hash_table_foreach_remove(
-      priv->entries,
-      inf_communication_registry_notify_status_cb_foreach_remove_func,
-      object
-    );
+    g_hash_table_iter_init(&iter, priv->entries);
+    while(g_hash_table_iter_next(&iter, NULL, &value))
+    {
+      entry = (InfCommunicationRegistryEntry*)value;
+      if(entry->key.connection == connection)
+      {
+        group = g_object_ref(entry->group);
+
+        /* Tell the method that we unregistered this connection because of
+         * connection closure. */
+        if(entry->registered == TRUE)
+          inf_communication_method_unregistered(entry->method, connection);
+        g_hash_table_iter_remove(&iter);
+
+        g_object_unref(group);
+      }
+    }
   }
 }
 
@@ -765,7 +771,11 @@ inf_communication_registry_get_type(void)
  * @connection via inf_communication_registry_send(). For received messages,
  * inf_communication_method_received() is called on @method.
  *
- * @connection must have status %INF_XML_CONNECTION_OPEN.
+ * @connection must have status %INF_XML_CONNECTION_OPEN. If the connection
+ * changes status to %INF_XML_CONNECTION_CLOSING or
+ * %INF_XML_CONNECTION_CLOSED, then the connection will be unregistered
+ * automatically, and inf_communication_method_unregistered() will be called
+ * on @method.
  */
 void
 inf_communication_registry_register(InfCommunicationRegistry* registry,
