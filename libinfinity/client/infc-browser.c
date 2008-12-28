@@ -571,9 +571,9 @@ infc_browser_session_close_cb(InfSession* session,
 
 /* Required by infc_browser_release_connection() */
 static void
-infc_browser_connection_notify_status_cb(InfXmlConnection* connection,
-                                         GParamSpec* pspec,
-                                         gpointer user_data);
+infc_browser_member_removed_cb(InfCommunicationGroup* group,
+                               InfXmlConnection* connection,
+                               gpointer user_data);
 
 static void
 infc_browser_release_connection(InfcBrowser* browser)
@@ -582,8 +582,8 @@ infc_browser_release_connection(InfcBrowser* browser)
   priv = INFC_BROWSER_PRIVATE(browser);
 
   /* Note that we do not remove the corresponding node that we sync in. We
-   * lost the connection to the server anyway, so we do not care whether that
-   * node exists on the server or not. */
+   * lost the connection to the server anyway, so we do not care whether
+   * that node exists on the server or not. */
   while(priv->sync_ins != NULL)
     infc_browser_remove_sync_in(browser, priv->sync_ins->data);
 
@@ -591,43 +591,38 @@ infc_browser_release_connection(InfcBrowser* browser)
   infc_request_manager_clear(priv->request_manager);
 
   g_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->connection),
-    G_CALLBACK(infc_browser_connection_notify_status_cb),
+    G_OBJECT(priv->group),
+    G_CALLBACK(infc_browser_member_removed_cb),
     browser
   );
 
-  if(priv->group != NULL)
-  {
-    /* Reset group since the browser's connection
-     * is always the publisher. */
-    g_object_unref(priv->group);
-    priv->group = NULL;
-  }
+  /* Reset group since the browser's connection
+   * is always the publisher. */
+  g_object_unref(priv->group);
+  priv->group = NULL;
 
   /* Keep tree so it is still accessible, however, we cannot explore
    * anything anymore. */
 
-  g_object_unref(G_OBJECT(priv->connection));
+  g_object_unref(priv->connection);
   priv->connection = NULL;
 }
 
 static void
-infc_browser_connection_notify_status_cb(InfXmlConnection* connection,
-                                         GParamSpec* pspec,
-                                         gpointer user_data)
+infc_browser_member_removed_cb(InfCommunicationGroup* group,
+                               InfXmlConnection* connection,
+                               gpointer user_data)
 {
   InfcBrowser* browser;
-  InfXmlConnectionStatus status;
+  InfcBrowserPrivate* priv;
 
   browser = INFC_BROWSER(user_data);
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+  priv = INFC_BROWSER_PRIVATE(browser);
 
-  if(status == INF_XML_CONNECTION_CLOSED ||
-     status == INF_XML_CONNECTION_CLOSING)
-  {
-    /* Reset connection in case of closure */
+  g_assert(INF_COMMUNICATION_GROUP(priv->group) == group);
+
+  if(connection == priv->connection)
     infc_browser_release_connection(browser);
-  }
 }
 
 /*
@@ -733,6 +728,13 @@ infc_browser_constructor(GType type,
     INF_COMMUNICATION_OBJECT(browser)
   );
 
+  g_signal_connect(
+    priv->group,
+    "member-removed",
+    G_CALLBACK(infc_browser_member_removed_cb),
+    browser
+  );
+
   return object;
 }
 
@@ -753,6 +755,7 @@ infc_browser_dispose(GObject* object)
 
   if(priv->connection != NULL)
     infc_browser_release_connection(browser);
+  g_assert(priv->group == NULL);
 
   /* Should have been freed by infc_browser_release_connection */
   g_assert(priv->sync_ins == NULL);
@@ -802,13 +805,6 @@ infc_browser_set_property(GObject* object,
   case PROP_CONNECTION:
     g_assert(priv->connection == NULL); /* construct/only */
     priv->connection = INF_XML_CONNECTION(g_value_dup_object(value));
-
-    g_signal_connect(
-      G_OBJECT(priv->connection),
-      "notify::status",
-      G_CALLBACK(infc_browser_connection_notify_status_cb),
-      browser
-    );
 
     break;
   default:
