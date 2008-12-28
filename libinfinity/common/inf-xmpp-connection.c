@@ -29,6 +29,9 @@
 #include <errno.h>
 #include <string.h>
 
+#include "config.h"
+
+/* Is now a configure option: */
 /*#define INF_XMPP_CONNECTION_PRINT_TRAFFIC*/
 
 /* This is an implementation of the XMPP protocol as specified in RFC 3920.

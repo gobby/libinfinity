@@ -63,9 +63,9 @@ if test $platform = 'win32'; then
   infinity_LIBS="$infinity_LIBS -lws2_32 -lrpcrt4"
 fi
 
-########################
+###################################
 # libinftextgtk optional package
-########################
+###################################
 
 AC_ARG_WITH([inftextgtk], AS_HELP_STRING([--with-inftextgtk],
             [Builds the libinftextgtk library [[default=auto]]]),
@@ -81,9 +81,9 @@ fi
 
 AM_CONDITIONAL([WITH_INFTEXTGTK], test "x$with_inftextgtk" = "xyes")
 
-########################
+###############################
 # libinfgtk optional package
-########################
+###############################
 
 AC_ARG_WITH([infgtk], AS_HELP_STRING([--with-infgtk],
             [Builds the libinfgtk library [[default=auto]]]),
@@ -99,9 +99,9 @@ fi
 
 AM_CONDITIONAL([WITH_INFGTK], test "x$with_infgtk" = "xyes")
 
-########################
+###############################
 # infinoted optional package
-########################
+###############################
 
 AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
             [Build the infinote standalone server [[default=yes]]]),
@@ -124,8 +124,7 @@ AC_ARG_WITH([avahi], AS_HELP_STRING([--with-avahi],
 
 if test "x$use_avahi" = "xauto"
 then
-  PKG_CHECK_MODULES([avahi], [avahi-client],
-                          [use_avahi=yes], [use_avahi=no])
+  PKG_CHECK_MODULES([avahi], [avahi-client], [use_avahi=yes], [use_avahi=no])
 elif test "x$use_avahi" = "xyes"
 then
   PKG_CHECK_MODULES([avahi], [avahi-client])
@@ -137,6 +136,19 @@ then
 fi
 
 AM_CONDITIONAL([LIBINFINITY_HAVE_AVAHI], test "x$use_avahi" = "xyes")
+
+###################
+# Traffic output
+###################
+
+AC_ARG_ENABLE([traffic_output], AS_HELP_STRING([--enable-traffic-output],
+              [Shows XMPP traffic on the terminal [[default=no]]]),
+              [enable_traffic_output=$enableval], [enable_traffic_output=no])
+
+if test "x$enable_traffic_output" = "xyes"; then
+  AC_DEFINE([INF_XMPP_CONNECTION_PRINT_TRAFFIC], 1,
+            [Whether to print XMPP traffic to the terminal])
+fi
 
 ############
 # gettext
