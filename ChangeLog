@@ -1,5 +1,92 @@
 2008-12-28  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-manager.h:
+	* libinfinity/communication/inf-communication-manager.c:
+	* libinfinity/communication/inf-communication-group-private.h:
+	* libinfinity/communication/inf-communication-group.h:
+	* libinfinity/communication/inf-communication-group.c:
+	* libinfinity/communication/inf-communication-method.h:
+	* libinfinity/communication/inf-communication-method.c:
+	* libinfinity/communication/inf-communication-factory.h:
+	* libinfinity/communication/inf-communication-factory.c:
+	* libinfinity/communication/inf-communication-object.h:
+	* libinfinity/communication/inf-communication-object.c:
+	* libinfinity/communication/inf-communication-joined-group.h:
+	* libinfinity/communication/inf-communication-joined-group.c:
+	* libinfinity/communication/inf-communication-hosted-group.h:
+	* libinfinity/communication/inf-communication-hosted-group.c:
+	* libinfinity/communication/inf-communication-registry.h:
+	* libinfinity/communication/inf-communication-registry.c:
+	* libinfinity/communication/inf-communication-central-method.h:
+	* libinfinity/communication/inf-communication-central-method.c:
+	* libinfinity/communication/inf-communication-central-factory.h:
+	* libinfinity/communication/inf-communication-central-factory.c:
+	* libinfinity/communication/Makefile.am: Added new "communication" API
+	replacing the connection manager system. This allows multiple
+	connections to the same host, and gets rid of the requirement for
+	UUIDs.
+
+	* libinfinity/common/inf-net-object.h:
+	* libinfinity/common/inf-net-object.c:
+	* libinfinity/common/inf-method-manager.h:
+	* libinfinity/common/inf-method-manager.c:
+	* libinfinity/common/inf-connection-manager.h:
+	* libinfinity/common/inf-connection-manager.c:
+	* libinfinity/common/inf-central-method.h:
+	* libinfinity/common/inf-central-method.c:
+	* libinfinity/methods/local-central/inf-method-local-central.c:
+	* libinfinity/methods/local-central/Makefile.am:
+	* libinfinity/methods/Makefile.am: Removed. These files are obsoleted
+	by the communication API.
+
+	* libinfinity/common/Makefile.am: Removed the above files from the
+	build.
+
+	* libinfinity/Makefile.am: Decend into communication subdirectory,
+	link against libinfinity_communication.
+
+	* configure.ac: Removed dependency on libuuid, don't link against
+	rpcrt4 on Windows.
+
+	* libinfinity/common/inf-simulated-connection.c: Small documentation
+	fix.
+
+	* libinfinity/common/inf-xmpp-connection.c: Renamed network from
+	"local" to "tcp/ip".
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/client/infc-note-plugin.h:
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/infc-session-proxy.h:
+	* libinfinity/client/infc-session-proxy.c:
+	* libinfinity/server/infd-note-plugin.h:
+	* libinfinity/server/infd-filesystem-storage.h:
+	* libinfinity/server/infd-session-proxy.h:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c:
+
+	* libinftext/inf-text-session.h:
+	* libinftext/inf-text-session.c:
+
+	* libinfgtk/inf-gtk-browser-store.h:
+	* libinfgtk/inf-gtk-browser-store.c:
+
+	* infinoted/note-plugins/text/infd-note-plugin-text.c:
+	* infinoted/infinoted-startup.c:
+	
+	* test/inf-test-browser.c:
+	* test/inf-test-daemon.c:
+	* test/inf-test-gtk-browser.c:
+	* test/inf-test-text-cleanup.c:
+	* test/inf-test-text-replay.c:
+	* test/inf-test-text-session.c: Adapt to API change.
+
+2008-12-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/configure.ac: Added an --enable-traffic-output configure
 	option, defining INF_XMPP_CONNECTION_PRINT_TRAFFIC.
 
