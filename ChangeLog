@@ -1,5 +1,11 @@
 2008-12-28  Armin Burgmeier  <armin@arbur.net>
 
+	* === Released 0.1.2 ===
+
+	* NEWS: Updated for release.
+
+2008-12-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/configure.ac: Added an --enable-traffic-output configure
 	option, defining INF_XMPP_CONNECTION_PRINT_TRAFFIC.
 
