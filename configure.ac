@@ -60,17 +60,11 @@ AC_TRY_COMPILE([#include <sys/socket.h>],
 
 infinity_libraries='glib-2.0 >= 2.16 gobject-2.0 >= 2.16 gmodule-2.0 >= 2.16 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21'
 
-# We use native Win32 functions for UUIDs, so we don't need the uuid library
-# on Windows
-if test $platform != 'win32'; then
-  infinity_libraries="$infinity_libraries uuid"
-fi
-
 PKG_CHECK_MODULES([infinity], [$infinity_libraries])
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.16 gobject-2.0 >= 2.16 libxml-2.0])
 
 if test $platform = 'win32'; then
-  infinity_LIBS="$infinity_LIBS -lws2_32 -lrpcrt4"
+  infinity_LIBS="$infinity_LIBS -lws2_32"
 fi
 
 ###################################
