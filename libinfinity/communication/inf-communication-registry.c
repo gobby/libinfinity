@@ -105,11 +105,7 @@ inf_communication_registry_send_real(InfCommunicationRegistryEntry* entry,
     );
   }
 
-  inf_xml_util_set_attribute(
-    container,
-    "name",
-    inf_communication_group_get_name(entry->group)
-  );
+  inf_xml_util_set_attribute(container, "name", entry->key.group_name);
 
   for(i = 0; i < num_messages && ((xml = entry->queue_begin) != NULL); ++ i)
   {
@@ -136,13 +132,21 @@ inf_communication_registry_send_real(InfCommunicationRegistryEntry* entry,
 
     while(child != NULL)
     {
-      for(xml = child->children; xml != NULL; xml = xml->next)
+      /* TODO: The group could be unset at this point if called from
+       * inf_communication_registry_entry_free() in turn called by
+       * inf_communication_registry_group_unrefed(). This can be removed if
+       * we keep the group alive in that case, refer to the comment below in
+       * inf_communication_registry_entry_free(). */
+      if(entry->group != NULL)
       {
-        inf_communication_method_enqueued(
-          entry->method,
-          entry->key.connection,
-          xml
-        );
+        for(xml = child->children; xml != NULL; xml = xml->next)
+        {
+          inf_communication_method_enqueued(
+            entry->method,
+            entry->key.connection,
+            xml
+          );
+        }
       }
 
       if(child == entry->enqueued_list)
@@ -191,7 +195,7 @@ inf_communication_registry_entry_free(gpointer data)
    * 2) Unref the group here, as we do with the connection. Do this after the
    * weak unref.
    * 3) Allow connection manager to return existing groups on join or host,
-   * as the groups can live longer then people expect.
+   * as the groups can live longer than people expect.
    */
   g_object_get(G_OBJECT(entry->key.connection), "status", &status, NULL);
   if(status != INF_XML_CONNECTION_CLOSING &&
@@ -466,6 +470,7 @@ inf_communication_registry_notify_status_cb(GObject* object,
   gpointer value;
   InfCommunicationRegistryEntry* entry;
   InfCommunicationGroup* group;
+  gboolean registered;
 
   registry = INF_COMMUNICATION_REGISTRY(user_data);
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
@@ -485,14 +490,17 @@ inf_communication_registry_notify_status_cb(GObject* object,
       if(entry->key.connection == connection)
       {
         group = g_object_ref(entry->group);
+        registered = entry->registered;
 
         /* Tell the method that we unregistered this connection because of
          * connection closure. */
-        if(entry->registered == TRUE)
+        if(registered == TRUE)
           inf_communication_method_unregistered(entry->method, connection);
+
         g_hash_table_iter_remove(&iter);
 
-        inf_communication_registry_remove_connection(registry, connection);
+        if(registered == TRUE)
+          inf_communication_registry_remove_connection(registry, connection);
 
         g_object_unref(group);
       }
@@ -608,7 +616,9 @@ inf_communication_registry_group_unrefed(gpointer user_data,
   InfCommunicationRegistryPrivate* priv;
   GHashTableIter iter;
   gpointer value;
+
   InfXmlConnection* connection;
+  gboolean registered;
 
   entry = (InfCommunicationRegistryEntry*)user_data;
   registry = entry->registry;
@@ -627,13 +637,22 @@ inf_communication_registry_group_unrefed(gpointer user_data,
     if(value == entry)
     {
       connection = entry->key.connection;
+      registered = entry->registered;
 
       /* So inf_communication_registry_entry_free() does not try to weak unref
        * the non-existing group: */
       entry->group = NULL;
+
+      /* TODO: This relies on entry->key.group_name being still valid.
+       * valgrind suggests it is. However, I don't feel confident with this.
+       * I this can be properly fixed when we keep the group alive for
+       * unregistered connections, refer to the comment in
+       * inf_communication_registry_entry_free(). */
       g_hash_table_iter_remove(&iter);
 
-      inf_communication_registry_remove_connection(registry, connection);
+      if(registered == TRUE)
+        inf_communication_registry_remove_connection(registry, connection);
+
       break;
     }
   }

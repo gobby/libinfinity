@@ -828,7 +828,7 @@ infd_session_proxy_set_property(GObject* object,
       proxy
     );
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(priv->session),
       "close",
       G_CALLBACK(infd_session_proxy_session_close_cb),
