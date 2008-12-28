@@ -676,8 +676,6 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
   g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
 
   priv = INF_ADOPTED_SESSION_RECORD_PRIVATE(record);
-  algorithm = inf_adopted_session_get_algorithm(priv->session);
-  user_table = inf_session_get_user_table(INF_SESSION(priv->session));
 
   g_return_val_if_fail(priv->writer != NULL, FALSE);
 
@@ -687,17 +685,27 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
     record
   );
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(algorithm),
-    G_CALLBACK(inf_adopted_session_record_execute_request_cb),
-    record
-  );
+  /* In synchronizing state we did not yet connect to these signals, and
+   * the algorithm doesn't even exist. */
+  if(inf_session_get_status(priv->session) != INF_SESSION_SYNCHRONIZING)
+  {
+    algorithm = inf_adopted_session_get_algorithm(priv->session);
+    user_table = inf_session_get_user_table(INF_SESSION(priv->session));
 
-  g_signal_handlers_disconnect_by_func(
-    G_OBJECT(algorithm),
-    G_CALLBACK(inf_adopted_session_record_add_user_cb),
-    record
-  );
+    g_assert(algorithm != NULL);
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(algorithm),
+      G_CALLBACK(inf_adopted_session_record_execute_request_cb),
+      record
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(user_table),
+      G_CALLBACK(inf_adopted_session_record_add_user_cb),
+      record
+    );
+  }
 
   result = xmlTextWriterWriteString(priv->writer, (const xmlChar*)"\n");
   if(result < 0) inf_adopted_session_record_handle_xml_error(record);

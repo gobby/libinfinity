@@ -1,5 +1,12 @@
 2008-12-28  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session-record.c
+	(inf_adopted_session_record_stop_recording): Avoid runtime warnings
+	when the recorded session is still in INF_SESSION_SYNCHRONIZING
+	status.
+
+2008-12-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-session-proxy.c
 	(infd_session_proxy_set_property): Connect after the default handler
 	for the close signal, so that the session has a chance to cancel any
