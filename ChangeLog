@@ -1,3 +1,9 @@
+2008-12-28  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity-1.0.pc.in:
+	* libinfgtk-1.0.pc.in:
+	* libinftextgtk-1.0.pc.in: Fixed dependencies in pkg-config files.
+
 2008-12-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-server-pool.c (infd_server_pool_entry_free):

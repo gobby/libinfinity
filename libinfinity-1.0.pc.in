@@ -5,7 +5,7 @@ includedir=@includedir@
 
 Name: libinfinity
 Description: Infinote core library
-Requires: glib-2.0 >= 2.14 gobject-2.0 >= 2.14 libxml-2.0 gnutls libgsasl
+Requires: glib-2.0 >= 2.16 gobject-2.0 >= 2.16 libxml-2.0 gnutls libgsasl
 Version: @VERSION@
 Libs: -L${libdir} -linfinity-1.0
 Cflags: -I${includedir}/libinfinity-1.0
