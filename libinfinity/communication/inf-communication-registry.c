@@ -425,9 +425,9 @@ inf_communication_registry_sent_cb(InfXmlConnection* connection,
 
     /* Messages have been sent, meaning the number of queued messages has
      * decreased, so we can send more messages now. */
-    /* TODO: Wait for inner_count <= 1 for packing */
-    if(entry->inner_count > INF_COMMUNICATION_REGISTRY_INNER_QUEUE_LIMIT &&
-       entry->queue_end != NULL)
+    /* Send next bunch of messages if inner_count reached zero, meaning no
+     * more messages have been enqueued, for better packing. */
+    if(entry->inner_count == 0 && entry->queue_end != NULL)
     {
       inf_communication_registry_send_real(
         entry,
@@ -994,9 +994,9 @@ inf_communication_registry_send(InfCommunicationRegistry* registry,
     entry->queue_end = xml;
   }
 
-  /* TODO: Don't send directly when priv->inner_count > 1, wait for optimal
-   * packing. */
-  if(entry->inner_count < INF_COMMUNICATION_REGISTRY_INNER_QUEUE_LIMIT)
+  /* If there is something in the inner queue, don't send directly but wait
+   * until the message has been sent, for better packing. */
+  if(entry->inner_count == 0)
   {
     inf_communication_registry_send_real(
       entry,
