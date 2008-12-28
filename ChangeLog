@@ -1,5 +1,13 @@
 2008-12-28  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/configure.ac: Added an --enable-traffic-output configure
+	option, defining INF_XMPP_CONNECTION_PRINT_TRAFFIC.
+
+	* libinfinity/common/inf-xmpp-connection.c: Include config.h, so that
+	we see when INF_XMPP_CONNECTION_PRINT_TRAFFIC is defined.
+
+2008-12-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity-1.0.pc.in:
 	* libinfgtk-1.0.pc.in:
 	* libinftextgtk-1.0.pc.in: Fixed dependencies in pkg-config files.

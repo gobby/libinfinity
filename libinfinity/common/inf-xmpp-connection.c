@@ -30,6 +30,9 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "config.h"
+
+/* Is now a configure option: */
 /*#define INF_XMPP_CONNECTION_PRINT_TRAFFIC*/
 
 /* This is an implementation of the XMPP protocol as specified in RFC 3920.
