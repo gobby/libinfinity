@@ -84,11 +84,14 @@ inf_communication_central_method_notify_status_cb(GObject* object,
     break;
   case INF_XML_CONNECTION_CLOSING:
   case INF_XML_CONNECTION_CLOSED:
+    g_object_ref(priv->group);
+
     inf_communication_method_remove_member(
       INF_COMMUNICATION_METHOD(method),
       INF_XML_CONNECTION(object)
     );
 
+    g_object_unref(priv->group);
     break;
   default:
     g_assert_not_reached();
