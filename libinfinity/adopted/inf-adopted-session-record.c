@@ -689,16 +689,20 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
    * the algorithm doesn't even exist. */
   if(inf_session_get_status(priv->session) != INF_SESSION_SYNCHRONIZING)
   {
-    algorithm = inf_adopted_session_get_algorithm(priv->session);
     user_table = inf_session_get_user_table(INF_SESSION(priv->session));
 
-    g_assert(algorithm != NULL);
+    /* The algorithm has been destroyed when the session has been closed. */
+    if(inf_session_get_status(priv->session) != INF_SESSION_CLOSED)
+    {
+      algorithm = inf_adopted_session_get_algorithm(priv->session);
+      g_assert(algorithm != NULL);
 
-    g_signal_handlers_disconnect_by_func(
-      G_OBJECT(algorithm),
-      G_CALLBACK(inf_adopted_session_record_execute_request_cb),
-      record
-    );
+      g_signal_handlers_disconnect_by_func(
+        G_OBJECT(algorithm),
+        G_CALLBACK(inf_adopted_session_record_execute_request_cb),
+        record
+      );
+    }
 
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(user_table),
@@ -734,8 +738,13 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
   g_free(priv->filename);
   priv->filename = NULL;
 
-  g_hash_table_unref(priv->last_send_table);
-  priv->last_send_table = NULL;
+  /* This has only been created if the session has entered running state
+   * already. */
+  if(priv->last_send_table != NULL)
+  {
+    g_hash_table_unref(priv->last_send_table);
+    priv->last_send_table = NULL;
+  }
 
   return result >= 0;
 }
