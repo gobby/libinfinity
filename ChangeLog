@@ -1,3 +1,9 @@
+2008-12-29  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c: Make sure
+	inf_xml_connection_sent() is not called twice for the same message,
+	and that it is not omitted for others.
+
 2008-12-28  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-session.c (inf_session_send_sync_error): Send

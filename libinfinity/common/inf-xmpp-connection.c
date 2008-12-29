@@ -83,6 +83,7 @@ typedef struct _InfXmppConnectionMessage InfXmppConnectionMessage;
 struct _InfXmppConnectionMessage {
   InfXmppConnectionMessage* next;
   guint position;
+  gboolean sent;
 
   InfXmppConnectionSentFunc sent_func;
   InfXmppConnectionFreeFunc free_func;
@@ -502,6 +503,7 @@ inf_xmpp_connection_push_message(InfXmppConnection* xmpp,
 
     message->next = NULL;
     message->position = priv->position;
+    message->sent = FALSE;
     message->sent_func = sent_func;
     message->free_func = free_func;
     message->user_data = user_data;
@@ -602,6 +604,7 @@ inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
 
   xmlDocSetRootElement(priv->doc, xml);
   xmlNodeDump(priv->buf, priv->doc, xml, 0, 0);
+  xmlUnlinkNode(xml);
 
   inf_xmpp_connection_send_chars(
     xmpp,
@@ -609,7 +612,6 @@ inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
     xmlBufferLength(priv->buf)
   );
 
-  xmlUnlinkNode(xml);
   xmlBufferEmpty(priv->buf);
 }
 
@@ -2626,6 +2628,7 @@ inf_xmpp_connection_sent_cb(InfTcpConnection* tcp,
   InfXmppConnection* xmpp;
   InfXmppConnectionPrivate* priv;
   InfXmppConnectionMessage* message;
+  gboolean have_sent;
 
   xmpp = INF_XMPP_CONNECTION(user_data);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -2633,21 +2636,44 @@ inf_xmpp_connection_sent_cb(InfTcpConnection* tcp,
   g_assert(priv->position >= len);
   g_object_ref(G_OBJECT(xmpp));
 
-  while(priv->messages != NULL && priv->messages->position <= len)
+  priv->position -= len;
+  if(priv->messages != NULL)
   {
-    if(priv->messages->sent_func != NULL)
-      priv->messages->sent_func(xmpp, priv->messages->user_data);
+    have_sent = priv->messages->sent;
 
-    /* Note that the sent func might have called _clear() in which case all
-     * messages have already been removed. */
-    if(priv->messages != NULL)
-      inf_xmpp_connection_pop_message(xmpp);
+    /* Flag all messages that have been sent by this call */
+    for(message = priv->messages; message != NULL; message = message->next)
+    {
+      if(!message->sent)
+      {
+        if(message->position <= len)
+          message->sent = TRUE;
+        else
+          message->position -= len;
+      }
+    }
+
+    /* Note that a complete execution of this function doesn't keep messages
+     * with sent flag set to TRUE in the queue. So if the sent flag was FALSE,
+     * the method has been called recursively by a sent callback. In that
+     * case, don't do anything here but let the parent call do all other sent
+     * callbacks. */
+    if(have_sent == FALSE)
+    {
+      /* Now call sent func on all flagged messages */
+      while(priv->messages != NULL && priv->messages->sent)
+      {
+        if(priv->messages->sent_func != NULL)
+          priv->messages->sent_func(xmpp, priv->messages->user_data);
+
+        /* Note that the sent func might have called _clear() in which case all
+         * messages have already been removed. */
+        if(priv->messages != NULL)
+          inf_xmpp_connection_pop_message(xmpp);
+      }
+    }
   }
 
-  for(message = priv->messages; message != NULL; message = message->next)
-    message->position -= len;
-
-  priv->position -= len;
   g_object_unref(G_OBJECT(xmpp));
 }
 
