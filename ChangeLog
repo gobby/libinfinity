@@ -1,5 +1,11 @@
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-central-method.c: Do not
+	unregister unregistered connection when in _CONNECTION_OPENING status in
+	inf_communication_central_method_remove_member()
+
+2008-12-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c: Negated wrongly negated assertion
 	in infd_directory_node_register_reply_subscription().
 

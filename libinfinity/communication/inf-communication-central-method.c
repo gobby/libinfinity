@@ -124,8 +124,7 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status != INF_XML_CONNECTION_CLOSING &&
-     status != INF_XML_CONNECTION_CLOSED)
+  if(status == INF_XML_CONNECTION_OPEN)
   {
     inf_communication_registry_unregister(
       priv->registry,
