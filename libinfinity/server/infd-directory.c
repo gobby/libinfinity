@@ -1072,7 +1072,7 @@ infd_directory_node_register_reply_subscription(InfdDirectory* directory,
   );
 
   /* "central" should always be used as a fallback */
-  g_assert(method == NULL);
+  g_assert(method != NULL);
 
   infd_directory_node_register(directory, node, connection);
   xml = infd_directory_node_register_to_xml(node);
