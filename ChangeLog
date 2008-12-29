@@ -1,5 +1,11 @@
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-central-method.c: Remember
+	whether a connection has been open, so we do remove it from its group if
+	it has not already been registered.
+
+2008-12-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/communication/inf-communication-central-method.c: Do not
 	unregister unregistered connection when in _CONNECTION_OPENING status in
 	inf_communication_central_method_remove_member()
