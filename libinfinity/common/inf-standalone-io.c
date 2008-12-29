@@ -23,7 +23,11 @@
  * The implementations should be in separate files, with this functions just
  * being forwarders. */
 
-#ifndef G_OS_WIN32
+#ifdef G_OS_WIN32
+
+#include <winsock2.h>
+
+#else
 
 #include <poll.h>
 #include <errno.h>
@@ -31,11 +35,31 @@
 
 #endif /* !G_OS_WIN32 */
 
-#ifndef G_OS_WIN32
+#ifdef G_OS_WIN32
+
+typedef WSAEVENT InfStandaloneIoNativeEvent;
+
+static const struct InfStandaloneIoEventTable {
+  guint flag_val;
+  guint flag_bit;
+  guint io_val;
+} event_table[] = {
+  { FD_READ,    FD_READ_BIT,    INF_IO_INCOMING },
+  { FD_CLOSE,   FD_CLOSE_BIT,   INF_IO_INCOMING },
+  { FD_ACCEPT,  FD_ACCEPT_BIT,  INF_IO_INCOMING },
+  { FD_WRITE,   FD_WRITE_BIT,   INF_IO_OUTGOING },
+  { FD_CONNECT, FD_CONNECT_BIT, INF_IO_OUTGOING }
+};
+
+#else
+
+typedef struct pollfd InfStandaloneIoNativeEvent;
+
+#endif
 
 typedef struct _InfStandaloneIoWatch InfStandaloneIoWatch;
 struct _InfStandaloneIoWatch {
-  struct pollfd* pfd;
+  InfStandaloneIoNativeEvent* event;
   InfNativeSocket* socket;
   InfIoFunc func;
   gpointer user_data;
@@ -51,12 +75,9 @@ struct _InfStandaloneIoTimeout {
   GDestroyNotify notify;
 };
 
-#endif /* !G_OS_WIN32 */
-
 typedef struct _InfStandaloneIoPrivate InfStandaloneIoPrivate;
 struct _InfStandaloneIoPrivate {
-#ifndef G_OS_WIN32
-  struct pollfd* pfds;
+  InfStandaloneIoNativeEvent* events;
   InfStandaloneIoWatch* watches;
 
   guint fd_size;
@@ -65,14 +86,11 @@ struct _InfStandaloneIoPrivate {
   GList* timeouts;
 
   gboolean loop_running;
-#endif /* !G_OS_WIN32 */
 };
 
 #define INF_STANDALONE_IO_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_STANDALONE_IO, InfStandaloneIoPrivate))
 
 static GObjectClass* parent_class;
-
-#ifndef G_OS_WIN32
 
 static guint
 inf_standalone_io_timeval_diff(GTimeVal* first,
@@ -93,7 +111,12 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
 {
   InfStandaloneIoPrivate* priv;
   InfIoEvent events;
-  int result;
+#ifdef G_OS_WIN32
+  typedef DWORD PollResultType;
+#else
+  typedef int PollResultType;
+#endif
+  PollResultType result;
   guint i;
 
   GList* item;
@@ -101,6 +124,10 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   InfStandaloneIoTimeout* cur_timeout;
   GList* next_timeout;
   guint elapsed;
+
+#ifdef G_OS_WIN32
+  gchar* error_message;
+#endif
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
@@ -132,8 +159,38 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
     }
   }
 
-  result = poll(priv->pfds, (nfds_t)priv->fd_size, timeout);
+#ifdef G_OS_WIN32
+  if(priv->fd_size == 0)
+  {
+    Sleep(timeout);
+    result = WSA_WAIT_TIMEOUT;
+  }
+  else
+  {
+    result = WSAWaitForMultipleEvents(priv->fd_size,
+                                      priv->events,
+                                      FALSE,
+                                      timeout,
+                                      TRUE);
+  }
+#else
+  result = poll(priv->events, (nfds_t)priv->fd_size, timeout);
+#endif
 
+#ifdef G_OS_WIN32
+  switch(result)
+  {
+  case WSA_WAIT_FAILED:
+    error_message = g_win32_error_message(WSAGetLastError());
+    g_warning("WSAWaitForMultipleEvents() failed: %s\n", error_message);
+    g_free(error_message);
+    return;
+  case WSA_WAIT_IO_COMPLETION:
+    return;
+  default:
+    break;
+  }
+#else
   if(result == -1)
   {
     if(errno != EINTR)
@@ -141,10 +198,15 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
 
     return;
   }
+#endif
 
   g_object_ref(G_OBJECT(io));
 
-  if(result == 0 && next_timeout != NULL)
+#ifdef G_OS_WIN32
+  if(next_timeout != NULL && result == WSA_WAIT_TIMEOUT)
+#else
+  if(next_timeout != NULL && result == 0)
+#endif
   {
     /* No file descriptor is active, but a timeout elapsed */
     cur_timeout = next_timeout->data;
@@ -155,25 +217,59 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
       cur_timeout->notify(cur_timeout->user_data);
     g_slice_free(InfStandaloneIoTimeout, cur_timeout);
   }
+#ifdef G_OS_WIN32
+  else if(result >= WSA_WAIT_EVENT_0 &&
+          result < WSA_WAIT_EVENT_0 + priv->fd_size)
+  {
+    int index = result - WSA_WAIT_EVENT_0;
+    InfStandaloneIoWatch* watch = &priv->watches[index];
+    WSANETWORKEVENTS events;
+    InfIoEvent occured_events;
+    if(WSAEnumNetworkEvents(*watch->socket, *watch->event, &events) == SOCKET_ERROR)
+    {
+      gchar* message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSAEnumNetworkEvents failed: %s\n", message);
+      g_free(message);
+
+      occured_events = INF_IO_ERROR;
+    }
+    else
+    {
+      int i;
+      occured_events = 0;
+      for(i = 0; i < G_N_ELEMENTS(event_table); ++i)
+      {
+        if(events.lNetworkEvents & event_table[i].flag_val)
+        {
+          occured_events |= event_table[i].io_val;
+          if(events.iErrorCode[event_table[i].flag_bit])
+            occured_events |= INF_IO_ERROR;
+        }
+      }
+    }
+
+    watch->func(watch->socket, occured_events, watch->user_data);
+  }
+#else
   else if(result > 0)
   {
     while(result--)
     {
       for(i = 0; i < priv->fd_size; ++ i)
       {
-        if(priv->pfds[i].revents != 0)
+        if(priv->events[i].revents != 0)
         {
           events = 0;
-          if(priv->pfds[i].revents & POLLIN)
+          if(priv->events[i].revents & POLLIN)
             events |= INF_IO_INCOMING;
-          if(priv->pfds[i].revents & POLLOUT)
+          if(priv->events[i].revents & POLLOUT)
             events |= INF_IO_OUTGOING;
           /* We treat POLLPRI as error because it should not occur in
            * infinote. */
-          if(priv->pfds[i].revents & (POLLERR | POLLPRI | POLLHUP | POLLNVAL))
+          if(priv->events[i].revents & (POLLERR | POLLPRI | POLLHUP | POLLNVAL))
             events |= INF_IO_ERROR;
           
-          priv->pfds[i].revents = 0;
+          priv->events[i].revents = 0;
 
           priv->watches[i].func(
             priv->watches[i].socket,
@@ -189,11 +285,10 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
       }
     }
   }
+#endif
 
   g_object_unref(G_OBJECT(io));
 }
-
-#endif /* !G_OS_WIN32 */
 
 static void
 inf_standalone_io_init(GTypeInstance* instance,
@@ -205,15 +300,14 @@ inf_standalone_io_init(GTypeInstance* instance,
   io = INF_STANDALONE_IO(instance);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-#ifndef G_OS_WIN32
-  priv->pfds = g_malloc(sizeof(struct pollfd) * 4);
-  priv->watches = g_malloc(sizeof(InfStandaloneIoWatch) * 4);
-
   priv->fd_size = 0;
   priv->fd_alloc = 4;
 
+  priv->events =
+    g_malloc(sizeof(InfStandaloneIoNativeEvent) * priv->fd_alloc);
+  priv->watches = g_malloc(sizeof(InfStandaloneIoWatch) * priv->fd_alloc);
+
   priv->loop_running = FALSE;
-#endif /* !G_OS_WIN32 */
 }
 
 static void
@@ -221,16 +315,21 @@ inf_standalone_io_finalize(GObject* object)
 {
   InfStandaloneIo* io;
   InfStandaloneIoPrivate* priv;
-#ifndef G_OS_WIN32
   guint i;
   GList* item;
   InfStandaloneIoTimeout* timeout;
-#endif /* !G_OS_WIN32 */
 
   io = INF_STANDALONE_IO(object);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-#ifndef G_OS_WIN32
+#ifdef G_OS_WIN32
+  for(i = 0; i < priv->fd_size; ++ i)
+  {
+    WSAEventSelect(*priv->watches[i].socket, priv->events[i], 0);
+    WSACloseEvent(priv->events[i]);
+  }
+#endif
+
   for(i = 0; i < priv->fd_size; ++ i)
     if(priv->watches[i].notify)
       priv->watches[i].notify(priv->watches[i].user_data);
@@ -240,12 +339,12 @@ inf_standalone_io_finalize(GObject* object)
     timeout = (InfStandaloneIoTimeout*)item->data;
     if(timeout->notify)
       timeout->notify(timeout->user_data);
+    g_slice_free(InfStandaloneIoTimeout, timeout);
   }
 
-  g_free(priv->pfds);
+  g_free(priv->events);
   g_free(priv->watches);
   g_list_free(priv->timeouts);
-#endif /* !G_OS_WIN32 */
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -258,13 +357,19 @@ inf_standalone_io_io_watch(InfIo* io,
                            gpointer user_data,
                            GDestroyNotify notify)
 {
-#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
-  int pevents;
+  long pevents;
   guint i;
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
+#ifdef G_OS_WIN32
+  pevents = 0;
+  if(events & INF_IO_INCOMING)
+    pevents |= (FD_READ | FD_ACCEPT | FD_CLOSE);
+  if(events & INF_IO_OUTGOING)
+    pevents |= (FD_WRITE | FD_CONNECT);
+#else
   pevents = 0;
   if(events & INF_IO_INCOMING)
     pevents |= POLLIN;
@@ -272,6 +377,7 @@ inf_standalone_io_io_watch(InfIo* io,
     pevents |= POLLOUT;
   if(events & INF_IO_ERROR)
     pevents |= (POLLERR | POLLHUP | POLLNVAL | POLLPRI);
+#endif
 
   for(i = 0; i < priv->fd_size; ++ i)
   {
@@ -279,6 +385,10 @@ inf_standalone_io_io_watch(InfIo* io,
     {
       if(events == 0)
       {
+#ifdef G_OS_WIN32
+        WSAEventSelect(*priv->watches[i].socket, priv->events[i], 0);
+        WSACloseEvent(priv->events[i]);
+#endif
         /* Free user_data */
         if(priv->watches[i].notify)
           priv->watches[i].notify(priv->watches[i].user_data);
@@ -287,9 +397,9 @@ inf_standalone_io_io_watch(InfIo* io,
         if(i != priv->fd_size - 1)
         {
           memcpy(
-            &priv->pfds[i],
-            &priv->pfds[priv->fd_size - 1],
-            sizeof(struct pollfd)
+            &priv->events[i],
+            &priv->events[priv->fd_size - 1],
+            sizeof(InfStandaloneIoNativeEvent)
           );
 
           memcpy(
@@ -298,7 +408,7 @@ inf_standalone_io_io_watch(InfIo* io,
             sizeof(InfStandaloneIoWatch)
           );
 
-          priv->watches[i].pfd = &priv->pfds[i];
+          priv->watches[i].event = &priv->events[i];
         }
 
         -- priv->fd_size;
@@ -310,7 +420,11 @@ inf_standalone_io_io_watch(InfIo* io,
           priv->watches[i].notify(priv->watches[i].user_data);
 
         /* Update */
-        priv->pfds[i].events = pevents;
+#ifdef G_OS_WIN32
+        WSAEventSelect(*priv->watches[i].socket, priv->events[i], pevents);
+#else
+        priv->events[i].events = pevents;
+#endif
 
         priv->watches[i].func = func;
         priv->watches[i].user_data = user_data;
@@ -326,9 +440,9 @@ inf_standalone_io_io_watch(InfIo* io,
   {
     priv->fd_alloc += 4;
 
-    priv->pfds = g_realloc(
-      priv->pfds,
-      priv->fd_alloc * sizeof(struct pollfd)
+    priv->events = g_realloc(
+      priv->events,
+      priv->fd_alloc * sizeof(InfStandaloneIoNativeEvent)
     );
 
     priv->watches = g_realloc(
@@ -337,20 +451,31 @@ inf_standalone_io_io_watch(InfIo* io,
     );
   }
 
-  priv->pfds[priv->fd_size].fd = *socket;
-  priv->pfds[priv->fd_size].events = pevents;
-  priv->pfds[priv->fd_size].revents = 0;
+#ifdef G_OS_WIN32
+  priv->events[priv->fd_size] = WSACreateEvent();
+  if(priv->events[priv->fd_size] == WSA_INVALID_EVENT)
+  {
+    gchar* message = g_win32_error_message(WSAGetLastError());
+    g_warning("WSACreateEvent() failed: %s", message);
+    g_free(message);
 
-  priv->watches[priv->fd_size].pfd = &priv->pfds[priv->fd_size];
+    return;
+  }
+
+  WSAEventSelect(*socket, priv->events[priv->fd_size], pevents);
+#else
+  priv->events[priv->fd_size].fd = *socket;
+  priv->events[priv->fd_size].events = pevents;
+  priv->events[priv->fd_size].revents = 0;
+#endif
+
+  priv->watches[priv->fd_size].event = &priv->events[priv->fd_size];
   priv->watches[priv->fd_size].socket = socket;
   priv->watches[priv->fd_size].func = func;
   priv->watches[priv->fd_size].user_data = user_data;
   priv->watches[priv->fd_size].notify = notify;
 
   ++ priv->fd_size;
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-#endif
 }
 
 static gpointer
@@ -360,7 +485,6 @@ inf_standalone_io_io_add_timeout(InfIo* io,
                                  gpointer user_data,
                                  GDestroyNotify notify)
 {
-#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
   InfStandaloneIoTimeout* timeout;
 
@@ -375,17 +499,12 @@ inf_standalone_io_io_add_timeout(InfIo* io,
   priv->timeouts = g_list_prepend(priv->timeouts, timeout);
 
   return timeout;
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-  return NULL;
-#endif
 }
 
 static void
 inf_standalone_io_io_remove_timeout(InfIo* io,
                                     gpointer timeout_handle)
 {
-#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
   InfStandaloneIoTimeout* timeout;
   GList* item;
@@ -401,9 +520,6 @@ inf_standalone_io_io_remove_timeout(InfIo* io,
     timeout->notify(timeout->user_data);
 
   g_slice_free(InfStandaloneIoTimeout, timeout);
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-#endif
 }
 
 static void
@@ -482,14 +598,9 @@ inf_standalone_io_get_type(void)
 InfStandaloneIo*
 inf_standalone_io_new(void)
 {
-#ifndef G_OS_WIN32
   GObject* object;
   object = g_object_new(INF_TYPE_STANDALONE_IO, NULL);
   return INF_STANDALONE_IO(object);
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-  return NULL;
-#endif
 }
 
 /**
@@ -502,11 +613,11 @@ inf_standalone_io_new(void)
 void
 inf_standalone_io_iteration(InfStandaloneIo* io)
 {
-#ifndef G_OS_WIN32
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
+#ifdef G_OS_WIN32
+  inf_standalone_io_iteration_impl(io, WSA_INFINITE);
+#else
   inf_standalone_io_iteration_impl(io, -1);
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
 #endif
 }
 
@@ -523,12 +634,8 @@ void
 inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
                                     guint timeout)
 {
-#ifndef G_OS_WIN32
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
   inf_standalone_io_iteration_impl(io, (int)timeout);
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-#endif
 }
 
 /**
@@ -541,7 +648,6 @@ inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
 void
 inf_standalone_io_loop(InfStandaloneIo* io)
 {
-#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
 
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
@@ -552,9 +658,6 @@ inf_standalone_io_loop(InfStandaloneIo* io)
 
   while(priv->loop_running == TRUE)
     inf_standalone_io_iteration_impl(io, -1);
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-#endif
 }
 
 /**
@@ -567,7 +670,6 @@ inf_standalone_io_loop(InfStandaloneIo* io)
 void
 inf_standalone_io_loop_quit(InfStandaloneIo* io)
 {
-#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
 
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
@@ -575,9 +677,6 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
 
   g_return_if_fail(priv->loop_running == TRUE);
   priv->loop_running = FALSE;
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-#endif
 }
 
 /**
@@ -592,17 +691,12 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
 gboolean
 inf_standalone_io_loop_running(InfStandaloneIo* io)
 {
-#ifndef G_OS_WIN32
   InfStandaloneIoPrivate* priv;
 
   g_return_val_if_fail(INF_IS_STANDALONE_IO(io), FALSE);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
   return priv->loop_running;
-#else /* !G_OS_WIN32 */
-  g_warning("InfStandaloneIo is not implemented on Win32");
-  return FALSE;
-#endif
 }
 
 /* vim:set et sw=2 ts=2: */

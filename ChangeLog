@@ -1,5 +1,10 @@
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-standalone-io.c: Added Win32 implementation using
+	Winsock2's WSAWaitForMultipleEvents().
+
+2008-12-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/communication/inf-communication-central-method.c: Remember
 	whether a connection has been open, so we do remove it from its group if
 	it has not already been registered.
