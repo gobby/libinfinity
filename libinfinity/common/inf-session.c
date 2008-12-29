@@ -353,7 +353,7 @@ inf_session_send_sync_error(InfSession* session,
   sprintf(code_buf, "%u", (unsigned int)error->code);
   xmlNewProp(node, (const xmlChar*)"code", (const xmlChar*)code_buf);
 
-  inf_communication_group_send_group_message(
+  inf_communication_group_send_message(
     priv->shared.sync.group,
     priv->shared.sync.conn,
     node

@@ -1,5 +1,11 @@
 2008-12-28  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-session.c (inf_session_send_sync_error): Send
+	synchronization error to synchronization client instead of whole
+	group except client.
+
+2008-12-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/communication/inf-communication-registry.c
 	(inf_communication_registry_register): Fixed reactivation of
 	previously unregistered connection which still has final messages
