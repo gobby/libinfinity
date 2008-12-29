@@ -830,12 +830,6 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
     inf_communication_group_get_publisher_id(group, connection);
   key.group_name = inf_communication_group_get_name(group);
 
-  if(g_hash_table_lookup(priv->entries, &key) != NULL)
-  {
-    g_free(key.publisher_id);
-    g_return_if_reached();
-  }
-
   inf_communication_registry_add_connection(registry, connection);
 
   entry = g_hash_table_lookup(priv->entries, &key);
