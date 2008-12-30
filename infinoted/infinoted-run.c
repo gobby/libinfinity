@@ -149,6 +149,45 @@ infinoted_run_directory_remove_session_cb(InfdDirectory* directory,
   g_object_set_data(G_OBJECT(session), "INFINOTED_SESSION_RECORD", NULL);
 }
 
+static InfdTcpServer*
+infinoted_run_create_server(InfinotedRun* run,
+                            InfinotedStartup* startup,
+                            InfIpAddress* address)
+{
+  InfdTcpServer* tcp;
+  InfdXmppServer* xmpp;
+
+  tcp = INFD_TCP_SERVER(
+    g_object_new(
+      INFD_TYPE_TCP_SERVER,
+      "io", INF_IO(run->io),
+      "local-address", address,
+      "local-port", startup->options->port,
+      NULL
+    )
+  );
+
+  xmpp = infd_xmpp_server_new(tcp, startup->credentials, NULL, NULL);
+
+  infd_xmpp_server_set_security_policy(
+    xmpp,
+    startup->options->security_policy
+  );
+
+  infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));
+
+#ifdef LIBINFINITY_HAVE_AVAHI
+  infd_server_pool_add_local_publisher(
+    run->pool,
+    xmpp,
+    INF_LOCAL_PUBLISHER(run->avahi)
+  );
+#endif
+
+  g_object_unref(xmpp);
+  return tcp;
+}
+
 /**
  * infinoted_run_new:
  * @startup: Startup parameters for the Infinote Server.
@@ -168,11 +207,8 @@ infinoted_run_new(InfinotedStartup* startup,
                   GError** error)
 {
   InfIpAddress* address;
-  InfdTcpServer* tcp;
-  InfdXmppServer* xmpp;
 #ifdef LIBINFINITY_HAVE_AVAHI
   InfXmppManager* xmpp_manager;
-  InfDiscoveryAvahi* avahi;
 #endif
 
   InfinotedRun* run;
@@ -180,31 +216,6 @@ infinoted_run_new(InfinotedStartup* startup,
   /* TODO: Find out why the startup needs to create a directory, and an IO
    * object. It would be better to create both here, so we don't have to
    * rely on IO being a InfStandaloneIo. */
-
-  address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
-
-  tcp = INFD_TCP_SERVER(
-    g_object_new(
-      INFD_TYPE_TCP_SERVER,
-      "io", infd_directory_get_io(startup->directory),
-      "local-address", address,
-      "local-port", startup->options->port,
-      NULL
-    )
-  );
-
-  /* TODO: Don't open here but in start. */
-  inf_ip_address_free(address);
-  if(infd_tcp_server_open(tcp, NULL) == FALSE)
-  {
-    /* IPv6 failed, try IPv4 */
-    g_object_set(G_OBJECT(tcp), "local-address", NULL, NULL);
-    if(infd_tcp_server_open(tcp, error) == FALSE)
-    {
-      g_object_unref(tcp);
-      return NULL;
-    }
-  }
 
   run = g_slice_new(InfinotedRun);
   run->io = INF_STANDALONE_IO(infd_directory_get_io(startup->directory));
@@ -239,21 +250,11 @@ infinoted_run_new(InfinotedStartup* startup,
   }
 
   run->pool = infd_server_pool_new(startup->directory);
-  xmpp = infd_xmpp_server_new(tcp, startup->credentials, NULL, NULL);
-
-  infd_xmpp_server_set_security_policy(
-    xmpp,
-    startup->options->security_policy
-  );
-
-  g_object_unref(tcp);
-
-  infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));
 
 #ifdef LIBINFINITY_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
 
-  avahi = inf_discovery_avahi_new(
+  run->avahi = inf_discovery_avahi_new(
     INF_IO(run->io),
     xmpp_manager,
     startup->credentials,
@@ -262,18 +263,13 @@ infinoted_run_new(InfinotedStartup* startup,
   );
 
   g_object_unref(xmpp_manager);
-
-  infd_server_pool_add_local_publisher(
-    run->pool,
-    xmpp,
-    INF_LOCAL_PUBLISHER(avahi)
-  );
-
-  g_object_unref(avahi);
 #endif
-  g_object_unref(xmpp);
 
-  fprintf(stderr, _("Server running on port %u\n"), startup->options->port);
+  address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
+  run->tcp4 = infinoted_run_create_server(run, startup, NULL);
+  run->tcp6 = infinoted_run_create_server(run, startup, address);
+  inf_ip_address_free(address);
+
   return run;
 }
 
@@ -289,6 +285,15 @@ infinoted_run_free(InfinotedRun* run)
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
 
+  if(run->tcp6 != NULL)
+    g_object_unref(run->tcp6);
+  if(run->tcp4 != NULL)
+    g_object_unref(run->tcp4);
+
+#ifdef LIBINFINITY_HAVE_AVAHI
+  g_object_unref(run->avahi);
+#endif
+
   if(run->autosave != NULL)
     infinoted_autosave_free(run->autosave);
 
@@ -301,14 +306,63 @@ infinoted_run_free(InfinotedRun* run)
 /**
  * infinoted_run_start:
  * @run: A #InfinotedRun.
+ * @error: Location to store error information, if any.
  *
  * Starts the infinote server. This runs in a loop until infinoted_run_stop()
- * is called.
+ * is called. If the server could not be started, the function returns %FALSE
+ * and @error is set.
+ *
+ * Returns: %TRUE if the server was started, %FALSE otherwise.
  */
-void
-infinoted_run_start(InfinotedRun* run)
+gboolean
+infinoted_run_start(InfinotedRun* run,
+                    GError** error)
 {
+  GError* local_error;
+  guint port;
+
+  if(infd_tcp_server_open(run->tcp6, NULL) == TRUE)
+  {
+    g_object_get(G_OBJECT(run->tcp6), "local-port", &port, NULL);
+    fprintf(stderr, _("IPv6 Server running on port %u\n"), port);
+  }
+  else
+  {
+    g_object_unref(run->tcp6);
+    run->tcp6 = NULL;
+  }
+
+  /* On Linux, the IPv6 server also handles IPv4 connections, and opening a
+   * separate IPv4 server does not work because the address is already on use.
+   * On Windows however, we need to start both servers. */
+  local_error = NULL;
+  if(infd_tcp_server_open(run->tcp4, &local_error) == TRUE)
+  {
+    g_object_get(G_OBJECT(run->tcp4), "local-port", &port, NULL);
+    fprintf(stderr, _("IPv4 Server running on port %u\n"), port);
+  }
+  else
+  {
+    g_object_unref(run->tcp4);
+    run->tcp4 = NULL;
+
+    /* Ignore if we have an IPv6 server running */
+    if(run->tcp6 != NULL)
+      g_error_free(local_error);
+    else
+    {
+      g_propagate_error(error, local_error);
+      return FALSE;
+    }
+  }
+
+  /* Make sure messages are shown. This explicit flush is for example
+   * required when running in an MSYS shell on Windows. */
+  fflush(stderr);
+
   inf_standalone_io_loop(run->io);
+
+  return TRUE;
 }
 
 /**

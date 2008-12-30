@@ -19,12 +19,15 @@
 #ifndef __INFINOTED_RUN_H__
 #define __INFINOTED_RUN_H__
 
+#include <libinfinity/inf-config.h>
+
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-autosave.h>
 
 #include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-discovery-avahi.h>
 
 #include <glib.h>
 
@@ -36,6 +39,13 @@ struct _InfinotedRun {
   InfdDirectory* directory;
   InfdServerPool* pool;
   InfinotedAutosave* autosave;
+
+  InfdTcpServer* tcp4;
+  InfdTcpServer* tcp6;
+
+#ifdef LIBINFINITY_HAVE_AVAHI
+  InfDiscoveryAvahi* avahi;
+#endif
 };
 
 InfinotedRun*
@@ -45,8 +55,9 @@ infinoted_run_new(InfinotedStartup* startup,
 void
 infinoted_run_free(InfinotedRun* run);
 
-void
-infinoted_run_start(InfinotedRun* run);
+gboolean
+infinoted_run_start(InfinotedRun* run,
+                    GError** error);
 
 void
 infinoted_run_stop(InfinotedRun* run);

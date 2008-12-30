@@ -30,6 +30,7 @@ infinoted_main_run(InfinotedStartup* startup,
 {
   InfinotedRun* run;
   InfinotedSignal* sig;
+  gboolean result;
 
   run = infinoted_run_new(startup, error);
   if(run == NULL) return FALSE;
@@ -37,11 +38,12 @@ infinoted_main_run(InfinotedStartup* startup,
   sig = infinoted_signal_register(run);
 
   /* Now start the server. It can later be stopped by signals. */
-  infinoted_run_start(run);
+  result = infinoted_run_start(run, error);
 
   infinoted_signal_unregister(sig);
   infinoted_run_free(run);
-  return TRUE;
+
+  return result;
 }
 
 static gboolean
