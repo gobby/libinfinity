@@ -1,3 +1,9 @@
+2008-12-30  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_received_cb): Make sure we read the whole gnutls
+	buffer, so that we don't stall when gnutls buffers some data.
+
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-tcp-connection.c: Allow retrieving local

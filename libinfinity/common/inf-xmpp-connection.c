@@ -2712,7 +2712,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
       priv->pull_len = len;
 
       receiving = TRUE;
-      while(receiving && priv->pull_len > 0)
+      while(receiving && (priv->pull_len > 0 ||
+                          gnutls_record_check_pending(priv->session) > 0))
       {
         res = gnutls_record_recv(priv->session, buffer, 2048);
         if(res < 0)
