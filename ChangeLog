@@ -1,24 +1,40 @@
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
-	* libinfinity/common/inf-standalone-io.c: Added Win32 implementation using
-	Winsock2's WSAWaitForMultipleEvents().
+	* libinfinity/common/inf-tcp-connection.c: Allow retrieving local
+	remote and port on closed connections by keeping the native socket
+	alive until disposal.
+
+	* libinfinity/communication/inf-communication-method.h:
+	* libinfinity/communication/inf-communication-method.c: Removed the
+	unregistered method.
+
+	* libinfinity/communication/inf-communication-registry.c: Support and
+	require closed connections to be unregistered.
+
+	* libinfinity/communication/inf-communication-central-method.c:
+	Unregister the connection even if it has been closed already.
 
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
-	* libinfinity/communication/inf-communication-central-method.c: Remember
-	whether a connection has been open, so we do remove it from its group if
-	it has not already been registered.
+	* libinfinity/common/inf-standalone-io.c: Added Win32 implementation
+	using Winsock2's WSAWaitForMultipleEvents().
+
+2008-12-29  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/communication/inf-communication-central-method.c:
+	Remember whether a connection has been open, so we do remove it from
+	its group if it has not already been registered.
 
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/communication/inf-communication-central-method.c: Do not
-	unregister unregistered connection when in _CONNECTION_OPENING status in
-	inf_communication_central_method_remove_member()
+	unregister unregistered connection when in _CONNECTION_OPENING status
+	in inf_communication_central_method_remove_member()
 
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 
-	* libinfinity/server/infd-directory.c: Negated wrongly negated assertion
-	in infd_directory_node_register_reply_subscription().
+	* libinfinity/server/infd-directory.c: Negated wrongly negated
+	assertion in infd_directory_node_register_reply_subscription().
 
 2008-12-29  Armin Burgmeier  <armin@arbur.net>
 

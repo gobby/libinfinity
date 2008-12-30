@@ -452,11 +452,6 @@ inf_communication_registry_sent_cb(InfXmlConnection* connection,
   xmlFree(group_name);
 }
 
-/* Required by inf_communication_registry_notify_status_cb() */
-static void
-inf_communication_registry_remove_connection(InfCommunicationRegistry* rgstry,
-                                             InfXmlConnection* connection);
-
 static void
 inf_communication_registry_notify_status_cb(GObject* object,
                                             GParamSpec* pspec,
@@ -492,15 +487,8 @@ inf_communication_registry_notify_status_cb(GObject* object,
         group = g_object_ref(entry->group);
         registered = entry->registered;
 
-        /* Tell the method that we unregistered this connection because of
-         * connection closure. */
-        if(registered == TRUE)
-          inf_communication_method_unregistered(entry->method, connection);
-
-        g_hash_table_iter_remove(&iter);
-
-        if(registered == TRUE)
-          inf_communication_registry_remove_connection(registry, connection);
+        if(entry->registered == FALSE)
+          g_hash_table_iter_remove(&iter);
 
         g_object_unref(group);
       }
@@ -797,11 +785,7 @@ inf_communication_registry_get_type(void)
  * @connection via inf_communication_registry_send(). For received messages,
  * inf_communication_method_received() is called on @method.
  *
- * @connection must have status %INF_XML_CONNECTION_OPEN. If the connection
- * changes status to %INF_XML_CONNECTION_CLOSING or
- * %INF_XML_CONNECTION_CLOSED, then the connection will be unregistered
- * automatically, and inf_communication_method_unregistered() will be called
- * on @method.
+ * @connection must have status %INF_XML_CONNECTION_OPEN.
  */
 void
 inf_communication_registry_register(InfCommunicationRegistry* registry,
@@ -894,10 +878,6 @@ inf_communication_registry_register(InfCommunicationRegistry* registry,
  * Unregisters @connection from @group. Incoming messages are no longer
  * reported to group's method, and inf_communication_registry_send() can
  * no longer be called for @connection.
- *
- * If a registered connection changes status to %INF_XML_CONNECTION_CLOSING
- * or %INF_XML_CONNECTION_CLOSED it is unregistered automatically. This
- * function must not be called for such a connection.
  */
 void
 inf_communication_registry_unregister(InfCommunicationRegistry* registry,
@@ -916,11 +896,6 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  /* We unregister automatically in case the connection was closed, so it
-   * is not allowed to call this on a closed connection. */
-  g_return_if_fail(status == INF_XML_CONNECTION_OPEN ||
-                   status == INF_XML_CONNECTION_OPENING);
-
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
 
   key.connection = connection;
@@ -931,7 +906,9 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
   entry = g_hash_table_lookup(priv->entries, &key);
   g_assert(entry != NULL && entry->registered == TRUE);
 
-  if(entry->queue_end != NULL || entry->inner_count > 0)
+  if(entry->queue_end != NULL || entry->inner_count > 0 &&
+     status != INF_XML_CONNECTION_CLOSING &&
+     status != INF_XML_CONNECTION_CLOSED)
   {
     /* The entry has still messages to send, so don't remove it right now
      * but wait until all scheduled messages have been sent. */

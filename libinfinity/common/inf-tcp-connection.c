@@ -516,6 +516,9 @@ inf_tcp_connection_finalize(GObject* object)
   if(priv->remote_address != NULL)
     inf_ip_address_free(priv->remote_address);
 
+  if(priv->socket != INVALID_SOCKET)
+    closesocket(priv->socket);
+
   g_free(priv->queue);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -617,12 +620,12 @@ inf_tcp_connection_get_property(GObject* object,
     g_value_set_uint(value, priv->remote_port);
     break;
   case PROP_LOCAL_ADDRESS:
-    g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
+    g_assert(priv->socket != NULL);
     inf_tcp_connection_addr_info(priv->socket, TRUE, &address, NULL);
     g_value_take_boxed(value, address);
     break;
   case PROP_LOCAL_PORT:
-    g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
+    g_assert(priv->socket != NULL);
     inf_tcp_connection_addr_info(priv->socket, TRUE, NULL, &port);
     g_value_set_uint(value, port);
     break;
@@ -687,12 +690,6 @@ inf_tcp_connection_error(InfTcpConnection* connection,
       connection,
       NULL
     );
-  }
-
-  if(priv->socket != INVALID_SOCKET)
-  {
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
   }
 
   if(priv->status != INF_TCP_CONNECTION_CLOSED)
@@ -998,6 +995,10 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   g_return_val_if_fail(priv->remote_address != NULL, FALSE);
   g_return_val_if_fail(priv->remote_port != 0, FALSE);
 
+  /* Close previous socket */
+  if(priv->socket == INVALID_SOCKET)
+    closesocket(priv->socket);
+
   switch(inf_ip_address_get_family(priv->remote_address))
   {
   case INF_IP_ADDRESS_IPV4:
@@ -1152,9 +1153,6 @@ inf_tcp_connection_close(InfTcpConnection* connection)
     connection,
     NULL
   );
-
-  closesocket(priv->socket);
-  priv->socket = INVALID_SOCKET;
 
   priv->front_pos = 0;
   priv->back_pos = 0;

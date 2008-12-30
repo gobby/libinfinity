@@ -60,8 +60,6 @@ typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
  * @enqueued: Handles when a message has been enqueued to be sent on a
  * registered connection.
  * @sent: Handles when a message has been sent to a registered connection.
- * @unregistered: Handles when a connection was unregistered because it has
- * been closed.
  *
  * The default signal handlers of virtual methods of #InfCommunicationMethod.
  * These implement communication within a #InfCommunicationGroup.
@@ -99,8 +97,6 @@ struct _InfCommunicationMethodIface {
   void (*sent)(InfCommunicationMethod* method,
                InfXmlConnection* connection,
                xmlNodePtr xml);
-  void (*unregistered)(InfCommunicationMethod* method,
-                       InfXmlConnection* connection);
 };
 
 GType
@@ -146,10 +142,6 @@ void
 inf_communication_method_sent(InfCommunicationMethod* method,
                               InfXmlConnection* connection,
                               xmlNodePtr xml);
-
-void
-inf_communication_method_unregistered(InfCommunicationMethod* method,
-                                      InfXmlConnection* connection);
 
 G_END_DECLS
 

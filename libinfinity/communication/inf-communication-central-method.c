@@ -74,33 +74,25 @@ inf_communication_central_method_notify_status_cb(GObject* object,
   {
   case INF_XML_CONNECTION_CLOSED:
   case INF_XML_CONNECTION_CLOSING:
-    was_open_ptr = g_object_get_data(object,
-                                     "inf-communication-central-method"
-                                     "::was-open");
-    if(!was_open_ptr)
-    {
-      g_object_ref(priv->group);
-      inf_communication_method_remove_member(
-        INF_COMMUNICATION_METHOD(method),
-        INF_XML_CONNECTION(object));
-      g_object_unref(priv->group);
-    }
+    g_object_ref(priv->group);
+
+    inf_communication_method_remove_member(
+      INF_COMMUNICATION_METHOD(method),
+      INF_XML_CONNECTION(object)
+    );
+
+    g_object_unref(priv->group);
     break;
   case INF_XML_CONNECTION_OPENING:
     break;
   case INF_XML_CONNECTION_OPEN:
-    /* TODO: not very elegant, do it better
-     *       Perhaps allow the registration of _OPENING connections */
-    g_object_set_data(object,
-                      "inf-communication-central-method::was-open",
-                      GUINT_TO_POINTER(TRUE));
-
     inf_communication_registry_register(
       priv->registry,
       priv->group,
       INF_COMMUNICATION_METHOD(method),
       INF_XML_CONNECTION(object)
     );
+
     break;
   default:
     g_assert_not_reached();
@@ -138,10 +130,6 @@ inf_communication_central_method_add_member(InfCommunicationMethod* method,
       method,
       connection
     );
-
-    g_object_set_data(G_OBJECT(connection),
-                      "inf-communication-central-method::was-open",
-                      GUINT_TO_POINTER(TRUE));
   }
 }
 
@@ -156,7 +144,7 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status == INF_XML_CONNECTION_OPEN)
+  if(status != INF_XML_CONNECTION_OPENING)
   {
     inf_communication_registry_unregister(
       priv->registry,
@@ -164,10 +152,6 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
       connection
     );
   }
-
-  g_object_set_data(G_OBJECT(connection),
-                    "inf-communication-central-method::was-open",
-                    NULL);
 
   g_signal_handlers_disconnect_by_func(
     connection,
@@ -363,13 +347,6 @@ inf_communication_central_method_sent(InfCommunicationMethod* method,
 
   if(target != NULL)
     inf_communication_object_sent(target, connection, xml);
-}
-
-static void
-inf_communication_central_method_unregistered(InfCommunicationMethod* method,
-                                              InfXmlConnection* connection)
-{
-  inf_communication_method_remove_member(method, connection);
 }
 
 /* Weakref handling. Both group and registry should never be unrefed before
@@ -640,7 +617,6 @@ inf_communication_central_method_method_init(gpointer g_iface,
   iface->received = inf_communication_central_method_received;
   iface->enqueued = inf_communication_central_method_enqueued;
   iface->sent = inf_communication_central_method_sent;
-  iface->unregistered = inf_communication_central_method_unregistered;
 }
 
 GType
