@@ -139,12 +139,23 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
 {
   InfCommunicationCentralMethodPrivate* priv;
   InfXmlConnectionStatus status;
+  gboolean is_registered;
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-  if(status != INF_XML_CONNECTION_OPENING)
+  is_registered = inf_communication_registry_is_registered(
+    priv->registry,
+    priv->group,
+    connection
+  );
+
+  /* The connection might not be registered if it never was in
+   * INF_XML_CONNECTION_OPEN status, but still is in
+   * INF_XML_CONNECTION_OPENING, or changed from OPENING directly
+   * to CLOSING or CLOSED. */
+  if(is_registered)
   {
     inf_communication_registry_unregister(
       priv->registry,

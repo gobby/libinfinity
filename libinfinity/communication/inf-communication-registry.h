@@ -71,6 +71,11 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
                                       InfCommunicationGroup* group,
                                       InfXmlConnection* connection);
 
+gboolean
+inf_communication_registry_is_registered(InfCommunicationRegistry* registry,
+                                         InfCommunicationGroup* group,
+                                         InfXmlConnection* connection);
+
 void
 inf_communication_registry_send(InfCommunicationRegistry* registry,
                                 InfCommunicationGroup* group,

@@ -1,5 +1,14 @@
 2008-12-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-registry.h:
+	* libinfinity/communication/inf-communication-registry.c: Added
+	inf_communication_registry_is_registered().
+
+	* libinfinity/communication/inf-communication-central-method.c: Make
+	sure we don't try to unregister a connection we never registered.
+
+2008-12-30  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c
 	(inf_xmpp_connection_received_cb): Make sure we read the whole gnutls
 	buffer, so that we don't stall when gnutls buffers some data.

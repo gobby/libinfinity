@@ -933,6 +933,41 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
 }
 
 /**
+ * inf_communication_registry_is_registered:
+ * @registry: A #InfCommunicationRegistry.
+ * @group: The group for which to check whether @connection is registered.
+ * @connection: The connection to check for registration.
+ *
+ * Returns whether @connection has been registered for @group with
+ * inf_communication_registry_register().
+ *
+ * Returns: %TRUE if @connection has been registered, or %FALSE otherwise.
+ */
+gboolean
+inf_communication_registry_is_registered(InfCommunicationRegistry* registry,
+                                         InfCommunicationGroup* group,
+                                         InfXmlConnection* connection)
+{
+  InfCommunicationRegistryPrivate* priv;
+  InfCommunicationRegistryKey key;
+  InfCommunicationRegistryEntry* entry;
+
+  g_return_if_fail(INF_COMMUNICATION_IS_REGISTRY(registry));
+  g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
+
+  key.connection = connection;
+  key.publisher_id =
+    inf_communication_group_get_publisher_id(group, connection);
+  key.group_name = inf_communication_group_get_name(group);
+
+  entry = g_hash_table_lookup(priv->entries, &key);
+  return entry != NULL && entry->registered == TRUE;
+}
+
+/**
  * inf_communication_registry_send:
  * @registry: A #InfCommunicationRegistry.
  * @group: The group for which to send the message #InfCommunicationGroup.
