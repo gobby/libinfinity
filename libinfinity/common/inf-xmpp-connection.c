@@ -1148,7 +1148,6 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
 #endif
 
   InfXmppConnectionPrivate* priv;
-  gnutls_dh_params_t dh_params;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->session == NULL);
@@ -1156,17 +1155,14 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
   /* Make sure credentials are present */
   if(priv->cred == NULL)
   {
+    /* We can create built-in credentials for the client side. However, the
+     * server requires a certificate, and it doesn't make sense to generate
+     * one here, so we require that credentials are given for a server-side
+     * XMPP connection. */
+    g_assert(priv->site == INF_XMPP_CONNECTION_CLIENT);
+
     gnutls_certificate_allocate_credentials(&priv->own_cred);
     priv->cred = priv->own_cred;
-
-    if(priv->site == INF_XMPP_CONNECTION_SERVER)
-    {
-      /* TODO: Should we error out here instead? This won't work anyway
-       * without certificate. */
-      gnutls_dh_params_init(&dh_params);
-      gnutls_dh_params_generate2(dh_params, xmpp_connection_dh_bits);
-      gnutls_certificate_set_dh_params(priv->cred, dh_params);
-    }
 
     g_object_notify(G_OBJECT(xmpp), "credentials");
   }
@@ -3103,6 +3099,15 @@ inf_xmpp_connection_constructor(GType type,
   if(status == INF_TCP_CONNECTION_CONNECTED)
     inf_xmpp_connection_initiate(INF_XMPP_CONNECTION(obj));
 
+  /* If we are an the server and allow TLS, then we do need credentials for
+   * this. We can't create them ourselves, because it requires
+   * a certificate. */
+  g_assert(
+    priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
+    priv->site == INF_XMPP_CONNECTION_CLIENT ||
+    priv->cred != NULL
+  );
+
   return obj;
 }
 
@@ -3711,12 +3716,9 @@ inf_xmpp_connection_get_type(void)
  * @cred may be %NULL in which case the connection creates the credentials
  * as soon as they are required. However, this only works if
  * @site is %INF_XMPP_CONNECTION_CLIENT or @security_policy is
- * %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED (or both, of course).
- * Otherwise, the server needs a valid certificate in the credentials. We
- * could create a self-signed one on the fly (which would also take some
- * time because of the private key generation), but this does not make much
- * sense because we would need to use the same certificate for all future
- * server connections.
+ * %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED (or both, of course). For
+ * server connections @cred must contain a valid server certificate in case
+ * @security_policy is not %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED.
  *
  * If @sasl_context is %NULL, #InfXmppConnection uses a built-in context
  * that only supports ANONYMOUS authentication. In the @sasl_context's
@@ -3746,6 +3748,12 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
   GObject* object;
 
   g_return_val_if_fail(INF_IS_TCP_CONNECTION(tcp), NULL);
+
+  g_return_val_if_fail(
+    security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
+    site == INF_XMPP_CONNECTION_CLIENT || cred != NULL,
+    NULL
+  );
 
   object = g_object_new(
     INF_TYPE_XMPP_CONNECTION,

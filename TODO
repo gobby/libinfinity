@@ -17,9 +17,6 @@ Performance (Some ideas to improve performance, profile to verify!):
     - G_DISABLE_CHECKS
     defined.
 
-Bandwidth usage optimizations:
- * Send multiple messages in the same <group> container
-
 Others:
 
  * Unify InfIo interface (IO):

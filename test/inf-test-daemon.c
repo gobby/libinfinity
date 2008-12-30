@@ -84,7 +84,14 @@ main(int argc, char* argv[])
     pool = infd_server_pool_new(directory);
     g_object_unref(G_OBJECT(directory));
 
-    xmpp = infd_xmpp_server_new(server, NULL, NULL, NULL);
+    xmpp = infd_xmpp_server_new(
+      server,
+      INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
+      NULL,
+      NULL,
+      NULL
+    );
+
     g_object_unref(G_OBJECT(server));
 
     infd_server_pool_add_server(pool, INFD_XML_SERVER(xmpp));

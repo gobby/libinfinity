@@ -167,11 +167,12 @@ infinoted_run_create_server(InfinotedRun* run,
     )
   );
 
-  xmpp = infd_xmpp_server_new(tcp, startup->credentials, NULL, NULL);
-
-  infd_xmpp_server_set_security_policy(
-    xmpp,
-    startup->options->security_policy
+  xmpp = infd_xmpp_server_new(
+    tcp,
+    startup->options->security_policy,
+    startup->credentials,
+    NULL,
+    NULL
   );
 
   infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));

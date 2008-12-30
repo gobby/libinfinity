@@ -1,5 +1,20 @@
 2008-12-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c: Made "security-policy" a
+	construct property, don't allow passing NULL credentials for a
+	non-only-unsecured security policy.
+
+	* libinfinity/client/inf-xmpp-connections.c: Enable built-in
+	credentials only for client connections, require valid credentials
+	including certificate for server connections in case security policy
+	is not only-unsecured.
+
+	* infinoted/infinoted-run.c:
+	* test/inf-test-daemon.c: Adapt to API change.
+
+2008-12-30  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-standalone-io.c: Some code cleanup, gather
 	some common platform-specific stuff at the top.
 

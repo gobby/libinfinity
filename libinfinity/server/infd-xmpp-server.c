@@ -35,7 +35,6 @@ struct _InfdXmppServerPrivate {
   InfXmppConnectionSecurityPolicy security_policy;
 
   gnutls_certificate_credentials_t tls_creds;
-  gnutls_certificate_credentials_t tls_own_creds;
 
   Gsasl* sasl_context;
   Gsasl* sasl_own_context;
@@ -290,7 +289,6 @@ infd_xmpp_server_init(GTypeInstance* instance,
   priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
 
   priv->tls_creds = NULL;
-  priv->tls_own_creds = NULL;
   priv->sasl_context = NULL;
   priv->sasl_own_context = NULL;
   priv->sasl_mechanisms = NULL;
@@ -301,10 +299,7 @@ infd_xmpp_server_constructor(GType type,
                              guint n_construct_properties,
                              GObjectConstructParam* construct_properties)
 {
-  static const guint xmpp_server_dh_bits = 1024;
-
   InfdXmppServerPrivate* priv;
-  gnutls_dh_params_t dh_params;
   GObject* obj;
 
   obj = G_OBJECT_CLASS(parent_class)->constructor(
@@ -316,32 +311,10 @@ infd_xmpp_server_constructor(GType type,
   priv = INFD_XMPP_SERVER_PRIVATE(obj);
   g_assert(priv->tcp != NULL);
 
-  /* Make sure TLS credentials are present */
-  /* TODO: Perhaps we should do this in a thread, and stay in status OPENING
-   * until the generation has completed. */
-  if(priv->tls_creds == NULL)
-  {
-    gnutls_certificate_allocate_credentials(&priv->tls_own_creds);
-    priv->tls_creds = priv->tls_own_creds;
-
-    gnutls_dh_params_init(&dh_params);
-    gnutls_dh_params_generate2(dh_params, xmpp_server_dh_bits);
-    gnutls_certificate_set_dh_params(priv->tls_creds, dh_params);
-
-    /* TODO: That makes no sense. We should either don't allow omitting
-     * the credentials, or use a default ad-hoc certificate that is known
-     * as such, and therefore not considered secure. See also
-     * inf-xmpp-connection.c in inf_xmpp_connection_tls_init() and
-     * inf_xmpp_connection_process_initiated(). */
-    gnutls_certificate_set_x509_key_file(
-      priv->tls_creds,
-      "cert.pem",
-      "key.pem",
-      GNUTLS_X509_FMT_PEM
-    );
-
-    g_object_notify(G_OBJECT(obj), "credentials");
-  }
+  g_assert(
+    priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
+    priv->tls_creds != NULL
+  );
 
   if(priv->sasl_context == NULL)
   {
@@ -391,9 +364,6 @@ infd_xmpp_server_finalize(GObject* object)
   if(priv->sasl_own_context != NULL)
     gsasl_done(priv->sasl_own_context);
 
-  if(priv->tls_own_creds != NULL)
-    gnutls_certificate_free_credentials(priv->tls_own_creds);
-
   g_free(priv->sasl_mechanisms);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -427,14 +397,6 @@ infd_xmpp_server_set_property(GObject* object,
       priv->local_hostname = g_strdup(g_get_host_name());
     break;
   case PROP_CREDENTIALS:
-    /* TODO: Make sure that the credentials are no longer in use by a XMPP
-     * connection object. */
-    if(priv->tls_own_creds != NULL)
-    {
-      gnutls_certificate_free_credentials(priv->tls_own_creds);
-      priv->tls_own_creds = NULL;
-    }
-
     priv->tls_creds = g_value_get_pointer(value);
     break;
   case PROP_SASL_CONTEXT:
@@ -623,7 +585,7 @@ infd_xmpp_server_class_init(gpointer g_class,
       "Whether to offer or require TLS",
       INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY,
       INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
-      G_PARAM_READWRITE
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -698,6 +660,7 @@ infd_xmpp_server_get_type(void)
 /**
  * infd_xmpp_server_new:
  * @tcp: A #InfdTcpServer.
+ * @policy: The initial security policy.
  * @cred: Certificate credentials used to secure any communication.
  * @sasl_context: A SASL context used for authentication.
  * @sasl_mechanisms: A whitespace-sparated list of SASL mechanisms.
@@ -709,19 +672,21 @@ infd_xmpp_server_get_type(void)
  * resulting connection will be in status OPENING until authentication has
  * completed.
  *
- * @cred may be %NULL in which case the server creates the credentials,
- * however, this might take some time. If @sasl_context is %NULL, the server
- * uses a built-in context that only supports ANONYMOUS authentication.
+ * If @policy is %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED, then @cred may
+ * be %NULL. If @cred is non-%NULL nevertheless, then it is possible to change
+ * the security policy later using infd_xmpp_server_set_security_policy().
  *
- * If @sasl_context is not %NULL, then @sasl_mechanisms specifies the
- * mechanisms offered to clients. If @sasl_mechanisms is %NULL, then all
- * available mechanims will be offered. If @sasl_context is %NULL, then this
- * parameter is ignored.
+ * If @sasl_context is %NULL, the server uses a built-in context that only
+ * supports ANONYMOUS authentication. If @sasl_context is not %NULL, then
+ * @sasl_mechanisms specifies the mechanisms offered to clients. If
+ * @sasl_mechanisms is %NULL, then all available mechanims will be offered.
+ * If @sasl_context is %NULL, then this parameter is ignored.
  *
  * Return Value: A new #InfdXmppServer.
  **/
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
+                     InfXmppConnectionSecurityPolicy policy,
                      gnutls_certificate_credentials_t cred,
                      Gsasl* sasl_context,
                      const gchar* sasl_mechanisms)
@@ -730,9 +695,15 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
 
   g_return_val_if_fail(INFD_IS_TCP_SERVER(tcp), NULL);
 
+  g_return_val_if_fail(
+    policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED || cred != NULL,
+    NULL
+  );
+
   object = g_object_new(
     INFD_TYPE_XMPP_SERVER,
     "tcp-server", tcp,
+    "security-policy", policy,
     "credentials", cred,
     "sasl-context", sasl_context,
     "sasl-mechanisms", sasl_mechanisms,
@@ -754,8 +725,22 @@ void
 infd_xmpp_server_set_security_policy(InfdXmppServer* server,
                                      InfXmppConnectionSecurityPolicy policy)
 {
+  InfdXmppServerPrivate* priv;
+
   g_return_if_fail(INFD_IS_XMPP_SERVER(server));
-  INFD_XMPP_SERVER_PRIVATE(server)->security_policy = policy;
+
+  priv = INFD_XMPP_SERVER_PRIVATE(server);
+
+  if(policy != priv->security_policy)
+  {
+    g_return_if_fail(
+      policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
+      priv->tls_creds != NULL
+    );
+
+    priv->security_policy = policy;
+    g_object_notify(G_OBJECT(server), "security-policy");
+  }
 }
 
 /**
