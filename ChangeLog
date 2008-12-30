@@ -1,5 +1,10 @@
 2008-12-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-standalone-io.c: Some code cleanup, gather
+	some common platform-specific stuff at the top.
+
+2008-12-30  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-run.h:
 	* infinoted/infinoted-run.c: Delay server opening to
 	infinoted_run_start(), create both IPv6 and IPv4 server when possible.
