@@ -13,3 +13,4 @@ inf-test-tcp-server
 *.prof
 callgrind.*
 *.out
+*.exe
