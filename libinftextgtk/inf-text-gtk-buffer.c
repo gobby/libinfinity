@@ -1685,6 +1685,39 @@ inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer)
 }
 
 /**
+ * inf_text_gtk_buffer_get_author:
+ * @buffer: A #InfTextGtkBuffer.
+ * @location: A #GtkTextIter which is not the end iterator.
+ *
+ * Returns the #InfTextUser which wrote the character at @location. If there
+ * is no such user, then %NULL is returned.
+ *
+ * Return Value: A #InfTextUser, or %NULL.
+ */
+InfTextUser*
+inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
+                               GtkTextIter* location)
+{
+  InfTextGtkBufferPrivate* priv;
+  guint user_id;
+  InfUser* user;
+
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), NULL);
+
+  g_return_val_if_fail(
+    location != NULL && !gtk_text_iter_is_end(location),
+    NULL
+  );
+  
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  user_id = inf_text_gtk_buffer_iter_get_author(location);
+  if(user_id == 0) return NULL;
+
+  user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
+  return INF_TEXT_USER(user);
+}
+
+/**
  * inf_text_gtk_buffer_set_wake_on_cursor_movement:
  * @buffer: A #InfTextGtkBuffer.
  * @wake: Whether to make inactive users active on cursor movement.

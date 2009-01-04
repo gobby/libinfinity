@@ -64,6 +64,10 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
 InfTextUser*
 inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer);
 
+InfTextUser*
+inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
+                               GtkTextIter* location);
+
 void
 inf_text_gtk_buffer_set_wake_on_cursor_movement(InfTextGtkBuffer* buffer,
                                                 gboolean wake);

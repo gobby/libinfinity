@@ -1,5 +1,11 @@
 2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added
+	inf_text_gtk_buffer_get_author().
+
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/communication/inf-communication-registry.c
 	(inf_communication_registry_is_registered): Don't leak the publisher
 	ID, and use g_return_val_if_reached instead of g_return_if_reached to
