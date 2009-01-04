@@ -2,13 +2,14 @@ SUBDIRS = note-plugins
 
 bin_PROGRAMS = infinoted
 
-plugin_path = ${libdir}/infinoted-1.0/note-plugins
+plugin_path = infinoted-1.0/note-plugins
 
 infinoted_CPPFLAGS = \
 	-I${top_srcdir} \
 	$(infinoted_CFLAGS) \
 	$(infinity_CFLAGS) \
-	-DPLUGIN_PATH=\"${plugin_path}\"
+	-DPLUGIN_LIBPATH=\"${libdir}\" \
+	-DPLUGIN_BASEPATH=\"${plugin_path}\"
 
 infinoted_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-1.0.la \

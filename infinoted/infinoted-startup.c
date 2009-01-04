@@ -82,6 +82,11 @@ infinoted_startup_load_directory(InfinotedStartup* startup,
   InfStandaloneIo* io;
   InfCommunicationManager* communication_manager;
 
+#ifdef G_OS_WIN32
+  gchar* module_path;
+#endif
+  gchar* plugin_path;
+
   storage = infd_filesystem_storage_new(startup->options->root_directory);
 
   io = inf_standalone_io_new();
@@ -97,8 +102,18 @@ infinoted_startup_load_directory(InfinotedStartup* startup,
   g_object_unref(storage);
   g_object_unref(communication_manager);
 
-  if(!infinoted_note_plugin_load_directory(PLUGIN_PATH, startup->directory))
+#ifdef G_OS_WIN32
+  module_path = g_win32_get_package_installation_directory_of_module(NULL);
+  plugin_path = g_build_filename(module_path, "lib", PLUGIN_BASEPATH, NULL);
+  g_free(module_path);
+#else
+  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_BASEPATH, NULL);
+#endif
+
+  if(!infinoted_note_plugin_load_directory(plugin_path, startup->directory))
   {
+    g_free(plugin_path);
+
     g_object_unref(startup->directory);
     startup->directory = NULL;
 
@@ -112,6 +127,7 @@ infinoted_startup_load_directory(InfinotedStartup* startup,
     return FALSE;
   }
 
+  g_free(plugin_path);
   return TRUE;
 }
 

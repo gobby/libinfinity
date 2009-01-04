@@ -1,5 +1,13 @@
 2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/Makefile.am: Replace PLUGIN_PATH define by PLUGIN_LIBPATH
+	and PLUGIN_BASEPATH.
+
+	* infinoted/infinoted-startup.c (infinoted_startup_load_directory):
+	Lookup the module path relative to the application's executable.
+
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.h:
 	* libinftextgtk/inf-text-gtk-buffer.c: Added
 	inf_text_gtk_buffer_get_author().
