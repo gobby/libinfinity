@@ -1,3 +1,12 @@
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/communication/inf-communication-registry.c
+	(inf_communication_registry_is_registered): Don't leak the publisher
+	ID, and use g_return_val_if_reached instead of g_return_if_reached to
+	avoid a warning.
+	(inf_communication_registry_unregister): Fixed another compiler
+	warning.
+
 2008-12-30  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-xmpp-server.h:

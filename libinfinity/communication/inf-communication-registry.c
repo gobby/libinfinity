@@ -906,7 +906,7 @@ inf_communication_registry_unregister(InfCommunicationRegistry* registry,
   entry = g_hash_table_lookup(priv->entries, &key);
   g_assert(entry != NULL && entry->registered == TRUE);
 
-  if(entry->queue_end != NULL || entry->inner_count > 0 &&
+  if( (entry->queue_end != NULL || entry->inner_count > 0) &&
      status != INF_XML_CONNECTION_CLOSING &&
      status != INF_XML_CONNECTION_CLOSED)
   {
@@ -952,9 +952,9 @@ inf_communication_registry_is_registered(InfCommunicationRegistry* registry,
   InfCommunicationRegistryKey key;
   InfCommunicationRegistryEntry* entry;
 
-  g_return_if_fail(INF_COMMUNICATION_IS_REGISTRY(registry));
-  g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_val_if_fail(INF_COMMUNICATION_IS_REGISTRY(registry), FALSE);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_GROUP(group), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
 
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
 
@@ -964,6 +964,8 @@ inf_communication_registry_is_registered(InfCommunicationRegistry* registry,
   key.group_name = inf_communication_group_get_name(group);
 
   entry = g_hash_table_lookup(priv->entries, &key);
+  g_free(key.publisher_id);
+
   return entry != NULL && entry->registered == TRUE;
 }
 
