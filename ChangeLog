@@ -1,5 +1,17 @@
 2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c:
+	* infinoted/infinoted-run.c: Moved directory creation from
+	InfinotedStartup to InfinotedRun.
+
+	* infinoted/infinoted-signal.c: Terminate directly on signal handler,
+	without relying on the mainloop being exited properly. Also set a
+	ConsoleCtrlHandler on Windows, to save the documents when the server's
+	console window is closed.
+
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/Makefile.am: Replace PLUGIN_PATH define by PLUGIN_LIBPATH
 	and PLUGIN_BASEPATH.
 

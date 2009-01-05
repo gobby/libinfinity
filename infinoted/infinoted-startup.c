@@ -18,10 +18,7 @@
 
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-creds.h>
-#include <infinoted/infinoted-note-plugin.h>
 
-#include <libinfinity/server/infd-filesystem-storage.h>
-#include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-init.h>
 #include <libinfinity/inf-i18n.h>
@@ -70,64 +67,6 @@ infinoted_startup_create_dirname(const gchar* path,
   }
 
   g_free(dirname);
-  return TRUE;
-}
-
-static gboolean
-infinoted_startup_load_directory(InfinotedStartup* startup,
-                                 GError** error)
-{
-  /* TODO: Allow different storage plugins */
-  InfdFilesystemStorage* storage;
-  InfStandaloneIo* io;
-  InfCommunicationManager* communication_manager;
-
-#ifdef G_OS_WIN32
-  gchar* module_path;
-#endif
-  gchar* plugin_path;
-
-  storage = infd_filesystem_storage_new(startup->options->root_directory);
-
-  io = inf_standalone_io_new();
-  communication_manager = inf_communication_manager_new();
-
-  startup->directory = infd_directory_new(
-    INF_IO(io),
-    INFD_STORAGE(storage),
-    communication_manager
-  );
-
-  g_object_unref(io);
-  g_object_unref(storage);
-  g_object_unref(communication_manager);
-
-#ifdef G_OS_WIN32
-  module_path = g_win32_get_package_installation_directory_of_module(NULL);
-  plugin_path = g_build_filename(module_path, "lib", PLUGIN_BASEPATH, NULL);
-  g_free(module_path);
-#else
-  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_BASEPATH, NULL);
-#endif
-
-  if(!infinoted_note_plugin_load_directory(plugin_path, startup->directory))
-  {
-    g_free(plugin_path);
-
-    g_object_unref(startup->directory);
-    startup->directory = NULL;
-
-    g_set_error(
-      error,
-      g_quark_from_static_string("INFINOTED_STARTUP_ERROR"),
-      0,
-      "Failed to load note plugins"
-    );
-
-    return FALSE;
-  }
-
-  g_free(plugin_path);
   return TRUE;
 }
 
@@ -352,9 +291,6 @@ infinoted_startup_load(InfinotedStartup* startup,
   if(infinoted_startup_load_credentials(startup, error) == FALSE)
     return FALSE;
 
-  if(infinoted_startup_load_directory(startup, error) == FALSE)
-    return FALSE;
-
   return TRUE;
 }
 
@@ -385,7 +321,6 @@ infinoted_startup_new(int* argc,
   startup->n_certificates = 0;
   startup->dh_params = NULL;
   startup->credentials = NULL;
-  startup->directory = NULL;
 
   if(infinoted_startup_load(startup, argc, argv, error) == FALSE)
   {
@@ -405,9 +340,6 @@ infinoted_startup_new(int* argc,
 void
 infinoted_startup_free(InfinotedStartup* startup)
 {
-  if(startup->directory != NULL)
-    g_object_unref(startup->directory);
-
   if(startup->credentials != NULL)
     gnutls_certificate_free_credentials(startup->credentials);
 

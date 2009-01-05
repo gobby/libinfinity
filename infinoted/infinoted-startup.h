@@ -21,8 +21,6 @@
 
 #include <infinoted/infinoted-options.h>
 
-#include <libinfinity/server/infd-directory.h>
-
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -35,7 +33,6 @@ struct _InfinotedStartup {
   gnutls_dh_params_t dh_params;
   guint n_certificates;
   gnutls_certificate_credentials_t credentials;
-  InfdDirectory* directory;
 };
 
 InfinotedStartup*

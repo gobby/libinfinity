@@ -17,10 +17,13 @@
  */
 
 #include <infinoted/infinoted-run.h>
+#include <infinoted/infinoted-note-plugin.h>
 
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-session-record.h>
+#include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-tcp-server.h>
+#include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-xmpp-manager.h>
 
@@ -149,6 +152,67 @@ infinoted_run_directory_remove_session_cb(InfdDirectory* directory,
   g_object_set_data(G_OBJECT(session), "INFINOTED_SESSION_RECORD", NULL);
 }
 
+static gboolean
+infinoted_run_load_directory(InfinotedRun* run,
+                             InfinotedStartup* startup,
+                             GError** error)
+{
+  /* TODO: Allow different storage plugins */
+  InfdFilesystemStorage* storage;
+  InfStandaloneIo* io;
+  InfCommunicationManager* communication_manager;
+
+#ifdef G_OS_WIN32
+  gchar* module_path;
+#endif
+  gchar* plugin_path;
+
+  storage = infd_filesystem_storage_new(startup->options->root_directory);
+
+  communication_manager = inf_communication_manager_new();
+
+  run->io = inf_standalone_io_new();
+
+  run->directory = infd_directory_new(
+    INF_IO(run->io),
+    INFD_STORAGE(storage),
+    communication_manager
+  );
+
+  g_object_unref(storage);
+  g_object_unref(communication_manager);
+
+#ifdef G_OS_WIN32
+  module_path = g_win32_get_package_installation_directory_of_module(NULL);
+  plugin_path = g_build_filename(module_path, "lib", PLUGIN_BASEPATH, NULL);
+  g_free(module_path);
+#else
+  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_BASEPATH, NULL);
+#endif
+
+  if(!infinoted_note_plugin_load_directory(plugin_path, run->directory))
+  {
+    g_free(plugin_path);
+
+    g_object_unref(run->directory);
+    g_object_unref(run->io);
+    run->directory = NULL;
+    run->io = NULL;
+
+    g_set_error(
+      error,
+      g_quark_from_static_string("INFINOTED_STARTUP_ERROR"),
+      0,
+      "Failed to load note plugins"
+    );
+
+    return FALSE;
+  }
+
+  g_free(plugin_path);
+  return TRUE;
+}
+
 static InfdTcpServer*
 infinoted_run_create_server(InfinotedRun* run,
                             InfinotedStartup* startup,
@@ -214,25 +278,23 @@ infinoted_run_new(InfinotedStartup* startup,
 
   InfinotedRun* run;
 
-  /* TODO: Find out why the startup needs to create a directory, and an IO
-   * object. It would be better to create both here, so we don't have to
-   * rely on IO being a InfStandaloneIo. */
-
   run = g_slice_new(InfinotedRun);
-  run->io = INF_STANDALONE_IO(infd_directory_get_io(startup->directory));
-  run->directory = startup->directory;
-  g_object_ref(run->io);
-  g_object_ref(run->directory);
+
+  if(infinoted_run_load_directory(run, startup, error) == FALSE)
+  {
+    g_slice_free(InfinotedRun, run);
+    return NULL;
+  }
 
   g_signal_connect(
-    G_OBJECT(startup->directory),
+    G_OBJECT(run->directory),
     "add-session",
     G_CALLBACK(infinoted_run_directory_add_session_cb),
     run
   );
 
   g_signal_connect(
-    G_OBJECT(startup->directory),
+    G_OBJECT(run->directory),
     "remove-session",
     G_CALLBACK(infinoted_run_directory_remove_session_cb),
     run
@@ -250,7 +312,7 @@ infinoted_run_new(InfinotedStartup* startup,
     run->autosave = NULL;
   }
 
-  run->pool = infd_server_pool_new(startup->directory);
+  run->pool = infd_server_pool_new(run->directory);
 
 #ifdef LIBINFINITY_HAVE_AVAHI
   xmpp_manager = inf_xmpp_manager_new();
