@@ -2,3 +2,4 @@ version.xml
 xml
 html
 *.stamp
+*.types

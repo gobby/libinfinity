@@ -26,6 +26,7 @@ autom4te.cache
 *.swp
 config.h
 config.h.in
+config.h.in~
 infwc
 inftodo
 libinfinity-*.tar.bz2
