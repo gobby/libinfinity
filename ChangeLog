@@ -1,5 +1,12 @@
 2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection.c
+	(inf_tcp_connection_get_property): Compare priv->socket against
+	INVALID_SOCKET instead of NULL in assertion for PROP_LOCAL_ADDRESS and
+	PROP_LOCAL_PORT.
+
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-run.c (infinoted_run_load_directory): Fixed a
 	warning about an unused variable.
 

@@ -620,12 +620,12 @@ inf_tcp_connection_get_property(GObject* object,
     g_value_set_uint(value, priv->remote_port);
     break;
   case PROP_LOCAL_ADDRESS:
-    g_assert(priv->socket != NULL);
+    g_assert(priv->socket != INVALID_SOCKET);
     inf_tcp_connection_addr_info(priv->socket, TRUE, &address, NULL);
     g_value_take_boxed(value, address);
     break;
   case PROP_LOCAL_PORT:
-    g_assert(priv->socket != NULL);
+    g_assert(priv->socket != INVALID_SOCKET);
     inf_tcp_connection_addr_info(priv->socket, TRUE, NULL, &port);
     g_value_set_uint(value, port);
     break;
