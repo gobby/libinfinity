@@ -1,5 +1,10 @@
 2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-run.c (infinoted_run_load_directory): Fixed a
+	warning about an unused variable.
+
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-startup.h:
 	* infinoted/infinoted-startup.c:
 	* infinoted/infinoted-run.c: Moved directory creation from

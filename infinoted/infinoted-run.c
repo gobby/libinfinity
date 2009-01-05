@@ -159,7 +159,6 @@ infinoted_run_load_directory(InfinotedRun* run,
 {
   /* TODO: Allow different storage plugins */
   InfdFilesystemStorage* storage;
-  InfStandaloneIo* io;
   InfCommunicationManager* communication_manager;
 
 #ifdef G_OS_WIN32
