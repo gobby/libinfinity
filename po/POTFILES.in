@@ -1,3 +1,4 @@
+infinoted/infinoted-autosave.c
 infinoted/infinoted-note-plugin.c
 infinoted/infinoted-options.c
 infinoted/infinoted-run.c
@@ -14,10 +15,8 @@ libinfinity/adopted/inf-adopted-state-vector.c
 libinfinity/client/infc-browser.c
 libinfinity/client/infc-request-manager.c
 libinfinity/client/infc-session-proxy.c
-libinfinity/common/inf-connection-manager.c
 libinfinity/common/inf-discovery-avahi.c
 libinfinity/common/inf-error.c
-libinfinity/common/inf-method-manager.c
 libinfinity/common/inf-session.c
 libinfinity/common/inf-tcp-connection.c
 libinfinity/common/inf-user.c

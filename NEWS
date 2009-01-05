@@ -1,3 +1,31 @@
+libinfinity 0.2.0:
+
+	* infinoted records sessions to ~/.infinoted-records
+	* Added proper modification tracking, and an autosave feature for
+	  infinoted.
+	* Implemented InfStandaloneIo on Windows, making infinoted run on
+	  Windows
+	* Refactored connection manager, introducing InfCommunication API for
+	  high-level network handling. This breaks protocol compatibility with
+	  libinfinity 0.1.x.
+
+libinfinity 0.1.2:
+
+	* Fixed required dependencies in pkg-config files
+	* Improved error message when the remote host does not send XMPP
+	* Fixed a crash when compiling with -O2 or above
+	* Fixed a few memory leaks
+	* Fixed build with cairo 1.4 (#393)
+
+libinfinity 0.1.1:
+
+	* Made libinfinity properly relocatable on Windows
+	* Fixed the documentation build when avahi is disabled (#386,
+	  Gregory Haynes)
+	* Fixed a segfault when showing the file list (#388, Georg)
+	* Fixed pasting a lot amount of text (#387, Benjamin Herr)
+	* Fixed connection to server with much history (#389, Matthias Prinz)
+
 libinfinity 0.1.0:
 
 	* Initial release of libinfinity

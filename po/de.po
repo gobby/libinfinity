@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2008-10-18 15:58+0200\n"
+"POT-Creation-Date: 2009-01-05 02:28+0100\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -15,6 +15,14 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: infinoted/infinoted-autosave.c:152
+#, c-format
+msgid ""
+"Failed to auto-save session \"%s\": %s\n"
+"\n"
+"Will retry in %u seconds."
+msgstr ""
 
 #: infinoted/infinoted-note-plugin.c:135
 #, c-format
@@ -45,17 +53,22 @@ msgstr ""
 
 #: infinoted/infinoted-options.c:107
 #, c-format
+msgid "Autosave interval must not be negative"
+msgstr ""
+
+#: infinoted/infinoted-options.c:128
+#, c-format
 msgid "\"%d\" is not a valid port number. Port numbers range from 1 to 65535"
 msgstr ""
 
-#: infinoted/infinoted-options.c:374
+#: infinoted/infinoted-options.c:395
 #, c-format
 msgid ""
 "Creating a new private key also requires creating a new certificate signed "
 "with it."
 msgstr ""
 
-#: infinoted/infinoted-options.c:387
+#: infinoted/infinoted-options.c:408
 #, c-format
 msgid ""
 "No private key file given. If you don't have a suitable key file, either "
@@ -63,7 +76,7 @@ msgid ""
 "setting the security policy to \"no-tls\"."
 msgstr ""
 
-#: infinoted/infinoted-options.c:401
+#: infinoted/infinoted-options.c:422
 #, c-format
 msgid ""
 "No certificate file given. If you don't have a suitable certificate file, "
@@ -71,108 +84,139 @@ msgid ""
 "disable TLS via by setting the security policy to \"no-tls\"."
 msgstr ""
 
-#: infinoted/infinoted-options.c:434
+#: infinoted/infinoted-options.c:456
 #, fuzzy
 msgid "The server's private key"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: infinoted/infinoted-options.c:434
+#: infinoted/infinoted-options.c:456
 msgid "KEY-FILE"
 msgstr ""
 
-#: infinoted/infinoted-options.c:437
+#: infinoted/infinoted-options.c:459
 #, fuzzy
 msgid "The server's certificate"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: infinoted/infinoted-options.c:437
+#: infinoted/infinoted-options.c:459
 msgid "CERTIFICATE-FILE"
 msgstr ""
 
-#: infinoted/infinoted-options.c:440
+#: infinoted/infinoted-options.c:462
 msgid "Creates a new random private key"
 msgstr ""
 
-#: infinoted/infinoted-options.c:443
+#: infinoted/infinoted-options.c:465
 msgid "Creates a new self-signed certificate using the given key"
 msgstr ""
 
-#: infinoted/infinoted-options.c:446
+#: infinoted/infinoted-options.c:468
 msgid "The port number to listen on"
 msgstr ""
 
-#: infinoted/infinoted-options.c:446
+#: infinoted/infinoted-options.c:468
 msgid "PORT"
 msgstr ""
 
-#: infinoted/infinoted-options.c:449
+#: infinoted/infinoted-options.c:471
 msgid "How to decide whether to use TLS"
 msgstr ""
 
-#: infinoted/infinoted-options.c:452
+#: infinoted/infinoted-options.c:474
 msgid "The directory to store documents into"
 msgstr ""
 
-#: infinoted/infinoted-options.c:452
+#: infinoted/infinoted-options.c:474
 msgid "DIRECTORY"
 msgstr ""
 
-#: infinoted/infinoted-options.c:455
+#: infinoted/infinoted-options.c:477
+msgid ""
+"Interval within which to save documents, in seconds, or 0 to disable autosave"
+msgstr ""
+
+#: infinoted/infinoted-options.c:478
+msgid "INTERVAL"
+msgstr ""
+
+#: infinoted/infinoted-options.c:481
 msgid "Display version information and exit"
 msgstr ""
 
-#: infinoted/infinoted-options.c:480
+#: infinoted/infinoted-options.c:505
 msgid "infinote dedicated server"
 msgstr ""
 
-#: infinoted/infinoted-run.c:129
+#: infinoted/infinoted-run.c:56
 #, c-format
-msgid "Server running on port %u\n"
+msgid "Error while writing record for session \"%s\" into \"%s\": %s"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:63
+#: infinoted/infinoted-run.c:98
+#, c-format
+msgid ""
+"Could not create record file for session \"%s\": Could not generate unused "
+"record file in directory \"%s\""
+msgstr ""
+
+#: infinoted/infinoted-run.c:110
+#, c-format
+msgid "Could not create record file directory \"%s\": %s"
+msgstr ""
+
+#: infinoted/infinoted-run.c:389
+#, c-format
+msgid "IPv6 Server running on port %u\n"
+msgstr ""
+
+#: infinoted/infinoted-run.c:404
+#, c-format
+msgid "IPv4 Server running on port %u\n"
+msgstr ""
+
+#: infinoted/infinoted-startup.c:60
 #, c-format
 msgid "Could not create directory \"%s\": %s"
 msgstr ""
 
 #. TODO: Open the key file beforehand
-#: infinoted/infinoted-startup.c:132
+#: infinoted/infinoted-startup.c:87
 #, c-format
 msgid "Generating 2048 bit RSA private key...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:168
+#: infinoted/infinoted-startup.c:123
 #, c-format
 msgid "Generating self-signed certificate...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:217
+#: infinoted/infinoted-startup.c:172
 #, c-format
 msgid "Generating 2048 bit Diffie-Hellman parameters...\n"
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-store.c:627
+#: libinfgtk/inf-gtk-browser-store.c:624
 #, c-format
 msgid "Disconnected"
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2030
+#: libinfgtk/inf-gtk-browser-view.c:2027
 msgid "Exploring..."
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2064
+#: libinfgtk/inf-gtk-browser-view.c:2061
 msgid "Synchronizing..."
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2136
+#: libinfgtk/inf-gtk-browser-view.c:2134
 msgid "Not connected"
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2147
+#: libinfgtk/inf-gtk-browser-view.c:2145
 msgid "Connecting..."
 msgstr ""
 
-#: libinfgtk/inf-gtk-browser-view.c:2157
+#: libinfgtk/inf-gtk-browser-view.c:2155
 msgid "Connected"
 msgstr ""
 
@@ -236,11 +280,11 @@ msgstr ""
 msgid "Certificate Chain"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:547
+#: libinfgtk/inf-gtk-certificate-dialog.c:549
 msgid "_View Certificate"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:584
+#: libinfgtk/inf-gtk-certificate-dialog.c:586
 msgid "Connection not secure"
 msgstr ""
 
@@ -373,12 +417,12 @@ msgstr ""
 msgid "No such user with user ID '%u'"
 msgstr ""
 
-#: libinfinity/adopted/inf-adopted-session.c:1046
+#: libinfinity/adopted/inf-adopted-session.c:1049
 #, c-format
 msgid "'time' attribute in user message is missing"
 msgstr ""
 
-#: libinfinity/adopted/inf-adopted-session.c:1435
+#: libinfinity/adopted/inf-adopted-session.c:1466
 #, c-format
 msgid "Operation for request missing"
 msgstr ""
@@ -404,76 +448,69 @@ msgstr ""
 msgid "Expected ';' or end of string after component of ID '%u'"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:678
+#: libinfinity/client/infc-browser.c:657
 #, c-format
 msgid ""
 "This session requires communication method `%s' which is not installed for "
 "network `%s'"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:773
-#, c-format
-msgid ""
-"Cannot connect to server since the \"central\" method could not be found for "
-"network \"%s\""
-msgstr ""
-
-#: libinfinity/client/infc-browser.c:1056
-#: libinfinity/client/infc-browser.c:1094
+#: libinfinity/client/infc-browser.c:1001
+#: libinfinity/client/infc-browser.c:1039
 #, c-format
 msgid "Node with ID '%u' exists already"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1344
+#: libinfinity/client/infc-browser.c:1298
 #, c-format
 msgid "Node to explore does no longer exist"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1355
+#: libinfinity/client/infc-browser.c:1309
 #, c-format
 msgid "Node to explore is not a subdirectory"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1366
+#: libinfinity/client/infc-browser.c:1320
 #, c-format
 msgid "Node to explore is already explored"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1549
+#: libinfinity/client/infc-browser.c:1503
 #, c-format
 msgid ""
 "The request contains a sequence number refering to a request of type '%s', "
 "but a request of either 'explore' or 'add-node' was expected."
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1632
+#: libinfinity/client/infc-browser.c:1585
 #, c-format
 msgid "Received sync-in without having requested one"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1650
+#: libinfinity/client/infc-browser.c:1603
 #, c-format
 msgid "Expected note type `%s' for sync-in, but received `%s'"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1822
+#: libinfinity/client/infc-browser.c:1805
 #, c-format
 msgid "Note type '%s' is not supported"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1835
+#: libinfinity/client/infc-browser.c:1818
 #, c-format
 msgid "Already subscribed to this session"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:2014
+#: libinfinity/client/infc-browser.c:1997
 #: libinfinity/client/infc-session-proxy.c:503
 #, c-format
 msgid "Error comes from unknown error domain '%s' (code %u)"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:2160
-#: libinfinity/client/infc-session-proxy.c:919
+#: libinfinity/client/infc-browser.c:2145
+#: libinfinity/client/infc-session-proxy.c:929
 #, c-format
 msgid "Server reply could not be processed: %s"
 msgstr ""
@@ -506,45 +543,7 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-connection-manager.c:678
-#, c-format
-msgid "Publisher ID of connection '%s' is already known"
-msgstr ""
-
-#: libinfinity/common/inf-connection-manager.c:696
-#, c-format
-msgid "Publisher ID '%s' has incorrect length"
-msgstr ""
-
-#: libinfinity/common/inf-connection-manager.c:745
-#, c-format
-msgid "Publisher ID '%s' is already in use"
-msgstr ""
-
-#: libinfinity/common/inf-connection-manager.c:821
-#, c-format
-msgid "Received unexpected message '%s'"
-msgstr ""
-
-#: libinfinity/common/inf-connection-manager.c:944
-#, c-format
-msgid ""
-"Request from %s caused error: %s\n"
-"\n"
-"The request could not be processed, thus the session is no longer guaranteed "
-"to be in a consistent state. Subsequent requests might therefore fail as "
-"well. The failed request was:\n"
-"\n"
-"%s\n"
-"\n"
-msgstr ""
-
-#: libinfinity/common/inf-connection-manager.c:1011
-#, c-format
-msgid "Received bad XML request from %s: %s"
-msgstr ""
-
-#: libinfinity/common/inf-discovery-avahi.c:488
+#: libinfinity/common/inf-discovery-avahi.c:502
 #, c-format
 msgid ""
 "Avahi service browser is in failure state. Services of type '%s' are no "
@@ -553,7 +552,7 @@ msgid ""
 "The failure was: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:556
+#: libinfinity/common/inf-discovery-avahi.c:570
 #, c-format
 msgid ""
 "Avahi entry group is in failure state. The service '%s' of type '%s' is no "
@@ -562,7 +561,7 @@ msgid ""
 "The failure was: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:766
+#: libinfinity/common/inf-discovery-avahi.c:780
 #, c-format
 msgid ""
 "Failed to start Avahi client. Service discovery or publishing will not be "
@@ -571,7 +570,7 @@ msgid ""
 "The occurred failure was: %s"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:809
+#: libinfinity/common/inf-discovery-avahi.c:823
 #, c-format
 msgid ""
 "Avahi client is in failure state. Service discovery or publishing is no "
@@ -582,158 +581,138 @@ msgstr ""
 
 #. Translators: This is "<Service Name> (via <Network Interface> on
 #. * <address family>)", for example "ck (via eth0 on IPv4)".
-#: libinfinity/common/inf-discovery-avahi.c:1359
+#: libinfinity/common/inf-discovery-avahi.c:1373
 #, c-format
 msgid "%s (via %s on IPv4)"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:1360
+#: libinfinity/common/inf-discovery-avahi.c:1374
 #, c-format
 msgid "%s (via %s on IPv6)"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:38
-msgid "Synchronization is still in progress"
-msgstr ""
-
-#: libinfinity/common/inf-error.c:40
-msgid "Message was not understood"
-msgstr ""
-
-#: libinfinity/common/inf-error.c:42
+#: libinfinity/common/inf-error.c:64
 msgid "Received error from an unknown domain"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:44
+#: libinfinity/common/inf-error.c:66
 msgid "Failed to process server reply"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:46
+#: libinfinity/common/inf-error.c:68
 msgid "Server reply contains invalid sequence number"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:48
+#: libinfinity/common/inf-error.c:70
 msgid "A required attribute was not set in request"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:50
+#: libinfinity/common/inf-error.c:72
 msgid "An attribute contained an invalid number"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:52
+#: libinfinity/common/inf-error.c:74
 msgid "An unknown request error occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:54 libinfinity/common/inf-error.c:84
+#: libinfinity/common/inf-error.c:76 libinfinity/common/inf-error.c:123
 #: libinfinity/common/inf-session.c:191
 msgid "An error with unknown error code occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:70
+#: libinfinity/common/inf-error.c:109
 msgid "Name is already in use"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:72
+#: libinfinity/common/inf-error.c:111
 msgid "'id' attribute provided in request"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:74
+#: libinfinity/common/inf-error.c:113
 msgid "There is no user with the given ID"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:76
+#: libinfinity/common/inf-error.c:115
 msgid "'status' attribute is 'unavailable' in join or rejoin request"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:78
+#: libinfinity/common/inf-error.c:117
 msgid "User did not join via this connection"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:80
+#: libinfinity/common/inf-error.c:119
 msgid "'status' attribute has invalid value"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:82
+#: libinfinity/common/inf-error.c:121
 msgid "An unknown user error occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:100
+#: libinfinity/common/inf-error.c:156
 msgid "A node with this name exists already"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:102
+#: libinfinity/common/inf-error.c:158
 msgid "Node does not exist"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:104
+#: libinfinity/common/inf-error.c:160
 msgid "Node is not a subdirectory"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:106
+#: libinfinity/common/inf-error.c:162
 msgid "Node is not a note"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:108
+#: libinfinity/common/inf-error.c:164
 msgid "Subdirectory has already been explored"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:110
+#: libinfinity/common/inf-error.c:166
 msgid "Note type is not supported"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:112
+#: libinfinity/common/inf-error.c:168
 msgid "Connection is already subscribed to this session"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:114 libinfinity/server/infd-directory.c:2451
+#: libinfinity/common/inf-error.c:170 libinfinity/server/infd-directory.c:2375
 #, c-format
 msgid "The requesting connection is not subscribed to the session"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:116
+#: libinfinity/common/inf-error.c:172
 msgid "Server sent more explored nodes then announced"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:118
+#: libinfinity/common/inf-error.c:174
 msgid "Server sent not as much explored nodes as announced"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:120
+#: libinfinity/common/inf-error.c:176
 msgid ""
 "The session does not support the network through which the connection "
 "attempt is being made."
 msgstr ""
 
-#: libinfinity/common/inf-error.c:123
+#: libinfinity/common/inf-error.c:179
 msgid "The session uses an unsupported communication method"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:125
+#: libinfinity/common/inf-error.c:181
 msgid "Received sync-in message without having requested a sync-in"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:127
+#: libinfinity/common/inf-error.c:183
 msgid "Unexpected XML message"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:129
+#: libinfinity/common/inf-error.c:185
 msgid "An unknown directory error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:131
+#: libinfinity/common/inf-error.c:187
 msgid "An error with unknown code has occured"
-msgstr ""
-
-#: libinfinity/common/inf-method-manager.c:114
-#, c-format
-msgid ""
-"Failed to load method `%s': Method with network `%s' and name `%s' already "
-"loaded."
-msgstr ""
-
-#: libinfinity/common/inf-method-manager.c:128
-#, c-format
-msgid "Failed to load module `%s': %s"
 msgstr ""
 
 #: libinfinity/common/inf-session.c:158
@@ -796,7 +775,7 @@ msgstr ""
 msgid "An error with unknown error domain occured"
 msgstr ""
 
-#: libinfinity/common/inf-session.c:722 libinftext/inf-text-session.c:1010
+#: libinfinity/common/inf-session.c:722 libinftext/inf-text-session.c:1021
 #, c-format
 msgid "User did not join from this connection"
 msgstr ""
@@ -806,13 +785,18 @@ msgstr ""
 msgid "Received unhandled XML message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-tcp-connection.c:569
+#: libinfinity/common/inf-session.c:1509
+#, c-format
+msgid "Received unexpected XML message \"%s\" while synchronizing"
+msgstr ""
+
+#: libinfinity/common/inf-tcp-connection.c:576
 #, c-format
 msgid "Interface `%s' does not exist"
 msgstr ""
 
 #. Failed to get name for device <Index>: <Reason>
-#: libinfinity/common/inf-tcp-connection.c:644
+#: libinfinity/common/inf-tcp-connection.c:651
 #, c-format
 msgid "Failed to get name for device %u: %s"
 msgstr ""
@@ -844,52 +828,52 @@ msgstr ""
 msgid "Request '%s' does not contain required attribute '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:321
+#: libinfinity/common/inf-xmpp-connection.c:326
 msgid "The entity has sent XML that cannot be processed"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:323
+#: libinfinity/common/inf-xmpp-connection.c:328
 msgid ""
 "The entity has sent a namespace prefix that is unsupported, or has sent no "
 "namespace prefix on an element that requires such a prefix"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:327
+#: libinfinity/common/inf-xmpp-connection.c:332
 msgid ""
 "The server is closing the active stream for this entity because a new stream "
 "has been initiated that conflicts with the existing stream"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:331
+#: libinfinity/common/inf-xmpp-connection.c:336
 msgid ""
 "The entity has not generated any traffic over the stream for some period of "
 "time"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:334
+#: libinfinity/common/inf-xmpp-connection.c:339
 msgid ""
 "The value of the 'to' attribute provided by the initiating entity in the "
 "stream header corresponds to a hostname that is no longer hosted by the "
 "server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:338
+#: libinfinity/common/inf-xmpp-connection.c:343
 msgid ""
 "The value of the 'to' attribute provided by the initiating entity  in the "
 "stream header does not correspond to a hostname that is hosted by the server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:342
+#: libinfinity/common/inf-xmpp-connection.c:347
 msgid "A stanza sent between two servers lacks a 'to' or 'from'attribute"
 msgstr "A stanza sent between two servers lacks a 'to' or 'from'attribute"
 
-#: libinfinity/common/inf-xmpp-connection.c:345
+#: libinfinity/common/inf-xmpp-connection.c:350
 msgid ""
 "The server has experienced a misconfiguration or an otherwise-undefined "
 "internal error that prevents it from servicing the stream"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:349
+#: libinfinity/common/inf-xmpp-connection.c:354
 msgid ""
 "The JID or hostname provided in a 'from' address does not match an "
 "authorized JID or validated domain negotiated between servers via SASL or "
@@ -897,135 +881,135 @@ msgid ""
 "binding"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:354
+#: libinfinity/common/inf-xmpp-connection.c:359
 msgid ""
 "The stream ID or dialback ID is invalid or does not match an ID previously "
 "provided"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:357
+#: libinfinity/common/inf-xmpp-connection.c:362
 msgid ""
 "The streams namespace is something other than \"http://etherx.jabber.org/"
 "streams\" or the dialback namespace name is something other than \"jabber:"
 "server:dialback\""
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:361
+#: libinfinity/common/inf-xmpp-connection.c:366
 msgid ""
 "The entity has sent invalid XML over the stream to a server that performs "
 "validation"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:364
+#: libinfinity/common/inf-xmpp-connection.c:369
 msgid ""
 "The entity has attempted to send data before the stream has been "
 "authenticated, or otherwise is not authorized to perform an action related "
 "to stream negotiation"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:368
+#: libinfinity/common/inf-xmpp-connection.c:373
 msgid "The entity has violated some local service policy"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:370
+#: libinfinity/common/inf-xmpp-connection.c:375
 msgid ""
 "The server is unable to property connect to a remote entity that is required "
 "for authentication or authorization"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:373
+#: libinfinity/common/inf-xmpp-connection.c:378
 msgid "The server lacks the system resources necessary to service the stream"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:376
+#: libinfinity/common/inf-xmpp-connection.c:381
 msgid "The entity has attempted to send restricted XML features"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:378
+#: libinfinity/common/inf-xmpp-connection.c:383
 msgid ""
 "The server will not provide service to the initiating entity but is "
 "redirecting traffic to another host"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:381
+#: libinfinity/common/inf-xmpp-connection.c:386
 msgid "The server is being shut down and all active streams are being closed"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:385
+#: libinfinity/common/inf-xmpp-connection.c:390
 msgid "The error condition is not one of those defined by the other conditions"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:388
+#: libinfinity/common/inf-xmpp-connection.c:393
 msgid ""
 "The initiating entity has encoded the stream in an encoding that is not "
 "supported by the server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:391
+#: libinfinity/common/inf-xmpp-connection.c:396
 msgid ""
 "The initiating entity has sent a first-level child of the stream that is not "
 "supported by the server."
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:394
+#: libinfinity/common/inf-xmpp-connection.c:399
 msgid ""
 "The value of the 'version' attribute provided by the initiating entity in "
 "the stream header specifies a version of XMPP that is not supported by the "
 "server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:398
+#: libinfinity/common/inf-xmpp-connection.c:403
 msgid "The initiating entity has sent XML that is not well-formed"
 msgstr "The initiating entity has sent XML that is not well-formed"
 
-#: libinfinity/common/inf-xmpp-connection.c:443
+#: libinfinity/common/inf-xmpp-connection.c:448
 msgid ""
 "The receiving entity acknowledged an <abort/> element sent by the initiating "
 "entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:446
+#: libinfinity/common/inf-xmpp-connection.c:451
 msgid ""
 "The data provided by the initiating entity could not be processed because "
 "the Base64 encoding is incorrect"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:449
+#: libinfinity/common/inf-xmpp-connection.c:454
 msgid ""
 "The authzid provided by the initiating entity is invalid, either because it "
 "is incorrectly formatted or because the initiating entity does not have "
 "permissions to authorize that ID"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:454
+#: libinfinity/common/inf-xmpp-connection.c:459
 msgid ""
 "The initiating entity did not provide a mechanism or requested a mechanism "
 "that is not supported by the receiving entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:457
+#: libinfinity/common/inf-xmpp-connection.c:462
 msgid ""
 "The mechanism requsted by the initiating entity is weaker than server policy "
 "permits for that initiating entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:460
+#: libinfinity/common/inf-xmpp-connection.c:465
 msgid ""
 "The authentication failed because the initiating entity did not provide "
 "valid credentials"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:463
+#: libinfinity/common/inf-xmpp-connection.c:468
 msgid ""
 "The authentication failed because of a temporary error condition within the "
 "receiving entity"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:466
+#: libinfinity/common/inf-xmpp-connection.c:471
 msgid "An unknown authentication error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:1001
+#: libinfinity/common/inf-xmpp-connection.c:1005
 #, c-format
 msgid "The server did not provide a certificate"
 msgstr ""
@@ -1069,17 +1053,17 @@ msgstr ""
 msgid "XML warning from %s: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:3806
+#. The server sent something which is not XML
+#: libinfinity/common/inf-xmpp-connection.c:2476
+msgid "Remote site is not an XMPP server"
+msgstr ""
+
+#: libinfinity/common/inf-xmpp-connection.c:3856
 #, c-format
 msgid "The server certificate is not trusted"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: libinfinity/server/infd-directory.c:210
-#, c-format
-msgid "The session does not support network '%s'"
-msgstr ""
-
-#: libinfinity/server/infd-directory.c:349
+#: libinfinity/server/infd-directory.c:317
 #, c-format
 msgid ""
 "Failed to save note \"%s\": %s\n"
@@ -1088,15 +1072,15 @@ msgid ""
 "shut down."
 msgstr ""
 
-#: libinfinity/server/infd-directory.c:788
+#: libinfinity/server/infd-directory.c:621
 #, c-format
 msgid ""
 "Could not write session \"%s\" to storage: %s\n"
 "\n"
-"Changes since the last save are lost."
+"All changes since the document das been saved are lost."
 msgstr ""
 
-#: libinfinity/server/infd-directory.c:1298
+#: libinfinity/server/infd-directory.c:1216
 #, c-format
 msgid ""
 "Session \"%s\" could not be saved: %s\n"
@@ -1121,32 +1105,32 @@ msgid ""
 "Subsequent storage operations will most likely fail\n"
 msgstr ""
 
-#: libinfinity/server/infd-session-proxy.c:279
+#: libinfinity/server/infd-session-proxy.c:207
 #, c-format
 msgid "Request does not contain required attribute 'name'"
 msgstr ""
 
-#: libinfinity/server/infd-session-proxy.c:297
+#: libinfinity/server/infd-session-proxy.c:225
 #, c-format
 msgid "Name '%s' already in use"
 msgstr ""
 
-#: libinfinity/server/infd-session-proxy.c:340
+#: libinfinity/server/infd-session-proxy.c:268
 #, c-format
 msgid "'status' attribute is 'unavailable' in user join request"
 msgstr ""
 
-#: libinftext/inf-text-session.c:996 libinftext/inf-text-session.c:1140
+#: libinftext/inf-text-session.c:1007 libinftext/inf-text-session.c:1151
 #, c-format
 msgid "No such user with ID '%u'"
 msgstr ""
 
-#: libinftext/inf-text-session.c:1024
+#: libinftext/inf-text-session.c:1035
 #, c-format
 msgid "Invalid hue value: '%g'"
 msgstr ""
 
-#: libinftext/inf-text-session.c:1344
+#: libinftext/inf-text-session.c:1355
 #, c-format
 msgid "'caret' attribute in user message is missing"
 msgstr ""
