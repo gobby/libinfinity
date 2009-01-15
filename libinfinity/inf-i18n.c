@@ -1,6 +1,6 @@
 /* libinfinity/inf-config.h.  Generated from inf-config.h.in by configure.  */
 /* libinfinity - a GObject-based infinote implementation
- * Copyright (C) 2007, 2008 Armin Burgmeier <armin@arbur.net>
+ * Copyright (C) 2007, 2008, 2009 Armin Burgmeier <armin@arbur.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
