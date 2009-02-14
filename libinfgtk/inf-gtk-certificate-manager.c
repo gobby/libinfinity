@@ -425,7 +425,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     priv->ca_certs->len,
     NULL,
     0,
-    0,
+    GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
     &verify
   );
 

@@ -1,5 +1,11 @@
 2009-02-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-certificate-manager.c
+	(inf_gtk_certificate_manager_certificate_func): Added
+	GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT flag.
+
+2009-02-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-cert-util.h:
 	* libinfinity/common/inf-cert-util.c: Added a "current" GPtrArray
 	parameter to inf_cert_util_load_file(), to which newly read
