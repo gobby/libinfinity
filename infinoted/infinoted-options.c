@@ -27,6 +27,9 @@
 
 static const gchar INFINOTED_OPTIONS_GROUP[] = "infinoted";
 
+/* TODO: Split the functionality to load key files as options into a separate
+ * file. */
+
 /* We abuse the flags of a GOptionEntry to decide whether the option
  * can be set in the config file in addition to the command line */
 static const gint G_OPTION_FLAG_NO_CONFIG_FILE = 1 << 31;
@@ -457,6 +460,9 @@ infinoted_options_load(InfinotedOptions* options,
     { "certificate-file", 'c', 0,
       G_OPTION_ARG_FILENAME, &options->certificate_file,
       N_("The server's certificate"), N_("CERTIFICATE-FILE") },
+    { "certificate-chain", 0, 0,
+      G_OPTION_ARG_FILENAME, &options->certificate_chain_file,
+      N_("The certificates chain down to the root certificate"), NULL },
     { "create-key", 0, G_OPTION_FLAG_NO_CONFIG_FILE,
       G_OPTION_ARG_NONE, &options->create_key,
       N_("Creates a new random private key"), NULL },
@@ -583,6 +589,7 @@ infinoted_options_new(const gchar* const* config_files,
   /* Default options */
   options->key_file = NULL;
   options->certificate_file = NULL;
+  options->certificate_chain_file = NULL;
   options->create_key = FALSE;
   options->create_certificate = FALSE;
   options->port = 6523;
@@ -611,6 +618,7 @@ infinoted_options_free(InfinotedOptions* options)
 {
   g_free(options->key_file);
   g_free(options->certificate_file);
+  g_free(options->certificate_chain_file);
   g_free(options->root_directory);
   g_slice_free(InfinotedOptions, options);
 }

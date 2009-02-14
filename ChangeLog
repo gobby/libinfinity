@@ -1,3 +1,20 @@
+2009-02-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-cert-util.h:
+	* libinfinity/common/inf-cert-util.c: Added a "current" GPtrArray
+	parameter to inf_cert_util_load_file(), to which newly read
+	certificates will be added, if non-NULL.
+
+	* libinfgtk/inf-gtk-certificate-manager.c: Adapt to the API change.
+
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c: Added a certificate-chain
+	command-line and configuration option, so that other certificates
+	belonging to the certificate chain can be read from a separate file.
+
+	* infinoted/infinoted-startup.c: Load more certificates from the
+	certificate-chain-file, if given.
+
 2008-01-15  Armin Burgmeier  <armin@arbur.net>
 
 	* all source files: Added 2009 to copyright years.

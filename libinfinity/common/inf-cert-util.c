@@ -82,12 +82,24 @@ inf_cert_util_format_hexadecimal(const guchar* data,
 }
 
 static void
-inf_cert_util_free_array(GPtrArray* array)
+inf_cert_util_free_array(GPtrArray* array,
+                         GPtrArray* current,
+                         guint current_len)
 {
+  /* If current is given, then free all entries from current, keeping only
+   * the first current_len entries. If not, free array completely. */
   guint i;
-  for(i = 0; i < array->len; ++ i)
-    gnutls_x509_crt_deinit((gnutls_x509_crt_t)g_ptr_array_index(array, i));
-  g_ptr_array_free(array, TRUE);
+  if(current != NULL)
+  {
+    for(i = current_len; i < current->len; ++ i)
+      gnutls_x509_crt_deinit((gnutls_x509_crt_t)g_ptr_array_index(array, i));
+  }
+  else
+  {
+    for(i = 0; i < array->len; ++ i)
+      gnutls_x509_crt_deinit((gnutls_x509_crt_t)g_ptr_array_index(array, i));
+    g_ptr_array_free(array, TRUE);
+  }
 }
 
 gboolean
@@ -161,12 +173,14 @@ inf_cert_util_save_file(gnutls_x509_crt_t* certs,
 }
 
 GPtrArray*
-inf_cert_util_load_file(const gchar* file,
+inf_cert_util_load_file(const gchar* filename,
+                        GPtrArray* current,
                         GError** error)
 {
   gchar* contents;
   gsize length;
   GPtrArray* result;
+  guint current_len;
 
   gchar* begin;
   gchar* end;
@@ -175,10 +189,18 @@ inf_cert_util_load_file(const gchar* file,
   gnutls_datum_t import_data;
   gnutls_x509_crt_t crt;
 
-  if(!g_file_get_contents(file, &contents, &length, error))
+  if(!g_file_get_contents(filename, &contents, &length, error))
     return NULL;
 
-  result = g_ptr_array_new();
+  if(current == NULL)
+  {
+    result = g_ptr_array_new();
+  }
+  else
+  {
+    result = current;
+    current_len = current->len;
+  }
 
   end = contents;
   for(;;)
@@ -205,7 +227,7 @@ inf_cert_util_load_file(const gchar* file,
     ret = gnutls_x509_crt_init(&crt);
     if(ret != GNUTLS_E_SUCCESS)
     {
-      inf_cert_util_free_array(result);
+      inf_cert_util_free_array(result, current, current_len);
       inf_gnutls_set_error(error, ret);
       return NULL;
     }
@@ -214,7 +236,7 @@ inf_cert_util_load_file(const gchar* file,
     if(ret != GNUTLS_E_SUCCESS)
     {
       gnutls_x509_crt_deinit(crt);
-      inf_cert_util_free_array(result);
+      inf_cert_util_free_array(result, current, current_len);
       inf_gnutls_set_error(error, ret);
       return NULL;
     }

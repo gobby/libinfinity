@@ -27,6 +27,7 @@ G_BEGIN_DECLS
 
 GPtrArray*
 inf_cert_util_load_file(const gchar* filename,
+                        GPtrArray* current,
                         GError** error);
 
 gboolean

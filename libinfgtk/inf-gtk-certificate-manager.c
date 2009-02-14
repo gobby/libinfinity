@@ -355,7 +355,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   {
     error = NULL;
 
-    priv->ca_certs = inf_cert_util_load_file(priv->trust_file, &error);
+    priv->ca_certs = inf_cert_util_load_file(priv->trust_file, NULL, &error);
     if(priv->ca_certs == NULL)
     {
       g_warning(_("Could not load trust file: %s"), error->message);
@@ -376,6 +376,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
     priv->known_hosts = inf_cert_util_load_file(
       priv->known_hosts_file,
+      NULL,
       &error
     );
 

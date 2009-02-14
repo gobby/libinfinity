@@ -29,6 +29,7 @@ typedef struct _InfinotedOptions InfinotedOptions;
 struct _InfinotedOptions {
   gchar* key_file;
   gchar* certificate_file;
+  gchar* certificate_chain_file;
   gboolean create_key;
   gboolean create_certificate;
   guint port;

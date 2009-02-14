@@ -108,12 +108,14 @@ static gnutls_x509_crt_t*
 infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
                                    gnutls_x509_privkey_t key,
                                    const gchar* certificate_file,
+                                   const gchar* certificate_chain_file,
                                    guint* n_certificates,
                                    GError** error)
 {
   gnutls_x509_crt_t* result;
   gnutls_x509_crt_t cert;
   GPtrArray* certs;
+  GPtrArray* chain_certs;
 
   if(create_self_signed_certificate == TRUE)
   {
@@ -138,8 +140,21 @@ infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
   }
   else
   {
-    certs = inf_cert_util_load_file(certificate_file, error);
+    certs = inf_cert_util_load_file(certificate_file, NULL, error);
     if(certs == NULL) return NULL;
+
+    if(certificate_chain_file != NULL)
+    {
+      chain_certs =
+        inf_cert_util_load_file(certificate_chain_file, certs, error);
+
+      if(chain_certs == NULL)
+      {
+        result = (gnutls_x509_crt_t*)g_ptr_array_free(certs, FALSE);
+        infinoted_startup_free_certificate_array(result, *n_certificates);
+        return NULL;
+      }
+    }
 
     *n_certificates = certs->len;
     result = (gnutls_x509_crt_t*)g_ptr_array_free(certs, FALSE);
@@ -205,6 +220,7 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
       startup->options->create_certificate,
       startup->private_key,
       startup->options->certificate_file,
+      startup->options->certificate_chain_file,
       &startup->n_certificates,
       error
     );
