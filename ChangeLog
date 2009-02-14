@@ -1,5 +1,11 @@
 2009-02-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection.c
+	(inf_tcp_connection_io_incoming): Make sure we don't try to read again
+	when the connection has been closed in a signal handler.
+
+2009-02-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-manager.c
 	(inf_gtk_certificate_manager_certificate_func): Added
 	GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT flag.
