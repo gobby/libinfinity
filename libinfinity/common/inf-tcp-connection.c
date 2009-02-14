@@ -326,7 +326,7 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
     }
   } while( ((result > 0) ||
             (result < 0 && errcode == INF_TCP_CONNECTION_EINTR)) &&
-           (priv->socket != INVALID_SOCKET));
+           (priv->status != INF_TCP_CONNECTION_CLOSED));
 }
 
 static void
