@@ -1,3 +1,9 @@
+2009-02-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-certificate-manager.c
+	(inf_gtk_certificate_manager_certificate_func): Added
+	GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT flag.
+
 2009-01-15  Armin Burgmeier  <armin@arbur.net>
 
 	* all source files: Added 2009 to copyright years.
