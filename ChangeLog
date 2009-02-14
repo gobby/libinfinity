@@ -21,15 +21,15 @@
 	* infinoted/infinoted-startup.c: Load more certificates from the
 	certificate-chain-file, if given.
 
-2008-01-15  Armin Burgmeier  <armin@arbur.net>
+2009-01-15  Armin Burgmeier  <armin@arbur.net>
 
 	* all source files: Added 2009 to copyright years.
 
-2008-01-04  Armin Burgmeier  <armin@arbur.net>
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Post-release bump to 0.3.0.
 
-2008-01-04  Armin Burgmeier  <armin@arbur.net>
+2009-01-04  Armin Burgmeier  <armin@arbur.net>
 
 	* === Released 0.2.0 ===
 
