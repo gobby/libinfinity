@@ -47,6 +47,18 @@ inf_xml_util_get_attribute_int_required(xmlNodePtr xml,
                                         GError** error);
 
 gboolean
+inf_xml_util_get_attribute_long(xmlNodePtr xml,
+                                const gchar* attribute,
+                                glong* result,
+                                GError** error);
+
+gboolean
+inf_xml_util_get_attribute_long_required(xmlNodePtr xml,
+                                         const gchar* attribute,
+                                         glong* result,
+                                         GError** error);
+
+gboolean
 inf_xml_util_get_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
                                 guint* result,
@@ -57,6 +69,18 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
                                          const gchar* attribute,
                                          guint* result,
                                          GError** error);
+
+gboolean
+inf_xml_util_get_attribute_ulong(xmlNodePtr xml,
+                                 const gchar* attribute,
+                                 gulong* result,
+                                 GError** error);
+
+gboolean
+inf_xml_util_get_attribute_ulong_required(xmlNodePtr xml,
+                                          const gchar* attribute,
+                                          gulong* result,
+                                          GError** error);
 
 gboolean
 inf_xml_util_get_attribute_double(xmlNodePtr xml,
@@ -81,9 +105,19 @@ inf_xml_util_set_attribute_int(xmlNodePtr xml,
                                gint value);
 
 void
+inf_xml_util_set_attribute_long(xmlNodePtr xml,
+                                const gchar* attribute,
+                                glong value);
+
+void
 inf_xml_util_set_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
                                 guint value);
+
+void
+inf_xml_util_set_attribute_ulong(xmlNodePtr xml,
+                                 const gchar* attribute,
+                                 gulong value);
 
 void
 inf_xml_util_set_attribute_double(xmlNodePtr xml,

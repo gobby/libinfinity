@@ -1,3 +1,9 @@
+2009-02-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xml-util.h:
+	* libinfinity/common/inf-xml-util.c: Added xml property setter and
+	getter functions for long and unsigned long values.
+
 2009-02-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-tcp-connection.c

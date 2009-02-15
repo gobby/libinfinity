@@ -25,10 +25,10 @@
 #include <errno.h>
 
 static gboolean
-inf_xml_util_string_to_int(const gchar* attribute,
-                           const xmlChar* value,
-                           gint* output,
-                           GError** error)
+inf_xml_util_string_to_long(const gchar* attribute,
+                            const xmlChar* value,
+                            glong* output,
+                            GError** error)
 {
   long converted;
   char* endptr;
@@ -48,8 +48,7 @@ inf_xml_util_string_to_int(const gchar* attribute,
 
     return FALSE;
   }
-  else if( (errno == ERANGE && converted == LONG_MAX) ||
-          converted > (long)G_MAXINT)
+  else if( (errno == ERANGE && converted == LONG_MAX))
   {
     g_set_error(
       error,
@@ -62,8 +61,95 @@ inf_xml_util_string_to_int(const gchar* attribute,
 
     return FALSE;
   }
-  else if( (errno == ERANGE && converted == LONG_MIN) ||
-            converted < (long)G_MININT)
+  else if( (errno == ERANGE && converted == LONG_MIN))
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      _("Attribute '%s' causes underflow (%s)"),
+      attribute,
+      (const gchar*)value
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    *output = converted;
+    return TRUE;
+  }
+}
+
+static gboolean
+inf_xml_util_string_to_ulong(const gchar* attribute, 
+                             const xmlChar* value,
+                             gulong* output,
+                             GError** error)
+{
+  unsigned long converted;
+  char* endptr;
+
+  errno = 0;
+  converted = strtoul((const char*)value, &endptr, 0);
+
+  if(*value == '\0' || *endptr != '\0')
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      _("Attribute '%s' does not contain a valid number"),
+      attribute
+    );
+
+    return FALSE;
+  }
+  else if(errno == ERANGE)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      _("Attribute '%s' causes overflow (%s)"),
+      attribute,
+      (const gchar*)value
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    *output = converted;
+    return TRUE;
+  }
+}
+
+static gboolean
+inf_xml_util_string_to_int(const gchar* attribute,
+                           const xmlChar* value,
+                           gint* output,
+                           GError** error)
+{
+  glong converted;
+
+  if(!inf_xml_util_string_to_long(attribute, value, &converted, error))
+    return FALSE;
+
+  if(converted > (long)G_MAXINT)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_NUMBER,
+      _("Attribute '%s' causes overflow (%s)"),
+      attribute,
+      (const gchar*)value
+    );
+
+    return FALSE;
+  }
+  else if(converted < (long)G_MININT)
   {
     g_set_error(
       error,
@@ -90,24 +176,11 @@ inf_xml_util_string_to_uint(const gchar* attribute,
                             GError** error)
 {
   unsigned long converted;
-  char* endptr;
 
-  errno = 0;
-  converted = strtoul((const char*)value, &endptr, 0);
-
-  if(*value == '\0' || *endptr != '\0')
-  {
-    g_set_error(
-      error,
-      inf_request_error_quark(),
-      INF_REQUEST_ERROR_INVALID_NUMBER,
-      _("Attribute '%s' does not contain a valid number"),
-      attribute
-    );
-
+  if(!inf_xml_util_string_to_ulong(attribute, value, &converted, error))
     return FALSE;
-  }
-  else if(errno == ERANGE || converted > (unsigned long)G_MAXUINT)
+
+  if(converted > (unsigned long)G_MAXUINT)
   {
     g_set_error(
       error,
@@ -250,6 +323,40 @@ inf_xml_util_get_attribute_int_required(xmlNodePtr xml,
 }
 
 gboolean
+inf_xml_util_get_attribute_long(xmlNodePtr xml,
+                                const gchar* attribute,
+                                glong* result,
+                                GError** error)
+{
+  xmlChar* value;
+  gboolean retval;
+
+  value = xmlGetProp(xml, (const xmlChar*)attribute);
+  if(value == NULL) return FALSE;
+
+  retval = inf_xml_util_string_to_long(attribute, value, result, error);
+  xmlFree(value);
+  return retval;
+}
+
+gboolean
+inf_xml_util_get_attribute_long_required(xmlNodePtr xml,
+                                         const gchar* attribute,
+                                         glong* result,
+                                         GError** error)
+{
+  xmlChar* value;
+  gboolean retval;
+
+  value = inf_xml_util_get_attribute_required(xml, attribute, error);
+  if(value == NULL) return FALSE;
+
+  retval = inf_xml_util_string_to_long(attribute, value, result, error);
+  xmlFree(value);
+  return retval;
+}
+
+gboolean
 inf_xml_util_get_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
                                 guint* result,
@@ -279,6 +386,40 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
   if(value == NULL) return FALSE;
 
   retval = inf_xml_util_string_to_uint(attribute, value, result, error);
+  xmlFree(value);
+  return retval;
+}
+
+gboolean
+inf_xml_util_get_attribute_ulong(xmlNodePtr xml,
+                                 const gchar* attribute,
+                                 gulong* result,
+                                 GError** error)
+{
+  xmlChar* value;
+  gboolean retval;
+
+  value = xmlGetProp(xml, (const xmlChar*)attribute);
+  if(value == NULL) return FALSE;
+
+  retval = inf_xml_util_string_to_ulong(attribute, value, result, error);
+  xmlFree(value);
+  return retval;
+}
+
+gboolean
+inf_xml_util_get_attribute_ulong_required(xmlNodePtr xml,
+                                          const gchar* attribute,
+                                          gulong* result,
+                                          GError** error)
+{
+  xmlChar* value;
+  gboolean retval;
+
+  value = inf_xml_util_get_attribute_required(xml, attribute, error);
+  if(value == NULL) return FALSE;
+
+  retval = inf_xml_util_string_to_ulong(attribute, value, result, error);
   xmlFree(value);
   return retval;
 }
@@ -330,8 +471,19 @@ inf_xml_util_set_attribute_int(xmlNodePtr xml,
                                const gchar* attribute,
                                gint value)
 {
-  char buffer[24];
+  char buffer[sizeof(gint) * 3];
   sprintf(buffer, "%d", value);
+
+  xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
+}
+
+void
+inf_xml_util_set_attribute_long(xmlNodePtr xml,
+                                const gchar* attribute,
+                                glong value)
+{
+  char buffer[sizeof(glong) * 3];
+  sprintf(buffer, "%ld", value);
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
@@ -341,8 +493,19 @@ inf_xml_util_set_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
                                 guint value)
 {
-  char buffer[24];
+  char buffer[sizeof(guint) * 3];
   sprintf(buffer, "%u", value);
+
+  xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
+}
+
+void
+inf_xml_util_set_attribute_ulong(xmlNodePtr xml,
+                                 const gchar* attribute,
+                                 gulong value)
+{
+  char buffer[sizeof(gulong) * 3];
+  sprintf(buffer, "%lu", value);
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
