@@ -499,6 +499,9 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     {
       /* Nothing to complain about, continue connection immediately. */
       inf_xmpp_connection_certificate_verify_continue(connection);
+
+      /* TODO: Add host to known hosts list, so that we can warn when its
+       * certificate changes? */
     }
     else
     {

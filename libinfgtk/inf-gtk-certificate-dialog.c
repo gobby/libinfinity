@@ -129,6 +129,9 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       }
       else
       {
+        /* TODO: Don't show this if the issuer of the new certificate
+         * is trusted, either because it's in the trust file or because it
+         * is in the known hosts file. */
         g_string_append(
           info_text,
           _("It is possible that the connection to the server is being "

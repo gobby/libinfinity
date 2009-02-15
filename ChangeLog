@@ -1,5 +1,13 @@
 2009-02-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-certificate-dialog.c:
+	* libinfgtk/inf-gtk-certificate-manager.c: Added TODO comments about
+	how to improve certificate handling: For trusted hosts, we shouldn't
+	show the hijack warning, and we should remember trusted hosts in the
+	known hosts file.
+
+2009-02-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xml-util.h:
 	* libinfinity/common/inf-xml-util.c: Added xml property setter and
 	getter functions for long and unsigned long values.
