@@ -47,6 +47,7 @@
 #include <avahi-common/alternative.h>
 #include <avahi-common/error.h>
 
+#include <sys/socket.h> /* Required by FreeBSD, see #430 */
 #include <net/if.h> /* For if_indextoname */
 #include <string.h>
 
