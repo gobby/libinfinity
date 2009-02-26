@@ -1,3 +1,9 @@
+2009-02-26  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-discovery-avahi.c: Added <sys/socket.h>
+	include to allow compilation on FreeBSD. Bug #430. Patch by
+	Romain Tartière.
+
 2009-02-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-certificate-dialog.c:
