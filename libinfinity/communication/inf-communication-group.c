@@ -861,7 +861,8 @@ inf_communication_group_get_method_for_network(InfCommunicationGroup* group,
  * @conn: The #InfXmlConnection for which to retrieve the method.
  *
  * Returns the method name of the method used for communication on @conn's
- * network within @group.
+ * network within @group. @conn does not need to be a member of @grp for this
+ * function to be called.
  *
  * Returns: A method name. The string is owned by the group, you don't need
  * to free it.

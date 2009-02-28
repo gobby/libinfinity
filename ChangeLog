@@ -1,3 +1,9 @@
+2009-02-28  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/communication/inf-communication-group.c: Documentation
+	fix for inf_communication_group_get_method_for_network(): Mention that
+	conn does not need to be a member of the group.
+
 2009-02-26  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-discovery-avahi.c: Added <sys/socket.h>
