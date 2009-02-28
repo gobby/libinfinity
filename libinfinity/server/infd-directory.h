@@ -152,7 +152,7 @@ gboolean
 infd_directory_add_note(InfdDirectory* directory,
                         InfdDirectoryIter* parent,
                         const gchar* name,
-                        InfdNotePlugin* plugin,
+                        const InfdNotePlugin* plugin,
                         InfdDirectoryIter* iter,
                         GError** error);
 

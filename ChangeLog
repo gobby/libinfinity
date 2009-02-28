@@ -1,5 +1,30 @@
 2009-02-28  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST, and some
+	documentation fixes.
+
+	* libinfinity/common/inf-session.c: Added a TODO item.
+
+	* libinfinity/client/infc-browser.c: Send <subscribe-ack> or
+	<subscribe-nack> after subscriptions, actually perform the
+	subscription when the message has been sent. This is used to tell the
+	server whether a subscription was successful or not. The subscription
+	can fail if the client does not support the communication method used,
+	or if it does not know the note type.
+
+	* libinfinity/server/infd-directory.h: Made the InfdNotePlugin
+	parameter const in infd_directory_add_note().
+
+	* libinfinity/server/infd-directory.c: Don't immediately subscribe the
+	client in <subscribe-session> or <add-node> requests, but wait for
+	<subscribe-ack> instead. Don't add the node in the latter case if the
+	client replies with <subscribe-nack>, so that <add-node> operations
+	are atomic.
+
+2009-02-28  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/communication/inf-communication-group.c: Documentation
 	fix for inf_communication_group_get_method_for_network(): Mention that
 	conn does not need to be a member of the group.

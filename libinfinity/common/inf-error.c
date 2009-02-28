@@ -156,6 +156,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("A node with this name exists already");
   case INF_DIRECTORY_ERROR_NO_SUCH_NODE:
     return _("Node does not exist");
+  case INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST:
+    return _("No previous subscription request present");
   case INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY:
     return _("Node is not a subdirectory");
   case INF_DIRECTORY_ERROR_NOT_A_NOTE:

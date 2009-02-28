@@ -52,3 +52,5 @@ Others:
    InfdXmppServer. Or, consider simply removing the interface, and require
    people to use InfDiscoveryAvahi directly (check how well that works with
    InfdServerPool).
+ * Assert in infc_explore_request_progress/_finish instead of setting error,
+   check error condition in InfcBrowser.

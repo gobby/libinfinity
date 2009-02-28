@@ -28,8 +28,8 @@ G_BEGIN_DECLS
 
 /**
  * InfRequestError:
- * @INF_REQUEST_ERROR_UNKNOWN_DOMAIN: The server sent <request-failed/> with
- * an unknown error domain.
+ * @INF_REQUEST_ERROR_UNKNOWN_DOMAIN: The server sent &lt;request-failed/&gt;
+ * with an unknown error domain.
  * @INF_REQUEST_ERROR_REPLY_UNPROCESSED: An error occured while processing the
  * server reply for a request.
  * @INF_REQUEST_ERROR_INVALID_SEQ: The server sent an invalid sequence number
@@ -94,6 +94,8 @@ typedef enum _InfUserError {
  * already in that subdirectory (in response to node creation requests).
  * @INF_DIRECTORY_ERROR_NO_SUCH_NODE: The node refered to in a request does
  * not exist in the directory (anymore).
+ * @INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST: A &lt;subscribe-ack&gt;
+ * or &lt;subscribe-nack&gt; has been received without a previous request.
  * @INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY: The node refered to in a request
  * is not a subdirectory node, but the requested operation requires one.
  * @INF_DIRECTORY_ERROR_NOT_A_NOTE: The node refered to in a request is not
@@ -118,8 +120,9 @@ typedef enum _InfUserError {
  * @INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED: The server requested a
  * communaction method for subscription or synchronization that is not
  * supported by the client.
- * @INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN: A client received a <sync-in/>
- * without having requested one. The client has no data to sync to the server.
+ * @INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN: A client received a
+ * &lt;sync-in/&gt; without having requested one. The client has no data to
+ * sync to the server.
  * @INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE: A message that is not understood
  * was received.
  * @INF_DIRECTORY_ERROR_FAILED: Generic error code when no further reason of
@@ -131,6 +134,7 @@ typedef enum _InfUserError {
 typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NODE_EXISTS,
   INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+  INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
   INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,

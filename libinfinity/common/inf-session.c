@@ -199,6 +199,9 @@ inf_session_get_sync_error_message(GQuark domain,
   if(domain == inf_session_sync_error_quark)
     return inf_session_sync_strerror(code);
 
+  /* TODO: Add a possibilty for sub classes to register their error domains
+   * that can occur in process_xml_sync. Maybe via a translate_error_sync
+   * vfunc. */
   return _("An error with unknown error domain occured");
 }
 
