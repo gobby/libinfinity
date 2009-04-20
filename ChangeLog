@@ -1,3 +1,8 @@
+2009-04-20  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/communication/inf-communication-hosted-group.c: Fixed
+	the length of a documentation comment.
+
 2009-02-28  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:

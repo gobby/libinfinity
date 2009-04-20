@@ -24,8 +24,8 @@
  * @stability: Unstable
  * @see_also: #InfCommunicationGroup, #InfCommunicationManager
  *
- * #InfCommunicationHostedGroup is a #InfCommunicationHostedGroup opened on the
- * local host. It allows adding other hosts to the group via
+ * #InfCommunicationHostedGroup is a #InfCommunicationHostedGroup opened on
+ * the local host. It allows adding other hosts to the group via
  * inf_communication_hosted_group_add_member(), and to remove hosts via
  * inf_communication_hosted_group_remove_member().
  **/
