@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-01-05 02:28+0100\n"
+"POT-Creation-Date: 2009-04-20 23:05+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -543,7 +543,7 @@ msgstr ""
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:502
+#: libinfinity/common/inf-discovery-avahi.c:503
 #, c-format
 msgid ""
 "Avahi service browser is in failure state. Services of type '%s' are no "
@@ -552,7 +552,7 @@ msgid ""
 "The failure was: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:570
+#: libinfinity/common/inf-discovery-avahi.c:571
 #, c-format
 msgid ""
 "Avahi entry group is in failure state. The service '%s' of type '%s' is no "
@@ -561,7 +561,7 @@ msgid ""
 "The failure was: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:780
+#: libinfinity/common/inf-discovery-avahi.c:781
 #, c-format
 msgid ""
 "Failed to start Avahi client. Service discovery or publishing will not be "
@@ -570,7 +570,7 @@ msgid ""
 "The occurred failure was: %s"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:823
+#: libinfinity/common/inf-discovery-avahi.c:824
 #, c-format
 msgid ""
 "Avahi client is in failure state. Service discovery or publishing is no "
@@ -581,12 +581,12 @@ msgstr ""
 
 #. Translators: This is "<Service Name> (via <Network Interface> on
 #. * <address family>)", for example "ck (via eth0 on IPv4)".
-#: libinfinity/common/inf-discovery-avahi.c:1373
+#: libinfinity/common/inf-discovery-avahi.c:1374
 #, c-format
 msgid "%s (via %s on IPv4)"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:1374
+#: libinfinity/common/inf-discovery-avahi.c:1375
 #, c-format
 msgid "%s (via %s on IPv6)"
 msgstr ""

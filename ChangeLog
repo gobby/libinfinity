@@ -1,3 +1,11 @@
+2009-04-20  Armin Burgmeier  <armin@arbur.net>
+
+	* === Released 0.2.1 ===
+
+	* NEWS: Update for release.
+
+	* configure.ac: Bump version number to 0.2.1.
+
 2009-02-28  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/communication/inf-communication-group.c: Documentation
