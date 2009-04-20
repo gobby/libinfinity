@@ -1,4 +1,6 @@
 m4_define([libinfinity_version], [0.3.0])
+m4_define([libinfinity_api_version], [0.3])
+m4_define([libinfinity_libtool_version], [0:0:0])
 
 AC_PREREQ(2.59)
 AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
@@ -8,7 +10,11 @@ AC_CONFIG_SRCDIR([libinfinity/common/inf-init.c])
 AC_CONFIG_HEADER([config.h libinfinity/inf-config.h])
 
 LIBINFINITY_VERSION=libinfinity_version
+LIBINFINITY_API_VERSION=libinfinity_api_version
+LIBINFINITY_LIBTOOL_VERSION=libinfinity_libtool_version
 AC_SUBST(LIBINFINITY_VERSION)
+AC_SUBST(LIBINFINITY_API_VERSION)
+AC_SUBST(LIBINFINITY_LIBTOOL_VERSION)
 
 AC_CANONICAL_HOST
 
@@ -207,12 +213,16 @@ AC_CONFIG_FILES([
         docs/reference/libinftextgtk/Makefile
 
     po/Makefile.in
-
-  libinfinity-1.0.pc
-  libinftext-1.0.pc
-  libinfgtk-1.0.pc
-  libinftextgtk-1.0.pc
 ])
+
+# These are separate for the macros to be expanded
+# (note no square brackets)
+AC_CONFIG_FILES(
+  libinfinity-libinfinity_api_version.pc:libinfinity.pc.in
+  libinftext-libinfinity_api_version.pc:libinftext.pc.in
+  libinfgtk-libinfinity_api_version.pc:libinfgtk.pc.in
+  libinftextgtk-libinfinity_api_version.pc:libinftextgtk.pc.in
+)
 
 AC_OUTPUT
 

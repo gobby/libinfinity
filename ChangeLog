@@ -1,5 +1,36 @@
 2009-04-20  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk.pc.in:
+	* libinfinity.pc.in:
+	* libinftext.pc.in:
+	* libinftextgtk.pc.in: Moved from *-1.0.pc.in, respectively. The API
+	version of the generated .pc file is not determined by the configure
+	script.
+
+	* infinoted/Makefile.am:
+	* infinoted/note-plugins/text/Makefile.am:
+	* libinfinity/Makefile.am:
+	* libinfinity/common/Makefile.am:
+	* libinfinity/communication/Makefile.am:
+	* libinfinity/adopted/Makefile.am:
+	* libinfinity/client/Makefile.am:
+	* libinfinity/server/Makefile.am:
+	* libinfgtk/Makefile.am:
+	* libinftext/Makefile.am:
+	* libinftextgtk/Makefile.am:
+	* test/Makefile.am:
+	* docs/reference/libinfinity/Makefile.am:
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am:
+	* configure.ac:
+	* Makefile.am: Introduce libtool versioning, make libinfinity
+	parallel-installable with future versions. The pkg-config files are
+	now prefixed with the corresponding libinfinity API version, such as
+	libinfinity-0.3.pc.
+
+2009-04-20  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/communication/inf-communication-hosted-group.c: Fixed
 	the length of a documentation comment.
 

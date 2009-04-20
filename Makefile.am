@@ -1,16 +1,18 @@
 SUBDIRS = libinfinity libinftext
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libinfinity-1.0.pc libinftext-1.0.pc
+pkgconfig_DATA = \
+	libinfinity-$(LIBINFINITY_API_VERSION).pc \
+	libinftext-$(LIBINFINITY_API_VERSION).pc
 
 if WITH_INFGTK
 SUBDIRS += libinfgtk
-pkgconfig_DATA += libinfgtk-1.0.pc
+pkgconfig_DATA += libinfgtk-$(LIBINFINITY_API_VERSION).pc
 endif
 
 if WITH_INFTEXTGTK
 SUBDIRS += libinftextgtk
-pkgconfig_DATA += libinftextgtk-1.0.pc
+pkgconfig_DATA += libinftextgtk-$(LIBINFINITY_API_VERSION).pc
 endif
 
 if WITH_INFINOTED

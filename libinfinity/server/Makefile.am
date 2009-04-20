@@ -4,7 +4,8 @@ libinfinity_server_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
-libinfinity_server_ladir = $(includedir)/libinfinity-1.0/libinfinity/server
+libinfinity_server_ladir = \
+	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/server
 
 libinfinity_server_la_SOURCES = \
 	infd-directory.c \

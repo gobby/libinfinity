@@ -1,27 +1,30 @@
-lib_LTLIBRARIES = libinftextgtk-1.0.la
+# TODO: Find a way to have the version number set automatically.
+lib_LTLIBRARIES = libinftextgtk-0.3.la
 
-libinftextgtk_1_0_la_CPPFLAGS = \
+libinftextgtk_0_3_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(inftextgtk_CFLAGS) \
 	$(inftext_CFLAGS) \
 	$(infinity_CFLAGS)
 
-libinftextgtk_1_0_la_LDFLAGS = \
-	-no-undefined
+libinftextgtk_0_3_la_LDFLAGS = \
+	-no-undefined \
+	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
-libinftextgtk_1_0_la_LIBADD = \
-	${top_builddir}/libinftext/libinftext-1.0.la \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
+libinftextgtk_0_3_la_LIBADD = \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(inftextgtk_LIBS) \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 
-libinftextgtk_1_0_ladir = $(includedir)/libinftextgtk-1.0/libinftextgtk
+libinftextgtk_0_3_ladir = \
+	$(includedir)/libinftextgtk-$(LIBINFINITY_API_VERSION)/libinftextgtk
 
-libinftextgtk_1_0_la_HEADERS = \
+libinftextgtk_0_3_la_HEADERS = \
 	inf-text-gtk-buffer.h \
 	inf-text-gtk-hue-chooser.h
 
-libinftextgtk_1_0_la_SOURCES = \
+libinftextgtk_0_3_la_SOURCES = \
 	inf-text-gtk-buffer.c \
 	inf-text-gtk-hue-chooser.c

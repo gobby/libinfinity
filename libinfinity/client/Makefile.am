@@ -4,7 +4,8 @@ libinfinity_client_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
-libinfinity_client_ladir = $(includedir)/libinfinity-1.0/libinfinity/client
+libinfinity_client_ladir = \
+	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/client
 
 libinfinity_client_la_SOURCES = \
 	infc-browser.c \

@@ -76,8 +76,8 @@ expand_content_files=
 AM_CPPFLAGS=$(inftext_CFLAGS)
 GTKDOC_LIBS = \
 	$(inftext_LIBS) \
-	$(top_builddir)/libinfinity/libinfinity-1.0.la \
-	$(top_builddir)/libinftext/libinftext-1.0.la
+	$(top_builddir)/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(top_builddir)/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la
 
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make

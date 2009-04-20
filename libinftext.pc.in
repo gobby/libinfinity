@@ -5,7 +5,7 @@ includedir=@includedir@
 
 Name: libinftext
 Description: Infinote text processing library
-Requires: libinfinity-1.0
+Requires: libinfinity-@LIBINFINITY_API_VERSION@
 Version: @VERSION@
-Libs: -L${libdir} -linftext-1.0
-Cflags: -I${includedir}/libinftext-1.0
+Libs: -L${libdir} -linftext-@LIBINFINITY_API_VERSION@
+Cflags: -I${includedir}/libinftext-@LIBINFINITY_API_VERSION@

@@ -1,22 +1,23 @@
 SUBDIRS = note-plugins
 
-bin_PROGRAMS = infinoted
+# TODO: Find a way to have the version number set automatically.
+bin_PROGRAMS = infinoted-0.3
 
-plugin_path = infinoted-1.0/note-plugins
+plugin_path = infinoted-$(LIBINFINITY_API_VERSION)/note-plugins
 
-infinoted_CPPFLAGS = \
+infinoted_0_3_CPPFLAGS = \
 	-I${top_srcdir} \
 	$(infinoted_CFLAGS) \
 	$(infinity_CFLAGS) \
 	-DPLUGIN_LIBPATH=\"${libdir}\" \
 	-DPLUGIN_BASEPATH=\"${plugin_path}\"
 
-infinoted_LDADD = \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
+infinoted_0_3_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS)
 
-infinoted_SOURCES = \
+infinoted_0_3_SOURCES = \
 	infinoted-autosave.c \
 	infinoted-creds.c \
 	infinoted-main.c \

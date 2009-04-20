@@ -1,21 +1,25 @@
-lib_LTLIBRARIES = libinftext-1.0.la
+# TODO: Find a way to have the version number set automatically.
+lib_LTLIBRARIES = libinftext-0.3.la
 
-libinftext_1_0_la_CPPFLAGS = \
+libinftext_0_3_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(inftext_CFLAGS) \
 	$(infinity_CFLAGS)
 
-libinftext_1_0_la_LDFLAGS = \
-	-no-undefined
+libinftext_0_3_la_LDFLAGS = \
+	-no-undefined \
+	-release $(LIBINFINITY_API_VERSION) \
+	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
-libinftext_1_0_la_LIBADD = \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
+libinftext_0_3_la_LIBADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 
-libinftext_1_0_ladir = $(includedir)/libinftext-1.0/libinftext
+libinftext_0_3_ladir = \
+	$(includedir)/libinftext-$(LIBINFINITY_API_VERSION)/libinftext
 
-libinftext_1_0_la_HEADERS = \
+libinftext_0_3_la_HEADERS = \
 	inf-text-buffer.h \
 	inf-text-chunk.h \
 	inf-text-default-buffer.h \
@@ -29,7 +33,7 @@ libinftext_1_0_la_HEADERS = \
 	inf-text-session.h \
 	inf-text-user.h
 
-libinftext_1_0_la_SOURCES = \
+libinftext_0_3_la_SOURCES = \
 	inf-text-buffer.c \
 	inf-text-chunk.c \
 	inf-text-default-buffer.c \

@@ -6,7 +6,7 @@ libinfinity_communication_la_CPPFLAGS = \
 noinst_LTLIBRARIES = libinfinity_communication.la
 
 libinfinity_communication_ladir = \
-	$(includedir)/libinfinity-1.0/libinfinity/communication
+	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/communication
 
 libinfinity_communication_la_SOURCES = \
 	inf-communication-central-factory.c \
