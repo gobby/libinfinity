@@ -1,5 +1,11 @@
 2009-04-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-session-record.c
+	(inf_adopted_session_record_stop_recording): Fixed two compiler
+	warnings about incompatible pointer types by properly casting them.
+
+2009-04-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/Makefile.am:
 	* libinftext/Makefile.am: Removed -release from LDFLAGS to not
 	duplicate the API version number in the .so filename.

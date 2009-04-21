@@ -667,6 +667,7 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
                                           GError** error)
 {
   InfAdoptedSessionRecordPrivate* priv;
+  InfSessionStatus status;
   InfAdoptedAlgorithm* algorithm;
   InfUserTable* user_table;
   xmlErrorPtr xmlerror;
@@ -687,12 +688,13 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
 
   /* In synchronizing state we did not yet connect to these signals, and
    * the algorithm doesn't even exist. */
-  if(inf_session_get_status(priv->session) != INF_SESSION_SYNCHRONIZING)
+  status = inf_session_get_status(INF_SESSION(priv->session));
+  if(status != INF_SESSION_SYNCHRONIZING)
   {
     user_table = inf_session_get_user_table(INF_SESSION(priv->session));
 
     /* The algorithm has been destroyed when the session has been closed. */
-    if(inf_session_get_status(priv->session) != INF_SESSION_CLOSED)
+    if(status != INF_SESSION_CLOSED)
     {
       algorithm = inf_adopted_session_get_algorithm(priv->session);
       g_assert(algorithm != NULL);
