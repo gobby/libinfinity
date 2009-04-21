@@ -73,11 +73,9 @@ typedef enum _InfAdoptedOperationFlags {
 /**
  * InfAdoptedOperationIface:
  * @need_concurrency_id: Virtual function to determine whether a concurrency
- * ID is required to transform @operation against @against. <!-- The function
- * is considered to return always %FALSE if not implemented. -->
+ * ID is required to transform @operation against @against.
  * @get_concurrency_id: Virtual function to obtain a concurrency ID for
- * transforming @op against @against. <!-- The function is considered to
- * always return %INF_ADOPTED_CONCURRENCY_NONE if not implemented. -->
+ * transforming @op against @against.
  * @transform: Virtual function that transform @operation against @against and
  * returns a new #InfAdoptedOperation as the result of the transformation.
  * @concurrency_id is either 1 or -1 and can be used to make a decision in
