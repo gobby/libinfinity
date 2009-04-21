@@ -13,5 +13,5 @@ noinst_HEADERS = \
 	inf-test-util.h
 
 libinftestutil_a_LIBADD = \
-	${top_builddir}/libinfinity/libinfinity-1.0.la \
-	${top_builddir}/libinftext/libinftext-1.0.la
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la
