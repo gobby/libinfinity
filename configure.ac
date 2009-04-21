@@ -164,7 +164,7 @@ fi
 # gettext
 ############
 
-GETTEXT_PACKAGE=libinfinity10
+GETTEXT_PACKAGE="libinfinity-libinfinity_api_version"
 AC_SUBST(GETTEXT_PACKAGE)
 AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE], ["$GETTEXT_PACKAGE"],
                    [The domain name to use with gettext.])
@@ -205,8 +205,9 @@ AC_CONFIG_FILES([
       test/cleanup/Makefile
 
     docs/Makefile
-      docs/reference/version.xml
       docs/reference/Makefile
+      docs/reference/version.xml
+      docs/reference/api_version.xml
         docs/reference/libinfinity/Makefile
         docs/reference/libinftext/Makefile
         docs/reference/libinfgtk/Makefile

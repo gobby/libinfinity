@@ -1,3 +1,9 @@
+libinfinity 0.2.1:
+
+	* Fixed compilation on FreeBSD (#430, Romain Tartière)
+	* Fixed a crash that could occur on connection loss.
+	* Accept v1 X.509 certificates.
+
 libinfinity 0.2.0:
 
 	* infinoted records sessions to ~/.infinoted-records

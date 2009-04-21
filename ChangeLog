@@ -1,5 +1,35 @@
 2009-04-21  Armin Burgmeier  <armin@arbur.net>
 
+	* docs/reference/api_version.xml.in: Added another external entity for
+	the API version. There is still one newline too much at the end in the
+	generated file, but I have currently no idea how to get rid of it.
+
+	* configure.ac: Generate docs/reference/api_version.xml.
+
+	* libinfinity/Makefile.am: Added inf-marshal.in to EXTRA_DIST instead
+	of dist_pkgdata_DATA, so that it is not installed.
+
+	* libinfinity/common/inf-discovery.h: Fixed a typo in a parameter
+	name.
+
+	* docs/reference/libinfinity/libinfinity-0.3-docs.sgml:
+	* docs/reference/libinfinity/libinfinity-0.3-overrides.txt:
+	* docs/reference/libinfinity/libinfinity-0.3-sections.txt: Moved from
+	the non-versioned files for parallel installation of the
+	documentation. This requires renaming these files with every API
+	version bump. The other libraries (libinftext, libinfgtk,
+	libinftextgtk) will follow soon.
+
+	* docs/reference/libinfinity/Makefile.am: Changed DOC_MODULE to
+	libinfinity-0.3 for parallel installation.
+
+	* docs/reference/libinftext/libinftext-docs.sgml:
+	* docs/reference/libinfgtk/libinfgtk-docs.sgml:
+	* docs/reference/libinftextgtk/libinftextgtk-docs.sgml: Include the
+	new external entity, and name the API version in the book title.
+
+2009-04-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-operation.h: Removed commented-out
 	documentation as this causes a warning when building the
 	documentation.

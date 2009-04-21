@@ -21,8 +21,6 @@ libinfinity_0_3_la_LIBADD = \
 	$(glib_LIBS) \
 	$(avahi_LIBS)
 
-dist_pkgdata_DATA = inf-marshal.in
-
 inf-marshal.h: inf-marshal.in
 	glib-genmarshal --header --prefix=inf_marshal $< > $@
 
@@ -47,3 +45,5 @@ libinfinity_0_3_la_SOURCES = \
 	inf-dll.c \
 	inf-i18n.c \
 	inf-marshal.c
+
+EXTRA_DIST = inf-marshal.in

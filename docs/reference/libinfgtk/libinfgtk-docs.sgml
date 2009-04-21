@@ -2,10 +2,11 @@
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
                "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
   <!ENTITY version SYSTEM "../version.xml">
+  <!ENTITY api_version SYSTEM "../api_version.xml">
 ]>
 <book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
   <bookinfo>
-    <title>libinfgtk Reference Manual</title>
+    <title>libinfgtk-&api_version; Reference Manual</title>
     <releaseinfo>
       for libinfgtk &version;.
       The latest version of this documentation can be found on-line at

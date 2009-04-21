@@ -122,7 +122,7 @@ struct _InfDiscoveryIface {
   void (*discovered)(InfDiscovery* discovery,
                      InfDiscoveryInfo* info);
 
-  void (*undiscovered)(InfDiscovery* discovry,
+  void (*undiscovered)(InfDiscovery* discovery,
                        InfDiscoveryInfo* info);
 };
 
