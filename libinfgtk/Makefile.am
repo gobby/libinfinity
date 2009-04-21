@@ -8,7 +8,6 @@ libinfgtk_0_3_la_CPPFLAGS = \
 
 libinfgtk_0_3_la_LDFLAGS = \
 	-no-undefined \
-	-release $(LIBINFINITY_API_VERSION) \
 	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
 libinfgtk_0_3_la_LIBADD = \

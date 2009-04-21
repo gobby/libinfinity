@@ -1,3 +1,9 @@
+2009-04-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/Makefile.am:
+	* libinftext/Makefile.am: Removed -release from LDFLAGS to not
+	duplicate the API version number in the .so filename.
+
 2009-04-20  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk.pc.in:

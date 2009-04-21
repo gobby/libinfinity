@@ -8,7 +8,6 @@ libinftext_0_3_la_CPPFLAGS = \
 
 libinftext_0_3_la_LDFLAGS = \
 	-no-undefined \
-	-release $(LIBINFINITY_API_VERSION) \
 	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
 libinftext_0_3_la_LIBADD = \
