@@ -1,3 +1,21 @@
+2009-04-22  Armin Burgmeier  <armin@arbur.net>
+
+	* docs/reference/libinftext/libinftext-0.3-docs.sgml:
+	* docs/reference/libinftext/libinftext-0.3-overrides.txt:
+	* docs/reference/libinftext/libinftext-0.3-sections.txt:
+	* docs/reference/libinfgtk/libinfgtk-0.3-docs.sgml:
+	* docs/reference/libinfgtk/libinfgtk-0.3-overrides.txt:
+	* docs/reference/libinfgtk/libinfgtk-0.3-sections.txt:
+	* docs/reference/libinftextgtk/libinftextgtk-0.3-docs.sgml:
+	* docs/reference/libinftextgtk/libinftextgtk-0.3-overrides.txt:
+	* docs/reference/libinftextgtk/libinftextgtk-0.3-sections.txt: Moved
+	from the unversioned files.
+
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am: Adapted DOC_MODULE
+	accordingly.
+
 2009-04-21  Armin Burgmeier  <armin@arbur.net>
 
 	* docs/reference/api_version.xml.in: Added another external entity for
