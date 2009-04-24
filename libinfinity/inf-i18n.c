@@ -34,7 +34,7 @@ _inf_gettext_get_locale_dir(void)
 
   root =
     g_win32_get_package_installation_directory_of_module(_inf_dll_handle);
-  temp = g_build_filename(root, "lib", "locale", NULL);
+  temp = g_build_filename(root, "share", "locale", NULL);
   g_free(root);
 
   result = g_win32_locale_filename_from_utf8(temp);

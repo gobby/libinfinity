@@ -1,5 +1,10 @@
 2009-04-24  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-i18n.c: Change gettext directory from lib/locale to
+	share/locale on Windows.
+
+2009-04-24  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c:
 	* libinfinity/server/infd-directory.c: Updated a few comments.
 
