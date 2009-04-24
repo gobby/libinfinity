@@ -1,3 +1,10 @@
+libinfinity 0.3.0:
+
+	* infinoted: Added the --certificate-chain command line option.
+	* Support rejecting a subscription on the client side, for example
+	  when the client does not support the communication method.
+	* Made libinfinity parallel-installable with future versions.
+
 libinfinity 0.2.1:
 
 	* Fixed compilation on FreeBSD (#430, Romain Tartière)

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: infinote 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-01-05 02:28+0100\n"
+"POT-Creation-Date: 2009-04-24 22:45+0200\n"
 "PO-Revision-Date: 2008-09-17 21:58+0200\n"
 "Last-Translator:  <armin@arbur.net>\n"
 "Language-Team: German\n"
@@ -44,31 +44,31 @@ msgstr ""
 msgid "Path \"%s\" does not contain any note plugins"
 msgstr ""
 
-#: infinoted/infinoted-options.c:78
+#: infinoted/infinoted-options.c:81
 #, c-format
 msgid ""
 "\"%s\" is not a valid security policy. Allowed values are \"no-tls\", "
 "\"allow-tls\" or \"require-tls\""
 msgstr ""
 
-#: infinoted/infinoted-options.c:107
+#: infinoted/infinoted-options.c:110
 #, c-format
 msgid "Autosave interval must not be negative"
 msgstr ""
 
-#: infinoted/infinoted-options.c:128
+#: infinoted/infinoted-options.c:131
 #, c-format
 msgid "\"%d\" is not a valid port number. Port numbers range from 1 to 65535"
 msgstr ""
 
-#: infinoted/infinoted-options.c:395
+#: infinoted/infinoted-options.c:398
 #, c-format
 msgid ""
 "Creating a new private key also requires creating a new certificate signed "
 "with it."
 msgstr ""
 
-#: infinoted/infinoted-options.c:408
+#: infinoted/infinoted-options.c:411
 #, c-format
 msgid ""
 "No private key file given. If you don't have a suitable key file, either "
@@ -76,7 +76,7 @@ msgid ""
 "setting the security policy to \"no-tls\"."
 msgstr ""
 
-#: infinoted/infinoted-options.c:422
+#: infinoted/infinoted-options.c:425
 #, c-format
 msgid ""
 "No certificate file given. If you don't have a suitable certificate file, "
@@ -84,66 +84,71 @@ msgid ""
 "disable TLS via by setting the security policy to \"no-tls\"."
 msgstr ""
 
-#: infinoted/infinoted-options.c:456
+#: infinoted/infinoted-options.c:459
 #, fuzzy
 msgid "The server's private key"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: infinoted/infinoted-options.c:456
+#: infinoted/infinoted-options.c:459
 msgid "KEY-FILE"
 msgstr ""
 
-#: infinoted/infinoted-options.c:459
+#: infinoted/infinoted-options.c:462
 #, fuzzy
 msgid "The server's certificate"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: infinoted/infinoted-options.c:459
+#: infinoted/infinoted-options.c:462
 msgid "CERTIFICATE-FILE"
 msgstr ""
 
-#: infinoted/infinoted-options.c:462
+#: infinoted/infinoted-options.c:465
+#, fuzzy
+msgid "The certificates chain down to the root certificate"
+msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
+
+#: infinoted/infinoted-options.c:468
 msgid "Creates a new random private key"
 msgstr ""
 
-#: infinoted/infinoted-options.c:465
+#: infinoted/infinoted-options.c:471
 msgid "Creates a new self-signed certificate using the given key"
 msgstr ""
 
-#: infinoted/infinoted-options.c:468
+#: infinoted/infinoted-options.c:474
 msgid "The port number to listen on"
 msgstr ""
 
-#: infinoted/infinoted-options.c:468
+#: infinoted/infinoted-options.c:474
 msgid "PORT"
 msgstr ""
 
-#: infinoted/infinoted-options.c:471
+#: infinoted/infinoted-options.c:477
 msgid "How to decide whether to use TLS"
 msgstr ""
 
-#: infinoted/infinoted-options.c:474
+#: infinoted/infinoted-options.c:480
 msgid "The directory to store documents into"
 msgstr ""
 
-#: infinoted/infinoted-options.c:474
+#: infinoted/infinoted-options.c:480
 msgid "DIRECTORY"
 msgstr ""
 
-#: infinoted/infinoted-options.c:477
+#: infinoted/infinoted-options.c:483
 msgid ""
 "Interval within which to save documents, in seconds, or 0 to disable autosave"
 msgstr ""
 
-#: infinoted/infinoted-options.c:478
+#: infinoted/infinoted-options.c:484
 msgid "INTERVAL"
 msgstr ""
 
-#: infinoted/infinoted-options.c:481
+#: infinoted/infinoted-options.c:487
 msgid "Display version information and exit"
 msgstr ""
 
-#: infinoted/infinoted-options.c:505
+#: infinoted/infinoted-options.c:511
 msgid "infinote dedicated server"
 msgstr ""
 
@@ -185,12 +190,12 @@ msgstr ""
 msgid "Generating 2048 bit RSA private key...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:123
+#: infinoted/infinoted-startup.c:125
 #, c-format
 msgid "Generating self-signed certificate...\n"
 msgstr ""
 
-#: infinoted/infinoted-startup.c:172
+#: infinoted/infinoted-startup.c:187
 #, c-format
 msgid "Generating 2048 bit Diffie-Hellman parameters...\n"
 msgstr ""
@@ -233,58 +238,58 @@ msgstr ""
 msgid "The previous certificate of the server has expired."
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:134
+#: libinfgtk/inf-gtk-certificate-dialog.c:137
 msgid ""
 "It is possible that the connection to the server is being hijacked. It is "
 "also possible that the host just has got a new certificate. However, please "
 "only continue the connection if you expected this warning."
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:150
+#: libinfgtk/inf-gtk-certificate-dialog.c:153
 #, fuzzy
 msgid "The certificate issuer is not trusted."
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:156
+#: libinfgtk/inf-gtk-certificate-dialog.c:159
 #, fuzzy
 msgid "The certificate is self-signed."
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:166
+#: libinfgtk/inf-gtk-certificate-dialog.c:169
 #, fuzzy
 msgid "The certificate is invalid!"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:182
+#: libinfgtk/inf-gtk-certificate-dialog.c:185
 #, c-format
 msgid ""
 "The hostname of the server, \"%s\", does not match the hostname the "
 "certificate is issued to, \"%s\"."
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:201
+#: libinfgtk/inf-gtk-certificate-dialog.c:204
 #, c-format
 msgid "The certificate has expired. The expiration date was %s"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:218
+#: libinfgtk/inf-gtk-certificate-dialog.c:221
 #, c-format
 msgid "The certificate has not yet been activated. Activation date is %s"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:384
+#: libinfgtk/inf-gtk-certificate-dialog.c:387
 msgid "<Unknown Certificate Holder>"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:439
+#: libinfgtk/inf-gtk-certificate-dialog.c:442
 msgid "Certificate Chain"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:549
+#: libinfgtk/inf-gtk-certificate-dialog.c:552
 msgid "_View Certificate"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-dialog.c:586
+#: libinfgtk/inf-gtk-certificate-dialog.c:589
 msgid "Connection not secure"
 msgstr ""
 
@@ -299,30 +304,30 @@ msgstr ""
 msgid "Could not load trust file: %s"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-manager.c:390
+#: libinfgtk/inf-gtk-certificate-manager.c:391
 #, c-format
 msgid "Could not load known hosts file: %s"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-manager.c:433
+#: libinfgtk/inf-gtk-certificate-manager.c:434
 #, c-format
 msgid "Could not verify certificate: %s"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-manager.c:539
+#: libinfgtk/inf-gtk-certificate-manager.c:543
 msgid "_Cancel connection"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-manager.c:550
+#: libinfgtk/inf-gtk-certificate-manager.c:554
 msgid "C_ontinue connection"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-manager.c:559
+#: libinfgtk/inf-gtk-certificate-manager.c:563
 #, c-format
 msgid "Do you want to continue the connection to host %s?"
 msgstr ""
 
-#: libinfgtk/inf-gtk-certificate-manager.c:577
+#: libinfgtk/inf-gtk-certificate-manager.c:581
 #, c-format
 msgid "Remember the answer for future connections to host %s"
 msgstr ""
@@ -448,68 +453,88 @@ msgstr ""
 msgid "Expected ';' or end of string after component of ID '%u'"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:657
+#: libinfinity/client/infc-browser.c:595
+msgid "The node to subscribe to has been removed"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:621 libinfinity/client/infc-browser.c:648
+msgid ""
+"The subdirectory into which the new node should have been created has been "
+"removed"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:804
 #, c-format
 msgid ""
 "This session requires communication method `%s' which is not installed for "
 "network `%s'"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1001
-#: libinfinity/client/infc-browser.c:1039
-#, c-format
-msgid "Node with ID '%u' exists already"
-msgstr ""
-
-#: libinfinity/client/infc-browser.c:1298
-#, c-format
-msgid "Node to explore does no longer exist"
-msgstr ""
-
-#: libinfinity/client/infc-browser.c:1309
-#, c-format
-msgid "Node to explore is not a subdirectory"
-msgstr ""
-
-#: libinfinity/client/infc-browser.c:1320
-#, c-format
-msgid "Node to explore is already explored"
-msgstr ""
-
-#: libinfinity/client/infc-browser.c:1503
+#: libinfinity/client/infc-browser.c:1568
 #, c-format
 msgid ""
 "The request contains a sequence number refering to a request of type '%s', "
 "but a request of either 'explore' or 'add-node' was expected."
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1585
+#: libinfinity/client/infc-browser.c:1777
+#, c-format
+msgid "Node to explore does no longer exist"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:1788
+#, c-format
+msgid "Node to explore is not a subdirectory"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:1799
+#, c-format
+msgid "Node to explore is already explored"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:1875
+#: libinfinity/client/infc-browser.c:2073
+#, c-format
+msgid "Node with ID \"%u\" exists already"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:1952
+#, c-format
+msgid "Explored nodes cannot be initially be subscribed to"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:1967
+#, c-format
+msgid "Note type \"%s\" not known"
+msgstr ""
+
+#: libinfinity/client/infc-browser.c:2117
 #, c-format
 msgid "Received sync-in without having requested one"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1603
+#: libinfinity/client/infc-browser.c:2139
 #, c-format
-msgid "Expected note type `%s' for sync-in, but received `%s'"
+msgid "Expected note type \"%s\" for sync-in, but received \"%s\""
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1805
+#: libinfinity/client/infc-browser.c:2272
 #, c-format
 msgid "Note type '%s' is not supported"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1818
+#: libinfinity/client/infc-browser.c:2286
 #, c-format
 msgid "Already subscribed to this session"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:1997
+#: libinfinity/client/infc-browser.c:2467
 #: libinfinity/client/infc-session-proxy.c:503
 #, c-format
 msgid "Error comes from unknown error domain '%s' (code %u)"
 msgstr ""
 
-#: libinfinity/client/infc-browser.c:2145
+#: libinfinity/client/infc-browser.c:2615
 #: libinfinity/client/infc-session-proxy.c:929
 #, c-format
 msgid "Server reply could not be processed: %s"
@@ -538,12 +563,12 @@ msgid "Request does not contain required attribute 'id'"
 msgstr ""
 
 #: libinfinity/client/infc-session-proxy.c:628
-#: libinfinity/common/inf-session.c:708
+#: libinfinity/common/inf-session.c:711
 #, c-format
 msgid "No such user with ID %u"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:502
+#: libinfinity/common/inf-discovery-avahi.c:503
 #, c-format
 msgid ""
 "Avahi service browser is in failure state. Services of type '%s' are no "
@@ -552,7 +577,7 @@ msgid ""
 "The failure was: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:570
+#: libinfinity/common/inf-discovery-avahi.c:571
 #, c-format
 msgid ""
 "Avahi entry group is in failure state. The service '%s' of type '%s' is no "
@@ -561,7 +586,7 @@ msgid ""
 "The failure was: %s\n"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:780
+#: libinfinity/common/inf-discovery-avahi.c:781
 #, c-format
 msgid ""
 "Failed to start Avahi client. Service discovery or publishing will not be "
@@ -570,7 +595,7 @@ msgid ""
 "The occurred failure was: %s"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:823
+#: libinfinity/common/inf-discovery-avahi.c:824
 #, c-format
 msgid ""
 "Avahi client is in failure state. Service discovery or publishing is no "
@@ -581,12 +606,12 @@ msgstr ""
 
 #. Translators: This is "<Service Name> (via <Network Interface> on
 #. * <address family>)", for example "ck (via eth0 on IPv4)".
-#: libinfinity/common/inf-discovery-avahi.c:1373
+#: libinfinity/common/inf-discovery-avahi.c:1374
 #, c-format
 msgid "%s (via %s on IPv4)"
 msgstr ""
 
-#: libinfinity/common/inf-discovery-avahi.c:1374
+#: libinfinity/common/inf-discovery-avahi.c:1375
 #, c-format
 msgid "%s (via %s on IPv6)"
 msgstr ""
@@ -657,61 +682,65 @@ msgid "Node does not exist"
 msgstr ""
 
 #: libinfinity/common/inf-error.c:160
-msgid "Node is not a subdirectory"
+msgid "No previous subscription request present"
 msgstr ""
 
 #: libinfinity/common/inf-error.c:162
-msgid "Node is not a note"
+msgid "Node is not a subdirectory"
 msgstr ""
 
 #: libinfinity/common/inf-error.c:164
-msgid "Subdirectory has already been explored"
+msgid "Node is not a note"
 msgstr ""
 
 #: libinfinity/common/inf-error.c:166
-msgid "Note type is not supported"
+msgid "Subdirectory has already been explored"
 msgstr ""
 
 #: libinfinity/common/inf-error.c:168
+msgid "Note type is not supported"
+msgstr ""
+
+#: libinfinity/common/inf-error.c:170
 msgid "Connection is already subscribed to this session"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:170 libinfinity/server/infd-directory.c:2375
+#: libinfinity/common/inf-error.c:172 libinfinity/server/infd-directory.c:2708
 #, c-format
 msgid "The requesting connection is not subscribed to the session"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:172
+#: libinfinity/common/inf-error.c:174
 msgid "Server sent more explored nodes then announced"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:174
+#: libinfinity/common/inf-error.c:176
 msgid "Server sent not as much explored nodes as announced"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:176
+#: libinfinity/common/inf-error.c:178
 msgid ""
 "The session does not support the network through which the connection "
 "attempt is being made."
 msgstr ""
 
-#: libinfinity/common/inf-error.c:179
+#: libinfinity/common/inf-error.c:181
 msgid "The session uses an unsupported communication method"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:181
+#: libinfinity/common/inf-error.c:183
 msgid "Received sync-in message without having requested a sync-in"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:183
+#: libinfinity/common/inf-error.c:185
 msgid "Unexpected XML message"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:185
+#: libinfinity/common/inf-error.c:187
 msgid "An unknown directory error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-error.c:187
+#: libinfinity/common/inf-error.c:189
 msgid "An error with unknown code has occured"
 msgstr ""
 
@@ -771,21 +800,24 @@ msgstr ""
 msgid "An unknown synchronization error has occured"
 msgstr ""
 
-#: libinfinity/common/inf-session.c:202
+#. TODO: Add a possibilty for sub classes to register their error domains
+#. * that can occur in process_xml_sync. Maybe via a translate_error_sync
+#. * vfunc.
+#: libinfinity/common/inf-session.c:205
 msgid "An error with unknown error domain occured"
 msgstr ""
 
-#: libinfinity/common/inf-session.c:722 libinftext/inf-text-session.c:1021
+#: libinfinity/common/inf-session.c:725 libinftext/inf-text-session.c:1021
 #, c-format
 msgid "User did not join from this connection"
 msgstr ""
 
-#: libinfinity/common/inf-session.c:878
+#: libinfinity/common/inf-session.c:881
 #, c-format
 msgid "Received unhandled XML message '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-session.c:1509
+#: libinfinity/common/inf-session.c:1512
 #, c-format
 msgid "Received unexpected XML message \"%s\" while synchronizing"
 msgstr ""
@@ -806,24 +838,26 @@ msgstr ""
 msgid "Invalid user status: '%s'"
 msgstr ""
 
-#: libinfinity/common/inf-xml-util.c:45 libinfinity/common/inf-xml-util.c:104
-#: libinfinity/common/inf-xml-util.c:148
+#: libinfinity/common/inf-xml-util.c:45 libinfinity/common/inf-xml-util.c:102
+#: libinfinity/common/inf-xml-util.c:221
 #, c-format
 msgid "Attribute '%s' does not contain a valid number"
 msgstr ""
 
-#: libinfinity/common/inf-xml-util.c:58 libinfinity/common/inf-xml-util.c:116
-#: libinfinity/common/inf-xml-util.c:161
+#: libinfinity/common/inf-xml-util.c:57 libinfinity/common/inf-xml-util.c:114
+#: libinfinity/common/inf-xml-util.c:145 libinfinity/common/inf-xml-util.c:189
+#: libinfinity/common/inf-xml-util.c:234
 #, c-format
 msgid "Attribute '%s' causes overflow (%s)"
 msgstr ""
 
-#: libinfinity/common/inf-xml-util.c:72 libinfinity/common/inf-xml-util.c:174
+#: libinfinity/common/inf-xml-util.c:70 libinfinity/common/inf-xml-util.c:158
+#: libinfinity/common/inf-xml-util.c:247
 #, c-format
 msgid "Attribute '%s' causes underflow (%s)"
 msgstr ""
 
-#: libinfinity/common/inf-xml-util.c:209
+#: libinfinity/common/inf-xml-util.c:282
 #, c-format
 msgid "Request '%s' does not contain required attribute '%s'"
 msgstr ""
@@ -1063,7 +1097,7 @@ msgstr ""
 msgid "The server certificate is not trusted"
 msgstr "Das Zertifikat des Servers ist nicht vertrauenswürdig"
 
-#: libinfinity/server/infd-directory.c:317
+#: libinfinity/server/infd-directory.c:338
 #, c-format
 msgid ""
 "Failed to save note \"%s\": %s\n"
@@ -1072,7 +1106,7 @@ msgid ""
 "shut down."
 msgstr ""
 
-#: libinfinity/server/infd-directory.c:621
+#: libinfinity/server/infd-directory.c:646
 #, c-format
 msgid ""
 "Could not write session \"%s\" to storage: %s\n"
@@ -1080,7 +1114,7 @@ msgid ""
 "All changes since the document das been saved are lost."
 msgstr ""
 
-#: libinfinity/server/infd-directory.c:1216
+#: libinfinity/server/infd-directory.c:1240
 #, c-format
 msgid ""
 "Session \"%s\" could not be saved: %s\n"
