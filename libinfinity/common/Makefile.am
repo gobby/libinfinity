@@ -12,6 +12,8 @@ libinfinity_common_la_SOURCES = \
 	inf-buffer.c \
 	inf-certificate-chain.c \
 	inf-cert-util.c \
+	inf-chat-buffer.c \
+	inf-chat-session.c \
 	inf-discovery-avahi.c \
 	inf-discovery.c \
 	inf-error.c \
@@ -34,6 +36,8 @@ libinfinity_common_la_HEADERS = \
 	inf-buffer.h \
 	inf-certificate-chain.h \
 	inf-cert-util.h \
+	inf-chat-buffer.h \
+	inf-chat-session.h \
 	inf-discovery.h \
 	inf-discovery-avahi.h \
 	inf-error.h \

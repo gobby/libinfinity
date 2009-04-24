@@ -20,6 +20,8 @@
     <title>Common infinote API</title>
     <xi:include href="xml/inf-init.xml"/>
     <xi:include href="xml/inf-session.xml"/>
+    <xi:include href="xml/inf-chat-session.xml"/>
+    <xi:include href="xml/inf-chat-buffer.xml"/>
     <xi:include href="xml/inf-user-table.xml"/>
     <xi:include href="xml/inf-user.xml"/>
     <xi:include href="xml/inf-discovery.xml"/>

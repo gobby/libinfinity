@@ -1,3 +1,17 @@
+2009-10-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-chat-buffer.h:
+	* libinfinity/common/inf-chat-buffer.c: Added the InfChatBuffer class.
+	This is an InfBuffer-implementing class that holds chat messages in a
+	ring-like structure (new messages replace old ones when a certain
+	message size has been exceeded).
+
+	* libinfinity/common/inf-chat-session.h:
+	* libinfinity/common/inf-chat-session.c: Added the InfChatSession
+	class which is a session allowing joined users to exchange messages.
+
+	* libinfinity/common/Makefile.am: Added the new files to the build.
+
 2009-10-08  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/communication/inf-communication-manager.c: Fixed a typo

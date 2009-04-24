@@ -1210,4 +1210,52 @@ INF_COMMUNICATION_TYPE_CENTRAL_METHOD
 inf_communication_central_method_get_type
 </SECTION>
 
+<SECTION>
+<FILE>inf-chat-session</FILE>
+<TITLE>InfChatSession</TITLE>
+InfChatSession
+InfChatSessionClass
+InfChatSessionError
+inf_chat_session_new
+inf_chat_session_set_log_file
+<SUBSECTION Standard>
+INF_CHAT_SESSION
+INF_IS_CHAT_SESSION
+INF_CHAT_SESSION_CLASS
+INF_IS_CHAT_SESSION_CLASS
+INF_CHAT_SESSION_GET_CLASS
+inf_chat_session_get_type
+INF_TYPE_CHAT_SESSION
+</SECTION>
+
+<SECTION>
+<FILE>inf-chat-buffer</FILE>
+<TITLE>InfChatBuffer</TITLE>
+InfChatBufferMessageType
+InfChatBufferMessage
+InfChatBuffer
+InfChatBufferClass
+inf_chat_buffer_message_copy
+inf_chat_buffer_message_free
+inf_chat_buffer_new
+inf_chat_buffer_add_message
+inf_chat_buffer_add_emote_message
+inf_chat_buffer_add_userjoin_message
+inf_chat_buffer_add_userpart_message
+inf_chat_buffer_get_message
+inf_chat_buffer_get_n_messages
+inf_chat_buffer_get_size
+<SUBSECTION Standard>
+INF_CHAT_BUFFER
+INF_IS_CHAT_BUFER
+inf_chat_buffer_message_type_get_type
+INF_TYPE_CHAT_BUFFER_MESSAGE_TYPE
+inf_chat_buffer_message_get_type
+INF_TYPE_CHAT_BUFFER_MESSAGE
+INF_CHAT_BUFFER_CLASS
+INF_IS_CHAT_BUFFER_CLASS
+INF_CHAT_BUFFER_GET_CLASS
+inf_chat_buffer_get_type
+INF_TYPE_CHAT_BUFFER
+</SECTION>
 
