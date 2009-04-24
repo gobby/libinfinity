@@ -136,10 +136,9 @@ struct _InfdDirectoryPrivate {
   InfIo* io;
   InfdStorage* storage;
   InfCommunicationManager* communication_manager;
-  InfCommunicationHostedGroup* group; /* TODO: This should be a property */
+  InfCommunicationHostedGroup* group;
 
   GHashTable* plugins; /* Registered plugins */
- /* TODO: CommunicationManagerGroup has already a connection list */
   GSList* connections;
 
   guint node_counter;
@@ -3133,7 +3132,7 @@ infd_directory_constructor(GType type,
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  /* TODO: Use default connection manager in case none is set */
+  /* TODO: Use default communication manager in case none is set */
   g_assert(priv->communication_manager != NULL);
   
   priv->group = inf_communication_manager_open_group(

@@ -152,7 +152,7 @@ typedef struct _InfcBrowserPrivate InfcBrowserPrivate;
 struct _InfcBrowserPrivate {
   InfIo* io;
   InfCommunicationManager* communication_manager;
-  InfCommunicationJoinedGroup* group; /* TODO: This should be a property */
+  InfCommunicationJoinedGroup* group;
   InfXmlConnection* connection;
 
   InfcRequestManager* request_manager;
