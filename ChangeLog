@@ -1,3 +1,15 @@
+2009-04-24  Armin Burgmeier  <armin@arbur.net>
+
+	* docs/reference/api_version.xml.in.in: Moved from api_version.xml.in.
+	* docs/reference/version.xml.in.in: Moved from version.xml.in.
+
+	* docs/reference/Makefile.am: Generate (api_)version.xml from
+	(api_)version.xml.in by removing the trailing newline. This is to
+	prevent that newline from appearing in the docbook XML when
+	substituting the external entities.
+
+	* configure.ac: Generate docs/reference/(api_)version.xml.in.
+
 2009-04-22  Armin Burgmeier  <armin@arbur.net>
 
 	* docs/reference/libinftext/libinftext-0.3-docs.sgml:

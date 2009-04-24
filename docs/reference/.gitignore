@@ -1,5 +1,7 @@
 version.xml
+version.xml.in
 api_version.xml
+api_version.xml.in
 xml
 html
 *.stamp

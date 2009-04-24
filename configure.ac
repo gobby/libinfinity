@@ -206,8 +206,8 @@ AC_CONFIG_FILES([
 
     docs/Makefile
       docs/reference/Makefile
-      docs/reference/version.xml
-      docs/reference/api_version.xml
+      docs/reference/version.xml.in
+      docs/reference/api_version.xml.in
         docs/reference/libinfinity/Makefile
         docs/reference/libinftext/Makefile
         docs/reference/libinfgtk/Makefile
