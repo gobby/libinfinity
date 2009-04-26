@@ -42,7 +42,13 @@ libinftextgtk:
   - libinftext
   - gtk+-2.0 >= 2.12
 
- 3. Developers
+ 3. Development
 
-This program is developed by Armin Burgmeier <armin@arbur.net>. Artwork is
-done by Benjamin Herr <ben@0x539.de>.
+This library is developed by Armin Burgmeier <armin@arbur.net>. Artwork is
+done by Benjamin Herr <ben@0x539.de>. To get in contact with the developers,
+either use the mailing list obby-users@list.0x539.de (to which you can
+subscribe by sending mail to obby-users-subscribe@list.0x539.de) or drop by
+in our IRC channel #0x539 on irc.blitzed.org. To hack on the code, check out
+the libinfinity git repository using `git clone
+git://git.0x539.de/git/infinote.git'. Patches should be filed in our bug
+tracker on http://gobby.0x539.de/trac/newticket.

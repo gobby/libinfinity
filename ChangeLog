@@ -1,5 +1,9 @@
 2009-04-26  Armin Burgmeier  <armin@arbur.net>
 
+	* README: Added some notes about development of libinfinity.
+
+2009-04-26  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac: Post-release bump to 0.4.0.
 
 	* docs/reference/libinfinity/libinfinity-0.4-docs.sgml:
