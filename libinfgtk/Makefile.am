@@ -1,24 +1,24 @@
 # TODO: Find a way to have the version number set automatically.
-lib_LTLIBRARIES = libinfgtk-0.3.la
+lib_LTLIBRARIES = libinfgtk-0.4.la
 
-libinfgtk_0_3_la_CPPFLAGS = \
+libinfgtk_0_4_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infgtk_CFLAGS) \
 	$(infinity_CFLAGS)
 
-libinfgtk_0_3_la_LDFLAGS = \
+libinfgtk_0_4_la_LDFLAGS = \
 	-no-undefined \
 	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
-libinfgtk_0_3_la_LIBADD = \
+libinfgtk_0_4_la_LIBADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infgtk_LIBS) \
 	$(infinity_LIBS)
 
-libinfgtk_0_3_ladir = \
+libinfgtk_0_4_ladir = \
 	$(includedir)/libinfgtk-$(LIBINFINITY_API_VERSION)/libinfgtk
 
-libinfgtk_0_3_la_HEADERS = \
+libinfgtk_0_4_la_HEADERS = \
 	inf-gtk-browser-model.h \
 	inf-gtk-browser-model-filter.h \
 	inf-gtk-browser-model-sort.h \
@@ -29,7 +29,7 @@ libinfgtk_0_3_la_HEADERS = \
 	inf-gtk-certificate-view.h \
 	inf-gtk-io.h
 
-libinfgtk_0_3_la_SOURCES = \
+libinfgtk_0_4_la_SOURCES = \
 	inf-gtk-browser-model.c \
 	inf-gtk-browser-model-filter.c \
 	inf-gtk-browser-model-sort.c \
