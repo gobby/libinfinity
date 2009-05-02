@@ -1,5 +1,12 @@
 2009-05-02  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-browser.c: Connect after the default handler on
+	the connection's notify::status, to give the communication method a
+	chance to register the connection with the registry before we try to
+	send stuff through it.
+
+2009-05-02  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-error.c: Added
 	INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT error.

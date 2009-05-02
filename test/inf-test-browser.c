@@ -348,7 +348,7 @@ main(int argc, char* argv[])
       NULL
     );
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(test.conn),
       "notify::status",
       G_CALLBACK(inf_test_browser_notify_status_cb),
