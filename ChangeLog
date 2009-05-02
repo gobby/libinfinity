@@ -1,5 +1,9 @@
 2009-05-02  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-store.c: Fixed a typo in a comment.
+
+2009-05-02  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-browser.c: Connect after the default handler on
 	the connection's notify::status, to give the communication method a
 	chance to register the connection with the registry before we try to

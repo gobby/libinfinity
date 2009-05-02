@@ -629,7 +629,7 @@ inf_gtk_browser_store_connection_notify_status_cb(GObject* object,
     /* set_browser() will do this anyway, in the default handler: */
     /*gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);*/
 
-    /* Reset browser, we do not need it anymore since its connection is
+    /* Reset browser, we do not need it anymore since it's connection is
      * gone. */
     /* TODO: Keep browser and still allow browsing in explored folders,
      * but reset connection. */
