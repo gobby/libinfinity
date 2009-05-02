@@ -101,6 +101,8 @@ typedef enum _InfUserError {
  * is not a subdirectory node, but the requested operation requires one.
  * @INF_DIRECTORY_ERROR_NOT_A_NOTE: The node refered to in a request is not
  * a note (non-subdirectory) node, but the requested operations requires one.
+ * @INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT: A &lt;remove-node&gt;
+ * request attempted to remove a directory's root node, which is not allowed.
  * @INF_DIRECTORY_ERROR_ALREADY_EXPLORED: The node given in an exploration
  * request has already been explored earlier.
  * @INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN: Exploration yields more children
@@ -138,6 +140,7 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
   INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
+  INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
   INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
   INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,

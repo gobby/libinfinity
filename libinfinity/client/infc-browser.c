@@ -3870,6 +3870,9 @@ infc_browser_remove_node(InfcBrowser* browser,
   priv = INFC_BROWSER_PRIVATE(browser);
   node = (InfcBrowserNode*)iter->node;
 
+  /* The root node cannot be removed */
+  g_return_val_if_fail(node->parent != NULL, NULL);
+
   /* TODO: Check that there is not a remove-node request already enqueued. */
 
   g_return_val_if_fail(priv->connection != NULL, NULL);

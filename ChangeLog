@@ -1,3 +1,19 @@
+2009-05-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT error.
+
+	* libinfinity/server/infd-directory.c
+	(infd_directory_handle_remove_node): Produce the newly introduced
+	error if a client attempts to remove the root node. This fixes bug
+	#442 (Gregory Haynes).
+	(infd_directory_remove_node): Added a g_return_val_if_fail() if a
+	the root node is attempted to be removed.
+
+	* libinfinity/client/infc-browser.c (infc_browser_remove_node): Added
+	a g_return_val_if_fail() if the root node is attempted to be removed.
+
 2009-04-26  Armin Burgmeier  <armin@arbur.net>
 
 	* README: Added some notes about development of libinfinity.

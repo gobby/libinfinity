@@ -1949,6 +1949,9 @@ infd_directory_node_remove(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_assert(priv->storage != NULL);
 
+  /* Cannot remove the root node */
+  g_assert(node->parent != NULL);
+
   infd_directory_node_get_path(node, &path, NULL);
   result = infd_storage_remove_node(
     priv->storage,
@@ -2573,19 +2576,34 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
   node = infd_directory_get_node_from_xml(directory, xml, "id", error);
   if(node == NULL) return FALSE;
 
-  has_seq = inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
+  if(node->parent == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark,
+      INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
+      _("The root node cannot be removed")
+    );
 
-  /* Note that seq is only passed uninitialized here if it is not used
-   * anyway because seq_conn is NULL. */
-  result = infd_directory_node_remove(
-    directory,
-    node,
-    (has_seq == TRUE) ? connection : NULL,
-    seq,
-    error
-  );
+    return FALSE;
+  }
+  else
+  {
+    has_seq =
+      inf_xml_util_get_attribute_uint_required(xml, "seq", &seq, error);
 
-  return result;
+    /* Note that seq is only passed uninitialized here if it is not used
+     * anyway because seq_conn is NULL. */
+    result = infd_directory_node_remove(
+      directory,
+      node,
+      (has_seq == TRUE) ? connection : NULL,
+      seq,
+      error
+    );
+
+    return result;
+  }
 }
 
 static gboolean
@@ -4363,11 +4381,16 @@ infd_directory_remove_node(InfdDirectory* directory,
                            InfdDirectoryIter* iter,
                            GError** error)
 {
+  InfdDirectoryNode* node;
+
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
   infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
-  return infd_directory_node_remove(directory, iter->node, NULL, 0, error);
+  node = iter->node;
+  g_return_val_if_fail(node->parent != NULL, FALSE);
+
+  return infd_directory_node_remove(directory, node, NULL, 0, error);
 }
 
 /**
