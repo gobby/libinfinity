@@ -130,7 +130,7 @@ infc_browser_iter_get_parent(InfcBrowser* browser,
 
 gboolean
 infc_browser_iter_get_explored(InfcBrowser* browser,
-                               InfcBrowserIter* iter);
+                               const InfcBrowserIter* iter);
 
 gboolean
 infc_browser_iter_get_child(InfcBrowser* browser,
@@ -138,35 +138,35 @@ infc_browser_iter_get_child(InfcBrowser* browser,
 
 InfcExploreRequest*
 infc_browser_iter_explore(InfcBrowser* browser,
-                          InfcBrowserIter* iter);
+                          const InfcBrowserIter* iter);
 
 const gchar*
 infc_browser_iter_get_name(InfcBrowser* browser,
-                           InfcBrowserIter* iter);
+                           const InfcBrowserIter* iter);
 
 gchar*
 infc_browser_iter_get_path(InfcBrowser* browser,
-                           InfcBrowserIter* iter);
+                           const InfcBrowserIter* iter);
 
 gboolean
 infc_browser_iter_is_subdirectory(InfcBrowser* browser,
-                                  InfcBrowserIter* iter);
+                                  const InfcBrowserIter* iter);
 
 InfcNodeRequest*
 infc_browser_add_subdirectory(InfcBrowser* browser,
-                              InfcBrowserIter* parent,
+                              const InfcBrowserIter* parent,
                               const gchar* name);
 
 InfcNodeRequest*
 infc_browser_add_note(InfcBrowser* browser,
-                      InfcBrowserIter* parent,
+                      const InfcBrowserIter* parent,
                       const gchar* name,
                       const InfcNotePlugin* plugin,
                       gboolean initial_subscribe);
 
 InfcNodeRequest*
 infc_browser_add_note_with_content(InfcBrowser* browser,
-                                   InfcBrowserIter* parent,
+                                   const InfcBrowserIter* parent,
                                    const gchar* name,
                                    const InfcNotePlugin* plugin,
                                    InfSession* session,
@@ -174,43 +174,43 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
 
 InfcNodeRequest*
 infc_browser_remove_node(InfcBrowser* browser,
-                         InfcBrowserIter* iter);
+                         const InfcBrowserIter* iter);
 
 const gchar*
 infc_browser_iter_get_note_type(InfcBrowser* browser,
-                                InfcBrowserIter* iter);
+                                const InfcBrowserIter* iter);
 
 const InfcNotePlugin*
 infc_browser_iter_get_plugin(InfcBrowser* browser,
-                             InfcBrowserIter* iter);
+                             const InfcBrowserIter* iter);
 
 InfcNodeRequest*
 infc_browser_iter_subscribe_session(InfcBrowser* browser,
-                                    InfcBrowserIter* iter);
+                                    const InfcBrowserIter* iter);
 
 InfcNodeRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
-                               InfcBrowserIter* iter);
+                               const InfcBrowserIter* iter);
 
 InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
-                              InfcBrowserIter* iter);
+                              const InfcBrowserIter* iter);
 
 InfcSessionProxy*
 infc_browser_iter_get_sync_in(InfcBrowser* browser,
-                              InfcBrowserIter* iter);
+                              const InfcBrowserIter* iter);
 
 InfcNodeRequest*
 infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
-                                        InfcBrowserIter* iter);
+                                        const InfcBrowserIter* iter);
 
 InfcExploreRequest*
 infc_browser_iter_get_explore_request(InfcBrowser* browser,
-                                      InfcBrowserIter* iter);
+                                      const InfcBrowserIter* iter);
 
 GSList*
 infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
-                                       InfcBrowserIter* iter);
+                                       const InfcBrowserIter* iter);
 
 gboolean
 infc_browser_iter_from_node_request(InfcBrowser* browser,

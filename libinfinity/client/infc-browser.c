@@ -3415,7 +3415,7 @@ infc_browser_iter_get_parent(InfcBrowser* browser,
  **/
 gboolean
 infc_browser_iter_get_explored(InfcBrowser* browser,
-                               InfcBrowserIter* iter)
+                               const InfcBrowserIter* iter)
 {
   InfcBrowserNode* node;
 
@@ -3482,7 +3482,7 @@ infc_browser_iter_get_child(InfcBrowser* browser,
  **/
 InfcExploreRequest*
 infc_browser_iter_explore(InfcBrowser* browser,
-                          InfcBrowserIter* iter)
+                          const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -3539,7 +3539,7 @@ infc_browser_iter_explore(InfcBrowser* browser,
  **/
 const gchar*
 infc_browser_iter_get_name(InfcBrowser* browser,
-                           InfcBrowserIter* iter)
+                           const InfcBrowserIter* iter)
 {
   InfcBrowserNode* node;
 
@@ -3563,7 +3563,7 @@ infc_browser_iter_get_name(InfcBrowser* browser,
  **/
 gchar*
 infc_browser_iter_get_path(InfcBrowser* browser,
-                           InfcBrowserIter* iter)
+                           const InfcBrowserIter* iter)
 {
   InfcBrowserNode* node;
   gchar* path;
@@ -3587,7 +3587,7 @@ infc_browser_iter_get_path(InfcBrowser* browser,
  **/
 gboolean
 infc_browser_iter_is_subdirectory(InfcBrowser* browser,
-                                  InfcBrowserIter* iter)
+                                  const InfcBrowserIter* iter)
 {
   InfcBrowserNode* node;
 
@@ -3616,7 +3616,7 @@ infc_browser_iter_is_subdirectory(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_add_subdirectory(InfcBrowser* browser,
-                              InfcBrowserIter* parent,
+                              const InfcBrowserIter* parent,
                               const gchar* name)
 {
   InfcBrowserPrivate* priv;
@@ -3679,7 +3679,7 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_add_note(InfcBrowser* browser,
-                      InfcBrowserIter* parent,
+                      const InfcBrowserIter* parent,
                       const gchar* name,
                       const InfcNotePlugin* plugin,
                       gboolean initial_subscribe)
@@ -3766,7 +3766,7 @@ infc_browser_add_note(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_add_note_with_content(InfcBrowser* browser,
-                                   InfcBrowserIter* parent,
+                                   const InfcBrowserIter* parent,
                                    const gchar* name,
                                    const InfcNotePlugin* plugin,
                                    InfSession* session,
@@ -3857,7 +3857,7 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_remove_node(InfcBrowser* browser,
-                         InfcBrowserIter* iter)
+                         const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -3909,7 +3909,7 @@ infc_browser_remove_node(InfcBrowser* browser,
  **/
 const gchar*
 infc_browser_iter_get_note_type(InfcBrowser* browser,
-                                InfcBrowserIter* iter)
+                                const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -3948,7 +3948,7 @@ infc_browser_iter_get_note_type(InfcBrowser* browser,
  **/
 const InfcNotePlugin*
 infc_browser_iter_get_plugin(InfcBrowser* browser,
-                             InfcBrowserIter* iter)
+                             const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -3989,7 +3989,7 @@ infc_browser_iter_get_plugin(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_iter_subscribe_session(InfcBrowser* browser,
-                                    InfcBrowserIter* iter)
+                                    const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4055,7 +4055,7 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
-                               InfcBrowserIter* iter)
+                               const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4103,7 +4103,7 @@ infc_browser_iter_save_session(InfcBrowser* browser,
  **/
 InfcSessionProxy*
 infc_browser_iter_get_session(InfcBrowser* browser,
-                              InfcBrowserIter* iter)
+                              const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4137,7 +4137,7 @@ infc_browser_iter_get_session(InfcBrowser* browser,
  **/
 InfcSessionProxy*
 infc_browser_iter_get_sync_in(InfcBrowser* browser,
-                              InfcBrowserIter* iter)
+                              const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   GSList* item;
@@ -4172,7 +4172,7 @@ infc_browser_iter_get_sync_in(InfcBrowser* browser,
  **/
 InfcNodeRequest*
 infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
-                                        InfcBrowserIter* iter)
+                                        const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4210,7 +4210,7 @@ infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
  **/
 InfcExploreRequest*
 infc_browser_iter_get_explore_request(InfcBrowser* browser,
-                                      InfcBrowserIter* iter)
+                                      const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4252,7 +4252,7 @@ infc_browser_iter_get_explore_request(InfcBrowser* browser,
  **/
 GSList*
 infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
-                                       InfcBrowserIter* iter)
+                                       const InfcBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;

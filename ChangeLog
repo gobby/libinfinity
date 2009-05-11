@@ -1,3 +1,9 @@
+2009-05-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Made several InfcBrowserIter
+	arguments const.
+
 2009-05-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-store.c: Fixed a typo in a comment.
