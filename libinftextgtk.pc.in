@@ -3,7 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: libinftext
+Name: libinftextgtk
 Description: Infinote text processing GTK+ UI functionality
 Requires: libinfinity-@LIBINFINITY_API_VERSION@ libinftext-@LIBINFINITY_API_VERSION@ gtk+-2.0 >= 2.12
 Version: @VERSION@
