@@ -1,3 +1,9 @@
+2009-06-03  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-session.c (inf_text_session_request_to_xml):
+	For delete operations, don't assert that at least one segment exists.
+	This avoids a crash when synchronizing a zero-length delete operation.
+
 2009-05-13  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk.pc.in: Fixed "Name:" field. This is libinftextgtk, not

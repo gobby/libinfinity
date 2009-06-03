@@ -1495,8 +1495,6 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
         cd = g_iconv_open("UTF-8", inf_text_chunk_get_encoding(chunk));
         result = inf_text_chunk_iter_init(chunk, &iter);
 
-        /* Should delete something, otherwise we could also use noop */
-        g_assert(result == TRUE);
         while(result == TRUE)
         {
           text = inf_text_chunk_iter_get_text(&iter);
