@@ -3439,7 +3439,7 @@ infc_browser_iter_get_explored(InfcBrowser* browser,
  * subdirectory has no children, @iter is left untouched and %FALSE is
  * returned.
  *
- * @Return Value: %TRUE if @iter was set, %FALSE otherwise.
+ * Return Value: %TRUE if @iter was set, %FALSE otherwise.
  **/
 gboolean
 infc_browser_iter_get_child(InfcBrowser* browser,

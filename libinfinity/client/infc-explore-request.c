@@ -372,6 +372,7 @@ infc_explore_request_get_node_id(InfcExploreRequest* request)
 /**
  * infc_explore_request_initiated:
  * @request: An #InfcExploreRequest.
+ * @total: The total number of children of the node which is being explored.
  *
  * Emits the "initiated" signal on @request. An explore request is considered
  * initiated as soon as the total amount of child nodes is known.

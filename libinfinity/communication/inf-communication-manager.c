@@ -125,7 +125,7 @@ inf_communication_manager_hosted_group_unrefed(gpointer data,
 
   /* We don't have the key here. If we had, then we could still not use it
    * because we wouldn't have the communication manager then. If we would
-   * want to have both, we would nice to dynamically allocate a structure
+   * want to have both, we would need to dynamically allocate a structure
    * containing both, and also storing that somewhere to be able to
    * g_weak_unref in dispose() which is pretty much hassle. */
   /* TODO: Let the groups strong-ref the manager, then dispose simply can't

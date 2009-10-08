@@ -887,7 +887,8 @@ inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
  * Recreates a vector from its string representation diff and the original
  * vector. If an error returns, the function returns %NULL and @error is set.
  *
- * Return Value:
+ * Return Value: The created state vector, or %NULL on error. Free with
+ * inf_adopted_state_vector_free() when no longer needed.
  **/
 InfAdoptedStateVector*
 inf_adopted_state_vector_from_string_diff(const gchar* str,

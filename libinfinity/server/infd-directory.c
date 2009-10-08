@@ -4014,7 +4014,7 @@ infd_directory_iter_get_path(InfdDirectory* directory,
 /**
  * infd_directory_iter_get_root:
  * @directory: A #InfdDirectory
- * @iter An uninitalized #InfdDirectoryIter.
+ * @iter: An uninitalized #InfdDirectoryIter.
  *
  * Sets @iter to point to the root node of the directory.
  **/
