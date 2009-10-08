@@ -584,6 +584,8 @@ infd_tcp_server_get_type(void)
  * bind on all interfaces on IPv4. If "local-port" is NULL, a random available
  * port will be assigned. If the function fails, FALSE is returned and @error
  * is set.
+ *
+ * Returns: %TRUE on success, or %FALSE if an error occured.
  **/
 gboolean
 infd_tcp_server_open(InfdTcpServer* server,

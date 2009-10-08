@@ -1,3 +1,17 @@
+2009-10-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/communication/inf-communication-manager.c:
+	* libinfinity/common/inf-init.c:
+	* libinfinity/common/inf-standalone-io.c:
+	* libinfinity/common/inf-xmpp-manager.c:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/infc-explore-request.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-filesystem-storage.c:
+	* libinfinity/server/infd-tcp-server.c: Fixed a few documentation
+	comments.
+
 2009-06-03  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-session.c (inf_text_session_request_to_xml):

@@ -34,7 +34,7 @@ static guint inf_init_counter = 0;
  *
  * This function initializes the libinfinity library and should be called
  * before any other functions of the library. The function does nothing if
- * it has already been called before().
+ * it has already been called before.
  *
  * Returns: Whether the initialization was successful or not.
  */

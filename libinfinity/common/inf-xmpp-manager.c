@@ -296,6 +296,9 @@ inf_xmpp_manager_new(void)
  * Looks for a #InfXmppConnection contained in @manager whose underlaying
  * #InfTcpConnection is connected to the given address and port. Returns
  * %NULL if there is no such connection.
+ *
+ * Returns: A #InfXmppConnection with the given address and port, or %NULL on
+ * error.
  **/
 InfXmppConnection*
 inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,

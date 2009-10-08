@@ -588,6 +588,9 @@ inf_standalone_io_get_type(void)
  * inf_standalone_io_new:
  *
  * Creates a new #InfStandaloneIo.
+ *
+ * Returns: A new #InfStandaloneIo. Free with g_object_unref() when no longer
+ * needed.
  **/
 InfStandaloneIo*
 inf_standalone_io_new(void)

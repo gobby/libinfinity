@@ -529,7 +529,8 @@ infd_filesystem_storage_new(const gchar* root_directory)
 
 /**
  * infd_filesystem_storage_open:
- * @storage:  A #InfdFilesystemStorage.
+ * @storage: A #InfdFilesystemStorage.
+ * @identifier: The type of node to open.
  * @path: Tha path to open.
  * @mode: Either "r" for reading or "w" for writing.
  * @error: Location to store error information, if any.
