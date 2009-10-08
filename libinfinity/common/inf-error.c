@@ -159,6 +159,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Node does not exist");
   case INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST:
     return _("No previous subscription request present");
+  case INF_DIRECTORY_ERROR_CHAT_DISABLED:
+    return _("The chat is disabled on the server side");
   case INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY:
     return _("Node is not a subdirectory");
   case INF_DIRECTORY_ERROR_NOT_A_NOTE:

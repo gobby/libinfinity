@@ -1,5 +1,17 @@
 2009-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added the
+	INFD_DIRECTORY_ERROR_CHAT_DISABLED error code which is generated when
+	a client tries to subscribe to a chat that is disabled on the server.
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added
+	infd_directory_enable_chat(), infd_directory_get_chat_session() and
+	handle <subscribe-chat/> requests from clients.
+
+2009-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-chat-buffer.h:
 	* libinfinity/common/inf-chat-buffer.c: Added the InfChatBuffer class.
 	This is an InfBuffer-implementing class that holds chat messages in a

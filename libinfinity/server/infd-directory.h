@@ -184,6 +184,13 @@ infd_directory_iter_save_session(InfdDirectory* directory,
                                  InfdDirectoryIter* iter,
                                  GError** error);
 
+void
+infd_directory_enable_chat(InfdDirectory* directory,
+                           gboolean enable);
+
+InfdSessionProxy*
+infd_directory_get_chat_session(InfdDirectory* directory);
+
 G_END_DECLS
 
 #endif /* __INFD_DIRECTORY_H__ */

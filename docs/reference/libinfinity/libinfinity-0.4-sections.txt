@@ -755,6 +755,8 @@ infd_directory_iter_get_plugin
 infd_directory_iter_get_session
 infd_directory_iter_peek_session
 infd_directory_iter_save_session
+infd_directory_enable_chat
+infd_directory_get_chat_session
 <SUBSECTION Standard>
 INFD_DIRECTORY
 INFD_IS_DIRECTORY

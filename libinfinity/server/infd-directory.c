@@ -37,6 +37,7 @@
 #include <libinfinity/server/infd-directory.h>
 
 #include <libinfinity/common/inf-session.h>
+#include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/communication/inf-communication-object.h>
@@ -97,6 +98,7 @@ struct _InfdDirectorySyncIn {
 };
 
 typedef enum _InfdDirectorySubreqType {
+  INFD_DIRECTORY_SUBREQ_CHAT,
   INFD_DIRECTORY_SUBREQ_SESSION,
   INFD_DIRECTORY_SUBREQ_ADD_NODE,
   INFD_DIRECTORY_SUBREQ_SYNC_IN,
@@ -108,6 +110,7 @@ typedef struct _InfdDirectorySubreq InfdDirectorySubreq;
 struct _InfdDirectorySubreq {
   InfdDirectorySubreqType type;
   InfXmlConnection* connection;
+  /* TODO: Should maybe go to shared as CHAT is not using this: */
   guint node_id;
 
   union {
@@ -148,6 +151,8 @@ struct _InfdDirectoryPrivate {
 
   GSList* sync_ins;
   GSList* subscription_requests;
+
+  InfdSessionProxy* chat_session;
 };
 
 enum {
@@ -155,7 +160,10 @@ enum {
 
   PROP_IO,
   PROP_STORAGE,
-  PROP_COMMUNICATION_MANAGER
+  PROP_COMMUNICATION_MANAGER,
+
+  /* read only */
+  PROP_CHAT_SESSION
 };
 
 enum {
@@ -856,8 +864,6 @@ infd_directory_node_free(InfdDirectory* directory,
       infd_directory_remove_sync_in(directory, sync_in);
   }
 
-  /* Keep subscription requests whose parent is gone. They will be released
-   * upon client reply. */
   for(item = priv->subscription_requests; item != NULL; item = next)
   {
     next = item->next;
@@ -865,7 +871,11 @@ infd_directory_node_free(InfdDirectory* directory,
 
     switch(request->type)
     {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
+      break;
     case INFD_DIRECTORY_SUBREQ_SESSION:
+      /* Keep subscription requests whose parent is gone. They will be
+       * released upon client reply. */
       /*if(request->node_id == node->id)
         infd_directory_remove_subreq(directory, request);*/
       break;
@@ -1386,6 +1396,22 @@ infd_directory_add_subreq_common(InfdDirectory* directory,
 }
 
 static InfdDirectorySubreq*
+infd_directory_add_subreq_chat(InfdDirectory* directory,
+                               InfXmlConnection* connection)
+{
+  InfdDirectorySubreq* request;
+
+  request = infd_directory_add_subreq_common(
+    directory,
+    INFD_DIRECTORY_SUBREQ_CHAT,
+    connection,
+    0
+  );
+
+  return request;
+}
+
+static InfdDirectorySubreq*
 infd_directory_add_subreq_session(InfdDirectory* directory,
                                   InfXmlConnection* connection,
                                   guint node_id,
@@ -1469,6 +1495,8 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
 {
   switch(request->type)
   {
+  case INFD_DIRECTORY_SUBREQ_CHAT:
+    break;
   case INFD_DIRECTORY_SUBREQ_SESSION:
     g_object_unref(request->shared.session.session);
     break;
@@ -1527,6 +1555,7 @@ infd_directory_find_subreq_by_name(InfdDirectory* directory,
 
     switch(request->type)
     {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
     case INFD_DIRECTORY_SUBREQ_SESSION:
       /* These don't occupy names */
       break;
@@ -2208,7 +2237,6 @@ static InfdDirectorySubreq*
 infd_directory_get_subreq_from_xml(InfdDirectory* directory,
                                    InfXmlConnection* connection,
                                    xmlNodePtr xml,
-                                   const gchar* attrib,
                                    GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -2219,29 +2247,50 @@ infd_directory_get_subreq_from_xml(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  has_node = inf_xml_util_get_attribute_uint_required(
+  has_node = inf_xml_util_get_attribute_uint(
     xml,
-    attrib,
+    "id",
     &node_id,
     error
   );
 
-  if(has_node == FALSE) return NULL;
-
-  for(item = priv->subscription_requests; item != NULL; item = item->next)
+  if(has_node == FALSE)
   {
-    request = (InfdDirectorySubreq*)item->data;
-    if(request->connection == connection && request->node_id == node_id)
-      return request;
-  }
+    /* subscription requests without node ID are for server chat */
+    for(item = priv->subscription_requests; item != NULL; item = item->next)
+    {
+      request = (InfdDirectorySubreq*)item->data;
+      if(request->type == INFD_DIRECTORY_SUBREQ_CHAT)
+        return request;
+    }
 
-  g_set_error(
-    error,
-    inf_directory_error_quark(),
-    INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
-    "No subscription request with ID %u",
-    node_id
-  );
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
+      _("No subscription request for the server chat")
+    );
+  }
+  else
+  {
+    for(item = priv->subscription_requests; item != NULL; item = item->next)
+    {
+      request = (InfdDirectorySubreq*)item->data;
+      if(request->type != INFD_DIRECTORY_SUBREQ_CHAT &&
+         request->connection == connection && request->node_id == node_id)
+      {
+        return request;
+      }
+    }
+
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
+      _("No subscription request with ID %u"),
+      node_id
+    );
+  }
 
   return NULL;
 }
@@ -2788,6 +2837,86 @@ infd_directory_handle_save_session(InfdDirectory* directory,
 }
 
 static gboolean
+infd_directory_handle_subscribe_chat(InfdDirectory* directory,
+                                     InfXmlConnection* connection,
+                                     xmlNodePtr xml,
+                                     GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfCommunicationGroup* group;
+  const gchar* method;
+  xmlChar* seq_attr;
+  xmlNodePtr reply_xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* TODO: Bail if this connection is either currently being synchronized to
+   * or is already subscribed */
+  /* TODO: Bail if a subscription request for this connection is pending. */
+
+  if(priv->chat_session == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_CHAT_DISABLED,
+      _("The chat is disabled")
+    );
+
+    return FALSE;
+  }
+
+  g_object_get(
+    G_OBJECT(priv->chat_session),
+    "subscription-group", &group,
+    NULL
+  );
+
+  method = inf_communication_group_get_method_for_connection(
+    group,
+    connection
+  );
+
+  /* We should always be able to fallback to "central" */
+  g_assert(method != NULL);
+
+  /* Reply that subscription was successful (so far, synchronization may
+   * still fail) and tell identifier. */
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"subscribe-chat");
+
+  xmlNewProp(
+    reply_xml,
+    (const xmlChar*)"group",
+    (const xmlChar*)inf_communication_group_get_name(group)
+  );
+  
+  xmlNewProp(
+    reply_xml,
+    (const xmlChar*)"method",
+    (const xmlChar*)method
+  );
+
+  g_object_unref(group);
+
+  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
+  if(seq_attr != NULL)
+  {
+    xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
+    xmlFree(seq_attr);
+  }
+
+  infd_directory_add_subreq_chat(directory, connection);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
+  );
+
+  return TRUE;
+}
+
+static gboolean
 infd_directory_handle_subscribe_ack(InfdDirectory* directory,
                                     InfXmlConnection* connection,
                                     const xmlNodePtr xml,
@@ -2805,7 +2934,6 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     directory,
     connection,
     xml,
-    "id",
     error
   );
 
@@ -2817,6 +2945,33 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
 
   switch(request->type)
   {
+  case INFD_DIRECTORY_SUBREQ_CHAT:
+    /* Note that it doesn't matter whether the chat was disabled+enabled
+     * between subreq generation and <subscribe-ack/> handling - the group
+     * is always called InfChat so the client joins the correct group in
+     * all cases. */
+    if(priv->chat_session != NULL)
+    {
+      infd_session_proxy_subscribe_to(priv->chat_session, connection, TRUE);
+    }
+    else
+    {
+      /* The chat does not exist anymore - just create a temporary chat,
+       * subscribe the client and then close the chat right aftewards, to
+       * notify the client about the chat not existing anymore. */
+
+      /* TODO: Make a helper function creating the chat proxy but not
+       * setting the member var / doing the property notify */
+      g_object_freeze_notify(G_OBJECT(directory));
+
+      infd_directory_enable_chat(directory, TRUE);
+      infd_session_proxy_subscribe_to(priv->chat_session, connection, TRUE);
+      infd_directory_enable_chat(directory, FALSE);
+
+      g_object_thaw_notify(G_OBJECT(directory));
+    }
+
+    break;
   case INFD_DIRECTORY_SUBREQ_SESSION:
     node = g_hash_table_lookup(
       priv->nodes,
@@ -2986,7 +3141,6 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
     directory,
     connection,
     xml,
-    "id",
     error
   );
 
@@ -3128,6 +3282,8 @@ infd_directory_init(GTypeInstance* instance,
   priv->root = infd_directory_node_new_subdirectory(directory, NULL, 0, NULL);
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
+
+  priv->chat_session = NULL;
 }
 
 static GObject*
@@ -3184,6 +3340,10 @@ infd_directory_dispose(GObject* object)
 
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Disable chat if any */
+  if(priv->chat_session != NULL)
+    infd_directory_enable_chat(directory, FALSE);
 
   /* Cancel sync-ins */
   while(priv->sync_ins != NULL)
@@ -3266,6 +3426,8 @@ infd_directory_set_property(GObject* object,
     );
 
     break;
+  case PROP_CHAT_SESSION:
+    /* read only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -3294,6 +3456,9 @@ infd_directory_get_property(GObject* object,
     break;
   case PROP_COMMUNICATION_MANAGER:
     g_value_set_object(value, G_OBJECT(priv->communication_manager));
+    break;
+  case PROP_CHAT_SESSION:
+    g_value_set_object(value, G_OBJECT(priv->chat_session));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -3442,6 +3607,15 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
+  else if(strcmp((const char*)node->name, "subscribe-chat") == 0)
+  {
+    infd_directory_handle_subscribe_chat(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
   else if(strcmp((const char*)node->name, "subscribe-ack") == 0)
   {
     /* Don't reply to subscribe-ack. */
@@ -3572,6 +3746,18 @@ infd_directory_class_init(gpointer g_class,
       "The communication manager for the directory",
       INF_COMMUNICATION_TYPE_MANAGER,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_CHAT_SESSION,
+    g_param_spec_object(
+      "chat-session",
+      "Chat session",
+      "The server's chat session",
+      INFD_TYPE_SESSION_PROXY,
+      G_PARAM_READABLE
     )
   );
 
@@ -4539,6 +4725,103 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   g_free(path);
   return result;
+}
+
+/**
+ * infd_directory_enable_chat:
+ * @directory: A #InfdDirectory.
+ * @enable: Whether to enable or disable the chat.
+ *
+ * If @enable is %TRUE, this enables the chat on the server. This allows
+ * clients subscribing to the chat via infc_browser_subscribe_chat(). If
+ * @enable is %FALSE the chat is disabled which means closing an existing
+ * chat session if any and no longer allowing subscription to the chat.
+ * The chat is initially disabled.
+ */
+void
+infd_directory_enable_chat(InfdDirectory* directory,
+                           gboolean enable)
+{
+  InfdDirectoryPrivate* priv;
+  InfCommunicationHostedGroup* group;
+  InfChatSession* session;
+
+  /* TODO: For the moment, there only exist central methods anyway. In the
+   * long term, this should probably be a property, though. */
+  static const gchar* const methods[] = { "central", NULL };
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(enable)
+  {
+    if(priv->chat_session == NULL)
+    {
+      group = inf_communication_manager_open_group(
+        priv->communication_manager,
+        "InfChat",
+        methods
+      );
+
+      session = inf_chat_session_new(
+        priv->communication_manager,
+        256,
+        NULL,
+        NULL
+      );
+
+      priv->chat_session = INFD_SESSION_PROXY(
+        g_object_new(
+          INFD_TYPE_SESSION_PROXY,
+          "session", session,
+          "subscription-group", group,
+          NULL
+        )
+      );
+
+      inf_communication_group_set_target(
+        INF_COMMUNICATION_GROUP(group),
+        INF_COMMUNICATION_OBJECT(priv->chat_session)
+      );
+
+      g_object_unref(session);
+      g_object_unref(group);
+
+      g_object_notify(G_OBJECT(directory), "chat-session");
+    }
+  }
+  else
+  {
+    if(priv->chat_session != NULL)
+    {
+      inf_session_close(infd_session_proxy_get_session(priv->chat_session));
+
+      g_object_unref(priv->chat_session);
+      priv->chat_session = NULL;
+
+      g_object_notify(G_OBJECT(directory), "chat-session");
+    }
+  }
+}
+
+/**
+ * infd_directory_get_chat_session:
+ * @directory: A #InfdDirectory.
+ *
+ * Returns a #InfdSessionProxy for the chat session, if any. If the chat is
+ * enabled (see infd_directory_enable_chat()) this returns a #InfdSessionProxy
+ * that can be used to join local users to the chat, or to get chat contents
+ * (by getting the #InfChatBuffer from the proxy's #InfChatSession). If the
+ * chat is disabled the function returns %NULL.
+ *
+ * Returns: A #InfdSessionProxy, or %NULL if the chat is disabled.
+ */
+InfdSessionProxy*
+infd_directory_get_chat_session(InfdDirectory* directory)
+{
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  return INFD_DIRECTORY_PRIVATE(directory)->chat_session;
 }
 
 /* vim:set et sw=2 ts=2: */

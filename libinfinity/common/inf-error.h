@@ -97,6 +97,8 @@ typedef enum _InfUserError {
  * not exist in the directory (anymore).
  * @INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST: A &lt;subscribe-ack&gt;
  * or &lt;subscribe-nack&gt; has been received without a previous request.
+ * @INF_DIRECTORY_ERROR_CHAT_DISABLED: A client attempted to subscribe to a
+ * server's chat, but the chat is disabled on the server side.
  * @INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY: The node refered to in a request
  * is not a subdirectory node, but the requested operation requires one.
  * @INF_DIRECTORY_ERROR_NOT_A_NOTE: The node refered to in a request is not
@@ -138,6 +140,7 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NODE_EXISTS,
   INF_DIRECTORY_ERROR_NO_SUCH_NODE,
   INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
+  INF_DIRECTORY_ERROR_CHAT_DISABLED,
   INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
   INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
