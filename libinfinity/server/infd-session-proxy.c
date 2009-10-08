@@ -1360,7 +1360,7 @@ infd_session_proxy_get_type(void)
  */
 
 /**
- * inf_session_proxy_get_session:
+ * infd_session_proxy_get_session:
  * @proxy: A #InfdSessionProxy.
  *
  * Returns the session proxied by @proxy. Returns %NULL if the session was

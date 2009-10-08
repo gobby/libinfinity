@@ -1,5 +1,10 @@
 2009-10-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-session-proxy.c: Fixed the documentation
+	comment of the infd_session_proxy_get_session() function.
+
+2009-10-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c
 	(infd_directory_handle_remove_node): Fixed the error domain of the
 	error generated when attempting to remove the root node.
