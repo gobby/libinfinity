@@ -115,6 +115,7 @@ version_check() {
 	printerr "  from your distribution or get the source tarball at"
         printerr "    $vc_source"
 	printerr
+	exit $vc_status
     fi
     return $vc_status
 }
@@ -221,7 +222,7 @@ check_m4macros() {
     fi
     if [ "$cm_status" != 0 ]; then
         print_m4macros_error
-        return $cm_status
+        exit $cm_status
     fi
     if [ -n "$FORBIDDEN_M4MACROS" ]; then
 	printbold "Checking for forbidden M4 macros..."
@@ -242,8 +243,8 @@ check_m4macros() {
     fi
     if [ "$cm_status" != 0 ]; then
         print_m4macros_error
+	exit $cm_status
     fi
-    return $cm_status
 }
 
 # try to catch the case where the macros2/ directory hasn't been cleared out.
@@ -256,6 +257,7 @@ want_intltool=false
 want_pkg_config=false
 want_gtk_doc=false
 want_gnome_doc_utils=false
+want_maintainer_mode=false
 
 configure_files="`find $srcdir -name '{arch}' -prune -o -name '_darcs' -prune -o -name '.??*' -prune -o -name configure.ac -print -o -name configure.in -print`"
 for configure_ac in $configure_files; do
@@ -288,6 +290,11 @@ for configure_ac in $configure_files; do
         want_gnome_doc_utils=true
     fi
 
+    # check that AM_MAINTAINER_MODE is used
+    if grep "^AM_MAINTAINER_MODE" $configure_ac >/dev/null; then
+	want_maintainer_mode=true
+    fi
+
     # check to make sure gnome-common macros can be found ...
     if grep "^GNOME_COMMON_INIT" $configure_ac >/dev/null ||
        grep "^GNOME_DEBUG_CHECK" $configure_ac >/dev/null ||
@@ -300,79 +307,74 @@ for configure_ac in $configure_files; do
     fi
 done
 
-DIE=0
-
 #tell Mandrake autoconf wrapper we want autoconf 2.5x, not 2.13
 WANT_AUTOCONF_2_5=1
 export WANT_AUTOCONF_2_5
 version_check autoconf AUTOCONF 'autoconf2.50 autoconf autoconf-2.53' $REQUIRED_AUTOCONF_VERSION \
-    "http://ftp.gnu.org/pub/gnu/autoconf/autoconf-$REQUIRED_AUTOCONF_VERSION.tar.gz" || DIE=1
+    "http://ftp.gnu.org/pub/gnu/autoconf/autoconf-$REQUIRED_AUTOCONF_VERSION.tar.gz"
 AUTOHEADER=`echo $AUTOCONF | sed s/autoconf/autoheader/`
 
 case $REQUIRED_AUTOMAKE_VERSION in
     1.4*) automake_progs="automake-1.4" ;;
-    1.5*) automake_progs="automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6 automake-1.5" ;;
-    1.6*) automake_progs="automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6" ;;
-    1.7*) automake_progs="automake-1.10 automake-1.9 automake-1.8 automake-1.7" ;;
-    1.8*) automake_progs="automake-1.10 automake-1.9 automake-1.8" ;;
-    1.9*) automake_progs="automake-1.10 automake-1.9" ;;
-    1.10*) automake_progs="automake-1.10" ;;
+    1.5*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6 automake-1.5" ;;
+    1.6*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6" ;;
+    1.7*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7" ;;
+    1.8*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8" ;;
+    1.9*) automake_progs="automake-1.11 automake-1.10 automake-1.9" ;;
+    1.10*) automake_progs="automake-1.11 automake-1.10" ;;
+    1.11*) automake_progs="automake-1.11" ;;
 esac
 version_check automake AUTOMAKE "$automake_progs" $REQUIRED_AUTOMAKE_VERSION \
-    "http://ftp.gnu.org/pub/gnu/automake/automake-$REQUIRED_AUTOMAKE_VERSION.tar.gz" || DIE=1
+    "http://ftp.gnu.org/pub/gnu/automake/automake-$REQUIRED_AUTOMAKE_VERSION.tar.gz"
 ACLOCAL=`echo $AUTOMAKE | sed s/automake/aclocal/`
 
 if $want_libtool; then
     version_check libtool LIBTOOLIZE libtoolize $REQUIRED_LIBTOOL_VERSION \
-        "http://ftp.gnu.org/pub/gnu/libtool/libtool-$REQUIRED_LIBTOOL_VERSION.tar.gz" || DIE=1
+        "http://ftp.gnu.org/pub/gnu/libtool/libtool-$REQUIRED_LIBTOOL_VERSION.tar.gz"
     require_m4macro libtool.m4
 fi
 
 if $want_gettext; then
     version_check gettext GETTEXTIZE gettextize $REQUIRED_GETTEXT_VERSION \
-        "http://ftp.gnu.org/pub/gnu/gettext/gettext-$REQUIRED_GETTEXT_VERSION.tar.gz" || DIE=1
+        "http://ftp.gnu.org/pub/gnu/gettext/gettext-$REQUIRED_GETTEXT_VERSION.tar.gz"
     require_m4macro gettext.m4
 fi
 
 if $want_glib_gettext; then
     version_check glib-gettext GLIB_GETTEXTIZE glib-gettextize $REQUIRED_GLIB_GETTEXT_VERSION \
-        "ftp://ftp.gtk.org/pub/gtk/v2.2/glib-$REQUIRED_GLIB_GETTEXT_VERSION.tar.gz" || DIE=1
+        "ftp://ftp.gtk.org/pub/gtk/v2.2/glib-$REQUIRED_GLIB_GETTEXT_VERSION.tar.gz"
     require_m4macro glib-gettext.m4
 fi
 
 if $want_intltool; then
     version_check intltool INTLTOOLIZE intltoolize $REQUIRED_INTLTOOL_VERSION \
-        "http://ftp.gnome.org/pub/GNOME/sources/intltool/" || DIE=1
+        "http://ftp.gnome.org/pub/GNOME/sources/intltool/"
     require_m4macro intltool.m4
 fi
 
 if $want_pkg_config; then
     version_check pkg-config PKG_CONFIG pkg-config $REQUIRED_PKG_CONFIG_VERSION \
-        "'http://www.freedesktop.org/software/pkgconfig/releases/pkgconfig-$REQUIRED_PKG_CONFIG_VERSION.tar.gz" || DIE=1
+        "'http://www.freedesktop.org/software/pkgconfig/releases/pkgconfig-$REQUIRED_PKG_CONFIG_VERSION.tar.gz"
     require_m4macro pkg.m4
 fi
 
 if $want_gtk_doc; then
     version_check gtk-doc GTKDOCIZE gtkdocize $REQUIRED_GTK_DOC_VERSION \
-        "http://ftp.gnome.org/pub/GNOME/sources/gtk-doc/" || DIE=1
+        "http://ftp.gnome.org/pub/GNOME/sources/gtk-doc/"
     require_m4macro gtk-doc.m4
 fi
 
 if $want_gnome_doc_utils; then
     version_check gnome-doc-utils GNOME_DOC_PREPARE gnome-doc-prepare $REQUIRED_GNOME_DOC_UTILS_VERSION \
-        "http://ftp.gnome.org/pub/GNOME/sources/gnome-doc-utils/" || DIE=1
+        "http://ftp.gnome.org/pub/GNOME/sources/gnome-doc-utils/"
 fi
 
 if [ "x$USE_COMMON_DOC_BUILD" = "xyes" ]; then
     version_check gnome-common DOC_COMMON gnome-doc-common \
-        $REQUIRED_DOC_COMMON_VERSION " " || DIE=1
+        $REQUIRED_DOC_COMMON_VERSION " "
 fi
 
-check_m4macros || DIE=1
-
-if [ "$DIE" -eq 1 ]; then
-  exit 1
-fi
+check_m4macros
 
 if [ "$#" = 0 -a "x$NOCONFIGURE" = "x" ]; then
   printerr "**Warning**: I am going to run \`configure' with no arguments."
@@ -472,7 +474,7 @@ for configure_ac in $configure_files; do
           cp -pf INSTALL INSTALL.autogen_bak
         fi
 	if [ $REQUIRED_AUTOMAKE_VERSION != 1.4 ]; then
-	    $AUTOMAKE --gnu --add-missing --force --copy || exit 1
+	    $AUTOMAKE --gnu --add-missing --force --copy -Wno-portability || exit 1
 	else
 	    $AUTOMAKE --gnu --add-missing --copy || exit 1
 	fi
@@ -489,7 +491,11 @@ for configure_ac in $configure_files; do
     fi
 done
 
-conf_flags="--enable-maintainer-mode"
+conf_flags=""
+
+if $want_maintainer_mode; then
+    conf_flags="--enable-maintainer-mode"
+fi
 
 if test x$NOCONFIGURE = x; then
     printbold Running $srcdir/configure $conf_flags "$@" ...
