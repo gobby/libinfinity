@@ -2580,7 +2580,7 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      inf_directory_error_quark,
+      inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
       _("The root node cannot be removed")
     );
