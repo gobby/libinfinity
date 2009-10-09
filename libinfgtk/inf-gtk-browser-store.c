@@ -787,9 +787,18 @@ inf_gtk_browser_store_begin_subscribe_cb(InfcBrowser* browser,
   InfGtkBrowserStoreItem* item;
 
   store = INF_GTK_BROWSER_STORE(user_data);
-  item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
-  inf_gtk_browser_store_item_request_add(store, item, INFC_REQUEST(request));
+  /* Ignore chat subscriptions */
+  if(iter != NULL)
+  {
+    item = inf_gtk_browser_store_find_item_by_browser(store, browser);
+
+    inf_gtk_browser_store_item_request_add(
+      store,
+      item,
+      INFC_REQUEST(request)
+    );
+  }
 }
 
 static void

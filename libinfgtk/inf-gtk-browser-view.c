@@ -683,7 +683,8 @@ inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
    * only be created along with new nodes, in which case we already add the
    * synchronization in row_inserted_cb(). Perhaps we could still
    * double-check here, just to be sure, though... */
-  if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
+  if(iter != NULL &&
+     inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
   {
     result = inf_gtk_browser_model_browser_iter_to_tree_iter(
       INF_GTK_BROWSER_MODEL(model),

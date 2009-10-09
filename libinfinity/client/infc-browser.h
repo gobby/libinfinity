@@ -79,8 +79,6 @@ struct _InfcBrowserClass {
                         InfcBrowserIter* iter,
                         InfcExploreRequest* request);
 
-  /* TODO: Does anyone actually use this signal? I can't imagine any
-   * senseful use of it. */
   void (*begin_subscribe)(InfcBrowser* browser,
                           InfcBrowserIter* iter,
                           InfcNodeRequest* request);
@@ -221,6 +219,17 @@ gboolean
 infc_browser_iter_from_explore_request(InfcBrowser* browser,
                                        InfcExploreRequest* request,
                                        InfcBrowserIter* iter);
+
+/* TODO: This should not use InfcNodeRequest, but another request type
+ * which is not identified with a node. */
+InfcNodeRequest*
+infc_browser_subscribe_chat(InfcBrowser* browser);
+
+InfcNodeRequest*
+infc_browser_get_subscribe_chat_request(InfcBrowser* browser);
+
+InfcSessionProxy*
+infc_browser_get_chat_session(InfcBrowser* browser);
 
 G_END_DECLS
 

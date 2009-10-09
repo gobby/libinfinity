@@ -32,6 +32,7 @@
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
 
+#include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
@@ -112,6 +113,7 @@ struct _InfcBrowserSyncIn {
 };
 
 typedef enum _InfcBrowserSubreqType {
+  INFC_BROWSER_SUBREQ_CHAT,
   INFC_BROWSER_SUBREQ_SESSION,
   INFC_BROWSER_SUBREQ_ADD_NODE,
   INFC_BROWSER_SUBREQ_SYNC_IN
@@ -120,9 +122,15 @@ typedef enum _InfcBrowserSubreqType {
 typedef struct _InfcBrowserSubreq InfcBrowserSubreq;
 struct _InfcBrowserSubreq {
   InfcBrowserSubreqType type;
+  /* TODO: This should maybe go to shared, as not required for chat: */
   guint node_id;
 
   union {
+    struct {
+      InfcNodeRequest* request;
+      InfCommunicationJoinedGroup* subscription_group;
+    } chat;
+
     struct {
       InfcBrowserNode* node;
       InfcNodeRequest* request;
@@ -165,6 +173,8 @@ struct _InfcBrowserPrivate {
 
   GSList* sync_ins;
   GSList* subscription_requests;
+
+  InfcSessionProxy* chat_session;
 };
 
 #define INFC_BROWSER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_BROWSER, InfcBrowserPrivate))
@@ -174,7 +184,10 @@ enum {
 
   PROP_IO,
   PROP_COMMUNICATION_MANAGER,
-  PROP_CONNECTION
+  PROP_CONNECTION,
+
+  /* read only */
+  PROP_CHAT_SESSION
 };
 
 enum {
@@ -292,6 +305,23 @@ infc_browser_iter_get_sync_in_requests_foreach_func(InfcRequest* request,
     if(node_id == data->iter->node_id)
       data->result = g_slist_prepend(data->result, node_request);
   }
+}
+
+static void
+infc_browser_get_chat_request_foreach_func(InfcRequest* request,
+                                           gpointer user_data)
+{
+  InfcBrowserIterGetNodeRequestForeachData* data;
+
+  data = (InfcBrowserIterGetNodeRequestForeachData*)user_data;
+  g_assert(INFC_IS_NODE_REQUEST(request));
+
+  /* There can only be one such request: */
+  g_assert(data->result == NULL);
+
+  /* TODO: Stop foreach when we found the request. Requires changes in
+   * InfcRequestManager. */
+  data->result = INFC_NODE_REQUEST(request);
 }
 
 /*
@@ -687,31 +717,46 @@ infc_browser_session_close_cb(InfSession* session,
                               gpointer user_data)
 {
   InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
   InfcBrowserIter* iter;
   InfcBrowserNode* node;
 
   browser = INFC_BROWSER(user_data);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
   iter = (InfcBrowserIter*)g_object_get_qdata(
     G_OBJECT(session),
     infc_browser_session_proxy_quark
   );
 
-  g_assert(iter != NULL);
-  g_assert(
-    g_hash_table_lookup(
-      INFC_BROWSER_PRIVATE(browser)->nodes, GUINT_TO_POINTER(iter->node_id)
-    ) == iter->node
-  );
+  if(iter != NULL)
+  {
+    g_assert(
+      g_hash_table_lookup(
+        INFC_BROWSER_PRIVATE(browser)->nodes, GUINT_TO_POINTER(iter->node_id)
+      ) == iter->node
+    );
 
-  node = (InfcBrowserNode*)iter->node;
+    node = (InfcBrowserNode*)iter->node;
 
-  g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
-  g_assert(node->shared.known.session != NULL);
-  g_assert(
-    infc_session_proxy_get_session(node->shared.known.session) == session
-  );
+    g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
+    g_assert(node->shared.known.session != NULL);
+    g_assert(
+      infc_session_proxy_get_session(node->shared.known.session) == session
+    );
 
-  infc_browser_session_remove_session(browser, node);
+    infc_browser_session_remove_session(browser, node);
+  }
+  else
+  {
+    g_assert(priv->chat_session != NULL);
+    g_assert(infc_session_proxy_get_session(priv->chat_session) == session);
+
+    g_object_unref(priv->chat_session);
+    priv->chat_session = NULL;
+
+    g_object_notify(G_OBJECT(browser), "chat-session");
+  }
 }
 
 /* Required by infc_browser_release_connection() */
@@ -837,6 +882,7 @@ infc_browser_init(GTypeInstance* instance,
 
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
+  priv->chat_session = NULL;
 }
 
 static GObject*
@@ -895,6 +941,11 @@ infc_browser_dispose(GObject* object)
 
   browser = INFC_BROWSER(object);
   priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* Close chat session if it is open */
+  if(priv->chat_session != NULL)
+    inf_session_close(infc_session_proxy_get_session(priv->chat_session));
+  g_assert(priv->chat_session == NULL);
 
   infc_browser_node_free(browser, priv->root);
   priv->root = NULL;
@@ -957,6 +1008,9 @@ infc_browser_set_property(GObject* object,
     priv->connection = INF_XML_CONNECTION(g_value_dup_object(value));
 
     break;
+  case PROP_CHAT_SESSION:
+    /* read only */
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -985,6 +1039,9 @@ infc_browser_get_property(GObject* object,
     break;
   case PROP_CONNECTION:
     g_value_set_object(value, G_OBJECT(priv->connection));
+    break;
+  case PROP_CHAT_SESSION:
+    g_value_set_object(value, G_OBJECT(priv->chat_session));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1053,6 +1110,30 @@ infc_browser_add_subreq_common(InfcBrowser* browser,
 }
 
 static InfcBrowserSubreq*
+infc_browser_add_subreq_chat(InfcBrowser* browser,
+                             InfcNodeRequest* request,
+                             InfCommunicationJoinedGroup* group)
+{
+  InfcBrowserSubreq* subreq;
+
+  subreq = infc_browser_add_subreq_common(
+    browser,
+    INFC_BROWSER_SUBREQ_CHAT,
+    0
+  );
+
+  subreq->shared.chat.request = request;
+  subreq->shared.chat.subscription_group = group;
+
+  /* TODO: Document in what case request can be NULL, or assert if it can't */
+  if(request != NULL)
+    g_object_ref(request);
+  g_object_ref(group);
+
+  return subreq;
+}
+
+static InfcBrowserSubreq*
 infc_browser_add_subreq_session(InfcBrowser* browser,
                                 InfcBrowserNode* node,
                                 InfcNodeRequest* request,
@@ -1070,6 +1151,7 @@ infc_browser_add_subreq_session(InfcBrowser* browser,
   subreq->shared.session.request = request;
   subreq->shared.session.subscription_group = group;
 
+  /* TODO: Document in what case request can be NULL, or assert if it can't */
   if(request != NULL)
     g_object_ref(request);
   g_object_ref(group);
@@ -1155,6 +1237,13 @@ infc_browser_free_subreq(InfcBrowserSubreq* request)
 {
   switch(request->type)
   {
+  case INFC_BROWSER_SUBREQ_CHAT:
+    g_object_unref(request->shared.chat.subscription_group);
+
+    if(request->shared.chat.request != NULL)
+      g_object_unref(request->shared.chat.request);
+
+    break;
   case INFC_BROWSER_SUBREQ_SESSION:
     g_object_unref(request->shared.session.subscription_group);
 
@@ -1227,8 +1316,9 @@ infc_browser_find_subreq(InfcBrowser* browser,
     subreq = (InfcBrowserSubreq*)item->data;
     switch(subreq->type)
     {
+    case INFC_BROWSER_SUBREQ_CHAT:
     case INFC_BROWSER_SUBREQ_SESSION:
-      /* This does not create a note */
+      /* These do not create a note */
       break;
     case INFC_BROWSER_SUBREQ_ADD_NODE:
       if(subreq->node_id == node_id)
@@ -1415,7 +1505,8 @@ infc_browser_subscribe_ack(InfcBrowser* browser,
   priv = INFC_BROWSER_PRIVATE(browser);
 
   xml = xmlNewNode(NULL, (const xmlChar*)"subscribe-ack");
-  inf_xml_util_set_attribute_uint(xml, "id", request->node_id);
+  if(request->type != INFC_BROWSER_SUBREQ_CHAT)
+    inf_xml_util_set_attribute_uint(xml, "id", request->node_id);
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -1435,7 +1526,7 @@ infc_browser_subscribe_nack(InfcBrowser* browser,
   priv = INFC_BROWSER_PRIVATE(browser);
 
   xml = xmlNewNode(NULL, (const xmlChar*)"subscribe-nack");
-  inf_xml_util_set_attribute_uint(xml, "id", node_id);
+  if(node_id > 0) inf_xml_util_set_attribute_uint(xml, "id", node_id);
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -2262,6 +2353,8 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     error
   );
 
+  /* TODO: Send subscribe-nack with the id the server sent, even if we could
+   * not find the node. */
   if(node == NULL) return FALSE;
 
   if(node->type == INFC_BROWSER_NODE_NOTE_UNKNOWN)
@@ -2300,6 +2393,12 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     error
   );
 
+  if(!group)
+  {
+    infc_browser_subscribe_nack(browser, connection, node->id);
+    return FALSE;
+  }
+
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     "subscribe-session",
@@ -2312,6 +2411,69 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
   subreq = infc_browser_add_subreq_session(
     browser,
     node,
+    INFC_NODE_REQUEST(request),
+    group
+  );
+
+  g_object_unref(group);
+
+  infc_browser_subscribe_ack(browser, connection, subreq);
+
+  return TRUE;
+}
+
+static gboolean
+infc_browser_handle_subscribe_chat(InfcBrowser* browser,
+                                   InfXmlConnection* connection,
+                                   xmlNodePtr xml,
+                                   GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  InfCommunicationJoinedGroup* group;
+  InfcBrowserSubreq* subreq;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  if(priv->chat_session != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
+      _("Already subscribed to the chat session")
+    );
+
+    /* Don't send subscribe-nack here, it is the server's job not to send us
+     * subscribe-session if we are already subscribed. */
+
+    return FALSE;
+  }
+
+  group = infc_browser_create_group_from_xml(
+    browser,
+    connection,
+    xml,
+    error
+  );
+
+  if(!group)
+  {
+    infc_browser_subscribe_nack(browser, connection, 0);
+    return FALSE;
+  }
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "subscribe-chat",
+    xml,
+    NULL
+  );
+
+  g_assert(INFC_IS_NODE_REQUEST(request));
+
+  subreq = infc_browser_add_subreq_chat(
+    browser,
     INFC_NODE_REQUEST(request),
     group
   );
@@ -2566,6 +2728,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
+  else if(strcmp((const gchar*)node->name, "subscribe-chat") == 0)
+  {
+    infc_browser_handle_subscribe_chat(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
   else if(strcmp((const gchar*)node->name, "save-session-in-progress") == 0)
   {
     infc_browser_handle_save_session_in_progress(
@@ -2647,6 +2818,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
   GSList* item;
   InfCommunicationJoinedGroup* sync_group;
   InfcBrowserSubreq* subreq;
+  InfChatSession* session;
   InfcSessionProxy* proxy;
   InfcBrowserIter iter;
 
@@ -2675,6 +2847,44 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
     switch(subreq->type)
     {
+    case INFC_BROWSER_SUBREQ_CHAT:
+      /* OK, do the subscription */
+      g_assert(priv->chat_session == NULL);
+
+      /* Synchronize in subscription group: */
+      session = inf_chat_session_new(
+        priv->communication_manager,
+        256,
+        INF_COMMUNICATION_GROUP(subreq->shared.chat.subscription_group),
+        connection
+      );
+
+      proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
+
+      inf_communication_group_set_target(
+        INF_COMMUNICATION_GROUP(subreq->shared.chat.subscription_group),
+        INF_COMMUNICATION_OBJECT(proxy)
+      );
+
+      infc_session_proxy_set_connection(
+        proxy,
+        subreq->shared.chat.subscription_group,
+        connection
+      );
+
+      g_object_unref(session);
+
+      g_signal_emit(
+        G_OBJECT(browser),
+        browser_signals[SUBSCRIBE_SESSION],
+        0,
+        NULL,
+        proxy
+      );
+
+      /* The default handler refs the proxy */
+      g_object_unref(proxy);
+      break;
     case INFC_BROWSER_SUBREQ_SESSION:
       if(subreq->shared.session.node != NULL)
       {
@@ -2867,30 +3077,42 @@ infc_browser_subscribe_session_impl(InfcBrowser* browser,
   InfSession* session;
 
   priv = INFC_BROWSER_PRIVATE(browser);
-  node = (InfcBrowserNode*)iter->node;
-  
-  g_assert(
-    g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) ==
-    node
-  );
-
-  g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
-  g_assert(node->shared.known.session == NULL);
-
-  node->shared.known.session = proxy;
-
-  g_object_ref(G_OBJECT(proxy));
-
   session = infc_session_proxy_get_session(proxy);
 
-  /* Associate the iter to the session so that we can remove the proxy
-   * from that item when the session is closed. */
-  g_object_set_qdata_full(
-    G_OBJECT(session),
-    infc_browser_session_proxy_quark,
-    infc_browser_iter_copy(iter),
-    (GDestroyNotify)infc_browser_iter_free
-  );
+  if(iter != NULL)
+  {
+    node = (InfcBrowserNode*)iter->node;
+
+    g_assert(
+      g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id)) ==
+      node
+    );
+
+    g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
+    g_assert(node->shared.known.session == NULL);
+
+    node->shared.known.session = proxy;
+
+    g_object_ref(proxy);
+
+    /* Associate the iter to the session so that we can remove the proxy
+     * from that item when the session is closed. */
+    g_object_set_qdata_full(
+      G_OBJECT(session),
+      infc_browser_session_proxy_quark,
+      infc_browser_iter_copy(iter),
+      (GDestroyNotify)infc_browser_iter_free
+    );
+  }
+  else
+  {
+    g_assert(priv->chat_session == NULL);
+
+    g_object_ref(proxy);
+    priv->chat_session = proxy;
+
+    g_object_notify(G_OBJECT(browser), "chat-session");
+  }
 
   /* connect_after so that we release the reference to the object after it
    * was closed. Otherwise, we would trigger another close signal when
@@ -2980,6 +3202,18 @@ infc_browser_class_init(gpointer g_class,
     )
   );
 
+  g_object_class_install_property(
+    object_class,
+    PROP_CHAT_SESSION,
+    g_param_spec_object(
+      "chat-session",
+      "Chat session",
+      "Active chat session",
+      INFC_TYPE_SESSION_PROXY,
+      G_PARAM_READABLE
+    )
+  );
+
   /**
    * InfcBrowser::node-added:
    * @browser: The #InfcBrowser emitting the siganl.
@@ -3029,13 +3263,17 @@ infc_browser_class_init(gpointer g_class,
   /**
    * InfcBrowser::subscribe-session:
    * @browser: The #InfcBrowser emitting the siganl.
-   * @iter: A #InfcBrowserIter pointing to the subscribed node.
+   * @iter: A #InfcBrowserIter pointing to the subscribed node, or %NULL.
    * @proxy: A #InfcSessionProxy for the subscribed session.
    *
    * Emitted when subscribed to a session. The subscription was successful,
    * but the synchronization (the server sending the initial session state)
    * might still fail. Use #InfSession::synchronization-complete and
    * #InfSession::synchronization-failed to be notified.
+   *
+   * If @iter is %NULL this is a subscription to the chat. This guarantees
+   * @proxy's session to be a #InfChatSession. If @iter is non-%NULL this is a
+   * subscription to the session of the node pointed to by @iter.
    **/
   browser_signals[SUBSCRIBE_SESSION] = g_signal_new(
     "subscribe-session",
@@ -3076,13 +3314,16 @@ infc_browser_class_init(gpointer g_class,
    * InfcBrowser::begin-subscribe:
    * @browser: The #InfcBrowser emitting the signal.
    * @iter: A #InfcBrowserIter pointing to the node to which the subscription
-   * starts.
+   * starts, or %NULL.
    * @request: A #InfcNodeRequest for the operation.
    *
    * This signal is emitted whenever a subscription request for a
    * (non-subdirectory) node is made. Note that the subscription may still
    * fail (connect to #InfcNodeRequest::finished and #InfcRequest::failed
    * to be notified).
+   *
+   * If @iter is %NULL the signal refers to the chat session, otherwise it
+   * points to the node to whose session the client requested a subscription.
    **/
   browser_signals[BEGIN_SUBSCRIBE] = g_signal_new(
     "begin-subscribe",
@@ -4349,6 +4590,112 @@ infc_browser_iter_from_explore_request(InfcBrowser* browser,
   iter->node_id = node_id;
   iter->node = node;
   return TRUE;
+}
+
+/**
+ * infc_browser_subscribe_chat:
+ * @browser: A #InfcBrowser.
+ *
+ * Attempts to subscribe to the server's chat. When the operation finishes
+ * infc_browser_get_chat_session() will return a #InfcSessionProxy
+ * representing the chat session. It can be used to read the chat's content.
+ * The request can fail in case the server chat is disabled.
+ *
+ * Returns: A #InfcNodeRequest that may be used to get notified when
+ * the request finishes or fails.
+ */
+InfcNodeRequest*
+infc_browser_subscribe_chat(InfcBrowser* browser)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(infc_browser_get_chat_session(browser) != NULL, NULL);
+
+  g_return_val_if_fail(
+    infc_browser_get_subscribe_chat_request(browser) != NULL,
+    NULL
+  );
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* This should really be a separate request type */
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_NODE_REQUEST,
+    "subscribe-chat",
+    "node-id", 0,
+    NULL
+  );
+
+  xml = infc_browser_request_to_xml(request);
+
+  g_signal_emit(
+    G_OBJECT(browser),
+    browser_signals[BEGIN_SUBSCRIBE],
+    0,
+    NULL,
+    request
+  );
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INFC_NODE_REQUEST(request);
+}
+
+/**
+ * infc_browser_get_subscribe_chat_request:
+ * @browser: A #InfcBrowser.
+ *
+ * Returns the #InfcNodeRequest that represests the request sent to the server
+ * which attempts to subscribe to its chat. If there is no such request
+ * running, then the function returns %NULL. After such a request finishes,
+ * call infc_browser_get_chat_session() to get the #InfcSessionProxy for the
+ * chat session. To initiate the request, call infc_browser_subscribe_chat().
+ *
+ * Returns: A #InfcNodeRequest, or %NULL.
+ */
+InfcNodeRequest*
+infc_browser_get_subscribe_chat_request(InfcBrowser* browser)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserIterGetNodeRequestForeachData data;
+
+  data.result = NULL;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  infc_request_manager_foreach_named_request(
+    priv->request_manager,
+    "subscribe-chat",
+    infc_browser_get_chat_request_foreach_func,
+    &data
+  );
+
+  return data.result;
+}
+
+/**
+ * infc_browser_get_chat_session:
+ * @browser: A #InfcBrowser.
+ *
+ * Returns the #InfcSessionProxy representing the running chat session if the
+ * local client is subscribed to it, or %NULL otherwise.
+ *
+ * Returns: A #InfcSessionProxy for the chat, or %NULL.
+ */
+InfcSessionProxy*
+infc_browser_get_chat_session(InfcBrowser* browser)
+{
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  return INFC_BROWSER_PRIVATE(browser)->chat_session;
 }
 
 /* vim:set et sw=2 ts=2: */

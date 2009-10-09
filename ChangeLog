@@ -1,3 +1,16 @@
+2009-10-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added
+	infc_browser_subscribe_chat(),
+	infc_browser_get_subscribe_chat_request() and
+	infc_browser_get_chat_session(). This handles the client-side part of
+	subscribing to a server's global chat.
+
+	* libinfgtk/inf-gtk-browser-store.c:
+	* libinfgtk/inf-gtk-browser-view.c: Ignore chat subscriptions in
+	begin-subscribe and subscribe-session signal handlers.
+
 2009-10-07  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:
