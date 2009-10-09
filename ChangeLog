@@ -1,5 +1,10 @@
 2009-10-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-manager.c: Fixed a typo
+	in a comment.
+
+2009-10-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c: Declared the iter member in the
 	InfcBrowserIterGetSyncInRequestsForeachData,
 	InfcBrowserIterGetNodeRequestForeachData and
