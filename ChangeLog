@@ -1,5 +1,10 @@
 2009-10-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-chat-session.c: Make InfChatSession's
+	description appear in the documentation.
+
+2009-10-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.h:
 	* libinfinity/client/infc-browser.c: Added
 	infc_browser_subscribe_chat(),

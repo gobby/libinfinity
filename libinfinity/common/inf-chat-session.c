@@ -17,7 +17,7 @@
  */
 
 /**
- * SECTION:inf-chat_session
+ * SECTION:inf-chat-session
  * @title: InfChatSession
  * @short_description: Simple standalone chat
  * @include: libinfinity/common/inf-chat-session.h
