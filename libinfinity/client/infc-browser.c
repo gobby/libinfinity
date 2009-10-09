@@ -51,21 +51,21 @@ typedef enum _InfcBrowserNodeType {
 typedef struct _InfcBrowserIterGetExploreRequestForeachData
   InfcBrowserIterGetExploreRequestForeachData;
 struct _InfcBrowserIterGetExploreRequestForeachData {
-  InfcBrowserIter* iter;
+  const InfcBrowserIter* iter;
   InfcExploreRequest* result;
 };
 
 typedef struct _InfcBrowserIterGetNodeRequestForeachData
   InfcBrowserIterGetNodeRequestForeachData;
 struct _InfcBrowserIterGetNodeRequestForeachData {
-  InfcBrowserIter* iter;
+  const InfcBrowserIter* iter;
   InfcNodeRequest* result;
 };
 
 typedef struct _InfcBrowserIterGetSyncInRequestsForeachData
   InfcBrowserIterGetSyncInRequestsForeachData;
 struct _InfcBrowserIterGetSyncInRequestsForeachData {
-  InfcBrowserIter* iter;
+  const InfcBrowserIter* iter;
   GSList* result;
 };
 
