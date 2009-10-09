@@ -799,6 +799,8 @@ inf_chat_buffer_get_n_messages(InfChatBuffer* buffer)
  *
  * Returns the size of the chat buffer, which is the maximum number of
  * messages that can be stored in the buffer.
+ *
+ * Returns: The number of messages in the chat buffer.
  */
 guint
 inf_chat_buffer_get_size(InfChatBuffer* buffer)
