@@ -96,7 +96,8 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
   /* Find the place at which to insert the new message */
   while(begin != end)
   {
-    message = &priv->messages[priv->first_message + begin % priv->size];
+    n = (begin + end) / 2;
+    message = &priv->messages[priv->first_message + n % priv->size];
     if(message->time <= time)
       begin = (begin + end + 1)/2;
     else
@@ -116,12 +117,14 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
  
     /* We rely on the messages not wrapping around yet when the buffer is
      * not yet full. */
-    g_assert(priv->first_message + priv->num_messages < priv->alloc_messages);
+    g_assert(priv->first_message + priv->num_messages <= priv->alloc_messages);
 
     if(priv->num_messages == priv->alloc_messages)
     {
       /* We need to allocate more space */
-      priv->alloc_messages = MIN(priv->alloc_messages * 2, priv->size);
+      priv->alloc_messages = MAX(priv->alloc_messages * 2, 16);
+      priv->alloc_messages = MIN(priv->alloc_messages, priv->size);
+
       g_assert(priv->alloc_messages > priv->num_messages);
 
       priv->messages = g_realloc(
@@ -196,48 +199,43 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
   else
   {
     /* The buffer is full. This means we need to remove the oldest message */
-    if(n == 0)
+    g_assert(n > 0); /* we have catched this before */
+
+    begin = priv->first_message;
+    end = priv->first_message + n % priv->size;
+
+    if(n == priv->num_messages)
     {
-      message = NULL;
+      priv->first_message = (priv->first_message + 1) % priv->size;
+      g_free(message->text);
     }
     else
     {
-      begin = priv->first_message;
-      end = priv->first_message + n % priv->size;
-
-      if(n == priv->num_messages)
+      /* Clear the oldest message */
+      g_free(priv->messages[end].text);
+        
+      if(begin < end)
       {
-        priv->first_message = (priv->first_message + 1) % priv->size;
-        g_free(message->text);
+        memmove(
+          priv->messages + begin + 1,
+          priv->messages + begin,
+          (end - begin) * sizeof(InfChatBufferMessage)
+        );
       }
       else
       {
-        /* Clear the oldest message */
-        g_free(priv->messages[end].text);
-        
-        if(begin < end)
-        {
-          memmove(
-            priv->messages + begin + 1,
-            priv->messages + begin,
-            (end - begin) * sizeof(InfChatBufferMessage)
-          );
-        }
-        else
-        {
-          memmove(
-            priv->messages + end + 1,
-            priv->messages + end,
-            (begin - end) * sizeof(InfChatBufferMessage)
-          );
+        memmove(
+          priv->messages + end + 1,
+          priv->messages + end,
+          (begin - end) * sizeof(InfChatBufferMessage)
+        );
 
-          priv->first_message = (priv->first_message + 1) % priv->size;
-        }
+        priv->first_message = (priv->first_message + 1) % priv->size;
       }
     }
   }
 
-  return message;
+  return &priv->messages[priv->first_message + n % priv->size];
 }
 
 /*

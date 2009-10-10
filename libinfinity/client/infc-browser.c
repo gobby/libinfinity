@@ -2829,13 +2829,15 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
     priv = INFC_BROWSER_PRIVATE(browser);
 
     has_id = inf_xml_util_get_attribute_uint(xml, "id", &node_id, NULL);
-    g_assert(has_id == TRUE);
 
     for(item = priv->subscription_requests; item != NULL; item = item->next)
     {
       subreq = (InfcBrowserSubreq*)item->data;
-      if(subreq->node_id == node_id)
+      if( (has_id  && subreq->node_id == node_id) ||
+          (!has_id && subreq->node_id == 0))
+      {
         break;
+      }
     }
 
     /* TODO: Only Assert here, and remove the subreq in
@@ -2848,6 +2850,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
     switch(subreq->type)
     {
     case INFC_BROWSER_SUBREQ_CHAT:
+      g_assert(has_id == FALSE);
       /* OK, do the subscription */
       g_assert(priv->chat_session == NULL);
 
@@ -2884,8 +2887,20 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
       /* The default handler refs the proxy */
       g_object_unref(proxy);
+
+      if(subreq->shared.chat.request != NULL)
+      {
+        infc_node_request_finished(subreq->shared.chat.request, NULL);
+
+        infc_request_manager_remove_request(
+          priv->request_manager,
+          INFC_REQUEST(subreq->shared.chat.request)
+        );
+      }
+ 
       break;
     case INFC_BROWSER_SUBREQ_SESSION:
+      g_assert(has_id == TRUE);
       if(subreq->shared.session.node != NULL)
       {
         g_assert(subreq->shared.session.node->id == node_id);
@@ -2913,6 +2928,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
       break;
     case INFC_BROWSER_SUBREQ_ADD_NODE:
+      g_assert(has_id == TRUE);
       if(subreq->shared.add_node.parent != NULL)
       {
         /* Any other attempt at creating a node with this ID should have
@@ -2959,6 +2975,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
       break;
     case INFC_BROWSER_SUBREQ_SYNC_IN:
+      g_assert(has_id == TRUE);
       if(subreq->shared.sync_in.parent != NULL)
       {
         /* Any other attempt at creating a node with this ID should have
@@ -4612,10 +4629,10 @@ infc_browser_subscribe_chat(InfcBrowser* browser)
   xmlNodePtr xml;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(infc_browser_get_chat_session(browser) != NULL, NULL);
+  g_return_val_if_fail(infc_browser_get_chat_session(browser) == NULL, NULL);
 
   g_return_val_if_fail(
-    infc_browser_get_subscribe_chat_request(browser) != NULL,
+    infc_browser_get_subscribe_chat_request(browser) == NULL,
     NULL
   );
 

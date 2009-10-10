@@ -202,17 +202,22 @@ inf_chat_session_message_from_xml(InfChatSession* session,
   xmlChar* text;
   guint text_len;
 
-  type = inf_xml_util_get_attribute_required(xml, "type", error);
-  if(type == NULL) return FALSE;
+  type = inf_xml_util_get_attribute(xml, "type");
+  if(type == NULL)
+  {
+    message_type = INF_CHAT_BUFFER_MESSAGE_NORMAL;
+  }
+  else
+  {
+    result = inf_chat_session_message_type_from_string(
+      (const char*)type,
+      &message_type,
+      error
+    );
 
-  result = inf_chat_session_message_type_from_string(
-    (const char*)type,
-    &message_type,
-    error
-  );
-
-  xmlFree(type);
-  if(result == FALSE) return FALSE;
+    xmlFree(type);
+    if(result == FALSE) return FALSE;
+  }
 
   if(for_sync)
   {

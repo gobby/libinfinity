@@ -1,3 +1,20 @@
+2009-10-09  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-chat-buffer.c
+	(inf_chat_buffer_reserve_message): Fixed logic for first inserted
+	message and fixed return value when the first message is reordered in
+	memory.
+
+	* libinfinity/common/inf-chat-session.c
+	(inf_chat_session_message_from_xml): Don't require the "type"
+	attribute being set but default to INF_CHAT_BUFFER_MESSAGE_NORMAL if
+	it isn't. This is compatible to the way the inverse function,
+	inf_chat_session_message_to_xml(), generates XML messages.
+
+	* libinfinity/client/infc-browser.c
+	(infc_browser_communication_object_sent): Handle correctly the case
+	when the outgoing message has no ID set (chat subscription).
+
 2009-10-08  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-chat-buffer.c (inf_chat_buffer_get_size):
