@@ -78,6 +78,8 @@ main(int argc, char* argv[])
       manager
     );
 
+    infd_directory_enable_chat(directory, TRUE);
+
     g_free(root_directory);
     g_object_unref(G_OBJECT(storage));
     g_object_unref(G_OBJECT(manager));

@@ -1,5 +1,14 @@
 2009-10-09  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-chat.c: Added simple command-line based chat client
+	as a test for InfChatSession.
+
+	* test/inf-test-daemon.c: Enable the chat on the server.
+
+	* test/Makefile.am: Added the file to the build.
+
+2009-10-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-chat-buffer.c
 	(inf_chat_buffer_reserve_message): Fixed logic for first inserted
 	message and fixed return value when the first message is reordered in
