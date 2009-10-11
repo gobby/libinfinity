@@ -1446,8 +1446,8 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * without returning to the main loop before) so that the synchronization
  * connection is added to the subscription group for synchronization.
  *
- * A subscription can only be initialted if @proxy's session is in state
- * %INF_SESSION_RUNNING.
+ * Otherwise a subscription can only be initiated if @proxy's session is in
+ * state %INF_SESSION_RUNNING.
  **/
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,

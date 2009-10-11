@@ -1,3 +1,9 @@
+2009-10-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-user.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfgtk/inf-gtk-io.c: Minor documentation fixes.
+
 2009-10-09  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-chat.c: Added simple command-line based chat client

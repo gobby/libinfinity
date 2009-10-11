@@ -381,6 +381,8 @@ inf_gtk_io_get_type(void)
  * inf_gtk_io_new:
  *
  * Creates a new #InfGtkIo.
+ *
+ * Returns: A new #InfGtkIo. Free with g_object_unref() when no longer needed.
  **/
 InfGtkIo*
 inf_gtk_io_new(void)

@@ -398,7 +398,7 @@ inf_user_get_status(const InfUser* user)
  * inf_user_get_flags:
  * @user: A #InfUser.
  *
- * Returns the flags for the given #INfUser.
+ * Returns the flags for the given #InfUser.
  *
  * Return Value: The user's flags.
  **/
