@@ -1,3 +1,15 @@
+2009-10-12  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-chat.h:
+	* libinfgtk/inf-gtk-chat.c: Added the InfGtkChat class, a widget to
+	show the conversation of an InfChatSession and to write messages if a
+	local user has joined the session.
+
+	* libinfgtk/Makefile.am: Added the new files to the build.
+
+	* test/inf-test-gtk-browser.c: When connecting to a host, subscribe to
+	its chat and open a window showing a InfGtkChat to make use of it.
+
 2009-10-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-user.c:

@@ -157,3 +157,22 @@ INF_GTK_TYPE_CERTIFICATE_VIEW
 INF_GTK_TYPE_CERTIFICATE_VIEW_FLAGS
 inf_gtk_certificate_view_get_type
 </SECTION>
+
+<SECTION>
+<FILE>inf-gtk-chat</FILE>
+<TITLE>InfGtkChat</TITLE>
+InfGtkChat
+inf_gtk_chat_new
+inf_gtk_chat_set_session
+inf_gtk_chat_set_active_user
+inf_gtk_chat_get_entry
+<SUBSECTION Standard>
+InfGtkChatClass
+INF_GTK_CHAT
+INF_GTK_IS_CHAT
+INF_GTK_TYPE_CHAT
+inf_gtk_chat_get_type
+INF_GTK_CHAT_CLASS
+INF_GTK_IS_CHAT_CLASS
+INF_GTK_CHAT_GET_CLASS
+</SECTION>

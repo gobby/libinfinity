@@ -20,21 +20,16 @@
 #include <libinftextgtk/inf-text-gtk-buffer.h>
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfgtk/inf-gtk-browser-store.h>
+#include <libinfgtk/inf-gtk-chat.h>
 #include <libinfgtk/inf-gtk-io.h>
 #include <libinftext/inf-text-session.h>
 #include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/common/inf-xmpp-manager.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
+#include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
 
-#include <gtk/gtkmain.h>
-#include <gtk/gtkbutton.h>
-#include <gtk/gtkhbbox.h>
-#include <gtk/gtkvbox.h>
-#include <gtk/gtkscrolledwindow.h>
-#include <gtk/gtktextview.h>
-#include <gtk/gtkwindow.h>
-#include <gtk/gtkstock.h>
+#include <gtk/gtk.h>
 
 typedef struct _InfTestGtkBrowserWindow InfTestGtkBrowserWindow;
 struct _InfTestGtkBrowserWindow {
@@ -43,6 +38,16 @@ struct _InfTestGtkBrowserWindow {
   GtkWidget* redo_button;
 
   InfTextGtkBuffer* buffer;
+  InfcSessionProxy* proxy;
+  InfUser* user;
+};
+
+typedef struct _InfTestGtkBrowserChatWindow InfTestGtkBrowserChatWindow;
+struct _InfTestGtkBrowserChatWindow {
+  GtkWidget* chat;
+  GtkWidget* status;
+
+  InfChatBuffer* buffer;
   InfcSessionProxy* proxy;
   InfUser* user;
 };
@@ -151,6 +156,30 @@ on_can_redo_changed(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
+on_chat_join_finished(InfcUserRequest* request,
+                      InfUser* user,
+                      gpointer user_data)
+{
+  InfTestGtkBrowserChatWindow* test;
+  gchar* text;
+
+  test = (InfTestGtkBrowserChatWindow*)user_data;
+  inf_gtk_chat_set_active_user(INF_GTK_CHAT(test->chat), user);
+
+  text = g_strdup_printf("Joined as %s", inf_user_get_name(user));
+  gtk_label_set_text(GTK_LABEL(test->status), text);
+  g_free(text);
+
+  test->user = user;
+  g_object_ref(user);
+
+  /* Unfortunately, gtk_widget_grab_focus(test->chat) +
+   * gtk_container_set_focus_child() in inf_gtk_chat_set_active_user() does
+   * not do the job which is why I added this crappy API. */
+  gtk_widget_grab_focus(inf_gtk_chat_get_entry(INF_GTK_CHAT(test->chat)));
+}
+
+static void
 on_join_finished(InfcUserRequest* request,
                  InfUser* user,
                  gpointer user_data)
@@ -180,6 +209,36 @@ on_join_finished(InfcUserRequest* request,
 }
 
 static void
+request_chat_join(InfTestGtkBrowserChatWindow* test,
+                  const gchar* user_name);
+
+static void
+on_chat_join_failed(InfcRequest* request,
+                    const GError* error,
+                    gpointer user_data)
+{
+  InfTestGtkBrowserChatWindow* test;
+  gchar* new_name;
+  gchar* text;
+
+  test = (InfTestGtkBrowserChatWindow*)user_data;
+
+  if(error->domain == inf_user_error_quark() &&
+     error->code == INF_USER_ERROR_NAME_IN_USE)
+  {
+    new_name = g_strdup_printf("%s%d", g_get_user_name(), 2);
+    request_chat_join(test, new_name);
+    g_free(new_name);
+  }
+  else
+  {
+    text = g_strdup_printf("User join failed: %s", error->message);
+    gtk_label_set_text(GTK_LABEL(test->status), text);
+    g_free(text);
+  }
+}
+
+static void
 request_join(InfTestGtkBrowserWindow* test,
              const gchar* user_name);
 
@@ -203,6 +262,51 @@ on_join_failed(InfcRequest* request,
   else
   {
     set_error(test, "User join failed", error->message);
+  }
+}
+
+static void
+request_chat_join(InfTestGtkBrowserChatWindow* test,
+                  const gchar* user_name)
+{
+  InfcUserRequest* request;
+  GError* error;
+  gchar* text;
+
+  GParameter params[1] = { { "name", { 0 } } };
+  g_value_init(&params[0].value, G_TYPE_STRING);
+  g_value_set_static_string(&params[0].value, user_name);
+
+  error = NULL;
+  request = infc_session_proxy_join_user(test->proxy, params, 1, &error);
+  g_value_unset(&params[0].value);
+
+  if(request == NULL)
+  {
+    text = g_strdup_printf("User join failed: %s", error->message);
+    g_error_free(error);
+    gtk_label_set_text(GTK_LABEL(test->status), text);
+    g_free(text);
+  }
+  else
+  {
+    text = g_strdup_printf("Requesting user join for %s", user_name);
+    gtk_label_set_text(GTK_LABEL(test->status), text);
+    g_free(text);
+
+    g_signal_connect_after(
+      G_OBJECT(request),
+      "failed",
+      G_CALLBACK(on_chat_join_failed),
+      test
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(request),
+      "finished",
+      G_CALLBACK(on_chat_join_finished),
+      test
+    );
   }
 }
 
@@ -272,6 +376,33 @@ request_join(InfTestGtkBrowserWindow* test,
 }
 
 static void
+on_chat_synchronization_failed(InfSession* session,
+                               InfXmlConnection* connection,
+                               const GError* error,
+                               gpointer user_data)
+{
+  InfTestGtkBrowserChatWindow* test;
+  gchar* text;
+
+  test = (InfTestGtkBrowserChatWindow*)user_data;
+  text = g_strdup_printf("Synchronization failed: %s\n", error->message);
+
+  gtk_label_set_text(GTK_LABEL(test->status), text);
+  g_free(text);
+}
+
+static void
+on_chat_synchronization_complete(InfSession* session,
+                                 InfXmlConnection* connection,
+                                 gpointer user_data)
+{
+  InfTestGtkBrowserChatWindow* test;
+  test = (InfTestGtkBrowserChatWindow*)user_data;
+
+  request_chat_join(test, g_get_user_name());
+}
+
+static void
 on_synchronization_failed(InfSession* session,
                           InfXmlConnection* connection,
                           const GError* error,
@@ -312,6 +443,34 @@ on_synchronization_complete(InfSession* session,
 }
 
 static void
+on_chat_window_destroy(GtkWindow* window,
+                       gpointer user_data)
+{
+  InfTestGtkBrowserChatWindow* test;
+  InfSession* session;
+
+  test = (InfTestGtkBrowserChatWindow*)user_data;
+  session = infc_session_proxy_get_session(test->proxy);
+
+  g_signal_handlers_disconnect_by_func(
+    session,
+    G_CALLBACK(on_chat_synchronization_complete),
+    test
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    session,
+    G_CALLBACK(on_chat_synchronization_failed),
+    test
+  );
+
+  if(test->proxy != NULL) g_object_unref(test->proxy);
+  if(test->user != NULL) g_object_unref(test->user);
+
+  g_slice_free(InfTestGtkBrowserChatWindow, test);
+}
+
+static void
 on_text_window_destroy(GtkWindow* window,
                        gpointer user_data)
 {
@@ -334,10 +493,85 @@ on_text_window_destroy(GtkWindow* window,
   );
 
   if(test->proxy != NULL) g_object_unref(test->proxy);
+  /* TODO: Do we ever ref buffer? */
   if(test->buffer != NULL) g_object_unref(test->buffer);
   if(test->user !=NULL) g_object_unref(test->user);
 
   g_slice_free(InfTestGtkBrowserWindow, test);
+}
+
+static void
+on_show(GtkWidget* window,
+        gpointer user_data)
+{
+  gtk_widget_grab_focus(GTK_WIDGET(user_data));
+}
+
+static void
+on_subscribe_chat_session(InfcBrowser* browser,
+                          InfcSessionProxy* proxy,
+                          gpointer user_data)
+{
+  InfSession* session;
+  InfChatBuffer* buffer;
+  GtkWidget* chat;
+  GtkWidget* status;
+  GtkWidget* vbox;
+  GtkWidget* window;
+  InfTestGtkBrowserChatWindow* test;
+
+  session = infc_session_proxy_get_session(proxy);
+  buffer = INF_CHAT_BUFFER(inf_session_get_buffer(session));
+
+  chat = inf_gtk_chat_new();
+  inf_gtk_chat_set_session(INF_GTK_CHAT(chat), INF_CHAT_SESSION(session));
+  gtk_widget_show(chat);
+
+  status = gtk_label_new("Synchronizing chat...");
+  gtk_widget_show(status);
+
+  vbox = gtk_vbox_new(FALSE, 6);
+  gtk_box_pack_start(GTK_BOX(vbox), chat, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), status, FALSE, TRUE, 0);
+  gtk_widget_show(vbox);
+
+  window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+
+  gtk_window_set_title(GTK_WINDOW(window), "Chat");
+  gtk_window_set_default_size(GTK_WINDOW(window), 400, 400);
+  gtk_window_set_icon_name(GTK_WINDOW(window), "infinote");
+  gtk_container_set_border_width(GTK_CONTAINER(window), 6);
+  gtk_container_add(GTK_CONTAINER(window), vbox);
+  gtk_widget_show(window);
+
+  test = g_slice_new(InfTestGtkBrowserChatWindow);
+  test->chat = chat;
+  test->status = status;
+  test->buffer = buffer;
+  test->proxy = proxy;
+  test->user = NULL;
+  g_object_ref(test->proxy);
+
+  g_signal_connect_after(
+    G_OBJECT(session),
+    "synchronization-failed",
+    G_CALLBACK(on_chat_synchronization_failed),
+    test
+  );
+
+  g_signal_connect_after(
+    G_OBJECT(session),
+    "synchronization-complete",
+    G_CALLBACK(on_chat_synchronization_complete),
+    test
+  );
+
+  g_signal_connect(
+    G_OBJECT(window),
+    "destroy",
+    G_CALLBACK(on_chat_window_destroy),
+    test
+  );
 }
 
 static void
@@ -357,6 +591,12 @@ on_subscribe_session(InfcBrowser* browser,
   InfTextGtkBuffer* buffer;
   GtkTextBuffer* textbuffer;
   InfTestGtkBrowserWindow* test;
+
+  if(iter == NULL)
+  {
+    on_subscribe_chat_session(browser, proxy, user_data);
+    return;
+  }
 
   session = infc_session_proxy_get_session(proxy);
   buffer = INF_TEXT_GTK_BUFFER(inf_session_get_buffer(session));
@@ -485,12 +725,26 @@ on_activate(InfGtkBrowserView* view,
 }
 
 static void
+on_connection_notify_status(GObject* object,
+                            const GParamSpec* pspec,
+                            gpointer user_data)
+{
+  InfXmlConnectionStatus status;
+
+  g_object_get(object, "status", &status, NULL);
+  if(status == INF_XML_CONNECTION_OPEN)
+    infc_browser_subscribe_chat(INFC_BROWSER(user_data));
+}
+
+static void
 on_set_browser(InfGtkBrowserModel* model,
                GtkTreePath* path,
                GtkTreeIter* iter,
                InfcBrowser* browser,
                gpointer user_data)
 {
+  InfXmlConnectionStatus status;
+
   if(browser != NULL)
   {
     infc_browser_add_plugin(browser, &INF_TEST_GTK_BROWSER_TEXT_PLUGIN);
@@ -501,6 +755,24 @@ on_set_browser(InfGtkBrowserModel* model,
       G_CALLBACK(on_subscribe_session),
       NULL
     );
+
+    g_object_get(
+      G_OBJECT(infc_browser_get_connection(browser)), "status", &status, NULL
+    );
+
+    if(status == INF_XML_CONNECTION_OPEN)
+    {
+      infc_browser_subscribe_chat(browser);
+    }
+    else
+    {
+      g_signal_connect(
+        G_OBJECT(infc_browser_get_connection(browser)),
+        "notify::status",
+        G_CALLBACK(on_connection_notify_status),
+        browser
+      );
+    }
   }
 }
 
@@ -542,7 +814,7 @@ main(int argc,
   g_object_unref(communication_manager);
   g_object_unref(G_OBJECT(io));
 
-  g_signal_connect(
+  g_signal_connect_after(
     G_OBJECT(store),
     "set-browser",
     G_CALLBACK(on_set_browser),

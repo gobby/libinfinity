@@ -27,6 +27,7 @@ libinfgtk_0_4_la_HEADERS = \
 	inf-gtk-certificate-dialog.h \
 	inf-gtk-certificate-manager.h \
 	inf-gtk-certificate-view.h \
+	inf-gtk-chat.h \
 	inf-gtk-io.h
 
 libinfgtk_0_4_la_SOURCES = \
@@ -38,4 +39,5 @@ libinfgtk_0_4_la_SOURCES = \
 	inf-gtk-certificate-dialog.c \
 	inf-gtk-certificate-manager.c \
 	inf-gtk-certificate-view.c \
+	inf-gtk-chat.c \
 	inf-gtk-io.c
