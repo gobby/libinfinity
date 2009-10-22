@@ -444,6 +444,11 @@ inf_standalone_io_io_watch(InfIo* io,
       priv->watches,
       priv->fd_alloc * sizeof(InfStandaloneIoWatch)
     );
+
+    /* Update event pointers, the location of the events in memory might have
+     * changed after realloc. */
+    for(i = 0; i < priv->fd_size; ++i)
+      priv->watches[i].event = &priv->events[i];
   }
 
 #ifdef G_OS_WIN32
