@@ -1,3 +1,10 @@
+2009-10-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-standalone-io.c
+	(inf_standalone_io_io_watch): Update event pointers after realloc.
+	This fixes sporadic disconnections when there are more than two
+	clients on a Windows infinoted.
+
 2009-10-08  Armin Burgmeier  <armin@arbur.net>
 
 	* autogen.sh: Updated autogen.sh from gnome-common. Bug #476.
