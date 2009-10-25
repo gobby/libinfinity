@@ -1,3 +1,9 @@
+2009-10-25  Armin Burgmeier  <armin@arbur.net>
+
+	* === Released 0.3.1 ===
+
+	* NEWS: Update for release.
+
 2009-10-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-standalone-io.c

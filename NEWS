@@ -1,3 +1,8 @@
+libinfinity 0.3.1:
+
+	* Avoid a crash when synchronizing a zero-length delete operation
+	* Fix sporadic disconnections on Windows
+
 libinfinity 0.3.0:
 
 	* infinoted: Added the --certificate-chain command line option.
