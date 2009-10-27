@@ -1,3 +1,11 @@
+2009-10-26  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-certificate-manager.c
+	(inf_gtk_certificate_manager_certificate_func): Don't crash if a
+	certificate of a known host does not have a hostname set. Ignore the
+	certificate instead, because we can't identify it with a host
+	properly. Bug #484.
+
 2009-10-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-standalone-io.c

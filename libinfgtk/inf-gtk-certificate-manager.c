@@ -453,40 +453,46 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     }
 
     own_hostname = inf_cert_util_get_hostname(own);
-    for(i = 0; i < priv->known_hosts->len; ++ i)
+    /* We don't ever trust hosts for which we have a certificate without
+     * hostname, as we can't identify the certificate with the corresponding
+     * host */
+    if(own_hostname != NULL)
     {
-      known = (gnutls_x509_crt_t)g_ptr_array_index(priv->known_hosts, i);
-      if(gnutls_x509_crt_check_hostname(known, own_hostname))
+      for(i = 0; i < priv->known_hosts->len; ++ i)
       {
-        /* TODO: Compare this as binary, not as string */
-        own_fingerprint =
-          inf_cert_util_get_fingerprint(own, GNUTLS_DIG_SHA1);
-        known_fingerprint =
-          inf_cert_util_get_fingerprint(known, GNUTLS_DIG_SHA1);
-
-        if(strcmp(own_fingerprint, known_fingerprint) == 0)
+        known = (gnutls_x509_crt_t)g_ptr_array_index(priv->known_hosts, i);
+        if(gnutls_x509_crt_check_hostname(known, own_hostname))
         {
-          /* We know this host, so we trust it, even if the issuer is 
-           * not a CA. */
-          flags &= ~INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED;
-        }
-        else
-        {
-          /* The fingerprint does not match, so the certificate for this host
-           * has changed. */
-          flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED;
+          /* TODO: Compare this as binary, not as string */
+          own_fingerprint =
+            inf_cert_util_get_fingerprint(own, GNUTLS_DIG_SHA1);
+          known_fingerprint =
+            inf_cert_util_get_fingerprint(known, GNUTLS_DIG_SHA1);
 
-          /* Check whether it has changed because the old one expired
-           * (then we have expected the certificate change, otherwise
-           * something strange is going on). */
-          t = gnutls_x509_crt_get_expiration_time(known);
-          if(t == (time_t)(-1) || t < time(NULL))
-            flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
-        }
+          if(strcmp(own_fingerprint, known_fingerprint) == 0)
+          {
+            /* We know this host, so we trust it, even if the issuer is 
+             * not a CA. */
+            flags &= ~INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED;
+          }
+          else
+          {
+            /* The fingerprint does not match, so the certificate for this host
+             * has changed. */
+            flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED;
 
-        g_free(own_fingerprint);
-        g_free(known_fingerprint);
-        break;
+            /* Check whether it has changed because the old one expired
+             * (then we have expected the certificate change, otherwise
+             * something strange is going on). */
+            t = gnutls_x509_crt_get_expiration_time(known);
+            if(t == (time_t)(-1) || t < time(NULL))
+              flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
+          }
+
+          g_free(own_fingerprint);
+          g_free(known_fingerprint);
+          break;
+        }
       }
     }
 
