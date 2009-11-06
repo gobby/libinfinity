@@ -1,5 +1,11 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_initiate): Removed commented-out try to allow
+	non-printable characters via XML entities.
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-tcp-connection (inf_tcp_connection_error):
 	Fix a typo in a comment.
 

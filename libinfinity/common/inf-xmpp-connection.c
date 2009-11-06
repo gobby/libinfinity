@@ -2554,21 +2554,6 @@ inf_xmpp_connection_initiate(InfXmppConnection* xmpp)
   {
     priv->buf = xmlBufferCreate();
     priv->doc = xmlNewDoc((const xmlChar*)"1.0");
-
-    /* Doesn't work: I wanted this to replace '\a' by &bell; in outgoing
-     * XML. */
-#if 0
-    xmlCreateIntSubset(priv->doc, "infinote", NULL, NULL);
-
-    printf("%p\n", xmlAddDocEntity(
-      priv->doc,
-      "bell",
-      XML_INTERNAL_GENERAL_ENTITY /* (?) */,
-      NULL,
-      NULL,
-      "\a"
-    ));
-#endif
   }
 
   if(priv->site == INF_XMPP_CONNECTION_CLIENT)
