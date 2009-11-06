@@ -260,6 +260,18 @@ inf_xml_util_string_to_double(const gchar* attribute,
   }
 }
 
+static gboolean
+inf_xml_util_valid_xml_char(gunichar codepoint)
+{
+  return
+    (codepoint >= 0x00020 && codepoint <= 0x00d7ff) /* probably most common */
+    || codepoint == 0xd
+    || codepoint == 0xa
+    || codepoint == 0x9
+    || (codepoint >= 0x0e000 && codepoint <= 0x00fffd)
+    || (codepoint >= 0x10000 && codepoint <= 0x10ffff);
+}
+
 void
 inf_xml_util_add_child_text(xmlNodePtr xml,
                             const gchar* text,
@@ -274,7 +286,7 @@ inf_xml_util_add_child_text(xmlNodePtr xml,
   {
     next = g_utf8_next_char(p);
     gunichar ch = g_utf8_get_char(p);
-    if(!g_unichar_isprint(ch))
+    if(!inf_xml_util_valid_xml_char(ch))
     {
       xmlNodeAddContentLen(xml, (const xmlChar*) text, p - text);
       child_node = xmlNewNode(NULL, (const xmlChar*)"uchar");

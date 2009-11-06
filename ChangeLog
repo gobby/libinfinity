@@ -1,5 +1,11 @@
 2009-11-06  Benjamin Herr  <ben@0x539.de>
 
+	* libinfinity/common/inf-xml-util.c: In inf_xml_util_add_child_text,
+	only escape the characters which are actually forbidden by XML, not
+	newlines and friends.
+
+2009-11-06  Benjamin Herr  <ben@0x539.de>
+
 	* libinfinity/common/inf-xml-util.h: 
 	* libinfinity/common/inf-xml-util.c:
 	* docs/reference/libinfinity/libinfinity-0.4-sections.txt: Added
