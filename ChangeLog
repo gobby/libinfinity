@@ -1,3 +1,12 @@
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-session-proxy.c
+	(infd_session_proxy_set_property): When connecting to the "close"
+	signal of a new session, connect before the default signal handler,
+	not after, so that our signal handler can still figure out the
+	synchronization status of the subscribed connections, to avoid sending
+	"session-close" if the sync is/was in progress. Bug #499.
+
 2009-11-06  Benjamin Herr  <ben@0x539.de>
 
 	* libinfinity/common/inf-xml-util.c: In inf_xml_util_add_child_text,

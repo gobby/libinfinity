@@ -829,7 +829,10 @@ infd_session_proxy_set_property(GObject* object,
       proxy
     );
 
-    g_signal_connect_after(
+    /* This in not connect_after to fix bug #499. This makes more sense
+     * anyway, because otherwise the signal handler does not have any
+     * synchronization info anymore. */
+    g_signal_connect(
       G_OBJECT(priv->session),
       "close",
       G_CALLBACK(infd_session_proxy_session_close_cb),
