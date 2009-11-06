@@ -29,6 +29,8 @@
 
 static guint inf_init_counter = 0;
 
+extern gboolean INF_XMPP_CONNECTION_PRINT_TRAFFIC;
+
 /**
  * inf_init:
  * @error: Location to store error information, if any.
@@ -72,6 +74,12 @@ inf_init(GError** error)
     gnutls_global_init();
     _inf_gettext_init();
   }
+
+  /* Initialize traffic debug */
+  if(g_getenv("LIBINFINITY_DEBUG_PRINT_TRAFFIC"))
+    INF_XMPP_CONNECTION_PRINT_TRAFFIC = TRUE;
+  else
+    INF_XMPP_CONNECTION_PRINT_TRAFFIC = FALSE;
 
   ++ inf_init_counter;
   return TRUE;

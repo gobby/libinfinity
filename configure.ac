@@ -147,19 +147,6 @@ fi
 
 AM_CONDITIONAL([LIBINFINITY_HAVE_AVAHI], test "x$use_avahi" = "xyes")
 
-###################
-# Traffic output
-###################
-
-AC_ARG_ENABLE([traffic_output], AS_HELP_STRING([--enable-traffic-output],
-              [Shows XMPP traffic on the terminal [[default=no]]]),
-              [enable_traffic_output=$enableval], [enable_traffic_output=no])
-
-if test "x$enable_traffic_output" = "xyes"; then
-  AC_DEFINE([INF_XMPP_CONNECTION_PRINT_TRAFFIC], 1,
-            [Whether to print XMPP traffic to the terminal])
-fi
-
 ############
 # gettext
 ############

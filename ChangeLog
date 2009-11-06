@@ -1,5 +1,17 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Removed the --enable-traffic-output option.
+
+	* libinfinity/common/inf-xmpp-connection.c: Add a global boolean
+	variable called INF_XMPP_CONNECTION_PRINT_TRAFFIC instead of a #define
+	with the same name.
+
+	* libinfinity/common/inf-init.c: Set that variable in inf_init() based
+	on the presence of the environment variable
+	LIBINFINITY_DEBUG_PRINT_TRAFFIC. Bug #502.
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c
 	(inf_xmpp_connection_initiate): Removed commented-out try to allow
 	non-printable characters via XML entities.
