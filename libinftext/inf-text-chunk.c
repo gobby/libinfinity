@@ -1130,6 +1130,10 @@ inf_text_chunk_equal(InfTextChunk* self,
 }
 
 #if 0
+/* TODO: if this is used again, convert to use
+ *       inf_xml_util_{get,add}_child_text() */
+
+
 /**
  * inf_text_chunk_to_xml:
  * @self: A #InfTextChunk.

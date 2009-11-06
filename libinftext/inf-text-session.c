@@ -132,7 +132,7 @@ inf_text_session_segment_to_xml(GIConv* cd,
   /* Conversion into UTF-8 should always succeed */
   g_assert(result == 0 || errno == E2BIG);
 
-  xmlNodeAddContentLen(xml, (const xmlChar*)utf8_text, 1024 - bytes_left);
+  inf_xml_util_add_child_text(xml, utf8_text, 1024 - bytes_left);
   inf_xml_util_set_attribute_uint(xml, "author", author);
 }
 
@@ -145,27 +145,26 @@ inf_text_session_segment_from_xml(GIConv* cd,
                                   GError** error)
 {
   gsize bytes_read;
-  xmlChar* utf8_text;
+  gchar* utf8_text;
   gpointer text;
 
   if(!inf_xml_util_get_attribute_uint_required(xml, "author", author, error))
     return NULL;
 
-  utf8_text = xmlNodeGetContent(xml);
-  *length = g_utf8_strlen((const gchar*)utf8_text, -1);
+  utf8_text = inf_xml_util_get_child_text(xml, &bytes_read, length, error);
+  if(!utf8_text)
+    return NULL;
 
   text = g_convert_with_iconv(
-    (const gchar*)utf8_text,
-    -1,
+    utf8_text,
+    bytes_read,
     *cd,
-    &bytes_read,
+    NULL,
     bytes,
     error
   );
 
-  xmlFree(utf8_text);
-  if(text == NULL) return FALSE;
-
+  g_free(utf8_text);
   return text;
 }
 
@@ -1463,7 +1462,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
       g_assert(utf8_text != NULL);
       g_assert(bytes_read == inf_text_chunk_iter_get_bytes(&iter));
 
-      xmlNodeAddContentLen(op_xml, (const xmlChar*)utf8_text, bytes_written);
+      inf_xml_util_add_child_text(op_xml, utf8_text, bytes_written);
       g_free(utf8_text);
 
       /* We only allow a single segment because the whole inserted text must
@@ -1601,10 +1600,11 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
   guint pos;
   gchar* text;
   gsize bytes;
-  guint length;
   InfTextChunk* chunk;
 
-  xmlChar* utf8_text;
+  gchar* utf8_text;
+  gsize in_bytes;
+  guint length;
 
   xmlNodePtr child;
   GIConv cd;
@@ -1636,15 +1636,13 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
     if(!inf_xml_util_get_attribute_uint_required(op_xml, "pos", &pos, error))
       goto fail;
 
-    /* TODO: Use XML_GET_CONTENT to avoid copy? */
-    /* TODO: Can we find out character and byte count in one pass?
-     * g_convert() calls strlen. */
-    utf8_text = xmlNodeGetContent(op_xml);
-    length = g_utf8_strlen((const gchar*)utf8_text, -1);
+    utf8_text = inf_xml_util_get_child_text(op_xml, &in_bytes, &length, error);
+    if(!utf8_text)
+      goto fail;
 
     text = g_convert(
-      (const gchar*)utf8_text,
-      -1,
+      utf8_text,
+      in_bytes,
       inf_text_buffer_get_encoding(buffer),
       "UTF-8",
       NULL,
@@ -1652,7 +1650,7 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
       error
     );
 
-    xmlFree(utf8_text);
+    g_free(utf8_text);
     if(text == NULL) goto fail;
 
     chunk = inf_text_chunk_new(inf_text_buffer_get_encoding(buffer));

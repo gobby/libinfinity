@@ -974,6 +974,8 @@ inf_deinit
 <SECTION>
 <FILE>inf-xml-util</FILE>
 <TITLE>InfXmlUtil</TITLE>
+inf_xml_util_add_child_text
+inf_xml_util_get_child_text
 inf_xml_util_get_attribute
 inf_xml_util_get_attribute_required
 inf_xml_util_get_attribute_int

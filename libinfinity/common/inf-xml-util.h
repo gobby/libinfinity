@@ -26,6 +26,17 @@
 
 G_BEGIN_DECLS
 
+void
+inf_xml_util_add_child_text(xmlNodePtr xml,
+                            const gchar* text,
+                            gsize bytes);
+
+gchar*
+inf_xml_util_get_child_text(xmlNodePtr xml,
+                            gsize* bytes,
+                            guint* chars,
+                            GError** error);
+
 xmlChar*
 inf_xml_util_get_attribute(xmlNodePtr xml,
                            const gchar* attribute);

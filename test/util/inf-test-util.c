@@ -197,6 +197,8 @@ inf_test_util_parse_buffer(xmlNodePtr xml,
   xmlNodePtr child;
   guint author;
   xmlChar* content;
+  gsize bytes;
+  guint chars;
 
   chunk = inf_text_chunk_new("UTF-8");
 
@@ -212,18 +214,23 @@ inf_test_util_parse_buffer(xmlNodePtr xml,
         return NULL;
       }
 
-      content = xmlNodeGetContent(child);
+      content = inf_xml_util_get_child_text(child, &bytes, &chars, error);
+      if(!content)
+      {
+        inf_text_chunk_free(chunk);
+        return NULL;
+      }
 
       inf_text_chunk_insert_text(
         chunk,
         inf_text_chunk_get_length(chunk),
-        (const gchar*)content,
-        g_utf8_strlen((const gchar*)content, -1),
-        strlen((const char*)content),
+        content,
+        bytes,
+        chars,
         author
       );
 
-      xmlFree(content);
+      g_free(content);
     }
     else
     {

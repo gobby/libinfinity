@@ -180,7 +180,7 @@ inf_chat_session_message_to_xml(InfChatSession* session,
   );
 
   if(message->text != NULL)
-    xmlNodeAddContentLen(xml, (const xmlChar*)message->text, message->length);
+    inf_xml_util_add_child_text(xml, message->text, message->length);
 
   return xml;
 }
@@ -200,7 +200,7 @@ inf_chat_session_message_from_xml(InfChatSession* session,
   InfUserTable* user_table;
   InfUser* user;
   xmlChar* text;
-  guint text_len;
+  gsize text_len;
 
   type = inf_xml_util_get_attribute(xml, "type");
   if(type == NULL)
@@ -271,14 +271,10 @@ inf_chat_session_message_from_xml(InfChatSession* session,
   if(message_type != INF_CHAT_BUFFER_MESSAGE_USERJOIN &&
      message_type != INF_CHAT_BUFFER_MESSAGE_USERPART)
   {
-    text = xmlNodeGetContent(xml);
-    text_len = strlen((const char*)text);
-
-    message->text = g_malloc((text_len + 1) * sizeof(gchar));
-    memcpy(message->text, text, text_len);
-    message->text[text_len] = '\0';
-    message->length = text_len;
-    xmlFree(text);
+    message->text =
+      inf_xml_util_get_child_text(xml, NULL, &message->length, error);
+    if(!message->text)
+      return FALSE;
   }
   else
   {

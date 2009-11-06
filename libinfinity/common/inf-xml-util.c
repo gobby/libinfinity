@@ -21,6 +21,7 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <string.h>
 #include <stdlib.h>
 #include <math.h> /* HUGE_VAL */
 #include <errno.h>
@@ -257,6 +258,88 @@ inf_xml_util_string_to_double(const gchar* attribute,
     *output = converted;
     return TRUE;
   }
+}
+
+void
+inf_xml_util_add_child_text(xmlNodePtr xml,
+                            const gchar* text,
+                            gsize bytes)
+{
+  const gchar* p;
+  const gchar* next;
+  gchar* node_value;
+  xmlNodePtr child_node;
+  gsize i;
+  for(i = 0, p = text; i < bytes; i += next - p, p = next)
+  {
+    next = g_utf8_next_char(p);
+    gunichar ch = g_utf8_get_char(p);
+    if(!g_unichar_isprint(ch))
+    {
+      xmlNodeAddContentLen(xml, (const xmlChar*) text, p - text);
+      child_node = xmlNewNode(NULL, (const xmlChar*)"uchar");
+      node_value = g_strdup_printf("%"G_GUINT32_FORMAT, ch);
+      xmlNewProp(child_node,
+        (const xmlChar*) "codepoint",
+        (const xmlChar*) node_value);
+      g_free(node_value);
+      xmlAddChild(xml, child_node);
+      text = next;
+    }
+  }
+
+  if(p != text)
+    xmlNodeAddContentLen(xml, (const xmlChar*) text, p - text);
+}
+
+gchar*
+inf_xml_util_get_child_text(xmlNodePtr xml,
+                            gsize* bytes,
+                            guint* chars,
+                            GError** error)
+{
+  xmlNodePtr child;
+  /* Every keypress will have to be get_child_text'ed, so
+   * we assume that most child texts are very short. */
+  GString* result = g_string_sized_new(16);
+  guint num_codepoint;
+  gsize char_count = 0;
+  for(child = xml->children; child; child = child->next)
+  {
+    switch(child->type)
+    {
+    case XML_TEXT_NODE:
+      g_string_append(result, (const gchar*)child->content);
+      char_count += g_utf8_strlen((const gchar*)child->content, -1);
+      break;
+    case XML_ELEMENT_NODE:
+      if(strcmp((const char*) child->name, "uchar") != 0) {
+        g_warning("unexpected child element in child text: %s", child->name);
+        break;
+      }
+
+      if(!inf_xml_util_get_attribute_uint_required(child,
+                                                   "codepoint",
+                                                   &num_codepoint,
+                                                   error))
+      {
+        g_string_free(result, TRUE);
+        return NULL;
+      }
+      g_string_append_unichar(result, (gunichar) num_codepoint);
+      ++char_count;
+      break;
+    default:
+      g_warning(
+        "unexpected node type in child text: %d",
+        (int) child->type);
+      break;
+    }
+  }
+
+  if(chars) *chars = char_count;
+  if(bytes) *bytes = result->len;
+  return g_string_free(result, FALSE);
 }
 
 xmlChar*

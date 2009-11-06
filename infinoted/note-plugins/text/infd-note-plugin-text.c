@@ -176,6 +176,9 @@ infd_note_plugin_text_read_buffer(InfTextBuffer* buffer,
   gboolean result;
   gboolean res;
   InfUser* user;
+  gsize bytes;
+  guint chars;
+
 
   g_assert(inf_text_buffer_get_length(buffer) == 0);
 
@@ -222,24 +225,27 @@ infd_note_plugin_text_read_buffer(InfTextBuffer* buffer,
         user = NULL;
       }
 
-      content = xmlNodeGetContent(child);
-      if(content != NULL)
+      content = inf_xml_util_get_child_text(child, &bytes, &chars, error);
+      if(!content)
       {
-        if(*content != '\0')
-        {
-          /* TODO: Use inf_text_buffer_append when we have it */
-          inf_text_buffer_insert_text(
-            buffer,
-            inf_text_buffer_get_length(buffer),
-            content,
-            strlen((const char*)content),
-            g_utf8_strlen((const gchar*)content, -1),
-            user
-          );
-        }
-
-        xmlFree(content);
+        result = FALSE;
+        break;
       }
+
+      if(*content != '\0')
+      {
+        /* TODO: Use inf_text_buffer_append when we have it */
+        inf_text_buffer_insert_text(
+          buffer,
+          inf_text_buffer_get_length(buffer),
+          content,
+          bytes,
+          chars,
+          user
+        );
+      }
+
+      g_free(content);
     }
     else
     {
@@ -473,7 +479,7 @@ infd_note_plugin_text_session_write(InfdStorage* storage,
       );
 
       inf_xml_util_set_attribute_uint(segment_node, "author", author);
-      xmlNodeAddContentLen(segment_node, (const xmlChar*)content, (int)bytes);
+      inf_xml_util_add_child_text(segment_node, content, bytes);
       g_free(content);
     } while(inf_text_buffer_iter_next(buffer, iter));
 
