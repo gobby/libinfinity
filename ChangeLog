@@ -1,5 +1,10 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-tcp-connection (inf_tcp_connection_error):
+	Fix a typo in a comment.
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Don't crash if the
 	underlying TCP connection goes down in an XML parser callback. This
 	also involved simplifying the code a bit by introducing an additional

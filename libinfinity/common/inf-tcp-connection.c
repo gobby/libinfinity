@@ -653,7 +653,7 @@ inf_tcp_connection_get_property(GObject* object,
           priv->device_index,
           strerror(errno)
         );
-        
+
         g_value_set_string(value, NULL);
       }
       else
@@ -676,7 +676,7 @@ inf_tcp_connection_error(InfTcpConnection* connection,
   InfTcpConnectionPrivate* priv;
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
 
-  /* Normally, it would be enough to check one both conditions, but socket
+  /* Normally, it would be enough to check one of both conditions, but socket
    * may be already set with status still being CLOSED during
    * inf_tcp_connection_open(). */
   if(priv->events != 0)
