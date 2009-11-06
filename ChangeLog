@@ -1,5 +1,13 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c: Don't crash if the
+	underlying TCP connection goes down in an XML parser callback. This
+	also involved simplifying the code a bit by introducing an additional
+	state variable that tracks whether we are currently in an XML
+	parser callback or not.
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-session-proxy.c
 	(infd_session_proxy_set_property): When connecting to the "close"
 	signal of a new session, connect before the default signal handler,
