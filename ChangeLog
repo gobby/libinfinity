@@ -1,5 +1,15 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* docs/reference/libinfinity/compiling.sgml: Added a chapter about
+	compiling libinfinity.
+
+	* docs/reference/libinfinity/libinfinity-0.4-docs.sgml: Added it to
+	the documentation.
+
+	* docs/reference/libinfinity/Makefile.am: Added it to the build.
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac: Removed the --enable-traffic-output option.
 
 	* libinfinity/common/inf-xmpp-connection.c: Add a global boolean

@@ -17,6 +17,14 @@
   </bookinfo>
 
   <chapter>
+    <title>About libinfinity</title>
+    <xi:include href="compiling.sgml"/>
+<!--    <xi:include href="whatis.sgml"/>
+    <xi:include href="concurrency_control.sgml"/>
+    <xi:include href="infinoted.sgml"/> -->
+  </chapter>
+
+  <chapter>
     <title>Common infinote API</title>
     <xi:include href="xml/inf-init.xml"/>
     <xi:include href="xml/inf-session.xml"/>

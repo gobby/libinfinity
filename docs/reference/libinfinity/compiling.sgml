@@ -1,0 +1,124 @@
+<?xml version="1.0"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
+]>
+
+<refentry id="custom-compiling" revision="7 Nov 2009">
+<refmeta>
+<refentrytitle>Compiling and Using libinfinity</refentrytitle>
+</refmeta>
+
+<refsect1 id="building">
+<title>Compiling libinfinity</title>
+
+<para>
+This chapter explains how to compile libinfinity on a UNIX-like operating
+system such as Linux. On Windows, you can pretty much follow the same
+instructions once you have set up a MinGW/MSYS build environment and
+installed the necessary dependencies to the correct locations. This document
+does not cover how to do this but might in the future. It is also possible
+to build libinfinity using the Microsoft Compiler and Visual Studio IDE but
+there are no project files so far.
+</para>
+
+<!-- TODO: Building on Windows -->
+
+<para>
+The first thing to do is to check whether all dependencies of libinfinity are
+installed. The following list shows what packages are required to be present
+on your system prior to building libinfinity:
+</para>
+
+<itemizedlist>
+  <listitem><para>libxml2</para></listitem>
+  <listitem><para>glib-2.0 >= 2.16</para></listitem>
+  <listitem><para>gnutls >= 1.7.2</para></listitem>
+  <listitem><para>gsasl >= 0.2.21</para></listitem>
+  <listitem><para>gtk+ >= 2.12 (optional)</para></listitem>
+  <listitem><para>avahi-client (optional)</para></listitem>
+</itemizedlist>
+
+<para>
+Most if not all of them are most likely available in the package manager of
+your operating system vendor. It is much more convenient to obtain them from
+there than building them on your own.
+</para>
+
+<para>
+The next step is to obtain the current source code for libinfinity. Point your
+web browser to <ulink url="http://releases.0x539.de/libinfinity">
+http://releases.0x539.de/libinfinity</ulink> and grab the latest
+<literal>.tar.gz</literal> file available, or exactly the version you want if
+you are looking for a specific one. Then unpack the tarball. On the command
+line this can be done using the following command:
+</para>
+
+<programlisting>
+tar xvfz libinfinity-0.4.tar.gz
+</programlisting>
+
+<para>
+After unpacking, descend into the newly created directory and run the
+<filename>configure</filename> script there. This performs several checks to
+adapt the build for your specific operating system and environment. The script
+can be passed several command-line arguments to alter the build. For example,
+the <systemitem>--prefix</systemitem> argument specifies the directory
+libinfinity will be installed into after the build. It defaults to
+<filename>/usr/local</filename> but you might want to install it to a
+different place, such as <filename>/opt/libinfinity</filename>. In that case
+run the following:
+</para>
+
+<programlisting>
+./configure --prefix=/opt/libinfinity
+</programlisting>
+
+<para>To get a list of all possible arguments run
+<filename>configure</filename> with the <systemitem>--help</systemitem>
+argument. If you do not want to change the installation path simply omit the
+<systemitem>--prefix=/opt/libinfinity</systemitem> in the command above.
+</para>
+
+<para>
+When all dependencies are installed correctly the
+<filename>configure</filename> script will run smoothly and end up with a
+status summary of what parts of libinfinity will or will not be built. If
+there are errors you need to fix them (for examply by installing a missing
+dependency) and run <filename>configure</filename> again. After it ran it
+created a <filename>Makefile</filename> and you can build the package via:
+</para>
+
+<programlisting>
+make
+</programlisting>
+
+<para>
+This might take some time but it is not supposed to produce an error. If it
+does something might be wrong with your build setup that
+<filename>configure</filename> was unable to detect. When make finished
+install the package using:
+</para>
+
+<programlisting>
+make install
+</programlisting>
+
+<para>
+Depending on the installation directory you chose with the
+<systemitem>--prefix</systemitem> argument to configure you might need
+superuser privileges for this step.
+</para>
+
+<!-- TODO: Building from git -->
+
+</refsect1>
+
+<refsect1 id="compiling">
+<title>Compiling applications using libinfinity</title>
+</refsect1>
+
+<refsect1 id="envvars">
+<title>Environment variables</title>
+</refsect1>
+
+</refentry>
