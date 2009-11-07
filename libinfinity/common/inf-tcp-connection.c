@@ -997,7 +997,7 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   g_return_val_if_fail(priv->remote_port != 0, FALSE);
 
   /* Close previous socket */
-  if(priv->socket == INVALID_SOCKET)
+  if(priv->socket != INVALID_SOCKET)
     closesocket(priv->socket);
 
   switch(inf_ip_address_get_family(priv->remote_address))
