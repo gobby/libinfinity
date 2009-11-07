@@ -76,6 +76,9 @@ void
 inf_gtk_chat_set_active_user(InfGtkChat* chat,
                              InfUser* user);
 
+InfUser*
+inf_gtk_chat_get_active_user(InfGtkChat* chat);
+
 GtkWidget*
 inf_gtk_chat_get_entry(InfGtkChat* chat);
 

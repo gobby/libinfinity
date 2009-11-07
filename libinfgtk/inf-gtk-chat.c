@@ -1011,6 +1011,22 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
   g_object_notify(G_OBJECT(chat), "active-user");
 }
 
+/**
+ * inf_gtk_chat_get_active_user:
+ * @chat: A #InfGtkChat.
+ *
+ * Returns the active user for @chat as set with
+ * inf_gtk_chat_set_active_user().
+ *
+ * Returns: The chat's active user, or %NULL if there is none.
+ */
+InfUser*
+inf_gtk_chat_get_active_user(InfGtkChat* chat)
+{
+  g_return_val_if_fail(INF_GTK_IS_CHAT(chat), NULL);
+  return INF_GTK_CHAT_PRIVATE(chat)->active_user;
+}
+
 /* TODO: I don't like this API because it allows users to do crap with the
  * entry such as setting it to be sensitive when it shouldn't be. It's
  * currently used to set the focus on the entry widget after setting the 

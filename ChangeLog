@@ -1,5 +1,11 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-chat.h:
+	* libinfgtk/inf-gtk-chat.c: Added inf_gtk_chat_get_active_user() as a
+	complement to inf_gtk_chat_set_active_user().
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-tcp-connection.c (inf_tcp_connection_open):
 	Fix the condition for closing an existing socket. Spotted by Gabríel
 	A. Pétursson.
