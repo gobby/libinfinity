@@ -1,5 +1,11 @@
 2009-11-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-store.c
+	(inf_gtk_browser_store_tree_model_get_column_type): Handle the case
+	when index is INF_GTK_BROWSER_MODEL_COL_NAME.
+
+2009-11-07  Armin Burgmeier  <armin@arbur.net>
+
 	* docs/reference/libinfinity/compiling.sgml: Added a chapter about
 	compiling libinfinity.
 

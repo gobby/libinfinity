@@ -1126,6 +1126,8 @@ inf_gtk_browser_store_tree_model_get_column_type(GtkTreeModel* model,
     return INFC_TYPE_BROWSER;
   case INF_GTK_BROWSER_MODEL_COL_STATUS:
     return INF_GTK_TYPE_BROWSER_MODEL_STATUS;
+  case INF_GTK_BROWSER_MODEL_COL_NAME:
+    return G_TYPE_STRING;
   case INF_GTK_BROWSER_MODEL_COL_ERROR:
     return G_TYPE_POINTER;
   case INF_GTK_BROWSER_MODEL_COL_NODE:
