@@ -179,6 +179,8 @@ infinoted_run_load_directory(InfinotedRun* run,
     communication_manager
   );
 
+  infd_directory_enable_chat(run->directory, TRUE);
+
   g_object_unref(storage);
   g_object_unref(communication_manager);
 
