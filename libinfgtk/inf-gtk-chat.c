@@ -36,6 +36,16 @@
 
 #include <gdk/gdkkeysyms.h>
 
+/* This is a small hack to get the scrolling in the textview right */
+typedef enum _InfGtkChatVMode {
+  /* VMode is disabled, always keep bottom row constant */
+  INF_GTK_CHAT_VMODE_DISABLED,
+  /* VMode is enabled, keep top row constant for next line addition */
+  INF_GTK_CHAT_VMODE_ENABLED,
+  /* VMode is set, keep top row constant */
+  INF_GTK_CHAT_VMODE_SET
+} InfGtkChatVMode;
+
 typedef struct _InfGtkChatEntryKeyPressEventCbForeachData
   InfGtkChatEntryKeyPressEventCbForeachData;
 struct _InfGtkChatEntryKeyPressEventCbForeachData {
@@ -54,6 +64,8 @@ struct _InfGtkChatPrivate {
   GtkWidget* entry;
   GtkWidget* button;
   GtkAdjustment* vadj;
+  gdouble voffset;
+  InfGtkChatVMode vmode;
 
   InfChatSession* session;
   InfChatBuffer* buffer;
@@ -218,18 +230,15 @@ inf_gtk_chat_add_message(InfGtkChat* chat,
   gtk_text_buffer_insert_with_tags(buffer, &insert_pos, text, -1, tag, NULL);
   gtk_text_buffer_insert(buffer, &insert_pos, "\n", 1);
 
-  if(scroll_val == scroll_upper - scroll_page_size)
+  if(scroll_val != scroll_upper - scroll_page_size &&
+     scroll_upper - scroll_page_size > 0 &&
+     priv->vmode == INF_GTK_CHAT_VMODE_ENABLED)
   {
-    gtk_text_buffer_place_cursor(buffer, &insert_pos);
-
-    gtk_text_view_scroll_to_mark(
-      GTK_TEXT_VIEW(priv->chat_view),
-      gtk_text_buffer_get_insert(buffer),
-      0.0,
-      FALSE,
-      0.0,
-      0.0
-    );
+    /* This is a kind of hack to keep the view where it is, otherwise
+     * inf_gtk_chat_adjustment_changed_cb() would try to keep the distance
+     * to the bottom row constant, moving the viewport by the newly
+     * added row. */
+    priv->vmode = INF_GTK_CHAT_VMODE_SET;
   }
 }
 
@@ -506,6 +515,83 @@ inf_gtk_chat_user_notify_flags_cb(GObject* object,
     inf_gtk_chat_set_active_user(INF_GTK_CHAT(user_data), NULL);
 }
 
+static void
+inf_gtk_chat_adjustment_changed_cb(GObject* object,
+                                   gpointer user_data)
+{
+  InfGtkChatPrivate* priv;
+  InfGtkChatVMode prev_mode;
+  gdouble value;
+  gdouble new_value;
+  gdouble upper;
+  gdouble page_size;
+  gdouble max;
+
+  priv = INF_GTK_CHAT_PRIVATE(user_data);
+
+  g_object_get(
+    object,
+    "value", &value,
+    "upper", &upper,
+    "page-size", &page_size,
+    NULL
+  );
+
+  max = (upper > page_size) ? (upper - page_size) : 0.0;
+  if(priv->vmode != INF_GTK_CHAT_VMODE_SET)
+  {
+    prev_mode = priv->vmode;
+    new_value = (max > priv->voffset) ? (max - priv->voffset) : 0.0;
+    if(value != new_value)
+    {
+      gtk_adjustment_set_value(GTK_ADJUSTMENT(object), new_value);
+
+      /* Undo effect of signal handler: We only enable vmode operation if
+       * the adjustment value was changed independently, for example by the
+       * user moving the scrollbar. */
+      priv->vmode = prev_mode;
+    }
+  }
+  else
+  {
+    priv->voffset = (max > value) ? (max - value) : 0.0;
+    priv->vmode = INF_GTK_CHAT_VMODE_ENABLED;
+  }
+}
+
+static void
+inf_gtk_chat_adjustment_value_changed_cb(GObject* object,
+                                         gpointer user_data)
+{
+  InfGtkChatPrivate* priv;
+  gdouble value;
+  gdouble upper;
+  gdouble page_size;
+  gdouble max;
+
+  priv = INF_GTK_CHAT_PRIVATE(user_data);
+
+  g_object_get(
+    object,
+    "value", &value,
+    "upper", &upper,
+    "page-size", &page_size,
+    NULL
+  );
+
+  max = (upper > page_size) ? (upper - page_size) : 0.0;
+  priv->voffset = (max > value) ? (max - value) : 0.0;
+
+  /* Enable vmode as soon as we scroll away from the bottom of the textview.
+   * This keeps the viewport constant when adding new rows but the scroll
+   * position not being at the bottom of the view. Due to some strange GTK+
+   * weirdness this does not work when initially populating the buffer with
+   * backlog messages, so we enable this explicitely after the scrollbar is
+   * moved away from the very bottom of the view. */
+  if(priv->vmode == INF_GTK_CHAT_VMODE_DISABLED)
+    priv->vmode = INF_GTK_CHAT_VMODE_ENABLED;
+}
+
 /*
  * GObject overrides
  */
@@ -527,6 +613,8 @@ inf_gtk_chat_init(GTypeInstance* instance,
   priv->session = NULL;
   priv->buffer = NULL;
   priv->active_user = NULL;
+  priv->voffset = 0.0;
+  priv->vmode = INF_GTK_CHAT_VMODE_DISABLED;
 
   /* Actually there are invalid as long as completion_text is NULL, but
    * let's be sure */
@@ -584,6 +672,20 @@ inf_gtk_chat_init(GTypeInstance* instance,
   gtk_container_add(GTK_CONTAINER(scroll), priv->chat_view);
   priv->vadj = gtk_scrolled_window_get_vadjustment(GTK_CONTAINER(scroll));
   gtk_widget_show(scroll);
+
+  g_signal_connect(
+    G_OBJECT(priv->vadj),
+    "changed",
+    G_CALLBACK(inf_gtk_chat_adjustment_changed_cb),
+    chat
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->vadj),
+    "value-changed",
+    G_CALLBACK(inf_gtk_chat_adjustment_value_changed_cb),
+    chat
+  );
 
   priv->entry = gtk_entry_new();
   g_object_set(G_OBJECT(priv->entry), "truncate-multiline", TRUE, NULL);
