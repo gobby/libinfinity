@@ -272,7 +272,7 @@ inf_chat_session_message_from_xml(InfChatSession* session,
      message_type != INF_CHAT_BUFFER_MESSAGE_USERPART)
   {
     message->text =
-      inf_xml_util_get_child_text(xml, NULL, &message->length, error);
+      inf_xml_util_get_child_text(xml, &message->length, NULL, error);
     if(!message->text)
       return FALSE;
   }
