@@ -1,3 +1,9 @@
+2009-11-09  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-chat-buffer.c: Added missing paranthesis to
+	constructs like (priv->first_message + n) % priv->size, fixing a crash
+	when the buffer starts to wrap around.
+
 2009-11-08  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-chat.c: Make sure to scroll to bottom initially,

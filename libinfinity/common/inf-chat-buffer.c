@@ -97,7 +97,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
   while(begin != end)
   {
     n = (begin + end) / 2;
-    message = &priv->messages[priv->first_message + n % priv->size];
+    message = &priv->messages[(priv->first_message + n) % priv->size];
     if(message->time <= time)
       begin = (begin + end + 1)/2;
     else
@@ -145,7 +145,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
         priv->messages /* + priv->first_message */,
         priv->num_messages * sizeof(InfChatBufferMessage)
       );
-      
+
       priv->first_message = end;
     }
     else if(n == priv->num_messages &&
@@ -161,7 +161,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
         priv->messages + priv->first_message,
         priv->num_messages * sizeof(InfChatBufferMessage)
       );
-      
+
       priv->first_message = end;
     }
     else if(n > 0 && n < priv->num_messages)
@@ -202,7 +202,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
     g_assert(n > 0); /* we have catched this before */
 
     begin = priv->first_message;
-    end = priv->first_message + n % priv->size;
+    end = (priv->first_message + n) % priv->size;
 
     if(n == priv->num_messages)
     {
@@ -213,7 +213,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
     {
       /* Clear the oldest message */
       g_free(priv->messages[end].text);
-        
+
       if(begin < end)
       {
         memmove(
@@ -235,7 +235,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
     }
   }
 
-  return &priv->messages[priv->first_message + n % priv->size];
+  return &priv->messages[(priv->first_message + n) % priv->size];
 }
 
 /*
