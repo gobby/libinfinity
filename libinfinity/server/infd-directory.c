@@ -123,6 +123,7 @@ struct _InfdDirectorySubreq {
       InfCommunicationHostedGroup* group;
       const InfdNotePlugin* plugin;
       gchar* name;
+      InfdSessionProxy* proxy;
     } add_node;
 
     struct {
@@ -536,6 +537,49 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
       INF_COMMUNICATION_GROUP(sync_g),
       INF_COMMUNICATION_OBJECT(proxy)
     );
+  }
+
+  return proxy;
+}
+
+static InfdSessionProxy*
+infd_directory_create_session_proxy_for_storage(
+    InfdDirectory* directory,
+    InfdDirectoryNode* parent,
+    InfCommunicationHostedGroup* group,
+    const gchar* name,
+    const InfdNotePlugin* plugin,
+    GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* path;
+  gboolean ret;
+  InfSession* session;
+  InfdDirectoryNode* node;
+  InfdSessionProxy* proxy;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  proxy = infd_directory_create_session_proxy(
+    directory, plugin, NULL, group, NULL);
+  session = infd_session_proxy_get_session(proxy);
+
+  /* Save session initially */
+  infd_directory_node_make_path(parent, name, &path, NULL);
+
+  ret = plugin->session_write(
+    priv->storage,
+    session,
+    path,
+    plugin->user_data,
+    error
+  );
+
+  g_free(path);
+  if(ret == FALSE)
+  {
+    g_object_unref(proxy);
+    return NULL;
   }
 
   return proxy;
@@ -1437,9 +1481,22 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
                                    InfdDirectoryNode* parent,
                                    InfCommunicationHostedGroup* group,
                                    const InfdNotePlugin* plugin,
-                                   const gchar* name)
+                                   const gchar* name,
+                                   GError** error)
 {
   InfdDirectorySubreq* request;
+  InfdSessionProxy* proxy;
+
+  proxy = infd_directory_create_session_proxy_for_storage(
+    directory,
+    parent,
+    group,
+    name,
+    plugin,
+    error);
+
+  if(proxy == NULL)
+    return NULL;
 
   request = infd_directory_add_subreq_common(
     directory,
@@ -1452,6 +1509,7 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
   request->shared.add_node.group = group;
   request->shared.add_node.plugin = plugin;
   request->shared.add_node.name = g_strdup(name);
+  request->shared.add_node.proxy = proxy;
 
   g_object_ref(group);
   return request;
@@ -1503,6 +1561,7 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
   case INFD_DIRECTORY_SUBREQ_ADD_NODE:
     g_free(request->shared.add_node.name);
     g_object_unref(request->shared.add_node.group);
+    g_object_unref(request->shared.add_node.proxy);
     break;
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
@@ -1778,42 +1837,19 @@ infd_directory_node_create_new_note(InfdDirectory* directory,
                                     const InfdNotePlugin* plugin,
                                     GError** error)
 {
-  InfdDirectoryPrivate* priv;
-  gchar* path;
-  gboolean ret;
-  InfSession* session;
-  InfdDirectoryNode* node;
   InfdSessionProxy* proxy;
+  InfdDirectoryNode* node;
 
-  priv = INFD_DIRECTORY_PRIVATE(directory);
+  proxy = infd_directory_create_session_proxy_for_storage(
+    directory,
+    parent,
+    group,
+    name,
+    plugin,
+    error);
 
-  session = plugin->session_new(
-    priv->io,
-    priv->communication_manager,
-    NULL,
-    NULL,
-    plugin->user_data
-  );
-
-  g_assert(session != NULL);
-
-  /* Save session initially */
-  infd_directory_node_make_path(parent, name, &path, NULL);
-
-  ret = plugin->session_write(
-    priv->storage,
-    session,
-    path,
-    plugin->user_data,
-    error
-  );
-
-  g_free(path);
-  if(ret == FALSE)
-  {
-    g_object_unref(session);
+  if(proxy == NULL)
     return NULL;
-  }
 
   node = infd_directory_node_new_note(
     directory,
@@ -1823,13 +1859,6 @@ infd_directory_node_create_new_note(InfdDirectory* directory,
     plugin
   );
 
-  proxy = infd_directory_create_session_proxy_with_group(
-    directory,
-    session,
-    group
-  );
-
-  g_object_unref(session);
   infd_directory_node_link_session(directory, node, proxy);
   g_object_unref(proxy);
 
@@ -1879,49 +1908,51 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
     if(seq_conn != NULL && subscribe_seq_conn == TRUE)
     {
-      infd_directory_add_subreq_add_node(
-        directory,
-        seq_conn,
-        node_id,
-        parent,
-        group,
-        plugin,
-        name
-      );
+      if(infd_directory_add_subreq_add_node(
+          directory,
+          seq_conn,
+          node_id,
+          parent,
+          group,
+          plugin,
+          name,
+          error
+        ))
+      {
+        xml = infd_directory_node_desc_register_to_xml(
+          node_id,
+          parent,
+          plugin,
+          name
+        );
 
-      xml = infd_directory_node_desc_register_to_xml(
-        node_id,
-        parent,
-        plugin,
-        name
-      );
+        inf_xml_util_set_attribute_uint(xml, "seq", seq);
 
-      inf_xml_util_set_attribute_uint(xml, "seq", seq);
+        child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
+        inf_xml_util_set_attribute(
+          child,
+          "group",
+          inf_communication_group_get_name(INF_COMMUNICATION_GROUP(group))
+        );
 
-      child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
-      inf_xml_util_set_attribute(
-        child,
-        "group",
-        inf_communication_group_get_name(INF_COMMUNICATION_GROUP(group))
-      );
+        method = inf_communication_group_get_method_for_connection(
+          INF_COMMUNICATION_GROUP(group),
+          seq_conn
+        );
 
-      method = inf_communication_group_get_method_for_connection(
-        INF_COMMUNICATION_GROUP(group),
-        seq_conn
-      );
+        /* "central" method should always be available */
+        g_assert(method != NULL);
 
-      /* "central" method should always be available */
-      g_assert(method != NULL);
+        inf_xml_util_set_attribute(child, "method", method);
 
-      inf_xml_util_set_attribute(child, "method", method);
+        inf_communication_group_send_message(
+          INF_COMMUNICATION_GROUP(priv->group),
+          seq_conn,
+          xml
+        );
 
-      inf_communication_group_send_message(
-        INF_COMMUNICATION_GROUP(priv->group),
-        seq_conn,
-        xml
-      );
-
-      result = TRUE;
+        result = TRUE;
+      }
     }
     else
     {
@@ -3015,28 +3046,22 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         ) == TRUE
       );
 
-      node = infd_directory_node_create_new_note(
+      proxy = node->shared.note.session;
+      g_object_ref(proxy);
+
+      node = infd_directory_node_new_note(
         directory,
         request->shared.add_node.parent,
-        request->shared.add_node.group,
         request->node_id,
-        request->shared.add_node.name,
-        request->shared.add_node.plugin,
-        NULL
+        g_strdup(request->shared.add_node.name),
+        request->shared.add_node.plugin
       );
 
-      /* TODO: We don't want an error here, so tell create_new_note to ignore
-       * the error when initially writing the new node. */
-      g_assert(node != NULL);
-
-      /* create_new_note should have linked a newly created session */
-      g_assert(node->shared.note.session != NULL);
+      infd_directory_node_link_session(directory, node, proxy);
 
       /* register to all but conn */
       infd_directory_node_register(directory, node, connection);
 
-      proxy = node->shared.note.session;
-      g_object_ref(proxy);
     }
     else
     {
@@ -3135,7 +3160,12 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
                                      const xmlNodePtr xml,
                                      GError** error)
 {
+  InfdDirectoryPrivate* priv;
   InfdDirectorySubreq* request;
+  gchar* path;
+  gboolean result;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
   request = infd_directory_get_subreq_from_xml(
     directory,
@@ -3146,8 +3176,27 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
 
   if(request == NULL) return FALSE;
 
+  result = TRUE;
+  if(request->type == INFD_DIRECTORY_SUBREQ_ADD_NODE)
+  {
+    infd_directory_node_make_path(
+      request->shared.add_node.parent,
+      request->shared.add_node.name,
+      &path,
+      NULL);
+
+    result = infd_storage_remove_node(
+      priv->storage,
+      request->shared.add_node.plugin->note_type,
+      path,
+      error
+    );
+
+    g_free(path);
+  }
+
   infd_directory_remove_subreq(directory, request);
-  return TRUE;
+  return result;
 }
 
 /*

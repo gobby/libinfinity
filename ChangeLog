@@ -1,3 +1,10 @@
+2009-11-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c: Fix crash when session could
+	not initially be saved in response to an add-node request with
+	initial-subscribe set. This fixes a crash on creating documents with
+	names '.', '..'. Still not handled properly for sync-in.
+
 2009-11-09  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-chat-buffer.c: Added missing paranthesis to
