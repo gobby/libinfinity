@@ -1,5 +1,11 @@
 2009-11-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-directory.c
+	(infd_directory_handle_subscribe_ack): Fix a crash in the ADD_NODE
+	case introduced by my last change.
+
+2009-11-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c: Fix crash when session could
 	not initially be saved in response to an add-node request with
 	initial-subscribe set. This fixes a crash on creating documents with

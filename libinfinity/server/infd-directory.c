@@ -3046,7 +3046,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         ) == TRUE
       );
 
-      proxy = node->shared.note.session;
+      proxy = request->shared.add_node.proxy;
       g_object_ref(proxy);
 
       node = infd_directory_node_new_note(
