@@ -270,8 +270,11 @@ inf_chat_buffer_finalize(GObject* object)
   buffer = INF_CHAT_BUFFER(object);
   priv = INF_CHAT_BUFFER_PRIVATE(buffer);
 
+  /* Note that the messages array is not necessarily filled from its
+   * beginning - we might have preallocated some space for prepending
+   * entries. */
   for(i = 0; i < priv->num_messages; ++i)
-    g_free(priv->messages[i].text);
+    g_free(priv->messages[(priv->first_message + i) % priv->size].text);
   g_free(priv->messages);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
