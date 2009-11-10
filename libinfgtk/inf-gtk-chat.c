@@ -625,6 +625,10 @@ inf_gtk_chat_init(GTypeInstance* instance,
 
   priv->chat_view = gtk_text_view_new();
   gtk_text_view_set_editable(GTK_TEXT_VIEW(priv->chat_view), FALSE);
+  gtk_text_view_set_wrap_mode(
+    GTK_TEXT_VIEW(priv->chat_view),
+    GTK_WRAP_WORD_CHAR
+  );
   /* TODO: this prevents copying via ctrl+c - maybe the entry ctrl+c
    * should catch this and copy from the textview instead: */
   GTK_WIDGET_UNSET_FLAGS(priv->chat_view, GTK_CAN_FOCUS);

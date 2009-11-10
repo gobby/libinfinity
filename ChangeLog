@@ -1,5 +1,10 @@
 2009-11-10  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-chat.c (inf_gtk_chat_init): Wrap text in the chat
+	widget.
+
+2009-11-10  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.c
 	(infd_directory_handle_subscribe_ack): Fix a crash in the ADD_NODE
 	case introduced by my last change.
