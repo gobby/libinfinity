@@ -247,16 +247,20 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
 {
   InfGtkChatPrivate* priv;
   priv = INF_GTK_CHAT_PRIVATE(chat);
-  
+  const gchar* text;
+
   g_assert(priv->session != NULL);
   g_assert(priv->buffer != NULL);
   g_assert(priv->active_user != NULL);
+
+  text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
 
   inf_chat_buffer_add_message(
     priv->buffer,
     priv->active_user,
     gtk_entry_get_text(GTK_ENTRY(priv->entry)),
-    gtk_entry_get_text_length(GTK_ENTRY(priv->entry)),
+    /* TODO: Use gtk_entry_get_text_length() once we can use GTK+ 2.14. */
+    strlen(text),
     time(NULL)
   );
 
@@ -271,7 +275,10 @@ static void
 inf_gtk_chat_entry_activate_cb(GtkEntry* entry,
                                gpointer user_data)
 {
-  if(gtk_entry_get_text_length(entry) > 0)
+  const gchar* text;
+  text = gtk_entry_get_text(entry);
+
+  if(text != NULL && *text != '\0')
     inf_gtk_chat_commit_message(INF_GTK_CHAT(user_data));
 }
 
@@ -1029,6 +1036,7 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
                              InfUser* user)
 {
   InfGtkChatPrivate* priv;
+  const gchar* text;
 
   g_return_if_fail(INF_GTK_IS_CHAT(chat));
   g_return_if_fail(user == NULL || INF_IS_USER(user));
@@ -1088,10 +1096,9 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
     );
 
     gtk_widget_set_sensitive(priv->entry, TRUE);
-    gtk_widget_set_sensitive(
-      priv->button,
-      (gtk_entry_get_text_length(GTK_ENTRY(priv->entry)) > 0) ? TRUE : FALSE
-    );
+
+    text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
+    gtk_widget_set_sensitive(priv->button, text != NULL && *text != '\0');
 
     /* TODO: Only do this when there currently is no focus child: */
     /* TODO: Doesn't work anyway: */

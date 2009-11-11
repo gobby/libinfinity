@@ -1,5 +1,11 @@
 2009-11-11  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-chat.c: Avoid the use of
+	gtk_entry_get_text_length() because this is only available since GTK+
+	2.14.
+
+2009-11-11  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.h:
 	* libinftextgtk/inf-text-gtk-buffer.c: Added the "saturation" and
 	"value" properties, and the
