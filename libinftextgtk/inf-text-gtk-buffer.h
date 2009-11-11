@@ -79,6 +79,17 @@ inf_text_gtk_buffer_get_wake_on_cursor_movement(InfTextGtkBuffer* buffer);
 void
 inf_text_gtk_buffer_ensure_author_tags_priority(InfTextGtkBuffer* buffer);
 
+void
+inf_text_gtk_buffer_set_saturation_value(InfTextGtkBuffer* buffer,
+                                         gdouble saturation,
+                                         gdouble value);
+
+gdouble
+inf_text_gtk_buffer_get_saturation(InfTextGtkBuffer* buffer);
+
+gdouble
+inf_text_gtk_buffer_get_value(InfTextGtkBuffer* buffer);
+
 G_END_DECLS
 
 #endif /* __INF_TEXT_GTK_BUFFER_H__ */

@@ -1,3 +1,11 @@
+2009-11-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added the "saturation" and
+	"value" properties, and the
+	inf_text_gtk_buffer_set_saturation_value(),
+	inf_text_gtk_buffer_get_saturation(), inf_text_gtk_buffer_get_value().
+
 2009-11-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-chat-buffer.c (inf_chat_buffer_finalize):

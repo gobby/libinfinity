@@ -43,6 +43,9 @@ struct _InfTextGtkBufferPrivate {
 
   InfTextUser* active_user;
   gboolean wake_on_cursor_movement;
+
+  gdouble saturation;
+  gdouble value;
 };
 
 enum {
@@ -52,6 +55,9 @@ enum {
   PROP_USER_TABLE,
   PROP_ACTIVE_USER,
   PROP_WAKE_ON_CURSOR_MOVEMENT,
+
+  PROP_SATURATION,
+  PROP_VALUE,
 
   /* overriden */
   PROP_MODIFIED
@@ -143,17 +149,17 @@ inf_text_gtk_update_tag_color(InfTextGtkBuffer* buffer,
                               GtkTextTag* tag,
                               InfTextUser* user)
 {
+  InfTextGtkBufferPrivate* priv;
   gdouble hue;
   gdouble saturation;
   gdouble value;
   GdkColor color;
 
-  hue = inf_text_user_get_hue(user);
-  /* TODO: Choose these to also fit a dark theme. Perhaps make a property
-   * out of them if we can't find out here. */
-  saturation = 0.35;
-  value = 1.0;
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
+  hue = inf_text_user_get_hue(user);
+  saturation = priv->saturation;
+  value = priv->value;
   hsv_to_rgb(&hue, &saturation, &value);
 
   color.red = hue * 0xffff;
@@ -345,6 +351,28 @@ inf_text_gtk_buffer_ensure_author_tags_priority_foreach_func(GtkTextTag* tag,
 
   if(author != 0)
     gtk_text_tag_set_priority(tag, 0);
+}
+
+static void
+inf_text_gtk_buffer_set_saturation_value_tag_table_foreach_func(GtkTextTag* t,
+                                                                gpointer data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  guint author;
+  InfUser* user;
+
+  buffer = INF_TEXT_GTK_BUFFER(data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  author = inf_text_gtk_buffer_author_from_tag(t);
+
+  if(author != 0)
+  {
+    user = inf_user_table_lookup_user_by_id(priv->user_table, author);
+    g_assert(INF_TEXT_IS_USER(user));
+
+    inf_text_gtk_update_tag_color(buffer, t, INF_TEXT_USER(user));
+  }
 }
 
 /* Required by inf_text_gtk_buffer_mark_set_cb() */
@@ -836,6 +864,9 @@ inf_text_gtk_buffer_init(GTypeInstance* instance,
 
   priv->active_user = NULL;
   priv->wake_on_cursor_movement = FALSE;
+
+  priv->saturation = 0.35;
+  priv->value = 1.0;
 }
 
 static void
@@ -908,6 +939,20 @@ inf_text_gtk_buffer_set_property(GObject* object,
     break;
   case PROP_MODIFIED:
     inf_text_gtk_buffer_set_modified(buffer, g_value_get_boolean(value));
+    break;
+  case PROP_SATURATION:
+    inf_text_gtk_buffer_set_saturation_value(
+      buffer,
+      g_value_get_double(value),
+      priv->value
+    );
+    break;
+  case PROP_VALUE:
+    inf_text_gtk_buffer_set_saturation_value(
+      buffer,
+      priv->saturation,
+      g_value_get_double(value)
+    );
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
@@ -1456,6 +1501,34 @@ inf_text_gtk_buffer_class_init(gpointer g_class,
     )
   );
 
+  g_object_class_install_property(
+    object_class,
+    PROP_SATURATION,
+    g_param_spec_double(
+      "saturation",
+      "Saturation",
+      "Saturation of user colors in a HSV color model",
+      0.0,
+      1.0,
+      0.35,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_VALUE,
+    g_param_spec_double(
+      "value",
+      "Value",
+      "Value of user colors in a HSV color model",
+      0.0,
+      1.0,
+      1.0,
+      G_PARAM_READWRITE
+    )
+  );
+
   g_object_class_override_property(object_class, PROP_MODIFIED, "modified");
 }
 
@@ -1790,6 +1863,87 @@ inf_text_gtk_buffer_ensure_author_tags_priority(InfTextGtkBuffer* buffer)
     inf_text_gtk_buffer_ensure_author_tags_priority_foreach_func,
     buffer
   );
+}
+
+/**
+ * inf_text_gtk_buffer_set_saturation_value:
+ * @buffer: A #InfTextGtkBuffer.
+ * @saturation: Saturation to use for user colors.
+ * @value: Value to use for user colors.
+ *
+ * Sets the saturation and value to use for user colors in a HSV color model.
+ * The hue is defined by each user's individual color. The reason why S and V
+ * are set locally the same for all users is that they can be adjusted
+ * depending on one's theme: Dark themes want dark user colors, bright themes
+ * want bright ones.
+ */
+void
+inf_text_gtk_buffer_set_saturation_value(InfTextGtkBuffer* buffer,
+                                         gdouble saturation,
+                                         gdouble value)
+{
+  InfTextGtkBufferPrivate* priv;
+  GtkTextTagTable* tag_table;
+
+  g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
+  g_return_if_fail(saturation >= 0.0 && saturation <= 1.0);
+  g_return_if_fail(value >= 0.0 && value <= 1.0);
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  if(saturation == priv->saturation && value == priv->value)
+    return;
+
+  g_object_freeze_notify(G_OBJECT(buffer));
+  if(saturation != priv->saturation)
+  {
+    priv->saturation = saturation;
+    g_object_notify(G_OBJECT(buffer), "saturation");
+  }
+
+  if(value != priv->value)
+  {
+    priv->value = value;
+    g_object_notify(G_OBJECT(buffer), "value");
+  }
+
+  tag_table = gtk_text_buffer_get_tag_table(priv->buffer);
+  gtk_text_tag_table_foreach(
+    tag_table,
+    inf_text_gtk_buffer_set_saturation_value_tag_table_foreach_func,
+    buffer
+  );
+  g_object_thaw_notify(G_OBJECT(buffer));
+}
+
+/**
+ * inf_text_gtk_buffer_get_saturation:
+ * @buffer: A #InfTextGtkBuffer.
+ *
+ * Returns the saturation part of the HSV user color.
+ *
+ * Returns: The saturation used for user colors.
+ */
+gdouble
+inf_text_gtk_buffer_get_saturation(InfTextGtkBuffer* buffer)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), 0.0);
+  return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->saturation;
+}
+
+/**
+ * inf_txet_gtk_buffer_get_value:
+ * @buffer: A #InfTextGtkBuffer.
+ *
+ * Returns the value part of the HSV user color.
+ *
+ * Returns: The value used for user colors.
+ */
+gdouble
+inf_text_gtk_buffer_get_value(InfTextGtkBuffer* buffer)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), 0.0);
+  return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->value;
 }
 
 /* vim:set et sw=2 ts=2: */
