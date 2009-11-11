@@ -1,5 +1,11 @@
 2009-11-11  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.c: Check for non-NULL iter in
+	infc_browser_return_if_iter_fail() and
+	infc_browser_return_val_if_iter_fail().
+
+2009-11-11  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-chat.c: Avoid the use of
 	gtk_entry_get_text_length() because this is only available since GTK+
 	2.14.

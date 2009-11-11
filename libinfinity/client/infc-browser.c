@@ -203,6 +203,7 @@ enum {
 /* These make sure that the node iter points to is contained in browser */
 #define infc_browser_return_if_iter_fail(browser, iter) \
   g_return_if_fail( \
+    iter != NULL && \
     g_hash_table_lookup( \
       INFC_BROWSER_PRIVATE(INFC_BROWSER(browser))->nodes, \
       GUINT_TO_POINTER((iter)->node_id) \
@@ -211,6 +212,7 @@ enum {
 
 #define infc_browser_return_val_if_iter_fail(browser, iter, val) \
   g_return_val_if_fail( \
+    iter != NULL && \
     g_hash_table_lookup( \
       INFC_BROWSER_PRIVATE(INFC_BROWSER(browser))->nodes, \
       GUINT_TO_POINTER((iter)->node_id) \
