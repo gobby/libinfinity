@@ -1,5 +1,9 @@
 2009-11-11  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xml-util.c: Added documentation comments.
+
+2009-11-11  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c: Check for non-NULL iter in
 	infc_browser_return_if_iter_fail() and
 	infc_browser_return_val_if_iter_fail().

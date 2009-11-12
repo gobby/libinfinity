@@ -17,6 +17,19 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-xml-util
+ * @title: XML utility functions
+ * @short_description: Helper functions to read basic data types from XML
+ * @include: libinfinity/common/inf-xml-util.h
+ * @stability: Unstable
+ *
+ * In the infinote protocol XML attributes are often required to contain
+ * numbers. These function provide some convenience to set and retrieve them.
+ * They are mostly used in libinfinity itself but can also be useful when
+ * implementing new session types so they are public API.
+ **/
+
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
@@ -263,6 +276,7 @@ inf_xml_util_string_to_double(const gchar* attribute,
 static gboolean
 inf_xml_util_valid_xml_char(gunichar codepoint)
 {
+  /* cf. http://www.w3.org/TR/REC-xml/#dt-text */
   return
     (codepoint >= 0x00020 && codepoint <= 0x00d7ff) /* probably most common */
     || codepoint == 0xd
@@ -272,6 +286,20 @@ inf_xml_util_valid_xml_char(gunichar codepoint)
     || (codepoint >= 0x10000 && codepoint <= 0x10ffff);
 }
 
+/**
+ * inf_xml_util_add_child_text:
+ * @xml: A #xmlNodePtr.
+ * @text: The child text to add.
+ * @bytes: The number of bytes of @text.
+ *
+ * Adds the given text as child text to @xml in the same way
+ * xmlNodeAddContentLen() would do. The difference is that @text is allowed
+ * to contain characters that are not valid in
+ * <ulink url="http://www.w3.org/TR/REC-xml/#dt-text">XML text</ulink>, such
+ * as formfeed characters \f. In case one occurs in @text, the function adds
+ * an &lt;uchar /&gt; element node instead to @xml as specified in the
+ * infinote protocol.
+ */
 void
 inf_xml_util_add_child_text(xmlNodePtr xml,
                             const gchar* text,
@@ -304,6 +332,21 @@ inf_xml_util_add_child_text(xmlNodePtr xml,
     xmlNodeAddContentLen(xml, (const xmlChar*) text, p - text);
 }
 
+/**
+ * inf_xml_util_get_child_text:
+ * @xml: A #xmlNodePtr
+ * @bytes: Location to store number of bytes of child text, or %NULL.
+ * @chars: Location to store number of characters of child text, or %NULL.
+ * @error: Locatian to store error information if any, or %NULL.
+ *
+ * Reads a node's child text. If there are &lt;uchar /&gt; child elements, as
+ * added by inf_xml_util_add_child_text() this function will convert them
+ * back to character codes. There should not be any other child elements in
+ * @xml.
+ *
+ * Returns: The node's child text, or %NULL on error. Free with g_free() when
+ * no longer needed.
+ */
 gchar*
 inf_xml_util_get_child_text(xmlNodePtr xml,
                             gsize* bytes,
@@ -354,6 +397,19 @@ inf_xml_util_get_child_text(xmlNodePtr xml,
   return g_string_free(result, FALSE);
 }
 
+/**
+ * inf_xml_util_get_attribute:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ *
+ * Returns the value of the attribute called @attribute in the XML element
+ * @xml. This function is a thin wrapper around xmlGetProp() which exists
+ * mostly for consistency, and for not having to cast the @attribute argument
+ * from char* to xmlChar*. The return value is a xmlChar*, though.
+ *
+ * Returns: The value of the attribute, or %NULL. Free with xmlFree() when no
+ * longer needed.
+ */
 xmlChar*
 inf_xml_util_get_attribute(xmlNodePtr xml,
                            const gchar* attribute)
@@ -361,6 +417,19 @@ inf_xml_util_get_attribute(xmlNodePtr xml,
   return xmlGetProp(xml, (const xmlChar*)attribute);
 }
 
+/**
+ * inf_xml_util_get_attribute_required:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @error: Location to store error information, if any.
+ *
+ * Returns the value of the attribute called @attribute in the XML element
+ * @xml. If there is no such attribute then the function returns %NULL and
+ * @error is set.
+ *
+ * Returns: The attribute's value, or %NULL on error. Free with xmlFree()
+ * when no longer needed.
+ */
 xmlChar*
 inf_xml_util_get_attribute_required(xmlNodePtr xml,
                                     const gchar* attribute,
@@ -384,6 +453,26 @@ inf_xml_util_get_attribute_required(xmlNodePtr xml,
   return value;
 }
 
+/**
+ * inf_xml_util_get_attribute_int:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Reads the attribute named @attribute from the XML element @xml. The
+ * attribute value is expected to be a signed integral number. If it is the
+ * function converts the text to an integere and stores the result into
+ * @result. In this case, %TRUE is returned and @error is left untouched.
+ *
+ * If the value is not a signed integral number, then the function returns
+ * %FALSE, @error is set and @result is left untouched.
+ *
+ * If the attribute does not exist the function returns %FALSE but @error is
+ * not set.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_int(xmlNodePtr xml,
                                const gchar* attribute,
@@ -401,6 +490,24 @@ inf_xml_util_get_attribute_int(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_int_required:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Reads the attribute named @attribute from the XML element @xml. The
+ * attribute value is expected to be a signed integral number. If it is the
+ * function converts the text to an integere and stores the result into
+ * @result. In this case, %TRUE is returned and @error is left untouched.
+ *
+ * If the value is not a signed integral number or the attribute does not
+ * exist, then the function returns %FALSE, @error is set and @result is
+ * left untouched.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_int_required(xmlNodePtr xml,
                                         const gchar* attribute,
@@ -418,6 +525,18 @@ inf_xml_util_get_attribute_int_required(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_long:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
+ * is that the function reads a signed long integral number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_long(xmlNodePtr xml,
                                 const gchar* attribute,
@@ -435,6 +554,18 @@ inf_xml_util_get_attribute_long(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_long_required:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
+ * difference is that the function reads a signed long integral number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_long_required(xmlNodePtr xml,
                                          const gchar* attribute,
@@ -452,6 +583,18 @@ inf_xml_util_get_attribute_long_required(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_uint:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
+ * is that the function reads an unsigned integral number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
@@ -469,6 +612,18 @@ inf_xml_util_get_attribute_uint(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_uint_required:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
+ * difference is that the function reads an unsigned integral number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
                                          const gchar* attribute,
@@ -486,6 +641,18 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_ulong:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
+ * is that the function reads an unsigned long integral number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_ulong(xmlNodePtr xml,
                                  const gchar* attribute,
@@ -503,6 +670,18 @@ inf_xml_util_get_attribute_ulong(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_ulong_required:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
+ * difference is that the function reads an unsigned long integral number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_ulong_required(xmlNodePtr xml,
                                           const gchar* attribute,
@@ -520,6 +699,18 @@ inf_xml_util_get_attribute_ulong_required(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_double:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
+ * is that the function reads a double-precision floating point number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_double(xmlNodePtr xml,
                                   const gchar* attribute,
@@ -537,6 +728,19 @@ inf_xml_util_get_attribute_double(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_get_attribute_double_required:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to query.
+ * @result: Location to store the read value.
+ * @error: Location to store error information, if any.
+ *
+ * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
+ * difference is that the function reads a double-precision floating point
+ * number.
+ *
+ * Returns: Whether @result was set.
+ */
 gboolean
 inf_xml_util_get_attribute_double_required(xmlNodePtr xml,
                                            const gchar* attribute,
@@ -554,6 +758,16 @@ inf_xml_util_get_attribute_double_required(xmlNodePtr xml,
   return retval;
 }
 
+/**
+ * inf_xml_util_set_attribute:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to set.
+ * @value: The value to set.
+ *
+ * Sets the attribute named @attribute to the given value of the XML element
+ * @xml. This is a thin wrapper around xmlSetProp(), mainly provided for
+ * consistency and for not having to cast the arguments to xmlChar*.
+ */
 void
 inf_xml_util_set_attribute(xmlNodePtr xml,
                            const gchar* attribute,
@@ -562,6 +776,15 @@ inf_xml_util_set_attribute(xmlNodePtr xml,
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)value);
 }
 
+/**
+ * inf_xml_util_set_attribute_int:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to set.
+ * @value: The value to set.
+ *
+ * Sets the attribute named @attribute to the given signed integral value
+ * converted to text.
+ */
 void
 inf_xml_util_set_attribute_int(xmlNodePtr xml,
                                const gchar* attribute,
@@ -573,6 +796,15 @@ inf_xml_util_set_attribute_int(xmlNodePtr xml,
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
 
+/**
+ * inf_xml_util_set_attribute_long:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to set.
+ * @value: The value to set.
+ *
+ * Sets the attribute named @attribute to the given signed long integral value
+ * converted to text.
+ */
 void
 inf_xml_util_set_attribute_long(xmlNodePtr xml,
                                 const gchar* attribute,
@@ -584,6 +816,15 @@ inf_xml_util_set_attribute_long(xmlNodePtr xml,
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
 
+/**
+ * inf_xml_util_set_attribute_uint:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to set.
+ * @value: The value to set.
+ *
+ * Sets the attribute named @attribute to the given unsigned integral value
+ * converted to text.
+ */
 void
 inf_xml_util_set_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
@@ -595,6 +836,15 @@ inf_xml_util_set_attribute_uint(xmlNodePtr xml,
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
 
+/**
+ * inf_xml_util_set_attribute_ulong:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to set.
+ * @value: The value to set.
+ *
+ * Sets the attribute named @attribute to the given unsigned long integral
+ * value converted to text.
+ */
 void
 inf_xml_util_set_attribute_ulong(xmlNodePtr xml,
                                  const gchar* attribute,
@@ -606,6 +856,15 @@ inf_xml_util_set_attribute_ulong(xmlNodePtr xml,
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
 
+/**
+ * inf_xml_util_set_attribute_double:
+ * @xml: A #xmlNodePtr.
+ * @attribute: The name of the attribute to set.
+ * @value: The value to set.
+ *
+ * Sets the attribute named @attribute to the given double-precision
+ * floating point number converted to text.
+ */
 void
 inf_xml_util_set_attribute_double(xmlNodePtr xml,
                                   const gchar* attribute,
