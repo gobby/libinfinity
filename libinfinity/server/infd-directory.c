@@ -1219,8 +1219,7 @@ infd_directory_node_name_equal(const gchar* name1,
 {
   gchar* f1 = g_utf8_casefold(name1, -1);
   gchar* f2 = g_utf8_casefold(name2, -1);
-  gboolean result = (g_utf8_collate(name1, name2) == 0);
-    result = TRUE;
+  gboolean result = (g_utf8_collate(f1, f2) == 0);
   g_free(f2);
   g_free(f1);
   return result;
@@ -2003,47 +2002,6 @@ infd_directory_node_add_note(InfdDirectory* directory,
 }
 
 static gboolean
-infd_directory_node_remove(InfdDirectory* directory,
-                           InfdDirectoryNode* node,
-                           InfXmlConnection* seq_conn,
-                           guint seq,
-                           GError** error)
-{
-  InfdDirectoryPrivate* priv;
-  gboolean result;
-  gchar* path;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(priv->storage != NULL);
-
-  /* Cannot remove the root node */
-  g_assert(node->parent != NULL);
-
-  infd_directory_node_get_path(node, &path, NULL);
-  result = infd_storage_remove_node(
-    priv->storage,
-    node->type == INFD_STORAGE_NODE_NOTE ?
-      node->shared.note.plugin->note_type :
-      NULL,
-    path,
-    error
-  );
-
-  g_free(path);
-
-  if(result == FALSE)
-    return FALSE;
-
-  /* Need to unlink child sessions explicitely before unregistering, so
-   * remove-session is emitted before node-removed. Don't save changes since
-   * we just removed the note anyway. */
-  infd_directory_node_unlink_child_sessions(directory, node, FALSE);
-  infd_directory_node_unregister(directory, node, seq_conn, seq);
-  infd_directory_node_free(directory, node);
-  return TRUE;
-}
-
-static gboolean
 infd_directory_node_add_sync_in(InfdDirectory* directory,
                                 InfdDirectoryNode* parent,
                                 const gchar* name,
@@ -2159,6 +2117,47 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     xml
   );
 
+  return TRUE;
+}
+
+static gboolean
+infd_directory_node_remove(InfdDirectory* directory,
+                           InfdDirectoryNode* node,
+                           InfXmlConnection* seq_conn,
+                           guint seq,
+                           GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gboolean result;
+  gchar* path;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_assert(priv->storage != NULL);
+
+  /* Cannot remove the root node */
+  g_assert(node->parent != NULL);
+
+  infd_directory_node_get_path(node, &path, NULL);
+  result = infd_storage_remove_node(
+    priv->storage,
+    node->type == INFD_STORAGE_NODE_NOTE ?
+      node->shared.note.plugin->note_type :
+      NULL,
+    path,
+    error
+  );
+
+  g_free(path);
+
+  if(result == FALSE)
+    return FALSE;
+
+  /* Need to unlink child sessions explicitely before unregistering, so
+   * remove-session is emitted before node-removed. Don't save changes since
+   * we just removed the note anyway. */
+  infd_directory_node_unlink_child_sessions(directory, node, FALSE);
+  infd_directory_node_unregister(directory, node, seq_conn, seq);
+  infd_directory_node_free(directory, node);
   return TRUE;
 }
 
@@ -3067,13 +3066,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
        * node has been removed. Still create a session proxy and subscribe to
        * connection before unrefing it again, so that the remote hosts gets
        * notified that this session is no longer active. */
-      proxy = infd_directory_create_session_proxy(
-        directory,
-        request->shared.add_node.plugin,
-        NULL,
-        request->shared.add_node.group,
-        NULL
-      );
+      proxy = request->shared.add_node.proxy;
+      g_object_ref(proxy);
     }
 
     /* Don't sync session to client if the client added this node, since the
@@ -3115,7 +3109,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     {
       /* The sync-in can't be performed properly because the parent node of
        * the node to sync-in has been removed. Still create the corresponding
-       * session and close it immediately, to tell the client. */
+       * session and close it immediately (cancelling the synchronization, to
+       * tell the client). */
       proxy = infd_directory_create_session_proxy(
         directory,
         request->shared.sync_in.plugin,

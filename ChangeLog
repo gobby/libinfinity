@@ -1,5 +1,13 @@
 2009-11-13  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-directory.c
+	(infd_directory_node_name_equal): Don't always return TRUE.
+	(infd_directory_handle_subscribe_ack): Use existing session and
+	session proxy to notify client about cancellation in case the parent
+	node was removed, instead of creating a new proxy.
+
+2009-11-13  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-error.c: Added
 	INF_DIRECTORY_ERROR_INVALID_NAME error code.
