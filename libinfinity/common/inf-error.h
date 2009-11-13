@@ -93,6 +93,8 @@ typedef enum _InfUserError {
  * InfDirectoryError:
  * @INF_DIRECTORY_ERROR_NODE_EXISTS: A node with the given name exists
  * already in that subdirectory (in response to node creation requests).
+ * @INF_DIRECTORY_ERROR_INVALID_NAME: A node with an invalid name was
+ * attempted to be created.
  * @INF_DIRECTORY_ERROR_NO_SUCH_NODE: The node refered to in a request does
  * not exist in the directory (anymore).
  * @INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST: A &lt;subscribe-ack&gt;
@@ -138,6 +140,7 @@ typedef enum _InfUserError {
  */
 typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NODE_EXISTS,
+  INF_DIRECTORY_ERROR_INVALID_NAME,
   INF_DIRECTORY_ERROR_NO_SUCH_NODE,
   INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
   INF_DIRECTORY_ERROR_CHAT_DISABLED,

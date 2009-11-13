@@ -1,3 +1,18 @@
+2009-11-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_INVALID_NAME error code.
+
+	* libinfinity/server/infd-directory.c
+	(infd_directory_node_name_equal): Use Unicode-aware case-insensitive
+	comparison.
+	(infd_directory_node_is_name_available): Don't allow nodes with '/' in
+	the name.
+
+	* libinfinity/server/infd-filesystem-storage.c: Don't allow empty path
+	components.
+
 2009-11-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xml-util.c: Added documentation comments.

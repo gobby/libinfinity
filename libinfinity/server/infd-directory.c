@@ -1217,10 +1217,13 @@ static gboolean
 infd_directory_node_name_equal(const gchar* name1,
                                const gchar* name2)
 {
-  /* TODO: Unicode awareness */
-  if(g_ascii_strcasecmp(name1, name2) == 0)
-    return TRUE;
-  return FALSE;
+  gchar* f1 = g_utf8_casefold(name1, -1);
+  gchar* f2 = g_utf8_casefold(name2, -1);
+  gboolean result = (g_utf8_collate(name1, name2) == 0);
+    result = TRUE;
+  g_free(f2);
+  g_free(f1);
+  return result;
 }
 
 /*
@@ -1666,16 +1669,36 @@ infd_directory_node_find_child_by_name(InfdDirectoryNode* parent,
 static gboolean
 infd_directory_node_is_name_available(InfdDirectory* directory,
                                       InfdDirectoryNode* parent,
-                                      const gchar* name)
+                                      const gchar* name,
+                                      GError** error)
 {
-  if(infd_directory_node_find_child_by_name(parent, name) != NULL)
-    return FALSE;
+  if(strchr(name, '/') != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_INVALID_NAME,
+      "Name \"%s\" is an invalid name: contains \"/\"",
+      name
+    );
 
-  if(infd_directory_find_sync_in_by_name(directory, parent, name) != NULL)
     return FALSE;
+  }
 
-  if(infd_directory_find_subreq_by_name(directory, parent, name) != NULL)
+  if(infd_directory_node_find_child_by_name(parent, name)         != NULL ||
+     infd_directory_find_sync_in_by_name(directory, parent, name) != NULL ||
+     infd_directory_find_subreq_by_name(directory, parent, name)  != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NODE_EXISTS,
+      "A node with name \"%s\" exists already",
+      name
+    );
+
     return FALSE;
+  }
 
   return TRUE;
 }
@@ -1791,16 +1814,8 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_assert(priv->storage != NULL);
 
-  if(infd_directory_node_is_name_available(directory, parent, name) == FALSE)
+  if(!infd_directory_node_is_name_available(directory, parent, name, error))
   {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NODE_EXISTS,
-      "A node with name \"%s\" exists already",
-      name
-    );
-
     return NULL;
   }
   else
@@ -1889,16 +1904,8 @@ infd_directory_node_add_note(InfdDirectory* directory,
   infd_directory_return_val_if_subdir_fail(parent, FALSE);
   g_return_val_if_fail(parent->shared.subdir.explored == TRUE, FALSE);
 
-  if(infd_directory_node_is_name_available(directory, parent, name) == FALSE)
+  if(!infd_directory_node_is_name_available(directory, parent, name, error))
   {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NODE_EXISTS,
-      "A node with name \"%s\" exists already",
-      name
-    );
-
     return FALSE;
   }
   else
@@ -2063,18 +2070,8 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(infd_directory_node_is_name_available(directory, parent, name) == FALSE)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NODE_EXISTS,
-      "A node with name \"%s\" exists already",
-      name
-    );
-
+  if(!infd_directory_node_is_name_available(directory, parent, name, error))
     return FALSE;
-  }
 
   node_id = priv->node_counter++;
 
@@ -3042,7 +3039,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         infd_directory_node_is_name_available(
           directory,
           request->shared.add_node.parent,
-          request->shared.add_node.name
+          request->shared.add_node.name,
+          NULL
         ) == TRUE
       );
 
@@ -3092,7 +3090,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         infd_directory_node_is_name_available(
           directory,
           request->shared.sync_in.parent,
-          request->shared.sync_in.name
+          request->shared.sync_in.name,
+          NULL
         ) == TRUE
       );
 

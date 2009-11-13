@@ -54,7 +54,8 @@ infd_filesystem_storage_verify_path(const gchar* path,
   components = g_strsplit(path, "/", 0);
   for(component = components; *component != NULL; ++ component)
   {
-    if(strcmp(*component, ".") == 0 || strcmp(*component, "..") == 0)
+    if(*component == '\0' ||
+       strcmp(*component, ".") == 0 || strcmp(*component, "..") == 0)
     {
       g_set_error(
         error,

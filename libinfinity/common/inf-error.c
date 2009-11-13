@@ -155,6 +155,8 @@ inf_directory_strerror(InfDirectoryError code)
   {
   case INF_DIRECTORY_ERROR_NODE_EXISTS:
     return _("A node with this name exists already");
+  case INF_DIRECTORY_ERROR_INVALID_NAME:
+    return _("Invalid node name");
   case INF_DIRECTORY_ERROR_NO_SUCH_NODE:
     return _("Node does not exist");
   case INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST:
