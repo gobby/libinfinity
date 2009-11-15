@@ -1,3 +1,9 @@
+2009-11-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-filesystem-storage.h:
+	* libinfinity/server/infd-filesystem-storage.c: Fixed directory
+	deletion on Windows. Bug #501.
+
 2009-11-13  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.c

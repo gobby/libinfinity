@@ -41,6 +41,8 @@ typedef struct _InfdFilesystemStorageClass InfdFilesystemStorageClass;
 typedef enum _InfdFilesystemStorageError {
   /* The path contains invalid characters */
   INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
+  /* Failed to remove files from disk */
+  INFD_FILESYSTEM_STORAGE_ERROR_REMOVE_FILES,
 
   INFD_FILESYSTEM_STORAGE_ERROR_FAILED
 } InfdFilesystemStorageError;

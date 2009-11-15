@@ -26,6 +26,10 @@
 #include <string.h>
 #include <errno.h>
 
+#ifdef G_OS_WIN32
+# include <windows.h>
+#endif
+
 typedef struct _InfdFilesystemStoragePrivate InfdFilesystemStoragePrivate;
 struct _InfdFilesystemStoragePrivate {
   gchar* root_directory;
@@ -120,6 +124,8 @@ infd_filesystem_storage_system_error(int code,
 {
   /* TODO_Win32: Use FormatMessage or something on Win32,
    * or probably better g_win32_error_message(). */
+  /* TODO: Actually we should get away from including system error codes
+   * in these errors, as they get eventually sent over the net */
   g_set_error(
     error,
     infd_filesystem_storage_system_error_quark,
@@ -133,6 +139,47 @@ static gboolean
 infd_filesystem_storage_remove_rec(const gchar* path,
                                    GError** error)
 {
+#ifdef G_OS_WIN32
+  SHFILEOPSTRUCTW op;
+  gchar* from_dup;
+  gunichar2* from;
+  glong len;
+  gboolean result;
+  int error_code;
+
+  from = g_utf8_to_utf16(path, -1, NULL, &len, error);
+  if(!from) return FALSE;
+
+  from = g_realloc(from, (len+2)*sizeof(gunichar2));
+  from[len+1] = L'\0';
+
+  op.hwnd = NULL;
+  op.wFunc = FO_DELETE;
+  op.pFrom = from;
+  op.pTo = NULL;
+  op.fFlags = FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION;
+  op.fAnyOperationsAborted = 0;
+  op.hNameMappings = NULL;
+  op.lpszProgressTitle = NULL;
+
+  result = TRUE;
+  error_code = SHFileOperationW(&op);
+  if(error_code != 0 || op.fAnyOperationsAborted != 0)
+  {
+    g_set_error(
+      error,
+      infd_filesystem_storage_error_quark,
+      INFD_FILESYSTEM_STORAGE_ERROR_REMOVE_FILES,
+      "Failed to remove files from disk"
+    );
+
+    result = FALSE;
+  }
+
+  g_free(from);
+  return result;
+#else
+  /* TODO: Use the REMOVE_FILES error code when something fails below */
   GDir* dir;
   const gchar* name;
   gchar* child;
@@ -177,6 +224,7 @@ infd_filesystem_storage_remove_rec(const gchar* path,
   }
 
   return TRUE;
+#endif
 }
 
 static void
@@ -378,6 +426,9 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   gchar* converted_name;
   gchar* disk_name;
   gchar* full_name;
+#ifdef G_OS_WIN32
+  gchar* sep;
+#endif
   gboolean ret;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
@@ -389,6 +440,14 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
   if(converted_name == NULL)
     return FALSE;
+
+#ifdef G_OS_WIN32
+  /* This is required for SHFileOperation. Maybe we should do it at a central
+   * place also for the other file operations... */
+  for(sep = converted_name; *sep != '\0'; ++sep)
+    if(*sep == '/')
+      *sep = '\\';
+#endif
 
   if(identifier != NULL)
   {
