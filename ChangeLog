@@ -1,3 +1,9 @@
+2009-11-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-chat.c (inf_gtk_chat_commit_message): Send
+	messages beginning with /me as emote messages.
+	(inf_gtk_chat_init): Fix a compiler warning.
+
 2009-11-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-filesystem-storage.h:

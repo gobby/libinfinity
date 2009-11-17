@@ -36,6 +36,8 @@
 
 #include <gdk/gdkkeysyms.h>
 
+#include <string.h> /* For strlen() */
+
 /* This is a small hack to get the scrolling in the textview right */
 typedef enum _InfGtkChatVMode {
   /* VMode is disabled, always keep bottom row constant */
@@ -246,8 +248,9 @@ static void
 inf_gtk_chat_commit_message(InfGtkChat* chat)
 {
   InfGtkChatPrivate* priv;
-  priv = INF_GTK_CHAT_PRIVATE(chat);
   const gchar* text;
+
+  priv = INF_GTK_CHAT_PRIVATE(chat);
 
   g_assert(priv->session != NULL);
   g_assert(priv->buffer != NULL);
@@ -255,14 +258,34 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
 
   text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
 
-  inf_chat_buffer_add_message(
-    priv->buffer,
-    priv->active_user,
-    gtk_entry_get_text(GTK_ENTRY(priv->entry)),
-    /* TODO: Use gtk_entry_get_text_length() once we can use GTK+ 2.14. */
-    strlen(text),
-    time(NULL)
-  );
+  if(g_str_has_prefix(text, "/me") &&
+     text[3] == '\0' || g_unichar_isspace(g_utf8_get_char(text+3)))
+  {
+    text += 3;
+    while(g_unichar_isspace(g_utf8_get_char(text)))
+      text = g_utf8_next_char(text);
+
+    inf_chat_buffer_add_emote_message(
+      priv->buffer,
+      priv->active_user,
+      text,
+      /* TODO: Use gtk_entry_get_text_length() - (text -
+       * gtk_entry_get_text())) once we can use GTK+ 2.14. */
+      strlen(text),
+      time(NULL)
+    );
+  }
+  else
+  {
+    inf_chat_buffer_add_message(
+      priv->buffer,
+      priv->active_user,
+      text,
+      /* TODO: Use gtk_entry_get_text_length() once we can use GTK+ 2.14. */
+      strlen(text),
+      time(NULL)
+    );
+  }
 
   gtk_entry_set_text(GTK_ENTRY(priv->entry), "");
 }
@@ -682,7 +705,8 @@ inf_gtk_chat_init(GTypeInstance* instance,
     GTK_POLICY_AUTOMATIC
   );
   gtk_container_add(GTK_CONTAINER(scroll), priv->chat_view);
-  priv->vadj = gtk_scrolled_window_get_vadjustment(GTK_CONTAINER(scroll));
+  priv->vadj =
+    gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll));
   gtk_widget_show(scroll);
 
   g_signal_connect(
