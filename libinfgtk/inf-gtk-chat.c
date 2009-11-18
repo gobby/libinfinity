@@ -259,7 +259,7 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
   text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
 
   if(g_str_has_prefix(text, "/me") &&
-     text[3] == '\0' || g_unichar_isspace(g_utf8_get_char(text+3)))
+     (text[3] == '\0' || g_unichar_isspace(g_utf8_get_char(text+3))))
   {
     text += 3;
     while(g_unichar_isspace(g_utf8_get_char(text)))
