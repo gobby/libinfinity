@@ -1,3 +1,9 @@
+2009-11-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinftext/inf-text-session.c: Made some clarifying comments about
+	implicit user activation and flushing pending requests.
+
 2009-11-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-chat.c (inf_gtk_chat_commit_message): Fixed

@@ -2072,7 +2072,8 @@ inf_text_session_set_user_color(InfTextSession* session,
  * are automatically activated as soon as they issue a request.
  *
  * TODO: We should probably detect this automatically, without requiring
- * people to call this function.
+ * people to call this function, i.e. flush requests for local users just
+ * before they become inactive.
  *
  * @user must have the %INF_USER_LOCAL flag set.
  */

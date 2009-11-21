@@ -495,6 +495,9 @@ inf_adopted_session_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO ||
      !INF_ADOPTED_IS_NO_OPERATION(inf_adopted_request_get_operation(request)))
   {
+    /* TODO: We should offer a virtual function to flush all requests for
+     * local users, either here or even in InfSession via a vfunc, so that
+     * we don't accidentally make local users active by a delayed request. */
     if(inf_user_get_status(INF_USER(user)) == INF_USER_INACTIVE)
       g_object_set(G_OBJECT(user), "status", INF_USER_ACTIVE, NULL);
   }
