@@ -20,6 +20,7 @@
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-marshal.h>
 
 #include <string.h>
 
@@ -42,10 +43,17 @@ enum {
   PROP_CONNECTION
 };
 
+enum {
+  SET_STATUS,
+
+  LAST_SIGNAL
+};
+
 #define INF_USER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
 #define INF_USER_PRIVATE(obj)     ((InfUserPrivate*)(obj)->priv)
 
 static GObjectClass* parent_class;
+static guint user_signals[LAST_SIGNAL];
 
 static void
 inf_user_init(GTypeInstance* instance,
@@ -99,7 +107,7 @@ inf_user_set_property(GObject* object,
 
   user = INF_USER(object);
   priv = INF_USER_PRIVATE(user);
-  
+
   /* TODO: Check if properties are still valid.
    * There are several combinations possible:
    *
@@ -123,7 +131,13 @@ inf_user_set_property(GObject* object,
     priv->name = g_value_dup_string(value);
     break;
   case PROP_STATUS:
-    priv->status = g_value_get_enum(value);
+    g_signal_emit(
+      object,
+      user_signals[SET_STATUS],
+      0,
+      g_value_get_enum(value)
+    );
+
     break;
   case PROP_FLAGS:
     priv->flags = g_value_get_flags(value);
@@ -174,11 +188,24 @@ inf_user_get_property(GObject* object,
 }
 
 static void
+inf_user_set_status_handler(InfUser* user,
+                            InfUserStatus status)
+{
+  InfUserPrivate* priv;
+  priv = INF_USER_PRIVATE(user);
+
+  priv->status = status;
+}
+
+static void
 inf_user_class_init(gpointer g_class,
                     gpointer class_data)
 {
   GObjectClass* object_class;
+  InfUserClass* user_class;
+
   object_class = G_OBJECT_CLASS(g_class);
+  user_class = INF_USER_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfUserPrivate));
@@ -187,6 +214,8 @@ inf_user_class_init(gpointer g_class,
   object_class->finalize = inf_user_finalize;
   object_class->set_property = inf_user_set_property;
   object_class->get_property = inf_user_get_property;
+
+  user_class->set_status = inf_user_set_status_handler;
 
   g_object_class_install_property(
     object_class,
@@ -251,6 +280,28 @@ inf_user_class_init(gpointer g_class,
       INF_TYPE_XML_CONNECTION,
       G_PARAM_READWRITE
     )
+  );
+
+  /**
+   * InfUser::set-status:
+   * @user: The #InfUser that changes status.
+   * @status: The new user status.
+   *
+   * This signal is emitted whenever the user's status changes. This is
+   * basically the same as a notification for the #InfUser:status property,
+   * but it allows to access the previous user status when connecting before
+   * the default signal handler.
+   */
+  user_signals[SET_STATUS] = g_signal_new(
+    "set-status",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfUserClass, set_status),
+    NULL, NULL,
+    inf_marshal_VOID__ENUM,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_USER_STATUS
   );
 }
 

@@ -39,15 +39,6 @@ G_BEGIN_DECLS
 typedef struct _InfUser InfUser;
 typedef struct _InfUserClass InfUserClass;
 
-struct _InfUserClass {
-  GObjectClass parent_class;
-};
-
-struct _InfUser {
-  GObject parent;
-  gpointer priv;
-};
-
 typedef enum _InfUserStatus {
   INF_USER_ACTIVE,
   INF_USER_INACTIVE,
@@ -57,6 +48,18 @@ typedef enum _InfUserStatus {
 typedef enum InfUserFlags {
   INF_USER_LOCAL = 1 << 0
 } InfUserFlags;
+
+struct _InfUserClass {
+  GObjectClass parent_class;
+
+  void (*set_status)(InfUser* user,
+                     InfUserStatus status);
+};
+
+struct _InfUser {
+  GObject parent;
+  gpointer priv;
+};
 
 GType
 inf_user_status_get_type(void) G_GNUC_CONST;

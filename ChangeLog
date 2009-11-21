@@ -1,5 +1,15 @@
 2009-11-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-user.h:
+	* libinfinity/common/inf-user.c: Added the set-status signal which
+	allows to access the previous user status.
+
+	* libinfinity/common/inf-chat-session.c: Don't emit a new message
+	userjoin message for each active->inactive and inactive->active user
+	status change.
+
+2009-11-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-session.c:
 	* libinftext/inf-text-session.c: Made some clarifying comments about
 	implicit user activation and flushing pending requests.

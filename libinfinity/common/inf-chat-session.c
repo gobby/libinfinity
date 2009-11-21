@@ -199,8 +199,6 @@ inf_chat_session_message_from_xml(InfChatSession* session,
   guint user_id;
   InfUserTable* user_table;
   InfUser* user;
-  xmlChar* text;
-  gsize text_len;
 
   type = inf_xml_util_get_attribute(xml, "type");
   if(type == NULL)
@@ -499,19 +497,25 @@ inf_chat_session_user_part(InfChatSession* session,
  */
 
 static void
-inf_chat_session_notify_status_cb(GObject* object,
-                                  GParamSpec* pspec,
-                                  gpointer user_data)
+inf_chat_session_set_status_cb(InfUser* user,
+                               InfUserStatus new_status,
+                               gpointer user_data)
 {
   InfSession* session;
   session = INF_SESSION(user_data);
 
   if(inf_session_get_status(session) == INF_SESSION_RUNNING)
   {
-    if(inf_user_get_status(INF_USER(object)) == INF_USER_UNAVAILABLE)
-      inf_chat_session_user_part(INF_CHAT_SESSION(session), INF_USER(object));
-    else
-      inf_chat_session_user_join(INF_CHAT_SESSION(session), INF_USER(object));
+    if(inf_user_get_status(user) != INF_USER_UNAVAILABLE &&
+       new_status == INF_USER_UNAVAILABLE)
+    {
+      inf_chat_session_user_part(INF_CHAT_SESSION(session), user);
+    }
+    else if(inf_user_get_status(user) == INF_USER_UNAVAILABLE &&
+            new_status != INF_USER_UNAVAILABLE)
+    {
+      inf_chat_session_user_join(INF_CHAT_SESSION(session), user);
+    }
   }
 }
 
@@ -522,8 +526,8 @@ inf_chat_session_add_user_cb(InfUserTable* user_table,
 {
   g_signal_connect(
     user,
-    "notify::status",
-    G_CALLBACK(inf_chat_session_notify_status_cb),
+    "set-status",
+    G_CALLBACK(inf_chat_session_set_status_cb),
     user_data
   );
 
@@ -543,7 +547,7 @@ inf_chat_session_remove_user_cb(InfUserTable* user_table,
 
   g_signal_handlers_disconnect_by_func(
     user,
-    G_CALLBACK(inf_chat_session_notify_status_cb),
+    G_CALLBACK(inf_chat_session_set_status_cb),
     user_data
   );
 }
@@ -591,8 +595,8 @@ inf_chat_session_constructor_foreach_user_func(InfUser* user,
 {
   g_signal_connect(
     user,
-    "notify::status",
-    G_CALLBACK(inf_chat_session_notify_status_cb),
+    "set-status",
+    G_CALLBACK(inf_chat_session_set_status_cb),
     user_data
   );
 }
@@ -653,7 +657,7 @@ inf_chat_session_dispose_foreach_user_func(InfUser* user,
 {
   g_signal_handlers_disconnect_by_func(
     user,
-    G_CALLBACK(inf_chat_session_notify_status_cb),
+    G_CALLBACK(inf_chat_session_set_status_cb),
     user_data
   );
 }
