@@ -146,7 +146,7 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
         priv->num_messages * sizeof(InfChatBufferMessage)
       );
 
-      priv->first_message = end;
+      priv->first_message = end - 1;
     }
     else if(n == priv->num_messages &&
             priv->first_message + priv->num_messages == priv->alloc_messages)

@@ -1,3 +1,9 @@
+2009-11-22  Benjamin Herr  <ben@0x539.de>
+
+	* libinfinity/common/inf-chat-buffer.c
+	(inf_chat_buffer_reserve_message): Properly set offset into allocated
+	messages when prepending a new message.
+
 2009-11-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-chat-buffer.c
