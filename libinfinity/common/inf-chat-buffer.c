@@ -206,8 +206,9 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
 
     if(n == priv->num_messages)
     {
+      /* We insert at the end, so the first message is going to be freed */
+      g_free(priv->messages[priv->first_message].text);
       priv->first_message = (priv->first_message + 1) % priv->size;
-      g_free(message->text);
     }
     else
     {
@@ -233,6 +234,9 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
         priv->first_message = (priv->first_message + 1) % priv->size;
       }
     }
+
+    /* We increased first_message, so adapt the new message's number */
+    --n;
   }
 
   return &priv->messages[(priv->first_message + n) % priv->size];

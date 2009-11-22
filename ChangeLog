@@ -1,3 +1,9 @@
+2009-11-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-chat-buffer.c
+	(inf_chat_buffer_reserve_message): Return the new message in case we
+	wrap around, not another one.
+
 2009-11-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-user.h:
