@@ -142,6 +142,7 @@ infd_xmpp_server_notify_status_cb(InfdTcpServer* tcp_server,
   switch(status)
   {
   case INFD_TCP_SERVER_CLOSED:
+  case INFD_TCP_SERVER_BOUND:
     if(priv->status != INFD_XMPP_SERVER_CLOSED)
     {
       priv->status = INFD_XMPP_SERVER_CLOSED;
@@ -234,6 +235,7 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
     switch(tcp_status)
     {
     case INFD_TCP_SERVER_CLOSED:
+    case INFD_TCP_SERVER_BOUND:
       g_assert(priv->status == INFD_XMPP_SERVER_CLOSED);
       break;
     case INFD_TCP_SERVER_OPEN:

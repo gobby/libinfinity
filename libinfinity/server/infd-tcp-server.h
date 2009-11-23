@@ -40,6 +40,7 @@ typedef struct _InfdTcpServerClass InfdTcpServerClass;
 
 typedef enum _InfdTcpServerStatus {
   INFD_TCP_SERVER_CLOSED,
+  INFD_TCP_SERVER_BOUND,
   INFD_TCP_SERVER_OPEN
 } InfdTcpServerStatus;
 
@@ -63,6 +64,10 @@ infd_tcp_server_status_get_type(void) G_GNUC_CONST;
 
 GType
 infd_tcp_server_get_type(void) G_GNUC_CONST;
+
+gboolean
+infd_tcp_server_bind(InfdTcpServer* server,
+                     GError** error);
 
 gboolean
 infd_tcp_server_open(InfdTcpServer* server,

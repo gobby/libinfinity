@@ -1,5 +1,14 @@
 2009-11-23  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-tcp-server.h:
+	* libinfinity/server/infd-tcp-server.c: Added infd_tcp_server_bind(),
+	and a INFD_TCP_SERVER_BOUND state.
+
+	* libinfinity/server/infd-xmpp-server.c: Treat INFD_TCP_SERVER_BOUND
+	the same as INFD_TCP_SERVER_CLOSED.
+
+2009-11-23  Armin Burgmeier  <armin@arbur.net>
+
 	* test/session/test-52.xml:
 	* test/session/Makefile.am: Added one more test which requires recon
 	in remote delete operations.

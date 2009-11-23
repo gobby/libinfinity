@@ -796,6 +796,7 @@ INFD_TYPE_XML_SERVER_STATUS
 InfdTcpServerStatus
 InfdTcpServer
 InfdTcpServerClass
+infd_tcp_server_bind
 infd_tcp_server_open
 infd_tcp_server_close
 <SUBSECTION Standard>

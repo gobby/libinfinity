@@ -577,23 +577,26 @@ infd_tcp_server_get_type(void)
 }
 
 /**
- * infd_tcp_server_open:
+ * infd_tcp_server_bind:
  * @server: A #InfdTcpServer.
- * @error: Location to store error information.
+ * @error: Location to store error information, if any.
  *
- * Attempts to open @server. If the "local-address" property is NULL, it will
- * bind on all interfaces on IPv4. If "local-port" is NULL, a random available
- * port will be assigned. If the function fails, FALSE is returned and @error
- * is set.
+ * Binds the server to the address and port given by the
+ * #InfdTcpServer:local-address and #InfdTcpServer:local-port properties. If
+ * the former is %NULL, it will bind on all interfaces on IPv4. If the latter
+ * is 0, a random available port will be assigned. If the function fails,
+ * %FALSE is returned and an error is set.
+ *
+ * @server must be in %INFD_TCP_SERVER_CLOSED state for this function to be
+ * called.
  *
  * Returns: %TRUE on success, or %FALSE if an error occured.
- **/
+ */
 gboolean
-infd_tcp_server_open(InfdTcpServer* server,
+infd_tcp_server_bind(InfdTcpServer* server,
                      GError** error)
 {
   InfdTcpServerPrivate* priv;
-  int result;
 
   union {
     struct sockaddr_in in;
@@ -603,14 +606,9 @@ infd_tcp_server_open(InfdTcpServer* server,
   struct sockaddr* addr;
   socklen_t addrlen;
 
-#ifdef G_OS_WIN32
-  u_long argp;
-#endif
-
   g_return_val_if_fail(INFD_IS_TCP_SERVER(server), FALSE);
   priv = INFD_TCP_SERVER_PRIVATE(server);
 
-  g_return_val_if_fail(priv->io != NULL, FALSE);
   g_return_val_if_fail(priv->status == INFD_TCP_SERVER_CLOSED, FALSE);
 
   if(priv->local_address == NULL)
@@ -669,37 +667,6 @@ infd_tcp_server_open(InfdTcpServer* server,
     return FALSE;
   }
 
-#ifndef G_OS_WIN32
-  result = fcntl(priv->socket, F_GETFL);
-  if(result == -1)
-  {
-    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-
-    closesocket(priv->socket);
-    priv->socket = -1;
-    return FALSE;
-  }
-
-  if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
-  {
-    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-#else
-  argp = 1;
-  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
-  {
-    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-#endif
-
   if(bind(priv->socket, addr, addrlen) == -1)
   {
     infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
@@ -709,14 +676,11 @@ infd_tcp_server_open(InfdTcpServer* server,
     return FALSE;
   }
 
-  if(listen(priv->socket, 5) == -1)
-  {
-    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+  g_object_freeze_notify(G_OBJECT(server));
 
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
+  /* Is assigned a few lines below, but notifications are frozen currently
+   * anyway... this saves us a temporary variable here. */
+  if(priv->local_port == 0) g_object_notify(G_OBJECT(server), "local-port");
 
   if(priv->local_address != NULL)
   {
@@ -735,6 +699,99 @@ infd_tcp_server_open(InfdTcpServer* server,
       &priv->local_address,
       &priv->local_port
     );
+
+    g_object_notify(G_OBJECT(server), "local-address");
+  }
+
+  g_object_notify(G_OBJECT(server), "local-port");
+
+  priv->status = INFD_TCP_SERVER_BOUND;
+  g_object_notify(G_OBJECT(server), "status");
+
+  g_object_thaw_notify(G_OBJECT(server));
+  return TRUE;
+}
+
+/**
+ * infd_tcp_server_open:
+ * @server: A #InfdTcpServer.
+ * @error: Location to store error information.
+ *
+ * Attempts to open @server. This means binding its local address and port
+ * if not already (see infd_tcp_server_bind()) and accepting incoming
+ * connections.
+ *
+ * @server needs to be in %INFD_TCP_SERVER_CLOSED or %INFD_TCP_SERVER_BOUND
+ * status for this function to be called. If @server's status is
+ * %INFD_TCP_SERVER_CLOSED, then infd_tcp_server_bind() is called before
+ * actually opening the server.
+ *
+ * Returns: %TRUE on success, or %FALSE if an error occured.
+ **/
+gboolean
+infd_tcp_server_open(InfdTcpServer* server,
+                     GError** error)
+{
+  InfdTcpServerPrivate* priv;
+  int result;
+
+#ifdef G_OS_WIN32
+  u_long argp;
+#endif
+
+  g_return_val_if_fail(INFD_IS_TCP_SERVER(server), FALSE);
+  priv = INFD_TCP_SERVER_PRIVATE(server);
+
+  g_return_val_if_fail(priv->io != NULL, FALSE);
+  g_return_val_if_fail(priv->status != INFD_TCP_SERVER_OPEN, FALSE);
+
+  g_object_freeze_notify(G_OBJECT(server));
+
+  if(priv->status == INFD_TCP_SERVER_CLOSED)
+  {
+    if(!infd_tcp_server_bind(server, error))
+    {
+      g_object_thaw_notify(G_OBJECT(server));
+      return FALSE;
+    }
+  }
+
+  /* TODO: If something fails here, and we were already bound previously,
+   * then don't fallback to closed. */
+#ifndef G_OS_WIN32
+  result = fcntl(priv->socket, F_GETFL);
+  if(result == -1)
+  {
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+    infd_tcp_server_close(server);
+    g_object_thaw_notify(G_OBJECT(server));
+    return FALSE;
+  }
+
+  if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
+  {
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+    infd_tcp_server_close(server);
+    g_object_thaw_notify(G_OBJECT(server));
+    return FALSE;
+  }
+#else
+  argp = 1;
+  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
+  {
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+    infd_tcp_server_close(server);
+    g_object_thaw_notify(G_OBJECT(server));
+    return FALSE;
+  }
+#endif
+
+  if(listen(priv->socket, 5) == -1)
+  {
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+    infd_tcp_server_close(server);
+    g_object_thaw_notify(G_OBJECT(server));
+    return FALSE;
   }
 
   inf_io_watch(
@@ -748,12 +805,7 @@ infd_tcp_server_open(InfdTcpServer* server,
 
   priv->status = INFD_TCP_SERVER_OPEN;
 
-  g_object_freeze_notify(G_OBJECT(server));
   g_object_notify(G_OBJECT(server), "status");
-  /* TODO: Only notify local-port if local-port was initially zero */
-  g_object_notify(G_OBJECT(server), "local-port");
-  /* TODO: Only notify local-address if local-address was initially NULL */
-  g_object_notify(G_OBJECT(server), "local-address");
   g_object_thaw_notify(G_OBJECT(server));
 
   return TRUE;
@@ -763,7 +815,7 @@ infd_tcp_server_open(InfdTcpServer* server,
  * infd_tcp_server_close:
  * @server: A #InfdTcpServer.
  *
- * Closes a TCP server that is open.
+ * Closes a TCP server that is open or bound.
  **/
 void
 infd_tcp_server_close(InfdTcpServer* server)
@@ -775,14 +827,17 @@ infd_tcp_server_close(InfdTcpServer* server)
   priv = INFD_TCP_SERVER_PRIVATE(server);
   g_return_if_fail(priv->status != INFD_TCP_SERVER_CLOSED);
 
-  inf_io_watch(
-    priv->io,
-    &priv->socket,
-    0,
-    infd_tcp_server_io,
-    server,
-    NULL
-  );
+  if(priv->status == INFD_TCP_SERVER_OPEN)
+  {
+    inf_io_watch(
+      priv->io,
+      &priv->socket,
+      0,
+      infd_tcp_server_io,
+      server,
+      NULL
+    );
+  }
 
   closesocket(priv->socket);
   priv->socket = INVALID_SOCKET;
