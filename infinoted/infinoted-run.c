@@ -22,8 +22,6 @@
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-note-plugin.h>
 
-#include <libinfinity/adopted/inf-adopted-session.h>
-#include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-tcp-server.h>
 #include <libinfinity/common/inf-standalone-io.h>
@@ -33,130 +31,12 @@
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h>
 
-/* TODO: Put the record stuff into a separate infinoted-record.[hc] */
-
 #include <glib/gstdio.h>
 
 #include <sys/stat.h>
-#include <string.h>
-#include <errno.h>
 
 static const guint8 INFINOTED_RUN_IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-static void
-infinoted_run_record_real(InfAdoptedSession* session,
-                          const gchar* filename,
-                          const gchar* title)
-{
-  GError* error;
-  InfAdoptedSessionRecord* record;
-
-  record = inf_adopted_session_record_new(session);
-  error = NULL;
-
-  inf_adopted_session_record_start_recording(record, filename, &error);
-
-  if(error != NULL)
-  {
-    g_warning(_("Error while writing record for session "
-                "\"%s\" into \"%s\": %s"),
-              title, filename, error->message);
-    g_error_free(error);
-  }
-  else
-  {
-    g_object_set_data_full(
-      G_OBJECT(session),
-      "INFINOTED_SESSION_RECORD",
-      record,
-      g_object_unref
-    );
-  }
-}
-
-static void
-infinoted_run_record(InfAdoptedSession* session,
-                     const gchar* title)
-{
-  gchar* dirname;
-  gchar* basename;
-  gchar* filename;
-  guint i;
-  gsize pos;
-
-  dirname = g_build_filename(g_get_home_dir(), ".infinoted-records", NULL);
-  basename = g_build_filename(dirname, title, NULL);
-
-  pos = strlen(basename) + 8;
-  filename = g_strdup_printf("%s.record-00000.xml", basename);
-  g_free(basename);
-
-  i = 0;
-  while(g_file_test(filename, G_FILE_TEST_EXISTS) && ++i < 100000)
-  {
-    g_snprintf(filename + pos, 10, "%05u.xml", i);
-  }
-
-  if(i >= 100000)
-  {
-    g_warning(
-      _("Could not create record file for session \"%s\": Could not generate "
-        "unused record file in directory \"%s\""),
-      title,
-      dirname
-    );
-  }
-  else
-  {
-    /* TODO: Use GetLastError() on Win32 */
-    if(g_mkdir_with_parents(dirname, 0700) == -1)
-    {
-      g_warning(
-        _("Could not create record file directory \"%s\": %s"),
-        strerror(errno)
-      );
-    }
-    else
-    {
-      infinoted_run_record_real(session, filename, title);
-    }
-  }
-
-  g_free(filename);
-  g_free(dirname);
-}
-
-static void
-infinoted_run_directory_add_session_cb(InfdDirectory* directory,
-                                       InfdDirectoryIter* iter,
-                                       InfdSessionProxy* proxy,
-                                       gpointer user_data)
-{
-  const gchar* title;
-
-  if(INF_ADOPTED_IS_SESSION(infd_session_proxy_get_session(proxy)))
-  {
-    title = infd_directory_iter_get_name(directory, iter);
-
-    infinoted_run_record(
-      INF_ADOPTED_SESSION(infd_session_proxy_get_session(proxy)),
-      title
-    );
-  }
-}
-
-static void
-infinoted_run_directory_remove_session_cb(InfdDirectory* directory,
-                                          InfdDirectoryIter* iter,
-                                          InfdSessionProxy* proxy,
-                                          gpointer user_data)
-{
-  InfSession* session;
-  session = infd_session_proxy_get_session(proxy);
-
-  g_object_set_data(G_OBJECT(session), "INFINOTED_SESSION_RECORD", NULL);
-}
 
 static gboolean
 infinoted_run_load_dh_params(InfinotedRun* run,
@@ -394,19 +274,7 @@ infinoted_run_new(InfinotedStartup* startup,
 
   inf_ip_address_free(address);
 
-  g_signal_connect(
-    G_OBJECT(run->directory),
-    "add-session",
-    G_CALLBACK(infinoted_run_directory_add_session_cb),
-    run
-  );
-
-  g_signal_connect(
-    G_OBJECT(run->directory),
-    "remove-session",
-    G_CALLBACK(infinoted_run_directory_remove_session_cb),
-    run
-  );
+  run->record = infinoted_record_new(run->directory);
 
   if(startup->options->autosave_interval > 0)
   {
@@ -444,6 +312,8 @@ infinoted_run_free(InfinotedRun* run)
   g_object_unref(run->avahi);
 #endif
 
+  if(run->record != NULL)
+    infinoted_record_free(run->record);
   if(run->autosave != NULL)
     infinoted_autosave_free(run->autosave);
 

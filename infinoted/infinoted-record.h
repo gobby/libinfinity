@@ -17,58 +17,29 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFINOTED_RUN_H__
-#define __INFINOTED_RUN_H__
+#ifndef __INFINOTED_RECORD_H__
+#define __INFINOTED_RECORD_H__
 
-#include <libinfinity/inf-config.h>
-
-#include <infinoted/infinoted-record.h>
-#include <infinoted/infinoted-startup.h>
-#include <infinoted/infinoted-autosave.h>
-
-#include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
-#include <libinfinity/common/inf-standalone-io.h>
-#include <libinfinity/common/inf-discovery-avahi.h>
 
 #include <glib.h>
 
 G_BEGIN_DECLS
 
-typedef struct _InfinotedRun InfinotedRun;
-struct _InfinotedRun {
-  InfStandaloneIo* io;
+typedef struct _InfinotedRecord InfinotedRecord;
+struct _InfinotedRecord {
   InfdDirectory* directory;
-  InfdServerPool* pool;
-  InfinotedAutosave* autosave;
-
-  InfdTcpServer* tcp4;
-  InfdTcpServer* tcp6;
-  gnutls_certificate_credentials_t creds; /* not owned */
-  gnutls_dh_params_t dh_params; /* owned */
-
-  InfinotedRecord* record;
-
-#ifdef LIBINFINITY_HAVE_AVAHI
-  InfDiscoveryAvahi* avahi;
-#endif
+  GSList* records;
 };
 
-InfinotedRun*
-infinoted_run_new(InfinotedStartup* startup,
-                  GError** error);
+InfinotedRecord*
+infinoted_record_new(InfdDirectory* directory);
 
 void
-infinoted_run_free(InfinotedRun* run);
-
-void
-infinoted_run_start(InfinotedRun* run);
-
-void
-infinoted_run_stop(InfinotedRun* run);
+infinoted_record_free(InfinotedRecord* record);
 
 G_END_DECLS
 
-#endif /* __INFINOTED_RUN_H__ */
+#endif /* __INFINOTED_RECORD_H__ */
 
 /* vim:set et sw=2 ts=2: */

@@ -1,5 +1,16 @@
 2009-11-23  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-record.h:
+	* infinoted/infinoted-record.c:
+	* infinoted/Makefile.am: Moved the session recording code to this new
+	source file.
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Use the new file, removed the equivalent
+	code from this file.
+
+2009-11-23  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-util.h:
 	* infinoted/infinoted-util.c:
 	* infinoted/Makefile.am: Added this new source file, containing
