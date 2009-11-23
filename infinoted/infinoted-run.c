@@ -18,6 +18,8 @@
  */
 
 #include <infinoted/infinoted-run.h>
+#include <infinoted/infinoted-creds.h>
+#include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-note-plugin.h>
 
 #include <libinfinity/adopted/inf-adopted-session.h>
@@ -33,6 +35,9 @@
 
 /* TODO: Put the record stuff into a separate infinoted-record.[hc] */
 
+#include <glib/gstdio.h>
+
+#include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
 
@@ -154,6 +159,53 @@ infinoted_run_directory_remove_session_cb(InfdDirectory* directory,
 }
 
 static gboolean
+infinoted_run_load_dh_params(InfinotedRun* run,
+                             GError** error)
+{
+  gnutls_dh_params_t dh_params;
+  gchar* filename;
+  struct stat st;
+
+  /* We don't need DH params when there are no credentials,
+   * i.e. we don't use TLS */
+  if(run->creds != NULL)
+  {
+    dh_params = NULL;
+    filename =
+      g_build_filename(g_get_home_dir(), ".infinoted", "dh.pem", NULL);
+
+    if(g_stat(filename, &st) == 0)
+    {
+      /* DH params expire every week */
+      if(st.st_mtime + 60 * 60 * 24 * 7 > time(NULL))
+        dh_params = infinoted_creds_read_dh_params(filename, NULL);
+    }
+
+    if(dh_params == NULL)
+    {
+      infinoted_util_create_dirname(filename, NULL);
+
+      printf(_("Generating 2048 bit Diffie-Hellman parameters...\n"));
+      dh_params = infinoted_creds_create_dh_params(error);
+
+      if(dh_params == NULL)
+      {
+        g_free(filename);
+        return FALSE;
+      }
+
+      infinoted_creds_write_dh_params(dh_params, filename, NULL);
+    }
+
+    g_free(filename);
+
+    gnutls_certificate_set_dh_params(run->creds, dh_params);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 infinoted_run_load_directory(InfinotedRun* run,
                              InfinotedStartup* startup,
                              GError** error)
@@ -218,7 +270,8 @@ infinoted_run_load_directory(InfinotedRun* run,
 static InfdTcpServer*
 infinoted_run_create_server(InfinotedRun* run,
                             InfinotedStartup* startup,
-                            InfIpAddress* address)
+                            InfIpAddress* address,
+                            GError** error)
 {
   InfdTcpServer* tcp;
   InfdXmppServer* xmpp;
@@ -232,6 +285,12 @@ infinoted_run_create_server(InfinotedRun* run,
       NULL
     )
   );
+
+  if(!infd_tcp_server_bind(tcp, error))
+  {
+    g_object_unref(tcp);
+    return NULL;
+  }
 
   xmpp = infd_xmpp_server_new(
     tcp,
@@ -279,14 +338,61 @@ infinoted_run_new(InfinotedStartup* startup,
 #endif
 
   InfinotedRun* run;
+  GError* local_error;
 
   run = g_slice_new(InfinotedRun);
+  run->creds = startup->credentials;
 
   if(infinoted_run_load_directory(run, startup, error) == FALSE)
   {
     g_slice_free(InfinotedRun, run);
     return NULL;
   }
+
+  run->pool = infd_server_pool_new(run->directory);
+
+#ifdef LIBINFINITY_HAVE_AVAHI
+  xmpp_manager = inf_xmpp_manager_new();
+
+  run->avahi = inf_discovery_avahi_new(
+    INF_IO(run->io),
+    xmpp_manager,
+    startup->credentials,
+    NULL,
+    NULL
+  );
+
+  g_object_unref(xmpp_manager);
+#endif
+
+  address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
+  run->tcp6 = infinoted_run_create_server(run, startup, address, NULL);
+
+  local_error = NULL;
+  run->tcp4 = infinoted_run_create_server(run, startup, NULL, &local_error);
+
+  if(run->tcp4 == NULL)
+  {
+    /* Ignore if we have an IPv6 server running */
+    if(run->tcp6 != NULL)
+    {
+      g_error_free(local_error);
+    }
+    else
+    {
+      g_propagate_error(error, local_error);
+#ifdef LIBINFINITY_HAVE_AVAHI
+      g_object_unref(run->avahi);
+#endif
+      g_object_unref(run->pool);
+      g_object_unref(run->directory);
+      g_object_unref(run->io);
+      g_slice_free(InfinotedRun, run);
+      return NULL;
+    }
+  }
+
+  inf_ip_address_free(address);
 
   g_signal_connect(
     G_OBJECT(run->directory),
@@ -313,27 +419,6 @@ infinoted_run_new(InfinotedStartup* startup,
   {
     run->autosave = NULL;
   }
-
-  run->pool = infd_server_pool_new(run->directory);
-
-#ifdef LIBINFINITY_HAVE_AVAHI
-  xmpp_manager = inf_xmpp_manager_new();
-
-  run->avahi = inf_discovery_avahi_new(
-    INF_IO(run->io),
-    xmpp_manager,
-    startup->credentials,
-    NULL,
-    NULL
-  );
-
-  g_object_unref(xmpp_manager);
-#endif
-
-  address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
-  run->tcp4 = infinoted_run_create_server(run, startup, NULL);
-  run->tcp6 = infinoted_run_create_server(run, startup, address);
-  inf_ip_address_free(address);
 
   return run;
 }
@@ -365,59 +450,74 @@ infinoted_run_free(InfinotedRun* run)
   g_object_unref(run->io);
   g_object_unref(run->directory);
   g_object_unref(run->pool);
+
+  if(run->creds)
+    if(run->dh_params != NULL)
+      gnutls_dh_params_deinit(run->dh_params);
+
   g_slice_free(InfinotedRun, run);
 }
 
 /**
  * infinoted_run_start:
  * @run: A #InfinotedRun.
- * @error: Location to store error information, if any.
  *
  * Starts the infinote server. This runs in a loop until infinoted_run_stop()
- * is called. If the server could not be started, the function returns %FALSE
- * and @error is set.
- *
- * Returns: %TRUE if the server was started, %FALSE otherwise.
+ * is called. This may fail in theory, but hardly does in practise. If it
+ * fails, it prints an error message to stderr and returns. It may also block
+ * before starting to generate DH parameters for key exchange.
  */
-gboolean
-infinoted_run_start(InfinotedRun* run,
-                    GError** error)
+void
+infinoted_run_start(InfinotedRun* run)
 {
-  GError* local_error;
+  GError* error;
   guint port;
 
-  if(infd_tcp_server_open(run->tcp6, NULL) == TRUE)
+  error = NULL;
+
+  /* Load DH parameters */
+  if(infinoted_run_load_dh_params(run, &error) == FALSE)
   {
-    g_object_get(G_OBJECT(run->tcp6), "local-port", &port, NULL);
-    fprintf(stderr, _("IPv6 Server running on port %u\n"), port);
-  }
-  else
-  {
-    g_object_unref(run->tcp6);
-    run->tcp6 = NULL;
+    printf(_("Failed to generate Diffie-Hellman parameters: %s\n"),
+           error->message);
+    g_error_free(error);
+    return;
   }
 
-  /* On Linux, the IPv6 server also handles IPv4 connections, and opening a
-   * separate IPv4 server does not work because the address is already on use.
-   * On Windows however, we need to start both servers. */
-  local_error = NULL;
-  if(infd_tcp_server_open(run->tcp4, &local_error) == TRUE)
+  /* Open server sockets, accepting incoming connections */
+  if(run->tcp6 != NULL)
   {
-    g_object_get(G_OBJECT(run->tcp4), "local-port", &port, NULL);
-    fprintf(stderr, _("IPv4 Server running on port %u\n"), port);
-  }
-  else
-  {
-    g_object_unref(run->tcp4);
-    run->tcp4 = NULL;
-
-    /* Ignore if we have an IPv6 server running */
-    if(run->tcp6 != NULL)
-      g_error_free(local_error);
+    if(infd_tcp_server_open(run->tcp6, &error) == TRUE)
+    {
+      g_object_get(G_OBJECT(run->tcp6), "local-port", &port, NULL);
+      fprintf(stderr, _("IPv6 Server running on port %u\n"), port);
+    }
     else
     {
-      g_propagate_error(error, local_error);
-      return FALSE;
+      fprintf(stderr, _("Failed to start IPv6 server: %s\n"), error->message);
+      g_error_free(error);
+      error = NULL;
+
+      g_object_unref(run->tcp6);
+      run->tcp6 = NULL;
+    }
+  }
+
+  if(run->tcp4 != NULL)
+  {
+    if(infd_tcp_server_open(run->tcp4, &error) == TRUE)
+    {
+      g_object_get(G_OBJECT(run->tcp4), "local-port", &port, NULL);
+      fprintf(stderr, _("IPv4 Server running on port %u\n"), port);
+    }
+    else
+    {
+      fprintf(stderr, _("Failed to start IPv4 server: %s\n"), error->message);
+      g_error_free(error);
+      error = NULL;
+
+      g_object_unref(run->tcp4);
+      run->tcp4 = NULL;
     }
   }
 
@@ -425,9 +525,8 @@ infinoted_run_start(InfinotedRun* run,
    * required when running in an MSYS shell on Windows. */
   fflush(stderr);
 
-  inf_standalone_io_loop(run->io);
-
-  return TRUE;
+  if(run->tcp4 != NULL || run->tcp6 != NULL)
+    inf_standalone_io_loop(run->io);
 }
 
 /**

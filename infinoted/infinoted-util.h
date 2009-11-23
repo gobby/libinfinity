@@ -17,34 +17,20 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFINOTED_STARTUP_H__
-#define __INFINOTED_STARTUP_H__
+#ifndef __INFINOTED_UTIL_H__
+#define __INFINOTED_UTIL_H__
 
-#include <infinoted/infinoted-options.h>
-
-#include <glib.h>
+#include <glib/gtypes.h>
+#include <glib/gerror.h>
 
 G_BEGIN_DECLS
 
-typedef struct _InfinotedStartup InfinotedStartup;
-struct _InfinotedStartup {
-  InfinotedOptions* options;
-  gnutls_x509_privkey_t private_key;
-  gnutls_x509_crt_t* certificates;
-  guint n_certificates;
-  gnutls_certificate_credentials_t credentials;
-};
-
-InfinotedStartup*
-infinoted_startup_new(int* argc,
-                      char*** argv,
-                      GError** error);
-
-void
-infinoted_startup_free(InfinotedStartup* startup);
+gboolean
+infinoted_util_create_dirname(const gchar* path,
+                              GError** error);
 
 G_END_DECLS
 
-#endif /* __INFINOTED_STARTUP_H__ */
+#endif /* __INFINOTED_UTIL_H__ */
 
 /* vim:set et sw=2 ts=2: */

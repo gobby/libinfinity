@@ -18,18 +18,14 @@
  */
 
 #include <infinoted/infinoted-startup.h>
+#include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-creds.h>
 
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-init.h>
 #include <libinfinity/inf-i18n.h>
 
-#include <glib/gstdio.h>
 #include <gnutls/x509.h>
-#include <sys/stat.h>
-
-#include <string.h>
-#include <errno.h>
 
 static void
 infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
@@ -41,36 +37,6 @@ infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
   g_free(certificates);
 }
 
-static gboolean
-infinoted_startup_create_dirname(const gchar* path,
-                                 GError** error)
-{
-  gchar* dirname;
-  int save_errno;
-
-  dirname = g_path_get_dirname(path);
-
-  if(g_mkdir_with_parents(dirname, 0700) != 0)
-  {
-    save_errno = errno;
-
-    g_set_error(
-      error,
-      g_quark_from_static_string("ERRNO_ERROR"),
-      save_errno,
-      _("Could not create directory \"%s\": %s"),
-      dirname,
-      strerror(save_errno)
-    );
-    
-    g_free(dirname);
-    return FALSE;
-  }
-
-  g_free(dirname);
-  return TRUE;
-}
-
 static gnutls_x509_privkey_t
 infinoted_startup_load_key(gboolean create_key,
                            const gchar* key_file,
@@ -80,7 +46,7 @@ infinoted_startup_load_key(gboolean create_key,
 
   if(create_key == TRUE)
   {
-    if(infinoted_startup_create_dirname(key_file, error) == FALSE)
+    if(infinoted_util_create_dirname(key_file, error) == FALSE)
       return NULL;
 
     /* TODO: Open the key file beforehand */
@@ -120,7 +86,7 @@ infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
 
   if(create_self_signed_certificate == TRUE)
   {
-    if(infinoted_startup_create_dirname(certificate_file, error) == FALSE)
+    if(infinoted_util_create_dirname(certificate_file, error) == FALSE)
       return NULL;
 
     printf(_("Generating self-signed certificate...\n"));
@@ -164,43 +130,6 @@ infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
   return result;
 }
 
-static gnutls_dh_params_t
-infinoted_startup_load_dh_params(GError** error)
-{
-  gnutls_dh_params_t dh_params;
-  gchar* filename;
-  struct stat st;
-
-  dh_params = NULL;
-  filename = g_build_filename(g_get_home_dir(), ".infinoted", "dh.pem", NULL);
-
-  if(g_stat(filename, &st) == 0)
-  {
-    /* DH params expire every week */
-    if(st.st_mtime + 60 * 60 * 24 * 7 > time(NULL))
-      dh_params = infinoted_creds_read_dh_params(filename, NULL);
-  }
-
-  if(dh_params == NULL)
-  {
-    infinoted_startup_create_dirname(filename, NULL);
-
-    printf(_("Generating 2048 bit Diffie-Hellman parameters...\n"));
-    dh_params = infinoted_creds_create_dh_params(error);
-
-    if(dh_params == NULL)
-    {
-      g_free(filename);
-      return NULL;
-    }
-
-    infinoted_creds_write_dh_params(dh_params, filename, NULL);
-  }
-
-  g_free(filename);
-  return dh_params;
-}
-
 static gboolean
 infinoted_startup_load_credentials(InfinotedStartup* startup,
                                    GError** error)
@@ -229,12 +158,7 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
     if(startup->certificates == NULL)
       return FALSE;
 
-    startup->dh_params = infinoted_startup_load_dh_params(error);
-    if(startup->dh_params == NULL)
-      return FALSE;
-
     startup->credentials = infinoted_creds_create_credentials(
-      startup->dh_params,
       startup->private_key,
       startup->certificates,
       startup->n_certificates,
@@ -336,7 +260,6 @@ infinoted_startup_new(int* argc,
   startup->private_key = NULL;
   startup->certificates = NULL;
   startup->n_certificates = 0;
-  startup->dh_params = NULL;
   startup->credentials = NULL;
 
   if(infinoted_startup_load(startup, argc, argv, error) == FALSE)
@@ -359,9 +282,6 @@ infinoted_startup_free(InfinotedStartup* startup)
 {
   if(startup->credentials != NULL)
     gnutls_certificate_free_credentials(startup->credentials);
-
-  if(startup->dh_params != NULL)
-    gnutls_dh_params_deinit(startup->dh_params);
 
   if(startup->certificates != NULL)
   {

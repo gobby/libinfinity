@@ -371,7 +371,6 @@ infinoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
 
 /**
  * infinoted_creds_create_credentials:
- * @dh_params: Diffie-Hellman parameters for key exchange.
  * @key: The X.509 private key to use.
  * @certs: An array of X.509 certificates to use. The first certificate is the
  * server's certificate, the second the issuer's, the third the issuer's
@@ -380,14 +379,14 @@ infinoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
  * @error: Location to store error information, if any.
  *
  * Creates a new #gnutls_certificate_credentials_t struture suitable for
- * TLS.
+ * TLS. You still need to set the DH params to be used for key exchange via
+ * gnutls_certificate_set_dh_params().
  *
  * Return Value: A #gnutls_certificate_credentials_t, to be freed
  * with gnutls_certificate_free_credentials().
  **/
 gnutls_certificate_credentials_t
-infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
-                                   gnutls_x509_privkey_t key,
+infinoted_creds_create_credentials(gnutls_x509_privkey_t key,
                                    gnutls_x509_crt_t* certs,
                                    guint n_certs,
                                    GError** error)
@@ -410,7 +409,7 @@ infinoted_creds_create_credentials(gnutls_dh_params_t dh_params,
     return NULL;
   }
 
-  gnutls_certificate_set_dh_params(creds, dh_params);
+  /*gnutls_certificate_set_dh_params(creds, dh_params);*/
   return creds;
 }
 

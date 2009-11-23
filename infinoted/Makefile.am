@@ -25,7 +25,8 @@ infinoted_0_4_SOURCES = \
 	infinoted-options.c \
 	infinoted-run.c \
 	infinoted-signal.c \
-	infinoted-startup.c
+	infinoted-startup.c \
+	infinoted-util.c
 
 noinst_HEADERS = \
 	infinoted-autosave.h \
@@ -34,4 +35,5 @@ noinst_HEADERS = \
 	infinoted-options.h \
 	infinoted-run.h \
 	infinoted-signal.h \
-	infinoted-startup.h
+	infinoted-startup.h \
+	infinoted-util.h

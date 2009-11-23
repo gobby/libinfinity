@@ -43,6 +43,8 @@ struct _InfinotedRun {
 
   InfdTcpServer* tcp4;
   InfdTcpServer* tcp6;
+  gnutls_certificate_credentials_t creds; /* not owned */
+  gnutls_dh_params_t dh_params; /* owned */
 
 #ifdef LIBINFINITY_HAVE_AVAHI
   InfDiscoveryAvahi* avahi;
@@ -56,9 +58,8 @@ infinoted_run_new(InfinotedStartup* startup,
 void
 infinoted_run_free(InfinotedRun* run);
 
-gboolean
-infinoted_run_start(InfinotedRun* run,
-                    GError** error);
+void
+infinoted_run_start(InfinotedRun* run);
 
 void
 infinoted_run_stop(InfinotedRun* run);

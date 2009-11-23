@@ -1,5 +1,32 @@
 2009-11-23  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-util.h:
+	* infinoted/infinoted-util.c:
+	* infinoted/Makefile.am: Added this new source file, containing
+	infinoted_util_create_dirname(), moved from infinoted-startup.
+
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-creds.c (infinoted_creds_create_credentials):
+	Don't set DH params.
+
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c: Don't load DH params in startup.
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Load DH params in run instead, and set
+	them for the credentials after loading. Also bind the server sockets
+	in _new() before starting the server. Create DH params just before
+	starting it. This prepares for the upcoming daemonizing; the server
+	should do all non-blocking work that might fail before fork()ing (so
+	that an error message can be reported), and potentially blocking
+	work (DH params generation) after fork()ing (so that it does not the
+	block boot process).
+
+	* infinoted-main.c: Adapt to infinoted_run_start() not taking an error
+	argument anymore.
+
+2009-11-23  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-tcp-server.h:
 	* libinfinity/server/infd-tcp-server.c: Added infd_tcp_server_bind(),
 	and a INFD_TCP_SERVER_BOUND state.
