@@ -1,3 +1,7 @@
+2009-11-24  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-note-plugin.c: Fixed some strings.
+
 2009-11-23  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-record.h:
