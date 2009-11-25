@@ -144,8 +144,8 @@ infinoted_note_plugin_load_directory(const gchar* path,
           if(strcmp(storage_type, plugin->storage_type) != 0)
           {
             g_warning(
-              _("Failed to load plugin \"%s\":
-                 Storage type \"%s\" does not match"),
+              _("Failed to load plugin \"%s\": "
+                "Storage type \"%s\" does not match"),
               plugin_path,
               plugin->storage_type
             );
