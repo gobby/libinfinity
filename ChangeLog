@@ -1,5 +1,23 @@
 2009-11-25  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Check for libdaemon presence.
+
+	* libinfinity/inf-config.h.in: Add a LIBINFINITY_HAVE_LIBDAEMON entry.
+
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c: Added a daemonize option.
+
+	* infinoted/infinoted-main.c: Fork and create a PID file if the
+	daemonize option is given, and libdaemon support is present. Bug
+	#507 (Yarek "Fx3" Tyshchenko).
+
+	* infinoted/Makefile.am: Link against libdaemon.
+
+	* docs/reference/libinfinity/compiling.sgml:
+	* README: Mention libdaemon as an optional dependency for the package.
+
+2009-11-25  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-note-plugin.c: Fixed the build, broken by my
 	last commit.
 

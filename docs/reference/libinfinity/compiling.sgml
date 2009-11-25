@@ -36,6 +36,7 @@ on your system prior to building libinfinity:
   <listitem><para>gsasl >= 0.2.21</para></listitem>
   <listitem><para>gtk+ >= 2.12 (optional)</para></listitem>
   <listitem><para>avahi-client (optional)</para></listitem>
+  <listitem><para>libdaemon (optional)</para></listitem>
 </itemizedlist>
 
 <para>

@@ -15,7 +15,8 @@ infinoted_0_4_CPPFLAGS = \
 infinoted_0_4_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
-	$(infinity_LIBS)
+	$(infinity_LIBS) \
+	$(libdaemon_LIBS)
 
 infinoted_0_4_SOURCES = \
 	infinoted-autosave.c \

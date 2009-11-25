@@ -21,6 +21,7 @@
 #define __INFINOTED_OPTIONS_H__
 
 #include <libinfinity/common/inf-xmpp-connection.h>
+#include <libinfinity/inf-config.h>
 
 #include <glib.h>
 
@@ -37,6 +38,10 @@ struct _InfinotedOptions {
   InfXmppConnectionSecurityPolicy security_policy;
   gchar* root_directory;
   guint autosave_interval;
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  gboolean daemonize;
+#endif
 };
 
 typedef enum _InfinotedOptionsError {

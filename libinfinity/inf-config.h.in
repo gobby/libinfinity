@@ -23,3 +23,6 @@
 
 /* Whether avahi support is enabled */
 #undef LIBINFINITY_HAVE_AVAHI
+
+/* Whether libdaemon support is enabled */
+#undef LIBINFINITY_HAVE_LIBDAEMON

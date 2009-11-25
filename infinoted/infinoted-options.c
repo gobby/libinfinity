@@ -483,6 +483,11 @@ infinoted_options_load(InfinotedOptions* options,
       G_OPTION_ARG_INT, &autosave_interval,
       N_("Interval within which to save documents, in seconds, or 0 to "
          "disable autosave"), N_("INTERVAL") },
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+    { "daemonize", 'd', 0,
+      G_OPTION_ARG_NONE, &options->daemonize,
+      N_("Daemonize the server"), NULL },
+#endif
     { "version", 'v', G_OPTION_FLAG_NO_CONFIG_FILE,
       G_OPTION_ARG_NONE, &display_version,
       N_("Display version information and exit"), NULL },
@@ -598,6 +603,10 @@ infinoted_options_new(const gchar* const* config_files,
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
   options->autosave_interval = 0;
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  options->daemonize = FALSE;
+#endif
 
   if(!infinoted_options_load(options, config_files, argc, argv, error))
   {

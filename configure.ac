@@ -147,6 +147,29 @@ fi
 
 AM_CONDITIONAL([LIBINFINITY_HAVE_AVAHI], test "x$use_avahi" = "xyes")
 
+####################
+# Check for libdaemon
+####################
+
+AC_ARG_WITH([libdaemon], AS_HELP_STRING([--with-libdaemon],
+            [Enables daemonizing support in infinoted [[default=auto]]]),
+            [use_libdaemon=$withval], [use_libdaemon=auto])
+
+if test "x$use_libdaemon" = "xauto"
+then
+  PKG_CHECK_MODULES([libdaemon], [libdaemon], [use_libdaemon=yes], [use_libdaemon=no])
+elif test "x$use_libdaemon" = "xyes"
+then
+  PKG_CHECK_MODULES([libdaemon], [libdaemon])
+fi
+
+if test "x$use_libdaemon" = "xyes"
+then
+  AC_DEFINE([LIBINFINITY_HAVE_LIBDAEMON], 1, [Whether libdaemon support is enabled])
+fi
+
+AM_CONDITIONAL([LIBINFINITY_HAVE_LIBDAEMON], test "x$use_libdaemon" = "xyes")
+
 ############
 # gettext
 ############
@@ -222,6 +245,7 @@ Build optional packages:
 
 Enable support for:
   avahi: $use_avahi
+  libdaemon: $use_libdaemon
 "
 
 # vim:set et:

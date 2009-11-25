@@ -22,8 +22,45 @@
 #include <infinoted/infinoted-startup.h>
 
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-config.h>
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+#include <libdaemon/dfork.h>
+#include <libdaemon/dpid.h>
+#endif
 
 #include <locale.h>
+#include <errno.h>
+#include <string.h>
+
+/* TODO: Move to util? Other files use something similar... */
+static void
+infinoted_main_set_errno_error(GError** error,
+                               int save_errno,
+                               const char* prefix)
+{
+  if(prefix != NULL)
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("ERRNO_ERROR"),
+      save_errno,
+      "%s: %s",
+      prefix,
+      strerror(save_errno)
+    );
+  }
+  else
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("ERRNO_ERROR"),
+      save_errno,
+      "%s",
+      strerror(save_errno)
+    );
+  }
+}
 
 static gboolean
 infinoted_main_run(InfinotedStartup* startup,
@@ -32,8 +69,45 @@ infinoted_main_run(InfinotedStartup* startup,
   InfinotedRun* run;
   InfinotedSignal* sig;
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  pid_t pid;
+#endif
+
   run = infinoted_run_new(startup, error);
   if(run == NULL) return FALSE;
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  if(startup->options->daemonize)
+  {
+    pid = daemon_fork();
+    if(pid < 0)
+    {
+      /* Translators: fork as in "fork into the background" */
+      infinoted_main_set_errno_error(error, errno, _("Failed to fork"));
+      infinoted_run_free(run);
+      return FALSE;
+    }
+    else if(pid > 0)
+    {
+      infinoted_run_free(run);
+      return TRUE;
+    }
+    else
+    {
+      if(daemon_pid_file_create() != 0)
+      {
+        infinoted_main_set_errno_error(
+          error,
+          errno,
+          _("Failed to create PID file")
+        );
+
+        infinoted_run_free(run);
+        return FALSE;
+      }
+    }
+  }
+#endif
 
   sig = infinoted_signal_register(run);
 
@@ -42,6 +116,10 @@ infinoted_main_run(InfinotedStartup* startup,
 
   infinoted_signal_unregister(sig);
   infinoted_run_free(run);
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  daemon_pid_file_remove();
+#endif
 
   return TRUE;
 }
