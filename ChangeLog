@@ -1,3 +1,9 @@
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-discovery-avahi.c
+	(inf_discovery_avahi_create_client): Pass the error variable to the
+	avahi_client_new() call, not NULL.
+
 2009-11-25  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Check for libdaemon presence.

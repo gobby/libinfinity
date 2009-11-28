@@ -771,7 +771,7 @@ inf_discovery_avahi_create_client(InfDiscoveryAvahi* discovery)
     AVAHI_CLIENT_NO_FAIL,
     inf_discovery_avahi_client_callback,
     discovery,
-    NULL
+    &error
   );
 
   /* This still seems to happen sometimes, even though we pass
