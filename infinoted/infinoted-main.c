@@ -29,6 +29,12 @@
 #include <libdaemon/dfork.h>
 #include <libdaemon/dpid.h>
 #include <libdaemon/dlog.h>
+
+#include <unistd.h> /* for access(2) */
+
+#define INFINOTED_PID_FILE_DIRECTORY \
+  LOCALSTATEDIR "/run/infinoted-" LIBINFINITY_API_VERSION
+
 #endif
 
 #include <locale.h>
@@ -66,13 +72,21 @@ infinoted_main_set_errno_error(GError** error,
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
 static const gchar*
-infinoted_main_get_pidfile_path(void) {
+infinoted_main_get_pidfile_path_user(void) {
   static gchar* path = NULL;
   if(path) return path;
 
-  path = g_strdup_printf("%s/.infinoted/infinoted.pid", g_get_home_dir());
+  path = g_strdup_printf(
+                 "%s/.infinoted/infinoted-" LIBINFINITY_API_VERSION ".pid",
+                 g_get_home_dir());
   infinoted_util_create_dirname(path, NULL);
   return path;
+}
+
+static const gchar*
+infinoted_main_get_pidfile_path_system(void) {
+  return INFINOTED_PID_FILE_DIRECTORY
+           "/infinoted-" LIBINFINITY_API_VERSION ".pid";
 }
 #endif
 
@@ -114,23 +128,37 @@ infinoted_main_run(InfinotedStartup* startup,
     }
     else
     {
+      if(access(INFINOTED_PID_FILE_DIRECTORY, W_OK) == 0)
+      {
+        daemon_pid_file_proc = infinoted_main_get_pidfile_path_system;
+      }
+      else
+      {
+        if(errno != EACCES)
+        {
+          infinoted_main_set_errno_error(
+            error,
+            errno,
+            _("Failed to create PID file")
+          );
+
+          infinoted_run_free(run);
+          return FALSE;
+        }
+
+        daemon_pid_file_proc = infinoted_main_get_pidfile_path_user;
+      }
+
       if(daemon_pid_file_create() != 0)
       {
-        if(errno == EPERM)
-        {
-          daemon_pid_file_proc = infinoted_main_get_pidfile_path;
-          if(daemon_pid_file_create() != 0)
-          {
-            infinoted_main_set_errno_error(
-              error,
-              errno,
-              _("Failed to create PID file")
-            );
+        infinoted_main_set_errno_error(
+          error,
+          errno,
+          _("Failed to create PID file")
+        );
 
-            infinoted_run_free(run);
-            return FALSE;
-          }
-        }
+        infinoted_run_free(run);
+        return FALSE;
       }
     }
   }
@@ -142,13 +170,13 @@ infinoted_main_run(InfinotedStartup* startup,
   infinoted_run_start(run);
 
   infinoted_signal_unregister(sig);
-  infinoted_run_free(run);
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   if(startup->options->daemonize)
     daemon_pid_file_remove();
 #endif
 
+  infinoted_run_free(run);
   return TRUE;
 }
 

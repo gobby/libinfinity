@@ -1,5 +1,12 @@
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-main.c: Change the location of the PID file to
+	localstatedir/run, append libinfinity API version to PID file name.
+
+	* infinoted/Makefile.am: Create directory for PID file on install.
+
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-util.c (infinoted_util_logv): Put an extra
 	newline after the log message.
 

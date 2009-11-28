@@ -10,7 +10,9 @@ infinoted_0_4_CPPFLAGS = \
 	$(infinoted_CFLAGS) \
 	$(infinity_CFLAGS) \
 	-DPLUGIN_LIBPATH=\"${libdir}\" \
-	-DPLUGIN_BASEPATH=\"${plugin_path}\"
+	-DPLUGIN_BASEPATH=\"${plugin_path}\" \
+	-DLOCALSTATEDIR=\"${localstatedir}\" \
+	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
 infinoted_0_4_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
@@ -40,3 +42,9 @@ noinst_HEADERS = \
 	infinoted-signal.h \
 	infinoted-startup.h \
 	infinoted-util.h
+
+install-exec-hook:
+	install -d ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)
+
+uninstall-hook:
+	rmdir --ignore-fail-on-non-empty ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)
