@@ -241,7 +241,7 @@ infinoted_startup_load(InfinotedStartup* startup,
  *
  * Creates parameters for starting an infinote daemon. This involves option
  * parsing, reading config files, reading or creating data for TLS
- * (private key, certificate or DH params).
+ * (private key and certificate).
  *
  * Returns: A new #InfinotedStartup. Free with infinoted_startup_free().
  */

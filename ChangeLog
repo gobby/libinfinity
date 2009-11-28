@@ -1,3 +1,16 @@
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Added infinoted_run_ensure_dh_params(),
+	take ownership of startup.
+
+	* infinoted/infinoted-startup.c (infinoted_startup_load): Fixed
+	documentation comment stating that this takes care about generating DH
+	params. It does not anymore, the code has moved to InfinotedRun.
+
+	* infinoted/infinoted-main.c: Adapt to startup ownership change in
+	InfinotedRun.
+
 2009-11-28  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-main.c: When daemonizing, write the pid file to

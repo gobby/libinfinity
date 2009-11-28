@@ -39,53 +39,6 @@ static const guint8 INFINOTED_RUN_IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 static gboolean
-infinoted_run_load_dh_params(InfinotedRun* run,
-                             GError** error)
-{
-  gnutls_dh_params_t dh_params;
-  gchar* filename;
-  struct stat st;
-
-  /* We don't need DH params when there are no credentials,
-   * i.e. we don't use TLS */
-  if(run->creds != NULL)
-  {
-    dh_params = NULL;
-    filename =
-      g_build_filename(g_get_home_dir(), ".infinoted", "dh.pem", NULL);
-
-    if(g_stat(filename, &st) == 0)
-    {
-      /* DH params expire every week */
-      if(st.st_mtime + 60 * 60 * 24 * 7 > time(NULL))
-        dh_params = infinoted_creds_read_dh_params(filename, NULL);
-    }
-
-    if(dh_params == NULL)
-    {
-      infinoted_util_create_dirname(filename, NULL);
-
-      printf(_("Generating 2048 bit Diffie-Hellman parameters...\n"));
-      dh_params = infinoted_creds_create_dh_params(error);
-
-      if(dh_params == NULL)
-      {
-        g_free(filename);
-        return FALSE;
-      }
-
-      infinoted_creds_write_dh_params(dh_params, filename, NULL);
-    }
-
-    g_free(filename);
-
-    gnutls_certificate_set_dh_params(run->creds, dh_params);
-  }
-
-  return TRUE;
-}
-
-static gboolean
 infinoted_run_load_directory(InfinotedRun* run,
                              InfinotedStartup* startup,
                              GError** error)
@@ -199,9 +152,9 @@ infinoted_run_create_server(InfinotedRun* run,
  * @startup: Startup parameters for the Infinote Server.
  * @error: Location to store error information, if any.
  *
- * Creates all necessary ressources for running an Infinote server. @startup
- * is used by the #InfinotedRun, so it must not be freed as long as the
- * #InfinotedRun object is still alive.
+ * Creates all necessary ressources for running an Infinote server. The
+ * #InfinotedRun has taken ownership of @startup if this function returns
+ * non-%NULL.
  *
  * Use infinoted_run_start() to start the server.
  *
@@ -221,7 +174,8 @@ infinoted_run_new(InfinotedStartup* startup,
   GError* local_error;
 
   run = g_slice_new(InfinotedRun);
-  run->creds = startup->credentials;
+  run->startup = startup;
+  run->dh_params = NULL;
 
   if(infinoted_run_load_directory(run, startup, error) == FALSE)
   {
@@ -321,11 +275,75 @@ infinoted_run_free(InfinotedRun* run)
   g_object_unref(run->directory);
   g_object_unref(run->pool);
 
-  if(run->creds)
-    if(run->dh_params != NULL)
-      gnutls_dh_params_deinit(run->dh_params);
+  if(run->dh_params != NULL)
+    gnutls_dh_params_deinit(run->dh_params);
+
+  if(run->startup)
+    infinoted_startup_free(run->startup);
 
   g_slice_free(InfinotedRun, run);
+}
+
+/**
+ * infinoted_run_ensure_dh_params:
+ * @run: A #InfinotedRun.
+ * @error: Location to store error information, if any.
+ *
+ * Ensures that DH parameters are set in the certificate credentials. This
+ * is called automatically by infinoted_run_start(), but you can also call
+ * it yourself if you want to make sure that it does not fail.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
+ */
+gboolean
+infinoted_run_ensure_dh_params(InfinotedRun* run,
+                               GError** error)
+{
+  gchar* filename;
+  struct stat st;
+
+  /* We don't need DH params when there are no credentials,
+   * i.e. we don't use TLS. */
+  if(run->startup->credentials == NULL)
+    return TRUE;
+
+  if(run->dh_params != NULL)
+  {
+    gnutls_certificate_set_dh_params(run->startup->credentials,
+                                     run->dh_params);
+    return TRUE;
+  }
+
+  filename =
+    g_build_filename(g_get_home_dir(), ".infinoted", "dh.pem", NULL);
+
+  if(g_stat(filename, &st) == 0)
+  {
+    /* DH params expire every week */
+    /*if(st.st_mtime + 60 * 60 * 24 * 7 > time(NULL))*/
+      run->dh_params = infinoted_creds_read_dh_params(filename, NULL);
+  }
+
+  if(run->dh_params == NULL)
+  {
+    infinoted_util_create_dirname(filename, NULL);
+
+    printf("%s\n", _("Generating 2048 bit Diffie-Hellman parameters..."));
+    run->dh_params = infinoted_creds_create_dh_params(error);
+
+    if(run->dh_params == NULL)
+    {
+      g_free(filename);
+      return FALSE;
+    }
+
+    infinoted_creds_write_dh_params(run->dh_params, filename, NULL);
+  }
+
+  g_free(filename);
+
+  gnutls_certificate_set_dh_params(run->startup->credentials, run->dh_params);
+  return TRUE;
 }
 
 /**
@@ -346,7 +364,7 @@ infinoted_run_start(InfinotedRun* run)
   error = NULL;
 
   /* Load DH parameters */
-  if(infinoted_run_load_dh_params(run, &error) == FALSE)
+  if(infinoted_run_ensure_dh_params(run, &error) == FALSE)
   {
     printf(_("Failed to generate Diffie-Hellman parameters: %s\n"),
            error->message);

@@ -76,6 +76,7 @@ infinoted_main_get_pidfile_path(void) {
 }
 #endif
 
+/* Takes ownership of startup */
 static gboolean
 infinoted_main_run(InfinotedStartup* startup,
                    GError** error)
@@ -87,8 +88,13 @@ infinoted_main_run(InfinotedStartup* startup,
   pid_t pid;
 #endif
 
+  /* infinoted_run_new() takes ownership of startup */
   run = infinoted_run_new(startup, error);
-  if(run == NULL) return FALSE;
+  if(run == NULL)
+  {
+    infinoted_startup_free(startup);
+    return FALSE;
+  }
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   if(startup->options->daemonize)
@@ -168,7 +174,6 @@ infinoted_main(int argc,
 #endif
 
   result = infinoted_main_run(startup, error);
-  infinoted_startup_free(startup);
 
   return result;
 }

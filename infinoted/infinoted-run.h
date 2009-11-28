@@ -37,6 +37,8 @@ G_BEGIN_DECLS
 
 typedef struct _InfinotedRun InfinotedRun;
 struct _InfinotedRun {
+  InfinotedStartup* startup;
+
   InfStandaloneIo* io;
   InfdDirectory* directory;
   InfdServerPool* pool;
@@ -44,8 +46,7 @@ struct _InfinotedRun {
 
   InfdTcpServer* tcp4;
   InfdTcpServer* tcp6;
-  gnutls_certificate_credentials_t creds; /* not owned */
-  gnutls_dh_params_t dh_params; /* owned */
+  gnutls_dh_params_t dh_params;
 
   InfinotedRecord* record;
 
@@ -60,6 +61,10 @@ infinoted_run_new(InfinotedStartup* startup,
 
 void
 infinoted_run_free(InfinotedRun* run);
+
+gboolean
+infinoted_run_ensure_dh_params(InfinotedRun* run,
+                               GError** error);
 
 void
 infinoted_run_start(InfinotedRun* run);
