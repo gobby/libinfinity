@@ -1,5 +1,10 @@
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-options.c: Allow passing NULL argc and argv in
+	which case options are only read from config file.
+
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-signal.h:
 	* infinoted/infinoted-signal.c: Implemented serial signal handling
 	via libdaemon, handle SIGQUIT and SIGHUP signals. Bug #507 (Yarek

@@ -514,25 +514,28 @@ infinoted_options_load(InfinotedOptions* options,
     }
   }
 
-  desc = g_strdup_printf("- %s", _("infinote dedicated server"));
-  context = g_option_context_new(desc);
-  g_free(desc);
-  g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
-
-  if(g_option_context_parse(context, argc, argv, error) == FALSE)
+  if(argc != NULL && argv != NULL)
   {
+    desc = g_strdup_printf("- %s", _("infinote dedicated server"));
+    context = g_option_context_new(desc);
+    g_free(desc);
+    g_option_context_add_main_entries(context, entries, GETTEXT_PACKAGE);
+
+    if(g_option_context_parse(context, argc, argv, error) == FALSE)
+    {
+      g_option_context_free(context);
+      g_free(security_policy);
+      return FALSE;
+    }
+
+    if(display_version)
+    {
+      printf("infinoted %s\n", PACKAGE_VERSION);
+      exit(0);
+    }
+
     g_option_context_free(context);
-    g_free(security_policy);
-    return FALSE;
   }
-
-  if(display_version)
-  {
-    printf("infinoted %s\n", PACKAGE_VERSION);
-    exit(0);
-  }
-
-  g_option_context_free(context);
 
   if(security_policy != NULL)
   {
