@@ -71,19 +71,19 @@ static InfinotedRun* _infinoted_signal_server = NULL;
 static void
 infinoted_signal_terminate(void)
 {
-	InfinotedRun* run;
+  InfinotedRun* run;
 
   /* We do a hard exit here, not calling inf_standalone_io_loop_quit(),
    * because the signal handler could be called from anywhere in the code. */
-	if(_infinoted_signal_server != NULL)
-	{
-		run = _infinoted_signal_server;
-		_infinoted_signal_server = NULL;
+  if(_infinoted_signal_server != NULL)
+  {
+    run = _infinoted_signal_server;
+    _infinoted_signal_server = NULL;
 
-		infinoted_run_free(run);
+    infinoted_run_free(run);
 
-		exit(0);
-	}
+    exit(0);
+  }
 }
 
 static void

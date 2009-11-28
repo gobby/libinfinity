@@ -1,5 +1,10 @@
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-signal.c (infinoted_signal_terminate): Fixed
+	indentation.
+
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-run.h:
 	* infinoted/infinoted-run.c: Added infinoted_run_ensure_dh_params(),
 	take ownership of startup.
