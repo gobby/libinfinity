@@ -100,6 +100,7 @@ infinoted_main_run(InfinotedStartup* startup,
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   pid_t pid;
+  int saved_errno;
 #endif
 
   /* infinoted_run_new() takes ownership of startup */
@@ -113,18 +114,44 @@ infinoted_main_run(InfinotedStartup* startup,
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   if(startup->options->daemonize)
   {
+    if(daemon_retval_init() == -1)
+    {
+      infinoted_run_free(run);
+      return FALSE; /* libdaemon already wrote an error message */
+    }
+
     pid = daemon_fork();
     if(pid < 0)
     {
       /* Translators: fork as in "fork into the background" */
       infinoted_main_set_errno_error(error, errno, _("Failed to fork"));
       infinoted_run_free(run);
+      daemon_retval_done();
       return FALSE;
     }
     else if(pid > 0)
     {
       infinoted_run_free(run);
-      return TRUE;
+      saved_errno = daemon_retval_wait(5);
+      if(saved_errno == 0)
+      {
+        return TRUE;
+      }
+      if(saved_errno == -1)
+      {
+        infinoted_main_set_errno_error(error, errno,
+          _("Failed to wait for daemonized child's return value"));
+        return FALSE;
+      }
+      else
+      {
+        /* on -1, the child process would have subtracted one from
+         * errno before passing it back to us. */
+        if(saved_errno < 0) ++saved_errno;
+        infinoted_main_set_errno_error(
+          error, saved_errno, _("Failed to create PID file"));
+        return FALSE;
+      }
     }
     else
     {
@@ -136,11 +163,14 @@ infinoted_main_run(InfinotedStartup* startup,
       {
         if(errno != EACCES)
         {
+          saved_errno = errno;
           infinoted_main_set_errno_error(
             error,
-            errno,
+            saved_errno,
             _("Failed to create PID file")
           );
+          if(saved_errno < 0) --saved_errno;
+          daemon_retval_send(saved_errno);
 
           infinoted_run_free(run);
           return FALSE;
@@ -151,15 +181,20 @@ infinoted_main_run(InfinotedStartup* startup,
 
       if(daemon_pid_file_create() != 0)
       {
+        saved_errno = errno;
         infinoted_main_set_errno_error(
           error,
-          errno,
+          saved_errno,
           _("Failed to create PID file")
         );
+        if(saved_errno < 0) --saved_errno;
+        daemon_retval_send(saved_errno);
 
         infinoted_run_free(run);
         return FALSE;
       }
+
+      daemon_retval_send(0);
     }
   }
 #endif
@@ -217,8 +252,12 @@ main(int argc,
   error = NULL;
   if(infinoted_main(argc, argv, &error) == FALSE)
   {
-    infinoted_util_log_error("%s", error->message);
-    g_error_free(error);
+    if(error)
+    {
+      infinoted_util_log_error("%s", error->message);
+      g_error_free(error);
+    }
+
     return -1;
   }
 

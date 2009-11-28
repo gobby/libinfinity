@@ -1,5 +1,10 @@
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-main.c: Tell parent process whether PID file
+	creation failed or not.
+
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-main.c: Change the location of the PID file to
 	localstatedir/run, append libinfinity API version to PID file name.
 
