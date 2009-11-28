@@ -20,6 +20,7 @@
 #include <infinoted/infinoted-signal.h>
 #include <infinoted/infinoted-run.h>
 #include <infinoted/infinoted-startup.h>
+#include <infinoted/infinoted-util.h>
 
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h>
@@ -27,6 +28,7 @@
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
 #include <libdaemon/dfork.h>
 #include <libdaemon/dpid.h>
+#include <libdaemon/dlog.h>
 #endif
 
 #include <locale.h>
@@ -62,6 +64,18 @@ infinoted_main_set_errno_error(GError** error,
   }
 }
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+static const gchar*
+infinoted_main_get_pidfile_path(void) {
+  static gchar* path = NULL;
+  if(path) return path;
+
+  path = g_strdup_printf("%s/.infinoted/infinoted.pid", g_get_home_dir());
+  infinoted_util_create_dirname(path, NULL);
+  return path;
+}
+#endif
+
 static gboolean
 infinoted_main_run(InfinotedStartup* startup,
                    GError** error)
@@ -96,14 +110,21 @@ infinoted_main_run(InfinotedStartup* startup,
     {
       if(daemon_pid_file_create() != 0)
       {
-        infinoted_main_set_errno_error(
-          error,
-          errno,
-          _("Failed to create PID file")
-        );
+        if(errno == EPERM)
+        {
+          daemon_pid_file_proc = infinoted_main_get_pidfile_path;
+          if(daemon_pid_file_create() != 0)
+          {
+            infinoted_main_set_errno_error(
+              error,
+              errno,
+              _("Failed to create PID file")
+            );
 
-        infinoted_run_free(run);
-        return FALSE;
+            infinoted_run_free(run);
+            return FALSE;
+          }
+        }
       }
     }
   }
@@ -118,7 +139,8 @@ infinoted_main_run(InfinotedStartup* startup,
   infinoted_run_free(run);
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
-  daemon_pid_file_remove();
+  if(startup->options->daemonize)
+    daemon_pid_file_remove();
 #endif
 
   return TRUE;
@@ -136,6 +158,14 @@ infinoted_main(int argc,
 
   if(startup == NULL)
     return FALSE;
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  if(startup->options->daemonize)
+  {
+    daemon_pid_file_ident = daemon_ident_from_argv0(argv[0]);
+    daemon_log_ident = daemon_pid_file_ident;
+  }
+#endif
 
   result = infinoted_main_run(startup, error);
   infinoted_startup_free(startup);
