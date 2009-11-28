@@ -18,11 +18,54 @@
  */
 
 #include <infinoted/infinoted-signal.h>
+#include <libinfinity/inf-i18n.h>
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+#include <libdaemon/dsignal.h>
+#endif
 
 #ifdef G_OS_WIN32
 # include <windows.h>
 #endif
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+static void
+infinoted_signal_sig_func(InfNativeSocket* fd,
+                          InfIoEvent event,
+                          gpointer user_data)
+{
+  InfinotedSignal* sig;
+  int occured;
+
+  sig = (InfinotedSignal*)user_data;
+
+  if(event & INF_IO_ERROR)
+  {
+    inf_io_watch(INF_IO(sig->run->io), &sig->signal_fd, 0, NULL, NULL, NULL);
+    daemon_signal_done();
+
+    sig->run = NULL;
+    sig->signal_fd = 0;
+
+    fprintf(stderr, "%s\n", _("Error on signal handler connection; signal "
+                              "handlers have been removed from now on"));
+  }
+  else if(event & INF_IO_INCOMING)
+  {
+    occured = daemon_signal_next();
+    if(occured == SIGINT || occured == SIGTERM || occured == SIGQUIT)
+    {
+      printf("\n");
+      inf_standalone_io_loop_quit(sig->run->io);
+    }
+    else if(occured == SIGHUP)
+    {
+      fprintf(stderr, "%s\n", _("Config file reloading has not yet "
+                                "been implemented"));
+    }
+  }
+}
+#else
 static InfinotedRun* _infinoted_signal_server = NULL;
 
 static void
@@ -30,6 +73,8 @@ infinoted_signal_terminate(void)
 {
 	InfinotedRun* run;
 
+  /* We do a hard exit here, not calling inf_standalone_io_loop_quit(),
+   * because the signal handler could be called from anywhere in the code. */
 	if(_infinoted_signal_server != NULL)
 	{
 		run = _infinoted_signal_server;
@@ -54,6 +99,26 @@ infinoted_signal_sigterm_handler(int sig)
   printf("\n");
   infinoted_signal_terminate();
 }
+
+static void
+infinoted_signal_sigquit_handler(int sig)
+{
+  printf("\n");
+  infinoted_signal_terminate();
+}
+
+static void
+infinoted_signal_sighup_handler(int sig)
+{
+  /* We don't reload the config file here since the signal handler could be
+   * called from anywhere in the code. */
+  fprintf(stderr, "%s\n", _("For config reloading to work libinfinity needs "
+                            "to be compiled with libdaemon support"));
+
+  /* Make sure the signal handler is not reset */
+  signal(SIGHUP, infinoted_signal_sighup_handler);
+}
+#endif
 
 #ifdef G_OS_WIN32
 BOOL WINAPI infinoted_signal_console_handler(DWORD fdwCtrlType)
@@ -81,16 +146,42 @@ infinoted_signal_register(InfinotedRun* run)
   InfinotedSignal* sig;
   sig = g_slice_new(InfinotedSignal);
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  sig->run = run;
+
+  /* TODO: Should we report when this fails? Should ideally happen before
+   * actually forking then - are signal connections kept in fork()'s child? */
+  if(daemon_signal_init(SIGINT, SIGTERM, SIGQUIT, SIGHUP, 0) == 0)
+  {
+    sig->signal_fd = daemon_signal_fd();
+
+    inf_io_watch(
+      INF_IO(run->io),
+      &sig->signal_fd,
+      INF_IO_INCOMING | INF_IO_ERROR,
+      infinoted_signal_sig_func,
+      sig,
+      NULL
+    );
+  }
+
+#else
   sig->previous_sigint_handler =
     signal(SIGINT, &infinoted_signal_sigint_handler);
   sig->previous_sigterm_handler =
     signal(SIGTERM, &infinoted_signal_sigterm_handler);
+  sig->previous_sigquit_handler =
+    signal(SIGQUIT, &infinoted_signal_sigquit_handler);
+  sig->previous_sighup_handler =
+    signal(SIGHUP, &infinoted_signal_sighup_handler);
+
+  _infinoted_signal_server = run;
+#endif
 
 #ifdef G_OS_WIN32
   SetConsoleCtrlHandler(infinoted_signal_console_handler, TRUE);
 #endif
 
-  _infinoted_signal_server = run;
   return sig;
 }
 
@@ -107,9 +198,21 @@ infinoted_signal_unregister(InfinotedSignal* sig)
   SetConsoleCtrlHandler(infinoted_signal_console_handler, FALSE);
 #endif
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  if(sig->run)
+  {
+    inf_io_watch(INF_IO(sig->run->io), &sig->signal_fd, 0, NULL, NULL, NULL);
+    daemon_signal_done();
+  }
+#else
   signal(SIGINT, sig->previous_sigint_handler);
   signal(SIGTERM, sig->previous_sigterm_handler);
+  signal(SIGQUIT, sig->previous_sigquit_handler);
+  signal(SIGHUP, sig->previous_sighup_handler);
+
   _infinoted_signal_server = NULL;
+#endif
+
   g_slice_free(InfinotedSignal, sig);
 }
 

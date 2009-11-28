@@ -21,6 +21,7 @@
 #define __INFINOTED_SIGNAL_H__
 
 #include <infinoted/infinoted-run.h>
+#include <libinfinity/inf-config.h>
 
 #include <glib.h>
 
@@ -33,8 +34,15 @@ typedef void(*InfinotedSignalFunc)(int);
 
 typedef struct _InfinotedSignal InfinotedSignal;
 struct _InfinotedSignal {
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  InfinotedRun* run;
+  int signal_fd;
+#else
   InfinotedSignalFunc previous_sigint_handler;
   InfinotedSignalFunc previous_sigterm_handler;
+  InfinotedSignalFunc previous_sigquit_handler;
+  InfinotedSignalFunc previous_sighup_handler;
+#endif
 };
 
 InfinotedSignal*
