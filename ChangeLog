@@ -1,3 +1,16 @@
+2009-11-28  Benjamin Herr  <ben@0x539.de>
+
+	* infinoted-util.h:
+	* infinoted-util.c: Added infinoted_util_log_{error,warning,info} that
+	delegate to either fprintf(stderr, ...), or daemon_log with the proper
+	priority when building with libdaemon.
+
+	* infinoted-main.c:
+	* infinoted-note-plugin.c:
+	* infinoted-signal.c:
+	* infinoted-startup.c: Use infinoted_util_log_{error,warning,info}
+	instead of fprintf(stderr, ...).
+
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-signal.c (infinoted_signal_terminate): Fixed

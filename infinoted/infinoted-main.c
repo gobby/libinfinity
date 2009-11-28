@@ -189,7 +189,7 @@ main(int argc,
   error = NULL;
   if(infinoted_main(argc, argv, &error) == FALSE)
   {
-    fprintf(stderr, "%s\n", error->message);
+    infinoted_util_log_error("%s\n", error->message);
     g_error_free(error);
     return -1;
   }

@@ -51,7 +51,7 @@ infinoted_startup_load_key(gboolean create_key,
 
     /* TODO: Open the key file beforehand */
 
-    printf(_("Generating 2048 bit RSA private key...\n"));
+    infinoted_util_log_info(_("Generating 2048 bit RSA private key...\n"));
     key = infinoted_creds_create_key(error);
 
     if(key == NULL)
@@ -89,7 +89,7 @@ infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
     if(infinoted_util_create_dirname(certificate_file, error) == FALSE)
       return NULL;
 
-    printf(_("Generating self-signed certificate...\n"));
+    infinoted_util_log_info(_("Generating self-signed certificate...\n"));
     cert = infinoted_creds_create_self_signed_certificate(key, error);
     if(cert == NULL) return NULL;
 

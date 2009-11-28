@@ -21,9 +21,26 @@
 
 #include <libinfinity/inf-i18n.h>
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+#include <libdaemon/dlog.h>
+#endif
+
 #include <glib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <syslog.h>
+
+static void
+infinoted_util_logv(int prio, const char* fmt, va_list ap)
+{
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  daemon_logv(prio, fmt, ap);
+#else
+  vfprintf(stderr, fmt, ap);
+#endif
+}
 
 /**
  * infinoted_util_create_dirname:
@@ -64,6 +81,33 @@ infinoted_util_create_dirname(const gchar* path,
 
   g_free(dirname);
   return TRUE;
+}
+
+void
+infinoted_util_log_error(const char* fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  infinoted_util_logv(LOG_ERR, fmt, ap);
+  va_end(ap);
+}
+
+void
+infinoted_util_log_warning(const char* fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  infinoted_util_logv(LOG_WARNING, fmt, ap);
+  va_end(ap);
+}
+
+void
+infinoted_util_log_info(const char* fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  infinoted_util_logv(LOG_INFO, fmt, ap);
+  va_end(ap);
 }
 
 /* vim:set et sw=2 ts=2: */

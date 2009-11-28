@@ -328,8 +328,8 @@ infinoted_run_ensure_dh_params(InfinotedRun* run,
   {
     infinoted_util_create_dirname(filename, NULL);
 
-    printf("%s\n", _("Generating 2048 bit Diffie-Hellman parameters..."));
-    run->dh_params = infinoted_creds_create_dh_params(error);
+    infinoted_util_log_info(
+            _("Generating 2048 bit Diffie-Hellman parameters...\n"));
 
     if(run->dh_params == NULL)
     {
@@ -366,7 +366,8 @@ infinoted_run_start(InfinotedRun* run)
   /* Load DH parameters */
   if(infinoted_run_ensure_dh_params(run, &error) == FALSE)
   {
-    printf(_("Failed to generate Diffie-Hellman parameters: %s\n"),
+    infinoted_util_log_error(
+           _("Failed to generate Diffie-Hellman parameters: %s\n"),
            error->message);
     g_error_free(error);
     return;
@@ -378,11 +379,13 @@ infinoted_run_start(InfinotedRun* run)
     if(infd_tcp_server_open(run->tcp6, &error) == TRUE)
     {
       g_object_get(G_OBJECT(run->tcp6), "local-port", &port, NULL);
-      fprintf(stderr, _("IPv6 Server running on port %u\n"), port);
+      infinoted_util_log_info(_("IPv6 Server running on port %u\n"), port);
     }
     else
     {
-      fprintf(stderr, _("Failed to start IPv6 server: %s\n"), error->message);
+      infinoted_util_log_error(
+              _("Failed to start IPv6 server: %s\n"),
+              error->message);
       g_error_free(error);
       error = NULL;
 
@@ -396,11 +399,13 @@ infinoted_run_start(InfinotedRun* run)
     if(infd_tcp_server_open(run->tcp4, &error) == TRUE)
     {
       g_object_get(G_OBJECT(run->tcp4), "local-port", &port, NULL);
-      fprintf(stderr, _("IPv4 Server running on port %u\n"), port);
+      infinoted_util_log_error(_("IPv4 Server running on port %u\n"), port);
     }
     else
     {
-      fprintf(stderr, _("Failed to start IPv4 server: %s\n"), error->message);
+      infinoted_util_log_error(
+              _("Failed to start IPv4 server: %s\n"),
+              error->message);
       g_error_free(error);
       error = NULL;
 

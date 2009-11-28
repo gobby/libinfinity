@@ -29,6 +29,15 @@ gboolean
 infinoted_util_create_dirname(const gchar* path,
                               GError** error);
 
+void
+infinoted_util_log_error(const char* fmt, ...);
+
+void
+infinoted_util_log_warning(const char* fmt, ...);
+
+void
+infinoted_util_log_info(const char* fmt, ...);
+
 G_END_DECLS
 
 #endif /* __INFINOTED_UTIL_H__ */

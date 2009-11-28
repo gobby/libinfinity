@@ -152,8 +152,7 @@ infinoted_note_plugin_load_directory(const gchar* path,
           }
           else
           {
-            fprintf(
-              stderr,
+            infinoted_util_log_info(
               _("Loaded plugin \"%s\" (%s)\n"),
               plugin_path,
               plugin->note_type

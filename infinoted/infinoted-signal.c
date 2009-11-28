@@ -18,6 +18,7 @@
  */
 
 #include <infinoted/infinoted-signal.h>
+#include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
@@ -47,8 +48,9 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
     sig->run = NULL;
     sig->signal_fd = 0;
 
-    fprintf(stderr, "%s\n", _("Error on signal handler connection; signal "
-                              "handlers have been removed from now on"));
+    infinoted_util_log_error(
+            "%s\n", _("Error on signal handler connection; signal "
+                      "handlers have been removed from now on"));
   }
   else if(event & INF_IO_INCOMING)
   {
@@ -60,8 +62,9 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
     }
     else if(occured == SIGHUP)
     {
-      fprintf(stderr, "%s\n", _("Config file reloading has not yet "
-                                "been implemented"));
+      infinoted_util_log_error(
+              "%s\n", _("Config file reloading has not yet "
+                        "been implemented"));
     }
   }
 }
@@ -112,8 +115,9 @@ infinoted_signal_sighup_handler(int sig)
 {
   /* We don't reload the config file here since the signal handler could be
    * called from anywhere in the code. */
-  fprintf(stderr, "%s\n", _("For config reloading to work libinfinity needs "
-                            "to be compiled with libdaemon support"));
+  infinoted_util_log_error(
+          "%s\n", _("For config reloading to work libinfinity needs "
+                    "to be compiled with libdaemon support"));
 
   /* Make sure the signal handler is not reset */
   signal(SIGHUP, infinoted_signal_sighup_handler);
