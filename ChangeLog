@@ -1,5 +1,17 @@
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-util.h:
+	* infinoted/infinoted-util.c: Added infinoted_util_set_errno_error()
+	and infinoted_util_set_daemon_pid_file_proc().
+
+	* infinoted/infinoted-options.c: Added the -D option to kill a
+	daemonized process.
+
+	* infinoted/infinoted-main.c: Use
+	infinoted_util_set_daemon_pid_file_proc().
+
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-main.c: Tell parent process whether PID file
 	creation failed or not.
 

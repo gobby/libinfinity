@@ -23,6 +23,7 @@
 #include <glib.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "config.h"
 
@@ -447,6 +448,9 @@ infinoted_options_load(InfinotedOptions* options,
   gchar* security_policy;
   gint port_number;
   gboolean display_version;
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  gboolean kill_daemon;
+#endif
   gint autosave_interval;
 
   gboolean result;
@@ -487,6 +491,9 @@ infinoted_options_load(InfinotedOptions* options,
     { "daemonize", 'd', 0,
       G_OPTION_ARG_NONE, &options->daemonize,
       N_("Daemonize the server"), NULL },
+    { "kill-daemon", 'D', 0,
+      G_OPTION_ARG_NONE, &kill_daemon,
+      N_("Kill a running daemon"), NULL },
 #endif
     { "version", 'v', G_OPTION_FLAG_NO_CONFIG_FILE,
       G_OPTION_ARG_NONE, &display_version,
@@ -497,6 +504,9 @@ infinoted_options_load(InfinotedOptions* options,
   };
 
   display_version = FALSE;
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  kill_daemon = FALSE;
+#endif
   security_policy = NULL;
   port_number = infinoted_options_port_to_integer(options->port);
   autosave_interval = options->autosave_interval;
@@ -534,6 +544,29 @@ infinoted_options_load(InfinotedOptions* options,
       exit(0);
     }
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+    if(kill_daemon)
+    {
+      g_free(security_policy);
+
+      if(!infinoted_util_set_daemon_pid_file_proc(error))
+        return FALSE;
+
+#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
+      if(daemon_pid_file_kill_wait(SIGTERM, 5) != 0)
+#else
+      if(daemon_pid_file_kill(SIGTERM) != 0)
+#endif
+      {
+        infinoted_util_set_errno_error(error, errno,
+          _("Could not kill daemon"));
+        return FALSE;
+      }
+
+      exit(0);
+    }
+#endif
+
     g_option_context_free(context);
   }
 
@@ -548,6 +581,8 @@ infinoted_options_load(InfinotedOptions* options,
     g_free(security_policy);
     if(!result) return FALSE;
   }
+
+  /* TODO: Do we leak security_policy at this point? */
 
   result = infinoted_options_port_from_integer(
     port_number,

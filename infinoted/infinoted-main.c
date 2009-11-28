@@ -29,66 +29,11 @@
 #include <libdaemon/dfork.h>
 #include <libdaemon/dpid.h>
 #include <libdaemon/dlog.h>
-
-#include <unistd.h> /* for access(2) */
-
-#define INFINOTED_PID_FILE_DIRECTORY \
-  LOCALSTATEDIR "/run/infinoted-" LIBINFINITY_API_VERSION
-
 #endif
 
 #include <locale.h>
 #include <errno.h>
 #include <string.h>
-
-/* TODO: Move to util? Other files use something similar... */
-static void
-infinoted_main_set_errno_error(GError** error,
-                               int save_errno,
-                               const char* prefix)
-{
-  if(prefix != NULL)
-  {
-    g_set_error(
-      error,
-      g_quark_from_static_string("ERRNO_ERROR"),
-      save_errno,
-      "%s: %s",
-      prefix,
-      strerror(save_errno)
-    );
-  }
-  else
-  {
-    g_set_error(
-      error,
-      g_quark_from_static_string("ERRNO_ERROR"),
-      save_errno,
-      "%s",
-      strerror(save_errno)
-    );
-  }
-}
-
-#ifdef LIBINFINITY_HAVE_LIBDAEMON
-static const gchar*
-infinoted_main_get_pidfile_path_user(void) {
-  static gchar* path = NULL;
-  if(path) return path;
-
-  path = g_strdup_printf(
-                 "%s/.infinoted/infinoted-" LIBINFINITY_API_VERSION ".pid",
-                 g_get_home_dir());
-  infinoted_util_create_dirname(path, NULL);
-  return path;
-}
-
-static const gchar*
-infinoted_main_get_pidfile_path_system(void) {
-  return INFINOTED_PID_FILE_DIRECTORY
-           "/infinoted-" LIBINFINITY_API_VERSION ".pid";
-}
-#endif
 
 /* Takes ownership of startup */
 static gboolean
@@ -124,7 +69,7 @@ infinoted_main_run(InfinotedStartup* startup,
     if(pid < 0)
     {
       /* Translators: fork as in "fork into the background" */
-      infinoted_main_set_errno_error(error, errno, _("Failed to fork"));
+      infinoted_util_set_errno_error(error, errno, _("Failed to fork"));
       infinoted_run_free(run);
       daemon_retval_done();
       return FALSE;
@@ -139,7 +84,7 @@ infinoted_main_run(InfinotedStartup* startup,
       }
       if(saved_errno == -1)
       {
-        infinoted_main_set_errno_error(error, errno,
+        infinoted_util_set_errno_error(error, errno,
           _("Failed to wait for daemonized child's return value"));
         return FALSE;
       }
@@ -148,41 +93,23 @@ infinoted_main_run(InfinotedStartup* startup,
         /* on -1, the child process would have subtracted one from
          * errno before passing it back to us. */
         if(saved_errno < 0) ++saved_errno;
-        infinoted_main_set_errno_error(
+        infinoted_util_set_errno_error(
           error, saved_errno, _("Failed to create PID file"));
         return FALSE;
       }
     }
     else
     {
-      if(access(INFINOTED_PID_FILE_DIRECTORY, W_OK) == 0)
+      if(!infinoted_util_set_daemon_pid_file_proc(error))
       {
-        daemon_pid_file_proc = infinoted_main_get_pidfile_path_system;
-      }
-      else
-      {
-        if(errno != EACCES)
-        {
-          saved_errno = errno;
-          infinoted_main_set_errno_error(
-            error,
-            saved_errno,
-            _("Failed to create PID file")
-          );
-          if(saved_errno < 0) --saved_errno;
-          daemon_retval_send(saved_errno);
-
-          infinoted_run_free(run);
-          return FALSE;
-        }
-
-        daemon_pid_file_proc = infinoted_main_get_pidfile_path_user;
+        infinoted_run_free(run);
+        return FALSE;
       }
 
       if(daemon_pid_file_create() != 0)
       {
         saved_errno = errno;
-        infinoted_main_set_errno_error(
+        infinoted_util_set_errno_error(
           error,
           saved_errno,
           _("Failed to create PID file")

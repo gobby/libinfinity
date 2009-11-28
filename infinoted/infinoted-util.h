@@ -20,6 +20,8 @@
 #ifndef __INFINOTED_UTIL_H__
 #define __INFINOTED_UTIL_H__
 
+#include <libinfinity/inf-config.h>
+
 #include <glib/gtypes.h>
 #include <glib/gerror.h>
 
@@ -37,6 +39,16 @@ infinoted_util_log_warning(const char* fmt, ...);
 
 void
 infinoted_util_log_info(const char* fmt, ...);
+
+void
+infinoted_util_set_errno_error(GError** error,
+                               int save_errno,
+                               const char* prefix);
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+gboolean
+infinoted_util_set_daemon_pid_file_proc(GError** error);
+#endif
 
 G_END_DECLS
 

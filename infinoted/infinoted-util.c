@@ -24,6 +24,13 @@
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
 #include <libdaemon/dlog.h>
+#include <libdaemon/dpid.h>
+
+#include <unistd.h> /* for access(2) */
+
+#define INFINOTED_PID_FILE_DIRECTORY \
+  LOCALSTATEDIR "/run/infinoted-" LIBINFINITY_API_VERSION
+
 #endif
 
 #include <glib.h>
@@ -43,6 +50,26 @@ infinoted_util_logv(int prio, const char* fmt, va_list ap)
   fputc('\n', stderr);
 #endif
 }
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+static const gchar*
+infinoted_util_get_pidfile_path_user(void) {
+  static gchar* path = NULL;
+  if(path) return path;
+
+  path = g_strdup_printf(
+                 "%s/.infinoted/infinoted-" LIBINFINITY_API_VERSION ".pid",
+                 g_get_home_dir());
+  infinoted_util_create_dirname(path, NULL);
+  return path;
+}
+
+static const gchar*
+infinoted_util_get_pidfile_path_system(void) {
+  return INFINOTED_PID_FILE_DIRECTORY
+           "/infinoted-" LIBINFINITY_API_VERSION ".pid";
+}
+#endif
 
 /**
  * infinoted_util_create_dirname:
@@ -85,6 +112,14 @@ infinoted_util_create_dirname(const gchar* path,
   return TRUE;
 }
 
+/**
+ * infinoted_util_log_error:
+ * @fmt: A printf-style format string.
+ * ...: Format arguments.
+ *
+ * Logs an error message. If the server is daemonized, log to syslog,
+ * otherwise log to stderr.
+ */
 void
 infinoted_util_log_error(const char* fmt, ...)
 {
@@ -94,6 +129,14 @@ infinoted_util_log_error(const char* fmt, ...)
   va_end(ap);
 }
 
+/**
+ * infinoted_util_log_warning:
+ * @fmt: A printf-style format string.
+ * ...: Format arguments.
+ *
+ * Logs a warning message. If the server is daemonized, log to syslog,
+ * otherwise log to stderr.
+ */
 void
 infinoted_util_log_warning(const char* fmt, ...)
 {
@@ -103,6 +146,14 @@ infinoted_util_log_warning(const char* fmt, ...)
   va_end(ap);
 }
 
+/**
+ * infinoted_util_log_info:
+ * @fmt: A printf-style format string.
+ * ...: Format arguments.
+ *
+ * Logs an info message. If the server is daemonized, log to syslog,
+ * otherwise log to stderr.
+ */
 void
 infinoted_util_log_info(const char* fmt, ...)
 {
@@ -111,5 +162,84 @@ infinoted_util_log_info(const char* fmt, ...)
   infinoted_util_logv(LOG_INFO, fmt, ap);
   va_end(ap);
 }
+
+/**
+ * infinoted_util_set_errno_error:
+ * @error: A pointer to a #GError pointer, or %NULL.
+ * @save_errno: An errno variable.
+ * @prefix: A prefix string, or %NULL.
+ *
+ * Sets @error to @save_errno with domain ERRNO_ERROR. If @prefix is
+ * non-%NULL, @prefix is prefixed to @error's message, obtained by strerror().
+ */
+void
+infinoted_util_set_errno_error(GError** error,
+                               int save_errno,
+                               const char* prefix)
+{
+  if(prefix != NULL)
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("ERRNO_ERROR"),
+      save_errno,
+      "%s: %s",
+      prefix,
+      strerror(save_errno)
+    );
+  }
+  else
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("ERRNO_ERROR"),
+      save_errno,
+      "%s",
+      strerror(save_errno)
+    );
+  }
+}
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+/**
+ * infinoted_util_set_daemon_pid_file_proc:
+ * @error: Location to store error information, if any.
+ *
+ * Sets @daemon_pid_file_proc to the location of infinoted's PID file.
+ *
+ * Returns: %TRUE on success, or %FALSE on error if no suitable location for
+ * the PID file was found.
+ */
+gboolean
+infinoted_util_set_daemon_pid_file_proc(GError** error)
+{
+  int saved_errno;
+
+  if(access(INFINOTED_PID_FILE_DIRECTORY, W_OK) == 0)
+  {
+    daemon_pid_file_proc = infinoted_util_get_pidfile_path_system;
+    return TRUE;
+  }
+  else
+  {
+    if(errno != EACCES)
+    {
+      saved_errno = errno;
+
+      infinoted_util_set_errno_error(
+        error,
+        saved_errno,
+        _("Failed to create PID file")
+      );
+
+      errno = saved_errno;
+      return FALSE;
+    }
+
+    daemon_pid_file_proc = infinoted_util_get_pidfile_path_user;
+    return TRUE;
+  }
+}
+#endif
 
 /* vim:set et sw=2 ts=2: */
