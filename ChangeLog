@@ -1,3 +1,15 @@
+2009-11-28  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-util.c (infinoted_util_logv): Put an extra
+	newline after the log message.
+
+	* infinoted/infinoted-note-plugin.c:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-signal.c:
+	* infinoted/infinoted-startup.c:
+	* infinoted/infinoted-main.c: Remove newline from calls to
+	infinoted_util_log_*() to prevent it from appearing in the syslog.
+
 2009-11-28  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted-util.h:

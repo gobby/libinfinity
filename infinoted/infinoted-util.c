@@ -20,6 +20,7 @@
 #include <infinoted/infinoted-util.h>
 
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-config.h>
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
 #include <libdaemon/dlog.h>
@@ -39,6 +40,7 @@ infinoted_util_logv(int prio, const char* fmt, va_list ap)
   daemon_logv(prio, fmt, ap);
 #else
   vfprintf(stderr, fmt, ap);
+  fputc('\n', stderr);
 #endif
 }
 
@@ -74,7 +76,7 @@ infinoted_util_create_dirname(const gchar* path,
       dirname,
       strerror(save_errno)
     );
-    
+
     g_free(dirname);
     return FALSE;
   }
