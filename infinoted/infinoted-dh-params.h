@@ -17,42 +17,21 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFINOTED_UTIL_H__
-#define __INFINOTED_UTIL_H__
+#ifndef __INFINOTED_DH_PARAMS_H__
+#define __INFINOTED_DH_PARAMS_H__
 
-#include <libinfinity/inf-config.h>
-
-#include <glib/gtypes.h>
-#include <glib/gerror.h>
+#include <gnutls/gnutls.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 
 gboolean
-infinoted_util_create_dirname(const gchar* path,
-                              GError** error);
-
-/* TODO: Move this to infinoted-log.[hc] */
-void
-infinoted_util_log_error(const char* fmt, ...);
-
-void
-infinoted_util_log_warning(const char* fmt, ...);
-
-void
-infinoted_util_log_info(const char* fmt, ...);
-
-void
-infinoted_util_set_errno_error(GError** error,
-                               int save_errno,
-                               const char* prefix);
-
-#ifdef LIBINFINITY_HAVE_LIBDAEMON
-gboolean
-infinoted_util_set_daemon_pid_file_proc(GError** error);
-#endif
+infinoted_dh_params_ensure(gnutls_certificate_credentials_t creds,
+                           gnutls_dh_params_t* dh_params,
+                           GError** error);
 
 G_END_DECLS
 
-#endif /* __INFINOTED_UTIL_H__ */
+#endif /* __INFINOTED_DH_PARAMS_H__ */
 
 /* vim:set et sw=2 ts=2: */

@@ -1,3 +1,16 @@
+2009-11-29  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-util.h: Added a TODO comment about moving the
+	logging functions to an extra file.
+
+	* infinoted/infinoted-dh-params.h:
+	* infinoted/infinoted-dh-params.c:
+	* infinoted/Makefile.am: Renamed infinoted_run_ensure_dh_params() to
+	infinoted_dh_params_ensure() and moved this to an extra file.
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Adapt.
+
 2009-11-28  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-util.h:

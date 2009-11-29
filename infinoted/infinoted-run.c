@@ -31,10 +31,6 @@
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h>
 
-#include <glib/gstdio.h>
-
-#include <sys/stat.h>
-
 static const guint8 INFINOTED_RUN_IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
@@ -285,68 +281,6 @@ infinoted_run_free(InfinotedRun* run)
 }
 
 /**
- * infinoted_run_ensure_dh_params:
- * @run: A #InfinotedRun.
- * @error: Location to store error information, if any.
- *
- * Ensures that DH parameters are set in the certificate credentials. This
- * is called automatically by infinoted_run_start(), but you can also call
- * it yourself if you want to make sure that it does not fail.
- *
- * Returns: %TRUE on success or %FALSE on error.
- */
-gboolean
-infinoted_run_ensure_dh_params(InfinotedRun* run,
-                               GError** error)
-{
-  gchar* filename;
-  struct stat st;
-
-  /* We don't need DH params when there are no credentials,
-   * i.e. we don't use TLS. */
-  if(run->startup->credentials == NULL)
-    return TRUE;
-
-  if(run->dh_params != NULL)
-  {
-    gnutls_certificate_set_dh_params(run->startup->credentials,
-                                     run->dh_params);
-    return TRUE;
-  }
-
-  filename =
-    g_build_filename(g_get_home_dir(), ".infinoted", "dh.pem", NULL);
-
-  if(g_stat(filename, &st) == 0)
-  {
-    /* DH params expire every week */
-    /*if(st.st_mtime + 60 * 60 * 24 * 7 > time(NULL))*/
-      run->dh_params = infinoted_creds_read_dh_params(filename, NULL);
-  }
-
-  if(run->dh_params == NULL)
-  {
-    infinoted_util_create_dirname(filename, NULL);
-
-    infinoted_util_log_info(
-            _("Generating 2048 bit Diffie-Hellman parameters..."));
-
-    if(run->dh_params == NULL)
-    {
-      g_free(filename);
-      return FALSE;
-    }
-
-    infinoted_creds_write_dh_params(run->dh_params, filename, NULL);
-  }
-
-  g_free(filename);
-
-  gnutls_certificate_set_dh_params(run->startup->credentials, run->dh_params);
-  return TRUE;
-}
-
-/**
  * infinoted_run_start:
  * @run: A #InfinotedRun.
  *
@@ -360,17 +294,24 @@ infinoted_run_start(InfinotedRun* run)
 {
   GError* error;
   guint port;
+  gboolean result;
 
   error = NULL;
 
   /* Load DH parameters */
-  if(infinoted_run_ensure_dh_params(run, &error) == FALSE)
+  if(run->startup->credentials)
   {
-    infinoted_util_log_error(
-           _("Failed to generate Diffie-Hellman parameters: %s"),
-           error->message);
-    g_error_free(error);
-    return;
+    result = infinoted_dh_params_ensure(
+      run->startup->credentials, &run->dh_params, &error);
+
+    if(result == FALSE)
+    {
+      infinoted_util_log_error(
+             _("Failed to generate Diffie-Hellman parameters: %s"),
+             error->message);
+      g_error_free(error);
+      return;
+    }
   }
 
   /* Open server sockets, accepting incoming connections */

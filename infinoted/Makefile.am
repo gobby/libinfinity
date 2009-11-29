@@ -23,6 +23,7 @@ infinoted_0_4_LDADD = \
 infinoted_0_4_SOURCES = \
 	infinoted-autosave.c \
 	infinoted-creds.c \
+	infinoted-dh-params.c \
 	infinoted-main.c \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
@@ -35,6 +36,7 @@ infinoted_0_4_SOURCES = \
 noinst_HEADERS = \
 	infinoted-autosave.h \
 	infinoted-creds.h \
+	infinoted-dh-params.h \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-record.h \

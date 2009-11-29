@@ -62,10 +62,6 @@ infinoted_run_new(InfinotedStartup* startup,
 void
 infinoted_run_free(InfinotedRun* run);
 
-gboolean
-infinoted_run_ensure_dh_params(InfinotedRun* run,
-                               GError** error);
-
 void
 infinoted_run_start(InfinotedRun* run);
 
