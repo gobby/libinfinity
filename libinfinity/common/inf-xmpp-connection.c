@@ -122,8 +122,8 @@ struct _InfXmppConnectionPrivate {
 
   /* Transport layer security */
   gnutls_session_t session;
-  gnutls_certificate_credentials_t cred;
-  gnutls_certificate_credentials_t own_cred;
+  InfCertificateCredentials* creds;
+  /*InfCertificateCredentials* own_creds;*/
   const gchar* pull_data;
   gsize pull_len;
 
@@ -143,7 +143,6 @@ enum {
   PROP_REMOTE_HOSTNAME,
   PROP_SECURITY_POLICY,
 
-  /* gnutls_certificate_credentials_t */
   PROP_CREDENTIALS,
   /* Gsasl* */
   PROP_SASL_CONTEXT,
@@ -1150,7 +1149,7 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
   g_assert(priv->session == NULL);
 
   /* Make sure credentials are present */
-  if(priv->cred == NULL)
+  if(priv->creds == NULL)
   {
     /* We can create built-in credentials for the client side. However, the
      * server requires a certificate, and it doesn't make sense to generate
@@ -1158,9 +1157,7 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
      * XMPP connection. */
     g_assert(priv->site == INF_XMPP_CONNECTION_CLIENT);
 
-    gnutls_certificate_allocate_credentials(&priv->own_cred);
-    priv->cred = priv->own_cred;
-
+    priv->creds = inf_certificate_credentials_new();
     g_object_notify(G_OBJECT(xmpp), "credentials");
   }
 
@@ -1193,7 +1190,12 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
   gnutls_mac_set_priority(priv->session, xmpp_connection_mac_priority);
 #endif
 
-  gnutls_credentials_set(priv->session, GNUTLS_CRD_CERTIFICATE, priv->cred);
+  gnutls_credentials_set(
+    priv->session,
+    GNUTLS_CRD_CERTIFICATE,
+    inf_certificate_credentials_get(priv->creds)
+  );
+
   gnutls_dh_set_prime_bits(priv->session, xmpp_connection_dh_bits);
 
   gnutls_transport_set_ptr(priv->session, xmpp);
@@ -3069,8 +3071,7 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->buf = NULL;
 
   priv->session = NULL;
-  priv->cred = NULL;
-  priv->own_cred = NULL;
+  priv->creds = NULL;
   priv->pull_data = NULL;
   priv->pull_len = 0;
 
@@ -3114,7 +3115,7 @@ inf_xmpp_connection_constructor(GType type,
   g_assert(
     priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
     priv->site == INF_XMPP_CONNECTION_CLIENT ||
-    priv->cred != NULL
+    priv->creds != NULL
   );
 
   return obj;
@@ -3138,11 +3139,10 @@ inf_xmpp_connection_dispose(GObject* object)
     priv->sasl_context = NULL;
   }
 
-  if(priv->own_cred != NULL)
+  if(priv->creds != NULL)
   {
-    gnutls_certificate_free_credentials(priv->own_cred);
-    priv->own_cred = NULL;
-    priv->cred = NULL;
+    inf_certificate_credentials_unref(priv->creds);
+    priv->creds = NULL;
   }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -3223,13 +3223,9 @@ inf_xmpp_connection_set_property(GObject* object,
     /* Cannot change credentials when currently in use */
     g_assert(priv->session == NULL);
 
-    if(priv->own_cred != NULL)
-    {
-      gnutls_certificate_free_credentials(priv->own_cred);
-      priv->own_cred = NULL;
-    }
-
-    priv->cred = g_value_get_pointer(value);
+    if(priv->creds != NULL) inf_certificate_credentials_unref(priv->creds);
+    priv->creds = g_value_dup_boxed(value);
+ 
     break;
   case PROP_SASL_CONTEXT:
     /* Cannot change context when currently in use */
@@ -3286,7 +3282,7 @@ inf_xmpp_connection_get_property(GObject* object,
     g_value_set_enum(value, priv->security_policy);
     break;
   case PROP_CREDENTIALS:
-    g_value_set_pointer(value, priv->cred);
+    g_value_set_boxed(value, priv->creds);
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, priv->sasl_context);
@@ -3528,10 +3524,11 @@ inf_xmpp_connection_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_CREDENTIALS,
-    g_param_spec_pointer(
+    g_param_spec_boxed(
       "credentials",
       "Credentials",
       "The certificate credentials for GnuTLS",
+      INF_TYPE_CERTIFICATE_CREDENTIALS,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -3703,7 +3700,7 @@ inf_xmpp_connection_get_type(void)
  * @remote_hostname: The hostname of the remote host.
  * @security_policy: Whether to use (or offer, as a server) TLS. See
  * #InfXmppConnectionSecurityPolicy for the meaning of this parameter.
- * @cred: Certificate credentials used to secure the communication.
+ * @creds: Certificate credentials used to secure the communication.
  * @sasl_context: A SASL context used for authentication.
  * @sasl_mechanisms: A whitespace-separated list of SASL mechanisms to
  * accept/offer, or %NULL.
@@ -3720,11 +3717,11 @@ inf_xmpp_connection_get_type(void)
  * @tcp, or a DNS name such as "example.com". @local_hostname can be %NULL
  * in which case the host name as reported by g_get_host_name() is used.
  *
- * @cred may be %NULL in which case the connection creates the credentials
+ * @creds may be %NULL in which case the connection creates the credentials
  * as soon as they are required. However, this only works if
  * @site is %INF_XMPP_CONNECTION_CLIENT or @security_policy is
  * %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED (or both, of course). For
- * server connections @cred must contain a valid server certificate in case
+ * server connections @creds must contain a valid server certificate in case
  * @security_policy is not %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED.
  *
  * If @sasl_context is %NULL, #InfXmppConnection uses a built-in context
@@ -3748,7 +3745,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         const gchar* local_hostname,
                         const gchar* remote_hostname,
                         InfXmppConnectionSecurityPolicy security_policy,
-                        gnutls_certificate_credentials_t cred,
+                        InfCertificateCredentials* creds,
                         Gsasl* sasl_context,
                         const gchar* sasl_mechanisms)
 {
@@ -3758,7 +3755,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
 
   g_return_val_if_fail(
     security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
-    site == INF_XMPP_CONNECTION_CLIENT || cred != NULL,
+    site == INF_XMPP_CONNECTION_CLIENT || creds != NULL,
     NULL
   );
 
@@ -3769,7 +3766,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
     "local-hostname", local_hostname,
     "remote-hostname", remote_hostname,
     "security-policy", security_policy,
-    "credentials", cred,
+    "credentials", creds,
     "sasl-context", sasl_context,
     "sasl-mechanisms", sasl_mechanisms,
     NULL

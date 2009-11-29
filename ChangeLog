@@ -1,5 +1,27 @@
 2009-11-29  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-certificate-credentials.h:
+	* libinfinity/common/inf-certificate-credentials.c:
+	* libinfinity/common/Makefile.am: Added a wrapper for
+	gnutls_certificate_credentials_t which does reference counting.
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/common/inf-discovery-avahi.h:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c: Use InfCertificateCredentials
+	instead of gnutls_certificate_credentials_t.
+
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-creds.c:
+	* infinoted/infinoted-dh-params.h:
+	* infinoted/infinoted-dh-params.c:
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c: Adapt to the changed API.
+
+2009-11-29  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-util.h: Added a TODO comment about moving the
 	logging functions to an extra file.
 

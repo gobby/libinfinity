@@ -20,13 +20,15 @@
 #ifndef __INFINOTED_DH_PARAMS_H__
 #define __INFINOTED_DH_PARAMS_H__
 
+#include <libinfinity/common/inf-certificate-credentials.h>
+
 #include <gnutls/gnutls.h>
 #include <glib.h>
 
 G_BEGIN_DECLS
 
 gboolean
-infinoted_dh_params_ensure(gnutls_certificate_credentials_t creds,
+infinoted_dh_params_ensure(InfCertificateCredentials* creds,
                            gnutls_dh_params_t* dh_params,
                            GError** error);
 

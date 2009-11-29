@@ -281,7 +281,7 @@ void
 infinoted_startup_free(InfinotedStartup* startup)
 {
   if(startup->credentials != NULL)
-    gnutls_certificate_free_credentials(startup->credentials);
+    inf_certificate_credentials_unref(startup->credentials);
 
   if(startup->certificates != NULL)
   {

@@ -17,35 +17,42 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFINOTED_STARTUP_H__
-#define __INFINOTED_STARTUP_H__
+#ifndef __INF_CERTIFICATE_CREDENTIALS_H__
+#define __INF_CERTIFICATE_CREDENTIALS_H__
 
-#include <infinoted/infinoted-options.h>
-#include <libinfinity/common/inf-certificate-credentials.h>
+#include <gnutls/gnutls.h>
 
-#include <glib.h>
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
-typedef struct _InfinotedStartup InfinotedStartup;
-struct _InfinotedStartup {
-  InfinotedOptions* options;
-  gnutls_x509_privkey_t private_key;
-  gnutls_x509_crt_t* certificates;
-  guint n_certificates;
-  InfCertificateCredentials* credentials;
-};
+#define INF_TYPE_CERTIFICATE_CREDENTIALS                (inf_certificate_credentials_get_type())
 
-InfinotedStartup*
-infinoted_startup_new(int* argc,
-                      char*** argv,
-                      GError** error);
+/**
+ * InfCertificateCredentials:
+ *
+ * #InfCertificateCredentials is an opaque data type. You should only access
+ * it via the public API functions.
+ */
+typedef struct _InfCertificateCredentials InfCertificateCredentials;
+
+GType
+inf_certificate_credentials_get_type(void) G_GNUC_CONST;
+
+InfCertificateCredentials*
+inf_certificate_credentials_new(void);
+
+InfCertificateCredentials*
+inf_certificate_credentials_ref(InfCertificateCredentials* creds);
 
 void
-infinoted_startup_free(InfinotedStartup* startup);
+inf_certificate_credentials_unref(InfCertificateCredentials* creds);
+
+gnutls_certificate_credentials_t
+inf_certificate_credentials_get(InfCertificateCredentials* creds);
 
 G_END_DECLS
 
-#endif /* __INFINOTED_STARTUP_H__ */
+#endif /* __INF_CERTIFICATE_CREDENTIALS_H__ */
 
 /* vim:set et sw=2 ts=2: */

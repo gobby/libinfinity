@@ -22,6 +22,7 @@
 
 #include <libinfinity/server/infd-tcp-server.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
+#include <libinfinity/common/inf-certificate-credentials.h>
 
 #include <gnutls/gnutls.h>
 #include <gsasl.h>
@@ -58,7 +59,7 @@ infd_xmpp_server_get_type(void) G_GNUC_CONST;
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      InfXmppConnectionSecurityPolicy policy,
-                     gnutls_certificate_credentials_t cred,
+                     InfCertificateCredentials* creds,
                      Gsasl* sasl_context,
                      const gchar* sasl_mechanisms);
 

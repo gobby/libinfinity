@@ -27,7 +27,7 @@
 
 /**
  * infinoted_dh_params_ensure:
- * @credentials: A #gnutls_certificate_credentials_t structure.
+ * @credentials: A #InfCertificateCredentials.
  * @dh_params: A pointer to a gnutils_dh_params_t structure.
  * @error: Location to store error information, if any.
  *
@@ -42,16 +42,18 @@
  * Returns: %TRUE on success or %FALSE on error.
  */
 gboolean
-infinoted_dh_params_ensure(gnutls_certificate_credentials_t credentials,
+infinoted_dh_params_ensure(InfCertificateCredentials* credentials,
                            gnutls_dh_params_t* dh_params,
                            GError** error)
 {
+  gnutls_certificate_credentials_t creds;
   gchar* filename;
   struct stat st;
 
+  creds = inf_certificate_credentials_get(credentials);
   if(*dh_params != NULL)
   {
-    gnutls_certificate_set_dh_params(credentials, *dh_params);
+    gnutls_certificate_set_dh_params(creds, *dh_params);
     return TRUE;
   }
 
@@ -85,7 +87,7 @@ infinoted_dh_params_ensure(gnutls_certificate_credentials_t credentials,
 
   g_free(filename);
 
-  gnutls_certificate_set_dh_params(credentials, *dh_params);
+  gnutls_certificate_set_dh_params(creds, *dh_params);
   return TRUE;
 }
 

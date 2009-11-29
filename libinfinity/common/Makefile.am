@@ -11,6 +11,7 @@ libinfinity_common_ladir = \
 libinfinity_common_la_SOURCES = \
 	inf-buffer.c \
 	inf-certificate-chain.c \
+	inf-certificate-credentials.c \
 	inf-cert-util.c \
 	inf-chat-buffer.c \
 	inf-chat-session.c \
@@ -35,6 +36,7 @@ libinfinity_common_la_SOURCES = \
 libinfinity_common_la_HEADERS = \
 	inf-buffer.h \
 	inf-certificate-chain.h \
+	inf-certificate-credentials.h \
 	inf-cert-util.h \
 	inf-chat-buffer.h \
 	inf-chat-session.h \

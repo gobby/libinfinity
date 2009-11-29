@@ -378,28 +378,25 @@ infinoted_creds_create_self_signed_certificate(gnutls_x509_privkey_t key,
  * @n_certs: Number of certificates in @certs.
  * @error: Location to store error information, if any.
  *
- * Creates a new #gnutls_certificate_credentials_t struture suitable for
+ * Creates a new #InfCertificateCredentials struture suitable for
  * TLS. You still need to set the DH params to be used for key exchange via
  * gnutls_certificate_set_dh_params().
  *
- * Return Value: A #gnutls_certificate_credentials_t, to be freed
- * with gnutls_certificate_free_credentials().
+ * Return Value: A #InfCertificateCredentials, to be freed
+ * with inf_certificate_credentials_unref().
  **/
-gnutls_certificate_credentials_t
+InfCertificateCredentials*
 infinoted_creds_create_credentials(gnutls_x509_privkey_t key,
                                    gnutls_x509_crt_t* certs,
                                    guint n_certs,
                                    GError** error)
 {
+  InfCertificateCredentials* credentials;
   gnutls_certificate_credentials_t creds;
   int res;
 
-  res = gnutls_certificate_allocate_credentials(&creds);
-  if(res != 0)
-  {
-    infinoted_creds_gnutls_error(res, error);
-    return NULL;
-  }
+  credentials = inf_certificate_credentials_new();
+  creds = inf_certificate_credentials_get(credentials);
 
   res = gnutls_certificate_set_x509_key(creds, certs, n_certs, key);
   if(res != 0)
@@ -410,7 +407,7 @@ infinoted_creds_create_credentials(gnutls_x509_privkey_t key,
   }
 
   /*gnutls_certificate_set_dh_params(creds, dh_params);*/
-  return creds;
+  return credentials;
 }
 
 /* vim:set et sw=2 ts=2: */

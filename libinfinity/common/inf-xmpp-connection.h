@@ -22,6 +22,7 @@
 
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-certificate-chain.h>
+#include <libinfinity/common/inf-certificate-credentials.h>
 
 #include <gnutls/gnutls.h>
 #include <gsasl.h>
@@ -153,7 +154,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         const gchar* local_hostname,
                         const gchar* remote_hostname,
                         InfXmppConnectionSecurityPolicy security_policy,
-                        gnutls_certificate_credentials_t cred,
+                        InfCertificateCredentials* creds,
                         Gsasl* sasl_context,
                         const gchar* sasl_mechanisms);
 

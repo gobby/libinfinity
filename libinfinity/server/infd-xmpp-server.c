@@ -35,7 +35,7 @@ struct _InfdXmppServerPrivate {
   gchar* local_hostname;
   InfXmppConnectionSecurityPolicy security_policy;
 
-  gnutls_certificate_credentials_t tls_creds;
+  InfCertificateCredentials* tls_creds;
 
   Gsasl* sasl_context;
   Gsasl* sasl_own_context;
@@ -348,7 +348,16 @@ infd_xmpp_server_dispose(GObject* object)
     infd_xml_server_close(INFD_XML_SERVER(xmpp));
 
   if(priv->tcp != NULL)
+  {
     g_object_unref(G_OBJECT(priv->tcp));
+    priv->tcp = NULL;
+  }
+
+  if(priv->tls_creds != NULL)
+  {
+    inf_certificate_credentials_unref(priv->tls_creds);
+    priv->tls_creds = NULL;
+  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -400,7 +409,9 @@ infd_xmpp_server_set_property(GObject* object,
       priv->local_hostname = g_strdup(g_get_host_name());
     break;
   case PROP_CREDENTIALS:
-    priv->tls_creds = g_value_get_pointer(value);
+    if(priv->tls_creds != NULL)
+      inf_certificate_credentials_unref(priv->tls_creds);
+    priv->tls_creds = g_value_dup_boxed(value);
     break;
   case PROP_SASL_CONTEXT:
     /* TODO: Make sure that the Gsasl context is no longer in use by a XMPP
@@ -462,7 +473,7 @@ infd_xmpp_server_get_property(GObject* object,
     g_value_set_string(value, priv->local_hostname);
     break;
   case PROP_CREDENTIALS:
-    g_value_set_pointer(value, priv->tls_creds);
+    g_value_set_boxed(value, priv->tls_creds);
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, priv->sasl_context);
@@ -548,10 +559,11 @@ infd_xmpp_server_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_CREDENTIALS,
-    g_param_spec_pointer(
+    g_param_spec_boxed(
       "credentials",
       "Credentials",
       "The certificate credentials for GnuTLS",
+      INF_TYPE_CERTIFICATE_CREDENTIALS,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -664,7 +676,7 @@ infd_xmpp_server_get_type(void)
  * infd_xmpp_server_new:
  * @tcp: A #InfdTcpServer.
  * @policy: The initial security policy.
- * @cred: Certificate credentials used to secure any communication.
+ * @creds: Certificate credentials used to secure any communication.
  * @sasl_context: A SASL context used for authentication.
  * @sasl_mechanisms: A whitespace-sparated list of SASL mechanisms.
  *
@@ -675,8 +687,8 @@ infd_xmpp_server_get_type(void)
  * resulting connection will be in status OPENING until authentication has
  * completed.
  *
- * If @policy is %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED, then @cred may
- * be %NULL. If @cred is non-%NULL nevertheless, then it is possible to change
+ * If @policy is %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED, then @creds may
+ * be %NULL. If @creds is non-%NULL nevertheless, then it is possible to change
  * the security policy later using infd_xmpp_server_set_security_policy().
  *
  * If @sasl_context is %NULL, the server uses a built-in context that only
@@ -690,7 +702,7 @@ infd_xmpp_server_get_type(void)
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      InfXmppConnectionSecurityPolicy policy,
-                     gnutls_certificate_credentials_t cred,
+                     InfCertificateCredentials* creds,
                      Gsasl* sasl_context,
                      const gchar* sasl_mechanisms)
 {
@@ -699,7 +711,7 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
   g_return_val_if_fail(INFD_IS_TCP_SERVER(tcp), NULL);
 
   g_return_val_if_fail(
-    policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED || cred != NULL,
+    policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED || creds != NULL,
     NULL
   );
 
@@ -707,7 +719,7 @@ infd_xmpp_server_new(InfdTcpServer* tcp,
     INFD_TYPE_XMPP_SERVER,
     "tcp-server", tcp,
     "security-policy", policy,
-    "credentials", cred,
+    "credentials", creds,
     "sasl-context", sasl_context,
     "sasl-mechanisms", sasl_mechanisms,
     NULL

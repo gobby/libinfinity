@@ -113,7 +113,7 @@ struct _InfDiscoveryAvahiPrivate {
   InfIo* io;
   InfXmppManager* xmpp_manager;
   InfXmppConnectionSecurityPolicy security_policy;
-  gnutls_certificate_credentials_t creds;
+  InfCertificateCredentials* creds;
   Gsasl* sasl_context;
   gchar* sasl_mechanisms;
 
@@ -1141,6 +1141,12 @@ inf_discovery_avahi_dispose(GObject* object)
     priv->xmpp_manager = NULL;
   }
 
+  if(priv->creds != NULL)
+  {
+    inf_certificate_credentials_unref(priv->creds);
+    priv->creds = NULL;
+  }
+
   if(priv->io != NULL)
   {
     g_object_unref(G_OBJECT(priv->io));
@@ -1188,8 +1194,8 @@ inf_discovery_avahi_set_property(GObject* object,
     break;
   case PROP_CREDENTIALS:
     g_assert(priv->creds == NULL); /* construct only */
-    priv->creds =
-      (gnutls_certificate_credentials_t)g_value_get_pointer(value);
+    if(priv->creds != NULL) inf_certificate_credentials_unref(priv->creds);
+    priv->creds = (InfCertificateCredentials*)g_value_dup_boxed(value);
     break;
   case PROP_SASL_CONTEXT:
     g_assert(priv->sasl_context == NULL); /* construct only */
@@ -1229,7 +1235,7 @@ inf_discovery_avahi_get_property(GObject* object,
     g_value_set_object(value, G_OBJECT(priv->xmpp_manager));
     break;
   case PROP_CREDENTIALS:
-    g_value_set_pointer(value, (gpointer)priv->creds);
+    g_value_set_boxed(value, priv->creds);
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_pointer(value, (gpointer)priv->sasl_context);
@@ -1483,10 +1489,11 @@ inf_discovery_avahi_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_CREDENTIALS,
-    g_param_spec_pointer(
+    g_param_spec_boxed(
       "credentials",
       "Certificate credentials",
       "The GnuTLS certificate credentials used for encrypting XMPP streams",
+      INF_TYPE_CERTIFICATE_CREDENTIALS,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1632,6 +1639,10 @@ inf_discovery_avahi_get_type(void)
  * These may be %NULL in which case #InfXmppConnection uses builtin
  * credentials or a builtin context, respectively.
  *
+ * If this #InfDiscoveryAvahi is not used to discover services but only to
+ * publish any, then @creds, @sasl_context and @sasl_mechanisms are ignored
+ * and can safely set to be %NULL.
+ *
  * @sasl_mechanisms specifies allowed mechanisms used for authentication with
  * the server. It can be %NULL, in which case all available mechanisms are
  * accepted.
@@ -1641,7 +1652,7 @@ inf_discovery_avahi_get_type(void)
 InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,
                         InfXmppManager* manager,
-                        gnutls_certificate_credentials_t creds,
+                        InfCertificateCredentials* creds,
                         Gsasl* sasl_context,
                         const gchar* sasl_mechanisms)
 {

@@ -21,6 +21,7 @@
 #define __INF_DISCOVERY_AVAHI_H__
 
 #include <libinfinity/common/inf-xmpp-manager.h>
+#include <libinfinity/common/inf-certificate-credentials.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-config.h> /* For LIBINFINITY_HAVE_AVAHI */
 
@@ -69,7 +70,7 @@ inf_discovery_avahi_get_type(void) G_GNUC_CONST;
 InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,
                         InfXmppManager* manager,
-                        gnutls_certificate_credentials_t creds,
+                        InfCertificateCredentials* creds,
                         Gsasl* sasl_context,
                         const gchar* sasl_mechanisms);
 

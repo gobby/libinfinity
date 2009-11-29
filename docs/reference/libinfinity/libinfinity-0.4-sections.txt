@@ -951,6 +951,19 @@ INF_TYPE_CERTIFICATE_CHAIN
 </SECTION>
 
 <SECTION>
+<FILE>inf-certificate-credentials</FILE>
+<TITLE>InfCertificateCredentials</TITLE>
+InfCertificateCredentials
+inf_certificate_credentials_new
+inf_certificate_credentials_ref
+inf_certificate_credentials_unref
+inf_certificate_credentials_get
+<SUBSECTION Standard>
+inf_certificate_credentials_get_type
+INF_TYPE_CERTIFICATE_CREDENTIALS
+</SECTION>
+
+<SECTION>
 <FILE>inf-cert-util</FILE>
 <TITLE>InfCertUtil</TITLE>
 inf_cert_util_load_file
