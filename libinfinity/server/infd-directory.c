@@ -3776,7 +3776,7 @@ infd_directory_class_init(gpointer g_class,
       "Storage backend",
       "The storage backend to use",
       INFD_TYPE_STORAGE,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 

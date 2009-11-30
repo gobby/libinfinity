@@ -1193,12 +1193,10 @@ inf_discovery_avahi_set_property(GObject* object,
     priv->xmpp_manager = INF_XMPP_MANAGER(g_value_dup_object(value));
     break;
   case PROP_CREDENTIALS:
-    g_assert(priv->creds == NULL); /* construct only */
     if(priv->creds != NULL) inf_certificate_credentials_unref(priv->creds);
     priv->creds = (InfCertificateCredentials*)g_value_dup_boxed(value);
     break;
   case PROP_SASL_CONTEXT:
-    g_assert(priv->sasl_context == NULL); /* construct only */
     priv->sasl_context = (Gsasl*)g_value_get_pointer(value);
     break;
   case PROP_SASL_MECHANISMS:
@@ -1269,7 +1267,7 @@ inf_discovery_avahi_discover(InfDiscovery* discovery,
   if(info == NULL)
   {
     info = g_slice_new(InfDiscoveryAvahiDiscoverInfo);
-    
+
     info->type = g_strdup(type);
     info->service_browser = NULL;
     info->discovered = NULL;
@@ -1342,7 +1340,7 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
         inf_discovery_avahi_service_resolver_callback,
         discovery
       );
-      
+
       if(info->service_resolver == NULL)
       {
         error = NULL;
@@ -1400,7 +1398,7 @@ inf_discovery_avahi_publish(InfLocalPublisher* publisher,
 {
   InfDiscoveryAvahiPrivate* priv;
   InfLocalPublisherItem* item;
-  
+
   priv = INF_DISCOVERY_AVAHI_PRIVATE(publisher);
   item = g_slice_new(InfLocalPublisherItem);
 
@@ -1494,7 +1492,7 @@ inf_discovery_avahi_class_init(gpointer g_class,
       "Certificate credentials",
       "The GnuTLS certificate credentials used for encrypting XMPP streams",
       INF_TYPE_CERTIFICATE_CREDENTIALS,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -1505,7 +1503,7 @@ inf_discovery_avahi_class_init(gpointer g_class,
       "sasl-context",
       "SASL context",
       "The Gsasl context used for authentication",
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -1517,7 +1515,7 @@ inf_discovery_avahi_class_init(gpointer g_class,
       "SASL mechanisms",
       "The accepted SASL mechanisms for authentication",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
