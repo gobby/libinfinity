@@ -45,6 +45,7 @@ struct _InfdNotePlugin {
 
   InfSession*(*session_new)(InfIo* io,
                             InfCommunicationManager* manager,
+                            InfSessionStatus status,
                             InfCommunicationHostedGroup* sync_group,
                             InfXmlConnection* sync_connection,
                             gpointer user_data);

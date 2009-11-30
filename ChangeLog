@@ -1,5 +1,32 @@
 2009-11-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Added INF_SESSION_PRESYNC status,
+	and the inf_session_synchronize_from() function. Require setting
+	status at construction.
+
+	* libinfinity/common/inf-chat-session.h:
+	* libinfinity/common/inf-chat-session.c (inf_chat_session_new): Added
+	status parameter.
+
+	* libinfinity/server/infd-note-plugin.h:
+	* libinfinity/client/infc-note-plugin.h: Added a status parameter to
+	the session_new function.
+
+	* libinftext/inf-text-session.h:
+	* libinftext/inf-text-session.c: Added a status parameter to
+	inf_text_session_new() and inf_text_session_new_with_user_table().
+
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/client/infc-browser.c:
+	* libinftext/inf-text-session.c:
+	* test/inf-test-gtk-browser.c:
+	* test/inf-test-text-replay.c:
+	* test/inf-test-text-session.c: Adapt to the API change.
+
+2009-11-30  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-autosave.c (infinoted_autosave_remove_session):
 	Disconnect from the notify::modified signal handler, preventing a
 	crash when the autosaver is disabled at runtime.

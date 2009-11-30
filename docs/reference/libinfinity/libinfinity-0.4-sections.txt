@@ -414,6 +414,7 @@ inf_session_get_user_table
 inf_session_get_status
 inf_session_add_user
 inf_session_set_user_status
+inf_session_synchronize_from
 inf_session_synchronize_to
 inf_session_get_synchronization_status
 inf_session_get_synchronization_progress

@@ -808,11 +808,11 @@ inf_text_session_constructor(GType type,
    * empty (we will fill it during synchronization). Text handlers are
    * connected when synchronization is complete. */
   g_assert(
-    status != INF_SESSION_SYNCHRONIZING ||
+    status == INF_SESSION_RUNNING ||
     inf_text_buffer_get_length(buffer) == 0
   );
 
-  if(status != INF_SESSION_SYNCHRONIZING)
+  if(status == INF_SESSION_RUNNING)
     inf_text_session_init_text_handlers(session);
 
   return object;
@@ -1910,19 +1910,21 @@ inf_text_session_get_type(void)
  * @manager: A #InfCommunicationManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
- * @sync_group: A group in which the session is synchronized, or %NULL.
+ * @status: The initial status of the session.
+ * @sync_group: A group in which the session is synchronized. Ignored if
+ * @status is %INF_SESSION_RUNNING.
  * @sync_connection: A connection to synchronize the session from. Ignored if
- * @sync_group is %NULL.
+ * @status is %INF_SESSION_RUNNING.
  *
  * Creates a new #InfTextSession. The communication manager is used to send
  * and receive requests from subscription and synchronization. @buffer will be
  * set to be initially empty if the session is initially synchronized
  * (see below). @io is required to trigger timeouts.
  *
- * If @sync_group is not %NULL, the session will initially be sychronized,
- * meaning the initial content is retrieved from @sync_connection. If you are
- * subscribed to the session, set the subscription group via
- * inf_session_set_subscription_group().
+ * If @status is %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING, then the
+ * session will initially be sychronized, meaning the initial content is
+ * retrieved from @sync_connection. If you are subscribed to the session, set
+ * the subscription group via inf_session_set_subscription_group().
  *
  * Return Value: A new #InfTextSession.
  **/
@@ -1930,6 +1932,7 @@ InfTextSession*
 inf_text_session_new(InfCommunicationManager* manager,
                      InfTextBuffer* buffer,
                      InfIo* io,
+                     InfSessionStatus status,
                      InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection)
 {
@@ -1940,8 +1943,10 @@ inf_text_session_new(InfCommunicationManager* manager,
   g_return_val_if_fail(INF_IS_IO(io), NULL);
 
   g_return_val_if_fail(
-    sync_group == NULL || 
-    (INF_COMMUNICATION_IS_GROUP(sync_group) &&
+    (status == INF_SESSION_RUNNING &&
+     sync_group == NULL && sync_connection == NULL) ||
+    (status != INF_SESSION_RUNNING &&
+     INF_COMMUNICATION_IS_GROUP(sync_group) &&
      INF_IS_XML_CONNECTION(sync_connection)),
     NULL
   );
@@ -1950,6 +1955,7 @@ inf_text_session_new(InfCommunicationManager* manager,
     INF_TEXT_TYPE_SESSION,
     "communication-manager", manager,
     "buffer", buffer,
+    "status", status,
     "sync-group", sync_group,
     "sync-connection", sync_connection,
     "io", io,
@@ -1965,19 +1971,21 @@ inf_text_session_new(InfCommunicationManager* manager,
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
  * @user_table: A #InfUserTable.
- * @sync_group: A group in which the session is synchronized, or %NULL.
+ * @status: The initial status for the session.
+ * @sync_group: A group in which the session is synchronized. Ignored if
+ * @status is %INF_SESSION_RUNNING.
  * @sync_connection: A connection to synchronize the session from. Ignored if
- * @sync_group is %NULL.
+ * @status is %INF_SESSION_RUNNING.
  *
  * Creates a new #InfTextSession. The connection manager is used to send and
  * receive requests from subscription and synchronization. @buffer will be
  * set to be initially empty if the session is initially synchronized
  * (see below). @io is required to trigger timeouts.
  *
- * If @sync_group is not %NULL, the session will initially be sychronized,
- * meaning the initial content is retrieved from @sync_connection. If you are
- * subscribed to the session, set the subscription group via
- * inf_session_set_subscription_group().
+ * If @status is %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING, then the
+ * session will initially be sychronized, meaning the initial content is
+ * retrieved from @sync_connection. If you are subscribed to the session, set
+ * the subscription group via inf_session_set_subscription_group().
  *
  * @user_table is used as an initial user table. The user table should only
  * contain unavailable users, if any, that may rejoin during the session. If
@@ -1992,9 +2000,13 @@ inf_text_session_new_with_user_table(InfCommunicationManager* manager,
                                      InfTextBuffer* buffer,
                                      InfIo* io,
                                      InfUserTable* user_table,
+                                     InfSessionStatus status,
                                      InfCommunicationGroup* sync_group,
                                      InfXmlConnection* sync_connection)
 {
+  /* TODO: Can it happen that the user_table is set explicitely PLUS the
+   * session is synchronized? If not then this function can be simplified */
+
   GObject* object;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(manager), NULL);
@@ -2003,8 +2015,10 @@ inf_text_session_new_with_user_table(InfCommunicationManager* manager,
   g_return_val_if_fail(INF_IS_USER_TABLE(user_table), NULL);
 
   g_return_val_if_fail(
-    sync_group == NULL ||
-    (INF_COMMUNICATION_IS_GROUP(sync_group) &&
+    (status == INF_SESSION_RUNNING &&
+     sync_group == NULL && sync_connection == NULL) ||
+    (status != INF_SESSION_RUNNING &&
+     INF_COMMUNICATION_IS_GROUP(sync_group) &&
      INF_IS_XML_CONNECTION(sync_connection)),
     NULL
   );
@@ -2014,6 +2028,7 @@ inf_text_session_new_with_user_table(InfCommunicationManager* manager,
     "communication-manager", manager,
     "buffer", buffer,
     "user-table", user_table,
+    "status", status,
     "sync-group", sync_group,
     "sync-connection", sync_connection,
     "io", io,

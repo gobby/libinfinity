@@ -100,6 +100,7 @@ perform_single_test(InfTextChunk* initial,
     buffer,
     io,
     user_table,
+    INF_SESSION_RUNNING,
     NULL,
     NULL
   );

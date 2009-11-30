@@ -1782,6 +1782,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
     session = node->shared.known.plugin->session_new(
       priv->io,
       priv->communication_manager,
+      INF_SESSION_SYNCHRONIZING,
       group,
       connection,
       node->shared.known.plugin->user_data
@@ -1792,6 +1793,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
     session = node->shared.known.plugin->session_new(
       priv->io,
       priv->communication_manager,
+      INF_SESSION_RUNNING,
       NULL,
       NULL,
       node->shared.known.plugin->user_data
@@ -2860,6 +2862,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
       session = inf_chat_session_new(
         priv->communication_manager,
         256,
+        INF_SESSION_SYNCHRONIZING,
         INF_COMMUNICATION_GROUP(subreq->shared.chat.subscription_group),
         connection
       );

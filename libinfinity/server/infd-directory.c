@@ -503,9 +503,10 @@ infd_directory_create_session_proxy_for_node(InfdDirectory* directory,
 static InfdSessionProxy*
 infd_directory_create_session_proxy(InfdDirectory* directory,
                                     const InfdNotePlugin* plugin,
+                                    InfSessionStatus status,
                                     InfCommunicationHostedGroup* sync_g,
-                                    InfCommunicationHostedGroup* sub_g,
-                                    InfXmlConnection* sync_conn)
+                                    InfXmlConnection* sync_conn,
+                                    InfCommunicationHostedGroup* sub_g)
 {
   InfdDirectoryPrivate* priv;
   InfSession* session;
@@ -518,6 +519,7 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
   session = plugin->session_new(
     priv->io,
     priv->communication_manager,
+    status,
     sync_g,
     sync_conn,
     plugin->user_data
@@ -561,7 +563,7 @@ infd_directory_create_session_proxy_for_storage(
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   proxy = infd_directory_create_session_proxy(
-    directory, plugin, NULL, group, NULL);
+    directory, plugin, INF_SESSION_RUNNING, NULL, NULL, group);
   session = infd_session_proxy_get_session(proxy);
 
   /* Save session initially */
@@ -1328,6 +1330,9 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
 
+  g_assert(sync_conn != NULL);
+  g_assert(synchronization_group != NULL);
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   sync_in = g_slice_new(InfdDirectorySyncIn);
@@ -1341,9 +1346,10 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->proxy = infd_directory_create_session_proxy(
     directory,
     plugin,
+    INF_SESSION_SYNCHRONIZING,
     synchronization_group,
-    subscription_group,
-    sync_conn
+    sync_conn,
+    subscription_group
   );
 
   g_signal_connect(
@@ -3114,9 +3120,10 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       proxy = infd_directory_create_session_proxy(
         directory,
         request->shared.sync_in.plugin,
+        INF_SESSION_SYNCHRONIZING,
         request->shared.sync_in.synchronization_group,
-        request->shared.sync_in.subscription_group,
-        connection
+        connection,
+        request->shared.sync_in.subscription_group
       );
     }
 
@@ -4810,6 +4817,7 @@ infd_directory_enable_chat(InfdDirectory* directory,
       session = inf_chat_session_new(
         priv->communication_manager,
         256,
+        INF_SESSION_RUNNING,
         NULL,
         NULL
       );

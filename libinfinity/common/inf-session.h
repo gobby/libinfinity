@@ -47,6 +47,11 @@ typedef struct _InfSessionClass InfSessionClass;
 
 /**
  * InfSessionStatus:
+ * @INF_SESSION_PRESYNC: The session is scheduled to be synchronized from a
+ * remote host. This can be useful if the session is needed to be present
+ * before the actual synchronization begins. Use
+ * inf_session_synchronize_from() to switch to
+ * %INF_SESSION_SYNCHRONIZING.
  * @INF_SESSION_SYNCHRONIZING: The session is currently being synchronized
  * from a remote host. When done synchronizing, it will enter into
  * %INF_SESSION_RUNNING state.
@@ -61,6 +66,7 @@ typedef struct _InfSessionClass InfSessionClass;
  * #InfSessionStatus defines in what state a session is in.
  */
 typedef enum _InfSessionStatus {
+  INF_SESSION_PRESYNC,
   INF_SESSION_SYNCHRONIZING,
   INF_SESSION_RUNNING,
   INF_SESSION_CLOSED
@@ -86,6 +92,9 @@ typedef enum _InfSessionSyncStatus {
 
 /**
  * InfSessionSyncError:
+ * @INF_SESSION_SYNC_ERROR_GOT_MESSAGE_IN_PRESYNC: Received a message
+ * in state %INF_SESSION_PRESYNC. It is not processed because
+ * inf_session_synchronize_from() was not yet called.
  * @INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE: A message has been received that
  * was not understood.
  * @INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT: An ID was not provided for a user
@@ -120,6 +129,7 @@ typedef enum _InfSessionSyncStatus {
  * Additional errors may occur depending on the session type.
  */
 typedef enum _InfSessionSyncError {
+  INF_SESSION_SYNC_ERROR_GOT_MESSAGE_IN_PRESYNC,
   INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
   INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT,
   INF_SESSION_SYNC_ERROR_ID_IN_USE,
@@ -295,6 +305,9 @@ void
 inf_session_set_user_status(InfSession* session,
                             InfUser* user,
                             InfUserStatus status);
+
+void
+inf_session_synchronize_from(InfSession* session);
 
 void
 inf_session_synchronize_to(InfSession* session,

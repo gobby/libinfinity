@@ -91,6 +91,13 @@ struct _InfSessionPrivate {
   InfCommunicationGroup* subscription_group;
 
   union {
+    /* INF_SESSION_PRESYNC */
+    struct {
+      InfCommunicationGroup* group;
+      InfXmlConnection* conn;
+      gboolean closing;
+    } presync;
+
     /* INF_SESSION_SYNCHRONIZING */
     struct {
       InfCommunicationGroup* group;
@@ -121,13 +128,13 @@ enum {
   PROP_BUFFER,
   PROP_USER_TABLE,
 
-  PROP_SUBSCRIPTION_GROUP, /* read/write */
+  PROP_STATUS,
 
-  /* initial sync, construct/only */
   PROP_SYNC_CONNECTION,
   PROP_SYNC_GROUP,
 
-  PROP_STATUS
+  /* read/write */
+  PROP_SUBSCRIPTION_GROUP
 };
 
 enum {
@@ -155,6 +162,8 @@ inf_session_sync_strerror(InfSessionSyncError errcode)
 {
   switch(errcode)
   {
+  case INF_SESSION_SYNC_ERROR_GOT_MESSAGE_IN_PRESYNC:
+    return _("Unexpectedly got an XML message in presync");
   case INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE:
     return _("Got unexpected XML node during synchronization");
   case INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT:
@@ -256,30 +265,16 @@ inf_session_release_connection(InfSession* session,
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
+    g_assert(priv->shared.presync.conn == connection);
+    g_assert(priv->shared.presync.group != NULL);
+    g_object_unref(priv->shared.presync.group);
+    priv->shared.presync.conn = NULL;
+    priv->shared.presync.group = NULL;
+    break;
   case INF_SESSION_SYNCHRONIZING:
     g_assert(priv->shared.sync.conn == connection);
     g_assert(priv->shared.sync.group != NULL);
-
-#if 0
-    has_connection = inf_connection_manager_has_connection(
-      priv->manager,
-      priv->shared.sync.group,
-      connection
-    );
-
-    /* If the connection was closed, the connection manager removes the
-     * connection from itself automatically, so make sure that it has not
-     * already done so. TODO: The connection does this in _after, so we
-     * should always be able to do this. */
-    if(has_connection == TRUE)
-    {
-      inf_connection_manager_unref_connection(
-        priv->manager,
-        priv->shared.sync.group,
-        connection
-      );
-    }
-#endif
 
     g_object_unref(priv->shared.sync.group);
 
@@ -291,23 +286,6 @@ inf_session_release_connection(InfSession* session,
     g_assert(item != NULL);
 
     sync = item->data;
-
-#if 0
-    has_connection = inf_connection_manager_has_connection(
-      priv->manager,
-      sync->group,
-      connection
-    );
-
-    if(has_connection == TRUE)
-    {
-      inf_connection_manager_unref_connection(
-        priv->manager,
-        sync->group,
-        connection
-      );
-    }
-#endif
 
     g_object_unref(sync->group);
 
@@ -396,13 +374,9 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
 
     switch(priv->status)
     {
-    case INF_SESSION_SYNCHRONIZING:
-      g_assert(connection == priv->shared.sync.conn);
+    case INF_SESSION_PRESYNC:
+      g_assert(connection == priv->shared.presync.conn);
 
-      /* Release connection prior to session closure, otherwise,
-       * inf_session_close would try to tell the synchronizer that the
-       * session is closed, but this is rather senseless because the
-       * communication channel just has been closed. */
       g_signal_emit(
         G_OBJECT(session),
         session_signals[SYNCHRONIZATION_FAILED],
@@ -411,9 +385,18 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
         error
       );
 
-      /* This is already done by the synchronization failed default signal
-       * handler: */
-/*      inf_session_close(session);*/
+      break;
+    case INF_SESSION_SYNCHRONIZING:
+      g_assert(connection == priv->shared.sync.conn);
+
+      g_signal_emit(
+        G_OBJECT(session),
+        session_signals[SYNCHRONIZATION_FAILED],
+        0,
+        connection,
+        error
+      );
+
       break;
     case INF_SESSION_RUNNING:
       g_assert(
@@ -444,24 +427,6 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
  */
 
 static void
-inf_session_init_sync(InfSession* session)
-{
-  InfSessionPrivate* priv;
-  priv = INF_SESSION_PRIVATE(session);
-
-  /* RUNNING is initial state */
-  if(priv->status == INF_SESSION_RUNNING)
-  {
-    priv->status = INF_SESSION_SYNCHRONIZING;
-    priv->shared.sync.conn = NULL;
-    priv->shared.sync.messages_total = 0;
-    priv->shared.sync.messages_received = 0;
-    priv->shared.sync.group = NULL;
-    priv->shared.sync.closing = FALSE;
-  }
-}
-
-static void
 inf_session_register_sync(InfSession* session)
 {
   /* TODO: Use _constructor */
@@ -477,12 +442,6 @@ inf_session_register_sync(InfSession* session)
   {
     g_object_ref(priv->shared.sync.group);
 
-    g_signal_connect(
-      G_OBJECT(priv->shared.sync.conn),
-      "notify::status",
-      G_CALLBACK(inf_session_connection_notify_status_cb),
-      session
-    );
   }
 }
 
@@ -511,6 +470,7 @@ inf_session_constructor(GType type,
 {
   GObject* object;
   InfSessionPrivate* priv;
+  InfXmlConnection* sync_conn;
 
   object = G_OBJECT_CLASS(parent_class)->constructor(
     type,
@@ -523,6 +483,37 @@ inf_session_constructor(GType type,
   /* Create empty user table if property was not initialized */
   if(priv->user_table == NULL)
     priv->user_table = inf_user_table_new();
+
+  switch(priv->status)
+  {
+  case INF_SESSION_PRESYNC:
+    g_assert(priv->shared.presync.conn != NULL &&
+             priv->shared.presync.group != NULL);
+    sync_conn = priv->shared.presync.conn;
+    break;
+  case INF_SESSION_SYNCHRONIZING:
+    g_assert(priv->shared.sync.conn != NULL &&
+             priv->shared.sync.group != NULL);
+    sync_conn = priv->shared.sync.conn;
+    break;
+  case INF_SESSION_RUNNING:
+  case INF_SESSION_CLOSED:
+    sync_conn = NULL;
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  if(sync_conn != NULL)
+  {
+    g_signal_connect(
+      G_OBJECT(sync_conn),
+      "notify::status",
+      G_CALLBACK(inf_session_connection_notify_status_cb),
+      object
+    );
+  }
 
   return object;
 }
@@ -575,8 +566,6 @@ inf_session_set_property(GObject* object,
 {
   InfSession* session;
   InfSessionPrivate* priv;
-  InfXmlConnection* conn;
-  InfCommunicationGroup* group;
 
   session = INF_SESSION(object);
   priv = INF_SESSION_PRIVATE(session);
@@ -596,40 +585,89 @@ inf_session_set_property(GObject* object,
     g_assert(priv->user_table == NULL); /* construct only */
     priv->user_table = INF_USER_TABLE(g_value_dup_object(value));
     break;
+  case PROP_STATUS:
+    /* construct only, INF_SESSION_RUNNING is the default */
+    g_assert(priv->status == INF_SESSION_RUNNING);
+    priv->status = g_value_get_enum(value);
+    switch(priv->status)
+    {
+    case INF_SESSION_PRESYNC:
+      priv->shared.presync.conn = NULL;
+      priv->shared.presync.group = NULL;
+      priv->shared.presync.closing = FALSE;
+      break;
+    case INF_SESSION_SYNCHRONIZING:
+      priv->shared.sync.conn = NULL;
+      priv->shared.sync.group = NULL;
+      priv->shared.sync.messages_total = 0;
+      priv->shared.sync.messages_received = 0;
+      priv->shared.sync.closing = FALSE;
+      break;
+    case INF_SESSION_RUNNING:
+      /* was default */
+      g_assert(priv->shared.run.syncs == NULL);
+      break;
+    case INF_SESSION_CLOSED:
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    break;
+  case PROP_SYNC_CONNECTION:
+    /* Need to have status sync or presync to set sync-connection */
+    switch(priv->status)
+    {
+    case INF_SESSION_PRESYNC:
+      g_assert(priv->shared.presync.conn == NULL); /* construct only */
+      priv->shared.presync.conn =
+        INF_XML_CONNECTION(g_value_dup_object(value));
+      break;
+    case INF_SESSION_SYNCHRONIZING:
+      g_assert(priv->shared.sync.conn == NULL); /* construct only */
+      priv->shared.sync.conn =
+        INF_XML_CONNECTION(g_value_dup_object(value));
+      break;
+    case INF_SESSION_RUNNING:
+      g_assert(g_value_get_object(value) == NULL);
+      break;
+    case INF_SESSION_CLOSED:
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    break;
+  case PROP_SYNC_GROUP:
+    switch(priv->status)
+    {
+    case INF_SESSION_PRESYNC:
+      g_assert(priv->shared.presync.group == NULL); /* construct only */
+      priv->shared.presync.group =
+        INF_COMMUNICATION_GROUP(g_value_dup_object(value));
+      break;
+    case INF_SESSION_SYNCHRONIZING:
+      g_assert(priv->shared.sync.group == NULL); /* construct only */
+      priv->shared.sync.group =
+        INF_COMMUNICATION_GROUP(g_value_dup_object(value));
+      break;
+    case INF_SESSION_RUNNING:
+      g_assert(g_value_get_object(value) == NULL);
+      break;
+    case INF_SESSION_CLOSED:
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    break;
   case PROP_SUBSCRIPTION_GROUP:
     if(priv->subscription_group != NULL)
       g_object_unref(priv->subscription_group);
 
     priv->subscription_group =
       INF_COMMUNICATION_GROUP(g_value_dup_object(value));
-
-    break;
-  case PROP_SYNC_CONNECTION:
-    conn = INF_XML_CONNECTION(g_value_get_object(value));
-    g_assert(priv->shared.sync.conn == NULL); /* construct only */
-
-    if(conn != NULL)
-    {
-      inf_session_init_sync(session);
-      priv->shared.sync.conn = conn;
-      g_object_ref(G_OBJECT(priv->shared.sync.conn));
-      inf_session_register_sync(session);
-    }
-
-    break;
-  case PROP_SYNC_GROUP:
-    group = INF_COMMUNICATION_GROUP(g_value_get_object(value));
-    g_assert(priv->shared.sync.group == NULL);
-
-    if(group != NULL)
-    {
-      inf_session_init_sync(session);
-
-      priv->shared.sync.group = group;
-      /* ref_group is done in register_sync when all components for
-       * initial sync are there */
-      inf_session_register_sync(session);
-    }
 
     break;
   default:
@@ -661,19 +699,49 @@ inf_session_get_property(GObject* object,
   case PROP_USER_TABLE:
     g_value_set_object(value, G_OBJECT(priv->user_table));
     break;
-  case PROP_SUBSCRIPTION_GROUP:
-    g_value_set_object(value, G_OBJECT(priv->subscription_group));
-    break;
-  case PROP_SYNC_CONNECTION:
-    g_assert(priv->status == INF_SESSION_SYNCHRONIZING);
-    g_value_set_object(value, G_OBJECT(priv->shared.sync.conn));
-    break;
-  case PROP_SYNC_GROUP:
-    g_assert(priv->status == INF_SESSION_SYNCHRONIZING);
-    g_value_set_object(value, priv->shared.sync.group);
-    break;
   case PROP_STATUS:
     g_value_set_enum(value, priv->status);
+    break;
+  case PROP_SYNC_CONNECTION:
+    switch(priv->status)
+    {
+    case INF_SESSION_PRESYNC:
+      g_value_set_object(value, G_OBJECT(priv->shared.presync.conn));
+      break;
+    case INF_SESSION_SYNCHRONIZING:
+      g_value_set_object(value, G_OBJECT(priv->shared.sync.conn));
+      break;
+    case INF_SESSION_RUNNING:
+    case INF_SESSION_CLOSED:
+      g_value_set_object(value, NULL);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    break;
+  case PROP_SYNC_GROUP:
+    switch(priv->status)
+    {
+    case INF_SESSION_PRESYNC:
+      g_value_set_object(value, G_OBJECT(priv->shared.presync.group));
+      break;
+    case INF_SESSION_SYNCHRONIZING:
+      g_value_set_object(value, G_OBJECT(priv->shared.sync.group));
+      break;
+    case INF_SESSION_RUNNING:
+    case INF_SESSION_CLOSED:
+      g_value_set_object(value, NULL);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    break;
+  case PROP_SUBSCRIPTION_GROUP:
+    g_value_set_object(value, G_OBJECT(priv->subscription_group));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -723,6 +791,7 @@ inf_session_handle_user_status_change(InfSession* session,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
+      "%s",
       _("User did not join from this connection")
     );
 
@@ -1034,7 +1103,7 @@ inf_session_validate_user_props_impl(InfSession* session,
   const gchar* name;
   InfUser* user;
   guint id;
-  
+
   priv = INF_SESSION_PRIVATE(session);
 
   /* TODO: Use InfSessionError and/or InfRequestError here */
@@ -1410,6 +1479,22 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
+    g_assert(connection == priv->shared.presync.conn);
+
+    /* We do not expect any messages in presync. The whole idea of presync is
+     * that one can keep a session around that is going to be synchronized
+     * later, ie. when telling the remote site about it. */
+    g_set_error(
+      error,
+      inf_session_sync_error_quark,
+      INF_SESSION_SYNC_ERROR_GOT_MESSAGE_IN_PRESYNC,
+      _("Unexpectedly received XML message \"%s\" in presync"),
+      (const gchar*)node->name
+    );
+
+    /* Don't forward unexpected message */
+    return INF_COMMUNICATION_SCOPE_PTP;
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
 
@@ -1563,13 +1648,29 @@ inf_session_close_handler(InfSession* session)
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
+    if(priv->shared.presync.closing == FALSE)
+    {
+      /* So that the "synchronization-failed" default signal handler does
+       * does not emit the close signal again: */
+      priv->shared.presync.closing = TRUE;
+
+      g_signal_emit(
+        G_OBJECT(session),
+        session_signals[SYNCHRONIZATION_FAILED],
+        0,
+        priv->shared.presync.conn,
+        error
+      );
+    }
+
+    inf_session_release_connection(session, priv->shared.presync.conn);
+    break;
   case INF_SESSION_SYNCHRONIZING:
     if(priv->shared.sync.closing == FALSE)
     {
       /* So that the "synchronization-failed" default signal handler does
        * does not emit the close signal again: */
-      /* TODO: Perhaps we should introduce a INF_SESSION_CLOSING status for
-       * that. */
       priv->shared.sync.closing = TRUE;
 
       /* If the connection was closed, another signal handler could close()
@@ -1577,8 +1678,7 @@ inf_session_close_handler(InfSession* session)
        * we cannot send anything anymore through the connection even though
        * sync.closing was not set already. */
       g_object_get(G_OBJECT(priv->shared.sync.conn), "status", &status, NULL);
-      if(status != INF_XML_CONNECTION_CLOSING &&
-         status != INF_XML_CONNECTION_CLOSED)
+      if(status == INF_XML_CONNECTION_OPEN)
       {
         inf_session_send_sync_error(session, error);
       }
@@ -1738,6 +1838,9 @@ inf_session_synchronization_complete_handler(InfSession* session,
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
+    g_assert_not_reached();
+    break;
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
 
@@ -1772,6 +1875,17 @@ inf_session_synchronization_failed_handler(InfSession* session,
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
+    g_assert(connection == priv->shared.presync.conn);
+    if(priv->shared.presync.closing == FALSE)
+    {
+      /* So that the "close" default signal handler does not emit the 
+       * "synchronization failed" signal again. */
+      priv->shared.presync.closing = TRUE;
+      inf_session_close(session);
+    }
+
+    break;
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
     if(priv->shared.sync.closing == FALSE)
@@ -1885,13 +1999,14 @@ inf_session_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_SUBSCRIPTION_GROUP,
-    g_param_spec_object(
-      "subscription-group",
-      "Subscription group",
-      "Communication group of subscribed connections",
-      INF_COMMUNICATION_TYPE_GROUP,
-      G_PARAM_READWRITE
+    PROP_STATUS,
+    g_param_spec_enum(
+      "status",
+      "Session Status",
+      "Current status of the session",
+      INF_TYPE_SESSION_STATUS,
+      INF_SESSION_RUNNING,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
 
@@ -1921,14 +2036,13 @@ inf_session_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_STATUS,
-    g_param_spec_enum(
-      "status",
-      "Session Status",
-      "Current status of the session",
-      INF_TYPE_SESSION_STATUS,
-      INF_SESSION_RUNNING,
-      G_PARAM_READABLE
+    PROP_SUBSCRIPTION_GROUP,
+    g_param_spec_object(
+      "subscription-group",
+      "Subscription group",
+      "Communication group of subscribed connections",
+      INF_COMMUNICATION_TYPE_GROUP,
+      G_PARAM_READWRITE
     )
   );
 
@@ -2081,6 +2195,10 @@ inf_session_status_get_type(void)
   {
     static const GEnumValue session_status_type_values[] = {
       {
+        INF_SESSION_PRESYNC,
+        "INF_SESSION_PRESYNC",
+        "presync"
+      }, {
         INF_SESSION_SYNCHRONIZING,
         "INF_SESSION_SYNCHRONIZING",
         "synchronizing"
@@ -2427,6 +2545,7 @@ inf_session_set_user_status(InfSession* session,
 
   g_return_if_fail(INF_IS_SESSION(session));
   g_return_if_fail(INF_IS_USER(user));
+  g_return_if_fail(inf_session_get_status(session) == INF_SESSION_RUNNING);
   g_return_if_fail(inf_user_get_status(user) != INF_USER_UNAVAILABLE);
   g_return_if_fail( (inf_user_get_flags(user) & INF_USER_LOCAL) != 0);
 
@@ -2451,8 +2570,50 @@ inf_session_set_user_status(InfSession* session,
 }
 
 /**
+ * inf_session_synchronize_from:
+ * @session: A #InfSession in status %INF_SESSION_PRESYNC.
+ *
+ * Switches @session's status to %INF_SESSION_SYNCHRONIZING. In
+ * %INF_SESSION_PRESYNC, all messages from incoming the synchronizing
+ * connection are ignored, and no cancellation request is sent to the remote
+ * site if the status changes to %INF_SESSION_CLOSED. The rationale behind
+ * that status is that one can prepare a session for synchronization but start
+ * the actual synchronization later, after having made sure that the remote
+ * site is ready to perform the synchronization.
+ */
+void
+inf_session_synchronize_from(InfSession* session)
+{
+  InfSessionPrivate* priv;
+  InfCommunicationGroup* group;
+  InfXmlConnection* connection;
+
+  /* TODO: Maybe add InfCommunicationGroup*, InfXmlConnection* arguments,
+   * and remove them from the priv->shared.presync. This might simplify code
+   * elsewhere. */
+
+  g_return_if_fail(inf_session_get_status(session) == INF_SESSION_PRESYNC);
+
+  priv = INF_SESSION_PRIVATE(session);
+  g_return_if_fail(priv->shared.presync.closing == FALSE);
+
+  group = priv->shared.presync.group;
+  connection = priv->shared.presync.conn;
+
+  priv->status = INF_SESSION_SYNCHRONIZING;
+
+  priv->shared.sync.group = group;
+  priv->shared.sync.conn = connection;
+  priv->shared.sync.messages_total = 0;
+  priv->shared.sync.messages_received = 0;
+  priv->shared.sync.closing = FALSE;
+
+  g_object_notify(G_OBJECT(session), "status");
+}
+
+/**
  * inf_session_synchronize_to:
- * @session: A #InfSession with state %INF_SESSION_RUNNING.
+ * @session: A #InfSession in status %INF_SESSION_RUNNING.
  * @group: A #InfCommunicationGroup.
  * @connection: A #InfConnection.
  *
@@ -2590,6 +2751,9 @@ inf_session_get_synchronization_progress(InfSession* session,
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
+    g_assert(connection == priv->shared.presync.conn);
+    return 0.0;
   case INF_SESSION_SYNCHRONIZING:
     g_assert(connection == priv->shared.sync.conn);
 
@@ -2636,6 +2800,7 @@ inf_session_has_synchronizations(InfSession* session)
 
   switch(priv->status)
   {
+  case INF_SESSION_PRESYNC:
   case INF_SESSION_SYNCHRONIZING:
     return TRUE;
   case INF_SESSION_RUNNING:

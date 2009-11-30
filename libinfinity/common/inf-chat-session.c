@@ -1126,9 +1126,13 @@ inf_chat_session_get_type(void)
  * inf_chat_session_new:
  * @manager: A #InfCommunicationManager.
  * @backlog_size: The number of messages to store.
- * @sync_group: A group in which the session is synchronized, or %NULL.
+ * @status: Initial status of the session. If this is
+ * %INF_SESSION_SYNCHRONIZING or %INF_SESSION_PRESYNC, then @sync_group and
+ * @sync_connection need to be set.
+ * @sync_group: A group in which the session is synchronized. Ignored if
+ * @status is %INF_SESSION_RUNNING.
  * @sync_connection: A connection to synchronize the session from. Ignored if
- * @sync_group is %NULL.
+ * @status is %INF_SESSION_RUNNING.
  *
  * Creates a new #InfChatSession with no initial messages. The communication
  * manager is used to send and receive requests from subscription and
@@ -1138,21 +1142,34 @@ inf_chat_session_get_type(void)
  * messages. This also limits how many old messages are transferred when
  * synchronizing the session.
  *
- * If @sync_group is not %NULL, then the session will initially be
- * synchronized, meaning an initial backlog is retrieved from
- * @sync_connection. If you are subscribed to the session, set the
- * subscription group via inf_session_set_subscription_group().
+ * If @status is %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING, then the
+ * session will initially be synchronized, meaning an initial backlog is
+ * retrieved from @sync_connection (which must not be %NULL in this case). If
+ * you are subscribed to the session, set the subscription group via
+ * inf_session_set_subscription_group().
  *
  * Returns: A new #InfChatSession.
  */
 InfChatSession*
 inf_chat_session_new(InfCommunicationManager* manager,
                      guint backlog_size,
+                     InfSessionStatus status,
                      InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection)
 {
   InfChatBuffer* buffer;
   InfChatSession* session;
+
+  g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(manager), NULL);
+
+  g_return_val_if_fail(
+    (status == INF_SESSION_RUNNING &&
+     sync_group == NULL && sync_connection == NULL) ||
+    (status != INF_SESSION_RUNNING &&
+     INF_COMMUNICATION_IS_GROUP(sync_group) &&
+     INF_IS_XML_CONNECTION(sync_connection)),
+    NULL
+  );
 
   /* This actually does more than just g_object_new, but I think language
    * bindings can just copy this. */
@@ -1163,6 +1180,7 @@ inf_chat_session_new(InfCommunicationManager* manager,
       INF_TYPE_CHAT_SESSION,
       "communication-manager", manager,
       "buffer", buffer,
+      "status", status,
       "sync-group", sync_group,
       "sync-connection", sync_connection,
       NULL

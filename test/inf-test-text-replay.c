@@ -634,6 +634,7 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
     client_manager,
     buffer,
     io,
+    INF_SESSION_SYNCHRONIZING,
     INF_COMMUNICATION_GROUP(client_group),
     INF_XML_CONNECTION(client)
   );

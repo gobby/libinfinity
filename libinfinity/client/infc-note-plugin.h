@@ -37,6 +37,7 @@ struct _InfcNotePlugin {
 
   InfSession*(*session_new)(InfIo* io,
                             InfCommunicationManager* manager,
+                            InfSessionStatus status,
                             InfCommunicationJoinedGroup* sync_group,
                             InfXmlConnection* sync_connection,
                             gpointer user_data);

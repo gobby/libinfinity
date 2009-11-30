@@ -43,6 +43,7 @@ typedef enum InfdNotePluginTextError {
 static InfSession*
 infd_note_plugin_text_session_new(InfIo* io,
                                   InfCommunicationManager* manager,
+                                  InfSessionStatus status,
                                   InfCommunicationHostedGroup* sync_group,
                                   InfXmlConnection* sync_connection,
                                   gpointer user_data)
@@ -53,6 +54,7 @@ infd_note_plugin_text_session_new(InfIo* io,
     manager,
     INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8")),
     io,
+    status,
     INF_COMMUNICATION_GROUP(sync_group),
     sync_connection
   );
@@ -387,6 +389,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     buffer,
     io,
     user_table,
+    INF_SESSION_RUNNING,
     NULL,
     NULL
   );

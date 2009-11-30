@@ -63,6 +63,7 @@ InfTextSession*
 inf_text_session_new(InfCommunicationManager* manager,
                      InfTextBuffer* buffer,
                      InfIo* io,
+                     InfSessionStatus status,
                      InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection);
 
@@ -71,6 +72,7 @@ inf_text_session_new_with_user_table(InfCommunicationManager* manager,
                                      InfTextBuffer* buffer,
                                      InfIo* io,
                                      InfUserTable* user_table,
+                                     InfSessionStatus status,
                                      InfCommunicationGroup* sync_group,
                                      InfXmlConnection* sync_connection);
 

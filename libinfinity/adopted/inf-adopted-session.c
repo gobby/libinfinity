@@ -598,6 +598,7 @@ inf_adopted_session_constructor(GType type,
 
   switch(status)
   {
+  case INF_SESSION_PRESYNC:
   case INF_SESSION_SYNCHRONIZING:
     /* algorithm is created during initial synchronization when parameters
      * like initial vector time, max total log size etc. are known. */
@@ -1272,8 +1273,8 @@ inf_adopted_session_get_io(InfAdoptedSession* session)
  * @session: A #InfAdoptedSession.
  *
  * Returns the #InfAlgorithm object of @session. Returns %NULL if @session
- * has status %INF_SESSION_SYNCHRONIZING because there the algorithm object
- * is not yet created before successful synchronization.
+ * has status %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING because there
+ * the algorithm object is not yet created before successful synchronization.
  *
  * Return Value: A #InfAdoptedAlgorithm, or %NULL.
  **/
