@@ -61,7 +61,8 @@ static const gchar*
 infd_server_pool_get_local_service_name(void)
 {
   /* TODO: It would be nice to have the host name as service name for
-   * dedicated server and user name otherwise */
+   * dedicated servers and user name otherwise. This should maybe be a
+   * property. */
   const gchar* name;
   name = g_get_real_name();
 
@@ -154,11 +155,6 @@ infd_server_pool_entry_unpublish(InfdServerPoolEntry* entry)
   }
 }
 
-/* Required by infd_server_pool_notify_status_cb() */
-static void
-infd_server_pool_remove_server(InfdServerPool* server_pool,
-                               InfdXmlServer* server);
-
 static void
 infd_server_pool_notify_status_cb(InfdXmlServer* server,
                                   GParamSpec* pspec,
@@ -177,18 +173,10 @@ infd_server_pool_notify_status_cb(InfdXmlServer* server,
 
   g_object_get(G_OBJECT(server), "status", &status, NULL);
 
-  if(status == INFD_XML_SERVER_CLOSED)
-  {
-    /* This unpublishes if necessary */
-    infd_server_pool_remove_server(server_pool, server);
-  }
+  if(status == INFD_XML_SERVER_OPEN)
+    infd_server_pool_entry_publish(entry);
   else
-  {
-    if(status == INFD_XML_SERVER_OPEN)
-      infd_server_pool_entry_publish(entry);
-    else
-      infd_server_pool_entry_unpublish(entry);
-  }
+    infd_server_pool_entry_unpublish(entry);
 }
 
 static void
@@ -244,24 +232,9 @@ infd_server_pool_entry_free(InfdServerPool* server_pool,
 
     g_slice_free(InfdServerPoolPublisher, publisher);
   }
-  
+
   g_slist_free(entry->publishers);
   g_slice_free(InfdServerPoolEntry, entry);
-}
-
-static void
-infd_server_pool_remove_server(InfdServerPool* server_pool,
-                               InfdXmlServer* server)
-{
-  InfdServerPoolPrivate* priv;
-  InfdServerPoolEntry* entry;
-
-  priv = INFD_SERVER_POOL_PRIVATE(server_pool);
-  entry = (InfdServerPoolEntry*)g_hash_table_lookup(priv->servers, server);
-  g_assert(entry != NULL);
-
-  infd_server_pool_entry_free(server_pool, entry);
-  g_hash_table_remove(priv->servers, server);
 }
 
 static void
@@ -451,7 +424,7 @@ infd_server_pool_get_type(void)
  * Creates a new #InfdServerPool.
  *
  * Return Value: A new #InfdServerPool.
- **/
+ */
 InfdServerPool*
 infd_server_pool_new(InfdDirectory* directory)
 {
@@ -475,11 +448,7 @@ infd_server_pool_new(InfdDirectory* directory)
  *
  * Adds @server to @server_pool. The server pool accepts incoming connections
  * and gives them to its directory which processes incoming requests.
- *
- * It is your responsibility to open @server. It will be automatically removed
- * from the pool when the server is closed. However, you might pass a closed
- * server to this function and open it afterwards.
- **/
+ */
 void
 infd_server_pool_add_server(InfdServerPool* server_pool,
                             InfdXmlServer* server)
@@ -524,7 +493,7 @@ infd_server_pool_add_server(InfdServerPool* server_pool,
  * Publishes a service offered by @server on the local network via
  * @publisher. This can safely be called when @server is not yet open. The
  * service will be published as soon as the server opens.
- **/
+ */
 /* TODO: Make a InfdLocalServer interface to query the port? */
 void
 infd_server_pool_add_local_publisher(InfdServerPool* server_pool,
@@ -564,6 +533,56 @@ infd_server_pool_add_local_publisher(InfdServerPool* server_pool,
   g_object_get(G_OBJECT(server), "status", &status, NULL);
   if(status == INFD_XML_SERVER_OPEN)
     infd_server_pool_entry_publish_with(entry, server_pool_publisher);
+}
+
+/**
+ * infd_server_pool_remove_server:
+ * @server_pool: A #InfdServerPool.
+ * @server: A #InfdXmlServer which was previously added to @server_pool.
+ *
+ * Removed @server from @servor_pool. If @server was published via
+ * some publishers then it will be unpublished automatically.
+ */
+void
+infd_server_pool_remove_server(InfdServerPool* server_pool,
+                               InfdXmlServer* server)
+{
+  InfdServerPoolPrivate* priv;
+  InfdServerPoolEntry* entry;
+
+  g_return_if_fail(INFD_IS_SERVER_POOL(server_pool));
+  g_return_if_fail(INFD_IS_XML_SERVER(server));
+
+  priv = INFD_SERVER_POOL_PRIVATE(server_pool);
+  entry = (InfdServerPoolEntry*)g_hash_table_lookup(priv->servers, server);
+  g_return_if_fail(entry != NULL);
+
+  infd_server_pool_entry_free(server_pool, entry);
+  g_hash_table_remove(priv->servers, server);
+}
+
+/**
+ * infd_server_pool_foreach_server:
+ * @server_pool: A #InfdServerPool.
+ * @func: The function to be called for each server.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Calls @func for each server in pool registered with
+ * infd_server_pool_add_server().
+ */
+void
+infd_server_pool_foreach_server(InfdServerPool* server_pool,
+                                InfdServerPoolForeachServerFunc func,
+                                gpointer user_data)
+{
+  InfdServerPoolPrivate* priv;
+  GHashTableIter iter;
+  gpointer value;
+
+  priv = INFD_SERVER_POOL_PRIVATE(server_pool);
+  g_hash_table_iter_init(&iter, priv->servers);
+  while(g_hash_table_iter_next(&iter, NULL, &value))
+    func( ((InfdServerPoolEntry*)value)->server, user_data);
 }
 
 /* vim:set et sw=2 ts=2: */

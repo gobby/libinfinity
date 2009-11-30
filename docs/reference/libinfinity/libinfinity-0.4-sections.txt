@@ -717,6 +717,8 @@ InfdServerPoolClass
 infd_server_pool_new
 infd_server_pool_add_server
 infd_server_pool_add_local_publisher
+infd_server_pool_remove_server
+infd_server_pool_foreach_server
 <SUBSECTION Standard>
 INFD_SERVER_POOL
 INFD_IS_SERVER_POOL

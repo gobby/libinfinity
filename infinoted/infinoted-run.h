@@ -44,8 +44,8 @@ struct _InfinotedRun {
   InfdServerPool* pool;
   InfinotedAutosave* autosave;
 
-  InfdTcpServer* tcp4;
-  InfdTcpServer* tcp6;
+  InfdXmppServer* xmpp4;
+  InfdXmppServer* xmpp6;
   gnutls_dh_params_t dh_params;
 
   InfinotedRecord* record;

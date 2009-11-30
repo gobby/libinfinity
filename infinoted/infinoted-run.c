@@ -18,6 +18,7 @@
  */
 
 #include <infinoted/infinoted-run.h>
+#include <infinoted/infinoted-dh-params.h>
 #include <infinoted/infinoted-creds.h>
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-note-plugin.h>
@@ -96,7 +97,7 @@ infinoted_run_load_directory(InfinotedRun* run,
   return TRUE;
 }
 
-static InfdTcpServer*
+static InfdXmppServer*
 infinoted_run_create_server(InfinotedRun* run,
                             InfinotedStartup* startup,
                             InfIpAddress* address,
@@ -139,8 +140,8 @@ infinoted_run_create_server(InfinotedRun* run,
   );
 #endif
 
-  g_object_unref(xmpp);
-  return tcp;
+  g_object_unref(tcp);
+  return xmpp;
 }
 
 /**
@@ -196,15 +197,15 @@ infinoted_run_new(InfinotedStartup* startup,
 #endif
 
   address = inf_ip_address_new_raw6(INFINOTED_RUN_IPV6_ANY_ADDR);
-  run->tcp6 = infinoted_run_create_server(run, startup, address, NULL);
+  run->xmpp6 = infinoted_run_create_server(run, startup, address, NULL);
 
   local_error = NULL;
-  run->tcp4 = infinoted_run_create_server(run, startup, NULL, &local_error);
+  run->xmpp4 = infinoted_run_create_server(run, startup, NULL, &local_error);
 
-  if(run->tcp4 == NULL)
+  if(run->xmpp4 == NULL)
   {
     /* Ignore if we have an IPv6 server running */
-    if(run->tcp6 != NULL)
+    if(run->xmpp6 != NULL)
     {
       g_error_free(local_error);
     }
@@ -253,10 +254,19 @@ infinoted_run_free(InfinotedRun* run)
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
 
-  if(run->tcp6 != NULL)
-    g_object_unref(run->tcp6);
-  if(run->tcp4 != NULL)
-    g_object_unref(run->tcp4);
+  if(run->xmpp6 != NULL)
+  {
+    infd_server_pool_remove_server(run->pool, INFD_XML_SERVER(run->xmpp6));
+    infd_xml_server_close(INFD_XML_SERVER(run->xmpp6));
+    g_object_unref(run->xmpp6);
+  }
+
+  if(run->xmpp4 != NULL)
+  {
+    infd_server_pool_remove_server(run->pool, INFD_XML_SERVER(run->xmpp4));
+    infd_xml_server_close(INFD_XML_SERVER(run->xmpp4));
+    g_object_unref(run->xmpp4);
+  }
 
 #ifdef LIBINFINITY_HAVE_AVAHI
   g_object_unref(run->avahi);
@@ -295,6 +305,7 @@ infinoted_run_start(InfinotedRun* run)
   GError* error;
   guint port;
   gboolean result;
+  InfdTcpServer* tcp;
 
   error = NULL;
 
@@ -314,12 +325,14 @@ infinoted_run_start(InfinotedRun* run)
     }
   }
 
-  /* Open server sockets, accepting incoming connections */
-  if(run->tcp6 != NULL)
+  /* Open server sockets, accepting incoming connections... TODO: Prevent
+   * code duplication here. */
+  if(run->xmpp6 != NULL)
   {
-    if(infd_tcp_server_open(run->tcp6, &error) == TRUE)
+    g_object_get(G_OBJECT(run->xmpp6), "tcp-server", &tcp, NULL);
+    if(infd_tcp_server_open(tcp, &error) == TRUE)
     {
-      g_object_get(G_OBJECT(run->tcp6), "local-port", &port, NULL);
+      g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
       infinoted_util_log_info(_("IPv6 Server running on port %u"), port);
     }
     else
@@ -330,16 +343,20 @@ infinoted_run_start(InfinotedRun* run)
       g_error_free(error);
       error = NULL;
 
-      g_object_unref(run->tcp6);
-      run->tcp6 = NULL;
+      g_object_unref(run->xmpp6);
+      run->xmpp6 = NULL;
+      infd_tcp_server_close(tcp);
     }
+
+    g_object_unref(tcp);
   }
 
-  if(run->tcp4 != NULL)
+  if(run->xmpp4 != NULL)
   {
-    if(infd_tcp_server_open(run->tcp4, &error) == TRUE)
+    g_object_get(G_OBJECT(run->xmpp4), "tcp-server", &tcp, NULL);
+    if(infd_tcp_server_open(tcp, &error) == TRUE)
     {
-      g_object_get(G_OBJECT(run->tcp4), "local-port", &port, NULL);
+      g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
       infinoted_util_log_info(_("IPv4 Server running on port %u"), port);
     }
     else
@@ -350,16 +367,19 @@ infinoted_run_start(InfinotedRun* run)
       g_error_free(error);
       error = NULL;
 
-      g_object_unref(run->tcp4);
-      run->tcp4 = NULL;
+      g_object_unref(run->xmpp4);
+      run->xmpp4 = NULL;
+      infd_tcp_server_close(tcp);
     }
+
+    g_object_unref(tcp);
   }
 
   /* Make sure messages are shown. This explicit flush is for example
    * required when running in an MSYS shell on Windows. */
   fflush(stderr);
 
-  if(run->tcp4 != NULL || run->tcp6 != NULL)
+  if(run->xmpp4 != NULL || run->xmpp6 != NULL)
     inf_standalone_io_loop(run->io);
 }
 

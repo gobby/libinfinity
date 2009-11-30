@@ -1,5 +1,18 @@
 2009-11-29  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-server-pool.h:
+	* libinfinity/server/infd-server-pool.c: Added
+	infd_server_pool_remove_server() and
+	infd_server_pool_foreach_server(). Changed semantics so that when a
+	server is closed it is no longer removed automatically from the pool.
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Adapt to that, and remove a server from
+	the pool if infd_tcp_server_open() failed (which it normally does not
+	since we have bound it already, but just to be sure).
+
+2009-11-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-discovery-avahi.c:
 	* libinfinity/server/infd-xmpp-server.c: Allow changing credentials,
 	SASL context and SASL mechanisms at runtime.

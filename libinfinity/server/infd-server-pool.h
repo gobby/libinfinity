@@ -47,6 +47,9 @@ struct _InfdServerPool {
   GObject parent;
 };
 
+typedef void(*InfdServerPoolForeachServerFunc)(InfdXmlServer* server,
+                                               gpointer user_data);
+
 GType
 infd_server_pool_get_type(void) G_GNUC_CONST;
 
@@ -61,6 +64,15 @@ void
 infd_server_pool_add_local_publisher(InfdServerPool* server_pool,
                                      InfdXmppServer* server,
                                      InfLocalPublisher* publisher);
+
+void
+infd_server_pool_remove_server(InfdServerPool* server_pool,
+                               InfdXmlServer* server);
+
+void
+infd_server_pool_foreach_server(InfdServerPool* server_pool,
+                                InfdServerPoolForeachServerFunc func,
+                                gpointer user_data);
 
 G_END_DECLS
 
