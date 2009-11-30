@@ -1,5 +1,19 @@
 2009-11-29  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-config-reload.h:
+	* infinoted/infinoted-config-reload.c:
+	* infinoted/Makefile.am: Added a new file which handles reloading
+	infinoted's configuration at runtime.
+
+	* infinoted/infinoted-signal.c: Call it on SIGHUP (#509).
+
+	* infinoted/infinoted-main.c (infinoted_main_run): After InfinotedRun
+	terminates, check run->startup->options->daemonize, not
+	startup->options->daemonize, since config reload might have
+	invalidated the latter.
+
+2009-11-29  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-autosave.c (infinoted_autosave_walk_directory):
 	Make this actually work, by initializing child before using it. This
 	is used only when adding an autosaver at runtime.

@@ -18,6 +18,7 @@
  */
 
 #include <infinoted/infinoted-signal.h>
+#include <infinoted/infinoted-config-reload.h>
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -37,6 +38,7 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
 {
   InfinotedSignal* sig;
   int occured;
+  GError* error;
 
   sig = (InfinotedSignal*)user_data;
 
@@ -61,8 +63,17 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
     }
     else if(occured == SIGHUP)
     {
-      infinoted_util_log_error(_("Config file reloading has not yet "
-                                 "been implemented"));
+      error = NULL;
+      if(!infinoted_config_reload(sig->run, &error))
+      {
+        infinoted_util_log_error(_("Config reload failed: %s"),
+                                 error->message);
+        g_error_free(error);
+      }
+      else
+      {
+        infinoted_util_log_info(_("Config reloaded"));
+      }
     }
   }
 }

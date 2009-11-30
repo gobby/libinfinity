@@ -134,7 +134,9 @@ infinoted_main_run(InfinotedStartup* startup,
   infinoted_signal_unregister(sig);
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
-  if(startup->options->daemonize)
+  /* startup might be invalid at this point in case a config reload happened,
+   * so use run->startup instead (which is revalidated by config reload). */
+  if(run->startup->options->daemonize)
     daemon_pid_file_remove();
 #endif
 
