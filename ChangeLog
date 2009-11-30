@@ -1,5 +1,11 @@
 2009-11-29  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-autosave.c (infinoted_autosave_walk_directory):
+	Make this actually work, by initializing child before using it. This
+	is used only when adding an autosaver at runtime.
+
+2009-11-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-server-pool.h:
 	* libinfinity/server/infd-server-pool.c: Added
 	infd_server_pool_remove_server() and

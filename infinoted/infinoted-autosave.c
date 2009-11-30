@@ -277,6 +277,7 @@ infinoted_autosave_walk_directory(InfinotedAutosave* autosave,
     if(infd_directory_iter_get_explored(autosave->directory, iter) == TRUE)
     {
       /* Errors can't happen as the directory is already explored */
+      child = *iter;
       if(infd_directory_iter_get_child(autosave->directory, &child, NULL))
       {
         do {
