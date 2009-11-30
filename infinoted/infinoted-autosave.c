@@ -227,10 +227,21 @@ static void
 infinoted_autosave_remove_session(InfinotedAutosave* autosave,
                                   InfinotedAutosaveSession* session)
 {
+  InfBuffer* buffer;
+
   /* Cancel autosave timeout even if session is modified. If the directory
    * removed the session, then it has already saved it anyway. */
   if(session->timeout_handle != NULL)
     infinoted_autosave_session_stop(autosave, session);
+
+  buffer =
+    inf_session_get_buffer(infd_session_proxy_get_session(session->proxy));
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(buffer),
+    G_CALLBACK(infinoted_autosave_buffer_notify_modified_cb),
+    session
+  );
 
   autosave->sessions = g_slist_remove(autosave->sessions, session);
   g_slice_free(InfinotedAutosaveSession, session);
