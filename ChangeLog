@@ -1,5 +1,10 @@
 2009-11-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-directory.c: Immediately write an empty
+	session to disk on sync-in, and refuse sync-in if that fails.
+
+2009-11-30  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-session.h:
 	* libinfinity/common/inf-session.c: Added INF_SESSION_PRESYNC status,
 	and the inf_session_synchronize_from() function. Require setting

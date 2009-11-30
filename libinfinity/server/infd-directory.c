@@ -123,6 +123,7 @@ struct _InfdDirectorySubreq {
       InfCommunicationHostedGroup* group;
       const InfdNotePlugin* plugin;
       gchar* name;
+      /* TODO: Isn't group already present in proxy? */
       InfdSessionProxy* proxy;
     } add_node;
 
@@ -132,6 +133,8 @@ struct _InfdDirectorySubreq {
       InfCommunicationHostedGroup* subscription_group;
       const InfdNotePlugin* plugin;
       gchar* name;
+      /* TODO: Aren't the groups already present in proxy? */
+      InfdSessionProxy* proxy;
     } sync_in;
   } shared;
 };
@@ -548,22 +551,24 @@ static InfdSessionProxy*
 infd_directory_create_session_proxy_for_storage(
     InfdDirectory* directory,
     InfdDirectoryNode* parent,
-    InfCommunicationHostedGroup* group,
+    InfCommunicationHostedGroup* sub_group,
     const gchar* name,
     const InfdNotePlugin* plugin,
+    InfSessionStatus status,
+    InfCommunicationHostedGroup* sync_group,
+    InfXmlConnection* sync_conn,
     GError** error)
 {
   InfdDirectoryPrivate* priv;
   gchar* path;
   gboolean ret;
   InfSession* session;
-  InfdDirectoryNode* node;
   InfdSessionProxy* proxy;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   proxy = infd_directory_create_session_proxy(
-    directory, plugin, INF_SESSION_RUNNING, NULL, NULL, group);
+    directory, plugin, status, sync_group, sync_conn, sub_group);
   session = infd_session_proxy_get_session(proxy);
 
   /* Save session initially */
@@ -580,6 +585,22 @@ infd_directory_create_session_proxy_for_storage(
   g_free(path);
   if(ret == FALSE)
   {
+    /* Reset communication groups for the proxy, to avoid a warning at
+     * final unref. Due do this failing the groups are very likely going to be
+     * unrefed as well any time soon. */
+    inf_communication_group_set_target(
+      INF_COMMUNICATION_GROUP(sub_group),
+      NULL
+    );
+
+    if(sync_group != NULL && sync_group != sub_group)
+    {
+      inf_communication_group_set_target(
+        INF_COMMUNICATION_GROUP(sync_group),
+        NULL
+      );
+    }
+
     g_object_unref(proxy);
     return NULL;
   }
@@ -1289,12 +1310,9 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
 
   if(ret == FALSE)
   {
-    /* TODO: It would be better not to create the node if it cannot be saved.
-     * This prevents possible data loss later, and deleting the node does not
-     * result in failure (because the storage cannot find the node).
-     * However, we need a way to notify the client about this, ideally with
-     * an error message, so we can't simply use remove-node. Maybe a new
-     * <sync-in-failed> message. */
+    /* Note that while indeed this may fail in theory we have already
+     * (successfully) written the session before we started the sync-in, so
+     * the name of the node is accepted by the storage backend. */
     g_warning(
       _("Session \"%s\" could not be saved: %s\nAnother attempt will "
         "be made when the session is unused for a while or the server is "
@@ -1322,16 +1340,10 @@ infd_directory_add_sync_in(InfdDirectory* directory,
                            guint node_id,
                            const gchar* name,
                            const InfdNotePlugin* plugin,
-                           InfXmlConnection* sync_conn,
-                           gboolean subscribe_sync_conn,
-                           InfCommunicationHostedGroup* synchronization_group,
-                           InfCommunicationHostedGroup* subscription_group)
+                           InfdSessionProxy* proxy)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
-
-  g_assert(sync_conn != NULL);
-  g_assert(synchronization_group != NULL);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1342,15 +1354,8 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->node_id = node_id;
   sync_in->name = g_strdup(name);
   sync_in->plugin = plugin;
-
-  sync_in->proxy = infd_directory_create_session_proxy(
-    directory,
-    plugin,
-    INF_SESSION_SYNCHRONIZING,
-    synchronization_group,
-    sync_conn,
-    subscription_group
-  );
+  sync_in->proxy = proxy;
+  g_object_ref(sync_in->proxy);
 
   g_signal_connect(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
@@ -1501,7 +1506,11 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
     group,
     name,
     plugin,
-    error);
+    INF_SESSION_RUNNING,
+    NULL,
+    NULL,
+    error
+  );
 
   if(proxy == NULL)
     return NULL;
@@ -1531,9 +1540,28 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
                                   InfCommunicationHostedGroup* sync_group,
                                   InfCommunicationHostedGroup* sub_group,
                                   const InfdNotePlugin* plugin,
-                                  const gchar* name)
+                                  const gchar* name,
+                                  GError** error)
 {
   InfdDirectorySubreq* request;
+  InfdSessionProxy* proxy;
+
+  /* Keep proxy in PRESYNC state, until we have the confirmation from the
+   * remote site that the chosen method is OK and we can go on. */
+  proxy = infd_directory_create_session_proxy_for_storage(
+    directory,
+    parent,
+    sub_group,
+    name,
+    plugin,
+    INF_SESSION_PRESYNC,
+    sync_group,
+    connection,
+    error
+  );
+
+  if(proxy == NULL)
+    return NULL;
 
   request = infd_directory_add_subreq_common(
     directory,
@@ -1549,6 +1577,7 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
   request->shared.sync_in.subscription_group = sub_group;
   request->shared.sync_in.plugin = plugin;
   request->shared.sync_in.name = g_strdup(name);
+  request->shared.sync_in.proxy = proxy;
 
   g_object_ref(sync_group);
   g_object_ref(sub_group);
@@ -1576,6 +1605,7 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
     g_free(request->shared.sync_in.name);
     g_object_unref(request->shared.sync_in.synchronization_group);
     g_object_unref(request->shared.sync_in.subscription_group);
+    g_object_unref(request->shared.sync_in.proxy);
     break;
   default:
     g_assert_not_reached();
@@ -1866,7 +1896,11 @@ infd_directory_node_create_new_note(InfdDirectory* directory,
     group,
     name,
     plugin,
-    error);
+    INF_SESSION_RUNNING,
+    NULL,
+    NULL,
+    error
+  );
 
   if(proxy == NULL)
     return NULL;
@@ -1902,6 +1936,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
   xmlNodePtr xml;
   xmlNodePtr child;
   const gchar* method;
+  InfdDirectorySubreq* subreq;
   gboolean result;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -1920,16 +1955,18 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
     if(seq_conn != NULL && subscribe_seq_conn == TRUE)
     {
-      if(infd_directory_add_subreq_add_node(
-          directory,
-          seq_conn,
-          node_id,
-          parent,
-          group,
-          plugin,
-          name,
-          error
-        ))
+      subreq = infd_directory_add_subreq_add_node(
+        directory,
+        seq_conn,
+        node_id,
+        parent,
+        group,
+        plugin,
+        name,
+        error
+      );
+
+      if(subreq != NULL)
       {
         xml = infd_directory_node_desc_register_to_xml(
           node_id,
@@ -2024,6 +2061,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
   gchar* sync_group_name;
   const gchar* method;
+  InfdDirectorySubreq* subreq;
 
   xmlNodePtr xml;
   xmlNodePtr child;
@@ -2068,6 +2106,25 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
   /* "central" should always be available */
   g_assert(method != NULL);
 
+  subreq = infd_directory_add_subreq_sync_in(
+    directory,
+    sync_conn,
+    node_id,
+    parent,
+    synchronization_group,
+    subscription_group,
+    plugin,
+    name,
+    error
+  );
+
+  if(subreq == NULL)
+  {
+    g_object_unref(synchronization_group);
+    g_object_unref(subscription_group);
+    return FALSE;
+  }
+
   xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
   inf_xml_util_set_attribute_uint(xml, "id", node_id);
   inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
@@ -2102,17 +2159,6 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
       )
     );
   }
-
-  infd_directory_add_subreq_sync_in(
-    directory,
-    sync_conn,
-    node_id,
-    parent,
-    synchronization_group,
-    subscription_group,
-    plugin,
-    name
-  );
 
   g_object_unref(synchronization_group);
   g_object_unref(subscription_group);
@@ -3064,13 +3110,12 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
 
       /* register to all but conn */
       infd_directory_node_register(directory, node, connection);
-
     }
     else
     {
       /* The add-node request can't be performed properly because the parent
        * node has been removed. Still create a session proxy and subscribe to
-       * connection before unrefing it again, so that the remote hosts gets
+       * connection before unrefing it again, so that the remote host gets
        * notified that this session is no longer active. */
       proxy = request->shared.add_node.proxy;
       g_object_ref(proxy);
@@ -3084,7 +3129,12 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     break;
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
-    if(request->shared.add_node.parent != NULL)
+    /* Group and method are OK for the client, so start synchronization */
+    inf_session_synchronize_from(
+      infd_session_proxy_get_session(request->shared.sync_in.proxy)
+    );
+
+    if(request->shared.sync_in.parent != NULL)
     {
       g_assert(
         infd_directory_node_is_name_available(
@@ -3095,21 +3145,17 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         ) == TRUE
       );
 
+      proxy = request->shared.sync_in.proxy;
+      g_object_ref(proxy);
+
       sync_in = infd_directory_add_sync_in(
         directory,
         request->shared.sync_in.parent,
         request->node_id,
         request->shared.sync_in.name,
         request->shared.sync_in.plugin,
-        connection,
-        request->type == INFD_DIRECTORY_SUBREQ_SYNC_IN ? FALSE : TRUE,
-        request->shared.sync_in.synchronization_group,
-        request->shared.sync_in.subscription_group
+        proxy
       );
-
-      g_assert(sync_in->proxy != NULL);
-      proxy = sync_in->proxy;
-      g_object_ref(proxy);
     }
     else
     {
@@ -3117,14 +3163,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
        * the node to sync-in has been removed. Still create the corresponding
        * session and close it immediately (cancelling the synchronization, to
        * tell the client). */
-      proxy = infd_directory_create_session_proxy(
-        directory,
-        request->shared.sync_in.plugin,
-        INF_SESSION_SYNCHRONIZING,
-        request->shared.sync_in.synchronization_group,
-        connection,
-        request->shared.sync_in.subscription_group
-      );
+      proxy = request->shared.sync_in.proxy;
+      g_object_ref(proxy);
     }
 
     if(request->type == INFD_DIRECTORY_SUBREQ_SYNC_IN)
