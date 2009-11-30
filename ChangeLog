@@ -1,5 +1,10 @@
 2009-11-29  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-creds.c (READ_FUNC_IMPL): Fixed a memory leak:
+	Don't leak the data variable.
+
+2009-11-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-certificate-credentials.h:
 	* libinfinity/common/inf-certificate-credentials.c:
 	* libinfinity/common/Makefile.am: Added a wrapper for

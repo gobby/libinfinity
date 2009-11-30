@@ -127,6 +127,7 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   int res; \
   \
   obj = NULL; \
+  data = NULL; \
   \
   if(g_file_get_contents(path, &data, &size, error) == FALSE) \
     return NULL; \
@@ -139,9 +140,11 @@ infinoted_creds_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   res = import_func(obj, &datum, GNUTLS_X509_FMT_PEM); \
   if(res != 0) goto error; \
   \
+  g_free(data); \
   return obj; \
 error: \
   if(obj != NULL) deinit_func(obj); \
+  g_free(data); \
   infinoted_creds_gnutls_error(res, error); \
   return NULL;
 
