@@ -315,9 +315,11 @@ infinoted_config_reload(InfinotedRun* run,
     }
   }
 
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
   /* Remember whether we have been daemonized; this is not a config file
    * option, so not properly set in our newly created startup. */
   startup->options->daemonize = run->startup->options->daemonize;
+#endif
 
   infinoted_startup_free(run->startup);
   run->startup = startup;
