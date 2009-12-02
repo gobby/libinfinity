@@ -124,11 +124,13 @@ inf_adopted_session_broadcast_request(InfAdoptedSession* session,
 
 void
 inf_adopted_session_undo(InfAdoptedSession* session,
-                         InfAdoptedUser* user);
+                         InfAdoptedUser* user,
+                         guint n);
 
 void
 inf_adopted_session_redo(InfAdoptedSession* session,
-                         InfAdoptedUser* user);
+                         InfAdoptedUser* user,
+                         guint n);
 
 gboolean
 inf_adopted_session_read_request_info(InfAdoptedSession* session,

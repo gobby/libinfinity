@@ -118,7 +118,7 @@ on_undo_button_clicked(GtkButton* button,
 
   test = (InfTestGtkBrowserWindow*)user_data;
   session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
-  inf_adopted_session_undo(session, INF_ADOPTED_USER(test->user));
+  inf_adopted_session_undo(session, INF_ADOPTED_USER(test->user), 1);
 }
 
 static void
@@ -130,7 +130,7 @@ on_redo_button_clicked(GtkButton* button,
 
   test = (InfTestGtkBrowserWindow*)user_data;
   session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
-  inf_adopted_session_redo(session, INF_ADOPTED_USER(test->user));
+  inf_adopted_session_redo(session, INF_ADOPTED_USER(test->user), 1);
 }
 
 static void

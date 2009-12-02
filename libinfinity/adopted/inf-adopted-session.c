@@ -95,7 +95,7 @@ static const int INF_ADOPTED_SESSION_NOOP_INTERVAL = 30;
  * Utility functions.
  */
 
-InfAdoptedSessionLocalUser*
+static InfAdoptedSessionLocalUser*
 inf_adopted_session_lookup_local_user(InfAdoptedSession* session,
                                       InfAdoptedUser* user)
 {
@@ -360,6 +360,62 @@ inf_adopted_session_stop_noop_timer(InfAdoptedSession* session,
       inf_adopted_session_schedule_noop_timer(session);
     }
   }
+}
+
+/* Breadcasts a request N times - makes only sense for undo and redo requests,
+ * so that's the only thing we offer API for. */
+static void
+inf_adopted_session_broadcast_n_requests(InfAdoptedSession* session,
+                                         InfAdoptedRequest* request,
+                                         guint n)
+{
+  InfAdoptedSessionPrivate* priv;
+  InfAdoptedSessionClass* session_class;
+  InfUserTable* user_table;
+  guint user_id;
+  InfUser* user;
+  InfAdoptedSessionLocalUser* local;
+  xmlNodePtr xml;
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
+  g_assert(session_class->request_to_xml != NULL);
+
+  user_table = inf_session_get_user_table(INF_SESSION(session));
+  user_id = inf_adopted_request_get_user_id(request);
+  user = inf_user_table_lookup_user_by_id(user_table, user_id);
+  g_assert(user != NULL);
+
+  local = inf_adopted_session_lookup_local_user(
+    session,
+    INF_ADOPTED_USER(user)
+  );
+  g_assert(local != NULL);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"request");
+
+  session_class->request_to_xml(
+    session,
+    xml,
+    request,
+    local->last_send_vector,
+    FALSE
+  );
+
+  if(n > 1) inf_xml_util_set_attribute_uint(xml, "num", n);
+  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+
+  inf_adopted_state_vector_free(local->last_send_vector);
+  local->last_send_vector = inf_adopted_state_vector_copy(
+    inf_adopted_request_get_vector(request)
+  );
+
+  /* Add this request to last send vector if it increases vector time
+   * (-> affects buffer). */
+  if(inf_adopted_request_affects_buffer(request) == TRUE)
+    inf_adopted_state_vector_add(local->last_send_vector, user_id, n);
+
+  inf_adopted_session_stop_noop_timer(session, local);
 }
 
 /*
@@ -882,6 +938,12 @@ inf_adopted_session_process_xml_run(InfSession* session,
   InfAdoptedRequest* request;
   InfAdoptedUser* user;
 
+  gboolean has_num;
+  guint num;
+  GError* local_error;
+  InfAdoptedRequest* copy_req;
+  guint i;
+
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
   if(strcmp((const char*)xml->name, "request") == 0)
@@ -900,6 +962,14 @@ inf_adopted_session_process_xml_run(InfSession* session,
 
     /* TODO: Check user connection! */
 
+    local_error = NULL;
+    has_num = inf_xml_util_get_attribute_uint(xml, "num", &num, &local_error);
+    if(local_error != NULL)
+    {
+      g_propagate_error(error, local_error);
+      return INF_COMMUNICATION_SCOPE_PTP;
+    }
+    
     request = session_class->xml_to_request(
       INF_ADOPTED_SESSION(session),
       xml,
@@ -912,7 +982,30 @@ inf_adopted_session_process_xml_run(InfSession* session,
       return INF_COMMUNICATION_SCOPE_PTP;
 
     inf_adopted_algorithm_receive_request(priv->algorithm, request);
-    g_object_unref(G_OBJECT(request));
+
+    /* Apply the request more than once if num is given. This is mostly used
+     * for multiple undos and redos, but is in general allowed for any
+     * request. */
+    if(has_num)
+    {
+      for(i = 1; i < num; ++i)
+      {
+        /* TODO: This is a bit of a hack since requests are normally
+         * immutable. It avoids an additional vector copy here though. */
+        copy_req = inf_adopted_request_copy(request);
+
+        inf_adopted_state_vector_add(
+          inf_adopted_request_get_vector(copy_req),
+          inf_user_get_id(INF_USER(user)),
+          i
+        );
+
+        inf_adopted_algorithm_receive_request(priv->algorithm, copy_req);
+        g_object_unref(copy_req);
+      }
+    }
+
+    g_object_unref(request);
 
     /* Requests can always be forwarded since user is given. */
     return INF_COMMUNICATION_SCOPE_GROUP;
@@ -1300,77 +1393,41 @@ void
 inf_adopted_session_broadcast_request(InfAdoptedSession* session,
                                       InfAdoptedRequest* request)
 {
-  InfAdoptedSessionPrivate* priv;
-  InfAdoptedSessionClass* session_class;
-  InfUserTable* user_table;
-  guint user_id;
-  InfUser* user;
-  InfAdoptedSessionLocalUser* local;
-  xmlNodePtr xml;
-
   g_return_if_fail(INF_ADOPTED_IS_SESSION(session));
   g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
 
-  priv = INF_ADOPTED_SESSION_PRIVATE(session);
-  session_class = INF_ADOPTED_SESSION_GET_CLASS(session);
-  g_assert(session_class->request_to_xml != NULL);
-
-  user_table = inf_session_get_user_table(INF_SESSION(session));
-  user_id = inf_adopted_request_get_user_id(request);
-  user = inf_user_table_lookup_user_by_id(user_table, user_id);
-  g_return_if_fail(user != NULL);
-
-  local = inf_adopted_session_lookup_local_user(
-    session,
-    INF_ADOPTED_USER(user)
-  );
-  g_return_if_fail(local != NULL);
-
-  xml = xmlNewNode(NULL, (const xmlChar*)"request");
-
-  session_class->request_to_xml(
-    session,
-    xml,
-    request,
-    local->last_send_vector,
-    FALSE
-  );
-
-  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
-
-  inf_adopted_state_vector_free(local->last_send_vector);
-  local->last_send_vector = inf_adopted_state_vector_copy(
-    inf_adopted_request_get_vector(request)
-  );
-
-  /* Add this request to last send vector if it increases vector time
-   * (-> affects buffer). */
-  if(inf_adopted_request_affects_buffer(request) == TRUE)
-    inf_adopted_state_vector_add(local->last_send_vector, user_id, 1);
-
-  inf_adopted_session_stop_noop_timer(session, local);
+  inf_adopted_session_broadcast_n_requests(session, request, 1);
 }
 
 /**
  * inf_adopted_session_undo:
  * @session: A #InfAdoptedSession.
  * @user: A local #InfAdoptedUser.
+ * @n: The number of undo requests to issue.
  *
- * This is a shortcut for creating an undo request and broadcasting it.
+ * This is a shortcut for creating @n undo requests and broadcasting them.
+ * If @n > 1 then this is also more efficient.
  **/
 void
 inf_adopted_session_undo(InfAdoptedSession* session,
-                         InfAdoptedUser* user)
+                         InfAdoptedUser* user,
+                         guint n)
 {
   InfAdoptedSessionPrivate* priv;
   InfAdoptedRequest* request;
+  guint i;
 
   g_return_if_fail(INF_ADOPTED_IS_SESSION(session));
   g_return_if_fail(INF_ADOPTED_IS_USER(user));
+  g_return_if_fail(n >= 1);
+
+  /* TODO: Check whether we can issue n undo requests before doing anything */
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   request = inf_adopted_algorithm_generate_undo(priv->algorithm, user);
-  inf_adopted_session_broadcast_request(session, request);
+  for(i = 1; i < n; ++i)
+    inf_adopted_algorithm_generate_undo(priv->algorithm, user);
+  inf_adopted_session_broadcast_n_requests(session, request, n);
   g_object_unref(request);  
 }
 
@@ -1378,22 +1435,31 @@ inf_adopted_session_undo(InfAdoptedSession* session,
  * inf_adopted_session_redo:
  * @session: A #InfAdoptedSession.
  * @user: A local #InfAdoptedUser.
+ * @n: The number of redo requests to issue.
  *
- * This is a shortcut for creating a redo request and broadcasting it.
+ * This is a shortcut for creating @n redo requests and broadcasting them.
+ * If @n > 1 then this is also more efficient.
  **/
 void
 inf_adopted_session_redo(InfAdoptedSession* session,
-                         InfAdoptedUser* user)
+                         InfAdoptedUser* user,
+                         guint n)
 {
   InfAdoptedSessionPrivate* priv;
   InfAdoptedRequest* request;
+  guint i;
+
+  /* TODO: Check whether we can issue n redo requests before doing anything */
 
   g_return_if_fail(INF_ADOPTED_IS_SESSION(session));
   g_return_if_fail(INF_ADOPTED_IS_USER(user));
+  g_return_if_fail(n >= 1);
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   request = inf_adopted_algorithm_generate_redo(priv->algorithm, user);
-  inf_adopted_session_broadcast_request(session, request);
+  for(i = 1; i < n; ++i)
+    inf_adopted_algorithm_generate_redo(priv->algorithm, user);
+  inf_adopted_session_broadcast_n_requests(session, request, n);
   g_object_unref(request);
 }
 

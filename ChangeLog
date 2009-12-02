@@ -1,3 +1,13 @@
+2009-12-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session.h:
+	* libinfinity/adopted/inf-adopted-session.c: Allow repetitive requests
+	by sending a num="n" attribute in the <request/> message. Add a guint
+	parameter to inf_adopted_session_undo() and inf_adopted_session_redo()
+	to undo or redo multiple requests at once.
+
+	* test/inf-test-gtk-browser.c: Adapt to the API change.
+
 2009-12-01  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-config-reload.c: Properly wrap reference to
