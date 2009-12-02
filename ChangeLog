@@ -1,5 +1,11 @@
 2009-12-02  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-algorithm.h:
+	* libinfinity/adopted/inf-adopted-algorithm.c: Made
+	inf_adopted_algorithm_translate_request() public.
+
+2009-12-02  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-session.h:
 	* libinfinity/adopted/inf-adopted-session.c: Allow repetitive requests
 	by sending a num="n" attribute in the <request/> message. Add a guint

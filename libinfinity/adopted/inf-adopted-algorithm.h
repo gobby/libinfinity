@@ -122,6 +122,11 @@ InfAdoptedRequest*
 inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
                                     InfAdoptedUser* user);
 
+InfAdoptedRequest*
+inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
+                                        InfAdoptedRequest* request,
+                                        InfAdoptedStateVector* to);
+
 void
 inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
                                       InfAdoptedRequest* request);
