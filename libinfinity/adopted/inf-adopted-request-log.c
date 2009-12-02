@@ -18,6 +18,7 @@
  */
 
 #include <libinfinity/adopted/inf-adopted-request-log.h>
+#include <libinfinity/inf-marshal.h>
 
 #include <string.h> /* For (g_)memmove */
 
@@ -76,11 +77,18 @@ enum {
   PROP_NEXT_REDO
 };
 
+enum {
+  ADD_REQUEST,
+
+  LAST_SIGNAL
+};
+
 #define INF_ADOPTED_REQUEST_LOG_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST_LOG, InfAdoptedRequestLogPrivate))
 #define INF_ADOPTED_REQUEST_LOG_PRIVATE(obj)     ((InfAdoptedRequestLogPrivate*)(obj)->priv)
 
 static GObjectClass* parent_class;
 static const guint INF_ADOPTED_REQUEST_LOG_INC = 0x80;
+static guint request_log_signals[LAST_SIGNAL];
 
 /* Find the request that is undone if the next request was an undo request
  * (to be cached in priv->next_undo). Similar if type is REDO. */
@@ -314,11 +322,192 @@ inf_adopted_request_log_get_property(GObject* object,
 }
 
 static void
+inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
+                                            InfAdoptedRequest* request)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedRequestLogEntry* entry;
+  InfAdoptedRequestLogEntry* old_entries;
+  guint i;
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+
+  g_assert(inf_adopted_request_get_user_id(request) == priv->user_id);
+
+  g_assert(
+    priv->begin == priv->end ||
+    inf_adopted_state_vector_get(
+      inf_adopted_request_get_vector(request),
+      priv->user_id
+    ) == priv->end
+  );
+
+  if(priv->offset + (priv->end - priv->begin) == priv->alloc)
+  {
+    if(priv->offset > 0)
+    {
+      g_memmove(
+        priv->entries,
+        priv->entries + priv->offset,
+        (priv->end - priv->begin) * sizeof(InfAdoptedRequestLogEntry)
+      );
+
+      /* We now corrupted several pointers in our entries because of
+       * moving memory around. */
+      for(i = 0; i < priv->end - priv->begin; ++ i)
+      {
+        g_assert(priv->entries[i].original != NULL);
+        priv->entries[i].original -= priv->offset;
+
+        if(priv->entries[i].next_associated != NULL)
+          priv->entries[i].next_associated -= priv->offset;
+        if(priv->entries[i].prev_associated != NULL)
+          priv->entries[i].prev_associated -= priv->offset;
+      }
+
+      if(priv->next_undo != NULL) priv->next_undo -= priv->offset;
+      if(priv->next_redo != NULL) priv->next_redo -= priv->offset;
+
+      priv->offset = 0;
+    }
+    else
+    {
+      old_entries = priv->entries;
+      priv->alloc += INF_ADOPTED_REQUEST_LOG_INC;
+
+      priv->entries = g_realloc(
+        priv->entries,
+        priv->alloc * sizeof(InfAdoptedRequestLogEntry)
+      );
+
+      if(priv->entries != old_entries)
+      {
+        /* The realloc above could have invalidated several pointers */
+        for(i = 0; i < priv->end - priv->begin; ++ i)
+        {
+          g_assert(priv->entries[i].original != NULL);
+          priv->entries[i].original =
+            priv->entries + (priv->entries[i].original - old_entries);
+
+          if(priv->entries[i].next_associated != NULL)
+          {
+            priv->entries[i].next_associated = priv->entries +
+              (priv->entries[i].next_associated - old_entries);
+          }
+
+          if(priv->entries[i].prev_associated != NULL)
+          {
+            priv->entries[i].prev_associated = priv->entries +
+              (priv->entries[i].prev_associated - old_entries);
+          }
+        }
+
+        if(priv->next_undo != NULL)
+          priv->next_undo = priv->entries + (priv->next_undo - old_entries);
+        if(priv->next_redo != NULL)
+          priv->next_redo = priv->entries + (priv->next_redo - old_entries);
+      }
+    }
+  }
+
+  g_object_freeze_notify(G_OBJECT(log));
+
+  if(priv->begin == priv->end)
+  {
+    priv->begin = inf_adopted_state_vector_get(
+      inf_adopted_request_get_vector(request),
+      priv->user_id
+    );
+
+    priv->end = priv->begin;
+  }
+
+  entry = &priv->entries[priv->offset + (priv->end - priv->begin)];
+  ++ priv->end;
+
+  g_object_notify(G_OBJECT(log), "end");
+
+  entry->request = request;
+  g_object_ref(G_OBJECT(request));
+
+  switch(inf_adopted_request_get_request_type(request))
+  {
+  case INF_ADOPTED_REQUEST_DO:
+    entry->original = entry;
+    entry->next_associated = NULL;
+    entry->prev_associated = NULL;
+    priv->next_undo = entry;
+    g_object_notify(G_OBJECT(log), "next-undo");
+
+    if(priv->next_redo != NULL)
+    {
+      priv->next_redo = NULL;
+      g_object_notify(G_OBJECT(log), "next-redo");
+    }
+
+    break;
+  case INF_ADOPTED_REQUEST_UNDO:
+    g_assert(priv->next_undo != NULL);
+
+    entry->next_associated = NULL;
+    entry->prev_associated = priv->next_undo;
+
+    entry->prev_associated->next_associated = entry;
+    entry->original = entry->prev_associated->original;
+
+    priv->next_undo =
+      inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_UNDO);
+    g_object_notify(G_OBJECT(log), "next-undo");
+
+    priv->next_redo = entry;
+    g_object_notify(G_OBJECT(log), "next-redo");
+
+    g_assert(priv->next_undo == NULL ||
+             inf_adopted_request_get_request_type(priv->next_undo->request) ==
+             INF_ADOPTED_REQUEST_DO ||
+             inf_adopted_request_get_request_type(priv->next_undo->request) ==
+             INF_ADOPTED_REQUEST_REDO);
+
+    break;
+  case INF_ADOPTED_REQUEST_REDO:
+    g_assert(priv->next_redo != NULL);
+
+    entry->next_associated = NULL;
+    entry->prev_associated = priv->next_redo;
+
+    entry->prev_associated->next_associated = entry;
+    entry->original = entry->prev_associated->original;
+
+    priv->next_undo = entry;
+    g_object_notify(G_OBJECT(log), "next-undo");
+
+    priv->next_redo =
+      inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_REDO);
+    g_object_notify(G_OBJECT(log), "next-redo");
+
+    g_assert(priv->next_redo == NULL ||
+             inf_adopted_request_get_request_type(priv->next_redo->request) ==
+             INF_ADOPTED_REQUEST_UNDO);
+
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  g_object_thaw_notify(G_OBJECT(log));
+
+}
+
+static void
 inf_adopted_request_log_class_init(gpointer g_class,
                                    gpointer class_data)
 {
   GObjectClass* object_class;
+  InfAdoptedRequestLogClass* request_log_class;
+
   object_class = G_OBJECT_CLASS(g_class);
+  request_log_class = INF_ADOPTED_REQUEST_LOG_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfAdoptedRequestLogPrivate));
@@ -327,6 +516,8 @@ inf_adopted_request_log_class_init(gpointer g_class,
   object_class->finalize = inf_adopted_request_log_finalize;
   object_class->set_property = inf_adopted_request_log_set_property;
   object_class->get_property = inf_adopted_request_log_get_property;
+  request_log_class->add_request =
+    inf_adopted_request_log_add_request_handler;
 
   g_object_class_install_property(
     object_class,
@@ -392,6 +583,26 @@ inf_adopted_request_log_class_init(gpointer g_class,
       INF_ADOPTED_TYPE_REQUEST,
       G_PARAM_READABLE
     )
+  );
+
+  /**
+   * InfAdoptedRequestLog::add-request:
+   * @request_log: The #InfAdoptedRequestLog to which a new request is added.
+   * @request: The new request being added.
+   *
+   * This signal is emitted whenever a new request is added to the request log
+   * via inf_adopted_request_log_add_request().
+   */
+  request_log_signals[ADD_REQUEST] = g_signal_new(
+    "add-request",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfAdoptedRequestLogClass, add_request),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_ADOPTED_TYPE_REQUEST
   );
 }
 
@@ -602,12 +813,9 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
                                     InfAdoptedRequest* request)
 {
   InfAdoptedRequestLogPrivate* priv;
-  InfAdoptedRequestLogEntry* entry;
-  InfAdoptedRequestLogEntry* old_entries;
-  guint i;
 
   g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
-  g_return_if_fail(request != NULL);
+  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
@@ -621,160 +829,7 @@ inf_adopted_request_log_add_request(InfAdoptedRequestLog* log,
     ) == priv->end
   );
 
-  if(priv->offset + (priv->end - priv->begin) == priv->alloc)
-  {
-    if(priv->offset > 0)
-    {
-      g_memmove(
-        priv->entries,
-        priv->entries + priv->offset,
-        (priv->end - priv->begin) * sizeof(InfAdoptedRequestLogEntry)
-      );
-
-      /* We now corrupted several pointers in our entries because of
-       * moving memory around. */
-      for(i = 0; i < priv->end - priv->begin; ++ i)
-      {
-        g_assert(priv->entries[i].original != NULL);
-        priv->entries[i].original -= priv->offset;
-
-        if(priv->entries[i].next_associated != NULL)
-          priv->entries[i].next_associated -= priv->offset;
-        if(priv->entries[i].prev_associated != NULL)
-          priv->entries[i].prev_associated -= priv->offset;
-      }
-
-      if(priv->next_undo != NULL) priv->next_undo -= priv->offset;
-      if(priv->next_redo != NULL) priv->next_redo -= priv->offset;
-
-      priv->offset = 0;
-    }
-    else
-    {
-      old_entries = priv->entries;
-      priv->alloc += INF_ADOPTED_REQUEST_LOG_INC;
-
-      priv->entries = g_realloc(
-        priv->entries,
-        priv->alloc * sizeof(InfAdoptedRequestLogEntry)
-      );
-
-      if(priv->entries != old_entries)
-      {
-        /* The realloc above could have invalidated several pointers */
-        for(i = 0; i < priv->end - priv->begin; ++ i)
-        {
-          g_assert(priv->entries[i].original != NULL);
-          priv->entries[i].original =
-            priv->entries + (priv->entries[i].original - old_entries);
-
-          if(priv->entries[i].next_associated != NULL)
-          {
-            priv->entries[i].next_associated = priv->entries +
-              (priv->entries[i].next_associated - old_entries);
-          }
-
-          if(priv->entries[i].prev_associated != NULL)
-          {
-            priv->entries[i].prev_associated = priv->entries +
-              (priv->entries[i].prev_associated - old_entries);
-          }
-        }
-
-        if(priv->next_undo != NULL)
-          priv->next_undo = priv->entries + (priv->next_undo - old_entries);
-        if(priv->next_redo != NULL)
-          priv->next_redo = priv->entries + (priv->next_redo - old_entries);
-      }
-    }
-  }
-
-  g_object_freeze_notify(G_OBJECT(log));
-
-  if(priv->begin == priv->end)
-  {
-    priv->begin = inf_adopted_state_vector_get(
-      inf_adopted_request_get_vector(request),
-      priv->user_id
-    );
-
-    priv->end = priv->begin;
-  }
-
-  entry = &priv->entries[priv->offset + (priv->end - priv->begin)];
-  ++ priv->end;
-
-  g_object_notify(G_OBJECT(log), "end");
-
-  entry->request = request;
-  g_object_ref(G_OBJECT(request));
-
-  switch(inf_adopted_request_get_request_type(request))
-  {
-  case INF_ADOPTED_REQUEST_DO:
-    entry->original = entry;
-    entry->next_associated = NULL;
-    entry->prev_associated = NULL;
-    priv->next_undo = entry;
-    g_object_notify(G_OBJECT(log), "next-undo");
-
-    if(priv->next_redo != NULL)
-    {
-      priv->next_redo = NULL;
-      g_object_notify(G_OBJECT(log), "next-redo");
-    }
-
-    break;
-  case INF_ADOPTED_REQUEST_UNDO:
-    g_assert(priv->next_undo != NULL);
-
-    entry->next_associated = NULL;
-    entry->prev_associated = priv->next_undo;
-
-    entry->prev_associated->next_associated = entry;
-    entry->original = entry->prev_associated->original;
-
-    priv->next_undo =
-      inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_UNDO);
-    g_object_notify(G_OBJECT(log), "next-undo");
-
-    priv->next_redo = entry;
-    g_object_notify(G_OBJECT(log), "next-redo");
-
-    g_assert(priv->next_undo == NULL ||
-             inf_adopted_request_get_request_type(priv->next_undo->request) ==
-             INF_ADOPTED_REQUEST_DO ||
-             inf_adopted_request_get_request_type(priv->next_undo->request) ==
-             INF_ADOPTED_REQUEST_REDO);
-
-    break;
-  case INF_ADOPTED_REQUEST_REDO:
-    g_assert(priv->next_redo != NULL);
-
-    entry->next_associated = NULL;
-    entry->prev_associated = priv->next_redo;
-
-    entry->prev_associated->next_associated = entry;
-    entry->original = entry->prev_associated->original;
-
-    priv->next_undo = entry;
-    g_object_notify(G_OBJECT(log), "next-undo");
-
-    priv->next_redo =
-      inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_REDO);
-    g_object_notify(G_OBJECT(log), "next-redo");
-
-    g_assert(priv->next_redo == NULL ||
-             inf_adopted_request_get_request_type(priv->next_redo->request) ==
-             INF_ADOPTED_REQUEST_UNDO);
-
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  g_object_thaw_notify(G_OBJECT(log));
+  g_signal_emit(G_OBJECT(log), request_log_signals[ADD_REQUEST], 0, request);
 }
 
 /**

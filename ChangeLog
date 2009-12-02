@@ -1,5 +1,11 @@
 2009-12-02  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/adopted/inf-adopted-request-log.h:
+	* libinfinity/adopted/inf-adopted-request-log.c: Added the
+	"add-request" signal.
+
+2009-12-02  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.h:
 	* libinfinity/adopted/inf-adopted-algorithm.c: Made
 	inf_adopted_algorithm_translate_request() public.

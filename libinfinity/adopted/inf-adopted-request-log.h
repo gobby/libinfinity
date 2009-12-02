@@ -38,12 +38,19 @@ typedef struct _InfAdoptedRequestLogClass InfAdoptedRequestLogClass;
 
 /**
  * InfAdoptedRequestLogClass:
+ * @add_request: Default signal handler for the
+ * #InfAdoptedRequestLog::add-request signal.
  *
- * This structure does not contain any public fields.
+ * This structure contains the default signal handlers for
+ * #InfAdoptedRequestLog.
  */
 struct _InfAdoptedRequestLogClass {
   /*< private >*/
   GObjectClass parent_class;
+
+  /*< public >*/
+  void(*add_request)(InfAdoptedRequestLog* request_log,
+                     InfAdoptedRequest* request);
 };
 
 /**
