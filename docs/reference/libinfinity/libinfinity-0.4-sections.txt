@@ -714,6 +714,7 @@ INFD_XMPP_SERVER_GET_CLASS
 <SECTION>
 <FILE>infd-server-pool</FILE>
 <TITLE>InfdServerPool</TITLE>
+InfdServerPoolForeachServerFunc
 InfdServerPool
 InfdServerPoolClass
 infd_server_pool_new
@@ -1272,7 +1273,7 @@ inf_chat_buffer_get_n_messages
 inf_chat_buffer_get_size
 <SUBSECTION Standard>
 INF_CHAT_BUFFER
-INF_IS_CHAT_BUFER
+INF_IS_CHAT_BUFFER
 inf_chat_buffer_message_type_get_type
 INF_TYPE_CHAT_BUFFER_MESSAGE_TYPE
 inf_chat_buffer_message_get_type
