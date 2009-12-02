@@ -678,6 +678,9 @@ inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
     }
 
     break;
+  case INF_USER_UNAVAILABLE:
+    /* TODO: Do we want to unset the active-user automatically here? */
+    break;
   default:
     /* Not of interest. */
     break;

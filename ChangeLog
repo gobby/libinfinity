@@ -1,5 +1,11 @@
 2009-12-02  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.c
+	(inf_text_gtk_buffer_active_user_notify_status_cb): Added a TODO
+	comment about unsetting active-user when it gets unavailable.
+
+2009-12-02  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-request-log.h:
 	* libinfinity/adopted/inf-adopted-request-log.c: Added the
 	"add-request" signal.
