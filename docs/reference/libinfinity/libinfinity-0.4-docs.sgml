@@ -55,6 +55,7 @@
     <title>Libinfinity's adOPTed implementation</title>
     <xi:include href="xml/inf-adopted-session.xml"/>
     <xi:include href="xml/inf-adopted-algorithm.xml"/>
+    <xi:include href="xml/inf-adopted-undo-grouping.xml"/>
     <xi:include href="xml/inf-adopted-request-log.xml"/>
     <xi:include href="xml/inf-adopted-request.xml"/>
     <xi:include href="xml/inf-adopted-operation.xml"/>

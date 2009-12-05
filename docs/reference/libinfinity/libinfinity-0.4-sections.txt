@@ -22,6 +22,28 @@ INF_ADOPTED_SESSION_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-adopted-undo-grouping</FILE>
+<TITLE>InfAdoptedUndoGrouping</TITLE>
+InfAdoptedUndoGrouping
+InfAdoptedUndoGroupingClass
+inf_adopted_undo_grouping_new
+inf_adopted_undo_grouping_get_algorithm
+inf_adopted_undo_grouping_set_algorithm
+inf_adopted_undo_grouping_start_group
+inf_adopted_undo_grouping_end_group
+inf_adopted_undo_grouping_get_undo_size
+inf_adopted_undo_grouping_get_redo_size
+<SUBSECTION Standard>
+INF_ADOPTED_UNDO_GROUPING
+INF_ADOPTED_IS_UNDO_GROUPING
+INF_ADOPTED_TYPE_UNDO_GROUPING
+inf_adopted_undo_grouping_get_type
+INF_ADOPTED_UNDO_GROUPING_CLASS
+INF_ADOPTED_IS_UNDO_GROUPING_CLASS
+INF_ADOPTED_UNDO_GROUPING_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>inf-adopted-session-record</FILE>
 <TITLE>InfAdoptedSessionRecord</TITLE>
 InfAdoptedSessionRecord

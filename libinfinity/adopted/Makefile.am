@@ -18,6 +18,7 @@ libinfinity_adopted_la_SOURCES = \
 	inf-adopted-session-record.c \
 	inf-adopted-split-operation.c \
 	inf-adopted-state-vector.c \
+	inf-adopted-undo-grouping.c \
 	inf-adopted-user.c
 
 libinfinity_adopted_la_HEADERS = \
@@ -30,6 +31,7 @@ libinfinity_adopted_la_HEADERS = \
 	inf-adopted-session-record.h \
 	inf-adopted-split-operation.h \
 	inf-adopted-state-vector.h \
+	inf-adopted-undo-grouping.h \
 	inf-adopted-user.h
 
 noinst_HEADERS = \

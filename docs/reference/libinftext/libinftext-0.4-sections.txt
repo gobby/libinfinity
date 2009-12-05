@@ -69,6 +69,22 @@ INF_TEXT_SESSION_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-text-undo-grouping</FILE>
+<TITLE>InfTextUndoGrouping</TITLE>
+InfTextUndoGrouping
+inf_text_undo_grouping_new
+<SUBSECTION Standard>
+InfTextUndoGroupingClass
+INF_TEXT_UNDO_GROUPING
+INF_TEXT_IS_UNDO_GROUPING
+INF_TEXT_TYPE_UNDO_GROUPING
+inf_text_undo_grouping_get_type
+INF_TEXT_UNDO_GROUPING_CLASS
+INF_TEXT_IS_UNDO_GROUPING_CLASS
+INF_TEXT_UNDO_GROUPING_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>inf-text-user</FILE>
 <TITLE>InfTextUser</TITLE>
 InfTextUser

@@ -30,6 +30,7 @@ libinftext_0_4_la_HEADERS = \
 	inf-text-operations.h \
 	inf-text-remote-delete-operation.h \
 	inf-text-session.h \
+	inf-text-undo-grouping.h \
 	inf-text-user.h
 
 libinftext_0_4_la_SOURCES = \
@@ -43,4 +44,5 @@ libinftext_0_4_la_SOURCES = \
 	inf-text-move-operation.c \
 	inf-text-remote-delete-operation.c \
 	inf-text-session.c \
+	inf-text-undo-grouping.c \
 	inf-text-user.c

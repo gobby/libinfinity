@@ -1,5 +1,19 @@
 2009-12-05  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/inf-marshal.in: Added a BOOL:OBJECT,OBJECT marshaller.
+
+	* libinfinity/adopted/inf-adopted-undo-grouping.h:
+	* libinfinity/adopted/inf-adopted-undo-grouping.c:
+	* libinfinity/adopted/Makefile.am: Added the #InfAdoptedUndoGrouping
+	class. It allows to group requests to be undone at the same time.
+
+	* libinftext/inf-text-undo-grouping.h:
+	* libinftext/inf-text-undo-grouping.c:
+	* libinftext/Makefile.am: Added a specialization of that class for
+	text operations.
+
+2009-12-05  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-session.h: Removed INF_TEXT_TYPE_SESSION_STATUS
 	define as it's not used.
 
