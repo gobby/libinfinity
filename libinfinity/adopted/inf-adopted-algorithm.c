@@ -1766,7 +1766,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
 
   /**
    * InfAdoptedAlgorithm::can-undo-changed:
-   * @algorithm: The #InfAdopedAlgorithm for which a user's
+   * @algorithm: The #InfAdoptedAlgorithm for which a user's
    * can-undo state changed.
    * @user: The #InfAdoptedUser whose can-undo state has changed.
    * @can_undo: Whether @user can issue an undo request in the current
@@ -1793,7 +1793,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
 
   /**
    * InfAdoptedAlgorithm::can-redo-changed:
-   * @algorithm: The #InfAdopedAlgorithm for which a user's
+   * @algorithm: The #InfAdoptedAlgorithm for which a user's
    * can-redo state changed.
    * @user: The #InfAdoptedUser whose can-redo state has changed.
    * @can_undo: Whether @user can issue a redo request in the current

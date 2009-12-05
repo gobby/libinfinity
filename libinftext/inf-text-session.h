@@ -37,8 +37,6 @@ G_BEGIN_DECLS
 #define INF_TEXT_IS_SESSION_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_TEXT_TYPE_SESSION))
 #define INF_TEXT_SESSION_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_TEXT_TYPE_SESSION, InfTextSessionClass))
 
-#define INF_TEXT_TYPE_SESSION_STATUS          (inf_text_session_status_get_type())
-
 typedef struct _InfTextSession InfTextSession;
 typedef struct _InfTextSessionClass InfTextSessionClass;
 
