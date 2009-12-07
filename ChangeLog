@@ -1,5 +1,10 @@
 2009-12-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.c: Move root node destruction to
+	finalize.
+
+2009-12-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.h:
 	* libinfinity/client/infc-browser.c: Added the "status" property,
 	infc_browser_get_status() and the "error" signal. Keep connection

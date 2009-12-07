@@ -1065,20 +1065,9 @@ infc_browser_dispose(GObject* object)
   browser = INFC_BROWSER(object);
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  /* Close chat session if it is open */
-  if(priv->chat_session != NULL)
-    inf_session_close(infc_session_proxy_get_session(priv->chat_session));
-  g_assert(priv->chat_session == NULL);
-
-  infc_browser_node_free(browser, priv->root);
-  priv->root = NULL;
-
-  g_hash_table_destroy(priv->nodes);
-  priv->nodes = NULL;
-
-  /* TODO: Use infc_browser_set_connection() wenn it is available - should be
-   * trivial to implement now. Remember to make the "connection" property
-   * writable also. */
+  /* TODO: Use infc_browser_set_connection() as soon as it is available -
+   * should be trivial to implement now. Remember to make the "connection"
+   * property writable also. */
 #if 0
   infc_browser_set_connection(browser, NULL);
 #else
@@ -1109,6 +1098,11 @@ infc_browser_dispose(GObject* object)
   }
 #endif
 
+  /* Close chat session if it is open */
+  if(priv->chat_session != NULL)
+    inf_session_close(infc_session_proxy_get_session(priv->chat_session));
+  g_assert(priv->chat_session == NULL);
+
   g_object_unref(priv->communication_manager);
   priv->communication_manager = NULL;
 
@@ -1125,6 +1119,24 @@ infc_browser_dispose(GObject* object)
   }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
+}
+
+static void
+infc_browser_finalize(GObject* object)
+{
+  InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
+
+  browser = INFC_BROWSER(object);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  infc_browser_node_free(browser, priv->root);
+  priv->root = NULL;
+
+  g_hash_table_destroy(priv->nodes);
+  priv->nodes = NULL;
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 static void
@@ -3353,6 +3365,7 @@ infc_browser_class_init(gpointer g_class,
 
   object_class->constructor = infc_browser_constructor;
   object_class->dispose = infc_browser_dispose;
+  object_class->finalize = infc_browser_finalize;
   object_class->set_property = infc_browser_set_property;
   object_class->get_property = infc_browser_get_property;
 
