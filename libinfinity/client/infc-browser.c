@@ -168,6 +168,7 @@ struct _InfcBrowserPrivate {
 
   GHashTable* plugins; /* Registered plugins */
 
+  InfcBrowserStatus status;
   GHashTable* nodes; /* Mapping from id to node */
   InfcBrowserNode* root;
 
@@ -187,10 +188,13 @@ enum {
   PROP_CONNECTION,
 
   /* read only */
+  PROP_STATUS,
   PROP_CHAT_SESSION
 };
 
 enum {
+  ERROR,
+
   NODE_ADDED,
   NODE_REMOVED,
   SUBSCRIBE_SESSION,
@@ -547,6 +551,28 @@ infc_browser_session_remove_session(InfcBrowser* browser,
   node->shared.known.session = NULL;
 }
 
+static void
+infc_browser_node_register(InfcBrowser* browser,
+                           InfcBrowserNode* node)
+{
+  InfcBrowserIter iter;
+  iter.node_id = node->id;
+  iter.node = node;
+
+  g_signal_emit(G_OBJECT(browser), browser_signals[NODE_ADDED], 0, &iter);
+}
+
+static void
+infc_browser_node_unregister(InfcBrowser* browser,
+                             InfcBrowserNode* node)
+{
+  InfcBrowserIter iter;
+  iter.node_id = node->id;
+  iter.node = node;
+
+  g_signal_emit(G_OBJECT(browser), browser_signals[NODE_REMOVED], 0, &iter);
+}
+
 /* Required by infc_browser_node_free */
 static void
 infc_browser_remove_sync_in(InfcBrowser* browser,
@@ -710,6 +736,16 @@ infc_browser_node_free(InfcBrowser* browser,
   g_slice_free(InfcBrowserNode, node);
 }
 
+static gboolean
+infc_browser_node_remove(InfcBrowser* browser,
+                         InfcBrowserNode* node,
+                         GError** error)
+{
+  infc_browser_node_unregister(browser, node);
+  infc_browser_node_free(browser, node);
+  return TRUE;
+}
+
 /*
  * Signal handlers
  */
@@ -761,16 +797,61 @@ infc_browser_session_close_cb(InfSession* session,
   }
 }
 
-/* Required by infc_browser_release_connection() */
+/* Required by infc_browser_disconnected */
 static void
 infc_browser_member_removed_cb(InfCommunicationGroup* group,
                                InfXmlConnection* connection,
                                gpointer user_data);
 
 static void
-infc_browser_release_connection(InfcBrowser* browser)
+infc_browser_connected(InfcBrowser* browser)
 {
   InfcBrowserPrivate* priv;
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  g_assert(priv->group == NULL);
+
+  /* Join directory group of server */
+  /* directory group always uses central method */
+  priv->group = inf_communication_manager_join_group(
+    priv->communication_manager,
+    "InfDirectory",
+    priv->connection,
+    "central"
+  );
+
+  /* "central" method should always be available */
+  g_assert(priv->group != NULL);
+
+  inf_communication_group_set_target(
+    INF_COMMUNICATION_GROUP(priv->group),
+    INF_COMMUNICATION_OBJECT(browser)
+  );
+
+  g_signal_connect(
+    priv->group,
+    "member-removed",
+    G_CALLBACK(infc_browser_member_removed_cb),
+    browser
+  );
+
+  /* TODO: Change to connecting, setup welcome timer, and wait for welcome
+   * message. */
+
+  if(priv->status != INFC_BROWSER_CONNECTED)
+  {
+    priv->status = INFC_BROWSER_CONNECTED;
+    g_object_notify(G_OBJECT(browser), "status");
+  }
+}
+
+static void
+infc_browser_disconnected(InfcBrowser* browser)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* child;
+  InfcBrowserNode* next;
+
   priv = INFC_BROWSER_PRIVATE(browser);
 
   /* Note that we do not remove the corresponding node that we sync in. We
@@ -782,7 +863,7 @@ infc_browser_release_connection(InfcBrowser* browser)
   while(priv->subscription_requests != NULL)
     infc_browser_remove_subreq(browser, priv->subscription_requests->data);
 
-  /* TODO: Emit failed signal with some "canceled" error? */
+  /* TODO: Emit failed signal with some "disconnected" error */
   infc_request_manager_clear(priv->request_manager);
 
   g_signal_handlers_disconnect_by_func(
@@ -791,16 +872,21 @@ infc_browser_release_connection(InfcBrowser* browser)
     browser
   );
 
-  /* Reset group since the browser's connection
-   * is always the publisher. */
+  /* Reset group since the browser's connection is always the publisher. */
   g_object_unref(priv->group);
   priv->group = NULL;
 
-  /* Keep tree so it is still accessible, however, we cannot explore
-   * anything anymore. */
+  /* Remove tree */
+  for(child = priv->root->shared.subdir.child; child != NULL; child = next)
+  {
+    next = child->next;
 
-  g_object_unref(priv->connection);
-  priv->connection = NULL;
+    infc_browser_node_unregister(browser, child);
+    infc_browser_node_free(browser, child);
+  }
+
+  priv->status = INFC_BROWSER_DISCONNECTED;
+  g_object_notify(G_OBJECT(browser), "status");
 }
 
 static void
@@ -817,7 +903,64 @@ infc_browser_member_removed_cb(InfCommunicationGroup* group,
   g_assert(INF_COMMUNICATION_GROUP(priv->group) == group);
 
   if(connection == priv->connection)
-    infc_browser_release_connection(browser);
+    infc_browser_disconnected(browser);
+}
+
+static void
+infc_browser_connection_notify_status_cb(GObject* object,
+                                         GParamSpec* pspec,
+                                         gpointer user_data)
+{
+  InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
+  InfXmlConnectionStatus status;
+
+  browser = INFC_BROWSER(user_data);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  g_object_get(object, "status", &status, NULL);
+
+  switch(status)
+  {
+  case INF_XML_CONNECTION_OPENING:
+    if(priv->status != INFC_BROWSER_CONNECTING)
+    {
+      priv->status = INFC_BROWSER_CONNECTING;
+      g_object_notify(G_OBJECT(browser), "status");
+    }
+
+    break;
+  case INF_XML_CONNECTION_OPEN:
+    infc_browser_connected(browser);
+    break;
+  case INF_XML_CONNECTION_CLOSING:
+  case INF_XML_CONNECTION_CLOSED:
+    /* The group will emit ::member-removed in this case in which we
+     * do some cleanup. If we got here from INF_XML_CONNECTION_OPENING then
+     * that cleanup is not required, but remember to reset status. */
+    if(priv->group == NULL && priv->status != INFC_BROWSER_DISCONNECTED)
+    {
+      priv->status = INFC_BROWSER_DISCONNECTED;
+      g_object_notify(G_OBJECT(browser), "status");
+    }
+
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+}
+
+static void
+infc_browser_connection_error_cb(InfXmlConnection* connection,
+                                 const GError* error,
+                                 gpointer user_data)
+{
+  InfcBrowser* browser;
+  browser = INFC_BROWSER(user_data);
+
+  /* Just relay to save others some work */
+  g_signal_emit(G_OBJECT(browser), browser_signals[ERROR], 0, error);
 }
 
 /*
@@ -875,10 +1018,12 @@ infc_browser_init(GTypeInstance* instance,
 
   priv->io = NULL;
   priv->communication_manager = NULL;
+  priv->group = NULL;
   priv->connection = NULL;
   priv->request_manager = infc_request_manager_new();
 
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
+  priv->status = INFC_BROWSER_DISCONNECTED;
   priv->nodes = g_hash_table_new(NULL, NULL);
   priv->root = infc_browser_node_new_subdirectory(browser, NULL, 0, NULL);
 
@@ -906,31 +1051,7 @@ infc_browser_constructor(GType type,
   priv = INFC_BROWSER_PRIVATE(browser);
 
   g_assert(priv->communication_manager != NULL);
-  g_assert(priv->connection != NULL);
-
-  /* Join directory group of server */
-  /* directory group always uses central method */
-  priv->group = inf_communication_manager_join_group(
-    priv->communication_manager,
-    "InfDirectory",
-    priv->connection,
-    "central"
-  );
-
-  /* "central" method should always be available */
-  g_assert(priv->group != NULL);
-
-  inf_communication_group_set_target(
-    INF_COMMUNICATION_GROUP(priv->group),
-    INF_COMMUNICATION_OBJECT(browser)
-  );
-
-  g_signal_connect(
-    priv->group,
-    "member-removed",
-    G_CALLBACK(infc_browser_member_removed_cb),
-    browser
-  );
+  g_assert(priv->io != NULL);
 
   return object;
 }
@@ -955,13 +1076,38 @@ infc_browser_dispose(GObject* object)
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
 
-  if(priv->connection != NULL)
-    infc_browser_release_connection(browser);
+  /* TODO: Use infc_browser_set_connection() wenn it is available - should be
+   * trivial to implement now. Remember to make the "connection" property
+   * writable also. */
+#if 0
+  infc_browser_set_connection(browser, NULL);
+#else
+  if(priv->group != NULL)
+    infc_browser_disconnected(browser);
   g_assert(priv->group == NULL);
 
-  /* Should have been freed by infc_browser_release_connection */
+  /* Should have been freed by infc_browser_disconnected */
   g_assert(priv->sync_ins == NULL);
   g_assert(priv->subscription_requests == NULL);
+
+  if(priv->connection != NULL)
+  {
+    g_signal_handlers_disconnect_by_func(
+      priv->connection,
+      G_CALLBACK(infc_browser_connection_notify_status_cb),
+      browser
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      priv->connection,
+      G_CALLBACK(infc_browser_connection_error_cb),
+      browser
+    );
+
+    g_object_unref(priv->connection);
+    priv->connection = NULL;
+  }
+#endif
 
   g_object_unref(priv->communication_manager);
   priv->communication_manager = NULL;
@@ -989,6 +1135,7 @@ infc_browser_set_property(GObject* object,
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
+  InfXmlConnectionStatus status;
 
   browser = INFC_BROWSER(object);
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -1006,13 +1153,84 @@ infc_browser_set_property(GObject* object,
 
     break;
   case PROP_CONNECTION:
-    g_assert(priv->connection == NULL); /* construct/only */
-    priv->connection = INF_XML_CONNECTION(g_value_dup_object(value));
+    if(priv->connection != NULL)
+    {
+      if(priv->group != NULL)
+        infc_browser_disconnected(browser);
+
+      g_signal_handlers_disconnect_by_func(
+        priv->connection,
+        G_CALLBACK(infc_browser_connection_notify_status_cb),
+        browser
+      );
+
+      g_signal_handlers_disconnect_by_func(
+        priv->connection,
+        G_CALLBACK(infc_browser_connection_error_cb),
+        browser
+      );
+
+      g_object_unref(priv->connection);
+    }
+
+    priv->connection = INF_XML_CONNECTION(g_value_get_object(value));
+
+    if(priv->connection)
+    {
+      g_object_ref(priv->connection);
+      g_object_get(G_OBJECT(priv->connection), "status", &status, NULL);
+
+      g_signal_connect(
+        G_OBJECT(priv->connection),
+        "notify::status",
+        G_CALLBACK(infc_browser_connection_notify_status_cb),
+        browser
+      );
+
+      g_signal_connect(
+        G_OBJECT(priv->connection),
+        "error",
+        G_CALLBACK(infc_browser_connection_error_cb),
+        browser
+      );
+
+      switch(status)
+      {
+      case INF_XML_CONNECTION_OPENING:
+        if(priv->status != INFC_BROWSER_CONNECTING)
+        {
+          priv->status = INFC_BROWSER_CONNECTING;
+          g_object_notify(G_OBJECT(browser), "status");
+        }
+
+        break;
+      case INF_XML_CONNECTION_OPEN:
+        infc_browser_connected(browser);
+        break;
+      case INF_XML_CONNECTION_CLOSING:
+      case INF_XML_CONNECTION_CLOSED:
+        if(priv->status != INFC_BROWSER_DISCONNECTED)
+        {
+          priv->status = INFC_BROWSER_DISCONNECTED;
+          g_object_notify(G_OBJECT(browser), "status");
+        }
+
+        break;
+      }
+    }
+    else
+    {
+      if(priv->status != INFC_BROWSER_DISCONNECTED)
+      {
+        priv->status = INFC_BROWSER_DISCONNECTED;
+        g_object_notify(G_OBJECT(browser), "status");
+      }
+    }
 
     break;
+  case PROP_STATUS:
   case PROP_CHAT_SESSION:
     /* read only */
-    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -1042,6 +1260,9 @@ infc_browser_get_property(GObject* object,
   case PROP_CONNECTION:
     g_value_set_object(value, G_OBJECT(priv->connection));
     break;
+  case PROP_STATUS:
+    g_value_set_enum(value, priv->status);
+    break;
   case PROP_CHAT_SESSION:
     g_value_set_object(value, G_OBJECT(priv->chat_session));
     break;
@@ -1049,42 +1270,6 @@ infc_browser_get_property(GObject* object,
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
-}
-
-/*
- * Directory tree operations.
- */
-
-static void
-infc_browser_node_register(InfcBrowser* browser,
-                           InfcBrowserNode* node)
-{
-  InfcBrowserIter iter;
-  iter.node_id = node->id;
-  iter.node = node;
-
-  g_signal_emit(G_OBJECT(browser), browser_signals[NODE_ADDED], 0, &iter);
-}
-
-static void
-infc_browser_node_unregister(InfcBrowser* browser,
-                             InfcBrowserNode* node)
-{
-  InfcBrowserIter iter;
-  iter.node_id = node->id;
-  iter.node = node;
-
-  g_signal_emit(G_OBJECT(browser), browser_signals[NODE_REMOVED], 0, &iter);
-}
-
-static gboolean
-infc_browser_node_remove(InfcBrowser* browser,
-                         InfcBrowserNode* node,
-                         GError** error)
-{
-  infc_browser_node_unregister(browser, node);
-  infc_browser_node_free(browser, node);
-  return TRUE;
 }
 
 /*
@@ -2801,6 +2986,7 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       g_error_free(seq_error);
     }
 
+    /* TODO: We might just want to emit error instead... */
     g_propagate_error(error, local_error);
   }
 
@@ -3170,6 +3356,7 @@ infc_browser_class_init(gpointer g_class,
   object_class->set_property = infc_browser_set_property;
   object_class->get_property = infc_browser_get_property;
 
+  browser_class->error = NULL;
   browser_class->node_added = NULL;
   browser_class->node_removed = NULL;
   browser_class->begin_explore = NULL;
@@ -3226,6 +3413,19 @@ infc_browser_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_STATUS,
+    g_param_spec_enum(
+      "status",
+      "Status",
+      "The current connectivity status of the browser",
+      INFC_TYPE_BROWSER_STATUS,
+      INFC_BROWSER_DISCONNECTED,
+      G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_CHAT_SESSION,
     g_param_spec_object(
       "chat-session",
@@ -3234,6 +3434,30 @@ infc_browser_class_init(gpointer g_class,
       INFC_TYPE_SESSION_PROXY,
       G_PARAM_READABLE
     )
+  );
+
+  /**
+   * InfcBrowser::error:
+   * @browser: The #InfcBrowser emitting the signal.
+   * @error: A @GError* saying what's wrong.
+   *
+   * This signal is emitted whenever an error occured. If the browser's
+   * underlying #InfXmlConnection produces emits #InfXmlConnection::error,
+   * then this signal will be emitted with the corresponding error as well.
+   * Also, if another error occurs on the browser level this signal is
+   * emitted. It may or may not be fatal. If it is fatal then the browser's
+   * status will change to %INFC_BROWSER_DISCONNECTED.
+   */
+  browser_signals[ERROR] = g_signal_new(
+    "error",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfcBrowserClass, error),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER /* actually a GError* */
   );
 
   /**
@@ -3373,6 +3597,38 @@ infc_browser_communication_object_init(gpointer g_iface,
 }
 
 GType
+infc_browser_status_get_type(void)
+{
+  static GType browser_status_type = 0;
+
+  if(!browser_status_type)
+  {
+    static const GEnumValue browser_status_values[] = {
+      {
+        INFC_BROWSER_DISCONNECTED,
+        "INFC_BROWSER_DISCONNECTED",
+        "disconnected"
+      }, {
+        INFC_BROWSER_CONNECTING,
+        "INFC_BROWSER_CONNECTING",
+        "connecting"
+      }, {
+        INFC_BROWSER_CONNECTED,
+        "INFC_BROWSER_CONNECTED",
+        "connected"
+      }
+    };
+
+    browser_status_type = g_enum_register_static(
+      "InfcBrowserStatus",
+      browser_status_values
+    );
+  }
+
+  return browser_status_type;
+}
+
+GType
 infc_browser_get_type(void)
 {
   static GType browser_type = 0;
@@ -3480,6 +3736,22 @@ infc_browser_get_connection(InfcBrowser* browser)
 {
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   return INFC_BROWSER_PRIVATE(browser)->connection;
+}
+
+/**
+ * infc_browser_get_status:
+ * @browser: A #InfcBrowser.
+ *
+ * Returns the browser's status. Note that the browser status can be
+ * %INFC_BROWSER_DISCONNECTED even if browser's connection is still open. This
+ * can happen if a fatal error on the browser layer happens, for example when
+ * it does not understand the server's messages.
+ */
+InfcBrowserStatus
+infc_browser_get_status(InfcBrowser* browser)
+{
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), INFC_BROWSER_DISCONNECTED);
+  return INFC_BROWSER_PRIVATE(browser)->status;
 }
 
 /**

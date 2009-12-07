@@ -42,10 +42,6 @@ struct _InfGtkBrowserStoreItem {
   InfDiscovery* discovery;
   InfDiscoveryInfo* info;
 
- /* This is the same as infc_browser_get_connection, but we need an extra
-  * reference on this because we connect to its "error" signal and need to
-  * disconnect when the browser already released its reference: */
-  InfXmlConnection* connection;
   InfcBrowser* browser;
 
   /* Running requests */
@@ -106,8 +102,8 @@ inf_gtk_browser_store_find_item_by_connection(InfGtkBrowserStore* store,
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
 
   for(item = priv->first_item; item != NULL; item = item->next)
-    if(item->connection != NULL)
-      if(item->connection == connection)
+    if(item->browser != NULL)
+      if(infc_browser_get_connection(item->browser) == connection)
         return item;
 
   return NULL;
@@ -152,14 +148,14 @@ inf_gtk_browser_store_find_item_by_discovery_info(InfGtkBrowserStore* store,
  */
 
 static void
-inf_gtk_browser_store_connection_notify_status_cb(GObject* object,
-                                                  GParamSpec* pspec,
-                                                  gpointer user_data);
+inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
+                                               GParamSpec* pspec,
+                                               gpointer user_data);
 
 static void
-inf_gtk_browser_store_connection_error_cb(InfXmlConnection* connection,
-                                          const GError* error,
-                                          gpointer user_data);
+inf_gtk_browser_store_browser_error_cb(InfcBrowser* browser,
+                                       const GError* error,
+                                       gpointer user_data);
 
 static void
 inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
@@ -384,7 +380,6 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
   item->info = info;
   item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
   item->browser = NULL;
-  item->connection = NULL;
   item->node_errors = g_hash_table_new_full(
     NULL,
     NULL,
@@ -531,14 +526,14 @@ inf_gtk_browser_store_undiscovered_cb(InfDiscovery* discovery,
   item = inf_gtk_browser_store_find_item_by_discovery_info(store, info);
   g_assert(item != NULL);
 
-  /* TODO: Keep if connection exists, just reset discovery and info */
+  /* TODO: Keep if browser exists, just reset discovery and info */
   inf_gtk_browser_store_remove_item(store, item);
 }
 
 static void
-inf_gtk_browser_store_connection_error_cb(InfXmlConnection* connection,
-                                          const GError* error,
-                                          gpointer user_data)
+inf_gtk_browser_store_browser_error_cb(InfcBrowser* browser,
+                                       const GError* error,
+                                       gpointer user_data)
 {
   InfGtkBrowserStore* store;
   InfGtkBrowserStoreItem* item;
@@ -548,7 +543,7 @@ inf_gtk_browser_store_connection_error_cb(InfXmlConnection* connection,
 
   store = INF_GTK_BROWSER_STORE(user_data);
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
-  item = inf_gtk_browser_store_find_item_by_connection(store, connection);
+  item = inf_gtk_browser_store_find_item_by_browser(store, browser);
   g_assert(item != NULL);
 
   /* Overwrite previous error */
@@ -570,22 +565,21 @@ inf_gtk_browser_store_connection_error_cb(InfXmlConnection* connection,
 }
 
 static void
-inf_gtk_browser_store_connection_notify_status_cb(GObject* object,
-                                                  GParamSpec* pspec,
-                                                  gpointer user_data)
+inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
+                                               GParamSpec* pspec,
+                                               gpointer user_data)
 {
   InfGtkBrowserStore* store;
   InfGtkBrowserStorePrivate* priv;
-  InfXmlConnection* connection;
+  InfcBrowser* browser;
   InfGtkBrowserStoreItem* item;
-  InfXmlConnectionStatus status;
   GtkTreeIter iter;
   GtkTreePath* path;
 
   store = INF_GTK_BROWSER_STORE(user_data);
   priv = INF_GTK_BROWSER_STORE_PRIVATE(user_data);  
-  connection = INF_XML_CONNECTION(object);
-  item = inf_gtk_browser_store_find_item_by_connection(store, connection);
+  browser = INFC_BROWSER(object);
+  item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
   g_assert(item != NULL);
   g_assert(item->status != INF_GTK_BROWSER_MODEL_ERROR);
@@ -597,20 +591,10 @@ inf_gtk_browser_store_connection_notify_status_cb(GObject* object,
 
   path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
 
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
-
-  switch(status)
+  switch(infc_browser_get_status(browser))
   {
-  case INF_XML_CONNECTION_OPENING:
-    item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
-    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
-    break;
-  case INF_XML_CONNECTION_OPEN:
-    item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
-    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
-    break;
-  case INF_XML_CONNECTION_CLOSING:
-  case INF_XML_CONNECTION_CLOSED:
+  case INFC_BROWSER_DISCONNECTED:
+    /* TODO: Do we want to go to disconnected state when error is not set? */
     item->status = INF_GTK_BROWSER_MODEL_ERROR;
 
     /* Set a "Disconnected" error if there is not already one set by
@@ -626,15 +610,15 @@ inf_gtk_browser_store_connection_notify_status_cb(GObject* object,
       );
     }
 
-    /* set_browser() will do this anyway, in the default handler: */
-    /*gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);*/
-
-    /* Reset browser, we do not need it anymore since it's connection is
-     * gone. */
-    /* TODO: Keep browser and still allow browsing in explored folders,
-     * but reset connection. */
-    /* Status cannot change to invalid because we just set error */
-    inf_gtk_browser_store_item_set_browser(store, item, path, NULL);
+    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
+    break;
+  case INFC_BROWSER_CONNECTING:
+    item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
+    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
+    break;
+  case INFC_BROWSER_CONNECTED:
+    item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
+    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
     break;
   default:
     g_assert_not_reached();
@@ -1670,7 +1654,6 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfXmlConnectionStatus status;
 
   InfcBrowserIter iter;
   guint n;
@@ -1708,23 +1691,6 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
       gtk_tree_path_up(path);
     }
 
-    if(item->connection != NULL)
-    {
-      g_signal_handlers_disconnect_by_func(
-        G_OBJECT(item->connection),
-        G_CALLBACK(inf_gtk_browser_store_connection_error_cb),
-        model
-      );
-
-      g_signal_handlers_disconnect_by_func(
-        G_OBJECT(item->connection),
-        G_CALLBACK(inf_gtk_browser_store_connection_notify_status_cb),
-        model
-      );
-
-      g_object_unref(G_OBJECT(item->connection));
-    }
-
     while(item->requests != NULL)
     {
       inf_gtk_browser_store_item_request_remove(
@@ -1734,6 +1700,18 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     }
 
     g_hash_table_remove_all(item->node_errors);
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(item->browser),
+      G_CALLBACK(inf_gtk_browser_store_browser_error_cb),
+      model
+    );
+
+    g_signal_handlers_disconnect_by_func(
+      G_OBJECT(item->browser),
+      G_CALLBACK(inf_gtk_browser_store_browser_notify_status_cb),
+      model
+    );
 
     g_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
@@ -1773,35 +1751,26 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     );
   }
 
-  /* Set up new browser and connection */
+  /* Set up new browser */
   item->browser = browser;
-  if(browser != NULL)
-    item->connection = infc_browser_get_connection(browser);
-  else
-    item->connection = NULL;
 
   if(browser != NULL)
   {
-    if(item->connection != NULL)
-    {
-      g_object_ref(G_OBJECT(item->connection));
+    g_object_ref(browser);
 
-      g_signal_connect(
-        G_OBJECT(item->connection),
-        "error",
-        G_CALLBACK(inf_gtk_browser_store_connection_error_cb),
-        model
-      );
+    g_signal_connect(
+      G_OBJECT(item->browser),
+      "error",
+      G_CALLBACK(inf_gtk_browser_store_browser_error_cb),
+      model
+    );
       
-      g_signal_connect(
-        G_OBJECT(item->connection),
-        "notify::status",
-        G_CALLBACK(inf_gtk_browser_store_connection_notify_status_cb),
-        model
-      );
-    }
-
-    g_object_ref(G_OBJECT(browser));
+    g_signal_connect(
+      G_OBJECT(item->browser),
+      "notify::status",
+      G_CALLBACK(inf_gtk_browser_store_browser_notify_status_cb),
+      model
+    );
 
     g_signal_connect_after(
       G_OBJECT(item->browser),
@@ -1839,25 +1808,25 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
   if(item->browser == NULL && item->info == NULL && item->error == NULL)
   {
     item->status = INF_GTK_BROWSER_MODEL_INVALID;
+    /* TODO: What's up with this? Can this happen? Can we assert() here? */
   }
   else if(item->status != INF_GTK_BROWSER_MODEL_ERROR)
   {
-    /* Set item status according to connection status if there is no error
-     * set. */
-    if(item->connection != NULL)
+    /* Set item status according to browser status if there is no
+     * error set. */
+    if(item->browser != NULL)
     {
-      g_object_get(G_OBJECT(item->connection), "status", &status, NULL);
-      switch(status)
+      switch(infc_browser_get_status(item->browser))
       {
-      case INF_XML_CONNECTION_OPENING:
+      case INFC_BROWSER_DISCONNECTED:
+        item->status = INF_GTK_BROWSER_MODEL_DISCONNECTED;
+        break;
+      case INFC_BROWSER_CONNECTING:
         item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
         break;
-      case INF_XML_CONNECTION_OPEN:
+      case INFC_BROWSER_CONNECTED:
         item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
         break;
-      case INF_XML_CONNECTION_CLOSING:
-      case INF_XML_CONNECTION_CLOSED:
-        /* Browser drops connection if in one of those states */
       default:
         g_assert_not_reached();
         break;
@@ -1865,7 +1834,7 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     }
     else
     {
-      /* No connection available. Discovery needs to be set now, otherwise
+      /* No browser available. Discovery needs to be set now, otherwise
        * we would have set the status to invalid above. */
       g_assert(item->info != NULL);
       item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
@@ -2203,9 +2172,6 @@ inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,
  * browse the explored parts of the directory of the remote site. If @name
  * is %NULL, then the #InfXmlConnection:remote-id of the connection will be
  * used.
- *
- * @connection must be in %INF_XML_CONNECTION_OPEN or
- * %INF_XML_CONNECTION_OPENING status.
  **/
 void
 inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
@@ -2221,8 +2187,6 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
-  g_return_if_fail(status == INF_XML_CONNECTION_OPENING ||
-                   status == INF_XML_CONNECTION_OPEN);
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
   item = inf_gtk_browser_store_find_item_by_connection(store, connection);

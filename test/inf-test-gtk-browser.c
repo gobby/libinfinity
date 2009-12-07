@@ -727,15 +727,15 @@ on_activate(InfGtkBrowserView* view,
 }
 
 static void
-on_connection_notify_status(GObject* object,
-                            const GParamSpec* pspec,
-                            gpointer user_data)
+on_browser_notify_status(GObject* object,
+                         const GParamSpec* pspec,
+                         gpointer user_data)
 {
-  InfXmlConnectionStatus status;
+  InfcBrowser* browser;
+  browser = INFC_BROWSER(object);
 
-  g_object_get(object, "status", &status, NULL);
-  if(status == INF_XML_CONNECTION_OPEN)
-    infc_browser_subscribe_chat(INFC_BROWSER(user_data));
+  if(infc_browser_get_status(browser) == INFC_BROWSER_CONNECTED)
+    infc_browser_subscribe_chat(browser);
 }
 
 static void
@@ -745,8 +745,6 @@ on_set_browser(InfGtkBrowserModel* model,
                InfcBrowser* browser,
                gpointer user_data)
 {
-  InfXmlConnectionStatus status;
-
   if(browser != NULL)
   {
     infc_browser_add_plugin(browser, &INF_TEST_GTK_BROWSER_TEXT_PLUGIN);
@@ -758,20 +756,16 @@ on_set_browser(InfGtkBrowserModel* model,
       NULL
     );
 
-    g_object_get(
-      G_OBJECT(infc_browser_get_connection(browser)), "status", &status, NULL
-    );
-
-    if(status == INF_XML_CONNECTION_OPEN)
+    if(infc_browser_get_status(browser) == INFC_BROWSER_CONNECTED)
     {
       infc_browser_subscribe_chat(browser);
     }
     else
     {
       g_signal_connect(
-        G_OBJECT(infc_browser_get_connection(browser)),
+        G_OBJECT(browser),
         "notify::status",
-        G_CALLBACK(on_connection_notify_status),
+        G_CALLBACK(on_browser_notify_status),
         browser
       );
     }

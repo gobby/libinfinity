@@ -1,5 +1,26 @@
 2009-12-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c: Added the "status" property,
+	infc_browser_get_status() and the "error" signal. Keep connection
+	around if it is closed, to allow easy reconnections.
+
+	* libinfgtk/inf-gtk-browser-model.h: Added
+	INF_GTK_BROWSER_MODEL_DISCONNECTED status.
+
+	* libinfgtk/inf-gtk-browser-store.c: Drop connection bookkeeping, keep
+	browser alive when it reaches INFC_BROWSER_DISCONNECTED status.
+
+	* test/inf-test-browser.c:
+	* test/inf-test-gtk-browser.c: Simplify the code by making use of the
+	new API.
+
+	* libinfinity/communication/inf-communication-manager.c: Added a
+	TODO comment questioning whether we should continue to allow joining
+	groups with connections with status INF_XML_CONNECTION_OPENING.
+
+2009-12-07  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-text-replay.c: Added an Undo Grouping for each user in
 	the replay, to test that undo grouping can at least handle all cases.
 

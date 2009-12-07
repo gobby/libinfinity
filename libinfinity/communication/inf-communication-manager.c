@@ -423,6 +423,8 @@ inf_communication_manager_join_group(InfCommunicationManager* manager,
     NULL
   );
 
+  /* TODO: Do we need to support OPENING somewhere? I don't think it's a good
+   * idea to do here. When we change this remember to change docs above. */
   if(status == INF_XML_CONNECTION_CLOSING ||
      status == INF_XML_CONNECTION_CLOSED)
   {

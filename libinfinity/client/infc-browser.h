@@ -39,8 +39,19 @@ G_BEGIN_DECLS
 #define INFC_IS_BROWSER_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFC_TYPE_BROWSER))
 #define INFC_BROWSER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFC_TYPE_BROWSER, InfcBrowserClass))
 
+#define INFC_TYPE_BROWSER_STATUS          (infc_browser_status_get_type())
+
 typedef struct _InfcBrowser InfcBrowser;
 typedef struct _InfcBrowserClass InfcBrowserClass;
+
+typedef enum _InfcBrowserStatus {
+  /* Not connected to any server */
+  INFC_BROWSER_DISCONNECTED,
+  /* Currently connecting */
+  INFC_BROWSER_CONNECTING,
+  /* Currently connected */
+  INFC_BROWSER_CONNECTED
+} InfcBrowserStatus;
 
 typedef enum _InfcBrowserNodeStatus {
   /* The node is synchronized with the server */
@@ -65,6 +76,9 @@ struct _InfcBrowserClass {
   GObjectClass parent_class;
 
   /* Signals */
+  void (*error)(InfcBrowser* browser,
+                const GError* error);
+
   void (*node_added)(InfcBrowser* browser,
                      InfcBrowserIter* iter);
 
@@ -89,6 +103,9 @@ struct _InfcBrowser {
 };
 
 GType
+infc_browser_status_get_type(void) G_GNUC_CONST;
+
+GType
 infc_browser_get_type(void) G_GNUC_CONST;
 
 InfcBrowser*
@@ -101,6 +118,9 @@ infc_browser_get_communication_manager(InfcBrowser* browser);
 
 InfXmlConnection*
 infc_browser_get_connection(InfcBrowser* browser);
+
+InfcBrowserStatus
+infc_browser_get_status(InfcBrowser* browser);
 
 gboolean
 infc_browser_add_plugin(InfcBrowser* browser,

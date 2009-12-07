@@ -257,7 +257,7 @@ inf_test_browser_input_cb(InfNativeSocket* fd,
 }
 
 static void
-inf_test_browser_error_cb(InfXmppConnection* xmpp,
+inf_test_browser_error_cb(InfcBrowser* browser,
                           GError* error,
                           gpointer user_data)
 {
@@ -270,12 +270,9 @@ inf_test_browser_notify_status_cb(GObject* object,
                                   gpointer user_data)
 {
   InfTestBrowser* test;
-  InfXmlConnectionStatus status;
-
   test = (InfTestBrowser*)user_data;
-  g_object_get(G_OBJECT(test->conn), "status", &status, NULL);
 
-  if(status == INF_XML_CONNECTION_OPEN)
+  if(infc_browser_get_status(test->browser) == INFC_BROWSER_CONNECTED)
   {
     printf("Connection established\n");
 
@@ -293,8 +290,7 @@ inf_test_browser_notify_status_cb(GObject* object,
     infc_browser_iter_explore(test->browser, &test->cwd);
   }
 
-  if(status == INF_XML_CONNECTION_CLOSING ||
-     status == INF_XML_CONNECTION_CLOSED)
+  if(infc_browser_get_status(test->browser) == INFC_BROWSER_DISCONNECTED)
   {
     inf_standalone_io_loop_quit(test->io);
   }
@@ -348,20 +344,6 @@ main(int argc, char* argv[])
       NULL
     );
 
-    g_signal_connect_after(
-      G_OBJECT(test.conn),
-      "notify::status",
-      G_CALLBACK(inf_test_browser_notify_status_cb),
-      &test
-    );
-
-    g_signal_connect(
-      G_OBJECT(test.conn),
-      "error",
-      G_CALLBACK(inf_test_browser_error_cb),
-      &test
-    );
-
     g_object_unref(G_OBJECT(tcp_conn));
 
     manager = inf_communication_manager_new();
@@ -369,6 +351,20 @@ main(int argc, char* argv[])
       INF_IO(test.io),
       manager,
       INF_XML_CONNECTION(test.conn)
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(test.browser),
+      "notify::status",
+      G_CALLBACK(inf_test_browser_notify_status_cb),
+      &test
+    );
+
+    g_signal_connect(
+      G_OBJECT(test.browser),
+      "error",
+      G_CALLBACK(inf_test_browser_error_cb),
+      &test
     );
 
     inf_standalone_io_loop(test.io);
