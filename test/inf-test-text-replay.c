@@ -95,8 +95,7 @@ G_DEFINE_TYPE_WITH_CODE(
   )
 )
 
-/* TODO: These functions assume that the buffer contains ASCII-only text.
- * It will fail with UTF-8! */
+/* The next three functions assume that buffer and chunks contain UTF-8 */
 static GString*
 inf_test_text_replay_load_buffer(InfTextBuffer* buffer)
 {
@@ -131,6 +130,7 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
   InfTextChunk* chunk;
   InfTextChunkIter iter;
   guint position;
+  guint length;
 
   if(INF_TEXT_IS_INSERT_OPERATION(operation))
   {
@@ -146,6 +146,9 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
 
     if(inf_text_chunk_iter_init(chunk, &iter))
     {
+      /* Convert from pos to byte */
+      position = g_utf8_offset_to_pointer(string->str, position) - string->str;
+
       do
       {
         g_string_insert_len(
@@ -161,15 +164,19 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
   }
   else if(INF_TEXT_IS_DELETE_OPERATION(operation))
   {
-    g_string_erase(
-      string,
-      inf_text_delete_operation_get_position(
-        INF_TEXT_DELETE_OPERATION(operation)
-      ),
-      inf_text_delete_operation_get_length(
-        INF_TEXT_DELETE_OPERATION(operation)
-      )
+    position = inf_text_delete_operation_get_position(
+      INF_TEXT_DELETE_OPERATION(operation)
     );
+    length = inf_text_delete_operation_get_length(
+      INF_TEXT_DELETE_OPERATION(operation)
+    );
+
+    length = g_utf8_offset_to_pointer(string->str, position+length) -
+      string->str;
+    position = g_utf8_offset_to_pointer(string->str, position) - string->str;
+    length -= position;
+
+    g_string_erase(string, position, length);
   }
 }
 

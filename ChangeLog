@@ -1,3 +1,7 @@
+2009-12-07  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-text-replay.c: Allow UTF-8 input files.
+
 2009-12-05  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added a BOOL:OBJECT,OBJECT marshaller.
