@@ -22,6 +22,7 @@
 #include "util/inf-test-util.h"
 
 #include <libinftext/inf-text-session.h>
+#include <libinftext/inf-text-undo-grouping.h>
 #include <libinftext/inf-text-default-buffer.h>
 #include <libinftext/inf-text-default-insert-operation.h>
 #include <libinftext/inf-text-insert-operation.h>
@@ -50,6 +51,13 @@ typedef enum _InfTestTextReplayError {
   INF_TEST_TEXT_REPLAY_UNEXPECTED_EOF,
   INF_TEST_TEXT_REPLAY_UNEXPECTED_NODE
 } InfTestTextReplayError;
+
+typedef struct _InfTestTextReplayPlayUserTableForeachFuncData
+  InfTestTextReplayPlayUserTableForeachFuncData;
+struct _InfTestTextReplayPlayUserTableForeachFuncData {
+  InfAdoptedAlgorithm* algorithm;
+  GSList* undo_groupings;
+};
 
 typedef struct _InfTestTextReplayObject InfTestTextReplayObject;
 struct _InfTestTextReplayObject {
@@ -388,6 +396,7 @@ inf_test_text_replay_play_initial(xmlTextReaderPtr reader,
 static gboolean
 inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
                                    InfSession* session,
+                                   GSList** undo_groupings,
                                    InfCommunicationGroup* publisher_group,
                                    InfXmlConnection* publisher,
                                    GError** error)
@@ -397,6 +406,7 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
   xmlNodePtr cur;
   InfUser* user;
   guint i;
+  InfTextUndoGrouping* grouping;
 
   session_class = INF_SESSION_GET_CLASS(session);
 
@@ -431,6 +441,15 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
       for(i = 0; i < user_props->len; ++ i)
         g_value_unset(&g_array_index(user_props, GParameter, i).value);
 
+      grouping = inf_text_undo_grouping_new();
+      inf_adopted_undo_grouping_set_algorithm(
+        INF_ADOPTED_UNDO_GROUPING(grouping),
+        inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session)),
+        INF_ADOPTED_USER(user)
+      );
+
+      *undo_groupings = g_slist_prepend(*undo_groupings, grouping);
+
       g_array_free(user_props, TRUE);
       if(user == NULL) return FALSE;
     }
@@ -457,6 +476,22 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
   return TRUE;
 }
 
+static void
+inf_test_text_replay_play_user_table_foreach_func(InfUser* user,
+                                                  gpointer user_data)
+{
+  InfTextUndoGrouping* grouping;
+  InfTestTextReplayPlayUserTableForeachFuncData* data;
+
+  grouping = inf_text_undo_grouping_new();
+  data = (InfTestTextReplayPlayUserTableForeachFuncData*)user_data;
+
+  inf_adopted_undo_grouping_set_algorithm(INF_ADOPTED_UNDO_GROUPING(grouping),
+                                          data->algorithm,
+                                          INF_ADOPTED_USER(user));
+  data->undo_groupings = g_slist_prepend(data->undo_groupings, grouping);
+}
+
 static gboolean
 inf_test_text_replay_play(xmlTextReaderPtr reader,
                           InfSession* session,
@@ -468,6 +503,9 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
 
   /* Used to find InfTextChunk errors */
   GString* content;
+
+  InfUserTable* user_table;
+  InfTestTextReplayPlayUserTableForeachFuncData data;
 
   /* Advance to root node */
   if(xmlTextReaderNodeType(reader) != XML_READER_TYPE_ELEMENT)
@@ -547,13 +585,33 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
     content
   );
 
+  /* Let an undo grouper group stuff, just as a consistency check
+   * that it does not crash or behave badly. */
+  user_table = inf_session_get_user_table(session);
+  data.algorithm =
+    inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+  data.undo_groupings = NULL;
+  inf_user_table_foreach_user(
+    user_table,
+    inf_test_text_replay_play_user_table_foreach_func,
+    &data
+  );
+
   result = inf_test_text_replay_play_requests(
     reader,
     session,
+    &data.undo_groupings,
     publisher_group,
     publisher,
     error
   );
+
+  while(data.undo_groupings != NULL)
+  {
+    g_object_unref(data.undo_groupings->data);
+    data.undo_groupings =
+      g_slist_remove(data.undo_groupings, data.undo_groupings->data);
+  }
 
   g_string_free(content, TRUE);
 

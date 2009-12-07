@@ -118,12 +118,8 @@ inf_adopted_undo_grouping_add_request(InfAdoptedUndoGrouping* grouping,
   switch(inf_adopted_request_get_request_type(request))
   {
   case INF_ADOPTED_REQUEST_DO:
-    if(priv->n_items == priv->n_alloc)
+    if(priv->first_item + priv->item_pos == priv->n_alloc)
     {
-      /* Don't start to wrap around as long as we have not reached the max
-       * buffer size. */
-      g_assert(priv->first_item == 0);
-
       /* The maximum number of requests that we ever need to hold is half of
        * the algorithm's max total log size, since undoing one of the requests
        * in the log takes another request. We add +1 because we add the new
@@ -138,20 +134,28 @@ inf_adopted_undo_grouping_add_request(InfAdoptedUndoGrouping* grouping,
       {
         max = (max/2) + 1;
 
-        priv->n_alloc = MIN(priv->n_alloc * 2, max);
-        priv->n_alloc = MAX(priv->n_alloc, MIN(16, max));
+        /* Don't start to wrap around as long as we have not reached the max
+         * buffer size. */
+        if(priv->n_alloc < max)
+        {
+          priv->n_alloc = MIN(priv->n_alloc * 2, max);
+          priv->n_alloc = MAX(priv->n_alloc, MIN(16, max));
+
+          priv->items = g_realloc(
+            priv->items,
+            priv->n_alloc * sizeof(InfAdoptedUndoGroupingItem)
+          );
+        }
       }
       else
       {
         priv->n_alloc = MAX(priv->n_alloc * 2, 16);
+
+        priv->items = g_realloc(
+          priv->items,
+          priv->n_alloc * sizeof(InfAdoptedUndoGroupingItem)
+        );
       }
-
-      g_assert(priv->n_alloc > priv->n_items);
-
-      priv->items = g_realloc(
-        priv->items,
-        priv->n_alloc * sizeof(InfAdoptedUndoGroupingItem)
-      );
     }
 
     /* Cut redo possibilities */
@@ -226,6 +230,69 @@ inf_adopted_undo_grouping_add_request(InfAdoptedUndoGrouping* grouping,
   }
 }
 
+/* Remove requests that can no longer be undone from buffer */
+static void
+inf_adopted_undo_grouping_cleanup(InfAdoptedUndoGrouping* grouping)
+{
+  InfAdoptedUndoGroupingPrivate* priv;
+  InfAdoptedUndoGroupingItem* item;
+  guint max_total_log_size;
+  guint vdiff;
+
+  priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
+  g_assert(priv->user != NULL);
+
+  g_object_get(
+    priv->algorithm,
+    "max-total-log-size", &max_total_log_size,
+    NULL
+  );
+
+  if(max_total_log_size != G_MAXUINT)
+  {
+    while(priv->n_items > 0)
+    {
+      item = &priv->items[priv->first_item];
+
+      vdiff = inf_adopted_state_vector_vdiff(
+        inf_adopted_request_get_vector(item->request),
+        inf_adopted_user_get_vector(priv->user)
+      );
+
+      if(vdiff + priv->n_items - 1 >= max_total_log_size)
+      {
+        /* Request is too old to be undone, remove from buffer */
+        if(priv->item_pos == 0)
+        {
+          /* Remove all items since we cannot redo the following anymore at
+           * this point since the first one to redo is too old. */
+          priv->first_item = 0;
+          priv->n_items = 0;
+          break;
+        }
+        else
+        {
+          /* Remove the request being too old */
+          priv->first_item = (priv->first_item + 1) % priv->n_alloc;
+          --priv->n_items;
+          --priv->item_pos;
+
+          /* Reuse buffer if we drop to zero */
+          if(priv->n_items == 0)
+            priv->first_item = 0;
+          else
+            priv->items[priv->first_item].in_group = FALSE;
+        }
+      }
+      else
+      {
+        /* All OK */
+        break;
+      }
+    }
+  }
+}
+
 static void
 inf_adopted_undo_grouping_add_request_cb(InfAdoptedRequestLog* log,
                                          InfAdoptedRequest* request,
@@ -246,9 +313,6 @@ inf_adopted_undo_grouping_execute_request_cb(InfAdoptedAlgorithm* algorithm,
 {
   InfAdoptedUndoGrouping* grouping;
   InfAdoptedUndoGroupingPrivate* priv;
-  InfAdoptedUndoGroupingItem* item;
-  guint max_total_log_size;
-  guint vdiff;
 
   /* Note that this signal handler is called _after_ the request has been
    * executed.  If the execution causes requests in the request log to be
@@ -261,57 +325,7 @@ inf_adopted_undo_grouping_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   /* If the request does not affect the buffer then it did not increase the
    * state vector, in which case we don't need to check again here. */
   if(priv->user != NULL && inf_adopted_request_affects_buffer(request))
-  {
-    g_object_get(
-      priv->algorithm,
-      "max-total-log-size", &max_total_log_size,
-      NULL
-    );
-
-    if(max_total_log_size != G_MAXUINT)
-    {
-      while(priv->n_items > 0)
-      {
-        item = &priv->items[priv->first_item];
-
-        vdiff = inf_adopted_state_vector_vdiff(
-          inf_adopted_request_get_vector(item->request),
-          inf_adopted_user_get_vector(priv->user)
-        );
-
-        if(vdiff + priv->n_items - 1 >= max_total_log_size)
-        {
-          /* Request is too old to be undone, remove from buffer */
-          if(priv->item_pos == 0)
-          {
-            /* Remove all items since we cannot redo the following anymore at
-             * this point since the first one to redo is too old. */
-            priv->first_item = 0;
-            priv->n_items = 0;
-            break;
-          }
-          else
-          {
-            /* Remove the request being too old */
-            priv->first_item = (priv->first_item + 1) % priv->n_alloc;
-            --priv->n_items;
-            --priv->item_pos;
-
-            /* Reuse buffer if we drop to zero */
-            if(priv->n_items == 0)
-              priv->first_item = 0;
-            else
-              priv->items[priv->first_item].in_group = FALSE;
-          }
-        }
-        else
-        {
-          /* All OK */
-          break;
-        }
-      }
-    }
-  }
+    inf_adopted_undo_grouping_cleanup(grouping);
 }
 
 static void
@@ -320,6 +334,7 @@ inf_adopted_undo_grouping_init_user(InfAdoptedUndoGrouping* grouping)
   InfAdoptedUndoGroupingPrivate* priv;
   InfAdoptedRequestLog* log;
   InfAdoptedRequest* request;
+  guint max_total_log_size;
   guint end;
   guint i;
 
@@ -334,13 +349,27 @@ inf_adopted_undo_grouping_init_user(InfAdoptedUndoGrouping* grouping)
     grouping
   );
 
+  g_object_get(
+    priv->algorithm,
+    "max-total-log-size", &max_total_log_size,
+    NULL
+  );
+
   /* Add initial requests from request log */
   log = inf_adopted_user_get_request_log(priv->user);
   end = inf_adopted_request_log_get_end(log);
+
   for(i = inf_adopted_request_log_get_begin(log); i < end; ++i)
   {
     request = inf_adopted_request_log_get_request(log, i);
     inf_adopted_undo_grouping_add_request(grouping, request);
+
+    /* TODO: Instead of cleaning up requests that we have added just before,
+     * we may find out which ones will not end up in the buffer anyway because
+     * they cannot be undone anymore. This would require
+     * inf_adopted_algorithm_can_undo_redo() to work for requests that are
+     * anywhere in the log and to be public. */
+    inf_adopted_undo_grouping_cleanup(grouping);
   }
 }
 

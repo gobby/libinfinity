@@ -1,5 +1,13 @@
 2009-12-07  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-text-replay.c: Added an Undo Grouping for each user in
+	the replay, to test that undo grouping can at least handle all cases.
+
+	* libinfinity/adopted/inf-adopted-undo-grouping.c: Fixed some bugs
+	which showed up when replaying test/replays/.
+
+2009-12-07  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-text-replay.c: Allow UTF-8 input files.
 
 2009-12-05  Armin Burgmeier  <armin@arbur.net>
