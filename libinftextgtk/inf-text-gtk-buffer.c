@@ -753,6 +753,8 @@ inf_text_gtk_buffer_set_modified(InfTextGtkBuffer* buffer,
       G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
       buffer
     );
+
+    g_object_notify(G_OBJECT(buffer), "modified");
   }
 }
 

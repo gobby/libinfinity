@@ -1,3 +1,8 @@
+2009-12-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.c
+	(inf_text_gtk_buffer_set_modified): Notify the "modified" property.
+
 2009-12-07  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.c: Move root node destruction to
