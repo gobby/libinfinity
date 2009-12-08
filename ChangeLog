@@ -1,5 +1,10 @@
 2009-12-08  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c (inf_text_session_remove_local_user):
+	Fix a crash a user's selection changes after it becomes non-local.
+
+2009-12-08  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.c
 	(inf_text_gtk_buffer_set_modified): Notify the "modified" property.
 

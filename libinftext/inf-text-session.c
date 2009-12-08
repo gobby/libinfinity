@@ -263,6 +263,7 @@ inf_text_session_selection_changed_cb(InfTextUser* user,
   session = INF_TEXT_SESSION(user_data);
   priv = INF_TEXT_SESSION_PRIVATE(session);
   local = inf_text_session_find_local_user(session, user);
+  g_assert(local != NULL);
 
   g_get_current_time(&current);
   diff = inf_text_session_timeval_diff(&current, &local->last_caret_update);
@@ -328,6 +329,12 @@ inf_text_session_remove_local_user(InfTextSession* session,
       local->caret_timeout
     );
   }
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(local->user),
+    G_CALLBACK(inf_text_session_selection_changed_cb),
+    session
+  );
 
   g_slice_free(InfTextSessionLocalUser, local);
   priv->local_users = g_slist_remove(priv->local_users, local);
