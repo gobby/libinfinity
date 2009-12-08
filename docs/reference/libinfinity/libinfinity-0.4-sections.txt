@@ -943,6 +943,13 @@ inf_gsasl_set_error
 </SECTION>
 
 <SECTION>
+<FILE>inf-protocol</FILE>
+<TITLE>InfProtocol</TITLE>
+inf_protocol_get_version
+inf_protocol_parse_version
+</SECTION>
+
+<SECTION>
 <FILE>inf-ip-address</FILE>
 <TITLE>InfIpAddress</TITLE>
 InfIpAddress

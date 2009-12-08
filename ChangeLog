@@ -1,3 +1,27 @@
+2009-12-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_NO_WELCOME_MESSAGE and
+	INF_DIRECTORY_ERROR_VERSION_MISMATCH error codes.
+
+	* libinfinity/common/inf-protocol.h:
+	* libinfinity/common/inf-protocol.c:
+	* libinfinity/common/Makefile.am: Added this new file containing
+	common protocol properties used by both client and server. Currently
+	contains a function returning the Infinote protocol version
+	implemented by libinfinity, and a function to split the version
+	string.
+
+	* libinfinity/server/infd-directory.c: Send a welcome message to the
+	client, telling it the protocol version the server uses and a sequence
+	identifier.
+
+	* libinfinity/client/infc-browser.c: Only activate itself after the
+	welcome message was received, produce an error if it did not arrive
+	after 5 seconds. Remember the sequence identifier which will be used
+	in a followup patch.
+
 2009-12-10  Benjamin Herr  <ben@0x539.de>
 
 	* libinfinity/common/inf-error.c: Include gsasl.h so that

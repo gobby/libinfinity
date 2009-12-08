@@ -34,6 +34,7 @@
 
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -164,6 +165,8 @@ struct _InfcBrowserPrivate {
   InfCommunicationJoinedGroup* group;
   InfXmlConnection* connection;
 
+  guint seq_id;
+  gpointer welcome_timeout;
   InfcRequestManager* request_manager;
 
   GHashTable* plugins; /* Registered plugins */
@@ -797,6 +800,38 @@ infc_browser_session_close_cb(InfSession* session,
   }
 }
 
+static void
+infc_browser_welcome_timeout_func(gpointer user_data)
+{
+  InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
+  GError* error;
+
+  browser = INFC_BROWSER(user_data);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  priv->welcome_timeout = NULL;
+  
+  error = NULL;
+  g_set_error(
+    &error,
+    inf_directory_error_quark(),
+    INF_DIRECTORY_ERROR_NO_WELCOME_MESSAGE,
+    "%s",
+    _("The server did not send an initial welcome message. This means that "
+      "the server is running a lower version of the software which is "
+      "incompatible to the client. Consider downgrading the client, or ask "
+      "the server maintainers to upgrade their software.")
+  );
+
+  g_signal_emit(G_OBJECT(browser), browser_signals[ERROR], 0, error);
+  g_error_free(error);
+
+  g_assert(priv->status != INFC_BROWSER_DISCONNECTED);
+  priv->status = INFC_BROWSER_DISCONNECTED;
+  g_object_notify(G_OBJECT(browser), "status");
+}
+
 /* Required by infc_browser_disconnected */
 static void
 infc_browser_member_removed_cb(InfCommunicationGroup* group,
@@ -835,14 +870,25 @@ infc_browser_connected(InfcBrowser* browser)
     browser
   );
 
-  /* TODO: Change to connecting, setup welcome timer, and wait for welcome
-   * message. */
-
-  if(priv->status != INFC_BROWSER_CONNECTED)
+  /* Wait for welcome message */
+  if(priv->status != INFC_BROWSER_CONNECTING)
   {
-    priv->status = INFC_BROWSER_CONNECTED;
+    priv->status = INFC_BROWSER_CONNECTING;
     g_object_notify(G_OBJECT(browser), "status");
   }
+
+  /* TODO: We have a relatively low timeout here to easily recognize when
+   * we try to connect to a server which does not yet send a welcome
+   * message. We can set it somewhat higher later when there are fewer
+   * old servers around. */
+  g_assert(priv->welcome_timeout == NULL);
+  priv->welcome_timeout = inf_io_add_timeout(
+    priv->io,
+    5*1000,
+    infc_browser_welcome_timeout_func,
+    browser,
+    NULL
+  );
 }
 
 static void
@@ -1020,6 +1066,8 @@ infc_browser_init(GTypeInstance* instance,
   priv->communication_manager = NULL;
   priv->group = NULL;
   priv->connection = NULL;
+  priv->seq_id = 0;
+  priv->welcome_timeout = NULL;
   priv->request_manager = infc_request_manager_new();
 
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
@@ -1111,6 +1159,12 @@ infc_browser_dispose(GObject* object)
 
   g_object_unref(G_OBJECT(priv->request_manager));
   priv->request_manager = NULL;
+
+  if(priv->welcome_timeout != NULL)
+  {
+    inf_io_remove_timeout(priv->io, priv->welcome_timeout);
+    priv->welcome_timeout = NULL;
+  }
 
   if(priv->io != NULL)
   {
@@ -2025,6 +2079,87 @@ infc_browser_subscribe_session(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_welcome(InfcBrowser* browser,
+                            InfXmlConnection* connection,
+                            xmlNodePtr xml,
+                            GError** error)
+{
+  InfcBrowserPrivate* priv;
+  xmlChar* version;
+  guint server_major;
+  guint server_minor;
+  guint own_major;
+  guint own_minor;
+  gboolean result;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  version = inf_xml_util_get_attribute_required(
+    xml,
+    "protocol-version",
+    error);
+  if(!version) return FALSE;
+
+  result = inf_protocol_parse_version(
+    (const gchar*)version,
+    &server_major, &server_minor,
+    error
+  );
+
+  xmlFree(version);
+  if(!result) return FALSE;
+
+  result = inf_protocol_parse_version(
+    inf_protocol_get_version(),
+    &own_major, &own_minor,
+    NULL
+  );
+
+  g_assert(result == TRUE);
+
+  if(server_major < own_major || server_minor < own_minor)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_VERSION_MISMATCH,
+      "%s",
+      _("The server uses an older version of the protocol which is no longer "
+        "supported by this client. Consider using an earlier version of it, "
+        "or ask the server maintainers to upgrade their software.")
+    );
+    return FALSE;
+  }
+
+  if(server_major > own_major)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_VERSION_MISMATCH,
+      "%s",
+      _("The server uses a newer version. Consider upgrading your client.")
+    );
+
+    return FALSE;
+  }
+
+  result = inf_xml_util_get_attribute_uint_required(
+    xml,
+    "sequence-id",
+    &priv->seq_id,
+    error
+  );
+
+  if(!result) return FALSE;
+
+  priv->status = INFC_BROWSER_CONNECTED;
+  g_object_notify(G_OBJECT(browser), "status");
+
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_explore_begin(InfcBrowser* browser,
                                   InfXmlConnection* connection,
                                   xmlNodePtr xml,
@@ -2866,7 +3001,26 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   priv = INFC_BROWSER_PRIVATE(browser);
   local_error = NULL;
 
-  if(strcmp((const gchar*)node->name, "request-failed") == 0)
+  if(priv->status == INFC_BROWSER_CONNECTING &&
+     strcmp((const gchar*)node->name, "welcome") == 0)
+  {
+    if(priv->welcome_timeout)
+    {
+      inf_io_remove_timeout(priv->io, priv->welcome_timeout);
+      priv->welcome_timeout = NULL;
+    }
+
+    if(!infc_browser_handle_welcome(browser, connection, node, &local_error))
+    {
+      g_signal_emit(browser, browser_signals[ERROR], 0, local_error);
+      g_error_free(local_error);
+      local_error = NULL;
+
+      priv->status = INFC_BROWSER_DISCONNECTED;
+      g_object_notify(G_OBJECT(browser), "status");
+    }
+  }
+  else if(strcmp((const gchar*)node->name, "request-failed") == 0)
   {
     infc_browser_handle_request_failed(
       browser,
@@ -3759,6 +3913,8 @@ infc_browser_get_connection(InfcBrowser* browser)
  * %INFC_BROWSER_DISCONNECTED even if browser's connection is still open. This
  * can happen if a fatal error on the browser layer happens, for example when
  * it does not understand the server's messages.
+ *
+ * Returns: The browser's status.
  */
 InfcBrowserStatus
 infc_browser_get_status(InfcBrowser* browser)

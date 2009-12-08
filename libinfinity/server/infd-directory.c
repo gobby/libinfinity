@@ -39,6 +39,7 @@
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
@@ -139,6 +140,11 @@ struct _InfdDirectorySubreq {
   } shared;
 };
 
+typedef struct _InfdDirectoryConnectionInfo InfdDirectoryConnectionInfo;
+struct _InfdDirectoryConnectionInfo {
+  guint seq_id;
+};
+
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
 struct _InfdDirectoryPrivate {
   InfIo* io;
@@ -147,7 +153,7 @@ struct _InfdDirectoryPrivate {
   InfCommunicationHostedGroup* group;
 
   GHashTable* plugins; /* Registered plugins */
-  GSList* connections;
+  GHashTable* connections; /* Connection infos */
 
   guint node_counter;
   GHashTable* nodes; /* Mapping from id to node */
@@ -2312,6 +2318,49 @@ infd_directory_node_get_and_link_session(InfdDirectory* directory,
  * Network command handling.
  */
 
+static void
+infd_directory_send_welcome_message(InfdDirectory* directory,
+                                    InfXmlConnection* connection)
+{
+  InfdDirectoryPrivate* priv;
+  xmlNodePtr xml;
+  xmlNodePtr plugins;
+  xmlNodePtr child;
+  GHashTableIter iter;
+  gpointer value;
+  const InfdNotePlugin* plugin;
+  InfdDirectoryConnectionInfo* info;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  xml = xmlNewNode(NULL, (const xmlChar*) "welcome");
+  inf_xml_util_set_attribute(
+    xml,
+    "protocol-version",
+    inf_protocol_get_version());
+
+  info = g_hash_table_lookup(priv->connections, connection);
+  g_assert(info != NULL);
+
+  inf_xml_util_set_attribute_uint(xml, "sequence-id", info->seq_id);
+
+  plugins = xmlNewChild(xml, NULL, (const xmlChar*) "note-plugins", NULL);
+
+  g_hash_table_iter_init(&iter, priv->plugins);
+  while(g_hash_table_iter_next(&iter, NULL, &value))
+  {
+    plugin = (const InfdNotePlugin*)value;
+
+    child = xmlNewChild(plugins, NULL, (const xmlChar*) "note-plugin", NULL);
+    inf_xml_util_set_attribute(child, "type", plugin->note_type);
+  }
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    xml);
+}
+
 static InfdDirectorySubreq*
 infd_directory_get_subreq_from_xml(InfdDirectory* directory,
                                    InfXmlConnection* connection,
@@ -3245,6 +3294,23 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
  */
 
 static void
+infd_directory_connection_notify_status_cb(GObject* object,
+                                           GParamSpec* pspec,
+                                           gpointer user_data)
+{
+  InfXmlConnectionStatus status;
+  g_object_get(object, "status", &status, NULL);
+
+  if(status == INF_XML_CONNECTION_OPEN)
+  {
+    infd_directory_send_welcome_message(
+      INFD_DIRECTORY(user_data),
+      INF_XML_CONNECTION(object)
+    );
+  }
+}
+
+static void
 infd_directory_member_removed_cb(InfCommunicationGroup* group,
                                  InfXmlConnection* connection,
                                  gpointer user_data)
@@ -3253,6 +3319,7 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
   InfdDirectoryPrivate* priv;
   GSList* item;
   InfdDirectorySubreq* request;
+  InfdDirectoryConnectionInfo* info;
 
   directory = INFD_DIRECTORY(user_data);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -3273,7 +3340,14 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
       infd_directory_remove_subreq(directory, request);
   }
 
-  priv->connections = g_slist_remove(priv->connections, connection);
+  info = g_hash_table_lookup(priv->connections, connection);
+  g_slice_free(InfdDirectoryConnectionInfo, info);
+
+  g_signal_handlers_disconnect_by_func(G_OBJECT(connection),
+    G_CALLBACK(infd_directory_connection_notify_status_cb),
+    directory);
+
+  g_hash_table_remove(priv->connections, connection);
   g_object_unref(G_OBJECT(connection));
 }
 
@@ -3363,7 +3437,7 @@ infd_directory_init(GTypeInstance* instance,
   priv->communication_manager = NULL;
 
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
-  priv->connections = NULL;
+  priv->connections = g_hash_table_new(NULL, NULL);
 
   priv->node_counter = 1;
   priv->nodes = g_hash_table_new(NULL, NULL);
@@ -3418,7 +3492,7 @@ infd_directory_constructor(GType type,
     INF_COMMUNICATION_OBJECT(directory)
   );
 
-  g_assert(priv->connections == NULL);
+  g_assert(g_hash_table_size(priv->connections) == 0);
   return object;
 }
 
@@ -3427,6 +3501,8 @@ infd_directory_dispose(GObject* object)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+  GHashTableIter iter;
+  gpointer key;
 
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -3447,12 +3523,14 @@ infd_directory_dispose(GObject* object)
 
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
-
-  while(priv->connections != NULL)
+  
+  for(g_hash_table_iter_init(&iter, priv->connections);
+      g_hash_table_iter_next(&iter, &key, NULL);
+      g_hash_table_iter_init(&iter, priv->connections))
   {
     inf_communication_hosted_group_remove_member(
       priv->group,
-      priv->connections->data
+      INF_XML_CONNECTION(key)
     );
   }
 
@@ -4216,17 +4294,51 @@ infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection)
 {
   InfdDirectoryPrivate* priv;
+  InfdDirectoryConnectionInfo* info;
+  InfXmlConnectionStatus status;
+  GHashTableIter iter;
+  gpointer value;
+  guint seq_id;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_return_val_if_fail(priv->communication_manager != NULL, FALSE);
+  g_return_val_if_fail(
+    g_hash_table_lookup(priv->connections, connection) == NULL,
+    FALSE
+  );
 
   inf_communication_hosted_group_add_member(priv->group, connection);
 
-  priv->connections = g_slist_prepend(priv->connections, connection);
-  g_object_ref(G_OBJECT(connection));
+  /* Find a free seq id */
+  seq_id = 1;
+  g_hash_table_iter_init(&iter, priv->connections);
+  while(g_hash_table_iter_next(&iter, NULL, &value))
+  {
+    info = (InfdDirectoryConnectionInfo*)value;
+    if(info->seq_id >= seq_id)
+      seq_id = info->seq_id + 1;
+    g_assert(seq_id > info->seq_id); /* check for overflow */
+  }
+
+  info = g_slice_new(InfdDirectoryConnectionInfo);
+  info->seq_id = seq_id;
+
+  g_hash_table_insert(priv->connections, connection, info);
+  g_object_ref(connection);
+
+  g_signal_connect(
+    G_OBJECT(connection),
+    "notify::status",
+    G_CALLBACK(infd_directory_connection_notify_status_cb),
+    directory
+  );
+
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+  if(status == INF_XML_CONNECTION_OPEN)
+    infd_directory_send_welcome_message(directory, connection);
 
   return TRUE;
 }

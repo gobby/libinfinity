@@ -22,6 +22,7 @@ libinfinity_common_la_SOURCES = \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
+	inf-protocol.c \
 	inf-session.c \
 	inf-simulated-connection.c \
 	inf-standalone-io.c \
@@ -47,6 +48,7 @@ libinfinity_common_la_HEADERS = \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \
+	inf-protocol.h \
 	inf-session.h \
 	inf-simulated-connection.h \
 	inf-standalone-io.h \
