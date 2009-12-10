@@ -58,6 +58,9 @@ infinoted_config_reload(InfinotedRun* run,
   startup = infinoted_startup_new(NULL, NULL, error);
   if(!startup) return FALSE;
 
+  /* TODO: need to support creating a gsasl context when reloading the config
+   * when none was created on first startup */
+
   /* Acquire DH params if necessary (if security policy changed from
    * no-tls to one of allow-tls or require-tls). */
   dh_params = run->dh_params;

@@ -31,6 +31,8 @@
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
 
+#include <gsasl.h>
+
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -47,6 +49,7 @@ struct _InfinotedRun {
   InfdXmppServer* xmpp4;
   InfdXmppServer* xmpp6;
   gnutls_dh_params_t dh_params;
+  Gsasl* gsasl;
 
   InfinotedRecord* record;
 

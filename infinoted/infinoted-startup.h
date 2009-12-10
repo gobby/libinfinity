@@ -23,6 +23,8 @@
 #include <infinoted/infinoted-options.h>
 #include <libinfinity/common/inf-certificate-credentials.h>
 
+#include <gsasl.h>
+
 #include <glib.h>
 
 G_BEGIN_DECLS
@@ -34,6 +36,7 @@ struct _InfinotedStartup {
   gnutls_x509_crt_t* certificates;
   guint n_certificates;
   InfCertificateCredentials* credentials;
+  Gsasl* gsasl;
 };
 
 InfinotedStartup*
