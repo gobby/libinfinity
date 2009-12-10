@@ -88,17 +88,11 @@ int main(int argc, char* argv[])
   io = inf_standalone_io_new();
   error = NULL;
 
-  connection = g_object_new(
-    INF_TYPE_TCP_CONNECTION,
-    "io", io,
-    "remote-address", addr,
-    "remote-port", 5223,
-    NULL
-  );
+  connection = inf_tcp_connection_new_and_open(io, addr, 5223, &error);
 
   inf_ip_address_free(addr);
 
-  if(inf_tcp_connection_open(connection, &error) == FALSE)
+  if(connection == NULL)
   {
     fprintf(stderr, "Could not open connection: %s\n", error->message);
     g_error_free(error);
@@ -122,7 +116,8 @@ int main(int argc, char* argv[])
   }
 
   g_object_unref(G_OBJECT(io));
-  g_object_unref(G_OBJECT(connection));
+  if(connection)
+    g_object_unref(G_OBJECT(connection));
 
   gnutls_global_deinit();
   return 0;

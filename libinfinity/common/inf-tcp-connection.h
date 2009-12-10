@@ -21,6 +21,7 @@
 #define __INF_TCP_CONNECTION_H__
 
 #include <libinfinity/common/inf-ip-address.h>
+#include <libinfinity/common/inf-io.h>
 
 #include <glib-object.h>
 
@@ -69,6 +70,17 @@ inf_tcp_connection_status_get_type(void) G_GNUC_CONST;
 
 GType
 inf_tcp_connection_get_type(void) G_GNUC_CONST;
+
+InfTcpConnection*
+inf_tcp_connection_new(InfIo* io,
+                       InfIpAddress* remote_addr,
+                       guint remote_port);
+
+InfTcpConnection*
+inf_tcp_connection_new_and_open(InfIo* io,
+                                InfIpAddress* remote_addr,
+                                guint remote_port,
+                                GError** error);
 
 gboolean
 inf_tcp_connection_open(InfTcpConnection* connection,

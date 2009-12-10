@@ -953,13 +953,84 @@ inf_tcp_connection_get_type(void)
 }
 
 /**
+ * inf_tcp_connection_new:
+ * @io: A #InfIo object used to watch for activity.
+ * @remote_addr: The address to eventually connect to.
+ * @remote_port: The port to eventually connect to.
+ *
+ * Creates a new #InfTcpConnection. The arguments are stored as properties for
+ * an eventual inf_tcp_connection_open() call, this function itself does not
+ * establish a connection.
+ *
+ * Returns: A new #InfTcpConnection. Free with g_object_unref().
+ **/
+InfTcpConnection*
+inf_tcp_connection_new(InfIo* io,
+                       InfIpAddress* remote_addr,
+                       guint remote_port)
+{
+  InfTcpConnection* tcp;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(remote_addr != NULL, NULL);
+  g_return_val_if_fail(remote_port <= 65535, NULL);
+
+  tcp = INF_TCP_CONNECTION(
+    g_object_new(
+      INF_TYPE_TCP_CONNECTION,
+      "io", io,
+      "remote-address", remote_addr,
+      "remote-port", remote_port,
+      NULL));
+
+  return tcp;
+}
+
+/**
+ * inf_tcp_connection_new_and_open:
+ * @io: A #InfIo object used to watch for activity.
+ * @remote_addr: The address to connect to.
+ * @remote_port: The port to connect to.
+ * @error: Location to store error information.
+ *
+ * Creates a new #InfTcpConnection and connects it to the given TCP endpoint.
+ * Like inf_tcp_connection_new, but calls inf_tcp_connection_open().
+ *
+ * Returns: A new #InfTcpConnection, or %NULL on error. Free with
+ * g_object_unref().
+ **/
+InfTcpConnection*
+inf_tcp_connection_new_and_open(InfIo* io,
+                                InfIpAddress* remote_addr,
+                                guint remote_port,
+                                GError** error)
+{
+  InfTcpConnection* tcp;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(remote_addr != NULL, NULL);
+  g_return_val_if_fail(remote_port <= 65535, NULL);
+  g_return_val_if_fail(error == NULL || *error == NULL, NULL);
+
+  tcp = inf_tcp_connection_new(io, remote_addr, remote_port);
+
+  if(inf_tcp_connection_open(tcp, error) == FALSE)
+  {
+    g_object_unref(tcp);
+    return NULL;
+  }
+
+  return tcp;
+}
+
+/**
  * inf_tcp_connection_open:
  * @connection: A #InfTcpConnection.
  * @error: Location to store error information.
  *
  * Attempts to open @connection. Make sure to have set the "remote-address"
  * and "remote-port" property before calling this function. If an error
- * occurs, the function returns FALSE and @error is set. Note however that
+ * occurs, the function returns %FALSE and @error is set. Note however that
  * the connection might not be fully open when the function returns
  * (check the "status" property if you need to know). If an asynchronous
  * error occurs while the connection is being opened, the "error" signal
@@ -1369,15 +1440,7 @@ _inf_tcp_connection_accepted(InfIo* io,
   g_return_val_if_fail(address != NULL, NULL);
   g_return_val_if_fail(port != 0, NULL);
 
-  connection = INF_TCP_CONNECTION(
-    g_object_new(
-      INF_TYPE_TCP_CONNECTION,
-      "io", io,
-      "remote-address", address,
-      "remote-port", port,
-      NULL
-    )
-  );
+  connection = inf_tcp_connection_new(io, address, port);
 
   inf_ip_address_free(address);
 

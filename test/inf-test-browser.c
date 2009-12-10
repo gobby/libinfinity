@@ -313,23 +313,15 @@ main(int argc, char* argv[])
 
   address = inf_ip_address_new_loopback4();
 
-  tcp_conn = g_object_new(
-    INF_TYPE_TCP_CONNECTION,
-    "io", test.io,
-    "remote-address", address,
-    "remote-port", 6523,
-    NULL
-  );
+  error = NULL;
+  tcp_conn = inf_tcp_connection_new_and_open(test.io, address, 6523, &error);
 
   inf_ip_address_free(address);
 
-  error = NULL;
-  if(inf_tcp_connection_open(tcp_conn, &error) == FALSE)
+  if(tcp_conn == NULL)
   {
     fprintf(stderr, "Could not open TCP connection: %s\n", error->message);
     g_error_free(error);
-
-    g_object_unref(G_OBJECT(tcp_conn));
   }
   else
   {

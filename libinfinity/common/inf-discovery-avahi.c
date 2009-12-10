@@ -340,16 +340,12 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
 
     if(discovery_info->resolved == NULL)
     {
-      error = NULL;
+      tcp = inf_tcp_connection_new(priv->io, inf_addr, port);
 
-      tcp = g_object_new(
-        INF_TYPE_TCP_CONNECTION,
-        "io", priv->io,
+      g_object_set(
+        G_OBJECT(tcp),
         "device-index", discovery_info->interface,
-        "remote-address", inf_addr,
-        "remote-port", port,
-        NULL
-      );
+        NULL);
 
       error = NULL;
       if(inf_tcp_connection_open(tcp, &error) == FALSE)

@@ -125,13 +125,7 @@ int main(int argc, char* argv[])
   io = inf_standalone_io_new();
   error = NULL;
 
-  connection = g_object_new(
-    INF_TYPE_TCP_CONNECTION,
-    "io", io,
-    "remote-address", addr,
-    "remote-port", 5223,
-    NULL
-  );
+  connection = inf_tcp_connection_new(io, addr, 5223);
 
   inf_ip_address_free(addr);
 
