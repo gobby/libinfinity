@@ -1,5 +1,16 @@
 2009-12-10  Benjamin Herr  <ben@0x539.de>
 
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Add public inf_gsasl_error_quark(),
+	inf_gsasl_set_error() for error codes returned from GNU GSASL
+	functions.
+
+	* libinfinity/common/inf-xmpp-connection.c: Use
+	inf_gsasl_error_set_error() instead of manually setting errors for
+	gsasl error codes.
+
+2009-12-10  Benjamin Herr  <ben@0x539.de>
+
 	* libinfinity/common/inf-tcp-connection.h:
 	* libinfinity/common/inf-tcp-connection.c: Add functions to create new
 	connections: inf_tcp_connection_new(),

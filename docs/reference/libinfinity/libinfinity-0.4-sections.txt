@@ -938,6 +938,8 @@ inf_directory_error_quark
 inf_directory_strerror
 inf_gnutls_error_quark
 inf_gnutls_set_error
+inf_gsasl_error_quark
+inf_gsasl_set_error
 </SECTION>
 
 <SECTION>

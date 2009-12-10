@@ -162,7 +162,6 @@ static GObjectClass* parent_class;
 static GQuark inf_xmpp_connection_error_quark;
 static GQuark inf_xmpp_connection_stream_error_quark;
 static GQuark inf_xmpp_connection_auth_error_quark;
-static GQuark inf_xmpp_connection_gsasl_error_quark;
 
 /*
  * XMPP error handling
@@ -1249,13 +1248,7 @@ inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
   g_assert(priv->sasl_session != NULL);
 
   error = NULL;
-  g_set_error(
-    &error,
-    inf_xmpp_connection_gsasl_error_quark,
-    code,
-    "%s",
-    gsasl_strerror(code)
-  );
+  inf_gsasl_set_error(&error, code);
 
   inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
   g_error_free(error);
@@ -1338,13 +1331,7 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
     if(ret != GSASL_OK)
     {
       error = NULL;
-      g_set_error(
-        &error,
-        inf_xmpp_connection_gsasl_error_quark,
-        ret,
-        "%s",
-        gsasl_strerror(ret)
-      );
+      inf_gsasl_set_error(&error, ret);
 
       inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
       g_free(error);
@@ -1657,13 +1644,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
           xmlFreeNode(features);
           error = NULL;
 
-          g_set_error(
-            &error,
-            inf_xmpp_connection_gsasl_error_quark,
-            ret,
-            "%s",
-            gsasl_strerror(ret)
-          );
+          inf_gsasl_set_error(&error, ret);
 
           inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
           g_error_free(error);
@@ -3453,10 +3434,6 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   inf_xmpp_connection_auth_error_quark = g_quark_from_static_string(
     "INF_XMPP_CONNECTION_AUTH_ERROR"
-  );
-
-  inf_xmpp_connection_gsasl_error_quark = g_quark_from_static_string(
-    "INF_XMPP_CONNECTION_GSASL_ERROR"
   );
 
   g_object_class_install_property(

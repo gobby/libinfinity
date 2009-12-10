@@ -232,4 +232,39 @@ inf_gnutls_set_error(GError** error,
   }
 }
 
+/**
+ * inf_gsasl_error_quark:
+ *
+ * Error domain for GNU SASL errors. Errors in this domain will be GNU SASL
+ * error codes. See #GError for information on error domains.
+ *
+ * Returns: A GQuark.
+ */
+GQuark
+inf_gsasl_error_quark(void)
+{
+  return g_quark_from_static_string("INF_GSASL_ERROR");
+}
+
+/**
+ * inf_gsasl_set_error:
+ * @error: Location to store the error, or %NULL.
+ * @error_code: A GNU SASL error code.
+ *
+ * Sets a #GError from a GNU SASL error code. If @error is %NULL, does nothing.
+ */
+void
+inf_gsasl_set_error(GError** error,
+                     int error_code)
+{
+  if(error != NULL)
+  {
+    *error = g_error_new_literal(
+      inf_gsasl_error_quark(),
+      error_code,
+      gsasl_strerror(error_code)
+    );
+  }
+}
+
 /* vim:set et sw=2 ts=2: */
