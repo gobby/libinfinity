@@ -55,7 +55,7 @@ GType
 infc_request_manager_get_type(void) G_GNUC_CONST;
 
 InfcRequestManager*
-infc_request_manager_new(void);
+infc_request_manager_new(guint seq_id);
 
 InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,

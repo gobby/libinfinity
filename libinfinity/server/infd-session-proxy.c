@@ -30,6 +30,8 @@
 typedef struct _InfdSessionProxySubscription InfdSessionProxySubscription;
 struct _InfdSessionProxySubscription {
   InfXmlConnection* connection;
+  guint seq_id;
+
   GSList* users; /* Available users joined via this connection */
 };
 
@@ -62,7 +64,7 @@ enum {
 enum {
   ADD_SUBSCRIPTION,
   REMOVE_SUBSCRIPTION,
-  
+
   LAST_SIGNAL
 };
 
@@ -76,12 +78,14 @@ static guint session_proxy_signals[LAST_SIGNAL];
  */
 
 static InfdSessionProxySubscription*
-infd_session_proxy_subscription_new(InfXmlConnection* connection)
+infd_session_proxy_subscription_new(InfXmlConnection* connection,
+                                    guint seq_id)
 {
   InfdSessionProxySubscription* subscription;
   subscription = g_slice_new(InfdSessionProxySubscription);
 
   subscription->connection = connection;
+  subscription->seq_id = seq_id;
   subscription->users = NULL;
 
   g_object_ref(G_OBJECT(connection));
@@ -166,14 +170,47 @@ infd_session_proxy_user_notify_status_cb(InfUser* user,
  * Utility functions.
  */
 
+static gboolean
+infd_session_proxy_make_seq(InfdSessionProxy* proxy,
+                            InfXmlConnection* connection,
+                            xmlNodePtr xml,
+                            gchar** seq,
+                            GError** error)
+{
+  InfdSessionProxyPrivate* priv;
+  InfdSessionProxySubscription* subscription;
+  GError* local_error;
+  guint seq_num;
+
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+  local_error = NULL;
+  if(!inf_xml_util_get_attribute_uint(xml, "seq", &seq_num, &local_error))
+  {
+    if(local_error)
+    {
+      g_propagate_error(error, local_error);
+      return FALSE;
+    }
+
+    *seq = NULL;
+    return TRUE;
+  }
+
+  subscription = infd_session_proxy_find_subscription(proxy, connection);
+  g_assert(subscription != NULL);
+
+  *seq = g_strdup_printf("%u/%u", subscription->seq_id, seq_num);
+  return TRUE;
+}
+
 /* Performs a user join on the given proxy. If connection is not null, the
  * user join is made from that connection, otherwise a local user join is
- * performed. request_seq is the seq of the user join request and used in
- * the reply. It is ignored when connection is NULL. */
+ * performed. seq is the seq of the user join request and used in
+ * the reply, or NULL if there was no seq. */
 static InfUser*
 infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
                                      InfXmlConnection* connection,
-                                     const gchar* request_seq,
+                                     const gchar* seq,
                                      GArray* user_props,
                                      GError** error)
 {
@@ -346,17 +383,10 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   }
 
   inf_session_user_to_xml(priv->session, user, xml);
+  if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
 
   /* TODO: Send with "connection" to subscriptions that are in the same
    * network, and that are non-local. */
-
-  /* exclude the connection from which the request comes. The reply to it
-   * is sent separately telling it that the user join was accepted. */
-  inf_session_send_to_subscriptions(
-    priv->session,
-    connection,
-    xmlCopyNode(xml, 1)
-  );
 
   g_signal_connect(
     G_OBJECT(user),
@@ -365,16 +395,14 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
     proxy
   );
 
+  inf_session_send_to_subscriptions(
+    priv->session,
+    NULL,
+    xml
+  );
+
   if(connection != NULL)
   {
-    xmlNewProp(xml, (const xmlChar*)"seq", (const xmlChar*)request_seq);
-
-    inf_communication_group_send_message(
-      INF_COMMUNICATION_GROUP(priv->subscription_group),
-      connection,
-      xml
-    );
-
     subscription = infd_session_proxy_find_subscription(proxy, connection);
     g_assert(subscription != NULL);
 
@@ -383,7 +411,6 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   else
   {
     priv->local_users = g_slist_prepend(priv->local_users, user);
-    xmlFreeNode(xml);
   }
 
   return user;
@@ -931,7 +958,8 @@ infd_session_proxy_get_property(GObject* object,
 
 static void
 infd_session_proxy_add_subscription(InfdSessionProxy* proxy,
-                                    InfXmlConnection* connection)
+                                    InfXmlConnection* connection,
+                                    guint seq_id)
 {
   InfdSessionProxyPrivate* priv;
   InfdSessionProxySubscription* subscription;
@@ -939,7 +967,7 @@ infd_session_proxy_add_subscription(InfdSessionProxy* proxy,
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   g_assert(infd_session_proxy_find_subscription(proxy, connection) == NULL);
 
-  subscription = infd_session_proxy_subscription_new(connection);
+  subscription = infd_session_proxy_subscription_new(connection, seq_id);
   priv->subscriptions = g_slist_prepend(priv->subscriptions, subscription);
 
   if(priv->idle)
@@ -1000,11 +1028,14 @@ infd_session_proxy_handle_user_join(InfdSessionProxy* proxy,
   InfSessionClass* session_class;
   GArray* array;
   InfUser* user;
-  xmlChar* seq_attr;
+  gchar* seq;
   guint i;
 
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
   session_class = INF_SESSION_GET_CLASS(priv->session);
+
+  if(!infd_session_proxy_make_seq(proxy, connection, xml, &seq, error))
+    return FALSE;
 
   array = session_class->get_xml_user_props(
     priv->session,
@@ -1012,21 +1043,19 @@ infd_session_proxy_handle_user_join(InfdSessionProxy* proxy,
     xml
   );
 
-  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
   user = infd_session_proxy_perform_user_join(
     proxy,
     connection,
-    (const gchar*)seq_attr,
+    seq,
     array,
     error
   );
-
-  xmlFree(seq_attr);
 
   for(i = 0; i < array->len; ++ i)
     g_value_unset(&g_array_index(array, GParameter, i).value);
 
   g_array_free(array, TRUE);
+  g_free(seq);
 
   if(user == NULL)
     return FALSE;
@@ -1112,7 +1141,7 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
   InfSessionSyncStatus status;
   GError* local_error;
   xmlNodePtr reply_xml;
-  xmlChar* seq_attr;
+  gchar* seq;
 
   proxy = INFD_SESSION_PROXY(obj);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
@@ -1166,6 +1195,9 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
 
   if(local_error != NULL)
   {
+    if(!infd_session_proxy_make_seq(proxy, connection, node, &seq, error))
+      seq = NULL;
+
     /* Only send request-failed when it was a proxy-related request */
     reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
     inf_xml_util_set_attribute_uint(reply_xml, "code", local_error->code);
@@ -1176,12 +1208,8 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
       (const xmlChar*)g_quark_to_string(local_error->domain)
     );
 
-    seq_attr = xmlGetProp(node, (const xmlChar*)"seq");
-    if(seq_attr != NULL)
-    {
-      xmlNewProp(reply_xml, (const xmlChar*)"seq", seq_attr);
-      xmlFree(seq_attr);
-    }
+    if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+    g_free(seq);
 
     inf_communication_group_send_message(
       INF_COMMUNICATION_GROUP(priv->subscription_group),
@@ -1189,16 +1217,11 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
       reply_xml
     );
 
-    /* TODO: Only propagate on fatal errors. If a user join fails because
-     * a user name is already in use or something, we do not need the
-     * communication manager to print a warning that the session might have
-     * become inconsistent. */
-
-    g_propagate_error(error, local_error);
+    g_error_free(local_error);
   }
 
   /* Don't forward proxy-related messages */
-  return FALSE;
+  return INF_COMMUNICATION_SCOPE_PTP;
 }
 
 /*
@@ -1267,6 +1290,8 @@ infd_session_proxy_class_init(gpointer g_class,
    * InfdSessionProxy::add-subscription:
    * @proxy: The #InfdSessionProxy emitting the signal.
    * @connection: The subscribed #InfXmlConnection.
+   * @seq_id: The sequence identifier for @connection as passed to
+   * infd_session_proxy_subscribe_to().
    *
    * Emitted every time a connection is subscribed to the session.
    **/
@@ -1276,10 +1301,11 @@ infd_session_proxy_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdSessionProxyClass, add_subscription),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    inf_marshal_VOID__OBJECT_UINT,
     G_TYPE_NONE,
-    1,
-    INF_TYPE_XML_CONNECTION
+    2,
+    INF_TYPE_XML_CONNECTION,
+    G_TYPE_UINT
   );
 
   /**
@@ -1427,11 +1453,17 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
  * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy.
  * @connection: A #InfConnection that is not yet subscribed.
+ * @seq_id: The sequence identifier for @connection.
  * @synchronize: If %TRUE, then synchronize the session to @connection first.
  *
  * Subscribes @connection to @proxy's session. The first thing that will be
  * done is a synchronization (see inf_session_synchronize_to()). Then, all
  * changes to the session are propagated to @connection.
+ *
+ * @seq_id should be a unique number for @connection, and the same number must
+ * be passed on the client side to the #InfcSessionProxy object. Normally
+ * #InfdDirectory and #InfcBrowser take care of choosing an appropriate
+ * sequence identifier.
  *
  * Normally, you want to set @synchronize to %TRUE in which case the whole
  * session state will be synchronized to @connection (within the subscription
@@ -1455,6 +1487,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection,
+                                guint seq_id,
                                 gboolean synchronize)
 {
   InfdSessionProxyPrivate* priv;
@@ -1486,7 +1519,8 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
     G_OBJECT(proxy),
     session_proxy_signals[ADD_SUBSCRIPTION],
     0,
-    connection
+    connection,
+    seq_id
   );
 
   /* Make sure the default handler ran. Stopping the signal emission before

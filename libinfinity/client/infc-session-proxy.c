@@ -45,6 +45,7 @@ enum {
 
   PROP_SESSION,
   PROP_SUBSCRIPTION_GROUP,
+  PROP_SEQUENCE_ID,
   PROP_CONNECTION
 };
 
@@ -259,6 +260,9 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
   /* TODO: Emit failed signal with some "cancelled" error? */
   infc_request_manager_clear(priv->request_manager);
 
+  g_object_unref(priv->request_manager);
+  priv->request_manager = NULL;
+
   /* Set status of all users to unavailable */
   /* TODO: Keep local users available */
   inf_user_table_foreach_user(
@@ -298,39 +302,6 @@ infc_session_proxy_request_to_xml(InfcRequest* request)
   return xml;
 }
 
-static void
-infc_session_proxy_succeed_user_request(InfcSessionProxy* proxy,
-                                        xmlNodePtr xml,
-                                        InfUser* user)
-{
-  InfcSessionProxyPrivate* priv;
-  xmlChar* seq_attr;
-  guint seq;
-  InfcRequest* request;
-
-  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  seq_attr = xmlGetProp(xml, (const xmlChar*)"seq");
-
-  if(seq_attr != NULL)
-  {
-    seq = strtoul((const char*)seq_attr, NULL, 0);
-    xmlFree(seq_attr);
-
-    request = infc_request_manager_get_request_by_seq(
-      priv->request_manager,
-      seq
-    );
-
-    /* TODO: Set error when invalid seq was set. Perhaps implement in
-     * request manager. */
-    if(INFC_IS_USER_REQUEST(request))
-    {
-      infc_user_request_finished(INFC_USER_REQUEST(request), user);
-      infc_request_manager_remove_request(priv->request_manager, request);
-    }
-  }
-}
-
 /*
  * GObject overrides.
  */
@@ -348,7 +319,7 @@ infc_session_proxy_init(GTypeInstance* instance,
   priv->session = NULL;
   priv->subscription_group = NULL;
   priv->connection = NULL;
-  priv->request_manager = infc_request_manager_new();
+  priv->request_manager = NULL;
 }
 
 static void
@@ -388,9 +359,7 @@ infc_session_proxy_dispose(GObject* object)
     priv->session = NULL;
   }
 
-  g_object_unref(G_OBJECT(priv->request_manager));
-  priv->request_manager = NULL;
-
+  g_assert(priv->request_manager == NULL);
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
@@ -522,6 +491,7 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
 {
   InfcSessionProxyPrivate* priv;
   InfSessionClass* session_class;
+  InfcRequest* request;
   GArray* array;
   InfUser* user;
   GParameter* param;
@@ -529,6 +499,13 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
   session_class = INF_SESSION_GET_CLASS(priv->session);
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "user-join",
+    xml,
+    NULL
+  );
 
   array = session_class->get_xml_user_props(priv->session, connection, xml);
 
@@ -538,7 +515,7 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   g_assert(!G_IS_VALUE(&param->value)); /* must not have been set already */
 
   g_value_init(&param->value, INF_TYPE_USER_FLAGS);
-  if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
+  if(request != NULL)
     g_value_set_flags(&param->value, INF_USER_LOCAL);
   else
     g_value_set_flags(&param->value, 0);
@@ -565,7 +542,12 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
 
   if(user != NULL)
   {
-    infc_session_proxy_succeed_user_request(proxy, xml, user);
+    if(request != NULL)
+    {
+      infc_user_request_finished(INFC_USER_REQUEST(request), user);
+      infc_request_manager_remove_request(priv->request_manager, request);
+    }
+
     return TRUE;
   }
   else
@@ -582,6 +564,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
 {
   InfcSessionProxyPrivate* priv;
   InfSessionClass* session_class;
+  InfcRequest* request;
   GArray* array;
   InfUser* user;
   const GParameter* idparam;
@@ -592,6 +575,13 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
   session_class = INF_SESSION_GET_CLASS(priv->session);
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "user-join",
+    xml,
+    NULL
+  );
 
   array = session_class->get_xml_user_props(priv->session, connection, xml);
 
@@ -639,7 +629,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
   g_assert(!G_IS_VALUE(&param->value)); /* must not have been set already */
 
   g_value_init(&param->value, INF_TYPE_USER_FLAGS);
-  if(xmlHasProp(xml, (const xmlChar*)"seq") != NULL)
+  if(request != NULL)
     g_value_set_flags(&param->value, INF_USER_LOCAL);
   else
     g_value_set_flags(&param->value, 0);
@@ -685,7 +675,11 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
     g_value_unset(&g_array_index(array, GParameter, i).value);
   g_array_free(array, TRUE);
 
-  infc_session_proxy_succeed_user_request(proxy, xml, user);
+  if(request != NULL)
+  {
+    infc_user_request_finished(INFC_USER_REQUEST(request), user);
+    infc_request_manager_remove_request(priv->request_manager, request);
+  }
 
   return TRUE;
 
@@ -969,7 +963,7 @@ infc_session_proxy_class_init(gpointer g_class,
   object_class->get_property = infc_session_proxy_get_property;
 
   proxy_class->translate_error = infc_session_proxy_translate_error_impl;
-  
+
   g_object_class_install_property(
     object_class,
     PROP_SESSION,
@@ -1070,8 +1064,10 @@ infc_session_proxy_get_type(void)
  * infc_session_proxy_set_connection:
  * @proxy: A #InfcSessionProxy.
  * @group: A #InfCommunicationJoinedGroup of subscribed connections. Ignored
- * if * @connection is %NULL.
+ * if @connection is %NULL.
  * @connection: A #InfXmlConnection.
+ * @seq_id: A sequence identifier for @connection. Ignored if @connection
+ * is %NULL.
  *
  * Sets the subscription connection for the given session. The subscription
  * connection is the connection through which session requests are transmitted
@@ -1081,6 +1077,12 @@ infc_session_proxy_get_type(void)
  * SYNCHRONIZING state in which case the session is immediately subscribed
  * after synchronization. Note that no attempt is made to tell the other end
  * about the subscription.
+ *
+ * @seq_id should be a sequence identifier obtained from the server side. It
+ * must be the same number that is used on the corresponding #InfdSessionProxy
+ * on the remote side, see infd_session_proxy_subscribe_to(). Normally
+ * #InfdDirectory or #InfcBrowser, respectively, take care of passing the
+ * correct sequence identifier.
  *
  * When the subscription connection is being closed or replaced (by a
  * subsequent call to this function), all pending requests are dropped and
@@ -1093,7 +1095,8 @@ infc_session_proxy_get_type(void)
 void
 infc_session_proxy_set_connection(InfcSessionProxy* proxy,
                                   InfCommunicationJoinedGroup* group,
-                                  InfXmlConnection* connection)
+                                  InfXmlConnection* connection,
+                                  guint seq_id)
 {
   InfcSessionProxyPrivate* priv;
   xmlNodePtr xml;
@@ -1146,6 +1149,9 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
     /* Set new group */
     priv->subscription_group = group;
     g_object_ref(priv->subscription_group);
+
+    g_assert(priv->request_manager == NULL);
+    priv->request_manager = infc_request_manager_new(seq_id);
   }
 
   inf_session_set_subscription_group(
@@ -1196,6 +1202,7 @@ infc_session_proxy_join_user(InfcSessionProxy* proxy,
   g_object_get(G_OBJECT(priv->session), "status", &status, NULL);
   g_return_val_if_fail(status == INF_SESSION_RUNNING, NULL);
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->request_manager != NULL, NULL);
 
   /* TODO: Check params locally */
 

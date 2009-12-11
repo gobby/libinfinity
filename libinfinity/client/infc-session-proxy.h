@@ -56,7 +56,8 @@ infc_session_proxy_get_type(void) G_GNUC_CONST;
 void
 infc_session_proxy_set_connection(InfcSessionProxy* proxy,
                                   InfCommunicationJoinedGroup* group,
-                                  InfXmlConnection* connection);
+                                  InfXmlConnection* connection,
+                                  guint seq_id);
 
 InfcUserRequest*
 infc_session_proxy_join_user(InfcSessionProxy* proxy,

@@ -811,7 +811,7 @@ infc_browser_welcome_timeout_func(gpointer user_data)
   priv = INFC_BROWSER_PRIVATE(browser);
 
   priv->welcome_timeout = NULL;
-  
+
   error = NULL;
   g_set_error(
     &error,
@@ -910,7 +910,12 @@ infc_browser_disconnected(InfcBrowser* browser)
     infc_browser_remove_subreq(browser, priv->subscription_requests->data);
 
   /* TODO: Emit failed signal with some "disconnected" error */
-  infc_request_manager_clear(priv->request_manager);
+  if(priv->request_manager)
+  {
+    infc_request_manager_clear(priv->request_manager);
+    g_object_unref(priv->request_manager);
+    priv->request_manager = NULL;
+  }
 
   g_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->group),
@@ -986,6 +991,8 @@ infc_browser_connection_notify_status_cb(GObject* object,
      * that cleanup is not required, but remember to reset status. */
     if(priv->group == NULL && priv->status != INFC_BROWSER_DISCONNECTED)
     {
+      g_assert(priv->request_manager == NULL);
+
       priv->status = INFC_BROWSER_DISCONNECTED;
       g_object_notify(G_OBJECT(browser), "status");
     }
@@ -1068,7 +1075,7 @@ infc_browser_init(GTypeInstance* instance,
   priv->connection = NULL;
   priv->seq_id = 0;
   priv->welcome_timeout = NULL;
-  priv->request_manager = infc_request_manager_new();
+  priv->request_manager = NULL;
 
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->status = INFC_BROWSER_DISCONNECTED;
@@ -1157,8 +1164,7 @@ infc_browser_dispose(GObject* object)
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;
 
-  g_object_unref(G_OBJECT(priv->request_manager));
-  priv->request_manager = NULL;
+  g_assert(priv->request_manager == NULL);
 
   if(priv->welcome_timeout != NULL)
   {
@@ -1378,7 +1384,8 @@ infc_browser_add_subreq_chat(InfcBrowser* browser,
   subreq->shared.chat.request = request;
   subreq->shared.chat.subscription_group = group;
 
-  /* TODO: Document in what case request can be NULL, or assert if it can't */
+  /* Request can be NULL if the server subscribed us to the chat without
+   * us asking about it. */
   if(request != NULL)
     g_object_ref(request);
   g_object_ref(group);
@@ -1880,23 +1887,15 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
-  GError* local_error;
 
   priv = INFC_BROWSER_PRIVATE(browser);
-  local_error = NULL;
 
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     NULL,
     xml,
-    &local_error
+    NULL
   );
-
-  if(local_error != NULL)
-  {
-    g_propagate_error(error, local_error);
-    return NULL;
-  }
 
   /* If no seq was set, then this add-node request was not issued by us */
   if(request != NULL)
@@ -1916,7 +1915,7 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
         infc_request_get_name(request)
       );
 
-      return FALSE;
+      return NULL;
     }
 
     /* TODO: If EXPLORE_REQUEST, then check whether we can add a node at this
@@ -2058,7 +2057,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
     INF_COMMUNICATION_OBJECT(proxy)
   );
 
-  infc_session_proxy_set_connection(proxy, group, connection);
+  infc_session_proxy_set_connection(proxy, group, connection, priv->seq_id);
 
   g_object_unref(session);
 
@@ -2153,6 +2152,9 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
   if(!result) return FALSE;
 
+  g_assert(priv->request_manager == NULL);
+  priv->request_manager = infc_request_manager_new(priv->seq_id);
+
   priv->status = INFC_BROWSER_CONNECTED;
   g_object_notify(G_OBJECT(browser), "status");
 
@@ -2174,6 +2176,8 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   InfcBrowserNode* node;
 
   priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* TODO: Allow exploration without us asking */
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
     "explore-node",
@@ -2248,6 +2252,8 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
   gboolean result;
 
   priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* TODO: Allow exploration without us asking */
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
     "explore-node",
@@ -2646,7 +2652,7 @@ infc_browser_handle_remove_node(InfcBrowser* browser,
     priv->request_manager,
     "remove-node",
     xml,
-    error
+    NULL
   );
 
   if(request != NULL)
@@ -2806,7 +2812,7 @@ infc_browser_handle_subscribe_chat(InfcBrowser* browser,
     NULL
   );
 
-  g_assert(INFC_IS_NODE_REQUEST(request));
+  g_assert(request == NULL || INFC_IS_NODE_REQUEST(request));
 
   subreq = infc_browser_add_subreq_chat(
     browser,
@@ -3229,7 +3235,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
       infc_session_proxy_set_connection(
         proxy,
         subreq->shared.chat.subscription_group,
-        connection
+        connection,
+        priv->seq_id
       );
 
       g_object_unref(session);
@@ -3254,7 +3261,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           INFC_REQUEST(subreq->shared.chat.request)
         );
       }
- 
+
       break;
     case INFC_BROWSER_SUBREQ_SESSION:
       g_assert(has_id == TRUE);
@@ -3401,7 +3408,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           infc_session_proxy_set_connection(
             proxy,
             subreq->shared.sync_in.subscription_group,
-            connection
+            connection,
+            priv->seq_id
           );
 
           g_signal_emit(
@@ -3533,7 +3541,7 @@ infc_browser_class_init(gpointer g_class,
   infc_browser_session_proxy_quark = g_quark_from_static_string(
     "infc-browser-session-proxy-quark"
   );
-  
+
   infc_browser_sync_in_session_quark = g_quark_from_static_string(
     "infc-browser-sync-in-session-quark"
   );
@@ -4203,6 +4211,7 @@ infc_browser_iter_explore(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INFC_BROWSER_CONNECTED, NULL);
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -4338,6 +4347,7 @@ infc_browser_add_subdirectory(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INFC_BROWSER_CONNECTED, NULL);
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -4404,6 +4414,7 @@ infc_browser_add_note(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INFC_BROWSER_CONNECTED, NULL);
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -4505,6 +4516,7 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INFC_BROWSER_CONNECTED, NULL);
 
   /* TODO: Add a InfcSyncInRequest, deriving from InfcNodeRequest that
    * carries session and plugin, so we don't need g_object_set_qdata for the
@@ -4580,6 +4592,7 @@ infc_browser_remove_node(InfcBrowser* browser,
   /* TODO: Check that there is not a remove-node request already enqueued. */
 
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INFC_BROWSER_CONNECTED, NULL);
 
   request = infc_request_manager_add_request(
     priv->request_manager,
@@ -4707,6 +4720,7 @@ infc_browser_iter_subscribe_session(InfcBrowser* browser,
   node = (InfcBrowserNode*)iter->node;
 
   g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INFC_BROWSER_CONNECTED, NULL);
   g_return_val_if_fail(node->type == INFC_BROWSER_NODE_NOTE_KNOWN, NULL);
   g_return_val_if_fail(node->shared.known.session == NULL, NULL);
 
@@ -4891,12 +4905,15 @@ infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
   node = (InfcBrowserNode*)iter->node;
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  infc_request_manager_foreach_named_request(
-    priv->request_manager,
-    "subscribe-session",
-    infc_browser_iter_get_node_request_foreach_func,
-    &data
-  );
+  if(priv->request_manager != NULL)
+  {
+    infc_request_manager_foreach_named_request(
+      priv->request_manager,
+      "subscribe-session",
+      infc_browser_iter_get_node_request_foreach_func,
+      &data
+    );
+  }
 
   return data.result;
 }
@@ -4931,12 +4948,15 @@ infc_browser_iter_get_explore_request(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  infc_request_manager_foreach_named_request(
-    priv->request_manager,
-    "explore-node",
-    infc_browser_iter_get_explore_request_foreach_func,
-    &data
-  );
+  if(priv->request_manager != NULL)
+  {
+    infc_request_manager_foreach_named_request(
+      priv->request_manager,
+      "explore-node",
+      infc_browser_iter_get_explore_request_foreach_func,
+      &data
+    );
+  }
 
   return data.result;
 }
@@ -4973,12 +4993,15 @@ infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  infc_request_manager_foreach_named_request(
-    priv->request_manager,
-    "add-node",
-    infc_browser_iter_get_sync_in_requests_foreach_func,
-    &data
-  );
+  if(priv->request_manager != NULL)
+  {
+    infc_request_manager_foreach_named_request(
+      priv->request_manager,
+      "add-node",
+      infc_browser_iter_get_sync_in_requests_foreach_func,
+      &data
+    );
+  }
 
   return data.result;
 }
@@ -5135,12 +5158,15 @@ infc_browser_get_subscribe_chat_request(InfcBrowser* browser)
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  infc_request_manager_foreach_named_request(
-    priv->request_manager,
-    "subscribe-chat",
-    infc_browser_get_chat_request_foreach_func,
-    &data
-  );
+  if(priv->request_manager != NULL)
+  {
+    infc_request_manager_foreach_named_request(
+      priv->request_manager,
+      "subscribe-chat",
+      infc_browser_get_chat_request_foreach_func,
+      &data
+    );
+  }
 
   return data.result;
 }

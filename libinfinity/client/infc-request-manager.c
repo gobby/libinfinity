@@ -26,6 +26,7 @@
 #include <gobject/gvaluecollector.h>
 
 #include <string.h>
+#include <errno.h>
 
 typedef struct _InfcRequestManagerForeachData InfcRequestManagerForeachData;
 struct _InfcRequestManagerForeachData {
@@ -37,7 +38,14 @@ struct _InfcRequestManagerForeachData {
 typedef struct _InfcRequestManagerPrivate InfcRequestManagerPrivate;
 struct _InfcRequestManagerPrivate {
   GHashTable* requests;
+  guint seq_id;
   guint seq_counter;
+};
+
+enum {
+  PROP_0,
+
+  PROP_SEQUENCE_ID
 };
 
 enum {
@@ -70,6 +78,79 @@ infc_request_manager_foreach_request_func(gpointer key,
   }
 }
 
+/* TODO: inf_protocol_version_parse() uses a very similar routine. We should
+ * avoid the code duplication. */
+static gboolean
+infc_request_manager_parse_seq(const gchar* seq,
+                               guint* seq_id,
+                               guint* seq_num,
+                               GError** error)
+{
+  gchar* endptr;
+  unsigned long sid;
+  unsigned long snum;
+
+  errno = 0;
+  sid = strtoul(seq, &endptr, 10);
+  if(errno == ERANGE || sid > (unsigned long)G_MAXUINT)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_SEQ,
+      "%s",
+      _("Sequence identifier causes overflow")
+    );
+
+    return FALSE;
+  }
+
+  if(*endptr != '/')
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_SEQ,
+      "%s",
+      _("Sequence components are not separated by '/'")
+    );
+
+    return FALSE;
+  }
+
+  errno = 0;
+  snum = strtoul(endptr + 1, &endptr, 10);
+  if(errno == ERANGE || snum > (unsigned long)G_MAXUINT)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_SEQ,
+      "%s",
+      _("Sequence number causes overflow")
+    );
+
+    return FALSE;
+  }
+
+  if(*endptr != '\0')
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_SEQ,
+      "%s",
+      _("Trailing characters after sequence number")
+    );
+
+    return FALSE;
+  }
+
+  if(seq_id) *seq_id = sid;
+  if(seq_num) *seq_num = snum;
+  return TRUE;
+}
+
 static void
 infc_request_manager_init(GTypeInstance* instance,
                           gpointer g_class)
@@ -87,6 +168,7 @@ infc_request_manager_init(GTypeInstance* instance,
     (GDestroyNotify)g_object_unref
   );
 
+  priv->seq_id = 0;
   priv->seq_counter = 0;
 }
 
@@ -104,6 +186,52 @@ infc_request_manager_dispose(GObject* object)
 
   if(parent_class->dispose != NULL)
     parent_class->dispose(object);
+}
+
+static void
+infc_request_manager_set_property(GObject* object,
+                                  guint prop_id,
+                                  const GValue* value,
+                                  GParamSpec* pspec)
+{
+  InfcRequestManager* request_manager;
+  InfcRequestManagerPrivate* priv;
+
+  request_manager = INFC_REQUEST_MANAGER(object);
+  priv = INFC_REQUEST_MANAGER_PRIVATE(request_manager);
+
+  switch(prop_id)
+  {
+  case PROP_SEQUENCE_ID:
+    priv->seq_id = g_value_get_uint(value);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infc_request_manager_get_property(GObject* object,
+                                  guint prop_id,
+                                  GValue* value,
+                                  GParamSpec* pspec)
+{
+  InfcRequestManager* request_manager;
+  InfcRequestManagerPrivate* priv;
+
+  request_manager = INFC_REQUEST_MANAGER(object);
+  priv = INFC_REQUEST_MANAGER_PRIVATE(request_manager);
+
+  switch(prop_id)
+  {
+  case PROP_SEQUENCE_ID:
+    g_value_set_uint(value, priv->seq_id);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
 }
 
 static void
@@ -150,9 +278,25 @@ infc_request_manager_class_init(gpointer g_class,
   g_type_class_add_private(g_class, sizeof(InfcRequestManagerPrivate));
 
   object_class->dispose = infc_request_manager_dispose;
+  object_class->set_property = infc_request_manager_set_property;
+  object_class->get_property = infc_request_manager_get_property;
 
   request_manager_class->request_add = infc_request_manager_request_add;
   request_manager_class->request_remove = infc_request_manager_request_remove;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SEQUENCE_ID,
+    g_param_spec_uint(
+      "sequence-id",
+      "Sequence ID",
+      "The local sequence identifier",
+      0,
+      G_MAXUINT,
+      0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   request_manager_signals[REQUEST_ADD] = g_signal_new(
     "request-add",
@@ -212,16 +356,18 @@ infc_request_manager_get_type(void)
 
 /**
  * infc_request_manager_new:
+ * @seq_id: The local sequence ID.
  *
  * Creates a new #InfcRequestManager.
  *
  * Return Value: A newly allocated #InfcRequestManager.
  **/
 InfcRequestManager*
-infc_request_manager_new(void)
+infc_request_manager_new(guint seq_id)
 {
   GObject* object;
-  object = g_object_new(INFC_TYPE_REQUEST_MANAGER, NULL);
+  object =
+    g_object_new(INFC_TYPE_REQUEST_MANAGER, "sequence-id", seq_id, NULL);
   return INFC_REQUEST_MANAGER(object);
 }
 
@@ -373,8 +519,8 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
   else
   {
     /* An error occured. We do not use GError here tough, because this is a
-     * most likely a bug in someone's code (if not, it is one in infinote's
-     * code). */
+     * most likely a bug in someone's code (if not, it is one in
+     * libinfinity's code). */
     request = NULL;
   }
 
@@ -481,9 +627,9 @@ infc_request_manager_get_request_by_seq(InfcRequestManager* manager,
  *
  * Looks whether there is a "seq" attribute in @xml. If not, the function
  * returns %NULL (without setting @error). Otherwise, it returns the request
- * with the given seq and name (if any). If the "seq" attribute is set but
- * the actual request is not present (or has another name), the function
- * returns %NULL and @error is set.
+ * with the given seq and name, if the sequence ID matches. If the "seq"
+ * attribute is set but the actual request is not present (or has another
+ * name), the function returns %NULL and @error is set.
  *
  * Return Value: The resulting request, or %NULL if the "seq" attribute was
  * not present or an error occured.
@@ -496,7 +642,9 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
 {
   InfcRequestManagerPrivate* priv;
   InfcRequest* request;
+  xmlChar* seq_attr;
   gboolean has_seq;
+  guint seq_id;
   guint seq;
 
   g_return_val_if_fail(INFC_IS_REQUEST_MANAGER(manager), NULL);
@@ -505,8 +653,20 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
   priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
   request = NULL;
 
-  has_seq = inf_xml_util_get_attribute_uint(xml, "seq", &seq, error);
-  if(has_seq == FALSE) return NULL;
+  seq_attr = inf_xml_util_get_attribute(xml, "seq");
+  if(!seq_attr) return NULL;
+
+  has_seq = infc_request_manager_parse_seq(
+    (const gchar*)seq_attr,
+    &seq_id,
+    &seq,
+    error
+  );
+
+  if(!has_seq) return NULL;
+
+  /* Not our seq ID */
+  if(seq_id != priv->seq_id) return NULL;
 
   request = infc_request_manager_get_request_by_seq(manager, seq);
   if(request == NULL)
@@ -548,9 +708,9 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
  * @error: Location to store error information.
  *
  * Looks whether there is a "seq" attribute in @xml. If so, it returns the
- * request with the given seq and name (if any). If the "seq" attribute is
- * not set or the actual request is not present (or has another name), the
- * function returns %NULL and @error is set.
+ * request with the given seq and name, if the sequence ID matches. If the
+ * "seq" attribute is not set or the actual request is not present (or has
+ * another name), the function returns %NULL and @error is set.
  *
  * Return Value: The resulting request, or %NULL if an error occured.
  **/

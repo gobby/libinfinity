@@ -41,7 +41,8 @@ struct _InfdSessionProxyClass {
 
   /* Signals */
   void (*add_subscription)(InfdSessionProxy* proxy,
-                           InfXmlConnection* connection);
+                           InfXmlConnection* connection,
+                           guint seq_id);
 
   void (*remove_subscription)(InfdSessionProxy* proxy,
                               InfXmlConnection* connection);
@@ -66,6 +67,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection,
+                                guint seq_id,
                                 gboolean synchronize);
 
 gboolean

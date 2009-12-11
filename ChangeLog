@@ -1,3 +1,24 @@
+2009-12-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Added VOID:OBJECT,UINT marshaller.
+
+	* libinfinity/server/infd-session-proxy.h:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/server/infd-directory.c: Send seqs in the form
+	"seq-id/seq-num". This allows to send the same message to the whole
+	group, not requiring an extra message for the host which issued the
+	request. Added the seq_id parameter to InfdSessionProxy's
+	add-subscription signal.
+
+	* libinfinity/client/infc-request-manager.h:
+	* libinfinity/client/infc-request-manager.c:
+	* libinfinity/client/infc-session-proxy.h:
+	* libinfinity/client/infc-session-proxy.c:
+	* libinfinity/client/infc-browser.c: Correctly deal with this kind of
+	seqs; pass sequence-id from welcome message to request manager and
+	session proxy and added the sequence-id property for
+	InfcRequestManager.
+
 2009-12-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:
