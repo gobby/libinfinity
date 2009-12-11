@@ -1,5 +1,11 @@
 2009-12-10  Benjamin Herr  <ben@0x539.de>
 
+	* libinfinity/common/inf-error.c: Include gsasl.h so that
+	gsasl_strerror() is not assumed to return int and consequently works
+	on non-32bit platforms, fixing a crash.
+
+2009-12-10  Benjamin Herr  <ben@0x539.de>
+
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-error.c: Add public inf_gsasl_error_quark(),
 	inf_gsasl_set_error() for error codes returned from GNU GSASL
