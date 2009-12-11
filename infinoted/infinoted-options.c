@@ -609,6 +609,15 @@ infinoted_options_load(InfinotedOptions* options,
   );
   if(!result) return FALSE;
 
+  if(options->password != NULL)
+  {
+    if(strcmp("", options->password) == NULL)
+    {
+      g_free(options->password);
+      options->password = NULL;
+    }
+  }
+
   return infinoted_options_validate(options, error);
 }
 
