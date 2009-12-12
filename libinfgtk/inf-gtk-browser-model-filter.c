@@ -17,6 +17,8 @@
  * MA 02110-1301, USA.
  */
 
+#include <libinfinity/inf-signals.h>
+
 #include <libinfgtk/inf-gtk-browser-model-filter.h>
 
 static GObjectClass* parent_class;
@@ -77,7 +79,7 @@ inf_gtk_browser_model_filter_sync_child_model(InfGtkBrowserModelFilter* model,
 
   if(priv->child_model != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       priv->child_model,
       G_CALLBACK(inf_gtk_browser_model_filter_set_browser_cb),
       model
@@ -179,7 +181,7 @@ inf_gtk_browser_model_filter_dispose(GObject* object)
    * up. */
   inf_gtk_browser_model_filter_sync_child_model(model_sort, NULL);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     object,
     G_CALLBACK(inf_gtk_browser_model_filter_notify_model_cb),
     NULL

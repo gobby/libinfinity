@@ -54,8 +54,11 @@ inf_text_chunk_segment_cmp(gconstpointer first,
                            gconstpointer second,
                            gpointer userdata)
 {
-  const InfTextChunkSegment* first_segment = (InfTextChunkSegment*)first;
-  const InfTextChunkSegment* second_segment = (InfTextChunkSegment*)second;
+  const InfTextChunkSegment* first_segment;
+  const InfTextChunkSegment* second_segment;
+ 
+  first_segment  = (const InfTextChunkSegment*)first;
+  second_segment = (const InfTextChunkSegment*)second;
 
   g_return_val_if_fail(second != NULL && first != NULL, 0);
 

@@ -24,6 +24,7 @@
 
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gnutls/x509.h>
 
@@ -580,7 +581,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
       }
       else
       {
-        *((char**)&data) += cur_bytes;
+        *((const char**)&data) += cur_bytes;
         len -= cur_bytes;
       }
     } while(len > 0);
@@ -997,6 +998,7 @@ inf_xmpp_connection_tls_import_server_certificate(InfXmppConnection* xmpp,
       error,
       inf_xmpp_connection_error_quark,
       INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
+      "%s",
       _("The server did not provide a certificate")
     );
 
@@ -1821,9 +1823,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
     if(child == NULL &&
        priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_TLS)
     {
-      error = NULL;
-      g_set_error(
-        &error,
+      error = g_error_new_literal(
         inf_xmpp_connection_error_quark,
         INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
         _("The server does not support transport layer security (TLS)")
@@ -1848,6 +1848,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
           &error,
           inf_xmpp_connection_error_quark,
           INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED,
+          "%s",
           _("The server requires transport layer security (TLS)")
         );
 
@@ -1879,10 +1880,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
     /* Server does not provide authentication mechanisms */
     if(child == NULL)
     {
-      error = NULL;
-
-      g_set_error(
-        &error,
+      error = g_error_new_literal(
         inf_xmpp_connection_error_quark,
         INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED,
         _("The server does not provide any authentication mechanism")
@@ -1964,10 +1962,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
 
       if(suggestion == NULL)
       {
-        error = NULL;
-
-        g_set_error(
-          &error,
+        error = g_error_new_literal(
           inf_xmpp_connection_error_quark,
           INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM,
           _("The server does not offer a suitable authentication mechanism")
@@ -2020,10 +2015,7 @@ inf_xmpp_connection_process_encryption(InfXmppConnection* xmpp,
   }
   else if(strcmp((const gchar*)xml->name, "failure") == 0)
   {
-    error = NULL;
-
-    g_set_error(
-      &error,
+    error = g_error_new_literal(
       inf_xmpp_connection_error_quark,
       INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
       _("The server cannot perform the TLS handshake")
@@ -2872,25 +2864,25 @@ inf_xmpp_connection_set_tcp(InfXmppConnection* xmpp,
     if(tcp_status != INF_TCP_CONNECTION_CLOSED)
       inf_tcp_connection_close(priv->tcp);
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(inf_xmpp_connection_sent_cb),
       xmpp
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(inf_xmpp_connection_received_cb),
       xmpp
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(inf_xmpp_connection_error_cb),
       xmpp
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(inf_xmpp_connection_notify_status_cb),
       xmpp
@@ -3829,9 +3821,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
   g_return_if_fail(priv->status == INF_XMPP_CONNECTION_CONNECTED);
   g_return_if_fail(priv->session != NULL);
 
-  error = NULL;
-  g_set_error(
-    &error,
+  error = g_error_new_literal(
     inf_xmpp_connection_error_quark,
     INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
     _("The server certificate is not trusted")

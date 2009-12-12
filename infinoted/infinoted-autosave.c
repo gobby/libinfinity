@@ -21,6 +21,7 @@
 
 #include <infinoted/infinoted-autosave.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 typedef struct _InfinotedAutosaveSession InfinotedAutosaveSession;
 struct _InfinotedAutosaveSession {
@@ -140,7 +141,7 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
     infd_session_proxy_get_session(session->proxy)
   );
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(infinoted_autosave_buffer_notify_modified_cb),
     session
@@ -169,7 +170,7 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
     inf_buffer_set_modified(INF_BUFFER(buffer), FALSE);
   }
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(infinoted_autosave_buffer_notify_modified_cb),
     session
@@ -237,7 +238,7 @@ infinoted_autosave_remove_session(InfinotedAutosave* autosave,
   buffer =
     inf_session_get_buffer(infd_session_proxy_get_session(session->proxy));
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(infinoted_autosave_buffer_notify_modified_cb),
     session
@@ -362,13 +363,13 @@ infinoted_autosave_new(InfdDirectory* directory,
 void
 infinoted_autosave_free(InfinotedAutosave* autosave)
 {
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(autosave->directory),
     G_CALLBACK(infinoted_autosave_directory_add_session_cb),
     autosave
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(autosave->directory),
     G_CALLBACK(infinoted_autosave_directory_remove_session_cb),
     autosave

@@ -18,6 +18,7 @@
  */
 
 #include <libinfinity/server/infd-server-pool.h>
+#include <libinfinity/inf-signals.h>
 
 typedef enum _InfdServerPoolPublisherType {
   INFD_SERVER_POOL_PUBLISHER_LOCAL
@@ -204,13 +205,13 @@ infd_server_pool_entry_free(InfdServerPool* server_pool,
   GSList* item;
   InfdServerPoolPublisher* publisher;
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(entry->server),
     G_CALLBACK(infd_server_pool_notify_status_cb),
     server_pool
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(entry->server),
     G_CALLBACK(infd_server_pool_new_connection_cb),
     server_pool

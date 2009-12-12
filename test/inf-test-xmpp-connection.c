@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
   io = inf_standalone_io_new();
   error = NULL;
 
-  connection = inf_tcp_connection_new_and_open(io, addr, 5223, &error);
+  connection = inf_tcp_connection_new_and_open(INF_IO(io), addr, 5223, &error);
 
   inf_ip_address_free(addr);
 

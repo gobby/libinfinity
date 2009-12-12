@@ -22,6 +22,7 @@
 #include <libinfinity/common/inf-tcp-connection.h>
 
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 typedef struct _InfXmppManagerKey InfXmppManagerKey;
 struct _InfXmppManagerKey {
@@ -117,7 +118,7 @@ inf_xmpp_manager_notify_status_cb(GObject* object,
     g_tree_remove(priv->connections, &key);
     g_object_unref(G_OBJECT(tcp));
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(connection),
       G_CALLBACK(inf_xmpp_manager_notify_status_cb),
       manager
@@ -138,7 +139,7 @@ inf_xmpp_manager_dispose_destroy_func(gpointer key,
   manager = INF_XMPP_MANAGER(data);
   connection = INF_XMPP_CONNECTION(value);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(connection),
     G_CALLBACK(inf_xmpp_manager_notify_status_cb),
     manager

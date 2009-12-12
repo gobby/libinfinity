@@ -5,6 +5,7 @@ m4_define([libinfinity_libtool_version], [0:0:0])
 AC_PREREQ(2.59)
 AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news])
+m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-init.c])
 AC_CONFIG_HEADER([config.h libinfinity/inf-config.h])
@@ -17,6 +18,13 @@ AC_SUBST(LIBINFINITY_API_VERSION)
 AC_SUBST(LIBINFINITY_LIBTOOL_VERSION)
 
 AC_CANONICAL_HOST
+has_strict_prototypes=""
+if (echo $CFLAGS | grep -- -Wstrict-prototype)
+then
+        has_strict_prototypes="true"
+        old_CFLAGS=$CFLAGS
+        CFLAGS="$CFLAGS -Wno-strict-prototypes"
+fi
 
 AC_LANG(C)
 AC_PROG_CC
@@ -186,6 +194,11 @@ AM_GLIB_DEFINE_LOCALEDIR(INF_LOCALEDIR)
 ###########
 # Output
 ###########
+
+if test -n $has_strict_prototypes
+then
+        CFLAGS=$old_CFLAGS
+fi
 
 AC_CONFIG_FILES([
   Makefile

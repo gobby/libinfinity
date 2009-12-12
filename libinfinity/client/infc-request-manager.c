@@ -675,6 +675,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
+      "%s",
       _("The request contains an unknown sequence number")
     );
   }
@@ -739,6 +740,7 @@ infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
+        "%s",
         _("The request does not contain a sequence number, but one "
           "is required")
       );

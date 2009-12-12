@@ -32,6 +32,7 @@
 #include <libinfinity/communication/inf-communication-central-method.h>
 #include <libinfinity/communication/inf-communication-hosted-group.h>
 #include <libinfinity/communication/inf-communication-registry.h>
+#include <libinfinity/inf-signals.h>
 
 #include <libxml/xmlsave.h>
 
@@ -65,7 +66,6 @@ inf_communication_central_method_notify_status_cb(GObject* object,
   InfCommunicationCentralMethod* method;
   InfCommunicationCentralMethodPrivate* priv;
   InfXmlConnectionStatus status;
-  gpointer was_open_ptr;
 
   method = INF_COMMUNICATION_CENTRAL_METHOD(user_data);
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
@@ -165,7 +165,7 @@ inf_communication_central_method_remove_member(InfCommunicationMethod* method,
     );
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     connection,
     G_CALLBACK(inf_communication_central_method_notify_status_cb),
     method

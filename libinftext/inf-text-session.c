@@ -30,6 +30,7 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <libxml/tree.h>
 #include <string.h>
@@ -118,7 +119,7 @@ inf_text_session_segment_to_xml(GIConv* cd,
 
   bytes_left = 1024;
 
-  inbuf = (gchar*)text;
+  inbuf = *(gchar**)(gpointer)&text; /* cast const away without warning */
   outbuf = utf8_text;
 
   result = g_iconv(
@@ -330,7 +331,7 @@ inf_text_session_remove_local_user(InfTextSession* session,
     );
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(local->user),
     G_CALLBACK(inf_text_session_selection_changed_cb),
     session
@@ -383,7 +384,7 @@ inf_text_session_block_local_users_selection_changed(InfTextSession* session)
   {
     local = (InfTextSessionLocalUser*)item->data;
 
-    g_signal_handlers_block_by_func(
+    inf_signal_handlers_block_by_func(
       G_OBJECT(local->user),
       G_CALLBACK(inf_text_session_selection_changed_cb),
       session
@@ -404,7 +405,7 @@ inf_text_session_unblock_local_users_selection_changed(InfTextSession* sess)
   {
     local = (InfTextSessionLocalUser*)item->data;
 
-    g_signal_handlers_unblock_by_func(
+    inf_signal_handlers_unblock_by_func(
       G_OBJECT(local->user),
       G_CALLBACK(inf_text_session_selection_changed_cb),
       sess
@@ -640,13 +641,13 @@ inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
   session = INF_TEXT_SESSION(user_data);
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
     session
   );
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
     session
@@ -667,13 +668,13 @@ inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
   session = INF_TEXT_SESSION(user_data);
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
     session
   );
   
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
     session
@@ -866,37 +867,37 @@ inf_text_session_dispose(GObject* object)
     );
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_insert_text_cb_after),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(inf_text_session_buffer_erase_text_cb_after),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(user_table),
     G_CALLBACK(inf_text_session_local_user_added_cb),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(user_table),
     G_CALLBACK(inf_text_session_local_user_removed_cb),
     session
@@ -905,13 +906,13 @@ inf_text_session_dispose(GObject* object)
   /* Algorithm may be NULL if we were still synchronizing */
   if(algorithm != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(algorithm),
       G_CALLBACK(inf_text_session_apply_request_cb_before),
       session
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(algorithm),
       G_CALLBACK(inf_text_session_apply_request_cb_after),
       session
@@ -951,7 +952,7 @@ inf_text_session_set_property(GObject* object,
     priv->caret_update_interval = g_value_get_uint(value);
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -1025,6 +1026,7 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
+      "%s",
       _("User did not join from this connection")
     );
 
@@ -1359,6 +1361,7 @@ inf_text_session_validate_user_props(InfSession* session,
       error,
       inf_text_session_error_quark,
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
       _("'caret' attribute in user message is missing")
     );
 

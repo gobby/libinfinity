@@ -20,6 +20,7 @@
 #include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <libxml/xmlwriter.h>
 
@@ -309,7 +310,7 @@ inf_adopted_session_record_synchronization_complete_cb(InfSession* session,
   InfAdoptedSessionRecord* record;
   record = INF_ADOPTED_SESSION_RECORD(user_data);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(session),
     G_CALLBACK(inf_adopted_session_record_synchronization_complete_cb),
     record
@@ -410,7 +411,7 @@ inf_adopted_session_record_set_property(GObject* object,
     priv->session = INF_ADOPTED_SESSION(g_value_dup_object(value));
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -681,7 +682,7 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
 
   g_return_val_if_fail(priv->writer != NULL, FALSE);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(inf_adopted_session_record_synchronization_complete_cb),
     record
@@ -700,14 +701,14 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
       algorithm = inf_adopted_session_get_algorithm(priv->session);
       g_assert(algorithm != NULL);
 
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         G_OBJECT(algorithm),
         G_CALLBACK(inf_adopted_session_record_execute_request_cb),
         record
       );
     }
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(user_table),
       G_CALLBACK(inf_adopted_session_record_add_user_cb),
       record

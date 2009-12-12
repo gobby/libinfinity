@@ -52,7 +52,7 @@ inf_text_undo_grouping_get_char_from_chunk(InfTextChunk* chunk)
 {
   GIConv cd;
   InfTextChunkIter iter;
-  const gchar* inbuf;
+  gchar* inbuf;
   size_t inlen;
   gchar* outbuf;
   size_t outlen;
@@ -63,12 +63,13 @@ inf_text_undo_grouping_get_char_from_chunk(InfTextChunk* chunk)
   g_assert(cd != (GIConv)-1);
 
   inf_text_chunk_iter_init(chunk, &iter);
-  inbuf = inf_text_chunk_iter_get_text(&iter);
+  /* cast const away without warning */ /* more or less */
+  *(gconstpointer*) &inbuf = inf_text_chunk_iter_get_text(&iter);
   inlen = inf_text_chunk_iter_get_bytes(&iter);
   outbuf = buffer;
   outlen = 6; /* max length of a UTF-8 character */
 
-  result = g_iconv(cd, (gchar**)&inbuf, &inlen, &outbuf, &outlen);
+  result = g_iconv(cd, &inbuf, &inlen, &outbuf, &outlen);
   /* we expect exactly one char in chunk, so there should be enough space */
   g_assert(result == 0);/* || (result == (size_t)(-1) && errno == E2BIG));*/
 

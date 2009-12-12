@@ -143,7 +143,7 @@ inf_adopted_split_operation_set_property(GObject* object,
     g_assert(priv->second != INF_ADOPTED_OPERATION(operation));
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }

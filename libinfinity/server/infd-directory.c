@@ -44,6 +44,7 @@
 #include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -1386,13 +1387,13 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
     G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
     sync_in
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
     sync_in
@@ -2377,6 +2378,7 @@ infd_directory_get_subreq_from_xml(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
+      "%s",
       _("No subscription request for the server chat")
     );
   }
@@ -2733,6 +2735,7 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
+      "%s",
       _("The root node cannot be removed")
     );
 
@@ -2863,6 +2866,7 @@ infd_directory_handle_save_session(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNSUBSCRIBED,
+      "%s",
       _("The requesting connection is not subscribed to the session")
     );
 
@@ -2948,6 +2952,7 @@ infd_directory_handle_subscribe_chat(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_CHAT_DISABLED,
+      "%s",
       _("The chat is disabled")
     );
 
@@ -3318,7 +3323,7 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
   info = g_hash_table_lookup(priv->connections, connection);
   g_slice_free(InfdDirectoryConnectionInfo, info);
 
-  g_signal_handlers_disconnect_by_func(G_OBJECT(connection),
+  inf_signal_handlers_disconnect_by_func(G_OBJECT(connection),
     G_CALLBACK(infd_directory_connection_notify_status_cb),
     directory);
 
@@ -3515,7 +3520,7 @@ infd_directory_dispose(GObject* object)
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->group),
     G_CALLBACK(infd_directory_member_removed_cb),
     directory
@@ -3669,7 +3674,7 @@ infd_directory_remove_session(InfdDirectory* directory,
     node->shared.note.save_timeout = NULL;
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(session),
     G_CALLBACK(infd_directory_session_idle_notify_cb),
     directory
@@ -4220,8 +4225,14 @@ infd_directory_add_plugin(InfdDirectory* directory,
 
   g_hash_table_insert(
     priv->plugins,
-    (gpointer)plugin->note_type,
-    (gpointer)plugin
+    /* cast const away without warning */
+    /* take addr -> char const * const *
+     *     cast  -> void         const *
+     *     cast  -> void       * const *
+     *     deref -> void * const
+     */
+    *(const gpointer*)(gconstpointer)&plugin->note_type,
+    *(gpointer*)(gpointer)&plugin
   );
 
   return TRUE;

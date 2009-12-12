@@ -21,6 +21,7 @@
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gtk/gtktreeview.h>
 #include <gtk/gtktreeviewcolumn.h>
@@ -121,7 +122,7 @@ static guint view_signals[LAST_SIGNAL];
  * Utility functions
  */
 
-InfGtkBrowserViewBrowser*
+static InfGtkBrowserViewBrowser*
 inf_gtk_browser_view_find_view_browser(InfGtkBrowserView* view,
                                        InfcBrowser* browser)
 {
@@ -140,7 +141,7 @@ inf_gtk_browser_view_find_view_browser(InfGtkBrowserView* view,
   return NULL;
 }
 
-InfGtkBrowserViewExplore*
+static InfGtkBrowserViewExplore*
 inf_gtk_browser_view_find_explore(InfGtkBrowserView* view,
                                   InfGtkBrowserViewBrowser* view_browser,
                                   InfcExploreRequest* request)
@@ -158,7 +159,7 @@ inf_gtk_browser_view_find_explore(InfGtkBrowserView* view,
   return NULL;
 }
 
-InfGtkBrowserViewSync*
+static InfGtkBrowserViewSync*
 inf_gtk_browser_view_find_sync(InfGtkBrowserView* view,
                                InfGtkBrowserViewBrowser* view_browser,
                                InfcSessionProxy* proxy)
@@ -480,19 +481,19 @@ inf_gtk_browser_view_sync_removed(InfGtkBrowserView* view,
     gtk_tree_path_free(path);
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infc_session_proxy_get_session(sync->proxy)),
     G_CALLBACK(inf_gtk_browser_view_session_synchronization_progress_cb),
     sync
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infc_session_proxy_get_session(sync->proxy)),
     G_CALLBACK(inf_gtk_browser_view_session_synchronization_complete_cb),
     sync
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infc_session_proxy_get_session(sync->proxy)),
     G_CALLBACK(inf_gtk_browser_view_session_synchronization_failed_cb),
     sync
@@ -587,19 +588,19 @@ inf_gtk_browser_view_explore_removed(InfGtkBrowserView* view,
     gtk_tree_path_free(path);
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(expl->request),
     G_CALLBACK(inf_gtk_browser_view_explore_request_initiated_cb),
     expl
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(expl->request),
     G_CALLBACK(inf_gtk_browser_view_explore_request_progress_cb),
     expl
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(expl->request),
     G_CALLBACK(inf_gtk_browser_view_explore_request_finished_cb),
     expl
@@ -1002,13 +1003,13 @@ inf_gtk_browser_view_browser_removed(InfGtkBrowserView* view,
   while(view_browser->syncs != NULL)
     inf_gtk_browser_view_sync_removed(view, view_browser->syncs->data);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(view_browser->browser),
     G_CALLBACK(inf_gtk_browser_view_begin_explore_cb),
     view_browser
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(view_browser->browser),
     G_CALLBACK(inf_gtk_browser_view_session_subscribe_cb),
     view_browser
@@ -1329,37 +1330,37 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
     g_slist_free(priv->info_resolvs);
     priv->info_resolvs = NULL;
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_row_inserted_cb),
       view
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_row_deleted_cb),
       view
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_row_changed_cb),
       view
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_rows_reordered_cb),
       view
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_set_browser_cb_before),
       view
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
       G_CALLBACK(inf_gtk_browser_view_set_browser_cb_after),
       view

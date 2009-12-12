@@ -196,7 +196,7 @@ inf_test_util_parse_buffer(xmlNodePtr xml,
   InfTextChunk* chunk;
   xmlNodePtr child;
   guint author;
-  xmlChar* content;
+  gchar* content;
   gsize bytes;
   guint chars;
 

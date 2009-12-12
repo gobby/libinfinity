@@ -63,6 +63,7 @@
 #include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -302,7 +303,7 @@ inf_session_release_connection(InfSession* session,
     break;
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(connection),
     G_CALLBACK(inf_session_connection_notify_status_cb),
     session
@@ -671,7 +672,7 @@ inf_session_set_property(GObject* object,
 
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -2513,7 +2514,9 @@ inf_session_add_user(InfSession* session,
   if(result == TRUE)
   {
     /* No idea why g_object_newv wants unconst GParameter list */
-    user = session_class->user_new(session, (GParameter*)params, n_params);
+    user = session_class->user_new(session,
+                                   *(GParameter**)(gpointer)&params,
+                                   n_params);
     inf_user_table_add_user(priv->user_table, user);
     g_object_unref(user); /* We rely on the usertable holding a reference */
 

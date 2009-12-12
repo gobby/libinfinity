@@ -36,9 +36,10 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-error.h>
-#include <libinfinity/inf-i18n.h>
 
+#include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -538,7 +539,7 @@ infc_browser_session_remove_session(InfcBrowser* browser,
 
   session = infc_session_proxy_get_session(node->shared.known.session);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     session,
     G_CALLBACK(infc_browser_session_close_cb),
     browser
@@ -917,7 +918,7 @@ infc_browser_disconnected(InfcBrowser* browser)
     priv->request_manager = NULL;
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->group),
     G_CALLBACK(infc_browser_member_removed_cb),
     browser
@@ -1136,13 +1137,13 @@ infc_browser_dispose(GObject* object)
 
   if(priv->connection != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       priv->connection,
       G_CALLBACK(infc_browser_connection_notify_status_cb),
       browser
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       priv->connection,
       G_CALLBACK(infc_browser_connection_error_cb),
       browser
@@ -1230,13 +1231,13 @@ infc_browser_set_property(GObject* object,
       if(priv->group != NULL)
         infc_browser_disconnected(browser);
 
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         priv->connection,
         G_CALLBACK(infc_browser_connection_notify_status_cb),
         browser
       );
 
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         priv->connection,
         G_CALLBACK(infc_browser_connection_error_cb),
         browser
@@ -1675,13 +1676,13 @@ infc_browser_remove_sync_in(InfcBrowser* browser,
   InfcBrowserPrivate* priv;
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infc_session_proxy_get_session(sync_in->proxy)),
     G_CALLBACK(infc_browser_sync_in_synchronization_complete_cb),
     sync_in
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(infc_session_proxy_get_session(sync_in->proxy)),
     G_CALLBACK(infc_browser_sync_in_synchronization_failed_cb),
     sync_in
@@ -2206,6 +2207,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+      "%s",
       _("Node to explore does no longer exist")
     );
 
@@ -2217,6 +2219,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
+      "%s",
       _("Node to explore is not a subdirectory")
     );
 
@@ -2228,6 +2231,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
+      "%s",
       _("Node to explore is already explored")
     );
 
@@ -2383,6 +2387,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
           error,
           inf_request_error_quark(),
           INF_REQUEST_ERROR_INVALID_SEQ,
+          "%s",
           _("Explored nodes cannot be initially be subscribed to")
         );
 
@@ -2548,6 +2553,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
+      "%s",
       _("Received sync-in without having requested one")
     );
 
@@ -2719,6 +2725,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
+      "%s",
       _("Already subscribed to this session")
     );
 
@@ -2783,6 +2790,7 @@ infc_browser_handle_subscribe_chat(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
+      "%s",
       _("Already subscribed to the chat session")
     );
 
@@ -3958,8 +3966,14 @@ infc_browser_add_plugin(InfcBrowser* browser,
 
   g_hash_table_insert(
     priv->plugins,
-    (gpointer)plugin->note_type,
-    (gpointer)plugin
+    /* cast const away without warning */
+    /* take addr -> char const * const *
+     *     cast  -> void         const *
+     *     cast  -> void       * const *
+     *     deref -> void * const
+     */
+    *(const gpointer*)(gconstpointer)&plugin->note_type,
+    *(gpointer*)(gpointer)&plugin
   );
 
   /* TODO: Check for yet unknown note types and make them known if they
@@ -4540,7 +4554,8 @@ infc_browser_add_note_with_content(InfcBrowser* browser,
   g_object_set_qdata(
     G_OBJECT(request),
     infc_browser_sync_in_plugin_quark,
-    (gpointer)plugin
+    /* cast away const without warning */
+    *(gpointer*)(gpointer)&plugin
   );
 
   xml = infc_browser_request_to_xml(request);

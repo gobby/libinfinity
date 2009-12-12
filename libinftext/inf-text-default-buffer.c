@@ -102,7 +102,7 @@ inf_text_default_buffer_set_property(GObject* object,
     priv->modified = g_value_get_boolean(value);
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }

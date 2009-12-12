@@ -273,7 +273,7 @@ inf_adopted_request_log_set_property(GObject* object,
   case PROP_NEXT_REDO:
     /* These are read only; fallthrough */
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }

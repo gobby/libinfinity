@@ -627,8 +627,7 @@ inf_gtk_certificate_dialog_set_property(GObject* object,
 
     break;
   case PROP_CERTIFICATE_FLAGS:
-    priv->certificate_flags =
-      (InfGtkCertificateDialogFlags)g_value_get_flags(value);
+    priv->certificate_flags = g_value_get_flags(value);
 
     if(priv->certificate_flags != 0 && priv->hostname != NULL)
       inf_gtk_certificate_dialog_renew_info(dialog);

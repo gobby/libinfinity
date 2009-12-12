@@ -18,6 +18,7 @@
  */
 
 #include <libinfinity/common/inf-tcp-connection.h>
+#include <libinfinity/common/inf-tcp-connection-private.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
@@ -243,7 +244,7 @@ inf_tcp_connection_send_real(InfTcpConnection* connection,
     }
     else if(result > 0)
     {
-      send_data = (char*)send_data + result;
+      send_data = (const char*)send_data + result;
       send_len -= result;
     }
   } while( (send_len > 0) &&
@@ -1275,7 +1276,7 @@ inf_tcp_connection_send(InfTcpConnection* connection,
 
     if(inf_tcp_connection_send_real(connection, data, &sent_len) == TRUE)
     {
-      data = (char*)data + sent_len;
+      data = (const char*)data + sent_len;
       len -= sent_len;
     }
     else

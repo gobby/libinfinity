@@ -59,3 +59,5 @@ libinfinity_common_la_HEADERS = \
 	inf-xml-util.h \
 	inf-xmpp-connection.h \
 	inf-xmpp-manager.h
+
+noinst_HEADERS = inf-tcp-connection-private.h

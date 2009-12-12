@@ -20,6 +20,8 @@
 #include <libinftextgtk/inf-text-gtk-buffer.h>
 #include <libinftext/inf-text-buffer.h>
 
+#include <libinfinity/inf-signals.h>
+
 #include <string.h> /* for strlen() */
 
 struct _InfTextBufferIter {
@@ -438,7 +440,7 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
    * handler syncs the cursor position of the user to the insertion mark of
    * the TextBuffer when the user becomes active again. However, when we
    * insert text, then this will be updated anyway. */
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
     buffer
@@ -446,7 +448,7 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
 
   /* Block selection-changed of active user. This would try to resync the 
    * buffer markers, but GtkTextBuffer already does this for us. */
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
@@ -461,13 +463,13 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
     INF_USER(priv->active_user)
   );
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
     buffer
   );
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
@@ -510,7 +512,7 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
    * handler syncs the cursor position of the user to the insertion mark of
    * the TextBuffer when the user becomes active again. However, when we
    * erase text, then this will be updated anyway. */
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
     buffer
@@ -518,7 +520,7 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
 
   /* Block selection-changed of active user. This would try to resync the 
    * buffer markers, but GtkTextBuffer already does this for us. */
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
@@ -531,13 +533,13 @@ inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
     INF_USER(priv->active_user)
   );
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
     buffer
   );
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
@@ -592,13 +594,13 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
          * insertion mark of the TextBuffer when the user becomes active
          * again. However, when we move the cursor, then this will be updated
          * anyway. */
-        g_signal_handlers_block_by_func(
+        inf_signal_handlers_block_by_func(
           G_OBJECT(priv->active_user),
           G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
           buffer
         );
 
-        g_signal_handlers_block_by_func(
+        inf_signal_handlers_block_by_func(
           G_OBJECT(priv->active_user),
           G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
           buffer
@@ -606,13 +608,13 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
 
         inf_text_user_set_selection(priv->active_user, offset, sel);
 
-        g_signal_handlers_unblock_by_func(
+        inf_signal_handlers_unblock_by_func(
           G_OBJECT(priv->active_user),
           G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
           buffer
         );
 
-        g_signal_handlers_unblock_by_func(
+        inf_signal_handlers_unblock_by_func(
           G_OBJECT(priv->active_user),
           G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
           buffer
@@ -662,7 +664,7 @@ inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
     if(inf_text_user_get_caret_position(priv->active_user) != offset ||
        inf_text_user_get_selection_length(priv->active_user) != sel)
     {
-      g_signal_handlers_block_by_func(
+      inf_signal_handlers_block_by_func(
         G_OBJECT(priv->active_user),
         G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
         buffer
@@ -670,7 +672,7 @@ inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
 
       inf_text_user_set_selection(priv->active_user, offset, sel);
 
-      g_signal_handlers_unblock_by_func(
+      inf_signal_handlers_unblock_by_func(
         G_OBJECT(priv->active_user),
         G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
         buffer
@@ -701,7 +703,7 @@ inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
   buffer = INF_TEXT_GTK_BUFFER(user_data);
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
     buffer
@@ -717,7 +719,7 @@ inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
 
   gtk_text_buffer_select_range(priv->buffer, &insert, &selection_bound);
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
     buffer
@@ -740,7 +742,7 @@ inf_text_gtk_buffer_set_modified(InfTextGtkBuffer* buffer,
 
   if(priv->buffer != NULL)
   {
-    g_signal_handlers_block_by_func(
+    inf_signal_handlers_block_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
       buffer
@@ -748,7 +750,7 @@ inf_text_gtk_buffer_set_modified(InfTextGtkBuffer* buffer,
 
     gtk_text_buffer_set_modified(priv->buffer, modified);
 
-    g_signal_handlers_unblock_by_func(
+    inf_signal_handlers_unblock_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
       buffer
@@ -767,31 +769,31 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
 
   if(priv->buffer != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
       buffer
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
       buffer
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
       buffer
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
       buffer
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_text_gtk_buffer_modified_changed_cb),
       buffer
@@ -960,7 +962,7 @@ inf_text_gtk_buffer_set_property(GObject* object,
     );
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -1274,13 +1276,13 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
   tag_remove.buffer = priv->buffer;
 
   /* Allow author tag changes within this function: */
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
     buffer
   );
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
     buffer
@@ -1354,7 +1356,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
 
       if(insert_at_cursor || insert_at_selection_bound)
       {
-        g_signal_handlers_block_by_func(
+        inf_signal_handlers_block_by_func(
           G_OBJECT(priv->buffer),
           G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
           buffer
@@ -1383,7 +1385,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
           );
         }
 
-        g_signal_handlers_unblock_by_func(
+        inf_signal_handlers_unblock_by_func(
           G_OBJECT(priv->buffer),
           G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
           buffer
@@ -1392,13 +1394,13 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
     }
   }
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
     buffer
   );
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
     buffer
@@ -1423,7 +1425,7 @@ inf_text_gtk_buffer_buffer_erase_text(InfTextBuffer* buffer,
   /* TODO: Is it faster to call gtk_text_iter_forward_chars on begin? */
   gtk_text_buffer_get_iter_at_offset(priv->buffer, &end, pos + len);
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
     buffer
@@ -1431,7 +1433,7 @@ inf_text_gtk_buffer_buffer_erase_text(InfTextBuffer* buffer,
 
   gtk_text_buffer_delete(priv->buffer, &begin, &end);
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
     buffer
@@ -1707,13 +1709,13 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
 
   if(priv->active_user != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->active_user),
       G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
       buffer
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->active_user),
       G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
       buffer

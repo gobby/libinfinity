@@ -174,7 +174,7 @@ infd_note_plugin_text_read_buffer(InfTextBuffer* buffer,
 {
   xmlNodePtr child;
   guint author;
-  xmlChar* content;
+  gchar* content;
   gboolean result;
   gboolean res;
   InfUser* user;

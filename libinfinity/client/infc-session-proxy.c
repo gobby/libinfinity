@@ -25,6 +25,7 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -214,19 +215,19 @@ infc_session_proxy_session_close_cb(InfSession* session,
 
   /* Don't release session so others can still access */
 #if 0
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infc_session_proxy_session_close_cb),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infc_session_proxy_session_synchronization_complete_cb),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infc_session_proxy_session_synchronization_failed_cb),
     proxy
@@ -271,7 +272,7 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
     NULL
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->connection),
     G_CALLBACK(infc_session_proxy_connection_notify_status_cb),
     proxy
@@ -337,19 +338,19 @@ infc_session_proxy_dispose(GObject* object)
   /* Release session */
   if(priv->session != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->session),
       G_CALLBACK(infc_session_proxy_session_close_cb),
       proxy
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->session),
       G_CALLBACK(infc_session_proxy_session_synchronization_complete_cb),
       proxy
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->session),
       G_CALLBACK(infc_session_proxy_session_synchronization_failed_cb),
       proxy
@@ -598,6 +599,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
       _("Request does not contain required attribute 'id'")
     );
 

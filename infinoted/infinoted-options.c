@@ -18,7 +18,10 @@
  */
 
 #include <infinoted/infinoted-options.h>
+#include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
+
+#include <libdaemon/dpid.h>
 
 #include <glib.h>
 #include <stdlib.h>
@@ -33,9 +36,11 @@ static const gchar INFINOTED_OPTIONS_GROUP[] = "infinoted";
  * file. */
 
 /* We abuse the flags of a GOptionEntry to decide whether the option
- * can be set in the config file in addition to the command line */
-static const gint G_OPTION_FLAG_NO_CONFIG_FILE = 1 << 31;
+ * can be set in the config file in addition to the command line. This has to
+ * be a macro so that we can initialise the GOptionEntries[] with it. */
+#define G_OPTION_FLAG_NO_CONFIG_FILE (1 << 31)
 
+#if 0
 static gchar*
 infinoted_options_policy_to_string(InfXmppConnectionSecurityPolicy policy)
 {
@@ -53,6 +58,7 @@ infinoted_options_policy_to_string(InfXmppConnectionSecurityPolicy policy)
     return NULL;
   }
 }
+#endif
 
 static gboolean
 infinoted_options_policy_from_string(const gchar* string,
@@ -109,6 +115,7 @@ infinoted_options_autosave_interval_from_integer(gint value,
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_INTERVAL,
+      "%s",
       _("Autosave interval must not be negative")
     );
 
@@ -397,6 +404,7 @@ infinoted_options_validate(InfinotedOptions* options,
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_INVALID_CREATE_OPTIONS,
+      "%s",
       _("Creating a new private key also requires creating a new certificate "
         "signed with it.")
     );
@@ -410,6 +418,7 @@ infinoted_options_validate(InfinotedOptions* options,
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
+      "%s",
       _("No private key file given. If you don't have a suitable key file, "
         "either create one using the --create-key command line argument, "
         "or disable TLS by setting the security policy to \"no-tls\".")
@@ -424,6 +433,7 @@ infinoted_options_validate(InfinotedOptions* options,
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
+      "%s",
       _("No certificate file given. If you don't have a suitable certificate "
         "file, either create one using the --create-certificate command line "
         "agument, or disable TLS via by setting the security policy to "
@@ -452,56 +462,74 @@ infinoted_options_load(InfinotedOptions* options,
   gboolean kill_daemon;
 #endif
   gint autosave_interval;
+  guint i;
 
   gboolean result;
 
   GOptionContext *context;
   gchar* desc;
 
-  const GOptionEntry entries[] = {
+  GOptionEntry entries[] = {
     { "key-file", 'k', 0,
-      G_OPTION_ARG_FILENAME, &options->key_file,
+      G_OPTION_ARG_FILENAME, NULL,
       N_("The server's private key"), N_("KEY-FILE") },
     { "certificate-file", 'c', 0,
-      G_OPTION_ARG_FILENAME, &options->certificate_file,
+      G_OPTION_ARG_FILENAME, NULL,
       N_("The server's certificate"), N_("CERTIFICATE-FILE") },
     { "certificate-chain", 0, 0,
-      G_OPTION_ARG_FILENAME, &options->certificate_chain_file,
+      G_OPTION_ARG_FILENAME, NULL,
       N_("The certificates chain down to the root certificate"), NULL },
     { "create-key", 0, G_OPTION_FLAG_NO_CONFIG_FILE,
-      G_OPTION_ARG_NONE, &options->create_key,
+      G_OPTION_ARG_NONE, NULL,
       N_("Creates a new random private key"), NULL },
     { "create-certificate", 0, G_OPTION_FLAG_NO_CONFIG_FILE,
-      G_OPTION_ARG_NONE, &options->create_certificate,
+      G_OPTION_ARG_NONE, NULL,
       N_("Creates a new self-signed certificate using the given key"), NULL },
     { "port-number", 'p', 0,
-      G_OPTION_ARG_INT, &port_number,
+      G_OPTION_ARG_INT, NULL,
       N_("The port number to listen on"), N_("PORT") },
     { "security-policy", 0, 0,
-      G_OPTION_ARG_STRING, &security_policy,
+      G_OPTION_ARG_STRING, NULL,
       N_("How to decide whether to use TLS"), "no-tls|allow-tls|require-tls" },
     { "root-directory", 'r', 0,
-      G_OPTION_ARG_FILENAME, &options->root_directory,
+      G_OPTION_ARG_FILENAME, NULL,
       N_("The directory to store documents into"), N_("DIRECTORY") },
     { "autosave-interval", 0, 0,
-      G_OPTION_ARG_INT, &autosave_interval,
+      G_OPTION_ARG_INT, NULL,
       N_("Interval within which to save documents, in seconds, or 0 to "
          "disable autosave"), N_("INTERVAL") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
-      G_OPTION_ARG_NONE, &options->daemonize,
+      G_OPTION_ARG_NONE, NULL,
       N_("Daemonize the server"), NULL },
     { "kill-daemon", 'D', 0,
-      G_OPTION_ARG_NONE, &kill_daemon,
+      G_OPTION_ARG_NONE, NULL,
       N_("Kill a running daemon"), NULL },
 #endif
     { "version", 'v', G_OPTION_FLAG_NO_CONFIG_FILE,
-      G_OPTION_ARG_NONE, &display_version,
+      G_OPTION_ARG_NONE, NULL,
       N_("Display version information and exit"), NULL },
     { NULL, 0, 0, G_OPTION_ARG_NONE,
       NULL,
       NULL, 0 }
   };
+
+  /* C90 does not allow non-compile-time-constant initializers for structs */
+  i = 0;
+  entries[i++].arg_data = &options->key_file;
+  entries[i++].arg_data = &options->certificate_file;
+  entries[i++].arg_data = &options->certificate_chain_file;
+  entries[i++].arg_data = &options->create_key;
+  entries[i++].arg_data = &options->create_certificate;
+  entries[i++].arg_data = &port_number;
+  entries[i++].arg_data = &security_policy;
+  entries[i++].arg_data = &options->root_directory;
+  entries[i++].arg_data = &autosave_interval;
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  entries[i++].arg_data = &options->daemonize;
+  entries[i++].arg_data = &kill_daemon;
+#endif
+  entries[i++].arg_data = &display_version;
 
   display_version = FALSE;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON

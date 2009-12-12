@@ -1,3 +1,86 @@
+2009-12-12  Benjamin Herr  <ben@0x539.de>
+
+	* configure.ac: Added AM_SILENT_RULES, defaulting to off.
+
+	* docs/reference/libinfinity/Makefile.am:
+	* infinoted/infinoted-autosave.c:
+	* infinoted/infinoted-note-plugin.c:
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-record.c:
+	* infinoted/infinoted-startup.c:
+	* infinoted/note-plugins/text/infd-note-plugin-text.c:
+	* libinfgtk/inf-gtk-browser-model-filter.c:
+	* libinfgtk/inf-gtk-browser-model-sort.c:
+	* libinfgtk/inf-gtk-browser-store.c:
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/inf-gtk-certificate-dialog.c:
+	* libinfgtk/inf-gtk-certificate-manager.c:
+	* libinfgtk/inf-gtk-chat.c:
+	* libinfinity/Makefile.am:
+	* libinfinity/adopted/inf-adopted-algorithm.c:
+	* libinfinity/adopted/inf-adopted-request-log.c:
+	* libinfinity/adopted/inf-adopted-session-record.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-split-operation.c:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinfinity/adopted/inf-adopted-undo-grouping.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/infc-request-manager.c:
+	* libinfinity/client/infc-session-proxy.c:
+	* libinfinity/common/Makefile.am:
+	* libinfinity/common/inf-chat-buffer.c:
+	* libinfinity/common/inf-chat-session.c:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/common/inf-tcp-connection-private.h:
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/common/inf-user-table.c:
+	* libinfinity/common/inf-user.h:
+	* libinfinity/common/inf-user.c:
+	* libinfinity/common/inf-xml-util.c:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/common/inf-xmpp-manager.c:
+	* libinfinity/inf-communication-central-method.c:
+	* libinfinity/communication/inf-communication-group.c:
+	* libinfinity/communication/inf-communication-joined-group.c:
+	* libinfinity/communication/inf-communication-manager.c:
+	* libinfinity/communication/inf-communication-registry.c:
+	* libinfinity/inf-i18n.c:
+	* libinfinity/inf-signals.h:
+	* libinfinity/inf-signals.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-filesystem-storage.c:
+	* libinfinity/server/infd-server-pool.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/server/infd-tcp-server.c:
+	* libinfinity/server/infd-xmpp-server.c:
+	* libinftext/inf-text-chunk.c:
+	* libinftext/inf-text-default-buffer.c:
+	* libinftext/inf-text-default-delete-operation.c:
+	* libinftext/inf-text-default-insert-operation.c:
+	* libinftext/inf-text-move-operation.c:
+	* libinftext/inf-text-remote-delete-operation.c:
+	* libinftext/inf-text-session.c:
+	* libinftext/inf-text-undo-grouping.c:
+	* libinftextgtk/inf-text-gtk-buffer.c:
+	* libinftextgtk/inf-text-gtk-hue-chooser.c:
+	* test/inf-test-browser.c:
+	* test/inf-test-chat.c:
+	* test/inf-test-gtk-browser.c:
+	* test/inf-test-tcp-connection.c:
+	* test/inf-test-xmpp-connection.c:
+	* test/util/inf-test-util.c: Fixed warnings.
+
+	To that effect, introduced wrappers for glib functions with funny
+	types and did a lot of casting-const-away or casting between object
+	pointers and function pointers with more indirection, so that gcc
+	would not notice it, and a few other minor changes. Also some
+	whitespace. Everything appears to build with -Werror now for at least
+	the following CFLAGS: -pedantic -ansi -Wall -Wextra -Wwrite-strings
+	-Wpointer-arith -Wcast-qual -Wno-missing-field-initializers
+	-Wdeclaration-after-statement -Wbad-function-cast -Wstrict-prototypes
+	-Wmissing-prototypes -Wmissing-declarations -Wnested-externs
+	-Waggregate-return -Wno-unused-parameter.
+
 2009-12-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/communication/inf-communication-method.h:

@@ -24,6 +24,7 @@
 
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -158,7 +159,7 @@ infd_session_proxy_user_notify_status_cb(InfUser* user,
       priv->local_users = g_slist_remove(priv->local_users, user);
     }
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(user),
       G_CALLBACK(infd_session_proxy_user_notify_status_cb),
       proxy
@@ -242,6 +243,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
       _("Request does not contain required attribute 'name'")
     );
 
@@ -303,6 +305,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
         error,
         inf_user_error_quark(),
         INF_USER_ERROR_STATUS_UNAVAILABLE,
+        "%s",
         _("'status' attribute is 'unavailable' in user join request")
       );
 
@@ -628,7 +631,7 @@ infd_session_proxy_session_close_cb(InfSession* session,
   proxy = INFD_SESSION_PROXY(user_data);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->subscription_group),
     G_CALLBACK(infd_session_proxy_member_removed_cb),
     proxy
@@ -762,37 +765,37 @@ infd_session_proxy_dispose(GObject* object)
   if(inf_session_get_status(priv->session) != INF_SESSION_CLOSED)
     inf_session_close(priv->session);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infd_session_proxy_session_close_cb),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(inf_session_get_user_table(priv->session)),
     G_CALLBACK(infd_session_proxy_add_user_cb),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infd_session_proxy_synchronization_begin_cb),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infd_session_proxy_synchronization_complete_cb),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infd_session_proxy_synchronization_failed_cb_before),
     proxy
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->session),
     G_CALLBACK(infd_session_proxy_synchronization_failed_cb_after),
     proxy

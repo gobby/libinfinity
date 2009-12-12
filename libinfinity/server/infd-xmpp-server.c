@@ -22,6 +22,7 @@
 #include <libinfinity/server/infd-xml-server.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 typedef enum InfdXmppServerStatus_ {
   INFD_XMPP_SERVER_CLOSED,
@@ -181,20 +182,20 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
     /* This will cause a notify that will adjust the XMPP status later */
     if(tcp_status != INFD_TCP_SERVER_CLOSED)
       infd_tcp_server_close(priv->tcp);
-    
-    g_signal_handlers_disconnect_by_func(
+
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(infd_xmpp_server_new_connection_cb),
       xmpp
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(infd_xmpp_server_error_cb),
       xmpp
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
       G_CALLBACK(infd_xmpp_server_notify_status_cb),
       xmpp

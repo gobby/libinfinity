@@ -19,6 +19,7 @@
 
 #include <libinfinity/adopted/inf-adopted-algorithm.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 /**
  * SECTION:inf-adopted-algorithm
@@ -1287,7 +1288,7 @@ inf_adopted_algorithm_dispose(GObject* object)
 
   if(priv->buffer != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
       algorithm
@@ -1302,19 +1303,19 @@ inf_adopted_algorithm_dispose(GObject* object)
 
   if(priv->user_table != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->user_table),
       G_CALLBACK(inf_adopted_algorithm_add_user_cb),
       algorithm
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->user_table),
       G_CALLBACK(inf_adopted_algorithm_add_local_user_cb),
       algorithm
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->user_table),
       G_CALLBACK(inf_adopted_algorithm_remove_local_user_cb),
       algorithm
@@ -1606,7 +1607,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     g_object_unref(log_request);
   }
 
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
     algorithm
@@ -1654,7 +1655,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     g_assert(inf_buffer_get_modified(priv->buffer) == TRUE);
   }
 
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
     algorithm

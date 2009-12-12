@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
   io = inf_standalone_io_new();
   error = NULL;
 
-  connection = inf_tcp_connection_new(io, addr, 5223);
+  connection = inf_tcp_connection_new(INF_IO(io), addr, 5223);
 
   inf_ip_address_free(addr);
 

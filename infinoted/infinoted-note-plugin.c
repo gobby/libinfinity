@@ -18,6 +18,7 @@
  */
 
 #include <infinoted/infinoted-note-plugin.h>
+#include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gmodule.h>

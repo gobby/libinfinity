@@ -221,6 +221,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
   cairo_t* source_cr;
   gint focus_width;
   gint focus_pad;
+  gint r_, g_, b_;
 
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
@@ -230,48 +231,52 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
     "focus-padding", &focus_pad,
     NULL
   );
-  
+
   center_x = GTK_WIDGET(chooser)->allocation.width / 2.0;
   center_y = GTK_WIDGET(chooser)->allocation.height / 2.0;
 
   outer = priv->size / 2.0;
   inner = outer - priv->ring_width;
-  
+
   /* Create an image initialized with the ring colors */
-  
+
   buf = g_new(guint32, width * height);
-  
+
   for(yy = 0; yy < height; yy++)
   {
     p = buf + yy * width;
-      
+
     dy = -(yy + y - center_y);
-      
+
     for (xx = 0; xx < width; xx++)
     {
       dx = xx + x - center_x;
-    
+
       dist = dx * dx + dy * dy;
       if(dist < ((inner-1) * (inner-1)) || dist > ((outer+1) * (outer+1)))
       {
         *p++ = 0;
         continue;
       }
-    
+
       angle = atan2 (dy, dx);
       if (angle < 0.0)
         angle += 2.0 * G_PI;
-    
+
       hue = angle / (2.0 * G_PI);
-    
+
       r = hue;
       g = 1.0;
       b = 1.0;
       inf_text_gtk_hue_chooser_hsv_to_rgb(&r, &g, &b);
-    
-      *p++ = (((int)floor (r * 255 + 0.5) << 16) |
-              ((int)floor (g * 255 + 0.5) <<  8) |
-               (int)floor (b * 255 + 0.5)      );
+
+      r_ = floor (r * 255 + 0.5);
+      g_ = floor (g * 255 + 0.5);
+      b_ = floor (b * 255 + 0.5);
+
+      *p++ = ((r_ << 16) |
+              (g_ <<  8) |
+               b_      );
     }
   }
 
@@ -287,12 +292,12 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
    * will get properly clipped at the edges of the ring
    */
   source_cr = cairo_create(source);
-  
+
   r = priv->hue;
   g = 1.0;
   b = 1.0;
   inf_text_gtk_hue_chooser_hsv_to_rgb(&r, &g, &b);
-  
+
   if(INTENSITY(r, g, b) > 0.5)
     cairo_set_source_rgb(source_cr, 0.0, 0.0, 0.0);
   else
@@ -310,7 +315,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
   /* Draw the ring using the source image */
 
   cairo_save(cr);
-    
+
   cairo_set_source_surface(cr, source, x, y);
   cairo_surface_destroy(source);
 
@@ -327,10 +332,10 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
   );
 
   cairo_stroke(cr);
-  
+
   cairo_restore(cr);
-  
-  g_free (buf); 
+
+  g_free (buf);
 }
 
 /*
@@ -400,7 +405,7 @@ inf_text_gtk_hue_chooser_set_property(GObject* object,
     inf_text_gtk_hue_chooser_set_hue(hue_chooser, g_value_get_double(value));
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }

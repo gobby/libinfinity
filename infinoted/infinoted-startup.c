@@ -185,7 +185,7 @@ infinoted_startup_load_options(InfinotedStartup* startup,
   const gchar* const* dir;
   guint i;
 
-  const gchar** config_files;
+  gchar** config_files;
 
   system_config_dirs = g_get_system_config_dirs();
   user_config_dir = g_get_user_config_dir();
@@ -208,10 +208,12 @@ infinoted_startup_load_options(InfinotedStartup* startup,
       g_build_filename(system_config_dirs[i], "infinoted.conf", NULL);
   }
 
-  startup->options = infinoted_options_new(config_files, argc, argv, error);
+  startup->options =
+    infinoted_options_new(
+      (gchar const* const*) config_files, argc, argv, error);
 
   for(i = 0; i < n_system_config_dirs + 1; ++ i)
-    g_free((gpointer)config_files[i]);
+    g_free(config_files[i]);
   g_free(config_files);
 
   if(startup->options == NULL)
