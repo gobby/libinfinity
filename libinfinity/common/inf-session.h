@@ -334,7 +334,6 @@ inf_session_set_subscription_group(InfSession* session,
 
 void
 inf_session_send_to_subscriptions(InfSession* session,
-                                  InfXmlConnection* except,
                                   xmlNodePtr xml);
 
 G_END_DECLS

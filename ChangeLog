@@ -1,3 +1,23 @@
+2009-12-12  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/communication/inf-communication-method.h:
+	* libinfinity/communication/inf-communication-method.c:
+	* libinfinity/communication/inf-communication-group.h:
+	* libinfinity/communication/inf-communication-group.c: Removed the
+	except parameter for sending a message to the whole group.
+
+	* libinfinity/communication/inf-communication-central-method.c: Adapt.
+
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c: Removed the except parameter for
+	inf_session_send_to_subscriptions().
+
+	* libinfinity/common/inf-chat-session.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinftext/inf-text-session.c:
+	* test/inf-test-text-replay.c: Adapt.
+
 2009-12-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in: Added VOID:OBJECT,UINT marshaller.

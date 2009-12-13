@@ -395,11 +395,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
     proxy
   );
 
-  inf_session_send_to_subscriptions(
-    priv->session,
-    NULL,
-    xml
-  );
+  inf_session_send_to_subscriptions(priv->session, xml);
 
   if(connection != NULL)
   {
@@ -459,11 +455,7 @@ infd_session_proxy_member_removed_cb(InfCommunicationGroup* group,
 
     /* The actual status change is performed in the default signal handler
      * of the remove-subscription signal. */
-    inf_session_send_to_subscriptions(
-      priv->session,
-      subscription->connection,
-      xml
-    );
+    inf_session_send_to_subscriptions(priv->session, xml);
   }
 
   g_signal_emit(

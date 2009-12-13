@@ -204,46 +204,27 @@ inf_communication_central_method_send_single(InfCommunicationMethod* method,
 
 static void
 inf_communication_central_method_send_all(InfCommunicationMethod* method,
-                                          InfXmlConnection* except,
                                           xmlNodePtr xml)
 {
   InfCommunicationCentralMethodPrivate* priv;
   GSList* item;
   GSList* next;
-  gboolean drop_xml;
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
-  drop_xml = FALSE;
   for(item = priv->connections; item != NULL; item = next)
   {
     next = item->next;
-    if(item->data == except) continue;
 
-    if(next == NULL || (next->data == except && next->next == NULL))
-    {
-      g_assert(drop_xml == FALSE);
-      drop_xml = TRUE;
-
-      inf_communication_registry_send(
-        priv->registry,
-        priv->group,
-        INF_XML_CONNECTION(item->data),
-        xml
-      );
-    }
-    else
-    {
-      inf_communication_registry_send(
-        priv->registry,
-        priv->group,
-        INF_XML_CONNECTION(item->data),
-        xmlCopyNode(xml, 1)
-      );
-    }
+    inf_communication_registry_send(
+      priv->registry,
+      priv->group,
+      INF_XML_CONNECTION(item->data),
+      next ? xmlCopyNode(xml, 1) : xml
+    );
   }
 
-  if(!drop_xml)
+  if(priv->connections == NULL)
     xmlFreeNode(xml);
 }
 
@@ -274,6 +255,7 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
   xmlSaveCtxtPtr ctx;
   gchar* remote_id;
   gchar* publisher_id;
+  GSList* item;
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
   error = NULL;
@@ -320,11 +302,18 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
 
     if(priv->is_publisher && scope == INF_COMMUNICATION_SCOPE_GROUP)
     {
-      inf_communication_central_method_send_all(
-        method,
-        connection,
-        xmlCopyNode(xml, 1)
-      );
+      for(item = priv->connections; item != NULL; item = item->next)
+      {
+        if(item->data != connection)
+        {
+          inf_communication_registry_send(
+            priv->registry,
+            priv->group,
+            INF_XML_CONNECTION(item->data),
+            xmlCopyNode(xml, 1)
+          );
+        }
+      }
 
       /* TODO: Forward to other methods of same group */
     }

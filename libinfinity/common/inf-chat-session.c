@@ -981,7 +981,7 @@ inf_chat_session_send_message_handler(InfChatSession* session,
 
   /* Actually send the message over the network */
   xml = inf_chat_session_message_to_xml(session, message, FALSE);
-  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+  inf_session_send_to_subscriptions(INF_SESSION(session), xml);
 
   inf_chat_session_log_message(session, message);
 }

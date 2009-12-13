@@ -2076,7 +2076,7 @@ inf_text_session_set_user_color(InfTextSession* session,
   inf_xml_util_set_attribute_uint(xml, "id", inf_user_get_id(INF_USER(user)));
   inf_xml_util_set_attribute_double(xml, "hue", hue);
 
-  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+  inf_session_send_to_subscriptions(INF_SESSION(session), xml);
   g_object_set(G_OBJECT(user), "hue", hue, NULL);
 }
 

@@ -84,7 +84,6 @@ struct _InfCommunicationMethodIface {
                       InfXmlConnection* connection,
                       xmlNodePtr xml);
   void (*send_all)(InfCommunicationMethod* method,
-                   InfXmlConnection* except,
                    xmlNodePtr xml);
   void (*cancel_messages)(InfCommunicationMethod* method,
                           InfXmlConnection* connection);
@@ -122,7 +121,6 @@ inf_communication_method_send_single(InfCommunicationMethod* method,
 
 void
 inf_communication_method_send_all(InfCommunicationMethod* method,
-                                  InfXmlConnection* except,
                                   xmlNodePtr xml);
 
 void

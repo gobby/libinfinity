@@ -403,7 +403,7 @@ inf_adopted_session_broadcast_n_requests(InfAdoptedSession* session,
   );
 
   if(n > 1) inf_xml_util_set_attribute_uint(xml, "num", n);
-  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+  inf_session_send_to_subscriptions(INF_SESSION(session), xml);
 
   inf_adopted_state_vector_free(local->last_send_vector);
   local->last_send_vector = inf_adopted_state_vector_copy(

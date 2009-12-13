@@ -106,7 +106,6 @@ inf_communication_group_send_message(InfCommunicationGroup* group,
 
 void
 inf_communication_group_send_group_message(InfCommunicationGroup* group,
-                                           InfXmlConnection* except,
                                            xmlNodePtr xml);
 
 void
