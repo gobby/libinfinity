@@ -47,8 +47,6 @@ noinst_HEADERS = \
 	infinoted-startup.h \
 	infinoted-util.h
 
-install-exec-hook:
-	install -d ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)
-
-uninstall-hook:
-	rmdir --ignore-fail-on-non-empty ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)
+# Create pid file directory
+pidfiledir = ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)
+pidfile_DATA =

@@ -1,5 +1,10 @@
 2009-12-14  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/Makefile.am: Create PID file directory via an empty _DATA
+	variable, for make distcheck to pass.
+
+2009-12-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c: Reset exploration flag for root
 	node.
 
