@@ -664,6 +664,9 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
     priv->buf = NULL;
     priv->doc = NULL;
   }
+
+  priv->pull_data = NULL;
+  priv->pull_len = 0;
 }
 
 /*
@@ -2810,6 +2813,8 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
 
       priv->status = INF_XMPP_CONNECTION_CLOSED;
       g_object_notify(G_OBJECT(xmpp), "status");
+
+      priv->position = 0;
     }
     else
     {
@@ -2817,6 +2822,7 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
       g_assert(priv->messages == NULL);
       g_assert(priv->parser == NULL);
       g_assert(priv->doc == NULL);
+      g_assert(priv->position == 0);
     }
 
     break;

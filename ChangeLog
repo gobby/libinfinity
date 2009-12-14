@@ -1,5 +1,12 @@
 2009-12-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_notify_status_cb): Reset priv->position when the
+	TCP connection was closed.
+	(inf_xmpp_connection_clear): Reset priv->pull_data and priv->pull_len.
+
+2009-12-14  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/Makefile.am: Create PID file directory via an empty _DATA
 	variable, for make distcheck to pass.
 
