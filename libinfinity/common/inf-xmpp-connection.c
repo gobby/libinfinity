@@ -3315,6 +3315,28 @@ inf_xmpp_connection_xml_connection_send_free(InfXmppConnection* xmpp,
   xmlFreeNode((xmlNodePtr)xml);
 }
 
+static gboolean
+inf_xmpp_connection_xml_connection_open(InfXmlConnection* connection,
+                                        GError** error)
+{
+  InfXmppConnectionPrivate* priv;
+  InfTcpConnectionStatus status;
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(connection);
+
+  g_assert(priv->status == INF_XMPP_CONNECTION_CLOSED);
+  g_assert(priv->tcp != NULL);
+
+  /* TODO: If we are in CLOSING state, we could go to a state such as
+   * INF_XMPP_CONNECTION_CLOSING_RECONNECT which reconnects after the
+   * closing has finished. */
+
+  g_object_get(G_OBJECT(priv->tcp), "status", &status, NULL);
+  g_assert(status == INF_TCP_CONNECTION_CLOSED);
+
+  return inf_tcp_connection_open(priv->tcp, error);
+}
+
 static void
 inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
 {
@@ -3322,9 +3344,9 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
   priv = INF_XMPP_CONNECTION_PRIVATE(connection);
 
   /* Connection is already being closed */
-  g_return_if_fail(priv->status != INF_XMPP_CONNECTION_CLOSING_STREAM &&
-                   priv->status != INF_XMPP_CONNECTION_CLOSING_GNUTLS &&
-                   priv->status != INF_XMPP_CONNECTION_CLOSED);
+  g_assert(priv->status != INF_XMPP_CONNECTION_CLOSING_STREAM &&
+           priv->status != INF_XMPP_CONNECTION_CLOSING_GNUTLS &&
+           priv->status != INF_XMPP_CONNECTION_CLOSED);
 
   switch(priv->status)
   {
@@ -3538,6 +3560,7 @@ inf_xmpp_connection_xml_connection_init(gpointer g_iface,
   InfXmlConnectionIface* iface;
   iface = (InfXmlConnectionIface*)g_iface;
 
+  iface->open = inf_xmpp_connection_xml_connection_open;
   iface->close = inf_xmpp_connection_xml_connection_close;
   iface->send = inf_xmpp_connection_xml_connection_send;
 }

@@ -379,7 +379,9 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
   item->name = name;
   item->discovery = discovery;
   item->info = info;
-  item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
+  item->status = INF_GTK_BROWSER_MODEL_DISCONNECTED;
+  if(discovery != NULL && info != NULL)
+    item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
   item->browser = NULL;
   item->node_errors = g_hash_table_new_full(
     NULL,
@@ -525,10 +527,25 @@ inf_gtk_browser_store_undiscovered_cb(InfDiscovery* discovery,
 
   store = INF_GTK_BROWSER_STORE(user_data);
   item = inf_gtk_browser_store_find_item_by_discovery_info(store, info);
-  g_assert(item != NULL);
 
-  /* TODO: Keep if browser exists, just reset discovery and info */
-  inf_gtk_browser_store_remove_item(store, item);
+  /* If, after a discovery resove we see that there is already an item for
+   * that connection, then we remove the discovery item, and use the other
+   * item instead. In that case, item can be NULL here. */
+  if(item != NULL)
+  {
+    if(item->browser == NULL)
+    {
+      inf_gtk_browser_store_remove_item(store, item);
+    }
+    else
+    {
+      g_assert(item->status != INF_GTK_BROWSER_MODEL_DISCOVERED &&
+               item->status != INF_GTK_BROWSER_MODEL_RESOLVING);
+
+      item->discovery = NULL;
+      item->info = NULL;
+    }
+  }
 }
 
 static void
@@ -583,7 +600,6 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
   item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
   g_assert(item != NULL);
-  g_assert(item->status != INF_GTK_BROWSER_MODEL_ERROR);
 
   iter.stamp = priv->stamp;
   iter.user_data = item;
@@ -613,10 +629,14 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
     gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
     break;
   case INFC_BROWSER_CONNECTING:
+    if(item->error != NULL) g_error_free(item->error);
+    item->error = NULL;
     item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
     gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
     break;
   case INFC_BROWSER_CONNECTED:
+    if(item->error != NULL) g_error_free(item->error);
+    item->error = NULL;
     item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
     gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
     break;
@@ -897,7 +917,8 @@ inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
       gtk_tree_path_free(path);
 
       /* TODO: Perhaps we should emit a signal so that the view can
-       * highlight and scroll to the existing item. */
+       * highlight and scroll to the existing item. And also so that it can
+       * over initial root exploration. */
 
       g_free(order);
     }

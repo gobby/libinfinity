@@ -937,6 +937,9 @@ infc_browser_disconnected(InfcBrowser* browser)
     infc_browser_node_free(browser, child);
   }
 
+  g_assert(priv->root->shared.subdir.child == NULL);
+  priv->root->shared.subdir.explored = FALSE;
+
   priv->status = INFC_BROWSER_DISCONNECTED;
   g_object_notify(G_OBJECT(browser), "status");
 }

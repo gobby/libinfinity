@@ -212,6 +212,35 @@ inf_xml_connection_get_type(void)
 }
 
 /**
+ * inf_xml_connection_open:
+ * @connection: A #infXmlConnection.
+ * @error: Location to store error information, if any.
+ *
+ * Attempts to open the given XML connection. If the process fails, @error
+ * will be set. The connection needs to be in status
+ * %INF_XML_CONNECTION_CLOSED for this function to be called. Even if this
+ * function succeeds, the connection process can fail later. In that case
+ * the status of @connection will be reset to %INF_XML_CONNECTION_CLOSED
+ * and the #InfXmlConnection::error signal will be emitted.
+ *
+ * Returns: %TRUE on succes, or %FALSE on error.
+ */
+gboolean
+inf_xml_connection_open(InfXmlConnection* connection,
+                        GError** error)
+{
+  InfXmlConnectionIface* iface;
+
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
+
+  iface = INF_XML_CONNECTION_GET_IFACE(connection);
+  g_return_val_if_fail(iface->open != NULL, FALSE);
+
+  return iface->open(connection, error);
+}
+
+/**
  * inf_xml_connection_close:
  * @connection: A #InfXmlConnection.
  *

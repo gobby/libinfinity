@@ -849,48 +849,51 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
   view_browser = inf_gtk_browser_view_find_view_browser(view, browser);
   g_assert(view_browser != NULL);
 
-  if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE)
+  if(infc_browser_get_status(browser) == INFC_BROWSER_CONNECTED)
   {
-    request = infc_browser_iter_get_explore_request(browser, browser_iter);
-    /* Explore root node if it is not already explored */
-    if(request == NULL)
-      request = infc_browser_iter_explore(browser, browser_iter);
-
-    if(view_browser->initial_root_expansion == TRUE)
+    if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE)
     {
-      /* There should always only be one view to do initial root expansion
-       * because only one view can have issued the resolv. */
-      g_assert(
-        g_object_get_data(
+      request = infc_browser_iter_get_explore_request(browser, browser_iter);
+      /* Explore root node if it is not already explored */
+      if(request == NULL)
+        request = infc_browser_iter_explore(browser, browser_iter);
+
+      if(view_browser->initial_root_expansion == TRUE)
+      {
+        /* There should always only be one view to do initial root expansion
+         * because only one view can have issued the resolv. */
+        g_assert(
+          g_object_get_data(
+            G_OBJECT(request),
+            INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
+          ) == NULL
+        );
+
+        /* Remember to do initial root expansion when the node has been
+         * explored. */
+        /*printf("Initial root exansion was set, set on request for view %p\n", view);*/
+        g_object_set_data(
           G_OBJECT(request),
-          INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
-        ) == NULL
-      );
+          INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
+          view
+        );
 
-      /* Remember to do initial root expansion when the node has been
-       * explored. */
-      /*printf("Initial root exansion was set, set on request for view %p\n", view);*/
-      g_object_set_data(
-        G_OBJECT(request),
-        INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
-        view
-      );
-
-      /* Handled expansion flag, so unset, could otherwise lead to another
-       * try of expanding the root node. */
-      view_browser->initial_root_expansion = FALSE;
+        /* Handled expansion flag, so unset, could otherwise lead to another
+         * try of expanding the root node. */
+        view_browser->initial_root_expansion = FALSE;
+      }
     }
-  }
-  else
-  {
-    if(view_browser->initial_root_expansion == TRUE)
+    else
     {
-      /*printf("Direct expansion for view %p\n", view);*/
-      gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
+      if(view_browser->initial_root_expansion == TRUE)
+      {
+        /*printf("Direct expansion for view %p\n", view);*/
+        gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
 
-      /* Handled expansion flag, so unset, could otherwise lead to another
-       * try of expanding the root node. */
-      view_browser->initial_root_expansion = FALSE;
+        /* Handled expansion flag, so unset, could otherwise lead to another
+         * try of expanding the root node. */
+        view_browser->initial_root_expansion = FALSE;
+      }
     }
   }
 
@@ -959,6 +962,9 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
   if(info != NULL && g_slist_find(priv->info_resolvs, info) != NULL)
   {
     /*printf("Set initial root expansion for view %p\n", view);*/
+    /* TODO: Remember to unset the flag when an error happens or the
+     * corresponding browser is disconnected for another reason before we
+     * actually get to explore anything. */
     view_browser->initial_root_expansion = TRUE;
     priv->info_resolvs = g_slist_remove(priv->info_resolvs, info);
   }
@@ -1508,6 +1514,10 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
 
   InfcBrowser* browser;
   InfcBrowserIter* browser_iter;
+  InfXmlConnection* connection;
+  InfXmlConnectionStatus xml_status;
+  GError* error;
+  InfGtkBrowserViewBrowser* view_browser;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -1524,14 +1534,44 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
       INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
       INF_GTK_BROWSER_MODEL_COL_DISCOVERY, &discovery,
       INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
+      INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
       -1
     );
 
-    if(discovery != NULL)
+    if(browser != NULL)
+    {
+      g_assert(infc_browser_get_connection(browser) != NULL);
+      if(infc_browser_get_status(browser) == INFC_BROWSER_DISCONNECTED)
+      {
+        connection = infc_browser_get_connection(browser);
+        g_assert(connection != NULL);
+        g_object_get(G_OBJECT(connection), "status", &xml_status, NULL);
+        if(xml_status == INF_XML_CONNECTION_CLOSED)
+        {
+          error = NULL;
+          if(!inf_xml_connection_open(connection, &error))
+          {
+            /* TODO: We can't properly report error here. Actually, we should
+             * not do this, but just emit signal activate here, for others
+             * to open the connection if necessary. */
+            g_warning("Failed to reconnect: %s\n", error->message);
+            g_error_free(error);
+          }
+
+          view_browser =
+            inf_gtk_browser_view_find_view_browser(view, browser);
+          g_assert(view_browser != NULL);
+          view_browser->initial_root_expansion = TRUE;
+        }
+      }
+    }
+    else if(discovery != NULL)
     {
       if(status == INF_GTK_BROWSER_MODEL_DISCOVERED ||
          status == INF_GTK_BROWSER_MODEL_ERROR)
       {
+        /* TODO: This method should not exist. Instead, we should just
+         * emit ACTIVATE and make others resolve stuff there. */
         inf_gtk_browser_model_resolve(
           INF_GTK_BROWSER_MODEL(model),
           discovery,
@@ -1543,9 +1583,13 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
         priv->info_resolvs = g_slist_prepend(priv->info_resolvs, info);
         /*printf("Add info %p to info resolvs of view %p\n", info, view);*/
       }
-
-      g_object_unref(G_OBJECT(discovery));
     }
+
+    if(discovery != NULL)
+      g_object_unref(G_OBJECT(discovery));
+
+    if(browser != NULL)
+      g_object_unref(browser);
   }
   else
   {

@@ -36,14 +36,36 @@ G_BEGIN_DECLS
 typedef struct _InfXmppManager InfXmppManager;
 typedef struct _InfXmppManagerClass InfXmppManagerClass;
 
+/**
+ * InfXmppManagerClass:
+ * @add_connection: Default signal handler for the
+ * #InfXmppManager::add-connection signal. It adds the connection to the
+ * manager's internal storage.
+ * @remove_connection: Default signal handler for the
+ * #InfXmppManager::remove-connection signal. It removes the connection from
+ * the manager's internal storage.
+ *
+ * This structure contains the default signal handlers for #InfXmppManager.
+ */
 struct _InfXmppManagerClass {
+  /*< private >*/
   GObjectClass parent_class;
 
+  /*< public >*/
   void(*add_connection)(InfXmppManager* manager,
                         InfXmppConnection* connection);
+  void(*remove_connection)(InfXmppManager* manager,
+                           InfXmppConnection* connection);
 };
 
+/**
+ * InfXmppManager:
+ *
+ * #InfXmppManager is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfXmppManager {
+  /*< private >*/
   GObject parent;
 };
 
@@ -65,6 +87,10 @@ inf_xmpp_manager_contains_connection(InfXmppManager* manager,
 void
 inf_xmpp_manager_add_connection(InfXmppManager* manager,
                                 InfXmppConnection* connection);
+
+void
+inf_xmpp_manager_remove_connection(InfXmppManager* manager,
+                                   InfXmppConnection* connection);
 
 G_END_DECLS
 

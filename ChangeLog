@@ -1,5 +1,30 @@
 2009-12-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/client/infc-browser.c: Reset exploration flag for root
+	node.
+
+	* libinfinity/common/inf-xmpp-manager.h:
+	* libinfinity/common/inf-xmpp-manager.c: Keep closed connections,
+	handle changing addresses or ports.
+
+	* libinfinity/common/inf-xml-connection.h:
+	* libinfinity/common/inf-xml-connection.c: Added
+	inf_xml_connection_open(), and a corresponding vfunc.
+
+	* libinfinity/common/inf-xmpp-connection.c: Implement
+	inf_xml_connection_open().
+
+	* libinfinity/common/inf-discovery-avahi.c: Reopen existing
+	connections, if any, instead of opening new connections.
+
+	* libinfgtk/inf-gtk-browser-view.c: Reconnect when double-clicking an
+	item with a disconnected browser.
+
+	* libinfgtk/inf-gtk-browser-store.c: Keep undiscovered items if they
+	have browser or error set.
+
+2009-12-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-manager.c: Don't complain about a
 	certificate having changed if the new certificate was issued by a CA.
 

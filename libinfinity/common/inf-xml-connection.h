@@ -47,6 +47,8 @@ struct _InfXmlConnectionIface {
   GTypeInterface parent;
 
   /* Virtual table */
+  gboolean (*open)(InfXmlConnection* connection,
+                   GError** error);
   void (*close)(InfXmlConnection* connection);
   void (*send)(InfXmlConnection* connection,
                xmlNodePtr xml);
@@ -65,6 +67,10 @@ inf_xml_connection_status_get_type(void) G_GNUC_CONST;
 
 GType
 inf_xml_connection_get_type(void) G_GNUC_CONST;
+
+gboolean
+inf_xml_connection_open(InfXmlConnection* connection,
+                        GError** error);
 
 void
 inf_xml_connection_close(InfXmlConnection* connection);

@@ -471,6 +471,7 @@ inf_xmpp_manager_new
 inf_xmpp_manager_lookup_connection_by_address
 inf_xmpp_manager_contains_connection
 inf_xmpp_manager_add_connection
+inf_xmpp_manager_remove_connection
 <SUBSECTION Standard>
 INF_XMPP_MANAGER
 INF_IS_XMPP_MANAGER
@@ -516,6 +517,7 @@ INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY
 InfXmlConnection
 InfXmlConnectionIface
 InfXmlConnectionStatus
+inf_xml_connection_open
 inf_xml_connection_close
 inf_xml_connection_send
 inf_xml_connection_sent

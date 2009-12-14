@@ -288,6 +288,8 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
 
   InfIpAddress* inf_addr;
   InfTcpConnection* tcp;
+  InfXmppConnection* xmpp;
+  InfXmlConnectionStatus status;
   GError* error;
   
   avahi = INF_DISCOVERY_AVAHI(userdata);
@@ -332,13 +334,13 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
       break;
     }
 
-    discovery_info->resolved = inf_xmpp_manager_lookup_connection_by_address(
+    xmpp = inf_xmpp_manager_lookup_connection_by_address(
       priv->xmpp_manager,
       inf_addr,
       port
     );
 
-    if(discovery_info->resolved == NULL)
+    if(xmpp == NULL)
     {
       tcp = inf_tcp_connection_new(priv->io, inf_addr, port);
 
@@ -353,11 +355,11 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
         inf_discovery_avahi_info_resolv_error(discovery_info, error);
         g_error_free(error);
 
-        g_object_unref(G_OBJECT(tcp));
+        g_object_unref(tcp);
       }
       else
       {
-        discovery_info->resolved = inf_xmpp_connection_new(
+        xmpp = inf_xmpp_connection_new(
           tcp,
           INF_XMPP_CONNECTION_CLIENT,
           NULL,
@@ -368,36 +370,60 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
           priv->sasl_context == NULL ? NULL : priv->sasl_mechanisms
         );
 
-        g_object_unref(G_OBJECT(tcp));
+        g_object_unref(tcp);
 
-        inf_xmpp_manager_add_connection(
-          priv->xmpp_manager,
-          discovery_info->resolved
-        );
+        inf_xmpp_manager_add_connection(priv->xmpp_manager, xmpp);
 
-        inf_discovery_avahi_info_resolv_complete(discovery_info);
+        discovery_info->resolved = xmpp;
 
-        /* TODO: Also connect to notify::status and remove info->resolved when
-         * the connection is closed to guarantee to always return a connection
-         * that will soon be ready. */
         g_object_weak_ref(
-          G_OBJECT(discovery_info->resolved),
+          G_OBJECT(xmpp),
           inf_discovery_avahi_discovery_info_resolved_destroy_cb,
           discovery_info
         );
 
-        g_object_unref(G_OBJECT(discovery_info->resolved));
+        inf_discovery_avahi_info_resolv_complete(discovery_info);
+
+        g_object_unref(xmpp);
       }
     }
     else
     {
+      discovery_info->resolved = xmpp;
+
       g_object_weak_ref(
-        G_OBJECT(discovery_info->resolved),
+        G_OBJECT(xmpp),
         inf_discovery_avahi_discovery_info_resolved_destroy_cb,
         discovery_info
       );
 
-      inf_discovery_avahi_info_resolv_complete(discovery_info);
+      g_object_get(G_OBJECT(xmpp), "status", &status, NULL);
+
+      /* TODO: There is similar code in inf_discovery_avahi_resolve; should
+       * probably go into an extra function. */
+      if(status == INF_XML_CONNECTION_CLOSING)
+      {
+        /* TODO: That's a bit a sad case here. We should wait for the
+         * connection being closed, and then reopen it: */
+        inf_discovery_avahi_info_resolv_error(discovery_info, NULL);
+      }
+      else if(status == INF_XML_CONNECTION_CLOSED)
+      {
+        error = NULL;
+        if(!inf_xml_connection_open(INF_XML_CONNECTION(xmpp), &error))
+        {
+          inf_discovery_avahi_info_resolv_error(discovery_info, error);
+          g_error_free(error);
+        }
+        else
+        {
+          inf_discovery_avahi_info_resolv_complete(discovery_info);
+        }
+      }
+      else
+      {
+        inf_discovery_avahi_info_resolv_complete(discovery_info);
+      }
     }
     
     inf_ip_address_free(inf_addr);
@@ -1303,6 +1329,7 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
 {
   InfDiscoveryAvahiPrivate* priv;
   InfDiscoveryAvahiInfoResolv* resolv;
+  InfXmlConnectionStatus status;
   int errno;
   GError* error;
 
@@ -1312,7 +1339,36 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
 
   if(info->resolved != NULL)
   {
-    complete_func(info, INF_XML_CONNECTION(info->resolved), user_data);
+    g_object_get(G_OBJECT(info->resolved), "status", &status, NULL);
+
+    switch(status)
+    {
+    case INF_XML_CONNECTION_CLOSED:
+      error = NULL;
+      if(!inf_xml_connection_open(INF_XML_CONNECTION(info->resolved), &error))
+      {
+        error_func(info, error, user_data);
+        g_error_free(error);
+      }
+      else
+      {
+        complete_func(info, INF_XML_CONNECTION(info->resolved), user_data);
+      }
+
+      break;
+    case INF_XML_CONNECTION_CLOSING:
+      /* TODO: We should add ourselves to the resolver list, and wait for
+       * the connection being closed and reopen it afterwards. */
+      error_func(info, NULL, user_data);
+      break;
+    case INF_XML_CONNECTION_OPENING:
+    case INF_XML_CONNECTION_OPEN:
+      complete_func(info, INF_XML_CONNECTION(info->resolved), user_data);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
   }
   else
   {
