@@ -478,16 +478,19 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
           }
           else
           {
-            /* The fingerprint does not match, so the certificate for this host
-             * has changed. */
-            flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED;
+            /* The fingerprint does not match, so the certificate for this
+             * host has changed. If the new cert is CA signed we don't care. */
+            if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED)
+            {
+              flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED;
 
-            /* Check whether it has changed because the old one expired
-             * (then we have expected the certificate change, otherwise
-             * something strange is going on). */
-            t = gnutls_x509_crt_get_expiration_time(known);
-            if(t == (time_t)(-1) || t < time(NULL))
-              flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
+              /* Check whether it has changed because the old one expired
+               * (then we have expected the certificate change, otherwise
+               * something strange is going on). */
+              t = gnutls_x509_crt_get_expiration_time(known);
+              if(t == (time_t)(-1) || t < time(NULL))
+                flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
+            }
           }
 
           g_free(own_fingerprint);
@@ -592,10 +595,10 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
       query->checkbutton = gtk_check_button_new_with_label(text);
 
-      /* TODO: Be able remember any answer, not only the one to
+      /* TODO: Be able to remember any answer, not only the one to
        * "issuer not trusted" */
-      if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED ||
-         flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
+      if((flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED) ||
+         (flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED) )
       {
         gtk_widget_show(query->checkbutton);
       }

@@ -1,3 +1,8 @@
+2009-12-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-certificate-manager.c: Don't complain about a
+	certificate having changed if the new certificate was issued by a CA.
+
 2009-12-12  Benjamin Herr  <ben@0x539.de>
 
 	* configure.ac: Added AM_SILENT_RULES, defaulting to off.
