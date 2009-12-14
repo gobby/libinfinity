@@ -63,6 +63,7 @@
 #include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -302,7 +303,7 @@ inf_session_release_connection(InfSession* session,
     break;
   }
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(connection),
     G_CALLBACK(inf_session_connection_notify_status_cb),
     session
@@ -671,7 +672,7 @@ inf_session_set_property(GObject* object,
 
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -2513,7 +2514,9 @@ inf_session_add_user(InfSession* session,
   if(result == TRUE)
   {
     /* No idea why g_object_newv wants unconst GParameter list */
-    user = session_class->user_new(session, (GParameter*)params, n_params);
+    user = session_class->user_new(session,
+                                   *(GParameter**)(gpointer)&params,
+                                   n_params);
     inf_user_table_add_user(priv->user_table, user);
     g_object_unref(user); /* We rely on the usertable holding a reference */
 
@@ -2563,7 +2566,7 @@ inf_session_set_user_status(InfSession* session,
     );
 
     if(priv->subscription_group != NULL)
-      inf_session_send_to_subscriptions(session, NULL, xml);
+      inf_session_send_to_subscriptions(session, xml);
 
     g_object_set(G_OBJECT(user), "status", status, NULL);
   }
@@ -2871,32 +2874,25 @@ inf_session_set_subscription_group(InfSession* session,
 /**
  * inf_session_send_to_subscriptions:
  * @session: A #InfSession.
- * @except: A #InfXmlConnection, or %NULL.
  * @xml: The message to send.
  *
- * Sends a XML message to the all members of @session's subscription group,
- * except @except. This function can only be called if the subscription group
- * is non-%NULL. It takes ownership of @xml.
+ * Sends a XML message to the all members of @session's subscription group.
+ * This function can only be called if the subscription group is non-%NULL. It
+ * takes ownership of @xml.
  **/
 void
 inf_session_send_to_subscriptions(InfSession* session,
-                                  InfXmlConnection* except,
                                   xmlNodePtr xml)
 {
   InfSessionPrivate* priv;
 
   g_return_if_fail(INF_IS_SESSION(session));
-  g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
   g_return_if_fail(xml != NULL);
 
   priv = INF_SESSION_PRIVATE(session);
   g_return_if_fail(priv->subscription_group != NULL);
 
-  inf_communication_group_send_group_message(
-    priv->subscription_group,
-    except,
-    xml
-  );
+  inf_communication_group_send_group_message(priv->subscription_group, xml);
 }
 
 /* vim:set et sw=2 ts=2: */

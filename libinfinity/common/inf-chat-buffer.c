@@ -306,7 +306,7 @@ inf_chat_buffer_set_property(GObject* object,
     priv->modified = g_value_get_boolean(value);
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -655,7 +655,8 @@ inf_chat_buffer_add_message(InfChatBuffer* buffer,
 
   msg.type = INF_CHAT_BUFFER_MESSAGE_NORMAL;
   msg.user = by;
-  msg.text = (gchar*)message;
+  /* cast const away without warning */
+  msg.text = *(gchar**) (gpointer) &message;
   msg.length = length;
   msg.time = time;
 
@@ -690,7 +691,8 @@ inf_chat_buffer_add_emote_message(InfChatBuffer* buffer,
 
   msg.type = INF_CHAT_BUFFER_MESSAGE_EMOTE;
   msg.user = by;
-  msg.text = (gchar*)message;
+  /* cast const away without warning */
+  msg.text = *(gchar**) (gpointer) &message;
   msg.length = length;
   msg.time = time;
 

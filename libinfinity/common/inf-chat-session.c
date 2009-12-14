@@ -34,6 +34,7 @@
 
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 #include <errno.h>
 #include <string.h>
@@ -545,7 +546,7 @@ inf_chat_session_remove_user_cb(InfUserTable* user_table,
     if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
       inf_chat_session_user_part(INF_CHAT_SESSION(user_data), user);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     user,
     G_CALLBACK(inf_chat_session_set_status_cb),
     user_data
@@ -655,7 +656,7 @@ static void
 inf_chat_session_dispose_foreach_user_func(InfUser* user,
                                            gpointer user_data)
 {
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     user,
     G_CALLBACK(inf_chat_session_set_status_cb),
     user_data
@@ -679,19 +680,19 @@ inf_chat_session_dispose(GObject* object)
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     user_table,
     G_CALLBACK(inf_chat_session_add_user_cb),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     user_table,
     G_CALLBACK(inf_chat_session_remove_user_cb),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     buffer,
     G_CALLBACK(inf_chat_session_add_message_cb),
     session
@@ -742,7 +743,7 @@ inf_chat_session_set_property(GObject* object,
 
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -915,7 +916,7 @@ inf_chat_session_receive_message_handler(InfChatSession* session,
 
   /* The add_message signal handler would try to send the message, so prevent
    * this. */
-  g_signal_handlers_block_by_func(
+  inf_signal_handlers_block_by_func(
     buffer,
     G_CALLBACK(inf_chat_session_add_message_cb),
     session
@@ -960,7 +961,7 @@ inf_chat_session_receive_message_handler(InfChatSession* session,
     break;
   }
   
-  g_signal_handlers_unblock_by_func(
+  inf_signal_handlers_unblock_by_func(
     buffer,
     G_CALLBACK(inf_chat_session_add_message_cb),
     session
@@ -981,7 +982,7 @@ inf_chat_session_send_message_handler(InfChatSession* session,
 
   /* Actually send the message over the network */
   xml = inf_chat_session_message_to_xml(session, message, FALSE);
-  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+  inf_session_send_to_subscriptions(INF_SESSION(session), xml);
 
   inf_chat_session_log_message(session, message);
 }

@@ -286,6 +286,10 @@ inf_xml_util_valid_xml_char(gunichar codepoint)
     || (codepoint >= 0x10000 && codepoint <= 0x10ffff);
 }
 
+/* like the g_utf8_next_char macro, but without the cast to char* at the end
+ */
+#define inf_utf8_next_char(p) ((p) + g_utf8_skip[*(const guchar *)(p)])
+
 /**
  * inf_xml_util_add_child_text:
  * @xml: A #xmlNodePtr.
@@ -309,11 +313,12 @@ inf_xml_util_add_child_text(xmlNodePtr xml,
   const gchar* next;
   gchar* node_value;
   xmlNodePtr child_node;
+  gunichar ch;
   gsize i;
   for(i = 0, p = text; i < bytes; i += next - p, p = next)
   {
-    next = g_utf8_next_char(p);
-    gunichar ch = g_utf8_get_char(p);
+    next = inf_utf8_next_char(p);
+    ch = g_utf8_get_char(p);
     if(!inf_xml_util_valid_xml_char(ch))
     {
       xmlNodeAddContentLen(xml, (const xmlChar*) text, p - text);

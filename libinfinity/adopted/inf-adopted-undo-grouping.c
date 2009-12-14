@@ -19,6 +19,7 @@
 
 #include <libinfinity/adopted/inf-adopted-undo-grouping.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 /**
  * SECTION:inf-adopted-undo-grouping
@@ -381,7 +382,7 @@ inf_adopted_undo_grouping_deinit_user(InfAdoptedUndoGrouping* grouping)
 
   g_assert(priv->user != NULL);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(inf_adopted_user_get_request_log(priv->user)),
     G_CALLBACK(inf_adopted_undo_grouping_add_request_cb),
     grouping
@@ -687,7 +688,7 @@ inf_adopted_undo_grouping_set_algorithm(InfAdoptedUndoGrouping* grouping,
   {
     if(priv->algorithm != NULL)
     {
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         G_OBJECT(priv->algorithm),
         G_CALLBACK(inf_adopted_undo_grouping_execute_request_cb),
         grouping

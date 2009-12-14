@@ -37,6 +37,7 @@
 
 #include <libinfinity/communication/inf-communication-joined-group.h>
 #include <libinfinity/communication/inf-communication-group-private.h>
+#include <libinfinity/inf-signals.h>
 
 typedef struct _InfCommunicationJoinedGroupPrivate
   InfCommunicationJoinedGroupPrivate;
@@ -90,7 +91,7 @@ inf_communication_joined_group_set_publisher(InfCommunicationJoinedGroup* grp,
 
   if(priv->publisher_conn != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->publisher_conn),
       G_CALLBACK(inf_communication_joined_group_publisher_notify_status_cb),
       grp

@@ -28,6 +28,7 @@
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gtk/gtk.h>
 
@@ -454,13 +455,13 @@ on_chat_window_destroy(GtkWindow* window,
   test = (InfTestGtkBrowserChatWindow*)user_data;
   session = infc_session_proxy_get_session(test->proxy);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     session,
     G_CALLBACK(on_chat_synchronization_complete),
     test
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     session,
     G_CALLBACK(on_chat_synchronization_failed),
     test
@@ -482,13 +483,13 @@ on_text_window_destroy(GtkWindow* window,
   test = (InfTestGtkBrowserWindow*)user_data;
   session = infc_session_proxy_get_session(test->proxy);
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     session,
     G_CALLBACK(on_synchronization_complete),
     test
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     session,
     G_CALLBACK(on_synchronization_failed),
     test
@@ -500,13 +501,6 @@ on_text_window_destroy(GtkWindow* window,
   if(test->user !=NULL) g_object_unref(test->user);
 
   g_slice_free(InfTestGtkBrowserWindow, test);
-}
-
-static void
-on_show(GtkWidget* window,
-        gpointer user_data)
-{
-  gtk_widget_grab_focus(GTK_WIDGET(user_data));
 }
 
 static void

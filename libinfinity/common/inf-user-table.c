@@ -19,6 +19,7 @@
 
 #include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -113,9 +114,9 @@ static void
 inf_user_table_unref_user(InfUserTable* user_table,
                           InfUser* user)
 {
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(user),
-    inf_user_table_check_local_cb,
+    G_CALLBACK(inf_user_table_check_local_cb),
     user_table
   );
 
@@ -547,7 +548,7 @@ inf_user_table_lookup_user_by_name(InfUserTable* user_table,
   user = g_hash_table_find(
     priv->table,
     inf_user_table_lookup_user_by_name_func,
-    (gpointer)name
+    *(gpointer*) (gpointer) &name /* cast const away without warning */
   );
 
   return user;

@@ -23,6 +23,7 @@
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 #include <time.h>
@@ -164,6 +165,7 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
           error,
           inf_adopted_session_error_quark,
           INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
+          "%s",
           _("Undo received, but no previous request found")
         );
 
@@ -180,6 +182,7 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
           error,
           inf_adopted_session_error_quark,
           INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
+          "%s",
           _("Redo received, but no previous request found")
         );
 
@@ -403,7 +406,7 @@ inf_adopted_session_broadcast_n_requests(InfAdoptedSession* session,
   );
 
   if(n > 1) inf_xml_util_set_attribute_uint(xml, "num", n);
-  inf_session_send_to_subscriptions(INF_SESSION(session), NULL, xml);
+  inf_session_send_to_subscriptions(INF_SESSION(session), xml);
 
   inf_adopted_state_vector_free(local->last_send_vector);
   local->last_send_vector = inf_adopted_state_vector_copy(
@@ -694,13 +697,13 @@ inf_adopted_session_dispose(GObject* object)
 
   user_table = inf_session_get_user_table(INF_SESSION(session));
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(user_table),
     G_CALLBACK(inf_adopted_session_add_local_user_cb),
     session
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(user_table),
     G_CALLBACK(inf_adopted_session_remove_local_user_cb),
     session
@@ -720,7 +723,7 @@ inf_adopted_session_dispose(GObject* object)
 
   if(priv->algorithm != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->algorithm),
       G_CALLBACK(inf_adopted_session_execute_request_cb),
       session
@@ -776,7 +779,7 @@ inf_adopted_session_set_property(GObject* object,
   case PROP_ALGORITHM:
     /* read only */
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -1144,6 +1147,7 @@ inf_adopted_session_validate_user_props(InfSession* session,
       error,
       inf_adopted_session_error_quark,
       INF_ADOPTED_SESSION_ERROR_MISSING_STATE_VECTOR,
+      "%s",
       _("'time' attribute in user message is missing")
     );
 
@@ -1534,6 +1538,7 @@ inf_adopted_session_read_request_info(InfAdoptedSession* session,
         error,
         inf_adopted_session_error_quark,
         INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
+        "%s",
         _("Operation for request missing")
       );
 

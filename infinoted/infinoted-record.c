@@ -22,6 +22,7 @@
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 #include <errno.h>
@@ -219,13 +220,13 @@ infinoted_record_free(InfinotedRecord* record)
   GSList* item;
   InfAdoptedSessionRecord* rec;
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     record->directory,
     G_CALLBACK(infinoted_record_directory_add_session_cb),
     record
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     record->directory,
     G_CALLBACK(infinoted_record_directory_remove_session_cb),
     record

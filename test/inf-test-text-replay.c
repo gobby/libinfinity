@@ -419,7 +419,6 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
     {
       inf_communication_group_send_group_message(
         publisher_group,
-        NULL,
         xmlCopyNode(cur, 1)
       );
 

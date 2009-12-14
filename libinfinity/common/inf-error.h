@@ -91,6 +91,10 @@ typedef enum _InfUserError {
 
 /**
  * InfDirectoryError:
+ * @INF_DIRECTORY_ERROR_NO_WELCOME_MESSAGE: A client did not receive the
+ * directory's initial welcome message.
+ * @INF_DIRECTORY_ERROR_VERSION_MISMATCH: The server and client use
+ * different versions of the protocol.
  * @INF_DIRECTORY_ERROR_NODE_EXISTS: A node with the given name exists
  * already in that subdirectory (in response to node creation requests).
  * @INF_DIRECTORY_ERROR_INVALID_NAME: A node with an invalid name was
@@ -139,6 +143,8 @@ typedef enum _InfUserError {
  * be reason why requests created by #InfcBrowser fail.
  */
 typedef enum _InfDirectoryError {
+  INF_DIRECTORY_ERROR_NO_WELCOME_MESSAGE,
+  INF_DIRECTORY_ERROR_VERSION_MISMATCH,
   INF_DIRECTORY_ERROR_NODE_EXISTS,
   INF_DIRECTORY_ERROR_INVALID_NAME,
   INF_DIRECTORY_ERROR_NO_SUCH_NODE,

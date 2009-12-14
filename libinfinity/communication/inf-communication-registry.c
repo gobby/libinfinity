@@ -38,6 +38,7 @@
 
 #include <libinfinity/communication/inf-communication-registry.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
@@ -574,19 +575,19 @@ inf_communication_registry_remove_connection(InfCommunicationRegistry* rgstry,
   }
   else
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(connection),
       G_CALLBACK(inf_communication_registry_received_cb),
       rgstry
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(connection),
       G_CALLBACK(inf_communication_registry_sent_cb),
       rgstry
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(connection),
       G_CALLBACK(inf_communication_registry_notify_status_cb),
       rgstry
@@ -695,19 +696,19 @@ inf_communication_registry_dispose(GObject* object)
     g_hash_table_iter_init(&iter, priv->connections);
     while(g_hash_table_iter_next(&iter, &key, NULL))
     {
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         G_OBJECT(key),
         G_CALLBACK(inf_communication_registry_received_cb),
         registry
       );
 
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         G_OBJECT(key),
         G_CALLBACK(inf_communication_registry_sent_cb),
         registry
       );
 
-      g_signal_handlers_disconnect_by_func(
+      inf_signal_handlers_disconnect_by_func(
         G_OBJECT(key),
         G_CALLBACK(inf_communication_registry_notify_status_cb),
         registry

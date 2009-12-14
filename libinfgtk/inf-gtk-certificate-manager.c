@@ -26,6 +26,7 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gnutls/x509.h>
 
@@ -99,7 +100,7 @@ inf_gtk_certificate_manager_notify_status_cb(GObject* object,
 static void
 inf_gtk_certificate_manager_query_free(InfGtkCertificateManagerQuery* query)
 {
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(query->connection),
     G_CALLBACK(inf_gtk_certificate_manager_notify_status_cb),
     query

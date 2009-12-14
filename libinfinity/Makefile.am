@@ -24,8 +24,11 @@ libinfinity_0_4_la_LIBADD = \
 inf-marshal.h: inf-marshal.in
 	glib-genmarshal --header --prefix=inf_marshal $< > $@
 
+# rewrite the output to avoid a warning for casting gpointer to a function
+# pointer type
 inf-marshal.c: inf-marshal.in
-	glib-genmarshal --body --prefix=inf_marshal $< > $@
+	echo '#include <libinfinity/inf-marshal.h>' > $@
+	glib-genmarshal --body --prefix=inf_marshal $< | perl -pe 's/^  callback = \((GMarshalFunc_[^)]+)\) \(marshal_data \? marshal_data : cc->callback\);/  callback = *($$1*) (marshal_data ? &marshal_data : &cc->callback);/' >> $@
 
 BUILT_SOURCES = inf-marshal.h inf-marshal.c
 CLEANFILES = inf-marshal.h inf-marshal.c
@@ -39,11 +42,13 @@ libinfinity_0_4_la_HEADERS = \
 noinst_HEADERS = \
 	inf-dll.h \
 	inf-i18n.h \
-	inf-marshal.h
+	inf-marshal.h \
+	inf-signals.h
 
 libinfinity_0_4_la_SOURCES = \
 	inf-dll.c \
 	inf-i18n.c \
-	inf-marshal.c
+	inf-marshal.c \
+	inf-signals.c
 
 EXTRA_DIST = inf-marshal.in

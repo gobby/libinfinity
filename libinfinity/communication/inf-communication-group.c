@@ -417,7 +417,7 @@ inf_communication_group_set_property(GObject* object,
 
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
@@ -750,15 +750,13 @@ inf_communication_group_send_message(InfCommunicationGroup* group,
 /**
  * inf_communication_group_send_group_message:
  * @group: A #InfCommunicationGroup.
- * @except: A #InfXmlConnection not to send the message to, or %NULL.
  * @xml: The message to send.
  *
- * Sends a message to all members of @group, except @except. This function
- * takes ownership of @xml.
+ * Sends a message to all members of @group. This function takes ownership
+ * of @xml.
  */
 void
 inf_communication_group_send_group_message(InfCommunicationGroup* group,
-                                           InfXmlConnection* except,
                                            xmlNodePtr xml)
 {
   InfCommunicationGroupPrivate* priv;
@@ -768,7 +766,6 @@ inf_communication_group_send_group_message(InfCommunicationGroup* group,
   gboolean has_next;
 
   g_return_if_fail(INF_COMMUNICATION_IS_GROUP(group));
-  g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
   g_return_if_fail(xml != NULL);
 
   priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
@@ -789,7 +786,6 @@ inf_communication_group_send_group_message(InfCommunicationGroup* group,
 
       inf_communication_method_send_all(
         method,
-        except,
         has_next ? xmlCopyNode(xml, 1) : xml
       );
     } while(has_next);

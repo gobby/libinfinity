@@ -233,7 +233,6 @@ inf_communication_method_send_single(InfCommunicationMethod* method,
 /**
  * inf_communication_method_send_all:
  * @method: A #InfCommunicationMethod.
- * @except: A #InfXmlConnection not to to send the message to, or %NULL.
  * @xml: The message to send.
  *
  * Sends an XML message to all group members on this network. This function
@@ -241,19 +240,17 @@ inf_communication_method_send_single(InfCommunicationMethod* method,
  */
 void
 inf_communication_method_send_all(InfCommunicationMethod* method,
-                                  InfXmlConnection* except,
                                   xmlNodePtr xml)
 {
   InfCommunicationMethodIface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
-  g_return_if_fail(except == NULL || INF_IS_XML_CONNECTION(except));
   g_return_if_fail(xml != NULL);
 
   iface = INF_COMMUNICATION_METHOD_GET_IFACE(method);
   g_return_if_fail(iface->send_all != NULL);
 
-  iface->send_all(method, except, xml);
+  iface->send_all(method, xml);
 }
 
 /**

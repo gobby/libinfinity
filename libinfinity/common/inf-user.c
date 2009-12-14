@@ -409,7 +409,7 @@ inf_user_get_type(void)
  * Return Value: A numerical User ID.
  **/
 guint
-inf_user_get_id(const InfUser* user)
+inf_user_get_id(InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), 0);
   return INF_USER_PRIVATE(user)->id;
@@ -424,7 +424,7 @@ inf_user_get_id(const InfUser* user)
  * Return Value: The user's name.
  **/
 const gchar*
-inf_user_get_name(const InfUser* user)
+inf_user_get_name(InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), NULL);
   return INF_USER_PRIVATE(user)->name;
@@ -439,7 +439,7 @@ inf_user_get_name(const InfUser* user)
  * Return Value: The user's status.
  **/
 InfUserStatus
-inf_user_get_status(const InfUser* user)
+inf_user_get_status(InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), INF_USER_UNAVAILABLE);
   return INF_USER_PRIVATE(user)->status;
@@ -454,7 +454,7 @@ inf_user_get_status(const InfUser* user)
  * Return Value: The user's flags.
  **/
 InfUserFlags
-inf_user_get_flags(const InfUser* user)
+inf_user_get_flags(InfUser* user)
 {
   g_return_val_if_fail(INF_IS_USER(user), 0);
   return INF_USER_PRIVATE(user)->flags;

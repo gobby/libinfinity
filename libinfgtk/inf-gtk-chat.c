@@ -17,6 +17,14 @@
  * MA 02110-1301, USA.
  */
 
+#include <libinfgtk/inf-gtk-chat.h>
+#include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
+
+#include <gdk/gdkkeysyms.h>
+
+#include <string.h> /* For strlen() */
+
 /**
  * SECTION:inf-gtk-chat
  * @title: InfGtkChat
@@ -30,13 +38,6 @@
  * inf_gtk_chat_set_active_user(). In this case the input text entry is made
  * available and messages are sent via that user.
  **/
-
-#include <libinfgtk/inf-gtk-chat.h>
-#include <libinfinity/inf-i18n.h>
-
-#include <gdk/gdkkeysyms.h>
-
-#include <string.h> /* For strlen() */
 
 /* This is a small hack to get the scrolling in the textview right */
 typedef enum _InfGtkChatVMode {
@@ -244,6 +245,10 @@ inf_gtk_chat_add_message(InfGtkChat* chat,
   }
 }
 
+/* like the g_utf8_next_char macro, but without the cast to char* at the end
+ */
+#define inf_utf8_next_char(p) ((p) + g_utf8_skip[*(const guchar *)(p)])
+
 static void
 inf_gtk_chat_commit_message(InfGtkChat* chat)
 {
@@ -263,7 +268,7 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
   {
     text += 3;
     while(g_unichar_isspace(g_utf8_get_char(text)))
-      text = g_utf8_next_char(text);
+      text = inf_utf8_next_char(text);
 
     inf_chat_buffer_add_emote_message(
       priv->buffer,
@@ -399,7 +404,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
         begin = g_utf8_prev_char(&text[begin]) - text;
         if(g_unichar_isspace(g_utf8_get_char(&text[begin])))
         {
-          begin = g_utf8_next_char(&text[begin]) - text;
+          begin = inf_utf8_next_char(&text[begin]) - text;
           break;
         }
       }
@@ -453,7 +458,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
       }
       else
       {
-        g_signal_handlers_block_by_func(
+        inf_signal_handlers_block_by_func(
           G_OBJECT(priv->entry),
           G_CALLBACK(inf_gtk_chat_entry_changed_cb),
           chat
@@ -498,7 +503,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
         priv->completion_end = position;
         gtk_editable_set_position(GTK_EDITABLE(priv->entry), position);
 
-        g_signal_handlers_unblock_by_func(
+        inf_signal_handlers_unblock_by_func(
           G_OBJECT(priv->entry),
           G_CALLBACK(inf_gtk_chat_entry_changed_cb),
           chat
@@ -985,7 +990,7 @@ inf_gtk_chat_set_session(InfGtkChat* chat,
     if(priv->active_user != NULL)
       inf_gtk_chat_set_active_user(chat, NULL);
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
       G_CALLBACK(inf_gtk_chat_buffer_add_message_cb),
       chat
@@ -1084,13 +1089,13 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
 
   if(priv->active_user != NULL)
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->active_user),
       G_CALLBACK(inf_gtk_chat_user_notify_status_cb),
       chat
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->active_user),
       G_CALLBACK(inf_gtk_chat_user_notify_flags_cb),
       chat

@@ -65,6 +65,7 @@ infd_filesystem_storage_verify_path(const gchar* path,
         error,
         infd_filesystem_storage_error_quark,
         INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
+        "%s",
         _("The path contains invalid components")
       );
 

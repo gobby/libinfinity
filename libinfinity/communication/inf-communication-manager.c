@@ -358,9 +358,7 @@ inf_communication_manager_open_group(InfCommunicationManager* manager,
 
   g_hash_table_insert(
     priv->hosted_groups,
-    (gpointer)inf_communication_group_get_name(
-      INF_COMMUNICATION_GROUP(group)
-    ),
+    *(gpointer*) (gpointer) &group_name, /* cast const away without warning */
     group
   );
 

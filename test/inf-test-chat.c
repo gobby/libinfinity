@@ -47,7 +47,6 @@ inf_test_chat_input_cb(InfNativeSocket* fd,
 {
   InfTestChat* test;
   char buffer[1024];
-  char* occ;
 
   test = (InfTestChat*)user_data;
 
@@ -338,7 +337,8 @@ main(int argc, char* argv[])
   address = inf_ip_address_new_loopback4();
 
   error = NULL;
-  tcp_conn = inf_tcp_connection_new_and_open(test.io, address, 6523, &error);
+  tcp_conn =
+    inf_tcp_connection_new_and_open(INF_IO(test.io), address, 6523, &error);
 
   inf_ip_address_free(address);
 

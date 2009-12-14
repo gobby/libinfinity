@@ -18,6 +18,7 @@
  */
 
 #include <libinfinity/server/infd-tcp-server.h>
+#include <libinfinity/common/inf-tcp-connection-private.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
@@ -76,13 +77,6 @@ enum {
 
   LAST_SIGNAL
 };
-
-/* This is defined in common/inf-tcp-connection.c. It should be defined in
- * this file, but it needs to access private InfTcpConnection stuff. */
-InfTcpConnection*
-_inf_tcp_connection_accepted(InfIo* io,
-                             InfNativeSocket socket,
-                             GError** error);
 
 #define INFD_TCP_SERVER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_TCP_SERVER, InfdTcpServerPrivate))
 

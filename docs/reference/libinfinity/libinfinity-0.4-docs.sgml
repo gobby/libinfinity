@@ -48,6 +48,7 @@
     <xi:include href="xml/inf-cert-util.xml"/>
     <xi:include href="xml/inf-certificate-credentials.xml"/>
     <xi:include href="xml/inf-error.xml"/>
+    <xi:include href="xml/inf-protocol.xml"/>
     <xi:include href="xml/inf-buffer.xml"/>
   </chapter>
 

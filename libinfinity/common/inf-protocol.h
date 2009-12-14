@@ -17,49 +17,24 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-dll.h>
+#ifndef __INF_PROTOCOL_H__
+#define __INF_PROTOCOL_H__
 
-#include <glib.h>
+#include <glib-object.h>
 
-#include "config.h"
+G_BEGIN_DECLS
 
-static gchar*
-_inf_gettext_get_locale_dir(void)
-{
-#ifdef G_OS_WIN32
-  gchar* root;
-  gchar* temp;
-  gchar* result;
+const gchar*
+inf_protocol_get_version(void);
 
-  root =
-    g_win32_get_package_installation_directory_of_module(_inf_dll_handle);
-  temp = g_build_filename(root, "share", "locale", NULL);
-  g_free(root);
+gboolean
+inf_protocol_parse_version(const gchar* version,
+                           guint* major,
+                           guint* minor,
+                           GError** error);
 
-  result = g_win32_locale_filename_from_utf8(temp);
-  g_free(temp);
-  return result;
-#else
-  return g_strdup(INF_LOCALEDIR);
-#endif
-}
+G_END_DECLS
 
-void
-_inf_gettext_init(void)
-{
-  gchar* localedir;
-  localedir = _inf_gettext_get_locale_dir();
-  bindtextdomain(GETTEXT_PACKAGE, localedir);
-  g_free(localedir);
-
-  bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8");
-}
-
-const char*
-_inf_gettext(const char* msgid)
-{
-  return dgettext(GETTEXT_PACKAGE, msgid);
-}
+#endif /* __INF_PROTOCOL_H__ */
 
 /* vim:set et sw=2 ts=2: */

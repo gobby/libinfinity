@@ -723,6 +723,7 @@ inf_adopted_state_vector_from_string(const gchar* str,
 {
   InfAdoptedStateVector* vec;
   const char* strpos;
+  char* endpos;
   gsize pos;
   guint id;
   guint n;
@@ -734,13 +735,14 @@ inf_adopted_state_vector_from_string(const gchar* str,
 
   while(*strpos)
   {
-    id = strtoul(strpos, (char**)&strpos, 10);
-    if(*strpos != ':')
+    id = strtoul(strpos, &endpos, 10);
+    if(*endpos != ':')
     {
       g_set_error(
         error,
         inf_adopted_state_vector_error_quark(),
         INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
+        "%s",
         _("Expected ':' after ID")
       );
 
@@ -763,10 +765,10 @@ inf_adopted_state_vector_from_string(const gchar* str,
       return NULL;
     }
 
-    ++ strpos; /* step over ':' */
-    n = strtoul(strpos, (char**)&strpos, 10);
+    strpos = endpos + 1; /* step over ':' */
+    n = strtoul(strpos, &endpos, 10);
 
-    if(*strpos != ';' && *strpos != '\0')
+    if(*endpos != ';' && *endpos != '\0')
     {
       g_set_error(
         error,
@@ -781,6 +783,7 @@ inf_adopted_state_vector_from_string(const gchar* str,
     }
 
     inf_adopted_state_vector_insert(vec, id, n, pos);
+    strpos = endpos;
     if(*strpos != '\0') ++ strpos; /* step over ';' */
   }
 

@@ -22,6 +22,7 @@
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gtk/gtktreemodel.h>
 
@@ -209,7 +210,7 @@ inf_gtk_browser_store_item_request_remove(InfGtkBrowserStoreItem* item,
     item
   );
 
-  g_signal_handlers_disconnect_by_func(
+  inf_signal_handlers_disconnect_by_func(
     G_OBJECT(request),
     G_CALLBACK(inf_gtk_browser_store_request_failed_cb),
     item
@@ -602,8 +603,7 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
      * meaningful error message. */
     if(item->error == NULL)
     {
-      g_set_error(
-        &item->error,
+      item->error = g_error_new_literal(
         g_quark_from_static_string("INF_GTK_BROWSER_STORE_ERROR"),
         0,
         _("Disconnected")
@@ -991,13 +991,13 @@ inf_gtk_browser_store_dispose(GObject* object)
 
   for(item = priv->discoveries; item != NULL; item = g_slist_next(item))
   {
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->data),
       G_CALLBACK(inf_gtk_browser_store_discovered_cb),
       store
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->data),
       G_CALLBACK(inf_gtk_browser_store_undiscovered_cb),
       store
@@ -1701,37 +1701,37 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
     g_hash_table_remove_all(item->node_errors);
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_browser_error_cb),
       model
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_browser_notify_status_cb),
       model
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_node_added_cb),
       model
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_node_removed_cb),
       model
     );
     
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_begin_explore_cb),
       model
     );
 
-    g_signal_handlers_disconnect_by_func(
+    inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_begin_subscribe_cb),
       model

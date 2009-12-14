@@ -71,16 +71,16 @@ GType
 inf_user_get_type(void) G_GNUC_CONST;
 
 guint
-inf_user_get_id(const InfUser* user);
+inf_user_get_id(InfUser* user);
 
 const gchar*
-inf_user_get_name(const InfUser* user);
+inf_user_get_name(InfUser* user);
 
 InfUserStatus
-inf_user_get_status(const InfUser* user);
+inf_user_get_status(InfUser* user);
 
 InfUserFlags
-inf_user_get_flags(const InfUser* user);
+inf_user_get_flags(InfUser* user);
 
 InfXmlConnection*
 inf_user_get_connection(InfUser* user);

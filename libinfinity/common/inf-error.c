@@ -30,6 +30,8 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <gsasl.h>
+
 #include <gnutls/gnutls.h>
 
 /* TODO: Cache GQuarks */
@@ -153,6 +155,10 @@ inf_directory_strerror(InfDirectoryError code)
 {
   switch(code)
   {
+  case INF_DIRECTORY_ERROR_NO_WELCOME_MESSAGE:
+    return _("Server did not send an initial welcome message");
+  case INF_DIRECTORY_ERROR_VERSION_MISMATCH:
+    return _("The server and client use different protocol versions");
   case INF_DIRECTORY_ERROR_NODE_EXISTS:
     return _("A node with this name exists already");
   case INF_DIRECTORY_ERROR_INVALID_NAME:

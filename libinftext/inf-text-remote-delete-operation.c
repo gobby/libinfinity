@@ -247,7 +247,7 @@ inf_text_remote_delete_operation_set_property(GObject* object,
     priv->length = g_value_get_uint(value);
     break;
   default:
-    G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
 }
