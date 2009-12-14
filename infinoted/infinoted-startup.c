@@ -28,6 +28,8 @@
 
 #include <gnutls/x509.h>
 
+#include <string.h>
+
 static void
 infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
                                          guint n_certificates)

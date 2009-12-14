@@ -507,7 +507,7 @@ infinoted_options_load(InfinotedOptions* options,
       N_("Interval within which to save documents, in seconds, or 0 to "
          "disable autosave"), N_("INTERVAL") },
     { "password", 'P', 0,
-      G_OPTION_ARG_STRING, &options->password,
+      G_OPTION_ARG_STRING, NULL,
       N_("Require given password on connections"), N_("PASSWORD") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
@@ -536,6 +536,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &security_policy;
   entries[i++].arg_data = &options->root_directory;
   entries[i++].arg_data = &autosave_interval;
+  entries[i++].arg_data = &options->password;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   entries[i++].arg_data = &options->daemonize;
   entries[i++].arg_data = &kill_daemon;
@@ -639,7 +640,7 @@ infinoted_options_load(InfinotedOptions* options,
 
   if(options->password != NULL)
   {
-    if(strcmp("", options->password) == NULL)
+    if(strcmp("", options->password) == 0)
     {
       g_free(options->password);
       options->password = NULL;
