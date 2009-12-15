@@ -792,9 +792,11 @@ inf_xmpp_connection_send_auth_error(InfXmppConnection* xmpp,
 
   xml = inf_xmpp_connection_node_new_sasl("failure");
 
-  child = xmlNewNode(
+  child = xmlNewChild(
+    xml,
     NULL,
-    (const xmlChar*)inf_xmpp_connection_auth_error_to_condition(code)
+    (const xmlChar*)inf_xmpp_connection_auth_error_to_condition(code),
+    NULL
   );
 
   inf_xmpp_connection_send_xml(xmpp, xml);
@@ -1449,6 +1451,7 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
                               const gchar* mechanism)
 {
   InfXmppConnectionPrivate* priv;
+  xmlNodePtr auth;
   int ret;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1459,6 +1462,17 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
   switch(priv->site)
   {
   case INF_XMPP_CONNECTION_CLIENT:
+    auth = inf_xmpp_connection_node_new_sasl("auth");
+
+    xmlNewProp(
+      auth,
+      (const xmlChar*)"mechanism",
+      (const xmlChar*)mechanism
+    );
+
+    inf_xmpp_connection_send_xml(xmpp, auth);
+    xmlFreeNode(auth);
+
     g_assert(priv->status == INF_XMPP_CONNECTION_AWAITING_FEATURES);
     ret = gsasl_client_start(
       priv->sasl_context,
@@ -1794,7 +1808,6 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
   xmlNodePtr child;
   xmlNodePtr req;
   xmlNodePtr starttls;
-  xmlNodePtr auth;
   xmlNodePtr mechanisms;
   GString* mechanisms_string;
   xmlChar* content;
@@ -1978,17 +1991,6 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
       }
       else
       {
-        auth = inf_xmpp_connection_node_new_sasl("auth");
-
-        xmlNewProp(
-          auth,
-          (const xmlChar*)"mechanism",
-          (const xmlChar*)suggestion
-        );
-
-        inf_xmpp_connection_send_xml(xmpp, auth);
-        xmlFreeNode(auth);
-
         inf_xmpp_connection_sasl_init(xmpp, suggestion);
       }
     }
@@ -2047,6 +2049,8 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
   InfXmppConnectionAuthError auth_code;
   xmlNodePtr child;
   xmlChar* content;
+  Gsasl_session* old_session;
+  const gchar* old_mechanism;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
@@ -2072,18 +2076,37 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
         );
       }
 
-      inf_xmpp_connection_emit_auth_error(xmpp, auth_code);
+      if (auth_code == INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED)
+      {
+        /* Retry. */
 
-      /* TODO: Retry authentication, if possible */
+        /* Remove SASL session, but delay finishing it for a bit so that we
+         * can pass on the mechanism to the new session. */
+        g_assert(priv->sasl_session != NULL);
+        old_session = priv->sasl_session;
+        priv->sasl_session = NULL;
 
-      /* Remove SASL session */
-      g_assert(priv->sasl_session != NULL);
-      gsasl_finish(priv->sasl_session);
-      priv->sasl_session = NULL;
+        old_mechanism = gsasl_mechanism_name(old_session);
+        g_assert(old_mechanism != NULL);
 
-      /* So that deinitiate does not try to abort the authentication */
-      priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
-      inf_xmpp_connection_deinitiate(xmpp);
+        priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
+        inf_xmpp_connection_sasl_init(xmpp, old_mechanism);
+
+        gsasl_finish(old_session);
+      }
+      else
+      {
+        /* Remove SASL session */
+        g_assert(priv->sasl_session != NULL);
+        gsasl_finish(priv->sasl_session);
+        priv->sasl_session = NULL;
+
+        inf_xmpp_connection_emit_auth_error(xmpp, auth_code);
+
+        /* So that deinitiate does not try to abort the authentication */
+        priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
+        inf_xmpp_connection_deinitiate(xmpp);
+      }
     }
     else if(strcmp((const gchar*)xml->name, "success") == 0)
     {

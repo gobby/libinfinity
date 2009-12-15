@@ -38,6 +38,7 @@ struct _InfinotedOptions {
   InfXmppConnectionSecurityPolicy security_policy;
   gchar* root_directory;
   guint autosave_interval;
+  gchar* password;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   gboolean daemonize;

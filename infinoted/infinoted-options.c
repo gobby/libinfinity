@@ -398,6 +398,14 @@ infinoted_options_validate(InfinotedOptions* options,
   InfXmppConnectionSecurityPolicy security_policy;
   security_policy = options->security_policy;
 
+  if(options->password != NULL &&
+     options->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
+  {
+    infinoted_util_log_warning(
+      _("Requiring password through unencrypted connection."));
+  }
+
+
   if(options->create_key == TRUE && options->create_certificate == FALSE)
   {
     g_set_error(
@@ -498,6 +506,9 @@ infinoted_options_load(InfinotedOptions* options,
       G_OPTION_ARG_INT, NULL,
       N_("Interval within which to save documents, in seconds, or 0 to "
          "disable autosave"), N_("INTERVAL") },
+    { "password", 'P', 0,
+      G_OPTION_ARG_STRING, NULL,
+      N_("Require given password on connections"), N_("PASSWORD") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
       G_OPTION_ARG_NONE, NULL,
@@ -525,6 +536,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &security_policy;
   entries[i++].arg_data = &options->root_directory;
   entries[i++].arg_data = &autosave_interval;
+  entries[i++].arg_data = &options->password;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   entries[i++].arg_data = &options->daemonize;
   entries[i++].arg_data = &kill_daemon;
@@ -626,6 +638,15 @@ infinoted_options_load(InfinotedOptions* options,
   );
   if(!result) return FALSE;
 
+  if(options->password != NULL)
+  {
+    if(strcmp("", options->password) == 0)
+    {
+      g_free(options->password);
+      options->password = NULL;
+    }
+  }
+
   return infinoted_options_validate(options, error);
 }
 
@@ -669,6 +690,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
   options->autosave_interval = 0;
+  options->password = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = FALSE;

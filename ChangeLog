@@ -1,3 +1,18 @@
+2009-12-15  Benjamin Herr  <ben@0x539.de>
+
+	* ChangeLog:
+	* infinoted/infinoted-config-reload.c:
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c: Enable requiring authentication via
+	SASL PLAIN, giving a server-wide password via startup options.
+
+	* libinfinity/common/inf-xmpp-connection.c: Perform multiple
+	authentication attempts.
+
 2009-12-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c
@@ -193,6 +208,17 @@
 	* libinfinity/common/inf-error.c: Include gsasl.h so that
 	gsasl_strerror() is not assumed to return int and consequently works
 	on non-32bit platforms, fixing a crash.
+
+2009-12-10  Benjamin Herr  <ben@0x539.de>
+
+	* infinoted/infinoted-config-reload.c:
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c: Added --password/-P option to require
+	a password from clients via GNU SASL 'PLAIN' authentication.
 
 2009-12-10  Benjamin Herr  <ben@0x539.de>
 

@@ -126,8 +126,8 @@ infinoted_run_create_server(InfinotedRun* run,
     tcp,
     startup->options->security_policy,
     startup->credentials,
-    NULL,
-    NULL
+    startup->gsasl,
+    startup->gsasl ? "PLAIN" : NULL
   );
 
   infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));
@@ -284,7 +284,7 @@ infinoted_run_free(InfinotedRun* run)
   if(run->dh_params != NULL)
     gnutls_dh_params_deinit(run->dh_params);
 
-  if(run->startup)
+  if(run->startup != NULL)
     infinoted_startup_free(run->startup);
 
   g_slice_free(InfinotedRun, run);

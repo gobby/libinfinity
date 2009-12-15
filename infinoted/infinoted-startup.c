@@ -23,9 +23,12 @@
 
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-init.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gnutls/x509.h>
+
+#include <string.h>
 
 static void
 infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
@@ -222,17 +225,53 @@ infinoted_startup_load_options(InfinotedStartup* startup,
   return TRUE;
 }
 
+static int
+infinoted_startup_gsasl_callback(Gsasl* gsasl,
+                                 Gsasl_session* session,
+                                 Gsasl_property prop)
+{
+  const char* prop_ptr;
+  InfinotedStartup* startup;
+  switch(prop)
+  {
+  case GSASL_VALIDATE_SIMPLE:
+    startup = gsasl_callback_hook_get(gsasl);
+    g_assert(startup->options->password != NULL);
+    prop_ptr = gsasl_property_fast(session, GSASL_PASSWORD);
+    if(strcmp(startup->options->password, prop_ptr) == 0)
+      return GSASL_OK;
+    else
+      return GSASL_AUTHENTICATION_ERROR;
+  default:
+    return GSASL_AUTHENTICATION_ERROR;
+  }
+}
+
 static gboolean
 infinoted_startup_load(InfinotedStartup* startup,
                        int* argc,
                        char*** argv,
                        GError** error)
 {
+  int gsasl_status;
+
   if(infinoted_startup_load_options(startup, argc, argv, error) == FALSE)
     return FALSE;
 
   if(infinoted_startup_load_credentials(startup, error) == FALSE)
     return FALSE;
+
+  if(startup->options->password)
+  {
+    gsasl_status = gsasl_init(&startup->gsasl);
+    if (gsasl_status != GSASL_OK)
+    {
+      inf_gsasl_set_error(error, gsasl_status);
+      return FALSE;
+    }
+    gsasl_callback_set(startup->gsasl, infinoted_startup_gsasl_callback);
+    gsasl_callback_hook_set(startup->gsasl, startup);
+  }
 
   return TRUE;
 }
@@ -263,6 +302,7 @@ infinoted_startup_new(int* argc,
   startup->certificates = NULL;
   startup->n_certificates = 0;
   startup->credentials = NULL;
+  startup->gsasl = NULL;
 
   if(infinoted_startup_load(startup, argc, argv, error) == FALSE)
   {
@@ -298,6 +338,9 @@ infinoted_startup_free(InfinotedStartup* startup)
 
   if(startup->options != NULL)
     infinoted_options_free(startup->options);
+
+  if(startup->gsasl != NULL)
+    gsasl_done(startup->gsasl);
 
   g_slice_free(InfinotedStartup, startup);
   inf_deinit();
