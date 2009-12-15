@@ -1,5 +1,20 @@
 2009-12-18  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-directory-sync.h:
+	* infinoted/infinoted-directory-sync.c:
+	* infinoted/Makefile.am: Added a new object which synchronizes the
+	document tree to disk.
+
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c: Added the --sync-directory and
+	--sync-interval command line and config file options.
+
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c: Create a InfinotedDirectorySync in case
+	the corresponding options were provided. Bug #428.
+
+2009-12-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-buffer.c (inf_text_buffer_create_iter): Fixed a
 	typo in a documentation string.
 

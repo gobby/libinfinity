@@ -15,6 +15,7 @@ infinoted_0_4_CPPFLAGS = \
 	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
 infinoted_0_4_LDADD = \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS) \
@@ -25,6 +26,7 @@ infinoted_0_4_SOURCES = \
 	infinoted-config-reload.c \
 	infinoted-creds.c \
 	infinoted-dh-params.c \
+	infinoted-directory-sync.c \
 	infinoted-main.c \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
@@ -39,6 +41,7 @@ noinst_HEADERS = \
 	infinoted-config-reload.h \
 	infinoted-creds.h \
 	infinoted-dh-params.h \
+	infinoted-directory-sync.h \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-record.h \

@@ -239,6 +239,20 @@ infinoted_run_new(InfinotedStartup* startup,
     run->autosave = NULL;
   }
 
+  if(startup->options->sync_interval > 0 &&
+     startup->options->sync_directory != NULL)
+  {
+    run->dsync = infinoted_directory_sync_new(
+      run->directory,
+      startup->options->sync_directory,
+      startup->options->sync_interval
+    );
+  }
+  else
+  {
+    run->dsync = NULL;
+  }
+
   return run;
 }
 
@@ -253,6 +267,11 @@ infinoted_run_free(InfinotedRun* run)
 {
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
+
+  if(run->autosave != NULL)
+    infinoted_autosave_free(run->autosave);
+  if(run->dsync != NULL)
+    infinoted_directory_sync_free(run->dsync);
 
   if(run->xmpp6 != NULL)
   {
@@ -274,8 +293,6 @@ infinoted_run_free(InfinotedRun* run)
 
   if(run->record != NULL)
     infinoted_record_free(run->record);
-  if(run->autosave != NULL)
-    infinoted_autosave_free(run->autosave);
 
   g_object_unref(run->io);
   g_object_unref(run->directory);

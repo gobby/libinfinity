@@ -25,6 +25,7 @@
 #include <infinoted/infinoted-record.h>
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-autosave.h>
+#include <infinoted/infinoted-directory-sync.h>
 
 #include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
@@ -45,6 +46,7 @@ struct _InfinotedRun {
   InfdDirectory* directory;
   InfdServerPool* pool;
   InfinotedAutosave* autosave;
+  InfinotedDirectorySync* dsync;
 
   InfdXmppServer* xmpp4;
   InfdXmppServer* xmpp6;

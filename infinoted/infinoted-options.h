@@ -40,6 +40,9 @@ struct _InfinotedOptions {
   guint autosave_interval;
   gchar* password;
 
+  gchar* sync_directory;
+  guint sync_interval;
+
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   gboolean daemonize;
 #endif
@@ -51,7 +54,8 @@ typedef enum _InfinotedOptionsError {
   INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_INTERVAL,
   INFINOTED_OPTIONS_ERROR_INVALID_CREATE_OPTIONS,
   INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
-  INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE
+  INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
+  INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION
 } InfinotedOptionsError;
 
 InfinotedOptions*
