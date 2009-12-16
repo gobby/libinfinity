@@ -17,6 +17,11 @@
  * MA 02110-1301, USA.
  */
 
+#ifndef G_OS_WIN32
+/* Need this for O_NOFOLLOW and fdopendir and so on */
+# define _GNU_SOURCE
+#endif
+
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/inf-i18n.h>
@@ -28,6 +33,12 @@
 
 #ifdef G_OS_WIN32
 # include <windows.h>
+#else
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <fcntl.h>
+# include <dirent.h>
+# include <unistd.h>
 #endif
 
 typedef struct _InfdFilesystemStoragePrivate InfdFilesystemStoragePrivate;
@@ -313,8 +324,16 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
   GSList* list;
+#ifndef G_OS_WIN32
+  int dir_fd;
+  DIR* dir;
+  struct dirent* dir_entry;
+  struct dirent* dir_result;
+  int saved_errno;
+#else
   GDir* dir;
   const gchar* name;
+#endif
   gchar* converted_name;
   gchar* full_name;
   gchar* file_path;
@@ -334,12 +353,76 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   full_name = g_build_filename(priv->root_directory, converted_name, NULL);
   g_free(converted_name);
 
+  list = NULL;
+
+#ifndef G_OS_WIN32
+  dir_fd = open(full_name, O_NOFOLLOW | O_RDONLY);
+  if(dir_fd == -1 || (dir = fdopendir(dir_fd)) == NULL)
+  {
+    infd_filesystem_storage_system_error(errno, error);
+    g_free(full_name);
+    return NULL;
+  }
+
+  dir_entry = g_malloc(offsetof(struct dirent, d_name) +
+                       fpathconf(dir_fd, _PC_NAME_MAX) + 1);
+
+  for(saved_errno = readdir_r(dir, dir_entry, &dir_result);
+      saved_errno == 0 && dir_result != NULL;
+      saved_errno = readdir_r(dir, dir_entry, &dir_result))
+  {
+    converted_name = g_filename_to_utf8(dir_result->d_name,
+                                        -1,
+                                        NULL,
+                                        &name_len,
+                                        NULL);
+    if(converted_name != NULL && strcmp(converted_name, ".") != 0
+                              && strcmp(converted_name, "..") != 0)
+    {
+      file_path = g_build_filename(full_name, dir_result->d_name, NULL);
+      if(dir_result->d_type != DT_LNK && dir_result->d_type != DT_UNKNOWN)
+      {
+        if(dir_result->d_type == DT_DIR)
+        {
+          list = g_slist_prepend(
+            list,
+            infd_storage_node_new_subdirectory(converted_name)
+          );
+        }
+        else if(dir_result->d_type == DT_REG)
+        {
+          /* The note type identifier is behind the last '.' */
+          separator = g_strrstr_len(converted_name, name_len, ".");
+          if(separator != NULL)
+          {
+            *separator = '\0';
+            list = g_slist_prepend(
+              list,
+              infd_storage_node_new_note(converted_name, separator + 1)
+            );
+          }
+        }
+      }
+
+      g_free(file_path);
+    }
+    g_free(converted_name);
+  }
+
+  g_free(dir_entry);
+
+  if(saved_errno != 0)
+  {
+    infd_filesystem_storage_system_error(saved_errno, error);
+    g_free(full_name);
+    return NULL;
+  }
+#else
   dir = g_dir_open(full_name, 0, error);
 
   if(dir == NULL)
     return NULL;
 
-  list = NULL;
   for(name = g_dir_read_name(dir); name != NULL; name = g_dir_read_name(dir))
   {
     converted_name = g_filename_to_utf8(name, -1, NULL, &name_len, NULL);
@@ -373,6 +456,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   }
 
   g_dir_close(dir);
+#endif
   g_free(full_name);
   return list;
 }
@@ -615,14 +699,18 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   gchar* full_name;
   FILE* res;
   int save_errno;
+#ifndef G_OS_WIN32
+  int fd;
+  int open_mode;
+#endif
 
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
   if(infd_filesystem_storage_verify_path(path, error) == FALSE)
-    return FALSE;
+    return NULL;
 
   converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
   if(converted_name == NULL)
-    return FALSE;
+    return NULL;
 
   disk_name = g_strconcat(converted_name, ".", identifier, NULL);
   g_free(converted_name);
@@ -630,14 +718,25 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   full_name = g_build_filename(priv->root_directory, disk_name, NULL);
   g_free(disk_name);
 
+#ifdef G_OS_WIN32
   res = g_fopen(full_name, mode);
+#else
+  if(strcmp(mode, "r") == 0) open_mode = O_RDONLY;
+  else if(strcmp(mode, "w") == 0) open_mode = O_WRONLY | O_TRUNC;
+  else g_assert_not_reached();
+  fd = open(full_name, O_NOFOLLOW | open_mode);
+  if(fd == -1)
+    res = NULL;
+  else
+    res = fdopen(fd, mode);
+#endif
   save_errno = errno;
   g_free(full_name);
 
   if(res == NULL)
   {
     infd_filesystem_storage_system_error(save_errno, error);
-    return FALSE;
+    return NULL;
   }
 
   return res;
