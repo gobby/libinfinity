@@ -38,7 +38,15 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <syslog.h>
+
+#ifdef G_OS_WIN32
+/* Arbitrary; they are not used currently anyway */
+# define LOG_ERR 0
+# define LOG_WARNING 1
+# define LOG_INFO 2
+#else
+# include <syslog.h>
+#endif
 
 static void
 infinoted_util_logv(int prio, const char* fmt, va_list ap)

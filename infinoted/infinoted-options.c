@@ -17,18 +17,20 @@
  * MA 02110-1301, USA.
  */
 
+#include "config.h"
+
 #include <infinoted/infinoted-options.h>
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
 
-#include <libdaemon/dpid.h>
+#ifdef LIBINFINITY_HAVE_DAEMON
+# include <libdaemon/dpid.h>
+#endif
 
 #include <glib.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-
-#include "config.h"
 
 static const gchar INFINOTED_OPTIONS_GROUP[] = "infinoted";
 

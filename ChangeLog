@@ -1,3 +1,14 @@
+2009-12-16  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/server/infd-xmpp-server.c: #undef ERROR on Windows. Some
+	crazy Windows header defines it, but we want to use it as an
+	identifier.
+
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-signal.c:
+	* infinoted/infinoted-util.c: Fix the build on Windows.
+
 2009-12-16  Benjamin Herr  <ben@0x539.de>
 
 	* libinfinity/server/infd-filesystem-storage.c: Try to ignore symlinks

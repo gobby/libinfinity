@@ -43,6 +43,13 @@
 
 #include <string.h>
 
+/* Some Windows header #defines error for no good */
+#ifdef G_OS_WIN32
+# ifdef ERROR
+#  undef ERROR
+# endif
+#endif
+
 typedef enum _InfcBrowserNodeType {
   INFC_BROWSER_NODE_SUBDIRECTORY = 1 << 0,
   /* We found a plugin to handle the note type */

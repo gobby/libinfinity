@@ -24,6 +24,13 @@
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
+/* Some Windows header #defines ERROR for no good */
+#ifdef G_OS_WIN32
+# ifdef ERROR
+#  undef ERROR
+# endif
+#endif
+
 typedef enum InfdXmppServerStatus_ {
   INFD_XMPP_SERVER_CLOSED,
   INFD_XMPP_SERVER_OPEN
