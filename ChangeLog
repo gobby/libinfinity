@@ -1,3 +1,10 @@
+2009-12-18  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-signal.c: Replace C++ style comments by C style
+	comments.
+
+	* infinoted/infinoted-option.c: Fix #ifdef check, to avoid a warning.
+
 2009-12-16  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.c:

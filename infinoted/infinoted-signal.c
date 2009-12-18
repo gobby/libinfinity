@@ -132,8 +132,8 @@ infinoted_signal_sighup_handler(int sig)
   /* Make sure the signal handler is not reset */
   signal(SIGHUP, infinoted_signal_sighup_handler);
 }
-#endif // !G_OS_WIN32
-#endif // !LIBINFINITY_HAVE_LIBDAEMON
+#endif /* !G_OS_WIN32 */
+#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
 
 #ifdef G_OS_WIN32
 BOOL WINAPI infinoted_signal_console_handler(DWORD fdwCtrlType)
@@ -190,9 +190,9 @@ infinoted_signal_register(InfinotedRun* run)
     signal(SIGQUIT, &infinoted_signal_sigquit_handler);
   sig->previous_sighup_handler =
     signal(SIGHUP, &infinoted_signal_sighup_handler);
-#endif // !G_OS_WIN32
+#endif /* !G_OS_WIN32 */
   _infinoted_signal_server = run;
-#endif // !LIBINFINITY_HAVE_LIBDAEMON
+#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
 
 #ifdef G_OS_WIN32
   SetConsoleCtrlHandler(infinoted_signal_console_handler, TRUE);
@@ -226,9 +226,9 @@ infinoted_signal_unregister(InfinotedSignal* sig)
 #ifndef G_OS_WIN32
   signal(SIGQUIT, sig->previous_sigquit_handler);
   signal(SIGHUP, sig->previous_sighup_handler);
-#endif // !G_OS_WIN32
+#endif /* !G_OS_WIN32 */
   _infinoted_signal_server = NULL;
-#endif // !LIBINFINITY_HAVE_LIBDAEMON
+#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
 
   g_slice_free(InfinotedSignal, sig);
 }

@@ -23,7 +23,7 @@
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
 
-#ifdef LIBINFINITY_HAVE_DAEMON
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
 # include <libdaemon/dpid.h>
 #endif
 
