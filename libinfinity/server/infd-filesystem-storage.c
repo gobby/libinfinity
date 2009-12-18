@@ -329,6 +329,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   DIR* dir;
   struct dirent* dir_entry;
   struct dirent* dir_result;
+  struct stat stat_buf;
   int saved_errno;
 #else
   GDir* dir;
@@ -379,7 +380,23 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
     if(converted_name != NULL && strcmp(converted_name, ".") != 0
                               && strcmp(converted_name, "..") != 0)
     {
-      file_path = g_build_filename(full_name, dir_result->d_name, NULL);
+      /* Some filesystems, such as reiserfs, don't support reporting the
+       * entry's file type. In that case we do an additional lstat here. */
+      if(dir_result->d_type == DT_UNKNOWN)
+      {
+        file_path = g_build_filename(full_name, dir_result->d_name, NULL);
+        if(lstat(file_path, &stat_buf) == 0)
+        {
+          if(S_ISDIR(stat_buf.st_mode))
+            dir_result->d_type = DT_DIR;
+          else if(S_ISREG(stat_buf.st_mode))
+            dir_result->d_type = DT_REG;
+          else if(S_ISLNK(stat_buf.st_mode))
+            dir_result->d_type = DT_LNK;
+        }
+        g_free(file_path);
+      }
+
       if(dir_result->d_type != DT_LNK && dir_result->d_type != DT_UNKNOWN)
       {
         if(dir_result->d_type == DT_DIR)
@@ -403,9 +420,8 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
           }
         }
       }
-
-      g_free(file_path);
     }
+
     g_free(converted_name);
   }
 
