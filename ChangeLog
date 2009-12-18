@@ -1,5 +1,11 @@
 2009-12-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added
+	inf_text_gtk_buffer_show_user_colors().
+
+2009-12-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-filesystem-storage.c
 	(infd_filesystem_storage_storage_read_subdirectory): If readdir_r does
 	not report the type of the enumerated file, then find it out via

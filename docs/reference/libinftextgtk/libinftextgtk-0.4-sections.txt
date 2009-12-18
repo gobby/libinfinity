@@ -13,6 +13,7 @@ inf_text_gtk_buffer_ensure_author_tags_priority
 inf_text_gtk_buffer_set_saturation_value
 inf_text_gtk_buffer_get_saturation
 inf_text_gtk_buffer_get_value
+inf_text_gtk_buffer_show_user_colors
 <SUBSECTION Standard>
 InfTextGtkBufferClass
 INF_TEXT_GTK_BUFFER

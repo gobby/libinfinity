@@ -90,6 +90,12 @@ inf_text_gtk_buffer_get_saturation(InfTextGtkBuffer* buffer);
 gdouble
 inf_text_gtk_buffer_get_value(InfTextGtkBuffer* buffer);
 
+void
+inf_text_gtk_buffer_show_user_colors(InfTextGtkBuffer* buffer,
+                                     gboolean show,
+                                     GtkTextIter* start,
+                                     GtkTextIter* end);
+
 G_END_DECLS
 
 #endif /* __INF_TEXT_GTK_BUFFER_H__ */

@@ -27,6 +27,15 @@
 struct _InfTextBufferIter {
   GtkTextIter begin;
   GtkTextIter end;
+  InfTextUser* user;
+};
+
+typedef struct _InfTextGtkBufferUserTags InfTextGtkBufferUserTags;
+struct _InfTextGtkBufferUserTags {
+  InfTextGtkBuffer* buffer;
+  InfTextUser* user;
+  GtkTextTag* colored_tag;
+  GtkTextTag* colorless_tag;
 };
 
 typedef struct _InfTextGtkBufferTagRemove InfTextGtkBufferTagRemove;
@@ -34,7 +43,7 @@ struct _InfTextGtkBufferTagRemove {
   GtkTextBuffer* buffer;
   GtkTextIter begin_iter;
   GtkTextIter end_iter;
-  GtkTextTag* ignore_tag;
+  InfTextGtkBufferUserTags* ignore_tags;
 };
 
 typedef struct _InfTextGtkBufferPrivate InfTextGtkBufferPrivate;
@@ -179,179 +188,250 @@ inf_text_gtk_user_notify_hue_cb(GObject* object,
   InfTextGtkBuffer* buffer;
   InfTextGtkBufferPrivate* priv;
   guint user_id;
-  GtkTextTag* tag;
+  InfTextGtkBufferUserTags* tags;
 
   buffer = INF_TEXT_GTK_BUFFER(user_data);
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
   user_id = inf_user_get_id(INF_USER(object));
-  tag = g_hash_table_lookup(priv->user_tags, GUINT_TO_POINTER(user_id));
-  g_assert(tag != NULL);
+  tags = g_hash_table_lookup(priv->user_tags, GUINT_TO_POINTER(user_id));
+  g_assert(tags != NULL && tags->colored_tag != NULL);
 
-  inf_text_gtk_update_tag_color(buffer, tag, INF_TEXT_USER(object));
+  inf_text_gtk_update_tag_color(
+    buffer,
+    tags->colored_tag,
+    INF_TEXT_USER(object)
+  );
 }
 
-static GtkTextTag*
-inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
-                                 guint user_id)
+static void
+inf_text_gtk_buffer_user_tags_free(gpointer user_tags)
+{
+  InfTextGtkBufferUserTags* tags;
+  tags = (InfTextGtkBufferUserTags*)user_tags;
+
+  if(tags->colored_tag)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      tags->user,
+      G_CALLBACK(inf_text_gtk_user_notify_hue_cb),
+      tags->buffer
+    );
+
+    g_object_unref(tags->colored_tag);
+  }
+
+  if(tags->colorless_tag)
+    g_object_unref(tags->colorless_tag);
+  g_slice_free(InfTextGtkBufferUserTags, tags);
+}
+
+static InfTextGtkBufferUserTags*
+inf_text_gtk_buffer_get_user_tags(InfTextGtkBuffer* buffer,
+                                  guint user_id)
 {
   InfTextGtkBufferPrivate* priv;
-  GtkTextTagTable* table;
-  GtkTextTag* tag;
-  gchar* tag_name;
-  InfTextUser* user;
+  InfTextGtkBufferUserTags* tags;
+  InfUser* user;
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
   if(user_id == 0)
     return NULL;
 
-  tag = g_hash_table_lookup(priv->user_tags, GUINT_TO_POINTER(user_id));
-  if(tag != NULL)
+  tags = g_hash_table_lookup(priv->user_tags, GUINT_TO_POINTER(user_id));
+
+  if(tags != NULL)
   {
-    return tag;
+    return tags;
   }
   else
   {
-    tag_name = g_strdup_printf("inftextgtk-user-%u", user_id);
-    tag = gtk_text_tag_new(tag_name);
-    g_free(tag_name);
+    user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
+    g_assert(INF_TEXT_IS_USER(user));
 
-    table = gtk_text_buffer_get_tag_table(priv->buffer);
-    gtk_text_tag_table_add(table, tag);
-    g_hash_table_insert(priv->user_tags, GUINT_TO_POINTER(user_id), tag);
+    tags = g_slice_new(InfTextGtkBufferUserTags);
+    tags->buffer = buffer;
+    tags->user = INF_TEXT_USER(user);
+    tags->colored_tag = NULL;
+    tags->colorless_tag = NULL;
+    g_hash_table_insert(priv->user_tags, GUINT_TO_POINTER(user_id), tags);
+    return tags;
+  }
+}
 
-    /* Set lowest priority for author tags, so GtkSourceView's bracket
-     * matching highlight tags and highlight of FIXME and such in comments is
-     * shown instead of the user color. */
-    gtk_text_tag_set_priority(tag, 0);
+static GtkTextTag*
+inf_text_gtk_buffer_get_user_tag(InfTextGtkBuffer* buffer,
+                                 InfTextGtkBufferUserTags* user_tags,
+                                 gboolean colored)
+{
+  InfTextGtkBufferPrivate* priv;
+  GtkTextTagTable* table;
+  GtkTextTag** tag;
+  gchar* tag_name;
+  guint user_id;
+  const gchar* colorstr;
 
-    g_object_set_qdata(
-      G_OBJECT(tag),
-      inf_text_gtk_buffer_tag_user_quark,
-      GUINT_TO_POINTER(user_id)
-    );
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  tag = colored ? &user_tags->colored_tag : &user_tags->colorless_tag;
+  if(*tag != NULL) return *tag;
 
-    user = INF_TEXT_USER(
-      inf_user_table_lookup_user_by_id(priv->user_table, user_id)
-    );
-    g_assert(user != NULL);
+  user_id = 0;
+  if(user_tags->user != NULL)
+    user_id = inf_user_get_id(INF_USER(user_tags->user));
+  colorstr = colored ? "colored" : "colorless";
 
-    /* TODO: Disconnect from that some time later */
+  tag_name = g_strdup_printf("inftextgtk-user-%s-%u", colorstr, user_id);
+  *tag = gtk_text_tag_new(tag_name);
+  g_free(tag_name);
+
+  table = gtk_text_buffer_get_tag_table(priv->buffer);
+  gtk_text_tag_table_add(table, *tag);
+
+  /* Set lowest priority for author tags, so GtkSourceView's bracket
+   * matching highlight tags and highlight of FIXME and such in comments is
+   * shown instead of the user color. */
+  gtk_text_tag_set_priority(*tag, 0);
+
+  g_object_set_qdata(
+    G_OBJECT(*tag),
+    inf_text_gtk_buffer_tag_user_quark,
+    user_tags->user
+  );
+
+  if(colored)
+  {
     g_signal_connect(
-      G_OBJECT(user),
+      G_OBJECT(user_tags->user),
       "notify::hue",
       G_CALLBACK(inf_text_gtk_user_notify_hue_cb),
       buffer
     );
 
-    inf_text_gtk_update_tag_color(buffer, tag, user);
-
-    return tag;
+    inf_text_gtk_update_tag_color(buffer, *tag, user_tags->user);
   }
+
+  return *tag;
 }
 
-static guint
+static InfTextUser*
 inf_text_gtk_buffer_author_from_tag(GtkTextTag* tag)
 {
   gpointer author_ptr;
-  guint author_id;
 
   author_ptr = g_object_get_qdata(
     G_OBJECT(tag),
     inf_text_gtk_buffer_tag_user_quark
   );
 
-  author_id = GPOINTER_TO_UINT(author_ptr);
-  return author_id;
+  return INF_TEXT_USER(author_ptr);
 }
 
-static guint
+static InfTextUser*
 inf_text_gtk_buffer_iter_list_contains_author_tag(GSList* tag_list)
 {
   GSList* item;
-  guint author;
+  InfTextUser* author;
 
   for(item = tag_list; item != NULL; item = g_slist_next(item))
   {
     author = inf_text_gtk_buffer_author_from_tag(GTK_TEXT_TAG(item->data));
-    if(author != 0) return author;
+    if(author != NULL) return author;
   }
 
-  return 0;
+  return NULL;
 }
 
-static guint
+static InfTextUser*
 inf_text_gtk_buffer_iter_get_author(GtkTextIter* location)
 {
   GSList* tag_list;
-  guint author;
+  InfTextUser* author;
 
   tag_list = gtk_text_iter_get_tags(location);
   author = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
   g_slist_free(tag_list);
 
-  /* Author tag must always be set on text */
   return author;
 }
 
 static gboolean
-inf_text_gtk_buffer_iter_is_author_toggle(GtkTextIter* iter)
+inf_text_gtk_buffer_iter_is_author_toggle(GtkTextIter* iter,
+                                          InfTextUser** toggled_on,
+                                          InfTextUser** toggled_off)
 {
   GSList* tag_list;
-  guint author_id;
+  InfTextUser* author_on;
+  InfTextUser* author_off;
 
   tag_list = gtk_text_iter_get_toggled_tags(iter, TRUE);
-  author_id = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
+  author_on = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
   g_slist_free(tag_list);
 
   /* We need to check both the tags that are toggled on and the tags that
    * are toggled off at this point, because text that is not written by
    * anyone specific (author NULL) does not count as author tag. */
-  if(author_id == 0)
+  if(author_on == NULL || toggled_off != NULL)
   {
     tag_list = gtk_text_iter_get_toggled_tags(iter, FALSE);
-    author_id = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
+    author_off = inf_text_gtk_buffer_iter_list_contains_author_tag(tag_list);
     g_slist_free(tag_list);
   }
 
-  if(author_id == 0) return FALSE;
+  if(author_on == NULL && author_off == NULL)
+    if(!gtk_text_iter_is_start(iter) && !gtk_text_iter_is_end(iter))
+      return FALSE;
+
+  if(toggled_on) *toggled_on = author_on;
+  if(toggled_off) *toggled_off = author_off;
   return TRUE;
 }
 
 static void
-inf_text_gtk_buffer_iter_next_author_toggle(GtkTextIter* iter)
+inf_text_gtk_buffer_iter_next_author_toggle(GtkTextIter* iter,
+                                            InfTextUser** user_on,
+                                            InfTextUser** user_off)
 {
+  gboolean is_author_toggle;
+
   do
   {
-    /* We get endless loops without these. I am not sure why. */
-    if(gtk_text_iter_is_end(iter)) return;
+    gtk_text_iter_forward_to_tag_toggle(iter, NULL);
 
-    if(gtk_text_iter_forward_to_tag_toggle(iter, NULL) == FALSE)
-      return;
-  } while(inf_text_gtk_buffer_iter_is_author_toggle(iter) == FALSE);
+    is_author_toggle = inf_text_gtk_buffer_iter_is_author_toggle(
+      iter,
+      user_on,
+      user_off
+    );
+  } while(!is_author_toggle);
 }
 
 static void
-inf_text_gtk_buffer_iter_prev_author_toggle(GtkTextIter* iter)
+inf_text_gtk_buffer_iter_prev_author_toggle(GtkTextIter* iter,
+                                            InfTextUser** user_on,
+                                            InfTextUser** user_off)
 {
+  gboolean is_author_toggle;
+
   do
   {
-    /* We get endless loops without this. I am not sure why. */
-    if(gtk_text_iter_is_start(iter)) return;
+    gtk_text_iter_backward_to_tag_toggle(iter, NULL);
 
-    if(gtk_text_iter_backward_to_tag_toggle(iter, NULL) == FALSE)
-      return;
-  } while(inf_text_gtk_buffer_iter_is_author_toggle(iter) == FALSE);
+    is_author_toggle = inf_text_gtk_buffer_iter_is_author_toggle(
+      iter,
+      user_on,
+      user_off
+    );
+  } while(!is_author_toggle);
 }
 
 static void
 inf_text_gtk_buffer_ensure_author_tags_priority_foreach_func(GtkTextTag* tag,
                                                              gpointer data)
 {
-  guint author;
+  InfTextUser* author;
   author = inf_text_gtk_buffer_author_from_tag(tag);
 
-  if(author != 0)
+  if(author != NULL)
     gtk_text_tag_set_priority(tag, 0);
 }
 
@@ -361,20 +441,14 @@ inf_text_gtk_buffer_set_saturation_value_tag_table_foreach_func(GtkTextTag* t,
 {
   InfTextGtkBuffer* buffer;
   InfTextGtkBufferPrivate* priv;
-  guint author;
-  InfUser* user;
+  InfTextUser* author;
 
   buffer = INF_TEXT_GTK_BUFFER(data);
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
   author = inf_text_gtk_buffer_author_from_tag(t);
 
-  if(author != 0)
-  {
-    user = inf_user_table_lookup_user_by_id(priv->user_table, author);
-    g_assert(INF_TEXT_IS_USER(user));
-
-    inf_text_gtk_update_tag_color(buffer, t, INF_TEXT_USER(user));
-  }
+  if(author != NULL)
+    inf_text_gtk_update_tag_color(buffer, t, author);
 }
 
 /* Required by inf_text_gtk_buffer_mark_set_cb() */
@@ -401,7 +475,7 @@ inf_text_gtk_buffer_apply_tag_cb(GtkTextBuffer* gtk_buffer,
   /* Don't allow auhtor tags to be applied by default. GTK+ seems to do this
    * when copy+pasting text from the text buffer itself, but we want to make
    * sure that a given segment of text has always a unique author set. */
-  if(inf_text_gtk_buffer_author_from_tag(tag) != 0)
+  if(inf_text_gtk_buffer_author_from_tag(tag) != NULL)
     g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "apply-tag");
 }
 
@@ -801,13 +875,13 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
 
     g_object_unref(G_OBJECT(priv->buffer));
   }
-  
+
   priv->buffer = gtk_buffer;
 
   if(gtk_buffer != NULL)
   {
     g_object_ref(G_OBJECT(gtk_buffer));
-    
+
     g_signal_connect(
       G_OBJECT(gtk_buffer),
       "apply-tag",
@@ -866,7 +940,7 @@ inf_text_gtk_buffer_init(GTypeInstance* instance,
     NULL,
     NULL,
     NULL,
-    (GDestroyNotify)g_object_unref
+    inf_text_gtk_buffer_user_tags_free
   );
 
   priv->active_user = NULL;
@@ -1054,7 +1128,7 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
   guint remaining;
 
   guint size;
-  guint author_id;
+  InfTextUser* author;
   gchar* text;
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
@@ -1068,7 +1142,7 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
     g_assert(gtk_text_iter_is_end(&iter) == FALSE);
 
     begin = iter;
-    inf_text_gtk_buffer_iter_next_author_toggle(&iter);
+    inf_text_gtk_buffer_iter_next_author_toggle(&iter, NULL, &author);
 
     size = gtk_text_iter_get_offset(&iter) - gtk_text_iter_get_offset(&begin);
 
@@ -1080,7 +1154,6 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
       gtk_text_iter_forward_chars(&iter, size);
     }
 
-    author_id = inf_text_gtk_buffer_iter_get_author(&begin);
     text = gtk_text_buffer_get_slice(priv->buffer, &begin, &iter, TRUE);
 
     /* TODO: Faster inf_text_chunk_append that optionally eats text */
@@ -1090,7 +1163,7 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
       text,
       strlen(text), /* I hate strlen. GTK+ should tell us how many bytes. */
       size,
-      author_id
+      (author == NULL) ? 0 : inf_user_get_id(INF_USER(author))
     );
 
     remaining -= size;
@@ -1118,7 +1191,11 @@ inf_text_gtk_buffer_buffer_create_iter(InfTextBuffer* buffer)
     gtk_text_buffer_get_start_iter(priv->buffer, &iter->begin);
 
     iter->end = iter->begin;
-    inf_text_gtk_buffer_iter_next_author_toggle(&iter->end);
+    inf_text_gtk_buffer_iter_next_author_toggle(
+      &iter->end,
+      NULL,
+      &iter->user
+    );
 
     return iter;
   }
@@ -1139,7 +1216,7 @@ inf_text_gtk_buffer_buffer_iter_next(InfTextBuffer* buffer,
     return FALSE;
 
   iter->begin = iter->end;
-  inf_text_gtk_buffer_iter_next_author_toggle(&iter->end);
+  inf_text_gtk_buffer_iter_next_author_toggle(&iter->end, NULL, &iter->user);
   return TRUE;
 }
 
@@ -1151,7 +1228,12 @@ inf_text_gtk_buffer_buffer_iter_prev(InfTextBuffer* buffer,
     return FALSE;
 
   iter->end = iter->begin;
-  inf_text_gtk_buffer_iter_prev_author_toggle(&iter->begin);
+  inf_text_gtk_buffer_iter_prev_author_toggle(
+    &iter->begin,
+    &iter->user,
+    NULL
+  );
+
   return TRUE;
 }
 
@@ -1234,8 +1316,7 @@ static guint
 inf_text_gtk_buffer_buffer_iter_get_author(InfTextBuffer* buffer,
                                            InfTextBufferIter* iter)
 {
-  /* TODO: Cache? */
-  return inf_text_gtk_buffer_iter_get_author(&iter->begin);
+  return (iter->user == NULL) ? 0 : inf_user_get_id(INF_USER(iter->user));
 }
 
 static void
@@ -1245,8 +1326,9 @@ inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func(GtkTextTag* tag,
   InfTextGtkBufferTagRemove* tag_remove;
   tag_remove = (InfTextGtkBufferTagRemove*)data;
 
-  if(tag != tag_remove->ignore_tag &&
-     inf_text_gtk_buffer_author_from_tag(tag) != G_MAXUINT)
+  if(tag_remove->ignore_tags == NULL ||
+     (tag != tag_remove->ignore_tags->colored_tag &&
+      tag != tag_remove->ignore_tags->colorless_tag))
   {
     gtk_text_buffer_remove_tag(
       tag_remove->buffer,
@@ -1266,6 +1348,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
   InfTextGtkBufferPrivate* priv;
   InfTextChunkIter chunk_iter;
   InfTextGtkBufferTagRemove tag_remove;
+  GtkTextTag* tag;
 
   GtkTextMark* mark;
   GtkTextIter insert_iter;
@@ -1298,17 +1381,30 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
 
     do
     {
-      tag_remove.ignore_tag = inf_text_gtk_buffer_get_user_tag(
+      tag_remove.ignore_tags = inf_text_gtk_buffer_get_user_tags(
         INF_TEXT_GTK_BUFFER(buffer),
         inf_text_chunk_iter_get_author(&chunk_iter)
       );
+
+      if(tag_remove.ignore_tags)
+      {
+        tag = inf_text_gtk_buffer_get_user_tag(
+          INF_TEXT_GTK_BUFFER(buffer),
+          tag_remove.ignore_tags,
+          TRUE
+        );
+      }
+      else
+      {
+        tag = NULL;
+      }
 
       gtk_text_buffer_insert_with_tags(
         tag_remove.buffer,
         &tag_remove.end_iter,
         inf_text_chunk_iter_get_text(&chunk_iter),
         inf_text_chunk_iter_get_bytes(&chunk_iter),
-        tag_remove.ignore_tag,
+        tag,
         NULL
       );
 
@@ -1780,8 +1876,6 @@ inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
                                GtkTextIter* location)
 {
   InfTextGtkBufferPrivate* priv;
-  guint user_id;
-  InfUser* user;
 
   g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), NULL);
 
@@ -1789,13 +1883,9 @@ inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
     location != NULL && !gtk_text_iter_is_end(location),
     NULL
   );
-  
-  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
-  user_id = inf_text_gtk_buffer_iter_get_author(location);
-  if(user_id == 0) return NULL;
 
-  user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
-  return INF_TEXT_USER(user);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  return inf_text_gtk_buffer_iter_get_author(location);
 }
 
 /**
@@ -1818,7 +1908,7 @@ inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
 void
 inf_text_gtk_buffer_set_wake_on_cursor_movement(InfTextGtkBuffer* buffer,
                                                 gboolean wake)
-{                                                
+{
   g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
   INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->wake_on_cursor_movement = wake;
   g_object_notify(G_OBJECT(buffer), "wake-on-cursor-movement");
@@ -1939,7 +2029,7 @@ inf_text_gtk_buffer_get_saturation(InfTextGtkBuffer* buffer)
 }
 
 /**
- * inf_txet_gtk_buffer_get_value:
+ * inf_text_gtk_buffer_get_value:
  * @buffer: A #InfTextGtkBuffer.
  *
  * Returns the value part of the HSV user color.
@@ -1951,6 +2041,85 @@ inf_text_gtk_buffer_get_value(InfTextGtkBuffer* buffer)
 {
   g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), 0.0);
   return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->value;
+}
+
+/**
+ * inf_text_gtk_buffer_show_user_colors:
+ * @buffer: A #InfTextGtkBuffer.
+ * @show: Whether to show or hide user colors.
+ * @start: Beginning of the range for which to show or hide user colors.
+ * @end: End of the range for which to show or hide user colors.
+ *
+ * If @show is %FALSE, then don't show user colors (which user wrote what
+ * text) as the background of the text, in the range from @start to @end.
+ * If @show is %TRUE, show user colors if they have previously been hidden
+ * via a call to this function with @show being %FALSE.
+ */
+void
+inf_text_gtk_buffer_show_user_colors(InfTextGtkBuffer* buffer,
+                                     gboolean show,
+                                     GtkTextIter* start,
+                                     GtkTextIter* end)
+{
+  InfTextGtkBufferPrivate* priv;
+  GtkTextIter iter;
+  GtkTextIter prev;
+  InfTextUser* user;
+  InfTextGtkBufferUserTags* tags;
+  GtkTextTag* hide_tag;
+  GtkTextTag* show_tag;
+
+  g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
+  g_return_if_fail(start != NULL);
+  g_return_if_fail(end != NULL);
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  iter = *start;
+  prev = iter;
+
+  while(!gtk_text_iter_equal(&iter, end))
+  {
+    inf_text_gtk_buffer_iter_next_author_toggle(&iter, NULL, &user);
+    if(gtk_text_iter_compare(&iter, end) > 0)
+      iter = *end;
+
+    if(user != NULL)
+    {
+      tags = g_hash_table_lookup(
+        priv->user_tags,
+        GUINT_TO_POINTER(inf_user_get_id(INF_USER(user)))
+      );
+      g_assert(tags != NULL);
+
+      if(show)
+      {
+        hide_tag = inf_text_gtk_buffer_get_user_tag(buffer, tags, FALSE);
+        show_tag = inf_text_gtk_buffer_get_user_tag(buffer, tags, TRUE);
+      }
+      else
+      {
+        hide_tag = inf_text_gtk_buffer_get_user_tag(buffer, tags, TRUE);
+        show_tag = inf_text_gtk_buffer_get_user_tag(buffer, tags, FALSE);
+      }
+
+      inf_signal_handlers_block_by_func(
+        priv->buffer,
+        G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+        buffer
+      );
+
+      gtk_text_buffer_remove_tag(priv->buffer, hide_tag, &prev, &iter);
+      gtk_text_buffer_apply_tag(priv->buffer, show_tag, &prev, &iter);
+
+      inf_signal_handlers_unblock_by_func(
+        priv->buffer,
+        G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+        buffer
+      );
+    }
+
+    prev = iter;
+  }
 }
 
 /* vim:set et sw=2 ts=2: */
