@@ -1,5 +1,10 @@
 2009-12-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-buffer.c (inf_text_buffer_create_iter): Fixed a
+	typo in a documentation string.
+
+2009-12-18  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.h:
 	* libinftextgtk/inf-text-gtk-buffer.c: Added
 	inf_text_gtk_buffer_show_user_colors().

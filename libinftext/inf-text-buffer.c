@@ -284,7 +284,7 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
  * inf_text_buffer_create_iter:
  * @buffer: A #InfTextBuffer.
  *
- * Creates a #InfTextBufferIter pointing to the first segmnet of @buffer.
+ * Creates a #InfTextBufferIter pointing to the first segment of @buffer.
  * A #InfTextBufferIter is used to traverse the buffer contents in steps of
  * so-called segments each of which is written by the same user. The function
  * returns %NULL if there are no segments (i.e. the buffer is empty).
