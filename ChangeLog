@@ -1,5 +1,11 @@
 2009-12-18  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/server/infd-filesystem-storage.c
+	(infd_filesystem_storage_open): Specify O_CREAT when opening the file
+	in writing mode.
+
+2009-12-18  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-directory-sync.h:
 	* infinoted/infinoted-directory-sync.c:
 	* infinoted/Makefile.am: Added a new object which synchronizes the

@@ -738,9 +738,9 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   res = g_fopen(full_name, mode);
 #else
   if(strcmp(mode, "r") == 0) open_mode = O_RDONLY;
-  else if(strcmp(mode, "w") == 0) open_mode = O_WRONLY | O_TRUNC;
+  else if(strcmp(mode, "w") == 0) open_mode = O_CREAT | O_WRONLY | O_TRUNC;
   else g_assert_not_reached();
-  fd = open(full_name, O_NOFOLLOW | open_mode);
+  fd = open(full_name, O_NOFOLLOW | open_mode, 0600);
   if(fd == -1)
     res = NULL;
   else
