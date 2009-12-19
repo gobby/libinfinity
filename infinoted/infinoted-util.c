@@ -44,6 +44,7 @@
 # define LOG_ERR 0
 # define LOG_WARNING 1
 # define LOG_INFO 2
+# include <windows.h>
 #else
 # include <syslog.h>
 #endif
@@ -54,9 +55,25 @@ infinoted_util_logv(int prio, const char* fmt, va_list ap)
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   daemon_logv(prio, fmt, ap);
 #else
+#ifdef G_OS_WIN32
+  /* On Windows, convert to the character set of the console */
+  gchar* out;
+  gchar* codeset;
+  gchar* converted;
+
+  out = g_strdup_vprintf(fmt, ap);
+  codeset = g_strdup_printf("CP%u", (guint)GetConsoleOutputCP());
+  converted = g_convert(out, -1, codeset, "UTF-8", NULL, NULL, NULL);
+  g_free(out);
+  g_free(codeset);
+
+  fprintf(stderr, "%s\n", converted);
+  g_free(converted);
+#else
   vfprintf(stderr, fmt, ap);
   fputc('\n', stderr);
-#endif
+#endif /* !G_OS_WIN32 */
+#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
 }
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON

@@ -1,5 +1,10 @@
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-util.c (infinoted_util_logv): On Windows,
+	convert the output from UTF-8 to the character set of the console.
+
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-directory-sync.c
 	(infinoted_directory_sync_add_session): Fix the build on Windows.
 
