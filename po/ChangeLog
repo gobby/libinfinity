@@ -1,5 +1,10 @@
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
+	* ca.po:
+	* de.po: Update from Launchpad.
+
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity-0.4.pot: Added, to allow synchronization with launchpad.
 
 	* POTFILES.in: Updated.

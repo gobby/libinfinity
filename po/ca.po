@@ -1,4 +1,4 @@
-# German translation for libinfinity
+# Catalan translation for libinfinity
 # Copyright (c) 2009 Rosetta Contributors and Canonical Ltd 2009
 # This file is distributed under the same license as the libinfinity package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2009.
@@ -8,9 +8,9 @@ msgstr ""
 "Project-Id-Version: libinfinity\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2009-12-19 19:58+0100\n"
-"PO-Revision-Date: 2009-11-28 11:36+0000\n"
-"Last-Translator: Armin Burgmeier <armin@arbur.net>\n"
-"Language-Team: German <de@li.org>\n"
+"PO-Revision-Date: 2009-12-10 07:26+0000\n"
+"Last-Translator: David Planella <Unknown>\n"
+"Language-Team: Catalan <ca@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -24,13 +24,13 @@ msgid ""
 "\n"
 "Will retry in %u seconds."
 msgstr ""
-"Die Sitzung »%s« konnte nicht automatisch gespeichert werden: %s\n"
+"Ha fallat el desament de la sessió «%s»: %s\n"
 "\n"
-"In %u Sekunden wird ein erneuter Versuch unternommen."
+"Es tornarà a intentar en %u segons."
 
 #: infinoted/infinoted-dh-params.c:75
 msgid "Generating 2048 bit Diffie-Hellman parameters..."
-msgstr "Erzeuge 2048-bit Diffie-Hellman-Parameter…"
+msgstr ""
 
 #: infinoted/infinoted-directory-sync.c:167
 #, c-format
@@ -87,12 +87,12 @@ msgstr ""
 #: infinoted/infinoted-note-plugin.c:157
 #, c-format
 msgid "Loaded plugin \"%s\" (%s)"
-msgstr "Erweiterung »%s« (%s) geladen"
+msgstr ""
 
 #: infinoted/infinoted-note-plugin.c:177
 #, c-format
 msgid "Path \"%s\" does not contain any note plugins"
-msgstr ""
+msgstr "El camí «%s» no conté cap connector de notes"
 
 #: infinoted/infinoted-options.c:91
 #, c-format
@@ -100,8 +100,6 @@ msgid ""
 "\"%s\" is not a valid security policy. Allowed values are \"no-tls\", "
 "\"allow-tls\" or \"require-tls\""
 msgstr ""
-"»%s« ist keine gültige Sicherheitsrichtlinie. Mögliche Werte sind »no-tls«, "
-"»allow-tls« oder »require-tls«"
 
 #: infinoted/infinoted-options.c:121
 msgid "Interval must not be negative"
@@ -111,8 +109,6 @@ msgstr ""
 #, c-format
 msgid "\"%d\" is not a valid port number. Port numbers range from 1 to 65535"
 msgstr ""
-"»%d« ist keine gültige Portnummer. Gültige Portnummern liegen zwischen 1 und "
-"65535"
 
 #: infinoted/infinoted-options.c:407
 msgid "Requiring password through unencrypted connection."
@@ -123,8 +119,6 @@ msgid ""
 "Creating a new private key also requires creating a new certificate signed "
 "with it."
 msgstr ""
-"Einen neuen privaten Schlüssel zu erstellen erfordert auch ein zugehöriges "
-"Zertifikat zu erstellen das damit signiert ist."
 
 #: infinoted/infinoted-options.c:432
 msgid ""
@@ -132,10 +126,6 @@ msgid ""
 "create one using the --create-key command line argument, or disable TLS by "
 "setting the security policy to \"no-tls\"."
 msgstr ""
-"Es wurde keine private Schlüsseldatei angegeben. Wenn keine passende Datei "
-"vorliegt können Sie entweder eine mit dem Kommandozeilen-Argument --create-"
-"key erstellen oder TLS durch Setzen der Sicherheitsrichtlinie auf »no-tls« "
-"deaktivieren."
 
 #: infinoted/infinoted-options.c:447
 msgid ""
@@ -143,10 +133,6 @@ msgid ""
 "either create one using the --create-certificate command line agument, or "
 "disable TLS via by setting the security policy to \"no-tls\"."
 msgstr ""
-"Keine Zertifikatsdatei angegeben. Wenn keine passende Datei vorliegt können "
-"Sie entweder eine mit dem Kommandozeilen-Argument --create-certificate "
-"erstellen oder TLS durch Setzen der Sicherheitsrichtlinie auf »no-tls« "
-"deaktivieren."
 
 #: infinoted/infinoted-options.c:462
 msgid ""
@@ -166,19 +152,19 @@ msgstr ""
 
 #: infinoted/infinoted-options.c:517
 msgid "The server's private key"
-msgstr "Die private Schlüsseldatei des Servers"
+msgstr ""
 
 #: infinoted/infinoted-options.c:517
 msgid "KEY-FILE"
-msgstr "SCHLÜSSELDATEI"
+msgstr ""
 
 #: infinoted/infinoted-options.c:520
 msgid "The server's certificate"
-msgstr "Das Zertifikat des Servers"
+msgstr ""
 
 #: infinoted/infinoted-options.c:520
 msgid "CERTIFICATE-FILE"
-msgstr "ZERTIFIKATSDATEI"
+msgstr ""
 
 #: infinoted/infinoted-options.c:523
 msgid "The certificates chain down to the root certificate"
@@ -186,17 +172,15 @@ msgstr ""
 
 #: infinoted/infinoted-options.c:526
 msgid "Creates a new random private key"
-msgstr "Erstellt einen neuen zufälligen privaten Schlüssel"
+msgstr ""
 
 #: infinoted/infinoted-options.c:529
 msgid "Creates a new self-signed certificate using the given key"
 msgstr ""
-"Erstellt ein neues selbstsigniertes Zertifikat mit Hilfe des angegeben "
-"Schlüssels"
 
 #: infinoted/infinoted-options.c:532
 msgid "The port number to listen on"
-msgstr ""
+msgstr "El número de port on escoltar"
 
 #: infinoted/infinoted-options.c:532
 msgid "PORT"
@@ -208,22 +192,20 @@ msgstr ""
 
 #: infinoted/infinoted-options.c:538
 msgid "The directory to store documents into"
-msgstr "Das Verzeichnis in dem die Dokumente gespeichert werden sollen"
+msgstr ""
 
 #: infinoted/infinoted-options.c:538 infinoted/infinoted-options.c:549
 msgid "DIRECTORY"
-msgstr "VERZEICHNIS"
+msgstr "DIRECTORI"
 
 #: infinoted/infinoted-options.c:541
 msgid ""
 "Interval within which to save documents, in seconds, or 0 to disable autosave"
 msgstr ""
-"Zeitabstand in Sekunden in dem Dokumente automatisch gespeichert werden, "
-"oder 0 um automatische Speicherung abzuschalten"
 
 #: infinoted/infinoted-options.c:542 infinoted/infinoted-options.c:554
 msgid "INTERVAL"
-msgstr "INTERVALL"
+msgstr "INTERVAL"
 
 #: infinoted/infinoted-options.c:545
 msgid "Require given password on connections"
@@ -267,7 +249,7 @@ msgstr ""
 #: infinoted/infinoted-record.c:45
 #, c-format
 msgid "Error while writing record for session \"%s\" into \"%s\": %s"
-msgstr "Fehler beim Speichern der Aufnahme für die Sitzung »%s« nach »%s«: %s"
+msgstr ""
 
 #: infinoted/infinoted-record.c:86
 #, c-format
@@ -275,14 +257,11 @@ msgid ""
 "Could not create record file for session \"%s\": Could not generate unused "
 "record file in directory \"%s\""
 msgstr ""
-"Die Aufnahmedatei für die Sitzung »%s« konnte nicht erstellt werden, da keine "
-"unbenutzte Aufnahmedatei im Verzeichnis »%s« erzeugt werden konnte"
 
 #: infinoted/infinoted-record.c:98
 #, c-format
 msgid "Could not create record file directory \"%s\": %s"
 msgstr ""
-"Das Verzeichnis für die Aufnahmedateien »%s« konnte nicht erstellt werden: %s"
 
 #: infinoted/infinoted-run.c:338
 #, c-format
@@ -292,7 +271,7 @@ msgstr ""
 #: infinoted/infinoted-run.c:353
 #, c-format
 msgid "IPv6 Server running on port %u"
-msgstr "Der IPv6-Server läuft auf dem Port %u"
+msgstr ""
 
 #: infinoted/infinoted-run.c:358
 #, c-format
@@ -302,7 +281,7 @@ msgstr ""
 #: infinoted/infinoted-run.c:377
 #, c-format
 msgid "IPv4 Server running on port %u"
-msgstr "Der IPv4-Server läuft auf dem Port %u"
+msgstr ""
 
 #: infinoted/infinoted-run.c:382
 #, c-format
@@ -335,53 +314,53 @@ msgstr ""
 #. TODO: Open the key file beforehand
 #: infinoted/infinoted-startup.c:57
 msgid "Generating 2048 bit RSA private key..."
-msgstr "Erzeuge einen 2048-bit starken privaten RSA-Schlüssel…"
+msgstr ""
 
 #: infinoted/infinoted-startup.c:95
 msgid "Generating self-signed certificate..."
-msgstr "Erzeuge ein selbstsigniertes Zertifikat…"
+msgstr ""
 
 #: infinoted/infinoted-util.c:110
 #, c-format
 msgid "Could not create directory \"%s\": %s"
-msgstr "Das Verzeichnis »%s« konnte nicht erstellt werden: %s"
+msgstr ""
 
 #: libinfgtk/inf-gtk-browser-store.c:625
 msgid "Disconnected"
-msgstr "Verbindung getrennt"
+msgstr "Desconnectat"
 
 #: libinfgtk/inf-gtk-browser-view.c:2074
 msgid "Exploring..."
-msgstr "Erkunde…"
+msgstr ""
 
 #: libinfgtk/inf-gtk-browser-view.c:2108
 msgid "Synchronizing..."
-msgstr "Synchronisiere…"
+msgstr "S'està sincronitzant..."
 
 #: libinfgtk/inf-gtk-browser-view.c:2181
 msgid "Not connected"
-msgstr "Nicht verbunden"
+msgstr "No connectat"
 
 #: libinfgtk/inf-gtk-browser-view.c:2192
 msgid "Connecting..."
-msgstr "Verbindung wird hergestellt ..."
+msgstr "S'està connectant..."
 
 #: libinfgtk/inf-gtk-browser-view.c:2202
 msgid "Connected"
-msgstr "Verbunden"
+msgstr "Connectat"
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:87
 #, c-format
 msgid "The connection to host \"%s\" is not considered secure"
-msgstr "Die Verbindung zu »%s« wird als unsicher eingestuft"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:116
 msgid "The certificate of the host has changed!"
-msgstr "Das SZertifikats des Servers hat sich geändert!"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:128
 msgid "The previous certificate of the server has expired."
-msgstr "Das vorherige Zertifikat des Servers ist abgelaufen."
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:138
 msgid ""
@@ -389,22 +368,18 @@ msgid ""
 "also possible that the host just has got a new certificate. However, please "
 "only continue the connection if you expected this warning."
 msgstr ""
-"Es ist möglich dass die Verbindung zum Server abgehört oder manipuliert "
-"wird. Es kann aber auch sein dass der Server einfach ein neues Zertifikat "
-"installiert hat. Fahren Sie in jedem Fall bitte nur fort wenn Sie diese "
-"Warnung erwartet haben."
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:154
 msgid "The certificate issuer is not trusted."
-msgstr "Dem Aussteller des Zertifikats wird nicht vertraut."
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:160
 msgid "The certificate is self-signed."
-msgstr "Das Zertifikat ist selbstsigniert."
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:170
 msgid "The certificate is invalid!"
-msgstr "Das Zertifikat ist ungültig!"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:186
 #, c-format
@@ -412,35 +387,32 @@ msgid ""
 "The hostname of the server, \"%s\", does not match the hostname the "
 "certificate is issued to, \"%s\"."
 msgstr ""
-"Der Name des Servers, »%s«, passt nicht zu dem Namen »%s« auf den das "
-"Zertifikat ausgestellt ist."
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:205
 #, c-format
 msgid "The certificate has expired. The expiration date was %s"
-msgstr "Das Zertifikat ist abgelaufen. Das Ablaufdatum war %s"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:222
 #, c-format
 msgid "The certificate has not yet been activated. Activation date is %s"
 msgstr ""
-"Das Zertifikat wurde noch nicht aktiviert. Das Aktivierungsdatum ist %s"
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:388
 msgid "<Unknown Certificate Holder>"
-msgstr "<Unbekannter Zertifikateigentümer>"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:443
 msgid "Certificate Chain"
-msgstr "Zertifikatskette"
+msgstr "Cadena de certificats"
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:553
 msgid "_View Certificate"
-msgstr "_Zertifikat anzeigen"
+msgstr "_Visualitza el certificat"
 
 #: libinfgtk/inf-gtk-certificate-dialog.c:590
 msgid "Connection not secure"
-msgstr "Unsichere Verbindung"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-manager.c:284
 #: libinfgtk/inf-gtk-certificate-manager.c:301
@@ -465,16 +437,16 @@ msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-manager.c:552
 msgid "_Cancel connection"
-msgstr "Verbindung abbre_chen"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-manager.c:563
 msgid "C_ontinue connection"
-msgstr "Verbindung f_ortsetzen"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-manager.c:572
 #, c-format
 msgid "Do you want to continue the connection to host %s?"
-msgstr "Wollen Sie die Verbindung zu %s fortsetzen?"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-manager.c:590
 #, c-format
@@ -487,72 +459,72 @@ msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-view.c:221
 msgid "Issued To"
-msgstr "Ausgestellt an"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-view.c:222
 #: libinfgtk/inf-gtk-certificate-view.c:233
 msgid "Common Name:"
-msgstr "Common-Name:"
+msgstr ""
 
 #: libinfgtk/inf-gtk-certificate-view.c:223
 #: libinfgtk/inf-gtk-certificate-view.c:234
 msgid "Organization:"
-msgstr "Organisation:"
+msgstr "Organització:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:224
 #: libinfgtk/inf-gtk-certificate-view.c:235
 msgid "Organizational Unit:"
-msgstr "Organisationseinheit:"
+msgstr "Unitat organitzativa:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:225
 msgid "Serial Number:"
-msgstr "Seriennummer:"
+msgstr "Número de sèrie:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:232
 msgid "Issued By"
-msgstr "Ausgestellt von"
+msgstr "Emès per"
 
 #: libinfgtk/inf-gtk-certificate-view.c:242
 msgid "Validity"
-msgstr "Gültigkeit"
+msgstr "Validesa"
 
 #: libinfgtk/inf-gtk-certificate-view.c:243
 msgid "Issued On:"
-msgstr "Ausgestellt am:"
+msgstr "Emès el:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:244
 msgid "Expires On:"
-msgstr "Läuft aus:"
+msgstr "Venç el:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:251
 msgid "Fingerprints"
-msgstr "Fingerabdrücke"
+msgstr "Empremtes"
 
 #: libinfgtk/inf-gtk-certificate-view.c:252
 msgid "SHA1 Fingerprint:"
-msgstr "SHA1-Fingerabdruck:"
+msgstr "Empremta SHA1:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:253
 msgid "MD5 Fingerprint:"
-msgstr "MD5-Fingerabdruck:"
+msgstr "Empremta MD5:"
 
 #: libinfgtk/inf-gtk-certificate-view.c:271
 msgid "General"
-msgstr "Allgemeines"
+msgstr "General"
 
 #: libinfgtk/inf-gtk-chat.c:199
 #, c-format
 msgid "%s has joined"
-msgstr "%s ist beigetreten"
+msgstr ""
 
 #: libinfgtk/inf-gtk-chat.c:206
 #, c-format
 msgid "%s has left"
-msgstr "%s ist gegangen"
+msgstr ""
 
 #: libinfgtk/inf-gtk-chat.c:759
 msgid "Send"
-msgstr ""
+msgstr "Envia"
 
 #: libinfinity/adopted/inf-adopted-concurrency-warning.c:29
 #, c-format
