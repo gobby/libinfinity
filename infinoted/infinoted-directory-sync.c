@@ -241,7 +241,7 @@ infinoted_directory_sync_add_session(InfinotedDirectorySync* dsync,
       g_set_error(
         error,
         infinoted_directory_sync_error_quark(),
-        INFINOTED_DIRECTORY_SYNC_ERROR_INVALID_PATH
+        INFINOTED_DIRECTORY_SYNC_ERROR_INVALID_PATH,
         _("Node \"%s\" contains invalid characters"),
         iter_path
       );
