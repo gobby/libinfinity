@@ -31,6 +31,7 @@
 
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-error.h>
 
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
@@ -450,7 +451,20 @@ inf_chat_session_receive_message(InfChatSession* session,
   if(!inf_chat_session_message_from_xml(session, &message, xml, sync, error))
     return FALSE;
 
-  /* TODO: Check user connection! */
+  if(inf_user_get_status(message.user) == INF_USER_UNAVAILABLE ||
+     inf_user_get_connection(message.user) != connection)
+  {
+    g_set_error(
+      error,
+      inf_user_error_quark(),
+      INF_USER_ERROR_NOT_JOINED,
+      "%s",
+      _("User did not join from this connection")
+    );
+
+    g_free(message.text);
+    return FALSE;
+  }
 
   g_signal_emit(
     session,

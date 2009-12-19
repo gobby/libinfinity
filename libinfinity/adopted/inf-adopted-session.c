@@ -22,6 +22,7 @@
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
@@ -963,7 +964,19 @@ inf_adopted_session_process_xml_run(InfSession* session,
     if(user == NULL)
       return INF_COMMUNICATION_SCOPE_PTP;
 
-    /* TODO: Check user connection! */
+    if(inf_user_get_status(INF_USER(user)) == INF_USER_UNAVAILABLE ||
+       inf_user_get_connection(INF_USER(user)) != connection)
+    {
+      g_set_error(
+        error,
+        inf_user_error_quark(),
+        INF_USER_ERROR_NOT_JOINED,
+        "%s",
+        _("User did not join from this connection")
+      );
+
+      return INF_COMMUNICATION_SCOPE_PTP;
+    }
 
     local_error = NULL;
     has_num = inf_xml_util_get_attribute_uint(xml, "num", &num, &local_error);

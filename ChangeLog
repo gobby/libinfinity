@@ -1,5 +1,12 @@
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-chat-session.c:
+	* libinfinity/adopted/inf-adopted-session.c: Deny operation if the
+	user has not joined from the connection from which the request is
+	received.
+
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-algorithm.c: Added a TODO comment
 	about not considering translation against inactive users.
 
