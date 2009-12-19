@@ -1,3 +1,8 @@
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-algorithm.c: Added a TODO comment
+	about not considering translation against inactive users.
+
 2009-12-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-filesystem-storage.c

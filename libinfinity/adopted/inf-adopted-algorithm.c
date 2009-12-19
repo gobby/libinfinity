@@ -68,6 +68,11 @@
 
 /* TODO: Do only cleanup if too much entries in cache? */
 
+/* TODO: If users are not issuing any requests for some time, and we can be
+ * sure that we do not need to transform any requests, then remove them from
+ * the users array (users_begin, users_end). Readd users as soon as they
+ * issue buffer-altering requests. */
+
 typedef struct _InfAdoptedAlgorithmLocalUser InfAdoptedAlgorithmLocalUser;
 struct _InfAdoptedAlgorithmLocalUser {
   InfAdoptedUser* user;
