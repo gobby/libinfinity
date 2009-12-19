@@ -132,6 +132,9 @@ struct _InfXmppConnectionPrivate {
   Gsasl* sasl_context;
   Gsasl* sasl_own_context;
   Gsasl_session* sasl_session;
+  /* mechanism in use. TODO: use gsasl_mechanism_name as soon as we bump
+   * gsasl dependency to 0.2.28. */
+  gchar* sasl_mechanism;
   gchar* sasl_mechanisms;
 };
 
@@ -628,8 +631,12 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
 
   if(priv->sasl_session != NULL)
   {
+    g_assert(priv->sasl_mechanism != NULL);
+
     gsasl_finish(priv->sasl_session);
     priv->sasl_session = NULL;
+    g_free(priv->sasl_mechanism);
+    priv->sasl_mechanism = NULL;
   }
 
   if(priv->session != NULL)
@@ -1253,6 +1260,7 @@ inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->sasl_session != NULL);
+  g_assert(priv->sasl_mechanism != NULL);
 
   error = NULL;
   inf_gsasl_set_error(&error, code);
@@ -1262,6 +1270,8 @@ inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
 
   gsasl_finish(priv->sasl_session);
   priv->sasl_session = NULL;
+  g_free(priv->sasl_mechanism);
+  priv->sasl_mechanism = NULL;
 
   if(priv->site == INF_XMPP_CONNECTION_SERVER)
   {
@@ -1329,7 +1339,7 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
   InfXmppConnectionPrivate* priv;
   int ret;
   GError* error;
- 
+
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   if(priv->sasl_context == NULL)
@@ -1366,8 +1376,12 @@ inf_xmpp_connection_sasl_finish(InfXmppConnection* xmpp)
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->sasl_session != NULL);
+  g_assert(priv->sasl_mechanism != NULL);
+
   gsasl_finish(priv->sasl_session);
   priv->sasl_session = NULL;
+  g_free(priv->sasl_mechanism);
+  priv->sasl_mechanism = NULL;
 
   /* Authentication done, switch to AUTH_CONNECTED */
   priv->status = INF_XMPP_CONNECTION_AUTH_CONNECTED;
@@ -1458,6 +1472,7 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
 
   g_assert(priv->sasl_context != NULL);
   g_assert(priv->sasl_session == NULL);
+  g_assert(priv->sasl_mechanism == NULL);
 
   switch(priv->site)
   {
@@ -1479,6 +1494,7 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
       mechanism,
       &priv->sasl_session
     );
+
     break;
   case INF_XMPP_CONNECTION_SERVER:
     g_assert(priv->status == INF_XMPP_CONNECTION_INITIATED);
@@ -1487,6 +1503,7 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
       mechanism,
       &priv->sasl_session
     );
+
     break;
   default:
     g_assert_not_reached();
@@ -1504,6 +1521,8 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
      * using the builtin context). */
     gsasl_session_hook_set(priv->sasl_session, xmpp);
     priv->status = INF_XMPP_CONNECTION_AUTHENTICATING;
+
+    priv->sasl_mechanism = g_strdup(mechanism);
 
     /* Begin on server site */
     if(priv->site == INF_XMPP_CONNECTION_SERVER)
@@ -2050,7 +2069,7 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
   xmlNodePtr child;
   xmlChar* content;
   Gsasl_session* old_session;
-  const gchar* old_mechanism;
+  gchar* old_mechanism;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
@@ -2083,23 +2102,28 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
         /* Remove SASL session, but delay finishing it for a bit so that we
          * can pass on the mechanism to the new session. */
         g_assert(priv->sasl_session != NULL);
+        g_assert(priv->sasl_mechanism != NULL);
         old_session = priv->sasl_session;
         priv->sasl_session = NULL;
 
-        old_mechanism = gsasl_mechanism_name(old_session);
-        g_assert(old_mechanism != NULL);
+        old_mechanism = priv->sasl_mechanism;
+        priv->sasl_mechanism = NULL;
 
         priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
         inf_xmpp_connection_sasl_init(xmpp, old_mechanism);
 
         gsasl_finish(old_session);
+        g_free(old_mechanism);
       }
       else
       {
         /* Remove SASL session */
         g_assert(priv->sasl_session != NULL);
+        g_assert(priv->sasl_mechanism != NULL);
         gsasl_finish(priv->sasl_session);
         priv->sasl_session = NULL;
+        g_free(priv->sasl_mechanism);
+        priv->sasl_mechanism = NULL;
 
         inf_xmpp_connection_emit_auth_error(xmpp, auth_code);
 
@@ -3080,6 +3104,7 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->sasl_context = NULL;
   priv->sasl_own_context = NULL;
   priv->sasl_session = NULL;
+  priv->sasl_mechanism = NULL;
   priv->sasl_mechanisms = NULL;
 }
 

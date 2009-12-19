@@ -1,5 +1,11 @@
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c: Track used SASL mechanism,
+	instead of using gsasl_mechanism_name(), since the latter is only
+	available since gsasl 0.2.28.
+
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-util.c (infinoted_util_logv): On Windows,
 	convert the output from UTF-8 to the character set of the console.
 
