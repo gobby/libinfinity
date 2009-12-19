@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libinfinity\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-12-19 19:58+0100\n"
+"POT-Creation-Date: 2009-12-19 23:05+0100\n"
 "PO-Revision-Date: 2009-12-10 07:26+0000\n"
 "Last-Translator: David Planella <Unknown>\n"
 "Language-Team: Catalan <ca@li.org>\n"
@@ -68,7 +68,7 @@ msgid "Failed to wait for daemonized child's return value"
 msgstr ""
 
 #: infinoted/infinoted-main.c:97 infinoted/infinoted-main.c:115
-#: infinoted/infinoted-util.c:240
+#: infinoted/infinoted-util.c:257
 msgid "Failed to create PID file"
 msgstr ""
 
@@ -320,7 +320,7 @@ msgstr ""
 msgid "Generating self-signed certificate..."
 msgstr ""
 
-#: infinoted/infinoted-util.c:110
+#: infinoted/infinoted-util.c:127
 #, c-format
 msgid "Could not create directory \"%s\": %s"
 msgstr ""

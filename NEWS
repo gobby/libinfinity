@@ -1,3 +1,17 @@
+libinfinity 0.4.0:
+
+	* infinoted: Added the --password, --sync-directory, --sync-interval,
+	  --daemonize and --kill-daemon command line options.
+	* infinoted: Reload configuration file at runtime on SIGHUP
+	* Added an IRC-like chat, driven by InfChatSession.
+	* Added functionality to group undo requests to be undone in a
+	  single step.
+
+libinfinity 0.3.1:
+
+	* Avoid a crash when synchronizing a zero-length delete operation
+	* Fix sporadic disconnections on Windows
+
 libinfinity 0.3.0:
 
 	* infinoted: Added the --certificate-chain command line option.

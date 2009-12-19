@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libinfinity\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-12-19 19:58+0100\n"
+"POT-Creation-Date: 2009-12-19 23:05+0100\n"
 "PO-Revision-Date: 2009-11-28 11:36+0000\n"
 "Last-Translator: Armin Burgmeier <armin@arbur.net>\n"
 "Language-Team: German <de@li.org>\n"
@@ -68,7 +68,7 @@ msgid "Failed to wait for daemonized child's return value"
 msgstr ""
 
 #: infinoted/infinoted-main.c:97 infinoted/infinoted-main.c:115
-#: infinoted/infinoted-util.c:240
+#: infinoted/infinoted-util.c:257
 msgid "Failed to create PID file"
 msgstr ""
 
@@ -341,7 +341,7 @@ msgstr "Erzeuge einen 2048-bit starken privaten RSA-Schlüssel…"
 msgid "Generating self-signed certificate..."
 msgstr "Erzeuge ein selbstsigniertes Zertifikat…"
 
-#: infinoted/infinoted-util.c:110
+#: infinoted/infinoted-util.c:127
 #, c-format
 msgid "Could not create directory \"%s\": %s"
 msgstr "Das Verzeichnis »%s« konnte nicht erstellt werden: %s"
