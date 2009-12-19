@@ -1,5 +1,11 @@
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-chat-session.c
+	(inf_chat_session_receive_message): Accept messages not issued from
+	the corresponding's user's connection on synchronization.
+
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-certificate-manager.c: Change the wording of the
 	check button in the certificate dialog, to make clear that it only
 	affects whether to trust the certificate.

@@ -451,8 +451,9 @@ inf_chat_session_receive_message(InfChatSession* session,
   if(!inf_chat_session_message_from_xml(session, &message, xml, sync, error))
     return FALSE;
 
-  if(inf_user_get_status(message.user) == INF_USER_UNAVAILABLE ||
-     inf_user_get_connection(message.user) != connection)
+  if(!sync &&
+     (inf_user_get_status(message.user) == INF_USER_UNAVAILABLE ||
+      inf_user_get_connection(message.user) != connection))
   {
     g_set_error(
       error,
