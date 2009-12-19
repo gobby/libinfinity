@@ -138,8 +138,6 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
    * accepted the connection, then we will add the new certificate below. */
   if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
   {
-    /* TODO: Should we always do this, independant of the
-     * checkbutton setting? */
     if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(query->checkbutton)))
     {
       /* Make sure the certificate is not currently in use by
@@ -589,7 +587,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       );
 
       text = g_strdup_printf(
-        _("Remember the answer for future connections to host %s"),
+        _("Trust the certificate of host %s in the future"),
         hostname
       );
 
