@@ -1,5 +1,27 @@
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Post-release bump to 0.5.0.
+
+	* docs/reference/libinfinity/libinfinity-0.5-docs.sgml:
+	* docs/reference/libinfinity/libinfinity-0.5-overrides.txt:
+	* docs/reference/libinfinity/libinfinity-0.5-sections.txt:
+	* docs/reference/libinftext/libinftext-0.5-docs.sgml:
+	* docs/reference/libinftext/libinftext-0.5-overrides.txt:
+	* docs/reference/libinftext/libinftext-0.5-sections.txt:
+	* docs/reference/libinfgtk/libinfgtk-0.5-docs.sgml:
+	* docs/reference/libinfgtk/libinfgtk-0.5-overrides.txt:
+	* docs/reference/libinfgtk/libinfgtk-0.5-sections.txt:
+	* docs/reference/libinftextgtk/libinftextgtk-0.5-docs.sgml:
+	* docs/reference/libinftextgtk/libinftextgtk-0.5-overrides.txt:
+	* docs/reference/libinftextgtk/libinftextgtk-0.5-sections.txt:
+	* infinoted/Makefile.am:
+	* libinfgtk/Makefile.am:
+	* libinfinity/Makefile.am:
+	* libinftext/Makefile.am:
+	* libinftextgtk/Makefile.am: Bump API version to 0.5.
+
+2009-12-19  Armin Burgmeier  <armin@arbur.net>
+
 	* === Released 0.4.0 ===
 
 	* NEWS: Update for release.
