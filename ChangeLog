@@ -1,3 +1,8 @@
+2009-12-20  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-text-replay.c: Set connection for users that joined
+	later in the replay, to avoid the request being rejected.
+
 2009-12-19  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Post-release bump to 0.4.1.
