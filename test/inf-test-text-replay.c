@@ -32,6 +32,7 @@
 #include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/common/inf-simulated-connection.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-io.h>
 
 #include <libxml/xmlreader.h>
@@ -399,6 +400,7 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
                                    GSList** undo_groupings,
                                    InfCommunicationGroup* publisher_group,
                                    InfXmlConnection* publisher,
+                                   InfXmlConnection* client,
                                    GError** error)
 {
   InfSessionClass* session_class;
@@ -407,6 +409,8 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
   InfUser* user;
   guint i;
   InfTextUndoGrouping* grouping;
+  GParameter* param;
+  guint user_id;
 
   session_class = INF_SESSION_GET_CLASS(session);
 
@@ -417,6 +421,27 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
 
     if(strcmp((const char*)cur->name, "request") == 0)
     {
+      /* TODO: Add user join/leaves to record. */
+      /* Until that is done, make users available when they issue a request */
+      if(!inf_xml_util_get_attribute_uint_required(cur, "user", &user_id, error))
+        return FALSE;
+
+      user = inf_user_table_lookup_user_by_id(
+        inf_session_get_user_table(session),
+        user_id
+      );
+      g_assert(user);
+
+      if(inf_user_get_status(user) == INF_USER_UNAVAILABLE)
+      {
+        g_object_set(
+          G_OBJECT(user),
+          "status", INF_USER_ACTIVE,
+          "connection", client,
+          NULL
+        );
+      }
+
       inf_communication_group_send_group_message(
         publisher_group,
         xmlCopyNode(cur, 1)
@@ -429,6 +454,12 @@ inf_test_text_replay_play_requests(xmlTextReaderPtr reader,
     {
       /* User join */
       user_props = session_class->get_xml_user_props(session, publisher, cur);
+      param = inf_session_get_user_property(user_props, "connection");
+      if(!G_IS_VALUE(&param->value))
+      {
+        g_value_init(&param->value, INF_TYPE_XML_CONNECTION);
+        g_value_set_object(&param->value, G_OBJECT(client));
+      }
 
       user = inf_session_add_user(
         session,
@@ -496,6 +527,7 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
                           InfSession* session,
                           InfCommunicationGroup* publisher_group,
                           InfXmlConnection* publisher,
+                          InfXmlConnection* client,
                           GError** error)
 {
   gboolean result;
@@ -602,6 +634,7 @@ inf_test_text_replay_play(xmlTextReaderPtr reader,
     &data.undo_groupings,
     publisher_group,
     publisher,
+    client,
     error
   );
 
@@ -725,6 +758,7 @@ inf_test_text_replay_process(xmlTextReaderPtr reader)
     INF_SESSION(session),
     INF_COMMUNICATION_GROUP(publisher_group),
     INF_XML_CONNECTION(publisher),
+    INF_XML_CONNECTION(client),
     &error
   );
 
