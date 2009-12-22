@@ -1,3 +1,9 @@
+2009-12-22  Armin Burgmeier  <armin@arbur.net>
+
+	* test/Makefile.am: Added inf-test-xmpp-server to build.
+
+	* test/inf-test-xmpp-server.c: Adapt to latest libinfinity API.
+
 2009-12-20  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-text-replay.c: Set connection for users that joined

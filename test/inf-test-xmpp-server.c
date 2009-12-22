@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
   server = g_object_new(
     INFD_TYPE_TCP_SERVER,
     "io", io,
-    "local-port", 5222,
+    "local-port", 5223,
     NULL
   );
 
@@ -158,7 +158,13 @@ int main(int argc, char* argv[])
   }
   else
   {
-    xmpp = infd_xmpp_server_new(server, "localhost", NULL, NULL);
+    xmpp = infd_xmpp_server_new(
+      server,
+      INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
+      NULL,
+      NULL,
+      NULL
+    );
 
     g_signal_connect(
       G_OBJECT(xmpp),

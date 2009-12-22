@@ -15,9 +15,10 @@ AM_CPPFLAGS += \
 endif
 
 noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
-	inf-test-tcp-server inf-test-daemon inf-test-browser inf-test-chat \
-	inf-test-state-vector inf-test-chunk inf-test-text-operations \
-	inf-test-text-session inf-test-text-cleanup inf-test-text-replay
+	inf-test-tcp-server inf-test-xmpp-server inf-test-daemon \
+	inf-test-browser inf-test-chat inf-test-state-vector inf-test-chunk \
+	inf-test-text-operations inf-test-text-session inf-test-text-cleanup \
+	inf-test-text-replay
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
@@ -39,6 +40,12 @@ inf_test_tcp_server_SOURCES = \
 	inf-test-tcp-server.c
 
 inf_test_tcp_server_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la
+
+inf_test_xmpp_server_SOURCES = \
+	inf-test-xmpp-server.c
+
+inf_test_xmpp_server_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la
 
 inf_test_daemon_SOURCES = \
