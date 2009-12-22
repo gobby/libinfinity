@@ -24,6 +24,7 @@
 
 #include <glib-object.h>
 
+#include <unistd.h> /* Get ssize_t on MSVC, required by gnutls.h */
 #include <gnutls/gnutls.h>
 
 G_BEGIN_DECLS

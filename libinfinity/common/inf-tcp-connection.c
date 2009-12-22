@@ -24,6 +24,8 @@
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <unistd.h> /* For ssize_t */
+
 #include "config.h"
 
 #ifndef G_OS_WIN32
@@ -534,8 +536,10 @@ inf_tcp_connection_set_property(GObject* object,
 {
   InfTcpConnection* connection;
   InfTcpConnectionPrivate* priv;
+#ifndef G_OS_WIN32
   const gchar* device_string;
   unsigned int new_index;
+#endif
 
   connection = INF_TCP_CONNECTION(object);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);

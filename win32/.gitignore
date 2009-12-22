@@ -1,0 +1,8 @@
+*.vcproj*.user
+debug
+Debug
+release
+Release
+libinfinity.suo
+libinfinity.ncb
+gendef

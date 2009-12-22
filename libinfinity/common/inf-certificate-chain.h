@@ -20,6 +20,7 @@
 #ifndef __INF_CERTIFICATE_CHAIN_H__
 #define __INF_CERTIFICATE_CHAIN_H__
 
+#include <unistd.h> /* Get ssize_t on MSVC, required by gnutls.h */
 #include <gnutls/gnutls.h>
 
 #include <glib-object.h>

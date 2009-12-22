@@ -20,6 +20,7 @@
 #include <libinfinity/common/inf-init.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <unistd.h> /* Get ssize_t on MSVC, required by gnutls.h */
 #include <gnutls/gnutls.h>
 #include <glib-object.h>
 

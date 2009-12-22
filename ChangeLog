@@ -1,5 +1,65 @@
 2009-12-22  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-cert-util.h:
+	* libinfinity/common/inf-certificate-chain.h:
+	* libinfinity/common/inf-certificate-credentials.h:
+	* libinfinity/common/inf-error.c:
+	* libinfinity/common/inf-init.c:
+	* libinfinity/common/inf-ip-address.c:
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfgtk/inf-gtk-certificate-view.h: Include <unistd.h> before
+	including <gnutls.h>, to make sure the definition of ssize_t is
+	available also when compiling with MSVC.
+
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/server/infd-tcp-server.c:
+	* libinfinity/server/infd-filesystem-storage.c: #ifdef-out some
+	variables not needed on Windows.
+
+	* win32/libinfinity/libinfinity.def:
+	* win32/libinftext/libinftext.def:
+	* win32/libinfgtk/libinfgtk.def:
+	* win32/libinftextgtk/libinftextgtk.def: Added module definition files
+	to create proper import libraries with MSVC.
+
+	* win32/libinfinity/inf-config.h:
+	* win32/libinfinity/inf-marshal.h:
+	* win32/libinfinity/inf-marshal.c:
+	* win32/config.h: Add static versions of files that would otherwise be
+	generated at the configure step, in order to be able to build
+	libinfinity with MSVC.
+
+	* win32/unistd.h: Added fake unistd.h, declaring ssize_t.
+
+	* win32/libinfinity/libinfinity.vcproj:
+	* win32/libinftext/libinftext.vcproj:
+	* win32/libinfgtk/libinfgtk.vcproj:
+	* win32/libinftextgtk/libinftextgtk.vcproj: Added MSVC project files
+	for libinfinity.
+
+	* win32/inf-test-browser/inf-test-browser.vcproj:
+	* win32/inf-test-chat/inf-test-chat.vcproj:
+	* win32/inf-test-chunk/inf-test-chunk.vcproj:
+	* win32/inf-test-daemon/inf-test-daemon.vcproj:
+	* win32/inf-test-gtk-browser/inf-test-gtk-browser.vcproj:
+	* win32/inf-test-state-vector/inf-test-state-vector.vcproj:
+	* win32/inf-test-tcp-connection/inf-test-tcp-connection.vcproj:
+	* win32/inf-test-tcp-server/inf-test-tcp-server.vcproj:
+	* win32/inf-test-text-cleanup/inf-test-text-cleanup.vcproj:
+	* win32/inf-test-text-operations/inf-test-text-operations.vcproj:
+	* win32/inf-test-text-replay/inf-test-text-replay.vcproj:
+	* win32/inf-test-text-session/inf-test-text-session.vcproj:
+	* win32/inf-test-xmpp-connection/inf-test-xmpp-connection.vcproj:
+	* win32/inf-test-xmpp-server/inf-test-xmpp-server.vcproj: Added MSVC
+	project files for its tests.
+
+	* win32/libinfinity.sln: Added a MSVC solution file containing all the
+	project files mentioned above.
+
+2009-12-22  Armin Burgmeier  <armin@arbur.net>
+
 	* test/Makefile.am: Added inf-test-xmpp-server to build.
 
 	* test/inf-test-xmpp-server.c: Adapt to latest libinfinity API.

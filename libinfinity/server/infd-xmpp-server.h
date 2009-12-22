@@ -24,6 +24,7 @@
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-certificate-credentials.h>
 
+#include <unistd.h> /* Get ssize_t on MSVC, required by gnutls.h */
 #include <gnutls/gnutls.h>
 #include <gsasl.h>
 

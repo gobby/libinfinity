@@ -32,7 +32,9 @@ struct _InfTestBrowser {
   InfStandaloneIo* io;
   InfXmppConnection* conn;
   InfcBrowser* browser;
+#ifndef G_OS_WIN32
   int input_fd;
+#endif
 
   InfcBrowserIter cwd;
 };
@@ -276,6 +278,7 @@ inf_test_browser_notify_status_cb(GObject* object,
   {
     printf("Connection established\n");
 
+#ifndef G_OS_WIN32
     inf_io_watch(
       INF_IO(test->io),
       &test->input_fd,
@@ -284,6 +287,7 @@ inf_test_browser_notify_status_cb(GObject* object,
       test,
       NULL
     );
+#endif
 
     /* Explore root node */
     infc_browser_iter_get_root(test->browser, &test->cwd);
@@ -309,8 +313,9 @@ main(int argc, char* argv[])
   g_type_init();
 
   test.io = inf_standalone_io_new();
+#ifndef G_OS_WIN32
   test.input_fd = STDIN_FILENO;
-
+#endif
   address = inf_ip_address_new_loopback4();
 
   error = NULL;

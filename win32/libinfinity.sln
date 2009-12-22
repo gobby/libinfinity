@@ -1,0 +1,191 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libinfinity", "libinfinity\libinfinity.vcproj", "{EECF755C-9D13-4F84-B172-CD0CE7D2E12A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libinftext", "libinftext\libinftext.vcproj", "{0E60248F-EDB5-40B3-8054-05C27C21F3BE}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libinfgtk", "libinfgtk\libinfgtk.vcproj", "{22A0CB47-E458-4421-A1A3-5BD7F0F3A704}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libinftextgtk", "libinftextgtk\libinftextgtk.vcproj", "{29025C54-41A7-4120-A1FE-31EF6D17C3DB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{22A0CB47-E458-4421-A1A3-5BD7F0F3A704} = {22A0CB47-E458-4421-A1A3-5BD7F0F3A704}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-browser", "inf-test-browser\inf-test-browser.vcproj", "{B63F08EC-7BE1-4CDD-970A-9A191AD807A6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-chat", "inf-test-chat\inf-test-chat.vcproj", "{2D5E811C-D4F1-40D2-92BB-4468476E6EA8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-chunk", "inf-test-chunk\inf-test-chunk.vcproj", "{BA75E6D6-3137-41EC-AD14-B559709A5FCB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-daemon", "inf-test-daemon\inf-test-daemon.vcproj", "{E76B4AEF-5E66-41DB-A360-21439AE855BC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-gtk-browser", "inf-test-gtk-browser\inf-test-gtk-browser.vcproj", "{7756564E-9949-4EDF-8612-C1F490316C0B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{29025C54-41A7-4120-A1FE-31EF6D17C3DB} = {29025C54-41A7-4120-A1FE-31EF6D17C3DB}
+		{22A0CB47-E458-4421-A1A3-5BD7F0F3A704} = {22A0CB47-E458-4421-A1A3-5BD7F0F3A704}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-state-vector", "inf-test-state-vector\inf-test-state-vector.vcproj", "{46EECC54-85DD-480D-89A2-EB3313E87D50}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-tcp-connection", "inf-test-tcp-connection\inf-test-tcp-connection.vcproj", "{489E8486-B7E7-45DF-AB91-B7A6E5619F86}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-tcp-server", "inf-test-tcp-server\inf-test-tcp-server.vcproj", "{F24CF008-6974-4582-84BD-4EBF6E0B9216}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-text-cleanup", "inf-test-text-cleanup\inf-test-text-cleanup.vcproj", "{409D0850-66AB-41E5-807E-41600C8535DA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-text-operations", "inf-test-text-operations\inf-test-text-operations.vcproj", "{A2A64098-5177-486E-8F6F-D7DCF65D2264}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-text-replay", "inf-test-text-replay\inf-test-text-replay.vcproj", "{39C935E9-FA44-42BC-B6F0-33866CDCBF12}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-text-session", "inf-test-text-session\inf-test-text-session.vcproj", "{1EE64BE4-CAA4-492C-A954-3AD064F9078D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-xmpp-connection", "inf-test-xmpp-connection\inf-test-xmpp-connection.vcproj", "{8BBB237A-7285-4389-9C62-7000E1705E82}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "inf-test-xmpp-server", "inf-test-xmpp-server\inf-test-xmpp-server.vcproj", "{6FA523CF-6DD1-4854-A3FB-E74D51EBF5C9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A} = {EECF755C-9D13-4F84-B172-CD0CE7D2E12A}
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE} = {0E60248F-EDB5-40B3-8054-05C27C21F3BE}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A}.Debug|Win32.Build.0 = Debug|Win32
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A}.Release|Win32.ActiveCfg = Release|Win32
+		{EECF755C-9D13-4F84-B172-CD0CE7D2E12A}.Release|Win32.Build.0 = Release|Win32
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE}.Debug|Win32.Build.0 = Debug|Win32
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE}.Release|Win32.ActiveCfg = Release|Win32
+		{0E60248F-EDB5-40B3-8054-05C27C21F3BE}.Release|Win32.Build.0 = Release|Win32
+		{22A0CB47-E458-4421-A1A3-5BD7F0F3A704}.Debug|Win32.ActiveCfg = Debug|Win32
+		{22A0CB47-E458-4421-A1A3-5BD7F0F3A704}.Debug|Win32.Build.0 = Debug|Win32
+		{22A0CB47-E458-4421-A1A3-5BD7F0F3A704}.Release|Win32.ActiveCfg = Release|Win32
+		{22A0CB47-E458-4421-A1A3-5BD7F0F3A704}.Release|Win32.Build.0 = Release|Win32
+		{29025C54-41A7-4120-A1FE-31EF6D17C3DB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{29025C54-41A7-4120-A1FE-31EF6D17C3DB}.Debug|Win32.Build.0 = Debug|Win32
+		{29025C54-41A7-4120-A1FE-31EF6D17C3DB}.Release|Win32.ActiveCfg = Release|Win32
+		{29025C54-41A7-4120-A1FE-31EF6D17C3DB}.Release|Win32.Build.0 = Release|Win32
+		{B63F08EC-7BE1-4CDD-970A-9A191AD807A6}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B63F08EC-7BE1-4CDD-970A-9A191AD807A6}.Debug|Win32.Build.0 = Debug|Win32
+		{B63F08EC-7BE1-4CDD-970A-9A191AD807A6}.Release|Win32.ActiveCfg = Release|Win32
+		{B63F08EC-7BE1-4CDD-970A-9A191AD807A6}.Release|Win32.Build.0 = Release|Win32
+		{2D5E811C-D4F1-40D2-92BB-4468476E6EA8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2D5E811C-D4F1-40D2-92BB-4468476E6EA8}.Debug|Win32.Build.0 = Debug|Win32
+		{2D5E811C-D4F1-40D2-92BB-4468476E6EA8}.Release|Win32.ActiveCfg = Release|Win32
+		{2D5E811C-D4F1-40D2-92BB-4468476E6EA8}.Release|Win32.Build.0 = Release|Win32
+		{BA75E6D6-3137-41EC-AD14-B559709A5FCB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BA75E6D6-3137-41EC-AD14-B559709A5FCB}.Debug|Win32.Build.0 = Debug|Win32
+		{BA75E6D6-3137-41EC-AD14-B559709A5FCB}.Release|Win32.ActiveCfg = Release|Win32
+		{BA75E6D6-3137-41EC-AD14-B559709A5FCB}.Release|Win32.Build.0 = Release|Win32
+		{E76B4AEF-5E66-41DB-A360-21439AE855BC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E76B4AEF-5E66-41DB-A360-21439AE855BC}.Debug|Win32.Build.0 = Debug|Win32
+		{E76B4AEF-5E66-41DB-A360-21439AE855BC}.Release|Win32.ActiveCfg = Release|Win32
+		{E76B4AEF-5E66-41DB-A360-21439AE855BC}.Release|Win32.Build.0 = Release|Win32
+		{7756564E-9949-4EDF-8612-C1F490316C0B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7756564E-9949-4EDF-8612-C1F490316C0B}.Debug|Win32.Build.0 = Debug|Win32
+		{7756564E-9949-4EDF-8612-C1F490316C0B}.Release|Win32.ActiveCfg = Release|Win32
+		{7756564E-9949-4EDF-8612-C1F490316C0B}.Release|Win32.Build.0 = Release|Win32
+		{46EECC54-85DD-480D-89A2-EB3313E87D50}.Debug|Win32.ActiveCfg = Debug|Win32
+		{46EECC54-85DD-480D-89A2-EB3313E87D50}.Debug|Win32.Build.0 = Debug|Win32
+		{46EECC54-85DD-480D-89A2-EB3313E87D50}.Release|Win32.ActiveCfg = Release|Win32
+		{46EECC54-85DD-480D-89A2-EB3313E87D50}.Release|Win32.Build.0 = Release|Win32
+		{489E8486-B7E7-45DF-AB91-B7A6E5619F86}.Debug|Win32.ActiveCfg = Debug|Win32
+		{489E8486-B7E7-45DF-AB91-B7A6E5619F86}.Debug|Win32.Build.0 = Debug|Win32
+		{489E8486-B7E7-45DF-AB91-B7A6E5619F86}.Release|Win32.ActiveCfg = Release|Win32
+		{489E8486-B7E7-45DF-AB91-B7A6E5619F86}.Release|Win32.Build.0 = Release|Win32
+		{F24CF008-6974-4582-84BD-4EBF6E0B9216}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F24CF008-6974-4582-84BD-4EBF6E0B9216}.Debug|Win32.Build.0 = Debug|Win32
+		{F24CF008-6974-4582-84BD-4EBF6E0B9216}.Release|Win32.ActiveCfg = Release|Win32
+		{F24CF008-6974-4582-84BD-4EBF6E0B9216}.Release|Win32.Build.0 = Release|Win32
+		{409D0850-66AB-41E5-807E-41600C8535DA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{409D0850-66AB-41E5-807E-41600C8535DA}.Debug|Win32.Build.0 = Debug|Win32
+		{409D0850-66AB-41E5-807E-41600C8535DA}.Release|Win32.ActiveCfg = Release|Win32
+		{409D0850-66AB-41E5-807E-41600C8535DA}.Release|Win32.Build.0 = Release|Win32
+		{A2A64098-5177-486E-8F6F-D7DCF65D2264}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A2A64098-5177-486E-8F6F-D7DCF65D2264}.Debug|Win32.Build.0 = Debug|Win32
+		{A2A64098-5177-486E-8F6F-D7DCF65D2264}.Release|Win32.ActiveCfg = Release|Win32
+		{A2A64098-5177-486E-8F6F-D7DCF65D2264}.Release|Win32.Build.0 = Release|Win32
+		{39C935E9-FA44-42BC-B6F0-33866CDCBF12}.Debug|Win32.ActiveCfg = Debug|Win32
+		{39C935E9-FA44-42BC-B6F0-33866CDCBF12}.Debug|Win32.Build.0 = Debug|Win32
+		{39C935E9-FA44-42BC-B6F0-33866CDCBF12}.Release|Win32.ActiveCfg = Release|Win32
+		{39C935E9-FA44-42BC-B6F0-33866CDCBF12}.Release|Win32.Build.0 = Release|Win32
+		{1EE64BE4-CAA4-492C-A954-3AD064F9078D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1EE64BE4-CAA4-492C-A954-3AD064F9078D}.Debug|Win32.Build.0 = Debug|Win32
+		{1EE64BE4-CAA4-492C-A954-3AD064F9078D}.Release|Win32.ActiveCfg = Release|Win32
+		{1EE64BE4-CAA4-492C-A954-3AD064F9078D}.Release|Win32.Build.0 = Release|Win32
+		{8BBB237A-7285-4389-9C62-7000E1705E82}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8BBB237A-7285-4389-9C62-7000E1705E82}.Debug|Win32.Build.0 = Debug|Win32
+		{8BBB237A-7285-4389-9C62-7000E1705E82}.Release|Win32.ActiveCfg = Release|Win32
+		{8BBB237A-7285-4389-9C62-7000E1705E82}.Release|Win32.Build.0 = Release|Win32
+		{6FA523CF-6DD1-4854-A3FB-E74D51EBF5C9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6FA523CF-6DD1-4854-A3FB-E74D51EBF5C9}.Debug|Win32.Build.0 = Debug|Win32
+		{6FA523CF-6DD1-4854-A3FB-E74D51EBF5C9}.Release|Win32.ActiveCfg = Release|Win32
+		{6FA523CF-6DD1-4854-A3FB-E74D51EBF5C9}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

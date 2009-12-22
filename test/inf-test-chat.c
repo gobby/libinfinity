@@ -34,7 +34,9 @@ struct _InfTestChat {
   InfStandaloneIo* io;
   InfXmppConnection* conn;
   InfcBrowser* browser;
+#ifndef G_OS_WIN32
   int input_fd;
+#endif
 
   InfChatBuffer* buffer;
   InfUser* self;
@@ -107,6 +109,7 @@ inf_test_chat_userjoin_finished_cb(InfcRequest* request,
 
   printf("User join complete. Start chatting!\n");
 
+#ifndef G_OS_WIN32
   inf_io_watch(
     INF_IO(test->io),
     &test->input_fd,
@@ -115,6 +118,7 @@ inf_test_chat_userjoin_finished_cb(InfcRequest* request,
     test,
     NULL
   );
+#endif
 
   test->self = user;
 }
@@ -331,7 +335,9 @@ main(int argc, char* argv[])
   g_type_init();
 
   test.io = inf_standalone_io_new();
+#ifndef G_OS_WIN32
   test.input_fd = STDIN_FILENO;
+#endif
   test.buffer = NULL;
 
   address = inf_ip_address_new_loopback4();

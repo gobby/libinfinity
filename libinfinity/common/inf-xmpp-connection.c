@@ -1397,7 +1397,7 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
 {
   InfXmppConnectionPrivate* priv;
   xmlNodePtr reply;
-  gchar* output;
+  char* output;
   int ret;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1439,7 +1439,7 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
         xmlFreeNode(reply);
       }
 
-      free(output);
+      gsasl_free(output);
     }
 
     /* Send authentication success to client when done */

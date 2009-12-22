@@ -727,10 +727,11 @@ infd_tcp_server_open(InfdTcpServer* server,
                      GError** error)
 {
   InfdTcpServerPrivate* priv;
-  int result;
 
 #ifdef G_OS_WIN32
   u_long argp;
+#else
+  int result;
 #endif
 
   g_return_val_if_fail(INFD_IS_TCP_SERVER(server), FALSE);

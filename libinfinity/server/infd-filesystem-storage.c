@@ -153,7 +153,6 @@ infd_filesystem_storage_remove_rec(const gchar* path,
 {
 #ifdef G_OS_WIN32
   SHFILEOPSTRUCTW op;
-  gchar* from_dup;
   gunichar2* from;
   glong len;
   gboolean result;

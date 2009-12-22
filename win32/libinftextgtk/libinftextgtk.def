@@ -1,0 +1,20 @@
+LIBRARY libinftextgtk.dll
+EXPORTS
+    inf_text_gtk_buffer_get_type
+    inf_text_gtk_buffer_new
+    inf_text_gtk_buffer_get_text_buffer
+    inf_text_gtk_buffer_set_active_user
+    inf_text_gtk_buffer_get_active_user
+    inf_text_gtk_buffer_get_author
+    inf_text_gtk_buffer_set_wake_on_cursor_movement
+    inf_text_gtk_buffer_get_wake_on_cursor_movement
+    inf_text_gtk_buffer_ensure_author_tags_priority
+    inf_text_gtk_buffer_set_saturation_value
+    inf_text_gtk_buffer_get_saturation
+    inf_text_gtk_buffer_get_value
+    inf_text_gtk_buffer_show_user_colors
+    inf_text_gtk_hue_chooser_get_type
+    inf_text_gtk_hue_chooser_new
+    inf_text_gtk_hue_chooser_new_with_hue
+    inf_text_gtk_hue_chooser_set_hue
+    inf_text_gtk_hue_chooser_get_hue
