@@ -260,7 +260,7 @@ inf_adopted_undo_grouping_cleanup(InfAdoptedUndoGrouping* grouping)
         inf_adopted_user_get_vector(priv->user)
       );
 
-      if(vdiff + priv->n_items - 1 >= max_total_log_size)
+      if(vdiff + priv->item_pos > max_total_log_size)
       {
         /* Request is too old to be undone, remove from buffer */
         if(priv->item_pos == 0)

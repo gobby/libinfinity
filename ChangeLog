@@ -1,3 +1,13 @@
+2009-12-24  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-undo-grouping.c
+	(inf_adopted_undo_grouping_cleanup): Don't throw away requests
+	prematurely, which might result in a failed assertion later when they
+	are needed. This happened when undoing a large number of requests.
+
+	* test/replay/replay-06.record.xml: Added a replay in which this
+	scenario occurs.
+
 2009-12-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-cert-util.h:
