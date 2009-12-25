@@ -314,6 +314,7 @@ inf_adopted_undo_grouping_execute_request_cb(InfAdoptedAlgorithm* algorithm,
 {
   InfAdoptedUndoGrouping* grouping;
   InfAdoptedUndoGroupingPrivate* priv;
+  guint user_id;
 
   /* Note that this signal handler is called _after_ the request has been
    * executed.  If the execution causes requests in the request log to be
@@ -325,8 +326,20 @@ inf_adopted_undo_grouping_execute_request_cb(InfAdoptedAlgorithm* algorithm,
 
   /* If the request does not affect the buffer then it did not increase the
    * state vector, in which case we don't need to check again here. */
-  if(priv->user != NULL && inf_adopted_request_affects_buffer(request))
-    inf_adopted_undo_grouping_cleanup(grouping);
+  if(priv->user != NULL)
+  {
+    user_id = inf_user_get_id(INF_USER(priv->user));
+
+    /* We need to do cleanup if our user issued this request, even if the
+     * request does not affect the buffer, since it raises that user's
+     * vector time, and thus might cause requests in its request log to be
+     * dropped. */
+    if(inf_adopted_request_affects_buffer(request) ||
+       inf_adopted_request_get_user_id(request) == user_id)
+    {
+      inf_adopted_undo_grouping_cleanup(grouping);
+    }
+  }
 }
 
 static void
