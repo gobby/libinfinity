@@ -1,3 +1,14 @@
+2009-12-26  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-session-replay.h:
+	* libinfinity/adopted/inf-adopted-session-replay.c:
+	* libinfinity/adopted/Makefile.am: Added the InfAdoptedSessionReplay
+	class, which can be used to replay a session recorded with
+	InfAdoptedSessionRecord.
+
+	* libinfinity/adopted/inf-adopted-session-record.c: Add a reference to
+	InfAdoptedSessionReplay in the docs.
+
 2010-01-31  Benjamin Herr  <ben@0x539.de>, Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:

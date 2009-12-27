@@ -16,6 +16,7 @@ libinfinity_adopted_la_SOURCES = \
 	inf-adopted-request-log.c \
 	inf-adopted-session.c \
 	inf-adopted-session-record.c \
+	inf-adopted-session-replay.c \
 	inf-adopted-split-operation.c \
 	inf-adopted-state-vector.c \
 	inf-adopted-undo-grouping.c \
@@ -29,6 +30,7 @@ libinfinity_adopted_la_HEADERS = \
 	inf-adopted-request-log.h \
 	inf-adopted-session.h \
 	inf-adopted-session-record.h \
+	inf-adopted-session-replay.h \
 	inf-adopted-split-operation.h \
 	inf-adopted-state-vector.h \
 	inf-adopted-undo-grouping.h \

@@ -37,7 +37,7 @@
  * @title: InfAdoptedSessionRecord
  * @short_description: Create a record of a session
  * @include: libinfinity/adopted/inf-adopted-session-record.h
- * @see_also: #InfAdoptedSession
+ * @see_also: #InfAdoptedSession, #InfAdoptedSessionReplay
  * @stability: Unstable
  *
  * #InfAdoptedSessionRecord creates a record of a #InfAdoptedSession. It
@@ -49,8 +49,8 @@
  * to make it easy to reproduce bugs in libinfinity. However, it might be
  * extended in the future.
  *
- * To replay a record, use the tool inf-test-text-replay in the infinote
- * test suite.
+ * To replay a record, use #InfAdoptedSessionReplay or the tool
+ * <literal>inf-test-text-replay</literal> in the infinote test suite.
  */
 
 /* TODO: Record user join/leave events, and update last send vectors on
@@ -89,7 +89,7 @@ inf_adopted_session_record_handle_xml_error(InfAdoptedSessionRecord* record)
 
   g_warning(
     /* Error writing record `<filename>': <Reason> */
-    _("Error writing record `%s': %s"),
+    _("Error writing record \"%s\": %s"),
     priv->filename,
     xmlerror->message
   );

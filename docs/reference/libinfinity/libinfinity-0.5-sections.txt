@@ -63,6 +63,27 @@ INF_ADOPTED_SESSION_RECORD_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-adopted-session-replay</FILE>
+<TITLE>InfAdoptedSessionReplay</TITLE>
+InfAdoptedSessionReplayError
+InfAdoptedSessionReplay
+InfAdoptedSessionReplayClass
+inf_adopted_session_replay_new
+inf_adopted_session_replay_set_record
+inf_adopted_session_replay_get_session
+inf_adopted_session_replay_play_next
+inf_adopted_session_replay_play_to_end
+<SUBSECTION Standard>
+INF_ADOPTED_SESSION_REPLAY
+INF_ADOPTED_IS_SESSION_REPLAY
+INF_ADOPTED_TYPE_SESSION_REPLAY
+inf_adopted_session_replay_get_type
+INF_ADOPTED_SESSION_REPLAY_CLASS
+INF_ADOPTED_IS_SESSION_REPLAY_CLASS
+INF_ADOPTED_SESSION_REPLAY_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>infc-browser</FILE>
 <TITLE>InfcBrowser</TITLE>
 InfcBrowserNodeStatus

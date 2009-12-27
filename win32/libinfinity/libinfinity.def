@@ -64,6 +64,12 @@ EXPORTS
     inf_adopted_session_record_start_recording
     inf_adopted_session_record_stop_recording
     inf_adopted_session_record_is_recording
+    inf_adopted_session_replay_get_type
+    inf_adopted_session_replay_new
+    inf_adopted_session_replay_set_record
+    inf_adopted_session_replay_get_session
+    inf_adopted_session_replay_play_next
+    inf_adopted_session_replay_play_to_end
     inf_adopted_session_get_type
     inf_adopted_session_get_io
     inf_adopted_session_get_algorithm
