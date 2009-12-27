@@ -409,7 +409,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
     n = inf_adopted_request_log_get_begin(log);
 
     /* Remove all sets of related requests whose upper related request has
-     * a large enough vdiff to lcp. */ 
+     * a large enough vdiff to lcp. */
     while(n < inf_adopted_request_log_get_end(log))
     {
       req = inf_adopted_request_log_upper_related(log, n);
@@ -2077,7 +2077,7 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedRequest* request;
-  
+
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
@@ -2102,10 +2102,10 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
     request,
     TRUE
   );
-  
+
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
-  
+
   return request;
 }
 
@@ -2128,7 +2128,7 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedRequest* request;
-  
+
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
   g_return_val_if_fail(
@@ -2155,7 +2155,7 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
-  
+
   return request;
 }
 
@@ -2178,7 +2178,7 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedRequest* request;
-  
+
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
   g_return_val_if_fail(
@@ -2205,7 +2205,7 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
-  
+
   return request;
 }
 

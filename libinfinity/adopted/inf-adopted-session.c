@@ -1515,12 +1515,12 @@ inf_adopted_session_read_request_info(InfAdoptedSession* session,
     *user = inf_adopted_session_user_from_request_xml(session, xml, error);
     if(*user == NULL) return FALSE;
   }
-  
+
   if(time != NULL)
   {
     attr = inf_xml_util_get_attribute_required(xml, "time", error);
     if(attr == NULL) return FALSE;
-    
+
     if(diff_vec == NULL)
     {
       *time = inf_adopted_state_vector_from_string((const gchar*)attr, error);
