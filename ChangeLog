@@ -1,3 +1,8 @@
+2009-12-27  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-text-replay.c: Reimplement using
+	InfAdoptedSessionReplay.
+
 2009-12-26  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-session-replay.h:
