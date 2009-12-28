@@ -1,3 +1,9 @@
+2009-12-28  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-reduce-replay.c:
+	* test/Makefile.am: Added a tool to reduce a erroneous replay to a
+	minimal testcase.
+
 2009-12-27  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-text-replay.c: Reimplement using
