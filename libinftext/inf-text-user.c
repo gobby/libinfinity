@@ -241,6 +241,40 @@ inf_text_user_get_type(void)
 }
 
 /**
+ * inf_text_user_new:
+ * @id: The user ID for this user.
+ * @name: The user's name.
+ * @vector: The state at which the user is at, or %NULL.
+ * @hue: The hue value of the user's color.
+ *
+ * Creates a new #InfTextUser. @id should be unique for all users working
+ * together. #InfUserTable will refuse to add users with duplicate id. If
+ * @vector is %NULL, then the vector with all components zero is used.
+ *
+ * Returns: A new #InfTextUser. Free with g_object_unref() when no longer
+ * needed.
+ */
+InfTextUser*
+inf_text_user_new(guint id,
+                  const gchar* name,
+                  InfAdoptedStateVector* vector,
+                  double hue)
+{
+  g_return_val_if_fail(name != NULL, NULL);
+
+  return INF_TEXT_USER(
+    g_object_new(
+      INF_TEXT_TYPE_USER,
+      "id", id,
+      "name", name,
+      "vector", vector,
+      "hue", hue,
+      NULL
+    )
+  );
+}
+
+/**
  * inf_text_user_get_caret_position:
  * @user: A #InfTextUser.
  *

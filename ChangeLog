@@ -1,3 +1,9 @@
+2010-01-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-user.h:
+	* libinftext/inf-text-user.c: Added inf_text_user_new(), to ease
+	language bindings.
+
 2009-12-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-undo-grouping.c

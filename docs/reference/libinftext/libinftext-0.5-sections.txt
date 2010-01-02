@@ -88,6 +88,7 @@ INF_TEXT_UNDO_GROUPING_GET_CLASS
 <FILE>inf-text-user</FILE>
 <TITLE>InfTextUser</TITLE>
 InfTextUser
+inf_text_user_new
 inf_text_user_get_caret_position
 inf_text_user_get_selection_length
 inf_text_user_set_selection

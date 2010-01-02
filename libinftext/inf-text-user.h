@@ -51,6 +51,12 @@ struct _InfTextUser {
 GType
 inf_text_user_get_type(void) G_GNUC_CONST;
 
+InfTextUser*
+inf_text_user_new(guint id,
+                  const gchar* name,
+                  InfAdoptedStateVector* vector,
+                  double hue);
+
 guint
 inf_text_user_get_caret_position(InfTextUser* user);
 
