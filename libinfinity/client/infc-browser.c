@@ -5104,6 +5104,31 @@ infc_browser_iter_from_explore_request(InfcBrowser* browser,
 }
 
 /**
+ * infc_browser_iter_is_valid:
+ * @browser: A #InfcBrowser.
+ * @iter: A #InfcBrowserIter.
+ *
+ * Returns whether @iter points to a valid node in @browser. This is
+ * generally the case for any #InfcBrowserIter returned by one of the
+ * InfcBrowser functions, it gets invalid however as soon as the node it
+ * points to is removed.
+ */
+gboolean
+infc_browser_iter_is_valid(InfcBrowser* browser,
+                           const InfcBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  gpointer node;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  if(!iter) return FALSE;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(iter->node_id));
+  return node != NULL && node == iter->node;
+}
+
+/**
  * infc_browser_subscribe_chat:
  * @browser: A #InfcBrowser.
  *

@@ -240,6 +240,10 @@ infc_browser_iter_from_explore_request(InfcBrowser* browser,
                                        InfcExploreRequest* request,
                                        InfcBrowserIter* iter);
 
+gboolean
+infc_browser_iter_is_valid(InfcBrowser* browser,
+                           const InfcBrowserIter* iter);
+
 /* TODO: This should not use InfcNodeRequest, but another request type
  * which is not identified with a node. */
 InfcNodeRequest*
