@@ -58,8 +58,12 @@ inf_test_chat_input_cb(InfNativeSocket* fd,
 
   if(io & INF_IO_INCOMING)
   {
-    fgets(buffer, sizeof(buffer), stdin);
-    if(strlen(buffer) != sizeof(buffer) || buffer[sizeof(buffer)-2] == '\n')
+    if(fgets(buffer, sizeof(buffer), stdin) == NULL)
+    {
+      inf_standalone_io_loop_quit(test->io);
+    }
+    else if(strlen(buffer) != sizeof(buffer) ||
+            buffer[sizeof(buffer)-2] == '\n')
     {
       buffer[strlen(buffer)-1] = '\0';
 
@@ -207,7 +211,8 @@ inf_chat_test_session_close_cb(InfSession* session,
   test = (InfTestChat*)user_data;
 
   printf("The server closed the chat session\n");
-  inf_standalone_io_loop_quit(test->io);
+  if(inf_standalone_io_loop_running(test->io))
+    inf_standalone_io_loop_quit(test->io);
 }
 
 static void
@@ -277,13 +282,13 @@ inf_test_chat_notify_status_cb(GObject* object,
                                gpointer user_data)
 {
   InfTestChat* test;
-  InfXmlConnectionStatus status;
+  InfcBrowserStatus status;
   InfcNodeRequest* request;
 
   test = (InfTestChat*)user_data;
-  g_object_get(G_OBJECT(test->conn), "status", &status, NULL);
+  status = infc_browser_get_status(test->browser);
 
-  if(status == INF_XML_CONNECTION_OPEN)
+  if(status == INFC_BROWSER_CONNECTED)
   {
     printf("Connection established, subscribing to chat...\n");
 
@@ -305,11 +310,11 @@ inf_test_chat_notify_status_cb(GObject* object,
     );
   }
 
-  if(status == INF_XML_CONNECTION_CLOSING ||
-     status == INF_XML_CONNECTION_CLOSED)
+  if(status == INFC_BROWSER_DISCONNECTED)
   {
     printf("Connection closed\n");
-    inf_standalone_io_loop_quit(test->io);
+    if(inf_standalone_io_loop_running(test->io))
+      inf_standalone_io_loop_quit(test->io);
   }
 }
 
@@ -366,20 +371,6 @@ main(int argc, char* argv[])
       NULL
     );
 
-    g_signal_connect_after(
-      G_OBJECT(test.conn),
-      "notify::status",
-      G_CALLBACK(inf_test_chat_notify_status_cb),
-      &test
-    );
-
-    g_signal_connect(
-      G_OBJECT(test.conn),
-      "error",
-      G_CALLBACK(inf_test_chat_error_cb),
-      &test
-    );
-
     g_object_unref(G_OBJECT(tcp_conn));
 
     manager = inf_communication_manager_new();
@@ -387,6 +378,20 @@ main(int argc, char* argv[])
       INF_IO(test.io),
       manager,
       INF_XML_CONNECTION(test.conn)
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(test.browser),
+      "notify::status",
+      G_CALLBACK(inf_test_chat_notify_status_cb),
+      &test
+    );
+
+    g_signal_connect(
+      G_OBJECT(test.browser),
+      "error",
+      G_CALLBACK(inf_test_chat_error_cb),
+      &test
     );
 
     inf_standalone_io_loop(test.io);

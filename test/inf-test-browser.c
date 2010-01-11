@@ -228,8 +228,12 @@ inf_test_browser_input_cb(InfNativeSocket* fd,
 
   if(io & INF_IO_INCOMING)
   {
-    fgets(buffer, sizeof(buffer), stdin);
-    if(strlen(buffer) != sizeof(buffer) || buffer[sizeof(buffer)-2] == '\n')
+    if(fgets(buffer, sizeof(buffer), stdin) == NULL)
+    {
+      inf_standalone_io_loop_quit(test->io);
+    }
+    else if(strlen(buffer) != sizeof(buffer) ||
+            buffer[sizeof(buffer)-2] == '\n')
     {
       buffer[strlen(buffer)-1] = '\0';
 
@@ -296,7 +300,8 @@ inf_test_browser_notify_status_cb(GObject* object,
 
   if(infc_browser_get_status(test->browser) == INFC_BROWSER_DISCONNECTED)
   {
-    inf_standalone_io_loop_quit(test->io);
+    if(inf_standalone_io_loop_running(test->io))
+      inf_standalone_io_loop_quit(test->io);
   }
 }
 

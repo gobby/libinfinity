@@ -1,5 +1,11 @@
 2010-02-11  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-browser.c:
+	* test/inf-test-chat.c: Check the result of fgets(). Bug #523 (Philipp
+	Kern).
+
+2010-02-11  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.h:
 	* libinfinity/client/infc-browser.c: Added
 	infc_browser_iter_is_valid(). Initial patch by Simon Veith.
