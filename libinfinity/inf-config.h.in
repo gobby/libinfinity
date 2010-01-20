@@ -26,3 +26,6 @@
 
 /* Whether libdaemon support is enabled */
 #undef LIBINFINITY_HAVE_LIBDAEMON
+
+/* Whether pam support is enabled */
+#undef LIBINFINITY_HAVE_PAM

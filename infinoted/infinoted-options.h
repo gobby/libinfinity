@@ -39,6 +39,9 @@ struct _InfinotedOptions {
   gchar* root_directory;
   guint autosave_interval;
   gchar* password;
+#ifdef LIBINFINITY_HAVE_PAM
+  gboolean use_pam;
+#endif /* LIBINFINITY_HAVE_PAM */
 
   gchar* sync_directory;
   guint sync_interval;

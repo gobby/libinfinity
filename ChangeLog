@@ -1,3 +1,13 @@
+2010-01-20  Benjamin Herr  <ben@0x539.de>
+
+	* configure.ac:
+	* libinfinity/inf-config.h.in:
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-startup.c: Add option to use pam to check
+	passwords instead of providing a server-wide one. No support for only
+	allowing certain users yet.
+
 2010-02-11  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-browser.c:

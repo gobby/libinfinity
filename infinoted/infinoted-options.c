@@ -398,15 +398,40 @@ infinoted_options_validate(InfinotedOptions* options,
                            GError** error)
 {
   InfXmppConnectionSecurityPolicy security_policy;
+  gboolean requires_password;
+
   security_policy = options->security_policy;
 
-  if(options->password != NULL &&
+#ifdef LIBINFINITY_HAVE_PAM
+  if(options->use_pam && geteuid() != 0)
+  {
+    infinoted_util_log_error(
+      _("Cannot use system authentication when not running as root.")
+    );
+    return FALSE;
+  }
+
+  if(options->password != NULL && options->use_pam)
+  {
+    infinoted_util_log_error(
+      _("Cannot use both server password and system authentication.")
+    );
+    return FALSE;
+  }
+
+#endif /* LIBINFINITY_HAVE_PAM */
+
+  requires_password = options->password != NULL;
+#ifdef LIBINFINITY_HAVE_PAM
+  requires_password = requires_password || options->use_pam;
+#endif /* LIBINFINITY_HAVE_PAM */
+
+  if(requires_password &&
      options->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
     infinoted_util_log_warning(
       _("Requiring password through unencrypted connection."));
   }
-
 
   if(options->create_key == TRUE && options->create_certificate == FALSE)
   {
@@ -543,6 +568,12 @@ infinoted_options_load(InfinotedOptions* options,
     { "password", 'P', 0,
       G_OPTION_ARG_STRING, NULL,
       N_("Require given password on connections"), N_("PASSWORD") },
+#ifdef LIBINFINITY_HAVE_PAM
+    { "pam", 0, 0,
+      G_OPTION_ARG_NONE, NULL,
+      N_("Authenticate clients against system user credentials on connection"),
+      NULL },
+#endif /* LIBINFINITY_HAVE_PAM */
     { "sync-directory", 0, 0,
       G_OPTION_ARG_FILENAME, NULL,
       N_("A directory into which to periodically store a copy of the "
@@ -580,6 +611,9 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &options->root_directory;
   entries[i++].arg_data = &autosave_interval;
   entries[i++].arg_data = &options->password;
+#ifdef LIBINFINITY_HAVE_PAM
+  entries[i++].arg_data = &options->use_pam;
+#endif /* LIBINFINITY_HAVE_PAM */
   entries[i++].arg_data = &options->sync_directory;
   entries[i++].arg_data = &sync_interval;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
@@ -748,6 +782,9 @@ infinoted_options_new(const gchar* const* config_files,
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
   options->autosave_interval = 0;
   options->password = NULL;
+#ifdef LIBINFINITY_HAVE_PAM
+  options->use_pam = FALSE;
+#endif /* LIBINFINITY_HAVE_PAM */
   options->sync_directory = NULL;
   options->sync_interval = 0;
 

@@ -178,6 +178,20 @@ fi
 
 AM_CONDITIONAL([LIBINFINITY_HAVE_LIBDAEMON], test "x$use_libdaemon" = "xyes")
 
+#################
+# Check for pam #
+#################
+
+AC_MSG_CHECKING(for pam)
+AC_CHECK_LIB([ pam ],
+             [ pam_start ],
+             [ AC_MSG_RESULT(yes)
+               AC_DEFINE(LIBINFINITY_HAVE_PAM, 1,
+                         [Define this symbol if you have pam])
+               infinity_LIBS="$infinity_LIBS -lpam" ],
+             [ AC_MSG_RESULT(no) ]
+)
+
 ############
 # gettext
 ############

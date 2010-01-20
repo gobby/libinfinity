@@ -25,10 +25,16 @@
 #include <libinfinity/common/inf-init.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-config.h>
+
+#ifdef LIBINFINITY_HAVE_PAM
+#include <security/pam_appl.h>
+#endif /* LIBINFINITY_HAVE_PAM */
 
 #include <gnutls/x509.h>
 
 #include <string.h>
+#include <stdlib.h>
 
 static void
 infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
@@ -225,20 +231,109 @@ infinoted_startup_load_options(InfinotedStartup* startup,
   return TRUE;
 }
 
+#ifdef LIBINFINITY_HAVE_PAM
+static char*
+infinoted_startup_strdup(const char* str)
+{
+  size_t size;
+  char* new_str;
+
+  size = strlen(str) + 1;
+  new_str = malloc(size + 1);
+  memcpy(new_str, str, size);
+
+  return new_str;
+}
+
+static int
+infinoted_startup_gsasl_pam_conv_func(int num_msg,
+                                      const struct pam_message** msgs,
+                                      struct pam_response** resps,
+                                      void* appdata_ptr)
+{
+  int i;
+  const struct pam_message* msg;
+  struct pam_response* resp;
+
+  *resps = malloc(sizeof(struct pam_response) * num_msg);
+
+  for(i = 0; i < num_msg; ++i)
+  {
+    msg = msgs[i];
+    resp = &(*resps)[i];
+    resp->resp_retcode = 0;
+    if(msg->msg_style == PAM_PROMPT_ECHO_OFF) /* looks like password prompt */
+      resp->resp = infinoted_startup_strdup(appdata_ptr);
+    else
+      resp->resp = NULL;
+  }
+  return PAM_SUCCESS;
+}
+
+static void
+infinoted_startup_gsasl_pam_delay_func(int retval,
+                                       unsigned usec_delay,
+                                       void *appdata_ptr)
+{
+  /* do not delay */
+}
+
+static gboolean
+infinoted_startup_gsasl_pam_authenticate(const char* username,
+                                         const char* password)
+{
+  pam_handle_t* pamh;
+  struct pam_conv conv;
+  void (*delay_fp)(int, unsigned, void*);
+  void* delay_void_ptr;
+  int status;
+
+  conv.conv = infinoted_startup_gsasl_pam_conv_func;
+  conv.appdata_ptr = *(void**) (void*) &password;
+
+  if(pam_start("system-auth", username, &conv, &pamh) != PAM_SUCCESS)
+    return FALSE;
+
+  delay_fp = infinoted_startup_gsasl_pam_delay_func;
+  /* avoid warnings for casting func-ptrs to object pointers
+   * and for type-punning pointers */
+  delay_void_ptr = *(void**) (void*) (char*) &delay_fp;
+  status = pam_set_item(pamh, PAM_FAIL_DELAY, delay_void_ptr);
+  if(status == PAM_SUCCESS)
+    status = pam_authenticate(pamh, 0);
+
+  pam_end(pamh, status);
+  return status == PAM_SUCCESS;
+}
+
+#endif /* LIBINFINITY_HAVE_PAM */
+
 static int
 infinoted_startup_gsasl_callback(Gsasl* gsasl,
                                  Gsasl_session* session,
                                  Gsasl_property prop)
 {
-  const char* prop_ptr;
+  const char* username;
+  const char* password;
   InfinotedStartup* startup;
+
   switch(prop)
   {
   case GSASL_VALIDATE_SIMPLE:
     startup = gsasl_callback_hook_get(gsasl);
+    username = gsasl_property_fast(session, GSASL_AUTHID);
+    password = gsasl_property_fast(session, GSASL_PASSWORD);
+#ifdef LIBINFINITY_HAVE_PAM
+    if(startup->options->use_pam)
+    {
+      if(infinoted_startup_gsasl_pam_authenticate(username, password))
+        return GSASL_OK;
+      else
+        return GSASL_AUTHENTICATION_ERROR;
+    }
+#endif /* LIBINFINITY_HAVE_PAM */
     g_assert(startup->options->password != NULL);
-    prop_ptr = gsasl_property_fast(session, GSASL_PASSWORD);
-    if(strcmp(startup->options->password, prop_ptr) == 0)
+    if(strcmp(startup->options->password, password) == 0)
       return GSASL_OK;
     else
       return GSASL_AUTHENTICATION_ERROR;
@@ -254,6 +349,7 @@ infinoted_startup_load(InfinotedStartup* startup,
                        GError** error)
 {
   int gsasl_status;
+  gboolean requires_password;
 
   if(infinoted_startup_load_options(startup, argc, argv, error) == FALSE)
     return FALSE;
@@ -261,7 +357,11 @@ infinoted_startup_load(InfinotedStartup* startup,
   if(infinoted_startup_load_credentials(startup, error) == FALSE)
     return FALSE;
 
-  if(startup->options->password)
+  requires_password = startup->options->password != NULL;
+#ifdef LIBINFINITY_HAVE_PAM
+  requires_password = requires_password || startup->options->use_pam;
+#endif /* LIBINFINITY_HAVE_PAM */
+  if(requires_password)
   {
     gsasl_status = gsasl_init(&startup->gsasl);
     if (gsasl_status != GSASL_OK)
