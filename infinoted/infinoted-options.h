@@ -40,7 +40,7 @@ struct _InfinotedOptions {
   guint autosave_interval;
   gchar* password;
 #ifdef LIBINFINITY_HAVE_PAM
-  gboolean use_pam;
+  gchar* pam_service;
 #endif /* LIBINFINITY_HAVE_PAM */
 
   gchar* sync_directory;

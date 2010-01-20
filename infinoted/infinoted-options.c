@@ -403,15 +403,7 @@ infinoted_options_validate(InfinotedOptions* options,
   security_policy = options->security_policy;
 
 #ifdef LIBINFINITY_HAVE_PAM
-  if(options->use_pam && geteuid() != 0)
-  {
-    infinoted_util_log_error(
-      _("Cannot use system authentication when not running as root.")
-    );
-    return FALSE;
-  }
-
-  if(options->password != NULL && options->use_pam)
+  if(options->password != NULL && options->pam_service != NULL)
   {
     infinoted_util_log_error(
       _("Cannot use both server password and system authentication.")
@@ -423,7 +415,7 @@ infinoted_options_validate(InfinotedOptions* options,
 
   requires_password = options->password != NULL;
 #ifdef LIBINFINITY_HAVE_PAM
-  requires_password = requires_password || options->use_pam;
+  requires_password = requires_password || options->pam_service != NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
 
   if(requires_password &&
@@ -569,10 +561,10 @@ infinoted_options_load(InfinotedOptions* options,
       G_OPTION_ARG_STRING, NULL,
       N_("Require given password on connections"), N_("PASSWORD") },
 #ifdef LIBINFINITY_HAVE_PAM
-    { "pam", 0, 0,
-      G_OPTION_ARG_NONE, NULL,
-      N_("Authenticate clients against system user credentials on connection"),
-      NULL },
+    { "pam-service", 0, 0,
+      G_OPTION_ARG_STRING, NULL,
+      N_("Authenticate clients against given pam service on connection"),
+      N_("SERVICE") },
 #endif /* LIBINFINITY_HAVE_PAM */
     { "sync-directory", 0, 0,
       G_OPTION_ARG_FILENAME, NULL,
@@ -612,7 +604,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &autosave_interval;
   entries[i++].arg_data = &options->password;
 #ifdef LIBINFINITY_HAVE_PAM
-  entries[i++].arg_data = &options->use_pam;
+  entries[i++].arg_data = &options->pam_service;
 #endif /* LIBINFINITY_HAVE_PAM */
   entries[i++].arg_data = &options->sync_directory;
   entries[i++].arg_data = &sync_interval;
@@ -731,6 +723,14 @@ infinoted_options_load(InfinotedOptions* options,
     options->password = NULL;
   }
 
+#ifdef LIBINFINITY_HAVE_PAM
+  if(options->pam_service != NULL && strcmp(options->pam_service, "") == 0)
+  {
+    g_free(options->pam_service);
+    options->pam_service = NULL;
+  }
+#endif /* LIBINFINITY_HAVE_PAM */
+
   if(options->sync_directory != NULL &&
      strcmp(options->sync_directory, "") == 0)
   {
@@ -783,7 +783,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->autosave_interval = 0;
   options->password = NULL;
 #ifdef LIBINFINITY_HAVE_PAM
-  options->use_pam = FALSE;
+  options->pam_service = NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
   options->sync_directory = NULL;
   options->sync_interval = 0;
@@ -815,6 +815,7 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
   g_free(options->password);
+  g_free(options->pam_service);
   g_free(options->sync_directory);
   g_slice_free(InfinotedOptions, options);
 }

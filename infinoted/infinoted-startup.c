@@ -279,7 +279,8 @@ infinoted_startup_gsasl_pam_delay_func(int retval,
 }
 
 static gboolean
-infinoted_startup_gsasl_pam_authenticate(const char* username,
+infinoted_startup_gsasl_pam_authenticate(const char* service,
+                                         const char* username,
                                          const char* password)
 {
   pam_handle_t* pamh;
@@ -291,7 +292,7 @@ infinoted_startup_gsasl_pam_authenticate(const char* username,
   conv.conv = infinoted_startup_gsasl_pam_conv_func;
   conv.appdata_ptr = *(void**) (void*) &password;
 
-  if(pam_start("system-auth", username, &conv, &pamh) != PAM_SUCCESS)
+  if(pam_start(service, username, &conv, &pamh) != PAM_SUCCESS)
     return FALSE;
 
   delay_fp = infinoted_startup_gsasl_pam_delay_func;
@@ -301,6 +302,8 @@ infinoted_startup_gsasl_pam_authenticate(const char* username,
   status = pam_set_item(pamh, PAM_FAIL_DELAY, delay_void_ptr);
   if(status == PAM_SUCCESS)
     status = pam_authenticate(pamh, 0);
+
+  /* TODO: consider pam_acct_mgmt */
 
   pam_end(pamh, status);
   return status == PAM_SUCCESS;
@@ -324,9 +327,10 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
     username = gsasl_property_fast(session, GSASL_AUTHID);
     password = gsasl_property_fast(session, GSASL_PASSWORD);
 #ifdef LIBINFINITY_HAVE_PAM
-    if(startup->options->use_pam)
+    if(startup->options->pam_service != NULL)
     {
-      if(infinoted_startup_gsasl_pam_authenticate(username, password))
+      if(infinoted_startup_gsasl_pam_authenticate(
+           startup->options->pam_service, username, password))
         return GSASL_OK;
       else
         return GSASL_AUTHENTICATION_ERROR;
@@ -359,7 +363,8 @@ infinoted_startup_load(InfinotedStartup* startup,
 
   requires_password = startup->options->password != NULL;
 #ifdef LIBINFINITY_HAVE_PAM
-  requires_password = requires_password || startup->options->use_pam;
+  requires_password =
+    requires_password || startup->options->pam_service != NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
   if(requires_password)
   {

@@ -324,6 +324,16 @@ infinoted_config_reload(InfinotedRun* run,
   startup->options->daemonize = run->startup->options->daemonize;
 #endif
 
+#ifdef LIBINFINITY_HAVE_PAM
+  startup->options->pam_service = run->startup->options->pam_service;
+  run->startup->options->pam_service = NULL;
+#endif
+
+  startup->options->password = run->startup->options->password;
+  run->startup->options->password = NULL;
+
+  /* TODO: Someone else might be holding on to the old startup, specifically
+   * the sasl sessions. */
   infinoted_startup_free(run->startup);
   run->startup = startup;
 
