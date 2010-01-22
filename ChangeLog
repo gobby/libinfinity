@@ -1,3 +1,8 @@
+2010-02-22  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-run.c (infinoted_run_free): Avoid a runtime
+	warning when freeing the InfinotedRun without having started it.
+
 2009-12-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-undo-grouping.c
