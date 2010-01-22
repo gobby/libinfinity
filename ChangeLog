@@ -1,3 +1,8 @@
+2010-02-22  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-run.c (infinoted_run_free): Avoid a runtime
+	warning when freeing the InfinotedRun without having started it.
+
 2010-02-11  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-browser.c:

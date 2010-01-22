@@ -265,6 +265,8 @@ infinoted_run_new(InfinotedStartup* startup,
 void
 infinoted_run_free(InfinotedRun* run)
 {
+  InfdXmlServerStatus status;
+
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
 
@@ -275,15 +277,19 @@ infinoted_run_free(InfinotedRun* run)
 
   if(run->xmpp6 != NULL)
   {
+    g_object_get(G_OBJECT(run->xmpp6), "status", &status, NULL);
     infd_server_pool_remove_server(run->pool, INFD_XML_SERVER(run->xmpp6));
-    infd_xml_server_close(INFD_XML_SERVER(run->xmpp6));
+    if(status != INFD_XML_SERVER_CLOSED)
+      infd_xml_server_close(INFD_XML_SERVER(run->xmpp6));
     g_object_unref(run->xmpp6);
   }
 
   if(run->xmpp4 != NULL)
   {
+    g_object_get(G_OBJECT(run->xmpp4), "status", &status, NULL);
     infd_server_pool_remove_server(run->pool, INFD_XML_SERVER(run->xmpp4));
-    infd_xml_server_close(INFD_XML_SERVER(run->xmpp4));
+    if(status != INFD_XML_SERVER_CLOSED)
+      infd_xml_server_close(INFD_XML_SERVER(run->xmpp4));
     g_object_unref(run->xmpp4);
   }
 
