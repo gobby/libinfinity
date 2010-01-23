@@ -2098,6 +2098,9 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
       if (auth_code == INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED)
       {
         /* Retry. */
+        /* TODO: This needs to differentiate between "wrong password" and the
+         * server not accepting the (properly authenticated) user. We must not
+         * prompt the user to re-enter the correct password indefinitely. */
 
         /* Remove SASL session, but delay finishing it for a bit so that we
          * can pass on the mechanism to the new session. */

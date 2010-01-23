@@ -205,6 +205,37 @@ infinoted_options_key_file_get_string(GKeyFile* keyfile,
 }
 
 static gboolean
+infinoted_options_key_file_get_string_list(GKeyFile* keyfile,
+                                           const gchar* keyname,
+                                           gchar*** result,
+                                           GError** error)
+{
+  GError* local_error;
+  gchar** ret;
+
+  local_error = NULL;
+  ret = g_key_file_get_string_list(
+    keyfile,
+    INFINOTED_OPTIONS_GROUP,
+    keyname,
+    NULL,
+    &local_error
+  );
+
+  if(local_error == NULL)
+  {
+    g_strfreev(*result);
+    *result = ret;
+  }
+  else
+  {
+    g_strfreev(ret);
+  }
+
+  return infinoted_options_propagate_key_file_error(error, local_error);
+}
+
+static gboolean
 infinoted_options_key_file_get_integer(GKeyFile* keyfile,
                                        const gchar* keyname,
                                        gint* result,
@@ -259,6 +290,7 @@ infinoted_options_load_key_file(const GOptionEntry* entries,
   gboolean result;
   gchar* string;
   gchar* filename;
+  gchar** string_list;
 
   for(entry = entries; entry->long_name != NULL; ++ entry)
   {
@@ -307,6 +339,33 @@ infinoted_options_load_key_file(const GOptionEntry* entries,
           else
           {
             g_free(string);
+          }
+        }
+
+        break;
+      case G_OPTION_ARG_STRING_ARRAY:
+        string_list = NULL;
+
+        result = infinoted_options_key_file_get_string_list(
+          key_file,
+          entry->long_name,
+          &string_list,
+          error
+        );
+
+        if(result == TRUE)
+        {
+          /* Can return TRUE without having string list set, for example in
+           * case the key is not set at all, in which case we just don't
+           * overwrite the existing value. */
+          if(entry->arg_data && string_list != NULL)
+          {
+            g_strfreev(*(gchar***)entry->arg_data);
+            *(gchar***)entry->arg_data = string_list;
+          }
+          else
+          {
+            g_strfreev(string_list);
           }
         }
 
@@ -411,6 +470,15 @@ infinoted_options_validate(InfinotedOptions* options,
     return FALSE;
   }
 
+  if(options->pam_service == NULL
+     && (options->pam_allowed_users != NULL
+         || options->pam_allowed_groups != NULL))
+  {
+    infinoted_util_log_error(
+      _("Need a pam service to authenticate users.")
+    );
+    return FALSE;
+  }
 #endif /* LIBINFINITY_HAVE_PAM */
 
   requires_password = options->password != NULL;
@@ -565,6 +633,14 @@ infinoted_options_load(InfinotedOptions* options,
       G_OPTION_ARG_STRING, NULL,
       N_("Authenticate clients against given pam service on connection"),
       N_("SERVICE") },
+    { "allow-user", 0, 0,
+      G_OPTION_ARG_STRING_ARRAY, NULL,
+      N_("User allowed to connect after pam authentication"),
+      N_("USER") },
+    { "allow-group", 0, 0,
+      G_OPTION_ARG_STRING_ARRAY, NULL,
+      N_("Group allowed to connecct after pam authentication"),
+      N_("GROUP") },
 #endif /* LIBINFINITY_HAVE_PAM */
     { "sync-directory", 0, 0,
       G_OPTION_ARG_FILENAME, NULL,
@@ -605,6 +681,8 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &options->password;
 #ifdef LIBINFINITY_HAVE_PAM
   entries[i++].arg_data = &options->pam_service;
+  entries[i++].arg_data = &options->pam_allowed_users;
+  entries[i++].arg_data = &options->pam_allowed_groups;
 #endif /* LIBINFINITY_HAVE_PAM */
   entries[i++].arg_data = &options->sync_directory;
   entries[i++].arg_data = &sync_interval;
@@ -729,6 +807,22 @@ infinoted_options_load(InfinotedOptions* options,
     g_free(options->pam_service);
     options->pam_service = NULL;
   }
+
+  /* treat it as undefining the option if only one entry, which is empty,
+   * is given */
+  if(options->pam_allowed_users != NULL
+     && strcmp(options->pam_allowed_users[0], "") == 0
+     && options->pam_allowed_users[1] == NULL) {
+    g_free(options->pam_allowed_users[0]);
+    g_free(options->pam_allowed_users);
+  }
+
+  if(options->pam_allowed_groups != NULL
+     && strcmp(options->pam_allowed_groups[0], "") == 0
+     && options->pam_allowed_groups[1] == NULL) {
+    g_free(options->pam_allowed_groups[0]);
+    g_free(options->pam_allowed_groups);
+  }
 #endif /* LIBINFINITY_HAVE_PAM */
 
   if(options->sync_directory != NULL &&
@@ -784,6 +878,8 @@ infinoted_options_new(const gchar* const* config_files,
   options->password = NULL;
 #ifdef LIBINFINITY_HAVE_PAM
   options->pam_service = NULL;
+  options->pam_allowed_users = NULL;
+  options->pam_allowed_groups = NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
   options->sync_directory = NULL;
   options->sync_interval = 0;
@@ -816,6 +912,8 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->root_directory);
   g_free(options->password);
   g_free(options->pam_service);
+  g_strfreev(options->pam_allowed_users);
+  g_strfreev(options->pam_allowed_groups);
   g_free(options->sync_directory);
   g_slice_free(InfinotedOptions, options);
 }

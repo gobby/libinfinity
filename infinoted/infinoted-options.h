@@ -41,6 +41,8 @@ struct _InfinotedOptions {
   gchar* password;
 #ifdef LIBINFINITY_HAVE_PAM
   gchar* pam_service;
+  gchar** pam_allowed_users;
+  gchar** pam_allowed_groups;
 #endif /* LIBINFINITY_HAVE_PAM */
 
   gchar* sync_directory;

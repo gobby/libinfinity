@@ -29,6 +29,9 @@
 
 #ifdef LIBINFINITY_HAVE_PAM
 #include <security/pam_appl.h>
+#include <sys/types.h>
+#include <grp.h>
+#include <pwd.h>
 #endif /* LIBINFINITY_HAVE_PAM */
 
 #include <gnutls/x509.h>
@@ -309,6 +312,83 @@ infinoted_startup_gsasl_pam_authenticate(const char* service,
   return status == PAM_SUCCESS;
 }
 
+static gboolean
+infinoted_startup_gsasl_pam_user_is_in_group(const gchar* username,
+                                             const gchar* required_group)
+{
+  struct passwd user_entry, *user_pointer;
+  struct group  group_entry, *group_pointer;
+  char buf[1024];
+  char** iter;
+  int status;
+  /* TODO: status receives an 'errno' style error code, should we log it?
+   * We could do more proper error handling, but we are not going to
+   * terminate because some user cannot log in, anyway, and I am not certain
+   * how much we are supposed to tell users about what went wrong, so we might
+   * either log it right here or plain ignore it. */
+
+  /* first check against the user's primary group */
+  status = getpwnam_r(username, &user_entry, buf, 1024, &user_pointer);
+  if(user_pointer == NULL)
+    return FALSE;
+
+  status =
+    getgrgid_r(user_entry.pw_gid, &group_entry, buf, 1024, &group_pointer);
+  if(group_pointer == NULL)
+    return FALSE;
+
+  if(strcmp(group_entry.gr_name, required_group) == 0)
+    return TRUE;
+
+  /* now go through all users listed for the required group */
+  status =
+    getgrnam_r(required_group, &group_entry, buf, 1024, &group_pointer);
+  if(group_pointer == NULL)
+    return FALSE;
+
+  for(iter = group_entry.gr_mem; *iter; ++iter)
+  {
+    if(strcmp(*iter, username) == 0)
+      return TRUE;
+  }
+
+  /* nothing worked. Oh well! */
+  return FALSE;
+}
+
+static gboolean
+infinoted_startup_gsasl_pam_user_is_allowed(InfinotedOptions* options,
+                                            const gchar* username)
+{
+  gchar** iter;
+  if(options->pam_allowed_users == NULL
+     && options->pam_allowed_groups == NULL)
+  {
+    return TRUE;
+  }
+  else
+  {
+    if(options->pam_allowed_users != NULL)
+    {
+      for(iter = options->pam_allowed_users; *iter; ++iter)
+      {
+        if(strcmp(*iter, username) == 0)
+          return TRUE;
+      }
+    }
+
+    if(options->pam_allowed_groups != NULL)
+    {
+      for(iter = options->pam_allowed_groups; *iter; ++iter)
+      {
+        if(infinoted_startup_gsasl_pam_user_is_in_group(username, *iter))
+          return TRUE;
+      }
+    }
+
+    return FALSE;
+  }
+}
 #endif /* LIBINFINITY_HAVE_PAM */
 
 static int
@@ -330,7 +410,9 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
     if(startup->options->pam_service != NULL)
     {
       if(infinoted_startup_gsasl_pam_authenticate(
-           startup->options->pam_service, username, password))
+           startup->options->pam_service, username, password)
+         && infinoted_startup_gsasl_pam_user_is_allowed(
+              startup->options, username))
         return GSASL_OK;
       else
         return GSASL_AUTHENTICATION_ERROR;
