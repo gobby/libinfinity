@@ -1477,7 +1477,11 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
           reply = inf_xmpp_connection_node_new_sasl("failure");
           xmlAddChild(
             reply,
-            inf_xml_util_new_node_from_error(post_auth_error, NULL, NULL)
+            inf_xml_util_new_node_from_error(
+              post_auth_error,
+              NULL,
+              "post-auth-error"
+            )
           );
 
           g_error_free(post_auth_error);
@@ -2104,6 +2108,59 @@ inf_xmpp_connection_process_encryption(InfXmppConnection* xmpp,
 }
 
 static void
+inf_xmpp_connection_process_authentication_error(
+  InfXmppConnection* xmpp,
+  InfXmppConnectionAuthError auth_code)
+{
+  InfXmppConnectionPrivate* priv;
+  Gsasl_session* old_session;
+  gchar* old_mechanism;
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  if (auth_code == INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED)
+  {
+    /* Retry. */
+    /* TODO: This needs to differentiate between "wrong password" and the
+     * server not accepting the (properly authenticated) user. We must not
+     * prompt the user to re-enter the correct password indefinitely. */
+
+    /* Remove SASL session, but delay finishing it for a bit so that we
+     * can pass on the mechanism to the new session. */
+    g_assert(priv->sasl_session != NULL);
+    g_assert(priv->sasl_mechanism != NULL);
+    old_session = priv->sasl_session;
+    priv->sasl_session = NULL;
+
+    old_mechanism = priv->sasl_mechanism;
+    priv->sasl_mechanism = NULL;
+
+    priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
+    inf_xmpp_connection_sasl_init(xmpp, old_mechanism);
+
+    gsasl_finish(old_session);
+    g_free(old_mechanism);
+  }
+  else
+  {
+    /* Remove SASL session */
+    g_assert(priv->sasl_session != NULL);
+    g_assert(priv->sasl_mechanism != NULL);
+    gsasl_finish(priv->sasl_session);
+    priv->sasl_session = NULL;
+    g_free(priv->sasl_mechanism);
+    priv->sasl_mechanism = NULL;
+
+    inf_xmpp_connection_emit_auth_error(xmpp, auth_code);
+
+    /* So that deinitiate does not try to abort the authentication */
+    priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
+    inf_xmpp_connection_deinitiate(xmpp);
+  }
+}
+
+
+static void
 inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
                                            xmlNodePtr xml)
 {
@@ -2111,8 +2168,7 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
   InfXmppConnectionAuthError auth_code;
   xmlNodePtr child;
   xmlChar* content;
-  Gsasl_session* old_session;
-  gchar* old_mechanism;
+  GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
@@ -2131,37 +2187,8 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
       child = xml->children;
       auth_code = INF_XMPP_CONNECTION_AUTH_ERROR_FAILED;
 
-      if(xml->children != NULL)
-      {
-        auth_code = inf_xmpp_connection_auth_error_from_condition(
-          (const gchar*)xml->children->name
-        );
-      }
-
-      if (auth_code == INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED)
-      {
-        /* Retry. */
-        /* TODO: This needs to differentiate between "wrong password" and the
-         * server not accepting the (properly authenticated) user. We must not
-         * prompt the user to re-enter the correct password indefinitely. */
-
-        /* Remove SASL session, but delay finishing it for a bit so that we
-         * can pass on the mechanism to the new session. */
-        g_assert(priv->sasl_session != NULL);
-        g_assert(priv->sasl_mechanism != NULL);
-        old_session = priv->sasl_session;
-        priv->sasl_session = NULL;
-
-        old_mechanism = priv->sasl_mechanism;
-        priv->sasl_mechanism = NULL;
-
-        priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
-        inf_xmpp_connection_sasl_init(xmpp, old_mechanism);
-
-        gsasl_finish(old_session);
-        g_free(old_mechanism);
-      }
-      else
+      if(child != NULL
+         && strcmp((const gchar*) child->name, "post-auth-error") == 0)
       {
         /* Remove SASL session */
         g_assert(priv->sasl_session != NULL);
@@ -2171,11 +2198,24 @@ inf_xmpp_connection_process_authentication(InfXmppConnection* xmpp,
         g_free(priv->sasl_mechanism);
         priv->sasl_mechanism = NULL;
 
-        inf_xmpp_connection_emit_auth_error(xmpp, auth_code);
+        error = inf_xml_util_new_error_from_node(child);
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+        g_error_free(error);
 
         /* So that deinitiate does not try to abort the authentication */
         priv->status = INF_XMPP_CONNECTION_AWAITING_FEATURES;
         inf_xmpp_connection_deinitiate(xmpp);
+      }
+      else
+      {
+        if(child != NULL)
+        {
+          auth_code = inf_xmpp_connection_auth_error_from_condition(
+            (const gchar*)child->name
+          );
+        }
+
+        inf_xmpp_connection_process_authentication_error(xmpp, auth_code);
       }
     }
     else if(strcmp((const gchar*)xml->name, "success") == 0)

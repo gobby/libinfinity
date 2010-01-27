@@ -1,5 +1,10 @@
 2010-01-27  Benjamin Herr  <ben@0x539.de>
 
+	* libinfinity/common/inf-xmpp-connection.c: Handle post-auth error
+	separately from auth error and emit it instead of generic auth error.
+
+2010-01-27  Benjamin Herr  <ben@0x539.de>
+
 	* infinoted/Makefile.am:
 	* infinoted/infinoted-startup.c:
 	* infinoted/infinoted-pam.h:
