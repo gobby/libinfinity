@@ -136,6 +136,14 @@ inf_xml_util_set_attribute_double(xmlNodePtr xml,
                                   const gchar* attribute,
                                   gdouble value);
 
+xmlNodePtr
+inf_xml_util_new_node_from_error(GError* error,
+                                 xmlNsPtr name_space,
+                                 const gchar* name);
+
+GError*
+inf_xml_util_new_error_from_node(xmlNodePtr xml);
+
 G_END_DECLS
 
 #endif /* __INF_XML_UTIL_H__ */

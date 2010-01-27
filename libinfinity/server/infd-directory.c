@@ -3805,14 +3805,9 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
 
     /* An error happened, so tell the client that the request failed and
      * what has gone wrong. */
-    reply_xml = xmlNewNode(NULL, (const xmlChar*)"request-failed");
-    inf_xml_util_set_attribute_uint(reply_xml, "code", local_error->code);
-
-    xmlNewProp(
-      reply_xml,
-      (const xmlChar*)"domain",
-      (const xmlChar*)g_quark_to_string(local_error->domain)
-    );
+    reply_xml = inf_xml_util_new_node_from_error(local_error,
+                                                 NULL,
+                                                 "request-failed");
 
     if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
     g_free(seq);

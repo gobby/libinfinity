@@ -318,23 +318,13 @@ inf_session_send_sync_error(InfSession* session,
 {
   InfSessionPrivate* priv;
   xmlNodePtr node;
-  gchar code_buf[16];
 
   priv = INF_SESSION_PRIVATE(session);
 
   g_return_if_fail(priv->status == INF_SESSION_SYNCHRONIZING);
   g_return_if_fail(priv->shared.sync.conn != NULL);
 
-  node = xmlNewNode(NULL, (const xmlChar*)"sync-error");
-
-  xmlNewProp(
-     node,
-    (const xmlChar*)"domain",
-    (const xmlChar*)g_quark_to_string(error->domain)
-  );
-
-  sprintf(code_buf, "%u", (unsigned int)error->code);
-  xmlNewProp(node, (const xmlChar*)"code", (const xmlChar*)code_buf);
+  node = inf_xml_util_new_node_from_error(error, NULL, "sync-error");
 
   inf_communication_group_send_message(
     priv->shared.sync.group,
@@ -1469,11 +1459,8 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
   InfSessionPrivate* priv;
   InfSessionSync* sync;
   gboolean result;
-  GQuark domain;
-  InfSessionSyncError code;
-  xmlChar* domain_attr;
-  xmlChar* code_attr;
   GError* local_error;
+  const gchar* local_message;
 
   session = INF_SESSION(comm_object);
   priv = INF_SESSION_PRIVATE(session);
@@ -1532,27 +1519,23 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
     {
       if(strcmp((const gchar*)node->name, "sync-error") == 0)
       {
-        local_error = NULL;
-
         /* There was an error during synchronization, cancel remaining
          * messages. */
         inf_communication_group_cancel_messages(sync->group, connection);
 
-        domain_attr = xmlGetProp(node, (const xmlChar*)"domain");
-        code_attr = xmlGetProp(node, (const xmlChar*)"code");
+        local_error = inf_xml_util_new_error_from_node(node);
 
-        if(domain_attr != NULL && code_attr != NULL)
+        if(local_error != NULL)
         {
-          domain = g_quark_from_string((const gchar*)domain_attr);
-          code = strtoul((const gchar*)code_attr, NULL, 0);
-
-          g_set_error(
-            &local_error,
-            domain,
-            code,
-            "%s",
-            inf_session_get_sync_error_message(domain, code)
-          );
+          local_message =
+            inf_session_get_sync_error_message(local_error->domain,
+                                               local_error->code);
+          if(local_message != NULL)
+          {
+            if(local_error->message != NULL)
+              g_free(local_error->message);
+            local_error->message = g_strdup(local_message);
+          }
         }
         else
         {
@@ -1564,9 +1547,6 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
             inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_FAILED)
           );
         }
-
-        if(domain_attr != NULL) xmlFree(domain_attr);
-        if(code_attr != NULL) xmlFree(code_attr);
 
         /* Note the default handler actually removes the sync */
         g_signal_emit(

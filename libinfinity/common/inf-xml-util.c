@@ -880,4 +880,77 @@ inf_xml_util_set_attribute_double(xmlNodePtr xml,
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
 }
 
+/**
+ * inf_xml_util_new_node_from_error:
+ * @error: The error object to represent in xml.
+ * @name_space: The element's namespace, or %NULL.
+ * @name: An element name, or %NULL.
+ *
+ * Creates a new #xmlNode that encodes @error. The element's name is
+ * optionally specified by @name, or "error" by default, @error's domain
+ * and code are set as attributes and its message is set as child text using
+ * inf_xml_util_add_child_text(). @name_space is set as the element's
+ * namespace, if not %NULL.
+ *
+ * Returns: A new #xmlNodePtr. It is the caller's responsibility to dispose it
+ * using xmlFreeNode().
+ */
+xmlNodePtr
+inf_xml_util_new_node_from_error(GError* error,
+                                 xmlNsPtr name_space,
+                                 const gchar* name)
+{
+  xmlNodePtr xml;
+
+  if(name == NULL)
+    name = "error";
+
+  xml = xmlNewNode(name_space, (const xmlChar*) name);
+
+  inf_xml_util_set_attribute_int(xml, "code", error->code);
+  xmlNewProp(
+    xml,
+    (const xmlChar*) "domain",
+    (const xmlChar*) g_quark_to_string(error->domain)
+  );
+  inf_xml_util_add_child_text(xml, error->message, strlen(error->message));
+
+  return xml;
+}
+
+/**
+ * inf_xml_util_new_error_from_node:
+ * @xml: A #xmlNodePtr as returned by inf_xml_util_new_node_from_error().
+ *
+ * Creates a new #GError with the domain and erro code given in @xml's
+ * attributes. The message is parsed from the child text as with
+ * inf_xml_util_get_child_text(). The element name and namespace are ignored.
+ * If @xml does not have the attributes as expected, %NULL is returned.
+ *
+ * Returns: A pointer to a new #GError, or %NULL on failure. It is the
+ * caller's responsibility to dispose the #GError object using g_error_free().
+ */
+GError*
+inf_xml_util_new_error_from_node(xmlNodePtr xml)
+{
+  GError* result;
+  xmlChar* domain_str;
+  int code;
+
+  if(!inf_xml_util_get_attribute_int(xml, "code", &code, NULL))
+    return NULL;
+
+  domain_str = xmlGetProp(xml, (const xmlChar*) "domain");
+  if(domain_str == NULL)
+    return NULL;
+  result = g_slice_new(GError);
+  result->code    = code;
+  result->domain  = g_quark_from_string((const gchar*) domain_str);
+  result->message = inf_xml_util_get_child_text(xml, NULL, NULL, NULL);
+
+  xmlFree(domain_str);
+
+  return result;
+}
+
 /* vim:set et sw=2 ts=2: */
