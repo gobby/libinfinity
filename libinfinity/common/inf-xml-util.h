@@ -138,7 +138,7 @@ inf_xml_util_set_attribute_double(xmlNodePtr xml,
 
 xmlNodePtr
 inf_xml_util_new_node_from_error(GError* error,
-                                 const gchar* name_space,
+                                 xmlNodePtr name_space,
                                  const gchar* name);
 
 GError*

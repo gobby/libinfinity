@@ -897,7 +897,7 @@ inf_xml_util_set_attribute_double(xmlNodePtr xml,
  */
 xmlNodePtr
 inf_xml_util_new_node_from_error(GError* error,
-                                 const gchar* name_space,
+                                 xmlNsPtr name_space,
                                  const gchar* name)
 {
   xmlNodePtr xml;
@@ -905,7 +905,7 @@ inf_xml_util_new_node_from_error(GError* error,
   if(name == NULL)
     name = "error";
 
-  xml = xmlNewNode((const xmlChar*) name_space, (const xmlChar*) name);
+  xml = xmlNewNode(name_space, (const xmlChar*) name);
 
   inf_xml_util_set_attribute_int(xml, "code", error->code);
   xmlNewProp(
