@@ -19,6 +19,11 @@
 
 #include <infinoted/infinoted-config-reload.h>
 #include <infinoted/infinoted-dh-params.h>
+
+#ifdef LIBINFINITY_HAVE_PAM
+#include <infinoted/infinoted-pam.h>
+#endif
+
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/inf-config.h>
 
@@ -229,6 +234,16 @@ infinoted_config_reload(InfinotedRun* run,
       );
 
       g_object_unref(tcp6);
+
+#ifdef LIBINFINITY_HAVE_PAM
+      g_signal_connect(
+        G_OBJECT(run->xmpp6),
+        "connection-user-authenticated",
+        G_CALLBACK(infinoted_pam_user_authenticated_cb),
+        startup->options
+      );
+#endif
+
       infd_server_pool_add_server(run->pool, INFD_XML_SERVER(run->xmpp6));
 
 #ifdef LIBINFINITY_HAVE_AVAHI
@@ -251,6 +266,16 @@ infinoted_config_reload(InfinotedRun* run,
       );
 
       g_object_unref(tcp4);
+
+#ifdef LIBINFINITY_HAVE_PAM
+      g_signal_connect(
+        G_OBJECT(run->xmpp4),
+        "connection-user-authenticated",
+        G_CALLBACK(infinoted_pam_user_authenticated_cb),
+        startup->options
+      );
+#endif
+
       infd_server_pool_add_server(run->pool, INFD_XML_SERVER(run->xmpp4));
 
 #ifdef LIBINFINITY_HAVE_AVAHI

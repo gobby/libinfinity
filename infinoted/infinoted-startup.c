@@ -17,27 +17,19 @@
  * MA 02110-1301, USA.
  */
 
-/* we cannot ifdef this for just the have_pam case because we need to define
- * it before including inf-config.h, which sets LIBINFINITY_HAVE_PAM in the
- * first place. */
-#define _POSIX_C_SOURCE 1 /* for getpwnam_r, getgrnam_r, getgrgid_r */
-
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-creds.h>
+
+#ifdef LIBINFINITY_HAVE_PAM
+#include <infinoted/infinoted-pam.h>
+#endif
 
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-init.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h>
-
-#ifdef LIBINFINITY_HAVE_PAM
-#include <security/pam_appl.h>
-#include <sys/types.h>
-#include <grp.h>
-#include <pwd.h>
-#endif /* LIBINFINITY_HAVE_PAM */
 
 #include <gnutls/x509.h>
 
@@ -239,163 +231,6 @@ infinoted_startup_load_options(InfinotedStartup* startup,
   return TRUE;
 }
 
-#ifdef LIBINFINITY_HAVE_PAM
-static char*
-infinoted_startup_strdup(const char* str)
-{
-  size_t size;
-  char* new_str;
-
-  size = strlen(str) + 1;
-  new_str = malloc(size + 1);
-  memcpy(new_str, str, size);
-
-  return new_str;
-}
-
-static int
-infinoted_startup_gsasl_pam_conv_func(int num_msg,
-                                      const struct pam_message** msgs,
-                                      struct pam_response** resps,
-                                      void* appdata_ptr)
-{
-  int i;
-  const struct pam_message* msg;
-  struct pam_response* resp;
-
-  *resps = malloc(sizeof(struct pam_response) * num_msg);
-
-  for(i = 0; i < num_msg; ++i)
-  {
-    msg = msgs[i];
-    resp = &(*resps)[i];
-    resp->resp_retcode = 0;
-    if(msg->msg_style == PAM_PROMPT_ECHO_OFF) /* looks like password prompt */
-      resp->resp = infinoted_startup_strdup(appdata_ptr);
-    else
-      resp->resp = NULL;
-  }
-  return PAM_SUCCESS;
-}
-
-static void
-infinoted_startup_gsasl_pam_delay_func(int retval,
-                                       unsigned usec_delay,
-                                       void *appdata_ptr)
-{
-  /* do not delay */
-}
-
-static gboolean
-infinoted_startup_gsasl_pam_authenticate(const char* service,
-                                         const char* username,
-                                         const char* password)
-{
-  pam_handle_t* pamh;
-  struct pam_conv conv;
-  void (*delay_fp)(int, unsigned, void*);
-  void* delay_void_ptr;
-  int status;
-
-  conv.conv = infinoted_startup_gsasl_pam_conv_func;
-  conv.appdata_ptr = *(void**) (void*) &password;
-
-  if(pam_start(service, username, &conv, &pamh) != PAM_SUCCESS)
-    return FALSE;
-
-  delay_fp = infinoted_startup_gsasl_pam_delay_func;
-  /* avoid warnings for casting func-ptrs to object pointers
-   * and for type-punning pointers */
-  delay_void_ptr = *(void**) (void*) (char*) &delay_fp;
-  status = pam_set_item(pamh, PAM_FAIL_DELAY, delay_void_ptr);
-  if(status == PAM_SUCCESS)
-    status = pam_authenticate(pamh, 0);
-
-  /* TODO: consider pam_acct_mgmt */
-
-  pam_end(pamh, status);
-  return status == PAM_SUCCESS;
-}
-
-static gboolean
-infinoted_startup_gsasl_pam_user_is_in_group(const gchar* username,
-                                             const gchar* required_group)
-{
-  struct passwd user_entry, *user_pointer;
-  struct group  group_entry, *group_pointer;
-  char buf[1024];
-  char** iter;
-  int status;
-  /* TODO: status receives an 'errno' style error code, should we log it?
-   * We could do more proper error handling, but we are not going to
-   * terminate because some user cannot log in, anyway, and I am not certain
-   * how much we are supposed to tell users about what went wrong, so we might
-   * either log it right here or plain ignore it. */
-
-  /* first check against the user's primary group */
-  status = getpwnam_r(username, &user_entry, buf, 1024, &user_pointer);
-  if(user_pointer == NULL)
-    return FALSE;
-
-  status =
-    getgrgid_r(user_entry.pw_gid, &group_entry, buf, 1024, &group_pointer);
-  if(group_pointer == NULL)
-    return FALSE;
-
-  if(strcmp(group_entry.gr_name, required_group) == 0)
-    return TRUE;
-
-  /* now go through all users listed for the required group */
-  status =
-    getgrnam_r(required_group, &group_entry, buf, 1024, &group_pointer);
-  if(group_pointer == NULL)
-    return FALSE;
-
-  for(iter = group_entry.gr_mem; *iter; ++iter)
-  {
-    if(strcmp(*iter, username) == 0)
-      return TRUE;
-  }
-
-  /* nothing worked. Oh well! */
-  return FALSE;
-}
-
-static gboolean
-infinoted_startup_gsasl_pam_user_is_allowed(InfinotedOptions* options,
-                                            const gchar* username)
-{
-  gchar** iter;
-  if(options->pam_allowed_users == NULL
-     && options->pam_allowed_groups == NULL)
-  {
-    return TRUE;
-  }
-  else
-  {
-    if(options->pam_allowed_users != NULL)
-    {
-      for(iter = options->pam_allowed_users; *iter; ++iter)
-      {
-        if(strcmp(*iter, username) == 0)
-          return TRUE;
-      }
-    }
-
-    if(options->pam_allowed_groups != NULL)
-    {
-      for(iter = options->pam_allowed_groups; *iter; ++iter)
-      {
-        if(infinoted_startup_gsasl_pam_user_is_in_group(username, *iter))
-          return TRUE;
-      }
-    }
-
-    return FALSE;
-  }
-}
-#endif /* LIBINFINITY_HAVE_PAM */
-
 static int
 infinoted_startup_gsasl_callback(Gsasl* gsasl,
                                  Gsasl_session* session,
@@ -414,10 +249,8 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
 #ifdef LIBINFINITY_HAVE_PAM
     if(startup->options->pam_service != NULL)
     {
-      if(infinoted_startup_gsasl_pam_authenticate(
-           startup->options->pam_service, username, password)
-         && infinoted_startup_gsasl_pam_user_is_allowed(
-              startup->options, username))
+      if(infinoted_pam_authenticate(
+           startup->options->pam_service, username, password))
         return GSASL_OK;
       else
         return GSASL_AUTHENTICATION_ERROR;
