@@ -1,15 +1,27 @@
-2010-02-22  Armin Burgmeier  <armin@arbur.net>
+2010-01-27  Benjamin Herr  <ben@0x539.de>
+
+	* libinfinity/common/inf-xml-util.h:
+	* libinfinity/common/inf-xml-util.c: Added
+	inf_xml_util_new_{error,node}_from_{node,error}() functions for
+	[de]serializing GErrors to xml.
+
+	* libinfinity/common/inf-session.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-session-proxy.c: Partially replaced manual
+	[de]serializing of GErrors to xml with the above functions.
+
+2010-01-22  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-run.c (infinoted_run_free): Avoid a runtime
 	warning when freeing the InfinotedRun without having started it.
 
-2010-02-11  Armin Burgmeier  <armin@arbur.net>
+2010-01-11  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-browser.c:
 	* test/inf-test-chat.c: Check the result of fgets(). Bug #523 (Philipp
 	Kern).
 
-2010-02-11  Armin Burgmeier  <armin@arbur.net>
+2010-01-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.h:
 	* libinfinity/client/infc-browser.c: Added
