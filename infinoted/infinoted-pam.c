@@ -198,6 +198,10 @@ infinoted_pam_user_authenticated_cb(InfdXmppServer* xmpp_server,
   const char* username;
 
   options = (InfinotedOptions*) user_data;
+  /* if we did not authenticate the user, do nothing*/
+  if (options->pam_service == NULL)
+    return NULL;
+
   username = gsasl_property_get(sasl_session, GSASL_AUTHID);
   if(infinoted_pam_user_is_allowed(options, username))
     return NULL;
