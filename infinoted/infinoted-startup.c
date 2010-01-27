@@ -17,6 +17,11 @@
  * MA 02110-1301, USA.
  */
 
+/* we cannot ifdef this for just the have_pam case because we need to define
+ * it before including inf-config.h, which sets LIBINFINITY_HAVE_PAM in the
+ * first place. */
+#define _POSIX_C_SOURCE 1 /* for getpwnam_r, getgrnam_r, getgrgid_r */
+
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-creds.h>
