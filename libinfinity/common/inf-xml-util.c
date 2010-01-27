@@ -942,7 +942,7 @@ inf_xml_util_new_error_from_node(xmlNodePtr xml)
   domain_str = xmlGetProp(xml, (const xmlChar*) "domain");
   if(domain_str == NULL)
     return NULL;
-  result->domain = g_quark_from_string(domain_str);
+  result->domain = g_quark_from_string((const gchar*) domain_str);
   xmlFree(domain_str);
 
   result->message = inf_xml_util_get_child_text(xml, NULL, NULL, NULL);
