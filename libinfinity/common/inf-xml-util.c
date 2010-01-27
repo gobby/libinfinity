@@ -935,17 +935,20 @@ inf_xml_util_new_error_from_node(xmlNodePtr xml)
 {
   GError* result;
   xmlChar* domain_str;
+  int code;
 
-  if(!inf_xml_util_get_attribute_int(xml, "code", &result->code, NULL))
+  if(!inf_xml_util_get_attribute_int(xml, "code", &code, NULL))
     return NULL;
 
   domain_str = xmlGetProp(xml, (const xmlChar*) "domain");
   if(domain_str == NULL)
     return NULL;
-  result->domain = g_quark_from_string((const gchar*) domain_str);
-  xmlFree(domain_str);
-
+  result = g_slice_new(GError);
+  result->code    = code;
+  result->domain  = g_quark_from_string((const gchar*) domain_str);
   result->message = inf_xml_util_get_child_text(xml, NULL, NULL, NULL);
+
+  xmlFree(domain_str);
 
   return result;
 }
