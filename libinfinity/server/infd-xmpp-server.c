@@ -79,7 +79,7 @@ static GObjectClass* parent_class;
 static guint xmpp_server_signals[LAST_SIGNAL];
 
 static GError*
-inf_xmpp_server_connection_user_authenticated_cb(InfXmppConnection* xmpp_conn,
+infd_xmpp_server_connection_user_authenticated_cb(InfXmppConnection* xmpp_conn,
                                                  Gsasl_session* sasl_session,
                                                  gpointer user_data)
 {
@@ -144,7 +144,7 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
   g_signal_connect(
     G_OBJECT(xmpp_connection),
     "user-authenticated",
-    G_CALLBACK(inf_xmpp_server_connection_user_authenticated_cb),
+    G_CALLBACK(infd_xmpp_server_connection_user_authenticated_cb),
     xmpp_server
   );
 
@@ -560,7 +560,7 @@ infd_xmpp_server_xml_server_close(InfdXmlServer* xml)
 }
 
 static gboolean
-inf_xmpp_server_connection_user_authenticated_accumulator(
+infd_xmpp_server_connection_user_authenticated_accumulator(
     GSignalInvocationHint* ih,
     GValue* return_accu,
     const GValue* h_return,
@@ -690,7 +690,7 @@ infd_xmpp_server_class_init(gpointer g_class,
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdXmppServerClass, connection_user_authenticated),
-    inf_xmpp_server_connection_user_authenticated_accumulator, NULL,
+    infd_xmpp_server_connection_user_authenticated_accumulator, NULL,
     inf_marshal_POINTER__OBJECT_POINTER,
     G_TYPE_POINTER, /* actually a GError* */
     2,
