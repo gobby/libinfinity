@@ -19,6 +19,7 @@
 
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-error.h>
 
@@ -137,6 +138,14 @@ struct _InfXmppConnectionPrivate {
   gchar* sasl_mechanism;
   gchar* sasl_mechanisms;
 };
+
+enum {
+  USER_AUTHENTICATED,
+
+  LAST_SIGNAL
+};
+
+static guint connection_signals[LAST_SIGNAL];
 
 enum {
   PROP_0,
@@ -1399,6 +1408,7 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
   xmlNodePtr reply;
   char* output;
   int ret;
+  GError* post_auth_error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->status == INF_XMPP_CONNECTION_AUTHENTICATING);
@@ -1447,11 +1457,44 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
     {
       if(priv->site == INF_XMPP_CONNECTION_SERVER)
       {
-        reply = inf_xmpp_connection_node_new_sasl("success");
-        inf_xmpp_connection_send_xml(xmpp, reply);
-        xmlFreeNode(reply);
+        g_signal_emit(
+          G_OBJECT(xmpp),
+          connection_signals[USER_AUTHENTICATED],
+          0,
+          priv->sasl_session,
+          &post_auth_error
+        );
 
-        inf_xmpp_connection_sasl_finish(xmpp);
+        if(post_auth_error)
+        {
+          inf_xml_connection_error(INF_XML_CONNECTION(xmpp), post_auth_error);
+
+          gsasl_finish(priv->sasl_session);
+          priv->sasl_session = NULL;
+          g_free(priv->sasl_mechanism);
+          priv->sasl_mechanism = NULL;
+
+          reply = inf_xmpp_connection_node_new_sasl("failure");
+          xmlAddChild(
+            reply,
+            inf_xml_util_new_node_from_error(post_auth_error, NULL, NULL)
+          );
+
+          g_error_free(post_auth_error);
+          inf_xmpp_connection_send_xml(xmpp, reply);
+          xmlFreeNode(reply);
+
+          /* Reset state to INITIATED so that the client can retry */
+          priv->status = INF_XMPP_CONNECTION_INITIATED;
+        }
+        else
+        {
+          reply = inf_xmpp_connection_node_new_sasl("success");
+          inf_xmpp_connection_send_xml(xmpp, reply);
+          xmlFreeNode(reply);
+
+          inf_xmpp_connection_sasl_finish(xmpp);
+        }
       }
 
       /* Wait for <success> from server before calling finish on
@@ -3194,6 +3237,24 @@ inf_xmpp_connection_finalize(GObject* object)
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
+static gboolean
+inf_xmpp_connection_user_authenticated_accumulator(GSignalInvocationHint* ih,
+                                                   GValue* return_accu,
+                                                   const GValue* h_return,
+                                                   gpointer data)
+{
+  if (g_value_get_pointer(h_return) == NULL)
+  {
+    /* in case this is the last call */
+    g_value_set_pointer(return_accu, NULL);
+
+    return TRUE;
+  }
+
+  g_value_copy(h_return, return_accu);
+  return FALSE;
+}
+
 static void
 inf_xmpp_connection_set_property(GObject* object,
                                  guint prop_id,
@@ -3505,6 +3566,20 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   inf_xmpp_connection_auth_error_quark = g_quark_from_static_string(
     "INF_XMPP_CONNECTION_AUTH_ERROR"
+  );
+
+  xmpp_class->user_authenticated = NULL;
+
+  connection_signals[USER_AUTHENTICATED] = g_signal_new(
+    "user-authenticated",
+    INF_TYPE_XMPP_CONNECTION,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfXmppConnectionClass, user_authenticated),
+    inf_xmpp_connection_user_authenticated_accumulator, NULL,
+    inf_marshal_POINTER__POINTER,
+    G_TYPE_POINTER, /* actually a GError* */
+    1,
+    G_TYPE_POINTER /* actually a Gsasl_session* */
   );
 
   g_object_class_install_property(

@@ -1,3 +1,21 @@
+2010-01-27  Benjamin Herr  <ben@0x539.de>
+
+	* libinfinity/inf-marshal.in:
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Added user-authenticated
+	signal that is emitted right before sasl authentication is finished
+	successfully to give a last chance to interrupt it.
+
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c: Added
+	connection-user-authenticated signal that is emitted whenever the
+	above signal is emitted for any connection to this server.
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added PostAuthentication error
+	domain for authentication failures that happen during the above
+	signals.
+
 2010-01-23  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-options.h:

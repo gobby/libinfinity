@@ -68,6 +68,7 @@ enum {
 
 enum {
   ERROR,
+  CONNECTION_USER_AUTHENTICATED,
 
   LAST_SIGNAL
 };
@@ -76,6 +77,28 @@ enum {
 
 static GObjectClass* parent_class;
 static guint xmpp_server_signals[LAST_SIGNAL];
+
+static GError*
+inf_xmpp_server_connection_user_authenticated_cb(InfXmppConnection* xmpp_conn,
+                                                 Gsasl_session* sasl_session,
+                                                 gpointer user_data)
+{
+  InfdXmppServer* xmpp_server = INFD_XMPP_SERVER(user_data);
+  GError* error;
+
+  /* simply forward the decision to the slots of our own
+   * CONNECTION_USER_AUTHENTICATED signal*/
+  g_signal_emit(
+    G_OBJECT(xmpp_server),
+    xmpp_server_signals[CONNECTION_USER_AUTHENTICATED],
+    0,
+    xmpp_conn,
+    sasl_session,
+    &error
+  );
+
+  return error;
+}
 
 static void
 infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
@@ -116,6 +139,13 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
   infd_xml_server_new_connection(
     INFD_XML_SERVER(xmpp_server),
     INF_XML_CONNECTION(xmpp_connection)
+  );
+
+  g_signal_connect(
+    G_OBJECT(xmpp_connection),
+    "user-authenticated",
+    G_CALLBACK(inf_xmpp_server_connection_user_authenticated_cb),
+    xmpp_server
   );
 
   g_object_unref(G_OBJECT(xmpp_connection));
@@ -529,6 +559,25 @@ infd_xmpp_server_xml_server_close(InfdXmlServer* xml)
   }
 }
 
+static gboolean
+inf_xmpp_server_connection_user_authenticated_accumulator(
+    GSignalInvocationHint* ih,
+    GValue* return_accu,
+    const GValue* h_return,
+    gpointer data)
+{
+  if (g_value_get_pointer(h_return) == NULL)
+  {
+    /* in case this is the last call */
+    g_value_set_pointer(return_accu, NULL);
+
+    return TRUE;
+  }
+
+  g_value_copy(h_return, return_accu);
+  return FALSE;
+}
+
 static void
 infd_xmpp_server_class_init(gpointer g_class,
                             gpointer class_data)
@@ -634,6 +683,19 @@ infd_xmpp_server_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* actually a GError* */
+  );
+
+  xmpp_server_signals[CONNECTION_USER_AUTHENTICATED] = g_signal_new(
+    "connection-user-authenticated",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdXmppServerClass, connection_user_authenticated),
+    inf_xmpp_server_connection_user_authenticated_accumulator, NULL,
+    inf_marshal_POINTER__OBJECT_POINTER,
+    G_TYPE_POINTER, /* actually a GError* */
+    2,
+    INF_TYPE_XMPP_CONNECTION,
+    G_TYPE_POINTER /* actually a Gsasl_session */
   );
 }
 

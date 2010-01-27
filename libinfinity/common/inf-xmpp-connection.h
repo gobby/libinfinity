@@ -130,6 +130,10 @@ typedef enum _InfXmppConnectionAuthError {
 
 struct _InfXmppConnectionClass {
   GObjectClass parent_class;
+
+  /* Signals */
+  GError* (*user_authenticated)(InfXmppConnection* xmpp,
+                                Gsasl_session* sasl_session);
 };
 
 struct _InfXmppConnection {

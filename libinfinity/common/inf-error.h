@@ -167,6 +167,16 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_FAILED
 } InfDirectoryError;
 
+/**
+ * InfPostAuthenticationError:
+ * @INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORISED: Authentication was
+ * successful, but the user authenticated as is not permitted to connect
+ * to this server.
+ */
+typedef enum _InfPostAuthenticationError {
+  INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED
+} InfPostAuthenticationError;
+
 GQuark
 inf_request_error_quark(void);
 
@@ -184,6 +194,12 @@ inf_directory_error_quark(void);
 
 const gchar*
 inf_directory_strerror(InfDirectoryError code);
+
+const gchar*
+inf_postauthentication_strerror(InfPostAuthenticationError code);
+
+GQuark
+inf_postauthentication_error_quark(void);
 
 GQuark
 inf_gnutls_error_quark(void);
