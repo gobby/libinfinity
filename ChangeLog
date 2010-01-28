@@ -1,3 +1,9 @@
+2010-01-28  Benjamin Herr  <ben@0x539.de>
+
+	* libinfinity/server/infd-xmpp-server.c: Properly disconnect the
+	post-auth signal handler when the server goes away before the
+	connection either goes away or is done authenticating.
+
 2010-01-27  Benjamin Herr  <ben@0x539.de>
 
 	* libinfinity/common/inf-xmpp-connection.c: Handle post-auth error
