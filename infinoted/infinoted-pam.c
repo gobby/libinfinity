@@ -97,7 +97,7 @@ infinoted_pam_log_error(const char* username,
     msg = strerror(error_code);
 
   infinoted_util_log_error(
-    _("Error while checking groups of user `%s', %s: %s."),
+    _("Error while checking groups of user \"%s\", %s: %s."),
     username,
     detail,
     msg
@@ -144,7 +144,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
     getgrgid_r(gid, &group_entry, buf, buf_size, &group_pointer);
   if(group_pointer == NULL)
   {
-    g_snprintf(msgbuf, sizeof msgbuf, "looking up group %ld", (long) gid);
+    g_snprintf(msgbuf, sizeof msgbuf, _("looking up group %ld"), (long) gid);
     infinoted_pam_log_error(username, msgbuf, status, error);
     return FALSE;
   }
@@ -159,7 +159,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
   {
     g_snprintf(msgbuf,
                sizeof msgbuf,
-               "looking up group `%s'",
+               _("looking up group \"%s\""),
                required_group);
     infinoted_pam_log_error(username, msgbuf, status, error);
     return FALSE;
@@ -183,6 +183,7 @@ infinoted_pam_user_is_allowed(InfinotedOptions* options,
   char* buf;
   long buf_size_gr, buf_size_pw, buf_size;
   gboolean status;
+  GError* local_error;
 
   gchar** iter;
 
@@ -207,22 +208,26 @@ infinoted_pam_user_is_allowed(InfinotedOptions* options,
       /* avoid reallocating this buffer over and over */
       buf_size_pw = sysconf(_SC_GETPW_R_SIZE_MAX);
       buf_size_gr = sysconf(_SC_GETGR_R_SIZE_MAX);
-      buf_size = buf_size_pw > buf_size_gr ? buf_size_pw : buf_size_gr;
+      buf_size = MAX(buf_size_pw, buf_size_gr);
       buf = g_malloc(buf_size);
 
       status = FALSE;
+      local_error = NULL;
       for(iter = options->pam_allowed_groups; *iter; ++iter)
       {
         if(infinoted_pam_user_is_in_group(
-             username, *iter, buf, buf_size, error))
+             username, *iter, buf, buf_size, &local_error))
         {
           status = TRUE;
           break;
         }
 
         /* do not try to check all other groups on an actual error */
-        if(error && *error)
+        if(local_error)
+        {
+          g_propagate_error(error, local_error);
           break;
+        }
       }
       g_free(buf);
       return status;

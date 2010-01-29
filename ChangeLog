@@ -1,5 +1,11 @@
 2010-01-29  Benjamin Herr  <ben@0x539.de>
 
+	* infinoted/infinoted-pam.c: Abort checking all groups early when an
+	error happens even if the caller does not care, also localise strings
+	properly and use proper quotation marks.
+
+2010-01-29  Benjamin Herr  <ben@0x539.de>
+
 	* libinfinity/common/inf-error.h:
 	* libinfinity/common/inf-error.c:
 	* infinoted/infinoted-pam.c: When an error happens while checking on
