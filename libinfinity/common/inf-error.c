@@ -234,8 +234,9 @@ inf_postauthentication_strerror(InfPostAuthenticationError code)
   switch(code)
   {
   case INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED:
-    return _("The user authenticated as is not permitted "
-             "to connect to this server.");
+    return _("User is not permitted to connect to this server.");
+  case INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR:
+    return _("An error cocured while checking user permissions.");
   default:
     return _("An error with unknown code has occured");
   }

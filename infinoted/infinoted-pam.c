@@ -20,7 +20,9 @@
 #define _POSIX_C_SOURCE 1 /* for getpwnam_r, getgrnam_r, getgrgid_r */
 
 #include <infinoted/infinoted-pam.h>
+#include <infinoted/infinoted-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <security/pam_appl.h>
 #include <sys/types.h>
@@ -77,41 +79,91 @@ infinoted_pam_delay_func(int retval,
                          void *appdata_ptr)
 {
   /* do not delay */
+  /* TODO: figure out how to randomly delay a bit without blocking the entire
+   * server. */
+}
+
+static void
+infinoted_pam_log_error(const char* username,
+                        const char* detail,
+                        int error_code,
+                        GError** error)
+{
+  const char* msg;
+
+  if(error_code == 0)
+    msg = _("Entry not found");
+  else
+    msg = strerror(error_code);
+
+  infinoted_util_log_error(
+    _("Error while checking groups of user `%s', %s: %s."),
+    username,
+    detail,
+    msg
+  );
+
+  /* TODO: use g_set_error_literal in glib 2.18 */
+  g_set_error(
+    error,
+    inf_postauthentication_error_quark(),
+    INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR,
+    "%s",
+    inf_postauthentication_strerror(INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR)
+  );
 }
 
 static gboolean
 infinoted_pam_user_is_in_group(const gchar* username,
-                                             const gchar* required_group)
+                               gchar* required_group,
+                               gchar* buf,
+                               size_t buf_size,
+                               GError** error)
 {
   struct passwd user_entry, *user_pointer;
   struct group  group_entry, *group_pointer;
-  char buf[1024];
   char** iter;
+  char msgbuf[128];
   int status;
-  /* TODO: status receives an 'errno' style error code, should we log it?
-   * We could do more proper error handling, but we are not going to
-   * terminate because some user cannot log in, anyway, and I am not certain
-   * how much we are supposed to tell users about what went wrong, so we might
-   * either log it right here or plain ignore it. */
+  gid_t gid;
 
   /* first check against the user's primary group */
-  status = getpwnam_r(username, &user_entry, buf, 1024, &user_pointer);
+  status = getpwnam_r(username, &user_entry, buf, buf_size, &user_pointer);
   if(user_pointer == NULL)
+  {
+    infinoted_pam_log_error(
+      username,
+      _("looking up user information"),
+      status,
+      error);
     return FALSE;
+  }
 
+  gid = user_entry.pw_gid;
   status =
-    getgrgid_r(user_entry.pw_gid, &group_entry, buf, 1024, &group_pointer);
+    getgrgid_r(gid, &group_entry, buf, buf_size, &group_pointer);
   if(group_pointer == NULL)
+  {
+    g_snprintf(msgbuf, sizeof msgbuf, "looking up group %ld", (long) gid);
+    infinoted_pam_log_error(username, msgbuf, status, error);
     return FALSE;
+  }
 
   if(strcmp(group_entry.gr_name, required_group) == 0)
     return TRUE;
 
   /* now go through all users listed for the required group */
   status =
-    getgrnam_r(required_group, &group_entry, buf, 1024, &group_pointer);
+    getgrnam_r(required_group, &group_entry, buf, buf_size, &group_pointer);
   if(group_pointer == NULL)
+  {
+    g_snprintf(msgbuf,
+               sizeof msgbuf,
+               "looking up group `%s'",
+               required_group);
+    infinoted_pam_log_error(username, msgbuf, status, error);
     return FALSE;
+  }
 
   for(iter = group_entry.gr_mem; *iter; ++iter)
   {
@@ -119,15 +171,21 @@ infinoted_pam_user_is_in_group(const gchar* username,
       return TRUE;
   }
 
-  /* nothing worked. Oh well! */
+  /* Nothing worked. No success, but no error either. */
   return FALSE;
 }
 
 static gboolean
 infinoted_pam_user_is_allowed(InfinotedOptions* options,
-                              const gchar* username)
+                              const gchar* username,
+                              GError** error)
 {
+  char* buf;
+  long buf_size_gr, buf_size_pw, buf_size;
+  gboolean status;
+
   gchar** iter;
+
   if(options->pam_allowed_users == NULL
      && options->pam_allowed_groups == NULL)
   {
@@ -146,14 +204,33 @@ infinoted_pam_user_is_allowed(InfinotedOptions* options,
 
     if(options->pam_allowed_groups != NULL)
     {
+      /* avoid reallocating this buffer over and over */
+      buf_size_pw = sysconf(_SC_GETPW_R_SIZE_MAX);
+      buf_size_gr = sysconf(_SC_GETGR_R_SIZE_MAX);
+      buf_size = buf_size_pw > buf_size_gr ? buf_size_pw : buf_size_gr;
+      buf = g_malloc(buf_size);
+
+      status = FALSE;
       for(iter = options->pam_allowed_groups; *iter; ++iter)
       {
-        if(infinoted_pam_user_is_in_group(username, *iter))
-          return TRUE;
-      }
-    }
+        if(infinoted_pam_user_is_in_group(
+             username, *iter, buf, buf_size, error))
+        {
+          status = TRUE;
+          break;
+        }
 
-    return FALSE;
+        /* do not try to check all other groups on an actual error */
+        if(error && *error)
+          break;
+      }
+      g_free(buf);
+      return status;
+    }
+    else
+    {
+      return FALSE;
+    }
   }
 }
 
@@ -196,15 +273,20 @@ infinoted_pam_user_authenticated_cb(InfdXmppServer* xmpp_server,
 {
   InfinotedOptions* options;
   const char* username;
+  GError* error;
 
   options = (InfinotedOptions*) user_data;
   /* if we did not authenticate the user, do nothing*/
   if (options->pam_service == NULL)
     return NULL;
 
+  error = NULL;
   username = gsasl_property_get(sasl_session, GSASL_AUTHID);
-  if(infinoted_pam_user_is_allowed(options, username))
+  if(infinoted_pam_user_is_allowed(options, username, &error))
     return NULL;
+
+  if(error)
+    return error;
 
   return g_error_new_literal(
     inf_postauthentication_error_quark(),

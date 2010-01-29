@@ -169,12 +169,14 @@ typedef enum _InfDirectoryError {
 
 /**
  * InfPostAuthenticationError:
- * @INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORISED: Authentication was
- * successful, but the user authenticated as is not permitted to connect
- * to this server.
+ * @INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORISED: User is not permitted
+ * to connect to this server.
+ * @INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR: An error occured while checking
+ * user permissions.
  */
 typedef enum _InfPostAuthenticationError {
-  INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED
+  INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED,
+  INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR
 } InfPostAuthenticationError;
 
 GQuark
