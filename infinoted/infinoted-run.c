@@ -22,9 +22,6 @@
 #include <infinoted/infinoted-creds.h>
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-note-plugin.h>
-#ifdef LIBINFINITY_HAVE_PAM
-#include <infinoted/infinoted-pam.h>
-#endif
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-tcp-server.h>
@@ -132,15 +129,6 @@ infinoted_run_create_server(InfinotedRun* run,
     startup->gsasl,
     startup->gsasl ? "PLAIN" : NULL
   );
-
-#ifdef LIBINFINITY_HAVE_PAM
-  g_signal_connect(
-    G_OBJECT(xmpp),
-    "connection-user-authenticated",
-    G_CALLBACK(infinoted_pam_user_authenticated_cb),
-    startup->options
-  );
-#endif
 
   infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));
 

@@ -130,10 +130,6 @@ typedef enum _InfXmppConnectionAuthError {
 
 struct _InfXmppConnectionClass {
   GObjectClass parent_class;
-
-  /* Signals */
-  GError* (*user_authenticated)(InfXmppConnection* xmpp,
-                                Gsasl_session* sasl_session);
 };
 
 struct _InfXmppConnection {
@@ -173,6 +169,17 @@ inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp);
 
 void
 inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp);
+
+gboolean
+inf_xmpp_connection_retry_sasl_authentication(InfXmppConnection* xmpp,
+                                              GError** error);
+
+void
+inf_xmpp_connection_set_sasl_error(InfXmppConnection* xmpp,
+                                   const GError* error);
+
+const GError*
+inf_xmpp_connection_get_sasl_error(InfXmppConnection* xmpp);
 
 G_END_DECLS
 

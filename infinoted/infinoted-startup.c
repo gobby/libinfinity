@@ -21,9 +21,7 @@
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-creds.h>
 
-#ifdef LIBINFINITY_HAVE_PAM
 #include <infinoted/infinoted-pam.h>
-#endif
 
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-init.h>
@@ -236,24 +234,58 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
                                  Gsasl_session* session,
                                  Gsasl_property prop)
 {
-  const char* username;
-  const char* password;
   InfinotedStartup* startup;
+  const char* password;
+
+#ifdef LIBINFINITY_HAVE_PAM
+  const char* username;
+  const gchar* pam_service;
+  InfXmppConnection* xmpp;
+  InfAuthenticationDetailError error_code;
+  GError* error;
+
+  xmpp = gsasl_session_hook_get(session);
+#endif
 
   switch(prop)
   {
   case GSASL_VALIDATE_SIMPLE:
     startup = gsasl_callback_hook_get(gsasl);
-    username = gsasl_property_fast(session, GSASL_AUTHID);
     password = gsasl_property_fast(session, GSASL_PASSWORD);
 #ifdef LIBINFINITY_HAVE_PAM
-    if(startup->options->pam_service != NULL)
+    username = gsasl_property_fast(session, GSASL_AUTHID);
+    pam_service = startup->options->pam_service;
+    if(pam_service != NULL)
     {
-      if(infinoted_pam_authenticate(
-           startup->options->pam_service, username, password))
-        return GSASL_OK;
+      error = NULL;
+      if(!infinoted_pam_authenticate(pam_service, username, password))
+      {
+        error_code = INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED;
+      }
+      else if (!infinoted_pam_user_is_allowed(startup->options,
+                                              username,
+                                              &error))
+      {
+        error_code = INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED;
+      }
       else
-        return GSASL_AUTHENTICATION_ERROR;
+      {
+        return GSASL_OK;
+      }
+
+      if(!error)
+      {
+        error = g_error_new_literal(
+          inf_authentication_detail_error_quark(),
+          error_code,
+          inf_authentication_detail_strerror(error_code)
+        );
+      }
+
+      inf_xmpp_connection_set_sasl_error(xmpp, error);
+      g_error_free(error);
+
+      return GSASL_AUTHENTICATION_ERROR;
     }
 #endif /* LIBINFINITY_HAVE_PAM */
     g_assert(startup->options->password != NULL);

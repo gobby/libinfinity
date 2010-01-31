@@ -205,37 +205,39 @@ inf_directory_strerror(InfDirectoryError code)
 }
 
 /**
- * inf_postauthentication_error_quark:
+ * inf_authentication_detail_error_quark:
  *
- * Error domain for "post-authentication" errors.  * Errors in this domain will
- * be from the #InfAuthenticationError enumeration. See #GError for
- * information on error domains.
+ * Error domain for further information on authentication errors. Errors in
+ * this domain will be from the #InfAuthenticationDetailError enumeration.
+ * See #GError for information on error domains.
  *
  * Returns: A GQuark.
  */
 GQuark
-inf_postauthentication_error_quark(void)
+inf_authentication_detail_error_quark(void)
 {
-  return g_quark_from_static_string("INF_POSTAUTHENTICATION_ERROR");
+  return g_quark_from_static_string("INF_AUTHENTICATION_DETAIL_ERROR");
 }
 
 
 /**
- * inf_postauthentication_strerror:
- * @code: An error code from the #InfPostauthenticationError enumeration.
+ * inf_authentication_detail_strerror:
+ * @code: An error code from the #InfAuthenticationDetailError enumeration.
  *
  * Returns a human-readable string for the given error code.
  *
  * Returns: A static string that must not be freed.
  */
 const gchar*
-inf_postauthentication_strerror(InfPostAuthenticationError code)
+inf_authentication_detail_strerror(InfAuthenticationDetailError code)
 {
   switch(code)
   {
-  case INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED:
+  case INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED:
+    return _("User did not provide valid credentials.");
+  case INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED:
     return _("User is not permitted to connect to this server.");
-  case INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR:
+  case INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR:
     return _("An error cocured while checking user permissions.");
   default:
     return _("An error with unknown code has occured");

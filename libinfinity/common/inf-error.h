@@ -168,16 +168,19 @@ typedef enum _InfDirectoryError {
 } InfDirectoryError;
 
 /**
- * InfPostAuthenticationError:
- * @INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORISED: User is not permitted
+ * InfAuthenticationDetailError:
+ * @INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED: User did not provide
+ * valid credentials.
+ * @INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED: User is not permitted
  * to connect to this server.
- * @INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR: An error occured while checking
+ * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occured while checking
  * user permissions.
  */
-typedef enum _InfPostAuthenticationError {
-  INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED,
-  INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR
-} InfPostAuthenticationError;
+typedef enum _InfAuthenticationDetailError {
+  INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
+  INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED,
+  INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR
+} InfAuthenticationDetailError;
 
 GQuark
 inf_request_error_quark(void);
@@ -198,10 +201,10 @@ const gchar*
 inf_directory_strerror(InfDirectoryError code);
 
 const gchar*
-inf_postauthentication_strerror(InfPostAuthenticationError code);
+inf_authentication_detail_strerror(InfAuthenticationDetailError code);
 
 GQuark
-inf_postauthentication_error_quark(void);
+inf_authentication_detail_error_quark(void);
 
 GQuark
 inf_gnutls_error_quark(void);

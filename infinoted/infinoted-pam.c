@@ -19,6 +19,10 @@
 
 #define _POSIX_C_SOURCE 1 /* for getpwnam_r, getgrnam_r, getgrgid_r */
 
+#include <libinfinity/inf-config.h>
+
+#ifdef LIBINFINITY_HAVE_PAM
+
 #include <infinoted/infinoted-pam.h>
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/common/inf-error.h>
@@ -106,10 +110,10 @@ infinoted_pam_log_error(const char* username,
   /* TODO: use g_set_error_literal in glib 2.18 */
   g_set_error(
     error,
-    inf_postauthentication_error_quark(),
-    INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR,
+    inf_authentication_detail_error_quark(),
+    INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR,
     "%s",
-    inf_postauthentication_strerror(INF_POSTAUTHENTICATION_ERROR_SERVER_ERROR)
+    inf_authentication_detail_strerror(INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR)
   );
 }
 
@@ -175,7 +179,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
   return FALSE;
 }
 
-static gboolean
+gboolean
 infinoted_pam_user_is_allowed(InfinotedOptions* options,
                               const gchar* username,
                               GError** error)
@@ -270,36 +274,6 @@ infinoted_pam_authenticate(const char* service,
   return status == PAM_SUCCESS;
 }
 
-GError*
-infinoted_pam_user_authenticated_cb(InfdXmppServer* xmpp_server,
-                                    InfXmppConnection* xmpp_connection,
-                                    Gsasl_session* sasl_session,
-                                    gpointer user_data)
-{
-  InfinotedOptions* options;
-  const char* username;
-  GError* error;
-
-  options = (InfinotedOptions*) user_data;
-  /* if we did not authenticate the user, do nothing*/
-  if (options->pam_service == NULL)
-    return NULL;
-
-  error = NULL;
-  username = gsasl_property_get(sasl_session, GSASL_AUTHID);
-  if(infinoted_pam_user_is_allowed(options, username, &error))
-    return NULL;
-
-  if(error)
-    return error;
-
-  return g_error_new_literal(
-    inf_postauthentication_error_quark(),
-    INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED,
-    inf_postauthentication_strerror(
-      INF_POSTAUTHENTICATION_ERROR_USER_NOT_AUTHORIZED
-    )
-  );
-}
+#endif /* LIBINFINITY_HAVE_PAM */
 
 /* vim:set et sw=2 ts=2: */

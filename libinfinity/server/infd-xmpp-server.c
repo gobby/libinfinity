@@ -68,7 +68,6 @@ enum {
 
 enum {
   ERROR,
-  CONNECTION_USER_AUTHENTICATED,
 
   LAST_SIGNAL
 };
@@ -77,95 +76,6 @@ enum {
 
 static GObjectClass* parent_class;
 static guint xmpp_server_signals[LAST_SIGNAL];
-
-/* forward declarations so each function can disconnect the others */
-static void
-infd_xmpp_server_finalize_disconnect_user_authenticated_signal(
-  gpointer data,
-  GObject* where_the_object_was);
-
-static void
-infd_xmpp_server_connection_finalize_unref_disconnection(
-  gpointer data,
-  GObject* where_the_object_was);
-
-static GError*
-infd_xmpp_server_connection_user_authenticated_cb(InfXmppConnection* xmpp_conn,
-                                                 Gsasl_session* sasl_session,
-                                                 gpointer user_data)
-{
-  InfdXmppServer* xmpp_server = INFD_XMPP_SERVER(user_data);
-  GError* error;
-
-  /* We are disconneccting the signal here so we do not need to worry about
-   * either of the server or the connection going away and leaving the other
-   * hanging. */
-  g_object_weak_unref(
-    G_OBJECT(xmpp_server),
-    infd_xmpp_server_finalize_disconnect_user_authenticated_signal,
-    xmpp_conn
-  );
-
-  g_object_weak_unref(
-    G_OBJECT(xmpp_conn),
-    infd_xmpp_server_connection_finalize_unref_disconnection,
-    xmpp_server
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    xmpp_conn,
-    G_CALLBACK(infd_xmpp_server_connection_user_authenticated_cb),
-    xmpp_server
-  );
-
-  /* simply forward the decision to the slots of our own
-   * CONNECTION_USER_AUTHENTICATED signal*/
-  g_signal_emit(
-    G_OBJECT(xmpp_server),
-    xmpp_server_signals[CONNECTION_USER_AUTHENTICATED],
-    0,
-    xmpp_conn,
-    sasl_session,
-    &error
-  );
-
-  return error;
-}
-
-static void
-infd_xmpp_server_finalize_disconnect_user_authenticated_signal(
-  gpointer data, /* the xmpp connection */
-  GObject* where_the_object_was)
-{
-  /* The server is gone, so the connection needs to drop its callback. */
-  inf_signal_handlers_disconnect_by_func(
-    data,
-    G_CALLBACK(infd_xmpp_server_connection_user_authenticated_cb),
-    where_the_object_was
-  );
-
-  /* Now that the server is gone, it does not care for the connection
-   * going away anymore either. */
-  g_object_weak_unref(
-    G_OBJECT(data),
-    infd_xmpp_server_connection_finalize_unref_disconnection,
-    where_the_object_was
-  );
-}
-
-static void
-infd_xmpp_server_connection_finalize_unref_disconnection(
-  gpointer data, /* the xmpp server */
-  GObject* where_the_object_was)
-{
-  /* The connection is gone, so the server does not need to worry about
-   * disconnecting its callback anymore when it dies. */
-  g_object_weak_unref(
-    G_OBJECT(data),
-    infd_xmpp_server_finalize_disconnect_user_authenticated_signal,
-    where_the_object_was
-  );
-}
 
 static void
 infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
@@ -206,25 +116,6 @@ infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
   infd_xml_server_new_connection(
     INFD_XML_SERVER(xmpp_server),
     INF_XML_CONNECTION(xmpp_connection)
-  );
-
-  g_signal_connect(
-    G_OBJECT(xmpp_connection),
-    "user-authenticated",
-    G_CALLBACK(infd_xmpp_server_connection_user_authenticated_cb),
-    xmpp_server
-  );
-
-  g_object_weak_ref(
-    G_OBJECT(xmpp_server),
-    infd_xmpp_server_finalize_disconnect_user_authenticated_signal,
-    xmpp_connection
-  );
-
-  g_object_weak_ref(
-    G_OBJECT(xmpp_connection),
-    infd_xmpp_server_connection_finalize_unref_disconnection,
-    xmpp_server
   );
 
   g_object_unref(G_OBJECT(xmpp_connection));
@@ -638,25 +529,6 @@ infd_xmpp_server_xml_server_close(InfdXmlServer* xml)
   }
 }
 
-static gboolean
-infd_xmpp_server_connection_user_authenticated_accumulator(
-    GSignalInvocationHint* ih,
-    GValue* return_accu,
-    const GValue* h_return,
-    gpointer data)
-{
-  if (g_value_get_pointer(h_return) == NULL)
-  {
-    /* in case this is the last call */
-    g_value_set_pointer(return_accu, NULL);
-
-    return TRUE;
-  }
-
-  g_value_copy(h_return, return_accu);
-  return FALSE;
-}
-
 static void
 infd_xmpp_server_class_init(gpointer g_class,
                             gpointer class_data)
@@ -762,19 +634,6 @@ infd_xmpp_server_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* actually a GError* */
-  );
-
-  xmpp_server_signals[CONNECTION_USER_AUTHENTICATED] = g_signal_new(
-    "connection-user-authenticated",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfdXmppServerClass, connection_user_authenticated),
-    infd_xmpp_server_connection_user_authenticated_accumulator, NULL,
-    inf_marshal_POINTER__OBJECT_POINTER,
-    G_TYPE_POINTER, /* actually a GError* */
-    2,
-    INF_TYPE_XMPP_CONNECTION,
-    G_TYPE_POINTER /* actually a Gsasl_session */
   );
 }
 

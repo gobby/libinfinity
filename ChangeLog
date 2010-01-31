@@ -1,3 +1,29 @@
+2010-01-31  Benjamin Herr  <ben@0x539.de>, Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Rename InfPostAuthenticationError to
+	InfAuthenticationDetailError, added
+	INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED.
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c: Removed user-authenticated
+	signals. Instead, allow the gsasl callback to use the new function
+	inf_xmpp_connection_set_sasl_error() to provide further information
+	regarding the failed authentication, which is sent to the clientside
+	and can be queried, for example in error callbacks, on either side
+	with inf_xmpp_connection_get_sasl_error(). The callback now needs to
+	explicitly use inf_xmpp_connection_retry_sasl_authentication() to
+	restart the authentication process. To make that possible, the client
+	will now remember what sasl mechanisms are supported by the server.
+
+	* infinoted/infinoted-config-reload.c:
+	* infinoted/infinoted-pam.h:
+	* infinoted/infinoted-pam.c:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-startup.c: Adapt to the above API changes.
+
 2010-01-29  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-pam.c: Abort checking all groups early when an

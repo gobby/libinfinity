@@ -20,7 +20,12 @@
 #ifndef __INFINOTED_PAM_H__
 #define __INFINOTED_PAM_H__
 
+#include <libinfinity/inf-config.h>
+
+#ifdef LIBINFINITY_HAVE_PAM
+
 #include <infinoted/infinoted-options.h>
+
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/server/infd-xmpp-server.h>
 
@@ -31,17 +36,18 @@
 G_BEGIN_DECLS
 
 gboolean
+infinoted_pam_user_is_allowed(InfinotedOptions* options,
+                              const gchar* username,
+                              GError** error);
+
+gboolean
 infinoted_pam_authenticate(const char* service,
                            const char* username,
                            const char* password);
 
-GError*
-infinoted_pam_user_authenticated_cb(InfdXmppServer* xmpp_server,
-                                    InfXmppConnection* xmpp_connection,
-                                    Gsasl_session* sasl_session,
-                                    gpointer user_data);
-
 G_END_DECLS
+
+#endif /* LIBINFINITY_HAVE_PAM */
 
 #endif /* __INFINOTED_PAM_H__ */
 

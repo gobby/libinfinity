@@ -48,8 +48,6 @@ struct _InfdXmppServerClass {
   /* Signals */
   void (*error)(InfdXmppServer* server,
                 GError* error);
-  GError* (*connection_user_authenticated)(InfdXmppServer* server,
-                                           InfXmppConnection* connection);
 };
 
 struct _InfdXmppServer {
