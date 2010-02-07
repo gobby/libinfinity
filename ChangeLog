@@ -1,3 +1,22 @@
+2010-02-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-operation.c
+	(inf_adopted_operation_get_concurrency_id): If the second operation is
+	a split operation, then call the function on it, and reverse the
+	result. This prevents every subclass to have to take that case into
+	account.
+
+	* libinfinity/adopted/inf-adopted-split-operation.c
+	(inf_adopted_split_operation_get_concurrency_id): If both parts of the
+	split operation agree, then return that. If one is none and the other
+	has a decision, then return that decision. Only error out if the two
+	IDs are contradictory.
+
+	* test/replay/replay-08.record.xml:
+	* test/replay/replay-09.record.xml: Added two records where
+	get_concurrency_id for InfAdoptedSplitOperation is required (08 is a
+	cut-down version of 09).
+
 2009-12-28  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-reduce-replay.c:

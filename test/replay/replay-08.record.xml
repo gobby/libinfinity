@@ -1,0 +1,707 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<infinote-adopted-session-record>
+ <initial><sync-begin num-messages="12"/><sync-user id="1" name="polarina" status="active" time="1:1550;2:1730;3:873" caret="869" selection="0" hue="0.19703100000000001"/><sync-user id="2" name="Anton" status="active" time="1:1547;2:1731;3:873" caret="565" selection="0" hue="0.33918199999999998"/><sync-user id="3" name="Daði" status="active" time="1:1446;2:1647;3:873" caret="305" selection="0" hue="0.36225186735257359"/><sync-segment author="1">Unintended pregnancies include unwanted pregnancies as well as those that are mistimed. Worldwide, 38</sync-segment><sync-segment author="2"> percent</sync-segment><sync-segment author="1"> of pregnancies are unintended (some 80 million unintended pregnancies each year). Unintended pregnancies result in about 42 million induced abortions per year, and 34 million unintended births.</sync-segment><sync-segment author="2">
+</sync-segment><sync-segment author="1">
+</sync-segment><sync-segment author="2">Anton:
+Unintended pregnancies include unwanted pregnancies as well as those that are mistimes. Worldwide, 38 percent of pregnancies are unintended (some 80 million unintended pregnancies each year). Unintended pregnancies result in about 42 million induced abo
+</sync-segment><sync-segment author="1">
+Polarina:
+Unitended pregnancies include unwanted pregnancies as well as those that are mistimed. Worldwide, 38 percent of pregnancies are unintended (some 80 million unintended pregnanci4es each year). Unintended pregnancies result in about 42 million induced abortions per year, and 32 million uninten
+
+</sync-segment><sync-segment author="3">
+</sync-segment><sync-segment author="1">
+</sync-segment><sync-end/></initial>
+
+   <request user="1" time="2:1">
+  <insert-caret pos="869">d</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="870">e</insert-caret>
+ </request>
+ <request user="2" time="1:5">
+  <insert-caret pos="565">r</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="871">d</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="873"> </insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="566">t</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="567">i</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="875">b</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="568">o</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="877">i</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="569">n</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="879">r</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="570">s</insert-caret>
+ </request>
+ <request user="1" time="2:2">
+  <insert-caret pos="882">t</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="571"> </insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="883">h</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="572">p</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="885">s</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="573">e</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="574">r</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="887">.</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="575"> </insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="576">y</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="577">e</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="578">a</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="579">r</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="580">,</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="581"> </insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="582">a</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="583">n</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="584">d</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="585"> </insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="586">3</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="587">4</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="588"> </insert-caret>
+ </request>
+ <request user="1" time="2:15">
+  <delete-caret pos="776" len="1"/>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="589">m</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="590">i</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="591">l</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="592">l</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="593">i</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="594">o</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="595">n</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="596"> </insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="597">u</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="598">n</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="599">i</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="600">n</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="601">t</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="602">e</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="603">n</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="604">d</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="605">e</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="606">d</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="607"> </insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="608">b</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="609">i</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="610">r</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="611">t</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="612">h</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="613">s</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="614">.</insert-caret>
+ </request>
+ <request user="1" time="2:27">
+  <insert-caret pos="630">n</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <delete-caret pos="397" len="1"/>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="397">d</insert-caret>
+ </request>
+ <request user="1" time="2:2">
+  <delete-caret pos="902" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="902">4</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="903">
+</insert-caret>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="903" len="1"/>
+ </request>
+ <request user="2" time="1:4">
+  <insert-caret pos="934">°</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="935">°</insert-caret>
+ </request>
+ <request user="2" time="">
+  <delete-caret pos="935" len="1"/>
+ </request>
+ <request user="2" time="">
+  <delete-caret pos="934" len="1"/>
+ </request>
+ <request user="3" time="1:121;2:140">
+  <insert-caret pos="934">i</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="935"> </insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="936">l</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="937">i</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="938">k</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="939">e</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="940"> </insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="941">b</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="942">i</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="943">g</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="944"> </insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="945">m</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="946">o</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="947">u</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="948">t</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="949">h</insert-caret>
+ </request>
+ <request user="2" time="3:16">
+  <delete-caret pos="0" len="932"/>
+ </request>
+ <request user="3" time="2:1">
+  <delete-caret pos="17" len="1"/>
+ </request>
+ <request user="2" time="">
+  <delete-caret pos="0" len="1"/>
+ </request>
+ <request user="2" time="3:1">
+  <delete-caret pos="0" len="1"/>
+ </request>
+ <request user="3" time="2:2">
+  <delete-caret pos="14" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="13" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="12" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="11" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="10" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="9" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="8" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="7" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="6" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="5" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="4" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="3" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="2" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="1" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="0" len="1"/>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="0">n</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="1">e</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="2">i</insert-caret>
+ </request>
+ <request user="3" time="">
+  <insert-caret pos="3">!</insert-caret>
+ </request>
+ <request user="1" time="2:7;3:36">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <undo-caret/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="5" len="1"/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="4" len="1"/>
+ </request>
+ <request user="3" time="1:19">
+  <delete-caret pos="3" len="1"/>
+ </request>
+ <request user="3" time="">
+  <delete-caret pos="2" len="1"/>
+ </request>
+ <request user="1" time="3:2">
+  <delete-caret pos="1" len="1"/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="0" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="0">m</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="1">,</insert-caret>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="1" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="1">o</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="2">d</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="3">u</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="4">l</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="5">e</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="6"> </insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="7">M</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="8">;</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="9">a</insert-caret>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="9" len="1"/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="8" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="8">a</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="9">i</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="10">n</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="11"> </insert-caret>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="11" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="11">(</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="12">)</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="13"> </insert-caret>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="13" len="1"/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="12" len="1"/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="11" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="11"> </insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="12">(</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="13">)</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="14"> </insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="15">w</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="16">h</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="17">e</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="18">r</insert-caret>
+ </request>
+ <request user="2" time="1:52;3:21">
+  <insert-caret pos="15">
+</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="19">e</insert-caret>
+ </request>
+ <request user="2" time="1:2">
+  <insert-caret pos="16">
+</insert-caret>
+ </request>
+ <request user="1" time="2:2">
+  <insert-caret pos="22">
+</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="23">
+</insert-caret>
+ </request>
+ <request user="2" time="1:3">
+  <insert-caret pos="23">
+</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="24">m</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="24">
+</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="26">a</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="25">
+</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="26">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="27">
+</insert-caret>
+ </request>
+ <request user="1" time="2:4">
+  <insert-caret pos="31">i</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="31">
+</insert-caret>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="32">n</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="34"> </insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="32">
+</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="36">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="37">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="38">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="39">
+</insert-caret>
+ </request>
+ <request user="1" time="2:4">
+  <insert-caret pos="36">:</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="41">
+</insert-caret>
+ </request>
+ <request user="1" time="2:1">
+  <insert-caret pos="37">:</insert-caret>
+ </request>
+ <request user="2" time="1:1">
+  <insert-caret pos="43">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="44">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="45">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="46">
+</insert-caret>
+ </request>
+ <request user="2" time="">
+  <insert-caret pos="47">
+</insert-caret>
+ </request>
+ <request user="1" time="2:6">
+  <delete-caret pos="31" len="1"/>
+ </request>
+ <request user="1" time="">
+  <delete-caret pos="30" len="1"/>
+ </request>
+ <request user="1" time="">
+  <insert-caret pos="30">a</insert-caret>
+ </request>
+ <request user="2" time="1:3">
+  <undo-caret/>
+ </request>
+ <request user="1" time="2:1">
+  <delete-caret pos="31" len="1"/>
+ </request>
+ <request user="2" time="1:1">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+ <request user="2" time="">
+  <undo-caret/>
+ </request>
+
+</infinote-adopted-session-record>

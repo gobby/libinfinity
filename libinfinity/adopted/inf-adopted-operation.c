@@ -192,6 +192,10 @@ inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
  * operations. This can then be used as concurrency ID to call
  * inf_adopted_operation_transform().
  *
+ * Note that the function is antisymmetric. If it returns
+ * %INF_ADOPTED_CONCURRENCY_SELF, then it returns
+ * %INF_ADOPTED_CONCURRENCY_OTHER for swapped arguments.
+ *
  * Returns: A concurrency ID between @operation and @against. Can be
  * %INF_ADOPTED_CONCURRENCY_NONE in case no decision can be made.
  */
@@ -200,6 +204,7 @@ inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
                                          InfAdoptedOperation* against)
 {
   InfAdoptedOperationIface* iface;
+  InfAdoptedConcurrencyId id;
 
   g_return_val_if_fail(
     INF_ADOPTED_IS_OPERATION(operation),
@@ -210,10 +215,35 @@ inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
     INF_ADOPTED_CONCURRENCY_NONE
   );
 
-  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
-  g_assert(iface->get_concurrency_id != NULL);
+  /* Use antisymmetricity if second argument is split operation, so that
+   * subclasses don't need to handle that case explicitely. */
+  if(!INF_ADOPTED_IS_SPLIT_OPERATION(operation) &&
+     INF_ADOPTED_IS_SPLIT_OPERATION(against))
+  {
+    iface = INF_ADOPTED_OPERATION_GET_IFACE(against);
+    g_assert(iface->get_concurrency_id != NULL);
 
-  return iface->get_concurrency_id(operation, against);
+    id = iface->get_concurrency_id(against, operation);
+    switch(id)
+    {
+    case INF_ADOPTED_CONCURRENCY_SELF:
+      return INF_ADOPTED_CONCURRENCY_OTHER;
+    case INF_ADOPTED_CONCURRENCY_NONE:
+      return INF_ADOPTED_CONCURRENCY_NONE;
+    case INF_ADOPTED_CONCURRENCY_OTHER:
+      return INF_ADOPTED_CONCURRENCY_SELF;
+    default:
+      g_assert_not_reached();
+      return INF_ADOPTED_CONCURRENCY_NONE;
+    }
+  }
+  else
+  {
+    iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
+    g_assert(iface->get_concurrency_id != NULL);
+
+    return iface->get_concurrency_id(operation, against);
+  }
 }
 
 

@@ -231,6 +231,27 @@ static InfAdoptedConcurrencyId
 inf_adopted_split_operation_get_concurrency_id(InfAdoptedOperation* operation,
                                                InfAdoptedOperation* against)
 {
+  InfAdoptedSplitOperation* split;
+  InfAdoptedSplitOperationPrivate* priv;
+  InfAdoptedConcurrencyId first_id;
+  InfAdoptedConcurrencyId second_id;
+
+  split = INF_ADOPTED_SPLIT_OPERATION(operation);
+  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
+
+  first_id = inf_adopted_operation_get_concurrency_id(priv->first, against);
+  second_id = inf_adopted_operation_get_concurrency_id(priv->second, against);
+
+  /* everything is fine if both split parts agree, or if only one can
+   * make a decision. Problem if they are contradictory. */
+
+  if(first_id == second_id)
+    return first_id;
+  else if(first_id == INF_ADOPTED_CONCURRENCY_NONE)
+    return second_id;
+  else if(second_id == INF_ADOPTED_CONCURRENCY_NONE)
+    return first_id;
+
   _inf_adopted_concurrency_warning(INF_ADOPTED_TYPE_SPLIT_OPERATION);
   return INF_ADOPTED_CONCURRENCY_NONE;
 }
