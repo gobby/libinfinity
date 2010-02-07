@@ -386,13 +386,16 @@ infd_directory_start_session_save_timeout(InfdDirectory* directory,
   timeout_data->directory = directory;
   timeout_data->node = node;
 
-  node->shared.note.save_timeout = inf_io_add_timeout(
-    priv->io,
-    INFD_DIRECTORY_SAVE_TIMEOUT,
-    infd_directory_session_save_timeout_func,
-    timeout_data,
-    infd_directory_session_save_timeout_data_free
-  );
+  if(priv->storage != NULL)
+  {
+    node->shared.note.save_timeout = inf_io_add_timeout(
+      priv->io,
+      INFD_DIRECTORY_SAVE_TIMEOUT,
+      infd_directory_session_save_timeout_func,
+      timeout_data,
+      infd_directory_session_save_timeout_data_free
+    );
+  }
 }
 
 static void
@@ -581,13 +584,20 @@ infd_directory_create_session_proxy_for_storage(
   /* Save session initially */
   infd_directory_node_make_path(parent, name, &path, NULL);
 
-  ret = plugin->session_write(
-    priv->storage,
-    session,
-    path,
-    plugin->user_data,
-    error
-  );
+  if(priv->storage != NULL)
+  {
+    ret = plugin->session_write(
+      priv->storage,
+      session,
+      path,
+      plugin->user_data,
+      error
+    );
+  }
+  else
+  {
+    ret = TRUE;
+  }
 
   g_free(path);
   if(ret == FALSE)
@@ -707,13 +717,17 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
         infd_directory_node_get_path(node, &path, NULL);
 
         error = NULL;
-        node->shared.note.plugin->session_write(
-          priv->storage,
-          infd_session_proxy_get_session(node->shared.note.session),
-          path,
-          node->shared.note.plugin->user_data,
-          &error
-        );
+
+        if(priv->storage != NULL)
+        {
+          node->shared.note.plugin->session_write(
+            priv->storage,
+            infd_session_proxy_get_session(node->shared.note.session),
+            path,
+            node->shared.note.plugin->user_data,
+            &error
+          );
+        }
 
         /* TODO: Unset modified flag of buffer if result == TRUE */
 
@@ -1305,13 +1319,21 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   infd_directory_node_get_path(node, &path, NULL);
 
   error = NULL;
-  ret = sync_in->plugin->session_write(
-    priv->storage,
-    session,
-    path,
-    sync_in->plugin->user_data,
-    &error
-  );
+
+  if(priv->storage != NULL)
+  {
+    ret = sync_in->plugin->session_write(
+      priv->storage,
+      session,
+      path,
+      sync_in->plugin->user_data,
+      &error
+    );
+  }
+  else
+  {
+    ret = TRUE;
+  }
 
   if(ret == FALSE)
   {
@@ -1791,7 +1813,7 @@ infd_directory_node_explore(InfdDirectory* directory,
         priv->node_counter ++,
         g_strdup(storage_node->name)
       );
-      
+
       break;
     case INFD_STORAGE_NODE_NOTE:
       /* TODO: Currently we ignore notes of unknown type. Perhaps we should
@@ -1852,7 +1874,6 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   g_return_val_if_fail(parent->shared.subdir.explored == TRUE, NULL);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(priv->storage != NULL);
 
   if(!infd_directory_node_is_name_available(directory, parent, name, error))
   {
@@ -1862,7 +1883,10 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   {
     infd_directory_node_make_path(parent, name, &path, NULL);
 
-    result = infd_storage_create_subdirectory(priv->storage, path, error);
+    if(priv->storage != NULL)
+      result = infd_storage_create_subdirectory(priv->storage, path, error);
+    else
+      result = TRUE;
 
     g_free(path);
     if(result == FALSE) return NULL;
@@ -1873,6 +1897,8 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
       priv->node_counter ++,
       g_strdup(name)
     );
+
+    node->shared.subdir.explored = TRUE;
 
     infd_directory_node_register(directory, node, NULL, seq);
     return node;
@@ -2172,20 +2198,28 @@ infd_directory_node_remove(InfdDirectory* directory,
   gchar* path;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(priv->storage != NULL);
 
   /* Cannot remove the root node */
   g_assert(node->parent != NULL);
 
   infd_directory_node_get_path(node, &path, NULL);
-  result = infd_storage_remove_node(
-    priv->storage,
-    node->type == INFD_STORAGE_NODE_NOTE ?
-      node->shared.note.plugin->note_type :
-      NULL,
-    path,
-    error
-  );
+
+
+  if(priv->storage != NULL)
+  {
+    result = infd_storage_remove_node(
+      priv->storage,
+      node->type == INFD_STORAGE_NODE_NOTE ?
+        node->shared.note.plugin->note_type :
+        NULL,
+      path,
+      error
+    );
+  }
+  else
+  {
+    result = TRUE;
+  }
 
   g_free(path);
 
@@ -2221,7 +2255,6 @@ infd_directory_node_get_session(InfdDirectory* directory,
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(priv->storage != NULL);
 
   if(node->shared.note.session != NULL)
   {
@@ -2230,6 +2263,9 @@ infd_directory_node_get_session(InfdDirectory* directory,
     g_object_ref(proxy);
     return proxy;
   }
+
+  /* If we don't have a background storage then all nodes are in memory */
+  g_assert(priv->storage != NULL);
 
   /* The session could already exist in a subscribe-session subreq */
   proxy = NULL;
@@ -2845,7 +2881,18 @@ infd_directory_handle_save_session(InfdDirectory* directory,
   gboolean result;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(priv->storage != NULL);
+  if(priv->storage == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_STORAGE,
+      "%s",
+      _("No background storage available")
+    );
+
+    return FALSE;
+  }
 
   /* TODO: Don't do anything if buffer is not modified */
 
@@ -3247,7 +3294,8 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
   if(request == NULL) return FALSE;
 
   result = TRUE;
-  if(request->type == INFD_DIRECTORY_SUBREQ_ADD_NODE)
+  if(priv->storage != NULL &&
+     request->type == INFD_DIRECTORY_SUBREQ_ADD_NODE)
   {
     infd_directory_node_make_path(
       request->shared.add_node.parent,
@@ -3453,7 +3501,7 @@ infd_directory_constructor(GType type,
 
   /* TODO: Use default communication manager in case none is set */
   g_assert(priv->communication_manager != NULL);
-  
+
   priv->group = inf_communication_manager_open_group(
     priv->communication_manager,
     "InfDirectory",
@@ -3471,6 +3519,12 @@ infd_directory_constructor(GType type,
     INF_COMMUNICATION_GROUP(priv->group),
     INF_COMMUNICATION_OBJECT(directory)
   );
+
+  /* If we don't have a background storage then the root node has been
+   * explored (there is simply no content yet, it has to be added via
+   * infd_directory_add_note). */
+  if(priv->storage == NULL)
+    priv->root->shared.subdir.explored = TRUE;
 
   g_assert(g_hash_table_size(priv->connections) == 0);
   return object;
@@ -4111,12 +4165,14 @@ infd_directory_iter_free(InfdDirectoryIter* iter)
  * infd_directory_new:
  * @io: IO object to watch connections and schedule timeouts.
  * @storage: Storage backend that is used to read/write notes from
- * permanent memory into #InfBuffer objects.
+ * permanent memory into #InfBuffer objects, or %NULL.
  * @comm_manager: A #InfCommunicationManager to register added
  * connections to and which forwards incoming data to the directory
  * or running sessions.
  *
- * Creates a new #InfdDirectory.
+ * Creates a new #InfdDirectory. If @storage is %NULL then the directory
+ * keeps all content in memory. This can make sense for ad-hoc sessions where
+ * no central document storage is required.
  *
  * Return Value: A new #InfdDirectory.
  **/
@@ -4128,7 +4184,7 @@ infd_directory_new(InfIo* io,
   GObject* object;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
-  g_return_val_if_fail(INFD_IS_STORAGE(storage), NULL);
+  g_return_val_if_fail(storage == NULL || INFD_IS_STORAGE(storage), NULL);
   g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(comm_manager), NULL);
 
   object = g_object_new(
@@ -4195,6 +4251,9 @@ infd_directory_get_communication_manager(InfdDirectory* directory)
  * Adds @plugin to @directory. This allows the directory to create sessions
  * of the plugin's type. Only one plugin of each type can be added to the
  * directory. The plugin's storage_type must match the storage of @directory.
+ * If the directory's storage is %NULL, then the plugin's storage type does
+ * not matter, and the plugin's @session_read and @session_write functions
+ * will not be used (and can therefore be %NULL).
  *
  * Return Value: Whether the plugin was added successfully.
  **/
@@ -4203,15 +4262,18 @@ infd_directory_add_plugin(InfdDirectory* directory,
                           const InfdNotePlugin* plugin)
 {
   InfdDirectoryPrivate* priv;
-  const gchar* storage_type;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(plugin != NULL, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  storage_type = g_type_name(G_TYPE_FROM_INSTANCE(priv->storage));
+
   g_return_val_if_fail(
-    strcmp(plugin->storage_type, storage_type) == 0,
+    priv->storage == NULL ||
+    strcmp(
+      plugin->storage_type,
+      g_type_name(G_TYPE_FROM_INSTANCE(priv->storage))
+    ) == 0,
     FALSE
   );
 
@@ -4633,7 +4695,6 @@ infd_directory_add_subdirectory(InfdDirectory* directory,
   infd_directory_return_val_if_subdir_fail(parent->node, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_return_val_if_fail(priv->storage != NULL, FALSE);
 
   if( ((InfdDirectoryNode*)parent->node)->shared.subdir.explored == FALSE)
     if(infd_directory_node_explore(directory, parent->node, error) == FALSE)
@@ -4891,6 +4952,19 @@ infd_directory_iter_save_session(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
   g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, FALSE);
+
+  if(priv->storage == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_STORAGE,
+      "%s",
+      _("No background storage available")
+    );
+
+    return FALSE;
+  }
 
   infd_directory_node_get_path(node, &path, NULL);
 

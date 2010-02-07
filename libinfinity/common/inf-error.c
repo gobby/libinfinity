@@ -197,6 +197,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Received sync-in message without having requested a sync-in");
   case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
     return _("Unexpected XML message");
+  case INF_DIRECTORY_ERROR_NO_STORAGE:
+    return _("Server does not have a background storage");
   case INF_DIRECTORY_ERROR_FAILED:
     return _("An unknown directory error has occured");
   default:

@@ -1,5 +1,14 @@
 2010-02-07  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_DIRECTORY_ERROR_NO_STORAGE.
+
+	* libinfinity/server/infd-directory.c: Allow to pass NULL storage to
+	directory in which case all nodes are kept in memory.
+
+2010-02-07  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-text-replay.c
 	(inf_test_text_replay_apply_operation_to_string): Handle the operation
 	being a split operation, and apply both parts of it to the string in
