@@ -24,9 +24,11 @@
 #include <libinftext/inf-text-default-insert-operation.h>
 #include <libinftext/inf-text-default-delete-operation.h>
 #include <libinftext/inf-text-default-buffer.h>
+#include <libinftext/inf-text-move-operation.h>
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
 #include <libinfinity/adopted/inf-adopted-session-replay.h>
+#include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/common/inf-init.h>
 
 #include <string.h>
@@ -83,6 +85,8 @@ inf_test_text_replay_load_buffer(InfTextBuffer* buffer)
 
   result = g_string_sized_new(inf_text_buffer_get_length(buffer));
 
+  g_assert(strcmp(inf_text_buffer_get_encoding(buffer), "UTF-8") == 0);
+
   iter = inf_text_buffer_create_iter(buffer);
   if(iter != NULL)
   {
@@ -108,6 +112,9 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
   InfTextChunkIter iter;
   guint position;
   guint length;
+  InfAdoptedOperation* first;
+  InfAdoptedOperation* second;
+  InfAdoptedOperation* new_second;
 
   if(INF_TEXT_IS_INSERT_OPERATION(operation))
   {
@@ -120,6 +127,8 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
     position = inf_text_insert_operation_get_position(
       INF_TEXT_INSERT_OPERATION(operation)
     );
+
+    g_assert(strcmp(inf_text_chunk_get_encoding(chunk), "UTF-8") == 0);
 
     if(inf_text_chunk_iter_init(chunk, &iter))
     {
@@ -154,6 +163,42 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
     length -= position;
 
     g_string_erase(string, position, length);
+  }
+  else if(INF_ADOPTED_IS_SPLIT_OPERATION(operation))
+  {
+    g_object_get(
+      G_OBJECT(operation),
+      "first", &first,
+      "second", &second,
+      NULL
+    );
+
+    new_second = inf_adopted_operation_transform(
+      second,
+      first,
+      INF_ADOPTED_CONCURRENCY_NONE
+    );
+
+    inf_test_text_replay_apply_operation_to_string(string, first);
+    inf_test_text_replay_apply_operation_to_string(string, new_second);
+
+    g_object_unref(first);
+    g_object_unref(second);
+    g_object_unref(new_second);
+  }
+  else if(INF_TEXT_IS_MOVE_OPERATION(operation) ||
+          INF_ADOPTED_IS_NO_OPERATION(operation))
+  {
+    /* Nothing to do */
+  }
+  else
+  {
+    g_error(
+      "Operation type \"%s\" not supported",
+      g_type_name(G_TYPE_FROM_INSTANCE(operation))
+    );
+
+    g_assert_not_reached();
   }
 }
 

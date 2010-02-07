@@ -1,5 +1,15 @@
 2010-02-07  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-text-replay.c
+	(inf_test_text_replay_apply_operation_to_string): Handle the operation
+	being a split operation, and apply both parts of it to the string in
+	that case.
+
+	* test/replay/replay-10.record.xml: Added a replay which requires this
+	functionality.
+
+2010-02-07  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/adopted/inf-adopted-operation.c
 	(inf_adopted_operation_get_concurrency_id): If the second operation is
 	a split operation, then call the function on it, and reverse the
