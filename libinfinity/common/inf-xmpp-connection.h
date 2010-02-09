@@ -170,6 +170,11 @@ inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp);
 void
 inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp);
 
+void
+inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
+                                              Gsasl* new_context,
+                                              const gchar* new_mechanisms);
+
 gboolean
 inf_xmpp_connection_retry_sasl_authentication(InfXmppConnection* xmpp,
                                               GError** error);

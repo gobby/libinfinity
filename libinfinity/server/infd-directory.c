@@ -4328,6 +4328,8 @@ infd_directory_lookup_plugin(InfdDirectory* directory,
  * not contain a "central" method for connection's network, then the
  * connection will not be added and the function returns %FALSE.
  *
+ * The connection is removed again automatically if it is closed.
+ *
  * Returns: Whether the connection was added to the directory.
  **/
 gboolean
@@ -4382,6 +4384,37 @@ infd_directory_add_connection(InfdDirectory* directory,
     infd_directory_send_welcome_message(directory, connection);
 
   return TRUE;
+}
+
+/**
+ * infd_directory_foreach_connection:
+ * @directory: A #InfdDirectory.
+ * @func: The function to call for each connection in @directory.
+ * @user_data: Additional data to pass to the callback function.
+ *
+ * Calls @func for each connection in @directory that has previously been
+ * added to the directory.
+ */
+void
+infd_directory_foreach_connection(InfdDirectory* directory,
+                                  InfdDirectoryForeachConnectionFunc func,
+                                  gpointer userdata)
+{
+  InfdDirectoryPrivate* priv;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(func != NULL);
+
+  GHashTableIter iter;
+  gpointer key;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_hash_table_iter_init(&iter, priv->connections);
+  while (g_hash_table_iter_next(&iter, &key, NULL)) 
+  {
+    func(INF_XML_CONNECTION(key), userdata);
+  }
 }
 
 /**

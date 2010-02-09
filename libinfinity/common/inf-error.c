@@ -239,6 +239,9 @@ inf_authentication_detail_strerror(InfAuthenticationDetailError code)
     return _("User did not provide valid credentials.");
   case INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED:
     return _("User is not permitted to connect to this server.");
+  case INF_AUTHENTICATION_DETAIL_ERROR_TRY_AGAIN:
+    return _("Authentication was temporarily "
+             "interrupted on the server side.");
   case INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR:
     return _("An error cocured while checking user permissions.");
   default:

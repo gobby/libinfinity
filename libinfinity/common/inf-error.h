@@ -174,12 +174,15 @@ typedef enum _InfDirectoryError {
  * valid credentials.
  * @INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED: User is not permitted
  * to connect to this server.
+ * @INF_AUTHENTICATION_DETAIL_ERROR_TRY_AGAIN: Authentication was temporarily
+ * interrupted on the server side.
  * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occured while checking
  * user permissions.
  */
 typedef enum _InfAuthenticationDetailError {
   INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
   INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED,
+  INF_AUTHENTICATION_DETAIL_ERROR_TRY_AGAIN,
   INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR
 } InfAuthenticationDetailError;
 

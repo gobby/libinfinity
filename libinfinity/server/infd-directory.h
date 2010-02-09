@@ -70,6 +70,9 @@ struct _InfdDirectory {
   GObject parent;
 };
 
+typedef void(*InfdDirectoryForeachConnectionFunc)(InfXmlConnection*,
+                                                  gpointer);
+
 GType
 infd_directory_iter_get_type(void) G_GNUC_CONST;
 
@@ -108,6 +111,11 @@ infd_directory_lookup_plugin(InfdDirectory* directory,
 gboolean
 infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection);
+
+void
+infd_directory_foreach_connection(InfdDirectory* directory,
+                                  InfdDirectoryForeachConnectionFunc func,
+                                  gpointer user_data);
 
 const gchar*
 infd_directory_iter_get_name(InfdDirectory* directory,

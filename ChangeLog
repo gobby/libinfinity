@@ -1,3 +1,21 @@
+2010-02-09  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added
+	infd_directory_foreach_connection().
+
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-error.c: Added
+	INF_AUTHENTICATION_DETAIL_ERROR_TRY_AGAIN.
+
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Added
+	inf_xmpp_connection_reset_sasl_authentication(), implement gracefully
+	abort of authentication.
+
+	* infinoted/infinoted-config-reload.c: Set new SASL context and
+	mechanisms for existing connections.
+
 2010-02-11  Armin Burgmeier  <armin@arbur.net>
 	
 	* configure.ac: Use AC_USE_SYSTEM_EXTENSIONS, bump autoconf

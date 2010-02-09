@@ -369,6 +369,10 @@ EXPORTS
     inf_xmpp_connection_set_certificate_callback
     inf_xmpp_connection_certificate_verify_continue
     inf_xmpp_connection_certificate_verify_cancel
+    inf_xmpp_connection_reset_sasl_authentication
+    inf_xmpp_connection_retry_sasl_authentication
+    inf_xmpp_connection_set_sasl_error
+    inf_xmpp_connection_get_sasl_error
     inf_xmpp_manager_get_type
     inf_xmpp_manager_new
     inf_xmpp_manager_lookup_connection_by_address
@@ -459,6 +463,7 @@ EXPORTS
     infd_directory_add_plugin
     infd_directory_lookup_plugin
     infd_directory_add_connection
+    infd_directory_foreach_connection
     infd_directory_iter_get_name
     infd_directory_iter_get_path
     infd_directory_iter_get_root

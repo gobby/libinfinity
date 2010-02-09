@@ -29,6 +29,20 @@
 static const guint8 INFINOTED_CONFIG_RELOAD_IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+static void
+infinoted_config_reload_update_connection_sasl_context(InfXmlConnection* xml,
+                                                       gpointer userdata)
+{
+  if(!INF_IS_XMPP_CONNECTION(xml))
+    return;
+
+  inf_xmpp_connection_reset_sasl_authentication(
+    INF_XMPP_CONNECTION(xml),
+    (Gsasl*) userdata,
+    userdata ? "PLAIN" : NULL
+  );
+}
+
 /**
  * infinoted_config_reload:
  * @run: A #InfinotedRun.
@@ -348,8 +362,16 @@ infinoted_config_reload(InfinotedRun* run,
     );
   }
 
-  /* TODO: Someone else might be holding on to the old startup, specifically
-   * the sasl sessions. */
+  /* Give each connection the new sasl context. This is necessary even if the
+   * connection already had a sasl context since that holds on to the old
+   * startup object. This aborts authentications in progress and otherwise
+   * has no effect, really. */
+  infd_directory_foreach_connection(
+    run->directory,
+    infinoted_config_reload_update_connection_sasl_context,
+    startup->gsasl
+   );
+
   infinoted_startup_free(run->startup);
   run->startup = startup;
 
