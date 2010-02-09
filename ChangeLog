@@ -1,3 +1,8 @@
+2010-02-09  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-startup.c: Changed sasl callback to provide
+	proper authentication error detail for server password authentication.
+
 2010-02-07  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-error.h:

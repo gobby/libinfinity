@@ -229,6 +229,31 @@ infinoted_startup_load_options(InfinotedStartup* startup,
   return TRUE;
 }
 
+static void
+infinoted_startup_gsasl_callback_set_error(InfXmppConnection* connection,
+                                           InfAuthenticationDetailError code,
+                                           const GError* error)
+{
+  GError* own_error;
+  own_error = NULL;
+
+  if(!error)
+  {
+    own_error = g_error_new_literal(
+      inf_authentication_detail_error_quark(),
+      code,
+      inf_authentication_detail_strerror(code)
+    );
+
+    inf_xmpp_connection_set_sasl_error(connection, own_error);
+    g_error_free(own_error);
+  }
+  else
+  {
+    inf_xmpp_connection_set_sasl_error(connection, error);
+  }
+}
+
 static int
 infinoted_startup_gsasl_callback(Gsasl* gsasl,
                                  Gsasl_session* session,
@@ -273,26 +298,28 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
         return GSASL_OK;
       }
 
-      if(!error)
-      {
-        error = g_error_new_literal(
-          inf_authentication_detail_error_quark(),
-          error_code,
-          inf_authentication_detail_strerror(error_code)
-        );
-      }
-
-      inf_xmpp_connection_set_sasl_error(xmpp, error);
-      g_error_free(error);
-
+      infinoted_startup_gsasl_callback_set_error(xmpp, error_code, error);
       return GSASL_AUTHENTICATION_ERROR;
     }
 #endif /* LIBINFINITY_HAVE_PAM */
     g_assert(startup->options->password != NULL);
     if(strcmp(startup->options->password, password) == 0)
+    {
       return GSASL_OK;
+    }
     else
+    {
+      infinoted_startup_gsasl_callback_set_error(
+        xmpp,
+        INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
+        NULL
+      );
+
       return GSASL_AUTHENTICATION_ERROR;
+    }
+
+    g_assert_not_reached();
+    return GSASL_AUTHENTICATION_ERROR;
   default:
     return GSASL_AUTHENTICATION_ERROR;
   }
