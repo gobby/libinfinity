@@ -1,5 +1,12 @@
 2010-02-09  Benjamin Herr  <ben@0x539.de>
 
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c: Properly set GError in for invalid
+	authentication-related options in infinoted_options_validate() so
+	that for example config-reloading knows what is up.
+
+2010-02-09  Benjamin Herr  <ben@0x539.de>
+
 	* infinoted/infinoted-config-reload.c: Properly require authentication
 	mechanism specified from newly loaded configuration.
 

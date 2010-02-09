@@ -464,7 +464,11 @@ infinoted_options_validate(InfinotedOptions* options,
 #ifdef LIBINFINITY_HAVE_PAM
   if(options->password != NULL && options->pam_service != NULL)
   {
-    infinoted_util_log_error(
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_AUTHENTICATION_SETTINGS,
+      "%s",
       _("Cannot use both server password and system authentication.")
     );
     return FALSE;
@@ -474,7 +478,11 @@ infinoted_options_validate(InfinotedOptions* options,
      && (options->pam_allowed_users != NULL
          || options->pam_allowed_groups != NULL))
   {
-    infinoted_util_log_error(
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_AUTHENTICATION_SETTINGS,
+      "%s",
       _("Need a pam service to authenticate users.")
     );
     return FALSE;
