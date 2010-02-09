@@ -1,3 +1,8 @@
+2010-02-09  Benjamin Herr  <ben@0x539.de>
+
+	* infinoted/infinoted-config-reload.c: Properly require authentication
+	mechanism specified from newly loaded configuration.
+
 2010-02-09  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-startup.c: Changed sasl callback to provide

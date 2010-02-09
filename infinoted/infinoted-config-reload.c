@@ -328,13 +328,25 @@ infinoted_config_reload(InfinotedRun* run,
   startup->options->daemonize = run->startup->options->daemonize;
 #endif
 
-#ifdef LIBINFINITY_HAVE_PAM
-  startup->options->pam_service = run->startup->options->pam_service;
-  run->startup->options->pam_service = NULL;
-#endif
+  if(run->xmpp4 != NULL)
+  {
+    g_object_set(
+      G_OBJECT(run->xmpp4),
+      "sasl-context",    startup->gsasl,
+      "sasl-mechanisms", startup->gsasl ? "PLAIN" : NULL,
+      NULL
+    );
+  }
 
-  startup->options->password = run->startup->options->password;
-  run->startup->options->password = NULL;
+  if(run->xmpp6 != NULL)
+  {
+    g_object_set(
+      G_OBJECT(run->xmpp6),
+      "sasl-context",    startup->gsasl,
+      "sasl-mechanisms", startup->gsasl ? "PLAIN" : NULL,
+      NULL
+    );
+  }
 
   /* TODO: Someone else might be holding on to the old startup, specifically
    * the sasl sessions. */
