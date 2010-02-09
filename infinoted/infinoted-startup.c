@@ -261,16 +261,16 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
 {
   InfinotedStartup* startup;
   const char* password;
+  InfXmppConnection* xmpp;
 
 #ifdef LIBINFINITY_HAVE_PAM
   const char* username;
   const gchar* pam_service;
-  InfXmppConnection* xmpp;
   InfAuthenticationDetailError error_code;
   GError* error;
+#endif
 
   xmpp = gsasl_session_hook_get(session);
-#endif
 
   switch(prop)
   {

@@ -919,9 +919,11 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
   g_free(options->password);
+#ifdef LIBINFINITY_HAVE_PAM
   g_free(options->pam_service);
   g_strfreev(options->pam_allowed_users);
   g_strfreev(options->pam_allowed_groups);
+#endif
   g_free(options->sync_directory);
   g_slice_free(InfinotedOptions, options);
 }

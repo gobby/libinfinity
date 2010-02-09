@@ -1,5 +1,11 @@
 2010-02-09  Benjamin Herr  <ben@0x539.de>
 
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-startup.c: Fix stupid compilation errors without
+	LIBINFINITY_HAVE_PAM.
+
+2010-02-09  Benjamin Herr  <ben@0x539.de>
+
 	* infinoted/infinoted-options.h:
 	* infinoted/infinoted-options.c: Properly set GError in for invalid
 	authentication-related options in infinoted_options_validate() so
