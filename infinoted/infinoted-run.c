@@ -326,11 +326,15 @@ void
 infinoted_run_start(InfinotedRun* run)
 {
   GError* error;
+  GError* error4;
+  GError* error6;
   guint port;
   gboolean result;
   InfdTcpServer* tcp;
 
   error = NULL;
+  error4 = NULL;
+  error6 = NULL;
 
   /* Load DH parameters */
   if(run->startup->credentials)
@@ -353,19 +357,13 @@ infinoted_run_start(InfinotedRun* run)
   if(run->xmpp6 != NULL)
   {
     g_object_get(G_OBJECT(run->xmpp6), "tcp-server", &tcp, NULL);
-    if(infd_tcp_server_open(tcp, &error) == TRUE)
+    if(infd_tcp_server_open(tcp, &error6) == TRUE)
     {
       g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
       infinoted_util_log_info(_("IPv6 Server running on port %u"), port);
     }
     else
     {
-      infinoted_util_log_error(
-              _("Failed to start IPv6 server: %s"),
-              error->message);
-      g_error_free(error);
-      error = NULL;
-
       g_object_unref(run->xmpp6);
       run->xmpp6 = NULL;
       infd_tcp_server_close(tcp);
@@ -377,25 +375,30 @@ infinoted_run_start(InfinotedRun* run)
   if(run->xmpp4 != NULL)
   {
     g_object_get(G_OBJECT(run->xmpp4), "tcp-server", &tcp, NULL);
-    if(infd_tcp_server_open(tcp, &error) == TRUE)
+    if(infd_tcp_server_open(tcp, &error4) == TRUE)
     {
       g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
       infinoted_util_log_info(_("IPv4 Server running on port %u"), port);
     }
     else
     {
-      infinoted_util_log_error(
-              _("Failed to start IPv4 server: %s"),
-              error->message);
-      g_error_free(error);
-      error = NULL;
-
       g_object_unref(run->xmpp4);
       run->xmpp4 = NULL;
       infd_tcp_server_close(tcp);
     }
 
     g_object_unref(tcp);
+  }
+
+  if(run->xmpp4 == NULL && run->xmpp6 == NULL)
+  {
+    g_assert(error4 != NULL || error6 != NULL);
+    error = error4 != NULL ? error4 : error6;
+    infinoted_util_log_error(
+            _("Failed to start server: %s"),
+            error->message);
+    if(error4 != NULL) g_error_free(error4);
+    if(error6 != NULL) g_error_free(error6);
   }
 
   /* Make sure messages are shown. This explicit flush is for example

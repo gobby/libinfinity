@@ -68,6 +68,17 @@ AC_TRY_COMPILE([#include <sys/socket.h>],
  	       [ AC_MSG_RESULT(no)]
 )
 
+# Check for SO_REUSEADDR
+AC_MSG_CHECKING(for SO_REUSEADDR)
+AC_TRY_COMPILE([#include <sys/socket.h>
+                #include <stdio.h> ],
+	       [ int f = SO_REUSEADDR; printf("%d\n", f); ],
+	       [ AC_MSG_RESULT(yes)
+	         AC_DEFINE(HAVE_SO_REUSEADDR, 1,
+			   [Define this symbol if you have SO_REUSEADDR]) ],
+	       [ AC_MSG_RESULT(no)]
+)
+
 ###################################
 # Check for regular dependencies
 ###################################

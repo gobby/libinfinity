@@ -1,3 +1,17 @@
+2010-01-31  Benjamin Herr  <ben@0x539.de>, Armin Burgmeier  <armin@arbur.net>
+
+	* configure.ac: Check for SO_REUSEADDR.
+
+	* libinfinity/server/infd-tcp-server.c: Set SO_REUSEADDR before
+	calling bind() on server sockets. Also do not call
+	infd_tcp_server_close() on error in infd_tcp_server_open() if the
+	socket was bound already.
+
+	* infinoted/infinoted-run.c: Only log errors on server startup if
+	neither ipv4 nor ipv6 servers could be started. This is because
+	SO_REUSEADDR apparently makes bind() work for both variants on the
+	same port  even though a later listen() call will definitely fail.
+
 2010-02-09  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-options.c:

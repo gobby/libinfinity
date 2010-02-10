@@ -22,6 +22,7 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-marshal.h>
+#include <config.h>
 
 #ifndef G_OS_WIN32
 # include <sys/types.h>
@@ -600,6 +601,10 @@ infd_tcp_server_bind(InfdTcpServer* server,
   struct sockaddr* addr;
   socklen_t addrlen;
 
+#if !defined(G_OS_WIN32) && defined(HAVE_SO_REUSEADDR)
+  int value;
+#endif
+
   g_return_val_if_fail(INFD_IS_TCP_SERVER(server), FALSE);
   priv = INFD_TCP_SERVER_PRIVATE(server);
 
@@ -660,6 +665,21 @@ infd_tcp_server_bind(InfdTcpServer* server,
     infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
     return FALSE;
   }
+
+#if !defined(G_OS_WIN32) && defined(HAVE_SO_REUSEADDR)
+  /* Allow fast restarts of servers by enabling SO_REUSEADDR */
+  value = 1;
+
+  if(setsockopt(priv->socket, SOL_SOCKET, SO_REUSEADDR, &value,
+      sizeof(int)) == -1)
+  {
+    infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
+
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+    return FALSE;
+  }
+#endif
 
   if(bind(priv->socket, addr, addrlen) == -1)
   {
@@ -727,6 +747,7 @@ infd_tcp_server_open(InfdTcpServer* server,
                      GError** error)
 {
   InfdTcpServerPrivate* priv;
+  gboolean was_bound;
 
 #ifdef G_OS_WIN32
   u_long argp;
@@ -742,7 +763,8 @@ infd_tcp_server_open(InfdTcpServer* server,
 
   g_object_freeze_notify(G_OBJECT(server));
 
-  if(priv->status == INFD_TCP_SERVER_CLOSED)
+  was_bound = (priv->status != INFD_TCP_SERVER_CLOSED);
+  if(!was_bound)
   {
     if(!infd_tcp_server_bind(server, error))
     {
@@ -751,14 +773,13 @@ infd_tcp_server_open(InfdTcpServer* server,
     }
   }
 
-  /* TODO: If something fails here, and we were already bound previously,
-   * then don't fallback to closed. */
 #ifndef G_OS_WIN32
   result = fcntl(priv->socket, F_GETFL);
   if(result == -1)
   {
     infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-    infd_tcp_server_close(server);
+    if(!was_bound)
+      infd_tcp_server_close(server);
     g_object_thaw_notify(G_OBJECT(server));
     return FALSE;
   }
@@ -766,7 +787,8 @@ infd_tcp_server_open(InfdTcpServer* server,
   if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
     infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-    infd_tcp_server_close(server);
+    if(!was_bound)
+      infd_tcp_server_close(server);
     g_object_thaw_notify(G_OBJECT(server));
     return FALSE;
   }
@@ -775,7 +797,8 @@ infd_tcp_server_open(InfdTcpServer* server,
   if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
   {
     infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-    infd_tcp_server_close(server);
+    if(!was_bound)
+      infd_tcp_server_close(server);
     g_object_thaw_notify(G_OBJECT(server));
     return FALSE;
   }
@@ -784,7 +807,8 @@ infd_tcp_server_open(InfdTcpServer* server,
   if(listen(priv->socket, 5) == -1)
   {
     infd_tcp_server_make_system_error(INFD_TCP_SERVER_LAST_ERROR, error);
-    infd_tcp_server_close(server);
+    if(!was_bound)
+      infd_tcp_server_close(server);
     g_object_thaw_notify(G_OBJECT(server));
     return FALSE;
   }
