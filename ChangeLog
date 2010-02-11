@@ -1,4 +1,13 @@
-2010-02-22  Armin Burgmeier  <armin@arbur.net>
+2010-02-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-view.c
+	(inf_gtk_browser_view_status_icon_data_func,
+	inf_gtk_browser_view_status_data_func): Handle
+	INF_GTK_BROWSER_MODEL_DISCONNECTED in switch, to avoid a crash when
+	adding disconnected connections to the browser (Jesse van den
+	Kieboom).
+
+2010-01-22  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-run.c (infinoted_run_free): Avoid a runtime
 	warning when freeing the InfinotedRun without having started it.
