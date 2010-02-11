@@ -17,10 +17,7 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef G_OS_WIN32
-/* Need this for O_NOFOLLOW and fdopendir and so on */
-# define _GNU_SOURCE
-#endif
+#include "config.h"
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-storage.h>
@@ -330,6 +327,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   struct dirent* dir_result;
   struct stat stat_buf;
   int saved_errno;
+  enum { F_UNKNOWN, F_DIR, F_REG, F_LNK } filetype;
 #else
   GDir* dir;
   const gchar* name;
@@ -379,33 +377,44 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
     if(converted_name != NULL && strcmp(converted_name, ".") != 0
                               && strcmp(converted_name, "..") != 0)
     {
-      /* Some filesystems, such as reiserfs, don't support reporting the
-       * entry's file type. In that case we do an additional lstat here. */
-      if(dir_result->d_type == DT_UNKNOWN)
+      filetype = F_UNKNOWN;
+
+#ifdef HAVE_D_TYPE
+      if(dir_result->d_type == DT_LNK)
+        filetype = F_LNK;
+      else if(dir_result->d_type == DT_DIR)
+        filetype = F_DIR;
+      else if(dir_result->d_type == DT_REG)
+        filetype = F_REG;
+      else if(dir_result->d_type == DT_UNKNOWN)
+#endif
       {
+        /* Some filesystems, such as reiserfs, don't support reporting the
+         * entry's file type. In that case we do an additional lstat here.
+         * Also lstat if d_type is not available on this platform. */
         file_path = g_build_filename(full_name, dir_result->d_name, NULL);
         if(lstat(file_path, &stat_buf) == 0)
         {
           if(S_ISDIR(stat_buf.st_mode))
-            dir_result->d_type = DT_DIR;
+            filetype = F_DIR;
           else if(S_ISREG(stat_buf.st_mode))
-            dir_result->d_type = DT_REG;
+            filetype = F_REG;
           else if(S_ISLNK(stat_buf.st_mode))
-            dir_result->d_type = DT_LNK;
+            filetype = F_LNK;
         }
         g_free(file_path);
       }
 
-      if(dir_result->d_type != DT_LNK && dir_result->d_type != DT_UNKNOWN)
+      if(filetype != F_LNK && filetype != F_UNKNOWN)
       {
-        if(dir_result->d_type == DT_DIR)
+        if(filetype == F_DIR)
         {
           list = g_slist_prepend(
             list,
             infd_storage_node_new_subdirectory(converted_name)
           );
         }
-        else if(dir_result->d_type == DT_REG)
+        else if(filetype == F_REG)
         {
           /* The note type identifier is behind the last '.' */
           separator = g_strrstr_len(converted_name, name_len, ".");

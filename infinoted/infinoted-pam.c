@@ -17,9 +17,7 @@
  * MA 02110-1301, USA.
  */
 
-#define _POSIX_C_SOURCE 1 /* for getpwnam_r, getgrnam_r, getgrgid_r */
-
-#include <libinfinity/inf-config.h>
+#include "config.h"
 
 #ifdef LIBINFINITY_HAVE_PAM
 
@@ -77,6 +75,7 @@ infinoted_pam_conv_func(int num_msg,
   return PAM_SUCCESS;
 }
 
+#ifdef HAVE_PAM_FAIL_DELAY
 static void
 infinoted_pam_delay_func(int retval,
                          unsigned usec_delay,
@@ -86,6 +85,7 @@ infinoted_pam_delay_func(int retval,
   /* TODO: figure out how to randomly delay a bit without blocking the entire
    * server. */
 }
+#endif /* HAVE_PAM_FAIL_DELAY */
 
 static void
 infinoted_pam_log_error(const char* username,
@@ -250,9 +250,12 @@ infinoted_pam_authenticate(const char* service,
 {
   pam_handle_t* pamh;
   struct pam_conv conv;
+  int status;
+
+#ifdef HAVE_PAM_FAIL_DELAY
   void (*delay_fp)(int, unsigned, void*);
   void* delay_void_ptr;
-  int status;
+#endif
 
   conv.conv = infinoted_pam_conv_func;
   conv.appdata_ptr = *(void**) (void*) &password;
@@ -260,6 +263,9 @@ infinoted_pam_authenticate(const char* service,
   if(pam_start(service, username, &conv, &pamh) != PAM_SUCCESS)
     return FALSE;
 
+  status = PAM_SUCCESS;
+
+#ifdef HAVE_PAM_FAIL_DELAY
   delay_fp = infinoted_pam_delay_func;
   /* avoid warnings for casting func-ptrs to object pointers
    * and for type-punning pointers */
@@ -267,6 +273,7 @@ infinoted_pam_authenticate(const char* service,
   status = pam_set_item(pamh, PAM_FAIL_DELAY, delay_void_ptr);
   if(status == PAM_SUCCESS)
     status = pam_authenticate(pamh, 0);
+#endif
 
   /* TODO: consider pam_acct_mgmt */
 

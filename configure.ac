@@ -2,7 +2,7 @@ m4_define([libinfinity_version], [0.5.0])
 m4_define([libinfinity_api_version], [0.5])
 m4_define([libinfinity_libtool_version], [0:0:0])
 
-AC_PREREQ(2.59)
+AC_PREREQ(2.60)
 AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES])
@@ -18,6 +18,8 @@ AC_SUBST(LIBINFINITY_API_VERSION)
 AC_SUBST(LIBINFINITY_LIBTOOL_VERSION)
 
 AC_CANONICAL_HOST
+
+# Remove -Wno-strict-prototypes for the feature tests
 has_strict_prototypes=""
 if (echo $CFLAGS | grep -- -Wstrict-prototype)
 then
@@ -25,6 +27,10 @@ then
         old_CFLAGS=$CFLAGS
         CFLAGS="$CFLAGS -Wno-strict-prototypes"
 fi
+
+# Make GNU and POSIX extensions such as readdir_r, O_NOFOLLOW and
+# fdopendir available
+AC_USE_SYSTEM_EXTENSIONS
 
 AC_LANG(C)
 AC_PROG_CC
@@ -77,6 +83,18 @@ AC_TRY_COMPILE([#include <sys/socket.h>
 	         AC_DEFINE(HAVE_SO_REUSEADDR, 1,
 			   [Define this symbol if you have SO_REUSEADDR]) ],
 	       [ AC_MSG_RESULT(no)]
+)
+
+# Check for dirent.d_type
+AC_MSG_CHECKING(for d_type)
+AC_TRY_COMPILE([#include <dirent.h>
+                #include <stdio.h> ],
+               [ struct dirent d; printf("%d\n", d.d_type); ],
+               [ AC_MSG_RESULT(yes)
+                 AC_DEFINE(HAVE_D_TYPE, 1,
+                           [Define this symbol if your struct dirent has the 
+                            d_type field])],
+               [ AC_MSG_RESULT(no)]
 )
 
 ###################################
@@ -201,6 +219,18 @@ AC_CHECK_LIB([ pam ],
                          [Define this symbol if you have pam])
                infinity_LIBS="$infinity_LIBS -lpam" ],
              [ AC_MSG_RESULT(no) ]
+)
+
+# Check for PAM_FAIL_DELAY
+AC_MSG_CHECKING(for PAM_FAIL_DELAY)
+AC_TRY_COMPILE([#include <security/pam_appl.h>
+                #include <stdio.h> ],
+               [ int f = PAM_FAIL_DELAY; printf("%d\n", f); ],
+               [ AC_MSG_RESULT(yes)
+                 AC_DEFINE(HAVE_PAM_FAIL_DELAY, 1,
+                           [Define this symbol if your pam
+                            has PAM_FAIL_DELAY])],
+               [ AC_MSG_RESULT(no)]
 )
 
 ############

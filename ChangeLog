@@ -1,4 +1,16 @@
 2010-02-11  Armin Burgmeier  <armin@arbur.net>
+	
+	* configure.ac: Use AC_USE_SYSTEM_EXTENSIONS, bump autoconf
+	requirement to 2.60 to be able to make use of it. Check whether
+	dirent.d_type and PAM_FAIL_DELAY exist.
+
+	* libinfinity/server/infd-directory.c: Include config.h instead of
+	defining _GNU_SOURCE manually, do lstat if d_type does not exist.
+
+	* infinoted/infinoted-pam.c: Only set fail delay if
+	HAVE_PAM_FAIL_DELAY is set.
+
+2010-02-11  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-view.c
 	(inf_gtk_browser_view_status_icon_data_func,
