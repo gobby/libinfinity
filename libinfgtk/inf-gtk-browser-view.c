@@ -1928,6 +1928,7 @@ inf_gtk_browser_view_status_icon_data_func(GtkTreeViewColumn* column,
 
     switch(status)
     {
+    case INF_GTK_BROWSER_MODEL_DISCONNECTED:
     case INF_GTK_BROWSER_MODEL_DISCOVERED:
     case INF_GTK_BROWSER_MODEL_RESOLVING:
     case INF_GTK_BROWSER_MODEL_CONNECTING:
@@ -2176,6 +2177,7 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
     switch(status)
     {
     case INF_GTK_BROWSER_MODEL_DISCOVERED:
+    case INF_GTK_BROWSER_MODEL_DISCONNECTED:
       g_object_set(
         G_OBJECT(renderer),
         "text", _("Not connected"),
