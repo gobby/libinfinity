@@ -1,5 +1,14 @@
 2010-02-13  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-view.h:
+	* libinftextgtk/inf-text-gtk-view.c:
+	* libinftextgtk/Makefile.am: Added InfTextGtkView, a class which draws
+	remote cursors in a GtkTextView.
+
+	* test/inf-test-gtk-browser.c: Make this show remote cursors.
+
+2010-02-13  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-store.c: When emitting
 	"has_child_toggled" after the last node has been removed from a
 	directory make sure that gtk_tree_model_iter_has_child() returns

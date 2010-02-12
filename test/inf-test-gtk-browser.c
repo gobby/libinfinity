@@ -18,6 +18,7 @@
  */
 
 #include <libinftextgtk/inf-text-gtk-buffer.h>
+#include <libinftextgtk/inf-text-gtk-view.h>
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfgtk/inf-gtk-browser-store.h>
 #include <libinfgtk/inf-gtk-chat.h>
@@ -39,6 +40,7 @@ struct _InfTestGtkBrowserWindow {
   GtkWidget* redo_button;
 
   InfTextGtkBuffer* buffer;
+  InfTextGtkView* view;
   InfcSessionProxy* proxy;
   InfUser* user;
 };
@@ -196,6 +198,7 @@ on_join_finished(InfcUserRequest* request,
   test = (InfTestGtkBrowserWindow*)user_data;
 
   inf_text_gtk_buffer_set_active_user(test->buffer, INF_TEXT_USER(user));
+  inf_text_gtk_view_set_active_user(test->view, INF_TEXT_USER(user));
   gtk_text_view_set_editable(GTK_TEXT_VIEW(test->textview), TRUE);
 
   test->user = user;
@@ -584,7 +587,10 @@ on_subscribe_session(InfcBrowser* browser,
   GtkWidget* undo_button;
   GtkWidget* redo_button;
   InfSession* session;
+  InfIo* io;
+  InfUserTable* user_table;
   InfTextGtkBuffer* buffer;
+  InfTextGtkView* view;
   GtkTextBuffer* textbuffer;
   InfTestGtkBrowserWindow* test;
 
@@ -595,10 +601,13 @@ on_subscribe_session(InfcBrowser* browser,
   }
 
   session = infc_session_proxy_get_session(proxy);
+  io = inf_adopted_session_get_io(INF_ADOPTED_SESSION(session));
+  user_table = inf_session_get_user_table(session);
   buffer = INF_TEXT_GTK_BUFFER(inf_session_get_buffer(session));
   textbuffer = inf_text_gtk_buffer_get_text_buffer(buffer);
 
   textview = gtk_text_view_new_with_buffer(textbuffer);
+  view = inf_text_gtk_view_new(io, GTK_TEXT_VIEW(textview), user_table);
   gtk_text_view_set_editable(GTK_TEXT_VIEW(textview), FALSE);
   gtk_widget_show(textview);
 
@@ -652,6 +661,7 @@ on_subscribe_session(InfcBrowser* browser,
   test->undo_button = undo_button;
   test->redo_button = redo_button;
   test->buffer = buffer;
+  test->view = view;
   test->proxy = proxy;
   test->user = NULL;
   g_object_ref(proxy);
@@ -788,9 +798,16 @@ main(int argc,
   GtkWidget* view;
   GtkWidget* scroll;
   GtkWidget* window;
+  GError* error;
 
   gtk_init(&argc, &argv);
-  gnutls_global_init();
+
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return -1;
+  }
 
   io = inf_gtk_io_new();
 #ifdef LIBINFINITY_HAVE_AVAHI

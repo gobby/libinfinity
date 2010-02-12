@@ -18,3 +18,9 @@ EXPORTS
     inf_text_gtk_hue_chooser_new_with_hue
     inf_text_gtk_hue_chooser_set_hue
     inf_text_gtk_hue_chooser_get_hue
+    inf_text_gtk_view_get_type
+    inf_text_gtk_view_new
+    inf_text_gtk_view_get_text_view
+    inf_text_gtk_view_get_user_table
+    inf_text_gtk_view_set_active_user
+    inf_text_gtk_view_get_active_user

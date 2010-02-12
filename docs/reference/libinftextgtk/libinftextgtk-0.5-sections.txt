@@ -26,6 +26,26 @@ INF_TEXT_GTK_BUFFER_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-text-gtk-view</FILE>
+<TITLE>InfTextGtkView</TITLE>
+InfTextGtkView
+inf_text_gtk_view_new
+inf_text_gtk_view_get_text_view
+inf_text_gtk_view_get_user_table
+inf_text_gtk_view_set_active_user
+inf_text_gtk_view_get_active_user
+<SUBSECTION Standard>
+InfTextGtkViewClass
+INF_TEXT_GTK_VIEW
+INF_TEXT_GTK_IS_VIEW
+INF_TEXT_GTK_TYPE_VIEW
+inf_text_gtk_view_get_type
+INF_TEXT_GTK_VIEW_CLASS
+INF_TEXT_GTK_IS_VIEW_CLASS
+INF_TEXT_GTK_VIEW_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>inf-text-gtk-hue-chooser</FILE>
 <TITLE>InfTextGtkHueChooser</TITLE>
 InfTextGtkHueChooser
