@@ -1,3 +1,11 @@
+2010-02-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-store.c: When emitting
+	"has_child_toggled" after the last node has been removed from a
+	directory make sure that gtk_tree_model_iter_has_child() returns
+	FALSE, and also that the other tree model functions skip the node to
+	be removed.
+
 2010-02-13  Jesse van den Kieboom  <jessevdk@gnome.org>
 
 	* libinfgtk/inf-gtk-browser-store.c:

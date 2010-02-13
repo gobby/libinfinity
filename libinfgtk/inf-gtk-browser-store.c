@@ -45,6 +45,12 @@ struct _InfGtkBrowserStoreItem {
 
   InfcBrowser* browser;
 
+  /* Browser node which is currently to be removed. This is required since
+   * when node-removed is emitted in InfcBrowser the node is still present,
+   * but we need to make sure that the GtkTreeModel functions do as if it
+   * wasn't present anymore. */
+  gpointer missing;
+
   /* Running requests */
   GSList* requests;
   /* Saved node errors (during exploration/subscription) */
@@ -383,6 +389,7 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
   if(discovery != NULL && info != NULL)
     item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
   item->browser = NULL;
+  item->missing = NULL;
   item->node_errors = g_hash_table_new_full(
     NULL,
     NULL,
@@ -490,7 +497,7 @@ inf_gtk_browser_store_remove_item(InfGtkBrowserStore* store,
 
   gtk_tree_model_row_deleted(GTK_TREE_MODEL(store), path);
   gtk_tree_path_free(path);
-  
+
   if(item->error != NULL)
     g_error_free(item->error);
 
@@ -723,12 +730,19 @@ inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
   item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
+  g_assert(item->missing == NULL);
+
   tree_iter.stamp = priv->stamp;
   tree_iter.user_data = item;
   tree_iter.user_data2 = GUINT_TO_POINTER(iter->node_id);
   tree_iter.user_data3 = iter->node;
 
   path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
+
+  /* This is a small hack to have the item removed from the tree
+   * model before it is removed from the InfcBrowser. */
+  item->missing = iter->node;
+
   gtk_tree_model_row_deleted(GTK_TREE_MODEL(store), path);
 
   /* TODO: Remove requests and node errors from nodes below the removed one */
@@ -764,6 +778,7 @@ inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
   }
 
   gtk_tree_path_free(path);
+  item->missing = NULL;
 }
 
 static void
@@ -1067,7 +1082,7 @@ inf_gtk_browser_store_set_property(GObject* object,
     g_assert(priv->communication_manager == NULL); /* construct only */
     priv->communication_manager =
       INF_COMMUNICATION_MANAGER(g_value_dup_object(value));
-  
+
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1164,7 +1179,7 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
 
   i = 0;
   for(item = priv->first_item; item != NULL && i < n; item = item->next)
-    ++ i;
+    ++i;
 
   if(item == NULL) return FALSE;
 
@@ -1180,7 +1195,7 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
 
   if(item->browser == NULL) return FALSE;
   infc_browser_iter_get_root(item->browser, &browser_iter);
-  
+
   for(n = 1; n < (guint)gtk_tree_path_get_depth(path); ++ n)
   {
     if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
@@ -1189,10 +1204,18 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
     if(infc_browser_iter_get_child(item->browser, &browser_iter) == FALSE)
       return FALSE;
 
+    /* skip missing */
+    if(browser_iter.node == item->missing)
+      ++indices[n];
+
     for(i = 0; i < (guint)indices[n]; ++ i)
     {
       if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
         return FALSE;
+
+      /* skip missing */
+      if(browser_iter.node == item->missing)
+        ++indices[n];
     }
   }
 
@@ -1216,7 +1239,7 @@ inf_gtk_browser_store_tree_model_get_path_impl(InfGtkBrowserStore* store,
   InfGtkBrowserStoreItem* cur;
   gboolean result;
   guint n;
-  
+
   cur_iter = *iter;
   if(infc_browser_iter_get_parent(item->browser, &cur_iter) == FALSE)
   {
@@ -1225,7 +1248,7 @@ inf_gtk_browser_store_tree_model_get_path_impl(InfGtkBrowserStore* store,
     /* We are on top level, but still need to find the item index */
     n = 0;
     for(cur = priv->first_item; cur != item; cur = cur->next)
-      ++ n;
+      ++n;
 
     gtk_tree_path_append_index(path, n);
   }
@@ -1241,12 +1264,27 @@ inf_gtk_browser_store_tree_model_get_path_impl(InfGtkBrowserStore* store,
     result = infc_browser_iter_get_child(item->browser, &cur_iter);
     g_assert(result == TRUE);
 
+    /* skip missing */
+    if(cur_iter.node == item->missing)
+    {
+      result = infc_browser_iter_get_next(item->browser, &cur_iter);
+      g_assert(result == TRUE);
+    }
+
     n = 0;
     while(cur_iter.node_id != iter->node_id)
     {
       result = infc_browser_iter_get_next(item->browser, &cur_iter);
       g_assert(result == TRUE);
-      ++ n;
+
+      /* skip missing */
+      if(cur_iter.node == item->missing)
+      {
+        result = infc_browser_iter_get_next(item->browser, &cur_iter);
+        g_assert(result == TRUE);
+      }
+
+      ++n;
     }
 
     gtk_tree_path_append_index(path, n);
@@ -1267,7 +1305,7 @@ inf_gtk_browser_store_tree_model_get_path(GtkTreeModel* model,
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
   g_assert(iter->stamp == priv->stamp);
   g_assert(iter->user_data != NULL);
-  
+
   item = (InfGtkBrowserStoreItem*)iter->user_data;
 
   path = gtk_tree_path_new();
@@ -1290,7 +1328,7 @@ inf_gtk_browser_store_tree_model_get_path(GtkTreeModel* model,
     /* toplevel */
     n = 0;
     for(cur = priv->first_item; cur != item; cur = cur->next)
-      ++ n;
+      ++n;
 
     gtk_tree_path_append_index(path, n);
   }
@@ -1315,7 +1353,8 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
   item = (InfGtkBrowserStoreItem*)iter->user_data;
   browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
   browser_iter.node = iter->user_data3;
-  
+  g_assert(item->missing == NULL || browser_iter.node != item->missing);
+
   switch(column)
   {
   case INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO:
@@ -1428,8 +1467,15 @@ inf_gtk_browser_store_tree_model_iter_next(GtkTreeModel* model,
   }
   else
   {
+    g_assert(browser_iter.node != item->missing);
+
     if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
       return FALSE;
+
+    /* skip missing */
+    if(browser_iter.node == item->missing)
+      if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
+        return FALSE;
 
     iter->user_data2 = GUINT_TO_POINTER(browser_iter.node_id);
     iter->user_data3 = browser_iter.node;
@@ -1473,6 +1519,8 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
     else
       browser_iter.node = parent->user_data3;
 
+    g_assert(item->missing == NULL || browser_iter.node != item->missing);
+
     if(!infc_browser_iter_is_subdirectory(item->browser, &browser_iter))
       return FALSE;
 
@@ -1481,6 +1529,10 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
 
     if(!infc_browser_iter_get_child(item->browser, &browser_iter))
       return FALSE;
+
+    if(browser_iter.node == item->missing)
+      if(!infc_browser_iter_get_next(item->browser, &browser_iter))
+        return FALSE;
 
     iter->stamp = priv->stamp;
     iter->user_data = item;
@@ -1506,6 +1558,7 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
 
   browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
   browser_iter.node = iter->user_data3;
+  g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
   if(browser_iter.node == NULL)
     infc_browser_iter_get_root(item->browser, &browser_iter);
@@ -1516,7 +1569,14 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
   if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
     return FALSE;
 
-  return infc_browser_iter_get_child(item->browser, &browser_iter);
+  if(!infc_browser_iter_get_child(item->browser, &browser_iter))
+    return FALSE;
+
+  if(browser_iter.node == item->missing)
+    if(!infc_browser_iter_get_next(item->browser, &browser_iter))
+      return FALSE;
+
+  return TRUE;
 }
 
 static gint
@@ -1537,7 +1597,7 @@ inf_gtk_browser_store_tree_model_iter_n_children(GtkTreeModel* model,
   {
     n = 0;
     for(cur = priv->first_item; cur != NULL; cur = cur->next)
-      ++ n;
+      ++n;
 
     return n;
   }
@@ -1546,6 +1606,7 @@ inf_gtk_browser_store_tree_model_iter_n_children(GtkTreeModel* model,
     item = (InfGtkBrowserStoreItem*)iter->user_data;
     browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
     browser_iter.node = iter->user_data3;
+    g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
     if(browser_iter.node == NULL)
       infc_browser_iter_get_root(item->browser, &browser_iter);
@@ -1558,7 +1619,8 @@ inf_gtk_browser_store_tree_model_iter_n_children(GtkTreeModel* model,
         result == TRUE;
         result = infc_browser_iter_get_next(item->browser, &browser_iter))
     {
-      ++ n;
+      if(browser_iter.node != item->missing)
+        ++n;
     }
 
     return n;
@@ -1607,17 +1669,25 @@ inf_gtk_browser_store_tree_model_iter_nth_child(GtkTreeModel* model,
       infc_browser_iter_get_root(item->browser, &browser_iter);
     else
       browser_iter.node = parent->user_data3;
+    g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
     if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
       return FALSE;
-                
+
     if(infc_browser_iter_get_child(item->browser, &browser_iter) == FALSE)
       return FALSE;
+
+    /* skip missing */
+    if(browser_iter.node == item->missing)
+      ++n;
 
     for(i = 0; i < (guint)n; ++ i)
     {
       if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
         return FALSE;
+
+      if(browser_iter.node == item->missing)
+        ++n;
     }
 
     iter->stamp = priv->stamp;
@@ -1648,8 +1718,11 @@ inf_gtk_browser_store_tree_model_iter_parent(GtkTreeModel* model,
   if(browser_iter.node == NULL)
     return FALSE;
 
+  g_assert(browser_iter.node != item->missing);
+
   result = infc_browser_iter_get_parent(item->browser, &browser_iter);
   g_assert(result == TRUE);
+  g_assert(browser_iter.node != item->missing);
 
   iter->stamp = priv->stamp;
   iter->user_data = item;
@@ -1943,7 +2016,7 @@ inf_gtk_browser_store_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
     INF_GTK_BROWSER_STORE(model),
     browser
   );
-  if(item == NULL) return FALSE;
+  if(item == NULL || item->missing == browser_iter->node) return FALSE;
 
   tree_iter->stamp = priv->stamp;
   tree_iter->user_data = item;
