@@ -4401,17 +4401,16 @@ infd_directory_foreach_connection(InfdDirectory* directory,
                                   gpointer userdata)
 {
   InfdDirectoryPrivate* priv;
+  GHashTableIter iter;
+  gpointer key;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(func != NULL);
 
-  GHashTableIter iter;
-  gpointer key;
-
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_hash_table_iter_init(&iter, priv->connections);
-  while (g_hash_table_iter_next(&iter, &key, NULL)) 
+  while (g_hash_table_iter_next(&iter, &key, NULL))
   {
     func(INF_XML_CONNECTION(key), userdata);
   }

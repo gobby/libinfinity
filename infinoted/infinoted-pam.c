@@ -19,13 +19,13 @@
 
 #include "config.h"
 
-#ifdef LIBINFINITY_HAVE_PAM
-
-#include <infinoted/infinoted-pam.h>
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
+#ifdef LIBINFINITY_HAVE_PAM
+
+#include <infinoted/infinoted-pam.h>
 #include <security/pam_appl.h>
 #include <sys/types.h>
 #include <grp.h>

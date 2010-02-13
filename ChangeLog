@@ -1,3 +1,8 @@
+2010-02-13  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c:
+	* infinoted/infinoted-pam.c: Fixed compiler warnings.
+
 2010-02-12  Armin Burgmeier  <armin@arbur.net>
 
 	* all source files: Added 2010 to copyright years.
