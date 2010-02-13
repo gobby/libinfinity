@@ -2,6 +2,13 @@
 
 	* libinfgtk/inf-gtk-browser-store.c:
 	* libinfgtk/inf-gtk-browser-store.h: Added
+	inf_gtk_browser_store_set_connection_name() and
+	inf_gtk_browser_store_clear_connection_error().
+
+2010-02-13  Jesse van den Kieboom  <jessevdk@gnome.org>
+
+	* libinfgtk/inf-gtk-browser-store.c:
+	* libinfgtk/inf-gtk-browser-store.h: Added
 	inf_gtk_browser_store_remove_connection().
 
 2010-02-13  Armin Burgmeier  <armin@arbur.net>

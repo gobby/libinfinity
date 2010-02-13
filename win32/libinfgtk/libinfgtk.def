@@ -14,6 +14,8 @@ EXPORTS
     inf_gtk_browser_store_add_discovery
     inf_gtk_browser_store_add_connection
     inf_gtk_browser_store_remove_connection
+    inf_gtk_browser_store_clear_connection_error
+    inf_gtk_browser_store_set_connection_name
     inf_gtk_browser_view_get_type
     inf_gtk_browser_view_new
     inf_gtk_browser_view_new_with_model
