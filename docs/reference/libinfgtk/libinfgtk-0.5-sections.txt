@@ -5,6 +5,7 @@ InfGtkBrowserStore
 inf_gtk_browser_store_new
 inf_gtk_browser_store_add_discovery
 inf_gtk_browser_store_add_connection
+inf_gtk_browser_store_remove_connection
 <SUBSECTION Standard>
 InfGtkBrowserStoreClass
 INF_GTK_BROWSER_STORE
