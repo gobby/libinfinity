@@ -832,7 +832,7 @@ inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
   new_item = inf_gtk_browser_store_find_item_by_discovery_info(store, info);
   old_item = inf_gtk_browser_store_find_item_by_connection(store, connection);
-  
+
   g_assert(new_item != NULL);
   g_assert(new_item->status == INF_GTK_BROWSER_MODEL_RESOLVING);
 
@@ -1745,7 +1745,7 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
       G_CALLBACK(inf_gtk_browser_store_node_removed_cb),
       model
     );
-    
+
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_begin_explore_cb),
@@ -1894,7 +1894,7 @@ inf_gtk_browser_store_browser_model_resolve(InfGtkBrowserModel* model,
   g_assert(
     item->status == INF_GTK_BROWSER_MODEL_DISCOVERED ||
     item->status == INF_GTK_BROWSER_MODEL_ERROR
-  );    
+  );
 
   if(item->status == INF_GTK_BROWSER_MODEL_ERROR)
   {
@@ -2243,8 +2243,7 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
  * @store: A #InfGtkBrowserStore.
  * @connection: A #InfXmlConnection contained in @store.
  *
- * This function removes the entry for the given connection from @store. It
- * does nothing if there is no such entry in the browser store.
+ * This function removes the entry for the given connection from @store.
  */
 void
 inf_gtk_browser_store_remove_connection(InfGtkBrowserStore* store,
@@ -2256,11 +2255,113 @@ inf_gtk_browser_store_remove_connection(InfGtkBrowserStore* store,
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
   item = inf_gtk_browser_store_find_item_by_connection(store, connection);
+  g_return_if_fail(item != NULL);
 
-  if(item != NULL)
+  inf_gtk_browser_store_remove_item (store, item);
+}
+
+/**
+ * inf_gtk_browser_store_clear_connection_error:
+ * @store: A #InfGtkBrowserStore.
+ * @connection: A #InfXmlConnection contained in @store.
+ *
+ * This function clears the error for the entry which belongs to the given
+ * connection.
+ */
+void
+inf_gtk_browser_store_clear_connection_error(InfGtkBrowserStore* store,
+                                             InfXmlConnection* connection)
+{
+  InfGtkBrowserStoreItem* item;
+  GtkTreeIter iter;
+  GtkTreePath* path;
+
+  g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  item = inf_gtk_browser_store_find_item_by_connection(store, connection);
+  g_return_if_fail(item != NULL);
+
+  if(item->status == INF_GTK_BROWSER_MODEL_ERROR)
   {
-    inf_gtk_browser_store_remove_item (store, item);
+    g_assert(item->error != NULL);
+
+    g_error_free(item->error);
+    item->error = NULL;
+
+    if(item->browser != NULL)
+    {
+      switch(infc_browser_get_status(item->browser))
+      {
+      case INFC_BROWSER_DISCONNECTED:
+        item->status = INF_GTK_BROWSER_MODEL_DISCONNECTED;
+        break;
+      case INFC_BROWSER_CONNECTING:
+        item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
+        break;
+      case INFC_BROWSER_CONNECTED:
+        item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
+        break;
+      default:
+        g_assert_not_reached();
+        break;
+      }
+    }
+    else if(item->info != NULL)
+    {
+      item->status = INF_GTK_BROWSER_MODEL_DISCOVERED;
+    }
+    else
+    {
+      g_assert_not_reached();
+    }
+
+    iter.stamp = INF_GTK_BROWSER_STORE_PRIVATE(store)->stamp;
+    iter.user_data = item;
+    iter.user_data2 = GUINT_TO_POINTER(0);
+    iter.user_data3 = NULL;
+
+    path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
+    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
+    gtk_tree_path_free (path);
   }
+}
+
+/**
+ * inf_gtk_browser_store_set_connection_name:
+ * @store: A #InfGtkBrowserStore.
+ * @connection: A #InfXmlConnection contained in @store.
+ * @name: The new name to set for the connection.
+ *
+ * This function sets the name of @connection.
+ **/
+void
+inf_gtk_browser_store_set_connection_name(InfGtkBrowserStore* store,
+                                          InfXmlConnection* connection,
+                                          const gchar* name)
+{
+  InfGtkBrowserStoreItem* item;
+  GtkTreeIter iter;
+  GtkTreePath* path;
+
+  g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(name != NULL);
+
+  item = inf_gtk_browser_store_find_item_by_connection(store, connection);
+  g_return_if_fail(item != NULL);
+
+  g_free (item->name);
+  item->name = g_strdup(name);
+
+  iter.stamp = INF_GTK_BROWSER_STORE_PRIVATE(store)->stamp;
+  iter.user_data = item;
+  iter.user_data2 = GUINT_TO_POINTER(0);
+  iter.user_data3 = NULL;
+
+  path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
+  gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
+  gtk_tree_path_free(path);
 }
 
 /* vim:set et sw=2 ts=2: */

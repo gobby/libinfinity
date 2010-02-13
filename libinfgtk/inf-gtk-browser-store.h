@@ -68,6 +68,15 @@ void
 inf_gtk_browser_store_remove_connection(InfGtkBrowserStore* store,
                                         InfXmlConnection* connection);
 
+void
+inf_gtk_browser_store_clear_connection_error(InfGtkBrowserStore* store,
+                                             InfXmlConnection* connection);
+
+void
+inf_gtk_browser_store_set_connection_name(InfGtkBrowserStore* store,
+                                          InfXmlConnection* connection,
+                                          const gchar* name);
+
 G_END_DECLS
 
 #endif /* __INF_GTK_BROWSER_STORE_H__ */
