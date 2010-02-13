@@ -2238,4 +2238,29 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
   }
 }
 
+/**
+ * inf_gtk_browser_store_remove_connection:
+ * @store: A #InfGtkBrowserStore.
+ * @connection: A #InfXmlConnection contained in @store.
+ *
+ * This function removes the entry for the given connection from @store. It
+ * does nothing if there is no such entry in the browser store.
+ */
+void
+inf_gtk_browser_store_remove_connection(InfGtkBrowserStore* store,
+                                        InfXmlConnection* connection)
+{
+  InfGtkBrowserStoreItem* item;
+
+  g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  item = inf_gtk_browser_store_find_item_by_connection(store, connection);
+
+  if(item != NULL)
+  {
+    inf_gtk_browser_store_remove_item (store, item);
+  }
+}
+
 /* vim:set et sw=2 ts=2: */
