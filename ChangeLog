@@ -1,5 +1,11 @@
 2010-02-13  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c
+	(inf_text_session_validate_user_props): Fix error domain for the
+	"'caret' attribute is missing" error.
+
+2010-02-13  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-view.h:
 	* libinftextgtk/inf-text-gtk-view.c:
 	* libinftextgtk/Makefile.am: Added InfTextGtkView, a class which draws
