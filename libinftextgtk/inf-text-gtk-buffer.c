@@ -358,7 +358,7 @@ inf_text_gtk_buffer_iter_get_author(GtkTextIter* location)
 }
 
 static gboolean
-inf_text_gtk_buffer_iter_is_author_toggle(GtkTextIter* iter,
+inf_text_gtk_buffer_iter_is_author_toggle(const GtkTextIter* iter,
                                           InfTextUser** toggled_on,
                                           InfTextUser** toggled_off)
 {
@@ -1909,6 +1909,105 @@ inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
   return inf_text_gtk_buffer_iter_get_author(location);
+}
+
+/**
+ * inf_text_gtk_buffer_is_author_toggle:
+ * @buffer: A #InfTextGtkBuffer.
+ * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.
+ * @user_on: A location to store a #InfTextUser, or %NULL.
+ * @user_off: Another location to store a #InfTextUser, or %NULL.
+ *
+ * This function returns %TRUE if the author of the text in @buffer changes
+ * at @iter, or %FALSE otherwise. If it returns %TRUE, then the user who
+ * authored the text to the right hand side of @iter is stored in @user_on (if
+ * non-%NULL) and the author of the text to the left hand side of @iter is
+ * stored in @user_off (if non-%NULL). Both can also be set to %NULL if there
+ * is unowned text in the buffer or if @iter is at the start or end of the
+ * buffer.
+ *
+ * Returns: Whether text attribution changes at @iter.
+ */
+gboolean
+inf_text_gtk_buffer_is_author_toggle(InfTextGtkBuffer* buffer,
+                                     const GtkTextIter* iter,
+                                     InfTextUser** user_on,
+                                     InfTextUser** user_off)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  return inf_text_gtk_buffer_iter_is_author_toggle(
+    iter,
+    user_on,
+    user_off
+  );
+}
+
+/**
+ * inf_text_gtk_buffer_forward_to_author_toggle:
+ * @buffer: A #InfTextGtkBuffer.
+ * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.
+ * @user_on: A location to store a #InfTextUser, or %NULL.
+ * @user_off: Another location to store a #InfTextUser, or %NULL.
+ *
+ * Moves @iter to the next point in @buffer's underlying #GtkTextBuffer where
+ * the text has been written by another user. If @iter points to the end of
+ * the buffer, then the function does nothing and returns %FALSE. Otherwise
+ * it returns %TRUE and sets @user_on to the user which has written the text
+ * on the right hand side of the location @iter has been moved to (if
+ * non-%NULL) and @user_off to the user which has written the left hand side
+ * of the location @iter has been moved to.
+ *
+ * Returns: %TRUE if @iter was moved, or %FALSE otherwise.
+ */
+gboolean
+inf_text_gtk_buffer_forward_to_author_toggle(InfTextGtkBuffer* buffer,
+                                             GtkTextIter* iter,
+                                             InfTextUser** user_on,
+                                             InfTextUser** user_off)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  if(gtk_text_iter_is_end(iter))
+    return FALSE;
+
+  inf_text_gtk_buffer_iter_next_author_toggle(iter, user_on, user_off);
+  return TRUE;
+}
+
+/**
+ * inf_text_gtk_buffer_backward_to_author_toggle:
+ * @buffer: A #InfTextGtkBuffer.
+ * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.
+ * @user_on: A location to store a #InfTextUser, or %NULL.
+ * @user_off: Another location to store a #InfTextUser, or %NULL.
+ *
+ * Moves @iter to the previous point in @buffer's underlying #GtkTextBuffer
+ * where the text has been written by another user. If @iter points to the
+ * beginning of the buffer, then the function does nothing and returns %FALSE.
+ * Otherwise it returns %TRUE and sets @user_on to the user which has written
+ * the text on the right hand side of the location @iter has been moved to (if
+ * non-%NULL) and @user_off to the user which has written the left hand side
+ * of the location @iter has been moved to.
+ *
+ * Returns: %TRUE if @iter was moved, or %FALSE otherwise.
+ */
+gboolean
+inf_text_gtk_buffer_backward_to_author_toggle(InfTextGtkBuffer* buffer,
+                                              GtkTextIter* iter,
+                                              InfTextUser** user_on,
+                                              InfTextUser** user_off)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  if(gtk_text_iter_is_start(iter))
+    return FALSE;
+
+  inf_text_gtk_buffer_iter_prev_author_toggle(iter, user_on, user_off);
+  return TRUE;
 }
 
 /**

@@ -69,6 +69,24 @@ InfTextUser*
 inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
                                GtkTextIter* location);
 
+gboolean
+inf_text_gtk_buffer_is_author_toggle(InfTextGtkBuffer* buffer,
+                                     const GtkTextIter* iter,
+                                     InfTextUser** user_on,
+                                     InfTextUser** user_off);
+
+gboolean
+inf_text_gtk_buffer_forward_to_author_toggle(InfTextGtkBuffer* buffer,
+                                             GtkTextIter* iter,
+                                             InfTextUser** user_on,
+                                             InfTextUser** user_off);
+
+gboolean
+inf_text_gtk_buffer_backward_to_author_toggle(InfTextGtkBuffer* buffer,
+                                              GtkTextIter* iter,
+                                              InfTextUser** user_on,
+                                              InfTextUser** user_off);
+
 void
 inf_text_gtk_buffer_set_wake_on_cursor_movement(InfTextGtkBuffer* buffer,
                                                 gboolean wake);
