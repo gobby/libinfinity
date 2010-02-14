@@ -1359,7 +1359,7 @@ inf_text_session_validate_user_props(InfSession* session,
   {
     g_set_error(
       error,
-      inf_text_session_error_quark,
+      inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
       "%s",
       _("'caret' attribute in user message is missing")

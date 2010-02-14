@@ -1,5 +1,11 @@
 2010-02-13  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c
+	(inf_text_session_validate_user_props): Fix error domain for the
+	"'caret' attribute is missing" error.
+
+2010-02-13  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-browser-store.c: When emitting
 	"has_child_toggled" after the last node has been removed from a
 	directory make sure that gtk_tree_model_iter_has_child() returns
