@@ -91,6 +91,13 @@ gdouble
 inf_text_gtk_buffer_get_value(InfTextGtkBuffer* buffer);
 
 void
+inf_text_gtk_buffer_set_show_user_colors(InfTextGtkBuffer* buffer,
+                                         gboolean show);
+
+gboolean
+inf_text_gtk_buffer_get_show_user_colors(InfTextGtkBuffer* buffer);
+
+void
 inf_text_gtk_buffer_show_user_colors(InfTextGtkBuffer* buffer,
                                      gboolean show,
                                      GtkTextIter* start,

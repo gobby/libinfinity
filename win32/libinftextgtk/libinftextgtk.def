@@ -12,6 +12,8 @@ EXPORTS
     inf_text_gtk_buffer_set_saturation_value
     inf_text_gtk_buffer_get_saturation
     inf_text_gtk_buffer_get_value
+    inf_text_gtk_buffer_set_show_user_colors
+    inf_text_gtk_buffer_get_show_user_colors
     inf_text_gtk_buffer_show_user_colors
     inf_text_gtk_hue_chooser_get_type
     inf_text_gtk_hue_chooser_new
