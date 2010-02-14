@@ -52,6 +52,8 @@ struct _InfTextGtkBufferPrivate {
   InfUserTable* user_table;
   GHashTable* user_tags;
 
+  gboolean show_user_colors;
+
   InfTextUser* active_user;
   gboolean wake_on_cursor_movement;
 
@@ -66,6 +68,7 @@ enum {
   PROP_USER_TABLE,
   PROP_ACTIVE_USER,
   PROP_WAKE_ON_CURSOR_MOVEMENT,
+  PROP_SHOW_USER_COLORS,
 
   PROP_SATURATION,
   PROP_VALUE,
@@ -472,7 +475,7 @@ inf_text_gtk_buffer_apply_tag_cb(GtkTextBuffer* gtk_buffer,
                                  GtkTextIter* end,
                                  gpointer user_data)
 {
-  /* Don't allow auhtor tags to be applied by default. GTK+ seems to do this
+  /* Don't allow author tags to be applied by default. GTK+ seems to do this
    * when copy+pasting text from the text buffer itself, but we want to make
    * sure that a given segment of text has always a unique author set. */
   if(inf_text_gtk_buffer_author_from_tag(tag) != NULL)
@@ -943,6 +946,8 @@ inf_text_gtk_buffer_init(GTypeInstance* instance,
     inf_text_gtk_buffer_user_tags_free
   );
 
+  priv->show_user_colors = TRUE;
+
   priv->active_user = NULL;
   priv->wake_on_cursor_movement = FALSE;
 
@@ -1018,6 +1023,9 @@ inf_text_gtk_buffer_set_property(GObject* object,
   case PROP_WAKE_ON_CURSOR_MOVEMENT:
     priv->wake_on_cursor_movement = g_value_get_boolean(value);
     break;
+  case PROP_SHOW_USER_COLORS:
+    priv->show_user_colors = g_value_get_boolean(value);
+    break;
   case PROP_MODIFIED:
     inf_text_gtk_buffer_set_modified(buffer, g_value_get_boolean(value));
     break;
@@ -1066,6 +1074,9 @@ inf_text_gtk_buffer_get_property(GObject* object,
     break;
   case PROP_WAKE_ON_CURSOR_MOVEMENT:
     g_value_set_boolean(value, priv->wake_on_cursor_movement);
+    break;
+  case PROP_SHOW_USER_COLORS:
+    g_value_set_boolean(value, priv->show_user_colors);
     break;
   case PROP_MODIFIED:
     if(priv->buffer != NULL)
@@ -1391,7 +1402,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
         tag = inf_text_gtk_buffer_get_user_tag(
           INF_TEXT_GTK_BUFFER(buffer),
           tag_remove.ignore_tags,
-          TRUE
+          priv->show_user_colors
         );
       }
       else
@@ -1600,6 +1611,18 @@ inf_text_gtk_buffer_class_init(gpointer g_class,
       "Whether to make inactive users active when the insertion mark in the "
       "TextBuffer moves",
       FALSE,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SHOW_USER_COLORS,
+    g_param_spec_boolean(
+      "show-user-colors",
+      "Show user colors",
+      "Whether to show user colors initially for newly written text",
+      TRUE,
       G_PARAM_READWRITE
     )
   );
@@ -2041,6 +2064,45 @@ inf_text_gtk_buffer_get_value(InfTextGtkBuffer* buffer)
 {
   g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), 0.0);
   return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->value;
+}
+
+/**
+ * inf_text_gtk_buffer_set_show_user_colors:
+ * @buffer: A #InfTextGtkBuffer.
+ * @show: Whether to show user colors or not.
+ *
+ * If @show is %TRUE (the default), then the user color is used as background
+ * for newly written text by that user. Otherwise, newly written text has no
+ * background color.
+ *
+ * Note that this setting is for newly written text only. If you want to show
+ * or hide user colors for existing text use
+ * inf_text_gtk_buffer_show_user_colors().
+ */
+void
+inf_text_gtk_buffer_set_show_user_colors(InfTextGtkBuffer* buffer,
+                                         gboolean show)
+{
+  g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
+  INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->show_user_colors = show;
+  g_object_notify(G_OBJECT(buffer), "show-user-colors");
+}
+
+/**
+ * inf_text_gtk_buffer_get_show_user_colors:
+ * @buffer: A #InfTextGtkBuffer.
+ *
+ * Returns whether newly written text is attributed with the author's user
+ * color or not.
+ *
+ * Returns: %TRUE if user color is applied to newly written text, or %FALSE
+ * otherwise.
+ */
+gboolean
+inf_text_gtk_buffer_get_show_user_colors(InfTextGtkBuffer* buffer)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), FALSE);
+  return INF_TEXT_GTK_BUFFER_PRIVATE(buffer)->show_user_colors;
 }
 
 /**

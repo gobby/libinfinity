@@ -1,5 +1,11 @@
 2010-02-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added the "show-user-colors"
+	property and accessor functions.
+
+2010-02-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-session-proxy.c
 	(infc_session_proxy_unsubscribe_connection): Only send the
 	"session-unsubscribe" message if the connection is still open.
