@@ -1,6 +1,14 @@
 2010-02-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-buffer.c: Added
+	inf_text_gtk_buffer_is_author_toggle(),
+	inf_text_gtk_buffer_forward_to_author_toggle() and
+	inf_text_gtk_buffer_backward_to_tag_toggle().
+
+2010-02-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-buffer.h:
 	* libinftextgtk/inf-text-gtk-buffer.c: Added the "show-user-colors"
 	property and accessor functions.
 
