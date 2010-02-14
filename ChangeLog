@@ -1,5 +1,11 @@
 2010-02-14  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c: Added
+	inf_xmpp_connection_get_tls_enabled() and the "tls-enabled" property.
+
+2010-02-14  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-buffer.h:
 	* libinftextgtk/inf-text-gtk-buffer.c: Added
 	inf_text_gtk_buffer_is_author_toggle(),

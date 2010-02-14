@@ -148,7 +148,9 @@ enum {
   PROP_REMOTE_HOSTNAME,
   PROP_SECURITY_POLICY,
 
+  PROP_TLS_ENABLED,
   PROP_CREDENTIALS,
+
   /* Gsasl* */
   PROP_SASL_CONTEXT,
   PROP_SASL_MECHANISMS,
@@ -630,6 +632,8 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
   InfXmppConnectionPrivate* priv;
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
+  g_object_freeze_notify(G_OBJECT(xmpp));
+
   if(priv->sasl_session != NULL)
   {
     gsasl_finish(priv->sasl_session);
@@ -646,6 +650,8 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
   {
     gnutls_deinit(priv->session);
     priv->session = NULL;
+
+    g_object_notify(G_OBJECT(xmpp), "tls-enabled");
   }
 
   if(priv->parser != NULL)
@@ -677,6 +683,8 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
 
   priv->pull_data = NULL;
   priv->pull_len = 0;
+
+  g_object_thaw_notify(G_OBJECT(xmpp));
 }
 
 /*
@@ -1095,6 +1103,8 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
   case 0:
     /* Handshake finished successfully */
     priv->status = INF_XMPP_CONNECTION_CONNECTED;
+    g_object_notify(G_OBJECT(xmpp), "tls-enabled");
+
     if(priv->site == INF_XMPP_CONNECTION_SERVER ||
        priv->certificate_callback == NULL)
     {
@@ -3445,7 +3455,7 @@ inf_xmpp_connection_set_property(GObject* object,
 
     if(priv->creds != NULL) inf_certificate_credentials_unref(priv->creds);
     priv->creds = g_value_dup_boxed(value);
- 
+
     break;
   case PROP_SASL_CONTEXT:
     /* Cannot change context when currently in use */
@@ -3507,6 +3517,9 @@ inf_xmpp_connection_get_property(GObject* object,
     break;
   case PROP_SECURITY_POLICY:
     g_value_set_enum(value, priv->security_policy);
+    break;
+  case PROP_TLS_ENABLED:
+    g_value_set_boolean(value, inf_xmpp_connection_get_tls_enabled(xmpp));
     break;
   case PROP_CREDENTIALS:
     g_value_set_boxed(value, priv->creds);
@@ -3768,6 +3781,18 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_TLS_ENABLED,
+    g_param_spec_boolean(
+      "tls-enabled",
+      "TLS enabled",
+      "Whether TLS is enabled for the connection or not",
+      FALSE,
+      G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_CREDENTIALS,
     g_param_spec_boxed(
       "credentials",
@@ -4022,6 +4047,31 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
 }
 
 /**
+ * inf_xmpp_connection_get_tls_enabled:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns whether TLS encryption is enabled for @xmpp. This returns %TRUE
+ * as soon as the TLS handshake is completed but before the server certificate
+ * was verified (see inf_xmpp_connection_set_certificate_callback()).
+ *
+ * Returns: %TRUE if TLS is enabled and %FALSE otherwise.
+ */
+gboolean
+inf_xmpp_connection_get_tls_enabled(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), FALSE);
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  if(priv->status == INF_XMPP_CONNECTION_HANDSHAKING) return FALSE;
+  if(priv->session == NULL) return FALSE;
+
+  return TRUE;
+}
+
+/**
  * inf_xmpp_connection_set_certificate_callback:
  * @xmpp: A #InfXmppConnection.
  * @cb: Function to be called to verify the server certificate, or %NULL.
@@ -4213,7 +4263,7 @@ inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
 
   g_object_notify(G_OBJECT(xmpp), "sasl-context");
   g_object_notify(G_OBJECT(xmpp), "sasl-mechanisms");
-  
+
   g_object_thaw_notify(G_OBJECT(xmpp));
 }
 

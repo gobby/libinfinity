@@ -159,6 +159,9 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         Gsasl* sasl_context,
                         const gchar* sasl_mechanisms);
 
+gboolean
+inf_xmpp_connection_get_tls_enabled(InfXmppConnection* xmpp);
+
 void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
                                              InfXmppConnectionCrtCallback cb,
