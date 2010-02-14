@@ -1,3 +1,12 @@
+2010-02-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-session-proxy.c
+	(infc_session_proxy_unsubscribe_connection): Only send the
+	"session-unsubscribe" message if the connection is still open.
+	We might get to this point with a closed connection if a
+	status::notify signal handler closes the session explicitely before
+	our own signal handler ran (Jesse van den Kieboom).
+
 2010-02-13  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-session.c
