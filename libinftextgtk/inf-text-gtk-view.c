@@ -255,6 +255,7 @@ static void
 inf_text_gtk_view_user_invalidate_cursor_rect(InfTextGtkViewUser* view_user)
 {
   InfTextGtkViewPrivate* priv;
+  GdkRectangle rect;
   GdkWindow* window;
 
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view_user->view);
@@ -262,7 +263,18 @@ inf_text_gtk_view_user_invalidate_cursor_rect(InfTextGtkViewUser* view_user)
   if(GTK_WIDGET_REALIZED(priv->textview))
   {
     window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
-    gdk_window_invalidate_rect(window, &view_user->cursor_rect, FALSE);
+
+    gtk_text_view_buffer_to_window_coords(
+      priv->textview,
+      GTK_TEXT_WINDOW_TEXT,
+      view_user->cursor_rect.x, view_user->cursor_rect.y,
+      &rect.x, &rect.y
+    );
+
+    rect.width = view_user->cursor_rect.width;
+    rect.height = view_user->cursor_rect.height;
+
+    gdk_window_invalidate_rect(window, &rect, FALSE);
   }
 }
 
@@ -396,7 +408,6 @@ inf_text_gtk_view_user_cursor_blink_timeout_func(gpointer user_data)
   GtkSettings* settings;
   gboolean cursor_blink;
   gint cursor_blink_time;
-  gint cursor_blink_timeout;
 
   view_user = (InfTextGtkViewUser*)user_data;
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view_user->view);
@@ -1120,7 +1131,6 @@ inf_text_gtk_view_set_active_user(InfTextGtkView* view,
 {
   InfTextGtkViewPrivate* priv;
   InfTextUser* active_user;
-  InfTextGtkViewUser* view_user;
 
   g_return_if_fail(INF_TEXT_GTK_IS_VIEW(view));
   g_return_if_fail(user == NULL || INF_TEXT_IS_USER(user));

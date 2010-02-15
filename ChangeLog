@@ -1,6 +1,12 @@
 2010-02-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-view.c
+	(inf_text_gtk_view_user_invalidate_cursor_rect): Convert to window
+	coordinates before invalidating.
+
+2010-02-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-view.c
 	(inf_text_gtk_view_set_active_user): Readd previously active user
 	correctly to list of users to track.
 
