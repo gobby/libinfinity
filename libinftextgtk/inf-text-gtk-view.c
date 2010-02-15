@@ -1127,6 +1127,7 @@ inf_text_gtk_view_set_active_user(InfTextGtkView* view,
 
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
   g_return_if_fail(
+    user == NULL ||
     inf_user_table_lookup_user_by_id(
       priv->user_table,
       inf_user_get_id(INF_USER(user))
@@ -1138,7 +1139,7 @@ inf_text_gtk_view_set_active_user(InfTextGtkView* view,
     active_user = priv->active_user;
     priv->active_user = NULL;
 
-    inf_text_gtk_view_user_added(view, priv->active_user);
+    inf_text_gtk_view_user_added(view, active_user);
   }
 
   if(user != NULL)

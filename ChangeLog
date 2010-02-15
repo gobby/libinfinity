@@ -1,3 +1,9 @@
+2010-02-15  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-view.c
+	(inf_text_gtk_view_set_active_user): Readd previously active user
+	correctly to list of users to track.
+
 2010-02-14  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.h:
