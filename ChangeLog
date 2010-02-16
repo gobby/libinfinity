@@ -1,3 +1,7 @@
+2010-02-18  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-view.c: Show remote selections.
+
 2010-02-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/inf-marshal.in:
