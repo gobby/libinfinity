@@ -201,11 +201,12 @@ inf_text_user_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTextUserClass, selection_changed),
     NULL, NULL,
-    inf_marshal_VOID__UINT_INT,
+    inf_marshal_VOID__UINT_INT_BOOLEAN,
     G_TYPE_NONE,
-    2,
+    3,
     G_TYPE_UINT,
-    G_TYPE_INT
+    G_TYPE_INT,
+    G_TYPE_BOOLEAN
   );
 }
 
@@ -318,7 +319,8 @@ inf_text_user_get_selection_length(InfTextUser* user)
 void
 inf_text_user_set_selection(InfTextUser* user,
                             guint position,
-                            gint length)
+                            gint length,
+                            gboolean by_request)
 {
   g_return_if_fail(INF_TEXT_IS_USER(user));
   g_signal_emit(
@@ -326,7 +328,8 @@ inf_text_user_set_selection(InfTextUser* user,
     user_signals[SELECTION_CHANGED],
     0,
     position,
-    length
+    length,
+    by_request
   );
 }
 

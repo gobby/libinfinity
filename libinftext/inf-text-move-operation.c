@@ -225,7 +225,8 @@ inf_text_move_operation_apply(InfAdoptedOperation* operation,
   inf_text_user_set_selection(
     INF_TEXT_USER(by),
     priv->position,
-    priv->length
+    priv->length,
+    TRUE /* explicit move request */
   );
 }
 

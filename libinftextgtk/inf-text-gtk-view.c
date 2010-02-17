@@ -495,6 +495,7 @@ static void
 inf_text_gtk_view_user_selection_changed_cb(InfTextUser* user,
                                             guint position,
                                             gint length,
+                                            gboolean by_request,
                                             gpointer user_data)
 {
   InfTextGtkViewUser* view_user;

@@ -41,7 +41,8 @@ struct _InfTextUserClass {
 
   void(*selection_changed)(InfTextUser* user,
                            guint position,
-                           guint length);
+                           guint length,
+                           gboolean by_request);
 };
 
 struct _InfTextUser {
@@ -66,7 +67,8 @@ inf_text_user_get_selection_length(InfTextUser* user);
 void
 inf_text_user_set_selection(InfTextUser* user,
                             guint position,
-                            gint length);
+                            gint length,
+                            gboolean by_request);
 
 gdouble
 inf_text_user_get_hue(InfTextUser* user);

@@ -253,6 +253,7 @@ static void
 inf_text_session_selection_changed_cb(InfTextUser* user,
                                       guint position,
                                       gint sel,
+                                      gboolean by_request,
                                       gpointer user_data)
 {
   InfTextSession* session;
@@ -265,6 +266,10 @@ inf_text_session_selection_changed_cb(InfTextUser* user,
   priv = INF_TEXT_SESSION_PRIVATE(session);
   local = inf_text_session_find_local_user(session, user);
   g_assert(local != NULL);
+
+  /* We should block all changes that have by_request set to FALSE... breaks
+   * if someone else does that... should maybe emit a warning instead. */
+  g_assert(by_request == TRUE);
 
   g_get_current_time(&current);
   diff = inf_text_session_timeval_diff(&current, &local->last_caret_update);
@@ -424,6 +429,7 @@ inf_text_session_buffer_insert_text_cb_after_foreach_func(InfUser* user,
   data = (InfTextSessionInsertForeachData*)user_data;
   if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
   {
+    /* TODO: Handle separately if insert-caret */
     position = inf_text_user_get_caret_position(INF_TEXT_USER(user));
     length = inf_text_user_get_selection_length(INF_TEXT_USER(user));
 
@@ -436,7 +442,12 @@ inf_text_session_buffer_insert_text_cb_after_foreach_func(InfUser* user,
       user == data->user ? FALSE : TRUE
     );
 
-    inf_text_user_set_selection(INF_TEXT_USER(user), position, length);
+    inf_text_user_set_selection(
+      INF_TEXT_USER(user),
+      position,
+      length,
+      user == data->user ? TRUE : FALSE
+    );
   }
 }
 
@@ -451,6 +462,7 @@ inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
   data = (InfTextSessionEraseForeachData*)user_data;
   if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
   {
+    /* TODO: Handle separately if erase-caret */
     position = inf_text_user_get_caret_position(INF_TEXT_USER(user));
     length = inf_text_user_get_selection_length(INF_TEXT_USER(user));
 
@@ -461,7 +473,12 @@ inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
       &length
     );
 
-    inf_text_user_set_selection(INF_TEXT_USER(user), position, length);
+    inf_text_user_set_selection(
+      INF_TEXT_USER(user),
+      position,
+      length,
+      user == data->user ? TRUE : FALSE
+    );
   }
 }
 
@@ -499,7 +516,8 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
     inf_text_user_set_selection(
       INF_TEXT_USER(user),
       pos + inf_text_chunk_get_length(chunk),
-      0
+      0,
+      TRUE
     );
   }
 #endif
@@ -536,7 +554,7 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
 
 #if 0
   if(user != NULL)
-    inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0);
+    inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0, TRUE);
 #endif
 
   inf_text_session_unblock_local_users_selection_changed(session);

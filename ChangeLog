@@ -1,3 +1,15 @@
+2010-02-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in:
+	* libinftext/inf-text-user.h:
+	* libinftext/inf-text-user.c: Added a by_request parameter to the
+	selection-changed signal.
+
+	* libinftext/inf-text-move-operation.c:
+	* libinftext/inf-text-session.c:
+	* libinftextgtk/inf-text-gtk-buffer.c:
+	* libinftextgtk/inf-text-gtk-view.c: Adapt for the API change.
+
 2010-02-15  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-view.c

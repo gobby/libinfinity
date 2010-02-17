@@ -459,6 +459,7 @@ static void
 inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
                                                      guint position,
                                                      gint length,
+                                                     gboolean by_request,
                                                      gpointer user_data);
 
 /* Required by inf_text_gtk_buffer_insert_text_cb(),
@@ -683,7 +684,7 @@ inf_text_gtk_buffer_mark_set_cb(GtkTextBuffer* gtk_buffer,
           buffer
         );
 
-        inf_text_user_set_selection(priv->active_user, offset, sel);
+        inf_text_user_set_selection(priv->active_user, offset, sel, TRUE);
 
         inf_signal_handlers_unblock_by_func(
           G_OBJECT(priv->active_user),
@@ -747,7 +748,7 @@ inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
         buffer
       );
 
-      inf_text_user_set_selection(priv->active_user, offset, sel);
+      inf_text_user_set_selection(priv->active_user, offset, sel, TRUE);
 
       inf_signal_handlers_unblock_by_func(
         G_OBJECT(priv->active_user),
@@ -770,6 +771,7 @@ static void
 inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
                                                      guint position,
                                                      gint selection_length,
+                                                     gboolean by_request,
                                                      gpointer user_data)
 {
   InfTextGtkBuffer* buffer;
