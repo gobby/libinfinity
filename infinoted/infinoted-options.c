@@ -647,7 +647,7 @@ infinoted_options_load(InfinotedOptions* options,
       N_("USER") },
     { "allow-group", 0, 0,
       G_OPTION_ARG_STRING_ARRAY, NULL,
-      N_("Group allowed to connecct after pam authentication"),
+      N_("Group allowed to connect after pam authentication"),
       N_("GROUP") },
 #endif /* LIBINFINITY_HAVE_PAM */
     { "sync-directory", 0, 0,
