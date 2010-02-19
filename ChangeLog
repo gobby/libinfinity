@@ -1,3 +1,8 @@
+2010-02-19  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-text-replay.c: Don't play the first argument N times
+	but every argument once.
+
 2010-02-18  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-view.c: Show remote selections.

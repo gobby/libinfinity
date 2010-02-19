@@ -328,7 +328,7 @@ int main(int argc, char* argv[])
     replay = inf_adopted_session_replay_new();
     inf_adopted_session_replay_set_record(
       replay,
-      argv[1],
+      argv[i],
       &INF_TEST_TEXT_REPLAY_TEXT_PLUGIN,
       &error
     );
@@ -390,6 +390,7 @@ int main(int argc, char* argv[])
       else
       {
         fprintf(stderr, "\n");
+        /*inf_test_util_print_buffer(INF_TEXT_BUFFER(buffer));*/
       }
 
       g_string_free(content, TRUE);
