@@ -1,5 +1,10 @@
 2010-02-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-view.c: Take TextView's left and right
+	margin into account when drawing remote selections.
+
+2010-02-19  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-text-replay.c: Don't play the first argument N times
 	but every argument once.
 

@@ -289,6 +289,45 @@ inf_text_gtk_view_user_compute_user_area(InfTextGtkViewUser* view_user)
   );
 }
 
+static guint
+inf_text_gtk_view_get_left_margin(GtkTextView* view)
+{
+  gint margin;
+  gint hadj;
+
+  margin = gtk_text_view_get_left_margin(view);
+  if(!view->hadjustment) return margin;
+
+  hadj = gtk_adjustment_get_value(view->hadjustment);
+  if(hadj < margin) return margin - hadj;
+
+  return 0;
+}
+
+static guint
+inf_text_gtk_view_get_right_margin(GtkTextView* view)
+{
+  gint margin;
+  gint hadj;
+  gint hupper;
+  gint hpage;
+
+  margin = gtk_text_view_get_right_margin(view);
+  if(!view->hadjustment) return margin;
+
+  /* TODO: I am not exactly sure where this +1 comes from, but it is required
+   * so that the selection is aligned with the local selection at the right
+   * margin. */
+  hadj = gtk_adjustment_get_value(view->hadjustment) + 1;
+  hupper = gtk_adjustment_get_upper(view->hadjustment);
+  hpage = gtk_adjustment_get_page_size(view->hadjustment);
+
+  if(hadj > hupper - hpage - margin)
+    return margin - (hupper - hpage - hadj);
+
+  return 0;
+}
+
 /* Invalidate the whole area of the textview covered by the given user:
  * cursor, selection, current line */
 static void
@@ -299,12 +338,14 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
   GdkRectangle invalidate_rect;
   gint selection_bound_x;
   gint selection_bound_y;
+  gint window_width;
 
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view_user->view);
 
   if(GTK_WIDGET_REALIZED(priv->textview))
   {
     window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
+    gdk_drawable_get_size(GDK_DRAWABLE(window), &window_width, NULL);
 
     gtk_text_view_buffer_to_window_coords(
       priv->textview,
@@ -352,14 +393,18 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
         /* Cursor and selection bound are on different lines. Could split
          * the actual area to be invalidated into three rectangles here,
          * but let's just do the union for simplicity reasons. */
-        invalidate_rect.width = GTK_WIDGET(priv->textview)->allocation.width;
+        invalidate_rect.width = window_width;
         invalidate_rect.height = MAX(
           invalidate_rect.y + invalidate_rect.height,
           selection_bound_y + view_user->selection_bound_rect.height
         ) - MIN(invalidate_rect.y, selection_bound_y);
 
-        invalidate_rect.x = 0;
+        invalidate_rect.x = inf_text_gtk_view_get_left_margin(priv->textview);
         invalidate_rect.y = MIN(invalidate_rect.y, selection_bound_y);
+
+        invalidate_rect.width -=
+          inf_text_gtk_view_get_left_margin(priv->textview) +
+          inf_text_gtk_view_get_right_margin(priv->textview);
       }
     }
 
@@ -480,6 +525,7 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
 {
   InfTextGtkView* view;
   InfTextGtkViewPrivate* priv;
+  gint window_width;
   GdkColor* cursor_color;
   double hc,sc,vc;
   double hs,ss,vs;
@@ -524,6 +570,8 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   {
     return FALSE;
   }
+
+  gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
 
   gtk_widget_style_get (widget, "cursor-color", &cursor_color, NULL);
   if(cursor_color != NULL)
@@ -809,12 +857,13 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
         );
 
         /* multiple lines */
-        if(widget->allocation.width > prev_toggle->x)
+        if(window_width > prev_toggle->x)
         {
           /* first line */
           rct.x = prev_toggle->x;
           rct.y = prev_toggle->y;
-          rct.width = widget->allocation.width - prev_toggle->x;
+          rct.width = window_width - prev_toggle->x -
+            inf_text_gtk_view_get_right_margin(priv->textview);
           rct.height = prev_toggle->user->selection_bound_rect.height;
           gdk_cairo_rectangle(cr, &rct);
         }
@@ -822,9 +871,9 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
         if(cur_toggle->x > 0)
         {
           /* last line */
-          rct.x = 0;
+          rct.x = inf_text_gtk_view_get_left_margin(priv->textview);
           rct.y = cur_toggle->y;
-          rct.width = cur_toggle->x;
+          rct.width = cur_toggle->x - rct.x;
           rct.height = cur_toggle->user->selection_bound_rect.height;
           gdk_cairo_rectangle(cr, &rct);
         }
@@ -833,10 +882,11 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
            cur_toggle->user->selection_bound_rect.height)
         {
           /* intermediate */
-          rct.x = 0;
+          rct.x = inf_text_gtk_view_get_left_margin(priv->textview);
           rct.y = prev_toggle->y +
             prev_toggle->user->selection_bound_rect.height;
-          rct.width = widget->allocation.width;
+          rct.width = window_width - rct.x -
+            inf_text_gtk_view_get_right_margin(priv->textview);
           rct.height = cur_toggle->y - prev_toggle->y -
             cur_toggle->user->selection_bound_rect.height;
           gdk_cairo_rectangle(cr, &rct);
