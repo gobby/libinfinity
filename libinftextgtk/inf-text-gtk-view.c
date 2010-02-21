@@ -27,10 +27,16 @@ struct _InfTextGtkViewUser {
   gpointer timeout_handle; /* TODO: Use glib for that; remove InfIo property */
   guint revalidate_idle;
 
+  /* All in buffer coordinates: */
+
   /* The rectanglular area occupied by the cursor */
   GdkRectangle cursor_rect;
   /* The position and height of the selection bound. width is ignored. */
   GdkRectangle selection_bound_rect;
+
+  /* Current line */
+  gint line_y;
+  gint line_height;
 };
 
 /* Helper struct for redrawing selection area */
@@ -261,6 +267,15 @@ inf_text_gtk_view_user_compute_user_area(InfTextGtkViewUser* view_user)
     inf_text_user_get_caret_position(view_user->user)
   );
 
+  /* Find current line */
+  gtk_text_view_get_line_yrange(
+    priv->textview,
+    &iter,
+    &view_user->line_y,
+    &view_user->line_height
+  );
+
+  /* Find cursor position */
   gtk_text_view_get_iter_location(
     priv->textview,
     &iter,
@@ -272,6 +287,7 @@ inf_text_gtk_view_user_compute_user_area(InfTextGtkViewUser* view_user)
     1
   );
 
+  /* Find selection bound */
   gtk_text_iter_forward_chars(
     &iter,
     inf_text_user_get_selection_length(view_user->user)
@@ -409,7 +425,40 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
     }
 
     gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
+
+    gtk_text_view_buffer_to_window_coords(
+      priv->textview,
+      GTK_TEXT_WINDOW_TEXT,
+      0, view_user->line_y,
+      NULL, &invalidate_rect.y
+    );
+
+    /* -1 to stay consistent with GtkSourceView */
+    invalidate_rect.x = inf_text_gtk_view_get_left_margin(priv->textview) - 1;
+    invalidate_rect.width = window_width - invalidate_rect.x;
+    invalidate_rect.height = view_user->line_height;
+
+    gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
   }
+}
+
+static gint
+inf_text_gtk_view_user_line_position_cmp(gconstpointer first,
+                                         gconstpointer second)
+{
+  const InfTextGtkViewUser* first_user;
+  const InfTextGtkViewUser* second_user;
+
+  first_user = (const InfTextGtkViewUser*)first;
+  second_user = (const InfTextGtkViewUser*)second;
+
+  if(second_user->line_y < first_user->line_y)
+    return 1;
+  else if(second_user->line_y > first_user->line_y)
+    return -1;
+
+  return 0;
+
 }
 
 static gint
@@ -516,6 +565,119 @@ inf_text_gtk_view_add_user_toggle_pair(GSequence* sequence,
     end_x,
     end_y
   );
+}
+
+static gboolean
+inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
+                                         GdkEventExpose* event,
+                                         gpointer user_data)
+{
+  InfTextGtkView* view;
+  InfTextGtkViewPrivate* priv;
+  GSList* item;
+  GSList* prev_item;
+  InfTextGtkViewUser* prev_user;
+  InfTextGtkViewUser* view_user;
+
+  GdkColor* color;
+  double h, s, v;
+  double r, g, b;
+
+  GSList* sort_users;
+  GdkRectangle rect;
+  gint window_width;
+  gint rx, ry;
+  cairo_t* cr;
+  cairo_pattern_t* pattern;
+  double n, n_users;
+
+  view = INF_TEXT_GTK_VIEW(user_data);
+  priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
+
+  if(gtk_text_view_get_window_type(priv->textview, event->window) !=
+     GTK_TEXT_WINDOW_TEXT)
+  {
+    return FALSE;
+  }
+
+  gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
+
+  /* Make selection color based on text color: If text is dark, selection
+   * is dark, if text is bright selection is bright. Note that we draw with
+   * 50% alpha only, so text remains readable. */
+  color = &widget->style->bg[GTK_STATE_NORMAL];
+  h = color->red / 65535.0;
+  s = color->green / 65535.0;
+  v = color->blue / 65535.0;
+  rgb_to_hsv(&h, &s, &v);
+  v = MAX(v, 0.3);
+  s = MAX(s, 0.1 + 0.3*(1 - v));
+
+  cr = gdk_cairo_create(event->window);
+
+  sort_users = g_slist_copy(priv->users);
+  sort_users =
+    g_slist_sort(sort_users, inf_text_gtk_view_user_line_position_cmp);
+
+  prev_item = sort_users;
+  if(prev_item) prev_user = (InfTextGtkViewUser*)prev_item->data;
+  n_users = 1.0;
+
+  for(item = sort_users; item != NULL; item = item->next, n_users += 1.0)
+  {
+    if(item->next == NULL ||
+       ((InfTextGtkViewUser*)item->next->data)->line_y != prev_user->line_y)
+    {
+      gtk_text_view_buffer_to_window_coords(
+        priv->textview,
+        GTK_TEXT_WINDOW_TEXT,
+        0, prev_user->line_y,
+        NULL, &rect.y
+      );
+
+      /* -1 to stay consistent with GtkSourceView */
+      rect.x = inf_text_gtk_view_get_left_margin(priv->textview) - 1;
+      rect.width = window_width - rect.x;
+      rect.height = prev_user->line_height;
+
+      if(gdk_region_rect_in(event->region, &rect) != GDK_OVERLAP_RECTANGLE_OUT)
+      {
+        /* Construct pattern */
+        n = 0.0;
+        rx = -gtk_adjustment_get_value(priv->textview->vadjustment);
+        ry = -gtk_adjustment_get_value(priv->textview->hadjustment);
+        pattern =
+          cairo_pattern_create_linear(rx, ry, rx+3.5*n_users, ry+3.5*n_users);
+        cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
+
+        for(n = 0.0;
+            prev_item != item->next;
+            prev_item = prev_item->next, n += 1.0)
+        {
+          view_user = (InfTextGtkViewUser*)prev_item->data;
+          h = inf_text_user_get_hue(view_user->user);
+          r = h; g = s; b = v;
+          hsv_to_rgb(&r, &g, &b);
+
+          cairo_pattern_add_color_stop_rgb(pattern, n/n_users, r, g, b);
+          cairo_pattern_add_color_stop_rgb(pattern, (n+1.0)/n_users, r, g, b);
+        }
+
+        cairo_set_source(cr, pattern);
+        gdk_cairo_rectangle(cr, &rect);
+        cairo_fill(cr);
+        cairo_pattern_destroy(pattern);
+      }
+
+      prev_item = item->next;
+      if(prev_item) prev_user = (InfTextGtkViewUser*)prev_item->data;
+      n_users = 0.0;
+    }
+  }
+
+  g_slist_free(sort_users);
+  cairo_destroy(cr);
+  return FALSE;
 }
 
 static gboolean
@@ -1380,6 +1542,12 @@ inf_text_gtk_view_set_view(InfTextGtkView* view,
   {
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->textview),
+      G_CALLBACK(inf_text_gtk_view_expose_event_before_cb),
+      view
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->textview),
       G_CALLBACK(inf_text_gtk_view_expose_event_after_cb),
       view
     );
@@ -1404,6 +1572,13 @@ inf_text_gtk_view_set_view(InfTextGtkView* view,
   if(gtk_view != NULL)
   {
     g_object_ref(gtk_view);
+
+    g_signal_connect(
+      G_OBJECT(gtk_view),
+      "expose-event",
+      G_CALLBACK(inf_text_gtk_view_expose_event_before_cb),
+      view
+    );
 
     g_signal_connect_after(
       G_OBJECT(gtk_view),

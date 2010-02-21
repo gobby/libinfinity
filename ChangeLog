@@ -1,5 +1,10 @@
 2010-02-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-view.c: Highlight current line of remote
+	users.
+
+2010-02-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-session-proxy.c: Improved docs for
 	infc_session_proxy_join_user().
 
