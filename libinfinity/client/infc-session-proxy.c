@@ -1184,7 +1184,9 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
  * @error: Location to store error information.
  *
  * Requests a user join for a user with the given properties (which must not
- * include ID and status since these are initially set by the server).
+ * include #InfUser:id and #InfUser:flags since these are initially set by the
+ * server). The #InfUser:status property is optional and defaults to
+ * %INF_USER_ACTIVE if not given. It must not be %INF_USER_UNAVAILABLE.
  *
  * Return Value: A #InfcUserRequest object that may be used to get notified
  * when the request succeeds or fails.
