@@ -51,6 +51,26 @@ INF_TEXT_GTK_VIEW_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-text-gtk-viewport</FILE>
+<TITLE>InfTextGtkViewport</TITLE>
+InfTextGtkViewport
+inf_text_gtk_viewport_new
+inf_text_gtk_viewport_get_scrolled_window
+inf_text_gtk_viewport_get_user_table
+inf_text_gtk_viewport_set_active_user
+inf_text_gtk_viewport_get_active_user
+<SUBSECTION Standard>
+InfTextGtkViewportClass
+INF_TEXT_GTK_VIEWPORT
+INF_TEXT_GTK_IS_VIEWPORT
+INF_TEXT_GTK_TYPE_VIEWPORT
+inf_text_gtk_viewport_get_type
+INF_TEXT_GTK_VIEWPORT_CLASS
+INF_TEXT_GTK_IS_VIEWPORT_CLASS
+INF_TEXT_GTK_VIEWPORT_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>inf-text-gtk-hue-chooser</FILE>
 <TITLE>InfTextGtkHueChooser</TITLE>
 InfTextGtkHueChooser

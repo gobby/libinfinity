@@ -1,3 +1,13 @@
+2010-02-25  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/Makefile.am:
+	* libinftextgtk/inf-text-gtk-viewport.h:
+	* libinftextgtk/inf-text-gtk-viewport.c: Added InfTextGtkViewport,
+	showing remote users' cursor positions in the scrollbar.
+
+	* test/inf-test-gtk-browser.c: Show the functionality in
+	inf-test-gtk-browser.
+
 2010-02-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-view.c: Highlight current line of remote

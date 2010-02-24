@@ -24,9 +24,11 @@ libinftextgtk_0_5_ladir = \
 libinftextgtk_0_5_la_HEADERS = \
 	inf-text-gtk-buffer.h \
 	inf-text-gtk-hue-chooser.h \
-	inf-text-gtk-view.h
+	inf-text-gtk-view.h \
+	inf-text-gtk-viewport.h
 
 libinftextgtk_0_5_la_SOURCES = \
 	inf-text-gtk-buffer.c \
 	inf-text-gtk-hue-chooser.c \
-	inf-text-gtk-view.c
+	inf-text-gtk-view.c \
+	inf-text-gtk-viewport.c

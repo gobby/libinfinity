@@ -18,6 +18,7 @@
     <title>libinftextgtk API</title>
     <xi:include href="xml/inf-text-gtk-buffer.xml"/>
     <xi:include href="xml/inf-text-gtk-view.xml"/>
+    <xi:include href="xml/inf-text-gtk-viewport.xml"/>
     <xi:include href="xml/inf-text-gtk-hue-chooser.xml"/>
   </chapter>
 </book>

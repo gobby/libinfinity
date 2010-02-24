@@ -19,6 +19,7 @@
 
 #include <libinftextgtk/inf-text-gtk-buffer.h>
 #include <libinftextgtk/inf-text-gtk-view.h>
+#include <libinftextgtk/inf-text-gtk-viewport.h>
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfgtk/inf-gtk-browser-store.h>
 #include <libinfgtk/inf-gtk-chat.h>
@@ -42,6 +43,7 @@ struct _InfTestGtkBrowserWindow {
 
   InfTextGtkBuffer* buffer;
   InfTextGtkView* view;
+  InfTextGtkViewport* viewport;
   InfcSessionProxy* proxy;
   InfUser* user;
 };
@@ -200,6 +202,7 @@ on_join_finished(InfcUserRequest* request,
 
   inf_text_gtk_buffer_set_active_user(test->buffer, INF_TEXT_USER(user));
   inf_text_gtk_view_set_active_user(test->view, INF_TEXT_USER(user));
+  inf_text_gtk_viewport_set_active_user(test->viewport, INF_TEXT_USER(user));
   gtk_text_view_set_editable(GTK_TEXT_VIEW(test->textview), TRUE);
 
   test->user = user;
@@ -592,6 +595,7 @@ on_subscribe_session(InfcBrowser* browser,
   InfUserTable* user_table;
   InfTextGtkBuffer* buffer;
   InfTextGtkView* view;
+  InfTextGtkViewport* viewport;
   GtkTextBuffer* textbuffer;
   InfTestGtkBrowserWindow* test;
 
@@ -613,6 +617,7 @@ on_subscribe_session(InfcBrowser* browser,
   gtk_widget_show(textview);
 
   scroll = gtk_scrolled_window_new(NULL, NULL);
+  viewport = inf_text_gtk_viewport_new(GTK_SCROLLED_WINDOW(scroll), user_table);
   gtk_scrolled_window_set_shadow_type(
     GTK_SCROLLED_WINDOW(scroll),
     GTK_SHADOW_IN
@@ -663,6 +668,7 @@ on_subscribe_session(InfcBrowser* browser,
   test->redo_button = redo_button;
   test->buffer = buffer;
   test->view = view;
+  test->viewport = viewport;
   test->proxy = proxy;
   test->user = NULL;
   g_object_ref(proxy);
