@@ -122,7 +122,8 @@ inf_text_user_get_property(GObject* object,
 static void
 inf_text_user_selection_changed(InfTextUser* user,
                                 guint position,
-                                guint length)
+                                guint length,
+                                gboolean by_request)
 {
   InfTextUserPrivate* priv;
   priv = INF_TEXT_USER_PRIVATE(user);
