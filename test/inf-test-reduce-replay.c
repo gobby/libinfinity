@@ -33,7 +33,9 @@
 
 #include <glib/gstdio.h>
 
-#include <sys/wait.h>
+#ifndef G_OS_WIN32
+# include <sys/wait.h>
+#endif
 #include <string.h>
 
 static const gchar REPLAY[] = ".libs/inf-test-text-replay";
@@ -228,6 +230,7 @@ inf_test_reduce_replay_run_test(xmlDocPtr doc)
 
   /*g_unlink("test.xml");*/
 
+#ifndef G_OS_WIN32
   if(WIFSIGNALED(ret) &&
      (WTERMSIG(ret) == SIGABRT || WTERMSIG(ret) == SIGSEGV))
   {
@@ -241,6 +244,7 @@ inf_test_reduce_replay_run_test(xmlDocPtr doc)
       return TRUE;
   }
   else
+#endif
   {
     /* what happen? */
     g_assert_not_reached();

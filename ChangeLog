@@ -1,5 +1,10 @@
 2010-02-26  Armin Burgmeier  <armin@arbur.net>
 
+	* test/inf-test-reduce-replay.c: Make this compile on Windows (but
+	not work yet).
+
+2010-02-26  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-viewport.c: Fix redraw bugs.
 
 2010-02-25  Armin Burgmeier  <armin@arbur.net>
