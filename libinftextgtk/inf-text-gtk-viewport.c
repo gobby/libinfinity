@@ -25,7 +25,6 @@ typedef struct _InfTextGtkViewportUser InfTextGtkViewportUser;
 struct _InfTextGtkViewportUser {
   InfTextGtkViewport* viewport;
   InfTextUser* user;
-  guint revalidate_idle;
   GdkRectangle rectangle;
 };
 
@@ -252,13 +251,7 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
     );
 
     gtk_text_view_get_iter_location(GTK_TEXT_VIEW(textview), &iter, &rect);
-
-    gtk_text_view_buffer_to_window_coords(
-      GTK_TEXT_VIEW(textview),
-      GTK_TEXT_WINDOW_TEXT,
-      rect.x, rect.y,
-      NULL, &y
-    );
+    y = rect.y;
 
     gtk_text_buffer_get_end_iter(
       gtk_text_view_get_buffer(GTK_TEXT_VIEW(textview)),
@@ -266,13 +259,7 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
     );
 
     gtk_text_view_get_iter_location(GTK_TEXT_VIEW(textview), &iter, &rect);
-
-    gtk_text_view_buffer_to_window_coords(
-      GTK_TEXT_VIEW(textview),
-      GTK_TEXT_WINDOW_TEXT,
-      rect.x, rect.y,
-      NULL, &end_y
-    );
+    end_y = rect.y;
 
     g_assert(end_y > 0 || y == 0);
 
@@ -285,15 +272,16 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
       NULL
     );
 
+    scroll_ox = border + 1 /* ?? */;
     scroll_oy = stepper_size + stepper_spacing;
     scroll_height = scrollbar->allocation.height - 2*scroll_oy;
 
     if(end_y > 0)
       y = y * scroll_height / end_y;
 
-    user->rectangle.x = scroll_ox + scrollbar->allocation.x + 1;
+    user->rectangle.x = scroll_ox + scrollbar->allocation.x;
     user->rectangle.y = scroll_oy + scrollbar->allocation.y + y - slider_size/3;
-    user->rectangle.width = slider_size - 2;
+    user->rectangle.width = slider_size - 2*scroll_ox;
     user->rectangle.height = slider_size*2/3;
 
     if(user->rectangle.y < scroll_oy + scrollbar->allocation.y)
@@ -393,8 +381,8 @@ inf_text_gtk_viewport_scrollbar_size_allocate_cb(GtkWidget* scrollbar,
 {
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
-  InfTextGtkViewportUser* viewport_user;
   GSList* item;
+  InfTextGtkViewportUser* viewport_user;
 
   viewport = INF_TEXT_GTK_VIEWPORT(user_data);
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
@@ -402,8 +390,9 @@ inf_text_gtk_viewport_scrollbar_size_allocate_cb(GtkWidget* scrollbar,
   for(item = priv->users; item != NULL; item = item->next)
   {
     viewport_user = (InfTextGtkViewportUser*)item->data;
+    inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
     inf_text_gtk_viewport_user_compute_user_area(viewport_user);
-    /* Don't invalidate, will redraw anyway in response to size-allocate */
+    inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
   }
 }
 
@@ -414,8 +403,8 @@ inf_text_gtk_viewport_scrollbar_style_set_cb(GtkWidget* scrollbar,
 {
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
-  InfTextGtkViewportUser* viewport_user;
   GSList* item;
+  InfTextGtkViewportUser* viewport_user;
 
   viewport = INF_TEXT_GTK_VIEWPORT(user_data);
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
@@ -423,27 +412,10 @@ inf_text_gtk_viewport_scrollbar_style_set_cb(GtkWidget* scrollbar,
   for(item = priv->users; item != NULL; item = item->next)
   {
     viewport_user = (InfTextGtkViewportUser*)item->data;
+    inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
     inf_text_gtk_viewport_user_compute_user_area(viewport_user);
-    /* Don't invalidate, will redraw anyway in response to style-set */
+    inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
   }
-}
-
-static gboolean
-inf_text_gtk_viewport_user_selection_changed_cb_idle_func(gpointer user_data)
-{
-  InfTextGtkViewportUser* viewport_user;
-  viewport_user = (InfTextGtkViewportUser*)user_data;
-
-  /* TODO: Just invalidate the region that really changed, by comparing
-   * old and new rectangle's coordinates */
-  inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
-
-  /* Recompute and revalidate */
-  inf_text_gtk_viewport_user_compute_user_area(viewport_user);
-  inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
-
-  viewport_user->revalidate_idle = 0;
-  return FALSE;
 }
 
 static void
@@ -459,17 +431,13 @@ inf_text_gtk_viewport_user_selection_changed_cb(InfTextUser* user,
   viewport_user = (InfTextGtkViewportUser*)user_data;
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport_user->viewport);
 
-  /* We can't invalidate here because
-   * gtk_text_view_buffer_to_window_coords() does not give correct
-   * coordinates at this point. We need to wait for the textview to
-   * revalidate onscreen lines first (which it does in an idle handler,
-   * note higher numbers indicate less priority). */
-  viewport_user->revalidate_idle = g_idle_add_full(
-    GTK_TEXT_VIEW_PRIORITY_VALIDATE + 1,
-    inf_text_gtk_viewport_user_selection_changed_cb_idle_func,
-    viewport_user,
-    NULL
-  );
+  /* TODO: Just invalidate the region that really changed, by comparing
+   * old and new rectangle's coordinates */
+  inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
+
+  /* Recompute and revalidate */
+  inf_text_gtk_viewport_user_compute_user_area(viewport_user);
+  inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
 }
 
 static void
@@ -498,7 +466,6 @@ inf_text_gtk_viewport_add_user(InfTextGtkViewport* viewport,
 
   viewport_user->viewport = viewport;
   viewport_user->user = INF_TEXT_USER(user);
-  viewport_user->revalidate_idle = 0;
   priv->users = g_slist_prepend(priv->users, viewport_user);
 
   inf_text_gtk_viewport_user_compute_user_area(viewport_user);
@@ -834,9 +801,9 @@ inf_text_gtk_viewport_dispose(GObject* object)
 
 static void
 inf_text_gtk_viewport_set_property(GObject* object,
-                                 guint prop_id,
-                                 const GValue* value,
-                                 GParamSpec* pspec)
+                                   guint prop_id,
+                                   const GValue* value,
+                                   GParamSpec* pspec)
 {
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
