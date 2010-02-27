@@ -1,3 +1,9 @@
+2010-02-27  Armin Burgmeier  <armin@arbur.net>, Benjamin Herr  <ben@0x539.de>
+
+	* libinftextgtk/inf-text-gtk-view.c: Fix rendering multi-selections
+	far down a document, slightly increased minimum value of selection
+	colors.
+
 2010-02-26  Armin Burgmeier  <armin@arbur.net>
 
 	* test/inf-test-reduce-replay.c: Make this compile on Windows (but

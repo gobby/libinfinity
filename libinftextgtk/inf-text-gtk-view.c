@@ -590,6 +590,7 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
   cairo_t* cr;
   cairo_pattern_t* pattern;
   double n, n_users;
+  cairo_matrix_t matrix;
 
   view = INF_TEXT_GTK_VIEW(user_data);
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
@@ -643,11 +644,12 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
       if(gdk_region_rect_in(event->region, &rect) != GDK_OVERLAP_RECTANGLE_OUT)
       {
         /* Construct pattern */
-        n = 0.0;
-        rx = -gtk_adjustment_get_value(priv->textview->vadjustment);
-        ry = -gtk_adjustment_get_value(priv->textview->hadjustment);
+        rx = gtk_adjustment_get_value(priv->textview->vadjustment);
+        ry = gtk_adjustment_get_value(priv->textview->hadjustment);
         pattern =
-          cairo_pattern_create_linear(rx, ry, rx+3.5*n_users, ry+3.5*n_users);
+          cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
+        cairo_matrix_init_translate(&matrix, rx, ry);
+        cairo_pattern_set_matrix(pattern, &matrix);
         cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
 
         for(n = 0.0;
@@ -720,6 +722,7 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   GSList* users;
   cairo_pattern_t* pattern;
   double n;
+  cairo_matrix_t matrix;
 
   GdkRectangle rct;
   gint rx, ry;
@@ -765,8 +768,8 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   sc = MIN(MAX(sc, 0.3), 0.8);
   vc = MAX(vc, 0.7);
 
-  ss = 1.0; /*MIN(MAX(ss, 0.3),  0.8);*/
-  vs = MAX(vs, 0.3);
+  vs = MAX(vs, 0.5);
+  ss = 1.0 - 0.4*(vs);
 
   /* Find range of text to be updated */
   gtk_text_view_window_to_buffer_coords(
@@ -970,13 +973,14 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
       g_assert(n_users > 0);
 
       /* Construct pattern */
-      n = 0.0;
-      rx = -gtk_adjustment_get_value(priv->textview->vadjustment);
-      ry = -gtk_adjustment_get_value(priv->textview->hadjustment);
+      rx = gtk_adjustment_get_value(priv->textview->hadjustment);
+      ry = gtk_adjustment_get_value(priv->textview->vadjustment);
       pattern =
-        cairo_pattern_create_linear(rx, ry, rx+3.5*n_users, ry+3.5*n_users);
+        cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
+      cairo_matrix_init_translate(&matrix, rx, ry);
+      cairo_pattern_set_matrix(pattern, &matrix);
       cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
-      for(item = users; item != NULL; item = item->next, n += 1.0)
+      for(item = users, n = 0.0; item != NULL; item = item->next, n += 1.0)
       {
         view_user = ((InfTextGtkViewUserToggle*)item->data)->user;
         hs = inf_text_user_get_hue(view_user->user);
