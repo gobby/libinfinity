@@ -329,7 +329,7 @@ version_check automake AUTOMAKE "$automake_progs" $REQUIRED_AUTOMAKE_VERSION \
 ACLOCAL=`echo $AUTOMAKE | sed s/automake/aclocal/`
 
 if $want_libtool; then
-    version_check libtool LIBTOOLIZE libtoolize $REQUIRED_LIBTOOL_VERSION \
+    version_check libtool LIBTOOLIZE "libtoolize glibtoolize" $REQUIRED_LIBTOOL_VERSION \
         "http://ftp.gnu.org/pub/gnu/libtool/libtool-$REQUIRED_LIBTOOL_VERSION.tar.gz"
     require_m4macro libtool.m4
 fi

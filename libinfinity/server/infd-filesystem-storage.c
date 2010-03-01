@@ -320,7 +320,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
   GSList* list;
-#ifndef G_OS_WIN32
+#if !defined(G_OS_WIN32) && !defined(__APPLE__)
   int dir_fd;
   DIR* dir;
   struct dirent* dir_entry;
@@ -353,7 +353,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
 
   list = NULL;
 
-#ifndef G_OS_WIN32
+#if !defined(G_OS_WIN32) && !defined(__APPLE__)
   dir_fd = open(full_name, O_NOFOLLOW | O_RDONLY);
   if(dir_fd == -1 || (dir = fdopendir(dir_fd)) == NULL)
   {
