@@ -1,3 +1,8 @@
+2010-03-05  Benjamin Herr  <ben@0x539.de>
+
+	* infinoted/infinoted-main.c: Call umask(077) explicitly after
+	forking since libdaemon < 0.14 sets the mask to 0777.
+
 2010-02-17  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Post-release bump to 0.4.2.
