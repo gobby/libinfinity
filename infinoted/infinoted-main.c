@@ -123,6 +123,12 @@ infinoted_main_run(InfinotedStartup* startup,
 
       daemon_retval_send(0);
     }
+
+    /* libdaemon < 0.14 sets our umask to 0777, preventing the file storage
+     * backend from working correctly. 0.14 uses 0077, but the documentation
+     * still says 0777, and, anyway, 0.14 does not seem widespread enough
+     * right now. */
+    umask(0077);
   }
 #endif
 
