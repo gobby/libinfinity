@@ -651,7 +651,7 @@ inf_gtk_chat_init(GTypeInstance* instance,
   priv->voffset = 0.0;
   priv->vmode = INF_GTK_CHAT_VMODE_DISABLED;
 
-  /* Actually there are invalid as long as completion_text is NULL, but
+  /* Actually they are invalid as long as completion_text is NULL, but
    * let's be sure */
   priv->completion_text = NULL;
   priv->completion_start = 0;

@@ -1,5 +1,10 @@
 2010-03-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-chat.c (inf_gtk_chat_init): Fix a typo in a
+	comment.
+
+2010-03-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/comon/inf-chat-buffer.c (inf_chat_buffer_get_message):
 	Reversed the order in which messages are returned, so that the
 	function does what the docs say.
