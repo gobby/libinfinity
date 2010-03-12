@@ -1325,6 +1325,7 @@ INF_TYPE_CHAT_SESSION
 <FILE>inf-chat-buffer</FILE>
 <TITLE>InfChatBuffer</TITLE>
 InfChatBufferMessageType
+InfChatBufferMessageFlags
 InfChatBufferMessage
 InfChatBuffer
 InfChatBufferClass
@@ -1342,6 +1343,7 @@ inf_chat_buffer_get_size
 INF_CHAT_BUFFER
 INF_IS_CHAT_BUFFER
 inf_chat_buffer_message_type_get_type
+inf_chat_buffer_message_flags_get_type
 INF_TYPE_CHAT_BUFFER_MESSAGE_TYPE
 inf_chat_buffer_message_get_type
 INF_TYPE_CHAT_BUFFER_MESSAGE

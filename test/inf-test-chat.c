@@ -74,7 +74,8 @@ inf_test_chat_input_cb(InfNativeSocket* fd,
           test->self,
           buffer,
           strlen(buffer),
-          time(NULL)
+          time(NULL),
+          0
         );
       }
     }

@@ -214,13 +214,9 @@ inf_gtk_chat_add_message(InfGtkChat* chat,
 
   g_free(time_str);
 
-  /* If the session is still being synchronized then this is
-   * a backlog message. Apply backlog tag instead. */
-  if(inf_session_get_status(INF_SESSION(priv->session)) ==
-     INF_SESSION_SYNCHRONIZING)
-  {
+  /* Always apply backlog tag if it's a backlog message */
+  if(message->flags & INF_CHAT_BUFFER_MESSAGE_BACKLOG)
     tag = priv->tag_backlog;
-  }
 
   g_object_get( G_OBJECT(priv->vadj),
     "value", &scroll_val,
@@ -277,7 +273,8 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
       /* TODO: Use gtk_entry_get_text_length() - (text -
        * gtk_entry_get_text())) once we can use GTK+ 2.14. */
       strlen(text),
-      time(NULL)
+      time(NULL),
+      0
     );
   }
   else
@@ -288,7 +285,8 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
       text,
       /* TODO: Use gtk_entry_get_text_length() once we can use GTK+ 2.14. */
       strlen(text),
-      time(NULL)
+      time(NULL),
+      0
     );
   }
 

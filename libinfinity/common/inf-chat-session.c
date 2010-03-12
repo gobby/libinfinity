@@ -197,10 +197,13 @@ inf_chat_session_message_from_xml(InfChatSession* session,
   xmlChar* type;
   gboolean result;
   InfChatBufferMessageType message_type;
+  InfChatBufferMessageFlags message_flags;
   long message_time;
   guint user_id;
   InfUserTable* user_table;
   InfUser* user;
+
+  message_flags = 0;
 
   type = inf_xml_util_get_attribute(xml, "type");
   if(type == NULL)
@@ -229,6 +232,7 @@ inf_chat_session_message_from_xml(InfChatSession* session,
     );
 
     if(result == FALSE) return FALSE;
+    message_flags = INF_CHAT_BUFFER_MESSAGE_BACKLOG;
   }
   else
   {
@@ -285,6 +289,7 @@ inf_chat_session_message_from_xml(InfChatSession* session,
   message->type = message_type;
   message->user = user;
   message->time = message_time;
+  message->flags = message_flags;
 
   return TRUE;
 }
@@ -945,7 +950,8 @@ inf_chat_session_receive_message_handler(InfChatSession* session,
       message->user,
       message->text,
       message->length,
-      message->time
+      message->time,
+      message->flags
     );
     break;
   case INF_CHAT_BUFFER_MESSAGE_EMOTE:
@@ -954,28 +960,31 @@ inf_chat_session_receive_message_handler(InfChatSession* session,
       message->user,
       message->text,
       message->length,
-      message->time
+      message->time,
+      message->flags
     );
     break;
   case INF_CHAT_BUFFER_MESSAGE_USERJOIN:
     inf_chat_buffer_add_userjoin_message(
       buffer,
       message->user,
-      message->time
+      message->time,
+      message->flags
     );
     break;
   case INF_CHAT_BUFFER_MESSAGE_USERPART:
     inf_chat_buffer_add_userpart_message(
       buffer,
       message->user,
-      message->time
+      message->time,
+      message->flags
     );
     break;
   default:
     g_assert_not_reached();
     break;
   }
-  
+
   inf_signal_handlers_unblock_by_func(
     buffer,
     G_CALLBACK(inf_chat_session_add_message_cb),

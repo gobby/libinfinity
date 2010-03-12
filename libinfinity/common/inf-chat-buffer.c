@@ -361,6 +361,7 @@ inf_chat_buffer_add_message_handler(InfChatBuffer* buffer,
     new_message->text = g_strndup(message->text, message->length);
     new_message->length = message->length;
     new_message->time = message->time;
+    new_message->flags = message->flags;
   }
 }
 
@@ -411,7 +412,7 @@ inf_chat_buffer_class_init(gpointer g_class,
   object_class->finalize = inf_chat_buffer_finalize;
   object_class->set_property = inf_chat_buffer_set_property;
   object_class->get_property = inf_chat_buffer_get_property;
-  
+
   buffer_class->add_message = inf_chat_buffer_add_message_handler;
 
   g_object_class_install_property(
@@ -488,6 +489,34 @@ inf_chat_buffer_message_type_get_type(void)
   }
 
   return chat_buffer_message_type_type;
+}
+
+GType
+inf_chat_buffer_message_flags_get_type(void)
+{
+  static GType chat_buffer_message_flags_type = 0;
+
+  if(!chat_buffer_message_flags_type)
+  {
+    static const GFlagsValue chat_buffer_message_flags_type_values[] = {
+      {
+        INF_CHAT_BUFFER_MESSAGE_BACKLOG,
+        "INF_CHAT_BUFFER_MESSAGE_BACKLOG",
+        "backlog"
+      }, {
+        0,
+        NULL,
+        NULL
+      }
+    };
+
+    chat_buffer_message_flags_type = g_flags_register_static(
+      "InfChatBufferMessageFlags",
+      chat_buffer_message_flags_type_values
+    );
+  }
+
+  return chat_buffer_message_flags_type;
 }
 
 GType
@@ -588,6 +617,7 @@ inf_chat_buffer_message_copy(const InfChatBufferMessage* message)
   new_message->text = g_strndup(message->text, message->length);
   new_message->length = message->length;
   new_message->time = message->time;
+  new_message->flags = message->flags;
 
   return new_message;
 }
@@ -634,6 +664,7 @@ inf_chat_buffer_new(guint size)
  * @message: The message text.
  * @length: The length of @message, in bytes.
  * @time: The time at which the user has written the message.
+ * @flags: Flags to set for the message to add.
  *
  * Adds a new message to the chat buffer. If the buffer is full (meaning the
  * number of messages in the buffer equals its size), then an old message will
@@ -645,7 +676,8 @@ inf_chat_buffer_add_message(InfChatBuffer* buffer,
                             InfUser* by,
                             const gchar* message,
                             gsize length,
-                            time_t time)
+                            time_t time,
+                            InfChatBufferMessageFlags flags)
 {
   InfChatBufferMessage msg;
 
@@ -659,6 +691,7 @@ inf_chat_buffer_add_message(InfChatBuffer* buffer,
   msg.text = *(gchar**) (gpointer) &message;
   msg.length = length;
   msg.time = time;
+  msg.flags = flags;
 
   g_signal_emit(buffer, chat_buffer_signals[ADD_MESSAGE], 0, &msg);
 }
@@ -670,6 +703,7 @@ inf_chat_buffer_add_message(InfChatBuffer* buffer,
  * @message: The message text.
  * @length: The length of @message, in bytes.
  * @time: The time at which the user has written the message.
+ * @flags: Flags to set for the message to add.
  *
  * Adds a new emote message to the chat buffer. If the buffer is full
  * (meaning the number of messages in the buffer equals its size), then an
@@ -681,7 +715,8 @@ inf_chat_buffer_add_emote_message(InfChatBuffer* buffer,
                                   InfUser* by,
                                   const gchar* message,
                                   gsize length,
-                                  time_t time)
+                                  time_t time,
+                                  InfChatBufferMessageFlags flags)
 {
   InfChatBufferMessage msg;
 
@@ -695,6 +730,7 @@ inf_chat_buffer_add_emote_message(InfChatBuffer* buffer,
   msg.text = *(gchar**) (gpointer) &message;
   msg.length = length;
   msg.time = time;
+  msg.flags = flags;
 
   g_signal_emit(buffer, chat_buffer_signals[ADD_MESSAGE], 0, &msg);
 }
@@ -704,6 +740,7 @@ inf_chat_buffer_add_emote_message(InfChatBuffer* buffer,
  * @buffer: A #InfChatBuffer.
  * @user: A #InfUser who wrote the message.
  * @time: The time at which the user has written the message.
+ * @flags: Flags to set for the message to add.
  *
  * Adds a new userjoin message to the chat buffer. If the buffer is full
  * (meaning the number of messages in the buffer equals its size), then an
@@ -713,7 +750,8 @@ inf_chat_buffer_add_emote_message(InfChatBuffer* buffer,
 void
 inf_chat_buffer_add_userjoin_message(InfChatBuffer* buffer,
                                      InfUser* user,
-                                     time_t time)
+                                     time_t time,
+                                     InfChatBufferMessageFlags flags)
 {
   InfChatBufferMessage msg;
 
@@ -725,6 +763,7 @@ inf_chat_buffer_add_userjoin_message(InfChatBuffer* buffer,
   msg.text = NULL;
   msg.length = 0;
   msg.time = time;
+  msg.flags = flags;
 
   g_signal_emit(buffer, chat_buffer_signals[ADD_MESSAGE], 0, &msg);
 }
@@ -734,6 +773,7 @@ inf_chat_buffer_add_userjoin_message(InfChatBuffer* buffer,
  * @buffer: A #InfChatBuffer.
  * @user: A #InfUser who wrote the message.
  * @time: The time at which the user has written the message.
+ * @flags: Flags to set for the message to add.
  *
  * Adds a new userpart message to the chat buffer. If the buffer is full
  * (meaning the number of messages in the buffer equals its size), then an
@@ -743,7 +783,8 @@ inf_chat_buffer_add_userjoin_message(InfChatBuffer* buffer,
 void
 inf_chat_buffer_add_userpart_message(InfChatBuffer* buffer,
                                      InfUser* user,
-                                     time_t time)
+                                     time_t time,
+                                     InfChatBufferMessageFlags flags)
 {
   InfChatBufferMessage msg;
 
@@ -755,6 +796,7 @@ inf_chat_buffer_add_userpart_message(InfChatBuffer* buffer,
   msg.text = NULL;
   msg.length = 0;
   msg.time = time;
+  msg.flags = flags;
 
   g_signal_emit(buffer, chat_buffer_signals[ADD_MESSAGE], 0, &msg);
 }

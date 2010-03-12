@@ -59,12 +59,24 @@ typedef enum _InfChatBufferMessageType {
 } InfChatBufferMessageType;
 
 /**
+ * InfChatBufferMessageFlags:
+ * @INF_CHAT_BUFFER_MESSAGE_BACKLOG: The message is a backlog message, i.e.
+ * it originated in a previous session.
+ *
+ * Possible chat message flags.
+ */
+typedef enum _InfChatBufferMessageFlags {
+  INF_CHAT_BUFFER_MESSAGE_BACKLOG = 1 << 0
+} InfChatBufferMessageFlags;
+
+/**
  * InfChatBufferMessage:
  * @type: The #InfChatBufferMessageType of the message.
  * @user: The #InfUser that issued the message.
  * @text: The UTF-8 encoded text of the message.
  * @length: The length of the message, in bytes.
  * @time: The time at which the message was received.
+ * @flags: Additional flags for the message, see #InfChatBufferMessageFlags.
  *
  * Represents a chat message.
  */
@@ -74,6 +86,7 @@ struct _InfChatBufferMessage {
   gchar* text;
   gsize length;
   time_t time;
+  InfChatBufferMessageFlags flags;
 };
 
 /**
@@ -110,6 +123,9 @@ GType
 inf_chat_buffer_message_type_get_type(void) G_GNUC_CONST;
 
 GType
+inf_chat_buffer_message_flags_get_type(void) G_GNUC_CONST;
+
+GType
 inf_chat_buffer_get_type(void) G_GNUC_CONST;
 
 InfChatBufferMessage*
@@ -126,24 +142,28 @@ inf_chat_buffer_add_message(InfChatBuffer* buffer,
                             InfUser* by,
                             const gchar* message,
                             gsize length,
-                            time_t time);
+                            time_t time,
+                            InfChatBufferMessageFlags flags);
 
 void
 inf_chat_buffer_add_emote_message(InfChatBuffer* buffer,
                                   InfUser* by,
                                   const gchar* message,
                                   gsize length,
-                                  time_t time);
+                                  time_t time,
+                                  InfChatBufferMessageFlags flags);
 
 void
 inf_chat_buffer_add_userjoin_message(InfChatBuffer* buffer,
                                      InfUser* user,
-                                     time_t time);
+                                     time_t time,
+                                     InfChatBufferMessageFlags flags);
 
 void
 inf_chat_buffer_add_userpart_message(InfChatBuffer* buffer,
                                      InfUser* user,
-                                     time_t time);
+                                     time_t time,
+                                     InfChatBufferMessageFlags flags);
 
 const InfChatBufferMessage*
 inf_chat_buffer_get_message(InfChatBuffer* buffer,

@@ -1,5 +1,18 @@
 2010-03-12  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-chat-buffer.h:
+	* libinfinity/common/inf-chat-buffer.c: Added a flags field to
+	InfGtkChatBufferMessage indicating whether a message is a backlog
+	message or not.
+
+	* libinfgtk/inf-gtk-chat.c: Show backlog messages also if chat session
+	is attached to widget after synchronization.
+
+	* libinfinity/common/inf-chat-session.c:
+	* test/inf-test-chat.c: Adapt for API changes.
+
+2010-03-12  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-chat.c (inf_gtk_chat_init): Fix a typo in a
 	comment.
 
