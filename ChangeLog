@@ -1,3 +1,12 @@
+2010-03-12  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/comon/inf-chat-buffer.c (inf_chat_buffer_get_message):
+	Reversed the order in which messages are returned, so that the
+	function does what the docs say.
+
+	* libinfinity/common/inf-chat-session.c
+	(inf_chat_session_to_xml_sync): Adapt to the API change.
+
 2010-03-05  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-main.c: Call umask(077) explicitly after

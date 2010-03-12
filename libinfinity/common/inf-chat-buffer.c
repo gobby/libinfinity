@@ -781,7 +781,7 @@ inf_chat_buffer_get_message(InfChatBuffer* buffer,
 
   priv = INF_CHAT_BUFFER_PRIVATE(buffer);
   return &priv->messages[
-    (priv->first_message + priv->num_messages - 1 - n) % priv->size
+    (priv->first_message + n) % priv->size
   ];
 }
 
