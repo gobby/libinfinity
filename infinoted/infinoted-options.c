@@ -29,6 +29,7 @@
 
 #include <glib.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <string.h>
 #include <errno.h>
 

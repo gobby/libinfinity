@@ -1,3 +1,8 @@
+2010-05-08  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-options.c: Include signal.h to fix the build on
+	Debian Lenny (#537).
+
 2010-03-05  Benjamin Herr  <ben@0x539.de>
 
 	* infinoted/infinoted-main.c: Call umask(077) explicitly after
