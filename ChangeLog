@@ -1,3 +1,8 @@
+2010-05-08  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-options.c: Include signal.h to fix the build on
+	Debian Lenny (#537).
+
 2010-03-12  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-chat-buffer.h:
