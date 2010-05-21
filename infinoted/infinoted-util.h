@@ -47,8 +47,14 @@ infinoted_util_set_errno_error(GError** error,
                                const char* prefix);
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
-gboolean
-infinoted_util_set_daemon_pid_file_proc(GError** error);
+void
+infinoted_util_daemon_set_global_pid_file_proc(void);
+
+void
+infinoted_util_daemon_set_local_pid_file_proc(void);
+
+int
+infinoted_util_daemon_pid_file_kill(int sig);
 #endif
 
 G_END_DECLS
