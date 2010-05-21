@@ -748,18 +748,16 @@ infinoted_options_load(InfinotedOptions* options,
     {
       g_free(security_policy);
 
-      if(!infinoted_util_set_daemon_pid_file_proc(error))
-        return FALSE;
-
-#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
-      if(daemon_pid_file_kill_wait(SIGTERM, 5) != 0)
-#else
-      if(daemon_pid_file_kill(SIGTERM) != 0)
-#endif
+      infinoted_util_daemon_set_global_pid_file_proc();
+      if(infinoted_util_daemon_pid_file_kill(SIGTERM) != 0)
       {
-        infinoted_util_set_errno_error(error, errno,
-          _("Could not kill daemon"));
-        return FALSE;
+        infinoted_util_daemon_set_local_pid_file_proc();
+        if(infinoted_util_daemon_pid_file_kill(SIGTERM) != 0)
+        {
+          infinoted_util_set_errno_error(error, errno,
+            _("Could not kill daemon"));
+          return FALSE;
+        }
       }
 
       exit(0);

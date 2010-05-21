@@ -100,25 +100,27 @@ infinoted_main_run(InfinotedStartup* startup,
     }
     else
     {
-      if(!infinoted_util_set_daemon_pid_file_proc(error))
-      {
-        infinoted_run_free(run);
-        return FALSE;
-      }
-
+      infinoted_util_daemon_set_global_pid_file_proc();
       if(daemon_pid_file_create() != 0)
       {
-        saved_errno = errno;
-        infinoted_util_set_errno_error(
-          error,
-          saved_errno,
-          _("Failed to create PID file")
-        );
-        if(saved_errno < 0) --saved_errno;
-        daemon_retval_send(saved_errno);
+        infinoted_util_daemon_set_local_pid_file_proc();
+        if(daemon_pid_file_create() != 0)
+        {
+          if(daemon_pid_file_create() != 0)
+          {
+            saved_errno = errno;
+            infinoted_util_set_errno_error(
+              error,
+              saved_errno,
+              _("Failed to create PID file")
+            );
+            if(saved_errno < 0) --saved_errno;
+            daemon_retval_send(saved_errno);
 
-        infinoted_run_free(run);
-        return FALSE;
+            infinoted_run_free(run);
+            return FALSE;
+          }
+        }
       }
 
       daemon_retval_send(0);

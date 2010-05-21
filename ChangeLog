@@ -1,3 +1,20 @@
+2010-05-21  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-util.h:
+	* infinoted/infinoted-util.c: Replaced
+	infinoted_util_set_daemon_pid_file_proc() by
+	infinoted_util_daemon_set_global_pid_file_proc(),
+	infinoted_util_daemon_set_local_pid_file_proc(). Also add
+	infinoted_util_daemon_pid_file_kill().
+
+	* infinoted-main.c:
+	* infinoted-options.c: Instead of setting the PID file directory
+	directly, first try the global one and if that fails use the local
+	one. This avoids a race condition which resulted from the previous use
+	of access() to check whether the PID file directory is writable.
+	These changes also fix a bug which prevented infinoted to launch in
+	daemonized mode when the global PID file directory did not exist.
+
 2010-05-08  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-options.c: Include signal.h to fix the build on

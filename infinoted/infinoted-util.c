@@ -226,45 +226,49 @@ infinoted_util_set_errno_error(GError** error,
 }
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
+
 /**
- * infinoted_util_set_daemon_pid_file_proc:
- * @error: Location to store error information, if any.
+ * infinoted_util_daemon_set_global_pid_file_proc:
  *
- * Sets @daemon_pid_file_proc to the location of infinoted's PID file.
- *
- * Returns: %TRUE on success, or %FALSE on error if no suitable location for
- * the PID file was found.
+ * When attempting to read or write the PID file use the global file.
  */
-gboolean
-infinoted_util_set_daemon_pid_file_proc(GError** error)
+void
+infinoted_util_daemon_set_global_pid_file_proc(void)
 {
-  int saved_errno;
-
-  if(access(INFINOTED_PID_FILE_DIRECTORY, W_OK) == 0)
-  {
-    daemon_pid_file_proc = infinoted_util_get_pidfile_path_system;
-    return TRUE;
-  }
-  else
-  {
-    if(errno != EACCES)
-    {
-      saved_errno = errno;
-
-      infinoted_util_set_errno_error(
-        error,
-        saved_errno,
-        _("Failed to create PID file")
-      );
-
-      errno = saved_errno;
-      return FALSE;
-    }
-
-    daemon_pid_file_proc = infinoted_util_get_pidfile_path_user;
-    return TRUE;
-  }
+  daemon_pid_file_proc = infinoted_util_get_pidfile_path_system;
 }
+
+/**
+ * infinoted_util_daemon_set_global_pid_file_proc:
+ *
+ * When attempting to read or write the PID file use the local file which is
+ * in the owner's home directory.
+ */
+void
+infinoted_util_daemon_set_local_pid_file_proc(void)
+{
+  daemon_pid_file_proc = infinoted_util_get_pidfile_path_user;
+}
+
+/**
+ * infinoted_util_daemon_pid_file_kill:
+ * @sig: The signal to send to the daemon process.
+ *
+ * This is a thin wrapper for daemon_pid_file_kill() which uses
+ * daemon_pid_file_kill_wait() if available with a timeout of 5 seconds.
+ *
+ * Returns: 0 if the signal was sent or nonzero otherwise.
+ */
+int
+infinoted_util_daemon_pid_file_kill(int sig)
+{
+#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
+  return daemon_pid_file_kill_wait(sig, 5);
+#else
+  return daemon_pid_file_kill(sig);
+#endif
+}
+
 #endif
 
 /* vim:set et sw=2 ts=2: */
