@@ -22,8 +22,8 @@
 #include <libinfinity/inf-marshal.h>
 
 enum {
-  INSERT_TEXT,
-  ERASE_TEXT,
+  TEXT_INSERTED,
+  TEXT_ERASED,
 
   LAST_SIGNAL
 };
@@ -37,11 +37,11 @@ inf_text_buffer_base_init(gpointer g_class)
 
   if(!initialized)
   {
-    text_buffer_signals[INSERT_TEXT] = g_signal_new(
-      "insert-text",
+    text_buffer_signals[TEXT_INSERTED] = g_signal_new(
+      "text-inserted",
       INF_TEXT_TYPE_BUFFER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfTextBufferIface, insert_text),
+      G_SIGNAL_RUN_FIRST,
+      G_STRUCT_OFFSET(InfTextBufferIface, text_inserted),
       NULL, NULL,
       inf_marshal_VOID__UINT_BOXED_OBJECT,
       G_TYPE_NONE,
@@ -51,17 +51,17 @@ inf_text_buffer_base_init(gpointer g_class)
       INF_TYPE_USER
     );
 
-    text_buffer_signals[ERASE_TEXT] = g_signal_new(
-      "erase-text",
+    text_buffer_signals[TEXT_ERASED] = g_signal_new(
+      "text-erased",
       INF_TEXT_TYPE_BUFFER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfTextBufferIface, erase_text),
+      G_SIGNAL_RUN_FIRST,
+      G_STRUCT_OFFSET(InfTextBufferIface, text_erased),
       NULL, NULL,
-      inf_marshal_VOID__UINT_UINT_OBJECT,
+      inf_marshal_VOID__UINT_BOXED_OBJECT,
       G_TYPE_NONE,
       3,
       G_TYPE_UINT,
-      G_TYPE_UINT,
+      INF_TEXT_TYPE_CHUNK | G_SIGNAL_TYPE_STATIC_SCOPE,
       INF_TYPE_USER
     );
 
@@ -192,11 +192,15 @@ inf_text_buffer_insert_text(InfTextBuffer* buffer,
                             guint len,
                             InfUser* user)
 {
+  InfTextBufferIface* iface;
   InfTextChunk* chunk;
 
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
   g_return_if_fail(text != NULL);
   g_return_if_fail(user == NULL || INF_IS_USER(user));
+
+  iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
+  g_return_if_fail(iface->insert_text != NULL);
 
   chunk = inf_text_chunk_new(inf_text_buffer_get_encoding(buffer));
 
@@ -209,14 +213,7 @@ inf_text_buffer_insert_text(InfTextBuffer* buffer,
     user == NULL ? 0 : inf_user_get_id(user)
   );
 
-  g_signal_emit(
-    G_OBJECT(buffer),
-    text_buffer_signals[INSERT_TEXT],
-    0,
-    pos,
-    chunk,
-    user
-  );
+  iface->insert_text(buffer, pos, chunk, user);
 
   inf_text_chunk_free(chunk);
 }
@@ -238,18 +235,16 @@ inf_text_buffer_insert_chunk(InfTextBuffer* buffer,
                              InfTextChunk* chunk,
                              InfUser* user)
 {
+  InfTextBufferIface* iface;
+
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
   g_return_if_fail(chunk != NULL);
   g_return_if_fail(user == NULL || INF_IS_USER(user));
 
-  g_signal_emit(
-    G_OBJECT(buffer),
-    text_buffer_signals[INSERT_TEXT],
-    0,
-    pos,
-    chunk,
-    user
-  );
+  iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
+  g_return_if_fail(iface->insert_text != NULL);
+
+  iface->insert_text(buffer, pos, chunk, user);
 }
 
 /**
@@ -267,17 +262,15 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
                            guint len,
                            InfUser* user)
 {
+  InfTextBufferIface* iface;
+
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
   g_return_if_fail(user == NULL || INF_IS_USER(user));
 
-  g_signal_emit(
-    G_OBJECT(buffer),
-    text_buffer_signals[ERASE_TEXT],
-    0,
-    pos,
-    len,
-    user
-  );
+  iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
+  g_return_if_fail(iface->erase_text != NULL);
+
+  iface->erase_text(buffer, pos, len, user);
 }
 
 /**
@@ -480,6 +473,68 @@ inf_text_buffer_iter_get_author(InfTextBuffer* buffer,
   g_return_val_if_fail(iface->iter_get_author != NULL, 0);
 
   return iface->iter_get_author(buffer, iter);
+}
+
+/**
+ * inf_text_buffer_text_inserted:
+ * @buffer: A #InfTextBuffer.
+ * @pos: A character offset into @buffer.
+ * @chunk: A #InfTextChunk.
+ * @user: A #InfUser inserting @chunk, or %NULL.
+ *
+ * Emits the #InfTextBuffer::text-inserted signal. This is meant to be used
+ * by interface implementations in their @insert_text function, or when text
+ * was inserted by other means.
+ **/
+void
+inf_text_buffer_text_inserted(InfTextBuffer* buffer,
+                              guint pos,
+                              InfTextChunk* chunk,
+                              InfUser* user)
+{
+  g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
+  g_return_if_fail(chunk != NULL);
+  g_return_if_fail(user == NULL || INF_IS_USER(user));
+
+  g_signal_emit(
+    G_OBJECT(buffer),
+    text_buffer_signals[TEXT_INSERTED],
+    0,
+    pos,
+    chunk,
+    user
+  );
+}
+
+/**
+ * inf_text_buffer_text_erased:
+ * @buffer: A #InfTextBuffer.
+ * @pos: The position to begin deleting characters from.
+ * @chunk: A #InfTextChunk containing the erased text.
+ * @user: A #InfUser that erases the text, or %NULL.
+ *
+ * Emits the #InfTextBuffer::text-erased signal. This is meant to be used
+ * by interface implementations in their @erase_text function, or when text
+ * was erased by other means.
+ **/
+void
+inf_text_buffer_text_erased(InfTextBuffer* buffer,
+                            guint pos,
+                            InfTextChunk* chunk,
+                            InfUser* user)
+{
+  g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
+  g_return_if_fail(chunk != NULL);
+  g_return_if_fail(user == NULL || INF_IS_USER(user));
+
+  g_signal_emit(
+    G_OBJECT(buffer),
+    text_buffer_signals[TEXT_ERASED],
+    0,
+    pos,
+    chunk,
+    user
+  );
 }
 
 /* vim:set et sw=2 ts=2: */

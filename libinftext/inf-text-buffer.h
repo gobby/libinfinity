@@ -50,6 +50,16 @@ struct _InfTextBufferIface {
                             guint pos,
                             guint len);
 
+  void(*insert_text)(InfTextBuffer* buffer,
+                     guint pos,
+                     InfTextChunk* chunk,
+                     InfUser* user);
+
+  void(*erase_text)(InfTextBuffer* buffer,
+                    guint pos,
+                    guint len,
+                    InfUser* user);
+
   InfTextBufferIter*(*create_iter)(InfTextBuffer* buffer);
 
   void(*destroy_iter)(InfTextBuffer* buffer,
@@ -74,15 +84,15 @@ struct _InfTextBufferIface {
                           InfTextBufferIter* iter);
 
   /* Signals */
-  void(*insert_text)(InfTextBuffer* buffer,
+  void(*text_inserted)(InfTextBuffer* buffer,
+                       guint pos,
+                       InfTextChunk* chunk,
+                       InfUser* user);
+
+  void(*text_erased)(InfTextBuffer* buffer,
                      guint pos,
                      InfTextChunk* chunk,
                      InfUser* user);
-
-  void(*erase_text)(InfTextBuffer* buffer,
-                    guint pos,
-                    guint len,
-                    InfUser* user);
 };
 
 GType
@@ -149,6 +159,18 @@ inf_text_buffer_iter_get_bytes(InfTextBuffer* buffer,
 guint
 inf_text_buffer_iter_get_author(InfTextBuffer* buffer,
                                 InfTextBufferIter* iter);
+
+void
+inf_text_buffer_text_inserted(InfTextBuffer* buffer,
+                              guint pos,
+                              InfTextChunk* chunk,
+                              InfUser* user);
+
+void
+inf_text_buffer_text_erased(InfTextBuffer* buffer,
+                            guint pos,
+                            InfTextChunk* chunk,
+                            InfUser* user);
 
 G_END_DECLS
 

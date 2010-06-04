@@ -51,6 +51,8 @@ typedef struct _InfTextSessionPrivate InfTextSessionPrivate;
 struct _InfTextSessionPrivate {
   guint caret_update_interval;
   GSList* local_users;
+
+  gboolean apply_request;
 };
 
 enum {
@@ -264,34 +266,40 @@ inf_text_session_selection_changed_cb(InfTextUser* user,
 
   session = INF_TEXT_SESSION(user_data);
   priv = INF_TEXT_SESSION_PRIVATE(session);
-  local = inf_text_session_find_local_user(session, user);
-  g_assert(local != NULL);
+
 
   /* We should block all changes that have by_request set to FALSE... breaks
    * if someone else does that... should maybe emit a warning instead. */
-  g_assert(by_request == TRUE);
+  g_assert( (priv->apply_request == TRUE && by_request == FALSE) ||
+            (priv->apply_request == FALSE && by_request == TRUE));
 
-  g_get_current_time(&current);
-  diff = inf_text_session_timeval_diff(&current, &local->last_caret_update);
-
-  if(diff < priv->caret_update_interval)
+  if(priv->apply_request == FALSE)
   {
-    if(local->caret_timeout == NULL)
+    local = inf_text_session_find_local_user(session, user);
+    g_assert(local != NULL);
+
+    g_get_current_time(&current);
+    diff = inf_text_session_timeval_diff(&current, &local->last_caret_update);
+
+    if(diff < priv->caret_update_interval)
     {
-      /* TODO: Interrupt timeout if a -caret request is sent from that
-       * local user. */
-      local->caret_timeout = inf_io_add_timeout(
-        inf_adopted_session_get_io(INF_ADOPTED_SESSION(local->session)),
-        priv->caret_update_interval - diff,
-        inf_text_session_caret_update_timeout_func,
-        local,
-        NULL
-      );
+      if(local->caret_timeout == NULL)
+      {
+        /* TODO: Interrupt timeout if a -caret request is sent from that
+         * local user. */
+        local->caret_timeout = inf_io_add_timeout(
+          inf_adopted_session_get_io(INF_ADOPTED_SESSION(local->session)),
+          priv->caret_update_interval - diff,
+          inf_text_session_caret_update_timeout_func,
+          local,
+          NULL
+        );
+      }
     }
-  }
-  else
-  {
-    inf_text_session_broadcast_caret_selection(session, local);
+    else
+    {
+      inf_text_session_broadcast_caret_selection(session, local);
+    }
   }
 }
 
@@ -419,8 +427,8 @@ inf_text_session_unblock_local_users_selection_changed(InfTextSession* sess)
 }
 
 static void
-inf_text_session_buffer_insert_text_cb_after_foreach_func(InfUser* user,
-                                                          gpointer user_data)
+inf_text_session_buffer_text_inserted_cb_foreach_func(InfUser* user,
+                                                      gpointer user_data)
 {
   InfTextSessionInsertForeachData* data;
   guint position;
@@ -452,8 +460,8 @@ inf_text_session_buffer_insert_text_cb_after_foreach_func(InfUser* user,
 }
 
 static void
-inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
-                                                         gpointer user_data)
+inf_text_session_buffer_text_erased_cb_foreach_func(InfUser* user,
+                                                    gpointer user_data)
 {
   InfTextSessionEraseForeachData* data;
   guint position;
@@ -485,18 +493,51 @@ inf_text_session_buffer_erase_text_cb_after_foreach_func(InfUser* user,
 /* The after handlers readjust the caret and selection properties of the
  * users. Block handlers so we don't broadcast this. */
 static void
-inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
-                                             guint pos,
-                                             InfTextChunk* chunk,
-                                             InfUser* user,
-                                             gpointer user_data)
+inf_text_session_buffer_text_inserted_cb(InfTextBuffer* buffer,
+                                         guint pos,
+                                         InfTextChunk* chunk,
+                                         InfUser* user,
+                                         gpointer user_data)
 {
   InfTextSession* session;
+  InfTextSessionPrivate* priv;
+  InfAdoptedOperation* operation;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedRequest* request;
   InfUserTable* user_table;
   InfTextSessionInsertForeachData data;
 
+  g_assert(INF_TEXT_IS_USER(user));
+
   session = INF_TEXT_SESSION(user_data);
+  priv = INF_TEXT_SESSION_PRIVATE(session);
   user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  if(priv->apply_request == FALSE)
+  {
+    operation = INF_ADOPTED_OPERATION(
+      inf_text_default_insert_operation_new(pos, chunk)
+    );
+
+    algorithm = inf_adopted_session_get_algorithm(
+      INF_ADOPTED_SESSION(session)
+    );
+
+    request = inf_adopted_algorithm_generate_request_noexec(
+      algorithm,
+      INF_ADOPTED_USER(user),
+      operation
+    );
+
+    inf_adopted_session_broadcast_request(
+      INF_ADOPTED_SESSION(session),
+      request
+    );
+
+    g_object_unref(request);
+    g_object_unref(operation);
+  }
+
   data.position = pos;
   data.chunk = chunk;
   data.user = user;
@@ -505,7 +546,7 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
 
   inf_user_table_foreach_user(
     user_table,
-    inf_text_session_buffer_insert_text_cb_after_foreach_func,
+    inf_text_session_buffer_text_inserted_cb_foreach_func,
     &data
   );
 
@@ -526,32 +567,64 @@ inf_text_session_buffer_insert_text_cb_after(InfTextBuffer* buffer,
 }
 
 static void
-inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
-                                            guint pos,
-                                            guint length,
-                                            InfUser* user,
-                                            gpointer user_data)
+inf_text_session_buffer_text_erased_cb(InfTextBuffer* buffer,
+                                       guint pos,
+                                       InfTextChunk* chunk,
+                                       InfUser* user,
+                                       gpointer user_data)
 {
   InfTextSession* session;
+  InfTextSessionPrivate* priv;
+  InfAdoptedOperation* operation;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedRequest* request;
   InfUserTable* user_table;
   InfTextSessionEraseForeachData data;
 
+  g_assert(INF_TEXT_IS_USER(user));
+
   session = INF_TEXT_SESSION(user_data);
+  priv = INF_TEXT_SESSION_PRIVATE(session);
   user_table = inf_session_get_user_table(INF_SESSION(session));
+
+  if(priv->apply_request == FALSE)
+  {
+    operation = INF_ADOPTED_OPERATION(
+      inf_text_default_delete_operation_new(pos, chunk)
+    );
+
+    algorithm = inf_adopted_session_get_algorithm(
+      INF_ADOPTED_SESSION(session)
+    );
+
+    request = inf_adopted_algorithm_generate_request_noexec(
+      algorithm,
+      INF_ADOPTED_USER(user),
+      operation
+    );
+
+    inf_adopted_session_broadcast_request(
+      INF_ADOPTED_SESSION(session),
+      request
+    );
+
+    g_object_unref(request);
+    g_object_unref(operation);
+  }
+
   data.position = pos;
-  data.length = length;
+  data.length = inf_text_chunk_get_length(chunk);
   data.user = user;
 
   inf_text_session_block_local_users_selection_changed(session);
 
   inf_user_table_foreach_user(
     user_table,
-    inf_text_session_buffer_erase_text_cb_after_foreach_func,
+    inf_text_session_buffer_text_erased_cb_foreach_func,
     &data
   );
 
   /* TODO: If that was an erase-caret request, then do this: */
-
 #if 0
   if(user != NULL)
     inf_text_user_set_selection(INF_TEXT_USER(user), pos, 0, TRUE);
@@ -560,92 +633,9 @@ inf_text_session_buffer_erase_text_cb_after(InfTextBuffer* buffer,
   inf_text_session_unblock_local_users_selection_changed(session);
 }
 
-/*
- * Insertion/Removal handling
- */
-
-static void
-inf_text_session_buffer_insert_text_cb_before(InfTextBuffer* buffer,
-                                              guint pos,
-                                              InfTextChunk* chunk,
-                                              InfUser* user,
-                                              gpointer user_data)
-{
-  InfTextSession* session;
-  InfAdoptedOperation* operation;
-  InfAdoptedAlgorithm* algorithm;
-  InfAdoptedRequest* request;
-
-  g_assert(INF_TEXT_IS_USER(user));
-
-  session = INF_TEXT_SESSION(user_data);
-
-  operation = INF_ADOPTED_OPERATION(
-    inf_text_default_insert_operation_new(pos, chunk)
-  );
-
-  algorithm = inf_adopted_session_get_algorithm(
-    INF_ADOPTED_SESSION(session)
-  );
-
-  request = inf_adopted_algorithm_generate_request_noexec(
-    algorithm,
-    INF_ADOPTED_USER(user),
-    operation
-  );
-
-  inf_adopted_session_broadcast_request(
-    INF_ADOPTED_SESSION(session),
-    request
-  );
-
-  g_object_unref(G_OBJECT(request));
-}
-
-static void
-inf_text_session_buffer_erase_text_cb_before(InfTextBuffer* buffer,
-                                             guint pos,
-                                             guint len,
-                                             InfUser* user,
-                                             gpointer user_data)
-{
-  InfTextSession* session;
-  InfAdoptedOperation* operation;
-  InfAdoptedAlgorithm* algorithm;
-  InfAdoptedRequest* request;
-  InfTextChunk* erased_chunk;
-
-  g_assert(INF_TEXT_IS_USER(user));
-  session = INF_TEXT_SESSION(user_data);
-
-  erased_chunk = inf_text_buffer_get_slice(buffer, pos, len);
-  operation = INF_ADOPTED_OPERATION(
-    inf_text_default_delete_operation_new(pos, erased_chunk)
-  );
-
-  inf_text_chunk_free(erased_chunk);
-
-  algorithm = inf_adopted_session_get_algorithm(
-    INF_ADOPTED_SESSION(session)
-  );
-
-  request = inf_adopted_algorithm_generate_request_noexec(
-    algorithm,
-    INF_ADOPTED_USER(user),
-    operation
-  );
-
-  inf_adopted_session_broadcast_request(
-    INF_ADOPTED_SESSION(session),
-    request
-  );
-
-  g_object_unref(G_OBJECT(request));
-}
-
-/* Block above before handlers and selection_changed handlers when the adopted
- * algorithm applies a request. This way, we don't re-broadcast incoming
- * requests, and we don't broadcast the effect of an Undo if the user calls
+/* Remember when a buffer operation happens in response to the algorithm
+ * applying a request so we don't re-broadcast incoming requests, and so that
+ * we don't broadcast the effect of an Undo if the user calls
  * inf_adopted_session_undo(). */
 static void
 inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
@@ -654,24 +644,14 @@ inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
                                          gpointer user_data)
 {
   InfTextSession* session;
-  InfTextBuffer* buffer;
+  InfTextSessionPrivate* priv;
+  /*InfTextBuffer* buffer;*/
 
   session = INF_TEXT_SESSION(user_data);
-  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
+  priv = INF_TEXT_SESSION_PRIVATE(session);
+  /*buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));*/
 
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
-    session
-  );
-
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
-    session
-  );
-
-  inf_text_session_block_local_users_selection_changed(session);
+  priv->apply_request = TRUE;
 }
 
 static void
@@ -681,24 +661,14 @@ inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
                                         gpointer user_data)
 {
   InfTextSession* session;
-  InfTextBuffer* buffer;
+  InfTextSessionPrivate* priv;
+  /*InfTextBuffer* buffer;*/
   
   session = INF_TEXT_SESSION(user_data);
-  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
+  priv = INF_TEXT_SESSION_PRIVATE(session);
+  /*buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));*/
 
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
-    session
-  );
-  
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
-    session
-  );
-
-  inf_text_session_unblock_local_users_selection_changed(session);
+  priv->apply_request = FALSE;
 }
 
 static void
@@ -726,29 +696,15 @@ inf_text_session_init_text_handlers(InfTextSession* session)
 
   g_signal_connect(
     G_OBJECT(buffer),
-    "insert-text",
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
+    "text-inserted",
+    G_CALLBACK(inf_text_session_buffer_text_inserted_cb),
     session
   );
 
   g_signal_connect(
     G_OBJECT(buffer),
-    "erase-text",
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
-    session
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(buffer),
-    "insert-text",
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_after),
-    session
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(buffer),
-    "erase-text",
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_after),
+    "text-erased",
+    G_CALLBACK(inf_text_session_buffer_text_erased_cb),
     session
   );
 
@@ -802,6 +758,7 @@ inf_text_session_init(GTypeInstance* instance,
   priv = INF_TEXT_SESSION_PRIVATE(session);
 
   priv->caret_update_interval = 500;
+  priv->apply_request = FALSE;
 }
 
 static GObject*
@@ -887,25 +844,13 @@ inf_text_session_dispose(GObject* object)
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_before),
+    G_CALLBACK(inf_text_session_buffer_text_inserted_cb),
     session
   );
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_before),
-    session
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_insert_text_cb_after),
-    session
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(buffer),
-    G_CALLBACK(inf_text_session_buffer_erase_text_cb_after),
+    G_CALLBACK(inf_text_session_buffer_text_erased_cb),
     session
   );
 

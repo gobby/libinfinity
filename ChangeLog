@@ -1,3 +1,27 @@
+2010-06-04  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/inf-marshal.in: Remove the VOID:UINT,UINT,OBJECT
+	marshaller.
+
+	* libinftext/inf-text-buffer.h:
+	* libinftext/inf-text-buffer.c: Rename the insert-text and erase-text
+	signals to text-inserted and text-erased, and make them RUN_FIRST
+	signals. This does not require the signal to be emitted to insert or
+	remove text, but if a modification to the buffer happens externally
+	then the signal can (and should!) still be emitted afterwards. Also,
+	turn the lengeth parameter of the text-erased signal to a
+	InfTextChunk* chunk parameter, so that it is still possible to find
+	out what text was deleted afterwards.
+
+	* libinftextgtk/inf-text-gtk-buffer.c: Do not stop emission of
+	GtkTextBuffer's insert-text and delete-range signals in our signal
+	handlers. This allows other signal handlers to rely on proper signal
+	emission and makes us handle recursive emissions correctly. 
+
+	* libinftext/inf-text-default-buffer.c:
+	* libinftext/inf-text-session.c:
+	* infinoted/infinoted-directory-sync.c: Adapt for the API change.
+
 2010-05-21  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-util.h:

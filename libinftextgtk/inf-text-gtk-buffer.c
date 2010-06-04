@@ -30,6 +30,16 @@ struct _InfTextBufferIter {
   InfTextUser* user;
 };
 
+typedef struct _InfTextGtkBufferRecord InfTextGtkBufferRecord;
+struct _InfTextGtkBufferRecord {
+  gboolean insert;
+  guint char_count;
+  guint position;
+  InfTextChunk* chunk;
+  gboolean applied;
+  InfTextGtkBufferRecord* next;
+};
+
 typedef struct _InfTextGtkBufferUserTags InfTextGtkBufferUserTags;
 struct _InfTextGtkBufferUserTags {
   InfTextGtkBuffer* buffer;
@@ -51,6 +61,8 @@ struct _InfTextGtkBufferPrivate {
   GtkTextBuffer* buffer;
   InfUserTable* user_table;
   GHashTable* user_tags;
+
+  InfTextGtkBufferRecord* record;
 
   gboolean show_user_colors;
 
@@ -454,7 +466,8 @@ inf_text_gtk_buffer_set_saturation_value_tag_table_foreach_func(GtkTextTag* t,
     inf_text_gtk_update_tag_color(buffer, t, author);
 }
 
-/* Required by inf_text_gtk_buffer_mark_set_cb() */
+/* Required by inf_text_gtk_buffer_record_signal() and
+ * inf_text_gtk_buffer_mark_set_cb() */
 static void
 inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
                                                      guint position,
@@ -462,8 +475,8 @@ inf_text_gtk_buffer_active_user_selection_changed_cb(InfTextUser* user,
                                                      gboolean by_request,
                                                      gpointer user_data);
 
-/* Required by inf_text_gtk_buffer_insert_text_cb(),
- * inf_text_gtk_buffer_delete_range_cb(), inf_text_gtk_buffer_mark_set_cb() */
+/* Required by inf_text_gtk_buffer_record_signal() and
+ * inf_text_gtk_buffer_mark_set_cb() */
 static void
 inf_text_gtk_buffer_active_user_notify_status_cb(GObject* object,
                                                  GParamSpec* pspec,
@@ -484,40 +497,284 @@ inf_text_gtk_buffer_apply_tag_cb(GtkTextBuffer* gtk_buffer,
 }
 
 static void
-inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
-                                   GtkTextIter* location,
-                                   gchar* text,
-                                   gint len,
-                                   gpointer user_data)
+inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func(GtkTextTag* tag,
+                                                              gpointer data)
 {
-  InfTextGtkBuffer* buffer;
-  InfTextGtkBufferPrivate* priv;
-  guint location_offset;
-  guint text_len;
+  InfTextGtkBufferTagRemove* tag_remove;
+  tag_remove = (InfTextGtkBufferTagRemove*)data;
 
-  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  if(tag_remove->ignore_tags == NULL ||
+     (tag != tag_remove->ignore_tags->colored_tag &&
+      tag != tag_remove->ignore_tags->colorless_tag))
+  {
+    gtk_text_buffer_remove_tag(
+      tag_remove->buffer,
+      tag,
+      &tag_remove->begin_iter,
+      &tag_remove->end_iter
+    );
+  }
+}
+
+/* Record tracking:
+ * This is to allow and correctly handle nested emissions of GtkTextBuffer's
+ * insert-text/delete-range signals. The text-inserted and text-erased
+ * signals of InfTextBuffer need to be emitted right after the operation was
+ * applied to the buffer which is why we need some bookkeeping here. */
+
+#ifndef G_DISABLE_ASSERT
+/* Check whether the top record has been applied correctly to the buffer */
+static gboolean
+inf_text_gtk_buffer_record_check(InfTextGtkBuffer* buffer,
+                                 InfTextGtkBufferRecord* record)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextChunk* chunk;
+  guint text_len;
+  guint buf_len;
+  gpointer buf_text;
+  gpointer chunk_text;
+  gsize buf_bytes;
+  gsize chunk_bytes;
+  int result;
+
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
-  /* Text written by the active user */
+  text_len = inf_text_chunk_get_length(record->chunk);
+  buf_len = gtk_text_buffer_get_char_count(priv->buffer);
+
+  /* We can only check insertions */
+  if(record->insert)
+  {
+    if(record->char_count + text_len != buf_len)
+      return FALSE;
+    if(record->position + text_len > buf_len)
+      return FALSE;
+
+    chunk = inf_text_buffer_get_slice(
+      INF_TEXT_BUFFER(buffer),
+      record->position,
+      text_len
+    );
+
+    buf_text = inf_text_chunk_get_text(record->chunk, &buf_bytes);
+    chunk_text = inf_text_chunk_get_text(chunk, &chunk_bytes);
+    inf_text_chunk_free(chunk);
+
+    if(buf_bytes == chunk_bytes)
+      result = memcmp(buf_text, chunk_text, buf_bytes);
+    else
+      result = -1;
+
+    g_free(buf_text);
+    g_free(chunk_text);
+    
+    if(result != 0) return FALSE;
+  }
+  else
+  {
+    if(text_len > record->char_count)
+      return FALSE;
+    if(record->char_count - text_len != buf_len)
+      return FALSE;
+  }
+
+  return TRUE;
+}
+#endif
+
+static void
+inf_text_gtk_buffer_record_transform(InfTextGtkBufferRecord* record,
+                                     InfTextGtkBufferRecord* against)
+{
+  guint record_len;
+  guint against_len;
+
+  /* What we do here is common sense; in fact this depends on how
+   * insert-text/delete-range signal handlers do revalidation of iters if
+   * they insert/erase text themselves. We rely on them doing it exactly
+   * this way currently, otherwise we cannot identify new/erased text to
+   * emit text-inserted/text-erased for, resulting in new/erased text not
+   * being transmitted to remote users, in turn resulting in lost session
+   * consistency. This is why the inf_text_gtk_buffer_record_check()
+   * check will fail if this happens. */
+  g_assert(record->applied == FALSE);
+  g_assert(against->applied == TRUE);
+
+  record_len = inf_text_chunk_get_length(record->chunk);
+  against_len = inf_text_chunk_get_length(against->chunk);
+
+  if(record->insert && against->insert)
+  {
+    if(record->position >= against->position)
+      record->position += against_len;
+  }
+  else if(record->insert && !against->insert)
+  {
+    if(record->position >= against->position + against_len)
+      record->position -= against_len;
+    else if(record->position >= against->position)
+      record->position = against->position;
+  }
+  else if(!record->insert && against->insert)
+  {
+    if(record->position >= against->position)
+    {
+      record->position += against->position;
+    }
+    else if(record->position < against->position &&
+            record->position + record_len > against->position)
+    {
+      /* Add text right into deletion range... */
+      inf_text_chunk_insert_chunk(
+        record->chunk,
+        against->position - record->position,
+        against->chunk
+      );
+    }
+  }
+  else if(!record->insert && !against->insert)
+  {
+    if(against->position + against_len <= record->position + record_len)
+    {
+      record->position -= against_len;
+    }
+    else if(against->position + against_len > record->position &&
+            against->position + against_len <= record->position + record_len)
+    {
+      record->position = against->position;
+      inf_text_chunk_erase(
+        record->chunk,
+        0,
+        against->position + against_len - record->position
+      );
+    }
+    else if(against->position <= record->position &&
+            against->position + against_len >= record->position + record_len)
+    {
+      record->position = against->position;
+      inf_text_chunk_erase(
+        record->chunk,
+        0,
+        inf_text_chunk_get_length(record->chunk)
+      );
+    }
+    else if(against->position >= record->position &&
+            against->position + against_len <= record->position + record_len)
+    {
+      inf_text_chunk_erase(
+        record->chunk,
+        against->position - record->position,
+        inf_text_chunk_get_length(against->chunk)
+      );
+    }
+    else if(against->position >= record->position &&
+            against->position + against_len >= record->position + record_len)
+    {
+      inf_text_chunk_erase(
+        record->chunk,
+        against->position - record->position,
+        record->position + record_len - against->position
+      );
+    }
+  }
+
+  /* Revalidate char count */
+  if(against->insert)
+  {
+    record->char_count += against_len;
+  }
+  else
+  {
+    g_assert(record->char_count >= against_len);
+    record->char_count -= against_len;
+  }
+}
+
+static void
+inf_text_gtk_buffer_record_signal(InfTextGtkBuffer* buffer,
+                                  InfTextGtkBufferRecord* record)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextGtkBufferRecord* rec;
+  InfTextGtkBufferTagRemove tag_remove;
+  GtkTextTag* tag;
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
   g_assert(priv->active_user != NULL);
+  g_assert(record->applied == FALSE);
 
-  /* The default handler of the "insert-text" signal
-   * (inf_text_gtk_buffer_buffer_insert_text) will re-emit the signal with
-   * this handler being blocked. This is a bit of a hack since signal handlers
-   * that ran already could rely on the default handler to run.
-   *
-   * However, it is required so that signal handlers of the "insert-text"
-   * signal of InfTextGtkBuffer that connected with the AFTER flag find the
-   * text already inserted into the buffer. */
-  g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "insert-text");
+  g_assert(inf_text_gtk_buffer_record_check(buffer, record));
 
-  location_offset = gtk_text_iter_get_offset(location);
-  text_len = g_utf8_strlen(text, len);
+  record->applied = TRUE;
+  for(rec = record->next; rec != NULL; rec = rec->next)
+    if(!rec->applied)
+      inf_text_gtk_buffer_record_transform(rec->next, record);
+
+  if(record->insert)
+  {
+    /* Allow author tag changes within this function: */
+    inf_signal_handlers_block_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+      buffer
+    );
+
+    /* Tag the inserted text with the user's color */
+    tag_remove.buffer = priv->buffer;
+
+    tag_remove.ignore_tags = inf_text_gtk_buffer_get_user_tags(
+      buffer,
+      inf_user_get_id(INF_USER(priv->active_user))
+    );
+    g_assert(tag_remove.ignore_tags != NULL);
+
+    tag = inf_text_gtk_buffer_get_user_tag(
+      buffer,
+      tag_remove.ignore_tags,
+      priv->show_user_colors
+    );
+
+    /* Remove other user tags, if any */
+    gtk_text_buffer_get_iter_at_offset(
+      priv->buffer,
+      &tag_remove.begin_iter,
+      record->position
+    );
+
+    gtk_text_buffer_get_iter_at_offset(
+      priv->buffer,
+      &tag_remove.end_iter,
+      record->position + inf_text_chunk_get_length(record->chunk)
+    );
+
+    gtk_text_tag_table_foreach(
+      gtk_text_buffer_get_tag_table(tag_remove.buffer),
+      inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func,
+      &tag_remove
+    );
+
+    /* Apply tag for this particular user */
+    gtk_text_buffer_apply_tag(
+      priv->buffer,
+      tag,
+      &tag_remove.begin_iter,
+      &tag_remove.end_iter
+    );
+
+    /* Allow author tag changes within this function: */
+    inf_signal_handlers_unblock_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+      buffer
+    );
+  }
 
   /* Block the notify_status signal handler of the active user. That signal
    * handler syncs the cursor position of the user to the insertion mark of
    * the TextBuffer when the user becomes active again. However, when we
-   * insert text, then this will be updated anyway. */
+   * insert or erase text, then this will be updated anyway. */
   inf_signal_handlers_block_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
@@ -525,21 +782,31 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
   );
 
   /* Block selection-changed of active user. This would try to resync the 
-   * buffer markers, but GtkTextBuffer already does this for us. */
+   * buffer markers, but GtkTextBuffer already did this for us. */
   inf_signal_handlers_block_by_func(
     G_OBJECT(priv->active_user),
     G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
   );
 
-  inf_text_buffer_insert_text(
-    INF_TEXT_BUFFER(buffer),
-    location_offset,
-    text,
-    len,
-    text_len,
-    INF_USER(priv->active_user)
-  );
+  if(record->insert)
+  {
+    inf_text_buffer_text_inserted(
+      INF_TEXT_BUFFER(buffer),
+      record->position,
+      record->chunk,
+      INF_USER(priv->active_user)
+    );
+  }
+  else
+  {
+    inf_text_buffer_text_erased(
+      INF_TEXT_BUFFER(buffer),
+      record->position,
+      record->chunk,
+      INF_USER(priv->active_user)
+    );
+  }
 
   inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->active_user),
@@ -552,80 +819,213 @@ inf_text_gtk_buffer_insert_text_cb(GtkTextBuffer* gtk_buffer,
     G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
     buffer
   );
-
-  /* Revalidate iterator */
-  gtk_text_buffer_get_iter_at_offset(priv->buffer, location,
-                                     location_offset + text_len);
 }
 
 static void
-inf_text_gtk_buffer_delete_range_cb(GtkTextBuffer* gtk_buffer,
-                                    GtkTextIter* begin,
-                                    GtkTextIter* end,
-                                    gpointer user_data)
+inf_text_gtk_buffer_push_record(InfTextGtkBuffer* buffer,
+                                gboolean insert,
+                                guint position,
+                                InfTextChunk* chunk)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextGtkBufferRecord* rec;
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  rec = priv->record;
+
+  priv->record = g_slice_new(InfTextGtkBufferRecord);
+  priv->record->insert = insert;
+  priv->record->char_count = gtk_text_buffer_get_char_count(priv->buffer);
+  priv->record->position = position;
+  priv->record->chunk = chunk;
+  priv->record->applied = FALSE;
+  priv->record->next = rec;
+
+  /* It is enough to check whether the top record was applied to the buffer,
+   * since, for previous records we would have been notified in a previous
+   * callback already. */
+  if(rec != NULL && rec->applied == FALSE)
+  {
+    /* If char count differs then the previous record has already been applied
+     * (that is the default handler ran but not our after handler, so
+     * probably another after handler inserted new text). */
+    /* TODO: This does not work if length of record is zero */
+    if(rec->char_count != (guint)gtk_text_buffer_get_char_count(priv->buffer))
+    {
+      /* This record has been applied already, so signal. */
+      inf_text_gtk_buffer_record_signal(buffer, rec);
+
+#ifndef G_ASSERT_DISABLED
+      /* Outer records would already have been signalled by previous signal
+       * handler invocations if they were applied. */
+      for(; rec != NULL; rec = rec->next)
+      {
+        g_assert(
+          rec->applied == TRUE ||
+          rec->char_count ==
+            (guint)gtk_text_buffer_get_char_count(priv->buffer)
+        );
+      }
+#endif
+    }
+  }
+}
+
+static void
+inf_text_gtk_buffer_pop_record(InfTextGtkBuffer* buffer)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextGtkBufferRecord* rec;
+  guint char_count;
+  guint length;
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  g_assert(priv->record != NULL);
+  if(!priv->record->applied)
+  {
+    length = inf_text_chunk_get_length(priv->record->chunk);
+    char_count = gtk_text_buffer_get_char_count(priv->buffer);
+
+    if(priv->record->insert)
+    {
+      g_assert(priv->record->char_count + length == char_count);
+    }
+    else
+    {
+      g_assert(priv->record->char_count >= length);
+      g_assert(priv->record->char_count - length == char_count);
+    }
+
+    /* Signal application */
+    inf_text_gtk_buffer_record_signal(buffer, priv->record);
+  }
+
+  rec = priv->record;
+  priv->record = rec->next;
+
+  inf_text_chunk_free(rec->chunk);
+  g_slice_free(InfTextGtkBufferRecord, rec);
+}
+
+static void
+inf_text_gtk_buffer_insert_text_cb_before(GtkTextBuffer* gtk_buffer,
+                                          GtkTextIter* location,
+                                          gchar* text,
+                                          gint len,
+                                          gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  InfTextChunk* chunk;
+
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  g_assert(priv->active_user != NULL);
+  chunk = inf_text_chunk_new("UTF-8");
+
+  inf_text_chunk_insert_text(
+    chunk,
+    0,
+    text,
+    len,
+    g_utf8_strlen(text, len),
+    inf_user_get_id(INF_USER(priv->active_user))
+  );
+
+  inf_text_gtk_buffer_push_record(
+    buffer,
+    TRUE,
+    gtk_text_iter_get_offset(location),
+    chunk
+  );
+}
+
+static void
+inf_text_gtk_buffer_insert_text_cb_after(GtkTextBuffer* gtk_buffer,
+                                         GtkTextIter* location,
+                                         gchar* text,
+                                         gint len,
+                                         gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
+  gpointer rec_text;
+  gsize bytes;
+
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  g_assert(priv->record != NULL);
+  g_assert(priv->record->insert == TRUE);
+
+#ifndef G_ASSERT_DISABLED
+  if(priv->record->applied == FALSE)
+  {
+    g_assert(
+      priv->record->position +
+        inf_text_chunk_get_length(priv->record->chunk) ==
+      (guint)gtk_text_iter_get_offset(location)
+    );
+
+    rec_text = inf_text_chunk_get_text(priv->record->chunk, &bytes);
+    g_assert(bytes == (gsize)len);
+    g_assert(memcmp(text, rec_text, bytes) == 0);
+    g_free(rec_text);
+  }
+#endif
+
+  inf_text_gtk_buffer_pop_record(buffer);
+}
+
+static void
+inf_text_gtk_buffer_delete_range_cb_before(GtkTextBuffer* gtk_buffer,
+                                           GtkTextIter* begin,
+                                           GtkTextIter* end,
+                                           gpointer user_data)
 {
   InfTextGtkBuffer* buffer;
   InfTextGtkBufferPrivate* priv;
   guint begin_offset;
+  guint end_offset;
+  InfTextChunk* chunk;
 
   buffer = INF_TEXT_GTK_BUFFER(user_data);
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
-  /* Text written by the active user */
-  g_assert(priv->active_user != NULL);
-
-  /* The default handler of the "erase-text" signal
-   * (inf_text_gtk_buffer_buffer_erase_text) will re-emit the signal with
-   * this handler being blocked. This is a bit of a hack since signal handlers
-   * that ran already could rely on the default handler to run.
-   *
-   * However, it is required so that signal handlers of the "erase-text"
-   * signal of InfTextGtkBuffer that connected with the AFTER flag find the
-   * text already removed from buffer. */
-  g_signal_stop_emission_by_name(G_OBJECT(gtk_buffer), "delete-range");
-
   begin_offset = gtk_text_iter_get_offset(begin);
+  end_offset = gtk_text_iter_get_offset(end);
 
-  /* Block the notify_status signal handler of the active user. That signal
-   * handler syncs the cursor position of the user to the insertion mark of
-   * the TextBuffer when the user becomes active again. However, when we
-   * erase text, then this will be updated anyway. */
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->active_user),
-    G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
-    buffer
-  );
-
-  /* Block selection-changed of active user. This would try to resync the 
-   * buffer markers, but GtkTextBuffer already does this for us. */
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->active_user),
-    G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
-    buffer
-  );
-
-  inf_text_buffer_erase_text(
+  chunk = inf_text_buffer_get_slice(
     INF_TEXT_BUFFER(buffer),
     begin_offset,
-    gtk_text_iter_get_offset(end) - begin_offset,
-    INF_USER(priv->active_user)
+    end_offset - begin_offset
   );
 
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->active_user),
-    G_CALLBACK(inf_text_gtk_buffer_active_user_notify_status_cb),
-    buffer
-  );
+  inf_text_gtk_buffer_push_record(buffer, FALSE, begin_offset, chunk);
+}
 
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->active_user),
-    G_CALLBACK(inf_text_gtk_buffer_active_user_selection_changed_cb),
-    buffer
-  );
+static void
+inf_text_gtk_buffer_delete_range_cb_after(GtkTextBuffer* gtk_buffer,
+                                          GtkTextIter* begin,
+                                          GtkTextIter* end,
+                                          gpointer user_data)
+{
+  InfTextGtkBuffer* buffer;
+  InfTextGtkBufferPrivate* priv;
 
-  /* Revalidate iterators */
-  gtk_text_buffer_get_iter_at_offset(priv->buffer, begin, begin_offset);
-  *end = *begin;
+  buffer = INF_TEXT_GTK_BUFFER(user_data);
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  
+  g_assert(priv->record != NULL);
+  g_assert(priv->record->insert == FALSE);
+  
+  g_assert(priv->record->applied == TRUE ||
+           priv->record->position == (guint)gtk_text_iter_get_offset(begin));
+
+  inf_text_gtk_buffer_pop_record(buffer);
 }
 
 static void
@@ -856,13 +1256,25 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
-      G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
+      G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_before),
       buffer
     );
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->buffer),
-      G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
+      G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_after),
+      buffer
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_before),
+      buffer
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->buffer),
+      G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_after),
       buffer
     );
 
@@ -897,14 +1309,28 @@ inf_text_gtk_buffer_set_buffer(InfTextGtkBuffer* buffer,
     g_signal_connect(
       G_OBJECT(gtk_buffer),
       "insert-text",
-      G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
+      G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_before),
+      buffer
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(gtk_buffer),
+      "insert-text",
+      G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_after),
       buffer
     );
 
     g_signal_connect(
       G_OBJECT(gtk_buffer),
       "delete-range",
-      G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
+      G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_before),
+      buffer
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(gtk_buffer),
+      "delete-range",
+      G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_after),
       buffer
     );
 
@@ -1186,6 +1612,243 @@ inf_text_gtk_buffer_buffer_get_slice(InfTextBuffer* buffer,
   return result;
 }
 
+static void
+inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
+                                       guint pos,
+                                       InfTextChunk* chunk,
+                                       InfUser* user)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextChunkIter chunk_iter;
+  InfTextGtkBufferTagRemove tag_remove;
+  GtkTextTag* tag;
+
+  GtkTextMark* mark;
+  GtkTextIter insert_iter;
+  gboolean insert_at_cursor;
+  gboolean insert_at_selection_bound;
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+  tag_remove.buffer = priv->buffer;
+
+  /* This would have to be handled separately, but I think this is unlikely
+   * to happen anyway. If it does happen then we would again need to rely on
+   * iterator revalidation to happen in the way we expect it. */
+  g_assert(priv->record == NULL);
+
+  /* Allow author tag changes within this function: */
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+    buffer
+  );
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_before),
+    buffer
+  );
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_after),
+    buffer
+  );
+
+  if(inf_text_chunk_iter_init(chunk, &chunk_iter))
+  {
+    gtk_text_buffer_get_iter_at_offset(
+      priv->buffer,
+      &tag_remove.end_iter,
+      pos
+    );
+
+    do
+    {
+      tag_remove.ignore_tags = inf_text_gtk_buffer_get_user_tags(
+        INF_TEXT_GTK_BUFFER(buffer),
+        inf_text_chunk_iter_get_author(&chunk_iter)
+      );
+
+      if(tag_remove.ignore_tags)
+      {
+        tag = inf_text_gtk_buffer_get_user_tag(
+          INF_TEXT_GTK_BUFFER(buffer),
+          tag_remove.ignore_tags,
+          priv->show_user_colors
+        );
+      }
+      else
+      {
+        tag = NULL;
+      }
+
+      gtk_text_buffer_insert_with_tags(
+        tag_remove.buffer,
+        &tag_remove.end_iter,
+        inf_text_chunk_iter_get_text(&chunk_iter),
+        inf_text_chunk_iter_get_bytes(&chunk_iter),
+        tag,
+        NULL
+      );
+
+      /* Remove other user tags. If we inserted the new text within another
+       * user's text, GtkTextBuffer automatically applies that tag to the
+       * new text. */
+
+      /* TODO: We could probably look for the tag that we have to remove
+       * before inserting text, to optimize this a bit. */
+      tag_remove.begin_iter = tag_remove.end_iter;
+      gtk_text_iter_backward_chars(
+        &tag_remove.begin_iter,
+        inf_text_chunk_iter_get_length(&chunk_iter)
+      );
+
+      gtk_text_tag_table_foreach(
+        gtk_text_buffer_get_tag_table(tag_remove.buffer),
+        inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func,
+        &tag_remove
+      );
+    } while(inf_text_chunk_iter_next(&chunk_iter));
+
+    /* Fix left gravity of own cursor on remote insert */
+
+    /* TODO: We could also do this by simply resyncing the text buffer marks
+     * to the active user's caret and selection properties. But then we
+     * wouldn't have left gravtiy if no active user was present. */
+    if(user != INF_USER(priv->active_user) || user == NULL)
+    {
+      mark = gtk_text_buffer_get_insert(priv->buffer);
+      gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
+
+      if(gtk_text_iter_equal(&insert_iter, &tag_remove.end_iter))
+        insert_at_cursor = TRUE;
+      else
+        insert_at_cursor = FALSE;
+
+      mark = gtk_text_buffer_get_selection_bound(priv->buffer);
+      gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
+
+      if(gtk_text_iter_equal(&insert_iter, &tag_remove.end_iter))
+        insert_at_selection_bound = TRUE;
+      else
+        insert_at_selection_bound = FALSE;
+
+      if(insert_at_cursor || insert_at_selection_bound)
+      {
+        inf_signal_handlers_block_by_func(
+          G_OBJECT(priv->buffer),
+          G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+          buffer
+        );
+
+        gtk_text_iter_backward_chars(
+          &tag_remove.end_iter,
+          inf_text_chunk_get_length(chunk)
+        );
+
+        if(insert_at_cursor)
+        {
+          gtk_text_buffer_move_mark(
+            priv->buffer,
+            gtk_text_buffer_get_insert(priv->buffer),
+            &tag_remove.end_iter
+          );
+        }
+
+        if(insert_at_selection_bound)
+        {
+          gtk_text_buffer_move_mark(
+            priv->buffer,
+            gtk_text_buffer_get_selection_bound(priv->buffer),
+            &tag_remove.end_iter
+          );
+        }
+
+        inf_signal_handlers_unblock_by_func(
+          G_OBJECT(priv->buffer),
+          G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
+          buffer
+        );
+      }
+    }
+  }
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
+    buffer
+  );
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_before),
+    buffer
+  );
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_insert_text_cb_after),
+    buffer
+  );
+
+  inf_text_buffer_text_inserted(buffer, pos, chunk, user);
+}
+
+static void
+inf_text_gtk_buffer_buffer_erase_text(InfTextBuffer* buffer,
+                                      guint pos,
+                                      guint len,
+                                      InfUser* user)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextChunk* chunk;
+
+  GtkTextIter begin;
+  GtkTextIter end;
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  /* This would have to be handled separately, but I think this is unlikely
+   * to happen anyway. If it does happen then we would again need to rely on
+   * iterator revalidation to happen in the way we expect it. */
+  g_assert(priv->record == NULL);
+
+  chunk = inf_text_buffer_get_slice(buffer, pos, len);
+
+  gtk_text_buffer_get_iter_at_offset(priv->buffer, &begin, pos);
+  gtk_text_buffer_get_iter_at_offset(priv->buffer, &end, pos + len);
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_before),
+    buffer
+  );
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_after),
+    buffer
+  );
+
+  gtk_text_buffer_delete(priv->buffer, &begin, &end);
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_before),
+    buffer
+  );
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_text_gtk_buffer_delete_range_cb_after),
+    buffer
+  );
+
+  inf_text_buffer_text_erased(buffer, pos, chunk, user);
+  inf_text_chunk_free(chunk);
+}
+
 static InfTextBufferIter*
 inf_text_gtk_buffer_buffer_create_iter(InfTextBuffer* buffer)
 {
@@ -1333,223 +1996,6 @@ inf_text_gtk_buffer_buffer_iter_get_author(InfTextBuffer* buffer,
 }
 
 static void
-inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func(GtkTextTag* tag,
-                                                              gpointer data)
-{
-  InfTextGtkBufferTagRemove* tag_remove;
-  tag_remove = (InfTextGtkBufferTagRemove*)data;
-
-  if(tag_remove->ignore_tags == NULL ||
-     (tag != tag_remove->ignore_tags->colored_tag &&
-      tag != tag_remove->ignore_tags->colorless_tag))
-  {
-    gtk_text_buffer_remove_tag(
-      tag_remove->buffer,
-      tag,
-      &tag_remove->begin_iter,
-      &tag_remove->end_iter
-    );
-  }
-}
-
-static void
-inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
-                                       guint pos,
-                                       InfTextChunk* chunk,
-                                       InfUser* user)
-{
-  InfTextGtkBufferPrivate* priv;
-  InfTextChunkIter chunk_iter;
-  InfTextGtkBufferTagRemove tag_remove;
-  GtkTextTag* tag;
-
-  GtkTextMark* mark;
-  GtkTextIter insert_iter;
-  gboolean insert_at_cursor;
-  gboolean insert_at_selection_bound;
-
-  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
-  tag_remove.buffer = priv->buffer;
-
-  /* Allow author tag changes within this function: */
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
-    buffer
-  );
-
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
-    buffer
-  );
-
-  if(inf_text_chunk_iter_init(chunk, &chunk_iter))
-  {
-    gtk_text_buffer_get_iter_at_offset(
-      priv->buffer,
-      &tag_remove.end_iter,
-      pos
-    );
-
-    do
-    {
-      tag_remove.ignore_tags = inf_text_gtk_buffer_get_user_tags(
-        INF_TEXT_GTK_BUFFER(buffer),
-        inf_text_chunk_iter_get_author(&chunk_iter)
-      );
-
-      if(tag_remove.ignore_tags)
-      {
-        tag = inf_text_gtk_buffer_get_user_tag(
-          INF_TEXT_GTK_BUFFER(buffer),
-          tag_remove.ignore_tags,
-          priv->show_user_colors
-        );
-      }
-      else
-      {
-        tag = NULL;
-      }
-
-      gtk_text_buffer_insert_with_tags(
-        tag_remove.buffer,
-        &tag_remove.end_iter,
-        inf_text_chunk_iter_get_text(&chunk_iter),
-        inf_text_chunk_iter_get_bytes(&chunk_iter),
-        tag,
-        NULL
-      );
-
-      /* Remove other user tags. If we inserted the new text within another
-       * user's text, GtkTextBuffer automatically applies that tag to the
-       * new text. */
-
-      /* TODO: We could probably look for the tag that we have to remove
-       * before inserting text, to optimize this a bit. */
-      tag_remove.begin_iter = tag_remove.end_iter;
-      gtk_text_iter_backward_chars(
-        &tag_remove.begin_iter,
-        inf_text_chunk_iter_get_length(&chunk_iter)
-      );
-
-      gtk_text_tag_table_foreach(
-        gtk_text_buffer_get_tag_table(tag_remove.buffer),
-        inf_text_gtk_buffer_buffer_insert_text_tag_table_foreach_func,
-        &tag_remove
-      );
-    } while(inf_text_chunk_iter_next(&chunk_iter));
-
-    /* Fix left gravity of own cursor on remote insert */
-
-    /* TODO: We could also do this by simply resyncing the text buffer marks
-     * to the active user's caret and selection properties. But then we
-     * wouldn't have left gravtiy if no active user was present. */
-    if(user != INF_USER(priv->active_user) || user == NULL)
-    {
-      mark = gtk_text_buffer_get_insert(priv->buffer);
-      gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
-
-      if(gtk_text_iter_equal(&insert_iter, &tag_remove.end_iter))
-        insert_at_cursor = TRUE;
-      else
-        insert_at_cursor = FALSE;
-
-      mark = gtk_text_buffer_get_selection_bound(priv->buffer);
-      gtk_text_buffer_get_iter_at_mark(priv->buffer, &insert_iter, mark);
-
-      if(gtk_text_iter_equal(&insert_iter, &tag_remove.end_iter))
-        insert_at_selection_bound = TRUE;
-      else
-        insert_at_selection_bound = FALSE;
-
-      if(insert_at_cursor || insert_at_selection_bound)
-      {
-        inf_signal_handlers_block_by_func(
-          G_OBJECT(priv->buffer),
-          G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
-          buffer
-        );
-
-        gtk_text_iter_backward_chars(
-          &tag_remove.end_iter,
-          inf_text_chunk_get_length(chunk)
-        );
-
-        if(insert_at_cursor)
-        {
-          gtk_text_buffer_move_mark(
-            priv->buffer,
-            gtk_text_buffer_get_insert(priv->buffer),
-            &tag_remove.end_iter
-          );
-        }
-
-        if(insert_at_selection_bound)
-        {
-          gtk_text_buffer_move_mark(
-            priv->buffer,
-            gtk_text_buffer_get_selection_bound(priv->buffer),
-            &tag_remove.end_iter
-          );
-        }
-
-        inf_signal_handlers_unblock_by_func(
-          G_OBJECT(priv->buffer),
-          G_CALLBACK(inf_text_gtk_buffer_mark_set_cb),
-          buffer
-        );
-      }
-    }
-  }
-
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_apply_tag_cb),
-    buffer
-  );
-
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_insert_text_cb),
-    buffer
-  );
-}
-
-static void
-inf_text_gtk_buffer_buffer_erase_text(InfTextBuffer* buffer,
-                                      guint pos,
-                                      guint len,
-                                      InfUser* user)
-{
-  InfTextGtkBufferPrivate* priv;
-
-  GtkTextIter begin;
-  GtkTextIter end;
-
-  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
-
-  gtk_text_buffer_get_iter_at_offset(priv->buffer, &begin, pos);
-
-  /* TODO: Is it faster to call gtk_text_iter_forward_chars on begin? */
-  gtk_text_buffer_get_iter_at_offset(priv->buffer, &end, pos + len);
-
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
-    buffer
-  );
-
-  gtk_text_buffer_delete(priv->buffer, &begin, &end);
-
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_text_gtk_buffer_delete_range_cb),
-    buffer
-  );
-}
-
-static void
 inf_text_gtk_buffer_class_init(gpointer g_class,
                                gpointer class_data)
 {
@@ -1681,6 +2127,8 @@ inf_text_gtk_buffer_text_buffer_init(gpointer g_iface,
   iface->get_encoding = inf_text_gtk_buffer_buffer_get_encoding;
   iface->get_length = inf_text_gtk_buffer_get_length;
   iface->get_slice = inf_text_gtk_buffer_buffer_get_slice;
+  iface->insert_text = inf_text_gtk_buffer_buffer_insert_text;
+  iface->erase_text = inf_text_gtk_buffer_buffer_erase_text;
   iface->create_iter = inf_text_gtk_buffer_buffer_create_iter;
   iface->destroy_iter = inf_text_gtk_buffer_buffer_destroy_iter;
   iface->iter_next = inf_text_gtk_buffer_buffer_iter_next;
@@ -1689,8 +2137,8 @@ inf_text_gtk_buffer_text_buffer_init(gpointer g_iface,
   iface->iter_get_length = inf_text_gtk_buffer_buffer_iter_get_length;
   iface->iter_get_bytes = inf_text_gtk_buffer_buffer_iter_get_bytes;
   iface->iter_get_author = inf_text_gtk_buffer_buffer_iter_get_author;
-  iface->insert_text = inf_text_gtk_buffer_buffer_insert_text;
-  iface->erase_text = inf_text_gtk_buffer_buffer_erase_text;
+  iface->text_inserted = NULL;
+  iface->text_erased = NULL;
 }
 
 GType

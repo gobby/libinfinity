@@ -106,11 +106,11 @@ infinoted_directory_sync_session_stop(InfinotedDirectorySync* dsync,
 }
 
 static void
-infinoted_directory_sync_buffer_insert_text_cb(InfTextBuffer* buffer,
-                                               guint position,
-                                               InfTextChunk* text,
-                                               InfUser* user,
-                                               gpointer user_data)
+infinoted_directory_sync_buffer_text_inserted_cb(InfTextBuffer* buffer,
+                                                 guint position,
+                                                 InfTextChunk* text,
+                                                 InfUser* user,
+                                                 gpointer user_data)
 {
   InfinotedDirectorySyncSession* session;
   session = (InfinotedDirectorySyncSession*)user_data;
@@ -120,11 +120,11 @@ infinoted_directory_sync_buffer_insert_text_cb(InfTextBuffer* buffer,
 }
 
 static void
-infinoted_directory_sync_buffer_erase_text_cb(InfTextBuffer* buffer,
-                                              guint position,
-                                              InfTextChunk* text,
-                                              InfUser* user,
-                                              gpointer user_data)
+infinoted_directory_sync_buffer_text_erased_cb(InfTextBuffer* buffer,
+                                               guint position,
+                                               InfTextChunk* text,
+                                               InfUser* user,
+                                               gpointer user_data)
 {
   InfinotedDirectorySyncSession* session;
   session = (InfinotedDirectorySyncSession*)user_data;
@@ -275,17 +275,17 @@ infinoted_directory_sync_add_session(InfinotedDirectorySync* dsync,
 
   buffer = inf_session_get_buffer(infd_session_proxy_get_session(proxy));
 
-  g_signal_connect_after(
+  g_signal_connect(
     G_OBJECT(buffer),
-    "insert-text",
-    G_CALLBACK(infinoted_directory_sync_buffer_insert_text_cb),
+    "text-inserted",
+    G_CALLBACK(infinoted_directory_sync_buffer_text_inserted_cb),
     session
   );
 
-  g_signal_connect_after(
+  g_signal_connect(
     G_OBJECT(buffer),
-    "erase-text",
-    G_CALLBACK(infinoted_directory_sync_buffer_erase_text_cb),
+    "text-erased",
+    G_CALLBACK(infinoted_directory_sync_buffer_text_erased_cb),
     session
   );
 
@@ -311,13 +311,13 @@ infinoted_directory_sync_remove_session(InfinotedDirectorySync* dsync,
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
-    G_CALLBACK(infinoted_directory_sync_buffer_insert_text_cb),
+    G_CALLBACK(infinoted_directory_sync_buffer_text_inserted_cb),
     sess
   );
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(buffer),
-    G_CALLBACK(infinoted_directory_sync_buffer_erase_text_cb),
+    G_CALLBACK(infinoted_directory_sync_buffer_text_erased_cb),
     sess
   );
 

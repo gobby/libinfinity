@@ -157,6 +157,8 @@ inf_text_buffer_iter_get_text
 inf_text_buffer_iter_get_length
 inf_text_buffer_iter_get_bytes
 inf_text_buffer_iter_get_author
+inf_text_buffer_text_inserted
+inf_text_buffer_text_erased
 <SUBSECTION Standard>
 INF_TEXT_BUFFER
 INF_TEXT_IS_BUFFER

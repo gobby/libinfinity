@@ -180,6 +180,50 @@ inf_text_default_buffer_buffer_get_slice(InfTextBuffer* buffer,
   return inf_text_chunk_substring(priv->chunk, pos, len);
 }
 
+static void
+inf_text_default_buffer_buffer_insert_text(InfTextBuffer* buffer,
+                                           guint pos,
+                                           InfTextChunk* chunk,
+                                           InfUser* user)
+{
+  InfTextDefaultBufferPrivate* priv;
+  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
+
+  inf_text_chunk_insert_chunk(priv->chunk, pos, chunk);
+
+  inf_text_buffer_text_inserted(buffer, pos, chunk, user);
+
+  if(priv->modified == FALSE)
+  {
+    priv->modified = TRUE;
+    g_object_notify(G_OBJECT(buffer), "modified");
+  }
+}
+
+static void
+inf_text_default_buffer_buffer_erase_text(InfTextBuffer* buffer,
+                                          guint pos,
+                                          guint len,
+                                          InfUser* user)
+{
+  InfTextDefaultBufferPrivate* priv;
+  InfTextChunk* chunk;
+
+  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
+
+  chunk = inf_text_chunk_substring(priv->chunk, pos, len);
+  inf_text_chunk_erase(priv->chunk, pos, len);
+
+  inf_text_buffer_text_erased(buffer, pos, chunk, user);
+  inf_text_chunk_free(chunk);
+
+  if(priv->modified == FALSE)
+  {
+    priv->modified = TRUE;
+    g_object_notify(G_OBJECT(buffer), "modified");
+  }
+}
+
 static InfTextBufferIter*
 inf_text_default_buffer_buffer_create_iter(InfTextBuffer* buffer)
 {
@@ -253,42 +297,6 @@ inf_text_default_buffer_buffer_iter_get_author(InfTextBuffer* buffer,
 }
 
 static void
-inf_text_default_buffer_buffer_insert_text(InfTextBuffer* buffer,
-                                           guint pos,
-                                           InfTextChunk* chunk,
-                                           InfUser* user)
-{
-  InfTextDefaultBufferPrivate* priv;
-  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
-
-  inf_text_chunk_insert_chunk(priv->chunk, pos, chunk);
-
-  if(priv->modified == FALSE)
-  {
-    priv->modified = TRUE;
-    g_object_notify(G_OBJECT(buffer), "modified");
-  }
-}
-
-static void
-inf_text_default_buffer_buffer_erase_text(InfTextBuffer* buffer,
-                                          guint pos,
-                                          guint len,
-                                          InfUser* user)
-{
-  InfTextDefaultBufferPrivate* priv;
-  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
-
-  inf_text_chunk_erase(priv->chunk, pos, len);
-
-  if(priv->modified == FALSE)
-  {
-    priv->modified = TRUE;
-    g_object_notify(G_OBJECT(buffer), "modified");
-  }
-}
-
-static void
 inf_text_default_buffer_class_init(gpointer g_class,
                                    gpointer class_data)
 {
@@ -338,6 +346,8 @@ inf_text_default_buffer_text_buffer_init(gpointer g_iface,
   iface->get_encoding = inf_text_default_buffer_buffer_get_encoding;
   iface->get_length = inf_text_default_buffer_get_length;
   iface->get_slice = inf_text_default_buffer_buffer_get_slice;
+  iface->insert_text = inf_text_default_buffer_buffer_insert_text;
+  iface->erase_text = inf_text_default_buffer_buffer_erase_text;
   iface->create_iter = inf_text_default_buffer_buffer_create_iter;
   iface->destroy_iter = inf_text_default_buffer_buffer_destroy_iter;
   iface->iter_next = inf_text_default_buffer_buffer_iter_next;
@@ -346,8 +356,8 @@ inf_text_default_buffer_text_buffer_init(gpointer g_iface,
   iface->iter_get_length = inf_text_default_buffer_buffer_iter_get_length;
   iface->iter_get_bytes = inf_text_default_buffer_buffer_iter_get_bytes;
   iface->iter_get_author = inf_text_default_buffer_buffer_iter_get_author;
-  iface->insert_text = inf_text_default_buffer_buffer_insert_text;
-  iface->erase_text = inf_text_default_buffer_buffer_erase_text;
+  iface->text_inserted = NULL;
+  iface->text_erased = NULL;
 }
 
 GType
