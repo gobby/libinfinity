@@ -1,5 +1,14 @@
 2010-06-05  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-move-operation.c
+	(inf_text_move_operation_transform_insert,
+	inf_text_move_operation_transform_delete): Make the delete
+	transformation work correctly when deleting characters from within the
+	selection, make the insert transformation not expand the selection
+	when inserting at the selection bounds.
+
+2010-06-05  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-view.c:
 	* libinftextgtk/inf-text-gtk-viewport.c: Avoid use of symbols not
 	available in GTK+ 2.12.

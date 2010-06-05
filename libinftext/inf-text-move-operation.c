@@ -421,8 +421,12 @@ inf_text_move_operation_get_length(InfTextMoveOperation* operation)
  * region when @insert_length characters are inserted at @insert_position.
  *
  * If text is inserted at the same position as @move_position, then
- * @move_position is kept at the position it currently is, otherwise it is
- * shifted to the right.
+ * @move_position is kept at the position it currently is if @left_gravity is
+ * %TRUE, otherwise it is shifted to the right.
+ *
+ * If *@move_length is nonzero, then the selection length is never enlarged if
+ * text is inserted at the selection bounds, not depending on whether
+ * @left_gravity is set or not.
  **/
 void
 inf_text_move_operation_transform_insert(guint insert_position,
@@ -440,16 +444,41 @@ inf_text_move_operation_transform_insert(guint insert_position,
   cur_pos = *move_position;
   cur_bound = *move_position + *move_length;
 
-  if( (insert_position < cur_pos) ||
-      (insert_position == cur_pos && !left_gravity))
+  if(cur_pos == cur_bound)
   {
-    cur_pos += insert_length;
+    if( (insert_position < cur_pos) ||
+        (insert_position == cur_pos && !left_gravity))
+    {
+      cur_pos += insert_length;
+      cur_bound += insert_length;
+    }
   }
-
-  if( (insert_position < cur_bound) ||
-      (insert_position == cur_bound && !left_gravity))
+  else
   {
-    cur_bound += insert_length;
+    if(cur_bound > cur_pos)
+    {
+      if(insert_position <= cur_pos)
+      {
+        cur_pos += insert_length;
+        cur_bound += insert_length;
+      }
+      else if(insert_position < cur_bound)
+      {
+        cur_bound += insert_length;
+      }
+    }
+    else
+    {
+      if(insert_position <= cur_bound)
+      {
+        cur_pos += insert_length;
+        cur_bound += insert_length;
+      }
+      else if(insert_position < cur_pos)
+      {
+        cur_pos += insert_length;
+      }
+    }
   }
 
   *move_position = cur_pos;
@@ -508,7 +537,7 @@ inf_text_move_operation_transform_delete(guint delete_position,
     else if(delete_position <= cur_pos + cur_len &&
             delete_position + delete_length > cur_pos + cur_len)
     {
-      *move_length = cur_pos - delete_position;
+      *move_length = -(gint)(cur_pos - (delete_position + delete_length));
     }
     else if(delete_position > cur_pos + cur_len &&
             delete_position + delete_length > cur_pos)
@@ -518,7 +547,7 @@ inf_text_move_operation_transform_delete(guint delete_position,
     else if(delete_position > cur_pos + cur_len &&
             delete_position + delete_length <= cur_pos)
     {
-      *move_length = cur_len - delete_length;
+      *move_length = cur_len + (gint)delete_length;
     }
     else
     {
@@ -543,7 +572,7 @@ inf_text_move_operation_transform_delete(guint delete_position,
     else if(delete_position <= cur_pos &&
             delete_position + delete_length > cur_pos)
     {
-      *move_length = cur_pos + cur_len - delete_position;
+      *move_length = cur_pos + cur_len - (delete_position + delete_length);
     }
     else if(delete_position > cur_pos &&
              delete_position + delete_length > cur_pos + cur_len)
