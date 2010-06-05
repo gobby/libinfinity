@@ -324,9 +324,9 @@ static guint
 inf_text_gtk_view_get_right_margin(GtkTextView* view)
 {
   gint margin;
-  gint hadj;
-  gint hupper;
-  gint hpage;
+  gdouble hadj;
+  gdouble hupper;
+  gdouble hpage;
 
   margin = gtk_text_view_get_right_margin(view);
   if(!view->hadjustment) return margin;
@@ -335,11 +335,16 @@ inf_text_gtk_view_get_right_margin(GtkTextView* view)
    * so that the selection is aligned with the local selection at the right
    * margin. */
   hadj = gtk_adjustment_get_value(view->hadjustment) + 1;
-  hupper = gtk_adjustment_get_upper(view->hadjustment);
-  hpage = gtk_adjustment_get_page_size(view->hadjustment);
+
+  g_object_get(
+    G_OBJECT(view->hadjustment),
+    "upper", &hupper,
+    "page-size", &hpage,
+    NULL
+  );
 
   if(hadj > hupper - hpage - margin)
-    return margin - (hupper - hpage - hadj);
+    return margin - (gint)(hupper - hpage - hadj);
 
   return 0;
 }

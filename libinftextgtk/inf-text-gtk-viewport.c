@@ -19,7 +19,7 @@
 #include <libinftextgtk/inf-text-gtk-viewport.h>
 #include <libinfinity/inf-signals.h>
 
-#include <gtk/gtktextview.h>
+#include <gtk/gtk.h>
 
 typedef struct _InfTextGtkViewportUser InfTextGtkViewportUser;
 struct _InfTextGtkViewportUser {
@@ -342,7 +342,11 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
 
   /* Can this happen? */
+#if GTK_CHECK_VERSION(2,14,0)
   if(event->window != gtk_widget_get_window(scrollbar))
+#else
+  if(event->window != GTK_WIDGET(scrollbar)->window)
+#endif
     return FALSE;
 
   color = &scrollbar->style->bg[GTK_STATE_NORMAL];
