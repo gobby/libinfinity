@@ -2362,6 +2362,28 @@ inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
 }
 
 /**
+ * inf_text_gtk_buffer_get_user_for_tag:
+ * @buffer: A #InfTextGtkBuffer.
+ * @tag: A #GtkTextTag from @buffer's underlying #GtkTextBuffer's tag table.
+ *
+ * If @tag is an author tag, i.e. used by @buffer to mark text that a certain
+ * user has written, then this function returns the #InfTextUser whose text is
+ * marked by @tag. If @tag is not an author tag then the function returns
+ * %NULL.
+ *
+ * Returns: A #InfTextUser, or %NULL.
+ */
+InfTextUser*
+inf_text_gtk_buffer_get_user_for_tag(InfTextGtkBuffer* buffer,
+                                     GtkTextTag* tag)
+{
+  g_return_val_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer), NULL);
+  g_return_val_if_fail(GTK_IS_TEXT_TAG(tag), NULL);
+
+  return inf_text_gtk_buffer_author_from_tag(tag);
+}
+
+/**
  * inf_text_gtk_buffer_is_author_toggle:
  * @buffer: A #InfTextGtkBuffer.
  * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.

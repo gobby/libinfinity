@@ -69,6 +69,10 @@ InfTextUser*
 inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
                                GtkTextIter* location);
 
+InfTextUser*
+inf_text_gtk_buffer_get_user_for_tag(InfTextGtkBuffer* buffer,
+                                     GtkTextTag* tag);
+
 gboolean
 inf_text_gtk_buffer_is_author_toggle(InfTextGtkBuffer* buffer,
                                      const GtkTextIter* iter,
