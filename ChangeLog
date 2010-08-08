@@ -1,3 +1,12 @@
+2010-08-08  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-tcp-server.c: Add debugging code to observe
+	badly-behaving accept(). There was a case where accept() returned a
+	valid but non-connected socket which brought down the infinoted server
+	due to getpeername failing. I want to find out more about when exactly
+	this happens and how this can be catched instead of just fixing the
+	symptoms.
+
 2010-06-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-buffer.h:

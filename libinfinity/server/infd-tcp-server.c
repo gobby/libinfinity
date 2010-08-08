@@ -184,6 +184,12 @@ infd_tcp_server_io(InfNativeSocket* socket,
   InfTcpConnection* connection;
   GError* error;
 
+  union {
+    struct sockaddr in_generic;
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+  } native_addr;
+
   server = INFD_TCP_SERVER(user_data);
   priv = INFD_TCP_SERVER_PRIVATE(server);
   g_object_ref(G_OBJECT(server));
@@ -203,7 +209,18 @@ infd_tcp_server_io(InfNativeSocket* socket,
   {
     do
     {
-      new_socket = accept(priv->socket, NULL, NULL);
+      /* Note that we do not do anything with native_addr and len. This is
+       * currently only for debugging purposes since there seemingly was a
+       * case where accept returned a valid but socket and errno was set to
+       * EAGAIN (which might have been resulted from a previous call however
+       * since the errno = 0 line was not there yet before that either).
+       * I hope to get some more information this way in case this occurs
+       * again. */
+#ifndef G_OS_WIN32
+      errno = 0;
+#endif
+      len = sizeof(native_addr);
+      new_socket = accept(priv->socket, &native_addr, &len);
       errcode = INFD_TCP_SERVER_LAST_ERROR;
 
       if(new_socket == INVALID_SOCKET &&
