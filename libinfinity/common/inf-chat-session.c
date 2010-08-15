@@ -494,6 +494,7 @@ inf_chat_session_user_join(InfChatSession* session,
   message.text = NULL;
   message.length = 0;
   message.time = time(NULL);
+  message.flags = 0;
 
   g_signal_emit(session, chat_session_signals[RECEIVE_MESSAGE], 0, &message);
 }
@@ -509,6 +510,7 @@ inf_chat_session_user_part(InfChatSession* session,
   message.text = NULL;
   message.length = 0;
   message.time = time(NULL);
+  message.flags = 0;
 
   g_signal_emit(session, chat_session_signals[RECEIVE_MESSAGE], 0, &message);
 }

@@ -1,5 +1,11 @@
 2010-08-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-chat-session.c (inf_chat_session_user_join,
+	inf_chat_session_user_part): Set correct flags for userjoin and
+	userpart messages.
+
+2010-08-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-chat-session.c
 	(inf_chat_session_to_xml_sync): Fix sending chat backlog to clients
 	which was broken since 2010-03-12.
