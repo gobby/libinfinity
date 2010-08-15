@@ -46,6 +46,7 @@ struct _InfTestGtkBrowserWindow {
   InfTextGtkViewport* viewport;
   InfcSessionProxy* proxy;
   InfUser* user;
+  InfcUserRequest* request;
 };
 
 typedef struct _InfTestGtkBrowserChatWindow InfTestGtkBrowserChatWindow;
@@ -56,6 +57,7 @@ struct _InfTestGtkBrowserChatWindow {
   InfChatBuffer* buffer;
   InfcSessionProxy* proxy;
   InfUser* user;
+  InfcUserRequest* request;
 };
 
 static InfSession*
@@ -181,6 +183,10 @@ on_chat_join_finished(InfcUserRequest* request,
   test->user = user;
   g_object_ref(user);
 
+  g_assert(test->request != NULL);
+  g_object_unref(test->request);
+  test->request = NULL;
+
   /* Unfortunately, gtk_widget_grab_focus(test->chat) +
    * gtk_container_set_focus_child() in inf_gtk_chat_set_active_user() does
    * not do the job which is why I added this crappy API. */
@@ -208,6 +214,10 @@ on_join_finished(InfcUserRequest* request,
   test->user = user;
   g_object_ref(user);
 
+  g_assert(test->request != NULL);
+  g_object_unref(test->request);
+  test->request = NULL;
+
   session = INF_ADOPTED_SESSION(infc_session_proxy_get_session(test->proxy));
   algorithm = inf_adopted_session_get_algorithm(session);
 
@@ -233,10 +243,14 @@ on_chat_join_failed(InfcRequest* request,
 
   test = (InfTestGtkBrowserChatWindow*)user_data;
 
+  g_assert(test->request != NULL);
+  g_object_unref(test->request);
+  test->request = NULL;
+
   if(error->domain == inf_user_error_quark() &&
      error->code == INF_USER_ERROR_NAME_IN_USE)
   {
-    new_name = g_strdup_printf("%s%d", g_get_user_name(), 2);
+    new_name = g_strdup_printf("%s%d", g_get_user_name(), rand());
     request_chat_join(test, new_name);
     g_free(new_name);
   }
@@ -262,10 +276,14 @@ on_join_failed(InfcRequest* request,
 
   test = (InfTestGtkBrowserWindow*)user_data;
 
+  g_assert(test->request != NULL);
+  g_object_unref(test->request);
+  test->request = NULL;
+
   if(error->domain == inf_user_error_quark() &&
      error->code == INF_USER_ERROR_NAME_IN_USE)
   {
-    new_name = g_strdup_printf("%s%d", g_get_user_name(), 2);
+    new_name = g_strdup_printf("%s%d", g_get_user_name(), rand());
     request_join(test, new_name);
     g_free(new_name);
   }
@@ -317,6 +335,10 @@ request_chat_join(InfTestGtkBrowserChatWindow* test,
       G_CALLBACK(on_chat_join_finished),
       test
     );
+
+    g_assert(test->request == NULL);
+    test->request = request;
+    g_object_ref(test->request);
   }
 }
 
@@ -382,6 +404,10 @@ request_join(InfTestGtkBrowserWindow* test,
       G_CALLBACK(on_join_finished),
       test
     );
+
+    g_assert(test->request == NULL);
+    test->request = request;
+    g_object_ref(request);
   }
 }
 
@@ -474,6 +500,23 @@ on_chat_window_destroy(GtkWindow* window,
     test
   );
 
+  if(test->request != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      test->request,
+      G_CALLBACK(on_chat_join_finished),
+      test
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      test->request,
+      G_CALLBACK(on_chat_join_failed),
+      test
+    );
+
+    g_object_unref(test->request);
+  }
+
   if(test->proxy != NULL) g_object_unref(test->proxy);
   if(test->user != NULL) g_object_unref(test->user);
 
@@ -501,6 +544,23 @@ on_text_window_destroy(GtkWindow* window,
     G_CALLBACK(on_synchronization_failed),
     test
   );
+
+  if(test->request != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      test->request,
+      G_CALLBACK(on_join_finished),
+      test
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      test->request,
+      G_CALLBACK(on_join_failed),
+      test
+    );
+
+    g_object_unref(test->request);
+  }
 
   if(test->proxy != NULL) g_object_unref(test->proxy);
   /* TODO: Do we ever ref buffer? */
@@ -553,6 +613,7 @@ on_subscribe_chat_session(InfcBrowser* browser,
   test->buffer = buffer;
   test->proxy = proxy;
   test->user = NULL;
+  test->request = NULL;
   g_object_ref(test->proxy);
 
   g_signal_connect_after(
@@ -671,6 +732,7 @@ on_subscribe_session(InfcBrowser* browser,
   test->viewport = viewport;
   test->proxy = proxy;
   test->user = NULL;
+  test->request = NULL;
   g_object_ref(proxy);
 
   g_signal_connect_after(
