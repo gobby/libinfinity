@@ -1,5 +1,11 @@
 2010-08-15  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-chat-session.c
+	(inf_chat_session_to_xml_sync): Fix sending chat backlog to clients
+	which was broken since 2010-03-12.
+
+2010-08-15  Armin Burgmeier  <armin@arbur.net>
+
 	* test/inf-test-gtk-browser.c: Fixed a crash when closing the chat
 	or session window while joining. Also do not attempt to rejoin with
 	the same user name all the time if the user name is in use already.

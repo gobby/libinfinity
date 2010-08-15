@@ -809,7 +809,7 @@ inf_chat_session_to_xml_sync(InfSession* session,
   g_assert(parent_class->to_xml_sync != NULL);
   parent_class->to_xml_sync(session, parent);
 
-  for(i = 0; i < inf_chat_buffer_get_n_messages(buffer); --i)
+  for(i = 0; i < inf_chat_buffer_get_n_messages(buffer); ++i)
   {
     message = inf_chat_buffer_get_message(buffer, i);
 
