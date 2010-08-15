@@ -254,7 +254,8 @@ inf_gtk_certificate_view_init(GTypeInstance* instance,
     NULL
   );
 
-  size = pango_font_description_get_size(priv->serial_number->style->font_desc);
+  size = pango_font_description_get_size(
+    gtk_widget_get_style(priv->serial_number)->font_desc);
   monospace_desc = pango_font_description_new();
   pango_font_description_set_family(monospace_desc, "Monospace");
   pango_font_description_set_size(monospace_desc, size * PANGO_SCALE_SMALL);

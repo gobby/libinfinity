@@ -339,6 +339,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
   InfGtkCertificateManagerQuery* query;
   gchar* text;
+  GtkWidget* vbox;
   GtkWidget* button;
   GtkWidget* image;
   GtkWidget* label;
@@ -578,13 +579,14 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       gtk_widget_show(label);
       g_free(text);
 
-      gtk_box_pack_start(
-        GTK_BOX(GTK_DIALOG(query->dialog)->vbox),
-        label,
-        FALSE,
-        FALSE,
-        0
-      );
+#if GTK_CHECK_VERSION(2,14,0)
+      vbox = gtk_dialog_get_content_area(GTK_DIALOG(query->dialog));
+#else
+      vbox = GTK_DIALOG(query->dialog)->vbox;
+#endif
+
+
+      gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 
       text = g_strdup_printf(
         _("Trust the certificate of host %s in the future"),
@@ -603,13 +605,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
       g_free(text);
 
-      gtk_box_pack_start(
-        GTK_BOX(GTK_DIALOG(query->dialog)->vbox),
-        query->checkbutton,
-        FALSE,
-        FALSE,
-        0
-      );
+      gtk_box_pack_start(GTK_BOX(vbox), query->checkbutton, FALSE, FALSE, 0);
 
       /* TODO: In which cases should the checkbutton be checked by default? */
 

@@ -24,7 +24,7 @@
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
-#include <gtk/gtktreemodel.h>
+#include <gtk/gtk.h>
 
 /* The three pointers in GtkTreeIter are used as follows:
  *

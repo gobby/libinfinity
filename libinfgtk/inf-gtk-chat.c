@@ -665,7 +665,11 @@ inf_gtk_chat_init(GTypeInstance* instance,
   gtk_text_view_set_indent(GTK_TEXT_VIEW(priv->chat_view), -12);
   /* TODO: this prevents copying via ctrl+c - maybe the entry ctrl+c
    * should catch this and copy from the textview instead: */
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_set_can_focus(priv->chat_view, FALSE);
+#else
   GTK_WIDGET_UNSET_FLAGS(priv->chat_view, GTK_CAN_FOCUS);
+#endif
   gtk_widget_show(priv->chat_view);
 
   /* TODO: These should probably be style properties: */

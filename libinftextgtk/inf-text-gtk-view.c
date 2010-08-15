@@ -18,6 +18,7 @@
 
 #include <libinftextgtk/inf-text-gtk-view.h>
 #include <libinfinity/inf-signals.h>
+#include <gdk/gdk.h>
 
 typedef struct _InfTextGtkViewUser InfTextGtkViewUser;
 struct _InfTextGtkViewUser {
@@ -308,13 +309,20 @@ inf_text_gtk_view_user_compute_user_area(InfTextGtkViewUser* view_user)
 static guint
 inf_text_gtk_view_get_left_margin(GtkTextView* view)
 {
+  GtkAdjustment* hadjustment;
   gint margin;
   gint hadj;
 
-  margin = gtk_text_view_get_left_margin(view);
-  if(!view->hadjustment) return margin;
+#if GTK_CHECK_VERSION(2,22,0)
+  hadjustment = gtk_text_view_get_hadjustment(view);
+#else
+  hadjustment = view->hadjustment;
+#endif
 
-  hadj = gtk_adjustment_get_value(view->hadjustment);
+  margin = gtk_text_view_get_left_margin(view);
+  if(!hadjustment) return margin;
+
+  hadj = gtk_adjustment_get_value(hadjustment);
   if(hadj < margin) return margin - hadj;
 
   return 0;
@@ -323,21 +331,28 @@ inf_text_gtk_view_get_left_margin(GtkTextView* view)
 static guint
 inf_text_gtk_view_get_right_margin(GtkTextView* view)
 {
+  GtkAdjustment* hadjustment;
   gint margin;
   gdouble hadj;
   gdouble hupper;
   gdouble hpage;
 
+#if GTK_CHECK_VERSION(2,22,0)
+  hadjustment = gtk_text_view_get_hadjustment(view);
+#else
+  hadjustment = view->hadjustment;
+#endif
+
   margin = gtk_text_view_get_right_margin(view);
-  if(!view->hadjustment) return margin;
+  if(!hadjustment) return margin;
 
   /* TODO: I am not exactly sure where this +1 comes from, but it is required
    * so that the selection is aligned with the local selection at the right
    * margin. */
-  hadj = gtk_adjustment_get_value(view->hadjustment) + 1;
+  hadj = gtk_adjustment_get_value(hadjustment) + 1;
 
   g_object_get(
-    G_OBJECT(view->hadjustment),
+    G_OBJECT(hadjustment),
     "upper", &hupper,
     "page-size", &hpage,
     NULL
@@ -363,7 +378,11 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
 
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view_user->view);
 
+#if GTK_CHECK_VERSION(2,20,0)
+  if(gtk_widget_get_realized(GTK_WIDGET(priv->textview)))
+#else
   if(GTK_WIDGET_REALIZED(priv->textview))
+#endif
   {
     window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
     gdk_drawable_get_size(GDK_DRAWABLE(window), &window_width, NULL);
@@ -583,6 +602,8 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
   GSList* prev_item;
   InfTextGtkViewUser* prev_user;
   InfTextGtkViewUser* view_user;
+  GtkAdjustment* hadjustment;
+  GtkAdjustment* vadjustment;
 
   GdkColor* color;
   double h, s, v;
@@ -611,7 +632,7 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
   /* Make selection color based on text color: If text is dark, selection
    * is dark, if text is bright selection is bright. Note that we draw with
    * 50% alpha only, so text remains readable. */
-  color = &widget->style->bg[GTK_STATE_NORMAL];
+  color = &gtk_widget_get_style(widget)->bg[GTK_STATE_NORMAL];
   h = color->red / 65535.0;
   s = color->green / 65535.0;
   v = color->blue / 65535.0;
@@ -646,11 +667,23 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
       rect.width = window_width - rect.x;
       rect.height = prev_user->line_height;
 
+#if GTK_CHECK_VERSION(2,90,5)
+      if(cairo_region_contains_rectangle(event->region, &rect) !=
+         CAIRO_REGION_OVERLAP_OUT)
+#else
       if(gdk_region_rect_in(event->region, &rect) != GDK_OVERLAP_RECTANGLE_OUT)
+#endif
       {
+#if GTK_CHECK_VERSION(2,22,0)
+        hadjustment = gtk_text_view_get_hadjustment(priv->textview);
+        vadjustment = gtk_text_view_get_vadjustment(priv->textview);
+#else
+        hadjustment = priv->textview->hadjustment;
+        vadjustment = priv->textview->vadjustment;
+#endif
         /* Construct pattern */
-        rx = gtk_adjustment_get_value(priv->textview->vadjustment);
-        ry = gtk_adjustment_get_value(priv->textview->hadjustment);
+        rx = gtk_adjustment_get_value(vadjustment);
+        ry = gtk_adjustment_get_value(hadjustment);
         pattern =
           cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
         cairo_matrix_init_translate(&matrix, rx, ry);
@@ -726,6 +759,8 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   guint n_users;
   GSList* users;
   cairo_pattern_t* pattern;
+  GtkAdjustment* hadjustment;
+  GtkAdjustment* vadjustment;
   double n;
   cairo_matrix_t matrix;
 
@@ -753,7 +788,7 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   }
   else
   {
-    cursor_color = &widget->style->text[GTK_STATE_NORMAL];
+    cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
     hc = cursor_color->red / 65535.0;
     sc = cursor_color->green / 65535.0;
     vc = cursor_color->blue / 65535.0;
@@ -762,7 +797,7 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   /* Make selection color based on text color: If text is dark, selection
    * is dark, if text is bright selection is bright. Note that we draw with
    * 50% alpha only, so text remains readable. */
-  cursor_color = &widget->style->text[GTK_STATE_NORMAL];
+  cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
   hs = cursor_color->red / 65535.0;
   ss = cursor_color->green / 65535.0;
   vs = cursor_color->blue / 65535.0;
@@ -977,9 +1012,17 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
       g_assert(prev_toggle != NULL);
       g_assert(n_users > 0);
 
+#if GTK_CHECK_VERSION(2,22,0)
+      hadjustment = gtk_text_view_get_hadjustment(priv->textview);
+      vadjustment = gtk_text_view_get_vadjustment(priv->textview);
+#else
+      hadjustment = priv->textview->hadjustment;
+      vadjustment = priv->textview->vadjustment;
+#endif
+
       /* Construct pattern */
-      rx = gtk_adjustment_get_value(priv->textview->hadjustment);
-      ry = gtk_adjustment_get_value(priv->textview->vadjustment);
+      rx = gtk_adjustment_get_value(hadjustment);
+      ry = gtk_adjustment_get_value(vadjustment);
       pattern =
         cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
       cairo_matrix_init_translate(&matrix, rx, ry);
@@ -1119,7 +1162,12 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
       rct.width = view_user->cursor_rect.width;
       rct.height = view_user->cursor_rect.height;
 
+#if GTK_CHECK_VERSION(2,90,5)
+      if(cairo_region_contains_rectangle(event->region, &rct) !=
+         CAIRO_REGION_OVERLAP_OUT)
+#else
       if(gdk_region_rect_in(event->region, &rct) != GDK_OVERLAP_RECTANGLE_OUT)
+#endif
       {
         hc = inf_text_user_get_hue(view_user->user);
 

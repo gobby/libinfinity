@@ -111,6 +111,21 @@ if test $platform = 'win32'; then
 fi
 
 ###################################
+# Check for GTK+ 3
+###################################
+
+AC_ARG_WITH([gtk3], AS_HELP_STRING([--with-gtk3],
+            [Builds libinfgtk and libinftextgtk against GTK+ 3 [[default=no]]]),
+	    [with_gtk3=$withval], [with_gtk3=no])
+
+if test "x$with_gtk3" = "xyes"
+then
+	gtk_requirement="gtk+-3.0 >= 2.90.6"
+else
+	gtk_requirement="gtk+-2.0 >= 2.12"
+fi
+
+###################################
 # libinftextgtk optional package
 ###################################
 
@@ -120,10 +135,10 @@ AC_ARG_WITH([inftextgtk], AS_HELP_STRING([--with-inftextgtk],
 
 if test "x$with_inftextgtk" = "xauto"
 then
-  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.12], [with_inftextgtk=yes], [with_inftextgtk=no])
+  PKG_CHECK_MODULES([inftextgtk], [$gtk_requirement], [with_inftextgtk=yes], [with_inftextgtk=no])
 elif test "x$with_inftextgtk" = "xyes"
 then
-  PKG_CHECK_MODULES([inftextgtk], [gtk+-2.0 >= 2.12])
+  PKG_CHECK_MODULES([inftextgtk], [$gtk_requirement])
 fi
 
 AM_CONDITIONAL([WITH_INFTEXTGTK], test "x$with_inftextgtk" = "xyes")
@@ -138,10 +153,10 @@ AC_ARG_WITH([infgtk], AS_HELP_STRING([--with-infgtk],
 
 if test "x$with_infgtk" = "xauto"
 then
-  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.12], [with_infgtk=yes], [with_infgtk=no])
+  PKG_CHECK_MODULES([infgtk], [$gtk_requirement], [with_infgtk=yes], [with_infgtk=no])
 elif test "x$with_infgtk" = "xyes"
 then
-  PKG_CHECK_MODULES([infgtk], [gtk+-2.0 >= 2.12])
+  PKG_CHECK_MODULES([infgtk], [$gtk_requirement])
 fi
 
 AM_CONDITIONAL([WITH_INFGTK], test "x$with_infgtk" = "xyes")

@@ -1,5 +1,32 @@
 2010-08-15  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Added a --with-gtk3 switch which makes libinfgtk and
+	libinftexgtk build against GTK+ 3.
+
+	* libinfgtk/inf-gtk-browser-model-filter.h:
+	* libinfgtk/inf-gtk-browser-model-sort.h:
+	* libinfgtk/inf-gtk-browser-model.h:
+	* libinfgtk/inf-gtk-browser-store.h:
+	* libinfgtk/inf-gtk-browser-store.c:
+	* libinfgtk/inf-gtk-browser-view.h:
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/inf-gtk-certificate-dialog.c:
+	* libinfgtk/inf-gtk-certificate-manager.c:
+	* libinfgtk/inf-gtk-certificate-view.c:
+	* libinfgtk/inf-gtk-chat.c:
+	* libinftextgtk/inf-text-gtk-buffer.h:
+	* libinftextgtk/inf-text-gtk-hue-chooser.h:
+	* libinftextgtk/inf-text-gtk-hue-chooser.c:
+	* libinftextgtk/inf-text-gtk-view.h:
+	* libinftextgtk/inf-text-gtk-view.c:
+	* libinftextgtk/inf-text-gtk-viewport.h:
+	* libinftextgtk/inf-text-gtk-viewport.c: Make libinfgtk and
+	libinftextgtk compile with GTK+ 3. This involves adhering to the
+	single include policy and replacing some sealed struct member accesses
+	with their corresponding accessor functions.
+
+2010-08-15  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-chat-session.c (inf_chat_session_user_join,
 	inf_chat_session_user_part): Set correct flags for userjoin and
 	userpart messages.

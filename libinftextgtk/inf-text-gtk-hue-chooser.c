@@ -37,7 +37,6 @@ struct _InfTextGtkHueChooserPrivate {
   gdouble hue;
 
   GdkWindow* window;
-  GdkGC* gc;
 
   guint ring_width;
   guint size;
@@ -153,6 +152,7 @@ inf_text_gtk_hue_chooser_is_in_ring(InfTextGtkHueChooser* chooser,
                                     gdouble y)
 {
   InfTextGtkHueChooserPrivate* priv;
+  GtkAllocation allocation;
   gdouble center_x;
   gdouble center_y;
   gdouble dx;
@@ -161,9 +161,15 @@ inf_text_gtk_hue_chooser_is_in_ring(InfTextGtkHueChooser* chooser,
   gdouble outer;
   gdouble dist_sqr;
 
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_get_allocation(GTK_WIDGET(chooser), &allocation);
+#else
+  allocation = GTK_WIDGET(chooser)->allocation;
+#endif
+
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
-  center_x = GTK_WIDGET(chooser)->allocation.width / 2.0;
-  center_y = GTK_WIDGET(chooser)->allocation.height / 2.0;
+  center_x = allocation.width / 2.0;
+  center_y = allocation.height / 2.0;
   outer = priv->size / 2.0;
   inner = outer - priv->ring_width;
   dx = x - center_x;
@@ -178,14 +184,21 @@ inf_text_gtk_hue_chooser_hue_by_coords(InfTextGtkHueChooser* chooser,
                                        gdouble x,
                                        gdouble y)
 {
+  GtkAllocation allocation;
   double center_x;
   double center_y;
   double dx;
   double dy;
   double angle;
 
-  center_x = GTK_WIDGET(chooser)->allocation.width / 2.0;
-  center_y = GTK_WIDGET(chooser)->allocation.height / 2.0;
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_get_allocation(GTK_WIDGET(chooser), &allocation);
+#else
+  allocation = GTK_WIDGET(chooser)->allocation;
+#endif
+
+  center_x = allocation.width / 2.0;
+  center_y = allocation.height / 2.0;
 
   dx = x - center_x;
   dy = center_y - y;
@@ -205,6 +218,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
                                gint height)
 {
   InfTextGtkHueChooserPrivate* priv;
+  GtkAllocation allocation;
   int xx, yy;
   gdouble dx, dy, dist;
   gdouble center_x;
@@ -232,8 +246,14 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
     NULL
   );
 
-  center_x = GTK_WIDGET(chooser)->allocation.width / 2.0;
-  center_y = GTK_WIDGET(chooser)->allocation.height / 2.0;
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_get_allocation(GTK_WIDGET(chooser), &allocation);
+#else
+  allocation = GTK_WIDGET(chooser)->allocation;
+#endif
+
+  center_x = allocation.width / 2.0;
+  center_y = allocation.height / 2.0;
 
   outer = priv->size / 2.0;
   inner = outer - priv->ring_width;
@@ -352,12 +372,16 @@ inf_text_gtk_hue_chooser_init(GTypeInstance* instance,
   hue_chooser = INF_TEXT_GTK_HUE_CHOOSER(instance);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(hue_chooser);
 
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_set_has_window(GTK_WIDGET(hue_chooser), FALSE);
+  gtk_widget_set_can_focus(GTK_WIDGET(hue_chooser), TRUE);
+#else
   GTK_WIDGET_SET_FLAGS(hue_chooser, GTK_NO_WINDOW);
   GTK_WIDGET_SET_FLAGS(hue_chooser, GTK_CAN_FOCUS);
+#endif
 
   priv->hue = 0.0;
   priv->window = NULL;
-  priv->gc = NULL;
   priv->ring_width = 50;
   priv->size = 240;
   priv->mode = INF_TEXT_GTK_HUE_CHOOSER_DRAG_NONE;
@@ -468,19 +492,30 @@ inf_text_gtk_hue_chooser_realize(GtkWidget* widget)
 {
   InfTextGtkHueChooser* chooser;
   InfTextGtkHueChooserPrivate* priv;
+  GtkAllocation allocation;
   GdkWindowAttr attr;
   GdkWindow* parent_window;
 
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
+#if GTK_CHECK_VERSION(2,20,0)
+  gtk_widget_set_realized(widget, TRUE);
+#else
   GTK_WIDGET_SET_FLAGS(widget, GTK_REALIZED);
+#endif
+
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_get_allocation(widget, &allocation);
+#else
+  allocation = widget->allocation;
+#endif
 
   attr.window_type = GDK_WINDOW_CHILD;
-  attr.x = widget->allocation.x;
-  attr.y = widget->allocation.y;
-  attr.width = widget->allocation.width;
-  attr.height = widget->allocation.height;
+  attr.x = allocation.x;
+  attr.y = allocation.y;
+  attr.width = allocation.width;
+  attr.height = allocation.height;
   attr.wclass = GDK_INPUT_ONLY;
   attr.event_mask = gtk_widget_get_events(widget);
   attr.event_mask |= (
@@ -493,14 +528,20 @@ inf_text_gtk_hue_chooser_realize(GtkWidget* widget)
   );
 
   parent_window = gtk_widget_get_parent_window(widget);
+  g_object_ref(parent_window);
+
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_set_window(widget, parent_window);
+#else
   widget->window = parent_window;
-  g_object_ref(widget->window);
+#endif
 
   priv->window = gdk_window_new(parent_window, &attr, GDK_WA_X | GDK_WA_Y);
-  gdk_window_set_user_data(priv->window, chooser);
-  widget->style = gtk_style_attach(widget->style, widget->window);
-
-  priv->gc = gdk_gc_new(parent_window);
+  gdk_window_set_user_data(parent_window, chooser);
+  gtk_widget_set_style(
+    widget,
+    gtk_style_attach(gtk_widget_get_style(widget), parent_window)
+  );
 }
 
 static void
@@ -515,9 +556,6 @@ inf_text_gtk_hue_chooser_unrealize(GtkWidget* widget)
   gdk_window_set_user_data(priv->window, NULL);
   gdk_window_destroy(priv->window);
   priv->window = NULL;
-
-  g_object_unref(priv->gc);
-  priv->gc = NULL;
 
   GTK_WIDGET_CLASS(parent_class)->unrealize(widget);
 }
@@ -555,9 +593,17 @@ inf_text_gtk_hue_chooser_size_allocate(GtkWidget* widget,
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_set_allocation(widget, allocation);
+#else
   widget->allocation = *allocation;
+#endif
 
+#if GTK_CHECK_VERSION(2,20,0)
+  if(gtk_widget_get_realized(widget))
+#else
   if(GTK_WIDGET_REALIZED(widget))
+#endif
   {
     /* TODO: Keep 1:1 aspect ratio, center within allocation, set size
      * accordingly, always request only ring_width * 2. */
@@ -674,6 +720,7 @@ inf_text_gtk_hue_chooser_expose_event(GtkWidget* widget,
 {
   InfTextGtkHueChooser* chooser;
   InfTextGtkHueChooserPrivate* priv;
+  GtkAllocation allocation;
   GdkRectangle rect;
   GdkRectangle dest;
   cairo_t* cr;
@@ -681,33 +728,54 @@ inf_text_gtk_hue_chooser_expose_event(GtkWidget* widget,
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
-
+#if GTK_CHECK_VERSION(2,18,0)
+  if(!(gtk_widget_is_drawable(widget) &&
+       event->window == gtk_widget_get_window(widget)))
+  {
+    return FALSE;
+  }
+#else
   if(!(GTK_WIDGET_DRAWABLE(widget) && event->window == widget->window))
     return FALSE;
+#endif
 
-  rect.x = widget->allocation.x;
-  rect.y = widget->allocation.y;
-  rect.width = widget->allocation.width;
-  rect.height = widget->allocation.height;
+#if GTK_CHECK_VERSION(2,18,0)
+  gtk_widget_get_allocation(widget, &allocation);
+#else
+  allocation = widget->allocation;
+#endif
+
+  rect.x = allocation.x;
+  rect.y = allocation.y;
+  rect.width = allocation.width;
+  rect.height = allocation.height;
 
   if(!gdk_rectangle_intersect(&event->area, &rect, &dest))
     return FALSE;
 
+#if GTK_CHECK_VERSION(2,14,0)
+  cr = gdk_cairo_create(gtk_widget_get_window(widget));
+#else
   cr = gdk_cairo_create(widget->window);
-  cairo_translate(cr, widget->allocation.x, widget->allocation.y);
+#endif
+  cairo_translate(cr, allocation.x, allocation.y);
 
   inf_text_gtk_hue_chooser_paint(
     chooser,
     cr,
-    dest.x - widget->allocation.x,
-    dest.y - widget->allocation.y,
+    dest.x - allocation.x,
+    dest.y - allocation.y,
     dest.width,
     dest.height
   );
 
   cairo_destroy(cr);
 
-  if(GTK_WIDGET_HAS_FOCUS(chooser))
+#if GTK_CHECK_VERSION(2,18,0)
+  if(gtk_widget_has_focus(widget))
+#else
+  if(GTK_WIDGET_HAS_FOCUS(widget))
+#endif
   {
     /* This looks irritating: */
 #if 0
@@ -739,7 +807,11 @@ inf_text_gtk_hue_chooser_focus(GtkWidget* widget,
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
+#if GTK_CHECK_VERSION(2,18,0)
+  if(!gtk_widget_has_focus(widget))
+#else
   if(!GTK_WIDGET_HAS_FOCUS(widget))
+#endif
   {
     gtk_widget_grab_focus(GTK_WIDGET(widget));
     return TRUE;

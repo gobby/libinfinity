@@ -233,6 +233,7 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
   gint stepper_size;
   gint stepper_spacing;
   gint border;
+  GdkRectangle allocation;
   gint scroll_ox;
   gint scroll_oy;
   gint dy;
@@ -241,8 +242,13 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
 
   textview = gtk_bin_get_child(GTK_BIN(priv->scroll));
   scrollbar = gtk_scrolled_window_get_vscrollbar(priv->scroll);
+#if GTK_CHECK_VERSION(2,20,0)
+  if(GTK_IS_TEXT_VIEW(textview) && scrollbar != NULL &&
+     gtk_widget_get_realized(textview))
+#else
   if(GTK_IS_TEXT_VIEW(textview) && scrollbar != NULL &&
      GTK_WIDGET_REALIZED(textview))
+#endif
   {
     gtk_text_buffer_get_iter_at_offset(
       gtk_text_view_get_buffer(GTK_TEXT_VIEW(textview)),
@@ -272,31 +278,36 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
       NULL
     );
 
+#if GTK_CHECK_VERSION(2,18,0)
+    gtk_widget_get_allocation(scrollbar, &allocation);
+#else
+    allocation = scrollbar->allocation;
+#endif
+
     scroll_ox = border + 1 /* ?? */;
     scroll_oy = stepper_size + stepper_spacing;
-    scroll_height = scrollbar->allocation.height - 2*scroll_oy;
+    scroll_height = allocation.height - 2*scroll_oy;
 
     if(end_y > 0)
       y = y * scroll_height / end_y;
 
-    user->rectangle.x = scroll_ox + scrollbar->allocation.x;
-    user->rectangle.y = scroll_oy + scrollbar->allocation.y + y - slider_size/3;
+    user->rectangle.x = scroll_ox + allocation.x;
+    user->rectangle.y = scroll_oy + allocation.y + y - slider_size/3;
     user->rectangle.width = slider_size - 2*scroll_ox;
     user->rectangle.height = slider_size*2/3;
 
-    if(user->rectangle.y < scroll_oy + scrollbar->allocation.y)
+    if(user->rectangle.y < scroll_oy + allocation.y)
     {
-      dy = scroll_oy + scrollbar->allocation.y - user->rectangle.y;
+      dy = scroll_oy + allocation.y - user->rectangle.y;
       user->rectangle.y += dy;
       user->rectangle.height -= dy;
     }
 
     if(user->rectangle.y + user->rectangle.height >
-       scroll_oy + scrollbar->allocation.y + scroll_height)
+       scroll_oy + allocation.y + scroll_height)
     {
       user->rectangle.height =
-        scroll_oy + scrollbar->allocation.y + scroll_height -
-        user->rectangle.y;
+        scroll_oy + allocation.y + scroll_height - user->rectangle.y;
     }
   }
   else
@@ -332,6 +343,7 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
   InfTextGtkViewportUser* viewport_user;
+  GdkRectangle* rectangle;
   GdkColor* color;
   double h,s,v;
   double r,g,b;
@@ -349,7 +361,7 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
 #endif
     return FALSE;
 
-  color = &scrollbar->style->bg[GTK_STATE_NORMAL];
+  color = &gtk_widget_get_style(scrollbar)->bg[GTK_STATE_NORMAL];
   h = color->red / 65535.0;
   s = color->green / 65535.0;
   v = color->blue / 65535.0;
@@ -361,15 +373,22 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
   for(item = priv->users; item != NULL; item = item->next)
   {
     viewport_user = (InfTextGtkViewportUser*)item->data;
-    if(gdk_region_rect_in(event->region, &viewport_user->rectangle) !=
+    rectangle = &viewport_user->rectangle;
+
+#if GTK_CHECK_VERSION(2,90,5)
+    if(cairo_region_contains_rectangle(event->region, rectangle) !=
+       CAIRO_REGION_OVERLAP_OUT)
+#else
+    if(gdk_region_rect_in(event->region, rectangle) !=
        GDK_OVERLAP_RECTANGLE_OUT)
+#endif
     {
       h = inf_text_user_get_hue(viewport_user->user);
       r = h; g = s; b = v;
       hsv_to_rgb(&r, &g, &b);
 
       cairo_set_source_rgba(cr, r, g, b, 0.6);
-      gdk_cairo_rectangle(cr, &viewport_user->rectangle);
+      gdk_cairo_rectangle(cr, rectangle);
       cairo_fill(cr);
     }
   }

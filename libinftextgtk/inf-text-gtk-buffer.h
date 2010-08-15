@@ -24,8 +24,7 @@
 #include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-user.h>
 
-#include <gtk/gtktextbuffer.h>
-
+#include <gtk/gtk.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS

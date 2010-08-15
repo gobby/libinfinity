@@ -21,8 +21,8 @@
 #define __INF_GTK_BROWSER_MODEL_FILTER_H__
 
 #include <libinfgtk/inf-gtk-browser-model.h>
-#include <gtk/gtktreemodelfilter.h>
 
+#include <gtk/gtk.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS

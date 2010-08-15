@@ -23,7 +23,7 @@
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/common/inf-discovery.h>
 
-#include <gtk/gtktreemodel.h>
+#include <gtk/gtk.h>
 
 #include <glib-object.h>
 

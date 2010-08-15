@@ -91,7 +91,8 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
     caption = gtk_label_new(NULL);
     gtk_misc_set_alignment(GTK_MISC(caption), 0.0, 0.0);
     gtk_label_set_line_wrap(GTK_LABEL(caption), TRUE);
-    size = pango_font_description_get_size(caption->style->font_desc);
+    size = pango_font_description_get_size(
+      gtk_widget_get_style(caption)->font_desc);
     font_desc = pango_font_description_new();
     pango_font_description_set_weight(font_desc, PANGO_WEIGHT_BOLD);
     pango_font_description_set_size(font_desc, size * PANGO_SCALE_LARGE);
@@ -398,6 +399,7 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
   GtkWidget* image;
   GtkWidget* hbox;
   GtkWidget* scroll;
+  GtkWidget* vbox;
   GtkTreeViewColumn* column;
   GtkCellRenderer* renderer;
   GtkTreeSelection* selection;
@@ -575,15 +577,15 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
 
   gtk_widget_show(priv->main_vbox);
 
-  gtk_box_pack_start(
-    GTK_BOX(GTK_DIALOG(dialog)->vbox),
-    priv->main_vbox,
-    TRUE,
-    TRUE,
-    0
-  );
+#if GTK_CHECK_VERSION(2,14,0)
+  vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+#else
+  vbox = GTK_DIALOG(dialog)->vbox;
+#endif
 
-  gtk_box_set_spacing(GTK_BOX(GTK_DIALOG(dialog)->vbox), 12);
+  gtk_box_pack_start(GTK_BOX(vbox), priv->main_vbox, TRUE, TRUE, 0);
+
+  gtk_box_set_spacing(GTK_BOX(vbox), 12);
 
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
   gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);

@@ -22,8 +22,7 @@
 #include <libinftext/inf-text-user.h>
 #include <libinfinity/common/inf-user-table.h>
 
-#include <gtk/gtkscrolledwindow.h>
-
+#include <gtk/gtk.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS

@@ -23,15 +23,7 @@
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
-#include <gtk/gtktreeview.h>
-#include <gtk/gtktreeviewcolumn.h>
-#include <gtk/gtktreeselection.h>
-#include <gtk/gtkcellrendererpixbuf.h>
-#include <gtk/gtkcellrenderertext.h>
-#include <gtk/gtkcellrendererprogress.h>
-#include <gtk/gtkimagemenuitem.h>
-#include <gtk/gtkstock.h>
-
+#include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
 
 #define INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION \
@@ -217,7 +209,11 @@ inf_gtk_browser_view_redraw_row(InfGtkBrowserView* view,
    * in the GTK+ treeview and friends. */
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
+#if GTK_CHECK_VERSION(2,20,0)
+  if(gtk_widget_get_realized(priv->treeview))
+#else
   if(GTK_WIDGET_REALIZED(priv->treeview))
+#endif
   {
     gtk_tree_view_get_cell_area(
       GTK_TREE_VIEW(priv->treeview),

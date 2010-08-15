@@ -21,9 +21,8 @@
 #define __INF_GTK_BROWSER_VIEW_H__
 
 #include <libinfgtk/inf-gtk-browser-model.h>
-#include <gtk/gtkbin.h>
-#include <gtk/gtkmenu.h>
 
+#include <gtk/gtk.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS

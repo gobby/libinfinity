@@ -24,8 +24,8 @@
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/communication/inf-communication-manager.h>
-#include <gtk/gtktreemodel.h>
 
+#include <gtk/gtk.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS

@@ -23,8 +23,7 @@
 #include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-io.h>
 
-#include <gtk/gtktextview.h>
-
+#include <gtk/gtk.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS

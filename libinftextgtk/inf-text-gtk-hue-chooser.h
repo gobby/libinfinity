@@ -20,7 +20,7 @@
 #ifndef __INF_TEXT_GTK_HUE_CHOOSER_H__
 #define __INF_TEXT_GTK_HUE_CHOOSER_H__
 
-#include <gtk/gtkwidget.h>
+#include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
