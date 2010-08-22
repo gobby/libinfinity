@@ -26,6 +26,7 @@
 #include <libinfinity/server/infd-tcp-server.h>
 #include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-protocol.h>
 
 #ifdef LIBINFINITY_HAVE_AVAHI
 #include <libinfinity/common/inf-discovery-avahi.h>
@@ -56,7 +57,7 @@ main(int argc, char* argv[])
   server = g_object_new(
     INFD_TYPE_TCP_SERVER,
     "io", io,
-    "local-port", 6523,
+    "local-port", inf_protocol_get_default_port(),
     NULL
   );
 

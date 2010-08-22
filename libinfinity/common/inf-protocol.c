@@ -135,4 +135,18 @@ inf_protocol_parse_version(const gchar* version,
   return TRUE;
 }
 
+/**
+ * inf_protocol_get_default_port:
+ *
+ * Returns the default port on which the infinote daemon listens for new
+ * connections.
+ *
+ * Returns: The default port.
+ */
+guint
+inf_protocol_get_default_port(void)
+{
+  return 6523;
+}
+
 /* vim:set et sw=2 ts=2: */

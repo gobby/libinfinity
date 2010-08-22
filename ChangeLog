@@ -1,5 +1,17 @@
 2010-08-22  Jesse van den Kieboom  <jessevdk@gnome.org>
 
+	* libinfinity/common/inf-protocol.h:
+	* libinfinity/common/inf-protocol.c: Add
+	inf_protocol_get_default_port().
+
+	* infinoted/infinoted-options.c:
+	* test/inf-test-browser.c:
+	* test/inf-test-chat.c:
+	* test/inf-test-daemon.c: Make use of the new function instead of
+	hardcoding the port value.
+
+2010-08-22  Jesse van den Kieboom  <jessevdk@gnome.org>
+
 	* libinftextgtk/inf-text-gtk-hue-chooser.c
 	(inf_text_gtk_hue_chooser_realize): Set correct user_data for correct
 	window, fixing the behavior of the hue chooser.

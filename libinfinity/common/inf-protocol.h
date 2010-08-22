@@ -33,6 +33,9 @@ inf_protocol_parse_version(const gchar* version,
                            guint* minor,
                            GError** error);
 
+guint
+inf_protocol_get_default_port(void);
+
 G_END_DECLS
 
 #endif /* __INF_PROTOCOL_H__ */

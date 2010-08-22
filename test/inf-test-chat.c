@@ -26,6 +26,7 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>
+#include <libinfinity/common/inf-protocol.h>
 
 #include <string.h>
 
@@ -350,7 +351,7 @@ main(int argc, char* argv[])
 
   error = NULL;
   tcp_conn =
-    inf_tcp_connection_new_and_open(INF_IO(test.io), address, 6523, &error);
+    inf_tcp_connection_new_and_open(INF_IO(test.io), address, inf_protocol_get_default_port(), &error);
 
   inf_ip_address_free(address);
 

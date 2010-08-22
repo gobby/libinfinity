@@ -22,6 +22,7 @@
 #include <infinoted/infinoted-options.h>
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/common/inf-protocol.h>
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
 # include <libdaemon/dpid.h>
@@ -877,7 +878,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->certificate_chain_file = NULL;
   options->create_key = FALSE;
   options->create_certificate = FALSE;
-  options->port = 6523;
+  options->port = inf_protocol_get_default_port();
   options->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);

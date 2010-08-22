@@ -980,6 +980,7 @@ inf_gsasl_set_error
 <TITLE>InfProtocol</TITLE>
 inf_protocol_get_version
 inf_protocol_parse_version
+inf_protocol_get_default_port
 </SECTION>
 
 <SECTION>
