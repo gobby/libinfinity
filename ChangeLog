@@ -1,3 +1,9 @@
+2010-08-22  Jesse van den Kieboom  <jessevdk@gnome.org>
+
+	* libinftextgtk/inf-text-gtk-hue-chooser.c
+	(inf_text_gtk_hue_chooser_realize): Set correct user_data for correct
+	window, fixing the behavior of the hue chooser.
+
 2010-08-15  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Added a --with-gtk3 switch which makes libinfgtk and

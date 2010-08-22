@@ -537,7 +537,7 @@ inf_text_gtk_hue_chooser_realize(GtkWidget* widget)
 #endif
 
   priv->window = gdk_window_new(parent_window, &attr, GDK_WA_X | GDK_WA_Y);
-  gdk_window_set_user_data(parent_window, chooser);
+  gdk_window_set_user_data(priv->window, chooser);
   gtk_widget_set_style(
     widget,
     gtk_style_attach(gtk_widget_get_style(widget), parent_window)
