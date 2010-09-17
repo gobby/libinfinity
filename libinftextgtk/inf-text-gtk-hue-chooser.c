@@ -970,7 +970,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_Up,
+    GDK_KEY_Up,
     0,
     "move",
     1,
@@ -980,7 +980,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_KP_Up,
+    GDK_KEY_KP_Up,
     0,
     "move",
     1,
@@ -990,7 +990,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_Down,
+    GDK_KEY_Down,
     0,
     "move",
     1,
@@ -1000,7 +1000,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_KP_Down,
+    GDK_KEY_KP_Down,
     0,
     "move",
     1,
@@ -1010,7 +1010,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_Right,
+    GDK_KEY_Right,
     0,
     "move",
     1,
@@ -1020,7 +1020,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_KP_Right,
+    GDK_KEY_KP_Right,
     0,
     "move",
     1,
@@ -1030,7 +1030,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_Left,
+    GDK_KEY_Left,
     0,
     "move",
     1,
@@ -1040,7 +1040,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-    GDK_KP_Left,
+    GDK_KEY_KP_Left,
     0,
     "move",
     1,

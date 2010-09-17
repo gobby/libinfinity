@@ -520,7 +520,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       query->connection = connection;
       query->dialog = inf_gtk_certificate_dialog_new(
         priv->parent_window,
-        GTK_DIALOG_NO_SEPARATOR,
+        0,
         flags,
         hostname,
         chain

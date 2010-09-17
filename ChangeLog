@@ -1,3 +1,12 @@
+2010-09-17  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/inf-gtk-certificate-dialog.c:
+	* libinfgtk/inf-gtk-certificate-manager.c:
+	* libinfgtk/inf-gtk-chat.c:
+	* libinftextgtk/inf-text-gtk-hue-chooser.c: Adapt to recent changes in
+	GTK+ 3.
+
 2010-08-22  Jesse van den Kieboom  <jessevdk@gnome.org>
 
 	* libinfinity/common/inf-protocol.h:

@@ -1823,7 +1823,7 @@ inf_gtk_browser_view_key_press_event_cb(GtkTreeView* treeview,
   GtkTreeSelection* selection;
   GtkTreeIter iter;
 
-  if(event->keyval == GDK_Menu)
+  if(event->keyval == GDK_KEY_Menu)
   {
     selection = gtk_tree_view_get_selection(treeview);
     if(gtk_tree_selection_get_selected(selection, NULL, &iter))
