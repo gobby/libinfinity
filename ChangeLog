@@ -1,5 +1,13 @@
 2010-09-19  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinfgtk/inf-gtk-certificate-dialog.c:
+	* libinfgtk/inf-gtk-certificate-manager.c:
+	* libinfgtk/inf-gtk-chat.c:
+	* libinftextgtk/inf-text-gtk-hue-chooser.c: Fix the GTK+2 build (#545).
+
+2010-09-19  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-main.c: Include <sys/types.h> and <sys/stat.h>,
 	so that umask() is available (fixes the build on Ubuntu).
 

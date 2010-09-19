@@ -375,7 +375,11 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
   /* This must not be pressed for tab completion to be triggered: */
 #define MASK (GDK_SHIFT_MASK | GDK_CONTROL_MASK | GDK_MOD1_MASK)
 
+#if GTK_CHECK_VERSION(2,90,7)
   if(event->keyval == GDK_KEY_Tab && (event->state & MASK) == 0)
+#else
+  if(event->keyval == GDK_Tab && (event->state & MASK) == 0)
+#endif
   {
     index = gtk_editable_get_position(GTK_EDITABLE(widget));
     if(priv->completion_text != NULL && index != priv->completion_end)
