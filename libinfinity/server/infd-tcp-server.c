@@ -220,7 +220,7 @@ infd_tcp_server_io(InfNativeSocket* socket,
       errno = 0;
 #endif
       len = sizeof(native_addr);
-      new_socket = accept(priv->socket, &native_addr, &len);
+      new_socket = accept(priv->socket, &native_addr.in_generic, &len);
       errcode = INFD_TCP_SERVER_LAST_ERROR;
 
       if(new_socket == INVALID_SOCKET &&
