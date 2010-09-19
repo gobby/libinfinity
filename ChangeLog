@@ -1,5 +1,10 @@
 2010-09-19  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-main.c: Include <sys/types.h> and <sys/stat.h>,
+	so that umask() is available (fixes the build on Ubuntu).
+
+2010-09-19  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-tcp-server.c (infd_tcp_server_io): Fix a
 	compiler warning.
 

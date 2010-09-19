@@ -29,6 +29,8 @@
 #include <libdaemon/dfork.h>
 #include <libdaemon/dpid.h>
 #include <libdaemon/dlog.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #endif
 
 #include <locale.h>
