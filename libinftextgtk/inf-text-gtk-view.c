@@ -30,7 +30,7 @@ struct _InfTextGtkViewUser {
 
   /* All in buffer coordinates: */
 
-  /* The rectanglular area occupied by the cursor */
+  /* The rectangular area occupied by the cursor */
   GdkRectangle cursor_rect;
   /* The position and height of the selection bound. width is ignored. */
   GdkRectangle selection_bound_rect;
@@ -62,6 +62,10 @@ struct _InfTextGtkViewPrivate {
   InfUserTable* user_table;
   InfTextUser* active_user;
   GSList* users;
+  
+  gboolean show_remote_cursors;
+  gboolean show_remote_selections;
+  gboolean show_remote_current_lines;
 };
 
 enum {
@@ -73,7 +77,11 @@ enum {
   PROP_USER_TABLE,
 
   /* read/write */
-  PROP_ACTIVE_USER
+  PROP_ACTIVE_USER,
+  
+  PROP_SHOW_REMOTE_CURSORS,
+  PROP_SHOW_REMOTE_SELECTIONS,
+  PROP_SHOW_REMOTE_CURRENT_LINES
 };
 
 #define INF_TEXT_GTK_VIEW_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_VIEW, InfTextGtkViewPrivate))
@@ -276,6 +284,11 @@ inf_text_gtk_view_user_compute_user_area(InfTextGtkViewUser* view_user)
     &view_user->line_height
   );
 
+  /* TODO: We don't need the cursor rect for show-remote-current-lines, and
+   * we don't need the selection rect for show-remote-cursors and
+   * show-remote-current-lines. So we might not even want to compute them in
+   * if those are disabled. */
+
   /* Find cursor position */
   gtk_text_view_get_iter_location(
     priv->textview,
@@ -384,85 +397,97 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
   if(GTK_WIDGET_REALIZED(priv->textview))
 #endif
   {
-    window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
-    gdk_drawable_get_size(GDK_DRAWABLE(window), &window_width, NULL);
+    /* Invalidate cursors/selections */
+    if(priv->show_remote_cursors || priv->show_remote_selections)
+    {
+      window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
+      gdk_drawable_get_size(GDK_DRAWABLE(window), &window_width, NULL);
 
-    gtk_text_view_buffer_to_window_coords(
-      priv->textview,
-      GTK_TEXT_WINDOW_TEXT,
-      view_user->cursor_rect.x, view_user->cursor_rect.y,
-      &invalidate_rect.x, &invalidate_rect.y
-    );
+      gtk_text_view_buffer_to_window_coords(
+        priv->textview,
+        GTK_TEXT_WINDOW_TEXT,
+        view_user->cursor_rect.x, view_user->cursor_rect.y,
+        &invalidate_rect.x, &invalidate_rect.y
+      );
 
-    invalidate_rect.width = view_user->cursor_rect.width;
-    invalidate_rect.height = view_user->cursor_rect.height;
+      invalidate_rect.width = view_user->cursor_rect.width;
+      invalidate_rect.height = view_user->cursor_rect.height;
 
-    /* Don't check for InfTextUser's selection length here so that clearing
-     * a previous selection works. */
-    if(view_user->selection_bound_rect.x != view_user->cursor_rect.x ||
-       view_user->selection_bound_rect.y != view_user->cursor_rect.y)
+      /* Don't check for InfTextUser's selection length here so that clearing
+       * a previous selection works. */
+      if(priv->show_remote_selections &&
+         (view_user->selection_bound_rect.x != view_user->cursor_rect.x ||
+          view_user->selection_bound_rect.y != view_user->cursor_rect.y))
+      {
+        gtk_text_view_buffer_to_window_coords(
+          priv->textview,
+          GTK_TEXT_WINDOW_TEXT,
+          view_user->selection_bound_rect.x,
+          view_user->selection_bound_rect.y,
+          &selection_bound_x, &selection_bound_y
+        );
+
+        /* Invalidate the whole area between cursor and selection bound */
+        if(selection_bound_y == invalidate_rect.y)
+        {
+          /* Cursor and selection bound are on the same line */
+          if(selection_bound_x > invalidate_rect.x)
+          {
+            /* Selection bound is to the right of cursor */
+            invalidate_rect.width = MAX(
+              selection_bound_x - invalidate_rect.x,
+              invalidate_rect.width
+            );
+          }
+          else
+          {
+            /* Selection bound is to the left of cursor */
+            invalidate_rect.width += (invalidate_rect.x - selection_bound_x);
+            invalidate_rect.x = selection_bound_x;
+          }
+        }
+        else
+        {
+          /* Cursor and selection bound are on different lines. Could split
+           * the actual area to be invalidated into three rectangles here,
+           * but let's just do the union for simplicity reasons. */
+          invalidate_rect.width = window_width;
+          invalidate_rect.height = MAX(
+            invalidate_rect.y + invalidate_rect.height,
+            selection_bound_y + view_user->selection_bound_rect.height
+          ) - MIN(invalidate_rect.y, selection_bound_y);
+
+          invalidate_rect.x =
+            inf_text_gtk_view_get_left_margin(priv->textview);
+          invalidate_rect.y = MIN(invalidate_rect.y, selection_bound_y);
+
+          invalidate_rect.width -=
+            inf_text_gtk_view_get_left_margin(priv->textview) +
+            inf_text_gtk_view_get_right_margin(priv->textview);
+        }
+      }
+
+     gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
+   }
+
+    /* Invalidate current lines */
+    if(priv->show_remote_current_lines)
     {
       gtk_text_view_buffer_to_window_coords(
         priv->textview,
         GTK_TEXT_WINDOW_TEXT,
-        view_user->selection_bound_rect.x, view_user->selection_bound_rect.y,
-        &selection_bound_x, &selection_bound_y
+        0, view_user->line_y,
+        NULL, &invalidate_rect.y
       );
 
-      /* Invalidate the whole area between cursor and selection bound */
-      if(selection_bound_y == invalidate_rect.y)
-      {
-        /* Cursor and selection bound are on the same line */
-        if(selection_bound_x > invalidate_rect.x)
-        {
-          /* Selection bound is to the right of cursor */
-          invalidate_rect.width = MAX(
-            selection_bound_x - invalidate_rect.x,
-            invalidate_rect.width
-          );
-        }
-        else
-        {
-          /* Selection bound is to the left of cursor */
-          invalidate_rect.width += (invalidate_rect.x - selection_bound_x);
-          invalidate_rect.x = selection_bound_x;
-        }
-      }
-      else
-      {
-        /* Cursor and selection bound are on different lines. Could split
-         * the actual area to be invalidated into three rectangles here,
-         * but let's just do the union for simplicity reasons. */
-        invalidate_rect.width = window_width;
-        invalidate_rect.height = MAX(
-          invalidate_rect.y + invalidate_rect.height,
-          selection_bound_y + view_user->selection_bound_rect.height
-        ) - MIN(invalidate_rect.y, selection_bound_y);
+      /* -1 to stay consistent with GtkSourceView */
+      invalidate_rect.x =
+        inf_text_gtk_view_get_left_margin(priv->textview) - 1;
+      invalidate_rect.width = window_width - invalidate_rect.x;
+      invalidate_rect.height = view_user->line_height;
 
-        invalidate_rect.x = inf_text_gtk_view_get_left_margin(priv->textview);
-        invalidate_rect.y = MIN(invalidate_rect.y, selection_bound_y);
-
-        invalidate_rect.width -=
-          inf_text_gtk_view_get_left_margin(priv->textview) +
-          inf_text_gtk_view_get_right_margin(priv->textview);
-      }
+      gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
     }
-
-    gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
-
-    gtk_text_view_buffer_to_window_coords(
-      priv->textview,
-      GTK_TEXT_WINDOW_TEXT,
-      0, view_user->line_y,
-      NULL, &invalidate_rect.y
-    );
-
-    /* -1 to stay consistent with GtkSourceView */
-    invalidate_rect.x = inf_text_gtk_view_get_left_margin(priv->textview) - 1;
-    invalidate_rect.width = window_width - invalidate_rect.x;
-    invalidate_rect.height = view_user->line_height;
-
-    gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
   }
 }
 
@@ -627,96 +652,110 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
     return FALSE;
   }
 
-  gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
-
-  /* Make selection color based on text color: If text is dark, selection
-   * is dark, if text is bright selection is bright. Note that we draw with
-   * 50% alpha only, so text remains readable. */
-  color = &gtk_widget_get_style(widget)->bg[GTK_STATE_NORMAL];
-  h = color->red / 65535.0;
-  s = color->green / 65535.0;
-  v = color->blue / 65535.0;
-  rgb_to_hsv(&h, &s, &v);
-  v = MAX(v, 0.3);
-  s = MAX(s, 0.1 + 0.3*(1 - v));
-
-  cr = gdk_cairo_create(event->window);
-
-  sort_users = g_slist_copy(priv->users);
-  sort_users =
-    g_slist_sort(sort_users, inf_text_gtk_view_user_line_position_cmp);
-
-  prev_item = sort_users;
-  if(prev_item) prev_user = (InfTextGtkViewUser*)prev_item->data;
-  n_users = 1.0;
-
-  for(item = sort_users; item != NULL; item = item->next, n_users += 1.0)
+  if(priv->show_remote_current_lines)
   {
-    if(item->next == NULL ||
-       ((InfTextGtkViewUser*)item->next->data)->line_y != prev_user->line_y)
-    {
-      gtk_text_view_buffer_to_window_coords(
-        priv->textview,
-        GTK_TEXT_WINDOW_TEXT,
-        0, prev_user->line_y,
-        NULL, &rect.y
-      );
+    cr = gdk_cairo_create(event->window);
 
-      /* -1 to stay consistent with GtkSourceView */
-      rect.x = inf_text_gtk_view_get_left_margin(priv->textview) - 1;
-      rect.width = window_width - rect.x;
-      rect.height = prev_user->line_height;
+    gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
+
+    /* Make selection color based on text color: If text is dark, selection
+     * is dark, if text is bright selection is bright. Note that we draw with
+     * 50% alpha only, so text remains readable. */
+    color = &gtk_widget_get_style(widget)->bg[GTK_STATE_NORMAL];
+    h = color->red / 65535.0;
+    s = color->green / 65535.0;
+    v = color->blue / 65535.0;
+    rgb_to_hsv(&h, &s, &v);
+    v = MAX(v, 0.3);
+    s = MAX(s, 0.1 + 0.3*(1 - v));
+
+    sort_users = g_slist_copy(priv->users);
+    sort_users =
+      g_slist_sort(sort_users, inf_text_gtk_view_user_line_position_cmp);
+
+    prev_item = sort_users;
+    if(prev_item) prev_user = (InfTextGtkViewUser*)prev_item->data;
+    n_users = 1.0;
+
+    for(item = sort_users; item != NULL; item = item->next, n_users += 1.0)
+    {
+      if(item->next == NULL ||
+         ((InfTextGtkViewUser*)item->next->data)->line_y != prev_user->line_y)
+      {
+        gtk_text_view_buffer_to_window_coords(
+          priv->textview,
+          GTK_TEXT_WINDOW_TEXT,
+          0, prev_user->line_y,
+          NULL, &rect.y
+        );
+
+        /* -1 to stay consistent with GtkSourceView */
+        rect.x = inf_text_gtk_view_get_left_margin(priv->textview) - 1;
+        rect.width = window_width - rect.x;
+        rect.height = prev_user->line_height;
 
 #if GTK_CHECK_VERSION(2,90,5)
-      if(cairo_region_contains_rectangle(event->region, &rect) !=
-         CAIRO_REGION_OVERLAP_OUT)
+        if(cairo_region_contains_rectangle(event->region, &rect) !=
+           CAIRO_REGION_OVERLAP_OUT)
 #else
-      if(gdk_region_rect_in(event->region, &rect) != GDK_OVERLAP_RECTANGLE_OUT)
+        if(gdk_region_rect_in(event->region, &rect) !=
+           GDK_OVERLAP_RECTANGLE_OUT)
 #endif
-      {
-#if GTK_CHECK_VERSION(2,22,0)
-        hadjustment = gtk_text_view_get_hadjustment(priv->textview);
-        vadjustment = gtk_text_view_get_vadjustment(priv->textview);
-#else
-        hadjustment = priv->textview->hadjustment;
-        vadjustment = priv->textview->vadjustment;
-#endif
-        /* Construct pattern */
-        rx = gtk_adjustment_get_value(vadjustment);
-        ry = gtk_adjustment_get_value(hadjustment);
-        pattern =
-          cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
-        cairo_matrix_init_translate(&matrix, rx, ry);
-        cairo_pattern_set_matrix(pattern, &matrix);
-        cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
-
-        for(n = 0.0;
-            prev_item != item->next;
-            prev_item = prev_item->next, n += 1.0)
         {
-          view_user = (InfTextGtkViewUser*)prev_item->data;
-          h = inf_text_user_get_hue(view_user->user);
-          r = h; g = s; b = v;
-          hsv_to_rgb(&r, &g, &b);
+#if GTK_CHECK_VERSION(2,22,0)
+          hadjustment = gtk_text_view_get_hadjustment(priv->textview);
+          vadjustment = gtk_text_view_get_vadjustment(priv->textview);
+#else
+          hadjustment = priv->textview->hadjustment;
+          vadjustment = priv->textview->vadjustment;
+#endif
+          /* Construct pattern */
+          rx = gtk_adjustment_get_value(vadjustment);
+          ry = gtk_adjustment_get_value(hadjustment);
+          pattern =
+            cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
+          cairo_matrix_init_translate(&matrix, rx, ry);
+          cairo_pattern_set_matrix(pattern, &matrix);
+          cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
 
-          cairo_pattern_add_color_stop_rgb(pattern, n/n_users, r, g, b);
-          cairo_pattern_add_color_stop_rgb(pattern, (n+1.0)/n_users, r, g, b);
+          for(n = 0.0;
+              prev_item != item->next;
+              prev_item = prev_item->next, n += 1.0)
+          {
+            view_user = (InfTextGtkViewUser*)prev_item->data;
+            h = inf_text_user_get_hue(view_user->user);
+            r = h; g = s; b = v;
+            hsv_to_rgb(&r, &g, &b);
+
+            cairo_pattern_add_color_stop_rgb(
+              pattern,
+              n/n_users,
+              r, g, b
+            );
+
+            cairo_pattern_add_color_stop_rgb(
+              pattern,
+              (n+1.0)/n_users,
+              r, g, b
+            );
+          }
+
+          cairo_set_source(cr, pattern);
+          gdk_cairo_rectangle(cr, &rect);
+          cairo_fill(cr);
+          cairo_pattern_destroy(pattern);
         }
 
-        cairo_set_source(cr, pattern);
-        gdk_cairo_rectangle(cr, &rect);
-        cairo_fill(cr);
-        cairo_pattern_destroy(pattern);
+        prev_item = item->next;
+        if(prev_item) prev_user = (InfTextGtkViewUser*)prev_item->data;
+        n_users = 0.0;
       }
-
-      prev_item = item->next;
-      if(prev_item) prev_user = (InfTextGtkViewUser*)prev_item->data;
-      n_users = 0.0;
     }
+
+    g_slist_free(sort_users);
+    cairo_destroy(cr);
   }
 
-  g_slist_free(sort_users);
-  cairo_destroy(cr);
   return FALSE;
 }
 
@@ -776,409 +815,416 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
     return FALSE;
   }
 
-  gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
-
-  gtk_widget_style_get (widget, "cursor-color", &cursor_color, NULL);
-  if(cursor_color != NULL)
-  {
-    hc = cursor_color->red / 65535.0;
-    sc = cursor_color->green / 65535.0;
-    vc = cursor_color->blue / 65535.0;
-    gdk_color_free(cursor_color);
-  }
-  else
-  {
-    cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
-    hc = cursor_color->red / 65535.0;
-    sc = cursor_color->green / 65535.0;
-    vc = cursor_color->blue / 65535.0;
-  }
-
-  /* Make selection color based on text color: If text is dark, selection
-   * is dark, if text is bright selection is bright. Note that we draw with
-   * 50% alpha only, so text remains readable. */
-  cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
-  hs = cursor_color->red / 65535.0;
-  ss = cursor_color->green / 65535.0;
-  vs = cursor_color->blue / 65535.0;
-
-  rgb_to_hsv(&hc, &sc, &vc);
-  rgb_to_hsv(&hs, &ss, &vs);
-
-  sc = MIN(MAX(sc, 0.3), 0.8);
-  vc = MAX(vc, 0.7);
-
-  vs = MAX(vs, 0.5);
-  ss = 1.0 - 0.4*(vs);
-
-  /* Find range of text to be updated */
-  gtk_text_view_window_to_buffer_coords(
-    priv->textview,
-    GTK_TEXT_WINDOW_TEXT,
-    event->area.x, event->area.y,
-    &ax, &ay
-  );
-
-  gtk_text_view_get_iter_at_location(
-    priv->textview,
-    &begin_iter,
-    ax,
-    ay
-  );
-
-  gtk_text_view_get_iter_at_location(
-    priv->textview,
-    &end_iter,
-    ax + event->area.width,
-    ay + event->area.height
-  );
-
-  area_begin = gtk_text_iter_get_offset(&begin_iter);
-  area_end = gtk_text_iter_get_offset(&end_iter);
-  g_assert(area_end >= area_begin);
-
-  /* Find own selection (we don't draw remote
-   * selections over own selection). */
-  gtk_text_buffer_get_selection_bounds(
-    gtk_text_view_get_buffer(priv->textview),
-    &begin_iter,
-    &end_iter
-  );
-
-  own_sel_begin = gtk_text_iter_get_offset(&begin_iter);
-  own_sel_end = gtk_text_iter_get_offset(&end_iter);
-  if(own_sel_begin != own_sel_end)
-  {
-    gtk_text_view_get_iter_location(priv->textview, &begin_iter, &rct);
-    gtk_text_view_buffer_to_window_coords(
-      priv->textview,
-      GTK_TEXT_WINDOW_TEXT,
-      rct.x, rct.y,
-      &osbx, &osby
-    );
-
-    gtk_text_view_get_iter_location(priv->textview, &end_iter, &rct);
-    gtk_text_view_buffer_to_window_coords(
-      priv->textview,
-      GTK_TEXT_WINDOW_TEXT,
-      rct.x, rct.y,
-      &osex, &osey
-    );
-  }
-
-  /* Build toggle list */
-  toggles = g_sequence_new(inf_text_gtk_view_user_toggle_free);
-  for(item = priv->users; item != NULL; item = item->next)
-  {
-    view_user = (InfTextGtkViewUser*)item->data;
-    if(inf_text_user_get_selection_length(view_user->user) != 0)
-    {
-      begin = inf_text_user_get_caret_position(view_user->user);
-      sel = inf_text_user_get_selection_length(view_user->user);
-
-      if(sel > 0)
-      {
-        end = begin + sel;
-      }
-      else
-      {
-        end = begin;
-        begin += sel;
-      }
-
-      begin = MIN(MAX(begin, area_begin), area_end);
-      end = MIN(MAX(end, area_begin), area_end);
-      if(begin != end)
-      {
-        if(sel > 0)
-        {
-          gtk_text_view_buffer_to_window_coords(
-            priv->textview,
-            GTK_TEXT_WINDOW_TEXT,
-            view_user->cursor_rect.x,
-            view_user->cursor_rect.y,
-            &rx, &ry
-          );
-
-          gtk_text_view_buffer_to_window_coords(
-            priv->textview,
-            GTK_TEXT_WINDOW_TEXT,
-            view_user->selection_bound_rect.x,
-            view_user->selection_bound_rect.y,
-            &ax, &ay
-          );
-        }
-        else
-        {
-          gtk_text_view_buffer_to_window_coords(
-            priv->textview,
-            GTK_TEXT_WINDOW_TEXT,
-            view_user->selection_bound_rect.x,
-            view_user->selection_bound_rect.y,
-            &rx, &ry
-          );
-
-          gtk_text_view_buffer_to_window_coords(
-            priv->textview,
-            GTK_TEXT_WINDOW_TEXT,
-            view_user->cursor_rect.x,
-            view_user->cursor_rect.y,
-            &ax, &ay
-          );
-        }
-
-        if(own_sel_begin == own_sel_end ||
-           own_sel_end <= begin || own_sel_begin >= end)
-        {
-          /* Local selection and remote selection do not overlap */
-          inf_text_gtk_view_add_user_toggle_pair(
-            toggles,
-            begin, end,
-            view_user,
-            rx, ry,
-            ax, ay
-          );
-        }
-        else if(own_sel_begin <= begin && own_sel_end >= end)
-        {
-          /* Whole remote selection is covered by local selection */
-        }
-        else if(own_sel_begin > begin && own_sel_end >= end)
-        {
-          /* Last part of remote selection is covered by local selection */
-          inf_text_gtk_view_add_user_toggle_pair(
-            toggles,
-            begin, own_sel_begin,
-            view_user,
-            rx, ry,
-            osbx, osby
-          );
-        }
-        else if(own_sel_begin <= begin && own_sel_end < end)
-        {
-          /* First part of remote selection is covered by local selection */
-          inf_text_gtk_view_add_user_toggle_pair(
-            toggles,
-            own_sel_end, end,
-            view_user,
-            osex, osey,
-            ax, ay
-          );
-        }
-        else if(own_sel_begin > begin && own_sel_end < end)
-        {
-          /* Local selection is in middle of remote selection */
-          inf_text_gtk_view_add_user_toggle_pair(
-            toggles,
-            begin, own_sel_begin,
-            view_user,
-            rx, ry,
-            osbx, osby
-          );
-
-          inf_text_gtk_view_add_user_toggle_pair(
-            toggles,
-            own_sel_end, end,
-            view_user,
-            osex, osey,
-            ax, ay
-          );
-        }
-        else
-        {
-          g_assert_not_reached();
-        }
-      }
-    }
-  }
-
   cr = gdk_cairo_create(event->window);
 
-  /* Walk toggle list, draw selections */
-  tog_iter = g_sequence_get_begin_iter(toggles);
-  cur_toggle = NULL;
-  prev_toggle = NULL;
-  users = NULL;
-  n_users = 0;
-
-  tog_iter = g_sequence_get_begin_iter(toggles);
-  while(!g_sequence_iter_is_end(tog_iter))
+  if(priv->show_remote_selections)
   {
-    cur_toggle = (InfTextGtkViewUserToggle*)g_sequence_get(tog_iter);
+    gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
 
-    /* Draw users from prev_toggle to cur_toggle */
-    if(users != NULL)
+    /* Make selection color based on text color: If text is dark, selection
+     * is dark, if text is bright selection is bright. Note that we draw with
+     * 50% alpha only, so text remains readable. */
+    cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
+    hs = cursor_color->red / 65535.0;
+    ss = cursor_color->green / 65535.0;
+    vs = cursor_color->blue / 65535.0;
+
+    rgb_to_hsv(&hs, &ss, &vs);
+    vs = MAX(vs, 0.5);
+    ss = 1.0 - 0.4*(vs);
+
+    /* Find range of text to be updated */
+    gtk_text_view_window_to_buffer_coords(
+      priv->textview,
+      GTK_TEXT_WINDOW_TEXT,
+      event->area.x, event->area.y,
+      &ax, &ay
+    );
+
+    gtk_text_view_get_iter_at_location(
+      priv->textview,
+      &begin_iter,
+      ax,
+      ay
+    );
+
+    gtk_text_view_get_iter_at_location(
+      priv->textview,
+      &end_iter,
+      ax + event->area.width,
+      ay + event->area.height
+    );
+
+    area_begin = gtk_text_iter_get_offset(&begin_iter);
+    area_end = gtk_text_iter_get_offset(&end_iter);
+    g_assert(area_end >= area_begin);
+
+    /* Find own selection (we don't draw remote
+     * selections over own selection). */
+    gtk_text_buffer_get_selection_bounds(
+      gtk_text_view_get_buffer(priv->textview),
+      &begin_iter,
+      &end_iter
+    );
+
+    own_sel_begin = gtk_text_iter_get_offset(&begin_iter);
+    own_sel_end = gtk_text_iter_get_offset(&end_iter);
+    if(own_sel_begin != own_sel_end)
     {
-      g_assert(prev_toggle != NULL);
-      g_assert(n_users > 0);
-
-#if GTK_CHECK_VERSION(2,22,0)
-      hadjustment = gtk_text_view_get_hadjustment(priv->textview);
-      vadjustment = gtk_text_view_get_vadjustment(priv->textview);
-#else
-      hadjustment = priv->textview->hadjustment;
-      vadjustment = priv->textview->vadjustment;
-#endif
-
-      /* Construct pattern */
-      rx = gtk_adjustment_get_value(hadjustment);
-      ry = gtk_adjustment_get_value(vadjustment);
-      pattern =
-        cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
-      cairo_matrix_init_translate(&matrix, rx, ry);
-      cairo_pattern_set_matrix(pattern, &matrix);
-      cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
-      for(item = users, n = 0.0; item != NULL; item = item->next, n += 1.0)
-      {
-        view_user = ((InfTextGtkViewUserToggle*)item->data)->user;
-        hs = inf_text_user_get_hue(view_user->user);
-
-        rs = hs;
-        gs = ss;
-        bs = vs;
-        hsv_to_rgb(&rs, &gs, &bs);
-
-        cairo_pattern_add_color_stop_rgba(
-          pattern,
-          n/n_users,
-          rs, gs, bs, 0.5
-        );
-
-        cairo_pattern_add_color_stop_rgba(
-          pattern,
-          (n+1.0)/n_users,
-          rs, gs, bs, 0.5
-        );
-      }
-
-      cairo_set_source(cr, pattern);
-      if(prev_toggle->y == cur_toggle->y)
-      {
-        /* same line */
-        g_assert(prev_toggle->x < cur_toggle->x);
-
-        rct.x = prev_toggle->x;
-        rct.y = prev_toggle->y;
-        rct.width = cur_toggle->x - prev_toggle->x;
-        rct.height = cur_toggle->user->selection_bound_rect.height;
-        gdk_cairo_rectangle(cr, &rct);
-      }
-      else
-      {
-        g_assert(
-          cur_toggle->y - prev_toggle->y >=
-          cur_toggle->user->selection_bound_rect.height
-        );
-
-        /* multiple lines */
-        if(window_width > prev_toggle->x)
-        {
-          /* first line */
-          rct.x = prev_toggle->x;
-          rct.y = prev_toggle->y;
-          rct.width = window_width - prev_toggle->x -
-            inf_text_gtk_view_get_right_margin(priv->textview);
-          rct.height = prev_toggle->user->selection_bound_rect.height;
-          gdk_cairo_rectangle(cr, &rct);
-        }
-
-        if(cur_toggle->x > 0)
-        {
-          /* last line */
-          rct.x = inf_text_gtk_view_get_left_margin(priv->textview);
-          rct.y = cur_toggle->y;
-          rct.width = cur_toggle->x - rct.x;
-          rct.height = cur_toggle->user->selection_bound_rect.height;
-          gdk_cairo_rectangle(cr, &rct);
-        }
-
-        if(cur_toggle->y - prev_toggle->y >
-           cur_toggle->user->selection_bound_rect.height)
-        {
-          /* intermediate */
-          rct.x = inf_text_gtk_view_get_left_margin(priv->textview);
-          rct.y = prev_toggle->y +
-            prev_toggle->user->selection_bound_rect.height;
-          rct.width = window_width - rct.x -
-            inf_text_gtk_view_get_right_margin(priv->textview);
-          rct.height = cur_toggle->y - prev_toggle->y -
-            cur_toggle->user->selection_bound_rect.height;
-          gdk_cairo_rectangle(cr, &rct);
-        }
-      }
-
-      cairo_fill(cr);
-      cairo_pattern_destroy(pattern);
-    }
-
-    prev_toggle = cur_toggle;
-
-    /* advance to next position, toggle users on/off while doing so */
-    do
-    {
-      if(cur_toggle->on_toggle == NULL)
-      {
-        /* Keep toggles in user list sorted by user ID, so that the same users
-         * generate the same pattern */
-        users = g_slist_insert_sorted(
-          users,
-          cur_toggle,
-          inf_text_gtk_view_user_toggle_user_cmp
-        );
-
-        ++n_users;
-      }
-      else
-      {
-        g_assert(n_users > 0);
-        users = g_slist_remove(users, cur_toggle->on_toggle);
-        --n_users;
-      }
-
-      tog_iter = g_sequence_iter_next(tog_iter);
-      if(g_sequence_iter_is_end(tog_iter))
-        break;
-
-      cur_toggle = (InfTextGtkViewUserToggle*)g_sequence_get(tog_iter);
-    } while(cur_toggle->pos == prev_toggle->pos);
-  }
-
-  g_assert(n_users == 0);
-  g_assert(users == NULL);
-  g_sequence_free(toggles);
-
-  for(item = priv->users; item != NULL; item = item->next)
-  {
-    view_user = (InfTextGtkViewUser*)item->data;
-    if(view_user->cursor_visible)
-    {
+      gtk_text_view_get_iter_location(priv->textview, &begin_iter, &rct);
       gtk_text_view_buffer_to_window_coords(
         priv->textview,
         GTK_TEXT_WINDOW_TEXT,
-        view_user->cursor_rect.x, view_user->cursor_rect.y,
-        &rct.x, &rct.y
+        rct.x, rct.y,
+        &osbx, &osby
       );
 
-      rct.width = view_user->cursor_rect.width;
-      rct.height = view_user->cursor_rect.height;
+      gtk_text_view_get_iter_location(priv->textview, &end_iter, &rct);
+      gtk_text_view_buffer_to_window_coords(
+        priv->textview,
+        GTK_TEXT_WINDOW_TEXT,
+        rct.x, rct.y,
+        &osex, &osey
+      );
+    }
+
+    /* Build toggle list */
+    toggles = g_sequence_new(inf_text_gtk_view_user_toggle_free);
+    for(item = priv->users; item != NULL; item = item->next)
+    {
+      view_user = (InfTextGtkViewUser*)item->data;
+      if(inf_text_user_get_selection_length(view_user->user) != 0)
+      {
+        begin = inf_text_user_get_caret_position(view_user->user);
+        sel = inf_text_user_get_selection_length(view_user->user);
+
+        if(sel > 0)
+        {
+          end = begin + sel;
+        }
+        else
+        {
+          end = begin;
+          begin += sel;
+        }
+
+        begin = MIN(MAX(begin, area_begin), area_end);
+        end = MIN(MAX(end, area_begin), area_end);
+        if(begin != end)
+        {
+          if(sel > 0)
+          {
+            gtk_text_view_buffer_to_window_coords(
+              priv->textview,
+              GTK_TEXT_WINDOW_TEXT,
+              view_user->cursor_rect.x,
+              view_user->cursor_rect.y,
+              &rx, &ry
+            );
+
+            gtk_text_view_buffer_to_window_coords(
+              priv->textview,
+              GTK_TEXT_WINDOW_TEXT,
+              view_user->selection_bound_rect.x,
+              view_user->selection_bound_rect.y,
+              &ax, &ay
+            );
+          }
+          else
+          {
+            gtk_text_view_buffer_to_window_coords(
+              priv->textview,
+              GTK_TEXT_WINDOW_TEXT,
+              view_user->selection_bound_rect.x,
+              view_user->selection_bound_rect.y,
+              &rx, &ry
+            );
+
+            gtk_text_view_buffer_to_window_coords(
+              priv->textview,
+              GTK_TEXT_WINDOW_TEXT,
+              view_user->cursor_rect.x,
+              view_user->cursor_rect.y,
+              &ax, &ay
+            );
+          }
+
+          if(own_sel_begin == own_sel_end ||
+             own_sel_end <= begin || own_sel_begin >= end)
+          {
+            /* Local selection and remote selection do not overlap */
+            inf_text_gtk_view_add_user_toggle_pair(
+              toggles,
+              begin, end,
+              view_user,
+              rx, ry,
+              ax, ay
+            );
+          }
+          else if(own_sel_begin <= begin && own_sel_end >= end)
+          {
+            /* Whole remote selection is covered by local selection */
+          }
+          else if(own_sel_begin > begin && own_sel_end >= end)
+          {
+            /* Last part of remote selection is covered by local selection */
+            inf_text_gtk_view_add_user_toggle_pair(
+              toggles,
+              begin, own_sel_begin,
+              view_user,
+              rx, ry,
+              osbx, osby
+            );
+          }
+          else if(own_sel_begin <= begin && own_sel_end < end)
+          {
+            /* First part of remote selection is covered by local selection */
+            inf_text_gtk_view_add_user_toggle_pair(
+              toggles,
+              own_sel_end, end,
+              view_user,
+              osex, osey,
+              ax, ay
+            );
+          }
+          else if(own_sel_begin > begin && own_sel_end < end)
+          {
+            /* Local selection is in middle of remote selection */
+            inf_text_gtk_view_add_user_toggle_pair(
+              toggles,
+              begin, own_sel_begin,
+              view_user,
+              rx, ry,
+              osbx, osby
+            );
+
+            inf_text_gtk_view_add_user_toggle_pair(
+              toggles,
+              own_sel_end, end,
+              view_user,
+              osex, osey,
+              ax, ay
+            );
+          }
+          else
+          {
+            g_assert_not_reached();
+          }
+        }
+      }
+    }
+
+    /* Walk toggle list, draw selections */
+    tog_iter = g_sequence_get_begin_iter(toggles);
+    cur_toggle = NULL;
+    prev_toggle = NULL;
+    users = NULL;
+    n_users = 0;
+
+    tog_iter = g_sequence_get_begin_iter(toggles);
+    while(!g_sequence_iter_is_end(tog_iter))
+    {
+      cur_toggle = (InfTextGtkViewUserToggle*)g_sequence_get(tog_iter);
+
+      /* Draw users from prev_toggle to cur_toggle */
+      if(users != NULL)
+      {
+        g_assert(prev_toggle != NULL);
+        g_assert(n_users > 0);
+
+  #if GTK_CHECK_VERSION(2,22,0)
+        hadjustment = gtk_text_view_get_hadjustment(priv->textview);
+        vadjustment = gtk_text_view_get_vadjustment(priv->textview);
+  #else
+        hadjustment = priv->textview->hadjustment;
+        vadjustment = priv->textview->vadjustment;
+  #endif
+
+        /* Construct pattern */
+        rx = gtk_adjustment_get_value(hadjustment);
+        ry = gtk_adjustment_get_value(vadjustment);
+        pattern =
+          cairo_pattern_create_linear(0, 0, 3.5*n_users, 3.5*n_users);
+        cairo_matrix_init_translate(&matrix, rx, ry);
+        cairo_pattern_set_matrix(pattern, &matrix);
+        cairo_pattern_set_extend(pattern, CAIRO_EXTEND_REPEAT);
+        for(item = users, n = 0.0; item != NULL; item = item->next, n += 1.0)
+        {
+          view_user = ((InfTextGtkViewUserToggle*)item->data)->user;
+          hs = inf_text_user_get_hue(view_user->user);
+
+          rs = hs;
+          gs = ss;
+          bs = vs;
+          hsv_to_rgb(&rs, &gs, &bs);
+
+          cairo_pattern_add_color_stop_rgba(
+            pattern,
+            n/n_users,
+            rs, gs, bs, 0.5
+          );
+
+          cairo_pattern_add_color_stop_rgba(
+            pattern,
+            (n+1.0)/n_users,
+            rs, gs, bs, 0.5
+          );
+        }
+
+        cairo_set_source(cr, pattern);
+        if(prev_toggle->y == cur_toggle->y)
+        {
+          /* same line */
+          g_assert(prev_toggle->x < cur_toggle->x);
+
+          rct.x = prev_toggle->x;
+          rct.y = prev_toggle->y;
+          rct.width = cur_toggle->x - prev_toggle->x;
+          rct.height = cur_toggle->user->selection_bound_rect.height;
+          gdk_cairo_rectangle(cr, &rct);
+        }
+        else
+        {
+          g_assert(
+            cur_toggle->y - prev_toggle->y >=
+            cur_toggle->user->selection_bound_rect.height
+          );
+
+          /* multiple lines */
+          if(window_width > prev_toggle->x)
+          {
+            /* first line */
+            rct.x = prev_toggle->x;
+            rct.y = prev_toggle->y;
+            rct.width = window_width - prev_toggle->x -
+              inf_text_gtk_view_get_right_margin(priv->textview);
+            rct.height = prev_toggle->user->selection_bound_rect.height;
+            gdk_cairo_rectangle(cr, &rct);
+          }
+
+          if(cur_toggle->x > 0)
+          {
+            /* last line */
+            rct.x = inf_text_gtk_view_get_left_margin(priv->textview);
+            rct.y = cur_toggle->y;
+            rct.width = cur_toggle->x - rct.x;
+            rct.height = cur_toggle->user->selection_bound_rect.height;
+            gdk_cairo_rectangle(cr, &rct);
+          }
+
+          if(cur_toggle->y - prev_toggle->y >
+             cur_toggle->user->selection_bound_rect.height)
+          {
+            /* intermediate */
+            rct.x = inf_text_gtk_view_get_left_margin(priv->textview);
+            rct.y = prev_toggle->y +
+              prev_toggle->user->selection_bound_rect.height;
+            rct.width = window_width - rct.x -
+              inf_text_gtk_view_get_right_margin(priv->textview);
+            rct.height = cur_toggle->y - prev_toggle->y -
+              cur_toggle->user->selection_bound_rect.height;
+            gdk_cairo_rectangle(cr, &rct);
+          }
+        }
+
+        cairo_fill(cr);
+        cairo_pattern_destroy(pattern);
+      }
+
+      prev_toggle = cur_toggle;
+
+      /* advance to next position, toggle users on/off while doing so */
+      do
+      {
+        if(cur_toggle->on_toggle == NULL)
+        {
+          /* Keep toggles in user list sorted by user ID, so that the same
+           * users generate the same pattern */
+          users = g_slist_insert_sorted(
+            users,
+            cur_toggle,
+            inf_text_gtk_view_user_toggle_user_cmp
+          );
+
+          ++n_users;
+        }
+        else
+        {
+          g_assert(n_users > 0);
+          users = g_slist_remove(users, cur_toggle->on_toggle);
+          --n_users;
+        }
+
+        tog_iter = g_sequence_iter_next(tog_iter);
+        if(g_sequence_iter_is_end(tog_iter))
+          break;
+
+        cur_toggle = (InfTextGtkViewUserToggle*)g_sequence_get(tog_iter);
+      } while(cur_toggle->pos == prev_toggle->pos);
+    }
+
+    g_assert(n_users == 0);
+    g_assert(users == NULL);
+    g_sequence_free(toggles);
+  }
+
+  if(priv->show_remote_cursors)
+  {
+    gtk_widget_style_get (widget, "cursor-color", &cursor_color, NULL);
+    if(cursor_color != NULL)
+    {
+      hc = cursor_color->red / 65535.0;
+      sc = cursor_color->green / 65535.0;
+      vc = cursor_color->blue / 65535.0;
+      gdk_color_free(cursor_color);
+    }
+    else
+    {
+      cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
+      hc = cursor_color->red / 65535.0;
+      sc = cursor_color->green / 65535.0;
+      vc = cursor_color->blue / 65535.0;
+    }
+
+    rgb_to_hsv(&hc, &sc, &vc);
+    sc = MIN(MAX(sc, 0.3), 0.8);
+    vc = MAX(vc, 0.7);
+
+
+    for(item = priv->users; item != NULL; item = item->next)
+    {
+      view_user = (InfTextGtkViewUser*)item->data;
+      if(view_user->cursor_visible)
+      {
+        gtk_text_view_buffer_to_window_coords(
+          priv->textview,
+          GTK_TEXT_WINDOW_TEXT,
+          view_user->cursor_rect.x, view_user->cursor_rect.y,
+          &rct.x, &rct.y
+        );
+
+        rct.width = view_user->cursor_rect.width;
+        rct.height = view_user->cursor_rect.height;
 
 #if GTK_CHECK_VERSION(2,90,5)
-      if(cairo_region_contains_rectangle(event->region, &rct) !=
-         CAIRO_REGION_OVERLAP_OUT)
+        if(cairo_region_contains_rectangle(event->region, &rct) !=
+           CAIRO_REGION_OVERLAP_OUT)
 #else
-      if(gdk_region_rect_in(event->region, &rct) != GDK_OVERLAP_RECTANGLE_OUT)
+        if(gdk_region_rect_in(event->region, &rct) !=
+           GDK_OVERLAP_RECTANGLE_OUT)
 #endif
-      {
-        hc = inf_text_user_get_hue(view_user->user);
+        {
+          hc = inf_text_user_get_hue(view_user->user);
 
-        rc = hc;
-        gc = sc;
-        bc = vc;
-        hsv_to_rgb(&rc, &gc, &bc);
+          rc = hc;
+          gc = sc;
+          bc = vc;
+          hsv_to_rgb(&rc, &gc, &bc);
 
-        cairo_set_source_rgb(cr, rc, gc, bc);
-        gdk_cairo_rectangle(cr, &rct);
-        cairo_fill(cr);
+          cairo_set_source_rgb(cr, rc, gc, bc);
+          gdk_cairo_rectangle(cr, &rct);
+          cairo_fill(cr);
+        }
       }
     }
   }
@@ -1350,7 +1396,7 @@ inf_text_gtk_view_user_selection_changed_cb(InfTextUser* user,
    * request. So for example if someone's cursor moved because another user
    * has inserted text somewhere before it, then we don't need to redraw that
    * cursor since it either:
-   * a) was shifted to the right, in which the underlying text was also
+   * a) was shifted to the right, in which case the underlying text was also
    * shifted and is therefore invalidated anyway.
    * b) Both text and cursor have not been shifted, no redraw necessary.
    * Note that we need to recompute the user area though because it might
@@ -1740,6 +1786,10 @@ inf_text_gtk_view_init(GTypeInstance* instance,
   priv->user_table = NULL;
   priv->active_user = NULL;
   priv->users = NULL;
+
+  priv->show_remote_cursors = TRUE;
+  priv->show_remote_selections = TRUE;
+  priv->show_remote_current_lines = TRUE;
 }
 
 static void
@@ -1809,6 +1859,27 @@ inf_text_gtk_view_set_property(GObject* object,
     );
 
     break;
+  case PROP_SHOW_REMOTE_CURSORS:
+    inf_text_gtk_view_set_show_remote_cursors(
+      view,
+      g_value_get_boolean(value)
+    );
+
+    break;
+  case PROP_SHOW_REMOTE_SELECTIONS:
+    inf_text_gtk_view_set_show_remote_selections(
+      view,
+      g_value_get_boolean(value)
+    );
+
+    break;
+  case PROP_SHOW_REMOTE_CURRENT_LINES:
+    inf_text_gtk_view_set_show_remote_current_lines(
+      view,
+      g_value_get_boolean(value)
+    );
+
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
     break;
@@ -1840,6 +1911,15 @@ inf_text_gtk_view_get_property(GObject* object,
     break;
   case PROP_ACTIVE_USER:
     g_value_set_object(value, G_OBJECT(priv->active_user));
+    break;
+  case PROP_SHOW_REMOTE_CURSORS:
+    g_value_set_boolean(value, priv->show_remote_cursors);
+    break;
+  case PROP_SHOW_REMOTE_SELECTIONS:
+    g_value_set_boolean(value, priv->show_remote_selections);
+    break;
+  case PROP_SHOW_REMOTE_CURRENT_LINES:
+    g_value_set_boolean(value, priv->show_remote_current_lines);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1905,6 +1985,42 @@ inf_text_gtk_view_class_init(gpointer g_class,
       "Active user",
       "The user for which to show the view",
       INF_TEXT_TYPE_USER,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SHOW_REMOTE_CURSORS,
+    g_param_spec_boolean(
+      "show-remote-cursors",
+      "Show remote cursors",
+      "Whether to show cursors of non-local users",
+      TRUE,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SHOW_REMOTE_SELECTIONS,
+    g_param_spec_boolean(
+      "show-remote-selections",
+      "Show remote selections",
+      "Whether to highlight text selected by non-local users",
+      TRUE,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SHOW_REMOTE_CURRENT_LINES,
+    g_param_spec_boolean(
+      "show-remote-current-lines",
+      "Show remote current lines",
+      "Whether to highlight the line in which the cursor of non-local users is",
+      TRUE,
       G_PARAM_READWRITE
     )
   );
@@ -2065,6 +2181,91 @@ inf_text_gtk_view_get_active_user(InfTextGtkView* view)
 {
   g_return_val_if_fail(INF_TEXT_GTK_IS_VIEW(view), NULL);
   return INF_TEXT_GTK_VIEW_PRIVATE(view)->active_user;
+}
+
+/**
+ * inf_text_gtk_view_set_show_remote_cursors:
+ * @view: A #InfTextGtkView.
+ * @show: Whether to show cursors of non-local users.
+ *
+ * If @show is %TRUE then @view draws a cursor for each non-local user in
+ * %INF_USER_ACTIVE status in that user's color into its underlying
+ * #GtkTextView. If it is %FALSE then remote cursors are not drawn.
+ */
+void
+inf_text_gtk_view_set_show_remote_cursors(InfTextGtkView* view,
+                                          gboolean show)
+{
+  InfTextGtkViewPrivate* priv;
+  
+  g_return_if_fail(INF_TEXT_GTK_IS_VIEW(view));
+  priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
+
+  if(priv->show_remote_cursors != show)
+  {
+    gtk_widget_queue_draw(GTK_WIDGET(priv->textview));
+
+    priv->show_remote_cursors = show;
+    g_object_notify(G_OBJECT(view), "show-remote-cursors");
+  }
+}
+
+/**
+ * inf_text_gtk_view_set_show_remote_selections:
+ * @view: A #InfTextGtkView.
+ * @show: Whether to show selections of non-local users.
+ *
+ * If @show is %TRUE then @view draws the selection ranges for each non-local
+ * user in %INF_USER_ACTIVE status. The selection range is drawn shaded in
+ * that user's color on top of the author color which indicates who wrote the
+ * selected text. If more than one user has a given piece of text selected
+ * then an alternating stripe pattern with each of the user's colors is drawn.
+ * If @show is %FALES then selection ranges of remote users are not drawn.
+ */
+void
+inf_text_gtk_view_set_show_remote_selections(InfTextGtkView* view,
+                                             gboolean show)
+{
+  InfTextGtkViewPrivate* priv;
+  
+  g_return_if_fail(INF_TEXT_GTK_IS_VIEW(view));
+  priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
+
+  if(priv->show_remote_selections != show)
+  {
+    gtk_widget_queue_draw(GTK_WIDGET(priv->textview));
+
+    priv->show_remote_selections = show;
+    g_object_notify(G_OBJECT(view), "show-remote-selections");
+  }
+}
+
+/**
+ * inf_text_gtk_view_set_show_remote_current_lines:
+ * @view: A #InfTextGtkView.
+ * @show: Whether to highlight the current line of non-local users.
+ *
+ * If @show is %TRUE then all lines in which the cursor of a non-local user
+ * in %INF_USER_ACTIVE status is is highlighted with that user's color, similar
+ * to GtkSourceView's "highlight current line" functionality. If it is %FALSE
+ * then the current line of non-local users is not be highlighted.
+ */
+void
+inf_text_gtk_view_set_show_remote_current_lines(InfTextGtkView* view,
+                                                gboolean show)
+{
+  InfTextGtkViewPrivate* priv;
+
+  g_return_if_fail(INF_TEXT_GTK_IS_VIEW(view));
+  priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
+
+  if(priv->show_remote_current_lines != show)
+  {
+    gtk_widget_queue_draw(GTK_WIDGET(priv->textview));
+
+    priv->show_remote_current_lines = show;
+    g_object_notify(G_OBJECT(view), "show-remote-current-lines");
+  }
 }
 
 /* vim:set et sw=2 ts=2: */

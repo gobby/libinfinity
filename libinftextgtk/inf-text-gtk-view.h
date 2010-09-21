@@ -67,6 +67,18 @@ inf_text_gtk_view_set_active_user(InfTextGtkView* view,
 InfTextUser*
 inf_text_gtk_view_get_active_user(InfTextGtkView* view);
 
+void
+inf_text_gtk_view_set_show_remote_cursors(InfTextGtkView* view,
+                                          gboolean show);
+
+void
+inf_text_gtk_view_set_show_remote_selections(InfTextGtkView* view,
+                                             gboolean show);
+
+void
+inf_text_gtk_view_set_show_remote_current_lines(InfTextGtkView* view,
+                                                gboolean show);
+
 G_END_DECLS
 
 #endif /* __INF_TEXT_GTK_VIEW_H__ */

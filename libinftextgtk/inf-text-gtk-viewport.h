@@ -65,6 +65,10 @@ inf_text_gtk_viewport_set_active_user(InfTextGtkViewport* viewport,
 InfTextUser*
 inf_text_gtk_viewport_get_active_user(InfTextGtkViewport* viewport);
 
+void
+inf_text_gtk_viewport_set_show_user_markers(InfTextGtkViewport* viewport,
+                                            gboolean show);
+
 G_END_DECLS
 
 #endif /* __INF_TEXT_GTK_VIEWPORT_H__ */

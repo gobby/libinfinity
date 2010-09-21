@@ -1,3 +1,15 @@
+2010-09-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-view.h:
+	* libinftextgtk/inf-text-gtk-view.c: Add
+	inf_text_gtk_view_set_show_remote_cursors(),
+	inf_text_gtk_view_set_show_remote_selections() and
+	inf_text_gtk_view_set_show_remote_current_lines().
+
+	* libinftextgtk/inf-text-gtk-viewport.h:
+	* libinftextgtk/inf-text-gtk-viewport.c: Add
+	inf_text_gtk_viewport_set_show_user_markers().
+
 2010-09-19  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-view.c:

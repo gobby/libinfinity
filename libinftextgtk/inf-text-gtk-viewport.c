@@ -34,6 +34,8 @@ struct _InfTextGtkViewportPrivate {
   InfUserTable* user_table;
   InfTextUser* active_user;
   GSList* users;
+
+  gboolean show_user_markers;
 };
 
 enum {
@@ -44,7 +46,8 @@ enum {
   PROP_USER_TABLE,
 
   /* read/write */
-  PROP_ACTIVE_USER
+  PROP_ACTIVE_USER,
+  PROP_SHOW_USER_MARKERS
 };
 
 #define INF_TEXT_GTK_VIEWPORT_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_VIEWPORT, InfTextGtkViewportPrivate))
@@ -240,6 +243,8 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
 
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(user->viewport);
 
+  /* TODO: We might want to skip this if show-user-markers is false. */
+
   textview = gtk_bin_get_child(GTK_BIN(priv->scroll));
   scrollbar = gtk_scrolled_window_get_vscrollbar(priv->scroll);
 #if GTK_CHECK_VERSION(2,20,0)
@@ -323,7 +328,8 @@ inf_text_gtk_viewport_user_invalidate_user_area(InfTextGtkViewportUser* user)
   InfTextGtkViewportPrivate* priv;
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(user->viewport);
 
-  if(user->rectangle.width > 0 && user->rectangle.height > 0)
+  if(priv->show_user_markers &&
+     user->rectangle.width > 0 && user->rectangle.height > 0)
   {
     gtk_widget_queue_draw_area(
       gtk_scrolled_window_get_vscrollbar(priv->scroll),
@@ -361,39 +367,43 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
 #endif
     return FALSE;
 
-  color = &gtk_widget_get_style(scrollbar)->bg[GTK_STATE_NORMAL];
-  h = color->red / 65535.0;
-  s = color->green / 65535.0;
-  v = color->blue / 65535.0;
-  rgb_to_hsv(&h, &s, &v);
-  s = MIN(MAX(s, 0.5), 0.8);
-  v = MAX(v, 0.5);
-
-  cr = gdk_cairo_create(event->window);
-  for(item = priv->users; item != NULL; item = item->next)
+  if(priv->show_user_markers)
   {
-    viewport_user = (InfTextGtkViewportUser*)item->data;
-    rectangle = &viewport_user->rectangle;
+    color = &gtk_widget_get_style(scrollbar)->bg[GTK_STATE_NORMAL];
+    h = color->red / 65535.0;
+    s = color->green / 65535.0;
+    v = color->blue / 65535.0;
+    rgb_to_hsv(&h, &s, &v);
+    s = MIN(MAX(s, 0.5), 0.8);
+    v = MAX(v, 0.5);
+
+    cr = gdk_cairo_create(event->window);
+    for(item = priv->users; item != NULL; item = item->next)
+    {
+      viewport_user = (InfTextGtkViewportUser*)item->data;
+      rectangle = &viewport_user->rectangle;
 
 #if GTK_CHECK_VERSION(2,90,5)
-    if(cairo_region_contains_rectangle(event->region, rectangle) !=
-       CAIRO_REGION_OVERLAP_OUT)
+      if(cairo_region_contains_rectangle(event->region, rectangle) !=
+         CAIRO_REGION_OVERLAP_OUT)
 #else
-    if(gdk_region_rect_in(event->region, rectangle) !=
-       GDK_OVERLAP_RECTANGLE_OUT)
+      if(gdk_region_rect_in(event->region, rectangle) !=
+         GDK_OVERLAP_RECTANGLE_OUT)
 #endif
-    {
-      h = inf_text_user_get_hue(viewport_user->user);
-      r = h; g = s; b = v;
-      hsv_to_rgb(&r, &g, &b);
+      {
+        h = inf_text_user_get_hue(viewport_user->user);
+        r = h; g = s; b = v;
+        hsv_to_rgb(&r, &g, &b);
 
-      cairo_set_source_rgba(cr, r, g, b, 0.6);
-      gdk_cairo_rectangle(cr, rectangle);
-      cairo_fill(cr);
+        cairo_set_source_rgba(cr, r, g, b, 0.6);
+        gdk_cairo_rectangle(cr, rectangle);
+        cairo_fill(cr);
+      }
     }
+
+    cairo_destroy(cr);
   }
 
-  cairo_destroy(cr);
   return FALSE;
 }
 
@@ -802,6 +812,8 @@ inf_text_gtk_viewport_init(GTypeInstance* instance,
   priv->user_table = NULL;
   priv->active_user = NULL;
   priv->users = NULL;
+
+  priv->show_user_markers = TRUE;
 }
 
 static void
@@ -861,6 +873,13 @@ inf_text_gtk_viewport_set_property(GObject* object,
     );
 
     break;
+  case PROP_SHOW_USER_MARKERS:
+    inf_text_gtk_viewport_set_show_user_markers(
+      viewport,
+      g_value_get_boolean(value)
+    );
+
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(value, prop_id, pspec);
     break;
@@ -889,6 +908,9 @@ inf_text_gtk_viewport_get_property(GObject* object,
     break;
   case PROP_ACTIVE_USER:
     g_value_set_object(value, G_OBJECT(priv->active_user));
+    break;
+  case PROP_SHOW_USER_MARKERS:
+    g_value_set_boolean(value, priv->show_user_markers);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -928,7 +950,8 @@ inf_text_gtk_viewport_class_init(gpointer g_class,
     g_param_spec_object(
       "user-table",
       "User table",
-      "The user table containing the users of the session shown in the viewport",
+      "The user table containing the users of the session shown in the "
+      "viewport",
       INF_TYPE_USER_TABLE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
@@ -942,6 +965,19 @@ inf_text_gtk_viewport_class_init(gpointer g_class,
       "Active user",
       "The user for which to show the viewport",
       INF_TEXT_TYPE_USER,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SHOW_USER_MARKERS,
+    g_param_spec_boolean(
+      "show-user-markers",
+      "Show user markers",
+      "Whether to indicate the position of non-local user's cursors in the "
+      "scrollbar",
+      TRUE,
       G_PARAM_READWRITE
     )
   );
@@ -1097,6 +1133,34 @@ inf_text_gtk_viewport_get_active_user(InfTextGtkViewport* viewport)
 {
   g_return_val_if_fail(INF_TEXT_GTK_IS_VIEWPORT(viewport), NULL);
   return INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport)->active_user;
+}
+
+/**
+ * inf_text_gtk_viewport_set_show_user_markers:
+ * @viewport: A #InfTextGtkViewport.
+ * @show: Whether to show the position of non-local users.
+ *
+ * If @show is %TRUE then draw a marker indicating the cursor position of all
+ * non-local users with status %INF_USER_ACTIVE in the scrollbar of the
+ * scrolled window. If @show is %FALSE then do not draw user markers into the
+ * scrollbar.
+ */
+void
+inf_text_gtk_viewport_set_show_user_markers(InfTextGtkViewport* viewport,
+                                            gboolean show)
+{
+  InfTextGtkViewportPrivate* priv;
+
+  g_return_if_fail(INF_TEXT_GTK_IS_VIEWPORT(viewport));
+  priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
+
+  if(priv->show_user_markers != show)
+  {
+    gtk_widget_queue_draw(gtk_scrolled_window_get_vscrollbar(priv->scroll));
+
+    priv->show_user_markers = show;
+    g_object_notify(G_OBJECT(viewport), "show-user-markers");
+  }
 }
 
 /* vim:set et sw=2 ts=2: */
