@@ -342,9 +342,15 @@ inf_text_gtk_viewport_user_invalidate_user_area(InfTextGtkViewportUser* user)
 }
 
 static gboolean
+#if GTK_CHECK_VERSION(2, 91, 0)
+inf_text_gtk_viewport_scrollbar_draw_cb(GtkWidget* scrollbar,
+                                        cairo_t* cr,
+                                        gpointer user_data)
+#else
 inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
                                                 GdkEventExpose* event,
                                                 gpointer user_data)
+#endif
 {
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
@@ -354,13 +360,20 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
   double h,s,v;
   double r,g,b;
   GSList* item;
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+  GdkRectangle clip_area;
+#else
   cairo_t* cr;
+#endif
 
   viewport = INF_TEXT_GTK_VIEWPORT(user_data);
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
 
   /* Can this happen? */
-#if GTK_CHECK_VERSION(2,14,0)
+#if GTK_CHECK_VERSION(2, 91, 0)
+  if(!gtk_cairo_should_draw_window(cr, gtk_widget_get_window(scrollbar)))
+#elif GTK_CHECK_VERSION(2,14,0)
   if(event->window != gtk_widget_get_window(scrollbar))
 #else
   if(event->window != GTK_WIDGET(scrollbar)->window)
@@ -377,13 +390,20 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
     s = MIN(MAX(s, 0.5), 0.8);
     v = MAX(v, 0.5);
 
+#if GTK_CHECK_VERSION(2, 91, 0)
+    gdk_cairo_get_clip_rectangle(cr, &clip_area);
+#else
     cr = gdk_cairo_create(event->window);
+#endif
+
     for(item = priv->users; item != NULL; item = item->next)
     {
       viewport_user = (InfTextGtkViewportUser*)item->data;
       rectangle = &viewport_user->rectangle;
 
-#if GTK_CHECK_VERSION(2,90,5)
+#if GTK_CHECK_VERSION(2, 91, 0)
+      if(gdk_rectangle_intersect(&clip_area, rectangle, NULL))
+#elif GTK_CHECK_VERSION(2,90,5)
       if(cairo_region_contains_rectangle(event->region, rectangle) !=
          CAIRO_REGION_OVERLAP_OUT)
 #else
@@ -401,7 +421,10 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
       }
     }
 
+#if ! GTK_CHECK_VERSION(2, 91, 0)
     cairo_destroy(cr);
+#endif
+
   }
 
   return FALSE;
@@ -695,7 +718,11 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
 
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(scrollbar),
+#if GTK_CHECK_VERSION(2, 91, 0)
+        G_CALLBACK(inf_text_gtk_viewport_scrollbar_draw_cb),
+#else
         G_CALLBACK(inf_text_gtk_viewport_scrollbar_expose_event_cb),
+#endif
         viewport
       );
     }
@@ -729,8 +756,13 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
 
     g_signal_connect_after(
       G_OBJECT(scrollbar),
+#if GTK_CHECK_VERSION(2, 91, 0)
+      "draw",
+      G_CALLBACK(inf_text_gtk_viewport_scrollbar_draw_cb),
+#else
       "expose-event",
       G_CALLBACK(inf_text_gtk_viewport_scrollbar_expose_event_cb),
+#endif
       viewport
     );
   }

@@ -401,7 +401,11 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
     if(priv->show_remote_cursors || priv->show_remote_selections)
     {
       window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
+#if GTK_CHECK_VERSION(2, 91, 0)
+      window_width = gdk_window_get_width(window);
+#else
       gdk_drawable_get_size(GDK_DRAWABLE(window), &window_width, NULL);
+#endif
 
       gtk_text_view_buffer_to_window_coords(
         priv->textview,
@@ -617,9 +621,15 @@ inf_text_gtk_view_add_user_toggle_pair(GSequence* sequence,
 }
 
 static gboolean
+#if GTK_CHECK_VERSION(2, 91, 0)
+inf_text_gtk_view_draw_before_cb(GtkWidget* widget,
+                                 cairo_t* cr,
+                                 gpointer user_data)
+#else
 inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
                                          GdkEventExpose* event,
                                          gpointer user_data)
+#endif
 {
   InfTextGtkView* view;
   InfTextGtkViewPrivate* priv;
@@ -629,6 +639,7 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
   InfTextGtkViewUser* view_user;
   GtkAdjustment* hadjustment;
   GtkAdjustment* vadjustment;
+  GdkWindow *text_window;
 
   GdkColor* color;
   double h, s, v;
@@ -638,7 +649,11 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
   GdkRectangle rect;
   gint window_width;
   gint rx, ry;
+#if GTK_CHECK_VERSION(2, 91, 0)
+  GdkRectangle clip_area;
+#else
   cairo_t* cr;
+#endif
   cairo_pattern_t* pattern;
   double n, n_users;
   cairo_matrix_t matrix;
@@ -646,17 +661,32 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
   view = INF_TEXT_GTK_VIEW(user_data);
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
 
-  if(gtk_text_view_get_window_type(priv->textview, event->window) !=
-     GTK_TEXT_WINDOW_TEXT)
+  text_window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+  if(!gtk_cairo_should_draw_window(cr, text_window))
+#else
+  if(text_window != event->window)
+#endif
   {
     return FALSE;
   }
 
   if(priv->show_remote_current_lines)
   {
-    cr = gdk_cairo_create(event->window);
+#if GTK_CHECK_VERSION(2, 91, 0)
+    gtk_cairo_transform_to_window(cr, GTK_WIDGET(priv->textview), text_window);
 
-    gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
+    gdk_cairo_get_clip_rectangle(cr, &clip_area);
+#else
+    cr = gdk_cairo_create(text_window);
+#endif
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+      window_width = gdk_window_get_width(text_window);
+#else
+      gdk_drawable_get_size(GDK_DRAWABLE(text_window), &window_width, NULL);
+#endif
 
     /* Make selection color based on text color: If text is dark, selection
      * is dark, if text is bright selection is bright. Note that we draw with
@@ -694,7 +724,9 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
         rect.width = window_width - rect.x;
         rect.height = prev_user->line_height;
 
-#if GTK_CHECK_VERSION(2,90,5)
+#if GTK_CHECK_VERSION(2, 91, 0)
+        if(gdk_rectangle_intersect(&clip_area, &rect, NULL))
+#elif GTK_CHECK_VERSION(2,90,5)
         if(cairo_region_contains_rectangle(event->region, &rect) !=
            CAIRO_REGION_OVERLAP_OUT)
 #else
@@ -753,16 +785,25 @@ inf_text_gtk_view_expose_event_before_cb(GtkWidget* widget,
     }
 
     g_slist_free(sort_users);
+
+#if ! GTK_CHECK_VERSION(2, 91, 0)
     cairo_destroy(cr);
+#endif
   }
 
   return FALSE;
 }
 
 static gboolean
+#if GTK_CHECK_VERSION(2, 91, 0)
+inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
+                                cairo_t* cr,
+                                gpointer user_data)
+#else
 inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
                                         GdkEventExpose* event,
                                         gpointer user_data)
+#endif
 {
   InfTextGtkView* view;
   InfTextGtkViewPrivate* priv;
@@ -774,7 +815,12 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
   InfTextGtkViewUser* view_user;
   double rc,gc,bc;
   double rs,gs,bs;
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+  GdkRectangle clip_area;
+#else
   cairo_t* cr;
+#endif
 
   gint ax, ay;
   GtkTextIter begin_iter;
@@ -805,21 +851,36 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
 
   GdkRectangle rct;
   gint rx, ry;
+  GdkWindow *text_window;
 
   view = INF_TEXT_GTK_VIEW(user_data);
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
 
-  if(gtk_text_view_get_window_type(priv->textview, event->window) !=
-     GTK_TEXT_WINDOW_TEXT)
+  text_window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+  if(!gtk_cairo_should_draw_window(cr, text_window))
+#else
+  if(text_window != event->window)
+#endif
   {
     return FALSE;
   }
 
-  cr = gdk_cairo_create(event->window);
+#if GTK_CHECK_VERSION(2, 91, 0)
+  gtk_cairo_transform_to_window(cr, GTK_WIDGET(priv->textview), text_window);
+#else
+  cr = gdk_cairo_create(text_window);
+#endif
 
   if(priv->show_remote_selections)
   {
-    gdk_drawable_get_size(GDK_DRAWABLE(event->window), &window_width, NULL);
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+      window_width = gdk_window_get_width(text_window);
+#else
+      gdk_drawable_get_size(GDK_DRAWABLE(text_window), &window_width, NULL);
+#endif
 
     /* Make selection color based on text color: If text is dark, selection
      * is dark, if text is bright selection is bright. Note that we draw with
@@ -834,10 +895,18 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
     ss = 1.0 - 0.4*(vs);
 
     /* Find range of text to be updated */
+#if GTK_CHECK_VERSION(2, 91, 0)
+    gdk_cairo_get_clip_rectangle(cr, &clip_area);
+#endif
+
     gtk_text_view_window_to_buffer_coords(
       priv->textview,
       GTK_TEXT_WINDOW_TEXT,
+#if GTK_CHECK_VERSION(2, 91, 0)
+      clip_area.x, clip_area.y,
+#else
       event->area.x, event->area.y,
+#endif
       &ax, &ay
     );
 
@@ -851,8 +920,13 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
     gtk_text_view_get_iter_at_location(
       priv->textview,
       &end_iter,
+#if GTK_CHECK_VERSION(2, 91, 0)
+      ax + clip_area.width,
+      ay + clip_area.height
+#else
       ax + event->area.width,
       ay + event->area.height
+#endif
     );
 
     area_begin = gtk_text_iter_get_offset(&begin_iter);
@@ -1206,7 +1280,9 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
         rct.width = view_user->cursor_rect.width;
         rct.height = view_user->cursor_rect.height;
 
-#if GTK_CHECK_VERSION(2,90,5)
+#if GTK_CHECK_VERSION(2, 91, 0)
+        if(gdk_rectangle_intersect(&clip_area, &rct, NULL))
+#elif GTK_CHECK_VERSION(2,90,5)
         if(cairo_region_contains_rectangle(event->region, &rct) !=
            CAIRO_REGION_OVERLAP_OUT)
 #else
@@ -1229,7 +1305,10 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
     }
   }
 
+#if ! GTK_CHECK_VERSION(2, 91, 0)
   cairo_destroy(cr);
+#endif
+
   return FALSE;
 }
 
@@ -1645,13 +1724,21 @@ inf_text_gtk_view_set_view(InfTextGtkView* view,
   {
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->textview),
+#if GTK_CHECK_VERSION(2, 91, 0)
+      G_CALLBACK(inf_text_gtk_view_draw_before_cb),
+#else
       G_CALLBACK(inf_text_gtk_view_expose_event_before_cb),
+#endif
       view
     );
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->textview),
+#if GTK_CHECK_VERSION(2, 91, 0)
+      G_CALLBACK(inf_text_gtk_view_draw_after_cb),
+#else
       G_CALLBACK(inf_text_gtk_view_expose_event_after_cb),
+#endif
       view
     );
 
@@ -1678,15 +1765,25 @@ inf_text_gtk_view_set_view(InfTextGtkView* view,
 
     g_signal_connect(
       G_OBJECT(gtk_view),
+#if GTK_CHECK_VERSION(2, 91, 0)
+      "draw",
+      G_CALLBACK(inf_text_gtk_view_draw_before_cb),
+#else
       "expose-event",
       G_CALLBACK(inf_text_gtk_view_expose_event_before_cb),
+#endif
       view
     );
 
     g_signal_connect_after(
       G_OBJECT(gtk_view),
+#if GTK_CHECK_VERSION(2, 91, 0)
+      "draw",
+      G_CALLBACK(inf_text_gtk_view_draw_after_cb),
+#else
       "expose-event",
       G_CALLBACK(inf_text_gtk_view_expose_event_after_cb),
+#endif
       view
     );
 

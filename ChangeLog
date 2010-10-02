@@ -1,3 +1,10 @@
+2010-10-02  Jesse van den Kieboom  <jessevdk@gnome.org>
+
+	* libinfgtk/inf-gtk-browser-view.c:
+	* libinftextgtk/inf-text-gtk-hue-chooser.c:
+	* libinftextgtk/inf-text-gtk-view.c:
+	* libinftextgtk/inf-text-gtk-viewport.c: Adapt for latest GTK+3.
+
 2010-09-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftextgtk/inf-text-gtk-view.h:

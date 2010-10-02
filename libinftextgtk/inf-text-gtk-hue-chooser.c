@@ -647,6 +647,19 @@ inf_text_gtk_hue_chooser_button_press_event(GtkWidget* widget,
       GDK_CROSSHAIR
     );
 
+#if GTK_CHECK_VERSION(2, 91, 0)
+    gdk_device_grab(
+      gdk_event_get_device((GdkEvent*)event),
+      priv->window,
+      GDK_OWNERSHIP_NONE,
+      FALSE,
+      GDK_POINTER_MOTION_MASK |
+      GDK_POINTER_MOTION_HINT_MASK |
+      GDK_BUTTON_RELEASE_MASK,
+      cursor,
+      event->time
+    );
+#else
     gdk_pointer_grab(
       priv->window,
       FALSE,
@@ -657,7 +670,7 @@ inf_text_gtk_hue_chooser_button_press_event(GtkWidget* widget,
       cursor,
       event->time
     );
-
+#endif
     gdk_cursor_unref(cursor);
     gtk_widget_grab_focus(widget);
   }
@@ -684,11 +697,17 @@ inf_text_gtk_hue_chooser_button_release_event(GtkWidget* widget,
   hue = inf_text_gtk_hue_chooser_hue_by_coords(chooser, event->x, event->y);
   inf_text_gtk_hue_chooser_set_hue(chooser, hue);
 
+#if GTK_CHECK_VERSION(2, 91, 0)
+  gdk_device_ungrab(
+    gdk_event_get_device((GdkEvent*)event),
+    event->time
+  );
+#else
   gdk_display_pointer_ungrab(
     gdk_drawable_get_display(event->window),
     event->time
   );
-
+#endif
   return TRUE;
 }
 
@@ -714,6 +733,29 @@ inf_text_gtk_hue_chooser_motion_notify_event(GtkWidget* widget,
   return TRUE;
 }
 
+#if GTK_CHECK_VERSION(2,91,0)
+static gboolean
+inf_text_gtk_hue_chooser_draw(GtkWidget* widget,
+                              cairo_t* cr)
+{
+  InfTextGtkHueChooser* chooser;
+  InfTextGtkHueChooserPrivate* priv;
+
+  chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
+  priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
+
+  inf_text_gtk_hue_chooser_paint(
+    chooser,
+    cr,
+    0,
+    0,
+    gtk_widget_get_allocated_width(widget),
+    gtk_widget_get_allocated_height(widget)
+  );
+
+  return FALSE;
+}
+#else
 static gboolean
 inf_text_gtk_hue_chooser_expose_event(GtkWidget* widget,
                                       GdkEventExpose* event)
@@ -796,6 +838,7 @@ inf_text_gtk_hue_chooser_expose_event(GtkWidget* widget,
 
   return FALSE;
 }
+#endif
 
 static gboolean
 inf_text_gtk_hue_chooser_focus(GtkWidget* widget,
@@ -921,7 +964,11 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
     inf_text_gtk_hue_chooser_button_release_event;
   widget_class->motion_notify_event =
     inf_text_gtk_hue_chooser_motion_notify_event;
+#if GTK_CHECK_VERSION(2,91,0)
+  widget_class->draw = inf_text_gtk_hue_chooser_draw;
+#else
   widget_class->expose_event = inf_text_gtk_hue_chooser_expose_event;
+#endif
   widget_class->focus = inf_text_gtk_hue_chooser_focus;
   widget_class->grab_broken_event = inf_text_gtk_hue_chooser_grab_broken_event;
 
