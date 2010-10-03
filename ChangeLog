@@ -1,3 +1,16 @@
+2010-10-03  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-remote-delete-operation.c
+	(inf_text_remote_delete_operation_transform_split): When a remote
+	delete operation is splitted, make sure to keep the recon order in the
+	splitted operations. Also fix recon position index in the second
+	operation.
+
+	* test/session/test-53.xml:
+	* test/replay/replay-11.record.xml: Add a test and a record which make
+	libinfinity run into a failed assertion when reconstructing the delete
+	operation without this being fixed.
+
 2010-05-21  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-util.h:
