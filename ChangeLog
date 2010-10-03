@@ -1,3 +1,8 @@
+2010-10-02  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-gtk-browser.c (main): Allow to open connections via
+	their IP address when given as commandline arguments.
+
 2010-10-02  Jesse van den Kieboom  <jessevdk@gnome.org>
 
 	* libinfgtk/inf-gtk-browser-view.c:

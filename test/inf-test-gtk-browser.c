@@ -869,6 +869,11 @@ main(int argc,
   GtkWidget* window;
   GError* error;
 
+  int i;
+  InfTcpConnection* tcp;
+  InfXmppConnection* xmpp;
+  InfIpAddress* addr;
+
   gtk_init(&argc, &argv);
 
   error = NULL;
@@ -888,7 +893,6 @@ main(int argc,
   communication_manager = inf_communication_manager_new();
   store = inf_gtk_browser_store_new(INF_IO(io), communication_manager);
   g_object_unref(communication_manager);
-  g_object_unref(G_OBJECT(io));
 
   g_signal_connect_after(
     G_OBJECT(store),
@@ -896,6 +900,43 @@ main(int argc,
     G_CALLBACK(on_set_browser),
     NULL
   );
+
+  for(i = 1; i < argc; ++i)
+  {
+    addr = inf_ip_address_new_from_string(argv[i]);
+
+    tcp = inf_tcp_connection_new(
+      INF_IO(io),
+      addr,
+      inf_protocol_get_default_port()
+    );
+
+    xmpp = inf_xmpp_connection_new(
+      tcp,
+      INF_XMPP_CONNECTION_CLIENT,
+      g_get_host_name(),
+      argv[i],
+      INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+      NULL,
+      NULL,
+      NULL
+    );
+
+    inf_ip_address_free(addr);
+    g_object_unref(tcp);
+
+#ifdef LIBINFINITY_HAVE_AVAHI
+    inf_xmpp_manager_add_connection(xmpp_manager, xmpp);
+#endif
+
+    inf_gtk_browser_store_add_connection(
+      INF_GTK_BROWSER_STORE(store),
+      INF_XML_CONNECTION(xmpp),
+      argv[i]
+    );
+  }
+
+  g_object_unref(G_OBJECT(io));
 
 #ifdef LIBINFINITY_HAVE_AVAHI
   inf_gtk_browser_store_add_discovery(store, INF_DISCOVERY(avahi));
