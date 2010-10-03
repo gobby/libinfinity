@@ -207,24 +207,69 @@ inf_communication_central_method_send_all(InfCommunicationMethod* method,
                                           xmlNodePtr xml)
 {
   InfCommunicationCentralMethodPrivate* priv;
+  InfCommunicationRegistry* registry;
+  InfCommunicationGroup* group;
+  GSList* connections;
   GSList* item;
-  GSList* next;
+  InfXmlConnection* connection;
+  gboolean is_registered;
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
-  for(item = priv->connections; item != NULL; item = next)
-  {
-    next = item->next;
+  /* Each of the inf_communication_registry_send() calls can do a callback
+   * which might possibly screw up our connection list completely. So be safe
+   * here by copying all relevant information on the stack. */
+  g_object_ref(method);
+  registry = g_object_ref(priv->registry);
+  group = g_object_ref(priv->group);
 
-    inf_communication_registry_send(
-      priv->registry,
-      priv->group,
-      INF_XML_CONNECTION(item->data),
-      next ? xmlCopyNode(xml, 1) : xml
+  connections = g_slist_copy(priv->connections);
+  for(item = connections; item != NULL; item = item->next)
+    g_object_ref(item->data);
+
+  while(connections)
+  {
+    connection = INF_XML_CONNECTION(connections->data);
+
+    /* A callback from a prior iteration might have unregistered the
+     * connection. */
+    is_registered = inf_communication_registry_is_registered(
+      registry,
+      group,
+      connection
     );
+
+    if(is_registered)
+    {
+      if(connections->next != NULL)
+      {
+        /* Keep ownership of XML if there might be more connections we should
+         * send it to. */
+        inf_communication_registry_send(
+          registry,
+          group,
+          connection,
+          xmlCopyNode(xml, 1)
+        );
+      }
+      else
+      {
+        /* Pass ownership of XML if this is definitely the last connection
+         * in the list. */
+        inf_communication_registry_send(registry, group, connection, xml);
+        xml = NULL;
+      }
+    }
+
+    g_object_unref(connection);
+    connections = g_slist_delete_link(connections, connections);
   }
 
-  if(priv->connections == NULL)
+  g_object_unref(method);
+  g_object_unref(registry);
+  g_object_unref(group);
+
+  if(xml != NULL)
     xmlFreeNode(xml);
 }
 

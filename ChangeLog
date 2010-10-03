@@ -1,5 +1,11 @@
 2010-10-03  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-central-method.c
+	(inf_communication_central_method_send_all): Make the code aware of
+	the send callback modifying the connection list.
+
+2010-10-03  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-remote-delete-operation.c
 	(inf_text_remote_delete_operation_transform_split): When a remote
 	delete operation is splitted, make sure to keep the recon order in the
