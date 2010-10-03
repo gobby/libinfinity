@@ -598,12 +598,16 @@ inf_text_remote_delete_operation_transform_split(
   for(item = priv->recon; item != NULL; item = g_slist_next(item))
   {
     recon = (InfTextRemoteDeleteOperationRecon*)item->data;
+
+    g_assert(recon->position >= recon_cur_len);
     if(recon->position - recon_cur_len <= split_pos)
     {
       new_recon = g_slice_new(InfTextRemoteDeleteOperationRecon);
       new_recon->position = recon->position;
       new_recon->chunk = inf_text_chunk_copy(recon->chunk);
       first_recon = g_slist_prepend(first_recon, new_recon);
+
+      recon_cur_len += inf_text_chunk_get_length(recon->chunk);
     }
     else
     {
@@ -629,11 +633,11 @@ inf_text_remote_delete_operation_transform_split(
   );
 
   result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(first_operation);
-  result_priv->recon = first_recon;
+  result_priv->recon = g_slist_reverse(first_recon);
   result_priv->recon_offset = priv->recon_offset;
 
   result_priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(second_operation);
-  result_priv->recon = second_recon;
+  result_priv->recon = g_slist_reverse(second_recon);
   result_priv->recon_offset = priv->recon_offset + split_pos + recon_cur_len;
 
   result = inf_adopted_split_operation_new(
