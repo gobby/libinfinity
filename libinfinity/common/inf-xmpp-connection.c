@@ -2382,8 +2382,16 @@ inf_xmpp_connection_sax_end_element(void* context,
   }
   else
   {
-    /* Should have caused an error in the XML parser otherwise */
-    g_assert(strcmp((const gchar*)name, "stream:stream") == 0);
+    /* Should have caused an error in the XML parser otherwise. The only case
+     * where we get an end element for the top-level which is not
+     * stream:stream is when the remote part sent a non-stream:stream opening
+     * tag and the corresponding closing tag in one go so that we process both
+     * in the same XML parser invocation. In that case
+     * inf_xmpp_connection_sax_start_element resets the connection status
+     * however so also check for that here. See also bug #546. */
+    g_assert(strcmp((const gchar*)name, "stream:stream") == 0 ||
+             priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS ||
+             priv->status == INF_XMPP_CONNECTION_CLOSED);
 
     switch(priv->status)
     {
@@ -2401,15 +2409,19 @@ inf_xmpp_connection_sax_end_element(void* context,
       /* Also terminate stream in these states */
       inf_xmpp_connection_terminate(xmpp);
       break;
+    case INF_XMPP_CONNECTION_CLOSED:
+    case INF_XMPP_CONNECTION_CLOSING_GNUTLS:
+      /* This can happen if the connection was terminated by start_element and
+       * the XML parser processed the corresponding end tag in the same
+       * xmlParseChunk() invocation. */
+      break;
     case INF_XMPP_CONNECTION_CONNECTED:
     case INF_XMPP_CONNECTION_AUTH_CONNECTED:
       /* We should not get </stream:stream> before we got <stream:stream>,
        * which would have caused us to change into the INITIATED state. The
        * XML parser should have reported an error in this case. */
-    case INF_XMPP_CONNECTION_CLOSING_GNUTLS:
     case INF_XMPP_CONNECTION_HANDSHAKING:
       /* received_cb should not call the XML parser in these states */
-    case INF_XMPP_CONNECTION_CLOSED:
     case INF_XMPP_CONNECTION_CONNECTING:
       /* We should not even receive something in these states */
     default:
