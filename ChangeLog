@@ -1,3 +1,13 @@
+2010-10-06  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_sax_end_element): Fix an assertion so that the
+	ending top-level tag is allowed not to be stream:stream if the
+	connection is going to be terminated. This can happen if the opening
+	and closing XML tag is sent in one go so that both are processed by
+	the parser. The XML handler for the start element will then terminate
+	the connection. Bug #546.
+
 2010-10-03  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/communication/inf-communication-central-method.c
