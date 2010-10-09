@@ -30,6 +30,7 @@
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/inf-signals.h>
 #include <libinfinity/common/inf-init.h>
 

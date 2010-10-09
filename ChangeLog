@@ -1,3 +1,7 @@
+2010-10-09  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-gtk-browser.c: Add a missing include.
+
 2010-10-06  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c
