@@ -801,6 +801,12 @@ infc_browser_session_close_cb(InfSession* session,
     g_assert(priv->chat_session != NULL);
     g_assert(infc_session_proxy_get_session(priv->chat_session) == session);
 
+    inf_signal_handlers_disconnect_by_func(
+      infc_session_proxy_get_session(priv->chat_session),
+      G_CALLBACK(infc_browser_session_close_cb),
+      browser
+    );
+
     g_object_unref(priv->chat_session);
     priv->chat_session = NULL;
 
@@ -947,8 +953,25 @@ infc_browser_disconnected(InfcBrowser* browser)
   g_assert(priv->root->shared.subdir.child == NULL);
   priv->root->shared.subdir.explored = FALSE;
 
+  g_object_freeze_notify(G_OBJECT(browser));
+
+  if(priv->chat_session != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      infc_session_proxy_get_session(priv->chat_session),
+      G_CALLBACK(infc_browser_session_close_cb),
+      browser
+    );
+
+    g_object_unref(priv->chat_session);
+    priv->chat_session = NULL;
+    
+    g_object_notify(G_OBJECT(browser), "chat-session");
+  }
+
   priv->status = INFC_BROWSER_DISCONNECTED;
   g_object_notify(G_OBJECT(browser), "status");
+  g_object_thaw_notify(G_OBJECT(browser));
 }
 
 static void
