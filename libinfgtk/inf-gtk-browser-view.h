@@ -52,9 +52,11 @@ struct _InfGtkBrowserViewClass {
   void (*populate_popup)(InfGtkBrowserView* view,
                          GtkMenu* menu);
 
+#if ! GTK_CHECK_VERSION(2, 91, 0)
   void (*set_scroll_adjustments)(InfGtkBrowserView* view,
                                  GtkAdjustment* hadjustment,
                                  GtkAdjustment* vadjustment);
+#endif
 };
 
 struct _InfGtkBrowserView {

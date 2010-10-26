@@ -2233,6 +2233,38 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
 }
 
 /*
+ * Adjustment callbacks
+ */
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+static void
+vadjustment_changed_cb (InfGtkBrowserView *view, GParamSpec *pspec, gpointer data)
+{
+  InfGtkBrowserViewPrivate* priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);;
+  GtkAdjustment *adj = gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(view));
+
+  /* Delegate to TreeView */
+  if(priv->treeview != NULL)
+  {
+    gtk_scrollable_set_vadjustment(GTK_SCROLLABLE(priv->treeview), adj);
+  }
+}
+
+static void
+hadjustment_changed_cb (InfGtkBrowserView *view, GParamSpec *pspec, gpointer data)
+{
+  InfGtkBrowserViewPrivate* priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);;
+  GtkAdjustment *adj = gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(view));
+
+  /* Delegate to TreeView */
+  if(priv->treeview != NULL)
+  {
+    gtk_scrollable_set_hadjustment(GTK_SCROLLABLE(priv->treeview), adj);
+  }
+}
+#endif
+
+/*
  * GObject overrides
  */
 
@@ -2354,6 +2386,22 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
     G_CALLBACK(inf_gtk_browser_view_selection_changed_cb),
     view
   );
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+  g_signal_connect(
+    view,
+    "notify::hadjustment",
+    G_CALLBACK (hadjustment_changed_cb),
+    NULL
+  );
+
+  g_signal_connect(
+    view,
+    "notify::vadjustment",
+    G_CALLBACK (vadjustment_changed_cb),
+    NULL
+  );
+#endif
 
   gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), priv->column);
   gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(priv->treeview), FALSE);
@@ -2518,6 +2566,7 @@ inf_gtk_browser_view_size_allocate(GtkWidget* widget,
   }
 }
 
+#if ! GTK_CHECK_VERSION(2, 91, 0)
 static void
 inf_gtk_browser_view_set_scroll_adjustments(InfGtkBrowserView* view,
                                             GtkAdjustment* hadj,
@@ -2543,6 +2592,7 @@ inf_gtk_browser_view_set_scroll_adjustments(InfGtkBrowserView* view,
     );
   }
 }
+#endif
 
 /*
  * GType registration
@@ -2583,8 +2633,11 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   view_class->activate = NULL;
   view_class->selection_changed = NULL;
   view_class->populate_popup = NULL;
+
+#if ! GTK_CHECK_VERSION(2, 91, 0)
   view_class->set_scroll_adjustments =
     inf_gtk_browser_view_set_scroll_adjustments;
+#endif
 
   g_object_class_install_property(
     object_class,
@@ -2634,6 +2687,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
     GTK_TYPE_MENU
   );
 
+#if ! GTK_CHECK_VERSION(2, 91, 0)
   widget_class->set_scroll_adjustments_signal = g_signal_new(
     "set-scroll-adjustments",
     G_TYPE_FROM_CLASS(object_class),
@@ -2646,6 +2700,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
     GTK_TYPE_ADJUSTMENT,
     GTK_TYPE_ADJUSTMENT
   );
+#endif
 }
 
 GType
