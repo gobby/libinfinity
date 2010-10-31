@@ -28,7 +28,7 @@ struct _InfinotedAutosaveSession {
   InfinotedAutosave* autosave;
   InfdDirectoryIter iter;
   InfdSessionProxy* proxy;
-  gpointer timeout_handle;
+  InfIoTimeout* timeout;
 };
 
 static InfinotedAutosaveSession*
@@ -64,9 +64,9 @@ infinoted_autosave_session_start(InfinotedAutosave* autosave,
   InfIo* io;
   io = infd_directory_get_io(autosave->directory);
 
-  g_assert(session->timeout_handle == NULL);
+  g_assert(session->timeout == NULL);
 
-  session->timeout_handle = inf_io_add_timeout(
+  session->timeout = inf_io_add_timeout(
     io,
     autosave->autosave_interval * 1000,
     infinoted_autosave_session_timeout_cb,
@@ -82,10 +82,10 @@ infinoted_autosave_session_stop(InfinotedAutosave* autosave,
   InfIo* io;
   io = infd_directory_get_io(autosave->directory);
 
-  g_assert(session->timeout_handle != NULL);
+  g_assert(session->timeout != NULL);
 
-  inf_io_remove_timeout(io, session->timeout_handle);
-  session->timeout_handle = NULL;
+  inf_io_remove_timeout(io, session->timeout);
+  session->timeout = NULL;
 }
 
 static void
@@ -103,12 +103,12 @@ infinoted_autosave_buffer_notify_modified_cb(GObject* object,
 
   if(inf_buffer_get_modified(buffer) == TRUE)
   {
-    if(session->timeout_handle == NULL)
+    if(session->timeout == NULL)
       infinoted_autosave_session_start(session->autosave, session);
   }
   else
   {
-    if(session->timeout_handle != NULL)
+    if(session->timeout != NULL)
       infinoted_autosave_session_stop(session->autosave, session);
   }
 }
@@ -127,14 +127,14 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
   iter = &session->iter;
   error = NULL;
 
-  if(session->timeout_handle != NULL)
+  if(session->timeout != NULL)
   {
     inf_io_remove_timeout(
       infd_directory_get_io(directory),
-      session->timeout_handle
+      session->timeout
     );
 
-    session->timeout_handle = NULL;
+    session->timeout = NULL;
   }
 
   buffer = inf_session_get_buffer(
@@ -183,7 +183,7 @@ infinoted_autosave_session_timeout_cb(gpointer user_data)
   InfinotedAutosaveSession* session;
 
   session = (InfinotedAutosaveSession*)user_data;
-  session->timeout_handle = NULL;
+  session->timeout = NULL;
 
   infinoted_autosave_session_save(session->autosave, session);
 }
@@ -205,7 +205,7 @@ infinoted_autosave_add_session(InfinotedAutosave* autosave,
   proxy = infd_directory_iter_peek_session(autosave->directory, iter);
   g_assert(proxy != NULL);
   session->proxy = proxy;
-  session->timeout_handle = NULL;
+  session->timeout = NULL;
 
   autosave->sessions = g_slist_prepend(autosave->sessions, session);
 
@@ -232,7 +232,7 @@ infinoted_autosave_remove_session(InfinotedAutosave* autosave,
 
   /* Cancel autosave timeout even if session is modified. If the directory
    * removed the session, then it has already saved it anyway. */
-  if(session->timeout_handle != NULL)
+  if(session->timeout != NULL)
     infinoted_autosave_session_stop(autosave, session);
 
   buffer =
@@ -403,7 +403,7 @@ infinoted_autosave_save_immediately(InfinotedAutosave* autosave)
   for(item = autosave->sessions; item != NULL; item = g_slist_next(item))
   {
     session = (InfinotedAutosaveSession*)item->data;
-    if(session->timeout_handle != NULL)
+    if(session->timeout != NULL)
       infinoted_autosave_session_save(autosave, session);
   }
 }

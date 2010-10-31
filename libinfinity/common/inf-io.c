@@ -34,6 +34,10 @@
  * Every object in Libinfinity that needs to schedule timeouts or watches
  * sockets uses a InfIo to do so. This allows to use libinfinity with
  * different main event loops, not only Glib's one.
+ *
+ * #InfIo is guaranteed to be thread-safe. All functions can be called from
+ * any thread at any time. However, all callback functions are always called
+ * from the same thread (normally the one running the main loop).
  **/
 
 #include <libinfinity/common/inf-io.h>
@@ -108,7 +112,7 @@ inf_io_get_type(void)
 }
 
 /**
- * inf_io_watch:
+ * inf_io_add_watch:
  * @io: A #InfIo.
  * @socket: The socket to watch.
  * @events: Events to watch for.
@@ -119,25 +123,76 @@ inf_io_get_type(void)
  *
  * Monitors the given socket for activity and calls @func if one of the
  * events specified in @events occurs.
+ *
+ * Returns: A #InfIoWatch that can be used to update or remove the watch.
  **/
+InfIoWatch*
+inf_io_add_watch(InfIo* io,
+                 InfNativeSocket* socket,
+                 InfIoEvent events,
+                 InfIoWatchFunc func,
+                 gpointer user_data,
+                 GDestroyNotify notify)
+{
+  InfIoIface* iface;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(socket != NULL, NULL);
+  g_return_val_if_fail(func != NULL, NULL);
+
+  iface = INF_IO_GET_IFACE(io);
+  g_return_val_if_fail(iface->add_watch != NULL, NULL);
+
+  return iface->add_watch(io, socket, events, func, user_data, notify);
+}
+
+/**
+ * inf_io_update_watch:
+ * @io: A #InfIo.
+ * @watch: The watch to update, as returned by inf_io_add_watch().
+ * @events: The new events to watch for.
+ *
+ * Changes the events that the socket bound to @watch is being watched for.
+ * The callback of @watch will only be called if one of the newly watched for
+ * events occurs.
+ */
 void
-inf_io_watch(InfIo* io,
-             InfNativeSocket* socket,
-             InfIoEvent events,
-             InfIoFunc func,
-             gpointer user_data,
-             GDestroyNotify notify)
+inf_io_update_watch(InfIo* io,
+                    InfIoWatch* watch,
+                    InfIoEvent events)
 {
   InfIoIface* iface;
 
   g_return_if_fail(INF_IS_IO(io));
-  g_return_if_fail(socket != NULL);
-  g_return_if_fail(events == 0 || func != NULL);
+  g_return_if_fail(watch != NULL);
 
   iface = INF_IO_GET_IFACE(io);
-  g_return_if_fail(iface->watch != NULL);
+  g_return_if_fail(iface->update_watch != NULL);
 
-  iface->watch(io, socket, events, func, user_data, notify);
+  iface->update_watch(io, watch, events);
+}
+
+/**
+ * inf_io_remove_watch:
+ * @io: A #InfIo.
+ * @watch: The watch to remove, as returned by inf_io_add_watch().
+ *
+ * Removes @watch from @io and releases all resources allocated for the watch.
+ * Events are no longer looked for on the socket.
+ */
+void
+inf_io_remove_watch(InfIo* io,
+                    InfIoWatch* watch)
+{
+  InfIoIface* iface;
+
+  g_return_if_fail(INF_IS_IO(io));
+  g_return_if_fail(watch != NULL);
+
+  iface = INF_IO_GET_IFACE(io);
+  g_return_if_fail(iface->remove_watch != NULL);
+
+  iface->remove_watch(io, watch);
 }
 
 /**
@@ -152,9 +207,9 @@ inf_io_watch(InfIo* io,
  * Calls @func after at least @msecs milliseconds have elapsed. The timeout
  * is removed after it has elapsed.
  *
- * Return Value: A timeout handle that can be used to remove the timeout.
+ * Returns: A timeout handle that can be used to remove the timeout.
  **/
-gpointer
+InfIoTimeout*
 inf_io_add_timeout(InfIo* io,
                    guint msecs,
                    InfIoTimeoutFunc func,
@@ -181,7 +236,7 @@ inf_io_add_timeout(InfIo* io,
  **/
 void
 inf_io_remove_timeout(InfIo* io,
-                      gpointer timeout)
+                      InfIoTimeout* timeout)
 {
   InfIoIface* iface;
 
@@ -192,6 +247,59 @@ inf_io_remove_timeout(InfIo* io,
   g_return_if_fail(iface->remove_timeout != NULL);
 
   iface->remove_timeout(io, timeout);
+}
+
+/**
+ * inf_io_add_dispatch:
+ * @io: A #InfIo.
+ * @func: Function to be called when the function is dispatched.
+ * @user_data: Extra data to pass to @func.
+ * @notify: A #GDestroyNotify that is called when @user_data is no longer
+ * needed, or %NULL.
+ *
+ * Schedules @func to be called by the thread @io runs in. This function can
+ * be used from a different thread to communicate to @io's thread.
+ *
+ * Returns: A dispatch handle that can be used to stop the dispatched function
+ * from being called as long as it has not yet been called.
+ **/
+InfIoDispatch*
+inf_io_add_dispatch(InfIo* io,
+                    InfIoDispatchFunc func,
+                    gpointer user_data,
+                    GDestroyNotify notify)
+{
+  InfIoIface* iface;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(func != NULL, NULL);
+
+  iface = INF_IO_GET_IFACE(io);
+  g_return_val_if_fail(iface->add_dispatch != NULL, NULL);
+
+  return iface->add_dispatch(io, func, user_data, notify);
+}
+
+/**
+ * inf_io_remove_dispatch:
+ * @io: A #InfIo.
+ * @timeout: A dispatch handle obtained from inf_io_add_dispatch().
+ *
+ * Removes the given dispatch from @io so that it is not called.
+ **/
+void
+inf_io_remove_dispatch(InfIo* io,
+                       InfIoDispatch* dispatch)
+{
+  InfIoIface* iface;
+
+  g_return_if_fail(INF_IS_IO(io));
+  g_return_if_fail(dispatch != NULL);
+
+  iface = INF_IO_GET_IFACE(io);
+  g_return_if_fail(iface->remove_dispatch != NULL);
+
+  iface->remove_dispatch(io, dispatch);
 }
 
 /* vim:set et sw=2 ts=2: */

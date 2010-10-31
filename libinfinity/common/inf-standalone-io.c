@@ -20,11 +20,14 @@
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>
 
+/* TODO: Modularize the FD handling, then add epoll support */
+
 #ifdef G_OS_WIN32
 # include <winsock2.h>
 #else
 # include <poll.h>
 # include <errno.h>
+# include <unistd.h>
 #endif /* !G_OS_WIN32 */
 
 #include <string.h>
@@ -51,17 +54,23 @@ static const InfStandaloneIoPollTimeout INF_STANDALONE_IO_POLL_INFINITE = -1;
   (poll(events, (nfds_t)num_events, timeout))
 #endif
 
-typedef struct _InfStandaloneIoWatch InfStandaloneIoWatch;
-struct _InfStandaloneIoWatch {
+struct _InfIoWatch {
+  /* TODO: Do we actually need this? We can access the event by
+   * priv->events[watchindex+1]. */
   InfStandaloneIoNativeEvent* event;
+
   InfNativeSocket* socket;
-  InfIoFunc func;
+  InfIoWatchFunc func;
   gpointer user_data;
   GDestroyNotify notify;
+
+  /* Protection flags to avoid freeing the watch object when running
+   * the callback */
+  gboolean executing;
+  gboolean disposed;
 };
 
-typedef struct _InfStandaloneIoTimeout InfStandaloneIoTimeout;
-struct _InfStandaloneIoTimeout {
+struct _InfIoTimeout {
   GTimeVal begin;
   guint msecs;
   InfIoTimeoutFunc func;
@@ -69,16 +78,31 @@ struct _InfStandaloneIoTimeout {
   GDestroyNotify notify;
 };
 
+struct _InfIoDispatch {
+  InfIoDispatchFunc func;
+  gpointer user_data;
+  GDestroyNotify notify;
+};
+
 typedef struct _InfStandaloneIoPrivate InfStandaloneIoPrivate;
 struct _InfStandaloneIoPrivate {
   InfStandaloneIoNativeEvent* events;
-  InfStandaloneIoWatch* watches;
+  GMutex* mutex;
 
   guint fd_size;
   guint fd_alloc;
 
-  GList* timeouts;
+  /* this array has fd_size-1 entries and fd_alloc-1 allocations: */
+  InfIoWatch** watches;
 
+  GList* timeouts;
+  GList* dispatchs;
+
+#ifndef G_OS_WIN32
+  int wakeup_pipe[2];
+#endif
+
+  gboolean polling;
   gboolean loop_running;
 };
 
@@ -119,6 +143,8 @@ inf_standalone_io_timeval_diff(GTimeVal* first,
          (first->tv_usec+500)/1000 - (second->tv_usec+500)/1000;
 }
 
+/* Run one iteration of the main loop. Call this only with the mutex locked
+ * and a local reference added to io. */
 static void
 inf_standalone_io_iteration_impl(InfStandaloneIo* io,
                                  InfStandaloneIoPollTimeout timeout)
@@ -130,49 +156,62 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
 
   GList* item;
   GTimeVal current;
-  InfStandaloneIoTimeout* cur_timeout;
-  GList* next_timeout;
+  InfIoWatch* watch;
+  InfIoTimeout* cur_timeout;
+  InfIoDispatch* dispatch;
   guint elapsed;
 
 #ifdef G_OS_WIN32
   gchar* error_message;
-  InfStandaloneIoWatch* watch;
   WSANETWORKEVENTS wsa_events;
   const InfStandaloneIoEventTableEntry* entry;
+#else
+  ssize_t ret;
+  char buf[1];
 #endif
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_get_current_time(&current);
-  next_timeout = NULL;
-
-  for(item = priv->timeouts; item != NULL; item = g_list_next(item))
+  /* Find number of milliseconds to wait */
+  if(priv->dispatchs != NULL)
   {
-    cur_timeout = item->data;
-    elapsed = inf_standalone_io_timeval_diff(&current, &cur_timeout->begin);
-
-    if(elapsed >= cur_timeout->msecs)
+    /* TODO: Don't even poll */
+    timeout = 0;
+  }
+  else
+  {
+    g_get_current_time(&current);
+    for(item = priv->timeouts; item != NULL; item = g_list_next(item))
     {
-      /* already elapsed */
-      /* TODO: Don't even poll */
-      timeout = 0;
-      next_timeout = item;
+      cur_timeout = (InfIoTimeout*)item->data;
+      elapsed = inf_standalone_io_timeval_diff(&current, &cur_timeout->begin);
 
-      /* no need to check other timeouts */
-      break;
-    }
-    else
-    {
-      if(timeout == INF_STANDALONE_IO_POLL_INFINITE ||
-         cur_timeout->msecs - elapsed > (guint)timeout)
+      if(elapsed >= cur_timeout->msecs)
       {
-        next_timeout = item;
-        timeout = cur_timeout->msecs - elapsed;
+        /* already elapsed */
+        /* TODO: Don't even poll */
+        timeout = 0;
+        /* no need to check other timeouts */
+        break;
+      }
+      else
+      {
+        if(timeout == INF_STANDALONE_IO_POLL_INFINITE ||
+           cur_timeout->msecs - elapsed > (guint)timeout)
+        {
+          timeout = cur_timeout->msecs - elapsed;
+        }
       }
     }
   }
 
+  priv->polling = TRUE;
+  g_mutex_unlock(priv->mutex);
+
   result = inf_standalone_io_poll(priv->events, priv->fd_size, timeout);
+
+  g_mutex_lock(priv->mutex);
+  priv->polling = FALSE;
 
 #ifdef G_OS_WIN32
   switch(result)
@@ -197,49 +236,85 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   }
 #endif
 
-  g_object_ref(io);
-
-  if(next_timeout != NULL && result == INF_STANDALONE_IO_POLL_TIMEOUT)
+  if(result == INF_STANDALONE_IO_POLL_TIMEOUT)
   {
-    /* No file descriptor is active, but a timeout elapsed */
-    cur_timeout = next_timeout->data;
-    priv->timeouts = g_list_delete_link(priv->timeouts, next_timeout);
+    /* No file descriptor is active, so check whether a timeout elapsed */
+    g_get_current_time(&current);
+    for(item = priv->timeouts; item != NULL; item = g_list_next(item))
+    {
+      cur_timeout = (InfIoTimeout*)item->data;
+      elapsed = inf_standalone_io_timeval_diff(&current, &cur_timeout->begin);
+      if(elapsed >= cur_timeout->msecs)
+      {
+        priv->timeouts = g_list_delete_link(priv->timeouts, item);
+        g_mutex_unlock(priv->mutex);
 
-    cur_timeout->func(cur_timeout->user_data);
-    if(cur_timeout->notify)
-      cur_timeout->notify(cur_timeout->user_data);
-    g_slice_free(InfStandaloneIoTimeout, cur_timeout);
+        cur_timeout->func(cur_timeout->user_data);
+        if(cur_timeout->notify)
+          cur_timeout->notify(cur_timeout->user_data);
+        g_slice_free(InfIoTimeout, cur_timeout);
+
+        g_mutex_lock(priv->mutex);
+        return;
+      }
+    }
   }
 #ifdef G_OS_WIN32
   else if(result >= WSA_WAIT_EVENT_0 &&
           result < WSA_WAIT_EVENT_0 + priv->fd_size)
   {
-    watch = &priv->watches[result - WSA_WAIT_EVENT_0];
-    if(WSAEnumNetworkEvents(*watch->socket, *watch->event, &wsa_events) ==
-       SOCKET_ERROR)
+    if(result == WSA_WAIT_EVENT_0)
     {
-      error_message = g_win32_error_message(WSAGetLastError());
-      g_warning("WSAEnumNetworkEvents failed: %s\n", error_message);
-      g_free(error_message);
-
-      events = INF_IO_ERROR;
+      /* wakeup call */
+      WSAResetEvent(priv->events[0]);
     }
     else
     {
-      events = 0;
-      for(i = 0; i < G_N_ELEMENTS(inf_standalone_io_event_table); ++ i)
+      watch = priv->watches[result - WSA_WAIT_EVENT_0 - 1];
+
+      if(WSAEnumNetworkEvents(*watch->socket, *watch->event, &wsa_events) ==
+         SOCKET_ERROR)
       {
-        entry = &inf_standalone_io_event_table[i];
-        if(wsa_events.lNetworkEvents & entry->flag_val)
+        error_message = g_win32_error_message(WSAGetLastError());
+        g_warning("WSAEnumNetworkEvents failed: %s\n", error_message);
+        g_free(error_message);
+
+        events = INF_IO_ERROR;
+      }
+      else
+      {
+        events = 0;
+        for(i = 0; i < G_N_ELEMENTS(inf_standalone_io_event_table); ++ i)
         {
-          events |= entry->io_val;
-          if(wsa_events.iErrorCode[entry->flag_bit])
-            events |= INF_IO_ERROR;
+          entry = &inf_standalone_io_event_table[i];
+          if(wsa_events.lNetworkEvents & entry->flag_val)
+          {
+            events |= entry->io_val;
+            if(wsa_events.iErrorCode[entry->flag_bit])
+              events |= INF_IO_ERROR;
+          }
         }
       }
-    }
 
-    watch->func(watch->socket, events, watch->user_data);
+      /* protect from removing the watch object via
+       * inf_io_remove_watch() when running the callback. */
+      watch->executing = TRUE;
+      g_mutex_unlock(priv->mutex);
+
+      watch->func(watch->socket, events, watch->user_data);
+
+      g_mutex_lock(priv->mutex);
+      watch->executing = FALSE;
+      if(watch->disposed == TRUE)
+      {
+        g_mutex_unlock(priv->mutex);
+        if(watch->notify) watch->notify(watch->user_data);
+        g_slice_free(InfIoWatch, watch);
+        g_mutex_lock(priv->mutex);
+      }
+
+      return;
+    }
   }
 #else
   else if(result > 0)
@@ -259,26 +334,91 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
            * infinote. */
           if(priv->events[i].revents & (POLLERR | POLLPRI | POLLHUP | POLLNVAL))
             events |= INF_IO_ERROR;
-          
+
           priv->events[i].revents = 0;
 
-          priv->watches[i].func(
-            priv->watches[i].socket,
-            events,
-            priv->watches[i].user_data
-          );
+          if(i == 0)
+          {
+            /* wakeup call */
 
-          /* The callback might have done everything, including completly
-           * screwing up the array of file descriptors. This is why we break
-           * here and iterate from the beginning to find the next event. */
-          break;
+            /* we were not polling for outgoing */
+            g_assert(~events & INF_IO_OUTGOING);
+            if(events & INF_IO_ERROR)
+            {
+              /* TODO: Read error from FD? */
+              g_warning("Error condition on wakeup pipe");
+              /* TODO: Is there anything we could do here?
+               * Try to re-establish pipe? */
+            }
+            else
+            {
+              ret = read(priv->events[0].fd, &buf, 1);
+              if(ret == -1)
+              {
+                g_warning(
+                  "read() on wakeup pipe failed: %s",
+                  strerror(errno)
+                );
+
+                /* TODO: Is there anything we could do here?
+                 * Try to re-establish pipe? */
+              }
+              else if(ret == 0)
+              {
+                g_warning("Wakeup pipe received EOF");
+                /* TODO: Is there anything we could do here?
+                 * Try to re-establish pipe? */
+              }
+              else
+              {
+                /* this is what we send as wakeup call */
+                g_assert(buf[0] == 'c');
+              }
+            }
+          }
+          else
+          {
+            watch = priv->watches[i-1];
+
+            /* protect from removing the watch object via
+             * inf_io_remove_watch() when running the callback. */
+            watch->executing = TRUE;
+            g_mutex_unlock(priv->mutex);
+
+            watch->func(watch->socket, events, watch->user_data);
+
+            g_mutex_lock(priv->mutex);
+            watch->executing = FALSE;
+            if(watch->disposed == TRUE)
+            {
+              g_mutex_unlock(priv->mutex);
+              if(watch->notify) watch->notify(watch->user_data);
+              g_slice_free(InfIoWatch, watch);
+              g_mutex_lock(priv->mutex);
+            }
+
+            return;
+          }
         }
       }
     }
   }
 #endif
 
-  g_object_unref(io);
+  /* neither timeout nor IO fired, so try a dispatched message */
+  if(priv->dispatchs != NULL)
+  {
+    dispatch = (InfIoDispatch*)priv->dispatchs->data;
+    priv->dispatchs = g_list_delete_link(priv->timeouts, item);
+    g_mutex_unlock(priv->mutex);
+
+    dispatch->func(dispatch->user_data);
+    if(dispatch->notify)
+      dispatch->notify(dispatch->user_data);
+    g_slice_free(InfIoDispatch, dispatch);
+
+    g_mutex_lock(priv->mutex);
+  }
 }
 
 static void
@@ -288,16 +428,52 @@ inf_standalone_io_init(GTypeInstance* instance,
   InfStandaloneIo* io;
   InfStandaloneIoPrivate* priv;
 
+#ifdef G_OS_WIN32
+  gchar* error_message;
+#endif
+
   io = INF_STANDALONE_IO(instance);
   priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  priv->mutex = g_mutex_new();
 
   priv->fd_size = 0;
   priv->fd_alloc = 4;
 
   priv->events =
     g_malloc(sizeof(InfStandaloneIoNativeEvent) * priv->fd_alloc);
-  priv->watches = g_malloc(sizeof(InfStandaloneIoWatch) * priv->fd_alloc);
 
+#ifdef G_OS_WIN32
+  priv->events[0] = WSACreateEvent();
+  if(priv->events[0] == WSA_INVALID_EVENT)
+  {
+    error_message = g_win32_error_message(WSAGetLastError());
+    g_error("Failed to create wakeup event: %s", error_message);
+    g_free(error_message); /* will not be called since g_error abort()s */
+  }
+  else
+  {
+    ++priv->fd_size;
+  }
+#else
+  if(pipe(priv->wakeup_pipe) == -1)
+  {
+    g_error("Failed to create wakeup pipe: %s", strerror(errno));
+  }
+  else
+  {
+    priv->events[0].fd = priv->wakeup_pipe[0];
+    priv->events[0].events = POLLIN | POLLERR;
+    priv->events[0].revents = 0;
+    ++priv->fd_size;
+  }
+#endif
+
+  priv->watches = g_malloc(sizeof(InfIoWatch*) * (priv->fd_alloc - 1) );
+  priv->timeouts = NULL;
+  priv->dispatchs = NULL;
+
+  priv->polling = FALSE;
   priv->loop_running = FALSE;
 }
 
@@ -308,47 +484,197 @@ inf_standalone_io_finalize(GObject* object)
   InfStandaloneIoPrivate* priv;
   guint i;
   GList* item;
-  InfStandaloneIoTimeout* timeout;
+  InfIoWatch* watch;
+  InfIoTimeout* timeout;
+  InfIoDispatch* dispatch;
+#ifdef G_OS_WIN32
+  gchar* error_message;
+#endif
 
   io = INF_STANDALONE_IO(object);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-#ifdef G_OS_WIN32
-  for(i = 0; i < priv->fd_size; ++ i)
+  g_mutex_lock(priv->mutex);
+
+  for(i = 1; i < priv->fd_size; ++i)
   {
-    WSAEventSelect(*priv->watches[i].socket, priv->events[i], 0);
-    WSACloseEvent(priv->events[i]);
-  }
+    watch = priv->watches[i - 1];
+
+    /* cannot dispose the IO while running a callback since the IO is
+     * reffed on the stack. */
+    g_assert(watch->executing == FALSE);
+
+#ifdef G_OS_WIN32
+    if(WSAEventSelect(*watch->socket, *watch->event, 0) ==
+       SOCKET_ERROR)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSAEventSelect() failed: %s", error_message);
+      g_free(error_message);
+    }
 #endif
 
-  for(i = 0; i < priv->fd_size; ++ i)
-    if(priv->watches[i].notify)
-      priv->watches[i].notify(priv->watches[i].user_data);
+    if(watch->notify)
+      watch->notify(watch->user_data);
+    g_slice_free(InfIoWatch, watch);
+  }
 
   for(item = priv->timeouts; item != NULL; item = g_list_next(item))
   {
-    timeout = (InfStandaloneIoTimeout*)item->data;
+    timeout = (InfIoTimeout*)item->data;
     if(timeout->notify)
       timeout->notify(timeout->user_data);
-    g_slice_free(InfStandaloneIoTimeout, timeout);
+    g_slice_free(InfIoTimeout, timeout);
   }
+
+  for(item = priv->dispatchs; item != NULL; item = g_list_next(item))
+  {
+    dispatch = (InfIoDispatch*)item->data;
+    if(dispatch->notify)
+      dispatch->notify(dispatch->user_data);
+    g_slice_free(InfIoDispatch, dispatch);
+  }
+
+#ifdef G_OS_WIN32
+  for(i = 0; i < priv->fd_size; ++ i)
+  {
+    if(WSACloseEvent(priv->events[i]) == FALSE)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSACloseEvent() failed: %s", error_message);
+      g_free(error_message);
+    }
+  }
+#endif
 
   g_free(priv->events);
   g_free(priv->watches);
   g_list_free(priv->timeouts);
+  g_list_free(priv->dispatchs);
+
+#ifndef G_OS_WIN32
+  if(close(priv->wakeup_pipe[0]) == -1)
+  {
+    g_warning(
+      "Failed to close reading end of wakeup pipe: %s",
+      strerror(errno)
+    );
+  }
+
+  if(close(priv->wakeup_pipe[1]) == -1)
+  {
+    g_warning(
+      "Failed to close writing end of wakeup pipe: %s",
+      strerror(errno)
+    );
+  }
+#endif
+
+  g_mutex_unlock(priv->mutex);
+  g_mutex_free(priv->mutex);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
-static void
-inf_standalone_io_io_watch(InfIo* io,
-                           InfNativeSocket* socket,
-                           InfIoEvent events,
-                           InfIoFunc func,
-                           gpointer user_data,
-                           GDestroyNotify notify)
+static InfIoWatch**
+inf_standalone_io_find_watch(InfStandaloneIo* io,
+                             InfIoWatch* watch)
 {
   InfStandaloneIoPrivate* priv;
+  guint i;
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+  for(i = 1; i < priv->fd_size; ++i)
+    if(priv->watches[i-1] == watch)
+      return &priv->watches[i-1];
+
+  return NULL;
+
+}
+
+static InfIoWatch**
+inf_standalone_io_find_watch_by_socket(InfStandaloneIo* io,
+                                       InfNativeSocket* socket)
+{
+  InfStandaloneIoPrivate* priv;
+  guint i;
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+  for(i = 1; i < priv->fd_size; ++i)
+    if(priv->watches[i-1]->socket == socket)
+      return &priv->watches[i-1];
+
+  return NULL;
+}
+
+static void
+inf_standalone_io_wakeup(InfStandaloneIo* io)
+{
+  /* Wake up the main loop in case it is currently sleeping. This function is
+   * called whenever a watch changes or a timeout or dispatch is added, so
+   * that the new event is taken into account. */
+  /* Should only ever be called with the IO's mutex being locked. */
+
+  InfStandaloneIoPrivate* priv;
+#ifndef G_OS_WIN32
+  char c;
+  ssize_t ret;
+#else
+  gchar* error_message;
+#endif
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  if(priv->polling)
+  {
+#ifdef G_OS_WIN32
+    if(WSASetEvent(priv->events[0]) == FALSE)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+
+      g_warning(
+        "WSASetEvent() failed when attempting to wake up the main loop: %s",
+        error_message
+      );
+
+      g_free(error_message);
+    }
+#else
+    c = 'c';
+    ret = write(priv->events[0].fd, &c, 1);
+    if(ret == -1)
+    {
+      g_warning(
+        "write() failed when attempting to wake up the main loop: %s",
+        strerror(errno)
+      );
+
+      /* TODO: Is there anything we could do here?
+       * Try to re-establish pipe? */
+    }
+    else if(ret == 0)
+    {
+      g_warning(
+        "Received EOF from weakup pipe when attempting to wake "
+        "up the main loop"
+      );
+
+      /* TODO: Is there anything we could do here?
+       * Try to re-establish pipe? */
+    }
+#endif
+  }
+}
+
+static InfIoWatch*
+inf_standalone_io_io_add_watch(InfIo* io,
+                               InfNativeSocket* socket,
+                               InfIoEvent events,
+                               InfIoWatchFunc func,
+                               gpointer user_data,
+                               GDestroyNotify notify)
+{
+  InfStandaloneIoPrivate* priv;
+  InfIoWatch* watch;
   long pevents;
   guint i;
 
@@ -374,61 +700,19 @@ inf_standalone_io_io_watch(InfIo* io,
     pevents |= (POLLERR | POLLHUP | POLLNVAL | POLLPRI);
 #endif
 
-  for(i = 0; i < priv->fd_size; ++ i)
+  g_mutex_lock(priv->mutex);
+
+  /* Watching the same socket for different events at least won't work on
+   * Windows since WSAEventSelect cancels the effect of previous
+   * WSAEventSelect calls for the same socket. */
+  if(inf_standalone_io_find_watch_by_socket(INF_STANDALONE_IO(io), socket))
   {
-    if(priv->watches[i].socket == socket)
-    {
-      if(events == 0)
-      {
-#ifdef G_OS_WIN32
-        WSAEventSelect(*priv->watches[i].socket, priv->events[i], 0);
-        WSACloseEvent(priv->events[i]);
-#endif
-        /* Free user_data */
-        if(priv->watches[i].notify)
-          priv->watches[i].notify(priv->watches[i].user_data);
-
-        /* Remove watch by replacing it by the last pollfd/watch */
-        if(i != priv->fd_size - 1)
-        {
-          memcpy(
-            &priv->events[i],
-            &priv->events[priv->fd_size - 1],
-            sizeof(InfStandaloneIoNativeEvent)
-          );
-
-          memcpy(
-            &priv->watches[i],
-            &priv->watches[priv->fd_size - 1],
-            sizeof(InfStandaloneIoWatch)
-          );
-
-          priv->watches[i].event = &priv->events[i];
-        }
-
-        -- priv->fd_size;
-      }
-      else
-      {
-        /* Free userdata before update */
-        if(priv->watches[i].notify)
-          priv->watches[i].notify(priv->watches[i].user_data);
-
-        /* Update */
-#ifdef G_OS_WIN32
-        WSAEventSelect(*priv->watches[i].socket, priv->events[i], pevents);
-#else
-        priv->events[i].events = pevents;
-#endif
-
-        priv->watches[i].func = func;
-        priv->watches[i].user_data = user_data;
-        priv->watches[i].notify = notify;
-      }
-
-      return;
-    }
+    g_mutex_unlock(priv->mutex);
+    return NULL;
   }
+
+  /* TODO: If we are currently polling we should not modify the fds array
+   * array but do this after wakeup directly after the poll call. */
 
   /* Socket is not already present, so create new watch */
   if(priv->fd_size == priv->fd_alloc)
@@ -442,13 +726,13 @@ inf_standalone_io_io_watch(InfIo* io,
 
     priv->watches = g_realloc(
       priv->watches,
-      priv->fd_alloc * sizeof(InfStandaloneIoWatch)
+      (priv->fd_alloc - 1) * sizeof(InfIoWatch*)
     );
 
     /* Update event pointers, the location of the events in memory might have
      * changed after realloc. */
-    for(i = 0; i < priv->fd_size; ++i)
-      priv->watches[i].event = &priv->events[i];
+    for(i = 1; i < priv->fd_size; ++i)
+      priv->watches[i-1]->event = &priv->events[i];
   }
 
 #ifdef G_OS_WIN32
@@ -459,26 +743,183 @@ inf_standalone_io_io_watch(InfIo* io,
     g_warning("WSACreateEvent() failed: %s", error_message);
     g_free(error_message);
 
-    return;
+    g_mutex_unlock(priv->mutex);
+    return NULL;
   }
 
-  WSAEventSelect(*socket, priv->events[priv->fd_size], pevents);
+  if(WSAEventSelect(*socket, priv->events[priv->fd_size], pevents) ==
+     SOCKET_ERROR)
+  {
+    error_message = g_win32_error_message(WSAGetLastError());
+    g_warning("WSAEventSelect() failed: %s", error_message);
+    g_free(error_message);
+
+    WSACloseEvent(priv->events[priv->fd_size]);
+    g_mutex_unlock(priv->mutex);
+    return NULL;
+  }
 #else
   priv->events[priv->fd_size].fd = *socket;
   priv->events[priv->fd_size].events = pevents;
   priv->events[priv->fd_size].revents = 0;
 #endif
 
-  priv->watches[priv->fd_size].event = &priv->events[priv->fd_size];
-  priv->watches[priv->fd_size].socket = socket;
-  priv->watches[priv->fd_size].func = func;
-  priv->watches[priv->fd_size].user_data = user_data;
-  priv->watches[priv->fd_size].notify = notify;
+  watch = g_slice_new(InfIoWatch);
+  watch->event = &priv->events[priv->fd_size];
+  watch->socket = socket;
+  watch->func = func;
+  watch->user_data = user_data;
+  watch->notify = notify;
+  watch->executing = FALSE;
+  watch->disposed = FALSE;
 
-  ++ priv->fd_size;
+  priv->watches[priv->fd_size-1] = watch;
+  ++priv->fd_size;
+
+  inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
+  g_mutex_unlock(priv->mutex);
+
+  return watch;
 }
 
-static gpointer
+static void
+inf_standalone_io_io_update_watch(InfIo* io,
+                                  InfIoWatch* watch,
+                                  InfIoEvent events)
+{
+  InfStandaloneIoPrivate* priv;
+  InfIoWatch** watch_iter;
+  long pevents;
+
+#ifdef G_OS_WIN32
+  gchar* error_message;
+#endif
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+
+#ifdef G_OS_WIN32
+  pevents = 0;
+  if(events & INF_IO_INCOMING)
+    pevents |= (FD_READ | FD_ACCEPT | FD_CLOSE);
+  if(events & INF_IO_OUTGOING)
+    pevents |= (FD_WRITE | FD_CONNECT);
+#else
+  pevents = 0;
+  if(events & INF_IO_INCOMING)
+    pevents |= POLLIN;
+  if(events & INF_IO_OUTGOING)
+    pevents |= POLLOUT;
+  if(events & INF_IO_ERROR)
+    pevents |= (POLLERR | POLLHUP | POLLNVAL | POLLPRI);
+#endif
+
+  g_mutex_lock(priv->mutex);
+
+  watch_iter = inf_standalone_io_find_watch(INF_STANDALONE_IO(io), watch);
+  if(watch_iter != NULL)
+  {
+    /* TODO: If we are currently polling we should not modify the fds array
+     * array but do this after wakeup directly after the poll call. */
+
+    /* Update */
+#ifdef G_OS_WIN32
+    if(WSAEventSelect(*watch->socket, *watch->event, pevents) == SOCKET_ERROR)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSAEventSelect() failed: %s", error_message);
+      g_free(error_message);
+    }
+#else
+    watch->event->events = pevents;
+#endif
+
+    inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
+  }
+
+  g_mutex_unlock(priv->mutex);
+}
+
+static void
+inf_standalone_io_io_remove_watch(InfIo* io,
+                                  InfIoWatch* watch)
+{
+  InfStandaloneIoPrivate* priv;
+  InfIoWatch** watch_iter;
+  guint index;
+
+#ifdef G_OS_WIN32
+  gchar* error_message;
+#endif
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  g_mutex_lock(priv->mutex);
+
+  watch_iter = inf_standalone_io_find_watch(INF_STANDALONE_IO(io), watch);
+  if(watch_iter != NULL)
+  {
+    /* TODO: If we are currently polling we should not modify the fds array
+     * array but do this after wakeup directly after the poll call. */
+    if(watch->executing)
+    {
+      /* The callback of the watch is currently running. We don't want to
+       * destroy the user data while it is, so we just remove it from the
+       * watches array, wait for the callback to return and then free the
+       * user_data and the InfIoWatch struct. */
+      watch->disposed = TRUE;
+    }
+    else
+    {
+      /* Free user_data */
+      if(watch->notify)
+        watch->notify(watch->user_data);
+      g_slice_free(InfIoWatch, watch);
+    }
+
+#ifdef G_OS_WIN32
+    if(WSAEventSelect(*watch->socket, *watch->event, 0) == SOCKET_ERROR)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSAEventSelect() failed: %s", error_message);
+      g_free(error_message);
+    }
+
+    if(WSACloseEvent(*watch->event) == FALSE)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSACloseEvent() failed: %s", error_message);
+      g_free(error_message);
+    }
+#endif
+
+    /* Remove watch by replacing it by the last pollfd/watch */
+    index = 1 + watch_iter - priv->watches;
+    if(index != priv->fd_size - 1)
+    {
+      memcpy(
+        &priv->events[index],
+        &priv->events[priv->fd_size - 1],
+        sizeof(InfStandaloneIoNativeEvent)
+      );
+
+      memcpy(
+        &priv->watches[index - 1],
+        &priv->watches[priv->fd_size - 2],
+        sizeof(InfIoWatch*)
+      );
+
+      priv->watches[index - 1]->event = &priv->events[index];
+    }
+
+    --priv->fd_size;
+
+    inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
+  }
+
+  g_mutex_unlock(priv->mutex);
+}
+
+static InfIoTimeout*
 inf_standalone_io_io_add_timeout(InfIo* io,
                                  guint msecs,
                                  InfIoTimeoutFunc func,
@@ -486,40 +927,109 @@ inf_standalone_io_io_add_timeout(InfIo* io,
                                  GDestroyNotify notify)
 {
   InfStandaloneIoPrivate* priv;
-  InfStandaloneIoTimeout* timeout;
+  InfIoTimeout* timeout;
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
-  timeout = g_slice_new(InfStandaloneIoTimeout);
+  timeout = g_slice_new(InfIoTimeout);
 
   g_get_current_time(&timeout->begin);
   timeout->msecs = msecs;
   timeout->func = func;
   timeout->user_data = user_data;
   timeout->notify = notify;
+
+  g_mutex_lock(priv->mutex);
   priv->timeouts = g_list_prepend(priv->timeouts, timeout);
+  inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
+  g_mutex_unlock(priv->mutex);
 
   return timeout;
 }
 
 static void
 inf_standalone_io_io_remove_timeout(InfIo* io,
-                                    gpointer timeout_handle)
+                                    InfIoTimeout* timeout)
 {
   InfStandaloneIoPrivate* priv;
-  InfStandaloneIoTimeout* timeout;
   GList* item;
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
-  item = g_list_find(priv->timeouts, timeout_handle);
-  g_assert(item != NULL);
 
-  timeout = item->data;
-  priv->timeouts = g_list_delete_link(priv->timeouts, item);
+  g_mutex_lock(priv->mutex);
 
-  if(timeout->notify)
-    timeout->notify(timeout->user_data);
+  item = g_list_find(priv->timeouts, timeout);
+  if(item != NULL)
+  {
+    priv->timeouts = g_list_delete_link(priv->timeouts, item);
+    g_mutex_unlock(priv->mutex);
 
-  g_slice_free(InfStandaloneIoTimeout, timeout);
+    if(timeout->notify)
+      timeout->notify(timeout->user_data);
+
+    g_slice_free(InfIoTimeout, timeout);
+
+    /* No need to wake up the main loop; it might run into its timeout sooner
+     * than necessary now, but that's OK. */
+  }
+  else
+  {
+    g_mutex_unlock(priv->mutex);
+  }
+}
+
+static InfIoDispatch*
+inf_standalone_io_io_add_dispatch(InfIo* io,
+                                  InfIoDispatchFunc func,
+                                  gpointer user_data,
+                                  GDestroyNotify notify)
+{
+  InfStandaloneIoPrivate* priv;
+  InfIoDispatch* dispatch;
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+  dispatch = g_slice_new(InfIoDispatch);
+
+  dispatch->func = func;
+  dispatch->user_data = user_data;
+  dispatch->notify = notify;
+
+  g_mutex_lock(priv->mutex);
+  priv->dispatchs = g_list_prepend(priv->dispatchs, dispatch);
+  inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
+  g_mutex_unlock(priv->mutex);
+
+  return dispatch;
+}
+
+static void
+inf_standalone_io_io_remove_dispatch(InfIo* io,
+                                     InfIoDispatch* dispatch)
+{
+  InfStandaloneIoPrivate* priv;
+  GList* item;
+
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  g_mutex_lock(priv->mutex);
+
+  item = g_list_find(priv->dispatchs, dispatch);
+  if(item != NULL)
+  {
+    priv->dispatchs = g_list_delete_link(priv->dispatchs, item);
+    g_mutex_unlock(priv->mutex);
+
+    if(dispatch->notify)
+      dispatch->notify(dispatch->user_data);
+
+    g_slice_free(InfIoDispatch, dispatch);
+
+    /* No need to wake up the main loop; it might run into its timeout sooner
+     * than necessary now, but that's OK. */
+  }
+  else
+  {
+    g_mutex_unlock(priv->mutex);
+  }
 }
 
 static void
@@ -542,9 +1052,13 @@ inf_standalone_io_io_init(gpointer g_iface,
   InfIoIface* iface;
   iface = (InfIoIface*)g_iface;
 
-  iface->watch = inf_standalone_io_io_watch;
+  iface->add_watch = inf_standalone_io_io_add_watch;
+  iface->update_watch = inf_standalone_io_io_update_watch;
+  iface->remove_watch = inf_standalone_io_io_remove_watch;
   iface->add_timeout = inf_standalone_io_io_add_timeout;
   iface->remove_timeout = inf_standalone_io_io_remove_timeout;
+  iface->add_dispatch = inf_standalone_io_io_add_dispatch;
+  iface->remove_dispatch = inf_standalone_io_io_remove_dispatch;
 }
 
 GType
@@ -616,8 +1130,20 @@ inf_standalone_io_new(void)
 void
 inf_standalone_io_iteration(InfStandaloneIo* io)
 {
+  InfStandaloneIoPrivate* priv;
+
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  g_object_ref(io);
+  g_mutex_lock(priv->mutex);
+
+  g_return_val_if_fail(priv->polling == FALSE, g_mutex_unlock(priv->mutex));
+
   inf_standalone_io_iteration_impl(io, INF_STANDALONE_IO_POLL_INFINITE);
+
+  g_mutex_unlock(priv->mutex);
+  g_object_unref(io);
 }
 
 /**
@@ -633,8 +1159,19 @@ void
 inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
                                     guint timeout)
 {
+  InfStandaloneIoPrivate* priv;
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
+  priv = INF_STANDALONE_IO_PRIVATE(io);
+
+  g_object_ref(io);
+  g_mutex_lock(priv->mutex);
+
+  g_return_val_if_fail(priv->polling == FALSE, g_mutex_unlock(priv->mutex));
+
   inf_standalone_io_iteration_impl(io, (int)timeout);
+
+  g_mutex_unlock(priv->mutex);
+  g_object_unref(io);
 }
 
 /**
@@ -652,11 +1189,29 @@ inf_standalone_io_loop(InfStandaloneIo* io)
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_return_if_fail(priv->loop_running == FALSE);
+  g_object_ref(io);
+  g_mutex_lock(priv->mutex);
+
+  g_return_val_if_fail(
+    priv->loop_running == FALSE,
+    g_mutex_unlock(priv->mutex)
+  );
+
+  g_return_val_if_fail(
+    priv->polling == FALSE,
+    g_mutex_unlock(priv->mutex)
+  );
+
+  /* TODO: Actually we need to make sure that a previous loop() call in
+   * another thread has exited the loop below, otherwise we will end up with
+   * two loops running one of which is supposed to have quit. */
   priv->loop_running = TRUE;
 
   while(priv->loop_running == TRUE)
     inf_standalone_io_iteration_impl(io, -1);
+
+  g_mutex_unlock(priv->mutex);
+  g_object_unref(io);
 }
 
 /**
@@ -674,8 +1229,13 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
+  g_mutex_lock(priv->mutex);
+
   g_return_if_fail(priv->loop_running == TRUE);
   priv->loop_running = FALSE;
+
+  inf_standalone_io_wakeup(io);
+  g_mutex_unlock(priv->mutex);
 }
 
 /**
@@ -691,11 +1251,16 @@ gboolean
 inf_standalone_io_loop_running(InfStandaloneIo* io)
 {
   InfStandaloneIoPrivate* priv;
+  gboolean running;
 
   g_return_val_if_fail(INF_IS_STANDALONE_IO(io), FALSE);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  return priv->loop_running;
+  g_mutex_lock(priv->mutex);
+  running = priv->loop_running;
+  g_mutex_unlock(priv->mutex);
+
+  return running;
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -433,9 +433,13 @@ InfNativeSocket
 InfIoEvent
 InfIoFunc
 InfIoTimeoutFunc
-inf_io_watch
+inf_io_add_watch
+inf_io_update_watch
+inf_io_remove_watch
 inf_io_add_timeout
 inf_io_remove_timeout
+inf_io_add_dispatch
+inf_io_remove_dispatch
 <SUBSECTION Standard>
 INF_IO
 INF_IS_IO

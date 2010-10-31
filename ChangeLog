@@ -1,3 +1,32 @@
+2010-10-31  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-io.h:
+	* libinfinity/common/inf-io.c: Change the watch interface slightly,
+	add inf_io_add_dispatch() and inf_io_remove_dispatch() and require
+	implementations to be thread-safe.
+
+	* libinfinity/common/inf-standalone-io.c:
+	* libinfgtk/inf-gtk-io.c: Adapt, and provide thread-safety.
+
+	* libinfinity/common/inf-init.c: Call g_thread_init as a part of the
+	libinfinity startup procedure.
+
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/common/inf-tcp-connection.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-tcp-server.c:
+	* libinftext/inf-text-session.c:
+	* libinftextgtk/inf-text-gtk-view.c:
+	* infinoted/infinoted-signal.h:
+	* infinoted/infinoted-signal.c:
+	* infinoted/infinoted-autosave.c:
+	* infinoted/infinoted-directory-sync.c:
+	* test/inf-test-browser.c:
+	* test/inf-test-chat.c:
+	* test/inf-test-tcp-connection.c: Adapt to the API changes.
+
 2010-10-09  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-browser.c (infc_browser_disconnected):

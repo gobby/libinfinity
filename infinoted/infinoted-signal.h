@@ -37,6 +37,7 @@ struct _InfinotedSignal {
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   InfinotedRun* run;
   int signal_fd;
+  InfIoWatch* watch;
 #else
   InfinotedSignalFunc previous_sigint_handler;
   InfinotedSignalFunc previous_sigterm_handler;

@@ -32,7 +32,7 @@ received_cb(InfTcpConnection* connection,
 	    guint len,
 	    gpointer user_data)
 {
-  printf("\033[00;32m%.*s\033[00;00m", (int)len, (const char*)buffer);
+  printf("Received: \033[00;32m%.*s\033[00;00m", (int)len, (const char*)buffer);
   fflush(stdout);
 }
 
@@ -42,7 +42,7 @@ sent_cb(InfTcpConnection* connection,
 	guint len,
 	gpointer user_data)
 {
-  printf("\033[00;34m%.*s\033[00;00m", (int)len, (const char*)buffer);
+  printf("Sent: \033[00;34m%.*s\033[00;00m", (int)len, (const char*)buffer);
   fflush(stdout);
 }
 

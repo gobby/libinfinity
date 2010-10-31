@@ -70,7 +70,7 @@ struct _InfAdoptedSessionPrivate {
   GSList* local_users; /* having zero or one item in 99.9% of all cases */
 
   /* Timeout for sending noop with our current vector time */
-  gpointer noop_timeout;
+  InfIoTimeout* noop_timeout;
   /* User to send the time for */
   InfAdoptedSessionLocalUser* next_noop_user;
 };

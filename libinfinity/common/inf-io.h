@@ -44,6 +44,10 @@ G_BEGIN_DECLS
 typedef struct _InfIo InfIo;
 typedef struct _InfIoIface InfIoIface;
 
+typedef struct _InfIoWatch InfIoWatch;
+typedef struct _InfIoTimeout InfIoTimeout;
+typedef struct _InfIoDispatch InfIoDispatch;
+
 /**
  * InfNativeSocket:
  *
@@ -74,16 +78,16 @@ typedef enum _InfIoEvent {
 } InfIoEvent;
 
 /**
- * InfIoFunc:
+ * InfIoWatchFunc:
  * @socket: The socket on which an event occured.
  * @event: A bitmask of the events that occured.
  * @user_data: User-defined data specified in inf_io_watch().
  *
  * Callback function that is called when an event occurs on a watched socket.
  */
-typedef void(*InfIoFunc)(InfNativeSocket* socket,
-                         InfIoEvent event,
-                         gpointer user_data);
+typedef void(*InfIoWatchFunc)(InfNativeSocket* socket,
+                              InfIoEvent event,
+                              gpointer user_data);
 
 /**
  * InfIoTimeoutFunc:
@@ -93,8 +97,22 @@ typedef void(*InfIoFunc)(InfNativeSocket* socket,
  */
 typedef void(*InfIoTimeoutFunc)(gpointer user_data);
 
+/** 
+ * InfIoDispatchFunc:
+ * @user_data: User-defined data specified in inf_io_add_dispatch().
+ *
+ * Callback function that is called when a dispatch is executed by the thread
+ * that runs #InfIo.
+ */
+typedef void(*InfIoDispatchFunc)(gpointer user_data);
+
 /**
  * InfIoIface:
+ * @add_watch: Watches a socket for events to occur in which case @func is
+ * called.
+ * @update_watch: Updates a watch on a socket so that a different set of
+ * events is watched for.
+ * @remove_watch: Removes a watch on a socket.
  * @watch: Changes the events the given socket is watched for. If @events is
  * 0, removes the watch for @socket.
  * @add_timeout: Schedules @func to be called at least @msecs milliseconds
@@ -102,30 +120,50 @@ typedef void(*InfIoTimeoutFunc)(gpointer user_data);
  * @remove_timeout: Removes a scheduled timeout again. The timeout is
  * removed automatically when it has elapsed, so there is no need to call
  * this function in that case.
+ * @add_dispatch: Schedules @func to be called by the thread the #InfIo
+ * runs in.
+ * @remove_dispatch: Removes a scheduled dispatch. This can be called as long
+ * as the scheduled function has not yet been called.
  *
- * The virtual methods of #InfIo. These allow to set up socket watches and
- * timeouts.
+ * The virtual methods of #InfIo. These allow to set up socket watches,
+ * timeouts and function dispatchers. All of these functions need to be
+ * thread-safe.
  */
 struct _InfIoIface {
   /*< private >*/
   GTypeInterface parent;
 
   /*< public >*/
-  void (*watch)(InfIo* io,
-                InfNativeSocket* socket,
-                InfIoEvent events,
-                InfIoFunc func,
-                gpointer user_data,
-                GDestroyNotify notify);
+  InfIoWatch* (*add_watch)(InfIo* io,
+                           InfNativeSocket* socket,
+                           InfIoEvent events,
+                           InfIoWatchFunc func,
+                           gpointer user_data,
+                           GDestroyNotify notify);
 
-  gpointer (*add_timeout)(InfIo* io,
-                          guint msecs,
-                          InfIoTimeoutFunc func,
-                          gpointer user_data,
-                          GDestroyNotify notify);
+  void (*update_watch)(InfIo* io,
+                       InfIoWatch* watch,
+                       InfIoEvent events);
+
+  void (*remove_watch)(InfIo* io,
+                       InfIoWatch* watch);
+
+  InfIoTimeout* (*add_timeout)(InfIo* io,
+                               guint msecs,
+                               InfIoTimeoutFunc func,
+                               gpointer user_data,
+                               GDestroyNotify notify);
 
   void (*remove_timeout)(InfIo* io,
-                         gpointer timeout);
+                         InfIoTimeout* timeout);
+
+  InfIoDispatch* (*add_dispatch)(InfIo* io,
+                                 InfIoDispatchFunc func,
+                                 gpointer user_data,
+                                 GDestroyNotify notify);
+
+  void (*remove_dispatch)(InfIo* io,
+                          InfIoDispatch* dispatch);
 };
 
 GType
@@ -134,15 +172,24 @@ inf_io_event_get_type(void) G_GNUC_CONST;
 GType
 inf_io_get_type(void) G_GNUC_CONST;
 
-void
-inf_io_watch(InfIo* io,
-             InfNativeSocket* socket,
-             InfIoEvent events,
-             InfIoFunc func,
-             gpointer user_data,
-             GDestroyNotify notify);
+InfIoWatch*
+inf_io_add_watch(InfIo* io,
+                 InfNativeSocket* socket,
+                 InfIoEvent events,
+                 InfIoWatchFunc func,
+                 gpointer user_data,
+                 GDestroyNotify notify);
 
-gpointer
+void
+inf_io_update_watch(InfIo* io,
+                    InfIoWatch* watch,
+                    InfIoEvent events);
+
+void
+inf_io_remove_watch(InfIo* io,
+                    InfIoWatch* watch);
+
+InfIoTimeout*
 inf_io_add_timeout(InfIo* io,
                    guint msecs,
                    InfIoTimeoutFunc func,
@@ -151,7 +198,17 @@ inf_io_add_timeout(InfIo* io,
 
 void
 inf_io_remove_timeout(InfIo* io,
-                      gpointer timeout);
+                      InfIoTimeout* timeout);
+
+InfIoDispatch*
+inf_io_add_dispatch(InfIo* io,
+                    InfIoDispatchFunc func,
+                    gpointer user_data,
+                    GDestroyNotify notify);
+
+void
+inf_io_remove_dispatch(InfIo* io,
+                       InfIoDispatch* dispatch);
 
 G_END_DECLS
 

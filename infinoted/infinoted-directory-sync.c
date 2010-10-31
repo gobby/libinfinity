@@ -33,7 +33,7 @@ struct _InfinotedDirectorySyncSession {
   InfinotedDirectorySync* dsync;
   InfdDirectoryIter iter;
   InfdSessionProxy* proxy;
-  gpointer timeout_handle;
+  InfIoTimeout* timeout;
 
   gchar* path;
 };
@@ -81,9 +81,9 @@ infinoted_directory_sync_session_start(InfinotedDirectorySync* dsync,
   InfIo* io;
   io = infd_directory_get_io(dsync->directory);
 
-  g_assert(session->timeout_handle == NULL);
+  g_assert(session->timeout == NULL);
 
-  session->timeout_handle = inf_io_add_timeout(
+  session->timeout = inf_io_add_timeout(
     io,
     dsync->sync_interval * 1000,
     infinoted_directory_sync_session_timeout_cb,
@@ -99,10 +99,10 @@ infinoted_directory_sync_session_stop(InfinotedDirectorySync* dsync,
   InfIo* io;
   io = infd_directory_get_io(dsync->directory);
 
-  g_assert(session->timeout_handle != NULL);
+  g_assert(session->timeout != NULL);
 
-  inf_io_remove_timeout(io, session->timeout_handle);
-  session->timeout_handle = NULL;
+  inf_io_remove_timeout(io, session->timeout);
+  session->timeout = NULL;
 }
 
 static void
@@ -115,7 +115,7 @@ infinoted_directory_sync_buffer_text_inserted_cb(InfTextBuffer* buffer,
   InfinotedDirectorySyncSession* session;
   session = (InfinotedDirectorySyncSession*)user_data;
 
-  if(session->timeout_handle == NULL)
+  if(session->timeout == NULL)
     infinoted_directory_sync_session_start(session->dsync, session);
 }
 
@@ -129,7 +129,7 @@ infinoted_directory_sync_buffer_text_erased_cb(InfTextBuffer* buffer,
   InfinotedDirectorySyncSession* session;
   session = (InfinotedDirectorySyncSession*)user_data;
 
-  if(session->timeout_handle == NULL)
+  if(session->timeout == NULL)
     infinoted_directory_sync_session_start(session->dsync, session);
 }
 
@@ -147,14 +147,14 @@ infinoted_directory_sync_session_save(InfinotedDirectorySync* dsync,
   iter = &session->iter;
   error = NULL;
 
-  if(session->timeout_handle != NULL)
+  if(session->timeout != NULL)
   {
     inf_io_remove_timeout(
       infd_directory_get_io(dsync->directory),
-      session->timeout_handle
+      session->timeout
     );
 
-    session->timeout_handle = NULL;
+    session->timeout = NULL;
   }
 
   buffer = inf_session_get_buffer(
@@ -203,7 +203,7 @@ infinoted_directory_sync_session_timeout_cb(gpointer user_data)
   InfinotedDirectorySyncSession* session;
 
   session = (InfinotedDirectorySyncSession*)user_data;
-  session->timeout_handle = NULL;
+  session->timeout = NULL;
 
   infinoted_directory_sync_session_save(session->dsync, session);
 }
@@ -268,7 +268,7 @@ infinoted_directory_sync_add_session(InfinotedDirectorySync* dsync,
   session->iter = *iter;
 
   session->proxy = proxy;
-  session->timeout_handle = NULL;
+  session->timeout = NULL;
   session->path = converted;
 
   dsync->sessions = g_slist_prepend(dsync->sessions, session);
@@ -299,7 +299,7 @@ infinoted_directory_sync_remove_session(InfinotedDirectorySync* dsync,
 {
   InfTextBuffer* buffer;
 
-  if(sess->timeout_handle != NULL)
+  if(sess->timeout != NULL)
   {
     infinoted_directory_sync_session_save(dsync, sess);
     infinoted_directory_sync_session_stop(dsync, sess);

@@ -45,11 +45,12 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
 
   if(event & INF_IO_ERROR)
   {
-    inf_io_watch(INF_IO(sig->run->io), &sig->signal_fd, 0, NULL, NULL, NULL);
+    inf_io_remove_watch(INF_IO(sig->run->io), sig->watch);
     daemon_signal_done();
 
     sig->run = NULL;
     sig->signal_fd = 0;
+    sig->watch = NULL;
 
     infinoted_util_log_error(_("Error on signal handler connection; signal "
                                "handlers have been removed from now on"));
@@ -170,7 +171,7 @@ infinoted_signal_register(InfinotedRun* run)
   {
     sig->signal_fd = daemon_signal_fd();
 
-    inf_io_watch(
+    sig->watch = inf_io_add_watch(
       INF_IO(run->io),
       &sig->signal_fd,
       INF_IO_INCOMING | INF_IO_ERROR,
@@ -217,7 +218,9 @@ infinoted_signal_unregister(InfinotedSignal* sig)
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   if(sig->run)
   {
-    inf_io_watch(INF_IO(sig->run->io), &sig->signal_fd, 0, NULL, NULL, NULL);
+    inf_io_remove_watch(INF_IO(sig->run->io), sig->watch);
+    sig->watch = NULL;
+
     daemon_signal_done();
   }
 #else

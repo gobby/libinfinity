@@ -44,7 +44,7 @@ struct _InfTextSessionLocalUser {
   InfTextSession* session;
   InfTextUser* user;
   GTimeVal last_caret_update;
-  gpointer caret_timeout;
+  InfIoTimeout* caret_timeout;
 };
 
 typedef struct _InfTextSessionPrivate InfTextSessionPrivate;

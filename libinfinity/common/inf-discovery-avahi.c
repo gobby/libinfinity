@@ -54,6 +54,7 @@
 
 struct AvahiWatch {
   InfDiscoveryAvahi* avahi;
+  InfIoWatch* watch;
 
   InfNativeSocket socket;
   AvahiWatchEvent occured_events;
@@ -64,7 +65,7 @@ struct AvahiWatch {
 
 struct AvahiTimeout {
   InfDiscoveryAvahi* avahi;
-  gpointer timeout_handle;
+  InfIoTimeout* timeout;
   AvahiTimeoutCallback callback;
   void* userdata;
 };
@@ -907,7 +908,7 @@ inf_discovery_avahi_timeout_cb(gpointer user_data)
   AvahiTimeout* timeout;
   timeout = (AvahiTimeout*)user_data;
 
-  timeout->timeout_handle = NULL;
+  timeout->timeout = NULL;
   timeout->callback(timeout, timeout->userdata);
 }
 
@@ -932,7 +933,7 @@ inf_discovery_avahi_watch_new(const AvahiPoll* api,
   watch->callback = callback;
   watch->userdata = userdata;
 
-  inf_io_watch(
+  watch->watch = inf_io_add_watch(
     priv->io,
     &watch->socket,
     inf_discovery_avahi_to_io_event(event),
@@ -951,13 +952,10 @@ inf_discovery_avahi_watch_update(AvahiWatch* watch,
   InfDiscoveryAvahiPrivate* priv;
   priv = INF_DISCOVERY_AVAHI_PRIVATE(watch->avahi);
 
-  inf_io_watch(
+  inf_io_update_watch(
     priv->io,
-    &watch->socket,
-    inf_discovery_avahi_to_io_event(event),
-    inf_discovery_avahi_watch_cb,
-    watch,
-    NULL
+    watch->watch,
+    inf_discovery_avahi_to_io_event(event)
   );
 }
 
@@ -973,15 +971,7 @@ inf_discovery_avahi_watch_free(AvahiWatch* watch)
   InfDiscoveryAvahiPrivate* priv;
   priv = INF_DISCOVERY_AVAHI_PRIVATE(watch->avahi);
 
-  inf_io_watch(
-    priv->io,
-    &watch->socket,
-    0,
-    NULL,
-    NULL,
-    NULL
-  );
-
+  inf_io_remove_watch(priv->io, watch->watch);
   g_slice_free(AvahiWatch, watch);
 }
 
@@ -1010,7 +1000,7 @@ inf_discovery_avahi_timeout_new(const AvahiPoll* api,
     usec = avahi_age(tv);
     if(usec > 0) usec = 0;
 
-    timeout->timeout_handle = inf_io_add_timeout(
+    timeout->timeout = inf_io_add_timeout(
       priv->io,
       ((-usec) + 500) / 1000,
       inf_discovery_avahi_timeout_cb,
@@ -1020,7 +1010,7 @@ inf_discovery_avahi_timeout_new(const AvahiPoll* api,
   }
   else
   {
-    timeout->timeout_handle = NULL;
+    timeout->timeout = NULL;
   }
 
   return timeout;
@@ -1034,8 +1024,8 @@ inf_discovery_avahi_timeout_update(AvahiTimeout* timeout,
   AvahiUsec usec;
   priv = INF_DISCOVERY_AVAHI_PRIVATE(timeout->avahi);
 
-  if(timeout->timeout_handle != NULL)
-    inf_io_remove_timeout(priv->io, timeout->timeout_handle);
+  if(timeout->timeout != NULL)
+    inf_io_remove_timeout(priv->io, timeout->timeout);
 
   if(tv != NULL)
   {
@@ -1043,7 +1033,7 @@ inf_discovery_avahi_timeout_update(AvahiTimeout* timeout,
     usec = avahi_age(tv);
     if(usec > 0) usec = 0;
 
-    timeout->timeout_handle = inf_io_add_timeout(
+    timeout->timeout = inf_io_add_timeout(
       priv->io,
       ((-usec) + 500) / 1000,
       inf_discovery_avahi_timeout_cb,
@@ -1053,7 +1043,7 @@ inf_discovery_avahi_timeout_update(AvahiTimeout* timeout,
   }
   else
   {
-    timeout->timeout_handle = NULL;
+    timeout->timeout = NULL;
   }
 }
 
@@ -1063,8 +1053,8 @@ inf_discovery_avahi_timeout_free(AvahiTimeout* timeout)
   InfDiscoveryAvahiPrivate* priv;
   priv = INF_DISCOVERY_AVAHI_PRIVATE(timeout->avahi);
 
-  if(timeout->timeout_handle != NULL)
-    inf_io_remove_timeout(priv->io, timeout->timeout_handle);
+  if(timeout->timeout != NULL)
+    inf_io_remove_timeout(priv->io, timeout->timeout);
 
   g_slice_free(AvahiTimeout, timeout);
 }

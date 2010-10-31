@@ -174,7 +174,7 @@ struct _InfcBrowserPrivate {
   InfXmlConnection* connection;
 
   guint seq_id;
-  gpointer welcome_timeout;
+  InfIoTimeout* welcome_timeout;
   InfcRequestManager* request_manager;
 
   GHashTable* plugins; /* Registered plugins */

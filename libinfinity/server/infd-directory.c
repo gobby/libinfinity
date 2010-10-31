@@ -65,7 +65,7 @@ struct _InfdDirectoryNode {
       /* Session type */
       const InfdNotePlugin* plugin;
       /* Timeout to save the session when inactive for some time */
-      gpointer save_timeout;
+      InfIoTimeout* save_timeout;
     } note;
 
     struct {

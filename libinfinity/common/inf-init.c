@@ -51,6 +51,9 @@ inf_init(GError** error)
   gchar* error_message;
 #endif
 
+  if(!g_thread_supported())
+    g_thread_init(NULL);
+
   if(inf_init_counter == 0)
   {
 #ifdef G_OS_WIN32
@@ -82,7 +85,7 @@ inf_init(GError** error)
   else
     INF_XMPP_CONNECTION_PRINT_TRAFFIC = FALSE;
 
-  ++ inf_init_counter;
+  ++inf_init_counter;
   return TRUE;
 }
 

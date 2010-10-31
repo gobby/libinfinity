@@ -284,7 +284,7 @@ inf_test_browser_notify_status_cb(GObject* object,
     printf("Connection established\n");
 
 #ifndef G_OS_WIN32
-    inf_io_watch(
+    inf_io_add_watch(
       INF_IO(test->io),
       &test->input_fd,
       INF_IO_INCOMING | INF_IO_ERROR,

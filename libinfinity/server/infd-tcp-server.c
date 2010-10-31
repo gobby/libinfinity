@@ -53,6 +53,7 @@
 typedef struct _InfdTcpServerPrivate InfdTcpServerPrivate;
 struct _InfdTcpServerPrivate {
   InfIo* io;
+  InfIoWatch* watch;
 
   InfNativeSocket socket;
   InfdTcpServerStatus status;
@@ -401,14 +402,9 @@ infd_tcp_server_error(InfdTcpServer* server,
 
   if(priv->status == INFD_TCP_SERVER_OPEN)
   {
-    inf_io_watch(
-      priv->io,
-      &priv->socket,
-      0,
-      infd_tcp_server_io,
-      server,
-      NULL
-    );
+    g_assert(priv->watch != NULL);
+    inf_io_remove_watch(priv->io, priv->watch);
+    priv->watch = NULL;
   }
 
   if(priv->socket != INVALID_SOCKET)
@@ -777,6 +773,7 @@ infd_tcp_server_open(InfdTcpServer* server,
 
   g_return_val_if_fail(priv->io != NULL, FALSE);
   g_return_val_if_fail(priv->status != INFD_TCP_SERVER_OPEN, FALSE);
+  g_assert(priv->watch == NULL);
 
   g_object_freeze_notify(G_OBJECT(server));
 
@@ -830,7 +827,7 @@ infd_tcp_server_open(InfdTcpServer* server,
     return FALSE;
   }
 
-  inf_io_watch(
+  priv->watch = inf_io_add_watch(
     priv->io,
     &priv->socket,
     INF_IO_INCOMING | INF_IO_ERROR,
@@ -865,14 +862,9 @@ infd_tcp_server_close(InfdTcpServer* server)
 
   if(priv->status == INFD_TCP_SERVER_OPEN)
   {
-    inf_io_watch(
-      priv->io,
-      &priv->socket,
-      0,
-      infd_tcp_server_io,
-      server,
-      NULL
-    );
+    g_assert(priv->watch != NULL);
+    inf_io_remove_watch(priv->io, priv->watch);
+    priv->watch = NULL;
   }
 
   closesocket(priv->socket);

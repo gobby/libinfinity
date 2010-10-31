@@ -25,7 +25,7 @@ struct _InfTextGtkViewUser {
   InfTextGtkView* view;
   InfTextUser* user;
   gboolean cursor_visible;
-  gpointer timeout_handle; /* TODO: Use glib for that; remove InfIo property */
+  InfIoTimeout* timeout; /* TODO: Use glib for that; remove InfIo property */
   guint revalidate_idle;
 
   /* All in buffer coordinates: */
@@ -1385,7 +1385,7 @@ inf_text_gtk_view_user_cursor_blink_timeout_func(gpointer user_data)
     else
       cursor_blink_time = cursor_blink_time * 2 / 3;
 
-    view_user->timeout_handle = inf_io_add_timeout(
+    view_user->timeout = inf_io_add_timeout(
       priv->io,
       cursor_blink_time,
       inf_text_gtk_view_user_cursor_blink_timeout_func,
@@ -1395,7 +1395,7 @@ inf_text_gtk_view_user_cursor_blink_timeout_func(gpointer user_data)
   }
   else
   {
-    view_user->timeout_handle = NULL;
+    view_user->timeout = NULL;
   }
 }
 
@@ -1409,10 +1409,10 @@ inf_text_gtk_view_user_reset_timeout(InfTextGtkViewUser* view_user)
 
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view_user->view);
 
-  if(view_user->timeout_handle)
+  if(view_user->timeout)
   {
-    inf_io_remove_timeout(priv->io, view_user->timeout_handle);
-    view_user->timeout_handle = NULL;
+    inf_io_remove_timeout(priv->io, view_user->timeout);
+    view_user->timeout = NULL;
   }
 
   if(!view_user->cursor_visible)
@@ -1435,7 +1435,7 @@ inf_text_gtk_view_user_reset_timeout(InfTextGtkViewUser* view_user)
 
   if(cursor_blink)
   {
-    view_user->timeout_handle = inf_io_add_timeout(
+    view_user->timeout = inf_io_add_timeout(
       priv->io,
       cursor_blink_time,
       inf_text_gtk_view_user_cursor_blink_timeout_func,
@@ -1539,7 +1539,7 @@ inf_text_gtk_view_add_user(InfTextGtkView* view,
   view_user->view = view;
   view_user->user = INF_TEXT_USER(user);
   view_user->cursor_visible = TRUE;
-  view_user->timeout_handle = NULL;
+  view_user->timeout = NULL;
   view_user->revalidate_idle = 0;
   inf_text_gtk_view_user_compute_user_area(view_user);
   inf_text_gtk_view_user_reset_timeout(view_user);
@@ -1580,8 +1580,8 @@ inf_text_gtk_view_remove_user(InfTextGtkViewUser* view_user)
     view_user
   );
 
-  if(view_user->timeout_handle != NULL)
-    inf_io_remove_timeout(priv->io, view_user->timeout_handle);
+  if(view_user->timeout != NULL)
+    inf_io_remove_timeout(priv->io, view_user->timeout);
 
   if(view_user->revalidate_idle != 0)
     g_source_remove(view_user->revalidate_idle);

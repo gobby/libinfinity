@@ -233,9 +233,13 @@ EXPORTS
     inf_deinit
     inf_io_event_get_type
     inf_io_get_type
-    inf_io_watch
+    inf_io_add_watch
+    inf_io_update_watch
+    inf_io_remove_watch
     inf_io_add_timeout
     inf_io_remove_timeout
+    inf_io_add_dispatch
+    inf_io_remove_dispatch
     inf_ip_address_family_get_type
     inf_ip_address_get_type
     inf_ip_address_new_raw4

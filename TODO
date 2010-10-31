@@ -19,10 +19,6 @@ Performance (Some ideas to improve performance, profile to verify!):
 
 Others:
 
- * Unify InfIo interface (IO):
-   - Rename InfIoFunc to InfIoWatchFunc
-   - Split inf_io_watch into inf_io_add_watch, inf_io_update_watch and
-     inf_io_remove_watch
  * Split InfXmppConnection (XMPP)
    - InfXmppConnection: XMPP core implementation
    - InfJabberConnection: Connection to jabber server, managing roster, presence, etc. Derives from InfXmppConnection, not used on server side
@@ -43,10 +39,6 @@ Others:
    (add-node, remove-node, subscribe-session etc.). Similar with the
    infc_browser_iter_get_foo_request functions (replace by a generic
    infc_browser_iter_get_pending_request function).
- * Support sending some special characters like bell ('\a') through XML. I had
-   an approach of defining custom entities for those (see inf-xmpp-connection.c
-   in inf_xmpp_connection_initiate()), though this didn't seem to work, and
-   does not seem to be allowed in XML.
  * Make InfLocalPublisher take a InfdXmlServer instead of a port number. Maybe
    even rename to InfPublisher, with InfDiscoveryAvahi assuming an
    InfdXmppServer. Or, consider simply removing the interface, and require

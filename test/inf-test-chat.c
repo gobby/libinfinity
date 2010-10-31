@@ -116,7 +116,7 @@ inf_test_chat_userjoin_finished_cb(InfcRequest* request,
   printf("User join complete. Start chatting!\n");
 
 #ifndef G_OS_WIN32
-  inf_io_watch(
+  inf_io_add_watch(
     INF_IO(test->io),
     &test->input_fd,
     INF_IO_INCOMING | INF_IO_ERROR,

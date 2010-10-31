@@ -69,6 +69,7 @@ typedef struct _InfTcpConnectionPrivate InfTcpConnectionPrivate;
 struct _InfTcpConnectionPrivate {
   InfIo* io;
   InfIoEvent events;
+  InfIoWatch* watch;
 
   InfTcpConnectionStatus status;
   InfNativeSocket socket;
@@ -275,14 +276,21 @@ inf_tcp_connection_connected(InfTcpConnection* connection)
 
   priv->events = INF_IO_INCOMING | INF_IO_ERROR;
 
-  inf_io_watch(
-    priv->io,
-    &priv->socket,
-    priv->events,
-    inf_tcp_connection_io,
-    connection,
-    NULL
-  );
+  if(priv->watch == NULL)
+  {
+    priv->watch = inf_io_add_watch(
+      priv->io,
+      &priv->socket,
+      priv->events,
+      inf_tcp_connection_io,
+      connection,
+      NULL
+    );
+  }
+  else
+  {
+    inf_io_update_watch(priv->io, priv->watch, priv->events);
+  }
 
   g_object_freeze_notify(G_OBJECT(connection));
   g_object_notify(G_OBJECT(connection), "status");
@@ -298,7 +306,7 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
   gchar buf[2048];
   int errcode;
   ssize_t result;
-  
+
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
 
   g_assert(priv->status == INF_TCP_CONNECTION_CONNECTED);
@@ -383,14 +391,7 @@ inf_tcp_connection_io_outgoing(InfTcpConnection* connection)
 
         priv->events &= ~INF_IO_OUTGOING;
 
-        inf_io_watch(
-          priv->io,
-          &priv->socket,
-          priv->events,
-          inf_tcp_connection_io,
-          connection,
-          NULL
-        );
+        inf_io_update_watch(priv->io, priv->watch, priv->events);
       }
 
       g_signal_emit(
@@ -474,6 +475,7 @@ inf_tcp_connection_init(GTypeInstance* instance,
 
   priv->io = NULL;
   priv->events = 0;
+  priv->watch = NULL;
   priv->status = INF_TCP_CONNECTION_CLOSED;
   priv->socket = INVALID_SOCKET;
 
@@ -684,18 +686,12 @@ inf_tcp_connection_error(InfTcpConnection* connection,
   /* Normally, it would be enough to check one of both conditions, but socket
    * may be already set with status still being CLOSED during
    * inf_tcp_connection_open(). */
-  if(priv->events != 0)
+  if(priv->watch != NULL)
   {
     priv->events = 0;
 
-    inf_io_watch(
-      priv->io,
-      &priv->socket,
-      priv->events,
-      inf_tcp_connection_io,
-      connection,
-      NULL
-    );
+    inf_io_remove_watch(priv->io, priv->watch);
+    priv->watch = NULL;
   }
 
   if(priv->status != INF_TCP_CONNECTION_CLOSED)
@@ -1185,10 +1181,12 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   }
   else
   {
+    g_assert(priv->watch == NULL);
+
     /* Connection establishment in progress */
     priv->events = INF_IO_OUTGOING | INF_IO_ERROR;
 
-    inf_io_watch(
+    priv->watch = inf_io_add_watch(
       priv->io,
       &priv->socket,
       priv->events,
@@ -1216,20 +1214,15 @@ inf_tcp_connection_close(InfTcpConnection* connection)
   InfTcpConnectionPrivate* priv;
 
   g_return_if_fail(INF_IS_TCP_CONNECTION(connection));
-  
+
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
   g_return_if_fail(priv->status != INF_TCP_CONNECTION_CLOSED);
 
   priv->events = 0;
 
-  inf_io_watch(
-    priv->io,
-    &priv->socket,
-    priv->events,
-    inf_tcp_connection_io,
-    connection,
-    NULL
-  );
+  g_assert(priv->watch != NULL);
+  inf_io_remove_watch(priv->io, priv->watch);
+  priv->watch = NULL;
 
   priv->front_pos = 0;
   priv->back_pos = 0;
@@ -1333,15 +1326,7 @@ inf_tcp_connection_send(InfTcpConnection* connection,
     if(~priv->events & INF_IO_OUTGOING)
     {
       priv->events |= INF_IO_OUTGOING;
-
-      inf_io_watch(
-        priv->io,
-        &priv->socket,
-        priv->events,
-        inf_tcp_connection_io,
-        connection,
-        NULL
-      );
+      inf_io_update_watch(priv->io, priv->watch, priv->events);
     }
   }
 
