@@ -40,7 +40,7 @@ typedef struct _InfGtkBrowserView InfGtkBrowserView;
 typedef struct _InfGtkBrowserViewClass InfGtkBrowserViewClass;
 
 struct _InfGtkBrowserViewClass {
-  GtkBinClass parent_class;
+  GtkTreeViewClass parent_class;
 
   /* signals */
   void (*activate)(InfGtkBrowserView* view,
@@ -60,7 +60,7 @@ struct _InfGtkBrowserViewClass {
 };
 
 struct _InfGtkBrowserView {
-  GtkBin parent;
+  GtkTreeView parent;
 };
 
 GType
