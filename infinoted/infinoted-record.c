@@ -188,6 +188,7 @@ infinoted_record_new(InfdDirectory* directory)
 
   record = g_slice_new(InfinotedRecord);
   record->directory = directory;
+  record->records = NULL;
   g_object_ref(directory);
 
   g_signal_connect(
