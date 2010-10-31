@@ -1,5 +1,10 @@
 2010-10-31  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-record.c (infinoted_record_new): Initialize
+	the record->records list to NULL.
+
+2010-10-31  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-io.h:
 	* libinfinity/common/inf-io.c: Change the watch interface slightly,
 	add inf_io_add_dispatch() and inf_io_remove_dispatch() and require
