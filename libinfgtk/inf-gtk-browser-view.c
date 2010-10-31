@@ -2605,23 +2605,6 @@ inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model)
 }
 
 /**
- * inf_gtk_browser_view_get_model:
- * @view: A #InfGtkBrowserView.
- *
- * Returns the model displayed by @view.
- * 
- * Returns: A #InfGtkBrowserModel.
- **/
-InfGtkBrowserModel*
-inf_gtk_browser_view_get_model(InfGtkBrowserView* view)
-{
-
-  g_return_val_if_fail(INF_GTK_IS_BROWSER_VIEW(view), NULL);
-
-  return INF_GTK_BROWSER_MODEL(gtk_tree_view_get_model(GTK_TREE_VIEW(view)));
-}
-
-/**
  * inf_gtk_browser_view_get_selected:
  * @view: A #InfGtkBrowserView.
  * @iter: An uninitialized #GtkTreeIter.

@@ -781,7 +781,7 @@ on_activate(InfGtkBrowserView* view,
   InfcBrowserIter* browser_iter;
 
   gtk_tree_model_get(
-    GTK_TREE_MODEL(inf_gtk_browser_view_get_model(view)),
+    GTK_TREE_MODEL(gtk_tree_view_get_model(GTK_TREE_VIEW(view))),
     iter,
     INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
     INF_GTK_BROWSER_MODEL_COL_NODE, &browser_iter,

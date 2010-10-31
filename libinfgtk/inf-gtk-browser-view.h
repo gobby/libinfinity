@@ -72,9 +72,6 @@ inf_gtk_browser_view_new(void);
 GtkWidget*
 inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model);
 
-InfGtkBrowserModel*
-inf_gtk_browser_view_get_model(InfGtkBrowserView* view);
-
 gboolean
 inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
                                   GtkTreeIter* iter);
