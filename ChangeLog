@@ -1,3 +1,8 @@
+2010-11-01  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity.pc.in:
+	* configure.ac: Require and link against gthread-2.0.
+
 2010-10-31  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-record.c (infinoted_record_new): Initialize
