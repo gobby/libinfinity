@@ -1352,7 +1352,6 @@ inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
   GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-  g_assert(priv->sasl_session != NULL);
 
   error = NULL;
   inf_gsasl_set_error(&error, code);

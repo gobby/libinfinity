@@ -1,5 +1,12 @@
 2010-11-01  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_sasl_error): Don't assert that sasl session is
+	set since it can happen that it isn't in case the SASL session cannot
+	be initiated.
+
+2010-11-01  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity.pc.in:
 	* configure.ac: Require and link against gthread-2.0.
 
