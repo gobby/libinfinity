@@ -2366,16 +2366,17 @@ inf_gtk_browser_view_set_property(GObject* object,
 
   view = INF_GTK_BROWSER_VIEW(object);
 
-  g_assert(INF_GTK_IS_BROWSER_MODEL(g_value_get_object(value)));
-
   switch(prop_id)
   {
   case PROP_MODEL:
+
+    if (g_value_get_object(value) != NULL)
+      g_assert(INF_GTK_IS_BROWSER_MODEL(g_value_get_object(value)));
+
     inf_gtk_browser_view_set_model(
       view,
       INF_GTK_BROWSER_MODEL(g_value_get_object(value))
     );
-  
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
