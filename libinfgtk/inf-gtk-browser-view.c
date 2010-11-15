@@ -62,7 +62,6 @@ struct _InfGtkBrowserViewSync {
 
 typedef struct _InfGtkBrowserViewPrivate InfGtkBrowserViewPrivate;
 struct _InfGtkBrowserViewPrivate {
-  GtkWidget* treeview;
   GtkTreeViewColumn* column;
 
   /* Note that progress and status_text are never visible at the same time */
@@ -210,13 +209,13 @@ inf_gtk_browser_view_redraw_row(InfGtkBrowserView* view,
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
 #if GTK_CHECK_VERSION(2,20,0)
-  if(gtk_widget_get_realized(priv->treeview))
+  if(gtk_widget_get_realized(GTK_WIDGET(view)))
 #else
-  if(GTK_WIDGET_REALIZED(priv->treeview))
+  if(GTK_WIDGET_REALIZED(GTK_WIDGET(view)))
 #endif
   {
     gtk_tree_view_get_cell_area(
-      GTK_TREE_VIEW(priv->treeview),
+      GTK_TREE_VIEW(view),
       path,
       priv->column,
       &cell_area
@@ -225,7 +224,7 @@ inf_gtk_browser_view_redraw_row(InfGtkBrowserView* view,
     if(cell_area.height != 0)
     {
       gtk_widget_queue_draw_area(
-        INF_GTK_BROWSER_VIEW_PRIVATE(view)->treeview,
+        GTK_WIDGET(view),
         cell_area.x,
         cell_area.y,
         cell_area.width,
@@ -249,7 +248,7 @@ inf_gtk_browser_view_redraw_for_reference(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(reference);
   g_assert(path != NULL);
 
-  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
   gtk_tree_model_get_iter(model, &iter, path);
   inf_gtk_browser_view_redraw_row(view, path, &iter);
   gtk_tree_path_free(path);
@@ -331,21 +330,21 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
                                                  gpointer user_data)
 {
   InfGtkBrowserViewExplore* explore;
-  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserView* view;
   GtkTreeModel* model;
   GtkTreePath* path;
   GtkTreeIter iter;
   gpointer initial_expansion;
 
   explore = (InfGtkBrowserViewExplore*)user_data;
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(explore->view_browser->view);
-  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  view = explore->view_browser->view;
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
   path = gtk_tree_row_reference_get_path(explore->reference);
   g_assert(path != NULL);
 
   gtk_tree_model_get_iter(model, &iter, path);
-  inf_gtk_browser_view_redraw_row(explore->view_browser->view, path, &iter);
+  inf_gtk_browser_view_redraw_row(view, path, &iter);
 
   initial_expansion = g_object_get_data(
       G_OBJECT(explore->request),
@@ -361,7 +360,7 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
    * any children. If we don't have any, then we can't expand of course. The
    * extra g_object_set_data does not need to be undone since the request
    * most likely vanishes anyway after exploration. */
-  if(initial_expansion == explore->view_browser->view &&
+  if(initial_expansion == view &&
      gtk_tree_model_iter_has_child(model, &iter))
   {
     g_object_set_data(
@@ -370,7 +369,7 @@ inf_gtk_browser_view_explore_request_progress_cb(InfcExploreRequest* request,
       NULL
     );
 
-    gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
+    gtk_tree_view_expand_row(GTK_TREE_VIEW(view), path, FALSE);
   }
 
   gtk_tree_path_free(path);
@@ -423,7 +422,7 @@ inf_gtk_browser_view_sync_added(InfGtkBrowserView* view,
 
   sync->reference = gtk_tree_row_reference_new_proxy(
     G_OBJECT(priv->column),
-    gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview)),
+    gtk_tree_view_get_model(GTK_TREE_VIEW(view)),
     path
   );
 
@@ -471,7 +470,7 @@ inf_gtk_browser_view_sync_removed(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(sync->reference);
   if(path != NULL)
   {
-    model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
     gtk_tree_model_get_iter(model, &iter, path);
     inf_gtk_browser_view_redraw_row(view, path, &iter);
     gtk_tree_path_free(path);
@@ -529,7 +528,7 @@ inf_gtk_browser_view_explore_added(InfGtkBrowserView* view,
 
   explore->reference = gtk_tree_row_reference_new_proxy(
     G_OBJECT(priv->column),
-    gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview)),
+    gtk_tree_view_get_model(GTK_TREE_VIEW(view)),
     path
   );
 
@@ -578,7 +577,7 @@ inf_gtk_browser_view_explore_removed(InfGtkBrowserView* view,
   path = gtk_tree_row_reference_get_path(expl->reference);
   if(path != NULL)
   {
-    model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+    model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
     gtk_tree_model_get_iter(model, &iter, path);
     inf_gtk_browser_view_redraw_row(view, path, &iter);
     gtk_tree_path_free(path);
@@ -621,15 +620,15 @@ inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
                                       gpointer user_data)
 {
   InfGtkBrowserViewBrowser* view_browser;
-  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserView* view;
   GtkTreeModel* model;
   GtkTreeIter tree_iter;
   GtkTreePath* path;
   gboolean result;
 
   view_browser = (InfGtkBrowserViewBrowser*)user_data;
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view_browser->view);
-  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  view = view_browser->view;
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
   result = inf_gtk_browser_model_browser_iter_to_tree_iter(
     INF_GTK_BROWSER_MODEL(model),
@@ -646,7 +645,7 @@ inf_gtk_browser_view_begin_explore_cb(InfcBrowser* browser,
   {
     path = gtk_tree_model_get_path(model, &tree_iter);
     inf_gtk_browser_view_explore_added(
-      view_browser->view,
+      view,
       browser,
       request,
       path,
@@ -663,7 +662,7 @@ inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
                                           gpointer user_data)
 {
   InfGtkBrowserViewBrowser* view_browser;
-  InfGtkBrowserViewPrivate* priv;
+  InfGtkBrowserView* view;
   InfSession* session;
   GtkTreeModel* model;
   GtkTreeIter tree_iter;
@@ -671,8 +670,8 @@ inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
   gboolean result;
 
   view_browser = (InfGtkBrowserViewBrowser*)user_data;
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view_browser->view);
-  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  view = view_browser->view;
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
   session = infc_session_proxy_get_session(proxy);
 
@@ -696,7 +695,7 @@ inf_gtk_browser_view_session_subscribe_cb(InfcBrowser* browser,
     {
       path = gtk_tree_model_get_path(model, &tree_iter);
       inf_gtk_browser_view_sync_added(
-        view_browser->view,
+        view,
         browser,
         proxy,
         path,
@@ -752,7 +751,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
     request = infc_browser_iter_get_explore_request(browser, iter);
     if(request != NULL)
     {
-      model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
       result = inf_gtk_browser_model_browser_iter_to_tree_iter(
         INF_GTK_BROWSER_MODEL(model),
@@ -791,7 +790,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
       if(inf_session_get_synchronization_status(session, connection) !=
          INF_SESSION_SYNC_NONE)
       {
-        model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+        model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
         result = inf_gtk_browser_model_browser_iter_to_tree_iter(
           INF_GTK_BROWSER_MODEL(model),
@@ -832,7 +831,7 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
   InfcBrowserIter* browser_iter;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
   gtk_tree_model_get(
     model,
@@ -884,7 +883,7 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
       if(view_browser->initial_root_expansion == TRUE)
       {
         /*printf("Direct expansion for view %p\n", view);*/
-        gtk_tree_view_expand_row(GTK_TREE_VIEW(priv->treeview), path, FALSE);
+        gtk_tree_view_expand_row(GTK_TREE_VIEW(view), path, FALSE);
 
         /* Handled expansion flag, so unset, could otherwise lead to another
          * try of expanding the root node. */
@@ -912,7 +911,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
   InfDiscoveryInfo* info;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
   view_browser = g_slice_new(InfGtkBrowserViewBrowser);
   view_browser->view = view;
@@ -1089,7 +1088,6 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   InfGtkBrowserViewBrowser* view_browser;
   InfGtkBrowserViewExplore* explore;
   GtkTreePath* parent_path;
-  GtkTreeView* treeview;
 
   InfcSessionProxy* proxy;
   InfSession* session;
@@ -1123,12 +1121,10 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
       {
         if(infc_browser_iter_get_explored(browser, browser_iter) == FALSE)
         {
-          treeview = GTK_TREE_VIEW(priv->treeview);
-
           parent_path = gtk_tree_path_copy(path);
           gtk_tree_path_up(parent_path);
 
-          if(gtk_tree_view_row_expanded(treeview, parent_path))
+          if(gtk_tree_view_row_expanded(GTK_TREE_VIEW(view), parent_path))
             infc_browser_iter_explore(browser, browser_iter);
 
           gtk_tree_path_free(parent_path);
@@ -1321,7 +1317,7 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
   GtkTreePath* path;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  current_model = gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview));
+  current_model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
   if(current_model != NULL)
   {
@@ -1370,14 +1366,14 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
   }
 
   gtk_tree_view_set_model(
-    GTK_TREE_VIEW(priv->treeview),
+    GTK_TREE_VIEW(view),
     GTK_TREE_MODEL(model)
   );
 
   if(model != NULL)
   {
     gtk_tree_view_set_search_column(
-      GTK_TREE_VIEW(priv->treeview),
+      GTK_TREE_VIEW(view),
       INF_GTK_BROWSER_MODEL_COL_NAME
     );
 
@@ -1455,10 +1451,9 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
  */
 
 static void
-inf_gtk_browser_view_row_expanded_cb(GtkTreeView* tree_view,
-                                     GtkTreeIter* iter,
-                                     GtkTreePath* path,
-                                     gpointer user_data)
+inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
+                                  GtkTreeIter* iter,
+                                  GtkTreePath* path)
 {
   GtkTreeModel* model;
   InfcBrowser* browser;
@@ -1492,13 +1487,15 @@ inf_gtk_browser_view_row_expanded_cb(GtkTreeView* tree_view,
 
   infc_browser_iter_free(browser_iter);
   g_object_unref(G_OBJECT(browser));
+
+  if(GTK_TREE_VIEW_CLASS(parent_class)->row_expanded != NULL)
+    GTK_TREE_VIEW_CLASS(parent_class)->row_expanded(tree_view, iter, path);
 }
 
 static void
-inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
-                                      GtkTreePath* path,
-                                      GtkTreeViewColumn* column,
-                                      gpointer user_data)
+inf_gtk_browser_view_row_activated(GtkTreeView* tree_view,
+                                   GtkTreePath* path,
+                                   GtkTreeViewColumn* column)
 {
   InfGtkBrowserView* view;
   InfGtkBrowserViewPrivate* priv;
@@ -1515,7 +1512,7 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
   GError* error;
   InfGtkBrowserViewBrowser* view_browser;
 
-  view = INF_GTK_BROWSER_VIEW(user_data);
+  view = INF_GTK_BROWSER_VIEW(tree_view);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
   /* Connect to host, if not already */
@@ -1618,6 +1615,9 @@ inf_gtk_browser_view_row_activated_cb(GtkTreeView* tree_view,
     infc_browser_iter_free(browser_iter);
     g_object_unref(G_OBJECT(browser));
   }
+
+  if(GTK_TREE_VIEW_CLASS(parent_class)->row_activated != NULL)
+    GTK_TREE_VIEW_CLASS(parent_class)->row_activated(tree_view, path, column);
 }
 
 static void
@@ -1673,7 +1673,7 @@ inf_gtk_browser_view_popup_menu_position_func(GtkMenu* menu,
 
   /* Place menu below currently selected row */
 
-  bin_window = gtk_tree_view_get_bin_window(GTK_TREE_VIEW(priv->treeview));
+  bin_window = gtk_tree_view_get_bin_window(GTK_TREE_VIEW(view));
   gdk_window_get_origin(bin_window, &orig_x, &orig_y);
 
   screen = gtk_widget_get_screen(GTK_WIDGET(view));
@@ -1690,11 +1690,11 @@ inf_gtk_browser_view_popup_menu_position_func(GtkMenu* menu,
       gdk_drawable_get_size(GDK_DRAWABLE(bin_window), NULL, &height);
 #endif
 
-  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->treeview));
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   gtk_tree_selection_get_selected(selection, &model, &selected_iter);
   selected_path = gtk_tree_model_get_path(model, &selected_iter);
   gtk_tree_view_get_cell_area(
-    GTK_TREE_VIEW(priv->treeview),
+    GTK_TREE_VIEW(view),
     selected_path,
     priv->column,
     &cell_area
@@ -1780,18 +1780,17 @@ inf_gtk_browser_view_show_popup(InfGtkBrowserView* view,
 }
 
 static gboolean
-inf_gtk_browser_view_button_press_event_cb(GtkTreeView* treeview,
-                                           GdkEventButton* event,
-                                           gpointer user_data)
+inf_gtk_browser_view_button_press_event(GtkWidget* treeview,
+                                        GdkEventButton* event)
 {
   GtkTreePath* path;
   gboolean has_path;
 
   if(event->button == 3 &&
-     event->window == gtk_tree_view_get_bin_window(treeview))
+     event->window == gtk_tree_view_get_bin_window(GTK_TREE_VIEW(treeview)))
   {
     has_path = gtk_tree_view_get_path_at_pos(
-      treeview,
+      GTK_TREE_VIEW(treeview),
       event->x,
       event->y,
       &path,
@@ -1803,27 +1802,26 @@ inf_gtk_browser_view_button_press_event_cb(GtkTreeView* treeview,
     if(has_path)
     {
       gtk_tree_selection_select_path(
-        gtk_tree_view_get_selection(treeview),
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview)),
         path
       );
 
       gtk_tree_path_free(path);
 
       return inf_gtk_browser_view_show_popup(
-        INF_GTK_BROWSER_VIEW(user_data),
+        INF_GTK_BROWSER_VIEW(treeview),
         event->button,
         event->time
       );
     }
   }
 
-  return FALSE;
+  return GTK_WIDGET_CLASS(parent_class)->button_press_event(treeview, event);
 }
 
 static gboolean
-inf_gtk_browser_view_key_press_event_cb(GtkTreeView* treeview,
-                                        GdkEventKey* event,
-                                        gpointer user_data)
+inf_gtk_browser_view_key_press_event(GtkWidget* treeview,
+                                     GdkEventKey* event)
 {
   GtkTreeSelection* selection;
   GtkTreeIter iter;
@@ -1834,18 +1832,18 @@ inf_gtk_browser_view_key_press_event_cb(GtkTreeView* treeview,
   if(event->keyval == GDK_Menu)
 #endif
   {
-    selection = gtk_tree_view_get_selection(treeview);
+    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
     if(gtk_tree_selection_get_selected(selection, NULL, &iter))
     {
       return inf_gtk_browser_view_show_popup(
-        INF_GTK_BROWSER_VIEW(user_data),
+        INF_GTK_BROWSER_VIEW(treeview),
         0,
         event->time
       );
     }
   }
 
-  return FALSE;
+  return GTK_WIDGET_CLASS(parent_class)->key_press_event(treeview, event);
 }
 
 /*
@@ -2247,9 +2245,8 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   view = INF_GTK_BROWSER_VIEW(instance);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-  priv->treeview = gtk_tree_view_new();
   priv->column = gtk_tree_view_column_new();
-  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->treeview));
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   
   priv->renderer_icon = gtk_cell_renderer_pixbuf_new();
   priv->renderer_status_icon = gtk_cell_renderer_pixbuf_new();
@@ -2321,44 +2318,14 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   );
 
   g_signal_connect(
-    G_OBJECT(priv->treeview),
-    "row-expanded",
-    G_CALLBACK(inf_gtk_browser_view_row_expanded_cb),
-    view
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->treeview),
-    "row-activated",
-    G_CALLBACK(inf_gtk_browser_view_row_activated_cb),
-    view
-  );
-
-  g_signal_connect(
-    priv->treeview,
-    "button-press-event",
-    G_CALLBACK(inf_gtk_browser_view_button_press_event_cb),
-    view
-  );
-
-  g_signal_connect(
-    priv->treeview,
-    "key-press-event",
-    G_CALLBACK(inf_gtk_browser_view_key_press_event_cb),
-    view
-  );
-
-  g_signal_connect(
     selection,
     "changed",
     G_CALLBACK(inf_gtk_browser_view_selection_changed_cb),
     view
   );
 
-  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), priv->column);
-  gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(priv->treeview), FALSE);
-  gtk_container_add(GTK_CONTAINER(view), priv->treeview);
-  gtk_widget_show(priv->treeview);
+  gtk_tree_view_append_column(GTK_TREE_VIEW(view), priv->column);
+  gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(view), FALSE);
 }
 
 static void
@@ -2370,12 +2337,7 @@ inf_gtk_browser_view_dispose(GObject* object)
   view = INF_GTK_BROWSER_VIEW(object);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-  if(priv->treeview != NULL)
-  {
-    /* This also resets all the browsers */
-    inf_gtk_browser_view_set_model(view, NULL);
-    priv->treeview = NULL;
-  }
+  inf_gtk_browser_view_set_model(view, NULL);
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -2401,19 +2363,20 @@ inf_gtk_browser_view_set_property(GObject* object,
                                   GParamSpec* pspec)
 {
   InfGtkBrowserView* view;
-  InfGtkBrowserViewPrivate* priv;
 
   view = INF_GTK_BROWSER_VIEW(object);
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
   switch(prop_id)
   {
   case PROP_MODEL:
+
+    if (g_value_get_object(value) != NULL)
+      g_assert(INF_GTK_IS_BROWSER_MODEL(g_value_get_object(value)));
+
     inf_gtk_browser_view_set_model(
       view,
       INF_GTK_BROWSER_MODEL(g_value_get_object(value))
     );
-  
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -2428,17 +2391,15 @@ inf_gtk_browser_view_get_property(GObject* object,
                                   GParamSpec* pspec)
 {
   InfGtkBrowserView* view;
-  InfGtkBrowserViewPrivate* priv;
 
   view = INF_GTK_BROWSER_VIEW(object);
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
   switch(prop_id)
   {
   case PROP_MODEL:
     g_value_set_object(
       value,
-      G_OBJECT(gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview)))
+      G_OBJECT(gtk_tree_view_get_model(GTK_TREE_VIEW(view)))
     );
 
     break;
@@ -2464,12 +2425,7 @@ inf_gtk_browser_view_destroy(GtkObject* object)
   view = INF_GTK_BROWSER_VIEW(object);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-  if(priv->treeview != NULL)
-  {
-    /* Unset model while treeview is alive */
-    inf_gtk_browser_view_set_model(view, NULL);
-    priv->treeview = NULL;
-  }
+  inf_gtk_browser_view_set_model(view, NULL);
 
 #if GTK_CHECK_VERSION(2, 91, 0)
   if(GTK_WIDGET_CLASS(parent_class)->destroy)
@@ -2478,70 +2434,6 @@ inf_gtk_browser_view_destroy(GtkObject* object)
   if(GTK_OBJECT_CLASS(parent_class)->destroy)
     GTK_OBJECT_CLASS(parent_class)->destroy(object);
 #endif
-}
-
-static void
-inf_gtk_browser_view_size_request(GtkWidget* widget,
-                                  GtkRequisition* requisition)
-{
-  InfGtkBrowserViewPrivate* priv;
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(widget);
-
-  if(priv->treeview != NULL)
-  {
-    gtk_widget_size_request(priv->treeview, requisition);
-  }
-  else
-  {
-    requisition->width = 0;
-    requisition->height = 0;
-  }
-}
-
-static void
-inf_gtk_browser_view_size_allocate(GtkWidget* widget,
-                                   GtkAllocation* allocation)
-{
-  InfGtkBrowserViewPrivate* priv;
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(widget);
-
-  if(priv->treeview != NULL)
-  {
-    gtk_widget_size_allocate(priv->treeview, allocation);
-  }
-  else
-  {
-    allocation->x = 0;
-    allocation->y = 0;
-    allocation->width = 0;
-    allocation->height = 0;
-  }
-}
-
-static void
-inf_gtk_browser_view_set_scroll_adjustments(InfGtkBrowserView* view,
-                                            GtkAdjustment* hadj,
-                                            GtkAdjustment* vadj)
-{
-  InfGtkBrowserViewPrivate* priv;
-  GtkWidgetClass* klass;
-
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-
-  if(priv->treeview != NULL)
-  {
-    klass = GTK_WIDGET_GET_CLASS(priv->treeview);
-
-    /* Delegate to TreeView */
-    g_assert(klass->set_scroll_adjustments_signal);
-    g_signal_emit(
-      G_OBJECT(priv->treeview),
-      klass->set_scroll_adjustments_signal,
-      0,
-      hadj,
-      vadj
-    );
-  }
 }
 
 /*
@@ -2555,6 +2447,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   GObjectClass* object_class;
   GtkWidgetClass* widget_class;
   InfGtkBrowserViewClass* view_class;
+  GtkTreeViewClass* tree_class;
 #if ! GTK_CHECK_VERSION(2, 91, 0)
   GtkObjectClass *gtk_object_class;
 #endif
@@ -2562,6 +2455,7 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   object_class = G_OBJECT_CLASS(g_class);
   widget_class = GTK_WIDGET_CLASS(g_class);
   view_class = INF_GTK_BROWSER_VIEW_CLASS(g_class);
+  tree_class = GTK_TREE_VIEW_CLASS(g_class);
 
 #if ! GTK_CHECK_VERSION(2, 91, 0)
   gtk_object_class = GTK_OBJECT_CLASS(g_class);
@@ -2577,26 +2471,18 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   object_class->finalize = inf_gtk_browser_view_finalize;
   object_class->set_property = inf_gtk_browser_view_set_property;
   object_class->get_property = inf_gtk_browser_view_get_property;
-  widget_class->size_request = inf_gtk_browser_view_size_request;
-  widget_class->size_allocate = inf_gtk_browser_view_size_allocate;
+
+  tree_class->row_expanded = inf_gtk_browser_view_row_expanded;
+  tree_class->row_activated = inf_gtk_browser_view_row_activated;
+
+  widget_class->button_press_event = inf_gtk_browser_view_button_press_event;
+  widget_class->key_press_event = inf_gtk_browser_view_key_press_event;
 
   view_class->activate = NULL;
   view_class->selection_changed = NULL;
   view_class->populate_popup = NULL;
-  view_class->set_scroll_adjustments =
-    inf_gtk_browser_view_set_scroll_adjustments;
 
-  g_object_class_install_property(
-    object_class,
-    PROP_MODEL,
-    g_param_spec_object(
-      "model",
-      "Model", 
-      "The model to display",
-      INF_GTK_TYPE_BROWSER_MODEL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
-    )
-  );
+  g_object_class_override_property(object_class, PROP_MODEL, "model");
 
   view_signals[ACTIVATE] = g_signal_new(
     "activate",
@@ -2633,19 +2519,6 @@ inf_gtk_browser_view_class_init(gpointer g_class,
     1,
     GTK_TYPE_MENU
   );
-
-  widget_class->set_scroll_adjustments_signal = g_signal_new(
-    "set-scroll-adjustments",
-    G_TYPE_FROM_CLASS(object_class),
-    G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
-    G_STRUCT_OFFSET(InfGtkBrowserViewClass, set_scroll_adjustments),
-    NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT,
-    G_TYPE_NONE,
-    2,
-    GTK_TYPE_ADJUSTMENT,
-    GTK_TYPE_ADJUSTMENT
-  );
 }
 
 GType
@@ -2669,7 +2542,7 @@ inf_gtk_browser_view_get_type(void)
     };
 
     browser_view_type = g_type_register_static(
-      GTK_TYPE_BIN,
+      GTK_TYPE_TREE_VIEW,
       "InfGtkBrowserView",
       &browser_view_type_info,
       0
@@ -2715,28 +2588,6 @@ inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model)
 }
 
 /**
- * inf_gtk_browser_view_get_model:
- * @view: A #InfGtkBrowserView.
- *
- * Returns the model displayed by @view.
- * 
- * Returns: A #InfGtkBrowserModel.
- **/
-InfGtkBrowserModel*
-inf_gtk_browser_view_get_model(InfGtkBrowserView* view)
-{
-  InfGtkBrowserViewPrivate* priv;
-  GtkTreeView* treeview;
-
-  g_return_val_if_fail(INF_GTK_IS_BROWSER_VIEW(view), NULL);
-
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  treeview = GTK_TREE_VIEW(priv->treeview);
-
-  return INF_GTK_BROWSER_MODEL(gtk_tree_view_get_model(treeview));
-}
-
-/**
  * inf_gtk_browser_view_get_selected:
  * @view: A #InfGtkBrowserView.
  * @iter: An uninitialized #GtkTreeIter.
@@ -2750,15 +2601,11 @@ gboolean
 inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
                                   GtkTreeIter* iter)
 {
-  InfGtkBrowserViewPrivate* priv;
-  GtkTreeView* treeview;
   GtkTreeSelection* selection;
 
   g_return_val_if_fail(INF_GTK_IS_BROWSER_VIEW(view), FALSE);
 
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  treeview = GTK_TREE_VIEW(priv->treeview);
-  selection = gtk_tree_view_get_selection(treeview);
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   return gtk_tree_selection_get_selected(selection, NULL, iter);
 }
 
@@ -2774,26 +2621,22 @@ void
 inf_gtk_browser_view_set_selected(InfGtkBrowserView* view,
                                   GtkTreeIter* iter)
 {
-  InfGtkBrowserViewPrivate* priv;
-  GtkTreeView* treeview;
   GtkTreeSelection* selection;
   GtkTreePath* path;
 
   g_return_if_fail(INF_GTK_IS_BROWSER_VIEW(view));
   g_return_if_fail(iter != NULL);
 
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  treeview = GTK_TREE_VIEW(priv->treeview);
-  selection = gtk_tree_view_get_selection(treeview);
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
 
   path = gtk_tree_model_get_path(
-    gtk_tree_view_get_model(GTK_TREE_VIEW(priv->treeview)),
+    gtk_tree_view_get_model(GTK_TREE_VIEW(view)),
     iter
   );
   g_assert(path != NULL);
 
-  gtk_tree_view_expand_to_path(treeview, path);
-  gtk_tree_view_scroll_to_cell(treeview, path, NULL, FALSE, 0.0f, 0.0f);
+  gtk_tree_view_expand_to_path(GTK_TREE_VIEW(view), path);
+  gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(view), path, NULL, FALSE, 0.0f, 0.0f);
   gtk_tree_path_free(path);
 
   gtk_tree_selection_select_iter(selection, iter);

@@ -40,7 +40,7 @@ typedef struct _InfGtkBrowserView InfGtkBrowserView;
 typedef struct _InfGtkBrowserViewClass InfGtkBrowserViewClass;
 
 struct _InfGtkBrowserViewClass {
-  GtkBinClass parent_class;
+  GtkTreeViewClass parent_class;
 
   /* signals */
   void (*activate)(InfGtkBrowserView* view,
@@ -52,13 +52,15 @@ struct _InfGtkBrowserViewClass {
   void (*populate_popup)(InfGtkBrowserView* view,
                          GtkMenu* menu);
 
+#if ! GTK_CHECK_VERSION(2, 91, 0)
   void (*set_scroll_adjustments)(InfGtkBrowserView* view,
                                  GtkAdjustment* hadjustment,
                                  GtkAdjustment* vadjustment);
+#endif
 };
 
 struct _InfGtkBrowserView {
-  GtkBin parent;
+  GtkTreeView parent;
 };
 
 GType
@@ -69,9 +71,6 @@ inf_gtk_browser_view_new(void);
 
 GtkWidget*
 inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model);
-
-InfGtkBrowserModel*
-inf_gtk_browser_view_get_model(InfGtkBrowserView* view);
 
 gboolean
 inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
