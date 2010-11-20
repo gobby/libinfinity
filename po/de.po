@@ -7,10 +7,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libinfinity\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-02-17 18:45+0100\n"
+"POT-Creation-Date: 2010-11-20 13:29+0100\n"
 "PO-Revision-Date: 2009-11-28 11:36+0000\n"
 "Last-Translator: Armin Burgmeier <armin@arbur.net>\n"
 "Language-Team: German <de@li.org>\n"
+"Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -68,7 +69,6 @@ msgid "Failed to wait for daemonized child's return value"
 msgstr ""
 
 #: infinoted/infinoted-main.c:97 infinoted/infinoted-main.c:115
-#: infinoted/infinoted-util.c:257
 msgid "Failed to create PID file"
 msgstr ""
 
@@ -94,7 +94,7 @@ msgstr "Erweiterung »%s« (%s) geladen"
 msgid "Path \"%s\" does not contain any note plugins"
 msgstr ""
 
-#: infinoted/infinoted-options.c:91
+#: infinoted/infinoted-options.c:92
 #, c-format
 msgid ""
 "\"%s\" is not a valid security policy. Allowed values are \"no-tls\", "
@@ -103,22 +103,22 @@ msgstr ""
 "»%s« ist keine gültige Sicherheitsrichtlinie. Mögliche Werte sind »no-tls«, "
 "»allow-tls« oder »require-tls«"
 
-#: infinoted/infinoted-options.c:121
+#: infinoted/infinoted-options.c:122
 msgid "Interval must not be negative"
 msgstr ""
 
-#: infinoted/infinoted-options.c:142
+#: infinoted/infinoted-options.c:143
 #, c-format
 msgid "\"%d\" is not a valid port number. Port numbers range from 1 to 65535"
 msgstr ""
 "»%d« ist keine gültige Portnummer. Gültige Portnummern liegen zwischen 1 und "
 "65535"
 
-#: infinoted/infinoted-options.c:407
+#: infinoted/infinoted-options.c:408
 msgid "Requiring password through unencrypted connection."
 msgstr ""
 
-#: infinoted/infinoted-options.c:418
+#: infinoted/infinoted-options.c:419
 msgid ""
 "Creating a new private key also requires creating a new certificate signed "
 "with it."
@@ -126,7 +126,7 @@ msgstr ""
 "Einen neuen privaten Schlüssel zu erstellen erfordert auch ein zugehöriges "
 "Zertifikat zu erstellen das damit signiert ist."
 
-#: infinoted/infinoted-options.c:432
+#: infinoted/infinoted-options.c:433
 msgid ""
 "No private key file given. If you don't have a suitable key file, either "
 "create one using the --create-key command line argument, or disable TLS by "
@@ -137,7 +137,7 @@ msgstr ""
 "key erstellen oder TLS durch Setzen der Sicherheitsrichtlinie auf »no-tls« "
 "deaktivieren."
 
-#: infinoted/infinoted-options.c:447
+#: infinoted/infinoted-options.c:448
 msgid ""
 "No certificate file given. If you don't have a suitable certificate file, "
 "either create one using the --create-certificate command line agument, or "
@@ -148,7 +148,7 @@ msgstr ""
 "erstellen oder TLS durch Setzen der Sicherheitsrichtlinie auf »no-tls« "
 "deaktivieren."
 
-#: infinoted/infinoted-options.c:462
+#: infinoted/infinoted-options.c:463
 msgid ""
 "A synchronization directory is given, but synchronization interval is not "
 "set. Please either set a nonzero synchronization interval or unset the "
@@ -156,7 +156,7 @@ msgid ""
 "command line or config file options."
 msgstr ""
 
-#: infinoted/infinoted-options.c:477
+#: infinoted/infinoted-options.c:478
 msgid ""
 "A synchronization interval is given, but the synchronization directory is "
 "not set. Please either set a valid synchronization directory, or set the "
@@ -164,103 +164,103 @@ msgid ""
 "command line or config file options."
 msgstr ""
 
-#: infinoted/infinoted-options.c:517
+#: infinoted/infinoted-options.c:518
 msgid "The server's private key"
 msgstr "Die private Schlüsseldatei des Servers"
 
-#: infinoted/infinoted-options.c:517
+#: infinoted/infinoted-options.c:518
 msgid "KEY-FILE"
 msgstr "SCHLÜSSELDATEI"
 
-#: infinoted/infinoted-options.c:520
+#: infinoted/infinoted-options.c:521
 msgid "The server's certificate"
 msgstr "Das Zertifikat des Servers"
 
-#: infinoted/infinoted-options.c:520
+#: infinoted/infinoted-options.c:521
 msgid "CERTIFICATE-FILE"
 msgstr "ZERTIFIKATSDATEI"
 
-#: infinoted/infinoted-options.c:523
+#: infinoted/infinoted-options.c:524
 msgid "The certificates chain down to the root certificate"
 msgstr ""
 
-#: infinoted/infinoted-options.c:526
+#: infinoted/infinoted-options.c:527
 msgid "Creates a new random private key"
 msgstr "Erstellt einen neuen zufälligen privaten Schlüssel"
 
-#: infinoted/infinoted-options.c:529
+#: infinoted/infinoted-options.c:530
 msgid "Creates a new self-signed certificate using the given key"
 msgstr ""
 "Erstellt ein neues selbstsigniertes Zertifikat mit Hilfe des angegeben "
 "Schlüssels"
 
-#: infinoted/infinoted-options.c:532
+#: infinoted/infinoted-options.c:533
 msgid "The port number to listen on"
 msgstr ""
 
-#: infinoted/infinoted-options.c:532
+#: infinoted/infinoted-options.c:533
 msgid "PORT"
 msgstr "PORT"
 
-#: infinoted/infinoted-options.c:535
+#: infinoted/infinoted-options.c:536
 msgid "How to decide whether to use TLS"
 msgstr ""
 
-#: infinoted/infinoted-options.c:538
+#: infinoted/infinoted-options.c:539
 msgid "The directory to store documents into"
 msgstr "Das Verzeichnis in dem die Dokumente gespeichert werden sollen"
 
-#: infinoted/infinoted-options.c:538 infinoted/infinoted-options.c:549
+#: infinoted/infinoted-options.c:539 infinoted/infinoted-options.c:550
 msgid "DIRECTORY"
 msgstr "VERZEICHNIS"
 
-#: infinoted/infinoted-options.c:541
+#: infinoted/infinoted-options.c:542
 msgid ""
 "Interval within which to save documents, in seconds, or 0 to disable autosave"
 msgstr ""
 "Zeitabstand in Sekunden in dem Dokumente automatisch gespeichert werden, "
 "oder 0 um automatische Speicherung abzuschalten"
 
-#: infinoted/infinoted-options.c:542 infinoted/infinoted-options.c:554
+#: infinoted/infinoted-options.c:543 infinoted/infinoted-options.c:555
 msgid "INTERVAL"
 msgstr "INTERVALL"
 
-#: infinoted/infinoted-options.c:545
+#: infinoted/infinoted-options.c:546
 msgid "Require given password on connections"
 msgstr ""
 
-#: infinoted/infinoted-options.c:545
+#: infinoted/infinoted-options.c:546
 msgid "PASSWORD"
 msgstr ""
 
-#: infinoted/infinoted-options.c:548
+#: infinoted/infinoted-options.c:549
 msgid ""
 "A directory into which to periodically store a copy of the document tree"
 msgstr ""
 
-#: infinoted/infinoted-options.c:552
+#: infinoted/infinoted-options.c:553
 msgid ""
 "Interval within which to store documents to the specified sync-directory, or "
 "0 to disable directory synchronization"
 msgstr ""
 
-#: infinoted/infinoted-options.c:558
+#: infinoted/infinoted-options.c:559
 msgid "Daemonize the server"
 msgstr ""
 
-#: infinoted/infinoted-options.c:561
+#: infinoted/infinoted-options.c:562
 msgid "Kill a running daemon"
 msgstr ""
 
-#: infinoted/infinoted-options.c:565
+#: infinoted/infinoted-options.c:566
 msgid "Display version information and exit"
 msgstr ""
 
-#: infinoted/infinoted-options.c:615
+#: infinoted/infinoted-options.c:616
 msgid "infinote dedicated server"
 msgstr ""
 
-#: infinoted/infinoted-options.c:648
+#: infinoted/infinoted-options.c:646
 msgid "Could not kill daemon"
 msgstr ""
 
@@ -275,8 +275,8 @@ msgid ""
 "Could not create record file for session \"%s\": Could not generate unused "
 "record file in directory \"%s\""
 msgstr ""
-"Die Aufnahmedatei für die Sitzung »%s« konnte nicht erstellt werden, da keine "
-"unbenutzte Aufnahmedatei im Verzeichnis »%s« erzeugt werden konnte"
+"Die Aufnahmedatei für die Sitzung »%s« konnte nicht erstellt werden, da "
+"keine unbenutzte Aufnahmedatei im Verzeichnis »%s« erzeugt werden konnte"
 
 #: infinoted/infinoted-record.c:98
 #, c-format
@@ -1351,17 +1351,17 @@ msgid "The server cannot perform the TLS handshake"
 msgstr ""
 
 #. XML Warning from <IP Address>: <Warning Text>
-#: libinfinity/common/inf-xmpp-connection.c:2470
+#: libinfinity/common/inf-xmpp-connection.c:2482
 #, c-format
 msgid "XML warning from %s: %s\n"
 msgstr ""
 
 #. The server sent something which is not XML
-#: libinfinity/common/inf-xmpp-connection.c:2509
+#: libinfinity/common/inf-xmpp-connection.c:2521
 msgid "Remote site is not an XMPP server"
 msgstr ""
 
-#: libinfinity/common/inf-xmpp-connection.c:3954
+#: libinfinity/common/inf-xmpp-connection.c:3966
 msgid "The server certificate is not trusted"
 msgstr ""
 

@@ -1,3 +1,13 @@
+libinfinity 0.4.2:
+
+	* infinoted: Fixed a bug when infinoted did not launch in daemonized
+	mode when the global PID file directory did not exist.
+	* Fixed a crash which could occur in high latency concurrent situations.
+	* Fixed a possible crash when multiple connections time out at the same
+	time.
+	* Fixed a crash when receiving an unexpected XML opening and ending
+	tag on the top-level.
+
 libinfinity 0.4.1:
 
 	* infinoted: Avoid a runtime warning when infinoted can not be
