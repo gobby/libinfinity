@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 /**
  * InfCertificateChain:
  *
- * #InfCertifiacteChain is an opaque data type. You should only access it
+ * #InfCertificateChain is an opaque data type. You should only access it
  * via the public API functions.
  */
 typedef struct _InfCertificateChain InfCertificateChain;

@@ -161,7 +161,7 @@ typedef enum _InfSessionSyncError {
  * @process_xml_run: Virtual function that is called for every received
  * message while the session is running. Return %INF_COMMUNICATION_SCOPE_GROUP
  * if the message is designated for all group members (see also
- * inf_net_object_received() on this topic).
+ * inf_communication_object_received() on this topic).
  * @get_xml_user_props: Virtual function that creates a list of
  * #GParameter<!-- -->s for use with g_object_newv() from a XML node.
  * @set_xml_user_props: Virtual function that writes the passed user

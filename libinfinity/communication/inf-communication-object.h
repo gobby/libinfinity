@@ -63,12 +63,12 @@ typedef struct _InfCommunicationObjectIface InfCommunicationObjectIface;
  * #InfCommunicationObject was received.
  * @enqueued: Called when a message to be sent to another group member has
  * been enqueued, which means sending it can no longer be cancelled via
- * inf_connection_manager_group_clear_queue().
+ * inf_communication_group_cancel_messages().
  * @sent: Called when a message has been sent to another group member of the
  * group related no this #InfCommunicationObject.
  *
  * The virtual methods of #InfCommunicationObject. These are called by the
- * #InfConnectionManager when appropriate.
+ * #InfCommunicationMethod when appropriate.
  */
 struct _InfCommunicationObjectIface {
   /*< private >*/

@@ -86,7 +86,6 @@ INF_ADOPTED_SESSION_REPLAY_GET_CLASS
 <SECTION>
 <FILE>infc-browser</FILE>
 <TITLE>InfcBrowser</TITLE>
-InfcBrowserNodeStatus
 InfcBrowserStatus
 InfcBrowser
 InfcBrowserClass
@@ -431,8 +430,12 @@ InfIo
 InfIoIface
 InfNativeSocket
 InfIoEvent
-InfIoFunc
+InfIoWatch
+InfIoTimeout
+InfIoDispatch
+InfIoWatchFunc
 InfIoTimeoutFunc
+InfIoDispatchFunc
 inf_io_add_watch
 inf_io_update_watch
 inf_io_remove_watch
@@ -799,6 +802,7 @@ INFD_SERVER_POOL_GET_CLASS
 InfdDirectoryIter
 InfdDirectory
 InfdDirectoryClass
+InfdDirectoryForeachConnectionFunc
 infd_directory_iter_copy
 infd_directory_iter_free
 infd_directory_new
@@ -967,12 +971,15 @@ INFC_TYPE_BROWSER_ITER
 InfRequestError
 InfUserError
 InfDirectoryError
+InfAuthenticationDetailError
 inf_request_error_quark
 inf_request_strerror
 inf_user_error_quark
 inf_user_strerror
 inf_directory_error_quark
 inf_directory_strerror
+inf_authentication_detail_error_quark
+inf_authentication_detail_strerror
 inf_gnutls_error_quark
 inf_gnutls_set_error
 inf_gsasl_error_quark
@@ -1085,6 +1092,8 @@ inf_xml_util_set_attribute_long
 inf_xml_util_set_attribute_uint
 inf_xml_util_set_attribute_ulong
 inf_xml_util_set_attribute_double
+inf_xml_util_new_error_from_node
+inf_xml_util_new_node_from_error
 </SECTION>
 
 <SECTION>

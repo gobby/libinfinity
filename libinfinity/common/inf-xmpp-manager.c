@@ -480,7 +480,7 @@ inf_xmpp_manager_new(void)
 
 /**
  * inf_xmpp_manager_lookup_connection_by_address:
- * @manager: A #InfConnectionManager.
+ * @manager: A #InfXmppManager.
  * @address: The remote #InfIpAddress of the connection to look for.
  * @port: The remote port number of the connection to look for.
  *

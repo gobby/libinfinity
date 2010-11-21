@@ -1382,9 +1382,10 @@ inf_adopted_session_get_io(InfAdoptedSession* session)
  * inf_adopted_session_get_algorithm:
  * @session: A #InfAdoptedSession.
  *
- * Returns the #InfAlgorithm object of @session. Returns %NULL if @session
- * has status %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING because there
- * the algorithm object is not yet created before successful synchronization.
+ * Returns the #InfAdoptedAlgorithm object of @session. Returns %NULL if
+ * @session has status %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING
+ * because there the algorithm object is not yet created before successful
+ * synchronization.
  *
  * Return Value: A #InfAdoptedAlgorithm, or %NULL.
  **/

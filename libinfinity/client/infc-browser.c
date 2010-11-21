@@ -88,7 +88,7 @@ struct _InfcBrowserNode {
   guint id;
   gchar* name;
   InfcBrowserNodeType type;
-  InfcBrowserNodeStatus status;
+  /*InfcBrowserNodeStatus status;*/
 
   union {
     struct {
@@ -455,12 +455,12 @@ infc_browser_node_new_common(InfcBrowser* browser,
 
   if(parent != NULL)
   {
-    node->status = INFC_BROWSER_NODE_INHERIT;
+    /*node->status = INFC_BROWSER_NODE_INHERIT;*/
     infc_browser_node_link(node, parent);
   }
   else
   {
-    node->status = INFC_BROWSER_NODE_SYNC;
+    /*node->status = INFC_BROWSER_NODE_SYNC;*/
     node->prev = NULL;
     node->next = NULL;
   }
@@ -4234,8 +4234,8 @@ infc_browser_iter_get_child(InfcBrowser* browser,
  * Explores the given subdirectory node. The returned request may be used
  * to get informed about exploration progress and completion. When the
  * exploration has been initiated, infc_browser_iter_get_child() may be called
- * to get the content that has so-far been explored. When the request has
- * been finished, all content is available.
+ * to get the content that has been explored so far. When the request has
+ * finished, all content is available.
  *
  * Return Value: A #InfcExploreRequest to watch the exploration process.
  **/
@@ -4705,7 +4705,7 @@ infc_browser_iter_get_note_type(InfcBrowser* browser,
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note inside @browser.
  *
- * Returns the #InfcNodePlugin that is used for subscriptions to the note
+ * Returns the #InfcNotePlugin that is used for subscriptions to the note
  * @iter points to, or %NULL if no plugin for the note's type has been
  * registered.
  *
@@ -4891,7 +4891,7 @@ infc_browser_iter_get_session(InfcBrowser* browser,
  *
  * Returns the #InfcSessionProxy that is used to synchronize the note @iter
  * points to to the server. Such a node is created by
- * infc_browser_iter_add_note_with_content(). If the client is subscribed to
+ * infc_browser_add_note_with_content(). If the client is subscribed to
  * this note, then this returns the same session as
  * infc_browser_iter_get_session(). However, it is possible that we
  * synchronize this node to the server without being subscribed to it. In
@@ -5135,6 +5135,8 @@ infc_browser_iter_from_explore_request(InfcBrowser* browser,
  * generally the case for any #InfcBrowserIter returned by one of the
  * InfcBrowser functions, it gets invalid however as soon as the node it
  * points to is removed.
+ *
+ * Returns: Whether @iter points to a node in @browser.
  */
 gboolean
 infc_browser_iter_is_valid(InfcBrowser* browser,

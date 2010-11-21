@@ -17,6 +17,27 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infc-explore-request
+ * @title: InfcExploreRequest
+ * @short_description: Watch progess of node exploration
+ * @include: libinfinity/client/infc-explore-request.h
+ * @stability: Unstable
+ *
+ * When starting a node exploration using infc_browser_iter_explore() then
+ * it returns an #InfcExploreRequest. This object can be used to get notified
+ * when there is progress in exploration (for example to show a progress bar
+ * in the GUI) or when the operation finished, that is all child nodes of the
+ * explored subdirectory are known to the browser.
+ *
+ * When the exploration starts the #InfcExploreRequest::initiated signal is
+ * emitted. Then, for each node being explored #InfcExploreRequest::progress
+ * is emitted. Eventually, #InfcExploreRequest::finished is emitted when the
+ * exploration has finished. Before each step the request can also fail, in
+ * which case #InfcRequest::failed is emitted. When this happens then none of
+ * the other signals will be emitted anymore.
+ */
+
 #include <libinfinity/client/infc-explore-request.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
@@ -287,6 +308,15 @@ infc_explore_request_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfcExploreRequest::initiated:
+   * @request: The #InfcExploreRequest that is being initiated.
+   * @total: Total number of the directory's child nodes.
+   *
+   * This signal is emitted once the exploration has been initiated, that is
+   * when it is known how many child nodes are going to be explored. The
+   * number of nodes is provided in the @total parameter.
+   */
   explore_request_signals[INITIATED] = g_signal_new(
     "initiated",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -299,6 +329,16 @@ infc_explore_request_class_init(gpointer g_class,
     G_TYPE_UINT
   );
 
+  /**
+   * InfcExploreRequest::progress:
+   * @request: The #InfcExploreRequest that made progress.
+   * @current: The number of child nodes retrieved so far.
+   * @total: The total number of child nodes.
+   *
+   * This signal is emitted for each child node that is added to the
+   * subdirectory being explored. This can for example be used to update a
+   * progress bar in the GUI.
+   */
   explore_request_signals[PROGRESS] = g_signal_new(
     "progress",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -312,6 +352,13 @@ infc_explore_request_class_init(gpointer g_class,
     G_TYPE_UINT
   );
 
+  /**
+   * InfcExploreRequest::finished:
+   * @request: The #InfcExploreRequest which finished.
+   *
+   * This signal is emitted when the exploration finished successfully and all
+   * child nodes of the subdirectory being explored are known.
+   */
   explore_request_signals[FINISHED] = g_signal_new(
     "finished",
     G_OBJECT_CLASS_TYPE(object_class),

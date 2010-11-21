@@ -4219,7 +4219,7 @@ infd_directory_get_io(InfdDirectory* directory)
  *
  * Returns the storage backend in use by the directory.
  *
- * Return Value: An #InfdDirectoryStorage.
+ * Return Value: An #InfdStorage.
  **/
 InfdStorage*
 infd_directory_get_storage(InfdDirectory* directory)
@@ -4860,7 +4860,7 @@ infd_directory_remove_node(InfdDirectory* directory,
  *
  * Returns the type of the node @iter points to.
  *
- * Returns: A #InfdDirectoryStorageNodeType.
+ * Returns: A #InfdStorageNodeType.
  **/
 InfdStorageNodeType
 infd_directory_iter_get_node_type(InfdDirectory* directory,

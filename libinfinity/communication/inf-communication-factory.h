@@ -55,6 +55,7 @@ struct _InfCommunicationFactoryIface {
   /*< private >*/
   GTypeInterface parent;
 
+  /*< public >*/
   gboolean (*supports_method)(InfCommunicationFactory* factory,
                               const gchar* network,
                               const gchar* method_name);

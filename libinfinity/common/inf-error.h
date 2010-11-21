@@ -136,6 +136,8 @@ typedef enum _InfUserError {
  * sync to the server.
  * @INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE: A message that is not understood
  * was received.
+ * @INF_DIRECTORY_ERROR_NO_STORAGE: A node cannot be stored permanently on the
+ * server since it has no storage backend attached.
  * @INF_DIRECTORY_ERROR_FAILED: Generic error code when no further reason of
  * failure is known.
  *
@@ -176,8 +178,8 @@ typedef enum _InfDirectoryError {
  * to connect to this server.
  * @INF_AUTHENTICATION_DETAIL_ERROR_TRY_AGAIN: Authentication was temporarily
  * interrupted on the server side.
- * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occured while checking
- * user permissions.
+ * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occured while
+ * checking user permissions.
  */
 typedef enum _InfAuthenticationDetailError {
   INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,

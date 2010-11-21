@@ -1,3 +1,29 @@
+2010-11-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-certificate-chain.h:
+	* libinfinity/common/inf-chat-session.c:
+	* libinfinity/common/inf-error.h:
+	* libinfinity/common/inf-io.h:
+	* libinfinity/common/inf-io.c:
+	* libinfinity/common/inf-local-publisher.h:
+	* libinfinity/common/inf-protocol.c:
+	* libinfinity/common/inf-session.h:
+	* libinfinity/common/inf-session.c:
+	* libinfinity/common/inf-xmpp-manager.c:
+	* libinfinity/communication/inf-communication-factory.h:
+	* libinfinity/communication/inf-communication-object.h:
+	* libinfinity/client/infc-browser.h:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/client/infc-explore-request.h:
+	* libinfinity/client/infc-explore-request.c:
+	* libinfinity/server/infd-directory.c:
+	* libinfinity/server/infd-session-proxy.c:
+	* libinfinity/adopted/inf-adopted-algorithm.c:
+	* libinfinity/adopted/inf-adopted-session.c:
+	* libinfinity/adopted/inf-adopted-state-vector.c:
+	* libinfinity/adopted/inf-adopted-undo-grouping.c: Some documentation
+	fixes.
+
 2010-11-01  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c

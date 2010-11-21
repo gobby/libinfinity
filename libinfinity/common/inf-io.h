@@ -66,7 +66,7 @@ typedef int InfNativeSocket;
  * the connection has been closed (which is the case when recv() returns 0).
  * @INF_IO_OUTGOING: Data can be sent without blocking.
  * @INF_IO_ERROR: An error with the socket occured, or the connection has
- * been closed. Use getsockopt() to read do %SO_ERROR option to find out what
+ * been closed. Use getsockopt() to read the %SO_ERROR option to find out what
  * the problem is.
  *
  * This enumeration specifies events that can be watched.
@@ -81,7 +81,7 @@ typedef enum _InfIoEvent {
  * InfIoWatchFunc:
  * @socket: The socket on which an event occured.
  * @event: A bitmask of the events that occured.
- * @user_data: User-defined data specified in inf_io_watch().
+ * @user_data: User-defined data specified in inf_io_add_watch().
  *
  * Callback function that is called when an event occurs on a watched socket.
  */
@@ -113,8 +113,6 @@ typedef void(*InfIoDispatchFunc)(gpointer user_data);
  * @update_watch: Updates a watch on a socket so that a different set of
  * events is watched for.
  * @remove_watch: Removes a watch on a socket.
- * @watch: Changes the events the given socket is watched for. If @events is
- * 0, removes the watch for @socket.
  * @add_timeout: Schedules @func to be called at least @msecs milliseconds
  * in the future.
  * @remove_timeout: Removes a scheduled timeout again. The timeout is

@@ -283,7 +283,7 @@ inf_io_add_dispatch(InfIo* io,
 /**
  * inf_io_remove_dispatch:
  * @io: A #InfIo.
- * @timeout: A dispatch handle obtained from inf_io_add_dispatch().
+ * @dispatch: A dispatch handle obtained from inf_io_add_dispatch().
  *
  * Removes the given dispatch from @io so that it is not called.
  **/

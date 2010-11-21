@@ -35,8 +35,22 @@ G_BEGIN_DECLS
 typedef struct _InfcExploreRequest InfcExploreRequest;
 typedef struct _InfcExploreRequestClass InfcExploreRequestClass;
 
+/**
+ * InfcExploreRequestClass:
+ * @initiated: Default signal handler for the #InfcExploreRequest::initiated
+ * signal.
+ * @progress: Default signal handler for the #InfcExploreRequest::progress
+ * signal.
+ * @finished: Default signal handler for the #InfcExploreRequest::finished
+ * signal.
+ *
+ * This structure contains default signal handlers for #InfcExploreRequest.
+ */
 struct _InfcExploreRequestClass {
+  /*< private >*/
   InfcRequestClass parent_class;
+
+  /*< public >*/
 
   /* Signals */
   void (*initiated)(InfcExploreRequest *explore_request,
@@ -47,7 +61,14 @@ struct _InfcExploreRequestClass {
   void (*finished)(InfcExploreRequest* explore_request);
 };
 
+/**
+ * InfcExploreRequest:
+ *
+ * #InfcExploreRequest is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfcExploreRequest {
+  /*< private >*/
   InfcRequest parent;
 };
 

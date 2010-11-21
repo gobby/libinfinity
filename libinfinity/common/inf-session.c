@@ -43,15 +43,15 @@
  * To be notified about changes other users make to a session, you need to
  * subscribe to the session (on client side), or wait for incoming
  * subscriptions (on server side). This is normally done by
- * infc_browser_subscribe_session(). The first action that is performed upon
- * subscription is a synchronization as described above. When the
+ * infc_browser_iter_subscribe_session(). The first action that is performed
+ * upon subscription is a synchronization as described above. When the
  * synchronization is complete, the #InfSession::synchronization-complete signal
  * is emitted.
  *
  * After subscription, one can observe modifications other users make, but it is
  * not possible to make own modifications. Before doing so, a #InfUser needs to
  * be joined. This is done by client/server specific API such as
- * infc_session_proxy_join_user() or infd_session_proxy_join_user(). The
+ * infc_session_proxy_join_user() or infd_session_proxy_add_user(). The
  * required parameters still depend on the actual note type, which is why most
  * note implementations offer their own API to join a user.
  **/
@@ -2084,9 +2084,9 @@ inf_session_class_init(gpointer g_class,
    * This signal is emitted whenever a new XML node has been sent or received
    * over @connection as part of a synchronization. The process is completed
    * when @progress reaches the value 1.0. At this point,
-   * #InfSession::synchronisation-complete is also emitted.
+   * #InfSession::synchronization-complete is also emitted.
    *
-   * If @sessions&apos;s status is %INF_SESSION_SYNCHRONIZING, the local
+   * If @session&apos;s status is %INF_SESSION_SYNCHRONIZING, the local
    * side is being synchronized by the remote side. If the status is
    * %INF_SESSION_RUNNING, the local side is updating the remote side.
    */
@@ -2515,7 +2515,7 @@ inf_session_add_user(InfSession* session,
  * Changes the status of the given @user which needs to have the
  * %INF_USER_LOCAL flag set for this function to be called. If the status
  * is changed to %INF_USER_UNAVAILABLE, then the user leaves the session. To
- * rejoin use infc_session_proxy_join_user or infd_session_proxy_join_user,
+ * rejoin use infc_session_proxy_join_user() or infd_session_proxy_add_user(),
  * respectively for a proxy proxying @session.
  **/
 void

@@ -1854,7 +1854,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
 
   /**
    * InfAdoptedAlgorithm::apply-request:
-   * @algorithm: The #InfAdopedAlgorithm applying a request.
+   * @algorithm: The #InfAdoptedAlgorithm applying a request.
    * @user: The #InfAdoptedUser applying the request.
    * @request: The #InfAdoptedRequest being applied.
    *
@@ -1869,8 +1869,9 @@ inf_adopted_algorithm_class_init(gpointer g_class,
    * fulfills the dependencies of queued requests).
    *
    * Note also that the signal is not emitted for every request processed by
-   * #InfAdoptedAlgorithm since inf_adopted_algorthm_generate_request_noexec()
-   * generates a request but does not apply it.
+   * #InfAdoptedAlgorithm since
+   * inf_adopted_algorithm_generate_request_noexec() generates a request but
+   * does not apply it.
    */
   algorithm_signals[APPLY_REQUEST] = g_signal_new(
     "apply-request",
@@ -1986,8 +1987,8 @@ inf_adopted_algorithm_new_full(InfUserTable* user_table,
   return INF_ADOPTED_ALGORITHM(object);
 }
 
-/** inf_adopted_algorithm_get_current()
- *
+/**
+ * inf_adopted_algorithm_get_current:
  * @algorithm: A #InfAdoptedAlgorithm.
  *
  * Returns the current vector time of @algorithm.

@@ -1442,7 +1442,7 @@ infd_session_proxy_add_user(InfdSessionProxy* proxy,
 /**
  * infd_session_proxy_subscribe_to:
  * @proxy: A #InfdSessionProxy.
- * @connection: A #InfConnection that is not yet subscribed.
+ * @connection: A #InfXmlConnection that is not yet subscribed.
  * @seq_id: The sequence identifier for @connection.
  * @synchronize: If %TRUE, then synchronize the session to @connection first.
  *

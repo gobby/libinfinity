@@ -785,7 +785,7 @@ inf_adopted_undo_grouping_start_group(InfAdoptedUndoGrouping* grouping,
 }
 
 /**
- * inf_adopted_undo_grouping_end_group.
+ * inf_adopted_undo_grouping_end_group:
  * @grouping: A #InfAdoptedUndoGrouping.
  * @allow_group_with_next: Whether subsequent requests are allow to be part of
  * this group if #InfAdoptedUndoGrouping::group-requests allows.

@@ -1092,7 +1092,7 @@ inf_chat_session_class_init(gpointer g_class,
   /**
    * InfChatSession::send-message:
    * @session: The #InfChatSession that is sending a message.
-   * @message: The #InfChatSessionMessage that is sent.
+   * @message: The #InfChatBufferMessage that is sent.
    *
    * This signal is emitted whenever a message is sent. Messages can be sent
    * by calling inf_chat_buffer_add_message() or

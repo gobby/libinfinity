@@ -708,7 +708,7 @@ inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec)
 }
 
 /**
- * inf_adopted_state_vector_from_string.
+ * inf_adopted_state_vector_from_string:
  * @str: A string representation of a #InfAdoptedStateVector.
  * @error: Location to place an error, if any.
  *

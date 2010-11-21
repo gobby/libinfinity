@@ -53,8 +53,8 @@ typedef struct _InfLocalPublisherItem InfLocalPublisherItem;
  * @publish: Virtual function to announce a service of the given type with
  * the given name on the given port. The returned #InfLocalPublisherItem is
  * valid as long as the service is published and the #InfLocalPublisher is
- * alive. It can be used to unpublish the service again using the
- * @unpublish function.
+ * alive. It can be used to unpublish the service again using the @unpublish
+ * function.
  * @unpublish: Virtual function to unpublish a previously published service.
  *
  * Virtual functions for #InfLocalPublisher.
@@ -64,6 +64,8 @@ struct _InfLocalPublisherIface {
   GTypeInterface parent;
 
   /* Virtual table */
+
+  /*< public >*/
   InfLocalPublisherItem* (*publish)(InfLocalPublisher* publisher,
                                     const gchar* type,
                                     const gchar* name,

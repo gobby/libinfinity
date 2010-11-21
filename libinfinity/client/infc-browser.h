@@ -44,16 +44,28 @@ G_BEGIN_DECLS
 typedef struct _InfcBrowser InfcBrowser;
 typedef struct _InfcBrowserClass InfcBrowserClass;
 
+/**
+ * InfcBrowserStatus:
+ * @INFC_BROWSER_DISCONNECTED: The browser is currently not connected to a
+ * server.
+ * @INFC_BROWSER_CONNECTING: The browser is currently establishing a
+ * connection to a remote server, but the connection is not yet fully
+ * established.
+ * @INFC_BROWSER_CONNECTED: The browser is connected to a remote server.
+ *
+ * This enumeration contains possible connection status values for
+ * #InfcBrowser. Several operations, such as exploring a node or subscribing
+ * to a session can only be performed when the browser is connected to a
+ * remote infinote server.
+ */
 typedef enum _InfcBrowserStatus {
-  /* Not connected to any server */
   INFC_BROWSER_DISCONNECTED,
-  /* Currently connecting */
   INFC_BROWSER_CONNECTING,
-  /* Currently connected */
   INFC_BROWSER_CONNECTED
 } InfcBrowserStatus;
 
-typedef enum _InfcBrowserNodeStatus {
+#if 0
+/*typedef enum _InfcBrowserNodeStatus {*/
   /* The node is synchronized with the server */
   INFC_BROWSER_NODE_SYNC,
   /* The node has been deleted locally, but the server has not yet
@@ -70,12 +82,32 @@ typedef enum _InfcBrowserNodeStatus {
   INFC_BROWSER_NODE_COPIED,
   /* Inherit status from parent node (used internally) */
   INFC_BROWSER_NODE_INHERIT
-} InfcBrowserNodeStatus;
+/*} InfcBrowserNodeStatus;*/
+#endif
 
+/**
+ * InfcBrowserClass:
+ * @error: Default signal handler for the #InfcBrowser::error signal.
+ * @node_added: Default signal handler for the #InfcBrowser::node_added
+ * signal.
+ * @node_removed: Default signal handler for the #InfcBrowser::node_removed
+ * signal.
+ * @subscribe_session: Default signal handler for the
+ * #InfcBrowser::subscribe_session signal.
+ * @begin_explore: Default signal handler for the
+ * #InfcBrowser::begin_explore signal.
+ * @begin_subscribe: Default signal handler for the
+ * #InfcBrowser::begin_subscribe signal.
+ *
+ * Signals for the #InfcBrowser class.
+ */
 struct _InfcBrowserClass {
+  /*< private >*/
   GObjectClass parent_class;
 
   /* Signals */
+
+  /*< public >*/
   void (*error)(InfcBrowser* browser,
                 const GError* error);
 
@@ -98,7 +130,14 @@ struct _InfcBrowserClass {
                           InfcNodeRequest* request);
 };
 
+/**
+ * InfcBrowser:
+ *
+ * #InfcBrowser is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfcBrowser {
+  /*< private >*/
   GObject parent;
 };
 
