@@ -964,11 +964,11 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
     priv->info_resolvs = g_slist_remove(priv->info_resolvs, info);
   }
 
-  connection = infc_browser_get_connection(browser);
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
+  /*connection = infc_browser_get_connection(browser);
+  g_object_get(G_OBJECT(connection), "status", &status, NULL);*/
 
   /* Initial explore if connection is already open */
-  if(status == INF_XML_CONNECTION_OPEN)
+  if(infc_browser_get_status(browser) == INFC_BROWSER_CONNECTED)
   {
     gtk_tree_model_get(
       model,
