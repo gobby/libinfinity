@@ -1,3 +1,10 @@
+2010-11-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-simulated-connection.c
+	(inf_simulated_connection_connect): Improve the docs to make it clear
+	that the function needs only to be called once for both connections to
+	be connected to each other.
+
 2010-11-24  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-browser-view.c

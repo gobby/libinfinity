@@ -449,9 +449,12 @@ inf_simulated_connection_new(void)
  * @to: The target connection.
  *
  * Connects two simulated connections, so that data sent through one of them
- * is received by the other one. If one or both of the connections already
- * have another target, then the simulated connection between those is closed
- * first.
+ * is received by the other one and vice versa. So one call to this function
+ * connects both #InfSimulatedConnection<!-- -->s to each other. There is no
+ * need to call this function once for each connection.
+ *
+ * If one or both of the connections already have another target, then the
+ * simulated connection between those is closed first.
  */
 void
 inf_simulated_connection_connect(InfSimulatedConnection* connection,
