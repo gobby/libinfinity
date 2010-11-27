@@ -1,5 +1,10 @@
 2010-11-27  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-io.c (inf_gtk_io_dispatch_func): Fix a crash when
+	a dispatch handler is supposed to be called (Felix Kaser).
+
+2010-11-27  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-simulated-connection.h:
 	* libinfinity/common/inf-simulated-connection.c: Add
 	INF_SIMULATED_CONNECTION_IO_CONTROLLED mode.

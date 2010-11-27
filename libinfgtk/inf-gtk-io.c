@@ -406,7 +406,7 @@ inf_gtk_io_dispatch_func(gpointer user_data)
   {
     /* At this point we now that InfGtkIo is still alive because otherwise
      * the source would have been destroyed in _finalize. */
-    dispatch = (InfIoDispatch*)user_data;
+    dispatch = userdata->shared.dispatch;
     priv = INF_GTK_IO_PRIVATE(dispatch->io);
 
     g_assert(*priv->mutexref > 1); /* Both InfGtkIo and we have a reference */
