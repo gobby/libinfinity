@@ -45,13 +45,18 @@ typedef struct _InfSimulatedConnectionClass InfSimulatedConnectionClass;
  * target site when calling inf_xml_connection_send().
  * @INF_SIMULATED_CONNECTION_DELAYED: Messages are queued, and delivered to
  * the target site when inf_simulated_connection_flush() is called.
+ * @INF_SIMULATED_CONNECTION_IO_CONTROLLED: Messages are queued and delivered 
+ * once the application main loop regains control. This requires the simulated
+ * connection to have been created with
+ * inf_simulated_connection_new_with_io().
  *
  * The mode of a simulated connection defines when sent messages arrive at
  * the target connection.
  */
 typedef enum _InfSimulatedConnectionMode {
   INF_SIMULATED_CONNECTION_IMMEDIATE,
-  INF_SIMULATED_CONNECTION_DELAYED
+  INF_SIMULATED_CONNECTION_DELAYED,
+  INF_SIMULATED_CONNECTION_IO_CONTROLLED
 } InfSimulatedConnectionMode;
 
 /**
@@ -83,6 +88,9 @@ inf_simulated_connection_get_type(void) G_GNUC_CONST;
 
 InfSimulatedConnection*
 inf_simulated_connection_new(void);
+
+InfSimulatedConnection*
+inf_simulated_connection_new_with_io(InfIo* io);
 
 void
 inf_simulated_connection_connect(InfSimulatedConnection* connection,

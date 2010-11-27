@@ -299,6 +299,7 @@ EXPORTS
     inf_simulated_connection_mode_get_type
     inf_simulated_connection_get_type
     inf_simulated_connection_new
+    inf_simulated_connection_new_with_io
     inf_simulated_connection_connect
     inf_simulated_connection_set_mode
     inf_simulated_connection_flush

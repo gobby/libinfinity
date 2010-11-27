@@ -36,6 +36,9 @@
 
 typedef struct _InfSimulatedConnectionPrivate InfSimulatedConnectionPrivate;
 struct _InfSimulatedConnectionPrivate {
+  InfIo* io;
+  InfIoDispatch* io_handler;
+
   InfSimulatedConnection* target;
   InfSimulatedConnectionMode mode;
 
@@ -45,6 +48,8 @@ struct _InfSimulatedConnectionPrivate {
 
 enum {
   PROP_0,
+
+  PROP_IO,
 
   PROP_TARGET,
   PROP_MODE,
@@ -67,6 +72,14 @@ inf_simulated_connection_clear_queue(InfSimulatedConnection* connection)
   xmlNodePtr next;
 
   priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
+
+  if(priv->io_handler != NULL)
+  {
+    g_assert(priv->io != NULL);
+
+    inf_io_remove_dispatch(priv->io, priv->io_handler);
+    priv->io_handler = NULL;
+  }
 
   while(priv->queue != NULL)
   {
@@ -142,11 +155,13 @@ static void
 inf_simulated_connection_init(GTypeInstance* instance,
                               gpointer g_class)
 {
-  InfSimulatedConnection* io;
+  InfSimulatedConnection* connection;
   InfSimulatedConnectionPrivate* priv;
 
-  io = INF_SIMULATED_CONNECTION(instance);
-  priv = INF_SIMULATED_CONNECTION_PRIVATE(io);
+  connection = INF_SIMULATED_CONNECTION(instance);
+  priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
+
+  priv->io = NULL;
 
   priv->target = NULL;
   priv->mode = INF_SIMULATED_CONNECTION_IMMEDIATE;
@@ -156,9 +171,19 @@ static void
 inf_simulated_connection_dispose(GObject* object)
 {
   InfSimulatedConnection* connection;
+  InfSimulatedConnectionPrivate* priv;
+
   connection = INF_SIMULATED_CONNECTION(object);
+  priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
 
   inf_simulated_connection_unset_target(connection);
+  g_assert(priv->io_handler == NULL);
+
+  if(priv->io != NULL)
+  {
+    g_object_unref(priv->io);
+    priv->io = NULL;
+  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -177,6 +202,11 @@ inf_simulated_connection_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_assert(priv->io == NULL); /* construct only */
+    priv->io = INF_IO(g_value_get_object(value));
+    g_object_ref(priv->io);
+    break;
   case PROP_TARGET:
     inf_simulated_connection_set_target(
       sim,
@@ -208,6 +238,9 @@ inf_simulated_connection_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_value_set_object(value, G_OBJECT(priv->io));
+    break;
   case PROP_TARGET:
     g_value_set_object(value, G_OBJECT(priv->target));
     break;
@@ -254,6 +287,21 @@ inf_simulated_connection_xml_connection_close(InfXmlConnection* connection)
 }
 
 static void
+inf_simulated_connection_dispatch_func(gpointer user_data)
+{
+  InfSimulatedConnection* connection;
+  InfSimulatedConnectionPrivate* priv;
+
+  printf("DISPATCH\n");
+
+  connection = INF_SIMULATED_CONNECTION(user_data);
+  priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
+
+  priv->io_handler = NULL;
+  inf_simulated_connection_flush(connection);
+}
+
+static void
 inf_simulated_connection_xml_connection_send(InfXmlConnection* connection,
                                              xmlNodePtr xml)
 {
@@ -270,6 +318,7 @@ inf_simulated_connection_xml_connection_send(InfXmlConnection* connection,
     xmlFreeNode(xml);
     break;
   case INF_SIMULATED_CONNECTION_DELAYED:
+  case INF_SIMULATED_CONNECTION_IO_CONTROLLED:
     xmlUnlinkNode(xml);
     if(priv->queue == NULL)
     {
@@ -280,6 +329,23 @@ inf_simulated_connection_xml_connection_send(InfXmlConnection* connection,
     {
       priv->queue_last_item->next = xml;
       priv->queue_last_item = xml;
+    }
+
+    if(priv->mode == INF_SIMULATED_CONNECTION_IO_CONTROLLED)
+    {
+      if(priv->io_handler == NULL)
+      {
+        g_assert(priv->io != NULL);
+
+        printf("INSTALL HANDLER\n");
+
+        priv->io_handler = inf_io_add_dispatch(
+          priv->io,
+          inf_simulated_connection_dispatch_func,
+          connection,
+          NULL
+        );
+      }
     }
 
     break;
@@ -306,6 +372,18 @@ inf_simulated_connection_class_init(gpointer g_class,
   object_class->dispose = inf_simulated_connection_dispose;
   object_class->set_property = inf_simulated_connection_set_property;
   object_class->get_property = inf_simulated_connection_get_property;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_IO,
+    g_param_spec_object(
+      "io",
+      "IO",
+      "The main loop to be used for IO_CONTROLLED mode",
+      INF_TYPE_IO,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
   g_object_class_install_property(
     object_class,
@@ -365,6 +443,10 @@ inf_simulated_connection_mode_get_type(void)
         INF_SIMULATED_CONNECTION_DELAYED,
         "INF_SIMULATED_CONNECTION_DELAYED",
         "delayed"
+      }, {
+        INF_SIMULATED_CONNECTION_IO_CONTROLLED,
+        "INF_SIMULATED_CONNECTION_IO_CONTROLLED",
+        "io-controlled"
       }, {
         0,
         NULL,
@@ -431,15 +513,41 @@ inf_simulated_connection_get_type(void)
 /**
  * inf_simulated_connection_new:
  *
- * Creates a new #InfSimulatedConnection.
+ * Creates a new #InfSimulatedConnection. A connection created this way cannot
+ * be switched to %INF_SIMULATED_CONNECTION_IO_CONTROLLED mode. Use
+ * inf_simulated_connection_new_with_io() instead if you intend to do that.
  *
- * Return Value: A new #InfSimulatedConnection.
+ * Returns: A new #InfSimulatedConnection.
  **/
 InfSimulatedConnection*
 inf_simulated_connection_new(void)
 {
   GObject* object;
   object = g_object_new(INF_TYPE_SIMULATED_CONNECTION, NULL);
+  return INF_SIMULATED_CONNECTION(object);
+}
+
+/**
+ * inf_simulated_connection_new_with_io:
+ * @io: The main loop to be used for %INF_SIMULATED_CONNECTION_IO_CONTROLLED
+ * mode.
+ *
+ * Creates a new #InfSimulatedConnection with the given #InfIo. This
+ * connection can be used with %INF_SIMULATED_CONNECTION_IO_CONTROLLED mode.
+ * If you don't intend to use that mode then using
+ * inf_simulated_connection_new() is also good enough since the #InfIo object
+ * is not required in that case.
+ *
+ * Returns: A new #InfSimulatedConnection.
+ */
+InfSimulatedConnection*
+inf_simulated_connection_new_with_io(InfIo* io)
+{
+  GObject* object;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+
+  object = g_object_new(INF_TYPE_SIMULATED_CONNECTION, "io", io, NULL);
   return INF_SIMULATED_CONNECTION(object);
 }
 
@@ -477,7 +585,12 @@ inf_simulated_connection_connect(InfSimulatedConnection* connection,
  * In %INF_SIMULATED_CONNECTION_DELAYED mode, messages sent are queued and
  * received by the target when inf_simulated_connection_flush() is called.
  *
- * When changing the mode from %INF_SIMULATED_CONNECTION_DELAYED to
+ * In %INF_SIMULATED_CONNECTION_IO_CONTROLLED mode, messages are queued and
+ * received by the target as soon as a dispatch handler (see
+ * inf_io_add_dispatch()) installed on the main loop is called.
+ *
+ * When changing the mode from %INF_SIMULATED_CONNECTION_DELAYED or
+ * %INF_SIMULATED_CONNECTION_IO_CONTROLLED to
  * %INF_SIMULATED_CONNECTION_IMMEDIATE, then the queue is flushed, too.
  */
 void
@@ -487,9 +600,12 @@ inf_simulated_connection_set_mode(InfSimulatedConnection* connection,
   InfSimulatedConnectionPrivate* priv;
   priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
 
+  g_return_if_fail(priv->io != NULL ||
+                   mode != INF_SIMULATED_CONNECTION_IO_CONTROLLED);
+
   if(priv->mode != mode)
   {
-    if(priv->mode == INF_SIMULATED_CONNECTION_DELAYED)
+    if(mode == INF_SIMULATED_CONNECTION_IMMEDIATE)
       inf_simulated_connection_flush(connection);
 
     priv->mode = mode;
@@ -501,8 +617,9 @@ inf_simulated_connection_set_mode(InfSimulatedConnection* connection,
  * inf_simulated_connection_flush:
  * @connection: A #InfSimulatedConnection.
  *
- * When @connection's mode is %INF_SIMULATED_CONNECTION_DELAYED, then calling
- * this function makes the target connection receive all the queued messages.
+ * When @connection's mode is %INF_SIMULATED_CONNECTION_DELAYED or
+ * %INF_SIMULATED_CONNECTION_IO_CONTROLLED, then calling this function makes
+ * the target connection receive all the queued messages.
  */
 void
 inf_simulated_connection_flush(InfSimulatedConnection* connection)
@@ -511,7 +628,18 @@ inf_simulated_connection_flush(InfSimulatedConnection* connection)
   xmlNodePtr next;
 
   priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
-  g_assert(priv->target != NULL);
+  g_return_if_fail(priv->target != NULL);
+
+  if(priv->mode == INF_SIMULATED_CONNECTION_IO_CONTROLLED)
+  {
+    g_assert(priv->io != NULL);
+
+    if(priv->io_handler != NULL)
+    {
+      inf_io_remove_dispatch(priv->io, priv->io_handler);
+      priv->io_handler = NULL;
+    }
+  }
 
   while(priv->queue != NULL)
   {
