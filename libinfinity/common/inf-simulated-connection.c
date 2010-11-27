@@ -292,8 +292,6 @@ inf_simulated_connection_dispatch_func(gpointer user_data)
   InfSimulatedConnection* connection;
   InfSimulatedConnectionPrivate* priv;
 
-  printf("DISPATCH\n");
-
   connection = INF_SIMULATED_CONNECTION(user_data);
   priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
 
@@ -336,8 +334,6 @@ inf_simulated_connection_xml_connection_send(InfXmlConnection* connection,
       if(priv->io_handler == NULL)
       {
         g_assert(priv->io != NULL);
-
-        printf("INSTALL HANDLER\n");
 
         priv->io_handler = inf_io_add_dispatch(
           priv->io,
