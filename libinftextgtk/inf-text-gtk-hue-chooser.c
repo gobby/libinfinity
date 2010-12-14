@@ -560,9 +560,8 @@ inf_text_gtk_hue_chooser_unrealize(GtkWidget* widget)
   GTK_WIDGET_CLASS(parent_class)->unrealize(widget);
 }
 
-static void
-inf_text_gtk_hue_chooser_size_request(GtkWidget* widget,
-                                      GtkRequisition* requisition)
+static gint
+inf_text_gtk_hue_chooser_calculate_width_and_height(GtkWidget *widget)
 {
   InfTextGtkHueChooser* chooser;
   InfTextGtkHueChooserPrivate* priv;
@@ -579,9 +578,38 @@ inf_text_gtk_hue_chooser_size_request(GtkWidget* widget,
     NULL
   );
 
-  requisition->width = priv->size + 2 * (focus_width + focus_pad);
-  requisition->height = priv->size + 2 * (focus_width + focus_pad);
+  return priv->size + 2 * (focus_width + focus_pad);
 }
+
+#if GTK_CHECK_VERSION(2,91,6)
+static void
+inf_text_gtk_hue_chooser_get_preferred_width(GtkWidget *widget,
+                                             gint *minimum,
+                                             gint *natural)
+{
+  *minimum = *natural =
+    inf_text_gtk_hue_chooser_calculate_width_and_height(widget);
+}
+
+static void
+inf_text_gtk_hue_chooser_get_preferred_height(GtkWidget *widget,
+                                              gint *minimum,
+                                              gint *natural)
+{
+  *minimum = *natural =
+    inf_text_gtk_hue_chooser_calculate_width_and_height(widget);
+}
+
+#else
+
+static void
+inf_text_gtk_hue_chooser_size_request(GtkWidget* widget,
+                                      GtkRequisition* requisition)
+{
+  requisition->width = requisition->height =
+    inf_text_gtk_hue_chooser_calculate_width_and_height(widget);
+}
+#endif
 
 static void
 inf_text_gtk_hue_chooser_size_allocate(GtkWidget* widget,
@@ -956,7 +984,14 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
   widget_class->unmap = inf_text_gtk_hue_chooser_unmap;
   widget_class->realize = inf_text_gtk_hue_chooser_realize;
   widget_class->unrealize = inf_text_gtk_hue_chooser_unrealize;
+#if GTK_CHECK_VERSION(2,91,6)
+  widget_class->get_preferred_height =
+    inf_text_gtk_hue_chooser_get_preferred_height;
+  widget_class->get_preferred_width =
+    inf_text_gtk_hue_chooser_get_preferred_width;
+#else
   widget_class->size_request = inf_text_gtk_hue_chooser_size_request;
+#endif
   widget_class->size_allocate = inf_text_gtk_hue_chooser_size_allocate;
   widget_class->button_press_event =
     inf_text_gtk_hue_chooser_button_press_event;

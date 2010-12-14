@@ -1,3 +1,9 @@
+2010-12-14  Felix Kaser  <f.kaser@gmx.net>
+
+	* libinftextgtk/inf-text-gtk-hue-chooser.c: Use get_preferred_width
+	and get_preferred_height instead of size_request when building against
+	recent enough GTK+ 3, fixing the build.
+
 2010-11-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfgtk/inf-gtk-io.c (inf_gtk_io_dispatch_func): Fix a crash when
