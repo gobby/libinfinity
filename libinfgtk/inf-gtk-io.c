@@ -254,8 +254,6 @@ inf_gtk_io_finalize(GObject* object)
     inf_gtk_io_dispatch_free((InfIoDispatch*)item->data);
   }
   g_slist_free(priv->dispatchs);
-
-  mutexref = --*priv->mutexref;
   g_mutex_unlock(priv->mutex);
 
   /* some callback userdata might still have a reference to the mutex, and
@@ -263,7 +261,7 @@ inf_gtk_io_finalize(GObject* object)
    * callback function will do nothing since g_source_is_destroyed() will
    * return FALSE since we removed all sources above. But we need to keep
    * the mutex alive so that the callbacks can check. */
-  if(mutexref == 0)
+  if(g_atomic_int_dec_and_test(priv->mutexref))
   {
     g_mutex_free(priv->mutex);
     g_free(priv->mutexref);
@@ -460,7 +458,7 @@ inf_gtk_io_io_add_watch(InfIo* io,
   data->shared.watch = watch;
   data->mutex = priv->mutex;
   data->mutexref = priv->mutexref;
-  ++*data->mutexref;
+  g_atomic_int_inc(data->mutexref);
 
 #ifdef G_OS_WIN32
   channel = g_io_channel_win32_new_socket(*socket);
@@ -503,7 +501,7 @@ inf_gtk_io_io_update_watch(InfIo* io,
   data->shared.watch = watch;
   data->mutex = priv->mutex;
   data->mutexref = priv->mutexref;
-  ++*data->mutexref;
+  g_atomic_int_inc(data->mutexref);
   g_mutex_unlock(priv->mutex);
 
   g_source_remove(watch->id);
@@ -580,7 +578,7 @@ inf_gtk_io_io_add_timeout(InfIo* io,
   data->mutexref = priv->mutexref;
 
   g_mutex_lock(priv->mutex);
-  ++*data->mutexref;
+  g_atomic_int_inc(data->mutexref);
 
   timeout->id = g_timeout_add_full(
     G_PRIORITY_DEFAULT,
@@ -636,7 +634,7 @@ inf_gtk_io_io_add_dispatch(InfIo* io,
   data->mutexref = priv->mutexref;
 
   g_mutex_lock(priv->mutex);
-  ++*data->mutexref;
+  g_atomic_int_inc(data->mutexref);
 
   dispatch->id = g_idle_add_full(
     G_PRIORITY_DEFAULT_IDLE,
