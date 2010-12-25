@@ -640,7 +640,7 @@ inf_standalone_io_wakeup(InfStandaloneIo* io)
     }
 #else
     c = 'c';
-    ret = write(priv->events[0].fd, &c, 1);
+    ret = write(priv->wakeup_pipe[1], &c, 1);
     if(ret == -1)
     {
       g_warning(
