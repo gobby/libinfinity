@@ -905,8 +905,6 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfGtkBrowserViewBrowser* view_browser;
   GtkTreeModel* model;
-  InfXmlConnection* connection;
-  InfXmlConnectionStatus status;
   InfcBrowserIter* browser_iter;
   InfDiscoveryInfo* info;
 

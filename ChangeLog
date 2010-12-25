@@ -1,5 +1,10 @@
 2010-12-25  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfgtk/inf-gtk-browser-view.c
+	(inf_gtk_browser_view_browser_added): Remove two unused variables.
+
+2010-12-25  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-standalone-io.c (inf_standalone_io_wakeup):
 	Make this actually work by writing to the writing end of the pipe, not
 	to the reading end.
