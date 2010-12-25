@@ -29,8 +29,6 @@
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/server/infd-xmpp-server.h>
 
-#include <gsasl.h>
-
 #include <glib.h>
 
 G_BEGIN_DECLS

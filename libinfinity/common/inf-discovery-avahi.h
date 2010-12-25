@@ -71,7 +71,7 @@ InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,
                         InfXmppManager* manager,
                         InfCertificateCredentials* creds,
-                        Gsasl* sasl_context,
+                        InfSaslContext* sasl_context,
                         const gchar* sasl_mechanisms);
 
 void

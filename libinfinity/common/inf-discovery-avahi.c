@@ -115,7 +115,7 @@ struct _InfDiscoveryAvahiPrivate {
   InfXmppManager* xmpp_manager;
   InfXmppConnectionSecurityPolicy security_policy;
   InfCertificateCredentials* creds;
-  Gsasl* sasl_context;
+  InfSaslContext* sasl_context;
   gchar* sasl_mechanisms;
 
   AvahiClient* client;
@@ -1158,6 +1158,12 @@ inf_discovery_avahi_dispose(GObject* object)
     inf_certificate_credentials_unref(priv->creds);
     priv->creds = NULL;
   }
+  
+  if(priv->sasl_context != NULL)
+  {
+    inf_sasl_context_unref(priv->sasl_context);
+    priv->sasl_context = NULL;
+  }
 
   if(priv->io != NULL)
   {
@@ -1209,7 +1215,7 @@ inf_discovery_avahi_set_property(GObject* object,
     priv->creds = (InfCertificateCredentials*)g_value_dup_boxed(value);
     break;
   case PROP_SASL_CONTEXT:
-    priv->sasl_context = (Gsasl*)g_value_get_pointer(value);
+    priv->sasl_context = (InfSaslContext*)g_value_dup_boxed(value);
     break;
   case PROP_SASL_MECHANISMS:
     g_free(priv->sasl_mechanisms);
@@ -1248,7 +1254,7 @@ inf_discovery_avahi_get_property(GObject* object,
     g_value_set_boxed(value, priv->creds);
     break;
   case PROP_SASL_CONTEXT:
-    g_value_set_pointer(value, (gpointer)priv->sasl_context);
+    g_value_set_boxed(value, priv->sasl_context);
     break;
   case PROP_SASL_MECHANISMS:
     g_value_set_string(value, priv->sasl_mechanisms);
@@ -1541,10 +1547,11 @@ inf_discovery_avahi_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SASL_CONTEXT,
-    g_param_spec_pointer(
+    g_param_spec_boxed(
       "sasl-context",
       "SASL context",
-      "The Gsasl context used for authentication",
+      "The SASL context used for authentication",
+      INF_TYPE_SASL_CONTEXT,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
@@ -1666,7 +1673,7 @@ inf_discovery_avahi_get_type(void)
  * @io: A #InfIo object used for watching sockets and timeouts.
  * @manager: A #InfXmppManager.
  * @creds: The certificate credentials used for GnuTLS encryption.
- * @sasl_context: A Gsasl context used for authentication.
+ * @sasl_context: A SASL context used for authentication.
  * @sasl_mechanisms: A whitespace-separated list of accepted SASL mechanisms,
  * or %NULL.
  *
@@ -1693,7 +1700,7 @@ InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,
                         InfXmppManager* manager,
                         InfCertificateCredentials* creds,
-                        Gsasl* sasl_context,
+                        InfSaslContext* sasl_context,
                         const gchar* sasl_mechanisms)
 {
   GObject* object;

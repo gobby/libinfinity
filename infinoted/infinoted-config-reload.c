@@ -38,7 +38,7 @@ infinoted_config_reload_update_connection_sasl_context(InfXmlConnection* xml,
 
   inf_xmpp_connection_reset_sasl_authentication(
     INF_XMPP_CONNECTION(xml),
-    (Gsasl*) userdata,
+    (InfSaslContext*) userdata,
     userdata ? "PLAIN" : NULL
   );
 }
@@ -73,9 +73,6 @@ infinoted_config_reload(InfinotedRun* run,
 
   startup = infinoted_startup_new(NULL, NULL, error);
   if(!startup) return FALSE;
-
-  /* TODO: need to support creating a gsasl context when reloading the config
-   * when none was created on first startup */
 
   /* Acquire DH params if necessary (if security policy changed from
    * no-tls to one of allow-tls or require-tls). */
@@ -346,8 +343,8 @@ infinoted_config_reload(InfinotedRun* run,
   {
     g_object_set(
       G_OBJECT(run->xmpp4),
-      "sasl-context",    startup->gsasl,
-      "sasl-mechanisms", startup->gsasl ? "PLAIN" : NULL,
+      "sasl-context",    startup->sasl_context,
+      "sasl-mechanisms", startup->sasl_context ? "PLAIN" : NULL,
       NULL
     );
   }
@@ -356,8 +353,8 @@ infinoted_config_reload(InfinotedRun* run,
   {
     g_object_set(
       G_OBJECT(run->xmpp6),
-      "sasl-context",    startup->gsasl,
-      "sasl-mechanisms", startup->gsasl ? "PLAIN" : NULL,
+      "sasl-context",    startup->sasl_context,
+      "sasl-mechanisms", startup->sasl_context ? "PLAIN" : NULL,
       NULL
     );
   }
@@ -369,7 +366,7 @@ infinoted_config_reload(InfinotedRun* run,
   infd_directory_foreach_connection(
     run->directory,
     infinoted_config_reload_update_connection_sasl_context,
-    startup->gsasl
+    startup->sasl_context
    );
 
   infinoted_startup_free(run->startup);

@@ -230,9 +230,9 @@ infinoted_startup_load_options(InfinotedStartup* startup,
 }
 
 static void
-infinoted_startup_gsasl_callback_set_error(InfXmppConnection* connection,
-                                           InfAuthenticationDetailError code,
-                                           const GError* error)
+infinoted_startup_sasl_callback_set_error(InfXmppConnection* connection,
+                                          InfAuthenticationDetailError code,
+                                          const GError* error)
 {
   GError* own_error;
   own_error = NULL;
@@ -254,10 +254,11 @@ infinoted_startup_gsasl_callback_set_error(InfXmppConnection* connection,
   }
 }
 
-static int
-infinoted_startup_gsasl_callback(Gsasl* gsasl,
-                                 Gsasl_session* session,
-                                 Gsasl_property prop)
+static void
+infinoted_startup_sasl_callback(InfSaslContextSession* session,
+                                Gsasl_property prop,
+                                gpointer session_data,
+                                gpointer user_data)
 {
   InfinotedStartup* startup;
   const char* password;
@@ -266,62 +267,82 @@ infinoted_startup_gsasl_callback(Gsasl* gsasl,
 #ifdef LIBINFINITY_HAVE_PAM
   const char* username;
   const gchar* pam_service;
-  InfAuthenticationDetailError error_code;
   GError* error;
 #endif
 
-  xmpp = gsasl_session_hook_get(session);
+  xmpp = INF_XMPP_CONNECTION(session_data);
 
   switch(prop)
   {
   case GSASL_VALIDATE_SIMPLE:
-    startup = gsasl_callback_hook_get(gsasl);
-    password = gsasl_property_fast(session, GSASL_PASSWORD);
+    startup = (InfinotedStartup*)user_data;
+    password = inf_sasl_context_session_get_property(session, GSASL_PASSWORD);
 #ifdef LIBINFINITY_HAVE_PAM
-    username = gsasl_property_fast(session, GSASL_AUTHID);
+    username = inf_sasl_context_session_get_property(session, GSASL_AUTHID);
     pam_service = startup->options->pam_service;
     if(pam_service != NULL)
     {
       error = NULL;
       if(!infinoted_pam_authenticate(pam_service, username, password))
       {
-        error_code = INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED;
+        infinoted_startup_sasl_callback_set_error(
+          xmpp,
+          INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
+          NULL
+        );
+
+        inf_sasl_context_session_continue(
+          session,
+          GSASL_AUTHENTICATION_ERROR
+        );
       }
-      else if (!infinoted_pam_user_is_allowed(startup->options,
-                                              username,
-                                              &error))
+      else if(!infinoted_pam_user_is_allowed(startup->options,
+                                             username,
+                                             &error))
       {
-        error_code = INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED;
+        infinoted_startup_sasl_callback_set_error(
+          xmpp,
+          INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED,
+          error
+        );
+
+        inf_sasl_context_session_continue(
+          session,
+          GSASL_AUTHENTICATION_ERROR
+        );
       }
       else
       {
-        return GSASL_OK;
+        inf_sasl_context_session_continue(session, GSASL_OK);
       }
-
-      infinoted_startup_gsasl_callback_set_error(xmpp, error_code, error);
-      return GSASL_AUTHENTICATION_ERROR;
-    }
-#endif /* LIBINFINITY_HAVE_PAM */
-    g_assert(startup->options->password != NULL);
-    if(strcmp(startup->options->password, password) == 0)
-    {
-      return GSASL_OK;
     }
     else
+#endif /* LIBINFINITY_HAVE_PAM */
     {
-      infinoted_startup_gsasl_callback_set_error(
-        xmpp,
-        INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
-        NULL
-      );
+      g_assert(startup->options->password != NULL);
+      if(strcmp(startup->options->password, password) == 0)
+      {
+        inf_sasl_context_session_continue(session, GSASL_OK);
+      }
+      else
+      {
+        infinoted_startup_sasl_callback_set_error(
+          xmpp,
+          INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
+          NULL
+        );
 
-      return GSASL_AUTHENTICATION_ERROR;
+        inf_sasl_context_session_continue(
+          session,
+          GSASL_AUTHENTICATION_ERROR
+        );
+      }
     }
 
-    g_assert_not_reached();
-    return GSASL_AUTHENTICATION_ERROR;
+    break;
   default:
-    return GSASL_AUTHENTICATION_ERROR;
+    inf_sasl_context_session_continue(session, GSASL_AUTHENTICATION_ERROR);
+    break;
   }
 }
 
@@ -331,7 +352,6 @@ infinoted_startup_load(InfinotedStartup* startup,
                        char*** argv,
                        GError** error)
 {
-  int gsasl_status;
   gboolean requires_password;
 
   if(infinoted_startup_load_options(startup, argc, argv, error) == FALSE)
@@ -345,16 +365,17 @@ infinoted_startup_load(InfinotedStartup* startup,
   requires_password =
     requires_password || startup->options->pam_service != NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
+
   if(requires_password)
   {
-    gsasl_status = gsasl_init(&startup->gsasl);
-    if (gsasl_status != GSASL_OK)
-    {
-      inf_gsasl_set_error(error, gsasl_status);
-      return FALSE;
-    }
-    gsasl_callback_set(startup->gsasl, infinoted_startup_gsasl_callback);
-    gsasl_callback_hook_set(startup->gsasl, startup);
+    startup->sasl_context = inf_sasl_context_new(error);
+    if(!startup->sasl_context) return FALSE;
+
+    inf_sasl_context_set_callback(
+      startup->sasl_context,
+      infinoted_startup_sasl_callback,
+      startup
+    );
   }
 
   return TRUE;
@@ -386,7 +407,7 @@ infinoted_startup_new(int* argc,
   startup->certificates = NULL;
   startup->n_certificates = 0;
   startup->credentials = NULL;
-  startup->gsasl = NULL;
+  startup->sasl_context = NULL;
 
   if(infinoted_startup_load(startup, argc, argv, error) == FALSE)
   {
@@ -423,8 +444,8 @@ infinoted_startup_free(InfinotedStartup* startup)
   if(startup->options != NULL)
     infinoted_options_free(startup->options);
 
-  if(startup->gsasl != NULL)
-    gsasl_done(startup->gsasl);
+  if(startup->sasl_context != NULL)
+    inf_sasl_context_unref(startup->sasl_context);
 
   g_slice_free(InfinotedStartup, startup);
   inf_deinit();

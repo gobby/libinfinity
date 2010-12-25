@@ -26,7 +26,6 @@
 
 #include <unistd.h> /* Get ssize_t on MSVC, required by gnutls.h */
 #include <gnutls/gnutls.h>
-#include <gsasl.h>
 
 #include <glib-object.h>
 
@@ -61,7 +60,7 @@ InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      InfXmppConnectionSecurityPolicy policy,
                      InfCertificateCredentials* creds,
-                     Gsasl* sasl_context,
+                     InfSaslContext* sasl_context,
                      const gchar* sasl_mechanisms);
 
 void

@@ -126,8 +126,8 @@ infinoted_run_create_server(InfinotedRun* run,
     tcp,
     startup->options->security_policy,
     startup->credentials,
-    startup->gsasl,
-    startup->gsasl ? "PLAIN" : NULL
+    startup->sasl_context,
+    startup->sasl_context ? "PLAIN" : NULL
   );
 
   infd_server_pool_add_server(run->pool, INFD_XML_SERVER(xmpp));

@@ -1049,6 +1049,34 @@ INF_TYPE_CERTIFICATE_CREDENTIALS
 </SECTION>
 
 <SECTION>
+<FILE>inf-sasl-context</FILE>
+<TITLE>InfSaslContext</TITLE>
+InfSaslContext
+InfSaslContextSession
+InfSaslContextCallbackFunc
+InfSaslContextSessionFeedFunc
+inf_sasl_context_new
+inf_sasl_context_ref
+inf_sasl_context_unref
+inf_sasl_context_set_callback
+inf_sasl_context_client_start_session
+inf_sasl_context_client_list_mechanisms
+inf_sasl_context_client_supports_mechanism
+inf_sasl_context_client_suggest_mechanism
+inf_sasl_context_server_start_session
+inf_sasl_context_server_list_mechanisms
+inf_sasl_context_server_supports_mechanism
+inf_sasl_context_stop_session
+inf_sasl_context_session_get_property
+inf_sasl_context_session_set_property
+inf_sasl_context_session_continue
+inf_sasl_context_session_feed
+<SUBSECTION Standard>
+inf_sasl_context_get_type
+INF_TYPE_SASL_CONTEXT
+</SECTION>
+
+<SECTION>
 <FILE>inf-cert-util</FILE>
 <TITLE>InfCertUtil</TITLE>
 inf_cert_util_load_file

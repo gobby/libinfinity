@@ -409,7 +409,7 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   if(priv->dispatchs != NULL)
   {
     dispatch = (InfIoDispatch*)priv->dispatchs->data;
-    priv->dispatchs = g_list_delete_link(priv->timeouts, item);
+    priv->dispatchs = g_list_delete_link(priv->dispatchs, priv->dispatchs);
     g_mutex_unlock(priv->mutex);
 
     dispatch->func(dispatch->user_data);

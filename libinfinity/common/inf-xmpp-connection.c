@@ -130,9 +130,9 @@ struct _InfXmppConnectionPrivate {
   gsize pull_len;
 
   /* SASL */
-  Gsasl* sasl_context;
-  Gsasl* sasl_own_context;
-  Gsasl_session* sasl_session;
+  InfSaslContext* sasl_context;
+  InfSaslContext* sasl_own_context;
+  InfSaslContextSession* sasl_session;
   gchar* sasl_local_mechanisms;
   gchar* sasl_remote_mechanisms;
 
@@ -151,7 +151,6 @@ enum {
   PROP_TLS_ENABLED,
   PROP_CREDENTIALS,
 
-  /* Gsasl* */
   PROP_SASL_CONTEXT,
   PROP_SASL_MECHANISMS,
 
@@ -636,7 +635,7 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
 
   if(priv->sasl_session != NULL)
   {
-    gsasl_finish(priv->sasl_session);
+    inf_sasl_context_stop_session(priv->sasl_context, priv->sasl_session);
     priv->sasl_session = NULL;
   }
 
@@ -1299,7 +1298,7 @@ inf_xmpp_connection_sasl_finish(InfXmppConnection* xmpp,
    * still waiting for the server to acknowledge. */
   if(priv->sasl_session != NULL)
   {
-    gsasl_finish(priv->sasl_session);
+    inf_sasl_context_stop_session(priv->sasl_context, priv->sasl_session);
     priv->sasl_session = NULL;
   }
 
@@ -1328,8 +1327,8 @@ inf_xmpp_connection_sasl_finish(InfXmppConnection* xmpp,
     /* We might be in a XML callback here, so do not initiate the stream right
      * now because it replaces the XML parser. The stream is reinitiated in
      * received_cb(). */
-    /* reinitiate here if this fails */
-    g_assert(priv->parsing == TRUE);
+    if(!priv->parsing)
+      inf_xmpp_connection_initiate(xmpp);
   }
   else
   {
@@ -1346,24 +1345,18 @@ inf_xmpp_connection_sasl_finish(InfXmppConnection* xmpp,
  * authentication failure to the other site. */
 static void
 inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
-                               int code)
+                               const GError* error)
 {
   InfXmppConnectionPrivate* priv;
   InfXmppConnectionAuthError auth_code;
-  GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-
-  error = NULL;
-  inf_gsasl_set_error(&error, code);
-
   inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-  g_error_free(error);
 
   if(priv->site == INF_XMPP_CONNECTION_SERVER)
   {
     /* Find matching auth error code to send to client */
-    switch(code)
+    switch(error->code)
     {
     case GSASL_UNKNOWN_MECHANISM:
     case GSASL_MECHANISM_PARSE_ERROR:
@@ -1397,30 +1390,39 @@ inf_xmpp_connection_sasl_error(InfXmppConnection* xmpp,
   }
 }
 
-static int
-inf_xmpp_connection_sasl_cb(Gsasl* ctx,
-                            Gsasl_session* sctx,
-                            Gsasl_property prop)
+static void
+inf_xmpp_connection_sasl_cb(InfSaslContextSession* session,
+                            Gsasl_property property,
+                            gpointer session_data,
+                            gpointer user_data)
 {
   InfXmppConnection* xmpp;
   InfXmppConnectionPrivate* priv;
 
-  xmpp = INF_XMPP_CONNECTION(gsasl_callback_hook_get(ctx));
+  xmpp = INF_XMPP_CONNECTION(user_data);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
-  switch(prop)
+  switch(property)
   {
   case GSASL_ANONYMOUS_TOKEN:
-    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, g_get_user_name());
-    return GSASL_OK;
+    inf_sasl_context_session_set_property(
+      session,
+      GSASL_ANONYMOUS_TOKEN,
+      g_get_user_name()
+    );
+
+    inf_sasl_context_session_continue(session, GSASL_OK);
+    break;
   case GSASL_VALIDATE_ANONYMOUS:
     /* Authentication always successful */
-    return GSASL_OK;
+    inf_sasl_context_session_continue(session, GSASL_OK);
+    break;
   default:
-    /* This is only used when using the built-in SASL context, and this one
-     * only supports anonymous authentication. */
+    /* This callbackfunction is only used when using the built-in SASL
+     * context, and this one only supports anonymous authentication. */
     g_assert_not_reached();
-    return GSASL_NO_CALLBACK;
+    inf_sasl_context_session_continue(session, GSASL_NO_CALLBACK);
+    break;
   }
 }
 
@@ -1428,7 +1430,6 @@ static gboolean
 inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
 {
   InfXmppConnectionPrivate* priv;
-  int ret;
   GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1437,14 +1438,13 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
   {
     g_assert(priv->sasl_own_context == NULL);
 
-    ret = gsasl_init(&priv->sasl_own_context);
-    if(ret != GSASL_OK)
-    {
-      error = NULL;
-      inf_gsasl_set_error(&error, ret);
+    error = NULL;
+    priv->sasl_own_context = inf_sasl_context_new(&error);
 
+    if(priv->sasl_own_context == NULL)
+    {
       inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-      g_free(error);
+      g_error_free(error);
 
       inf_xmpp_connection_terminate(xmpp);
       return FALSE;
@@ -1452,8 +1452,14 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
     else
     {
       priv->sasl_context = priv->sasl_own_context;
-      gsasl_callback_set(priv->sasl_context, inf_xmpp_connection_sasl_cb);
-      gsasl_callback_hook_set(priv->sasl_context, xmpp);
+      inf_sasl_context_ref(priv->sasl_context);
+
+      inf_sasl_context_set_callback(
+        priv->sasl_context,
+        inf_xmpp_connection_sasl_cb,
+        xmpp
+      );
+
       g_object_notify(G_OBJECT(xmpp), "sasl-context");
     }
   }
@@ -1463,35 +1469,37 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
 }
 
 static void
-inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
-                                 const gchar* input)
+inf_xmpp_connection_sasl_request_feed_func(InfSaslContextSession* session,
+                                           const char* data,
+                                           gboolean needs_more,
+                                           const GError* error,
+                                           gpointer user_data)
 {
+  InfXmppConnection* xmpp;
   InfXmppConnectionPrivate* priv;
   xmlNodePtr reply;
-  char* output;
-  int ret;
 
+  xmpp = INF_XMPP_CONNECTION(user_data);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->status == INF_XMPP_CONNECTION_AUTHENTICATING);
   g_assert(priv->sasl_session != NULL);
 
-  ret = gsasl_step64(priv->sasl_session, input, &output);
-  if(ret != GSASL_NEEDS_MORE && ret != GSASL_OK)
+  if(error)
   {
-    inf_xmpp_connection_sasl_error(xmpp, ret);
+    inf_xmpp_connection_sasl_error(xmpp, error);
   }
   else
   {
     /* We do not need to send a challenge when the authentication
      * has already been completed, but we need to response every
      * challenge. */
-    if(output != NULL)
+    if(data != NULL)
     {
       reply = NULL;
       switch(priv->site)
       {
       case INF_XMPP_CONNECTION_SERVER:
-        if(ret == GSASL_NEEDS_MORE)
+        if(needs_more)
           reply = inf_xmpp_connection_node_new_sasl("challenge");
 
         break;
@@ -1505,16 +1513,14 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
 
       if(reply != NULL)
       {
-        xmlNodeAddContent(reply, (const xmlChar*)output);
+        xmlNodeAddContent(reply, (const xmlChar*)data);
         inf_xmpp_connection_send_xml(xmpp, reply);
         xmlFreeNode(reply);
       }
-
-      gsasl_free(output);
     }
 
     /* Send authentication success to client when done */
-    if(ret == GSASL_OK)
+    if(!needs_more)
     {
       if(priv->site == INF_XMPP_CONNECTION_SERVER)
       {
@@ -1532,24 +1538,49 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
 }
 
 static void
+inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
+                                 const gchar* input)
+{
+  InfXmppConnectionPrivate* priv;
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  g_assert(priv->status == INF_XMPP_CONNECTION_AUTHENTICATING);
+  g_assert(priv->sasl_session != NULL);
+
+  inf_sasl_context_session_feed(
+    priv->sasl_session,
+    input,
+    inf_xmpp_connection_sasl_request_feed_func,
+    xmpp
+  );
+
+  /* Wait for feed_func to be called */
+}
+
+static void
 inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
                               const gchar* mechanism)
 {
   InfXmppConnectionPrivate* priv;
+  InfIo* io;
   xmlNodePtr auth;
-  int ret;
+  GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->status != INF_XMPP_CONNECTION_AUTHENTICATING);
   g_assert(priv->sasl_context != NULL);
   g_assert(priv->sasl_session == NULL);
+  g_assert(priv->tcp != NULL);
 
   if(priv->sasl_error != NULL)
   {
     g_error_free(priv->sasl_error);
     priv->sasl_error = NULL;
   }
+  
+  g_object_get(G_OBJECT(priv->tcp), "io", &io, NULL);
+  g_assert(io != NULL);
 
   switch(priv->site)
   {
@@ -1566,19 +1597,27 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
     xmlFreeNode(auth);
 
     g_assert(priv->status == INF_XMPP_CONNECTION_AWAITING_FEATURES);
-    ret = gsasl_client_start(
+
+    error = NULL;
+    priv->sasl_session = inf_sasl_context_client_start_session(
       priv->sasl_context,
+      io,
       mechanism,
-      &priv->sasl_session
+      xmpp,
+      &error
     );
 
     break;
   case INF_XMPP_CONNECTION_SERVER:
     g_assert(priv->status == INF_XMPP_CONNECTION_INITIATED);
-    ret = gsasl_server_start(
+    
+    error = NULL;
+    priv->sasl_session = inf_sasl_context_server_start_session(
       priv->sasl_context,
+      io,
       mechanism,
-      &priv->sasl_session
+      xmpp,
+      &error
     );
 
     break;
@@ -1587,16 +1626,15 @@ inf_xmpp_connection_sasl_init(InfXmppConnection* xmpp,
     break;
   }
 
-  if(ret != GSASL_OK)
+  g_object_unref(io);
+
+  if(error != NULL)
   {
-    inf_xmpp_connection_sasl_error(xmpp, ret);
+    inf_xmpp_connection_sasl_error(xmpp, error);
+    g_error_free(error);
   }
   else
   {
-    /* Set XMPP connection as session hook so the callback can access
-     * the XMPP object also when not implemented in this file (e.g. not
-     * using the builtin context). */
-    gsasl_session_hook_set(priv->sasl_session, xmpp);
     priv->status = INF_XMPP_CONNECTION_AUTHENTICATING;
 
     /* Begin on server site */
@@ -1668,7 +1706,6 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
   char* mech_list;
   char* begin;
   char* end;
-  int ret;
 
   gchar* reply;
 
@@ -1751,16 +1788,19 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
     {
       if(priv->sasl_local_mechanisms == NULL)
       {
-        ret = gsasl_server_mechlist(priv->sasl_context, &mech_list);
-        if(ret != GSASL_OK)
+        error = NULL;
+        mech_list = inf_sasl_context_server_list_mechanisms(
+          priv->sasl_context,
+          &error
+        );
+
+        if(error != NULL)
         {
           xmlFreeNode(features);
-          error = NULL;
-
-          inf_gsasl_set_error(&error, ret);
 
           inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
           g_error_free(error);
+
           inf_xmpp_connection_terminate(xmpp);
           return;
         }
@@ -1777,7 +1817,8 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
         if(end == NULL) end = begin + strlen(begin);
         mechanism_dup = g_strndup(begin, end - begin);
 
-        if(gsasl_server_support_p(priv->sasl_context, mechanism_dup))
+        if(inf_sasl_context_server_supports_mechanism(priv->sasl_context,
+                                                      mechanism_dup))
         {
           mechanism = xmlNewChild(
             mechanisms,
@@ -1815,7 +1856,7 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
 {
   InfXmppConnectionPrivate* priv;
   xmlNodePtr proceed;
-  xmlChar* mechanism;
+  xmlChar* mech;
   gboolean has_mechanism;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
@@ -1860,15 +1901,15 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
     g_assert(priv->sasl_context != NULL);
     if(strcmp((const gchar*)xml->name, "auth") == 0)
     {
-      mechanism = xmlGetProp(xml, (const xmlChar*)"mechanism");
+      mech = xmlGetProp(xml, (const xmlChar*)"mechanism");
 
       has_mechanism = TRUE;
-      if(mechanism == NULL)
+      if(mech == NULL)
       {
         has_mechanism = FALSE;
       }
-      else if(!gsasl_server_support_p(priv->sasl_context,
-                                      (const gchar*)mechanism))
+      else if(!inf_sasl_context_server_supports_mechanism(priv->sasl_context,
+                                                          (const char*)mech))
       {
         has_mechanism = FALSE;
       }
@@ -1876,19 +1917,19 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
               priv->sasl_local_mechanisms != NULL &&
               !inf_xmpp_connection_sasl_has_mechanism(
                   priv->sasl_local_mechanisms,
-                  (const char*) mechanism))
+                  (const char*)mech))
       {
         has_mechanism = FALSE;
       }
       else if(priv->sasl_own_context != NULL &&
-              g_ascii_strcasecmp((const char*)mechanism, "ANONYMOUS") != 0)
+              g_ascii_strcasecmp((const char*)mech, "ANONYMOUS") != 0)
       {
         has_mechanism = FALSE;
       }
 
       if(has_mechanism)
       {
-        inf_xmpp_connection_sasl_init(xmpp, (const gchar*)mechanism);
+        inf_xmpp_connection_sasl_init(xmpp, (const gchar*)mech);
       }
       else
       {
@@ -1904,8 +1945,8 @@ inf_xmpp_connection_process_initiated(InfXmppConnection* xmpp,
         );
       }
 
-      if(mechanism != NULL)
-        xmlFree(mechanism);
+      if(mech != NULL)
+        xmlFree(mech);
     }
     else
     {
@@ -2003,7 +2044,8 @@ inf_xmpp_connection_sasl_suggest_mechanism(InfXmppConnection* xmpp,
         iter = mechanism_string->str;
       }
 
-      has_mechanism = gsasl_client_support_p(priv->sasl_context, iter);
+      has_mechanism =
+        inf_sasl_context_client_supports_mechanism(priv->sasl_context, iter);
 
       if(has_mechanism == TRUE && priv->sasl_local_mechanisms != NULL)
       {
@@ -2024,7 +2066,7 @@ inf_xmpp_connection_sasl_suggest_mechanism(InfXmppConnection* xmpp,
 
     if(mechanisms_string->len > 0)
     {
-      suggestion = gsasl_client_suggest_mechanism(
+      suggestion = inf_sasl_context_client_suggest_mechanism(
         priv->sasl_context,
         mechanisms_string->str
       );
@@ -3069,9 +3111,8 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
         inf_xmpp_connection_clear(xmpp);
 
       priv->status = INF_XMPP_CONNECTION_CLOSED;
-      g_object_notify(G_OBJECT(xmpp), "status");
-
       priv->position = 0;
+      g_object_notify(G_OBJECT(xmpp), "status");
     }
     else
     {
@@ -3080,6 +3121,7 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
       g_assert(priv->parser == NULL);
       g_assert(priv->doc == NULL);
       g_assert(priv->position == 0);
+      g_assert(priv->sasl_session == NULL);
     }
 
     break;
@@ -3117,15 +3159,21 @@ inf_xmpp_connection_set_tcp(InfXmppConnection* xmpp,
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
+  g_object_freeze_notify(G_OBJECT(xmpp));
+
   if(priv->tcp != NULL)
   {
-    g_object_freeze_notify(G_OBJECT(xmpp));
     g_object_get(G_OBJECT(priv->tcp), "status", &tcp_status, NULL);
 
     /* This will cause a status notify which will actually delete
      * GnuTLS session (if any) and the message queue. */
     if(tcp_status != INF_TCP_CONNECTION_CLOSED)
       inf_tcp_connection_close(priv->tcp);
+
+    /* Make sure there is no SASL session running anymore... it's not a big
+     * deal if there was but it should be aborted by the above call to
+     * inf_tcp_connection_close(). */
+    g_assert(priv->sasl_session == NULL);
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
@@ -3152,7 +3200,6 @@ inf_xmpp_connection_set_tcp(InfXmppConnection* xmpp,
     );
 
     g_object_unref(G_OBJECT(priv->tcp));
-    g_object_thaw_notify(G_OBJECT(xmpp));
   }
 
   priv->tcp = tcp;
@@ -3211,6 +3258,8 @@ inf_xmpp_connection_set_tcp(InfXmppConnection* xmpp,
       break;
     }
   }
+
+  g_object_thaw_notify(G_OBJECT(xmpp));
 }
 
 static InfXmlConnectionStatus
@@ -3372,8 +3421,13 @@ inf_xmpp_connection_dispose(GObject* object)
 
   if(priv->sasl_own_context != NULL)
   {
-    gsasl_done(priv->sasl_own_context);
+    inf_sasl_context_unref(priv->sasl_own_context);
     priv->sasl_own_context = NULL;
+  }
+
+  if(priv->sasl_context != NULL)
+  {
+    inf_sasl_context_unref(priv->sasl_context);
     priv->sasl_context = NULL;
   }
 
@@ -3477,11 +3531,13 @@ inf_xmpp_connection_set_property(GObject* object,
 
     if(priv->sasl_own_context != NULL)
     {
-      gsasl_done(priv->sasl_own_context);
+      inf_sasl_context_unref(priv->sasl_own_context);
       priv->sasl_own_context = NULL;
     }
 
-    priv->sasl_context = g_value_get_pointer(value);
+    if(priv->sasl_context != NULL)
+      inf_sasl_context_unref(priv->sasl_context);
+    priv->sasl_context = g_value_dup_boxed(value);
     break;
   case PROP_SASL_MECHANISMS:
     /* Cannot change context when currently in use */
@@ -3537,7 +3593,7 @@ inf_xmpp_connection_get_property(GObject* object,
     g_value_set_boxed(value, priv->creds);
     break;
   case PROP_SASL_CONTEXT:
-    g_value_set_pointer(value, priv->sasl_context);
+    g_value_set_boxed(value, priv->sasl_context);
     break;
   case PROP_SASL_MECHANISMS:
     g_value_set_string(value, priv->sasl_local_mechanisms);
@@ -3818,10 +3874,11 @@ inf_xmpp_connection_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SASL_CONTEXT,
-    g_param_spec_pointer(
+    g_param_spec_boxed(
       "sasl-context",
-      "GnuSASL context",
-      "The GnuSASL context used for authentication",
+      "SASL context",
+      "The SASL context used for authentication",
+      INF_TYPE_SASL_CONTEXT,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -4008,9 +4065,10 @@ inf_xmpp_connection_get_type(void)
  * @security_policy is not %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED.
  *
  * If @sasl_context is %NULL, #InfXmppConnection uses a built-in context
- * that only supports ANONYMOUS authentication. In the @sasl_context's
+ * that only supports ANONYMOUS authentication. In @sasl_context's
  * callback function, the #InfXmppConnection for which the authentication
- * shall be performed can be retrieved with gsasl_session_hook_get().
+ * shall be performed can be accessed via the @session_data parameter of
+ * #InfSaslContextCallbackFunc.
  *
  * If @sasl_context is not %NULL, then the @sasl_mechanisms parameter defines
  * what SASL mechanisms are used. On the server side, these are the mechanisms
@@ -4029,7 +4087,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         const gchar* remote_hostname,
                         InfXmppConnectionSecurityPolicy security_policy,
                         InfCertificateCredentials* creds,
-                        Gsasl* sasl_context,
+                        InfSaslContext* sasl_context,
                         const gchar* sasl_mechanisms)
 {
   GObject* object;
@@ -4203,7 +4261,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
  */
 void
 inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
-                                              Gsasl* new_context,
+                                              InfSaslContext* new_context,
                                               const gchar* new_mechanisms)
 {
   InfXmppConnectionPrivate* priv;
@@ -4229,7 +4287,7 @@ inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
         xml = inf_xmpp_connection_node_new_sasl("abort");
         inf_xmpp_connection_send_xml(xmpp, xml);
 
-        gsasl_finish(priv->sasl_session);
+        inf_sasl_context_stop_session(priv->sasl_context, priv->sasl_session);
         priv->sasl_session = NULL;
       }
 
@@ -4239,7 +4297,7 @@ inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
        * challenge until we tell it to avoid race conditions. */
       if(priv->sasl_session != NULL)
       {
-        gsasl_finish(priv->sasl_session);
+        inf_sasl_context_stop_session(priv->sasl_context, priv->sasl_session);
         priv->sasl_session = NULL;
       }
 
@@ -4252,11 +4310,15 @@ inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
 
   if(priv->sasl_own_context != NULL)
   {
-    gsasl_done(priv->sasl_own_context);
+    inf_sasl_context_unref(priv->sasl_own_context);
     priv->sasl_own_context = NULL;
   }
 
+  if(priv->sasl_context != NULL)
+    inf_sasl_context_unref(priv->sasl_context);
+
   priv->sasl_context = new_context;
+  if(new_context != NULL) inf_sasl_context_ref(new_context);
 
   g_free(priv->sasl_local_mechanisms);
   priv->sasl_local_mechanisms = g_strdup(new_mechanisms);
@@ -4326,7 +4388,7 @@ inf_xmpp_connection_retry_sasl_authentication(InfXmppConnection* xmpp,
  * @error: The SASL error to set.
  *
  * Sets the SASL error of @xmpp. The SASL error is an additional hint of what
- * went wrong during authentication. It should be set on the server side in
+ * went wrong during authentication. It should be set on the server side
  * in the gsasl callback checking the user authentication. If on the
  * client side #InfXmlConnection::error is emitted with an error from the 
  * INF_XMPP_CONNECTION_AUTH_ERROR domain then
@@ -4353,7 +4415,7 @@ inf_xmpp_connection_set_sasl_error(InfXmppConnection* xmpp,
  *
  * Gets the SASL error of @xmpp. See inf_xmpp_connection_set_sasl_error().
  *
- * Returns: A pointer to a GError object owned by @xmpp.
+ * Returns: A pointer to a #GError object owned by @xmpp.
  */
 const GError*
 inf_xmpp_connection_get_sasl_error(InfXmppConnection* xmpp)

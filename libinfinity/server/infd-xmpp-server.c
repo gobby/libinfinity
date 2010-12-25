@@ -45,8 +45,8 @@ struct _InfdXmppServerPrivate {
 
   InfCertificateCredentials* tls_creds;
 
-  Gsasl* sasl_context;
-  Gsasl* sasl_own_context;
+  InfSaslContext* sasl_context;
+  InfSaslContext* sasl_own_context;
   gchar* sasl_mechanisms;
 };
 
@@ -173,6 +173,74 @@ infd_xmpp_server_notify_status_cb(InfdTcpServer* tcp_server,
 }
 
 static void
+infd_xmpp_server_sasl_cb(InfSaslContextSession* session,
+                         Gsasl_property property,
+                         gpointer session_data,
+                         gpointer user_data)
+{
+  InfdXmppServer* xmpp;
+  InfdXmppServerPrivate* priv;
+
+  xmpp = INFD_XMPP_SERVER(user_data);
+  priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
+
+  switch(property)
+  {
+  case GSASL_ANONYMOUS_TOKEN:
+    inf_sasl_context_session_set_property(
+      session,
+      GSASL_ANONYMOUS_TOKEN,
+      priv->local_hostname
+    );
+
+    inf_sasl_context_session_continue(session, GSASL_OK);
+    break;
+  case GSASL_VALIDATE_ANONYMOUS:
+    /* Authentaction always successful */
+    inf_sasl_context_session_continue(session, GSASL_OK);
+    break;
+  default:
+    /* This is only used when using built-in SASL context, and this one
+     * only supports anonymous authentication. */
+    g_assert_not_reached();
+    inf_sasl_context_session_continue(session, GSASL_NO_CALLBACK);
+    break;
+  }
+}
+
+/* Set own SASL context based on whether an external one is given or not */
+static void
+infd_xmpp_server_setup_own_sasl_context(InfdXmppServer* xmpp)
+{
+  InfdXmppServerPrivate* priv;
+
+  priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
+  g_assert(priv->sasl_own_context == NULL);
+
+  if(priv->sasl_context == NULL && priv->tcp != NULL)
+  {
+    /* Failure does not matter too much because every XMPP connection will
+     * generate an own SASL context in this case, and error out if that
+     * fails again. */
+    priv->sasl_own_context = inf_sasl_context_new(NULL);
+
+    if(priv->sasl_own_context != NULL)
+    {
+      priv->sasl_context = priv->sasl_own_context;
+      inf_sasl_context_ref(priv->sasl_context);
+
+      inf_sasl_context_set_callback(
+        priv->sasl_context,
+        infd_xmpp_server_sasl_cb,
+        xmpp
+      );
+
+      g_object_notify(G_OBJECT(xmpp), "sasl-context");
+    }
+  }
+}
+
+static void
 infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
                          InfdTcpServer* tcp)
 {
@@ -181,14 +249,26 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
 
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
 
+  g_object_freeze_notify(G_OBJECT(xmpp));
+
   if(priv->tcp != NULL)
   {
-    g_object_freeze_notify(G_OBJECT(xmpp));
     g_object_get(G_OBJECT(priv->tcp), "status", &tcp_status, NULL);
 
     /* This will cause a notify that will adjust the XMPP status later */
     if(tcp_status != INFD_TCP_SERVER_CLOSED)
       infd_tcp_server_close(priv->tcp);
+
+    /* TODO: Make sure there are no connections with sasl_own_context out
+     * there anymore because otherwise the SASL callback might access an
+     * invalid InfdServer pointer once we get finalized. */
+#if 0
+    if(priv->sasl_own_context != NULL)
+    {
+      inf_sasl_context_unref(priv->sasl_own_context);
+      priv->sasl_own_context = NULL;
+    }
+#endif
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
@@ -209,7 +289,6 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
     );
 
     g_object_unref(G_OBJECT(priv->tcp));
-    g_object_thaw_notify(G_OBJECT(xmpp));
   }
 
   priv->tcp = tcp;
@@ -255,62 +334,9 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
       break;
     }
   }
-}
 
-static int
-infd_xmpp_server_sasl_cb(Gsasl* ctx,
-                         Gsasl_session* sctx,
-                         Gsasl_property prop)
-{
-  InfdXmppServer* xmpp;
-  InfdXmppServerPrivate* priv;
-
-  xmpp = INFD_XMPP_SERVER(gsasl_callback_hook_get(ctx));
-  priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
-
-  switch(prop)
-  {
-  case GSASL_ANONYMOUS_TOKEN:
-    gsasl_property_set(sctx, GSASL_ANONYMOUS_TOKEN, priv->local_hostname);
-    return GSASL_OK;
-  case GSASL_VALIDATE_ANONYMOUS:
-    /* Authentaction always successful */
-    return GSASL_OK;
-  default:
-    /* This is only used when using built-in SASL context, and this one
-     * only supports anonymous authentication. */
-    g_assert_not_reached();
-    return GSASL_NO_CALLBACK;
-  }
-}
-
-/* Set own SASL context based on whether an external one is given or not */
-static void
-infd_xmpp_server_setup_own_sasl_context(InfdXmppServer* xmpp)
-{
-  InfdXmppServerPrivate* priv;
-  priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
-
-  if(priv->sasl_context == NULL && priv->sasl_own_context == NULL)
-  {
-    /* Failure does not matter too much because every XMPP connection will
-     * generate an own SASL context in this case. */
-    if(gsasl_init(&priv->sasl_own_context) == GSASL_OK)
-    {
-      priv->sasl_context = priv->sasl_own_context;
-      gsasl_callback_set(priv->sasl_context, infd_xmpp_server_sasl_cb);
-      gsasl_callback_hook_set(priv->sasl_context, xmpp);
-      g_object_notify(G_OBJECT(xmpp), "sasl-context");
-    }
-  }
-  else if(priv->sasl_context != NULL && priv->sasl_own_context != NULL &&
-          priv->sasl_context != priv->sasl_own_context)
-  {
-    /* TODO: Make sure that the Gsasl context is no longer in use by a XMPP
-     * connection object. */
-    gsasl_done(priv->sasl_own_context);
-    priv->sasl_own_context = NULL;
-  }
+  infd_xmpp_server_setup_own_sasl_context(xmpp);
+  g_object_thaw_notify(G_OBJECT(xmpp));
 }
 
 static void
@@ -356,7 +382,6 @@ infd_xmpp_server_constructor(GType type,
     priv->tls_creds != NULL
   );
 
-  infd_xmpp_server_setup_own_sasl_context(INFD_XMPP_SERVER(obj));
   return obj;
 }
 
@@ -372,10 +397,18 @@ infd_xmpp_server_dispose(GObject* object)
   if(priv->status != INFD_XMPP_SERVER_CLOSED)
     infd_xml_server_close(INFD_XML_SERVER(xmpp));
 
-  if(priv->tcp != NULL)
+  infd_xmpp_server_set_tcp(xmpp, NULL);
+
+  if(priv->sasl_own_context != NULL)
   {
-    g_object_unref(G_OBJECT(priv->tcp));
-    priv->tcp = NULL;
+    inf_sasl_context_unref(priv->sasl_own_context);
+    priv->sasl_own_context = NULL;
+  }
+
+  if(priv->sasl_context != NULL)
+  {
+    inf_sasl_context_unref(priv->sasl_context);
+    priv->sasl_context = NULL;
   }
 
   if(priv->tls_creds != NULL)
@@ -397,10 +430,6 @@ infd_xmpp_server_finalize(GObject* object)
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
 
   g_free(priv->local_hostname);
-
-  if(priv->sasl_own_context != NULL)
-    gsasl_done(priv->sasl_own_context);
-
   g_free(priv->sasl_mechanisms);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -439,7 +468,16 @@ infd_xmpp_server_set_property(GObject* object,
     priv->tls_creds = g_value_dup_boxed(value);
     break;
   case PROP_SASL_CONTEXT:
-    priv->sasl_context = g_value_get_pointer(value);
+    if(priv->sasl_own_context != NULL)
+    {
+      inf_sasl_context_unref(priv->sasl_own_context);
+      priv->sasl_own_context = NULL;
+    }
+
+    if(priv->sasl_context != NULL)
+      inf_sasl_context_unref(priv->sasl_context);
+
+    priv->sasl_context = g_value_dup_boxed(value);
     infd_xmpp_server_setup_own_sasl_context(xmpp);
     break;
   case PROP_SASL_MECHANISMS:
@@ -494,7 +532,7 @@ infd_xmpp_server_get_property(GObject* object,
     g_value_set_boxed(value, priv->tls_creds);
     break;
   case PROP_SASL_CONTEXT:
-    g_value_set_pointer(value, priv->sasl_context);
+    g_value_set_boxed(value, priv->sasl_context);
     break;
   case PROP_SASL_MECHANISMS:
     g_value_set_string(value, priv->sasl_mechanisms);
@@ -589,10 +627,11 @@ infd_xmpp_server_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_SASL_CONTEXT,
-    g_param_spec_pointer(
+    g_param_spec_boxed(
       "sasl-context",
-      "GnuSASL context",
-      "The GnuSASL context used for authentaction",
+      "SASL context",
+      "The SASL context used for authentaction",
+      INF_TYPE_SASL_CONTEXT,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
@@ -723,7 +762,7 @@ InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,
                      InfXmppConnectionSecurityPolicy policy,
                      InfCertificateCredentials* creds,
-                     Gsasl* sasl_context,
+                     InfSaslContext* sasl_context,
                      const gchar* sasl_mechanisms)
 {
   GObject* object;

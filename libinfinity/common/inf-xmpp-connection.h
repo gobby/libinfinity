@@ -23,10 +23,11 @@
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-certificate-chain.h>
 #include <libinfinity/common/inf-certificate-credentials.h>
+#include <libinfinity/common/inf-sasl-context.h>
 
 #include <unistd.h> /* Get ssize_t on MSVC, required by gnutls.h */
 #include <gnutls/gnutls.h>
-#include <gsasl.h>
+/*#include <gsasl.h>*/
 
 #include <glib-object.h>
 
@@ -156,7 +157,7 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
                         const gchar* remote_hostname,
                         InfXmppConnectionSecurityPolicy security_policy,
                         InfCertificateCredentials* creds,
-                        Gsasl* sasl_context,
+                        InfSaslContext* sasl_context,
                         const gchar* sasl_mechanisms);
 
 gboolean
@@ -175,7 +176,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp);
 
 void
 inf_xmpp_connection_reset_sasl_authentication(InfXmppConnection* xmpp,
-                                              Gsasl* new_context,
+                                              InfSaslContext* new_context,
                                               const gchar* new_mechanisms);
 
 gboolean

@@ -1,5 +1,30 @@
 2010-12-25  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-standalone-io.c: Don't confuse dispatch list
+	with timeout list on dispatch invocation.
+
+	* libinfinity/common/inf-sasl-context.h:
+	* libinfinity/common/inf-sasl-context.c:
+	* libinfinity/common/Makefile.am: Add InfSaslContext, which provides
+	a wrapper for Gsasl. It provides an asynchronous callback mechanism,
+	implemented via an extra thread for each authentication session.
+
+	* libinfinity/common/inf-discovery-avahi.h:
+	* libinfinity/common/inf-discovery-avahi.c:
+	* libinfinity/common/inf-xmpp-connection.h:
+	* libinfinity/common/inf-xmpp-connection.c:
+	* libinfinity/server/infd-xmpp-server.h:
+	* libinfinity/server/infd-xmpp-server.c:
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c:
+	* infinoted/infinoted-run.h:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-pam.h:
+	* infinoted/infinoted-config-reload.c: Replace Gsasl usage by
+	InfSaslContext and adapt to API changes.
+
+2010-12-25  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c
 	(inf_xmpp_connection_terminate): If sending an authentication abort,
 	then free the corresponding XML node afterwards.
