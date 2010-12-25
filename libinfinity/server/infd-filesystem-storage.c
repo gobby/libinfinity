@@ -358,6 +358,7 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   if(dir_fd == -1 || (dir = fdopendir(dir_fd)) == NULL)
   {
     infd_filesystem_storage_system_error(errno, error);
+    if(dir_fd != -1) close(dir_fd);
     g_free(full_name);
     return NULL;
   }
@@ -434,10 +435,18 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   }
 
   g_free(dir_entry);
+  if(closedir(dir) == -1)
+  {
+    infd_filesystem_storage_system_error(errno, error);
+    infd_storage_node_list_free(list);
+    g_free(full_name);
+    return NULL;
+  }
 
   if(saved_errno != 0)
   {
     infd_filesystem_storage_system_error(saved_errno, error);
+    infd_storage_node_list_free(list);
     g_free(full_name);
     return NULL;
   }

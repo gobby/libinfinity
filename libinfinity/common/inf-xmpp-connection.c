@@ -764,6 +764,7 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
         /* Abort authentication before sending final </stream:stream> */
         abort = inf_xmpp_connection_node_new_sasl("abort");
         inf_xmpp_connection_send_xml(xmpp, abort);
+        xmlFreeNode(abort);
       }
 
       inf_xmpp_connection_send_chars(

@@ -1,5 +1,22 @@
 2010-12-25  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_terminate): If sending an authentication abort,
+	then free the corresponding XML node afterwards.
+
+	* libinfinity/server/infd-directory.c (infd_directory_dispose): Free
+	the connections hash table.
+
+	* libinfinity/server/infd-filesystem-storage.c
+	(infd_filesystem_storage_storage_read_subdirectory): Close the DIR*
+	returned by fdopendir().
+
+	* infinoted/infinoted-run.c (infinoted_run_start): If the IPv6 server
+	could start but the IPv4 server couldn't (or vice versa), then still
+	free the error from the failing server.
+
+2010-12-25  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfgtk/inf-gtk-io.c: Fix a possible race condition.
 
 2010-12-25  Armin Burgmeier  <armin@arbur.net>

@@ -3557,7 +3557,7 @@ infd_directory_dispose(GObject* object)
 
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
-  
+
   for(g_hash_table_iter_init(&iter, priv->connections);
       g_hash_table_iter_next(&iter, &key, NULL);
       g_hash_table_iter_init(&iter, priv->connections))
@@ -3567,6 +3567,8 @@ infd_directory_dispose(GObject* object)
       INF_XML_CONNECTION(key)
     );
   }
+  
+  g_assert(g_hash_table_size(priv->connections) == 0);
 
   /* Should have been cleared by removing all connections */
   g_assert(priv->subscription_requests == NULL);
@@ -3583,6 +3585,9 @@ infd_directory_dispose(GObject* object)
   g_object_unref(priv->group);
   g_object_unref(priv->communication_manager);
   infd_directory_set_storage(directory, NULL);
+
+  g_hash_table_destroy(priv->connections);
+  priv->connections = NULL;
 
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;

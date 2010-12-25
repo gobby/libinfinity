@@ -397,9 +397,10 @@ infinoted_run_start(InfinotedRun* run)
     infinoted_util_log_error(
             _("Failed to start server: %s"),
             error->message);
-    if(error4 != NULL) g_error_free(error4);
-    if(error6 != NULL) g_error_free(error6);
   }
+
+  if(error4 != NULL) g_error_free(error4);
+  if(error6 != NULL) g_error_free(error6);
 
   /* Make sure messages are shown. This explicit flush is for example
    * required when running in an MSYS shell on Windows. */
