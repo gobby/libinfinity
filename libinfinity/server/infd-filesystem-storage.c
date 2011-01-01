@@ -196,7 +196,7 @@ infd_filesystem_storage_remove_rec(const gchar* path,
   ret = g_unlink(path);
   if(ret == -1)
   {
-    if(errno == EISDIR)
+    if(errno == EISDIR || errno == EPERM)
     {
       dir = g_dir_open(path, 0, error);
       if(dir == NULL) return FALSE;

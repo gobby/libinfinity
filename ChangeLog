@@ -1,3 +1,11 @@
+2011-01-01  Elliot Kroo  <elliot.kroo@gmail.com>
+
+	* libinfinity/server/infd-filesystem-storage.c
+	(infd_filesystem_storage_remove_rec): If g_unlink fails with EPERM
+	then this can also mean that the file being unlinked is a directory,
+	so also try to recurse in this case. This fixes node removal on Mac OS
+	X.
+
 2010-12-25  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-standalone-io.c: Don't confuse dispatch list
