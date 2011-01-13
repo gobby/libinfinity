@@ -1,3 +1,8 @@
+2011-01-14  Philipp Kern  <phil@0x539.de>
+
+	* infinoted/Makefile.am:
+	* infinoted/infinoted-0.5.man: add a manpage for infinoted
+
 2011-01-01  Elliot Kroo  <elliot.kroo@gmail.com>
 
 	* libinfinity/server/infd-filesystem-storage.c
