@@ -1,0 +1,73 @@
+.TH INFINOTED "1" "January 2011" "infinoted 0.5" "User Commands"
+.SH NAME
+infinoted \- manual page for infinoted 0.5
+.SH SYNOPSIS
+.B infinoted\-0.5
+.RI [ options ]
+.SH DESCRIPTION
+.B infinoted
+is a dedicated server which allows clients to edit plain text documents and
+source files collaboratively over a network. Changes to the documents are
+synchronised instantly to the other clients.
+.PP
+This server supports the infinote protocol as implemented by libinfinity.
+Example clients include Gobby 0.4.9x, Kobby and a special plugin for gedit.
+It is
+.B not
+complatible to the older libobby protocol.
+.SH OPTIONS
+.SS "Help Options:"
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Show help options
+.SS "Application Options:"
+.TP
+\fB\-k\fR, \fB\-\-key\-file\fR=\fIKEY\-FILE\fR
+The server's private key
+.TP
+\fB\-c\fR, \fB\-\-certificate\-file\fR=\fICERTIFICATE\-FILE\fR
+The server's certificate
+.TP
+\fB\-\-certificate\-chain\fR
+The certificates chain down to the root certificate
+.TP
+\fB\-\-create\-key\fR
+Creates a new random private key
+.TP
+\fB\-\-create\-certificate\fR
+Creates a new self\-signed certificate using the given key
+.TP
+\fB\-p\fR, \fB\-\-port\-number\fR=\fIPORT\fR
+The port number to listen on
+.TP
+\fB\-\-security\-policy\fR=\fIno\-tls\fR|allow\-tls|require\-tls
+How to decide whether to use TLS
+.TP
+\fB\-r\fR, \fB\-\-root\-directory\fR=\fIDIRECTORY\fR
+The directory to store documents into
+.TP
+\fB\-\-autosave\-interval\fR=\fIINTERVAL\fR
+Interval within which to save documents, in seconds, or 0 to disable autosave
+.TP
+\fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR
+Require given password on connections
+.TP
+\fB\-\-sync\-directory\fR=\fIDIRECTORY\fR
+A directory into which to periodically store a copy of the document tree
+.TP
+\fB\-\-sync\-interval\fR=\fIINTERVAL\fR
+Interval within which to store documents to the specified sync\-directory, or 0 to disable directory synchronization
+.TP
+\fB\-d\fR, \fB\-\-daemonize\fR
+Daemonize the server
+.TP
+\fB\-D\fR, \fB\-\-kill\-daemon\fR
+Kill a running daemon
+.TP
+\fB\-v\fR, \fB\-\-version\fR
+Display version information and exit
+.SH AUTHOR
+.B infinoted
+and
+.B libinfinity
+were written by Armin Burgmeier <armin@0x539.de>.
