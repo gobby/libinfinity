@@ -39,7 +39,7 @@
  * requests inbetween.
  *
  * Using this class you don't need to connect to
- * #InfAdoptedUndoGrouping::group-requests to perform the grouping./
+ * #InfAdoptedUndoGrouping::group-requests to perform the grouping.
  */
 
 #define INF_TEXT_UNDO_GROUPING_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_UNDO_GROUPING, InfTextUndoGroupingPrivate))
@@ -271,7 +271,7 @@ inf_text_undo_grouping_group_requests(InfAdoptedUndoGrouping* grouping,
 }
 
 /*
- * Gype registration.
+ * GType registration.
  */
 
 static void

@@ -1,5 +1,9 @@
 2011-01-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-undo-grouping.c: Fix two typos in comments.
+
+2011-01-17  Armin Burgmeier  <armin@arbur.net>
+
 	* README: Add new gthread-2.0 dependency to the README file.
 
 2011-01-14  Philipp Kern  <phil@0x539.de>
