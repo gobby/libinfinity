@@ -74,6 +74,13 @@ struct _InfCommunicationRegistryEntry {
   xmlNodePtr sent_list;
 };
 
+typedef struct _InfCommunicationRegistryForeachMethodData
+  InfCommunicationRegistryForeachMethodData;
+struct _InfCommunicationRegistryForeachMethodData {
+  InfCommunicationMethod* original_method;
+  xmlNodePtr xml;
+};
+
 typedef struct _InfCommunicationRegistryPrivate
   InfCommunicationRegistryPrivate;
 struct _InfCommunicationRegistryPrivate {
@@ -265,6 +272,19 @@ inf_communication_registry_key_equal(gconstpointer first,
 }
 
 static void
+inf_communication_registry_foreach_method_func(InfCommunicationMethod* method,
+                                               gpointer user_data)
+{
+  InfCommunicationRegistryForeachMethodData* data;
+  data = (InfCommunicationRegistryForeachMethodData*)user_data;
+
+  /* TODO: Make sure that any callbacks in the send functions do not alter
+   * the hash table which holds the methods in InfCommunicationGroup. */
+  if(method != data->original_method)
+    inf_communication_method_send_all(method, xmlCopyNode(data->xml, 1));
+}
+
+static void
 inf_communication_registry_received_cb(InfXmlConnection* connection,
                                        xmlNodePtr xml,
                                        gpointer user_data)
@@ -276,6 +296,8 @@ inf_communication_registry_received_cb(InfXmlConnection* connection,
   xmlChar* group_name;
   xmlChar* publisher;
   xmlNodePtr child;
+  InfCommunicationScope scope;
+  InfCommunicationRegistryForeachMethodData data;
 
   registry = INF_COMMUNICATION_REGISTRY(user_data);
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
@@ -315,11 +337,25 @@ inf_communication_registry_received_cb(InfXmlConnection* connection,
     entry = g_hash_table_lookup(priv->entries, &key);
     if(entry != NULL && entry->registered == TRUE)
     {
-      inf_communication_method_received(
+      scope = inf_communication_method_received(
         entry->method,
         entry->key.connection,
         child
       );
+
+      /* If this was a group message then we relay it to any
+       * other networks group is in. */
+      if(scope == INF_COMMUNICATION_SCOPE_GROUP)
+      {
+        data.original_method = entry->method;
+        data.xml = child;
+
+        _inf_communication_group_foreach_method(
+	  entry->group,
+	  inf_communication_registry_foreach_method_func,
+	  &data
+	);
+      }
     }
   }
 

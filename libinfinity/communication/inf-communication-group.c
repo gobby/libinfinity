@@ -993,4 +993,28 @@ _inf_communication_group_remove_member(InfCommunicationGroup* group,
   inf_communication_method_remove_member(method, connection);
 }
 
+void
+_inf_communication_group_foreach_method(InfCommunicationGroup* group,
+                                        InfCommunicationGroupForeachFunc func,
+					gpointer user_data)
+{
+  InfCommunicationGroupPrivate* priv;
+  GHashTableIter iter;
+  gpointer value;
+  InfCommunicationMethod* method;
+  gboolean has_next;
+
+  priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
+  g_hash_table_iter_init(&iter, priv->methods);
+
+  has_next = g_hash_table_iter_next(&iter, NULL, &value);
+
+  while(has_next)
+  {
+    method = INF_COMMUNICATION_METHOD(value);
+    has_next = g_hash_table_iter_next(&iter, NULL, &value);
+    func(method, user_data);
+  }
+}
+
 /* vim:set et sw=2 ts=2: */

@@ -287,7 +287,7 @@ inf_communication_central_method_cancel_messages(InfCommunicationMethod* meth,
   );
 }
 
-static void
+static InfCommunicationScope
 inf_communication_central_method_received(InfCommunicationMethod* method,
                                           InfXmlConnection* connection,
                                           xmlNodePtr xml)
@@ -316,7 +316,7 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
     );
 
     /* TODO: Find a better place to show this message, maybe in
-     * InfCommunicationGroup, somehow. */
+     * InfCommunicationRegistry's received_cb. */
     if(error != NULL)
     {
       buffer = xmlBufferCreate();
@@ -359,9 +359,15 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
           );
         }
       }
-
-      /* TODO: Forward to other methods of same group */
     }
+
+    return scope;
+  }
+  else
+  {
+    /* Without target we don't know what to do with the message, so better
+     * don't relay. */
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 }
 

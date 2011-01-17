@@ -21,6 +21,7 @@
 #define __INF_COMMUNICATION_METHOD_H__
 
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/communication/inf-communication-object.h>
 
 #include <glib-object.h>
 
@@ -88,9 +89,9 @@ struct _InfCommunicationMethodIface {
   void (*cancel_messages)(InfCommunicationMethod* method,
                           InfXmlConnection* connection);
 
-  void (*received)(InfCommunicationMethod* method,
-                   InfXmlConnection* connection,
-                   xmlNodePtr xml);
+  InfCommunicationScope (*received)(InfCommunicationMethod* method,
+                                    InfXmlConnection* connection,
+                                    xmlNodePtr xml);
   void (*enqueued)(InfCommunicationMethod* method,
                    InfXmlConnection* connection,
                    xmlNodePtr xml);
@@ -127,7 +128,7 @@ void
 inf_communication_method_cancel_messages(InfCommunicationMethod* method,
                                          InfXmlConnection* connection);
 
-void
+InfCommunicationScope
 inf_communication_method_received(InfCommunicationMethod* method,
                                   InfXmlConnection* connection,
                                   xmlNodePtr xml);

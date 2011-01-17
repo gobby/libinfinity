@@ -285,8 +285,14 @@ inf_communication_method_cancel_messages(InfCommunicationMethod* method,
  * This function is called by the #InfCommunicationRegistry if data has been
  * received on registered connections
  * (see inf_communication_registry_register()).
+ *
+ * This function returns the scope of the message. If the scope is
+ * %INF_COMMUNICATION_SCOPE_GROUP then the registry relays the message to
+ * other connections on different networks (if any).
+ *
+ * Returns: The scope of the message.
  */
-void
+InfCommunicationScope
 inf_communication_method_received(InfCommunicationMethod* method,
                                   InfXmlConnection* connection,
                                   xmlNodePtr xml)
@@ -301,7 +307,7 @@ inf_communication_method_received(InfCommunicationMethod* method,
   iface = INF_COMMUNICATION_METHOD_GET_IFACE(method);
   g_return_if_fail(iface->received != NULL);
 
-  iface->received(method, connection, xml);
+  return iface->received(method, connection, xml);
 }
 
 /**

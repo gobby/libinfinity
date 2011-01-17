@@ -1,5 +1,22 @@
 2011-01-17  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/communication/inf-communication-group-private.h:
+	* libinfinity/communication/inf-communication-group.c: Add a private
+	_inf_communication_group_foreach_method() function.
+
+	* libinfinity/communication/inf-communication-method.h:
+	* libinfinity/communication/inf-communication-method.c:
+	* libinfinity/communication/inf-communication-central-method.c: Change
+	the return type of the _received vfunc to InfCommunicationScope,
+	returning the scope given by the InfCommunicationObject target.
+
+	* libinfinity/communication/inf-communication-registry.c
+	(inf_communication_registry_received_cb): Relay any received messages
+	with INF_COMMUNICATION_SCOPE_GROUP to connections in other networks of
+	the same group.
+
+2011-01-17  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftext/inf-text-undo-grouping.c: Fix two typos in comments.
 
 2011-01-17  Armin Burgmeier  <armin@arbur.net>

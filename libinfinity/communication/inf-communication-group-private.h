@@ -21,6 +21,10 @@
 #define __INF_COMMUNICATION_GROUP_PRIVATE_H__
 
 #include <libinfinity/communication/inf-communication-group.h>
+#include <libinfinity/communication/inf-communication-method.h>
+
+typedef void(*InfCommunicationGroupForeachFunc)(InfCommunicationMethod* meth,
+                                                gpointer user_data);
 
 void
 _inf_communication_group_add_member(InfCommunicationGroup* group,
@@ -29,6 +33,11 @@ _inf_communication_group_add_member(InfCommunicationGroup* group,
 void
 _inf_communication_group_remove_member(InfCommunicationGroup* group,
                                        InfXmlConnection* connection);
+
+void
+_inf_communication_group_foreach_method(InfCommunicationGroup* group,
+                                        InfCommunicationGroupForeachFunc func,
+					gpointer user_data);
 
 #endif /* __INF_COMMUNICATION_GROUP_PRIVATE_H__ */
 
