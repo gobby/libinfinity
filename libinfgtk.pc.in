@@ -3,6 +3,8 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
+gtk_version=@gtk_version@
+
 Name: libinfgtk
 Description: Common infinote GTK+ UI functionality
 Requires: libinfinity-@LIBINFINITY_API_VERSION@ gtk+-2.0 >= 2.12

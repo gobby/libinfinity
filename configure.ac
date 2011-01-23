@@ -121,9 +121,13 @@ AC_ARG_WITH([gtk3], AS_HELP_STRING([--with-gtk3],
 if test "x$with_gtk3" = "xyes"
 then
 	gtk_requirement="gtk+-3.0 >= 2.90.6"
+	gtk_version=3
 else
 	gtk_requirement="gtk+-2.0 >= 2.12"
+	gtk_version=2
 fi
+
+AC_SUBST(gtk_version)
 
 ###################################
 # libinftextgtk optional package
