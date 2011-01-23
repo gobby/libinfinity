@@ -1,3 +1,10 @@
+2011-01-23  Armin Burgmeier  <armin@arbur.net>
+
+	* configure.ac:
+	* libinfgtk.pc.in:
+	* libinftextgtk.pc.in: Add a gtk_version variable for pkg-config and
+	request the correct GTK+ version in the pkg-config file.
+
 2011-01-17  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/communication/inf-communication-group-private.h:

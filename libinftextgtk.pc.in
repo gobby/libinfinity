@@ -7,7 +7,7 @@ gtk_version=@gtk_version@
 
 Name: libinftextgtk
 Description: Infinote text processing GTK+ UI functionality
-Requires: libinfinity-@LIBINFINITY_API_VERSION@ libinftext-@LIBINFINITY_API_VERSION@ gtk+-2.0 >= 2.12
+Requires: libinfinity-@LIBINFINITY_API_VERSION@ libinftext-@LIBINFINITY_API_VERSION@ @gtk_requirement@
 Version: @VERSION@
 Libs: -L${libdir} -linftextgtk-@LIBINFINITY_API_VERSION@
 Cflags: -I${includedir}/libinftextgtk-@LIBINFINITY_API_VERSION@

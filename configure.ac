@@ -127,6 +127,7 @@ else
 	gtk_version=2
 fi
 
+AC_SUBST(gtk_requirement)
 AC_SUBST(gtk_version)
 
 ###################################
