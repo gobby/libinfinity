@@ -1,5 +1,9 @@
 2011-01-23  Armin Burgmeier  <armin@arbur.net>
 
+	* all source files: Add 2011 to copyright years.
+
+2011-01-23  Armin Burgmeier  <armin@arbur.net>
+
 	* configure.ac:
 	* libinfgtk.pc.in:
 	* libinftextgtk.pc.in: Add a gtk_version variable for pkg-config and
