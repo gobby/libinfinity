@@ -289,8 +289,8 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
     allocation = scrollbar->allocation;
 #endif
 
-    scroll_ox = border + 1 /* ?? */;
-    scroll_oy = stepper_size + stepper_spacing;
+    scroll_ox = border;
+    scroll_oy = border + stepper_size + stepper_spacing;
     scroll_height = allocation.height - 2*scroll_oy;
 
     if(end_y > 0)
@@ -298,7 +298,7 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
 
     user->rectangle.x = scroll_ox + allocation.x;
     user->rectangle.y = scroll_oy + allocation.y + y - slider_size/3;
-    user->rectangle.width = slider_size - 2*scroll_ox;
+    user->rectangle.width = slider_size;
     user->rectangle.height = slider_size*2/3;
 
     if(user->rectangle.y < scroll_oy + allocation.y)
@@ -360,6 +360,7 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
   double h,s,v;
   double r,g,b;
   GSList* item;
+  double line_width;
 
 #if GTK_CHECK_VERSION(2, 91, 0)
   GdkRectangle clip_area;
@@ -391,11 +392,18 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
     v = MAX(v, 0.5);
 
 #if GTK_CHECK_VERSION(2, 91, 0)
+    gtk_cairo_transform_to_window(
+      cr,
+      GTK_WIDGET(scrollbar),
+      gtk_widget_get_window(scrollbar)
+    );
+
     gdk_cairo_get_clip_rectangle(cr, &clip_area);
 #else
     cr = gdk_cairo_create(event->window);
 #endif
 
+    line_width = cairo_get_line_width(cr);
     for(item = priv->users; item != NULL; item = item->next)
     {
       viewport_user = (InfTextGtkViewportUser*)item->data;
@@ -412,11 +420,23 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
 #endif
       {
         h = inf_text_user_get_hue(viewport_user->user);
+
+        cairo_rectangle(
+          cr,
+          rectangle->x + line_width/2,
+          rectangle->y + line_width/2,
+          rectangle->width - line_width,
+          rectangle->height - line_width
+        );
+
+        r = h; g = s; b = v/2.0;
+        hsv_to_rgb(&r, &g, &b);
+        cairo_set_source_rgba(cr, r, g, b, 0.6);
+        cairo_stroke_preserve(cr);
+
         r = h; g = s; b = v;
         hsv_to_rgb(&r, &g, &b);
-
         cairo_set_source_rgba(cr, r, g, b, 0.6);
-        gdk_cairo_rectangle(cr, rectangle);
         cairo_fill(cr);
       }
     }
@@ -424,7 +444,6 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
 #if ! GTK_CHECK_VERSION(2, 91, 0)
     cairo_destroy(cr);
 #endif
-
   }
 
   return FALSE;
@@ -754,17 +773,21 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
       viewport
     );
 
+#if GTK_CHECK_VERSION(2, 91, 0)
     g_signal_connect_after(
       G_OBJECT(scrollbar),
-#if GTK_CHECK_VERSION(2, 91, 0)
       "draw",
       G_CALLBACK(inf_text_gtk_viewport_scrollbar_draw_cb),
-#else
-      "expose-event",
-      G_CALLBACK(inf_text_gtk_viewport_scrollbar_expose_event_cb),
-#endif
       viewport
     );
+#else
+    g_signal_connect_after(
+      G_OBJECT(scrollbar),
+      "expose-event",
+      G_CALLBACK(inf_text_gtk_viewport_scrollbar_expose_event_cb),
+      viewport
+    );
+#endif
   }
 
   g_object_notify(G_OBJECT(viewport), "scrolled-window");

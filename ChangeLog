@@ -1,5 +1,10 @@
 2011-01-29  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-viewport.c: Fix display of remote cursor
+	position in scrollbar with GTK+ 3, and make the marker a bit nicer.
+
+2011-01-29  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-view.c
 	(inf_text_gtk_view_expose_event_after_cb): With GTK+ 3, fix remote
 	cursors not being drawn if remote selections are not activated to be
