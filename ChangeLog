@@ -1,3 +1,10 @@
+2011-01-29  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftextgtk/inf-text-gtk-view.c
+	(inf_text_gtk_view_expose_event_after_cb): With GTK+ 3, fix remote
+	cursors not being drawn if remote selections are not activated to be
+	drawn.
+
 2011-01-23  Armin Burgmeier  <armin@arbur.net>
 
 	* all source files: Add 2011 to copyright years.

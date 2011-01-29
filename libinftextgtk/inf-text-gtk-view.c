@@ -869,13 +869,13 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
 
 #if GTK_CHECK_VERSION(2, 91, 0)
   gtk_cairo_transform_to_window(cr, GTK_WIDGET(priv->textview), text_window);
+  gdk_cairo_get_clip_rectangle(cr, &clip_area);
 #else
   cr = gdk_cairo_create(text_window);
 #endif
 
   if(priv->show_remote_selections)
   {
-
 #if GTK_CHECK_VERSION(2, 91, 0)
       window_width = gdk_window_get_width(text_window);
 #else
@@ -895,10 +895,6 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
     ss = 1.0 - 0.4*(vs);
 
     /* Find range of text to be updated */
-#if GTK_CHECK_VERSION(2, 91, 0)
-    gdk_cairo_get_clip_rectangle(cr, &clip_area);
-#endif
-
     gtk_text_view_window_to_buffer_coords(
       priv->textview,
       GTK_TEXT_WINDOW_TEXT,
@@ -1263,7 +1259,6 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
     rgb_to_hsv(&hc, &sc, &vc);
     sc = MIN(MAX(sc, 0.3), 0.8);
     vc = MAX(vc, 0.7);
-
 
     for(item = priv->users; item != NULL; item = item->next)
     {
