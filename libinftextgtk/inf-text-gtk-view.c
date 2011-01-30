@@ -971,15 +971,24 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
         if(sel > 0)
         {
           end = begin + sel;
+          g_assert(
+            end <= gtk_text_buffer_get_char_count(
+              gtk_text_view_get_buffer(priv->textview)
+            )
+          );
         }
         else
         {
+          g_assert(begin >= (unsigned int)-sel);
+
           end = begin;
           begin += sel;
         }
 
         begin = MIN(MAX(begin, area_begin), area_end);
         end = MIN(MAX(end, area_begin), area_end);
+        g_assert(end >= begin);
+
         if(begin != end)
         {
           if(sel > 0)

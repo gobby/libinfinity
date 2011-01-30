@@ -1,5 +1,11 @@
 2011-01-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftextgtk/inf-text-gtk-view.c
+	(inf_text_gtk_view_expose_event_after_cb): Add a few assertions to
+	make sure our internal state is OK.
+
+2011-01-30  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-viewport.c
 	(inf_text_gtk_viewport_remove_user): Remove remote cursor position
 	indicator when the corresponding client leaves.
