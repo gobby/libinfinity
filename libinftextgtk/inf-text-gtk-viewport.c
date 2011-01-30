@@ -472,6 +472,27 @@ inf_text_gtk_viewport_scrollbar_size_allocate_cb(GtkWidget* scrollbar,
 }
 
 static void
+inf_text_gtk_viewport_adjustment_changed_cb(GtkAdjustment* adjustment,
+                                            gpointer user_data)
+{
+  InfTextGtkViewport* viewport;
+  InfTextGtkViewportPrivate* priv;
+  GSList* item;
+  InfTextGtkViewportUser* viewport_user;
+
+  viewport = INF_TEXT_GTK_VIEWPORT(user_data);
+  priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
+
+  for(item = priv->users; item != NULL; item = item->next)
+  {
+    viewport_user = (InfTextGtkViewportUser*)item->data;
+    inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
+    inf_text_gtk_viewport_user_compute_user_area(viewport_user);
+    inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
+  }
+}
+
+static void
 inf_text_gtk_viewport_scrollbar_style_set_cb(GtkWidget* scrollbar,
                                              GtkStyle* prev_style,
                                              gpointer user_data)
@@ -711,6 +732,7 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
 {
   InfTextGtkViewportPrivate* priv;
   GtkWidget* scrollbar;
+  GtkAdjustment* adjustment;
 
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
 
@@ -723,6 +745,15 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
      * is most likely going to be freed anyway... */
     if(scrollbar != NULL)
     {
+      adjustment = gtk_range_get_adjustment(GTK_RANGE(scrollbar));
+      g_assert(adjustment != NULL);
+
+      inf_signal_handlers_disconnect_by_func(
+        G_OBJECT(adjustment),
+        G_CALLBACK(inf_text_gtk_viewport_adjustment_changed_cb),
+        viewport
+      );
+
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(scrollbar),
         G_CALLBACK(inf_text_gtk_viewport_scrollbar_size_allocate_cb),
@@ -757,7 +788,17 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
     /* TODO: can this happen? maybe for GTK_POLICY_NEVER? */
     g_assert(scrollbar != NULL);
 
+    adjustment = gtk_range_get_adjustment(GTK_RANGE(scrollbar));
+    g_assert(adjustment != NULL);
+
     g_object_ref(scroll);
+
+    g_signal_connect_after(
+      G_OBJECT(adjustment),
+      "changed",
+      G_CALLBACK(inf_text_gtk_viewport_adjustment_changed_cb),
+      viewport
+    );
 
     g_signal_connect_after(
       G_OBJECT(scrollbar),
