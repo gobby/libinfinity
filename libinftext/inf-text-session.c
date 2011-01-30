@@ -1212,12 +1212,12 @@ inf_text_session_get_xml_user_props(InfSession* session,
     g_value_set_uint(&parameter->value, caret);
   }
 
+  parameter = inf_session_get_user_property(array, "selection-length");
+  g_value_init(&parameter->value, G_TYPE_INT);
   if(inf_xml_util_get_attribute_int(xml, "selection", &selection, NULL))
-  {
-    parameter = inf_session_get_user_property(array, "selection-length");
-    g_value_init(&parameter->value, G_TYPE_INT);
     g_value_set_int(&parameter->value, selection);
-  }
+  else
+    g_value_set_int(&parameter->value, 0);
 
   parameter = inf_session_get_user_property(array, "hue");
   g_value_init(&parameter->value, G_TYPE_DOUBLE);

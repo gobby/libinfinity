@@ -1,5 +1,12 @@
 2011-01-30  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c (inf_text_session_get_xml_user_props):
+	If the "selection" attribute is not set, default to zero. Otherwise an
+	invalid selection might arise if the selection-length of a rejoined
+	user is kept but caret-position is set to another value.
+
+2011-01-30  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-view.c
 	(inf_text_gtk_view_expose_event_after_cb): Add a few assertions to
 	make sure our internal state is OK.
