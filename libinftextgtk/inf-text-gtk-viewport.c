@@ -589,6 +589,8 @@ inf_text_gtk_viewport_remove_user(InfTextGtkViewportUser* viewport_user)
   InfTextGtkViewportPrivate* priv;
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport_user->viewport);
 
+  inf_text_gtk_viewport_user_invalidate_user_area(viewport_user);
+
   inf_signal_handlers_disconnect_by_func(
     viewport_user->user,
     G_CALLBACK(inf_text_gtk_viewport_user_selection_changed_cb),
