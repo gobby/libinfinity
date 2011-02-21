@@ -1,3 +1,9 @@
+2011-02-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/adopted/inf-adopted-undo-grouping.c
+	(inf_adopted_undo_grouping_class_init): Fix struct offset of the
+	group_requests signal.
+
 2011-01-30  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-session.c (inf_text_session_get_xml_user_props):
