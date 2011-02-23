@@ -32,6 +32,26 @@ G_BEGIN_DECLS
 
 /* TODO: GTypeModule stuff? */
 
+typedef InfSession*(*InfdNotePluginSessionNew)(InfIo*,
+                                               InfCommunicationManager*,
+                                               InfSessionStatus,
+                                               InfCommunicationHostedGroup*,
+                                               InfXmlConnection*,
+                                               gpointer);
+
+typedef InfSession*(*InfdNotePluginSessionRead)(InfdStorage*,
+                                                InfIo*,
+                                                InfCommunicationManager*,
+                                                const gchar*,
+                                                gpointer,
+                                                GError**);
+
+typedef gboolean(*InfdNotePluginSessionWrite)(InfdStorage*,
+                                              InfSession*,
+                                              const gchar*,
+                                              gpointer,
+                                              GError**);
+
 typedef struct _InfdNotePlugin InfdNotePlugin;
 struct _InfdNotePlugin {
   gpointer user_data;
@@ -43,25 +63,9 @@ struct _InfdNotePlugin {
   /* The note type this plugin handles, such as InfText */
   const gchar* note_type;
 
-  InfSession*(*session_new)(InfIo* io,
-                            InfCommunicationManager* manager,
-                            InfSessionStatus status,
-                            InfCommunicationHostedGroup* sync_group,
-                            InfXmlConnection* sync_connection,
-                            gpointer user_data);
-
-  InfSession*(*session_read)(InfdStorage* storage,
-                             InfIo* io,
-                             InfCommunicationManager* manager,
-                             const gchar* path,
-                             gpointer user_data,
-                             GError** error);
-
-  gboolean(*session_write)(InfdStorage* storage,
-                           InfSession* session,
-                           const gchar* path,
-                           gpointer user_data,
-                           GError** error);
+  InfdNotePluginSessionNew session_new;
+  InfdNotePluginSessionRead session_read;
+  InfdNotePluginSessionWrite session_write;
 };
 
 G_END_DECLS

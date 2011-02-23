@@ -29,18 +29,20 @@ G_BEGIN_DECLS
 
 /* TODO: GTypeModule stuff? */
 
+typedef InfSession*(*InfcNotePluginSessionNew)(InfIo*,
+                                               InfCommunicationManager*,
+                                               InfSessionStatus,
+                                               InfCommunicationJoinedGroup*,
+                                               InfXmlConnection*,
+                                               gpointer);
+
 typedef struct _InfcNotePlugin InfcNotePlugin;
 struct _InfcNotePlugin {
   gpointer user_data;
 
   const gchar* note_type;
 
-  InfSession*(*session_new)(InfIo* io,
-                            InfCommunicationManager* manager,
-                            InfSessionStatus status,
-                            InfCommunicationJoinedGroup* sync_group,
-                            InfXmlConnection* sync_connection,
-                            gpointer user_data);
+  InfcNotePluginSessionNew session_new;
 };
 
 G_END_DECLS

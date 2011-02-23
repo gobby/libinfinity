@@ -1,3 +1,9 @@
+2011-02-23  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-note-plugin.h:
+	* libinfinity/server/infd-note-plugin.h: Add typedefs for the function
+	pointers used to be more friendly to binding generators.
+
 2011-02-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/adopted/inf-adopted-undo-grouping.c
