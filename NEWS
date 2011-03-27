@@ -1,3 +1,43 @@
+libinfinity 0.5.0:
+
+	* infinoted: Added the --pam-server, --allow-user and --allow-group
+	  command line options. 
+	* Show cursor and selection of remote users in the own textview and
+	  the scrollbar.
+	* Add optional support for GTK+ 3.
+	* Provide asynchronous SASL authentication.
+
+libinfinity 0.4.2:
+
+	* infinoted: Fixed a bug when infinoted did not launch in daemonized
+	mode when the global PID file directory did not exist.
+	* Fixed a crash which could occur in high latency concurrent situations.
+	* Fixed a possible crash when multiple connections time out at the same
+	time.
+	* Fixed a crash when receiving an unexpected XML opening and ending
+	tag on the top-level.
+
+libinfinity 0.4.1:
+
+	* infinoted: Avoid a runtime warning when infinoted can not be
+	  started.
+	* Fixed a crash in undo grouping when undoing a large number of
+	  requests.
+	* Fixed a crash when showing closed connections in a
+	  InfGtkBrowserView (Jesse van den Kieboom).
+	* Fixed expander arrows on non-expandable columns in
+	  InfGtkBrowserView.
+	* Fixed a crash when closing an XML connection still in use by a
+	  session (Jesse van den Kieboom).
+	* Introduced new API:
+	  - inf_xmpp_connection_get_tls_enabled()
+	  - inf_gtk_browser_store_remove_connection()
+	  - inf_gtk_browser_store_set_connection_name()
+	  - inf_gtk_browser_store_clear_connection_error()
+	  - inf_text_gtk_buffer_is_tag_toggle()
+	  - inf_text_gtk_buffer_forward_to_tag_toggle()
+	  - inf_text_gtk_buffer_backward_to_tag_toggle()
+
 libinfinity 0.4.0:
 
 	* infinoted: Added the --password, --sync-directory, --sync-interval,

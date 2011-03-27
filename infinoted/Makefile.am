@@ -2,7 +2,7 @@ SUBDIRS = note-plugins
 
 # TODO: Find a way to have the version number set automatically.
 bin_PROGRAMS = infinoted-0.5
-man1_MANS = infinoted-0.5.man
+dist_man1_MANS = infinoted-0.5.man
 
 plugin_path = infinoted-$(LIBINFINITY_API_VERSION)/note-plugins
 

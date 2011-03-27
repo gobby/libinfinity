@@ -14,7 +14,7 @@ This server supports the infinote protocol as implemented by libinfinity.
 Example clients include Gobby 0.4.9x, Kobby and a special plugin for gedit.
 It is
 .B not
-complatible to the older libobby protocol.
+compatible to the older libobby protocol.
 .SH OPTIONS
 .SS "Help Options:"
 .TP
@@ -51,6 +51,15 @@ Interval within which to save documents, in seconds, or 0 to disable autosave
 .TP
 \fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR
 Require given password on connections
+.TP
+\fB\-P\fR, \fB\-\-pam-service\fR=\fISERVICE\fR
+Authenticate clients against given pam service on connection
+.TP
+\fB\-P\fR, \fB\-\-allow-user\fR=\fIUSERS\fR
+Users allowed to connect after pam authentication. Separate entries with semicolons.
+.TP
+\fB\-P\fR, \fB\-\-allow-group\fR=\fIGROUPS\fR
+Group allowed to connect after pam authentication. Separate entries with semicolons.
 .TP
 \fB\-\-sync\-directory\fR=\fIDIRECTORY\fR
 A directory into which to periodically store a copy of the document tree

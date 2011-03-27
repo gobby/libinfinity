@@ -13,3 +13,4 @@ api_version.xml: api_version.xml.in
 	echo -n `cat api_version.xml.in` > api_version.xml
 
 CLEANFILES = version.xml api_version.xml
+DISTCLEANFILES = version.xml.in api_version.xml.in

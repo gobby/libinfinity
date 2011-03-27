@@ -11,6 +11,7 @@ msgstr ""
 "PO-Revision-Date: 2009-11-28 11:36+0000\n"
 "Last-Translator: Armin Burgmeier <armin@arbur.net>\n"
 "Language-Team: German <de@li.org>\n"
+"Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -275,8 +276,8 @@ msgid ""
 "Could not create record file for session \"%s\": Could not generate unused "
 "record file in directory \"%s\""
 msgstr ""
-"Die Aufnahmedatei für die Sitzung »%s« konnte nicht erstellt werden, da keine "
-"unbenutzte Aufnahmedatei im Verzeichnis »%s« erzeugt werden konnte"
+"Die Aufnahmedatei für die Sitzung »%s« konnte nicht erstellt werden, da "
+"keine unbenutzte Aufnahmedatei im Verzeichnis »%s« erzeugt werden konnte"
 
 #: infinoted/infinoted-record.c:98
 #, c-format

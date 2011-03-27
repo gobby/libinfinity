@@ -1,3 +1,19 @@
+2011-03-27  Armin Burgmeier  <armin@arbur.net>
+
+	* === Released 0.5.0 ===
+
+	* NEWS: Update for release.
+
+	* infinoted/Makefile.am: Distribute the manpage since it is not
+	generated.
+
+	* docs/reference/Makefile.am:
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinfinity/Makefile.am;
+	* docs/reference/libinftext/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am: Fix make distcheck with
+	recent gtk-doc.
+
 2011-02-23  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/client/infc-note-plugin.h:
