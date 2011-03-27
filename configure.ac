@@ -1,5 +1,5 @@
-m4_define([libinfinity_version], [0.5.0])
-m4_define([libinfinity_api_version], [0.5])
+m4_define([libinfinity_version], [0.6.0])
+m4_define([libinfinity_api_version], [0.6])
 m4_define([libinfinity_libtool_version], [0:0:0])
 
 AC_PREREQ(2.60)

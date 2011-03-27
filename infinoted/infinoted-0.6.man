@@ -1,8 +1,8 @@
-.TH INFINOTED "1" "January 2011" "infinoted 0.5" "User Commands"
+.TH INFINOTED "1" "January 2011" "infinoted 0.6" "User Commands"
 .SH NAME
-infinoted \- manual page for infinoted 0.5
+infinoted \- manual page for infinoted 0.6
 .SH SYNOPSIS
-.B infinoted\-0.5
+.B infinoted\-0.6
 .RI [ options ]
 .SH DESCRIPTION
 .B infinoted
