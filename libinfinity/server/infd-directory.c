@@ -2326,7 +2326,9 @@ infd_directory_node_get_and_link_session(InfdDirectory* directory,
   proxy = infd_directory_node_get_session(directory, node, error);
   if(!proxy) return NULL;
 
-  infd_directory_node_link_session(directory, node, proxy);
+  if(node->shared.note.session == NULL)
+    infd_directory_node_link_session(directory, node, proxy);
+
   g_object_unref(proxy);
 
   return node->shared.note.session;

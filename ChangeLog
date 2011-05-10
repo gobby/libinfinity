@@ -1,3 +1,12 @@
+2011-05-10  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c
+	(infd_directory_node_get_and_link_session): Only call
+	infd_directory_node_link_session() if the session is not yet linked,
+	otherwise an assertion fails. This could happen if the
+	infd_directory_iter_get_session() public API function was called
+	when the session existed already.
+
 2011-03-27  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Post-release bump to 0.6.0
