@@ -4817,6 +4817,8 @@ infd_directory_add_note(InfdDirectory* directory,
     error
   );
 
+  g_object_unref(group);
+
   if(node == NULL)
     return FALSE;
 
