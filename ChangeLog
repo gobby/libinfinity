@@ -1,3 +1,8 @@
+2011-06-02  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c (infd_directory_add_note): Do
+	not leak a reference on the subscription group.
+
 2011-05-10  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.c
