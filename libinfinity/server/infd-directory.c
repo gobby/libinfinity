@@ -66,6 +66,8 @@ struct _InfdDirectoryNode {
       const InfdNotePlugin* plugin;
       /* Timeout to save the session when inactive for some time */
       InfIoTimeout* save_timeout;
+      /* Whether we hold a weak reference or a strong reference on session */
+      gboolean weakref;
     } note;
 
     struct {
@@ -339,6 +341,9 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   error = NULL;
 
   infd_directory_node_get_path(timeout_data->node, &path, NULL);
+
+  /* TODO: Only write if the buffer modified-flag is set */
+
   result = timeout_data->node->shared.note.plugin->session_write(
     priv->storage,
     infd_session_proxy_get_session(timeout_data->node->shared.note.session),
@@ -399,6 +404,21 @@ infd_directory_start_session_save_timeout(InfdDirectory* directory,
 }
 
 static void
+infd_directory_session_weak_ref_cb(gpointer data,
+                                   GObject* where_the_object_was)
+{
+  InfdDirectoryNode* node;
+  node = (InfdDirectoryNode*)data;
+
+  g_assert(G_OBJECT(node->shared.note.session) == where_the_object_was);
+  g_assert(node->shared.note.weakref == TRUE);
+  g_assert(node->shared.note.save_timeout == NULL);
+
+  node->shared.note.session = NULL;
+  node->shared.note.weakref = FALSE;
+}
+
+static void
 infd_directory_session_idle_notify_cb(GObject* object,
                                       GParamSpec* pspec,
                                       gpointer user_data)
@@ -417,19 +437,86 @@ infd_directory_session_idle_notify_cb(GObject* object,
   /* Drop session from memory if it remains idle */
   if(infd_session_proxy_is_idle(INFD_SESSION_PROXY(object)))
   {
-    if(node->shared.note.save_timeout == NULL)
+    if(node->shared.note.weakref == FALSE &&
+       node->shared.note.save_timeout == NULL)
     {
       infd_directory_start_session_save_timeout(directory, node);
     }
   }
   else
   {
-    if(node->shared.note.save_timeout != NULL)
+    /* If a session becomes non-idle again then strong-ref it */
+    if(node->shared.note.weakref == TRUE)
+    {
+      g_object_ref(node->shared.note.session);
+      g_assert(node->shared.note.save_timeout == NULL);
+      node->shared.note.weakref = FALSE;
+
+      g_object_weak_unref(
+        G_OBJECT(node->shared.note.session),
+        infd_directory_session_weak_ref_cb,
+        node
+      );
+    }
+    else if(node->shared.note.save_timeout != NULL)
     {
       inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
       node->shared.note.save_timeout = NULL;
     }
   }
+}
+
+/* Releases a session fully from the directory. This is not normally needed
+ * because if we don't need a session anymore we still keep a weak reference
+ * to it around, in case we need to recover it later. When nobody is holding
+ * a strong reference to it anymore we clear the pointer in
+ * infd_directory_session_weak_ref_cb(). The only point where this function
+ * is being called is when a node with an active session is removed from the
+ * directory. */
+static void
+infd_directory_release_session(InfdDirectory* directory,
+                               InfdDirectoryNode* node,
+                               InfdSessionProxy* session)
+{
+  InfdDirectoryPrivate* priv;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->shared.note.session == session);
+
+  if(node->shared.note.save_timeout != NULL)
+  {
+    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
+    node->shared.note.save_timeout = NULL;
+  }
+
+  inf_signal_handlers_disconnect_by_func(
+    G_OBJECT(session),
+    G_CALLBACK(infd_directory_session_idle_notify_cb),
+    directory
+  );
+
+  g_object_set_qdata(
+    G_OBJECT(session),
+    infd_directory_node_id_quark,
+    NULL
+  );
+
+  if(node->shared.note.weakref == TRUE)
+  {
+    g_object_weak_unref(
+      G_OBJECT(session),
+      infd_directory_session_weak_ref_cb,
+      node
+    );
+  }
+  else
+  {
+    g_object_unref(session);
+  }
+
+  node->shared.note.session = NULL;
 }
 
 /*
@@ -666,10 +753,6 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
   iter.node = node;
   iter.node_id = node->id;
 
-  /* TODO: We could still weakref the session, to continue using it if
-   * others need it anyway. We just need to strongref it again if it becomes
-   * non-idle. */
-
   g_signal_emit(
     G_OBJECT(directory),
     directory_signals[REMOVE_SESSION],
@@ -884,6 +967,7 @@ infd_directory_node_new_note(InfdDirectory* directory,
   node->shared.note.session = NULL;
   node->shared.note.plugin = plugin;
   node->shared.note.save_timeout = NULL;
+  node->shared.note.weakref = FALSE;
 
   return node;
 }
@@ -930,10 +1014,20 @@ infd_directory_node_free(InfdDirectory* directory,
 
     break;
   case INFD_STORAGE_NODE_NOTE:
-    /* Sessions must have been explicitely unlinked before, so that the
-     * remove-session signal was emitted before any children already have been
-     * removed. */
-    g_assert(node->shared.note.session == NULL);
+    /* Sessions must have been explicitely unlinked before; we might still
+     * have weak references though. */
+    g_assert(node->shared.note.session == NULL ||
+             node->shared.note.weakref == TRUE);
+
+    if(node->shared.note.session != NULL)
+    {
+      infd_directory_release_session(
+        directory,
+        node,
+        node->shared.note.session
+      );
+    }
+
     break;
   default:
     g_assert_not_reached();
@@ -2256,6 +2350,7 @@ infd_directory_node_get_session(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  /* Note the session might only be weak-refed in which case we re-use it */
   if(node->shared.note.session != NULL)
   {
     proxy = node->shared.note.session;
@@ -2326,7 +2421,7 @@ infd_directory_node_get_and_link_session(InfdDirectory* directory,
   proxy = infd_directory_node_get_session(directory, node, error);
   if(!proxy) return NULL;
 
-  if(node->shared.note.session == NULL)
+  if(node->shared.note.session == NULL || node->shared.note.weakref == TRUE)
     infd_directory_node_link_session(directory, node, proxy);
 
   g_object_unref(proxy);
@@ -3689,10 +3784,28 @@ infd_directory_add_session(InfdDirectory* directory,
 
   node = (InfdDirectoryNode*)iter->node;
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
-  g_assert(node->shared.note.session == NULL);
-  
-  node->shared.note.session = session;
+
+  g_assert(node->shared.note.session == NULL ||
+           (node->shared.note.session == session &&
+            node->shared.note.weakref == TRUE));
+
   g_object_ref(session);
+
+  /* Re-link a previous session which was kept around by somebody else */
+  if(node->shared.note.session != NULL)
+  {
+    g_object_weak_unref(
+      G_OBJECT(node->shared.note.session),
+      infd_directory_session_weak_ref_cb,
+      node
+    );
+  }
+  else
+  {
+    node->shared.note.session = session;
+  }
+
+  node->shared.note.weakref = FALSE;
 
   g_object_set_qdata(
     G_OBJECT(session),
@@ -3706,6 +3819,9 @@ infd_directory_add_session(InfdDirectory* directory,
     G_CALLBACK(infd_directory_session_idle_notify_cb),
     directory
   );
+  
+  /* TODO: Drop the session if it gets closed; don't even weak-ref
+   * it in that case */
 
   if(infd_session_proxy_is_idle(node->shared.note.session))
   {
@@ -3728,27 +3844,26 @@ infd_directory_remove_session(InfdDirectory* directory,
 
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
   g_assert(node->shared.note.session == session);
+  g_assert(node->shared.note.weakref == FALSE);
 
+  /* Remove save timeout. We are just keeping a weak reference to the session
+   * in order to be able to re-use it when it is requested again and if
+   * someone else is going to keep it around anyway, but in all other regards
+   * we behave like we have dropped the session fully from memory. */
   if(node->shared.note.save_timeout != NULL)
   {
     inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
     node->shared.note.save_timeout = NULL;
   }
 
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(session),
-    G_CALLBACK(infd_directory_session_idle_notify_cb),
-    directory
+  g_object_weak_ref(
+    G_OBJECT(node->shared.note.session),
+    infd_directory_session_weak_ref_cb,
+    node
   );
 
-  g_object_set_qdata(
-    G_OBJECT(session),
-    infd_directory_node_id_quark,
-    NULL
-  );
-
-  g_object_unref(session);
-  node->shared.note.session = NULL;
+  node->shared.note.weakref = TRUE;
+  g_object_unref(node->shared.note.session);
 }
 
 /*
