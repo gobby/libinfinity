@@ -25,6 +25,8 @@
 #include <libinftext/inf-text-user.h>
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/communication/inf-communication-manager.h>
+#include <libinfinity/client/infc-user-request.h>
+#include <libinfinity/client/infc-session-proxy.h>
 
 #include <glib-object.h>
 
@@ -82,6 +84,15 @@ inf_text_session_set_user_color(InfTextSession* session,
 void
 inf_text_session_flush_requests_for_user(InfTextSession* session,
                                          InfTextUser* user);
+
+InfcUserRequest*
+inf_text_session_join_user(InfcSessionProxy* proxy,
+                           const gchar* name,
+                           InfUserStatus status,
+                           gdouble hue,
+                           guint caret_position,
+                           int selection_length,
+                           GError** error);
 
 G_END_DECLS
 

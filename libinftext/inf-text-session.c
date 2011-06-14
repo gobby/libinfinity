@@ -2083,4 +2083,86 @@ inf_text_session_flush_requests_for_user(InfTextSession* session,
   }
 }
 
+/**
+ * inf_text_session_join_user:
+ * @proxy: A #InfcSessionProxy with a #InfTextSession session.
+ * @name: The name of the user to join.
+ * @status: The initial status of the user to join. Must not be
+ * @INF_USER_UNAVAILABLE.
+ * @hue: The user color of the user to join.
+ * @caret_position: The initial position of the new user's cursor.
+ * @selection_length: The initial length of the new user's selection.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * This functions creates a user join request for an #InfTextSession. This is
+ * a shortcut for infc_session_proxy_join_user().
+ *
+ * Returns: A #InfcUserRequest, or %NULL on error.
+ */
+InfcUserRequest*
+inf_text_session_join_user(InfcSessionProxy* proxy,
+                           const gchar* name,
+                           InfUserStatus status,
+                           gdouble hue,
+                           guint caret_position,
+                           int selection_length,
+                           GError** error)
+{
+  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
+  g_return_val_if_fail(
+    INF_TEXT_IS_SESSION(infc_session_proxy_get_session(proxy)),
+    NULL
+  );
+
+#define N_PARAMS 6u
+  GParameter params[N_PARAMS] = {
+    { "hue", { 0 } },
+    { "vector", { 0 } },
+    { "caret-position", { 0 } },
+    { "selection-length", { 0 } },
+    { "name", { 0 } },
+    { "status", { 0 } }
+  };
+
+  InfcUserRequest* request;
+  guint i;
+
+  g_value_init(&params[0].value, G_TYPE_DOUBLE);
+  g_value_set_double(&params[0].value, hue);
+
+  g_value_init(&params[1].value, INF_ADOPTED_TYPE_STATE_VECTOR);
+  g_value_set_boxed(
+    &params[1].value,
+    inf_adopted_algorithm_get_current(
+      inf_adopted_session_get_algorithm(
+        INF_ADOPTED_SESSION(
+          infc_session_proxy_get_session(
+            proxy
+         )
+        )
+      )
+    )
+  );
+
+  g_value_init(&params[2].value, G_TYPE_UINT);
+  g_value_set_uint(&params[2].value, caret_position);
+
+  g_value_init(&params[3].value, G_TYPE_INT);
+  g_value_set_uint(&params[3].value, selection_length);
+
+  g_value_init(&params[4].value, G_TYPE_STRING);
+  g_value_set_string(&params[4].value, name); /* TODO: set_static_string? */
+
+  g_value_init(&params[5].value, INF_TYPE_USER_STATUS);
+  g_value_set_enum(&params[5].value, status);
+
+  request = infc_session_proxy_join_user(proxy, params, N_PARAMS, error);
+
+  for(i = 0; i < N_PARAMS; ++i)
+    g_value_unset(&params[i].value);
+#undef N_PARAMS
+
+  return request;
+}
+
 /* vim:set et sw=2 ts=2: */

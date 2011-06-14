@@ -14,6 +14,12 @@
 	(infd_directory_node_is_name_available): Enable localization of two
 	error messages.
 
+2011-06-14  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-session.h:
+	* libinftext/inf-text-session.c: Add inf_text_session_join_user()
+	convenience function.
+
 2011-06-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.c: When unlinking a session that
