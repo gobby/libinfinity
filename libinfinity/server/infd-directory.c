@@ -1828,6 +1828,42 @@ infd_directory_node_is_name_available(InfdDirectory* directory,
                                       const gchar* name,
                                       GError** error)
 {
+  gboolean has_sensible_character = FALSE;
+  const gchar* p;
+
+  for (p = name; *p != '\0'; p = g_utf8_next_char(p))
+  {
+    if(!g_unichar_isprint(*p))
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_INVALID_NAME,
+        _("Name \"%s\" is an invalid name: contains non-printable characters"),
+        name
+      );
+
+      return FALSE;
+    }
+    else if(!g_unichar_isspace(*p))
+    {
+      has_sensible_character = TRUE;
+    }
+  }
+
+  if(!has_sensible_character)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_INVALID_NAME,
+      _("Name \"%s\" is an invalid name: contains only space characters"),
+      name
+    );
+
+    return FALSE;
+  }
+
   if(strchr(name, '/') != NULL)
   {
     g_set_error(
