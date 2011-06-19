@@ -1,3 +1,9 @@
+2011-06-19  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.c
+	(infd_directory_node_is_name_available): Enable localization of two
+	error messages.
+
 2011-06-02  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/server/infd-directory.c (infd_directory_add_note): Do

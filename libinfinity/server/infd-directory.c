@@ -1740,7 +1740,7 @@ infd_directory_node_is_name_available(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_INVALID_NAME,
-      "Name \"%s\" is an invalid name: contains \"/\"",
+      _("Name \"%s\" is an invalid name: contains \"/\""),
       name
     );
 
@@ -1755,7 +1755,7 @@ infd_directory_node_is_name_available(InfdDirectory* directory,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NODE_EXISTS,
-      "A node with name \"%s\" exists already",
+      _("A node with name \"%s\" exists already"),
       name
     );
 
