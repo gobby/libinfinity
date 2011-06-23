@@ -1,3 +1,7 @@
+2011-06-23  Philipp Kern  <phil@0x539.de>
+
+	* configure.ac: Print if PAM support is enabled or not.
+
 2011-06-19  Benjamin Herr  <ben@0x539.de>
 
 	* libinfinity/server/infd-directory.c
