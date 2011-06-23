@@ -237,8 +237,10 @@ AC_CHECK_LIB([ pam ],
              [ AC_MSG_RESULT(yes)
                AC_DEFINE(LIBINFINITY_HAVE_PAM, 1,
                          [Define this symbol if you have pam])
+               use_pam=yes
                infinity_LIBS="$infinity_LIBS -lpam" ],
-             [ AC_MSG_RESULT(no) ]
+             [ AC_MSG_RESULT(no)
+               use_pam=no ]
 )
 
 # Check for PAM_FAIL_DELAY
@@ -334,6 +336,7 @@ Build optional packages:
 Enable support for:
   avahi: $use_avahi
   libdaemon: $use_libdaemon
+  pam: $use_pam
 "
 
 # vim:set et:
