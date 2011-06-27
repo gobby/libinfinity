@@ -1,3 +1,10 @@
+2011-06-27  Armin Burgmeier  <armin@arbur.net>
+
+	* libinftext/inf-text-chunk.c: Use g_utf8_offset_to_pointer() instead
+	of iconv to determine the byte offset in a segment when the chunk is
+	UTF-8 encoded. This is a significant perforamnce improvement for long
+	segments.
+
 2011-06-23  Philipp Kern  <phil@0x539.de>
 
 	* configure.ac: Print if PAM support is enabled or not.
