@@ -1,3 +1,8 @@
+2011-07-17  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-pam.c: Fix pam_appl.h include on MacOS X (#563,
+	nairboon).
+
 2011-06-27  Armin Burgmeier  <armin@arbur.net>
 
 	* libinftext/inf-text-chunk.c: Use g_utf8_offset_to_pointer() instead

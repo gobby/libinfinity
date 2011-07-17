@@ -26,7 +26,11 @@
 #ifdef LIBINFINITY_HAVE_PAM
 
 #include <infinoted/infinoted-pam.h>
+#ifdef __APPLE__
+#include <pam/pam_appl.h>
+#else
 #include <security/pam_appl.h>
+#endif
 #include <sys/types.h>
 #include <grp.h>
 #include <pwd.h>
