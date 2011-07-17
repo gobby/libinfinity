@@ -1,3 +1,8 @@
+2011-07-17  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-pam.c: Fix pam_appl.h include on MacOS X (#563,
+	nairboon).
+
 2011-06-23  Philipp Kern  <phil@0x539.de>
 
 	* configure.ac: Print if PAM support is enabled or not.
