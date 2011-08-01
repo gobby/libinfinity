@@ -1,5 +1,11 @@
 2011-08-01  Armin Burgmeier  <armin@arbur.net>
 
+	* === Released 0.5.1 ===
+
+	* NEWS: Update for release.
+
+2011-08-01  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-config-reload.c (infinoted_config_reload):
 	Update directory sync on config reload.
 

@@ -1,3 +1,13 @@
+libinfinity 0.5.1:
+
+	* infinoted: Update directory sync settings on config reload
+	* infinoted: Fix a crash when directory sync was enabled (#556)
+	* Fix the build on Mac OS X (#563)
+	* Disallow node names containing non-printable or only space
+	  characters
+	* Fixed a reference leak in infd_directory_add_note()
+	* Fixed a crash in infd_directory_iter_get_session()
+
 libinfinity 0.5.0:
 
 	* infinoted: Added the --pam-server, --allow-user and --allow-group
