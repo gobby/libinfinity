@@ -197,7 +197,7 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
       else
       {
         if(timeout == INF_STANDALONE_IO_POLL_INFINITE ||
-           cur_timeout->msecs - elapsed > (guint)timeout)
+           cur_timeout->msecs - elapsed < (guint)timeout)
         {
           timeout = cur_timeout->msecs - elapsed;
         }
@@ -614,6 +614,8 @@ inf_standalone_io_wakeup(InfStandaloneIo* io)
    * called whenever a watch changes or a timeout or dispatch is added, so
    * that the new event is taken into account. */
   /* Should only ever be called with the IO's mutex being locked. */
+  /* TODO: Turn this into a noop if called from the same thread the loop
+   * runs in? */
 
   InfStandaloneIoPrivate* priv;
 #ifndef G_OS_WIN32
