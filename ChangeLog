@@ -1,5 +1,9 @@
 2011-08-01  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Post-release bump to 0.5.2.
+
+2011-08-01  Armin Burgmeier  <armin@arbur.net>
+
 	* === Released 0.5.1 ===
 
 	* NEWS: Update for release.
