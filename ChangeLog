@@ -1,3 +1,9 @@
+2011-08-01  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-standalone-io.c
+	(inf_standalone_io_iteration_impl): Wait for the earliest timeout, not
+	for the latest one.
+
 2011-07-17  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-pam.c: Fix pam_appl.h include on MacOS X (#563,
