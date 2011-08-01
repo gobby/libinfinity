@@ -1,5 +1,11 @@
 2011-08-01  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-directory-sync.c
+	(infinoted_directory_sync_remove_session): Do not run into an
+	assertion failue if the removed session had a timeout running.
+
+2011-08-01  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-standalone-io.c
 	(inf_standalone_io_iteration_impl): Wait for the earliest timeout, not
 	for the latest one.

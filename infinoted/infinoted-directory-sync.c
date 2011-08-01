@@ -302,7 +302,13 @@ infinoted_directory_sync_remove_session(InfinotedDirectorySync* dsync,
   if(sess->timeout != NULL)
   {
     infinoted_directory_sync_session_save(dsync, sess);
-    infinoted_directory_sync_session_stop(dsync, sess);
+
+    if(sess->timeout != NULL)
+    {
+      /* should not happen as the timeout is reset by _save. Could still
+       * be set in case _save fails though. */
+      infinoted_directory_sync_session_stop(dsync, sess);
+    }
   }
 
   buffer = INF_TEXT_BUFFER(
@@ -339,6 +345,7 @@ infinoted_directory_sync_directory_add_session_cb(InfdDirectory* directory,
 
   dsync = (InfinotedDirectorySync*)user_data;
   error = NULL;
+
   if(!infinoted_directory_sync_add_session(dsync, iter, &error))
   {
     path = infd_directory_iter_get_path(directory, iter);
