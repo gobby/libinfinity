@@ -1,5 +1,10 @@
 2011-08-01  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-config-reload.c (infinoted_config_reload):
+	Update directory sync on config reload.
+
+2011-08-01  Armin Burgmeier  <armin@arbur.net>
+
 	* infinoted/infinoted-directory-sync.c
 	(infinoted_directory_sync_remove_session): Do not run into an
 	assertion failue if the removed session had a timeout running.

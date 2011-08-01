@@ -333,6 +333,32 @@ infinoted_config_reload(InfinotedRun* run,
     }
   }
 
+  if( (run->dsync == NULL && startup->options->sync_interval > 0 &&
+                             startup->options->sync_directory != NULL) ||
+      (run->dsync != NULL && (startup->options->sync_interval !=
+                              run->dsync->sync_interval ||
+                              startup->options->sync_directory == NULL ||
+                              strcmp(
+                                startup->options->sync_directory,
+                                run->dsync->sync_directory) != 0)))
+  {
+    if(run->dsync != NULL)
+    {
+      infinoted_directory_sync_free(run->dsync);
+      run->dsync = NULL;
+    }
+
+    if(startup->options->sync_interval > 0 &&
+       startup->options->sync_directory != NULL)
+    {
+      run->dsync = infinoted_directory_sync_new(
+        run->directory,
+        startup->options->sync_directory,
+        startup->options->sync_interval
+      );
+    }
+  }
+
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   /* Remember whether we have been daemonized; this is not a config file
    * option, so not properly set in our newly created startup. */
