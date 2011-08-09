@@ -29,6 +29,11 @@
 
 2011-08-09  Armin Burgmeier  <armin@arbur.net>
 
+	* libinftext/inf-text-session.c (inf_text_session_join_user): Set
+	caret position property correctly as given, and avoid a warning.
+
+2011-08-09  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Fix a crash when the
 	initial message contains invalid UTF-8.
 

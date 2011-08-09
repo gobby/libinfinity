@@ -2148,7 +2148,7 @@ inf_text_session_join_user(InfcSessionProxy* proxy,
   g_value_set_uint(&params[2].value, caret_position);
 
   g_value_init(&params[3].value, G_TYPE_INT);
-  g_value_set_uint(&params[3].value, selection_length);
+  g_value_set_int(&params[3].value, selection_length);
 
   g_value_init(&params[4].value, G_TYPE_STRING);
   g_value_set_string(&params[4].value, name); /* TODO: set_static_string? */
