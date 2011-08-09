@@ -2522,6 +2522,12 @@ inf_xmpp_connection_sax_start_element(void* context,
   xmpp = INF_XMPP_CONNECTION(context);
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
+  /* This can happen when both a chunk which causes the connection to
+   * terminate and the start of an element happen in the same call to
+   * xmlParseChunk */
+  if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
+    return;
+
   switch(priv->status)
   {
   case INF_XMPP_CONNECTION_CONNECTED:
@@ -2603,6 +2609,12 @@ inf_xmpp_connection_sax_end_element(void* context,
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
+
+  /* This can happen when both a chunk which causes the connection to
+   * terminate and the end of an element happen in the same call to
+   * xmlParseChunk */
+  if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
+    return;
 
   /* If we are not in the toplevel (directly in <stream:stream>) but in some
    * child, process this normally because it belongs to a child. */
@@ -2733,6 +2745,11 @@ inf_xmpp_connection_sax_error(void* context,
 
   /* The XML parser should not be called in this state */
   g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
+
+  /* This can happen when both a chunk which causes the connection to
+   * terminate and an error happens in the same call to xmlParseChunk */
+  if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS)
+    return;
 
   /* If we are in this state, the server waits already on a GnuTLS
    * handshake, so we cannot send arbitrary XML here. Also cannot
