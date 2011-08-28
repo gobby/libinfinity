@@ -1,3 +1,8 @@
+2011-08-28  Philipp Kern  <phil@0x539.de>
+
+	* infinoted/infinoted-0.6.man: Update whatis entry to be
+	actually useful.
+
 2011-08-09  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c: Fix a crash when the
