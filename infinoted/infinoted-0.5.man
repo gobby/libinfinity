@@ -1,6 +1,6 @@
 .TH INFINOTED "1" "January 2011" "infinoted 0.5" "User Commands"
 .SH NAME
-infinoted \- manual page for infinoted 0.5
+infinoted \- dedicated server for the infinote protocol (e.g. Gobby)
 .SH SYNOPSIS
 .B infinoted\-0.5
 .RI [ options ]
