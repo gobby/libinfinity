@@ -1,3 +1,9 @@
+2011-10-13  Philipp Kern  <phil@0x539.de>
+
+	* infinoted/infinoted-0.5.man:
+	* infinoted/infinoted-options.c: State that sync interval is
+	in seconds.
+
 2011-08-28  Philipp Kern  <phil@0x539.de>
 
 	* infinoted/infinoted-0.5.man: Update whatis entry to be

@@ -65,7 +65,7 @@ Group allowed to connect after pam authentication. Separate entries with semicol
 A directory into which to periodically store a copy of the document tree
 .TP
 \fB\-\-sync\-interval\fR=\fIINTERVAL\fR
-Interval within which to store documents to the specified sync\-directory, or 0 to disable directory synchronization
+Interval within which to store documents to the specified sync\-directory, in seconds, or 0 to disable directory synchronization
 .TP
 \fB\-d\fR, \fB\-\-daemonize\fR
 Daemonize the server
