@@ -659,7 +659,8 @@ infinoted_options_load(InfinotedOptions* options,
     { "sync-interval", 0, 0,
       G_OPTION_ARG_INT, NULL,
       N_("Interval within which to store documents to the specified "
-         "sync-directory, or 0 to disable directory synchronization"),
+         "sync-directory, in seconds, or 0 to disable directory "
+         "synchronization"),
          N_("INTERVAL") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
