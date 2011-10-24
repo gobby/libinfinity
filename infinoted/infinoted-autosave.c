@@ -19,6 +19,7 @@
 
 /* TODO: Make a GObject out of this, and move it into libinfinity */
 
+#include <glib.h>
 #include <infinoted/infinoted-autosave.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
@@ -122,6 +123,8 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
   GError* error;
   gchar* path;
   InfBuffer* buffer;
+  gchar* root_directory;
+  gchar* argv[4];
 
   directory = autosave->directory;
   iter = &session->iter;
@@ -160,6 +163,7 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
 
     g_free(path);
     g_error_free(error);
+    error = NULL;
 
     infinoted_autosave_session_start(session->autosave, session);
   }
@@ -168,8 +172,40 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
     /* TODO: Remove this as soon as directory itself unsets modified flag
      * on session_write */
     inf_buffer_set_modified(INF_BUFFER(buffer), FALSE);
-  }
 
+    if(autosave->autosave_hook != NULL)
+    {
+      path = infd_directory_iter_get_path(directory, iter);
+
+      g_object_get(
+        G_OBJECT(infd_directory_get_storage(directory)),
+        "root-directory",
+        &root_directory,
+        NULL
+      );
+
+      argv[0] = autosave->autosave_hook;
+      argv[1] = root_directory;
+      argv[2] = path;
+      argv[3] = NULL;
+
+      if(!g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH,
+                        NULL, NULL, NULL, &error))
+      {
+        g_warning(
+          _("Could not execute autosave hook: \"%s\""),
+          error->message
+        );
+
+        g_error_free(error);
+        error = NULL;
+      }
+
+      g_free(path);
+      g_free(root_directory);
+    }
+  }
+  
   inf_signal_handlers_unblock_by_func(
     G_OBJECT(buffer),
     G_CALLBACK(infinoted_autosave_buffer_notify_modified_cb),
@@ -309,6 +345,7 @@ infinoted_autosave_walk_directory(InfinotedAutosave* autosave,
 /**
  * infinoted_autosave_new:
  * @directory: A #InfdDirectory.
+ * @autosave_hook: Command to run after saving the documents in @directory.
  * @autosave_interval: The interval in which to save documents in @directory,
  * in seconds.
  *
@@ -320,7 +357,8 @@ infinoted_autosave_walk_directory(InfinotedAutosave* autosave,
  */
 InfinotedAutosave*
 infinoted_autosave_new(InfdDirectory* directory,
-                       unsigned int autosave_interval)
+                       unsigned int autosave_interval,
+                       gchar* autosave_hook)
 {
   InfinotedAutosave* autosave;
   InfdDirectoryIter iter;
@@ -329,6 +367,7 @@ infinoted_autosave_new(InfdDirectory* directory,
 
   autosave->directory = directory;
   autosave->autosave_interval = autosave_interval;
+  autosave->autosave_hook = g_strdup(autosave_hook);
   autosave->sessions = NULL;
   g_object_ref(directory);
 
@@ -383,6 +422,7 @@ infinoted_autosave_free(InfinotedAutosave* autosave)
     );
   }
 
+  g_free(autosave->autosave_hook);
   g_object_unref(autosave->directory);
   g_slice_free(InfinotedAutosave, autosave);
 }

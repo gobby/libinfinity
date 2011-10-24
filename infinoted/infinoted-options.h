@@ -37,6 +37,7 @@ struct _InfinotedOptions {
   guint port;
   InfXmppConnectionSecurityPolicy security_policy;
   gchar* root_directory;
+  gchar* autosave_hook;
   guint autosave_interval;
   gchar* password;
 #ifdef LIBINFINITY_HAVE_PAM
@@ -47,6 +48,7 @@ struct _InfinotedOptions {
 
   gchar* sync_directory;
   guint sync_interval;
+  gchar* sync_hook;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   gboolean daemonize;
@@ -61,6 +63,7 @@ typedef enum _InfinotedOptionsError {
   INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
   INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
   INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION,
+  INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_COMBINATION,
   INFINOTED_OPTIONS_ERROR_INVALID_AUTHENTICATION_SETTINGS
 } InfinotedOptionsError;
 

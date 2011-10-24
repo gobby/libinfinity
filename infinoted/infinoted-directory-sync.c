@@ -143,6 +143,8 @@ infinoted_directory_sync_session_save(InfinotedDirectorySync* dsync,
   InfTextChunk* chunk;
   gchar* content;
   gsize bytes;
+  gchar* path;
+  gchar* argv[4];
 
   iter = &session->iter;
   error = NULL;
@@ -189,8 +191,31 @@ infinoted_directory_sync_session_save(InfinotedDirectorySync* dsync,
       );
 
       g_error_free(error);
+      error = NULL;
 
       infinoted_directory_sync_session_start(session->dsync, session);
+    }
+    else
+    {
+      if(dsync->sync_hook != NULL)
+      {
+        path = infd_directory_iter_get_path(session->dsync->directory, iter);
+
+        argv[0] = dsync->sync_hook;
+        argv[1] = path;
+        argv[2] = session->path;
+        argv[3] = NULL;
+
+        if(!g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH,
+                          NULL, NULL, NULL, &error))
+        {
+          g_warning(_("Could not execute sync-hook: \"%s\""), error->message);
+          g_error_free(error);
+          error = NULL;
+        }
+
+        g_free(path);
+      }
     }
 
     g_free(content);
@@ -435,6 +460,7 @@ infinoted_directory_sync_walk_directory(InfinotedDirectorySync* dsync,
  * @sync_directory: The directory on the file system to sync documents to.
  * @sync_interval: The interval in which to save documents to @sync_directory,
  * in seconds.
+ * @sync_hook: Command to run after syncing the documents.
  *
  * Creates a new #InfinotedDirectorySync object which will save all documents
  * in @directory every @sync_interval into the file system at @sync_directory.
@@ -445,7 +471,8 @@ infinoted_directory_sync_walk_directory(InfinotedDirectorySync* dsync,
 InfinotedDirectorySync*
 infinoted_directory_sync_new(InfdDirectory* directory,
                              const gchar* sync_directory,
-                             unsigned int sync_interval)
+                             unsigned int sync_interval,
+                             const gchar* sync_hook)
 {
   InfinotedDirectorySync* dsync;
   InfdDirectoryIter iter;
@@ -455,6 +482,7 @@ infinoted_directory_sync_new(InfdDirectory* directory,
   dsync->directory = directory;
   dsync->sync_directory = g_strdup(sync_directory);
   dsync->sync_interval = sync_interval;
+  dsync->sync_hook = g_strdup(sync_hook);
   dsync->sessions = NULL;
   g_object_ref(directory);
 
@@ -507,6 +535,9 @@ infinoted_directory_sync_free(InfinotedDirectorySync* dsync)
   }
 
   g_object_unref(dsync->directory);
+
+  g_free(dsync->sync_hook);
+  g_free(dsync->sync_directory);
   g_slice_free(InfinotedDirectorySync, dsync);
 }
 

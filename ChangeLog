@@ -1,3 +1,15 @@
+2011-10-24  Fabian Henze  <flyser42@gmx.de>
+
+	* infinoted/infinoted-autosave.h:
+	* infinoted/infinoted-autosave.c:
+	* infinoted/infinoted-directory-sync.h:
+	* infinoted/infinoted-directory-sync.c:
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-config-reload.c: Added the autosave-hook and
+	sync-hook options.
+
 2011-10-13  Philipp Kern  <phil@0x539.de>
 
 	* infinoted/infinoted-0.6.man:

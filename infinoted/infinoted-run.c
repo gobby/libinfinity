@@ -231,7 +231,8 @@ infinoted_run_new(InfinotedStartup* startup,
   {
     run->autosave = infinoted_autosave_new(
       run->directory,
-      startup->options->autosave_interval
+      startup->options->autosave_interval,
+      startup->options->autosave_hook
     );
   }
   else
@@ -245,7 +246,8 @@ infinoted_run_new(InfinotedStartup* startup,
     run->dsync = infinoted_directory_sync_new(
       run->directory,
       startup->options->sync_directory,
-      startup->options->sync_interval
+      startup->options->sync_interval,
+      startup->options->sync_hook
     );
   }
   else

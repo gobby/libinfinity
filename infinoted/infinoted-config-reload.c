@@ -316,7 +316,9 @@ infinoted_config_reload(InfinotedRun* run,
 
   if( (run->autosave == NULL && startup->options->autosave_interval >  0) ||
       (run->autosave != NULL && startup->options->autosave_interval !=
-                                run->autosave->autosave_interval))
+                                run->autosave->autosave_interval) ||
+      (run->autosave != NULL && strcmp(startup->options->autosave_hook,
+                                       run->autosave->autosave_hook) != 0))
   {
     if(run->autosave != NULL)
     {
@@ -328,7 +330,8 @@ infinoted_config_reload(InfinotedRun* run,
     {
       run->autosave = infinoted_autosave_new(
         run->directory,
-        startup->options->autosave_interval
+        startup->options->autosave_interval,
+        startup->options->autosave_hook
       );
     }
   }
@@ -340,7 +343,10 @@ infinoted_config_reload(InfinotedRun* run,
                               startup->options->sync_directory == NULL ||
                               strcmp(
                                 startup->options->sync_directory,
-                                run->dsync->sync_directory) != 0)))
+                                run->dsync->sync_directory) != 0 || 
+                              strcmp(
+                                startup->options->sync_hook,
+                                run->dsync->sync_hook) != 0)))
   {
     if(run->dsync != NULL)
     {
@@ -354,7 +360,8 @@ infinoted_config_reload(InfinotedRun* run,
       run->dsync = infinoted_directory_sync_new(
         run->directory,
         startup->options->sync_directory,
-        startup->options->sync_interval
+        startup->options->sync_interval,
+        startup->options->sync_hook
       );
     }
   }

@@ -30,12 +30,14 @@ typedef struct _InfinotedAutosave InfinotedAutosave;
 struct _InfinotedAutosave {
   InfdDirectory* directory;
   unsigned int autosave_interval;
+  gchar* autosave_hook;
   GSList* sessions;
 };
 
 InfinotedAutosave*
 infinoted_autosave_new(InfdDirectory* directory,
-                       unsigned int autosave_interval);
+                       unsigned int autosave_interval,
+                       gchar* autosave_hook);
 
 void
 infinoted_autosave_free(InfinotedAutosave* autosave);

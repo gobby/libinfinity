@@ -35,6 +35,7 @@ struct _InfinotedDirectorySync {
   InfdDirectory* directory;
   gchar* sync_directory;
   unsigned int sync_interval;
+  gchar* sync_hook;
   GSList* sessions;
 };
 
@@ -45,7 +46,8 @@ typedef enum _InfinotedDirectorySyncError {
 InfinotedDirectorySync*
 infinoted_directory_sync_new(InfdDirectory* directory,
                              const gchar* sync_directory,
-                             unsigned int sync_interval);
+                             unsigned int sync_interval,
+                             const gchar* sync_hook);
 
 void
 infinoted_directory_sync_free(InfinotedDirectorySync* autosave);

@@ -556,7 +556,7 @@ infinoted_options_validate(InfinotedOptions* options,
       "%s",
       _("A synchronization directory is given, but synchronization interval "
         "is not set. Please either set a nonzero synchronization interval "
-        "or unset the synchronization directory using the --sync-directory "
+        "or unset the synchronization directory using the sync-directory "
         "and sync-interval command line or config file options.")
     );
 
@@ -571,9 +571,42 @@ infinoted_options_validate(InfinotedOptions* options,
       "%s",
       _("A synchronization interval is given, but the synchronization "
         "directory is not set. Please either set a valid synchronization "
-        "directory, or set the synchronization interval to zero using "
-        "--sync-directory and sync-interval command line or config file "
+        "directory, or set the synchronization interval to zero using the "
+        "sync-directory and sync-interval command line or config file "
         "options.")
+    );
+
+    return FALSE;
+  }
+  else if(options->sync_hook != NULL &&
+          (options->sync_interval == 0 || options->sync_directory == NULL))
+  {
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION,
+      "%s",
+      _("A synchronization hook is given, but either the synchronization "
+        "directory or the synchronization interval is not set. Please "
+        "either set a valid synchronization interval and directory,"
+        "or unset the synchronization hook using the sync-directory, "
+        "sync-interval and sync-hook sync-hook command line or config file "
+        "options.")
+    );
+
+    return FALSE;
+  }
+  else if(options->autosave_hook != NULL && options->autosave_interval == 0)
+  {
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_COMBINATION,
+      "%s",
+      _("An autosave hook is given, but the autosave interval is not set. "
+        "Please either set a valid autosave interval or unset the "
+        "autosave hook using the --autosave-interval and --autosave-hook "
+        "command line or config file options.")
     );
 
     return FALSE;
@@ -631,6 +664,9 @@ infinoted_options_load(InfinotedOptions* options,
     { "root-directory", 'r', 0,
       G_OPTION_ARG_FILENAME, NULL,
       N_("The directory to store documents into"), N_("DIRECTORY") },
+    { "autosave-hook", 0, 0,
+      G_OPTION_ARG_STRING, NULL,
+      N_("Script to run after having saved a document"), N_("PROGRAM") },
     { "autosave-interval", 0, 0,
       G_OPTION_ARG_INT, NULL,
       N_("Interval within which to save documents, in seconds, or 0 to "
@@ -662,6 +698,10 @@ infinoted_options_load(InfinotedOptions* options,
          "sync-directory, in seconds, or 0 to disable directory "
          "synchronization"),
          N_("INTERVAL") },
+    { "sync-hook", 0, 0,
+      G_OPTION_ARG_STRING, NULL,
+      N_("A script or program which is called whenever a copy of a file in "
+         "the document tree is stored"), N_("PROGRAM") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
       G_OPTION_ARG_NONE, NULL,
@@ -688,6 +728,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &port_number;
   entries[i++].arg_data = &security_policy;
   entries[i++].arg_data = &options->root_directory;
+  entries[i++].arg_data = &options->autosave_hook;
   entries[i++].arg_data = &autosave_interval;
   entries[i++].arg_data = &options->password;
 #ifdef LIBINFINITY_HAVE_PAM
@@ -697,6 +738,7 @@ infinoted_options_load(InfinotedOptions* options,
 #endif /* LIBINFINITY_HAVE_PAM */
   entries[i++].arg_data = &options->sync_directory;
   entries[i++].arg_data = &sync_interval;
+  entries[i++].arg_data = &options->sync_hook;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   entries[i++].arg_data = &options->daemonize;
   entries[i++].arg_data = &kill_daemon;
@@ -809,6 +851,14 @@ infinoted_options_load(InfinotedOptions* options,
     g_free(options->password);
     options->password = NULL;
   }
+  
+  if(options->autosave_hook != NULL &&
+   strcmp(options->autosave_hook, "") == 0)
+  {
+    g_free(options->autosave_hook);
+    options->autosave_hook = NULL;
+  }
+
 
 #ifdef LIBINFINITY_HAVE_PAM
   if(options->pam_service != NULL && strcmp(options->pam_service, "") == 0)
@@ -839,6 +889,13 @@ infinoted_options_load(InfinotedOptions* options,
   {
     g_free(options->sync_directory);
     options->sync_directory = NULL;
+  }
+
+  if(options->sync_hook != NULL &&
+     strcmp(options->sync_hook, "") == 0)
+  {
+    g_free(options->sync_hook);
+    options->sync_hook = NULL;
   }
 
   return infinoted_options_validate(options, error);
@@ -883,6 +940,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
+  options->autosave_hook = NULL;
   options->autosave_interval = 0;
   options->password = NULL;
 #ifdef LIBINFINITY_HAVE_PAM
@@ -892,6 +950,7 @@ infinoted_options_new(const gchar* const* config_files,
 #endif /* LIBINFINITY_HAVE_PAM */
   options->sync_directory = NULL;
   options->sync_interval = 0;
+  options->sync_hook = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = FALSE;
@@ -919,6 +978,7 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_file);
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
+  g_free(options->autosave_hook);
   g_free(options->password);
 #ifdef LIBINFINITY_HAVE_PAM
   g_free(options->pam_service);
@@ -926,6 +986,7 @@ infinoted_options_free(InfinotedOptions* options)
   g_strfreev(options->pam_allowed_groups);
 #endif
   g_free(options->sync_directory);
+  g_free(options->sync_hook);
   g_slice_free(InfinotedOptions, options);
 }
 
