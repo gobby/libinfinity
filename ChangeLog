@@ -1,3 +1,9 @@
+2012-01-09  Dominique Leuenberger  <dimstar@opensuse.org>
+
+    * infinoted/infinoted-creds.h:
+    * infinoted/infinoted-util.h:
+    * libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
+
 2011-10-13  Philipp Kern  <phil@0x539.de>
 
 	* infinoted/infinoted-0.5.man:
