@@ -22,8 +22,7 @@
 
 #include <libinfinity/common/inf-certificate-credentials.h>
 
-#include <glib/gtypes.h>
-#include <glib/gerror.h>
+#include <glib.h>
 
 #include <gnutls/gnutls.h>
 

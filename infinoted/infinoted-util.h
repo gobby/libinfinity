@@ -22,8 +22,7 @@
 
 #include <libinfinity/inf-config.h>
 
-#include <glib/gtypes.h>
-#include <glib/gerror.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 

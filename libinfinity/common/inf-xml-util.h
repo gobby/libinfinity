@@ -20,8 +20,7 @@
 #ifndef __INF_XML_UTIL_H__
 #define __INF_XML_UTIL_H__
 
-#include <glib/gtypes.h>
-#include <glib/gerror.h>
+#include <glib.h>
 #include <libxml/tree.h>
 
 G_BEGIN_DECLS
