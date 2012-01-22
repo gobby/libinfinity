@@ -1,8 +1,20 @@
+2012-01-26  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-browser.h:
+	* libinfinity/common/inf-browser-iter.h:
+	* libinfinity/common/inf-browser-request.h:
+	* libinfinity/common/inf-browser.c:
+	* libinfinity/common/inf-browser-iter.c:
+	* libinfinity/common/inf-browser-request.c:
+	* libinfinity/common/inf-marshal.in:
+	* libinfinity/common/Makefile.am: Added the InfBrowser interface, the
+	InfBrowserRequest interface and the InfBrowserIter type.
+
 2012-01-09  Dominique Leuenberger  <dimstar@opensuse.org>
 
-    * infinoted/infinoted-creds.h:
-    * infinoted/infinoted-util.h:
-    * libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-util.h:
+	* libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
 
 2011-10-24  Fabian Henze  <flyser42@gmx.de>
 

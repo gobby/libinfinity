@@ -9,6 +9,9 @@ libinfinity_common_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/common
 
 libinfinity_common_la_SOURCES = \
+	inf-browser.c \
+	inf-browser-iter.c \
+	inf-browser-request.c \
 	inf-buffer.c \
 	inf-certificate-chain.c \
 	inf-certificate-credentials.c \
@@ -36,6 +39,9 @@ libinfinity_common_la_SOURCES = \
 	inf-xmpp-manager.c
 
 libinfinity_common_la_HEADERS = \
+	inf-browser.h \
+	inf-browser-iter.h \
+	inf-browser-request.h \
 	inf-buffer.h \
 	inf-certificate-chain.h \
 	inf-certificate-credentials.h \
