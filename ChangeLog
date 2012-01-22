@@ -1,8 +1,13 @@
+2012-01-22  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/common/inf-discovery.c: Indicate title and stability in
+	docs comment block.
+
 2012-01-09  Dominique Leuenberger  <dimstar@opensuse.org>
 
-    * infinoted/infinoted-creds.h:
-    * infinoted/infinoted-util.h:
-    * libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-util.h:
+	* libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
 
 2011-10-24  Fabian Henze  <flyser42@gmx.de>
 

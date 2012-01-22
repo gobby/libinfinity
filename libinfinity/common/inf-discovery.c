@@ -19,9 +19,11 @@
 
 /**
  * SECTION:inf-discovery
+ * @title: InfDiscovery
  * @short_description: Discovery of remote services
  * @include: libinfinity/common/inf-discovery.h
  * @see_also: #InfDiscoveryAvahi
+ * @stability: Unstable
  *
  * #InfDiscovery provides a common interface for the discovery of services.
  * Discovered services are represented by #InfDiscoveryInfo<!-- --> objects
