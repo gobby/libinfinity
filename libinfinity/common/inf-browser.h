@@ -119,6 +119,10 @@ struct _InfBrowserIface {
                             InfBrowserIter* iter,
                             GObject* proxy); /* TODO: Make a InfSessionProxy base class */
 
+  void (*unsubscribe_session)(InfBrowser* browser,
+                              InfBrowserIter* iter,
+                              GObject* proxy); /* TODO: Make a InfSessionProxy base class */
+
   void (*begin_request)(InfBrowser* browser,
                         InfBrowserIter* iter,
                         InfBrowserRequest* request);
@@ -278,6 +282,11 @@ void
 inf_browser_subscribe_session(InfBrowser* browser,
                               InfBrowserIter* iter,
                               GObject* proxy);
+
+void
+inf_browser_unsubscribe_session(InfBrowser* browser,
+                                InfBrowserIter* iter,
+                                GObject* proxy);
 
 void
 inf_browser_begin_request(InfBrowser* browser,

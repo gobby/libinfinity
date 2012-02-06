@@ -42,6 +42,7 @@ enum {
   NODE_ADDED,
   NODE_REMOVED,
   SUBSCRIBE_SESSION,
+  UNSUBSCRIBE_SESSION,
   BEGIN_REQUEST, /* detailed */
 
   LAST_SIGNAL
@@ -156,6 +157,31 @@ inf_browser_base_init(gpointer g_class)
       INF_TYPE_BROWSER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, subscribe_session),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_OBJECT,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      G_TYPE_OBJECT
+    );
+
+    /**
+     * InfBrowser::unsubscribe-session:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @iter: An iterator pointing to the node from which a subscription.
+     * was removed.
+     * @session: The session to which the subscription was removed.
+     *
+     * This signal is emitted whenever a subscription for a node has been
+     * removed. This can happen when a subscribed session is closed, or, in
+     * the case of a server, if the session is idle for a long time it is
+     * stored on disk.
+     */
+    browser_signals[UNSUBSCRIBE_SESSION] = g_signal_new(
+      "unsubscribe-session",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, unsubscribe_session),
       NULL, NULL,
       inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
@@ -914,6 +940,34 @@ inf_browser_subscribe_session(InfBrowser* browser,
   g_signal_emit(
     browser,
     browser_signals[SUBSCRIBE_SESSION],
+    0,
+    iter,
+    proxy
+  );
+}
+
+/**
+ * inf_browser_unsubscribe_session:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to the node to whose session the
+ * subscription was removed.
+ * @proxy: A session proxy for the unsubscribed session.
+ *
+ * This function emits the #InfBrowser::unsubscribe-session signal on
+ * @browser. It is meant to be used by interface implementations only.
+ */
+void
+inf_browser_unsubscribe_session(InfBrowser* browser,
+                                InfBrowserIter* iter,
+                                GObject* proxy)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(iter != NULL);
+  g_return_if_fail(G_IS_OBJECT(proxy));
+
+  g_signal_emit(
+    browser,
+    browser_signals[UNSUBSCRIBE_SESSION],
     0,
     iter,
     proxy
