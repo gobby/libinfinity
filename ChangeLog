@@ -1,8 +1,14 @@
+2012-02-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-certificate-manager.c
+	(inf_gtk_certificate_manager_certificate_func): Fix a crash when the
+	certificate has no hostname set.
+
 2012-01-09  Dominique Leuenberger  <dimstar@opensuse.org>
 
-    * infinoted/infinoted-creds.h:
-    * infinoted/infinoted-util.h:
-    * libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
+	* infinoted/infinoted-creds.h:
+	* infinoted/infinoted-util.h:
+	* libinfinity/common/inf-xml-util.h: Fix compilation with glib 2.31.
 
 2011-10-13  Philipp Kern  <phil@0x539.de>
 

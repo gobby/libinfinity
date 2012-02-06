@@ -497,13 +497,13 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
           break;
         }
       }
+
+      /* Host not found in known hosts list */
+      if(i == priv->known_hosts->len)
+        known = NULL;
     }
 
     g_free(own_hostname);
-
-    /* Host not found in known hosts list */
-    if(i == priv->known_hosts->len)
-      known = NULL;
 
     if(flags == 0)
     {
