@@ -1,3 +1,9 @@
+2012-02-07  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfgtk/inf-gtk-certificate-manager.c
+	(inf_gtk_certificate_manager_certificate_func): Fix a crash when the
+	certificate has no hostname set.
+
 2012-01-22  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-discovery.c: Indicate title and stability in
