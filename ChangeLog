@@ -1,5 +1,21 @@
 2012-03-17  Philipp Kern  <phil@0x539.de>
 
+	* Makefile.am:
+	* configure.ac:
+	* libinfgtk/Makefile.am:
+	* libinftextgtk/Makefile.am: Rework Gtk3 support.  libinfgtk and
+	libinftextgtk are renamed to libinfgtk3 and libinftextgtk3 when
+	Gtk3 support is requested.  This is reflected in the library
+	names, pkg-config files, but not in the header subdirs.  This does
+	mean that old binaries linked against a Gtk3 libinf(text)?gtk
+	will break.  On the other hand this seems to be the better way
+	than breaking old binaries linked against a Gtk2 libinfgtk when
+	libinfinity is (re)built with Gtk3 support, given that Gtk3 support
+	is optional.  Reverse dependencies also need to specify the Gtk3
+	variant explicitly by using the right pkg-config names.
+
+2012-03-17  Philipp Kern  <phil@0x539.de>
+
 	* INSTALL: Boilerplate content updated.
 
 2012-02-07  Armin Burgmeier  <armin@arbur.net>

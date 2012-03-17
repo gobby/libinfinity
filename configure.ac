@@ -122,13 +122,18 @@ if test "x$with_gtk3" = "xyes"
 then
 	gtk_requirement="gtk+-3.0 >= 2.90.6"
 	gtk_version=3
+	infgtkver=gtk3
 else
 	gtk_requirement="gtk+-2.0 >= 2.12"
 	gtk_version=2
+	infgtkver=gtk
 fi
+
+AM_CONDITIONAL([WITH_GTK3], test "x$with_gtk3" = "xyes")
 
 AC_SUBST(gtk_requirement)
 AC_SUBST(gtk_version)
+AC_SUBST(infgtkver)
 
 ###################################
 # libinftextgtk optional package
@@ -321,8 +326,8 @@ AC_CONFIG_FILES([
 AC_CONFIG_FILES(
   libinfinity-libinfinity_api_version.pc:libinfinity.pc.in
   libinftext-libinfinity_api_version.pc:libinftext.pc.in
-  libinfgtk-libinfinity_api_version.pc:libinfgtk.pc.in
-  libinftextgtk-libinfinity_api_version.pc:libinftextgtk.pc.in
+  libinf${infgtkver}-libinfinity_api_version.pc:libinfgtk.pc.in
+  libinftext${infgtkver}-libinfinity_api_version.pc:libinftextgtk.pc.in
 )
 
 AC_OUTPUT
@@ -334,6 +339,7 @@ Build optional packages:
   infinoted: $with_infinoted
 
 Enable support for:
+  gtk: version $gtk_version
   avahi: $use_avahi
   libdaemon: $use_libdaemon
   pam: $use_pam

@@ -7,12 +7,12 @@ pkgconfig_DATA = \
 
 if WITH_INFGTK
 SUBDIRS += libinfgtk
-pkgconfig_DATA += libinfgtk-$(LIBINFINITY_API_VERSION).pc
+pkgconfig_DATA += libinf$(infgtkver)-$(LIBINFINITY_API_VERSION).pc
 endif
 
 if WITH_INFTEXTGTK
 SUBDIRS += libinftextgtk
-pkgconfig_DATA += libinftextgtk-$(LIBINFINITY_API_VERSION).pc
+pkgconfig_DATA += libinftext$(infgtkver)-$(LIBINFINITY_API_VERSION).pc
 endif
 
 if WITH_INFINOTED
