@@ -1,5 +1,11 @@
 2012-03-18  Philipp Kern  <phil@0x539.de>
 
+	* docs/reference/libinfgtk/Makefile.am:
+	* docs/reference/libinftextgtk/Makefile.am: Reference the correct lib
+	when built with Gtk3 support.
+
+2012-03-18  Philipp Kern  <phil@0x539.de>
+
 	* test/Makefile.am: Reference the correct lib when built with Gtk3
 	support.
 

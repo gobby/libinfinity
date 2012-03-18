@@ -77,7 +77,7 @@ AM_CPPFLAGS=$(infgtk_CFLAGS)
 GTKDOC_LIBS = \
 	$(infgtk_LIBS) \
 	$(top_builddir)/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
-	$(top_builddir)/libinfgtk/libinfgtk-$(LIBINFINITY_API_VERSION).la
+	$(top_builddir)/libinfgtk/libinf$(infgtkver)-$(LIBINFINITY_API_VERSION).la
 
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make
