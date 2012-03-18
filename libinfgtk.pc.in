@@ -9,5 +9,5 @@ Name: libinfgtk
 Description: Common infinote GTK+ UI functionality
 Requires: libinfinity-@LIBINFINITY_API_VERSION@ @gtk_requirement@
 Version: @VERSION@
-Libs: -L${libdir} -linfgtk-@LIBINFINITY_API_VERSION@
-Cflags: -I${includedir}/libinfgtk-@LIBINFINITY_API_VERSION@
+Libs: -L${libdir} -linf@infgtkver@-@LIBINFINITY_API_VERSION@
+Cflags: -I${includedir}/libinf@infgtkver@-@LIBINFINITY_API_VERSION@
