@@ -1,3 +1,9 @@
+libinfinity 0.5.2:
+
+	* Fix a crash when a server certificate does not have a hostname set
+	* Fix a crash when the remote side sends invalid UTF-8
+	* Fix compilation with glib >= 2.31
+
 libinfinity 0.5.1:
 
 	* infinoted: Update directory sync settings on config reload
