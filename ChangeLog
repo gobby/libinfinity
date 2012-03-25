@@ -1,5 +1,9 @@
 2012-03-25  Armin Burgmeier  <armin@arbur.net>
 
+	* configure.ac: Post-release bump to 0.5.3.
+
+2012-03-25  Armin Burgmeier  <armin@arbur.net>
+
 	* === Released 0.5.2 ===
 
 	* NEWS: Update for release.
