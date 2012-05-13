@@ -205,7 +205,7 @@ inf_simulated_connection_set_property(GObject* object,
   case PROP_IO:
     g_assert(priv->io == NULL); /* construct only */
     priv->io = INF_IO(g_value_get_object(value));
-    g_object_ref(priv->io);
+    if(priv->io) g_object_ref(priv->io);
     break;
   case PROP_TARGET:
     inf_simulated_connection_set_target(
