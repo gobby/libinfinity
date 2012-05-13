@@ -1,3 +1,10 @@
+2012-05-13  Armin Burgmeier  <armin@arbur.net>
+
+	* test/inf-test-text-recover.c:
+	* test/Makefile.am: Add inf-test-text-recover, a tool similar to
+	inf-test-text-replay which aims at recovering text from a record which
+	was, accidentally or not, deleted by a user.
+
 2012-03-18  Philipp Kern  <phil@0x539.de>
 
 	* libinfgtk.pc.in:
