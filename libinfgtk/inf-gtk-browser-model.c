@@ -94,6 +94,10 @@ inf_gtk_browser_model_status_get_type(void)
         INF_GTK_BROWSER_MODEL_ERROR,
         "INF_GTK_BROWSER_MODEL_ERROR",
         "error"
+      }, {
+        0,
+        NULL,
+        NULL
       }
     };
 

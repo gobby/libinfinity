@@ -166,6 +166,10 @@ inf_xml_connection_status_get_type(void)
         INF_XML_CONNECTION_OPENING,
         "INF_XML_CONNECTION_OPENING",
         "opening"
+      }, {
+        0,
+        NULL,
+        NULL
       }
     };
 
