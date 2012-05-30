@@ -3832,6 +3832,10 @@ infc_browser_status_get_type(void)
         INFC_BROWSER_CONNECTED,
         "INFC_BROWSER_CONNECTED",
         "connected"
+      }, {
+        0,
+        NULL,
+        NULL
       }
     };
 

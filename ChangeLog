@@ -1,3 +1,12 @@
+2012-05-30  Colomban Wendling <ban@herbesfolles.org>
+
+	* libinfgtk/inf-gtk-browser-model.c:
+	* libinfinity/client/infc-browser.c:
+	* libinfinity/common/inf-xml-connection.c: InfXmlConnectionStatus,
+	InfcBrowserStatus and InfGtkBrowserModelStatus GType registration code
+	missed an array sentinel leading to GType reading invalid memory paste
+	the end of the array.
+
 2012-03-25  Armin Burgmeier  <armin@arbur.net>
 
 	* configure.ac: Post-release bump to 0.5.3.
