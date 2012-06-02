@@ -151,6 +151,11 @@ then
   PKG_CHECK_MODULES([inftextgtk], [$gtk_requirement])
 fi
 
+if test "x$with_inftextgtk" = "xyes"
+then
+  AC_CHECK_LIB([m], [atan2], [inftextgtk_LIBS="$inftextgtk_LIBS -lm"], AC_MSG_ERROR(libm not found))
+fi
+
 AM_CONDITIONAL([WITH_INFTEXTGTK], test "x$with_inftextgtk" = "xyes")
 
 ###############################
