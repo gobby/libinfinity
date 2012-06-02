@@ -1,4 +1,6 @@
 SUBDIRS = util session cleanup
+TESTS = inf-test-state-vector inf-test-chunk inf-test-text-session \
+	inf-test-text-cleanup
 
 AM_CPPFLAGS = \
 	-I${top_srcdir} \
