@@ -1,3 +1,8 @@
+2012-06-02  Philipp Kern  <phil@0x539.de>
+
+	* configure.ac: Check for libm for libinftextgtk (uses atan2, floor
+	and sin/cos).
+
 2012-05-30  Colomban Wendling <ban@herbesfolles.org>
 
 	* libinfgtk/inf-gtk-browser-model.c:
