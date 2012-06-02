@@ -1,5 +1,11 @@
 2012-06-02  Philipp Kern  <phil@0x539.de>
 
+	* test/Makefile.am: Add non-interactive tests to `make check'.
+	(Except for text-replay, which takes a long time to complete and
+	needs additional CLI parameters.)
+
+2012-06-02  Philipp Kern  <phil@0x539.de>
+
 	* configure.ac: Check for libm for libinftextgtk (uses atan2, floor
 	and sin/cos).
 
