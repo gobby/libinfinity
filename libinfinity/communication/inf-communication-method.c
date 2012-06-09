@@ -299,13 +299,13 @@ inf_communication_method_received(InfCommunicationMethod* method,
 {
   InfCommunicationMethodIface* iface;
 
-  g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
-  g_return_if_fail(inf_communication_method_is_member(method, connection));
-  g_return_if_fail(xml != NULL);
+  g_return_val_if_fail(INF_COMMUNICATION_IS_METHOD(method), 0);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), 0);
+  g_return_val_if_fail(inf_communication_method_is_member(method, connection), 0);
+  g_return_val_if_fail(xml != NULL, 0);
 
   iface = INF_COMMUNICATION_METHOD_GET_IFACE(method);
-  g_return_if_fail(iface->received != NULL);
+  g_return_val_if_fail(iface->received != NULL, 0);
 
   return iface->received(method, connection, xml);
 }

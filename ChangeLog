@@ -1,3 +1,9 @@
+2012-06-09  Philipp Kern  <phil@0x539.de>
+
+	* libinfinity/communication/inf-communication-method.c
+	(inf_communication_method_received): Do not return without a value
+	from a non-void function.
+
 2012-06-02  Philipp Kern  <phil@0x539.de>
 
 	* test/Makefile.am: Add non-interactive tests to `make check'.
