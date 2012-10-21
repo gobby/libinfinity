@@ -2301,12 +2301,15 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
   if(request == NULL) return FALSE;
   g_assert(INFC_IS_EXPLORE_REQUEST(request));
 
+  g_object_ref(request);
+  infc_request_manager_remove_request(priv->request_manager, request);
+
   result = infc_explore_request_finished(
     INFC_EXPLORE_REQUEST(request),
     error
   );
 
-  infc_request_manager_remove_request(priv->request_manager, request);
+  g_object_unref(request);
   return result;
 }
 

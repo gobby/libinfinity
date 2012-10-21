@@ -1,3 +1,8 @@
+2012-10-21  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/client/infc-browser.c (infc_browser_handle_explore_end):
+	Allow the browser to be disconnected during the request callback.
+
 2012-06-09  Philipp Kern  <phil@0x539.de>
 
 	* libinfinity/communication/inf-communication-method.c
