@@ -1,5 +1,11 @@
 2012-10-21  Armin Burgmeier  <armin@arbur.net>
 
+	* === Released 0.5.3 ===
+
+	* NEWS: Update for release.
+
+2012-10-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/common/inf-xmpp-connection.c: Fix a crash that could
 	occur when it is noticed at send time that a connection is down.
 

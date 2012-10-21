@@ -1,3 +1,10 @@
+libinfinity 0.5.3:
+
+	* Fix a crash when a connection goes down at the moment libinfinity
+	  is trying to send data.
+	* Fix possible undefined behavior at type registration (Colomban
+	  Wendling).
+
 libinfinity 0.5.2:
 
 	* Fix a crash when a server certificate does not have a hostname set
