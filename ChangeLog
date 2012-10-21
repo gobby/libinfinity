@@ -1,5 +1,15 @@
 2012-10-21  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c: Fix a crash that could
+	occur when it is noticed at send time that a connection is down.
+
+	* test/inf-test-mass-join.c:
+	* test/Makefile.am: Add a test which connects 128 users
+	simultaneously to an infinote server. Disconnecting all these users at
+	once is a way to reproduce the crash the above change fixes.
+
+2012-10-21  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/client/infc-browser.c (infc_browser_handle_explore_end):
 	Allow the browser to be disconnected during the request callback.
 

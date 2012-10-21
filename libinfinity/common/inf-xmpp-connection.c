@@ -117,7 +117,7 @@ struct _InfXmppConnectionPrivate {
   InfXmppConnectionMessage* last_message;
 
   /* XML parsing */
-  gboolean parsing; /* Whether we are currently in an XML parser callback */
+  guint parsing; /* Whether we are currently in an XML parser or GnuTLS callback */
   xmlParserCtxtPtr parser;
   xmlNodePtr root;
   xmlNodePtr cur;
@@ -543,84 +543,6 @@ inf_xmpp_connection_pop_message(InfXmppConnection* connection)
   g_slice_free(InfXmppConnectionMessage, message);
 }
 
-static void
-inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
-                               gconstpointer data,
-                               guint len)
-{
-  InfXmppConnectionPrivate* priv;
-  ssize_t cur_bytes;
-  GError* error;
-
-  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-
-  g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING);
-
-  if(INF_XMPP_CONNECTION_PRINT_TRAFFIC)
-    printf("\033[00;34m%.*s\033[00;00m\n", (int)len, (const char*)data);
-
-  if(priv->session != NULL)
-  {
-    do
-    {
-      cur_bytes = gnutls_record_send(priv->session, data, len);
-
-      if(cur_bytes < 0)
-      {
-        /* A GnuTLS error occured. It does not make sense to try to send
-         * </stream:stream> or a gnutls bye here, since this would again
-         * have to go through GnuTLS, which would fail again, and so on. */
-        error = NULL;
-        inf_gnutls_set_error(&error, cur_bytes);
-        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-        g_error_free(error);
-
-        inf_tcp_connection_close(priv->tcp);
-      }
-      else if(cur_bytes == 0)
-      {
-        /* TODO: I am not sure whether this can actually happen and what
-         * it means. */
-        g_assert_not_reached();
-        /*inf_tcp_connection_close(priv->tcp);*/
-      }
-      else
-      {
-        *((const char**)&data) += cur_bytes;
-        len -= cur_bytes;
-      }
-    } while(len > 0);
-  }
-  else
-  {
-    priv->position += len;
-    inf_tcp_connection_send(priv->tcp, data, len);
-  }
-}
-
-static void
-inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
-                             xmlNodePtr xml)
-{
-  InfXmppConnectionPrivate* priv;
-  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-
-  g_return_if_fail(priv->doc != NULL);
-  g_return_if_fail(priv->buf != NULL);
-
-  xmlDocSetRootElement(priv->doc, xml);
-  xmlNodeDump(priv->buf, priv->doc, xml, 0, 0);
-  xmlUnlinkNode(xml);
-
-  inf_xmpp_connection_send_chars(
-    xmpp,
-    xmlBufferContent(priv->buf),
-    xmlBufferLength(priv->buf)
-  );
-
-  xmlBufferEmpty(priv->buf);
-}
-
 /* Note that this function does not change the state of xmpp, so it might
  * rest in a state where it expects to actually have the resources available
  * that are cleared here. Be sure to adjust state after having called
@@ -684,6 +606,110 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
   priv->pull_len = 0;
 
   g_object_thaw_notify(G_OBJECT(xmpp));
+}
+
+static void
+inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
+                               gconstpointer data,
+                               guint len)
+{
+  InfXmppConnectionPrivate* priv;
+  ssize_t cur_bytes;
+  GError* error;
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  g_assert(priv->status != INF_XMPP_CONNECTION_HANDSHAKING &&
+           priv->status != INF_XMPP_CONNECTION_CLOSED);
+
+  if(INF_XMPP_CONNECTION_PRINT_TRAFFIC)
+    printf("\033[00;34m%.*s\033[00;00m\n", (int)len, (const char*)data);
+
+  /* From here on we go into a GnuTLS callback. Set this flag to prevent
+   * premature cleanup -- make sure that if the connection is being brought
+   * down from a GnuTLS callback then we keep the GnuTLS context around
+   * until the gntuls_record_send() call finishes. */
+  ++priv->parsing;
+
+  if(priv->session != NULL)
+  {
+    do
+    {
+      cur_bytes = gnutls_record_send(priv->session, data, len);
+
+      if(cur_bytes < 0)
+      {
+        /* A GnuTLS error occured. It does not make sense to try to send
+         * </stream:stream> or a gnutls bye here, since this would again
+         * have to go through GnuTLS, which would fail again, and so on. */
+        error = NULL;
+        inf_gnutls_set_error(&error, cur_bytes);
+        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+        g_error_free(error);
+
+        inf_tcp_connection_close(priv->tcp);
+        break;
+      }
+      else if(cur_bytes == 0)
+      {
+        /* TODO: I am not sure whether this can actually happen and what
+         * it means. */
+        g_assert_not_reached();
+        /*inf_tcp_connection_close(priv->tcp);*/
+      }
+      else
+      {
+        *((const char**)&data) += cur_bytes;
+        len -= cur_bytes;
+      }
+    } while(len > 0);
+  }
+  else
+  {
+    priv->position += len;
+    inf_tcp_connection_send(priv->tcp, data, len);
+  }
+
+  g_assert(priv->parsing > 0);
+  if(--priv->parsing == 0)
+  {
+    if(priv->status == INF_XMPP_CONNECTION_CLOSED)
+    {
+      /* Status changed to CLOSED, so while attempting to send data we noticed
+       * that the connection is down. Clear up. We didn't clean up in the
+       * disconnection callback because we wanted to keep the gnutls context
+       * alive until gnutls_record_send() returns. */
+      inf_xmpp_connection_clear(xmpp);
+    }
+  }
+}
+
+static void
+inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
+                             xmlNodePtr xml)
+{
+  InfXmppConnectionPrivate* priv;
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+
+  g_return_if_fail(priv->doc != NULL);
+  g_return_if_fail(priv->buf != NULL);
+
+  xmlDocSetRootElement(priv->doc, xml);
+  xmlNodeDump(priv->buf, priv->doc, xml, 0, 0);
+  xmlUnlinkNode(xml);
+  xmlSetListDoc(xml, NULL);
+
+  inf_xmpp_connection_send_chars(
+    xmpp,
+    xmlBufferContent(priv->buf),
+    xmlBufferLength(priv->buf)
+  );
+
+  /* The connection might be closed & cleared as a result from
+   * inf_xmpp_connection_send_chars(), so make sure the buffer still
+   * exists before emptying it. */
+  if(priv->buf != NULL)
+    xmlBufferEmpty(priv->buf);
 }
 
 /*
@@ -778,7 +804,7 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
   }
 
   /* Clear resources such as GnuTLS session and XML parser */
-  if(!priv->parsing)
+  if(priv->parsing == 0)
     inf_xmpp_connection_clear(xmpp);
 
   /* The Change from CLOSING_STREAM to CLOSING_GNUTLS does not change
@@ -1327,7 +1353,7 @@ inf_xmpp_connection_sasl_finish(InfXmppConnection* xmpp,
     /* We might be in a XML callback here, so do not initiate the stream right
      * now because it replaces the XML parser. The stream is reinitiated in
      * received_cb(). */
-    if(!priv->parsing)
+    if(priv->parsing == 0)
       inf_xmpp_connection_initiate(xmpp);
   }
   else
@@ -2973,13 +2999,13 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
 
   g_object_ref(xmpp);
 
-  g_assert(priv->parsing == FALSE);
+  g_assert(priv->parsing == 0);
   g_assert(priv->parser != NULL);
 
   /* Let callbacks know that we start XML parsing. In case of deinitialization
    * this tells them to keep the XML parser alive. We clean up after parsing
    * in that case. */
-  priv->parsing = TRUE;
+  ++priv->parsing;
 
   if(priv->status != INF_XMPP_CONNECTION_HANDSHAKING)
   {
@@ -3058,34 +3084,36 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
              priv->pull_len == 0);
   }
 
-  priv->parsing = FALSE;
-
-  if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS ||
-     priv->status == INF_XMPP_CONNECTION_CLOSED)
+  g_assert(priv->parsing > 0);
+  if(--priv->parsing == 0)
   {
-    /* Status changed to CLOSING_GNUTLS, this means that someone called
-     * _terminate(). Clean up any resources in use (XML parser, GnuTLS
-     * session etc. */
-    inf_xmpp_connection_clear(xmpp);
-
-    if(priv->status != INF_XMPP_CONNECTION_CLOSED)
+    if(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS ||
+       priv->status == INF_XMPP_CONNECTION_CLOSED)
     {
-      /* Close the TCP connection after remaining stuff has been sent out
-       * in case it is not closed already. */
-      inf_xmpp_connection_push_message(
-        xmpp,
-        inf_xmpp_connection_received_cb_sent_func,
-        NULL,
-        NULL
-      );
+      /* Status changed to CLOSING_GNUTLS, this means that someone called
+       * _terminate(). Clean up any resources in use (XML parser, GnuTLS
+       * session etc. */
+      inf_xmpp_connection_clear(xmpp);
+
+      if(priv->status != INF_XMPP_CONNECTION_CLOSED)
+      {
+        /* Close the TCP connection after remaining stuff has been sent out
+         * in case it is not closed already. */
+        inf_xmpp_connection_push_message(
+          xmpp,
+          inf_xmpp_connection_received_cb_sent_func,
+          NULL,
+          NULL
+        );
+      }
     }
-  }
-  else if(priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED)
-  {
-    /* Reinitiate connection after successful authentication */
-    /* TODO: Only do this if status at the beginning of this call was
-     * AUTHENTICATING */
-    inf_xmpp_connection_initiate(xmpp);
+    else if(priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED)
+    {
+      /* Reinitiate connection after successful authentication */
+      /* TODO: Only do this if status at the beginning of this call was
+       * AUTHENTICATING */
+      inf_xmpp_connection_initiate(xmpp);
+    }
   }
 
   g_object_unref(xmpp);
@@ -3124,7 +3152,7 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
        * signal handler) then we can't delete the XML parser here (otherwise
        * libxml2 crashes, understandably). Instead, just set the status to
        * closed and clean up after XML parsing in _received_cb(). */
-      if(!priv->parsing)
+      if(priv->parsing == 0)
         inf_xmpp_connection_clear(xmpp);
 
       priv->status = INF_XMPP_CONNECTION_CLOSED;
@@ -3364,7 +3392,7 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->messages = NULL;
   priv->last_message = NULL;
 
-  priv->parsing = FALSE;
+  priv->parsing = 0;
   priv->parser = NULL;
   priv->root = NULL;
   priv->cur = NULL;
@@ -3707,7 +3735,7 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
     break;
   case INF_XMPP_CONNECTION_CONNECTED:
   case INF_XMPP_CONNECTION_AUTH_CONNECTED:
-    g_assert(priv->parsing == FALSE);
+    g_assert(priv->parsing == 0);
     inf_xmpp_connection_terminate(INF_XMPP_CONNECTION(connection));
     /* TODO: Shouldn't we close the TCP connection here, as in
      * inf_xmpp_connection_received_cb()? */
@@ -3730,7 +3758,7 @@ inf_xmpp_connection_xml_connection_close(InfXmlConnection* connection)
      * wait on either successful or unsuccessful authentication result,
      * and then close the connection normally. Actually, this is what
      * inf_xmpp_connection_deinitiate is supposed to do. */
-    g_assert(priv->parsing == FALSE);
+    g_assert(priv->parsing == 0);
     inf_xmpp_connection_terminate(INF_XMPP_CONNECTION(connection));
     /* TODO: Shouldn't we close the TCP connection here, as in
      * inf_xmpp_connection_received_cb()? */
@@ -3759,12 +3787,22 @@ inf_xmpp_connection_xml_connection_send(InfXmlConnection* connection,
 
   inf_xmpp_connection_send_xml(INF_XMPP_CONNECTION(connection), xml);
 
-  inf_xmpp_connection_push_message(
-    INF_XMPP_CONNECTION(connection),
-    inf_xmpp_connection_xml_connection_send_sent,
-    inf_xmpp_connection_xml_connection_send_free,
-    xml
-  );
+  /* It can happen that while calling inf_xmpp_connection_send_xml we
+   * notice that the connection is down. Only proceed with sent notification
+   * if the connection is still up and we could actually send the thing. */
+  if(priv->status == INF_XMPP_CONNECTION_READY)
+  {
+    inf_xmpp_connection_push_message(
+      INF_XMPP_CONNECTION(connection),
+      inf_xmpp_connection_xml_connection_send_sent,
+      inf_xmpp_connection_xml_connection_send_free,
+      xml
+    );
+  }
+  else
+  {
+    xmlFreeNode(xml);
+  }
 }
 
 /*
