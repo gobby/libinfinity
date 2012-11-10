@@ -20,6 +20,8 @@
 #ifndef __INFINOTED_DIRECTORY_SYNC_H__
 #define __INFINOTED_DIRECTORY_SYNC_H__
 
+#include <infinoted/infinoted-log.h>
+
 #include <libinfinity/server/infd-directory.h>
 
 #include <glib.h>
@@ -33,6 +35,7 @@ G_BEGIN_DECLS
 typedef struct _InfinotedDirectorySync InfinotedDirectorySync;
 struct _InfinotedDirectorySync {
   InfdDirectory* directory;
+  InfinotedLog* log;
   gchar* sync_directory;
   unsigned int sync_interval;
   gchar* sync_hook;
@@ -45,6 +48,7 @@ typedef enum _InfinotedDirectorySyncError {
 
 InfinotedDirectorySync*
 infinoted_directory_sync_new(InfdDirectory* directory,
+                             InfinotedLog* log,
                              const gchar* sync_directory,
                              unsigned int sync_interval,
                              const gchar* sync_hook);

@@ -80,13 +80,18 @@ infinoted_note_plugin_load(const gchar* plugin_path,
 
 /**
  * infinoted_note_plugin_load_directory:
+ * @path: The path to load plugins from.
+ * @directory: The #InfdDirectory to add the loaded plugins to.
+ * @log: A #InfinotedLog, or %NULL.
+ *
  * Loads a directory that contains note plugins and adds them to the given
  * @directory. The directory should only contain valid plugins. A warning for
- * each plugin that could not be load is issued.
+ * each plugin that could not be load is issued to @log, if non-%NULL.
  **/
 gboolean
 infinoted_note_plugin_load_directory(const gchar* path,
-                                     InfdDirectory* directory)
+                                     InfdDirectory* directory,
+                                     InfinotedLog* log)
 {
   GDir* dir;
   GError* error;
@@ -101,7 +106,13 @@ infinoted_note_plugin_load_directory(const gchar* path,
   dir = g_dir_open(path, 0, &error);
   if(dir == NULL)
   {
-    g_warning("%s", error->message);
+    infinoted_log_warning(
+      log,
+      "Could not list directory \"%s\" for plugin loading: %s",
+      path,
+      error->message
+    );
+
     g_error_free(error);
     return FALSE;
   }
@@ -122,8 +133,10 @@ infinoted_note_plugin_load_directory(const gchar* path,
 
       if(plugin == NULL)
       {
-        g_warning(
-          "%s",
+        infinoted_log_warning(
+          log,
+          "Failed to load plugin \"%s\": %s",
+          plugin_path,
           error->message
         );
 
@@ -133,7 +146,8 @@ infinoted_note_plugin_load_directory(const gchar* path,
       {
         if(infd_directory_lookup_plugin(directory, plugin->note_type) != NULL)
         {
-          g_warning(
+          infinoted_log_warning(
+            log,
             _("Failed to load plugin \"%s\": Note type \"%s\" is "
               "already handled by another plugin"),
             plugin_path,
@@ -144,7 +158,8 @@ infinoted_note_plugin_load_directory(const gchar* path,
         {
           if(strcmp(storage_type, plugin->storage_type) != 0)
           {
-            g_warning(
+            infinoted_log_warning(
+              log,
               _("Failed to load plugin \"%s\": "
                 "Storage type \"%s\" does not match"),
               plugin_path,
@@ -153,7 +168,8 @@ infinoted_note_plugin_load_directory(const gchar* path,
           }
           else
           {
-            infinoted_util_log_info(
+            infinoted_log_info(
+              log,
               _("Loaded plugin \"%s\" (%s)"),
               plugin_path,
               plugin->note_type
@@ -174,7 +190,12 @@ infinoted_note_plugin_load_directory(const gchar* path,
 
     if(has_plugins == FALSE)
     {
-      g_warning(_("Path \"%s\" does not contain any note plugins"), path);
+      infinoted_log_warning(
+        log,
+        _("Path \"%s\" does not contain any note plugins"),
+        path
+      );
+
       return FALSE;
     }
     else

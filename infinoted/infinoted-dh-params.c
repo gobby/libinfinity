@@ -27,6 +27,7 @@
 
 /**
  * infinoted_dh_params_ensure:
+ * @log: A #InfinotedLog, or %NULL.
  * @credentials: A #InfCertificateCredentials.
  * @dh_params: A pointer to a gnutils_dh_params_t structure.
  * @error: Location to store error information, if any.
@@ -39,10 +40,15 @@
  * disk cache and sets them into *@dh_params. If generation fails, the
  * function returns %FALSE and @error is set.
  *
+ * @log is used to write a log message about the parameters being generated
+ * if they are not cached, so the user knows what's going on during this
+ * lengthy operation.
+ *
  * Returns: %TRUE on success or %FALSE on error.
  */
 gboolean
-infinoted_dh_params_ensure(InfCertificateCredentials* credentials,
+infinoted_dh_params_ensure(InfinotedLog* log,
+                           InfCertificateCredentials* credentials,
                            gnutls_dh_params_t* dh_params,
                            GError** error)
 {
@@ -71,8 +77,11 @@ infinoted_dh_params_ensure(InfCertificateCredentials* credentials,
   {
     infinoted_util_create_dirname(filename, NULL);
 
-    infinoted_util_log_info(
-      _("Generating 2048 bit Diffie-Hellman parameters..."));
+    if(log != NULL)
+    {
+      infinoted_log_info(
+        log, _("Generating 2048 bit Diffie-Hellman parameters..."));
+    }
 
     *dh_params = infinoted_creds_create_dh_params(error);
 

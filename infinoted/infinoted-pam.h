@@ -24,7 +24,7 @@
 
 #ifdef LIBINFINITY_HAVE_PAM
 
-#include <infinoted/infinoted-options.h>
+#include <infinoted/infinoted-startup.h>
 
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/server/infd-xmpp-server.h>
@@ -34,7 +34,7 @@
 G_BEGIN_DECLS
 
 gboolean
-infinoted_pam_user_is_allowed(InfinotedOptions* options,
+infinoted_pam_user_is_allowed(InfinotedStartup* startup,
                               const gchar* username,
                               GError** error);
 

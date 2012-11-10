@@ -21,6 +21,7 @@
 #define __INFINOTED_STARTUP_H__
 
 #include <infinoted/infinoted-options.h>
+#include <infinoted/infinoted-log.h>
 #include <libinfinity/common/inf-certificate-credentials.h>
 
 #include <glib.h>
@@ -30,6 +31,7 @@ G_BEGIN_DECLS
 typedef struct _InfinotedStartup InfinotedStartup;
 struct _InfinotedStartup {
   InfinotedOptions* options;
+  InfinotedLog* log;
   gnutls_x509_privkey_t private_key;
   gnutls_x509_crt_t* certificates;
   guint n_certificates;

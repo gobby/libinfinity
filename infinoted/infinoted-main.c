@@ -193,7 +193,7 @@ main(int argc,
   {
     if(error)
     {
-      infinoted_util_log_error("%s", error->message);
+      fprintf(stderr, "%s\n", error->message);
       g_error_free(error);
     }
 

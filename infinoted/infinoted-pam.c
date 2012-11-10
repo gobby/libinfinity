@@ -92,7 +92,8 @@ infinoted_pam_delay_func(int retval,
 #endif /* HAVE_PAM_FAIL_DELAY */
 
 static void
-infinoted_pam_log_error(const char* username,
+infinoted_pam_log_error(InfinotedLog* log,
+                        const char* username,
                         const char* detail,
                         int error_code,
                         GError** error)
@@ -104,7 +105,8 @@ infinoted_pam_log_error(const char* username,
   else
     msg = strerror(error_code);
 
-  infinoted_util_log_error(
+  infinoted_log_error(
+    log,
     _("Error while checking groups of user \"%s\", %s: %s."),
     username,
     detail,
@@ -117,7 +119,9 @@ infinoted_pam_log_error(const char* username,
     inf_authentication_detail_error_quark(),
     INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR,
     "%s",
-    inf_authentication_detail_strerror(INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR)
+    inf_authentication_detail_strerror(
+      INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR
+    )
   );
 }
 
@@ -126,6 +130,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
                                gchar* required_group,
                                gchar* buf,
                                size_t buf_size,
+                               InfinotedLog* log,
                                GError** error)
 {
   struct passwd user_entry, *user_pointer;
@@ -140,6 +145,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
   if(user_pointer == NULL)
   {
     infinoted_pam_log_error(
+      log,
       username,
       _("looking up user information"),
       status,
@@ -153,7 +159,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
   if(group_pointer == NULL)
   {
     g_snprintf(msgbuf, sizeof msgbuf, _("looking up group %ld"), (long) gid);
-    infinoted_pam_log_error(username, msgbuf, status, error);
+    infinoted_pam_log_error(log, username, msgbuf, status, error);
     return FALSE;
   }
 
@@ -169,7 +175,7 @@ infinoted_pam_user_is_in_group(const gchar* username,
                sizeof msgbuf,
                _("looking up group \"%s\""),
                required_group);
-    infinoted_pam_log_error(username, msgbuf, status, error);
+    infinoted_pam_log_error(log, username, msgbuf, status, error);
     return FALSE;
   }
 
@@ -184,16 +190,20 @@ infinoted_pam_user_is_in_group(const gchar* username,
 }
 
 gboolean
-infinoted_pam_user_is_allowed(InfinotedOptions* options,
+infinoted_pam_user_is_allowed(InfinotedStartup* startup,
                               const gchar* username,
                               GError** error)
 {
+  InfinotedOptions* options;
+
   char* buf;
   long buf_size_gr, buf_size_pw, buf_size;
   gboolean status;
   GError* local_error;
 
   gchar** iter;
+
+  options = startup->options;
 
   if(options->pam_allowed_users == NULL
      && options->pam_allowed_groups == NULL)
@@ -224,7 +234,7 @@ infinoted_pam_user_is_allowed(InfinotedOptions* options,
       for(iter = options->pam_allowed_groups; *iter; ++iter)
       {
         if(infinoted_pam_user_is_in_group(
-             username, *iter, buf, buf_size, &local_error))
+             username, *iter, buf, buf_size, startup->log, &local_error))
         {
           status = TRUE;
           break;

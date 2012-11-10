@@ -19,6 +19,7 @@
 
 #include <infinoted/infinoted-config-reload.h>
 #include <infinoted/infinoted-dh-params.h>
+#include <infinoted/infinoted-log.h>
 #include <infinoted/infinoted-pam.h>
 
 #include <libinfinity/server/infd-filesystem-storage.h>
@@ -70,16 +71,29 @@ infinoted_config_reload(InfinotedRun* run,
   InfdStorage* storage;
   InfdFilesystemStorage* filesystem_storage;
   gchar* root_directory;
+  gboolean result;
 
+  /* Note that this opens a new log handle to the log file. */
   startup = infinoted_startup_new(NULL, NULL, error);
   if(!startup) return FALSE;
+
+  /* Associate the directory to the new log handle */
+  if(startup->log)
+    infinoted_log_set_directory(startup->log, run->directory);
 
   /* Acquire DH params if necessary (if security policy changed from
    * no-tls to one of allow-tls or require-tls). */
   dh_params = run->dh_params;
   if(startup->credentials)
   {
-    if(!infinoted_dh_params_ensure(startup->credentials, &dh_params, error))
+    result = infinoted_dh_params_ensure(
+      startup->log,
+      startup->credentials,
+      &dh_params,
+      error
+    );
+
+    if(!result)
     {
       infinoted_startup_free(startup);
       return FALSE;
@@ -359,6 +373,7 @@ infinoted_config_reload(InfinotedRun* run,
     {
       run->dsync = infinoted_directory_sync_new(
         run->directory,
+        startup->log,
         startup->options->sync_directory,
         startup->options->sync_interval,
         startup->options->sync_hook

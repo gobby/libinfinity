@@ -39,43 +39,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#ifdef G_OS_WIN32
-/* Arbitrary; they are not used currently anyway */
-# define LOG_ERR 0
-# define LOG_WARNING 1
-# define LOG_INFO 2
-# include <windows.h>
-#else
-# include <syslog.h>
-#endif
-
-static void
-infinoted_util_logv(int prio, const char* fmt, va_list ap)
-{
-#ifdef LIBINFINITY_HAVE_LIBDAEMON
-  daemon_logv(prio, fmt, ap);
-#else
-#ifdef G_OS_WIN32
-  /* On Windows, convert to the character set of the console */
-  gchar* out;
-  gchar* codeset;
-  gchar* converted;
-
-  out = g_strdup_vprintf(fmt, ap);
-  codeset = g_strdup_printf("CP%u", (guint)GetConsoleOutputCP());
-  converted = g_convert(out, -1, codeset, "UTF-8", NULL, NULL, NULL);
-  g_free(out);
-  g_free(codeset);
-
-  fprintf(stderr, "%s\n", converted);
-  g_free(converted);
-#else
-  vfprintf(stderr, fmt, ap);
-  fputc('\n', stderr);
-#endif /* !G_OS_WIN32 */
-#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
-}
-
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
 static const gchar*
 infinoted_util_get_pidfile_path_user(void) {
@@ -135,57 +98,6 @@ infinoted_util_create_dirname(const gchar* path,
 
   g_free(dirname);
   return TRUE;
-}
-
-/**
- * infinoted_util_log_error:
- * @fmt: A printf-style format string.
- * ...: Format arguments.
- *
- * Logs an error message. If the server is daemonized, log to syslog,
- * otherwise log to stderr.
- */
-void
-infinoted_util_log_error(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  infinoted_util_logv(LOG_ERR, fmt, ap);
-  va_end(ap);
-}
-
-/**
- * infinoted_util_log_warning:
- * @fmt: A printf-style format string.
- * ...: Format arguments.
- *
- * Logs a warning message. If the server is daemonized, log to syslog,
- * otherwise log to stderr.
- */
-void
-infinoted_util_log_warning(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  infinoted_util_logv(LOG_WARNING, fmt, ap);
-  va_end(ap);
-}
-
-/**
- * infinoted_util_log_info:
- * @fmt: A printf-style format string.
- * ...: Format arguments.
- *
- * Logs an info message. If the server is daemonized, log to syslog,
- * otherwise log to stderr.
- */
-void
-infinoted_util_log_info(const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  infinoted_util_logv(LOG_INFO, fmt, ap);
-  va_end(ap);
 }
 
 /**

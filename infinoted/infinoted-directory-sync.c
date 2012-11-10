@@ -375,7 +375,8 @@ infinoted_directory_sync_directory_add_session_cb(InfdDirectory* directory,
   {
     path = infd_directory_iter_get_path(directory, iter);
 
-    infinoted_util_log_warning(
+    infinoted_log_warning(
+      dsync->log,
       _("Failed to synchronize session \"%s\" to disk: %s"),
       path,
       error->message
@@ -441,7 +442,8 @@ infinoted_directory_sync_walk_directory(InfinotedDirectorySync* dsync,
       {
         path = infd_directory_iter_get_path(dsync->directory, iter);
 
-        infinoted_util_log_warning(
+        infinoted_log_warning(
+          dsync->log,
           _("Failed to synchronize session \"%s\" to disk: %s"),
           path,
           error->message
@@ -457,6 +459,7 @@ infinoted_directory_sync_walk_directory(InfinotedDirectorySync* dsync,
 /**
  * infinoted_directory_sync_new:
  * @directory: A #InfdDirectory.
+ * @log: A #InfinotedLog, or %NULL.
  * @sync_directory: The directory on the file system to sync documents to.
  * @sync_interval: The interval in which to save documents to @sync_directory,
  * in seconds.
@@ -470,6 +473,7 @@ infinoted_directory_sync_walk_directory(InfinotedDirectorySync* dsync,
  */
 InfinotedDirectorySync*
 infinoted_directory_sync_new(InfdDirectory* directory,
+                             InfinotedLog* log,
                              const gchar* sync_directory,
                              unsigned int sync_interval,
                              const gchar* sync_hook)
@@ -480,6 +484,7 @@ infinoted_directory_sync_new(InfdDirectory* directory,
   dsync = g_slice_new(InfinotedDirectorySync);
 
   dsync->directory = directory;
+  dsync->log = log;
   dsync->sync_directory = g_strdup(sync_directory);
   dsync->sync_interval = sync_interval;
   dsync->sync_hook = g_strdup(sync_hook);

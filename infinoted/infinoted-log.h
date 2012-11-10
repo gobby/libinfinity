@@ -17,26 +17,49 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFINOTED_DH_PARAMS_H__
-#define __INFINOTED_DH_PARAMS_H__
+#ifndef __INFINOTED_LOG_H__
+#define __INFINOTED_LOG_H__
 
-#include <infinoted/infinoted-log.h>
+#include <infinoted/infinoted-options.h>
 
-#include <libinfinity/common/inf-certificate-credentials.h>
+#include <libinfinity/server/infd-directory.h>
 
-#include <gnutls/gnutls.h>
 #include <glib.h>
 
 G_BEGIN_DECLS
 
-gboolean
-infinoted_dh_params_ensure(InfinotedLog* log,
-                           InfCertificateCredentials* creds,
-                           gnutls_dh_params_t* dh_params,
-                           GError** error);
+typedef struct _InfinotedLog InfinotedLog;
+struct _InfinotedLog {
+  FILE* file;
+
+  InfdDirectory* directory;
+
+  GSList* connections;
+  GSList* sessions;
+};
+
+InfinotedLog*
+infinoted_log_new(InfinotedOptions* options,
+                  GError** error);
+
+void
+infinoted_log_free(InfinotedLog* log);
+
+void
+infinoted_log_set_directory(InfinotedLog* log,
+                            InfdDirectory* directory);
+
+void
+infinoted_log_error(InfinotedLog* log, const char* fmt, ...);
+
+void
+infinoted_log_warning(InfinotedLog* log, const char* fmt, ...);
+
+void
+infinoted_log_info(InfinotedLog* log, const char* fmt, ...);
 
 G_END_DECLS
 
-#endif /* __INFINOTED_DH_PARAMS_H__ */
+#endif /* __INFINOTED_LOG_H__ */
 
 /* vim:set et sw=2 ts=2: */

@@ -499,8 +499,8 @@ infinoted_options_validate(InfinotedOptions* options,
   if(requires_password &&
      options->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
-    infinoted_util_log_warning(
-      _("Requiring password through unencrypted connection."));
+    fprintf(stderr,
+      _("WARNING: Requiring password through unencrypted connection."));
   }
 
   if(options->create_key == TRUE && options->create_certificate == FALSE)
@@ -640,6 +640,9 @@ infinoted_options_load(InfinotedOptions* options,
   gchar* desc;
 
   GOptionEntry entries[] = {
+    { "log-path", 'l', 0,
+      G_OPTION_ARG_FILENAME, NULL,
+      N_("Path to write the logfile to"), N_("LOG-FILE") },
     { "key-file", 'k', 0,
       G_OPTION_ARG_FILENAME, NULL,
       N_("The server's private key"), N_("KEY-FILE") },
@@ -720,6 +723,7 @@ infinoted_options_load(InfinotedOptions* options,
 
   /* C90 does not allow non-compile-time-constant initializers for structs */
   i = 0;
+  entries[i++].arg_data = &options->log_path;
   entries[i++].arg_data = &options->key_file;
   entries[i++].arg_data = &options->certificate_file;
   entries[i++].arg_data = &options->certificate_chain_file;
@@ -822,8 +826,6 @@ infinoted_options_load(InfinotedOptions* options,
     g_free(security_policy);
     if(!result) return FALSE;
   }
-
-  /* TODO: Do we leak security_policy at this point? */
 
   result = infinoted_options_port_from_integer(
     port_number,
@@ -931,6 +933,7 @@ infinoted_options_new(const gchar* const* config_files,
   options = g_slice_new(InfinotedOptions);
 
   /* Default options */
+  options->log_path = NULL;
   options->key_file = NULL;
   options->certificate_file = NULL;
   options->certificate_chain_file = NULL;
@@ -974,6 +977,7 @@ infinoted_options_new(const gchar* const* config_files,
 void
 infinoted_options_free(InfinotedOptions* options)
 {
+  g_free(options->log_path);
   g_free(options->key_file);
   g_free(options->certificate_file);
   g_free(options->certificate_chain_file);

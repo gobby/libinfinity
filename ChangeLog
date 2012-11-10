@@ -1,3 +1,36 @@
+2012-11-10  Armin Burgmeier  <armin@arbur.net>
+
+	* infinoted/infinoted-log.h:
+	* infinoted/infinoted-log.c:
+	* infinoted/Makefile.am: Add a new object which encapsulates the
+	logging facilities in a class. It can additionally log to a file, and
+	it has an interface to monitor a InfdDirectory for "interesting"
+	events to happen that can then be logged (not implemented yet).
+
+	* infinoted/infinoted-options.h:
+	* infinoted/infinoted-options.c: Add a --log-path (-l) parameter
+	which, if given, specifies the path to a log file that is written to
+	in addition to logging to syslog and/or stderr.
+
+	* infinoted/infinoted-util.h:
+	* infinoted/infinoted-util.c: Remove logging functions from
+	infinoted-util.
+
+	* infinoted/infinoted-config-reload.c:
+	* infinoted/infinoted-dh-params.h:
+	* infinoted/infinoted-dh-params.c:
+	* infinoted/infinoted-directory-sync.h:
+	* infinoted/infinoted-directory-sync.c:
+	* infinoted/infinoted-note-plugin.h:
+	* infinoted/infinoted-note-plugin.c:
+	* infinoted/infinoted-main.c:
+	* infinoted/infinoted-pam.h:
+	* infinoted/infinoted-pam.c:
+	* infinoted/infinoted-run.c:
+	* infinoted/infinoted-signal.c:
+	* infinoted/infinoted-startup.h:
+	* infinoted/infinoted-startup.c: Migrate to new API.
+
 2012-10-21  Armin Burgmeier  <armin@arbur.net>
 
 	* libinfinity/common/inf-xmpp-connection.c: Fix a crash that could

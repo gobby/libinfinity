@@ -48,6 +48,7 @@ infinoted_run_load_directory(InfinotedRun* run,
   gchar* module_path;
 #endif
   gchar* plugin_path;
+  gboolean result;
 
   storage = infd_filesystem_storage_new(startup->options->root_directory);
 
@@ -74,7 +75,13 @@ infinoted_run_load_directory(InfinotedRun* run,
   plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_BASEPATH, NULL);
 #endif
 
-  if(!infinoted_note_plugin_load_directory(plugin_path, run->directory))
+  result = infinoted_note_plugin_load_directory(
+    plugin_path,
+    run->directory,
+    startup->log
+  );
+
+  if(!result)
   {
     g_free(plugin_path);
 
@@ -92,6 +99,9 @@ infinoted_run_load_directory(InfinotedRun* run,
 
     return FALSE;
   }
+
+  if(startup->log != NULL)
+    infinoted_log_set_directory(startup->log, run->directory);
 
   g_free(plugin_path);
   return TRUE;
@@ -245,6 +255,7 @@ infinoted_run_new(InfinotedStartup* startup,
   {
     run->dsync = infinoted_directory_sync_new(
       run->directory,
+      startup->log,
       startup->options->sync_directory,
       startup->options->sync_interval,
       startup->options->sync_hook
@@ -302,6 +313,9 @@ infinoted_run_free(InfinotedRun* run)
   if(run->record != NULL)
     infinoted_record_free(run->record);
 
+  if(run->startup->log)
+    infinoted_log_set_directory(run->startup->log, NULL);
+
   g_object_unref(run->io);
   g_object_unref(run->directory);
   g_object_unref(run->pool);
@@ -342,13 +356,16 @@ infinoted_run_start(InfinotedRun* run)
   if(run->startup->credentials)
   {
     result = infinoted_dh_params_ensure(
-      run->startup->credentials, &run->dh_params, &error);
+      run->startup->log, run->startup->credentials, &run->dh_params, &error);
 
     if(result == FALSE)
     {
-      infinoted_util_log_error(
-             _("Failed to generate Diffie-Hellman parameters: %s"),
-             error->message);
+      infinoted_log_error(
+        run->startup->log,
+        _("Failed to generate Diffie-Hellman parameters: %s"),
+        error->message
+      );
+
       g_error_free(error);
       return;
     }
@@ -362,7 +379,12 @@ infinoted_run_start(InfinotedRun* run)
     if(infd_tcp_server_open(tcp, &error6) == TRUE)
     {
       g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
-      infinoted_util_log_info(_("IPv6 Server running on port %u"), port);
+
+      infinoted_log_info(
+        run->startup->log,
+        _("IPv6 Server running on port %u"),
+        port
+      );
     }
     else
     {
@@ -380,7 +402,12 @@ infinoted_run_start(InfinotedRun* run)
     if(infd_tcp_server_open(tcp, &error4) == TRUE)
     {
       g_object_get(G_OBJECT(tcp), "local-port", &port, NULL);
-      infinoted_util_log_info(_("IPv4 Server running on port %u"), port);
+
+      infinoted_log_info(
+        run->startup->log,
+        _("IPv4 Server running on port %u"),
+        port
+      );
     }
     else
     {
@@ -396,9 +423,12 @@ infinoted_run_start(InfinotedRun* run)
   {
     g_assert(error4 != NULL || error6 != NULL);
     error = error4 != NULL ? error4 : error6;
-    infinoted_util_log_error(
-            _("Failed to start server: %s"),
-            error->message);
+
+    infinoted_log_error(
+      run->startup->log,
+      _("Failed to start server: %s"),
+      error->message
+    );
   }
 
   if(error4 != NULL) g_error_free(error4);
@@ -409,7 +439,14 @@ infinoted_run_start(InfinotedRun* run)
   fflush(stderr);
 
   if(run->xmpp4 != NULL || run->xmpp6 != NULL)
+  {
     inf_standalone_io_loop(run->io);
+
+    infinoted_log_info(
+      run->startup->log,
+      _("Infinoted shutting down...")
+    );
+  }
 }
 
 /**

@@ -20,6 +20,7 @@
 #include <infinoted/infinoted-signal.h>
 #include <infinoted/infinoted-config-reload.h>
 #include <infinoted/infinoted-util.h>
+#include <infinoted/infinoted-log.h>
 #include <libinfinity/inf-i18n.h>
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
@@ -52,8 +53,11 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
     sig->signal_fd = 0;
     sig->watch = NULL;
 
-    infinoted_util_log_error(_("Error on signal handler connection; signal "
-                               "handlers have been removed from now on"));
+    infinoted_log_error(
+      sig->run->startup->log,
+      _("Error on signal handler connection; signal "
+        "handlers have been removed from now on")
+    );
   }
   else if(event & INF_IO_INCOMING)
   {
@@ -68,13 +72,19 @@ infinoted_signal_sig_func(InfNativeSocket* fd,
       error = NULL;
       if(!infinoted_config_reload(sig->run, &error))
       {
-        infinoted_util_log_error(_("Config reload failed: %s"),
-                                 error->message);
+        infinoted_log_error(
+          sig->run->startup->log,
+          _("Configuration reload failed: %s"), error->message
+        );
+
         g_error_free(error);
       }
       else
       {
-        infinoted_util_log_info(_("Config reloaded"));
+        infinoted_log_info(
+          sig->run->startup->log,
+          _("Configuration reloaded")
+        );
       }
     }
   }
@@ -125,10 +135,17 @@ infinoted_signal_sigquit_handler(int sig)
 static void
 infinoted_signal_sighup_handler(int sig)
 {
+  InfinotedRun* run;
+  if(_infinoted_signal_server != NULL)
+    run = _infinoted_signal_server;
+
   /* We don't reload the config file here since the signal handler could be
    * called from anywhere in the code. */
-  infinoted_util_log_error(_("For config reloading to work libinfinity needs "
-                             "to be compiled with libdaemon support"));
+  infinoted_log_error(
+    run->startup->log,
+    _("For config reloading to work libinfinity needs "
+      "to be compiled with libdaemon support")
+  );
 
   /* Make sure the signal handler is not reset */
   signal(SIGHUP, infinoted_signal_sighup_handler);

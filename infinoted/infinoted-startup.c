@@ -19,6 +19,7 @@
 
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-util.h>
+#include <infinoted/infinoted-log.h>
 #include <infinoted/infinoted-creds.h>
 
 #include <infinoted/infinoted-pam.h>
@@ -45,7 +46,8 @@ infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
 }
 
 static gnutls_x509_privkey_t
-infinoted_startup_load_key(gboolean create_key,
+infinoted_startup_load_key(InfinotedLog* log,
+                           gboolean create_key,
                            const gchar* key_file,
                            GError** error)
 {
@@ -58,7 +60,7 @@ infinoted_startup_load_key(gboolean create_key,
 
     /* TODO: Open the key file beforehand */
 
-    infinoted_util_log_info(_("Generating 2048 bit RSA private key..."));
+    infinoted_log_info(log, _("Generating 2048 bit RSA private key..."));
     key = infinoted_creds_create_key(error);
 
     if(key == NULL)
@@ -79,7 +81,8 @@ infinoted_startup_load_key(gboolean create_key,
 }
 
 static gnutls_x509_crt_t*
-infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
+infinoted_startup_load_certificate(InfinotedLog* log,
+                                   gboolean create_self_signed_certificate,
                                    gnutls_x509_privkey_t key,
                                    const gchar* certificate_file,
                                    const gchar* certificate_chain_file,
@@ -96,7 +99,7 @@ infinoted_startup_load_certificate(gboolean create_self_signed_certificate,
     if(infinoted_util_create_dirname(certificate_file, error) == FALSE)
       return NULL;
 
-    infinoted_util_log_info(_("Generating self-signed certificate..."));
+    infinoted_log_info(log, _("Generating self-signed certificate..."));
     cert = infinoted_creds_create_self_signed_certificate(key, error);
     if(cert == NULL) return NULL;
 
@@ -145,6 +148,7 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
      INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
     startup->private_key = infinoted_startup_load_key(
+      startup->log,
       startup->options->create_key,
       startup->options->key_file,
       error
@@ -154,6 +158,7 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
       return FALSE;
 
     startup->certificates = infinoted_startup_load_certificate(
+      startup->log,
       startup->options->create_certificate,
       startup->private_key,
       startup->options->certificate_file,
@@ -261,30 +266,39 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
                                 gpointer user_data)
 {
   InfinotedStartup* startup;
+  const char* username;
   const char* password;
   InfXmppConnection* xmpp;
 
 #ifdef LIBINFINITY_HAVE_PAM
-  const char* username;
   const gchar* pam_service;
   GError* error;
 #endif
+  gchar* remote_id;
 
   xmpp = INF_XMPP_CONNECTION(session_data);
+  g_object_get(xmpp, "remote-id", &remote_id, NULL);
 
   switch(prop)
   {
   case GSASL_VALIDATE_SIMPLE:
     startup = (InfinotedStartup*)user_data;
+    username = inf_sasl_context_session_get_property(session, GSASL_AUTHID);
     password = inf_sasl_context_session_get_property(session, GSASL_PASSWORD);
 #ifdef LIBINFINITY_HAVE_PAM
-    username = inf_sasl_context_session_get_property(session, GSASL_AUTHID);
     pam_service = startup->options->pam_service;
     if(pam_service != NULL)
     {
       error = NULL;
       if(!infinoted_pam_authenticate(pam_service, username, password))
       {
+        infinoted_log_warning(
+          startup->log,
+          _("User %s failed to log in from %s: PAM authentication failed"),
+          username,
+          remote_id
+        );
+
         infinoted_startup_sasl_callback_set_error(
           xmpp,
           INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
@@ -296,10 +310,15 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
           GSASL_AUTHENTICATION_ERROR
         );
       }
-      else if(!infinoted_pam_user_is_allowed(startup->options,
-                                             username,
-                                             &error))
+      else if(!infinoted_pam_user_is_allowed(startup, username, &error))
       {
+        infinoted_log_warning(
+          startup->log,
+          _("User %s failed to log in from %s: PAM user not allowed"),
+          username,
+          remote_id
+        );
+
         infinoted_startup_sasl_callback_set_error(
           xmpp,
           INF_AUTHENTICATION_DETAIL_ERROR_USER_NOT_AUTHORIZED,
@@ -313,6 +332,13 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
       }
       else
       {
+        infinoted_log_info(
+          startup->log,
+          _("User %s logged in from %s via PAM"),
+          username,
+          remote_id
+        );
+
         inf_sasl_context_session_continue(session, GSASL_OK);
       }
     }
@@ -322,10 +348,24 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
       g_assert(startup->options->password != NULL);
       if(strcmp(startup->options->password, password) == 0)
       {
+        infinoted_log_info(
+          startup->log,
+          _("User %s logged in from %s via password"),
+          username,
+          remote_id
+        );
+
         inf_sasl_context_session_continue(session, GSASL_OK);
       }
       else
       {
+        infinoted_log_warning(
+          startup->log,
+          _("User %s failed to log in from %s: wrong password"),
+          username,
+          remote_id
+        );
+
         infinoted_startup_sasl_callback_set_error(
           xmpp,
           INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,
@@ -344,6 +384,8 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
     inf_sasl_context_session_continue(session, GSASL_AUTHENTICATION_ERROR);
     break;
   }
+
+  g_free(remote_id);
 }
 
 static gboolean
@@ -355,6 +397,10 @@ infinoted_startup_load(InfinotedStartup* startup,
   gboolean requires_password;
 
   if(infinoted_startup_load_options(startup, argc, argv, error) == FALSE)
+    return FALSE;
+
+  startup->log = infinoted_log_new(startup->options, error);
+  if(startup->log == NULL)
     return FALSE;
 
   if(infinoted_startup_load_credentials(startup, error) == FALSE)
@@ -403,6 +449,7 @@ infinoted_startup_new(int* argc,
 
   startup = g_slice_new(InfinotedStartup);
   startup->options = NULL;
+  startup->log = NULL;
   startup->private_key = NULL;
   startup->certificates = NULL;
   startup->n_certificates = 0;
@@ -440,6 +487,9 @@ infinoted_startup_free(InfinotedStartup* startup)
 
   if(startup->private_key != NULL)
     gnutls_x509_privkey_deinit(startup->private_key);
+
+  if(startup->log != NULL)
+    infinoted_log_free(startup->log);
 
   if(startup->options != NULL)
     infinoted_options_free(startup->options);

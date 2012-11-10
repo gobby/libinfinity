@@ -20,6 +20,8 @@
 #ifndef __INFINOTED_NOTE_PLUGIN_H__
 #define __INFINOTED_NOTE_PLUGIN_H__
 
+#include <infinoted/infinoted-log.h>
+
 #include <libinfinity/server/infd-directory.h>
 
 G_BEGIN_DECLS
@@ -37,7 +39,8 @@ infinoted_note_plugin_load(const gchar* plugin_path,
 
 gboolean
 infinoted_note_plugin_load_directory(const gchar* path,
-                                     InfdDirectory* directory);
+                                     InfdDirectory* directory,
+                                     InfinotedLog* log);
 
 G_END_DECLS
 

@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 
 typedef struct _InfinotedOptions InfinotedOptions;
 struct _InfinotedOptions {
+  gchar* log_path;
+
   gchar* key_file;
   gchar* certificate_file;
   gchar* certificate_chain_file;

@@ -28,6 +28,7 @@ infinoted_0_6_SOURCES = \
 	infinoted-creds.c \
 	infinoted-dh-params.c \
 	infinoted-directory-sync.c \
+	infinoted-log.c \
 	infinoted-main.c \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
@@ -44,6 +45,7 @@ noinst_HEADERS = \
 	infinoted-creds.h \
 	infinoted-dh-params.h \
 	infinoted-directory-sync.h \
+	infinoted-log.h \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-pam.h \
