@@ -1,5 +1,10 @@
 2012-11-11  Armin Burgmeier  <armin@arbur.net>
 
+	* infinoted/infinoted-log.c: Log an info message when a connection is
+	added or removed.
+
+2012-11-11  Armin Burgmeier  <armin@arbur.net>
+
 	* libinfinity/server/infd-directory.h:
 	* libinfinity/server/infd-directory.c: Added connection-added and
 	connection-removed signals.

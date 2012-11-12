@@ -19,6 +19,8 @@
 
 #include <infinoted/infinoted-log.h>
 
+#include <libinfinity/inf-i18n.h>
+
 #ifdef G_OS_WIN32
 /* Arbitrary; they are not used currently anyway */
 # define LOG_ERR 0
@@ -97,6 +99,98 @@ infinoted_log_logv(InfinotedLog* log,
 #endif /* !LIBINFINITY_HAVE_LIBDAEMON */
 }
 
+static void
+infinoted_log_connection_added_cb(InfdDirectory* directory,
+                                  InfXmlConnection* connection,
+                                  gpointer user_data)
+{
+  InfinotedLog* log;
+  gchar* remote_id;
+
+  log = (InfinotedLog*)user_data;
+  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
+
+  infinoted_log_info(
+    log,
+    _("%s connected"),
+    remote_id
+  );
+
+  g_free(remote_id);
+}
+
+static void
+infinoted_log_connection_removed_cb(InfdDirectory* directory,
+                                    InfXmlConnection* connection,
+                                    gpointer user_data)
+{
+  InfinotedLog* log;
+  gchar* remote_id;
+
+  log = (InfinotedLog*)user_data;
+  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
+
+  infinoted_log_info(
+    log,
+    _("%s disconnected"),
+    remote_id
+  );
+
+  g_free(remote_id);
+}
+
+static void
+infinoted_log_connection_error_cb(InfXmlConnection* connection,
+                                  gpointer error,
+                                  gpointer user_data)
+{
+  const GError* err;
+  InfinotedLog* log;
+  gchar* remote_id;
+
+  err = (const GError*)error;
+  log = (InfinotedLog*)user_data;
+  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
+
+  infinoted_log_error(
+    log,
+    _("Error from connection %s: %s"),
+    remote_id,
+    err->message
+  );
+
+  g_free(remote_id);
+}
+
+static void
+infinoted_log_set_directory_remove_func(InfXmlConnection* connection,
+                                        gpointer user_data)
+{
+  InfinotedLog* log;
+  log = (InfinotedLog*)user_data;
+
+  inf_signal_handlers_disconnect_by_func(
+    connection,
+    G_CALLBACK(infinoted_log_connection_error_cb),
+    log
+  );
+}
+
+static void
+infinoted_log_set_directory_add_func(InfXmlConnection* connection,
+                                     gpointer user_data)
+{
+  InfinotedLog* log;
+  log = (InfinotedLog*)user_data;
+
+  g_signal_connect(
+    connection,
+    "error",
+    G_CALLBACK(infinoted_log_connection_error_cb),
+    log
+  );
+}
+
 /**
  * infinoted_log_new:
  * @options: A #InfinotedOptions object.
@@ -143,6 +237,7 @@ infinoted_log_free(InfinotedLog* log)
 {
   if(log->directory != NULL)
     infinoted_log_set_directory(log, NULL);
+
   g_assert(log->sessions == NULL);
   g_assert(log->connections == NULL);
 
@@ -165,7 +260,55 @@ void
 infinoted_log_set_directory(InfinotedLog* log,
                             InfdDirectory* directory)
 {
-  /* TODO */
+  if(log->directory != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      log->directory,
+      G_CALLBACK(infinoted_log_connection_added_cb),
+      log
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      log->directory,
+      G_CALLBACK(infinoted_log_connection_removed_cb),
+      log
+    );
+
+    infd_directory_foreach_connection(
+      log->directory,
+      infinoted_log_set_directory_remove_func,
+      log
+    );
+
+    g_object_unref(log->directory);
+  }
+
+  log->directory = directory;
+
+  if(directory)
+  {
+    g_object_ref(directory);
+
+    g_signal_connect(
+      G_OBJECT(directory),
+      "connection-added",
+      G_CALLBACK(infinoted_log_connection_added_cb),
+      log
+    );
+
+    g_signal_connect(
+      G_OBJECT(directory),
+      "connection-removed",
+      G_CALLBACK(infinoted_log_connection_removed_cb),
+      log
+    );
+
+    infd_directory_foreach_connection(
+      log->directory,
+      infinoted_log_set_directory_add_func,
+      log
+    );
+  }
 }
 
 /**
