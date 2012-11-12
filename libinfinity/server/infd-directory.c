@@ -184,6 +184,8 @@ enum {
   NODE_REMOVED,
   ADD_SESSION,
   REMOVE_SESSION,
+  CONNECTION_ADDED,
+  CONNECTION_REMOVED,
 
   LAST_SIGNAL
 };
@@ -3509,7 +3511,15 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
     directory);
 
   g_hash_table_remove(priv->connections, connection);
-  g_object_unref(G_OBJECT(connection));
+
+  g_signal_emit(
+    G_OBJECT(directory),
+    directory_signals[CONNECTION_REMOVED],
+    0,
+    connection
+  );
+
+  g_object_unref(connection);
 }
 
 /*
@@ -4062,6 +4072,8 @@ infd_directory_class_init(gpointer g_class,
   directory_class->node_removed = NULL;
   directory_class->add_session = infd_directory_add_session;
   directory_class->remove_session = infd_directory_remove_session;
+  directory_class->connection_added = NULL;
+  directory_class->connection_removed = NULL;
 
   infd_directory_node_id_quark =
     g_quark_from_static_string("INFD_DIRECTORY_NODE_ID");
@@ -4206,6 +4218,48 @@ infd_directory_class_init(gpointer g_class,
     2,
     INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
     INFD_TYPE_SESSION_PROXY
+  );
+
+  /**
+   * InfdDirectory::connection-added:
+   * @directory: The #InfdDirectory emitting the signal.
+   * @connection: The #InfXmlConnection that was added.
+   *
+   * This signal is emitted when a connection that is served by the
+   * #InfdDirectory was added. The only way this can happen is by a call to
+   * infd_directory_add_connection(). This can be done automatically by an
+   * #InfdServerPool instance, however.
+   **/
+  directory_signals[CONNECTION_ADDED] = g_signal_new(
+    "connection-added",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdDirectoryClass, connection_added),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XML_CONNECTION
+  );
+
+  /**
+   * InfdDirectory::connection-removed:
+   * @directory: The #InfdDirectory emitting the signal.
+   * @connection: The #InfXmlConnection that was removed.
+   *
+   * This signal is emitted when a connection stopes being served by
+   * @directory. Usually this happens only when the connection is closed.
+   **/
+  directory_signals[CONNECTION_REMOVED] = g_signal_new(
+    "connection-removed",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdDirectoryClass, connection_removed),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XML_CONNECTION
   );
 }
 
@@ -4540,6 +4594,13 @@ infd_directory_add_connection(InfdDirectory* directory,
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
   if(status == INF_XML_CONNECTION_OPEN)
     infd_directory_send_welcome_message(directory, connection);
+
+  g_signal_emit(
+    G_OBJECT(directory),
+    directory_signals[CONNECTION_ADDED],
+    0,
+    connection
+  );
 
   return TRUE;
 }

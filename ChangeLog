@@ -1,3 +1,9 @@
+2012-11-11  Armin Burgmeier  <armin@arbur.net>
+
+	* libinfinity/server/infd-directory.h:
+	* libinfinity/server/infd-directory.c: Added connection-added and
+	connection-removed signals.
+
 2012-11-10  Armin Burgmeier  <armin@arbur.net>
 
 	* infinoted/infinoted-log.h:

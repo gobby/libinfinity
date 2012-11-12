@@ -64,6 +64,10 @@ struct _InfdDirectoryClass {
   void (*remove_session)(InfdDirectory* directory,
                          InfdDirectoryIter* iter,
                          InfdSessionProxy* session);
+  void (*connection_added)(InfdDirectory* directory,
+                           InfXmlConnection* connection);
+  void (*connection_removed)(InfdDirectory* directory,
+                             InfXmlConnection* connection);
 };
 
 struct _InfdDirectory {
