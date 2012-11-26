@@ -699,6 +699,10 @@ inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
   xmlUnlinkNode(xml);
   xmlSetListDoc(xml, NULL);
 
+  /* Keep the object alive during the send_chars call, so that we can check
+   * the buffer variable afterwards. */
+  g_object_ref(xmpp);
+
   inf_xmpp_connection_send_chars(
     xmpp,
     xmlBufferContent(priv->buf),
@@ -710,6 +714,8 @@ inf_xmpp_connection_send_xml(InfXmppConnection* xmpp,
    * exists before emptying it. */
   if(priv->buf != NULL)
     xmlBufferEmpty(priv->buf);
+
+  g_object_unref(xmpp);
 }
 
 /*
