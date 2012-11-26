@@ -1,5 +1,11 @@
 2012-11-26  Armin Burgmeier  <armin@arbur.net>
 
+	* libinfinity/common/inf-xmpp-connection.c
+	(inf_xmpp_connection_send_xml): Don't crash when the connection is
+	deleted during the sent callback.
+
+2012-11-26  Armin Burgmeier  <armin@arbur.net>
+
 	* libinftextgtk/inf-text-gtk-view.c: Fix assertion fail at drawing selection
 	of not yet fully synchronized document.
 
