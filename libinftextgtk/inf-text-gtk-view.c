@@ -971,11 +971,6 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
         if(sel > 0)
         {
           end = begin + sel;
-          g_assert(
-            end <= gtk_text_buffer_get_char_count(
-              gtk_text_view_get_buffer(priv->textview)
-            )
-          );
         }
         else
         {
@@ -984,6 +979,13 @@ inf_text_gtk_view_expose_event_after_cb(GtkWidget* widget,
           end = begin;
           begin += sel;
         }
+
+        /* This can happen if the document is not yet fully loaded, i.e. synchronization
+         * is still in progress. */
+        if(begin > gtk_text_buffer_get_char_count(gtk_text_view_get_buffer(priv->textview)))
+          begin = gtk_text_buffer_get_char_count(gtk_text_view_get_buffer(priv->textview));
+        if(end > gtk_text_buffer_get_char_count(gtk_text_view_get_buffer(priv->textview)))
+          end = gtk_text_buffer_get_char_count(gtk_text_view_get_buffer(priv->textview));
 
         begin = MIN(MAX(begin, area_begin), area_end);
         end = MIN(MAX(end, area_begin), area_end);
