@@ -36,6 +36,8 @@ struct _InfinotedLog {
 
   GSList* connections;
   GSList* sessions;
+
+  GLogFunc prev_log_handler;
 };
 
 InfinotedLog*

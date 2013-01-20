@@ -191,6 +191,44 @@ infinoted_log_set_directory_add_func(InfXmlConnection* connection,
   );
 }
 
+static void
+infinoted_log_handler(const gchar* log_domain,
+                      GLogLevelFlags log_level,
+                      const gchar* message,
+                      gpointer user_data)
+{
+  InfinotedLog* log;
+  log = (InfinotedLog*)user_data;
+
+  switch(log_level & G_LOG_LEVEL_MASK)
+  {
+  case G_LOG_LEVEL_ERROR:
+  case G_LOG_LEVEL_CRITICAL:
+    if(log_domain)
+      infinoted_log_error(log, "%s: %s", log_domain, message);
+    else
+      infinoted_log_error(log, "%s", message);
+    break;
+  case G_LOG_LEVEL_WARNING:
+    if(log_domain)
+      infinoted_log_warning(log, "%s: %s", log_domain, message);
+    else
+      infinoted_log_warning(log, "%s", message);
+    break;
+  case G_LOG_LEVEL_MESSAGE:
+  case G_LOG_LEVEL_INFO:
+  case G_LOG_LEVEL_DEBUG:
+    if(log_domain)
+      infinoted_log_info(log, "%s: %s", log_domain, message);
+    else
+      infinoted_log_info(log, "%s", message);
+    break;
+  }
+
+  if(log_level & G_LOG_FLAG_FATAL)
+    abort();
+}
+
 /**
  * infinoted_log_new:
  * @options: A #InfinotedOptions object.
@@ -222,6 +260,11 @@ infinoted_log_new(InfinotedOptions* options,
     }
   }
 
+  log->prev_log_handler = g_log_set_default_handler(
+    infinoted_log_handler,
+    log
+  );
+
   return log;
 }
 
@@ -244,6 +287,7 @@ infinoted_log_free(InfinotedLog* log)
   if(log->file != NULL)
     fclose(log->file);
 
+  g_log_set_default_handler(log->prev_log_handler, NULL);
   g_slice_free(InfinotedLog, log);
 }
 
