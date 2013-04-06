@@ -421,8 +421,10 @@ inf_browser_get_child(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, FALSE);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_child != NULL, FALSE);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, FALSE);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, FALSE);
 
+  g_return_val_if_fail(iface->get_child != NULL, FALSE);
   return iface->get_child(browser, iter);
 }
 
@@ -454,8 +456,10 @@ inf_browser_explore(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->explore != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, NULL);
 
+  g_return_val_if_fail(iface->explore != NULL, NULL);
   return iface->explore(browser, iter);
 
 }
@@ -480,9 +484,36 @@ inf_browser_get_explored(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, FALSE);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_explored != NULL, FALSE);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, FALSE);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, FALSE);
 
+  g_return_val_if_fail(iface->get_explored != NULL, FALSE);
   return iface->get_explored(browser, iter);
+}
+
+/**
+ * inf_browser_is_subdirectory:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ *
+ * Returns whether the node @iter points to is a subdirectory node.
+ *
+ * Returns: %TRUE if the node @iter points to is a subdirectory node or
+ * %FALSE otherwise.
+ */
+gboolean
+inf_browser_is_subdirectory(InfBrowser* browser,
+                            const InfBrowserIter* iter)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, FALSE);
+
+  return iface->is_subdirectory(browser, iter);
 }
 
 /**
@@ -518,6 +549,9 @@ inf_browser_add_note(InfBrowser* browser,
   g_return_val_if_fail(session == NULL || INF_IS_SESSION(session), NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, NULL);
+
   g_return_val_if_fail(iface->add_note != NULL, NULL);
 
   return iface->add_note(
@@ -553,8 +587,10 @@ inf_browser_add_subdirectory(InfBrowser* browser,
   g_return_val_if_fail(name != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->add_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, NULL);
 
+  g_return_val_if_fail(iface->add_subdirectory != NULL, NULL);
   return iface->add_subdirectory(browser, iter, name);
 }
 
@@ -612,11 +648,9 @@ inf_browser_get_node_name(InfBrowser* browser,
 /**
  * inf_browser_get_node_type:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @iter: A #InfBrowserIter pointing to a leaf node inside @browser.
  *
- * Returns the type of the node @iter points to. If this is a subdirectory
- * node then it will be "InfSubdirectory" or otherwise the type of the
- * note.
+ * Returns the type of the node @iter points to.
  *
  * Returns: The node type as a string.
  */
@@ -630,8 +664,10 @@ inf_browser_get_node_type(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_node_type != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == FALSE, NULL);
 
+  g_return_val_if_fail(iface->get_node_type != NULL, NULL);
   return iface->get_node_type(browser, iter);
 }
 
@@ -678,8 +714,10 @@ inf_browser_subscribe(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->subscribe != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == FALSE, NULL);
 
+  g_return_val_if_fail(iface->subscribe != NULL, NULL);
   return iface->subscribe(browser, iter);
 }
 
@@ -707,8 +745,10 @@ inf_browser_get_session(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_session != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
+  g_return_val_if_fail(iface->is_subdirectory(browser, iter) == FALSE, NULL);
 
+  g_return_val_if_fail(iface->get_session != NULL, NULL);
   return iface->get_session(browser, iter);
 }
 
@@ -798,6 +838,7 @@ inf_browser_get_pending_explore_request(InfBrowser* browser,
 
   g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
   g_return_val_if_fail(iter != NULL, NULL);
+  g_return_val_if_fail(inf_browser_is_subdirectory(browser, iter), NULL);
 
   list = inf_browser_list_pending_requests(browser, iter, "explore-node");
   g_assert(list == NULL || list->next == NULL);
@@ -832,6 +873,7 @@ inf_browser_get_pending_subscribe_request(InfBrowser* browser,
 
   g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
   g_return_val_if_fail(iter != NULL, NULL);
+  g_return_val_if_fail(!inf_browser_is_subdirectory(browser, iter), NULL);
 
   list = inf_browser_list_pending_requests(
     browser,

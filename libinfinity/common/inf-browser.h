@@ -127,10 +127,6 @@ struct _InfBrowserIface {
                         InfBrowserIter* iter,
                         InfBrowserRequest* request);
 
-/*  void (*begin_subscribe)(InfBrowser* browser,
-                          InfBrowserIter* iter,
-                          InfBrowserRequest* request);*/
-
   /* Virtual functions */
 
   gboolean (*get_root)(InfBrowser* browser,
@@ -147,6 +143,8 @@ struct _InfBrowserIface {
                                 const InfBrowserIter* iter);
   gboolean (*get_explored)(InfBrowser* browser,
                            const InfBrowserIter* iter);
+  gboolean (*is_subdirectory)(InfBrowser* browser,
+                              const InfBrowserIter* iter);
 
   InfBrowserRequest* (*add_note)(InfBrowser* browser,
                                  const InfBrowserIter* iter,
@@ -211,6 +209,10 @@ gboolean
 inf_browser_get_explored(InfBrowser* browser,
                          const InfBrowserIter* iter);
 
+gboolean
+inf_browser_is_subdirectory(InfBrowser* browser,
+                            const InfBrowserIter* iter);
+
 InfBrowserRequest*
 inf_browser_add_note(InfBrowser* browser,
                      const InfBrowserIter* iter,
@@ -260,11 +262,11 @@ inf_browser_iter_from_request(InfBrowser* browser,
 
 InfBrowserRequest*
 inf_browser_get_pending_explore_request(InfBrowser* browser,
-                                        const InfBrowserIter* iter); /* convenience function */
+                                        const InfBrowserIter* iter);
 
 InfBrowserRequest*
 inf_browser_get_pending_subscribe_request(InfBrowser* browser,
-                                          const InfBrowserIter* iter); /* convenience function */
+                                          const InfBrowserIter* iter);
 
 void
 inf_browser_error(InfBrowser* browser,
