@@ -26,6 +26,7 @@ libinfinity_common_la_SOURCES = \
 	inf-ip-address.c \
 	inf-local-publisher.c \
 	inf-protocol.c \
+	inf-request.c \
 	inf-sasl-context.c \
 	inf-session.c \
 	inf-simulated-connection.c \
@@ -56,6 +57,7 @@ libinfinity_common_la_HEADERS = \
 	inf-ip-address.h \
 	inf-local-publisher.h \
 	inf-protocol.h \
+	inf-request.h \
 	inf-sasl-context.h \
 	inf-session.h \
 	inf-simulated-connection.h \

@@ -361,6 +361,19 @@ INF_BROWSER_REQUEST_GET_IFACE
 </SECTION>
 
 <SECTION>
+<FILE>inf-request</FILE>
+<TITLE>InfRequest</TITLE>
+InfRequest
+InfRequestIface
+<SUBSECTION Standard>
+INF_REQUEST
+INF_IS_REQUEST
+INF_TYPE_REQUEST
+inf_request_get_type
+INF_REQUEST_GET_IFACE
+</SECTION>
+
+<SECTION>
 <FILE>inf-buffer</FILE>
 <TITLE>InfBuffer</TITLE>
 InfBuffer

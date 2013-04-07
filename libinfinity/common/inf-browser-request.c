@@ -22,7 +22,7 @@
  * @title: InfBrowserRequest
  * @short_description: Asynchronous browser request
  * @include: libinfinity/common/inf-browser-request.h
- * @see_also: #InfBrowser
+ * @see_also: #InfBrowser, #InfRequest, #InfcNodeRequest
  * @stability: Unstable
  *
  * #InfBrowserRequest represents a request that has been made via the
@@ -33,6 +33,7 @@
  */
 
 #include <libinfinity/common/inf-browser-request.h>
+#include <libinfinity/common/inf-request.h>
 #include <libinfinity/inf-marshal.h>
 
 enum {
@@ -88,17 +89,6 @@ inf_browser_request_base_init(gpointer g_class)
       )
     );
 
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_string(
-        "type",
-        "Type",
-        "A string identifier for the type of the request",
-        NULL,
-        G_PARAM_READABLE
-      )
-    );
-
     initialized = TRUE;
   }
 }
@@ -131,6 +121,7 @@ inf_browser_request_get_type(void)
     );
 
     g_type_interface_add_prerequisite(browser_request_type, G_TYPE_OBJECT);
+    g_type_interface_add_prerequisite(browser_request_type, INF_TYPE_REQUEST);
   }
 
   return browser_request_type;

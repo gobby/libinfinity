@@ -54,6 +54,7 @@
     <xi:include href="xml/inf-error.xml"/>
     <xi:include href="xml/inf-protocol.xml"/>
     <xi:include href="xml/inf-buffer.xml"/>
+    <xi:include href="xml/inf-request.xml"/>
   </chapter>
 
   <chapter>
