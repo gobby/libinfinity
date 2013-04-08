@@ -120,7 +120,6 @@ inf_browser_request_get_type(void)
       0
     );
 
-    g_type_interface_add_prerequisite(browser_request_type, G_TYPE_OBJECT);
     g_type_interface_add_prerequisite(browser_request_type, INF_TYPE_REQUEST);
   }
 
