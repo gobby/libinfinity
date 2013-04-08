@@ -527,7 +527,35 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  *
  * Adds a new leaf node to the browser. The new node is of type @type. If
  * session is non-%NULL it will be used as the initial content of the new
- * node, otherwise the new node will start empty.
+ * node, otherwise the new node will start empty. In the case of non-%NULL
+ * @session the session must be in status %INF_SESSION_RUNNING.
+ *
+ * The returned request finishes as soon as the creation of the node is
+ * acknowledged. It is however not guaranteed that the content of the note has
+ * been synchronized yet. In the case of a client connected to an infinote
+ * server the content is usually not transmitted when the request finishes.
+ * If an error in the process of transmission happens then the node will be
+ * removed again.
+ *
+ * On the client side, the progress of synchronization to the server after the
+ * request has finished can be monitored with the
+ * InfSession::synchronization-failed,
+ * InfSession::synchronization-complete and
+ * InfSession::synchronization-progress signals. Note that a single session
+ * might be synchronized to multiple servers at the same time, you will have
+ * to check the connection parameter in the signal hander to find out to
+ * which server the session is synchronized.
+ *
+ * You can safely unref session after having called this function. If the
+ * request or the synchronization fails, the session will be discarded in
+ * that case. When the returned request finishes, you can use
+ * infc_browser_iter_get_sync_in() to get the session again.
+ *
+ * If @initial_subscribe is set, then, when the returned request finishes,
+ * you might call infc_browser_iter_get_session() on the resulting
+ * #InfcBrowserIter. However, that function is not guaranteed to return
+ * non-%NULL in this case since the node might have been created, but the
+ * subscription could have failed.
  *
  * Returns: A #InfBrowserRequest which can be used to get notified when the
  * request finishes.
@@ -547,6 +575,20 @@ inf_browser_add_note(InfBrowser* browser,
   g_return_val_if_fail(name != NULL, NULL);
   g_return_val_if_fail(type != NULL, NULL);
   g_return_val_if_fail(session == NULL || INF_IS_SESSION(session), NULL);
+
+  g_return_val_if_fail(
+    session == NULL ||
+    inf_session_get_status(session) == INF_SESSION_RUNNING,
+    NULL
+  );
+
+  /* Can only subscribe if that session is not already subscribed elsewhere */
+  g_return_val_if_fail(
+    session == NULL ||
+    initial_subscribe == FALSE ||
+    inf_session_get_subscription_group(session) == NULL,
+    NULL
+  );
 
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->is_subdirectory != NULL, NULL);
