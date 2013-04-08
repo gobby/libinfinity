@@ -113,7 +113,9 @@ typedef enum _InfUserError {
  * request attempted to remove a directory's root node, which is not allowed.
  * @INF_DIRECTORY_ERROR_ALREADY_EXPLORED: The node given in an exploration
  * request has already been explored earlier.
- * @INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN: Exploration yields more children
+ * @INF_DIRECTORY_ERROR_NOT_INITIATED: Exploration has begun before the client
+ * was told how many entries to expect.
+ * @INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN: Exploration yields more children
  * than announced at the beginning of the exploration.
  * @INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN: Exploration yields less children
  * than announced at the beginning of the exploration.
@@ -156,7 +158,8 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
   INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
-  INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
+  INF_DIRECTORY_ERROR_NOT_INITIATED,
+  INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
   INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
   INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
   INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,

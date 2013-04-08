@@ -184,7 +184,10 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Connection is already subscribed to this session");
   case INF_DIRECTORY_ERROR_UNSUBSCRIBED:
     return _("The requesting connection is not subscribed to the session");
-  case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
+  case INF_DIRECTORY_ERROR_NOT_INITIATED:
+    return _("The server started to send explored nodes before telling how"
+             "many nodes to expect");
+  case INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN:
     return _("Server sent more explored nodes then announced");
   case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:
     return _("Server sent not as much explored nodes as announced");
