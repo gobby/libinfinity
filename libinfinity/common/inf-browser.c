@@ -966,7 +966,7 @@ inf_browser_error(InfBrowser* browser,
  */
 void
 inf_browser_node_added(InfBrowser* browser,
-                       InfBrowserIter* iter)
+                       const InfBrowserIter* iter)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(iter != NULL);
@@ -989,7 +989,7 @@ inf_browser_node_added(InfBrowser* browser,
  */
 void
 inf_browser_node_removed(InfBrowser* browser,
-                         InfBrowserIter* iter)
+                         const InfBrowserIter* iter)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(iter != NULL);
@@ -1014,7 +1014,7 @@ inf_browser_node_removed(InfBrowser* browser,
  */
 void
 inf_browser_subscribe_session(InfBrowser* browser,
-                              InfBrowserIter* iter,
+                              const InfBrowserIter* iter,
                               GObject* proxy)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
@@ -1042,7 +1042,7 @@ inf_browser_subscribe_session(InfBrowser* browser,
  */
 void
 inf_browser_unsubscribe_session(InfBrowser* browser,
-                                InfBrowserIter* iter,
+                                const InfBrowserIter* iter,
                                 GObject* proxy)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
@@ -1069,7 +1069,7 @@ inf_browser_unsubscribe_session(InfBrowser* browser,
  */
 void
 inf_browser_begin_request(InfBrowser* browser,
-                          InfBrowserIter* iter,
+                          const InfBrowserIter* iter,
                           InfBrowserRequest* request)
 {
   GValue value = { 0 };

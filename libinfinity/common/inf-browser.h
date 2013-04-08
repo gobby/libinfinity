@@ -110,21 +110,21 @@ struct _InfBrowserIface {
                 const GError* error);
 
   void (*node_added)(InfBrowser* browser,
-                     InfBrowserIter* iter);
+                     const InfBrowserIter* iter);
 
   void (*node_removed)(InfBrowser* browser,
-                       InfBrowserIter* iter);
+                       const InfBrowserIter* iter);
 
   void (*subscribe_session)(InfBrowser* browser,
-                            InfBrowserIter* iter,
+                            const InfBrowserIter* iter,
                             GObject* proxy); /* TODO: Make a InfSessionProxy base class */
 
   void (*unsubscribe_session)(InfBrowser* browser,
-                              InfBrowserIter* iter,
+                              const InfBrowserIter* iter,
                               GObject* proxy); /* TODO: Make a InfSessionProxy base class */
 
   void (*begin_request)(InfBrowser* browser,
-                        InfBrowserIter* iter,
+                        const InfBrowserIter* iter,
                         InfBrowserRequest* request);
 
   /* Virtual functions */
@@ -274,25 +274,25 @@ inf_browser_error(InfBrowser* browser,
 
 void
 inf_browser_node_added(InfBrowser* browser,
-                       InfBrowserIter* iter);
+                       const InfBrowserIter* iter);
 
 void
 inf_browser_node_removed(InfBrowser* browser,
-                         InfBrowserIter* iter);
+                         const InfBrowserIter* iter);
 
 void
 inf_browser_subscribe_session(InfBrowser* browser,
-                              InfBrowserIter* iter,
+                              const InfBrowserIter* iter,
                               GObject* proxy);
 
 void
 inf_browser_unsubscribe_session(InfBrowser* browser,
-                                InfBrowserIter* iter,
+                                const InfBrowserIter* iter,
                                 GObject* proxy);
 
 void
 inf_browser_begin_request(InfBrowser* browser,
-                          InfBrowserIter* iter,
+                          const InfBrowserIter* iter,
                           InfBrowserRequest* request);
 
 G_END_DECLS
