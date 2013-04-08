@@ -47,7 +47,7 @@ inf_request_base_init(gpointer g_class)
         "Type",
         "A string identifier for the type of the request",
         NULL,
-        G_PARAM_READABLE
+        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
       )
     );
 
