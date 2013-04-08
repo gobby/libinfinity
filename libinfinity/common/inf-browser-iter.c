@@ -69,7 +69,7 @@ inf_browser_iter_get_type(void)
  * Return Value: A newly-allocated copy of @iter.
  */
 InfBrowserIter*
-inf_browser_iter_copy(InfBrowserIter* iter)
+inf_browser_iter_copy(const InfBrowserIter* iter)
 {
   InfBrowserIter* new_iter;
 

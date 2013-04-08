@@ -36,7 +36,7 @@ GType
 inf_browser_iter_get_type(void) G_GNUC_CONST;
 
 InfBrowserIter*
-inf_browser_iter_copy(InfBrowserIter* iter);
+inf_browser_iter_copy(const InfBrowserIter* iter);
 
 void
 inf_browser_iter_free(InfBrowserIter* iter);
