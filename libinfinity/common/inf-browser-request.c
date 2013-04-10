@@ -70,7 +70,7 @@ inf_browser_request_base_init(gpointer g_class)
       NULL, NULL,
       inf_marshal_VOID__BOXED_POINTER,
       G_TYPE_NONE,
-      1,
+      2,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
       G_TYPE_POINTER /* GError* */
     );
