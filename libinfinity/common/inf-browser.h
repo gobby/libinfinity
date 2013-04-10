@@ -23,6 +23,7 @@
 #include <glib-object.h>
 #include <libinfinity/common/inf-browser-iter.h>
 #include <libinfinity/common/inf-browser-request.h>
+#include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-session.h>
 
 G_BEGIN_DECLS
@@ -125,7 +126,7 @@ struct _InfBrowserIface {
 
   void (*begin_request)(InfBrowser* browser,
                         const InfBrowserIter* iter,
-                        InfBrowserRequest* request);
+                        InfRequest* request);
 
   /* Virtual functions */
 
@@ -293,7 +294,7 @@ inf_browser_unsubscribe_session(InfBrowser* browser,
 void
 inf_browser_begin_request(InfBrowser* browser,
                           const InfBrowserIter* iter,
-                          InfBrowserRequest* request);
+                          InfRequest* request);
 
 G_END_DECLS
 

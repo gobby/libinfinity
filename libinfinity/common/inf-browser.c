@@ -144,13 +144,16 @@ inf_browser_base_init(gpointer g_class)
      * InfBrowser::subscribe-session:
      * @browser: The #InfBrowser object emitting the signal.
      * @iter: An iterator pointing to the node to which a subscription.
-     * was made.
+     * was made, or %NULL.
      * @session: The subscribed session.
      *
      * This signal is emitted whenever the browser is subscribed to a session.
      * This can happen as a result of a inf_browser_subscribe() or
      * inf_browser_add_note() call, but it is also possible that a
      * subscription is initiated without user interaction.
+     *
+     * If @iter is %NULL the session was a global session and not attached to
+     * a particular node.
      */
     browser_signals[SUBSCRIBE_SESSION] = g_signal_new(
       "subscribe-session",
@@ -169,13 +172,16 @@ inf_browser_base_init(gpointer g_class)
      * InfBrowser::unsubscribe-session:
      * @browser: The #InfBrowser object emitting the signal.
      * @iter: An iterator pointing to the node from which a subscription.
-     * was removed.
+     * was removed, or %NULL.
      * @session: The session to which the subscription was removed.
      *
-     * This signal is emitted whenever a subscription for a node has been
+     * This signal is emitted whenever a subscription for a session has been
      * removed. This can happen when a subscribed session is closed, or, in
      * the case of a server, if the session is idle for a long time it is
-     * stored on disk.
+     * stored on disk and removed from memory.
+     *
+     * If @iter is %NULL the session was a global session and not attached to
+     * a particular node.
      */
     browser_signals[UNSUBSCRIBE_SESSION] = g_signal_new(
       "unsubscribe-session",
@@ -193,13 +199,17 @@ inf_browser_base_init(gpointer g_class)
     /**
      * InfBrowser::begin-request:
      * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the node for which a request is made.
+     * @iter: An iterator pointing to the node for which a request is made, or
+     * %NULL.
      * @request: The request being made.
      *
      * This signal is emitted whenever a request is made with the browser.
-     * The signal is detailed with the request type. Possible request types
-     * are  "add-node", "add-subdirectory", "remove-node", "explore-node" and
-     * "subscribe-session".
+     * The signal is detailed with the request type, so that it is possible to
+     * connect to e.g. "begin-request::add-subdirectory" to only get notified
+     * about subdirectory creation requests.
+     *
+     * If @iter is %NULL the request is a global request and not attached to a
+     * particular node.
      */
     browser_signals[BEGIN_REQUEST] = g_signal_new(
       "begin-request",
@@ -211,7 +221,7 @@ inf_browser_base_init(gpointer g_class)
       G_TYPE_NONE,
       2,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_BROWSER_REQUEST
+      INF_TYPE_REQUEST
     );
 
     g_object_interface_install_property(
@@ -804,12 +814,11 @@ inf_browser_get_session(InfBrowser* browser,
  * Returns a list of all pending requests for the node @iter points to which
  * match type @request_type. A pending request is a request which has been
  * created but has not yet finished. @request_type can be %NULL in which case
- * all requests for the given node are returned. If it is non-%NULL it should
- * be one of "add-node", "add-subdirectory", "remove-node", "explore-node" or
- * "subscribe-session". In this case only requests which match the given type
- * are included in the list of returned requests.
+ * all requests for the given node are returned. If it is non-%NULL only
+ * requests which match the given type are included in the list of returned
+ * requests.
  *
- * Returns: A list #InfBrowserRequest<!-- -->s. Free with g_slist_free() when
+ * Returns: A list of #InfRequest<!-- -->s. Free with g_slist_free() when
  * no longer needed.
  */
 GSList*
@@ -1006,7 +1015,7 @@ inf_browser_node_removed(InfBrowser* browser,
  * inf_browser_subscribe_session:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to the node to whose session a
- * subscription was made.
+ * subscription was made, or %NULL.
  * @proxy: A session proxy for the newly subscribed session.
  *
  * This function emits the #InfBrowser::subscribe-session signal on @browser.
@@ -1018,7 +1027,6 @@ inf_browser_subscribe_session(InfBrowser* browser,
                               GObject* proxy)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
-  g_return_if_fail(iter != NULL);
   g_return_if_fail(G_IS_OBJECT(proxy));
 
   g_signal_emit(
@@ -1034,7 +1042,7 @@ inf_browser_subscribe_session(InfBrowser* browser,
  * inf_browser_unsubscribe_session:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to the node to whose session the
- * subscription was removed.
+ * subscription was removed, or %NULL.
  * @proxy: A session proxy for the unsubscribed session.
  *
  * This function emits the #InfBrowser::unsubscribe-session signal on
@@ -1046,7 +1054,6 @@ inf_browser_unsubscribe_session(InfBrowser* browser,
                                 GObject* proxy)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
-  g_return_if_fail(iter != NULL);
   g_return_if_fail(G_IS_OBJECT(proxy));
 
   g_signal_emit(
@@ -1061,7 +1068,8 @@ inf_browser_unsubscribe_session(InfBrowser* browser,
 /**
  * inf_browser_begin_request:
  * @browser: A #InfBrowser.
- * @iter: A #infBrowserIter pointing to the node for which a request was made.
+ * @iter: A #infBrowserIter pointing to the node for which a request was made,
+ * or %NULL.
  * @request: The request which was made.
  *
  * This function emits the #InfBrowser::begin_request signal on @browser. It
@@ -1070,12 +1078,11 @@ inf_browser_unsubscribe_session(InfBrowser* browser,
 void
 inf_browser_begin_request(InfBrowser* browser,
                           const InfBrowserIter* iter,
-                          InfBrowserRequest* request)
+                          InfRequest* request)
 {
   GValue value = { 0 };
 
   g_return_if_fail(INF_IS_BROWSER(browser));
-  g_return_if_fail(iter != NULL);
   g_return_if_fail(INF_IS_BROWSER_REQUEST(request));
 
   g_value_init(&value, G_TYPE_STRING);
