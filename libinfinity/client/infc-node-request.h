@@ -20,8 +20,6 @@
 #ifndef __INFC_NODE_REQUEST_H__
 #define __INFC_NODE_REQUEST_H__
 
-#include <libinfinity/client/infc-browser-iter.h>
-#include <libinfinity/client/infc-request.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -33,27 +31,33 @@ G_BEGIN_DECLS
 #define INFC_IS_NODE_REQUEST_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFC_TYPE_NODE_REQUEST))
 #define INFC_NODE_REQUEST_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFC_TYPE_NODE_REQUEST, InfcNodeRequestClass))
 
+/**
+ * InfcNodeRequest:
+ *
+ * #InfcNodeRequest is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfcNodeRequest InfcNodeRequest;
 typedef struct _InfcNodeRequestClass InfcNodeRequestClass;
 
+/**
+ * InfcNodeRequestClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfcNodeRequestClass {
-  InfcRequestClass parent_class;
+  /*< private >*/
+  GObjectClass parent_class;
 
-  /* Signals */
-  void (*finished)(InfcNodeRequest* node_request,
-                   const InfcBrowserIter* iter);
+  /*< public >*/
 };
 
 struct _InfcNodeRequest {
-  InfcRequest parent;
+  GObject parent;
 };
 
 GType
 infc_node_request_get_type(void) G_GNUC_CONST;
-
-void
-infc_node_request_finished(InfcNodeRequest* request,
-                           const InfcBrowserIter* iter);
 
 G_END_DECLS
 

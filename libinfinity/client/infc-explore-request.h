@@ -20,7 +20,7 @@
 #ifndef __INFC_EXPLORE_REQUEST_H__
 #define __INFC_EXPLORE_REQUEST_H__
 
-#include <libinfinity/client/infc-request.h>
+#include <libinfinity/client/infc-node-request.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -39,26 +39,18 @@ typedef struct _InfcExploreRequestClass InfcExploreRequestClass;
  * InfcExploreRequestClass:
  * @initiated: Default signal handler for the #InfcExploreRequest::initiated
  * signal.
- * @progress: Default signal handler for the #InfcExploreRequest::progress
- * signal.
- * @finished: Default signal handler for the #InfcExploreRequest::finished
- * signal.
  *
  * This structure contains default signal handlers for #InfcExploreRequest.
  */
 struct _InfcExploreRequestClass {
   /*< private >*/
-  InfcRequestClass parent_class;
+  InfcNodeRequestClass parent_class;
 
   /*< public >*/
 
   /* Signals */
   void (*initiated)(InfcExploreRequest *explore_request,
                     guint total);
-  void (*progress)(InfcExploreRequest* explore_request,
-                   guint current,
-                   guint total);
-  void (*finished)(InfcExploreRequest* explore_request);
 };
 
 /**
@@ -69,32 +61,21 @@ struct _InfcExploreRequestClass {
  */
 struct _InfcExploreRequest {
   /*< private >*/
-  InfcRequest parent;
+  InfcNodeRequest parent;
 };
 
 GType
 infc_explore_request_get_type(void) G_GNUC_CONST;
-
-guint
-infc_explore_request_get_node_id(InfcExploreRequest* request);
 
 void
 infc_explore_request_initiated(InfcExploreRequest* request,
                                guint total);
 
 gboolean
-infc_explore_request_progress(InfcExploreRequest* request,
-                              GError** error);
-
-gboolean
-infc_explore_request_finished(InfcExploreRequest* request,
-                              GError** error);
-
-gboolean
 infc_explore_request_get_initiated(InfcExploreRequest* request);
 
-gboolean
-infc_explore_request_get_finished(InfcExploreRequest* request);
+void
+infc_explore_request_progress(InfcExploreRequest* request);
 
 G_END_DECLS
 

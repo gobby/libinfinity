@@ -24,57 +24,52 @@
  * @include: libinfinity/client/infc-explore-request.h
  * @stability: Unstable
  *
- * When starting a node exploration using infc_browser_iter_explore() then
- * it returns an #InfcExploreRequest. This object can be used to get notified
- * when there is progress in exploration (for example to show a progress bar
- * in the GUI) or when the operation finished, that is all child nodes of the
- * explored subdirectory are known to the browser.
+ * When starting a node exploration using inf_browser_explore() on a
+ * #InfcBrowser then it returns an #InfcExploreRequest. This object can be
+ * used to get notified when there is progress in exploration (for example to
+ * show a progress bar in the GUI) or when the operation finished, that is
+ * all child nodes of the explored subdirectory are known to the browser.
  *
  * When the exploration starts the #InfcExploreRequest::initiated signal is
- * emitted. Then, for each node being explored #InfcExploreRequest::progress
- * is emitted. Eventually, #InfcExploreRequest::finished is emitted when the
+ * emitted. Then, for each node being explored the
+ * #InfcExploreRequest:progress property changes.
+ * Eventually, #InfBrowserRequest::finished is emitted when the
  * exploration has finished. Before each step the request can also fail, in
- * which case #InfcRequest::failed is emitted. When this happens then none of
- * the other signals will be emitted anymore.
+ * which case #InfBrowserRequest::finished is emitted with non-zero error.
+ * When this happens then none of the other signals will be emitted anymore.
  */
 
 #include <libinfinity/client/infc-explore-request.h>
-#include <libinfinity/common/inf-error.h>
+#include <libinfinity/client/infc-node-request.h>
 #include <libinfinity/inf-marshal.h>
 
 typedef struct _InfcExploreRequestPrivate InfcExploreRequestPrivate;
 struct _InfcExploreRequestPrivate {
-  guint node_id;
   guint current;
   guint total;
 
-  /* TODO: Use an enum instead? */
   gboolean initiated;
-  gboolean finished;
 };
 
 enum {
   PROP_0,
 
-  PROP_NODE_ID,
   PROP_CURRENT,
   PROP_TOTAL,
+  PROP_PROGRESS,
 
-  PROP_INITIATED,
-  PROP_FINISHED
+  PROP_INITIATED
 };
 
 enum {
   INITIATED,
-  PROGRESS,
-  FINISHED,
 
   LAST_SIGNAL
 };
 
 #define INFC_EXPLORE_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_EXPLORE_REQUEST, InfcExploreRequestPrivate))
 
-static InfcRequestClass* parent_class;
+static InfcNodeRequestClass* parent_class;
 static guint explore_request_signals[LAST_SIGNAL];
 
 static void
@@ -87,12 +82,10 @@ infc_explore_request_init(GTypeInstance* instance,
   request = INFC_EXPLORE_REQUEST(instance);
   priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
 
-  priv->node_id = 0;
   priv->current = 0;
   priv->total = 0;
 
   priv->initiated = FALSE;
-  priv->finished = FALSE;
 }
 
 static void
@@ -122,17 +115,10 @@ infc_explore_request_set_property(GObject* object,
 
   switch(prop_id)
   {
-  case PROP_NODE_ID:
-    priv->node_id = g_value_get_uint(value);
-    break;
   case PROP_TOTAL:
-    priv->total = g_value_get_uint(value);
-    break;
   case PROP_CURRENT:
-    priv->total = g_value_get_uint(value);
-    break;
+  case PROP_PROGRESS:
   case PROP_INITIATED:
-  case PROP_FINISHED:
     /* readonly */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -148,26 +134,35 @@ infc_explore_request_get_property(GObject* object,
 {
   InfcExploreRequest* explore_request;
   InfcExploreRequestPrivate* priv;
+  gboolean finished;
 
   explore_request = INFC_EXPLORE_REQUEST(object);
   priv = INFC_EXPLORE_REQUEST_PRIVATE(explore_request);
 
   switch(prop_id)
   {
-  case PROP_NODE_ID:
-    g_value_set_uint(value, priv->node_id);
-    break;
   case PROP_TOTAL:
     g_value_set_uint(value, priv->total);
     break;
   case PROP_CURRENT:
     g_value_set_uint(value, priv->current);
     break;
+  case PROP_PROGRESS:
+    if(priv->total == 0)
+    {
+      g_object_get(object, "finished", &finished, NULL);
+      if(finished == TRUE)
+        g_value_set_double(value, 1.0);
+      else
+        g_value_set_double(value, 0.0);
+    }
+    else
+    {
+      g_value_set_double(value, (double)priv->current / (double)priv->total);
+    }
+    break;
   case PROP_INITIATED:
     g_value_set_boolean(value, priv->initiated);
-    break;
-  case PROP_FINISHED:
-    g_value_set_boolean(value, priv->finished);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -183,42 +178,12 @@ infc_explore_request_initiated_impl(InfcExploreRequest* request,
   priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
 
   g_assert(priv->initiated == FALSE);
-  g_assert(priv->finished == FALSE);
 
   priv->total = total;
   priv->initiated = TRUE;
 
   g_object_notify(G_OBJECT(request), "total");
   g_object_notify(G_OBJECT(request), "initiated");
-}
-
-static void
-infc_explore_request_progress_impl(InfcExploreRequest* request,
-                                   guint current,
-                                   guint total)
-{
-  InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
-
-  g_assert(priv->initiated == TRUE);
-  g_assert(priv->finished == FALSE);
-  g_assert(total == priv->total);
-
-  priv->current = current;
-  g_object_notify(G_OBJECT(request), "current");
-}
-
-static void
-infc_explore_request_finished_impl(InfcExploreRequest* request)
-{
-  InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
-
-  g_assert(priv->initiated == TRUE);
-  g_assert(priv->finished == FALSE);
-
-  priv->finished = TRUE;
-  g_object_notify(G_OBJECT(request), "finished");
 }
 
 static void
@@ -231,7 +196,7 @@ infc_explore_request_class_init(gpointer g_class,
   object_class = G_OBJECT_CLASS(g_class);
   request_class = INFC_EXPLORE_REQUEST_CLASS(g_class);
 
-  parent_class = INFC_REQUEST_CLASS(g_type_class_peek_parent(g_class));
+  parent_class = INFC_NODE_REQUEST_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfcExploreRequestPrivate));
 
   object_class->finalize = infc_explore_request_finalize;
@@ -239,22 +204,6 @@ infc_explore_request_class_init(gpointer g_class,
   object_class->get_property = infc_explore_request_get_property;
 
   request_class->initiated = infc_explore_request_initiated_impl;
-  request_class->progress = infc_explore_request_progress_impl;
-  request_class->finished = infc_explore_request_finished_impl;
-
-  g_object_class_install_property(
-    object_class,
-    PROP_NODE_ID,
-    g_param_spec_uint(
-      "node_id",
-      "Node ID",
-      "ID of the node to explore",
-      0,
-      G_MAXUINT,
-      0,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-    )
-  );
 
   g_object_class_install_property(
     object_class,
@@ -266,7 +215,7 @@ infc_explore_request_class_init(gpointer g_class,
       0,
       G_MAXUINT,
       0,
-      G_PARAM_READWRITE
+      G_PARAM_READABLE
     )
   );
 
@@ -276,11 +225,11 @@ infc_explore_request_class_init(gpointer g_class,
     g_param_spec_uint(
       "current",
       "Current",
-      "Node that has just been explored",
+      "Number of nodes that have been explored",
       0,
       G_MAXUINT,
       0,
-      G_PARAM_READWRITE
+      G_PARAM_READABLE
     )
   );
 
@@ -296,17 +245,7 @@ infc_explore_request_class_init(gpointer g_class,
     )
   );
 
-  g_object_class_install_property(
-    object_class,
-    PROP_FINISHED,
-    g_param_spec_boolean(
-      "finished",
-      "Finished",
-      "Whether the exploration process has finished",
-      FALSE,
-      G_PARAM_READABLE
-    )
-  );
+  g_object_class_override_property(object_class, PROP_PROGRESS, "progress");
 
   /**
    * InfcExploreRequest::initiated:
@@ -327,47 +266,6 @@ infc_explore_request_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     G_TYPE_UINT
-  );
-
-  /**
-   * InfcExploreRequest::progress:
-   * @request: The #InfcExploreRequest that made progress.
-   * @current: The number of child nodes retrieved so far.
-   * @total: The total number of child nodes.
-   *
-   * This signal is emitted for each child node that is added to the
-   * subdirectory being explored. This can for example be used to update a
-   * progress bar in the GUI.
-   */
-  explore_request_signals[PROGRESS] = g_signal_new(
-    "progress",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfcExploreRequestClass, progress),
-    NULL, NULL,
-    inf_marshal_VOID__UINT_UINT,
-    G_TYPE_NONE,
-    2,
-    G_TYPE_UINT,
-    G_TYPE_UINT
-  );
-
-  /**
-   * InfcExploreRequest::finished:
-   * @request: The #InfcExploreRequest which finished.
-   *
-   * This signal is emitted when the exploration finished successfully and all
-   * child nodes of the subdirectory being explored are known.
-   */
-  explore_request_signals[FINISHED] = g_signal_new(
-    "finished",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfcExploreRequestClass, finished),
-    NULL, NULL,
-    inf_marshal_VOID__VOID,
-    G_TYPE_NONE,
-    0
   );
 }
 
@@ -392,7 +290,7 @@ infc_explore_request_get_type(void)
     };
 
     explore_request_type = g_type_register_static(
-      INFC_TYPE_REQUEST,
+      INFC_TYPE_NODE_REQUEST,
       "InfcExploreRequest",
       &explore_request_type_info,
       0
@@ -400,20 +298,6 @@ infc_explore_request_get_type(void)
   }
 
   return explore_request_type;
-}
-
-/**
- * infc_explore_request_get_node_id:
- * @request: An #InfcExploreRequest.
- *
- * Returns the ID of the node to be explored.
- *
- * Return Value: ID of the node to be explored.
- **/
-guint
-infc_explore_request_get_node_id(InfcExploreRequest* request)
-{
-  return INFC_EXPLORE_REQUEST_PRIVATE(request)->node_id;
 }
 
 /**
@@ -437,88 +321,6 @@ infc_explore_request_initiated(InfcExploreRequest* request,
 }
 
 /**
- * infc_explore_request_progress:
- * @request: A #InfcExploreRequest.
- * @error: Location to store error information.
- *
- * Emits the "progress" signal on @request.
- *
- * Return Value: %TRUE when the signal was emitted, %FALSE on error.
- **/
-gboolean
-infc_explore_request_progress(InfcExploreRequest* request,
-                              GError** error)
-{
-  InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
-
-  if(priv->current == priv->total)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN)
-    );
-
-    return FALSE;
-  }
-  else
-  {
-    g_signal_emit(
-      G_OBJECT(request),
-      explore_request_signals[PROGRESS],
-      0,
-      priv->current + 1,
-      priv->total
-    );
-
-    return TRUE;
-  }
-}
-
-/**
- * infc_explore_request_finished:
- * @request: A #InfcExploreRequest.
- * @error: Location to store error information.
- *
- * Emits the "finished" signal on @request.
- *
- * Return Value: %TRUE when the signal was emitted, %FALSE on error.
- **/
-gboolean
-infc_explore_request_finished(InfcExploreRequest* request,
-                              GError** error)
-{
-  InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
-
-  if(priv->current < priv->total)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN)
-    );
-
-    return FALSE;
-  }
-  else
-  {
-    g_signal_emit(
-      G_OBJECT(request),
-      explore_request_signals[FINISHED],
-      0
-    );
-
-    return TRUE;
-  }
-}
-
-/**
  * infc_explore_request_get_initiated:
  * @request: A #InfcExploreRequest.
  *
@@ -535,19 +337,24 @@ infc_explore_request_get_initiated(InfcExploreRequest* request)
 }
 
 /**
- * infc_explore_request_get_finished:
+ * infc_explore_request_progress:
  * @request: A #InfcExploreRequest.
+ * @error: Location to store error information.
  *
- * Returns whether the exploration process has finished, i.e. the "finished"
- * signal was emitted.
- *
- * Return Value: Whether the exploration has finished.
+ * Indicates that one more node has been explored and changes the
+ * #InfcExploreRequest:current property accordingly.
  **/
-gboolean
-infc_explore_request_get_finished(InfcExploreRequest* request)
+void
+infc_explore_request_progress(InfcExploreRequest* request)
 {
-  g_return_val_if_fail(INFC_IS_EXPLORE_REQUEST(request), FALSE);
-  return INFC_EXPLORE_REQUEST_PRIVATE(request)->finished;
+  InfcExploreRequestPrivate* priv;
+  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  
+  g_return_if_fail(priv->current < priv->total);
+
+  ++priv->current;
+  g_object_notify(G_OBJECT(request), "current");
+  g_object_notify(G_OBJECT(request), "progress");
 }
 
 /* vim:set et sw=2 ts=2: */

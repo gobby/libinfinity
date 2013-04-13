@@ -17,50 +17,72 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/client/infc-browser.h>
+/**
+ * SECTION:infc-node-request
+ * @title: InfcNodeRequest
+ * @short_description: Asynchronous request related to a node in a browser
+ * @include: libinfinity/client/infc-node-request.h
+ * @see_also: #InfcBrowser
+ * @stability: Unstable
+ *
+ * #InfcNodeRequest represents an asynchronous operation which is related to
+ * a node in a #InfcBrowser. This could be the request to add a node. The
+ * request finishes when the server has sent a reply.
+ */
+
 #include <libinfinity/client/infc-node-request.h>
-#include <libinfinity/inf-marshal.h>
+#include <libinfinity/client/infc-request.h>
+#include <libinfinity/common/inf-browser-request.h>
+#include <libinfinity/common/inf-request.h>
 
 typedef struct _InfcNodeRequestPrivate InfcNodeRequestPrivate;
 struct _InfcNodeRequestPrivate {
+  gchar* type;
+  guint seq;
   guint node_id;
+
+  gboolean finished;
 };
 
 enum {
   PROP_0,
 
-  PROP_NODE_ID
-};
+  PROP_TYPE,
+  PROP_SEQ,
+  PROP_NODE_ID,
 
-enum {
-  FINISHED,
-
-  LAST_SIGNAL
+  PROP_PROGRESS
 };
 
 #define INFC_NODE_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_NODE_REQUEST, InfcNodeRequestPrivate))
 
-static InfcRequestClass* parent_class;
-static guint node_request_signals[LAST_SIGNAL];
+static GObjectClass* parent_class;
 
 static void
 infc_node_request_init(GTypeInstance* instance,
                        gpointer g_class)
 {
-  InfcNodeRequest* node_request;
+  InfcNodeRequest* request;
   InfcNodeRequestPrivate* priv;
 
-  node_request = INFC_NODE_REQUEST(instance);
-  priv = INFC_NODE_REQUEST_PRIVATE(node_request);
+  request = INFC_NODE_REQUEST(instance);
+  priv = INFC_NODE_REQUEST_PRIVATE(request);
 
-  priv->node_id = 0;
+  priv->type = NULL;
+  priv->seq = 0;
+  priv->finished = FALSE;
 }
 
 static void
 infc_node_request_finalize(GObject* object)
 {
   InfcNodeRequest* request;
+  InfcNodeRequestPrivate* priv;
+
   request = INFC_NODE_REQUEST(object);
+  priv = INFC_NODE_REQUEST_PRIVATE(request);
+
+  g_free(priv->type);
 
   if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
     G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -80,9 +102,20 @@ infc_node_request_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_TYPE:
+    g_assert(priv->type == NULL); /* construct only */
+    priv->type = g_value_dup_string(value);
+    break;
+  case PROP_SEQ:
+    g_assert(priv->seq == 0); /* construct only */
+    priv->seq = g_value_get_uint(value);
+    break;
   case PROP_NODE_ID:
+    g_assert(priv->node_id == 0); /* construct only */
     priv->node_id = g_value_get_uint(value);
     break;
+  case PROP_PROGRESS:
+    /* read only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -103,13 +136,47 @@ infc_node_request_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_TYPE:
+    g_value_set_string(value, priv->type);
+    break;
+  case PROP_SEQ:
+    g_value_set_uint(value, priv->seq);
+    break;
   case PROP_NODE_ID:
     g_value_set_uint(value, priv->node_id);
+    break;
+  case PROP_PROGRESS:
+    if(priv->finished == FALSE)
+      g_value_set_double(value, 0.0);
+    else
+      g_value_set_double(value, 1.0);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
+}
+
+static void
+infc_node_request_request_fail(InfRequest* request,
+                               const GError* error)
+{
+  inf_browser_request_finished(INF_BROWSER_REQUEST(request), NULL, error);
+}
+
+static void
+infc_node_request_browser_request_finished(InfBrowserRequest* request,
+                                           InfBrowserIter* iter,
+                                           const GError* error)
+{
+  InfcNodeRequest* node_request;
+  InfcNodeRequestPrivate* priv;
+
+  node_request = INFC_NODE_REQUEST(request);
+  priv = INFC_NODE_REQUEST_PRIVATE(node_request);
+
+  priv->finished = TRUE;
+  g_object_notify(G_OBJECT(node_request), "progress");
 }
 
 static void
@@ -122,14 +189,12 @@ infc_node_request_class_init(gpointer g_class,
   object_class = G_OBJECT_CLASS(g_class);
   request_class = INFC_NODE_REQUEST_CLASS(g_class);
 
-  parent_class = INFC_REQUEST_CLASS(g_type_class_peek_parent(g_class));
+  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfcNodeRequestPrivate));
 
   object_class->finalize = infc_node_request_finalize;
   object_class->set_property = infc_node_request_set_property;
   object_class->get_property = infc_node_request_get_property;
-
-  request_class->finished = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -145,17 +210,37 @@ infc_node_request_class_init(gpointer g_class,
     )
   );
 
-  node_request_signals[FINISHED] = g_signal_new(
-    "finished",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfcNodeRequestClass, finished),
-    NULL, NULL,
-    inf_marshal_VOID__BOXED,
-    G_TYPE_NONE,
-    1,
-    INFC_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
-  );
+  g_object_class_override_property(object_class, PROP_TYPE, "type");
+  g_object_class_override_property(object_class, PROP_SEQ, "seq");
+  g_object_class_override_property(object_class, PROP_PROGRESS, "progress");
+}
+
+static void
+infc_node_request_request_init(gpointer g_iface,
+                               gpointer iface_data)
+{
+  InfRequestIface* iface;
+  iface = (InfRequestIface*)g_iface;
+
+  iface->fail = infc_node_request_request_fail;
+}
+
+static void
+infc_node_request_browser_request_init(gpointer g_iface,
+                                       gpointer iface_data)
+{
+  InfBrowserRequestIface* iface;
+  iface = (InfBrowserRequestIface*)g_iface;
+
+  iface->finished = infc_node_request_browser_request_finished;
+}
+
+static void
+infc_node_request_infc_request_init(gpointer g_iface,
+                                    gpointer iface_data)
+{
+  InfcRequestIface* iface;
+  iface = (InfcRequestIface*)g_iface;
 }
 
 GType
@@ -178,29 +263,51 @@ infc_node_request_get_type(void)
       NULL                           /* value_table */
     };
 
+    static const GInterfaceInfo request_info = {
+      infc_node_request_request_init,
+      NULL,
+      NULL
+    };
+
+    static const GInterfaceInfo browser_request_info = {
+      infc_node_request_browser_request_init,
+      NULL,
+      NULL
+    };
+
+    static const GInterfaceInfo infc_request_info = {
+      infc_node_request_infc_request_init,
+      NULL,
+      NULL
+    };
+
     node_request_type = g_type_register_static(
-      INFC_TYPE_REQUEST,
+      G_TYPE_OBJECT,
       "InfcNodeRequest",
       &node_request_type_info,
       0
     );
+
+    g_type_add_interface_static(
+      node_request_type,
+      INF_TYPE_REQUEST,
+      &request_info
+    );
+
+    g_type_add_interface_static(
+      node_request_type,
+      INF_TYPE_BROWSER_REQUEST,
+      &browser_request_info
+    );
+
+    g_type_add_interface_static(
+      node_request_type,
+      INFC_TYPE_REQUEST,
+      &infc_request_info
+    );
   }
 
   return node_request_type;
-}
-
-/**
- * infc_node_request_finished:
- * @request: A #InfcNodeRequest.
- * @iter: A #InfcBrowserIter pointing to a node affected by the request.
- *
- * Emits the "finished" signal on @request.
- **/
-void
-infc_node_request_finished(InfcNodeRequest* request,
-                           const InfcBrowserIter* iter)
-{
-  g_signal_emit(G_OBJECT(request), node_request_signals[FINISHED], 0, iter);
 }
 
 /* vim:set et sw=2 ts=2: */

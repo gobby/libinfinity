@@ -34,7 +34,7 @@ static void
 inf_gtk_browser_model_sort_set_browser_cb(InfGtkBrowserModel* model,
                                           GtkTreePath* path,
                                           GtkTreeIter* iter,
-                                          InfcBrowser* browser,
+                                          InfBrowser* browser,
                                           gpointer user_data)
 {
   GtkTreeModelSort* model_sort;
@@ -198,8 +198,8 @@ inf_gtk_browser_model_sort_resolve(InfGtkBrowserModel* model,
 
 static gboolean
 inf_gtk_browser_model_sort_browser_iter_to_tree_iter(InfGtkBrowserModel* mdl,
-                                                     InfcBrowser* browser,
-                                                     InfcBrowserIter* iter,
+                                                     InfBrowser* browser,
+                                                     InfBrowserIter* iter,
                                                      GtkTreeIter* tree_iter)
 {
   GtkTreeModel* child_model;

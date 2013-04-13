@@ -76,12 +76,12 @@
   <chapter>
     <title>Libinfinity client side API</title>
     <xi:include href="xml/infc-browser.xml"/>
-    <xi:include href="xml/infc-browser-iter.xml"/>
     <xi:include href="xml/infc-note-plugin.xml"/>
     <xi:include href="xml/infc-session-proxy.xml"/>
-    <xi:include href="xml/infc-explore-request.xml"/>
     <xi:include href="xml/infc-node-request.xml"/>
+    <xi:include href="xml/infc-explore-request.xml"/>
     <xi:include href="xml/infc-user-request.xml"/>
+    <xi:include href="xml/infc-chat-request.xml"/>
     <xi:include href="xml/infc-request.xml"/>
     <xi:include href="xml/infc-request-manager.xml"/>
   </chapter>

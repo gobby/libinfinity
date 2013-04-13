@@ -18,26 +18,26 @@
  */
 
 /**
- * SECTION:infc-user-request
- * @title: InfcUserRequest
- * @short_description: Asynchronous request related to a user
- * @include: libinfinity/client/infc-user-request.h
- * @see_also: #InfcSessionProxy
+ * SECTION:infc-chat-request
+ * @title: InfcChatRequest
+ * @short_description: Asynchronous request related to the chat.
+ * @include: libinfinity/client/infc-chat-request.h
+ * @see_also: #InfcBrowser, #InfcRequest
  * @stability: Unstable
  *
- * #InfcUserRequest represents an asynchronous operation which is related to
- * a user in a session. This could be a user join request or a status update
- * request.
+ * #InfcChatRequest represents an asynchronous operation which is related to
+ * subscribing to the chat session of a #InfcBrowser. The request finishes
+ * when the server has sent a reply and will emit the
+ * #InfcChatRequest::finished signal.
  */
 
-#include <libinfinity/client/infc-user-request.h>
+#include <libinfinity/client/infc-chat-request.h>
 #include <libinfinity/client/infc-request.h>
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/inf-marshal.h>
 
-typedef struct _InfcUserRequestPrivate InfcUserRequestPrivate;
-struct _InfcUserRequestPrivate {
-  gchar* type;
+typedef struct _InfcChatRequestPrivate InfcChatRequestPrivate;
+struct _InfcChatRequestPrivate {
   guint seq;
 };
 
@@ -54,57 +54,55 @@ enum {
   PROP_SEQ
 };
 
-#define INFC_USER_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_USER_REQUEST, InfcUserRequestPrivate))
+#define INFC_CHAT_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_CHAT_REQUEST, InfcChatRequestPrivate))
 
 static GObjectClass* parent_class;
-static guint user_request_signals[LAST_SIGNAL];
+static guint chat_request_signals[LAST_SIGNAL];
 
 static void
-infc_user_request_init(GTypeInstance* instance,
+infc_chat_request_init(GTypeInstance* instance,
                        gpointer g_class)
 {
-  InfcUserRequest* request;
-  InfcUserRequestPrivate* priv;
+  InfcChatRequest* request;
+  InfcChatRequestPrivate* priv;
 
-  request = INFC_USER_REQUEST(instance);
-  priv = INFC_USER_REQUEST_PRIVATE(request);
+  request = INFC_CHAT_REQUEST(instance);
+  priv = INFC_CHAT_REQUEST_PRIVATE(request);
 
-  priv->type = NULL;
   priv->seq = 0;
 }
 
 static void
-infc_user_request_finalize(GObject* object)
+infc_chat_request_finalize(GObject* object)
 {
-  InfcUserRequest* request;
-  InfcUserRequestPrivate* priv;
+  InfcChatRequest* request;
+  InfcChatRequestPrivate* priv;
 
-  request = INFC_USER_REQUEST(object);
-  priv = INFC_USER_REQUEST_PRIVATE(request);
-
-  g_free(priv->type);
+  request = INFC_CHAT_REQUEST(object);
+  priv = INFC_CHAT_REQUEST_PRIVATE(request);
 
   if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 static void
-infc_user_request_set_property(GObject* object,
+infc_chat_request_set_property(GObject* object,
                                guint prop_id,
                                const GValue* value,
                                GParamSpec* pspec)
 {
-  InfcUserRequest* request;
-  InfcUserRequestPrivate* priv;
+  InfcChatRequest* request;
+  InfcChatRequestPrivate* priv;
 
-  request = INFC_USER_REQUEST(object);
-  priv = INFC_USER_REQUEST_PRIVATE(request);
+  request = INFC_CHAT_REQUEST(object);
+  priv = INFC_CHAT_REQUEST_PRIVATE(request);
 
   switch(prop_id)
   {
   case PROP_TYPE:
-    g_assert(priv->type == NULL); /* construct only */
-    priv->type = g_value_dup_string(value);
+    /* this can only have subscribe-chat type, otherwise it would not be a
+     * InfcChatRequest. */
+    g_assert(strcmp(g_value_get_string(value), "subscribe-chat") == 0);
     break;
   case PROP_SEQ:
     g_assert(priv->seq == 0); /* construct only */
@@ -117,21 +115,21 @@ infc_user_request_set_property(GObject* object,
 }
 
 static void
-infc_user_request_get_property(GObject* object,
+infc_chat_request_get_property(GObject* object,
                                guint prop_id,
                                GValue* value,
                                GParamSpec* pspec)
 {
-  InfcUserRequest* request;
-  InfcUserRequestPrivate* priv;
+  InfcChatRequest* request;
+  InfcChatRequestPrivate* priv;
 
-  request = INFC_USER_REQUEST(object);
-  priv = INFC_USER_REQUEST_PRIVATE(request);
+  request = INFC_CHAT_REQUEST(object);
+  priv = INFC_CHAT_REQUEST_PRIVATE(request);
 
   switch(prop_id)
   {
   case PROP_TYPE:
-    g_value_set_string(value, priv->type);
+    g_value_set_static_string(value, "subscribe-chat");
     break;
   case PROP_SEQ:
     g_value_set_uint(value, priv->seq);
@@ -143,52 +141,54 @@ infc_user_request_get_property(GObject* object,
 }
 
 static void
-infc_user_request_request_fail(InfRequest* request,
+infc_chat_request_request_fail(InfRequest* request,
                                const GError* error)
 {
-  infc_user_request_finished(INFC_USER_REQUEST(request), NULL, error);
+  g_signal_emit(
+    request,
+    chat_request_signals[FINISHED],
+    0,
+    error
+  );
 }
 
 static void
-infc_user_request_class_init(gpointer g_class,
+infc_chat_request_class_init(gpointer g_class,
                              gpointer class_data)
 {
   GObjectClass* object_class;
-  InfcUserRequestClass* request_class;
+  InfcChatRequestClass* request_class;
 
   object_class = G_OBJECT_CLASS(g_class);
-  request_class = INFC_USER_REQUEST_CLASS(g_class);
+  request_class = INFC_CHAT_REQUEST_CLASS(g_class);
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfcUserRequestPrivate));
+  g_type_class_add_private(g_class, sizeof(InfcChatRequestPrivate));
 
-  object_class->finalize = infc_user_request_finalize;
-  object_class->set_property = infc_user_request_set_property;
-  object_class->get_property = infc_user_request_get_property;
+  object_class->finalize = infc_chat_request_finalize;
+  object_class->set_property = infc_chat_request_set_property;
+  object_class->get_property = infc_chat_request_get_property;
 
   request_class->finished = NULL;
 
   /**
-   * InfcUserRequest::finished:
+   * InfcChatRequest::finished:
    * @request: The #InfcUserRequest object emitting the signal.
-   * @user: The affected #InfcUser object.
    * @error: Reason of request failure in the case of an error.
    *
-   * This signal is emitted when the request finishes. If it finishes
-   * successfully, @error will be %NULL and @user points to the affected user.
-   * For a user join request this is the newly joined user. If the request
-   * failed @error will be non-%NULL and @user can be %NULL.
+   * This signal is emitted when the chat request finishes. If it finishes
+   * successfully, @error will be %NULL, othewise it will be non-%NULL and
+   * contains error information.
    */
-  user_request_signals[FINISHED] = g_signal_new(
+  chat_request_signals[FINISHED] = g_signal_new(
     "finished",
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfcUserRequestClass, finished),
+    G_STRUCT_OFFSET(InfcChatRequestClass, finished),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_POINTER,
+    inf_marshal_VOID__POINTER,
     G_TYPE_NONE,
-    2,
-    INF_TYPE_USER,
+    1,
     G_TYPE_POINTER /* GError* */
   );
 
@@ -197,17 +197,17 @@ infc_user_request_class_init(gpointer g_class,
 }
 
 static void
-infc_user_request_request_init(gpointer g_iface,
+infc_chat_request_request_init(gpointer g_iface,
                                gpointer iface_data)
 {
   InfRequestIface* iface;
   iface = (InfRequestIface*)g_iface;
 
-  iface->fail = infc_user_request_request_fail;
+  iface->fail = infc_chat_request_request_fail;
 }
 
 static void
-infc_user_request_infc_request_init(gpointer g_iface,
+infc_chat_request_infc_request_init(gpointer g_iface,
                                     gpointer iface_data)
 {
   InfcRequestIface* iface;
@@ -215,80 +215,77 @@ infc_user_request_infc_request_init(gpointer g_iface,
 }
 
 GType
-infc_user_request_get_type(void)
+infc_chat_request_get_type(void)
 {
-  static GType user_request_type = 0;
+  static GType chat_request_type = 0;
 
-  if(!user_request_type)
+  if(!chat_request_type)
   {
-    static const GTypeInfo user_request_type_info = {
-      sizeof(InfcUserRequestClass),  /* class_size */
+    static const GTypeInfo chat_request_type_info = {
+      sizeof(InfcChatRequestClass),  /* class_size */
       NULL,                          /* base_init */
       NULL,                          /* base_finalize */
-      infc_user_request_class_init,  /* class_init */
+      infc_chat_request_class_init,  /* class_init */
       NULL,                          /* class_finalize */
       NULL,                          /* class_data */
-      sizeof(InfcUserRequest),       /* instance_size */
+      sizeof(InfcChatRequest),       /* instance_size */
       0,                             /* n_preallocs */
-      infc_user_request_init,        /* instance_init */
+      infc_chat_request_init,        /* instance_init */
       NULL                           /* value_table */
     };
 
     static const GInterfaceInfo request_info = {
-      infc_user_request_request_init,
+      infc_chat_request_request_init,
       NULL,
       NULL
     };
 
     static const GInterfaceInfo infc_request_info = {
-      infc_user_request_infc_request_init,
+      infc_chat_request_infc_request_init,
       NULL,
       NULL
     };
 
-    user_request_type = g_type_register_static(
+    chat_request_type = g_type_register_static(
       G_TYPE_OBJECT,
-      "InfcUserRequest",
-      &user_request_type_info,
+      "InfcChatRequest",
+      &chat_request_type_info,
       0
     );
 
     g_type_add_interface_static(
-      user_request_type,
+      chat_request_type,
       INF_TYPE_REQUEST,
       &request_info
     );
 
     g_type_add_interface_static(
-      user_request_type,
+      chat_request_type,
       INFC_TYPE_REQUEST,
       &infc_request_info
     );
   }
 
-  return user_request_type;
+  return chat_request_type;
 }
 
 /**
- * infc_user_request_finished:
- * @request: A #InfcUserRequest.
- * @user: The #InfUser affected by the request, or %NULL.
+ * infc_chat_request_finished:
+ * @request: A #InfcChatRequest.
  * @error: A #GError explaining the reason for request failure, or %NULL.
  *
- * Emits the #InfcUserRequest::finished signal on @request. @user should only
- * be %NULL if a user join request failed. If the request failed then @error
- * should be non-%NULL, otherwise it should be %NULL.
+ * Emits the #InfcChatRequest::finished signal on @request. @error should be
+ * %NULL if the request finished successfully, otherwise it should contain
+ * appropriate error information.
  **/
 void
-infc_user_request_finished(InfcUserRequest* request,
-                           InfUser* user,
+infc_chat_request_finished(InfcChatRequest* request,
                            const GError* error)
 {
   g_signal_emit(
     G_OBJECT(request),
-    user_request_signals[FINISHED],
+    chat_request_signals[FINISHED],
     0,
-    user,
     error
   );
 }

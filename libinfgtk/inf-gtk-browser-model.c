@@ -59,7 +59,7 @@ inf_gtk_browser_model_base_init(gpointer g_class)
       3,
       GTK_TYPE_TREE_PATH | G_SIGNAL_TYPE_STATIC_SCOPE,
       GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INFC_TYPE_BROWSER
+      INF_TYPE_BROWSER
     );
 
     initialized = TRUE;
@@ -157,12 +157,12 @@ void
 inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
                                   GtkTreePath* path,
                                   GtkTreeIter* iter,
-                                  InfcBrowser* browser)
+                                  InfBrowser* browser)
 {
   g_return_if_fail(INF_GTK_IS_BROWSER_MODEL(model));
   g_return_if_fail(path != NULL);
   g_return_if_fail(iter != NULL);
-  g_return_if_fail(browser == NULL || INFC_IS_BROWSER(browser));
+  g_return_if_fail(browser == NULL || INF_IS_BROWSER(browser));
 
   g_signal_emit(
     G_OBJECT(model),
@@ -205,8 +205,8 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
 /**
  * inf_gtk_browser_model_browser_iter_to_tree_iter:
  * @model: A #InfGtkBrowserModel.
- * @browser:  A #InfcBrowser.
- * @browser_iter: A #InfcBrowserIter pointing into @browser.
+ * @browser:  A #InfBrowser.
+ * @browser_iter: A #InfBrowserIter pointing into @browser.
  * @tree_iter: A #GtkTreeIter that will be set by this function.
  *
  * Sets @tree_iter to point to the same node @browser_iter refers to
@@ -218,8 +218,8 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
  **/
 gboolean
 inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
-                                                InfcBrowser* browser,
-                                                InfcBrowserIter* browser_iter,
+                                                InfBrowser* browser,
+                                                InfBrowserIter* browser_iter,
                                                 GtkTreeIter* tree_iter)
 {
   InfGtkBrowserModelIface* iface;

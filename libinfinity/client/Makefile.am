@@ -9,7 +9,7 @@ libinfinity_client_ladir = \
 
 libinfinity_client_la_SOURCES = \
 	infc-browser.c \
-	infc-browser-iter.c \
+	infc-chat-request.c \
 	infc-explore-request.c \
 	infc-node-request.c \
 	infc-request.c \
@@ -19,7 +19,7 @@ libinfinity_client_la_SOURCES = \
 
 libinfinity_client_la_HEADERS = \
 	infc-browser.h \
-	infc-browser-iter.h \
+	infc-chat-request.h \
 	infc-explore-request.h \
 	infc-node-request.h \
 	infc-note-plugin.h \

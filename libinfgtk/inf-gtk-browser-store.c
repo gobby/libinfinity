@@ -29,7 +29,7 @@
 /* The three pointers in GtkTreeIter are used as follows:
  *
  * user_data holds a pointer to the GtkTreeModelItem the iter points to.
- * user_data2 holds the node_id field of the InfcBrowserIter, or 0 if the
+ * user_data2 holds the node_id field of the InfBrowserIter, or 0 if the
  * iter points to the toplevel node.
  * user_data3 holds the node field of the InfcBrowser, or NULL if the iter
  * points to the toplevel node. Note that it does not hold the root node of
@@ -43,7 +43,7 @@ struct _InfGtkBrowserStoreItem {
   InfDiscovery* discovery;
   InfDiscoveryInfo* info;
 
-  InfcBrowser* browser;
+  InfBrowser* browser;
 
   /* Browser node which is currently to be removed. This is required since
    * when node-removed is emitted in InfcBrowser the node is still present,
@@ -105,20 +105,26 @@ inf_gtk_browser_store_find_item_by_connection(InfGtkBrowserStore* store,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
+  InfcBrowser* browser;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
 
   for(item = priv->first_item; item != NULL; item = item->next)
+  {
     if(item->browser != NULL)
-      if(infc_browser_get_connection(item->browser) == connection)
+    {
+      browser = INFC_BROWSER(item->browser);
+      if(infc_browser_get_connection(browser) == connection)
         return item;
+    }
+  }
 
   return NULL;
 }
 
 static InfGtkBrowserStoreItem*
 inf_gtk_browser_store_find_item_by_browser(InfGtkBrowserStore* store,
-                                           InfcBrowser* browser)
+                                           InfBrowser* browser)
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
@@ -160,36 +166,37 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
                                                gpointer user_data);
 
 static void
-inf_gtk_browser_store_browser_error_cb(InfcBrowser* browser,
+inf_gtk_browser_store_browser_error_cb(InfBrowser* browser,
                                        const GError* error,
                                        gpointer user_data);
 
 static void
-inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
-                                    InfcBrowserIter* iter,
+inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
+                                    InfBrowserIter* iter,
                                     gpointer user_data);
 
 static void
-inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
-                                      InfcBrowserIter* iter,
+inf_gtk_browser_store_node_removed_cb(InfBrowser* browser,
+                                      InfBrowserIter* iter,
                                       gpointer user_data);
 
 static void
-inf_gtk_browser_store_begin_explore_cb(InfcBrowser* browser,
-                                       InfcBrowserIter* iter,
-                                       InfcExploreRequest* request,
-                                       gpointer user_data);
+inf_gtk_browser_store_begin_request_explore_node_cb(InfBrowser* browser,
+                                                    InfBrowserIter* iter,
+                                                    InfRequest* request,
+                                                    gpointer user_data);
 
 static void
-inf_gtk_browser_store_begin_subscribe_cb(InfcBrowser* browser,
-                                         InfcBrowserIter* iter,
-                                         InfcNodeRequest* request,
-                                         gpointer user_data);
+inf_gtk_browser_store_begin_request_subscribe_session_cb(InfBrowser* browser,
+                                                         InfBrowserIter* iter,
+                                                         InfRequest* request,
+                                                         gpointer user_data);
 
 static void
-inf_gtk_browser_store_request_failed_cb(InfcRequest* request,
-                                        const GError* error,
-                                        gpointer user_data);
+inf_gtk_browser_store_request_finished_cb(InfBrowserRequest* request,
+                                          InfBrowserIter* iter,
+                                          const GError* error,
+                                          gpointer user_data);
 
 static void
 inf_gtk_browser_store_request_unrefed_func(gpointer data,
@@ -208,7 +215,7 @@ inf_gtk_browser_store_request_data_free(gpointer data,
 
 static void
 inf_gtk_browser_store_item_request_remove(InfGtkBrowserStoreItem* item,
-                                          InfcRequest* request)
+                                          InfBrowserRequest* request)
 {
   g_object_weak_unref(
     G_OBJECT(request),
@@ -218,7 +225,7 @@ inf_gtk_browser_store_item_request_remove(InfGtkBrowserStoreItem* item,
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(request),
-    G_CALLBACK(inf_gtk_browser_store_request_failed_cb),
+    G_CALLBACK(inf_gtk_browser_store_request_finished_cb),
     item
   );
 
@@ -228,7 +235,7 @@ inf_gtk_browser_store_item_request_remove(InfGtkBrowserStoreItem* item,
 static void
 inf_gtk_browser_store_item_request_add(InfGtkBrowserStore* store,
                                        InfGtkBrowserStoreItem* item,
-                                       InfcRequest* request)
+                                       InfBrowserRequest* request)
 {
   InfGtkBrowserStoreRequestData* data;
 
@@ -241,8 +248,8 @@ inf_gtk_browser_store_item_request_add(InfGtkBrowserStore* store,
 
   g_signal_connect_data(
     G_OBJECT(request),
-    "failed",
-    G_CALLBACK(inf_gtk_browser_store_request_failed_cb),
+    "finished",
+    G_CALLBACK(inf_gtk_browser_store_request_finished_cb),
     data,
     inf_gtk_browser_store_request_data_free,
     0
@@ -256,13 +263,14 @@ inf_gtk_browser_store_item_request_add(InfGtkBrowserStore* store,
 }
 
 static void
-inf_gtk_browser_store_request_failed_cb(InfcRequest* request,
-                                        const GError* error,
-                                        gpointer user_data)
+inf_gtk_browser_store_request_finished_cb(InfBrowserRequest* request,
+                                          InfBrowserIter* iter,
+                                          const GError* error,
+                                          gpointer user_data)
 {
   InfGtkBrowserStoreRequestData* data;
   InfGtkBrowserStorePrivate* priv;
-  InfcBrowserIter iter;
+  InfBrowserIter request_iter;
   gboolean node_exists;
   GtkTreeIter tree_iter;
   GtkTreePath* path;
@@ -273,52 +281,45 @@ inf_gtk_browser_store_request_failed_cb(InfcRequest* request,
   g_assert(g_slist_find(data->item->requests, request) != NULL);
   g_assert(data->item->browser != NULL);
 
-  /* TODO: Let explore request derive from node request */
-  g_assert(INFC_IS_EXPLORE_REQUEST(request) || INFC_IS_NODE_REQUEST(request));
+  g_assert(INFC_IS_NODE_REQUEST(request));
 
-  if(INFC_IS_EXPLORE_REQUEST(request))
+  /* TODO: Also remove the request from the store when
+   * it has properly finished? */
+  if(error != NULL)
   {
-    node_exists = infc_browser_iter_from_explore_request(
+    node_exists = inf_browser_iter_from_request(
       data->item->browser,
-      INFC_EXPLORE_REQUEST(request),
-      &iter
-    );
-  }
-  else
-  {
-    node_exists = infc_browser_iter_from_node_request(
-      data->item->browser,
-      INFC_NODE_REQUEST(request),
-      &iter
-    );
-  }
-
-  inf_gtk_browser_store_item_request_remove(data->item, request);
-
-  /* Ignore if node has been removed in the meanwhile */
-  if(G_LIKELY(node_exists))
-  {
-    /* Replace previous error */
-    g_hash_table_insert(
-      data->item->node_errors,
-      GUINT_TO_POINTER(iter.node_id),
-      g_error_copy(error)
+      request,
+      &request_iter
     );
 
-    tree_iter.stamp = priv->stamp;
-    tree_iter.user_data = data->item;
-    tree_iter.user_data2 = GUINT_TO_POINTER(iter.node_id);
+    inf_gtk_browser_store_item_request_remove(data->item, request);
 
-    /* Set NULL for root node because it also refers to the store item as
-     * such if no browser is set. */
-    if(iter.node_id == 0)
-      tree_iter.user_data3 = NULL;
-    else
-      tree_iter.user_data3 = iter.node;
+    /* Ignore if node has been removed in the meanwhile */
+    if(G_LIKELY(node_exists))
+    {
+      /* Replace previous error */
+      g_hash_table_insert(
+        data->item->node_errors,
+        GUINT_TO_POINTER(request_iter.node_id),
+        g_error_copy(error)
+      );
 
-    path = gtk_tree_model_get_path(GTK_TREE_MODEL(data->store), &tree_iter);
-    gtk_tree_model_row_changed(GTK_TREE_MODEL(data->store), path, &tree_iter);
-    gtk_tree_path_free(path);
+      tree_iter.stamp = priv->stamp;
+      tree_iter.user_data = data->item;
+      tree_iter.user_data2 = GUINT_TO_POINTER(request_iter.node_id);
+
+      /* Set NULL for root node because it also refers to the store item as
+       * such if no browser is set. */
+      if(request_iter.node_id == 0)
+        tree_iter.user_data3 = NULL;
+      else
+        tree_iter.user_data3 = request_iter.node;
+
+      path = gtk_tree_model_get_path(GTK_TREE_MODEL(data->store), &tree_iter);
+      gtk_tree_model_row_changed(GTK_TREE_MODEL(data->store), path, &tree_iter);
+      gtk_tree_path_free(path);
+    }
   }
 }
 
@@ -337,7 +338,7 @@ static void
 inf_gtk_browser_store_item_set_browser(InfGtkBrowserStore* store,
                                        InfGtkBrowserStoreItem* item,
                                        GtkTreePath* path,
-                                       InfcBrowser* browser)
+                                       InfBrowser* browser)
 {
   GtkTreeIter tree_iter;
   InfGtkBrowserStorePrivate* priv;
@@ -356,7 +357,7 @@ inf_gtk_browser_store_item_set_browser(InfGtkBrowserStore* store,
     path,
     &tree_iter,
     browser
-   );
+  );
 }
 
 /* takes ownership of name */
@@ -436,7 +437,14 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
      * method for the connection's network. */
     /* TODO: Set error */
     if(infc_browser_get_connection(browser) != NULL)
-      inf_gtk_browser_store_item_set_browser(store, item, path, browser);
+    {
+      inf_gtk_browser_store_item_set_browser(
+        store,
+        item,
+        path,
+        INF_BROWSER(browser)
+      );
+    }
 
     g_object_unref(G_OBJECT(browser));
   }
@@ -556,7 +564,7 @@ inf_gtk_browser_store_undiscovered_cb(InfDiscovery* discovery,
 }
 
 static void
-inf_gtk_browser_store_browser_error_cb(InfcBrowser* browser,
+inf_gtk_browser_store_browser_error_cb(InfBrowser* browser,
                                        const GError* error,
                                        gpointer user_data)
 {
@@ -596,14 +604,15 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
 {
   InfGtkBrowserStore* store;
   InfGtkBrowserStorePrivate* priv;
-  InfcBrowser* browser;
+  InfBrowser* browser;
+  InfBrowserStatus status;
   InfGtkBrowserStoreItem* item;
   GtkTreeIter iter;
   GtkTreePath* path;
 
   store = INF_GTK_BROWSER_STORE(user_data);
   priv = INF_GTK_BROWSER_STORE_PRIVATE(user_data);  
-  browser = INFC_BROWSER(object);
+  browser = INF_BROWSER(object);
   item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
   g_assert(item != NULL);
@@ -614,10 +623,11 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
   iter.user_data3 = NULL;
 
   path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &iter);
+  g_object_get(G_OBJECT(browser), "status", &status, NULL);
 
-  switch(infc_browser_get_status(browser))
+  switch(status)
   {
-  case INFC_BROWSER_DISCONNECTED:
+  case INF_BROWSER_CLOSED:
     /* TODO: Do we want to go to disconnected state when error is not set? */
     item->status = INF_GTK_BROWSER_MODEL_ERROR;
 
@@ -635,13 +645,13 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
 
     gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
     break;
-  case INFC_BROWSER_CONNECTING:
+  case INF_BROWSER_OPENING:
     if(item->error != NULL) g_error_free(item->error);
     item->error = NULL;
     item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
     gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &iter);
     break;
-  case INFC_BROWSER_CONNECTED:
+  case INF_BROWSER_OPEN:
     if(item->error != NULL) g_error_free(item->error);
     item->error = NULL;
     item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
@@ -656,8 +666,8 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
 }
 
 static void
-inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
-                                    InfcBrowserIter* iter,
+inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
+                                    InfBrowserIter* iter,
                                     gpointer user_data)
 {
   InfGtkBrowserStore* store;
@@ -666,7 +676,7 @@ inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
   GtkTreeIter tree_iter;
   GtkTreePath* path;
 
-  InfcBrowserIter test_iter;
+  InfBrowserIter test_iter;
   gboolean test_result;
 
   store = INF_GTK_BROWSER_STORE(user_data);
@@ -684,7 +694,7 @@ inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
   /* If iter is the only node within its parent, we need to emit the
    * row-has-child-toggled signal. */
   test_iter = *iter;
-  test_result = infc_browser_iter_get_parent(browser, &test_iter);
+  test_result = inf_browser_get_parent(browser, &test_iter);
   g_assert(test_result == TRUE);
 
   /* Let tree_iter point to parent row for possible notification */
@@ -698,10 +708,10 @@ inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
   else
     tree_iter.user_data3 = test_iter.node;
 
-  test_result = infc_browser_iter_get_child(browser, &test_iter);
+  test_result = inf_browser_get_child(browser, &test_iter);
   g_assert(test_result == TRUE);
 
-  if(infc_browser_iter_get_next(browser, &test_iter) == FALSE)
+  if(inf_browser_get_next(browser, &test_iter) == FALSE)
   {
     gtk_tree_model_row_has_child_toggled(
       GTK_TREE_MODEL(store),
@@ -714,8 +724,8 @@ inf_gtk_browser_store_node_added_cb(InfcBrowser* browser,
 }
 
 static void
-inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
-                                      InfcBrowserIter* iter,
+inf_gtk_browser_store_node_removed_cb(InfBrowser* browser,
+                                      InfBrowserIter* iter,
                                       gpointer user_data)
 {
   InfGtkBrowserStore* store;
@@ -723,7 +733,7 @@ inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
   InfGtkBrowserStoreItem* item;
   GtkTreeIter tree_iter;
   GtkTreePath* path;
-  InfcBrowserIter test_iter;
+  InfBrowserIter test_iter;
   gboolean test_result;
 
   store = INF_GTK_BROWSER_STORE(user_data);
@@ -751,7 +761,7 @@ inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
    * to emit row-has-child-toggled if it is the only one in its
    * subdirectory. */
   test_iter = *iter;
-  test_result = infc_browser_iter_get_parent(browser, &test_iter);
+  test_result = inf_browser_get_parent(browser, &test_iter);
   g_assert(test_result == TRUE);
 
   /* Let tree_iter point to parent row for possible notification */
@@ -765,10 +775,10 @@ inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
   else
     tree_iter.user_data3 = test_iter.node;
 
-  test_result = infc_browser_iter_get_child(browser, &test_iter);
+  test_result = inf_browser_get_child(browser, &test_iter);
   g_assert(test_result == TRUE);
 
-  if(infc_browser_iter_get_next(browser, &test_iter) == FALSE)
+  if(inf_browser_get_next(browser, &test_iter) == FALSE)
   {
     gtk_tree_model_row_has_child_toggled(
       GTK_TREE_MODEL(store),
@@ -782,10 +792,10 @@ inf_gtk_browser_store_node_removed_cb(InfcBrowser* browser,
 }
 
 static void
-inf_gtk_browser_store_begin_explore_cb(InfcBrowser* browser,
-                                       InfcBrowserIter* iter,
-                                       InfcExploreRequest* request,
-                                       gpointer user_data)
+inf_gtk_browser_store_begin_request_explore_node_cb(InfBrowser* browser,
+                                                    InfBrowserIter* iter,
+                                                    InfRequest* request,
+                                                    gpointer user_data)
 {
   InfGtkBrowserStore* store;
   InfGtkBrowserStoreItem* item;
@@ -793,31 +803,37 @@ inf_gtk_browser_store_begin_explore_cb(InfcBrowser* browser,
   store = INF_GTK_BROWSER_STORE(user_data);
   item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
-  inf_gtk_browser_store_item_request_add(store, item, INFC_REQUEST(request));
+  g_assert(INF_IS_BROWSER_REQUEST(request));
+
+  inf_gtk_browser_store_item_request_add(
+    store,
+    item,
+    INF_BROWSER_REQUEST(request)
+  );
 }
 
 static void
-inf_gtk_browser_store_begin_subscribe_cb(InfcBrowser* browser,
-                                         InfcBrowserIter* iter,
-                                         InfcNodeRequest* request,
-                                         gpointer user_data)
+inf_gtk_browser_store_begin_request_subscribe_session_cb(InfBrowser* browser,
+                                                         InfBrowserIter* iter,
+                                                         InfRequest* request,
+                                                         gpointer user_data)
 {
   InfGtkBrowserStore* store;
   InfGtkBrowserStoreItem* item;
 
+  /* should not be a chat session, because chat session
+   * has type subscribe-chat */
+  g_assert(iter != NULL);
+  g_assert(INF_IS_BROWSER_REQUEST(request));
+
   store = INF_GTK_BROWSER_STORE(user_data);
+  item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
-  /* Ignore chat subscriptions */
-  if(iter != NULL)
-  {
-    item = inf_gtk_browser_store_find_item_by_browser(store, browser);
-
-    inf_gtk_browser_store_item_request_add(
-      store,
-      item,
-      INFC_REQUEST(request)
-    );
-  }
+  inf_gtk_browser_store_item_request_add(
+    store,
+    item,
+    INF_BROWSER_REQUEST(request)
+  );
 }
 
 static void
@@ -952,7 +968,14 @@ inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
      * method for the connection's network. */
     /* TODO: Set error */
     if(infc_browser_get_connection(browser) != NULL)
-      inf_gtk_browser_store_item_set_browser(store, new_item, path, browser);
+    {
+      inf_gtk_browser_store_item_set_browser(
+        store,
+        new_item,
+        path,
+        INF_BROWSER(browser)
+      );
+    }
 
     g_object_unref(G_OBJECT(browser));
     gtk_tree_path_free(path);
@@ -1151,7 +1174,7 @@ inf_gtk_browser_store_tree_model_get_column_type(GtkTreeModel* model,
   case INF_GTK_BROWSER_MODEL_COL_ERROR:
     return G_TYPE_POINTER;
   case INF_GTK_BROWSER_MODEL_COL_NODE:
-    return INFC_TYPE_BROWSER_ITER;
+    return INF_TYPE_BROWSER_ITER;
   default:
     g_assert_not_reached();
     return G_TYPE_INVALID;
@@ -1165,7 +1188,7 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
   gint* indices;
 
   guint i;
@@ -1194,14 +1217,14 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
   }
 
   if(item->browser == NULL) return FALSE;
-  infc_browser_iter_get_root(item->browser, &browser_iter);
+  inf_browser_get_root(item->browser, &browser_iter);
 
   for(n = 1; n < (guint)gtk_tree_path_get_depth(path); ++ n)
   {
-    if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
+    if(inf_browser_get_explored(item->browser, &browser_iter) == FALSE)
       return FALSE;
 
-    if(infc_browser_iter_get_child(item->browser, &browser_iter) == FALSE)
+    if(inf_browser_get_child(item->browser, &browser_iter) == FALSE)
       return FALSE;
 
     /* skip missing */
@@ -1210,7 +1233,7 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
 
     for(i = 0; i < (guint)indices[n]; ++ i)
     {
-      if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
+      if(inf_browser_get_next(item->browser, &browser_iter) == FALSE)
         return FALSE;
 
       /* skip missing */
@@ -1231,17 +1254,17 @@ inf_gtk_browser_store_tree_model_get_iter(GtkTreeModel* model,
 static void
 inf_gtk_browser_store_tree_model_get_path_impl(InfGtkBrowserStore* store,
                                                InfGtkBrowserStoreItem* item,
-                                               InfcBrowserIter* iter,
+                                               InfBrowserIter* iter,
                                                GtkTreePath* path)
 {
   InfGtkBrowserStorePrivate* priv;
-  InfcBrowserIter cur_iter;
+  InfBrowserIter cur_iter;
   InfGtkBrowserStoreItem* cur;
   gboolean result;
   guint n;
 
   cur_iter = *iter;
-  if(infc_browser_iter_get_parent(item->browser, &cur_iter) == FALSE)
+  if(inf_browser_get_parent(item->browser, &cur_iter) == FALSE)
   {
     priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
 
@@ -1261,26 +1284,26 @@ inf_gtk_browser_store_tree_model_get_path_impl(InfGtkBrowserStore* store,
       path
     );
 
-    result = infc_browser_iter_get_child(item->browser, &cur_iter);
+    result = inf_browser_get_child(item->browser, &cur_iter);
     g_assert(result == TRUE);
 
     /* skip missing */
     if(cur_iter.node == item->missing)
     {
-      result = infc_browser_iter_get_next(item->browser, &cur_iter);
+      result = inf_browser_get_next(item->browser, &cur_iter);
       g_assert(result == TRUE);
     }
 
     n = 0;
     while(cur_iter.node_id != iter->node_id)
     {
-      result = infc_browser_iter_get_next(item->browser, &cur_iter);
+      result = inf_browser_get_next(item->browser, &cur_iter);
       g_assert(result == TRUE);
 
       /* skip missing */
       if(cur_iter.node == item->missing)
       {
-        result = infc_browser_iter_get_next(item->browser, &cur_iter);
+        result = inf_browser_get_next(item->browser, &cur_iter);
         g_assert(result == TRUE);
       }
 
@@ -1299,7 +1322,7 @@ inf_gtk_browser_store_tree_model_get_path(GtkTreeModel* model,
   InfGtkBrowserStoreItem* item;
   InfGtkBrowserStoreItem* cur;
   GtkTreePath* path;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
   guint n;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
@@ -1344,7 +1367,8 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
+  InfBrowserStatus browser_status;
   GError* error;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
@@ -1384,7 +1408,7 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
     {
       g_value_set_string(
         value,
-        infc_browser_iter_get_name(item->browser, &browser_iter)
+        inf_browser_get_node_name(INF_BROWSER(item->browser), &browser_iter)
       );
     }
     break;
@@ -1400,11 +1424,27 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
       else if(item->browser != NULL)
       {
         /* error on root node */
-        infc_browser_iter_get_root(item->browser, &browser_iter);
-        error = g_hash_table_lookup(
-          item->node_errors,
-          GUINT_TO_POINTER(browser_iter.node_id)
+        g_object_get(
+          G_OBJECT(item->browser),
+          "status",
+          &browser_status,
+          NULL
         );
+
+        if(browser_status == INF_BROWSER_OPEN)
+        {
+          inf_browser_get_root(item->browser, &browser_iter);
+          error = g_hash_table_lookup(
+            item->node_errors,
+            GUINT_TO_POINTER(browser_iter.node_id)
+          );
+        }
+        else
+        {
+          /* Browser exists but is closed, but there is no connection error
+           * set: no error */
+          error = NULL;
+        }
       }
       else
       {
@@ -1416,6 +1456,9 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
     {
       g_assert(item->browser != NULL);
 
+      g_object_get(G_OBJECT(item->browser), "status", &browser_status, NULL);
+      g_assert(browser_status == INF_BROWSER_OPEN);
+
       error = g_hash_table_lookup(
         item->node_errors,
         GUINT_TO_POINTER(browser_iter.node_id)
@@ -1426,14 +1469,15 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
     g_value_set_pointer(value, error);
     break;
   case INF_GTK_BROWSER_MODEL_COL_NODE:
-    if(browser_iter.node == NULL)
-    {
-      /* get root node, if available */
-      g_assert(item->browser != NULL);
-      infc_browser_iter_get_root(item->browser, &browser_iter);
-    }
+    g_assert(item->browser != NULL);
 
-    g_value_init(value, INFC_TYPE_BROWSER_ITER);
+    g_object_get(G_OBJECT(item->browser), "status", &browser_status, NULL);
+    g_assert(browser_status == INF_BROWSER_OPEN);
+
+    if(browser_iter.node == NULL)
+      inf_browser_get_root(item->browser, &browser_iter);
+
+    g_value_init(value, INF_TYPE_BROWSER_ITER);
     g_value_set_boxed(value, &browser_iter);
     break;
   default:
@@ -1448,7 +1492,7 @@ inf_gtk_browser_store_tree_model_iter_next(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
   g_assert(iter->stamp == priv->stamp);
@@ -1469,12 +1513,12 @@ inf_gtk_browser_store_tree_model_iter_next(GtkTreeModel* model,
   {
     g_assert(browser_iter.node != item->missing);
 
-    if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
+    if(inf_browser_get_next(item->browser, &browser_iter) == FALSE)
       return FALSE;
 
     /* skip missing */
     if(browser_iter.node == item->missing)
-      if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
+      if(inf_browser_get_next(item->browser, &browser_iter) == FALSE)
         return FALSE;
 
     iter->user_data2 = GUINT_TO_POINTER(browser_iter.node_id);
@@ -1490,7 +1534,8 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfcBrowserIter browser_iter;
+  InfBrowserStatus browser_status;
+  InfBrowserIter browser_iter;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
 
@@ -1513,25 +1558,29 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
     if(item->browser == NULL)
       return FALSE;
 
+    g_object_get(G_OBJECT(item->browser), "status", &browser_status, NULL);
+    if(browser_status != INF_BROWSER_OPEN)
+      return FALSE;
+
     browser_iter.node_id = GPOINTER_TO_UINT(parent->user_data2);
     if(browser_iter.node_id == 0)
-      infc_browser_iter_get_root(item->browser, &browser_iter);
+      inf_browser_get_root(item->browser, &browser_iter);
     else
       browser_iter.node = parent->user_data3;
 
     g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
-    if(!infc_browser_iter_is_subdirectory(item->browser, &browser_iter))
+    if(!inf_browser_is_subdirectory(item->browser, &browser_iter))
       return FALSE;
 
-    if(!infc_browser_iter_get_explored(item->browser, &browser_iter))
+    if(!inf_browser_get_explored(item->browser, &browser_iter))
       return FALSE;
 
-    if(!infc_browser_iter_get_child(item->browser, &browser_iter))
+    if(!inf_browser_get_child(item->browser, &browser_iter))
       return FALSE;
 
     if(browser_iter.node == item->missing)
-      if(!infc_browser_iter_get_next(item->browser, &browser_iter))
+      if(!inf_browser_get_next(item->browser, &browser_iter))
         return FALSE;
 
     iter->stamp = priv->stamp;
@@ -1548,7 +1597,7 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
   g_assert(iter->stamp == priv->stamp);
@@ -1561,19 +1610,19 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
   g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
   if(browser_iter.node == NULL)
-    infc_browser_iter_get_root(item->browser, &browser_iter);
+    inf_browser_get_root(item->browser, &browser_iter);
 
-  if(infc_browser_iter_is_subdirectory(item->browser, &browser_iter) == FALSE)
+  if(inf_browser_is_subdirectory(item->browser, &browser_iter) == FALSE)
     return FALSE;
 
-  if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
+  if(inf_browser_get_explored(item->browser, &browser_iter) == FALSE)
     return FALSE;
 
-  if(!infc_browser_iter_get_child(item->browser, &browser_iter))
+  if(!inf_browser_get_child(item->browser, &browser_iter))
     return FALSE;
 
   if(browser_iter.node == item->missing)
-    if(!infc_browser_iter_get_next(item->browser, &browser_iter))
+    if(!inf_browser_get_next(item->browser, &browser_iter))
       return FALSE;
 
   return TRUE;
@@ -1586,7 +1635,7 @@ inf_gtk_browser_store_tree_model_iter_n_children(GtkTreeModel* model,
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
   InfGtkBrowserStoreItem* cur;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
   gboolean result;
   guint n;
 
@@ -1609,15 +1658,15 @@ inf_gtk_browser_store_tree_model_iter_n_children(GtkTreeModel* model,
     g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
     if(browser_iter.node == NULL)
-      infc_browser_iter_get_root(item->browser, &browser_iter);
+      inf_browser_get_root(item->browser, &browser_iter);
 
-    if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
+    if(inf_browser_get_explored(item->browser, &browser_iter) == FALSE)
       return 0;
 
     n = 0;
-    for(result = infc_browser_iter_get_child(item->browser, &browser_iter);
+    for(result = inf_browser_get_child(item->browser, &browser_iter);
         result == TRUE;
-        result = infc_browser_iter_get_next(item->browser, &browser_iter))
+        result = inf_browser_get_next(item->browser, &browser_iter))
     {
       if(browser_iter.node != item->missing)
         ++n;
@@ -1636,7 +1685,7 @@ inf_gtk_browser_store_tree_model_iter_nth_child(GtkTreeModel* model,
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
   InfGtkBrowserStoreItem* cur;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
   guint i;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
@@ -1666,15 +1715,15 @@ inf_gtk_browser_store_tree_model_iter_nth_child(GtkTreeModel* model,
     browser_iter.node_id = GPOINTER_TO_UINT(parent->user_data2);
 
     if(browser_iter.node_id == 0)
-      infc_browser_iter_get_root(item->browser, &browser_iter);
+      inf_browser_get_root(item->browser, &browser_iter);
     else
       browser_iter.node = parent->user_data3;
     g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
-    if(infc_browser_iter_get_explored(item->browser, &browser_iter) == FALSE)
+    if(inf_browser_get_explored(item->browser, &browser_iter) == FALSE)
       return FALSE;
 
-    if(infc_browser_iter_get_child(item->browser, &browser_iter) == FALSE)
+    if(inf_browser_get_child(item->browser, &browser_iter) == FALSE)
       return FALSE;
 
     /* skip missing */
@@ -1683,7 +1732,7 @@ inf_gtk_browser_store_tree_model_iter_nth_child(GtkTreeModel* model,
 
     for(i = 0; i < (guint)n; ++ i)
     {
-      if(infc_browser_iter_get_next(item->browser, &browser_iter) == FALSE)
+      if(inf_browser_get_next(item->browser, &browser_iter) == FALSE)
         return FALSE;
 
       if(browser_iter.node == item->missing)
@@ -1705,7 +1754,7 @@ inf_gtk_browser_store_tree_model_iter_parent(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfcBrowserIter browser_iter;
+  InfBrowserIter browser_iter;
   gboolean result;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
@@ -1720,7 +1769,7 @@ inf_gtk_browser_store_tree_model_iter_parent(GtkTreeModel* model,
 
   g_assert(browser_iter.node != item->missing);
 
-  result = infc_browser_iter_get_parent(item->browser, &browser_iter);
+  result = inf_browser_get_parent(item->browser, &browser_iter);
   g_assert(result == TRUE);
   g_assert(browser_iter.node != item->missing);
 
@@ -1744,14 +1793,15 @@ static void
 inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
                                                 GtkTreePath* path,
                                                 GtkTreeIter* tree_iter,
-                                                InfcBrowser* browser)
+                                                InfBrowser* browser)
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
 
-  InfcBrowserIter iter;
+  InfBrowserIter iter;
   guint n;
   gboolean had_children;
+  InfBrowserStatus status;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
   had_children = FALSE;
@@ -1765,12 +1815,12 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     /* Notify about deleted rows. Notify in reverse order so that indexing
      * continues to work. Remember whether we had children to emit
      * row-has-child-toggled later. */
-    infc_browser_iter_get_root(item->browser, &iter);
-    if(infc_browser_iter_get_explored(item->browser, &iter) &&
-       infc_browser_iter_get_child(item->browser, &iter))
+    inf_browser_get_root(item->browser, &iter);
+    if(inf_browser_get_explored(item->browser, &iter) &&
+       inf_browser_get_child(item->browser, &iter))
     {
       n = 1;
-      while(infc_browser_iter_get_next(item->browser, &iter))
+      while(inf_browser_get_next(item->browser, &iter))
         ++ n;
 
       gtk_tree_path_append_index(path, n);
@@ -1789,7 +1839,7 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     {
       inf_gtk_browser_store_item_request_remove(
         item,
-        INFC_REQUEST(item->requests->data)
+        INF_BROWSER_REQUEST(item->requests->data)
       );
     }
 
@@ -1821,13 +1871,13 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
-      G_CALLBACK(inf_gtk_browser_store_begin_explore_cb),
+      G_CALLBACK(inf_gtk_browser_store_begin_request_explore_node_cb),
       model
     );
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
-      G_CALLBACK(inf_gtk_browser_store_begin_subscribe_cb),
+      G_CALLBACK(inf_gtk_browser_store_begin_request_subscribe_session_cb),
       model
     );
 
@@ -1882,15 +1932,15 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
     g_signal_connect_after(
       G_OBJECT(item->browser),
-      "begin-explore",
-      G_CALLBACK(inf_gtk_browser_store_begin_explore_cb),
+      "begin-request::explore-node",
+      G_CALLBACK(inf_gtk_browser_store_begin_request_explore_node_cb),
       model
     );
 
     g_signal_connect_after(
       G_OBJECT(item->browser),
-      "begin-subscribe",
-      G_CALLBACK(inf_gtk_browser_store_begin_subscribe_cb),
+      "begin-request::subscribe-session",
+      G_CALLBACK(inf_gtk_browser_store_begin_request_subscribe_session_cb),
       model
     );
 
@@ -1910,15 +1960,16 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
      * error set. */
     if(item->browser != NULL)
     {
-      switch(infc_browser_get_status(item->browser))
+      g_object_get(G_OBJECT(item->browser), "status", &status, NULL);
+      switch(status)
       {
-      case INFC_BROWSER_DISCONNECTED:
+      case INF_BROWSER_CLOSED:
         item->status = INF_GTK_BROWSER_MODEL_DISCONNECTED;
         break;
-      case INFC_BROWSER_CONNECTING:
+      case INF_BROWSER_OPENING:
         item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
         break;
-      case INFC_BROWSER_CONNECTED:
+      case INF_BROWSER_OPEN:
         item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
         break;
       default:
@@ -2002,8 +2053,8 @@ inf_gtk_browser_store_browser_model_resolve(InfGtkBrowserModel* model,
 
 static gboolean
 inf_gtk_browser_store_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
-                                                InfcBrowser* browser,
-                                                InfcBrowserIter* browser_iter,
+                                                InfBrowser* browser,
+                                                InfBrowserIter* browser_iter,
                                                 GtkTreeIter* tree_iter)
 {
   InfGtkBrowserStorePrivate* priv;
@@ -2346,6 +2397,7 @@ inf_gtk_browser_store_clear_connection_error(InfGtkBrowserStore* store,
                                              InfXmlConnection* connection)
 {
   InfGtkBrowserStoreItem* item;
+  InfBrowserStatus status;
   GtkTreeIter iter;
   GtkTreePath* path;
 
@@ -2364,15 +2416,16 @@ inf_gtk_browser_store_clear_connection_error(InfGtkBrowserStore* store,
 
     if(item->browser != NULL)
     {
-      switch(infc_browser_get_status(item->browser))
+      g_object_get(G_OBJECT(item->browser), "status", &status, NULL);
+      switch(status)
       {
-      case INFC_BROWSER_DISCONNECTED:
+      case INF_BROWSER_CLOSED:
         item->status = INF_GTK_BROWSER_MODEL_DISCONNECTED;
         break;
-      case INFC_BROWSER_CONNECTING:
+      case INF_BROWSER_OPENING:
         item->status = INF_GTK_BROWSER_MODEL_CONNECTING;
         break;
-      case INFC_BROWSER_CONNECTED:
+      case INF_BROWSER_OPEN:
         item->status = INF_GTK_BROWSER_MODEL_CONNECTED;
         break;
       default:

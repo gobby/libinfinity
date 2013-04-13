@@ -1,5 +1,5 @@
 /* libinfinity - a GObject-based infinote implementation
- * Copyright (C) 2007-2010 Armin Burgmeier <armin@arbur.net>
+ * Copyright (C) 2007-2011 Armin Burgmeier <armin@arbur.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,40 +26,30 @@ G_BEGIN_DECLS
 
 #define INFC_TYPE_REQUEST                 (infc_request_get_type())
 #define INFC_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFC_TYPE_REQUEST, InfcRequest))
-#define INFC_REQUEST_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INFC_TYPE_REQUEST, InfcRequestClass))
 #define INFC_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFC_TYPE_REQUEST))
-#define INFC_IS_REQUEST_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFC_TYPE_REQUEST))
-#define INFC_REQUEST_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFC_TYPE_REQUEST, InfcRequestClass))
+#define INFC_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFC_TYPE_REQUEST, InfcRequestIface))
 
+/**
+ * InfcRequest:
+ *
+ * #InfcRequest is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfcRequest InfcRequest;
-typedef struct _InfcRequestClass InfcRequestClass;
+typedef struct _InfcRequestIface InfcRequestIface;
 
-struct _InfcRequestClass {
-  GObjectClass parent_class;
-
-  /* Signals */
-  void (*failed)(InfcRequest* request, GError* error);
-
-  void (*unused1)(void);
-  void (*usused2)(void);
-};
-
-struct _InfcRequest {
-  GObject parent;
+/**
+ * InfcRequestIface:
+ *
+ * Default signal handlers for the #InfcRequest interface.
+ */
+struct _InfcRequestIface {
+  /*< private >*/
+  GTypeInterface parent;
 };
 
 GType
 infc_request_get_type(void) G_GNUC_CONST;
-
-guint
-infc_request_get_seq(InfcRequest* request);
-
-const gchar*
-infc_request_get_name(InfcRequest* request);
-
-void
-infc_request_failed(InfcRequest* request,
-                    GError* error);
 
 G_END_DECLS
 

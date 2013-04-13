@@ -299,16 +299,22 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
   g_object_notify(G_OBJECT(proxy), "subscription-group");
 }
 
+/* TODO: This function should be moved to InfcRequest */
 static xmlNodePtr
 infc_session_proxy_request_to_xml(InfcRequest* request)
 {
   xmlNodePtr xml;
+  gchar* type;
+  guint seq;
   gchar seq_buffer[16];
 
-  xml = xmlNewNode(NULL, (const xmlChar*)infc_request_get_name(request));
-  sprintf(seq_buffer, "%u", infc_request_get_seq(request));
+  g_object_get(G_OBJECT(request), "type", &type, "seq", &seq, NULL);
+  sprintf(seq_buffer, "%u", seq);
 
+  xml = xmlNewNode(NULL, (const xmlChar*)type);
   xmlNewProp(xml, (const xmlChar*)"seq", (const xmlChar*)seq_buffer);
+
+  g_free(type);
   return xml;
 }
 
@@ -554,7 +560,7 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   {
     if(request != NULL)
     {
-      infc_user_request_finished(INFC_USER_REQUEST(request), user);
+      infc_user_request_finished(INFC_USER_REQUEST(request), user, NULL);
       infc_request_manager_remove_request(priv->request_manager, request);
     }
 
@@ -688,7 +694,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
 
   if(request != NULL)
   {
-    infc_user_request_finished(INFC_USER_REQUEST(request), user);
+    infc_user_request_finished(INFC_USER_REQUEST(request), user, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 

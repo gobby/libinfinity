@@ -32,12 +32,12 @@ typedef struct _InfTestBrowser InfTestBrowser;
 struct _InfTestBrowser {
   InfStandaloneIo* io;
   InfXmppConnection* conn;
-  InfcBrowser* browser;
+  InfBrowser* browser;
 #ifndef G_OS_WIN32
   int input_fd;
 #endif
 
-  InfcBrowserIter cwd;
+  InfBrowserIter cwd;
 };
 
 typedef void(*InfTestBrowserCmdFunc)(InfTestBrowser*, const gchar*);
@@ -51,27 +51,27 @@ struct _InfTestBrowserCmd {
 static gboolean
 inf_test_browser_find_node(InfTestBrowser* test,
                            const gchar* name,
-                           InfcBrowserIter* result_iter)
+                           InfBrowserIter* result_iter)
 {
-  InfcBrowserIter iter;
+  InfBrowserIter iter;
   gboolean result;
 
-  if(infc_browser_iter_get_explored(test->browser, &test->cwd) == FALSE)
+  if(inf_browser_get_explored(test->browser, &test->cwd) == FALSE)
   {
     fprintf(
       stderr,
       "Directory '%s' not yet explored\n",
-      infc_browser_iter_get_name(test->browser, &test->cwd)
+      inf_browser_get_node_name(test->browser, &test->cwd)
     );
   }
   else
   {
     iter = test->cwd;
-    for(result = infc_browser_iter_get_child(test->browser, &iter);
+    for(result = inf_browser_get_child(test->browser, &iter);
         result == TRUE;
-        result = infc_browser_iter_get_next(test->browser, &iter))
+        result = inf_browser_get_next(test->browser, &iter))
     {
-      if(strcmp(infc_browser_iter_get_name(test->browser, &iter), name) == 0)
+      if(strcmp(inf_browser_get_node_name(test->browser, &iter), name) == 0)
       {
         *result_iter = iter;
         return TRUE;
@@ -86,25 +86,25 @@ static void
 inf_test_browser_cmd_ls(InfTestBrowser* test,
                         const gchar* param)
 {
-  InfcBrowserIter iter;
+  InfBrowserIter iter;
   gboolean result;
 
-  if(infc_browser_iter_get_explored(test->browser, &test->cwd) == FALSE)
+  if(inf_browser_get_explored(test->browser, &test->cwd) == FALSE)
   {
     fprintf(
       stderr,
       "Directory '%s' not yet explored\n",
-      infc_browser_iter_get_name(test->browser, &test->cwd)
+      inf_browser_get_node_name(test->browser, &test->cwd)
     );
   }
   else
   {
     iter = test->cwd;
-    for(result = infc_browser_iter_get_child(test->browser, &iter);
+    for(result = inf_browser_get_child(test->browser, &iter);
         result == TRUE;
-        result = infc_browser_iter_get_next(test->browser, &iter))
+        result = inf_browser_get_next(test->browser, &iter))
     {
-      printf("%s\n", infc_browser_iter_get_name(test->browser, &iter));
+      printf("%s\n", inf_browser_get_node_name(test->browser, &iter));
     }
   }
 }
@@ -113,12 +113,12 @@ static void
 inf_test_browser_cmd_cd(InfTestBrowser* test,
                         const gchar* param)
 {
-  InfcBrowserIter iter;
+  InfBrowserIter iter;
 
   if(strcmp(param, "..") == 0)
   {
     iter = test->cwd;
-    if(infc_browser_iter_get_parent(test->browser, &iter) == FALSE)
+    if(inf_browser_get_parent(test->browser, &iter) == FALSE)
     {
       fprintf(stderr, "Already at the root directory\n");
     }
@@ -135,12 +135,12 @@ inf_test_browser_cmd_cd(InfTestBrowser* test,
       param
     );
   }
-  else if(infc_browser_iter_get_explored(test->browser, &iter) == FALSE)
+  else if(inf_browser_get_explored(test->browser, &iter) == FALSE)
   {
     fprintf(
       stderr,
       "Directory '%s' not yet explored\n",
-      infc_browser_iter_get_name(test->browser, &iter)
+      inf_browser_get_node_name(test->browser, &iter)
     );
   }
   else
@@ -153,7 +153,7 @@ static void
 inf_test_browser_cmd_explore(InfTestBrowser* test,
                              const gchar* param)
 {
-  InfcBrowserIter iter;
+  InfBrowserIter iter;
 
   if(inf_test_browser_find_node(test, param, &iter) == FALSE)
   {
@@ -163,17 +163,17 @@ inf_test_browser_cmd_explore(InfTestBrowser* test,
       param
     );
   }
-  else if(infc_browser_iter_get_explored(test->browser, &iter) == TRUE)
+  else if(inf_browser_get_explored(test->browser, &iter) == TRUE)
   {
     fprintf(
       stderr,
       "Directory '%s' is already explored",
-      infc_browser_iter_get_name(test->browser, &iter)
+      inf_browser_get_node_name(test->browser, &iter)
     );
   }
   else
   {
-    infc_browser_iter_explore(test->browser, &iter);
+    inf_browser_explore(test->browser, &iter);
   }
 }
 
@@ -181,14 +181,14 @@ static void
 inf_test_browser_cmd_create(InfTestBrowser* test,
                             const gchar* param)
 {
-  infc_browser_add_subdirectory(test->browser, &test->cwd, param);
+  inf_browser_add_subdirectory(test->browser, &test->cwd, param);
 }
 
 static void
 inf_test_browser_cmd_remove(InfTestBrowser* test,
                             const gchar* param)
 {
-  InfcBrowserIter iter;
+  InfBrowserIter iter;
   if(inf_test_browser_find_node(test, param, &iter) == FALSE)
   {
     fprintf(
@@ -199,7 +199,7 @@ inf_test_browser_cmd_remove(InfTestBrowser* test,
   }
   else
   {
-    infc_browser_remove_node(test->browser, &iter);
+    inf_browser_remove_node(test->browser, &iter);
   }
 }
 
@@ -277,9 +277,12 @@ inf_test_browser_notify_status_cb(GObject* object,
                                   gpointer user_data)
 {
   InfTestBrowser* test;
-  test = (InfTestBrowser*)user_data;
+  InfBrowserStatus status;
 
-  if(infc_browser_get_status(test->browser) == INFC_BROWSER_CONNECTED)
+  test = (InfTestBrowser*)user_data;
+  g_object_get(G_OBJECT(test->browser), "status", &status, NULL);
+
+  if(status == INF_BROWSER_OPEN)
   {
     printf("Connection established\n");
 
@@ -295,11 +298,11 @@ inf_test_browser_notify_status_cb(GObject* object,
 #endif
 
     /* Explore root node */
-    infc_browser_iter_get_root(test->browser, &test->cwd);
-    infc_browser_iter_explore(test->browser, &test->cwd);
+    inf_browser_get_root(test->browser, &test->cwd);
+    inf_browser_explore(test->browser, &test->cwd);
   }
 
-  if(infc_browser_get_status(test->browser) == INFC_BROWSER_DISCONNECTED)
+  if(status == INF_BROWSER_CLOSED)
   {
     if(inf_standalone_io_loop_running(test->io))
       inf_standalone_io_loop_quit(test->io);
@@ -351,10 +354,12 @@ main(int argc, char* argv[])
     g_object_unref(G_OBJECT(tcp_conn));
 
     manager = inf_communication_manager_new();
-    test.browser = infc_browser_new(
-      INF_IO(test.io),
-      manager,
-      INF_XML_CONNECTION(test.conn)
+    test.browser = INF_BROWSER(
+      infc_browser_new(
+        INF_IO(test.io),
+        manager,
+        INF_XML_CONNECTION(test.conn)
+      )
     );
 
     g_signal_connect_after(

@@ -20,7 +20,6 @@
 #ifndef __INFC_USER_REQUEST_H__
 #define __INFC_USER_REQUEST_H__
 
-#include <libinfinity/client/infc-request.h>
 #include <libinfinity/common/inf-user.h>
 #include <glib-object.h>
 
@@ -33,19 +32,37 @@ G_BEGIN_DECLS
 #define INFC_IS_USER_REQUEST_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFC_TYPE_USER_REQUEST))
 #define INFC_USER_REQUEST_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFC_TYPE_USER_REQUEST, InfcUserRequestClass))
 
+/**
+ * InfcUserRequest:
+ *
+ * #InfcUserRequest is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfcUserRequest InfcUserRequest;
 typedef struct _InfcUserRequestClass InfcUserRequestClass;
 
+/**
+ * InfcUserRequestClass:
+ *
+ * @finished: Default signal handler for the #InfcUserRequest::finished
+ * signal.
+ *
+ * This structure contains default signal handlers for #InfcUserRequest.
+ */
 struct _InfcUserRequestClass {
-  InfcRequestClass parent_class;
+  /*< private >*/
+  GObjectClass parent_class;
+
+  /*< public >*/
 
   /* Signals */
   void (*finished)(InfcUserRequest* request,
-                   InfUser* user);
+                   InfUser* user,
+                   const GError* error);
 };
 
 struct _InfcUserRequest {
-  InfcRequest parent;
+  GObject parent;
 };
 
 GType
@@ -53,7 +70,8 @@ infc_user_request_get_type(void) G_GNUC_CONST;
 
 void
 infc_user_request_finished(InfcUserRequest* request,
-                           InfUser* user);
+                           InfUser* user,
+                           const GError* error);
 
 G_END_DECLS
 
