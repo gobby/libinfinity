@@ -347,17 +347,17 @@ INF_TYPE_BROWSER_ITER
 </SECTION>
 
 <SECTION>
-<FILE>inf-browser-request</FILE>
-<TITLE>InfBrowserRequest</TITLE>
-InfBrowserRequest
-InfBrowserRequestIface
-inf_browser_request_finished
+<FILE>inf-node-request</FILE>
+<TITLE>InfNodeRequest</TITLE>
+InfNodeRequest
+InfNodeRequestIface
+inf_node_request_finished
 <SUBSECTION Standard>
-INF_BROWSER_REQUEST
-INF_IS_BROWSER_REQUEST
-INF_TYPE_BROWSER_REQUEST
-inf_browser_request_get_type
-INF_BROWSER_REQUEST_GET_IFACE
+INF_NODE_REQUEST
+INF_IS_NODE_REQUEST
+INF_TYPE_NODE_REQUEST
+inf_node_request_get_type
+INF_NODE_REQUEST_GET_IFACE
 </SECTION>
 
 <SECTION>

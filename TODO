@@ -58,7 +58,6 @@ Others:
      commonly on client and server side.
    * Add a base class or interface, InfSessionProxy with a vfunc for joining a
      user and get_session() vfunc.
-   * Rename InfBrowserRequest to InfNodeRequest
    * Remove infc_browser_get_status() function
    * Change the storage interface to be asynchronous
      * take the chance and require gio

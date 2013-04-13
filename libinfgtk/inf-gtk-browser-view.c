@@ -727,7 +727,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
                                    InfBrowserIter* iter)
 {
   InfGtkBrowserViewPrivate* priv;
-  InfBrowserRequest* request;
+  InfNodeRequest* request;
   InfcExploreRequest* explore_request;
   GObject* object;
   InfcSessionProxy* proxy;
@@ -843,7 +843,7 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
                                           GtkTreeIter* iter)
 {
   InfGtkBrowserViewPrivate* priv;
-  InfBrowserRequest* request;
+  InfNodeRequest* request;
   InfGtkBrowserViewBrowser* view_browser;
   GtkTreeModel* model;
   InfBrowser* browser;
@@ -1104,7 +1104,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   GtkTreeIter parent_iter;
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
-  InfBrowserRequest* request;
+  InfNodeRequest* request;
   InfcExploreRequest* explore_request;
   InfGtkBrowserViewBrowser* view_browser;
   InfGtkBrowserViewExplore* explore;
@@ -1494,7 +1494,7 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   GtkTreeModel* model;
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
-  InfBrowserRequest* pending_request;
+  InfNodeRequest* pending_request;
 
   model = gtk_tree_view_get_model(tree_view);
 
@@ -2057,7 +2057,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
   InfBrowser* browser;
   InfBrowserStatus browser_status;
   InfBrowserIter* browser_iter;
-  InfBrowserRequest* browser_request;
+  InfNodeRequest* browser_request;
   InfcExploreRequest* explore_request;
   GObject* object;
   InfcSessionProxy* proxy;

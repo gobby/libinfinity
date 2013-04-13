@@ -11,7 +11,6 @@ libinfinity_common_ladir = \
 libinfinity_common_la_SOURCES = \
 	inf-browser.c \
 	inf-browser-iter.c \
-	inf-browser-request.c \
 	inf-buffer.c \
 	inf-certificate-chain.c \
 	inf-certificate-credentials.c \
@@ -25,6 +24,7 @@ libinfinity_common_la_SOURCES = \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
+	inf-node-request.c \
 	inf-protocol.c \
 	inf-request.c \
 	inf-sasl-context.c \
@@ -42,7 +42,6 @@ libinfinity_common_la_SOURCES = \
 libinfinity_common_la_HEADERS = \
 	inf-browser.h \
 	inf-browser-iter.h \
-	inf-browser-request.h \
 	inf-buffer.h \
 	inf-certificate-chain.h \
 	inf-certificate-credentials.h \
@@ -56,6 +55,7 @@ libinfinity_common_la_HEADERS = \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \
+	inf-node-request.h \
 	inf-protocol.h \
 	inf-request.h \
 	inf-sasl-context.h \

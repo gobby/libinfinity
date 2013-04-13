@@ -29,7 +29,7 @@
     <xi:include href="xml/inf-init.xml"/>
     <xi:include href="xml/inf-browser.xml"/>
     <xi:include href="xml/inf-browser-iter.xml"/>
-    <xi:include href="xml/inf-browser-request.xml"/>
+    <xi:include href="xml/inf-node-request.xml"/>
     <xi:include href="xml/inf-session.xml"/>
     <xi:include href="xml/inf-chat-session.xml"/>
     <xi:include href="xml/inf-chat-buffer.xml"/>

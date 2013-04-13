@@ -448,15 +448,15 @@ inf_browser_get_child(InfBrowser* browser,
  * nodes are not explored, that is not known what content there is. Nodes can
  * be explored to learn about the children nodes they contain. Since exploring
  * is a potentially lengthy process involing networking or I/O with slow
- * devices this function returns a @InfBrowserRequest which can be used to
+ * devices this function returns a @InfNodeRequest which can be used to
  * monitor the progress of the operation and get notified when the exploration
  * finishes. During exploration @InfBrowser::node-added signals are already
  * emitted appropriately for every child explored inside @iter.
  *
- * Returns: A #InfBrowserRequest, or %NULL if @iter points to a
+ * Returns: A #InfNodeRequest, or %NULL if @iter points to a
  * non-subdirectory node.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_explore(InfBrowser* browser,
                     const InfBrowserIter* iter)
 {
@@ -567,10 +567,10 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * non-%NULL in this case since the node might have been created, but the
  * subscription could have failed.
  *
- * Returns: A #InfBrowserRequest which can be used to get notified when the
+ * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_add_note(InfBrowser* browser,
                      const InfBrowserIter* iter,
                      const char* name,
@@ -624,10 +624,10 @@ inf_browser_add_note(InfBrowser* browser,
  *
  * Adds a new subdirectory node to the browser.
  *
- * Returns: A #InfBrowserRequest which can be used to get notified when the
+ * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_add_subdirectory(InfBrowser* browser,
                              const InfBrowserIter* iter,
                              const char* name)
@@ -655,10 +655,10 @@ inf_browser_add_subdirectory(InfBrowser* browser,
  * subdirectory node in which case all its children are removed recursively
  * as well.
  *
- * Returns: A #InfBrowserRequest which can be used to get notified when the
+ * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_remove_node(InfBrowser* browser,
                         const InfBrowserIter* iter)
 {
@@ -753,10 +753,10 @@ inf_browser_get_path(InfBrowser* browser,
  * #InfSession representing its content. This also allows to change the
  * content of the node.
  *
- * Returns: A #InfBrowserRequest which can be used to get notified when the
+ * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_subscribe(InfBrowser* browser,
                       const InfBrowserIter* iter)
 {
@@ -840,7 +840,7 @@ inf_browser_list_pending_requests(InfBrowser* browser,
 /**
  * inf_browser_iter_from_request:
  * @browser: A #InfBrowser.
- * @request: A #InfBrowserRequest which has not yet finished and which was
+ * @request: A #InfNodeRequest which has not yet finished and which was
  * issued by @browser.
  * @iter: An uninitialized #InfBrowserIter.
  *
@@ -852,13 +852,13 @@ inf_browser_list_pending_requests(InfBrowser* browser,
  */
 gboolean
 inf_browser_iter_from_request(InfBrowser* browser,
-                              InfBrowserRequest* request,
+                              InfNodeRequest* request,
                               InfBrowserIter* iter)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
-  g_return_val_if_fail(INF_IS_BROWSER_REQUEST(request), FALSE);
+  g_return_val_if_fail(INF_IS_NODE_REQUEST(request), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
 
   iface = INF_BROWSER_GET_IFACE(browser);
@@ -878,14 +878,14 @@ inf_browser_iter_from_request(InfBrowser* browser,
  * "explore-node" as request type and retrieving the first item from the list.
  * Note that there can be at most one explore request for any node.
  *
- * Returns: A #InfBrowserRequest, or %NULL.
+ * Returns: A #InfNodeRequest, or %NULL.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_get_pending_explore_request(InfBrowser* browser,
                                         const InfBrowserIter* iter)
 {
   GSList* list;
-  InfBrowserRequest* request;
+  InfNodeRequest* request;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -896,7 +896,7 @@ inf_browser_get_pending_explore_request(InfBrowser* browser,
 
   request = NULL;
   if(list != NULL)
-    request = (InfBrowserRequest*)list->data;
+    request = (InfNodeRequest*)list->data;
 
   g_slist_free(list);
   return request;
@@ -913,14 +913,14 @@ inf_browser_get_pending_explore_request(InfBrowser* browser,
  * "subscribe-session" as request type and retrieving the first item from the
  * list. Note that there can be at most one subscribe request for any node.
  *
- * Returns: A #InfBrowserRequest, or %NULL.
+ * Returns: A #InfNodeRequest, or %NULL.
  */
-InfBrowserRequest*
+InfNodeRequest*
 inf_browser_get_pending_subscribe_request(InfBrowser* browser,
                                           const InfBrowserIter* iter)
 {
   GSList* list;
-  InfBrowserRequest* request;
+  InfNodeRequest* request;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -936,7 +936,7 @@ inf_browser_get_pending_subscribe_request(InfBrowser* browser,
 
   request = NULL;
   if(list != NULL)
-    request = (InfBrowserRequest*)list->data;
+    request = (InfNodeRequest*)list->data;
 
   g_slist_free(list);
   return request;
@@ -1083,7 +1083,7 @@ inf_browser_begin_request(InfBrowser* browser,
   GValue value = { 0 };
 
   g_return_if_fail(INF_IS_BROWSER(browser));
-  g_return_if_fail(INF_IS_BROWSER_REQUEST(request));
+  g_return_if_fail(INF_IS_NODE_REQUEST(request));
 
   g_value_init(&value, G_TYPE_STRING);
   g_object_get_property(G_OBJECT(request), "type", &value);

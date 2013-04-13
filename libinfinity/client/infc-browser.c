@@ -2016,7 +2016,7 @@ infc_browser_process_add_node_request(InfcBrowser* browser,
   {
     iter.node_id = node->id;
     iter.node = node;
-    inf_browser_request_finished(INF_BROWSER_REQUEST(request), &iter, NULL);
+    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
 
     infc_request_manager_remove_request(
       priv->request_manager,
@@ -2352,7 +2352,7 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
      * cancelled before. */
     g_assert(iter.node != NULL);
 
-    inf_browser_request_finished(INF_BROWSER_REQUEST(request), &iter, NULL);
+    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
     return TRUE;
   }
@@ -2741,7 +2741,7 @@ infc_browser_handle_remove_node(InfcBrowser* browser,
     g_assert(INFC_IS_NODE_REQUEST(request));
     iter.node_id = node->id;
     iter.node = node;
-    inf_browser_request_finished(INF_BROWSER_REQUEST(request), &iter, NULL);
+    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
@@ -2984,7 +2984,7 @@ infc_browser_handle_saved_session(InfcBrowser* browser,
     g_assert(INFC_IS_NODE_REQUEST(request));
     iter.node_id = node->id;
     iter.node = node;
-    inf_browser_request_finished(INF_BROWSER_REQUEST(request), &iter, NULL);
+    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
@@ -3363,8 +3363,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           iter.node = subreq->shared.session.node;
           iter.node_id = node_id;
 
-          inf_browser_request_finished(
-            INF_BROWSER_REQUEST(subreq->shared.session.request),
+          inf_node_request_finished(
+            INF_NODE_REQUEST(subreq->shared.session.request),
             &iter,
             NULL
           );
@@ -3415,8 +3415,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           iter.node = node;
           iter.node_id = node_id;
 
-          inf_browser_request_finished(
-            INF_BROWSER_REQUEST(subreq->shared.add_node.request),
+          inf_node_request_finished(
+            INF_NODE_REQUEST(subreq->shared.add_node.request),
             &iter,
             NULL
           );
@@ -3517,8 +3517,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
         g_assert(subreq->shared.sync_in.request != NULL);
 
-        inf_browser_request_finished(
-          INF_BROWSER_REQUEST(subreq->shared.sync_in.request),
+        inf_node_request_finished(
+          INF_NODE_REQUEST(subreq->shared.sync_in.request),
           &iter,
           NULL
         );
@@ -3713,7 +3713,7 @@ infc_browser_browser_get_child(InfBrowser* browser,
   }
 }
 
-static InfBrowserRequest*
+static InfNodeRequest*
 infc_browser_browser_explore(InfBrowser* browser,
                              const InfBrowserIter* iter)
 {
@@ -3759,7 +3759,7 @@ infc_browser_browser_explore(InfBrowser* browser,
     xml
   );
 
-  return INF_BROWSER_REQUEST(request);
+  return INF_NODE_REQUEST(request);
 }
 
 static gboolean
@@ -3792,7 +3792,7 @@ infc_browser_browser_is_subdirectory(InfBrowser* browser,
   return FALSE;
 }
 
-static InfBrowserRequest*
+static InfNodeRequest*
 infc_browser_browser_add_note(InfBrowser* infbrowser,
                               const InfBrowserIter* iter,
                               const char* name,
@@ -3871,10 +3871,10 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_BROWSER_REQUEST(request);
+  return INF_NODE_REQUEST(request);
 }
 
-static InfBrowserRequest*
+static InfNodeRequest*
 infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
                                       const InfBrowserIter* iter,
                                       const char* name)
@@ -3919,10 +3919,10 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_BROWSER_REQUEST(request);
+  return INF_NODE_REQUEST(request);
 }
 
-static InfBrowserRequest*
+static InfNodeRequest*
 infc_browser_browser_remove_node(InfBrowser* infbrowser,
                                  const InfBrowserIter* iter)
 {
@@ -3966,7 +3966,7 @@ infc_browser_browser_remove_node(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_BROWSER_REQUEST(request);
+  return INF_NODE_REQUEST(request);
 }
 
 static const gchar*
@@ -4012,7 +4012,7 @@ infc_browser_browser_get_node_type(InfBrowser* infbrowser,
   }
 }
 
-static InfBrowserRequest*
+static InfNodeRequest*
 infc_browser_browser_subscribe(InfBrowser* infbrowser,
                                const InfBrowserIter* iter)
 {
@@ -4062,7 +4062,7 @@ infc_browser_browser_subscribe(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_BROWSER_REQUEST(request);
+  return INF_NODE_REQUEST(request);
 }
 
 static GObject*
@@ -4126,7 +4126,7 @@ infc_browser_browser_list_pending_requests(InfBrowser* browser,
 
 static gboolean
 infc_browser_browser_iter_from_request(InfBrowser* browser,
-                                       InfBrowserRequest* request,
+                                       InfNodeRequest* request,
                                        InfBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;

@@ -193,7 +193,7 @@ inf_gtk_browser_store_begin_request_subscribe_session_cb(InfBrowser* browser,
                                                          gpointer user_data);
 
 static void
-inf_gtk_browser_store_request_finished_cb(InfBrowserRequest* request,
+inf_gtk_browser_store_request_finished_cb(InfNodeRequest* request,
                                           InfBrowserIter* iter,
                                           const GError* error,
                                           gpointer user_data);
@@ -215,7 +215,7 @@ inf_gtk_browser_store_request_data_free(gpointer data,
 
 static void
 inf_gtk_browser_store_item_request_remove(InfGtkBrowserStoreItem* item,
-                                          InfBrowserRequest* request)
+                                          InfNodeRequest* request)
 {
   g_object_weak_unref(
     G_OBJECT(request),
@@ -235,7 +235,7 @@ inf_gtk_browser_store_item_request_remove(InfGtkBrowserStoreItem* item,
 static void
 inf_gtk_browser_store_item_request_add(InfGtkBrowserStore* store,
                                        InfGtkBrowserStoreItem* item,
-                                       InfBrowserRequest* request)
+                                       InfNodeRequest* request)
 {
   InfGtkBrowserStoreRequestData* data;
 
@@ -263,7 +263,7 @@ inf_gtk_browser_store_item_request_add(InfGtkBrowserStore* store,
 }
 
 static void
-inf_gtk_browser_store_request_finished_cb(InfBrowserRequest* request,
+inf_gtk_browser_store_request_finished_cb(InfNodeRequest* request,
                                           InfBrowserIter* iter,
                                           const GError* error,
                                           gpointer user_data)
@@ -280,8 +280,6 @@ inf_gtk_browser_store_request_finished_cb(InfBrowserRequest* request,
 
   g_assert(g_slist_find(data->item->requests, request) != NULL);
   g_assert(data->item->browser != NULL);
-
-  g_assert(INFC_IS_NODE_REQUEST(request));
 
   /* TODO: Also remove the request from the store when
    * it has properly finished? */
@@ -803,12 +801,12 @@ inf_gtk_browser_store_begin_request_explore_node_cb(InfBrowser* browser,
   store = INF_GTK_BROWSER_STORE(user_data);
   item = inf_gtk_browser_store_find_item_by_browser(store, browser);
 
-  g_assert(INF_IS_BROWSER_REQUEST(request));
+  g_assert(INF_IS_NODE_REQUEST(request));
 
   inf_gtk_browser_store_item_request_add(
     store,
     item,
-    INF_BROWSER_REQUEST(request)
+    INF_NODE_REQUEST(request)
   );
 }
 
@@ -824,7 +822,7 @@ inf_gtk_browser_store_begin_request_subscribe_session_cb(InfBrowser* browser,
   /* should not be a chat session, because chat session
    * has type subscribe-chat */
   g_assert(iter != NULL);
-  g_assert(INF_IS_BROWSER_REQUEST(request));
+  g_assert(INF_IS_NODE_REQUEST(request));
 
   store = INF_GTK_BROWSER_STORE(user_data);
   item = inf_gtk_browser_store_find_item_by_browser(store, browser);
@@ -832,7 +830,7 @@ inf_gtk_browser_store_begin_request_subscribe_session_cb(InfBrowser* browser,
   inf_gtk_browser_store_item_request_add(
     store,
     item,
-    INF_BROWSER_REQUEST(request)
+    INF_NODE_REQUEST(request)
   );
 }
 
@@ -1839,7 +1837,7 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
     {
       inf_gtk_browser_store_item_request_remove(
         item,
-        INF_BROWSER_REQUEST(item->requests->data)
+        INF_NODE_REQUEST(item->requests->data)
       );
     }
 

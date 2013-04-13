@@ -17,57 +17,57 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INF_BROWSER_REQUEST_H__
-#define __INF_BROWSER_REQUEST_H__
+#ifndef __INF_NODE_REQUEST_H__
+#define __INF_NODE_REQUEST_H__
 
 #include <glib-object.h>
 #include <libinfinity/common/inf-browser-iter.h>
 
 G_BEGIN_DECLS
 
-#define INF_TYPE_BROWSER_REQUEST                 (inf_browser_request_get_type())
-#define INF_BROWSER_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_BROWSER_REQUEST, InfBrowserRequest))
-#define INF_IS_BROWSER_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_BROWSER_REQUEST))
-#define INF_BROWSER_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_BROWSER_REQUEST, InfBrowserRequestIface))
+#define INF_TYPE_NODE_REQUEST                 (inf_node_request_get_type())
+#define INF_NODE_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_NODE_REQUEST, InfNodeRequest))
+#define INF_IS_NODE_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_NODE_REQUEST))
+#define INF_NODE_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_NODE_REQUEST, InfNodeRequestIface))
 
 /**
- * InfBrowserRequest:
+ * InfNodeRequest:
  *
- * #InfBrowserRequest is an opaque data type. You should only access it
+ * #InfNodeRequest is an opaque data type. You should only access it
  * via the public API functions.
  */
-typedef struct _InfBrowserRequest InfBrowserRequest;
-typedef struct _InfBrowserRequestIface InfBrowserRequestIface;
+typedef struct _InfNodeRequest InfNodeRequest;
+typedef struct _InfNodeRequestIface InfNodeRequestIface;
 
 /**
- * InfBrowserRequestIface:
+ * InfNodeRequestIface:
  * @finished: Default signal handler for the
- * #InfBrowserRequest::finished signal.
+ * #InfNodeRequest::finished signal.
  *
- * Default signal handlers for the #InfBrowserRequest interface.
+ * Default signal handlers for the #InfNodeRequest interface.
  */
-struct _InfBrowserRequestIface {
+struct _InfNodeRequestIface {
   /*< private >*/
   GTypeInterface parent;
 
   /*< public >*/
 
   /* Signals */
-  void (*finished)(InfBrowserRequest* request,
+  void (*finished)(InfNodeRequest* request,
                    InfBrowserIter* iter,
                    const GError* error);
 };
 
 GType
-inf_browser_request_get_type(void) G_GNUC_CONST;
+inf_node_request_get_type(void) G_GNUC_CONST;
 
 void
-inf_browser_request_finished(InfBrowserRequest* request,
-                             InfBrowserIter* iter,
-                             const GError* error);
+inf_node_request_finished(InfNodeRequest* request,
+                          InfBrowserIter* iter,
+                          const GError* error);
 
 G_END_DECLS
 
-#endif /* __INF_BROWSER_REQUEST_H__ */
+#endif /* __INF_NODE_REQUEST_H__ */
 
 /* vim:set et sw=2 ts=2: */

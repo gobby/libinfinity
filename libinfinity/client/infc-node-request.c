@@ -32,7 +32,7 @@
 
 #include <libinfinity/client/infc-node-request.h>
 #include <libinfinity/client/infc-request.h>
-#include <libinfinity/common/inf-browser-request.h>
+#include <libinfinity/common/inf-node-request.h>
 #include <libinfinity/common/inf-request.h>
 
 typedef struct _InfcNodeRequestPrivate InfcNodeRequestPrivate;
@@ -161,13 +161,13 @@ static void
 infc_node_request_request_fail(InfRequest* request,
                                const GError* error)
 {
-  inf_browser_request_finished(INF_BROWSER_REQUEST(request), NULL, error);
+  inf_node_request_finished(INF_NODE_REQUEST(request), NULL, error);
 }
 
 static void
-infc_node_request_browser_request_finished(InfBrowserRequest* request,
-                                           InfBrowserIter* iter,
-                                           const GError* error)
+infc_node_request_node_request_finished(InfNodeRequest* request,
+                                        InfBrowserIter* iter,
+                                        const GError* error)
 {
   InfcNodeRequest* node_request;
   InfcNodeRequestPrivate* priv;
@@ -226,13 +226,13 @@ infc_node_request_request_init(gpointer g_iface,
 }
 
 static void
-infc_node_request_browser_request_init(gpointer g_iface,
-                                       gpointer iface_data)
+infc_node_request_node_request_init(gpointer g_iface,
+                                    gpointer iface_data)
 {
-  InfBrowserRequestIface* iface;
-  iface = (InfBrowserRequestIface*)g_iface;
+  InfNodeRequestIface* iface;
+  iface = (InfNodeRequestIface*)g_iface;
 
-  iface->finished = infc_node_request_browser_request_finished;
+  iface->finished = infc_node_request_node_request_finished;
 }
 
 static void
@@ -269,8 +269,8 @@ infc_node_request_get_type(void)
       NULL
     };
 
-    static const GInterfaceInfo browser_request_info = {
-      infc_node_request_browser_request_init,
+    static const GInterfaceInfo node_request_info = {
+      infc_node_request_node_request_init,
       NULL,
       NULL
     };
@@ -296,8 +296,8 @@ infc_node_request_get_type(void)
 
     g_type_add_interface_static(
       node_request_type,
-      INF_TYPE_BROWSER_REQUEST,
-      &browser_request_info
+      INF_TYPE_NODE_REQUEST,
+      &node_request_info
     );
 
     g_type_add_interface_static(
