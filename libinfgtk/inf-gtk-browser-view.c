@@ -168,28 +168,6 @@ inf_gtk_browser_view_find_sync(InfGtkBrowserView* view,
   return NULL;
 }
 
-/*gint
-inf_gtk_browser_view_session_find(InfGtkBrowserView* view,
-                                  InfSession* session)
-{
-  InfGtkBrowserViewPrivate* priv;
-  InfGtkBrowserViewObject* object;
-  InfcSessionProxy* proxy;
-  guint i;
-
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-
-  for(i = 0; i < priv->sessions->len; ++ i)
-  {
-    object = &g_array_index(priv->sessions, InfGtkBrowserViewObject, i);
-    proxy = INFC_SESSION_PROXY(object->object);
-    if(infc_session_proxy_get_session(proxy) == session)
-      return i;
-  }
-
-  return -1;
-}*/
-
 static void
 inf_gtk_browser_view_redraw_row(InfGtkBrowserView* view,
                                 GtkTreePath* path,
@@ -406,7 +384,7 @@ inf_gtk_browser_view_sync_added(InfGtkBrowserView* view,
   InfGtkBrowserViewSync* sync;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
-  session = infc_session_proxy_get_session(proxy);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   view_browser = inf_gtk_browser_view_find_view_browser(view, browser);
   g_assert(view_browser != NULL);
@@ -454,6 +432,7 @@ inf_gtk_browser_view_sync_added(InfGtkBrowserView* view,
     sync
   );
 
+  g_object_unref(session);
   inf_gtk_browser_view_redraw_row(view, path, iter);
 }
 
@@ -462,11 +441,13 @@ inf_gtk_browser_view_sync_removed(InfGtkBrowserView* view,
                                   InfGtkBrowserViewSync* sync)
 {
   InfGtkBrowserViewPrivate* priv;
+  InfSession* session;
   GtkTreePath* path;
   GtkTreeModel* model;
   GtkTreeIter iter;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
+  g_object_get(G_OBJECT(sync->proxy), "session", &session, NULL);
 
   /* Redraw if the reference is still valid. Note that if the node is removed
    * while the corresponding session is synchronized, then the reference is
@@ -481,22 +462,24 @@ inf_gtk_browser_view_sync_removed(InfGtkBrowserView* view,
   }
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infc_session_proxy_get_session(sync->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(inf_gtk_browser_view_session_synchronization_progress_cb),
     sync
   );
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infc_session_proxy_get_session(sync->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(inf_gtk_browser_view_session_synchronization_complete_cb),
     sync
   );
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infc_session_proxy_get_session(sync->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(inf_gtk_browser_view_session_synchronization_failed_cb),
     sync
   );
+
+  g_object_unref(session);
 
   gtk_tree_row_reference_free(sync->reference);
   g_object_unref(sync->proxy);
@@ -681,7 +664,7 @@ inf_gtk_browser_view_subscribe_session_cb(InfBrowser* browser,
   view = view_browser->view;
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
-  session = infc_session_proxy_get_session(INFC_SESSION_PROXY(proxy));
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   /* Note that we do not check sync-ins here. This is because sync-ins can
    * only be created along with new nodes, in which case we already add the
@@ -712,6 +695,8 @@ inf_gtk_browser_view_subscribe_session_cb(InfBrowser* browser,
       gtk_tree_path_free(path); 
     }
   }
+
+  g_object_unref(session);
 }
 
 /*
@@ -797,7 +782,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
 
     if(proxy != NULL)
     {
-      session = infc_session_proxy_get_session(proxy);
+      g_object_get(G_OBJECT(proxy), "session", &session, NULL);
       connection = infc_browser_get_connection(INFC_BROWSER(browser));
       g_assert(connection != NULL);
 
@@ -828,6 +813,8 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
           gtk_tree_path_free(path);
         }
       }
+
+      g_object_unref(session);
     }
   }
 }
@@ -1191,7 +1178,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
 
       if(proxy != NULL)
       {
-        session = infc_session_proxy_get_session(proxy);
+        g_object_get(G_OBJECT(proxy), "session", &session, NULL);
         connection = infc_browser_get_connection(INFC_BROWSER(browser));
         g_assert(connection != NULL);
 
@@ -1200,6 +1187,8 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
         {
           inf_gtk_browser_view_sync_added(view, browser, proxy, path, iter);
         }
+
+        g_object_unref(session);
       }
     }
 
@@ -2140,7 +2129,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
           connection = infc_browser_get_connection(INFC_BROWSER(browser));
           g_assert(connection != NULL);
 
-          session = infc_session_proxy_get_session(proxy);
+          g_object_get(G_OBJECT(proxy), "session", &session, NULL);
           if(inf_session_get_synchronization_status(session, connection) !=
              INF_SESSION_SYNC_NONE)
           {
@@ -2159,6 +2148,8 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
 
             progress_set = TRUE;
           }
+
+          g_object_unref(session);
         }
       }
 

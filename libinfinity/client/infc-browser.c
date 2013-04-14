@@ -513,7 +513,7 @@ infc_browser_session_remove_session(InfcBrowser* browser,
   g_assert(node->shared.known.session != NULL);
 
   proxy = node->shared.known.session;
-  session = infc_session_proxy_get_session(proxy);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   inf_signal_handlers_disconnect_by_func(
     session,
@@ -535,6 +535,7 @@ infc_browser_session_remove_session(InfcBrowser* browser,
     G_OBJECT(proxy)
   );
 
+  g_object_unref(session);
   g_object_unref(proxy);
 }
 
@@ -746,6 +747,7 @@ infc_browser_session_close_cb(InfSession* session,
   InfBrowserIter* iter;
   InfcBrowserNode* node;
   InfcSessionProxy* proxy;
+  InfSession* proxy_session;
 
   browser = INFC_BROWSER(user_data);
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -767,22 +769,35 @@ infc_browser_session_close_cb(InfSession* session,
 
     g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
     g_assert(node->shared.known.session != NULL);
-    g_assert(
-      infc_session_proxy_get_session(node->shared.known.session) == session
+    
+    g_object_get(
+      G_OBJECT(node->shared.known.session),
+      "session", &proxy_session,
+      NULL
     );
+
+    g_assert(proxy_session == session);
+    g_object_unref(proxy_session);
 
     infc_browser_session_remove_session(browser, node);
   }
   else
   {
     g_assert(priv->chat_session != NULL);
-    g_assert(infc_session_proxy_get_session(priv->chat_session) == session);
+    g_object_get(
+      G_OBJECT(priv->chat_session),
+      "session", &proxy_session,
+      NULL
+    );
+    g_assert(proxy_session == session);
 
     inf_signal_handlers_disconnect_by_func(
-      infc_session_proxy_get_session(priv->chat_session),
+      proxy_session,
       G_CALLBACK(infc_browser_session_close_cb),
       browser
     );
+
+    g_object_unref(proxy_session);
 
     proxy = priv->chat_session;
     priv->chat_session = NULL;
@@ -895,6 +910,7 @@ infc_browser_disconnected(InfcBrowser* browser)
   InfcBrowserPrivate* priv;
   InfcBrowserNode* child;
   InfcBrowserNode* next;
+  InfSession* session;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
@@ -941,11 +957,15 @@ infc_browser_disconnected(InfcBrowser* browser)
 
   if(priv->chat_session != NULL)
   {
+    g_object_get(G_OBJECT(priv->chat_session), "session", &session, NULL);
+
     inf_signal_handlers_disconnect_by_func(
-      infc_session_proxy_get_session(priv->chat_session),
+      session,
       G_CALLBACK(infc_browser_session_close_cb),
       browser
     );
+
+    g_object_unref(session);
 
     g_object_unref(priv->chat_session);
     priv->chat_session = NULL;
@@ -1140,6 +1160,7 @@ infc_browser_dispose(GObject* object)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
+  InfSession* session;
 
   browser = INFC_BROWSER(object);
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -1179,7 +1200,12 @@ infc_browser_dispose(GObject* object)
 
   /* Close chat session if it is open */
   if(priv->chat_session != NULL)
-    inf_session_close(infc_session_proxy_get_session(priv->chat_session));
+  {
+    g_object_get(G_OBJECT(priv->chat_session), "session", &session, NULL);
+    inf_session_close(session);
+    g_object_unref(session);
+  }
+
   g_assert(priv->chat_session == NULL);
 
   g_object_unref(priv->communication_manager);
@@ -1663,6 +1689,7 @@ infc_browser_add_sync_in(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   InfcBrowserSyncIn* sync_in;
+  InfSession* session;
 
   priv = INFC_BROWSER_PRIVATE(browser);
   sync_in = g_slice_new(InfcBrowserSyncIn);
@@ -1674,19 +1701,23 @@ infc_browser_add_sync_in(InfcBrowser* browser,
   sync_in->proxy = proxy;
   g_object_ref(proxy);
 
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+
   g_signal_connect(
-    G_OBJECT(infc_session_proxy_get_session(proxy)),
+    session,
     "synchronization-failed",
     G_CALLBACK(infc_browser_sync_in_synchronization_failed_cb),
     sync_in
   );
 
   g_signal_connect(
-    G_OBJECT(infc_session_proxy_get_session(proxy)),
+    session,
     "synchronization-complete",
     G_CALLBACK(infc_browser_sync_in_synchronization_complete_cb),
     sync_in
   );
+
+  g_object_unref(session);
 
   priv->sync_ins = g_slist_prepend(priv->sync_ins, sync_in);
   return sync_in;
@@ -1697,20 +1728,25 @@ infc_browser_remove_sync_in(InfcBrowser* browser,
                             InfcBrowserSyncIn* sync_in)
 {
   InfcBrowserPrivate* priv;
+  InfSession* session;
+
   priv = INFC_BROWSER_PRIVATE(browser);
+  
+  g_object_get(G_OBJECT(sync_in->proxy), "session", &session, NULL);
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infc_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(infc_browser_sync_in_synchronization_complete_cb),
     sync_in
   );
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infc_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(infc_browser_sync_in_synchronization_failed_cb),
     sync_in
   );
 
+  g_object_unref(session);
   g_object_unref(sync_in->proxy);
   g_slice_free(InfcBrowserSyncIn, sync_in);
 
@@ -3552,7 +3588,8 @@ infc_browser_browser_subscribe_session(InfBrowser* browser,
   InfSession* session;
 
   priv = INFC_BROWSER_PRIVATE(browser);
-  session = infc_session_proxy_get_session(INFC_SESSION_PROXY(proxy));
+
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   if(iter != NULL)
   {
@@ -3599,6 +3636,8 @@ infc_browser_browser_subscribe_session(InfBrowser* browser,
     G_CALLBACK(infc_browser_session_close_cb),
     browser
   );
+
+  g_object_unref(session);
 }
 
 static gboolean

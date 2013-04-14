@@ -19,6 +19,7 @@
 
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/communication/inf-communication-manager.h>
+#include <libinfinity/common/inf-session-proxy.h>
 #include <libinfinity/common/inf-chat-buffer.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
@@ -106,7 +107,7 @@ inf_chat_test_buffer_receive_message_cb(InfChatSession* session,
 }
 
 static void
-inf_test_chat_userjoin_finished_cb(InfcUserRequest* request,
+inf_test_chat_userjoin_finished_cb(InfUserRequest* request,
                                    InfUser* user,
                                    const GError* error,
                                    gpointer user_data)
@@ -145,7 +146,7 @@ inf_chat_test_session_synchronization_complete_cb(InfSession* session,
 {
   InfTestChat* test;
   InfcSessionProxy* proxy;
-  InfcUserRequest* request;
+  InfUserRequest* request;
   GParameter params[1] = { { "name", { 0 } } };
   GError* error;
 
@@ -157,12 +158,10 @@ inf_chat_test_session_synchronization_complete_cb(InfSession* session,
   g_value_init(&params[0].value, G_TYPE_STRING);
   g_value_set_string(&params[0].value, g_get_user_name());
 
-  error = NULL;
-  request = infc_session_proxy_join_user(
-    proxy,
-    params,
+  request = inf_session_proxy_join_user(
+    INF_SESSION_PROXY(proxy),
     G_N_ELEMENTS(params),
-    &error
+    params
   );
 
   g_value_unset(&params[0].value);
@@ -216,6 +215,7 @@ inf_chat_test_subscribe_finished_cb(InfcNodeRequest* request,
                                     gpointer user_data)
 {
   InfTestChat* test;
+  InfcSessionProxy* proxy;
   InfSession* session;
   test = (InfTestChat*)user_data;
 
@@ -223,8 +223,8 @@ inf_chat_test_subscribe_finished_cb(InfcNodeRequest* request,
   {
     printf("Subscription successful, waiting for synchronization...\n");
 
-    session = infc_session_proxy_get_session(
-      infc_browser_get_chat_session(INFC_BROWSER(test->browser)));
+    proxy = infc_browser_get_chat_session(INFC_BROWSER(test->browser));
+    g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
     test->buffer = INF_CHAT_BUFFER(inf_session_get_buffer(session));
 
@@ -259,6 +259,8 @@ inf_chat_test_subscribe_finished_cb(InfcNodeRequest* request,
       G_CALLBACK(inf_chat_test_session_close_cb),
       test
     );
+
+    g_object_unref(session);
   }
   else
   {
@@ -274,7 +276,7 @@ inf_test_chat_notify_status_cb(GObject* object,
 {
   InfTestChat* test;
   InfBrowserStatus status;
-  InfcNodeRequest* request;
+  InfcChatRequest* request;
 
   test = (InfTestChat*)user_data;
   g_object_get(G_OBJECT(object), "status", &status, NULL);

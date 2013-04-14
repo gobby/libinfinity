@@ -20,6 +20,8 @@
 #include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/client/infc-request-manager.h>
+#include <libinfinity/common/inf-session-proxy.h>
+#include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-user-request.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -525,8 +527,7 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
 
   array = session_class->get_xml_user_props(priv->session, connection, xml);
 
-  /* Set local flag if the join was requested by us (seq is present in
-   * server response). */
+  /* Set local flag if the join was requested by us. */
   param = inf_session_get_user_property(array, "flags");
   g_assert(!G_IS_VALUE(&param->value)); /* must not have been set already */
 
@@ -958,6 +959,56 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
 }
 
 /*
+ * InfSessionProxy implementation
+ */
+
+InfUserRequest*
+infc_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
+                                           guint n_params,
+                                           const GParameter* params)
+{
+  InfcSessionProxyPrivate* priv;
+  InfSessionClass* session_class;
+  InfSessionStatus status;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
+  g_return_val_if_fail(n_params == 0 || params != NULL, NULL);
+
+  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
+  g_return_val_if_fail(priv->session != NULL, NULL);
+
+  session_class = INF_SESSION_GET_CLASS(priv->session);
+
+  /* Make sure we are subscribed */
+  g_object_get(G_OBJECT(priv->session), "status", &status, NULL);
+  g_return_val_if_fail(status == INF_SESSION_RUNNING, NULL);
+  g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->request_manager != NULL, NULL);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_USER_REQUEST,
+    "user-join",
+    NULL
+  );
+
+  xml = infc_session_proxy_request_to_xml(INFC_REQUEST(request));
+
+  g_assert(session_class->set_xml_user_props != NULL);
+  session_class->set_xml_user_props(priv->session, params, n_params, xml);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->subscription_group),
+    priv->connection,
+    xml
+  );
+
+  return INF_USER_REQUEST(request);
+}
+
+/*
  * GType registration.
  */
 
@@ -982,18 +1033,6 @@ infc_session_proxy_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_SESSION,
-    g_param_spec_object(
-      "session",
-      "Session",
-      "The underlaying session object",
-      INF_TYPE_SESSION,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
     PROP_SUBSCRIPTION_GROUP,
     g_param_spec_object(
       "subscription-group",
@@ -1015,6 +1054,8 @@ infc_session_proxy_class_init(gpointer g_class,
       G_PARAM_READABLE
     )
   );
+
+  g_object_class_override_property(object_class, PROP_SESSION, "session");
 }
 
 static void
@@ -1027,6 +1068,16 @@ infc_session_proxy_communication_object_init(gpointer g_iface,
   iface->sent = infc_session_proxy_communication_object_sent;
   iface->enqueued = infc_session_proxy_communication_object_enqueued;
   iface->received = infc_session_proxy_communication_object_received;
+}
+
+static void
+infc_session_proxy_session_proxy_init(gpointer g_iface,
+                                      gpointer iface_data)
+{
+  InfSessionProxyIface* iface;
+  iface = (InfSessionProxyIface*)g_iface;
+
+  iface->join_user = infc_session_proxy_session_proxy_join_user;
 }
 
 GType
@@ -1055,6 +1106,12 @@ infc_session_proxy_get_type(void)
       NULL
     };
 
+    static const GInterfaceInfo session_proxy_info = {
+      infc_session_proxy_session_proxy_init,
+      NULL,
+      NULL
+    };
+
     session_proxy_type = g_type_register_static(
       G_TYPE_OBJECT,
       "InfcSessionProxy",
@@ -1066,6 +1123,12 @@ infc_session_proxy_get_type(void)
       session_proxy_type,
       INF_COMMUNICATION_TYPE_OBJECT,
       &communication_object_info
+    );
+
+    g_type_add_interface_static(
+      session_proxy_type,
+      INF_TYPE_SESSION_PROXY,
+      &session_proxy_info
     );
   }
 
@@ -1179,86 +1242,6 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
   g_object_notify(G_OBJECT(proxy), "subscription-group");
   g_object_thaw_notify(G_OBJECT(priv->session));
   g_object_thaw_notify(G_OBJECT(proxy));
-}
-
-/**
- * infc_session_proxy_join_user:
- * @proxy: A #InfcSessionProxy.
- * @params: Construction properties for the InfUser (or derived) object.
- * @n_params: Number of parameters.
- * @error: Location to store error information.
- *
- * Requests a user join for a user with the given properties (which must not
- * include #InfUser:id and #InfUser:flags since these are initially set by the
- * server). The #InfUser:status property is optional and defaults to
- * %INF_USER_ACTIVE if not given. It must not be %INF_USER_UNAVAILABLE.
- *
- * Return Value: A #InfcUserRequest object that may be used to get notified
- * when the request succeeds or fails.
- **/
-InfcUserRequest*
-infc_session_proxy_join_user(InfcSessionProxy* proxy,
-                             const GParameter* params,
-                             guint n_params,
-                             GError** error)
-{
-  InfcSessionProxyPrivate* priv;
-  InfSessionClass* session_class;
-  InfSessionStatus status;
-  InfcRequest* request;
-  xmlNodePtr xml;
-
-  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
-  g_return_val_if_fail(params != NULL || n_params == 0, NULL);
-
-  priv = INFC_SESSION_PROXY_PRIVATE(proxy);
-  g_return_val_if_fail(priv->session != NULL, NULL);
-
-  session_class = INF_SESSION_GET_CLASS(priv->session);
-
-  /* Make sure we are subscribed */
-  g_object_get(G_OBJECT(priv->session), "status", &status, NULL);
-  g_return_val_if_fail(status == INF_SESSION_RUNNING, NULL);
-  g_return_val_if_fail(priv->connection != NULL, NULL);
-  g_return_val_if_fail(priv->request_manager != NULL, NULL);
-
-  /* TODO: Check params locally */
-
-  request = infc_request_manager_add_request(
-    priv->request_manager,
-    INFC_TYPE_USER_REQUEST,
-    "user-join",
-    NULL
-  );
-
-  xml = infc_session_proxy_request_to_xml(INFC_REQUEST(request));
-
-  g_assert(session_class->set_xml_user_props != NULL);
-  session_class->set_xml_user_props(priv->session, params, n_params, xml);
-
-  inf_communication_group_send_message(
-    INF_COMMUNICATION_GROUP(priv->subscription_group),
-    priv->connection,
-    xml
-  );
-
-  return INFC_USER_REQUEST(request);
-}
-
-/**
- * infc_session_proxy_get_session:
- * @proxy: A #InfcSessionProxy.
- *
- * Returns the session proxied by @proxy, or %NULL if the session has been
- * closed.
- *
- * Return Value: A #InfSession, or %NULL.
- **/
-InfSession*
-infc_session_proxy_get_session(InfcSessionProxy* proxy)
-{
-  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
-  return INFC_SESSION_PROXY_PRIVATE(proxy)->session;
 }
 
 /**
