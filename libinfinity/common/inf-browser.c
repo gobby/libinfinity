@@ -448,15 +448,15 @@ inf_browser_get_child(InfBrowser* browser,
  * nodes are not explored, that is not known what content there is. Nodes can
  * be explored to learn about the children nodes they contain. Since exploring
  * is a potentially lengthy process involing networking or I/O with slow
- * devices this function returns a @InfNodeRequest which can be used to
+ * devices this function returns a @InfExploreRequest which can be used to
  * monitor the progress of the operation and get notified when the exploration
  * finishes. During exploration @InfBrowser::node-added signals are already
  * emitted appropriately for every child explored inside @iter.
  *
- * Returns: A #InfNodeRequest, or %NULL if @iter points to a
+ * Returns: A #InfExploreRequest, or %NULL if @iter points to a
  * non-subdirectory node.
  */
-InfNodeRequest*
+InfExploreRequest*
 inf_browser_explore(InfBrowser* browser,
                     const InfBrowserIter* iter)
 {
@@ -878,14 +878,14 @@ inf_browser_iter_from_request(InfBrowser* browser,
  * "explore-node" as request type and retrieving the first item from the list.
  * Note that there can be at most one explore request for any node.
  *
- * Returns: A #InfNodeRequest, or %NULL.
+ * Returns: A #InfExploreRequest, or %NULL.
  */
-InfNodeRequest*
+InfExploreRequest*
 inf_browser_get_pending_explore_request(InfBrowser* browser,
                                         const InfBrowserIter* iter)
 {
   GSList* list;
-  InfNodeRequest* request;
+  InfExploreRequest* request;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -896,7 +896,7 @@ inf_browser_get_pending_explore_request(InfBrowser* browser,
 
   request = NULL;
   if(list != NULL)
-    request = (InfNodeRequest*)list->data;
+    request = (InfExploreRequest*)list->data;
 
   g_slist_free(list);
   return request;

@@ -22,8 +22,9 @@
 
 #include <glib-object.h>
 #include <libinfinity/common/inf-browser-iter.h>
-#include <libinfinity/common/inf-node-request.h>
 #include <libinfinity/common/inf-request.h>
+#include <libinfinity/common/inf-node-request.h>
+#include <libinfinity/common/inf-explore-request.h>
 #include <libinfinity/common/inf-session.h>
 
 G_BEGIN_DECLS
@@ -140,7 +141,7 @@ struct _InfBrowserIface {
                          InfBrowserIter* iter);
   gboolean (*get_child)(InfBrowser* browser,
                         InfBrowserIter* iter);
-  InfNodeRequest* (*explore)(InfBrowser* browser,
+  InfExploreRequest* (*explore)(InfBrowser* browser,
                                 const InfBrowserIter* iter);
   gboolean (*get_explored)(InfBrowser* browser,
                            const InfBrowserIter* iter);
@@ -151,7 +152,7 @@ struct _InfBrowserIface {
                                  const InfBrowserIter* iter,
                                  const char* name,
                                  const char* type,
-                                 InfSession* session, /* may be NULL to create empty session */
+                                 InfSession* session,
                                  gboolean initial_subscribe);
   InfNodeRequest* (*add_subdirectory)(InfBrowser* browser,
                                          const InfBrowserIter* iter,
@@ -202,7 +203,7 @@ gboolean
 inf_browser_get_child(InfBrowser* browser,
                       InfBrowserIter* iter);
 
-InfNodeRequest*
+InfExploreRequest*
 inf_browser_explore(InfBrowser* browser,
                     const InfBrowserIter* iter);
 
@@ -219,7 +220,7 @@ inf_browser_add_note(InfBrowser* browser,
                      const InfBrowserIter* iter,
                      const char* name,
                      const char* type,
-                     InfSession* session, /* may be NULL to create empty session */
+                     InfSession* session,
                      gboolean initial_subscribe);
 
 InfNodeRequest*
@@ -261,7 +262,7 @@ inf_browser_iter_from_request(InfBrowser* browser,
                               InfNodeRequest* request,
                               InfBrowserIter* iter);
 
-InfNodeRequest*
+InfExploreRequest*
 inf_browser_get_pending_explore_request(InfBrowser* browser,
                                         const InfBrowserIter* iter);
 

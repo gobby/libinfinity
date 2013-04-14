@@ -361,6 +361,19 @@ INF_NODE_REQUEST_GET_IFACE
 </SECTION>
 
 <SECTION>
+<FILE>inf-explore-request</FILE>
+<TITLE>InfExploreRequest</TITLE>
+InfExploreRequest
+InfExploreRequestIface
+<SUBSECTION Standard>
+INF_EXPLORE_REQUEST
+INF_IS_EXPLORE_REQUEST
+INF_TYPE_EXPLORE_REQUEST
+inf_explore_request_get_type
+INF_EXPLORE_REQUEST_GET_IFACE
+</SECTION>
+
+<SECTION>
 <FILE>inf-request</FILE>
 <TITLE>InfRequest</TITLE>
 InfRequest

@@ -21,15 +21,15 @@
  * SECTION:inf-node-request
  * @title: InfNodeRequest
  * @short_description: Asynchronous browser request
- * @include: libinfinity/common/inf-browser-request.h
+ * @include: libinfinity/common/inf-node-request.h
  * @see_also: #InfBrowser, #InfRequest, #InfcNodeRequest
  * @stability: Unstable
  *
  * #InfNodeRequest represents a request that has been made via the
  * #InfBrowser API. Usually such a request is asynchronous, for example
  * because it waits for a response from an infinote server or because it
- * performs I/O. The #InfNodeRequest class is used to monitor progress and
- * being notified when the request finishes.
+ * performs I/O. The #InfNodeRequest class is used to be notified when the
+ * request finishes.
  */
 
 #include <libinfinity/common/inf-node-request.h>
@@ -73,20 +73,6 @@ inf_node_request_base_init(gpointer g_class)
       2,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
       G_TYPE_POINTER /* GError* */
-    );
-
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_double(
-        "progress",
-        "Progress",
-        "The progress of the operation represented as a floating point "
-        "number between 0.0 and 1.0",
-        0.0,
-        1.0,
-        0.0,
-        G_PARAM_READABLE
-      )
     );
 
     initialized = TRUE;

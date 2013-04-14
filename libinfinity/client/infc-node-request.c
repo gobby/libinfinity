@@ -49,9 +49,7 @@ enum {
 
   PROP_TYPE,
   PROP_SEQ,
-  PROP_NODE_ID,
-
-  PROP_PROGRESS
+  PROP_NODE_ID
 };
 
 #define INFC_NODE_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_NODE_REQUEST, InfcNodeRequestPrivate))
@@ -114,8 +112,6 @@ infc_node_request_set_property(GObject* object,
     g_assert(priv->node_id == 0); /* construct only */
     priv->node_id = g_value_get_uint(value);
     break;
-  case PROP_PROGRESS:
-    /* read only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -145,12 +141,6 @@ infc_node_request_get_property(GObject* object,
   case PROP_NODE_ID:
     g_value_set_uint(value, priv->node_id);
     break;
-  case PROP_PROGRESS:
-    if(priv->finished == FALSE)
-      g_value_set_double(value, 0.0);
-    else
-      g_value_set_double(value, 1.0);
-    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -176,7 +166,6 @@ infc_node_request_node_request_finished(InfNodeRequest* request,
   priv = INFC_NODE_REQUEST_PRIVATE(node_request);
 
   priv->finished = TRUE;
-  g_object_notify(G_OBJECT(node_request), "progress");
 }
 
 static void
@@ -212,7 +201,6 @@ infc_node_request_class_init(gpointer g_class,
 
   g_object_class_override_property(object_class, PROP_TYPE, "type");
   g_object_class_override_property(object_class, PROP_SEQ, "seq");
-  g_object_class_override_property(object_class, PROP_PROGRESS, "progress");
 }
 
 static void

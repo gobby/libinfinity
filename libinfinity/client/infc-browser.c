@@ -1909,7 +1909,6 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
-  gboolean initiated;
   guint current;
   guint total;
   gchar* type;
@@ -1956,13 +1955,13 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
 
       g_object_get(
         G_OBJECT(request),
-        "initiated", &initiated,
         "current", &current,
         "total", &total,
         NULL
       );
 
-      if(initiated == FALSE)
+      if(infc_explore_request_get_initiated(INFC_EXPLORE_REQUEST(request)) ==
+         FALSE)
       {
         g_set_error(
           error,
@@ -3713,7 +3712,7 @@ infc_browser_browser_get_child(InfBrowser* browser,
   }
 }
 
-static InfNodeRequest*
+static InfExploreRequest*
 infc_browser_browser_explore(InfBrowser* browser,
                              const InfBrowserIter* iter)
 {
@@ -3759,7 +3758,7 @@ infc_browser_browser_explore(InfBrowser* browser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_EXPLORE_REQUEST(request);
 }
 
 static gboolean

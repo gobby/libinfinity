@@ -37,20 +37,12 @@ typedef struct _InfcExploreRequestClass InfcExploreRequestClass;
 
 /**
  * InfcExploreRequestClass:
- * @initiated: Default signal handler for the #InfcExploreRequest::initiated
- * signal.
  *
- * This structure contains default signal handlers for #InfcExploreRequest.
+ * This structure does not contain any public fields.
  */
 struct _InfcExploreRequestClass {
   /*< private >*/
   InfcNodeRequestClass parent_class;
-
-  /*< public >*/
-
-  /* Signals */
-  void (*initiated)(InfcExploreRequest *explore_request,
-                    guint total);
 };
 
 /**
@@ -70,9 +62,6 @@ infc_explore_request_get_type(void) G_GNUC_CONST;
 void
 infc_explore_request_initiated(InfcExploreRequest* request,
                                guint total);
-
-gboolean
-infc_explore_request_get_initiated(InfcExploreRequest* request);
 
 void
 infc_explore_request_progress(InfcExploreRequest* request);
