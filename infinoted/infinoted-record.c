@@ -118,23 +118,23 @@ infinoted_record_directory_add_session_cb(InfdDirectory* directory,
                                           gpointer user_data)
 {
   InfinotedRecord* record;
+  InfSession* session;
   const gchar* title;
   InfAdoptedSessionRecord* rec;
 
   record = (InfinotedRecord*)user_data;
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
-  if(INF_ADOPTED_IS_SESSION(infd_session_proxy_get_session(proxy)))
+  if(INF_ADOPTED_IS_SESSION(session))
   {
     title = infd_directory_iter_get_name(directory, iter);
 
-    rec = infinoted_record_start(
-      INF_ADOPTED_SESSION(infd_session_proxy_get_session(proxy)),
-      title
-    );
-
+    rec = infinoted_record_start(INF_ADOPTED_SESSION(session), title);
     if(rec)
       record->records = g_slist_prepend(record->records, rec);
   }
+
+  g_object_unref(session);
 }
 
 static void
@@ -150,7 +150,7 @@ infinoted_record_directory_remove_session_cb(InfdDirectory* directory,
   InfAdoptedSessionRecord* rec;
   InfSession* cur_session;
 
-  session = infd_session_proxy_get_session(proxy);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
   record = (InfinotedRecord*)user_data;
 
   for(item = record->records; item != NULL; item = item->next)
@@ -169,6 +169,8 @@ infinoted_record_directory_remove_session_cb(InfdDirectory* directory,
       g_object_unref(cur_session);
     }
   }
+
+  g_object_unref(session);
 }
 
 /**
@@ -243,3 +245,5 @@ infinoted_record_free(InfinotedRecord* record)
   g_object_unref(record->directory);
   g_slice_free(InfinotedRecord, record);
 }
+
+/* vim:set et sw=2 ts=2: */

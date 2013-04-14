@@ -18,10 +18,12 @@
  */
 
 #include <libinfinity/server/infd-session-proxy.h>
-
+#include <libinfinity/server/infd-user-request.h>
+#include <libinfinity/common/inf-session-proxy.h>
+#include <libinfinity/common/inf-user-request.h>
+#include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
-
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
@@ -36,17 +38,30 @@ struct _InfdSessionProxySubscription {
   GSList* users; /* Available users joined via this connection */
 };
 
+typedef struct _InfdSessionProxyUserJoinRequest
+  InfdSessionProxyUserJoinRequest;
+struct _InfdSessionProxyUserJoinRequest {
+  InfdSessionProxy* proxy;
+  guint n_params;
+  GParameter* params;
+  InfdUserRequest* request;
+  InfIoDispatch* dispatch;
+};
+
 typedef struct _InfdSessionProxyPrivate InfdSessionProxyPrivate;
 struct _InfdSessionProxyPrivate {
+  InfIo* io;
   InfSession* session;
   InfCommunicationHostedGroup* subscription_group;
 
   GSList* subscriptions;
   guint user_id_counter;
 
+  /* Local user join requests. These are delayed artificially so that we can
+   * provide the same interface as InfcSessionProxy. */
+  GSList* local_user_join_requests;
   /* Local users that do not belong to a particular connection */
   GSList* local_users;
-
   /* Whether there are any subscriptions / synchronizations */
   gboolean idle;
 };
@@ -55,6 +70,7 @@ enum {
   PROP_0,
 
   /* construct/only */
+  PROP_IO,
   PROP_SESSION,
   PROP_SUBSCRIPTION_GROUP,
 
@@ -416,6 +432,139 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
 }
 
 /*
+ * User Join requests
+ */
+
+static void
+infd_session_proxy_remove_user_join_request(
+  InfdSessionProxy* proxy,
+  InfdSessionProxyUserJoinRequest *r);
+
+static void
+infd_session_proxy_add_user_join_request_free(gpointer data)
+{
+  InfdSessionProxyUserJoinRequest* request;
+  request = (InfdSessionProxyUserJoinRequest*)data;
+
+  /* TODO: Emit finished signal with some cancelled error? */
+  infd_session_proxy_remove_user_join_request(request->proxy, request);
+}
+
+static void
+infd_session_proxy_add_user_join_request_func(gpointer user_data)
+{
+  InfdSessionProxyUserJoinRequest* request;
+  GArray* array;
+  GError* error;
+  InfUser* user;
+  guint i;
+  InfUserRequest* user_request;
+
+  request = (InfdSessionProxyUserJoinRequest*)user_data;
+
+  request->dispatch = NULL;
+
+  array = g_array_sized_new(
+    FALSE,
+    FALSE,
+    sizeof(GParameter),
+    request->n_params + 2
+  );
+
+  g_array_append_vals(array, request->params, request->n_params);
+
+  error = NULL;
+  user = infd_session_proxy_perform_user_join(
+    request->proxy,
+    NULL,
+    NULL,
+    array,
+    &error
+  );
+
+  for(i = request->n_params; i < array->len; ++i)
+    g_value_unset(&g_array_index(array, GParameter, i).value);
+  g_array_free(array, TRUE);
+
+  user_request = INF_USER_REQUEST(request->request);
+  g_object_ref(user_request);
+
+  infd_session_proxy_remove_user_join_request(request->proxy, request);
+
+  inf_user_request_finished(user_request, user, error);
+  if(error) g_error_free(error);
+
+  g_object_unref(user_request);
+}
+
+static InfdUserRequest*
+infd_session_proxy_add_user_join_request(InfdSessionProxy* proxy,
+                                         guint n_params,
+                                         const GParameter* params)
+{
+  InfdSessionProxyPrivate* priv;
+  InfdSessionProxyUserJoinRequest* request;
+  guint i;
+  
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  request = g_slice_new(InfdSessionProxyUserJoinRequest);
+  request->proxy = proxy;
+  request->n_params = n_params;
+  request->params = g_malloc(n_params * sizeof(GParameter));
+  
+  for(i = 0; i < n_params; ++i)
+  {
+    /* Note that this assumes that the parameter names are truly static,
+     * since the strings are kept until the dispatch is called. */
+    request->params[i].name = params[i].name;
+    g_value_init(&request->params[i].value, G_VALUE_TYPE(&params[i].value));
+    g_value_copy(&params[i].value, &request->params[i].value);
+  }
+
+  request->request = g_object_new(
+    INFD_TYPE_USER_REQUEST,
+    "type", "user-join",
+    NULL
+  );
+
+  request->dispatch = inf_io_add_dispatch(
+    priv->io,
+    infd_session_proxy_add_user_join_request_func,
+    request,
+    infd_session_proxy_add_user_join_request_free
+  );
+
+  priv->local_user_join_requests =
+    g_slist_prepend(priv->local_user_join_requests, request);
+  return request->request;
+}
+
+static void
+infd_session_proxy_remove_user_join_request(InfdSessionProxy* proxy,
+                                            InfdSessionProxyUserJoinRequest*r)
+{
+  InfdSessionProxyPrivate* priv;
+  InfIo* io;
+  guint i;
+
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  for(i = 0; i < r->n_params; ++i)
+    g_value_unset(&r->params[i].value);
+
+  g_free(r->params);
+  g_object_unref(r->request);
+
+  if(r->dispatch != NULL)
+    inf_io_remove_dispatch(priv->io, r->dispatch);
+
+  priv->local_user_join_requests =
+    g_slist_remove(priv->local_user_join_requests, r);
+  g_slice_free(InfdSessionProxyUserJoinRequest, r);
+}
+
+/*
  * Signal handlers.
  */
 
@@ -700,9 +849,11 @@ infd_session_proxy_init(GTypeInstance* instance,
   session_proxy = INFD_SESSION_PROXY(instance);
   priv = INFD_SESSION_PROXY_PRIVATE(session_proxy);
 
+  priv->io = NULL;
   priv->subscriptions = NULL;
   priv->subscription_group = NULL;
   priv->user_id_counter = 1;
+  priv->local_user_join_requests = NULL;
   priv->local_users = NULL;
   priv->idle = TRUE;
 }
@@ -758,6 +909,14 @@ infd_session_proxy_dispose(GObject* object)
   g_slist_free(priv->local_users);
   priv->local_users = NULL;
 
+  while(priv->local_user_join_requests != NULL)
+  {
+    infd_session_proxy_remove_user_join_request(
+      proxy,
+      (InfdSessionProxyUserJoinRequest*)priv->local_user_join_requests->data
+    );
+  }
+
   /* We need to close the session explicitely before we unref so that
    * the signal handler for the close signal is called. */
   /* Note this emits the close signal, removing all subscriptions and
@@ -807,6 +966,9 @@ infd_session_proxy_dispose(GObject* object)
   g_assert(priv->subscription_group == NULL);
   g_assert(priv->subscriptions == NULL);
 
+  g_object_unref(priv->io);
+  priv->io = NULL;
+
   g_object_unref(manager);
 }
 
@@ -838,6 +1000,10 @@ infd_session_proxy_set_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_assert(priv->io == NULL); /* construct only */
+    priv->io = INF_IO(g_value_dup_object(value));
+    break;
   case PROP_SESSION:
     g_assert(priv->session == NULL); /* construct only */
     priv->session = INF_SESSION(g_value_dup_object(value));
@@ -932,6 +1098,9 @@ infd_session_proxy_get_property(GObject* object,
 
   switch(prop_id)
   {
+  case PROP_IO:
+    g_value_set_object(value, priv->io);
+    break;
   case PROP_SESSION:
     g_value_set_object(value, priv->session);
     break;
@@ -1215,6 +1384,28 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
 }
 
 /*
+ * InfSessionProxy implementation
+ */
+
+static InfUserRequest*
+infd_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
+                                           guint n_params,
+                                           const GParameter* params)
+{
+  InfdUserRequest* request;
+
+  g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), NULL);
+
+  request = infd_session_proxy_add_user_join_request(
+    INFD_SESSION_PROXY(proxy),
+    n_params,
+    params
+  );
+
+  return INF_USER_REQUEST(request);
+}
+
+/*
  * GType registration.
  */
 
@@ -1241,12 +1432,12 @@ infd_session_proxy_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_SESSION,
+    PROP_IO,
     g_param_spec_object(
-      "session",
-      "Session",
-      "The underlying session",
-      INF_TYPE_SESSION,
+      "io",
+      "Io",
+      "The InfIo object for scheduling events",
+      INF_TYPE_IO,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
@@ -1275,6 +1466,8 @@ infd_session_proxy_class_init(gpointer g_class,
       G_PARAM_READABLE
     )
   );
+
+  g_object_class_override_property(object_class, PROP_SESSION, "session");
 
   /**
    * InfdSessionProxy::add-subscription:
@@ -1331,6 +1524,16 @@ infd_session_proxy_communication_object_init(gpointer g_iface,
   iface->received = infd_session_proxy_communication_object_received;
 }
 
+static void
+infd_session_proxy_session_proxy_init(gpointer g_iface,
+                                      gpointer iface_data)
+{
+  InfSessionProxyIface* iface;
+  iface = (InfSessionProxyIface*)g_iface;
+
+  iface->join_user = infd_session_proxy_session_proxy_join_user;
+}
+
 GType
 infd_session_proxy_get_type(void)
 {
@@ -1357,6 +1560,12 @@ infd_session_proxy_get_type(void)
       NULL
     };
 
+    static const GInterfaceInfo session_proxy_info = {
+      infd_session_proxy_session_proxy_init,
+      NULL,
+      NULL
+    };
+
     session_proxy_type = g_type_register_static(
       G_TYPE_OBJECT,
       "InfdSessionProxy",
@@ -1369,6 +1578,12 @@ infd_session_proxy_get_type(void)
       INF_COMMUNICATION_TYPE_OBJECT,
       &communication_object_info
     );
+
+    g_type_add_interface_static(
+      session_proxy_type,
+      INF_TYPE_SESSION_PROXY,
+      &session_proxy_info
+    );
   }
 
   return session_proxy_type;
@@ -1377,67 +1592,6 @@ infd_session_proxy_get_type(void)
 /*
  * Public API.
  */
-
-/**
- * infd_session_proxy_get_session:
- * @proxy: A #InfdSessionProxy.
- *
- * Returns the session proxied by @proxy. Returns %NULL if the session was
- * closed.
- *
- * Return Value: A #InfSession, or %NULL.
- **/
-InfSession*
-infd_session_proxy_get_session(InfdSessionProxy* proxy)
-{
-  g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), NULL);
-  return INFD_SESSION_PROXY_PRIVATE(proxy)->session;
-}
-
-/**
- * infd_session_proxy_add_user:
- * @proxy: A #InfdSessionProxy.
- * @params: Construction properties for the #InfUser (or derived) object.
- * @n_params: Number of parameters.
- * @error: Location to store error information.
- *
- * Adds a local user to @proxy's session. @params must not contain the
- * 'id' property because it will be choosen by the proxy. Also, if the 'name'
- * property is already in use by an existing, but unavailable user, this user 
- * will be re-used.
- *
- * Return Value: The #InfUser that has been added, or %NULL in case of an
- * error.
- **/
-InfUser*
-infd_session_proxy_add_user(InfdSessionProxy* proxy,
-                            const GParameter* params,
-                            guint n_params,
-                            GError** error)
-{
-  InfUser* user;
-  GArray* array;
-
-  g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), NULL);
-
-  /* TODO: Make sure values added by infd_session_proxy_perform_user_join are
-   * released, for example by inserting copies into the array, and freeing
-   * the values after the call. */
-  array = g_array_sized_new(FALSE, FALSE, sizeof(GParameter), n_params + 2);
-  g_array_append_vals(array, params, n_params);
-
-  user = infd_session_proxy_perform_user_join(
-    proxy,
-    NULL,
-    NULL,
-    array,
-    error
-  );
-
-  g_array_free(array, TRUE);
-
-  return user;
-}
 
 /**
  * infd_session_proxy_subscribe_to:

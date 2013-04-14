@@ -96,6 +96,7 @@
     <xi:include href="xml/infd-storage.xml"/>
     <xi:include href="xml/infd-filesystem-storage.xml"/>
     <xi:include href="xml/infd-session-proxy.xml"/>
+    <xi:include href="xml/infd-user-request.xml"/>
     <xi:include href="xml/infd-tcp-server.xml"/>
     <xi:include href="xml/infd-xml-server.xml"/>
     <xi:include href="xml/infd-xmpp-server.xml"/>

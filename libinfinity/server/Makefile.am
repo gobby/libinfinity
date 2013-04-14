@@ -14,6 +14,7 @@ libinfinity_server_la_SOURCES = \
 	infd-session-proxy.c \
 	infd-storage.c \
 	infd-tcp-server.c \
+	infd-user-request.c \
 	infd-xml-server.c \
 	infd-xmpp-server.c
 
@@ -25,5 +26,6 @@ libinfinity_server_la_HEADERS = \
 	infd-session-proxy.h \
 	infd-storage.h \
 	infd-tcp-server.h \
+	infd-user-request.h \
 	infd-xml-server.h \
 	infd-xmpp-server.h

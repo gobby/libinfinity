@@ -332,6 +332,7 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   GError* error;
   gchar* path;
   gboolean result;
+  InfSession* session;
 
   timeout_data = (InfdDirectorySessionSaveTimeoutData*)user_data;
 
@@ -342,15 +343,23 @@ infd_directory_session_save_timeout_func(gpointer user_data)
 
   infd_directory_node_get_path(timeout_data->node, &path, NULL);
 
+  g_object_get(
+    G_OBJECT(timeout_data->node->shared.note.session),
+    "session", &session,
+    NULL
+  );
+
   /* TODO: Only write if the buffer modified-flag is set */
 
   result = timeout_data->node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(timeout_data->node->shared.note.session),
+    session,
     path,
     timeout_data->node->shared.note.plugin->user_data,
     &error
   );
+
+  g_object_unref(session);
 
   /* TODO: Unset modified flag of buffer if result == TRUE */
 
@@ -555,7 +564,10 @@ infd_directory_create_session_proxy_with_group(InfdDirectory* directory,
                                                InfSession* session,
                                                InfCommunicationHostedGroup* g)
 {
+  InfdDirectoryPrivate* priv;
   InfdSessionProxy* proxy;
+  
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(
     inf_communication_group_get_target(INF_COMMUNICATION_GROUP(g)) == NULL
@@ -564,6 +576,7 @@ infd_directory_create_session_proxy_with_group(InfdDirectory* directory,
   proxy = INFD_SESSION_PROXY(
     g_object_new(
       INFD_TYPE_SESSION_PROXY,
+      "io", priv->io,
       "session", session,
       "subscription-group", g,
       NULL
@@ -666,7 +679,7 @@ infd_directory_create_session_proxy_for_storage(
 
   proxy = infd_directory_create_session_proxy(
     directory, plugin, status, sync_group, sync_conn, sub_group);
-  session = infd_session_proxy_get_session(proxy);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   /* Save session initially */
   infd_directory_node_make_path(parent, name, &path, NULL);
@@ -685,8 +698,10 @@ infd_directory_create_session_proxy_for_storage(
   {
     ret = TRUE;
   }
-
+  
+  g_object_unref(session);
   g_free(path);
+
   if(ret == FALSE)
   {
     /* Reset communication groups for the proxy, to avoid a warning at
@@ -771,6 +786,7 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
   InfdDirectoryNode* child;
   gchar* path;
   GError* error;
+  InfSession* session;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -803,13 +819,21 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
 
         if(priv->storage != NULL)
         {
+          g_object_get(
+            G_OBJECT(node->shared.note.session),
+            "session", &session,
+            NULL
+          );
+
           node->shared.note.plugin->session_write(
             priv->storage,
-            infd_session_proxy_get_session(node->shared.note.session),
+            session,
             path,
             node->shared.note.plugin->user_data,
             &error
           );
+
+          g_object_unref(session);
         }
 
         /* TODO: Unset modified flag of buffer if result == TRUE */
@@ -1465,6 +1489,7 @@ infd_directory_add_sync_in(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
+  InfSession* session;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1477,20 +1502,24 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->plugin = plugin;
   sync_in->proxy = proxy;
   g_object_ref(sync_in->proxy);
+  
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   g_signal_connect(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     "synchronization-failed",
     G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
     sync_in
   );
 
   g_signal_connect(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     "synchronization-complete",
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
     sync_in
   );
+
+  g_object_unref(session);
 
   priv->sync_ins = g_slist_prepend(priv->sync_ins, sync_in);
   return sync_in;
@@ -1501,19 +1530,24 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
                               InfdDirectorySyncIn* sync_in)
 {
   InfdDirectoryPrivate* priv;
+  InfSession* session;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_object_get(G_OBJECT(sync_in->proxy), "session", &session, NULL);
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
     sync_in
   );
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
     sync_in
   );
+
+  g_object_unref(session);
 
   /* This cancels the synchronization: */
   g_object_unref(sync_in->proxy);
@@ -3011,6 +3045,7 @@ infd_directory_handle_save_session(InfdDirectory* directory,
   xmlNodePtr reply_xml;
   gchar* path;
   gchar* seq;
+  InfSession* session;
   gboolean result;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -3073,13 +3108,21 @@ infd_directory_handle_save_session(InfdDirectory* directory,
 
   infd_directory_node_get_path(node, &path, NULL);
 
+  g_object_get(
+    G_OBJECT(node->shared.note.session),
+    "session", &session,
+    NULL
+  );
+
   result = node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(node->shared.note.session),
+    session,
     path,
     node->shared.note.plugin->user_data,
     error
   );
+
+  g_object_unref(session);
 
   /* TODO: unset modified flag of buffer if result == TRUE */
 
@@ -3199,6 +3242,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   InfdDirectoryNode* node;
   InfdDirectorySyncIn* sync_in;
   InfdSessionProxy* proxy;
+  InfSession* session;
   InfdDirectoryConnectionInfo* info;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -3339,9 +3383,14 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
     /* Group and method are OK for the client, so start synchronization */
-    inf_session_synchronize_from(
-      infd_session_proxy_get_session(request->shared.sync_in.proxy)
+    g_object_get(
+      G_OBJECT(request->shared.sync_in.proxy),
+      "session", &session,
+      NULL
     );
+
+    inf_session_synchronize_from(session);
+    g_object_unref(session);
 
     if(request->shared.sync_in.parent != NULL)
     {
@@ -5136,6 +5185,7 @@ infd_directory_iter_save_session(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   gchar* path;
+  InfSession* session;
   gboolean result;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
@@ -5160,9 +5210,15 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   infd_directory_node_get_path(node, &path, NULL);
 
+  g_object_get(
+    G_OBJECT(node->shared.note.session),
+    "session", &session,
+    NULL
+  );
+
   result = node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(node->shared.note.session),
+    session,
     path,
     node->shared.note.plugin->user_data,
     error
@@ -5170,6 +5226,7 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   /* TODO: Unset modified flag of buffer if result == TRUE */
 
+  g_object_unref(session);
   g_free(path);
   return result;
 }
@@ -5191,7 +5248,8 @@ infd_directory_enable_chat(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfCommunicationHostedGroup* group;
-  InfChatSession* session;
+  InfChatSession* chat_session;
+  InfSession* session;
 
   /* TODO: For the moment, there only exist central methods anyway. In the
    * long term, this should probably be a property, though. */
@@ -5211,7 +5269,7 @@ infd_directory_enable_chat(InfdDirectory* directory,
         methods
       );
 
-      session = inf_chat_session_new(
+      chat_session = inf_chat_session_new(
         priv->communication_manager,
         256,
         INF_SESSION_RUNNING,
@@ -5222,7 +5280,8 @@ infd_directory_enable_chat(InfdDirectory* directory,
       priv->chat_session = INFD_SESSION_PROXY(
         g_object_new(
           INFD_TYPE_SESSION_PROXY,
-          "session", session,
+          "io", priv->io,
+          "session", chat_session,
           "subscription-group", group,
           NULL
         )
@@ -5233,7 +5292,7 @@ infd_directory_enable_chat(InfdDirectory* directory,
         INF_COMMUNICATION_OBJECT(priv->chat_session)
       );
 
-      g_object_unref(session);
+      g_object_unref(chat_session);
       g_object_unref(group);
 
       g_object_notify(G_OBJECT(directory), "chat-session");
@@ -5243,7 +5302,9 @@ infd_directory_enable_chat(InfdDirectory* directory,
   {
     if(priv->chat_session != NULL)
     {
-      inf_session_close(infd_session_proxy_get_session(priv->chat_session));
+      g_object_get(G_OBJECT(priv->chat_session), "session", &session, NULL);
+      inf_session_close(session);
+      g_object_unref(session);
 
       g_object_unref(priv->chat_session);
       priv->chat_session = NULL;
