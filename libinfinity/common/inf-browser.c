@@ -783,11 +783,10 @@ inf_browser_subscribe(InfBrowser* browser,
  * session is not subscribed or the subscription request has not yet finished
  * the function returns %NULL.
  *
- * Returns: A @GObject which contains the session. This is either a
- * #InfcSessionProxy or a #InfdSessionProxy (TODO: Make a common base class
- * or interface).
+ * Returns: A @InfSessionProxy which contains the session. The proxy object
+ * can be used to join a user into the session.
  */
-GObject*
+InfSessionProxy*
 inf_browser_get_session(InfBrowser* browser,
                         const InfBrowserIter* iter)
 {

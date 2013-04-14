@@ -3581,7 +3581,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 static void
 infc_browser_browser_subscribe_session(InfBrowser* browser,
                                        const InfBrowserIter* iter,
-                                       GObject* proxy)
+                                       InfSessionProxy* proxy)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -3589,6 +3589,7 @@ infc_browser_browser_subscribe_session(InfBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
+  g_assert(INFC_IS_SESSION_PROXY(proxy));
   g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   if(iter != NULL)
@@ -4103,7 +4104,7 @@ infc_browser_browser_subscribe(InfBrowser* infbrowser,
   return INF_NODE_REQUEST(request);
 }
 
-static GObject*
+static InfSessionProxy*
 infc_browser_browser_get_session(InfBrowser* browser,
                                  const InfBrowserIter* iter)
 {
@@ -4117,7 +4118,7 @@ infc_browser_browser_get_session(InfBrowser* browser,
   node = (InfcBrowserNode*)iter->node;
 
   if(node->type != INFC_BROWSER_NODE_NOTE_KNOWN) return NULL;
-  return G_OBJECT(node->shared.known.session);
+  return INF_SESSION_PROXY(node->shared.known.session);
 }
 
 static GSList*

@@ -57,7 +57,7 @@ struct _InfGtkBrowserViewSync {
   InfGtkBrowserViewBrowser* view_browser;
   GtkTreeRowReference* reference;
 
-  InfcSessionProxy* proxy;
+  InfSessionProxy* proxy;
 };
 
 typedef struct _InfGtkBrowserViewPrivate InfGtkBrowserViewPrivate;
@@ -153,7 +153,7 @@ inf_gtk_browser_view_find_explore(InfGtkBrowserView* view,
 static InfGtkBrowserViewSync*
 inf_gtk_browser_view_find_sync(InfGtkBrowserView* view,
                                InfGtkBrowserViewBrowser* view_browser,
-                               InfcSessionProxy* proxy)
+                               InfSessionProxy* proxy)
 {
   GSList* item;
   InfGtkBrowserViewSync* sync;
@@ -374,7 +374,7 @@ inf_gtk_browser_view_explore_request_finished_cb(InfExploreRequest* request,
 static void
 inf_gtk_browser_view_sync_added(InfGtkBrowserView* view,
                                 InfBrowser* browser,
-                                InfcSessionProxy* proxy,
+                                InfSessionProxy* proxy,
                                 GtkTreePath* path,
                                 GtkTreeIter* iter)
 {
@@ -649,7 +649,7 @@ inf_gtk_browser_view_begin_request_explore_node_cb(InfBrowser* browser,
 static void
 inf_gtk_browser_view_subscribe_session_cb(InfBrowser* browser,
                                           InfBrowserIter* iter,
-                                          GObject* proxy,
+                                          InfSessionProxy* proxy,
                                           gpointer user_data)
 {
   InfGtkBrowserViewBrowser* view_browser;
@@ -688,7 +688,7 @@ inf_gtk_browser_view_subscribe_session_cb(InfBrowser* browser,
       inf_gtk_browser_view_sync_added(
         view,
         browser,
-        INFC_SESSION_PROXY(proxy),
+        proxy,
         path,
         &tree_iter
       );
@@ -713,7 +713,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
   InfGtkBrowserViewPrivate* priv;
   InfExploreRequest* request;
   GObject* object;
-  InfcSessionProxy* proxy;
+  InfSessionProxy* proxy;
   InfSession* session;
   GtkTreeModel* model;
   GtkTreeIter tree_iter;
@@ -772,13 +772,10 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
   }
   else
   {
-    proxy = infc_browser_iter_get_sync_in(INFC_BROWSER(browser), iter);
+    proxy = INF_SESSION_PROXY(
+      infc_browser_iter_get_sync_in(INFC_BROWSER(browser), iter));
     if(proxy == NULL)
-    {
-      object = inf_browser_get_session(browser, iter);
-      g_assert(object == NULL || INFC_IS_SESSION_PROXY(object));
-      proxy = INFC_SESSION_PROXY(object);
-    }
+      proxy = inf_browser_get_session(browser, iter);
 
     if(proxy != NULL)
     {
@@ -1093,7 +1090,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   GtkTreePath* parent_path;
 
   GObject* object;
-  InfcSessionProxy* proxy;
+  InfSessionProxy* proxy;
   InfSession* session;
   InfXmlConnection* connection;
 
@@ -1167,14 +1164,10 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
     }
     else
     {
-      proxy =
-        infc_browser_iter_get_sync_in(INFC_BROWSER(browser), browser_iter);
+      proxy = INF_SESSION_PROXY(
+        infc_browser_iter_get_sync_in(INFC_BROWSER(browser), browser_iter));
       if(proxy == NULL)
-      {
-        object = inf_browser_get_session(browser, browser_iter);
-        g_assert(object == NULL || INFC_IS_SESSION_PROXY(object));
-        proxy = INFC_SESSION_PROXY(object);
-      }
+        proxy = inf_browser_get_session(browser, browser_iter);
 
       if(proxy != NULL)
       {
@@ -2039,7 +2032,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
   InfBrowserIter* browser_iter;
   InfExploreRequest* request;
   GObject* object;
-  InfcSessionProxy* proxy;
+  InfSessionProxy* proxy;
   InfSession* session;
   InfXmlConnection* connection;
   guint current;
@@ -2115,14 +2108,10 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
       {
         /* Show progress of either sync-in or synchronization
          * due to subscription. */
-        proxy = infc_browser_iter_get_sync_in(
-          INFC_BROWSER(browser), browser_iter);
+        proxy = INF_SESSION_PROXY(
+          infc_browser_iter_get_sync_in(INFC_BROWSER(browser), browser_iter));
         if(proxy == NULL)
-        {
-          object = inf_browser_get_session(browser, browser_iter);
-          g_assert(object == NULL || INFC_IS_SESSION_PROXY(object));
-          proxy = INFC_SESSION_PROXY(object);
-        }
+          proxy = inf_browser_get_session(browser, browser_iter);
 
         if(proxy != NULL)
         {

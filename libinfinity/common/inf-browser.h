@@ -25,6 +25,7 @@
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-node-request.h>
 #include <libinfinity/common/inf-explore-request.h>
+#include <libinfinity/common/inf-session-proxy.h>
 #include <libinfinity/common/inf-session.h>
 
 G_BEGIN_DECLS
@@ -119,11 +120,11 @@ struct _InfBrowserIface {
 
   void (*subscribe_session)(InfBrowser* browser,
                             const InfBrowserIter* iter,
-                            GObject* proxy); /* TODO: Make a InfSessionProxy base class */
+                            InfSessionProxy* proxy);
 
   void (*unsubscribe_session)(InfBrowser* browser,
                               const InfBrowserIter* iter,
-                              GObject* proxy); /* TODO: Make a InfSessionProxy base class */
+                              InfSessionProxy* proxy);
 
   void (*begin_request)(InfBrowser* browser,
                         const InfBrowserIter* iter,
@@ -166,8 +167,8 @@ struct _InfBrowserIface {
 
   InfNodeRequest* (*subscribe)(InfBrowser* browser,
                                   const InfBrowserIter* iter);
-  GObject* (*get_session)(InfBrowser* browser,
-                          const InfBrowserIter* iter);
+  InfSessionProxy* (*get_session)(InfBrowser* browser,
+                                  const InfBrowserIter* iter);
 
   GSList* (*list_pending_requests)(InfBrowser* browser,
                                    const InfBrowserIter* iter,
@@ -248,7 +249,7 @@ InfNodeRequest*
 inf_browser_subscribe(InfBrowser* browser,
                       const InfBrowserIter* iter);
 
-GObject*
+InfSessionProxy*
 inf_browser_get_session(InfBrowser* browser,
                         const InfBrowserIter* iter);
 
