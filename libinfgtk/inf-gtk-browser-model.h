@@ -78,7 +78,7 @@ struct _InfGtkBrowserModelIface {
 
   gboolean(*browser_iter_to_tree_iter)(InfGtkBrowserModel* model,
                                        InfBrowser* browser,
-                                       InfBrowserIter* browser_iter,
+                                       const InfBrowserIter* iter,
                                        GtkTreeIter* tree_iter);
 };
 
@@ -106,7 +106,7 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
 gboolean
 inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
                                                 InfBrowser* browser,
-                                                InfBrowserIter* browser_iter,
+                                                const InfBrowserIter* iter,
                                                 GtkTreeIter* tree_iter);
 
 G_END_DECLS

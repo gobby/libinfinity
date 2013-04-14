@@ -2052,7 +2052,7 @@ inf_gtk_browser_store_browser_model_resolve(InfGtkBrowserModel* model,
 static gboolean
 inf_gtk_browser_store_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
                                                 InfBrowser* browser,
-                                                InfBrowserIter* browser_iter,
+                                                const InfBrowserIter* iter,
                                                 GtkTreeIter* tree_iter)
 {
   InfGtkBrowserStorePrivate* priv;
@@ -2065,15 +2065,15 @@ inf_gtk_browser_store_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
     INF_GTK_BROWSER_STORE(model),
     browser
   );
-  if(item == NULL || item->missing == browser_iter->node) return FALSE;
+  if(item == NULL || item->missing == iter->node) return FALSE;
 
   tree_iter->stamp = priv->stamp;
   tree_iter->user_data = item;
-  tree_iter->user_data2 = GUINT_TO_POINTER(browser_iter->node_id);
-  tree_iter->user_data3 = browser_iter->node;
+  tree_iter->user_data2 = GUINT_TO_POINTER(iter->node_id);
+  tree_iter->user_data3 = iter->node;
 
   /* Root node */
-  if(browser_iter->node_id == 0)
+  if(iter->node_id == 0)
     tree_iter->user_data3 = NULL;
 
   return TRUE;

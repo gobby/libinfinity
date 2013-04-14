@@ -213,7 +213,7 @@ inf_gtk_browser_model_filter_resolve(InfGtkBrowserModel* model,
 static gboolean
 inf_gtk_browser_model_filter_browser_iter_to_tree_iter(InfGtkBrowserModel* m,
                                                        InfBrowser* browser,
-                                                       InfBrowserIter* iter,
+                                                       const InfBrowserIter*i,
                                                        GtkTreeIter* tree_iter)
 {
   GtkTreeModel* child_model;
@@ -225,7 +225,7 @@ inf_gtk_browser_model_filter_browser_iter_to_tree_iter(InfGtkBrowserModel* m,
   result = inf_gtk_browser_model_browser_iter_to_tree_iter(
     INF_GTK_BROWSER_MODEL(child_model),
     browser,
-    iter,
+    i,
     &child_iter
   );
 

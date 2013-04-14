@@ -206,7 +206,7 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
  * inf_gtk_browser_model_browser_iter_to_tree_iter:
  * @model: A #InfGtkBrowserModel.
  * @browser:  A #InfBrowser.
- * @browser_iter: A #InfBrowserIter pointing into @browser.
+ * @iter: A #InfBrowserIter pointing into @browser.
  * @tree_iter: A #GtkTreeIter that will be set by this function.
  *
  * Sets @tree_iter to point to the same node @browser_iter refers to
@@ -219,25 +219,20 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
 gboolean
 inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
                                                 InfBrowser* browser,
-                                                InfBrowserIter* browser_iter,
+                                                const InfBrowserIter* iter,
                                                 GtkTreeIter* tree_iter)
 {
   InfGtkBrowserModelIface* iface;
 
   g_return_val_if_fail(INF_GTK_IS_BROWSER_MODEL(model), FALSE);
   g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
-  g_return_val_if_fail(browser_iter != NULL, FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
   g_return_val_if_fail(tree_iter != NULL, FALSE);
 
   iface = INF_GTK_BROWSER_MODEL_GET_IFACE(model);
   g_return_val_if_fail(iface->browser_iter_to_tree_iter != NULL, FALSE);
 
-  return iface->browser_iter_to_tree_iter(
-    model,
-    browser,
-    browser_iter,
-    tree_iter
-  );
+  return iface->browser_iter_to_tree_iter(model, browser, iter, tree_iter);
 }
 
 /* vim:set et sw=2 ts=2: */

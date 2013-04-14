@@ -199,7 +199,7 @@ inf_gtk_browser_model_sort_resolve(InfGtkBrowserModel* model,
 static gboolean
 inf_gtk_browser_model_sort_browser_iter_to_tree_iter(InfGtkBrowserModel* mdl,
                                                      InfBrowser* browser,
-                                                     InfBrowserIter* iter,
+                                                     const InfBrowserIter* it,
                                                      GtkTreeIter* tree_iter)
 {
   GtkTreeModel* child_model;
@@ -211,7 +211,7 @@ inf_gtk_browser_model_sort_browser_iter_to_tree_iter(InfGtkBrowserModel* mdl,
   result = inf_gtk_browser_model_browser_iter_to_tree_iter(
     INF_GTK_BROWSER_MODEL(child_model),
     browser,
-    iter,
+    it,
     &child_iter
   );
 
