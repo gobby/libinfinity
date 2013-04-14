@@ -30,6 +30,7 @@ libinfinity_common_la_SOURCES = \
 	inf-request.c \
 	inf-sasl-context.c \
 	inf-session.c \
+	inf-session-proxy.c \
 	inf-simulated-connection.c \
 	inf-standalone-io.c \
 	inf-tcp-connection.c \
@@ -63,6 +64,7 @@ libinfinity_common_la_HEADERS = \
 	inf-request.h \
 	inf-sasl-context.h \
 	inf-session.h \
+	inf-session-proxy.h \
 	inf-simulated-connection.h \
 	inf-standalone-io.h \
 	inf-tcp-connection.h \

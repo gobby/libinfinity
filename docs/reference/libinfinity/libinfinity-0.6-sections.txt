@@ -596,6 +596,20 @@ INF_TYPE_SESSION_STATUS
 </SECTION>
 
 <SECTION>
+<FILE>inf-session-proxy</FILE>
+<TITLE>InfSessionProxy</TITLE>
+InfSesisonProxy
+InfSessionProxyIface
+inf_session_proxy_join_user
+<SUBSECTION Standard>
+INF_SESSION_PROXY
+INF_IS_SESSION_PROXY
+INF_TYPE_SESSION_PROXY
+INF_SESSION_PROXY_GET_IFACE
+inf_session_proxy_get_type
+</SECTION>
+
+<SECTION>
 <FILE>inf-xmpp-manager</FILE>
 <TITLE>InfXmppManager</TITLE>
 InfXmppManager
