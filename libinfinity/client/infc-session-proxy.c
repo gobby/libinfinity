@@ -20,7 +20,7 @@
 #include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/client/infc-request-manager.h>
-
+#include <libinfinity/common/inf-user-request.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
@@ -560,7 +560,7 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   {
     if(request != NULL)
     {
-      infc_user_request_finished(INFC_USER_REQUEST(request), user, NULL);
+      inf_user_request_finished(INF_USER_REQUEST(request), user, NULL);
       infc_request_manager_remove_request(priv->request_manager, request);
     }
 
@@ -640,8 +640,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
     goto error;
   }
 
-  /* Set local flag if the join was requested by us (seq is present in
-   * server response). */
+  /* Set local flag if the join was requested by us */
   param = inf_session_get_user_property(array, "flags");
   g_assert(!G_IS_VALUE(&param->value)); /* must not have been set already */
 
@@ -694,7 +693,7 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
 
   if(request != NULL)
   {
-    infc_user_request_finished(INFC_USER_REQUEST(request), user, NULL);
+    inf_user_request_finished(INF_USER_REQUEST(request), user, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 

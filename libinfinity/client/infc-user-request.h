@@ -20,7 +20,6 @@
 #ifndef __INFC_USER_REQUEST_H__
 #define __INFC_USER_REQUEST_H__
 
-#include <libinfinity/common/inf-user.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -44,21 +43,11 @@ typedef struct _InfcUserRequestClass InfcUserRequestClass;
 /**
  * InfcUserRequestClass:
  *
- * @finished: Default signal handler for the #InfcUserRequest::finished
- * signal.
- *
- * This structure contains default signal handlers for #InfcUserRequest.
+ * This structure does not contain any public fields.
  */
 struct _InfcUserRequestClass {
   /*< private >*/
   GObjectClass parent_class;
-
-  /*< public >*/
-
-  /* Signals */
-  void (*finished)(InfcUserRequest* request,
-                   InfUser* user,
-                   const GError* error);
 };
 
 struct _InfcUserRequest {
@@ -67,11 +56,6 @@ struct _InfcUserRequest {
 
 GType
 infc_user_request_get_type(void) G_GNUC_CONST;
-
-void
-infc_user_request_finished(InfcUserRequest* request,
-                           InfUser* user,
-                           const GError* error);
 
 G_END_DECLS
 

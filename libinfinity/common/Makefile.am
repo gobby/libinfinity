@@ -34,6 +34,7 @@ libinfinity_common_la_SOURCES = \
 	inf-standalone-io.c \
 	inf-tcp-connection.c \
 	inf-user.c \
+	inf-user-request.c \
 	inf-user-table.c \
 	inf-xml-connection.c \
 	inf-xml-util.c \
@@ -66,6 +67,7 @@ libinfinity_common_la_HEADERS = \
 	inf-standalone-io.h \
 	inf-tcp-connection.h \
 	inf-user.h \
+	inf-user-request.h \
 	inf-user-table.h \
 	inf-xml-connection.h \
 	inf-xml-util.h \
