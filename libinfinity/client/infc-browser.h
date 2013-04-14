@@ -77,9 +77,6 @@ infc_browser_get_communication_manager(InfcBrowser* browser);
 InfXmlConnection*
 infc_browser_get_connection(InfcBrowser* browser);
 
-InfBrowserStatus
-infc_browser_get_status(InfcBrowser* browser);
-
 gboolean
 infc_browser_add_plugin(InfcBrowser* browser,
                         const InfcNotePlugin* plugin);

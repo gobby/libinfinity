@@ -4397,24 +4397,6 @@ infc_browser_get_connection(InfcBrowser* browser)
 }
 
 /**
- * infc_browser_get_status:
- * @browser: A #InfcBrowser.
- *
- * Returns the browser's status. Note that the browser status can be
- * %INFC_BROWSER_DISCONNECTED even if browser's connection is still open. This
- * can happen if a fatal error on the browser layer happens, for example when
- * it does not understand the server's messages.
- *
- * Returns: The browser's status.
- */
-InfBrowserStatus
-infc_browser_get_status(InfcBrowser* browser)
-{
-  g_return_val_if_fail(INFC_IS_BROWSER(browser), INF_BROWSER_CLOSED);
-  return INFC_BROWSER_PRIVATE(browser)->status;
-}
-
-/**
  * infc_browser_add_plugin:
  * @browser: A #InfcBrowser.
  * @plugin: A #InfcNotePlugin.

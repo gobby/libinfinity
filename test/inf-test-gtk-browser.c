@@ -781,9 +781,11 @@ on_browser_notify_status(GObject* object,
                          gpointer user_data)
 {
   InfcBrowser* browser;
+  InfBrowserStatus status;
   browser = INFC_BROWSER(object);
 
-  if(infc_browser_get_status(browser) == INF_BROWSER_OPEN)
+  g_object_get(G_OBJECT(browser), "status", &status, NULL);
+  if(status == INF_BROWSER_OPEN)
     infc_browser_subscribe_chat(browser);
 }
 
@@ -794,6 +796,8 @@ on_set_browser(InfGtkBrowserModel* model,
                InfcBrowser* browser,
                gpointer user_data)
 {
+  InfBrowserStatus status;
+
   if(browser != NULL)
   {
     infc_browser_add_plugin(browser, &INF_TEST_GTK_BROWSER_TEXT_PLUGIN);
@@ -805,7 +809,8 @@ on_set_browser(InfGtkBrowserModel* model,
       NULL
     );
 
-    if(infc_browser_get_status(browser) == INF_BROWSER_OPEN)
+    g_object_get(G_OBJECT(browser), "status", &status, NULL);
+    if(status == INF_BROWSER_OPEN)
     {
       infc_browser_subscribe_chat(browser);
     }

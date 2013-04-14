@@ -92,7 +92,6 @@ InfcBrowserClass
 infc_browser_new
 infc_browser_get_communication_manager
 infc_browser_get_connection
-infc_browser_get_status
 infc_browser_add_plugin
 infc_browser_lookup_plugin
 infc_browser_iter_get_root
