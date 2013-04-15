@@ -20,7 +20,7 @@
 /**
  * SECTION:infc-explore-request
  * @title: InfcExploreRequest
- * @short_description: Watch progess of node exploration
+ * @short_description: Watch progress of node exploration
  * @include: libinfinity/client/infc-explore-request.h
  * @see_also: #InfExploreRequest, #InfcRequest, #InfcBrowser
  * @stability: Unstable
