@@ -63,6 +63,9 @@ void
 infc_explore_request_initiated(InfcExploreRequest* request,
                                guint total);
 
+gboolean
+infc_explore_request_get_initiated(InfcExploreRequest* request);
+
 void
 infc_explore_request_progress(InfcExploreRequest* request);
 
