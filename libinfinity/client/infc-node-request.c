@@ -68,6 +68,7 @@ infc_node_request_init(GTypeInstance* instance,
 
   priv->type = NULL;
   priv->seq = 0;
+  priv->node_id = 0;
   priv->finished = FALSE;
 }
 
