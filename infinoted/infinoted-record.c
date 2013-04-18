@@ -112,10 +112,10 @@ infinoted_record_start(InfAdoptedSession* session,
 }
 
 static void
-infinoted_record_directory_add_session_cb(InfdDirectory* directory,
-                                          InfdDirectoryIter* iter,
-                                          InfdSessionProxy* proxy,
-                                          gpointer user_data)
+infinoted_record_directory_subscribe_session_cb(InfBrowser* browser,
+                                                const InfBrowserIter* iter,
+                                                InfSessionProxy* proxy,
+                                                gpointer user_data)
 {
   InfinotedRecord* record;
   InfSession* session;
@@ -127,7 +127,7 @@ infinoted_record_directory_add_session_cb(InfdDirectory* directory,
 
   if(INF_ADOPTED_IS_SESSION(session))
   {
-    title = infd_directory_iter_get_name(directory, iter);
+    title = inf_browser_get_node_name(browser, iter);
 
     rec = infinoted_record_start(INF_ADOPTED_SESSION(session), title);
     if(rec)
@@ -138,10 +138,10 @@ infinoted_record_directory_add_session_cb(InfdDirectory* directory,
 }
 
 static void
-infinoted_record_directory_remove_session_cb(InfdDirectory* directory,
-                                             InfdDirectoryIter* iter,
-                                             InfdSessionProxy* proxy,
-                                             gpointer user_data)
+infinoted_record_directory_unsubscribe_session_cb(InfBrowser* browser,
+                                                  const InfBrowserIter* iter,
+                                                  InfSessionProxy* proxy,
+                                                  gpointer user_data)
 {
   InfinotedRecord* record;
   InfSession* session;
@@ -195,15 +195,15 @@ infinoted_record_new(InfdDirectory* directory)
 
   g_signal_connect(
     G_OBJECT(record->directory),
-    "add-session",
-    G_CALLBACK(infinoted_record_directory_add_session_cb),
+    "subscribe-session",
+    G_CALLBACK(infinoted_record_directory_subscribe_session_cb),
     record
   );
 
   g_signal_connect(
     G_OBJECT(record->directory),
-    "remove-session",
-    G_CALLBACK(infinoted_record_directory_remove_session_cb),
+    "unsubscribe-session",
+    G_CALLBACK(infinoted_record_directory_unsubscribe_session_cb),
     record
   );
 
@@ -225,13 +225,13 @@ infinoted_record_free(InfinotedRecord* record)
 
   inf_signal_handlers_disconnect_by_func(
     record->directory,
-    G_CALLBACK(infinoted_record_directory_add_session_cb),
+    G_CALLBACK(infinoted_record_directory_subscribe_session_cb),
     record
   );
 
   inf_signal_handlers_disconnect_by_func(
     record->directory,
-    G_CALLBACK(infinoted_record_directory_remove_session_cb),
+    G_CALLBACK(infinoted_record_directory_unsubscribe_session_cb),
     record
   );
 

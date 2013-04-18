@@ -27,14 +27,14 @@
 typedef struct _InfinotedAutosaveSession InfinotedAutosaveSession;
 struct _InfinotedAutosaveSession {
   InfinotedAutosave* autosave;
-  InfdDirectoryIter iter;
-  InfdSessionProxy* proxy;
+  InfBrowserIter iter;
+  InfSessionProxy* proxy;
   InfIoTimeout* timeout;
 };
 
 static InfinotedAutosaveSession*
 infinoted_autosave_find_session(InfinotedAutosave* autosave,
-                                InfdDirectoryIter* iter)
+                                const InfBrowserIter* iter)
 {
   GSList* item;
   InfinotedAutosaveSession* session;
@@ -131,7 +131,7 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
                                 InfinotedAutosaveSession* autosave_session)
 {
   InfdDirectory* directory;
-  InfdDirectoryIter* iter;
+  InfBrowserIter* iter;
   GError* error;
   gchar* path;
   InfSession* session;
@@ -165,7 +165,7 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
 
   if(infd_directory_iter_save_session(directory, iter, &error) == FALSE)
   {
-    path = infd_directory_iter_get_path(directory, iter);
+    path = inf_browser_get_path(INF_BROWSER(directory), iter);
     g_warning(
       _("Failed to auto-save session \"%s\": %s\n\n"
         "Will retry in %u seconds."),
@@ -191,7 +191,7 @@ infinoted_autosave_session_save(InfinotedAutosave* autosave,
 
     if(autosave->autosave_hook != NULL)
     {
-      path = infd_directory_iter_get_path(directory, iter);
+      path = inf_browser_get_path(INF_BROWSER(directory), iter);
 
       g_object_get(
         G_OBJECT(infd_directory_get_storage(directory)),
@@ -242,10 +242,10 @@ infinoted_autosave_session_timeout_cb(gpointer user_data)
 
 static void
 infinoted_autosave_add_session(InfinotedAutosave* autosave,
-                               InfdDirectoryIter* iter)
+                               const InfBrowserIter* iter)
 {
   InfinotedAutosaveSession* autosave_session;
-  InfdSessionProxy* proxy;
+  InfSessionProxy* proxy;
   InfSession* session;
   InfBuffer* buffer;
 
@@ -255,7 +255,7 @@ infinoted_autosave_add_session(InfinotedAutosave* autosave,
   autosave_session->autosave = autosave;
   autosave_session->iter = *iter;
 
-  proxy = infd_directory_iter_peek_session(autosave->directory, iter);
+  proxy = inf_browser_get_session(INF_BROWSER(autosave->directory), iter);
   g_assert(proxy != NULL);
   autosave_session->proxy = proxy;
   autosave_session->timeout = NULL;
@@ -306,10 +306,11 @@ infinoted_autosave_remove_session(InfinotedAutosave* autosave,
 }
 
 static void
-infinoted_autosave_directory_add_session_cb(InfdDirectory* directory,
-                                            InfdDirectoryIter* iter,
-                                            InfdSessionProxy* proxy,
-                                            gpointer user_data)
+infinoted_autosave_directory_subscribe_session_cb(
+  InfBrowser* browser,
+  const InfBrowserIter* iter,
+  InfSessionProxy* proxy,
+  gpointer user_data)
 {
   InfinotedAutosave* autosave;
   autosave = (InfinotedAutosave*)user_data;
@@ -318,10 +319,11 @@ infinoted_autosave_directory_add_session_cb(InfdDirectory* directory,
 }
 
 static void
-infinoted_autosave_directory_remove_session_cb(InfdDirectory* directory,
-                                               InfdDirectoryIter* iter,
-                                               InfdSessionProxy* proxy,
-                                               gpointer user_data)
+infinoted_autosave_directory_unsubscribe_session_cb(
+  InfBrowser* browser,
+  const InfBrowserIter* iter,
+  InfSessionProxy* proxy,
+  gpointer user_data)
 {
   InfinotedAutosave* autosave;
   InfinotedAutosaveSession* session;
@@ -335,30 +337,31 @@ infinoted_autosave_directory_remove_session_cb(InfdDirectory* directory,
 
 static void
 infinoted_autosave_walk_directory(InfinotedAutosave* autosave,
-                                  InfdDirectoryIter* iter)
+                                  InfBrowserIter* iter)
 {
-  InfdDirectoryIter child;
-  InfdSessionProxy* session;
+  InfBrowser* browser;
+  InfBrowserIter child;
+  InfSessionProxy* proxy;
 
-  if(infd_directory_iter_get_node_type(autosave->directory, iter) ==
-     INFD_STORAGE_NODE_SUBDIRECTORY)
+  browser = INF_BROWSER(autosave->directory);
+
+  if(inf_browser_is_subdirectory(browser, iter) == TRUE)
   {
-    if(infd_directory_iter_get_explored(autosave->directory, iter) == TRUE)
+    if(inf_browser_get_explored(browser, iter) == TRUE)
     {
-      /* Errors can't happen as the directory is already explored */
       child = *iter;
-      if(infd_directory_iter_get_child(autosave->directory, &child, NULL))
+      if(inf_browser_get_child(browser, &child) == TRUE)
       {
         do {
           infinoted_autosave_walk_directory(autosave, &child);
-        } while(infd_directory_iter_get_next(autosave->directory, &child));
+        } while(inf_browser_get_next(browser, &child) == TRUE);
       }
     }
   }
   else
   {
-    session = infd_directory_iter_peek_session(autosave->directory, iter);
-    if(session != NULL)
+    proxy = inf_browser_get_session(browser, iter);
+    if(proxy != NULL)
       infinoted_autosave_add_session(autosave, iter);
   }
 }
@@ -382,7 +385,7 @@ infinoted_autosave_new(InfdDirectory* directory,
                        gchar* autosave_hook)
 {
   InfinotedAutosave* autosave;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
 
   autosave = g_slice_new(InfinotedAutosave);
 
@@ -394,19 +397,19 @@ infinoted_autosave_new(InfdDirectory* directory,
 
   g_signal_connect_after(
     G_OBJECT(directory),
-    "add-session",
-    G_CALLBACK(infinoted_autosave_directory_add_session_cb),
+    "subscribe-session",
+    G_CALLBACK(infinoted_autosave_directory_subscribe_session_cb),
     autosave
   );
 
   g_signal_connect_after(
     G_OBJECT(directory),
-    "remove-session",
-    G_CALLBACK(infinoted_autosave_directory_remove_session_cb),
+    "unsubscribe-session",
+    G_CALLBACK(infinoted_autosave_directory_unsubscribe_session_cb),
     autosave
   );
 
-  infd_directory_iter_get_root(directory, &iter);
+  inf_browser_get_root(INF_BROWSER(directory), &iter);
   infinoted_autosave_walk_directory(autosave, &iter);
   return autosave;
 }
@@ -425,13 +428,13 @@ infinoted_autosave_free(InfinotedAutosave* autosave)
 {
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(autosave->directory),
-    G_CALLBACK(infinoted_autosave_directory_add_session_cb),
+    G_CALLBACK(infinoted_autosave_directory_subscribe_session_cb),
     autosave
   );
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(autosave->directory),
-    G_CALLBACK(infinoted_autosave_directory_remove_session_cb),
+    G_CALLBACK(infinoted_autosave_directory_unsubscribe_session_cb),
     autosave
   );
 

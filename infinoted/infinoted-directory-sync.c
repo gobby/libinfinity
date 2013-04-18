@@ -31,8 +31,8 @@
 typedef struct _InfinotedDirectorySyncSession InfinotedDirectorySyncSession;
 struct _InfinotedDirectorySyncSession {
   InfinotedDirectorySync* dsync;
-  InfdDirectoryIter iter;
-  InfdSessionProxy* proxy;
+  InfBrowserIter iter;
+  InfSessionProxy* proxy;
   InfIoTimeout* timeout;
 
   gchar* path;
@@ -50,7 +50,7 @@ infinoted_directory_sync_error_quark(void)
 
 static InfinotedDirectorySyncSession*
 infinoted_directory_sync_find_session(InfinotedDirectorySync* dsync,
-                                      InfdDirectoryIter* iter)
+                                      const InfBrowserIter* iter)
 {
   GSList* item;
   InfinotedDirectorySyncSession* session;
@@ -59,7 +59,7 @@ infinoted_directory_sync_find_session(InfinotedDirectorySync* dsync,
   {
     session = (InfinotedDirectorySyncSession*)item->data;
 
-    /* TODO: Add a infd_directory_iter_compare() method in libinfinity */
+    /* TODO: Add a inf_browser_iter_compare() method in libinfinity */
     if(session->iter.node == iter->node &&
        session->iter.node_id == iter->node_id)
     {
@@ -137,7 +137,7 @@ static void
 infinoted_directory_sync_session_save(InfinotedDirectorySync* dsync,
                                       InfinotedDirectorySyncSession* dsession)
 {
-  InfdDirectoryIter* iter;
+  InfBrowserIter* iter;
   GError* error;
   InfSession* session;
   InfBuffer* buffer;
@@ -200,7 +200,10 @@ infinoted_directory_sync_session_save(InfinotedDirectorySync* dsync,
     {
       if(dsync->sync_hook != NULL)
       {
-        path = infd_directory_iter_get_path(dsession->dsync->directory, iter);
+        path = inf_browser_get_path(
+          INF_BROWSER(dsession->dsync->directory),
+          iter
+        );
 
         argv[0] = dsync->sync_hook;
         argv[1] = path;
@@ -236,11 +239,11 @@ infinoted_directory_sync_session_timeout_cb(gpointer user_data)
 
 static gboolean
 infinoted_directory_sync_add_session(InfinotedDirectorySync* dsync,
-                                     InfdDirectoryIter* iter,
+                                     const InfBrowserIter* iter,
                                      GError** error)
 {
   InfinotedDirectorySyncSession* dsession;
-  InfdSessionProxy* proxy;
+  InfSessionProxy* proxy;
   InfSession* session;
   InfBuffer* buffer;
   gchar* iter_path;
@@ -252,7 +255,7 @@ infinoted_directory_sync_add_session(InfinotedDirectorySync* dsync,
 
   g_assert(infinoted_directory_sync_find_session(dsync, iter) == NULL);
 
-  proxy = infd_directory_iter_peek_session(dsync->directory, iter);
+  proxy = inf_browser_get_session(INF_BROWSER(dsync->directory), iter);
   g_assert(proxy != NULL);
 
   g_object_get(G_OBJECT(proxy), "session", &session, NULL);
@@ -262,7 +265,7 @@ infinoted_directory_sync_add_session(InfinotedDirectorySync* dsync,
     return TRUE;
   }
 
-  iter_path = infd_directory_iter_get_path(dsync->directory, iter);
+  iter_path = inf_browser_get_path(INF_BROWSER(dsync->directory), iter);
 #ifdef G_OS_WIN32
   for(pos = iter_path; *pos != '\0'; ++pos)
   {
@@ -370,10 +373,11 @@ infinoted_directory_sync_remove_session(InfinotedDirectorySync* dsync,
 }
 
 static void
-infinoted_directory_sync_directory_add_session_cb(InfdDirectory* directory,
-                                                  InfdDirectoryIter* iter,
-                                                  InfdSessionProxy* proxy,
-                                                  gpointer user_data)
+infinoted_directory_sync_directory_subscribe_session_cb(
+  InfBrowser* browser,
+  const InfBrowserIter* iter,
+  InfSessionProxy* proxy,
+  gpointer user_data)
 {
   InfinotedDirectorySync* dsync;
   GError* error;
@@ -384,7 +388,7 @@ infinoted_directory_sync_directory_add_session_cb(InfdDirectory* directory,
 
   if(!infinoted_directory_sync_add_session(dsync, iter, &error))
   {
-    path = infd_directory_iter_get_path(directory, iter);
+    path = inf_browser_get_path(browser, iter);
 
     infinoted_util_log_warning(
       _("Failed to synchronize session \"%s\" to disk: %s"),
@@ -398,10 +402,11 @@ infinoted_directory_sync_directory_add_session_cb(InfdDirectory* directory,
 }
 
 static void
-infinoted_directory_sync_directory_remove_session_cb(InfdDirectory* directory,
-                                                     InfdDirectoryIter* iter,
-                                                     InfdSessionProxy* proxy,
-                                                     gpointer user_data)
+infinoted_directory_sync_directory_unsubscribe_session_cb(
+  InfBrowser* browser,
+  const InfBrowserIter* iter,
+  InfSessionProxy* proxy,
+  gpointer user_data)
 {
   InfSession* session;
   InfinotedDirectorySync* dsync;
@@ -424,38 +429,39 @@ infinoted_directory_sync_directory_remove_session_cb(InfdDirectory* directory,
 
 static void
 infinoted_directory_sync_walk_directory(InfinotedDirectorySync* dsync,
-                                        InfdDirectoryIter* iter)
+                                        InfBrowserIter* iter)
 {
-  InfdDirectoryIter child;
-  InfdSessionProxy* session;
+  InfBrowser* browser;
+  InfBrowserIter child;
+  InfSessionProxy* proxy;
   GError* error;
   gchar* path;
+  
+  browser = INF_BROWSER(dsync->directory);
 
-  if(infd_directory_iter_get_node_type(dsync->directory, iter) ==
-     INFD_STORAGE_NODE_SUBDIRECTORY)
+  if(inf_browser_is_subdirectory(browser, iter))
   {
-    if(infd_directory_iter_get_explored(dsync->directory, iter) == TRUE)
+    if(inf_browser_get_explored(browser, iter) == TRUE)
     {
-      /* Errors can't happen as the directory is already explored */
       child = *iter;
-      if(infd_directory_iter_get_child(dsync->directory, &child, NULL))
+      if(inf_browser_get_child(browser, &child))
       {
         do
         {
           infinoted_directory_sync_walk_directory(dsync, &child);
-        } while(infd_directory_iter_get_next(dsync->directory, &child));
+        } while(inf_browser_get_next(browser, &child));
       }
     }
   }
   else
   {
-    session = infd_directory_iter_peek_session(dsync->directory, iter);
-    if(session != NULL)
+    proxy = inf_browser_get_session(browser, iter);
+    if(proxy != NULL)
     {
       error = NULL;
       if(!infinoted_directory_sync_add_session(dsync, iter, &error))
       {
-        path = infd_directory_iter_get_path(dsync->directory, iter);
+        path = inf_browser_get_path(browser, iter);
 
         infinoted_util_log_warning(
           _("Failed to synchronize session \"%s\" to disk: %s"),
@@ -491,7 +497,7 @@ infinoted_directory_sync_new(InfdDirectory* directory,
                              const gchar* sync_hook)
 {
   InfinotedDirectorySync* dsync;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
 
   dsync = g_slice_new(InfinotedDirectorySync);
 
@@ -504,19 +510,19 @@ infinoted_directory_sync_new(InfdDirectory* directory,
 
   g_signal_connect_after(
     G_OBJECT(directory),
-    "add-session",
-    G_CALLBACK(infinoted_directory_sync_directory_add_session_cb),
+    "subscribe-session",
+    G_CALLBACK(infinoted_directory_sync_directory_subscribe_session_cb),
     dsync
   );
 
   g_signal_connect_after(
     G_OBJECT(directory),
-    "remove-session",
-    G_CALLBACK(infinoted_directory_sync_directory_remove_session_cb),
+    "unsubscribe-session",
+    G_CALLBACK(infinoted_directory_sync_directory_unsubscribe_session_cb),
     dsync
   );
 
-  infd_directory_iter_get_root(directory, &iter);
+  inf_browser_get_root(INF_BROWSER(directory), &iter);
   infinoted_directory_sync_walk_directory(dsync, &iter);
   return dsync;
 }
@@ -532,13 +538,13 @@ infinoted_directory_sync_free(InfinotedDirectorySync* dsync)
 {
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(dsync->directory),
-    G_CALLBACK(infinoted_directory_sync_directory_add_session_cb),
+    G_CALLBACK(infinoted_directory_sync_directory_subscribe_session_cb),
     dsync
   );
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(dsync->directory),
-    G_CALLBACK(infinoted_directory_sync_directory_remove_session_cb),
+    G_CALLBACK(infinoted_directory_sync_directory_unsubscribe_session_cb),
     dsync
   );
 
