@@ -198,6 +198,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("The session uses an unsupported communication method");
   case INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN:
     return _("Received sync-in message without having requested a sync-in");
+  case INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED:
+    return _("Client rejected subscription");
   case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
     return _("Unexpected XML message");
   case INF_DIRECTORY_ERROR_NO_STORAGE:

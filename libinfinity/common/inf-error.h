@@ -136,6 +136,8 @@ typedef enum _InfUserError {
  * @INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN: A client received a
  * &lt;sync-in/&gt; without having requested one. The client has no data to
  * sync to the server.
+ * @INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED: A client replied with
+ * <subscribe-nack> on an attempt to subscribe it to a session.
  * @INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE: A message that is not understood
  * was received.
  * @INF_DIRECTORY_ERROR_NO_STORAGE: A node cannot be stored permanently on the
@@ -167,6 +169,7 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
   INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
   INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
+  INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED,
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
   INF_DIRECTORY_ERROR_NO_STORAGE,
 
