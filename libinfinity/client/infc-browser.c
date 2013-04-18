@@ -532,7 +532,7 @@ infc_browser_session_remove_session(InfcBrowser* browser,
   inf_browser_unsubscribe_session(
     INF_BROWSER(browser),
     &iter,
-    G_OBJECT(proxy)
+    INF_SESSION_PROXY(proxy)
   );
 
   g_object_unref(session);
@@ -806,7 +806,7 @@ infc_browser_session_close_cb(InfSession* session,
     inf_browser_unsubscribe_session(
       INF_BROWSER(browser),
       NULL,
-      G_OBJECT(proxy)
+      INF_SESSION_PROXY(proxy)
     );
 
     g_object_unref(proxy);
@@ -2161,7 +2161,11 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   iter.node_id = node->id;
   iter.node = node;
 
-  inf_browser_subscribe_session(INF_BROWSER(browser), &iter, G_OBJECT(proxy));
+  inf_browser_subscribe_session(
+    INF_BROWSER(browser),
+    &iter,
+    INF_SESSION_PROXY(proxy)
+  );
 
   /* The default handler refs the proxy */
   g_object_unref(proxy);
@@ -3362,7 +3366,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
       inf_browser_subscribe_session(
         INF_BROWSER(browser),
         NULL,
-        G_OBJECT(proxy)
+        INF_SESSION_PROXY(proxy)
       );
 
       /* The default handler refs the proxy */
@@ -3541,7 +3545,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           inf_browser_subscribe_session(
             INF_BROWSER(browser),
             &iter,
-            G_OBJECT(proxy)
+            INF_SESSION_PROXY(proxy)
           );
         }
 

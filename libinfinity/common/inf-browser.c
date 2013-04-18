@@ -1023,7 +1023,7 @@ inf_browser_node_removed(InfBrowser* browser,
 void
 inf_browser_subscribe_session(InfBrowser* browser,
                               const InfBrowserIter* iter,
-                              GObject* proxy)
+                              InfSessionProxy* proxy)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(G_IS_OBJECT(proxy));
@@ -1050,7 +1050,7 @@ inf_browser_subscribe_session(InfBrowser* browser,
 void
 inf_browser_unsubscribe_session(InfBrowser* browser,
                                 const InfBrowserIter* iter,
-                                GObject* proxy)
+                                InfSessionProxy* proxy)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(G_IS_OBJECT(proxy));
