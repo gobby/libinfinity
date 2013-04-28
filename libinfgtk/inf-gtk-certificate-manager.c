@@ -185,7 +185,8 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
          * then it should have been removed above. */
         g_assert(query->old_certificate == NULL);
 
-        if(inf_cert_util_copy(&copied_own, own) == GNUTLS_E_SUCCESS)
+        copied_own = inf_cert_util_copy_certificate(own, NULL);
+        if(copied_own != NULL)
           g_ptr_array_add(priv->known_hosts, copied_own);
       }
     }
@@ -288,7 +289,7 @@ inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
       else
       {
         error = NULL;
-        ret = inf_cert_util_save_file(
+        ret = inf_cert_util_write_certificate(
           (gnutls_x509_crt_t*)priv->known_hosts->pdata,
           priv->known_hosts->len,
           priv->known_hosts_file,
@@ -356,7 +357,12 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   {
     error = NULL;
 
-    priv->ca_certs = inf_cert_util_load_file(priv->trust_file, NULL, &error);
+    priv->ca_certs = inf_cert_util_read_certificate(
+      priv->trust_file,
+      NULL,
+      &error
+    );
+
     if(priv->ca_certs == NULL)
     {
       g_warning(_("Could not load trust file: %s"), error->message);
@@ -375,7 +381,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   {
     error = NULL;
 
-    priv->known_hosts = inf_cert_util_load_file(
+    priv->known_hosts = inf_cert_util_read_certificate(
       priv->known_hosts_file,
       NULL,
       &error

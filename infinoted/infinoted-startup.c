@@ -20,7 +20,6 @@
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-log.h>
-#include <infinoted/infinoted-creds.h>
 
 #include <infinoted/infinoted-pam.h>
 
@@ -61,12 +60,12 @@ infinoted_startup_load_key(InfinotedLog* log,
     /* TODO: Open the key file beforehand */
 
     infinoted_log_info(log, _("Generating 2048 bit RSA private key..."));
-    key = infinoted_creds_create_key(error);
+    key = inf_cert_util_create_private_key(error);
 
     if(key == NULL)
       return NULL;
 
-    if(infinoted_creds_write_key(key, key_file, error) == FALSE)
+    if(inf_cert_util_write_private_key(key, key_file, error) == FALSE)
     {
       gnutls_x509_privkey_deinit(key);
       return NULL;
@@ -74,7 +73,7 @@ infinoted_startup_load_key(InfinotedLog* log,
   }
   else
   {
-    key = infinoted_creds_read_key(key_file, error);
+    key = inf_cert_util_read_private_key(key_file, error);
   }
 
   return key;
@@ -93,6 +92,7 @@ infinoted_startup_load_certificate(InfinotedLog* log,
   gnutls_x509_crt_t cert;
   GPtrArray* certs;
   GPtrArray* chain_certs;
+  gboolean res;
 
   if(create_self_signed_certificate == TRUE)
   {
@@ -100,10 +100,11 @@ infinoted_startup_load_certificate(InfinotedLog* log,
       return NULL;
 
     infinoted_log_info(log, _("Generating self-signed certificate..."));
-    cert = infinoted_creds_create_self_signed_certificate(key, error);
+    cert = inf_cert_util_create_self_signed_certificate(key, error);
     if(cert == NULL) return NULL;
 
-    if(inf_cert_util_save_file(&cert, 1, certificate_file, error) == FALSE)
+    res = inf_cert_util_write_certificate(&cert, 1, certificate_file, error);
+    if(res == FALSE)
     {
       gnutls_x509_crt_deinit(cert);
       return NULL;
@@ -117,13 +118,13 @@ infinoted_startup_load_certificate(InfinotedLog* log,
   }
   else
   {
-    certs = inf_cert_util_load_file(certificate_file, NULL, error);
+    certs = inf_cert_util_read_certificate(certificate_file, NULL, error);
     if(certs == NULL) return NULL;
 
     if(certificate_chain_file != NULL)
     {
       chain_certs =
-        inf_cert_util_load_file(certificate_chain_file, certs, error);
+        inf_cert_util_read_certificate(certificate_chain_file, certs, error);
 
       if(chain_certs == NULL)
       {
@@ -144,6 +145,9 @@ static gboolean
 infinoted_startup_load_credentials(InfinotedStartup* startup,
                                    GError** error)
 {
+  gnutls_certificate_credentials_t creds;
+  int res;
+
   if(startup->options->security_policy !=
      INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
@@ -170,15 +174,21 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
     if(startup->certificates == NULL)
       return FALSE;
 
-    startup->credentials = infinoted_creds_create_credentials(
-      startup->private_key,
+    startup->credentials = inf_certificate_credentials_new();
+    creds = inf_certificate_credentials_get(startup->credentials);
+
+    res = gnutls_certificate_set_x509_key(
+      creds,
       startup->certificates,
       startup->n_certificates,
-      error
+      startup->private_key
     );
 
-    if(startup->credentials == NULL)
+    if(res != 0)
+    {
+      inf_gnutls_set_error(error, res);
       return FALSE;
+    }
   }
 
   return TRUE;

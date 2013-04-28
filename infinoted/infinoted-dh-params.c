@@ -18,8 +18,8 @@
  */
 
 #include <infinoted/infinoted-dh-params.h>
-#include <infinoted/infinoted-creds.h>
 #include <infinoted/infinoted-util.h>
+#include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <glib/gstdio.h>
@@ -70,7 +70,7 @@ infinoted_dh_params_ensure(InfinotedLog* log,
   {
     /* DH params expire every week */
     /*if(st.st_mtime + 60 * 60 * 24 * 7 > time(NULL))*/
-      *dh_params = infinoted_creds_read_dh_params(filename, NULL);
+      *dh_params = inf_cert_util_read_dh_params(filename, NULL);
   }
 
   if(*dh_params == NULL)
@@ -83,7 +83,7 @@ infinoted_dh_params_ensure(InfinotedLog* log,
         log, _("Generating 2048 bit Diffie-Hellman parameters..."));
     }
 
-    *dh_params = infinoted_creds_create_dh_params(error);
+    *dh_params = inf_cert_util_create_dh_params(error);
 
     if(*dh_params == NULL)
     {
@@ -91,7 +91,7 @@ infinoted_dh_params_ensure(InfinotedLog* log,
       return FALSE;
     }
 
-    infinoted_creds_write_dh_params(*dh_params, filename, NULL);
+    inf_cert_util_write_dh_params(*dh_params, filename, NULL);
   }
 
   g_free(filename);

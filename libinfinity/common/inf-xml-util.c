@@ -467,7 +467,7 @@ inf_xml_util_get_attribute_required(xmlNodePtr xml,
  *
  * Reads the attribute named @attribute from the XML element @xml. The
  * attribute value is expected to be a signed integral number. If it is the
- * function converts the text to an integere and stores the result into
+ * function converts the text to an integer and stores the result into
  * @result. In this case, %TRUE is returned and @error is left untouched.
  *
  * If the value is not a signed integral number, then the function returns

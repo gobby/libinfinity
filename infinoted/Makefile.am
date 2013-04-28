@@ -25,7 +25,6 @@ infinoted_0_6_LDADD = \
 infinoted_0_6_SOURCES = \
 	infinoted-autosave.c \
 	infinoted-config-reload.c \
-	infinoted-creds.c \
 	infinoted-dh-params.c \
 	infinoted-directory-sync.c \
 	infinoted-log.c \
@@ -44,7 +43,6 @@ infinoted_0_6_SOURCES = \
 noinst_HEADERS = \
 	infinoted-autosave.h \
 	infinoted-config-reload.h \
-	infinoted-creds.h \
 	infinoted-dh-params.h \
 	infinoted-directory-sync.h \
 	infinoted-log.h \

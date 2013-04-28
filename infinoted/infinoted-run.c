@@ -19,7 +19,6 @@
 
 #include <infinoted/infinoted-run.h>
 #include <infinoted/infinoted-dh-params.h>
-#include <infinoted/infinoted-creds.h>
 #include <infinoted/infinoted-util.h>
 #include <infinoted/infinoted-note-plugin.h>
 

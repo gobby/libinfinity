@@ -27,20 +27,48 @@
 
 G_BEGIN_DECLS
 
-GPtrArray*
-inf_cert_util_load_file(const gchar* filename,
-                        GPtrArray* current,
-                        GError** error);
+gnutls_dh_params_t
+inf_cert_util_create_dh_params(GError** error);
+
+gnutls_dh_params_t
+inf_cert_util_read_dh_params(const gchar* filename,
+                             GError** error);
 
 gboolean
-inf_cert_util_save_file(gnutls_x509_crt_t* certs,
-                        guint n_certs,
-                        const gchar* file,
-                        GError** error);
+inf_cert_util_write_dh_params(gnutls_dh_params_t params,
+                              const gchar* filename,
+                              GError** error);
 
-int
-inf_cert_util_copy(gnutls_x509_crt_t* dest,
-                   gnutls_x509_crt_t src);
+gnutls_x509_privkey_t
+inf_cert_util_create_private_key(GError** error);
+
+gnutls_x509_privkey_t
+inf_cert_util_read_private_key(const gchar* filename,
+                               GError** error);
+
+gboolean
+inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
+                                const gchar* filename,
+                                GError** error);
+
+gnutls_x509_crt_t
+inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
+                                             GError** error);
+
+GPtrArray*
+inf_cert_util_read_certificate(const gchar* filename,
+                               GPtrArray* current,
+                               GError** error);
+
+gboolean
+inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
+                                guint n_certs,
+                                const gchar* filename,
+                                GError** error);
+
+gnutls_x509_crt_t
+inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
+                               GError** error);
 
 gchar*
 inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
