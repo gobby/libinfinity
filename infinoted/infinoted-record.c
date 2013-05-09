@@ -20,7 +20,6 @@
 #include <infinoted/infinoted-record.h>
 
 #include <libinfinity/adopted/inf-adopted-session.h>
-#include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
@@ -243,3 +242,36 @@ infinoted_record_free(InfinotedRecord* record)
   g_object_unref(record->directory);
   g_slice_free(InfinotedRecord, record);
 }
+
+/**
+ * infinoted_record_get_for_session:
+ * @record: A #InfinotedRecord.
+ * @session: A #InfAdoptedSession from @record's directory.
+ *
+ * Returns the #InfAdoptedSessionRecord with which @session is being recorded.
+ *
+ * Returns: The #InfAdoptedSessionRecord for @session.
+ */
+InfAdoptedSessionRecord*
+infinoted_record_get_for_session(InfinotedRecord* record,
+                                 InfAdoptedSession* session)
+{
+  GSList* item;
+  InfAdoptedSessionRecord* rec;
+  InfAdoptedSession* rec_session;
+
+  for(item = record->records; item != NULL; item = item->next)
+  {
+    rec = INF_ADOPTED_SESSION_RECORD(item->data);
+    g_object_get(G_OBJECT(rec), "session", &rec_session, NULL);
+    if(rec_session == session)
+    {
+      g_object_unref(rec_session);
+      return rec;
+    }
+
+    g_object_unref(rec_session);
+  }
+}
+
+/* vim:set et sw=2 ts=2: */

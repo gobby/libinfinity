@@ -21,23 +21,32 @@
 #define __INFINOTED_LOG_H__
 
 #include <infinoted/infinoted-options.h>
+#include <infinoted/infinoted-record.h>
 
 #include <libinfinity/server/infd-directory.h>
+#include <libinfinity/adopted/inf-adopted-request.h>
+#include <libinfinity/adopted/inf-adopted-user.h>
 
 #include <glib.h>
 
 G_BEGIN_DECLS
 
+typedef struct _InfinotedLogSession InfinotedLogSession;
 typedef struct _InfinotedLog InfinotedLog;
 struct _InfinotedLog {
   FILE* file;
 
   InfdDirectory* directory;
+  InfinotedRecord* record;
 
   GSList* connections;
   GSList* sessions;
 
   GLogFunc prev_log_handler;
+
+  InfinotedLogSession* current_session;
+  InfAdoptedRequest* current_request;
+  InfAdoptedUser* current_user;
 };
 
 InfinotedLog*
@@ -50,6 +59,10 @@ infinoted_log_free(InfinotedLog* log);
 void
 infinoted_log_set_directory(InfinotedLog* log,
                             InfdDirectory* directory);
+
+void
+infinoted_log_set_record(InfinotedLog* log,
+                         InfinotedRecord* record);
 
 void
 infinoted_log_error(InfinotedLog* log, const char* fmt, ...);

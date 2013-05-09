@@ -19,6 +19,9 @@
 
 #include <infinoted/infinoted-log.h>
 
+#include <libinfinity/adopted/inf-adopted-session.h>
+#include <libinfinity/adopted/inf-adopted-algorithm.h>
+
 #include <libinfinity/inf-i18n.h>
 
 #ifdef G_OS_WIN32
@@ -34,6 +37,12 @@
 #include <time.h>
 #include <errno.h>
 
+struct _InfinotedLogSession {
+  InfinotedLog* log;
+  InfSession* session;
+  gchar* path;
+};
+
 static void
 infinoted_log_logv(InfinotedLog* log,
                    int prio,
@@ -44,6 +53,15 @@ infinoted_log_logv(InfinotedLog* log,
   struct tm* cur_tm;
   char time_msg[128];
   va_list ap2;
+
+  gchar* request_str;
+  const gchar* user_name;
+  InfXmlConnection* user_connection;
+  gchar* user_connection_str;
+  InfAdoptedSessionRecord* record;
+  gchar* record_filename;
+  gchar* record_basename;
+  gchar* document_name;
 
   if(log->file != NULL)
   {
@@ -72,6 +90,78 @@ infinoted_log_logv(InfinotedLog* log,
     fputs(time_msg, log->file);
     vfprintf(log->file, fmt, ap2);
     fputc('\n', log->file);
+
+    /* Print extra information about what caused the log message */
+    if(log->current_session != NULL && log->current_user != NULL &&
+       log->current_request != NULL)
+    {
+      request_str = inf_adopted_state_vector_to_string(
+        inf_adopted_request_get_vector(log->current_request)
+      );
+
+      user_name = inf_user_get_name(INF_USER(log->current_user));
+      user_connection = inf_user_get_connection(INF_USER(log->current_user));
+
+      if(user_connection != NULL)
+      {
+        g_object_get(
+          G_OBJECT(user_connection),
+          "remote-id", &user_connection_str,
+          NULL
+        );
+      }
+      else
+      {
+        user_connection_str = g_strdup("local");
+      }
+
+      record = NULL;
+      record_basename = NULL;
+      if(log->record != NULL)
+      {
+        record = infinoted_record_get_for_session(
+          log->record,
+          INF_ADOPTED_SESSION(log->current_session->session)
+        );
+
+        if(record != NULL)
+        {
+          g_object_get(G_OBJECT(record), "filename", &record_filename, NULL);
+          record_basename = g_path_get_basename(record_filename);
+          g_free(record_filename);
+        }
+      }
+
+      if(record_basename == NULL)
+      {
+        document_name = g_strdup(log->current_session->path);
+      }
+      else
+      {
+        document_name = g_strdup_printf(
+          "%s (%s)",
+          log->current_session->path, record_basename
+        );
+
+        g_free(record_basename);
+      }
+
+      fprintf(
+        log->file,
+        _("\twhen executing request \"%s\" from user %s (%s) in document %s"),
+        request_str,
+        user_name,
+        user_connection_str,
+        document_name
+      );
+
+      g_free(document_name);
+      g_free(user_connection_str);
+      g_free(request_str);
+
+      fputc('\n', log->file);
+    }
+    
     fflush(log->file);
   }
 
@@ -98,6 +188,157 @@ infinoted_log_logv(InfinotedLog* log,
 #endif /* !G_OS_WIN32 */
 #endif /* !LIBINFINITY_HAVE_LIBDAEMON */
 }
+
+static void
+infinoted_log_session_execute_request_before_cb(InfAdoptedAlgorithm* algo,
+                                                InfAdoptedUser* user,
+                                                InfAdoptedRequest* request,
+                                                gboolean apply,
+                                                gpointer user_data)
+{
+  InfinotedLogSession* log_session;
+  log_session = (InfinotedLogSession*)user_data;
+
+  g_assert(log_session->log->current_session == NULL);
+  g_assert(log_session->log->current_request == NULL);
+
+  /* Don't need to ref these */
+  log_session->log->current_session = log_session;
+  log_session->log->current_user = user;
+  log_session->log->current_request = request;
+}
+
+static void
+infinoted_log_session_execute_request_after_cb(InfAdoptedAlgorithm* algo,
+                                               InfAdoptedUser* user,
+                                               InfAdoptedRequest* request,
+                                               gboolean apply,
+                                               gpointer user_data)
+{
+  InfinotedLogSession* log_session;
+  log_session = (InfinotedLogSession*)user_data;
+
+  g_assert(log_session->log->current_session == log_session);
+  g_assert(log_session->log->current_user == user);
+  g_assert(log_session->log->current_request == request);
+
+  log_session->log->current_session = NULL;
+  log_session->log->current_user = NULL;
+  log_session->log->current_request = NULL;
+}
+
+static void
+infinoted_log_add_session(InfinotedLog* log,
+                          InfdDirectoryIter* iter,
+                          InfSession* session)
+{
+  InfinotedLogSession* log_session;
+  InfAdoptedAlgorithm* algorithm;
+
+  log_session = g_slice_new(InfinotedLogSession);
+
+  log_session->log = log;
+  log_session->session = session;
+  log_session->path = infd_directory_iter_get_path(log->directory, iter);
+  g_object_ref(session);
+  
+  if(INF_ADOPTED_IS_SESSION(session))
+  {
+    algorithm =
+      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+
+    g_signal_connect(
+      G_OBJECT(algorithm),
+      "execute-request",
+      G_CALLBACK(infinoted_log_session_execute_request_before_cb),
+      log_session
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(algorithm),
+      "execute-request",
+      G_CALLBACK(infinoted_log_session_execute_request_after_cb),
+      log_session
+    );
+  }
+
+  log->sessions = g_slist_prepend(log->sessions, log_session);
+}
+
+static void
+infinoted_log_remove_session(InfinotedLog* log,
+                             InfSession* session)
+{
+  InfinotedLogSession* log_session;
+  GSList* item;
+  InfAdoptedAlgorithm* algorithm;
+
+  for(item = log->sessions; item != NULL; item = item->next)
+    if( ((InfinotedLogSession*)item->data)->session == session)
+      break;
+
+  g_assert(item != NULL);
+  log_session = (InfinotedLogSession*)item->data;
+
+  if(INF_ADOPTED_IS_SESSION(session))
+  {
+    algorithm =
+      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+
+    inf_signal_handlers_disconnect_by_func(
+      algorithm,
+      G_CALLBACK(infinoted_log_session_execute_request_before_cb),
+      log_session
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      algorithm,
+      G_CALLBACK(infinoted_log_session_execute_request_after_cb),
+      log_session
+    );
+  }
+
+  /* If we are in the middle of an execute of this session, then clear the
+   * current pointers, because we won't get notified upon execution finish
+   * anymore. */
+  if(log_session == log->current_session)
+  {
+    log->current_session = NULL;
+    log->current_user = NULL;
+    log->current_request = NULL;
+  }
+
+  log->sessions = g_slist_delete_link(log->sessions, item);
+
+  g_free(log_session->path);
+  g_object_unref(log_session->session);
+  g_slice_free(InfinotedLogSession, log_session);
+}
+
+static void
+infinoted_log_add_session_cb(InfdDirectory* directory,
+                             InfdDirectoryIter* iter,
+                             InfdSessionProxy* proxy,
+                             gpointer user_data)
+{
+  InfinotedLog* log;
+  log = (InfinotedLog*)user_data;
+
+  infinoted_log_add_session(log, iter, infd_session_proxy_get_session(proxy));
+}
+
+static void
+infinoted_log_remove_session_cb(InfdDirectory* directory,
+                                InfdDirectoryIter* iter,
+                                InfdSessionProxy* proxy,
+                                gpointer user_data)
+{
+  InfinotedLog* log;
+  log = (InfinotedLog*)user_data;
+
+  infinoted_log_remove_session(log, infd_session_proxy_get_session(proxy));
+}
+
 
 static void
 infinoted_log_connection_added_cb(InfdDirectory* directory,
@@ -248,6 +489,9 @@ infinoted_log_new(InfinotedOptions* options,
   log->directory = NULL;
   log->connections = NULL;
   log->sessions = NULL;
+  log->current_session = NULL;
+  log->current_user = NULL;
+  log->current_request = NULL;
 
   if(options->log_path != NULL)
   {
@@ -281,6 +525,9 @@ infinoted_log_free(InfinotedLog* log)
   if(log->directory != NULL)
     infinoted_log_set_directory(log, NULL);
 
+  g_assert(log->current_session == NULL);
+  g_assert(log->current_user == NULL);
+  g_assert(log->current_request == NULL);
   g_assert(log->sessions == NULL);
   g_assert(log->connections == NULL);
 
@@ -318,11 +565,32 @@ infinoted_log_set_directory(InfinotedLog* log,
       log
     );
 
+    inf_signal_handlers_disconnect_by_func(
+      log->directory,
+      G_CALLBACK(infinoted_log_add_session_cb),
+      log
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      log->directory,
+      G_CALLBACK(infinoted_log_remove_session_cb),
+      log
+    );
+
     infd_directory_foreach_connection(
       log->directory,
       infinoted_log_set_directory_remove_func,
       log
     );
+
+    /* Remove all sessions */
+    while(log->sessions != NULL)
+    {
+      infinoted_log_remove_session(
+        log,
+        ((InfinotedLogSession*)log->sessions->data)->session
+      );
+    }
 
     g_object_unref(log->directory);
   }
@@ -347,12 +615,45 @@ infinoted_log_set_directory(InfinotedLog* log,
       log
     );
 
+    g_signal_connect(
+      G_OBJECT(directory),
+      "add-session",
+      G_CALLBACK(infinoted_log_add_session_cb),
+      log
+    );
+
+    g_signal_connect(
+      G_OBJECT(directory),
+      "remove-session",
+      G_CALLBACK(infinoted_log_remove_session_cb),
+      log
+    );
+
     infd_directory_foreach_connection(
       log->directory,
       infinoted_log_set_directory_add_func,
       log
     );
+
+    /* TODO: Add all running sessions in directory */
   }
+}
+
+/**
+ * infinoted_log_set_record:
+ * @log: A #InfinotedLog.
+ * @record: The #InfinotedRecord to set, or %NULL.
+ *
+ * Sets the record for @log to @record. If a record is set, then for error
+ * messages that appear while executing a request the filename of the record
+ * is being logged as well, so that it makes it simple to debug it with the
+ * corresponding record file, should the need arise.
+ */
+void
+infinoted_log_set_record(InfinotedLog* log,
+                         InfinotedRecord* record)
+{
+  log->record = record;
 }
 
 /**

@@ -21,6 +21,7 @@
 #define __INFINOTED_RECORD_H__
 
 #include <libinfinity/server/infd-directory.h>
+#include <libinfinity/adopted/inf-adopted-session-record.h>
 
 #include <glib.h>
 
@@ -37,6 +38,10 @@ infinoted_record_new(InfdDirectory* directory);
 
 void
 infinoted_record_free(InfinotedRecord* record);
+
+InfAdoptedSessionRecord*
+infinoted_record_get_for_session(InfinotedRecord* record,
+                                 InfAdoptedSession* session);
 
 G_END_DECLS
 

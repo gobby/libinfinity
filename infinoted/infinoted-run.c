@@ -236,6 +236,7 @@ infinoted_run_new(InfinotedStartup* startup,
   inf_ip_address_free(address);
 
   run->record = infinoted_record_new(run->directory);
+  infinoted_log_set_record(startup->log, run->record);
 
   if(startup->options->autosave_interval > 0)
   {
@@ -310,11 +311,14 @@ infinoted_run_free(InfinotedRun* run)
   g_object_unref(run->avahi);
 #endif
 
+  if(run->startup->log != NULL)
+  {
+    infinoted_log_set_record(run->startup->log, NULL);
+    infinoted_log_set_directory(run->startup->log, NULL);
+  }
+
   if(run->record != NULL)
     infinoted_record_free(run->record);
-
-  if(run->startup->log)
-    infinoted_log_set_directory(run->startup->log, NULL);
 
   g_object_unref(run->io);
   g_object_unref(run->directory);
