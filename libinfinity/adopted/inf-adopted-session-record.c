@@ -70,7 +70,8 @@ enum {
   PROP_0,
 
   /* construct only */
-  PROP_SESSION
+  PROP_SESSION,
+  PROP_FILENAME
 };
 
 #define INF_ADOPTED_SESSION_RECORD_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_SESSION_RECORD, InfAdoptedSessionRecordPrivate))
@@ -410,6 +411,8 @@ inf_adopted_session_record_set_property(GObject* object,
     g_assert(priv->session == NULL); /* construct only */
     priv->session = INF_ADOPTED_SESSION(g_value_dup_object(value));
     break;
+  case PROP_FILENAME:
+    /* read only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -432,6 +435,9 @@ inf_adopted_session_record_get_property(GObject* object,
   {
   case PROP_SESSION:
     g_value_set_object(value, G_OBJECT(priv->session));
+    break;
+  case PROP_FILENAME:
+    g_value_set_string(value, priv->filename);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -470,6 +476,18 @@ inf_adopted_session_record_class_init(gpointer g_class,
       "The session to record",
       INF_ADOPTED_TYPE_SESSION,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_FILENAME,
+    g_param_spec_string(
+      "filename",
+      "Filename",
+      "The filename of the record file",
+      NULL,
+      G_PARAM_READABLE
     )
   );
 }
@@ -646,6 +664,7 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
 
   g_assert(priv->filename == NULL);
   priv->filename = g_strdup(filename);
+  g_object_notify(G_OBJECT(record), "filename");
   return TRUE;
 }
 
@@ -749,6 +768,8 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
     g_hash_table_unref(priv->last_send_table);
     priv->last_send_table = NULL;
   }
+
+  g_object_notify(G_OBJECT(record), "filename");
 
   return result >= 0;
 }
