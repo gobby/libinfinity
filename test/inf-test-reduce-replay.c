@@ -290,7 +290,8 @@ inf_test_reduce_replay_remove_sync_requests(xmlNodePtr initial)
 
 static gboolean
 inf_test_reduce_replay_reduce(xmlDocPtr doc,
-                              const char* filename)
+                              const char* filename,
+                              guint skip)
 {
   InfAdoptedSessionReplay* local_replay;
   InfAdoptedSession* session;
@@ -403,7 +404,12 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
 
         if(inf_test_reduce_replay_validate_test(doc))
         {
-          if(inf_test_reduce_replay_run_test(doc))
+          if(i % skip != 0)
+          {
+            /* Simply continue */
+            fprintf(stderr, "SKIP\n");
+          }
+          else if(inf_test_reduce_replay_run_test(doc))
           {
             fprintf(stderr, "OK!\n");
             result = TRUE;
@@ -481,7 +487,12 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
 
       if(inf_test_reduce_replay_validate_test(back_doc))
       {
-        if(inf_test_reduce_replay_run_test(back_doc))
+        if(i % skip != 0)
+        {
+          /* Simply continue */
+          fprintf(stderr, "SKIP\n");
+        }
+        else if(inf_test_reduce_replay_run_test(back_doc))
         {
           fprintf(stderr, "OK!\n");
           result = TRUE;
@@ -517,6 +528,7 @@ int main(int argc, char* argv[])
   GError* error = NULL;
   xmlDocPtr doc;
   gboolean ret;
+  guint skip;
 
   if(!inf_init(&error))
   {
@@ -532,7 +544,7 @@ int main(int argc, char* argv[])
 
   if(argc < 2)
   {
-    fprintf(stderr, "Usage: %s <record-file>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <record-file> [<skip>]\n", argv[0]);
     return -1;
   }
 
@@ -544,7 +556,10 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  ret = inf_test_reduce_replay_reduce(doc, argv[1]);
+  skip = 1;
+  if(argc > 2) skip = strtol(argv[2], NULL, 10);
+
+  ret = inf_test_reduce_replay_reduce(doc, argv[1], skip);
 
   xmlFreeDoc(doc);
   return ret ? 0 : -1;
