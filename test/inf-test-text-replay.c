@@ -255,6 +255,115 @@ inf_test_text_replay_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
   g_string_free(buffer_content, TRUE);
 }
 
+static const gchar*
+inf_test_text_replay_request_typestring(InfAdoptedRequest* request)
+{
+  switch(inf_adopted_request_get_request_type(request))
+  {
+  case INF_ADOPTED_REQUEST_DO: return "DO";
+  case INF_ADOPTED_REQUEST_UNDO: return "UNDO";
+  case INF_ADOPTED_REQUEST_REDO: return "REDO";
+  default: g_assert_not_reached(); return NULL;
+  }
+}
+
+static gint64 test;
+
+static void
+inf_test_text_replay_execute_request_cb_before(InfAdoptedAlgorithm* algorithm,
+                                               InfAdoptedUser* user,
+                                               InfAdoptedRequest* request,
+                                               gboolean apply,
+                                               gpointer user_data)
+{
+  gchar* current_str;
+  gchar* request_str;
+  guint vdiff;
+
+  vdiff = inf_adopted_state_vector_vdiff(
+    inf_adopted_request_get_vector(request),
+    inf_adopted_algorithm_get_current(algorithm)
+  );
+
+  if(vdiff > 10)
+  {
+    current_str = inf_adopted_state_vector_to_string(
+      inf_adopted_algorithm_get_current(algorithm)
+    );
+
+    request_str = inf_adopted_state_vector_to_string(
+      inf_adopted_request_get_vector(request)
+    );
+
+    /* TODO: Write what type of request it is */
+    fprintf(
+      stderr,
+      "WARNING: Transforming %s request \"%s\" of user \"%s\" to state \"%s\""
+      ", vdiff=%u\n",
+      inf_test_text_replay_request_typestring(request),
+      request_str,
+      inf_user_get_name(INF_USER(user)),
+      current_str,
+      vdiff
+    );
+
+    g_free(current_str);
+    g_free(request_str);
+  }
+
+  test = g_get_monotonic_time();
+}
+
+static void
+inf_test_text_replay_execute_request_cb_after(InfAdoptedAlgorithm* algorithm,
+                                              InfAdoptedUser* user,
+                                              InfAdoptedRequest* request,
+                                              gboolean apply,
+                                              gpointer user_data)
+{
+  InfAdoptedStateVector* current;
+  gchar* current_str;
+  gchar* request_str;
+  gint64 time;
+
+  time = g_get_monotonic_time();
+
+  if(time - test > 10000)
+  {
+    current = inf_adopted_state_vector_copy(
+      inf_adopted_algorithm_get_current(algorithm)
+    );
+    if(inf_adopted_request_affects_buffer(request))
+    {
+      inf_adopted_state_vector_add(
+        current,
+        inf_user_get_id(INF_USER(user)),
+        -1
+      );
+    }
+    current_str = inf_adopted_state_vector_to_string(current);
+    inf_adopted_state_vector_free(current);
+
+    request_str = inf_adopted_state_vector_to_string(
+      inf_adopted_request_get_vector(request)
+    );
+
+    fprintf(
+      stderr,
+      "WARNING: Transforming %s request \"%s\" of user \"%s\" to state \"%s\" "
+      "took %.3g ms\n",
+      inf_test_text_replay_request_typestring(request),
+      request_str,
+      inf_user_get_name(INF_USER(user)),
+      current_str,
+      (time - test)/1000.0
+    );
+
+    g_free(current_str);
+    g_free(request_str);
+  }
+}
+
 /*
  * Undo grouping
  */
@@ -361,6 +470,20 @@ int main(int argc, char* argv[])
         data.algorithm,
         "apply-request",
         G_CALLBACK(inf_test_text_replay_apply_request_cb_after),
+        content
+      );
+
+      g_signal_connect(
+        data.algorithm,
+        "execute-request",
+        G_CALLBACK(inf_test_text_replay_execute_request_cb_before),
+        content
+      );
+
+      g_signal_connect_after(
+        data.algorithm,
+        "execute-request",
+        G_CALLBACK(inf_test_text_replay_execute_request_cb_after),
         content
       );
 
