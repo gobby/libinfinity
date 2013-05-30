@@ -102,14 +102,8 @@ inf_text_undo_grouping_get_translated_position(InfAdoptedAlgorithm* algorithm,
   move_req = inf_adopted_request_new_do(move_vec, move_id, move_op);
   inf_adopted_state_vector_free(move_vec);
 
-  /* TODO: I think that it might be possible that this translatation is not
-   * always possible as we might have already removed some request log entries
-   * in other user's request logs to do the transformation.
-   *
-   * Instead we should: Do the transformation if all requests are available
-   * If not, check whether to follows from, in which case no transformation is
-   * necessary. If that is not the case, we can't decide,
-   * so don't group. */
+  /* This should always succeed because of the vdiff check in
+   * inf_text_undo_grouping_group_requests(). */
   inf_adopted_algorithm_translate_request(
     algorithm,
     move_req,
@@ -130,6 +124,11 @@ inf_text_undo_grouping_group_requests(InfAdoptedUndoGrouping* grouping,
 {
   InfAdoptedOperation* first_op;
   InfAdoptedOperation* second_op;
+  InfAdoptedStateVector* first_vector;
+  InfAdoptedStateVector* second_vector;
+  InfAdoptedAlgorithm* algorithm;
+  guint max_total_log_size;
+  guint vdiff;
   guint first_length;
   guint second_length;
   guint first_pos;
@@ -141,6 +140,24 @@ inf_text_undo_grouping_group_requests(InfAdoptedUndoGrouping* grouping,
            INF_ADOPTED_REQUEST_DO);
   g_assert(inf_adopted_request_get_request_type(second) ==
            INF_ADOPTED_REQUEST_DO);
+
+  /* We want to avoid doing excessive transformations so that if someone
+   * types a character, waits a long time with others writing a lot in the
+   * meantime, and then writes another character. This also avoids the
+   * problem  that we might not have all the requests from other users
+   * around anymore to do the transformation. */
+  first_vector = inf_adopted_request_get_vector(first);
+  second_vector = inf_adopted_request_get_vector(second);
+  vdiff = inf_adopted_state_vector_vdiff(first_vector, second_vector);
+  algorithm = inf_adopted_undo_grouping_get_algorithm(grouping);
+  g_object_get(
+    G_OBJECT(algorithm),
+    "max-total-log-size", &max_total_log_size,
+    NULL
+  );
+
+  if(vdiff > max_total_log_size)
+    return FALSE;
 
   first_op = inf_adopted_request_get_operation(first);
   second_op = inf_adopted_request_get_operation(second);
