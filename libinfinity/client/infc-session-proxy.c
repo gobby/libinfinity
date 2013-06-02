@@ -949,7 +949,7 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
   }
 
   /* Don't forward any of the handled messages */
-  return FALSE;
+  return INF_COMMUNICATION_SCOPE_PTP;
 }
 
 /*
