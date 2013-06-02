@@ -99,7 +99,12 @@ inf_text_undo_grouping_get_translated_position(InfAdoptedAlgorithm* algorithm,
     move_id,
     inf_adopted_state_vector_get(inf_adopted_request_get_vector(to), move_id)
   );
-  move_req = inf_adopted_request_new_do(move_vec, move_id, move_op);
+  move_req = inf_adopted_request_new_do(
+    move_vec,
+    move_id,
+    move_op,
+    inf_adopted_request_get_receive_time(from)
+  );
   inf_adopted_state_vector_free(move_vec);
 
   /* This should always succeed because of the vdiff check in

@@ -149,6 +149,15 @@ enum {
 static GObjectClass* parent_class;
 static guint algorithm_signals[LAST_SIGNAL];
 
+static gint64
+inf_adopted_algorithm_get_real_time()
+{
+  /* TODO: Replace by g_get_real_time() once we depend on glib >=2.28 */
+  GTimeVal timeval;
+  g_get_current_time(&timeval);
+  return (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
+}
+
 static int
 inf_adopted_algorithm_request_key_cmp(gconstpointer a,
                                       gconstpointer b,
@@ -454,6 +463,14 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
     }
 
     inf_adopted_request_log_remove_requests(log, n);
+
+    /* TODO: We should cleanup the cache here, by removing only entries
+     * from this user, which are between log_begin and n. The cache data
+     * structure should allow us to do that easily, for example by having
+     * one tree per user, and in that tree requests are primarily ordered by
+     * that user's request N. */
+    /* TODO: We should profile all of this though, especially now that we
+     * have a good record testcase. */
   }
 
   cleanup_data.algorithm = algorithm;
@@ -1489,6 +1506,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedOperation* operation;
   InfAdoptedOperation* reversible_operation;
   InfAdoptedOperationFlags flags;
+  gint64 execution_time;
 
   InfAdoptedRequest* original;
   InfAdoptedStateVector* v;
@@ -1504,6 +1522,9 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   );
 
   log = inf_adopted_user_get_request_log(user);
+  execution_time = inf_adopted_algorithm_get_real_time();
+
+  inf_adopted_request_set_execute_time(request, execution_time);
 
   /* Adjust vector time for Undo/Redo operations because they only depend on
    * their original operation. */
@@ -1529,14 +1550,16 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     case INF_ADOPTED_REQUEST_UNDO:
       log_request = inf_adopted_request_new_undo(
         v,
-        inf_adopted_request_get_user_id(request)
+        inf_adopted_request_get_user_id(request),
+        inf_adopted_request_get_receive_time(request)
       );
 
       break;
     case INF_ADOPTED_REQUEST_REDO:
       log_request = inf_adopted_request_new_redo(
         v,
-        inf_adopted_request_get_user_id(request)
+        inf_adopted_request_get_user_id(request),
+        inf_adopted_request_get_receive_time(request)
       );
 
       break;
@@ -1545,6 +1568,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
       break;
     }
 
+    inf_adopted_request_set_execute_time(log_request, execution_time);
     inf_adopted_state_vector_free(v);
   }
   else
@@ -1583,9 +1607,11 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
           log_request = inf_adopted_request_new_do(
             inf_adopted_request_get_vector(request),
             inf_adopted_request_get_user_id(request),
-            reversible_operation
+            reversible_operation,
+            inf_adopted_request_get_receive_time(request)
           );
 
+          inf_adopted_request_set_execute_time(log_request, execution_time);
           g_object_unref(reversible_operation);
         }
       }
@@ -2040,7 +2066,8 @@ inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
   request = inf_adopted_request_new_do(
     priv->current,
     inf_user_get_id(INF_USER(user)),
-    operation
+    operation,
+    inf_adopted_algorithm_get_real_time() /* TODO: Should be a parameter? */
   );
 
   g_signal_emit(
@@ -2092,7 +2119,8 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
   request = inf_adopted_request_new_do(
     priv->current,
     inf_user_get_id(INF_USER(user)),
-    operation
+    operation,
+    inf_adopted_algorithm_get_real_time()
   );
 
   g_signal_emit(
@@ -2142,7 +2170,8 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
 
   request = inf_adopted_request_new_undo(
     priv->current,
-    inf_user_get_id(INF_USER(user))
+    inf_user_get_id(INF_USER(user)),
+    inf_adopted_algorithm_get_real_time()
   );
 
   g_signal_emit(
@@ -2192,7 +2221,8 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
 
   request = inf_adopted_request_new_redo(
     priv->current,
-    inf_user_get_id(INF_USER(user))
+    inf_user_get_id(INF_USER(user)),
+    inf_adopted_algorithm_get_real_time()
   );
 
   g_signal_emit(

@@ -43,6 +43,8 @@ struct _InfAdoptedRequestPrivate {
   InfAdoptedStateVector* vector;
   guint user_id;
   InfAdoptedOperation* operation;
+  gint64 received;
+  gint64 executed;
 };
 
 enum {
@@ -52,7 +54,11 @@ enum {
   PROP_TYPE,
   PROP_VECTOR,
   PROP_USER_ID,
-  PROP_OPERATION
+  PROP_OPERATION,
+  PROP_RECEIVED,
+
+  /* read/write */
+  PROP_EXECUTED
 };
 
 #define INF_ADOPTED_REQUEST_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequestPrivate))
@@ -75,6 +81,9 @@ inf_adopted_request_init(GTypeInstance* instance,
   priv->vector = NULL;
   priv->user_id = 0;
   priv->operation = NULL;
+
+  priv->received = 0;
+  priv->executed = 0;
 }
 
 static void
@@ -140,6 +149,13 @@ inf_adopted_request_set_property(GObject* object,
     g_assert(priv->operation == NULL); /* construct only */
     priv->operation = INF_ADOPTED_OPERATION(g_value_dup_object(value));
     break;
+  case PROP_RECEIVED:
+    g_assert(priv->received == 0); /* construct only */
+    priv->received = g_value_get_int64(value);
+    break;
+  case PROP_EXECUTED:
+    priv->executed = g_value_get_int64(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -171,6 +187,12 @@ inf_adopted_request_get_property(GObject* object,
     break;
   case PROP_OPERATION:
     g_value_set_object(value, G_OBJECT(priv->operation));
+    break;
+  case PROP_RECEIVED:
+    g_value_set_int64(value, priv->received);
+    break;
+  case PROP_EXECUTED:
+    g_value_set_int64(value, priv->executed);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -241,6 +263,34 @@ inf_adopted_request_class_init(gpointer g_class,
       "The operation of the request",
       INF_ADOPTED_TYPE_OPERATION,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_RECEIVED,
+    g_param_spec_int64(
+      "received",
+      "Received",
+      "Time the request was received, in microseconds",
+      G_MININT64,
+      G_MAXINT64,
+      0,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_EXECUTED,
+    g_param_spec_int64(
+      "executed",
+      "Executed",
+      "Time the request was executed, in microseconds",
+      G_MININT64,
+      G_MAXINT64,
+      0,
+      G_PARAM_READWRITE
     )
   );
 }
@@ -317,6 +367,7 @@ inf_adopted_request_get_type(void)
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  * @operation: The operation the user performed.
+ * @received: Time the request was received, in microseconds since the epoch.
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_DO.
  *
@@ -325,7 +376,8 @@ inf_adopted_request_get_type(void)
 InfAdoptedRequest*
 inf_adopted_request_new_do(InfAdoptedStateVector* vector,
                            guint user_id,
-                           InfAdoptedOperation* operation)
+                           InfAdoptedOperation* operation,
+                           gint64 received)
 {
   GObject* object;
 
@@ -339,6 +391,7 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
     "vector", vector,
     "user-id", user_id,
     "operation", operation,
+    "received", received,
     NULL
   );
 
@@ -349,6 +402,7 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
  * inf_adopted_request_new_undo:
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
+ * @received: Time the request was received, in microseconds since the epoch.
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_UNDO.
  * The operation performed is implicitely defined by reverting the operation
@@ -359,7 +413,8 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
-                             guint user_id)
+                             guint user_id,
+                             gint64 received)
 {
   GObject* object;
 
@@ -371,6 +426,7 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
     "type", INF_ADOPTED_REQUEST_UNDO,
     "vector", vector,
     "user-id", user_id,
+    "received", received,
     NULL
   );
   
@@ -381,6 +437,7 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
  * inf_adopted_request_new_redo:
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
+ * @received: Time the request was received, in microseconds since the epoch.
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_REDO. The
  * operation performed is implicitely defined by reverting the operation of
@@ -391,7 +448,8 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
-                             guint user_id)
+                             guint user_id,
+                             gint64 received)
 {
   GObject* object;
   
@@ -403,6 +461,7 @@ inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
     "type", INF_ADOPTED_REQUEST_REDO,
     "vector", vector,
     "user-id", user_id,
+    "received", received,
     NULL
   );
   
@@ -421,6 +480,7 @@ InfAdoptedRequest*
 inf_adopted_request_copy(InfAdoptedRequest* request)
 {
   InfAdoptedRequestPrivate* priv;
+  InfAdoptedRequestPrivate* new_priv;
   GObject* object;
   
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
@@ -434,6 +494,7 @@ inf_adopted_request_copy(InfAdoptedRequest* request)
       "vector", priv->vector,
       "user-id", priv->user_id,
       "operation", priv->operation,
+      "received", priv->received,
       NULL
     );
   }
@@ -444,10 +505,13 @@ inf_adopted_request_copy(InfAdoptedRequest* request)
       "type", priv->type,
       "vector", priv->vector,
       "user-id", priv->user_id,
+      "received", priv->received,
       NULL
     );
   }
 
+  new_priv = INF_ADOPTED_REQUEST_PRIVATE(INF_ADOPTED_REQUEST(object));
+  new_priv->executed = priv->executed;
   return INF_ADOPTED_REQUEST(object);
 }
 
@@ -517,11 +581,80 @@ inf_adopted_request_get_operation(InfAdoptedRequest* request)
   InfAdoptedRequestPrivate* priv;
 
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
-  
+
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
   g_return_val_if_fail(priv->operation != NULL, NULL);
 
   return priv->operation;
+}
+
+/**
+ * inf_adopted_request_get_receive_time:
+ * @request: A #InfAdoptedRequest.
+ *
+ * Returns the time when the request was received, or, if it's a local
+ * request, generated. The time is given in microseconds since January 1,
+ * 1970.
+ *
+ * Returns: Time when the request was received.
+ */
+gint64
+inf_adopted_request_get_receive_time(InfAdoptedRequest* request)
+{
+  InfAdoptedRequestPrivate* priv;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), 0);
+
+  priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+  return priv->received;
+}
+
+/**
+ * inf_adopted_request_get_execute_time:
+ * @request: A #InfAdoptedRequest.
+ *
+ * Returns the time when the request was executed by an #InfAdoptedAlgorithm,
+ * see the #InfAdoptedAlgorithm::execute-request signal. The time is given in
+ * microseconds since January 1, 1970. If the request was not yet executed,
+ * the function returns 0.
+ *
+ * Returns: The time when the function was executed, or 0.
+ */
+gint64
+inf_adopted_request_get_execute_time(InfAdoptedRequest* request)
+{
+  InfAdoptedRequestPrivate* priv;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), 0);
+
+  priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+  return priv->executed;
+}
+
+/**
+ * inf_adopted_request_set_execute_time:
+ * @request: A #InfAdoptedRequest.
+ * @time: A time in microseconds since January 1, 1970.
+ *
+ * Sets the time when @request was executed. Usually this is called by
+ * #InfAdoptedAlgorithm when it executes a request, i.e. translates it to the
+ * current state of the document.
+ */
+void
+inf_adopted_request_set_execute_time(InfAdoptedRequest* request,
+                                     gint64 time)
+{
+  InfAdoptedRequestPrivate* priv;
+
+  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
+
+  priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+
+  if(priv->executed != time)
+  {
+    priv->executed = time;
+    g_object_notify(G_OBJECT(request), "executed");
+  }
 }
 
 /**
@@ -669,6 +802,7 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
 {
   InfAdoptedRequestPrivate* request_priv;
   InfAdoptedRequestPrivate* against_priv;
+  InfAdoptedRequestPrivate* new_priv;
   InfAdoptedOperation* new_operation;
   InfAdoptedStateVector* new_vector;
   InfAdoptedRequest* new_request;
@@ -721,8 +855,12 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
   new_request = inf_adopted_request_new_do(
     new_vector,
     request_priv->user_id,
-    new_operation
+    new_operation,
+    request_priv->received
   );
+
+  new_priv = INF_ADOPTED_REQUEST_PRIVATE(new_request);
+  new_priv->executed = request_priv->executed;
 
   g_object_unref(new_operation);
   inf_adopted_state_vector_free(new_vector);
@@ -752,6 +890,7 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
                            guint by)
 {
   InfAdoptedRequestPrivate* priv;
+  InfAdoptedRequestPrivate* new_priv;
   InfAdoptedOperation* new_operation;
   InfAdoptedStateVector* new_vector;
   InfAdoptedRequest* new_request;
@@ -773,8 +912,12 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
   new_request = inf_adopted_request_new_do(
     new_vector,
     priv->user_id,
-    new_operation
+    new_operation,
+    priv->received
   );
+
+  new_priv = INF_ADOPTED_REQUEST_PRIVATE(new_request);
+  new_priv->executed = priv->executed;
 
   g_object_unref(new_operation);
   inf_adopted_state_vector_free(new_vector);
@@ -804,6 +947,7 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
                          guint by)
 {
   InfAdoptedRequestPrivate* priv;
+  InfAdoptedRequestPrivate* new_priv;
   InfAdoptedStateVector* new_vector;
   InfAdoptedRequest* new_request;
 
@@ -826,6 +970,7 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
         "operation", priv->operation,
         "vector", new_vector,
         "user-id", priv->user_id,
+        "received", priv->received,
         NULL
       )
     );
@@ -838,10 +983,14 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
         "type", priv->type,
         "vector", new_vector,
         "user-id", priv->user_id,
+        "received", priv->received,
         NULL
       )
     );
   }
+
+  new_priv = INF_ADOPTED_REQUEST_PRIVATE(new_request);
+  new_priv->executed = priv->executed;
 
   inf_adopted_state_vector_free(new_vector);
   return new_request;

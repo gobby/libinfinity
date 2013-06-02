@@ -86,15 +86,18 @@ inf_adopted_request_get_type(void) G_GNUC_CONST;
 InfAdoptedRequest*
 inf_adopted_request_new_do(InfAdoptedStateVector* vector,
                            guint user_id,
-                           InfAdoptedOperation* operation);
+                           InfAdoptedOperation* operation,
+                           gint64 received);
 
 InfAdoptedRequest*
 inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
-                             guint user_id);
+                             guint user_id,
+                             gint64 received);
 
 InfAdoptedRequest*
 inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
-                             guint user_id);
+                             guint user_id,
+                             gint64 received);
 
 InfAdoptedRequest*
 inf_adopted_request_copy(InfAdoptedRequest* request);
@@ -110,6 +113,16 @@ inf_adopted_request_get_user_id(InfAdoptedRequest* request);
 
 InfAdoptedOperation*
 inf_adopted_request_get_operation(InfAdoptedRequest* request);
+
+gint64
+inf_adopted_request_get_receive_time(InfAdoptedRequest* request);
+
+gint64
+inf_adopted_request_get_execute_time(InfAdoptedRequest* request);
+
+void
+inf_adopted_request_set_execute_time(InfAdoptedRequest* request,
+                                     gint64 time);
 
 gboolean
 inf_adopted_request_need_concurrency_id(InfAdoptedRequest* request,
