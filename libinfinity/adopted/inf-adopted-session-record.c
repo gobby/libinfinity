@@ -79,6 +79,15 @@ enum {
 static GObjectClass* parent_class;
 static GQuark libxml2_writer_error_quark;
 
+static gint64
+inf_adopted_session_record_get_real_time()
+{
+  /* TODO: Replace by g_get_real_time() once we depend on glib >=2.28 */
+  GTimeVal timeval;
+  g_get_current_time(&timeval);
+  return (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
+}
+
 static void
 inf_adopted_session_record_handle_xml_error(InfAdoptedSessionRecord* record)
 {
@@ -175,6 +184,23 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   g_assert(previous != NULL);
 
   session_class->request_to_xml(priv->session, xml, request, previous, FALSE);
+
+  inf_xml_util_set_attribute_double(
+    xml,
+    "received",
+    inf_adopted_request_get_receive_time(request) / 1000000.
+  );
+
+  /* Note that execute_time of request is not yet set at this point, since it
+   * is only set in the default handler of execute-request. However, we want
+   * to write the record already before, so that if there is a problem during
+   * execution we have written the request into the record. */
+  inf_xml_util_set_attribute_double(
+    xml,
+    "executed",
+    inf_adopted_session_record_get_real_time() / 1000000.
+  );
+
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
 
@@ -210,6 +236,13 @@ inf_adopted_session_record_add_user_cb(InfUserTable* user_table,
 
   xml = xmlNewNode(NULL, (const xmlChar*)"user");
   inf_session_user_to_xml(INF_SESSION(priv->session), user, xml);
+
+  inf_xml_util_set_attribute_double(
+    xml,
+    "executed",
+    inf_adopted_session_record_get_real_time() / 1000000.
+  );
+
   inf_adopted_session_record_write_node(record, xml);
   xmlFreeNode(xml);
 
