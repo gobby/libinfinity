@@ -1128,8 +1128,7 @@ infd_session_proxy_communication_object_enqueued(InfCommunicationObject* obj,
 static InfCommunicationScope
 infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
                                                  InfXmlConnection* connection,
-                                                 xmlNodePtr node,
-                                                 GError** error)
+                                                 xmlNodePtr node)
 {
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
@@ -1152,8 +1151,7 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
     return inf_communication_object_received(
       INF_COMMUNICATION_OBJECT(priv->session),
       connection,
-      node,
-      error
+      node
     );
   }
   else
@@ -1182,15 +1180,14 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
       return inf_communication_object_received(
         INF_COMMUNICATION_OBJECT(priv->session),
         connection,
-        node,
-        error
+        node
       );
     }
   }
 
   if(local_error != NULL)
   {
-    if(!infd_session_proxy_make_seq(proxy, connection, node, &seq, error))
+    if(!infd_session_proxy_make_seq(proxy, connection, node, &seq, NULL))
       seq = NULL;
 
     /* Only send request-failed when it was a proxy-related request */

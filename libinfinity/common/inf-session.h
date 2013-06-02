@@ -232,6 +232,10 @@ struct _InfSessionClass {
 
   /* Signals */
   void(*close)(InfSession* session);
+  void(*error)(InfSession* session,
+               InfXmlConnection* connection,
+               xmlNodePtr xml,
+               const GError* error);
 
   void(*synchronization_begin)(InfSession* session,
                                InfCommunicationGroup* group,

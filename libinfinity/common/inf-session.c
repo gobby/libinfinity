@@ -140,6 +140,8 @@ enum {
 
 enum {
   CLOSE,
+  ERROR,
+
   SYNCHRONIZATION_BEGIN,
   SYNCHRONIZATION_PROGRESS,
   SYNCHRONIZATION_COMPLETE,
@@ -1451,14 +1453,14 @@ inf_session_communication_object_enqueued(InfCommunicationObject* comm_object,
 static InfCommunicationScope
 inf_session_communication_object_received(InfCommunicationObject* comm_object,
                                           InfXmlConnection* connection,
-                                          const xmlNodePtr node,
-                                          GError** error)
+                                          const xmlNodePtr node)
 {
   InfSessionClass* session_class;
   InfSession* session;
   InfSessionPrivate* priv;
   InfSessionSync* sync;
   gboolean result;
+  InfCommunicationScope scope;
   GError* local_error;
   const gchar* local_message;
 
@@ -1473,12 +1475,23 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
     /* We do not expect any messages in presync. The whole idea of presync is
      * that one can keep a session around that is going to be synchronized
      * later, ie. when telling the remote site about it. */
+    local_error = NULL;
+
     g_set_error(
-      error,
+      &local_error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_GOT_MESSAGE_IN_PRESYNC,
       _("Unexpectedly received XML message \"%s\" in presync"),
       (const gchar*)node->name
+    );
+
+     g_signal_emit(
+      G_OBJECT(session),
+      session_signals[ERROR],
+      0,
+      connection,
+      node,
+      local_error
     );
 
     /* Don't forward unexpected message */
@@ -1572,13 +1585,21 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
       }
       else
       {
+        local_error = NULL;
+
         g_set_error(
-          error,
+          &local_error,
           inf_session_sync_error_quark,
           INF_SESSION_SYNC_ERROR_UNEXPECTED_NODE,
           _("Received unexpected XML message \"%s\" while synchronizing"),
           (const gchar*)node->name
         );
+
+        /* We got sent something by the other session, even though we do not
+         * expect anything really. We consider it an error, and cancel the
+         * synchronization here. */
+
+        g_error_free(local_error);
       }
 
       /* Synchronization is always ptp only, don't forward */
@@ -1589,14 +1610,37 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
       session_class = INF_SESSION_GET_CLASS(session);
       g_assert(session_class->process_xml_run != NULL);
 
-      return session_class->process_xml_run(session, connection, node, error);
-    }
+      local_error = NULL;
+      scope = session_class->process_xml_run(
+        session,
+        connection,
+        node,
+        &local_error
+      );
 
-    break;
+      if(local_error != NULL)
+      {
+        /* At this point we don't really know what's wrong with the session,
+         * or whether the error is fatal in a sense or not. We emit the
+         * "error" signal here, so that anyone who is interested can handle
+         * it, for example by closing the session, or logging it into a file
+         * for human inspection. */
+         g_signal_emit(
+          G_OBJECT(session),
+          session_signals[ERROR],
+          0,
+          connection,
+          node,
+          local_error
+        );
+      }
+
+      return scope;
+    }
   case INF_SESSION_CLOSED:
   default:
     g_assert_not_reached();
-    break;
+    return INF_COMMUNICATION_SCOPE_PTP;
   }
 }
 
@@ -1930,6 +1974,7 @@ inf_session_class_init(gpointer g_class,
   session_class->user_new = NULL;
 
   session_class->close = inf_session_close_handler;
+  session_class->error = NULL;
   session_class->synchronization_begin =
     inf_session_synchronization_begin_handler;
   session_class->synchronization_progress = NULL;
@@ -2045,6 +2090,33 @@ inf_session_class_init(gpointer g_class,
     inf_marshal_VOID__VOID,
     G_TYPE_NONE,
     0
+  );
+
+  /**
+   * InfSession::error:
+   * @session: The #InfSession having an error.
+   * @connection: The #InfXmlConnection which sent the erroneous request.
+   * @xml: The XML request that produced the error.
+   * @error: A #GError providing information about the error.
+   *
+   * This signal is emitted when the session detects an error. The session
+   * itself does not know much about the nature of the error. It might mean
+   * the session is in an inconsistent state, or it might be recoverable.
+   * This signal can be used to handle the error or to write error
+   * information into a log file or bring to a user's attention in another
+   * manner. */
+  session_signals[ERROR] = g_signal_new(
+    "error",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfSessionClass, error),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT_POINTER_POINTER,
+    G_TYPE_NONE,
+    3,
+    INF_TYPE_XML_CONNECTION,
+    G_TYPE_POINTER, /* actually a xmlNodePtr */
+    G_TYPE_POINTER /* actually a GError* */
   );
 
   /**

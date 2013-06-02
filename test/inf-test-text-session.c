@@ -114,12 +114,10 @@ perform_single_test(InfTextChunk* initial,
   {
     request = (xmlNodePtr)item->data;
 
-    /* TODO: Check error? */
     inf_communication_object_received(
       INF_COMMUNICATION_OBJECT(session),
       NULL,
-      request,
-      NULL
+      request
     );
   }
 

@@ -110,7 +110,6 @@ inf_communication_object_get_type(void)
  * @object: A #InfCommunicationObject.
  * @conn: The #InfXmlConnection data was received from.
  * @node: The received data.
- * @error: Location to store error information, if any.
  *
  * This function is called when a #InfCommunicationManager received data from
  * @connection belonging to a group whose communication object is @object.
@@ -136,8 +135,7 @@ inf_communication_object_get_type(void)
 InfCommunicationScope
 inf_communication_object_received(InfCommunicationObject* object,
                                   InfXmlConnection* conn,
-                                  xmlNodePtr node,
-                                  GError** error)
+                                  xmlNodePtr node)
 {
   InfCommunicationObjectIface* iface;
 
@@ -149,7 +147,7 @@ inf_communication_object_received(InfCommunicationObject* object,
   iface = INF_COMMUNICATION_OBJECT_GET_IFACE(object);
 
   if(iface->received != NULL)
-    return (*iface->received)(object, conn, node, error);
+    return (*iface->received)(object, conn, node);
 
   return FALSE;
 }

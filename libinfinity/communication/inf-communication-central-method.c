@@ -294,7 +294,6 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
 {
   InfCommunicationCentralMethodPrivate* priv;
   InfCommunicationObject* target;
-  GError* error;
   InfCommunicationScope scope;
   xmlBufferPtr buffer;
   xmlSaveCtxtPtr ctx;
@@ -303,47 +302,15 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
   GSList* item;
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
-  error = NULL;
-
   target = inf_communication_group_get_target(priv->group);
+
   if(target != NULL)
   {
     scope = inf_communication_object_received(
       target,
       connection,
-      xml,
-      &error
+      xml
     );
-
-    /* TODO: Find a better place to show this message, maybe in
-     * InfCommunicationRegistry's received_cb. */
-    if(error != NULL)
-    {
-      buffer = xmlBufferCreate();
-      ctx = xmlSaveToBuffer(buffer, "UTF-8", XML_SAVE_FORMAT);
-      xmlSaveTree(ctx, xml);
-      xmlSaveClose(ctx);
-
-      g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
-      publisher_id =
-        inf_communication_group_get_publisher_id(priv->group, connection);
-
-      g_warning(
-        "Error in group \"%s\", publisher \"%s\" while processing a message "
-        "from \"%s\":\n%s\n\nThe session might have lost consistency. The "
-        "message was:\n\n%s\n\n",
-        inf_communication_group_get_name(priv->group),
-        publisher_id,
-        remote_id,
-        error->message,
-        (const gchar*)xmlBufferContent(buffer)
-      );
-
-      g_free(publisher_id);
-      g_free(remote_id);
-      g_error_free(error);
-      xmlBufferFree(buffer);
-    }
 
     if(priv->is_publisher && scope == INF_COMMUNICATION_SCOPE_GROUP)
     {

@@ -136,12 +136,8 @@ perform_test(guint max_total_log_size,
       result = inf_communication_object_received(
         INF_COMMUNICATION_OBJECT(session),
         NULL,
-        request,
-        &local_error
+        request
       );
-      
-      if(local_error != NULL)
-        goto fail;
     }
     else
     {

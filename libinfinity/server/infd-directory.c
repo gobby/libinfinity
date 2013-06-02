@@ -3919,8 +3919,7 @@ infd_directory_remove_session(InfdDirectory* directory,
 static InfCommunicationScope
 infd_directory_communication_object_received(InfCommunicationObject* object,
                                              InfXmlConnection* connection,
-                                             const xmlNodePtr node,
-                                             GError** error)
+                                             const xmlNodePtr node)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
@@ -4022,7 +4021,7 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
     /* TODO: If error is not from the InfDirectoryError error domain, the
      * client cannot reconstruct the error because he possibly does not know
      * the error domain (it might even come from a storage plugin). */
-    if(!infd_directory_make_seq(directory, connection, node, &seq, error))
+    if(!infd_directory_make_seq(directory, connection, node, &seq, NULL))
       seq = NULL;
 
     /* An error happened, so tell the client that the request failed and

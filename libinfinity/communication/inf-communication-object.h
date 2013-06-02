@@ -77,8 +77,7 @@ struct _InfCommunicationObjectIface {
   /*< public >*/
   InfCommunicationScope (*received)(InfCommunicationObject* object,
                                     InfXmlConnection* conn,
-                                    xmlNodePtr node,
-                                    GError** error);
+                                    xmlNodePtr node);
 
   void (*enqueued)(InfCommunicationObject* object,
                    InfXmlConnection* conn,
@@ -98,8 +97,7 @@ inf_communication_object_get_type(void) G_GNUC_CONST;
 InfCommunicationScope
 inf_communication_object_received(InfCommunicationObject* object,
                                   InfXmlConnection* conn,
-                                  xmlNodePtr node,
-                                  GError** error);
+                                  xmlNodePtr node);
 
 void
 inf_communication_object_enqueued(InfCommunicationObject* object,

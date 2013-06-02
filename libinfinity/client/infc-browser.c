@@ -3038,8 +3038,7 @@ infc_browser_handle_request_failed(InfcBrowser* browser,
 static InfCommunicationScope
 infc_browser_communication_object_received(InfCommunicationObject* object,
                                            InfXmlConnection* connection,
-                                           xmlNodePtr node,
-                                           GError** error)
+                                           xmlNodePtr node)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -3202,8 +3201,8 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       g_error_free(seq_error);
     }
 
-    /* TODO: We might just want to emit error instead... */
-    g_propagate_error(error, local_error);
+    g_signal_emit(browser, browser_signals[ERROR], 0, local_error);
+    g_error_free(local_error);
   }
 
   /* Browser is client-side anyway, so we should not even need to forward

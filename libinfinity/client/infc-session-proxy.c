@@ -832,8 +832,7 @@ infc_session_proxy_communication_object_enqueued(InfCommunicationObject* obj,
 static InfCommunicationScope
 infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
                                                  InfXmlConnection* connection,
-                                                 xmlNodePtr node,
-                                                 GError** error)
+                                                 xmlNodePtr node)
 {
   InfcSessionProxy* proxy;
   InfcSessionProxyPrivate* priv;
@@ -859,8 +858,7 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
     return inf_communication_object_received(
       INF_COMMUNICATION_OBJECT(priv->session),
       connection,
-      node,
-      error
+      node
     );
   }
   else
@@ -903,11 +901,11 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
     }
     else
     {
+      /* forward to session */
       return inf_communication_object_received(
         INF_COMMUNICATION_OBJECT(priv->session),
         connection,
-        node,
-        error
+        node
       );
     }
   }
@@ -945,7 +943,8 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
       g_error_free(seq_error);
     }
 
-    g_propagate_error(error, local_error);
+    /* TODO: Do we want to emit session's error signal? */
+    g_error_free(local_error);
   }
 
   /* Don't forward any of the handled messages */
