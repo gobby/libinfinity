@@ -837,7 +837,8 @@ inf_adopted_request_fold(InfAdoptedRequest* request,
         INF_ADOPTED_TYPE_REQUEST,
         "type", priv->type,
         "vector", new_vector,
-        "user-id", priv->user_id
+        "user-id", priv->user_id,
+        NULL
       )
     );
   }
