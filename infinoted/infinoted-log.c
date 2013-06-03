@@ -24,6 +24,8 @@
 
 #include <libinfinity/inf-i18n.h>
 
+#include <libxml/xmlsave.h>
+
 #ifdef G_OS_WIN32
 /* Arbitrary; they are not used currently anyway */
 # define LOG_ERR 0
@@ -47,21 +49,13 @@ static void
 infinoted_log_logv(InfinotedLog* log,
                    int prio,
                    const char* fmt,
-                   va_list ap)
+                   va_list ap,
+                   const char* extra_log)
 {
   time_t cur_time;
   struct tm* cur_tm;
   char time_msg[128];
   va_list ap2;
-
-  gchar* request_str;
-  const gchar* user_name;
-  InfXmlConnection* user_connection;
-  gchar* user_connection_str;
-  InfAdoptedSessionRecord* record;
-  gchar* record_filename;
-  gchar* record_basename;
-  gchar* document_name;
 
   if(log->file != NULL)
   {
@@ -92,76 +86,15 @@ infinoted_log_logv(InfinotedLog* log,
     fputc('\n', log->file);
 
     /* Print extra information about what caused the log message */
-    if(log->current_session != NULL && log->current_user != NULL &&
-       log->current_request != NULL)
+    if(extra_log != NULL)
     {
-      request_str = inf_adopted_state_vector_to_string(
-        inf_adopted_request_get_vector(log->current_request)
-      );
-
-      user_name = inf_user_get_name(INF_USER(log->current_user));
-      user_connection = inf_user_get_connection(INF_USER(log->current_user));
-
-      if(user_connection != NULL)
-      {
-        g_object_get(
-          G_OBJECT(user_connection),
-          "remote-id", &user_connection_str,
-          NULL
-        );
-      }
-      else
-      {
-        user_connection_str = g_strdup("local");
-      }
-
-      record = NULL;
-      record_basename = NULL;
-      if(log->record != NULL)
-      {
-        record = infinoted_record_get_for_session(
-          log->record,
-          INF_ADOPTED_SESSION(log->current_session->session)
-        );
-
-        if(record != NULL)
-        {
-          g_object_get(G_OBJECT(record), "filename", &record_filename, NULL);
-          record_basename = g_path_get_basename(record_filename);
-          g_free(record_filename);
-        }
-      }
-
-      if(record_basename == NULL)
-      {
-        document_name = g_strdup(log->current_session->path);
-      }
-      else
-      {
-        document_name = g_strdup_printf(
-          "%s (%s)",
-          log->current_session->path, record_basename
-        );
-
-        g_free(record_basename);
-      }
-
       fprintf(
         log->file,
-        _("\twhen executing request \"%s\" from user %s (%s) in document %s"),
-        request_str,
-        user_name,
-        user_connection_str,
-        document_name
+        "\t%s\n",
+        extra_log
       );
-
-      g_free(document_name);
-      g_free(user_connection_str);
-      g_free(request_str);
-
-      fputc('\n', log->file);
     }
-    
+
     fflush(log->file);
   }
 
@@ -187,6 +120,188 @@ infinoted_log_logv(InfinotedLog* log,
   fputc('\n', stderr);
 #endif /* !G_OS_WIN32 */
 #endif /* !LIBINFINITY_HAVE_LIBDAEMON */
+}
+
+static void
+infinoted_log_log(InfinotedLog* log,
+                  int prio,
+                  const char* extra,
+                  const char* fmt, ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  infinoted_log_logv(log, prio, fmt, ap, extra);
+  va_end(ap);
+}
+
+static gchar*
+infinoted_log_get_default_extra(InfinotedLog* log)
+{
+  gchar* request_str;
+  const gchar* user_name;
+  InfXmlConnection* user_connection;
+  gchar* user_connection_str;
+  InfAdoptedSessionRecord* record;
+  gchar* record_filename;
+  gchar* record_basename;
+  gchar* document_name;
+  gchar* extra;
+
+  if(log->current_session != NULL && log->current_user != NULL &&
+     log->current_request != NULL)
+  {
+    request_str = inf_adopted_state_vector_to_string(
+      inf_adopted_request_get_vector(log->current_request)
+    );
+
+    user_name = inf_user_get_name(INF_USER(log->current_user));
+    user_connection = inf_user_get_connection(INF_USER(log->current_user));
+
+    if(user_connection != NULL)
+    {
+      g_object_get(
+        G_OBJECT(user_connection),
+        "remote-id", &user_connection_str,
+        NULL
+      );
+    }
+    else
+    {
+      user_connection_str = g_strdup("local");
+    }
+
+    record = NULL;
+    record_basename = NULL;
+    if(log->record != NULL)
+    {
+      record = infinoted_record_get_for_session(
+        log->record,
+        INF_ADOPTED_SESSION(log->current_session->session)
+      );
+
+      if(record != NULL)
+      {
+        g_object_get(G_OBJECT(record), "filename", &record_filename, NULL);
+        record_basename = g_path_get_basename(record_filename);
+        g_free(record_filename);
+      }
+    }
+
+    if(record_basename == NULL)
+    {
+      document_name = g_strdup(log->current_session->path);
+    }
+    else
+    {
+      document_name = g_strdup_printf(
+        "%s (%s)",
+        log->current_session->path,
+        record_basename
+      );
+
+      g_free(record_basename);
+    }
+
+    extra = g_strdup_printf(
+      _("\twhen executing request \"%s\" from user %s (%s) in document %s"),
+      request_str,
+      user_name,
+      user_connection_str,
+      document_name
+    );
+
+    g_free(document_name);
+    g_free(user_connection_str);
+    g_free(request_str);
+
+    return extra;
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+static void
+infinoted_log_session_error_cb(InfSession* session,
+                               InfXmlConnection* connection,
+                               xmlNodePtr xml,
+                               const GError* error,
+                               gpointer user_data)
+{
+  InfinotedLogSession* log_session;
+  InfinotedLog* log;
+  InfAdoptedSessionRecord* record;
+  gchar* connection_str;
+  gchar* record_filename;
+  gchar* record_basename;
+  gchar* document_name;
+  xmlBufferPtr buffer;
+  xmlSaveCtxtPtr ctx;
+  gchar* extra;
+
+  log_session = (InfinotedLogSession*)user_data;
+  log = log_session->log;
+
+  g_object_get(G_OBJECT(connection), "remote-id", &connection_str, NULL);
+
+  record = NULL;
+  record_basename = NULL;
+  if(log->record != NULL)
+  {
+    record = infinoted_record_get_for_session(
+      log->record,
+      INF_ADOPTED_SESSION(session)
+    );
+
+    if(record != NULL)
+    {
+      g_object_get(G_OBJECT(record), "filename", &record_filename, NULL);
+      record_basename = g_path_get_basename(record_filename);
+      g_free(record_filename);
+    }
+  }
+
+  if(record_basename == NULL)
+  {
+    document_name = g_strdup(log_session->path);
+  }
+  else
+  {
+    document_name = g_strdup_printf(
+      "%s (%s)",
+      log_session->path,
+      record_basename
+    );
+
+    g_free(record_basename);
+   }
+
+  buffer = xmlBufferCreate();
+  ctx = xmlSaveToBuffer(buffer, "UTF-8", XML_SAVE_FORMAT);
+  xmlSaveTree(ctx, xml);
+  xmlSaveClose(ctx);
+
+  extra = g_strdup_printf(
+    _("in document %s from connection %s. The request was:\n\n%s"),
+    document_name,
+    connection_str,
+    (const gchar*)xmlBufferContent(buffer)
+  );
+
+  g_free(connection_str);
+  g_free(document_name);
+  xmlBufferFree(buffer);
+
+  infinoted_log_log(
+    log,
+    LOG_WARNING,
+    extra,
+    "Session error: %s",
+    error->message
+  );
+
+  g_free(extra);
 }
 
 static void
@@ -241,6 +356,13 @@ infinoted_log_add_session(InfinotedLog* log,
   log_session->session = session;
   log_session->path = infd_directory_iter_get_path(log->directory, iter);
   g_object_ref(session);
+
+  g_signal_connect(
+    G_OBJECT(session),
+    "error",
+    G_CALLBACK(infinoted_log_session_error_cb),
+    log_session
+  );
   
   if(INF_ADOPTED_IS_SESSION(session))
   {
@@ -297,6 +419,12 @@ infinoted_log_remove_session(InfinotedLog* log,
       log_session
     );
   }
+
+  inf_signal_handlers_disconnect_by_func(
+    session,
+    G_CALLBACK(infinoted_log_session_error_cb),
+    log_session
+  );
 
   /* If we are in the middle of an execute of this session, then clear the
    * current pointers, because we won't get notified upon execution finish
@@ -670,9 +798,13 @@ void
 infinoted_log_error(InfinotedLog* log, const char* fmt, ...)
 {
   va_list ap;
+  gchar* extra;
+
+  extra = infinoted_log_get_default_extra(log);
   va_start(ap, fmt);
-  infinoted_log_logv(log, LOG_ERR, fmt, ap);
+  infinoted_log_logv(log, LOG_ERR, fmt, ap, extra);
   va_end(ap);
+  g_free(extra);
 }
 
 /**
@@ -689,9 +821,13 @@ void
 infinoted_log_warning(InfinotedLog* log, const char* fmt, ...)
 {
   va_list ap;
+  gchar* extra;
+
+  extra = infinoted_log_get_default_extra(log);
   va_start(ap, fmt);
-  infinoted_log_logv(log, LOG_WARNING, fmt, ap);
+  infinoted_log_logv(log, LOG_WARNING, fmt, ap, extra);
   va_end(ap);
+  g_free(extra);
 }
 
 /**
@@ -708,9 +844,13 @@ void
 infinoted_log_info(InfinotedLog* log, const char* fmt, ...)
 {
   va_list ap;
+  gchar* extra;
+
+  extra = infinoted_log_get_default_extra(log);
   va_start(ap, fmt);
-  infinoted_log_logv(log, LOG_INFO, fmt, ap);
+  infinoted_log_logv(log, LOG_INFO, fmt, ap, extra);
   va_end(ap);
+  g_free(extra);
 }
 
 /* vim:set et sw=2 ts=2: */
