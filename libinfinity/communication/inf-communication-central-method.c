@@ -34,8 +34,6 @@
 #include <libinfinity/communication/inf-communication-registry.h>
 #include <libinfinity/inf-signals.h>
 
-#include <libxml/xmlsave.h>
-
 typedef struct _InfCommunicationCentralMethodPrivate
   InfCommunicationCentralMethodPrivate;
 struct _InfCommunicationCentralMethodPrivate {
@@ -295,8 +293,6 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
   InfCommunicationCentralMethodPrivate* priv;
   InfCommunicationObject* target;
   InfCommunicationScope scope;
-  xmlBufferPtr buffer;
-  xmlSaveCtxtPtr ctx;
   gchar* remote_id;
   gchar* publisher_id;
   GSList* item;
