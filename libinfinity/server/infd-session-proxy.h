@@ -70,6 +70,10 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 guint seq_id,
                                 gboolean synchronize);
 
+void
+infd_session_proxy_unsubscribe(InfdSessionProxy* proxy,
+                               InfXmlConnection* connection);
+
 gboolean
 infd_session_proxy_has_subscriptions(InfdSessionProxy* proxy);
 

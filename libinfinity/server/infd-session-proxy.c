@@ -625,8 +625,6 @@ infd_session_proxy_session_close_cb(InfSession* session,
   InfdSessionProxy* proxy;
   InfdSessionProxyPrivate* priv;
   InfdSessionProxySubscription* subscription;
-  InfSessionSyncStatus status;
-  xmlNodePtr xml;
 
   proxy = INFD_SESSION_PROXY(user_data);
   priv = INFD_SESSION_PROXY_PRIVATE(proxy);
@@ -641,39 +639,12 @@ infd_session_proxy_session_close_cb(InfSession* session,
   {
     subscription = (InfdSessionProxySubscription*)priv->subscriptions->data;
 
-    status = inf_session_get_synchronization_status(
-      priv->session,
-      subscription->connection
-    );
-
-    /* If synchronization is still in progress, the default handler of
-     * InfSession will cancel the synchronization in which case we do
-     * not need to send an extra session-close message. */
-
-    /* We send session_close when we are in AWAITING_ACK status. In
-     * AWAITING_ACK status we cannot cancel the synchronization anymore
-     * because everything has already been sent out. Therefore the client
-     * will eventuelly get in RUNNING state when he receives this message,
-     * and process it correctly. */
-    if(status != INF_SESSION_SYNC_IN_PROGRESS)
-    {
-      xml = xmlNewNode(NULL, (const xmlChar*)"session-close");
-
-      inf_communication_group_send_message(
-        INF_COMMUNICATION_GROUP(priv->subscription_group),
-        subscription->connection,
-        xml
-      );
-    }
-
     /* Note that this does not call our signal handler because we already
      * disconnected it. This way, we make sure not to send user status updates
      * which would be pointless since we are closing the group anyway. */
-    inf_communication_hosted_group_remove_member(
-      priv->subscription_group,
-      subscription->connection
-    );
+    infd_session_proxy_unsubscribe(proxy, subscription->connection);
 
+    /* However, this means we need to emit the unsubscribe signal ourselves */
     g_signal_emit(
       proxy,
       session_proxy_signals[REMOVE_SUBSCRIPTION],
@@ -1526,6 +1497,76 @@ infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
       connection
     );
   }
+}
+
+/**
+ * infd_session_proxy_unsubscribe:
+ * @proxy: A #InfdSessionProxy.
+ * @connection: The #InfXmlConnection to unsubscribe.
+ *
+ * Unsubscribes a subscribed connection from @proxy's session. This will
+ * prevent all users joined via @connection to continue modifying the
+ * session's buffer, and it will cancel ongoing synchronization to
+ * @connection, if not yet finished.
+ */
+void
+infd_session_proxy_unsubscribe(InfdSessionProxy* proxy,
+                               InfXmlConnection* connection)
+{
+  InfdSessionProxyPrivate* priv;
+  InfdSessionProxySubscription* subscription;
+  InfSessionSyncStatus status;
+  xmlNodePtr xml;
+
+  g_return_if_fail(INFD_IS_SESSION_PROXY(proxy));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  /* TODO: Can we support the SYNCHRONIZING case? In that case the session
+   * will probably end up closed... */
+  g_assert(inf_session_get_status(priv->session) == INF_SESSION_RUNNING);
+
+  subscription = infd_session_proxy_find_subscription(proxy, connection);
+  g_return_if_fail(subscription != NULL);
+
+  status = inf_session_get_synchronization_status(
+    priv->session,
+    subscription->connection
+  );
+
+  /* If synchronization is still in progress, the default handler of
+   * InfSession will cancel the synchronization in which case we do
+   * not need to send an extra session-close message. */
+
+  /* We send session_close when we are in AWAITING_ACK status. In
+   * AWAITING_ACK status we cannot cancel the synchronization anymore
+   * because everything has already been sent out. Therefore the client
+   * will eventuelly get in RUNNING state when it receives this message,
+   * and process it correctly. */
+  if(status != INF_SESSION_SYNC_IN_PROGRESS)
+  {
+    xml = xmlNewNode(NULL, (const xmlChar*)"session-close");
+
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->subscription_group),
+      subscription->connection,
+      xml
+    );
+  }
+  else
+  {
+    /* In case we are synchronizing the client */
+    inf_session_cancel_synchronization(
+      priv->session,
+      subscription->connection
+    );
+  }
+
+  inf_communication_hosted_group_remove_member(
+    priv->subscription_group,
+    subscription->connection
+  );
 }
 
 /**

@@ -921,6 +921,7 @@ InfdSessionProxyClass
 infd_session_proxy_get_session
 infd_session_proxy_add_user
 infd_session_proxy_subscribe_to
+infd_session_proxy_unsubscribe
 infd_session_proxy_has_subscriptions
 infd_session_proxy_is_subscribed
 infd_session_proxy_is_idle
