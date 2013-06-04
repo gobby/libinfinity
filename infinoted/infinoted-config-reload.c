@@ -381,6 +381,32 @@ infinoted_config_reload(InfinotedRun* run,
     }
   }
 
+  if(run->protector != NULL)
+  {
+    if(startup->options->max_transformation_vdiff > 0)
+    {
+      infinoted_transformation_protector_set_max_vdiff(
+        run->protector,
+        startup->options->max_transformation_vdiff
+      );
+
+      run->protector->log = startup->log;
+    }
+    else
+    {
+      infinoted_transformation_protector_free(run->protector);
+      run->protector = NULL;
+    }
+  }
+  else if(startup->options->max_transformation_vdiff > 0)
+  {
+    run->protector = infinoted_transformation_protector_new(
+      run->directory,
+      startup->log,
+      startup->options->max_transformation_vdiff
+    );
+  }
+
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   /* Remember whether we have been daemonized; this is not a config file
    * option, so not properly set in our newly created startup. */

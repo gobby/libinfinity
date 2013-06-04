@@ -499,8 +499,11 @@ infinoted_options_validate(InfinotedOptions* options,
   if(requires_password &&
      options->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
-    fprintf(stderr,
-      _("WARNING: Requiring password through unencrypted connection."));
+    fprintf(
+      stderr,
+      "%s",
+      _("WARNING: Requiring password through unencrypted connection.")
+    );
   }
 
   if(options->create_key == TRUE && options->create_certificate == FALSE)
@@ -632,6 +635,7 @@ infinoted_options_load(InfinotedOptions* options,
 #endif
   gint autosave_interval;
   gint sync_interval;
+  gint max_transformation_vdiff;
   guint i;
 
   gboolean result;
@@ -700,11 +704,16 @@ infinoted_options_load(InfinotedOptions* options,
       N_("Interval within which to store documents to the specified "
          "sync-directory, in seconds, or 0 to disable directory "
          "synchronization"),
-         N_("INTERVAL") },
+      N_("INTERVAL") },
     { "sync-hook", 0, 0,
       G_OPTION_ARG_STRING, NULL,
       N_("A script or program which is called whenever a copy of a file in "
          "the document tree is stored"), N_("PROGRAM") },
+    { "max-transformation-vdiff", 0, 0,
+      G_OPTION_ARG_INT, NULL,
+      N_("Maximum number of transformations for one request, or 0 for "
+         "no maximum"),
+      N_("TRANSFORMATIONS") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
       G_OPTION_ARG_NONE, NULL,
@@ -743,6 +752,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &options->sync_directory;
   entries[i++].arg_data = &sync_interval;
   entries[i++].arg_data = &options->sync_hook;
+  entries[i++].arg_data = &max_transformation_vdiff;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   entries[i++].arg_data = &options->daemonize;
   entries[i++].arg_data = &kill_daemon;
@@ -757,6 +767,7 @@ infinoted_options_load(InfinotedOptions* options,
   port_number = infinoted_options_port_to_integer(options->port);
   autosave_interval = options->autosave_interval;
   sync_interval = options->sync_interval;
+  max_transformation_vdiff = options->max_transformation_vdiff;
 
   if(config_files)
   {
@@ -847,6 +858,20 @@ infinoted_options_load(InfinotedOptions* options,
     error
   );
   if(!result) return FALSE;
+
+  if(max_transformation_vdiff < 0)
+  {
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_VDIFF,
+      "%s",
+      _("max-transformation-vdiff must not be negative")
+    );
+
+    return FALSE;
+  }
+  options->max_transformation_vdiff = max_transformation_vdiff;
 
   if(options->password != NULL && strcmp(options->password, "") == 0)
   {
@@ -954,6 +979,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->sync_directory = NULL;
   options->sync_interval = 0;
   options->sync_hook = NULL;
+  options->max_transformation_vdiff = 0;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = FALSE;

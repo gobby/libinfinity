@@ -37,6 +37,7 @@ infinoted_0_6_SOURCES = \
 	infinoted-run.c \
 	infinoted-signal.c \
 	infinoted-startup.c \
+	infinoted-transformation-protector.c \
 	infinoted-util.c
 
 noinst_HEADERS = \
@@ -53,6 +54,7 @@ noinst_HEADERS = \
 	infinoted-run.h \
 	infinoted-signal.h \
 	infinoted-startup.h \
+	infinoted-transformation-protector.h \
 	infinoted-util.h
 
 # Create pid file directory

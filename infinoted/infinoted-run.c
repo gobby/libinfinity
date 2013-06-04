@@ -267,6 +267,19 @@ infinoted_run_new(InfinotedStartup* startup,
     run->dsync = NULL;
   }
 
+  if(startup->options->max_transformation_vdiff > 0)
+  {
+    run->protector = infinoted_transformation_protector_new(
+      run->directory,
+      startup->log,
+      startup->options->max_transformation_vdiff
+    );
+  }
+  else
+  {
+    run->protector = NULL;
+  }
+
   return run;
 }
 
@@ -283,6 +296,9 @@ infinoted_run_free(InfinotedRun* run)
 
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
+
+  if(run->protector != NULL)
+    infinoted_transformation_protector_free(run->protector);
 
   if(run->autosave != NULL)
     infinoted_autosave_free(run->autosave);
