@@ -1653,21 +1653,8 @@ inf_session_close_handler(InfSession* session)
 {
   InfSessionPrivate* priv;
   InfSessionSync* sync;
-  xmlNodePtr xml;
-  GError* error;
-  InfXmlConnectionStatus status;
 
   priv = INF_SESSION_PRIVATE(session);
-
-  error = NULL;
-
-  g_set_error(
-    &error,
-    inf_session_sync_error_quark,
-    INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
-    "%s",
-    inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED)
-  );
 
   g_object_freeze_notify(G_OBJECT(session));
 
@@ -1680,13 +1667,7 @@ inf_session_close_handler(InfSession* session)
        * does not emit the close signal again: */
       priv->shared.presync.closing = TRUE;
 
-      g_signal_emit(
-        G_OBJECT(session),
-        session_signals[SYNCHRONIZATION_FAILED],
-        0,
-        priv->shared.presync.conn,
-        error
-      );
+      inf_session_cancel_synchronization(session, priv->shared.presync.conn);
     }
 
     inf_session_release_connection(session, priv->shared.presync.conn);
@@ -1698,23 +1679,7 @@ inf_session_close_handler(InfSession* session)
        * does not emit the close signal again: */
       priv->shared.sync.closing = TRUE;
 
-      /* If the connection was closed, another signal handler could close()
-       * the session explicitely (for example by disposing it), in which case
-       * we cannot send anything anymore through the connection even though
-       * sync.closing was not set already. */
-      g_object_get(G_OBJECT(priv->shared.sync.conn), "status", &status, NULL);
-      if(status == INF_XML_CONNECTION_OPEN)
-      {
-        inf_session_send_sync_error(session, error);
-      }
-
-      g_signal_emit(
-        G_OBJECT(session),
-        session_signals[SYNCHRONIZATION_FAILED],
-        0,
-        priv->shared.sync.conn,
-        error
-      );
+      inf_session_cancel_synchronization(session, priv->shared.sync.conn);
     }
 
     inf_session_release_connection(session, priv->shared.sync.conn);
@@ -1728,31 +1693,7 @@ inf_session_close_handler(InfSession* session)
     while(priv->shared.run.syncs != NULL)
     {
       sync = (InfSessionSync*)priv->shared.run.syncs->data;
-
-      /* If the sync-end message has already been enqueued within the
-       * connection manager, we cannot cancel it anymore, so the remote
-       * site will receive the full sync nevertheless, so we do not need
-       * to cancel anything. */
-      if(sync->status == INF_SESSION_SYNC_IN_PROGRESS)
-      {
-        inf_communication_group_cancel_messages(sync->group, sync->conn);
-
-        xml = xmlNewNode(NULL, (const xmlChar*)"sync-cancel");
-        inf_communication_group_send_message(sync->group, sync->conn, xml);
-      }
-
-      /* We had to cancel the synchronization, so the synchronization
-       * actually failed. */
-      g_signal_emit(
-        G_OBJECT(session),
-        session_signals[SYNCHRONIZATION_FAILED],
-        0,
-        sync->conn,
-        error
-      );
-
-      /* Note that the synchronization_failed default handler actualy
-       * removes the sync. */
+      inf_session_cancel_synchronization(session, sync->conn);
     }
 
     break;
@@ -1769,8 +1710,6 @@ inf_session_close_handler(InfSession* session)
 
     g_object_notify(G_OBJECT(session), "subscription-group");
   }
-
-  g_error_free(error);
 
   priv->status = INF_SESSION_CLOSED;
   g_object_notify(G_OBJECT(session), "status");
@@ -2705,6 +2644,112 @@ inf_session_synchronize_to(InfSession* session,
     group,
     connection
   );
+}
+
+/**
+ * inf_session_cancel_synchronization:
+ * @session: A #InfSession.
+ * @connection: The #InfXmlConnection with which to cancel synchronization.
+ *
+ * Cancells an ongaing synchronization to or from @connection. If @session
+ * is in state %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING,
+ * @connection must match the connection that @session is synchronizing with.
+ * If @session is in state %INF_SESSION_RUNNING, @connection can be any
+ * connection that the session is currently being synchronized to.
+ *
+ * In any case, the #InfSession::synchronization-failed signal will be
+ * emitted for the cancelled synchronization. If the session is in state
+ * %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING, the session will also
+ * be closed, with the #InfSession::close signal being emited.
+ */
+void
+inf_session_cancel_synchronization(InfSession* session,
+                                   InfXmlConnection* connection)
+{
+  InfSessionPrivate* priv;
+  InfXmlConnectionStatus status;
+  InfSessionSync* sync;
+  xmlNodePtr xml;
+  GError* error;
+
+  g_return_if_fail(INF_IS_SESSION(session));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+
+  priv = INF_SESSION_PRIVATE(session);
+  error = NULL;
+
+  switch(priv->status)
+  {
+  case INF_SESSION_PRESYNC:
+    g_return_if_fail(connection == priv->shared.presync.conn);
+
+    g_set_error(
+      &error,
+      inf_session_sync_error_quark,
+      INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
+      "%s",
+      inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED)
+    );
+
+    break;
+  case INF_SESSION_SYNCHRONIZING:
+    g_return_if_fail(connection == priv->shared.sync.conn);
+
+    g_set_error(
+      &error,
+      inf_session_sync_error_quark,
+      INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
+      "%s",
+      inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED)
+    );
+
+    g_object_get(G_OBJECT(connection), "status", &status, NULL);
+    if(status == INF_XML_CONNECTION_OPEN)
+      inf_session_send_sync_error(session, error);
+
+    break;
+  case INF_SESSION_RUNNING:
+    sync = inf_session_find_sync_by_connection(session, connection);
+    g_return_if_fail(sync != NULL);
+
+    /* If the sync-end message has already been enqueued within the
+     * connection manager, we cannot cancel it anymore, so the remote
+     * site will receive the full sync nevertheless, so we do not need
+     * to cancel anything. */
+    if(sync->status == INF_SESSION_SYNC_IN_PROGRESS)
+    {
+      inf_communication_group_cancel_messages(sync->group, sync->conn);
+
+      xml = xmlNewNode(NULL, (const xmlChar*)"sync-cancel");
+      inf_communication_group_send_message(sync->group, sync->conn, xml);
+    }
+
+    g_set_error(
+      &error,
+      inf_session_sync_error_quark,
+      INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
+      "%s",
+      inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_SENDER_CANCELLED)
+    );
+
+    break;
+  case INF_SESSION_CLOSED:
+    g_return_if_reached();
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  g_signal_emit(
+    G_OBJECT(session),
+    session_signals[SYNCHRONIZATION_FAILED],
+    0,
+    connection,
+    error
+  );
+
+  g_error_free(error);
 }
 
 /**

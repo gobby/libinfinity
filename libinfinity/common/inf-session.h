@@ -318,6 +318,10 @@ inf_session_synchronize_to(InfSession* session,
                            InfCommunicationGroup* group,
                            InfXmlConnection* connection);
 
+void
+inf_session_cancel_synchronization(InfSession* session,
+                                   InfXmlConnection* connection);
+
 InfSessionSyncStatus
 inf_session_get_synchronization_status(InfSession* session,
                                        InfXmlConnection* connection);
