@@ -41,6 +41,14 @@
  * or Redo requests do not refer to some request that is about to be removed.
  */
 
+typedef struct _InfAdoptedRequestLogCleanupCacheData
+  InfAdoptedRequestLogCleanupCacheData;
+struct _InfAdoptedRequestLogCleanupCacheData {
+  guint user_id;
+  guint up_to;
+  GSList* requests_to_remove;
+};
+
 typedef struct _InfAdoptedRequestLogEntry InfAdoptedRequestLogEntry;
 struct _InfAdoptedRequestLogEntry {
   InfAdoptedRequest* request;
@@ -54,6 +62,7 @@ typedef struct _InfAdoptedRequestLogPrivate InfAdoptedRequestLogPrivate;
 struct _InfAdoptedRequestLogPrivate {
   guint user_id;
   InfAdoptedRequestLogEntry* entries;
+  GTree* cache;
 
   InfAdoptedRequestLogEntry* next_undo;
   InfAdoptedRequestLogEntry* next_redo;
@@ -89,6 +98,74 @@ enum {
 static GObjectClass* parent_class;
 static const guint INF_ADOPTED_REQUEST_LOG_INC = 0x80;
 static guint request_log_signals[LAST_SIGNAL];
+
+/*
+ * Transformation cache
+ */
+
+static int
+inf_adopted_request_log_cache_key_cmp(gconstpointer a,
+                                      gconstpointer b,
+                                      gpointer user_data)
+{
+  InfAdoptedRequestLog* log;
+  InfAdoptedRequestLogPrivate* priv;
+  const InfAdoptedStateVector* key_a;
+  const InfAdoptedStateVector* key_b;
+  guint n_a, n_b;
+
+  key_a = (const InfAdoptedStateVector*)a;
+  key_b = (const InfAdoptedStateVector*)b;
+
+  log = (InfAdoptedRequestLog*)user_data;
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+
+  /* Primary, order by component of user ID -- this makes cleanup very
+   * efficient. */
+  n_a = inf_adopted_state_vector_get(key_a, priv->user_id);
+  n_b = inf_adopted_state_vector_get(key_b, priv->user_id);
+
+  if(n_a < n_b)
+    return -1;
+  if(n_a > n_b)
+    return 1;
+
+  /* If user ID component is equal, go by other components. */
+  return inf_adopted_state_vector_compare(key_a, key_b);
+}
+
+static gboolean
+inf_adopted_request_log_remove_requests_cache_foreach_func(gpointer key,
+                                                           gpointer value,
+                                                           gpointer user_data)
+{
+  InfAdoptedStateVector* vector;
+  InfAdoptedRequestLogCleanupCacheData* data;
+
+  vector = (InfAdoptedStateVector*)key;
+  data = (InfAdoptedRequestLogCleanupCacheData*)user_data;
+
+  /* Remove all requests which are a cached translation of one of the requests
+   * that have been removed, i.e. have a user component smaller than up_to. */
+  if(inf_adopted_state_vector_get(vector, data->user_id) < data->up_to)
+  {
+    data->requests_to_remove =
+      g_slist_prepend(data->requests_to_remove, vector);
+    return FALSE;
+  }
+  else
+  {
+    /* Stop traversal. The tree is traversed in sorted order, and the primary
+     * sort criteria of the tree is the vector component of the user. So if
+     * we have reached this point, all other elements in the tree will have
+     * a higher user component and are not scheduled for removal. */
+    return TRUE;
+  }
+}
+
+/*
+ * Associated and Related requests
+ */
 
 /* Find the request that is undone if the next request was an undo request
  * (to be cached in priv->next_undo). Similar if type is REDO. */
@@ -187,6 +264,10 @@ inf_adopted_request_log_is_related(InfAdoptedRequestLog* log,
   return FALSE;
 }
 
+/*
+ * GObject overrides
+ */
+
 static void
 inf_adopted_request_log_init(GTypeInstance* instance,
                              gpointer g_class)
@@ -202,6 +283,7 @@ inf_adopted_request_log_init(GTypeInstance* instance,
 
   priv->alloc = INF_ADOPTED_REQUEST_LOG_INC;
   priv->entries = g_malloc(priv->alloc * sizeof(InfAdoptedRequestLogEntry));
+  priv->cache = NULL;
   priv->begin = 0;
   priv->end = 0;
   priv->offset = 0;
@@ -219,6 +301,12 @@ inf_adopted_request_log_dispose(GObject* object)
 
   log = INF_ADOPTED_REQUEST_LOG(object);
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+
+  if(priv->cache != NULL)
+  {
+    g_tree_destroy(priv->cache);
+    priv->cache = NULL;
+  }
 
   for(i = priv->offset; i < priv->offset + (priv->end - priv->begin); ++ i)
     g_object_unref(G_OBJECT(priv->entries[i].request));
@@ -637,6 +725,10 @@ inf_adopted_request_log_get_type(void)
   return request_log_type;
 }
 
+/*
+ * Public API
+ */
+
 /**
  * inf_adopted_request_log_new:
  * @user_id: The ID of the #InfAdoptedUser to create a request log for. The
@@ -847,7 +939,9 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
                                         guint up_to)
 {
   InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedRequestLogCleanupCacheData data;
   guint i;
+  GSList* item;
 
   g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
   g_return_if_fail(inf_adopted_request_log_is_related(log, up_to) == FALSE);
@@ -856,7 +950,7 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
 
   g_return_if_fail(up_to >= priv->begin && up_to <= priv->end);
 
-  for(i = priv->offset; i < priv->offset + (up_to - priv->begin); ++ i)
+  for(i = priv->offset; i < priv->offset + (up_to - priv->begin); ++i)
     g_object_unref(G_OBJECT(priv->entries[i].request));
 
   g_object_freeze_notify(G_OBJECT(log));
@@ -884,8 +978,25 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
 
   priv->offset += (up_to - priv->begin);
   priv->begin = up_to;
-
   g_object_notify(G_OBJECT(log), "begin");
+
+  if(priv->cache != NULL)
+  {
+    data.user_id = priv->user_id;
+    data.up_to = up_to;
+    data.requests_to_remove = NULL;
+
+    g_tree_foreach(
+      priv->cache,
+      inf_adopted_request_log_remove_requests_cache_foreach_func,
+      &data
+    );
+    
+    for(item = data.requests_to_remove; item != NULL; item = item->next)
+      g_tree_remove(priv->cache, (InfAdoptedStateVector*)item->data);
+    g_slist_free(data.requests_to_remove);
+  }
+
   g_object_thaw_notify(G_OBJECT(log));
 }
 
@@ -1114,7 +1225,7 @@ inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
  * @n: Index of the first request in a set of related requests.
  *
  * Returns the newest request in @log that is related to @n<!-- -->th request
- * in log. requests are considered related when they are enclosed by a
+ * in log. Requests are considered related when they are enclosed by a
  * do/undo, an undo/redo or a redo/undo pair.
  *
  * In other words, the "upper related" request of a given request A is the
@@ -1156,6 +1267,91 @@ inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
   }
 
   return newest_related->request;
+}
+
+/**
+ * inf_adopted_request_log_add_cached_request:
+ * @log: A #InfAdoptedRequestLog.
+ * @request: The #InfAdoptedRequest to add to the cache.
+ *
+ * #InfAdoptedRequestLog has a cache for translated requests built in. This
+ * can be used to store requests that have been translated to another point
+ * in the state space, and to efficiently look them up later. The advantage
+ * of having this functionality within #InfAdoptedRequestLog is that when
+ * requests are removed from the log the cache is automatically updated
+ * accordingly.
+ *
+ * The data structure of the cache is optimized for quick lookup of entries
+ * by the state vector and cleaning up entries in an efficient manner also
+ * when the cache has grown very big.
+ *
+ * The request cache is mainly used by #InfAdoptedAlgorithm to efficiently
+ * handle big transformations.
+ *
+ * This function adds a request to the cache of the request log.
+ * @request must be a translated version of a request existing in @log.
+ */
+void
+inf_adopted_request_log_add_cached_request(InfAdoptedRequestLog* log,
+                                           InfAdoptedRequest* request)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedStateVector* vector;
+
+  g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
+  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  g_return_if_fail(inf_adopted_request_get_user_id(request) == priv->user_id);
+
+  vector = inf_adopted_request_get_vector(request);
+
+  if(priv->cache == NULL)
+  {
+    priv->cache = g_tree_new_full(
+      inf_adopted_request_log_cache_key_cmp,
+      log,
+      NULL,
+      g_object_unref
+    );
+  }
+
+  g_return_if_fail(g_tree_lookup(priv->cache, vector) == NULL);
+
+  g_tree_insert(priv->cache, vector, request);
+  g_object_ref(request);
+
+  /* Implement lookup_cached_request */
+  /* Use this implementation in InfAdoptedAlgorithm */
+  /* Make the performance tests */
+}
+
+/**
+ * inf_adopted_request_log_lookup_cached_request:
+ * @log: A #InfAdoptedRequestLog.
+ * @vec: The state vector at which to look up the request.
+ *
+ * Looks up the request at @vec from the cache of the request log. If the
+ * queried request does not exist in the cache, the function returns %NULL.
+ *
+ * See inf_adopted_request_log_add_cached_request() for an explanation of
+ * the request cache.
+ *
+ * Returns: The cached #InfAdoptedRequest according to @vec, or %NULL.
+ */
+InfAdoptedRequest*
+inf_adopted_request_log_lookup_cached_request(InfAdoptedRequestLog* log,
+                                              InfAdoptedStateVector* vec)
+{
+  InfAdoptedRequestLogPrivate* priv;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+  g_return_val_if_fail(vec != NULL, NULL);
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+  if(priv->cache == NULL) return NULL;
+
+  return INF_ADOPTED_REQUEST(g_tree_lookup(priv->cache, vec));
 }
 
 /* vim:set et sw=2 ts=2: */

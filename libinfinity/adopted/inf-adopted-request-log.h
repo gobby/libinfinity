@@ -121,6 +121,14 @@ InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
                                       guint n);
 
+void
+inf_adopted_request_log_add_cached_request(InfAdoptedRequestLog* log,
+                                           InfAdoptedRequest* request);
+
+InfAdoptedRequest*
+inf_adopted_request_log_lookup_cached_request(InfAdoptedRequestLog* log,
+                                              InfAdoptedStateVector* vec);
+
 G_END_DECLS
 
 #endif /* __INF_ADOPTED_REQUEST_LOG_H__ */

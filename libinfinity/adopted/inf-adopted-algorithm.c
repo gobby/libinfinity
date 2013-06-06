@@ -80,21 +80,6 @@ struct _InfAdoptedAlgorithmLocalUser {
   gboolean can_redo;
 };
 
-typedef struct _InfAdoptedAlgorithmCacheCleanupData
-  InfAdoptedAlgorithmCacheCleanupData;
-struct _InfAdoptedAlgorithmCacheCleanupData {
-  InfAdoptedAlgorithm* algorithm;
-  InfAdoptedStateVector* lcp;
-  GSList* rem_keys;
-};
-
-typedef struct _InfAdoptedAlgorithmRequestKey InfAdoptedAlgorithmRequestKey;
-struct _InfAdoptedAlgorithmRequestKey {
-  /* Not a copy, directly points to vector of the keyed request */
-  InfAdoptedStateVector* vector;
-  guint user_id;
-};
-
 typedef struct _InfAdoptedAlgorithmPrivate InfAdoptedAlgorithmPrivate;
 struct _InfAdoptedAlgorithmPrivate {
   /* request log policy */
@@ -112,11 +97,6 @@ struct _InfAdoptedAlgorithmPrivate {
    * keep them as array here. */
   InfAdoptedUser** users_begin;
   InfAdoptedUser** users_end;
-
-  /* Request cache */
-  /* TODO: Consider using a hash table here... given a good hash function it
-   * could perhaps speedup lookup. */
-  GTree* cache;
 
   GSList* local_users;
 };
@@ -156,31 +136,6 @@ inf_adopted_algorithm_get_real_time()
   GTimeVal timeval;
   g_get_current_time(&timeval);
   return (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
-}
-
-static int
-inf_adopted_algorithm_request_key_cmp(gconstpointer a,
-                                      gconstpointer b,
-                                      gpointer user_data)
-{
-  const InfAdoptedAlgorithmRequestKey* key_a;
-  const InfAdoptedAlgorithmRequestKey* key_b;
-
-  key_a = (const InfAdoptedAlgorithmRequestKey*)a;
-  key_b = (const InfAdoptedAlgorithmRequestKey*)b;
-
-  if(key_a->user_id < key_b->user_id)
-    return -1;
-  if(key_a->user_id > key_b->user_id)
-    return 1;
-
-  return inf_adopted_state_vector_compare(key_a->vector, key_b->vector);
-}
-
-static void
-inf_adopted_algorithm_request_key_free(gpointer key)
-{
-  g_slice_free(InfAdoptedAlgorithmRequestKey, key);
 }
 
 /* Returns a new state vector v so that both first and second are causally
@@ -307,45 +262,6 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
   }
 }
 
-static gboolean
-inf_adopted_algorithm_cleanup_cache_traverse_func(gpointer key,
-                                                  gpointer value,
-                                                  gpointer data)
-{
-  InfAdoptedAlgorithmRequestKey* request_key;
-  InfAdoptedAlgorithmCacheCleanupData* cleanup_data;
-  InfAdoptedAlgorithmPrivate* priv;
-  guint vdiff;
-
-  request_key = (InfAdoptedAlgorithmRequestKey*)key;
-  cleanup_data = (InfAdoptedAlgorithmCacheCleanupData*)data;
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(cleanup_data->algorithm);
-
-  g_assert(priv->max_total_log_size != G_MAXUINT);
-
-  /* TODO: Save vdiff-to-zero of lcp in cache data and vdiff-to-zero in
-   * request key. We could then get the final vdiff by just subtracting them,
-   * saving an exepensive inf_adopted_state_vector_vdiff() call. */
-  if(inf_adopted_state_vector_causally_before(request_key->vector,
-                                              cleanup_data->lcp))
-  {
-    vdiff = inf_adopted_state_vector_vdiff(
-      request_key->vector,
-      cleanup_data->lcp
-    );
-
-    if(vdiff > priv->max_total_log_size)
-    {
-      /* Old enough to remove */
-      cleanup_data->rem_keys =
-        g_slist_prepend(cleanup_data->rem_keys, request_key);
-    }
-  }
-
-  /* TODO: Return TRUE if this takes too long (>10 msecs or so)? */
-  return FALSE;
-}
-
 /* TODO: This is "only" some kind of garbage collection that does not need
  * to be done after _every_ request received. */
 static void
@@ -353,6 +269,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedStateVector* temp;
+  InfAdoptedStateVector* lcp;
   InfAdoptedUser** user;
   InfAdoptedRequestLog* log;
   InfAdoptedRequest* req;
@@ -362,9 +279,6 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
   guint n;
   guint id;
   guint vdiff;
-
-  InfAdoptedAlgorithmCacheCleanupData cleanup_data;
-  GSList* item;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
   g_assert(priv->users_begin != priv->users_end);
@@ -395,19 +309,19 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
    * are additional conditions. However, in the current case, some requests
    * are just kept a bit longer than necessary, in favor of simplicity. */
 
-  cleanup_data.lcp = inf_adopted_state_vector_copy(priv->current);
+  lcp = inf_adopted_state_vector_copy(priv->current);
   for(user = priv->users_begin; user != priv->users_end; ++ user)
   {
     if(inf_user_get_status(INF_USER(*user)) != INF_USER_UNAVAILABLE)
     {
       temp = inf_adopted_algorithm_least_common_predecessor(
         algorithm,
-        cleanup_data.lcp,
+        lcp,
         inf_adopted_user_get_vector(*user)
       );
 
-      inf_adopted_state_vector_free(cleanup_data.lcp);
-      cleanup_data.lcp = temp;
+      inf_adopted_state_vector_free(lcp);
+      lcp = temp;
     }
   }
 
@@ -431,7 +345,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
        * the request needs to be available to reach its target vector time. */
       req_before_lcp = inf_adopted_state_vector_causally_before_inc(
         req_vec,
-        cleanup_data.lcp,
+        lcp,
         id
       );
 
@@ -446,7 +360,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
         inf_adopted_request_log_get_request(log, n)
       );
 
-      vdiff = inf_adopted_state_vector_vdiff(low_vec, cleanup_data.lcp);
+      vdiff = inf_adopted_state_vector_vdiff(low_vec, lcp);
 
       /* TODO: Again, I experimentally changed <= to < here. If the vdiff is
        * equal to the log size, then nobody can do anything with the request
@@ -463,39 +377,9 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
     }
 
     inf_adopted_request_log_remove_requests(log, n);
-
-    /* TODO: We should cleanup the cache here, by removing only entries
-     * from this user, which are between log_begin and n. The cache data
-     * structure should allow us to do that easily, for example by having
-     * one tree per user, and in that tree requests are primarily ordered by
-     * that user's request N. */
-    /* TODO: We should profile all of this though, especially now that we
-     * have a good record testcase. */
   }
 
-  cleanup_data.algorithm = algorithm;
-  cleanup_data.rem_keys = NULL;
-
-  /* Remove requests from cache. That's O(n log n) here in the worst case,
-   * which is quite bad regarding that the cache can contain hundreds of
-   * thousands of requests, or even more given a large enough
-   * max total log size. However, that's a problem with the GTree API.
-   * TODO: We could try out GHashTable instead which has
-   * g_hash_table_foreach_remove() allowing this to be implemented in O(n).
-   * We should still do good profiling, though. */
-  /* TODO: We can also do this in an idle handler, and only process a couple
-   * requests at a time. */
-  g_tree_foreach(
-    priv->cache,
-    inf_adopted_algorithm_cleanup_cache_traverse_func,
-    &cleanup_data
-  );
-
-  for(item = cleanup_data.rem_keys; item != NULL; item = g_slist_next(item))
-    g_tree_remove(priv->cache, item->data);
-
-  g_slist_free(cleanup_data.rem_keys);
-  inf_adopted_state_vector_free(cleanup_data.lcp);
+  inf_adopted_state_vector_free(lcp);
 }
 
 /* Updates the can_undo and can_redo fields of the
@@ -980,7 +864,7 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
 
       concurrency_id =
         inf_adopted_request_get_concurrency_id(lcs_request, lcs_against);
-      
+
       g_object_unref(lcs_request);
       g_object_unref(lcs_against);
     }
@@ -1212,13 +1096,6 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   priv->users_begin = NULL;
   priv->users_end = NULL;
 
-  priv->cache = g_tree_new_full(
-    inf_adopted_algorithm_request_key_cmp,
-    NULL,
-    inf_adopted_algorithm_request_key_free,
-    g_object_unref
-  );
-
   priv->local_users = NULL;
 }
 
@@ -1302,9 +1179,6 @@ inf_adopted_algorithm_dispose(GObject* object)
     g_object_unref(G_OBJECT(item->data));
   g_list_free(priv->queue);
   priv->queue = NULL;
-
-  g_tree_destroy(priv->cache);
-  priv->cache = NULL;
 
   g_free(priv->users_begin);
 
@@ -2265,11 +2139,10 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 {
   InfAdoptedAlgorithmPrivate* priv;
   guint user_id;
-
+  InfUser* plain_user;
+  InfAdoptedUser* user;
+  InfAdoptedRequestLog* log;
   InfAdoptedRequest* result;
-
-  InfAdoptedAlgorithmRequestKey lookup_key;
-  InfAdoptedAlgorithmRequestKey* insert_key;
 
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
@@ -2277,12 +2150,12 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
   user_id = inf_adopted_request_get_user_id(request);
+  plain_user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
 
   /* Validity checks */
-  g_return_val_if_fail(
-    inf_user_table_lookup_user_by_id(priv->user_table, user_id) != NULL,
-    NULL
-  );
+  g_return_val_if_fail(INF_ADOPTED_IS_USER(plain_user), NULL);
+  user = INF_ADOPTED_USER(plain_user);
+  log = inf_adopted_user_get_request_log(user);
 
   g_return_val_if_fail(
     inf_adopted_state_vector_causally_before(to, priv->current),
@@ -2292,14 +2165,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   g_return_val_if_fail(
     inf_adopted_state_vector_causally_before(
       inf_adopted_request_get_vector(
-        inf_adopted_request_log_original_request(
-          inf_adopted_user_get_request_log(
-            INF_ADOPTED_USER(
-              inf_user_table_lookup_user_by_id(priv->user_table, user_id)
-            )
-          ),
-          request
-        )
+        inf_adopted_request_log_original_request(log, request)
       ),
       to
     ),
@@ -2315,9 +2181,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
    * earlier. */
   if(inf_adopted_request_affects_buffer(request))
   {
-    lookup_key.vector = to;
-    lookup_key.user_id = user_id;
-    result = g_tree_lookup(priv->cache, &lookup_key);
+    result = inf_adopted_request_log_lookup_cached_request(log, to);
     if(result != NULL)
     {
       g_object_ref(result);
@@ -2339,15 +2203,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
   );
 
   if(inf_adopted_algorithm_can_cache(result))
-  {
-    insert_key = g_slice_new(InfAdoptedAlgorithmRequestKey);
-    insert_key->vector = inf_adopted_request_get_vector(result);
-    insert_key->user_id = user_id;
-    g_assert(g_tree_lookup(priv->cache, insert_key) == NULL);
-    g_tree_replace(priv->cache, insert_key, result);
-    g_object_ref(result);
-  }
-
+    inf_adopted_request_log_add_cached_request(log, result);
   return result;
 }
 
