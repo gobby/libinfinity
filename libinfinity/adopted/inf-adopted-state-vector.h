@@ -79,7 +79,7 @@ void
 inf_adopted_state_vector_free(InfAdoptedStateVector* vec);
 
 guint
-inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
+inf_adopted_state_vector_get(const InfAdoptedStateVector* vec,
                              guint id);
 
 void
@@ -93,41 +93,42 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
                              gint value);
 
 void
-inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
+inf_adopted_state_vector_foreach(const InfAdoptedStateVector* vec,
                                  InfAdoptedStateVectorForeachFunc func,
                                  gpointer user_data);
 
 int
-inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
-                                 InfAdoptedStateVector* second);
+inf_adopted_state_vector_compare(const InfAdoptedStateVector* first,
+                                 const InfAdoptedStateVector* second);
 
 gboolean
-inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
-                                         InfAdoptedStateVector* second);
+inf_adopted_state_vector_causally_before(const InfAdoptedStateVector* first,
+                                         const InfAdoptedStateVector* second);
 
 gboolean
-inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
-                                             InfAdoptedStateVector* second,
-                                             guint inc_component);
+inf_adopted_state_vector_causally_before_inc(
+  const InfAdoptedStateVector* first,
+  const InfAdoptedStateVector* second,
+  guint inc_component);
 
 guint
-inf_adopted_state_vector_vdiff(InfAdoptedStateVector* first,
-                               InfAdoptedStateVector* second);
+inf_adopted_state_vector_vdiff(const InfAdoptedStateVector* first,
+                               const InfAdoptedStateVector* second);
 
 gchar*
-inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec);
+inf_adopted_state_vector_to_string(const InfAdoptedStateVector* vec);
 
 InfAdoptedStateVector*
 inf_adopted_state_vector_from_string(const gchar* str,
                                      GError** error);
 
 gchar*
-inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
-                                        InfAdoptedStateVector* orig);
+inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
+                                        const InfAdoptedStateVector* orig);
 
 InfAdoptedStateVector*
 inf_adopted_state_vector_from_string_diff(const gchar* str,
-                                          InfAdoptedStateVector* orig,
+                                          const InfAdoptedStateVector* orig,
                                           GError** error);
 
 G_END_DECLS

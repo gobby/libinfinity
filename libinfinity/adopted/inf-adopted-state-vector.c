@@ -63,7 +63,7 @@ struct _InfAdoptedStateVector {
 };
 
 static gsize
-inf_adopted_state_vector_find_insert_pos(InfAdoptedStateVector* vec,
+inf_adopted_state_vector_find_insert_pos(const InfAdoptedStateVector* vec,
                                          guint id)
 {
   gsize begin;
@@ -99,8 +99,8 @@ inf_adopted_state_vector_find_insert_pos(InfAdoptedStateVector* vec,
 }
 
 static InfAdoptedStateVectorComponent*
-inf_adopted_state_vector_lookup(InfAdoptedStateVector* vec,
-                                      guint id)
+inf_adopted_state_vector_lookup(const InfAdoptedStateVector* vec,
+                                guint id)
 {
   gsize pos;
 
@@ -255,7 +255,7 @@ inf_adopted_state_vector_free(InfAdoptedStateVector* vec)
  * Return Value: The @component'th entry in the vector.
  */
 guint
-inf_adopted_state_vector_get(InfAdoptedStateVector* vec,
+inf_adopted_state_vector_get(const InfAdoptedStateVector* vec,
                              guint id)
 {
   InfAdoptedStateVectorComponent* comp;
@@ -339,7 +339,7 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
  * which @func will not be called if their timestamp is 0.
  **/
 void
-inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
+inf_adopted_state_vector_foreach(const InfAdoptedStateVector* vec,
                                  InfAdoptedStateVectorForeachFunc func,
                                  gpointer user_data)
 {
@@ -366,8 +366,8 @@ inf_adopted_state_vector_foreach(InfAdoptedStateVector* vec,
  * Return Value: -1, 0 or 1.
  **/
 int
-inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
-                                 InfAdoptedStateVector* second)
+inf_adopted_state_vector_compare(const InfAdoptedStateVector* first,
+                                 const InfAdoptedStateVector* second)
 {
   gsize first_pos;
   gsize second_pos;
@@ -461,8 +461,8 @@ inf_adopted_state_vector_compare(InfAdoptedStateVector* first,
  * Return Value: Whether @second depends on @first.
  **/
 gboolean
-inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
-                                         InfAdoptedStateVector* second)
+inf_adopted_state_vector_causally_before(const InfAdoptedStateVector* first,
+                                         const InfAdoptedStateVector* second)
 {
   gsize first_pos;
   gsize second_pos;
@@ -537,9 +537,10 @@ inf_adopted_state_vector_causally_before(InfAdoptedStateVector* first,
  * @inc_component<!-- -->th component increased by one.
  **/
 gboolean
-inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
-                                             InfAdoptedStateVector* second,
-                                             guint inc_component)
+inf_adopted_state_vector_causally_before_inc(
+  const InfAdoptedStateVector* first,
+  const InfAdoptedStateVector* second,
+  guint inc_component)
 {
   gsize first_pos;
   gsize second_pos;
@@ -648,8 +649,8 @@ inf_adopted_state_vector_causally_before_inc(InfAdoptedStateVector* first,
  * @second.
  */
 guint
-inf_adopted_state_vector_vdiff(InfAdoptedStateVector* first,
-                               InfAdoptedStateVector* second)
+inf_adopted_state_vector_vdiff(const InfAdoptedStateVector* first,
+                               const InfAdoptedStateVector* second)
 {
   gsize n;
   guint first_sum;
@@ -681,7 +682,7 @@ inf_adopted_state_vector_vdiff(InfAdoptedStateVector* first,
  * Return Value: A newly-allocated string to be freed by the caller.
  **/
 gchar*
-inf_adopted_state_vector_to_string(InfAdoptedStateVector* vec)
+inf_adopted_state_vector_to_string(const InfAdoptedStateVector* vec)
 {
   GString* str;
   gsize pos;
@@ -804,8 +805,8 @@ inf_adopted_state_vector_from_string(const gchar* str,
  * Return Value: A newly allocated string to be freed by the caller.
  **/
 gchar*
-inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
-                                        InfAdoptedStateVector* orig)
+inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
+                                        const InfAdoptedStateVector* orig)
 {
   gsize vec_pos;
   gsize orig_pos;
@@ -895,7 +896,7 @@ inf_adopted_state_vector_to_string_diff(InfAdoptedStateVector* vec,
  **/
 InfAdoptedStateVector*
 inf_adopted_state_vector_from_string_diff(const gchar* str,
-                                          InfAdoptedStateVector* orig,
+                                          const InfAdoptedStateVector* orig,
                                           GError** error)
 {
   InfAdoptedStateVector* vec;
