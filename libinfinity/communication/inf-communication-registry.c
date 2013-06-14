@@ -555,14 +555,14 @@ inf_communication_registry_add_connection(InfCommunicationRegistry* registry,
 
     g_object_ref(connection);
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(connection),
       "received",
       G_CALLBACK(inf_communication_registry_received_cb),
       registry
     );
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(connection),
       "sent",
       G_CALLBACK(inf_communication_registry_sent_cb),
