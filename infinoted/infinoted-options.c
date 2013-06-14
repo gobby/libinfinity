@@ -714,6 +714,11 @@ infinoted_options_load(InfinotedOptions* options,
       N_("Maximum number of transformations for one request, or 0 for "
          "no maximum"),
       N_("TRANSFORMATIONS") },
+    { "traffic-log-directory", 0, 0,
+      G_OPTION_ARG_FILENAME, NULL,
+      N_("Directory into which to write a debug log with all infinoted "
+         "network traffic"),
+      N_("DIRECTORY") },
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
     { "daemonize", 'd', 0,
       G_OPTION_ARG_NONE, NULL,
@@ -753,6 +758,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &sync_interval;
   entries[i++].arg_data = &options->sync_hook;
   entries[i++].arg_data = &max_transformation_vdiff;
+  entries[i++].arg_data = &options->traffic_log_directory;
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   entries[i++].arg_data = &options->daemonize;
   entries[i++].arg_data = &kill_daemon;
@@ -859,20 +865,6 @@ infinoted_options_load(InfinotedOptions* options,
   );
   if(!result) return FALSE;
 
-  if(max_transformation_vdiff < 0)
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_VDIFF,
-      "%s",
-      _("max-transformation-vdiff must not be negative")
-    );
-
-    return FALSE;
-  }
-  options->max_transformation_vdiff = max_transformation_vdiff;
-
   if(options->password != NULL && strcmp(options->password, "") == 0)
   {
     g_free(options->password);
@@ -923,6 +915,27 @@ infinoted_options_load(InfinotedOptions* options,
   {
     g_free(options->sync_hook);
     options->sync_hook = NULL;
+  }
+
+  if(max_transformation_vdiff < 0)
+  {
+    g_set_error(
+      error,
+      infinoted_options_error_quark(),
+      INFINOTED_OPTIONS_ERROR_INVALID_VDIFF,
+      "%s",
+      _("max-transformation-vdiff must not be negative")
+    );
+
+    return FALSE;
+  }
+  options->max_transformation_vdiff = max_transformation_vdiff;
+
+  if(options->traffic_log_directory != NULL &&
+     strcmp(options->traffic_log_directory, "") == 0)
+  {
+    g_free(options->traffic_log_directory);
+    options->traffic_log_directory = NULL;
   }
 
   return infinoted_options_validate(options, error);
@@ -980,6 +993,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->sync_interval = 0;
   options->sync_hook = NULL;
   options->max_transformation_vdiff = 0;
+  options->traffic_log_directory = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = FALSE;
@@ -1003,6 +1017,7 @@ infinoted_options_new(const gchar* const* config_files,
 void
 infinoted_options_free(InfinotedOptions* options)
 {
+  g_free(options->traffic_log_directory);
   g_free(options->log_path);
   g_free(options->key_file);
   g_free(options->certificate_file);

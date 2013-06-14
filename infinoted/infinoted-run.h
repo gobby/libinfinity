@@ -27,6 +27,7 @@
 #include <infinoted/infinoted-autosave.h>
 #include <infinoted/infinoted-directory-sync.h>
 #include <infinoted/infinoted-transformation-protector.h>
+#include <infinoted/infinoted-traffic-logger.h>
 
 #include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
@@ -47,6 +48,7 @@ struct _InfinotedRun {
   InfinotedAutosave* autosave;
   InfinotedDirectorySync* dsync;
   InfinotedTransformationProtector* protector;
+  InfinotedTrafficLogger* traffic_logger;
 
   InfdXmppServer* xmpp4;
   InfdXmppServer* xmpp6;

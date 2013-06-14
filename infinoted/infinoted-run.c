@@ -280,6 +280,19 @@ infinoted_run_new(InfinotedStartup* startup,
     run->protector = NULL;
   }
 
+  if(startup->options->traffic_log_directory != NULL)
+  {
+    run->traffic_logger = infinoted_traffic_logger_new(
+      run->directory,
+      startup->log,
+      startup->options->traffic_log_directory
+    );
+  }
+  else
+  {
+    run->traffic_logger = NULL;
+  }
+
   return run;
 }
 
@@ -296,6 +309,9 @@ infinoted_run_free(InfinotedRun* run)
 
   if(inf_standalone_io_loop_running(run->io))
     inf_standalone_io_loop_quit(run->io);
+
+  if(run->traffic_logger != NULL)
+    infinoted_traffic_logger_free(run->traffic_logger);
 
   if(run->protector != NULL)
     infinoted_transformation_protector_free(run->protector);
