@@ -69,7 +69,7 @@ struct _InfGtkBrowserModelIface {
   void(*set_browser)(InfGtkBrowserModel* model,
                      GtkTreePath* path,
                      GtkTreeIter* iter,
-                     InfcBrowser* browser);
+                     InfBrowser* browser);
 
   /* virtual functions */
   void(*resolve)(InfGtkBrowserModel* model,
@@ -77,8 +77,8 @@ struct _InfGtkBrowserModelIface {
                  InfDiscoveryInfo* info);
 
   gboolean(*browser_iter_to_tree_iter)(InfGtkBrowserModel* model,
-                                       InfcBrowser* browser,
-                                       InfcBrowserIter* browser_iter,
+                                       InfBrowser* browser,
+                                       const InfBrowserIter* iter,
                                        GtkTreeIter* tree_iter);
 };
 
@@ -96,7 +96,7 @@ void
 inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
                                   GtkTreePath* path,
                                   GtkTreeIter* iter,
-                                  InfcBrowser* browser);
+                                  InfBrowser* browser);
 
 void
 inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
@@ -105,8 +105,8 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
 
 gboolean
 inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
-                                                InfcBrowser* browser,
-                                                InfcBrowserIter* browser_iter,
+                                                InfBrowser* browser,
+                                                const InfBrowserIter* iter,
                                                 GtkTreeIter* tree_iter);
 
 G_END_DECLS

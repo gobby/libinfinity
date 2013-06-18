@@ -21,10 +21,10 @@
 #define __INFC_BROWSER_H__
 
 #include <libinfinity/client/infc-session-proxy.h>
-#include <libinfinity/client/infc-browser-iter.h>
-#include <libinfinity/client/infc-explore-request.h>
 #include <libinfinity/client/infc-node-request.h>
+#include <libinfinity/client/infc-chat-request.h>
 #include <libinfinity/client/infc-note-plugin.h>
+#include <libinfinity/common/inf-browser.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/communication/inf-communication-manager.h>
 
@@ -39,95 +39,17 @@ G_BEGIN_DECLS
 #define INFC_IS_BROWSER_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFC_TYPE_BROWSER))
 #define INFC_BROWSER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFC_TYPE_BROWSER, InfcBrowserClass))
 
-#define INFC_TYPE_BROWSER_STATUS          (infc_browser_status_get_type())
-
 typedef struct _InfcBrowser InfcBrowser;
 typedef struct _InfcBrowserClass InfcBrowserClass;
 
 /**
- * InfcBrowserStatus:
- * @INFC_BROWSER_DISCONNECTED: The browser is currently not connected to a
- * server.
- * @INFC_BROWSER_CONNECTING: The browser is currently establishing a
- * connection to a remote server, but the connection is not yet fully
- * established.
- * @INFC_BROWSER_CONNECTED: The browser is connected to a remote server.
- *
- * This enumeration contains possible connection status values for
- * #InfcBrowser. Several operations, such as exploring a node or subscribing
- * to a session can only be performed when the browser is connected to a
- * remote infinote server.
- */
-typedef enum _InfcBrowserStatus {
-  INFC_BROWSER_DISCONNECTED,
-  INFC_BROWSER_CONNECTING,
-  INFC_BROWSER_CONNECTED
-} InfcBrowserStatus;
-
-#if 0
-/*typedef enum _InfcBrowserNodeStatus {*/
-  /* The node is synchronized with the server */
-  INFC_BROWSER_NODE_SYNC,
-  /* The node has been deleted locally, but the server has not yet
-   * acknowledged the deletion and might still reject the request. */
-  INFC_BROWSER_NODE_DELETED,
-  /* The node has been added locally, but the server has not yet
-   * acknowledged the addition and might still reject the request. */
-  INFC_BROWSER_NODE_ADDED,
-  /* The node has been moved locally, but the server has not yet
-   * acknowledged the move and might still reject the request. */
-  INFC_BROWSER_NODE_MOVED,
-  /* The node has been copied locally, but the server has not yet
-   * acknowledged the copy and might still reject the request. */
-  INFC_BROWSER_NODE_COPIED,
-  /* Inherit status from parent node (used internally) */
-  INFC_BROWSER_NODE_INHERIT
-/*} InfcBrowserNodeStatus;*/
-#endif
-
-/**
  * InfcBrowserClass:
- * @error: Default signal handler for the #InfcBrowser::error signal.
- * @node_added: Default signal handler for the #InfcBrowser::node_added
- * signal.
- * @node_removed: Default signal handler for the #InfcBrowser::node_removed
- * signal.
- * @subscribe_session: Default signal handler for the
- * #InfcBrowser::subscribe_session signal.
- * @begin_explore: Default signal handler for the
- * #InfcBrowser::begin_explore signal.
- * @begin_subscribe: Default signal handler for the
- * #InfcBrowser::begin_subscribe signal.
  *
- * Signals for the #InfcBrowser class.
+ * This structure does not contain any public fields.
  */
 struct _InfcBrowserClass {
   /*< private >*/
   GObjectClass parent_class;
-
-  /* Signals */
-
-  /*< public >*/
-  void (*error)(InfcBrowser* browser,
-                const GError* error);
-
-  void (*node_added)(InfcBrowser* browser,
-                     InfcBrowserIter* iter);
-
-  void (*node_removed)(InfcBrowser* browser,
-                       InfcBrowserIter* iter);
-
-  void (*subscribe_session)(InfcBrowser* browser,
-                            InfcBrowserIter* iter,
-                            InfcSessionProxy* proxy);
-
-  void (*begin_explore)(InfcBrowser* browser,
-                        InfcBrowserIter* iter,
-                        InfcExploreRequest* request);
-
-  void (*begin_subscribe)(InfcBrowser* browser,
-                          InfcBrowserIter* iter,
-                          InfcNodeRequest* request);
 };
 
 /**
@@ -140,9 +62,6 @@ struct _InfcBrowser {
   /*< private >*/
   GObject parent;
 };
-
-GType
-infc_browser_status_get_type(void) G_GNUC_CONST;
 
 GType
 infc_browser_get_type(void) G_GNUC_CONST;
@@ -158,9 +77,6 @@ infc_browser_get_communication_manager(InfcBrowser* browser);
 InfXmlConnection*
 infc_browser_get_connection(InfcBrowser* browser);
 
-InfcBrowserStatus
-infc_browser_get_status(InfcBrowser* browser);
-
 gboolean
 infc_browser_add_plugin(InfcBrowser* browser,
                         const InfcNotePlugin* plugin);
@@ -169,126 +85,26 @@ const InfcNotePlugin*
 infc_browser_lookup_plugin(InfcBrowser* browser,
                            const gchar* note_type);
 
-void
-infc_browser_iter_get_root(InfcBrowser* browser,
-                           InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_get_next(InfcBrowser* browser,
-                           InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_get_prev(InfcBrowser* browser,
-                           InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_get_parent(InfcBrowser* browser,
-                             InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_get_explored(InfcBrowser* browser,
-                               const InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_get_child(InfcBrowser* browser,
-                            InfcBrowserIter* iter);
-
-InfcExploreRequest*
-infc_browser_iter_explore(InfcBrowser* browser,
-                          const InfcBrowserIter* iter);
-
-const gchar*
-infc_browser_iter_get_name(InfcBrowser* browser,
-                           const InfcBrowserIter* iter);
-
-gchar*
-infc_browser_iter_get_path(InfcBrowser* browser,
-                           const InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_is_subdirectory(InfcBrowser* browser,
-                                  const InfcBrowserIter* iter);
-
-InfcNodeRequest*
-infc_browser_add_subdirectory(InfcBrowser* browser,
-                              const InfcBrowserIter* parent,
-                              const gchar* name);
-
-InfcNodeRequest*
-infc_browser_add_note(InfcBrowser* browser,
-                      const InfcBrowserIter* parent,
-                      const gchar* name,
-                      const InfcNotePlugin* plugin,
-                      gboolean initial_subscribe);
-
-InfcNodeRequest*
-infc_browser_add_note_with_content(InfcBrowser* browser,
-                                   const InfcBrowserIter* parent,
-                                   const gchar* name,
-                                   const InfcNotePlugin* plugin,
-                                   InfSession* session,
-                                   gboolean initial_subscribe);
-
-InfcNodeRequest*
-infc_browser_remove_node(InfcBrowser* browser,
-                         const InfcBrowserIter* iter);
-
-const gchar*
-infc_browser_iter_get_note_type(InfcBrowser* browser,
-                                const InfcBrowserIter* iter);
-
-const InfcNotePlugin*
-infc_browser_iter_get_plugin(InfcBrowser* browser,
-                             const InfcBrowserIter* iter);
-
-InfcNodeRequest*
-infc_browser_iter_subscribe_session(InfcBrowser* browser,
-                                    const InfcBrowserIter* iter);
-
 InfcNodeRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
-                               const InfcBrowserIter* iter);
-
-InfcSessionProxy*
-infc_browser_iter_get_session(InfcBrowser* browser,
-                              const InfcBrowserIter* iter);
+                               const InfBrowserIter* iter);
 
 InfcSessionProxy*
 infc_browser_iter_get_sync_in(InfcBrowser* browser,
-                              const InfcBrowserIter* iter);
-
-InfcNodeRequest*
-infc_browser_iter_get_subscribe_request(InfcBrowser* browser,
-                                        const InfcBrowserIter* iter);
-
-InfcExploreRequest*
-infc_browser_iter_get_explore_request(InfcBrowser* browser,
-                                      const InfcBrowserIter* iter);
+                              const InfBrowserIter* iter);
 
 GSList*
 infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
-                                       const InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_from_node_request(InfcBrowser* browser,
-                                    InfcNodeRequest* request,
-                                    InfcBrowserIter* iter);
-
-gboolean
-infc_browser_iter_from_explore_request(InfcBrowser* browser,
-                                       InfcExploreRequest* request,
-                                       InfcBrowserIter* iter);
+                                       const InfBrowserIter* iter);
 
 gboolean
 infc_browser_iter_is_valid(InfcBrowser* browser,
-                           const InfcBrowserIter* iter);
+                           const InfBrowserIter* iter);
 
-/* TODO: This should not use InfcNodeRequest, but another request type
- * which is not identified with a node. */
-InfcNodeRequest*
+InfcChatRequest*
 infc_browser_subscribe_chat(InfcBrowser* browser);
 
-InfcNodeRequest*
+InfcChatRequest*
 infc_browser_get_subscribe_chat_request(InfcBrowser* browser);
 
 InfcSessionProxy*

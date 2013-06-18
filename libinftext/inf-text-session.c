@@ -2107,35 +2107,27 @@ inf_text_session_flush_requests_for_user(InfTextSession* session,
 
 /**
  * inf_text_session_join_user:
- * @proxy: A #InfcSessionProxy with a #InfTextSession session.
+ * @proxy: A #InfSessionProxy with a #InfTextSession session.
  * @name: The name of the user to join.
  * @status: The initial status of the user to join. Must not be
  * @INF_USER_UNAVAILABLE.
  * @hue: The user color of the user to join.
  * @caret_position: The initial position of the new user's cursor.
  * @selection_length: The initial length of the new user's selection.
- * @error: Location to store error information, if any, or %NULL.
  *
  * This functions creates a user join request for an #InfTextSession. This is
- * a shortcut for infc_session_proxy_join_user().
+ * a shortcut for inf_session_proxy_join_user().
  *
- * Returns: A #InfcUserRequest, or %NULL on error.
+ * Returns: A #InfUserRequest, or %NULL on error.
  */
-InfcUserRequest*
-inf_text_session_join_user(InfcSessionProxy* proxy,
+InfUserRequest*
+inf_text_session_join_user(InfSessionProxy* proxy,
                            const gchar* name,
                            InfUserStatus status,
                            gdouble hue,
                            guint caret_position,
-                           int selection_length,
-                           GError** error)
+                           int selection_length)
 {
-  g_return_val_if_fail(INFC_IS_SESSION_PROXY(proxy), NULL);
-  g_return_val_if_fail(
-    INF_TEXT_IS_SESSION(infc_session_proxy_get_session(proxy)),
-    NULL
-  );
-
 #define N_PARAMS 6u
   GParameter params[N_PARAMS] = {
     { "hue", { 0 } },
@@ -2146,8 +2138,14 @@ inf_text_session_join_user(InfcSessionProxy* proxy,
     { "status", { 0 } }
   };
 
-  InfcUserRequest* request;
+  InfSession* session;
+  InfUserRequest* request;
   guint i;
+
+  g_return_val_if_fail(INF_IS_SESSION_PROXY(proxy), NULL);
+  
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+  g_return_val_if_fail(INF_TEXT_IS_SESSION(session), NULL);
 
   g_value_init(&params[0].value, G_TYPE_DOUBLE);
   g_value_set_double(&params[0].value, hue);
@@ -2156,13 +2154,7 @@ inf_text_session_join_user(InfcSessionProxy* proxy,
   g_value_set_boxed(
     &params[1].value,
     inf_adopted_algorithm_get_current(
-      inf_adopted_session_get_algorithm(
-        INF_ADOPTED_SESSION(
-          infc_session_proxy_get_session(
-            proxy
-         )
-        )
-      )
+      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))
     )
   );
 
@@ -2178,12 +2170,13 @@ inf_text_session_join_user(InfcSessionProxy* proxy,
   g_value_init(&params[5].value, INF_TYPE_USER_STATUS);
   g_value_set_enum(&params[5].value, status);
 
-  request = infc_session_proxy_join_user(proxy, params, N_PARAMS, error);
+  request = inf_session_proxy_join_user(proxy, N_PARAMS, params);
 
   for(i = 0; i < N_PARAMS; ++i)
     g_value_unset(&params[i].value);
 #undef N_PARAMS
 
+  g_object_unref(session);
   return request;
 }
 

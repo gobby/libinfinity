@@ -78,40 +78,37 @@ static const InfcNotePlugin INF_TEST_MASS_JOIN_TEXT_PLUGIN = {
 };
 
 static void
-inf_test_mass_join_user_join_failed_cb(InfcUserRequest* request,
-                                       const GError* error,
-                                       gpointer user_data)
-{
-  InfTestMassJoiner* joiner;
-  joiner = (InfTestMassJoiner*)user_data;
-
-  fprintf(
-    stderr,
-    "Joiner %s: User join failed: %s\n",
-    joiner->username,
-    error->message
-  );
-
-  inf_xml_connection_close(infc_browser_get_connection(joiner->browser));
-}
-
-static void
-inf_test_mass_join_user_join_finished_cb(InfcUserRequest* request,
+inf_test_mass_join_user_join_finished_cb(InfUserRequest* request,
                                          InfUser* user,
+                                         const GError* error,
                                          gpointer user_data)
 {
   InfTestMassJoiner* joiner;
   joiner = (InfTestMassJoiner*)user_data;
 
-  fprintf(stdout, "Joiner %s: User joined!\n", joiner->username);
+  if(error == NULL)
+  {
+    fprintf(stdout, "Joiner %s: User joined!\n", joiner->username);
+  }
+  else
+  {
+    fprintf(
+      stderr,
+      "Joiner %s: User join failed: %s\n",
+      joiner->username,
+      error->message
+    );
+
+    inf_xml_connection_close(infc_browser_get_connection(joiner->browser));
+  }
 }
 
 static void
 inf_test_mass_join_join_user(InfTestMassJoiner* joiner)
 {
-  InfcUserRequest* request;
+  InfUserRequest* request;
+  InfSession* session;
   InfAdoptedStateVector* v;
-  GError* error;
   GParameter params[3] = {
     { "name", { 0 } },
     { "vector", { 0 } },
@@ -124,50 +121,31 @@ inf_test_mass_join_join_user(InfTestMassJoiner* joiner)
 
   g_value_set_static_string(&params[0].value, joiner->username);
 
+  g_object_get(G_OBJECT(joiner->session), "session", &session, NULL);
   v = inf_adopted_algorithm_get_current(
-    inf_adopted_session_get_algorithm(
-      INF_ADOPTED_SESSION(infc_session_proxy_get_session(joiner->session))
-    )
+    inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))
   );
+  g_object_unref(session);
 
   g_value_set_boxed(&params[1].value, v);
   g_value_set_uint(&params[2].value, 0u);
 
-  error = NULL;
-  request = infc_session_proxy_join_user(joiner->session, params, 3, &error);
+  request = inf_session_proxy_join_user(
+    INF_SESSION_PROXY(joiner->session),
+    3,
+    params
+  );
 
   g_value_unset(&params[2].value);
   g_value_unset(&params[1].value);
   g_value_unset(&params[0].value);
 
-  if(request == NULL)
-  {
-    fprintf(
-      stderr,
-      "Joiner %s: User join failed: %s\n",
-      joiner->username,
-      error->message
-    );
-
-    g_error_free(error);
-    inf_xml_connection_close(infc_browser_get_connection(joiner->browser));
-  }
-  else
-  {
-    g_signal_connect(
-      G_OBJECT(request),
-      "failed",
-      G_CALLBACK(inf_test_mass_join_user_join_failed_cb),
-      joiner
-    );
-
-    g_signal_connect_after(
-      G_OBJECT(request),
-      "finished",
-      G_CALLBACK(inf_test_mass_join_user_join_finished_cb),
-      joiner
-    );
-  }
+  g_signal_connect_after(
+    G_OBJECT(request),
+    "finished",
+    G_CALLBACK(inf_test_mass_join_user_join_finished_cb),
+    joiner
+  );
 }
 
 static void
@@ -202,7 +180,8 @@ inf_test_mass_join_session_synchronization_complete_cb(InfSession* session,
 
 static void
 inf_test_mass_join_subscribe_finished_cb(InfcNodeRequest* request,
-                                         const InfcBrowserIter* iter,
+                                         const InfBrowserIter* iter,
+                                         const GError* error,
                                          gpointer user_data)
 {
   InfTestMassJoiner* joiner;
@@ -210,10 +189,16 @@ inf_test_mass_join_subscribe_finished_cb(InfcNodeRequest* request,
 
   joiner = (InfTestMassJoiner*)user_data;
 
-  joiner->session = infc_browser_iter_get_session(joiner->browser, iter);
+  joiner->session = INFC_SESSION_PROXY(
+    inf_browser_get_session(
+      INF_BROWSER(joiner->browser),
+      iter
+    )
+  );
+
   g_assert(joiner->session != NULL);
 
-  session = infc_session_proxy_get_session(joiner->session);
+  g_object_get(G_OBJECT(joiner->session), "session", &session, NULL);
   switch(inf_session_get_status(session))
   {
   case INF_SESSION_PRESYNC:
@@ -246,20 +231,26 @@ inf_test_mass_join_subscribe_finished_cb(InfcNodeRequest* request,
     inf_xml_connection_close(infc_browser_get_connection(joiner->browser));
     break;
   }
+
+  g_object_unref(session);
 }
 
 static void
-inf_test_mass_join_explore_finished_cb(InfcExploreRequest* exp_request,
+inf_test_mass_join_explore_finished_cb(InfExploreRequest* exp_request,
+                                       InfBrowserIter* exp_iter,
+                                       const GError* error,
                                        gpointer user_data)
 {
   InfTestMassJoiner* joiner;
-  InfcBrowserIter iter;
+  InfBrowser* browser;
+  InfBrowserIter iter;
   const char* name;
-  InfcNodeRequest* sub_request;
+  InfNodeRequest* sub_request;
 
   joiner = (InfTestMassJoiner*)user_data;
-  infc_browser_iter_get_root(joiner->browser, &iter);
-  if(infc_browser_iter_get_child(joiner->browser, &iter) == FALSE)
+  browser = INF_BROWSER(joiner->browser);
+  inf_browser_get_root(browser, &iter);
+  if(inf_browser_get_child(browser, &iter) == FALSE)
   {
     fprintf(
       stderr,
@@ -274,10 +265,10 @@ inf_test_mass_join_explore_finished_cb(InfcExploreRequest* exp_request,
   sub_request = NULL;
   do
   {
-    name = infc_browser_iter_get_name(joiner->browser, &iter);
+    name = inf_browser_get_node_name(browser, &iter);
     if(strcmp(name, joiner->document) == 0)
     {
-      sub_request = infc_browser_iter_subscribe_session(joiner->browser, &iter);
+      sub_request = inf_browser_subscribe(browser, &iter);
 
       g_signal_connect(
         G_OBJECT(sub_request),
@@ -288,7 +279,7 @@ inf_test_mass_join_explore_finished_cb(InfcExploreRequest* exp_request,
 
       break;
     }
-  } while(infc_browser_iter_get_next(joiner->browser, &iter) == TRUE);
+  } while(inf_browser_get_next(browser, &iter) == TRUE);
 
   if(sub_request == NULL)
   {
@@ -308,36 +299,38 @@ inf_test_mass_join_browser_notify_status_cb(GObject* object,
                                             const GParamSpec* pspec,
                                             gpointer user_data)
 {
-  InfcBrowser* browser;
-  InfcBrowserIter iter;
-  InfcExploreRequest* request;
+  InfBrowser* browser;
+  InfBrowserStatus status;
+  InfBrowserIter iter;
+  InfExploreRequest* request;
 
   InfTestMassJoin* massjoin;
   InfTestMassJoiner* joiner;
   GSList* item;
 
-  browser = INFC_BROWSER(object);
+  browser = INF_BROWSER(object);
   massjoin = (InfTestMassJoin*)user_data;
   joiner = NULL;
   for(item = massjoin->joiners; item != NULL; item = item->next)
   {
     joiner = (InfTestMassJoiner*)item->data;
-    if(joiner->browser == browser)
+    if(INF_BROWSER(joiner->browser) == browser)
       break;
   }
 
   g_assert(joiner != NULL);
 
-  switch(infc_browser_get_status(browser))
+  g_object_get(G_OBJECT(browser), "status", &status, NULL);
+  switch(status)
   {
-  case INFC_BROWSER_CONNECTING:
+  case INF_BROWSER_OPENING:
     /* nothing to do */
     break;
-  case INFC_BROWSER_CONNECTED:
+  case INF_BROWSER_OPEN:
     fprintf(stdout, "Joiner %s: Connected\n", joiner->username);
 
-    infc_browser_iter_get_root(browser, &iter);
-    request = infc_browser_iter_explore(browser, &iter);
+    inf_browser_get_root(browser, &iter);
+    request = inf_browser_explore(browser, &iter);
     g_signal_connect(
       G_OBJECT(request),
       "finished",
@@ -346,7 +339,7 @@ inf_test_mass_join_browser_notify_status_cb(GObject* object,
     );
 
     break;
-  case INFC_BROWSER_DISCONNECTED:
+  case INF_BROWSER_CLOSED:
     fprintf(stdout, "Joiner %s: Disconnected\n", joiner->username);
     massjoin->joiners = g_slist_remove(massjoin->joiners, joiner);
     if(massjoin->joiners == NULL)

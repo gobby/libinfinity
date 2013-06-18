@@ -23,6 +23,7 @@
 #include <libinfinity/server/infd-storage.h>
 #include <libinfinity/server/infd-note-plugin.h>
 #include <libinfinity/server/infd-session-proxy.h>
+#include <libinfinity/common/inf-browser.h>
 #include <libinfinity/communication/inf-communication-manager.h>
 
 #include <glib-object.h>
@@ -36,34 +37,12 @@ G_BEGIN_DECLS
 #define INFD_IS_DIRECTORY_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFD_TYPE_DIRECTORY))
 #define INFD_DIRECTORY_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFD_TYPE_DIRECTORY, InfdDirectoryClass))
 
-#define INFD_TYPE_DIRECTORY_ITER            (infd_directory_iter_get_type())
-
 typedef struct _InfdDirectory InfdDirectory;
 typedef struct _InfdDirectoryClass InfdDirectoryClass;
-
-typedef struct _InfdDirectoryIter InfdDirectoryIter;
-struct _InfdDirectoryIter {
-  guint node_id;
-  gpointer node;
-};
 
 struct _InfdDirectoryClass {
   GObjectClass parent_class;
 
-  /* Signals */
-  void (*node_added)(InfdDirectory* directory,
-                     InfdDirectoryIter* iter);
-
-  void (*node_removed)(InfdDirectory* directory,
-                       InfdDirectoryIter* iter);
-
-  void (*add_session)(InfdDirectory* directory,
-                      InfdDirectoryIter* iter,
-                      InfdSessionProxy* session);
-
-  void (*remove_session)(InfdDirectory* directory,
-                         InfdDirectoryIter* iter,
-                         InfdSessionProxy* session);
   void (*connection_added)(InfdDirectory* directory,
                            InfXmlConnection* connection);
   void (*connection_removed)(InfdDirectory* directory,
@@ -78,17 +57,7 @@ typedef void(*InfdDirectoryForeachConnectionFunc)(InfXmlConnection*,
                                                   gpointer);
 
 GType
-infd_directory_iter_get_type(void) G_GNUC_CONST;
-
-GType
 infd_directory_get_type(void) G_GNUC_CONST;
-
-/* TODO: Do these two need to be public? */
-InfdDirectoryIter*
-infd_directory_iter_copy(InfdDirectoryIter* iter);
-
-void
-infd_directory_iter_free(InfdDirectoryIter* iter);
 
 InfdDirectory*
 infd_directory_new(InfIo* io,
@@ -121,79 +90,9 @@ infd_directory_foreach_connection(InfdDirectory* directory,
                                   InfdDirectoryForeachConnectionFunc func,
                                   gpointer user_data);
 
-const gchar*
-infd_directory_iter_get_name(InfdDirectory* directory,
-                             InfdDirectoryIter* iter);
-
-gchar*
-infd_directory_iter_get_path(InfdDirectory* directory,
-                             InfdDirectoryIter* iter);
-
-void
-infd_directory_iter_get_root(InfdDirectory* directory,
-                             InfdDirectoryIter* iter);
-
-gboolean
-infd_directory_iter_get_next(InfdDirectory* directory,
-                             InfdDirectoryIter* iter);
-
-gboolean
-infd_directory_iter_get_prev(InfdDirectory* directory,
-                             InfdDirectoryIter* iter);
-
-gboolean
-infd_directory_iter_get_parent(InfdDirectory* directory,
-                               InfdDirectoryIter* iter);
-
-gboolean
-infd_directory_iter_get_child(InfdDirectory* directory,
-                              InfdDirectoryIter* iter,
-                              GError** error);
-
-gboolean
-infd_directory_iter_get_explored(InfdDirectory* directory,
-                                 InfdDirectoryIter* iter);
-
-gboolean
-infd_directory_add_subdirectory(InfdDirectory* directory,
-                                InfdDirectoryIter* parent,
-                                const gchar* name,
-                                InfdDirectoryIter* iter,
-                                GError** error);
-
-gboolean
-infd_directory_add_note(InfdDirectory* directory,
-                        InfdDirectoryIter* parent,
-                        const gchar* name,
-                        const InfdNotePlugin* plugin,
-                        InfdDirectoryIter* iter,
-                        GError** error);
-
-gboolean
-infd_directory_remove_node(InfdDirectory* directory,
-                           InfdDirectoryIter* iter,
-                           GError** error);
-
-InfdStorageNodeType
-infd_directory_iter_get_node_type(InfdDirectory* directory,
-                                  InfdDirectoryIter* iter);
-
-const InfdNotePlugin*
-infd_directory_iter_get_plugin(InfdDirectory* directory,
-                               InfdDirectoryIter* iter);
-
-InfdSessionProxy*
-infd_directory_iter_get_session(InfdDirectory* directory,
-                                InfdDirectoryIter* iter,
-                                GError** error);
-
-InfdSessionProxy*
-infd_directory_iter_peek_session(InfdDirectory* directory,
-                                 InfdDirectoryIter* iter);
-
 gboolean
 infd_directory_iter_save_session(InfdDirectory* directory,
-                                 InfdDirectoryIter* iter,
+                                 InfBrowserIter* iter,
                                  GError** error);
 
 void

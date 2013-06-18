@@ -184,7 +184,10 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Connection is already subscribed to this session");
   case INF_DIRECTORY_ERROR_UNSUBSCRIBED:
     return _("The requesting connection is not subscribed to the session");
-  case INF_DIRECTORY_ERROR_TOO_MUCH_CHILDREN:
+  case INF_DIRECTORY_ERROR_NOT_INITIATED:
+    return _("The server started to send explored nodes before telling how"
+             "many nodes to expect");
+  case INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN:
     return _("Server sent more explored nodes then announced");
   case INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN:
     return _("Server sent not as much explored nodes as announced");
@@ -195,6 +198,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("The session uses an unsupported communication method");
   case INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN:
     return _("Received sync-in message without having requested a sync-in");
+  case INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED:
+    return _("Client rejected subscription");
   case INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE:
     return _("Unexpected XML message");
   case INF_DIRECTORY_ERROR_NO_STORAGE:

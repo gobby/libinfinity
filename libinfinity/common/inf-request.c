@@ -18,29 +18,23 @@
  */
 
 /**
- * SECTION:infc-request
- * @title: InfcRequest
- * @short_description: Asynchronous request on the client side
- * @include: libinfinity/client/infc-request.h
- * @see_also: #InfRequest, #InfcNodeRequest, #InfcUserRequest
+ * SECTION:inf-request
+ * @title: InfRequest
+ * @short_description: Asynchronous request
+ * @include: libinfinity/common/inf-request.h
+ * @see_also: #InfBrowserRequest
  * @stability: Unstable
  *
- * #InfcRequest is an interface which represents an asynchronous operation on
- * the client side. This usually means that a request has sent to the server
- * and the client is waiting for a reply. For this purpose, classes
- * implementing this interface need to rememeber a so-called sequence number
- * ("seq" number) that uniquely identifies the particular request in the
- * server reply.
- *
- * This interface is implemented by specific requests such as #InfcNodeRequest
- * or #InfcUserRequest.
+ * #InfRequest represents an asynchronous operation. This is a basic interface
+ * which allows to query the type of the operation. More specific operations
+ * are possible on more specialized interfaces or classes, such as
+ * #InfBrowserRequest or #InfcUserRequest.
  */
 
-#include <libinfinity/client/infc-request.h>
 #include <libinfinity/common/inf-request.h>
 
 static void
-infc_request_base_init(gpointer g_class)
+inf_request_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
 
@@ -48,13 +42,11 @@ infc_request_base_init(gpointer g_class)
   {
     g_object_interface_install_property(
       g_class,
-      g_param_spec_uint(
-        "seq",
-        "Seq",
-        "The sequence number of the request",
-        0,
-        G_MAXUINT,
-        0,
+      g_param_spec_string(
+        "type",
+        "Type",
+        "A string identifier for the type of the request",
+        NULL,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
       )
     );
@@ -64,15 +56,15 @@ infc_request_base_init(gpointer g_class)
 }
 
 GType
-infc_request_get_type(void)
+inf_request_get_type(void)
 {
   static GType request_type = 0;
 
   if(!request_type)
   {
     static const GTypeInfo request_info = {
-      sizeof(InfcRequestIface),   /* class_size */
-      infc_request_base_init,     /* base_init */
+      sizeof(InfRequestIface),    /* class_size */
+      inf_request_base_init,      /* base_init */
       NULL,                       /* base_finalize */
       NULL,                       /* class_init */
       NULL,                       /* class_finalize */
@@ -85,15 +77,43 @@ infc_request_get_type(void)
 
     request_type = g_type_register_static(
       G_TYPE_INTERFACE,
-      "InfcRequest",
+      "InfRequest",
       &request_info,
       0
     );
 
-    g_type_interface_add_prerequisite(request_type, INF_TYPE_REQUEST);
+    g_type_interface_add_prerequisite(request_type, G_TYPE_OBJECT);
   }
 
   return request_type;
+}
+
+/*
+ * Public API
+ */
+
+/**
+ * inf_request_fail:
+ * @request: A #InfRequest.
+ * @error: A #GError describing the reason for why the request failed.
+ *
+ * Declares the request as failed. What this actually does is defined by the
+ * actual class implementing this interface. Usually a signal is emitted which
+ * lets higher level objects know that an operation has failed.
+ */
+void
+inf_request_fail(InfRequest* request,
+                 const GError* error)
+{
+  InfRequestIface* iface;
+
+  g_return_if_fail(INF_IS_REQUEST(request));
+  g_return_if_fail(error != NULL);
+
+  iface = INF_REQUEST_GET_IFACE(request);
+  g_return_if_fail(iface->fail != NULL);
+
+  return iface->fail(request, error);
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -55,15 +55,6 @@ struct _InfdSessionProxy {
 GType
 infd_session_proxy_get_type(void) G_GNUC_CONST;
 
-InfSession*
-infd_session_proxy_get_session(InfdSessionProxy* proxy);
-
-InfUser*
-infd_session_proxy_add_user(InfdSessionProxy* proxy,
-                            const GParameter* params,
-                            guint n_params,
-                            GError** error);
-
 void
 infd_session_proxy_subscribe_to(InfdSessionProxy* proxy,
                                 InfXmlConnection* connection,

@@ -32,7 +32,7 @@ struct _InfinotedTransformationProtectorSession {
 static InfinotedTransformationProtectorSession*
 infinoted_transformation_protector_find_session(
   InfinotedTransformationProtector* protector,
-  InfdSessionProxy* proxy)
+  InfSessionProxy* proxy)
 {
   GSList* item;
   InfinotedTransformationProtectorSession* sess;
@@ -40,7 +40,7 @@ infinoted_transformation_protector_find_session(
   for(item = protector->sessions; item != NULL; item = g_slist_next(item))
   {
     sess = (InfinotedTransformationProtectorSession*)item->data;
-    if(sess->proxy == proxy)
+    if(INF_SESSION_PROXY(sess->proxy) == proxy)
       return sess;
   }
 
@@ -91,7 +91,7 @@ infinoted_transformation_protector_add_session(
   InfdSessionProxy* proxy)
 {
   InfinotedTransformationProtectorSession* sess;
-  InfAdoptedSession* session;
+  InfSession* session;
   InfAdoptedAlgorithm* algorithm;
 
   sess = g_slice_new(InfinotedTransformationProtectorSession);
@@ -103,9 +103,9 @@ infinoted_transformation_protector_add_session(
 
   protector->sessions = g_slist_prepend(protector->sessions, sess);
 
-  g_assert(INF_ADOPTED_IS_SESSION(infd_session_proxy_get_session(proxy)));
-  session = INF_ADOPTED_SESSION(infd_session_proxy_get_session(proxy));
-  algorithm = inf_adopted_session_get_algorithm(session);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+  g_assert(INF_ADOPTED_IS_SESSION(session));
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
 
   g_signal_connect(
     G_OBJECT(algorithm),
@@ -113,6 +113,8 @@ infinoted_transformation_protector_add_session(
     G_CALLBACK(infinoted_transformation_protector_execute_request_cb),
     sess
   );
+
+  g_object_unref(session);
 }
 
 static void
@@ -120,15 +122,16 @@ infinoted_transformation_protector_remove_session(
   InfinotedTransformationProtector* protector,
   InfinotedTransformationProtectorSession* sess)
 {
-  InfAdoptedSession* session;
-  session = INF_ADOPTED_SESSION(infd_session_proxy_get_session(sess->proxy));
+  InfSession* session;
+  g_object_get(G_OBJECT(sess->proxy), "session", &session, NULL);
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(inf_adopted_session_get_algorithm(session)),
+    G_OBJECT(inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))),
     G_CALLBACK(infinoted_transformation_protector_execute_request_cb),
     sess
   );
 
+  g_object_unref(session);
   g_object_unref(sess->proxy);
   protector->sessions = g_slist_remove(protector->sessions, sess);
 
@@ -136,30 +139,42 @@ infinoted_transformation_protector_remove_session(
 }
 
 static void
-infinoted_transformation_protector_add_session_cb(InfdDirectory* directory,
-                                                  InfdDirectoryIter* iter,
-                                                  InfdSessionProxy* proxy,
-                                                  gpointer user_data)
+infinoted_transformation_protector_subscribe_session_cb(
+  InfBrowser* browser,
+  const InfBrowserIter* iter,
+  InfSessionProxy* proxy,
+  gpointer user_data)
 {
   InfinotedTransformationProtector* protector;
-  protector = (InfinotedTransformationProtector*)user_data;
+  InfSession* session;
 
-  if(INF_ADOPTED_IS_SESSION(infd_session_proxy_get_session(proxy)))
-    infinoted_transformation_protector_add_session(protector, proxy);
+  protector = (InfinotedTransformationProtector*)user_data;
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+
+  if(INF_ADOPTED_IS_SESSION(session))
+  {
+    infinoted_transformation_protector_add_session(
+      protector,
+      INFD_SESSION_PROXY(proxy)
+    );
+  }
+
+  g_object_unref(session);
 }
 
 static void
-infinoted_transformation_protector_remove_session_cb(InfdDirectory* directory,
-                                                     InfdDirectoryIter* iter,
-                                                     InfdSessionProxy* proxy,
-                                                     gpointer user_data)
+infinoted_transformation_protector_unsubscribe_session_cb(
+  InfBrowser* browser,
+  const InfBrowserIter* iter,
+  InfSessionProxy* proxy,
+  gpointer user_data)
 {
   InfinotedTransformationProtector* protector;
   InfinotedTransformationProtectorSession* sess;
   InfSession* session;
 
   protector = (InfinotedTransformationProtector*)user_data;
-  session = infd_session_proxy_get_session(proxy);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   if(INF_ADOPTED_IS_SESSION(session))
   {
@@ -168,43 +183,46 @@ infinoted_transformation_protector_remove_session_cb(InfdDirectory* directory,
     g_assert(sess != NULL);
     infinoted_transformation_protector_remove_session(protector, sess);
   }
+
+  g_object_unref(session);
 }
 
 static void
 infinoted_transformation_protector_walk_directory(
   InfinotedTransformationProtector* protector,
-  InfdDirectoryIter* iter)
+  const InfBrowserIter* iter)
 {
-  InfdDirectoryIter child;
-  InfdSessionProxy* proxy;
+  InfBrowser* browser;
+  InfBrowserIter child;
+  InfSessionProxy* proxy;
   GError* error;
   gchar* path;
 
-  if(infd_directory_iter_get_node_type(protector->directory, iter) ==
-     INFD_STORAGE_NODE_SUBDIRECTORY)
+  browser = INF_BROWSER(protector->directory);
+  if(inf_browser_is_subdirectory(browser, iter) == TRUE)
   {
-    if(infd_directory_iter_get_explored(protector->directory, iter) == TRUE)
+    if(inf_browser_get_explored(browser, iter) == TRUE)
     {
-      /* Errors can't happen as the directory is already explored */
       child = *iter;
-      if(infd_directory_iter_get_child(protector->directory, &child, NULL))
+      inf_browser_get_child(browser, &child);
+      do
       {
-        do
-        {
-          infinoted_transformation_protector_walk_directory(
-            protector,
-            &child
-          );
-        } while(infd_directory_iter_get_next(protector->directory, &child));
-      }
+        infinoted_transformation_protector_walk_directory(
+          protector,
+          &child
+        );
+      } while(inf_browser_get_next(browser, &child));
     }
   }
   else
   {
-    proxy = infd_directory_iter_peek_session(protector->directory, iter);
+    proxy = inf_browser_get_session(browser, iter);
     if(proxy != NULL)
     {
-      infinoted_transformation_protector_add_session(protector, proxy);
+      infinoted_transformation_protector_add_session(
+        protector,
+        INFD_SESSION_PROXY(proxy)
+      );
     }
   }
 }
@@ -238,7 +256,7 @@ infinoted_transformation_protector_new(InfdDirectory* directory,
                                        guint max_vdiff)
 {
   InfinotedTransformationProtector* protector;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
 
   protector = g_slice_new(InfinotedTransformationProtector);
   protector->directory = directory;
@@ -250,19 +268,19 @@ infinoted_transformation_protector_new(InfdDirectory* directory,
 
   g_signal_connect_after(
     G_OBJECT(directory),
-    "add-session",
-    G_CALLBACK(infinoted_transformation_protector_add_session_cb),
+    "subscribe-session",
+    G_CALLBACK(infinoted_transformation_protector_subscribe_session_cb),
     protector
   );
 
   g_signal_connect_after(
     G_OBJECT(directory),
-    "remove-session",
-    G_CALLBACK(infinoted_transformation_protector_remove_session_cb),
+    "unsubscribe-session",
+    G_CALLBACK(infinoted_transformation_protector_unsubscribe_session_cb),
     protector
   );
 
-  infd_directory_iter_get_root(directory, &iter);
+  inf_browser_get_root(INF_BROWSER(directory), &iter);
   infinoted_transformation_protector_walk_directory(protector, &iter);
   return protector;
 }
@@ -278,13 +296,13 @@ infinoted_transformation_protector_free(InfinotedTransformationProtector* pt)
 {
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(pt->directory),
-    G_CALLBACK(infinoted_transformation_protector_add_session_cb),
+    G_CALLBACK(infinoted_transformation_protector_subscribe_session_cb),
     pt
   );
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(pt->directory),
-    G_CALLBACK(infinoted_transformation_protector_remove_session_cb),
+    G_CALLBACK(infinoted_transformation_protector_unsubscribe_session_cb),
     pt
   );
 

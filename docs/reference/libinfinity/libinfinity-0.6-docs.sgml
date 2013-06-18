@@ -27,6 +27,9 @@
   <chapter>
     <title>Common libinfinity API</title>
     <xi:include href="xml/inf-init.xml"/>
+    <xi:include href="xml/inf-browser.xml"/>
+    <xi:include href="xml/inf-browser-iter.xml"/>
+    <xi:include href="xml/inf-session-proxy.xml"/>
     <xi:include href="xml/inf-session.xml"/>
     <xi:include href="xml/inf-chat-session.xml"/>
     <xi:include href="xml/inf-chat-buffer.xml"/>
@@ -51,6 +54,10 @@
     <xi:include href="xml/inf-error.xml"/>
     <xi:include href="xml/inf-protocol.xml"/>
     <xi:include href="xml/inf-buffer.xml"/>
+    <xi:include href="xml/inf-request.xml"/>
+    <xi:include href="xml/inf-node-request.xml"/>
+    <xi:include href="xml/inf-explore-request.xml"/>
+    <xi:include href="xml/inf-user-request.xml"/>
   </chapter>
 
   <chapter>
@@ -72,12 +79,12 @@
   <chapter>
     <title>Libinfinity client side API</title>
     <xi:include href="xml/infc-browser.xml"/>
-    <xi:include href="xml/infc-browser-iter.xml"/>
     <xi:include href="xml/infc-note-plugin.xml"/>
     <xi:include href="xml/infc-session-proxy.xml"/>
-    <xi:include href="xml/infc-explore-request.xml"/>
     <xi:include href="xml/infc-node-request.xml"/>
+    <xi:include href="xml/infc-explore-request.xml"/>
     <xi:include href="xml/infc-user-request.xml"/>
+    <xi:include href="xml/infc-chat-request.xml"/>
     <xi:include href="xml/infc-request.xml"/>
     <xi:include href="xml/infc-request-manager.xml"/>
   </chapter>
@@ -89,6 +96,9 @@
     <xi:include href="xml/infd-storage.xml"/>
     <xi:include href="xml/infd-filesystem-storage.xml"/>
     <xi:include href="xml/infd-session-proxy.xml"/>
+    <xi:include href="xml/infd-node-request.xml"/>
+    <xi:include href="xml/infd-explore-request.xml"/>
+    <xi:include href="xml/infd-user-request.xml"/>
     <xi:include href="xml/infd-tcp-server.xml"/>
     <xi:include href="xml/infd-xml-server.xml"/>
     <xi:include href="xml/infd-xmpp-server.xml"/>

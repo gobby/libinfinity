@@ -1,5 +1,5 @@
 /* libinfinity - a GObject-based infinote implementation
- * Copyright (C) 2007-2010 Armin Burgmeier <armin@arbur.net>
+ * Copyright (C) 2007-2011 Armin Burgmeier <armin@arbur.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,33 +17,32 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFC_BROWSER_ITER_H__
-#define __INFC_BROWSER_ITER_H__
+#ifndef __INF_BROWSER_ITER_H__
+#define __INF_BROWSER_ITER_H__
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INFC_TYPE_BROWSER_ITER            (infc_browser_iter_get_type())
+#define INF_TYPE_BROWSER_ITER              (inf_browser_iter_get_type())
 
-typedef struct _InfcBrowserIter InfcBrowserIter;
-struct _InfcBrowserIter {
+typedef struct _InfBrowserIter InfBrowserIter;
+struct _InfBrowserIter {
   guint node_id;
   gpointer node;
 };
 
 GType
-infc_browser_iter_get_type(void) G_GNUC_CONST;
+inf_browser_iter_get_type(void) G_GNUC_CONST;
 
-/* TODO: Do these two need to be public? */
-InfcBrowserIter*
-infc_browser_iter_copy(InfcBrowserIter* iter);
+InfBrowserIter*
+inf_browser_iter_copy(const InfBrowserIter* iter);
 
 void
-infc_browser_iter_free(InfcBrowserIter* iter);
+inf_browser_iter_free(InfBrowserIter* iter);
 
 G_END_DECLS
 
-#endif /* __INFC_BROWSER_ITER_H__ */
+#endif /* __INF_BROWSER_ITER_H__ */
 
 /* vim:set et sw=2 ts=2: */

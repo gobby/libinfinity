@@ -35,7 +35,8 @@
  **/
 
 #include <libinfinity/server/infd-directory.h>
-
+#include <libinfinity/server/infd-node-request.h>
+#include <libinfinity/server/infd-explore-request.h>
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
@@ -99,6 +100,7 @@ struct _InfdDirectorySyncIn {
   gchar* name;
   const InfdNotePlugin* plugin;
   InfdSessionProxy* proxy;
+  InfdNodeRequest* request;
 };
 
 typedef enum _InfdDirectorySubreqType {
@@ -120,6 +122,7 @@ struct _InfdDirectorySubreq {
   union {
     struct {
       InfdSessionProxy* session;
+      InfdNodeRequest* request;
     } session;
 
     struct {
@@ -129,6 +132,7 @@ struct _InfdDirectorySubreq {
       gchar* name;
       /* TODO: Isn't group already present in proxy? */
       InfdSessionProxy* proxy;
+      InfdNodeRequest* request;
     } add_node;
 
     struct {
@@ -139,7 +143,45 @@ struct _InfdDirectorySubreq {
       gchar* name;
       /* TODO: Aren't the groups already present in proxy? */
       InfdSessionProxy* proxy;
+      InfdNodeRequest* request;
     } sync_in;
+  } shared;
+};
+
+/* Local request (to delay requests made by InfBrowser API) */
+typedef enum _InfdDirectoryLocreqType {
+  INFD_DIRECTORY_LOCREQ_EXPLORE_NODE,
+  INFD_DIRECTORY_LOCREQ_ADD_NODE,
+  INFD_DIRECTORY_LOCREQ_REMOVE_NODE,
+  INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION
+} InfdDirectoryLocreqType;
+
+typedef struct _InfdDirectoryLocreq InfdDirectoryLocreq;
+struct _InfdDirectoryLocreq {
+  InfdDirectory* directory;
+  InfdDirectoryLocreqType type;
+  InfdNodeRequest* request;
+  InfIoDispatch* dispatch;
+
+  union {
+    struct {
+      InfdDirectoryNode* node;
+    } explore_node;
+
+    struct {
+      InfdDirectoryNode* node;
+      gchar* name;
+      const InfdNotePlugin* plugin; /* NULL for subdirectory */
+      InfSession* session; /* NULL for initially empty notes */
+    } add_node;
+
+    struct {
+      InfdDirectoryNode* node;
+    } remove_node;
+
+    struct {
+      InfdDirectoryNode* node;
+    } subscribe_session;
   } shared;
 };
 
@@ -164,6 +206,7 @@ struct _InfdDirectoryPrivate {
 
   GSList* sync_ins;
   GSList* subscription_requests;
+  GSList* local_requests;
 
   InfdSessionProxy* chat_session;
 };
@@ -176,14 +219,11 @@ enum {
   PROP_COMMUNICATION_MANAGER,
 
   /* read only */
-  PROP_CHAT_SESSION
+  PROP_CHAT_SESSION,
+  PROP_STATUS
 };
 
 enum {
-  NODE_ADDED,
-  NODE_REMOVED,
-  ADD_SESSION,
-  REMOVE_SESSION,
   CONNECTION_ADDED,
   CONNECTION_REMOVED,
 
@@ -334,6 +374,7 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   GError* error;
   gchar* path;
   gboolean result;
+  InfSession* session;
 
   timeout_data = (InfdDirectorySessionSaveTimeoutData*)user_data;
 
@@ -344,15 +385,23 @@ infd_directory_session_save_timeout_func(gpointer user_data)
 
   infd_directory_node_get_path(timeout_data->node, &path, NULL);
 
+  g_object_get(
+    G_OBJECT(timeout_data->node->shared.note.session),
+    "session", &session,
+    NULL
+  );
+
   /* TODO: Only write if the buffer modified-flag is set */
 
   result = timeout_data->node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(timeout_data->node->shared.note.session),
+    session,
     path,
     timeout_data->node->shared.note.plugin->user_data,
     &error
   );
+
+  g_object_unref(session);
 
   /* TODO: Unset modified flag of buffer if result == TRUE */
 
@@ -557,7 +606,10 @@ infd_directory_create_session_proxy_with_group(InfdDirectory* directory,
                                                InfSession* session,
                                                InfCommunicationHostedGroup* g)
 {
+  InfdDirectoryPrivate* priv;
   InfdSessionProxy* proxy;
+  
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(
     inf_communication_group_get_target(INF_COMMUNICATION_GROUP(g)) == NULL
@@ -566,6 +618,7 @@ infd_directory_create_session_proxy_with_group(InfdDirectory* directory,
   proxy = INFD_SESSION_PROXY(
     g_object_new(
       INFD_TYPE_SESSION_PROXY,
+      "io", priv->io,
       "session", session,
       "subscription-group", g,
       NULL
@@ -646,35 +699,33 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
   return proxy;
 }
 
-static InfdSessionProxy*
-infd_directory_create_session_proxy_for_storage(
-    InfdDirectory* directory,
-    InfdDirectoryNode* parent,
-    InfCommunicationHostedGroup* sub_group,
-    const gchar* name,
-    const InfdNotePlugin* plugin,
-    InfSessionStatus status,
-    InfCommunicationHostedGroup* sync_group,
-    InfXmlConnection* sync_conn,
-    GError** error)
+/* Called after a session proxy has been created for a newly added node.
+ * If attempts to store the node in the storage. If it cannot be stored, the
+ * function fails and unrefs the proxy. */
+static gboolean
+infd_directory_session_proxy_ensure(InfdDirectory* directory,
+                                    InfdDirectoryNode* parent,
+                                    const gchar* name,
+                                    const InfdNotePlugin* plugin,
+                                    InfdSessionProxy* proxy,
+                                    GError** error)
 {
   InfdDirectoryPrivate* priv;
   gchar* path;
-  gboolean ret;
   InfSession* session;
-  InfdSessionProxy* proxy;
+  gboolean ret;
+  InfCommunicationGroup* sub_group;
+  InfCommunicationGroup* sync_group;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  proxy = infd_directory_create_session_proxy(
-    directory, plugin, status, sync_group, sync_conn, sub_group);
-  session = infd_session_proxy_get_session(proxy);
-
-  /* Save session initially */
-  infd_directory_node_make_path(parent, name, &path, NULL);
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   if(priv->storage != NULL)
   {
+    /* Save session initially */
+    infd_directory_node_make_path(parent, name, &path, NULL);
+
     ret = plugin->session_write(
       priv->storage,
       session,
@@ -682,36 +733,37 @@ infd_directory_create_session_proxy_for_storage(
       plugin->user_data,
       error
     );
+
+    g_free(path);
+
+    /* Unset modified flag since we just wrote the buffer contents into
+     * storage. */
+    if(ret == TRUE)
+      inf_buffer_set_modified(inf_session_get_buffer(session), FALSE);
   }
   else
   {
     ret = TRUE;
   }
 
-  g_free(path);
   if(ret == FALSE)
   {
     /* Reset communication groups for the proxy, to avoid a warning at
      * final unref. Due do this failing the groups are very likely going to be
      * unrefed as well any time soon. */
-    inf_communication_group_set_target(
-      INF_COMMUNICATION_GROUP(sub_group),
-      NULL
-    );
+    sub_group = inf_session_get_subscription_group(session);
+    inf_communication_group_set_target(sub_group, NULL);
 
+    g_object_get(G_OBJECT(session), "sync-group", &sync_group, NULL);
     if(sync_group != NULL && sync_group != sub_group)
-    {
-      inf_communication_group_set_target(
-        INF_COMMUNICATION_GROUP(sync_group),
-        NULL
-      );
-    }
+      inf_communication_group_set_target(sync_group, NULL);
+    g_object_unref(sync_group);
 
     g_object_unref(proxy);
-    return NULL;
   }
 
-  return proxy;
+  g_object_unref(session);
+  return ret;
 }
 
 /* Links a InfdSessionProxy with a InfdDirectoryNode */
@@ -721,7 +773,7 @@ infd_directory_node_link_session(InfdDirectory* directory,
                                  InfdSessionProxy* proxy)
 {
   InfdDirectoryPrivate* priv;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -731,12 +783,10 @@ infd_directory_node_link_session(InfdDirectory* directory,
   iter.node = node;
   iter.node_id = node->id;
 
-  g_signal_emit(
-    G_OBJECT(directory),
-    directory_signals[ADD_SESSION],
-    0,
+  inf_browser_subscribe_session(
+    INF_BROWSER(directory),
     &iter,
-    proxy
+    INF_SESSION_PROXY(proxy)
   );
 }
 
@@ -745,7 +795,7 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
                                    InfdDirectoryNode* node)
 {
   InfdDirectoryPrivate* priv;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -755,12 +805,10 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
   iter.node = node;
   iter.node_id = node->id;
 
-  g_signal_emit(
-    G_OBJECT(directory),
-    directory_signals[REMOVE_SESSION],
-    0,
+  inf_browser_unsubscribe_session(
+    INF_BROWSER(directory),
     &iter,
-    node->shared.note.session
+    INF_SESSION_PROXY(node->shared.note.session)
   );
 }
 
@@ -773,6 +821,7 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
   InfdDirectoryNode* child;
   gchar* path;
   GError* error;
+  InfSession* session;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -805,13 +854,21 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
 
         if(priv->storage != NULL)
         {
+          g_object_get(
+            G_OBJECT(node->shared.note.session),
+            "session", &session,
+            NULL
+          );
+
           node->shared.note.plugin->session_write(
             priv->storage,
-            infd_session_proxy_get_session(node->shared.note.session),
+            session,
             path,
             node->shared.note.plugin->user_data,
             &error
           );
+
+          g_object_unref(session);
         }
 
         /* TODO: Unset modified flag of buffer if result == TRUE */
@@ -994,6 +1051,7 @@ infd_directory_node_free(InfdDirectory* directory,
   GSList* next;
   InfdDirectorySyncIn* sync_in;
   InfdDirectorySubreq* request;
+  InfdDirectoryLocreq* locreq;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(node != NULL);
@@ -1071,6 +1129,33 @@ infd_directory_node_free(InfdDirectory* directory,
     case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
       if(request->shared.sync_in.parent->id == node->id)
         request->shared.sync_in.parent = NULL;
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+  }
+
+  for(item = priv->local_requests; item != NULL; item = item->next)
+  {
+    locreq = (InfdDirectoryLocreq*)item->data;
+    switch(locreq->type)
+    {
+    case INFD_DIRECTORY_LOCREQ_EXPLORE_NODE:
+      if(locreq->shared.explore_node.node == node)
+        locreq->shared.explore_node.node = NULL;
+      break;
+    case INFD_DIRECTORY_LOCREQ_ADD_NODE:
+      if(locreq->shared.add_node.node == node)
+        locreq->shared.add_node.node = NULL;
+      break;
+    case INFD_DIRECTORY_LOCREQ_REMOVE_NODE:
+      if(locreq->shared.remove_node.node == node)
+        locreq->shared.remove_node.node = NULL;
+      break;
+    case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
+      if(locreq->shared.subscribe_session.node == node)
+        locreq->shared.subscribe_session.node = NULL;
       break;
     default:
       g_assert_not_reached();
@@ -1287,19 +1372,14 @@ infd_directory_node_register(InfdDirectory* directory,
                              const gchar* seq)
 {
   InfdDirectoryPrivate* priv;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
   xmlNodePtr xml;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
 
-  g_signal_emit(
-    G_OBJECT(directory),
-    directory_signals[NODE_ADDED],
-    0,
-    &iter
-  );
+  inf_browser_node_added(INF_BROWSER(directory), &iter);
 
   if(node->parent->shared.subdir.connections != NULL)
   {
@@ -1326,19 +1406,14 @@ infd_directory_node_unregister(InfdDirectory* directory,
                                const gchar* seq)
 {
   InfdDirectoryPrivate* priv;
-  InfdDirectoryIter iter;
+  InfBrowserIter iter;
   xmlNodePtr xml;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
 
-  g_signal_emit(
-    G_OBJECT(directory),
-    directory_signals[NODE_REMOVED],
-    0,
-    &iter
-  );
+  inf_browser_node_removed(INF_BROWSER(directory), &iter);
 
   xml = infd_directory_node_unregister_to_xml(node);
   if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
@@ -1377,9 +1452,15 @@ infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
    * notification required since the synchronization failed on the remote site
    * as well. */
   InfdDirectorySyncIn* sync_in;
-  sync_in = (InfdDirectorySyncIn*)user_data;
+  InfdNodeRequest* request;
 
+  sync_in = (InfdDirectorySyncIn*)user_data;
+  request = sync_in->request;
+
+  g_object_ref(request);
   infd_directory_remove_sync_in(sync_in->directory, sync_in);
+  inf_request_fail(INF_REQUEST(request), error);
+  g_object_unref(request);
 }
 
 static void
@@ -1393,6 +1474,8 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  InfBrowserIter iter;
+  InfdNodeRequest* request;
   gchar* path;
   gboolean ret;
   GError* error;
@@ -1450,16 +1533,30 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   g_free(path);
 
   sync_in->name = NULL; /* Don't free, we passed ownership */
+  request = sync_in->request;
+  g_object_ref(request);
   infd_directory_remove_sync_in(directory, sync_in);
 
   /* Don't send to conn since the completed synchronization already lets the
    * remote site know that the node was inserted. */
   infd_directory_node_register(directory, node, conn, NULL);
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  inf_node_request_finished(
+    INF_NODE_REQUEST(request),
+    &iter,
+    NULL
+  );
+
+  g_object_unref(request);
 }
 
 static InfdDirectorySyncIn*
 infd_directory_add_sync_in(InfdDirectory* directory,
                            InfdDirectoryNode* parent,
+                           InfdNodeRequest* request,
                            guint node_id,
                            const gchar* name,
                            const InfdNotePlugin* plugin,
@@ -1467,6 +1564,7 @@ infd_directory_add_sync_in(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectorySyncIn* sync_in;
+  InfSession* session;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1478,21 +1576,28 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->name = g_strdup(name);
   sync_in->plugin = plugin;
   sync_in->proxy = proxy;
+  sync_in->request = request;
+
   g_object_ref(sync_in->proxy);
+  g_object_ref(sync_in->request);
+  
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
   g_signal_connect(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     "synchronization-failed",
     G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
     sync_in
   );
 
   g_signal_connect(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     "synchronization-complete",
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
     sync_in
   );
+
+  g_object_unref(session);
 
   priv->sync_ins = g_slist_prepend(priv->sync_ins, sync_in);
   return sync_in;
@@ -1503,22 +1608,30 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
                               InfdDirectorySyncIn* sync_in)
 {
   InfdDirectoryPrivate* priv;
+  InfSession* session;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_object_get(G_OBJECT(sync_in->proxy), "session", &session, NULL);
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
     sync_in
   );
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(infd_session_proxy_get_session(sync_in->proxy)),
+    G_OBJECT(session),
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
     sync_in
   );
 
+  g_object_unref(session);
+
   /* This cancels the synchronization: */
   g_object_unref(sync_in->proxy);
+
+  /* TODO: Fail request with a cancelled error? */
+  g_object_unref(sync_in->request);
 
   g_free(sync_in->name);
   g_slice_free(InfdDirectorySyncIn, sync_in);
@@ -1594,70 +1707,98 @@ infd_directory_add_subreq_chat(InfdDirectory* directory,
 static InfdDirectorySubreq*
 infd_directory_add_subreq_session(InfdDirectory* directory,
                                   InfXmlConnection* connection,
+                                  InfdNodeRequest* request,
                                   guint node_id,
                                   InfdSessionProxy* proxy)
 {
-  InfdDirectorySubreq* request;
+  InfdDirectorySubreq* subreq;
 
-  request = infd_directory_add_subreq_common(
+  subreq = infd_directory_add_subreq_common(
     directory,
     INFD_DIRECTORY_SUBREQ_SESSION,
     connection,
     node_id
   );
 
-  request->shared.session.session = proxy; /* take ownership */
-  return request;
+  subreq->shared.session.session = proxy; /* take ownership */
+  subreq->shared.session.request = request;
+
+  if(request != NULL)
+    g_object_ref(request);
+  return subreq;
 }
 
 static InfdDirectorySubreq*
 infd_directory_add_subreq_add_node(InfdDirectory* directory,
                                    InfXmlConnection* connection,
+                                   InfdNodeRequest* request,
                                    guint node_id,
                                    InfdDirectoryNode* parent,
                                    InfCommunicationHostedGroup* group,
                                    const InfdNotePlugin* plugin,
+                                   InfSession* session,
                                    const gchar* name,
                                    GError** error)
 {
-  InfdDirectorySubreq* request;
+  InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
+  gboolean ensured;
 
-  proxy = infd_directory_create_session_proxy_for_storage(
+  if(session != NULL)
+  {
+    proxy = infd_directory_create_session_proxy_for_node(
+      directory,
+      node_id,
+      session
+    );
+  }
+  else
+  {
+    proxy = infd_directory_create_session_proxy(
+      directory,
+      plugin,
+      INF_SESSION_RUNNING,
+      NULL,
+      NULL,
+      group
+    );
+  }
+
+  ensured = infd_directory_session_proxy_ensure(
     directory,
     parent,
-    group,
     name,
     plugin,
-    INF_SESSION_RUNNING,
-    NULL,
-    NULL,
+    proxy,
     error
   );
 
-  if(proxy == NULL)
+  if(ensured == FALSE)
     return NULL;
 
-  request = infd_directory_add_subreq_common(
+  subreq = infd_directory_add_subreq_common(
     directory,
     INFD_DIRECTORY_SUBREQ_ADD_NODE,
     connection,
     node_id
   );
 
-  request->shared.add_node.parent = parent;
-  request->shared.add_node.group = group;
-  request->shared.add_node.plugin = plugin;
-  request->shared.add_node.name = g_strdup(name);
-  request->shared.add_node.proxy = proxy;
+  subreq->shared.add_node.parent = parent;
+  subreq->shared.add_node.group = group;
+  subreq->shared.add_node.plugin = plugin;
+  subreq->shared.add_node.name = g_strdup(name);
+  subreq->shared.add_node.proxy = proxy;
+  subreq->shared.add_node.request = request;
 
+  g_object_ref(request);
   g_object_ref(group);
-  return request;
+  return subreq;
 }
 
 static InfdDirectorySubreq*
 infd_directory_add_subreq_sync_in(InfdDirectory* directory,
                                   InfXmlConnection* connection,
+                                  InfdNodeRequest* request,
                                   guint node_id,
                                   InfdDirectoryNode* parent,
                                   InfCommunicationHostedGroup* sync_group,
@@ -1666,27 +1807,34 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
                                   const gchar* name,
                                   GError** error)
 {
-  InfdDirectorySubreq* request;
+  InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
+  gboolean ensured;
 
   /* Keep proxy in PRESYNC state, until we have the confirmation from the
    * remote site that the chosen method is OK and we can go on. */
-  proxy = infd_directory_create_session_proxy_for_storage(
+  proxy = infd_directory_create_session_proxy(
     directory,
-    parent,
-    sub_group,
-    name,
     plugin,
     INF_SESSION_PRESYNC,
     sync_group,
     connection,
+    sub_group
+  );
+
+  ensured = infd_directory_session_proxy_ensure(
+    directory,
+    parent,
+    name,
+    plugin,
+    proxy,
     error
   );
 
-  if(proxy == NULL)
+  if(ensured == FALSE)
     return NULL;
 
-  request = infd_directory_add_subreq_common(
+  subreq = infd_directory_add_subreq_common(
     directory,
     sync_group == sub_group ?
       INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE :
@@ -1695,17 +1843,19 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
     node_id
   );
 
-  request->shared.sync_in.parent = parent;
-  request->shared.sync_in.synchronization_group = sync_group;
-  request->shared.sync_in.subscription_group = sub_group;
-  request->shared.sync_in.plugin = plugin;
-  request->shared.sync_in.name = g_strdup(name);
-  request->shared.sync_in.proxy = proxy;
+  subreq->shared.sync_in.parent = parent;
+  subreq->shared.sync_in.synchronization_group = sync_group;
+  subreq->shared.sync_in.subscription_group = sub_group;
+  subreq->shared.sync_in.plugin = plugin;
+  subreq->shared.sync_in.name = g_strdup(name);
+  subreq->shared.sync_in.proxy = proxy;
+  subreq->shared.sync_in.request = request;
 
+  g_object_ref(request);
   g_object_ref(sync_group);
   g_object_ref(sub_group);
 
-  return request;
+  return subreq;
 }
 
 static void
@@ -1717,11 +1867,15 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
     break;
   case INFD_DIRECTORY_SUBREQ_SESSION:
     g_object_unref(request->shared.session.session);
+    if(request->shared.session.request != NULL)
+      g_object_unref(request->shared.session.request);
     break;
   case INFD_DIRECTORY_SUBREQ_ADD_NODE:
     g_free(request->shared.add_node.name);
     g_object_unref(request->shared.add_node.group);
     g_object_unref(request->shared.add_node.proxy);
+    /* TODO: Fail with some cancelled error? */
+    g_object_unref(request->shared.add_node.request);
     break;
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
@@ -1729,6 +1883,8 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
     g_object_unref(request->shared.sync_in.synchronization_group);
     g_object_unref(request->shared.sync_in.subscription_group);
     g_object_unref(request->shared.sync_in.proxy);
+    /* TODO: Fail with some cancelled error? */
+    g_object_unref(request->shared.sync_in.request);
     break;
   default:
     g_assert_not_reached();
@@ -1756,6 +1912,27 @@ infd_directory_remove_subreq(InfdDirectory* directory,
 {
   infd_directory_unlink_subreq(directory, request);
   infd_directory_free_subreq(request);
+}
+
+static InfdDirectorySubreq*
+infd_directory_find_subreq_by_node_id(InfdDirectory* directory,
+                                      InfdDirectorySubreqType type,
+                                      guint node_id)
+{
+  InfdDirectoryPrivate* priv;
+  GSList* item;
+  InfdDirectorySubreq* subreq;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  for(item = priv->subscription_requests; item != NULL; item = item->next)
+  {
+    subreq = (InfdDirectorySubreq*)item->data;
+    if(subreq->type == type && subreq->node_id == node_id)
+      return subreq;
+  }
+
+  return NULL;
 }
 
 static InfdDirectorySubreq*
@@ -1897,17 +2074,81 @@ infd_directory_node_is_name_available(InfdDirectory* directory,
   return TRUE;
 }
 
+
+static InfdDirectoryNode*
+infd_directory_node_create_new_note(InfdDirectory* directory,
+                                    InfdDirectoryNode* parent,
+                                    InfCommunicationHostedGroup* group,
+                                    guint node_id,
+                                    const gchar* name,
+                                    const InfdNotePlugin* plugin,
+                                    InfSession* session,
+                                    GError** error)
+{
+  InfdSessionProxy* proxy;
+  InfdDirectoryNode* node;
+  gboolean ensured;
+
+  if(session != NULL)
+  {
+    proxy = infd_directory_create_session_proxy_for_node(
+      directory,
+      node_id,
+      session
+    );
+  }
+  else
+  {
+    proxy = infd_directory_create_session_proxy(
+      directory,
+      plugin,
+      INF_SESSION_RUNNING,
+      NULL,
+      NULL,
+      group
+    );
+  }
+
+  ensured = infd_directory_session_proxy_ensure(
+    directory,
+    parent,
+    name,
+    plugin,
+    proxy,
+    error
+  );
+
+  if(ensured == FALSE)
+    return NULL;
+
+  node = infd_directory_node_new_note(
+    directory,
+    parent,
+    node_id,
+    g_strdup(name),
+    plugin
+  );
+
+  infd_directory_node_link_session(directory, node, proxy);
+  g_object_unref(proxy);
+
+  return node;
+}
+
 static gboolean
 infd_directory_node_explore(InfdDirectory* directory,
                             InfdDirectoryNode* node,
+                            InfdExploreRequest* request,
                             GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfdStorageNode* storage_node;
   InfdDirectoryNode* new_node;
+  InfBrowserIter iter;
   InfdNotePlugin* plugin;
   GError* local_error;
   GSList* list;
+  guint n_items;
   GSList* item;
   gchar* path;
   gsize len;
@@ -1925,9 +2166,16 @@ infd_directory_node_explore(InfdDirectory* directory,
 
   if(local_error != NULL)
   {
+    inf_request_fail(INF_REQUEST(request), local_error);
     g_propagate_error(error, local_error);
     return FALSE;
   }
+
+  n_items = 0;
+  for(item = list; item != NULL; item = g_slist_next(item))
+    ++n_items;
+
+  infd_explore_request_initiated(request, n_items);
 
   for(item = list; item != NULL; item = g_slist_next(item))
   {
@@ -1981,7 +2229,17 @@ infd_directory_node_explore(InfdDirectory* directory,
        * in the new node. */
       infd_directory_node_register(directory, new_node, NULL, NULL);
     }
+
+    infd_explore_request_progress(request);
   }
+
+  iter.node_id = node->id;
+  iter.node = node;
+  inf_node_request_finished(
+    INF_NODE_REQUEST(request),
+    &iter,
+    NULL
+  );
 
   infd_storage_node_list_free(list);
 
@@ -1992,6 +2250,7 @@ infd_directory_node_explore(InfdDirectory* directory,
 static InfdDirectoryNode*
 infd_directory_node_add_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
+                                     InfdNodeRequest* request,
                                      const gchar* name,
                                      InfXmlConnection* connection,
                                      const gchar* seq,
@@ -2002,8 +2261,9 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   gboolean result;
   gchar* path;
 
-  infd_directory_return_val_if_subdir_fail(parent, NULL);
-  g_return_val_if_fail(parent->shared.subdir.explored == TRUE, NULL);
+  g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(parent->shared.subdir.explored == TRUE);
+  g_assert(request != NULL);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -2037,52 +2297,13 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   }
 }
 
-static InfdDirectoryNode*
-infd_directory_node_create_new_note(InfdDirectory* directory,
-                                    InfdDirectoryNode* parent,
-                                    InfCommunicationHostedGroup* group,
-                                    guint node_id,
-                                    const gchar* name,
-                                    const InfdNotePlugin* plugin,
-                                    GError** error)
-{
-  InfdSessionProxy* proxy;
-  InfdDirectoryNode* node;
-
-  proxy = infd_directory_create_session_proxy_for_storage(
-    directory,
-    parent,
-    group,
-    name,
-    plugin,
-    INF_SESSION_RUNNING,
-    NULL,
-    NULL,
-    error
-  );
-
-  if(proxy == NULL)
-    return NULL;
-
-  node = infd_directory_node_new_note(
-    directory,
-    parent,
-    node_id,
-    g_strdup(name),
-    plugin
-  );
-
-  infd_directory_node_link_session(directory, node, proxy);
-  g_object_unref(proxy);
-
-  return node;
-}
-
 static gboolean
 infd_directory_node_add_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
+                             InfdNodeRequest* request,
                              const gchar* name,
                              const InfdNotePlugin* plugin,
+                             InfSession* session,
                              InfXmlConnection* connection,
                              gboolean subscribe_connection,
                              const char* seq,
@@ -2090,37 +2311,51 @@ infd_directory_node_add_note(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  InfBrowserIter iter;
   guint node_id;
   InfCommunicationHostedGroup* group;
   xmlNodePtr xml;
   xmlNodePtr child;
   const gchar* method;
   InfdDirectorySubreq* subreq;
-  gboolean result;
+  GError* local_error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  infd_directory_return_val_if_subdir_fail(parent, FALSE);
-  g_return_val_if_fail(parent->shared.subdir.explored == TRUE, FALSE);
+  g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(parent->shared.subdir.explored == TRUE);
+  g_assert(request != NULL);
 
-  if(!infd_directory_node_is_name_available(directory, parent, name, error))
-  {
-    return FALSE;
-  }
-  else
+  local_error = NULL;
+  infd_directory_node_is_name_available(
+    directory,
+    parent,
+    name,
+    &local_error
+  );
+
+  if(local_error == NULL)
   {
     node_id = priv->node_counter++;
     group = infd_directory_create_subscription_group(directory, node_id);
 
     if(subscribe_connection == TRUE)
     {
+      /* Note that if session is non-zero at this point, the remote site has
+       * to know the contents of the session. It is not synchronized
+       * automatically.
+       * Note also though this is in principle supported by the code, there is
+       * currently no case that calls this function with non-zero session and
+       * subscribe_connection set. */
       subreq = infd_directory_add_subreq_add_node(
         directory,
         connection,
+        request,
         node_id,
         parent,
         group,
         plugin,
+        session,
         name,
         error
       );
@@ -2158,8 +2393,6 @@ infd_directory_node_add_note(InfdDirectory* directory,
           connection,
           xml
         );
-
-        result = TRUE;
       }
     }
     else
@@ -2171,29 +2404,42 @@ infd_directory_node_add_note(InfdDirectory* directory,
         node_id,
         name,
         plugin,
-        error
+        session,
+        &local_error
       );
 
       if(node != NULL)
       {
         infd_directory_node_register(directory, node, NULL, seq);
-        result = TRUE;
-      }
-      else
-      {
-        result = FALSE;
+
+        iter.node_id = node->id;
+        iter.node = node;
+
+        inf_node_request_finished(
+          INF_NODE_REQUEST(request),
+          &iter,
+          NULL
+        );
       }
     }
 
     g_object_unref(group);
-
-    return result;
   }
+
+  if(local_error != NULL)
+  {
+    inf_request_fail(INF_REQUEST(request), local_error);
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static gboolean
 infd_directory_node_add_sync_in(InfdDirectory* directory,
                                 InfdDirectoryNode* parent,
+                                InfdNodeRequest* request,
                                 const gchar* name,
                                 const InfdNotePlugin* plugin,
                                 InfXmlConnection* sync_conn,
@@ -2205,13 +2451,12 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
   InfCommunicationHostedGroup* subscription_group;
   InfCommunicationHostedGroup* synchronization_group;
   guint node_id;
-
   gchar* sync_group_name;
   const gchar* method;
   InfdDirectorySubreq* subreq;
-
   xmlNodePtr xml;
   xmlNodePtr child;
+  GError* local_error;
 
   /* Synchronization is always between only two peers, so central method
    * is enough. */
@@ -2219,102 +2464,117 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(!infd_directory_node_is_name_available(directory, parent, name, error))
-    return FALSE;
+  g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(parent->shared.subdir.explored == TRUE);
 
-  node_id = priv->node_counter++;
+  local_error = NULL;
+  infd_directory_node_is_name_available(
+    directory,
+    parent,
+    name,
+    &local_error
+  );
 
-  subscription_group =
-    infd_directory_create_subscription_group(directory, node_id);
-
-  if(subscribe_sync_conn == TRUE)
+  if(local_error == NULL)
   {
-    synchronization_group = subscription_group;
-    g_object_ref(synchronization_group);
-  }
-  else
-  {
-    sync_group_name = g_strdup_printf("InfSession_SyncIn_%u", node_id);
+    node_id = priv->node_counter++;
 
-    synchronization_group = inf_communication_manager_open_group(
-      priv->communication_manager,
-      sync_group_name,
-      sync_methods
+    subscription_group =
+      infd_directory_create_subscription_group(directory, node_id);
+
+    if(subscribe_sync_conn == TRUE)
+    {
+      synchronization_group = subscription_group;
+      g_object_ref(synchronization_group);
+    }
+    else
+    {
+      sync_group_name = g_strdup_printf("InfSession_SyncIn_%u", node_id);
+
+      synchronization_group = inf_communication_manager_open_group(
+        priv->communication_manager,
+        sync_group_name,
+        sync_methods
+      );
+
+      g_free(sync_group_name);
+    }
+
+    method = inf_communication_group_get_method_for_connection(
+      INF_COMMUNICATION_GROUP(synchronization_group),
+      sync_conn
     );
 
-    g_free(sync_group_name);
-  }
+    /* "central" should always be available */
+    g_assert(method != NULL);
 
-  method = inf_communication_group_get_method_for_connection(
-    INF_COMMUNICATION_GROUP(synchronization_group),
-    sync_conn
-  );
+    subreq = infd_directory_add_subreq_sync_in(
+      directory,
+      sync_conn,
+      request,
+      node_id,
+      parent,
+      synchronization_group,
+      subscription_group,
+      plugin,
+      name,
+      error
+    );
 
-  /* "central" should always be available */
-  g_assert(method != NULL);
+    if(subreq != NULL)
+    {
+      xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
+      inf_xml_util_set_attribute_uint(xml, "id", node_id);
+      inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
 
-  subreq = infd_directory_add_subreq_sync_in(
-    directory,
-    sync_conn,
-    node_id,
-    parent,
-    synchronization_group,
-    subscription_group,
-    plugin,
-    name,
-    error
-  );
+      inf_xml_util_set_attribute(
+        xml,
+        "group",
+        inf_communication_group_get_name(
+          INF_COMMUNICATION_GROUP(synchronization_group)
+        )
+      );
 
-  if(subreq == NULL)
-  {
+      inf_xml_util_set_attribute(xml, "method", method);
+      if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
+
+      inf_xml_util_set_attribute(xml, "name", name);
+      inf_xml_util_set_attribute(xml, "type", plugin->note_type);
+
+      if(subscribe_sync_conn == TRUE)
+      {
+        /* Note that if subscribe_sync_conn is set, then sync_group is the
+         * same as the subscription group, so we don't need to query the
+         * subscription group here. */
+        child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
+        inf_xml_util_set_attribute(child, "method", method);
+
+        inf_xml_util_set_attribute(
+          child,
+          "group",
+          inf_communication_group_get_name(
+            INF_COMMUNICATION_GROUP(subscription_group)
+          )
+        );
+      }
+
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        sync_conn,
+        xml
+      );
+    }
+
     g_object_unref(synchronization_group);
     g_object_unref(subscription_group);
+  }
+
+  if(local_error != NULL)
+  {
+    inf_request_fail(INF_REQUEST(request), local_error);
+    g_propagate_error(error, local_error);
     return FALSE;
   }
-
-  xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
-  inf_xml_util_set_attribute_uint(xml, "id", node_id);
-  inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
-
-  inf_xml_util_set_attribute(
-    xml,
-    "group",
-    inf_communication_group_get_name(
-      INF_COMMUNICATION_GROUP(synchronization_group)
-    )
-  );
-
-  inf_xml_util_set_attribute(xml, "method", method);
-  if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
-
-  inf_xml_util_set_attribute(xml, "name", name);
-  inf_xml_util_set_attribute(xml, "type", plugin->note_type);
-
-  if(subscribe_sync_conn == TRUE)
-  {
-    /* Note that if subscribe_sync_conn is set, then sync_group is the same
-     * as the subscription group, so we don't need to query the subscription
-     * group here. */
-    child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
-    inf_xml_util_set_attribute(child, "method", method);
-
-    inf_xml_util_set_attribute(
-      child,
-      "group",
-      inf_communication_group_get_name(
-        INF_COMMUNICATION_GROUP(subscription_group)
-      )
-    );
-  }
-
-  g_object_unref(synchronization_group);
-  g_object_unref(subscription_group);
-
-  inf_communication_group_send_message(
-    INF_COMMUNICATION_GROUP(priv->group),
-    sync_conn,
-    xml
-  );
 
   return TRUE;
 }
@@ -2322,71 +2582,94 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 static gboolean
 infd_directory_node_remove(InfdDirectory* directory,
                            InfdDirectoryNode* node,
+                           InfdNodeRequest* request,
                            const gchar* seq,
                            GError** error)
 {
   InfdDirectoryPrivate* priv;
-  gboolean result;
   gchar* path;
+  InfBrowserIter iter;
+  GError* local_error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   /* Cannot remove the root node */
+  /* TODO: Move the error check here so we have same error checking for
+   * local and remote requests. */
   g_assert(node->parent != NULL);
+  g_assert(request != NULL);
 
-  infd_directory_node_get_path(node, &path, NULL);
-
-
+  local_error = NULL;
   if(priv->storage != NULL)
   {
-    result = infd_storage_remove_node(
+    infd_directory_node_get_path(node, &path, NULL);
+
+    infd_storage_remove_node(
       priv->storage,
       node->type == INFD_STORAGE_NODE_NOTE ?
         node->shared.note.plugin->note_type :
         NULL,
       path,
-      error
+      &local_error
     );
+    
+    g_free(path);
+  }
+
+  iter.node_id = node->id;
+  iter.node = node;
+  if(local_error != NULL)
+  {
+    inf_request_fail(INF_REQUEST(request), local_error);
+    g_propagate_error(error, local_error);
+    return FALSE;
   }
   else
   {
-    result = TRUE;
+    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
+
+    /* Need to unlink child sessions explicitely before unregistering, so
+     * remove-session is emitted before node-removed. Don't save changes since
+     * we just removed the note anyway. */
+    infd_directory_node_unlink_child_sessions(directory, node, FALSE);
+    infd_directory_node_unregister(directory, node, seq);
+    infd_directory_node_free(directory, node);
+    
+    return TRUE;
   }
-
-  g_free(path);
-
-  if(result == FALSE)
-    return FALSE;
-
-  /* Need to unlink child sessions explicitely before unregistering, so
-   * remove-session is emitted before node-removed. Don't save changes since
-   * we just removed the note anyway. */
-  infd_directory_node_unlink_child_sessions(directory, node, FALSE);
-  infd_directory_node_unregister(directory, node, seq);
-  infd_directory_node_free(directory, node);
-  return TRUE;
 }
 
 /* Returns the session for the given node. This does not link the session
  * (if it isn't already). This means that the next time this function is
  * called, the session will be created again if you don't link it yourself,
- * or if you don't create a subscription request for it. Unref the result.
- * See infd_directory_node_get_and_link_session() to get a linked session. */
+ * or if you don't create a subscription request for it. Unref the result. */
 static InfdSessionProxy*
-infd_directory_node_get_session(InfdDirectory* directory,
-                                InfdDirectoryNode* node,
-                                GError** error)
+infd_directory_node_make_session(InfdDirectory* directory,
+                                 InfdDirectoryNode* node,
+                                 GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfSession* session;
   GSList* item;
-  InfdDirectorySubreq* request;
+  InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
   gchar* path;
 
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Make sure the session is not already created */
+  g_assert(node->shared.note.session == NULL ||
+           node->shared.note.weakref == TRUE);
+
+  g_assert(
+    infd_directory_find_subreq_by_node_id(
+      directory,
+      INFD_DIRECTORY_SUBREQ_SESSION,
+      node->id
+    ) == NULL
+  );
 
   /* Note the session might only be weak-refed in which case we re-use it */
   if(node->shared.note.session != NULL)
@@ -2399,27 +2682,6 @@ infd_directory_node_get_session(InfdDirectory* directory,
 
   /* If we don't have a background storage then all nodes are in memory */
   g_assert(priv->storage != NULL);
-
-  /* The session could already exist in a subscribe-session subreq */
-  proxy = NULL;
-  for(item = priv->subscription_requests; item != NULL; item = item->next)
-  {
-    request = (InfdDirectorySubreq*)item->data;
-    if(request->type == INFD_DIRECTORY_SUBREQ_SESSION)
-    {
-      if(request->node_id == node->id)
-      {
-        proxy = request->shared.session.session;
-        break;
-      }
-    }
-  }
-
-  if(proxy != NULL)
-  {
-    g_object_ref(proxy);
-    return proxy;
-  }
 
   infd_directory_node_get_path(node, &path, NULL);
   session = node->shared.note.plugin->session_read(
@@ -2448,23 +2710,484 @@ infd_directory_node_get_session(InfdDirectory* directory,
   return proxy;
 }
 
-static InfdSessionProxy*
-infd_directory_node_get_and_link_session(InfdDirectory* directory,
-                                         InfdDirectoryNode* node,
-                                         GError** error)
+/*
+ * Local requests.
+ */
+
+static void
+infd_directory_begin_locreq_request(InfdDirectory* directory,
+                                    InfdDirectoryLocreq* locreq)
 {
-  InfdSessionProxy* proxy;
+  InfBrowserIter iter;
+  InfdDirectoryNode* node;
+
+  switch(locreq->type)
+  {
+  case INFD_DIRECTORY_LOCREQ_EXPLORE_NODE:
+    node = locreq->shared.explore_node.node;
+    break;
+  case INFD_DIRECTORY_LOCREQ_ADD_NODE:
+    node = locreq->shared.add_node.node;
+    break;
+  case INFD_DIRECTORY_LOCREQ_REMOVE_NODE:
+    node = locreq->shared.remove_node.node;
+    break;
+  case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
+    node = locreq->shared.subscribe_session.node;
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  inf_browser_begin_request(
+    INF_BROWSER(directory),
+    &iter,
+    INF_REQUEST(locreq->request)
+  );
+}
+
+static InfdDirectoryLocreq*
+infd_directory_add_locreq_common(InfdDirectory* directory,
+                                 InfdDirectoryLocreqType type,
+                                 InfdNodeRequest* request)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryLocreq* locreq;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  locreq = g_slice_new(InfdDirectoryLocreq);
+
+  locreq->directory = directory;
+  locreq->type = type;
+  locreq->request = request;
+  locreq->dispatch = NULL;
+
+  priv->local_requests = g_slist_prepend(priv->local_requests, locreq);
+  return locreq;
+}
+
+static InfdDirectoryLocreq*
+infd_directory_add_locreq_explore_node(InfdDirectory* directory,
+                                       InfdDirectoryNode* node)
+{
+  InfdDirectoryLocreq* locreq;
+  GObject* request;
+
+  g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+
+  request = g_object_new(
+    INFD_TYPE_EXPLORE_REQUEST,
+    "type", "explore-node",
+    "node-id", node->id,
+    "requestor", NULL,
+    NULL
+  );
+
+  locreq = infd_directory_add_locreq_common(
+    directory,
+    INFD_DIRECTORY_LOCREQ_EXPLORE_NODE,
+    INFD_NODE_REQUEST(request)
+  );
+
+  locreq->shared.explore_node.node = node;
+
+  infd_directory_begin_locreq_request(directory, locreq);
+  return locreq;
+}
+
+static InfdDirectoryLocreq*
+infd_directory_add_locreq_add_node(InfdDirectory* directory,
+                                   InfdDirectoryNode* node,
+                                   const gchar* name,
+                                   const InfdNotePlugin* plugin,
+                                   InfSession* session)
+{
+  InfdDirectoryLocreq* locreq;
+  GObject* request;
+
+  g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+
+  request = g_object_new(
+    INFD_TYPE_NODE_REQUEST,
+    "type", "add-node",
+    "node-id", node->id,
+    "requestor", NULL,
+    NULL
+  );
+
+  locreq = infd_directory_add_locreq_common(
+    directory,
+    INFD_DIRECTORY_LOCREQ_ADD_NODE,
+    INFD_NODE_REQUEST(request)
+  );
+
+  locreq->shared.add_node.node = node;
+  locreq->shared.add_node.name = g_strdup(name);
+  locreq->shared.add_node.plugin = plugin;
+  locreq->shared.add_node.session = session;
+
+  if(session != NULL)
+    g_object_ref(session);
+
+  infd_directory_begin_locreq_request(directory, locreq);
+  return locreq;
+}
+
+static InfdDirectoryLocreq*
+infd_directory_add_locreq_remove_node(InfdDirectory* directory,
+                                      InfdDirectoryNode* node)
+{
+  InfdDirectoryLocreq* locreq;
+  GObject* request;
+
+  request = g_object_new(
+    INFD_TYPE_NODE_REQUEST,
+    "type", "remove-node",
+    "node-id", node->id,
+    "requestor", NULL,
+    NULL
+  );
+
+  locreq = infd_directory_add_locreq_common(
+    directory,
+    INFD_DIRECTORY_LOCREQ_REMOVE_NODE,
+    INFD_NODE_REQUEST(request)
+  );
+
+  locreq->shared.remove_node.node = node;
+
+  infd_directory_begin_locreq_request(directory, locreq);
+  return locreq;
+}
+
+static InfdDirectoryLocreq*
+infd_directory_add_locreq_subscribe_session(InfdDirectory* directory,
+                                            InfdDirectoryNode* node)
+{
+  InfdDirectoryPrivate* priv;
+  GObject* request;
+  InfdDirectorySubreq* subreq;
+  InfdDirectoryLocreq* locreq;
+
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
 
-  proxy = infd_directory_node_get_session(directory, node, error);
-  if(!proxy) return NULL;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(node->shared.note.session == NULL || node->shared.note.weakref == TRUE)
-    infd_directory_node_link_session(directory, node, proxy);
+  /* See whether there is a subreq for this node. If yes, take the request
+   * from there instead of creating a new one. */
+  subreq = infd_directory_find_subreq_by_node_id(
+    directory,
+    INFD_DIRECTORY_SUBREQ_SESSION,
+    node->id
+  );
 
-  g_object_unref(proxy);
+  if(subreq != NULL)
+  {
+    request = G_OBJECT(subreq->shared.session.request);
+  }
+  else
+  {
+    request = g_object_new(
+      INFD_TYPE_NODE_REQUEST,
+      "type", "subscribe-session",
+      "node-id", node->id,
+      "requestor", NULL,
+      NULL
+    );
+  }
 
-  return node->shared.note.session;
+  locreq = infd_directory_add_locreq_common(
+    directory,
+    INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION,
+    INFD_NODE_REQUEST(request)
+  );
+
+  locreq->shared.subscribe_session.node = node;
+
+  /* Emit begin-request if we created a new request */
+  if(subreq == NULL)
+    infd_directory_begin_locreq_request(directory, locreq);
+  return locreq;
+}
+
+static void
+infd_directory_remove_locreq(InfdDirectory* directory,
+                             InfdDirectoryLocreq* locreq)
+{
+  InfdDirectoryPrivate* priv;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  priv->local_requests = g_slist_remove(priv->local_requests, locreq);
+
+  switch(locreq->type)
+  {
+  case INFD_DIRECTORY_LOCREQ_EXPLORE_NODE:
+    break;
+  case INFD_DIRECTORY_LOCREQ_ADD_NODE:
+    g_free(locreq->shared.add_node.name);
+    if(locreq->shared.add_node.session)
+      g_object_unref(locreq->shared.add_node.session);
+    break;
+  case INFD_DIRECTORY_LOCREQ_REMOVE_NODE:
+  case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  if(locreq->dispatch != NULL)
+    inf_io_remove_dispatch(priv->io, locreq->dispatch);
+
+  /* Might be NULL if the request was taken over (and executed) before the
+   * locreq was run. */
+  if(locreq->request != NULL)
+  {
+    /* TODO: Fail request with some sort of "cancelled" error? */
+    g_object_unref(locreq->request);
+  }
+
+  g_slice_free(InfdDirectoryLocreq, locreq);
+}
+
+static void
+infd_directory_start_locreq_func(gpointer user_data)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryLocreq* locreq;
+  GSList* item;
+  InfdDirectorySubreq* subreq;
+  InfdSessionProxy* proxy;
+  InfBrowserIter iter;
+  GError* error;
+
+  locreq = (InfdDirectoryLocreq*)user_data;
+  priv = INFD_DIRECTORY_PRIVATE(locreq->directory);
+
+  locreq->dispatch = NULL;
+
+  error = NULL;
+  switch(locreq->type)
+  {
+  case INFD_DIRECTORY_LOCREQ_EXPLORE_NODE:
+    if(locreq->shared.explore_node.node == NULL)
+    {
+      g_set_error(
+        &error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The node to be explored has been removed")
+      );
+    }
+    else
+    {
+      g_assert(INFD_IS_EXPLORE_REQUEST(locreq->request));
+
+      infd_directory_node_explore(
+        locreq->directory,
+        locreq->shared.explore_node.node,
+        INFD_EXPLORE_REQUEST(locreq->request),
+        NULL
+      );
+    }
+
+    break;
+  case INFD_DIRECTORY_LOCREQ_ADD_NODE:
+    if(locreq->shared.add_node.node == NULL)
+    {
+      g_set_error(
+        &error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The subdirectory into which a node was supposed to be inserted "
+          "has been removed")
+      );
+    }
+    else if(locreq->shared.add_node.plugin == NULL)
+    {
+      infd_directory_node_add_subdirectory(
+        locreq->directory,
+        locreq->shared.add_node.node,
+        locreq->request,
+        locreq->shared.add_node.name,
+        NULL,
+        NULL,
+        NULL
+      );
+    }
+    else
+    {
+      infd_directory_node_add_note(
+        locreq->directory,
+        locreq->shared.add_node.node,
+        locreq->request,
+        locreq->shared.add_node.name,
+        locreq->shared.add_node.plugin,
+        locreq->shared.add_node.session,
+        NULL,
+        FALSE,
+        NULL,
+        NULL
+      );
+    }
+    break;
+  case INFD_DIRECTORY_LOCREQ_REMOVE_NODE:
+    if(locreq->shared.remove_node.node == NULL)
+    {
+      g_set_error(
+        &error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The node to be removed has already been removed")
+      );
+    }
+    else
+    {
+      infd_directory_node_remove(
+        locreq->directory,
+        locreq->shared.remove_node.node,
+        locreq->request,
+        NULL,
+        NULL
+      );
+    }
+
+    break;
+  case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
+    if(locreq->shared.subscribe_session.node == NULL)
+    {
+      g_set_error(
+        &error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The node to be subscribed to has been removed")
+      );
+    }
+    else
+    {
+      if(locreq->shared.subscribe_session.node->shared.note.session == NULL ||
+         locreq->shared.subscribe_session.node->shared.note.weakref == TRUE)
+      {
+        proxy = NULL;
+        for(item = priv->subscription_requests;
+            item != NULL;
+            item = item->next)
+        {
+          /* Check if there is a subreq. If yes, this means that after we
+           * started the locreq a subscription request came in (we wouldn't
+           * have started the locreq if we knew about the subscription request
+           * before, instead we would have failed and required the API user to
+           * watch the existing pending_request). This is OK. We are making
+           * and linking the session here, which is okay as well. All we have
+           * to do is to remove the request from the subreq, so that it does
+           * not try to finish it again. */
+          subreq = (InfdDirectorySubreq*)item->data;
+          if(subreq->type == INFD_DIRECTORY_SUBREQ_SESSION)
+          {
+            if(subreq->node_id == locreq->shared.subscribe_session.node->id)
+            {
+              /* Note there can be more than one subreq */
+              g_assert(subreq->shared.session.request == locreq->request);
+
+              g_object_unref(subreq->shared.session.request);
+              subreq->shared.session.request = NULL;
+
+              /* Get the session proxy from the subreq, to avoid making it
+               * again. */
+              g_assert(proxy == NULL ||
+                       proxy == subreq->shared.session.session);
+
+              proxy = subreq->shared.session.session;
+              g_object_ref(proxy);
+            }
+          }
+        }
+
+        if(proxy == NULL)
+        {
+          proxy = infd_directory_node_make_session(
+            locreq->directory,
+            locreq->shared.subscribe_session.node,
+            &error
+          );
+        }
+
+        if(proxy != NULL)
+        {
+          infd_directory_node_link_session(
+            locreq->directory,
+            locreq->shared.subscribe_session.node,
+            proxy
+          );
+
+          g_object_unref(proxy);
+
+          iter.node_id = locreq->shared.subscribe_session.node->id;
+          iter.node = locreq->shared.subscribe_session.node;
+          inf_node_request_finished(
+            INF_NODE_REQUEST(locreq->request),
+            &iter,
+            NULL
+          );
+        }
+      }
+      else
+      {
+        g_set_error(
+          &error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
+          "%s",
+          inf_directory_strerror(INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED)
+        );
+      }
+    }
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  if(error != NULL)
+  {
+    inf_request_fail(INF_REQUEST(locreq->request), error);
+    g_error_free(error);
+  }
+
+  infd_directory_remove_locreq(locreq->directory, locreq);
+}
+
+static void
+infd_directory_locreq_free(gpointer user_data)
+{
+  InfdDirectoryLocreq* locreq;
+  locreq = (InfdDirectoryLocreq*)user_data;
+  infd_directory_remove_locreq(locreq->directory, locreq);
+}
+
+static void
+infd_directory_start_locreq(InfdDirectory* directory,
+                            InfdDirectoryLocreq* locreq)
+{
+  InfdDirectoryPrivate* priv;
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(locreq->dispatch == NULL);
+
+  locreq->dispatch = inf_io_add_dispatch(
+    priv->io,
+    infd_directory_start_locreq_func,
+    locreq,
+    infd_directory_locreq_free
+  );
 }
 
 /*
@@ -2667,6 +3390,11 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  GSList* item;
+  InfdDirectoryLocreq* locreq;
+  InfdExploreRequest* request;
+  InfBrowserIter iter;
+  GError* local_error;
   InfdDirectoryNode* child;
   xmlNodePtr reply_xml;
   gchar* seq;
@@ -2682,9 +3410,58 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     error
   );
 
+  if(node == NULL) return FALSE;
+
   if(node->shared.subdir.explored == FALSE)
-    if(infd_directory_node_explore(directory, node, error) == FALSE)
+  {
+    /* Check if there is a locreq; if yes we finish it implicitely here */
+    for(item = priv->local_requests; item != NULL; item = item->next)
+    {
+      locreq = (InfdDirectoryLocreq*)item->data;
+      if(locreq->type == INFD_DIRECTORY_LOCREQ_EXPLORE_NODE)
+      {
+        if(locreq->shared.explore_node.node == node)
+        {
+          g_assert(INFD_IS_EXPLORE_REQUEST(locreq->request));
+          request = INFD_EXPLORE_REQUEST(locreq->request);
+          locreq->request = NULL;
+          infd_directory_remove_locreq(directory, locreq);
+          break;
+        }
+      }
+    }
+
+    if(request == NULL)
+    {
+      request = INFD_EXPLORE_REQUEST(
+        g_object_new(
+          INFD_TYPE_EXPLORE_REQUEST,
+          "type", "explore-node",
+          "node-id", node->id,
+          "requestor", connection,
+          NULL
+        )
+      );
+
+      iter.node_id = node->id;
+      iter.node = node;
+      inf_browser_begin_request(
+        INF_BROWSER(directory),
+        &iter,
+        INF_REQUEST(request)
+      );
+    }
+
+    local_error = NULL;
+    infd_directory_node_explore(directory, node, request, &local_error);
+    g_object_unref(request);
+
+    if(local_error != NULL)
+    {
+      g_propagate_error(error, local_error);
       return FALSE;
+    }
+  }
 
   if(g_slist_find(node->shared.subdir.connections, connection) != NULL)
   {
@@ -2759,8 +3536,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* parent;
+  InfBrowserIter parent_iter;
   InfdDirectoryNode* node;
   InfdNotePlugin* plugin;
+  InfdNodeRequest* request;
   xmlChar* name;
   xmlChar* type;
   gchar* seq;
@@ -2821,11 +3600,30 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     return FALSE;
   }
 
+  request = INFD_NODE_REQUEST(
+    g_object_new(
+      INFD_TYPE_NODE_REQUEST,
+      "type", "add-node",
+      "node-id", parent->id,
+      "requestor", connection,
+      NULL
+    )
+  );
+
+  parent_iter.node_id = parent->id;
+  parent_iter.node = parent;
+  inf_browser_begin_request(
+    INF_BROWSER(directory),
+    &parent_iter,
+    INF_REQUEST(request)
+  );
+
   if(plugin == NULL)
   {
     node = infd_directory_node_add_subdirectory(
       directory,
       parent,
+      request,
       (const gchar*)name,
       connection,
       seq,
@@ -2854,8 +3652,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       node_added = infd_directory_node_add_note(
         directory,
         parent,
+        request,
         (const gchar*)name,
         plugin,
+        NULL,
         connection,
         subscribe_sync_conn,
         seq,
@@ -2867,6 +3667,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       node_added = infd_directory_node_add_sync_in(
         directory,
         parent,
+        request,
         (const char*)name,
         plugin,
         connection,
@@ -2880,6 +3681,8 @@ infd_directory_handle_add_node(InfdDirectory* directory,
        * fails or the parent folder is removed. */
     }
   }
+
+  g_object_unref(request);
 
   xmlFree(name);
   g_free(seq);
@@ -2895,6 +3698,8 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
 {
   InfdDirectoryNode* node;
   gchar* seq;
+  InfdNodeRequest* request;
+  InfBrowserIter iter;
   gboolean result;
 
   node = infd_directory_get_node_from_xml(directory, xml, "id", error);
@@ -2917,7 +3722,26 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
     if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
       return FALSE;
 
-    result = infd_directory_node_remove(directory, node, seq, error);
+    request = INFD_NODE_REQUEST(
+      g_object_new(
+        INFD_TYPE_NODE_REQUEST,
+        "type", "remove-node",
+        "node-id", node->id,
+        "requestor", connection,
+        NULL
+      )
+    );
+
+    iter.node_id = node->id;
+    iter.node = node;
+    inf_browser_begin_request(
+      INF_BROWSER(directory),
+      &iter,
+      INF_REQUEST(request)
+    );
+
+    result = infd_directory_node_remove(directory, node, request, seq, error);
+    g_object_unref(request);
     return result;
   }
 }
@@ -2930,11 +3754,17 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  GSList* item;
+  InfdDirectorySubreq* subreq;
+  InfdDirectoryLocreq* locreq;
   InfdSessionProxy* proxy;
+  InfBrowserIter iter;
+  InfdNodeRequest* request;
   InfCommunicationGroup* group;
   const gchar* method;
   gchar* seq;
   xmlNodePtr reply_xml;
+  GError* local_error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -2951,14 +3781,107 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 
   /* TODO: Bail if this connection is either currently being synchronized to
    * or is already subscribed */
-  /* TODO: Bail if a subscription request for this connection is pending. */
 
-  proxy = infd_directory_node_get_session(directory, node, error);
-  if(proxy == NULL)
-    return FALSE;
+  /* Check if there exists already a session in a subreq */
+  for(item = priv->subscription_requests; item != NULL; item = item->next)
+  {
+    subreq = (InfdDirectorySubreq*)item->data;
+    if(subreq->type == INFD_DIRECTORY_SUBREQ_SESSION &&
+       subreq->node_id == node->id)
+    {
+      if(subreq->connection == connection)
+      {
+        g_set_error(
+          error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
+          "%s",
+          inf_directory_strerror(INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED)
+        );
+
+        return FALSE;
+      }
+      else
+      {
+        request = subreq->shared.session.request;
+        proxy = subreq->shared.session.session;
+      }
+    }
+  }
+
+  for(item = priv->local_requests; item != NULL; item = item->next)
+  {
+    locreq = (InfdDirectoryLocreq*)item->data;
+    if(locreq->type == INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION &&
+       locreq->shared.subscribe_session.node == node)
+    {
+      request = locreq->request;
+      break;
+    }
+  }
+
+  if(node->shared.note.session != NULL && node->shared.note.weakref == FALSE)
+  {
+    g_assert(proxy == NULL || proxy == node->shared.note.session);
+    proxy = node->shared.note.session;
+  }
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
     return FALSE;
+
+  /* Make a new request if there is no request yet and we don't have a proxy
+   * already. If we do have a proxy, then we don't have to read anything from
+   * storage. */
+  if(request == NULL && proxy == NULL)
+  {
+    request = INFD_NODE_REQUEST(
+      g_object_new(
+        INFD_TYPE_NODE_REQUEST,
+        "type", "subscribe-session",
+        "node-id", node->id,
+        "requestor", connection,
+        NULL
+      )
+    );
+
+    iter.node_id = node->id;
+    iter.node = node;
+    inf_browser_begin_request(
+      INF_BROWSER(directory),
+      &iter,
+      INF_REQUEST(request)
+    );
+  }
+  else if(request != NULL)
+  {
+    g_object_ref(request);
+  }
+
+  /* In case we don't have a proxy already, create a new one */
+  if(proxy == NULL)
+  {
+    local_error = NULL;
+    proxy = infd_directory_node_make_session(directory, node, &local_error);
+    if(proxy == NULL)
+    {
+      /* The situation here is the following. We don't have any subreqs
+       * because otherwise we would have taken the proxy from there. We can
+       * have a locreq. In that case, we have kind of handled the locreq
+       * here: fail the request and remove the locreq. */
+      g_assert(request != NULL);
+      if(locreq != NULL)
+        infd_directory_remove_locreq(directory, locreq);
+      inf_request_fail(INF_REQUEST(request), local_error);
+      g_error_free(local_error);
+      g_object_unref(request);
+      g_free(seq);
+      return FALSE;
+    }
+  }
+  else
+  {
+    g_object_ref(proxy);
+  }
 
   g_object_get(G_OBJECT(proxy), "subscription-group", &group, NULL);
   method = inf_communication_group_get_method_for_connection(
@@ -2990,7 +3913,16 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
   /* This gives ownership of proxy to the subscription request */
-  infd_directory_add_subreq_session(directory, connection, node->id, proxy);
+  infd_directory_add_subreq_session(
+    directory,
+    connection,
+    request,
+    node->id,
+    proxy
+  );
+
+  if(request != NULL)
+    g_object_unref(request);
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -3013,6 +3945,7 @@ infd_directory_handle_save_session(InfdDirectory* directory,
   xmlNodePtr reply_xml;
   gchar* path;
   gchar* seq;
+  InfSession* session;
   gboolean result;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -3075,13 +4008,21 @@ infd_directory_handle_save_session(InfdDirectory* directory,
 
   infd_directory_node_get_path(node, &path, NULL);
 
+  g_object_get(
+    G_OBJECT(node->shared.note.session),
+    "session", &session,
+    NULL
+  );
+
   result = node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(node->shared.note.session),
+    session,
     path,
     node->shared.note.plugin->user_data,
     error
   );
+
+  g_object_unref(session);
 
   /* TODO: unset modified flag of buffer if result == TRUE */
 
@@ -3197,31 +4138,37 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
                                     GError** error)
 {
   InfdDirectoryPrivate* priv;
-  InfdDirectorySubreq* request;
+  InfdDirectorySubreq* subreq;
   InfdDirectoryNode* node;
+  InfBrowserIter iter;
+  GSList* item;
+  InfdDirectorySubreq* subsubreq;
+  InfdDirectoryLocreq* locreq;
   InfdDirectorySyncIn* sync_in;
   InfdSessionProxy* proxy;
+  InfSession* session;
   InfdDirectoryConnectionInfo* info;
+  GError* local_error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  request = infd_directory_get_subreq_from_xml(
+  subreq = infd_directory_get_subreq_from_xml(
     directory,
     connection,
     xml,
     error
   );
 
-  if(request == NULL) return FALSE;
+  if(subreq == NULL) return FALSE;
 
   /* Unlink, so that the subreq itself does not cause the is_name_available
    * assertions below to fail. */
-  infd_directory_unlink_subreq(directory, request);
+  infd_directory_unlink_subreq(directory, subreq);
 
   info = g_hash_table_lookup(priv->connections, connection);
   g_assert(info != NULL);
 
-  switch(request->type)
+  switch(subreq->type)
   {
   case INFD_DIRECTORY_SUBREQ_CHAT:
     /* Note that it doesn't matter whether the chat was disabled+enabled
@@ -3263,8 +4210,40 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   case INFD_DIRECTORY_SUBREQ_SESSION:
     node = g_hash_table_lookup(
       priv->nodes,
-      GUINT_TO_POINTER(request->node_id)
+      GUINT_TO_POINTER(subreq->node_id)
     );
+
+    /* Remove the request from other subreqs, if any, because we are going
+     * to finish it now. */
+    for(item = priv->subscription_requests; item != NULL; item = item->next)
+    {
+      subsubreq = (InfdDirectorySubreq*)item->data;
+      if(subsubreq->type == INFD_DIRECTORY_SUBREQ_SESSION &&
+         subsubreq->node_id == subreq->node_id)
+      {
+        g_assert(subsubreq->shared.session.request ==
+                 subreq->shared.session.request);
+        if(subsubreq->shared.session.request != NULL)
+        {
+          subsubreq->shared.session.request = NULL;
+          g_object_unref(subsubreq->shared.session.request);
+        }
+      }
+    }
+
+    /* If there's a locreq around for this node then remove it, since we
+     * are handling the request now. */
+    for(item = priv->local_requests; item != NULL; item = item->next)
+    {
+      locreq = (InfdDirectoryLocreq*)item->data;
+      /* Don't match by node because node might have been removed */
+      if(locreq->type == INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION &&
+         locreq->request == subreq->shared.session.request)
+      {
+        infd_directory_remove_locreq(directory, locreq);
+        break;
+      }
+    }
 
     /* The node this client wants to subscribe might have been removed in the
      * meanwhile. */
@@ -3273,20 +4252,60 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       g_assert(node->type == INFD_STORAGE_NODE_NOTE);
 
       g_assert(node->shared.note.session == NULL ||
-               node->shared.note.session == request->shared.session.session);
+               node->shared.note.session == subreq->shared.session.session);
 
-      if(node->shared.note.session == NULL)
+      g_assert(
+        ((node->shared.note.session == NULL ||
+          node->shared.note.weakref == TRUE) &&
+         subreq->shared.session.request != NULL) ||
+        ((node->shared.note.session != NULL &&
+          node->shared.note.weakref == FALSE) &&
+         subreq->shared.session.request == NULL)
+      );
+
+      if(node->shared.note.session == NULL ||
+         node->shared.note.weakref == TRUE)
       {
         infd_directory_node_link_session(
           directory,
           node,
-          request->shared.session.session
+          subreq->shared.session.session
         );
+
+        iter.node_id = node->id;
+        iter.node = node;
+
+        inf_node_request_finished(
+          INF_NODE_REQUEST(subreq->shared.session.request),
+          &iter,
+          NULL
+        );
+      }
+    }
+    else
+    {
+      if(subreq->shared.session.request != NULL)
+      {
+        local_error = NULL;
+        g_set_error(
+          &local_error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+          "%s",
+          _("The node to be subscribed to has been removed")
+        );
+
+        inf_request_fail(
+          INF_REQUEST(subreq->shared.session.request),
+          local_error
+        );
+
+        g_error_free(local_error);
       }
     }
 
     infd_session_proxy_subscribe_to(
-      request->shared.session.session,
+      subreq->shared.session.session,
       connection,
       info->seq_id,
       TRUE
@@ -3294,26 +4313,27 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
 
     break;
   case INFD_DIRECTORY_SUBREQ_ADD_NODE:
-    if(request->shared.add_node.parent != NULL)
+    g_assert(subreq->shared.add_node.request != NULL);
+    if(subreq->shared.add_node.parent != NULL)
     {
       g_assert(
         infd_directory_node_is_name_available(
           directory,
-          request->shared.add_node.parent,
-          request->shared.add_node.name,
+          subreq->shared.add_node.parent,
+          subreq->shared.add_node.name,
           NULL
         ) == TRUE
       );
 
-      proxy = request->shared.add_node.proxy;
+      proxy = subreq->shared.add_node.proxy;
       g_object_ref(proxy);
 
       node = infd_directory_node_new_note(
         directory,
-        request->shared.add_node.parent,
-        request->node_id,
-        g_strdup(request->shared.add_node.name),
-        request->shared.add_node.plugin
+        subreq->shared.add_node.parent,
+        subreq->node_id,
+        g_strdup(subreq->shared.add_node.name),
+        subreq->shared.add_node.plugin
       );
 
       infd_directory_node_link_session(directory, node, proxy);
@@ -3321,6 +4341,17 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       /* register to all but conn. conn already added the node after
        * having sent subscribe-ack. */
       infd_directory_node_register(directory, node, connection, NULL);
+
+      g_assert(subreq->shared.add_node.request != NULL);
+
+      iter.node_id = node->id;
+      iter.node = node;
+
+      inf_node_request_finished(
+        INF_NODE_REQUEST(subreq->shared.add_node.request),
+        &iter,
+        NULL
+      );
     }
     else
     {
@@ -3328,8 +4359,24 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
        * node has been removed. Still create a session proxy and subscribe to
        * connection before unrefing it again, so that the remote host gets
        * notified that this session is no longer active. */
-      proxy = request->shared.add_node.proxy;
+      proxy = subreq->shared.add_node.proxy;
       g_object_ref(proxy);
+
+      local_error = NULL;
+      g_set_error(
+        &local_error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The parent node of the node to be added has been removed")
+      );
+
+      inf_request_fail(
+        INF_REQUEST(subreq->shared.add_node.request),
+        local_error
+      );
+
+      g_error_free(local_error);
     }
 
     /* Don't sync session to client if the client added this node, since the
@@ -3340,31 +4387,39 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     break;
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+    g_assert(subreq->shared.sync_in.request != NULL);
+
     /* Group and method are OK for the client, so start synchronization */
-    inf_session_synchronize_from(
-      infd_session_proxy_get_session(request->shared.sync_in.proxy)
+    g_object_get(
+      G_OBJECT(subreq->shared.sync_in.proxy),
+      "session", &session,
+      NULL
     );
 
-    if(request->shared.sync_in.parent != NULL)
+    inf_session_synchronize_from(session);
+    g_object_unref(session);
+
+    if(subreq->shared.sync_in.parent != NULL)
     {
       g_assert(
         infd_directory_node_is_name_available(
           directory,
-          request->shared.sync_in.parent,
-          request->shared.sync_in.name,
+          subreq->shared.sync_in.parent,
+          subreq->shared.sync_in.name,
           NULL
         ) == TRUE
       );
 
-      proxy = request->shared.sync_in.proxy;
+      proxy = subreq->shared.sync_in.proxy;
       g_object_ref(proxy);
 
       sync_in = infd_directory_add_sync_in(
         directory,
-        request->shared.sync_in.parent,
-        request->node_id,
-        request->shared.sync_in.name,
-        request->shared.sync_in.plugin,
+        subreq->shared.sync_in.parent,
+        subreq->shared.sync_in.request,
+        subreq->node_id,
+        subreq->shared.sync_in.name,
+        subreq->shared.sync_in.plugin,
         proxy
       );
     }
@@ -3374,16 +4429,32 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
        * the node to sync-in has been removed. Still create the corresponding
        * session and close it immediately (cancelling the synchronization, to
        * tell the client). */
-      proxy = request->shared.sync_in.proxy;
+      proxy = subreq->shared.sync_in.proxy;
       g_object_ref(proxy);
+
+      local_error = NULL;
+      g_set_error(
+        &local_error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The parent node of the node to be added has been removed")
+      );
+
+      inf_request_fail(
+        INF_REQUEST(subreq->shared.sync_in.request),
+        local_error
+      );
+
+      g_error_free(local_error);
     }
 
-    if(request->type == INFD_DIRECTORY_SUBREQ_SYNC_IN)
+    if(subreq->type == INFD_DIRECTORY_SUBREQ_SYNC_IN)
     {
       /* No subscription, so add connection to synchronization group
        * explicitely. */
       inf_communication_hosted_group_add_member(
-        request->shared.sync_in.synchronization_group,
+        subreq->shared.sync_in.synchronization_group,
         connection
       );
     }
@@ -3402,7 +4473,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     break;
   }
 
-  infd_directory_free_subreq(request);
+  infd_directory_free_subreq(subreq);
   return TRUE;
 }
 
@@ -3413,42 +4484,150 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
                                      GError** error)
 {
   InfdDirectoryPrivate* priv;
-  InfdDirectorySubreq* request;
+  InfdDirectorySubreq* subreq;
+  InfdDirectorySubreq* subsubreq;
+  InfdDirectoryLocreq* locreq;
+  GSList* item;
+  InfdNodeRequest* other_request;
   gchar* path;
   gboolean result;
+  GError* local_error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  request = infd_directory_get_subreq_from_xml(
+  subreq = infd_directory_get_subreq_from_xml(
     directory,
     connection,
     xml,
     error
   );
 
-  if(request == NULL) return FALSE;
+  if(subreq == NULL) return FALSE;
 
   result = TRUE;
   if(priv->storage != NULL &&
-     request->type == INFD_DIRECTORY_SUBREQ_ADD_NODE)
+     (subreq->type == INFD_DIRECTORY_SUBREQ_SESSION ||
+      subreq->type == INFD_DIRECTORY_SUBREQ_ADD_NODE ||
+      subreq->type == INFD_DIRECTORY_SUBREQ_SYNC_IN ||
+      subreq->type == INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE))
   {
-    infd_directory_node_make_path(
-      request->shared.add_node.parent,
-      request->shared.add_node.name,
-      &path,
-      NULL);
-
-    result = infd_storage_remove_node(
-      priv->storage,
-      request->shared.add_node.plugin->note_type,
-      path,
-      error
+    local_error = NULL;
+    g_set_error(
+      &local_error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED,
+      "%s",
+      _("Client did not acknowledge initial subscription")
     );
 
-    g_free(path);
+    switch(subreq->type)
+    {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
+      break;
+    case INFD_DIRECTORY_SUBREQ_SESSION:
+      /* Only fail the request if there are no other requests with the same
+       * node around. There could be subreqs or locreqs. */
+
+      other_request = NULL;
+      
+      /* Cannot use infd_directory_find_subreq_by_node_id() because that
+       * way we cannot ignore the subreq currently being processed. */
+      for(item = priv->subscription_requests; item != NULL; item = item->next)
+      {
+        subsubreq = (InfdDirectorySubreq*)item->data;
+        if(subsubreq == subreq) continue;
+
+        if(subsubreq->type == INFD_DIRECTORY_SUBREQ_SESSION &&
+           subsubreq->node_id == subreq->node_id)
+        {
+          g_assert(subsubreq->shared.session.request ==
+                   subreq->shared.session.request);
+          other_request = subsubreq->shared.session.request;
+          break;
+        }
+      }
+      
+      for(item = priv->local_requests; item != NULL; item = item->next)
+      {
+        locreq = (InfdDirectoryLocreq*)item->data;
+        if(locreq->type == INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION &&
+           locreq->shared.subscribe_session.node != NULL &&
+           locreq->shared.subscribe_session.node->id == subreq->node_id)
+        {
+          g_assert(locreq->request == subreq->shared.session.request);
+          other_request = locreq->request;
+          break;
+        }
+      }
+
+      if(other_request == NULL)
+      {
+        inf_request_fail(
+          INF_REQUEST(subreq->shared.session.request),
+          local_error
+        );
+      }
+
+      /* No need to remove the node from storage since it existed
+       * already before */
+      result = TRUE;
+      break;
+    case INFD_DIRECTORY_SUBREQ_ADD_NODE:
+      inf_request_fail(
+        INF_REQUEST(subreq->shared.add_node.request),
+        local_error
+      );
+
+      infd_directory_node_make_path(
+        subreq->shared.add_node.parent,
+        subreq->shared.add_node.name,
+        &path,
+        NULL
+      );
+
+      result = infd_storage_remove_node(
+        priv->storage,
+        subreq->shared.add_node.plugin->note_type,
+        path,
+        error
+      );
+
+      g_free(path);
+
+      break;
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN:
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+      inf_request_fail(
+        INF_REQUEST(subreq->shared.sync_in.request),
+        local_error
+      );
+
+      infd_directory_node_make_path(
+        subreq->shared.sync_in.parent,
+        subreq->shared.sync_in.name,
+        &path,
+        NULL
+      );
+
+      result = infd_storage_remove_node(
+        priv->storage,
+        subreq->shared.sync_in.plugin->note_type,
+        path,
+        error
+      );
+
+      g_free(path);
+
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    g_error_free(local_error);
   }
 
-  infd_directory_remove_subreq(directory, request);
+  infd_directory_remove_subreq(directory, subreq);
   return result;
 }
 
@@ -3546,6 +4725,7 @@ infd_directory_set_storage(InfdDirectory* directory,
        * modifications to the sessions will not be stored in storage. */
       while((child = priv->root->shared.subdir.child) != NULL)
       {
+        /* TODO: Do make requests here */
         infd_directory_node_unlink_child_sessions(directory, child, TRUE);
         infd_directory_node_unregister(directory, child, NULL);
         infd_directory_node_free(directory, child);
@@ -3568,7 +4748,8 @@ infd_directory_set_storage(InfdDirectory* directory,
       priv->root->shared.subdir.explored = FALSE;
 
       /* TODO: Error handling? */
-      infd_directory_node_explore(directory, priv->root, NULL);
+      /* TODO: Do make requests here */
+      infd_directory_node_explore(directory, priv->root, NULL, NULL);
     }
 
     g_object_ref(G_OBJECT(storage));
@@ -3617,6 +4798,7 @@ infd_directory_init(GTypeInstance* instance,
   priv->root = infd_directory_node_new_subdirectory(directory, NULL, 0, NULL);
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
+  priv->local_requests = NULL;
 
   priv->chat_session = NULL;
 }
@@ -3716,6 +4898,14 @@ infd_directory_dispose(GObject* object)
   /* Should have been cleared by removing all connections */
   g_assert(priv->subscription_requests == NULL);
 
+  while(priv->local_requests != NULL)
+  {
+    infd_directory_remove_locreq(
+      directory,
+      (InfdDirectoryLocreq*)priv->local_requests->data
+    );
+  }
+
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
 
@@ -3777,6 +4967,7 @@ infd_directory_set_property(GObject* object,
 
     break;
   case PROP_CHAT_SESSION:
+  case PROP_STATUS:
     /* read only */
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -3810,106 +5001,13 @@ infd_directory_get_property(GObject* object,
   case PROP_CHAT_SESSION:
     g_value_set_object(value, G_OBJECT(priv->chat_session));
     break;
+  case PROP_STATUS:
+    g_value_set_enum(value, INF_BROWSER_OPEN);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
   }
-}
-
-/*
- * Default signal handler implementation.
- */
-static void
-infd_directory_add_session(InfdDirectory* directory,
-                           InfdDirectoryIter* iter,
-                           InfdSessionProxy* session)
-{
-  InfdDirectoryNode* node;
-
-  infd_directory_return_if_iter_fail(directory, iter);
-
-  node = (InfdDirectoryNode*)iter->node;
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
-
-  g_assert(node->shared.note.session == NULL ||
-           (node->shared.note.session == session &&
-            node->shared.note.weakref == TRUE));
-
-  g_object_ref(session);
-
-  /* Re-link a previous session which was kept around by somebody else */
-  if(node->shared.note.session != NULL)
-  {
-    g_object_weak_unref(
-      G_OBJECT(node->shared.note.session),
-      infd_directory_session_weak_ref_cb,
-      node
-    );
-  }
-  else
-  {
-    node->shared.note.session = session;
-  }
-
-  node->shared.note.weakref = FALSE;
-
-  g_object_set_qdata(
-    G_OBJECT(session),
-    infd_directory_node_id_quark,
-    GUINT_TO_POINTER(node->id)
-  );
-
-  g_signal_connect(
-    G_OBJECT(session),
-    "notify::idle",
-    G_CALLBACK(infd_directory_session_idle_notify_cb),
-    directory
-  );
-  
-  /* TODO: Drop the session if it gets closed; don't even weak-ref
-   * it in that case */
-
-  if(infd_session_proxy_is_idle(node->shared.note.session))
-  {
-    infd_directory_start_session_save_timeout(directory, node);
-  }
-}
-
-static void
-infd_directory_remove_session(InfdDirectory* directory,
-                              InfdDirectoryIter* iter,
-                              InfdSessionProxy* session)
-{
-  InfdDirectoryNode* node;
-  InfdDirectoryPrivate* priv;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-
-  infd_directory_return_if_iter_fail(directory, iter);
-  node = (InfdDirectoryNode*)iter->node;
-
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
-  g_assert(node->shared.note.session == session);
-  g_assert(node->shared.note.weakref == FALSE);
-
-  /* Remove save timeout. We are just keeping a weak reference to the session
-   * in order to be able to re-use it when it is requested again and if
-   * someone else is going to keep it around anyway, but in all other regards
-   * we behave like we have dropped the session fully from memory. */
-  if(node->shared.note.save_timeout != NULL)
-  {
-    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
-    node->shared.note.save_timeout = NULL;
-  }
-
-  g_object_weak_ref(
-    G_OBJECT(node->shared.note.session),
-    infd_directory_session_weak_ref_cb,
-    node
-  );
-
-  node->shared.note.weakref = TRUE;
-  g_object_unref(node->shared.note.session);
 }
 
 /*
@@ -4047,6 +5145,248 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
 }
 
 /*
+ * InfBrowser implementation
+ */
+
+static void
+infd_directory_browser_subscribe_session(InfBrowser* browser,
+                                         const InfBrowserIter* iter,
+                                         InfSessionProxy* proxy)
+{
+  InfdDirectoryNode* node;
+
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_assert(INFD_IS_SESSION_PROXY(proxy));
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+
+  g_assert(node->shared.note.session == NULL ||
+           (node->shared.note.session == INFD_SESSION_PROXY(proxy) &&
+            node->shared.note.weakref == TRUE));
+
+  g_object_ref(proxy);
+
+  /* Re-link a previous session which was kept around by somebody else */
+  if(node->shared.note.session != NULL)
+  {
+    g_object_weak_unref(
+      G_OBJECT(node->shared.note.session),
+      infd_directory_session_weak_ref_cb,
+      node
+    );
+  }
+  else
+  {
+    node->shared.note.session = INFD_SESSION_PROXY(proxy);
+  }
+
+  node->shared.note.weakref = FALSE;
+
+  g_object_set_qdata(
+    G_OBJECT(proxy),
+    infd_directory_node_id_quark,
+    GUINT_TO_POINTER(node->id)
+  );
+
+  g_signal_connect(
+    G_OBJECT(proxy),
+    "notify::idle",
+    G_CALLBACK(infd_directory_session_idle_notify_cb),
+    INFD_DIRECTORY(browser)
+  );
+  
+  /* TODO: Drop the session if it gets closed; don't even weak-ref
+   * it in that case */
+
+  if(infd_session_proxy_is_idle(node->shared.note.session))
+  {
+    infd_directory_start_session_save_timeout(INFD_DIRECTORY(browser), node);
+  }
+}
+
+static void
+infd_directory_browser_unsubscribe_session(InfBrowser* browser,
+                                           const InfBrowserIter* iter,
+                                           InfSessionProxy* proxy)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node = (InfdDirectoryNode*)iter->node;
+
+  g_assert(INFD_IS_SESSION_PROXY(proxy));
+  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+
+  g_assert(node->shared.note.session == INFD_SESSION_PROXY(proxy));
+  g_assert(node->shared.note.weakref == FALSE);
+
+  /* Remove save timeout. We are just keeping a weak reference to the session
+   * in order to be able to re-use it when it is requested again and if
+   * someone else is going to keep it around anyway, but in all other regards
+   * we behave like we have dropped the session fully from memory. */
+  if(node->shared.note.save_timeout != NULL)
+  {
+    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
+    node->shared.note.save_timeout = NULL;
+  }
+
+  g_object_weak_ref(
+    G_OBJECT(node->shared.note.session),
+    infd_directory_session_weak_ref_cb,
+    node
+  );
+
+  node->shared.note.weakref = TRUE;
+  g_object_unref(node->shared.note.session);
+}
+
+static gboolean
+infd_directory_browser_get_root(InfBrowser* browser,
+                                InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static gboolean
+infd_directory_browser_get_next(InfBrowser* browser,
+                                InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static gboolean
+infd_directory_browser_get_prev(InfBrowser* browser,
+                                InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static gboolean
+infd_directory_browser_get_parent(InfBrowser* browser,
+                                  InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static gboolean
+infd_directory_browser_get_child(InfBrowser* browser,
+                                 InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static InfExploreRequest*
+infd_directory_browser_explore(InfBrowser* browser,
+                               const InfBrowserIter* iter)
+{
+  /* TODO */
+  return NULL;
+}
+
+static gboolean
+infd_directory_browser_get_explored(InfBrowser* browser,
+                                    const InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static gboolean
+infd_directory_browser_is_subdirectory(InfBrowser* browser,
+                                       const InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+static InfNodeRequest*
+infd_directory_browser_add_note(InfBrowser* infbrowser,
+                                const InfBrowserIter* iter,
+                                const char* name,
+                                const char* type,
+                                InfSession* session,
+                                gboolean initial_subscribe)
+{
+  /* TODO */
+  return NULL;
+}
+
+static InfNodeRequest*
+infd_directory_browser_add_subdirectory(InfBrowser* infbrowser,
+                                        const InfBrowserIter* iter,
+                                        const char* name)
+{
+  /* TODO */
+  return NULL;
+}
+
+static InfNodeRequest*
+infd_directory_browser_remove_node(InfBrowser* infbrowser,
+                                   const InfBrowserIter* iter)
+{
+  /* TODO */
+  return NULL;
+}
+
+static const gchar*
+infd_directory_browser_get_node_name(InfBrowser* browser,
+                                     const InfBrowserIter* iter)
+{
+  /* TODO */
+  return NULL;
+}
+
+static const gchar*
+infd_directory_browser_get_node_type(InfBrowser* infbrowser,
+                                     const InfBrowserIter* iter)
+{
+  /* TODO */
+  return NULL;
+}
+
+static InfNodeRequest*
+infd_directory_browser_subscribe(InfBrowser* infbrowser,
+                                 const InfBrowserIter* iter)
+{
+  /* TODO */
+  return NULL;
+}
+
+static InfSessionProxy*
+infd_directory_browser_get_session(InfBrowser* browser,
+                                   const InfBrowserIter* iter)
+{
+  /* TODO */
+  return NULL;
+}
+
+static GSList*
+infd_directory_browser_list_pending_requests(InfBrowser* browser,
+                                             const InfBrowserIter* iter,
+                                             const gchar* request_type)
+{
+  /* TODO */
+  return NULL;
+}
+
+static gboolean
+infd_directory_browser_iter_from_request(InfBrowser* browser,
+                                         InfNodeRequest* request,
+                                         InfBrowserIter* iter)
+{
+  /* TODO */
+  return FALSE;
+}
+
+/*
  * GType registration.
  */
 static void
@@ -4067,10 +5407,6 @@ infd_directory_class_init(gpointer g_class,
   object_class->set_property = infd_directory_set_property;
   object_class->get_property = infd_directory_get_property;
 
-  directory_class->node_added = NULL;
-  directory_class->node_removed = NULL;
-  directory_class->add_session = infd_directory_add_session;
-  directory_class->remove_session = infd_directory_remove_session;
   directory_class->connection_added = NULL;
   directory_class->connection_removed = NULL;
 
@@ -4126,100 +5462,6 @@ infd_directory_class_init(gpointer g_class,
   );
 
   /**
-   * InfdDirectory::node-added:
-   * @directory: The #InfdDirectory emitting the signal.
-   * @iter: A #InfdDirectoryIter pointing to the added node.
-   *
-   * This signal is emitted when a new node has been created. It can either
-   * be created by API calls such as infd_directory_add_note() and
-   * infd_directory_add_subdirectory() or by a client making a corresponding
-   * request.
-   **/
-  directory_signals[NODE_ADDED] = g_signal_new(
-    "node-added",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfdDirectoryClass, node_added),
-    NULL, NULL,
-    inf_marshal_VOID__BOXED,
-    G_TYPE_NONE,
-    1,
-    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
-  );
-
-  /**
-   * InfdDirectory::node-removed:
-   * @directory: The #InfdDirectory emitting the signal.
-   * @iter: A #InfdDirectoryIter pointing to the removed node.
-   *
-   * This signal is emitted when a node has been removed. If a subdirectory
-   * node is removed, all contained nodes are removed as well. Node removal
-   * can either happen through a call to infd_directory_remove_node(), or by
-   * a client making a corresponding request.
-   **/
-  directory_signals[NODE_REMOVED] = g_signal_new(
-    "node-removed",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfdDirectoryClass, node_removed),
-    NULL, NULL,
-    inf_marshal_VOID__BOXED,
-    G_TYPE_NONE,
-    1,
-    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
-  );
-
-  /**
-   * InfdDirectory::add-session:
-   * @directory: The #InfdDirectory emitting the signal.
-   * @iter: A #InfdDirectoryIter pointing to the affected node.
-   * @session: The #InfdSessionProxy proxying the added session.
-   *
-   * This signal is emitted, when a session has been associated with a node.
-   * This happens when infd_directory_iter_get_session() is called on a node,
-   * when a remote client subscribes to a session or a new node was created.
-   *
-   * When a session has been created for a node, the session is kept until it
-   * is idle for some time. Then, it is removed again after having been stored
-   * into the background storage.
-   */
-  directory_signals[ADD_SESSION] = g_signal_new(
-    "add-session",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfdDirectoryClass, add_session),
-    NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
-    G_TYPE_NONE,
-    2,
-    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-    INFD_TYPE_SESSION_PROXY
-  );
-
-  /**
-   * InfdDirectory::remove-session:
-   * @directory: The #InfdDirectory emitting the signal.
-   * @iter: A #InfdDirectoryIter pointing to the affected node.
-   * @session: The #InfdSessionProxy proxying the removed session.
-   *
-   * This signal is emitted when a previously added session was removed. This
-   * happens when a session is idle for some time, or when the corresponding
-   * node has been removed.
-   */
-  directory_signals[REMOVE_SESSION] = g_signal_new(
-    "remove-session",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfdDirectoryClass, remove_session),
-    NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
-    G_TYPE_NONE,
-    2,
-    INFD_TYPE_DIRECTORY_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-    INFD_TYPE_SESSION_PROXY
-  );
-
-  /**
    * InfdDirectory::connection-added:
    * @directory: The #InfdDirectory emitting the signal.
    * @connection: The #InfXmlConnection that was added.
@@ -4260,6 +5502,8 @@ infd_directory_class_init(gpointer g_class,
     1,
     INF_TYPE_XML_CONNECTION
   );
+
+  g_object_class_override_property(object_class, PROP_STATUS, "status");
 }
 
 static void
@@ -4272,21 +5516,37 @@ infd_directory_communication_object_init(gpointer g_iface,
   iface->received = infd_directory_communication_object_received;
 }
 
-GType
-infd_directory_iter_get_type(void)
+static void
+infd_directory_browser_init(gpointer g_iface,
+                            gpointer iface_data)
 {
-  static GType directory_iter_type = 0;
+  InfBrowserIface* iface;
+  iface = (InfBrowserIface*)g_iface;
 
-  if(!directory_iter_type)
-  {
-    directory_iter_type = g_boxed_type_register_static(
-      "InfdDirectoryIter",
-      (GBoxedCopyFunc)infd_directory_iter_copy,
-      (GBoxedFreeFunc)infd_directory_iter_free
-    );
-  }
+  iface->error = NULL;
+  iface->node_added = NULL;
+  iface->node_removed = NULL;
+  iface->subscribe_session = infd_directory_browser_subscribe_session;
+  iface->unsubscribe_session = infd_directory_browser_unsubscribe_session;
+  iface->begin_request = NULL;
 
-  return directory_iter_type;
+  iface->get_root = infd_directory_browser_get_root;
+  iface->get_next = infd_directory_browser_get_next;
+  iface->get_prev = infd_directory_browser_get_prev;
+  iface->get_parent = infd_directory_browser_get_parent;
+  iface->get_child = infd_directory_browser_get_child;
+  iface->explore = infd_directory_browser_explore;
+  iface->get_explored = infd_directory_browser_get_explored;
+  iface->is_subdirectory = infd_directory_browser_is_subdirectory;
+  iface->add_note = infd_directory_browser_add_note;
+  iface->add_subdirectory = infd_directory_browser_add_subdirectory;
+  iface->remove_node = infd_directory_browser_remove_node;
+  iface->get_node_name = infd_directory_browser_get_node_name;
+  iface->get_node_type = infd_directory_browser_get_node_type;
+  iface->subscribe = infd_directory_browser_subscribe;
+  iface->get_session = infd_directory_browser_get_session;
+  iface->list_pending_requests = infd_directory_browser_list_pending_requests;
+  iface->iter_from_request = infd_directory_browser_iter_from_request;
 }
 
 GType
@@ -4315,6 +5575,12 @@ infd_directory_get_type(void)
       NULL
     };
 
+    static const GInterfaceInfo browser_info = {
+      infd_directory_browser_init,
+      NULL,
+      NULL
+    };
+
     directory_type = g_type_register_static(
       G_TYPE_OBJECT,
       "InfdDirectory",
@@ -4327,6 +5593,12 @@ infd_directory_get_type(void)
       INF_COMMUNICATION_TYPE_OBJECT,
       &communication_object_info
     );
+
+    g_type_add_interface_static(
+      directory_type,
+      INF_TYPE_BROWSER,
+      &browser_info
+    );
   }
 
   return directory_type;
@@ -4336,43 +5608,7 @@ infd_directory_get_type(void)
  * Public API.
  */
 
-/**
- * infd_directory_iter_copy:
- * @iter: A #InfdDirectoryIter.
- *
- * Makes a dynamically-allocated copy of @iter. This should not be used by
- * applications because you can copy the structs by value.
- *
- * Return Value: A newly-allocated copy of @iter.
- **/
-InfdDirectoryIter*
-infd_directory_iter_copy(InfdDirectoryIter* iter)
-{
-  InfdDirectoryIter* new_iter;
-
-  g_return_val_if_fail(iter != NULL, NULL);
-
-  new_iter = g_slice_new(InfdDirectoryIter);
-  *new_iter = *iter;
-
-  return new_iter;
-}
-
-/**
- * infd_directory_iter_free:
- * @iter: A #InfdDirectoryIter.
- *
- * Frees a #InfdDirectoryIter allocated with infd_directory_iter_copy().
- **/
-void
-infd_directory_iter_free(InfdDirectoryIter* iter)
-{
-  g_return_if_fail(iter != NULL);
-
-  g_slice_free(InfdDirectoryIter, iter);
-}
-
-/**
+ /**
  * infd_directory_new:
  * @io: IO object to watch connections and schedule timeouts.
  * @storage: Storage backend that is used to read/write notes from
@@ -4634,553 +5870,12 @@ infd_directory_foreach_connection(InfdDirectory* directory,
   }
 }
 
-/**
- * infd_directory_iter_get_name:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a node in @directory.
- *
- * Returns the name of the node @iter points to.
- *
- * Returns: The node's name. The returned string must not be freed.
- */
-const gchar*
-infd_directory_iter_get_name(InfdDirectory* directory,
-                             InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
 
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  g_return_val_if_fail(iter != NULL, NULL);
-  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  return node->name;
-}
-
-/**
- * infd_directory_iter_get_path:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a node in @directory.
- *
- * Returns the complete path to the node @iter points to. The path to a node
- * is the name of the node and the name of all parent nodes separated by '/',
- * as a filesystem path on Unix.
- *
- * Returns: The node's path. Free with g_free() when no longer in use.
- */
-gchar*
-infd_directory_iter_get_path(InfdDirectory* directory,
-                             InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-  gchar* path;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  g_return_val_if_fail(iter != NULL, NULL);
-  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  infd_directory_node_get_path(node, &path, NULL);
-  return path;
-}
-
-/**
- * infd_directory_iter_get_root:
- * @directory: A #InfdDirectory
- * @iter: An uninitalized #InfdDirectoryIter.
- *
- * Sets @iter to point to the root node of the directory.
- **/
-void
-infd_directory_iter_get_root(InfdDirectory* directory,
-                             InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-
-  g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(iter != NULL);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  g_assert(priv->root != NULL);
-
-  iter->node_id = priv->root->id;
-  iter->node = priv->root;
-}
-
-/**
- * infd_directory_iter_get_next:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to some node in @directory.
- *
- * Sets @iter to point to the next node within the same subdirectory. If there
- * is no next node, @iter is left untouched and the function returns %FALSE.
- *
- * Return Value: %TRUE, if @iter was set. 
- **/
-gboolean
-infd_directory_iter_get_next(InfdDirectory* directory,
-                             InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(iter != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  if(node->next != NULL)
-  {
-    iter->node_id = node->next->id;
-    iter->node = node->next;
-
-    return TRUE;
-  }
-  else
-  {
-    return FALSE;
-  }
-}
-
-/**
- * infd_directory_iter_get_prev:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to some node in @directory.
- *
- * Sets @iter to point to the previous node within the same subdirectory. If
- * there is no such node, @iter is left untouched and the function returns
- * %FALSE.
- *
- * Return Value: %TRUE, if @iter was set. 
- **/
-gboolean
-infd_directory_iter_get_prev(InfdDirectory* directory,
-                             InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(iter != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  if(node->prev != NULL)
-  {
-    iter->node_id = node->prev->id;
-    iter->node = node->prev;
-
-    return TRUE;
-  }
-  else
-  {
-    return FALSE;
-  }
-}
-
-/**
- * infd_directory_iter_get_parent:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to some node in @directory.
- *
- * Sets @iter to point to the parent node of @iter. This node is guaranteed
- * to be a subdirectory node. If there is no such node (i.e. @iter points
- * to the root node), @iter is left untouched and the function returns %FALSE.
- *
- * Return Value: %TRUE, if @iter was set. 
- **/
-gboolean
-infd_directory_iter_get_parent(InfdDirectory* directory,
-                               InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(iter != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  if(node->parent != NULL)
-  {
-    iter->node_id = node->parent->id;
-    iter->node = node->parent;
-
-    return TRUE;
-  }
-  else
-  {
-    return FALSE;
-  }
-}
-
-/**
- * infd_directory_iter_get_child:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
- * @error: Location to store error information.
- *
- * Sets @iter to point to first child node of @iter. This requires that @iter
- * points to a subdirectory node. If the subdirectory @iter points to has
- * no children, the function returns %FALSE and @iter is left untouched.
- *
- * The function might fail if this node's children have not yet been read
- * from the background storage and an error occurs while reading them. In
- * this case, %FALSE is returned and @error is set.
- *
- * The function guarantees not to set @error if the node is already explored,
- * i.e. infd_directory_iter_get_explored() returns %TRUE for @directory and
- * @iter.
- *
- * Return Value: %TRUE, if @iter was set. 
- **/
-gboolean
-infd_directory_iter_get_child(InfdDirectory* directory,
-                              InfdDirectoryIter* iter,
-                              GError** error)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(iter != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
-  infd_directory_return_val_if_subdir_fail(iter->node, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  if(node->shared.subdir.explored == FALSE)
-  {
-    if(infd_directory_node_explore(directory, node, error) == FALSE)
-      return FALSE;
-
-    g_assert(node->shared.subdir.explored == TRUE);
-  }
-
-  if(node->shared.subdir.child != NULL)
-  {
-    iter->node_id = node->shared.subdir.child->id;
-    iter->node = node->shared.subdir.child;
-
-    return TRUE;
-  }
-  else
-  {
-    return FALSE;
-  }
-}
-
-/**
- * infd_directory_iter_get_explored:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a subdirectory node in @directory.
- *
- * Returns whether the subdirectory node pointed to by @iter has already
- * been read from the background storage. If not, then no connections can
- * be subscribed to any child nodes.
- *
- * Returns: Whether the node @iter points to has been explored.
- */
-gboolean
-infd_directory_iter_get_explored(InfdDirectory* directory,
-                                 InfdDirectoryIter* iter)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(iter != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
-  infd_directory_return_val_if_subdir_fail(iter->node, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
-
-  return node->shared.subdir.explored;
-}
-
-/**
- * infd_directory_add_subdirectory:
- * @directory: A #InfdDirectory.
- * @parent: A #InfdDirectoryIter pointing to a subdirectory node
- * in @directory.
- * @name: The name of the new node.
- * @iter: An uninitalized #InfdDirectoryIter.
- * @error: Location to store error information.
- *
- * Adds a subdirectory to the directory tree. The new subdirectory will be
- * a child the subdirectory @parent points to. @iter is modified to point to
- * the new subdirectory. If creation fails, the function returns FALSE and
- * @error is set.
- *
- * Return Value: %TRUE if the subdirectory was created successfully.
- **/
-gboolean
-infd_directory_add_subdirectory(InfdDirectory* directory,
-                                InfdDirectoryIter* parent,
-                                const gchar* name,
-                                InfdDirectoryIter* iter,
-                                GError** error)
-{
-  InfdDirectoryPrivate* priv;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(parent != NULL, FALSE);
-  g_return_val_if_fail(name != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, parent, FALSE);
-  infd_directory_return_val_if_subdir_fail(parent->node, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-
-  if( ((InfdDirectoryNode*)parent->node)->shared.subdir.explored == FALSE)
-    if(infd_directory_node_explore(directory, parent->node, error) == FALSE)
-      return FALSE;
-
-  node = infd_directory_node_add_subdirectory(
-    directory,
-    parent->node,
-    name,
-    NULL,
-    NULL,
-    error
-  );
-
-  if(node == NULL)
-    return FALSE;
-
-  if(iter != NULL)
-  {
-    iter->node_id = node->id;
-    iter->node = node;
-  }
-
-  return TRUE;
-}
-
-/**
- * infd_directory_add_note:
- * @directory: A #InfdDirectory.
- * @parent: A #InfdDirectoryIter pointing to a subdirectory node
- * in @directory.
- * @name: The name of the new node.
- * @plugin: The plugin to use for the node. Must have been added with
- * infd_directory_add_plugin().
- * @iter: An uninitialized #InfdDirectoryIter.
- * @error: Location to store error information.
- *
- * Creates a new note in @directory. It will be child of the subdirectory
- * node @parent points to. @iter is set to point to the new node. If an
- * error occurs, the function returns %FALSE and @error is set.
- *
- * Return Value: %TRUE on success.
- **/
-gboolean
-infd_directory_add_note(InfdDirectory* directory,
-                        InfdDirectoryIter* parent,
-                        const gchar* name,
-                        const InfdNotePlugin* plugin,
-                        InfdDirectoryIter* iter,
-                        GError** error)
-{
-  InfdDirectoryPrivate* priv;
-  guint node_id;
-  InfCommunicationHostedGroup* group;
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(parent != NULL, FALSE);
-  g_return_val_if_fail(name != NULL, FALSE);
-  g_return_val_if_fail(plugin != NULL, FALSE);
-
-  infd_directory_return_val_if_iter_fail(directory, parent, FALSE);
-  infd_directory_return_val_if_subdir_fail(parent->node, FALSE);
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-
-  if( ((InfdDirectoryNode*)parent->node)->shared.subdir.explored == FALSE)
-    if(infd_directory_node_explore(directory, parent->node, error) == FALSE)
-      return FALSE;
-
-  node_id = priv->node_counter++;
-  group = infd_directory_create_subscription_group(directory, node_id);
-
-  node = infd_directory_node_create_new_note(
-    directory,
-    parent->node,
-    group,
-    node_id,
-    name,
-    plugin,
-    error
-  );
-
-  g_object_unref(group);
-
-  if(node == NULL)
-    return FALSE;
-
-  infd_directory_node_register(directory, node, NULL, NULL);
-
-  if(iter != NULL)
-  {
-    iter->node = node;
-    iter->node_id = node->id;
-  }
-
-  return TRUE;
-}
-
-/**
- * infd_directory_remove_node:
- * @directory: A #InfdDirectory
- * @iter: A #InfdDirectoryIter pointing to some node in @directory.
- * @error: Location to store error information.
- *
- * Removes the node @iter points to. If it is a subdirectory node, every
- * node it contains will also be removed. If the function fails, %FALSE is
- * returned and @error is set.
- *
- * Return Value: %TRUE on success.
- **/
-gboolean
-infd_directory_remove_node(InfdDirectory* directory,
-                           InfdDirectoryIter* iter,
-                           GError** error)
-{
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(iter != NULL, FALSE);
-  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
-
-  node = iter->node;
-  g_return_val_if_fail(node->parent != NULL, FALSE);
-
-  return infd_directory_node_remove(directory, node, NULL, error);
-}
-
-/**
- * infd_directory_iter_get_node_type:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to some node in @directory.
- *
- * Returns the type of the node @iter points to.
- *
- * Returns: A #InfdStorageNodeType.
- **/
-InfdStorageNodeType
-infd_directory_iter_get_node_type(InfdDirectory* directory,
-                                  InfdDirectoryIter* iter)
-{
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), INFD_STORAGE_NODE_NOTE);
-
-  infd_directory_return_val_if_iter_fail(
-    directory,
-    iter,
-    INFD_STORAGE_NODE_NOTE
-  );
-
-  return ((InfdDirectoryNode*)iter->node)->type;
-}
-
-/**
- * infd_directory_iter_get_plugin:
- * @directory: A #InfdDirectory.
- * @iter: a #InfdDirectoryIter pointing to a note in @directory.
- *
- * Returns the plugin that is used to create a session for the note @iter
- * points to.
- *
- * Return Value: The plugin for the note @iter points to.
- **/
-const InfdNotePlugin*
-infd_directory_iter_get_plugin(InfdDirectory* directory,
-                               InfdDirectoryIter* iter)
-{
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
-
-  node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type != INFD_STORAGE_NODE_NOTE, NULL);
-
-  return node->shared.note.plugin;
-}
-
-/**
- * infd_directory_iter_get_session:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a note in @directory.
- * @error: Location to store error information.
- *
- * Returns the running session in which the note @iter points to is currently
- * edited. If the session does not exist, it is created. However, this might
- * fail if the loading from the background storage fails. In this case, %NULL
- * is returned and @error is set.
- *
- * Return Value: A #InfdSessionProxy for the note @iter points to.
- **/
-InfdSessionProxy*
-infd_directory_iter_get_session(InfdDirectory* directory,
-                                InfdDirectoryIter* iter,
-                                GError** error)
-{
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
-
-  node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
-
-  return infd_directory_node_get_and_link_session(directory, node, error);
-}
-
-/**
- * infd_directory_iter_peek_session:
- * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a note in @directory.
- *
- * Returns the running session in which the note @iter points to is currently
- * edited. If the session does not exist because nobody is editing it at the
- * moment, the function returns %NULL.
- *
- * Return Value: A #InfdSessionProxy for the note @iter points to, or %NULL.
- */
-InfdSessionProxy*
-infd_directory_iter_peek_session(InfdDirectory* directory,
-                                 InfdDirectoryIter* iter)
-{
-  InfdDirectoryNode* node;
-
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
-
-  node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
-
-  return node->shared.note.session;
-}
 
 /**
  * infd_directory_iter_save_session:
  * @directory: A #InfdDirectory.
- * @iter: A #InfdDirectoryIter pointing to a note in @directory.
+ * @iter: A #InfBrowserIter pointing to a note in @directory.
  * @error: Location to store error information.
  *
  * Attempts to store the session the node @iter points to represents into the
@@ -5190,12 +5885,13 @@ infd_directory_iter_peek_session(InfdDirectory* directory,
  */
 gboolean
 infd_directory_iter_save_session(InfdDirectory* directory,
-                                 InfdDirectoryIter* iter,
+                                 InfBrowserIter* iter,
                                  GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   gchar* path;
+  InfSession* session;
   gboolean result;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
@@ -5220,9 +5916,15 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   infd_directory_node_get_path(node, &path, NULL);
 
+  g_object_get(
+    G_OBJECT(node->shared.note.session),
+    "session", &session,
+    NULL
+  );
+
   result = node->shared.note.plugin->session_write(
     priv->storage,
-    infd_session_proxy_get_session(node->shared.note.session),
+    session,
     path,
     node->shared.note.plugin->user_data,
     error
@@ -5230,6 +5932,7 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   /* TODO: Unset modified flag of buffer if result == TRUE */
 
+  g_object_unref(session);
   g_free(path);
   return result;
 }
@@ -5251,7 +5954,8 @@ infd_directory_enable_chat(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfCommunicationHostedGroup* group;
-  InfChatSession* session;
+  InfChatSession* chat_session;
+  InfSession* session;
 
   /* TODO: For the moment, there only exist central methods anyway. In the
    * long term, this should probably be a property, though. */
@@ -5271,7 +5975,7 @@ infd_directory_enable_chat(InfdDirectory* directory,
         methods
       );
 
-      session = inf_chat_session_new(
+      chat_session = inf_chat_session_new(
         priv->communication_manager,
         256,
         INF_SESSION_RUNNING,
@@ -5282,7 +5986,8 @@ infd_directory_enable_chat(InfdDirectory* directory,
       priv->chat_session = INFD_SESSION_PROXY(
         g_object_new(
           INFD_TYPE_SESSION_PROXY,
-          "session", session,
+          "io", priv->io,
+          "session", chat_session,
           "subscription-group", group,
           NULL
         )
@@ -5293,7 +5998,7 @@ infd_directory_enable_chat(InfdDirectory* directory,
         INF_COMMUNICATION_OBJECT(priv->chat_session)
       );
 
-      g_object_unref(session);
+      g_object_unref(chat_session);
       g_object_unref(group);
 
       g_object_notify(G_OBJECT(directory), "chat-session");
@@ -5303,7 +6008,9 @@ infd_directory_enable_chat(InfdDirectory* directory,
   {
     if(priv->chat_session != NULL)
     {
-      inf_session_close(infd_session_proxy_get_session(priv->chat_session));
+      g_object_get(G_OBJECT(priv->chat_session), "session", &session, NULL);
+      inf_session_close(session);
+      g_object_unref(session);
 
       g_object_unref(priv->chat_session);
       priv->chat_session = NULL;

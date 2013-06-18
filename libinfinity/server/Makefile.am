@@ -9,21 +9,27 @@ libinfinity_server_ladir = \
 
 libinfinity_server_la_SOURCES = \
 	infd-directory.c \
+	infd-explore-request.c \
 	infd-filesystem-storage.c \
+	infd-node-request.c \
 	infd-server-pool.c \
 	infd-session-proxy.c \
 	infd-storage.c \
 	infd-tcp-server.c \
+	infd-user-request.c \
 	infd-xml-server.c \
 	infd-xmpp-server.c
 
 libinfinity_server_la_HEADERS = \
 	infd-directory.h \
+	infd-explore-request.h \
 	infd-filesystem-storage.h \
+	infd-node-request.h \
 	infd-note-plugin.h \
 	infd-server-pool.h \
 	infd-session-proxy.h \
 	infd-storage.h \
 	infd-tcp-server.h \
+	infd-user-request.h \
 	infd-xml-server.h \
 	infd-xmpp-server.h

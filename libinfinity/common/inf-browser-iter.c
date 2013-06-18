@@ -18,41 +18,41 @@
  */
 
 /**
- * SECTION:infc-browser-iter
- * @title: InfcBrowserIter
+ * SECTION:inf-browser-iter
+ * @title: InfBrowserIter
  * @short_description: Iterating through browsed nodes
- * @see_also: #InfcBrowser
- * @include: libinfinity/client/infc-browser-iter.h
+ * @see_also: #InfBrowser
+ * @include: libinfinity/common/inf-browser-iter.h
  * @stability: Unstable
  *
- * The #InfcBrowserIter is used to iterate through the nodes of a
- * #InfcBrowser. Normally, #InfcBrowserIter is allocated on the stack and
- * initialized by a #InfcBrowser API call, such as
- * infc_browser_iter_get_root(). You can also safely copy the struct by
- * value to create a copy. It is not necessary to free it.
+ * #InfBrowserIter is used to iterate through the nodes of a #InfBrowser.
+ * Normally, #InfBrowserIter is allocated on the stack and
+ * initialized by a #InfBrowser API call, such as inf_browser_get_root(). You
+ * can also safely copy the struct by value to create a copy. It is not
+ * necessary to free it.
  *
- * Most operations are done via the #InfcBrowser API. These methods could be
- * useful to language bindings.
+ * Most operations are done via the #InfBrowser API. The methods
+ * described here could be useful to language bindings, however.
  *
- * An initialized #InfcBrowserIter always points to a node within the
- * #InfcBrowser. It stays valid as long as the node it points to is not
- * removed from the browser (if it is, the #InfcBrowser::node-removed) signal
+ * An initialized #InfBrowserIter always points to a node within the
+ * #InfBrowser. It stays valid as long as the node it points to is not
+ * removed from the browser (if it is, the #InfBrowser::node-removed) signal
  * is emitted.
  **/
 
-#include <libinfinity/client/infc-browser-iter.h>
+#include <libinfinity/common/inf-browser-iter.h>
 
 GType
-infc_browser_iter_get_type(void)
+inf_browser_iter_get_type(void)
 {
   static GType browser_iter_type = 0;
 
   if(!browser_iter_type)
   {
     browser_iter_type = g_boxed_type_register_static(
-      "InfcBrowserIter",
-      (GBoxedCopyFunc)infc_browser_iter_copy,
-      (GBoxedFreeFunc)infc_browser_iter_free
+      "InfBrowserIter",
+      (GBoxedCopyFunc)inf_browser_iter_copy,
+      (GBoxedFreeFunc)inf_browser_iter_free
     );
   }
 
@@ -60,39 +60,39 @@ infc_browser_iter_get_type(void)
 }
 
 /**
- * infc_browser_iter_copy:
- * @iter: A #InfcBrowserIter.
+ * inf_browser_iter_copy:
+ * @iter: A #InfBrowserIter.
  *
  * Makes a dynamically allocated copy of @iter. This should not be used by
  * applications because you can copy the structs by value.
  *
  * Return Value: A newly-allocated copy of @iter.
  */
-InfcBrowserIter*
-infc_browser_iter_copy(InfcBrowserIter* iter)
+InfBrowserIter*
+inf_browser_iter_copy(const InfBrowserIter* iter)
 {
-  InfcBrowserIter* new_iter;
+  InfBrowserIter* new_iter;
 
   g_return_val_if_fail(iter != NULL, NULL);
 
-  new_iter = g_slice_new(InfcBrowserIter);
+  new_iter = g_slice_new(InfBrowserIter);
   *new_iter = *iter;
 
   return new_iter;
 }
 
 /**
- * infc_browser_iter_free:
- * @iter: A #InfcBrowserIter.
+ * inf_browser_iter_free:
+ * @iter: A #InfBrowserIter.
  *
- * Frees a #InfcBrowserIter allocated by infc_browser_iter_copy().
+ * Frees a #InfBrowserIter allocated by inf_browser_iter_copy().
  **/
 void
-infc_browser_iter_free(InfcBrowserIter* iter)
+inf_browser_iter_free(InfBrowserIter* iter)
 {
   g_return_if_fail(iter != NULL);
 
-  g_slice_free(InfcBrowserIter, iter);
+  g_slice_free(InfBrowserIter, iter);
 }
 
 /* vim:set et sw=2 ts=2: */

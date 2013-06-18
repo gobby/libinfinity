@@ -344,7 +344,7 @@ infinoted_log_session_execute_request_after_cb(InfAdoptedAlgorithm* algo,
 
 static void
 infinoted_log_add_session(InfinotedLog* log,
-                          InfdDirectoryIter* iter,
+                          const InfBrowserIter* iter,
                           InfSession* session)
 {
   InfinotedLogSession* log_session;
@@ -354,7 +354,7 @@ infinoted_log_add_session(InfinotedLog* log,
 
   log_session->log = log;
   log_session->session = session;
-  log_session->path = infd_directory_iter_get_path(log->directory, iter);
+  log_session->path = inf_browser_get_path(INF_BROWSER(log->directory), iter);
   g_object_ref(session);
 
   g_signal_connect(
@@ -444,27 +444,35 @@ infinoted_log_remove_session(InfinotedLog* log,
 }
 
 static void
-infinoted_log_add_session_cb(InfdDirectory* directory,
-                             InfdDirectoryIter* iter,
-                             InfdSessionProxy* proxy,
-                             gpointer user_data)
+infinoted_log_subscribe_session_cb(InfBrowser* browser,
+                                   const InfBrowserIter* iter,
+                                   InfSessionProxy* proxy,
+                                   gpointer user_data)
 {
   InfinotedLog* log;
+  InfSession* session;
+
   log = (InfinotedLog*)user_data;
 
-  infinoted_log_add_session(log, iter, infd_session_proxy_get_session(proxy));
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+  infinoted_log_add_session(log, iter, session);
+  g_object_unref(session);
 }
 
 static void
-infinoted_log_remove_session_cb(InfdDirectory* directory,
-                                InfdDirectoryIter* iter,
-                                InfdSessionProxy* proxy,
-                                gpointer user_data)
+infinoted_log_unsubscribe_session_cb(InfBrowser* browser,
+                                     const InfBrowserIter* iter,
+                                     InfSessionProxy* proxy,
+                                     gpointer user_data)
 {
   InfinotedLog* log;
+  InfSession* session;
+
   log = (InfinotedLog*)user_data;
 
-  infinoted_log_remove_session(log, infd_session_proxy_get_session(proxy));
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+  infinoted_log_remove_session(log, session);
+  g_object_unref(session);
 }
 
 
@@ -695,13 +703,13 @@ infinoted_log_set_directory(InfinotedLog* log,
 
     inf_signal_handlers_disconnect_by_func(
       log->directory,
-      G_CALLBACK(infinoted_log_add_session_cb),
+      G_CALLBACK(infinoted_log_subscribe_session_cb),
       log
     );
 
     inf_signal_handlers_disconnect_by_func(
       log->directory,
-      G_CALLBACK(infinoted_log_remove_session_cb),
+      G_CALLBACK(infinoted_log_unsubscribe_session_cb),
       log
     );
 
@@ -745,15 +753,15 @@ infinoted_log_set_directory(InfinotedLog* log,
 
     g_signal_connect(
       G_OBJECT(directory),
-      "add-session",
-      G_CALLBACK(infinoted_log_add_session_cb),
+      "subscribe-session",
+      G_CALLBACK(infinoted_log_subscribe_session_cb),
       log
     );
 
     g_signal_connect(
       G_OBJECT(directory),
-      "remove-session",
-      G_CALLBACK(infinoted_log_remove_session_cb),
+      "unsubscribe-session",
+      G_CALLBACK(infinoted_log_unsubscribe_session_cb),
       log
     );
 

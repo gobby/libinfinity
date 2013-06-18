@@ -35,7 +35,7 @@ static void
 inf_gtk_browser_model_filter_set_browser_cb(InfGtkBrowserModel* model,
                                             GtkTreePath* path,
                                             GtkTreeIter* iter,
-                                            InfcBrowser* browser,
+                                            InfBrowser* browser,
                                             gpointer user_data)
 {
   GtkTreeModelFilter* model_filter;
@@ -212,8 +212,8 @@ inf_gtk_browser_model_filter_resolve(InfGtkBrowserModel* model,
 
 static gboolean
 inf_gtk_browser_model_filter_browser_iter_to_tree_iter(InfGtkBrowserModel* m,
-                                                       InfcBrowser* browser,
-                                                       InfcBrowserIter* iter,
+                                                       InfBrowser* browser,
+                                                       const InfBrowserIter*i,
                                                        GtkTreeIter* tree_iter)
 {
   GtkTreeModel* child_model;
@@ -225,7 +225,7 @@ inf_gtk_browser_model_filter_browser_iter_to_tree_iter(InfGtkBrowserModel* m,
   result = inf_gtk_browser_model_browser_iter_to_tree_iter(
     INF_GTK_BROWSER_MODEL(child_model),
     browser,
-    iter,
+    i,
     &child_iter
   );
 

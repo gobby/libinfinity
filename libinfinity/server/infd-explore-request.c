@@ -1,4 +1,4 @@
-/* infcinote - Collaborative notetaking application
+/* infdinote - Collaborative notetaking application
  * Copyright (C) 2007-2011 Armin Burgmeier <armin@arbur.net>
  *
  * This library is free software; you can redistribute it and/or
@@ -18,27 +18,26 @@
  */
 
 /**
- * SECTION:infc-explore-request
- * @title: InfcExploreRequest
+ * SECTION:infd-explore-request
+ * @title: InfdExploreRequest
  * @short_description: Watch progress of node exploration
- * @include: libinfinity/client/infc-explore-request.h
- * @see_also: #InfExploreRequest, #InfcRequest, #InfcBrowser
+ * @include: libinfinity/server/infd-explore-request.h
+ * @see_also: #InfExploreRequest, #InfdNodeRequest, #InfdDirectory
  * @stability: Unstable
  *
  * When starting a node exploration using inf_browser_explore() on a
- * #InfcBrowser then it returns an #InfcExploreRequest. This object can be
+ * #InfdDirectory then it returns an #InfdExploreRequest. This object can be
  * used to get notified when there is progress in exploration (for example to
  * show a progress bar in the GUI) or when the operation finished, that is
- * all child nodes of the explored subdirectory are known to the browser.
+ * all child nodes of the explored subdirectory are known to the directory.
  */
 
-#include <libinfinity/client/infc-explore-request.h>
-#include <libinfinity/client/infc-node-request.h>
+#include <libinfinity/server/infd-explore-request.h>
+#include <libinfinity/server/infd-node-request.h>
 #include <libinfinity/common/inf-explore-request.h>
-#include <libinfinity/inf-marshal.h>
 
-typedef struct _InfcExploreRequestPrivate InfcExploreRequestPrivate;
-struct _InfcExploreRequestPrivate {
+typedef struct _InfdExploreRequestPrivate InfdExploreRequestPrivate;
+struct _InfdExploreRequestPrivate {
   guint current;
   guint total;
 
@@ -52,19 +51,19 @@ enum {
   PROP_TOTAL
 };
 
-#define INFC_EXPLORE_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_EXPLORE_REQUEST, InfcExploreRequestPrivate))
+#define INFD_EXPLORE_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_EXPLORE_REQUEST, InfdExploreRequestPrivate))
 
-static InfcNodeRequestClass* parent_class;
+static InfdNodeRequestClass* parent_class;
 
 static void
-infc_explore_request_init(GTypeInstance* instance,
+infd_explore_request_init(GTypeInstance* instance,
                           gpointer g_class)
 {
-  InfcExploreRequest* request;
-  InfcExploreRequestPrivate* priv;
+  InfdExploreRequest* request;
+  InfdExploreRequestPrivate* priv;
 
-  request = INFC_EXPLORE_REQUEST(instance);
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  request = INFD_EXPLORE_REQUEST(instance);
+  priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
 
   priv->current = 0;
   priv->total = 0;
@@ -73,29 +72,29 @@ infc_explore_request_init(GTypeInstance* instance,
 }
 
 static void
-infc_explore_request_finalize(GObject* object)
+infd_explore_request_finalize(GObject* object)
 {
-  InfcExploreRequest* request;
-  InfcExploreRequestPrivate* priv;
+  InfdExploreRequest* request;
+  InfdExploreRequestPrivate* priv;
 
-  request = INFC_EXPLORE_REQUEST(object);
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  request = INFD_EXPLORE_REQUEST(object);
+  priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
 
   if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
 static void
-infc_explore_request_set_property(GObject* object,
+infd_explore_request_set_property(GObject* object,
                                   guint prop_id,
                                   const GValue* value,
                                   GParamSpec* pspec)
 {
-  InfcExploreRequest* request;
-  InfcExploreRequestPrivate* priv;
+  InfdExploreRequest* request;
+  InfdExploreRequestPrivate* priv;
 
-  request = INFC_EXPLORE_REQUEST(object);
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  request = INFD_EXPLORE_REQUEST(object);
+  priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
 
   switch(prop_id)
   {
@@ -109,17 +108,17 @@ infc_explore_request_set_property(GObject* object,
 }
 
 static void
-infc_explore_request_get_property(GObject* object,
+infd_explore_request_get_property(GObject* object,
                                   guint prop_id,
                                   GValue* value,
                                   GParamSpec* pspec)
 {
-  InfcExploreRequest* explore_request;
-  InfcExploreRequestPrivate* priv;
+  InfdExploreRequest* explore_request;
+  InfdExploreRequestPrivate* priv;
   gboolean finished;
 
-  explore_request = INFC_EXPLORE_REQUEST(object);
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(explore_request);
+  explore_request = INFD_EXPLORE_REQUEST(object);
+  priv = INFD_EXPLORE_REQUEST_PRIVATE(explore_request);
 
   switch(prop_id)
   {
@@ -136,28 +135,28 @@ infc_explore_request_get_property(GObject* object,
 }
 
 static void
-infc_explore_request_class_init(gpointer g_class,
+infd_explore_request_class_init(gpointer g_class,
                                 gpointer class_data)
 {
   GObjectClass* object_class;
-  InfcExploreRequestClass* request_class;
+  InfdExploreRequestClass* request_class;
 
   object_class = G_OBJECT_CLASS(g_class);
-  request_class = INFC_EXPLORE_REQUEST_CLASS(g_class);
+  request_class = INFD_EXPLORE_REQUEST_CLASS(g_class);
 
-  parent_class = INFC_NODE_REQUEST_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfcExploreRequestPrivate));
+  parent_class = INFD_NODE_REQUEST_CLASS(g_type_class_peek_parent(g_class));
+  g_type_class_add_private(g_class, sizeof(InfdExploreRequestPrivate));
 
-  object_class->finalize = infc_explore_request_finalize;
-  object_class->set_property = infc_explore_request_set_property;
-  object_class->get_property = infc_explore_request_get_property;
+  object_class->finalize = infd_explore_request_finalize;
+  object_class->set_property = infd_explore_request_set_property;
+  object_class->get_property = infd_explore_request_get_property;
 
   g_object_class_override_property(object_class, PROP_CURRENT, "current");
   g_object_class_override_property(object_class, PROP_TOTAL, "total");
 }
 
 static void
-infc_explore_request_explore_request_init(gpointer g_iface,
+infd_explore_request_explore_request_init(gpointer g_iface,
                                           gpointer iface_data)
 {
   InfExploreRequestIface* iface;
@@ -165,34 +164,34 @@ infc_explore_request_explore_request_init(gpointer g_iface,
 }
 
 GType
-infc_explore_request_get_type(void)
+infd_explore_request_get_type(void)
 {
   static GType explore_request_type = 0;
 
   if(!explore_request_type)
   {
     static const GTypeInfo explore_request_type_info = {
-      sizeof(InfcExploreRequestClass),  /* class_size */
+      sizeof(InfdExploreRequestClass),  /* class_size */
       NULL,                             /* base_init */
       NULL,                             /* base_finalize */
-      infc_explore_request_class_init,  /* class_init */
+      infd_explore_request_class_init,  /* class_init */
       NULL,                             /* class_finalize */
       NULL,                             /* class_data */
-      sizeof(InfcExploreRequest),       /* instance_size */
+      sizeof(InfdExploreRequest),       /* instance_size */
       0,                                /* n_preallocs */
-      infc_explore_request_init,        /* instance_init */
+      infd_explore_request_init,        /* instance_init */
       NULL                              /* value_table */
     };
 
     static const GInterfaceInfo explore_request_info = {
-      infc_explore_request_explore_request_init,
+      infd_explore_request_explore_request_init,
       NULL,
       NULL
     };
 
     explore_request_type = g_type_register_static(
-      INFC_TYPE_NODE_REQUEST,
-      "InfcExploreRequest",
+      INFD_TYPE_NODE_REQUEST,
+      "InfdExploreRequest",
       &explore_request_type_info,
       0
     );
@@ -208,19 +207,19 @@ infc_explore_request_get_type(void)
 }
 
 /**
- * infc_explore_request_initiated:
- * @request: An #InfcExploreRequest.
+ * infd_explore_request_initiated:
+ * @request: An #InfdExploreRequest.
  * @total: The total number of children of the node which is being explored.
  *
  * Initiates the request. An explore request is considered initiated as soon
  * as the total amount of child nodes is known.
  **/
 void
-infc_explore_request_initiated(InfcExploreRequest* request,
+infd_explore_request_initiated(InfdExploreRequest* request,
                                guint total)
 {
-  InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  InfdExploreRequestPrivate* priv;
+  priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
 
   g_return_if_fail(priv->initiated == FALSE);
 
@@ -231,34 +230,18 @@ infc_explore_request_initiated(InfcExploreRequest* request,
 }
 
 /**
- * infc_explore_request_get_initiated:
- * @request: A #InfcExploreRequest.
- *
- * Returns whether the exploration process was already initiated, i.e. the
- * total number of nodes to explore is known.
- *
- * Return Value: Whether the exploration was initiated.
- **/
-gboolean
-infc_explore_request_get_initiated(InfcExploreRequest* request)
-{
-  g_return_val_if_fail(INFC_IS_EXPLORE_REQUEST(request), FALSE);
-  return INFC_EXPLORE_REQUEST_PRIVATE(request)->initiated;
-}
-
-/**
- * infc_explore_request_progress:
- * @request: A #InfcExploreRequest.
+ * infd_explore_request_progress:
+ * @request: A #InfdExploreRequest.
  * @error: Location to store error information.
  *
  * Indicates that one more node has been explored and changes the
- * #InfcExploreRequest:current property accordingly.
+ * #InfdExploreRequest:current property accordingly.
  **/
 void
-infc_explore_request_progress(InfcExploreRequest* request)
+infd_explore_request_progress(InfdExploreRequest* request)
 {
-  InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  InfdExploreRequestPrivate* priv;
+  priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
   
   g_return_if_fail(priv->current < priv->total);
 

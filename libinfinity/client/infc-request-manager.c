@@ -18,6 +18,7 @@
  */
 
 #include <libinfinity/client/infc-request-manager.h>
+#include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-marshal.h>
@@ -67,15 +68,18 @@ infc_request_manager_foreach_request_func(gpointer key,
 {
   InfcRequest* request;
   InfcRequestManagerForeachData* foreach_data;
+  gchar* type;
 
   request = INFC_REQUEST(value);
   foreach_data = (InfcRequestManagerForeachData*)user_data;
+  g_object_get(G_OBJECT(request), "type", &type, NULL);
 
-  if(foreach_data->name == NULL ||
-     strcmp(foreach_data->name, infc_request_get_name(request)) == 0)
+  if(foreach_data->name == NULL || strcmp(foreach_data->name, type) == 0)
   {
     foreach_data->func(request, foreach_data->user_data);
   }
+
+  g_free(type);
 }
 
 /* TODO: inf_protocol_version_parse() uses a very similar routine. We should
@@ -239,13 +243,15 @@ infc_request_manager_request_add(InfcRequestManager* manager,
                                  InfcRequest* request)
 {
   InfcRequestManagerPrivate* priv;
-  gpointer seq;
+  guint seq;
+  gpointer seq_ptr;
 
   priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
-  seq = GUINT_TO_POINTER(infc_request_get_seq(request));
+  g_object_get(G_OBJECT(request), "seq", &seq, NULL);
+  seq_ptr = GUINT_TO_POINTER(seq);
 
-  g_assert(g_hash_table_lookup(priv->requests, seq) == NULL);
-  g_hash_table_insert(priv->requests, seq, request);
+  g_assert(g_hash_table_lookup(priv->requests, seq_ptr) == NULL);
+  g_hash_table_insert(priv->requests, seq_ptr, request);
 
   g_object_ref(G_OBJECT(request));
 }
@@ -255,13 +261,15 @@ infc_request_manager_request_remove(InfcRequestManager* manager,
                                     InfcRequest* request)
 {
   InfcRequestManagerPrivate* priv;
-  gpointer seq;
+  guint seq;
+  gpointer seq_ptr;
 
   priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
-  seq = GUINT_TO_POINTER(infc_request_get_seq(request));
+  g_object_get(G_OBJECT(request), "seq", &seq, NULL);
+  seq_ptr = GUINT_TO_POINTER(seq);
 
-  g_assert(g_hash_table_lookup(priv->requests, seq) != NULL);
-  g_hash_table_remove(priv->requests, seq);
+  g_assert(g_hash_table_lookup(priv->requests, seq_ptr) != NULL);
+  g_hash_table_remove(priv->requests, seq_ptr);
 }
 
 static void
@@ -461,7 +469,7 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
   param_alloc = 16;
   params = g_malloc0(param_alloc * sizeof(GParameter));
 
-  params[param_size].name = "name";
+  params[param_size].name = "type";
   g_value_init(&params[param_size].value, G_TYPE_STRING);
   g_value_set_static_string(&params[param_size].value, request_name);
   ++ param_size;
@@ -564,8 +572,8 @@ infc_request_manager_remove_request(InfcRequestManager* manager,
  * @request: A #InfcRequest that has previously been added to @manager.
  * @error: Error information why the request failed.
  *
- * Emits the "failed" signal on @request and then removes the request from
- * the manager.
+ * Marks @request as failed using inf_request_fail() and then removes the
+ * request from the manager.
  **/
 void
 infc_request_manager_fail_request(InfcRequestManager* manager,
@@ -576,7 +584,7 @@ infc_request_manager_fail_request(InfcRequestManager* manager,
   g_return_if_fail(INFC_IS_REQUEST(request));
   g_return_if_fail(error != NULL);
 
-  infc_request_failed(request, error);
+  inf_request_fail(INF_REQUEST(request), error);
   infc_request_manager_remove_request(manager, request);
 }
 
@@ -646,6 +654,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
   gboolean has_seq;
   guint seq_id;
   guint seq;
+  gchar* request_type;
 
   g_return_val_if_fail(INFC_IS_REQUEST_MANAGER(manager), NULL);
   g_return_val_if_fail(xml != NULL, NULL);
@@ -681,8 +690,8 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
   }
   else
   {
-    if(name != NULL &&
-       strcmp(name, infc_request_get_name(request)) != 0)
+    g_object_get(G_OBJECT(request), "type", &request_type, NULL);
+    if(name != NULL && strcmp(name, request_type) != 0)
     {
       g_set_error(
         error,
@@ -690,12 +699,14 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
         INF_REQUEST_ERROR_INVALID_SEQ,
         _("The request contains a sequence number refering to a request of "
           "type '%s', but a request of type '%s' was expected"),
-        infc_request_get_name(request),
+        request_type,
         name
       );
 
       request = NULL;
     }
+
+    g_free(request_type);
   }
 
   return request;

@@ -20,8 +20,6 @@
 #ifndef __INFC_SESSION_PROXY_H__
 #define __INFC_SESSION_PROXY_H__
 
-#include <libinfinity/client/infc-user-request.h>
-#include <libinfinity/common/inf-session.h>
 #include <libinfinity/communication/inf-communication-joined-group.h>
 
 #include <glib-object.h>
@@ -58,15 +56,6 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
                                   InfCommunicationJoinedGroup* group,
                                   InfXmlConnection* connection,
                                   guint seq_id);
-
-InfcUserRequest*
-infc_session_proxy_join_user(InfcSessionProxy* proxy,
-                             const GParameter* params,
-                             guint n_params,
-                             GError** error);
-
-InfSession*
-infc_session_proxy_get_session(InfcSessionProxy* proxy);
 
 InfXmlConnection*
 infc_session_proxy_get_connection(InfcSessionProxy* proxy);

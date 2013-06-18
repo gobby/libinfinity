@@ -17,42 +17,50 @@
  * MA 02110-1301, USA.
  */
 
-#ifndef __INFC_REQUEST_H__
-#define __INFC_REQUEST_H__
+#ifndef __INF_REQUEST_H__
+#define __INF_REQUEST_H__
 
 #include <glib-object.h>
 
 G_BEGIN_DECLS
 
-#define INFC_TYPE_REQUEST                 (infc_request_get_type())
-#define INFC_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFC_TYPE_REQUEST, InfcRequest))
-#define INFC_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFC_TYPE_REQUEST))
-#define INFC_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFC_TYPE_REQUEST, InfcRequestIface))
+#define INF_TYPE_REQUEST                 (inf_request_get_type())
+#define INF_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_REQUEST, InfRequest))
+#define INF_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_REQUEST))
+#define INF_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_REQUEST, InfRequestIface))
 
 /**
- * InfcRequest:
+ * InfRequest:
  *
- * #InfcRequest is an opaque data type. You should only access it
+ * #InfRequest is an opaque data type. You should only access it
  * via the public API functions.
  */
-typedef struct _InfcRequest InfcRequest;
-typedef struct _InfcRequestIface InfcRequestIface;
+typedef struct _InfRequest InfRequest;
+typedef struct _InfRequestIface InfRequestIface;
 
 /**
- * InfcRequestIface:
+ * InfRequestIface:
  *
- * Default signal handlers for the #InfcRequest interface.
+ * Default signal handlers for the #InfRequest interface.
  */
-struct _InfcRequestIface {
+struct _InfRequestIface {
   /*< private >*/
   GTypeInterface parent;
+
+  /*< public >*/
+  void (*fail)(InfRequest* request,
+               const GError* error);
 };
 
 GType
-infc_request_get_type(void) G_GNUC_CONST;
+inf_request_get_type(void) G_GNUC_CONST;
+
+void
+inf_request_fail(InfRequest* request,
+                 const GError* error);
 
 G_END_DECLS
 
-#endif /* __INFC_REQUEST_H__ */
+#endif /* __INF_REQUEST_H__ */
 
 /* vim:set et sw=2 ts=2: */
