@@ -2392,7 +2392,8 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
     g_assert(iter.node != NULL);
 
     inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
-    infc_request_manager_remove_request(priv->request_manager, request);
+    if(priv->status == INF_BROWSER_OPEN)
+      infc_request_manager_remove_request(priv->request_manager, request);
     return TRUE;
   }
 }
