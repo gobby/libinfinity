@@ -8,7 +8,7 @@ infinoted \- dedicated server for the infinote protocol (e.g. Gobby)
 .B infinoted
 is a dedicated server which allows clients to edit plain text documents and
 source files collaboratively over a network. Changes to the documents are
-synchronised instantly to the other clients.
+synchronized instantly to the other clients.
 .PP
 This server supports the infinote protocol as implemented by libinfinity.
 Example clients include Gobby 0.4.9x, Kobby and a special plugin for gedit.
@@ -44,10 +44,20 @@ The port number to listen on
 How to decide whether to use TLS
 .TP
 \fB\-r\fR, \fB\-\-root\-directory\fR=\fIDIRECTORY\fR
-The directory to store documents into
+A directory to save the document tree into in infinoted\-xml format.
+This is the location where the tree is kept persistently so that it is
+available again after server restart. Usually, documents are saved in
+this tree 60 seconds after the last user left the session. In addition
+to this, with the \-\-autosave-interval option it is possible to save
+sessions into the tree periodically. The default directory is
+~/.infinote.
 .TP
 \fB\-\-autosave\-interval\fR=\fIINTERVAL\fR
-Interval within which to save documents, in seconds, or 0 to disable autosave
+Interval  within  which  to  save the document tree to the root directory,
+in seconds, or 0 to disable autosave. If autosave is disabled, documents
+are only stored to the filesystem 60 seconds after the last user has left the
+session or when the server is shut down. If autosave is enabled, documents
+are still stored on these two occasions in addition to the periodic save.
 .TP
 \fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR
 Require given password on connections
@@ -62,10 +72,13 @@ Users allowed to connect after pam authentication. Separate entries with semicol
 Group allowed to connect after pam authentication. Separate entries with semicolons.
 .TP
 \fB\-\-sync\-directory\fR=\fIDIRECTORY\fR
-A directory into which to periodically store a copy of the document tree
+A directory into which to periodically export the documents of the directory
+as plain text files. Requires \-\-sync\-interval to be set non-zero.
 .TP
 \fB\-\-sync\-interval\fR=\fIINTERVAL\fR
-Interval within which to store documents to the specified sync\-directory, in seconds, or 0 to disable directory synchronization
+Interval within which to store documents to the specified sync\-directory,
+in seconds, or 0 to disable directory synchronization. Requires
+\-\-sync\-directory to be set.
 .TP
 \fB\-d\fR, \fB\-\-daemonize\fR
 Daemonize the server
