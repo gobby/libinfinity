@@ -125,7 +125,8 @@ struct _InfXmppConnectionPrivate {
   /* Transport layer security */
   gnutls_session_t session;
   InfCertificateCredentials* creds;
-  /*InfCertificateCredentials* own_creds;*/
+  gnutls_x509_crt_t own_cert;
+  InfCertificateChain* peer_cert;
   const gchar* pull_data;
   gsize pull_len;
 
@@ -150,6 +151,8 @@ enum {
 
   PROP_TLS_ENABLED,
   PROP_CREDENTIALS,
+  PROP_OWN_CERTIFICATE,
+  PROP_PEER_CERTIFICATE,
 
   PROP_SASL_CONTEXT,
   PROP_SASL_MECHANISMS,
@@ -565,6 +568,22 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
   {
     g_free(priv->sasl_remote_mechanisms);
     priv->sasl_remote_mechanisms = NULL;
+  }
+
+  if(priv->own_cert != NULL)
+  {
+    gnutls_x509_crt_deinit(priv->own_cert);
+    priv->own_cert = NULL;
+
+    g_object_notify(G_OBJECT(xmpp), "own-certificate");
+  }
+
+  if(priv->peer_cert != NULL)
+  {
+    inf_certificate_chain_unref(priv->peer_cert);
+    priv->peer_cert = NULL;
+
+    g_object_notify(G_OBJECT(xmpp), "peer-certificate");
   }
 
   if(priv->session != NULL)
@@ -1068,35 +1087,81 @@ inf_xmpp_connection_tls_pull(gnutls_transport_ptr_t ptr,
   }
 }
 
-static InfCertificateChain*
-inf_xmpp_connection_tls_import_server_certificate(InfXmppConnection* xmpp,
-                                                  GError** error)
+static gnutls_x509_crt_t
+inf_xmpp_connection_tls_import_own_certificate(InfXmppConnection* xmpp,
+                                               GError** error)
 {
   InfXmppConnectionPrivate* priv;
-  const gnutls_datum_t* server_certs_raw;
-  unsigned int list_size;
-  gnutls_x509_crt_t* certs;
-  unsigned int i;
+  const gnutls_datum_t* cert_raw;
+  gnutls_x509_crt_t cert;
   int res;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
-  server_certs_raw = gnutls_certificate_get_peers(priv->session, &list_size);
+  cert_raw = gnutls_certificate_get_ours(priv->session);
 
-  if(server_certs_raw == NULL)
+  if(cert_raw == NULL)
+    return NULL;
+
+  res = gnutls_x509_crt_init(&cert);
+  if(res != GNUTLS_E_SUCCESS)
   {
-    g_set_error(
-      error,
-      inf_xmpp_connection_error_quark,
-      INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
-      "%s",
-      _("The server did not provide a certificate")
-    );
-
+    inf_gnutls_set_error(error, res);
     return NULL;
   }
 
+  res = gnutls_x509_crt_import(cert, cert_raw, GNUTLS_X509_FMT_DER);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  return cert;
+}
+
+static InfCertificateChain*
+inf_xmpp_connection_tls_import_peer_certificate(InfXmppConnection* xmpp,
+                                                GError** error)
+{
+  InfXmppConnectionPrivate* priv;
+  const gnutls_datum_t* certs_raw;
+  unsigned int list_size;
+  unsigned int n_certs;
+  gnutls_x509_crt_t* certs;
+  int res;
+  guint i;
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  certs_raw = gnutls_certificate_get_peers(priv->session, &list_size);
+
+  if(certs_raw == NULL)
+    return NULL;
+
   certs = g_malloc(list_size * sizeof(gnutls_x509_crt_t));
 
+  /* TODO: The upper code only imports one certificate, even if there are
+   * more. It's unclear to me why this happens. */
+#if 0
+  n_certs = list_size;
+  res = gnutls_x509_crt_list_import(
+    certs,
+    &n_certs,
+    certs_raw,
+    GNUTLS_X509_FMT_DER,
+    GNUTLS_X509_CRT_LIST_FAIL_IF_UNSORTED
+  );
+
+  if(res < 0)
+  {
+    g_free(certs);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  g_assert(res == n_certs);
+  g_assert(res == list_size);
+#else
   for(i = 0; i < list_size; ++ i)
   {
     res = gnutls_x509_crt_init(&certs[i]);
@@ -1105,7 +1170,7 @@ inf_xmpp_connection_tls_import_server_certificate(InfXmppConnection* xmpp,
     {
       res = gnutls_x509_crt_import(
         certs[i],
-        server_certs_raw + i,
+        certs_raw + i,
         GNUTLS_X509_FMT_DER
       );
 
@@ -1122,6 +1187,7 @@ inf_xmpp_connection_tls_import_server_certificate(InfXmppConnection* xmpp,
       return NULL;
     }
   }
+#endif
 
   return inf_certificate_chain_new(certs, list_size);
 }
@@ -1150,34 +1216,69 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
     priv->status = INF_XMPP_CONNECTION_CONNECTED;
     g_object_notify(G_OBJECT(xmpp), "tls-enabled");
 
-    if(priv->site == INF_XMPP_CONNECTION_SERVER ||
-       priv->certificate_callback == NULL)
+    error = NULL;
+
+    /* Extract own certificate */
+    g_assert(priv->own_cert == NULL);
+    priv->own_cert =
+      inf_xmpp_connection_tls_import_own_certificate(xmpp, &error);
+    if(error == NULL)
     {
-      /* Reinitiate stream */
-      inf_xmpp_connection_initiate(xmpp);
+      if(priv->own_cert != NULL)
+        g_object_notify(G_OBJECT(xmpp), "own-certificate");
+    
+      /* Extract peer certificate */
+      g_assert(priv->peer_cert == NULL);
+      priv->peer_cert =
+        inf_xmpp_connection_tls_import_peer_certificate(xmpp, &error);
+      if(error == NULL)
+      {
+        /* Require the server to show us its certificate */
+        if(priv->peer_cert == NULL)
+        {
+          if(priv->site == INF_XMPP_CONNECTION_CLIENT)
+          {
+            g_set_error(
+              &error,
+              inf_xmpp_connection_error_quark,
+              INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
+              "%s",
+              _("The server did not provide a certificate")
+            );
+          }
+        }
+        else
+        {
+          g_object_notify(G_OBJECT(xmpp), "peer-certificate");
+        }
+      }
+    }
+
+    if(error != NULL)
+    {
+      inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
+      g_error_free(error);
+      inf_xmpp_connection_terminate(xmpp);
     }
     else
     {
-      error = NULL;
-      chain = inf_xmpp_connection_tls_import_server_certificate(xmpp, &error);
-
-      if(chain == NULL)
-      {
-        inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-        g_error_free(error);
-        inf_xmpp_connection_terminate(xmpp);
-      }
-      else
+      /* We got our peer's certificate. Ask the user to verify it. */
+      if(priv->peer_cert != NULL && priv->certificate_callback != NULL)
       {
         priv->certificate_callback(
           xmpp,
-          chain,
+          priv->peer_cert,
           priv->certificate_callback_user_data
         );
-
-        inf_certificate_chain_unref(chain);
+      }
+      else
+      {
+        /* The user doesn't seem to be interested,
+         * blindly accept the certificate */
+        inf_xmpp_connection_initiate(xmpp);
       }
     }
+
     break;
   default:
     error = NULL;
@@ -1194,11 +1295,6 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
       /* Terminate connection when GnuTLS handshake fails. Don't wait for
        * </stream:stream> as the server might not be aware of the problem. */
       inf_xmpp_connection_terminate(xmpp);
-#if 0
-      /* Wait for terminating </stream:stream> from server */
-      priv->status = INF_XMPP_CONNECTION_CLOSING_STREAM;
-      g_object_notify(G_OBJECT(xmpp), "status");
-#endif
       break;
     case INF_XMPP_CONNECTION_SERVER:
       /* TODO: Just close connection on error, without sending
@@ -3422,6 +3518,8 @@ inf_xmpp_connection_init(GTypeInstance* instance,
 
   priv->session = NULL;
   priv->creds = NULL;
+  priv->own_cert = NULL;
+  priv->peer_cert = NULL;
   priv->pull_data = NULL;
   priv->pull_len = 0;
 
@@ -3483,6 +3581,11 @@ inf_xmpp_connection_dispose(GObject* object)
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
 
   inf_xmpp_connection_set_tcp(xmpp, NULL);
+
+  g_assert(priv->session == NULL);
+  g_assert(priv->own_cert == NULL);
+  g_assert(priv->peer_cert == NULL);
+  g_assert(priv->sasl_session == NULL);
 
   if(priv->sasl_own_context != NULL)
   {
@@ -3656,6 +3759,12 @@ inf_xmpp_connection_get_property(GObject* object,
     break;
   case PROP_CREDENTIALS:
     g_value_set_boxed(value, priv->creds);
+    break;
+  case PROP_OWN_CERTIFICATE:
+    g_value_set_pointer(value, priv->own_cert);
+    break;
+  case PROP_PEER_CERTIFICATE:
+    g_value_set_boxed(value, priv->peer_cert);
     break;
   case PROP_SASL_CONTEXT:
     g_value_set_boxed(value, priv->sasl_context);
@@ -3948,6 +4057,30 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_OWN_CERTIFICATE,
+    g_param_spec_pointer(
+      "own-certificate",
+      "Own certificate",
+      "The certificate (gnutls_x509_crt_t) that was presented to "
+      "the remote host",
+      G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_PEER_CERTIFICATE,
+    g_param_spec_boxed(
+      "peer-certificate",
+      "Peer Certificate",
+      "The remote host's certificate chain",
+      INF_TYPE_CERTIFICATE_CHAIN,
+      G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_SASL_CONTEXT,
     g_param_spec_boxed(
       "sasl-context",
@@ -4138,6 +4271,8 @@ inf_xmpp_connection_get_type(void)
  * %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED (or both, of course). For
  * server connections @creds must contain a valid server certificate in case
  * @security_policy is not %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED.
+ * @creds can contain a certificate for the client site and, if so, is used
+ * for client authentication.
  *
  * If @sasl_context is %NULL, #InfXmppConnection uses a built-in context
  * that only supports ANONYMOUS authentication. In @sasl_context's
@@ -4214,6 +4349,53 @@ inf_xmpp_connection_get_tls_enabled(InfXmppConnection* xmpp)
   if(priv->session == NULL) return FALSE;
 
   return TRUE;
+}
+
+/**
+ * inf_xmpp_connection_get_own_certificate:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the local host's certificate that was used to authenticate with
+ * the remote host, or %NULL if no certificate was used. This function can
+ * only be used after the TLS handshake has completed, see
+ * inf_xmpp_connection_get_tls_enabled().
+ *
+ * Returns: The certificate of the local host. The returned value should not
+ * be freed, it is owned by the #InfXmppConnection.
+ */
+gnutls_x509_crt_t
+inf_xmpp_connection_get_own_certificate(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), NULL);
+  g_return_val_if_fail(inf_xmpp_connection_get_tls_enabled(xmpp), NULL);
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  return priv->own_cert;
+}
+
+/**
+ * inf_xmpp_connection_get_peer_certificate:
+ * @xmpp: A #InfXmppConnection.
+ *
+ * Returns the certificate chain that the remote host authenticated itself
+ * with. This function can only be used after the TLS handshake has completed,
+ * see inf_xmpp_connection_get_tls_enabled().
+ *
+ * Returns: The certificate chain of the remote host. The returned value
+ * should not be freed, it is owned by the #InfXmppConnection.
+ */
+InfCertificateChain*
+inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
+{
+  InfXmppConnectionPrivate* priv;
+
+  g_return_val_if_fail(INF_IS_XMPP_CONNECTION(xmpp), NULL);
+  g_return_val_if_fail(inf_xmpp_connection_get_tls_enabled(xmpp), NULL);
+
+  priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  return priv->peer_cert;
 }
 
 /**

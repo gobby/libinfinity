@@ -163,6 +163,12 @@ inf_xmpp_connection_new(InfTcpConnection* tcp,
 gboolean
 inf_xmpp_connection_get_tls_enabled(InfXmppConnection* xmpp);
 
+gnutls_x509_crt_t
+inf_xmpp_connection_get_own_certificate(InfXmppConnection* xmpp);
+
+InfCertificateChain*
+inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp);
+
 void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
                                              InfXmppConnectionCrtCallback cb,
