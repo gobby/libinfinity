@@ -4708,9 +4708,7 @@ infc_browser_subscribe_chat(InfcBrowser* browser)
     NULL
   );
 
-  /* TODO: Should we emit a BEGIN_SUBSCRIBE_CHAT signal here? Or should we
-   * allow BEGIN_REQUEST to work with all kind of requests, not only
-   * InfBrowserRequests in the InfBrowser interface? */
+  inf_browser_begin_request(INF_BROWSER(browser), NULL, INF_REQUEST(request));
 
   xml = infc_browser_request_to_xml(request);
 

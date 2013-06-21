@@ -1082,7 +1082,7 @@ inf_browser_begin_request(InfBrowser* browser,
   GValue value = { 0 };
 
   g_return_if_fail(INF_IS_BROWSER(browser));
-  g_return_if_fail(INF_IS_NODE_REQUEST(request));
+  g_return_if_fail(INF_IS_REQUEST(request));
 
   g_value_init(&value, G_TYPE_STRING);
   g_object_get_property(G_OBJECT(request), "type", &value);
