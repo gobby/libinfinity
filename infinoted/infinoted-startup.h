@@ -33,8 +33,7 @@ struct _InfinotedStartup {
   InfinotedOptions* options;
   InfinotedLog* log;
   gnutls_x509_privkey_t private_key;
-  gnutls_x509_crt_t* certificates;
-  guint n_certificates;
+  InfCertificateChain* certificates;
   InfCertificateCredentials* credentials;
   InfSaslContext* sasl_context;
 };

@@ -61,6 +61,12 @@ infinoted_run_load_directory(InfinotedRun* run,
     communication_manager
   );
 
+  infd_directory_set_certificate(
+    run->directory,
+    startup->private_key,
+    startup->certificates
+  );
+
   infd_directory_enable_chat(run->directory, TRUE);
 
   g_object_unref(storage);

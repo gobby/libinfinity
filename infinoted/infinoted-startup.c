@@ -145,6 +145,8 @@ static gboolean
 infinoted_startup_load_credentials(InfinotedStartup* startup,
                                    GError** error)
 {
+  gnutls_x509_crt_t* certs;
+  guint n_certs;
   gnutls_certificate_credentials_t creds;
   int res;
 
@@ -161,26 +163,29 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
     if(startup->private_key == NULL)
       return FALSE;
 
-    startup->certificates = infinoted_startup_load_certificate(
+    certs = infinoted_startup_load_certificate(
       startup->log,
       startup->options->create_certificate,
       startup->private_key,
       startup->options->certificate_file,
       startup->options->certificate_chain_file,
-      &startup->n_certificates,
+      &n_certs,
       error
     );
 
-    if(startup->certificates == NULL)
+    if(certs == NULL)
       return FALSE;
+
+    /* Takes ownership of certificates: */
+    startup->certificates = inf_certificate_chain_new(certs, n_certs);
 
     startup->credentials = inf_certificate_credentials_new();
     creds = inf_certificate_credentials_get(startup->credentials);
 
     res = gnutls_certificate_set_x509_key(
       creds,
-      startup->certificates,
-      startup->n_certificates,
+      inf_certificate_chain_get_raw(startup->certificates),
+      inf_certificate_chain_get_n_certificates(startup->certificates),
       startup->private_key
     );
 
@@ -462,7 +467,6 @@ infinoted_startup_new(int* argc,
   startup->log = NULL;
   startup->private_key = NULL;
   startup->certificates = NULL;
-  startup->n_certificates = 0;
   startup->credentials = NULL;
   startup->sasl_context = NULL;
 
@@ -488,12 +492,7 @@ infinoted_startup_free(InfinotedStartup* startup)
     inf_certificate_credentials_unref(startup->credentials);
 
   if(startup->certificates != NULL)
-  {
-    infinoted_startup_free_certificate_array(
-      startup->certificates,
-      startup->n_certificates
-    );
-  }
+    inf_certificate_chain_unref(startup->certificates);
 
   if(startup->private_key != NULL)
     gnutls_x509_privkey_deinit(startup->private_key);
