@@ -24,7 +24,10 @@
 #include <libinfinity/server/infd-note-plugin.h>
 #include <libinfinity/server/infd-session-proxy.h>
 #include <libinfinity/common/inf-browser.h>
+#include <libinfinity/common/inf-certificate-chain.h>
 #include <libinfinity/communication/inf-communication-manager.h>
+
+#include <gnutls/x509.h>
 
 #include <glib-object.h>
 
@@ -72,6 +75,11 @@ infd_directory_get_storage(InfdDirectory* directory);
 
 InfCommunicationManager*
 infd_directory_get_communication_manager(InfdDirectory* directory);
+
+void
+infd_directory_set_certificate(InfdDirectory* directory,
+                               gnutls_x509_privkey_t key,
+                               InfCertificateChain* cert);
 
 gboolean
 infd_directory_add_plugin(InfdDirectory* directory,

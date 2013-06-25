@@ -198,6 +198,9 @@ struct _InfdDirectoryPrivate {
   InfCommunicationManager* communication_manager;
   InfCommunicationHostedGroup* group;
 
+  gnutls_x509_privkey_t private_key;
+  InfCertificateChain* certificate;
+
   GHashTable* plugins; /* Registered plugins */
   GHashTable* connections; /* Connection infos */
 
@@ -218,6 +221,9 @@ enum {
   PROP_IO,
   PROP_STORAGE,
   PROP_COMMUNICATION_MANAGER,
+
+  PROP_PRIVATE_KEY,
+  PROP_CERTIFICATE,
 
   /* read only */
   PROP_CHAT_SESSION,
@@ -4791,6 +4797,9 @@ infd_directory_init(GTypeInstance* instance,
   priv->storage = NULL;
   priv->communication_manager = NULL;
 
+  priv->private_key = NULL;
+  priv->certificate = NULL;
+
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->connections = g_hash_table_new(NULL, NULL);
 
@@ -4928,6 +4937,12 @@ infd_directory_dispose(GObject* object)
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;
 
+  if(priv->certificate != NULL)
+  {
+    inf_certificate_chain_unref(priv->certificate);
+    priv->certificate = NULL;
+  }
+
   if(priv->io != NULL)
   {
     g_object_unref(G_OBJECT(priv->io));
@@ -4969,6 +4984,12 @@ infd_directory_set_property(GObject* object,
     );
 
     break;
+  case PROP_PRIVATE_KEY:
+    priv->private_key = (gnutls_x509_privkey_t)g_value_get_pointer(value);
+    break;
+  case PROP_CERTIFICATE:
+    priv->certificate = (InfCertificateChain*)g_value_dup_boxed(value);
+    break;
   case PROP_CHAT_SESSION:
   case PROP_STATUS:
     /* read only */
@@ -5000,6 +5021,12 @@ infd_directory_get_property(GObject* object,
     break;
   case PROP_COMMUNICATION_MANAGER:
     g_value_set_object(value, G_OBJECT(priv->communication_manager));
+    break;
+  case PROP_PRIVATE_KEY:
+    g_value_set_pointer(value, priv->private_key);
+    break;
+  case PROP_CERTIFICATE:
+    g_value_set_boxed(value, priv->certificate);
     break;
   case PROP_CHAT_SESSION:
     g_value_set_object(value, G_OBJECT(priv->chat_session));
@@ -5775,6 +5802,29 @@ infd_directory_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
+    PROP_PRIVATE_KEY,
+    g_param_spec_pointer(
+      "private-key",
+      "Private Key",
+      "The private key of the server with which belongs to its certificate",
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_CERTIFICATE,
+    g_param_spec_boxed(
+      "certificate",
+      "Certificate",
+      "The certificate chain of the server",
+      INF_TYPE_CERTIFICATE_CHAIN,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
     PROP_CHAT_SESSION,
     g_param_spec_object(
       "chat-session",
@@ -6012,6 +6062,47 @@ infd_directory_get_communication_manager(InfdDirectory* directory)
 {
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
   return INFD_DIRECTORY_PRIVATE(directory)->communication_manager;
+}
+
+/**
+ * infd_directory_set_certificate:
+ * @directory: A #InfdDirectory.
+ * @key: The private key of the directory.
+ * @cert: The certificate chain of the directory.
+ *
+ * Sets the private key and certificate chain of the directory. The directory
+ * does not use these for certificate authentication with added connections.
+ * Connections should already be authenticated, for example with the means of
+ * #InfXmppConnection.
+ *
+ * At the moment, the directory certificate is used to sign incoming
+ * certificate requests. Selected clients can request a certificate signed
+ * with the server's certificates, see infc_browser_request_certificate().
+ * If the server certificate is set with this function, the request is handled
+ * properly. If no certificate is set with this function, such a request is
+ * rejected.
+ */
+void
+infd_directory_set_certificate(InfdDirectory* directory,
+                               gnutls_x509_privkey_t key,
+                               InfCertificateChain* cert)
+{
+  InfdDirectoryPrivate* priv;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(priv->certificate != NULL)
+    inf_certificate_chain_unref(priv->certificate);
+
+  priv->private_key = key;
+  priv->certificate = cert;
+
+  if(cert != NULL)
+    inf_certificate_chain_ref(cert);
+
+  g_object_notify(G_OBJECT(directory), "private-key");
+  g_object_notify(G_OBJECT(directory), "certificate");
 }
 
 /**

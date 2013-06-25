@@ -933,6 +933,7 @@ infd_directory_new
 infd_directory_get_io
 infd_directory_get_storage
 infd_directory_get_communication_manager
+infd_directory_set_certificate
 infd_directory_add_plugin
 infd_directory_lookup_plugin
 infd_directory_add_connection
