@@ -1359,6 +1359,16 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
     break;
   case INF_XMPP_CONNECTION_SERVER:
     gnutls_init(&priv->session, GNUTLS_SERVER);
+
+    /* If the user wants to check the client's certificate, then require
+     * that the client sends one. */
+    if(priv->certificate_callback != NULL)
+    {
+      gnutls_certificate_server_set_request(
+        priv->session,
+        GNUTLS_CERT_REQUEST
+      );
+    }
     break;
   default:
     g_assert_not_reached();

@@ -695,6 +695,10 @@ infinoted_options_load(InfinotedOptions* options,
       N_("Group allowed to connect after pam authentication"),
       N_("GROUP") },
 #endif /* LIBINFINITY_HAVE_PAM */
+    { "ca-list-file", 0, 0,
+      G_OPTION_ARG_FILENAME, NULL,
+      N_("Require client certificate to be signed by one of these CAs"),
+      N_("FILE") },
     { "sync-directory", 0, 0,
       G_OPTION_ARG_FILENAME, NULL,
       N_("A directory into which to periodically store a copy of the "
@@ -754,6 +758,7 @@ infinoted_options_load(InfinotedOptions* options,
   entries[i++].arg_data = &options->pam_allowed_users;
   entries[i++].arg_data = &options->pam_allowed_groups;
 #endif /* LIBINFINITY_HAVE_PAM */
+  entries[i++].arg_data = &options->ca_list_file;
   entries[i++].arg_data = &options->sync_directory;
   entries[i++].arg_data = &sync_interval;
   entries[i++].arg_data = &options->sync_hook;
@@ -870,14 +875,13 @@ infinoted_options_load(InfinotedOptions* options,
     g_free(options->password);
     options->password = NULL;
   }
-  
+
   if(options->autosave_hook != NULL &&
    strcmp(options->autosave_hook, "") == 0)
   {
     g_free(options->autosave_hook);
     options->autosave_hook = NULL;
   }
-
 
 #ifdef LIBINFINITY_HAVE_PAM
   if(options->pam_service != NULL && strcmp(options->pam_service, "") == 0)
@@ -903,6 +907,13 @@ infinoted_options_load(InfinotedOptions* options,
   }
 #endif /* LIBINFINITY_HAVE_PAM */
 
+  if(options->ca_list_file != NULL &&
+     strcmp(options->ca_list_file, "") == 0)
+  {
+    g_free(options->ca_list_file);
+    options->ca_list_file = NULL;
+  }
+  
   if(options->sync_directory != NULL &&
      strcmp(options->sync_directory, "") == 0)
   {
@@ -989,6 +1000,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->pam_allowed_users = NULL;
   options->pam_allowed_groups = NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
+  options->ca_list_file = NULL;
   options->sync_directory = NULL;
   options->sync_interval = 0;
   options->sync_hook = NULL;
@@ -1030,6 +1042,7 @@ infinoted_options_free(InfinotedOptions* options)
   g_strfreev(options->pam_allowed_users);
   g_strfreev(options->pam_allowed_groups);
 #endif
+  g_free(options->ca_list_file);
   g_free(options->sync_directory);
   g_free(options->sync_hook);
   g_slice_free(InfinotedOptions, options);

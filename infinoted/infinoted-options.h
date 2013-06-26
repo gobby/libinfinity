@@ -47,6 +47,7 @@ struct _InfinotedOptions {
   gchar** pam_allowed_users;
   gchar** pam_allowed_groups;
 #endif /* LIBINFINITY_HAVE_PAM */
+  gchar* ca_list_file;
 
   gchar* sync_directory;
   guint sync_interval;

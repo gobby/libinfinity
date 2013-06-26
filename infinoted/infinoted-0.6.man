@@ -62,14 +62,20 @@ are still stored on these two occasions in addition to the periodic save.
 \fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR
 Require given password on connections
 .TP
-\fB\-P\fR, \fB\-\-pam-service\fR=\fISERVICE\fR
+\fB\-\-pam-service\fR=\fISERVICE\fR
 Authenticate clients against given pam service on connection
 .TP
-\fB\-P\fR, \fB\-\-allow-user\fR=\fIUSERS\fR
+\fB\-\-allow-user\fR=\fIUSERS\fR
 Users allowed to connect after pam authentication. Separate entries with semicolons.
 .TP
-\fB\-P\fR, \fB\-\-allow-group\fR=\fIGROUPS\fR
+\fB\-\-allow-group\fR=\fIGROUPS\fR
 Group allowed to connect after pam authentication. Separate entries with semicolons.
+.TP
+\fB\-\-ca-list-file\fR=\fIFILENAME\fR
+Specify a filename with trusted certificates. If this option is given, clients
+will be requested to authenticate themselves with a certificate, and only if
+the certificate was signed by one of the CAs in the list the client connection
+will be accepted.
 .TP
 \fB\-\-sync\-directory\fR=\fIDIRECTORY\fR
 A directory into which to periodically export the documents of the directory

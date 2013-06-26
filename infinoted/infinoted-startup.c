@@ -39,7 +39,7 @@ infinoted_startup_free_certificate_array(gnutls_x509_crt_t* certificates,
                                          guint n_certificates)
 {
   guint i;
-  for(i = 0; i < n_certificates; ++ i)
+  for(i = 0; i < n_certificates; ++i)
     gnutls_x509_crt_deinit(certificates[i]);
   g_free(certificates);
 }
@@ -191,6 +191,46 @@ infinoted_startup_load_credentials(InfinotedStartup* startup,
 
     if(res != 0)
     {
+      inf_gnutls_set_error(error, res);
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
+static gboolean
+infinoted_startup_load_cas(InfinotedStartup* startup,
+                           GError** error)
+{
+  GPtrArray* certs;
+  gint res;
+
+  if(startup->options->ca_list_file != NULL)
+  {
+    certs = inf_cert_util_read_certificate(
+      startup->options->ca_list_file,
+      NULL,
+      error
+    );
+
+    if(certs == NULL) return FALSE;
+
+    startup->n_cas = certs->len;
+    startup->cas = (gnutls_x509_crt_t*)g_ptr_array_free(certs, FALSE);
+
+    res = gnutls_certificate_set_x509_trust(
+      inf_certificate_credentials_get(startup->credentials),
+      startup->cas,
+      startup->n_cas
+    );
+
+    if(res != 0)
+    {
+      infinoted_startup_free_certificate_array(startup->cas, startup->n_cas);
+      startup->cas = NULL;
+      startup->n_cas = 0;
+
       inf_gnutls_set_error(error, res);
       return FALSE;
     }
@@ -439,6 +479,9 @@ infinoted_startup_load(InfinotedStartup* startup,
     );
   }
 
+  if(infinoted_startup_load_cas(startup, error) == FALSE)
+    return FALSE;
+
   return TRUE;
 }
 
@@ -469,6 +512,8 @@ infinoted_startup_new(int* argc,
   startup->certificates = NULL;
   startup->credentials = NULL;
   startup->sasl_context = NULL;
+  startup->cas = NULL;
+  startup->n_cas = 0;
 
   if(infinoted_startup_load(startup, argc, argv, error) == FALSE)
   {
@@ -488,6 +533,8 @@ infinoted_startup_new(int* argc,
 void
 infinoted_startup_free(InfinotedStartup* startup)
 {
+  guint i;
+
   if(startup->credentials != NULL)
     inf_certificate_credentials_unref(startup->credentials);
 
@@ -505,6 +552,8 @@ infinoted_startup_free(InfinotedStartup* startup)
 
   if(startup->sasl_context != NULL)
     inf_sasl_context_unref(startup->sasl_context);
+
+  infinoted_startup_free_certificate_array(startup->cas, startup->n_cas);
 
   g_slice_free(InfinotedStartup, startup);
   inf_deinit();
