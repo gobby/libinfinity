@@ -130,6 +130,8 @@ typedef enum _InfUserError {
  * example, subscribing to a session might require a network that has a
  * peer-to-peer communication method, but there is no implementation of that
  * method for the connection's network.
+ * @INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED: The requested operation is not
+ * supported by the server.
  * @INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED: The server requested a
  * communaction method for subscription or synchronization that is not
  * supported by the client.
@@ -142,6 +144,8 @@ typedef enum _InfUserError {
  * was received.
  * @INF_DIRECTORY_ERROR_NO_STORAGE: A node cannot be stored permanently on the
  * server since it has no storage backend attached.
+ * @INF_DIRECTORY_ERROR_NOT_AUTHORIZED: The requesting host is not authorized
+ * to perform the requested action.
  * @INF_DIRECTORY_ERROR_FAILED: Generic error code when no further reason of
  * failure is known.
  *
@@ -168,10 +172,13 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_UNSUBSCRIBED,
   INF_DIRECTORY_ERROR_NETWORK_UNSUPPORTED,
   INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED,
+  INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
   INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
   INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED,
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
   INF_DIRECTORY_ERROR_NO_STORAGE,
+  INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
+  INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
 
   INF_DIRECTORY_ERROR_FAILED
 } InfDirectoryError;

@@ -23,10 +23,13 @@
 #include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/client/infc-node-request.h>
 #include <libinfinity/client/infc-chat-request.h>
+#include <libinfinity/client/infc-certificate-request.h>
 #include <libinfinity/client/infc-note-plugin.h>
 #include <libinfinity/common/inf-browser.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/communication/inf-communication-manager.h>
+
+#include <gnutls/x509.h>
 
 #include <glib-object.h>
 
@@ -109,6 +112,12 @@ infc_browser_get_subscribe_chat_request(InfcBrowser* browser);
 
 InfcSessionProxy*
 infc_browser_get_chat_session(InfcBrowser* browser);
+
+InfcCertificateRequest*
+infc_browser_request_certificate(InfcBrowser* browser,
+                                 gnutls_x509_crq_t crq,
+                                 const gchar* extra_data,
+                                 GError** error);
 
 G_END_DECLS
 

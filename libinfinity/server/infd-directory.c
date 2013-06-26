@@ -37,6 +37,7 @@
 #include <libinfinity/server/infd-directory.h>
 #include <libinfinity/server/infd-node-request.h>
 #include <libinfinity/server/infd-explore-request.h>
+#include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
@@ -46,6 +47,8 @@
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
+
+#include <gnutls/gnutls.h>
 
 #include <string.h>
 
@@ -236,6 +239,8 @@ enum {
 
   LAST_SIGNAL
 };
+
+static const unsigned int DAYS = 24 * 60 * 60;
 
 #define INFD_DIRECTORY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_DIRECTORY, InfdDirectoryPrivate))
 
@@ -4141,6 +4146,262 @@ infd_directory_handle_subscribe_chat(InfdDirectory* directory,
 }
 
 static gboolean
+infd_directory_handle_request_certificate(InfdDirectory* directory,
+                                          InfXmlConnection* connection,
+                                          xmlNodePtr xml,
+                                          GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* seq;
+  xmlNodePtr child;
+  xmlNodePtr subchild;
+  int res;
+
+  const char* extra;
+  gnutls_datum_t crq_text;
+  gnutls_x509_crq_t crq;
+
+  gnutls_x509_crt_t cert;
+  size_t cert_size;
+  gchar* cert_buffer;
+
+  time_t timestamp;
+  gchar serial_buffer[5];
+
+  xmlNodePtr reply_xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(priv->certificate == NULL || priv->private_key == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
+      "%s",
+      _("Server does not support issuing certificates")
+    );
+
+    return FALSE;
+  }
+
+  /* TODO: Implement this via the InfXmlConnection interface */
+  if(!INF_IS_XMPP_CONNECTION(connection))
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
+      "%s",
+      _("Cannot authorize request without authentication")
+    );
+
+    return FALSE;
+  }
+
+  /* TODO: Check that the issuing connection is authorized */
+
+  crq_text.data = NULL;
+  for(child = xml->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+
+    if(strcmp((const char*)child->name, "extra") == 0)
+    {
+      if(child->children != NULL && child->children->type == XML_TEXT_NODE)
+        extra = (const gchar*)child->content;
+    }
+    else if(strcmp((const char*)child->name, "crq") == 0)
+    {
+      if(child->children != NULL && child->children->type == XML_TEXT_NODE)
+      {
+        crq_text.data = (char*)child->children->content;
+        crq_text.size = strlen(crq_text.data);
+      }
+    }
+  }
+
+  if(crq_text.data == NULL)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
+      _("No certificate request provided")
+    );
+
+    return FALSE;
+  }
+
+  /* TODO: Some of the code below should be moved to inf-cert-util */
+  
+  res = gnutls_x509_crq_init(&crq);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crq_import(crq, &crq_text, GNUTLS_X509_FMT_PEM);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crq_deinit(crq);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crq_verify(crq, 0);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crq_deinit(crq);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  /* OK, so now we have a good certificate request in front of us. Now, go
+   * ahead, create the certificate and sign it with the server's key. */
+
+  res = gnutls_x509_crt_init(&cert);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crq_deinit(crq);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_set_crq(cert, crq);
+  gnutls_x509_crq_deinit(crq);
+
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  timestamp = time(NULL);
+  serial_buffer[4] = (timestamp      ) & 0xff;
+  serial_buffer[3] = (timestamp >>  8) & 0xff;
+  serial_buffer[2] = (timestamp >> 16) & 0xff;
+  serial_buffer[1] = (timestamp >> 24) & 0xff;
+  serial_buffer[0] = (timestamp >> 32) & 0xff;
+
+  res = gnutls_x509_crt_set_serial(cert, serial_buffer, 5);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_set_activation_time(cert, timestamp);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_set_expiration_time(cert, timestamp + 365 * DAYS);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_set_basic_constraints(cert, 0, -1);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_set_key_usage(cert, GNUTLS_KEY_DIGITAL_SIGNATURE);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_set_version(cert, 3);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  /* The certificate is now set up, we can sign it. */
+  res = gnutls_x509_crt_sign2(
+    cert,
+    inf_certificate_chain_get_own_certificate(priv->certificate),
+    priv->private_key,
+    GNUTLS_DIG_SHA1,
+    0
+  );
+
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  /* Now, export it to PEM format and send it back to the client */
+  cert_size = 0;
+  res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &cert_size);
+  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  cert_buffer = g_malloc(cert_size);
+  res = gnutls_x509_crt_export(
+    cert,
+    GNUTLS_X509_FMT_PEM,
+    cert_buffer,
+    &cert_size
+  );
+  gnutls_x509_crt_deinit(cert);
+
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    g_free(cert_buffer);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
+  {
+    g_free(cert_buffer);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"certificate-generated");
+  child = xmlNewChild(reply_xml, NULL, (const xmlChar*)"certificate", NULL);
+  xmlNodeAddContentLen(child, (const xmlChar*)cert_buffer, cert_size);
+  g_free(cert_buffer);
+
+  if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+  g_free(seq);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
+  );
+
+  return TRUE;
+}
+
+static gboolean
 infd_directory_handle_subscribe_ack(InfdDirectory* directory,
                                     InfXmlConnection* connection,
                                     const xmlNodePtr xml,
@@ -5107,6 +5368,15 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const char*)node->name, "subscribe-chat") == 0)
   {
     infd_directory_handle_subscribe_chat(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const char*)node->name, "request-certificate") == 0)
+  {
+    infd_directory_handle_request_certificate(
       directory,
       connection,
       node,

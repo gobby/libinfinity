@@ -101,7 +101,7 @@ AC_TRY_COMPILE([#include <dirent.h>
 # Check for regular dependencies
 ###################################
 
-infinity_libraries='glib-2.0 >= 2.16 gobject-2.0 >= 2.16 gmodule-2.0 >= 2.16 gthread-2.0 >= 2.16 libxml-2.0 gnutls >= 1.7.2 libgsasl >= 0.2.21'
+infinity_libraries='glib-2.0 >= 2.16 gobject-2.0 >= 2.16 gmodule-2.0 >= 2.16 gthread-2.0 >= 2.16 libxml-2.0 gnutls >= 2.12.0 libgsasl >= 0.2.21'
 
 PKG_CHECK_MODULES([infinity], [$infinity_libraries])
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.16 gobject-2.0 >= 2.16 libxml-2.0])

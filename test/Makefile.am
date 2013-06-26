@@ -18,10 +18,10 @@ endif
 
 noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-tcp-server inf-test-xmpp-server inf-test-daemon \
-	inf-test-browser inf-test-chat inf-test-state-vector inf-test-chunk \
-	inf-test-text-operations inf-test-text-session inf-test-text-cleanup \
-	inf-test-text-recover inf-test-text-replay inf-test-reduce-replay \
-	inf-test-mass-join
+	inf-test-browser inf-test-certificate-request inf-test-chat \
+	inf-test-state-vector inf-test-chunk inf-test-text-operations \
+	inf-test-text-session inf-test-text-cleanup inf-test-text-recover \
+	inf-test-text-replay inf-test-reduce-replay inf-test-mass-join
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
@@ -66,6 +66,14 @@ inf_test_browser_SOURCES = \
 	inf-test-browser.c
 
 inf_test_browser_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	${infinity_LIBS}
+
+inf_test_certificate_request_SOURCES = \
+	inf-test-certificate-request.c
+
+inf_test_certificate_request_LDADD = \
+	util/libinftestutil.a \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	${infinity_LIBS}
 

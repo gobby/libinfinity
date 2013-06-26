@@ -196,6 +196,8 @@ inf_directory_strerror(InfDirectoryError code)
              "connection attempt is being made.");
   case INF_DIRECTORY_ERROR_METHOD_UNSUPPORTED:
     return _("The session uses an unsupported communication method");
+  case INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED:
+    return _("The requested operation is not supported by the server");
   case INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN:
     return _("Received sync-in message without having requested a sync-in");
   case INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED:
@@ -204,6 +206,10 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Unexpected XML message");
   case INF_DIRECTORY_ERROR_NO_STORAGE:
     return _("Server does not have a background storage");
+  case INF_DIRECTORY_ERROR_NOT_AUTHORIZED:
+    return _("Not authorized");
+  case INF_DIRECTORY_ERROR_INVALID_CERTIFICATE:
+    return _("The certificate is invalid or not trusted");
   case INF_DIRECTORY_ERROR_FAILED:
     return _("An unknown directory error has occured");
   default:

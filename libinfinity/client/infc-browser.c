@@ -32,7 +32,9 @@
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
 
+#include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-chat-session.h>
+#include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-error.h>
@@ -3032,6 +3034,191 @@ infc_browser_handle_saved_session(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_certificate_generated(InfcBrowser* browser,
+                                          InfXmlConnection* connection,
+                                          xmlNodePtr xml,
+                                          GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr child;
+  gnutls_datum_t cert_text;
+
+  int res;
+  gnutls_x509_crt_t cert;
+  InfCertificateChain* chain;
+  gnutls_x509_crt_t root_cert;
+
+  int verify_result;
+  guint n_certs;
+  guint i;
+  gnutls_x509_crt_t* all_certs;
+  InfCertificateChain* new_chain;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* TODO: Implement this via the InfXmlConnection interface, and then
+   * make sure we have a cert in _request_certificate()  */
+  if(!INF_IS_XMPP_CONNECTION(connection))
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
+      "%s",
+      _("Cannot verify the certificate without server certificate")
+    );
+
+    return FALSE;
+  }
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "request-certificate",
+    xml,
+    NULL
+  );
+
+  if(request == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
+      "%s",
+      _("No certificate request has been made")
+    );
+  }
+
+  cert_text.data = NULL;
+  for(child = xml->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+
+    if(strcmp((const char*)child->name, "certificate") == 0)
+    {
+      if(child->children != NULL && child->children->type == XML_TEXT_NODE)
+      {
+        cert_text.data = (char*)child->children->content;
+        cert_text.size = strlen(cert_text.data);
+      }
+    }
+  }
+
+  if(cert_text.data == NULL)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
+      _("No certificate provided")
+    );
+
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_init(&cert);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_import(cert, &cert_text, GNUTLS_X509_FMT_PEM);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  chain =
+    inf_xmpp_connection_get_peer_certificate(INF_XMPP_CONNECTION(connection));
+  if(chain == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
+      "%s",
+      _("Cannot verify the certificate without server certificate")
+    );
+
+    gnutls_x509_crt_deinit(cert);
+    return FALSE;
+  }
+
+  /* Verify that it is signed
+   * a) correctly
+   * b) by the server itself */
+  root_cert = inf_certificate_chain_get_root_certificate(chain);
+
+  /* TODO: Validate the whole chain after it was constructed,
+   * using gnutls_x509_crt_list_verify(). */
+  res = gnutls_x509_crt_verify(
+    cert,
+    &root_cert,
+    1,
+    GNUTLS_VERIFY_DO_NOT_ALLOW_X509_V1_CA_CRT,
+    &verify_result
+  );
+
+  if(res != GNUTLS_E_SUCCESS || (verify_result & GNUTLS_CERT_INVALID) != 0)
+  {
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      inf_gnutls_set_error(error, res);
+    }
+    else
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
+        _("Server sent an invalid certificate (%d)"),
+        verify_result
+      );
+    }
+
+    gnutls_x509_crt_deinit(cert);
+    return FALSE;
+  }
+
+  n_certs = inf_certificate_chain_get_n_certificates(chain);
+  all_certs = g_malloc(sizeof(gnutls_x509_crt_t) * (n_certs + 1));
+  all_certs[0] = cert;
+  for(i = 0; i < n_certs; ++i)
+  {
+    all_certs[i+1] = inf_cert_util_copy_certificate(
+      inf_certificate_chain_get_nth_certificate(chain, i),
+      error
+    );
+
+    if(all_certs[i+1] == NULL)
+    {
+      for(; i > 0; --i)
+        gnutls_x509_crt_deinit(all_certs[i]);
+      gnutls_x509_crt_deinit(cert);
+      return FALSE;
+    }
+  }
+
+  new_chain = inf_certificate_chain_new(all_certs, n_certs + 1);
+
+  infc_certificate_request_finished(
+    INFC_CERTIFICATE_REQUEST(request),
+    new_chain,
+    NULL
+  );
+
+  infc_request_manager_remove_request(priv->request_manager, request);
+
+  inf_certificate_chain_unref(new_chain);
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_request_failed(InfcBrowser* browser,
                                    InfXmlConnection* connection,
                                    xmlNodePtr xml,
@@ -3132,7 +3319,7 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   if(priv->status == INF_BROWSER_OPENING &&
      strcmp((const gchar*)node->name, "welcome") == 0)
   {
-    if(priv->welcome_timeout)
+    if(priv->welcome_timeout != NULL)
     {
       inf_io_remove_timeout(priv->io, priv->welcome_timeout);
       priv->welcome_timeout = NULL;
@@ -3232,6 +3419,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const gchar*)node->name, "saved-session") == 0)
   {
     infc_browser_handle_saved_session(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "certificate-generated") == 0)
+  {
+    infc_browser_handle_certificate_generated(
       browser,
       connection,
       node,
@@ -4771,6 +4967,91 @@ infc_browser_get_chat_session(InfcBrowser* browser)
 {
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   return INFC_BROWSER_PRIVATE(browser)->chat_session;
+}
+
+/**
+ * infc_browser_request_certificate:
+ * @browser: A #InfcBrowser.
+ * @crt: A .X509 certificate request.
+ * @extra_data: Extra data to be associated to the entity.
+ * @error: Location to store error information, if any.
+ *
+ * Requests a new certificate at the server. The server is expected to sign
+ * it with its certificate and send us the signed certificate back.
+ * @extra_data is some extra data to be associated to the new certificate.
+ * However, this is not stored within the certificate but centrally on the
+ * server. This allows to change the @extra_data later without having to
+ * issue a new certificate.
+ *
+ * The function may fail in case there is a problem serializing the
+ * certificate request. In that case the function returns %NULL and @error
+ * is set.
+ *
+ * Returns: A #InfcCertificateRequest that can be used to get notified when
+ * the request finishes, or %NULL on error.
+ */
+InfcCertificateRequest*
+infc_browser_request_certificate(InfcBrowser* browser,
+                                 gnutls_x509_crq_t crq,
+                                 const gchar* extra_data,
+                                 GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr xml;
+  xmlNodePtr extra;
+  xmlNodePtr crqNode;
+
+  gchar* crq_text;
+  size_t size;
+  int res;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(crq != NULL, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
+
+  size = 0;
+  res = gnutls_x509_crq_export(crq, GNUTLS_X509_FMT_PEM, NULL, &size);
+  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+  {
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  crq_text = g_malloc(size);
+  res = gnutls_x509_crq_export(crq, GNUTLS_X509_FMT_PEM, crq_text, &size);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    g_free(crq_text);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_CERTIFICATE_REQUEST,
+    "request-certificate",
+    NULL
+  );
+
+  inf_browser_begin_request(INF_BROWSER(browser), NULL, INF_REQUEST(request));
+
+  xml = infc_browser_request_to_xml(request);
+  extra = xmlNewChild(xml, NULL, (const xmlChar*)"extra", NULL);
+  xmlNodeAddContent(extra, (const xmlChar*)extra_data);
+  crqNode = xmlNewChild(xml, NULL, (const xmlChar*)"crq", NULL);
+  xmlNodeAddContentLen(crqNode, (const xmlChar*)crq_text, size);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INFC_CERTIFICATE_REQUEST(request);
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -123,6 +123,7 @@ infc_browser_iter_is_valid
 infc_browser_subscribe_chat
 infc_browser_get_subscribe_chat_request
 infc_browser_get_chat_session
+infc_browser_request_certificate
 <SUBSECTION Standard>
 INFC_BROWSER
 INFC_IS_BROWSER
@@ -235,6 +236,22 @@ infc_request_get_type
 INFC_REQUEST_CLASS
 INFC_IS_REQUEST_CLASS
 INFC_REQUEST_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>infc-certificate-request</FILE>
+<TITLE>InfcCertificateRequest</TITLE>
+InfcCertificateRequest
+InfcCertificateRequestClass
+infc_certificate_request_finished
+<SUBSECTION Standard>
+INFC_CERTIFICATE_REQUEST
+INFC_IS_CERTIFICATE_REQUEST
+INFC_TYPE_CERTIFICATE_REQUEST
+infc_certificate_request_get_type
+INFC_CERTIFICATE_REQUEST_CLASS
+INFC_IS_CERTIFICATE_REQUEST_CLASS
+INFC_CERTIFICATE_REQUEST_GET_CLASS
 </SECTION>
 
 <SECTION>
