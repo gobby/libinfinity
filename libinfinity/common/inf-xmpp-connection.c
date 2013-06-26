@@ -1262,8 +1262,10 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
     }
     else
     {
-      /* We got our peer's certificate. Ask the user to verify it. */
-      if(priv->peer_cert != NULL && priv->certificate_callback != NULL)
+      /* Ask the user to verify the peer's certificate, or, if there is no
+       * certificate, whether the user still wants to accept the connection or
+       * not. */
+      if(priv->certificate_callback != NULL)
       {
         priv->certificate_callback(
           xmpp,
@@ -4401,11 +4403,11 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
 /**
  * inf_xmpp_connection_set_certificate_callback:
  * @xmpp: A #InfXmppConnection.
- * @cb: Function to be called to verify the server certificate, or %NULL.
+ * @cb: Function to be called to verify the peer's certificate, or %NULL.
  * @user_data: Additional data to pass to the callback function.
  *
  * This function sets a callback that is called when the connection needs to
- * verify the server's certificate. It does not need to respond immediately,
+ * verify the peer's certificate. It does not need to respond immediately,
  * but can, for example, show a dialog to a user and continue when the user
  * finished with it.
  *
@@ -4414,6 +4416,10 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
  * otherwise inf_xmpp_connection_certificate_verify_cancel(). This can happen
  * in the callback or some time later. The connection process is stopped until
  * either of these functions is called.
+ *
+ * Note that the function is also called if the peer did not send a
+ * certificate, in which case the certificate chain parameter in the callback
+ * will be %NULL.
  *
  * If @cb is %NULL, or this function has not been called before a certificate
  * needs to be verified, then the certificate is always trusted.
@@ -4438,7 +4444,7 @@ inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
  *
  * Call this function when your callback set in
  * inf_xmpp_connection_set_certificate_callback() was called and you do trust
- * the server's certificate. The connection process will then continue.
+ * the peer's certificate. The connection process will then continue.
  */
 void
 inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp)
@@ -4460,7 +4466,7 @@ inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp)
  *
  * Call this function when your callback set in
  * inf_xmpp_connection_set_certificate_callback() was called and you do not
- * trust the server's certificate. The connection will then be closed with a
+ * trust the peer's certificate. The connection will then be closed with a
  * corresponding error.
  */
 void
@@ -4475,11 +4481,22 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
   g_return_if_fail(priv->status == INF_XMPP_CONNECTION_CONNECTED);
   g_return_if_fail(priv->session != NULL);
 
-  error = g_error_new_literal(
-    inf_xmpp_connection_error_quark,
-    INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
-    _("The server certificate is not trusted")
-  );
+  if(priv->site == INF_XMPP_CONNECTION_CLIENT)
+  {
+    error = g_error_new_literal(
+      inf_xmpp_connection_error_quark,
+      INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+      _("The server certificate is not trusted")
+    );
+  }
+  else
+  {
+    error = g_error_new_literal(
+      inf_xmpp_connection_error_quark,
+      INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+      _("The client certificate is not trusted")
+    );
+  }
 
   inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
   g_error_free(error);
