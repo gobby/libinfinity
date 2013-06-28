@@ -4289,7 +4289,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
   inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
   g_error_free(error);
 
-  inf_xml_connection_close(INF_XML_CONNECTION(xmpp));
+  inf_xmpp_connection_terminate(xmpp);
 }
 
 /**
