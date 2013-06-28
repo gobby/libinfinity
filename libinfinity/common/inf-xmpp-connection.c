@@ -3013,15 +3013,29 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
    * in that case. */
   ++priv->parsing;
 
-  if(priv->status != INF_XMPP_CONNECTION_HANDSHAKING)
+  /* If we have a GnuTLS session, prepare data to be read by
+   * gnutls_record_recv(). */
+  if(priv->session != NULL)
+  {
+    g_assert(priv->pull_len == 0);
+    priv->pull_data = data;
+    priv->pull_len = len;
+  }
+
+  if(priv->status == INF_XMPP_CONNECTION_HANDSHAKING)
+  {
+    g_assert(priv->session != NULL);
+    inf_xmpp_connection_tls_handshake(xmpp);
+  }
+
+  /* Note that this is not an else branch, since if the XMPP handshake
+   * finishes, the status will change and then we process initial data
+   * here, if any. */
+  if(priv->status != INF_XMPP_CONNECTION_HANDSHAKING &&
+     priv->status != INF_XMPP_CONNECTION_CLOSING_GNUTLS)
   {
     if(priv->session != NULL)
     {
-      g_assert(priv->pull_len == 0);
-
-      priv->pull_data = data;
-      priv->pull_len = len;
-
       receiving = TRUE;
       while(receiving && (priv->pull_len > 0 ||
                           gnutls_record_check_pending(priv->session) > 0))
@@ -3075,19 +3089,6 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
         printf("\033[00;31m%.*s\033[00;00m\n", (int)len, (const char*)data);
       xmlParseChunk(priv->parser, data, len, 0);
     }
-  }
-  else
-  {
-    g_assert(priv->pull_len == 0);
-
-    /* Perform TLS handshake */
-    priv->pull_data = data;
-    priv->pull_len = len;
-    inf_xmpp_connection_tls_handshake(xmpp);
-
-    /* Either all data was processed, or the handshake failed */
-    g_assert(priv->status == INF_XMPP_CONNECTION_CLOSING_GNUTLS ||
-             priv->pull_len == 0);
   }
 
   g_assert(priv->parsing > 0);
