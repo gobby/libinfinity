@@ -33,13 +33,61 @@ G_BEGIN_DECLS
 #define INF_TEXT_IS_BUFFER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TEXT_TYPE_BUFFER))
 #define INF_TEXT_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_BUFFER, InfTextBufferIface))
 
+/**
+ * InfTextBuffer:
+ *
+ * #InfTextBuffer is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfTextBuffer InfTextBuffer;
 typedef struct _InfTextBufferIface InfTextBufferIface;
 
+/**
+ * InfTextBufferIter:
+ *
+ * #InfTextBufferIter is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfTextBufferIter InfTextBufferIter;
 
+/**
+ * InfTextBufferIface:
+ * @get_encoding: Virtual function which returns the character coding of the
+ * buffer.
+ * @get_length: Virtual function to return the total length of the text in
+ * the buffer, in characters.
+ * @get_slice: Virtual function to extract a slice of text from the buffer.
+ * @insert_text: Virtual function to insert text into the buffer.
+ * @erase_text: Virtual function to remove text from the buffer.
+ * @create_iter: Virtual function to create a #InfTextBufferIter, used for
+ * traversing through buffer segments.
+ * @destroy_iter: Virtual function to destroy an iterator created with
+ * the @create_iter function.
+ * @iter_next: Virtual function to advance a #InfTextBufferIter to the next
+ * segment.
+ * @iter_prev: Virtual function to retreat a #InfTextBufferIter to the
+ * previous segment.
+ * @iter_get_text: Virtual function to obtain the text of a segment a
+ * #InfTextBufferIter points to.
+ * @iter_get_length: Virtual function to obtain the length of a segment a
+ * #InfTextBufferIter points to.
+ * @iter_get_bytes: Virtual function to obtain the number of bytes in a
+ * segment a #InfTextBufferIter points to.
+ * @iter_get_author: Virtual function to obtain the author of the segment a
+ * #InfTextBufferIter points to.
+ * @text_inserted: Default signal handler of the #InfTextBuffer::text-inserted
+ * signal.
+ * @text_erased: Default signal handler of the #InfTextBuffer::text-erased
+ * signal.
+ *
+ * This structure contains virtual functions and signal handlers of the
+ * #InfTextBuffer interface.
+ */
 struct _InfTextBufferIface {
+  /*< private >*/
   GTypeInterface parent;
+
+  /*< public >*/
 
   /* Virtual table */
   const gchar* (*get_encoding)(InfTextBuffer* buffer);

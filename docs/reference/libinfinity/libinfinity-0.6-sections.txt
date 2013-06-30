@@ -599,7 +599,7 @@ INF_TYPE_SESSION_STATUS
 <SECTION>
 <FILE>inf-session-proxy</FILE>
 <TITLE>InfSessionProxy</TITLE>
-InfSesisonProxy
+InfSessionProxy
 InfSessionProxyIface
 inf_session_proxy_join_user
 <SUBSECTION Standard>

@@ -17,6 +17,19 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-gtk-certificate-dialog
+ * @title: InfGtkCertificateDialog
+ * @short_description: A dialog warning the user about a server's certificate
+ * @include: libinfgtk/inf-gtk-certificate-dialog.h
+ * @stability: Unstable
+ *
+ * #InfGtkCertificateDialog is a dialog that can be shown to a user if the
+ * validation of the server's certificate fails. The dialog will present to
+ * the user the reason(s) of the validation failure and might ask whether to
+ * fully establish the connection to the server or not.
+ **/
+
 #include <libinfgtk/inf-gtk-certificate-dialog.h>
 #include <libinfgtk/inf-gtk-certificate-view.h>
 #include <libinfinity/common/inf-cert-util.h>
@@ -766,6 +779,10 @@ inf_gtk_certificate_dialog_flags_get_type(void)
         "INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED",
         "cert-changed"
       }, {
+        INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED,
+        "INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED",
+        "cert-old-expired"
+      }, {
         0,
         NULL,
         NULL
@@ -773,7 +790,7 @@ inf_gtk_certificate_dialog_flags_get_type(void)
     };
 
     certificate_dialog_flags_type = g_flags_register_static(
-      "InfCertificateDialogFlags",
+      "InfGtkCertificateDialogFlags",
       certificate_dialog_flags_type_values
     );
   }

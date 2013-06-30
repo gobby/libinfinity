@@ -28,10 +28,28 @@ G_BEGIN_DECLS
 
 #define INF_TEXT_TYPE_CHUNK            (inf_text_chunk_get_type())
 
+/**
+ * InfTextChunk:
+ *
+ * #InfTextChunk is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfTextChunk InfTextChunk;
 
+/**
+ * InfTextChunkIter:
+ *
+ * #InfTextChunkIter is an opaque data type. You should only access it
+ * via the public API functions.
+ *
+ * #InfTextChunkIter can be safely allocated on the stack and copied by value.
+ * Use inf_text_chunk_iter_init() to initialize a #InfTextChunkIter. There is
+ * no deinitialization required. A #InfTextChunkIter is valid as long as the
+ * chunk is not modified.
+ */
 typedef struct _InfTextChunkIter InfTextChunkIter;
 struct _InfTextChunkIter {
+  /*< private >*/
   InfTextChunk* chunk;
   GSequenceIter* first;
   GSequenceIter* second;
@@ -85,17 +103,6 @@ inf_text_chunk_get_text(InfTextChunk* self,
 gboolean
 inf_text_chunk_equal(InfTextChunk* self,
                      InfTextChunk* other);
-
-#if 0
-void
-inf_text_chunk_to_xml(InfTextChunk* self,
-                      xmlNodePtr xml);
-
-InfTextChunk*
-inf_text_chunk_from_xml(xmlNodePtr xml,
-                        const gchar* encoding,
-                        GError** error);
-#endif
 
 gboolean
 inf_text_chunk_iter_init(InfTextChunk* self,

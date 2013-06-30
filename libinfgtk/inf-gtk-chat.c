@@ -1054,8 +1054,7 @@ inf_gtk_chat_set_session(InfGtkChat* chat,
  *
  * Sets the active user for the chat. This must be a user in the chat's
  * session's user table and it must have the %INF_USER_LOCAL flag set, i.e.
- * you need to have it joined before using infc_session_proxy_join_user()
- * or infd_session_proxy_add_user().
+ * you need to have it joined before using inf_session_proxy_join_user().
  *
  * If an active user is set the chat's text entry is made sensitive and the
  * user can type chat messages. They are sent to the session as originated by

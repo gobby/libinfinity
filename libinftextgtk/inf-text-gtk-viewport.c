@@ -1163,7 +1163,7 @@ inf_text_gtk_viewport_get_scrolled_window(InfTextGtkViewport* viewport)
  * Returns the #InfUserTable containing the users of the session the
  * #InfTextGtkViewport's #GtkScrolledWindow is displaying.
  *
- * Returns: The #InfGtkTextViewport's #InfUserTable.
+ * Returns: The #InfTextGtkViewport's #InfUserTable.
  */
 InfUserTable*
 inf_text_gtk_viewport_get_user_table(InfTextGtkViewport* viewport)

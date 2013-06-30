@@ -2215,7 +2215,7 @@ inf_text_gtk_view_get_text_view(InfTextGtkView* view)
  * Returns the #InfUserTable containing the users of the session the
  * #InfTextGtkView's #GtkTextView is displaying.
  *
- * Returns: The #InfGtkTextView's #InfUserTable.
+ * Returns: The #InfTextGtkView's #InfUserTable.
  */
 InfUserTable*
 inf_text_gtk_view_get_user_table(InfTextGtkView* view)
@@ -2323,7 +2323,7 @@ inf_text_gtk_view_set_show_remote_cursors(InfTextGtkView* view,
  * that user's color on top of the author color which indicates who wrote the
  * selected text. If more than one user has a given piece of text selected
  * then an alternating stripe pattern with each of the user's colors is drawn.
- * If @show is %FALES then selection ranges of remote users are not drawn.
+ * If @show is %FALSE then selection ranges of remote users are not drawn.
  */
 void
 inf_text_gtk_view_set_show_remote_selections(InfTextGtkView* view,

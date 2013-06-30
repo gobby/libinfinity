@@ -17,6 +17,20 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-user
+ * @title: InfUser
+ * @short_description: User in a #InfSession.
+ * @include: libinfinity/common/inf-user.h
+ * @see_also: #InfSession
+ * @stability: Unstable
+ *
+ * #InfUser represents a user in an #InfSession. The #InfUser object stores
+ * basic user information required in all kinds of sessions, that is the user
+ * ID, user name, its status and auxiliary flags.
+ */
+
+
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>

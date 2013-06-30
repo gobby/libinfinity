@@ -39,16 +39,41 @@ G_BEGIN_DECLS
 typedef struct _InfUser InfUser;
 typedef struct _InfUserClass InfUserClass;
 
+/**
+ * InfUserStatus:
+ * @INF_USER_ACTIVE: The user is available and currently looking at this
+ * session.
+ * @INF_USER_INACTIVE: The user is available but currently not paying
+ * attention to this session.
+ * @INF_USER_UNAVAILABLE: The user is not available, i.e. not joined into the
+ * session.
+ *
+ * Different possible types of status an #InfUser can have.
+ */
 typedef enum _InfUserStatus {
   INF_USER_ACTIVE,
   INF_USER_INACTIVE,
   INF_USER_UNAVAILABLE
 } InfUserStatus;
 
+/**
+ * InfUserFlags:
+ * @INF_USER_LOCAL: The user is local, i.e. joined by the local instance.
+ *
+ * Additional flags for #InfUser.
+ */
 typedef enum InfUserFlags {
   INF_USER_LOCAL = 1 << 0
 } InfUserFlags;
 
+/**
+ * InfUserClass:
+ *
+ * @set_status: Virtual function to change the status of a user. This is a
+ * hook for user subclasses to react on status change.
+ *
+ * This structure contains virtual functions for the #InfUser class.
+ */
 struct _InfUserClass {
   GObjectClass parent_class;
 
@@ -56,6 +81,12 @@ struct _InfUserClass {
                      InfUserStatus status);
 };
 
+/**
+ * InfUser:
+ *
+ * #InfUser is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfUser {
   GObject parent;
   gpointer priv;

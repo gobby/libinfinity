@@ -17,6 +17,26 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-gtk-browser-model
+ * @title: InfGtkBrowserModel
+ * @short_description: Interface for tree models representing infinote
+ * directories
+ * @include: libinfgtk/inf-gtk-browser-model.h
+ * @see_also: #InfGtkBrowserStore
+ * @stability: Unstable
+ *
+ * #InfGtkBrowserModel provides an interface for tree models that are used to
+ * show the contents of infinote directories. All implementations of
+ * #InfGtkBrowserModel also need to implement #GtkTreeModel and can then by
+ * displayed in a #GtkTreeView.
+ *
+ * #InfGtkBrowserStore is a reference implementation of this interface,
+ * allowing to add discoveries and browsers to it which it then manages.
+ * Other implementations include #InfGtkBrowserModelSort and
+ * #InfGtkBrowserModelFilter which can be used to sort or filter the list.
+ */
+
 #include <libinfgtk/inf-gtk-browser-model.h>
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/inf-marshal.h>

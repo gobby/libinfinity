@@ -36,8 +36,6 @@ G_BEGIN_DECLS
 #define INF_GTK_IS_CHAT_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INF_GTK_TYPE_CHAT))
 #define INF_GTK_CHAT_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INF_GTK_TYPE_CHAT, InfGtkChatClass))
 
-#define INF_GTK_TYPE_CHAT_FLAGS           (inf_gtk_chat_flags_get_type())
-
 typedef struct _InfGtkChat InfGtkChat;
 typedef struct _InfGtkChatClass InfGtkChatClass;
 

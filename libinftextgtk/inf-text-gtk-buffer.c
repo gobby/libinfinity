@@ -2554,11 +2554,11 @@ inf_text_gtk_buffer_backward_to_author_toggle(InfTextGtkBuffer* buffer,
  * This function spcecifies whether movement of the insertion point or
  * selection bound of the underlying text buffer causes the active user
  * (see inf_text_gtk_buffer_set_active_user()) to become active when its
- * status is %INF_USER_STATUS_INACTIVE.
+ * status is %INF_USER_INACTIVE.
  *
- * If @wake is %TRUE, then the user status changes to %INF_USER_STATUS_ACTIVE
+ * If @wake is %TRUE, then the user status changes to %INF_USER_ACTIVE
  * in that case. If @wake is %FALSE, then the user status stays
- * %INF_USER_STATUS_INACTIVE, and its caret-position and selection-length
+ * %INF_USER_INACTIVE, and its caret-position and selection-length
  * properties will be no longer be synchronized to the buffer marks until
  * the user is set active again.
  */
@@ -2579,7 +2579,7 @@ inf_text_gtk_buffer_set_wake_on_cursor_movement(InfTextGtkBuffer* buffer,
  * Returns whether movement of the insertion point or selection bound of the
  * underlying text buffer causes whether the active user (see
  * inf_text_gtk_buffer_set_active_user()) to become active when its status
- * is %INF_USER_STATUS_INACTIVE. See also
+ * is %INF_USER_INACTIVE. See also
  * inf_text_gtk_buffer_set_wake_on_cursor_movement().
  *
  * Returns: Whether to make inactive users active when the insertion mark

@@ -17,6 +17,27 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-text-buffer
+ * @title: InfTextBuffer
+ * @short_description: Interface for the text storage of an #InfTextSession.
+ * @include: libinftext/inf-text-buffer.h
+ * @see_also: #InfTextDefaultBuffer
+ * @stability: Unstable
+ *
+ * #InfTextBuffer is an interface on top of #InfBuffer which represents a
+ * text buffer in a similar way as #GtkTextBuffer. #InfTextBuffer can be used
+ * as the buffer of an #InfTextSession, allowing the session to insert text
+ * written by remote users and access text written by local users and send
+ * it to everyone else.
+ *
+ * See #InfTextDefaultBuffer for a simple implementation based on
+ * #InfTextChunk. However, in GUI collaborative editing clients this interface
+ * should be implemented in a more sophisticated way, such that the text of
+ * a document is not stored twice in memory. #InfTextGtkBuffer does this for
+ * GTK+ based user interfaces.
+ */
+
 #include <libinftext/inf-text-buffer.h>
 #include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/inf-marshal.h>

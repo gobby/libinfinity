@@ -40,14 +40,50 @@ G_BEGIN_DECLS
 typedef struct _InfGtkCertificateDialog InfGtkCertificateDialog;
 typedef struct _InfGtkCertificateDialogClass InfGtkCertificateDialogClass;
 
+/**
+ * InfGtkCertificateDialogClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfGtkCertificateDialogClass {
+  /*< private >*/
   GtkDialogClass parent_class;
 };
 
+/**
+ * InfGtkCertificateDialog:
+ *
+ * #InfGtkCertificateDialog is an opaque data type. You should only access
+ * it via the public API functions.
+ */
 struct _InfGtkCertificateDialog {
+  /*< private >*/
   GtkDialog parent;
 };
 
+/**
+ * InfGtkCertificateDialogFlags:
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_NOT_ACTIVATED: The certificate is not
+ * valid yet, i.e. the certificate start date lies in the future.
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED: The certificate is expired,
+ * i.e. its end date lies in the past.
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH: The hostname of the
+ * machine connected to does not match the one from the certificate.
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_INVALID: The certificate is invalid, i.e.
+ * has an invalid signature.
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED: The issuer of the
+ * certificate is not trusted, i.e. is not in the list of trusted CAs.
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED: The certificate has changed
+ * since the last connection to the same host.
+ * @INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED: This can only be set when
+ * #INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED is set as well. In this case it
+ * means that the previous certificate of the host is expired, which is a
+ * good reason why we see a new certificate.
+ *
+ * Various flags for why a certificate is not trusted.
+ * #InfGtkCertificateDialog uses this information to show a corresponding
+ * warning message to the user.
+ */
 typedef enum _InfGtkCertificateDialogFlags {
   INF_GTK_CERTIFICATE_DIALOG_CERT_NOT_ACTIVATED      = 1 << 0,
   INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED            = 1 << 1,

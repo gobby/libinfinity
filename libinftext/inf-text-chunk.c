@@ -17,6 +17,34 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-text-chunk
+ * @title: InfTextChunk
+ * @short_description: A chunk of text written by various authors
+ * @include: libinftext/inf-text-chunk.h
+ * @see_also: #InfTextBuffer
+ * @stability: Unstable
+ *
+ * #InfTextChunk represents a chunk of text where different parts of it can
+ * be written by different authors. The #InfTextChunk API can be used like a
+ * normal string API, except that apart from the text itself it also stores
+ * the author information.
+ *
+ * An #InfTextChunk is made up of segments, where each segment represents a
+ * contiguous piece of text which is written by the same user. The
+ * #InfTextChunkIter functionality can be used to iterate over the segments
+ * of a chunk.
+ *
+ * The #InfTextChunk API works with characters, not bytes, i.e. all offsets
+ * are given in number of characters. This ensures that unicode strings
+ * cannot be torn apart in the middle of a multibyte sequence. The encoding
+ * of an #InfTextChunk is not fixed, but it can be freely chosen.
+ * #InfTextChunk then uses iconv to convert between bytes and character
+ * offsets where necessary. For a small set of selected encodings which are
+ * very popular, most notably UTF-8, there exist more optimized code paths to
+ * do the conversion.
+ */
+
 #include <libinftext/inf-text-chunk.h>
 #include <libinfinity/common/inf-xml-util.h>
 

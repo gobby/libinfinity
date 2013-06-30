@@ -76,7 +76,6 @@ INF_GTK_BROWSER_MODEL_SORT_GET_CLASS
 InfGtkBrowserView
 inf_gtk_browser_view_new
 inf_gtk_browser_view_new_with_model
-inf_gtk_browser_view_get_model
 inf_gtk_browser_view_get_selected
 inf_gtk_browser_view_set_selected
 <SUBSECTION Standard>
@@ -167,6 +166,7 @@ inf_gtk_certificate_view_get_type
 InfGtkChat
 inf_gtk_chat_new
 inf_gtk_chat_set_session
+inf_gtk_chat_get_active_user
 inf_gtk_chat_set_active_user
 inf_gtk_chat_get_entry
 <SUBSECTION Standard>
