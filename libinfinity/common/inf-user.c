@@ -488,7 +488,7 @@ inf_user_get_flags(InfUser* user)
  *
  * If this functions returns %NULL, this either means @user is a local user
  * (%INF_USER_LOCAL flag set) or it is not available (status is
- * %INF_USER_UNAVAILBALE).
+ * %INF_USER_UNAVAILABLE).
  *
  * Return Value: A #InfXmlConnection, or %NULL.
  **/

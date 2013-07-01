@@ -17,6 +17,31 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-xml-connection
+ * @title: InfXmlConnection
+ * @short_description: Exchange of XML messages
+ * @include: libinfinity/common/inf-xml-connection.h
+ * @see_also: #InfXmppConnection
+ * @stability: Unstable
+ *
+ * #InfXmlConnection provides a generic interface for sending an receiving
+ * messages in the form of XML nodes. The rest of the libinfinity library
+ * works with #InfXmlConnection<!-- -->s to transfer data between nodes.
+ * Therefore, simply implementing this interface allows to use the core
+ * functionality of the library with any kind of network or transport.
+ *
+ * Apart from the virtual functions, implementations also need to provide the
+ * #InfXmlConnection:remote-id and #InfXmlConnection:local-id properties.
+ * These properties represent string identifiers that are unique to the
+ * particular hosts in the network, such as IP addresses for IP connections.
+ * If the connection is supposed to be used with other communication methods
+ * (see #InfCommunicationMethod) than the &quot;central&quot; one, these
+ * IDs must be unique and every host must see the same ID for the other hosts
+ * in the network. This is no longer fulfilled by simple IP addresses, but for
+ * example for JIDs when sending XML messages over a jabber server.
+ */
+
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/inf-marshal.h>
 
@@ -41,6 +66,9 @@ inf_xml_connection_base_init(gpointer g_class)
      * InfXmlConnection::sent:
      * @connection: The #InfXmlConnection through which @node has been sent 
      * @node: An #xmlNodePtr refering to the XML node that has been sent
+     *
+     * Signal which is emitted when an XML node has been successfully
+     * transmitted with this connection.
      */
     connection_signals[SENT] = g_signal_new(
       "sent",
@@ -58,6 +86,9 @@ inf_xml_connection_base_init(gpointer g_class)
      * InfXmlConnection::received:
      * @connection: The #InfXmlConnection through which @node has been received
      * @node: An #xmlNodePtr refering to the XML node that has been received
+     *
+     * Signal which is emitted when an XML node has been received by this
+     * connection.
      */
     connection_signals[RECEIVED] = g_signal_new(
       "received",
@@ -75,6 +106,15 @@ inf_xml_connection_base_init(gpointer g_class)
      * InfXmlConnection::error:
      * @connection: The erroneous #InfXmlConnection
      * @error: A pointer to a #GError object with details on the error
+     *
+     * This signal is emitted when an error occurs for this connection.
+     * For example, if the connection cannot be established and the status
+     * changes from %INF_XML_CONNECTION_OPENING to %INF_XML_CONNECTION_CLOSED,
+     * then this signal is usually emitted with more details on the error.
+     *
+     * Note however that the error may or may not be fatal for the
+     * connection. If it is fatal, then a status notify to
+     * %INF_XML_CONNECTION_CLOSING or %INF_XML_CONNECTION_CLOSED will follow.
      */
     connection_signals[ERROR] = g_signal_new(
       "error",

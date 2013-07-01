@@ -6092,7 +6092,7 @@ infd_directory_lookup_plugin(InfdDirectory* directory,
 /**
  * infd_directory_add_connection:
  * @directory: A #InfdDirectory.
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  *
  * Adds @connection to the connections of @directory. The directory will then
  * receive requests from @connection. If the directory's method manager does

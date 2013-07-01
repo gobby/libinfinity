@@ -50,8 +50,8 @@
  *
  * After subscription, one can observe modifications other users make, but it is
  * not possible to make own modifications. Before doing so, a #InfUser needs to
- * be joined. This is done by client/server specific API such as
- * infc_session_proxy_join_user() or infd_session_proxy_add_user(). The
+ * be joined. This is done by client/server specific API from
+ * #InfSessionProxy, in particular inf_session_proxy_join_user(). The
  * required parameters still depend on the actual note type, which is why most
  * note implementations offer their own API to join a user.
  **/
@@ -2609,12 +2609,12 @@ inf_session_synchronize_from(InfSession* session)
  * inf_session_synchronize_to:
  * @session: A #InfSession in status %INF_SESSION_RUNNING.
  * @group: A #InfCommunicationGroup.
- * @connection: A #InfConnection.
+ * @connection: A #InfXmlConnection.
  *
  * Initiates a synchronization to @connection. On the other end of
  * @connection, a new session with the sync-connection and sync-group
  * construction properties set should have been created. @group is used
- * as a group in the connection manager. It is allowed for @group to have
+ * as a group in the communication manager. It is allowed for @group to have
  * another #InfCommunicationObject than @session, however, you should forward
  * the #InfCommunicationObject messages your object receives to @session then.
  * Also, @connection must already be present in @group, and should not be
