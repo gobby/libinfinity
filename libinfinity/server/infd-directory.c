@@ -37,7 +37,6 @@
 #include <libinfinity/server/infd-directory.h>
 #include <libinfinity/server/infd-node-request.h>
 #include <libinfinity/server/infd-explore-request.h>
-#include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-error.h>
@@ -4180,20 +4179,6 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
       "%s",
       _("Server does not support issuing certificates")
-    );
-
-    return FALSE;
-  }
-
-  /* TODO: Implement this via the InfXmlConnection interface */
-  if(!INF_IS_XMPP_CONNECTION(connection))
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
-      "%s",
-      _("Cannot authorize request without authentication")
     );
 
     return FALSE;

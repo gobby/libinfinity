@@ -151,8 +151,6 @@ enum {
 
   PROP_TLS_ENABLED,
   PROP_CREDENTIALS,
-  PROP_OWN_CERTIFICATE,
-  PROP_PEER_CERTIFICATE,
 
   PROP_SASL_CONTEXT,
   PROP_SASL_MECHANISMS,
@@ -161,7 +159,9 @@ enum {
   PROP_STATUS,
   PROP_NETWORK,
   PROP_LOCAL_ID,
-  PROP_REMOTE_ID
+  PROP_REMOTE_ID,
+  PROP_LOCAL_CERTIFICATE,
+  PROP_REMOTE_CERTIFICATE
 };
 
 #define INF_XMPP_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_XMPP_CONNECTION, InfXmppConnectionPrivate))
@@ -575,7 +575,7 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
     gnutls_x509_crt_deinit(priv->own_cert);
     priv->own_cert = NULL;
 
-    g_object_notify(G_OBJECT(xmpp), "own-certificate");
+    g_object_notify(G_OBJECT(xmpp), "local-certificate");
   }
 
   if(priv->peer_cert != NULL)
@@ -583,7 +583,7 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
     inf_certificate_chain_unref(priv->peer_cert);
     priv->peer_cert = NULL;
 
-    g_object_notify(G_OBJECT(xmpp), "peer-certificate");
+    g_object_notify(G_OBJECT(xmpp), "remote-certificate");
   }
 
   if(priv->session != NULL)
@@ -1225,7 +1225,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
     if(error == NULL)
     {
       if(priv->own_cert != NULL)
-        g_object_notify(G_OBJECT(xmpp), "own-certificate");
+        g_object_notify(G_OBJECT(xmpp), "local-certificate");
     
       /* Extract peer certificate */
       g_assert(priv->peer_cert == NULL);
@@ -1249,7 +1249,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
         }
         else
         {
-          g_object_notify(G_OBJECT(xmpp), "peer-certificate");
+          g_object_notify(G_OBJECT(xmpp), "remote-certificate");
         }
       }
     }
@@ -3772,12 +3772,6 @@ inf_xmpp_connection_get_property(GObject* object,
   case PROP_CREDENTIALS:
     g_value_set_boxed(value, priv->creds);
     break;
-  case PROP_OWN_CERTIFICATE:
-    g_value_set_pointer(value, priv->own_cert);
-    break;
-  case PROP_PEER_CERTIFICATE:
-    g_value_set_boxed(value, priv->peer_cert);
-    break;
   case PROP_SASL_CONTEXT:
     g_value_set_boxed(value, priv->sasl_context);
     break;
@@ -3811,6 +3805,12 @@ inf_xmpp_connection_get_property(GObject* object,
     port = inf_tcp_connection_get_remote_port(priv->tcp);
     id = inf_xmpp_connection_get_address_id(addr, port);
     g_value_take_string(value, id);
+    break;
+  case PROP_LOCAL_CERTIFICATE:
+    g_value_set_pointer(value, priv->own_cert);
+    break;
+  case PROP_REMOTE_CERTIFICATE:
+    g_value_set_boxed(value, priv->peer_cert);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -4069,30 +4069,6 @@ inf_xmpp_connection_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_OWN_CERTIFICATE,
-    g_param_spec_pointer(
-      "own-certificate",
-      "Own certificate",
-      "The certificate (gnutls_x509_crt_t) that was presented to "
-      "the remote host",
-      G_PARAM_READABLE
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
-    PROP_PEER_CERTIFICATE,
-    g_param_spec_boxed(
-      "peer-certificate",
-      "Peer Certificate",
-      "The remote host's certificate chain",
-      INF_TYPE_CERTIFICATE_CHAIN,
-      G_PARAM_READABLE
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
     PROP_SASL_CONTEXT,
     g_param_spec_boxed(
       "sasl-context",
@@ -4119,6 +4095,18 @@ inf_xmpp_connection_class_init(gpointer g_class,
   g_object_class_override_property(object_class, PROP_NETWORK, "network");
   g_object_class_override_property(object_class, PROP_LOCAL_ID, "local-id");
   g_object_class_override_property(object_class, PROP_REMOTE_ID, "remote-id");
+
+  g_object_class_override_property(
+    object_class,
+    PROP_LOCAL_CERTIFICATE,
+    "local-certificate"
+  );
+
+  g_object_class_override_property(
+    object_class,
+    PROP_REMOTE_CERTIFICATE,
+    "remote-certificate"
+  );
 }
 
 static void

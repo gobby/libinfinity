@@ -32,7 +32,6 @@
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
 
-#include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -3057,21 +3056,6 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  /* TODO: Implement this via the InfXmlConnection interface, and then
-   * make sure we have a cert in _request_certificate()  */
-  if(!INF_IS_XMPP_CONNECTION(connection))
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
-      _("Cannot verify the certificate without server certificate")
-    );
-
-    return FALSE;
-  }
-
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     "request-certificate",
@@ -3133,8 +3117,7 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
     return FALSE;
   }
 
-  chain =
-    inf_xmpp_connection_get_peer_certificate(INF_XMPP_CONNECTION(connection));
+  g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
   if(chain == NULL)
   {
     g_set_error(
@@ -3164,6 +3147,7 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
     &verify_result
   );
 
+  inf_certificate_chain_unref(chain);
   if(res != GNUTLS_E_SUCCESS || (verify_result & GNUTLS_CERT_INVALID) != 0)
   {
     if(res != GNUTLS_E_SUCCESS)

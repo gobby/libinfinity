@@ -58,7 +58,9 @@ enum {
   PROP_STATUS,
   PROP_NETWORK,
   PROP_LOCAL_ID,
-  PROP_REMOTE_ID
+  PROP_REMOTE_ID,
+  PROP_LOCAL_CERTIFICATE,
+  PROP_REMOTE_CERTIFICATE
 };
 
 #define INF_SIMULATED_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_SIMULATED_CONNECTION, InfSimulatedConnectionPrivate))
@@ -266,6 +268,12 @@ inf_simulated_connection_get_property(GObject* object,
     id = g_strdup_printf("simulated-%p", (void*)priv->target);
     g_value_take_string(value, id);
     break;
+  case PROP_LOCAL_CERTIFICATE:
+    g_value_set_pointer(value, NULL);
+    break;
+  case PROP_REMOTE_CERTIFICATE:
+    g_value_set_boxed(value, NULL);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -410,6 +418,18 @@ inf_simulated_connection_class_init(gpointer g_class,
   g_object_class_override_property(object_class, PROP_NETWORK, "network");
   g_object_class_override_property(object_class, PROP_LOCAL_ID, "local-id");
   g_object_class_override_property(object_class, PROP_REMOTE_ID, "remote-id");
+
+  g_object_class_override_property(
+    object_class,
+    PROP_LOCAL_CERTIFICATE,
+    "local-certificate"
+  );
+
+  g_object_class_override_property(
+    object_class,
+    PROP_REMOTE_CERTIFICATE,
+    "remote-certificate"
+  );
 }
 
 static void

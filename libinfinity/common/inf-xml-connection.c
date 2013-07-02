@@ -43,6 +43,7 @@
  */
 
 #include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/common/inf-certificate-chain.h>
 #include <libinfinity/inf-marshal.h>
 
 enum {
@@ -174,6 +175,27 @@ inf_xml_connection_base_init(gpointer g_class)
         "Remote ID",
         "A unique identification on the network for the remote site",
         NULL,
+        G_PARAM_READABLE
+      )
+    );
+
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_pointer(
+        "local-certificate",
+        "Local Certificate",
+        "The X.509 certificate (gnutls_x509_crt_t) of the local site",
+        G_PARAM_READABLE
+      )
+    );
+
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_boxed(
+        "remote-certificate",
+        "Remote Certificate",
+        "The X.509 certificate of the remote site",
+        INF_TYPE_CERTIFICATE_CHAIN,
         G_PARAM_READABLE
       )
     );
