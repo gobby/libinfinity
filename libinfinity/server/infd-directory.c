@@ -173,6 +173,7 @@ struct _InfdDirectoryLocreq {
       gchar* name;
       const InfdNotePlugin* plugin; /* NULL for subdirectory */
       InfSession* session; /* NULL for initially empty notes */
+      gboolean initial_subscribe; /* Ignored for subdirectory */
     } add_node;
 
     struct {
@@ -2804,7 +2805,8 @@ infd_directory_add_locreq_add_node(InfdDirectory* directory,
                                    InfdDirectoryNode* node,
                                    const gchar* name,
                                    const InfdNotePlugin* plugin,
-                                   InfSession* session)
+                                   InfSession* session,
+                                   gboolean initial_subscribe)
 {
   InfdDirectoryLocreq* locreq;
   GObject* request;
@@ -2829,6 +2831,7 @@ infd_directory_add_locreq_add_node(InfdDirectory* directory,
   locreq->shared.add_node.name = g_strdup(name);
   locreq->shared.add_node.plugin = plugin;
   locreq->shared.add_node.session = session;
+  locreq->shared.add_node.initial_subscribe = initial_subscribe;
 
   if(session != NULL)
     g_object_ref(session);
@@ -5247,125 +5250,355 @@ static gboolean
 infd_directory_browser_get_root(InfBrowser* browser,
                                 InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  iter->node_id = priv->root->id;
+  iter->node = priv->root;
+  return TRUE;
 }
 
 static gboolean
 infd_directory_browser_get_next(InfBrowser* browser,
                                 InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  node = (InfdDirectoryNode*)iter->node;
+  node = node->next;
+
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node->id;
+  iter->node = node;
+  return TRUE;
 }
 
 static gboolean
 infd_directory_browser_get_prev(InfBrowser* browser,
                                 InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  node = (InfdDirectoryNode*)iter->node;
+  node = node->prev;
+
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node->id;
+  iter->node = node;
+  return TRUE;
 }
 
 static gboolean
 infd_directory_browser_get_parent(InfBrowser* browser,
                                   InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  node = (InfdDirectoryNode*)iter->node;
+  node = node->parent;
+
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node->id;
+  iter->node = node;
+  return TRUE;
 }
 
 static gboolean
 infd_directory_browser_get_child(InfBrowser* browser,
                                  InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, FALSE);
+  g_return_val_if_fail(node->shared.subdir.explored == TRUE, FALSE);
+
+  node = node->shared.subdir.child;
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node->id;
+  iter->node = node;
+  return TRUE;
 }
 
 static InfExploreRequest*
 infd_directory_browser_explore(InfBrowser* browser,
                                const InfBrowserIter* iter)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, NULL);
+  g_return_val_if_fail(node->shared.subdir.explored == FALSE, NULL);
+
+  locreq = infd_directory_add_locreq_explore_node(directory, node);
+  infd_directory_start_locreq(directory, locreq);
+  return INF_EXPLORE_REQUEST(locreq->request);
 }
 
 static gboolean
 infd_directory_browser_get_explored(InfBrowser* browser,
                                     const InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, FALSE);
+  return node->shared.subdir.explored;
 }
 
 static gboolean
 infd_directory_browser_is_subdirectory(InfBrowser* browser,
                                        const InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
+
+  node = (InfdDirectoryNode*)iter->node;
+  if(node->type != INFD_STORAGE_NODE_SUBDIRECTORY)
+    return FALSE;
+  return TRUE;
 }
 
 static InfNodeRequest*
-infd_directory_browser_add_note(InfBrowser* infbrowser,
+infd_directory_browser_add_note(InfBrowser* browser,
                                 const InfBrowserIter* iter,
                                 const char* name,
                                 const char* type,
                                 InfSession* session,
                                 gboolean initial_subscribe)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, NULL);
+  g_return_val_if_fail(node->shared.subdir.explored == TRUE, NULL);
+
+  plugin = infd_directory_lookup_plugin(directory, type);
+  g_return_val_if_fail(plugin != NULL, NULL);
+
+  locreq = infd_directory_add_locreq_add_node(
+    directory,
+    node,
+    name,
+    plugin,
+    session,
+    initial_subscribe
+  );
+
+  infd_directory_start_locreq(directory, locreq);
+
+  return INF_NODE_REQUEST(locreq->request);
 }
 
 static InfNodeRequest*
-infd_directory_browser_add_subdirectory(InfBrowser* infbrowser,
+infd_directory_browser_add_subdirectory(InfBrowser* browser,
                                         const InfBrowserIter* iter,
                                         const char* name)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, NULL);
+  g_return_val_if_fail(node->shared.subdir.explored == TRUE, NULL);
+
+  locreq = infd_directory_add_locreq_add_node(
+    directory,
+    node,
+    name,
+    NULL,
+    NULL,
+    FALSE
+  );
+
+  infd_directory_start_locreq(directory, locreq);
+
+  return INF_NODE_REQUEST(locreq->request);
 }
 
 static InfNodeRequest*
-infd_directory_browser_remove_node(InfBrowser* infbrowser,
+infd_directory_browser_remove_node(InfBrowser* browser,
                                    const InfBrowserIter* iter)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+
+  locreq = infd_directory_add_locreq_remove_node(directory, node);
+  infd_directory_start_locreq(directory, locreq);
+  return INF_NODE_REQUEST(locreq->request);
 }
 
 static const gchar*
 infd_directory_browser_get_node_name(InfBrowser* browser,
                                      const InfBrowserIter* iter)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  return node->name;
 }
 
 static const gchar*
-infd_directory_browser_get_node_type(InfBrowser* infbrowser,
+infd_directory_browser_get_node_type(InfBrowser* browser,
                                      const InfBrowserIter* iter)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
+  return node->shared.note.plugin->note_type;
 }
 
 static InfNodeRequest*
-infd_directory_browser_subscribe(InfBrowser* infbrowser,
+infd_directory_browser_subscribe(InfBrowser* browser,
                                  const InfBrowserIter* iter)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
+  g_return_val_if_fail(
+    node->shared.note.session == NULL ||
+    node->shared.note.weakref == TRUE,
+    NULL
+  );
+
+  locreq = infd_directory_add_locreq_subscribe_session(directory, node);
+  infd_directory_start_locreq(directory, locreq);
+  return INF_NODE_REQUEST(locreq->request);
 }
 
 static InfSessionProxy*
 infd_directory_browser_get_session(InfBrowser* browser,
                                    const InfBrowserIter* iter)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+  const InfdNotePlugin* plugin;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
+  
+  if(node->shared.note.session == NULL || node->shared.note.weakref == TRUE)
+    return NULL;
+  return INF_SESSION_PROXY(node->shared.note.session);
 }
 
 static GSList*
@@ -5373,8 +5606,85 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
                                              const InfBrowserIter* iter,
                                              const gchar* request_type)
 {
-  /* TODO */
-  return NULL;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectorySubreq* subreq;
+  InfdDirectoryLocreq* locreq;
+  InfRequest* request;
+  gchar* type;
+  gboolean right_type;
+  GSList* list;
+  GSList* item;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  for(item = priv->subscription_requests; item != NULL; item = item->next)
+  {
+    request = NULL;
+    subreq = (InfdDirectorySubreq*)item->data;
+    switch(subreq->type)
+    {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
+    case INFD_DIRECTORY_SUBREQ_SESSION:
+      request = INF_REQUEST(subreq->shared.session.request);
+      break;
+    case INFD_DIRECTORY_SUBREQ_ADD_NODE:
+      request = INF_REQUEST(subreq->shared.add_node.request);
+      break;
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN:
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+      request = INF_REQUEST(subreq->shared.sync_in.request);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    if(request != NULL)
+    {
+      right_type = TRUE;
+      if(request_type != NULL)
+      {
+        g_object_get(G_OBJECT(request), "type", &type, NULL);
+        if(strcmp(type, request_type) != 0)
+          right_type = FALSE;
+        g_free(type);
+      }
+
+      if(right_type == TRUE)
+      {
+        if(g_slist_find(list, request) == NULL)
+          list = g_slist_prepend(list, request);
+      }
+    }
+  }
+
+  for(item = priv->local_requests; item != NULL; item = item->next)
+  {
+    locreq = (InfdDirectoryLocreq*)item->data;
+    request = INF_REQUEST(locreq->request);
+
+    if(request != NULL)
+    {
+      right_type = TRUE;
+      if(request_type != NULL)
+      {
+        g_object_get(G_OBJECT(request), "type", &type, NULL);
+        if(strcmp(type, request_type) != 0)
+          right_type = FALSE;
+        g_free(type);
+      }
+
+      if(right_type == TRUE)
+      {
+        if(g_slist_find(list, request) == NULL)
+          list = g_slist_prepend(list, request);
+      }
+    }
+  }
+
+  return list;
 }
 
 static gboolean
@@ -5382,8 +5692,22 @@ infd_directory_browser_iter_from_request(InfBrowser* browser,
                                          InfNodeRequest* request,
                                          InfBrowserIter* iter)
 {
-  /* TODO */
-  return FALSE;
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  guint node_id;
+  
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+  
+  node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
+  if(node == NULL) return FALSE;
+
+  iter->node_id = node_id;
+  iter->node = node;
+  return TRUE;
 }
 
 /*
