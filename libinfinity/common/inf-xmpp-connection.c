@@ -798,14 +798,20 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
         xmlFreeNode(abort);
       }
 
-      inf_xmpp_connection_send_chars(
-        xmpp,
-        xmpp_connection_deinit_request,
-        sizeof(xmpp_connection_deinit_request) - 1
-      );
+      /* inf_xmpp_connection_send_xml() above might have caused
+       * status update: */
+      if(priv->status != INF_XMPP_CONNECTION_CLOSED)
+      {
+        inf_xmpp_connection_send_chars(
+          xmpp,
+          xmpp_connection_deinit_request,
+          sizeof(xmpp_connection_deinit_request) - 1
+        );
+      }
     }
 
-    if(priv->session != NULL)
+    /* One of the send() calls above might have caused status update */
+    if(priv->status != INF_XMPP_CONNECTION_CLOSED && priv->session != NULL)
       gnutls_bye(priv->session, GNUTLS_SHUT_WR);
   }
 
