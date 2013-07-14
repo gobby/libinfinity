@@ -2,10 +2,10 @@
 <FILE>inf-text-default-delete-operation</FILE>
 <TITLE>InfTextDefaultDeleteOperation</TITLE>
 InfTextDefaultDeleteOperation
+InfTextDefaultDeleteOperationClass
 inf_text_default_delete_operation_new
 inf_text_default_delete_operation_get_chunk
 <SUBSECTION Standard>
-InfTextDefaultDeleteOperationClass
 INF_TEXT_DEFAULT_DELETE_OPERATION
 INF_TEXT_IS_DEFAULT_DELETE_OPERATION
 INF_TEXT_TYPE_DEFAULT_DELETE_OPERATION
@@ -17,6 +17,7 @@ INF_TEXT_DEFAULT_DELETE_OPERATION_GET_CLASS
 
 <SECTION>
 <FILE>inf-text-insert-operation</FILE>
+InfTextInsertOperation
 InfTextInsertOperationIface
 inf_text_insert_operation_get_position
 inf_text_insert_operation_get_length
@@ -36,9 +37,9 @@ INF_TEXT_INSERT_OPERATION_GET_IFACE
 <FILE>inf-text-remote-delete-operation</FILE>
 <TITLE>InfTextRemoteDeleteOperation</TITLE>
 InfTextRemoteDeleteOperation
+InfTextRemoteDeleteOperationClass
 inf_text_remote_delete_operation_new
 <SUBSECTION Standard>
-InfTextRemoteDeleteOperationClass
 INF_TEXT_REMOTE_DELETE_OPERATION
 INF_TEXT_IS_REMOTE_DELETE_OPERATION
 INF_TEXT_TYPE_REMOTE_DELETE_OPERATION
@@ -53,13 +54,13 @@ INF_TEXT_REMOTE_DELETE_OPERATION_GET_CLASS
 InfTextSessionError
 <TITLE>InfTextSession</TITLE>
 InfTextSession
+InfTextSessionClass
 inf_text_session_new
 inf_text_session_new_with_user_table
 inf_text_session_set_user_color
 inf_text_session_flush_requests_for_user
 inf_text_session_join_user
 <SUBSECTION Standard>
-InfTextSessionClass
 INF_TEXT_SESSION
 INF_TEXT_IS_SESSION
 INF_TEXT_TYPE_SESSION
@@ -73,9 +74,9 @@ INF_TEXT_SESSION_GET_CLASS
 <FILE>inf-text-undo-grouping</FILE>
 <TITLE>InfTextUndoGrouping</TITLE>
 InfTextUndoGrouping
+InfTextUndoGroupingClass
 inf_text_undo_grouping_new
 <SUBSECTION Standard>
-InfTextUndoGroupingClass
 INF_TEXT_UNDO_GROUPING
 INF_TEXT_IS_UNDO_GROUPING
 INF_TEXT_TYPE_UNDO_GROUPING
@@ -89,13 +90,13 @@ INF_TEXT_UNDO_GROUPING_GET_CLASS
 <FILE>inf-text-user</FILE>
 <TITLE>InfTextUser</TITLE>
 InfTextUser
+InfTextUserClass
 inf_text_user_new
 inf_text_user_get_caret_position
 inf_text_user_get_selection_length
 inf_text_user_set_selection
 inf_text_user_get_hue
 <SUBSECTION Standard>
-InfTextUserClass
 INF_TEXT_USER
 INF_TEXT_IS_USER
 INF_TEXT_TYPE_USER
@@ -109,10 +110,10 @@ INF_TEXT_USER_GET_CLASS
 <FILE>inf-text-default-insert-operation</FILE>
 <TITLE>InfTextDefaultInsertOperation</TITLE>
 InfTextDefaultInsertOperation
+InfTextDefaultInsertOperationClass
 inf_text_default_insert_operation_new
 inf_text_default_insert_operation_get_chunk
 <SUBSECTION Standard>
-InfTextDefaultInsertOperationClass
 INF_TEXT_DEFAULT_INSERT_OPERATION
 INF_TEXT_IS_DEFAULT_INSERT_OPERATION
 INF_TEXT_TYPE_DEFAULT_INSERT_OPERATION
@@ -124,6 +125,7 @@ INF_TEXT_DEFAULT_INSERT_OPERATION_GET_CLASS
 
 <SECTION>
 <FILE>inf-text-delete-operation</FILE>
+InfTextDeleteOperation
 InfTextDeleteOperationIface
 inf_text_delete_operation_get_position
 inf_text_delete_operation_get_length
@@ -172,9 +174,9 @@ INF_TEXT_BUFFER_GET_IFACE
 <FILE>inf-text-default-buffer</FILE>
 <TITLE>InfTextDefaultBuffer</TITLE>
 InfTextDefaultBuffer
+InfTextDefaultBufferClass
 inf_text_default_buffer_new
 <SUBSECTION Standard>
-InfTextDefaultBufferClass
 INF_TEXT_DEFAULT_BUFFER
 INF_TEXT_IS_DEFAULT_BUFFER
 INF_TEXT_TYPE_DEFAULT_BUFFER
@@ -188,13 +190,13 @@ INF_TEXT_DEFAULT_BUFFER_GET_CLASS
 <FILE>inf-text-move-operation</FILE>
 <TITLE>InfTextMoveOperation</TITLE>
 InfTextMoveOperation
+InfTextMoveOperationClass
 inf_text_move_operation_new
 inf_text_move_operation_get_position
 inf_text_move_operation_get_length
 inf_text_move_operation_transform_insert
 inf_text_move_operation_transform_delete
 <SUBSECTION Standard>
-InfTextMoveOperationClass
 INF_TEXT_MOVE_OPERATION
 INF_TEXT_IS_MOVE_OPERATION
 INF_TEXT_TYPE_MOVE_OPERATION
@@ -202,12 +204,6 @@ inf_text_move_operation_get_type
 INF_TEXT_MOVE_OPERATION_CLASS
 INF_TEXT_IS_MOVE_OPERATION_CLASS
 INF_TEXT_MOVE_OPERATION_GET_CLASS
-</SECTION>
-
-<SECTION>
-<FILE>inf-text-operations</FILE>
-InfTextDeleteOperation
-InfTextInsertOperation
 </SECTION>
 
 <SECTION>

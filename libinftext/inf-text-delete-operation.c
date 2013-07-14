@@ -17,6 +17,26 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-text-delete-operation
+ * @title: InfTextDeleteOperation
+ * @short_description: Interface for an operation erasing text
+ * @include: libinftext/inf-text-delete-operation.h
+ * @see_also: #InfTextInsertOperation
+ * @stability: Unstable
+ *
+ * #InfTextDeleteOperation is an interface for an operation removing text
+ * from the document. It implements the transformation logic for
+ * transformation against other delete operations or insert operations.
+ *
+ * This interface does not make any assumption on what kind of text is
+ * removed, it works only with character offsets and lengths. This information
+ * is enough to perform transformation of this operation or other operations
+ * against this operation. Whether the actual operation only knows about the
+ * offsets, too, or actually knows the text that is being erased (and if so,
+ * in what representation), is up to the implementation.
+ */
+
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
 #include <libinfinity/adopted/inf-adopted-concurrency-warning.h>

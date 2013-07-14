@@ -2,6 +2,7 @@
 <FILE>inf-text-gtk-buffer</FILE>
 <TITLE>InfTextGtkBuffer</TITLE>
 InfTextGtkBuffer
+InfTextGtkBufferClass
 inf_text_gtk_buffer_new
 inf_text_gtk_buffer_get_text_buffer
 inf_text_gtk_buffer_set_active_user
@@ -22,7 +23,6 @@ inf_text_gtk_buffer_set_show_user_colors
 inf_text_gtk_buffer_get_show_user_colors
 inf_text_gtk_buffer_show_user_colors
 <SUBSECTION Standard>
-InfTextGtkBufferClass
 INF_TEXT_GTK_BUFFER
 INF_TEXT_GTK_IS_BUFFER
 INF_TEXT_GTK_TYPE_BUFFER
@@ -36,6 +36,7 @@ INF_TEXT_GTK_BUFFER_GET_CLASS
 <FILE>inf-text-gtk-view</FILE>
 <TITLE>InfTextGtkView</TITLE>
 InfTextGtkView
+InfTextGtkViewClass
 inf_text_gtk_view_new
 inf_text_gtk_view_get_text_view
 inf_text_gtk_view_get_user_table
@@ -45,7 +46,6 @@ inf_text_gtk_view_set_show_remote_cursors
 inf_text_gtk_view_set_show_remote_selections
 inf_text_gtk_view_set_show_remote_current_lines
 <SUBSECTION Standard>
-InfTextGtkViewClass
 INF_TEXT_GTK_VIEW
 INF_TEXT_GTK_IS_VIEW
 INF_TEXT_GTK_TYPE_VIEW
@@ -59,6 +59,7 @@ INF_TEXT_GTK_VIEW_GET_CLASS
 <FILE>inf-text-gtk-viewport</FILE>
 <TITLE>InfTextGtkViewport</TITLE>
 InfTextGtkViewport
+InfTextGtkViewportClass
 inf_text_gtk_viewport_new
 inf_text_gtk_viewport_get_scrolled_window
 inf_text_gtk_viewport_get_user_table
@@ -66,7 +67,6 @@ inf_text_gtk_viewport_set_active_user
 inf_text_gtk_viewport_get_active_user
 inf_text_gtk_viewport_set_show_user_markers
 <SUBSECTION Standard>
-InfTextGtkViewportClass
 INF_TEXT_GTK_VIEWPORT
 INF_TEXT_GTK_IS_VIEWPORT
 INF_TEXT_GTK_TYPE_VIEWPORT
@@ -80,12 +80,12 @@ INF_TEXT_GTK_VIEWPORT_GET_CLASS
 <FILE>inf-text-gtk-hue-chooser</FILE>
 <TITLE>InfTextGtkHueChooser</TITLE>
 InfTextGtkHueChooser
+InfTextGtkHueChooserClass
 inf_text_gtk_hue_chooser_new
 inf_text_gtk_hue_chooser_new_with_hue
 inf_text_gtk_hue_chooser_set_hue
 inf_text_gtk_hue_chooser_get_hue
 <SUBSECTION Standard>
-InfTextGtkHueChooserClass
 INF_TEXT_GTK_HUE_CHOOSER
 INF_TEXT_GTK_IS_HUE_CHOOSER
 INF_TEXT_GTK_TYPE_HUE_CHOOSER

@@ -26,7 +26,21 @@ G_BEGIN_DECLS
 
 /* Forward declaration for inf-text-insert-operation.h and
  * inf-text-delete-operation.h each of which needs both. */
+
+/**
+ * InfTextDeleteOperation:
+ *
+ * #InfTextDeleteOperation is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfTextDeleteOperation InfTextDeleteOperation;
+
+/**
+ * InfTextInsertOperation:
+ *
+ * #InfTextInsertOperation is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfTextInsertOperation InfTextInsertOperation;
 
 G_END_DECLS

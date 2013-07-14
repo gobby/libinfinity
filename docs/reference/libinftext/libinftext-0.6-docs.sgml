@@ -23,7 +23,6 @@
     <xi:include href="xml/inf-text-chunk.xml"/>
     <xi:include href="xml/inf-text-default-buffer.xml"/>
     <xi:include href="xml/inf-text-undo-grouping.xml"/>
-    <xi:include href="xml/inf-text-operations.xml"/>
     <xi:include href="xml/inf-text-insert-operation.xml"/>
     <xi:include href="xml/inf-text-delete-operation.xml"/>
     <xi:include href="xml/inf-text-default-delete-operation.xml"/>

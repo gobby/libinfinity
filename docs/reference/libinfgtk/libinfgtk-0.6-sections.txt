@@ -2,6 +2,7 @@
 <FILE>inf-gtk-browser-store</FILE>
 <TITLE>InfGtkBrowserStore</TITLE>
 InfGtkBrowserStore
+InfGtkBrowserStoreClass
 inf_gtk_browser_store_new
 inf_gtk_browser_store_add_discovery
 inf_gtk_browser_store_add_connection
@@ -9,7 +10,6 @@ inf_gtk_browser_store_remove_connection
 inf_gtk_browser_store_clear_connection_error
 inf_gtk_browser_store_set_connection_name
 <SUBSECTION Standard>
-InfGtkBrowserStoreClass
 INF_GTK_BROWSER_STORE
 INF_GTK_IS_BROWSER_STORE
 INF_GTK_TYPE_BROWSER_STORE
@@ -23,9 +23,9 @@ INF_GTK_BROWSER_STORE_GET_CLASS
 <FILE>inf-gtk-browser-model-filter</FILE>
 <TITLE>InfGtkBrowserModelFilter</TITLE>
 InfGtkBrowserModelFilter
+InfGtkBrowserModelFilterClass
 inf_gtk_browser_model_filter_new
 <SUBSECTION Standard>
-InfGtkBrowserModelFilterClass
 INF_GTK_BROWSER_MODEL_FILTER
 INF_GTK_IS_BROWSER_MODEL_FILTER
 INF_GTK_TYPE_BROWSER_MODEL_FILTER
@@ -39,13 +39,13 @@ INF_GTK_BROWSER_MODEL_FILTER_GET_CLASS
 <FILE>inf-gtk-browser-model</FILE>
 INF_GTK_TYPE_BROWSER_MODEL_STATUS
 InfGtkBrowserModel
+InfGtkBrowserModelIface
 InfGtkBrowserModelStatus
 InfGtkBrowserModelColumn
 inf_gtk_browser_model_set_browser
 inf_gtk_browser_model_resolve
 inf_gtk_browser_model_browser_iter_to_tree_iter
 <SUBSECTION Standard>
-InfGtkBrowserModelIface
 inf_gtk_browser_model_get_type
 INF_GTK_BROWSER_MODEL
 INF_GTK_IS_BROWSER_MODEL
@@ -58,9 +58,9 @@ INF_GTK_BROWSER_MODEL_GET_IFACE
 <FILE>inf-gtk-browser-model-sort</FILE>
 <TITLE>InfGtkBrowserModelSort</TITLE>
 InfGtkBrowserModelSort
+InfGtkBrowserModelSortClass
 inf_gtk_browser_model_sort_new
 <SUBSECTION Standard>
-InfGtkBrowserModelSortClass
 INF_GTK_BROWSER_MODEL_SORT
 INF_GTK_IS_BROWSER_MODEL_SORT
 INF_GTK_TYPE_BROWSER_MODEL_SORT
@@ -74,12 +74,12 @@ INF_GTK_BROWSER_MODEL_SORT_GET_CLASS
 <FILE>inf-gtk-browser-view</FILE>
 <TITLE>InfGtkBrowserView</TITLE>
 InfGtkBrowserView
+InfGtkBrowserViewClass
 inf_gtk_browser_view_new
 inf_gtk_browser_view_new_with_model
 inf_gtk_browser_view_get_selected
 inf_gtk_browser_view_set_selected
 <SUBSECTION Standard>
-InfGtkBrowserViewClass
 INF_GTK_BROWSER_VIEW
 INF_GTK_IS_BROWSER_VIEW
 INF_GTK_TYPE_BROWSER_VIEW
@@ -94,9 +94,9 @@ INF_GTK_TYPE_BROWSER_VIEW_STATUS
 <FILE>inf-gtk-io</FILE>
 <TITLE>InfGtkIo</TITLE>
 InfGtkIo
+InfGtkIoClass
 inf_gtk_io_new
 <SUBSECTION Standard>
-InfGtkIoClass
 INF_GTK_IO
 INF_GTK_IS_IO
 INF_GTK_TYPE_IO
@@ -110,10 +110,10 @@ INF_GTK_IO_GET_CLASS
 <FILE>inf-gtk-certificate-dialog</FILE>
 <TITLE>InfGtkCertificateDialog</TITLE>
 InfGtkCertificateDialog
+InfGtkCertificateDialogClass
 InfGtkCertificateDialogFlags
 inf_gtk_certificate_dialog_new
 <SUBSECTION Standard>
-InfGtkCertificateDialogClass
 INF_GTK_CERTIFICATE_DIALOG
 INF_GTK_CERTIFICATE_DIALOG_CLASS
 INF_GTK_CERTIFICATE_DIALOG_GET_CLASS
@@ -129,9 +129,9 @@ inf_gtk_certificate_dialog_get_type
 <FILE>inf-gtk-certificate-manager</FILE>
 <TITLE>InfGtkCertificateManager</TITLE>
 InfGtkCertificateManager
+InfGtkCertificateManagerClass
 inf_gtk_certificate_manager_new
 <SUBSECTION Standard>
-InfGtkCertificateManagerClass
 INF_GTK_CERTIFICATE_MANAGER
 INF_GTK_CERTIFICATE_MANAGER_CLASS
 INF_GTK_CERTIFICATE_MANAGER_GET_CLASS
@@ -145,11 +145,11 @@ inf_gtk_certificate_manager_get_type
 <FILE>inf-gtk-certificate-view</FILE>
 <TITLE>InfGtkCertificateView</TITLE>
 InfGtkCertificateView
+InfGtkCertificateViewClass
 inf_gtk_certificate_view_new
 inf_gtk_certificate_view_new_with_certificate
 inf_gtk_certificate_view_set_certificate
 <SUBSECTION Standard>
-InfGtkCertificateViewClass
 INF_GTK_CERTIFICATE_VIEW
 INF_GTK_CERTIFICATE_VIEW_CLASS
 INF_GTK_CERTIFICATE_VIEW_GET_CLASS
@@ -164,13 +164,13 @@ inf_gtk_certificate_view_get_type
 <FILE>inf-gtk-chat</FILE>
 <TITLE>InfGtkChat</TITLE>
 InfGtkChat
+InfGtkChatClass
 inf_gtk_chat_new
 inf_gtk_chat_set_session
 inf_gtk_chat_get_active_user
 inf_gtk_chat_set_active_user
 inf_gtk_chat_get_entry
 <SUBSECTION Standard>
-InfGtkChatClass
 INF_GTK_CHAT
 INF_GTK_IS_CHAT
 INF_GTK_TYPE_CHAT

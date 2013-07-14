@@ -35,8 +35,27 @@ G_BEGIN_DECLS
 
 typedef struct _InfTextDeleteOperationIface InfTextDeleteOperationIface;
 
+/**
+ * InfTextDeleteOperationIface:
+ * @get_position: Virtual function to retrieve the start position of the
+ * delete operation.
+ * @get_length: Virtual function to retrieve the end position of the number
+ * of characters removed by the delete operation.
+ * @transform_position: Virtual function to transform the operation such that
+ * the start position of the operation changes.
+ * @transform_overlap: Virtual function to transform the operation against
+ * another delete operation with overlapping regions.
+ * @transform_split: Virtual function to transform the operation against an
+ * insert operation such that this operation needs to be split in two.
+ *
+ * This structure contains virtual methods of the #InfTextDeleteOperation
+ * interface.
+ */
 struct _InfTextDeleteOperationIface {
+  /*< private >*/
   GTypeInterface parent;
+
+  /*< public >*/
 
   /* Virtual table */
   guint(*get_position)(InfTextDeleteOperation* operation);
