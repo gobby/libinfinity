@@ -813,16 +813,23 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
   if(priv->parsing == 0)
     inf_xmpp_connection_clear(xmpp);
 
-  /* The Change from CLOSING_STREAM to CLOSING_GNUTLS does not change
-   * the XML status, so we need no notify in this case. */
-  if(priv->status != INF_XMPP_CONNECTION_CLOSING_STREAM)
+  /* It can happen that the call to gnutls_bye() causes a send error because
+   * the connection is already down. In that case the status is changed to
+   * CLOSED, in which case we do not need further status updates at
+   * this point. */
+  if(priv->status != INF_XMPP_CONNECTION_CLOSED)
   {
-    priv->status = INF_XMPP_CONNECTION_CLOSING_GNUTLS;
-    g_object_notify(G_OBJECT(xmpp), "status");
-  }
-  else
-  {
-    priv->status = INF_XMPP_CONNECTION_CLOSING_GNUTLS;
+    /* The Change from CLOSING_STREAM to CLOSING_GNUTLS does not change
+     * the XML status, so we need no notify in this case. */
+    if(priv->status != INF_XMPP_CONNECTION_CLOSING_STREAM)
+    {
+      priv->status = INF_XMPP_CONNECTION_CLOSING_GNUTLS;
+      g_object_notify(G_OBJECT(xmpp), "status");
+    }
+    else
+    {
+      priv->status = INF_XMPP_CONNECTION_CLOSING_GNUTLS;
+    }
   }
 }
 
