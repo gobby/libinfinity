@@ -4771,6 +4771,9 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   /* TODO: Bail if this connection is either currently being synchronized to
    * or is already subscribed */
 
+  request = NULL;
+  proxy = NULL;
+
   /* Check if there exists already a session in a subreq */
   for(item = priv->subscription_requests; item != NULL; item = item->next)
   {
