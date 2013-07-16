@@ -686,39 +686,42 @@ inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
   tree_iter.user_data2 = GUINT_TO_POINTER(iter->node_id);
   tree_iter.user_data3 = iter->node;
 
-  path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
-  gtk_tree_model_row_inserted(GTK_TREE_MODEL(store), path, &tree_iter);
-
-  /* If iter is the only node within its parent, we need to emit the
-   * row-has-child-toggled signal. */
-  test_iter = *iter;
-  test_result = inf_browser_get_parent(browser, &test_iter);
-  g_assert(test_result == TRUE);
-
-  /* Let tree_iter point to parent row for possible notification */
-  tree_iter.user_data2 = GUINT_TO_POINTER(test_iter.node_id);
-
-  /* Also adjust path */
-  gtk_tree_path_up(path);
-
-  if(test_iter.node_id == 0)
-    tree_iter.user_data3 = NULL;
-  else
-    tree_iter.user_data3 = test_iter.node;
-
-  test_result = inf_browser_get_child(browser, &test_iter);
-  g_assert(test_result == TRUE);
-
-  if(inf_browser_get_next(browser, &test_iter) == FALSE)
+  if(iter->node_id != 0)
   {
-    gtk_tree_model_row_has_child_toggled(
-      GTK_TREE_MODEL(store),
-      path,
-      &tree_iter
-    );
-  }
+    path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
+    gtk_tree_model_row_inserted(GTK_TREE_MODEL(store), path, &tree_iter);
 
-  gtk_tree_path_free(path);
+    /* If iter is the only node within its parent, we need to emit the
+     * row-has-child-toggled signal. */
+    test_iter = *iter;
+    test_result = inf_browser_get_parent(browser, &test_iter);
+    g_assert(test_result == TRUE);
+
+    /* Let tree_iter point to parent row for possible notification */
+    tree_iter.user_data2 = GUINT_TO_POINTER(test_iter.node_id);
+
+    /* Also adjust path */
+    gtk_tree_path_up(path);
+
+    if(test_iter.node_id == 0)
+      tree_iter.user_data3 = NULL;
+    else
+      tree_iter.user_data3 = test_iter.node;
+
+    test_result = inf_browser_get_child(browser, &test_iter);
+    g_assert(test_result == TRUE);
+
+    if(inf_browser_get_next(browser, &test_iter) == FALSE)
+    {
+      gtk_tree_model_row_has_child_toggled(
+        GTK_TREE_MODEL(store),
+        path,
+        &tree_iter
+      );
+    }
+
+    gtk_tree_path_free(path);
+  }
 }
 
 static void
@@ -749,44 +752,75 @@ inf_gtk_browser_store_node_removed_cb(InfBrowser* browser,
 
   /* This is a small hack to have the item removed from the tree
    * model before it is removed from the InfcBrowser. */
+
   item->missing = iter->node;
 
-  gtk_tree_model_row_deleted(GTK_TREE_MODEL(store), path);
+  if(iter->node_id != 0)
+  {
+    gtk_tree_model_row_deleted(GTK_TREE_MODEL(store), path);
 
   /* TODO: Remove requests and node errors from nodes below the removed one */
 
-  /* Note that at this point removed node is still in the browser. We have
-   * to emit row-has-child-toggled if it is the only one in its
-   * subdirectory. */
-  test_iter = *iter;
-  test_result = inf_browser_get_parent(browser, &test_iter);
-  g_assert(test_result == TRUE);
+    /* Note that at this point removed node is still in the browser. We have
+     * to emit row-has-child-toggled if it is the only one in its
+     * subdirectory. */
+    test_iter = *iter;
+    test_result = inf_browser_get_parent(browser, &test_iter);
+    g_assert(test_result == TRUE);
 
-  /* Let tree_iter point to parent row for possible notification */
-  tree_iter.user_data2 = GUINT_TO_POINTER(test_iter.node_id);
+    /* Let tree_iter point to parent row for possible notification */
+    tree_iter.user_data2 = GUINT_TO_POINTER(test_iter.node_id);
 
-  /* Also adjust path */
-  gtk_tree_path_up(path);
+    /* Also adjust path */
+    gtk_tree_path_up(path);
 
-  if(test_iter.node_id == 0)
-    tree_iter.user_data3 = NULL;
+    if(test_iter.node_id == 0)
+      tree_iter.user_data3 = NULL;
+    else
+      tree_iter.user_data3 = test_iter.node;
+
+    test_result = inf_browser_get_child(browser, &test_iter);
+    g_assert(test_result == TRUE);
+
+    if(inf_browser_get_next(browser, &test_iter) == FALSE)
+    {
+      gtk_tree_model_row_has_child_toggled(
+        GTK_TREE_MODEL(store),
+        path,
+        &tree_iter
+      );
+    }
+  }
   else
-    tree_iter.user_data3 = test_iter.node;
-
-  test_result = inf_browser_get_child(browser, &test_iter);
-  g_assert(test_result == TRUE);
-
-  if(inf_browser_get_next(browser, &test_iter) == FALSE)
   {
-    gtk_tree_model_row_has_child_toggled(
-      GTK_TREE_MODEL(store),
-      path,
-      &tree_iter
-    );
+    /* The root node was removed. We don't remove the node from the
+     * GtkTreeModel because it still represents the InfBrowser. Remove
+     * all the children, however. */
+    if(inf_browser_get_explored(browser, iter))
+    {
+      test_iter = *iter;
+      test_result = inf_browser_get_child(browser, &test_iter);
+      gtk_tree_path_down(path);
+
+      do
+      {
+        gtk_tree_model_row_deleted(GTK_TREE_MODEL(store), path);
+      } while(inf_browser_get_next(browser, &test_iter));
+
+      if(test_result == TRUE)
+      {
+        gtk_tree_path_up(path);
+        gtk_tree_model_row_has_child_toggled(
+          GTK_TREE_MODEL(store),
+          path,
+          &tree_iter
+        );
+      }
+    }
   }
 
-  gtk_tree_path_free(path);
   item->missing = NULL;
+  gtk_tree_path_free(path);
 }
 
 static void
@@ -1810,27 +1844,31 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
   if(item->browser != NULL)
   {
-    /* Notify about deleted rows. Notify in reverse order so that indexing
-     * continues to work. Remember whether we had children to emit
-     * row-has-child-toggled later. */
-    inf_browser_get_root(item->browser, &iter);
-    if(inf_browser_get_explored(item->browser, &iter) &&
-       inf_browser_get_child(item->browser, &iter))
+    g_object_get(G_OBJECT(item->browser), "status", &status, NULL);
+    if(status == INF_BROWSER_OPEN)
     {
-      n = 1;
-      while(inf_browser_get_next(item->browser, &iter))
-        ++ n;
-
-      gtk_tree_path_append_index(path, n);
-
-      for(; n > 0; -- n)
+      /* Notify about deleted rows. Notify in reverse order so that indexing
+       * continues to work. Remember whether we had children to emit
+       * row-has-child-toggled later. */
+      inf_browser_get_root(item->browser, &iter);
+      if(inf_browser_get_explored(item->browser, &iter) &&
+         inf_browser_get_child(item->browser, &iter))
       {
-        had_children = TRUE;
-        gtk_tree_path_prev(path);
-        gtk_tree_model_row_deleted(GTK_TREE_MODEL(model), path);
-      }
+        n = 1;
+        while(inf_browser_get_next(item->browser, &iter))
+          ++ n;
 
-      gtk_tree_path_up(path);
+        gtk_tree_path_append_index(path, n);
+
+        for(; n > 0; -- n)
+        {
+          had_children = TRUE;
+          gtk_tree_path_prev(path);
+          gtk_tree_model_row_deleted(GTK_TREE_MODEL(model), path);
+        }
+
+        gtk_tree_path_up(path);
+      }
     }
 
     while(item->requests != NULL)
