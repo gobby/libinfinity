@@ -220,8 +220,9 @@ infc_explore_request_initiated(InfcExploreRequest* request,
                                guint total)
 {
   InfcExploreRequestPrivate* priv;
-  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
+  g_return_if_fail(INFC_IS_EXPLORE_REQUEST(request));
 
+  priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
   g_return_if_fail(priv->initiated == FALSE);
 
   priv->total = total;
@@ -237,7 +238,7 @@ infc_explore_request_initiated(InfcExploreRequest* request,
  * Returns whether the exploration process was already initiated, i.e. the
  * total number of nodes to explore is known.
  *
- * Return Value: Whether the exploration was initiated.
+ * Returns: Whether the exploration was initiated.
  **/
 gboolean
 infc_explore_request_get_initiated(InfcExploreRequest* request)
@@ -252,14 +253,17 @@ infc_explore_request_get_initiated(InfcExploreRequest* request)
  * @error: Location to store error information.
  *
  * Indicates that one more node has been explored and changes the
- * #InfcExploreRequest:current property accordingly.
+ * #InfcExploreRequest:current property accordingly. The request must be
+ * initiated before this function can be called.
  **/
 void
 infc_explore_request_progress(InfcExploreRequest* request)
 {
   InfcExploreRequestPrivate* priv;
+  g_return_if_fail(INFC_IS_EXPLORE_REQUEST(request));
+
   priv = INFC_EXPLORE_REQUEST_PRIVATE(request);
-  
+  g_return_if_fail(priv->initiated == TRUE);  
   g_return_if_fail(priv->current < priv->total);
 
   ++priv->current;
