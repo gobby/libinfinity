@@ -757,6 +757,7 @@ on_activate(InfGtkBrowserView* view,
   InfBrowserIter* browser_iter;
   const char* note_type;
   const InfcNotePlugin* plugin;
+  InfRequest* request;
 
   gtk_tree_model_get(
     GTK_TREE_MODEL(gtk_tree_view_get_model(GTK_TREE_VIEW(view))),
@@ -770,9 +771,14 @@ on_activate(InfGtkBrowserView* view,
   plugin = infc_browser_lookup_plugin(INFC_BROWSER(browser), note_type);
 
   /* Subscribe, if possible and not already */
+  request = inf_browser_get_pending_request(
+    browser,
+    browser_iter,
+    "subscribe-session"
+  );
+
   if(!inf_browser_get_session(browser, browser_iter) &&
-     !inf_browser_get_pending_subscribe_request(browser, browser_iter) &&
-     plugin != NULL)
+     !request && plugin != NULL)
   {
     inf_browser_subscribe(browser, browser_iter);
   }

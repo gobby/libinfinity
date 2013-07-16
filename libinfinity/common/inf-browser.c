@@ -867,75 +867,41 @@ inf_browser_iter_from_request(InfBrowser* browser,
 }
 
 /**
- * inf_browser_get_pending_explore_request:
+ * inf_browser_get_pending_request:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a subdirectory node inside @browser.
+ * @iter: A #InfBrowserIter pointing to a node inside @browser, or %NULL.
+ * @type: The type of request.
  *
- * Returns a pending explore request for the subdirectory @iter points to. If
- * there is no such request the function returns %NULL. This function is a
- * shortcut for calling inf_browser_list_pending_requests() with
- * "explore-node" as request type and retrieving the first item from the list.
- * Note that there can be at most one explore request for any node.
+ * Returns a pending request for the node @iter points to which matches type
+ * @request_type. If there is no such request the function returns %NULL.
+ * This function is a shortcut for calling
+ * inf_browser_list_pending_requests() and retrieving the first item from
+ * the list.
  *
- * Returns: A #InfExploreRequest, or %NULL.
+ * If @iter is %NULL the function returns a global request.
+ *
+ * For many request types, such as "subscribe-session", "subscribe-chat",
+ * "explore-node", "query-user-list" or "query-acl" there can only be one
+ * request at a time, and therefore this function is more convenient to use
+ * than inf_browser_list_pending_requests().
+ *
+ * Returns: A #InfRequest, or %NULL.
  */
-InfExploreRequest*
-inf_browser_get_pending_explore_request(InfBrowser* browser,
-                                        const InfBrowserIter* iter)
+InfRequest*
+inf_browser_get_pending_request(InfBrowser* browser,
+                                const InfBrowserIter* iter,
+                                const gchar* type)
 {
   GSList* list;
-  InfExploreRequest* request;
+  InfRequest* request;
 
-  g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
-  g_return_val_if_fail(iter != NULL, NULL);
-  g_return_val_if_fail(inf_browser_is_subdirectory(browser, iter), NULL);
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
-  list = inf_browser_list_pending_requests(browser, iter, "explore-node");
-  g_assert(list == NULL || list->next == NULL);
+  list = inf_browser_list_pending_requests(browser, iter, type);
 
   request = NULL;
   if(list != NULL)
-    request = (InfExploreRequest*)list->data;
-
-  g_slist_free(list);
-  return request;
-}
-
-/**
- * inf_browser_get_pending_subscribe_request:
- * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a leaf node inside @browser.
- *
- * Returns a pending subscribe request for the note @iter points to. If
- * there is no such request the function returns %NULL. This function is a
- * shortcut for calling inf_browser_list_pending_requests() with
- * "subscribe-session" as request type and retrieving the first item from the
- * list. Note that there can be at most one subscribe request for any node.
- *
- * Returns: A #InfNodeRequest, or %NULL.
- */
-InfNodeRequest*
-inf_browser_get_pending_subscribe_request(InfBrowser* browser,
-                                          const InfBrowserIter* iter)
-{
-  GSList* list;
-  InfNodeRequest* request;
-
-  g_return_val_if_fail(INF_IS_BROWSER(browser),NULL);
-  g_return_val_if_fail(iter != NULL, NULL);
-  g_return_val_if_fail(!inf_browser_is_subdirectory(browser, iter), NULL);
-
-  list = inf_browser_list_pending_requests(
-    browser,
-    iter,
-    "subscribe-session"
-  );
-
-  g_assert(list == NULL || list->next == NULL);
-
-  request = NULL;
-  if(list != NULL)
-    request = (InfNodeRequest*)list->data;
+    request = INF_REQUEST(list->data);
 
   g_slist_free(list);
   return request;

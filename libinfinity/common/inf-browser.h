@@ -166,7 +166,7 @@ struct _InfBrowserIface {
                                 const InfBrowserIter* iter);
 
   InfNodeRequest* (*subscribe)(InfBrowser* browser,
-                                  const InfBrowserIter* iter);
+                               const InfBrowserIter* iter);
   InfSessionProxy* (*get_session)(InfBrowser* browser,
                                   const InfBrowserIter* iter);
 
@@ -263,13 +263,11 @@ inf_browser_iter_from_request(InfBrowser* browser,
                               InfNodeRequest* request,
                               InfBrowserIter* iter);
 
-InfExploreRequest*
-inf_browser_get_pending_explore_request(InfBrowser* browser,
-                                        const InfBrowserIter* iter);
+InfRequest*
+inf_browser_get_pending_request(InfBrowser* browser,
+                                const InfBrowserIter* iter,
+                                const gchar* request_type);
 
-InfNodeRequest*
-inf_browser_get_pending_subscribe_request(InfBrowser* browser,
-                                          const InfBrowserIter* iter);
 
 void
 inf_browser_error(InfBrowser* browser,

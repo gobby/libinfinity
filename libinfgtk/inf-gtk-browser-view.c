@@ -711,7 +711,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
                                    InfBrowserIter* iter)
 {
   InfGtkBrowserViewPrivate* priv;
-  InfExploreRequest* request;
+  InfRequest* request;
   GObject* object;
   InfSessionProxy* proxy;
   InfSession* session;
@@ -742,7 +742,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
       }
     }
 
-    request = inf_browser_get_pending_explore_request(browser, iter);
+    request = inf_browser_get_pending_request(browser, iter, "explore-node");
     if(request != NULL)
     {
       model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
@@ -762,7 +762,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
         inf_gtk_browser_view_explore_added(
           view,
           browser,
-          request,
+          INF_EXPLORE_REQUEST(request),
           path,
           &tree_iter
         );
@@ -822,7 +822,7 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
                                           GtkTreeIter* iter)
 {
   InfGtkBrowserViewPrivate* priv;
-  InfExploreRequest* request;
+  InfRequest* request;
   InfGtkBrowserViewBrowser* view_browser;
   GtkTreeModel* model;
   InfBrowser* browser;
@@ -848,14 +848,19 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
   {
     if(inf_browser_get_explored(browser, browser_iter) == FALSE)
     {
-      request = inf_browser_get_pending_explore_request(
+      request = inf_browser_get_pending_request(
         INF_BROWSER(browser),
-        browser_iter
+        browser_iter,
+        "explore-node"
       );
 
       /* Explore root node if it is not already explored */
       if(request == NULL)
-        request = inf_browser_explore(INF_BROWSER(browser), browser_iter);
+      {
+        request = INF_REQUEST(
+          inf_browser_explore(INF_BROWSER(browser), browser_iter)
+        );
+      }
 
       if(view_browser->initial_root_expansion == TRUE)
       {
@@ -1083,7 +1088,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   GtkTreeIter parent_iter;
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
-  InfExploreRequest* request;
+  InfRequest* request;
   InfGtkBrowserViewBrowser* view_browser;
   InfGtkBrowserViewExplore* explore;
   gboolean explored;
@@ -1115,9 +1120,10 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
     if(inf_browser_is_subdirectory(browser, browser_iter))
     {
       /* Perhaps some other code already explored this. */
-      request = inf_browser_get_pending_explore_request(
+      request = inf_browser_get_pending_request(
         INF_BROWSER(browser),
-        browser_iter
+        browser_iter,
+        "explore-node"
       );
 
       if(request == NULL)
@@ -1143,7 +1149,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
         explore = inf_gtk_browser_view_find_explore(
           view,
           view_browser,
-          request
+          INF_EXPLORE_REQUEST(request)
         );
 
         /* TODO: The correct way to do this would probably be to ignore
@@ -1155,7 +1161,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
           inf_gtk_browser_view_explore_added(
             view,
             browser,
-            request,
+            INF_EXPLORE_REQUEST(request),
             path,
             iter
           );
@@ -1467,7 +1473,7 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   GtkTreeModel* model;
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
-  InfExploreRequest* pending_request;
+  InfRequest* pending_request;
 
   model = gtk_tree_view_get_model(tree_view);
 
@@ -1489,8 +1495,11 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
       if(inf_browser_is_subdirectory(browser, browser_iter) == TRUE &&
          inf_browser_get_explored(browser, browser_iter) == FALSE)
       {
-        pending_request =
-          inf_browser_get_pending_explore_request(browser, browser_iter);
+        pending_request = inf_browser_get_pending_request(
+          browser,
+          browser_iter,
+          "explore-node"
+        );
 
         if(pending_request == NULL)
           inf_browser_explore(INF_BROWSER(browser), browser_iter);
@@ -2030,7 +2039,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
   InfBrowser* browser;
   InfBrowserStatus browser_status;
   InfBrowserIter* browser_iter;
-  InfExploreRequest* request;
+  InfRequest* request;
   GObject* object;
   InfSessionProxy* proxy;
   InfSession* session;
@@ -2063,9 +2072,10 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
 
       if(inf_browser_is_subdirectory(browser, browser_iter))
       {
-        request = inf_browser_get_pending_explore_request(
+        request = inf_browser_get_pending_request(
           browser,
-          browser_iter
+          browser_iter,
+          "explore-node"
         );
 
         if(request != NULL)

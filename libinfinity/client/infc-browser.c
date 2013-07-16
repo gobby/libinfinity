@@ -3952,10 +3952,7 @@ infc_browser_browser_explore(InfBrowser* browser,
   infc_browser_return_val_if_subdir_fail(node, NULL);
   g_return_val_if_fail(node->shared.subdir.explored == FALSE, NULL);
   g_return_val_if_fail(
-    inf_browser_get_pending_explore_request(
-      INF_BROWSER(browser),
-      iter
-    ) == NULL,
+    inf_browser_get_pending_request(browser, iter, "explore-node") == NULL,
     NULL
   );
 
@@ -4259,9 +4256,10 @@ infc_browser_browser_subscribe(InfBrowser* infbrowser,
   g_return_val_if_fail(node->shared.known.session == NULL, NULL);
 
   g_return_val_if_fail(
-    inf_browser_get_pending_subscribe_request(
+    inf_browser_get_pending_request(
       INF_BROWSER(browser),
-      iter
+      iter,
+      "subscribe-session"
     ) == NULL,
     NULL
   );
