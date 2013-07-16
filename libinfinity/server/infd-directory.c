@@ -4337,6 +4337,8 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 
   if(node->shared.subdir.explored == FALSE)
   {
+    request = NULL;
+
     /* Check if there is a locreq; if yes we finish it implicitely here */
     for(item = priv->local_requests; item != NULL; item = item->next)
     {
