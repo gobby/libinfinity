@@ -17,6 +17,13 @@ Performance (Some ideas to improve performance, profile to verify!):
     - G_DISABLE_CHECKS
     defined.
 
+Modernization:
+ * Use G_TYPE_ERROR for signals with an error parameter
+ * Phase-out GTK2 support
+ * Use g_get_monotonic_time where a time is needed
+ * Generate gobject introspection annotations, typelibs and girs
+ * Use GFile API for InfdFilesystemStorage
+
 Others:
 
  * Split InfXmppConnection (XMPP)
@@ -36,29 +43,24 @@ Others:
    * This can be used between begin-user-action and end-user-action, to keep the operation atomic on the infinote side
    * maybe need to evaluate whether a split operation which has insert as one child and delete as other child is handled correctly
      * definitely add more unit tests for this
- ! Replace the various begin-foo signals in InfcBrowser by a begin-operation
-   with iter and request as parameters, detailed on the operation type
-   (add-node, remove-node, subscribe-session etc.). Similar with the
-   infc_browser_iter_get_foo_request functions (replace by a generic
-   infc_browser_iter_get_pending_request function).
  * Make InfLocalPublisher take a InfdXmlServer instead of a port number. Maybe
    even rename to InfPublisher, with InfDiscoveryAvahi assuming an
    InfdXmppServer. Or, consider simply removing the interface, and require
    people to use InfDiscoveryAvahi directly (check how well that works with
    InfdServerPool).
- * The following should be done before the release, since it breaks API/ABI.
-   * Make a InfcChat object that handles the chat session from InfcBrowser.
-     InfcBrowser should relay messages to it, and if not handled by InfcChat,
-     handle it by itself. InfcChat should be a public property of InfcBrowser,
-     but handle all the chat stuff itself. Maybe implement
-     InfCommunicationObject and still have the stuff relayed? Check again how
-     the InfcBrowser->InfcSessionProxy->InfSession flow goes and do the same.
-   * The same kind of thing should be implemented on the server side.
-   * Make a common InfBrowserTree class which implements the basic tree structure
-     commonly on client and server side.
-   * Add a base class or interface, InfSessionProxy with a vfunc for joining a
-     user and get_session() vfunc.
-   * Remove infc_browser_get_status() function
-   * Change the storage interface to be asynchronous
-     * take the chance and require gio
-       * port the network code to gnio
+ * Make a InfcChat object that handles the chat session from InfcBrowser.
+   InfcBrowser should relay messages to it, and if not handled by InfcChat,
+   handle it by itself. InfcChat should be a public property of InfcBrowser,
+   but handle all the chat stuff itself. Maybe implement
+   InfCommunicationObject and still have the stuff relayed? Check again how
+   the InfcBrowser->InfcSessionProxy->InfSession flow goes and do the same.
+ * The same kind of thing should be implemented on the server side.
+ * Make a common InfBrowserTree class which implements the basic tree structure
+   commonly on client and server side.
+ * Remove infc_browser_get_status() function
+ * Change the storage interface to be asynchronous
+   * take the chance and require gio
+     * port the network code to gnio?
+ * Change the request API so that requests can finish during the call to the
+   main function. This would enable us to get rid of that horrible locreqs
+   in InfdDirectory
