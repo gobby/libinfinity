@@ -1257,9 +1257,9 @@ inf_browser_check_acl(InfBrowser* browser,
 
   do
   {
-    g_return_val_if_fail(inf_browser_has_acl(browser, iter, user), 0);
+    g_return_val_if_fail(inf_browser_has_acl(browser, &check_iter, user), 0);
 
-    sheet_set = inf_browser_get_acl(browser, iter);
+    sheet_set = inf_browser_get_acl(browser, &check_iter);
     if(sheet_set != NULL)
     {
       sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, user);
