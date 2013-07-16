@@ -448,9 +448,13 @@ infc_browser_node_new_common(InfcBrowser* browser,
     node->next = NULL;
   }
 
-  iter.node_id = id;
-  iter.node = node;
-  inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+
+  if(sheet_set != NULL)
+  {
+    iter.node_id = id;
+    iter.node = node;
+    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+  }
 
   g_assert(
     g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node->id)) == NULL
