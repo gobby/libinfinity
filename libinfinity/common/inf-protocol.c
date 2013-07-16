@@ -45,7 +45,7 @@
 const gchar*
 inf_protocol_get_version(void)
 {
-  return "1.0";
+  return "1.1";
 }
 
 /**
