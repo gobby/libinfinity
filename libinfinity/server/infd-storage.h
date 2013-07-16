@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include <libinfinity/common/inf-acl-sheet.h>
+
 G_BEGIN_DECLS
 
 #define INFD_TYPE_STORAGE                 (infd_storage_get_type())
@@ -31,6 +33,7 @@ G_BEGIN_DECLS
 
 #define INFD_TYPE_STORAGE_NODE_TYPE       (infd_storage_node_type_get_type())
 #define INFD_TYPE_STORAGE_NODE            (infd_storage_node_get_type())
+#define INFD_TYPE_STORAGE_ACL             (infd_storage_acl_get_type())
 
 typedef struct _InfdStorage InfdStorage;
 typedef struct _InfdStorageIface InfdStorageIface;
@@ -46,6 +49,13 @@ struct _InfdStorageNode {
   gchar* name;
 
   gchar* identifier; /* Only set when type == INFD_STORAGE_NODE_NOTE */
+};
+
+typedef struct _InfdStorageAcl InfdStorageAcl;
+struct _InfdStorageAcl {
+  gchar* user_id;
+  guint64 mask;
+  guint64 perms;  
 };
 
 struct _InfdStorageIface {
@@ -71,7 +81,24 @@ struct _InfdStorageIface {
                           GError** error);
 
   /* TODO: Add further methods to copy, move and expunge nodes */
-  /* TODO: Notification? */
+
+  InfAclUser** (*read_user_list)(InfdStorage* storage,
+                                 guint* n_users,
+                                 GError** error);
+
+  gboolean (*write_user_list)(InfdStorage* storage,
+                              const InfAclUser** users,
+                              guint n_users,
+                              GError** error);
+
+  GSList* (*read_acl)(InfdStorage* storage,
+                      const gchar* path,
+                      GError** error);
+
+  gboolean (*write_acl)(InfdStorage* storage,
+                        const gchar* path,
+                        const InfAclSheetSet* sheet_set,
+                        GError** error);
 };
 
 GType
@@ -79,6 +106,9 @@ infd_storage_node_type_get_type(void) G_GNUC_CONST;
 
 GType
 infd_storage_node_get_type(void) G_GNUC_CONST;
+
+GType
+infd_storage_acl_get_type(void) G_GNUC_CONST;
 
 GType
 infd_storage_get_type(void) G_GNUC_CONST;
@@ -99,6 +129,15 @@ infd_storage_node_free(InfdStorageNode* node);
 void
 infd_storage_node_list_free(GSList* node_list);
 
+InfdStorageAcl*
+infd_storage_acl_copy(InfdStorageAcl* acl);
+
+void
+infd_storage_acl_free(InfdStorageAcl* acl);
+
+void
+infd_storage_acl_list_free(GSList* acl_list);
+
 GSList*
 infd_storage_read_subdirectory(InfdStorage* storage,
                                const gchar* path,
@@ -114,6 +153,28 @@ infd_storage_remove_node(InfdStorage* storage,
                          const gchar* identifier,
                          const gchar* path,
                          GError** error);
+
+InfAclUser**
+infd_storage_read_user_list(InfdStorage* storage,
+                            guint* n_users,
+                            GError** error);
+
+gboolean
+infd_storage_write_user_list(InfdStorage* storage,
+                             const InfAclUser** users,
+                             guint n_users,
+                             GError** error);
+
+GSList*
+infd_storage_read_acl(InfdStorage* storage,
+                      const gchar* path,
+                      GError** error);
+
+gboolean
+infd_storage_write_acl(InfdStorage* storage,
+                       const gchar* path,
+                       const InfAclSheetSet* sheet_set,
+                       GError** error);
 
 G_END_DECLS
 

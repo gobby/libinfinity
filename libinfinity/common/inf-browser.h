@@ -25,8 +25,10 @@
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-node-request.h>
 #include <libinfinity/common/inf-explore-request.h>
+#include <libinfinity/common/inf-acl-user-list-request.h>
 #include <libinfinity/common/inf-session-proxy.h>
 #include <libinfinity/common/inf-session.h>
+#include <libinfinity/common/inf-acl-table.h>
 
 G_BEGIN_DECLS
 
@@ -68,16 +70,20 @@ typedef enum _InfBrowserStatus {
 /**
  * InfBrowserIface:
  * @error: Default signal handler for the #InfBrowser::error signal.
- * @node_added: Default signal handler for the #InfBrowser::node_added
+ * @node_added: Default signal handler for the #InfBrowser::node-added
  * signal.
- * @node_removed: Default signal handler for the #InfBrowser::node_removed
+ * @node_removed: Default signal handler for the #InfBrowser::node-removed
  * signal.
  * @subscribe_session: Default signal handler for the
- * #InfBrowser::subscribe_session signal.
+ * #InfBrowser::subscribe-session signal.
  * @begin_explore: Default signal handler for the
- * #InfBrowser::begin_explore signal.
+ * #InfBrowser::begin-explore signal.
  * @begin_request: Default signal handler for the
- * #InfBrowser::begin_request signal.
+ * #InfBrowser::begin-request signal.
+ * @acl_user_added: Default signal handler for the
+ * #InfBrowser::acl-user-added signal.
+ * @acl_changed: Default signal handler for the
+ * #InfBrowser::acl-changed signal.
  * @get_root: Virtual function to return the root node of the browser.
  * @get_next: Virtual function to return the next sibling in a browser.
  * @get_prev: Virtual function to return the previous sibling in a browser.
@@ -99,6 +105,17 @@ typedef enum _InfBrowserStatus {
  * requests for a node in a browser.
  * @iter_from_request: Virtual function to return an iterator pointing to the
  * node a given request was made for.
+ * @query_acl_user_list: Virtual function for querying the list of users.
+ * @get_acl_user_list: Virtual function for obtaining the list of users.
+ * @get_acl_local_user: Virtual function to return the ACL user representing
+ * the local host.
+ * @lookup_local_user: Virtual function to find a ACL user by its ID.
+ * @query_acl: Virtual function for querying the ACL for a node for all
+ * other users.
+ * @has_acl: Virtual function for checking whether the ACL has been queried
+ * or is otherwise available.
+ * @get_acl: Virtual function for obtaining the full ACL for a node.
+ * @set_acl: Virtual function for changing the ACL for one node.
  *
  * Signals and virtual functions for the #InfBrowser interface.
  */
@@ -130,6 +147,13 @@ struct _InfBrowserIface {
                         const InfBrowserIter* iter,
                         InfRequest* request);
 
+  void (*acl_user_added)(InfBrowser* browser,
+                         const InfAclUser* user);
+
+  void (*acl_changed)(InfBrowser* browser,
+                      const InfBrowserIter* iter,
+                      const InfAclSheetSet* sheet_set);
+
   /* Virtual functions */
 
   gboolean (*get_root)(InfBrowser* browser,
@@ -150,14 +174,16 @@ struct _InfBrowserIface {
                               const InfBrowserIter* iter);
 
   InfNodeRequest* (*add_note)(InfBrowser* browser,
-                                 const InfBrowserIter* iter,
-                                 const char* name,
-                                 const char* type,
-                                 InfSession* session,
-                                 gboolean initial_subscribe);
+                              const InfBrowserIter* iter,
+                              const char* name,
+                              const char* type,
+                              const InfAclSheetSet* acl,
+                              InfSession* session,
+                              gboolean initial_subscribe);
   InfNodeRequest* (*add_subdirectory)(InfBrowser* browser,
-                                         const InfBrowserIter* iter,
-                                         const char* name);
+                                      const InfBrowserIter* iter,
+                                      const char* name,
+                                      const InfAclSheetSet* acl);
   InfNodeRequest* (*remove_node)(InfBrowser* browser,
                                     const InfBrowserIter* iter);
   const gchar* (*get_node_name)(InfBrowser* browser,
@@ -176,6 +202,30 @@ struct _InfBrowserIface {
   gboolean (*iter_from_request)(InfBrowser* browser,
                                 InfNodeRequest* request,
                                 InfBrowserIter* iter);
+
+  InfAclUserListRequest* (*query_acl_user_list)(InfBrowser* browser);
+
+  const InfAclUser** (*get_acl_user_list)(InfBrowser* browser,
+                                          guint* n_users);
+
+  const InfAclUser* (*get_acl_local_user)(InfBrowser* browser);
+
+  const InfAclUser* (*lookup_acl_user)(InfBrowser* browser,
+                                       const gchar* user_id);
+
+  InfNodeRequest* (*query_acl)(InfBrowser* browser,
+                               const InfBrowserIter* iter);
+
+  gboolean (*has_acl)(InfBrowser* browser,
+                      const InfBrowserIter* iter,
+                      const InfAclUser* user);
+
+  const InfAclSheetSet* (*get_acl)(InfBrowser* browser,
+                                   const InfBrowserIter* iter);
+
+  InfNodeRequest* (*set_acl)(InfBrowser* browser,
+                             const InfBrowserIter* iter,
+                             const InfAclSheetSet* sheet_set);
 };
 
 GType
@@ -221,13 +271,15 @@ inf_browser_add_note(InfBrowser* browser,
                      const InfBrowserIter* iter,
                      const char* name,
                      const char* type,
+                     const InfAclSheetSet* acl,
                      InfSession* session,
                      gboolean initial_subscribe);
 
 InfNodeRequest*
 inf_browser_add_subdirectory(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             const char* name);
+                             const char* name,
+                             const InfAclSheetSet* acl);
 
 InfNodeRequest*
 inf_browser_remove_node(InfBrowser* browser,
@@ -268,6 +320,43 @@ inf_browser_get_pending_request(InfBrowser* browser,
                                 const InfBrowserIter* iter,
                                 const gchar* request_type);
 
+InfAclUserListRequest*
+inf_browser_query_acl_user_list(InfBrowser* browser);
+
+const InfAclUser**
+inf_browser_get_acl_user_list(InfBrowser* browser,
+                              guint* n_users);
+
+const InfAclUser*
+inf_browser_get_acl_local_user(InfBrowser* browser);
+
+const InfAclUser*
+inf_browser_lookup_acl_user(InfBrowser* browser,
+                            const gchar* user_id);
+
+InfNodeRequest*
+inf_browser_query_acl(InfBrowser* browser,
+                      const InfBrowserIter* iter);
+
+gboolean
+inf_browser_has_acl(InfBrowser* browser,
+                    const InfBrowserIter* iter,
+                    const InfAclUser* user);
+
+const InfAclSheetSet*
+inf_browser_get_acl(InfBrowser* browser,
+                    const InfBrowserIter* iter);
+
+InfNodeRequest*
+inf_browser_set_acl(InfBrowser* browser,
+                    const InfBrowserIter* iter,
+                    const InfAclSheetSet* sheet_set);
+
+guint64
+inf_browser_check_acl(InfBrowser* browser,
+                      const InfBrowserIter* iter,
+                      const InfAclUser* user,
+                      guint64 mask);
 
 void
 inf_browser_error(InfBrowser* browser,
@@ -295,6 +384,15 @@ void
 inf_browser_begin_request(InfBrowser* browser,
                           const InfBrowserIter* iter,
                           InfRequest* request);
+
+void
+inf_browser_acl_user_added(InfBrowser* browser,
+                           const InfAclUser* user);
+
+void
+inf_browser_acl_changed(InfBrowser* browser,
+                        const InfBrowserIter* iter,
+                        const InfAclSheetSet* update);
 
 G_END_DECLS
 

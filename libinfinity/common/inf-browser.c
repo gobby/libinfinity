@@ -44,6 +44,8 @@ enum {
   SUBSCRIBE_SESSION,
   UNSUBSCRIBE_SESSION,
   BEGIN_REQUEST, /* detailed */
+  ACL_USER_ADDED,
+  ACL_CHANGED,
 
   LAST_SIGNAL
 };
@@ -222,6 +224,54 @@ inf_browser_base_init(gpointer g_class)
       2,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
       INF_TYPE_REQUEST
+    );
+
+    /**
+     * InfBrowser::acl-user-added:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @user: The new #InfAclUser.
+     *
+     * This signal is emitted whenever a new user is added to the browser, and
+     * the user list has been queried with inf_browser_query_user_list().
+     */
+    browser_signals[ACL_USER_ADDED] = g_signal_new(
+      "acl-user-added",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, acl_user_added),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED,
+      G_TYPE_NONE,
+      1,
+      INF_TYPE_ACL_USER | G_SIGNAL_TYPE_STATIC_SCOPE
+    );
+
+    /**
+     * InfBrowser::acl-changed:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @iter: An iterator pointing to the node for which the ACL has changed.
+     * @sheet_set: A #InfAclSheetSet containing the changed ACL sheets.
+     *
+     * This signal is emitted whenever an ACL for the node @iter points to
+     * are changed. This signal is emitted whenever the ACL change for the
+     * local user, the default user, or for a node that all ACLs have been
+     * queried with inf_browser_query_acl().
+     *
+     * The @sheet_set parameter contains only the ACL sheets that have
+     * changed. In order to get the new full sheet set, call
+     * inf_browser_get_acl().
+     */
+    browser_signals[ACL_CHANGED] = g_signal_new(
+      "acl-changed",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, acl_changed),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_BOXED,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_ACL_SHEET_SET | G_SIGNAL_TYPE_STATIC_SCOPE
     );
 
     g_object_interface_install_property(
@@ -532,6 +582,8 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside @browser.
  * @name: The name of the node to add.
  * @type: The type of the node to add.
+ * @acl: A #InfAclSheetSet representing the initial ACL for this node, or
+ * %NULL.
  * @session: A #InfSession with a session of type @type, or %NULL.
  * @initial_subscribe: Whether to subscribe to the newly created session.
  *
@@ -567,6 +619,12 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * non-%NULL in this case since the node might have been created, but the
  * subscription could have failed.
  *
+ * The initial ACL for the new node is given by @acl. If this parameter
+ * is %NULL, then the default ACL is used, which inherits all permissions
+ * from the parent node. In order to apply non-%NULL ACL to the new node,
+ * the %INF_ACL_CAN_SET_ACL permission must be granted to the local entity for
+ * the node @iter points to.
+ *
  * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
@@ -575,6 +633,7 @@ inf_browser_add_note(InfBrowser* browser,
                      const InfBrowserIter* iter,
                      const char* name,
                      const char* type,
+                     const InfAclSheetSet* acl,
                      InfSession* session,
                      gboolean initial_subscribe)
 {
@@ -611,6 +670,7 @@ inf_browser_add_note(InfBrowser* browser,
     iter,
     name,
     type,
+    acl,
     session,
     initial_subscribe
   );
@@ -621,8 +681,16 @@ inf_browser_add_note(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside @browser.
  * @name: The name of the node to add.
+ * @acl: A #InfAclSheetSet representing the initial ACL for this node, or
+ * %NULL.
  *
  * Adds a new subdirectory node to the browser.
+ *
+ * The initial ACL for the new node is given by @acl. If this parameter
+ * is %NULL, then the default ACL is used, which inherits all permissions
+ * from the parent node. In order to apply non-%NULL ACL to the new node,
+ * the %INF_ACL_CAN_SET_ACL permission must be granted to the local entity for
+ * the node @iter points to.
  *
  * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
@@ -630,7 +698,8 @@ inf_browser_add_note(InfBrowser* browser,
 InfNodeRequest*
 inf_browser_add_subdirectory(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             const char* name)
+                             const char* name,
+                             const InfAclSheetSet* acl)
 {
   InfBrowserIface* iface;
 
@@ -643,7 +712,7 @@ inf_browser_add_subdirectory(InfBrowser* browser,
   g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, NULL);
 
   g_return_val_if_fail(iface->add_subdirectory != NULL, NULL);
-  return iface->add_subdirectory(browser, iter, name);
+  return iface->add_subdirectory(browser, iter, name, acl);
 }
 
 /**
@@ -806,7 +875,7 @@ inf_browser_get_session(InfBrowser* browser,
 /**
  * inf_browser_list_pending_requests:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @iter: A #InfBrowserIter pointing to a node inside @browser, or %NULL.
  * @request_type: The type of request to return pending requests for, or
  * %NULL.
  *
@@ -816,6 +885,8 @@ inf_browser_get_session(InfBrowser* browser,
  * all requests for the given node are returned. If it is non-%NULL only
  * requests which match the given type are included in the list of returned
  * requests.
+ *
+ * If @iter is %NULL then the function returns all pending global requests.
  *
  * Returns: A list of #InfRequest<!-- -->s. Free with g_slist_free() when
  * no longer needed.
@@ -828,7 +899,6 @@ inf_browser_list_pending_requests(InfBrowser* browser,
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(iter != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->list_pending_requests != NULL, NULL);
@@ -905,6 +975,315 @@ inf_browser_get_pending_request(InfBrowser* browser,
 
   g_slist_free(list);
   return request;
+}
+
+/**
+ * inf_browser_query_acl_user_list:
+ * @browser: A #InfBrowser.
+ *
+ * Queries the list of users in @browser. When this call has finished,
+ * inf_browser_get_acl_user_list() can be called in order to retrieve the user
+ * list.
+ *
+ * Returns: A #InfUserListRequest that can be used to be notified when the
+ * request finishes.
+ */
+InfAclUserListRequest*
+inf_browser_query_acl_user_list(InfBrowser* browser)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->query_acl_user_list != NULL, NULL);
+
+  return iface->query_acl_user_list(browser);
+}
+
+/**
+ * inf_browser_get_acl_user_list:
+ * @browser: A #InfBrowser.
+ * @n_users: An output parameter for the total number of users.
+ *
+ * Returns an array of users, if they have been queried before
+ * with inf_browser_query_user_list(). If the user list has not been queried,
+ * %NULL is returned. Note that this does not mean that there are no known
+ * users, it only means that the full list is not available. The self user
+ * with inf_browser_get_acl_local_user() is always available for example, even
+ * if this function returns %NULL.
+ *
+ * Returns: A %NULL-terminated list of #InfAclUser objects, or %NULL. Free
+ * with g_free() when no longer needed.
+ */
+const InfAclUser**
+inf_browser_get_acl_user_list(InfBrowser* browser,
+                              guint* n_users)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(n_users != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->get_acl_user_list != NULL, NULL);
+
+  return iface->get_acl_user_list(browser, n_users);
+}
+
+/**
+ * inf_browser_get_acl_local_user:
+ * @browser: A #InfBrowser
+ *
+ * Returns the #InfAclUser representing the local host. This can be used to
+ * check whether the local user is allowed to perform certain operations in
+ * the browser. The function can also return %NULL, in which case all
+ * operations are allowed, because the browser represents a local infinote
+ * directory.
+ *
+ * Returns: A #InfAclUser, or %NULL. The returned value is owned by the
+ * browser and must not be freed.
+ */
+const InfAclUser*
+inf_browser_get_acl_local_user(InfBrowser* browser)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->get_acl_local_user != NULL, NULL);
+
+  return iface->get_acl_local_user(browser);
+}
+
+/**
+ * inf_browser_lookup_acl_user:
+ * @browser: A #InfBrowser.
+ * @user_id: The ACL user ID to look up.
+ *
+ * Looks up the ACL user with the given ID. If the user list has not been
+ * queried with inf_browser_query_user_list() before only the default user
+ * and the local user can be looked up using this function. If there is no
+ * user with the given ID the function returns %NULL.
+ *
+ * Returns: A #InfAclUser owned by the browser, or %NULL.
+ */
+const InfAclUser*
+inf_browser_lookup_acl_user(InfBrowser* browser,
+                            const gchar* user_id)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(user_id != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->lookup_acl_user != NULL, NULL);
+
+  return iface->lookup_acl_user(browser, user_id);
+}
+
+/**
+ * inf_browser_query_acl:
+ * @browser: A #InfBrowser.
+ * @iter: An iterator pointing to a node for which to query the ACLs.
+ *
+ * Queries the ACLs for all users of the node @iter points to. When the
+ * request has finished, inf_browser_get_acl() can be used to retrieve the
+ * ACLs.
+ *
+ * Returns: A #InfNodeRequest which can be used to be notified when the
+ * request finishes.
+ */
+InfNodeRequest*
+inf_browser_query_acl(InfBrowser* browser,
+                      const InfBrowserIter* iter)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->query_acl != NULL, NULL);
+
+  return iface->query_acl(browser, iter);
+}
+
+/**
+ * inf_browser_has_acl:
+ * @browser: A #InfBrowser.
+ * @iter: An iterator pointing to a node for which to check full ACL
+ * availability.
+ * @user: The user to check ACL availability for, or %NULL.
+ *
+ * This function returns whether the ACL sheet for the given user is available
+ * or not. If the function returns %FALSE then inf_browser_query_acl() can be
+ * called in order to retrieve the full ACL. If @user is %NULL the function
+ * checks whether the full ACL is available, i.e. the ACL sheets for all
+ * users. Usually the ACL sheets for the default user and the local user are
+ * always available.
+ *
+ * Returns: %TRUE when the ACL sheet for @user is available or %FALSE
+ * otherwise.
+ */
+gboolean
+inf_browser_has_acl(InfBrowser* browser,
+                    const InfBrowserIter* iter,
+                    const InfAclUser* user)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->has_acl != NULL, FALSE);
+
+  return iface->has_acl(browser, iter, user);
+}
+
+/**
+ * inf_browser_get_acl:
+ * @browser: A #InfBrowser.
+ * @iter: An iterator pointing to a node for which to retrieve ACLs.
+ *
+ * Retrieves the ACL for the node @iter points to. This function can also
+ * be called if the ACL has not been queried before using
+ * inf_browser_query_acl(). In that case, the returned sheet set will only
+ * contain sheets for the default user and the local user. The function
+ * can return %NULL which is equivalent to an empty sheet set, i.e. no ACL.
+ *
+ * When the full ACL has been successfully queried with
+ * inf_browser_query_acl(), the full ACL is returned by this function. The
+ * function inf_browser_has_acl() can be used to check whether this function
+ * will return the full ACL or only the sheets for the default and local
+ * users.
+ *
+ * Returns: A #InfAclSheetSet containing the requested ACL, or %NULL. The
+ * returned value is owned by the #InfBrowser and should not be freed.
+ */
+const InfAclSheetSet*
+inf_browser_get_acl(InfBrowser* browser,
+                    const InfBrowserIter* iter)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->get_acl != NULL, NULL);
+
+  return iface->get_acl(browser, iter);
+}
+
+/**
+ * inf_browser_set_acl:
+ * @browser: A #InfBrowser.
+ * @iter: An iterator pointing to the node for which to change ACLs.
+ * @sheet_set: An #InfAclSheetSet with the sheets to update.
+ *
+ * Changes the ACLs for the node @iter points to. Existing sheets that are not
+ * in @sheet_set are left untouched. This operation is only allowed when the
+ * ACL for the node @iter points to has been retrieved already with
+ * inf_browser_query_acl(). Use inf_browser_has_acl() to check whether this
+ * function can be called or whether the ACL needs to be queried first.
+ *
+ * Returns: A #InfNodeRequest which can be used to be notified when the
+ * request finishes.
+ */
+InfNodeRequest*
+inf_browser_set_acl(InfBrowser* browser,
+                    const InfBrowserIter* iter,
+                    const InfAclSheetSet* sheet_set)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+  g_return_val_if_fail(sheet_set != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->set_acl != NULL, NULL);
+
+  return iface->set_acl(browser, iter, sheet_set);
+}
+
+/**
+ * inf_browser_check_acl:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to a node in a browser.
+ * @user: A #InfAclUser whose permission to check.
+ * @mask: A bitmask of #InfAclSetting<!-- -->s with permissions to check.
+ *
+ * Checks whether the given user has permissions to perform the operations
+ * specified by @mask on the node @iter points to. The @mask bitfield is a
+ * mask which should have all bits enabled for which permissions shall be
+ * checked. The return value is a bitmask which has the bits enabled of the
+ * permissions that the user actually has.
+ *
+ * In order for this function to work, the ACL sheet for @user has to be
+ * available for the node @iter points to and all of its parent nodes. If
+ * user is not the default or the local user, these need to be queried before
+ * using inf_browser_query_acl().
+ */
+guint64
+inf_browser_check_acl(InfBrowser* browser,
+                      const InfBrowserIter* iter,
+                      const InfAclUser* user,
+                      guint64 mask)
+{
+  const InfAclUser* default_user;
+  InfBrowserIter check_iter;
+  guint64 remaining_mask;
+  guint64 perms;
+  const InfAclSheetSet* sheet_set;
+  const InfAclSheet* sheet;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), 0);
+  g_return_val_if_fail(iter != NULL, 0);
+  g_return_val_if_fail(user != NULL, 0);
+
+  if(strcmp(user->user_id, "default") != 0)
+    default_user = inf_browser_lookup_acl_user(browser, "default");
+  else
+    default_user = NULL;
+
+  remaining_mask = mask;
+  perms = mask;
+  check_iter = *iter;
+
+  do
+  {
+    g_return_val_if_fail(inf_browser_has_acl(browser, iter, user), 0);
+
+    sheet_set = inf_browser_get_acl(browser, iter);
+    if(sheet_set != NULL)
+    {
+      sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, user);
+      if(sheet != NULL)
+      {
+        perms &= (sheet->perms & (sheet->mask & remaining_mask));
+        remaining_mask &= ~sheet->mask;
+      }
+
+      if(remaining_mask != 0 && default_user != NULL)
+      {
+        sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, default_user);
+        if(sheet != NULL)
+        {
+          perms &= (sheet->perms & (sheet->mask & remaining_mask));
+          remaining_mask &= ~sheet->mask;
+        }
+      }
+    }
+  } while(remaining_mask != 0 &&
+          inf_browser_get_parent(browser, &check_iter));
+
+  g_assert(remaining_mask == 0);
+  return perms;
 }
 
 /**
@@ -1062,6 +1441,56 @@ inf_browser_begin_request(InfBrowser* browser,
   );
 
   g_value_unset(&value);
+}
+
+/**
+ * inf_browser_acl_user_added:
+ * @browser: A #InfBrowser.
+ * @InfAclUser: The new #InfAclUser.
+ *
+ * This function emits the #InfBrowser::acl-user-added signal on @browser. It
+ * is meant to be used by interface implementations only.
+ */
+void
+inf_browser_acl_user_added(InfBrowser* browser,
+                           const InfAclUser* user)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(user != NULL);
+
+  g_signal_emit(
+    browser,
+    browser_signals[ACL_USER_ADDED],
+    0,
+    user
+  );
+}
+
+/**
+ * inf_browser_acl_changed:
+ * @browser: A #InfBrowser.
+ * @iter: An iterator pointing to the node for which the ACL has changed.
+ * @sheet_set: A #InfAclSheetSet containing the changed ACL sheets.
+ *
+ * This function emits the #InfBrowser::acl-changed signal on @browser. It
+ * is meant to be used by interface implementations only.
+ */
+void
+inf_browser_acl_changed(InfBrowser* browser,
+                        const InfBrowserIter* iter,
+                        const InfAclSheetSet* sheet_set)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(iter != NULL);
+  g_return_if_fail(sheet_set != NULL);
+
+  g_signal_emit(
+    browser,
+    browser_signals[ACL_CHANGED],
+    0,
+    iter,
+    sheet_set
+  );
 }
 
 /* vim:set et sw=2 ts=2: */

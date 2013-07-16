@@ -42,6 +42,7 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/communication/inf-communication-object.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
@@ -56,6 +57,8 @@ struct _InfdDirectoryNode {
   InfdDirectoryNode* parent;
   InfdDirectoryNode* prev;
   InfdDirectoryNode* next;
+
+  GSList* acl_connections;
 
   InfdStorageNodeType type;
   guint id;
@@ -100,6 +103,7 @@ struct _InfdDirectorySyncIn {
   InfdDirectoryNode* parent;
   guint node_id;
   gchar* name;
+  InfAclSheetSet* sheet_set;
   const InfdNotePlugin* plugin;
   InfdSessionProxy* proxy;
   InfdNodeRequest* request;
@@ -132,6 +136,7 @@ struct _InfdDirectorySubreq {
       InfCommunicationHostedGroup* group;
       const InfdNotePlugin* plugin;
       gchar* name;
+      InfAclSheetSet* sheet_set;
       /* TODO: Isn't group already present in proxy? */
       InfdSessionProxy* proxy;
       InfdNodeRequest* request;
@@ -143,6 +148,7 @@ struct _InfdDirectorySubreq {
       InfCommunicationHostedGroup* subscription_group;
       const InfdNotePlugin* plugin;
       gchar* name;
+      InfAclSheetSet* sheet_set;
       /* TODO: Aren't the groups already present in proxy? */
       InfdSessionProxy* proxy;
       InfdNodeRequest* request;
@@ -155,7 +161,8 @@ typedef enum _InfdDirectoryLocreqType {
   INFD_DIRECTORY_LOCREQ_EXPLORE_NODE,
   INFD_DIRECTORY_LOCREQ_ADD_NODE,
   INFD_DIRECTORY_LOCREQ_REMOVE_NODE,
-  INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION
+  INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION,
+  INFD_DIRECTORY_LOCREQ_SET_ACL
 } InfdDirectoryLocreqType;
 
 typedef struct _InfdDirectoryLocreq InfdDirectoryLocreq;
@@ -173,6 +180,7 @@ struct _InfdDirectoryLocreq {
     struct {
       InfdDirectoryNode* node;
       gchar* name;
+      InfAclSheetSet* sheet_set;
       const InfdNotePlugin* plugin; /* NULL for subdirectory */
       InfSession* session; /* NULL for initially empty notes */
       gboolean initial_subscribe; /* Ignored for subdirectory */
@@ -185,12 +193,18 @@ struct _InfdDirectoryLocreq {
     struct {
       InfdDirectoryNode* node;
     } subscribe_session;
+
+    struct {
+      InfdDirectoryNode* node;
+      InfAclSheetSet* sheet_set;
+    } set_acl;
   } shared;
 };
 
 typedef struct _InfdDirectoryConnectionInfo InfdDirectoryConnectionInfo;
 struct _InfdDirectoryConnectionInfo {
   guint seq_id;
+  const InfAclUser* user;
 };
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
@@ -205,6 +219,9 @@ struct _InfdDirectoryPrivate {
 
   GHashTable* plugins; /* Registered plugins */
   GHashTable* connections; /* Connection infos */
+
+  InfAclTable* acl_table;
+  GSList* user_list_connections;
 
   guint node_counter;
   GHashTable* nodes; /* Mapping from id to node */
@@ -582,6 +599,611 @@ infd_directory_release_session(InfdDirectory* directory,
 }
 
 /*
+ * ACLs
+ */
+
+static gboolean
+infd_directory_get_connection_info_by_acl_user_func(gpointer key,
+                                                    gpointer value,
+                                                    gpointer user_data)
+{
+  if(key == user_data)
+    return TRUE;
+  return FALSE;
+}
+
+static InfdDirectoryConnectionInfo*
+infd_directory_get_connection_info_by_acl_user(InfdDirectory* directory,
+                                               const InfAclUser* user)
+{
+  /* TODO: There could be more than one. We should return a list
+   * of infos, or so. */
+  return g_hash_table_find(
+    INFD_DIRECTORY_PRIVATE(directory)->connections,
+    infd_directory_get_connection_info_by_acl_user_func,
+    (gpointer)user
+  );
+}
+
+static void
+infd_directory_write_user_list(InfdDirectory* directory)
+{
+  InfdDirectoryPrivate* priv;
+  const InfAclUser** users;
+  guint n_users;
+  GError* error;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  if(priv->storage != NULL)
+  {
+    error = NULL;
+    users = inf_acl_table_get_user_list(priv->acl_table, &n_users);
+
+    infd_storage_write_user_list(
+      priv->storage,
+      users,
+      n_users,
+      &error
+    );
+
+    if(error != NULL)
+    {
+      g_warning(
+        _("Failed to write user list to storage: %s\n"
+          "Keeping it in memory for now, but it will not be available "
+          "after server restart"),
+        error->message
+      );
+
+      g_error_free(error);
+      error = NULL;
+    }
+
+    g_free(users);
+  }
+}
+
+static void
+infd_directory_acl_table_user_added_cb(InfAclTable* acl_table,
+                                       const InfAclUser* user,
+                                       gpointer user_data)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  GSList* item;
+  xmlNodePtr xml;
+  InfXmlConnection* connection;
+
+  directory = INFD_DIRECTORY(user_data);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"add-user");
+  inf_acl_user_to_xml(user, xml, FALSE);
+
+  for(item = priv->user_list_connections;
+      item != NULL;
+      item = g_slist_next(item))
+  {
+    connection = INF_XML_CONNECTION(item->data);
+
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
+      connection,
+      xmlCopyNode(xml, 1)
+    );
+  }
+
+  inf_browser_acl_user_added(INF_BROWSER(directory), user);
+
+  xmlFreeNode(xml);
+}
+
+/* acl_connections is a list of connections which have queried the full ACL.
+ * It can be NULL in which case only the default sheet and the sheet for that
+ * particular connection are sent. */
+static gboolean
+infd_directory_acl_sheets_to_xml_for_connection(InfdDirectory* directory,
+                                                GSList* acl_connections,
+                                                const InfAclSheetSet* sheets,
+                                                InfXmlConnection* connection,
+                                                xmlNodePtr xml)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryConnectionInfo* info;
+  guint written_sheets;
+  InfAclSheet selected_sheets[2];
+  InfAclSheetSet set;
+  guint i;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(g_slist_find(acl_connections, connection) != NULL)
+  {
+    if(sheets->n_sheets > 0)
+      inf_acl_table_sheet_set_to_xml(priv->acl_table, sheets, xml);
+    written_sheets = sheets->n_sheets;
+  }
+  else
+  {
+    /* Otherwise, add only the sheets for the user itself and the default
+     * sheet. */
+    info = g_hash_table_lookup(priv->connections, connection);
+    g_assert(info != NULL);
+
+    written_sheets = 0;
+    for(i = 0; i < sheets->n_sheets && written_sheets < 2; ++i)
+    {
+      if(strcmp(sheets->sheets[i].user->user_id, "default") == 0 ||
+         sheets->sheets[i].user == info->user)
+      {
+        selected_sheets[written_sheets] = sheets->sheets[i];
+        ++written_sheets;
+      }
+    }
+
+    if(written_sheets > 0)
+    {
+      set.own_sheets = NULL;
+      set.sheets = selected_sheets;
+      set.n_sheets = written_sheets;
+      inf_acl_table_sheet_set_to_xml(priv->acl_table, &set, xml);
+    }
+  }
+
+  if(written_sheets == 0)
+    return FALSE;
+  return TRUE;
+}
+
+static void
+infd_directory_announce_acl_sheets_for_connection(InfdDirectory* directory,
+                                                  const InfdDirectoryNode* nd,
+                                                  const InfAclSheetSet* shts,
+                                                  InfXmlConnection* conn)
+{
+  InfdDirectoryPrivate* priv;
+  gboolean has_sheets;
+  xmlNodePtr xml;
+  gboolean any_sheets;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"set-acl");
+
+  any_sheets = infd_directory_acl_sheets_to_xml_for_connection(
+    directory,
+    nd->acl_connections,
+    shts,
+    conn,
+    xml
+  );
+
+  if(any_sheets == TRUE)
+  {
+    inf_xml_util_set_attribute_uint(xml, "id", nd->id);
+
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
+      conn,
+      xml
+    );
+  }
+  else
+  {
+    xmlFreeNode(xml);
+  }
+}
+
+static void
+infd_directory_announce_acl_sheets(InfdDirectory* directory,
+                                   InfdDirectoryNode* node,
+                                   const InfAclSheetSet* sheet_set,
+                                   InfXmlConnection* except)
+{
+  InfdDirectoryPrivate* priv;
+  xmlNodePtr xml;
+  GList* connection_list;
+  GSList* local_connection_list;
+  GList* item;
+  GSList* local_item;
+  InfBrowserIter iter;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Go through all connections that see this node, i.e. have explored the
+   * parent node. To those connections we need to send an ACL update. */
+  if(node->parent == NULL)
+  {
+    connection_list = g_hash_table_get_keys(priv->connections);
+
+    for(item = connection_list; item != NULL; item = g_list_next(item))
+    {
+      if(item->data != except)
+      {
+        infd_directory_announce_acl_sheets_for_connection(
+          directory,
+          node,
+          sheet_set,
+          INF_XML_CONNECTION(item->data)
+        );
+      }
+    }
+
+    g_list_free(connection_list);
+  }
+  else
+  {
+    local_connection_list = node->parent->shared.subdir.connections;
+
+    for(local_item = local_connection_list;
+        local_item != NULL;
+        local_item = g_slist_next(item))
+    {
+      if(local_item->data != except)
+      {
+        infd_directory_announce_acl_sheets_for_connection(
+          directory,
+          node,
+          sheet_set,
+          INF_XML_CONNECTION(local_item->data)
+        );
+      }
+    }
+  }
+
+  iter.node_id = node->id;
+  iter.node = node;
+  inf_browser_acl_changed(INF_BROWSER(directory), &iter, sheet_set);
+}
+
+static const InfAclUser*
+infd_directory_add_user_for_certificate(InfdDirectory* directory,
+                                        gnutls_x509_crt_t cert)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* fingerprint;
+  gchar* name;
+  InfAclUser* user;
+  const InfAclUser* ret_user;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
+  name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
+
+  user = inf_acl_user_new(fingerprint, name);
+
+  /* TODO: inf_acl_table_add_user should return the new user object */
+  if(inf_acl_table_add_user(priv->acl_table, user, TRUE) == TRUE)
+    infd_directory_write_user_list(directory);
+
+  ret_user = inf_acl_table_get_user(priv->acl_table, fingerprint);
+
+  g_free(name);
+  g_free(fingerprint);
+
+  return ret_user;
+}
+
+static const InfAclUser*
+infd_directory_add_user_for_connection(InfdDirectory* directory,
+                                       InfXmlConnection* connection)
+{
+  InfdDirectoryPrivate* priv;
+  InfCertificateChain* chain;
+  const InfAclUser* user;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
+
+  user = NULL;
+  if(chain != NULL)
+  {
+    user = infd_directory_add_user_for_certificate(
+      directory,
+      inf_certificate_chain_get_own_certificate(chain)
+    );
+
+    inf_certificate_chain_unref(chain);
+  }
+  else
+  {
+    user = inf_acl_table_get_user(priv->acl_table, "default");
+  }
+
+  g_assert(user != NULL);
+  return user;
+}
+
+/* node can be NULL. If node is not NULL, additional sheets are returned
+ * which correspond to erasure of the current ACL for the node. This allows
+ * the ACL change to be performed atomically on the node. */
+static InfAclSheetSet*
+infd_directory_read_acl(InfdDirectory* directory,
+                        const gchar* path,
+                        InfdDirectoryNode* node,
+                        GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfBrowserIter iter;
+  GError* local_error;
+  GSList* acl;
+  GSList* item;
+  InfdStorageAcl* storage_acl;
+  const InfAclUser* user;
+  InfAclUser* new_user;
+  InfAclSheetSet* sheet_set;
+  InfAclSheet* sheet;
+  gboolean user_added;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(priv->storage != NULL);
+
+  local_error = NULL;
+  acl = infd_storage_read_acl(priv->storage, path, &local_error);
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  /* If there are any ACLs set already for this node, then clear them. This
+   * should usually not happen because we only call this function for new
+   * nodes, but it can happen when the storage is changed on the fly and the
+   * root node changes. */
+  if(node != NULL)
+  {
+    iter.node_id = node->id;
+    iter.node = node;
+    sheet_set = inf_acl_table_get_clear_sheets(priv->acl_table, &iter);
+  }
+  else
+  {
+    sheet_set = inf_acl_sheet_set_new();
+  }
+
+  user_added = FALSE;
+  for(item = acl; item != NULL; item = g_slist_next(item))
+  {
+    storage_acl = (InfdStorageAcl*)item->data;
+    user = inf_acl_table_get_user(priv->acl_table, storage_acl->user_id);
+
+    /* It is possible that we do not find this user in the user table. For
+     * example this can happen if reading the initial user table failed. In
+     * that case, create a user here. Whenever that user shows up we replace
+     * the name and times. */
+    if(user == NULL)
+    {
+      new_user = inf_acl_user_new(storage_acl->user_id, NULL);
+      inf_acl_table_add_user(priv->acl_table, new_user, FALSE);
+      user = new_user;
+      user_added = TRUE;
+    }
+
+    sheet = inf_acl_sheet_set_add_sheet(sheet_set, user);
+    sheet->mask = storage_acl->mask;
+    sheet->perms = storage_acl->perms;
+  }
+
+  infd_storage_acl_list_free(acl);
+
+  /* If we have added one or more new users to the user list, write it to
+   * storage. */
+  if(user_added == TRUE)
+    infd_directory_write_user_list(directory);
+
+  return sheet_set;
+}
+
+static void
+infd_directory_write_acl(InfdDirectory* directory,
+                         InfdDirectoryNode* node)
+{
+  InfdDirectoryPrivate* priv;
+  InfBrowserIter iter;
+  const InfAclSheetSet* all_sheets;
+  gchar* path;
+  GError* error;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Write the changed ACL into the storage */
+  if(priv->storage != NULL)
+  {
+    iter.node_id = node->id;
+    iter.node = node;
+
+    all_sheets = inf_acl_table_get_sheets(priv->acl_table, &iter);
+
+    infd_directory_node_get_path(node, &path, NULL);
+    error = NULL;
+
+    infd_storage_write_acl(priv->storage, path, all_sheets, &error);
+
+    if(error != NULL)
+    {
+      g_warning(
+        _("Failed to write ACL for node \"%s\": %s\nThe new ACL is applied "
+          "but will be lost after a server re-start. This is a possible "
+          "security problem. Please fix the problem with the storage!"),
+        path,
+        error->message
+      );
+
+      g_error_free(error);
+    }
+
+    g_free(path);
+  }
+}
+
+static void
+infd_directory_read_root_acl(InfdDirectory* directory)
+{
+  InfdDirectoryPrivate* priv;
+  InfAclUser** users;
+  guint i;
+  guint n_users;
+  gboolean merged;
+  gboolean merge_result;
+  gboolean connected;
+  guint overlap;
+  const InfAclUser* old_user;
+  InfdDirectoryConnectionInfo* info;
+  const InfAclUser* default_user;
+  InfAclSheetSet* sheet_set;
+  InfBrowserIter iter;
+  InfAclSheet* default_sheet;
+  guint64 default_mask;
+  GError* error;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  error = NULL;
+
+  users = infd_storage_read_user_list(
+    priv->storage,
+    &n_users,
+    &error
+  );
+
+  if(error != NULL)
+  {
+    g_assert(users == NULL);
+
+    g_warning(
+      _("Failed to read user list from storage: %s\n"
+        "Will start with an empty user list."),
+      error->message
+    );
+
+    g_error_free(error);
+    error = NULL;
+  }
+  else
+  {
+    merged = FALSE;
+    overlap = 0;
+    for(i = 0; i < n_users; ++i)
+    {
+      connected = FALSE;
+      old_user = inf_acl_table_get_user(priv->acl_table, users[i]->user_id);
+      if(old_user != NULL)
+      {
+        ++overlap;
+
+        info = infd_directory_get_connection_info_by_acl_user(
+          directory,
+          old_user
+        );
+
+        /* In case of a conflict (user both present in storage and memory),
+         * we take the settings from the user from storage except the user
+         * is currently connected in which case we "know better" and take
+         * the settings from the connected user. */
+        if(info != NULL)
+          connected = TRUE;
+      }
+
+      merge_result = inf_acl_table_add_user(
+        priv->acl_table,
+        users[i],
+        connected
+      );
+
+      /* Remember whether any settings where changed with respect to what
+       * was in storage. */
+      merged = merged || merge_result;
+    }
+
+    /* Write updated user list back to disk, if anything changed, or if
+     * we have users in memory that are not present in the list on disk. */
+    /* TODO: Should we move this to the user_added signal handler? Would
+     * make sense, but we should then have a possibility to process batch
+     * updates. */
+    if(merged == TRUE || overlap < inf_acl_table_get_n_users(priv->acl_table))
+      infd_directory_write_user_list(directory);
+
+    g_free(users);
+  }
+
+  sheet_set = infd_directory_read_acl(
+    directory,
+    "/",
+    priv->root,
+    &error
+  );
+
+  default_user = inf_acl_table_get_user(priv->acl_table, "default");
+  g_assert(default_user != NULL);
+
+  iter.node_id = priv->root->id;
+  iter.node = priv->root;
+
+  if(error != NULL)
+  {
+    g_assert(sheet_set == NULL);
+
+    g_warning(
+      _("Failed to read the ACL for the root node: %s\n"
+        "In order not to compromise security all permissions have been "
+        "revoked for all users. The infinote server is likely not very "
+        "usable in this configuration, so please check the storage "
+        "system, fix the problem and re-start the server."),
+      error->message
+    );
+
+    g_error_free(error);
+
+    /* Clear all existing sheets and add one sheet for the default user which
+     * prohibits everything. */
+    sheet_set = inf_acl_table_get_clear_sheets(priv->acl_table, &iter);
+    default_sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_user);
+    default_sheet->mask = INF_ACL_MASK_ALL;
+    default_sheet->perms = 0;
+
+    /* Make sure this "revoke-everything" sheet is not written to disk. */
+    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+
+    infd_directory_announce_acl_sheets(
+      directory,
+      priv->root,
+      sheet_set,
+      NULL
+    );
+  }
+  else
+  {
+    /* Note that the sheets array already includes sheets that clear the
+     * existing ACL. */
+
+    /* Make sure there are permissions for the default user defined. If there
+     * are not, use sensible default permissions. */
+    default_sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_user);
+
+    default_mask = default_sheet->mask;
+    default_sheet->perms |= (INF_ACL_MASK_DEFAULT & ~default_mask);
+    default_sheet->mask = INF_ACL_MASK_ALL;
+
+    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+
+    infd_directory_announce_acl_sheets(
+      directory,
+      priv->root,
+      sheet_set,
+      NULL
+    );
+
+    if((default_mask & INF_ACL_MASK_ALL) != INF_ACL_MASK_ALL)
+      infd_directory_write_acl(directory, priv->root);
+  }
+
+  inf_acl_sheet_set_free(sheet_set);
+}
+
+/*
  * Node construction and removal
  */
 
@@ -823,6 +1445,7 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
   );
 }
 
+/* Notes are saved into the storage when save_notes is TRUE. */
 static void
 infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
                                           InfdDirectoryNode* node,
@@ -957,16 +1580,22 @@ infd_directory_node_unlink(InfdDirectoryNode* node)
     node->next->prev = node->prev;
 }
 
-/* This function takes ownership of name */
+/* This function takes ownership of name. If write_acl the ACL is written to
+ * the storage. This should be used for newly created nodes, but for nodes
+ * read from storage it should be false, since it is pointless to write
+ * the ACL again. */
 static InfdDirectoryNode*
 infd_directory_node_new_common(InfdDirectory* directory,
                                InfdDirectoryNode* parent,
                                InfdStorageNodeType type,
                                guint node_id,
-                               gchar* name)
+                               gchar* name,
+                               const InfAclSheetSet* sheet_set,
+                               gboolean write_acl)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  InfBrowserIter iter;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -979,6 +1608,7 @@ infd_directory_node_new_common(InfdDirectory* directory,
   node->type = type;
   node->id = node_id;
   node->name = name;
+  node->acl_connections = NULL;
 
   if(parent != NULL)
   {
@@ -990,6 +1620,19 @@ infd_directory_node_new_common(InfdDirectory* directory,
     node->next = NULL;
   }
 
+  if(sheet_set != NULL)
+  {
+    /* Set the node ACL immediately after it was created, to avoid possible
+     * races. Note this does not require the hash table entry yet, and
+     * especially that the "node-added" signal was not emitted yet. */
+    iter.node_id = node_id;
+    iter.node = node;
+    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+
+    if(write_acl == TRUE)
+      infd_directory_write_acl(directory, node);
+  }
+
   g_hash_table_insert(priv->nodes, GUINT_TO_POINTER(node->id), node);
   return node;
 }
@@ -998,7 +1641,9 @@ static InfdDirectoryNode*
 infd_directory_node_new_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
                                      guint node_id,
-                                     gchar* name)
+                                     gchar* name,
+                                     const InfAclSheetSet* sheet_set,
+                                     gboolean write_acl)
 {
   InfdDirectoryNode* node;
 
@@ -1007,7 +1652,9 @@ infd_directory_node_new_subdirectory(InfdDirectory* directory,
     parent,
     INFD_STORAGE_NODE_SUBDIRECTORY,
     node_id,
-    name
+    name,
+    sheet_set,
+    write_acl
   );
 
   node->shared.subdir.connections = NULL;
@@ -1022,6 +1669,8 @@ infd_directory_node_new_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
                              guint node_id,
                              gchar* name,
+                             const InfAclSheetSet* sheet_set,
+                             gboolean write_acl,
                              const InfdNotePlugin* plugin)
 {
   InfdDirectoryNode* node;
@@ -1031,7 +1680,9 @@ infd_directory_node_new_note(InfdDirectory* directory,
     parent,
     INFD_STORAGE_NODE_NOTE,
     node_id,
-    name
+    name,
+    sheet_set,
+    write_acl
   );
 
   node->shared.note.session = NULL;
@@ -1050,12 +1701,12 @@ static void
 infd_directory_remove_subreq(InfdDirectory* directory,
                              InfdDirectorySubreq* request);
 
-/* Notes are saved into the storage when save_notes is TRUE. */
 static void
 infd_directory_node_free(InfdDirectory* directory,
                          InfdDirectoryNode* node)
 {
   InfdDirectoryPrivate* priv;
+  InfBrowserIter iter;
   gboolean removed;
 
   GSList* item;
@@ -1107,6 +1758,13 @@ infd_directory_node_free(InfdDirectory* directory,
 
   if(node->parent != NULL)
     infd_directory_node_unlink(node);
+  g_slist_free(node->acl_connections);
+
+  /* Only clear ACL table after unlink, so that ACL has effect until the very
+   * moment where the node does not exist anymore, to avoid possible races. */
+  iter.node_id = node->id;
+  iter.node = node;
+  inf_acl_table_clear_sheets(priv->acl_table, &iter);
 
   /* Remove sync-ins whose parent is gone */
   for(item = priv->sync_ins; item != NULL; item = next)
@@ -1168,6 +1826,10 @@ infd_directory_node_free(InfdDirectory* directory,
       if(locreq->shared.subscribe_session.node == node)
         locreq->shared.subscribe_session.node = NULL;
       break;
+    case INFD_DIRECTORY_LOCREQ_SET_ACL:
+      if(locreq->shared.set_acl.node == node)
+        locreq->shared.set_acl.node = NULL;
+      break;
     default:
       g_assert_not_reached();
       break;
@@ -1220,6 +1882,20 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
       g_assert(node->shared.subdir.connections == NULL);
     }
   }
+
+  /* Remove the connection from ACL connections of ourselves and all
+   * children. Do not recurse, since the recursion has taken place
+   * in the loop above only for explored subdirectories. */
+  node->acl_connections = g_slist_remove(node->acl_connections, connection);
+  for(child = node->shared.subdir.child;
+      child != NULL;
+      child = child->next)
+  {
+    child->acl_connections = g_slist_remove(
+      child->acl_connections,
+      connection
+    );
+  }
 }
 
 /*
@@ -1227,14 +1903,15 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
  */
 
 static xmlNodePtr
-infd_directory_node_desc_register_to_xml(guint node_id,
+infd_directory_node_desc_register_to_xml(const gchar* node_name,
+                                         guint node_id,
                                          InfdDirectoryNode* parent,
                                          const InfdNotePlugin* plugin,
                                          const gchar* name)
 {
   xmlNodePtr xml;
 
-  xml = xmlNewNode(NULL, (const xmlChar*)"add-node");
+  xml = xmlNewNode(NULL, (const xmlChar*)node_name);
 
   inf_xml_util_set_attribute_uint(xml, "id", node_id);
   inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
@@ -1270,6 +1947,7 @@ infd_directory_node_register_to_xml(InfdDirectoryNode* node)
   }
 
   return infd_directory_node_desc_register_to_xml(
+    "add-node",
     node->id,
     node->parent,
     plugin,
@@ -1325,54 +2003,6 @@ infd_directory_make_seq(InfdDirectory* directory,
   return TRUE;
 }
 
-/* Sends a message to the given connections. We cannot always send to all
- * group members because some messages are only supposed to be sent to
- * clients that explored a certain subdirectory. */
-static void
-infd_directory_send(InfdDirectory* directory,
-                    GSList* connections,
-                    InfXmlConnection* exclude,
-                    xmlNodePtr xml)
-{
-  InfdDirectoryPrivate* priv;
-  GSList* item;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-
-  if(connections == NULL ||
-     (connections->data == exclude && connections->next == NULL))
-  {
-    xmlFreeNode(xml);
-  }
-  else
-  {
-    for(item = connections; item != NULL; item = g_slist_next(item))
-    {
-      if(item->data == exclude) continue;
-
-      /* Do not copy this item if it is the last item to be sent because the
-       * connection manager takes ownership */
-      if(item->next != NULL &&
-         (item->next->data != exclude || item->next->next != NULL))
-      {
-        inf_communication_group_send_message(
-          INF_COMMUNICATION_GROUP(priv->group),
-          INF_XML_CONNECTION(item->data),
-          xmlCopyNode(xml, 1)
-        );
-      }
-      else
-      {
-        inf_communication_group_send_message(
-          INF_COMMUNICATION_GROUP(priv->group),
-          INF_XML_CONNECTION(item->data),
-          xml
-        );
-      }
-    }
-  }
-}
-
 /* Announces the presence of a new node. This is not done in
  * infd_directory_node_new because we do not want to do this for all
  * nodes we create (namely not for the root node). */
@@ -1384,28 +2014,51 @@ infd_directory_node_register(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
+  const InfAclSheetSet* sheet_set;
+  InfdDirectoryConnectionInfo* info;
   xmlNodePtr xml;
+  xmlNodePtr copy_xml;
+  GSList* item;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
   iter.node = node;
 
+  sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
   inf_browser_node_added(INF_BROWSER(directory), &iter);
 
-  if(node->parent->shared.subdir.connections != NULL)
+  xml = infd_directory_node_register_to_xml(node);
+  if(seq != NULL)
+   inf_xml_util_set_attribute(xml, "seq", seq);
+
+  for(item = node->parent->shared.subdir.connections;
+      item != NULL;
+      item = g_slist_next(item))
   {
-    xml = infd_directory_node_register_to_xml(node);
+    if(item->data != except)
+    {
+      info = g_hash_table_lookup(priv->connections, item->data);
+      g_assert(info != NULL);
 
-    if(seq != NULL)
-     inf_xml_util_set_attribute(xml, "seq", seq);
+      copy_xml = xmlCopyNode(xml, 1);
 
-    infd_directory_send(
-      directory,
-      node->parent->shared.subdir.connections,
-      except,
-      xml
-    );
+      infd_directory_acl_sheets_to_xml_for_connection(
+        directory,
+        node->acl_connections,
+        sheet_set,
+        INF_XML_CONNECTION(item->data),
+        copy_xml
+      );
+
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        INF_XML_CONNECTION(item->data),
+        copy_xml
+      );
+    }
   }
+
+  xmlFreeNode(xml);
 }
 
 /* Announces that a node is removed. Again, this is not done in
@@ -1419,6 +2072,7 @@ infd_directory_node_unregister(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
   xmlNodePtr xml;
+  GSList* item;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   iter.node_id = node->id;
@@ -1429,12 +2083,18 @@ infd_directory_node_unregister(InfdDirectory* directory,
   xml = infd_directory_node_unregister_to_xml(node);
   if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
 
-  infd_directory_send(
-    directory,
-    node->parent->shared.subdir.connections,
-    NULL,
-    xml
-  );
+  for(item = node->parent->shared.subdir.connections;
+      item != NULL;
+      item = g_slist_next(item))
+  {
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
+      INF_XML_CONNECTION(item->data),
+      xmlCopyNode(xml, 1)
+    );
+  }
+
+  xmlFreeNode(xml);
 }
 
 static gboolean
@@ -1459,7 +2119,7 @@ infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
                                                  const GError* error,
                                                  gpointer user_data)
 {
-  /* Synchronization failed. We simple remove the sync-in. There is no further
+  /* Synchronization failed. We simply remove the sync-in. There is no further
    * notification required since the synchronization failed on the remote site
    * as well. */
   InfdDirectorySyncIn* sync_in;
@@ -1500,6 +2160,8 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
     sync_in->parent,
     sync_in->node_id,
     sync_in->name,
+    sync_in->sheet_set,
+    TRUE,
     sync_in->plugin
   );
 
@@ -1570,6 +2232,7 @@ infd_directory_add_sync_in(InfdDirectory* directory,
                            InfdNodeRequest* request,
                            guint node_id,
                            const gchar* name,
+                           const InfAclSheetSet* sheet_set,
                            const InfdNotePlugin* plugin,
                            InfdSessionProxy* proxy)
 {
@@ -1585,6 +2248,10 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   sync_in->parent = parent;
   sync_in->node_id = node_id;
   sync_in->name = g_strdup(name);
+  if(sheet_set != NULL)
+    sync_in->sheet_set = inf_acl_sheet_set_copy(sheet_set);
+  else
+    sync_in->sheet_set = NULL;
   sync_in->plugin = plugin;
   sync_in->proxy = proxy;
   sync_in->request = request;
@@ -1644,6 +2311,8 @@ infd_directory_remove_sync_in(InfdDirectory* directory,
   /* TODO: Fail request with a cancelled error? */
   g_object_unref(sync_in->request);
 
+  if(sync_in->sheet_set != NULL)
+    inf_acl_sheet_set_free(sync_in->sheet_set);
   g_free(sync_in->name);
   g_slice_free(InfdDirectorySyncIn, sync_in);
 
@@ -1742,13 +2411,14 @@ infd_directory_add_subreq_session(InfdDirectory* directory,
 static InfdDirectorySubreq*
 infd_directory_add_subreq_add_node(InfdDirectory* directory,
                                    InfXmlConnection* connection,
-                                   InfdNodeRequest* request,
-                                   guint node_id,
-                                   InfdDirectoryNode* parent,
                                    InfCommunicationHostedGroup* group,
+                                   InfdNodeRequest* request,
+                                   InfdDirectoryNode* parent,
+                                   guint node_id,
+                                   const gchar* name,
+                                   const InfAclSheetSet* sheet_set,
                                    const InfdNotePlugin* plugin,
                                    InfSession* session,
-                                   const gchar* name,
                                    GError** error)
 {
   InfdDirectorySubreq* subreq;
@@ -1798,6 +2468,10 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
   subreq->shared.add_node.group = group;
   subreq->shared.add_node.plugin = plugin;
   subreq->shared.add_node.name = g_strdup(name);
+  if(sheet_set != NULL)
+    subreq->shared.add_node.sheet_set = inf_acl_sheet_set_copy(sheet_set);
+  else
+    subreq->shared.add_node.sheet_set = NULL;
   subreq->shared.add_node.proxy = proxy;
   subreq->shared.add_node.request = request;
 
@@ -1809,13 +2483,14 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
 static InfdDirectorySubreq*
 infd_directory_add_subreq_sync_in(InfdDirectory* directory,
                                   InfXmlConnection* connection,
-                                  InfdNodeRequest* request,
-                                  guint node_id,
-                                  InfdDirectoryNode* parent,
                                   InfCommunicationHostedGroup* sync_group,
                                   InfCommunicationHostedGroup* sub_group,
-                                  const InfdNotePlugin* plugin,
+                                  InfdNodeRequest* request,
+                                  InfdDirectoryNode* parent,
+                                  guint node_id,
                                   const gchar* name,
+                                  const InfAclSheetSet* sheet_set,
+                                  const InfdNotePlugin* plugin,
                                   GError** error)
 {
   InfdDirectorySubreq* subreq;
@@ -1859,6 +2534,10 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
   subreq->shared.sync_in.subscription_group = sub_group;
   subreq->shared.sync_in.plugin = plugin;
   subreq->shared.sync_in.name = g_strdup(name);
+  if(sheet_set != NULL)
+    subreq->shared.sync_in.sheet_set = inf_acl_sheet_set_copy(sheet_set);
+  else
+    subreq->shared.sync_in.sheet_set = NULL;
   subreq->shared.sync_in.proxy = proxy;
   subreq->shared.sync_in.request = request;
 
@@ -1883,6 +2562,8 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
     break;
   case INFD_DIRECTORY_SUBREQ_ADD_NODE:
     g_free(request->shared.add_node.name);
+    if(request->shared.add_node.sheet_set != NULL)
+      inf_acl_sheet_set_free(request->shared.add_node.sheet_set);
     g_object_unref(request->shared.add_node.group);
     g_object_unref(request->shared.add_node.proxy);
     /* TODO: Fail with some cancelled error? */
@@ -1891,6 +2572,8 @@ infd_directory_free_subreq(InfdDirectorySubreq* request)
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
     g_free(request->shared.sync_in.name);
+    if(request->shared.sync_in.sheet_set != NULL)
+      inf_acl_sheet_set_free(request->shared.sync_in.sheet_set);
     g_object_unref(request->shared.sync_in.synchronization_group);
     g_object_unref(request->shared.sync_in.subscription_group);
     g_object_unref(request->shared.sync_in.proxy);
@@ -2092,6 +2775,7 @@ infd_directory_node_create_new_note(InfdDirectory* directory,
                                     InfCommunicationHostedGroup* group,
                                     guint node_id,
                                     const gchar* name,
+                                    const InfAclSheetSet* sheet_set,
                                     const InfdNotePlugin* plugin,
                                     InfSession* session,
                                     GError** error)
@@ -2137,6 +2821,8 @@ infd_directory_node_create_new_note(InfdDirectory* directory,
     parent,
     node_id,
     g_strdup(name),
+    sheet_set,
+    TRUE,
     plugin
   );
 
@@ -2159,10 +2845,14 @@ infd_directory_node_explore(InfdDirectory* directory,
   InfdNotePlugin* plugin;
   GError* local_error;
   GSList* list;
-  guint n_items;
+  InfAclSheetSet* sheet_set;
+  GPtrArray* acls;
   GSList* item;
   gchar* path;
   gsize len;
+  gsize node_len;
+  gsize path_len;
+  guint index;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -2173,36 +2863,79 @@ infd_directory_node_explore(InfdDirectory* directory,
   local_error = NULL;
   infd_directory_node_get_path(node, &path, &len);
   list = infd_storage_read_subdirectory(priv->storage, path, &local_error);
-  g_free(path);
 
   if(local_error != NULL)
   {
+    g_free(path);
     inf_request_fail(INF_REQUEST(request), local_error);
     g_propagate_error(error, local_error);
     return FALSE;
   }
 
-  n_items = 0;
-  for(item = list; item != NULL; item = g_slist_next(item))
-    ++n_items;
-
-  infd_explore_request_initiated(request, n_items);
-
+  /* First pass: Count the total number of items and read the ACLs for each
+   * node. If there is a problem reading the ACL for one node, cancel the
+   * full exploration. */
+  path_len = len;
+  acls = g_ptr_array_sized_new(16);
   for(item = list; item != NULL; item = g_slist_next(item))
   {
+    /* Construct the storage path for this node */
+    node_len = strlen(storage_node->name);
+    if(len + 1 + node_len < path_len)
+    {
+      path_len = len + 1 + node_len;
+      path = g_realloc(path, path_len + 1);
+    }
+
+    path[len] = '/';
+    memcpy(path + len + 1, storage_node->name, node_len + 1);
+
+    /* Read ACL */
+    sheet_set = infd_directory_read_acl(
+      directory,
+      path,
+      NULL,
+      &local_error
+    );
+
+    if(local_error != NULL)
+    {
+      for(index = 0; index < acls->len; ++index)
+        inf_acl_sheet_set_free(g_ptr_array_index(acls, index));
+      g_ptr_array_free(acls, TRUE);
+      infd_storage_node_list_free(list);
+      g_free(path);
+      inf_request_fail(INF_REQUEST(request), local_error);
+      g_propagate_error(error, local_error);
+      return FALSE;
+    }
+
+    g_ptr_array_add(acls, sheet_set);
+  }
+
+  g_free(path);
+  infd_explore_request_initiated(request, acls->len);
+
+  /* Second pass, fill the directory tree */
+  index = 0;
+  for(item = list, index = 0;
+      item != NULL;
+      item = g_slist_next(item), ++index)
+  {
     storage_node = (InfdStorageNode*)item->data;
+    sheet_set = (InfAclSheetSet*)g_ptr_array_index(acls, index);
     new_node = NULL;
 
-    /* TODO: Transfer ownership of storade_node->name to
-     * infd_directory_new_*? */
     switch(storage_node->type)
     {
     case INFD_STORAGE_NODE_SUBDIRECTORY:
       new_node = infd_directory_node_new_subdirectory(
         directory,
         node,
-        priv->node_counter ++,
-        g_strdup(storage_node->name)
+        priv->node_counter++,
+        g_strdup(storage_node->name),
+        sheet_set,
+        FALSE
       );
 
       break;
@@ -2215,8 +2948,10 @@ infd_directory_node_explore(InfdDirectory* directory,
         new_node = infd_directory_node_new_note(
           directory,
           node,
-          priv->node_counter ++,
+          priv->node_counter++,
           g_strdup(storage_node->name),
+          sheet_set,
+          FALSE,
           plugin
         );
       }
@@ -2226,6 +2961,8 @@ infd_directory_node_explore(InfdDirectory* directory,
       g_assert_not_reached();
       break;
     }
+
+    inf_acl_sheet_set_free(sheet_set);
 
     if(new_node != NULL)
     {
@@ -2243,6 +2980,8 @@ infd_directory_node_explore(InfdDirectory* directory,
 
     infd_explore_request_progress(request);
   }
+
+  g_ptr_array_free(acls, TRUE);
 
   iter.node_id = node->id;
   iter.node = node;
@@ -2263,6 +3002,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
                                      InfdNodeRequest* request,
                                      const gchar* name,
+                                     const InfAclSheetSet* sheet_set,
                                      InfXmlConnection* connection,
                                      const gchar* seq,
                                      GError** error)
@@ -2297,8 +3037,10 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
     node = infd_directory_node_new_subdirectory(
       directory,
       parent,
-      priv->node_counter ++,
-      g_strdup(name)
+      priv->node_counter++,
+      g_strdup(name),
+      sheet_set,
+      TRUE
     );
 
     node->shared.subdir.explored = TRUE;
@@ -2313,6 +3055,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
                              InfdNodeRequest* request,
                              const gchar* name,
+                             const InfAclSheetSet* sheet_set,
                              const InfdNotePlugin* plugin,
                              InfSession* session,
                              InfXmlConnection* connection,
@@ -2361,19 +3104,21 @@ infd_directory_node_add_note(InfdDirectory* directory,
       subreq = infd_directory_add_subreq_add_node(
         directory,
         connection,
-        request,
-        node_id,
-        parent,
         group,
+        request,
+        parent,
+        node_id,
+        name,
+        sheet_set,
         plugin,
         session,
-        name,
         error
       );
 
       if(subreq != NULL)
       {
         xml = infd_directory_node_desc_register_to_xml(
+          "add-node",
           node_id,
           parent,
           plugin,
@@ -2381,6 +3126,14 @@ infd_directory_node_add_note(InfdDirectory* directory,
         );
 
         inf_xml_util_set_attribute(xml, "seq", seq);
+
+        infd_directory_acl_sheets_to_xml_for_connection(
+          directory,
+          NULL,
+          sheet_set,
+          connection,
+          xml
+        );
 
         child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
         inf_xml_util_set_attribute(
@@ -2414,6 +3167,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
         group,
         node_id,
         name,
+        sheet_set,
         plugin,
         session,
         &local_error
@@ -2452,6 +3206,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
                                 InfdDirectoryNode* parent,
                                 InfdNodeRequest* request,
                                 const gchar* name,
+                                const InfAclSheetSet* sheet_set,
                                 const InfdNotePlugin* plugin,
                                 InfXmlConnection* sync_conn,
                                 gboolean subscribe_sync_conn,
@@ -2522,21 +3277,34 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
     subreq = infd_directory_add_subreq_sync_in(
       directory,
       sync_conn,
-      request,
-      node_id,
-      parent,
       synchronization_group,
       subscription_group,
-      plugin,
+      request,
+      parent,
+      node_id,
       name,
+      sheet_set,
+      plugin,
       error
     );
 
     if(subreq != NULL)
     {
-      xml = xmlNewNode(NULL, (const xmlChar*)"sync-in");
-      inf_xml_util_set_attribute_uint(xml, "id", node_id);
-      inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
+      xml = infd_directory_node_desc_register_to_xml(
+        "sync-in",
+        node_id,
+        parent,
+        plugin,
+        name
+      );
+
+      infd_directory_acl_sheets_to_xml_for_connection(
+        directory,
+        NULL,
+        sheet_set,
+        sync_conn,
+        xml
+      );
 
       inf_xml_util_set_attribute(
         xml,
@@ -2548,9 +3316,6 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
       inf_xml_util_set_attribute(xml, "method", method);
       if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
-
-      inf_xml_util_set_attribute(xml, "name", name);
-      inf_xml_util_set_attribute(xml, "type", plugin->note_type);
 
       if(subscribe_sync_conn == TRUE)
       {
@@ -2645,7 +3410,7 @@ infd_directory_node_remove(InfdDirectory* directory,
     infd_directory_node_unlink_child_sessions(directory, node, FALSE);
     infd_directory_node_unregister(directory, node, seq);
     infd_directory_node_free(directory, node);
-    
+
     return TRUE;
   }
 }
@@ -2746,6 +3511,9 @@ infd_directory_begin_locreq_request(InfdDirectory* directory,
   case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
     node = locreq->shared.subscribe_session.node;
     break;
+  case INFD_DIRECTORY_LOCREQ_SET_ACL:
+    node = locreq->shared.set_acl.node;
+    break;
   default:
     g_assert_not_reached();
     break;
@@ -2814,6 +3582,7 @@ static InfdDirectoryLocreq*
 infd_directory_add_locreq_add_node(InfdDirectory* directory,
                                    InfdDirectoryNode* node,
                                    const gchar* name,
+                                   const InfAclSheetSet* sheet_set,
                                    const InfdNotePlugin* plugin,
                                    InfSession* session,
                                    gboolean initial_subscribe)
@@ -2839,6 +3608,10 @@ infd_directory_add_locreq_add_node(InfdDirectory* directory,
 
   locreq->shared.add_node.node = node;
   locreq->shared.add_node.name = g_strdup(name);
+  if(sheet_set != NULL)
+    locreq->shared.add_node.sheet_set = inf_acl_sheet_set_copy(sheet_set);
+  else
+    locreq->shared.add_node.sheet_set = NULL;
   locreq->shared.add_node.plugin = plugin;
   locreq->shared.add_node.session = session;
   locreq->shared.add_node.initial_subscribe = initial_subscribe;
@@ -2927,6 +3700,36 @@ infd_directory_add_locreq_subscribe_session(InfdDirectory* directory,
   return locreq;
 }
 
+static InfdDirectoryLocreq*
+infd_directory_add_locreq_set_acl(InfdDirectory* directory,
+                                  InfdDirectoryNode* node,
+                                  const InfAclSheetSet* sheet_set)
+{
+  InfdDirectoryPrivate* priv;
+  GObject* request;
+  InfdDirectoryLocreq* locreq;
+
+  request = g_object_new(
+    INFD_TYPE_NODE_REQUEST,
+    "type", "set-acl",
+    "node-id", node->id,
+    "requestor", NULL,
+    NULL
+  );
+
+  locreq = infd_directory_add_locreq_common(
+    directory,
+    INFD_DIRECTORY_LOCREQ_SET_ACL,
+    INFD_NODE_REQUEST(request)
+  );
+
+  locreq->shared.set_acl.node = node;
+  locreq->shared.set_acl.sheet_set = inf_acl_sheet_set_copy(sheet_set);
+
+  infd_directory_begin_locreq_request(directory, locreq);
+  return locreq;
+}
+
 static void
 infd_directory_remove_locreq(InfdDirectory* directory,
                              InfdDirectoryLocreq* locreq)
@@ -2942,11 +3745,16 @@ infd_directory_remove_locreq(InfdDirectory* directory,
     break;
   case INFD_DIRECTORY_LOCREQ_ADD_NODE:
     g_free(locreq->shared.add_node.name);
-    if(locreq->shared.add_node.session)
+    if(locreq->shared.add_node.sheet_set != NULL)
+      inf_acl_sheet_set_free(locreq->shared.add_node.sheet_set);
+    if(locreq->shared.add_node.session != NULL)
       g_object_unref(locreq->shared.add_node.session);
     break;
   case INFD_DIRECTORY_LOCREQ_REMOVE_NODE:
   case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
+    break;
+  case INFD_DIRECTORY_LOCREQ_SET_ACL:
+    inf_acl_sheet_set_free(locreq->shared.set_acl.sheet_set);
     break;
   default:
     g_assert_not_reached();
@@ -3029,6 +3837,7 @@ infd_directory_start_locreq_func(gpointer user_data)
         locreq->shared.add_node.node,
         locreq->request,
         locreq->shared.add_node.name,
+        locreq->shared.add_node.sheet_set,
         NULL,
         NULL,
         NULL
@@ -3041,6 +3850,7 @@ infd_directory_start_locreq_func(gpointer user_data)
         locreq->shared.add_node.node,
         locreq->request,
         locreq->shared.add_node.name,
+        locreq->shared.add_node.sheet_set,
         locreq->shared.add_node.plugin,
         locreq->shared.add_node.session,
         NULL,
@@ -3164,6 +3974,42 @@ infd_directory_start_locreq_func(gpointer user_data)
       }
     }
     break;
+  case INFD_DIRECTORY_LOCREQ_SET_ACL:
+    if(locreq->shared.set_acl.node == NULL)
+    {
+      g_set_error(
+        &error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+        "%s",
+        _("The node to change the ACL for has been removed")
+      );
+    }
+    else
+    {
+      iter.node_id = locreq->shared.set_acl.node->id;
+      iter.node = locreq->shared.set_acl.node;
+
+      inf_acl_table_insert_sheets(
+        priv->acl_table,
+        &iter,
+        locreq->shared.set_acl.sheet_set
+      );
+
+      infd_directory_announce_acl_sheets(
+        locreq->directory,
+        locreq->shared.set_acl.node,
+        locreq->shared.set_acl.sheet_set,
+        NULL
+      );
+
+      infd_directory_write_acl(
+        locreq->directory,
+        locreq->shared.set_acl.node
+      );
+    }
+
+    break;
   default:
     g_assert_not_reached();
     break;
@@ -3207,6 +4053,49 @@ infd_directory_start_locreq(InfdDirectory* directory,
  * Network command handling.
  */
 
+static gboolean
+infd_directory_check_auth(InfdDirectory* directory,
+                          InfdDirectoryNode* node,
+                          InfXmlConnection* connection,
+                          guint64 mask,
+                          GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryConnectionInfo* info;
+  InfBrowserIter iter;
+  guint64 check_mask;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  info = g_hash_table_lookup(priv->connections, connection);
+  g_assert(info != NULL);
+
+  iter.node_id = node->id;
+  iter.node = node;
+  check_mask = mask;
+
+  check_mask = inf_browser_check_acl(
+    INF_BROWSER(directory),
+    &iter,
+    info->user,
+    mask
+  );
+
+  if(check_mask != mask)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
+      "%s",
+      _("Permission denied")
+    );
+
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
 static void
 infd_directory_send_welcome_message(InfdDirectory* directory,
                                     InfXmlConnection* connection)
@@ -3219,6 +4108,8 @@ infd_directory_send_welcome_message(InfdDirectory* directory,
   gpointer value;
   const InfdNotePlugin* plugin;
   InfdDirectoryConnectionInfo* info;
+  InfBrowserIter browser_iter;
+  const InfAclSheetSet* sheet_set;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -3244,10 +4135,24 @@ infd_directory_send_welcome_message(InfdDirectory* directory,
     inf_xml_util_set_attribute(child, "type", plugin->note_type);
   }
 
+  /* Add default ACL for the root node */
+  browser_iter.node_id = priv->root->id;
+  browser_iter.node = priv->root;
+  sheet_set = inf_acl_table_get_sheets(priv->acl_table, &browser_iter);
+
+  infd_directory_acl_sheets_to_xml_for_connection(
+    directory,
+    priv->root->acl_connections,
+    sheet_set,
+    connection,
+    xml
+  );
+
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
     connection,
-    xml);
+    xml
+  );
 }
 
 static InfdDirectorySubreq*
@@ -3349,6 +4254,8 @@ infd_directory_get_node_from_xml(InfdDirectory* directory,
     return NULL;
   }
 
+  /* TODO: Verify that the connection has explored this node */
+
   return node;
 }
 
@@ -3412,6 +4319,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   xmlNodePtr reply_xml;
   gchar* seq;
   guint total;
+  const InfAclSheetSet* sheet_set;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -3513,6 +4421,18 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     if(seq != NULL)
       inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
+    iter.node_id = child->id;
+    iter.node = child;
+    sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
+
+    infd_directory_acl_sheets_to_xml_for_connection(
+      directory,
+      child->acl_connections,
+      sheet_set,
+      connection,
+      reply_xml
+    );
+
     inf_communication_group_send_message(
       INF_COMMUNICATION_GROUP(priv->group),
       connection,
@@ -3551,6 +4471,9 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   InfdDirectoryNode* parent;
   InfBrowserIter parent_iter;
   InfdDirectoryNode* node;
+  GError* local_error;
+  InfAclSheetSet* sheet_set;
+  guint64 perms;
   InfdNotePlugin* plugin;
   InfdNodeRequest* request;
   xmlChar* name;
@@ -3575,8 +4498,35 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   if(parent == NULL)
     return FALSE;
 
+  local_error = NULL;
+  sheet_set = inf_acl_table_sheet_set_from_xml(
+    priv->acl_table,
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    xmlFree(name);
+    g_free(seq);
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  perms = 0; /* TODO: (1 << INF_ACL_CAN_ADD_NODE) */
+  if(sheet_set != NULL && sheet_set->n_sheets > 0)
+    perms |= (1 << INF_ACL_CAN_SET_ACL);
+
+  if(!infd_directory_check_auth(directory, parent, connection, perms, error))
+    return FALSE;
+
   type = inf_xml_util_get_attribute_required(xml, "type", error);
-  if(type == NULL) return FALSE;
+  if(type == NULL)
+  {
+    if(sheet_set != NULL)
+      inf_acl_sheet_set_free(sheet_set);
+    return FALSE;
+  }
 
   if(strcmp((const gchar*)type, "InfSubdirectory") == 0)
   {
@@ -3591,6 +4541,9 @@ infd_directory_handle_add_node(InfdDirectory* directory,
 
     if(plugin == NULL)
     {
+      if(sheet_set != NULL)
+        inf_acl_sheet_set_free(sheet_set);
+
       g_set_error(
         error,
         inf_directory_error_quark(),
@@ -3604,11 +4557,17 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   }
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
+  {
+    if(sheet_set != NULL)
+      inf_acl_sheet_set_free(sheet_set);
     return FALSE;
+  }
 
   name = inf_xml_util_get_attribute_required(xml, "name", error);
   if(name == NULL)
   {
+    if(sheet_set != NULL)
+      inf_acl_sheet_set_free(sheet_set);
     g_free(seq);
     return FALSE;
   }
@@ -3638,6 +4597,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       parent,
       request,
       (const gchar*)name,
+      sheet_set,
       connection,
       seq,
       error
@@ -3667,6 +4627,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
         parent,
         request,
         (const gchar*)name,
+        sheet_set,
         plugin,
         NULL,
         connection,
@@ -3682,6 +4643,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
         parent,
         request,
         (const char*)name,
+        sheet_set,
         plugin,
         connection,
         subscribe_sync_conn,
@@ -3697,6 +4659,8 @@ infd_directory_handle_add_node(InfdDirectory* directory,
 
   g_object_unref(request);
 
+  if(sheet_set != NULL)
+    inf_acl_sheet_set_free(sheet_set);
   xmlFree(name);
   g_free(seq);
 
@@ -3767,6 +4731,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  guint64 perms;
   GSList* item;
   InfdDirectorySubreq* subreq;
   InfdDirectoryLocreq* locreq;
@@ -3790,6 +4755,10 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   );
 
   if(node == NULL)
+    return FALSE;
+
+  perms = (1 << INF_ACL_CAN_SUBSCRIBE_SESSION);
+  if(!infd_directory_check_auth(directory, node, connection, perms, error))
     return FALSE;
 
   /* TODO: Bail if this connection is either currently being synchronized to
@@ -4353,11 +5322,11 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
     cert_buffer,
     &cert_size
   );
-  gnutls_x509_crt_deinit(cert);
 
   if(res != GNUTLS_E_SUCCESS)
   {
     g_free(cert_buffer);
+    gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
   }
@@ -4365,9 +5334,15 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
   {
     g_free(cert_buffer);
+    gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
   }
+
+  /* Add the user into the ACL table, so that ACLs can immediately be
+   * set for the new user. */
+  infd_directory_add_user_for_certificate(directory, cert);
+  gnutls_x509_crt_deinit(cert);
 
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"certificate-generated");
   child = xmlNewChild(reply_xml, NULL, (const xmlChar*)"certificate", NULL);
@@ -4383,6 +5358,297 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
     reply_xml
   );
 
+  return TRUE;
+}
+
+static gboolean
+infd_directory_handle_query_user_list(InfdDirectory* directory,
+                                      InfXmlConnection* connection,
+                                      const xmlNodePtr xml,
+                                      GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* seq;
+  GSList* item;
+  xmlNodePtr reply_xml;
+  const InfAclUser** user_list;
+  guint n_users;
+  guint i;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(g_slist_find(priv->user_list_connections, connection) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
+      "%s",
+      _("The user list has already been queried")
+    );
+
+    return FALSE;
+  }
+
+  /* TODO: Check ACL */
+
+  if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
+    return FALSE;
+
+  user_list = inf_acl_table_get_user_list(priv->acl_table, &n_users);
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-list-begin");
+  inf_xml_util_set_attribute_uint(reply_xml, "n-users", n_users);
+  if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
+  );
+
+  priv->user_list_connections =
+    g_slist_prepend(priv->user_list_connections, connection);
+
+  for(i = 0; i < n_users; ++i)
+  {
+    reply_xml = xmlNewNode(NULL, (const xmlChar*)"add-user");
+    inf_acl_user_to_xml(user_list[i], reply_xml, FALSE);
+    if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
+      connection,
+      reply_xml
+    );
+  }
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-list-end");
+  if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
+  );
+
+  g_free(seq);
+  g_free(user_list);
+  return TRUE;
+}
+
+static gboolean
+infd_directory_handle_query_acl(InfdDirectory* directory,
+                                InfXmlConnection* connection,
+                                const xmlNodePtr xml,
+                                GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  gchar* seq;
+  InfBrowserIter iter;
+  const InfAclSheetSet* sheet_set;
+  xmlNodePtr reply_xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  node = infd_directory_get_node_from_xml(
+    directory,
+    xml,
+    "id",
+    error
+  );
+  
+  if(node == NULL)
+    return FALSE;
+
+  if(g_slist_find(node->acl_connections, connection) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED,
+      "%s",
+      _("The ACL for this node has already been queried")
+    );
+
+    return FALSE;
+  }
+
+  /* TODO: Check ACL */
+
+  if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
+    return FALSE;
+
+  /* Add to ACL connections here so that
+   * infd_directory_acl_sheets_to_xml_for_connection() will send the full
+   * ACL, and not only the default sheet. */
+  node->acl_connections = g_slist_prepend(node->acl_connections, connection);
+
+  iter.node_id = node->id;
+  iter.node = node;
+  sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"set-acl");
+  inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
+  if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+
+  infd_directory_acl_sheets_to_xml_for_connection(
+    directory,
+    node->acl_connections,
+    sheet_set,
+    connection,
+    reply_xml
+  );
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
+  );
+
+  g_free(seq);
+  return TRUE;
+}
+
+static gboolean
+infd_directory_handle_set_acl(InfdDirectory* directory,
+                              InfXmlConnection* connection,
+                              const xmlNodePtr xml,
+                              GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryNode* parent;
+  guint64 perms;
+  gchar* seq;
+  GError* local_error;
+  InfAclSheetSet* sheet_set;
+  InfdNodeRequest* request;
+  InfBrowserIter iter;
+  xmlNodePtr reply_xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  node = infd_directory_get_node_from_xml(
+    directory,
+    xml,
+    "id",
+    error
+  );
+  
+  if(node == NULL)
+    return FALSE;
+
+  if(g_slist_find(node->acl_connections, connection) == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_ACL_NOT_QUERIED,
+      "%s",
+      _("The ACL for this node has not been queried yet")
+    );
+
+    return FALSE;
+  }
+
+  /* In order to change the ACL for a node, one needs CAN_SET_ACL permissions
+   * for its parent node. */
+  if(node->parent != NULL)
+    parent = node->parent;
+  else
+    parent = priv->root;
+
+  perms = (1 << INF_ACL_CAN_SET_ACL);
+  if(!infd_directory_check_auth(directory, parent, connection, perms, error))
+    return FALSE;
+
+  /* TODO: Introduce inf_acl_table_sheet_set_from_xml_required */
+  local_error = NULL;
+  sheet_set = inf_acl_table_sheet_set_from_xml(
+    priv->acl_table,
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  if(sheet_set == NULL || sheet_set->n_sheets == 0)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
+      _("The set-acl request does not have any ACL provided")
+    );
+
+    return FALSE;
+  }
+
+  if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
+  {
+    inf_acl_sheet_set_free(sheet_set);
+    return FALSE;
+  }
+
+  request = INFD_NODE_REQUEST(
+    g_object_new(
+      INFD_TYPE_NODE_REQUEST,
+      "type", "set-acl",
+      "node-id", node->id,
+      "requestor", connection,
+      NULL
+    )
+  );
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  inf_browser_begin_request(INF_BROWSER(directory),
+    &iter,
+    INF_REQUEST(request)
+  );
+
+  inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+
+  /* Announce to all connections but this one, since for this connection we
+   * need to set the seq (done below) */
+  infd_directory_announce_acl_sheets(directory, node, sheet_set, connection);
+  infd_directory_write_acl(directory, node);
+
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"set-acl");
+  inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
+  if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+
+  infd_directory_acl_sheets_to_xml_for_connection(
+    directory,
+    node->acl_connections,
+    sheet_set,
+    connection,
+    reply_xml
+  );
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    reply_xml
+  );
+
+  inf_node_request_finished(
+    INF_NODE_REQUEST(request),
+    &iter,
+    NULL
+  );
+
+  g_object_unref(request);
+  inf_acl_sheet_set_free(sheet_set);
+  g_free(seq);
   return TRUE;
 }
 
@@ -4588,6 +5854,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         subreq->shared.add_node.parent,
         subreq->node_id,
         g_strdup(subreq->shared.add_node.name),
+        subreq->shared.add_node.sheet_set,
+        TRUE,
         subreq->shared.add_node.plugin
       );
 
@@ -4674,6 +5942,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         subreq->shared.sync_in.request,
         subreq->node_id,
         subreq->shared.sync_in.name,
+        subreq->shared.sync_in.sheet_set,
         subreq->shared.sync_in.plugin,
         proxy
       );
@@ -4895,15 +6164,33 @@ infd_directory_connection_notify_status_cb(GObject* object,
                                            GParamSpec* pspec,
                                            gpointer user_data)
 {
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfXmlConnection* connection;
   InfXmlConnectionStatus status;
+  InfdDirectoryConnectionInfo* info;
+
+  directory = INFD_DIRECTORY(user_data),
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  connection = INF_XML_CONNECTION(object);
   g_object_get(object, "status", &status, NULL);
 
   if(status == INF_XML_CONNECTION_OPEN)
   {
-    infd_directory_send_welcome_message(
-      INFD_DIRECTORY(user_data),
-      INF_XML_CONNECTION(object)
+    info = (InfdDirectoryConnectionInfo*)g_hash_table_lookup(
+      priv->connections,
+      connection
     );
+
+    g_assert(info != NULL);
+    g_assert(info->user == NULL);
+
+    info->user = infd_directory_add_user_for_connection(
+      directory,
+      connection
+    );
+
+    infd_directory_send_welcome_message(directory, connection);
   }
 }
 
@@ -4921,9 +6208,25 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
   directory = INFD_DIRECTORY(user_data);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(priv->root != NULL && priv->root->shared.subdir.explored)
+  /* TODO: Update last seen time, and write user list to storage */
+
+  priv->user_list_connections =
+    g_slist_remove(priv->user_list_connections, connection);
+  if(priv->root != NULL)
   {
-    infd_directory_node_remove_connection(priv->root, connection);
+    if(priv->root->shared.subdir.explored == TRUE)
+    {
+      infd_directory_node_remove_connection(priv->root, connection);
+    }
+    else
+    {
+      /* If the root directory was not explored it could still happen that
+       * the connection queried its ACL. */
+      priv->root->acl_connections = g_slist_remove(
+        priv->root->acl_connections,
+        connection
+      );
+    }
   }
 
   /* Remove all subscription requests for this connection */
@@ -4972,6 +6275,9 @@ infd_directory_set_storage(InfdDirectory* directory,
 
   if(priv->storage != NULL)
   {
+    /* TODO: Update last seen times of all connected users,
+     * and write user list to storage */
+
     /* priv->root may be NULL if this is called from dispose. */
     if(priv->root != NULL && priv->root->shared.subdir.explored == TRUE)
     {
@@ -4994,6 +6300,11 @@ infd_directory_set_storage(InfdDirectory* directory,
 
   if(storage != NULL)
   {
+    /* Read user list from new storage, and new ACL for the root node. This
+     * overwrites the current ACL for the root node. If no new storage is set,
+     * then we keep the previous ACL for the root node. */
+    infd_directory_read_root_acl(directory);
+
     /* root folder was explored before storage change, so keep it
      * explored. */
     if(priv->root->shared.subdir.explored == TRUE)
@@ -5042,6 +6353,7 @@ infd_directory_init(GTypeInstance* instance,
   priv->io = NULL;
   priv->storage = NULL;
   priv->communication_manager = NULL;
+  priv->group = NULL;
 
   priv->private_key = NULL;
   priv->certificate = NULL;
@@ -5049,16 +6361,42 @@ infd_directory_init(GTypeInstance* instance,
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->connections = g_hash_table_new(NULL, NULL);
 
+  priv->acl_table = inf_acl_table_new();
+  priv->user_list_connections = NULL;
+
   priv->node_counter = 1;
   priv->nodes = g_hash_table_new(NULL, NULL);
 
-  /* The root node has no name. */
-  priv->root = infd_directory_node_new_subdirectory(directory, NULL, 0, NULL);
+  /* The root node has no name. At this point we also create the root node
+   * with no ACL. The ACL is read from storage in the constructor, or if no
+   * ACL exists in storage, a default ACL is used. */
+  priv->root = infd_directory_node_new_subdirectory(
+    directory,
+    NULL,
+    0,
+    NULL,
+    NULL,
+    FALSE
+  );
+
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
   priv->local_requests = NULL;
 
   priv->chat_session = NULL;
+
+  inf_acl_table_add_user(
+    priv->acl_table,
+    inf_acl_user_new("default", NULL),
+    TRUE
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->acl_table),
+    "user-added",
+    G_CALLBACK(infd_directory_acl_table_user_added_cb),
+    directory
+  );
 }
 
 static GObject*
@@ -5069,6 +6407,9 @@ infd_directory_constructor(GType type,
   GObject* object;
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+
+  InfAclSheet sheet;
+  InfBrowserIter iter;
 
   /* We only use central method for directory handling */
   static const gchar* const methods[] = { "centrol", NULL };
@@ -5107,7 +6448,20 @@ infd_directory_constructor(GType type,
    * explored (there is simply no content yet, it has to be added via
    * infd_directory_add_note). */
   if(priv->storage == NULL)
+  {
     priv->root->shared.subdir.explored = TRUE;
+
+    /* Apply default permissions for the root node */
+    sheet.user = inf_acl_table_get_user(priv->acl_table, "default");
+    sheet.perms = INF_ACL_MASK_DEFAULT;
+    sheet.mask = INF_ACL_MASK_ALL;
+    iter.node = priv->root;
+    iter.node_id = priv->root->id;
+    inf_acl_table_insert_sheet(priv->acl_table, &iter, &sheet);
+  }
+
+  /* Note that if storage is non-NULL the root ACL has already been loaded
+   * when the storage property was set. */
 
   g_assert(g_hash_table_size(priv->connections) == 0);
   return object;
@@ -5163,6 +6517,16 @@ infd_directory_dispose(GObject* object)
       (InfdDirectoryLocreq*)priv->local_requests->data
     );
   }
+
+  g_slist_free(priv->user_list_connections);
+
+  inf_signal_handlers_disconnect_by_func(
+    G_OBJECT(priv->acl_table),
+    G_CALLBACK(infd_directory_acl_table_user_added_cb),
+    directory
+  );
+
+  g_object_unref(priv->acl_table);
 
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
@@ -5362,6 +6726,33 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const char*)node->name, "request-certificate") == 0)
   {
     infd_directory_handle_request_certificate(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const char*)node->name, "query-user-list") == 0)
+  {
+    infd_directory_handle_query_user_list(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const char*)node->name, "query-acl") == 0)
+  {
+    infd_directory_handle_query_acl(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const char*)node->name, "set-acl") == 0)
+  {
+    infd_directory_handle_set_acl(
       directory,
       connection,
       node,
@@ -5702,6 +7093,7 @@ infd_directory_browser_add_note(InfBrowser* browser,
                                 const InfBrowserIter* iter,
                                 const char* name,
                                 const char* type,
+                                const InfAclSheetSet* sheet_set,
                                 InfSession* session,
                                 gboolean initial_subscribe)
 {
@@ -5727,6 +7119,7 @@ infd_directory_browser_add_note(InfBrowser* browser,
     directory,
     node,
     name,
+    sheet_set,
     plugin,
     session,
     initial_subscribe
@@ -5740,7 +7133,8 @@ infd_directory_browser_add_note(InfBrowser* browser,
 static InfNodeRequest*
 infd_directory_browser_add_subdirectory(InfBrowser* browser,
                                         const InfBrowserIter* iter,
-                                        const char* name)
+                                        const char* name,
+                                        const InfAclSheetSet* sheet_set)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
@@ -5761,6 +7155,7 @@ infd_directory_browser_add_subdirectory(InfBrowser* browser,
     directory,
     node,
     name,
+    sheet_set,
     NULL,
     NULL,
     FALSE
@@ -5890,6 +7285,7 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
   InfdDirectorySubreq* subreq;
   InfdDirectoryLocreq* locreq;
   InfRequest* request;
@@ -5901,6 +7297,13 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  node = NULL;
+  if(iter != NULL)
+  {
+    infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+    node = (InfdDirectoryNode*)iter->node;
+  }
+
   for(item = priv->subscription_requests; item != NULL; item = item->next)
   {
     request = NULL;
@@ -5908,15 +7311,19 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
     switch(subreq->type)
     {
     case INFD_DIRECTORY_SUBREQ_CHAT:
+      break;
     case INFD_DIRECTORY_SUBREQ_SESSION:
-      request = INF_REQUEST(subreq->shared.session.request);
+      if(iter != NULL && subreq->node_id == node->id)
+        request = INF_REQUEST(subreq->shared.session.request);
       break;
     case INFD_DIRECTORY_SUBREQ_ADD_NODE:
-      request = INF_REQUEST(subreq->shared.add_node.request);
+      if(iter != NULL && subreq->shared.add_node.parent == node)
+        request = INF_REQUEST(subreq->shared.add_node.request);
       break;
     case INFD_DIRECTORY_SUBREQ_SYNC_IN:
     case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
-      request = INF_REQUEST(subreq->shared.sync_in.request);
+      if(iter != NULL && subreq->shared.sync_in.parent == node)
+        request = INF_REQUEST(subreq->shared.sync_in.request);
       break;
     default:
       g_assert_not_reached();
@@ -5945,7 +7352,29 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
   for(item = priv->local_requests; item != NULL; item = item->next)
   {
     locreq = (InfdDirectoryLocreq*)item->data;
-    request = INF_REQUEST(locreq->request);
+
+    switch(locreq->type)
+    {
+    case INFD_DIRECTORY_LOCREQ_EXPLORE_NODE:
+      if(iter != NULL && locreq->shared.explore_node.node == node)
+        request = INF_REQUEST(locreq->request);
+    case INFD_DIRECTORY_LOCREQ_ADD_NODE:
+      if(iter != NULL && locreq->shared.add_node.node == node)
+        request = INF_REQUEST(locreq->request);
+    case INFD_DIRECTORY_LOCREQ_REMOVE_NODE:
+      if(iter != NULL && locreq->shared.remove_node.node == node)
+        request = INF_REQUEST(locreq->request);
+    case INFD_DIRECTORY_LOCREQ_SUBSCRIBE_SESSION:
+      if(iter != NULL && locreq->shared.subscribe_session.node == node)
+        request = INF_REQUEST(locreq->request);
+    case INFD_DIRECTORY_LOCREQ_SET_ACL:
+      if(iter != NULL && locreq->shared.set_acl.node == node)
+        request = INF_REQUEST(locreq->request);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
 
     if(request != NULL)
     {
@@ -5990,6 +7419,105 @@ infd_directory_browser_iter_from_request(InfBrowser* browser,
   iter->node_id = node_id;
   iter->node = node;
   return TRUE;
+}
+
+static InfAclUserListRequest*
+infd_directory_browser_query_acl_user_list(InfBrowser* browser)
+{
+  /* This should not be called because get_acl_user_list always returns the
+   * full list. */
+  g_return_val_if_reached(NULL);
+  return NULL;
+}
+
+static const InfAclUser**
+infd_directory_browser_get_acl_user_list(InfBrowser* browser,
+                                         guint* n_users)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  return inf_acl_table_get_user_list(priv->acl_table, n_users);
+}
+
+static const InfAclUser*
+infd_directory_browser_get_acl_local_user(InfBrowser* browser)
+{
+  /* There is no local user. This means direct access to the directory and
+   * no ACL applies for local operations. */
+  return NULL;
+}
+
+static const InfAclUser*
+infd_directory_browser_lookup_acl_user(InfBrowser* browser,
+                                       const gchar* user_id)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  return inf_acl_table_get_user(priv->acl_table, user_id);
+}
+
+static InfNodeRequest*
+infd_directory_browser_query_acl(InfBrowser* browser,
+                                 const InfBrowserIter* iter)
+{
+  /* We always have the full ACL since we read it directly with the
+   * exploration of a node. Therefore, there is nothing to query and the
+   * full ACL is available with inf_browser_get_acl(). */
+  g_return_val_if_reached(NULL);
+  return NULL;
+}
+
+static gboolean
+infd_directory_browser_has_acl(InfBrowser* browser,
+                               const InfBrowserIter* iter,
+                               const InfAclUser* user)
+{
+  /* The full ACL is always available */
+  return TRUE;
+}
+
+static const InfAclSheetSet*
+infd_directory_browser_get_acl(InfBrowser* browser,
+                               const InfBrowserIter* iter)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+  return inf_acl_table_get_sheets(priv->acl_table, iter);
+}
+
+static InfNodeRequest*
+infd_directory_browser_set_acl(InfBrowser* browser,
+                               const InfBrowserIter* iter,
+                               const InfAclSheetSet* sheet_set)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdDirectoryLocreq* locreq;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+  locreq = infd_directory_add_locreq_set_acl(directory, node, sheet_set);
+  infd_directory_start_locreq(directory, locreq);
+
+  return INF_NODE_REQUEST(locreq->request);
 }
 
 /*
@@ -6158,6 +7686,8 @@ infd_directory_browser_init(gpointer g_iface,
   iface->subscribe_session = infd_directory_browser_subscribe_session;
   iface->unsubscribe_session = infd_directory_browser_unsubscribe_session;
   iface->begin_request = NULL;
+  iface->acl_user_added = NULL;
+  iface->acl_changed = NULL;
 
   iface->get_root = infd_directory_browser_get_root;
   iface->get_next = infd_directory_browser_get_next;
@@ -6176,6 +7706,15 @@ infd_directory_browser_init(gpointer g_iface,
   iface->get_session = infd_directory_browser_get_session;
   iface->list_pending_requests = infd_directory_browser_list_pending_requests;
   iface->iter_from_request = infd_directory_browser_iter_from_request;
+
+  iface->query_acl_user_list = infd_directory_browser_query_acl_user_list;
+  iface->get_acl_user_list = infd_directory_browser_get_acl_user_list;
+  iface->get_acl_local_user = infd_directory_browser_get_acl_local_user;
+  iface->lookup_acl_user = infd_directory_browser_lookup_acl_user;
+  iface->query_acl = infd_directory_browser_query_acl;
+  iface->has_acl = infd_directory_browser_has_acl;
+  iface->get_acl = infd_directory_browser_get_acl;
+  iface->set_acl = infd_directory_browser_set_acl;
 }
 
 GType
@@ -6485,6 +8024,7 @@ infd_directory_add_connection(InfdDirectory* directory,
 
   info = g_slice_new(InfdDirectoryConnectionInfo);
   info->seq_id = seq_id;
+  info->user = NULL;
 
   g_hash_table_insert(priv->connections, connection, info);
   g_object_ref(connection);
@@ -6498,7 +8038,11 @@ infd_directory_add_connection(InfdDirectory* directory,
 
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
   if(status == INF_XML_CONNECTION_OPEN)
+  {
+    info->user =
+      infd_directory_add_user_for_connection(directory, connection);
     infd_directory_send_welcome_message(directory, connection);
+  }
 
   g_signal_emit(
     G_OBJECT(directory),

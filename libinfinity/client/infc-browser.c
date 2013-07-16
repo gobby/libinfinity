@@ -31,6 +31,7 @@
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
+#include <libinfinity/client/infc-acl-user-list-request.h>
 
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-cert-util.h>
@@ -89,6 +90,7 @@ struct _InfcBrowserNode {
   guint id;
   gchar* name;
   InfcBrowserNodeType type;
+  gboolean acl_queried;
   /*InfcBrowserNodeStatus status;*/
 
   union {
@@ -151,6 +153,7 @@ struct _InfcBrowserSubreq {
       InfcBrowserNode* parent;
       const InfcNotePlugin* plugin;
       gchar* name;
+      InfAclSheetSet* sheet_set;
       InfcNodeRequest* request;
       InfCommunicationJoinedGroup* subscription_group;
     } add_node;
@@ -159,6 +162,7 @@ struct _InfcBrowserSubreq {
       InfcBrowserNode* parent;
       const InfcNotePlugin* plugin;
       gchar* name;
+      InfAclSheetSet* sheet_set;
       InfcNodeRequest* request;
       InfCommunicationJoinedGroup* synchronization_group;
       InfCommunicationJoinedGroup* subscription_group; /* can be NULL */
@@ -183,6 +187,10 @@ struct _InfcBrowserPrivate {
   InfBrowserStatus status;
   GHashTable* nodes; /* Mapping from id to node */
   InfcBrowserNode* root;
+
+  InfAclTable* acl_table;
+  const InfAclUser* local_user;
+  gboolean user_list_queried;
 
   GSList* sync_ins;
   GSList* subscription_requests;
@@ -259,7 +267,12 @@ infc_browser_browser_list_pending_requests_foreach_func(InfcRequest* request,
     node_request = INFC_NODE_REQUEST(request);
     g_object_get(G_OBJECT(node_request), "node-id", &node_id, NULL);
 
-    if(node_id == data->iter->node_id)
+    if(data->iter != NULL && node_id == data->iter->node_id)
+      data->result = g_slist_prepend(data->result, node_request);
+  }
+  else
+  {
+    if(data->iter == NULL)
       data->result = g_slist_prepend(data->result, node_request);
   }
 }
@@ -407,18 +420,21 @@ infc_browser_node_new_common(InfcBrowser* browser,
                              InfcBrowserNode* parent,
                              guint id,
                              InfcBrowserNodeType type,
-                             const gchar* name)
+                             const gchar* name,
+                             const InfAclSheetSet* sheet_set)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
+  InfBrowserIter iter;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
   node = g_slice_new(InfcBrowserNode);
   node->parent = parent;
-  node->type = type;
   node->id = id;
   node->name = g_strdup(name);
+  node->type = type;
+  node->acl_queried = FALSE;
 
   if(parent != NULL)
   {
@@ -432,6 +448,10 @@ infc_browser_node_new_common(InfcBrowser* browser,
     node->next = NULL;
   }
 
+  iter.node_id = id;
+  iter.node = node;
+  inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+
   g_assert(
     g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node->id)) == NULL
   );
@@ -444,7 +464,8 @@ static InfcBrowserNode*
 infc_browser_node_new_subdirectory(InfcBrowser* browser,
                                    InfcBrowserNode* parent,
                                    guint id,
-                                   const gchar* name)
+                                   const gchar* name,
+                                   const InfAclSheetSet* sheet_set)
 {
   InfcBrowserNode* node;
   node = infc_browser_node_new_common(
@@ -452,7 +473,8 @@ infc_browser_node_new_subdirectory(InfcBrowser* browser,
     parent,
     id,
     INFC_BROWSER_NODE_SUBDIRECTORY,
-    name
+    name,
+    sheet_set
   );
 
   node->shared.subdir.explored = FALSE;
@@ -466,7 +488,8 @@ infc_browser_node_new_note(InfcBrowser* browser,
                            InfcBrowserNode* parent,
                            guint id,
                            const gchar* name,
-                           const gchar* type)
+                           const gchar* type,
+                           const InfAclSheetSet* sheet_set)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -481,7 +504,8 @@ infc_browser_node_new_note(InfcBrowser* browser,
     id,
     (plugin != NULL) ? INFC_BROWSER_NODE_NOTE_KNOWN :
       INFC_BROWSER_NODE_NOTE_UNKNOWN,
-    name
+    name,
+    sheet_set
   );
 
   if(plugin != NULL)
@@ -582,6 +606,7 @@ infc_browser_node_free(InfcBrowser* browser,
   InfcBrowserSyncIn* sync_in;
   InfcBrowserSubreq* request;
 
+  InfBrowserIter iter;
   GError* error;
 
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -589,9 +614,10 @@ infc_browser_node_free(InfcBrowser* browser,
   switch(node->type)
   {
   case INFC_BROWSER_NODE_SUBDIRECTORY:
-    if(node->shared.subdir.explored == TRUE)
-      while(node->shared.subdir.child != NULL)
-        infc_browser_node_free(browser, node->shared.subdir.child);
+    /* Also do this for nodes that don't have the explored flag to TRUE, to
+     * delete nodes in case we are still in the middle of an exploration */
+    while(node->shared.subdir.child != NULL)
+      infc_browser_node_free(browser, node->shared.subdir.child);
 
     break;
   case INFC_BROWSER_NODE_NOTE_KNOWN:
@@ -717,6 +743,11 @@ infc_browser_node_free(InfcBrowser* browser,
 
   if(node->parent != NULL)
     infc_browser_node_unlink(node);
+
+  g_assert(priv->acl_table != NULL);
+  iter.node_id = node->id;
+  iter.node = node;
+  inf_acl_table_clear_sheets(priv->acl_table, &iter);
 
   removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
   g_assert(removed == TRUE);
@@ -912,6 +943,7 @@ infc_browser_disconnected(InfcBrowser* browser)
   InfcBrowserNode* child;
   InfcBrowserNode* next;
   InfSession* session;
+  InfBrowserIter iter;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
@@ -942,6 +974,7 @@ infc_browser_disconnected(InfcBrowser* browser)
   g_object_unref(priv->group);
   priv->group = NULL;
 
+#if 0
   /* Remove tree */
   for(child = priv->root->shared.subdir.child; child != NULL; child = next)
   {
@@ -950,9 +983,22 @@ infc_browser_disconnected(InfcBrowser* browser)
     infc_browser_node_unregister(browser, child);
     infc_browser_node_free(browser, child);
   }
+#endif
 
-  g_assert(priv->root->shared.subdir.child == NULL);
-  priv->root->shared.subdir.explored = FALSE;
+  if(priv->root != NULL)
+  {
+    infc_browser_node_unregister(browser, priv->root);
+    infc_browser_node_free(browser, priv->root);
+    priv->root = NULL;
+  }
+
+  priv->local_user = NULL;
+
+  if(priv->acl_table != NULL)
+  {
+    g_object_unref(priv->acl_table);
+    priv->acl_table = NULL;
+  }
 
   g_object_freeze_notify(G_OBJECT(browser));
 
@@ -1125,7 +1171,11 @@ infc_browser_init(GTypeInstance* instance,
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->status = INF_BROWSER_CLOSED;
   priv->nodes = g_hash_table_new(NULL, NULL);
-  priv->root = infc_browser_node_new_subdirectory(browser, NULL, 0, NULL);
+  priv->root = NULL;
+
+  priv->acl_table = NULL;
+  priv->local_user = NULL;
+  priv->user_list_queried = FALSE;
 
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
@@ -1177,6 +1227,7 @@ infc_browser_dispose(GObject* object)
   g_assert(priv->group == NULL);
 
   /* Should have been freed by infc_browser_disconnected */
+  g_assert(priv->acl_table == NULL);
   g_assert(priv->sync_ins == NULL);
   g_assert(priv->subscription_requests == NULL);
 
@@ -1240,9 +1291,6 @@ infc_browser_finalize(GObject* object)
 
   browser = INFC_BROWSER(object);
   priv = INFC_BROWSER_PRIVATE(browser);
-
-  infc_browser_node_free(browser, priv->root);
-  priv->root = NULL;
 
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
@@ -1476,6 +1524,7 @@ infc_browser_add_subreq_add_node(InfcBrowser* browser,
                                  InfcBrowserNode* parent,
                                  const InfcNotePlugin* plugin,
                                  const gchar* name,
+                                 const InfAclSheetSet* sheet_set,
                                  InfcNodeRequest* request,
                                  InfCommunicationJoinedGroup* group)
 {
@@ -1490,6 +1539,10 @@ infc_browser_add_subreq_add_node(InfcBrowser* browser,
   subreq->shared.add_node.parent = parent;
   subreq->shared.add_node.plugin = plugin;
   subreq->shared.add_node.name = g_strdup(name);
+  if(sheet_set != NULL)
+    subreq->shared.add_node.sheet_set = inf_acl_sheet_set_copy(sheet_set);
+  else
+    subreq->shared.add_node.sheet_set = NULL;
   subreq->shared.add_node.request = request;
   subreq->shared.add_node.subscription_group = group;
 
@@ -1506,6 +1559,7 @@ infc_browser_add_subreq_sync_in(InfcBrowser* browser,
                                 InfcBrowserNode* parent,
                                 const InfcNotePlugin* plugin,
                                 const gchar* name,
+                                const InfAclSheetSet* sheet_set,
                                 InfcNodeRequest* request,
                                 InfSession* session,
                                 InfCommunicationJoinedGroup* sync_group,
@@ -1529,6 +1583,10 @@ infc_browser_add_subreq_sync_in(InfcBrowser* browser,
   subreq->shared.sync_in.parent = parent;
   subreq->shared.sync_in.plugin = plugin;
   subreq->shared.sync_in.name = g_strdup(name);
+  if(sheet_set != NULL)
+    subreq->shared.sync_in.sheet_set = inf_acl_sheet_set_copy(sheet_set);
+  else
+    subreq->shared.sync_in.sheet_set = NULL;
   subreq->shared.sync_in.request = request;
   subreq->shared.sync_in.session = session;
   subreq->shared.sync_in.synchronization_group = sync_group;
@@ -1568,6 +1626,8 @@ infc_browser_free_subreq(InfcBrowserSubreq* request)
     if(request->shared.add_node.request != NULL)
       g_object_unref(request->shared.add_node.request);
 
+    if(request->shared.add_node.sheet_set != NULL)
+      inf_acl_sheet_set_free(request->shared.add_node.sheet_set);
     g_free(request->shared.add_node.name);
     break;
   case INFC_BROWSER_SUBREQ_SYNC_IN:
@@ -1580,6 +1640,8 @@ infc_browser_free_subreq(InfcBrowserSubreq* request)
     if(request->shared.sync_in.request != NULL)
       g_object_unref(request->shared.sync_in.request);
 
+    if(request->shared.sync_in.sheet_set != NULL)
+      inf_acl_sheet_set_free(request->shared.sync_in.sheet_set);
     g_free(request->shared.sync_in.name);
     break;
   default:
@@ -1762,7 +1824,8 @@ static InfcBrowserNode*
 infc_browser_node_add_subdirectory(InfcBrowser* browser,
                                    InfcBrowserNode* parent,
                                    guint id,
-                                   const gchar* name)
+                                   const gchar* name,
+                                   const InfAclSheetSet* sheet_set)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -1772,7 +1835,14 @@ infc_browser_node_add_subdirectory(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  node = infc_browser_node_new_subdirectory(browser, parent, id, name);
+  node = infc_browser_node_new_subdirectory(
+    browser,
+    parent,
+    id,
+    name,
+    sheet_set
+  );
+
   infc_browser_node_register(browser, node);
 
   return node;
@@ -1784,6 +1854,7 @@ infc_browser_node_add_note(InfcBrowser* browser,
                            guint id,
                            const gchar* name,
                            const gchar* type,
+                           const InfAclSheetSet* sheet_set,
                            InfcSessionProxy* sync_in_session)
 {
   InfcBrowserPrivate* priv;
@@ -1795,7 +1866,14 @@ infc_browser_node_add_note(InfcBrowser* browser,
   priv = INFC_BROWSER_PRIVATE(browser);
   g_assert(priv->connection != NULL);
 
-  node = infc_browser_node_new_note(browser, parent, id, name, type);
+  node = infc_browser_node_new_note(
+    browser,
+    parent,
+    id,
+    name,
+    type,
+    sheet_set
+  );
 
   if(sync_in_session != NULL)
   {
@@ -1988,6 +2066,8 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
     /* For explore request, we do some basic sanity checking here */
     if(strcmp(type, "explore-node") == 0)
     {
+      /* TODO: Make a InfProgressRequest interface, and then move this code
+       * into a separate function, sharing it with the add-user checks. */
       g_assert(INFC_IS_EXPLORE_REQUEST(request));
 
       g_object_get(
@@ -2186,6 +2266,16 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   guint own_major;
   guint own_minor;
   gboolean result;
+  InfAclSheetSet* sheet_set;
+
+  gnutls_x509_crt_t cert;
+  gchar* fingerprint;
+  gchar* name;
+  InfAclUser* default_user;
+  InfAclUser* local_user;
+  GError* local_error;
+  InfAclSheet* sheet;
+  guint64 default_mask;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
@@ -2249,11 +2339,77 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
   if(!result) return FALSE;
 
+  g_assert(priv->acl_table == NULL);
+  priv->acl_table = inf_acl_table_new();
+
+  default_user = inf_acl_user_new("default", NULL);
+  inf_acl_table_add_user(priv->acl_table, default_user, TRUE);
+
+  g_object_get(G_OBJECT(connection), "local-certificate", &cert, NULL);
+  if(cert != NULL)
+  {
+    fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
+    name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
+
+    local_user = inf_acl_user_new(fingerprint, name);
+    inf_acl_table_add_user(priv->acl_table, local_user, TRUE);
+
+    priv->local_user = inf_acl_table_get_user(priv->acl_table, fingerprint);
+
+    g_free(fingerprint);
+    g_free(name);
+  }
+  else
+  {
+    priv->local_user = inf_acl_table_get_user(priv->acl_table, "default");
+  }
+
+  /* Load the ACL sheet only after having initialized the users in the ACL
+   * table. */
+  local_error = NULL;
+  sheet_set = inf_acl_table_sheet_set_from_xml(
+    priv->acl_table,
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    g_object_unref(priv->acl_table);
+    priv->acl_table = NULL;
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  /* Assume default permissions for the root node if they are not sent
+   * explicitely by the server. */
+  if(sheet_set == NULL)
+    sheet_set = inf_acl_sheet_set_new();
+  sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_user);
+  default_mask = sheet->mask;
+  sheet->perms |= (INF_ACL_MASK_DEFAULT & ~default_mask);
+  sheet->mask = INF_ACL_MASK_ALL;
+
+  g_assert(priv->root == NULL);
+  priv->root = infc_browser_node_new_subdirectory(
+    browser,
+    NULL,
+    0,
+    NULL,
+    sheet_set
+  );
+
+  inf_acl_sheet_set_free(sheet_set);
+
   g_assert(priv->request_manager == NULL);
   priv->request_manager = infc_request_manager_new(priv->seq_id);
 
   priv->status = INF_BROWSER_OPEN;
   g_object_notify(G_OBJECT(browser), "status");
+
+  inf_browser_acl_user_added(INF_BROWSER(browser), default_user);
+  if(priv->local_user != NULL)
+    inf_browser_acl_user_added(INF_BROWSER(browser), priv->local_user);
 
   return TRUE;
 }
@@ -2266,7 +2422,6 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
-  xmlChar* total_attr;
   guint total;
 
   guint node_id;
@@ -2274,7 +2429,8 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  /* TODO: Allow exploration without us asking */
+  /* TODO: Allow exploration without us asking. We should then create a
+   * request here, and correctly handle the case when there is already one. */
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
     "explore-node",
@@ -2285,14 +2441,8 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   if(request == NULL) return FALSE;
   g_assert(INFC_IS_EXPLORE_REQUEST(request));
 
-  /* TODO: Consider non-given total attribute as an error */
-  total_attr = xmlGetProp(xml, (const xmlChar*)"total");
-  total = 0;
-  if(total_attr != NULL)
-  {
-    total = strtoul((const char*)total_attr, NULL, 10);
-    xmlFree(total_attr);
-  }
+  if(!inf_xml_util_get_attribute_uint_required(xml, "total", &total, error))
+    return FALSE;
 
   g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
   node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
@@ -2374,7 +2524,7 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
       "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN)
+      _("Not all nodes were received before explore-end was received")
     );
 
     return FALSE;
@@ -2391,6 +2541,8 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
     /* The node being explored must exist, or the request would have been
      * cancelled before. */
     g_assert(iter.node != NULL);
+
+    /*((InfcBrowserNode*)iter.node)->shared.subdir.explored = TRUE;*/
 
     inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
     if(priv->status == INF_BROWSER_OPEN)
@@ -2411,6 +2563,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
   guint id;
   xmlChar* name;
   xmlChar* type;
+  InfAclSheetSet* sheet_set;
   InfcNodeRequest* request;
   GError* local_error;
 
@@ -2468,13 +2621,28 @@ infc_browser_handle_add_node(InfcBrowser* browser,
     return FALSE;
   }
 
+  sheet_set = inf_acl_table_sheet_set_from_xml(
+    priv->acl_table,
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    xmlFree(type);
+    xmlFree(name);
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
   if(strcmp((const gchar*)type, "InfSubdirectory") == 0)
   {
     node = infc_browser_node_add_subdirectory(
       browser,
       parent,
       id,
-      (const gchar*)name
+      (const gchar*)name,
+      sheet_set
     );
 
     if(request != NULL)
@@ -2551,6 +2719,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
               parent,
               plugin,
               (const gchar*)name,
+              sheet_set,
               INFC_NODE_REQUEST(request),
               group
             );
@@ -2571,6 +2740,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
         id,
         (const gchar*)name,
         (const gchar*)type,
+        sheet_set,
         NULL
       );
 
@@ -2587,6 +2757,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
     }
   }
 
+  inf_acl_sheet_set_free(sheet_set);
   xmlFree(type);
   xmlFree(name);
 
@@ -2609,6 +2780,8 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
 
   xmlChar* type;
   xmlChar* name;
+  GError* local_error;
+  InfAclSheetSet* sheet_set;
   xmlNodePtr child;
   InfcBrowserSubreq* subreq;
   gboolean result;
@@ -2702,46 +2875,63 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       name = inf_xml_util_get_attribute_required(xml, "name", error);
       if(name != NULL)
       {
-        /* Note that all the errors which could have occured up to this point
-         * are the server's fault. If one of those occured, then the server
-         * sent us crap and could have known better. We therefore don't reply
-         * with subscribe-nack on these errors. */
-
-        sync_group = infc_browser_create_group_from_xml(
-          browser,
-          connection,
+        local_error = NULL;
+        sheet_set = inf_acl_table_sheet_set_from_xml(
+          priv->acl_table,
           xml,
-          error
+          &local_error
         );
 
-        if(sync_group == NULL)
+        if(local_error != NULL)
         {
-          infc_browser_subscribe_nack(browser, connection, id);
+          g_propagate_error(error, local_error);
         }
         else
         {
-          /* TODO: The server might specify a different
-           * subscription group */
-          for(child = xml->children; child != NULL; child = child->next)
-            if(strcmp((const char*)child->name, "subscribe") == 0)
-              break;
+          /* Note that all the errors which could have occured up to this
+           * point are the server's fault. If one of those occured, then the
+           * server sent us crap and could have known better. We therefore
+           * don't reply with subscribe-nack on these errors. */
 
-          subreq = infc_browser_add_subreq_sync_in(
+          sync_group = infc_browser_create_group_from_xml(
             browser,
-            id,
-            parent,
-            plugin,
-            (const gchar*)name,
-            INFC_NODE_REQUEST(request),
-            session,
-            sync_group,
-            child != NULL ? sync_group : NULL
+            connection,
+            xml,
+            error
           );
 
-          g_object_unref(sync_group);
+          if(sync_group == NULL)
+          {
+            infc_browser_subscribe_nack(browser, connection, id);
+          }
+          else
+          {
+            /* TODO: The server might specify a different
+             * subscription group */
+            for(child = xml->children; child != NULL; child = child->next)
+              if(strcmp((const char*)child->name, "subscribe") == 0)
+                break;
 
-          infc_browser_subscribe_ack(browser, connection, subreq);
-          result = TRUE;
+            subreq = infc_browser_add_subreq_sync_in(
+              browser,
+              id,
+              parent,
+              plugin,
+              (const gchar*)name,
+              sheet_set,
+              INFC_NODE_REQUEST(request),
+              session,
+              sync_group,
+              child != NULL ? sync_group : NULL
+            );
+
+            g_object_unref(sync_group);
+
+            infc_browser_subscribe_ack(browser, connection, subreq);
+            result = TRUE;
+          }
+
+          inf_acl_sheet_set_free(sheet_set);
         }
 
         xmlFree(name);
@@ -3203,6 +3393,284 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_user_list_begin(InfcBrowser* browser,
+                                    InfXmlConnection* connection,
+                                    xmlNodePtr xml,
+                                    GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  guint total;
+
+  guint node_id;
+  InfcBrowserNode* node;
+  InfBrowserIter iter;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* TODO: Allow user list query without us asking. We should then create a
+   * request here, and correctly handle the case that there is already one. */
+  request = infc_request_manager_get_request_by_xml_required(
+    priv->request_manager,
+    "query-user-list",
+    xml,
+    error
+  );
+
+  if(request == NULL) return FALSE;
+  g_assert(INFC_IS_ACL_USER_LIST_REQUEST(request));
+
+  if(!inf_xml_util_get_attribute_uint_required(xml, "n-users", &total, error))
+    return FALSE;
+
+  if(priv->user_list_queried == TRUE)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
+      "%s",
+      _("The user list has already been queried")
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    priv->user_list_queried = TRUE;
+
+    infc_acl_user_list_request_initiated(
+      INFC_ACL_USER_LIST_REQUEST(request),
+      total
+    );
+
+    return TRUE;
+  }
+}
+
+static gboolean
+infc_browser_handle_user_list_end(InfcBrowser* browser,
+                                  InfXmlConnection* connection,
+                                  xmlNodePtr xml,
+                                  GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  guint current;
+  guint total;
+  InfBrowserIter iter;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* TODO: Allow user list query without us asking. */
+  request = infc_request_manager_get_request_by_xml_required(
+    priv->request_manager,
+    "query-user-list",
+    xml,
+    error
+  );
+
+  if(request == NULL) return FALSE;
+  g_assert(INFC_IS_ACL_USER_LIST_REQUEST(request));
+
+  g_object_get(G_OBJECT(request), "current", &current, "total", &total, NULL);
+  if(current < total)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
+      "%s",
+      _("Not all users have been transmitted before "
+        "user-list-end was received")
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    inf_acl_user_list_request_finished(
+      INF_ACL_USER_LIST_REQUEST(request),
+      NULL
+    );
+
+    if(priv->status == INF_BROWSER_OPEN)
+      infc_request_manager_remove_request(priv->request_manager, request);
+
+    return TRUE;
+  }
+}
+
+static gboolean
+infc_browser_handle_add_user(InfcBrowser* browser,
+                             InfXmlConnection* connection,
+                             xmlNodePtr xml,
+                             GError** error)
+{
+  InfcBrowserPrivate* priv;
+  GError* local_error;
+  InfcRequest* request;
+  InfcAclUserListRequest* acl_request;
+  guint current;
+  guint total;
+  InfAclUser* user;
+  gchar* id;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  local_error = NULL;
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "query-user-list",
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  acl_request = NULL;
+  if(request != NULL)
+  {
+    g_assert(INFC_IS_ACL_USER_LIST_REQUEST(request));
+    acl_request = INFC_ACL_USER_LIST_REQUEST(request);
+
+    g_object_get(
+      G_OBJECT(request),
+      "current", &current,
+      "total", &total,
+      NULL
+    );
+
+    if(infc_acl_user_list_request_get_initiated(acl_request) == FALSE)
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_NOT_INITIATED,
+        "%s",
+        _("\"query-user-list\" request was not initiated yet, but "
+          "\"add-user\" was already received")
+      );
+
+      return FALSE;
+    }
+    else if(current >= total)
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
+        "%s",
+        _("More users were added in response to \"query-user-list\" than "
+          "initially proclaimed")
+      );
+
+      return FALSE;
+    }
+  }
+
+  user = inf_acl_user_from_xml(xml, error);
+  if(user == NULL) return FALSE;
+
+  id = g_strdup(user->user_id);
+
+  inf_acl_table_add_user(
+    priv->acl_table,
+    user,
+    TRUE
+  );
+
+  if(acl_request != NULL)
+    infc_acl_user_list_request_progress(acl_request);
+
+  inf_browser_acl_user_added(
+    INF_BROWSER(browser),
+    inf_acl_table_get_user(priv->acl_table, id)
+  );
+
+  g_free(id);
+
+  return TRUE;
+}
+
+static gboolean
+infc_browser_handle_set_acl(InfcBrowser* browser,
+                            InfXmlConnection* connection,
+                            xmlNodePtr xml,
+                            GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfAclSheetSet* sheet_set;
+  GError* local_error;
+  InfcRequest* request;
+  gchar* request_type;
+  InfBrowserIter iter;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  node = infc_browser_get_node_from_xml(browser, xml, "id", error);
+  if(node == NULL) return FALSE;
+
+  local_error = NULL;
+  sheet_set = inf_acl_table_sheet_set_from_xml(
+    priv->acl_table,
+    xml,
+    &local_error
+  );
+
+  if(local_error != NULL)
+    return FALSE;
+
+  /* request can either by query-acl or set-acl */
+  request = infc_request_manager_get_request_by_xml_required(
+    priv->request_manager,
+    NULL,
+    xml,
+    error
+  );
+
+  g_assert(request == NULL || INF_IS_NODE_REQUEST(request));
+
+  /* Remember that we have queried this ACL */
+  if(request != NULL)
+  {
+    g_object_get(G_OBJECT(request), "type", &request_type, NULL);
+    if(strcmp(request_type, "query-acl") == 0)
+    {
+      g_assert(node->acl_queried == FALSE);
+      node->acl_queried = TRUE;
+    }
+
+    g_free(request_type);
+  }
+
+  /* sheet_set can be NULL, for example when querying the ACL for a node and
+   * the ACL is empty. */
+  if(sheet_set != NULL)
+  {
+    if(sheet_set->n_sheets > 0)
+    {
+      iter.node_id = node->id;
+      iter.node = node;
+      inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+      inf_browser_acl_changed(INF_BROWSER(browser), &iter, sheet_set);
+    }
+
+    inf_acl_sheet_set_free(sheet_set);
+  }
+
+  if(request != NULL)
+    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
+
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_request_failed(InfcBrowser* browser,
                                    InfXmlConnection* connection,
                                    xmlNodePtr xml,
@@ -3418,6 +3886,42 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
+  else if(strcmp((const gchar*)node->name, "user-list-begin") == 0)
+  {
+    infc_browser_handle_user_list_begin(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "user-list-end") == 0)
+  {
+    infc_browser_handle_user_list_end(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "add-user") == 0)
+  {
+    infc_browser_handle_add_user(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "set-acl") == 0)
+  {
+    infc_browser_handle_set_acl(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
   else
   {
     g_set_error(
@@ -3614,6 +4118,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           node_id,
           subreq->shared.add_node.name,
           subreq->shared.add_node.plugin->note_type,
+          subreq->shared.add_node.sheet_set,
           NULL
         );
 
@@ -3685,6 +4190,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           node_id,
           subreq->shared.sync_in.name,
           subreq->shared.sync_in.plugin->note_type,
+          subreq->shared.sync_in.sheet_set,
           proxy
         );
 
@@ -3922,6 +4428,7 @@ infc_browser_browser_get_child(InfBrowser* browser,
   infc_browser_return_val_if_iter_fail(browser, iter, FALSE);
 
   node = (InfcBrowserNode*)iter->node;
+
   g_return_val_if_fail(node->shared.subdir.explored == TRUE, FALSE);
 
   if(node->shared.subdir.child != NULL)
@@ -4017,6 +4524,7 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
                               const InfBrowserIter* iter,
                               const char* name,
                               const char* type,
+                              const InfAclSheetSet* sheet_set,
                               InfSession* session,
                               gboolean initial_subscribe)
 {
@@ -4080,6 +4588,9 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
   inf_xml_util_set_attribute(xml, "type", type);
   inf_xml_util_set_attribute(xml, "name", name);
 
+  if(sheet_set != NULL)
+    inf_acl_table_sheet_set_to_xml(priv->acl_table, sheet_set, xml);
+
   if(initial_subscribe != FALSE)
     xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
   if(session != NULL)
@@ -4097,7 +4608,8 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
 static InfNodeRequest*
 infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
                                       const InfBrowserIter* iter,
-                                      const char* name)
+                                      const char* name,
+                                      const InfAclSheetSet* sheet_set)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -4132,6 +4644,9 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
   inf_xml_util_set_attribute_uint(xml, "parent", node->id);
   inf_xml_util_set_attribute(xml, "type", "InfSubdirectory");
   inf_xml_util_set_attribute(xml, "name", name);
+
+  if(sheet_set != NULL)
+    inf_acl_table_sheet_set_to_xml(priv->acl_table, sheet_set, xml);
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -4233,19 +4748,17 @@ infc_browser_browser_get_node_type(InfBrowser* infbrowser,
 }
 
 static InfNodeRequest*
-infc_browser_browser_subscribe(InfBrowser* infbrowser,
+infc_browser_browser_subscribe(InfBrowser* browser,
                                const InfBrowserIter* iter)
 {
-  InfcBrowser* browser;
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
   InfcRequest* request;
   xmlNodePtr xml;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
-  browser = INFC_BROWSER(infbrowser);
 
-  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+  infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, NULL);
 
   priv = INFC_BROWSER_PRIVATE(browser);
   node = (InfcBrowserNode*)iter->node;
@@ -4257,7 +4770,7 @@ infc_browser_browser_subscribe(InfBrowser* infbrowser,
 
   g_return_val_if_fail(
     inf_browser_get_pending_request(
-      INF_BROWSER(browser),
+      browser,
       iter,
       "subscribe-session"
     ) == NULL,
@@ -4272,7 +4785,7 @@ infc_browser_browser_subscribe(InfBrowser* infbrowser,
     NULL
   );
 
-  inf_browser_begin_request(INF_BROWSER(browser), iter, INF_REQUEST(request));
+  inf_browser_begin_request(browser, iter, INF_REQUEST(request));
 
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
@@ -4309,16 +4822,18 @@ infc_browser_browser_list_pending_requests(InfBrowser* browser,
                                            const gchar* request_type)
 {
   InfcBrowserPrivate* priv;
-  InfcBrowserNode* node;
   InfcBrowserListPendingRequestsForeachData data;
 
   data.iter = iter;
   data.result = NULL;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
-  infc_browser_return_val_if_iter_fail(browser, iter, NULL);
 
-  node = (InfcBrowserNode*)iter->node;
+  if(iter != NULL)
+  {
+    infc_browser_return_val_if_iter_fail(browser, iter, NULL);
+  }
+
   priv = INFC_BROWSER_PRIVATE(browser);
 
   if(priv->request_manager != NULL)
@@ -4367,6 +4882,219 @@ infc_browser_browser_iter_from_request(InfBrowser* browser,
   iter->node_id = node_id;
   iter->node = node;
   return TRUE;
+}
+
+static InfAclUserListRequest*
+infc_browser_browser_query_acl_user_list(InfBrowser* browser)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
+  g_return_val_if_fail(priv->user_list_queried == FALSE, NULL);
+
+  g_return_val_if_fail(
+    inf_browser_get_pending_request(
+      INF_BROWSER(browser),
+      NULL,
+      "query-user-list"
+    ) == NULL,
+    NULL
+  );
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_ACL_USER_LIST_REQUEST,
+    "query-user-list",
+    NULL
+  );
+
+  inf_browser_begin_request(browser, NULL, INF_REQUEST(request));
+
+  xml = infc_browser_request_to_xml(request);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INF_ACL_USER_LIST_REQUEST(request);
+}
+
+static const InfAclUser**
+infc_browser_browser_get_acl_user_list(InfBrowser* infbrowser,
+                                       guint* n_users)
+{
+  InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
+
+  browser = INFC_BROWSER(infbrowser);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
+
+  if(priv->user_list_queried == FALSE)
+    return NULL;
+  return inf_acl_table_get_user_list(priv->acl_table, n_users);
+}
+
+static const InfAclUser*
+infc_browser_browser_get_acl_local_user(InfBrowser* infbrowser)
+{
+  InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
+
+  browser = INFC_BROWSER(infbrowser);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
+  g_assert(priv->local_user != NULL);
+
+  return priv->local_user;
+}
+
+static const InfAclUser*
+infc_browser_browser_lookup_acl_user(InfBrowser* browser,
+                                     const gchar* user_id)
+{
+  InfcBrowserPrivate* priv;
+  priv = INFC_BROWSER_PRIVATE(browser);
+  return inf_acl_table_get_user(priv->acl_table, user_id);
+}
+
+static InfNodeRequest*
+infc_browser_browser_query_acl(InfBrowser* browser,
+                               const InfBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, NULL);
+  node = (InfcBrowserNode*)iter->node;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
+  g_return_val_if_fail(node->acl_queried == FALSE, NULL);
+
+  g_return_val_if_fail(
+    inf_browser_get_pending_request(browser, iter, "query-acl") == NULL,
+    NULL
+  );
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_NODE_REQUEST,
+    "query-acl",
+    "node-id", node->id,
+    NULL
+  );
+
+  inf_browser_begin_request(browser, iter, INF_REQUEST(request));
+
+  xml = infc_browser_request_to_xml(request);
+  inf_xml_util_set_attribute_uint(xml, "id", node->id);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INF_NODE_REQUEST(request);
+}
+
+static gboolean
+infc_browser_browser_has_acl(InfBrowser* browser,
+                             const InfBrowserIter* iter,
+                             const InfAclUser* user)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, FALSE);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = (InfcBrowserNode*)iter->node;
+
+  /* If we have queried the full ACL, everything is available */
+  if(node->acl_queried == TRUE)
+    return TRUE;
+
+  /* Otherwise we only have the local user and the default user sheets */
+  if(user != NULL)
+  {
+    if(user == priv->local_user || strcmp(user->user_id, "default") == 0)
+      return TRUE;
+  }
+
+  /* So if that's not the case we don't have it */
+  return FALSE;
+}
+
+static const InfAclSheetSet*
+infc_browser_browser_get_acl(InfBrowser* browser,
+                             const InfBrowserIter* iter)
+{
+  InfcBrowserPrivate* priv;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, NULL);
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  return inf_acl_table_get_sheets(priv->acl_table, iter);
+}
+
+static InfNodeRequest*
+infc_browser_browser_set_acl(InfBrowser* browser,
+                             const InfBrowserIter* iter,
+                             const InfAclSheetSet* sheet_set)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
+  infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, NULL);
+  node = (InfcBrowserNode*)iter->node;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  g_return_val_if_fail(priv->connection != NULL, NULL);
+  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
+  g_return_val_if_fail(node->acl_queried == TRUE, NULL);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_NODE_REQUEST,
+    "set-acl",
+    "node-id", node->id,
+    NULL
+  );
+
+  inf_browser_begin_request(browser, iter, INF_REQUEST(request));
+
+  xml = infc_browser_request_to_xml(request);
+  inf_xml_util_set_attribute_uint(xml, "id", node->id);
+
+  inf_acl_table_sheet_set_to_xml(priv->acl_table, sheet_set, xml);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INF_NODE_REQUEST(request);
 }
 
 /*
@@ -4476,6 +5204,8 @@ infc_browser_browser_init(gpointer g_iface,
   iface->subscribe_session = infc_browser_browser_subscribe_session;
   iface->unsubscribe_session = NULL;
   iface->begin_request = NULL;
+  iface->acl_user_added = NULL;
+  iface->acl_changed = NULL;
 
   iface->get_root = infc_browser_browser_get_root;
   iface->get_next = infc_browser_browser_get_next;
@@ -4494,6 +5224,15 @@ infc_browser_browser_init(gpointer g_iface,
   iface->get_session = infc_browser_browser_get_session;
   iface->list_pending_requests = infc_browser_browser_list_pending_requests;
   iface->iter_from_request = infc_browser_browser_iter_from_request;
+
+  iface->query_acl_user_list = infc_browser_browser_query_acl_user_list;
+  iface->get_acl_user_list = infc_browser_browser_get_acl_user_list;
+  iface->get_acl_local_user = infc_browser_browser_get_acl_local_user;
+  iface->lookup_acl_user = infc_browser_browser_lookup_acl_user;
+  iface->query_acl = infc_browser_browser_query_acl;
+  iface->has_acl = infc_browser_browser_has_acl;
+  iface->get_acl = infc_browser_browser_get_acl;
+  iface->set_acl = infc_browser_browser_set_acl;
 }
 
 GType

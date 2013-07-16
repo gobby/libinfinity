@@ -72,6 +72,8 @@ inf_request_strerror(InfRequestError code)
     return _("Server reply contains invalid sequence number");
   case INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE:
     return _("A required attribute was not set in request");
+  case INF_REQUEST_ERROR_INVALID_ATTRIBUTE:
+    return _("An attribute did not have valid content");
   case INF_REQUEST_ERROR_INVALID_NUMBER:
     return _("An attribute contained an invalid number");
   case INF_REQUEST_ERROR_FAILED:
@@ -210,6 +212,12 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Not authorized");
   case INF_DIRECTORY_ERROR_INVALID_CERTIFICATE:
     return _("The certificate is invalid or not trusted");
+  case INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED:
+    return _("The user list has already been queried before");
+  case INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED:
+    return _("The ACL has already been queried");
+  case INF_DIRECTORY_ERROR_ACL_NOT_QUERIED:
+    return _("The ACL has not been queried");
   case INF_DIRECTORY_ERROR_FAILED:
     return _("An unknown directory error has occured");
   default:

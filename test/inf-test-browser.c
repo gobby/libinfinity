@@ -181,7 +181,7 @@ static void
 inf_test_browser_cmd_create(InfTestBrowser* test,
                             const gchar* param)
 {
-  inf_browser_add_subdirectory(test->browser, &test->cwd, param);
+  inf_browser_add_subdirectory(test->browser, &test->cwd, param, NULL);
 }
 
 static void

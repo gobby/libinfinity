@@ -9,6 +9,9 @@ libinfinity_common_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/common
 
 libinfinity_common_la_SOURCES = \
+	inf-acl-sheet.c \
+	inf-acl-table.c \
+	inf-acl-user-list-request.c \
 	inf-browser.c \
 	inf-browser-iter.c \
 	inf-buffer.c \
@@ -43,6 +46,9 @@ libinfinity_common_la_SOURCES = \
 	inf-xmpp-manager.c
 
 libinfinity_common_la_HEADERS = \
+	inf-acl-sheet.h \
+	inf-acl-table.h \
+	inf-acl-user-list-request.h \
 	inf-browser.h \
 	inf-browser-iter.h \
 	inf-buffer.h \

@@ -37,6 +37,8 @@ G_BEGIN_DECLS
  * in a reply to a request.
  * @INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE: A request did not contain a XML
  * attribute that is required to complete the request.
+ * @INF_REQUEST_ERROR_INVALID_ATTRIBUTE: A request contains an XML attribute
+ * with unexpected content.
  * @INF_REQUEST_ERROR_INVALID_NUMBER: A number in a request was invalid.
  * Either it was not numerical, or it produced an underflow or an overflow.
  * @INF_REQUEST_ERROR_FAILED: Generic error code when no further reason of
@@ -51,6 +53,7 @@ typedef enum _InfRequestError {
   INF_REQUEST_ERROR_REPLY_UNPROCESSED,
   INF_REQUEST_ERROR_INVALID_SEQ,
   INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+  INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
   INF_REQUEST_ERROR_INVALID_NUMBER,
 
   INF_REQUEST_ERROR_FAILED
@@ -146,6 +149,14 @@ typedef enum _InfUserError {
  * server since it has no storage backend attached.
  * @INF_DIRECTORY_ERROR_NOT_AUTHORIZED: The requesting host is not authorized
  * to perform the requested action.
+ * @INF_DIRECTORY_ERROR_INVALID_CERTIFICATE: An invalid certificate or
+ * certificate request have been sent.
+ * @INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED: The user list has already
+ * been queried before.
+ * @INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED: The ACL for a node has
+ * already been queried before.
+ * @INF_DIRECTORY_ERROR_ACL_NOT_QUERIED: The ACL for a node has
+ * not yet been queried, but is required to perform the operation.
  * @INF_DIRECTORY_ERROR_FAILED: Generic error code when no further reason of
  * failure is known.
  *
@@ -179,6 +190,9 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NO_STORAGE,
   INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
   INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
+  INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
+  INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED,
+  INF_DIRECTORY_ERROR_ACL_NOT_QUERIED,
 
   INF_DIRECTORY_ERROR_FAILED
 } InfDirectoryError;

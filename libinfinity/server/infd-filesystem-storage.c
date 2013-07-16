@@ -21,7 +21,11 @@
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-storage.h>
+#include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-i18n.h>
+
+#include <libxml/tree.h>
+#include <libxml/parser.h>
 
 #include <glib/gstdio.h>
 
@@ -233,6 +237,175 @@ infd_filesystem_storage_remove_rec(const gchar* path,
 
   return TRUE;
 #endif
+}
+
+
+static int
+infd_filesystem_storage_read_xml_stream_read_func(void* context,
+                                                  char* buffer,
+                                                  int len)
+{
+  int res;
+  res = fread(buffer, 1, len, (FILE*)context);
+
+  if(ferror((FILE*)context))
+    return -1;
+
+  return res;
+}
+
+static int
+infd_filesystem_storage_read_xml_stream_close_func(void* context)
+{
+  return fclose((FILE*)context);
+}
+
+/* TODO: Unify these a bit: Make these functions available in the public
+ * API, use in infinoted-plugin-text. Also, share code between this and
+ * infd_filesystem_storage_open. */
+static xmlDocPtr
+infd_filesystem_storage_read_xml_stream(InfdFilesystemStorage* storage,
+                                        FILE* stream,
+                                        const char* filename,
+                                        const char* toplevel_tag,
+                                        GError** error)
+{
+  xmlDocPtr doc;
+  xmlNodePtr root;
+  xmlErrorPtr xmlerror;
+
+  doc = xmlReadIO(
+    infd_filesystem_storage_read_xml_stream_read_func,
+    infd_filesystem_storage_read_xml_stream_close_func,
+    stream,
+    filename,
+    "UTF-8",
+    XML_PARSE_NOWARNING | XML_PARSE_NOERROR
+  );
+
+  if(doc == NULL)
+  {
+    xmlerror = xmlGetLastError();
+
+    g_set_error(
+      error,
+      g_quark_from_static_string("LIBXML2_PARSER_ERROR"),
+      xmlerror->code,
+      _("Error parsing XML in file \"%s\": [%d]: %s"),
+      filename,
+      xmlerror->line,
+      xmlerror->message
+    );
+  }
+  else
+  {
+    root = xmlDocGetRootElement(doc);
+    if(strcmp((const char*)root->name, toplevel_tag) != 0)
+    {
+      g_set_error(
+        error,
+        infd_filesystem_storage_error_quark,
+        INFD_FILESYSTEM_STORAGE_ERROR_INVALID_FORMAT,
+        _("Error processing file \"%s\": Toplevel tag is not \"%s\""),
+        filename,
+        toplevel_tag
+      );
+
+      xmlFreeDoc(doc);
+      doc = NULL;
+    }
+  }
+
+  return doc;
+}
+
+static xmlDocPtr
+infd_filesystem_storage_read_xml_file(InfdFilesystemStorage* storage,
+                                      const char* filename,
+                                      const char* toplevel_tag,
+                                      GError** error)
+{
+  InfdFilesystemStoragePrivate* priv;
+  gchar* full_name;
+  FILE* stream;
+  int save_errno;
+  xmlDocPtr doc;
+
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
+
+  full_name = g_build_filename(priv->root_directory, filename, NULL);
+  stream = fopen(full_name, "r");
+  save_errno = errno;
+  
+  if(stream == NULL)
+  {
+    infd_filesystem_storage_system_error(errno, error);
+    return NULL;
+  }
+
+  doc = infd_filesystem_storage_read_xml_stream(
+    storage,
+    stream,
+    full_name,
+    toplevel_tag,
+    error
+  );
+
+  g_free(full_name);
+  /* TODO: stream is already closed by xmlReadIO(?). Check, both in
+   * success and in error case. */
+  return doc;
+}
+
+static gboolean
+infd_filesystem_storage_write_xml_file(InfdFilesystemStorage* storage,
+                                       const char* filename,
+                                       xmlDocPtr doc,
+                                       GError** error)
+{
+  InfdFilesystemStoragePrivate* priv;
+  gchar* full_name;
+  FILE* stream;
+  int save_errno;
+  xmlErrorPtr xmlerror;
+
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
+
+  full_name = g_build_filename(priv->root_directory, filename, NULL);
+  stream = fopen(full_name, "w");
+  save_errno = errno;
+  g_free(full_name);
+
+  if(stream == NULL)
+  {
+    infd_filesystem_storage_system_error(save_errno, error);
+    return FALSE;
+  }
+
+  if(xmlDocFormatDump(stream, doc, 1) == -1)
+  {
+    xmlerror = xmlGetLastError();
+    fclose(stream);
+    /* TODO: unlink? */
+
+    g_set_error(
+      error,
+      g_quark_from_static_string("LIBXML2_OUTPUT_ERROR"),
+      xmlerror->code,
+      "%s",
+      xmlerror->message
+    );
+
+    return FALSE;
+  }
+
+  if(fclose(stream) != 0)
+  {
+    infd_filesystem_storage_system_error(save_errno, error);
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static void
@@ -586,6 +759,361 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   return ret;
 }
 
+static InfAclUser**
+infd_filesystem_storage_storage_read_user_list(InfdStorage* storage,
+                                               guint* n_users,
+                                               GError** error)
+{
+  InfdFilesystemStorage* fs_storage;
+  InfdFilesystemStoragePrivate* priv;
+  gchar* full_name;
+  FILE* stream;
+  int save_errno;
+
+  xmlDocPtr doc;
+  xmlNodePtr root;
+  xmlNodePtr child;
+  GPtrArray* array;
+  InfAclUser* user;
+  guint i;
+
+  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
+
+  full_name = g_build_filename(priv->root_directory, "users.xml", NULL);
+
+  stream = fopen(full_name, "r");
+  save_errno = errno;
+
+  if(stream == NULL)
+  {
+    g_free(full_name);
+    if(save_errno == ENOENT)
+    {
+      /* The ACL file does not exist. This is not an error, but just means
+       * the ACL is empty. */
+      *n_users = 0;
+      return NULL;
+    }
+    else
+    {
+      infd_filesystem_storage_system_error(save_errno, error);
+      return NULL;
+    }
+  }
+
+  doc = infd_filesystem_storage_read_xml_stream(
+    INFD_FILESYSTEM_STORAGE(storage),
+    stream,
+    full_name,
+    "inf-acl-user-list",
+    error
+  );
+
+  g_free(full_name);
+  if(doc == NULL)
+    return NULL;
+
+  array = g_ptr_array_sized_new(128);
+
+  root = xmlDocGetRootElement(doc);
+  for(child = root->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+
+    if(strcmp((const char*)child->name, "user") == 0)
+    {
+      user = inf_acl_user_from_xml(child, error);
+      if(user == NULL)
+      {
+        for(i = 0; i < array->len; ++i)
+          inf_acl_user_free((InfAclUser*)g_ptr_array_index(array, i));
+        g_ptr_array_free(array, TRUE);
+        xmlFreeDoc(doc);
+        return NULL;
+      }
+
+      g_ptr_array_add(array, user);
+    }
+  }
+
+  xmlFreeDoc(doc);
+  *n_users = array->len;
+  return (InfAclUser**)g_ptr_array_free(array, FALSE);
+}
+
+static gboolean
+infd_filesystem_storage_storage_write_user_list(InfdStorage* storage,
+                                                const InfAclUser** users,
+                                                guint n_users,
+                                                GError** error)
+{
+  InfdFilesystemStorage* fs_storage;
+  xmlNodePtr root;
+  xmlNodePtr child;
+  guint i;
+  xmlDocPtr doc;
+  gboolean result;
+
+  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
+
+  root = xmlNewNode(NULL, (const xmlChar*)"inf-acl-user-list");
+  for(i = 0; i < n_users; ++i)
+  {
+    child = xmlNewChild(root, NULL, (const xmlChar*)"user", NULL);
+    inf_acl_user_to_xml(users[i], child, TRUE);
+  }
+
+  doc = xmlNewDoc((const xmlChar*)"1.0");
+  xmlDocSetRootElement(doc, root);
+
+  result = infd_filesystem_storage_write_xml_file(
+    fs_storage,
+    "users.xml",
+    doc,
+    error
+  );
+
+  xmlFreeDoc(doc);
+  return result;
+}
+
+static GSList*
+infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
+                                         const gchar* path,
+                                         GError** error)
+{
+  InfdFilesystemStoragePrivate* priv;
+  gchar* converted_name;
+  gchar* disk_name;
+  gchar* full_name;
+  FILE* stream;
+  int save_errno;
+  xmlDocPtr doc;
+  xmlNodePtr root;
+  xmlNodePtr child;
+  GSList* list;
+  InfdStorageAcl* acl;
+  xmlChar* user_name;
+
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
+  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
+    return NULL;
+
+  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
+  if(converted_name == NULL)
+    return NULL;
+
+  if(strcmp(converted_name, "/") != 0)
+  {
+    disk_name = g_strconcat(converted_name, ".xml.acl", NULL);
+    g_free(converted_name);
+
+    full_name = g_build_filename(priv->root_directory, disk_name, NULL);
+    g_free(disk_name);
+  }
+  else
+  {
+    full_name = g_build_filename(
+      priv->root_directory,
+      "global-acl.xml",
+      NULL
+    );
+
+    g_free(converted_name);
+  }
+
+  stream = fopen(full_name, "r");
+  save_errno = errno;
+
+  if(stream == NULL)
+  {
+    g_free(full_name);
+    if(save_errno == ENOENT)
+    {
+      /* The ACL file does not exist. This is not an error, but just means
+       * the ACL is empty. */
+      return NULL;
+    }
+    else
+    {
+      infd_filesystem_storage_system_error(save_errno, error);
+      return NULL;
+    }
+  }
+
+  doc = infd_filesystem_storage_read_xml_stream(
+    INFD_FILESYSTEM_STORAGE(storage),
+    stream,
+    full_name,
+    "inf-acl",
+    error
+  );
+
+  /* TODO: stream is already closed by xmlReadIO(?). Check, both in
+   * success and in error case. */
+
+  g_free(full_name);
+
+  if(doc == NULL)
+    return NULL;
+
+  root = xmlDocGetRootElement(doc);
+  list = NULL;
+
+  for(child = root->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+
+    if(strcmp((const char*)child->name, "sheet") == 0)
+    {
+      user_name = inf_xml_util_get_attribute_required(child, "user", error);
+      if(user_name == NULL)
+      {
+        infd_storage_acl_list_free(list);
+        xmlFreeDoc(doc);
+        return NULL;
+      }
+
+      acl = g_slice_new(InfdStorageAcl);
+      acl->user_id = g_strdup((const gchar*)user_name);
+      xmlFree(user_name);
+      
+      if(!inf_acl_sheet_perms_from_xml(child, &acl->mask, &acl->perms, error))
+      {
+        g_free(acl->user_id);
+        g_slice_free(InfdStorageAcl, acl);
+        infd_storage_acl_list_free(list);
+        xmlFreeDoc(doc);
+        return NULL;
+      }
+
+      if(acl->mask != 0)
+      {
+        list = g_slist_prepend(list, acl);
+      }
+      else
+      {
+        g_free(acl->user_id);
+        g_slice_free(InfdStorageAcl, acl);
+      }
+    }
+  }
+
+  xmlFreeDoc(doc);
+  return list;
+}
+
+static gboolean
+infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
+                                          const gchar* path,
+                                          const InfAclSheetSet* sheet_set,
+                                          GError** error)
+{
+  InfdFilesystemStoragePrivate* priv;
+  gchar* converted_name;
+  gchar* disk_name;
+  gchar* full_name;
+  xmlNodePtr root;
+  xmlNodePtr child;
+  guint i;
+  xmlDocPtr doc;
+  gboolean result;
+  int save_errno;
+
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
+  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
+    return FALSE;
+
+  /* TODO: A function which gives us the file name, to share in read_acl
+   * and write_acl. */
+  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
+  if(converted_name == NULL)
+    return FALSE;
+
+  if(strcmp(converted_name, "/") != 0)
+  {
+    disk_name = g_strconcat(converted_name, ".xml.acl", NULL);
+    g_free(converted_name);
+  }
+  else
+  {
+    disk_name = g_strdup("global-acl.xml");
+    g_free(converted_name);
+  }
+
+  root = NULL;
+  if(sheet_set != NULL)
+  {
+    root = xmlNewNode(NULL, (const xmlChar*)"inf-acl");
+    for(i = 0; i < sheet_set->n_sheets; ++i)
+    {
+      if(sheet_set->sheets[i].mask != 0)
+      {
+        child = xmlNewChild(root, NULL, (const xmlChar*)"sheet", NULL);
+
+        inf_xml_util_set_attribute(
+          child,
+          "user",
+          sheet_set->sheets[i].user->user_id
+        );
+
+        inf_acl_sheet_perms_to_xml(
+          sheet_set->sheets[i].mask,
+          sheet_set->sheets[i].perms,
+          child
+        );
+      }
+    }
+
+    if(root->children == NULL)
+    {
+      xmlFreeNode(root);
+      root = NULL;
+    }
+  }
+
+  if(root == NULL)
+  {
+    full_name = g_build_filename(priv->root_directory, disk_name, NULL);
+    if(g_unlink(full_name) == -1)
+    {
+      save_errno = errno;
+      if(save_errno != ENOENT)
+      {
+        g_free(full_name);
+        infd_filesystem_storage_system_error(save_errno, error);
+        return FALSE;
+      }
+    }
+
+    g_free(full_name);
+  }
+  else
+  {
+    doc = xmlNewDoc((const xmlChar*)"1.0");
+    xmlDocSetRootElement(doc, root);
+
+    result = infd_filesystem_storage_write_xml_file(
+      INFD_FILESYSTEM_STORAGE(storage),
+      disk_name,
+      doc,
+      error
+    );
+
+    xmlFreeDoc(doc);
+
+    if(result == FALSE)
+    {
+      g_free(full_name);
+      return FALSE;
+    }
+  }
+
+  g_free(disk_name);
+  return TRUE;
+}
+
 static void
 infd_filesystem_storage_class_init(gpointer g_class,
                                    gpointer class_data)
@@ -637,6 +1165,15 @@ infd_filesystem_storage_storage_init(gpointer g_iface,
     infd_filesystem_storage_storage_create_subdirectory;
   iface->remove_node =
     infd_filesystem_storage_storage_remove_node;
+
+  iface->read_user_list =
+    infd_filesystem_storage_storage_read_user_list;
+  iface->write_user_list =
+    infd_filesystem_storage_storage_write_user_list;
+  iface->read_acl =
+    infd_filesystem_storage_storage_read_acl;
+  iface->write_acl =
+    infd_filesystem_storage_storage_write_acl;
 }
 
 GType

@@ -43,6 +43,8 @@ typedef enum _InfdFilesystemStorageError {
   INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
   /* Failed to remove files from disk */
   INFD_FILESYSTEM_STORAGE_ERROR_REMOVE_FILES,
+  /* File has invaild format */
+  INFD_FILESYSTEM_STORAGE_ERROR_INVALID_FORMAT,
 
   INFD_FILESYSTEM_STORAGE_ERROR_FAILED
 } InfdFilesystemStorageError;
