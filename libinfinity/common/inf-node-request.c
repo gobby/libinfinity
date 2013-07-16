@@ -53,7 +53,7 @@ inf_node_request_base_init(gpointer g_class)
   {
     /**
      * InfNodeRequest::finished:
-     * @browser: The #InfNodeRequest which finished.
+     * @request: The #InfNodeRequest which finished.
      * @iter: A #InfBrowserIter corresponding to the node associated to the
      * request.
      * @error: Error information in case the request failed, or %NULL
