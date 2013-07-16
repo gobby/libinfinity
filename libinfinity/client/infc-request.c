@@ -1,5 +1,5 @@
 /* libinfinity - a GObject-based infinote implementation
- * Copyright (C) 2007-2011 Armin Burgmeier <armin@arbur.net>
+ * Copyright (C) 2007-2013 Armin Burgmeier <armin@arbur.net>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
