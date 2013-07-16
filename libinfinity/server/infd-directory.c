@@ -4429,13 +4429,16 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     iter.node = child;
     sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
 
-    infd_directory_acl_sheets_to_xml_for_connection(
-      directory,
-      child->acl_connections,
-      sheet_set,
-      connection,
-      reply_xml
-    );
+    if(sheet_set != NULL)
+    {
+      infd_directory_acl_sheets_to_xml_for_connection(
+        directory,
+        child->acl_connections,
+        sheet_set,
+        connection,
+        reply_xml
+      );
+    }
 
     inf_communication_group_send_message(
       INF_COMMUNICATION_GROUP(priv->group),
