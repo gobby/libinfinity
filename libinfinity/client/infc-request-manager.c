@@ -584,8 +584,10 @@ infc_request_manager_fail_request(InfcRequestManager* manager,
   g_return_if_fail(INFC_IS_REQUEST(request));
   g_return_if_fail(error != NULL);
 
-  inf_request_fail(INF_REQUEST(request), error);
+  g_object_ref(request);
   infc_request_manager_remove_request(manager, request);
+  inf_request_fail(INF_REQUEST(request), error);
+  g_object_unref(request);
 }
 
 /**
