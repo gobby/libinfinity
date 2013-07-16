@@ -2879,6 +2879,8 @@ infd_directory_node_explore(InfdDirectory* directory,
   acls = g_ptr_array_sized_new(16);
   for(item = list; item != NULL; item = g_slist_next(item))
   {
+    storage_node = (InfdStorageNode*)item->data;
+
     /* Construct the storage path for this node */
     node_len = strlen(storage_node->name);
     if(len + 1 + node_len < path_len)
