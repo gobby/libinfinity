@@ -219,6 +219,9 @@ infd_explore_request_initiated(InfdExploreRequest* request,
                                guint total)
 {
   InfdExploreRequestPrivate* priv;
+
+  g_return_if_fail(INFD_IS_EXPLORE_REQUEST(request));
+
   priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
 
   g_return_if_fail(priv->initiated == FALSE);
@@ -241,6 +244,9 @@ void
 infd_explore_request_progress(InfdExploreRequest* request)
 {
   InfdExploreRequestPrivate* priv;
+
+  g_return_if_fail(INFD_IS_EXPLORE_REQUEST(request));
+
   priv = INFD_EXPLORE_REQUEST_PRIVATE(request);
   
   g_return_if_fail(priv->current < priv->total);
