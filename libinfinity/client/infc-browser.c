@@ -2761,7 +2761,9 @@ infc_browser_handle_add_node(InfcBrowser* browser,
     }
   }
 
-  inf_acl_sheet_set_free(sheet_set);
+  if(sheet_set != NULL)
+    inf_acl_sheet_set_free(sheet_set);
+
   xmlFree(type);
   xmlFree(name);
 
@@ -2935,7 +2937,8 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
             result = TRUE;
           }
 
-          inf_acl_sheet_set_free(sheet_set);
+          if(sheet_set != NULL)
+            inf_acl_sheet_set_free(sheet_set);
         }
 
         xmlFree(name);
