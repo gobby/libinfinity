@@ -52,7 +52,6 @@ inf_gtk_certificate_manager_get_type(void) G_GNUC_CONST;
 InfGtkCertificateManager*
 inf_gtk_certificate_manager_new(GtkWindow* parent_window,
                                 InfXmppManager* xmpp_manager,
-                                const gchar* trust_file,
                                 const gchar* known_hosts_file);
 
 G_END_DECLS

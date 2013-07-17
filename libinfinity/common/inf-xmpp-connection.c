@@ -1269,6 +1269,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
       {
         priv->certificate_callback(
           xmpp,
+          priv->session,
           priv->peer_cert,
           priv->certificate_callback_user_data
         );

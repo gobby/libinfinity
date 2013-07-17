@@ -138,6 +138,7 @@ struct _InfXmppConnection {
 };
 
 typedef void(*InfXmppConnectionCrtCallback)(InfXmppConnection* xmpp,
+                                            gnutls_session_t session,
                                             InfCertificateChain* chain,
                                             gpointer user_data);
 

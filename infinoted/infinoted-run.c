@@ -36,6 +36,7 @@ static const guint8 INFINOTED_RUN_IPV6_ANY_ADDR[16] =
 
 static void
 infinoted_run_directory_certificate_cb(InfXmppConnection* connection,
+                                       gnutls_session_t session,
                                        InfCertificateChain* chain,
                                        gpointer user_data)
 {

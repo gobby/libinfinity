@@ -17,6 +17,7 @@
  * MA 02110-1301, USA.
  */
 
+/* TODO: Rename to InfGtkCertificateChecker */
 /* TODO: Put the non-GUI-relevant parts of this code into libinfinity */
 /* TODO: Support CRLs */
 
@@ -48,10 +49,7 @@ struct _InfGtkCertificateManagerPrivate {
   GtkWindow* parent_window;
   InfXmppManager* xmpp_manager;
 
-  gchar* trust_file;
   gchar* known_hosts_file;
-
-  GPtrArray* ca_certs;
   GPtrArray* known_hosts;
 
   GSList* queries;
@@ -318,6 +316,7 @@ inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
 
 static void
 inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
+                                             gnutls_session_t session,
                                              InfCertificateChain* chain,
                                              gpointer user_data)
 {
@@ -349,33 +348,6 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
   manager = INF_GTK_CERTIFICATE_MANAGER(user_data);
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
-
-  /* TODO: We don't want to load these at the beginning to improve startup
-   * time... maybe we should do this in an idle handler, or even
-   * asynchronously via Gio. */
-  if(priv->ca_certs == NULL && priv->trust_file != NULL)
-  {
-    error = NULL;
-
-    priv->ca_certs = inf_cert_util_read_certificate(
-      priv->trust_file,
-      NULL,
-      &error
-    );
-
-    if(priv->ca_certs == NULL)
-    {
-      g_warning(_("Could not load trust file: %s"), error->message);
-      g_error_free(error);
-
-      g_free(priv->trust_file);
-      priv->trust_file = NULL;
-      g_object_notify(G_OBJECT(manager), "trust-file");
-    }
-  }
-
-  if(priv->ca_certs == NULL)
-    priv->ca_certs = g_ptr_array_new();
 
   if(priv->known_hosts == NULL && priv->known_hosts_file != NULL)
   {
@@ -425,16 +397,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   if(t == (time_t)(-1) || t < time(NULL))
     flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED;
 
-  ret = gnutls_x509_crt_list_verify(
-    inf_certificate_chain_get_raw(chain),
-    inf_certificate_chain_get_n_certificates(chain),
-    (gnutls_x509_crt_t*)priv->ca_certs->pdata,
-    priv->ca_certs->len,
-    NULL,
-    0,
-    GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
-    &verify
-  );
+  ret = gnutls_certificate_verify_peers2(session, &verify);
 
   if(ret < 0)
   {
@@ -658,10 +621,7 @@ inf_gtk_certificate_manager_init(GTypeInstance* instance,
   priv->parent_window = NULL;
   priv->xmpp_manager = NULL;
 
-  priv->trust_file = NULL;
   priv->known_hosts_file = NULL;
-
-  priv->ca_certs = NULL;
   priv->known_hosts = NULL;
 }
 
@@ -710,9 +670,6 @@ inf_gtk_certificate_manager_finalize(GObject* object)
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
 
   inf_gtk_certificate_manager_set_known_hosts(manager, NULL);
-
-  if(priv->ca_certs != NULL)
-    inf_gtk_certificate_manager_free_certificate_array(priv->ca_certs);
   g_free(priv->known_hosts_file);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -748,15 +705,6 @@ inf_gtk_certificate_manager_set_property(GObject* object,
     );
 
     break;
-  case PROP_TRUST_FILE:
-    g_free(priv->trust_file);
-    priv->trust_file = g_value_dup_string(value);
-    if(priv->ca_certs != NULL)
-    {
-      inf_gtk_certificate_manager_free_certificate_array(priv->ca_certs);
-      priv->ca_certs = NULL;
-    }
-    break;
   case PROP_KNOWN_HOSTS_FILE:
     inf_gtk_certificate_manager_set_known_hosts(
       manager,
@@ -789,9 +737,6 @@ inf_gtk_certificate_manager_get_property(GObject* object,
     break;
   case PROP_XMPP_MANAGER:
     g_value_set_object(value, G_OBJECT(priv->xmpp_manager));
-    break;
-  case PROP_TRUST_FILE:
-    g_value_set_string(value, priv->trust_file);
     break;
   case PROP_KNOWN_HOSTS_FILE:
     g_value_set_string(value, priv->known_hosts_file);
@@ -850,18 +795,6 @@ inf_gtk_certificate_manager_class_init(gpointer g_class,
 
   g_object_class_install_property(
     object_class,
-    PROP_TRUST_FILE,
-    g_param_spec_string(
-      "trust-file",
-      "Trust file",
-      "File containing trusted root CAs",
-      NULL,
-      G_PARAM_READWRITE
-    )
-  );
-
-  g_object_class_install_property(
-    object_class,
     PROP_KNOWN_HOSTS_FILE,
     g_param_spec_string(
       "known-hosts-file",
@@ -914,8 +847,6 @@ inf_gtk_certificate_manager_get_type(void)
  * dialogs transient to.
  * @xmpp_manager: The #InfXmppManager whose #InfXmppConnection<!-- -->s to
  * manage the certificates for.
- * @trust_file: Path pointing to a file that contains trusted root CAs, or
- * %NULL.
  * @known_hosts_file: Path pointing to a file that contains certificates of
  * known hosts, or %NULL.
  *
@@ -923,18 +854,16 @@ inf_gtk_certificate_manager_get_type(void)
  * #InfXmppConnection in @xmpp_manager, the certificate manager will verify
  * the server's certificate.
  *
- * If the root CA of that certificate is contained in @trust_file, or the
- * server certificate itself is known already (meaning it is contained in
- * @known_hosts_file), then the certificate is accepted automatically.
- * Otherwise, the user is asked for approval. If the user approves the
- * certificate, then it is inserted into the @known_hosts_file.
+ * If the certificate is contained in @known_hosts_file, then
+ * the certificate is accepted automatically. Otherwise, the user is asked for
+ * approval. If the user approves the certificate, then it is inserted into
+ * the @known_hosts_file.
  *
  * Returns: A new #InfGtkCertificateManager.
  **/
 InfGtkCertificateManager*
 inf_gtk_certificate_manager_new(GtkWindow* parent_window,
                                 InfXmppManager* xmpp_manager,
-                                const gchar* trust_file,
                                 const gchar* known_hosts_file)
 {
   GObject* object;
@@ -943,7 +872,6 @@ inf_gtk_certificate_manager_new(GtkWindow* parent_window,
     INF_GTK_TYPE_CERTIFICATE_MANAGER,
     "parent-window", parent_window,
     "xmpp-manager", xmpp_manager,
-    "trust-file", trust_file,
     "known-hosts-file", known_hosts_file,
     NULL
   );
