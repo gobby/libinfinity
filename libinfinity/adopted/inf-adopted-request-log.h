@@ -121,7 +121,9 @@ InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
                                       guint n);
 
-G_END_DECLS
+InfAdoptedRequest*
+inf_adopted_request_log_lower_related(InfAdoptedRequestLog* log,
+                                      guint n);
 
 #endif /* __INF_ADOPTED_REQUEST_LOG_H__ */
 

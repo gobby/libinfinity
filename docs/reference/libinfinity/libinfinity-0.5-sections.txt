@@ -749,6 +749,7 @@ inf_adopted_request_log_original_request
 inf_adopted_request_log_next_undo
 inf_adopted_request_log_next_redo
 inf_adopted_request_log_upper_related
+inf_adopted_request_log_lower_related
 <SUBSECTION Standard>
 INF_ADOPTED_REQUEST_LOG
 INF_ADOPTED_IS_REQUEST_LOG
