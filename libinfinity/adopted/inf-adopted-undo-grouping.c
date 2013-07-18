@@ -166,6 +166,7 @@ inf_adopted_undo_grouping_add_request(InfAdoptedUndoGrouping* grouping,
 
     /* We don't ref request, it is kept alive by the request log anyway */
     item->request = request;
+    g_object_ref(request);
 
     if(priv->item_pos > 0)
     {
@@ -239,6 +240,7 @@ inf_adopted_undo_grouping_cleanup(InfAdoptedUndoGrouping* grouping)
   InfAdoptedUndoGroupingItem* item;
   guint max_total_log_size;
   guint vdiff;
+  guint i;
 
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
   g_assert(priv->user != NULL);
@@ -267,12 +269,16 @@ inf_adopted_undo_grouping_cleanup(InfAdoptedUndoGrouping* grouping)
         {
           /* Remove all items since we cannot redo the following anymore at
            * this point since the first one to redo is too old. */
+          for(i = 0; i < priv->n_items; ++i)
+            g_object_unref(priv->items[(priv->first_item + i) % priv->n_alloc].request);
           priv->first_item = 0;
           priv->n_items = 0;
           break;
         }
         else
         {
+          g_object_unref(item->request);
+
           /* Remove the request being too old */
           priv->first_item = (priv->first_item + 1) % priv->n_alloc;
           --priv->n_items;
