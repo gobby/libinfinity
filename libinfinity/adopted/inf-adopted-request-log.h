@@ -121,6 +121,10 @@ InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
                                       guint n);
 
+InfAdoptedRequest*
+inf_adopted_request_log_lower_related(InfAdoptedRequestLog* log,
+                                      guint n);
+
 void
 inf_adopted_request_log_add_cached_request(InfAdoptedRequestLog* log,
                                            InfAdoptedRequest* request);

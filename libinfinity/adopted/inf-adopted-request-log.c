@@ -56,6 +56,9 @@ struct _InfAdoptedRequestLogEntry {
 
   InfAdoptedRequestLogEntry* next_associated;
   InfAdoptedRequestLogEntry* prev_associated;
+
+  InfAdoptedRequestLogEntry* lower_related;
+  InfAdoptedRequestLogEntry* upper_related;
 };
 
 typedef struct _InfAdoptedRequestLogPrivate InfAdoptedRequestLogPrivate;
@@ -98,6 +101,58 @@ enum {
 static GObjectClass* parent_class;
 static const guint INF_ADOPTED_REQUEST_LOG_INC = 0x80;
 static guint request_log_signals[LAST_SIGNAL];
+
+#ifdef INF_ADOPTED_REQUEST_LOG_CHECK_RELATED
+static void
+inf_adopted_request_log_verify_related(InfAdoptedRequestLog* log)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedRequestLogEntry* begin;
+  InfAdoptedRequestLogEntry* end;
+  InfAdoptedRequestLogEntry* current;
+
+  InfAdoptedRequestLogEntry* lower_related;
+  InfAdoptedRequestLogEntry* upper_related;
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+
+  begin = priv->entries + priv->offset;
+  end = begin + (priv->end - priv->begin);
+
+  lower_related = NULL;
+  upper_related = NULL;
+  for(current = begin; current != end; ++current)
+  {
+    g_assert( (lower_related == NULL && upper_related == NULL) ||
+              (lower_related != NULL && upper_related != NULL));
+
+    if(lower_related == NULL)
+    {
+      g_assert(current->lower_related == current);
+      g_assert(current->upper_related >= current);
+
+      if(current->upper_related > current)
+      {
+        lower_related = current->lower_related;
+        upper_related = current->upper_related;
+      }
+    }
+    else
+    {
+      g_assert(current->lower_related == lower_related);
+      g_assert(current->upper_related == upper_related);
+
+      if(current == upper_related)
+      {
+        lower_related = NULL;
+        upper_related = NULL;
+      }
+    }
+  }
+}
+#else
+# define inf_adopted_request_log_verify_related(log)
+#endif
 
 /*
  * Transformation cache
@@ -223,45 +278,6 @@ inf_adopted_request_log_find_associated(InfAdoptedRequestLog* log,
   }
   
   return NULL;
-}
-
-/* Only used in an assertion. Verifies that the removed entries do not
- * reference non-removed entries with their next_associated / prev_associated
- * fields. This would, in turn, mean, that a non-removed entry would point
- * to an entry that is about to be removed now. In effect, only whole
- * do/undo/redo/undo/redo/etc. chains can be removed but not be splitted
- * in between. */
-static gboolean
-inf_adopted_request_log_is_related(InfAdoptedRequestLog* log,
-                                   guint up_to)
-{
-  InfAdoptedRequestLogPrivate* priv;
-  InfAdoptedRequestLogEntry* entry;
-  guint index;
-  guint i;
-
-  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
-  
-  for(i = priv->offset; i < priv->offset + (up_to - priv->begin); ++ i)
-  {
-    entry = &priv->entries[i];
-
-    /* Note that the only problematic field is next_associated because
-     * the other point behind entry. */
-    if(entry->next_associated != NULL)
-    {
-      /* Index of the associated entry within the priv->entries array,
-       * with priv->offset as origin */
-      index = entry->next_associated - (priv->entries + priv->offset);
-
-      /* There is a relation if this points to something that is not
-       * going to be removed */
-      if(priv->begin + index >= up_to)
-        return TRUE;
-    }
-  }
-
-  return FALSE;
 }
 
 /*
@@ -416,6 +432,7 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
   InfAdoptedRequestLogPrivate* priv;
   InfAdoptedRequestLogEntry* entry;
   InfAdoptedRequestLogEntry* old_entries;
+  InfAdoptedRequestLogEntry* current;
   guint i;
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
@@ -451,6 +468,8 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
           priv->entries[i].next_associated -= priv->offset;
         if(priv->entries[i].prev_associated != NULL)
           priv->entries[i].prev_associated -= priv->offset;
+        priv->entries[i].lower_related -= priv->offset;
+        priv->entries[i].upper_related -= priv->offset;
       }
 
       if(priv->next_undo != NULL) priv->next_undo -= priv->offset;
@@ -488,6 +507,11 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
             priv->entries[i].prev_associated = priv->entries +
               (priv->entries[i].prev_associated - old_entries);
           }
+
+          priv->entries[i].lower_related = priv->entries +
+            (priv->entries[i].lower_related - old_entries);
+          priv->entries[i].upper_related = priv->entries +
+            (priv->entries[i].upper_related - old_entries);
         }
 
         if(priv->next_undo != NULL)
@@ -524,6 +548,8 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
     entry->original = entry;
     entry->next_associated = NULL;
     entry->prev_associated = NULL;
+    entry->lower_related = entry;
+    entry->upper_related = entry;
     priv->next_undo = entry;
     g_object_notify(G_OBJECT(log), "next-undo");
 
@@ -542,6 +568,14 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
 
     entry->prev_associated->next_associated = entry;
     entry->original = entry->prev_associated->original;
+
+    entry->lower_related = entry->original->lower_related;
+    entry->upper_related = entry;
+    for(current = entry->lower_related; current != entry; ++current)
+    {
+      current->lower_related = entry->lower_related;
+      current->upper_related = entry;
+    }
 
     priv->next_undo =
       inf_adopted_request_log_find_associated(log, INF_ADOPTED_REQUEST_UNDO);
@@ -566,6 +600,14 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
     entry->prev_associated->next_associated = entry;
     entry->original = entry->prev_associated->original;
 
+    entry->lower_related = entry->original->lower_related;
+    entry->upper_related = entry;
+    for(current = entry->lower_related; current != entry; ++current)
+    {
+      current->lower_related = entry->lower_related;
+      current->upper_related = entry;
+    }
+
     priv->next_undo = entry;
     g_object_notify(G_OBJECT(log), "next-undo");
 
@@ -583,8 +625,8 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
     break;
   }
 
+  inf_adopted_request_log_verify_related(log);
   g_object_thaw_notify(G_OBJECT(log));
-
 }
 
 static void
@@ -944,11 +986,16 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
   GSList* item;
 
   g_return_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log));
-  g_return_if_fail(inf_adopted_request_log_is_related(log, up_to) == FALSE);
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
   g_return_if_fail(up_to >= priv->begin && up_to <= priv->end);
+
+  g_return_if_fail(
+    up_to == priv->begin ||
+    priv->entries[priv->offset + up_to - priv->begin - 1].upper_related ==
+    &priv->entries[priv->offset + up_to - priv->begin - 1]
+  );
 
   for(i = priv->offset; i < priv->offset + (up_to - priv->begin); ++i)
     g_object_unref(G_OBJECT(priv->entries[i].request));
@@ -997,6 +1044,7 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
     g_slist_free(data.requests_to_remove);
   }
 
+  inf_adopted_request_log_verify_related(log);
   g_object_thaw_notify(G_OBJECT(log));
 }
 
@@ -1222,51 +1270,69 @@ inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
 /**
  * inf_adopted_request_log_upper_related:
  * @log: A #InfAdoptedRequestLog.
- * @n: Index of the first request in a set of related requests.
+ * @n: Index of a request in @log.
  *
  * Returns the newest request in @log that is related to @n<!-- -->th request
  * in log. Requests are considered related when they are enclosed by a
  * do/undo, an undo/redo or a redo/undo pair.
  *
- * In other words, the "upper related" request of a given request A is the
- * first request newer than A so that all requests before the "upper related"
- * request can be removed without any remaining request in the log still
- * refering to a removed one.
- *
  * Note that the sets of related requests within a request log are
  * disjoint.
  *
- * <note><para>
- * This function only works if request is the oldest request of a
- * set of related requests. This could be changed in later versions.
- * </para></note>
- *
- * Return Value: The newest request in @log being related to @request.
+ * Return Value: The newest request in @log being related to the @n<!-- -->th
+ * request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
                                       guint n)
 {
   InfAdoptedRequestLogPrivate* priv;
-  
-  InfAdoptedRequestLogEntry* newest_related;
   InfAdoptedRequestLogEntry* current;
   
   g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
 
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
-  newest_related = priv->entries + priv->offset + n - priv->begin;
-  for(current = newest_related; current <= newest_related; ++ current)
-  {
-    if(current->next_associated != NULL &&
-       current->next_associated > newest_related)
-    {
-      newest_related = current->next_associated;
-    }
-  }
+  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
 
-  return newest_related->request;
+  inf_adopted_request_log_verify_related(log);
+
+  current = priv->entries + priv->offset + n - priv->begin;
+  return current->upper_related->request;
+}
+
+/**
+ * inf_adopted_request_log_lower_related:
+ * @log: A #InfAdoptedRequestLog.
+ * @n: Index of a request in @log.
+ *
+ * Returns the oldest request in @log that is related to @n<!-- -->th request
+ * in log. Requests are considered related when they are enclosed by a
+ * do/undo, an undo/redo or a redo/undo pair.
+ *
+ * Note that the sets of related requests within a request log are
+ * disjoint.
+ *
+ * Return Value: The oldest request in @log being related to the @n<!-- -->th
+ * request.
+ **/
+InfAdoptedRequest*
+inf_adopted_request_log_lower_related(InfAdoptedRequestLog* log,
+                                      guint n)
+{
+  InfAdoptedRequestLogPrivate* priv;
+  InfAdoptedRequestLogEntry* current;
+  
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST_LOG(log), NULL);
+
+  priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
+
+  g_return_val_if_fail(n >= priv->begin && n < priv->end, NULL);
+
+  inf_adopted_request_log_verify_related(log);
+
+  current = priv->entries + priv->offset + n - priv->begin;
+  return current->lower_related->request;
 }
 
 /**
