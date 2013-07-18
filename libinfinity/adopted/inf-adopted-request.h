@@ -111,6 +111,9 @@ inf_adopted_request_get_user_id(InfAdoptedRequest* request);
 InfAdoptedOperation*
 inf_adopted_request_get_operation(InfAdoptedRequest* request);
 
+guint
+inf_adopted_request_get_index(InfAdoptedRequest* request);
+
 gboolean
 inf_adopted_request_need_concurrency_id(InfAdoptedRequest* request,
                                         InfAdoptedRequest* against);
