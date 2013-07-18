@@ -589,6 +589,26 @@ inf_adopted_request_get_operation(InfAdoptedRequest* request)
 }
 
 /**
+ * inf_adopted_request_get_index:
+ * @request: A #InfAdoptedRequest.
+ *
+ * Returns the vector time component of the request's own users. This
+ * corresponds to the request index by that user.
+ *
+ * Returns: The vector time component of the request's own user.
+ */
+guint
+inf_adopted_request_get_index(InfAdoptedRequest* request)
+{
+  InfAdoptedRequestPrivate* priv;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+
+  priv = INF_ADOPTED_REQUEST_PRIVATE(request);
+  return inf_adopted_state_vector_get(priv->vector, priv->user_id);
+}
+
+/**
  * inf_adopted_request_get_receive_time:
  * @request: A #InfAdoptedRequest.
  *
