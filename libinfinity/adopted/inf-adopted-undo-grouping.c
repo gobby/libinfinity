@@ -819,7 +819,8 @@ inf_adopted_undo_grouping_end_group(InfAdoptedUndoGrouping* grouping,
  * @grouping: A #InfAdoptedUndoGrouping.
  *
  * Returns the number of requests to undo so that a whole group is being
- * undone.
+ * undone. This takes into account that possibly not the whole group cannot
+ * be undone due to the #InfAdoptedAlgorithm:max-total-log-size constraint.
  *
  * Returns: The number of requests in the current undo group.
  */
@@ -827,17 +828,43 @@ guint
 inf_adopted_undo_grouping_get_undo_size(InfAdoptedUndoGrouping* grouping)
 {
   InfAdoptedUndoGroupingPrivate* priv;
+  guint max_total_log_size;
+  InfAdoptedRequestLog* log;
+  InfAdoptedStateVector* current;
   guint pos;
+  guint index;
+  InfAdoptedRequest* lower_related;
+  InfAdoptedStateVector* vector;
+  guint vdiff;
 
   g_return_val_if_fail(INF_ADOPTED_IS_UNDO_GROUPING(grouping), 0);
 
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
   if(priv->item_pos == 0) return 0;
 
+  g_object_get(
+    G_OBJECT(priv->algorithm),
+    "max-total-log-size",
+    &max_total_log_size,
+    NULL
+  );
+
+  log = inf_adopted_user_get_request_log(priv->user);
+  current = inf_adopted_user_get_vector(priv->user);
+
   pos = priv->item_pos;
   do
   {
     g_assert(pos > 0);
+
+    index = inf_adopted_request_get_index(priv->items[pos-1].request);
+    lower_related = inf_adopted_request_log_lower_related(log, index);
+    vector = inf_adopted_request_get_vector(lower_related);
+    vdiff = inf_adopted_state_vector_vdiff(vector, current);
+
+    if(vdiff + priv->item_pos - pos >= max_total_log_size)
+      return priv->item_pos - pos;
+
     --pos;
   } while(priv->items[(priv->first_item + pos) % priv->n_alloc].in_group);
 
@@ -849,7 +876,8 @@ inf_adopted_undo_grouping_get_undo_size(InfAdoptedUndoGrouping* grouping)
  * @grouping: A #InfAdoptedUndoGrouping.
  *
  * Returns the number of requests to redo so that a whole group is being
- * redone.
+ * redone. This takes into account that possibly not the whole group cannot
+ * be undone due to the #InfAdoptedAlgorithm:max-total-log-size constraint.
  *
  * Returns: The number of requests in the current redo group.
  */
@@ -857,17 +885,43 @@ guint
 inf_adopted_undo_grouping_get_redo_size(InfAdoptedUndoGrouping* grouping)
 {
   InfAdoptedUndoGroupingPrivate* priv;
+  guint max_total_log_size;
+  InfAdoptedRequestLog* log;
+  InfAdoptedStateVector* current;
   guint pos;
+  guint index;
+  InfAdoptedRequest* lower_related;
+  InfAdoptedStateVector* vector;
+  guint vdiff;
 
   g_return_val_if_fail(INF_ADOPTED_IS_UNDO_GROUPING(grouping), 0);
 
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
   if(priv->item_pos == priv->n_items) return 0;
 
+  g_object_get(
+    G_OBJECT(priv->algorithm),
+    "max-total-log-size",
+    &max_total_log_size,
+    NULL
+  );
+
+  log = inf_adopted_user_get_request_log(priv->user);
+  current = inf_adopted_user_get_vector(priv->user);
+
   pos = priv->item_pos;
   do
   {
     g_assert(pos < priv->n_items);
+
+    index = inf_adopted_request_get_index(priv->items[pos].request);
+    lower_related = inf_adopted_request_log_lower_related(log, index);
+    vector = inf_adopted_request_get_vector(lower_related);
+    vdiff = inf_adopted_state_vector_vdiff(vector, current);
+
+    if(vdiff + pos - priv->item_pos >= max_total_log_size)
+      return pos - priv->item_pos;
+
     ++pos;
   } while(pos < priv->n_items &&
           priv->items[(priv->first_item + pos) % priv->n_alloc].in_group);
