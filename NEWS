@@ -1,3 +1,12 @@
+libinfinity 0.5.4:
+
+	* Fix crashes that can happen when the connection goes down at
+	  unexpected moments.
+	* Fix a crash when when drawing remote cursors or selections and the
+	  initial document has not yet been fully transmitted.
+	* Fix a possible crash when undoing or redoing many operations in a
+	  row (Sven Brauch).
+
 libinfinity 0.5.3:
 
 	* Fix a crash when a connection goes down at the moment libinfinity
