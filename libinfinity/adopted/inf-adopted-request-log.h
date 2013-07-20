@@ -125,6 +125,8 @@ InfAdoptedRequest*
 inf_adopted_request_log_lower_related(InfAdoptedRequestLog* log,
                                       guint n);
 
+G_END_DECLS
+
 #endif /* __INF_ADOPTED_REQUEST_LOG_H__ */
 
 /* vim:set et sw=2 ts=2: */
