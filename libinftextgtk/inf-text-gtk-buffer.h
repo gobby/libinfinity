@@ -39,11 +39,24 @@ G_BEGIN_DECLS
 typedef struct _InfTextGtkBuffer InfTextGtkBuffer;
 typedef struct _InfTextGtkBufferClass InfTextGtkBufferClass;
 
+/**
+ * InfTextGtkBufferClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfTextGtkBufferClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfTextGtkBuffer:
+ *
+ * #InfTextGtkBuffer is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfTextGtkBuffer {
+  /*< private >*/
   GObject parent;
 };
 

@@ -17,6 +17,39 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-text-gtk-buffer
+ * @title: InfTextGtkBuffer
+ * @short_description: Synchronizing a text session with a #GtkTextBuffer
+ * @include: libinftextgtk/inf-text-gtk-buffer.h
+ * @see_also: #InfTextBuffer
+ * @stability: Unstable
+ *
+ * #InfTextGtkBuffer is an implementation of the #InfTextBuffer interface. It
+ * can therefore be used as a backend for #InfTextSession<!-- -->s to store
+ * their text. The buffer is implemented by using a #GtkTextBuffer as
+ * storage. This way the text document can be displayed using a #GtkTextView
+ * such that only one copy of the text is held in memory, which is used both
+ * by the user interface toolkit and the text synchronization functionality.
+ *
+ * If external changes are made to the #GtkTextBuffer, for example by a user
+ * typing into a #GtkTextView, then the text is synchronized to other
+ * participants of the session. For this purpose,
+ * inf_text_gtk_buffer_set_active_user() should be called with a user that
+ * was previously joined into the session using inf_session_proxy_join_user().
+ * If there is no local user in the session, no modifications to the buffer
+ * must be made because they cannot be synchronized to other participants.
+ *
+ * This class also takes care of setting background colors for the text to
+ * indicate which user wrote what text, by adding corresponding
+ * #GtkTextTag<!-- -->s to the document. The function
+ * inf_text_gtk_buffer_set_show_user_colors() to turn on or off the colored
+ * background. Even if background coloring is turned off, the text is still
+ * tagged according to the authorship, so that coloring can be turned on at a
+ * later point or so that the authorship can still be queried for other means,
+ * such as in a "blame" kind of functionality.
+ */
+
 #include <libinftextgtk/inf-text-gtk-buffer.h>
 #include <libinftext/inf-text-buffer.h>
 
