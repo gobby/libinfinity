@@ -2306,7 +2306,7 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
   g_assert(result == TRUE);
 
-  if(server_major < own_major || server_minor < own_minor)
+  if(server_major < own_major)
   {
     g_set_error(
       error,
