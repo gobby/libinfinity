@@ -48,7 +48,7 @@
 
 typedef struct _InfXmppManagerKey InfXmppManagerKey;
 struct _InfXmppManagerKey {
-  InfIpAddress* address; /* owned by connection */
+  InfIpAddress* address;
   guint port;
 };
 
@@ -497,7 +497,7 @@ inf_xmpp_manager_new(void)
  **/
 InfXmppConnection*
 inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
-                                              InfIpAddress* address,
+                                              const InfIpAddress* address,
                                               guint port)
 {
   InfXmppManagerPrivate* priv;
@@ -507,7 +507,7 @@ inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
   g_return_val_if_fail(address != NULL, NULL);
 
   priv = INF_XMPP_MANAGER_PRIVATE(manager);
-  key.address = address;
+  key.address = (InfIpAddress*)address;
   key.port = port;
   return INF_XMPP_CONNECTION(g_tree_lookup(priv->connections, &key));
 }

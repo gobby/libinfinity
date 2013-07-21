@@ -77,7 +77,7 @@ inf_xmpp_manager_new(void);
 
 InfXmppConnection*
 inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
-                                              InfIpAddress* address,
+                                              const InfIpAddress* address,
                                               guint port);
 
 gboolean
