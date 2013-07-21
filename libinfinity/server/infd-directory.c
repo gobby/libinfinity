@@ -2042,13 +2042,16 @@ infd_directory_node_register(InfdDirectory* directory,
 
       copy_xml = xmlCopyNode(xml, 1);
 
-      infd_directory_acl_sheets_to_xml_for_connection(
-        directory,
-        node->acl_connections,
-        sheet_set,
-        INF_XML_CONNECTION(item->data),
-        copy_xml
-      );
+      if(sheet_set != NULL)
+      {
+        infd_directory_acl_sheets_to_xml_for_connection(
+          directory,
+          node->acl_connections,
+          sheet_set,
+          INF_XML_CONNECTION(item->data),
+          copy_xml
+        );
+      }
 
       inf_communication_group_send_message(
         INF_COMMUNICATION_GROUP(priv->group),
@@ -3129,13 +3132,16 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
         inf_xml_util_set_attribute(xml, "seq", seq);
 
-        infd_directory_acl_sheets_to_xml_for_connection(
-          directory,
-          NULL,
-          sheet_set,
-          connection,
-          xml
-        );
+        if(sheet_set != NULL)
+        {
+          infd_directory_acl_sheets_to_xml_for_connection(
+            directory,
+            NULL,
+            sheet_set,
+            connection,
+            xml
+          );
+        }
 
         child = xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
         inf_xml_util_set_attribute(
@@ -3300,13 +3306,16 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
         name
       );
 
-      infd_directory_acl_sheets_to_xml_for_connection(
-        directory,
-        NULL,
-        sheet_set,
-        sync_conn,
-        xml
-      );
+      if(sheet_set != NULL)
+      {
+        infd_directory_acl_sheets_to_xml_for_connection(
+          directory,
+          NULL,
+          sheet_set,
+          sync_conn,
+          xml
+        );
+      }
 
       inf_xml_util_set_attribute(
         xml,
@@ -5503,13 +5512,16 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
   inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
-  infd_directory_acl_sheets_to_xml_for_connection(
-    directory,
-    node->acl_connections,
-    sheet_set,
-    connection,
-    reply_xml
-  );
+  if(sheet_set != NULL)
+  {
+    infd_directory_acl_sheets_to_xml_for_connection(
+      directory,
+      node->acl_connections,
+      sheet_set,
+      connection,
+      reply_xml
+    );
+  }
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
