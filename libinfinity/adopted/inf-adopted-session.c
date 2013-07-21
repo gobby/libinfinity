@@ -1225,6 +1225,8 @@ inf_adopted_session_synchronization_complete(InfSession* session,
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   g_object_get(G_OBJECT(session), "status", &status, NULL);
 
+  g_object_freeze_notify(G_OBJECT(session));
+
   INF_SESSION_CLASS(parent_class)->synchronization_complete(
     session,
     connection
@@ -1242,6 +1244,8 @@ inf_adopted_session_synchronization_complete(InfSession* session,
     g_assert(priv->algorithm == NULL);
     inf_adopted_session_create_algorithm(INF_ADOPTED_SESSION(session));
   }
+
+  g_object_thaw_notify(G_OBJECT(session));
 }
 
 /*
