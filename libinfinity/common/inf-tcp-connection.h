@@ -73,12 +73,12 @@ inf_tcp_connection_get_type(void) G_GNUC_CONST;
 
 InfTcpConnection*
 inf_tcp_connection_new(InfIo* io,
-                       InfIpAddress* remote_addr,
+                       const InfIpAddress* remote_addr,
                        guint remote_port);
 
 InfTcpConnection*
 inf_tcp_connection_new_and_open(InfIo* io,
-                                InfIpAddress* remote_addr,
+                                const InfIpAddress* remote_addr,
                                 guint remote_port,
                                 GError** error);
 
