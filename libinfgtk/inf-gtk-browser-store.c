@@ -1409,7 +1409,14 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
   item = (InfGtkBrowserStoreItem*)iter->user_data;
   browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
   browser_iter.node = iter->user_data3;
-  g_assert(item->missing == NULL || browser_iter.node != item->missing);
+
+  /* If this iterator is the missing one, then it must be the root node,
+   * otherwise this function must not have been called; it would have
+   * been called on a non-existing entry. */
+  g_assert(
+    item->missing == NULL || browser_iter.node_id == 0 ||
+    browser_iter.node != item->missing
+  );
 
   switch(column)
   {
@@ -1600,7 +1607,16 @@ inf_gtk_browser_store_tree_model_iter_children(GtkTreeModel* model,
     else
       browser_iter.node = parent->user_data3;
 
-    g_assert(item->missing == NULL || browser_iter.node != item->missing);
+    /* If this iterator is the missing one, then it must be the root node,
+     * otherwise this function must not have been called; it would have
+     * been called on a non-existing entry. */
+    g_assert(
+      item->missing == NULL || browser_iter.node_id == 0 ||
+      browser_iter.node != item->missing
+    );
+
+    if(item->missing != NULL && browser_iter.node == item->missing)
+      return FALSE;
 
     if(!inf_browser_is_subdirectory(item->browser, &browser_iter))
       return FALSE;
@@ -1639,10 +1655,20 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
 
   browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
   browser_iter.node = iter->user_data3;
-  g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
   if(browser_iter.node == NULL)
     inf_browser_get_root(item->browser, &browser_iter);
+
+  /* If this iterator is the missing one, then it must be the root node,
+   * otherwise this function must not have been called; it would have
+   * been called on a non-existing entry. */
+  g_assert(
+    item->missing == NULL || browser_iter.node_id == 0 ||
+    browser_iter.node != item->missing
+  );
+
+  if(item->missing != NULL && browser_iter.node == item->missing)
+    return FALSE;
 
   if(inf_browser_is_subdirectory(item->browser, &browser_iter) == FALSE)
     return FALSE;
@@ -1687,12 +1713,19 @@ inf_gtk_browser_store_tree_model_iter_n_children(GtkTreeModel* model,
     item = (InfGtkBrowserStoreItem*)iter->user_data;
     browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
     browser_iter.node = iter->user_data3;
-    g_assert(item->missing == NULL || browser_iter.node != item->missing);
 
     if(browser_iter.node == NULL)
       inf_browser_get_root(item->browser, &browser_iter);
 
-    if(inf_browser_get_explored(item->browser, &browser_iter) == FALSE)
+    /* If this iterator is the missing one, then it must be the root node,
+     * otherwise this function must not have been called; it would have
+     * been called on a non-existing entry. */
+    g_assert(
+      item->missing == NULL || browser_iter.node_id == 0 ||
+      browser_iter.node != item->missing
+    );
+
+    if(item->missing != NULL && browser_iter.node == item->missing)
       return 0;
 
     n = 0;
@@ -1750,7 +1783,17 @@ inf_gtk_browser_store_tree_model_iter_nth_child(GtkTreeModel* model,
       inf_browser_get_root(item->browser, &browser_iter);
     else
       browser_iter.node = parent->user_data3;
-    g_assert(item->missing == NULL || browser_iter.node != item->missing);
+
+    /* If this iterator is the missing one, then it must be the root node,
+     * otherwise this function must not have been called; it would have
+     * been called on a non-existing entry. */
+    g_assert(
+      item->missing == NULL || browser_iter.node_id == 0 ||
+      browser_iter.node != item->missing
+    );
+
+    if(item->missing != NULL && browser_iter.node == item->missing)
+      return FALSE;
 
     if(inf_browser_get_explored(item->browser, &browser_iter) == FALSE)
       return FALSE;
