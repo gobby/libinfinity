@@ -343,6 +343,45 @@ infinoted_log_session_execute_request_after_cb(InfAdoptedAlgorithm* algo,
 }
 
 static void
+infinoted_log_session_notify_status_cb(GObject* object,
+                                       GParamSpec* pspec,
+                                       gpointer user_data)
+{
+  InfinotedLogSession* log_session;
+  InfAdoptedAlgorithm* algorithm;
+
+  log_session = (InfinotedLogSession*)user_data;
+
+  g_assert(INF_ADOPTED_IS_SESSION(object));
+
+  if(inf_session_get_status(INF_SESSION(object)) == INF_SESSION_RUNNING)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      object,
+      G_CALLBACK(infinoted_log_session_notify_status_cb),
+      log_session
+    );
+
+    algorithm =
+      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(object));
+
+    g_signal_connect(
+      G_OBJECT(algorithm),
+      "execute-request",
+      G_CALLBACK(infinoted_log_session_execute_request_before_cb),
+      log_session
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(algorithm),
+      "execute-request",
+      G_CALLBACK(infinoted_log_session_execute_request_after_cb),
+      log_session
+    );
+  }
+}
+
+static void
 infinoted_log_add_session(InfinotedLog* log,
                           const InfBrowserIter* iter,
                           InfSession* session)
@@ -366,22 +405,34 @@ infinoted_log_add_session(InfinotedLog* log,
   
   if(INF_ADOPTED_IS_SESSION(session))
   {
-    algorithm =
-      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+    if(inf_session_get_status(session) == INF_SESSION_RUNNING)
+    {
+      algorithm =
+        inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
 
-    g_signal_connect(
-      G_OBJECT(algorithm),
-      "execute-request",
-      G_CALLBACK(infinoted_log_session_execute_request_before_cb),
-      log_session
-    );
+      g_signal_connect(
+        G_OBJECT(algorithm),
+        "execute-request",
+        G_CALLBACK(infinoted_log_session_execute_request_before_cb),
+        log_session
+      );
 
-    g_signal_connect_after(
-      G_OBJECT(algorithm),
-      "execute-request",
-      G_CALLBACK(infinoted_log_session_execute_request_after_cb),
-      log_session
-    );
+      g_signal_connect_after(
+        G_OBJECT(algorithm),
+        "execute-request",
+        G_CALLBACK(infinoted_log_session_execute_request_after_cb),
+        log_session
+      );
+    }
+    else
+    {
+      g_signal_connect(
+        G_OBJECT(session),
+        "notify::status",
+        G_CALLBACK(infinoted_log_session_notify_status_cb),
+        log_session
+      );
+    }
   }
 
   log->sessions = g_slist_prepend(log->sessions, log_session);
@@ -404,6 +455,12 @@ infinoted_log_remove_session(InfinotedLog* log,
 
   if(INF_ADOPTED_IS_SESSION(session))
   {
+    inf_signal_handlers_disconnect_by_func(
+      session,
+      G_CALLBACK(infinoted_log_session_notify_status_cb),
+      log_session
+    );
+
     algorithm =
       inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
 
