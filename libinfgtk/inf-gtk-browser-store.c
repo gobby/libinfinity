@@ -2353,8 +2353,13 @@ inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,
  * browse the explored parts of the directory of the remote site. If @name
  * is %NULL, then the #InfXmlConnection:remote-id of the connection will be
  * used.
+ *
+ * The return value is the #InfBrowser for the added connection, or an
+ * existing browser for the connection, if there is any.
+ *
+ * Returns: An #InfBrowser for the new connection.
  **/
-void
+InfBrowser*
 inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
                                      InfXmlConnection* connection,
                                      const gchar* name)
@@ -2377,7 +2382,8 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
     if(name == NULL)
     {
       g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
-      inf_gtk_browser_store_add_item(
+
+      item = inf_gtk_browser_store_add_item(
         store,
         NULL,
         NULL,
@@ -2387,7 +2393,7 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
     }
     else
     {
-      inf_gtk_browser_store_add_item(
+      item = inf_gtk_browser_store_add_item(
         store,
         NULL,
         NULL,
@@ -2396,6 +2402,8 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
       );
     }
   }
+
+  return item->browser;
 }
 
 /**

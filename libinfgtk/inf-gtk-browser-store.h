@@ -59,7 +59,7 @@ void
 inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,
                                     InfDiscovery* discovery);
 
-void
+InfBrowser*
 inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
                                      InfXmlConnection* connection,
                                      const gchar* name);
