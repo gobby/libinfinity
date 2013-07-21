@@ -2103,16 +2103,23 @@ inf_gtk_browser_store_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
     INF_GTK_BROWSER_STORE(model),
     browser
   );
-  if(item == NULL || item->missing == iter->node) return FALSE;
+  if(item == NULL || (iter != NULL && item->missing == iter->node))
+    return FALSE;
 
   tree_iter->stamp = priv->stamp;
   tree_iter->user_data = item;
-  tree_iter->user_data2 = GUINT_TO_POINTER(iter->node_id);
-  tree_iter->user_data3 = iter->node;
 
-  /* Root node */
-  if(iter->node_id == 0)
+  if(iter != NULL && iter->node_id != 0)
+  {
+    tree_iter->user_data2 = GUINT_TO_POINTER(iter->node_id);
+    tree_iter->user_data3 = iter->node;
+  }
+  else
+  {
+    /* Root node */
+    tree_iter->user_data2 = 0;
     tree_iter->user_data3 = NULL;
+  }
 
   return TRUE;
 }
