@@ -38,11 +38,24 @@ G_BEGIN_DECLS
 typedef struct _InfTextGtkView InfTextGtkView;
 typedef struct _InfTextGtkViewClass InfTextGtkViewClass;
 
+/**
+ * InfTextGtkViewClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfTextGtkViewClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfTextGtkView:
+ *
+ * #InfTextGtkView is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfTextGtkView {
+  /*< private >*/
   GObject parent;
 };
 

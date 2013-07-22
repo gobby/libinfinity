@@ -16,6 +16,35 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-text-gtk-view
+ * @title: InfTextGtkView
+ * @short_description: Drawing remote cursors and selections in a #GtkTextView
+ * @include: libinftextgtk/inf-text-gtk-view.h
+ * @see_also: #InfTextGtkBuffer, #InfTextGtkViewport
+ * @stability: Unstable
+ *
+ * #InfTextGtkView is a helper object which, as long as it is alive, draws
+ * the cursor position, selected text of remote users into a #GtkTextView
+ * widget. It can also highlight the current line of a remote user in a
+ * similar way the #GtkSourceView widget can highlight the current line of
+ * the local user.
+ *
+ * This functionality was not implemented by subclassing #GtkTextView such
+ * that it can also be used with existing subclasses, such as #GtkSourceView.
+ *
+ * With the function inf_text_gtk_view_set_active_user() the local
+ * #InfTextUser who is editing the text can be set, if there is any. The
+ * insertion position, seleceted text or current line are not drawn for this
+ * user, since the normal #GtkTextView takes care of that already. This
+ * assumes the local user cursor position and selection is synchronized to the
+ * corresponding #InfTextUser properties, which is automatically the case when
+ * a #InfTextGtkBuffer is used for the buffer the #GtkTextView is displaying.
+ *
+ * See #InfTextGtkViewport for drawing a marker at remote users' location into
+ * the scrollbar.
+ */	
+
 #include <libinftextgtk/inf-text-gtk-view.h>
 #include <libinfinity/inf-signals.h>
 #include <gdk/gdk.h>
@@ -2351,7 +2380,7 @@ inf_text_gtk_view_set_show_remote_selections(InfTextGtkView* view,
  * If @show is %TRUE then all lines in which the cursor of a non-local user
  * in %INF_USER_ACTIVE status is is highlighted with that user's color, similar
  * to GtkSourceView's "highlight current line" functionality. If it is %FALSE
- * then the current line of non-local users is not be highlighted.
+ * then the current line of non-local users is not highlighted.
  */
 void
 inf_text_gtk_view_set_show_remote_current_lines(InfTextGtkView* view,

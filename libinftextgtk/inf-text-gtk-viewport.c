@@ -16,6 +16,26 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+/**
+ * SECTION:inf-text-gtk-viewport
+ * @title: InfTextGtkViewport
+ * @short_description: Drawing position of remote users into the scrollbar
+ * @include: libinftextgtk/inf-text-gtk-viewport.h
+ * @see_also: #InfTextGtkView
+ * @stability: Unstable
+ *
+ * #InfTextGtkViewport is a helper object which, as long as it is alive,
+ * draws the location of the cursor of remote users into the scrollbar of
+ * a #GtkScrolledWindow containing a #GtkTextView. 
+ *
+ * The function inf_text_gtk_viewport_set_active_user() can be used to skip
+ * drawing the location of the user working locally on the document, if there
+ * is any.
+ *
+ * See #InfTextGtkView for drawing the cursor and selected region of remote
+ * users into a #GtkTextView.
+ */	
+
 #include <libinftextgtk/inf-text-gtk-viewport.h>
 #include <libinfinity/inf-signals.h>
 
