@@ -179,3 +179,23 @@ INF_GTK_CHAT_CLASS
 INF_GTK_IS_CHAT_CLASS
 INF_GTK_CHAT_GET_CLASS
 </SECTION>
+
+<SECTION>
+<FILE>inf-gtk-acl-sheet-view</FILE>
+<TITLE>InfGtkAclSheetView</TITLE>
+InfGtkAclSheetView
+InfGtkAclSheetViewClass
+inf_gtk_acl_sheet_view_new
+inf_gtk_acl_sheet_view_set_sheet
+inf_gtk_acl_sheet_view_get_sheet
+inf_gtk_acl_sheet_view_set_editable
+inf_gtk_acl_sheet_view_get_editable
+<SUBSECTION Standard>
+INF_GTK_ACL_SHEET_VIEW
+INF_GTK_IS_ACL_SHEET_VIEW
+INF_GTK_TYPE_ACL_SHEET_VIEW
+inf_gtk_acl_sheet_view_get_type
+INF_GTK_ACL_SHEET_VIEW_CLASS
+INF_GTK_IS_ACL_SHEET_VIEW_CLASS
+INF_GTK_ACL_SHEET_VIEW_GET_CLASS
+</SECTION>

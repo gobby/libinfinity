@@ -20,6 +20,7 @@ libadd = \
 	$(infinity_LIBS)
 
 headers = \
+	inf-gtk-acl-sheet-view.h \
 	inf-gtk-browser-model.h \
 	inf-gtk-browser-model-filter.h \
 	inf-gtk-browser-model-sort.h \
@@ -32,6 +33,7 @@ headers = \
 	inf-gtk-io.h
 
 sources = \
+	inf-gtk-acl-sheet-view.c \
 	inf-gtk-browser-model.c \
 	inf-gtk-browser-model-filter.c \
 	inf-gtk-browser-model-sort.c \
