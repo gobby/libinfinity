@@ -74,6 +74,14 @@ inf_acl_setting_get_type(void)
         "INF_ACL_CAN_SUBSCRIBE_SESSION",
         "can-subscribe-session"
       }, {
+        INF_ACL_CAN_QUERY_USER_LIST,
+        "INF_ACL_CAN_QUERY_USER_LIST",
+        "can-query-user-list"
+      }, {
+        INF_ACL_CAN_QUERY_ACL,
+        "INF_ACL_CAN_QUERY_ACL",
+        "can-query-acl"
+      }, {
         INF_ACL_CAN_SET_ACL,
         "INF_ACL_CAN_SET_ACL",
         "can-set-acl"

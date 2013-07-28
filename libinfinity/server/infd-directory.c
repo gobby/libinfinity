@@ -5387,6 +5387,8 @@ infd_directory_handle_query_user_list(InfdDirectory* directory,
                                       GError** error)
 {
   InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  guint64 perms;
   gchar* seq;
   GSList* item;
   xmlNodePtr reply_xml;
@@ -5409,7 +5411,10 @@ infd_directory_handle_query_user_list(InfdDirectory* directory,
     return FALSE;
   }
 
-  /* TODO: Check ACL */
+  node = priv->root;
+  perms = (1 << INF_ACL_CAN_QUERY_USER_LIST);
+  if(!infd_directory_check_auth(directory, node, connection, perms, error))
+    return FALSE;
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
     return FALSE;
@@ -5464,6 +5469,7 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  guint64 perms;
   gchar* seq;
   InfBrowserIter iter;
   const InfAclSheetSet* sheet_set;
@@ -5494,7 +5500,9 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
     return FALSE;
   }
 
-  /* TODO: Check ACL */
+  perms = (1 << INF_ACL_CAN_QUERY_ACL);
+  if(!infd_directory_check_auth(directory, node, connection, perms, error))
+    return FALSE;
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
     return FALSE;

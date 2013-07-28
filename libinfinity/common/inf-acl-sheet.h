@@ -52,14 +52,20 @@ struct _InfAclUser {
  * InfAclSetting:
  * @INF_ACL_CAN_SUBSCRIBE_SESSION: The user is allowed to subscribe to a
  * session in the directory tree.
- * @INF_ACL_CAN_SET_ACL: The user is allowed to change the ACL of the node, or
- * in the case of a subdirectory, create a new node with a non-default ACL.
+ * @INF_ACL_CAN_QUERY_USER_LIST: The user is allowed to query the full list
+ * of ACL accounts.
+ * @INF_ACL_CAN_QUERY_ACL: The user is allowed to query the full ACL for
+ * this node.
+ * @INF_ACL_CAN_SET_ACL: The user is allowed to change the ACL of child
+ * nodes, or create new nodes with a non-default ACL.
  *
  * Defines the actual permissions that can be granted or revoked for different
  * users.
  */
 typedef enum _InfAclSetting {
   INF_ACL_CAN_SUBSCRIBE_SESSION,
+  INF_ACL_CAN_QUERY_USER_LIST,
+  INF_ACL_CAN_QUERY_ACL,
   INF_ACL_CAN_SET_ACL,
 
   /*< private >*/
