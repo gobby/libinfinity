@@ -489,6 +489,40 @@ inf_browser_get_child(InfBrowser* browser,
 }
 
 /**
+ * inf_browser_is_ancestor:
+ * @browser: A #InfBrowser.
+ * @ancestor: An iterator pointing to the ancestor node.
+ * @iter: An iterator pointing to the node to be checked.
+ *
+ * Returns whether @ancestor is an ancestor of @iter, i.e. either the two
+ * iterators point to the same node or @ancestor is a parent, grand-parent,
+ * grand-grand-parent, etc. of the node @iter points to.
+ *
+ * Returns: Whether @ancestor is an ancestor of @iter.
+ */
+gboolean
+inf_browser_is_ancestor(InfBrowser* browser,
+                        const InfBrowserIter* ancestor,
+                        const InfBrowserIter* iter)
+{
+  InfBrowserIter check_iter;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(ancestor != NULL, FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  check_iter = *iter;
+
+  do
+  {
+    if(check_iter.node == ancestor->node)
+      return TRUE;
+  } while(inf_browser_get_parent(browser, &check_iter));
+
+  return FALSE;
+}
+
+/**
  * inf_browser_explore:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside

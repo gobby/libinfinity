@@ -254,6 +254,11 @@ gboolean
 inf_browser_get_child(InfBrowser* browser,
                       InfBrowserIter* iter);
 
+gboolean
+inf_browser_is_ancestor(InfBrowser* browser,
+                        const InfBrowserIter* ancestor,
+                        const InfBrowserIter* iter);
+
 InfExploreRequest*
 inf_browser_explore(InfBrowser* browser,
                     const InfBrowserIter* iter);

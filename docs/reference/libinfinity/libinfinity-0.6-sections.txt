@@ -322,6 +322,7 @@ inf_browser_get_next
 inf_browser_get_prev
 inf_browser_get_parent
 inf_browser_get_child
+inf_browser_is_ancestor
 inf_browser_explore
 inf_browser_get_explored
 inf_browser_add_note
