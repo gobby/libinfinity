@@ -1,0 +1,1246 @@
+/* libinfinity - a GObject-based infinote implementation
+ * Copyright (C) 2007-2013 Armin Burgmeier <armin@arbur.net>
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ */
+
+/**
+ * SECTION:inf-gtk-permissions-dialog
+ * @title: InfGtkPermissionsDialog
+ * @short_description: A dialog to view and modify the ACL of a directory
+ * node
+ * @include: libinfgtk/inf-gtk-permissions-dialog.h
+ * @stability: Unstable
+ *
+ * #InfGtkPermissionsDialog is a dialog widget which allows to view and
+ * modify the ACL of a node in a infinote directory. It shows a list of all
+ * available users and allows the permissions for each of them to be changed,
+ * using a #InfGtkAclSheetView widget.
+ *
+ * If either the "can-query-user-list" or the "can-query-acl" permissions are
+ * not granted for the local user, the dialog only shows the permissions for
+ * the default user and the local user. The dialog also comes with a status
+ * text to inform the user why certain functionality is not available.
+ *
+ * The dialog class reacts to changes to the ACL in real time, and also if the
+ * node that is being monitored is removed.
+ **/
+
+#include <libinfgtk/inf-gtk-permissions-dialog.h>
+#include <libinfgtk/inf-gtk-acl-sheet-view.h>
+#include <libinfinity/common/inf-acl-user-list-request.h>
+#include <libinfinity/inf-i18n.h>
+
+typedef struct _InfGtkPermissionsDialogPrivate InfGtkPermissionsDialogPrivate;
+struct _InfGtkPermissionsDialogPrivate {
+  InfBrowser* browser;
+  InfBrowserIter browser_iter;
+
+  GtkListStore* account_store;
+  gboolean show_full_list;
+
+  InfAclUserListRequest* query_acl_user_list_request;
+  InfNodeRequest* query_acl_request;
+  GSList* set_acl_requests;
+
+  GtkWidget* tree_view;
+  GtkWidget* sheet_view;
+  GtkWidget* status_text;
+};
+
+enum {
+  PROP_0,
+
+  PROP_BROWSER,
+  PROP_BROWSER_ITER
+};
+
+#define INF_GTK_PERMISSIONS_DIALOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_PERMISSIONS_DIALOG, InfGtkPermissionsDialogPrivate))
+
+static GtkDialogClass* parent_class;
+
+/*
+ * Private functionality
+ */
+
+static void
+inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
+                                  const GError* error);
+
+static void
+inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog);
+
+static void
+inf_gtk_permissions_dialog_set_acl_finished_cb(InfNodeRequest* request,
+                                               const InfBrowserIter* iter,
+                                               const GError* error,
+                                               gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(error != NULL)
+  {
+    /* Show the error message */
+    inf_gtk_permissions_dialog_update(dialog, error);
+
+    /* Reset sheet to what we had before making the request */
+    inf_gtk_permissions_dialog_update_sheet(dialog);
+  }
+
+  g_assert(g_slist_find(priv->set_acl_requests, request) != NULL);
+  priv->set_acl_requests = g_slist_remove(priv->set_acl_requests, request);
+}
+
+static void
+inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
+                                            gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  const InfAclSheet* sheet;
+  InfAclSheetSet sheet_set;
+  InfNodeRequest* req;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  sheet = inf_gtk_acl_sheet_view_get_sheet(
+    INF_GTK_ACL_SHEET_VIEW(priv->sheet_view)
+  );
+
+  g_assert(sheet != NULL);
+
+  sheet_set.own_sheets = NULL;
+  sheet_set.sheets = sheet;
+  sheet_set.n_sheets = 1;
+
+  req = inf_browser_set_acl(priv->browser, &priv->browser_iter, &sheet_set);
+  priv->set_acl_requests = g_slist_prepend(priv->set_acl_requests, req);
+
+  g_signal_connect(
+    G_OBJECT(req),
+    "finished",
+    G_CALLBACK(inf_gtk_permissions_dialog_set_acl_finished_cb),
+    dialog
+  );
+}
+
+static gboolean
+inf_gtk_permissions_dialog_find_account(InfGtkPermissionsDialog* dialog,
+                                        const InfAclUser* account,
+                                        GtkTreeIter* out_iter)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  const InfAclUser* row_account;
+  GtkTreeModel* model;
+  GtkTreeIter iter;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+  model = GTK_TREE_MODEL(priv->account_store);
+
+  if(gtk_tree_model_get_iter_first(model, &iter))
+  {
+    do
+    {
+      gtk_tree_model_get(model, &iter, 0, &row_account, -1);
+      if(row_account == account)
+      {
+        if(out_iter != NULL)
+          *out_iter = iter;
+        return TRUE;
+      }
+    } while(gtk_tree_model_iter_next(model, &iter));
+  }
+
+  return FALSE;
+}
+
+static void
+inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
+                                             const InfAclUser** accounts,
+                                             guint n_accounts)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  guint i;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  for(i = 0; i < n_accounts; ++i)
+  {
+    /* Make sure not to fill an account twice */
+    if(!inf_gtk_permissions_dialog_find_account(dialog, accounts[i], NULL))
+    {
+      gtk_list_store_insert_with_values(
+        priv->account_store,
+        NULL,
+        -1,
+        0,
+        accounts[i],
+        -1
+      );
+    }
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeSelection* selection;
+
+  GtkTreeModel* model;
+  GtkTreeIter iter;
+  const InfAclUser* account;
+  const InfAclSheetSet* sheet_set;
+  const InfAclSheet* sheet;
+  InfAclSheet default_sheet;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->sheet_view),
+    G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
+    dialog
+  );
+
+  if(!gtk_tree_selection_get_selected(selection, &model, &iter))
+  {
+    inf_gtk_acl_sheet_view_set_sheet(
+      INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+      NULL
+    );
+  }
+  else
+  {
+    gtk_tree_model_get(model, &iter, 0, &account, -1);
+    g_assert(account != NULL);
+
+    sheet = NULL;
+    sheet_set = inf_browser_get_acl(priv->browser, &priv->browser_iter);
+    if(sheet_set != NULL)
+    {
+      sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, account);
+      if(sheet != NULL)
+      {
+        inf_gtk_acl_sheet_view_set_sheet(
+          INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+          sheet
+        );
+      }
+    }
+
+    /* No sheet: set default sheet (all permissions masked out) */
+    if(sheet == NULL)
+    {
+      default_sheet.user = account;
+      default_sheet.mask = 0;
+      default_sheet.perms = 0;
+
+      inf_gtk_acl_sheet_view_set_sheet(
+        INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+        &default_sheet
+      );
+    }
+  }
+
+  /* TODO: Block default lane if this is the default sheet of the root node */
+  /* TODO: Block root-only permissions if this is not the root node */
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->sheet_view),
+    G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
+    dialog
+  );
+}
+
+static void
+inf_gtk_permissions_dialog_node_removed_cb(InfBrowser* browser,
+                                           const InfBrowserIter* iter,
+                                           gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(inf_browser_is_ancestor(browser, iter, &priv->browser_iter))
+    inf_gtk_permissions_dialog_set_node(dialog, NULL, NULL);
+}
+
+static void
+inf_gtk_permissions_dialog_acl_user_added_cb(InfBrowser* browser,
+                                             const InfAclUser* account,
+                                             gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeIter iter;
+  GtkTreePath* path;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* Add the new user to the user list. Note that this is also called when
+   * the given user was updated, in which case we need to call row_changed,
+   * since its name might have changed. */
+  if(priv->show_full_list == TRUE)
+  {  
+    /* Make sure not to fill an account twice */
+    if(inf_gtk_permissions_dialog_find_account(dialog, account, &iter))
+    {
+      path = gtk_tree_model_get_path(
+        GTK_TREE_MODEL(priv->account_store),
+        &iter
+      );
+      
+      gtk_tree_model_row_changed(
+        GTK_TREE_MODEL(priv->account_store),
+        path,
+        &iter
+      );
+
+      gtk_tree_path_free(path);
+    }
+    else
+    {
+      gtk_list_store_insert_with_values(
+        priv->account_store,
+        NULL,
+        -1,
+        0,
+        account,
+        -1
+      );
+    }
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_acl_changed_cb(InfBrowser* browser,
+                                          const InfBrowserIter* iter,
+                                          const InfAclSheetSet* sheet_set,
+                                          gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* If the node we are currently viewing had its ACL changed, show the
+   * new ACL. */
+  if(iter->node == priv->browser_iter.node)
+    inf_gtk_permissions_dialog_update_sheet(dialog);
+
+  /* If the node or one of its ancestors had their ACL changed, update the
+   * view, since we might have been granted or revoked rights to see the
+   * user list or the ACL for this node. */
+  if(inf_browser_is_ancestor(browser, iter, &priv->browser_iter))
+    inf_gtk_permissions_dialog_update(dialog, NULL);
+}
+
+static void
+inf_gtk_permissions_dialog_selection_changed_cb(GtkTreeSelection* selection,
+                                                gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  inf_gtk_permissions_dialog_update_sheet(dialog);
+}
+
+static int
+inf_gtk_permissions_dialog_account_sort_func(GtkTreeModel* model,
+                                             GtkTreeIter* a,
+                                             GtkTreeIter* b,
+                                             gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  const InfAclUser* account_a;
+  const InfAclUser* account_b;
+  const InfAclUser* default_user;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  gtk_tree_model_get(model, a, 0, &account_a, -1);
+  gtk_tree_model_get(model, b, 0, &account_b, -1);
+
+  /* default sorts before anything */
+  default_user = inf_browser_lookup_acl_user(priv->browser, "default");
+  if(account_a == default_user)
+  {
+    if(account_b == default_user)
+      return 0;
+    else
+      return 1;
+  }
+  else if(account_b == default_user)
+  {
+    return -1;
+  }
+  else
+  {
+    /* Next, accounts with user name sort before accounts without */
+    if(account_a->user_name == NULL)
+    {
+      if(account_b->user_name == NULL)
+        return g_utf8_collate(account_b->user_id, account_a->user_id);
+      else
+        return -1;
+    }
+    else
+    {
+      if(account_b->user_name == NULL)
+        return 1;
+      else
+        return g_utf8_collate(account_b->user_name, account_a->user_name);
+    }
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_name_data_func(GtkTreeViewColumn* column,
+                                          GtkCellRenderer* cell,
+                                          GtkTreeModel* model,
+                                          GtkTreeIter* iter,
+                                          gpointer user_data)
+{
+  const InfAclUser* account;
+  gchar* str;
+
+  gtk_tree_model_get(model, iter, 0, &account, -1);
+
+  if(account->user_name != NULL)
+  {
+    g_object_set(G_OBJECT(cell), "text", account->user_name, NULL);
+  }
+  else
+  {
+    str = g_strdup_printf("<%s>", account->user_id);
+    g_object_set(G_OBJECT(cell), "text", str, NULL);
+    g_free(str);
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_query_acl_user_list_finished_cb(InfRequest* req,
+                                                           const GError* err,
+                                                           gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  priv->query_acl_user_list_request = NULL;
+  inf_gtk_permissions_dialog_update(dialog, err);
+}
+
+static void
+inf_gtk_permissions_dialog_query_acl_finished_cb(InfNodeRequest* request,
+                                                 const InfBrowserIter* iter,
+                                                 const GError* error,
+                                                 gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  priv->query_acl_request = NULL;
+  inf_gtk_permissions_dialog_update(dialog, error);
+}
+
+static void
+inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
+                                  const GError* error)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  gchar* path;
+  gchar* title;
+
+  guint64 own_acl;
+  guint64 parent_acl;
+  InfBrowserIter parent_iter;
+
+  const InfAclUser** accounts;
+  const InfAclUser* custom_accounts[2];
+  guint n_accounts;
+
+  const InfAclSheetSet* sheet_set;
+  gboolean have_full_acl;
+  guint n_children;
+
+  const gchar* query_acl_str;
+  const gchar* set_acl_str;
+  gchar* error_str;
+  gchar* str;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* Reset all widgets if no node is set */
+  if(priv->browser == NULL)
+  {
+    gtk_list_store_clear(priv->account_store);
+    /*inf_gtk_permissions_dialog_update_sheet(dialog);*/
+    gtk_widget_hide(priv->status_text);
+    return;
+  }
+
+  /* Set the dialog title */
+  path = inf_browser_get_path(priv->browser, &priv->browser_iter);
+  title = g_strdup_printf(_("Permissions for %s"), path);
+  gtk_window_set_title(GTK_WINDOW(dialog), title);
+  g_free(path);
+  g_free(title);
+
+  /* Obtain permissions for this node */
+  own_acl = (1 << INF_ACL_CAN_QUERY_USER_LIST)
+          | (1 << INF_ACL_CAN_QUERY_ACL);
+  parent_acl = (1 << INF_ACL_CAN_SET_ACL);
+
+  own_acl = inf_browser_check_acl(
+    priv->browser,
+    &priv->browser_iter,
+    inf_browser_get_acl_local_user(priv->browser),
+    own_acl
+  );
+
+  parent_iter = priv->browser_iter;
+  inf_browser_get_parent(priv->browser, &parent_iter);
+
+  parent_acl = inf_browser_check_acl(
+    priv->browser,
+    &parent_iter,
+    inf_browser_get_acl_local_user(priv->browser),
+    parent_acl
+  );
+
+  /* Request account list and ACL */
+  have_full_acl = FALSE;
+  accounts = inf_browser_get_acl_user_list(priv->browser, &n_accounts);
+  if(accounts == NULL)
+  {
+    if((own_acl & (1 << INF_ACL_CAN_QUERY_USER_LIST)) != 0 &&
+       priv->query_acl_user_list_request == NULL && error == NULL)
+    {
+      priv->query_acl_user_list_request = INF_ACL_USER_LIST_REQUEST(
+        inf_browser_get_pending_request(
+          priv->browser,
+          NULL,
+          "query-acl-user-list"
+        )
+      );
+
+      if(priv->query_acl_user_list_request == NULL)
+      {
+        priv->query_acl_user_list_request = inf_browser_query_acl_user_list(
+          priv->browser
+        );
+      }
+
+      g_signal_connect(
+        G_OBJECT(priv->query_acl_user_list_request),
+        "finished",
+        G_CALLBACK(
+          inf_gtk_permissions_dialog_query_acl_user_list_finished_cb
+        ),
+        dialog
+      );
+    }
+  }
+  else
+  {
+    if(!inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
+    {
+      if((own_acl & (1 << INF_ACL_CAN_QUERY_ACL)) != 0 &&
+         priv->query_acl_request == NULL && error == NULL)
+      {
+        priv->query_acl_request = INF_NODE_REQUEST(
+          inf_browser_get_pending_request(
+            priv->browser,
+            &priv->browser_iter,
+            "query-acl"
+          )
+        );
+
+        if(priv->query_acl_request == NULL)
+        {
+          priv->query_acl_request = inf_browser_query_acl(
+            priv->browser,
+            &priv->browser_iter
+          );
+        }
+
+        g_signal_connect(
+          G_OBJECT(priv->query_acl_request),
+          "finished",
+          G_CALLBACK(inf_gtk_permissions_dialog_query_acl_finished_cb),
+          dialog
+        );
+      }
+    }
+    else
+    {
+      have_full_acl = TRUE;
+    }
+  }
+
+  /* Fill the account list widget */
+  if(have_full_acl == TRUE)
+  {
+    if(priv->show_full_list == FALSE)
+    {
+      inf_gtk_permissions_dialog_fill_account_list(
+        dialog,
+        accounts,
+        n_accounts
+      );
+
+      priv->show_full_list = TRUE;
+    }
+  }
+  else
+  {
+    priv->show_full_list = FALSE;
+
+    custom_accounts[0] =
+      inf_browser_lookup_acl_user(priv->browser, "default");
+    custom_accounts[1] =
+      inf_browser_get_acl_local_user(priv->browser);
+
+    if(custom_accounts[1] != NULL && custom_accounts[1] != custom_accounts[0])
+      n_accounts = 2;
+    else
+      n_accounts = 1;
+
+    inf_gtk_permissions_dialog_fill_account_list(
+      dialog,
+      custom_accounts,
+      n_accounts
+    );
+  }
+
+  g_free(accounts);
+
+  /* Set editability of the sheet view */
+  if((parent_acl & (1 << INF_ACL_CAN_SET_ACL)) == 0 ||
+     !inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
+  {
+    inf_gtk_acl_sheet_view_set_editable(
+      INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+      FALSE
+    );
+
+    set_acl_str = _("Permission is <b>not granted</b> to modify the permission list. It is read-only.");
+  }
+  else
+  {
+    inf_gtk_acl_sheet_view_set_editable(
+      INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+      TRUE
+    );
+
+    set_acl_str = _("Permission is <b>granted</b> to modify the permission list.");
+  }
+
+  /* Update status text */
+  error_str = NULL;
+  if(error != NULL)
+  {
+    error_str = g_markup_printf_escaped(
+      _("<b>Server Error:</b> %s"),
+      error->message
+    );
+
+    query_acl_str = error_str;
+  }
+  else if(priv->query_acl_user_list_request != NULL)
+  {
+    query_acl_str = _("Querying the account list from the server...");
+  }
+  else if(priv->query_acl_request != NULL)
+  {
+    query_acl_str = _("Querying current permissions for this node from the server...");
+  }
+  else if((own_acl & (1 << INF_ACL_CAN_QUERY_USER_LIST)) == 0)
+  {
+    query_acl_str = _("Permission is <b>not granted</b> to query the "
+                      "account list from the server. Showing only default "
+                      "permissions and permissions for the own account.");
+  }
+  else if((own_acl & (1 << INF_ACL_CAN_QUERY_ACL)) == 0)
+  {
+    query_acl_str = _("Permission is <b>not granted</b> to query the "
+                      "permission list for this node from the server. "
+                      "Showing only default permissions and permissions "
+                      "for the own account.");
+  }
+  else
+  {
+    query_acl_str = _("Permissions are <b>granted</b> to query the full "
+                      "permission list from the server. "
+                      "Showing all permissions");
+  }
+
+  /* TODO: Add an icon... for example GTK_STOCK_YES if permissions can be
+   * edited and GTK_STOCK_NO if they can't. */
+
+  str = g_strdup_printf("%s\n\n%s", query_acl_str, set_acl_str);
+  g_free(error_str);
+
+  gtk_label_set_markup(GTK_LABEL(priv->status_text), str);
+  g_free(str);
+
+  gtk_widget_show(priv->status_text);
+}
+
+static void
+inf_gtk_permissions_dialog_register(InfGtkPermissionsDialog* dialog)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  g_assert(priv->browser != NULL);
+
+  g_signal_connect(
+    priv->browser,
+    "node-removed",
+    G_CALLBACK(inf_gtk_permissions_dialog_node_removed_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    priv->browser,
+    "acl-user-added",
+    G_CALLBACK(inf_gtk_permissions_dialog_acl_user_added_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    priv->browser,
+    "acl-changed",
+    G_CALLBACK(inf_gtk_permissions_dialog_acl_changed_cb),
+    dialog
+  );
+}
+
+static void
+inf_gtk_permissions_dialog_unregister(InfGtkPermissionsDialog* dialog)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  g_assert(priv->browser != NULL);
+
+  inf_signal_handlers_disconnect_by_func(
+    priv->browser,
+    G_CALLBACK(inf_gtk_permissions_dialog_node_removed_cb),
+    dialog
+  );
+
+  inf_signal_handlers_disconnect_by_func(
+    priv->browser,
+    G_CALLBACK(inf_gtk_permissions_dialog_acl_user_added_cb),
+    dialog
+  );
+
+  inf_signal_handlers_disconnect_by_func(
+    priv->browser,
+    G_CALLBACK(inf_gtk_permissions_dialog_acl_changed_cb),
+    dialog
+  );
+}
+
+/*
+ * GObject virtual functions
+ */
+
+static void
+inf_gtk_permissions_dialog_init(GTypeInstance* instance,
+                                gpointer g_class)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeViewColumn* column;
+  GtkCellRenderer* renderer;
+  GtkTreeSelection* selection;
+  GtkWidget* scroll;
+  GtkWidget* hbox;
+  GtkWidget* vbox;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(instance);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* Do not use INF_TYPE_ACL_USER type, to avoid making a copy of the
+   * InfAclUser object. */
+  priv->account_store = gtk_list_store_new(1, G_TYPE_POINTER);
+  priv->show_full_list = FALSE;
+
+  gtk_tree_sortable_set_sort_column_id(
+    GTK_TREE_SORTABLE(priv->account_store),
+    0,
+    GTK_SORT_DESCENDING
+  );
+
+  gtk_tree_sortable_set_sort_func(
+    GTK_TREE_SORTABLE(priv->account_store),
+    0,
+    inf_gtk_permissions_dialog_account_sort_func,
+    dialog,
+    NULL
+  );
+
+  priv->query_acl_user_list_request = NULL;
+  priv->query_acl_request = NULL;
+  priv->set_acl_requests = NULL;
+
+  column = gtk_tree_view_column_new();
+  gtk_tree_view_column_set_title(column, _("Accounts"));
+  gtk_tree_view_column_set_spacing(column, 6);
+
+  renderer = gtk_cell_renderer_text_new();
+  gtk_tree_view_column_pack_start(column, renderer, FALSE);
+
+  gtk_tree_view_column_set_cell_data_func(
+    column,
+    renderer,
+    inf_gtk_permissions_dialog_name_data_func,
+    NULL,
+    NULL
+  );
+
+  priv->tree_view =
+    gtk_tree_view_new_with_model(GTK_TREE_MODEL(priv->account_store));
+  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->tree_view), column);
+
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+  gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
+
+  g_signal_connect(
+    G_OBJECT(selection),
+    "changed",
+    G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+    dialog
+  );
+
+  gtk_widget_show(priv->tree_view);
+
+  scroll = gtk_scrolled_window_new(NULL, NULL);
+  gtk_widget_set_size_request(scroll, 200, 350);
+
+  gtk_scrolled_window_set_shadow_type(
+    GTK_SCROLLED_WINDOW(scroll),
+    GTK_SHADOW_IN
+  );
+
+  gtk_scrolled_window_set_policy(
+    GTK_SCROLLED_WINDOW(scroll),
+    GTK_POLICY_AUTOMATIC,
+    GTK_POLICY_AUTOMATIC
+  );
+
+  gtk_container_add(GTK_CONTAINER(scroll), priv->tree_view);
+  gtk_widget_show(scroll);
+
+  priv->sheet_view = inf_gtk_acl_sheet_view_new();
+
+  g_signal_connect(
+    G_OBJECT(priv->sheet_view),
+    "sheet-changed",
+    G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
+    dialog
+  );
+
+  gtk_widget_show(priv->sheet_view);
+
+  hbox = gtk_hbox_new(FALSE, 12);
+  gtk_box_pack_start(GTK_BOX(hbox), scroll, FALSE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(hbox), priv->sheet_view, TRUE, TRUE, 0);
+  gtk_widget_show(hbox);
+
+  priv->status_text = gtk_label_new(NULL);
+
+#if GTK_CHECK_VERSION(2,14,0)
+  vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+#else
+  vbox = GTK_DIALOG(dialog)->vbox;
+#endif
+
+  gtk_box_set_spacing(GTK_BOX(vbox), 12);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), priv->status_text, FALSE, FALSE, 0);
+
+  gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
+  gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
+}
+
+static GObject*
+inf_gtk_permissions_dialog_constructor(GType type,
+                                       guint n_properties,
+                                       GObjectConstructParam* properties)
+{
+  GObject* object;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  object = G_OBJECT_CLASS(parent_class)->constructor(
+    type,
+    n_properties,
+    properties
+  );
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(object);
+
+  if(priv->browser != NULL)
+  {
+    inf_gtk_permissions_dialog_update(
+      INF_GTK_PERMISSIONS_DIALOG(object),
+      NULL
+    );
+  }
+
+  return object;
+}
+
+static void
+inf_gtk_permissions_dialog_dispose(GObject* object)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(object);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(priv->browser != NULL)
+  {
+    inf_gtk_permissions_dialog_set_node(dialog, NULL, NULL);
+  }
+
+  if(priv->account_store != NULL)
+  {
+    g_object_unref(priv->account_store);
+    priv->account_store = NULL;
+  }
+
+  G_OBJECT_CLASS(parent_class)->dispose(object);
+}
+
+
+static void
+inf_gtk_permissions_dialog_finalize(GObject* object)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(object);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
+static void
+inf_gtk_permissions_dialog_set_property(GObject* object,
+                                        guint prop_id,
+                                        const GValue* value,
+                                        GParamSpec* pspec)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(object);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  switch(prop_id)
+  {
+  case PROP_BROWSER:
+    g_assert(priv->browser == NULL); /* construct only */
+    priv->browser = INF_BROWSER(g_value_dup_object(value));
+
+    if(priv->browser != NULL)
+      inf_gtk_permissions_dialog_register(dialog);
+
+    break;
+  case PROP_BROWSER_ITER:
+    priv->browser_iter = *(InfBrowserIter*)g_value_get_boxed(value);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_get_property(GObject* object,
+                                        guint prop_id,
+                                        GValue* value,
+                                        GParamSpec* pspec)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(object);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  switch(prop_id)
+  {
+  case PROP_BROWSER:
+    g_value_set_object(value, priv->browser);
+    break;
+  case PROP_BROWSER_ITER:
+    g_value_set_boxed(value, &priv->browser_iter);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+/*
+ * GType registration
+ */
+
+static void
+inf_gtk_permissions_dialog_class_init(gpointer g_class,
+                                       gpointer class_data)
+{
+  GObjectClass* object_class;
+  object_class = G_OBJECT_CLASS(g_class);
+
+  parent_class = GTK_DIALOG_CLASS(g_type_class_peek_parent(g_class));
+  g_type_class_add_private(g_class, sizeof(InfGtkPermissionsDialogPrivate));
+
+  object_class->constructor = inf_gtk_permissions_dialog_constructor;
+  object_class->dispose = inf_gtk_permissions_dialog_dispose;
+  object_class->finalize = inf_gtk_permissions_dialog_finalize;
+  object_class->set_property = inf_gtk_permissions_dialog_set_property;
+  object_class->get_property = inf_gtk_permissions_dialog_get_property;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_BROWSER,
+    g_param_spec_object(
+      "browser",
+      "Browser",
+      "The browser with the node for which to show the permissions",
+      INF_TYPE_BROWSER,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_BROWSER_ITER,
+    g_param_spec_boxed(
+      "browser-iter",
+      "Browser Iter",
+      "An iterator pointing to the node inside the browser for which to show "
+      "the permissions",
+      INF_TYPE_BROWSER_ITER,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+}
+
+GType
+inf_gtk_permissions_dialog_get_type(void)
+{
+  static GType permissions_dialog_type = 0;
+
+  if(!permissions_dialog_type)
+  {
+    static const GTypeInfo permissions_dialog_type_info = {
+      sizeof(InfGtkPermissionsDialogClass),    /* class_size */
+      NULL,                                    /* base_init */
+      NULL,                                    /* base_finalize */
+      inf_gtk_permissions_dialog_class_init,   /* class_init */
+      NULL,                                    /* class_finalize */
+      NULL,                                    /* class_data */
+      sizeof(InfGtkPermissionsDialog),         /* instance_size */
+      0,                                       /* n_preallocs */
+      inf_gtk_permissions_dialog_init,         /* instance_init */
+      NULL                                     /* value_table */
+    };
+
+    permissions_dialog_type = g_type_register_static(
+      GTK_TYPE_DIALOG,
+      "InfGtkPermissionsDialog",
+      &permissions_dialog_type_info,
+      0
+    );
+  }
+
+  return permissions_dialog_type;
+}
+
+/*
+ * Public API.
+ */
+
+/**
+ * inf_gtk_permissions_dialog_new:
+ * @parent: Parent #GtkWindow of the dialog.
+ * @dialog_flags: Flags for the dialog, see #GtkDialogFlags.
+ * @browser: The #InfBrowser containing the node to show permissions for, or
+ * %NULL.
+ * @iter: An iterator pointing to the node to show permissions for, or %NULL.
+ *
+ * Creates a new #InfGtkPermissionsDialog, showing the ACL for the node
+ * @iter points to inside @browser. If @browser is %NULL, @iter must be %NULL,
+ * too. In that case no permissions are shown, and the node to be shown can
+ * be set later with inf_gtk_permissions_dialog_set_node().
+ *
+ * Returns: A new #InfGtkPermissionsDialog. Free with gtk_widget_destroy()
+ * when no longer needed.
+ */
+InfGtkPermissionsDialog*
+inf_gtk_permissions_dialog_new(GtkWindow* parent,
+                               GtkDialogFlags dialog_flags,
+                               InfBrowser* browser,
+                               const InfBrowserIter* iter)
+{
+  GObject* object;
+
+  g_return_val_if_fail(parent == NULL || GTK_IS_WINDOW(parent), NULL);
+  g_return_val_if_fail(browser == NULL || INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(browser == NULL || iter != NULL, NULL);
+
+  object = g_object_new(
+    INF_GTK_TYPE_PERMISSIONS_DIALOG,
+    "browser", browser,
+    "browser-iter", iter,
+    NULL
+  );
+
+  if(dialog_flags & GTK_DIALOG_MODAL)
+    gtk_window_set_modal(GTK_WINDOW(object), TRUE);
+
+  if(dialog_flags & GTK_DIALOG_DESTROY_WITH_PARENT)
+    gtk_window_set_destroy_with_parent(GTK_WINDOW(object), TRUE);
+
+#if !GTK_CHECK_VERSION(2,90,7)
+  if(dialog_flags & GTK_DIALOG_NO_SEPARATOR)
+    gtk_dialog_set_has_separator(GTK_DIALOG(object), FALSE);
+#endif
+
+  gtk_window_set_transient_for(GTK_WINDOW(object), parent);
+  return INF_GTK_PERMISSIONS_DIALOG(object);
+}
+
+/**
+ * inf_gtk_permissions_dialog_set_node:
+ * @dialog: A #InfGtkPermissionsDialog.
+ * @browser: The #InfBrowser containing the node to show permissions for, or
+ * %NULL.
+ * @iter: An iterator pointing to the node to show permissions for, or %NULL.
+ *
+ * Changes the node the dialog shows permissions for. To unset the node, both
+ * @browser and @iter should be %NULL.
+ */
+void
+inf_gtk_permissions_dialog_set_node(InfGtkPermissionsDialog* dialog,
+                                    InfBrowser* browser,
+                                    const InfBrowserIter* iter)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GSList* item;
+
+  g_return_if_fail(INF_GTK_IS_PERMISSIONS_DIALOG(dialog));
+  g_return_if_fail(browser == NULL || INF_IS_BROWSER(browser));
+  g_return_if_fail((browser == NULL) == (iter == NULL));
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(priv->browser != NULL)
+  {
+    if(priv->query_acl_user_list_request != NULL)
+    {
+      inf_signal_handlers_disconnect_by_func(
+        priv->query_acl_user_list_request,
+        G_CALLBACK(
+          inf_gtk_permissions_dialog_query_acl_user_list_finished_cb
+        ),
+        dialog
+      );
+      
+      priv->query_acl_user_list_request = NULL;
+    }
+
+    if(priv->query_acl_request != NULL)
+    {
+      inf_signal_handlers_disconnect_by_func(
+        priv->query_acl_request,
+        G_CALLBACK(inf_gtk_permissions_dialog_query_acl_finished_cb),
+        dialog
+      );
+
+      priv->query_acl_request = NULL;
+    }
+
+    for(item = priv->set_acl_requests; item != NULL; item = item->next)
+    {
+      inf_signal_handlers_disconnect_by_func(
+        G_OBJECT(item->data),
+        G_CALLBACK(inf_gtk_permissions_dialog_set_acl_finished_cb),
+        dialog
+      );
+    }
+
+    g_slist_free(priv->set_acl_requests);
+    priv->set_acl_requests = NULL;
+  }
+
+  gtk_list_store_clear(priv->account_store);
+  priv->show_full_list = FALSE;
+
+  if(priv->browser != browser)
+  {
+    if(priv->browser != NULL)
+    {
+      inf_gtk_permissions_dialog_unregister(dialog);
+      g_object_unref(priv->browser);
+    }
+
+    priv->browser = browser;
+    if(iter != NULL)
+      priv->browser_iter = *iter;
+
+    if(priv->browser != NULL)
+    {
+      g_object_ref(priv->browser);
+      inf_gtk_permissions_dialog_register(dialog);
+    }
+
+    g_object_notify(G_OBJECT(dialog), "browser");
+    g_object_notify(G_OBJECT(dialog), "browser-iter");
+  }
+
+  if(priv->browser != NULL)
+  {
+    inf_gtk_permissions_dialog_update(dialog, NULL);
+  }
+}
+
+/* vim:set et sw=2 ts=2: */

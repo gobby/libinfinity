@@ -107,6 +107,23 @@ INF_GTK_IO_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-gtk-permissions-dialog</FILE>
+<TITLE>InfGtkPermissionsDialog</TITLE>
+InfGtkPermissionsDialog
+InfGtkPermissionsDialogClass
+inf_gtk_permissions_dialog_new
+inf_gtk_permissions_dialog_set_node
+<SUBSECTION Standard>
+INF_GTK_PERMISSIONS_DIALOG
+INF_GTK_PERMISSIONS_DIALOG_CLASS
+INF_GTK_PERMISSIONS_DIALOG_GET_CLASS
+INF_GTK_IS_PERMISSIONS_DIALOG
+INF_GTK_IS_PERMISSIONS_DIALOG_CLASS
+INF_GTK_TYPE_PERMISSIONS_DIALOG
+inf_gtk_permissions_dialog_get_type
+</SECTION>
+
+<SECTION>
 <FILE>inf-gtk-certificate-dialog</FILE>
 <TITLE>InfGtkCertificateDialog</TITLE>
 InfGtkCertificateDialog

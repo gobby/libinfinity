@@ -30,7 +30,8 @@ headers = \
 	inf-gtk-certificate-manager.h \
 	inf-gtk-certificate-view.h \
 	inf-gtk-chat.h \
-	inf-gtk-io.h
+	inf-gtk-io.h \
+	inf-gtk-permissions-dialog.h
 
 sources = \
 	inf-gtk-acl-sheet-view.c \
@@ -43,7 +44,8 @@ sources = \
 	inf-gtk-certificate-manager.c \
 	inf-gtk-certificate-view.c \
 	inf-gtk-chat.c \
-	inf-gtk-io.c
+	inf-gtk-io.c \
+	inf-gtk-permissions-dialog.c
 
 if WITH_GTK3
 libinfgtk3_0_6_la_CPPFLAGS = $(cppflags)

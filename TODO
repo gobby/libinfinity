@@ -23,6 +23,8 @@ Modernization:
  * Use g_get_monotonic_time where a time is needed
  * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
+ * Use G_DEFINE_TYPE and friends
+ * Replace constructor by constructed
 
 Others:
 
