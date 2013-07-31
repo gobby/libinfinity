@@ -38,13 +38,17 @@ struct _InfGtkAclSheetViewPrivate {
   GtkWidget* treeview;
   InfAclSheet* sheet;
   gboolean editable;
+  guint64 permission_mask;
 };
 
 enum {
   PROP_0,
 
   PROP_SHEET,
-  PROP_EDITABLE
+  PROP_EDITABLE,
+
+  PROP_SHOW_DEFAULT,
+  PROP_PERMISSION_MASK
 };
 
 enum {
@@ -306,9 +310,6 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
   InfGtkAclSheetView* view;
   InfGtkAclSheetViewPrivate* priv;
 
-  GEnumClass* enum_class;
-  guint i;
-
   GtkTreeSelection* selection;
   GtkTreeViewColumn* column;
   GtkCellRenderer* renderer;
@@ -322,6 +323,7 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
   priv->treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(priv->store));
   priv->sheet = NULL;
   priv->editable = FALSE;
+  priv->permission_mask = 0;
 
   gtk_tree_sortable_set_sort_column_id(
     GTK_TREE_SORTABLE(priv->store),
@@ -337,19 +339,7 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
     NULL
   );
 
-  enum_class = G_ENUM_CLASS(g_type_class_ref(INF_TYPE_ACL_SETTING));
-  for(i = 0; i < enum_class->n_values; ++i)
-  {
-    gtk_list_store_insert_with_values(
-      priv->store,
-      NULL,
-      i,
-      0, enum_class->values[i].value_nick,
-      1, enum_class->values[i].value,
-      -1
-    );
-  }
-  g_type_class_unref(enum_class);
+  inf_gtk_acl_sheet_view_set_permission_mask(view, INF_ACL_MASK_ALL);
 
   renderer = gtk_cell_renderer_text_new();
   column = gtk_tree_view_column_new();
@@ -516,6 +506,16 @@ inf_gtk_acl_sheet_view_set_property(GObject* object,
   case PROP_EDITABLE:
     inf_gtk_acl_sheet_view_set_editable(view, g_value_get_boolean(value));
     break;
+  case PROP_SHOW_DEFAULT:
+    inf_gtk_acl_sheet_view_set_show_default(view, g_value_get_boolean(value));
+    break;
+  case PROP_PERMISSION_MASK:
+    inf_gtk_acl_sheet_view_set_permission_mask(
+      view,
+      g_value_get_uint64(value)
+    );
+
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -541,6 +541,12 @@ inf_gtk_acl_sheet_view_get_property(GObject* object,
     break;
   case PROP_EDITABLE:
     g_value_set_boolean(value, priv->editable);
+    break;
+  case PROP_SHOW_DEFAULT:
+    g_value_set_boolean(value, inf_gtk_acl_sheet_view_get_show_default(view));
+    break;
+  case PROP_PERMISSION_MASK:
+    g_value_set_uint64(value, priv->permission_mask);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -610,6 +616,32 @@ inf_gtk_acl_sheet_view_class_init(gpointer g_class,
       "Whether the sheet can be edited by the user or not",
       FALSE,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_SHOW_DEFAULT,
+    g_param_spec_boolean(
+      "show-default",
+      "Show default",
+      "Whether to show the \"default\" column",
+      TRUE,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_PERMISSION_MASK,
+    g_param_spec_uint64(
+      "permission-mask",
+      "Permission mask",
+      "A bitfield with the permissions to show in the sheet view",
+      0,
+      INF_ACL_MASK_ALL,
+      INF_ACL_MASK_ALL,
+      G_PARAM_READWRITE
     )
   );
 }
@@ -770,6 +802,158 @@ inf_gtk_acl_sheet_view_get_editable(InfGtkAclSheetView* view)
 {
   g_return_val_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view), FALSE);
   return INF_GTK_ACL_SHEET_VIEW_PRIVATE(view)->editable;
+}
+
+/**
+ * inf_gtk_acl_sheet_view_set_show_default:
+ * @view: A #InfGtkAclSheetView.
+ * @show: Whether to show the default column.
+ *
+ * Specifies whether the "default" column is shown, and whether it is
+ * allowed to change certain permissions to the default value or not. The
+ * ACL sheet for the default account of a directory's root node is not
+ * allowed to have default permissions. In this case this function should be
+ * called to hide the default column from the user interface.
+ */
+void
+inf_gtk_acl_sheet_view_set_show_default(InfGtkAclSheetView* view,
+                                        gboolean show)
+{
+  InfGtkAclSheetViewPrivate* priv;
+  GtkTreeViewColumn* column;
+
+  g_return_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view));
+
+  priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->treeview), 1);
+
+  if(gtk_tree_view_column_get_visible(column) != show)
+  {
+    gtk_tree_view_column_set_visible(column, show);
+    g_object_notify(G_OBJECT(view), "show-default");
+  }
+}
+
+/**
+ * inf_gtk_acl_sheet_view_get_show_default:
+ * @view: A #InfGtkAclSheetView.
+ *
+ * Returns whether the "default" column is shown.
+ *
+ * Returns: %TRUE if the "default" column is shown or %FALSE otherwise.
+ */
+gboolean
+inf_gtk_acl_sheet_view_get_show_default(InfGtkAclSheetView* view)
+{
+  InfGtkAclSheetViewPrivate* priv;
+  GtkTreeViewColumn* column;
+
+  g_return_val_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view), FALSE);
+
+  priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->treeview), 1);
+
+  return gtk_tree_view_column_get_visible(column);
+}
+
+/**
+ * inf_gtk_acl_sheet_view_set_permission_mask:
+ * @view: A #InfGtkAclSheetView.
+ * @mask: A bitfield with the permissions to show.
+ *
+ * Sets which permissions of the sheet to show. Mask is a bitfield of
+ * #InfAclSetting<!-- -->s which specifies which permissions are shown. By
+ * default all permissions are shown.
+ */
+void
+inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
+                                           guint64 mask)
+{
+  InfGtkAclSheetViewPrivate* priv;
+
+  guint64 add;
+  guint64 remove;
+
+  GEnumClass* enum_class;
+  guint i;
+
+  GtkTreeIter iter;
+  gboolean has_element;
+  InfAclSetting setting;
+
+  priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  add = mask & ~priv->permission_mask;
+  remove = priv->permission_mask & ~mask;
+
+  if(remove != 0)
+  {
+    has_element = gtk_tree_model_get_iter_first(
+      GTK_TREE_MODEL(priv->store),
+      &iter
+    );
+
+    g_assert(has_element == TRUE);
+
+    while(has_element == TRUE)
+    {
+      gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
+      if((remove & ((guint64)1 << (guint64)setting)) != 0)
+      {
+        has_element = gtk_list_store_remove(priv->store, &iter);
+      }
+      else
+      {
+        has_element = gtk_tree_model_iter_next(
+          GTK_TREE_MODEL(priv->store),
+          &iter
+        );
+      }
+    }
+  }
+
+  if(add != 0)
+  {
+    enum_class = G_ENUM_CLASS(g_type_class_ref(INF_TYPE_ACL_SETTING));
+
+    for(i = 0; i < enum_class->n_values; ++i)
+    {
+      if((add & ((guint64)1 << (guint64)enum_class->values[i].value)) != 0)
+      {
+        gtk_list_store_insert_with_values(
+          priv->store,
+          NULL,
+          -1,
+          0, enum_class->values[i].value_nick,
+          1, enum_class->values[i].value,
+          -1
+        );
+      }
+    }
+
+    g_type_class_unref(enum_class);
+  }
+
+  if(remove != 0 || add != 0)
+  {
+    priv->permission_mask = mask;
+    g_object_notify(G_OBJECT(view), "permission-mask");
+  }
+}
+
+/**
+ * inf_gtk_acl_sheet_view_get_permission_mask:
+ * @view: A #InfGtkAclSheetView.
+ *
+ * Returns a bitfield of #InfAclSetting<!-- -->s which specifies which
+ * permissions are currently being shown by @view.
+ *
+ * Returns: A bitfield of settings shown.
+ */
+guint64
+inf_gtk_acl_sheet_view_get_permission_mask(InfGtkAclSheetView* view)
+{
+  g_return_val_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view), 0);
+  return INF_GTK_ACL_SHEET_VIEW_PRIVATE(view)->permission_mask;
 }
 
 /* vim:set et sw=2 ts=2: */

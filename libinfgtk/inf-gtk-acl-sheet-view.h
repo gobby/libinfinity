@@ -85,6 +85,20 @@ inf_gtk_acl_sheet_view_set_editable(InfGtkAclSheetView* view,
 gboolean
 inf_gtk_acl_sheet_view_get_editable(InfGtkAclSheetView* view);
 
+void
+inf_gtk_acl_sheet_view_set_show_default(InfGtkAclSheetView* view,
+                                        gboolean show);
+
+gboolean
+inf_gtk_acl_sheet_view_get_show_default(InfGtkAclSheetView* view);
+
+void
+inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
+                                           guint64 mask);
+
+guint64
+inf_gtk_acl_sheet_view_get_permission_mask(InfGtkAclSheetView* view);
+
 G_END_DECLS
 
 #endif /* __INF_GTK_ACL_SHEET_VIEW_H__ */
