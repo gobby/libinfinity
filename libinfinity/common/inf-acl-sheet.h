@@ -113,6 +113,12 @@ struct _InfAclSheetSet {
 #define INF_ACL_MASK_DEFAULT \
   (1 << INF_ACL_CAN_SUBSCRIBE_SESSION)
 
+/* Non root-node permissions */
+#define INF_ACL_MASK_NONROOT \
+  (1 << INF_ACL_CAN_SUBSCRIBE_SESSION) | \
+  (1 << INF_ACL_CAN_QUERY_ACL) | \
+  (1 << INF_ACL_CAN_SET_ACL)
+
 GType
 inf_acl_user_get_type(void) G_GNUC_CONST;
 
