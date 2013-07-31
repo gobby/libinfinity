@@ -93,6 +93,10 @@ gboolean
 infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection);
 
+const InfAclUser*
+infd_directory_get_acl_user_for_connection(InfdDirectory* directory,
+                                           InfXmlConnection* connection);
+
 void
 infd_directory_foreach_connection(InfdDirectory* directory,
                                   InfdDirectoryForeachConnectionFunc func,

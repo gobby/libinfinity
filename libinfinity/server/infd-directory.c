@@ -8083,6 +8083,38 @@ infd_directory_add_connection(InfdDirectory* directory,
 }
 
 /**
+ * infd_directory_get_acl_user_for_connection:
+ * @directory: A #InfdDirectory.
+ * @connection: A @connection added to @directory.
+ *
+ * This function returns the #InfAclUser that the given connection is logged
+ * in into. The @connection must have been added to the directory before
+ * with infd_directory_add_connection(). If no special login was performed,
+ * the default user is returned.
+ *
+ * A #InfAclUser owned by @directory. It must not be freed.
+ */
+const InfAclUser*
+infd_directory_get_acl_user_for_connection(InfdDirectory* directory,
+                                           InfXmlConnection* connection)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryConnectionInfo* info;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  info = (InfdDirectoryConnectionInfo*)g_hash_table_lookup(
+    priv->connections,
+    connection
+  );
+
+  g_assert(info != NULL);
+  return info->user;
+}
+
+/**
  * infd_directory_foreach_connection:
  * @directory: A #InfdDirectory.
  * @func: The function to call for each connection in @directory.
