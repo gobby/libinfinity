@@ -56,8 +56,8 @@ struct _InfAclUser {
  * of ACL accounts.
  * @INF_ACL_CAN_QUERY_ACL: The user is allowed to query the full ACL for
  * this node.
- * @INF_ACL_CAN_SET_ACL: The user is allowed to change the ACL of child
- * nodes, or create new nodes with a non-default ACL.
+ * @INF_ACL_CAN_SET_ACL: The user is allowed to change the ACL of this node,
+ * or create new nodes with a non-default ACL.
  *
  * Defines the actual permissions that can be granted or revoked for different
  * users.

@@ -4529,7 +4529,20 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     return FALSE;
   }
 
+  /* Check for sync-in/subscribe flags */
+  perform_sync_in = subscribe_sync_conn = FALSE;
+  for(child = xml->children; child != NULL; child = child->next)
+  {
+    if(strcmp((const char*)child->name, "sync-in") == 0)
+      perform_sync_in = TRUE;
+    else if(strcmp((const char*)child->name, "subscribe") == 0)
+      subscribe_sync_conn = TRUE;
+  }
+
   perms = 0; /* TODO: (1 << INF_ACL_CAN_ADD_NODE) */
+  if(subscribe_sync_conn == TRUE)
+    perms |= (1 << INF_ACL_CAN_SUBSCRIBE_SESSION);
+  /* TODO: (1 << INF_ACL_CAN_SYNC_IN) */
   if(sheet_set != NULL && sheet_set->n_sheets > 0)
     perms |= (1 << INF_ACL_CAN_SET_ACL);
 
@@ -4549,6 +4562,9 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     /* No plugin because we want to create a directory */
     plugin = NULL;
     xmlFree(type);
+    
+    /* TODO: Error if perform_sync_in or subscribe are set. Actually we
+     * could interpret subscribe as initially explored... */
   }
   else
   {
@@ -4626,16 +4642,6 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   }
   else
   {
-    /* Check for sync-in/subscribe flags */
-    perform_sync_in = subscribe_sync_conn = FALSE;
-    for(child = xml->children; child != NULL; child = child->next)
-    {
-      if(strcmp((const char*)child->name, "sync-in") == 0)
-        perform_sync_in = TRUE;
-      else if(strcmp((const char*)child->name, "subscribe") == 0)
-        subscribe_sync_conn = TRUE;
-    }
-
     if(perform_sync_in == FALSE)
     {
       node_added = infd_directory_node_add_note(
@@ -5549,7 +5555,6 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfdDirectoryNode* parent;
   guint64 perms;
   gchar* seq;
   GError* local_error;
@@ -5583,15 +5588,8 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
     return FALSE;
   }
 
-  /* In order to change the ACL for a node, one needs CAN_SET_ACL permissions
-   * for its parent node. */
-  if(node->parent != NULL)
-    parent = node->parent;
-  else
-    parent = priv->root;
-
   perms = (1 << INF_ACL_CAN_SET_ACL);
-  if(!infd_directory_check_auth(directory, parent, connection, perms, error))
+  if(!infd_directory_check_auth(directory, node, connection, perms, error))
     return FALSE;
 
   /* TODO: Introduce inf_acl_table_sheet_set_from_xml_required */

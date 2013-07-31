@@ -531,9 +531,7 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   gchar* path;
   gchar* title;
 
-  guint64 own_acl;
-  guint64 parent_acl;
-  InfBrowserIter parent_iter;
+  guint64 perms;
 
   const InfAclUser** accounts;
   const InfAclUser* custom_accounts[2];
@@ -573,25 +571,15 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   g_free(title);
 
   /* Obtain permissions for this node */
-  own_acl = (1 << INF_ACL_CAN_QUERY_USER_LIST)
-          | (1 << INF_ACL_CAN_QUERY_ACL);
-  parent_acl = (1 << INF_ACL_CAN_SET_ACL);
+  perms = (1 << INF_ACL_CAN_QUERY_USER_LIST)
+          | (1 << INF_ACL_CAN_QUERY_ACL)
+          | (1 << INF_ACL_CAN_SET_ACL);
 
-  own_acl = inf_browser_check_acl(
+  perms = inf_browser_check_acl(
     priv->browser,
     &priv->browser_iter,
     inf_browser_get_acl_local_user(priv->browser),
-    own_acl
-  );
-
-  parent_iter = priv->browser_iter;
-  inf_browser_get_parent(priv->browser, &parent_iter);
-
-  parent_acl = inf_browser_check_acl(
-    priv->browser,
-    &parent_iter,
-    inf_browser_get_acl_local_user(priv->browser),
-    parent_acl
+    perms
   );
 
   /* Request account list and ACL */
@@ -599,7 +587,7 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   accounts = inf_browser_get_acl_user_list(priv->browser, &n_accounts);
   if(accounts == NULL)
   {
-    if((own_acl & (1 << INF_ACL_CAN_QUERY_USER_LIST)) != 0 &&
+    if((perms & (1 << INF_ACL_CAN_QUERY_USER_LIST)) != 0 &&
        priv->query_acl_user_list_request == NULL && error == NULL)
     {
       priv->query_acl_user_list_request = INF_ACL_USER_LIST_REQUEST(
@@ -631,7 +619,7 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   {
     if(!inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
     {
-      if((own_acl & (1 << INF_ACL_CAN_QUERY_ACL)) != 0 &&
+      if((perms & (1 << INF_ACL_CAN_QUERY_ACL)) != 0 &&
          priv->query_acl_request == NULL && error == NULL)
       {
         priv->query_acl_request = INF_NODE_REQUEST(
@@ -702,7 +690,7 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   g_free(accounts);
 
   /* Set editability of the sheet view */
-  if((parent_acl & (1 << INF_ACL_CAN_SET_ACL)) == 0 ||
+  if((perms & (1 << INF_ACL_CAN_SET_ACL)) == 0 ||
      !inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
   {
     inf_gtk_acl_sheet_view_set_editable(
@@ -753,14 +741,14 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   {
     query_acl_str = _("Querying current permissions for this node from the server...");
   }
-  else if((own_acl & (1 << INF_ACL_CAN_QUERY_USER_LIST)) == 0 &&
+  else if((perms & (1 << INF_ACL_CAN_QUERY_USER_LIST)) == 0 &&
           accounts == NULL)
   {
     query_acl_str = _("Permission is <b>not granted</b> to query the "
                       "account list from the server. Showing only default "
                       "permissions and permissions for the own account.");
   }
-  else if((own_acl & (1 << INF_ACL_CAN_QUERY_ACL)) == 0 &&
+  else if((perms & (1 << INF_ACL_CAN_QUERY_ACL)) == 0 &&
           !inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
   {
     query_acl_str = _("Permission is <b>not granted</b> to query the "
