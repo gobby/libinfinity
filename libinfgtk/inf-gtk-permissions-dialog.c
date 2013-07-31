@@ -106,6 +106,7 @@ inf_gtk_permissions_dialog_set_acl_finished_cb(InfNodeRequest* request,
 
   g_assert(g_slist_find(priv->set_acl_requests, request) != NULL);
   priv->set_acl_requests = g_slist_remove(priv->set_acl_requests, request);
+  g_object_unref(request);
 }
 
 static void
@@ -133,6 +134,7 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
 
   req = inf_browser_set_acl(priv->browser, &priv->browser_iter, &sheet_set);
   priv->set_acl_requests = g_slist_prepend(priv->set_acl_requests, req);
+  g_object_ref(req);
 
   g_signal_connect(
     G_OBJECT(req),
@@ -703,7 +705,7 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   {
     query_acl_str = _("Permissions are <b>granted</b> to query the full "
                       "permission list from the server. "
-                      "Showing all permissions");
+                      "Showing all permissions.");
   }
 
   /* TODO: Add an icon... for example GTK_STOCK_YES if permissions can be
@@ -1206,6 +1208,8 @@ inf_gtk_permissions_dialog_set_node(InfGtkPermissionsDialog* dialog,
         G_CALLBACK(inf_gtk_permissions_dialog_set_acl_finished_cb),
         dialog
       );
+
+      g_object_unref(item->data);
     }
 
     g_slist_free(priv->set_acl_requests);
