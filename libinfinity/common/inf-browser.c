@@ -1299,7 +1299,7 @@ inf_browser_check_acl(InfBrowser* browser,
       sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, user);
       if(sheet != NULL)
       {
-        perms &= (sheet->perms & (sheet->mask & remaining_mask));
+        perms &= (sheet->perms | ~(sheet->mask & remaining_mask));
         remaining_mask &= ~sheet->mask;
       }
 
@@ -1308,7 +1308,7 @@ inf_browser_check_acl(InfBrowser* browser,
         sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, default_user);
         if(sheet != NULL)
         {
-          perms &= (sheet->perms & (sheet->mask & remaining_mask));
+          perms &= (sheet->perms | ~(sheet->mask & remaining_mask));
           remaining_mask &= ~sheet->mask;
         }
       }
