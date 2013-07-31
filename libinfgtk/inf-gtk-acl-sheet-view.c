@@ -326,7 +326,7 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
   gtk_tree_sortable_set_sort_column_id(
     GTK_TREE_SORTABLE(priv->store),
     0,
-    GTK_SORT_DESCENDING
+    GTK_SORT_ASCENDING
   );
 
   gtk_tree_sortable_set_sort_func(
