@@ -64,7 +64,11 @@ inf_browser_extract_path(InfBrowser* browser,
   if(inf_browser_get_parent(browser, &parent_iter))
   {
     inf_browser_extract_path(browser, &parent_iter, string);
-    g_string_append_c(string, '/');
+
+    g_assert(string->len > 0);
+    if(string->str[string->len - 1] != '/')
+      g_string_append_c(string, '/');
+
     g_string_append(string, inf_browser_get_node_name(browser, iter));
   }
   else
@@ -827,7 +831,7 @@ inf_browser_get_node_type(InfBrowser* browser,
 }
 
 /**
- * inf_browser_get_path:
+ * g:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node inside @browser.
  *
