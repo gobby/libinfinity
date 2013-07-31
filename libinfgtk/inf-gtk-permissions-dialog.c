@@ -58,6 +58,7 @@ struct _InfGtkPermissionsDialogPrivate {
 
   GtkWidget* tree_view;
   GtkWidget* sheet_view;
+  GtkWidget* status_image;
   GtkWidget* status_text;
 };
 
@@ -507,8 +508,14 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   if(priv->browser == NULL)
   {
     gtk_list_store_clear(priv->account_store);
-    /*inf_gtk_permissions_dialog_update_sheet(dialog);*/
-    gtk_widget_hide(priv->status_text);
+    gtk_label_set_text(GTK_LABEL(priv->status_text), _("No node selected"));
+
+    gtk_image_set_from_stock(
+      GTK_IMAGE(priv->status_image),
+      GTK_STOCK_DISCONNECT,
+      GTK_ICON_SIZE_BUTTON
+    );
+
     return;
   }
 
@@ -657,6 +664,12 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       FALSE
     );
 
+    gtk_image_set_from_stock(
+      GTK_IMAGE(priv->status_image),
+      GTK_STOCK_NO,
+      GTK_ICON_SIZE_BUTTON
+    );
+
     set_acl_str = _("Permission is <b>not granted</b> to modify the permission list. It is read-only.");
   }
   else
@@ -664,6 +677,12 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
     inf_gtk_acl_sheet_view_set_editable(
       INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
       TRUE
+    );
+
+    gtk_image_set_from_stock(
+      GTK_IMAGE(priv->status_image),
+      GTK_STOCK_YES,
+      GTK_ICON_SIZE_BUTTON
     );
 
     set_acl_str = _("Permission is <b>granted</b> to modify the permission list.");
@@ -688,13 +707,15 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   {
     query_acl_str = _("Querying current permissions for this node from the server...");
   }
-  else if((own_acl & (1 << INF_ACL_CAN_QUERY_USER_LIST)) == 0)
+  else if((own_acl & (1 << INF_ACL_CAN_QUERY_USER_LIST)) == 0 &&
+          accounts == NULL)
   {
     query_acl_str = _("Permission is <b>not granted</b> to query the "
                       "account list from the server. Showing only default "
                       "permissions and permissions for the own account.");
   }
-  else if((own_acl & (1 << INF_ACL_CAN_QUERY_ACL)) == 0)
+  else if((own_acl & (1 << INF_ACL_CAN_QUERY_ACL)) == 0 &&
+          !inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
   {
     query_acl_str = _("Permission is <b>not granted</b> to query the "
                       "permission list for this node from the server. "
@@ -708,16 +729,11 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
                       "Showing all permissions.");
   }
 
-  /* TODO: Add an icon... for example GTK_STOCK_YES if permissions can be
-   * edited and GTK_STOCK_NO if they can't. */
-
   str = g_strdup_printf("%s\n\n%s", query_acl_str, set_acl_str);
   g_free(error_str);
 
   gtk_label_set_markup(GTK_LABEL(priv->status_text), str);
   g_free(str);
-
-  gtk_widget_show(priv->status_text);
 }
 
 static void
@@ -792,7 +808,13 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   GtkTreeSelection* selection;
   GtkWidget* scroll;
   GtkWidget* hbox;
+  GtkWidget* status_hbox;
   GtkWidget* vbox;
+
+  GtkWidget* image;
+  GtkWidget* image_hbox;
+
+  GtkWidget* dialog_vbox;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(instance);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
@@ -884,17 +906,59 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_box_pack_start(GTK_BOX(hbox), priv->sheet_view, TRUE, TRUE, 0);
   gtk_widget_show(hbox);
 
+  priv->status_image = gtk_image_new();
+  gtk_widget_show(priv->status_image);
+
   priv->status_text = gtk_label_new(NULL);
+  gtk_misc_set_alignment(GTK_MISC(priv->status_text), 0.0, 0.5);
+  gtk_widget_show(priv->status_text);
+
+  status_hbox = gtk_hbox_new(FALSE, 12);
+
+  gtk_box_pack_start(
+    GTK_BOX(status_hbox),
+    priv->status_image,
+    FALSE,
+    FALSE,
+    0
+  );
+
+  gtk_box_pack_start(
+    GTK_BOX(status_hbox),
+    priv->status_text,
+    TRUE,
+    TRUE,
+    0
+  );
+
+  gtk_widget_show(status_hbox);
+
+  vbox = gtk_vbox_new(FALSE, 12);
+  gtk_box_pack_start(GTK_BOX(vbox), status_hbox, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+  gtk_widget_show(vbox);
+
+  image = gtk_image_new_from_stock(
+    GTK_STOCK_DIALOG_AUTHENTICATION,
+    GTK_ICON_SIZE_DIALOG
+  );
+
+  gtk_misc_set_alignment(GTK_MISC(image), 0.0, 0.0);
+  gtk_widget_show(image);
+
+  image_hbox = gtk_hbox_new(FALSE, 12);
+  gtk_box_pack_start(GTK_BOX(image_hbox), image, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(image_hbox), vbox, TRUE, TRUE, 0);
+  gtk_widget_show(image_hbox);
 
 #if GTK_CHECK_VERSION(2,14,0)
-  vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 #else
-  vbox = GTK_DIALOG(dialog)->vbox;
+  dialog_vbox = GTK_DIALOG(dialog)->vbox;
 #endif
 
-  gtk_box_set_spacing(GTK_BOX(vbox), 12);
-  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), priv->status_text, FALSE, FALSE, 0);
+  gtk_box_set_spacing(GTK_BOX(dialog_vbox), 12);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), image_hbox, FALSE, FALSE, 0);
 
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
   gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
@@ -916,13 +980,10 @@ inf_gtk_permissions_dialog_constructor(GType type,
 
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(object);
 
-  if(priv->browser != NULL)
-  {
-    inf_gtk_permissions_dialog_update(
-      INF_GTK_PERMISSIONS_DIALOG(object),
-      NULL
-    );
-  }
+  inf_gtk_permissions_dialog_update(
+    INF_GTK_PERMISSIONS_DIALOG(object),
+    NULL
+  );
 
   return object;
 }
@@ -1241,10 +1302,7 @@ inf_gtk_permissions_dialog_set_node(InfGtkPermissionsDialog* dialog,
     g_object_notify(G_OBJECT(dialog), "browser-iter");
   }
 
-  if(priv->browser != NULL)
-  {
-    inf_gtk_permissions_dialog_update(dialog, NULL);
-  }
+  inf_gtk_permissions_dialog_update(dialog, NULL);
 }
 
 /* vim:set et sw=2 ts=2: */
