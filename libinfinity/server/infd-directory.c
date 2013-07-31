@@ -837,7 +837,7 @@ infd_directory_announce_acl_sheets(InfdDirectory* directory,
 
     for(local_item = local_connection_list;
         local_item != NULL;
-        local_item = g_slist_next(item))
+        local_item = g_slist_next(local_item))
     {
       if(local_item->data != except)
       {
