@@ -956,6 +956,9 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_widget_show(priv->status_image);
 
   priv->status_text = gtk_label_new(NULL);
+  gtk_label_set_max_width_chars(GTK_LABEL(priv->status_text), 50);
+  gtk_label_set_width_chars(GTK_LABEL(priv->status_text), 50);
+  gtk_label_set_line_wrap(GTK_LABEL(priv->status_text), TRUE);
   gtk_misc_set_alignment(GTK_MISC(priv->status_text), 0.0, 0.5);
   gtk_widget_show(priv->status_text);
 
