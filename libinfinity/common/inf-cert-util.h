@@ -40,7 +40,9 @@ inf_cert_util_write_dh_params(gnutls_dh_params_t params,
                               GError** error);
 
 gnutls_x509_privkey_t
-inf_cert_util_create_private_key(GError** error);
+inf_cert_util_create_private_key(gnutls_pk_algorithm_t algo,
+                                 unsigned int bits,
+                                 GError** error);
 
 gnutls_x509_privkey_t
 inf_cert_util_read_private_key(const gchar* filename,

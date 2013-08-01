@@ -344,15 +344,21 @@ inf_cert_util_write_dh_params(gnutls_dh_params_t params,
 
 /**
  * inf_cert_util_create_private_key:
+ * @algo: The key algorithm to use (RSA or DSA).
+ * @bits: The length of the key to generate.
  * @error: Location to store error information, if any.
  *
- * Generates a new, random X.509 private key.
+ * Generates a new, random X.509 private key. This function is a thin
+ * wrapper around gnutls_x509_privkey_generate() which provides GError-style
+ * error reporting.
  *
  * Returns: A new key to be freed with gnutls_x509_privkey_deinit(),
  * or %NULL if an error occured.
  */
 gnutls_x509_privkey_t
-inf_cert_util_create_private_key(GError** error)
+inf_cert_util_create_private_key(gnutls_pk_algorithm_t algo,
+                                 unsigned int bits,
+                                 GError** error)
 {
   gnutls_x509_privkey_t key;
   int res;
@@ -364,7 +370,7 @@ inf_cert_util_create_private_key(GError** error)
     return NULL;
   }
 
-  res = gnutls_x509_privkey_generate(key, GNUTLS_PK_RSA, 2048, 0);
+  res = gnutls_x509_privkey_generate(key, algo, bits, 0);
   if(res != 0)
   {
     inf_gnutls_set_error(error, res);
