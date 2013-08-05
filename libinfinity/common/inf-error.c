@@ -76,6 +76,8 @@ inf_request_strerror(InfRequestError code)
     return _("An attribute did not have valid content");
   case INF_REQUEST_ERROR_INVALID_NUMBER:
     return _("An attribute contained an invalid number");
+  case INF_REQUEST_ERROR_NOT_AUTHORIZED:
+    return _("Not authorized");
   case INF_REQUEST_ERROR_FAILED:
     return _("An unknown request error occured");
   default:
@@ -208,8 +210,6 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Unexpected XML message");
   case INF_DIRECTORY_ERROR_NO_STORAGE:
     return _("Server does not have a background storage");
-  case INF_DIRECTORY_ERROR_NOT_AUTHORIZED:
-    return _("Not authorized");
   case INF_DIRECTORY_ERROR_INVALID_CERTIFICATE:
     return _("The certificate is invalid or not trusted");
   case INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED:

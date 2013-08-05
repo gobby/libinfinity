@@ -4095,8 +4095,8 @@ infd_directory_check_auth(InfdDirectory* directory,
   {
     g_set_error(
       error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NOT_AUTHORIZED,
       "%s",
       _("Permission denied")
     );

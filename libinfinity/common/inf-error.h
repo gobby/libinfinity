@@ -41,6 +41,8 @@ G_BEGIN_DECLS
  * with unexpected content.
  * @INF_REQUEST_ERROR_INVALID_NUMBER: A number in a request was invalid.
  * Either it was not numerical, or it produced an underflow or an overflow.
+ * @INF_REQUEST_ERROR_NOT_AUTHORIZED: The requesting host is not authorized
+ * to perform the requested action.
  * @INF_REQUEST_ERROR_FAILED: Generic error code when no further reason of
  * failure is known.
  *
@@ -55,6 +57,7 @@ typedef enum _InfRequestError {
   INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
   INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
   INF_REQUEST_ERROR_INVALID_NUMBER,
+  INF_REQUEST_ERROR_NOT_AUTHORIZED,
 
   INF_REQUEST_ERROR_FAILED
 } InfRequestError;
@@ -147,8 +150,6 @@ typedef enum _InfUserError {
  * was received.
  * @INF_DIRECTORY_ERROR_NO_STORAGE: A node cannot be stored permanently on the
  * server since it has no storage backend attached.
- * @INF_DIRECTORY_ERROR_NOT_AUTHORIZED: The requesting host is not authorized
- * to perform the requested action.
  * @INF_DIRECTORY_ERROR_INVALID_CERTIFICATE: An invalid certificate or
  * certificate request have been sent.
  * @INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED: The user list has already
@@ -188,7 +189,6 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED,
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
   INF_DIRECTORY_ERROR_NO_STORAGE,
-  INF_DIRECTORY_ERROR_NOT_AUTHORIZED,
   INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
   INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
   INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED,
