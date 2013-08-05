@@ -17,6 +17,28 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infd-session-proxy
+ * @title: InfdSessionProxy
+ * @short_description: Server-side session management
+ * @include: libinfinity/server/infd-session-proxy.h
+ * @see_also: #InfSession
+ * @stability: Unstable
+ *
+ * #InfdSessionProxy is a manager for #InfSession that is specific for the
+ * server side. The #InfdSessionProxy manages exactly one #InfSession. It is
+ * usually created by #InfdDirectory when the content of a node is requested.
+ *
+ * #InfdSessionProxy allows to perform server-specific operations for the
+ * session it manages, such as joining a local user, or removing a connection
+ * from the list of subscribed connections. In addition it handles requests
+ * made by its counterpart, #InfcSessionProxy, for the client side, such as
+ * remote user joins.
+ *
+ * #InfdSessionProxy implements the #InfSessionProxy interface, which can be
+ * used to access the underlying #InfSession or to join a local user.
+ */
+
 #include <libinfinity/server/infd-session-proxy.h>
 #include <libinfinity/server/infd-user-request.h>
 #include <libinfinity/common/inf-session-proxy.h>

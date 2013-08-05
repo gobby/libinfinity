@@ -36,15 +36,35 @@ G_BEGIN_DECLS
 typedef struct _InfcSessionProxy InfcSessionProxy;
 typedef struct _InfcSessionProxyClass InfcSessionProxyClass;
 
+/**
+ * InfcSessionProxyClass:
+ * @translate_error: Virtual function to transform an error domain and code
+ * into a #GError object. If the domain and code are known, this allows to
+ * show a localized error message to the user, independent from the language
+ * the server uses in the error message that went over the wire.
+ *
+ * This structure contains virtual functions of the #InfcSessionProxy class.
+ */
 struct _InfcSessionProxyClass {
+  /*< private >*/
   GObjectClass parent_class;
 
+  /* Virtual Functions */
+
+  /*< public >*/
   GError* (*translate_error)(InfcSessionProxy* session,
                              GQuark domain,
                              guint code);
 };
 
+/**
+ * InfcSessionProxy:
+ *
+ * #InfcSessionProxy is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfcSessionProxy {
+  /*< private >*/
   GObject parent;
 };
 

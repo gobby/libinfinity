@@ -36,8 +36,21 @@ G_BEGIN_DECLS
 typedef struct _InfdSessionProxy InfdSessionProxy;
 typedef struct _InfdSessionProxyClass InfdSessionProxyClass;
 
+/**
+ * InfdSessionProxyClass:
+ * @add_subscription: Default signal handler for the
+ * #InfdSessionProxy::add-subscription signal.
+ * @remove_subscription: Default signal handler for the
+ * #InfdSessionProxy::remove-subscription signal.
+ *
+ * This structure contains the default signal handlers of the
+ * #InfdSessionProxy class.
+ */
 struct _InfdSessionProxyClass {
+  /*< private >*/
   GObjectClass parent_class;
+
+  /*< public >*/
 
   /* Signals */
   void (*add_subscription)(InfdSessionProxy* proxy,
@@ -48,7 +61,14 @@ struct _InfdSessionProxyClass {
                               InfXmlConnection* connection);
 };
 
+/**
+ * InfdSessionProxy:
+ *
+ * #InfdSessionProxy is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfdSessionProxy {
+  /*< private >*/
   GObject parent;
 };
 

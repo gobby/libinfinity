@@ -17,6 +17,27 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infc-session-proxy
+ * @title: InfcSessionProxy
+ * @short_description: Client-side session management
+ * @include: libinfinity/client/infc-session-proxy.h
+ * @see_also: #InfSession
+ * @stability: Unstable
+ *
+ * #InfcSessionProxy is a manager for #InfSession that is specific for the
+ * client side. The #InfcSessionProxy manages exactly one #InfSession. It is
+ * usually created by #InfcBrowser when a subscription to a node is made.
+ *
+ * #InfcSessionProxy allows to perform client-specific operations for the
+ * session it manages, such as joining a user. In addition it handles requests
+ * made by its counterpart, #InfdSessionProxy, for the server side, such as
+ * remote user joins and forced session closure.
+ *
+ * #InfcSessionProxy implements the #InfSessionProxy interface, which can be
+ * used to access the underlying #InfSession or to join a user.
+ */
+
 #include <libinfinity/client/infc-session-proxy.h>
 #include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/client/infc-request-manager.h>
