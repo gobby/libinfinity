@@ -545,6 +545,48 @@ infd_directory_session_idle_notify_cb(GObject* object,
   }
 }
 
+static gboolean
+infd_directory_session_reject_user_join_cb(InfdSessionProxy* proxy,
+                                           InfXmlConnection* connection,
+                                           const GArray* user_properties,
+                                           InfUser* rejoin_user,
+                                           gpointer user_data)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  gpointer node_id;
+  InfdDirectoryNode* node;
+
+  InfdDirectoryConnectionInfo* info;
+  InfBrowserIter iter;
+  guint64 check_mask;
+
+  directory = INFD_DIRECTORY(user_data);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  node_id = g_object_get_qdata(G_OBJECT(proxy), infd_directory_node_id_quark);
+  node = g_hash_table_lookup(priv->nodes, node_id);
+  g_assert(node != NULL);
+
+  info = g_hash_table_lookup(priv->connections, connection);
+  g_assert(info != NULL);
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  check_mask = inf_browser_check_acl(
+    INF_BROWSER(directory),
+    &iter,
+    info->user,
+    1 << INF_ACL_CAN_JOIN_USER
+  );
+
+  /* Reject the user join if the permission is not set. */
+  if(check_mask == 0)
+    return TRUE;
+
+  return FALSE;
+}
+
 /* Releases a session fully from the directory. This is not normally needed
  * because if we don't need a session anymore we still keep a weak reference
  * to it around, in case we need to recover it later. When nobody is holding
@@ -573,6 +615,12 @@ infd_directory_release_session(InfdDirectory* directory,
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(session),
     G_CALLBACK(infd_directory_session_idle_notify_cb),
+    directory
+  );
+
+  inf_signal_handlers_disconnect_by_func(
+    G_OBJECT(session),
+    G_CALLBACK(infd_directory_session_reject_user_join_cb),
     directory
   );
 
@@ -6896,6 +6944,13 @@ infd_directory_browser_subscribe_session(InfBrowser* browser,
     G_OBJECT(proxy),
     "notify::idle",
     G_CALLBACK(infd_directory_session_idle_notify_cb),
+    INFD_DIRECTORY(browser)
+  );
+
+  g_signal_connect(
+    G_OBJECT(proxy),
+    "reject-user-join",
+    G_CALLBACK(infd_directory_session_reject_user_join_cb),
     INFD_DIRECTORY(browser)
   );
   

@@ -103,6 +103,7 @@ enum {
 enum {
   ADD_SUBSCRIPTION,
   REMOVE_SUBSCRIPTION,
+  REJECT_USER_JOIN,
 
   LAST_SIGNAL
 };
@@ -374,37 +375,56 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   g_value_init(&param->value, INF_TYPE_XML_CONNECTION);
   g_value_set_object(&param->value, G_OBJECT(connection));
 
+  /* Validate properties, but exclude the rejoining user from the check.
+   * Otherwise, we would get conflicts because the name and the ID
+   * of the request and the rejoining user are the same. */
+  result = session_class->validate_user_props(
+    priv->session,
+    (const GParameter*)user_props->data,
+    user_props->len,
+    user,
+    error
+  );
+
+  if(result == FALSE)
+    return NULL;
+
+  g_signal_emit(
+    proxy,
+    session_proxy_signals[REJECT_USER_JOIN],
+    0,
+    connection,
+    user_props,
+    user,
+    &result
+  );
+
+  if(result == TRUE)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NOT_AUTHORIZED,
+      "%s",
+      _("Permission denied")
+    );
+
+    return NULL;
+  }
+
   if(user == NULL)
   {
-    /* This validates properties */
     user = inf_session_add_user(
       priv->session,
       (const GParameter*)user_props->data,
-      user_props->len,
-      error
+      user_props->len
     );
 
-    if(user == NULL)
-      return NULL;
-
+    g_assert(user != NULL);
     xml = xmlNewNode(NULL, (const xmlChar*)"user-join");
   }
   else
   {
-    /* Validate properties, but exclude the rejoining user from the check.
-     * Otherwise, we would get conflicts because the name and the ID
-     * of the request and the rejoining user are the same. */
-    result = session_class->validate_user_props(
-      priv->session,
-      (const GParameter*)user_props->data,
-      user_props->len,
-      user,
-      error
-    );
-
-    if(result == FALSE)
-      return NULL;
-
     g_object_freeze_notify(G_OBJECT(user));
 
     /* Set properties on already existing user object. */
@@ -1171,6 +1191,16 @@ infd_session_proxy_remove_subscription(InfdSessionProxy* proxy,
   }
 }
 
+static gboolean
+infd_session_proxy_reject_user_join(InfdSessionProxy* proxy,
+                                    InfXmlConnection* connection,
+                                    const GArray* user_properties,
+                                    InfUser* user_rejoin)
+{
+  /* Allow user join by default */
+  return FALSE;
+}
+
 /*
  * Message handling.
  */
@@ -1419,6 +1449,7 @@ infd_session_proxy_class_init(gpointer g_class,
 
   proxy_class->add_subscription = infd_session_proxy_add_subscription;
   proxy_class->remove_subscription = infd_session_proxy_remove_subscription;
+  proxy_class->reject_user_join = infd_session_proxy_reject_user_join;
 
   g_object_class_install_property(
     object_class,
@@ -1499,6 +1530,43 @@ infd_session_proxy_class_init(gpointer g_class,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION
+  );
+
+  /**
+   * InfdSessionProxy::reject-user-join:
+   * @proxy: The #InfdSessionProxy emitting the signal.
+   * @connection: A subscribed #InfXmlConnection requesting the user join.
+   * @user_properties: An array with the properties for the new user.
+   * @rejoin_user: The existing unavailable user that is being rejoined, or
+   * %NULL.
+   *
+   * This signal is emitted before every remote user join. The signal handler
+   * can return %TRUE in which case the #InfdSessionProxy does not allow the
+   * user join with %INF_REQUEST_ERROR_NOT_AUTHORIZED error. If there is more
+   * than one signal handler, then if one of them returns %TRUE the user
+   * join is rejected.
+   *
+   * The @user_properties parameter is a #GArray of #GParameter values. It
+   * contains the construct properties for the #InfUser object that would be
+   * created if the user join is not rejected. It must not be modified, but
+   * it can be used to make the decision whether to reject the user join or
+   * not dependent on the parameters, such as allowing the user join only if
+   * the user has a predefined name. The function
+   * inf_session_lookup_user_property() can be used to look up a named
+   * parameter in the array.
+   */
+  session_proxy_signals[REJECT_USER_JOIN] = g_signal_new(
+    "reject-user-join",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdSessionProxyClass, reject_user_join),
+    g_signal_accumulator_true_handled, NULL,
+    inf_marshal_BOOLEAN__OBJECT_POINTER_OBJECT,
+    G_TYPE_BOOLEAN,
+    3,
+    INF_TYPE_XML_CONNECTION,
+    G_TYPE_POINTER, /* TODO: G_TYPE_ARRAY */
+    INF_TYPE_USER
   );
 }
 

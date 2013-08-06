@@ -914,6 +914,7 @@ inf_adopted_session_replay_play_next(InfAdoptedSessionReplay* replay,
   InfSessionClass* session_class;
   GArray* user_props;
   GParameter* param;
+  gboolean result;
   guint i;
 
   g_return_val_if_fail(INF_ADOPTED_IS_SESSION_REPLAY(replay), FALSE);
@@ -1006,12 +1007,22 @@ inf_adopted_session_replay_play_next(InfAdoptedSessionReplay* replay,
       g_value_set_object(&param->value, G_OBJECT(priv->client_conn));
     }
 
-    user = inf_session_add_user(
+    result = session_class->validate_user_props(
       INF_SESSION(priv->session),
       (const GParameter*)user_props->data,
       user_props->len,
+      NULL,
       error
     );
+
+    if(result == TRUE)
+    {
+      user = inf_session_add_user(
+        INF_SESSION(priv->session),
+        (const GParameter*)user_props->data,
+        user_props->len
+      );
+    }
 
     for(i = 0; i < user_props->len; ++i)
       g_value_unset(&g_array_index(user_props, GParameter, i).value);

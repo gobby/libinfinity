@@ -893,8 +893,7 @@ inf_session_process_xml_sync_impl(InfSession* session,
     user = inf_session_add_user(
       session,
       (GParameter*)user_props->data,
-      user_props->len,
-      error
+      user_props->len
     );
 
     for(i = 0; i < user_props->len; ++ i)
@@ -2472,14 +2471,15 @@ inf_session_get_status(InfSession* session)
  * by #InfdSessionProxy or #InfcSessionProxy, respectively.
  *
  * You should not call this function unless you know what you are doing.
+ * If @params comes from an untrusted source, they should be checked first
+ * with the validate_user_props virtual function.
  *
  * Return Value: The new #InfUser, or %NULL in case of an error.
  **/
 InfUser*
 inf_session_add_user(InfSession* session,
                      const GParameter* params,
-                     guint n_params,
-                     GError** error)
+                     guint n_params)
 {
   InfSessionPrivate* priv;
   InfSessionClass* session_class;
@@ -2494,27 +2494,22 @@ inf_session_add_user(InfSession* session,
 
   priv = INF_SESSION_PRIVATE(session);
 
-  result = session_class->validate_user_props(
-    session,
-    params,
-    n_params,
-    NULL,
-    error
+  g_return_val_if_fail(
+    session_class->validate_user_props(session, params, n_params, NULL, NULL),
+    NULL
   );
 
-  if(result == TRUE)
-  {
-    /* No idea why g_object_newv wants unconst GParameter list */
-    user = session_class->user_new(session,
-                                   *(GParameter**)(gpointer)&params,
-                                   n_params);
-    inf_user_table_add_user(priv->user_table, user);
-    g_object_unref(user); /* We rely on the usertable holding a reference */
+  /* No idea why g_object_newv wants unconst GParameter list */
+  user = session_class->user_new(
+    session,
+    *(GParameter**)(gpointer)&params,
+    n_params
+  );
 
-    return user;
-  }
+  inf_user_table_add_user(priv->user_table, user);
+  g_object_unref(user); /* We rely on the usertable holding a reference */
 
-  return NULL;
+  return user;
 }
 
 /**

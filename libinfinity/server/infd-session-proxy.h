@@ -42,6 +42,8 @@ typedef struct _InfdSessionProxyClass InfdSessionProxyClass;
  * #InfdSessionProxy::add-subscription signal.
  * @remove_subscription: Default signal handler for the
  * #InfdSessionProxy::remove-subscription signal.
+ * @reject_user_join: Default signal handler for the
+ * #InfdSessionProxy::reject-user-join signal.
  *
  * This structure contains the default signal handlers of the
  * #InfdSessionProxy class.
@@ -59,6 +61,11 @@ struct _InfdSessionProxyClass {
 
   void (*remove_subscription)(InfdSessionProxy* proxy,
                               InfXmlConnection* connection);
+
+  gboolean (*reject_user_join)(InfdSessionProxy* proxy,
+                               InfXmlConnection* connection,
+                               const GArray* user_properties,
+                               InfUser* rejoin_user);
 };
 
 /**

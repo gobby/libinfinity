@@ -302,8 +302,7 @@ inf_session_get_status(InfSession* session);
 InfUser*
 inf_session_add_user(InfSession* session,
                      const GParameter* params,
-                     guint n_params,
-                     GError** error);
+                     guint n_params);
 
 void
 inf_session_set_user_status(InfSession* session,

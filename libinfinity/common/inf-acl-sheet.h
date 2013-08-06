@@ -52,6 +52,8 @@ struct _InfAclUser {
  * InfAclSetting:
  * @INF_ACL_CAN_SUBSCRIBE_SESSION: The user is allowed to subscribe to a
  * session in the directory tree.
+ * @INF_ACL_CAN_JOIN_USER: The user is allowed to join a user into the
+ * session which corresponds to the node.
  * @INF_ACL_CAN_QUERY_USER_LIST: The user is allowed to query the full list
  * of ACL accounts.
  * @INF_ACL_CAN_QUERY_ACL: The user is allowed to query the full ACL for
@@ -64,6 +66,8 @@ struct _InfAclUser {
  */
 typedef enum _InfAclSetting {
   INF_ACL_CAN_SUBSCRIBE_SESSION,
+  INF_ACL_CAN_JOIN_USER,
+
   INF_ACL_CAN_QUERY_USER_LIST,
   INF_ACL_CAN_QUERY_ACL,
   INF_ACL_CAN_SET_ACL,
@@ -111,11 +115,13 @@ struct _InfAclSheetSet {
 
 /* Default permissions */
 #define INF_ACL_MASK_DEFAULT \
-  (1 << INF_ACL_CAN_SUBSCRIBE_SESSION)
+  (1 << INF_ACL_CAN_SUBSCRIBE_SESSION) | \
+  (1 << INF_ACL_CAN_JOIN_USER)
 
 /* Non root-node permissions */
 #define INF_ACL_MASK_NONROOT \
   (1 << INF_ACL_CAN_SUBSCRIBE_SESSION) | \
+  (1 << INF_ACL_CAN_JOIN_USER) | \
   (1 << INF_ACL_CAN_QUERY_ACL) | \
   (1 << INF_ACL_CAN_SET_ACL)
 

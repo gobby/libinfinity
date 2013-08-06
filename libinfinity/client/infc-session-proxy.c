@@ -534,6 +534,7 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   GArray* array;
   InfUser* user;
   GParameter* param;
+  gboolean result;
   guint i;
 
   priv = INFC_SESSION_PROXY_PRIVATE(proxy);
@@ -566,13 +567,24 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
     g_value_set_object(&param->value, G_OBJECT(connection));
   }
 
-  /* This validates properties */
-  user = inf_session_add_user(
+  result = session_class->validate_user_props(
     priv->session,
     (const GParameter*)array->data,
     array->len,
+    NULL,
     error
   );
+
+  if(result == TRUE)
+  {
+    user = inf_session_add_user(
+      priv->session,
+      (const GParameter*)array->data,
+      array->len
+    );
+
+    g_assert(user != NULL);
+  }
 
   for(i = 0; i < array->len; ++ i)
     g_value_unset(&g_array_index(array, GParameter, i).value);
