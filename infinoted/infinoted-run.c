@@ -41,8 +41,7 @@ infinoted_run_directory_certificate_cb(InfXmppConnection* connection,
                                        gpointer user_data)
 {
   InfinotedRun* run;
-  gnutls_x509_crt_t cert;
-  int verify_result;
+  unsigned int verify_result;
   int res;
   gboolean authenticated;
 

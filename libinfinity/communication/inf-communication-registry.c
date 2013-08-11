@@ -37,6 +37,7 @@
  **/
 
 #include <libinfinity/communication/inf-communication-registry.h>
+#include <libinfinity/communication/inf-communication-group-private.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-signals.h>
 

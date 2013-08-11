@@ -37,6 +37,8 @@
 #include <libinfinity/common/inf-browser.h>
 #include <libinfinity/inf-marshal.h>
 
+#include <string.h>
+
 enum {
   ERROR_,
   NODE_ADDED,

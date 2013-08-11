@@ -602,7 +602,7 @@ inf_adopted_request_get_index(InfAdoptedRequest* request)
 {
   InfAdoptedRequestPrivate* priv;
 
-  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), 0);
 
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
   return inf_adopted_state_vector_get(priv->vector, priv->user_id);
