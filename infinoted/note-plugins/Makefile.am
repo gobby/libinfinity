@@ -1,1 +1,1 @@
-SUBDIRS = text
+SUBDIRS = text chat

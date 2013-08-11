@@ -303,6 +303,7 @@ AC_CONFIG_FILES([
     infinoted/Makefile
       infinoted/note-plugins/Makefile
         infinoted/note-plugins/text/Makefile
+        infinoted/note-plugins/chat/Makefile
 
     pixmaps/Makefile
       pixmaps/16x16/Makefile
