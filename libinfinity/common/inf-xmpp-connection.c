@@ -2641,6 +2641,11 @@ inf_xmpp_connection_process_end_element(InfXmppConnection* xmpp,
       case INF_XMPP_CONNECTION_READY:
         inf_xml_connection_received(INF_XML_CONNECTION(xmpp), priv->root);
         break;
+      case INF_XMPP_CONNECTION_CLOSING_STREAM:
+        /* We are waiting for </stream:stream>. It can be that we receive
+         * other XML nodes from the remote side before that happens, but we
+         * ignore them here. */
+        break;
       case INF_XMPP_CONNECTION_AUTH_INITIATED:
         /* The client should be waiting for <stream:stream> from the server
          * in this state, and sax_end_element should not have called this
@@ -2650,7 +2655,6 @@ inf_xmpp_connection_process_end_element(InfXmppConnection* xmpp,
       case INF_XMPP_CONNECTION_CONNECTED:
       case INF_XMPP_CONNECTION_AUTH_CONNECTED:
       case INF_XMPP_CONNECTION_HANDSHAKING:
-      case INF_XMPP_CONNECTION_CLOSING_STREAM:
       case INF_XMPP_CONNECTION_CLOSING_GNUTLS:
       case INF_XMPP_CONNECTION_CLOSED:
       default:
