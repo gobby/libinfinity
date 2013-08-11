@@ -25,13 +25,14 @@
  * @stability: Unstable
  *
  * The #InfcBrowser is used to browse a remote directory and can be used
- * to subscribe to sessions.
+ * to subscribe to sessions. #InfcBrowser implements the #InfBrowser
+ * interface, through which most operations are performed.
  **/
 
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/client/infc-explore-request.h>
-#include <libinfinity/client/infc-acl-user-list-request.h>
+#include <libinfinity/client/infc-acl-account-list-request.h>
 
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-cert-util.h>
@@ -59,6 +60,13 @@ typedef enum _InfcBrowserNodeType {
   /* There was no plugin registered to handle the note's type */
   INFC_BROWSER_NODE_NOTE_UNKNOWN = 1 << 2
 } InfcBrowserNodeType;
+
+typedef struct _InfcBrowserGetAclAccountListData
+  InfcBrowserGetAclAccountListData;
+struct _InfcBrowserGetAclAccountListData {
+  const InfAclAccount** accounts;
+  guint index;
+};
 
 typedef struct _InfcBrowserListPendingRequestsForeachData
   InfcBrowserListPendingRequestsForeachData;
@@ -90,7 +98,9 @@ struct _InfcBrowserNode {
   guint id;
   gchar* name;
   InfcBrowserNodeType type;
+  InfAclSheetSet* acl;
   gboolean acl_queried;
+
   /*InfcBrowserNodeStatus status;*/
 
   union {
@@ -188,9 +198,9 @@ struct _InfcBrowserPrivate {
   GHashTable* nodes; /* Mapping from id to node */
   InfcBrowserNode* root;
 
-  InfAclTable* acl_table;
-  const InfAclUser* local_user;
-  gboolean user_list_queried;
+  GHashTable* accounts; /* known accounts, id -> InfAclAccount* */
+  const InfAclAccount* local_account;
+  gboolean account_list_queried;
 
   GSList* sync_ins;
   GSList* subscription_requests;
@@ -252,6 +262,26 @@ static GQuark infc_browser_sync_in_plugin_quark;
 /*
  * Callbacks
  */
+
+static void
+infc_browser_get_acl_account_list_foreach_func(gpointer key,
+                                               gpointer value,
+                                               gpointer user_data)
+{
+  InfcBrowserGetAclAccountListData* data;
+  data = (InfcBrowserGetAclAccountListData*)user_data;
+
+  data->accounts[data->index++] = (const InfAclAccount*)value;
+}
+
+static const InfAclAccount*
+infc_browser_acl_account_lookup_func(const gchar* id,
+                                     gpointer user_data)
+{
+  GHashTable* account_table;
+  account_table = (GHashTable*)user_data;
+  return (InfAclAccount*)g_hash_table_lookup(account_table, id);
+}
 
 static void
 infc_browser_browser_list_pending_requests_foreach_func(InfcRequest* request,
@@ -434,6 +464,10 @@ infc_browser_node_new_common(InfcBrowser* browser,
   node->id = id;
   node->name = g_strdup(name);
   node->type = type;
+  if(sheet_set != NULL)
+    node->acl = inf_acl_sheet_set_copy(sheet_set);
+  else
+    node->acl = NULL;
   node->acl_queried = FALSE;
 
   if(parent != NULL)
@@ -446,14 +480,6 @@ infc_browser_node_new_common(InfcBrowser* browser,
     /*node->status = INFC_BROWSER_NODE_SYNC;*/
     node->prev = NULL;
     node->next = NULL;
-  }
-
-
-  if(sheet_set != NULL)
-  {
-    iter.node_id = id;
-    iter.node = node;
-    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
   }
 
   g_assert(
@@ -748,10 +774,8 @@ infc_browser_node_free(InfcBrowser* browser,
   if(node->parent != NULL)
     infc_browser_node_unlink(node);
 
-  g_assert(priv->acl_table != NULL);
-  iter.node_id = node->id;
-  iter.node = node;
-  inf_acl_table_clear_sheets(priv->acl_table, &iter);
+  if(node->acl != NULL)
+    inf_acl_sheet_set_free(node->acl);
 
   removed = g_hash_table_remove(priv->nodes, GUINT_TO_POINTER(node->id));
   g_assert(removed == TRUE);
@@ -996,12 +1020,12 @@ infc_browser_disconnected(InfcBrowser* browser)
     priv->root = NULL;
   }
 
-  priv->local_user = NULL;
+  priv->local_account = NULL;
 
-  if(priv->acl_table != NULL)
+  if(priv->accounts != NULL)
   {
-    g_object_unref(priv->acl_table);
-    priv->acl_table = NULL;
+    g_hash_table_destroy(priv->accounts);
+    priv->accounts = NULL;
   }
 
   g_object_freeze_notify(G_OBJECT(browser));
@@ -1177,9 +1201,9 @@ infc_browser_init(GTypeInstance* instance,
   priv->nodes = g_hash_table_new(NULL, NULL);
   priv->root = NULL;
 
-  priv->acl_table = NULL;
-  priv->local_user = NULL;
-  priv->user_list_queried = FALSE;
+  priv->accounts = NULL;
+  priv->local_account = NULL;
+  priv->account_list_queried = FALSE;
 
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
@@ -1231,7 +1255,7 @@ infc_browser_dispose(GObject* object)
   g_assert(priv->group == NULL);
 
   /* Should have been freed by infc_browser_disconnected */
-  g_assert(priv->acl_table == NULL);
+  g_assert(priv->accounts == NULL);
   g_assert(priv->sync_ins == NULL);
   g_assert(priv->subscription_requests == NULL);
 
@@ -2272,14 +2296,11 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   gboolean result;
   InfAclSheetSet* sheet_set;
 
-  gnutls_x509_crt_t cert;
-  gchar* fingerprint;
-  gchar* name;
-  InfAclUser* default_user;
-  InfAclUser* local_user;
+  xmlNodePtr node;
+  InfAclAccount* default_account;
   GError* local_error;
   InfAclSheet* sheet;
-  guint64 default_mask;
+  InfAclMask default_mask;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
@@ -2343,44 +2364,61 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
   if(!result) return FALSE;
 
-  g_assert(priv->acl_table == NULL);
-  priv->acl_table = inf_acl_table_new();
+  /* Load ACL accounts */
+  g_assert(priv->accounts == NULL);
+  g_assert(priv->local_account == NULL);
 
-  default_user = inf_acl_user_new("default", NULL);
-  inf_acl_table_add_user(priv->acl_table, default_user, TRUE);
+  priv->accounts = g_hash_table_new_full(
+    g_str_hash,
+    g_str_equal,
+    NULL,
+    (GDestroyNotify)inf_acl_account_free
+  );
 
-  g_object_get(G_OBJECT(connection), "local-certificate", &cert, NULL);
-  if(cert != NULL)
+  default_account = inf_acl_account_new("default", NULL);
+  g_hash_table_insert(priv->accounts, default_account->id, default_account);
+
+  priv->local_account = default_account;
+  for(node = xml->children; node != NULL; node = node->next)
   {
-    fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
-    name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
+    if(node->type != XML_ELEMENT_NODE) continue;
 
-    local_user = inf_acl_user_new(fingerprint, name);
-    inf_acl_table_add_user(priv->acl_table, local_user, TRUE);
+    if(strcmp(node->name, "account") == 0)
+    {
+      priv->local_account = inf_acl_account_from_xml(node, error);
+      if(priv->local_account == NULL)
+      {
+        g_hash_table_destroy(priv->accounts);
+        priv->accounts = NULL;
+        return FALSE;
+      }
 
-    priv->local_user = inf_acl_table_get_user(priv->acl_table, fingerprint);
+      g_hash_table_insert(
+        priv->accounts,
+        priv->local_account->id,
+        (gpointer)priv->local_account
+      );
 
-    g_free(fingerprint);
-    g_free(name);
+      break;
+    }
   }
-  else
-  {
-    priv->local_user = inf_acl_table_get_user(priv->acl_table, "default");
-  }
 
-  /* Load the ACL sheet only after having initialized the users in the ACL
-   * table. */
+  /* Load the root ACL sheet set */
   local_error = NULL;
-  sheet_set = inf_acl_table_sheet_set_from_xml(
-    priv->acl_table,
+
+  sheet_set = inf_acl_sheet_set_from_xml(
     xml,
+    infc_browser_acl_account_lookup_func,
+    priv->accounts,
     &local_error
   );
 
   if(local_error != NULL)
   {
-    g_object_unref(priv->acl_table);
-    priv->acl_table = NULL;
+    g_hash_table_destroy(priv->accounts);
+    priv->accounts = NULL;
+    priv->local_account = NULL;
+
     g_propagate_error(error, local_error);
     return FALSE;
   }
@@ -2389,9 +2427,14 @@ infc_browser_handle_welcome(InfcBrowser* browser,
    * explicitely by the server. */
   if(sheet_set == NULL)
     sheet_set = inf_acl_sheet_set_new();
-  sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_user);
+
+  sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_account);
   default_mask = sheet->mask;
-  sheet->perms |= (INF_ACL_MASK_DEFAULT & ~default_mask);
+
+  inf_acl_mask_neg(&default_mask, &default_mask);
+  inf_acl_mask_and(&default_mask, &INF_ACL_MASK_DEFAULT, &default_mask);
+  inf_acl_mask_or(&sheet->perms, &default_mask, &sheet->perms);
+
   sheet->mask = INF_ACL_MASK_ALL;
 
   g_assert(priv->root == NULL);
@@ -2411,9 +2454,9 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   priv->status = INF_BROWSER_OPEN;
   g_object_notify(G_OBJECT(browser), "status");
 
-  inf_browser_acl_user_added(INF_BROWSER(browser), default_user);
-  if(priv->local_user != NULL)
-    inf_browser_acl_user_added(INF_BROWSER(browser), priv->local_user);
+  inf_browser_acl_account_added(INF_BROWSER(browser), default_account);
+  if(priv->local_account != default_account)
+    inf_browser_acl_account_added(INF_BROWSER(browser), priv->local_account);
 
   return TRUE;
 }
@@ -2625,9 +2668,10 @@ infc_browser_handle_add_node(InfcBrowser* browser,
     return FALSE;
   }
 
-  sheet_set = inf_acl_table_sheet_set_from_xml(
-    priv->acl_table,
+  sheet_set = inf_acl_sheet_set_from_xml(
     xml,
+    infc_browser_acl_account_lookup_func,
+    priv->accounts,
     &local_error
   );
 
@@ -2882,9 +2926,11 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       if(name != NULL)
       {
         local_error = NULL;
-        sheet_set = inf_acl_table_sheet_set_from_xml(
-          priv->acl_table,
+
+        sheet_set = inf_acl_sheet_set_from_xml(
           xml,
+          infc_browser_acl_account_lookup_func,
+          priv->accounts,
           &local_error
         );
 
@@ -3400,10 +3446,10 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
 }
 
 static gboolean
-infc_browser_handle_user_list_begin(InfcBrowser* browser,
-                                    InfXmlConnection* connection,
-                                    xmlNodePtr xml,
-                                    GError** error)
+infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
+                                           InfXmlConnection* connection,
+                                           xmlNodePtr xml,
+                                           GError** error)
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
@@ -3415,39 +3461,39 @@ infc_browser_handle_user_list_begin(InfcBrowser* browser,
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  /* TODO: Allow user list query without us asking. We should then create a
+  /* TODO: Allow account list query without us asking. We should then create a
    * request here, and correctly handle the case that there is already one. */
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
-    "query-user-list",
+    "query-acl-account-list",
     xml,
     error
   );
 
   if(request == NULL) return FALSE;
-  g_assert(INFC_IS_ACL_USER_LIST_REQUEST(request));
+  g_assert(INFC_IS_ACL_ACCOUNT_LIST_REQUEST(request));
 
-  if(!inf_xml_util_get_attribute_uint_required(xml, "n-users", &total, error))
+  if(!inf_xml_util_get_attribute_uint_required(xml, "total", &total, error))
     return FALSE;
 
-  if(priv->user_list_queried == TRUE)
+  if(priv->account_list_queried == TRUE)
   {
     g_set_error(
       error,
       inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
+      INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED,
       "%s",
-      _("The user list has already been queried")
+      _("The account list has already been queried")
     );
 
     return FALSE;
   }
   else
   {
-    priv->user_list_queried = TRUE;
+    priv->account_list_queried = TRUE;
 
-    infc_acl_user_list_request_initiated(
-      INFC_ACL_USER_LIST_REQUEST(request),
+    infc_acl_account_list_request_initiated(
+      INFC_ACL_ACCOUNT_LIST_REQUEST(request),
       total
     );
 
@@ -3456,10 +3502,10 @@ infc_browser_handle_user_list_begin(InfcBrowser* browser,
 }
 
 static gboolean
-infc_browser_handle_user_list_end(InfcBrowser* browser,
-                                  InfXmlConnection* connection,
-                                  xmlNodePtr xml,
-                                  GError** error)
+infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
+                                         InfXmlConnection* connection,
+                                         xmlNodePtr xml,
+                                         GError** error)
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
@@ -3472,13 +3518,13 @@ infc_browser_handle_user_list_end(InfcBrowser* browser,
   /* TODO: Allow user list query without us asking. */
   request = infc_request_manager_get_request_by_xml_required(
     priv->request_manager,
-    "query-user-list",
+    "query-acl-account-list",
     xml,
     error
   );
 
   if(request == NULL) return FALSE;
-  g_assert(INFC_IS_ACL_USER_LIST_REQUEST(request));
+  g_assert(INFC_IS_ACL_ACCOUNT_LIST_REQUEST(request));
 
   g_object_get(G_OBJECT(request), "current", &current, "total", &total, NULL);
   if(current < total)
@@ -3496,8 +3542,8 @@ infc_browser_handle_user_list_end(InfcBrowser* browser,
   }
   else
   {
-    inf_acl_user_list_request_finished(
-      INF_ACL_USER_LIST_REQUEST(request),
+    inf_acl_account_list_request_finished(
+      INF_ACL_ACCOUNT_LIST_REQUEST(request),
       NULL
     );
 
@@ -3509,18 +3555,18 @@ infc_browser_handle_user_list_end(InfcBrowser* browser,
 }
 
 static gboolean
-infc_browser_handle_add_user(InfcBrowser* browser,
-                             InfXmlConnection* connection,
-                             xmlNodePtr xml,
-                             GError** error)
+infc_browser_handle_add_acl_account(InfcBrowser* browser,
+                                    InfXmlConnection* connection,
+                                    xmlNodePtr xml,
+                                    GError** error)
 {
   InfcBrowserPrivate* priv;
   GError* local_error;
   InfcRequest* request;
-  InfcAclUserListRequest* acl_request;
+  InfcAclAccountListRequest* acl_request;
   guint current;
   guint total;
-  InfAclUser* user;
+  InfAclAccount* account;
   gchar* id;
 
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -3528,7 +3574,7 @@ infc_browser_handle_add_user(InfcBrowser* browser,
   local_error = NULL;
   request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
-    "query-user-list",
+    "query-acl-account-list",
     xml,
     &local_error
   );
@@ -3542,8 +3588,8 @@ infc_browser_handle_add_user(InfcBrowser* browser,
   acl_request = NULL;
   if(request != NULL)
   {
-    g_assert(INFC_IS_ACL_USER_LIST_REQUEST(request));
-    acl_request = INFC_ACL_USER_LIST_REQUEST(request);
+    g_assert(INFC_IS_ACL_ACCOUNT_LIST_REQUEST(request));
+    acl_request = INFC_ACL_ACCOUNT_LIST_REQUEST(request);
 
     g_object_get(
       G_OBJECT(request),
@@ -3552,15 +3598,15 @@ infc_browser_handle_add_user(InfcBrowser* browser,
       NULL
     );
 
-    if(infc_acl_user_list_request_get_initiated(acl_request) == FALSE)
+    if(infc_acl_account_list_request_get_initiated(acl_request) == FALSE)
     {
       g_set_error(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_NOT_INITIATED,
         "%s",
-        _("\"query-user-list\" request was not initiated yet, but "
-          "\"add-user\" was already received")
+        _("\"query-acl-account-list\" request was not initiated yet, but "
+          "\"add-acl-account\" was already received")
       );
 
       return FALSE;
@@ -3572,35 +3618,37 @@ infc_browser_handle_add_user(InfcBrowser* browser,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
         "%s",
-        _("More users were added in response to \"query-user-list\" than "
-          "initially proclaimed")
+        _("More users were added in response to \"query-acl-account-list\" "
+          "than initially proclaimed")
       );
 
       return FALSE;
     }
   }
 
-  user = inf_acl_user_from_xml(xml, error);
-  if(user == NULL) return FALSE;
+  account = inf_acl_account_from_xml(xml, error);
+  if(account == NULL) return FALSE;
 
-  id = g_strdup(user->user_id);
+  if(g_hash_table_lookup(priv->accounts, account->id) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
+      "%s",
+      _("Server sent a duplicate account in \"query-acl-account-list\"")
+    );
 
-  inf_acl_table_add_user(
-    priv->acl_table,
-    user,
-    TRUE
-  );
+    inf_acl_account_free(account);
+    return FALSE;
+  }
+
+  g_hash_table_insert(priv->accounts, account->id, account);
 
   if(acl_request != NULL)
-    infc_acl_user_list_request_progress(acl_request);
+    infc_acl_account_list_request_progress(acl_request);
 
-  inf_browser_acl_user_added(
-    INF_BROWSER(browser),
-    inf_acl_table_get_user(priv->acl_table, id)
-  );
-
-  g_free(id);
-
+  inf_browser_acl_account_added(INF_BROWSER(browser), account);
   return TRUE;
 }
 
@@ -3624,9 +3672,11 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   if(node == NULL) return FALSE;
 
   local_error = NULL;
-  sheet_set = inf_acl_table_sheet_set_from_xml(
-    priv->acl_table,
+
+  sheet_set = inf_acl_sheet_set_from_xml(
     xml,
+    infc_browser_acl_account_lookup_func,
+    priv->accounts,
     &local_error
   );
 
@@ -3656,15 +3706,16 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
     g_free(request_type);
   }
 
+  iter.node_id = node->id;
+  iter.node = node;
+
   /* sheet_set can be NULL, for example when querying the ACL for a node and
    * the ACL is empty. */
   if(sheet_set != NULL)
   {
     if(sheet_set->n_sheets > 0)
     {
-      iter.node_id = node->id;
-      iter.node = node;
-      inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+      node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
       inf_browser_acl_changed(INF_BROWSER(browser), &iter, sheet_set);
     }
 
@@ -3728,7 +3779,16 @@ infc_browser_handle_request_failed(InfcBrowser* browser,
       inf_directory_strerror(code)
     );
   }
-  /* TODO: Can errors from the inf_request_error_quark() domain occur? */
+  else if(g_quark_from_string((gchar*)domain) == inf_request_error_quark())
+  {
+    g_set_error(
+      &req_error,
+      inf_request_error_quark(),
+      code,
+      "%s",
+      inf_request_strerror(code)
+    );
+  }
   else
   {
     /* TODO: Look whether server has sent a human-readable error message
@@ -3893,27 +3953,27 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
-  else if(strcmp((const gchar*)node->name, "user-list-begin") == 0)
+  else if(strcmp((const gchar*)node->name, "acl-account-list-begin") == 0)
   {
-    infc_browser_handle_user_list_begin(
+    infc_browser_handle_acl_account_list_begin(
       browser,
       connection,
       node,
       &local_error
     );
   }
-  else if(strcmp((const gchar*)node->name, "user-list-end") == 0)
+  else if(strcmp((const gchar*)node->name, "acl-account-list-end") == 0)
   {
-    infc_browser_handle_user_list_end(
+    infc_browser_handle_acl_account_list_end(
       browser,
       connection,
       node,
       &local_error
     );
   }
-  else if(strcmp((const gchar*)node->name, "add-user") == 0)
+  else if(strcmp((const gchar*)node->name, "add-acl-account") == 0)
   {
-    infc_browser_handle_add_user(
+    infc_browser_handle_add_acl_account(
       browser,
       connection,
       node,
@@ -4596,7 +4656,7 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
   inf_xml_util_set_attribute(xml, "name", name);
 
   if(sheet_set != NULL)
-    inf_acl_table_sheet_set_to_xml(priv->acl_table, sheet_set, xml);
+    inf_acl_sheet_set_to_xml(sheet_set, xml);
 
   if(initial_subscribe != FALSE)
     xmlNewChild(xml, NULL, (const xmlChar*)"subscribe", NULL);
@@ -4653,7 +4713,7 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
   inf_xml_util_set_attribute(xml, "name", name);
 
   if(sheet_set != NULL)
-    inf_acl_table_sheet_set_to_xml(priv->acl_table, sheet_set, xml);
+    inf_acl_sheet_set_to_xml(sheet_set, xml);
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -4891,8 +4951,8 @@ infc_browser_browser_iter_from_request(InfBrowser* browser,
   return TRUE;
 }
 
-static InfAclUserListRequest*
-infc_browser_browser_query_acl_user_list(InfBrowser* browser)
+static InfAclAccountListRequest*
+infc_browser_browser_query_acl_account_list(InfBrowser* browser)
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
@@ -4902,21 +4962,21 @@ infc_browser_browser_query_acl_user_list(InfBrowser* browser)
   priv = INFC_BROWSER_PRIVATE(browser);
 
   g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
-  g_return_val_if_fail(priv->user_list_queried == FALSE, NULL);
+  g_return_val_if_fail(priv->account_list_queried == FALSE, NULL);
 
   g_return_val_if_fail(
     inf_browser_get_pending_request(
       INF_BROWSER(browser),
       NULL,
-      "query-user-list"
+      "query-acl-account-list"
     ) == NULL,
     NULL
   );
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_ACL_USER_LIST_REQUEST,
-    "query-user-list",
+    INFC_TYPE_ACL_ACCOUNT_LIST_REQUEST,
+    "query-acl-account-list",
     NULL
   );
 
@@ -4930,28 +4990,43 @@ infc_browser_browser_query_acl_user_list(InfBrowser* browser)
     xml
   );
 
-  return INF_ACL_USER_LIST_REQUEST(request);
+  return INF_ACL_ACCOUNT_LIST_REQUEST(request);
 }
 
-static const InfAclUser**
-infc_browser_browser_get_acl_user_list(InfBrowser* infbrowser,
-                                       guint* n_users)
+static const InfAclAccount**
+infc_browser_browser_get_acl_account_list(InfBrowser* infbrowser,
+                                          guint* n_accounts)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
+  InfcBrowserGetAclAccountListData data;
 
   browser = INFC_BROWSER(infbrowser);
   priv = INFC_BROWSER_PRIVATE(browser);
 
   g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
 
-  if(priv->user_list_queried == FALSE)
+  if(priv->account_list_queried == FALSE)
     return NULL;
-  return inf_acl_table_get_user_list(priv->acl_table, n_users);
+
+  *n_accounts = g_hash_table_size(priv->accounts);
+  if(*n_accounts == 0)
+    return NULL;
+
+  data.accounts = g_malloc(sizeof(InfAclAccount*) * (*n_accounts));
+  data.index = 0;
+
+  g_hash_table_foreach(
+    priv->accounts,
+    infc_browser_get_acl_account_list_foreach_func,
+    &data
+  );
+
+  return data.accounts;
 }
 
-static const InfAclUser*
-infc_browser_browser_get_acl_local_user(InfBrowser* infbrowser)
+static const InfAclAccount*
+infc_browser_browser_get_acl_local_account(InfBrowser* infbrowser)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -4960,18 +5035,18 @@ infc_browser_browser_get_acl_local_user(InfBrowser* infbrowser)
   priv = INFC_BROWSER_PRIVATE(browser);
 
   g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
-  g_assert(priv->local_user != NULL);
+  g_assert(priv->local_account != NULL);
 
-  return priv->local_user;
+  return priv->local_account;
 }
 
-static const InfAclUser*
-infc_browser_browser_lookup_acl_user(InfBrowser* browser,
-                                     const gchar* user_id)
+static const InfAclAccount*
+infc_browser_browser_lookup_acl_account(InfBrowser* browser,
+                                        const gchar* id)
 {
   InfcBrowserPrivate* priv;
   priv = INFC_BROWSER_PRIVATE(browser);
-  return inf_acl_table_get_user(priv->acl_table, user_id);
+  return (const InfAclAccount*)g_hash_table_lookup(priv->accounts, id);
 }
 
 static InfNodeRequest*
@@ -5022,7 +5097,7 @@ infc_browser_browser_query_acl(InfBrowser* browser,
 static gboolean
 infc_browser_browser_has_acl(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             const InfAclUser* user)
+                             const InfAclAccount* account)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -5038,9 +5113,9 @@ infc_browser_browser_has_acl(InfBrowser* browser,
     return TRUE;
 
   /* Otherwise we only have the local user and the default user sheets */
-  if(user != NULL)
+  if(account != NULL)
   {
-    if(user == priv->local_user || strcmp(user->user_id, "default") == 0)
+    if(account == priv->local_account || strcmp(account->id, "default") == 0)
       return TRUE;
   }
 
@@ -5053,12 +5128,13 @@ infc_browser_browser_get_acl(InfBrowser* browser,
                              const InfBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, NULL);
 
-  priv = INFC_BROWSER_PRIVATE(browser);
-  return inf_acl_table_get_sheets(priv->acl_table, iter);
+  node = (InfcBrowserNode*)iter->node;
+  return node->acl;
 }
 
 static InfNodeRequest*
@@ -5093,7 +5169,7 @@ infc_browser_browser_set_acl(InfBrowser* browser,
   xml = infc_browser_request_to_xml(request);
   inf_xml_util_set_attribute_uint(xml, "id", node->id);
 
-  inf_acl_table_sheet_set_to_xml(priv->acl_table, sheet_set, xml);
+  inf_acl_sheet_set_to_xml(sheet_set, xml);
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -5211,7 +5287,7 @@ infc_browser_browser_init(gpointer g_iface,
   iface->subscribe_session = infc_browser_browser_subscribe_session;
   iface->unsubscribe_session = NULL;
   iface->begin_request = NULL;
-  iface->acl_user_added = NULL;
+  iface->acl_account_added = NULL;
   iface->acl_changed = NULL;
 
   iface->get_root = infc_browser_browser_get_root;
@@ -5232,10 +5308,10 @@ infc_browser_browser_init(gpointer g_iface,
   iface->list_pending_requests = infc_browser_browser_list_pending_requests;
   iface->iter_from_request = infc_browser_browser_iter_from_request;
 
-  iface->query_acl_user_list = infc_browser_browser_query_acl_user_list;
-  iface->get_acl_user_list = infc_browser_browser_get_acl_user_list;
-  iface->get_acl_local_user = infc_browser_browser_get_acl_local_user;
-  iface->lookup_acl_user = infc_browser_browser_lookup_acl_user;
+  iface->query_acl_account_list = infc_browser_browser_query_acl_account_list;
+  iface->get_acl_account_list = infc_browser_browser_get_acl_account_list;
+  iface->get_acl_local_account = infc_browser_browser_get_acl_local_account;
+  iface->lookup_acl_account = infc_browser_browser_lookup_acl_account;
   iface->query_acl = infc_browser_browser_query_acl;
   iface->has_acl = infc_browser_browser_has_acl;
   iface->get_acl = infc_browser_browser_get_acl;

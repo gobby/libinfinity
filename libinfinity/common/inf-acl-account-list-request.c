@@ -18,21 +18,21 @@
  */
 
 /**
- * SECTION:inf-acl-user-list-request
- * @title: InfAclUserListRequest
- * @short_description: Asynchronous request to obtain a list of users
- * @include: libinfinity/common/inf-acl-user-list-request.h
+ * SECTION:inf-acl-account-list-request
+ * @title: InfAclAccountListRequest
+ * @short_description: Asynchronous request to obtain a list of accounts
+ * @include: libinfinity/common/inf-acl-account-list-request.h
  * @see_also: #InfBrowser, #InfRequest
  * @stability: Unstable
  *
- * #InfAclUserListRequest represents a request that has been made via the
+ * #InfAclAccountListRequest represents a request that has been made via the
  * #InfBrowser API to request the list of known users. Usually such a request
  * is asynchronous, for example because it waits for a response from an
- * infinote server or because it performs I/O. The #InfAclUserListRequest class
- * is used to be notified when the request finishes.
+ * infinote server or because it performs I/O. The #InfAclAccountListRequest
+ * class is used to be notified when the request finishes.
  */
 
-#include <libinfinity/common/inf-acl-user-list-request.h>
+#include <libinfinity/common/inf-acl-account-list-request.h>
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/inf-marshal.h>
 
@@ -42,10 +42,10 @@ enum {
   LAST_SIGNAL
 };
 
-static guint acl_user_list_request_signals[LAST_SIGNAL];
+static guint acl_account_list_request_signals[LAST_SIGNAL];
 
 static void
-inf_acl_user_list_request_base_init(gpointer g_class)
+inf_acl_account_list_request_base_init(gpointer g_class)
 {
   static gboolean initialized = FALSE;
 
@@ -78,19 +78,19 @@ inf_acl_user_list_request_base_init(gpointer g_class)
     );
 
     /**
-     * InfAclUserListRequest::finished:
-     * @request: The #InfAclUserListRequest which finished.
+     * InfAclAccountListRequest::finished:
+     * @request: The #InfAclAccountListRequest which finished.
      * @error: Error information in case the request failed, or %NULL
      * otherwise.
      *
      * This signal is emitted when the request finishes. If @error is
      * non-%NULL the request failed, otherwise it finished successfully.
      */
-    acl_user_list_request_signals[FINISHED] = g_signal_new(
+    acl_account_list_request_signals[FINISHED] = g_signal_new(
       "finished",
-      INF_TYPE_ACL_USER_LIST_REQUEST,
+      INF_TYPE_ACL_ACCOUNT_LIST_REQUEST,
       G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfAclUserListRequestIface, finished),
+      G_STRUCT_OFFSET(InfAclAccountListRequestIface, finished),
       NULL, NULL,
       inf_marshal_VOID__POINTER,
       G_TYPE_NONE,
@@ -103,59 +103,59 @@ inf_acl_user_list_request_base_init(gpointer g_class)
 }
 
 GType
-inf_acl_user_list_request_get_type(void)
+inf_acl_account_list_request_get_type(void)
 {
-  static GType acl_user_list_request_type = 0;
+  static GType acl_account_list_request_type = 0;
 
-  if(!acl_user_list_request_type)
+  if(!acl_account_list_request_type)
   {
-    static const GTypeInfo acl_user_list_request_info = {
-      sizeof(InfAclUserListRequestIface), /* class_size */
-      inf_acl_user_list_request_base_init, /* base_init */
-      NULL,                            /* base_finalize */
-      NULL,                            /* class_init */
-      NULL,                            /* class_finalize */
-      NULL,                            /* class_data */
-      0,                               /* instance_size */
-      0,                               /* n_preallocs */
-      NULL,                            /* instance_init */
-      NULL                             /* value_table */
+    static const GTypeInfo acl_account_list_request_info = {
+      sizeof(InfAclAccountListRequestIface),  /* class_size */
+      inf_acl_account_list_request_base_init, /* base_init */
+      NULL,                                   /* base_finalize */
+      NULL,                                   /* class_init */
+      NULL,                                   /* class_finalize */
+      NULL,                                   /* class_data */
+      0,                                      /* instance_size */
+      0,                                      /* n_preallocs */
+      NULL,                                   /* instance_init */
+      NULL                                    /* value_table */
     };
 
-    acl_user_list_request_type = g_type_register_static(
+    acl_account_list_request_type = g_type_register_static(
       G_TYPE_INTERFACE,
-      "InfAclUserListRequest",
-      &acl_user_list_request_info,
+      "InfAclAccountListRequest",
+      &acl_account_list_request_info,
       0
     );
 
     g_type_interface_add_prerequisite(
-      acl_user_list_request_type,
+      acl_account_list_request_type,
       INF_TYPE_REQUEST
     );
   }
 
-  return acl_user_list_request_type;
+  return acl_account_list_request_type;
 }
 
 /**
- * inf_acl_user_list_request_finished:
- * @request: A #InfAclUserListRequest.
+ * inf_acl_account_list_request_finished:
+ * @request: A #InfAclAccountListRequest.
  * @error: A #GError containing error information in case the request failed,
  * or %NULL otherwise.
  *
- * This function emits the #InfAclUserListRequest::finished signal on @request.
- * It is meant to be used by interface implementations only.
+ * This function emits the #InfAclAccountListRequest::finished signal on
+ * @request. It is meant to be used by interface implementations only.
  */
 void
-inf_acl_user_list_request_finished(InfAclUserListRequest* request,
-                               const GError* error)
+inf_acl_account_list_request_finished(InfAclAccountListRequest* request,
+                                      const GError* error)
 {
-  g_return_if_fail(INF_IS_ACL_USER_LIST_REQUEST(request));
+  g_return_if_fail(INF_IS_ACL_ACCOUNT_LIST_REQUEST(request));
 
   g_signal_emit(
     request,
-    acl_user_list_request_signals[FINISHED],
+    acl_account_list_request_signals[FINISHED],
     0,
     error
   );

@@ -52,12 +52,27 @@
 
 #include <string.h>
 
+typedef struct _InfdDirectoryWriteAccountListForeachData
+  InfdDirectoryWriteAccountListForeachData;
+struct _InfdDirectoryWriteAccountListForeachData {
+  const InfdAclAccountInfo** accounts;
+  guint index;
+};
+
+typedef struct _InfdDirectoryGetAclAccountListData
+  InfdDirectoryGetAclAccountListData;
+struct _InfdDirectoryGetAclAccountListData {
+  const InfAclAccount** accounts;
+  guint index;
+};
+
 typedef struct _InfdDirectoryNode InfdDirectoryNode;
 struct _InfdDirectoryNode {
   InfdDirectoryNode* parent;
   InfdDirectoryNode* prev;
   InfdDirectoryNode* next;
 
+  InfAclSheetSet* acl;
   GSList* acl_connections;
 
   InfdStorageNodeType type;
@@ -204,7 +219,7 @@ struct _InfdDirectoryLocreq {
 typedef struct _InfdDirectoryConnectionInfo InfdDirectoryConnectionInfo;
 struct _InfdDirectoryConnectionInfo {
   guint seq_id;
-  const InfAclUser* user;
+  const InfdAclAccountInfo* account;
 };
 
 typedef struct _InfdDirectoryPrivate InfdDirectoryPrivate;
@@ -220,8 +235,9 @@ struct _InfdDirectoryPrivate {
   GHashTable* plugins; /* Registered plugins */
   GHashTable* connections; /* Connection infos */
 
-  InfAclTable* acl_table;
-  GSList* user_list_connections;
+  GHashTable* accounts; /* All accounts */
+  GHashTable* accounts_by_certificate; /* For lookup by certificate */
+  GSList* account_list_connections;
 
   guint node_counter;
   GHashTable* nodes; /* Mapping from id to node */
@@ -559,7 +575,8 @@ infd_directory_session_reject_user_join_cb(InfdSessionProxy* proxy,
 
   InfdDirectoryConnectionInfo* info;
   InfBrowserIter iter;
-  guint64 check_mask;
+  InfAclMask check_mask;
+  gboolean result;
 
   directory = INFD_DIRECTORY(user_data);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -573,15 +590,18 @@ infd_directory_session_reject_user_join_cb(InfdSessionProxy* proxy,
   iter.node_id = node->id;
   iter.node = node;
 
-  check_mask = inf_browser_check_acl(
+  inf_acl_mask_set1(&check_mask, INF_ACL_CAN_JOIN_USER);
+
+  result = inf_browser_check_acl(
     INF_BROWSER(directory),
     &iter,
-    info->user,
-    1 << INF_ACL_CAN_JOIN_USER
+    &info->account->account,
+    &check_mask,
+    NULL
   );
 
   /* Reject the user join if the permission is not set. */
-  if(check_mask == 0)
+  if(result == FALSE)
     return TRUE;
 
   return FALSE;
@@ -650,54 +670,85 @@ infd_directory_release_session(InfdDirectory* directory,
  * ACLs
  */
 
-static gboolean
-infd_directory_get_connection_info_by_acl_user_func(gpointer key,
-                                                    gpointer value,
-                                                    gpointer user_data)
+static const InfAclAccount*
+infd_directory_acl_account_lookup_func(const gchar* id,
+                                       gpointer user_data)
 {
-  if(key == user_data)
-    return TRUE;
-  return FALSE;
-}
+  GHashTable* account_table;
+  InfdAclAccountInfo* info;
 
-static InfdDirectoryConnectionInfo*
-infd_directory_get_connection_info_by_acl_user(InfdDirectory* directory,
-                                               const InfAclUser* user)
-{
-  /* TODO: There could be more than one. We should return a list
-   * of infos, or so. */
-  return g_hash_table_find(
-    INFD_DIRECTORY_PRIVATE(directory)->connections,
-    infd_directory_get_connection_info_by_acl_user_func,
-    (gpointer)user
-  );
+  account_table = (GHashTable*)user_data;
+  info = (InfdAclAccountInfo*)g_hash_table_lookup(account_table, id);
+
+  return &info->account;
 }
 
 static void
-infd_directory_write_user_list(InfdDirectory* directory)
+infd_directory_get_acl_account_list_foreach_func(gpointer key,
+                                                 gpointer value,
+                                                 gpointer user_data)
+{
+  InfdDirectoryGetAclAccountListData* data;
+  const InfdAclAccountInfo* info;
+
+  data = (InfdDirectoryGetAclAccountListData*)user_data;
+  info = (const InfdAclAccountInfo*)value;
+
+  data->accounts[data->index++] = &info->account;
+}
+
+static void
+infd_directory_write_account_list_foreach_func(gpointer key,
+                                               gpointer value,
+                                               gpointer user_data)
+{
+  InfdDirectoryWriteAccountListForeachData* data;
+  const InfdAclAccountInfo* info;
+
+  data = (InfdDirectoryWriteAccountListForeachData*)user_data;
+  info = (const InfdAclAccountInfo*)value;
+
+  /* This is for writing the account list to storage. We omit writing the
+   * default account. */
+  if(strcmp(info->account.id, "default") != 0)
+    data->accounts[data->index++] = info;
+}
+
+static void
+infd_directory_write_account_list(InfdDirectory* directory)
 {
   InfdDirectoryPrivate* priv;
-  const InfAclUser** users;
-  guint n_users;
+  InfdDirectoryWriteAccountListForeachData data;
   GError* error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   if(priv->storage != NULL)
   {
-    error = NULL;
-    users = inf_acl_table_get_user_list(priv->acl_table, &n_users);
+    data.index = 0;
+    data.accounts = g_malloc(
+      sizeof(InfdAclAccountInfo*) * (g_hash_table_size(priv->accounts) - 1)
+    );
 
-    infd_storage_write_user_list(
+    g_hash_table_foreach(
+      priv->accounts,
+      infd_directory_write_account_list_foreach_func,
+      &data
+    );
+
+    g_assert(data.index == g_hash_table_size(priv->accounts) - 1);
+
+    error = NULL;
+    infd_storage_write_account_list(
       priv->storage,
-      users,
-      n_users,
+      data.accounts,
+      data.index,
       &error
     );
 
     if(error != NULL)
     {
       g_warning(
-        _("Failed to write user list to storage: %s\n"
+        _("Failed to write account list to storage: %s\n"
           "Keeping it in memory for now, but it will not be available "
           "after server restart"),
         error->message
@@ -707,28 +758,25 @@ infd_directory_write_user_list(InfdDirectory* directory)
       error = NULL;
     }
 
-    g_free(users);
+    g_free(data.accounts);
   }
 }
 
 static void
-infd_directory_acl_table_user_added_cb(InfAclTable* acl_table,
-                                       const InfAclUser* user,
-                                       gpointer user_data)
+infd_directory_announce_acl_account(InfdDirectory* directory,
+                                    const InfdAclAccountInfo* info)
 {
-  InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   GSList* item;
   xmlNodePtr xml;
   InfXmlConnection* connection;
 
-  directory = INFD_DIRECTORY(user_data);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  xml = xmlNewNode(NULL, (const xmlChar*)"add-user");
-  inf_acl_user_to_xml(user, xml, FALSE);
+  xml = xmlNewNode(NULL, (const xmlChar*)"add-acl-account");
+  inf_acl_account_to_xml(&info->account, xml);
 
-  for(item = priv->user_list_connections;
+  for(item = priv->account_list_connections;
       item != NULL;
       item = g_slist_next(item))
   {
@@ -741,7 +789,7 @@ infd_directory_acl_table_user_added_cb(InfAclTable* acl_table,
     );
   }
 
-  inf_browser_acl_user_added(INF_BROWSER(directory), user);
+  inf_browser_acl_account_added(INF_BROWSER(directory), &info->account);
 
   xmlFreeNode(xml);
 }
@@ -768,7 +816,7 @@ infd_directory_acl_sheets_to_xml_for_connection(InfdDirectory* directory,
   if(g_slist_find(acl_connections, connection) != NULL)
   {
     if(sheets->n_sheets > 0)
-      inf_acl_table_sheet_set_to_xml(priv->acl_table, sheets, xml);
+      inf_acl_sheet_set_to_xml(sheets, xml);
     written_sheets = sheets->n_sheets;
   }
   else
@@ -781,8 +829,8 @@ infd_directory_acl_sheets_to_xml_for_connection(InfdDirectory* directory,
     written_sheets = 0;
     for(i = 0; i < sheets->n_sheets && written_sheets < 2; ++i)
     {
-      if(strcmp(sheets->sheets[i].user->user_id, "default") == 0 ||
-         sheets->sheets[i].user == info->user)
+      if(strcmp(sheets->sheets[i].account->id, "default") == 0 ||
+         sheets->sheets[i].account == &info->account->account)
       {
         selected_sheets[written_sheets] = sheets->sheets[i];
         ++written_sheets;
@@ -794,7 +842,7 @@ infd_directory_acl_sheets_to_xml_for_connection(InfdDirectory* directory,
       set.own_sheets = NULL;
       set.sheets = selected_sheets;
       set.n_sheets = written_sheets;
-      inf_acl_table_sheet_set_to_xml(priv->acl_table, &set, xml);
+      inf_acl_sheet_set_to_xml(&set, xml);
     }
   }
 
@@ -904,63 +952,61 @@ infd_directory_announce_acl_sheets(InfdDirectory* directory,
   inf_browser_acl_changed(INF_BROWSER(directory), &iter, sheet_set);
 }
 
-static const InfAclUser*
-infd_directory_add_user_for_certificate(InfdDirectory* directory,
-                                        gnutls_x509_crt_t cert)
+static InfdAclAccountInfo*
+infd_directory_get_account_for_certificate(InfdDirectory* directory,
+                                           gnutls_x509_crt_t cert)
 {
   InfdDirectoryPrivate* priv;
+  InfdAclAccountInfo* info;
   gchar* fingerprint;
-  gchar* name;
-  InfAclUser* user;
-  const InfAclUser* ret_user;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
-  name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
-
-  user = inf_acl_user_new(fingerprint, name);
-
-  /* TODO: inf_acl_table_add_user should return the new user object */
-  if(inf_acl_table_add_user(priv->acl_table, user, TRUE) == TRUE)
-    infd_directory_write_user_list(directory);
-
-  ret_user = inf_acl_table_get_user(priv->acl_table, fingerprint);
-
-  g_free(name);
+  info = g_hash_table_lookup(priv->accounts_by_certificate, fingerprint);
   g_free(fingerprint);
 
-  return ret_user;
+  return info;
 }
 
-static const InfAclUser*
-infd_directory_add_user_for_connection(InfdDirectory* directory,
-                                       InfXmlConnection* connection)
+static InfdAclAccountInfo*
+infd_directory_login_by_certificate(InfdDirectory* directory,
+                                    InfXmlConnection* connection)
 {
   InfdDirectoryPrivate* priv;
   InfCertificateChain* chain;
-  const InfAclUser* user;
+  InfdAclAccountInfo* info;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
 
-  user = NULL;
+  info = NULL;
   if(chain != NULL)
   {
-    user = infd_directory_add_user_for_certificate(
+    info = infd_directory_get_account_for_certificate(
       directory,
       inf_certificate_chain_get_own_certificate(chain)
     );
 
     inf_certificate_chain_unref(chain);
-  }
-  else
-  {
-    user = inf_acl_table_get_user(priv->acl_table, "default");
+
+    if(info != NULL)
+    {
+      /* Update last seen time */
+      infd_acl_account_info_update_time(info);
+      infd_directory_write_account_list(directory);
+    }
   }
 
-  g_assert(user != NULL);
-  return user;
+  /* No client certificate provided, or certificate not registered with any
+   * account: Fall back to default user. */
+  if(info == NULL)
+  {
+    info = g_hash_table_lookup(priv->accounts, "default");
+  }
+
+  g_assert(info != NULL);
+  return info;
 }
 
 /* node can be NULL. If node is not NULL, additional sheets are returned
@@ -978,11 +1024,9 @@ infd_directory_read_acl(InfdDirectory* directory,
   GSList* acl;
   GSList* item;
   InfdStorageAcl* storage_acl;
-  const InfAclUser* user;
-  InfAclUser* new_user;
   InfAclSheetSet* sheet_set;
   InfAclSheet* sheet;
-  gboolean user_added;
+  const InfdAclAccountInfo* info;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -1001,46 +1045,41 @@ infd_directory_read_acl(InfdDirectory* directory,
    * should usually not happen because we only call this function for new
    * nodes, but it can happen when the storage is changed on the fly and the
    * root node changes. */
-  if(node != NULL)
+  if(node != NULL && node->acl != NULL)
   {
-    iter.node_id = node->id;
-    iter.node = node;
-    sheet_set = inf_acl_table_get_clear_sheets(priv->acl_table, &iter);
+    sheet_set = inf_acl_sheet_set_get_clear_sheets(node->acl);
   }
   else
   {
     sheet_set = inf_acl_sheet_set_new();
   }
 
-  user_added = FALSE;
   for(item = acl; item != NULL; item = g_slist_next(item))
   {
     storage_acl = (InfdStorageAcl*)item->data;
-    user = inf_acl_table_get_user(priv->acl_table, storage_acl->user_id);
+    info = g_hash_table_lookup(priv->accounts, storage_acl->account_id);
 
     /* It is possible that we do not find this user in the user table. For
      * example this can happen if reading the initial user table failed. In
-     * that case, create a user here. Whenever that user shows up we replace
-     * the name and times. */
-    if(user == NULL)
+     * that case, we issue a warning here and omit the ACL for this
+     * account. */
+    if(info == NULL)
     {
-      new_user = inf_acl_user_new(storage_acl->user_id, NULL);
-      inf_acl_table_add_user(priv->acl_table, new_user, FALSE);
-      user = new_user;
-      user_added = TRUE;
+      g_warning(
+        "Reading ACL for node \"%s\": Account ID \"%s\" does not exist.",
+        path,
+        storage_acl->account_id
+      );
     }
-
-    sheet = inf_acl_sheet_set_add_sheet(sheet_set, user);
-    sheet->mask = storage_acl->mask;
-    sheet->perms = storage_acl->perms;
+    else
+    {
+      sheet = inf_acl_sheet_set_add_sheet(sheet_set, &info->account);
+      sheet->mask = storage_acl->mask;
+      sheet->perms = storage_acl->perms;
+    }
   }
 
   infd_storage_acl_list_free(acl);
-
-  /* If we have added one or more new users to the user list, write it to
-   * storage. */
-  if(user_added == TRUE)
-    infd_directory_write_user_list(directory);
 
   return sheet_set;
 }
@@ -1051,7 +1090,6 @@ infd_directory_write_acl(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
-  const InfAclSheetSet* all_sheets;
   gchar* path;
   GError* error;
 
@@ -1060,15 +1098,10 @@ infd_directory_write_acl(InfdDirectory* directory,
   /* Write the changed ACL into the storage */
   if(priv->storage != NULL)
   {
-    iter.node_id = node->id;
-    iter.node = node;
-
-    all_sheets = inf_acl_table_get_sheets(priv->acl_table, &iter);
-
     infd_directory_node_get_path(node, &path, NULL);
     error = NULL;
 
-    infd_storage_write_acl(priv->storage, path, all_sheets, &error);
+    infd_storage_write_acl(priv->storage, path, node->acl, &error);
 
     if(error != NULL)
     {
@@ -1091,39 +1124,57 @@ static void
 infd_directory_read_root_acl(InfdDirectory* directory)
 {
   InfdDirectoryPrivate* priv;
-  InfAclUser** users;
-  guint i;
-  guint n_users;
-  gboolean merged;
-  gboolean merge_result;
-  gboolean connected;
-  guint overlap;
-  const InfAclUser* old_user;
-  InfdDirectoryConnectionInfo* info;
-  const InfAclUser* default_user;
+  InfdAclAccountInfo* default_account;
+  InfdAclAccountInfo** accounts;
+  guint n_accounts;
+  guint i, j;
+  InfdAclAccountInfo* info;
+
+  GHashTableIter hash_iter;
+  gpointer key;
+  gpointer value;
+  InfdDirectoryConnectionInfo* conn_info;
+
   InfAclSheetSet* sheet_set;
-  InfBrowserIter iter;
   InfAclSheet* default_sheet;
-  guint64 default_mask;
+  InfAclMask default_mask;
+  InfAclMask tmp_mask;
   GError* error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   error = NULL;
 
-  users = infd_storage_read_user_list(
+  /* Remove existing user accounts, we are going to lead new ones
+   * from storage. */
+  /* TODO: Emit an account-removed signal,
+   * and send it to account_list_connections */
+  g_hash_table_remove_all(priv->accounts);
+  g_hash_table_remove_all(priv->accounts_by_certificate);
+
+  default_account = infd_acl_account_info_new("default", NULL);
+
+  g_hash_table_insert(
+    priv->accounts,
+    default_account->account.id,
+    default_account
+  );
+
+  infd_directory_announce_acl_account(directory, default_account);
+
+  accounts = infd_storage_read_account_list(
     priv->storage,
-    &n_users,
+    &n_accounts,
     &error
   );
 
   if(error != NULL)
   {
-    g_assert(users == NULL);
+    g_assert(accounts == NULL);
 
     g_warning(
-      _("Failed to read user list from storage: %s\n"
-        "Will start with an empty user list."),
+      _("Failed to read account list from storage: %s\n"
+        "Will start with an empty account list."),
       error->message
     );
 
@@ -1132,49 +1183,88 @@ infd_directory_read_root_acl(InfdDirectory* directory)
   }
   else
   {
-    merged = FALSE;
-    overlap = 0;
-    for(i = 0; i < n_users; ++i)
+    /* TODO: If any error occurs below, we should also fall back to an
+     * empty account list. Would make sense to put this code into another
+     * function then. */
+    for(i = 0; i < n_accounts; ++i)
     {
-      connected = FALSE;
-      old_user = inf_acl_table_get_user(priv->acl_table, users[i]->user_id);
-      if(old_user != NULL)
+      info = g_hash_table_lookup(priv->accounts, accounts[i]->account.id);
+      if(info != NULL)
       {
-        ++overlap;
-
-        info = infd_directory_get_connection_info_by_acl_user(
-          directory,
-          old_user
+        g_warning(
+          _("Account ID \"%s\" occurs more than once in storage. Ignoring "
+            "all but the first one."),
+          accounts[i]->account.id
         );
 
-        /* In case of a conflict (user both present in storage and memory),
-         * we take the settings from the user from storage except the user
-         * is currently connected in which case we "know better" and take
-         * the settings from the connected user. */
-        if(info != NULL)
-          connected = TRUE;
+        infd_acl_account_info_free(accounts[i]);
       }
+      else
+      {
+        g_hash_table_insert(
+          priv->accounts,
+          accounts[i]->account.id,
+          accounts[i]
+        );
 
-      merge_result = inf_acl_table_add_user(
-        priv->acl_table,
-        users[i],
-        connected
-      );
+        for(j = 0; j < accounts[i]->n_certificates; ++j)
+        {
+          info = g_hash_table_lookup(
+            priv->accounts_by_certificate,
+            accounts[i]->certificates[j]
+          );
 
-      /* Remember whether any settings where changed with respect to what
-       * was in storage. */
-      merged = merged || merge_result;
+          if(info != NULL)
+          {
+            g_warning(
+              "Certificate \"%s\" is mapped to more than one account. "
+              "Removing it from all accounts.",
+              accounts[i]->certificates[j]
+            );
+
+            g_hash_table_remove(
+              priv->accounts_by_certificate,
+              accounts[i]->certificates[j]
+            );
+
+            infd_acl_account_info_remove_certificate(
+              info,
+              accounts[i]->certificates[j]
+            );
+
+            infd_acl_account_info_remove_certificate(
+              accounts[i],
+              accounts[i]->certificates[j]
+            );
+          }
+          else
+          {
+            g_hash_table_insert(
+              priv->accounts_by_certificate,
+              accounts[i]->certificates[j],
+              accounts[i]
+            );
+          }
+        }
+
+        infd_directory_announce_acl_account(directory, accounts[i]);
+      }
     }
 
-    /* Write updated user list back to disk, if anything changed, or if
-     * we have users in memory that are not present in the list on disk. */
-    /* TODO: Should we move this to the user_added signal handler? Would
-     * make sense, but we should then have a possibility to process batch
-     * updates. */
-    if(merged == TRUE || overlap < inf_acl_table_get_n_users(priv->acl_table))
-      infd_directory_write_user_list(directory);
+    g_free(accounts);
+  }
 
-    g_free(users);
+  g_hash_table_iter_init(&hash_iter, priv->connections);
+  while(g_hash_table_iter_next(&hash_iter, &key, &value))
+  {
+    conn_info = (InfdDirectoryConnectionInfo*)value;
+
+    conn_info->account = infd_directory_login_by_certificate(
+      directory,
+      INF_XML_CONNECTION(key)
+    );
+
+    /* TODO: We should send each user its new logined account. */
   }
 
   sheet_set = infd_directory_read_acl(
@@ -1184,11 +1274,8 @@ infd_directory_read_root_acl(InfdDirectory* directory)
     &error
   );
 
-  default_user = inf_acl_table_get_user(priv->acl_table, "default");
-  g_assert(default_user != NULL);
-
-  iter.node_id = priv->root->id;
-  iter.node = priv->root;
+  default_account = g_hash_table_lookup(priv->accounts, "default");
+  g_assert(default_account != NULL);
 
   if(error != NULL)
   {
@@ -1207,13 +1294,21 @@ infd_directory_read_root_acl(InfdDirectory* directory)
 
     /* Clear all existing sheets and add one sheet for the default user which
      * prohibits everything. */
-    sheet_set = inf_acl_table_get_clear_sheets(priv->acl_table, &iter);
-    default_sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_user);
+    if(priv->root->acl != NULL)
+      sheet_set = inf_acl_sheet_set_get_clear_sheets(priv->root->acl);
+    else
+      sheet_set = inf_acl_sheet_set_new();
+
+    default_sheet =
+      inf_acl_sheet_set_add_sheet(sheet_set, &default_account->account);
     default_sheet->mask = INF_ACL_MASK_ALL;
-    default_sheet->perms = 0;
+    inf_acl_mask_clear(&default_sheet->perms);
 
     /* Make sure this "revoke-everything" sheet is not written to disk. */
-    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+    priv->root->acl = inf_acl_sheet_set_merge_sheets(
+      priv->root->acl,
+      sheet_set
+    );
 
     infd_directory_announce_acl_sheets(
       directory,
@@ -1224,18 +1319,25 @@ infd_directory_read_root_acl(InfdDirectory* directory)
   }
   else
   {
-    /* Note that the sheets array already includes sheets that clear the
-     * existing ACL. */
-
     /* Make sure there are permissions for the default user defined. If there
      * are not, use sensible default permissions. */
-    default_sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_user);
+    default_sheet =
+      inf_acl_sheet_set_add_sheet(sheet_set, &default_account->account);
 
     default_mask = default_sheet->mask;
-    default_sheet->perms |= (INF_ACL_MASK_DEFAULT & ~default_mask);
+    inf_acl_mask_neg(&default_mask, &tmp_mask);
+    inf_acl_mask_and(&tmp_mask, &INF_ACL_MASK_DEFAULT, &tmp_mask);
+
+    inf_acl_mask_or(&default_sheet->perms, &tmp_mask, &default_sheet->perms);
+
     default_sheet->mask = INF_ACL_MASK_ALL;
 
-    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+    /* Note that the sheets array already includes sheets that clear the
+     * existing ACL. */
+    priv->root->acl = inf_acl_sheet_set_merge_sheets(
+      priv->root->acl,
+      sheet_set
+    );
 
     infd_directory_announce_acl_sheets(
       directory,
@@ -1244,7 +1346,8 @@ infd_directory_read_root_acl(InfdDirectory* directory)
       NULL
     );
 
-    if((default_mask & INF_ACL_MASK_ALL) != INF_ACL_MASK_ALL)
+    inf_acl_mask_and(&default_mask, &INF_ACL_MASK_ALL, &default_mask);
+    if(!inf_acl_mask_equal(&default_mask, &INF_ACL_MASK_ALL))
       infd_directory_write_acl(directory, priv->root);
   }
 
@@ -1656,7 +1759,15 @@ infd_directory_node_new_common(InfdDirectory* directory,
   node->type = type;
   node->id = node_id;
   node->name = name;
+  node->acl = NULL;
   node->acl_connections = NULL;
+
+  if(sheet_set != NULL)
+  {
+    inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
+    if(write_acl == TRUE)
+      infd_directory_write_acl(directory, node);
+  }
 
   if(parent != NULL)
   {
@@ -1666,19 +1777,6 @@ infd_directory_node_new_common(InfdDirectory* directory,
   {
     node->prev = NULL;
     node->next = NULL;
-  }
-
-  if(sheet_set != NULL)
-  {
-    /* Set the node ACL immediately after it was created, to avoid possible
-     * races. Note this does not require the hash table entry yet, and
-     * especially that the "node-added" signal was not emitted yet. */
-    iter.node_id = node_id;
-    iter.node = node;
-    inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
-
-    if(write_acl == TRUE)
-      infd_directory_write_acl(directory, node);
   }
 
   g_hash_table_insert(priv->nodes, GUINT_TO_POINTER(node->id), node);
@@ -1810,9 +1908,8 @@ infd_directory_node_free(InfdDirectory* directory,
 
   /* Only clear ACL table after unlink, so that ACL has effect until the very
    * moment where the node does not exist anymore, to avoid possible races. */
-  iter.node_id = node->id;
-  iter.node = node;
-  inf_acl_table_clear_sheets(priv->acl_table, &iter);
+  if(node->acl != NULL)
+    inf_acl_sheet_set_free(node->acl);
 
   /* Remove sync-ins whose parent is gone */
   for(item = priv->sync_ins; item != NULL; item = next)
@@ -2062,17 +2159,15 @@ infd_directory_node_register(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
-  const InfAclSheetSet* sheet_set;
   InfdDirectoryConnectionInfo* info;
   xmlNodePtr xml;
   xmlNodePtr copy_xml;
   GSList* item;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+
   iter.node_id = node->id;
   iter.node = node;
-
-  sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
   inf_browser_node_added(INF_BROWSER(directory), &iter);
 
   xml = infd_directory_node_register_to_xml(node);
@@ -2090,12 +2185,12 @@ infd_directory_node_register(InfdDirectory* directory,
 
       copy_xml = xmlCopyNode(xml, 1);
 
-      if(sheet_set != NULL)
+      if(node->acl != NULL)
       {
         infd_directory_acl_sheets_to_xml_for_connection(
           directory,
           node->acl_connections,
-          sheet_set,
+          node->acl,
           INF_XML_CONNECTION(item->data),
           copy_xml
         );
@@ -4046,12 +4141,8 @@ infd_directory_start_locreq_func(gpointer user_data)
     }
     else
     {
-      iter.node_id = locreq->shared.set_acl.node->id;
-      iter.node = locreq->shared.set_acl.node;
-
-      inf_acl_table_insert_sheets(
-        priv->acl_table,
-        &iter,
+      locreq->shared.set_acl.node->acl = inf_acl_sheet_set_merge_sheets(
+        locreq->shared.set_acl.node->acl,
         locreq->shared.set_acl.sheet_set
       );
 
@@ -4116,13 +4207,13 @@ static gboolean
 infd_directory_check_auth(InfdDirectory* directory,
                           InfdDirectoryNode* node,
                           InfXmlConnection* connection,
-                          guint64 mask,
+                          const InfAclMask* mask,
                           GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryConnectionInfo* info;
   InfBrowserIter iter;
-  guint64 check_mask;
+  gboolean result;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   info = g_hash_table_lookup(priv->connections, connection);
@@ -4130,16 +4221,16 @@ infd_directory_check_auth(InfdDirectory* directory,
 
   iter.node_id = node->id;
   iter.node = node;
-  check_mask = mask;
 
-  check_mask = inf_browser_check_acl(
+  result = inf_browser_check_acl(
     INF_BROWSER(directory),
     &iter,
-    info->user,
-    mask
+    &info->account->account,
+    mask,
+    NULL
   );
 
-  if(check_mask != mask)
+  if(result == FALSE)
   {
     g_set_error(
       error,
@@ -4167,7 +4258,6 @@ infd_directory_send_welcome_message(InfdDirectory* directory,
   gpointer value;
   const InfdNotePlugin* plugin;
   InfdDirectoryConnectionInfo* info;
-  InfBrowserIter browser_iter;
   const InfAclSheetSet* sheet_set;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -4194,15 +4284,17 @@ infd_directory_send_welcome_message(InfdDirectory* directory,
     inf_xml_util_set_attribute(child, "type", plugin->note_type);
   }
 
-  /* Add default ACL for the root node */
-  browser_iter.node_id = priv->root->id;
-  browser_iter.node = priv->root;
-  sheet_set = inf_acl_table_get_sheets(priv->acl_table, &browser_iter);
+  if(strcmp(info->account->account.id, "default") != 0)
+  {
+    child = xmlNewChild(xml, NULL, (const xmlChar*)"account", NULL);
+    inf_acl_account_to_xml(&info->account->account, child);
+  }
 
+  /* Add default ACL for the root node */
   infd_directory_acl_sheets_to_xml_for_connection(
     directory,
     priv->root->acl_connections,
-    sheet_set,
+    priv->root->acl,
     connection,
     xml
   );
@@ -4482,16 +4574,12 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     if(seq != NULL)
       inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
-    iter.node_id = child->id;
-    iter.node = child;
-    sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
-
-    if(sheet_set != NULL)
+    if(child->acl != NULL)
     {
       infd_directory_acl_sheets_to_xml_for_connection(
         directory,
         child->acl_connections,
-        sheet_set,
+        child->acl,
         connection,
         reply_xml
       );
@@ -4537,7 +4625,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   InfdDirectoryNode* node;
   GError* local_error;
   InfAclSheetSet* sheet_set;
-  guint64 perms;
+  InfAclMask perms;
   InfdNotePlugin* plugin;
   InfdNodeRequest* request;
   xmlChar* name;
@@ -4563,9 +4651,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     return FALSE;
 
   local_error = NULL;
-  sheet_set = inf_acl_table_sheet_set_from_xml(
-    priv->acl_table,
+  sheet_set = inf_acl_sheet_set_from_xml(
     xml,
+    infd_directory_acl_account_lookup_func,
+    priv->accounts,
     &local_error
   );
 
@@ -4587,14 +4676,14 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       subscribe_sync_conn = TRUE;
   }
 
-  perms = 0; /* TODO: (1 << INF_ACL_CAN_ADD_NODE) */
+  inf_acl_mask_clear(&perms); /* TODO: _set1(INF_ACL_CAN_ADD_NODE) */
   if(subscribe_sync_conn == TRUE)
-    perms |= (1 << INF_ACL_CAN_SUBSCRIBE_SESSION);
+    inf_acl_mask_or1(&perms, INF_ACL_CAN_SUBSCRIBE_SESSION);
   /* TODO: (1 << INF_ACL_CAN_SYNC_IN) */
   if(sheet_set != NULL && sheet_set->n_sheets > 0)
-    perms |= (1 << INF_ACL_CAN_SET_ACL);
+    inf_acl_mask_or1(&perms, INF_ACL_CAN_SET_ACL);
 
-  if(!infd_directory_check_auth(directory, parent, connection, perms, error))
+  if(!infd_directory_check_auth(directory, parent, connection, &perms, error))
     return FALSE;
 
   type = inf_xml_util_get_attribute_required(xml, "type", error);
@@ -4801,7 +4890,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  guint64 perms;
+  InfAclMask perms;
   GSList* item;
   InfdDirectorySubreq* subreq;
   InfdDirectoryLocreq* locreq;
@@ -4827,8 +4916,8 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   if(node == NULL)
     return FALSE;
 
-  perms = (1 << INF_ACL_CAN_SUBSCRIBE_SESSION);
-  if(!infd_directory_check_auth(directory, node, connection, perms, error))
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_SUBSCRIBE_SESSION);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
     return FALSE;
 
   /* TODO: Bail if this connection is either currently being synchronized to
@@ -5209,6 +5298,11 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   time_t timestamp;
   gchar serial_buffer[5];
 
+  gchar* fingerprint;
+  gchar* account_id;
+  gchar* name;
+  InfdAclAccountInfo* info;
+
   xmlNodePtr reply_xml;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -5378,11 +5472,32 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
     return FALSE;
   }
 
+  /* Check whether the fingerprint clashes with an existing certificate. This
+   * is very unlikely, but we cannot handle it at the moment. */
+  fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
+  if(g_hash_table_lookup(priv->accounts_by_certificate, fingerprint) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
+      "%s",
+      _("The fingerprint of the generated certificate exists already. This "
+        "is possible, but highly unlikely. Please try creating the "
+        "certificate again and the error should disappear.")
+    );
+
+    g_free(fingerprint);
+    gnutls_x509_crt_deinit(cert);
+    return FALSE;
+  }
+
   /* Now, export it to PEM format and send it back to the client */
   cert_size = 0;
   res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &cert_size);
   if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
   {
+    g_free(fingerprint);
     gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
@@ -5399,6 +5514,7 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   if(res != GNUTLS_E_SUCCESS)
   {
     g_free(cert_buffer);
+    g_free(fingerprint);
     gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
@@ -5407,15 +5523,73 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
   {
     g_free(cert_buffer);
+    g_free(fingerprint);
     gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
   }
 
-  /* Add the user into the ACL table, so that ACLs can immediately be
-   * set for the new user. */
-  infd_directory_add_user_for_certificate(directory, cert);
+  /* Check that a common name is set in the certificate. Without a common
+   * name, we cannot associate the certificate to an account. */
+  name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
+  if(name == NULL || name[0] == '\0')
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
+      "%s",
+      _("The certificate request has no common name set")
+    );
+
+    g_free(seq);
+    g_free(cert_buffer);
+    g_free(fingerprint);
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  /* Now, find an account with the common name of the certificate. If we find
+   * one, we assume the certificate was generated for this account, and
+   * replace all other certificates with the new one. */
+  account_id = g_strdup_printf("user:%s", name);
+  info = g_hash_table_lookup(priv->accounts, account_id);
+
+  if(info != NULL)
+  {
+    while(info->n_certificates > 0)
+    {
+      g_hash_table_remove(
+        priv->accounts_by_certificate,
+        info->certificates[0]
+      );
+
+      infd_acl_account_info_remove_certificate(info, info->certificates[0]);
+    }
+  }
+  else
+  {
+    info = infd_acl_account_info_new(account_id, name);
+    g_hash_table_insert(priv->accounts, info->account.id, info);
+    infd_directory_announce_acl_account(directory, info);
+  }
+
+  g_free(account_id);
+  g_free(name);
+
+  infd_acl_account_info_add_certificate(info, fingerprint);
+  g_free(fingerprint);
+
+  g_hash_table_insert(
+    priv->accounts_by_certificate,
+    info->certificates[0],
+    info
+  );
+
   gnutls_x509_crt_deinit(cert);
+
+  infd_directory_write_account_list(directory);
 
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"certificate-generated");
   child = xmlNewChild(reply_xml, NULL, (const xmlChar*)"certificate", NULL);
@@ -5435,48 +5609,71 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
 }
 
 static gboolean
-infd_directory_handle_query_user_list(InfdDirectory* directory,
-                                      InfXmlConnection* connection,
-                                      const xmlNodePtr xml,
-                                      GError** error)
+infd_directory_handle_query_acl_account_list(InfdDirectory* directory,
+                                             InfXmlConnection* connection,
+                                             const xmlNodePtr xml,
+                                             GError** error)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  guint64 perms;
+  InfdDirectoryConnectionInfo* conn_info;
+  InfAclMask perms;
   gchar* seq;
   GSList* item;
   xmlNodePtr reply_xml;
-  const InfAclUser** user_list;
-  guint n_users;
-  guint i;
+  guint known_accounts;
+
+  GHashTableIter iter;
+  gpointer key;
+  gpointer value;
+  const InfdAclAccountInfo* default_account;
+  const InfdAclAccountInfo* info;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(g_slist_find(priv->user_list_connections, connection) != NULL)
+  if(g_slist_find(priv->account_list_connections, connection) != NULL)
   {
     g_set_error(
       error,
       inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
+      INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED,
       "%s",
-      _("The user list has already been queried")
+      _("The account list has already been queried")
     );
 
     return FALSE;
   }
 
+  conn_info = g_hash_table_lookup(priv->connections, connection);
+  g_assert(conn_info != NULL);
+
   node = priv->root;
-  perms = (1 << INF_ACL_CAN_QUERY_USER_LIST);
-  if(!infd_directory_check_auth(directory, node, connection, perms, error))
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
     return FALSE;
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
     return FALSE;
 
-  user_list = inf_acl_table_get_user_list(priv->acl_table, &n_users);
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"acl-account-list-begin");
 
-  reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-list-begin");
-  inf_xml_util_set_attribute_uint(reply_xml, "n-users", n_users);
+  /* Count the number of accounts already known by the client, to correctly
+   * calculate the number of accounts to be transferred. */
+  default_account = g_hash_table_lookup(priv->accounts, "default");
+  g_assert(default_account != NULL);
+
+  if(conn_info->account != default_account)
+    known_accounts = 2;
+  else
+    known_accounts = 1;
+  g_assert(g_hash_table_size(priv->accounts) >= known_accounts);
+
+  inf_xml_util_set_attribute_uint(
+    reply_xml,
+    "total",
+    g_hash_table_size(priv->accounts) - known_accounts
+  );
+
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
   inf_communication_group_send_message(
@@ -5485,23 +5682,31 @@ infd_directory_handle_query_user_list(InfdDirectory* directory,
     reply_xml
   );
 
-  priv->user_list_connections =
-    g_slist_prepend(priv->user_list_connections, connection);
+  priv->account_list_connections =
+    g_slist_prepend(priv->account_list_connections, connection);
 
-  for(i = 0; i < n_users; ++i)
+  g_hash_table_iter_init(&iter, priv->accounts);
+  while(g_hash_table_iter_next(&iter, &key, &value))
   {
-    reply_xml = xmlNewNode(NULL, (const xmlChar*)"add-user");
-    inf_acl_user_to_xml(user_list[i], reply_xml, FALSE);
-    if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+    info = (const InfdAclAccountInfo*)value;
 
-    inf_communication_group_send_message(
-      INF_COMMUNICATION_GROUP(priv->group),
-      connection,
-      reply_xml
-    );
+    /* Ignore accounts already known by the client: Its own account and the
+     * default account. */
+    if(info != default_account && info != conn_info->account)
+    {
+      reply_xml = xmlNewNode(NULL, (const xmlChar*)"add-acl-account");
+      inf_acl_account_to_xml(&info->account, reply_xml);
+      if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
+
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        connection,
+        reply_xml
+      );
+    }
   }
 
-  reply_xml = xmlNewNode(NULL, (const xmlChar*)"user-list-end");
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"acl-account-list-end");
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
   inf_communication_group_send_message(
@@ -5511,7 +5716,6 @@ infd_directory_handle_query_user_list(InfdDirectory* directory,
   );
 
   g_free(seq);
-  g_free(user_list);
   return TRUE;
 }
 
@@ -5523,9 +5727,8 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  guint64 perms;
+  InfAclMask perms;
   gchar* seq;
-  InfBrowserIter iter;
   const InfAclSheetSet* sheet_set;
   xmlNodePtr reply_xml;
 
@@ -5554,8 +5757,8 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
     return FALSE;
   }
 
-  perms = (1 << INF_ACL_CAN_QUERY_ACL);
-  if(!infd_directory_check_auth(directory, node, connection, perms, error))
+  inf_acl_mask_set1(&perms, 1 << INF_ACL_CAN_QUERY_ACL);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
     return FALSE;
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
@@ -5566,20 +5769,16 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
    * ACL, and not only the default sheet. */
   node->acl_connections = g_slist_prepend(node->acl_connections, connection);
 
-  iter.node_id = node->id;
-  iter.node = node;
-  sheet_set = inf_acl_table_get_sheets(priv->acl_table, &iter);
-
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"set-acl");
   inf_xml_util_set_attribute_uint(reply_xml, "id", node->id);
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
 
-  if(sheet_set != NULL)
+  if(node->acl != NULL)
   {
     infd_directory_acl_sheets_to_xml_for_connection(
       directory,
       node->acl_connections,
-      sheet_set,
+      node->acl,
       connection,
       reply_xml
     );
@@ -5603,7 +5802,7 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  guint64 perms;
+  InfAclMask perms;
   gchar* seq;
   GError* local_error;
   InfAclSheetSet* sheet_set;
@@ -5636,15 +5835,16 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
     return FALSE;
   }
 
-  perms = (1 << INF_ACL_CAN_SET_ACL);
-  if(!infd_directory_check_auth(directory, node, connection, perms, error))
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_SET_ACL);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
     return FALSE;
 
-  /* TODO: Introduce inf_acl_table_sheet_set_from_xml_required */
+  /* TODO: Introduce inf_acl_sheet_set_from_xml_required */
   local_error = NULL;
-  sheet_set = inf_acl_table_sheet_set_from_xml(
-    priv->acl_table,
+  sheet_set = inf_acl_sheet_set_from_xml(
     xml,
+    infd_directory_acl_account_lookup_func,
+    priv->accounts,
     &local_error
   );
 
@@ -5691,7 +5891,7 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
     INF_REQUEST(request)
   );
 
-  inf_acl_table_insert_sheets(priv->acl_table, &iter, sheet_set);
+  node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
 
   /* Announce to all connections but this one, since for this connection we
    * need to set the seq (done below) */
@@ -6259,9 +6459,9 @@ infd_directory_connection_notify_status_cb(GObject* object,
     );
 
     g_assert(info != NULL);
-    g_assert(info->user == NULL);
+    g_assert(info->account == NULL);
 
-    info->user = infd_directory_add_user_for_connection(
+    info->account = infd_directory_login_by_certificate(
       directory,
       connection
     );
@@ -6286,8 +6486,8 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
 
   /* TODO: Update last seen time, and write user list to storage */
 
-  priv->user_list_connections =
-    g_slist_remove(priv->user_list_connections, connection);
+  priv->account_list_connections =
+    g_slist_remove(priv->account_list_connections, connection);
   if(priv->root != NULL)
   {
     if(priv->root->shared.subdir.explored == TRUE)
@@ -6352,7 +6552,7 @@ infd_directory_set_storage(InfdDirectory* directory,
   if(priv->storage != NULL)
   {
     /* TODO: Update last seen times of all connected users,
-     * and write user list to storage */
+     * and write user list to storage. */
 
     /* priv->root may be NULL if this is called from dispose. */
     if(priv->root != NULL && priv->root->shared.subdir.explored == TRUE)
@@ -6422,6 +6622,7 @@ infd_directory_init(GTypeInstance* instance,
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+  InfdAclAccountInfo* info;
 
   directory = INFD_DIRECTORY(instance);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -6437,8 +6638,15 @@ infd_directory_init(GTypeInstance* instance,
   priv->plugins = g_hash_table_new(g_str_hash, g_str_equal);
   priv->connections = g_hash_table_new(NULL, NULL);
 
-  priv->acl_table = inf_acl_table_new();
-  priv->user_list_connections = NULL;
+  priv->accounts = g_hash_table_new_full(
+    g_str_hash,
+    g_str_equal,
+    NULL,
+    (GDestroyNotify)infd_acl_account_info_free
+  );
+
+  priv->accounts_by_certificate = g_hash_table_new(g_str_hash, g_str_equal);
+  priv->account_list_connections = NULL;
 
   priv->node_counter = 1;
   priv->nodes = g_hash_table_new(NULL, NULL);
@@ -6461,18 +6669,8 @@ infd_directory_init(GTypeInstance* instance,
 
   priv->chat_session = NULL;
 
-  inf_acl_table_add_user(
-    priv->acl_table,
-    inf_acl_user_new("default", NULL),
-    TRUE
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->acl_table),
-    "user-added",
-    G_CALLBACK(infd_directory_acl_table_user_added_cb),
-    directory
-  );
+  info = infd_acl_account_info_new("default", NULL);
+  g_hash_table_insert(priv->accounts, info->account.id, info);
 }
 
 static GObject*
@@ -6485,7 +6683,7 @@ infd_directory_constructor(GType type,
   InfdDirectoryPrivate* priv;
 
   InfAclSheet sheet;
-  InfBrowserIter iter;
+  InfAclSheetSet sheet_set;
 
   /* We only use central method for directory handling */
   static const gchar* const methods[] = { "centrol", NULL };
@@ -6528,12 +6726,19 @@ infd_directory_constructor(GType type,
     priv->root->shared.subdir.explored = TRUE;
 
     /* Apply default permissions for the root node */
-    sheet.user = inf_acl_table_get_user(priv->acl_table, "default");
+    sheet.account = g_hash_table_lookup(priv->accounts, "default");
     sheet.perms = INF_ACL_MASK_DEFAULT;
     sheet.mask = INF_ACL_MASK_ALL;
-    iter.node = priv->root;
-    iter.node_id = priv->root->id;
-    inf_acl_table_insert_sheet(priv->acl_table, &iter, &sheet);
+
+    g_assert(sheet.account != NULL);
+    g_assert(priv->root->acl == NULL);
+
+    sheet_set.own_sheets = NULL;
+    sheet_set.sheets = &sheet;
+    sheet_set.n_sheets = 1;
+
+    priv->root->acl =
+      inf_acl_sheet_set_merge_sheets(priv->root->acl, &sheet_set);
   }
 
   /* Note that if storage is non-NULL the root ACL has already been loaded
@@ -6594,15 +6799,7 @@ infd_directory_dispose(GObject* object)
     );
   }
 
-  g_slist_free(priv->user_list_connections);
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(priv->acl_table),
-    G_CALLBACK(infd_directory_acl_table_user_added_cb),
-    directory
-  );
-
-  g_object_unref(priv->acl_table);
+  g_slist_free(priv->account_list_connections);
 
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
@@ -6619,6 +6816,12 @@ infd_directory_dispose(GObject* object)
 
   g_hash_table_destroy(priv->connections);
   priv->connections = NULL;
+
+  g_hash_table_destroy(priv->accounts_by_certificate);
+  priv->accounts_by_certificate = NULL;
+
+  g_hash_table_destroy(priv->accounts);
+  priv->accounts = NULL;
 
   g_hash_table_destroy(priv->plugins);
   priv->plugins = NULL;
@@ -6808,9 +7011,9 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
-  else if(strcmp((const char*)node->name, "query-user-list") == 0)
+  else if(strcmp((const char*)node->name, "query-acl-account-list") == 0)
   {
-    infd_directory_handle_query_user_list(
+    infd_directory_handle_query_acl_account_list(
       directory,
       connection,
       node,
@@ -7504,47 +7707,63 @@ infd_directory_browser_iter_from_request(InfBrowser* browser,
   return TRUE;
 }
 
-static InfAclUserListRequest*
-infd_directory_browser_query_acl_user_list(InfBrowser* browser)
+static InfAclAccountListRequest*
+infd_directory_browser_query_acl_account_list(InfBrowser* browser)
 {
-  /* This should not be called because get_acl_user_list always returns the
+  /* This should not be called because get_acl_account_list always returns the
    * full list. */
   g_return_val_if_reached(NULL);
   return NULL;
 }
 
-static const InfAclUser**
-infd_directory_browser_get_acl_user_list(InfBrowser* browser,
-                                         guint* n_users)
+static const InfAclAccount**
+infd_directory_browser_get_acl_account_list(InfBrowser* browser,
+                                            guint* n_accounts)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+  InfdDirectoryGetAclAccountListData data;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  return inf_acl_table_get_user_list(priv->acl_table, n_users);
+  *n_accounts = g_hash_table_size(priv->accounts);
+
+  data.accounts = g_malloc(sizeof(const InfAclAccount*) * (*n_accounts));
+  data.index = 0;
+
+  g_hash_table_foreach(
+    priv->accounts,
+    infd_directory_get_acl_account_list_foreach_func,
+    &data
+  );
+
+  g_assert(data.index == g_hash_table_size(priv->accounts));
+  return data.accounts;
 }
 
-static const InfAclUser*
-infd_directory_browser_get_acl_local_user(InfBrowser* browser)
+static const InfAclAccount*
+infd_directory_browser_get_acl_local_account(InfBrowser* browser)
 {
-  /* There is no local user. This means direct access to the directory and
+  /* There is no local account. This means direct access to the directory and
    * no ACL applies for local operations. */
   return NULL;
 }
 
-static const InfAclUser*
-infd_directory_browser_lookup_acl_user(InfBrowser* browser,
-                                       const gchar* user_id)
+static const InfAclAccount*
+infd_directory_browser_lookup_acl_account(InfBrowser* browser,
+                                          const gchar* id)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+  const InfdAclAccountInfo* info;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  info = g_hash_table_lookup(priv->accounts, id);
 
-  return inf_acl_table_get_user(priv->acl_table, user_id);
+  if(info == NULL) return NULL;
+  return &info->account;
 }
 
 static InfNodeRequest*
@@ -7561,7 +7780,7 @@ infd_directory_browser_query_acl(InfBrowser* browser,
 static gboolean
 infd_directory_browser_has_acl(InfBrowser* browser,
                                const InfBrowserIter* iter,
-                               const InfAclUser* user)
+                               const InfAclAccount* account)
 {
   /* The full ACL is always available */
   return TRUE;
@@ -7573,12 +7792,15 @@ infd_directory_browser_get_acl(InfBrowser* browser,
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
-  return inf_acl_table_get_sheets(priv->acl_table, iter);
+  node = (InfdDirectoryNode*)iter->node;
+
+  return node->acl;
 }
 
 static InfNodeRequest*
@@ -7769,7 +7991,7 @@ infd_directory_browser_init(gpointer g_iface,
   iface->subscribe_session = infd_directory_browser_subscribe_session;
   iface->unsubscribe_session = infd_directory_browser_unsubscribe_session;
   iface->begin_request = NULL;
-  iface->acl_user_added = NULL;
+  iface->acl_account_added = NULL;
   iface->acl_changed = NULL;
 
   iface->get_root = infd_directory_browser_get_root;
@@ -7790,10 +8012,11 @@ infd_directory_browser_init(gpointer g_iface,
   iface->list_pending_requests = infd_directory_browser_list_pending_requests;
   iface->iter_from_request = infd_directory_browser_iter_from_request;
 
-  iface->query_acl_user_list = infd_directory_browser_query_acl_user_list;
-  iface->get_acl_user_list = infd_directory_browser_get_acl_user_list;
-  iface->get_acl_local_user = infd_directory_browser_get_acl_local_user;
-  iface->lookup_acl_user = infd_directory_browser_lookup_acl_user;
+  iface->query_acl_account_list =
+    infd_directory_browser_query_acl_account_list;
+  iface->get_acl_account_list = infd_directory_browser_get_acl_account_list;
+  iface->get_acl_local_account = infd_directory_browser_get_acl_local_account;
+  iface->lookup_acl_account = infd_directory_browser_lookup_acl_account;
   iface->query_acl = infd_directory_browser_query_acl;
   iface->has_acl = infd_directory_browser_has_acl;
   iface->get_acl = infd_directory_browser_get_acl;
@@ -8107,7 +8330,7 @@ infd_directory_add_connection(InfdDirectory* directory,
 
   info = g_slice_new(InfdDirectoryConnectionInfo);
   info->seq_id = seq_id;
-  info->user = NULL;
+  info->account = NULL;
 
   g_hash_table_insert(priv->connections, connection, info);
   g_object_ref(connection);
@@ -8122,8 +8345,8 @@ infd_directory_add_connection(InfdDirectory* directory,
   g_object_get(G_OBJECT(connection), "status", &status, NULL);
   if(status == INF_XML_CONNECTION_OPEN)
   {
-    info->user =
-      infd_directory_add_user_for_connection(directory, connection);
+    info->account =
+      infd_directory_login_by_certificate(directory, connection);
     infd_directory_send_welcome_message(directory, connection);
   }
 
@@ -8142,16 +8365,16 @@ infd_directory_add_connection(InfdDirectory* directory,
  * @directory: A #InfdDirectory.
  * @connection: A @connection added to @directory.
  *
- * This function returns the #InfAclUser that the given connection is logged
- * in into. The @connection must have been added to the directory before
+ * This function returns the #InfAclAccount that the given connection is
+ * logged into. The @connection must have been added to the directory before
  * with infd_directory_add_connection(). If no special login was performed,
- * the default user is returned.
+ * the default account is returned.
  *
- * A #InfAclUser owned by @directory. It must not be freed.
+ * A #InfAclAccount owned by @directory. It must not be freed.
  */
-const InfAclUser*
-infd_directory_get_acl_user_for_connection(InfdDirectory* directory,
-                                           InfXmlConnection* connection)
+const InfAclAccount*
+infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
+                                              InfXmlConnection* connection)
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryConnectionInfo* info;
@@ -8166,7 +8389,7 @@ infd_directory_get_acl_user_for_connection(InfdDirectory* directory,
   );
 
   g_assert(info != NULL);
-  return info->user;
+  return &info->account->account;
 }
 
 /**

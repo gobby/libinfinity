@@ -89,13 +89,14 @@ const InfdNotePlugin*
 infd_directory_lookup_plugin(InfdDirectory* directory,
                              const gchar* note_type);
 
+/* TODO: Add possibility to add ACL account here, either by InfAclAccount or account ID */
 gboolean
 infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection);
 
-const InfAclUser*
-infd_directory_get_acl_user_for_connection(InfdDirectory* directory,
-                                           InfXmlConnection* connection);
+const InfAclAccount*
+infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
+                                              InfXmlConnection* connection);
 
 void
 infd_directory_foreach_connection(InfdDirectory* directory,

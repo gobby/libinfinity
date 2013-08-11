@@ -158,6 +158,24 @@ INFC_EXPLORE_REQUEST_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>infc-acl-account-list-request</FILE>
+<TITLE>InfcAclAccountListRequest</TITLE>
+InfcAclAccountListRequest
+InfcAclAccountListRequestClass
+infc_acl_account_list_request_initiated
+infc_acl_account_list_request_get_initiated
+infc_acl_account_list_request_progress
+<SUBSECTION Standard>
+INFC_ACL_ACCOUNT_LIST_REQUEST
+INFC_IS_ACL_ACCOUNT_LIST_REQUEST
+INFC_TYPE_ACL_ACCOUNT_LIST_REQUEST
+infc_account_account_list_request_get_type
+INFC_ACL_ACCOUNT_LIST_REQUEST_CLASS
+INFC_IS_ACL_ACCOUNT_LIST_REQUEST_CLASS
+INFC_ACL_ACCOUNT_LIST_REQUEST_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>infc-node-request</FILE>
 <TITLE>InfcNodeRequest</TITLE>
 InfcNodeRequest
@@ -379,17 +397,18 @@ inf_browser_status_get_type
 </SECTION>
 
 <SECTION>
-<FILE>inf-acl-sheet</FILE>
-<TITLE>InfAclSheet</TITLE>
-InfAclUser
+<FILE>inf-acl</FILE>
+<TITLE>InfAcl</TITLE>
+InfAclAccount
 InfAclSetting
+InfAclMask
 InfAclSheet
 InfAclSheetSet
-inf_acl_user_new
-inf_acl_user_copy
-inf_acl_user_free
-inf_acl_user_from_xml
-inf_acl_user_to_xml
+inf_acl_account_new
+inf_acl_account_copy
+inf_acl_account_free
+inf_acl_account_from_xml
+inf_acl_account_to_xml
 inf_acl_sheet_copy
 inf_acl_sheet_free
 inf_acl_sheet_perms_from_xml
@@ -403,12 +422,14 @@ inf_acl_sheet_set_remove_sheet
 inf_acl_sheet_set_find_sheet
 inf_acl_sheet_set_find_const_sheet
 <SUBSECTION Standard>
-inf_acl_user_get_type
+inf_acl_account_get_type
 inf_acl_setting_get_type
+inf_acl_mask_get_type
 inf_acl_sheet_get_type
 inf_acl_sheet_set_get_type
-INF_TYPE_ACL_USER
+INF_TYPE_ACL_ACCOUNT
 INF_TYPE_ACL_SETTING
+INF_TYPE_ACL_MASK
 INF_TYPE_ACL_SHEET
 INF_TYPE_ACL_SHEET_SET
 </SECTION>
@@ -439,17 +460,17 @@ INF_NODE_REQUEST_GET_IFACE
 </SECTION>
 
 <SECTION>
-<FILE>inf-acl-user-list-request</FILE>
-<TITLE>InfAclUserListRequest</TITLE>
-InfAclUserListRequest
-InfAclUserListRequestIface
-inf_acl_user_list_request_finished
+<FILE>inf-acl-account-list-request</FILE>
+<TITLE>InfAclAccountListRequest</TITLE>
+InfAclAccountListRequest
+InfAclAccountListRequestIface
+inf_acl_account_list_request_finished
 <SUBSECTION Standard>
-INF_ACL_USER_LIST_REQUEST
-INF_IS_ACL_USER_LIST_REQUEST
-INF_TYPE_ACL_USER_LIST_REQUEST
-inf_acl_user_list_request_get_type
-INF_ACL_USER_LIST_REQUEST_GET_IFACE
+INF_ACL_ACCOUNT_LIST_REQUEST
+INF_IS_ACL_ACCOUNT_LIST_REQUEST
+INF_TYPE_ACL_ACCOUNT_LIST_REQUEST
+inf_acl_account_list_request_get_type
+INF_ACL_ACCOUNT_LIST_REQUEST_GET_IFACE
 </SECTION>
 
 <SECTION>
@@ -977,6 +998,24 @@ inf_adopted_request_log_get_type
 INF_ADOPTED_REQUEST_LOG_CLASS
 INF_ADOPTED_IS_REQUEST_LOG_CLASS
 INF_ADOPTED_REQUEST_LOG_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>infd-acl-account-info</FILE>
+<TITLE>InfdAclAccountInfo</TITLE>
+InfdAclAccountInfo
+infd_acl_account_info_new
+infd_acl_account_info_copy
+infd_acl_account_info_free
+infd_acl_account_info_set_password
+infd_acl_account_info_check_password
+infd_acl_account_info_add_certificate
+infd_acl_account_info_remove_certificate
+infd_acl_account_info_update_time
+infd_acl_account_info_from_xml
+infd_acl_account_info_to_xml
+<SUBSECTION Standard>
+infd_acl_account_info_get_type
 </SECTION>
 
 <SECTION>
@@ -1621,36 +1660,6 @@ INF_IS_CHAT_SESSION_CLASS
 INF_CHAT_SESSION_GET_CLASS
 inf_chat_session_get_type
 INF_TYPE_CHAT_SESSION
-</SECTION>
-
-<SECTION>
-<FILE>inf-acl-table</FILE>
-<TITLE>InfAclTable</TITLE>
-InfAclTable
-InfAclTableClass
-inf_acl_table_new
-inf_acl_table_add_user
-inf_acl_table_get_n_users
-inf_acl_table_get_user
-inf_acl_table_get_user_list
-inf_acl_table_insert_sheet
-inf_acl_table_insert_sheets
-inf_acl_table_get_sheets
-inf_acl_table_get_sheet
-inf_acl_table_get_clear_sheets
-inf_acl_table_clear_sheets
-inf_acl_table_sheet_to_xml
-inf_acl_table_sheet_from_xml
-inf_acl_table_sheet_set_to_xml
-inf_acl_table_sheet_set_from_xml
-<SUBSECTION Standard>
-INF_ACL_TABLE
-INF_IS_ACL_TABLE
-INF_ACL_TABLE_CLASS
-INF_IS_ACL_TABLE_CLASS
-INF_ACL_TABLE_GET_CLASS
-inf_acl_table_get_type
-INF_TYPE_ACL_TABLE
 </SECTION>
 
 <SECTION>

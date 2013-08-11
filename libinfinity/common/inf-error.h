@@ -152,8 +152,10 @@ typedef enum _InfUserError {
  * server since it has no storage backend attached.
  * @INF_DIRECTORY_ERROR_INVALID_CERTIFICATE: An invalid certificate or
  * certificate request have been sent.
- * @INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED: The user list has already
- * been queried before.
+ * @INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED: The account list has
+ * already been queried before.
+ * @INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT: When adding a new account the new
+ * account ID exists already in the account list.
  * @INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED: The ACL for a node has
  * already been queried before.
  * @INF_DIRECTORY_ERROR_ACL_NOT_QUERIED: The ACL for a node has
@@ -190,7 +192,8 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
   INF_DIRECTORY_ERROR_NO_STORAGE,
   INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
-  INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED,
+  INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED,
+  INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
   INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED,
   INF_DIRECTORY_ERROR_ACL_NOT_QUERIED,
 

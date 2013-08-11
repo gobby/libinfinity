@@ -20,7 +20,7 @@
 #ifndef __INF_GTK_ACL_SHEET_VIEW_H__
 #define __INF_GTK_ACL_SHEET_VIEW_H__
 
-#include <libinfinity/common/inf-acl-sheet.h>
+#include <libinfinity/common/inf-acl.h>
 
 #include <gtk/gtk.h>
 
@@ -94,9 +94,9 @@ inf_gtk_acl_sheet_view_get_show_default(InfGtkAclSheetView* view);
 
 void
 inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
-                                           guint64 mask);
+                                           const InfAclMask* mask);
 
-guint64
+const InfAclMask*
 inf_gtk_acl_sheet_view_get_permission_mask(InfGtkAclSheetView* view);
 
 G_END_DECLS

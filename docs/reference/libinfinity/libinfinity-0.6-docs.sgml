@@ -35,8 +35,7 @@
     <xi:include href="xml/inf-chat-buffer.xml"/>
     <xi:include href="xml/inf-user-table.xml"/>
     <xi:include href="xml/inf-user.xml"/>
-    <xi:include href="xml/inf-acl-sheet.xml"/>
-    <xi:include href="xml/inf-acl-table.xml"/>
+    <xi:include href="xml/inf-acl.xml"/>
     <xi:include href="xml/inf-discovery.xml"/>
     <xi:include href="xml/inf-local-publisher.xml"/>
     <xi:include href="xml/inf-ip-address.xml"/>
@@ -59,7 +58,7 @@
     <xi:include href="xml/inf-request.xml"/>
     <xi:include href="xml/inf-node-request.xml"/>
     <xi:include href="xml/inf-explore-request.xml"/>
-    <xi:include href="xml/inf-acl-user-list-request.xml"/>
+    <xi:include href="xml/inf-acl-account-list-request.xml"/>
     <xi:include href="xml/inf-user-request.xml"/>
   </chapter>
 
@@ -88,6 +87,7 @@
     <xi:include href="xml/infc-explore-request.xml"/>
     <xi:include href="xml/infc-user-request.xml"/>
     <xi:include href="xml/infc-chat-request.xml"/>
+    <xi:include href="xml/infc-acl-account-list-request.xml"/>
     <xi:include href="xml/infc-certificate-request.xml"/>
     <xi:include href="xml/infc-request.xml"/>
     <xi:include href="xml/infc-request-manager.xml"/>
@@ -97,6 +97,7 @@
     <title>Libinfinity server side API</title>
     <xi:include href="xml/infd-directory.xml"/>
     <xi:include href="xml/infd-note-plugin.xml"/>
+    <xi:include href="xml/infd-acl-account-info.xml"/>
     <xi:include href="xml/infd-storage.xml"/>
     <xi:include href="xml/infd-filesystem-storage.xml"/>
     <xi:include href="xml/infd-session-proxy.xml"/>

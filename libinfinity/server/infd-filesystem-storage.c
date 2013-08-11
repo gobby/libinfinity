@@ -759,10 +759,10 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   return ret;
 }
 
-static InfAclUser**
-infd_filesystem_storage_storage_read_user_list(InfdStorage* storage,
-                                               guint* n_users,
-                                               GError** error)
+static InfdAclAccountInfo**
+infd_filesystem_storage_storage_read_account_list(InfdStorage* storage,
+                                                  guint* n_accounts,
+                                                  GError** error)
 {
   InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
@@ -774,13 +774,13 @@ infd_filesystem_storage_storage_read_user_list(InfdStorage* storage,
   xmlNodePtr root;
   xmlNodePtr child;
   GPtrArray* array;
-  InfAclUser* user;
+  InfdAclAccountInfo* info;
   guint i;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
 
-  full_name = g_build_filename(priv->root_directory, "users.xml", NULL);
+  full_name = g_build_filename(priv->root_directory, "accounts.xml", NULL);
 
   stream = fopen(full_name, "r");
   save_errno = errno;
@@ -790,9 +790,9 @@ infd_filesystem_storage_storage_read_user_list(InfdStorage* storage,
     g_free(full_name);
     if(save_errno == ENOENT)
     {
-      /* The ACL file does not exist. This is not an error, but just means
-       * the ACL is empty. */
-      *n_users = 0;
+      /* The account file does not exist. This is not an error, but just means
+       * the account list is empty. */
+      *n_accounts = 0;
       return NULL;
     }
     else
@@ -806,7 +806,7 @@ infd_filesystem_storage_storage_read_user_list(InfdStorage* storage,
     INFD_FILESYSTEM_STORAGE(storage),
     stream,
     full_name,
-    "inf-acl-user-list",
+    "inf-acl-account-list",
     error
   );
 
@@ -821,32 +821,38 @@ infd_filesystem_storage_storage_read_user_list(InfdStorage* storage,
   {
     if(child->type != XML_ELEMENT_NODE) continue;
 
-    if(strcmp((const char*)child->name, "user") == 0)
+    if(strcmp((const char*)child->name, "account") == 0)
     {
-      user = inf_acl_user_from_xml(child, error);
-      if(user == NULL)
+      info = infd_acl_account_info_from_xml(child, error);
+      if(info == NULL)
       {
         for(i = 0; i < array->len; ++i)
-          inf_acl_user_free((InfAclUser*)g_ptr_array_index(array, i));
+        {
+          infd_acl_account_info_free(
+            (InfdAclAccountInfo*)g_ptr_array_index(array, i)
+          );
+        }
+
         g_ptr_array_free(array, TRUE);
         xmlFreeDoc(doc);
         return NULL;
       }
 
-      g_ptr_array_add(array, user);
+      g_ptr_array_add(array, info);
     }
   }
 
   xmlFreeDoc(doc);
-  *n_users = array->len;
-  return (InfAclUser**)g_ptr_array_free(array, FALSE);
+  *n_accounts = array->len;
+  return (InfdAclAccountInfo**)g_ptr_array_free(array, FALSE);
 }
 
 static gboolean
-infd_filesystem_storage_storage_write_user_list(InfdStorage* storage,
-                                                const InfAclUser** users,
-                                                guint n_users,
-                                                GError** error)
+infd_filesystem_storage_storage_write_account_list(
+  InfdStorage* storage,
+  const InfdAclAccountInfo** accounts,
+  guint n_accounts,
+  GError** error)
 {
   InfdFilesystemStorage* fs_storage;
   xmlNodePtr root;
@@ -857,11 +863,11 @@ infd_filesystem_storage_storage_write_user_list(InfdStorage* storage,
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
 
-  root = xmlNewNode(NULL, (const xmlChar*)"inf-acl-user-list");
-  for(i = 0; i < n_users; ++i)
+  root = xmlNewNode(NULL, (const xmlChar*)"inf-acl-account-list");
+  for(i = 0; i < n_accounts; ++i)
   {
-    child = xmlNewChild(root, NULL, (const xmlChar*)"user", NULL);
-    inf_acl_user_to_xml(users[i], child, TRUE);
+    child = xmlNewChild(root, NULL, (const xmlChar*)"account", NULL);
+    infd_acl_account_info_to_xml(accounts[i], child);
   }
 
   doc = xmlNewDoc((const xmlChar*)"1.0");
@@ -869,7 +875,7 @@ infd_filesystem_storage_storage_write_user_list(InfdStorage* storage,
 
   result = infd_filesystem_storage_write_xml_file(
     fs_storage,
-    "users.xml",
+    "accounts.xml",
     doc,
     error
   );
@@ -894,7 +900,7 @@ infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
   xmlNodePtr child;
   GSList* list;
   InfdStorageAcl* acl;
-  xmlChar* user_name;
+  xmlChar* account_id;
 
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
   if(infd_filesystem_storage_verify_path(path, error) == FALSE)
@@ -967,8 +973,9 @@ infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
 
     if(strcmp((const char*)child->name, "sheet") == 0)
     {
-      user_name = inf_xml_util_get_attribute_required(child, "user", error);
-      if(user_name == NULL)
+      account_id =
+        inf_xml_util_get_attribute_required(child, "account", error);
+      if(account_id == NULL)
       {
         infd_storage_acl_list_free(list);
         xmlFreeDoc(doc);
@@ -976,25 +983,25 @@ infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
       }
 
       acl = g_slice_new(InfdStorageAcl);
-      acl->user_id = g_strdup((const gchar*)user_name);
-      xmlFree(user_name);
+      acl->account_id = g_strdup((const gchar*)account_id);
+      xmlFree(account_id);
       
       if(!inf_acl_sheet_perms_from_xml(child, &acl->mask, &acl->perms, error))
       {
-        g_free(acl->user_id);
+        g_free(acl->account_id);
         g_slice_free(InfdStorageAcl, acl);
         infd_storage_acl_list_free(list);
         xmlFreeDoc(doc);
         return NULL;
       }
 
-      if(acl->mask != 0)
+      if(!inf_acl_mask_empty(&acl->mask))
       {
         list = g_slist_prepend(list, acl);
       }
       else
       {
-        g_free(acl->user_id);
+        g_free(acl->account_id);
         g_slice_free(InfdStorageAcl, acl);
       }
     }
@@ -1048,19 +1055,19 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
     root = xmlNewNode(NULL, (const xmlChar*)"inf-acl");
     for(i = 0; i < sheet_set->n_sheets; ++i)
     {
-      if(sheet_set->sheets[i].mask != 0)
+      if(!inf_acl_mask_empty(&sheet_set->sheets[i].mask))
       {
         child = xmlNewChild(root, NULL, (const xmlChar*)"sheet", NULL);
 
         inf_xml_util_set_attribute(
           child,
-          "user",
-          sheet_set->sheets[i].user->user_id
+          "account",
+          sheet_set->sheets[i].account->id
         );
 
         inf_acl_sheet_perms_to_xml(
-          sheet_set->sheets[i].mask,
-          sheet_set->sheets[i].perms,
+          &sheet_set->sheets[i].mask,
+          &sheet_set->sheets[i].perms,
           child
         );
       }
@@ -1166,10 +1173,10 @@ infd_filesystem_storage_storage_init(gpointer g_iface,
   iface->remove_node =
     infd_filesystem_storage_storage_remove_node;
 
-  iface->read_user_list =
-    infd_filesystem_storage_storage_read_user_list;
-  iface->write_user_list =
-    infd_filesystem_storage_storage_write_user_list;
+  iface->read_account_list =
+    infd_filesystem_storage_storage_read_account_list;
+  iface->write_account_list =
+    infd_filesystem_storage_storage_write_account_list;
   iface->read_acl =
     infd_filesystem_storage_storage_read_acl;
   iface->write_acl =

@@ -38,7 +38,7 @@ struct _InfGtkAclSheetViewPrivate {
   GtkWidget* treeview;
   InfAclSheet* sheet;
   gboolean editable;
-  guint64 permission_mask;
+  InfAclMask permission_mask;
 };
 
 enum {
@@ -86,10 +86,11 @@ inf_gtk_acl_sheet_view_default_toggled_cb(GtkCellRenderer* cell,
   g_assert(priv->sheet != NULL);
 
   gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
+  
 
-  if((priv->sheet->mask & 1 << setting) != 0)
+  if(inf_acl_mask_has(&priv->sheet->mask, setting))
   {
-    priv->sheet->mask &= ~(1 << setting);
+    inf_acl_mask_and1(&priv->sheet->mask, setting);
 
     g_signal_emit(G_OBJECT(view), acl_sheet_view_signals[SHEET_CHANGED], 0);
     g_object_notify(G_OBJECT(view), "sheet");
@@ -121,11 +122,11 @@ inf_gtk_acl_sheet_view_yes_toggled_cb(GtkCellRenderer* cell,
 
   gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
 
-  if((priv->sheet->mask & (1 << setting)) == 0 ||
-     (priv->sheet->perms & (1 << setting)) == 0)
+  if(!inf_acl_mask_has(&priv->sheet->mask, setting) ||
+     !inf_acl_mask_has(&priv->sheet->perms, setting))
   {
-    priv->sheet->mask |= (1 << setting);
-    priv->sheet->perms |= (1 << setting);
+    inf_acl_mask_or1(&priv->sheet->mask, setting);
+    inf_acl_mask_or1(&priv->sheet->perms, setting);
 
     g_signal_emit(G_OBJECT(view), acl_sheet_view_signals[SHEET_CHANGED], 0);
     g_object_notify(G_OBJECT(view), "sheet");
@@ -157,11 +158,11 @@ inf_gtk_acl_sheet_view_no_toggled_cb(GtkCellRenderer* cell,
 
   gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
 
-  if((priv->sheet->mask & (1 << setting)) == 0 ||
-     (priv->sheet->perms & (1 << setting)) != 0)
+  if(!inf_acl_mask_has(&priv->sheet->mask, setting) ||
+     inf_acl_mask_has(&priv->sheet->perms, setting))
   {
-    priv->sheet->mask |= (1 << setting);
-    priv->sheet->perms &= ~(1 << setting);
+    inf_acl_mask_or1(&priv->sheet->mask, setting);
+    inf_acl_mask_and1(&priv->sheet->perms, setting);
 
     g_signal_emit(G_OBJECT(view), acl_sheet_view_signals[SHEET_CHANGED], 0);
     g_object_notify(G_OBJECT(view), "sheet");
@@ -184,7 +185,7 @@ inf_gtk_acl_sheet_view_default_cell_data_func(GtkTreeViewColumn* column,
 
   gtk_tree_model_get(tree, iter, 1, &setting, -1);
 
-  if(priv->sheet == NULL || (priv->sheet->mask & (1 << setting)) == 0)
+  if(priv->sheet == NULL || !inf_acl_mask_has(&priv->sheet->mask, setting))
     g_object_set(cell, "active", TRUE, NULL);
   else
     g_object_set(cell, "active", FALSE, NULL);
@@ -206,8 +207,8 @@ inf_gtk_acl_sheet_view_yes_cell_data_func(GtkTreeViewColumn* column,
 
   gtk_tree_model_get(tree, iter, 1, &setting, -1);
 
-  if(priv->sheet != NULL && (priv->sheet->mask & (1 << setting)) != 0 &&
-     (priv->sheet->perms & (1 << setting)) != 0)
+  if(priv->sheet != NULL && inf_acl_mask_has(&priv->sheet->mask, setting) &&
+     inf_acl_mask_has(&priv->sheet->perms, setting))
   {
     g_object_set(cell, "active", TRUE, NULL);
   }
@@ -233,8 +234,8 @@ inf_gtk_acl_sheet_view_no_cell_data_func(GtkTreeViewColumn* column,
 
   gtk_tree_model_get(tree, iter, 1, &setting, -1);
 
-  if(priv->sheet != NULL && (priv->sheet->mask & (1 << setting)) != 0 &&
-     (priv->sheet->perms & (1 << setting)) == 0)
+  if(priv->sheet != NULL && inf_acl_mask_has(&priv->sheet->mask, setting) &&
+     !inf_acl_mask_has(&priv->sheet->perms, setting))
   {
     g_object_set(cell, "active", TRUE, NULL);
   }
@@ -323,7 +324,7 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
   priv->treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(priv->store));
   priv->sheet = NULL;
   priv->editable = FALSE;
-  priv->permission_mask = 0;
+  inf_acl_mask_clear(&priv->permission_mask);
 
   gtk_tree_sortable_set_sort_column_id(
     GTK_TREE_SORTABLE(priv->store),
@@ -339,7 +340,7 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
     NULL
   );
 
-  inf_gtk_acl_sheet_view_set_permission_mask(view, INF_ACL_MASK_ALL);
+  inf_gtk_acl_sheet_view_set_permission_mask(view, &INF_ACL_MASK_ALL);
 
   renderer = gtk_cell_renderer_text_new();
   column = gtk_tree_view_column_new();
@@ -512,7 +513,7 @@ inf_gtk_acl_sheet_view_set_property(GObject* object,
   case PROP_PERMISSION_MASK:
     inf_gtk_acl_sheet_view_set_permission_mask(
       view,
-      g_value_get_uint64(value)
+      (const InfAclMask*)g_value_get_boxed(value)
     );
 
     break;
@@ -546,7 +547,7 @@ inf_gtk_acl_sheet_view_get_property(GObject* object,
     g_value_set_boolean(value, inf_gtk_acl_sheet_view_get_show_default(view));
     break;
   case PROP_PERMISSION_MASK:
-    g_value_set_uint64(value, priv->permission_mask);
+    g_value_set_boxed(value, &priv->permission_mask);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -634,13 +635,11 @@ inf_gtk_acl_sheet_view_class_init(gpointer g_class,
   g_object_class_install_property(
     object_class,
     PROP_PERMISSION_MASK,
-    g_param_spec_uint64(
+    g_param_spec_boxed(
       "permission-mask",
       "Permission mask",
-      "A bitfield with the permissions to show in the sheet view",
-      0,
-      INF_ACL_MASK_ALL,
-      INF_ACL_MASK_ALL,
+      "Specifies which permissions to show in the sheet view",
+      INF_TYPE_ACL_MASK,
       G_PARAM_READWRITE
     )
   );
@@ -859,20 +858,19 @@ inf_gtk_acl_sheet_view_get_show_default(InfGtkAclSheetView* view)
 /**
  * inf_gtk_acl_sheet_view_set_permission_mask:
  * @view: A #InfGtkAclSheetView.
- * @mask: A bitfield with the permissions to show.
+ * @mask: A #InfAclMask with the permissions to show.
  *
- * Sets which permissions of the sheet to show. Mask is a bitfield of
- * #InfAclSetting<!-- -->s which specifies which permissions are shown. By
- * default all permissions are shown.
+ * Sets which permissions of the sheet to show. Only the permissions that
+ * are enabled in @mask ar being shown. By default all permissions are shown.
  */
 void
 inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
-                                           guint64 mask)
+                                           const InfAclMask* mask)
 {
   InfGtkAclSheetViewPrivate* priv;
 
-  guint64 add;
-  guint64 remove;
+  InfAclMask add;
+  InfAclMask remove;
 
   GEnumClass* enum_class;
   guint i;
@@ -882,10 +880,14 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
   InfAclSetting setting;
 
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
-  add = mask & ~priv->permission_mask;
-  remove = priv->permission_mask & ~mask;
 
-  if(remove != 0)
+  inf_acl_mask_neg(&priv->permission_mask, &add);
+  inf_acl_mask_and(mask, &add, &add);
+
+  inf_acl_mask_neg(mask, &remove);
+  inf_acl_mask_and(&priv->permission_mask, &remove, &remove);
+
+  if(!inf_acl_mask_empty(&remove))
   {
     has_element = gtk_tree_model_get_iter_first(
       GTK_TREE_MODEL(priv->store),
@@ -897,7 +899,7 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
     while(has_element == TRUE)
     {
       gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
-      if((remove & ((guint64)1 << (guint64)setting)) != 0)
+      if(inf_acl_mask_has(&remove, setting))
       {
         has_element = gtk_list_store_remove(priv->store, &iter);
       }
@@ -911,13 +913,13 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
     }
   }
 
-  if(add != 0)
+  if(!inf_acl_mask_empty(&add))
   {
     enum_class = G_ENUM_CLASS(g_type_class_ref(INF_TYPE_ACL_SETTING));
 
     for(i = 0; i < enum_class->n_values; ++i)
     {
-      if((add & ((guint64)1 << (guint64)enum_class->values[i].value)) != 0)
+      if(inf_acl_mask_has(&add, enum_class->values[i].value))
       {
         gtk_list_store_insert_with_values(
           priv->store,
@@ -933,9 +935,9 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
     g_type_class_unref(enum_class);
   }
 
-  if(remove != 0 || add != 0)
+  if(!inf_acl_mask_equal(&priv->permission_mask, mask))
   {
-    priv->permission_mask = mask;
+    priv->permission_mask = *mask;
     g_object_notify(G_OBJECT(view), "permission-mask");
   }
 }
@@ -944,16 +946,16 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
  * inf_gtk_acl_sheet_view_get_permission_mask:
  * @view: A #InfGtkAclSheetView.
  *
- * Returns a bitfield of #InfAclSetting<!-- -->s which specifies which
- * permissions are currently being shown by @view.
+ * Returns a #InfAclMask specifies which permissions are currently being
+ * shown by @view.
  *
- * Returns: A bitfield of settings shown.
+ * Returns: A #InfAclMask owned by @view. It must not be freed.
  */
-guint64
+const InfAclMask*
 inf_gtk_acl_sheet_view_get_permission_mask(InfGtkAclSheetView* view)
 {
   g_return_val_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view), 0);
-  return INF_GTK_ACL_SHEET_VIEW_PRIVATE(view)->permission_mask;
+  return &INF_GTK_ACL_SHEET_VIEW_PRIVATE(view)->permission_mask;
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -44,7 +44,7 @@ enum {
   SUBSCRIBE_SESSION,
   UNSUBSCRIBE_SESSION,
   BEGIN_REQUEST, /* detailed */
-  ACL_USER_ADDED,
+  ACL_ACCOUNT_ADDED,
   ACL_CHANGED,
 
   LAST_SIGNAL
@@ -231,23 +231,24 @@ inf_browser_base_init(gpointer g_class)
     );
 
     /**
-     * InfBrowser::acl-user-added:
+     * InfBrowser::acl-account-added:
      * @browser: The #InfBrowser object emitting the signal.
-     * @user: The new #InfAclUser.
+     * @account: The new #InfAclAccount.
      *
-     * This signal is emitted whenever a new user is added to the browser, and
-     * the user list has been queried with inf_browser_query_user_list().
+     * This signal is emitted whenever a new account is added to the browser,
+     * and the account list has been queried with
+     * inf_browser_query_account_list().
      */
-    browser_signals[ACL_USER_ADDED] = g_signal_new(
-      "acl-user-added",
+    browser_signals[ACL_ACCOUNT_ADDED] = g_signal_new(
+      "acl-account-added",
       INF_TYPE_BROWSER,
       G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, acl_user_added),
+      G_STRUCT_OFFSET(InfBrowserIface, acl_account_added),
       NULL, NULL,
       inf_marshal_VOID__BOXED,
       G_TYPE_NONE,
       1,
-      INF_TYPE_ACL_USER | G_SIGNAL_TYPE_STATIC_SCOPE
+      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
     );
 
     /**
@@ -1016,110 +1017,110 @@ inf_browser_get_pending_request(InfBrowser* browser,
 }
 
 /**
- * inf_browser_query_acl_user_list:
+ * inf_browser_query_acl_account_list:
  * @browser: A #InfBrowser.
  *
- * Queries the list of users in @browser. When this call has finished,
- * inf_browser_get_acl_user_list() can be called in order to retrieve the user
- * list.
+ * Queries the list of accounts in @browser. When this call has finished,
+ * inf_browser_get_acl_account_list() can be called in order to retrieve the
+ * account list.
  *
- * Returns: A #InfUserListRequest that can be used to be notified when the
- * request finishes.
+ * Returns: A #InfAclAccountListRequest that can be used to be notified when
+ * the request finishes.
  */
-InfAclUserListRequest*
-inf_browser_query_acl_user_list(InfBrowser* browser)
+InfAclAccountListRequest*
+inf_browser_query_acl_account_list(InfBrowser* browser)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->query_acl_user_list != NULL, NULL);
+  g_return_val_if_fail(iface->query_acl_account_list != NULL, NULL);
 
-  return iface->query_acl_user_list(browser);
+  return iface->query_acl_account_list(browser);
 }
 
 /**
- * inf_browser_get_acl_user_list:
+ * inf_browser_get_acl_account_list:
  * @browser: A #InfBrowser.
- * @n_users: An output parameter for the total number of users.
+ * @n_accounts: An output parameter for the total number of accounts.
  *
- * Returns an array of users, if they have been queried before
- * with inf_browser_query_user_list(). If the user list has not been queried,
- * %NULL is returned. Note that this does not mean that there are no known
- * users, it only means that the full list is not available. The self user
- * with inf_browser_get_acl_local_user() is always available for example, even
- * if this function returns %NULL.
+ * Returns an array of accounts, if they have been queried before
+ * with inf_browser_query_account_list(). If the account list has not been
+ * queried, %NULL is returned. Note that this does not mean that there are no
+ * known accounts, it only means that the full list is not available. The
+ * local ccount with inf_browser_get_acl_local_account() is always available
+ * for example, even if this function returns %NULL.
  *
- * Returns: A %NULL-terminated list of #InfAclUser objects, or %NULL. Free
+ * Returns: A %NULL-terminated list of #InfAclAccount objects, or %NULL. Free
  * with g_free() when no longer needed.
  */
-const InfAclUser**
-inf_browser_get_acl_user_list(InfBrowser* browser,
-                              guint* n_users)
+const InfAclAccount**
+inf_browser_get_acl_account_list(InfBrowser* browser,
+                                 guint* n_accounts)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(n_users != NULL, NULL);
+  g_return_val_if_fail(n_accounts != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_acl_user_list != NULL, NULL);
+  g_return_val_if_fail(iface->get_acl_account_list != NULL, NULL);
 
-  return iface->get_acl_user_list(browser, n_users);
+  return iface->get_acl_account_list(browser, n_accounts);
 }
 
 /**
- * inf_browser_get_acl_local_user:
+ * inf_browser_get_acl_local_account:
  * @browser: A #InfBrowser
  *
- * Returns the #InfAclUser representing the local host. This can be used to
- * check whether the local user is allowed to perform certain operations in
+ * Returns the #InfAclAccount representing the local host. This can be used to
+ * check whether the local account is allowed to perform certain operations in
  * the browser. The function can also return %NULL, in which case all
  * operations are allowed, because the browser represents a local infinote
  * directory.
  *
- * Returns: A #InfAclUser, or %NULL. The returned value is owned by the
+ * Returns: A #InfAclAccount, or %NULL. The returned value is owned by the
  * browser and must not be freed.
  */
-const InfAclUser*
-inf_browser_get_acl_local_user(InfBrowser* browser)
+const InfAclAccount*
+inf_browser_get_acl_local_account(InfBrowser* browser)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_acl_local_user != NULL, NULL);
+  g_return_val_if_fail(iface->get_acl_local_account != NULL, NULL);
 
-  return iface->get_acl_local_user(browser);
+  return iface->get_acl_local_account(browser);
 }
 
 /**
- * inf_browser_lookup_acl_user:
+ * inf_browser_lookup_acl_account:
  * @browser: A #InfBrowser.
- * @user_id: The ACL user ID to look up.
+ * @id: The account ID to look up.
  *
- * Looks up the ACL user with the given ID. If the user list has not been
- * queried with inf_browser_query_user_list() before only the default user
- * and the local user can be looked up using this function. If there is no
- * user with the given ID the function returns %NULL.
+ * Looks up the account with the given ID. If the account list has not been
+ * queried with inf_browser_query_account_list() before, only the default
+ * account and the local account can be looked up using this function. If
+ * there is no account with the given ID the function returns %NULL.
  *
- * Returns: A #InfAclUser owned by the browser, or %NULL.
+ * Returns: A #InfAclAccount owned by the browser, or %NULL.
  */
-const InfAclUser*
-inf_browser_lookup_acl_user(InfBrowser* browser,
-                            const gchar* user_id)
+const InfAclAccount*
+inf_browser_lookup_acl_account(InfBrowser* browser,
+                               const gchar* id)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(user_id != NULL, NULL);
+  g_return_val_if_fail(id != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->lookup_acl_user != NULL, NULL);
+  g_return_val_if_fail(iface->lookup_acl_account != NULL, NULL);
 
-  return iface->lookup_acl_user(browser, user_id);
+  return iface->lookup_acl_account(browser, id);
 }
 
 /**
@@ -1169,7 +1170,7 @@ inf_browser_query_acl(InfBrowser* browser,
 gboolean
 inf_browser_has_acl(InfBrowser* browser,
                     const InfBrowserIter* iter,
-                    const InfAclUser* user)
+                    const InfAclAccount* account)
 {
   InfBrowserIface* iface;
 
@@ -1179,7 +1180,7 @@ inf_browser_has_acl(InfBrowser* browser,
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->has_acl != NULL, FALSE);
 
-  return iface->has_acl(browser, iter, user);
+  return iface->has_acl(browser, iter, account);
 }
 
 /**
@@ -1253,75 +1254,108 @@ inf_browser_set_acl(InfBrowser* browser,
  * inf_browser_check_acl:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node in a browser.
- * @user: A #InfAclUser whose permission to check.
- * @mask: A bitmask of #InfAclSetting<!-- -->s with permissions to check.
+ * @account: A #InfAclAccount whose permission to check.
+ * @check_mask: A bitmask of #InfAclSetting<!-- -->s with permissions to
+ * check.
+ * @out_mask: Output parameter with the granted permissions, or %NULL.
  *
- * Checks whether the given user has permissions to perform the operations
- * specified by @mask on the node @iter points to. The @mask bitfield is a
- * mask which should have all bits enabled for which permissions shall be
- * checked. The return value is a bitmask which has the bits enabled of the
- * permissions that the user actually has.
+ * Checks whether the given account has permissions to perform the operations
+ * specified by @mask on the node @iter points to. The @mask parameter
+ * should have all permissions enabled that are to be checked. The function
+ * will then write those permissions that are actually granted to the
+ * mask specified by the @out_mask parameter.
  *
- * In order for this function to work, the ACL sheet for @user has to be
+ * The function returns %TRUE if all permissions asked for are granted, i.e.
+ * when *@out_mask equals *@mask after the function call. The @out_mask
+ * parameter is allowed to be %NULL which is useful if only the return value
+ * is of interest.
+ *
+ * In order for this function to work, the ACL sheet for @account has to be
  * available for the node @iter points to and all of its parent nodes. If
- * user is not the default or the local user, these need to be queried before
- * using inf_browser_query_acl().
+ * @account is not the default or the local account, these need to be queried
+ * before using inf_browser_query_acl().
  */
-guint64
+gboolean
 inf_browser_check_acl(InfBrowser* browser,
                       const InfBrowserIter* iter,
-                      const InfAclUser* user,
-                      guint64 mask)
+                      const InfAclAccount* account,
+                      const InfAclMask* check_mask,
+                      InfAclMask* out_mask)
 {
-  const InfAclUser* default_user;
+  const InfAclAccount* default_account;
   InfBrowserIter check_iter;
-  guint64 remaining_mask;
-  guint64 perms;
+  InfAclMask remaining_mask;
+  InfAclMask perms;
   const InfAclSheetSet* sheet_set;
   const InfAclSheet* sheet;
+  InfAclMask temp_mask;
 
-  g_return_val_if_fail(INF_IS_BROWSER(browser), 0);
-  g_return_val_if_fail(iter != NULL, 0);
-  g_return_val_if_fail(user != NULL, 0);
+  g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+  g_return_val_if_fail(account != NULL, FALSE);
+  g_return_val_if_fail(check_mask != NULL, FALSE);
 
-  if(strcmp(user->user_id, "default") != 0)
-    default_user = inf_browser_lookup_acl_user(browser, "default");
+  if(strcmp(account->id, "default") != 0)
+    default_account = inf_browser_lookup_acl_account(browser, "default");
   else
-    default_user = NULL;
+    default_account = NULL;
 
-  remaining_mask = mask;
-  perms = mask;
+  remaining_mask = *check_mask;
+  perms = *check_mask;
   check_iter = *iter;
 
   do
   {
-    g_return_val_if_fail(inf_browser_has_acl(browser, &check_iter, user), 0);
+    g_return_val_if_fail(
+      inf_browser_has_acl(browser, &check_iter, account),
+      FALSE
+    );
 
     sheet_set = inf_browser_get_acl(browser, &check_iter);
     if(sheet_set != NULL)
     {
-      sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, user);
+      sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, account);
       if(sheet != NULL)
       {
-        perms &= (sheet->perms | ~(sheet->mask & remaining_mask));
-        remaining_mask &= ~sheet->mask;
+        inf_acl_mask_and(&sheet->mask, &remaining_mask, &temp_mask);
+        inf_acl_mask_neg(&temp_mask, &temp_mask);
+        inf_acl_mask_or(&sheet->perms, &temp_mask, &temp_mask);
+        inf_acl_mask_and(&perms, &temp_mask, &perms);
+        
+        inf_acl_mask_neg(&sheet->mask, &temp_mask);
+        inf_acl_mask_and(&remaining_mask, &temp_mask, &remaining_mask);
       }
 
-      if(remaining_mask != 0 && default_user != NULL)
+      if(!inf_acl_mask_empty(&remaining_mask) && default_account != NULL)
       {
-        sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, default_user);
+        sheet = inf_acl_sheet_set_find_const_sheet(
+          sheet_set,
+          default_account
+        );
+
         if(sheet != NULL)
         {
-          perms &= (sheet->perms | ~(sheet->mask & remaining_mask));
-          remaining_mask &= ~sheet->mask;
+          inf_acl_mask_and(&sheet->mask, &remaining_mask, &temp_mask);
+          inf_acl_mask_neg(&temp_mask, &temp_mask);
+          inf_acl_mask_or(&sheet->perms, &temp_mask, &temp_mask);
+          inf_acl_mask_and(&perms, &temp_mask, &perms);
+        
+          inf_acl_mask_neg(&sheet->mask, &temp_mask);
+          inf_acl_mask_and(&remaining_mask, &temp_mask, &remaining_mask);
         }
       }
     }
-  } while(remaining_mask != 0 &&
+  } while(!inf_acl_mask_empty(&remaining_mask) &&
           inf_browser_get_parent(browser, &check_iter));
 
-  g_assert(remaining_mask == 0);
-  return perms;
+  g_assert(inf_acl_mask_empty(&remaining_mask));
+
+  if(out_mask != NULL)
+    *out_mask = perms;
+
+  if(inf_acl_mask_equal(&perms, check_mask))
+    return TRUE;
+  return FALSE;
 }
 
 /**
@@ -1482,25 +1516,25 @@ inf_browser_begin_request(InfBrowser* browser,
 }
 
 /**
- * inf_browser_acl_user_added:
+ * inf_browser_acl_account_added:
  * @browser: A #InfBrowser.
- * @InfAclUser: The new #InfAclUser.
+ * @InfAclAccount: The new #InfAclAccount.
  *
- * This function emits the #InfBrowser::acl-user-added signal on @browser. It
- * is meant to be used by interface implementations only.
+ * This function emits the #InfBrowser::acl-account-added signal on @browser.
+ * It is meant to be used by interface implementations only.
  */
 void
-inf_browser_acl_user_added(InfBrowser* browser,
-                           const InfAclUser* user)
+inf_browser_acl_account_added(InfBrowser* browser,
+                              const InfAclAccount* account)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
-  g_return_if_fail(user != NULL);
+  g_return_if_fail(account != NULL);
 
   g_signal_emit(
     browser,
-    browser_signals[ACL_USER_ADDED],
+    browser_signals[ACL_ACCOUNT_ADDED],
     0,
-    user
+    account
   );
 }
 

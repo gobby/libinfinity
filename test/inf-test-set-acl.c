@@ -60,10 +60,10 @@ inf_test_set_acl_set_acl_finished_cb(InfNodeRequest* request,
     {
       fprintf(
         stderr,
-        "  %s: mask=%llu, perms=%llu\n",
-        sheet_set->sheets[i].user->user_id,
-        (unsigned long long)sheet_set->sheets[i].mask,
-        (unsigned long long)sheet_set->sheets[i].perms
+        "  %s: mask=%llx, perms=%llx\n",
+        sheet_set->sheets[i].account->id,
+        (unsigned long long)sheet_set->sheets[i].mask.mask[0],
+        (unsigned long long)sheet_set->sheets[i].perms.mask[0]
       );
     }
   }
@@ -79,7 +79,7 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
 {
   InfTestSetAcl* test;
   InfAclSheetSet* sheet_set;
-  InfAclUser* user;
+  const InfAclAccount* account;
   InfAclSheet* sheet;
   guint i;
   InfNodeRequest* node_request;
@@ -101,19 +101,19 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
     {
       fprintf(
         stderr,
-        "  %s: mask=%llu, perms=%llu\n",
-        sheet_set->sheets[i].user->user_id,
-        (unsigned long long)sheet_set->sheets[i].mask,
-        (unsigned long long)sheet_set->sheets[i].perms
+        "  %s: mask=%llx, perms=%llx\n",
+        sheet_set->sheets[i].account->id,
+        (unsigned long long)sheet_set->sheets[i].mask.mask[0],
+        (unsigned long long)sheet_set->sheets[i].perms.mask[0]
       );
     }
 
-    user = inf_browser_lookup_acl_user(test->browser, "default");
-    sheet = inf_acl_sheet_set_add_sheet(sheet_set, user);
+    account = inf_browser_lookup_acl_account(test->browser, "default");
+    sheet = inf_acl_sheet_set_add_sheet(sheet_set, account);
 
     fprintf(stderr, "Requesting CAN_SET_ACL permission for the root node\n");
-    sheet->mask |= (1 << INF_ACL_CAN_SET_ACL);
-    sheet->perms |= (1 << INF_ACL_CAN_SET_ACL);
+    inf_acl_mask_or1(&sheet->mask, INF_ACL_CAN_SET_ACL);
+    inf_acl_mask_or1(&sheet->perms, INF_ACL_CAN_SET_ACL);
     node_request = inf_browser_set_acl(test->browser, iter, sheet_set);
 
     g_signal_connect(
@@ -128,13 +128,13 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
 }
 
 static void
-inf_test_set_acl_query_user_list_finished_cb(InfAclUserListRequest* request,
-                                             const GError* error,
-                                             gpointer user_data)
+inf_test_set_acl_query_account_list_finished_cb(InfAclAccountListRequest* req,
+                                                const GError* error,
+                                                gpointer user_data)
 {
   InfTestSetAcl* test;
-  const InfAclUser** users;
-  guint n_users;
+  const InfAclAccount** accounts;
+  guint n_accounts;
   guint i;
 
   InfBrowserIter iter;
@@ -144,16 +144,16 @@ inf_test_set_acl_query_user_list_finished_cb(InfAclUserListRequest* request,
 
   if(error != NULL)
   {
-    fprintf(stderr, "User List query failed: %s\n", error->message);
+    fprintf(stderr, "Account List query failed: %s\n", error->message);
     inf_xml_connection_close(INF_XML_CONNECTION(test->conn));
   }
   else
   {
-    printf("User List:\n");
-    users = inf_browser_get_acl_user_list(test->browser, &n_users);
-    for(i = 0; i < n_users; ++i)
-      printf("  * %s (%s)\n", users[i]->user_id, users[i]->user_name);
-    g_free(users);
+    printf("Account List:\n");
+    accounts = inf_browser_get_acl_account_list(test->browser, &n_accounts);
+    for(i = 0; i < n_accounts; ++i)
+      printf("  * %s (%s)\n", accounts[i]->id, accounts[i]->name);
+    g_free(accounts);
 
     fprintf(stderr, "Querying root node ACL...\n");
 
@@ -184,25 +184,25 @@ inf_test_set_acl_notify_status_cb(GObject* object,
 {
   InfTestSetAcl* test;
   InfBrowserStatus status;
-  InfAclUserListRequest* request;
-  const InfAclUser* user;
+  InfAclAccountListRequest* request;
+  const InfAclAccount* account;
 
   test = (InfTestSetAcl*)user_data;
   g_object_get(G_OBJECT(test->browser), "status", &status, NULL);
 
   if(status == INF_BROWSER_OPEN)
   {
-    user = inf_browser_get_acl_local_user(test->browser);
+    account = inf_browser_get_acl_local_account(test->browser);
 
-    fprintf(stderr, "Connection established, querying user list...\n");
-    fprintf(stderr, "Local user: %s (%s)\n", user->user_id, user->user_name);
+    fprintf(stderr, "Connection established, querying account list...\n");
+    fprintf(stderr, "Local account: %s (%s)\n", account->id, account->name);
 
-    request = inf_browser_query_acl_user_list(test->browser);
+    request = inf_browser_query_acl_account_list(test->browser);
 
     g_signal_connect(
       G_OBJECT(request),
       "finished",
-      G_CALLBACK(inf_test_set_acl_query_user_list_finished_cb),
+      G_CALLBACK(inf_test_set_acl_query_account_list_finished_cb),
       test
     );
   }

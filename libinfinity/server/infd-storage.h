@@ -22,7 +22,8 @@
 
 #include <glib-object.h>
 
-#include <libinfinity/common/inf-acl-sheet.h>
+#include <libinfinity/server/infd-acl-account-info.h>
+#include <libinfinity/common/inf-acl.h>
 
 G_BEGIN_DECLS
 
@@ -53,9 +54,9 @@ struct _InfdStorageNode {
 
 typedef struct _InfdStorageAcl InfdStorageAcl;
 struct _InfdStorageAcl {
-  gchar* user_id;
-  guint64 mask;
-  guint64 perms;  
+  gchar* account_id;
+  InfAclMask mask;
+  InfAclMask perms;  
 };
 
 struct _InfdStorageIface {
@@ -75,6 +76,7 @@ struct _InfdStorageIface {
                                   const gchar* path,
                                   GError** error);
 
+  /* TODO: Remove the identifier here */
   gboolean (*remove_node)(InfdStorage* storage,
                           const gchar* identifier,
                           const gchar* path,
@@ -82,14 +84,16 @@ struct _InfdStorageIface {
 
   /* TODO: Add further methods to copy, move and expunge nodes */
 
-  InfAclUser** (*read_user_list)(InfdStorage* storage,
-                                 guint* n_users,
-                                 GError** error);
+  /* TODO: There should be a method to only add/change one account. */
 
-  gboolean (*write_user_list)(InfdStorage* storage,
-                              const InfAclUser** users,
-                              guint n_users,
-                              GError** error);
+  InfdAclAccountInfo** (*read_account_list)(InfdStorage* storage,
+                                            guint* n_accounts,
+                                            GError** error);
+
+  gboolean (*write_account_list)(InfdStorage* storage,
+                                 const InfdAclAccountInfo** accounts,
+                                 guint n_accounts,
+                                 GError** error);
 
   GSList* (*read_acl)(InfdStorage* storage,
                       const gchar* path,
@@ -154,16 +158,16 @@ infd_storage_remove_node(InfdStorage* storage,
                          const gchar* path,
                          GError** error);
 
-InfAclUser**
-infd_storage_read_user_list(InfdStorage* storage,
-                            guint* n_users,
-                            GError** error);
+InfdAclAccountInfo**
+infd_storage_read_account_list(InfdStorage* storage,
+                               guint* n_accounts,
+                               GError** error);
 
 gboolean
-infd_storage_write_user_list(InfdStorage* storage,
-                             const InfAclUser** users,
-                             guint n_users,
-                             GError** error);
+infd_storage_write_account_list(InfdStorage* storage,
+                                const InfdAclAccountInfo** accounts,
+                                guint n_accounts,
+                                GError** error);
 
 GSList*
 infd_storage_read_acl(InfdStorage* storage,

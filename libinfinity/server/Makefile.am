@@ -8,6 +8,7 @@ libinfinity_server_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/server
 
 libinfinity_server_la_SOURCES = \
+	infd-acl-account-info.c \
 	infd-directory.c \
 	infd-explore-request.c \
 	infd-filesystem-storage.c \
@@ -21,6 +22,7 @@ libinfinity_server_la_SOURCES = \
 	infd-xmpp-server.c
 
 libinfinity_server_la_HEADERS = \
+	infd-acl-account-info.h \
 	infd-directory.h \
 	infd-explore-request.h \
 	infd-filesystem-storage.h \

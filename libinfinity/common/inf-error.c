@@ -212,8 +212,10 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Server does not have a background storage");
   case INF_DIRECTORY_ERROR_INVALID_CERTIFICATE:
     return _("The certificate is invalid or not trusted");
-  case INF_DIRECTORY_ERROR_USER_LIST_ALREADY_QUERIED:
-    return _("The user list has already been queried before");
+  case INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED:
+    return _("The account list has already been queried before");
+  case INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT:
+    return _("An account with this ID exists already");
   case INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED:
     return _("The ACL has already been queried");
   case INF_DIRECTORY_ERROR_ACL_NOT_QUERIED:
