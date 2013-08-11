@@ -284,9 +284,6 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
 
   g_assert(INFD_IS_FILESYSTEM_STORAGE(storage));
 
-  user_table = inf_user_table_new();
-  buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
-
   /* TODO: Use a SAX parser for better performance */
   stream = infd_filesystem_storage_open(
     INFD_FILESYSTEM_STORAGE(storage),
@@ -297,6 +294,9 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
   );
 
   if(stream == NULL) return FALSE;
+
+  user_table = inf_user_table_new();
+  buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
 
   doc = xmlReadIO(
     infd_note_plugin_text_session_read_read_func,
@@ -382,7 +382,11 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
   }
 
   if(result == FALSE)
+  {
+    g_object_unref(buffer);
+    g_object_unref(user_table);
     return NULL;
+  }
 
   session = inf_text_session_new_with_user_table(
     manager,
@@ -394,6 +398,8 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     NULL
   );
 
+  g_object_unref(buffer);
+  g_object_unref(user_table);
   return INF_SESSION(session);
 }
 
