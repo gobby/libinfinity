@@ -183,10 +183,22 @@ inf_browser_base_init(gpointer g_class)
      * was removed, or %NULL.
      * @session: The session to which the subscription was removed.
      *
-     * This signal is emitted whenever a subscription for a session has been
-     * removed. This can happen when a subscribed session is closed, or, in
+     * This signal is emitted whenever a session is detached from a browser
+     * node. This can happen when a subscribed session is closed, or, in
      * the case of a server, if the session is idle for a long time it is
      * stored on disk and removed from memory.
+     *
+     * Note that this signal does not mean that the corresponding
+     * session can no longer be used. It only means that it is no longer
+     * associated to a browser node, for example also when the browser node
+     * is deleted. The session might still be intact, though, and can continue
+     * even when it is detached from the browser.
+     *
+     * In order to find out whether the local host was unsubscribed from a
+     * session and the connection to the other session participants has been
+     * lost, the #InfSession:subscription-group property should be monitored,
+     * and if that property changes and inf_session_get_subscription_group()
+     * returns %NULL afterwards, it means the session is no longer connected.
      *
      * If @iter is %NULL the session was a global session and not attached to
      * a particular node.

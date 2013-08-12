@@ -553,8 +553,9 @@ infc_browser_node_new_note(InfcBrowser* browser,
 
 /* Required by infc_browser_session_remove_session */
 static void
-infc_browser_session_close_cb(InfSession* session,
-                              gpointer user_data);
+infc_browser_session_notify_subscription_group_cb(InfSession* session,
+                                                  const GParamSpec* pspec,
+                                                  gpointer user_data);
 
 static void
 infc_browser_session_remove_session(InfcBrowser* browser,
@@ -572,7 +573,7 @@ infc_browser_session_remove_session(InfcBrowser* browser,
 
   inf_signal_handlers_disconnect_by_func(
     session,
-    G_CALLBACK(infc_browser_session_close_cb),
+    G_CALLBACK(infc_browser_session_notify_subscription_group_cb),
     browser
   );
 
@@ -799,8 +800,9 @@ infc_browser_node_remove(InfcBrowser* browser,
  */
 
 static void
-infc_browser_session_close_cb(InfSession* session,
-                              gpointer user_data)
+infc_browser_session_notify_subscription_group_cb(InfSession* session,
+                                                  const GParamSpec* spec,
+                                                  gpointer user_data)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -812,64 +814,73 @@ infc_browser_session_close_cb(InfSession* session,
   browser = INFC_BROWSER(user_data);
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  iter = (InfBrowserIter*)g_object_get_qdata(
-    G_OBJECT(session),
-    infc_browser_session_proxy_quark
-  );
-
-  if(iter != NULL)
+  /* When the session loses its subscription group, we detach it from the
+   * browser. It means that we are not subscribed to the session anymore. The
+   * session is now in a "floating" state. It can still be used, for example
+   * to sync-in the session into another node, but it is not connected
+   * anymore to any other host. */
+  if(inf_session_get_subscription_group(session) == NULL)
   {
-    g_assert(
-      g_hash_table_lookup(
-        INFC_BROWSER_PRIVATE(browser)->nodes, GUINT_TO_POINTER(iter->node_id)
-      ) == iter->node
+    iter = (InfBrowserIter*)g_object_get_qdata(
+      G_OBJECT(session),
+      infc_browser_session_proxy_quark
     );
 
-    node = (InfcBrowserNode*)iter->node;
+    if(iter != NULL)
+    {
+      g_assert(
+        g_hash_table_lookup(
+          INFC_BROWSER_PRIVATE(browser)->nodes,
+          GUINT_TO_POINTER(iter->node_id)
+        ) == iter->node
+      );
 
-    g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
-    g_assert(node->shared.known.session != NULL);
+      node = (InfcBrowserNode*)iter->node;
+
+      g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
+      g_assert(node->shared.known.session != NULL);
     
-    g_object_get(
-      G_OBJECT(node->shared.known.session),
-      "session", &proxy_session,
-      NULL
-    );
+      g_object_get(
+        G_OBJECT(node->shared.known.session),
+        "session", &proxy_session,
+        NULL
+      );
 
-    g_assert(proxy_session == session);
-    g_object_unref(proxy_session);
+      g_assert(proxy_session == session);
+      g_object_unref(proxy_session);
 
-    infc_browser_session_remove_session(browser, node);
-  }
-  else
-  {
-    g_assert(priv->chat_session != NULL);
-    g_object_get(
-      G_OBJECT(priv->chat_session),
-      "session", &proxy_session,
-      NULL
-    );
-    g_assert(proxy_session == session);
+      infc_browser_session_remove_session(browser, node);
+    }
+    else
+    {
+      g_assert(priv->chat_session != NULL);
+      g_object_get(
+        G_OBJECT(priv->chat_session),
+        "session", &proxy_session,
+        NULL
+      );
+      g_assert(proxy_session == session);
 
-    inf_signal_handlers_disconnect_by_func(
-      proxy_session,
-      G_CALLBACK(infc_browser_session_close_cb),
-      browser
-    );
+      inf_signal_handlers_disconnect_by_func(
+        proxy_session,
+        G_CALLBACK(infc_browser_session_notify_subscription_group_cb),
+        browser
+      );
 
-    g_object_unref(proxy_session);
+      g_object_unref(proxy_session);
 
-    proxy = priv->chat_session;
-    priv->chat_session = NULL;
-    g_object_notify(G_OBJECT(browser), "chat-session");
+      proxy = priv->chat_session;
+      priv->chat_session = NULL;
+      g_object_notify(G_OBJECT(browser), "chat-session");
 
-    inf_browser_unsubscribe_session(
-      INF_BROWSER(browser),
-      NULL,
-      INF_SESSION_PROXY(proxy)
-    );
+      inf_browser_unsubscribe_session(
+        INF_BROWSER(browser),
+        NULL,
+        INF_SESSION_PROXY(proxy)
+      );
 
-    g_object_unref(proxy);
+      g_object_unref(proxy);
+    }
   }
 }
 
@@ -1036,7 +1047,7 @@ infc_browser_disconnected(InfcBrowser* browser)
 
     inf_signal_handlers_disconnect_by_func(
       session,
-      G_CALLBACK(infc_browser_session_close_cb),
+      G_CALLBACK(infc_browser_session_notify_subscription_group_cb),
       browser
     );
 
@@ -4384,14 +4395,10 @@ infc_browser_browser_subscribe_session(InfBrowser* browser,
     g_object_notify(G_OBJECT(browser), "chat-session");
   }
 
-  /* connect_after so that we release the reference to the object after it
-   * was closed. Otherwise, we would trigger another close signal when
-   * disposing the session before the default handler of the "close" signal
-   * ran. */
-  g_signal_connect_after(
+  g_signal_connect(
     session,
-    "close",
-    G_CALLBACK(infc_browser_session_close_cb),
+    "notify::subscription-group",
+    G_CALLBACK(infc_browser_session_notify_subscription_group_cb),
     browser
   );
 
