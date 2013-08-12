@@ -289,6 +289,7 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
 
   g_assert(priv->connection != NULL);
   g_assert(priv->subscription_group != NULL);
+  g_assert(priv->request_manager != NULL);
 
   /* TODO: Emit failed signal with some "cancelled" error? */
   infc_request_manager_clear(priv->request_manager);
@@ -310,16 +311,22 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
     proxy
   );
 
-  inf_session_set_subscription_group(priv->session, NULL);
-
   g_object_unref(priv->subscription_group);
   priv->subscription_group = NULL;
 
   g_object_unref(G_OBJECT(priv->connection));
   priv->connection = NULL;
 
+  /* Keep the proxy alive while re-setting the session's subscription group,
+   * to be able to announce our status changes afterwards. */
+  g_object_ref(proxy);
+
+  inf_session_set_subscription_group(priv->session, NULL);
+
   g_object_notify(G_OBJECT(proxy), "connection");
   g_object_notify(G_OBJECT(proxy), "subscription-group");
+
+  g_object_unref(proxy);
 }
 
 /* TODO: This function should be moved to InfcRequest */
