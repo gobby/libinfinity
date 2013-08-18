@@ -4953,6 +4953,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     }
   }
 
+  locreq = NULL;
   for(item = priv->local_requests; item != NULL; item = item->next)
   {
     locreq = (InfdDirectoryLocreq*)item->data;

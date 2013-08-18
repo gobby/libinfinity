@@ -113,6 +113,8 @@ infd_note_plugin_chat_session_read(InfdStorage* storage,
     XML_PARSE_NOWARNING | XML_PARSE_NOERROR
   );
 
+  result = TRUE;
+
   if(doc == NULL)
   {
     xmlerror = xmlGetLastError();
