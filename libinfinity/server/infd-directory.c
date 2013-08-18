@@ -5417,7 +5417,10 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
     return FALSE;
   }
 
-  res = gnutls_x509_crt_set_activation_time(cert, timestamp);
+  /* Set the activation time a bit in the past, so that if the client
+   * checks the certificate and has its clock slightly offset it doesn't
+   * find the certificate invalid. */
+  res = gnutls_x509_crt_set_activation_time(cert, timestamp - DAYS / 10);
   if(res != GNUTLS_E_SUCCESS)
   {
     gnutls_x509_crt_deinit(cert);
