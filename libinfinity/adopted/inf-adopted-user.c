@@ -17,6 +17,23 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-adopted-user
+ * @title: InfAdoptedUser
+ * @short_description: User in a #InfAdoptedUser.
+ * @include: libinfinity/adopted/inf-adopted-user.h
+ * @see_also: #InfAdoptedSession, #InfAdoptedAlgorithm
+ * @stability: Unstable
+ *
+ * #InfAdoptedUser is a #InfUser-derived class that is used in
+ * #InfAdoptedSession. It holds all user-specific information that is needed
+ * by #InfAdoptedAlgorithm to handle the concurrency control. This includes
+ * the user's request log which stores all the requests made by the user and
+ * a state vector which specifies the document state that the user has, as
+ * known to the local host. This information is extracted from the most recent
+ * request received from the user.
+ */
+
 #include <libinfinity/adopted/inf-adopted-user.h>
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
 

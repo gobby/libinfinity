@@ -34,11 +34,24 @@ G_BEGIN_DECLS
 typedef struct _InfStandaloneIo InfStandaloneIo;
 typedef struct _InfStandaloneIoClass InfStandaloneIoClass;
 
+/**
+ * InfStandaloneIoClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfStandaloneIoClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfStandaloneIo:
+ *
+ * #InfStandaloneIo is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfStandaloneIo {
+  /*< private >*/
   GObject parent;
 };
 

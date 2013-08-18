@@ -17,6 +17,28 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-standalone-io
+ * @title: InfStandaloneIo
+ * @short_description: Simple event loop implementation
+ * @include: libinfinity/common/inf-standalone-io.h
+ * @see_also: #InfIo
+ * @stability: Unstable
+ *
+ * #InfStandaloneIo is a simple implementation of the #InfIo interface. It
+ * implements a basic application event loop with support for listening on
+ * sockets, scheduling timeouts and inter-thread notifications. The class
+ * is fully thread-safe.
+ *
+ * This class can be perfectly used for all functions in libinfinity that
+ * require a #InfIo object to wait for events. If, on top of that more
+ * functionality is required, or the main loop needs to be integrated with
+ * another library such as a UI toolkit, a custom class should be created
+ * instead which implements the #InfIo interface. For the GTK+ toolkit, there
+ * is #InfGtkIo in the libinfgtk library, to integrate with the Glib main
+ * loop.
+ */
+
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>
 

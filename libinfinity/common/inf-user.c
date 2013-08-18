@@ -30,7 +30,6 @@
  * ID, user name, its status and auxiliary flags.
  */
 
-
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
