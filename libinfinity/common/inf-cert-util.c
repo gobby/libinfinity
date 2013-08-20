@@ -728,6 +728,7 @@ inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
   gpointer data;
   gnutls_datum_t tmp;
 
+  der_size = 0;
   ret = gnutls_x509_crt_export(src, GNUTLS_X509_FMT_DER, NULL, &der_size);
   if (ret != GNUTLS_E_SHORT_MEMORY_BUFFER)
   {
