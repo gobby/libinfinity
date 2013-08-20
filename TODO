@@ -11,6 +11,9 @@ Performance (Some ideas to improve performance, profile to verify!):
     with a better O(n) implementation.
   * Cache request.vector[request.user] in every request, this seems to be
     used pretty often.
+    * There is already a function for this, inf_adopted_request_get_index()
+    * It needs to be consistently used where this information is required
+    * And then the cache actually be introduced
   * Optionally compile with
     - G_DISABLE_CAST_CHECKS
     - G_DISABLE_ASSERT
@@ -19,12 +22,15 @@ Performance (Some ideas to improve performance, profile to verify!):
 
 Modernization:
  * Use G_TYPE_ERROR for signals with an error parameter
+    and G_TYPE_ARRAY for InfdSessionProxy::block-user-join
+ * ffi marshalling
  * Phase-out GTK2 support
- * Use g_get_monotonic_time where a time is needed
+ * Use g_get_monotonic_time/g_get_real_time where a time is needed
  * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
  * Use G_DEFINE_TYPE and friends
  * Replace constructor by constructed
+ * Use GtkBox and GtkGrid
 
 Others:
 
