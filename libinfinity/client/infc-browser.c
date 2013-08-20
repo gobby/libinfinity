@@ -3326,6 +3326,8 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
       "%s",
       _("No certificate request has been made")
     );
+
+    return FALSE;
   }
 
   cert_text.data = NULL;
