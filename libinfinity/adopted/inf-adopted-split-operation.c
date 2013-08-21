@@ -25,7 +25,24 @@
  *
  * #InfAdoptedSplitOperation is a wrapper around that two
  * #InfAdoptedOperation<!-- -->s. This is normally not required directly but
- * may be a result of some transformation.
+ * may be a result of some transformation. It can also be used to atomically
+ * perform multiple operations at once.
+ *
+ * If A denotes the first operation of the split operation and B denotes
+ * the second operation, the split operation applies first A and then B to
+ * the document. Note that a split operation is not commutative, i.e. the
+ * order of the two operations is important and cannot be interchanged at
+ * will. When the second operation, B, is applied, it is assumed that the
+ * operation A was already applied before.
+ *
+ * The reverse of the split operation (A, B) is (R(B), R(A)) where R indicates
+ * the reverse operation. When the split operation is transformed against an
+ * operation T, the result is (T A, (A T) B). When another operation T
+ * is transformed against the split operation, the result is B (A T).
+ * The functions inf_adopted_operation_revert(),
+ * inf_adopted_operation_transform() and
+ * inf_adopted_split_operation_transform_other() perform these three
+ * operations, respectively.
  **/
 
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
@@ -37,7 +54,6 @@ typedef struct _InfAdoptedSplitOperationPrivate InfAdoptedSplitOperationPrivate;
 struct _InfAdoptedSplitOperationPrivate {
   InfAdoptedOperation* first;
   InfAdoptedOperation* second;
-  /* TODO: Cache new_second? We should probably profile before */
 };
 
 enum {
@@ -265,6 +281,7 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   InfAdoptedSplitOperationPrivate* priv;
 
   InfAdoptedOperation* new_first;
+  InfAdoptedOperation* new_against;
   InfAdoptedOperation* new_second;
   InfAdoptedOperation* result;
 
@@ -277,11 +294,19 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
     concurrency_id
   );
 
+  new_against = inf_adopted_operation_transform(
+    against,
+    priv->first,
+    -concurrency_id
+  );
+
   new_second = inf_adopted_operation_transform(
     priv->second,
-    against,
+    new_against,
     concurrency_id
   );
+
+  g_object_unref(new_against);
 
   /* Note that even if one of the two is a no-op, we keep the split operation
    * at this point. Parts of the split operation implementation relies on the
@@ -352,17 +377,12 @@ inf_adopted_split_operation_apply(InfAdoptedOperation* operation,
 {
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
-  InfAdoptedOperation* new_second;
 
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
-
   inf_adopted_operation_apply(priv->first, by, buffer);
-  inf_adopted_operation_apply(new_second, by, buffer);
-
-  g_object_unref(G_OBJECT(new_second));
+  inf_adopted_operation_apply(priv->second, by, buffer);
 }
 
 static InfAdoptedOperation*
@@ -379,8 +399,6 @@ inf_adopted_split_operation_apply_transformed(InfAdoptedOperation* operation,
 
   InfAdoptedOperation* ret_first;
   InfAdoptedOperation* ret_second;
-  InfAdoptedOperation* new_second;
-  InfAdoptedOperation* new_trans_second;
   InfAdoptedSplitOperation* result;
 
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
@@ -399,34 +417,26 @@ inf_adopted_split_operation_apply_transformed(InfAdoptedOperation* operation,
     buffer
   );
 
-  new_second = inf_adopted_operation_transform(
-    priv->second,
-    priv->first,
-    0
-  );
-
-  new_trans_second = inf_adopted_operation_transform(
-    trans_priv->second,
-    trans_priv->first,
-    0
-  );
-
   ret_second = inf_adopted_operation_apply_transformed(
-    new_second,
-    new_trans_second,
+    priv->second,
+    trans_priv->second,
     by,
     buffer
   );
 
-  /* TODO: If one of the two operations does not affect the buffer, allow
-   * its return value to be NULL, and keep original operation, with the
-   * other operation made reversible. */
-
-  if(ret_first == NULL || ret_second == NULL)
-  {
-    if(ret_first != NULL) g_object_unref(ret_first);
-    if(ret_second != NULL) g_object_unref(ret_second);
+  if(ret_first == NULL && ret_second == NULL)
     return NULL;
+
+  if(ret_first == NULL)
+  {
+    ret_first = priv->first;
+    g_object_ref(priv->first);
+  }
+
+  if(ret_second == NULL)
+  {
+    ret_second = priv->second;
+    g_object_ref(priv->second);
   }
 
   result = inf_adopted_split_operation_new(
@@ -445,7 +455,6 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
 {
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
-  InfAdoptedOperation* new_second;
 
   InfAdoptedOperation* revert_first;
   InfAdoptedOperation* revert_second;
@@ -454,13 +463,10 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
-
   revert_first = inf_adopted_operation_revert(priv->first);
-  revert_second = inf_adopted_operation_revert(new_second);
-  g_object_unref(new_second);
+  revert_second = inf_adopted_operation_revert(priv->second);
 
-  result = inf_adopted_split_operation_new(revert_first, revert_second);
+  result = inf_adopted_split_operation_new(revert_second, revert_first);
 
   g_object_unref(revert_first);
   g_object_unref(revert_second);
@@ -597,7 +603,6 @@ inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,
 {
   InfAdoptedSplitOperationPrivate* priv;
   InfAdoptedOperation* tmp;
-  InfAdoptedOperation* new_second;
   InfAdoptedOperation* result;
 
   g_return_val_if_fail(INF_ADOPTED_IS_SPLIT_OPERATION(op), NULL);
@@ -606,11 +611,9 @@ inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(op);
 
   tmp = inf_adopted_operation_transform(other, priv->first, concurrency_id);
-  new_second = inf_adopted_operation_transform(priv->second, priv->first, 0);
-  result = inf_adopted_operation_transform(tmp, new_second, concurrency_id);
+  result = inf_adopted_operation_transform(tmp, priv->second, concurrency_id);
 
-  g_object_unref(G_OBJECT(tmp));
-  g_object_unref(G_OBJECT(new_second));
+  g_object_unref(tmp);
   return result;
 }
 

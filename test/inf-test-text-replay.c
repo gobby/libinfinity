@@ -114,7 +114,6 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
   guint length;
   InfAdoptedOperation* first;
   InfAdoptedOperation* second;
-  InfAdoptedOperation* new_second;
 
   if(INF_TEXT_IS_INSERT_OPERATION(operation))
   {
@@ -173,18 +172,11 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
       NULL
     );
 
-    new_second = inf_adopted_operation_transform(
-      second,
-      first,
-      INF_ADOPTED_CONCURRENCY_NONE
-    );
-
     inf_test_text_replay_apply_operation_to_string(string, first);
-    inf_test_text_replay_apply_operation_to_string(string, new_second);
+    inf_test_text_replay_apply_operation_to_string(string, second);
 
     g_object_unref(first);
     g_object_unref(second);
-    g_object_unref(new_second);
   }
   else if(INF_TEXT_IS_MOVE_OPERATION(operation) ||
           INF_ADOPTED_IS_NO_OPERATION(operation))

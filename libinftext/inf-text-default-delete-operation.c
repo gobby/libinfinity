@@ -385,7 +385,7 @@ inf_text_default_delete_operation_transform_split(
 
   second = g_object_new(
     INF_TEXT_TYPE_DEFAULT_DELETE_OPERATION,
-    "position", priv->position + split_pos + split_len,
+    "position", priv->position + split_len,
     "chunk", second_chunk,
     NULL
   );

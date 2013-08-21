@@ -71,10 +71,18 @@ static const operation_def OPERATIONS[] = {
   { OP_DEL, 0, GUINT_TO_POINTER(5) },
   { OP_DEL, 2, GUINT_TO_POINTER(7) },
   { OP_DEL, 1, GUINT_TO_POINTER(9) },
+#if 1
+  /* del vs. del */
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[0], &SPLIT_OPS[2] },
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[2], &SPLIT_OPS[0] },
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[0], &SPLIT_OPS[1] },
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[1], &SPLIT_OPS[0] },
+  /* del vs. ins */
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[1], &SPLIT_OPS[3] },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[1], &SPLIT_OPS[4] },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[3], &SPLIT_OPS[1] },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[4], &SPLIT_OPS[1] },
+#endif
 };
 
 static const gchar EXAMPLE_DOCUMENT[] = "abcdefghijklmnopqrstuvwxyz";
@@ -82,12 +90,14 @@ static const gchar EXAMPLE_DOCUMENT[] = "abcdefghijklmnopqrstuvwxyz";
 static InfAdoptedOperation*
 def_to_operation(const operation_def* def,
                  InfTextChunk* document,
-                 guint user)
+                 InfAdoptedUser* user)
 {
   InfTextChunk* chunk;
   InfAdoptedOperation* operation;
   InfAdoptedOperation* operation1;
   InfAdoptedOperation* operation2;
+  InfTextDefaultBuffer* buf;
+  InfTextChunk* new_document;
 
   switch(def->type)
   {
@@ -99,7 +109,7 @@ def_to_operation(const operation_def* def,
       def->text,
       strlen(def->text),
       strlen(def->text),
-      user
+      inf_user_get_id(INF_USER(user))
     );
 
     operation = INF_ADOPTED_OPERATION(
@@ -123,7 +133,21 @@ def_to_operation(const operation_def* def,
     break;
   case OP_SPLIT:
     operation1 = def_to_operation(def->split_1, document, user);
-    operation2 = def_to_operation(def->split_2, document, user);
+
+    buf = inf_text_default_buffer_new("UTF-8");
+    inf_text_buffer_insert_chunk(INF_TEXT_BUFFER(buf), 0, document, NULL);
+    inf_adopted_operation_apply(operation1, user, INF_BUFFER(buf));
+
+    new_document = inf_text_buffer_get_slice(
+      INF_TEXT_BUFFER(buf),
+      0,
+      inf_text_buffer_get_length(INF_TEXT_BUFFER(buf))
+    );
+
+    g_object_unref(buf);
+
+    operation2 = def_to_operation(def->split_2, new_document, user);
+    inf_text_chunk_free(new_document);
 
     operation = INF_ADOPTED_OPERATION(
       inf_adopted_split_operation_new(operation1, operation2)
@@ -604,9 +628,14 @@ int main()
 
   for(i = 0; i < G_N_ELEMENTS(OPERATIONS); ++ i)
   {
-    operations[i] = def_to_operation(&OPERATIONS[i], document, i + 1);
     users[i] = INF_ADOPTED_USER(
       g_object_new(INF_TEXT_TYPE_USER, "id", i + 1, NULL)
+    );
+
+    operations[i] = def_to_operation(
+      &OPERATIONS[i],
+      document,
+      users[i]
     );
   }
 

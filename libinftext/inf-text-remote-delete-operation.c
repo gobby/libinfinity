@@ -470,6 +470,12 @@ inf_text_remote_delete_operation_apply_transformed(InfAdoptedOperation* op,
     /* Free recon list if newly allocated */
     if(priv->length > 0)
       inf_text_remote_delete_operation_recon_free(recon_list);
+
+    inf_adopted_operation_apply(
+      INF_ADOPTED_OPERATION(item->data),
+      by,
+      buffer
+    );
   }
 
   g_slist_free(list);
@@ -477,10 +483,6 @@ inf_text_remote_delete_operation_apply_transformed(InfAdoptedOperation* op,
   priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(op);
   result = inf_text_default_delete_operation_new(priv->position, chunk);
   inf_text_chunk_free(chunk);
-
-  /* We have now reconstructed the reversible delete operation. Now apply
-   * the transformed operation to the buffer. */
-  inf_adopted_operation_apply(trans, by, buffer);
 
   return INF_ADOPTED_OPERATION(result);
 }
@@ -631,7 +633,7 @@ inf_text_remote_delete_operation_transform_split(
   
   second_operation = g_object_new(
     INF_TEXT_TYPE_REMOTE_DELETE_OPERATION,
-    "position", priv->position + split_pos + split_len,
+    "position", priv->position + split_len,
     "length", priv->length - split_pos,
     NULL
   );
