@@ -40,6 +40,81 @@
 
 static const gchar REPLAY[] = ".libs/inf-test-text-replay";
 
+typedef struct _InfTestReduceReplayValidateUserData
+  InfTestReduceReplayValidateUserData;
+struct _InfTestReduceReplayValidateUserData {
+  guint undo_cur;
+  guint undo_max;
+  InfAdoptedStateVector* time;
+};
+
+static InfTestReduceReplayValidateUserData*
+inf_test_reduce_replay_validate_user_data_new(const gchar* time_string,
+                                              GError** error)
+{
+  InfTestReduceReplayValidateUserData* data;
+  InfAdoptedStateVector* time;
+
+  time = inf_adopted_state_vector_from_string(time_string, error);
+  if(time == NULL) return NULL;
+
+  data = g_slice_new(InfTestReduceReplayValidateUserData);
+
+  data->undo_cur = 0;
+  data->undo_max = 0;
+  data->time = time;
+
+  return data;
+}
+
+static void
+inf_test_reduce_replay_valiadate_user_data_free(
+  InfTestReduceReplayValidateUserData* data)
+{
+  inf_adopted_state_vector_free(data->time);
+  g_slice_free(InfTestReduceReplayValidateUserData, data);
+}
+
+static InfTestReduceReplayValidateUserData*
+inf_test_reduce_replay_add_validate_user_from_xml(GHashTable* table,
+                                                  InfAdoptedStateVector* time,
+                                                  xmlNodePtr xml,
+                                                  GError** error)
+{
+  InfTestReduceReplayValidateUserData* data;
+  xmlChar* time_str;
+  guint user_id;
+
+  /* The XML node can either be a <user> or a <sync-user> element */
+  if(!inf_xml_util_get_attribute_uint_required(xml, "id", &user_id, error))
+    return NULL;
+
+  time_str = inf_xml_util_get_attribute_required(xml, "time", error);
+  if(time_str == NULL) return NULL;
+
+  data = inf_test_reduce_replay_validate_user_data_new(
+    (const char*)time_str,
+    error
+  );
+
+  xmlFree(time_str);
+
+  if(data == NULL)
+    return NULL;
+
+  if(time != NULL)
+  {
+    inf_adopted_state_vector_set(
+      time,
+      user_id,
+      inf_adopted_state_vector_get(data->time, user_id)
+    );
+  }
+
+  g_hash_table_insert(table, GUINT_TO_POINTER(user_id), data);
+  return data;
+}
+
 static InfSession*
 inf_test_reduce_replay_session_new(InfIo* io,
                                    InfCommunicationManager* manager,
@@ -102,95 +177,197 @@ inf_test_reduce_replay_first_node(xmlNodePtr xml)
 }
 
 static gboolean
-inf_test_reduce_replay_validate_test(xmlDocPtr doc)
+inf_test_reduce_replay_validate_test(xmlDocPtr doc,
+                                     GError** error)
 {
   GHashTable* table;
   xmlNodePtr root;
   xmlNodePtr cur;
   xmlNodePtr child;
+  InfTestReduceReplayValidateUserData* data;
+  InfAdoptedStateVector* initial_time;
+  InfAdoptedStateVector* vector;
+  xmlChar* time_str;
   guint user_id;
-  guint count;
-  guint count_cur;
-  guint count_max;
+  gboolean result;
 
   root = xmlDocGetRootElement(doc);
   cur = inf_test_reduce_replay_find_node(root, "initial");
-  g_assert(cur);
+  g_assert(cur != NULL);
 
-  table = g_hash_table_new(NULL, NULL);
+  table = g_hash_table_new_full(
+    NULL,
+    NULL,
+    NULL,
+    (GDestroyNotify)inf_test_reduce_replay_valiadate_user_data_free
+  );
 
+  /* Insert initial users into table */
+  initial_time = inf_adopted_state_vector_new();
+
+  for(child = cur->children;
+      child != NULL;
+      child = inf_test_reduce_replay_next_node(child))
+  {
+    if(strcmp((const char*)child->name, "sync-user") == 0)
+    {
+      data = inf_test_reduce_replay_add_validate_user_from_xml(
+        table,
+        initial_time,
+        child,
+        error
+      );
+
+      if(data == NULL)
+      {
+        inf_adopted_state_vector_free(initial_time);
+        g_hash_table_unref(table);
+        return FALSE;
+      }
+    }
+  }
+
+  /* Check all requests */
   while( (cur = inf_test_reduce_replay_next_node(cur)) != NULL)
   {
-    if(strcmp((const char*)cur->name, "request") == 0)
+    if(strcmp((const char*)cur->name, "user") == 0)
+    {
+      data = inf_test_reduce_replay_add_validate_user_from_xml(
+        table,
+        NULL,
+        cur,
+        error
+      );
+
+      if(data == NULL)
+      {
+        inf_adopted_state_vector_free(initial_time);
+        g_hash_table_unref(table);
+        return FALSE;
+      }
+    }
+    else if(strcmp((const char*)cur->name, "request") == 0)
     {
       child = cur->children;
       g_assert(child);
       if(child->type != XML_ELEMENT_NODE)
         child = inf_test_reduce_replay_next_node(child);
 
-      if(!inf_xml_util_get_attribute_uint_required(cur, "user",
-                                                   &user_id, NULL))
+      result = inf_xml_util_get_attribute_uint_required(
+        cur,
+        "user",
+        &user_id,
+        error
+      );
+
+      if(result == FALSE)
       {
+        inf_adopted_state_vector_free(initial_time);
         g_hash_table_unref(table);
         return FALSE;
       }
 
-      count = GPOINTER_TO_UINT(
-        g_hash_table_lookup(table, GUINT_TO_POINTER(user_id))
+      data = g_hash_table_lookup(table, GUINT_TO_POINTER(user_id));
+      g_assert(data != NULL);
+
+      /* Check the vector time */
+      time_str = inf_xml_util_get_attribute_required(cur, "time", error);
+      if(time_str == NULL)
+      {
+        inf_adopted_state_vector_free(initial_time);
+        g_hash_table_unref(table);
+        return FALSE;
+      }
+
+      vector = inf_adopted_state_vector_from_string_diff(
+        (const char*)time_str,
+        data->time,
+        error
       );
 
-      count_cur = (count      ) & 0xffff;
-      count_max = (count >> 16) & 0xffff;
+      xmlFree(time_str);
 
-      /* move and noop requests don't affect the buffer */
+      if(vector == NULL)
+      {
+        inf_adopted_state_vector_free(initial_time);
+        g_hash_table_unref(table);
+        return FALSE;
+      }
+
+      if(!inf_adopted_state_vector_causally_before(initial_time, vector))
+      {
+        g_set_error(
+          error,
+          g_quark_from_static_string("INF_TEST_REDUCE_REPLAY_ERROR"),
+          0,
+          "Concurrent request at line %d",
+          cur->line
+        );
+
+        inf_adopted_state_vector_free(vector);
+        inf_adopted_state_vector_free(initial_time);
+        g_hash_table_unref(table);
+        return FALSE;
+      }
+
+      inf_adopted_state_vector_add(vector, user_id, 1);
+      inf_adopted_state_vector_free(data->time);
+      data->time = vector;
+
+      /* Check undo/redo counts */
       if(strcmp((const char*)child->name, "move") != 0 &&
          strcmp((const char*)child->name, "no-op") != 0)
       {
         if(strcmp((const char*)child->name, "undo") == 0 ||
            strcmp((const char*)child->name, "undo-caret") == 0)
         {
-          if(count_cur == 0)
+          if(data->undo_cur == 0)
           {
+            g_set_error(
+              error,
+              g_quark_from_static_string("INF_TEST_REDUCE_REPLAY_ERROR"),
+              1,
+              "Dangling undo request at line %d",
+              child->line
+            );
+
+            inf_adopted_state_vector_free(initial_time);
             g_hash_table_unref(table);
             return FALSE;
           }
 
-          --count_cur;
+          --data->undo_cur;
         }
         else if(strcmp((const char*)child->name, "redo") == 0 ||
                 strcmp((const char*)child->name, "redo-caret") == 0)
         {
-          if(count_cur == count_max)
+          if(data->undo_cur == data->undo_max)
           {
+            g_set_error(
+              error,
+              g_quark_from_static_string("INF_TEST_REDUCE_REPLAY_ERROR"),
+              2,
+              "Dangling redo request at line %d",
+              child->line
+            );
+
+            inf_adopted_state_vector_free(initial_time);
             g_hash_table_unref(table);
             return FALSE;
           }
 
-          ++count_cur;
+          ++data->undo_cur;
         }
         else
         {
-          /* do */
-          if(count_max >= 0xffff)
-          {
-            /* overflow */
-            g_hash_table_unref(table);
-            return FALSE;
-          }
-
-          count_max = count_cur + 1;
-          count_cur = count_max;
+          data->undo_max = data->undo_cur + 1;
+          data->undo_cur = data->undo_max;
         }
       }
-
-      g_hash_table_insert(
-        table,
-        GUINT_TO_POINTER(user_id),
-        GUINT_TO_POINTER((count_max >> 16) | count_cur)
-      );
     }
   }
 
+  inf_adopted_state_vector_free(initial_time);
   g_hash_table_unref(table);
   return TRUE;
 }
@@ -308,6 +485,7 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
   GError* error;
   guint i;
 
+  error = NULL;
   root = xmlDocGetRootElement(doc);
   if(inf_test_reduce_replay_run_test(doc) == TRUE)
   {
@@ -315,9 +493,10 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
     return FALSE;
   }
 
-  if(!inf_test_reduce_replay_validate_test(doc))
+  if(!inf_test_reduce_replay_validate_test(doc, &error))
   {
-    fprintf(stderr, "Test does not initially validate\n");
+    fprintf(stderr, "Test does not initially validate: %s\n", error->message);
+    g_error_free(error);
     return FALSE;
   }
 
@@ -402,7 +581,7 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
         /* this sets num-messages: */
         inf_test_reduce_replay_remove_sync_requests(initial);
 
-        if(inf_test_reduce_replay_validate_test(doc))
+        if(inf_test_reduce_replay_validate_test(doc, &error))
         {
           if(i % skip != 0)
           {
@@ -427,7 +606,9 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
           /* Continue when test is invalid; we probably removed an undo's
            * associated request, so just wait until we remove the undo request
            * itself. */
-          fprintf(stderr, "INVALID\n");
+          fprintf(stderr, "INVALID %s\n", error->message);
+          g_error_free(error);
+          error = NULL;
         }
       }
     }
@@ -485,7 +666,7 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
         xmlFreeNode(next);
       } while(request && request->type != XML_ELEMENT_NODE);
 
-      if(inf_test_reduce_replay_validate_test(back_doc))
+      if(inf_test_reduce_replay_validate_test(back_doc, &error))
       {
         if(i % skip != 0)
         {
@@ -507,7 +688,10 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
       }
       else
       {
-        fprintf(stderr, "INVALID\n");
+        fprintf(stderr, "INVALID %s\n", error->message);
+        g_error_free(error);
+        error = NULL;
+
         result = FALSE;
         break;
       }
