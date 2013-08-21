@@ -296,6 +296,65 @@ operation_equal(InfAdoptedOperation* op1,
 }
 
 static gboolean
+test_undo(InfAdoptedOperation* op,
+          InfAdoptedUser* user)
+{
+  // TODO: compare the raw example text with the situation when op and mirror(op) are applied to it.
+  InfTextDefaultBuffer* first;
+  InfTextDefaultBuffer* second;
+  InfAdoptedOperation* reverted;
+  InfTextChunk* first_chunk;
+  InfTextChunk* second_chunk;
+  int result;
+
+  first = inf_text_default_buffer_new("UTF-8");
+
+  inf_text_buffer_insert_text(
+    INF_TEXT_BUFFER(first),
+    0,
+    EXAMPLE_DOCUMENT,
+    strlen(EXAMPLE_DOCUMENT),
+    strlen(EXAMPLE_DOCUMENT),
+    NULL
+  );
+
+  second = inf_text_default_buffer_new("UTF-8");
+  inf_text_buffer_insert_text(
+    INF_TEXT_BUFFER(second),
+    0,
+    EXAMPLE_DOCUMENT,
+    strlen(EXAMPLE_DOCUMENT),
+    strlen(EXAMPLE_DOCUMENT),
+    NULL
+  );
+
+  inf_adopted_operation_apply(op, user, INF_BUFFER(first));
+  reverted = inf_adopted_operation_revert(op);
+  inf_adopted_operation_apply(reverted, user, INF_BUFFER(first));
+  g_object_unref(reverted);
+
+  first_chunk = inf_text_buffer_get_slice(
+    INF_TEXT_BUFFER(first),
+    0,
+    inf_text_buffer_get_length(INF_TEXT_BUFFER(first))
+  );
+  second_chunk = inf_text_buffer_get_slice(
+    INF_TEXT_BUFFER(second),
+    0,
+    inf_text_buffer_get_length(INF_TEXT_BUFFER(second))
+  );
+
+  result = inf_text_chunk_equal(first_chunk, second_chunk);
+
+  inf_text_chunk_free(first_chunk);
+  inf_text_chunk_free(second_chunk);
+  g_object_unref(G_OBJECT(first));
+  g_object_unref(G_OBJECT(second));
+
+  return result;
+}
+
+static gboolean
 test_c1(InfAdoptedOperation* op1,
         InfAdoptedOperation* op2,
         InfAdoptedUser* user1,
@@ -422,6 +481,21 @@ cid(InfAdoptedOperation** first,
 }
 
 static void
+perform_undo(InfAdoptedOperation** begin,
+             InfAdoptedOperation** end,
+             InfAdoptedUser** users,
+             test_result* result)
+{
+  InfAdoptedOperation** _1;
+  for(_1 = begin; _1 != end; ++ _1)
+  {
+    ++ result->total;
+    if(test_undo(*_1, users[_1 - begin]))
+      ++ result->passed;
+  }
+}
+
+static void
 perform_c1(InfAdoptedOperation** begin,
            InfAdoptedOperation** end,
            InfAdoptedUser** users,
@@ -511,7 +585,27 @@ int main()
 
   result.passed = 0;
   result.total = 0;
-  perform_c1(operations, operations + G_N_ELEMENTS(OPERATIONS), users, &result);
+
+  perform_undo(
+    operations,
+    operations + G_N_ELEMENTS(OPERATIONS),
+    users,
+    &result
+  );
+
+  printf("UNDO: %u out of %u passed\n", result.passed, result.total);
+  if(result.passed < result.total)
+    retval = -1;
+
+  result.passed = 0;
+  result.total = 0;
+
+  perform_c1(
+    operations,
+    operations + G_N_ELEMENTS(OPERATIONS),
+    users,
+    &result
+  );
 
   printf("C1: %u out of %u passed\n", result.passed, result.total);
   if(result.passed < result.total)
@@ -519,7 +613,12 @@ int main()
 
   result.passed = 0;
   result.total = 0;
-  perform_c2(operations, operations + G_N_ELEMENTS(OPERATIONS), &result);
+
+  perform_c2(
+    operations,
+    operations + G_N_ELEMENTS(OPERATIONS),
+    &result
+  );
 
   printf("C2: %u out of %u passed\n", result.passed, result.total);
   if(result.passed < result.total)
