@@ -38,14 +38,26 @@ typedef struct {
 
 typedef enum {
   OP_INS,
-  OP_DEL
+  OP_DEL,
+  OP_SPLIT
 } operation_type;
 
-typedef struct {
+typedef struct _operation_def operation_def;
+struct _operation_def {
   operation_type type;
   guint offset;
   const gchar* text;
-} operation_def;
+  const operation_def* split_1;
+  const operation_def* split_2;
+};
+
+static const operation_def SPLIT_OPS[] = {
+  { OP_DEL, 0, GUINT_TO_POINTER(1) },
+  { OP_DEL, 1, GUINT_TO_POINTER(1) },
+  { OP_DEL, 2, GUINT_TO_POINTER(1) },
+  { OP_INS, 0, "a" },
+  { OP_INS, 1, "b" }
+};
 
 static const operation_def OPERATIONS[] = {
   { OP_INS, 4, "a" },
@@ -58,7 +70,11 @@ static const operation_def OPERATIONS[] = {
   { OP_DEL, 0, GUINT_TO_POINTER(1) },
   { OP_DEL, 0, GUINT_TO_POINTER(5) },
   { OP_DEL, 2, GUINT_TO_POINTER(7) },
-  { OP_DEL, 1, GUINT_TO_POINTER(9) }
+  { OP_DEL, 1, GUINT_TO_POINTER(9) },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[0], &SPLIT_OPS[2] },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[2], &SPLIT_OPS[0] },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[0], &SPLIT_OPS[1] },
+  { OP_SPLIT, 0, NULL, &SPLIT_OPS[1], &SPLIT_OPS[0] },
 };
 
 static const gchar EXAMPLE_DOCUMENT[] = "abcdefghijklmnopqrstuvwxyz";
@@ -70,6 +86,8 @@ def_to_operation(const operation_def* def,
 {
   InfTextChunk* chunk;
   InfAdoptedOperation* operation;
+  InfAdoptedOperation* operation1;
+  InfAdoptedOperation* operation2;
 
   switch(def->type)
   {
@@ -102,6 +120,17 @@ def_to_operation(const operation_def* def,
     );
 
     inf_text_chunk_free(chunk);
+    break;
+  case OP_SPLIT:
+    operation1 = def_to_operation(def->split_1, document, user);
+    operation2 = def_to_operation(def->split_2, document, user);
+
+    operation = INF_ADOPTED_OPERATION(
+      inf_adopted_split_operation_new(operation1, operation2)
+    );
+
+    g_object_unref(operation1);
+    g_object_unref(operation2);
     break;
   default:
     g_assert_not_reached();
