@@ -1073,6 +1073,28 @@ inf_adopted_algorithm_translate_request_nocache(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
+inf_adopted_algorithm_log_request(InfAdoptedAlgorithm* algorithm,
+                                  InfAdoptedRequestLog* log,
+                                  InfAdoptedRequest* request)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  if(inf_adopted_request_affects_buffer(request))
+  {
+    inf_adopted_request_log_add_request(log, request);
+
+    inf_adopted_state_vector_add(
+      priv->current,
+      inf_adopted_request_get_user_id(request),
+      1
+    );
+
+    inf_adopted_algorithm_update_local_user_times(algorithm);
+  }
+}
+
+static void
 inf_adopted_algorithm_init(GTypeInstance* instance,
                            gpointer g_class)
 {
@@ -1378,8 +1400,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* translated;
   InfAdoptedRequest* log_request;
   InfAdoptedOperation* operation;
-  InfAdoptedOperation* reversible_operation;
-  InfAdoptedOperationFlags flags;
   gint64 execution_time;
 
   InfAdoptedRequest* original;
@@ -1457,60 +1477,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     priv->current
   );
 
-  if(inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO)
-  {
-    g_assert(log_request == request);
-
-    operation = inf_adopted_request_get_operation(request);
-    flags = inf_adopted_operation_get_flags(operation);
-
-    if( (flags & INF_ADOPTED_OPERATION_AFFECTS_BUFFER) != 0)
-    {
-      if(inf_adopted_operation_is_reversible(operation) == FALSE)
-      {
-        reversible_operation = inf_adopted_operation_make_reversible(
-          operation,
-          inf_adopted_request_get_operation(translated),
-          priv->buffer
-        );
-
-        if(reversible_operation != NULL)
-        {
-          g_object_unref(log_request);
-
-          log_request = inf_adopted_request_new_do(
-            inf_adopted_request_get_vector(request),
-            inf_adopted_request_get_user_id(request),
-            reversible_operation,
-            inf_adopted_request_get_receive_time(request)
-          );
-
-          inf_adopted_request_set_execute_time(log_request, execution_time);
-          g_object_unref(reversible_operation);
-        }
-      }
-    }
-    else
-    {
-      /* Does not affect the buffer, so is not recorded in log */
-      g_object_unref(log_request);
-      log_request = NULL;
-    }
-  }
-
-  if(log_request != NULL)
-  {
-    inf_adopted_request_log_add_request(log, log_request);
-
-    inf_adopted_state_vector_add(
-      priv->current,
-      inf_adopted_request_get_user_id(request),
-      1
-    );
-
-    inf_adopted_algorithm_update_local_user_times(algorithm);
-    g_object_unref(log_request);
-  }
+  operation = inf_adopted_request_get_operation(translated);
 
   inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
@@ -1525,9 +1492,21 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
       algorithm_signals[APPLY_REQUEST],
       0,
       user,
-      translated
+      translated,
+      log_request
     );
   }
+  else
+  {
+    inf_adopted_algorithm_log_request(
+      algorithm,
+      log,
+      log_request
+    );
+  }
+
+  g_object_unref(translated);
+  g_object_unref(log_request);
 
   /* TODO: We only need to do this if we changed the current state vector
    * time <=> if the current request was added to the log */
@@ -1565,23 +1544,86 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
     algorithm
   );
-
-  g_object_unref(translated);
 }
 
 static void
 inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
                                     InfAdoptedUser* user,
-                                    InfAdoptedRequest* request)
+                                    InfAdoptedRequest* request,
+                                    InfAdoptedRequest* orig_request)
 {
   InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedOperation* orig_operation;
+  InfAdoptedOperation* reversible_operation;
+  InfAdoptedRequest* log_request;
+
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
-  inf_adopted_operation_apply(
-    inf_adopted_request_get_operation(request),
-    user,
-    priv->buffer
+  /* Apply the operation to the buffer. If this originated from a DO request,
+   * make the operation reversible before adding it to the request log. */
+  if(inf_adopted_request_get_request_type(orig_request) ==
+     INF_ADOPTED_REQUEST_DO)
+  {
+    /* Make the operation reversible */
+    reversible_operation = NULL;
+    orig_operation = inf_adopted_request_get_operation(orig_request);
+    if(inf_adopted_request_affects_buffer(orig_request) &&
+       !inf_adopted_operation_is_reversible(orig_operation))
+    {
+      reversible_operation = inf_adopted_operation_make_reversible(
+        orig_operation,
+        inf_adopted_request_get_operation(request),
+        priv->buffer
+      );
+    }
+
+    if(reversible_operation == NULL)
+    {
+      reversible_operation = orig_operation;
+      g_object_ref(reversible_operation);
+    }
+
+    /* Apply the operation to the buffer */
+    inf_adopted_operation_apply(
+      inf_adopted_request_get_operation(request),
+      user,
+      priv->buffer
+    );
+
+    /* Create the log request from the reversible operation */
+    log_request = inf_adopted_request_new_do(
+      inf_adopted_request_get_vector(orig_request),
+      inf_adopted_request_get_user_id(orig_request),
+      reversible_operation,
+      inf_adopted_request_get_receive_time(orig_request)
+    );
+
+    inf_adopted_request_set_execute_time(
+      log_request,
+      inf_adopted_request_get_execute_time(orig_request)
+    );
+
+    g_object_unref(reversible_operation);
+  }
+  else
+  {
+    inf_adopted_operation_apply(
+      inf_adopted_request_get_operation(request),
+      user,
+      priv->buffer
+    );
+
+    log_request = orig_request;
+    g_object_ref(log_request);
+  }
+
+  inf_adopted_algorithm_log_request(
+    algorithm,
+    inf_adopted_user_get_request_log(user),
+    log_request
   );
+
+  g_object_unref(log_request);
 }
 
 static void
@@ -1757,6 +1799,8 @@ inf_adopted_algorithm_class_init(gpointer g_class,
    * @algorithm: The #InfAdoptedAlgorithm applying a request.
    * @user: The #InfAdoptedUser applying the request.
    * @request: The #InfAdoptedRequest being applied.
+   * @orig_request: The original #InfAdoptedRequest issued by @user, before
+   * it was transformed to the current document state.
    *
    * This signal is emitted every time the algorithm applies a request.
    *
@@ -1779,10 +1823,11 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, apply_request),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT,
+    inf_marshal_VOID__OBJECT_OBJECT_OBJECT,
     G_TYPE_NONE,
-    2,
+    3,
     INF_ADOPTED_TYPE_USER,
+    INF_ADOPTED_TYPE_REQUEST,
     INF_ADOPTED_TYPE_REQUEST
   );
 }
@@ -1915,6 +1960,12 @@ inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm)
  * the operation is applied before the next request is processed or generated.
  * This may be useful if you are applying multiple operations, but want
  * to only make a single request out of them to save bandwidth.
+ *
+ * One drawback of using this function with respect to
+ * inf_adopted_algorithm_generate_request() is that if the given operation
+ * is not reversible, it cannot be made reversible anymore because the
+ * information that would be needed is no longer available in the buffer at
+ * the time the request is generated.
  *
  * Return Value: A #InfAdoptedRequest that needs to be transmitted to the
  * other non-local users.

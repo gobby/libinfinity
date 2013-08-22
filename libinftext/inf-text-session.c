@@ -650,6 +650,7 @@ static void
 inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
                                          InfAdoptedUser* user,
                                          InfAdoptedRequest* request,
+                                         InfAdoptedRequest* orig_request,
                                          gpointer user_data)
 {
   InfTextSession* session;
@@ -667,6 +668,7 @@ static void
 inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedUser* user,
                                         InfAdoptedRequest* request,
+                                        InfAdoptedRequest* orig_request,
                                         gpointer user_data)
 {
   InfTextSession* session;

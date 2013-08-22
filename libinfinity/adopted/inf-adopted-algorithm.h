@@ -74,7 +74,8 @@ struct _InfAdoptedAlgorithmClass {
 
   void(*apply_request)(InfAdoptedAlgorithm* algorithm,
                        InfAdoptedUser* user,
-                       InfAdoptedRequest* request);
+                       InfAdoptedRequest* request,
+                       InfAdoptedRequest* orig_request);
 };
 
 /**

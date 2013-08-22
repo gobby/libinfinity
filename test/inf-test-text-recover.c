@@ -77,9 +77,10 @@ static const InfcNotePlugin INF_TEST_TEXT_RECOVER_TEXT_PLUGIN = {
 
 static void
 inf_test_text_recover_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
-                                             InfAdoptedUser* user,
-                                             InfAdoptedRequest* request,
-                                             gpointer user_data)
+                                              InfAdoptedUser* user,
+                                              InfAdoptedRequest* request,
+                                              InfAdoptedRequest* orig_request,
+                                              gpointer user_data)
 {
   InfAdoptedOperation* operation;
   InfTextBuffer* buffer;

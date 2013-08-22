@@ -206,6 +206,7 @@ static void
 inf_test_text_replay_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
                                              InfAdoptedUser* user,
                                              InfAdoptedRequest* request,
+                                             InfAdoptedRequest* orig_request,
                                              gpointer user_data)
 {
   InfAdoptedOperation* operation;
@@ -228,6 +229,7 @@ static void
 inf_test_text_replay_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
                                             InfAdoptedUser* user,
                                             InfAdoptedRequest* request,
+                                            InfAdoptedRequest* orig_request,
                                             gpointer user_data)
 {
   InfTextBuffer* buffer;
