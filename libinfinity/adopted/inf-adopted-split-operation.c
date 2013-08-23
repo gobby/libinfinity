@@ -283,8 +283,9 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
     concurrency_id
   );
 
-  /* TODO: Check whether one of these is a noop and return only the other
-   * one in that case. */
+  /* Note that even if one of the two is a no-op, we keep the split operation
+   * at this point. Parts of the split operation implementation relies on the
+   * fact that a split operation is never un-split during transformation. */
 
   result = INF_ADOPTED_OPERATION(
     inf_adopted_split_operation_new(new_first, new_second)
@@ -365,6 +366,81 @@ inf_adopted_split_operation_apply(InfAdoptedOperation* operation,
 }
 
 static InfAdoptedOperation*
+inf_adopted_split_operation_apply_transformed(InfAdoptedOperation* operation,
+                                              InfAdoptedOperation* transformed,
+                                              InfAdoptedUser* by,
+                                              InfBuffer* buffer)
+{
+  InfAdoptedSplitOperation* split;
+  InfAdoptedSplitOperation* trans_split;
+
+  InfAdoptedSplitOperationPrivate* priv;
+  InfAdoptedSplitOperationPrivate* trans_priv;
+
+  InfAdoptedOperation* ret_first;
+  InfAdoptedOperation* ret_second;
+  InfAdoptedOperation* new_second;
+  InfAdoptedOperation* new_trans_second;
+  InfAdoptedSplitOperation* result;
+
+  split = INF_ADOPTED_SPLIT_OPERATION(operation);
+  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
+
+  /* The transformed operation must be a split operation, too,
+   * since we do no never unsplit operations when transforming */
+  g_assert(INF_ADOPTED_IS_SPLIT_OPERATION(transformed));
+  trans_split = INF_ADOPTED_SPLIT_OPERATION(transformed);
+  trans_priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(trans_split);
+
+  ret_first = inf_adopted_operation_apply_transformed(
+    priv->first,
+    trans_priv->first,
+    by,
+    buffer
+  );
+
+  new_second = inf_adopted_operation_transform(
+    priv->second,
+    priv->first,
+    0
+  );
+
+  new_trans_second = inf_adopted_operation_transform(
+    trans_priv->second,
+    trans_priv->first,
+    0
+  );
+
+  ret_second = inf_adopted_operation_apply_transformed(
+    new_second,
+    new_trans_second,
+    by,
+    buffer
+  );
+
+  /* TODO: If one of the two operations does not affect the buffer, allow
+   * its return value to be NULL, and keep original operation, with the
+   * other operation made reversible. */
+
+  if(ret_first == NULL || ret_second == NULL)
+  {
+    if(ret_first != NULL) g_object_unref(ret_first);
+    if(ret_second != NULL) g_object_unref(ret_second);
+    return NULL;
+  }
+
+  result = inf_adopted_split_operation_new(
+    ret_first,
+    ret_second
+  );
+
+  g_object_unref(ret_first);
+  g_object_unref(ret_second);
+
+  return INF_ADOPTED_OPERATION(result);
+}
+
+static InfAdoptedOperation*
 inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
 {
   InfAdoptedSplitOperation* split;
@@ -392,34 +468,6 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
   return INF_ADOPTED_OPERATION(result);
 }
 
-static InfAdoptedOperation*
-inf_adopted_split_operation_make_reversible(InfAdoptedOperation* operation,
-                                            InfAdoptedOperation* with,
-                                            InfBuffer* buffer)
-{
-  InfAdoptedSplitOperation* split;
-  InfAdoptedSplitOperationPrivate* priv;
-  InfAdoptedOperation* first;
-  InfAdoptedOperation* second;
-
-  split = INF_ADOPTED_SPLIT_OPERATION(operation);
-  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
-
-  first = inf_adopted_operation_make_reversible(priv->first, with, buffer);
-  if(first == NULL) return NULL;
-
-  second = inf_adopted_operation_make_reversible(priv->second, with, buffer);
-  if(second == NULL)
-  {
-    g_object_unref(G_OBJECT(first));
-    return NULL;
-  }
-
-  return INF_ADOPTED_OPERATION(
-    inf_adopted_split_operation_new(first, second)
-  );
-}
-
 static void
 inf_adopted_split_operation_operation_init(gpointer g_iface,
                                            gpointer iface_data)
@@ -434,8 +482,8 @@ inf_adopted_split_operation_operation_init(gpointer g_iface,
   iface->copy = inf_adopted_split_operation_copy;
   iface->get_flags = inf_adopted_split_operation_get_flags;
   iface->apply = inf_adopted_split_operation_apply;
+  iface->apply_transformed = inf_adopted_split_operation_apply_transformed;
   iface->revert = inf_adopted_split_operation_revert;
-  iface->make_reversible = inf_adopted_split_operation_make_reversible;
 }
 
 GType

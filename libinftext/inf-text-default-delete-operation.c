@@ -459,9 +459,8 @@ inf_text_default_delete_operation_operation_init(gpointer g_iface,
   iface->copy = inf_text_default_delete_operation_copy;
   iface->get_flags = inf_text_default_delete_operation_get_flags;
   iface->apply = inf_text_default_delete_operation_apply;
+  iface->apply_transformed = NULL;
   iface->revert = inf_text_default_delete_operation_revert;
-  /* DefaultDeleteOperation is always reversible */
-  iface->make_reversible = NULL;
 }
 
 static void

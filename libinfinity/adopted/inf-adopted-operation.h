@@ -88,18 +88,16 @@ typedef enum _InfAdoptedOperationFlags {
  * see #InfAdoptedOperationFlags.
  * @apply: Virtual function that applies the operation to the buffer. @by is
  * the user that applies the operation.
+ * @apply_transformed: Virtual function that applies a transformed version
+ * of the operation to the buffer. It attempts to use information from the
+ * buffer to make the original operation reversible, if it is not already.
+ * The implementation of this function is optional, and only needs to be
+ * implemented if the operation is not reversible but can be made reversible
+ * with additional information from the buffer or the transformed operation.
  * @revert: Virtual function that creates a new operation that undoes the
  * effect of the operation. If @get_flags does never return the
  * %INF_ADOPTED_OPERATION_REVERSIBLE flag set, then this is allowed to be
  * %NULL.
- * @make_reversible: Virtual function that creates a reversible operation out
- * of the operation itself. If @get_flags does always return the
- * %INF_ADOPTED_OPERATION_REVERSIBLE flag set, then this is allowed to be
- * %NULL. Some operations may not be reversible, but can be made reversible
- * with some extra information such as another operation that collected
- * information while being transformed, or the current buffer. This function
- * should return either a new, reversible operation that has the same effect
- * on a buffer, or %NULL if the operation cannot be made reversible.
  *
  * The virtual methods that need to be implemented by an operation to be used
  * with #InfAdoptedAlgorithm.
@@ -127,11 +125,12 @@ struct _InfAdoptedOperationIface {
                 InfAdoptedUser* by,
                 InfBuffer* buffer);
 
-  InfAdoptedOperation* (*revert)(InfAdoptedOperation* operation);
+  InfAdoptedOperation* (*apply_transformed)(InfAdoptedOperation* operation,
+                                            InfAdoptedOperation* transformed,
+                                            InfAdoptedUser* by,
+                                            InfBuffer* buffer);
 
-  InfAdoptedOperation* (*make_reversible)(InfAdoptedOperation* operation,
-                                          InfAdoptedOperation* with,
-                                          InfBuffer* buffer);
+  InfAdoptedOperation* (*revert)(InfAdoptedOperation* operation);
 };
 
 /**
@@ -173,16 +172,17 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
                             InfAdoptedUser* by,
                             InfBuffer* buffer);
 
+InfAdoptedOperation*
+inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
+                                        InfAdoptedOperation* transformed,
+                                        InfAdoptedUser* by,
+                                        InfBuffer* buffer);
+
 gboolean
 inf_adopted_operation_is_reversible(InfAdoptedOperation* operation);
 
 InfAdoptedOperation*
 inf_adopted_operation_revert(InfAdoptedOperation* operation);
-
-InfAdoptedOperation*
-inf_adopted_operation_make_reversible(InfAdoptedOperation* operation,
-                                      InfAdoptedOperation* with,
-                                      InfBuffer* buffer);
 
 G_END_DECLS
 

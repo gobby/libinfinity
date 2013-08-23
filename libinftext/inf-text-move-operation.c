@@ -230,24 +230,6 @@ inf_text_move_operation_apply(InfAdoptedOperation* operation,
   );
 }
 
-static InfAdoptedOperation*
-inf_text_move_operation_revert(InfAdoptedOperation* operation)
-{
-  /* Not reversible */
-  g_assert_not_reached();
-  return NULL;
-}
-
-static InfAdoptedOperation*
-inf_text_move_operation_make_reversible(InfAdoptedOperation* operation,
-                                        InfAdoptedOperation* with,
-                                        InfBuffer* buffer)
-{
-  /* MoveOperation cannot be made reversible */
-  g_assert_not_reached();
-  return NULL;
-}
-
 static void
 inf_text_move_operation_class_init(gpointer g_class,
                                    gpointer class_data)
@@ -303,8 +285,8 @@ inf_text_move_operation_operation_init(gpointer g_iface,
   iface->copy = inf_text_move_operation_copy;
   iface->get_flags = inf_text_move_operation_get_flags;
   iface->apply = inf_text_move_operation_apply;
-  iface->revert = inf_text_move_operation_revert;
-  iface->make_reversible = inf_text_move_operation_make_reversible;
+  iface->apply_transformed = NULL;
+  iface->revert = NULL;
 }
 
 GType

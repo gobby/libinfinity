@@ -389,9 +389,10 @@ inf_text_remote_delete_operation_apply(InfAdoptedOperation* operation,
 }
 
 static InfAdoptedOperation*
-inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
-                                                 InfAdoptedOperation* with,
-                                                 InfBuffer* buffer)
+inf_text_remote_delete_operation_apply_transformed(InfAdoptedOperation* op,
+                                                   InfAdoptedOperation* trans,
+                                                   InfAdoptedUser* by,
+                                                   InfBuffer* buffer)
 {
   InfTextRemoteDeleteOperationPrivate* priv;
   InfTextChunk* chunk;
@@ -409,15 +410,15 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
   /* TODO: We can probably optimize this function, but then we should
    * a) profile it and b) in many cases input parameters to this function
    * are trivial anyway. */
-  if(INF_ADOPTED_IS_SPLIT_OPERATION(with))
+  if(INF_ADOPTED_IS_SPLIT_OPERATION(trans))
   {
     list = inf_adopted_split_operation_unsplit(
-      INF_ADOPTED_SPLIT_OPERATION(with)
+      INF_ADOPTED_SPLIT_OPERATION(trans)
     );
   }
   else
   {
-    list = g_slist_prepend(NULL, with);
+    list = g_slist_prepend(NULL, trans);
   }
 
   chunk = inf_text_chunk_new(
@@ -475,8 +476,11 @@ inf_text_remote_delete_operation_make_reversible(InfAdoptedOperation* op,
 
   priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(op);
   result = inf_text_default_delete_operation_new(priv->position, chunk);
-
   inf_text_chunk_free(chunk);
+
+  /* We have now reconstructed the reversible delete operation. Now apply
+   * the transformed operation to the buffer. */
+  inf_adopted_operation_apply(trans, by, buffer);
 
   return INF_ADOPTED_OPERATION(result);
 }
@@ -708,9 +712,10 @@ inf_text_remote_delete_operation_operation_init(gpointer g_iface,
   iface->copy = inf_text_remote_delete_operation_copy;
   iface->get_flags = inf_text_remote_delete_operation_get_flags;
   iface->apply = inf_text_remote_delete_operation_apply;
+  iface->apply_transformed =
+    inf_text_remote_delete_operation_apply_transformed;
   /* RemoteDeleteOperation is not reversible */
   iface->revert = NULL;
-  iface->make_reversible = inf_text_remote_delete_operation_make_reversible;
 }
 
 static void
@@ -793,11 +798,11 @@ inf_text_remote_delete_operation_get_type(void)
  * characters starting from position @position. Note that this operation is
  * not reversible because it does not know the text to delete and is therefore
  * only used to transmit a delete operation through the network to reduce
- * bandwidth usage. The other part can then reconstruct the deleted text
- * using the make_reversible vfunc.
+ * bandwidth usage. The remote part can then reconstruct the deleted text
+ * using inf_adopted_operation_apply_transformed().
  *
  * However, it is easier to just use #InfTextDefaultDeleteOperation if you
- * want the  operation to be reversible.
+ * want the operation to be reversible.
  *
  * Return Value: A new #InfTextRemoteDeleteOperation.
  **/

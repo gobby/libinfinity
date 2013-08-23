@@ -364,6 +364,94 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
 }
 
 /**
+ * inf_adopted_operation_apply_transformed:
+ * @operation: A #InfAdoptedOperation.
+ * @transformed: A transformed version of @operation.
+ * @by: The #InfAdoptedUser applying the operation.
+ * @buffer: The #InfBuffer to apply the operation to.
+ *
+ * Applies @transformed to @buffer. The operation is considered to be applied
+ * by user @by. The operation @transformed must have originated from
+ * @operation by transformation with inf_adopted_operation_transform().
+ *
+ * If @operation is reversible or does not affect the buffer (see
+ * #InfAdoptedOperationFlags), this function is equivalent to
+ * <code>inf_adopted_operation_apply(transformed, by, buffer)</code>, with
+ * the exception of the return value. In that case the return value will be
+ * @operation itself, with a reference added.
+ *
+ * However, if @operation is not reversible and affects the buffer, the
+ * function attempts to construct an operation which is identical to
+ * @operation, but reversible, and returns it. The function can use
+ * information from the transformed operation and the buffer to construct
+ * the reversible operation. If a reversible operation cannot be constructed,
+ * the function returns %NULL, but still applies the transformed operation
+ * to the buffer.
+ *
+ * For example, an operation that deletes text in a text editor would be
+ * transmitting only the position and the length of the text to delete over
+ * the network. From that information alone, the operation cannot be made
+ * reversible. However, when the operation is applied to the buffer, the
+ * actual text that is being removed can be restored by looking it up in
+ * the buffer, making the operation reversible.
+ *
+ * In summary, if the function returns a non-%NULL value, it is a reversible
+ * operation with identical effect as @operation.
+ *
+ * Returns: A #InfAdoptedOperation, or %NULL. Free with g_object_unref() when
+ * no longer needed.
+ */
+InfAdoptedOperation*
+inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
+                                        InfAdoptedOperation* transformed,
+                                        InfAdoptedUser* by,
+                                        InfBuffer* buffer)
+{
+  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationFlags flags;
+  InfAdoptedOperationFlags check_flags;
+
+  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(transformed), NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_USER(by), NULL);
+  g_return_val_if_fail(INF_IS_BUFFER(buffer), NULL);
+
+  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
+
+  flags = inf_adopted_operation_get_flags(operation);
+
+  check_flags = INF_ADOPTED_OPERATION_REVERSIBLE |
+                INF_ADOPTED_OPERATION_AFFECTS_BUFFER;
+  if( (flags & check_flags) == INF_ADOPTED_OPERATION_AFFECTS_BUFFER)
+  {
+    if(iface->apply_transformed != NULL)
+    {
+      return (*iface->apply_transformed)(operation, transformed, by, buffer);
+    }
+    else
+    {
+      /* apply must be implemented */
+      g_assert(iface->apply != NULL);
+      (*iface->apply)(transformed, by, buffer);
+
+      return NULL;
+    }
+  }
+  else
+  {
+    /* apply must be implemented */
+    g_assert(iface->apply != NULL);
+    (*iface->apply)(transformed, by, buffer);
+
+    if( (flags & INF_ADOPTED_OPERATION_REVERSIBLE) == 0)
+      return NULL;
+
+    g_object_ref(operation);
+    return operation;
+  }
+}
+
+/**
  * inf_adopted_operation_is_reversible:
  * @operation: A #InfAdoptedOperation.
  *
@@ -412,51 +500,6 @@ inf_adopted_operation_revert(InfAdoptedOperation* operation)
    * it must implement revert. */
   g_assert(iface->revert != NULL);
   return (*iface->revert)(operation);
-}
-
-/**
- * inf_adopted_operation_make_reversible:
- * @operation: A #InfAdoptedOperation.
- * @with: Another #InfAdoptedOperation that emerged from @operation by
- * transforming it.
- * @buffer: A #InfBuffer.
- *
- * Some operations may not be reversible, but can be made reversible with
- * some extra information such as another operation that collected
- * enough information while being transformed, and the current buffer.
- *
- * This function can only be called when @operation is not yet reversible
- * and returns a new operation that has the same effect as @operation, but is
- * reversible.
- *
- * For example, an operation that deletes some range of text in a text editor
- * is not reversible if it only stores the position and length of the range,
- * but can be made reversible when it looks up what there is at that position
- * in the buffer.
- *
- * Return Value: A reversible #InfAdoptedOperation, or %NULL if @operation
- * cannot be made reversible with the given transformed operation @with and
- * @buffer.
- **/
-InfAdoptedOperation*
-inf_adopted_operation_make_reversible(InfAdoptedOperation* operation,
-                                      InfAdoptedOperation* with,
-                                      InfBuffer* buffer)
-{
-  InfAdoptedOperationIface* iface;
-
-  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(with), NULL);
-  g_return_val_if_fail(INF_IS_BUFFER(buffer), NULL);
-
-  g_assert(inf_adopted_operation_is_reversible(operation) == FALSE);
-
-  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
-
-  if(iface->make_reversible != NULL)
-    return (*iface->make_reversible)(operation, with, buffer);
-  else
-    return NULL;
 }
 
 /* vim:set et sw=2 ts=2: */

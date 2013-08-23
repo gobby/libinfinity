@@ -109,10 +109,8 @@ inf_adopted_no_operation_operation_init(gpointer g_iface,
   iface->copy = inf_adopted_no_operation_copy;
   iface->get_flags = inf_adopted_no_operation_get_flags;
   iface->apply = inf_adopted_no_operation_apply;
+  iface->apply_transformed = NULL;
   iface->revert = inf_adopted_no_operation_revert;
-
-  /* should never be called because no_operation is always reversible */
-  iface->make_reversible = NULL;
 }
 
 GType

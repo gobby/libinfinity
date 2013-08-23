@@ -1399,7 +1399,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequestLog* log;
   InfAdoptedRequest* translated;
   InfAdoptedRequest* log_request;
-  InfAdoptedOperation* operation;
   gint64 execution_time;
 
   InfAdoptedRequest* original;
@@ -1477,8 +1476,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     priv->current
   );
 
-  operation = inf_adopted_request_get_operation(translated);
-
   inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
     G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
@@ -1553,7 +1550,6 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
                                     InfAdoptedRequest* orig_request)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedOperation* orig_operation;
   InfAdoptedOperation* reversible_operation;
   InfAdoptedRequest* log_request;
 
@@ -1565,30 +1561,22 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
      INF_ADOPTED_REQUEST_DO)
   {
     /* Make the operation reversible */
-    reversible_operation = NULL;
-    orig_operation = inf_adopted_request_get_operation(orig_request);
-    if(inf_adopted_request_affects_buffer(orig_request) &&
-       !inf_adopted_operation_is_reversible(orig_operation))
-    {
-      reversible_operation = inf_adopted_operation_make_reversible(
-        orig_operation,
-        inf_adopted_request_get_operation(request),
-        priv->buffer
-      );
-    }
-
-    if(reversible_operation == NULL)
-    {
-      reversible_operation = orig_operation;
-      g_object_ref(reversible_operation);
-    }
-
-    /* Apply the operation to the buffer */
-    inf_adopted_operation_apply(
+    reversible_operation = inf_adopted_operation_apply_transformed(
+      inf_adopted_request_get_operation(orig_request),
       inf_adopted_request_get_operation(request),
       user,
       priv->buffer
     );
+
+    /* It can happen that we could not make the operation reversible, in which
+     * case we use the original operation. If the original operation does
+     * affect the buffer, this means that it cannot be undone, or any
+     * operations before that by the same user. */
+    if(reversible_operation == NULL)
+    {
+      reversible_operation = inf_adopted_request_get_operation(orig_request);
+      g_object_ref(reversible_operation);
+    }
 
     /* Create the log request from the reversible operation */
     log_request = inf_adopted_request_new_do(
