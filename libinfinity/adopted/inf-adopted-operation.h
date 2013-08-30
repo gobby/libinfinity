@@ -75,8 +75,6 @@ typedef enum _InfAdoptedOperationFlags {
  * InfAdoptedOperationIface:
  * @need_concurrency_id: Virtual function to determine whether a concurrency
  * ID is required to transform @operation against @against.
- * @get_concurrency_id: Virtual function to obtain a concurrency ID for
- * transforming @op against @against.
  * @transform: Virtual function that transform @operation against @against and
  * returns a new #InfAdoptedOperation as the result of the transformation.
  * @concurrency_id is either 1 or -1 and can be used to make a decision in
@@ -110,11 +108,10 @@ struct _InfAdoptedOperationIface {
   gboolean (*need_concurrency_id)(InfAdoptedOperation* operation,
                                   InfAdoptedOperation* against);
 
-  InfAdoptedConcurrencyId (*get_concurrency_id)(InfAdoptedOperation* op,
-                                                InfAdoptedOperation* against);
-
   InfAdoptedOperation* (*transform)(InfAdoptedOperation* operation,
                                     InfAdoptedOperation* against,
+                                    InfAdoptedOperation* lcs_operation,
+                                    InfAdoptedOperation* lcs_against,
                                     InfAdoptedConcurrencyId concurrency_id);
 
   InfAdoptedOperation* (*copy)(InfAdoptedOperation* operation);
@@ -153,12 +150,11 @@ gboolean
 inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
                                           InfAdoptedOperation* against);
 
-InfAdoptedConcurrencyId
-inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
-                                         InfAdoptedOperation* against);
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
                                 InfAdoptedOperation* against,
+                                InfAdoptedOperation* operation_lcs,
+                                InfAdoptedOperation* against_lcs,
                                 gint concurrency_id);
 
 InfAdoptedOperation*

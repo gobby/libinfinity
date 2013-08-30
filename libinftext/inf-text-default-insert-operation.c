@@ -137,32 +137,27 @@ inf_text_default_insert_operation_need_concurrency_id(
   );
 }
 
-static InfAdoptedConcurrencyId
-inf_text_default_insert_operation_get_concurrency_id(
-  InfAdoptedOperation* operation,
-  InfAdoptedOperation* against)
-{
-  g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
-
-  return inf_text_insert_operation_get_concurrency_id(
-    INF_TEXT_INSERT_OPERATION(operation),
-    against
-  );
-}
-
-
 static InfAdoptedOperation*
 inf_text_default_insert_operation_transform(InfAdoptedOperation* operation,
                                             InfAdoptedOperation* against,
+                                            InfAdoptedOperation* op_lcs,
+                                            InfAdoptedOperation* against_lcs,
                                             InfAdoptedConcurrencyId cid)
 {
   g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
 
   if(INF_TEXT_IS_INSERT_OPERATION(against))
   {
+    g_assert(op_lcs == NULL ||
+             INF_TEXT_IS_INSERT_OPERATION(op_lcs));
+    g_assert(against_lcs == NULL ||
+             INF_TEXT_IS_INSERT_OPERATION(against_lcs));
+
     return inf_text_insert_operation_transform_insert(
       INF_TEXT_INSERT_OPERATION(operation),
       INF_TEXT_INSERT_OPERATION(against),
+      INF_TEXT_INSERT_OPERATION(op_lcs),
+      INF_TEXT_INSERT_OPERATION(against_lcs),
       cid
     );
   }
@@ -170,8 +165,7 @@ inf_text_default_insert_operation_transform(InfAdoptedOperation* operation,
   {
     return inf_text_insert_operation_transform_delete(
       INF_TEXT_INSERT_OPERATION(operation),
-      INF_TEXT_DELETE_OPERATION(against),
-      cid
+      INF_TEXT_DELETE_OPERATION(against)
     );
   }
   else
@@ -325,8 +319,6 @@ inf_text_default_insert_operation_operation_init(gpointer g_iface,
 
   iface->need_concurrency_id =
     inf_text_default_insert_operation_need_concurrency_id;
-  iface->get_concurrency_id =
-    inf_text_default_insert_operation_get_concurrency_id;
   iface->transform = inf_text_default_insert_operation_transform;
   iface->copy = inf_text_default_insert_operation_copy;
   iface->get_flags = inf_text_default_insert_operation_get_flags;

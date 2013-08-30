@@ -23,7 +23,6 @@
 #include <libinftext/inf-text-user.h>
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
-#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
 
 typedef struct _InfTextMoveOperationPrivate InfTextMoveOperationPrivate;
 struct _InfTextMoveOperationPrivate {
@@ -116,18 +115,11 @@ inf_text_move_operation_need_concurrency_id(InfAdoptedOperation* operation,
   return FALSE;
 }
 
-static InfAdoptedConcurrencyId
-inf_text_move_operation_get_concurrency_id(InfAdoptedOperation* operation,
-                                           InfAdoptedOperation* against)
-{
-  g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
-  _inf_adopted_concurrency_warning(INF_TEXT_TYPE_MOVE_OPERATION);
-  return INF_ADOPTED_CONCURRENCY_NONE;
-}
-
 static InfAdoptedOperation*
 inf_text_move_operation_transform(InfAdoptedOperation* operation,
                                   InfAdoptedOperation* against,
+                                  InfAdoptedOperation* operation_lcs,
+                                  InfAdoptedOperation* against_lcs,
                                   gint concurrency_id)
 {
   InfTextMoveOperationPrivate* priv;
@@ -280,7 +272,6 @@ inf_text_move_operation_operation_init(gpointer g_iface,
   iface = (InfAdoptedOperationIface*)g_iface;
 
   iface->need_concurrency_id = inf_text_move_operation_need_concurrency_id;
-  iface->get_concurrency_id = inf_text_move_operation_get_concurrency_id;
   iface->transform = inf_text_move_operation_transform;
   iface->copy = inf_text_move_operation_copy;
   iface->get_flags = inf_text_move_operation_get_flags;

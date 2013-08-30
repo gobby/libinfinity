@@ -861,12 +861,14 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
         request,
         lcs
       );
+    }
+    else
+    {
+      lcs_against = against;
+      lcs_request = request;
 
-      concurrency_id =
-        inf_adopted_request_get_concurrency_id(lcs_request, lcs_against);
-
-      g_object_unref(lcs_request);
-      g_object_unref(lcs_against);
+      g_object_ref(lcs_against);
+      g_object_ref(lcs_request);
     }
 
     inf_adopted_state_vector_free(lcs);
@@ -875,8 +877,14 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
   result = inf_adopted_request_transform(
     request_at,
     against_at,
-    concurrency_id
+    lcs_request,
+    lcs_against
   );
+
+  if(lcs_request != NULL)
+    g_object_unref(lcs_request);
+  if(lcs_against != NULL)
+    g_object_unref(lcs_against);
 
   g_object_unref(request_at);
   g_object_unref(against_at);

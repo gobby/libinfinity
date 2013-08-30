@@ -70,6 +70,8 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation);
 InfAdoptedOperation*
 inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,
                                             InfAdoptedOperation* other,
+                                            InfAdoptedOperation* op_lcs,
+                                            InfAdoptedOperation* other_lcs,
                                             gint concurrency_id);
 
 G_END_DECLS

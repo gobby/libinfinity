@@ -39,7 +39,6 @@
 
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
-#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
 
 static void
 inf_text_delete_operation_base_init(gpointer g_class)
@@ -152,38 +151,9 @@ inf_text_delete_operation_need_concurrency_id(InfTextDeleteOperation* op,
 }
 
 /**
- * inf_text_delete_operation_get_concurrency_id:
- * @op: A #InfTextDeleteOperation.
- * @against: Another #InfAdoptedOperation.
- *
- * Returns a concurrency ID for transformation of @op against @against
- * (see inf_adopted_operation_get_concurrency_id() for further information).
- *
- * Returns: A concurrency ID between @op and @against.
- */
-InfAdoptedConcurrencyId
-inf_text_delete_operation_get_concurrency_id(InfTextDeleteOperation* op,
-                                             InfAdoptedOperation* against)
-{
-  g_return_val_if_fail(
-    INF_TEXT_IS_DELETE_OPERATION(op),
-    INF_ADOPTED_CONCURRENCY_NONE
-  );
-
-  g_return_val_if_fail(
-    INF_ADOPTED_IS_OPERATION(against),
-    INF_ADOPTED_CONCURRENCY_NONE
-  );
-
-  _inf_adopted_concurrency_warning(INF_TEXT_TYPE_DELETE_OPERATION);
-  return INF_ADOPTED_CONCURRENCY_NONE;
-}
-
-/**
  * inf_text_delete_operation_transform_insert:
  * @operation: A #InfTextDeleteOperation.
  * @against: A #InfTextInsertOperation.
- * @cid: The concurrency ID for the transformation.
  *
  * Returns a new operation that includes the effect of @against into
  * @operation.
@@ -192,8 +162,7 @@ inf_text_delete_operation_get_concurrency_id(InfTextDeleteOperation* op,
  **/
 InfAdoptedOperation*
 inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
-                                           InfTextInsertOperation* against,
-                                           InfAdoptedConcurrencyId cid)
+                                           InfTextInsertOperation* against)
 {
   InfTextDeleteOperationIface* iface;
   guint own_pos;
@@ -235,7 +204,6 @@ inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
  * inf_text_delete_operation_transform_delete:
  * @operation: A #InfTextDeleteOperation.
  * @against: Another #InfTextDeleteOperation.
- * @cid: The concurrency ID for the transformation.
  *
  * Returns a new operation that includes the effect of @against into
  * @operation.
@@ -244,8 +212,7 @@ inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
  **/
 InfAdoptedOperation*
 inf_text_delete_operation_transform_delete(InfTextDeleteOperation* operation,
-                                           InfTextDeleteOperation* against,
-                                           InfAdoptedConcurrencyId cid)
+                                           InfTextDeleteOperation* against)
 {
   InfTextDeleteOperationIface* iface;
   guint own_pos;

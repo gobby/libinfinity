@@ -19,7 +19,6 @@
 
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
-#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
 
 static void
 inf_text_insert_operation_base_init(gpointer g_class)
@@ -144,56 +143,11 @@ inf_text_insert_operation_need_concurrency_id(InfTextInsertOperation* op,
 }
 
 /**
- * inf_text_insert_operation_get_concurrency_id:
- * @op: A #InfTextInsertOperation.
- * @against: Another #InfAdoptedOperation.
- *
- * Returns a concurrency ID for transformation of @op against @against
- * (see inf_adopted_operation_get_concurrency_id() for further information).
- *
- * Returns: A concurrency ID between @op and @against.
- */
-InfAdoptedConcurrencyId
-inf_text_insert_operation_get_concurrency_id(InfTextInsertOperation* op,
-                                             InfAdoptedOperation* against)
-{
-  InfTextInsertOperation* insert_against;
-  guint own_pos;
-  guint against_pos;
-
-  g_return_val_if_fail(
-    INF_TEXT_IS_INSERT_OPERATION(op),
-    INF_ADOPTED_CONCURRENCY_NONE
-  );
-
-  g_return_val_if_fail(
-    INF_ADOPTED_IS_OPERATION(against),
-    INF_ADOPTED_CONCURRENCY_NONE
-  );
-
-  if(INF_TEXT_IS_INSERT_OPERATION(against))
-  {
-    insert_against = INF_TEXT_INSERT_OPERATION(against);
-    own_pos = inf_text_insert_operation_get_position(op);
-    against_pos = inf_text_insert_operation_get_position(insert_against);
-    if(own_pos < against_pos)
-      return INF_ADOPTED_CONCURRENCY_OTHER;
-    else if(own_pos > against_pos)
-      return INF_ADOPTED_CONCURRENCY_SELF;
-    else
-      return INF_ADOPTED_CONCURRENCY_NONE;
-  }
-  else
-  {
-    _inf_adopted_concurrency_warning(INF_TEXT_TYPE_INSERT_OPERATION);
-    return INF_ADOPTED_CONCURRENCY_NONE;
-  }
-}
-
-/**
  * inf_text_insert_operation_transform_insert:
  * @operation: A #InfTextInsertOperation.
  * @against: Another #InfTextInsertOperation.
+ * @op_lcs: The given operation in a previous state, or %NULL.
+ * @ag_lcs: The @against operation in a previous state, or %NULL.
  * @cid: The concurrency ID for the transformation.
  *
  * Returns a new operation that includes the effect of @against into
@@ -204,11 +158,15 @@ inf_text_insert_operation_get_concurrency_id(InfTextInsertOperation* op,
 InfAdoptedOperation*
 inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
                                            InfTextInsertOperation* against,
+                                           InfTextInsertOperation* op_lcs,
+                                           InfTextInsertOperation* ag_lcs,
                                            InfAdoptedConcurrencyId cid)
 {
   InfTextInsertOperationIface* iface;
   guint op_pos;
   guint against_pos;
+  guint op_lcs_pos;
+  guint against_lcs_pos;
   guint against_length;
 
   g_return_val_if_fail(INF_TEXT_IS_INSERT_OPERATION(operation), NULL);
@@ -220,13 +178,11 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
   op_pos = inf_text_insert_operation_get_position(operation);
   against_pos = inf_text_insert_operation_get_position(against);
 
-  if(op_pos < against_pos ||
-     (op_pos == against_pos && cid == INF_ADOPTED_CONCURRENCY_OTHER))
+  if(op_pos < against_pos)
   {
     return inf_adopted_operation_copy(INF_ADOPTED_OPERATION(operation));
   }
-  else if(op_pos > against_pos ||
-          (op_pos == against_pos && cid == INF_ADOPTED_CONCURRENCY_SELF))
+  else if(op_pos > against_pos)
   {
     against_length = inf_text_insert_operation_get_length(against);
 
@@ -236,13 +192,33 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
   }
   else
   {
-    /* Note this can actually occur when a split operation has to transform
-     * one of its parts against the other. It is also possible for a split
-     * operation to hold two insert operations, for example when reversing a
-     * splitted delete operation. However, it is illegal that two such insert
-     * operations insert text at the same position. */
-    g_assert_not_reached();
-    return NULL;
+    g_assert(op_lcs != NULL);
+    g_assert(ag_lcs != NULL);
+
+    op_lcs_pos = inf_text_insert_operation_get_position(op_lcs);
+    against_lcs_pos = inf_text_insert_operation_get_position(ag_lcs);
+
+    if(op_lcs_pos < against_lcs_pos ||
+       (op_lcs_pos == against_lcs_pos &&
+        cid == INF_ADOPTED_CONCURRENCY_OTHER))
+    {
+      return inf_adopted_operation_copy(INF_ADOPTED_OPERATION(operation));
+    }
+    else if(op_lcs_pos > against_lcs_pos ||
+            (op_lcs_pos == against_lcs_pos &&
+             cid == INF_ADOPTED_CONCURRENCY_SELF))
+    {
+      against_length = inf_text_insert_operation_get_length(against);
+
+      return INF_ADOPTED_OPERATION(
+        iface->transform_position(operation, op_pos + against_length)
+      );
+    }
+    else
+    {
+      g_assert_not_reached();
+      return NULL;
+    }
   }
 }
 
@@ -250,7 +226,6 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
  * inf_text_insert_operation_transform_delete:
  * @operation: A #InfTextInsertOperation.
  * @against: A #InfTextDeleteOperation.
- * @cid: The concurrency ID for the transformation.
  *
  * Returns a new operation that includes the effect of @against into
  * @operation.
@@ -259,8 +234,7 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
  **/
 InfAdoptedOperation*
 inf_text_insert_operation_transform_delete(InfTextInsertOperation* operation,
-                                           InfTextDeleteOperation* against,
-                                           InfAdoptedConcurrencyId cid)
+                                           InfTextDeleteOperation* against)
 {
   InfTextInsertOperationIface* iface;
   guint own_pos;

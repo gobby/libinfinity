@@ -9,7 +9,6 @@ libinfinity_adopted_ladir = \
 
 libinfinity_adopted_la_SOURCES = \
 	inf-adopted-algorithm.c \
-	inf-adopted-concurrency-warning.c \
 	inf-adopted-no-operation.c \
 	inf-adopted-operation.c \
 	inf-adopted-request.c \
@@ -35,6 +34,3 @@ libinfinity_adopted_la_HEADERS = \
 	inf-adopted-state-vector.h \
 	inf-adopted-undo-grouping.h \
 	inf-adopted-user.h
-
-noinst_HEADERS = \
-	inf-adopted-concurrency-warning.h

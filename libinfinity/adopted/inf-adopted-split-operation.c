@@ -48,8 +48,6 @@
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
 
-#include <libinfinity/adopted/inf-adopted-concurrency-warning.h>
-
 typedef struct _InfAdoptedSplitOperationPrivate InfAdoptedSplitOperationPrivate;
 struct _InfAdoptedSplitOperationPrivate {
   InfAdoptedOperation* first;
@@ -236,45 +234,38 @@ inf_adopted_split_operation_need_concurrency_id(InfAdoptedOperation* op,
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
 
+  InfAdoptedOperation* new_against;
+  gboolean result;
+
   split = INF_ADOPTED_SPLIT_OPERATION(op);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  return inf_adopted_operation_need_concurrency_id(priv->first, against) ||
-         inf_adopted_operation_need_concurrency_id(priv->second, against);
-}
+  if(inf_adopted_operation_need_concurrency_id(priv->first, against) == TRUE)
+    return TRUE;
 
-static InfAdoptedConcurrencyId
-inf_adopted_split_operation_get_concurrency_id(InfAdoptedOperation* operation,
-                                               InfAdoptedOperation* against)
-{
-  InfAdoptedSplitOperation* split;
-  InfAdoptedSplitOperationPrivate* priv;
-  InfAdoptedConcurrencyId first_id;
-  InfAdoptedConcurrencyId second_id;
+  /* Note that for this transformation there is no concurrency ID required */
+  new_against = inf_adopted_operation_transform(
+    against,
+    priv->first,
+    NULL,
+    NULL,
+    INF_ADOPTED_CONCURRENCY_NONE
+  );
 
-  split = INF_ADOPTED_SPLIT_OPERATION(operation);
-  priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
+  result = inf_adopted_operation_need_concurrency_id(
+    priv->second,
+    new_against
+  );
 
-  first_id = inf_adopted_operation_get_concurrency_id(priv->first, against);
-  second_id = inf_adopted_operation_get_concurrency_id(priv->second, against);
-
-  /* everything is fine if both split parts agree, or if only one can
-   * make a decision. Problem if they are contradictory. */
-
-  if(first_id == second_id)
-    return first_id;
-  else if(first_id == INF_ADOPTED_CONCURRENCY_NONE)
-    return second_id;
-  else if(second_id == INF_ADOPTED_CONCURRENCY_NONE)
-    return first_id;
-
-  _inf_adopted_concurrency_warning(INF_ADOPTED_TYPE_SPLIT_OPERATION);
-  return INF_ADOPTED_CONCURRENCY_NONE;
+  g_object_unref(new_against);
+  return result;
 }
 
 static InfAdoptedOperation*
 inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
                                       InfAdoptedOperation* against,
+                                      InfAdoptedOperation* operation_lcs,
+                                      InfAdoptedOperation* against_lcs,
                                       InfAdoptedConcurrencyId concurrency_id)
 {
   InfAdoptedSplitOperation* split;
@@ -284,27 +275,73 @@ inf_adopted_split_operation_transform(InfAdoptedOperation* operation,
   InfAdoptedOperation* new_against;
   InfAdoptedOperation* new_second;
   InfAdoptedOperation* result;
+  
+  InfAdoptedSplitOperationPrivate* priv_lcs;
+  InfAdoptedOperation* first_lcs;
+  InfAdoptedOperation* second_lcs;
+  InfAdoptedOperation* new_against_lcs;
 
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
+  
+  if(INF_ADOPTED_IS_SPLIT_OPERATION(operation_lcs))
+  {
+    g_assert(against_lcs != NULL);
+
+    priv_lcs = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(operation_lcs);
+
+    first_lcs = priv_lcs->first;
+    second_lcs = priv_lcs->second;
+
+    new_against_lcs = inf_adopted_operation_transform(
+      against_lcs,
+      first_lcs,
+      against_lcs,
+      first_lcs,
+      -concurrency_id
+    );
+  }
+  else if(operation_lcs != NULL)
+  {
+    first_lcs = operation_lcs;
+    second_lcs = operation_lcs;
+
+    new_against_lcs = against_lcs;
+    g_object_ref(new_against_lcs);
+  }
+  else
+  {
+    first_lcs = NULL;
+    second_lcs = NULL;
+    new_against_lcs = NULL;
+  }
 
   new_first = inf_adopted_operation_transform(
     priv->first,
     against,
+    first_lcs,
+    against_lcs,
     concurrency_id
   );
 
   new_against = inf_adopted_operation_transform(
     against,
     priv->first,
+    against_lcs,
+    first_lcs,
     -concurrency_id
   );
 
   new_second = inf_adopted_operation_transform(
     priv->second,
     new_against,
+    second_lcs,
+    new_against_lcs,
     concurrency_id
   );
+
+  if(new_against_lcs != NULL)
+    g_object_unref(new_against_lcs);
 
   g_object_unref(new_against);
 
@@ -483,7 +520,6 @@ inf_adopted_split_operation_operation_init(gpointer g_iface,
 
   iface->need_concurrency_id =
     inf_adopted_split_operation_need_concurrency_id;
-  iface->get_concurrency_id = inf_adopted_split_operation_get_concurrency_id;
   iface->transform = inf_adopted_split_operation_transform;
   iface->copy = inf_adopted_split_operation_copy;
   iface->get_flags = inf_adopted_split_operation_get_flags;
@@ -589,6 +625,8 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
  * inf_adopted_split_operation_transform_other:
  * @op: A #InfAdoptedSplitOperation.
  * @other: An arbitrary #InfAdoptedOperation.
+ * @op_lcs: The operation @op at a previous state, or %NULL.
+ * @other_lcs: The operation @other at a previous state, or %NULL.
  * @concurrency_id: The concurrency id for the transformation of
  * @other against @op.
  *
@@ -599,19 +637,75 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
 InfAdoptedOperation*
 inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,
                                             InfAdoptedOperation* other,
+                                            InfAdoptedOperation* op_lcs,
+                                            InfAdoptedOperation* other_lcs,
                                             gint concurrency_id)
 {
   InfAdoptedSplitOperationPrivate* priv;
+  InfAdoptedSplitOperationPrivate* priv_lcs;
   InfAdoptedOperation* tmp;
   InfAdoptedOperation* result;
+
+  InfAdoptedOperation* first_lcs;
+  InfAdoptedOperation* second_lcs;
+  InfAdoptedOperation* tmp_lcs;
 
   g_return_val_if_fail(INF_ADOPTED_IS_SPLIT_OPERATION(op), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(other), NULL);
 
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(op);
+  
+  if(INF_ADOPTED_IS_SPLIT_OPERATION(op_lcs))
+  {
+    g_assert(other_lcs != NULL);
 
-  tmp = inf_adopted_operation_transform(other, priv->first, concurrency_id);
-  result = inf_adopted_operation_transform(tmp, priv->second, concurrency_id);
+    priv_lcs = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(op_lcs);
+    first_lcs = priv_lcs->first;
+    second_lcs = priv_lcs->second;
+
+    tmp_lcs = inf_adopted_operation_transform(
+      other_lcs,
+      first_lcs,
+      other_lcs,
+      first_lcs,
+      concurrency_id
+    );
+  }
+  else if(op_lcs != NULL)
+  {
+    g_assert(other_lcs != NULL);
+
+    first_lcs = op_lcs;
+    second_lcs = op_lcs;
+
+    tmp_lcs = other_lcs;
+    g_object_ref(tmp_lcs);
+  }
+  else
+  {
+    first_lcs = NULL;
+    second_lcs = NULL;
+    tmp_lcs = NULL;
+  }
+
+  tmp = inf_adopted_operation_transform(
+    other,
+    priv->first,
+    other_lcs,
+    first_lcs,
+    concurrency_id
+  );
+
+  result = inf_adopted_operation_transform(
+    tmp,
+    priv->second,
+    tmp_lcs,
+    second_lcs,
+    concurrency_id
+  );
+
+  if(tmp_lcs != NULL)
+    g_object_unref(tmp_lcs);
 
   g_object_unref(tmp);
   return result;

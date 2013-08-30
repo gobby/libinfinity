@@ -59,19 +59,16 @@ gboolean
 inf_text_insert_operation_need_concurrency_id(InfTextInsertOperation* op,
                                               InfAdoptedOperation* against);
 
-InfAdoptedConcurrencyId
-inf_text_insert_operation_get_concurrency_id(InfTextInsertOperation* op,
-                                             InfAdoptedOperation* against);
-
 InfAdoptedOperation*
 inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
                                            InfTextInsertOperation* against,
+                                           InfTextInsertOperation* op_lcs,
+                                           InfTextInsertOperation* ag_lcs,
                                            InfAdoptedConcurrencyId cid);
 
 InfAdoptedOperation*
 inf_text_insert_operation_transform_delete(InfTextInsertOperation* operation,
-                                           InfTextDeleteOperation* against,
-                                           InfAdoptedConcurrencyId cid);
+                                           InfTextDeleteOperation* against);
 
 G_END_DECLS
 

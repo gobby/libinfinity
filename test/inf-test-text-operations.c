@@ -71,7 +71,6 @@ static const operation_def OPERATIONS[] = {
   { OP_DEL, 0, GUINT_TO_POINTER(5) },
   { OP_DEL, 2, GUINT_TO_POINTER(7) },
   { OP_DEL, 1, GUINT_TO_POINTER(9) },
-#if 1
   /* del vs. del */
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[0], &SPLIT_OPS[2] },
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[2], &SPLIT_OPS[0] },
@@ -82,7 +81,6 @@ static const operation_def OPERATIONS[] = {
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[1], &SPLIT_OPS[4] },
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[3], &SPLIT_OPS[1] },
   { OP_SPLIT, 0, NULL, &SPLIT_OPS[4], &SPLIT_OPS[1] },
-#endif
 };
 
 static const gchar EXAMPLE_DOCUMENT[] = "abcdefghijklmnopqrstuvwxyz";
@@ -165,194 +163,9 @@ def_to_operation(const operation_def* def,
 }
 
 static gboolean
-insert_operation_equal(InfTextDefaultInsertOperation* op1,
-                       InfAdoptedOperation* op2)
-{
-  guint pos1;
-  guint pos2;
-  int result;
-
-  if(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(op2))
-  {
-    pos1 = inf_text_insert_operation_get_position(
-      INF_TEXT_INSERT_OPERATION(op1)
-    );
-    pos2 = inf_text_insert_operation_get_position(
-      INF_TEXT_INSERT_OPERATION(op2)
-    );
-
-    if(pos1 != pos2)
-      return FALSE;
-    
-    result = inf_text_chunk_equal(
-      inf_text_default_insert_operation_get_chunk(op1),
-      inf_text_default_insert_operation_get_chunk(
-        INF_TEXT_DEFAULT_INSERT_OPERATION(op2)
-      )
-    );
-
-    return result;
-  }
-  else
-  {
-    return FALSE;
-  }
-}
-
-static gboolean
-delete_operation_equal(InfTextDefaultDeleteOperation* op1,
-                       InfAdoptedOperation* op2)
-{
-  guint pos1;
-  guint pos2;
-  InfTextChunk* chunk1;
-  InfTextChunk* chunk2;
-
-  if(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(op2))
-  {
-    pos1 = inf_text_delete_operation_get_position(
-      INF_TEXT_DELETE_OPERATION(op1)
-    );
-
-    pos2 = inf_text_delete_operation_get_position(
-      INF_TEXT_DELETE_OPERATION(op2)
-    );
-
-    chunk1 = inf_text_default_delete_operation_get_chunk(
-      INF_TEXT_DEFAULT_DELETE_OPERATION(op1)
-    );
-
-    chunk2 = inf_text_default_delete_operation_get_chunk(
-      INF_TEXT_DEFAULT_DELETE_OPERATION(op2)
-    );
-
-    /* Both are no-op */
-    if(inf_text_chunk_get_length(chunk1) == 0 &&
-       inf_text_chunk_get_length(chunk2) == 0)
-    {
-      return TRUE;
-    }
-
-    if(pos1 != pos2) return FALSE;
-    return inf_text_chunk_equal(chunk1, chunk2);
-  }
-  else
-  {
-    return FALSE;
-  }
-}
-
-/* Required by split_operation_equal */
-static gboolean
-operation_equal(InfAdoptedOperation* op1,
-                InfAdoptedOperation* op2);
-
-static gboolean
-split_operation_equal(InfAdoptedSplitOperation* op1,
-                      InfAdoptedOperation* op2)
-{
-  GSList* first_list;
-  GSList* second_list;
-  GSList* first_item;
-  GSList* second_item;
-  InfAdoptedOperation* first_op;
-  InfAdoptedOperation* second_op;
-
-  first_list = inf_adopted_split_operation_unsplit(op1);
-  if(INF_ADOPTED_IS_SPLIT_OPERATION(op2))
-  {
-    second_list = inf_adopted_split_operation_unsplit(
-      INF_ADOPTED_SPLIT_OPERATION(op2)
-    );
-  }
-  else
-  {
-    second_list = g_slist_prepend(NULL, op2);
-  }
-
-  /* Order in split operations does not matter. */
-  for(first_item = first_list;
-      first_item != NULL;
-      first_item = g_slist_next(first_item))
-  {
-    first_op = first_item->data;
-
-    /* Ignore noop operations */
-    if(INF_TEXT_IS_DELETE_OPERATION(first_op))
-      if(inf_text_delete_operation_get_length(INF_TEXT_DELETE_OPERATION(first_op)) == 0)
-        continue;
-
-    if(INF_ADOPTED_IS_NO_OPERATION(first_op))
-      continue;
-
-    for(second_item = second_list; second_item != NULL; second_item = g_slist_next(second_item))
-    {
-      second_op = second_item->data;
-      if(operation_equal(first_op, second_op) == TRUE)
-        break;
-    }
-
-    if(second_item == NULL)
-    {
-      g_slist_free(first_list);
-      g_slist_free(second_list);
-      return FALSE;
-    }
-  }
-
-  for(second_item = second_list; second_item != NULL; second_item = g_slist_next(second_item))
-  {
-    second_op = second_item->data;
-
-    /* Ignore noop operations */
-    if(INF_TEXT_IS_DELETE_OPERATION(second_op))
-      if(inf_text_delete_operation_get_length(INF_TEXT_DELETE_OPERATION(second_op)) == 0)
-        continue;
-
-    if(INF_ADOPTED_IS_NO_OPERATION(second_op))
-      continue;
-
-    for(first_item = first_list; first_item != NULL; first_item = g_slist_next(first_item))
-    {
-      first_op = first_item->data;
-      if(operation_equal(first_op, second_op) == TRUE)
-        break;
-    }
-    
-    if(first_item == NULL)
-    {
-      g_slist_free(first_list);
-      g_slist_free(second_list);
-      return FALSE;
-    }
-  }
-  
-  g_slist_free(first_list);
-  g_slist_free(second_list);
-  return TRUE;
-}
-
-static gboolean
-operation_equal(InfAdoptedOperation* op1,
-                InfAdoptedOperation* op2)
-{
-  if(INF_ADOPTED_IS_SPLIT_OPERATION(op1))
-    return split_operation_equal(INF_ADOPTED_SPLIT_OPERATION(op1), op2);
-  else if(INF_ADOPTED_IS_SPLIT_OPERATION(op2))
-    return split_operation_equal(INF_ADOPTED_SPLIT_OPERATION(op2), op1);
-  else if(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(op1))
-    return insert_operation_equal(INF_TEXT_DEFAULT_INSERT_OPERATION(op1), op2);
-  else if(INF_TEXT_IS_DEFAULT_DELETE_OPERATION(op1))
-    return delete_operation_equal(INF_TEXT_DEFAULT_DELETE_OPERATION(op1), op2);
-  else
-    g_assert_not_reached();
-}
-
-static gboolean
 test_undo(InfAdoptedOperation* op,
           InfAdoptedUser* user)
 {
-  // TODO: compare the raw example text with the situation when op and mirror(op) are applied to it.
   InfTextDefaultBuffer* first;
   InfTextDefaultBuffer* second;
   InfAdoptedOperation* reverted;
@@ -443,12 +256,12 @@ test_c1(InfAdoptedOperation* op1,
   );
 
   inf_adopted_operation_apply(op1, user1, INF_BUFFER(first));
-  transformed = inf_adopted_operation_transform(op2, op1, -cid12);
+  transformed = inf_adopted_operation_transform(op2, op1, op2, op1, -cid12);
   inf_adopted_operation_apply(transformed, user2, INF_BUFFER(first));
   g_object_unref(G_OBJECT(transformed));
 
   inf_adopted_operation_apply(op2, user2, INF_BUFFER(second));
-  transformed = inf_adopted_operation_transform(op1, op2, cid12);
+  transformed = inf_adopted_operation_transform(op1, op2, op1, op2, cid12);
   inf_adopted_operation_apply(transformed, user1, INF_BUFFER(second));
   g_object_unref(G_OBJECT(transformed));
 
@@ -479,42 +292,70 @@ test_c2(InfAdoptedOperation* op1,
         InfAdoptedOperation* op3,
         InfAdoptedConcurrencyId cid12,
         InfAdoptedConcurrencyId cid13,
-        InfAdoptedConcurrencyId cid23)
+        InfAdoptedConcurrencyId cid23,
+        InfAdoptedUser* user3)
 {
   InfAdoptedOperation* temp1;
   InfAdoptedOperation* temp2;
   InfAdoptedOperation* result1;
   InfAdoptedOperation* result2;
-  InfAdoptedConcurrencyId cid;
+  InfTextDefaultBuffer* first;
+  InfTextDefaultBuffer* second;
+  InfTextChunk* first_chunk;
+  InfTextChunk* second_chunk;
   gboolean retval;
 
-  temp1 = inf_adopted_operation_transform(op2, op1, -cid12);
-  temp2 = inf_adopted_operation_transform(op3, op1, -cid13);
+  first = inf_text_default_buffer_new("UTF-8");
 
-  cid = INF_ADOPTED_CONCURRENCY_NONE;
-  if(inf_adopted_operation_need_concurrency_id(temp2, temp1))
-    cid = inf_adopted_operation_get_concurrency_id(op3, op2);
-  if(cid == INF_ADOPTED_CONCURRENCY_NONE)
-    cid = -cid23;
+  inf_text_buffer_insert_text(
+    INF_TEXT_BUFFER(first),
+    0,
+    EXAMPLE_DOCUMENT,
+    strlen(EXAMPLE_DOCUMENT),
+    strlen(EXAMPLE_DOCUMENT),
+    NULL
+  );
 
-  result1 = inf_adopted_operation_transform(temp2, temp1, cid);
+  second = inf_text_default_buffer_new("UTF-8");
+  inf_text_buffer_insert_text(
+    INF_TEXT_BUFFER(second),
+    0,
+    EXAMPLE_DOCUMENT,
+    strlen(EXAMPLE_DOCUMENT),
+    strlen(EXAMPLE_DOCUMENT),
+    NULL
+  );
+
+  temp1 = inf_adopted_operation_transform(op2, op1, op2, op1, -cid12);
+  temp2 = inf_adopted_operation_transform(op3, op1, op3, op1, -cid13);
+  result1 = inf_adopted_operation_transform(temp2, temp1, op3, op2, -cid23);
   g_object_unref(G_OBJECT(temp1));
   g_object_unref(G_OBJECT(temp2));
 
-  temp1 = inf_adopted_operation_transform(op1, op2, cid12);
-  temp2 = inf_adopted_operation_transform(op3, op2, -cid23);
-
-  cid = INF_ADOPTED_CONCURRENCY_NONE;
-  if(inf_adopted_operation_need_concurrency_id(temp2, temp1))
-    cid = inf_adopted_operation_get_concurrency_id(op3, op1);
-  if(cid == INF_ADOPTED_CONCURRENCY_NONE)
-    cid = -cid13;
-
-  result2 = inf_adopted_operation_transform(temp2, temp1, cid);
+  temp1 = inf_adopted_operation_transform(op1, op2, op1, op2, cid12);
+  temp2 = inf_adopted_operation_transform(op3, op2, op3, op2, -cid23);
+  result2 = inf_adopted_operation_transform(temp2, temp1, op3, op1, -cid13);
   g_object_unref(G_OBJECT(temp1));
   g_object_unref(G_OBJECT(temp2));
 
-  retval = operation_equal(result1, result2);
+  inf_adopted_operation_apply(result1, user3, INF_BUFFER(first));
+  inf_adopted_operation_apply(result2, user3, INF_BUFFER(second));
+
+  first_chunk = inf_text_buffer_get_slice(
+    INF_TEXT_BUFFER(first),
+    0,
+    inf_text_buffer_get_length(INF_TEXT_BUFFER(first))
+  );
+  second_chunk = inf_text_buffer_get_slice(
+    INF_TEXT_BUFFER(second),
+    0,
+    inf_text_buffer_get_length(INF_TEXT_BUFFER(second))
+  );
+
+  retval = inf_text_chunk_equal(first_chunk, second_chunk);
+
+  inf_text_chunk_free(first_chunk);
+  inf_text_chunk_free(second_chunk);
 
   g_object_unref(G_OBJECT(result1));
   g_object_unref(G_OBJECT(result2));
@@ -574,11 +415,15 @@ perform_c1(InfAdoptedOperation** begin,
 static void
 perform_c2(InfAdoptedOperation** begin,
            InfAdoptedOperation** end,
+           InfAdoptedUser** users,
            test_result* result)
 {
   InfAdoptedOperation** _1;
   InfAdoptedOperation** _2;
   InfAdoptedOperation** _3;
+  InfAdoptedConcurrencyId cid12;
+  InfAdoptedConcurrencyId cid13;
+  InfAdoptedConcurrencyId cid23;
 
   for(_1 = begin; _1 != end; ++ _1)
   {
@@ -588,8 +433,12 @@ perform_c2(InfAdoptedOperation** begin,
       {
         if(_1 != _2 && _1 != _3 && _2 != _3)
         {
+          cid12 = cid(_1, _2);
+          cid13 = cid(_1, _3);
+          cid23 = cid(_2, _3);
+
           ++ result->total;
-          if(test_c2(*_1, *_2, *_3, cid(_1, _2), cid(_1, _3), cid(_2, _3)))
+          if(test_c2(*_1, *_2, *_3, cid12, cid13, cid23, users[_3 - begin]))
             ++ result->passed;
         }
       }
@@ -675,6 +524,7 @@ int main()
   perform_c2(
     operations,
     operations + G_N_ELEMENTS(OPERATIONS),
+    users,
     &result
   );
 

@@ -168,97 +168,47 @@ inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), FALSE);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(against), FALSE);
-
-  iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
-  g_assert(iface->need_concurrency_id != NULL);
-
-  return iface->need_concurrency_id(operation, against);
-}
-
-/**
- * inf_adopted_operation_get_concurrency_id:
- * @operation: The #InfAdoptedOperation to transform.
- * @against: The operation to transform against.
- *
- * This function returns a concurrency ID for transformation of @operation
- * against @against. It always returns %INF_ADOPTED_CONCURRENCY_NONE when
- * inf_adopted_operation_need_concurrency_id() returns %TRUE for
- * @operation and @against (but that's not necessarily true the other way
- * around), since it is not possible to decide which operation to transform
- * without any additional information.
- *
- * However, the function can be called on the same operations in a previous
- * state. In some cases, a decision can be made based on those previous
- * operations. This can then be used as concurrency ID to call
- * inf_adopted_operation_transform().
- *
- * Note that the function is antisymmetric. If it returns
- * %INF_ADOPTED_CONCURRENCY_SELF, then it returns
- * %INF_ADOPTED_CONCURRENCY_OTHER for swapped arguments.
- *
- * Returns: A concurrency ID between @operation and @against. Can be
- * %INF_ADOPTED_CONCURRENCY_NONE in case no decision can be made.
- */
-InfAdoptedConcurrencyId
-inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
-                                         InfAdoptedOperation* against)
-{
-  InfAdoptedOperationIface* iface;
-  InfAdoptedConcurrencyId id;
-
-  g_return_val_if_fail(
-    INF_ADOPTED_IS_OPERATION(operation),
-    INF_ADOPTED_CONCURRENCY_NONE
-  );
-  g_return_val_if_fail(
-    INF_ADOPTED_IS_OPERATION(against),
-    INF_ADOPTED_CONCURRENCY_NONE
-  );
-
-  /* Use antisymmetricity if second argument is split operation, so that
-   * subclasses don't need to handle that case explicitely. */
-  if(!INF_ADOPTED_IS_SPLIT_OPERATION(operation) &&
-     INF_ADOPTED_IS_SPLIT_OPERATION(against))
+  
+  if(INF_ADOPTED_IS_SPLIT_OPERATION(against))
   {
     iface = INF_ADOPTED_OPERATION_GET_IFACE(against);
-    g_assert(iface->get_concurrency_id != NULL);
+    g_assert(iface->need_concurrency_id != NULL);
 
-    id = iface->get_concurrency_id(against, operation);
-    switch(id)
-    {
-    case INF_ADOPTED_CONCURRENCY_SELF:
-      return INF_ADOPTED_CONCURRENCY_OTHER;
-    case INF_ADOPTED_CONCURRENCY_NONE:
-      return INF_ADOPTED_CONCURRENCY_NONE;
-    case INF_ADOPTED_CONCURRENCY_OTHER:
-      return INF_ADOPTED_CONCURRENCY_SELF;
-    default:
-      g_assert_not_reached();
-      return INF_ADOPTED_CONCURRENCY_NONE;
-    }
+    return iface->need_concurrency_id(against, operation);
   }
   else
   {
     iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
-    g_assert(iface->get_concurrency_id != NULL);
+    g_assert(iface->need_concurrency_id != NULL);
 
-    return iface->get_concurrency_id(operation, against);
+    return iface->need_concurrency_id(operation, against);
   }
 }
-
 
 /**
  * inf_adopted_operation_transform:
  * @operation: The #InfAdoptedOperation to transform.
  * @against: The operation to transform against.
+ * @operation_lcs: The operation at a previous state, or %NULL.
+ * @against_lcs: The @against operation at a previous state, or %NULL.
  * @concurrency_id: The concurrency ID for the transformation.
  *
  * Performs an inclusion transformation of @operation against @against,
  * meaning that the effect of @against is included in @operation.
  *
  * If inf_adopted_operation_need_concurrency_id() returns %TRUE for @operation
- * and @against, then @concurrency_id must not be
- * %INF_ADOPTED_CONCURRENCY_NONE. Otherwise, the parameter is ignored.
+ * and @against, then @operation_lcs and @against_lcs must not be %NULL. In
+ * this case they must be the same operations as @operation and @against at
+ * the earlierst state to which both of them can be transformed. This
+ * information can then used to resolve any conflicts in the transformation
+ * of @operation against @against.
+ *
+ * The @concurrency_id parameter is used if
+ * inf_adopted_operation_need_concurrency_id() returns %TRUE and no conflict
+ * resolution can be deduced from @operation_lcs and @against_lcs. In this
+ * case @concurrency_id defines a unique way to transform the two operations.
+ * Usually, this is derived from the user IDs of the users who issued the two
+ * conflicting operations.
  *
  * Return Value: The transformed #InfAdoptedOperation, or %NULL if the
  * transformation failed.
@@ -266,6 +216,8 @@ inf_adopted_operation_get_concurrency_id(InfAdoptedOperation* operation,
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
                                 InfAdoptedOperation* against,
+                                InfAdoptedOperation* operation_lcs,
+                                InfAdoptedOperation* against_lcs,
                                 InfAdoptedConcurrencyId concurrency_id)
 {
   InfAdoptedOperationIface* iface;
@@ -280,6 +232,8 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
     return inf_adopted_split_operation_transform_other(
       INF_ADOPTED_SPLIT_OPERATION(against),
       operation,
+      against_lcs,
+      operation_lcs,
       concurrency_id
     );
   }
@@ -288,7 +242,13 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
     iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
     g_assert(iface->transform != NULL);
 
-    return (*iface->transform)(operation, against, concurrency_id);
+    return (*iface->transform)(
+      operation,
+      against,
+      operation_lcs,
+      against_lcs,
+      concurrency_id
+    );
   }
 }
 

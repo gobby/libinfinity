@@ -131,14 +131,11 @@ gboolean
 inf_adopted_request_need_concurrency_id(InfAdoptedRequest* request,
                                         InfAdoptedRequest* against);
 
-InfAdoptedConcurrencyId
-inf_adopted_request_get_concurrency_id(InfAdoptedRequest* request,
-                                       InfAdoptedRequest* against);
-
 InfAdoptedRequest*
 inf_adopted_request_transform(InfAdoptedRequest* request,
                               InfAdoptedRequest* against,
-                              InfAdoptedConcurrencyId concurrency_id);
+                              InfAdoptedRequest* request_lcs,
+                              InfAdoptedRequest* against_lcs);
 
 InfAdoptedRequest*
 inf_adopted_request_mirror(InfAdoptedRequest* request,
