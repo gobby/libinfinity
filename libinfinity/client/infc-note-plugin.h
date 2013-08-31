@@ -34,6 +34,7 @@ typedef InfSession*(*InfcNotePluginSessionNew)(InfIo*,
                                                InfSessionStatus,
                                                InfCommunicationGroup*,
                                                InfXmlConnection*,
+                                               const char*,
                                                gpointer);
 
 typedef struct _InfcNotePlugin InfcNotePlugin;

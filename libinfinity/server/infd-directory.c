@@ -1821,7 +1821,8 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
                                     InfSessionStatus status,
                                     InfCommunicationHostedGroup* sync_g,
                                     InfXmlConnection* sync_conn,
-                                    InfCommunicationHostedGroup* sub_g)
+                                    InfCommunicationHostedGroup* sub_g,
+                                    const char* path)
 {
   InfdDirectoryPrivate* priv;
   InfSession* session;
@@ -1837,6 +1838,7 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
     status,
     INF_COMMUNICATION_GROUP(sync_g),
     sync_conn,
+    path,
     plugin->user_data
   );
 
@@ -3910,6 +3912,7 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
 {
   InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
+  gchar* path;
   gboolean ensured;
 
   if(session != NULL)
@@ -3922,14 +3925,19 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
   }
   else
   {
+    infd_directory_node_make_path(parent, name, &path, NULL);
+
     proxy = infd_directory_create_session_proxy(
       directory,
       plugin,
       INF_SESSION_RUNNING,
       NULL,
       NULL,
-      group
+      group,
+      path
     );
+
+    g_free(path);
   }
 
   ensured = infd_directory_session_proxy_ensure(
@@ -3982,7 +3990,10 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
 {
   InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
+  gchar* path;
   gboolean ensured;
+
+  infd_directory_node_make_path(parent, name, &path, NULL);
 
   /* Keep proxy in PRESYNC state, until we have the confirmation from the
    * remote site that the chosen method is OK and we can go on. */
@@ -3992,8 +4003,11 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
     INF_SESSION_PRESYNC,
     sync_group,
     connection,
-    sub_group
+    sub_group,
+    path
   );
+
+  g_free(path);
 
   ensured = infd_directory_session_proxy_ensure(
     directory,
@@ -4542,6 +4556,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
   const gchar* method;
   InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
+  gchar* path;
   gboolean ensured;
   GError* local_error;
 
@@ -4648,14 +4663,19 @@ infd_directory_node_add_note(InfdDirectory* directory,
       }
       else
       {
+        infd_directory_node_make_path(parent, name, &path, NULL);
+
         proxy = infd_directory_create_session_proxy(
           directory,
           plugin,
           INF_SESSION_RUNNING,
           NULL,
           NULL,
-          group
+          group,
+          path
         );
+
+        g_free(path);
       }
 
       ensured = infd_directory_session_proxy_ensure(

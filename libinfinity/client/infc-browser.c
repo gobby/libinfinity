@@ -2742,6 +2742,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   InfcBrowserPrivate* priv;
   InfcSessionProxy* proxy;
   InfBrowserIter iter;
+  GString* path;
   InfSession* session;
 
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -2749,6 +2750,9 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
   g_assert(node->shared.known.plugin != NULL);
   g_assert(node->shared.known.session == NULL);
+
+  path = g_string_sized_new(128);
+  infc_browser_node_get_path_string(node, path);
 
   if(initial_sync)
   {
@@ -2758,6 +2762,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
       INF_SESSION_SYNCHRONIZING,
       INF_COMMUNICATION_GROUP(group),
       connection,
+      path->str,
       node->shared.known.plugin->user_data
     );
   }
@@ -2769,9 +2774,12 @@ infc_browser_subscribe_session(InfcBrowser* browser,
       INF_SESSION_RUNNING,
       NULL,
       NULL,
+      path->str,
       node->shared.known.plugin->user_data
     );
   }
+
+  g_string_free(path, TRUE);
 
   proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
 

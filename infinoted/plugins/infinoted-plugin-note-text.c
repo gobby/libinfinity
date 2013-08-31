@@ -39,6 +39,7 @@ infinoted_plugin_note_text_session_new(InfIo* io,
                                        InfSessionStatus status,
                                        InfCommunicationGroup* sync_group,
                                        InfXmlConnection* sync_connection,
+                                       const gchar* path,
                                        gpointer user_data)
 {
   InfTextSession* session;

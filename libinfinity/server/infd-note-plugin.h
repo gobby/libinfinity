@@ -37,6 +37,7 @@ typedef InfSession*(*InfdNotePluginSessionNew)(InfIo*,
                                                InfSessionStatus,
                                                InfCommunicationGroup*,
                                                InfXmlConnection*,
+                                               const char*,
                                                gpointer);
 
 typedef InfSession*(*InfdNotePluginSessionRead)(InfdStorage*,

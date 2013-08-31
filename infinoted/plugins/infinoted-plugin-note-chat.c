@@ -44,6 +44,7 @@ infinoted_plugin_note_chat_session_new(InfIo* io,
                                        InfSessionStatus status,
                                        InfCommunicationGroup* sync_group,
                                        InfXmlConnection* sync_connection,
+                                       const gchar* path,
                                        gpointer user_data)
 {
   InfChatBuffer* buffer;

@@ -833,6 +833,7 @@ inf_adopted_session_replay_set_record(InfAdoptedSessionReplay* replay,
       INF_SESSION_SYNCHRONIZING,
       INF_COMMUNICATION_GROUP(priv->client_group),
       INF_XML_CONNECTION(priv->client_conn),
+      NULL,
       plugin->user_data
     )
   );
