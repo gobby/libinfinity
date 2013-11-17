@@ -409,7 +409,9 @@ inf_test_reduce_replay_run_test(xmlDocPtr doc)
 
 #ifndef G_OS_WIN32
   if(WIFSIGNALED(ret) &&
-     (WTERMSIG(ret) == SIGABRT || WTERMSIG(ret) == SIGSEGV))
+     (WTERMSIG(ret) == SIGABRT ||
+      WTERMSIG(ret) == SIGSEGV ||
+      WTERMSIG(ret) == SIGTRAP))
   {
     return FALSE;
   }
@@ -629,7 +631,6 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
       }
     }
   }
-
   g_object_unref(local_replay);
 
   if(result)
