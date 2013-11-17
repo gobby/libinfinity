@@ -85,7 +85,7 @@ inf_test_util_print_operation(InfAdoptedOperation* op)
   }
   else
   {
-    g_assert_not_reached();
+    printf("unknown: %s\n", g_type_name(G_TYPE_FROM_INSTANCE(op)));
   }
 }
 
