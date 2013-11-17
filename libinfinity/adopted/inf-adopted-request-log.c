@@ -1098,7 +1098,7 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
  *
  * @request must either be contained in @log or the vector time component
  * of its own user must be equivalent to inf_adopted_request_log_get_end(),
- * in which case @request is treated as it if was the newest requset in @log.
+ * in which case @request is treated as it if was the newest request in @log.
  *
  * Return Value: The previous associated request of @request, or %NULL.
  **/
