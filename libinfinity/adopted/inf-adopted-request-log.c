@@ -1169,7 +1169,7 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
  * in which case @request is treated as it if was the newest request in @log.
  *
  * Return Value: The original request of @request. This function never
-* returns %NULL.
+ * returns %NULL.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
@@ -1217,7 +1217,16 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
   }
   else
   {
-    entry =  priv->entries + priv->offset + n - priv->begin;
+    /* Note that this check would in principle not be needed, if request were
+     * always contained in request log. However, it can happen that it is a
+     * different request (for example, a helper request that does not affect
+     * the buffer -- InfTextUndoGrouping uses such a request). In this case we
+     * do not want to exchange the given request by the one which is in the
+     * request log. */
+    if(inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO)
+      return request;
+
+    entry = priv->entries + priv->offset + n - priv->begin;
     g_assert(entry->original != NULL);
     return entry->original->request;
   }
