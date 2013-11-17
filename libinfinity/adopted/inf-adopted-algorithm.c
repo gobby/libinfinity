@@ -73,6 +73,8 @@
  * the users array (users_begin, users_end). Readd users as soon as they
  * issue buffer-altering requests. */
 
+#define INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
+
 typedef struct _InfAdoptedAlgorithmLocalUser InfAdoptedAlgorithmLocalUser;
 struct _InfAdoptedAlgorithmLocalUser {
   InfAdoptedUser* user;
@@ -864,14 +866,19 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
     }
     else
     {
-      lcs_against = against;
-      lcs_request = request;
+      lcs_against = against_at;
+      lcs_request = request_at;
 
       g_object_ref(lcs_against);
       g_object_ref(lcs_request);
     }
 
     inf_adopted_state_vector_free(lcs);
+  }
+  else
+  {
+    lcs_against = NULL;
+    lcs_request = NULL;
   }
 
   result = inf_adopted_request_transform(
@@ -890,6 +897,153 @@ inf_adopted_algorithm_transform_request(InfAdoptedAlgorithm* algorithm,
   g_object_unref(against_at);
 
   return result;
+}
+
+static InfAdoptedRequest*
+inf_adopted_algorithm_translate_request_forward(InfAdoptedAlgorithm* algorithm,
+                                                InfAdoptedRequest* request,
+                                                InfAdoptedStateVector* to)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedUser** user_it;
+  InfAdoptedUser* user;
+  InfAdoptedRequestLog* log;
+  guint user_id;
+
+  InfAdoptedRequest* cur_req;
+  InfAdoptedRequest* next_req;
+  InfAdoptedStateVector* vector;
+
+  InfAdoptedRequest* index;
+  InfAdoptedRequest* associated;
+  InfAdoptedRequest* translated;
+  InfAdoptedStateVector* associated_vector;
+  guint from_n;
+  guint to_n;
+  guint associated_index;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  cur_req = request;
+  vector = inf_adopted_request_get_vector(cur_req);
+  g_object_ref(cur_req);
+
+  while(inf_adopted_state_vector_compare(vector, to) != 0)
+  {
+    next_req = NULL;
+
+    g_assert(inf_adopted_state_vector_causally_before(vector, to) == TRUE);
+    for(user_it = priv->users_begin; user_it != priv->users_end; ++user_it)
+    {
+      user = *user_it;
+      user_id = inf_user_get_id(INF_USER(user));
+
+      if(user_id == inf_adopted_request_get_user_id(cur_req)) continue;
+
+      from_n = inf_adopted_state_vector_get(vector, user_id);
+      to_n = inf_adopted_state_vector_get(to, user_id);
+      g_assert(from_n <= to_n);
+
+      if(from_n == to_n) continue;
+
+      log = inf_adopted_user_get_request_log(user);
+      g_assert(from_n >= inf_adopted_request_log_get_begin(log));
+      g_assert(to_n <= inf_adopted_request_log_get_end(log));
+
+      index = inf_adopted_request_log_get_request(log, from_n);
+      associated = inf_adopted_request_log_next_associated(log, index);
+      if(associated != NULL &&
+         inf_adopted_request_get_index(associated) < to_n)
+      {
+        next_req = inf_adopted_request_fold(
+          cur_req,
+          user_id,
+          inf_adopted_request_get_index(associated) - from_n + 1
+        );
+
+        break;
+      }
+      else
+      {
+        /* Cannot fold, so transform, if possible */
+        associated = inf_adopted_request_log_original_request(log, index);
+        associated_vector = inf_adopted_request_get_vector(associated);
+        if(inf_adopted_state_vector_causally_before(associated_vector, vector))
+        {
+          translated = inf_adopted_algorithm_translate_request(
+            algorithm,
+            associated,
+            vector
+          );
+
+          next_req = inf_adopted_algorithm_transform_request(
+            algorithm,
+            cur_req,
+            translated,
+            vector
+          );
+
+          g_object_unref(translated);
+          break;
+        }
+      }
+    }
+
+    /* Late Mirror, only if no transformations or folds possible */
+    if(next_req == NULL)
+    {
+      user_id = inf_adopted_request_get_user_id(cur_req);
+      user = INF_ADOPTED_USER(
+        inf_user_table_lookup_user_by_id(priv->user_table, user_id)
+      );
+
+      log = inf_adopted_user_get_request_log(user);
+      from_n = inf_adopted_request_get_index(cur_req);
+      to_n = inf_adopted_state_vector_get(to, user_id);
+      index = inf_adopted_request_log_get_request(log, from_n);
+      associated = inf_adopted_request_log_next_associated(log, index);
+
+      /* The last request might not be in the request log yet, so fetch
+       * the index from the log endpoint. */
+      if(associated == NULL)
+      {
+        if(inf_adopted_request_get_request_type(index) == INF_ADOPTED_REQUEST_UNDO)
+        {
+          if(inf_adopted_request_log_next_redo(log) == index)
+            associated_index = to_n;
+          else
+            associated_index = G_MAXUINT;
+        }
+        else
+        {
+          if(inf_adopted_request_log_next_undo(log) == index)
+            associated_index = to_n;
+          else
+            associated_index = G_MAXUINT;
+        }
+      }
+      else
+      {
+        associated_index = inf_adopted_request_get_index(associated);
+      }
+
+      if(associated_index != G_MAXUINT && associated_index <= to_n)
+      {
+        next_req = inf_adopted_request_mirror(
+          cur_req,
+          associated_index - from_n
+        );
+      }
+    }
+
+    g_assert(next_req != NULL);
+
+    g_object_unref(cur_req);
+    cur_req = next_req;
+    vector = inf_adopted_request_get_vector(cur_req);
+  }
+
+  return cur_req;
 }
 
 /* This should only ever be called by
@@ -1429,6 +1583,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   /* Adjust vector time for Undo/Redo operations because they only depend on
    * their original operation. */
+#ifndef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
   if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
   {
     original = inf_adopted_request_log_original_request(log, request);
@@ -1477,12 +1632,28 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     log_request = request;
     g_object_ref(log_request);
   }
+#else
+  log_request = request;
+  g_object_ref(log_request);
+#endif
+
+  g_assert(
+    inf_adopted_request_get_request_type(
+      inf_adopted_request_log_original_request(log, request)
+    ) == INF_ADOPTED_REQUEST_DO
+  );
 
   translated = inf_adopted_algorithm_translate_request(
     algorithm,
+#ifdef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
+    inf_adopted_request_log_original_request(log, request),
+#else
     log_request,
+#endif
     priv->current
   );
+
+  g_assert(inf_adopted_request_get_request_type(translated) == INF_ADOPTED_REQUEST_DO);
 
   inf_signal_handlers_block_by_func(
     G_OBJECT(priv->buffer),
@@ -2236,7 +2407,13 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     }
   }
 
+#ifdef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
+  /* New algorithm */
+  result = inf_adopted_algorithm_translate_request_forward(
+#else
+  /* Old algorithm -- incorrect, fails test-55.xml */
   result = inf_adopted_algorithm_translate_request_nocache(
+#endif
     algorithm,
     request,
     to
