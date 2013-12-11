@@ -590,15 +590,20 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
         }
         else if(filetype == F_REG)
         {
-          /* The note type identifier is behind the last '.' */
-          separator = g_strrstr_len(converted_name, name_len, ".");
-          if(separator != NULL)
+          if(!g_str_has_suffix(converted_name, ".xml.acl") &&
+             strcmp(converted_name, "accounts.xml") != 0 &&
+             strcmp(converted_name, "global-acl.xml") != 0)
           {
-            *separator = '\0';
-            list = g_slist_prepend(
-              list,
-              infd_storage_node_new_note(converted_name, separator + 1)
-            );
+            /* The note type identifier is behind the last '.' */
+            separator = g_strrstr_len(converted_name, name_len, ".");
+            if(separator != NULL)
+            {
+              *separator = '\0';
+              list = g_slist_prepend(
+                list,
+                infd_storage_node_new_note(converted_name, separator + 1)
+              );
+            }
           }
         }
       }
@@ -644,15 +649,20 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
       }
       else if(g_file_test(file_path, G_FILE_TEST_IS_REGULAR))
       {
-        /* The note type identifier is behind the last '.' */
-        separator = g_strrstr_len(converted_name, name_len, ".");
-        if(separator != NULL)
+        if(!g_str_has_suffix(converted_name, ".xml.acl") &&
+           strcmp(converted_name, "accounts.xml") != 0 &&
+           strcmp(converted_name, "global-acl.xml") != 0)
         {
-          *separator = '\0';
-          list = g_slist_prepend(
-            list,
-            infd_storage_node_new_note(converted_name, separator + 1)
-          );
+          /* The note type identifier is behind the last '.' */
+          separator = g_strrstr_len(converted_name, name_len, ".");
+          if(separator != NULL)
+          {
+            *separator = '\0';
+            list = g_slist_prepend(
+              list,
+              infd_storage_node_new_note(converted_name, separator + 1)
+            );
+          }
         }
       }
 
