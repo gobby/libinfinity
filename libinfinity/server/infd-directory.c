@@ -1764,7 +1764,7 @@ infd_directory_node_new_common(InfdDirectory* directory,
 
   if(sheet_set != NULL)
   {
-    inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
+    node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
     if(write_acl == TRUE)
       infd_directory_write_acl(directory, node);
   }
