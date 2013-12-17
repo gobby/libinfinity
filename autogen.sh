@@ -2,24 +2,24 @@
 # Run this to generate all the initial makefiles, etc.
 
 #name of package
-PKG_NAME=${PKG_NAME:-Package}
-srcdir=${srcdir:-.}
+test "$PKG_NAME" || PKG_NAME=Package
+test "$srcdir" || srcdir=.
 
 # default version requirements ...
-REQUIRED_AUTOCONF_VERSION=${REQUIRED_AUTOCONF_VERSION:-2.53}
-REQUIRED_AUTOMAKE_VERSION=${REQUIRED_AUTOMAKE_VERSION:-1.9}
-REQUIRED_LIBTOOL_VERSION=${REQUIRED_LIBTOOL_VERSION:-1.4.3}
-REQUIRED_GETTEXT_VERSION=${REQUIRED_GETTEXT_VERSION:-0.10.40}
-REQUIRED_GLIB_GETTEXT_VERSION=${REQUIRED_GLIB_GETTEXT_VERSION:-2.2.0}
-REQUIRED_INTLTOOL_VERSION=${REQUIRED_INTLTOOL_VERSION:-0.25}
-REQUIRED_PKG_CONFIG_VERSION=${REQUIRED_PKG_CONFIG_VERSION:-0.14.0}
-REQUIRED_GTK_DOC_VERSION=${REQUIRED_GTK_DOC_VERSION:-1.0}
-REQUIRED_DOC_COMMON_VERSION=${REQUIRED_DOC_COMMON_VERSION:-2.3.0}
-REQUIRED_GNOME_DOC_UTILS_VERSION=${REQUIRED_GNOME_DOC_UTILS_VERSION:-0.4.2}
+test "$REQUIRED_AUTOCONF_VERSION" || REQUIRED_AUTOCONF_VERSION=2.53
+test "$REQUIRED_AUTOMAKE_VERSION" || REQUIRED_AUTOMAKE_VERSION=1.9
+test "$REQUIRED_LIBTOOL_VERSION" || REQUIRED_LIBTOOL_VERSION=1.5
+test "$REQUIRED_GETTEXT_VERSION" || REQUIRED_GETTEXT_VERSION=0.12
+test "$REQUIRED_GLIB_GETTEXT_VERSION" || REQUIRED_GLIB_GETTEXT_VERSION=2.2.0
+test "$REQUIRED_INTLTOOL_VERSION" || REQUIRED_INTLTOOL_VERSION=0.30
+test "$REQUIRED_PKG_CONFIG_VERSION" || REQUIRED_PKG_CONFIG_VERSION=0.14.0
+test "$REQUIRED_GTK_DOC_VERSION" || REQUIRED_GTK_DOC_VERSION=1.0
+test "$REQUIRED_DOC_COMMON_VERSION" || REQUIRED_DOC_COMMON_VERSION=2.3.0
+test "$REQUIRED_GNOME_DOC_UTILS_VERSION" || REQUIRED_GNOME_DOC_UTILS_VERSION=0.4.2
 
 # a list of required m4 macros.  Package can set an initial value
-REQUIRED_M4MACROS=${REQUIRED_M4MACROS:-}
-FORBIDDEN_M4MACROS=${FORBIDDEN_M4MACROS:-}
+test "$REQUIRED_M4MACROS" || REQUIRED_M4MACROS=
+test "$FORBIDDEN_M4MACROS" || FORBIDDEN_M4MACROS=
 
 # Not all echo versions allow -n, so we check what is possible. This test is
 # based on the one in autoconf.
@@ -36,8 +36,13 @@ case `echo -n x` in
 esac
 
 # some terminal codes ...
-boldface="`tput bold 2>/dev/null`"
-normal="`tput sgr0 2>/dev/null`"
+if tty < /dev/null 1>/dev/null 2>&1; then
+    boldface="`tput bold 2>/dev/null`"
+    normal="`tput sgr0 2>/dev/null`"
+else
+    boldface=
+    normal=
+fi
 printbold() {
     echo $ECHO_N "$boldface" $ECHO_C
     echo "$@"
@@ -169,7 +174,8 @@ check_m4macros() {
     # but it contains only Automake's own macros, so we can ignore it.
 
     # Read the dirlist file, supported by Automake >= 1.7.
-    if compare_versions 1.7 $AUTOMAKE_VERSION && [ -s $cm_macrodirs/dirlist ]; then
+    # If AUTOMAKE was defined, no version was detected.
+    if [ -z "$AUTOMAKE_VERSION" ] || compare_versions 1.7 $AUTOMAKE_VERSION && [ -s $cm_macrodirs/dirlist ]; then
 	cm_dirlist=`sed 's/[ 	]*#.*//;/^$/d' $cm_macrodirs/dirlist`
 	if [ -n "$cm_dirlist" ] ; then
 	    for cm_dir in $cm_dirlist; do
@@ -259,7 +265,30 @@ want_gtk_doc=false
 want_gnome_doc_utils=false
 want_maintainer_mode=false
 
-configure_files="`find $srcdir -name '{arch}' -prune -o -name '_darcs' -prune -o -name '.??*' -prune -o -name configure.ac -print -o -name configure.in -print`"
+#tell Mandrake autoconf wrapper we want autoconf 2.5x, not 2.13
+WANT_AUTOCONF_2_5=1
+export WANT_AUTOCONF_2_5
+version_check autoconf AUTOCONF 'autoconf2.50 autoconf autoconf-2.53' $REQUIRED_AUTOCONF_VERSION \
+    "http://ftp.gnu.org/pub/gnu/autoconf/autoconf-$REQUIRED_AUTOCONF_VERSION.tar.gz"
+AUTOHEADER=`echo $AUTOCONF | sed s/autoconf/autoheader/`
+
+find_configure_files() {
+    configure_ac=
+    if test -f "$1/configure.ac"; then
+	configure_ac="$1/configure.ac"
+    elif test -f "$1/configure.in"; then
+	configure_ac="$1/configure.in"
+    fi
+    if test "x$configure_ac" != x; then
+	echo "$configure_ac"
+	$AUTOCONF -t 'AC_CONFIG_SUBDIRS:$1' "$configure_ac" | while read dir; do
+	    find_configure_files "$1/$dir"
+	done
+    fi
+}
+
+configure_files="`find_configure_files $srcdir`"
+
 for configure_ac in $configure_files; do
     dirname=`dirname $configure_ac`
     if [ -f $dirname/NO-AUTO-GEN ]; then
@@ -295,6 +324,10 @@ for configure_ac in $configure_files; do
 	want_maintainer_mode=true
     fi
 
+    if grep "^YELP_HELP_INIT" $configure_ac >/dev/null; then
+        require_m4macro yelp.m4
+    fi
+
     # check to make sure gnome-common macros can be found ...
     if grep "^GNOME_COMMON_INIT" $configure_ac >/dev/null ||
        grep "^GNOME_DEBUG_CHECK" $configure_ac >/dev/null ||
@@ -305,24 +338,22 @@ for configure_ac in $configure_files; do
        grep "^GNOME_CXX_WARNINGS" $configure_ac >/dev/null; then
         require_m4macro gnome-compiler-flags.m4
     fi
+    if grep "^GNOME_CODE_COVERAGE" $configure_ac >/dev/null; then
+        require_m4macro gnome-code-coverage.m4
+    fi
 done
-
-#tell Mandrake autoconf wrapper we want autoconf 2.5x, not 2.13
-WANT_AUTOCONF_2_5=1
-export WANT_AUTOCONF_2_5
-version_check autoconf AUTOCONF 'autoconf2.50 autoconf autoconf-2.53' $REQUIRED_AUTOCONF_VERSION \
-    "http://ftp.gnu.org/pub/gnu/autoconf/autoconf-$REQUIRED_AUTOCONF_VERSION.tar.gz"
-AUTOHEADER=`echo $AUTOCONF | sed s/autoconf/autoheader/`
 
 case $REQUIRED_AUTOMAKE_VERSION in
     1.4*) automake_progs="automake-1.4" ;;
-    1.5*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6 automake-1.5" ;;
-    1.6*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6" ;;
-    1.7*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7" ;;
-    1.8*) automake_progs="automake-1.11 automake-1.10 automake-1.9 automake-1.8" ;;
-    1.9*) automake_progs="automake-1.11 automake-1.10 automake-1.9" ;;
-    1.10*) automake_progs="automake-1.11 automake-1.10" ;;
-    1.11*) automake_progs="automake-1.11" ;;
+    1.5*) automake_progs="automake-1.13 automake-1.12 automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6 automake-1.5" ;;
+    1.6*) automake_progs="automake-1.13 automake-1.12 automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7 automake-1.6" ;;
+    1.7*) automake_progs="automake-1.13 automake-1.12 automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7" ;;
+    1.8*) automake_progs="automake-1.13 automake-1.12 automake-1.11 automake-1.10 automake-1.9 automake-1.8" ;;
+    1.9*) automake_progs="automake-1.13 automake-1.12 automake-1.11 automake-1.10 automake-1.9" ;;
+    1.10*) automake_progs="automake-1.13 automake-1.12 automake-1.11 automake-1.10" ;;
+    1.11*) automake_progs="automake-1.13 automake-1.12 automake-1.11" ;;
+    1.12*) automake_progs="automake-1.13 automake-1.12" ;;
+    1.13*) automake_progs="automake-1.13" ;;
 esac
 version_check automake AUTOMAKE "$automake_progs" $REQUIRED_AUTOMAKE_VERSION \
     "http://ftp.gnu.org/pub/gnu/automake/automake-$REQUIRED_AUTOMAKE_VERSION.tar.gz"
@@ -474,7 +505,7 @@ for configure_ac in $configure_files; do
           cp -pf INSTALL INSTALL.autogen_bak
         fi
 	if [ $REQUIRED_AUTOMAKE_VERSION != 1.4 ]; then
-	    $AUTOMAKE --gnu --add-missing --force --copy -Wno-portability || exit 1
+	    $AUTOMAKE --gnu --add-missing --copy -Wno-portability || exit 1
 	else
 	    $AUTOMAKE --gnu --add-missing --copy || exit 1
 	fi

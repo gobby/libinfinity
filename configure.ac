@@ -38,6 +38,7 @@ AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+AM_PROG_AR
 AC_PROG_LIBTOOL
 
 # Seems to be required for building a binary from multiple source files
