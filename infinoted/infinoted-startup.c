@@ -266,12 +266,12 @@ infinoted_startup_load_options(InfinotedStartup* startup,
 
   config_files = g_malloc( (n_system_config_dirs + 2) * sizeof(gchar*));
   config_files[n_system_config_dirs + 1] = NULL;
-  config_files[n_system_config_dirs] =
+  config_files[0] =
     g_build_filename(user_config_dir, "infinoted.conf", NULL);
 
   for(i = 0; i < n_system_config_dirs; ++ i)
   {
-    config_files[n_system_config_dirs - i - 1] =
+    config_files[i + 1] =
       g_build_filename(system_config_dirs[i], "infinoted.conf", NULL);
   }
 

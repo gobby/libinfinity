@@ -45,6 +45,7 @@ struct _InfinotedRun {
   InfStandaloneIo* io;
   InfdDirectory* directory;
   InfdServerPool* pool;
+
   InfinotedAutosave* autosave;
   InfinotedDirectorySync* dsync;
   InfinotedTransformationProtector* protector;
