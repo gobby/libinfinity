@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include <infinoted/infinoted-options.h>
+#include <infinoted/infinoted-parameter.h>
 #include <infinoted/infinoted-util.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/common/inf-protocol.h>
@@ -36,274 +37,21 @@
 
 static const gchar INFINOTED_OPTIONS_GROUP[] = "infinoted";
 
-/* TODO: Split the functionality to load key files as options into a separate
- * file, and make it public, so it can be used by plugins. Suggested name:
- * InfinotedParameter. Everything that has to do with command line parsing
- * and actual InfinotedOptions dependence stays here then. */
-
-typedef enum _InfinotedOptionsEntryType {
-  INFINOTED_OPTIONS_ENTRY_INT,
-  INFINOTED_OPTIONS_ENTRY_STRING,
-  INFINOTED_OPTIONS_ENTRY_STRING_LIST
-} InfinotedOptionsEntryType;
-
-/* One value for an option, as it comes either from the command line or the
- * configuration file. The conversion function (see below) transforms this into
- * the actual target type. */
-typedef union _InfinotedOptionsValue InfinotedOptionsValue;
-union _InfinotedOptionsValue {
-  int number;
-  gchar* str;
-  gchar** strv;
-};
-
-typedef struct _InfinotedOptionsTypedValue InfinotedOptionsTypedValue;
-struct _InfinotedOptionsTypedValue {
-  InfinotedOptionsEntryType type;
-  InfinotedOptionsValue value;
-};
-
-typedef struct _InfinotedOptionsEntry InfinotedOptionsEntry;
-struct _InfinotedOptionsEntry {
-  const char* name;
-  InfinotedOptionsEntryType type;
-  size_t offset;
-
-  /* The conversion function validates and converts the value read from the
-   * key file into the target field inside the InfinotedOptions structure. */
-  gboolean(*convert)(gpointer out, gpointer in, GError** error);
-
-  /* The following three options are only used for commandline option parsing,
-   * but not for reading the option value from a configuration file. */
-  char short_name;
-  const char* description;
-  const char* arg_description;
-};
-
-static InfinotedOptionsTypedValue*
-infinoted_options_typed_value_new(void)
-{
-  return g_slice_new(InfinotedOptionsTypedValue);
-}
-
-static void
-infinoted_options_typed_value_free(gpointer data)
-{
-  InfinotedOptionsTypedValue* val;
-  val = (InfinotedOptionsTypedValue*)data;
-
-  switch(val->type)
-  {
-  case INFINOTED_OPTIONS_ENTRY_INT:
-    break;
-  case INFINOTED_OPTIONS_ENTRY_STRING:
-    g_free(val->value.str);
-    break;
-  case INFINOTED_OPTIONS_ENTRY_STRING_LIST:
-    g_strfreev(val->value.strv);
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  g_slice_free(InfinotedOptionsTypedValue, val);
-}
-
-static gboolean
-infinoted_options_convert_string(gpointer out,
-                                 gpointer in,
-                                 GError** error)
-{
-  gchar** out_str;
-  gchar** in_str;
-
-  out_str = (gchar**)out;
-  in_str = (gchar**)in;
-
-  /* free previous entry */
-  g_free(*out_str);
-  /* set new value */
-  *out_str = *in_str;
-  /* reset old value, to avoid it being freed */
-  *in_str = NULL;
-
-  /* Set empty strings to NULL */
-  if(*out_str != NULL && **out_str == '\0')
-  {
-    g_free(*out_str);
-    *out_str = NULL;
-  }
-
-  return TRUE;
-}
-
-static gboolean
-infinoted_options_convert_string_list(gpointer out,
-                                      gpointer in,
-                                      GError** error)
-{
-  gchar*** out_str;
-  gchar*** in_str;
-
-  out_str = (gchar***)out;
-  in_str = (gchar***)in;
-
-  /* free previous entry */
-  g_strfreev(*out_str);
-  /* set new value */
-  *out_str = *in_str;
-  /* reset old value, to avoid it being freed */
-  *in_str = NULL;
-
-  /* Set empty string lists, or a string list with only one empty string,
-   * to NULL. */
-  if(*out_str != NULL)
-  {
-    if( (*out_str)[0] != NULL)
-    {
-      if(*(*out_str)[0] == '\0' && (*out_str)[1] == NULL)
-      {
-        g_free( (*out_str)[0]);
-        (*out_str)[0] = NULL;
-      }
-    }
-
-    if( (*out_str)[0] == NULL)
-    {
-      g_free(*out_str);
-      *out_str = NULL;
-    }
-  }
-
-  return TRUE;
-}
-
-static gboolean
-infinoted_options_convert_filename(gpointer out,
-                                   gpointer in,
-                                   GError** error)
-{
-  gchar** out_str;
-  gchar** in_str;
-
-  out_str = (gchar**)out;
-  in_str = (gchar**)in;
-
-  *out_str = NULL;
-  if(*in_str != NULL && **in_str != '\0')
-    *out_str = g_filename_from_utf8(*in_str, -1, NULL, NULL, error);
-
-  return TRUE;
-}
-
-static gboolean
-infinoted_options_convert_port(gpointer out,
-                               gpointer in,
-                               GError** error)
-{
-  int number;
-  number = *(gint*)in;
-
-  if(number <= 0 || number > 0xffff)
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_PORT,
-      _("\"%d\" is not a valid port number. Port numbers range from "
-        "1 to 65535"),
-      number
-    );
-
-    return FALSE;
-  }
-
-  *(guint*)out = number;
-  return TRUE;
-}
-
-static gboolean
-infinoted_options_convert_interval(gpointer out,
-                                   gpointer in,
-                                   GError** error)
-{
-  int number;
-  number = *(gint*)in;
-
-  if(number < 0)
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_INTERVAL,
-      "%s",
-      _("Interval must not be negative")
-    );
-
-    return FALSE;
-  }
-
-  *(guint*)out = number;
-  return TRUE;
-}
-
-static gboolean
-infinoted_options_convert_security_policy(gpointer out,
-                                          gpointer in,
-                                          GError** error)
-{
-  gchar** in_str;
-  InfXmppConnectionSecurityPolicy* out_val;
-
-  in_str = (gchar**)in;
-  out_val = (InfXmppConnectionSecurityPolicy*)out;
-
-  if(strcmp(*in_str, "no-tls") == 0)
-  {
-    *out_val = INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED;
-    return TRUE;
-  }
-  else if(strcmp(*in_str, "allow-tls") == 0)
-  {
-    *out_val = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
-    return TRUE;
-  }
-  else if(strcmp(*in_str, "require-tls") == 0)
-  {
-    *out_val = INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
-    return TRUE;
-  }
-  else
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_SECURITY_POLICY,
-      _("\"%s\" is not a valid security policy. Allowed values are "
-        "\"no-tls\", \"allow-tls\" or \"require-tls\""),
-      *in_str
-    );
-
-    return FALSE;
-  }
-}
-
-const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
+const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   {
     "log-file",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, log_path),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     'l',
     N_("If set, write the server log to the given file, "
        "in addition to stdout"),
     N_("LOG-FILE")
   }, {
     "key-file",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, key_file),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     'k',
     N_("Path to the server's private key. Must be the key with which the "
        "given certificate was signed. Not needed when security-policy is "
@@ -311,18 +59,18 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("KEY-FILE")
   }, {
     "certificate-file",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, certificate_file),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     'c',
     N_("Path to the server's certificate. Must be signed with the given key "
        "file. Not needed when security-policy is set to \"no-tls\"."),
     N_("CERT-FILE"),
   }, {
     "certificate-chain",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, certificate_chain_file),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     0,
     N_("Optional file which contains the issuer certificate of the server "
        "certificate, and the issuer's issuer, and so on. This option can be "
@@ -333,17 +81,17 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("CERT-FILE")
   }, {
     "port",
-    INFINOTED_OPTIONS_ENTRY_INT,
+    INFINOTED_PARAMETER_INT,
     offsetof(InfinotedOptions, port),
-    infinoted_options_convert_port,
+    infinoted_parameter_convert_port,
     'p',
     N_("The TCP port number to listen on."),
     N_("PORT")
   }, {
     "security-policy",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, security_policy),
-    infinoted_options_convert_security_policy,
+    infinoted_parameter_convert_security_policy,
     0,
     N_("Whether to use Transport Layer Security (TLS) or not. Allowed "
        "values are \"no-tls\", \"allow-tls\" or \"require-tls\". When "
@@ -356,9 +104,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("no-tls|allow-tls|require-tls")
   }, {
     "root-directory",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, root_directory),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     'r',
     N_("The directory which infinoted uses to permanantly store all "
        "documents on the server, and where they are read from after a "
@@ -366,17 +114,17 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("DIRECTORY")
   }, {
     "autosave-hook", 
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, autosave_hook),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     0,
     N_("Command to run after having saved a document"),
     N_("PROGRAM")
   }, {
     "autosave-interval",
-    INFINOTED_OPTIONS_ENTRY_INT,
+    INFINOTED_PARAMETER_INT,
     offsetof(InfinotedOptions, autosave_interval),
-    infinoted_options_convert_interval,
+    infinoted_parameter_convert_interval,
     0,
     N_("Interval, in seconds, after which to save documents into the root "
        "directory. An interval of 0 disables autosave. In this case "
@@ -385,9 +133,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("INTERVAL")
   }, {
     "password",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, password),
-    infinoted_options_convert_string,
+    infinoted_parameter_convert_string,
     'P',
     N_("If set, require clients to enter a password before being allowed "
        "to connect to the server. This option cannot be combined with "
@@ -396,9 +144,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
 #ifdef LIBINFINITY_HAVE_PAM
   }, {
     "pam-service",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, pam_service),
-    infinoted_options_convert_string,
+    infinoted_parameter_convert_string,
     0,
     N_("Authenticate clients using the given PAM service. This option cannot "
        "be combined with --password. Clients are requested to send their "
@@ -407,9 +155,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("SERVICE")
   }, {
     "pam-allow-user",
-    INFINOTED_OPTIONS_ENTRY_STRING_LIST,
+    INFINOTED_PARAMETER_STRING_LIST,
     offsetof(InfinotedOptions, pam_allowed_users),
-    infinoted_options_convert_string_list,
+    infinoted_parameter_convert_string_list,
     0,
     N_("If set, only the given username is allowed to connect to the "
        "server. This option can be given multiple times to allow multiple "
@@ -417,9 +165,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("USER")
   }, {
     "pam-allow-group",
-    INFINOTED_OPTIONS_ENTRY_STRING_LIST,
+    INFINOTED_PARAMETER_STRING_LIST,
     offsetof(InfinotedOptions, pam_allowed_groups),
-    infinoted_options_convert_string_list,
+    infinoted_parameter_convert_string_list,
     0,
     N_("If set, only users belonging to the given group are allowed to "
        "connect to the server. This option can be given multiple times to "
@@ -428,18 +176,18 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
 #endif
   }, {
     "ca-list-file",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, ca_list_file),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     0,
     N_("If set, require clients to authenticate themselves by showing a "
        "client certificate issued by one of the CAs from this file."),
     N_("CA-FILE"),
   }, {
     "sync-directory",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, sync_directory),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     0,
     N_("A directory, into which to periodically store a copy of the document "
        "tree in plain text, without any infinote metadata such as which user "
@@ -451,9 +199,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("DIRECTORY"),
   }, {
     "sync-interval",
-    INFINOTED_OPTIONS_ENTRY_INT,
+    INFINOTED_PARAMETER_INT,
     offsetof(InfinotedOptions, sync_interval),
-    infinoted_options_convert_interval,
+    infinoted_parameter_convert_interval,
     0,
     N_("Interval, in seconds, within which to store documents to the "
        "specified sync-directory. If the interval is 0, document "
@@ -461,18 +209,18 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("INTERVAL")
   }, {
     "sync-hook",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, sync_hook),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     0,
     N_("Command to run every time a copy of a document has been saved "
        "into the sync-directory."),
     N_("PROGRAM")
   }, {
     "max-transformation-vdiff",
-    INFINOTED_OPTIONS_ENTRY_INT,
+    INFINOTED_PARAMETER_INT,
     offsetof(InfinotedOptions, max_transformation_vdiff),
-    infinoted_options_convert_interval,
+    infinoted_parameter_convert_interval,
     0,
     N_("Maximum number of transformations allowed for one request. If "
        "processing a request would exceed this number of transformations, "
@@ -483,9 +231,9 @@ const InfinotedOptionsEntry INFINOTED_OPTIONS[] = {
     N_("TRANSFORMATIONS")
   }, {
     "traffic-log-directory",
-    INFINOTED_OPTIONS_ENTRY_STRING,
+    INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, traffic_log_directory),
-    infinoted_options_convert_filename,
+    infinoted_parameter_convert_filename,
     0,
     N_("A directory into which to store the (decrypted) network traffic "
        "between the server and the clients, with one file for each "
@@ -665,125 +413,6 @@ infinoted_options_validate(InfinotedOptions* options,
   return TRUE;
 }
 
-static gboolean
-infinoted_options_read_entry_from_keyfile(GKeyFile* key_file,
-                                          const InfinotedOptionsEntry* entry,
-                                          gpointer base,
-                                          GError** error)
-{
-  GError* local_error;
-  InfinotedOptionsValue v;
-  gpointer in;
-  gpointer out;
-
-  local_error = NULL;
-
-  switch(entry->type)
-  {
-  case INFINOTED_OPTIONS_ENTRY_INT:
-    v.number = g_key_file_get_integer(
-      key_file,
-      INFINOTED_OPTIONS_GROUP,
-      entry->name,
-      &local_error
-    );
-
-    in = &v.number;
-    break;
-  case INFINOTED_OPTIONS_ENTRY_STRING:
-    v.str = g_key_file_get_string(
-      key_file,
-      INFINOTED_OPTIONS_GROUP,
-      entry->name,
-      &local_error
-    );
-
-    in = &v.str;
-    break;
-  case INFINOTED_OPTIONS_ENTRY_STRING_LIST:
-    v.strv = g_key_file_get_string_list(
-      key_file,
-      INFINOTED_OPTIONS_GROUP,
-      entry->name,
-      NULL,
-      &local_error
-    );
-
-    in = &v.strv;
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  if(local_error != NULL)
-  {
-    if(local_error->domain == G_KEY_FILE_ERROR &&
-       (local_error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND ||
-        local_error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND))
-    {
-      /* keep default value */
-      g_error_free(local_error);
-      return TRUE;
-    }
-
-    g_propagate_error(error, local_error);
-    return FALSE;
-  }
-  else
-  {
-    out = (char*)base + entry->offset;
-    entry->convert(out, in, &local_error);
-
-    switch(entry->type)
-    {
-    case INFINOTED_OPTIONS_ENTRY_INT:
-      break;
-    case INFINOTED_OPTIONS_ENTRY_STRING:
-      g_free(v.str);
-      break;
-    case INFINOTED_OPTIONS_ENTRY_STRING_LIST:
-      g_strfreev(v.strv);
-      break;
-    default:
-      g_assert_not_reached();
-      break;
-    }
-
-    if(local_error != NULL)
-    {
-      g_propagate_error(error, local_error);
-      return FALSE;
-    }
-
-    return TRUE;
-  }
-}
-
-static gboolean
-infinoted_options_load_key_file(InfinotedOptions* options,
-                                GKeyFile* key_file,
-                                GError** error)
-{
-  const InfinotedOptionsEntry* entry;
-  gboolean retval;
-
-  for(entry = INFINOTED_OPTIONS; entry->name != NULL; ++entry)
-  {
-    retval = infinoted_options_read_entry_from_keyfile(
-      key_file,
-      entry,
-      options,
-      error
-    );
-
-    if(!retval)
-      return FALSE;
-  }
-
-  return TRUE;
-}
-
 static GKeyFile*
 infinoted_options_read_config_into_keyfile(const gchar* const* files,
                                            gboolean ignore_nonexisting_files,
@@ -835,10 +464,10 @@ infinoted_options_parse_arg_func(const gchar* option_name,
                                  gpointer data,
                                  GError** error)
 {
-  const InfinotedOptionsEntry* entry;
+  const InfinotedParameterInfo* info;
   GHashTable* options;
 
-  InfinotedOptionsTypedValue* optval;
+  InfinotedParameterTypedValue* optval;
 
   long l_val;
   char* endptr;
@@ -852,23 +481,23 @@ infinoted_options_parse_arg_func(const gchar* option_name,
   g_assert(option_name[0] == '-');
   if(option_name[1] == '-')
   {
-    for(entry = INFINOTED_OPTIONS; entry->name != NULL; ++entry)
-      if(strcmp(entry->name, option_name + 2) == 0)
+    for(info = INFINOTED_OPTIONS; info->name != NULL; ++info)
+      if(strcmp(info->name, option_name + 2) == 0)
         break;
   }
   else
   {
-    for(entry = INFINOTED_OPTIONS; entry->name != NULL; ++entry)
-      if(entry->short_name == option_name[1])
+    for(info = INFINOTED_OPTIONS; info->name != NULL; ++info)
+      if(info->short_name == option_name[1])
         break;
   }
 
-  g_assert(entry->name != NULL);
+  g_assert(info->name != NULL);
 
-  switch(entry->type)
+  switch(info->type)
   {
-  case INFINOTED_OPTIONS_ENTRY_INT:
-    if(g_hash_table_lookup(options, entry) != NULL)
+  case INFINOTED_PARAMETER_INT:
+    if(g_hash_table_lookup(options, info) != NULL)
     {
       g_set_error(
         error,
@@ -934,15 +563,15 @@ infinoted_options_parse_arg_func(const gchar* option_name,
     }
     else
     {
-      optval = infinoted_options_typed_value_new();
-      optval->type = INFINOTED_OPTIONS_ENTRY_INT;
+      optval = infinoted_parameter_typed_value_new();
+      optval->type = INFINOTED_PARAMETER_INT;
       optval->value.number = l_val;
-      g_hash_table_insert(options, (gpointer)entry, optval);
+      g_hash_table_insert(options, (gpointer)info, optval);
     }
 
     return TRUE;
-  case INFINOTED_OPTIONS_ENTRY_STRING:
-    if(g_hash_table_lookup(options, (gpointer)entry) != NULL)
+  case INFINOTED_PARAMETER_STRING:
+    if(g_hash_table_lookup(options, info) != NULL)
     {
       g_set_error(
         error,
@@ -955,26 +584,26 @@ infinoted_options_parse_arg_func(const gchar* option_name,
       return FALSE;
     }
 
-    optval = infinoted_options_typed_value_new();
-    optval->type = INFINOTED_OPTIONS_ENTRY_STRING;
+    optval = infinoted_parameter_typed_value_new();
+    optval->type = INFINOTED_PARAMETER_STRING;
     optval->value.str = g_strdup(value);
-    g_hash_table_insert(options, (gpointer)entry, optval);
+    g_hash_table_insert(options, (gpointer)info, optval);
 
     return TRUE;
-  case INFINOTED_OPTIONS_ENTRY_STRING_LIST:
-    optval = g_hash_table_lookup(options, entry);
+  case INFINOTED_PARAMETER_STRING_LIST:
+    optval = g_hash_table_lookup(options, info);
     if(optval == NULL)
     {
-      optval = infinoted_options_typed_value_new();
-      optval->type = INFINOTED_OPTIONS_ENTRY_STRING_LIST;
+      optval = infinoted_parameter_typed_value_new();
+      optval->type = INFINOTED_PARAMETER_STRING_LIST;
       optval->value.strv = g_malloc(2 * sizeof(gchar*));
       optval->value.strv[0] = g_strdup(value);
       optval->value.strv[1] = NULL;
-      g_hash_table_insert(options, (gpointer)entry, optval);
+      g_hash_table_insert(options, (gpointer)info, optval);
     }
     else
     {
-      g_assert(optval->type == INFINOTED_OPTIONS_ENTRY_STRING_LIST);
+      g_assert(optval->type == INFINOTED_PARAMETER_STRING_LIST);
 
       n_strs = 0;
       for(str = optval->value.strv; *str != NULL; ++str)
@@ -1001,40 +630,40 @@ infinoted_options_args_to_keyfile_foreach_func(gpointer key,
                                                gpointer value,
                                                gpointer user_data)
 {
-  const InfinotedOptionsEntry* entry;
-  const InfinotedOptionsTypedValue* optval;
+  const InfinotedParameterInfo* info;
+  const InfinotedParameterTypedValue* optval;
   GKeyFile* key_file;
 
   gchar* const* str;
   guint n_strs;
 
-  entry = (const InfinotedOptionsEntry*)key;
-  optval = (const InfinotedOptionsTypedValue*)value;
+  info = (const InfinotedParameterInfo*)key;
+  optval = (const InfinotedParameterTypedValue*)value;
   key_file = (GKeyFile*)user_data;
 
-  g_assert(entry->type == optval->type);
+  g_assert(info->type == optval->type);
 
-  switch(entry->type)
+  switch(info->type)
   {
-  case INFINOTED_OPTIONS_ENTRY_INT:
+  case INFINOTED_PARAMETER_INT:
     g_key_file_set_integer(
       key_file,
       INFINOTED_OPTIONS_GROUP,
-      entry->name,
+      info->name,
       optval->value.number
     );
 
     break;
-  case INFINOTED_OPTIONS_ENTRY_STRING:
+  case INFINOTED_PARAMETER_STRING:
     g_key_file_set_string(
       key_file,
       INFINOTED_OPTIONS_GROUP,
-      entry->name,
+      info->name,
       optval->value.str
     );
 
     break;
-  case INFINOTED_OPTIONS_ENTRY_STRING_LIST:
+  case INFINOTED_PARAMETER_STRING_LIST:
     n_strs = 0;
     for(str = optval->value.strv; *str != NULL; ++str)
       ++n_strs;
@@ -1042,7 +671,7 @@ infinoted_options_args_to_keyfile_foreach_func(gpointer key,
     g_key_file_set_string_list(
       key_file,
       INFINOTED_OPTIONS_GROUP,
-      entry->name,
+      info->name,
       (const gchar* const*)optval->value.strv,
       n_strs
     );
@@ -1071,7 +700,7 @@ infinoted_options_load(InfinotedOptions* options,
   GOptionContext *context;
   gchar* desc;
 
-  const InfinotedOptionsEntry* option;
+  const InfinotedParameterInfo* info;
 
   GOptionGroup* group;
   GOptionEntry* entries;
@@ -1080,6 +709,7 @@ infinoted_options_load(InfinotedOptions* options,
   GHashTable* cmdline_options;
 
   GKeyFile* key_file;
+  gboolean result;
 
   const GOptionEntry STATIC_ENTRIES[] = {
     { "config-file", 0, 0,
@@ -1134,15 +764,15 @@ infinoted_options_load(InfinotedOptions* options,
   entries = g_malloc(n_entries * sizeof(GOptionEntry));
 
   index = 0;
-  for(option = INFINOTED_OPTIONS; option->name != NULL; ++option)
+  for(info = INFINOTED_OPTIONS; info->name != NULL; ++info)
   {
-    entries[index].long_name = option->name;
-    entries[index].short_name = option->short_name;
+    entries[index].long_name = info->name;
+    entries[index].short_name = info->short_name;
     entries[index].flags = 0;
     entries[index].arg = G_OPTION_ARG_CALLBACK;
     entries[index].arg_data = infinoted_options_parse_arg_func;
-    entries[index].description = option->description;
-    entries[index].arg_description = option->arg_description;
+    entries[index].description = info->description;
+    entries[index].arg_description = info->arg_description;
     ++index;
   }
 
@@ -1162,7 +792,7 @@ infinoted_options_load(InfinotedOptions* options,
       NULL,
       NULL,
       NULL,
-      infinoted_options_typed_value_free
+      infinoted_parameter_typed_value_free
     );
 
     /* Note that we take ownership of the hash table ourselves */
@@ -1266,13 +896,18 @@ infinoted_options_load(InfinotedOptions* options,
   g_hash_table_unref(cmdline_options);
 
   /* Finally, load the key file into the actual options structure */
-  if(!infinoted_options_load_key_file(options, key_file, error))
-  {
-    g_key_file_free(key_file);
-    return FALSE;
-  }
+  result = infinoted_parameter_load_from_key_file(
+    INFINOTED_OPTIONS,
+    key_file,
+    INFINOTED_OPTIONS_GROUP,
+    options,
+    error
+  );
 
   g_key_file_free(key_file);
+  if(!result) return FALSE;
+
+  /* And validate the options, make sure they are consistent */
   return infinoted_options_validate(options, error);
 }
 
@@ -1375,7 +1010,7 @@ infinoted_options_free(InfinotedOptions* options)
 /**
  * infinoted_options_error_quark:
  *
- * Returns the GQuark for errors from the InfinotedOptions module.
+ * Returns the #GQuark for errors from the InfinotedOptions module.
  *
  * Returns: The error domain for the InfinotedOptions module.
  */
