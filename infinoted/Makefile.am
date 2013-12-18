@@ -31,6 +31,8 @@ libinfinoted_plugin_manager_0_6_la_LIBADD = \
 	$(infinity_LIBS)
 
 libinfinoted_plugin_manager_0_6_la_SOURCES = \
+	infinoted-parameter.h \
+	infinoted-parameter.c \
 	infinoted-plugin-manager.h \
 	infinoted-plugin-manager.c
 
@@ -63,7 +65,6 @@ infinoted_0_6_SOURCES = \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
 	infinoted-pam.c \
-	infinoted-parameter.c \
 	infinoted-record.c \
 	infinoted-run.c \
 	infinoted-signal.c \
@@ -81,7 +82,6 @@ noinst_HEADERS = \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-pam.h \
-	infinoted-parameter.h \
 	infinoted-record.h \
 	infinoted-run.h \
 	infinoted-signal.h \

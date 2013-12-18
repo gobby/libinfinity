@@ -264,7 +264,7 @@ static gboolean
 infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
                                      const gchar* plugin_path,
                                      const gchar* plugin_name,
-                                     const GKeyFile* options,
+                                     GKeyFile* key_file,
                                      GError** error)
 {
   gchar* plugin_basename;
@@ -324,9 +324,45 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
   instance->module = module;
   instance->plugin = plugin;
 
+  /* Call on_info_initialize, allowing the plugin to set default values */
+  if(plugin->on_info_initialize != NULL)
+    plugin->on_info_initialize(instance+1);
+
+  /* Next, parse options from keyfile */
+  if(plugin->options != NULL)
+  {
+    local_error = NULL;
+
+    result = infinoted_parameter_load_from_key_file(
+      plugin->options,
+      key_file,
+      plugin->name,
+      instance+1,
+      &local_error
+    );
+    
+    if(result == FALSE)
+    {
+      g_free(instance);
+      g_module_close(module);
+
+      g_propagate_prefixed_error(
+        error,
+        local_error,
+        "Failed to initialize plugin \"%s\": ",
+        plugin_name
+      );
+
+      return FALSE;
+    }
+  }
+
+  /* Finally, call on_initialize, which allows the plugin to initialize
+   * itself with the plugin options. */
   if(plugin->on_initialize != NULL)
   {
     local_error = NULL;
+
     result = plugin->on_initialize(
       manager,
       manager->directory,
@@ -510,7 +546,7 @@ InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
                              const gchar* plugin_path,
                              const gchar* const* plugins,
-                             const GKeyFile* options,
+                             GKeyFile* options,
                              GError** error)
 {
   InfinotedPluginManager* plugin_manager;

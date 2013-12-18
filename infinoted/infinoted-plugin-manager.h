@@ -24,7 +24,14 @@
  * must not use any other infinoted API! The reason for this is to allow
  * loaded plugins to call plugin manager functions. Calling symbols from the
  * application itself would not be portable, so this needs to reside in a
- * shared library. */
+ * shared library.
+ *
+ * The only API allowed to be used is what is declared in
+ * infinoted-parameter.h. The reason for this is that this code is also
+ * included in the shared library. This allows parameter parsing for
+ * plugins. */
+
+#include <infinoted/infinoted-parameter.h>
 
 #include <libinfinity/server/infd-directory.h>
 
@@ -46,11 +53,15 @@ struct _InfinotedPluginManager {
 typedef struct _InfinotedPlugin InfinotedPlugin;
 struct _InfinotedPlugin {
   const gchar* name;
+  const gchar* description;
+  const InfinotedParameterInfo* options;
 
   gsize info_size;
   gsize connection_info_size;
   gsize session_info_size;
   const gchar* session_type;
+
+  void(*on_info_initialize)(gpointer plugin_info);
 
   gboolean(*on_initialize)(InfinotedPluginManager* manager,
                            InfdDirectory* directory,
@@ -89,7 +100,7 @@ InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
                              const gchar* plugin_path,
                              const gchar* const* plugins,
-                             const GKeyFile* options,
+                             GKeyFile* options,
                              GError** error);
 
 void

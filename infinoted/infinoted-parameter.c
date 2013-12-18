@@ -100,8 +100,22 @@ infinoted_parameter_load_one_from_key_file(const InfinotedParameterInfo* info,
        (local_error->code == G_KEY_FILE_ERROR_GROUP_NOT_FOUND ||
         local_error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND))
     {
-      /* keep default value */
       g_error_free(local_error);
+      local_error = NULL;
+
+      if(info->flags & INFINOTED_PARAMETER_REQUIRED)
+      {
+        g_set_error(
+          error,
+          infinoted_parameter_error_quark(),
+          INFINOTED_PARAMETER_ERROR_REQUIRED,
+          _("The parameter \"%s\" is required"),
+          info->name
+        );
+
+        return FALSE;
+      }
+
       return TRUE;
     }
 
@@ -388,7 +402,7 @@ infinoted_parameter_convert_port(gpointer out,
                                  gpointer in,
                                  GError** error)
 {
-  int number;
+  gint number;
   number = *(gint*)in;
 
   if(number <= 0 || number > 0xffff)
@@ -396,7 +410,7 @@ infinoted_parameter_convert_port(gpointer out,
     g_set_error(
       error,
       infinoted_parameter_error_quark(),
-      INFINOTED_PARAMETER_ERROR_INVALID_PORT,
+      INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
       _("\"%d\" is not a valid port number. Port numbers range from "
         "1 to 65535"),
       number
@@ -406,6 +420,7 @@ infinoted_parameter_convert_port(gpointer out,
   }
 
   *(guint*)out = number;
+
   return TRUE;
 }
 
@@ -428,7 +443,7 @@ infinoted_parameter_convert_interval(gpointer out,
                                      gpointer in,
                                      GError** error)
 {
-  int number;
+  gint number;
   number = *(gint*)in;
 
   if(number < 0)
@@ -436,7 +451,7 @@ infinoted_parameter_convert_interval(gpointer out,
     g_set_error(
       error,
       infinoted_parameter_error_quark(),
-      INFINOTED_PARAMETER_ERROR_INVALID_INTERVAL,
+      INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
       "%s",
       _("Number must not be negative")
     );
@@ -445,6 +460,7 @@ infinoted_parameter_convert_interval(gpointer out,
   }
 
   *(guint*)out = number;
+
   return TRUE;
 }
 
@@ -478,17 +494,14 @@ infinoted_parameter_convert_security_policy(gpointer out,
   if(strcmp(*in_str, "no-tls") == 0)
   {
     *out_val = INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED;
-    return TRUE;
   }
   else if(strcmp(*in_str, "allow-tls") == 0)
   {
     *out_val = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
-    return TRUE;
   }
   else if(strcmp(*in_str, "require-tls") == 0)
   {
     *out_val = INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
-    return TRUE;
   }
   else
   {
@@ -503,6 +516,8 @@ infinoted_parameter_convert_security_policy(gpointer out,
 
     return FALSE;
   }
+  
+  return TRUE;
 }
 
 /* vim:set et sw=2 ts=2: */

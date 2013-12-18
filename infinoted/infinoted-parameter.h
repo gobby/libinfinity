@@ -33,6 +33,10 @@ typedef enum _InfinotedParameterType {
   INFINOTED_PARAMETER_STRING_LIST
 } InfinotedParameterType;
 
+typedef enum _InfinotedParameterFlags {
+  INFINOTED_PARAMETER_REQUIRED = 1 << 0
+} InfinotedParameterFlags;
+
 typedef union _InfinotedParameterValue InfinotedParameterValue;
 union _InfinotedParameterValue {
   gint number;
@@ -54,6 +58,7 @@ typedef struct _InfinotedParameterInfo InfinotedParameterInfo;
 struct _InfinotedParameterInfo {
   const char* name;
   InfinotedParameterType type;
+  InfinotedParameterFlags flags;
   size_t offset;
 
   /* The conversion function validates and converts the value read from the
@@ -68,9 +73,9 @@ struct _InfinotedParameterInfo {
 };
 
 typedef enum _InfinotedParameterError {
-  INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY,
-  INFINOTED_PARAMETER_ERROR_INVALID_PORT,
-  INFINOTED_PARAMETER_ERROR_INVALID_INTERVAL
+  INFINOTED_PARAMETER_ERROR_REQUIRED,
+  INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
+  INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY
 } InfinotedParameterError;
 
 GQuark

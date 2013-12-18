@@ -41,6 +41,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   {
     "log-file",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, log_path),
     infinoted_parameter_convert_filename,
     'l',
@@ -50,6 +51,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "key-file",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, key_file),
     infinoted_parameter_convert_filename,
     'k',
@@ -60,6 +62,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "certificate-file",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, certificate_file),
     infinoted_parameter_convert_filename,
     'c',
@@ -69,6 +72,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "certificate-chain",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, certificate_chain_file),
     infinoted_parameter_convert_filename,
     0,
@@ -82,6 +86,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "port",
     INFINOTED_PARAMETER_INT,
+    0,
     offsetof(InfinotedOptions, port),
     infinoted_parameter_convert_port,
     'p',
@@ -90,6 +95,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "security-policy",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, security_policy),
     infinoted_parameter_convert_security_policy,
     0,
@@ -105,6 +111,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "root-directory",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, root_directory),
     infinoted_parameter_convert_filename,
     'r',
@@ -115,6 +122,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "plugins",
     INFINOTED_PARAMETER_STRING_LIST,
+    0,
     offsetof(InfinotedOptions, plugins),
     infinoted_parameter_convert_string_list,
     0,
@@ -126,6 +134,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "autosave-hook", 
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, autosave_hook),
     infinoted_parameter_convert_filename,
     0,
@@ -134,6 +143,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "autosave-interval",
     INFINOTED_PARAMETER_INT,
+    0,
     offsetof(InfinotedOptions, autosave_interval),
     infinoted_parameter_convert_interval,
     0,
@@ -145,6 +155,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "password",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, password),
     infinoted_parameter_convert_string,
     'P',
@@ -156,6 +167,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "pam-service",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, pam_service),
     infinoted_parameter_convert_string,
     0,
@@ -167,6 +179,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "pam-allow-user",
     INFINOTED_PARAMETER_STRING_LIST,
+    0,
     offsetof(InfinotedOptions, pam_allowed_users),
     infinoted_parameter_convert_string_list,
     0,
@@ -177,6 +190,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "pam-allow-group",
     INFINOTED_PARAMETER_STRING_LIST,
+    0,
     offsetof(InfinotedOptions, pam_allowed_groups),
     infinoted_parameter_convert_string_list,
     0,
@@ -188,6 +202,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "ca-list-file",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, ca_list_file),
     infinoted_parameter_convert_filename,
     0,
@@ -197,6 +212,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "sync-directory",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, sync_directory),
     infinoted_parameter_convert_filename,
     0,
@@ -211,6 +227,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "sync-interval",
     INFINOTED_PARAMETER_INT,
+    0,
     offsetof(InfinotedOptions, sync_interval),
     infinoted_parameter_convert_interval,
     0,
@@ -221,6 +238,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "sync-hook",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, sync_hook),
     infinoted_parameter_convert_filename,
     0,
@@ -230,6 +248,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "max-transformation-vdiff",
     INFINOTED_PARAMETER_INT,
+    0,
     offsetof(InfinotedOptions, max_transformation_vdiff),
     infinoted_parameter_convert_interval,
     0,
@@ -243,6 +262,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
   }, {
     "traffic-log-directory",
     INFINOTED_PARAMETER_STRING,
+    0,
     offsetof(InfinotedOptions, traffic_log_directory),
     infinoted_parameter_convert_filename,
     0,
@@ -254,6 +274,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     N_("DIRECTORY")
   }, {
     NULL,
+    0,
     0,
     0,
     NULL
@@ -705,7 +726,8 @@ infinoted_options_override_plugin_parameters(const gchar* const* parameters,
   for(parameter = parameters; *parameter != NULL; ++parameter)
   {
     tokens = g_strsplit(*parameter, ":", 3);
-    if(tokens == NULL || tokens[0] == NULL || tokens[1] == NULL)
+    if(tokens == NULL || tokens[0] == NULL ||
+       tokens[1] == NULL || tokens[2] == NULL)
     {
       g_strfreev(tokens);
 
