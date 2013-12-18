@@ -150,12 +150,13 @@ infinoted_run_load_directory(InfinotedRun* run,
   g_object_unref(storage);
   g_object_unref(communication_manager);
 
+  /* Load note plugins */
 #ifdef G_OS_WIN32
   module_path = g_win32_get_package_installation_directory_of_module(NULL);
-  plugin_path = g_build_filename(module_path, "lib", PLUGIN_BASEPATH, NULL);
+  plugin_path = g_build_filename(module_path, "lib", NOTE_PLUGIN_PATH, NULL);
   g_free(module_path);
 #else
-  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_BASEPATH, NULL);
+  plugin_path = g_build_filename(PLUGIN_LIBPATH, NOTE_PLUGIN_PATH, NULL);
 #endif
 
   result = infinoted_note_plugin_load_directory(
@@ -164,10 +165,10 @@ infinoted_run_load_directory(InfinotedRun* run,
     startup->log
   );
 
+  g_free(plugin_path);
+
   if(!result)
   {
-    g_free(plugin_path);
-
     g_object_unref(run->directory);
     g_object_unref(run->io);
     run->directory = NULL;
@@ -183,10 +184,38 @@ infinoted_run_load_directory(InfinotedRun* run,
     return FALSE;
   }
 
+  /* Load server plugins via plugin manager */
+#ifdef G_OS_WIN32
+  module_path = g_win32_get_package_installation_directory_of_module(NULL);
+  plugin_path = g_build_filename(module_path, "lib", PLUGIN_PATH, NULL);
+  g_free(module_path);
+#else
+  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_PATH, NULL);
+#endif
+
+  run->plugin_manager = infinoted_plugin_manager_new(
+    run->directory,
+    plugin_path,
+    (const gchar* const*)startup->options->plugins,
+    startup->options->config_key_file,
+    error
+  );
+
+  g_free(plugin_path);
+  infinoted_options_drop_config_file(startup->options);
+
+  if(run->plugin_manager == NULL)
+  {
+    g_object_unref(run->directory);
+    g_object_unref(run->io);
+    run->directory = NULL;
+    run->io = NULL;
+    return FALSE;
+  }
+
   if(startup->log != NULL)
     infinoted_log_set_directory(startup->log, run->directory);
 
-  g_free(plugin_path);
   return TRUE;
 }
 
@@ -425,6 +454,12 @@ infinoted_run_free(InfinotedRun* run)
 #ifdef LIBINFINITY_HAVE_AVAHI
   g_object_unref(run->avahi);
 #endif
+
+  if(run->plugin_manager != NULL)
+  {
+    infinoted_plugin_manager_free(run->plugin_manager);
+    run->plugin_manager = NULL;
+  }
 
   if(run->startup->log != NULL)
   {

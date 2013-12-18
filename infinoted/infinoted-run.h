@@ -24,6 +24,7 @@
 
 #include <infinoted/infinoted-record.h>
 #include <infinoted/infinoted-startup.h>
+#include <infinoted/infinoted-plugin-manager.h>
 #include <infinoted/infinoted-autosave.h>
 #include <infinoted/infinoted-directory-sync.h>
 #include <infinoted/infinoted-transformation-protector.h>
@@ -45,6 +46,8 @@ struct _InfinotedRun {
   InfStandaloneIo* io;
   InfdDirectory* directory;
   InfdServerPool* pool;
+
+  InfinotedPluginManager* plugin_manager;
 
   InfinotedAutosave* autosave;
   InfinotedDirectorySync* dsync;

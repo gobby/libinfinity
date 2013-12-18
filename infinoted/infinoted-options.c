@@ -113,6 +113,17 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
        "server restart. [Default=~/.infinote]"),
     N_("DIRECTORY")
   }, {
+    "plugins",
+    INFINOTED_PARAMETER_STRING_LIST,
+    offsetof(InfinotedOptions, plugins),
+    infinoted_parameter_convert_string_list,
+    0,
+    N_("Additional plugins to load. This option can be specified more than "
+       "once to load multiple plugins. Plugin options can be configured in "
+       "the configuration file (one section for each plugin), or with the "
+       "--plugin-parameter option."),
+    N_("PLUGIN-NAME")
+  }, {
     "autosave-hook", 
     INFINOTED_PARAMETER_STRING,
     offsetof(InfinotedOptions, autosave_hook),
@@ -684,6 +695,46 @@ infinoted_options_args_to_keyfile_foreach_func(gpointer key,
 }
 
 static gboolean
+infinoted_options_override_plugin_parameters(const gchar* const* parameters,
+                                             GKeyFile* key_file,
+                                             GError** error)
+{
+  const gchar* const* parameter;
+  gchar** tokens;
+
+  for(parameter = parameters; *parameter != NULL; ++parameter)
+  {
+    tokens = g_strsplit(*parameter, ":", 3);
+    if(tokens == NULL || tokens[0] == NULL || tokens[1] == NULL)
+    {
+      g_strfreev(tokens);
+
+      g_set_error(
+        error,
+        infinoted_options_error_quark(),
+        INFINOTED_OPTIONS_ERROR_INVALID_PLUGIN_PARAMETER,
+        "Invalid sequence for specifying a plugin parameter: \"%s\". "
+        "The value must have the form PLUGIN:PARAMETER:VALUE",
+        *parameter
+      );
+
+      return FALSE;
+    }
+
+    g_key_file_set_string(
+      key_file,
+      tokens[0],
+      tokens[1],
+      tokens[2]
+    );
+
+    g_strfreev(tokens);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 infinoted_options_load(InfinotedOptions* options,
                        const gchar* const* config_files,
                        int* argc,
@@ -693,6 +744,7 @@ infinoted_options_load(InfinotedOptions* options,
   gchar* config_filename[2];
   gboolean create_key;
   gboolean create_certificate;
+  gchar** plugin_parameters;
   gboolean daemonize;
   gboolean kill_daemon;
   gboolean display_version;
@@ -723,12 +775,22 @@ infinoted_options_load(InfinotedOptions* options,
       N_("Creates a new random private key. The new key will be stored at "
          "the given location for the server's private key."),
       NULL
-    }, { "create-certificate", 0, 0,
+    }, {
+      "create-certificate", 0, 0,
       G_OPTION_ARG_NONE, &create_certificate,
       N_("Creates a new self-signed certificate signed with the given "
          "private key. The certificate is stored at the given location "
          "for the server's certificate."),
       NULL
+    }, {
+      "plugin-parameter", 0, 0,
+      G_OPTION_ARG_STRING_ARRAY, &plugin_parameters,
+      N_("Allows to override configuration entries for plugins from the "
+         "command line. The syntax is --plugin-parameter=plugin:key:value, "
+         "where plugin is the name of the plugin for which to override a "
+         "configuration parameter, key is the parameter which to override "
+         "and value is the new value of the parameter"),
+      N_("PLUGIN:PARAMETER:VALUE")
     }, {
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
       "daemonize", 'd', 0,
@@ -752,6 +814,7 @@ infinoted_options_load(InfinotedOptions* options,
   config_filename[0] = NULL;
   create_key = options->create_key;
   create_certificate = options->create_certificate;
+  plugin_parameters = NULL;
   daemonize = options->daemonize;
   kill_daemon = FALSE;
   display_version = FALSE;
@@ -837,6 +900,11 @@ infinoted_options_load(InfinotedOptions* options,
         infinoted_util_daemon_set_local_pid_file_proc();
         if(infinoted_util_daemon_pid_file_kill(SIGTERM) != 0)
         {
+          g_option_context_free(context);
+          g_free(entries);
+          g_hash_table_unref(cmdline_options);
+          g_strfreev(plugin_parameters);
+
           infinoted_util_set_errno_error(error, errno,
             _("Could not kill daemon"));
           return FALSE;
@@ -882,6 +950,7 @@ infinoted_options_load(InfinotedOptions* options,
   if(!key_file)
   {
     g_hash_table_unref(cmdline_options);
+    g_strfreev(plugin_parameters);
     return FALSE;
   }
 
@@ -895,6 +964,22 @@ infinoted_options_load(InfinotedOptions* options,
 
   g_hash_table_unref(cmdline_options);
 
+  if(plugin_parameters != NULL)
+  {
+    result = infinoted_options_override_plugin_parameters(
+      (const gchar* const*)plugin_parameters,
+      key_file,
+      error
+    );
+    
+    g_strfreev(plugin_parameters);
+    if(!result)
+    {
+      g_key_file_free(key_file);
+      return FALSE;
+    }
+  }
+
   /* Finally, load the key file into the actual options structure */
   result = infinoted_parameter_load_from_key_file(
     INFINOTED_OPTIONS,
@@ -904,11 +989,16 @@ infinoted_options_load(InfinotedOptions* options,
     error
   );
 
-  g_key_file_free(key_file);
-  if(!result) return FALSE;
+  if(!result || !infinoted_options_validate(options, error))
+  {
+    g_key_file_free(key_file);
+    return FALSE;
+  }
 
-  /* And validate the options, make sure they are consistent */
-  return infinoted_options_validate(options, error);
+  g_assert(options->config_key_file == NULL);
+  options->config_key_file = key_file;
+
+  return TRUE;
 }
 
 /**
@@ -939,6 +1029,7 @@ infinoted_options_new(const gchar* const* config_files,
   InfinotedOptions* options;
 
   options = g_slice_new(InfinotedOptions);
+  options->config_key_file = NULL;
 
   /* Default options */
   options->log_path = NULL;
@@ -951,6 +1042,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->security_policy = INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
+  options->plugins = NULL;
   options->autosave_hook = NULL;
   options->autosave_interval = 0;
   options->password = NULL;
@@ -994,6 +1086,7 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_file);
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
+  g_strfreev(options->plugins);
   g_free(options->autosave_hook);
   g_free(options->password);
 #ifdef LIBINFINITY_HAVE_PAM
@@ -1004,6 +1097,9 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->ca_list_file);
   g_free(options->sync_directory);
   g_free(options->sync_hook);
+
+  if(options->config_key_file != NULL)
+    g_key_file_free(options->config_key_file);
   g_slice_free(InfinotedOptions, options);
 }
 
@@ -1018,6 +1114,27 @@ GQuark
 infinoted_options_error_quark(void)
 {
   return g_quark_from_static_string("INFINOTED_OPTIONS_ERROR");
+}
+
+/**
+ * infinoted_options_drop_config_file:
+ * @options: The #InfinotedOptions object for which to drop the configuration
+ * file.
+ *
+ * Removes the reference to the configuration #GKeyFile from the
+ * #InfinotedOptions structure. Typically, after options are loaded, the
+ * #GKeyFile is still kept around and can be used to read other options, for
+ * example for activated plugins.
+ *
+ * Once this has happened this function can be called to drop the
+ * configuration file and release the memory that it uses.
+ */
+void
+infinoted_options_drop_config_file(InfinotedOptions* options)
+{
+  g_assert(options->config_key_file != NULL);
+  g_key_file_free(options->config_key_file);
+  options->config_key_file = NULL;
 }
 
 /* vim:set et sw=2 ts=2: */

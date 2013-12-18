@@ -73,6 +73,12 @@ infinoted_config_reload(InfinotedRun* run,
   gchar* root_directory;
   gboolean result;
 
+#ifdef G_OS_WIN32
+  gchar* module_path;
+#endif
+  gchar* plugin_path;
+  InfinotedPluginManager* plugin_manager;
+
   /* Note that this opens a new log handle to the log file. */
   startup = infinoted_startup_new(NULL, NULL, error);
   if(!startup) return FALSE;
@@ -178,6 +184,41 @@ infinoted_config_reload(InfinotedRun* run,
   g_object_unref(storage);
   filesystem_storage = NULL;
 
+  /* Re-initialize plugin system. Right now we re-create the whole plugin
+   * manager, i.e. re-loading all plugins. We only use the new plugins if
+   * everything else goes well.
+   *
+   * TODO: Here we could be smarter:
+   *   - add/remove changed plugins
+   *   - optional callback to existing plugins to read the new configuration
+   */
+  /* TODO: The path determination is copied from infinoted-run.c... it should
+   * probably go into a separate function, or inside plugin manager. */
+#ifdef G_OS_WIN32
+  module_path = g_win32_get_package_installation_directory_of_module(NULL);
+  plugin_path = g_build_filename(module_path, "lib", PLUGIN_PATH, NULL);
+  g_free(module_path);
+#else
+  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_PATH, NULL);
+#endif
+
+  plugin_manager = infinoted_plugin_manager_new(
+    run->directory,
+    plugin_path,
+    (const gchar* const*)startup->options->plugins,
+    startup->options->config_key_file,
+    error
+  );
+
+  g_free(plugin_path);
+  infinoted_options_drop_config_file(startup->options);
+
+  if(plugin_manager == NULL)
+  {
+    infinoted_startup_free(startup);
+    return FALSE;
+  }
+
   if(strcmp(root_directory, startup->options->root_directory) != 0)
   {
     /* Root directory changes. I don't think this is actually useful, but
@@ -214,6 +255,7 @@ infinoted_config_reload(InfinotedRun* run,
     if(tcp4 == NULL && tcp6 == NULL)
     {
       g_propagate_error(error, local_error);
+      infinoted_plugin_manager_free(plugin_manager);
       if(filesystem_storage) g_object_unref(filesystem_storage);
       infinoted_startup_free(startup);
       return FALSE;
@@ -327,6 +369,10 @@ infinoted_config_reload(InfinotedRun* run,
 
     g_object_unref(filesystem_storage);
   }
+
+  g_assert(run->plugin_manager != NULL);
+  infinoted_plugin_manager_free(run->plugin_manager);
+  run->plugin_manager = plugin_manager;
 
   if( (run->autosave == NULL && startup->options->autosave_interval >  0) ||
       (run->autosave != NULL && startup->options->autosave_interval !=

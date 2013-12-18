@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 
 typedef struct _InfinotedOptions InfinotedOptions;
 struct _InfinotedOptions {
+  GKeyFile* config_key_file;
+
   gchar* log_path;
 
   gchar* key_file;
@@ -39,6 +41,9 @@ struct _InfinotedOptions {
   guint port;
   InfXmppConnectionSecurityPolicy security_policy;
   gchar* root_directory;
+
+  gchar** plugins;
+
   gchar* autosave_hook;
   guint autosave_interval;
   gchar* password;
@@ -64,6 +69,7 @@ struct _InfinotedOptions {
 typedef enum _InfinotedOptionsError {
   INFINOTED_OPTIONS_ERROR_MULTIPLE_OPTIONS,
   INFINOTED_OPTIONS_ERROR_INVALID_NUMBER,
+  INFINOTED_OPTIONS_ERROR_INVALID_PLUGIN_PARAMETER,
   INFINOTED_OPTIONS_ERROR_INVALID_CREATE_OPTIONS,
   INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
   INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
@@ -83,6 +89,9 @@ infinoted_options_free(InfinotedOptions* options);
 
 GQuark
 infinoted_options_error_quark(void);
+
+void
+infinoted_options_drop_config_file(InfinotedOptions* options);
 
 G_END_DECLS
 
