@@ -99,19 +99,29 @@ inf_session_proxy_get_type(void)
  * @proxy: A #InfSessionProxy.
  * @n_params: Number of parameters.
  * @params: Construction properties for the InfUser (or derived) object.
+ * @func: Function to be called on completion of the user join, or %NULL.
+ * @user_data: Additional data to be passed to @func.
  *
  * Requests a user join for a user with the given properties (which must not
  * include #InfUser:id or #InfUser:flags since these are chosen by the session
  * proxy). The #InfUser:status property is optional and defaults to
  * %INF_USER_ACTIVE if not given. It must not be %INF_USER_UNAVAILABLE.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfUserRequest object is returned,
+ * where @func has been installed for the #InfUserRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Returns: A #InfUserRequest object that may be used to get notified
- * when the request finishes.
+ * when the request finishes, or %NULL.
  */
 InfUserRequest*
 inf_session_proxy_join_user(InfSessionProxy* proxy,
                             guint n_params,
-                            const GParameter* params)
+                            const GParameter* params,
+                            InfUserRequestFunc func,
+                            gpointer user_data)
 {
   InfSessionProxyIface* iface;
 
@@ -121,7 +131,7 @@ inf_session_proxy_join_user(InfSessionProxy* proxy,
   iface = INF_SESSION_PROXY_GET_IFACE(proxy);
   g_return_val_if_fail(iface->join_user != NULL, NULL);
 
-  return iface->join_user(proxy, n_params, params);
+  return iface->join_user(proxy, n_params, params, func, user_data);
 }
 
 /* vim:set et sw=2 ts=2: */

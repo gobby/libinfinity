@@ -385,12 +385,17 @@ infc_request_manager_new(guint seq_id)
  * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
  * @request_name: The name of the request, such as "explore-node" or
  * "subscribe-session".
+ * @callback: A #GCallback that will be called when the request has completed,
+ * or %NULL.
+ * @user_data: Additional data passed to the callback.
  * @first_property_name: The first property name apart from name and seq to
  * set for the new request.
  * @...: The value of the first property, followed optionally by more
  * name/value pairs, followed by %NULL.
  *
- * Adds a request to the request manager.
+ * Adds a request to the request manager. A new signal handler for the
+ * request's "finished" signal will be installed and made to invoke the given
+ * callback.
  *
  * Return Value: The generated #InfcRequest (actually of type @request_type).
  **/
@@ -398,6 +403,8 @@ InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,
                                  GType request_type,
                                  const gchar* request_name,
+                                 GCallback callback,
+                                 gpointer user_data,
                                  const gchar* first_property_name,
                                  ...)
 {
@@ -410,6 +417,8 @@ infc_request_manager_add_request(InfcRequestManager* manager,
     manager,
     request_type,
     request_name,
+    callback,
+    user_data,
     first_property_name,
     arglist
   );
@@ -424,12 +433,17 @@ infc_request_manager_add_request(InfcRequestManager* manager,
  * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
  * @request_name: The name of the request, such as &quot;explore-node&quot; or
  * &quot;subscribe-session&quot;
+ * @callback: A #GCallback that will be called when the request has completed,
+ * or %NULL.
+ * @user_data: Additional data passed to the callback.
  * @first_property_name: The first property name apart from name and seq to
  * set for the new request.
  * @arglist: The value of the first property, followed optionally by more
  * name/value pairs, followed by %NULL.
  *
- * Adds a request to the request manager.
+ * Adds a request to the request manager. A new signal handler for the
+ * request's "finished" signal will be installed and made to invoke the given
+ * callback.
  *
  * Return Value: The generated #InfcRequest (actually of type @request_type).
  */
@@ -437,6 +451,8 @@ InfcRequest*
 infc_request_manager_add_request_valist(InfcRequestManager* manager,
                                         GType request_type,
                                         const gchar* request_name,
+                                        GCallback callback,
+                                        gpointer user_data,
                                         const gchar* first_property_name,
                                         va_list arglist)
 {
@@ -536,6 +552,16 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
     g_value_unset(&params[i].value);
   g_free(params);
   g_type_class_unref(request_class);
+
+  if(callback != NULL)
+  {
+    g_signal_connect_after(
+      G_OBJECT(request),
+      "finished",
+      callback,
+      user_data
+    );
+  }
 
   return request;
 }

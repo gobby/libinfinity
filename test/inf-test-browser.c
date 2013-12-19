@@ -173,7 +173,7 @@ inf_test_browser_cmd_explore(InfTestBrowser* test,
   }
   else
   {
-    inf_browser_explore(test->browser, &iter);
+    inf_browser_explore(test->browser, &iter, NULL, NULL);
   }
 }
 
@@ -181,7 +181,14 @@ static void
 inf_test_browser_cmd_create(InfTestBrowser* test,
                             const gchar* param)
 {
-  inf_browser_add_subdirectory(test->browser, &test->cwd, param, NULL);
+  inf_browser_add_subdirectory(
+    test->browser,
+    &test->cwd,
+    param,
+    NULL,
+    NULL,
+    NULL
+  );
 }
 
 static void
@@ -199,7 +206,7 @@ inf_test_browser_cmd_remove(InfTestBrowser* test,
   }
   else
   {
-    inf_browser_remove_node(test->browser, &iter);
+    inf_browser_remove_node(test->browser, &iter, NULL, NULL);
   }
 }
 
@@ -299,7 +306,7 @@ inf_test_browser_notify_status_cb(GObject* object,
 
     /* Explore root node */
     inf_browser_get_root(test->browser, &test->cwd);
-    inf_browser_explore(test->browser, &test->cwd);
+    inf_browser_explore(test->browser, &test->cwd, NULL, NULL);
   }
 
   if(status == INF_BROWSER_CLOSED)

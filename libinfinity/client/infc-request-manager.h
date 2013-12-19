@@ -61,6 +61,8 @@ InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,
                                  GType request_type,
                                  const gchar* request_name,
+                                 GCallback callback,
+                                 gpointer user_data,
                                  const gchar* first_property_name,
                                  ...);
 
@@ -68,6 +70,8 @@ InfcRequest*
 infc_request_manager_add_request_valist(InfcRequestManager* manager,
                                         GType request_type,
                                         const gchar* request_name,
+                                        GCallback callback,
+                                        gpointer user_data,
                                         const gchar* first_property_name,
                                         va_list arglist);
 

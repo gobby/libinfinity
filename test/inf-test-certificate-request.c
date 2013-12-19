@@ -171,23 +171,18 @@ inf_test_certificate_request_notify_status_cb(GObject* object,
       INFC_BROWSER(object),
       crq,
       "Administrator",
+      inf_test_certificate_request_finished_cb,
+      test,
       &error
     );
 
-    if(request == NULL)
+    if(error != NULL)
     {
       fprintf(stderr, "Failed to request certificate: %s\n", error->message);
+      g_error_free(error);
+
       if(inf_standalone_io_loop_running(test->io))
         inf_standalone_io_loop_quit(test->io);
-    }
-    else
-    {
-      g_signal_connect(
-        G_OBJECT(request),
-        "finished",
-        G_CALLBACK(inf_test_certificate_request_finished_cb),
-        test
-      );
     }
 
     gnutls_x509_crq_deinit(crq);

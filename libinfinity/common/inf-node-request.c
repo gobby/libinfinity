@@ -124,7 +124,7 @@ inf_node_request_get_type(void)
  */
 void
 inf_node_request_finished(InfNodeRequest* request,
-                          InfBrowserIter* iter,
+                          const InfBrowserIter* iter,
                           const GError* error)
 {
   g_return_if_fail(INF_IS_NODE_REQUEST(request));

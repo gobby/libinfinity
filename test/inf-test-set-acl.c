@@ -82,7 +82,6 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
   const InfAclAccount* account;
   InfAclSheet* sheet;
   guint i;
-  InfNodeRequest* node_request;
 
   test = (InfTestSetAcl*)user_data;
 
@@ -114,12 +113,12 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
     fprintf(stderr, "Requesting CAN_SET_ACL permission for the root node\n");
     inf_acl_mask_or1(&sheet->mask, INF_ACL_CAN_SET_ACL);
     inf_acl_mask_or1(&sheet->perms, INF_ACL_CAN_SET_ACL);
-    node_request = inf_browser_set_acl(test->browser, iter, sheet_set);
 
-    g_signal_connect(
-      G_OBJECT(node_request),
-      "finished",
-      G_CALLBACK(inf_test_set_acl_set_acl_finished_cb),
+    inf_browser_set_acl(
+      test->browser,
+      iter,
+      sheet_set,
+      inf_test_set_acl_set_acl_finished_cb,
       test
     );
 
@@ -138,7 +137,6 @@ inf_test_set_acl_query_account_list_finished_cb(InfAclAccountListRequest* req,
   guint i;
 
   InfBrowserIter iter;
-  InfNodeRequest* node_request;
 
   test = (InfTestSetAcl*)user_data;
 
@@ -158,12 +156,11 @@ inf_test_set_acl_query_account_list_finished_cb(InfAclAccountListRequest* req,
     fprintf(stderr, "Querying root node ACL...\n");
 
     inf_browser_get_root(test->browser, &iter);
-    node_request = inf_browser_query_acl(test->browser, &iter);
 
-    g_signal_connect(
-      G_OBJECT(node_request),
-      "finished",
-      G_CALLBACK(inf_test_set_acl_query_acl_finished_cb),
+    inf_browser_query_acl(
+      test->browser,
+      &iter,
+      inf_test_set_acl_query_acl_finished_cb,
       test
     );
   }
@@ -184,7 +181,6 @@ inf_test_set_acl_notify_status_cb(GObject* object,
 {
   InfTestSetAcl* test;
   InfBrowserStatus status;
-  InfAclAccountListRequest* request;
   const InfAclAccount* account;
 
   test = (InfTestSetAcl*)user_data;
@@ -197,12 +193,9 @@ inf_test_set_acl_notify_status_cb(GObject* object,
     fprintf(stderr, "Connection established, querying account list...\n");
     fprintf(stderr, "Local account: %s (%s)\n", account->id, account->name);
 
-    request = inf_browser_query_acl_account_list(test->browser);
-
-    g_signal_connect(
-      G_OBJECT(request),
-      "finished",
-      G_CALLBACK(inf_test_set_acl_query_account_list_finished_cb),
+    inf_browser_query_acl_account_list(
+      test->browser,
+      inf_test_set_acl_query_account_list_finished_cb,
       test
     );
   }

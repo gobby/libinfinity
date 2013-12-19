@@ -90,7 +90,9 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
 
 InfcNodeRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
-                               const InfBrowserIter* iter);
+                               const InfBrowserIter* iter,
+                               InfNodeRequestFunc func,
+                               gpointer user_data);
 
 InfcSessionProxy*
 infc_browser_iter_get_sync_in(InfcBrowser* browser,
@@ -105,7 +107,9 @@ infc_browser_iter_is_valid(InfcBrowser* browser,
                            const InfBrowserIter* iter);
 
 InfcChatRequest*
-infc_browser_subscribe_chat(InfcBrowser* browser);
+infc_browser_subscribe_chat(InfcBrowser* browser,
+                            InfcChatRequestFunc func,
+                            gpointer user_data);
 
 InfcChatRequest*
 infc_browser_get_subscribe_chat_request(InfcBrowser* browser);
@@ -117,6 +121,8 @@ InfcCertificateRequest*
 infc_browser_request_certificate(InfcBrowser* browser,
                                  gnutls_x509_crq_t crq,
                                  const gchar* extra_data,
+                                 InfcCertificateRequestFunc func,
+                                 gpointer user_data,
                                  GError** error);
 
 G_END_DECLS

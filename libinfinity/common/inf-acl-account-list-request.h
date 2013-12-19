@@ -56,6 +56,18 @@ struct _InfAclAccountListRequestIface {
                    const GError* error);
 };
 
+/**
+ * InfAclAccountListRequestFunc:
+ * @request: The #InfAclAccountListRequest which has finished.
+ * @error: The error which occurred, or %NULL.
+ * @user_data: User data passed when the signal handler was connected.
+ *
+ * The signature of #InfAclAccountListRequest::finished signal handlers.
+ */
+typedef void(*InfAclAccountListRequestFunc)(InfAclAccountListRequest* request,
+                                            const GError* error,
+                                            gpointer user_data);
+
 GType
 inf_acl_account_list_request_get_type(void) G_GNUC_CONST;
 

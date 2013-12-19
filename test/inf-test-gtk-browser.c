@@ -196,6 +196,12 @@ on_chat_join_finished(InfUserRequest* request,
 
   test = (InfTestGtkBrowserChatWindow*)user_data;
 
+  if(test->request != NULL)
+  {
+    g_object_unref(test->request);
+    test->request = NULL;
+  }
+
   if(error == NULL)
   {
     inf_gtk_chat_set_active_user(INF_GTK_CHAT(test->chat), user);
@@ -207,10 +213,6 @@ on_chat_join_finished(InfUserRequest* request,
     test->user = user;
     g_object_ref(user);
 
-    g_assert(test->request != NULL);
-    g_object_unref(test->request);
-    test->request = NULL;
-
     /* Unfortunately, gtk_widget_grab_focus(test->chat) +
      * gtk_container_set_focus_child() in inf_gtk_chat_set_active_user() does
      * not do the job which is why I added this crappy API. */
@@ -218,10 +220,6 @@ on_chat_join_finished(InfUserRequest* request,
   }
   else
   {
-    g_assert(test->request != NULL);
-    g_object_unref(test->request);
-    test->request = NULL;
-
     if(error->domain == inf_user_error_quark() &&
        error->code == INF_USER_ERROR_NAME_IN_USE)
     {
@@ -257,6 +255,12 @@ on_join_finished(InfUserRequest* request,
 
   test = (InfTestGtkBrowserWindow*)user_data;
 
+  if(test->request != NULL)
+  {
+    g_object_unref(test->request);
+    test->request = NULL;
+  }
+
   if(error == NULL)
   {
     inf_text_gtk_buffer_set_active_user(test->buffer, INF_TEXT_USER(user));
@@ -269,10 +273,6 @@ on_join_finished(InfUserRequest* request,
 
     test->user = user;
     g_object_ref(user);
-
-    g_assert(test->request != NULL);
-    g_object_unref(test->request);
-    test->request = NULL;
 
     g_object_get(G_OBJECT(test->proxy), "session", &session, NULL);
     algorithm =
@@ -287,10 +287,6 @@ on_join_finished(InfUserRequest* request,
   }
   else
   {
-    g_assert(test->request != NULL);
-    g_object_unref(test->request);
-    test->request = NULL;
-
     if(error->domain == inf_user_error_quark() &&
        error->code == INF_USER_ERROR_NAME_IN_USE)
     {
@@ -310,31 +306,32 @@ request_chat_join(InfTestGtkBrowserChatWindow* test,
                   const gchar* user_name)
 {
   InfUserRequest* request;
-  GError* error;
   gchar* text;
 
   GParameter params[1] = { { "name", { 0 } } };
   g_value_init(&params[0].value, G_TYPE_STRING);
   g_value_set_static_string(&params[0].value, user_name);
 
-  error = NULL;
-  request = inf_session_proxy_join_user(test->proxy, 1, params);
-  g_value_unset(&params[0].value);
-
   text = g_strdup_printf("Requesting user join for %s", user_name);
   gtk_label_set_text(GTK_LABEL(test->status), text);
   g_free(text);
 
-  g_signal_connect_after(
-    G_OBJECT(request),
-    "finished",
-    G_CALLBACK(on_chat_join_finished),
+  request = inf_session_proxy_join_user(
+    test->proxy,
+    1,
+    params,
+    on_chat_join_finished,
     test
   );
 
-  g_assert(test->request == NULL);
-  test->request = request;
-  g_object_ref(test->request);
+  g_value_unset(&params[0].value);
+
+  if(request != NULL)
+  {
+    g_assert(test->request == NULL);
+    test->request = request;
+    g_object_ref(test->request);
+  }
 }
 
 static void
@@ -344,7 +341,6 @@ request_join(InfTestGtkBrowserWindow* test,
   InfUserRequest* request;
   InfSession* session;
   InfAdoptedStateVector* v;
-  GError* error;
   GtkTextBuffer* buffer;
   GtkTextMark* mark;
   GtkTextIter iter;
@@ -376,21 +372,22 @@ request_join(InfTestGtkBrowserWindow* test,
   gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
   g_value_set_uint(&params[2].value, gtk_text_iter_get_offset(&iter));
 
-  request = inf_session_proxy_join_user(test->proxy, 3, params);
-  g_object_unref(session);
-
-  /* TODO: Free GValues? */
-
-  g_signal_connect_after(
-    G_OBJECT(request),
-    "finished",
-    G_CALLBACK(on_join_finished),
+  request = inf_session_proxy_join_user(
+    test->proxy,
+    3,
+    params,
+    on_join_finished,
     test
   );
 
-  g_assert(test->request == NULL);
-  test->request = request;
-  g_object_ref(request);
+  g_object_unref(session);
+
+  if(request != NULL)
+  {
+    g_assert(test->request == NULL);
+    test->request = request;
+    g_object_ref(request);
+  }
 }
 
 static void
@@ -780,7 +777,7 @@ on_activate(InfGtkBrowserView* view,
   if(!inf_browser_get_session(browser, browser_iter) &&
      !request && plugin != NULL)
   {
-    inf_browser_subscribe(browser, browser_iter);
+    inf_browser_subscribe(browser, browser_iter, NULL, NULL);
   }
 
   inf_browser_iter_free(browser_iter);
@@ -798,7 +795,7 @@ on_browser_notify_status(GObject* object,
 
   g_object_get(G_OBJECT(browser), "status", &status, NULL);
   if(status == INF_BROWSER_OPEN)
-    infc_browser_subscribe_chat(browser);
+    infc_browser_subscribe_chat(browser, NULL, NULL);
 }
 
 static void
@@ -824,7 +821,7 @@ on_set_browser(InfGtkBrowserModel* model,
     g_object_get(G_OBJECT(browser), "status", &status, NULL);
     if(status == INF_BROWSER_OPEN)
     {
-      infc_browser_subscribe_chat(browser);
+      infc_browser_subscribe_chat(browser, NULL, NULL);
     }
     else
     {

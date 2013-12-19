@@ -90,7 +90,9 @@ inf_text_session_join_user(InfSessionProxy* proxy,
                            InfUserStatus status,
                            gdouble hue,
                            guint caret_position,
-                           int selection_length);
+                           int selection_length,
+                           InfUserRequestFunc func,
+                           gpointer user_data);
 
 G_END_DECLS
 

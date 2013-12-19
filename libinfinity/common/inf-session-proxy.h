@@ -57,7 +57,9 @@ struct _InfSessionProxyIface {
   /*< public >*/
   InfUserRequest* (*join_user)(InfSessionProxy* proxy,
                                guint n_params,
-                               const GParameter* params);
+                               const GParameter* params,
+                               InfUserRequestFunc func,
+                               gpointer user_data);
 };
 
 GType
@@ -66,7 +68,9 @@ inf_session_proxy_get_type(void) G_GNUC_CONST;
 InfUserRequest*
 inf_session_proxy_join_user(InfSessionProxy* proxy,
                             guint n_params,
-                            const GParameter* params);
+                            const GParameter* params,
+                            InfUserRequestFunc func,
+                            gpointer user_data);
 
 G_END_DECLS
 

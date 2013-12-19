@@ -168,7 +168,9 @@ struct _InfBrowserIface {
   gboolean (*get_child)(InfBrowser* browser,
                         InfBrowserIter* iter);
   InfExploreRequest* (*explore)(InfBrowser* browser,
-                                const InfBrowserIter* iter);
+                                const InfBrowserIter* iter,
+                                InfNodeRequestFunc func,
+                                gpointer user_data);
   gboolean (*get_explored)(InfBrowser* browser,
                            const InfBrowserIter* iter);
   gboolean (*is_subdirectory)(InfBrowser* browser,
@@ -180,20 +182,28 @@ struct _InfBrowserIface {
                               const char* type,
                               const InfAclSheetSet* acl,
                               InfSession* session,
-                              gboolean initial_subscribe);
+                              gboolean initial_subscribe,
+                              InfNodeRequestFunc func,
+                              gpointer user_data);
   InfNodeRequest* (*add_subdirectory)(InfBrowser* browser,
                                       const InfBrowserIter* iter,
                                       const char* name,
-                                      const InfAclSheetSet* acl);
+                                      const InfAclSheetSet* acl,
+                                      InfNodeRequestFunc func,
+                                      gpointer user_data);
   InfNodeRequest* (*remove_node)(InfBrowser* browser,
-                                    const InfBrowserIter* iter);
+                                 const InfBrowserIter* iter,
+                                 InfNodeRequestFunc func,
+                                 gpointer user_data);
   const gchar* (*get_node_name)(InfBrowser* browser,
                                 const InfBrowserIter* iter);
   const gchar* (*get_node_type)(InfBrowser* browser,
                                 const InfBrowserIter* iter);
 
   InfNodeRequest* (*subscribe)(InfBrowser* browser,
-                               const InfBrowserIter* iter);
+                               const InfBrowserIter* iter,
+                               InfNodeRequestFunc func,
+                               gpointer user_data);
   InfSessionProxy* (*get_session)(InfBrowser* browser,
                                   const InfBrowserIter* iter);
 
@@ -204,7 +214,10 @@ struct _InfBrowserIface {
                                 InfNodeRequest* request,
                                 InfBrowserIter* iter);
 
-  InfAclAccountListRequest* (*query_acl_account_list)(InfBrowser* browser);
+  InfAclAccountListRequest* (*query_acl_account_list)(
+    InfBrowser* browser,
+    InfAclAccountListRequestFunc func,
+    gpointer user_data);
 
   const InfAclAccount** (*get_acl_account_list)(InfBrowser* browser,
                                                 guint* n_accounts);
@@ -215,7 +228,9 @@ struct _InfBrowserIface {
                                           const gchar* id);
 
   InfNodeRequest* (*query_acl)(InfBrowser* browser,
-                               const InfBrowserIter* iter);
+                               const InfBrowserIter* iter,
+                               InfNodeRequestFunc func,
+                               gpointer user_data);
 
   gboolean (*has_acl)(InfBrowser* browser,
                       const InfBrowserIter* iter,
@@ -226,7 +241,9 @@ struct _InfBrowserIface {
 
   InfNodeRequest* (*set_acl)(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             const InfAclSheetSet* sheet_set);
+                             const InfAclSheetSet* sheet_set,
+                             InfNodeRequestFunc func,
+                             gpointer user_data);
 };
 
 GType
@@ -262,7 +279,9 @@ inf_browser_is_ancestor(InfBrowser* browser,
 
 InfExploreRequest*
 inf_browser_explore(InfBrowser* browser,
-                    const InfBrowserIter* iter);
+                    const InfBrowserIter* iter,
+                    InfNodeRequestFunc func,
+                    gpointer user_data);
 
 gboolean
 inf_browser_get_explored(InfBrowser* browser,
@@ -279,17 +298,23 @@ inf_browser_add_note(InfBrowser* browser,
                      const char* type,
                      const InfAclSheetSet* acl,
                      InfSession* session,
-                     gboolean initial_subscribe);
+                     gboolean initial_subscribe,
+                     InfNodeRequestFunc func,
+                     gpointer user_data);
 
 InfNodeRequest*
 inf_browser_add_subdirectory(InfBrowser* browser,
                              const InfBrowserIter* iter,
                              const char* name,
-                             const InfAclSheetSet* acl);
+                             const InfAclSheetSet* acl,
+                             InfNodeRequestFunc func,
+                             gpointer user_data);
 
 InfNodeRequest*
 inf_browser_remove_node(InfBrowser* browser,
-                        const InfBrowserIter* iter);
+                        const InfBrowserIter* iter,
+                        InfNodeRequestFunc func,
+                        gpointer user_data);
 
 const gchar*
 inf_browser_get_node_name(InfBrowser* browser,
@@ -305,7 +330,9 @@ inf_browser_get_path(InfBrowser* browser,
 
 InfNodeRequest*
 inf_browser_subscribe(InfBrowser* browser,
-                      const InfBrowserIter* iter);
+                      const InfBrowserIter* iter,
+                      InfNodeRequestFunc func,
+                      gpointer user_data);
 
 InfSessionProxy*
 inf_browser_get_session(InfBrowser* browser,
@@ -327,7 +354,9 @@ inf_browser_get_pending_request(InfBrowser* browser,
                                 const gchar* request_type);
 
 InfAclAccountListRequest*
-inf_browser_query_acl_account_list(InfBrowser* browser);
+inf_browser_query_acl_account_list(InfBrowser* browser,
+                                   InfAclAccountListRequestFunc func,
+                                   gpointer user_data);
 
 const InfAclAccount**
 inf_browser_get_acl_account_list(InfBrowser* browser,
@@ -342,7 +371,9 @@ inf_browser_lookup_acl_account(InfBrowser* browser,
 
 InfNodeRequest*
 inf_browser_query_acl(InfBrowser* browser,
-                      const InfBrowserIter* iter);
+                      const InfBrowserIter* iter,
+                      InfNodeRequestFunc func,
+                      gpointer user_data);
 
 gboolean
 inf_browser_has_acl(InfBrowser* browser,
@@ -356,7 +387,9 @@ inf_browser_get_acl(InfBrowser* browser,
 InfNodeRequest*
 inf_browser_set_acl(InfBrowser* browser,
                     const InfBrowserIter* iter,
-                    const InfAclSheetSet* sheet_set);
+                    const InfAclSheetSet* sheet_set,
+                    InfNodeRequestFunc func,
+                    gpointer user_data);
 
 gboolean
 inf_browser_check_acl(InfBrowser* browser,

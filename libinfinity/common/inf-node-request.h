@@ -54,16 +54,30 @@ struct _InfNodeRequestIface {
 
   /* Signals */
   void (*finished)(InfNodeRequest* request,
-                   InfBrowserIter* iter,
+                   const InfBrowserIter* iter,
                    const GError* error);
 };
+
+/**
+ * InfNodeRequestFunc:
+ * @request: The #InfNodeRequest which has finished.
+ * @iter: An iterator pointing to the node affected by the request, or %NULL.
+ * @error: The error which occurred, or %NULL.
+ * @user_data: User data passed when the signal handler was connected.
+ *
+ * The signature of #InfNodeRequest::finished signal handlers.
+ */
+typedef void(*InfNodeRequestFunc)(InfNodeRequest* request,
+                                  const InfBrowserIter* iter,
+                                  const GError* error,
+                                  gpointer user_data);
 
 GType
 inf_node_request_get_type(void) G_GNUC_CONST;
 
 void
 inf_node_request_finished(InfNodeRequest* request,
-                          InfBrowserIter* iter,
+                          const InfBrowserIter* iter,
                           const GError* error);
 
 G_END_DECLS

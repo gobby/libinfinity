@@ -4521,7 +4521,9 @@ infc_browser_browser_get_child(InfBrowser* browser,
 
 static InfExploreRequest*
 infc_browser_browser_explore(InfBrowser* browser,
-                             const InfBrowserIter* iter)
+                             const InfBrowserIter* iter,
+                             InfNodeRequestFunc func,
+                             gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4547,6 +4549,8 @@ infc_browser_browser_explore(InfBrowser* browser,
     priv->request_manager,
     INFC_TYPE_EXPLORE_REQUEST,
     "explore-node",
+    G_CALLBACK(func),
+    user_data,
     "node_id", node->id,
     NULL
   );
@@ -4602,7 +4606,9 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
                               const char* type,
                               const InfAclSheetSet* sheet_set,
                               InfSession* session,
-                              gboolean initial_subscribe)
+                              gboolean initial_subscribe,
+                              InfNodeRequestFunc func,
+                              gpointer user_data)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -4631,6 +4637,8 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "add-node",
+    G_CALLBACK(func),
+    user_data,
     "node-id", iter->node_id,
     NULL
   );
@@ -4685,7 +4693,9 @@ static InfNodeRequest*
 infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
                                       const InfBrowserIter* iter,
                                       const char* name,
-                                      const InfAclSheetSet* sheet_set)
+                                      const InfAclSheetSet* sheet_set,
+                                      InfNodeRequestFunc func,
+                                      gpointer user_data)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -4710,6 +4720,7 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "add-node",
+    G_CALLBACK(func), user_data,
     "node-id", iter->node_id,
     NULL
   );
@@ -4735,7 +4746,9 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
 
 static InfNodeRequest*
 infc_browser_browser_remove_node(InfBrowser* infbrowser,
-                                 const InfBrowserIter* iter)
+                                 const InfBrowserIter* iter,
+                                 InfNodeRequestFunc func,
+                                 gpointer user_data)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
@@ -4762,6 +4775,8 @@ infc_browser_browser_remove_node(InfBrowser* infbrowser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "remove-node",
+    G_CALLBACK(func),
+    user_data,
     "node-id", iter->node_id,
     NULL
   );
@@ -4825,7 +4840,9 @@ infc_browser_browser_get_node_type(InfBrowser* infbrowser,
 
 static InfNodeRequest*
 infc_browser_browser_subscribe(InfBrowser* browser,
-                               const InfBrowserIter* iter)
+                               const InfBrowserIter* iter,
+                               InfNodeRequestFunc func,
+                               gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -4857,6 +4874,8 @@ infc_browser_browser_subscribe(InfBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "subscribe-session",
+    G_CALLBACK(func),
+    user_data,
     "node-id", iter->node_id,
     NULL
   );
@@ -4961,7 +4980,9 @@ infc_browser_browser_iter_from_request(InfBrowser* browser,
 }
 
 static InfAclAccountListRequest*
-infc_browser_browser_query_acl_account_list(InfBrowser* browser)
+infc_browser_browser_query_acl_account_list(InfBrowser* browser,
+                                            InfAclAccountListRequestFunc func,
+                                            gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
@@ -4986,6 +5007,8 @@ infc_browser_browser_query_acl_account_list(InfBrowser* browser)
     priv->request_manager,
     INFC_TYPE_ACL_ACCOUNT_LIST_REQUEST,
     "query-acl-account-list",
+    G_CALLBACK(func),
+    user_data,
     NULL
   );
 
@@ -5060,7 +5083,9 @@ infc_browser_browser_lookup_acl_account(InfBrowser* browser,
 
 static InfNodeRequest*
 infc_browser_browser_query_acl(InfBrowser* browser,
-                               const InfBrowserIter* iter)
+                               const InfBrowserIter* iter,
+                               InfNodeRequestFunc func,
+                               gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -5085,6 +5110,8 @@ infc_browser_browser_query_acl(InfBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "query-acl",
+    G_CALLBACK(func),
+    user_data,
     "node-id", node->id,
     NULL
   );
@@ -5149,7 +5176,9 @@ infc_browser_browser_get_acl(InfBrowser* browser,
 static InfNodeRequest*
 infc_browser_browser_set_acl(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             const InfAclSheetSet* sheet_set)
+                             const InfAclSheetSet* sheet_set,
+                             InfNodeRequestFunc func,
+                             gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -5169,6 +5198,8 @@ infc_browser_browser_set_acl(InfBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "set-acl",
+    G_CALLBACK(func),
+    user_data,
     "node-id", node->id,
     NULL
   );
@@ -5519,6 +5550,8 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
  * infc_browser_iter_save_session:
  * @browser: A #InfcBrowser.
  * @iter: A #InfcBrowserIter pointing to a note in @browser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Requests that the server saves the note pointed to by @iter into its
  * background storage. Normally, the server only does this when it is either
@@ -5526,12 +5559,20 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
  * this is merely a request and the server might decide not to save the
  * session for whatever reason.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Return Value: A #InfcNodeRequest that may be used to get notified when
  * the request finishes or fails.
  **/
 InfcNodeRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
-                               const InfBrowserIter* iter)
+                               const InfBrowserIter* iter,
+                               InfNodeRequestFunc func,
+                               gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
@@ -5551,6 +5592,8 @@ infc_browser_iter_save_session(InfcBrowser* browser,
     priv->request_manager,
     INFC_TYPE_NODE_REQUEST,
     "save-session",
+    G_CALLBACK(func),
+    user_data,
     "node-id", iter->node_id,
     NULL
   );
@@ -5683,17 +5726,27 @@ infc_browser_iter_is_valid(InfcBrowser* browser,
 /**
  * infc_browser_subscribe_chat:
  * @browser: A #InfcBrowser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Attempts to subscribe to the server's chat. When the operation finishes
  * infc_browser_get_chat_session() will return a #InfcSessionProxy
  * representing the chat session. It can be used to read the chat's content.
  * The request can fail in case the server chat is disabled.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfcChatRequest object is returned,
+ * where @func has been installed for the #InfcChatRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Returns: A #InfcChatRequest that may be used to get notified when
  * the request finishes or fails.
  */
 InfcChatRequest*
-infc_browser_subscribe_chat(InfcBrowser* browser)
+infc_browser_subscribe_chat(InfcBrowser* browser,
+                            InfcChatRequestFunc func,
+                            gpointer user_data)
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
@@ -5714,6 +5767,8 @@ infc_browser_subscribe_chat(InfcBrowser* browser)
     priv->request_manager,
     INFC_TYPE_CHAT_REQUEST,
     "subscribe-chat",
+    G_CALLBACK(func),
+    user_data,
     NULL
   );
 
@@ -5788,6 +5843,8 @@ infc_browser_get_chat_session(InfcBrowser* browser)
  * @crt: A .X509 certificate request.
  * @extra_data: Extra data to be associated to the entity.
  * @error: Location to store error information, if any.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Requests a new certificate at the server. The server is expected to sign
  * it with its certificate and send us the signed certificate back.
@@ -5800,6 +5857,13 @@ infc_browser_get_chat_session(InfcBrowser* browser)
  * certificate request. In that case the function returns %NULL and @error
  * is set.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfcCertificateRequest object is
+ * returned, where @func has been installed for the
+ * #InfcCertificateRequest::finished signal, so that it is called as soon as
+ * the request finishes.
+ *
  * Returns: A #InfcCertificateRequest that can be used to get notified when
  * the request finishes, or %NULL on error.
  */
@@ -5807,6 +5871,8 @@ InfcCertificateRequest*
 infc_browser_request_certificate(InfcBrowser* browser,
                                  gnutls_x509_crq_t crq,
                                  const gchar* extra_data,
+                                 InfcCertificateRequestFunc func,
+                                 gpointer user_data,
                                  GError** error)
 {
   InfcBrowserPrivate* priv;
@@ -5847,6 +5913,8 @@ infc_browser_request_certificate(InfcBrowser* browser,
     priv->request_manager,
     INFC_TYPE_CERTIFICATE_REQUEST,
     "request-certificate",
+    G_CALLBACK(func),
+    user_data,
     NULL
   );
 

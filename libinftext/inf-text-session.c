@@ -2116,6 +2116,8 @@ inf_text_session_flush_requests_for_user(InfTextSession* session,
  * @hue: The user color of the user to join.
  * @caret_position: The initial position of the new user's cursor.
  * @selection_length: The initial length of the new user's selection.
+ * @func: Function to call after completion of the request, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * This functions creates a user join request for an #InfTextSession. This is
  * a shortcut for inf_session_proxy_join_user().
@@ -2128,7 +2130,9 @@ inf_text_session_join_user(InfSessionProxy* proxy,
                            InfUserStatus status,
                            gdouble hue,
                            guint caret_position,
-                           int selection_length)
+                           int selection_length,
+                           InfUserRequestFunc func,
+                           gpointer user_data)
 {
 #define N_PARAMS 6u
   GParameter params[N_PARAMS] = {
@@ -2172,7 +2176,13 @@ inf_text_session_join_user(InfSessionProxy* proxy,
   g_value_init(&params[5].value, INF_TYPE_USER_STATUS);
   g_value_set_enum(&params[5].value, status);
 
-  request = inf_session_proxy_join_user(proxy, N_PARAMS, params);
+  request = inf_session_proxy_join_user(
+    proxy,
+    N_PARAMS,
+    params,
+    func,
+    user_data
+  );
 
   for(i = 0; i < N_PARAMS; ++i)
     g_value_unset(&params[i].value);

@@ -546,6 +546,8 @@ inf_browser_is_ancestor(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside
  * @browser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Requests the node @iter points to to be explored. Initally, subdirectory
  * nodes are not explored, that is not known what content there is. Nodes can
@@ -556,12 +558,20 @@ inf_browser_is_ancestor(InfBrowser* browser,
  * finishes. During exploration @InfBrowser::node-added signals are already
  * emitted appropriately for every child explored inside @iter.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfExploreRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Returns: A #InfExploreRequest, or %NULL if @iter points to a
  * non-subdirectory node.
  */
 InfExploreRequest*
 inf_browser_explore(InfBrowser* browser,
-                    const InfBrowserIter* iter)
+                    const InfBrowserIter* iter,
+                    InfNodeRequestFunc func,
+                    gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -573,7 +583,7 @@ inf_browser_explore(InfBrowser* browser,
   g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, NULL);
 
   g_return_val_if_fail(iface->explore != NULL, NULL);
-  return iface->explore(browser, iter);
+  return iface->explore(browser, iter, func, user_data);
 
 }
 
@@ -639,6 +649,8 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * %NULL.
  * @session: A #InfSession with a session of type @type, or %NULL.
  * @initial_subscribe: Whether to subscribe to the newly created session.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Adds a new leaf node to the browser. The new node is of type @type. If
  * session is non-%NULL it will be used as the initial content of the new
@@ -678,6 +690,12 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * the %INF_ACL_CAN_SET_ACL permission must be granted to the local entity for
  * the node @iter points to.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
@@ -688,7 +706,9 @@ inf_browser_add_note(InfBrowser* browser,
                      const char* type,
                      const InfAclSheetSet* acl,
                      InfSession* session,
-                     gboolean initial_subscribe)
+                     gboolean initial_subscribe,
+                     InfNodeRequestFunc func,
+                     gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -725,7 +745,9 @@ inf_browser_add_note(InfBrowser* browser,
     type,
     acl,
     session,
-    initial_subscribe
+    initial_subscribe,
+    func,
+    user_data
   );
 }
 
@@ -736,6 +758,8 @@ inf_browser_add_note(InfBrowser* browser,
  * @name: The name of the node to add.
  * @acl: A #InfAclSheetSet representing the initial ACL for this node, or
  * %NULL.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Adds a new subdirectory node to the browser.
  *
@@ -745,6 +769,12 @@ inf_browser_add_note(InfBrowser* browser,
  * the %INF_ACL_CAN_SET_ACL permission must be granted to the local entity for
  * the node @iter points to.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
@@ -752,7 +782,9 @@ InfNodeRequest*
 inf_browser_add_subdirectory(InfBrowser* browser,
                              const InfBrowserIter* iter,
                              const char* name,
-                             const InfAclSheetSet* acl)
+                             const InfAclSheetSet* acl,
+                             InfNodeRequestFunc func,
+                             gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -765,24 +797,34 @@ inf_browser_add_subdirectory(InfBrowser* browser,
   g_return_val_if_fail(iface->is_subdirectory(browser, iter) == TRUE, NULL);
 
   g_return_val_if_fail(iface->add_subdirectory != NULL, NULL);
-  return iface->add_subdirectory(browser, iter, name, acl);
+  return iface->add_subdirectory(browser, iter, name, acl, func, user_data);
 }
 
 /**
  * inf_browser_remove_node:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Requests to remove the node @iter points to. It may point to a
  * subdirectory node in which case all its children are removed recursively
  * as well.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
  *
  * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
 InfNodeRequest*
 inf_browser_remove_node(InfBrowser* browser,
-                        const InfBrowserIter* iter)
+                        const InfBrowserIter* iter,
+                        InfNodeRequestFunc func,
+                        gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -792,7 +834,7 @@ inf_browser_remove_node(InfBrowser* browser,
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->remove_node != NULL, NULL);
 
-  return iface->remove_node(browser, iter);
+  return iface->remove_node(browser, iter, func, user_data);
 }
 
 /**
@@ -870,17 +912,27 @@ inf_browser_get_path(InfBrowser* browser,
  * inf_browser_subscribe:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a leaf node inside @browser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Attempts to subscribe to the node @iter points to, i.e. obtain a
  * #InfSession representing its content. This also allows to change the
  * content of the node.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
  *
  * Returns: A #InfNodeRequest which can be used to get notified when the
  * request finishes.
  */
 InfNodeRequest*
 inf_browser_subscribe(InfBrowser* browser,
-                      const InfBrowserIter* iter)
+                      const InfBrowserIter* iter,
+                      InfNodeRequestFunc func,
+                      gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -892,7 +944,7 @@ inf_browser_subscribe(InfBrowser* browser,
   g_return_val_if_fail(iface->is_subdirectory(browser, iter) == FALSE, NULL);
 
   g_return_val_if_fail(iface->subscribe != NULL, NULL);
-  return iface->subscribe(browser, iter);
+  return iface->subscribe(browser, iter, func, user_data);
 }
 
 /**
@@ -1033,16 +1085,27 @@ inf_browser_get_pending_request(InfBrowser* browser,
 /**
  * inf_browser_query_acl_account_list:
  * @browser: A #InfBrowser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Queries the list of accounts in @browser. When this call has finished,
  * inf_browser_get_acl_account_list() can be called in order to retrieve the
  * account list.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfAclAccountListRequest object is
+ * returned, where @func has been installed for the
+ * #InfAcLAccountListRequest::finished signal, so that it is called as soon
+ * as the request finishes.
+ *
  * Returns: A #InfAclAccountListRequest that can be used to be notified when
  * the request finishes.
  */
 InfAclAccountListRequest*
-inf_browser_query_acl_account_list(InfBrowser* browser)
+inf_browser_query_acl_account_list(InfBrowser* browser,
+                                   InfAclAccountListRequestFunc func,
+                                   gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -1051,7 +1114,7 @@ inf_browser_query_acl_account_list(InfBrowser* browser)
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->query_acl_account_list != NULL, NULL);
 
-  return iface->query_acl_account_list(browser);
+  return iface->query_acl_account_list(browser, func, user_data);
 }
 
 /**
@@ -1141,17 +1204,27 @@ inf_browser_lookup_acl_account(InfBrowser* browser,
  * inf_browser_query_acl:
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to a node for which to query the ACLs.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Queries the ACLs for all users of the node @iter points to. When the
  * request has finished, inf_browser_get_acl() can be used to retrieve the
  * ACLs.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
  *
  * Returns: A #InfNodeRequest which can be used to be notified when the
  * request finishes.
  */
 InfNodeRequest*
 inf_browser_query_acl(InfBrowser* browser,
-                      const InfBrowserIter* iter)
+                      const InfBrowserIter* iter,
+                      InfNodeRequestFunc func,
+                      gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -1161,7 +1234,7 @@ inf_browser_query_acl(InfBrowser* browser,
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->query_acl != NULL, NULL);
 
-  return iface->query_acl(browser, iter);
+  return iface->query_acl(browser, iter, func, user_data);
 }
 
 /**
@@ -1237,6 +1310,8 @@ inf_browser_get_acl(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to the node for which to change ACLs.
  * @sheet_set: An #InfAclSheetSet with the sheets to update.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
  * Changes the ACLs for the node @iter points to. Existing sheets that are not
  * in @sheet_set are left untouched. This operation is only allowed when the
@@ -1244,13 +1319,21 @@ inf_browser_get_acl(InfBrowser* browser,
  * inf_browser_query_acl(). Use inf_browser_has_acl() to check whether this
  * function can be called or whether the ACL needs to be queried first.
  *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfNodeRequest object is returned,
+ * where @func has been installed for the #InfNodeRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
  * Returns: A #InfNodeRequest which can be used to be notified when the
  * request finishes.
  */
 InfNodeRequest*
 inf_browser_set_acl(InfBrowser* browser,
                     const InfBrowserIter* iter,
-                    const InfAclSheetSet* sheet_set)
+                    const InfAclSheetSet* sheet_set,
+                    InfNodeRequestFunc func,
+                    gpointer user_data)
 {
   InfBrowserIface* iface;
 
@@ -1261,7 +1344,7 @@ inf_browser_set_acl(InfBrowser* browser,
   iface = INF_BROWSER_GET_IFACE(browser);
   g_return_val_if_fail(iface->set_acl != NULL, NULL);
 
-  return iface->set_acl(browser, iter, sheet_set);
+  return iface->set_acl(browser, iter, sheet_set, func, user_data);
 }
 
 /**

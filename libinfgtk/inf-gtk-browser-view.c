@@ -858,28 +858,44 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
       if(request == NULL)
       {
         request = INF_REQUEST(
-          inf_browser_explore(INF_BROWSER(browser), browser_iter)
+          inf_browser_explore(INF_BROWSER(browser), browser_iter, NULL, NULL)
         );
       }
 
       if(view_browser->initial_root_expansion == TRUE)
       {
-        /* There should always only be one view to do initial root expansion
-         * because only one view can have issued the request. */
-        g_assert(
-          g_object_get_data(
-            G_OBJECT(request),
-            INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
-          ) == NULL
-        );
+        /* Expand the root node */
+        if(!gtk_tree_model_iter_has_child(model, iter))
+        {
+          /* The root node does not yet have a child. If it is not yet fully
+           * explored (i.e., request != NULL), then remember to do it as soon
+           * as the first note is created. Otherwise, there is nothing to
+           * expand. */
+          if(request != NULL)
+          {
+            /* There should always only be one view to do initial root expansion
+             * because only one view can have issued the request. */
+            g_assert(
+              g_object_get_data(
+                G_OBJECT(request),
+                INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
+              ) == NULL
+            );
 
-        /* Remember to do initial root expansion when the node has been
-         * explored. */
-        g_object_set_data(
-          G_OBJECT(request),
-          INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
-          view
-        );
+            /* Remember to do initial root expansion when the node has been
+             * explored. */
+            g_object_set_data(
+              G_OBJECT(request),
+              INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
+              view
+            );
+          }
+        }
+        else
+        {
+          /* We can expand it right away */
+          gtk_tree_view_expand_row(GTK_TREE_VIEW(view), path, FALSE);
+        }
 
         /* Handled expansion flag, so unset, could otherwise lead to another
          * try of expanding the root node. */
@@ -1136,7 +1152,14 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
           gtk_tree_path_up(parent_path);
 
           if(gtk_tree_view_row_expanded(GTK_TREE_VIEW(view), parent_path))
-            inf_browser_explore(INF_BROWSER(browser), browser_iter);
+          {
+            inf_browser_explore(
+              INF_BROWSER(browser),
+              browser_iter,
+              NULL,
+              NULL
+            );
+          }
 
           gtk_tree_path_free(parent_path);
         }
@@ -1502,7 +1525,7 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
         );
 
         if(pending_request == NULL)
-          inf_browser_explore(INF_BROWSER(browser), browser_iter);
+          inf_browser_explore(INF_BROWSER(browser), browser_iter, NULL, NULL);
       }
     } while(inf_browser_get_next(INF_BROWSER(browser), browser_iter));
   }

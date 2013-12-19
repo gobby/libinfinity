@@ -58,6 +58,20 @@ struct _InfUserRequestIface {
                    const GError* error);
 };
 
+/**
+ * InfUserRequestFunc:
+ * @request: The #InfUserRequest which has finished.
+ * @user: The newly joined user, or %NULL.
+ * @error: The error which occurred, or %NULL.
+ * @user_data: User data passed when the signal handler was connected.
+ *
+ * The signature of #InfUserRequest::finished signal handlers.
+ */
+typedef void(*InfUserRequestFunc)(InfUserRequest* request,
+                                  InfUser* user,
+                                  const GError* error,
+                                  gpointer user_data);
+
 GType
 inf_user_request_get_type(void) G_GNUC_CONST;
 

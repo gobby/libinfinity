@@ -106,7 +106,6 @@ inf_test_mass_join_user_join_finished_cb(InfUserRequest* request,
 static void
 inf_test_mass_join_join_user(InfTestMassJoiner* joiner)
 {
-  InfUserRequest* request;
   InfSession* session;
   InfAdoptedStateVector* v;
   GParameter params[3] = {
@@ -130,22 +129,17 @@ inf_test_mass_join_join_user(InfTestMassJoiner* joiner)
   g_value_set_boxed(&params[1].value, v);
   g_value_set_uint(&params[2].value, 0u);
 
-  request = inf_session_proxy_join_user(
+  inf_session_proxy_join_user(
     INF_SESSION_PROXY(joiner->session),
     3,
-    params
+    params,
+    inf_test_mass_join_user_join_finished_cb,
+    joiner
   );
 
   g_value_unset(&params[2].value);
   g_value_unset(&params[1].value);
   g_value_unset(&params[0].value);
-
-  g_signal_connect_after(
-    G_OBJECT(request),
-    "finished",
-    G_CALLBACK(inf_test_mass_join_user_join_finished_cb),
-    joiner
-  );
 }
 
 static void
@@ -179,7 +173,7 @@ inf_test_mass_join_session_synchronization_complete_cb(InfSession* session,
 }
 
 static void
-inf_test_mass_join_subscribe_finished_cb(InfcNodeRequest* request,
+inf_test_mass_join_subscribe_finished_cb(InfNodeRequest* request,
                                          const InfBrowserIter* iter,
                                          const GError* error,
                                          gpointer user_data)
@@ -236,8 +230,8 @@ inf_test_mass_join_subscribe_finished_cb(InfcNodeRequest* request,
 }
 
 static void
-inf_test_mass_join_explore_finished_cb(InfExploreRequest* exp_request,
-                                       InfBrowserIter* exp_iter,
+inf_test_mass_join_explore_finished_cb(InfNodeRequest* request,
+                                       const InfBrowserIter* explore_iter,
                                        const GError* error,
                                        gpointer user_data)
 {
@@ -245,7 +239,7 @@ inf_test_mass_join_explore_finished_cb(InfExploreRequest* exp_request,
   InfBrowser* browser;
   InfBrowserIter iter;
   const char* name;
-  InfNodeRequest* sub_request;
+  gboolean document_exists;
 
   joiner = (InfTestMassJoiner*)user_data;
   browser = INF_BROWSER(joiner->browser);
@@ -262,18 +256,19 @@ inf_test_mass_join_explore_finished_cb(InfExploreRequest* exp_request,
     inf_xml_connection_close(infc_browser_get_connection(joiner->browser));
   }
 
-  sub_request = NULL;
+  document_exists = FALSE;
+
   do
   {
     name = inf_browser_get_node_name(browser, &iter);
     if(strcmp(name, joiner->document) == 0)
     {
-      sub_request = inf_browser_subscribe(browser, &iter);
+      document_exists = TRUE;
 
-      g_signal_connect(
-        G_OBJECT(sub_request),
-        "finished",
-        G_CALLBACK(inf_test_mass_join_subscribe_finished_cb),
+      inf_browser_subscribe(
+        browser,
+        &iter,
+        inf_test_mass_join_subscribe_finished_cb,
         joiner
       );
 
@@ -281,7 +276,7 @@ inf_test_mass_join_explore_finished_cb(InfExploreRequest* exp_request,
     }
   } while(inf_browser_get_next(browser, &iter) == TRUE);
 
-  if(sub_request == NULL)
+  if(!document_exists)
   {
     fprintf(
       stderr,
@@ -302,7 +297,6 @@ inf_test_mass_join_browser_notify_status_cb(GObject* object,
   InfBrowser* browser;
   InfBrowserStatus status;
   InfBrowserIter iter;
-  InfExploreRequest* request;
 
   InfTestMassJoin* massjoin;
   InfTestMassJoiner* joiner;
@@ -330,11 +324,11 @@ inf_test_mass_join_browser_notify_status_cb(GObject* object,
     fprintf(stdout, "Joiner %s: Connected\n", joiner->username);
 
     inf_browser_get_root(browser, &iter);
-    request = inf_browser_explore(browser, &iter);
-    g_signal_connect(
-      G_OBJECT(request),
-      "finished",
-      G_CALLBACK(inf_test_mass_join_explore_finished_cb),
+
+    inf_browser_explore(
+      browser,
+      &iter,
+      inf_test_mass_join_explore_finished_cb,
       joiner
     );
 

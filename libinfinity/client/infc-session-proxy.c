@@ -1004,7 +1004,9 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
 InfUserRequest*
 infc_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
                                            guint n_params,
-                                           const GParameter* params)
+                                           const GParameter* params,
+                                           InfUserRequestFunc func,
+                                           gpointer user_data)
 {
   InfcSessionProxyPrivate* priv;
   InfSessionClass* session_class;
@@ -1030,6 +1032,8 @@ infc_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
     priv->request_manager,
     INFC_TYPE_USER_REQUEST,
     "user-join",
+    G_CALLBACK(func),
+    user_data,
     NULL
   );
 

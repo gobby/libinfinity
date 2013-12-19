@@ -64,6 +64,18 @@ struct _InfcChatRequest {
   GObject parent;
 };
 
+/**
+ * InfcChatRequestFunc:
+ * @request: The #InfcChatRequest which has finished.
+ * @error: The error which occurred, or %NULL.
+ * @user_data: User data passed when the signal handler was connected.
+ *
+ * The signature of #InfcChatRequest::finished signal handlers.
+ */
+typedef void(*InfcChatRequestFunc)(InfcChatRequest* request,
+                                   const GError* error,
+                                   gpointer user_data);
+
 GType
 infc_chat_request_get_type(void) G_GNUC_CONST;
 

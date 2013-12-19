@@ -69,6 +69,20 @@ struct _InfcCertificateRequest {
   GObject parent;
 };
 
+/**
+ * InfcCertificateRequestFunc:
+ * @request: The #InfcCertificateRequest which has finished.
+ * @cert: The created certificate, or %NULL.
+ * @error: The error which occurred, or %NULL.
+ * @user_data: User data passed when the signal handler was connected.
+ *
+ * The signature of #InfcCertificateRequest::finished signal handlers.
+ */
+typedef void(*InfcCertificateRequestFunc)(InfcCertificateRequest* request,
+                                          InfCertificateChain* cert,
+                                          const GError* error,
+                                          gpointer user_data);
+
 GType
 infc_certificate_request_get_type(void) G_GNUC_CONST;
 

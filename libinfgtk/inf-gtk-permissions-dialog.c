@@ -105,9 +105,11 @@ inf_gtk_permissions_dialog_set_acl_finished_cb(InfNodeRequest* request,
     inf_gtk_permissions_dialog_update_sheet(dialog);
   }
 
-  g_assert(g_slist_find(priv->set_acl_requests, request) != NULL);
-  priv->set_acl_requests = g_slist_remove(priv->set_acl_requests, request);
-  g_object_unref(request);
+  if(g_slist_find(priv->set_acl_requests, request) != NULL)
+  {
+    priv->set_acl_requests = g_slist_remove(priv->set_acl_requests, request);
+    g_object_unref(request);
+  }
 }
 
 static void
@@ -118,7 +120,7 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
   InfGtkPermissionsDialogPrivate* priv;
   const InfAclSheet* sheet;
   InfAclSheetSet sheet_set;
-  InfNodeRequest* req;
+  InfNodeRequest* request;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
@@ -133,16 +135,19 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
   sheet_set.sheets = sheet;
   sheet_set.n_sheets = 1;
 
-  req = inf_browser_set_acl(priv->browser, &priv->browser_iter, &sheet_set);
-  priv->set_acl_requests = g_slist_prepend(priv->set_acl_requests, req);
-  g_object_ref(req);
-
-  g_signal_connect(
-    G_OBJECT(req),
-    "finished",
-    G_CALLBACK(inf_gtk_permissions_dialog_set_acl_finished_cb),
+  request = inf_browser_set_acl(
+    priv->browser,
+    &priv->browser_iter,
+    &sheet_set,
+    inf_gtk_permissions_dialog_set_acl_finished_cb,
     dialog
   );
+
+  if(request != NULL)
+  {
+    priv->set_acl_requests = g_slist_prepend(priv->set_acl_requests, request);
+    g_object_ref(request);
+  }
 }
 
 static gboolean
@@ -496,18 +501,19 @@ inf_gtk_permissions_dialog_name_data_func(GtkTreeViewColumn* column,
 }
 
 static void
-inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(InfRequest* req,
-                                                              const GError* e,
-                                                              gpointer data)
+inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
+  InfAclAccountListRequest* request,
+  const GError* error,
+  gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
 
-  dialog = INF_GTK_PERMISSIONS_DIALOG(data);
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
   priv->query_acl_account_list_request = NULL;
-  inf_gtk_permissions_dialog_update(dialog, e);
+  inf_gtk_permissions_dialog_update(dialog, error);
 }
 
 static void
@@ -604,17 +610,23 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       if(priv->query_acl_account_list_request == NULL)
       {
         priv->query_acl_account_list_request =
-          inf_browser_query_acl_account_list(priv->browser);
+          inf_browser_query_acl_account_list(
+            priv->browser,
+            inf_gtk_permissions_dialog_query_acl_account_list_finished_cb,
+            dialog
+          );
       }
-
-      g_signal_connect(
-        G_OBJECT(priv->query_acl_account_list_request),
-        "finished",
-        G_CALLBACK(
-          inf_gtk_permissions_dialog_query_acl_account_list_finished_cb
-        ),
-        dialog
-      );
+      else
+      {
+        g_signal_connect(
+          G_OBJECT(priv->query_acl_account_list_request),
+          "finished",
+          G_CALLBACK(
+            inf_gtk_permissions_dialog_query_acl_account_list_finished_cb
+          ),
+          dialog
+        );
+      }
     }
   }
   else
@@ -636,16 +648,20 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
         {
           priv->query_acl_request = inf_browser_query_acl(
             priv->browser,
-            &priv->browser_iter
+            &priv->browser_iter,
+            inf_gtk_permissions_dialog_query_acl_finished_cb,
+            dialog
           );
         }
-
-        g_signal_connect(
-          G_OBJECT(priv->query_acl_request),
-          "finished",
-          G_CALLBACK(inf_gtk_permissions_dialog_query_acl_finished_cb),
-          dialog
-        );
+        else
+        {
+          g_signal_connect(
+            G_OBJECT(priv->query_acl_request),
+            "finished",
+            G_CALLBACK(inf_gtk_permissions_dialog_query_acl_finished_cb),
+            dialog
+          );
+        }
       }
     }
     else

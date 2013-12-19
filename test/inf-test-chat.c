@@ -148,7 +148,6 @@ inf_chat_test_session_synchronization_complete_cb(InfSession* session,
   InfcSessionProxy* proxy;
   InfUserRequest* request;
   GParameter params[1] = { { "name", { 0 } } };
-  GError* error;
 
   printf("Synchronization complete, joining user...\n");
 
@@ -158,30 +157,15 @@ inf_chat_test_session_synchronization_complete_cb(InfSession* session,
   g_value_init(&params[0].value, G_TYPE_STRING);
   g_value_set_string(&params[0].value, g_get_user_name());
 
-  request = inf_session_proxy_join_user(
+  inf_session_proxy_join_user(
     INF_SESSION_PROXY(proxy),
     G_N_ELEMENTS(params),
-    params
+    params,
+    inf_test_chat_userjoin_finished_cb,
+    test
   );
 
   g_value_unset(&params[0].value);
-
-  if(!request)
-  {
-    fprintf(stderr, "User join failed: %s\n", error->message);
-    g_error_free(error);
-
-    inf_standalone_io_loop_quit(test->io);
-  }
-  else
-  {
-    g_signal_connect_after(
-      G_OBJECT(request),
-      "finished",
-      G_CALLBACK(inf_test_chat_userjoin_finished_cb),
-      test
-    );
-  }
 }
 
 static void
@@ -210,7 +194,7 @@ inf_chat_test_session_close_cb(InfSession* session,
 }
 
 static void
-inf_chat_test_subscribe_finished_cb(InfcNodeRequest* request,
+inf_chat_test_subscribe_finished_cb(InfcChatRequest* request,
                                     const GError* error,
                                     gpointer user_data)
 {
@@ -276,7 +260,6 @@ inf_test_chat_notify_status_cb(GObject* object,
 {
   InfTestChat* test;
   InfBrowserStatus status;
-  InfcChatRequest* request;
 
   test = (InfTestChat*)user_data;
   g_object_get(G_OBJECT(object), "status", &status, NULL);
@@ -286,12 +269,9 @@ inf_test_chat_notify_status_cb(GObject* object,
     printf("Connection established, subscribing to chat...\n");
 
     /* Subscribe to chat */
-    request = infc_browser_subscribe_chat(INFC_BROWSER(test->browser));
-
-    g_signal_connect_after(
-      G_OBJECT(request),
-      "finished",
-      G_CALLBACK(inf_chat_test_subscribe_finished_cb),
+    infc_browser_subscribe_chat(
+      INFC_BROWSER(test->browser),
+      inf_chat_test_subscribe_finished_cb,
       test
     );
   }

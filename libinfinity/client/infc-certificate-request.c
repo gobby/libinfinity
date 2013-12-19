@@ -279,7 +279,7 @@ infc_certificate_request_get_type(void)
  *
  * Emits the #InfcCertificateRequest::finished signal on @request. @cert is the
  * created certificate, or %NULL if the request failed. The certificate chain
- * includes all the issuers up to the CA. @error should be * %NULL if the
+ * includes all the issuers up to the CA. @error should be %NULL if the
  * request finished successfully, otherwise it should contain appropriate
  * error information.
  **/
