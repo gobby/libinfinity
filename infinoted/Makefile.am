@@ -1,4 +1,4 @@
-SUBDIRS = note-plugins
+SUBDIRS = . plugins note-plugins
 
 # TODO: Find a way to have the version number set automatically.
 bin_PROGRAMS = infinoted-0.6

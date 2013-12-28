@@ -302,6 +302,7 @@ AC_CONFIG_FILES([
     libinftextgtk/Makefile
 
     infinoted/Makefile
+      infinoted/plugins/Makefile
       infinoted/note-plugins/Makefile
         infinoted/note-plugins/text/Makefile
         infinoted/note-plugins/chat/Makefile
