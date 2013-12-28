@@ -420,25 +420,6 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
  */
 
 static void
-inf_session_register_sync(InfSession* session)
-{
-  /* TODO: Use _constructor */
-  InfSessionPrivate* priv;
-  priv = INF_SESSION_PRIVATE(session);
-
-  /* Register CommunicationObject when all requirements for initial
-   * synchronization are met. */
-  if(priv->status == INF_SESSION_SYNCHRONIZING &&
-     priv->manager != NULL &&
-     priv->shared.sync.conn != NULL &&
-     priv->shared.sync.group != NULL)
-  {
-    g_object_ref(priv->shared.sync.group);
-
-  }
-}
-
-static void
 inf_session_init(GTypeInstance* instance,
                  gpointer g_class)
 {
@@ -568,7 +549,6 @@ inf_session_set_property(GObject* object,
   case PROP_COMMUNICATION_MANAGER:
     g_assert(priv->manager == NULL); /* construct only */
     priv->manager = INF_COMMUNICATION_MANAGER(g_value_dup_object(value));
-    inf_session_register_sync(session);
     break;
   case PROP_BUFFER:
     g_assert(priv->buffer == NULL); /* construct only */
