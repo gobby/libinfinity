@@ -225,14 +225,34 @@ inf_text_default_buffer_buffer_erase_text(InfTextBuffer* buffer,
 }
 
 static InfTextBufferIter*
-inf_text_default_buffer_buffer_create_iter(InfTextBuffer* buffer)
+inf_text_default_buffer_buffer_create_begin_iter(InfTextBuffer* buffer)
 {
   InfTextDefaultBufferPrivate* priv;
   InfTextChunkIter chunk_iter;
   InfTextBufferIter* iter;
 
   priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
-  if(inf_text_chunk_iter_init(priv->chunk, &chunk_iter) == TRUE)
+  if(inf_text_chunk_iter_init_begin(priv->chunk, &chunk_iter) == TRUE)
+  {
+    iter = g_slice_new(InfTextBufferIter);
+    iter->chunk_iter = chunk_iter;
+    return iter;
+  }
+  else
+  {
+    return NULL;
+  }
+}
+
+static InfTextBufferIter*
+inf_text_default_buffer_buffer_create_end_iter(InfTextBuffer* buffer)
+{
+  InfTextDefaultBufferPrivate* priv;
+  InfTextChunkIter chunk_iter;
+  InfTextBufferIter* iter;
+
+  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
+  if(inf_text_chunk_iter_init_end(priv->chunk, &chunk_iter) == TRUE)
   {
     iter = g_slice_new(InfTextBufferIter);
     iter->chunk_iter = chunk_iter;
@@ -348,7 +368,8 @@ inf_text_default_buffer_text_buffer_init(gpointer g_iface,
   iface->get_slice = inf_text_default_buffer_buffer_get_slice;
   iface->insert_text = inf_text_default_buffer_buffer_insert_text;
   iface->erase_text = inf_text_default_buffer_buffer_erase_text;
-  iface->create_iter = inf_text_default_buffer_buffer_create_iter;
+  iface->create_begin_iter = inf_text_default_buffer_buffer_create_begin_iter;
+  iface->create_end_iter = inf_text_default_buffer_buffer_create_end_iter;
   iface->destroy_iter = inf_text_default_buffer_buffer_destroy_iter;
   iface->iter_next = inf_text_default_buffer_buffer_iter_next;
   iface->iter_prev = inf_text_default_buffer_buffer_iter_prev;

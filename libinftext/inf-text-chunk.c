@@ -1224,7 +1224,7 @@ inf_text_chunk_equal(InfTextChunk* self,
 }
 
 /**
- * inf_text_chunk_iter_init:
+ * inf_text_chunk_iter_init_begin:
  * @self: A #InfTextChunk.
  * @iter: A #InfTextChunkIter.
  *
@@ -1235,8 +1235,8 @@ inf_text_chunk_equal(InfTextChunk* self,
  * Return Value: Whether @iter was set.
  **/
 gboolean
-inf_text_chunk_iter_init(InfTextChunk* self,
-                         InfTextChunkIter* iter)
+inf_text_chunk_iter_init_begin(InfTextChunk* self,
+                               InfTextChunkIter* iter)
 {
   g_return_val_if_fail(self != NULL, FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -1246,6 +1246,37 @@ inf_text_chunk_iter_init(InfTextChunk* self,
     iter->chunk = self;
     iter->first = g_sequence_get_begin_iter(self->segments);
     iter->second = g_sequence_iter_next(iter->first);
+    return TRUE;
+  }
+  else
+  {
+    return FALSE;
+  }
+}
+
+/**
+ * inf_text_chunk_iter_init_end:
+ * @self: A #InfTextChunk.
+ * @iter: A #InfTextChunkIter.
+ *
+ * Sets @iter to point to the last segment of @self. If there are no
+ * segments (i.e. @self is empty), @iter is left untouched and the function
+ * returns %FALSE.
+ *
+ * Return Value: Whether @iter was set.
+ **/
+gboolean
+inf_text_chunk_iter_init_end(InfTextChunk* self,
+                             InfTextChunkIter* iter)
+{
+  g_return_val_if_fail(self != NULL, FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  if(self->length > 0)
+  {
+    iter->chunk = self;
+    iter->second = g_sequence_get_end_iter(self->segments);
+    iter->first = g_sequence_iter_prev(iter->second);
     return TRUE;
   }
   else

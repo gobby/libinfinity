@@ -62,7 +62,7 @@ inf_text_undo_grouping_get_char_from_chunk(InfTextChunk* chunk)
   cd = g_iconv_open("UTF-8", inf_text_chunk_get_encoding(chunk));
   g_assert(cd != (GIConv)-1);
 
-  inf_text_chunk_iter_init(chunk, &iter);
+  inf_text_chunk_iter_init_begin(chunk, &iter);
   /* cast const away without warning */ /* more or less */
   *(gconstpointer*) &inbuf = inf_text_chunk_iter_get_text(&iter);
   inlen = inf_text_chunk_iter_get_bytes(&iter);

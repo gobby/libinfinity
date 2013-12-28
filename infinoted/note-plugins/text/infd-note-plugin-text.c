@@ -471,7 +471,7 @@ infd_note_plugin_text_session_write(InfdStorage* storage,
   );
 
   buffer_node = xmlNewChild(root, NULL, (const xmlChar*)"buffer", NULL);
-  iter = inf_text_buffer_create_iter(buffer);
+  iter = inf_text_buffer_create_begin_iter(buffer);
   if(iter != NULL)
   {
     do

@@ -1726,7 +1726,7 @@ inf_text_gtk_buffer_buffer_insert_text(InfTextBuffer* buffer,
     buffer
   );
 
-  if(inf_text_chunk_iter_init(chunk, &chunk_iter))
+  if(inf_text_chunk_iter_init_begin(chunk, &chunk_iter))
   {
     gtk_text_buffer_get_iter_at_offset(
       priv->buffer,
@@ -1921,7 +1921,7 @@ inf_text_gtk_buffer_buffer_erase_text(InfTextBuffer* buffer,
 }
 
 static InfTextBufferIter*
-inf_text_gtk_buffer_buffer_create_iter(InfTextBuffer* buffer)
+inf_text_gtk_buffer_buffer_create_begin_iter(InfTextBuffer* buffer)
 {
   InfTextGtkBufferPrivate* priv;
   InfTextBufferIter* iter;
@@ -1942,6 +1942,34 @@ inf_text_gtk_buffer_buffer_create_iter(InfTextBuffer* buffer)
       &iter->end,
       NULL,
       &iter->user
+    );
+
+    return iter;
+  }
+}
+
+static InfTextBufferIter*
+inf_text_gtk_buffer_buffer_create_end_iter(InfTextBuffer* buffer)
+{
+  InfTextGtkBufferPrivate* priv;
+  InfTextBufferIter* iter;
+
+  priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
+
+  if(gtk_text_buffer_get_char_count(priv->buffer) == 0)
+  {
+    return NULL;
+  }
+  else
+  {
+    iter = g_slice_new(InfTextBufferIter);
+    gtk_text_buffer_get_end_iter(priv->buffer, &iter->end);
+
+    iter->begin = iter->end;
+    inf_text_gtk_buffer_iter_prev_author_toggle(
+      &iter->begin,
+      &iter->user,
+      NULL
     );
 
     return iter;
@@ -2226,7 +2254,8 @@ inf_text_gtk_buffer_text_buffer_init(gpointer g_iface,
   iface->get_slice = inf_text_gtk_buffer_buffer_get_slice;
   iface->insert_text = inf_text_gtk_buffer_buffer_insert_text;
   iface->erase_text = inf_text_gtk_buffer_buffer_erase_text;
-  iface->create_iter = inf_text_gtk_buffer_buffer_create_iter;
+  iface->create_begin_iter = inf_text_gtk_buffer_buffer_create_begin_iter;
+  iface->create_end_iter = inf_text_gtk_buffer_buffer_create_end_iter;
   iface->destroy_iter = inf_text_gtk_buffer_buffer_destroy_iter;
   iface->iter_next = inf_text_gtk_buffer_buffer_iter_next;
   iface->iter_prev = inf_text_gtk_buffer_buffer_iter_prev;

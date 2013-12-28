@@ -1050,7 +1050,7 @@ inf_text_session_to_xml_sync(InfSession* session,
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
   cd = g_iconv_open("UTF-8", inf_text_buffer_get_encoding(buffer));
 
-  iter = inf_text_buffer_create_iter(buffer);
+  iter = inf_text_buffer_create_begin_iter(buffer);
   if(iter != NULL)
   {
     result = TRUE;
@@ -1429,7 +1429,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
         INF_TEXT_DEFAULT_INSERT_OPERATION(operation)
       );
 
-      result = inf_text_chunk_iter_init(chunk, &iter);
+      result = inf_text_chunk_iter_init_begin(chunk, &iter);
       g_assert(result == TRUE);
 
       utf8_text = g_convert(
@@ -1476,7 +1476,7 @@ inf_text_session_request_to_xml(InfAdoptedSession* session,
 
         /* Need to transmit all deleted data */
         cd = g_iconv_open("UTF-8", inf_text_chunk_get_encoding(chunk));
-        result = inf_text_chunk_iter_init(chunk, &iter);
+        result = inf_text_chunk_iter_init_begin(chunk, &iter);
 
         while(result == TRUE)
         {

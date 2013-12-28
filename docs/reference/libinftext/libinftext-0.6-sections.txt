@@ -152,7 +152,8 @@ inf_text_buffer_get_slice
 inf_text_buffer_insert_text
 inf_text_buffer_insert_chunk
 inf_text_buffer_erase_text
-inf_text_buffer_create_iter
+inf_text_buffer_create_begin_iter
+inf_text_buffer_create_end_iter
 inf_text_buffer_destroy_iter
 inf_text_buffer_iter_next
 inf_text_buffer_iter_prev
@@ -221,7 +222,8 @@ inf_text_chunk_insert_chunk
 inf_text_chunk_erase
 inf_text_chunk_get_text
 inf_text_chunk_equal
-inf_text_chunk_iter_init
+inf_text_chunk_iter_init_begin
+inf_text_chunk_iter_init_end
 inf_text_chunk_iter_next
 inf_text_chunk_iter_prev
 inf_text_chunk_iter_get_text

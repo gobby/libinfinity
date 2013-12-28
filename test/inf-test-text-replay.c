@@ -87,7 +87,7 @@ inf_test_text_replay_load_buffer(InfTextBuffer* buffer)
 
   g_assert(strcmp(inf_text_buffer_get_encoding(buffer), "UTF-8") == 0);
 
-  iter = inf_text_buffer_create_iter(buffer);
+  iter = inf_text_buffer_create_begin_iter(buffer);
   if(iter != NULL)
   {
     do
@@ -129,7 +129,7 @@ inf_test_text_replay_apply_operation_to_string(GString* string,
 
     g_assert(strcmp(inf_text_chunk_get_encoding(chunk), "UTF-8") == 0);
 
-    if(inf_text_chunk_iter_init(chunk, &iter))
+    if(inf_text_chunk_iter_init_begin(chunk, &iter))
     {
       /* Convert from pos to byte */
       position = g_utf8_offset_to_pointer(string->str, position) - string->str;

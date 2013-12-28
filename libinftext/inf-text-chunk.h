@@ -43,9 +43,9 @@ typedef struct _InfTextChunk InfTextChunk;
  * via the public API functions.
  *
  * #InfTextChunkIter can be safely allocated on the stack and copied by value.
- * Use inf_text_chunk_iter_init() to initialize a #InfTextChunkIter. There is
- * no deinitialization required. A #InfTextChunkIter is valid as long as the
- * chunk is not modified.
+ * Use inf_text_chunk_iter_init_begin() or inf_text_chunk_iter_init_end() to
+ * initialize a #InfTextChunkIter. There is no deinitialization required. A
+ * #InfTextChunkIter is valid as long as the chunk is not modified.
  */
 typedef struct _InfTextChunkIter InfTextChunkIter;
 struct _InfTextChunkIter {
@@ -105,8 +105,12 @@ inf_text_chunk_equal(InfTextChunk* self,
                      InfTextChunk* other);
 
 gboolean
-inf_text_chunk_iter_init(InfTextChunk* self,
-                         InfTextChunkIter* iter);
+inf_text_chunk_iter_init_begin(InfTextChunk* self,
+                               InfTextChunkIter* iter);
+
+gboolean
+inf_text_chunk_iter_init_end(InfTextChunk* self,
+                             InfTextChunkIter* iter);
 
 gboolean
 inf_text_chunk_iter_next(InfTextChunkIter* iter);

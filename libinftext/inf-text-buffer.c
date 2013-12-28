@@ -295,7 +295,7 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
 }
 
 /**
- * inf_text_buffer_create_iter:
+ * inf_text_buffer_create_begin_iter:
  * @buffer: A #InfTextBuffer.
  *
  * Creates a #InfTextBufferIter pointing to the first segment of @buffer.
@@ -310,16 +310,44 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
  * inf_text_buffer_destroy_iter() when done using it, or %NULL.
  **/
 InfTextBufferIter*
-inf_text_buffer_create_iter(InfTextBuffer* buffer)
+inf_text_buffer_create_begin_iter(InfTextBuffer* buffer)
 {
   InfTextBufferIface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
 
   iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
-  g_return_val_if_fail(iface->create_iter != NULL, NULL);
+  g_return_val_if_fail(iface->create_begin_iter != NULL, NULL);
 
-  return iface->create_iter(buffer);
+  return iface->create_begin_iter(buffer);
+}
+
+/**
+ * inf_text_buffer_create_end_iter:
+ * @buffer: A #InfTextBuffer.
+ *
+ * Creates a #InfTextBufferIter pointing to the last segment of @buffer.
+ * A #InfTextBufferIter is used to traverse the buffer contents in steps of
+ * so-called segments each of which is written by the same user. The function
+ * returns %NULL if there are no segments (i.e. the buffer is empty).
+ *
+ * The iterator stays valid as long as the buffer remains unmodified and
+ * must be freed with inf_text_buffer_destroy_iter() before.
+ *
+ * Return Value: A #InfTextBufferIter to be freed by
+ * inf_text_buffer_destroy_iter() when done using it, or %NULL.
+ **/
+InfTextBufferIter*
+inf_text_buffer_create_end_iter(InfTextBuffer* buffer)
+{
+  InfTextBufferIface* iface;
+
+  g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
+
+  iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
+  g_return_val_if_fail(iface->create_end_iter != NULL, NULL);
+
+  return iface->create_end_iter(buffer);
 }
 
 /**
@@ -327,7 +355,8 @@ inf_text_buffer_create_iter(InfTextBuffer* buffer)
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.
  *
- * Destroys a #InfTextBufferIter created by inf_text_buffer_create_iter().
+ * Destroys a #InfTextBufferIter created by
+ * inf_text_buffer_create_begin_iter() or inf_text_buffer_create_end_iter().
  **/
 void
 inf_text_buffer_destroy_iter(InfTextBuffer* buffer,

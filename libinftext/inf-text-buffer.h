@@ -108,7 +108,9 @@ struct _InfTextBufferIface {
                     guint len,
                     InfUser* user);
 
-  InfTextBufferIter*(*create_iter)(InfTextBuffer* buffer);
+  InfTextBufferIter*(*create_begin_iter)(InfTextBuffer* buffer);
+
+  InfTextBufferIter*(*create_end_iter)(InfTextBuffer* buffer);
 
   void(*destroy_iter)(InfTextBuffer* buffer,
                       InfTextBufferIter* iter);
@@ -178,7 +180,10 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
                            InfUser* user);
 
 InfTextBufferIter*
-inf_text_buffer_create_iter(InfTextBuffer* buffer);
+inf_text_buffer_create_begin_iter(InfTextBuffer* buffer);
+
+InfTextBufferIter*
+inf_text_buffer_create_end_iter(InfTextBuffer* buffer);
 
 void
 inf_text_buffer_destroy_iter(InfTextBuffer* buffer,
