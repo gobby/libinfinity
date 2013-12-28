@@ -538,25 +538,29 @@ infd_directory_session_reject_user_join_cb(InfdSessionProxy* proxy,
   node = g_hash_table_lookup(priv->nodes, node_id);
   g_assert(node != NULL);
 
-  info = g_hash_table_lookup(priv->connections, connection);
-  g_assert(info != NULL);
+  /* ACL cannot prevent local users from joining */
+  if(connection != NULL)
+  {
+    info = g_hash_table_lookup(priv->connections, connection);
+    g_assert(info != NULL);
 
-  iter.node_id = node->id;
-  iter.node = node;
+    iter.node_id = node->id;
+    iter.node = node;
 
-  inf_acl_mask_set1(&check_mask, INF_ACL_CAN_JOIN_USER);
+    inf_acl_mask_set1(&check_mask, INF_ACL_CAN_JOIN_USER);
 
-  result = inf_browser_check_acl(
-    INF_BROWSER(directory),
-    &iter,
-    &info->account->account,
-    &check_mask,
-    NULL
-  );
+    result = inf_browser_check_acl(
+      INF_BROWSER(directory),
+      &iter,
+      &info->account->account,
+      &check_mask,
+      NULL
+    );
 
-  /* Reject the user join if the permission is not set. */
-  if(result == FALSE)
-    return TRUE;
+    /* Reject the user join if the permission is not set. */
+    if(result == FALSE)
+      return TRUE;
+  }
 
   return FALSE;
 }
