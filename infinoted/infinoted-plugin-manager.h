@@ -78,11 +78,13 @@ struct _InfinotedPlugin {
                                gpointer plugin_info,
                                gpointer connection_info);
 
-  void(*on_session_added)(InfSessionProxy* proxy,
+  void(*on_session_added)(const InfBrowserIter* iter,
+                          InfSessionProxy* proxy,
                           gpointer plugin_info,
                           gpointer session_info);
 
-  void(*on_session_removed)(InfSessionProxy* proxy,
+  void(*on_session_removed)(const InfBrowserIter* iter,
+                            InfSessionProxy* proxy,
                             gpointer plugin_info,
                             gpointer session_info);
 };

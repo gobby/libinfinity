@@ -37,6 +37,7 @@ struct _InfinotedPluginManagerForeachConnectionData {
 typedef void(*InfinotedPluginManagerWalkDirectoryFunc)(
   InfinotedPluginManager*,
   InfinotedPluginInstance*,
+  const InfBrowserIter*,
   InfSessionProxy*);
 
 static gpointer
@@ -140,6 +141,7 @@ infinoted_plugin_manager_check_session_type(InfinotedPluginInstance* instance,
 static void
 infinoted_plugin_manager_add_session(InfinotedPluginManager* manager,
                                      InfinotedPluginInstance* instance,
+                                     const InfBrowserIter* iter,
                                      InfSessionProxy* proxy)
 {
   gpointer plugin_info;
@@ -159,13 +161,21 @@ infinoted_plugin_manager_add_session(InfinotedPluginManager* manager,
     }
 
     if(instance->plugin->on_session_added != NULL)
-      instance->plugin->on_session_added(proxy, plugin_info, session_info);
+    {
+      instance->plugin->on_session_added(
+        iter,
+        proxy,
+        plugin_info,
+        session_info
+      );
+    }
   }
 }
 
 static void
 infinoted_plugin_manager_remove_session(InfinotedPluginManager* manager,
                                         InfinotedPluginInstance* instance,
+                                        const InfBrowserIter* iter,
                                         InfSessionProxy* proxy)
 {
   gpointer plugin_info;
@@ -184,7 +194,14 @@ infinoted_plugin_manager_remove_session(InfinotedPluginManager* manager,
     );
 
     if(instance->plugin->on_session_removed != NULL)
-      instance->plugin->on_session_removed(proxy, plugin_info, session_info);
+    {
+      instance->plugin->on_session_removed(
+        iter,
+        proxy,
+        plugin_info,
+        session_info
+      );
+    }
 
     if(instance->plugin->session_info_size > 0)
     {
@@ -225,7 +242,7 @@ infinoted_plugin_manager_walk_directory(
     proxy = inf_browser_get_session(browser, iter);
     if(proxy != NULL)
     {
-      func(manager, instance, proxy);
+      func(manager, instance, iter, proxy);
     }
   }
 }
@@ -500,6 +517,7 @@ infinoted_plugin_manager_subscribe_session_cb(InfBrowser* browser,
     infinoted_plugin_manager_add_session(
       manager,
       (InfinotedPluginInstance*)item->data,
+      iter,
       proxy
     );
   }
@@ -521,6 +539,7 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
     infinoted_plugin_manager_remove_session(
       manager,
       (InfinotedPluginInstance*)item->data,
+      iter,
       proxy
     );
   }

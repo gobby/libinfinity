@@ -252,7 +252,8 @@ infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
 }
 
 static void
-infinoted_plugin_linekeeper_session_added(InfSessionProxy* proxy,
+infinoted_plugin_linekeeper_session_added(const InfBrowserIter* iter,
+                                          InfSessionProxy* proxy,
                                           gpointer plugin_info,
                                           gpointer session_info)
 {
@@ -287,7 +288,8 @@ infinoted_plugin_linekeeper_session_added(InfSessionProxy* proxy,
 }
 
 static void
-infinoted_plugin_linekeeper_session_removed(InfSessionProxy* proxy,
+infinoted_plugin_linekeeper_session_removed(const InfBrowserIter* iter,
+                                            InfSessionProxy* proxy,
                                             gpointer plugin_info,
                                             gpointer session_info)
 {
