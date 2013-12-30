@@ -145,7 +145,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     INFINOTED_PARAMETER_INT,
     0,
     offsetof(InfinotedOptions, autosave_interval),
-    infinoted_parameter_convert_interval,
+    infinoted_parameter_convert_nonnegative,
     0,
     N_("Interval, in seconds, after which to save documents into the root "
        "directory. An interval of 0 disables autosave. In this case "
@@ -229,7 +229,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     INFINOTED_PARAMETER_INT,
     0,
     offsetof(InfinotedOptions, sync_interval),
-    infinoted_parameter_convert_interval,
+    infinoted_parameter_convert_nonnegative,
     0,
     N_("Interval, in seconds, within which to store documents to the "
        "specified sync-directory. If the interval is 0, document "
@@ -250,7 +250,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     INFINOTED_PARAMETER_INT,
     0,
     offsetof(InfinotedOptions, max_transformation_vdiff),
-    infinoted_parameter_convert_interval,
+    infinoted_parameter_convert_nonnegative,
     0,
     N_("Maximum number of transformations allowed for one request. If "
        "processing a request would exceed this number of transformations, "

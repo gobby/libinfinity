@@ -115,7 +115,12 @@ infinoted_parameter_convert_port(gpointer out,
                                  GError** error);
 
 gboolean
-infinoted_parameter_convert_interval(gpointer out,
+infinoted_parameter_convert_nonnegative(gpointer out,
+                                        gpointer in,
+                                        GError** error);
+
+gboolean
+infinoted_parameter_convert_positive(gpointer out,
                                      gpointer in,
                                      GError** error);
 

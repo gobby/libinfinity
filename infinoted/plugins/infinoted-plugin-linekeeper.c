@@ -347,7 +347,7 @@ static const InfinotedParameterInfo INFINOTED_PLUGIN_LINEKEEPER_OPTIONS[] = {
     INFINOTED_PARAMETER_INT,
     INFINOTED_PARAMETER_REQUIRED,
     offsetof(InfinotedPluginLinekeeper, n_lines),
-    infinoted_parameter_convert_interval,
+    infinoted_parameter_convert_nonnegative,
     0,
     N_("The number of empty lines to keep at the end of the document."),
     N_("LINES")

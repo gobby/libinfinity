@@ -425,7 +425,7 @@ infinoted_parameter_convert_port(gpointer out,
 }
 
 /**
- * infinoted_parameter_convert_interval:
+ * infinoted_parameter_convert_nonnegative:
  * @out: The pointer to the output #guint.
  * @in: The pointer to the input #gint.
  * @error: Location to store error information, if any, or %NULL.
@@ -439,9 +439,9 @@ infinoted_parameter_convert_port(gpointer out,
  * Returns: %TRUE on success, or %FALSE otherwise.
  */
 gboolean
-infinoted_parameter_convert_interval(gpointer out,
-                                     gpointer in,
-                                     GError** error)
+infinoted_parameter_convert_nonnegative(gpointer out,
+                                        gpointer in,
+                                        GError** error)
 {
   gint number;
   number = *(gint*)in;
@@ -454,6 +454,46 @@ infinoted_parameter_convert_interval(gpointer out,
       INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
       "%s",
       _("Number must not be negative")
+    );
+
+    return FALSE;
+  }
+
+  *(guint*)out = number;
+
+  return TRUE;
+}
+
+/**
+ * infinoted_parameter_convert_positive:
+ * @out: The pointer to the output #guint.
+ * @in: The pointer to the input #gint.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * This function validates the input number to be positve, i.e. greater than
+ * zero, and converts it into an unsigned integer.
+ *
+ * This is a #InfinotedParameterConvertFunc function that can be used for
+ * any non-negative numbers.
+ *
+ * Returns: %TRUE on success, or %FALSE otherwise.
+ */
+gboolean
+infinoted_parameter_convert_positive(gpointer out,
+                                     gpointer in,
+                                     GError** error)
+{
+  gint number;
+  number = *(gint*)in;
+
+  if(number <= 0)
+  {
+    g_set_error(
+      error,
+      infinoted_parameter_error_quark(),
+      INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
+      "%s",
+      _("Number must be positive")
     );
 
     return FALSE;
