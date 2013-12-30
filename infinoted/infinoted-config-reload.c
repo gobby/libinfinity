@@ -374,28 +374,6 @@ infinoted_config_reload(InfinotedRun* run,
   infinoted_plugin_manager_free(run->plugin_manager);
   run->plugin_manager = plugin_manager;
 
-  if( (run->autosave == NULL && startup->options->autosave_interval >  0) ||
-      (run->autosave != NULL && startup->options->autosave_interval !=
-                                run->autosave->autosave_interval) ||
-      (run->autosave != NULL && strcmp(startup->options->autosave_hook,
-                                       run->autosave->autosave_hook) != 0))
-  {
-    if(run->autosave != NULL)
-    {
-      infinoted_autosave_free(run->autosave);
-      run->autosave = NULL;
-    }
-
-    if(startup->options->autosave_interval > 0)
-    {
-      run->autosave = infinoted_autosave_new(
-        run->directory,
-        startup->options->autosave_interval,
-        startup->options->autosave_hook
-      );
-    }
-  }
-
   if( (run->dsync == NULL && startup->options->sync_interval > 0 &&
                              startup->options->sync_directory != NULL) ||
       (run->dsync != NULL && (startup->options->sync_interval !=

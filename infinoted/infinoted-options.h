@@ -44,8 +44,6 @@ struct _InfinotedOptions {
 
   gchar** plugins;
 
-  gchar* autosave_hook;
-  guint autosave_interval;
   gchar* password;
 #ifdef LIBINFINITY_HAVE_PAM
   gchar* pam_service;

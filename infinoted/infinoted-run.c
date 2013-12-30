@@ -350,19 +350,6 @@ infinoted_run_new(InfinotedStartup* startup,
   run->record = infinoted_record_new(run->directory);
   infinoted_log_set_record(startup->log, run->record);
 
-  if(startup->options->autosave_interval > 0)
-  {
-    run->autosave = infinoted_autosave_new(
-      run->directory,
-      startup->options->autosave_interval,
-      startup->options->autosave_hook
-    );
-  }
-  else
-  {
-    run->autosave = NULL;
-  }
-
   if(startup->options->sync_interval > 0 &&
      startup->options->sync_directory != NULL)
   {
@@ -428,8 +415,6 @@ infinoted_run_free(InfinotedRun* run)
   if(run->protector != NULL)
     infinoted_transformation_protector_free(run->protector);
 
-  if(run->autosave != NULL)
-    infinoted_autosave_free(run->autosave);
   if(run->dsync != NULL)
     infinoted_directory_sync_free(run->dsync);
 

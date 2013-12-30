@@ -25,7 +25,6 @@
 #include <infinoted/infinoted-record.h>
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-plugin-manager.h>
-#include <infinoted/infinoted-autosave.h>
 #include <infinoted/infinoted-directory-sync.h>
 #include <infinoted/infinoted-transformation-protector.h>
 #include <infinoted/infinoted-traffic-logger.h>
@@ -49,7 +48,6 @@ struct _InfinotedRun {
 
   InfinotedPluginManager* plugin_manager;
 
-  InfinotedAutosave* autosave;
   InfinotedDirectorySync* dsync;
   InfinotedTransformationProtector* protector;
   InfinotedTrafficLogger* traffic_logger;

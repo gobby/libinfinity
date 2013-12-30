@@ -132,27 +132,6 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
        "--plugin-parameter option."),
     N_("PLUGIN-NAME")
   }, {
-    "autosave-hook", 
-    INFINOTED_PARAMETER_STRING,
-    0,
-    offsetof(InfinotedOptions, autosave_hook),
-    infinoted_parameter_convert_filename,
-    0,
-    N_("Command to run after having saved a document"),
-    N_("PROGRAM")
-  }, {
-    "autosave-interval",
-    INFINOTED_PARAMETER_INT,
-    0,
-    offsetof(InfinotedOptions, autosave_interval),
-    infinoted_parameter_convert_nonnegative,
-    0,
-    N_("Interval, in seconds, after which to save documents into the root "
-       "directory. An interval of 0 disables autosave. In this case "
-       "documents are only stored to disk when there has been no user "
-       "logged into them for 60 seconds. [Default=0]"),
-    N_("INTERVAL")
-  }, {
     "password",
     INFINOTED_PARAMETER_STRING,
     0,
@@ -422,21 +401,6 @@ infinoted_options_validate(InfinotedOptions* options,
         "or unset the synchronization hook using the sync-directory, "
         "sync-interval and sync-hook sync-hook command line or config file "
         "options.")
-    );
-
-    return FALSE;
-  }
-  else if(options->autosave_hook != NULL && options->autosave_interval == 0)
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_COMBINATION,
-      "%s",
-      _("An autosave hook is given, but the autosave interval is not set. "
-        "Please either set a valid autosave interval or unset the "
-        "autosave hook using the --autosave-interval and --autosave-hook "
-        "command line or config file options.")
     );
 
     return FALSE;
@@ -1065,8 +1029,6 @@ infinoted_options_new(const gchar* const* config_files,
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
   options->plugins = NULL;
-  options->autosave_hook = NULL;
-  options->autosave_interval = 0;
   options->password = NULL;
 #ifdef LIBINFINITY_HAVE_PAM
   options->pam_service = NULL;
@@ -1109,7 +1071,6 @@ infinoted_options_free(InfinotedOptions* options)
   g_free(options->certificate_chain_file);
   g_free(options->root_directory);
   g_strfreev(options->plugins);
-  g_free(options->autosave_hook);
   g_free(options->password);
 #ifdef LIBINFINITY_HAVE_PAM
   g_free(options->pam_service);

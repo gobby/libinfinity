@@ -56,7 +56,6 @@ infinoted_0_6_LDADD = \
 	$(libdaemon_LIBS)
 
 infinoted_0_6_SOURCES = \
-	infinoted-autosave.c \
 	infinoted-config-reload.c \
 	infinoted-dh-params.c \
 	infinoted-directory-sync.c \
@@ -74,7 +73,6 @@ infinoted_0_6_SOURCES = \
 	infinoted-util.c
 
 noinst_HEADERS = \
-	infinoted-autosave.h \
 	infinoted-config-reload.h \
 	infinoted-dh-params.h \
 	infinoted-directory-sync.h \
