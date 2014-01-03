@@ -1604,7 +1604,7 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
          * "error" signal here, so that anyone who is interested can handle
          * it, for example by closing the session, or logging it into a file
          * for human inspection. */
-         g_signal_emit(
+        g_signal_emit(
           G_OBJECT(session),
           session_signals[ERROR],
           0,

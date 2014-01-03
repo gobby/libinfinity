@@ -17,14 +17,29 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infinoted-log
+ * @title: InfinotedLog
+ * @short_description: A class to handle logging of messages.
+ * @include: infinoted/infinoted-log.h
+ * @stability: Unstable
+ *
+ * #InfinotedLog manages a message log. Messages can be written to the log
+ * either as informational, warning and error messages. If the log was
+ * successfully opened, also a glib logging handler is installed which
+ * redirects glib logging to this class. Log output is always shown on
+ * stderr and, optionally, can be duplicated to a file as well.
+ **/
+
 #include <infinoted/infinoted-log.h>
 
-#include <libinfinity/adopted/inf-adopted-session.h>
-#include <libinfinity/adopted/inf-adopted-algorithm.h>
-
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-marshal.h>
 
-#include <libxml/xmlsave.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <errno.h>
 
 #ifdef G_OS_WIN32
 /* Arbitrary; they are not used currently anyway */
@@ -36,594 +51,32 @@
 # include <syslog.h>
 #endif
 
-#include <time.h>
-#include <errno.h>
+typedef struct _InfinotedLogPrivate InfinotedLogPrivate;
+struct _InfinotedLogPrivate {
+  gchar* file_path;
+  FILE* log_file;
+  GLogFunc prev_log_handler;
 
-struct _InfinotedLogSession {
-  InfinotedLog* log;
-  InfSession* session;
-  gchar* path;
+  guint recursion_depth;
 };
 
-static void
-infinoted_log_logv(InfinotedLog* log,
-                   int prio,
-                   const char* fmt,
-                   va_list ap,
-                   const char* extra_log)
-{
-  time_t cur_time;
-  struct tm* cur_tm;
-  char time_msg[128];
-  va_list ap2;
+enum {
+  PROP_0,
 
-  if(log->file != NULL)
-  {
-    cur_time = time(NULL);
-    cur_tm = localtime(&cur_time);
+  /* read only */
+  PROP_FILE_PATH
+};
 
-    switch(prio)
-    {
-    case LOG_ERR:
-      strftime(time_msg, 128, "[%c]   ERROR: ", cur_tm);
-      break;
-    case LOG_WARNING:
-      strftime(time_msg, 128, "[%c] WARNING: ", cur_tm);
-      break;
-    case LOG_INFO:
-      strftime(time_msg, 128, "[%c]    INFO: ", cur_tm);
-      break;
-    default:
-      g_assert_not_reached();
-      break;
-    }
+enum {
+  LOG_MESSAGE,
 
-    /* Copy the va_list so that we don't corrupt the original that we
-     * are going to hand to daemon_logv of vfprintf. */
-    va_copy(ap2, ap);
-    fputs(time_msg, log->file);
-    vfprintf(log->file, fmt, ap2);
-    fputc('\n', log->file);
+  LAST_SIGNAL
+};
 
-    /* Print extra information about what caused the log message */
-    if(extra_log != NULL)
-    {
-      fprintf(
-        log->file,
-        "\t%s\n",
-        extra_log
-      );
-    }
+#define INFINOTED_LOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFINOTED_TYPE_LOG, InfinotedLogPrivate))
 
-    fflush(log->file);
-  }
-
-#ifdef LIBINFINITY_HAVE_LIBDAEMON
-  daemon_logv(prio, fmt, ap);
-#else
-#ifdef G_OS_WIN32
-  /* On Windows, convert to the character set of the console */
-  gchar* out;
-  gchar* codeset;
-  gchar* converted;
-
-  out = g_strdup_vprintf(fmt, ap);
-  codeset = g_strdup_printf("CP%u", (guint)GetConsoleOutputCP());
-  converted = g_convert(out, -1, codeset, "UTF-8", NULL, NULL, NULL);
-  g_free(out);
-  g_free(codeset);
-
-  fprintf(stderr, "%s\n", converted);
-  g_free(converted);
-#else
-  vfprintf(stderr, fmt, ap);
-  fputc('\n', stderr);
-#endif /* !G_OS_WIN32 */
-#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
-}
-
-static void
-infinoted_log_log(InfinotedLog* log,
-                  int prio,
-                  const char* extra,
-                  const char* fmt, ...)
-{
-  va_list ap;
-  va_start(ap, fmt);
-  infinoted_log_logv(log, prio, fmt, ap, extra);
-  va_end(ap);
-}
-
-static gchar*
-infinoted_log_get_default_extra(InfinotedLog* log)
-{
-  gchar* request_str;
-  const gchar* user_name;
-  InfXmlConnection* user_connection;
-  gchar* user_connection_str;
-  InfAdoptedSessionRecord* record;
-  gchar* record_filename;
-  gchar* record_basename;
-  gchar* document_name;
-  gchar* extra;
-
-  if(log->current_session != NULL && log->current_user != NULL &&
-     log->current_request != NULL)
-  {
-    request_str = inf_adopted_state_vector_to_string(
-      inf_adopted_request_get_vector(log->current_request)
-    );
-
-    user_name = inf_user_get_name(INF_USER(log->current_user));
-    user_connection = inf_user_get_connection(INF_USER(log->current_user));
-
-    if(user_connection != NULL)
-    {
-      g_object_get(
-        G_OBJECT(user_connection),
-        "remote-id", &user_connection_str,
-        NULL
-      );
-    }
-    else
-    {
-      user_connection_str = g_strdup("local");
-    }
-
-    record = NULL;
-    record_basename = NULL;
-    if(log->record != NULL)
-    {
-      record = infinoted_record_get_for_session(
-        log->record,
-        INF_ADOPTED_SESSION(log->current_session->session)
-      );
-
-      if(record != NULL)
-      {
-        g_object_get(G_OBJECT(record), "filename", &record_filename, NULL);
-        record_basename = g_path_get_basename(record_filename);
-        g_free(record_filename);
-      }
-    }
-
-    if(record_basename == NULL)
-    {
-      document_name = g_strdup(log->current_session->path);
-    }
-    else
-    {
-      document_name = g_strdup_printf(
-        "%s (%s)",
-        log->current_session->path,
-        record_basename
-      );
-
-      g_free(record_basename);
-    }
-
-    extra = g_strdup_printf(
-      _("\twhen executing request \"%s\" from user %s (%s) in document %s"),
-      request_str,
-      user_name,
-      user_connection_str,
-      document_name
-    );
-
-    g_free(document_name);
-    g_free(user_connection_str);
-    g_free(request_str);
-
-    return extra;
-  }
-  else
-  {
-    return NULL;
-  }
-}
-
-static void
-infinoted_log_session_error_cb(InfSession* session,
-                               InfXmlConnection* connection,
-                               xmlNodePtr xml,
-                               const GError* error,
-                               gpointer user_data)
-{
-  InfinotedLogSession* log_session;
-  InfinotedLog* log;
-  InfAdoptedSessionRecord* record;
-  gchar* connection_str;
-  gchar* record_filename;
-  gchar* record_basename;
-  gchar* document_name;
-  xmlBufferPtr buffer;
-  xmlSaveCtxtPtr ctx;
-  gchar* extra;
-
-  log_session = (InfinotedLogSession*)user_data;
-  log = log_session->log;
-
-  g_object_get(G_OBJECT(connection), "remote-id", &connection_str, NULL);
-
-  record = NULL;
-  record_basename = NULL;
-  if(log->record != NULL)
-  {
-    record = infinoted_record_get_for_session(
-      log->record,
-      INF_ADOPTED_SESSION(session)
-    );
-
-    if(record != NULL)
-    {
-      g_object_get(G_OBJECT(record), "filename", &record_filename, NULL);
-      record_basename = g_path_get_basename(record_filename);
-      g_free(record_filename);
-    }
-  }
-
-  if(record_basename == NULL)
-  {
-    document_name = g_strdup(log_session->path);
-  }
-  else
-  {
-    document_name = g_strdup_printf(
-      "%s (%s)",
-      log_session->path,
-      record_basename
-    );
-
-    g_free(record_basename);
-   }
-
-  buffer = xmlBufferCreate();
-  ctx = xmlSaveToBuffer(buffer, "UTF-8", XML_SAVE_FORMAT);
-  xmlSaveTree(ctx, xml);
-  xmlSaveClose(ctx);
-
-  extra = g_strdup_printf(
-    _("in document %s from connection %s. The request was:\n\n%s"),
-    document_name,
-    connection_str,
-    (const gchar*)xmlBufferContent(buffer)
-  );
-
-  g_free(connection_str);
-  g_free(document_name);
-  xmlBufferFree(buffer);
-
-  infinoted_log_log(
-    log,
-    LOG_WARNING,
-    extra,
-    "Session error: %s",
-    error->message
-  );
-
-  g_free(extra);
-}
-
-static void
-infinoted_log_session_execute_request_before_cb(InfAdoptedAlgorithm* algo,
-                                                InfAdoptedUser* user,
-                                                InfAdoptedRequest* request,
-                                                gboolean apply,
-                                                gpointer user_data)
-{
-  InfinotedLogSession* log_session;
-  log_session = (InfinotedLogSession*)user_data;
-
-  g_assert(log_session->log->current_session == NULL);
-  g_assert(log_session->log->current_request == NULL);
-
-  /* Don't need to ref these */
-  log_session->log->current_session = log_session;
-  log_session->log->current_user = user;
-  log_session->log->current_request = request;
-}
-
-static void
-infinoted_log_session_execute_request_after_cb(InfAdoptedAlgorithm* algo,
-                                               InfAdoptedUser* user,
-                                               InfAdoptedRequest* request,
-                                               gboolean apply,
-                                               gpointer user_data)
-{
-  InfinotedLogSession* log_session;
-  log_session = (InfinotedLogSession*)user_data;
-
-  g_assert(log_session->log->current_session == log_session);
-  g_assert(log_session->log->current_user == user);
-  g_assert(log_session->log->current_request == request);
-
-  log_session->log->current_session = NULL;
-  log_session->log->current_user = NULL;
-  log_session->log->current_request = NULL;
-}
-
-static void
-infinoted_log_session_notify_status_cb(GObject* object,
-                                       GParamSpec* pspec,
-                                       gpointer user_data)
-{
-  InfinotedLogSession* log_session;
-  InfAdoptedAlgorithm* algorithm;
-
-  log_session = (InfinotedLogSession*)user_data;
-
-  g_assert(INF_ADOPTED_IS_SESSION(object));
-
-  if(inf_session_get_status(INF_SESSION(object)) == INF_SESSION_RUNNING)
-  {
-    inf_signal_handlers_disconnect_by_func(
-      object,
-      G_CALLBACK(infinoted_log_session_notify_status_cb),
-      log_session
-    );
-
-    algorithm =
-      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(object));
-
-    g_signal_connect(
-      G_OBJECT(algorithm),
-      "execute-request",
-      G_CALLBACK(infinoted_log_session_execute_request_before_cb),
-      log_session
-    );
-
-    g_signal_connect_after(
-      G_OBJECT(algorithm),
-      "execute-request",
-      G_CALLBACK(infinoted_log_session_execute_request_after_cb),
-      log_session
-    );
-  }
-}
-
-static void
-infinoted_log_add_session(InfinotedLog* log,
-                          const InfBrowserIter* iter,
-                          InfSession* session)
-{
-  InfinotedLogSession* log_session;
-  InfAdoptedAlgorithm* algorithm;
-
-  log_session = g_slice_new(InfinotedLogSession);
-
-  log_session->log = log;
-  log_session->session = session;
-  log_session->path = inf_browser_get_path(INF_BROWSER(log->directory), iter);
-  g_object_ref(session);
-
-  g_signal_connect(
-    G_OBJECT(session),
-    "error",
-    G_CALLBACK(infinoted_log_session_error_cb),
-    log_session
-  );
-  
-  if(INF_ADOPTED_IS_SESSION(session))
-  {
-    if(inf_session_get_status(session) == INF_SESSION_RUNNING)
-    {
-      algorithm =
-        inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
-
-      g_signal_connect(
-        G_OBJECT(algorithm),
-        "execute-request",
-        G_CALLBACK(infinoted_log_session_execute_request_before_cb),
-        log_session
-      );
-
-      g_signal_connect_after(
-        G_OBJECT(algorithm),
-        "execute-request",
-        G_CALLBACK(infinoted_log_session_execute_request_after_cb),
-        log_session
-      );
-    }
-    else
-    {
-      g_signal_connect(
-        G_OBJECT(session),
-        "notify::status",
-        G_CALLBACK(infinoted_log_session_notify_status_cb),
-        log_session
-      );
-    }
-  }
-
-  log->sessions = g_slist_prepend(log->sessions, log_session);
-}
-
-static void
-infinoted_log_remove_session(InfinotedLog* log,
-                             InfSession* session)
-{
-  InfinotedLogSession* log_session;
-  GSList* item;
-  InfAdoptedAlgorithm* algorithm;
-
-  for(item = log->sessions; item != NULL; item = item->next)
-    if( ((InfinotedLogSession*)item->data)->session == session)
-      break;
-
-  g_assert(item != NULL);
-  log_session = (InfinotedLogSession*)item->data;
-
-  if(INF_ADOPTED_IS_SESSION(session))
-  {
-    inf_signal_handlers_disconnect_by_func(
-      session,
-      G_CALLBACK(infinoted_log_session_notify_status_cb),
-      log_session
-    );
-
-    algorithm =
-      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
-
-    inf_signal_handlers_disconnect_by_func(
-      algorithm,
-      G_CALLBACK(infinoted_log_session_execute_request_before_cb),
-      log_session
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      algorithm,
-      G_CALLBACK(infinoted_log_session_execute_request_after_cb),
-      log_session
-    );
-  }
-
-  inf_signal_handlers_disconnect_by_func(
-    session,
-    G_CALLBACK(infinoted_log_session_error_cb),
-    log_session
-  );
-
-  /* If we are in the middle of an execute of this session, then clear the
-   * current pointers, because we won't get notified upon execution finish
-   * anymore. */
-  if(log_session == log->current_session)
-  {
-    log->current_session = NULL;
-    log->current_user = NULL;
-    log->current_request = NULL;
-  }
-
-  log->sessions = g_slist_delete_link(log->sessions, item);
-
-  g_free(log_session->path);
-  g_object_unref(log_session->session);
-  g_slice_free(InfinotedLogSession, log_session);
-}
-
-static void
-infinoted_log_subscribe_session_cb(InfBrowser* browser,
-                                   const InfBrowserIter* iter,
-                                   InfSessionProxy* proxy,
-                                   gpointer user_data)
-{
-  InfinotedLog* log;
-  InfSession* session;
-
-  log = (InfinotedLog*)user_data;
-
-  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
-  infinoted_log_add_session(log, iter, session);
-  g_object_unref(session);
-}
-
-static void
-infinoted_log_unsubscribe_session_cb(InfBrowser* browser,
-                                     const InfBrowserIter* iter,
-                                     InfSessionProxy* proxy,
-                                     gpointer user_data)
-{
-  InfinotedLog* log;
-  InfSession* session;
-
-  log = (InfinotedLog*)user_data;
-
-  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
-  infinoted_log_remove_session(log, session);
-  g_object_unref(session);
-}
-
-
-static void
-infinoted_log_connection_added_cb(InfdDirectory* directory,
-                                  InfXmlConnection* connection,
-                                  gpointer user_data)
-{
-  InfinotedLog* log;
-  gchar* remote_id;
-
-  log = (InfinotedLog*)user_data;
-  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
-
-  infinoted_log_info(
-    log,
-    _("%s connected"),
-    remote_id
-  );
-
-  g_free(remote_id);
-}
-
-static void
-infinoted_log_connection_removed_cb(InfdDirectory* directory,
-                                    InfXmlConnection* connection,
-                                    gpointer user_data)
-{
-  InfinotedLog* log;
-  gchar* remote_id;
-
-  log = (InfinotedLog*)user_data;
-  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
-
-  infinoted_log_info(
-    log,
-    _("%s disconnected"),
-    remote_id
-  );
-
-  g_free(remote_id);
-}
-
-static void
-infinoted_log_connection_error_cb(InfXmlConnection* connection,
-                                  gpointer error,
-                                  gpointer user_data)
-{
-  const GError* err;
-  InfinotedLog* log;
-  gchar* remote_id;
-
-  err = (const GError*)error;
-  log = (InfinotedLog*)user_data;
-  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
-
-  infinoted_log_error(
-    log,
-    _("Error from connection %s: %s"),
-    remote_id,
-    err->message
-  );
-
-  g_free(remote_id);
-}
-
-static void
-infinoted_log_set_directory_remove_func(InfXmlConnection* connection,
-                                        gpointer user_data)
-{
-  InfinotedLog* log;
-  log = (InfinotedLog*)user_data;
-
-  inf_signal_handlers_disconnect_by_func(
-    connection,
-    G_CALLBACK(infinoted_log_connection_error_cb),
-    log
-  );
-}
-
-static void
-infinoted_log_set_directory_add_func(InfXmlConnection* connection,
-                                     gpointer user_data)
-{
-  InfinotedLog* log;
-  log = (InfinotedLog*)user_data;
-
-  g_signal_connect(
-    connection,
-    "error",
-    G_CALLBACK(infinoted_log_connection_error_cb),
-    log
-  );
-}
+static GObjectClass* parent_class;
+static guint log_signals[LAST_SIGNAL];
 
 static void
 infinoted_log_handler(const gchar* log_domain,
@@ -632,7 +85,7 @@ infinoted_log_handler(const gchar* log_domain,
                       gpointer user_data)
 {
   InfinotedLog* log;
-  log = (InfinotedLog*)user_data;
+  log = INFINOTED_LOG(user_data);
 
   switch(log_level & G_LOG_LEVEL_MASK)
   {
@@ -663,190 +116,378 @@ infinoted_log_handler(const gchar* log_domain,
     abort();
 }
 
-/**
- * infinoted_log_new:
- * @options: A #InfinotedOptions object.
- * @error: Location to store error information, if any.
- *
- * Creates a new #InfinotedLog. The log path is read from the options object.
- *
- * Returns: A new #InfinotedLog, or %NULL on error.
- */
-InfinotedLog*
-infinoted_log_new(InfinotedOptions* options,
-                  GError** error)
+static void
+infinoted_log_write(InfinotedLog* log,
+                    guint prio,
+                    guint depth,
+                    const gchar* text)
 {
-  InfinotedLog* log;
-  log = g_slice_new(InfinotedLog);
-  log->file = NULL;
-  log->directory = NULL;
-  log->connections = NULL;
-  log->sessions = NULL;
-  log->current_session = NULL;
-  log->current_user = NULL;
-  log->current_request = NULL;
+  InfinotedLogPrivate* priv;
+  time_t cur_time;
+  struct tm* cur_tm;
+  char time_msg[128];
+  gchar* final_text;
 
-  if(options->log_path != NULL)
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  if(depth == 0)
   {
-    log->file = fopen(options->log_path, "a");
-    if(log->file == NULL)
+    cur_time = time(NULL);
+    cur_tm = localtime(&cur_time);
+
+    switch(prio)
     {
-      infinoted_util_set_errno_error(error, errno, "Failed to open log file");
-      infinoted_log_free(log);
-      return FALSE;
+    case LOG_ERR:
+      strftime(time_msg, 128, "[%c]   ERROR", cur_tm);
+      break;
+    case LOG_WARNING:
+      strftime(time_msg, 128, "[%c] WARNING", cur_tm);
+      break;
+    case LOG_INFO:
+      strftime(time_msg, 128, "[%c]    INFO", cur_tm);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
     }
+
+    final_text = g_strdup_printf("%s: %s", time_msg, text);
+  }
+  else
+  {
+    final_text = g_strdup_printf("\t%s", text);
   }
 
-  log->prev_log_handler = g_log_set_default_handler(
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+  daemon_log(prio, "%s", final_text);
+#else
+#ifdef G_OS_WIN32
+  /* On Windows, convert to the character set of the console */
+  gchar* codeset;
+  gchar* converted;
+
+  codeset = g_strdup_printf("CP%u", (guint)GetConsoleOutputCP());
+  converted = g_convert(final_text, -1, codeset, "UTF-8", NULL, NULL, NULL);
+  g_free(codeset);
+
+  fprintf(stderr, "%s\n", converted);
+  g_free(converted);
+#else
+  fprintf(stderr, "%s\n", final_text);
+#endif /* !G_OS_WIN32 */
+#endif /* !LIBINFINITY_HAVE_LIBDAEMON */
+
+  if(priv->log_file != NULL)
+  {
+    fprintf(priv->log_file, "%s\n", final_text);
+  }
+
+  g_free(final_text);
+}
+
+static void
+infinoted_log_entry(InfinotedLog* log,
+                    guint prio,
+                    const gchar* fmt,
+                    va_list args)
+{
+  /* This is an entry point for the three public functions. */
+  InfinotedLogPrivate* priv;
+  gchar* text;
+  guint depth;
+
+  priv = INFINOTED_LOG_PRIVATE(log);
+  text = g_strdup_vprintf(fmt, args);
+
+  /*g_rec_mutex_lock(priv->mutex);*/
+
+  depth = priv->recursion_depth++;
+
+  g_signal_emit(log, log_signals[LOG_MESSAGE], 0, prio, depth, text);
+
+  g_assert(priv->recursion_depth == depth + 1);
+  --priv->recursion_depth;
+
+  /*g_rec_mutex_unlock(priv->mutex);*/
+}
+
+static void
+infinoted_log_init(GTypeInstance* instance,
+                   gpointer g_class)
+{
+  InfinotedLog* log;
+  InfinotedLogPrivate* priv;
+
+  log = INFINOTED_LOG(instance);
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  priv->file_path = NULL;
+  priv->log_file = NULL;
+  priv->prev_log_handler = NULL;
+  priv->recursion_depth = 0;
+}
+
+static void
+infinoted_log_finalize(GObject* object)
+{
+  InfinotedLog* log;
+  InfinotedLogPrivate* priv;
+
+  log = INFINOTED_LOG(object);
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  if(priv->log_file != NULL)
+    infinoted_log_close(log);
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
+static void
+infinoted_log_set_property(GObject* object,
+                           guint prop_id,
+                           const GValue* value,
+                           GParamSpec* pspec)
+{
+  InfinotedLog* log;
+  InfinotedLogPrivate* priv;
+
+  log = INFINOTED_LOG(object);
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  switch(prop_id)
+  {
+  case PROP_FILE_PATH:
+    /* read only */
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infinoted_log_get_property(GObject* object,
+                           guint prop_id,
+                           GValue* value,
+                           GParamSpec* pspec)
+{
+  InfinotedLog* log;
+  InfinotedLogPrivate* priv;
+
+  log = INFINOTED_LOG(object);
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  switch(prop_id)
+  {
+  case PROP_FILE_PATH:
+    g_value_set_string(value, priv->file_path);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infinoted_log_log_message(InfinotedLog* log,
+                          guint prio,
+                          guint depth,
+                          const gchar* text)
+{
+  InfinotedLogPrivate* priv;
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  g_assert(priv->recursion_depth == depth+1);
+  infinoted_log_write(log, prio, depth, text);
+}
+
+static void
+infinoted_log_class_init(gpointer g_class,
+                         gpointer class_data)
+{
+  GObjectClass* object_class;
+  InfinotedLogClass* log_class;
+
+  object_class = G_OBJECT_CLASS(g_class);
+  log_class = INFINOTED_LOG_CLASS(g_class);
+
+  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
+  g_type_class_add_private(g_class, sizeof(InfinotedLogPrivate));
+
+  object_class->finalize = infinoted_log_finalize;
+  object_class->set_property = infinoted_log_set_property;
+  object_class->get_property = infinoted_log_get_property;
+
+  log_class->log_message = infinoted_log_log_message;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_FILE_PATH,
+    g_param_spec_string(
+      "file-path",
+      "File Path",
+      "Path to the log file",
+      NULL,
+      G_PARAM_READABLE
+    )
+  );
+
+  /**
+   * InfinotedLog::log-message:
+   * @log: The #InfinotedLog that is logging a message.
+   * @prio: The priority of the logged message.
+   * @depth: The recursion depth of the logged message.
+   * @text: The logged message text.
+   *
+   * This signal is emitted when a new line of log message is written to the
+   * log.
+   */
+  log_signals[LOG_MESSAGE] = g_signal_new(
+    "log-message",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_FIRST,
+    G_STRUCT_OFFSET(InfinotedLogClass, log_message),
+    NULL, NULL,
+    inf_marshal_VOID__UINT_UINT_STRING,
+    G_TYPE_NONE,
+    3,
+    G_TYPE_UINT,
+    G_TYPE_UINT,
+    G_TYPE_STRING
+  );
+}
+
+GType
+infinoted_log_get_type(void)
+{
+  static GType log_type = 0;
+
+  if(!log_type)
+  {
+    static const GTypeInfo log_type_info = {
+      sizeof(InfinotedLogClass), /* class_size */
+      NULL,                      /* base_init */
+      NULL,                      /* base_finalize */
+      infinoted_log_class_init,  /* class_init */
+      NULL,                      /* class_finalize */
+      NULL,                      /* class_data */
+      sizeof(InfinotedLog),      /* instance_size */
+      0,                         /* n_preallocs */
+      infinoted_log_init,        /* instance_init */
+      NULL                       /* value_table */
+    };
+
+    log_type = g_type_register_static(
+      G_TYPE_OBJECT,
+      "InfinotedLog",
+      &log_type_info,
+      0
+    );
+  }
+
+  return log_type;
+}
+
+/**
+ * infinoted_log_new:
+ *
+ * Creates a new #InfinotedLog.
+ *
+ * Returns: A new #InfinotedLog. Free with g_object_unref() when no longer
+ * needed.
+ */
+InfinotedLog*
+infinoted_log_new(void)
+{
+  GObject* object = g_object_new(INFINOTED_TYPE_LOG, NULL);
+  return INFINOTED_LOG(object);
+}
+
+/**
+ * infinoted_log_open:
+ * @log: A #InfinotedLog.
+ * @path: The path to the log file to write, or %NULL.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Attempts to open the log file at the given path. If the log file could not
+ * be opened the function returns %FALSE and @error is set. If the log file
+ * exists already then new log messages will be appended.
+ *
+ * If @path is %NULL no log file is opened and logging only occurs to stderr.
+ *
+ * Returns: %TRUE on success, or %FALSE otherwise.
+ */
+gboolean
+infinoted_log_open(InfinotedLog* log,
+                   const gchar* path,
+                   GError** error)
+{
+  InfinotedLogPrivate* priv;
+
+  g_return_val_if_fail(INFINOTED_IS_LOG(log), FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
+
+  priv = INFINOTED_LOG_PRIVATE(log);
+  g_return_val_if_fail(priv->prev_log_handler == NULL, FALSE);
+
+  if(path != NULL)
+  {
+    g_assert(priv->log_file == NULL);
+    priv->log_file = fopen(path, "a");
+    if(priv->log_file == NULL)
+    {
+      infinoted_util_set_errno_error(error, errno, "Failed to open log file");
+      return FALSE;
+    }
+
+    g_assert(priv->file_path == NULL);
+    priv->file_path = g_strdup(path);
+  }
+
+  priv->prev_log_handler = g_log_set_default_handler(
     infinoted_log_handler,
     log
   );
 
-  return log;
+  if(path != NULL)
+    g_object_notify(G_OBJECT(log), "file-path");
+
+  return TRUE;
 }
 
 /**
- * infinoted_log_free:
- * @log: A #InfinotedLog object created with infinoted_log_new().
- *
- * Frees @log so that it can no longer be used. Allocated resources
- * are returned to the system.
- */
-void
-infinoted_log_free(InfinotedLog* log)
-{
-  if(log->directory != NULL)
-    infinoted_log_set_directory(log, NULL);
-
-  g_assert(log->current_session == NULL);
-  g_assert(log->current_user == NULL);
-  g_assert(log->current_request == NULL);
-  g_assert(log->sessions == NULL);
-  g_assert(log->connections == NULL);
-
-  if(log->file != NULL)
-    fclose(log->file);
-
-  g_log_set_default_handler(log->prev_log_handler, NULL);
-  g_slice_free(InfinotedLog, log);
-}
-
-/**
- * infinoted_log_set_directory:
+ * infinoted_log_close:
  * @log: A #InfinotedLog.
- * @directory: A #InfdDirectory being monitored by @log, or %NULL.
  *
- * If @directory is non-%NULL then @log will monitor interesting events that
- * happen to the directory, such as new connections, new sessions or node
- * creation or removal. Those events are written to the log file.
+ * Closes a #InfinotedLog object opened with infinoted_log_open(). After the
+ * log was closed it can be opened again with a different file. The log is
+ * closed automatically on destruction.
  */
 void
-infinoted_log_set_directory(InfinotedLog* log,
-                            InfdDirectory* directory)
+infinoted_log_close(InfinotedLog* log)
 {
-  if(log->directory != NULL)
+  InfinotedLogPrivate* priv;
+  
+  g_return_if_fail(INFINOTED_IS_LOG(log));
+  priv = INFINOTED_LOG_PRIVATE(log);
+
+  g_return_if_fail(priv->prev_log_handler != NULL);
+  if(priv->log_file != NULL)
   {
-    inf_signal_handlers_disconnect_by_func(
-      log->directory,
-      G_CALLBACK(infinoted_log_connection_added_cb),
-      log
-    );
+    g_assert(priv->file_path != NULL);
 
-    inf_signal_handlers_disconnect_by_func(
-      log->directory,
-      G_CALLBACK(infinoted_log_connection_removed_cb),
-      log
-    );
+    fclose(priv->log_file);
+    priv->log_file = NULL;
 
-    inf_signal_handlers_disconnect_by_func(
-      log->directory,
-      G_CALLBACK(infinoted_log_subscribe_session_cb),
-      log
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      log->directory,
-      G_CALLBACK(infinoted_log_unsubscribe_session_cb),
-      log
-    );
-
-    infd_directory_foreach_connection(
-      log->directory,
-      infinoted_log_set_directory_remove_func,
-      log
-    );
-
-    /* Remove all sessions */
-    while(log->sessions != NULL)
-    {
-      infinoted_log_remove_session(
-        log,
-        ((InfinotedLogSession*)log->sessions->data)->session
-      );
-    }
-
-    g_object_unref(log->directory);
+    g_free(priv->file_path);
+    priv->file_path = NULL;
   }
 
-  log->directory = directory;
+  g_assert(priv->file_path == NULL);
 
-  if(directory)
-  {
-    g_object_ref(directory);
+  g_log_set_default_handler(priv->prev_log_handler, NULL);
+  priv->prev_log_handler = NULL;
 
-    g_signal_connect(
-      G_OBJECT(directory),
-      "connection-added",
-      G_CALLBACK(infinoted_log_connection_added_cb),
-      log
-    );
-
-    g_signal_connect(
-      G_OBJECT(directory),
-      "connection-removed",
-      G_CALLBACK(infinoted_log_connection_removed_cb),
-      log
-    );
-
-    g_signal_connect(
-      G_OBJECT(directory),
-      "subscribe-session",
-      G_CALLBACK(infinoted_log_subscribe_session_cb),
-      log
-    );
-
-    g_signal_connect(
-      G_OBJECT(directory),
-      "unsubscribe-session",
-      G_CALLBACK(infinoted_log_unsubscribe_session_cb),
-      log
-    );
-
-    infd_directory_foreach_connection(
-      log->directory,
-      infinoted_log_set_directory_add_func,
-      log
-    );
-
-    /* TODO: Add all running sessions in directory */
-  }
-}
-
-/**
- * infinoted_log_set_record:
- * @log: A #InfinotedLog.
- * @record: The #InfinotedRecord to set, or %NULL.
- *
- * Sets the record for @log to @record. If a record is set, then for error
- * messages that appear while executing a request the filename of the record
- * is being logged as well, so that it makes it simple to debug it with the
- * corresponding record file, should the need arise.
- */
-void
-infinoted_log_set_record(InfinotedLog* log,
-                         InfinotedRecord* record)
-{
-  log->record = record;
+  g_object_notify(G_OBJECT(log), "file-path");
 }
 
 /**
@@ -863,13 +504,9 @@ void
 infinoted_log_error(InfinotedLog* log, const char* fmt, ...)
 {
   va_list ap;
-  gchar* extra;
-
-  extra = infinoted_log_get_default_extra(log);
   va_start(ap, fmt);
-  infinoted_log_logv(log, LOG_ERR, fmt, ap, extra);
+  infinoted_log_entry(log, LOG_ERR, fmt, ap);
   va_end(ap);
-  g_free(extra);
 }
 
 /**
@@ -886,13 +523,9 @@ void
 infinoted_log_warning(InfinotedLog* log, const char* fmt, ...)
 {
   va_list ap;
-  gchar* extra;
-
-  extra = infinoted_log_get_default_extra(log);
   va_start(ap, fmt);
-  infinoted_log_logv(log, LOG_WARNING, fmt, ap, extra);
+  infinoted_log_entry(log, LOG_WARNING, fmt, ap);
   va_end(ap);
-  g_free(extra);
 }
 
 /**
@@ -909,13 +542,9 @@ void
 infinoted_log_info(InfinotedLog* log, const char* fmt, ...)
 {
   va_list ap;
-  gchar* extra;
-
-  extra = infinoted_log_get_default_extra(log);
   va_start(ap, fmt);
-  infinoted_log_logv(log, LOG_INFO, fmt, ap, extra);
+  infinoted_log_entry(log, LOG_INFO, fmt, ap);
   va_end(ap);
-  g_free(extra);
 }
 
 /* vim:set et sw=2 ts=2: */

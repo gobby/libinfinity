@@ -213,9 +213,6 @@ infinoted_run_load_directory(InfinotedRun* run,
     return FALSE;
   }
 
-  if(startup->log != NULL)
-    infinoted_log_set_directory(startup->log, run->directory);
-
   return TRUE;
 }
 
@@ -348,7 +345,6 @@ infinoted_run_new(InfinotedStartup* startup,
   inf_ip_address_free(address);
 
   run->record = infinoted_record_new(run->directory);
-  infinoted_log_set_record(startup->log, run->record);
 
   if(startup->options->sync_interval > 0 &&
      startup->options->sync_directory != NULL)
@@ -444,12 +440,6 @@ infinoted_run_free(InfinotedRun* run)
   {
     infinoted_plugin_manager_free(run->plugin_manager);
     run->plugin_manager = NULL;
-  }
-
-  if(run->startup->log != NULL)
-  {
-    infinoted_log_set_record(run->startup->log, NULL);
-    infinoted_log_set_directory(run->startup->log, NULL);
   }
 
   if(run->record != NULL)

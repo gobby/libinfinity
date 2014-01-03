@@ -76,9 +76,13 @@ infinoted_transformation_protector_execute_request_cb(InfAdoptedAlgorithm* algor
     /* Prevent the request from being transformed */
     g_signal_stop_emission_by_name(algorithm, "execute-request");
 
+    /* TODO: Take care of this in some other way, by rearranging the way
+     * execute-request and apply-request are called. */
+#if 0
     sess->protector->log->current_session = NULL;
     sess->protector->log->current_request = NULL;
     sess->protector->log->current_user = NULL;
+#endif
 
     /* Kill the connection (if any) */
     infd_session_proxy_unsubscribe(sess->proxy, connection);

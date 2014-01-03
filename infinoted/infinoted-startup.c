@@ -454,8 +454,8 @@ infinoted_startup_load(InfinotedStartup* startup,
   if(infinoted_startup_load_options(startup, argc, argv, error) == FALSE)
     return FALSE;
 
-  startup->log = infinoted_log_new(startup->options, error);
-  if(startup->log == NULL)
+  startup->log = infinoted_log_new();
+  if(!infinoted_log_open(startup->log, startup->options->log_path, error))
     return FALSE;
 
   if(infinoted_startup_load_credentials(startup, error) == FALSE)
@@ -545,7 +545,7 @@ infinoted_startup_free(InfinotedStartup* startup)
     gnutls_x509_privkey_deinit(startup->private_key);
 
   if(startup->log != NULL)
-    infinoted_log_free(startup->log);
+    g_object_unref(startup->log);
 
   if(startup->options != NULL)
     infinoted_options_free(startup->options);

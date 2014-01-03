@@ -83,10 +83,6 @@ infinoted_config_reload(InfinotedRun* run,
   startup = infinoted_startup_new(NULL, NULL, error);
   if(!startup) return FALSE;
 
-  /* Associate the directory to the new log handle */
-  if(startup->log)
-    infinoted_log_set_directory(startup->log, run->directory);
-
   /* Acquire DH params if necessary (if security policy changed from
    * no-tls to one of allow-tls or require-tls). */
   dh_params = run->dh_params;
