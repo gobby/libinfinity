@@ -200,6 +200,7 @@ infinoted_config_reload(InfinotedRun* run,
 
   plugin_manager = infinoted_plugin_manager_new(
     run->directory,
+    startup->log,
     plugin_path,
     (const gchar* const*)startup->options->plugins,
     startup->options->config_key_file,

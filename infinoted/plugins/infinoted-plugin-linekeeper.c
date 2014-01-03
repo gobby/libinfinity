@@ -30,6 +30,7 @@
 typedef struct _InfinotedPluginLinekeeper InfinotedPluginLinekeeper;
 struct _InfinotedPluginLinekeeper {
   InfIo* io;
+  InfinotedLog* log;
   guint n_lines;
 };
 
@@ -46,6 +47,7 @@ struct _InfinotedPluginLinekeeperSessionInfo {
 static gboolean
 infinoted_plugin_linekeeper_initialize(InfinotedPluginManager* manager,
                                        InfdDirectory* directory,
+                                       InfinotedLog* log,
                                        gpointer plugin_info,
                                        GError** error)
 {
@@ -53,6 +55,9 @@ infinoted_plugin_linekeeper_initialize(InfinotedPluginManager* manager,
   plugin = (InfinotedPluginLinekeeper*)plugin_info;
 
   g_object_get(G_OBJECT(directory), "io", &plugin->io, NULL);
+
+  plugin->log = log;
+  g_object_ref(log);
 }
 
 static void
@@ -62,6 +67,7 @@ infinoted_plugin_linekeeper_deinitialize(gpointer plugin_info)
   plugin = (InfinotedPluginLinekeeper*)plugin_info;
 
   g_object_unref(plugin->io);
+  g_object_unref(plugin->log);
 }
 
 static guint
@@ -220,9 +226,8 @@ infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
 
   if(error != NULL)
   {
-    /* TODO: Replace by infinoted log */
-    fprintf(
-      stderr,
+    infinoted_log_warning(
+      info->plugin->log,
       _("Could not join LineKeeper user for document: %s\n"),
       error->message
     );

@@ -27,11 +27,12 @@
  * shared library.
  *
  * The only API allowed to be used is what is declared in
- * infinoted-parameter.h. The reason for this is that this code is also
- * included in the shared library. This allows parameter parsing for
- * plugins. */
+ * infinoted-parameter.h and infinoted-log. The reason for this is that this
+ * code is also included in the shared library. This allows parameter parsing
+ * and central logging for plugins. */
 
 #include <infinoted/infinoted-parameter.h>
+#include <infinoted/infinoted-log.h>
 
 #include <libinfinity/server/infd-directory.h>
 
@@ -42,6 +43,7 @@ G_BEGIN_DECLS
 typedef struct _InfinotedPluginManager InfinotedPluginManager;
 struct _InfinotedPluginManager {
   InfdDirectory* directory;
+  InfinotedLog* log;
   gchar* path;
 
   GSList* plugins;
@@ -65,6 +67,7 @@ struct _InfinotedPlugin {
 
   gboolean(*on_initialize)(InfinotedPluginManager* manager,
                            InfdDirectory* directory,
+                           InfinotedLog* log,
                            gpointer plugin_info,
                            GError** error);
 
@@ -100,6 +103,7 @@ typedef enum _InfinotedPluginManagerError {
 
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
+                             InfinotedLog* log,
                              const gchar* plugin_path,
                              const gchar* const* plugins,
                              GKeyFile* options,

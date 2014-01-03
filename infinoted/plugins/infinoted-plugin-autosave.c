@@ -19,6 +19,7 @@
 
 #include <infinoted/infinoted-plugin-manager.h>
 #include <infinoted/infinoted-parameter.h>
+#include <infinoted/infinoted-log.h>
 
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-buffer.h>
@@ -30,6 +31,7 @@
 typedef struct _InfinotedPluginAutosave InfinotedPluginAutosave;
 struct _InfinotedPluginAutosave {
   InfdDirectory* directory;
+  InfinotedLog* log;
   guint interval;
   gchar* hook;
 };
@@ -140,8 +142,8 @@ infinoted_plugin_autosave_save(InfinotedPluginAutosaveSessionInfo* info)
   {
     path = inf_browser_get_path(INF_BROWSER(directory), iter);
 
-    /* TODO: Use infinoted logging here */
-    g_warning(
+    infinoted_log_warning(
+      info->plugin->log,
       _("Failed to auto-save session \"%s\": %s\n\n"
         "Will retry in %u seconds."),
       path,
@@ -180,8 +182,8 @@ infinoted_plugin_autosave_save(InfinotedPluginAutosaveSessionInfo* info)
       if(!g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH,
                         NULL, NULL, NULL, &error))
       {
-        /* TODO: Use infinoted logging here */
-        g_warning(
+        infinoted_log_warning(
+          info->plugin->log,
           _("Could not execute autosave hook: \"%s\""),
           error->message
         );
@@ -222,6 +224,7 @@ infinoted_plugin_autosave_info_initialize(gpointer plugin_info)
   plugin = (InfinotedPluginAutosave*)plugin_info;
 
   plugin->directory = NULL;
+  plugin->log = NULL;
   plugin->interval = 0;
   plugin->hook = NULL;
 }
@@ -229,6 +232,7 @@ infinoted_plugin_autosave_info_initialize(gpointer plugin_info)
 static gboolean
 infinoted_plugin_autosave_initialize(InfinotedPluginManager* manager,
                                      InfdDirectory* directory,
+                                     InfinotedLog* log,
                                      gpointer plugin_info,
                                      GError** error)
 {
@@ -236,7 +240,10 @@ infinoted_plugin_autosave_initialize(InfinotedPluginManager* manager,
   plugin = (InfinotedPluginAutosave*)plugin_info;
 
   plugin->directory = directory;
+  plugin->log = log;
+
   g_object_ref(directory);
+  g_object_ref(log);
 }
 
 static void
@@ -247,6 +254,7 @@ infinoted_plugin_autosave_deinitialize(gpointer plugin_info)
 
   g_free(plugin->hook);
   g_object_unref(plugin->directory);
+  g_object_unref(plugin->log);
 }
 
 static void

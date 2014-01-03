@@ -383,6 +383,7 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
     result = plugin->on_initialize(
       manager,
       manager->directory,
+      manager->log,
       instance+1,
       &local_error
     );
@@ -548,6 +549,7 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
 /**
  * infinoted_plugin_manager_new:
  * @directory: The #InfdDirectory on which plugins should operate.
+ * @log: The #InfinotedLog to write log messages to.
  * @plugin_path: A path to the plugin modules.
  * @plugins: A list of plugins to load, or %NULL.
  * @options: A #GKeyFile with configuration options for the plugins.
@@ -563,6 +565,7 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
  */
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
+                             InfinotedLog* log,
                              const gchar* plugin_path,
                              const gchar* const* plugins,
                              GKeyFile* options,
@@ -575,12 +578,14 @@ infinoted_plugin_manager_new(InfdDirectory* directory,
   plugin_manager = g_slice_new(InfinotedPluginManager);
 
   plugin_manager->directory = directory;
+  plugin_manager->log = log;
   plugin_manager->path = g_strdup(plugin_path);
   plugin_manager->plugins = NULL;
   plugin_manager->connections = g_hash_table_new(NULL, NULL);
   plugin_manager->sessions = g_hash_table_new(NULL, NULL);
 
   g_object_ref(directory);
+  g_object_ref(log);
 
   g_signal_connect_after(
     G_OBJECT(directory),
@@ -685,6 +690,7 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager)
   g_free(manager->path);
 
   g_object_unref(manager->directory);
+  g_object_unref(manager->log);
 
   g_slice_free(InfinotedPluginManager, manager);
 }
