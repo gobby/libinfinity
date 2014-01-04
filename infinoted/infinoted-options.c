@@ -492,6 +492,50 @@ infinoted_options_parse_arg_func(const gchar* option_name,
 
   switch(info->type)
   {
+  case INFINOTED_PARAMETER_BOOLEAN:
+    if(g_hash_table_lookup(options, info) != NULL)
+    {
+      g_set_error(
+        error,
+        infinoted_options_error_quark(),
+        INFINOTED_OPTIONS_ERROR_MULTIPLE_OPTIONS,
+        _("The option \"%s\" can only be given once"),
+        option_name
+      );
+
+      return FALSE;
+    }
+
+    if(strcmp(value, "true") == 0 || strcmp(value, "1") == 0)
+    {
+      optval = infinoted_parameter_typed_value_new();
+      optval->type = INFINOTED_PARAMETER_BOOLEAN;
+      optval->value.yesno = TRUE;
+      g_hash_table_insert(options, (gpointer)info, optval);
+      return TRUE;
+    }
+    else if(strcmp(value, "false") == 0 || strcmp(value, "0") == 0)
+    {
+      optval = infinoted_parameter_typed_value_new();
+      optval->type = INFINOTED_PARAMETER_BOOLEAN;
+      optval->value.yesno = FALSE;
+      g_hash_table_insert(options, (gpointer)info, optval);
+      return TRUE;
+    }
+    else
+    {
+      g_set_error(
+        error,
+        infinoted_options_error_quark(),
+        INFINOTED_OPTIONS_ERROR_INVALID_BOOLEAN,
+        _("\"%s\" cannot be interpreted as a boolean value"),
+        value
+      );
+
+      return FALSE;
+    }
+
+    break;
   case INFINOTED_PARAMETER_INT:
     if(g_hash_table_lookup(options, info) != NULL)
     {
@@ -641,6 +685,15 @@ infinoted_options_args_to_keyfile_foreach_func(gpointer key,
 
   switch(info->type)
   {
+  case INFINOTED_PARAMETER_BOOLEAN:
+    g_key_file_set_boolean(
+      key_file,
+      INFINOTED_OPTIONS_GROUP,
+      info->name,
+      optval->value.yesno
+    );
+
+    break;
   case INFINOTED_PARAMETER_INT:
     g_key_file_set_integer(
       key_file,

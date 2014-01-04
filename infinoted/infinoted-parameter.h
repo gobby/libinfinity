@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 typedef enum _InfinotedParameterType {
+  INFINOTED_PARAMETER_BOOLEAN,
   INFINOTED_PARAMETER_INT,
   INFINOTED_PARAMETER_STRING,
   INFINOTED_PARAMETER_STRING_LIST
@@ -39,6 +40,7 @@ typedef enum _InfinotedParameterFlags {
 
 typedef union _InfinotedParameterValue InfinotedParameterValue;
 union _InfinotedParameterValue {
+  gboolean yesno;
   gint number;
   gchar* str;
   gchar** strv;
@@ -108,6 +110,11 @@ gboolean
 infinoted_parameter_convert_filename(gpointer out,
                                      gpointer in,
                                      GError** error);
+
+gboolean
+infinoted_parameter_convert_boolean(gpointer out,
+                                   gpointer in,
+                                   GError** error);
 
 gboolean
 infinoted_parameter_convert_port(gpointer out,

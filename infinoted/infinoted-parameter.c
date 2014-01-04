@@ -28,6 +28,7 @@ infinoted_parameter_free_data(InfinotedParameterType type,
 {
   switch(type)
   {
+  case INFINOTED_PARAMETER_BOOLEAN:
   case INFINOTED_PARAMETER_INT:
     break;
   case INFINOTED_PARAMETER_STRING:
@@ -58,6 +59,16 @@ infinoted_parameter_load_one_from_key_file(const InfinotedParameterInfo* info,
 
   switch(info->type)
   {
+  case INFINOTED_PARAMETER_BOOLEAN:
+    v.yesno = g_key_file_get_boolean(
+      key_file,
+      group,
+      info->name,
+      &local_error
+    );
+
+    in = &v.yesno;
+    break;
   case INFINOTED_PARAMETER_INT:
     v.number = g_key_file_get_integer(
       key_file,
@@ -379,6 +390,31 @@ infinoted_parameter_convert_filename(gpointer out,
     *out_str = NULL;
   }
 
+  return TRUE;
+}
+
+/**
+ * infinoted_parameter_convert_boolean:
+ * @out: The pointer to the output #gboolean.
+ * @in: The pointer to the input #gboolean.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * This function simply writes the boolean value from @in to @out without any
+ * further validation.
+ *
+ * This is a #InfinotedParameterConvertFunc function that can be used for
+ * boolean values.
+ *
+ * Returns: This function always returns %TRUE.
+ */
+gboolean
+infinoted_parameter_convert_boolean(gpointer out,
+                                    gpointer in,
+                                    GError** error)
+{
+  gboolean value;
+  value = *(gboolean*)in;
+  *(gboolean*)out = value;
   return TRUE;
 }
 
