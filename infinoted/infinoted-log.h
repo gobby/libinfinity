@@ -78,6 +78,12 @@ void
 infinoted_log_close(InfinotedLog* log);
 
 void
+infinoted_log_log(InfinotedLog* log,
+                  guint prio,
+                  const char* fmt,
+                  ...);
+
+void
 infinoted_log_error(InfinotedLog* log,
                     const char* fmt,
                     ...);

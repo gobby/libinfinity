@@ -493,6 +493,30 @@ infinoted_log_close(InfinotedLog* log)
 /**
  * infinoted_log_error:
  * @log: A #InfinotedLog.
+ * @prio: Priority of the logged message.
+ * @fmt: A printf-style format string.
+ * ...: Format arguments.
+ *
+ * Logs a message with the given priority. The priority is one of %LOG_ERR,
+ * %LOG_WARNING or %LOG_INFO.  If the server is daemonized, log to syslog,
+ * otherwise log to stderr. If a logfile is given in the options when @log
+ * was created, the logfile is written to as well.
+ */
+void
+infinoted_log_log(InfinotedLog* log,
+                  guint prio,
+                  const char* fmt,
+                  ...)
+{
+  va_list ap;
+  va_start(ap, fmt);
+  infinoted_log_entry(log, prio, fmt, ap);
+  va_end(ap);
+}
+
+/**
+ * infinoted_log_error:
+ * @log: A #InfinotedLog.
  * @fmt: A printf-style format string.
  * ...: Format arguments.
  *
@@ -501,7 +525,9 @@ infinoted_log_close(InfinotedLog* log)
  * was created, the logfile is written to as well.
  */
 void
-infinoted_log_error(InfinotedLog* log, const char* fmt, ...)
+infinoted_log_error(InfinotedLog* log,
+                    const char* fmt,
+                    ...)
 {
   va_list ap;
   va_start(ap, fmt);
@@ -520,7 +546,9 @@ infinoted_log_error(InfinotedLog* log, const char* fmt, ...)
  * was created, the logfile is written to as well.
  */
 void
-infinoted_log_warning(InfinotedLog* log, const char* fmt, ...)
+infinoted_log_warning(InfinotedLog* log,
+                      const char* fmt,
+                      ...)
 {
   va_list ap;
   va_start(ap, fmt);
@@ -539,7 +567,8 @@ infinoted_log_warning(InfinotedLog* log, const char* fmt, ...)
  * was created, the logfile is written to as well.
  */
 void
-infinoted_log_info(InfinotedLog* log, const char* fmt, ...)
+infinoted_log_info(InfinotedLog* log,
+                   const char* fmt,...)
 {
   va_list ap;
   va_start(ap, fmt);
