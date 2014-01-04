@@ -50,6 +50,7 @@ infinoted_record_start_real(InfAdoptedSession* session,
   }
   else
   {
+    g_object_set_data(G_OBJECT(session), "infinoted-record", record);
     return record;
   }
 }
@@ -159,6 +160,7 @@ infinoted_record_directory_unsubscribe_session_cb(InfBrowser* browser,
     if(session == cur_session)
     {
       record->records = g_slist_remove(record->records, rec);
+      g_object_set_data(G_OBJECT(session), "infinoted-record", NULL);
       g_object_unref(cur_session);
       g_object_unref(rec);
       break;

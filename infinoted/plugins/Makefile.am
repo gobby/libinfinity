@@ -1,4 +1,8 @@
-plugin_LTLIBRARIES = libinfinoted-plugin-linekeeper.la libinfinoted-plugin-autosave.la
+plugin_LTLIBRARIES = \
+	libinfinoted-plugin-autosave.la	\
+	libinfinoted-plugin-linekeeper.la \
+	libinfinoted-plugin-logging.la
+
 plugindir = ${libdir}/infinoted-$(LIBINFINITY_API_VERSION)/plugins
 
 AM_CPPFLAGS = \
@@ -18,8 +22,11 @@ LIBADD = \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 
+libinfinoted_plugin_autosave_la_SOURCES = \
+	infinoted-plugin-autosave.c
+
 libinfinoted_plugin_linekeeper_la_SOURCES = \
 	infinoted-plugin-linekeeper.c
 
-libinfinoted_plugin_autosave_la_SOURCES = \
-	infinoted-plugin-autosave.c
+libinfinoted_plugin_logging_la_SOURCES = \
+	infinoted-plugin-logging.c
