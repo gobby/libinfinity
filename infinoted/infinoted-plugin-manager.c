@@ -749,7 +749,7 @@ infinoted_plugin_manager_get_session_info(InfinotedPluginManager* mgr,
                                           InfSessionProxy* proxy)
 {
   return g_hash_table_lookup(
-    mgr->connections,
+    mgr->sessions,
     infinoted_plugin_manager_hash(plugin_info, proxy)
   );
 }
