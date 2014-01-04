@@ -29,8 +29,7 @@
 
 typedef struct _InfinotedPluginLinekeeper InfinotedPluginLinekeeper;
 struct _InfinotedPluginLinekeeper {
-  InfIo* io;
-  InfinotedLog* log;
+  InfinotedPluginManager* manager;
   guint n_lines;
 };
 
@@ -46,18 +45,13 @@ struct _InfinotedPluginLinekeeperSessionInfo {
 
 static gboolean
 infinoted_plugin_linekeeper_initialize(InfinotedPluginManager* manager,
-                                       InfdDirectory* directory,
-                                       InfinotedLog* log,
                                        gpointer plugin_info,
                                        GError** error)
 {
   InfinotedPluginLinekeeper* plugin;
   plugin = (InfinotedPluginLinekeeper*)plugin_info;
 
-  g_object_get(G_OBJECT(directory), "io", &plugin->io, NULL);
-
-  plugin->log = log;
-  g_object_ref(log);
+  plugin->manager = manager;
 }
 
 static void
@@ -65,9 +59,6 @@ infinoted_plugin_linekeeper_deinitialize(gpointer plugin_info)
 {
   InfinotedPluginLinekeeper* plugin;
   plugin = (InfinotedPluginLinekeeper*)plugin_info;
-
-  g_object_unref(plugin->io);
-  g_object_unref(plugin->log);
 }
 
 static guint
@@ -179,12 +170,16 @@ infinoted_plugin_linekeeper_text_inserted_cb(InfTextBuffer* buffer,
                                              gpointer user_data)
 {
   InfinotedPluginLinekeeperSessionInfo* info;
+  InfdDirectory* directory;
+
   info = (InfinotedPluginLinekeeperSessionInfo*)user_data;
 
   if(info->dispatch == NULL)
   {
+    directory = infinoted_plugin_manager_get_directory(info->plugin->manager);
+
     info->dispatch = inf_io_add_dispatch(
-      info->plugin->io,
+      infd_directory_get_io(directory),
       infinoted_plugin_linekeeper_run_dispatch_func,
       info,
       NULL
@@ -200,12 +195,16 @@ infinoted_plugin_linekeeper_text_erased_cb(InfTextBuffer* buffer,
                                            gpointer user_data)
 {
   InfinotedPluginLinekeeperSessionInfo* info;
+  InfdDirectory* directory;
+
   info = (InfinotedPluginLinekeeperSessionInfo*)user_data;
 
   if(info->dispatch == NULL)
   {
+    directory = infinoted_plugin_manager_get_directory(info->plugin->manager);
+
     info->dispatch = inf_io_add_dispatch(
-      info->plugin->io,
+      infd_directory_get_io(directory),
       infinoted_plugin_linekeeper_run_dispatch_func,
       info,
       NULL
@@ -227,7 +226,7 @@ infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
   if(error != NULL)
   {
     infinoted_log_warning(
-      info->plugin->log,
+      infinoted_plugin_manager_get_log(info->plugin->manager),
       _("Could not join LineKeeper user for document: %s\n"),
       error->message
     );
@@ -299,11 +298,14 @@ infinoted_plugin_linekeeper_session_removed(const InfBrowserIter* iter,
                                             gpointer session_info)
 {
   InfinotedPluginLinekeeperSessionInfo* info;
+  InfdDirectory* directory;
+
   info = (InfinotedPluginLinekeeperSessionInfo*)session_info;
 
   if(info->dispatch != NULL)
   {
-    inf_io_remove_dispatch(info->plugin->io, info->dispatch);
+    directory = infinoted_plugin_manager_get_directory(info->plugin->manager);
+    inf_io_remove_dispatch(infd_directory_get_io(directory), info->dispatch);
     info->dispatch = NULL;
   }
 

@@ -34,8 +34,6 @@
 typedef struct _InfinotedPluginLogging InfinotedPluginLogging;
 struct _InfinotedPluginLogging {
   InfinotedPluginManager* manager;
-  InfdDirectory* directory;
-  InfinotedLog* log;
 
   gboolean log_connections;
   gboolean log_connection_errors;
@@ -88,7 +86,9 @@ infinoted_plugin_logging_get_document_name(
   }
 
   path = inf_browser_get_path(
-    INF_BROWSER(info->plugin->directory),
+    INF_BROWSER(
+      infinoted_plugin_manager_get_directory(info->plugin->manager)
+    ),
     &info->iter
   );
 
@@ -233,7 +233,7 @@ infinoted_plugin_logging_connection_error_cb(InfXmlConnection* connection,
   g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
 
   infinoted_log_error(
-    plugin->log,
+    infinoted_plugin_manager_get_log(plugin->manager),
     _("Error from connection %s: %s"),
     remote_id,
     error->message
@@ -284,7 +284,7 @@ infinoted_pluggin_logging_session_error_cb(InfSession* session,
   /* The extra message is being written inside the handler of the
    * InfinotedLog::log-message signal. */
   infinoted_log_error(
-    info->plugin->log,
+    infinoted_plugin_manager_get_log(info->plugin->manager),
     _("Session error: %s"),
     error->message
   );
@@ -340,8 +340,6 @@ infinoted_plugin_logging_info_initialize(gpointer plugin_info)
 
 static gboolean
 infinoted_plugin_logging_initialize(InfinotedPluginManager* manager,
-                                    InfdDirectory* directory,
-                                    InfinotedLog* log,
                                     gpointer plugin_info,
                                     GError** error)
 {
@@ -349,14 +347,9 @@ infinoted_plugin_logging_initialize(InfinotedPluginManager* manager,
   plugin = (InfinotedPluginLogging*)plugin_info;
 
   plugin->manager = manager;
-  plugin->directory = directory;
-  plugin->log = log;
-
-  g_object_ref(directory);
-  g_object_ref(log);
 
   g_signal_connect(
-    G_OBJECT(log),
+    G_OBJECT(infinoted_plugin_manager_get_log(manager)),
     "log-message",
     G_CALLBACK(infinoted_plugin_logging_log_message_cb),
     plugin
@@ -375,13 +368,10 @@ infinoted_plugin_logging_deinitialize(gpointer plugin_info)
   plugin = (InfinotedPluginLogging*)plugin_info;
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(plugin->log),
+    G_OBJECT(infinoted_plugin_manager_get_log(plugin->manager)),
     G_CALLBACK(infinoted_plugin_logging_log_message_cb),
     plugin
   );
-
-  g_object_unref(plugin->directory);
-  g_object_unref(plugin->log);
 }
 
 static void
@@ -409,7 +399,7 @@ infinoted_plugin_logging_connection_added(InfXmlConnection* connection,
     g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
 
     infinoted_log_info(
-      plugin->log,
+      infinoted_plugin_manager_get_log(plugin->manager),
       _("%s connected"),
       remote_id
     );
@@ -442,7 +432,7 @@ infinoted_plugin_logging_connection_removed(InfXmlConnection* connection,
     g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
 
     infinoted_log_info(
-      plugin->log,
+      infinoted_plugin_manager_get_log(plugin->manager),
       _("%s disconnected"),
       remote_id
     );

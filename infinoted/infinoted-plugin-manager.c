@@ -380,13 +380,7 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
   {
     local_error = NULL;
 
-    result = plugin->on_initialize(
-      manager,
-      manager->directory,
-      manager->log,
-      instance+1,
-      &local_error
-    );
+    result = plugin->on_initialize(manager, instance+1, &local_error);
 
     if(local_error != NULL)
     {
@@ -693,6 +687,35 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager)
   g_object_unref(manager->log);
 
   g_slice_free(InfinotedPluginManager, manager);
+}
+
+/**
+ * infinoted_plugin_manager_get_directory:
+ * @manager: A #InfinotedPluginManager.
+ *
+ * Returns the #InfdDirectory used by the plugin manager.
+ *
+ * Returns: A #InfdDirectory owned by the plugin manager.
+ */
+InfdDirectory*
+infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager)
+{
+  return manager->directory;
+}
+
+/**
+ * infinoted_plugin_manager_get_log:
+ * @manager: A #InfinotedPluginManager.
+ *
+ * Returns the #InfinotedLog that the plugin manager and the plugins do
+ * write log messages to.
+ *
+ * Returns: A #InfinotedLog owned by the plugin manager.
+ */
+InfinotedLog*
+infinoted_plugin_manager_get_log(InfinotedPluginManager* manager)
+{
+  return manager->log;
 }
 
 /**

@@ -66,8 +66,6 @@ struct _InfinotedPlugin {
   void(*on_info_initialize)(gpointer plugin_info);
 
   gboolean(*on_initialize)(InfinotedPluginManager* manager,
-                           InfdDirectory* directory,
-                           InfinotedLog* log,
                            gpointer plugin_info,
                            GError** error);
 
@@ -111,6 +109,12 @@ infinoted_plugin_manager_new(InfdDirectory* directory,
 
 void
 infinoted_plugin_manager_free(InfinotedPluginManager* manager);
+
+InfdDirectory*
+infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager);
+
+InfinotedLog*
+infinoted_plugin_manager_get_log(InfinotedPluginManager* manager);
 
 GQuark
 infinoted_plugin_manager_error_quark(void);

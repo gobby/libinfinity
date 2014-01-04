@@ -30,8 +30,7 @@
 
 typedef struct _InfinotedPluginAutosave InfinotedPluginAutosave;
 struct _InfinotedPluginAutosave {
-  InfdDirectory* directory;
-  InfinotedLog* log;
+  InfinotedPluginManager* manager;
   guint interval;
   gchar* hook;
 };
@@ -53,7 +52,9 @@ infinoted_plugin_autosave_start(InfinotedPluginAutosaveSessionInfo* info)
 {
   InfIo* io;
 
-  io = infd_directory_get_io(info->plugin->directory);
+  io = infd_directory_get_io(
+    infinoted_plugin_manager_get_directory(info->plugin->manager)
+  );
 
   g_assert(info->timeout == NULL);
 
@@ -71,7 +72,9 @@ infinoted_plugin_autosave_stop(InfinotedPluginAutosaveSessionInfo* info)
 {
   InfIo* io;
 
-  io = infd_directory_get_io(info->plugin->directory);
+  io = infd_directory_get_io(
+    infinoted_plugin_manager_get_directory(info->plugin->manager)
+  );
 
   g_assert(info->timeout != NULL);
 
@@ -119,7 +122,7 @@ infinoted_plugin_autosave_save(InfinotedPluginAutosaveSessionInfo* info)
   gchar* root_directory;
   gchar* argv[4];
 
-  directory = info->plugin->directory;
+  directory = infinoted_plugin_manager_get_directory(info->plugin->manager);
   iter = &info->iter;
   error = NULL;
 
@@ -143,7 +146,7 @@ infinoted_plugin_autosave_save(InfinotedPluginAutosaveSessionInfo* info)
     path = inf_browser_get_path(INF_BROWSER(directory), iter);
 
     infinoted_log_warning(
-      info->plugin->log,
+      infinoted_plugin_manager_get_log(info->plugin->manager),
       _("Failed to auto-save session \"%s\": %s\n\n"
         "Will retry in %u seconds."),
       path,
@@ -183,7 +186,7 @@ infinoted_plugin_autosave_save(InfinotedPluginAutosaveSessionInfo* info)
                         NULL, NULL, NULL, &error))
       {
         infinoted_log_warning(
-          info->plugin->log,
+          infinoted_plugin_manager_get_log(info->plugin->manager),
           _("Could not execute autosave hook: \"%s\""),
           error->message
         );
@@ -223,27 +226,20 @@ infinoted_plugin_autosave_info_initialize(gpointer plugin_info)
   InfinotedPluginAutosave* plugin;
   plugin = (InfinotedPluginAutosave*)plugin_info;
 
-  plugin->directory = NULL;
-  plugin->log = NULL;
+  plugin->manager = NULL;
   plugin->interval = 0;
   plugin->hook = NULL;
 }
 
 static gboolean
 infinoted_plugin_autosave_initialize(InfinotedPluginManager* manager,
-                                     InfdDirectory* directory,
-                                     InfinotedLog* log,
                                      gpointer plugin_info,
                                      GError** error)
 {
   InfinotedPluginAutosave* plugin;
   plugin = (InfinotedPluginAutosave*)plugin_info;
 
-  plugin->directory = directory;
-  plugin->log = log;
-
-  g_object_ref(directory);
-  g_object_ref(log);
+  plugin->manager = manager;
 }
 
 static void
@@ -253,8 +249,6 @@ infinoted_plugin_autosave_deinitialize(gpointer plugin_info)
   plugin = (InfinotedPluginAutosave*)plugin_info;
 
   g_free(plugin->hook);
-  g_object_unref(plugin->directory);
-  g_object_unref(plugin->log);
 }
 
 static void
