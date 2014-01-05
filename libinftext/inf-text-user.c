@@ -314,8 +314,16 @@ inf_text_user_get_selection_length(InfTextUser* user)
  * @position: The new position for the user's caret.
  * @length: The number of characters to select. Negative numbers mean
  * selection towards the beginning.
+ * @by_request: %TRUE if explicitly requested or %FALSE when just an effect
+ * of another operation.
  *
- * Changes @user's selection (i.e. caret position and selection length).
+ * Changes @user's selection (i.e. caret position and selection length). The
+ * @by_request parameter should be set to %TRUE if the selection change was
+ * requested explicitly, for example by the user actively moving the cursor
+ * using the mouse or the keyboard. If the cursor position changes only
+ * because another user inserted text at a position before the user's cursor
+ * and this results in a change of the selection position, the @by_request
+ * parameter should be set to %FALSE.
  **/
 void
 inf_text_user_set_selection(InfTextUser* user,
