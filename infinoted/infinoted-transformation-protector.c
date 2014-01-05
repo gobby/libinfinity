@@ -47,12 +47,11 @@ infinoted_transformation_protector_find_session(
   return NULL;
 }
 
-static void
-infinoted_transformation_protector_execute_request_cb(InfAdoptedAlgorithm* algorithm,
-                                                      InfAdoptedUser* user,
-                                                      InfAdoptedRequest* request,
-                                                      gboolean apply,
-                                                      gpointer user_data)
+static gboolean
+infinoted_transformation_protector_check_request_cb(InfAdoptedSession* session,
+                                                    InfAdoptedRequest* request,
+                                                    InfAdoptedUser* user,
+                                                    gpointer user_data)
 {
   InfinotedTransformationProtectorSession* sess;
   InfXmlConnection* connection;
@@ -62,7 +61,9 @@ infinoted_transformation_protector_execute_request_cb(InfAdoptedAlgorithm* algor
 
   vdiff = inf_adopted_state_vector_vdiff(
     inf_adopted_request_get_vector(request),
-    inf_adopted_algorithm_get_current(algorithm)
+    inf_adopted_algorithm_get_current(
+      inf_adopted_session_get_algorithm(session)
+    )
   );
 
   if(vdiff > sess->protector->max_vdiff)
@@ -73,20 +74,14 @@ infinoted_transformation_protector_execute_request_cb(InfAdoptedAlgorithm* algor
      * zero vdiff. */
     g_assert(connection != NULL);
 
-    /* Prevent the request from being transformed */
-    g_signal_stop_emission_by_name(algorithm, "execute-request");
-
-    /* TODO: Take care of this in some other way, by rearranging the way
-     * execute-request and apply-request are called. */
-#if 0
-    sess->protector->log->current_session = NULL;
-    sess->protector->log->current_request = NULL;
-    sess->protector->log->current_user = NULL;
-#endif
-
     /* Kill the connection (if any) */
     infd_session_proxy_unsubscribe(sess->proxy, connection);
+
+    /* Prevent the request from being transformed */
+    return TRUE;
   }
+
+  return FALSE;
 }
 
 static void
@@ -96,7 +91,6 @@ infinoted_transformation_protector_add_session(
 {
   InfinotedTransformationProtectorSession* sess;
   InfSession* session;
-  InfAdoptedAlgorithm* algorithm;
 
   sess = g_slice_new(InfinotedTransformationProtectorSession);
   sess->protector = protector;
@@ -109,12 +103,11 @@ infinoted_transformation_protector_add_session(
 
   g_object_get(G_OBJECT(proxy), "session", &session, NULL);
   g_assert(INF_ADOPTED_IS_SESSION(session));
-  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
 
   g_signal_connect(
-    G_OBJECT(algorithm),
-    "execute-request",
-    G_CALLBACK(infinoted_transformation_protector_execute_request_cb),
+    G_OBJECT(session),
+    "check-request",
+    G_CALLBACK(infinoted_transformation_protector_check_request_cb),
     sess
   );
 
@@ -130,8 +123,8 @@ infinoted_transformation_protector_remove_session(
   g_object_get(G_OBJECT(sess->proxy), "session", &session, NULL);
 
   inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))),
-    G_CALLBACK(infinoted_transformation_protector_execute_request_cb),
+    G_OBJECT(session),
+    G_CALLBACK(infinoted_transformation_protector_check_request_cb),
     sess
   );
 
