@@ -24,6 +24,7 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 #include <string.h>
@@ -86,9 +87,17 @@ enum {
   PROP_ALGORITHM
 };
 
+enum {
+  CHECK_REQUEST,
+
+  LAST_SIGNAL
+};
+
 #define INF_ADOPTED_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_SESSION, InfAdoptedSessionPrivate))
 
 static InfSessionClass* parent_class;
+static guint session_signals[LAST_SIGNAL];
+
 static GQuark inf_adopted_session_error_quark;
 /* TODO: This should perhaps be a property: */
 static const int INF_ADOPTED_SESSION_NOOP_INTERVAL = 30;
@@ -420,6 +429,34 @@ inf_adopted_session_broadcast_n_requests(InfAdoptedSession* session,
     inf_adopted_state_vector_add(local->last_send_vector, user_id, n);
 
   inf_adopted_session_stop_noop_timer(session, local);
+}
+
+static gboolean
+inf_adopted_session_process_request(InfAdoptedSession* session,
+                                    InfAdoptedRequest* request,
+                                    InfAdoptedUser* user)
+{
+  InfAdoptedSessionPrivate* priv;
+  gboolean reject_request;
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  g_signal_emit(
+    G_OBJECT(session),
+    session_signals[CHECK_REQUEST],
+    0,
+    request,
+    user,
+    &reject_request
+  );
+
+  if(!reject_request)
+  {
+    inf_adopted_algorithm_receive_request(priv->algorithm, request);
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 /*
@@ -943,6 +980,7 @@ inf_adopted_session_process_xml_run(InfSession* session,
   InfAdoptedUser* user;
 
   gboolean has_num;
+  gboolean process_request;
   guint num;
   GError* local_error;
   InfAdoptedRequest* copy_req;
@@ -997,14 +1035,18 @@ inf_adopted_session_process_xml_run(InfSession* session,
     if(request == NULL)
       return INF_COMMUNICATION_SCOPE_PTP;
 
-    inf_adopted_algorithm_receive_request(priv->algorithm, request);
+    process_request = inf_adopted_session_process_request(
+      INF_ADOPTED_SESSION(session),
+      request,
+      user
+    );
 
     /* Apply the request more than once if num is given. This is mostly used
      * for multiple undos and redos, but is in general allowed for any
      * request. */
     if(has_num)
     {
-      for(i = 1; i < num; ++i)
+      for(i = 1; process_request && i < num; ++i)
       {
         /* TODO: This is a bit of a hack since requests are normally
          * immutable. It avoids an additional vector copy here though. */
@@ -1016,7 +1058,12 @@ inf_adopted_session_process_xml_run(InfSession* session,
           i
         );
 
-        inf_adopted_algorithm_receive_request(priv->algorithm, copy_req);
+        process_request = inf_adopted_session_process_request(
+          INF_ADOPTED_SESSION(session),
+          copy_req,
+          user
+        );
+
         g_object_unref(copy_req);
       }
     }
@@ -1248,6 +1295,15 @@ inf_adopted_session_synchronization_complete(InfSession* session,
   g_object_thaw_notify(G_OBJECT(session));
 }
 
+static gboolean
+inf_adopted_session_check_request(InfAdoptedSession* session,
+                                  InfAdoptedRequest* request,
+                                  InfAdoptedUser* user)
+{
+  /* Accept all requests by default */
+  return FALSE;
+}
+
 /*
  * Gype registration.
  */
@@ -1288,9 +1344,39 @@ inf_adopted_session_class_init(gpointer g_class,
 
   adopted_session_class->xml_to_request = NULL;
   adopted_session_class->request_to_xml = NULL;
+  adopted_session_class->check_request = inf_adopted_session_check_request;
 
   inf_adopted_session_error_quark = g_quark_from_static_string(
     "INF_ADOPTED_SESSION_ERROR"
+  );
+
+  /**
+   * InfAdoptedSession::check-request:
+   * @session: The #InfAdoptedSession which is about to process a request.
+   * @request: The request to be processed.
+   * @user: The user who issued the request.
+   *
+   * This signal is emitted whenever the session received a request from a
+   * non-local user. It is used to decide whether the request should be
+   * processed or not. Note that generally not processing a request results is
+   * loss of synchronization, since other hosts might process the request.
+   * Only if the same condition can be applied on all sites a request should
+   * be rejected. Another possibility is to reject a request at a central host
+   * before it gets distributed to all other clients. If there is one signal
+   * handler returning %TRUE the request is rejected, i.e. only if all signal
+   * handlers return %FALSE it is accepted.
+   */
+  session_signals[CHECK_REQUEST] = g_signal_new(
+    "check-request",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfAdoptedSessionClass, check_request),
+    g_signal_accumulator_true_handled, NULL,
+    inf_marshal_BOOLEAN__OBJECT_OBJECT,
+    G_TYPE_BOOLEAN,
+    2,
+    INF_ADOPTED_TYPE_REQUEST,
+    INF_ADOPTED_TYPE_USER
   );
 
   g_object_class_install_property(

@@ -75,8 +75,10 @@ typedef enum _InfAdoptedSessionError {
  * to XML. This function should add properties and children to the given XML
  * node. At might use inf_adopted_session_write_request_info() to write the
  * common info.
+ * @check_request: Default signal handler of the
+ * InfAdoptedSession::check-request signal.
  *
- * Virtual functions for #InfAdoptedSession.
+ * Virtual functions and default signal handlers for #InfAdoptedSession.
  */
 struct _InfAdoptedSessionClass {
   /*< private >*/
@@ -96,6 +98,12 @@ struct _InfAdoptedSessionClass {
                         InfAdoptedRequest* request,
                         InfAdoptedStateVector* diff_vec,
                         gboolean for_sync);
+
+  /* Signals */
+
+  gboolean(*check_request)(InfAdoptedSession* session,
+                           InfAdoptedRequest* request,
+                           InfAdoptedUser* user);
 };
 
 /**
