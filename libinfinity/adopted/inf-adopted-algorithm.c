@@ -56,9 +56,7 @@
 /* This class implements the adOPTed algorithm as described in the paper
  * "An integrating, transformation-oriented approach to concurrency control
  * and undo in group editors" by Matthias Ressel, Doris Nitsche-Ruhland
- * and Rul Gunzenhäuser (http://portal.acm.org/citation.cfm?id=240305). Don't
- * even try to understand (the interesting part) of this code without having
- * read it.
+ * and Rul Gunzenhäuser (http://portal.acm.org/citation.cfm?id=240305).
  *
  * "Reducing the Problems of Group Undo" by Matthias Ressel and Rul
  * Gunzenhäuser (http://portal.acm.org/citation.cfm?doid=320297.320312)
@@ -71,7 +69,8 @@
 /* TODO: If users are not issuing any requests for some time, and we can be
  * sure that we do not need to transform any requests, then remove them from
  * the users array (users_begin, users_end). Readd users as soon as they
- * issue buffer-altering requests. */
+ * issue buffer-altering requests. This way we keep the asymptotic complexity
+ * dynamically as O(active users^2). */
 
 #define INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
 
@@ -89,6 +88,8 @@ struct _InfAdoptedAlgorithmPrivate {
 
   InfAdoptedStateVector* current;
   InfAdoptedStateVector* buffer_modified_time;
+
+  InfAdoptedRequest* execute_request;
 
   InfUserTable* user_table;
   InfBuffer* buffer;
@@ -120,7 +121,6 @@ enum {
   CAN_UNDO_CHANGED,
   CAN_REDO_CHANGED,
   EXECUTE_REQUEST,
-  APPLY_REQUEST,
 
   LAST_SIGNAL
 };
@@ -965,7 +965,7 @@ inf_adopted_algorithm_translate_request_forward(InfAdoptedAlgorithm* algorithm,
       }
       else
       {
-        /* Cannot fold, so transform, if possible */
+        /* Cannot fold, so transform, if possible. */
         associated = inf_adopted_request_log_original_request(log, index);
         associated_vector = inf_adopted_request_get_vector(associated);
         if(inf_adopted_state_vector_causally_before(associated_vector, vector))
@@ -1257,6 +1257,77 @@ inf_adopted_algorithm_log_request(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
+inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
+                                    InfAdoptedUser* user,
+                                    InfAdoptedRequest* request,
+                                    InfAdoptedRequest* orig_request)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedOperation* reversible_operation;
+  InfAdoptedRequest* log_request;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  /* Apply the operation to the buffer. If this originated from a DO request,
+   * make the operation reversible before adding it to the request log. */
+  if(inf_adopted_request_get_request_type(orig_request) ==
+     INF_ADOPTED_REQUEST_DO)
+  {
+    /* Make the operation reversible */
+    reversible_operation = inf_adopted_operation_apply_transformed(
+      inf_adopted_request_get_operation(orig_request),
+      inf_adopted_request_get_operation(request),
+      user,
+      priv->buffer
+    );
+
+    /* It can happen that we could not make the operation reversible, in which
+     * case we use the original operation. If the original operation does
+     * affect the buffer, this means that it cannot be undone, or any
+     * operations before that by the same user. */
+    if(reversible_operation == NULL)
+    {
+      reversible_operation = inf_adopted_request_get_operation(orig_request);
+      g_object_ref(reversible_operation);
+    }
+
+    /* Create the log request from the reversible operation */
+    log_request = inf_adopted_request_new_do(
+      inf_adopted_request_get_vector(orig_request),
+      inf_adopted_request_get_user_id(orig_request),
+      reversible_operation,
+      inf_adopted_request_get_receive_time(orig_request)
+    );
+
+    inf_adopted_request_set_execute_time(
+      log_request,
+      inf_adopted_request_get_execute_time(orig_request)
+    );
+
+    g_object_unref(reversible_operation);
+  }
+  else
+  {
+    inf_adopted_operation_apply(
+      inf_adopted_request_get_operation(request),
+      user,
+      priv->buffer
+    );
+
+    log_request = orig_request;
+    g_object_ref(log_request);
+  }
+
+  inf_adopted_algorithm_log_request(
+    algorithm,
+    inf_adopted_user_get_request_log(user),
+    log_request
+  );
+
+  g_object_unref(log_request);
+}
+
+static void
 inf_adopted_algorithm_init(GTypeInstance* instance,
                            gpointer g_class)
 {
@@ -1268,6 +1339,7 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
   priv->max_total_log_size = 2048;
+  priv->execute_request = NULL;
 
   priv->current = inf_adopted_state_vector_new();
   priv->buffer_modified_time = NULL;
@@ -1569,6 +1641,9 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
+  g_assert(priv->execute_request == NULL); /* not re-entrant */
+  priv->execute_request = request;
+
   g_assert(
     inf_adopted_state_vector_causally_before(
       inf_adopted_request_get_vector(request),
@@ -1663,10 +1738,8 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   if(apply == TRUE)
   {
-    g_signal_emit(
-      G_OBJECT(algorithm),
-      algorithm_signals[APPLY_REQUEST],
-      0,
+    inf_adopted_algorithm_apply_request(
+      algorithm,
       user,
       translated,
       log_request
@@ -1720,77 +1793,8 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
     algorithm
   );
-}
 
-static void
-inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
-                                    InfAdoptedUser* user,
-                                    InfAdoptedRequest* request,
-                                    InfAdoptedRequest* orig_request)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedOperation* reversible_operation;
-  InfAdoptedRequest* log_request;
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  /* Apply the operation to the buffer. If this originated from a DO request,
-   * make the operation reversible before adding it to the request log. */
-  if(inf_adopted_request_get_request_type(orig_request) ==
-     INF_ADOPTED_REQUEST_DO)
-  {
-    /* Make the operation reversible */
-    reversible_operation = inf_adopted_operation_apply_transformed(
-      inf_adopted_request_get_operation(orig_request),
-      inf_adopted_request_get_operation(request),
-      user,
-      priv->buffer
-    );
-
-    /* It can happen that we could not make the operation reversible, in which
-     * case we use the original operation. If the original operation does
-     * affect the buffer, this means that it cannot be undone, or any
-     * operations before that by the same user. */
-    if(reversible_operation == NULL)
-    {
-      reversible_operation = inf_adopted_request_get_operation(orig_request);
-      g_object_ref(reversible_operation);
-    }
-
-    /* Create the log request from the reversible operation */
-    log_request = inf_adopted_request_new_do(
-      inf_adopted_request_get_vector(orig_request),
-      inf_adopted_request_get_user_id(orig_request),
-      reversible_operation,
-      inf_adopted_request_get_receive_time(orig_request)
-    );
-
-    inf_adopted_request_set_execute_time(
-      log_request,
-      inf_adopted_request_get_execute_time(orig_request)
-    );
-
-    g_object_unref(reversible_operation);
-  }
-  else
-  {
-    inf_adopted_operation_apply(
-      inf_adopted_request_get_operation(request),
-      user,
-      priv->buffer
-    );
-
-    log_request = orig_request;
-    g_object_ref(log_request);
-  }
-
-  inf_adopted_algorithm_log_request(
-    algorithm,
-    inf_adopted_user_get_request_log(user),
-    log_request
-  );
-
-  g_object_unref(log_request);
+  priv->execute_request = NULL;
 }
 
 static void
@@ -1945,7 +1949,7 @@ inf_adopted_algorithm_class_init(gpointer g_class,
    * generally not be applied to the current state, and it might also be an
    * undo or redo request. The default handler of this signal computes the
    * operation that can be applied to the buffer, and applies it when @apply
-   * is %TRUE by emitting #InfAdoptedAlgorithm::apply-request.
+   * is %TRUE.
    */
   algorithm_signals[EXECUTE_REQUEST] = g_signal_new(
     "execute-request",
@@ -1959,43 +1963,6 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     INF_ADOPTED_TYPE_USER,
     INF_ADOPTED_TYPE_REQUEST,
     G_TYPE_BOOLEAN
-  );
-
-  /**
-   * InfAdoptedAlgorithm::apply-request:
-   * @algorithm: The #InfAdoptedAlgorithm applying a request.
-   * @user: The #InfAdoptedUser applying the request.
-   * @request: The #InfAdoptedRequest being applied.
-   * @orig_request: The original #InfAdoptedRequest issued by @user, before
-   * it was transformed to the current document state.
-   *
-   * This signal is emitted every time the algorithm applies a request.
-   *
-   * Note a call to inf_adopted_algorithm_generate_request(),
-   * inf_adopted_algorithm_generate_undo()
-   * or inf_adopted_algorithm_generate_redo() always applies the generated
-   * request. In contrast, inf_adopted_algorithm_receive_request() might not
-   * apply the given request (if requests it depends upon have not yet
-   * received) or might apply multiple request (if the provided request
-   * fulfills the dependencies of queued requests).
-   *
-   * Note also that the signal is not emitted for every request processed by
-   * #InfAdoptedAlgorithm since
-   * inf_adopted_algorithm_generate_request_noexec() generates a request but
-   * does not apply it.
-   */
-  algorithm_signals[APPLY_REQUEST] = g_signal_new(
-    "apply-request",
-    G_OBJECT_CLASS_TYPE(object_class),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, apply_request),
-    NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT_OBJECT,
-    G_TYPE_NONE,
-    3,
-    INF_ADOPTED_TYPE_USER,
-    INF_ADOPTED_TYPE_REQUEST,
-    INF_ADOPTED_TYPE_REQUEST
   );
 }
 
@@ -2112,6 +2079,27 @@ inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm)
 {
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
   return INF_ADOPTED_ALGORITHM_PRIVATE(algorithm)->current;
+}
+
+/**
+ * inf_adopted_algorithm_get_execute_request:
+ * @algorithm: A #InfAdoptedAlgorithm.
+ *
+ * Returns whether the algorithm is currently transforming a request to the
+ * current state and appling its state to the buffer. If it is the function
+ * is returning the request that was received and is currently being
+ * executed, other wise the function returns %NULL. Note that the request
+ * execution is not re-entrant, i.e. two requests cannot be executed
+ * concurrently at the same time, or recursively.
+ *
+ * Returns: The request that @algorithm is currently processing, or %NULL.
+ * The return value must not be freed by the caller.
+ */
+InfAdoptedRequest*
+inf_adopted_algorithm_get_execute_request(InfAdoptedAlgorithm* algorithm)
+{
+  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
+  return INF_ADOPTED_ALGORITHM_PRIVATE(algorithm)->execute_request;
 }
 
 /**

@@ -51,8 +51,6 @@ typedef struct _InfTextSessionPrivate InfTextSessionPrivate;
 struct _InfTextSessionPrivate {
   guint caret_update_interval;
   GSList* local_users;
-
-  gboolean apply_request;
 };
 
 enum {
@@ -269,20 +267,23 @@ inf_text_session_selection_changed_cb(InfTextUser* user,
 {
   InfTextSession* session;
   InfTextSessionPrivate* priv;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedRequest* execute_request;
   InfTextSessionLocalUser* local;
   GTimeVal current;
   guint diff;
 
   session = INF_TEXT_SESSION(user_data);
   priv = INF_TEXT_SESSION_PRIVATE(session);
-
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+  execute_request = inf_adopted_algorithm_get_execute_request(algorithm);
 
   /* We should block all changes that have by_request set to FALSE... breaks
    * if someone else does that... should maybe emit a warning instead. */
-  g_assert( (priv->apply_request == TRUE && by_request == FALSE) ||
-            (priv->apply_request == FALSE && by_request == TRUE));
+  g_assert( (execute_request != NULL && by_request == FALSE) ||
+            (execute_request == NULL && by_request == TRUE));
 
-  if(priv->apply_request == FALSE)
+  if(execute_request == NULL)
   {
     local = inf_text_session_find_local_user(session, user);
     g_assert(local != NULL);
@@ -510,10 +511,12 @@ inf_text_session_buffer_text_inserted_cb(InfTextBuffer* buffer,
 {
   InfTextSession* session;
   InfTextSessionPrivate* priv;
-  InfAdoptedOperation* operation;
-  InfAdoptedAlgorithm* algorithm;
-  InfAdoptedRequest* request;
   InfUserTable* user_table;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedRequest* execute_request;
+
+  InfAdoptedOperation* operation;
+  InfAdoptedRequest* request;
   InfTextSessionInsertForeachData data;
 
   g_assert(INF_TEXT_IS_USER(user));
@@ -521,15 +524,13 @@ inf_text_session_buffer_text_inserted_cb(InfTextBuffer* buffer,
   session = INF_TEXT_SESSION(user_data);
   priv = INF_TEXT_SESSION_PRIVATE(session);
   user_table = inf_session_get_user_table(INF_SESSION(session));
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+  execute_request = inf_adopted_algorithm_get_execute_request(algorithm);
 
-  if(priv->apply_request == FALSE)
+  if(execute_request == NULL)
   {
     operation = INF_ADOPTED_OPERATION(
       inf_text_default_insert_operation_new(pos, chunk)
-    );
-
-    algorithm = inf_adopted_session_get_algorithm(
-      INF_ADOPTED_SESSION(session)
     );
 
     request = inf_adopted_algorithm_generate_request_noexec(
@@ -584,10 +585,12 @@ inf_text_session_buffer_text_erased_cb(InfTextBuffer* buffer,
 {
   InfTextSession* session;
   InfTextSessionPrivate* priv;
-  InfAdoptedOperation* operation;
-  InfAdoptedAlgorithm* algorithm;
-  InfAdoptedRequest* request;
   InfUserTable* user_table;
+  InfAdoptedAlgorithm* algorithm;
+  InfAdoptedRequest* execute_request;
+
+  InfAdoptedOperation* operation;
+  InfAdoptedRequest* request;
   InfTextSessionEraseForeachData data;
 
   g_assert(INF_TEXT_IS_USER(user));
@@ -595,15 +598,13 @@ inf_text_session_buffer_text_erased_cb(InfTextBuffer* buffer,
   session = INF_TEXT_SESSION(user_data);
   priv = INF_TEXT_SESSION_PRIVATE(session);
   user_table = inf_session_get_user_table(INF_SESSION(session));
+  algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
+  execute_request = inf_adopted_algorithm_get_execute_request(algorithm);
 
-  if(priv->apply_request == FALSE)
+  if(execute_request == NULL)
   {
     operation = INF_ADOPTED_OPERATION(
       inf_text_default_delete_operation_new(pos, chunk)
-    );
-
-    algorithm = inf_adopted_session_get_algorithm(
-      INF_ADOPTED_SESSION(session)
     );
 
     request = inf_adopted_algorithm_generate_request_noexec(
@@ -640,46 +641,6 @@ inf_text_session_buffer_text_erased_cb(InfTextBuffer* buffer,
 #endif
 
   inf_text_session_unblock_local_users_selection_changed(session);
-}
-
-/* Remember when a buffer operation happens in response to the algorithm
- * applying a request so we don't re-broadcast incoming requests, and so that
- * we don't broadcast the effect of an Undo if the user calls
- * inf_adopted_session_undo(). */
-static void
-inf_text_session_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
-                                         InfAdoptedUser* user,
-                                         InfAdoptedRequest* request,
-                                         InfAdoptedRequest* orig_request,
-                                         gpointer user_data)
-{
-  InfTextSession* session;
-  InfTextSessionPrivate* priv;
-  /*InfTextBuffer* buffer;*/
-
-  session = INF_TEXT_SESSION(user_data);
-  priv = INF_TEXT_SESSION_PRIVATE(session);
-  /*buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));*/
-
-  priv->apply_request = TRUE;
-}
-
-static void
-inf_text_session_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
-                                        InfAdoptedUser* user,
-                                        InfAdoptedRequest* request,
-                                        InfAdoptedRequest* orig_request,
-                                        gpointer user_data)
-{
-  InfTextSession* session;
-  InfTextSessionPrivate* priv;
-  /*InfTextBuffer* buffer;*/
-  
-  session = INF_TEXT_SESSION(user_data);
-  priv = INF_TEXT_SESSION_PRIVATE(session);
-  /*buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));*/
-
-  priv->apply_request = FALSE;
 }
 
 static void
@@ -733,20 +694,6 @@ inf_text_session_init_text_handlers(InfTextSession* session)
     session
   );
 
-  g_signal_connect(
-    G_OBJECT(algorithm),
-    "apply-request",
-    G_CALLBACK(inf_text_session_apply_request_cb_before),
-    session
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(algorithm),
-    "apply-request",
-    G_CALLBACK(inf_text_session_apply_request_cb_after),
-    session
-  );
-
   inf_user_table_foreach_local_user(
     user_table,
     inf_text_session_init_text_handlers_user_foreach_func,
@@ -769,7 +716,6 @@ inf_text_session_init(GTypeInstance* instance,
   priv = INF_TEXT_SESSION_PRIVATE(session);
 
   priv->caret_update_interval = 500;
-  priv->apply_request = FALSE;
 }
 
 static GObject*
@@ -876,22 +822,6 @@ inf_text_session_dispose(GObject* object)
     G_CALLBACK(inf_text_session_local_user_removed_cb),
     session
   );
-
-  /* Algorithm may be NULL if we were still synchronizing */
-  if(algorithm != NULL)
-  {
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(algorithm),
-      G_CALLBACK(inf_text_session_apply_request_cb_before),
-      session
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(algorithm),
-      G_CALLBACK(inf_text_session_apply_request_cb_after),
-      session
-    );
-  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }

@@ -105,145 +105,71 @@ inf_test_text_replay_load_buffer(InfTextBuffer* buffer)
 }
 
 static void
-inf_test_text_replay_apply_operation_to_string(GString* string,
-                                               InfAdoptedOperation* operation)
+inf_test_text_replay_text_inserted_cb(InfTextBuffer* buffer,
+                                      guint pos,
+                                      InfTextChunk* chunk,
+                                      InfUser* user,
+                                      gpointer user_data)
 {
-  InfTextChunk* chunk;
-  InfTextChunkIter iter;
-  guint position;
-  guint length;
-  InfAdoptedOperation* first;
-  InfAdoptedOperation* second;
-
-  if(INF_TEXT_IS_INSERT_OPERATION(operation))
-  {
-    g_assert(INF_TEXT_IS_DEFAULT_INSERT_OPERATION(operation));
-
-    chunk = inf_text_default_insert_operation_get_chunk(
-      INF_TEXT_DEFAULT_INSERT_OPERATION(operation)
-    );
-
-    position = inf_text_insert_operation_get_position(
-      INF_TEXT_INSERT_OPERATION(operation)
-    );
-
-    g_assert(strcmp(inf_text_chunk_get_encoding(chunk), "UTF-8") == 0);
-
-    if(inf_text_chunk_iter_init_begin(chunk, &iter))
-    {
-      /* Convert from pos to byte */
-      position = g_utf8_offset_to_pointer(string->str, position) - string->str;
-
-      do
-      {
-        g_string_insert_len(
-          string,
-          position,
-          inf_text_chunk_iter_get_text(&iter),
-          inf_text_chunk_iter_get_bytes(&iter)
-        );
-
-        position += inf_text_chunk_iter_get_bytes(&iter);
-      } while(inf_text_chunk_iter_next(&iter));
-    }
-  }
-  else if(INF_TEXT_IS_DELETE_OPERATION(operation))
-  {
-    position = inf_text_delete_operation_get_position(
-      INF_TEXT_DELETE_OPERATION(operation)
-    );
-    length = inf_text_delete_operation_get_length(
-      INF_TEXT_DELETE_OPERATION(operation)
-    );
-
-    length = g_utf8_offset_to_pointer(string->str, position+length) -
-      string->str;
-    position = g_utf8_offset_to_pointer(string->str, position) - string->str;
-    length -= position;
-
-    g_string_erase(string, position, length);
-  }
-  else if(INF_ADOPTED_IS_SPLIT_OPERATION(operation))
-  {
-    g_object_get(
-      G_OBJECT(operation),
-      "first", &first,
-      "second", &second,
-      NULL
-    );
-
-    inf_test_text_replay_apply_operation_to_string(string, first);
-    inf_test_text_replay_apply_operation_to_string(string, second);
-
-    g_object_unref(first);
-    g_object_unref(second);
-  }
-  else if(INF_TEXT_IS_MOVE_OPERATION(operation) ||
-          INF_ADOPTED_IS_NO_OPERATION(operation))
-  {
-    /* Nothing to do */
-  }
-  else
-  {
-    g_error(
-      "Operation type \"%s\" not supported",
-      g_type_name(G_TYPE_FROM_INSTANCE(operation))
-    );
-
-    g_assert_not_reached();
-  }
-}
-
-static void
-inf_test_text_replay_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
-                                             InfAdoptedUser* user,
-                                             InfAdoptedRequest* request,
-                                             InfAdoptedRequest* orig_request,
-                                             gpointer user_data)
-{
-  InfAdoptedOperation* operation;
-
-  g_assert(
-    inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
-  );
-
-  operation = inf_adopted_request_get_operation(request);
-#if 0
-  /* This can be used to set a breakpoint if the operation meats special
-   * conditions when debugging a specific problem. */
-  if(INF_TEXT_IS_INSERT_OPERATION(operation))
-    if(inf_text_insert_operation_get_position(INF_TEXT_INSERT_OPERATION(operation)) == 1730)
-      printf("tada\n");
-#endif
-}
-
-static void
-inf_test_text_replay_apply_request_cb_after(InfAdoptedAlgorithm* algorithm,
-                                            InfAdoptedUser* user,
-                                            InfAdoptedRequest* request,
-                                            InfAdoptedRequest* orig_request,
-                                            gpointer user_data)
-{
-  InfTextBuffer* buffer;
-  InfAdoptedOperation* operation;
   GString* own_content;
+  InfTextChunkIter iter;
+  gsize bpos;
   GString* buffer_content;
 
-  g_object_get(G_OBJECT(algorithm), "buffer", &buffer, NULL);
   own_content = (GString*)user_data;
 
-  g_assert(
-    inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
-  );
+  /* apply operation to string */
+  if(inf_text_chunk_iter_init_begin(chunk, &iter))
+  {
+    /* Convert from pos to byte */
+    bpos = g_utf8_offset_to_pointer(own_content->str, pos) - own_content->str;
 
-  operation = inf_adopted_request_get_operation(request);
+    do
+    {
+      g_string_insert_len(
+        own_content,
+        bpos,
+        inf_text_chunk_iter_get_text(&iter),
+        inf_text_chunk_iter_get_bytes(&iter)
+      );
 
-  /* Apply operation to own string */
-  inf_test_text_replay_apply_operation_to_string(own_content, operation);
+      bpos += inf_text_chunk_iter_get_bytes(&iter);
+    } while(inf_text_chunk_iter_next(&iter));
+  }
 
   /* Compare with buffer content */
   buffer_content = inf_test_text_replay_load_buffer(buffer);
-  g_object_unref(buffer);
+
+  g_assert(strcmp(buffer_content->str, own_content->str) == 0);
+  g_string_free(buffer_content, TRUE);
+}
+
+static void
+inf_test_text_replay_text_erased_cb(InfTextBuffer* buffer,
+                                    guint pos,
+                                    InfTextChunk* chunk,
+                                    InfUser* user,
+                                    gpointer user_data)
+{
+  GString* own_content;
+  guint beg;
+  guint end;
+  gsize bbeg;
+  gsize bend;
+  GString* buffer_content;
+
+  own_content = (GString*)user_data;
+
+  /* apply operation to string */
+  beg = pos;
+  end = beg + inf_text_chunk_get_length(chunk);
+  bbeg = g_utf8_offset_to_pointer(own_content->str, pos) - own_content->str;
+  bend = g_utf8_offset_to_pointer(own_content->str, end) - own_content->str;
+
+  g_string_erase(own_content, bbeg, bend - bbeg);
+
+  /* Compare with buffer content */
+  buffer_content = inf_test_text_replay_load_buffer(buffer);
 
   g_assert(strcmp(buffer_content->str, own_content->str) == 0);
   g_string_free(buffer_content, TRUE);
@@ -454,16 +380,16 @@ int main(int argc, char* argv[])
       data.undo_groupings = NULL;
 
       g_signal_connect(
-        data.algorithm,
-        "apply-request",
-        G_CALLBACK(inf_test_text_replay_apply_request_cb_before),
+        inf_session_get_buffer(INF_SESSION(session)),
+        "text-inserted",
+        G_CALLBACK(inf_test_text_replay_text_inserted_cb),
         content
       );
 
-      g_signal_connect_after(
-        data.algorithm,
-        "apply-request",
-        G_CALLBACK(inf_test_text_replay_apply_request_cb_after),
+      g_signal_connect(
+        inf_session_get_buffer(INF_SESSION(session)),
+        "text-erased",
+        G_CALLBACK(inf_test_text_replay_text_erased_cb),
         content
       );
 

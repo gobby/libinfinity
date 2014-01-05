@@ -106,6 +106,9 @@ InfAdoptedStateVector*
 inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm);
 
 InfAdoptedRequest*
+inf_adopted_algorithm_get_execute_request(InfAdoptedAlgorithm* algorithm);
+
+InfAdoptedRequest*
 inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
                                               InfAdoptedUser* user,
                                               InfAdoptedOperation* operation);

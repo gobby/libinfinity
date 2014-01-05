@@ -76,46 +76,47 @@ static const InfcNotePlugin INF_TEST_TEXT_RECOVER_TEXT_PLUGIN = {
 };
 
 static void
-inf_test_text_recover_apply_request_cb_before(InfAdoptedAlgorithm* algorithm,
-                                              InfAdoptedUser* user,
-                                              InfAdoptedRequest* request,
-                                              InfAdoptedRequest* orig_request,
-                                              gpointer user_data)
+inf_test_text_recover_text_erased_cb(InfTextBuffer* buffer,
+                                     guint pos,
+                                     InfTextChunk* chunk,
+                                     InfUser* user,
+                                     gpointer user_data)
 {
   InfAdoptedOperation* operation;
-  InfTextBuffer* buffer;
   guint len;
 
-  g_assert(
-    inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
-  );
+  InfTextChunk* print_chunk;
+  gsize print_bytes;
+  gpointer print_text;
 
-  operation = inf_adopted_request_get_operation(request);
-
-  if(INF_TEXT_IS_DELETE_OPERATION(operation))
+  /* If the document has substantial content and this deletes most of it,
+   * then print out the document here. */
+  len = inf_text_chunk_get_length(chunk);
+  if(inf_text_buffer_get_length(buffer) + len >= 50)
   {
-    /* If the document has substantial content and this deletes most of it,
-     * then print out the document here. */
-    g_object_get(G_OBJECT(algorithm), "buffer", &buffer, NULL);
-    if(inf_text_buffer_get_length(buffer) >= 50)
+    if(len >= (inf_text_buffer_get_length(buffer) + len)*75/100)
     {
-      len = inf_text_delete_operation_get_length(
-        INF_TEXT_DELETE_OPERATION(operation)
-      );
-
-      if(len >= inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer))*75/100)
+      if(*(int*)user_data == 0)
       {
-        if(*(int*)user_data == 0)
-        {
-          inf_test_util_print_buffer(INF_TEXT_BUFFER(buffer));
-        }
+        print_chunk = inf_text_buffer_get_slice(
+          buffer,
+          0,
+          inf_text_buffer_get_length(buffer)
+        );
 
-        --*(int*)user_data;
+        inf_text_chunk_insert_chunk(print_chunk, pos, chunk);
+        print_text = inf_text_chunk_get_text(print_chunk, &print_bytes);
+        inf_text_chunk_free(print_chunk);
+
+        printf("%.*s\n", (int)print_bytes, (gchar*)print_text);
+        g_free(print_text);
       }
-    }
 
-    g_object_unref(buffer);
+      --*(int*)user_data;
+    }
   }
+
+  g_object_unref(buffer);
 }
 
 /*
@@ -131,7 +132,6 @@ int main(int argc, char* argv[])
   int ret;
 
   InfBuffer* buffer;
-  InfAdoptedAlgorithm* algo;
   GSList* item;
   gint counter;
 
@@ -175,12 +175,11 @@ int main(int argc, char* argv[])
     {
       session = inf_adopted_session_replay_get_session(replay);
       buffer = inf_session_get_buffer(INF_SESSION(session));
-      algo = inf_adopted_session_get_algorithm(session);
 
       g_signal_connect(
-        algo,
-        "apply-request",
-        G_CALLBACK(inf_test_text_recover_apply_request_cb_before),
+        buffer,
+        "text-erased",
+        G_CALLBACK(inf_test_text_recover_text_erased_cb),
         &counter
       );
 
