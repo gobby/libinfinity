@@ -67,15 +67,15 @@ struct _InfAdoptedAlgorithmClass {
                           InfAdoptedUser* user,
                           gboolean can_redo);
 
-  void(*execute_request)(InfAdoptedAlgorithm* algorithm,
-                         InfAdoptedUser* user,
-                         InfAdoptedRequest* request,
-                         gboolean apply);
+  void(*begin_execute_request)(InfAdoptedAlgorithm* algorithm,
+                               InfAdoptedUser* user,
+                               InfAdoptedRequest* request);
 
-  void(*apply_request)(InfAdoptedAlgorithm* algorithm,
-                       InfAdoptedUser* user,
-                       InfAdoptedRequest* request,
-                       InfAdoptedRequest* orig_request);
+  void(*end_execute_request)(InfAdoptedAlgorithm* algorithm,
+                             InfAdoptedUser* user,
+                             InfAdoptedRequest* request,
+                             InfAdoptedRequest* translated_request,
+                             const GError* error);
 };
 
 /**

@@ -554,49 +554,54 @@ inf_adopted_session_constructor_foreach_local_user_func(InfUser* user,
 }
 
 static void
-inf_adopted_session_execute_request_cb(InfAdoptedAlgorithm* algorithm,
-                                       InfAdoptedUser* user,
-                                       InfAdoptedRequest* request,
-                                       gboolean apply,
-                                       gpointer user_data)
+inf_adopted_session_end_execute_request_cb(InfAdoptedAlgorithm* algorithm,
+                                          InfAdoptedUser* user,
+                                          InfAdoptedRequest* request,
+                                          InfAdoptedRequest* translated,
+                                          const GError* error,
+                                          gpointer user_data)
 {
   InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
   GSList* item;
   InfAdoptedSessionLocalUser* local;
   guint id;
+  InfAdoptedOperation* operation;
 
   session = INF_ADOPTED_SESSION(user_data);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
-  if(inf_adopted_request_affects_buffer(request))
+  if(translated != NULL)
   {
-    id = inf_adopted_request_get_user_id(request);
-
-    /* A request has been executed, meaning we are no longer up to date. Send
-     * a noop in some time, so that others know what we already processed. */
-    for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+    if(inf_adopted_request_affects_buffer(translated))
     {
-      local = (InfAdoptedSessionLocalUser*)item->data;
-      if(local->noop_time == 0)
-        /* Except we issued the request ourselves, of course. */
-        if(inf_user_get_id(INF_USER(local->user)) != id)
-          inf_adopted_session_start_noop_timer(session, local);
-    }
-  }
+      id = inf_adopted_request_get_user_id(translated);
 
-  /* Mark inactive users active if they do something */
-  /* Note: This behaviour is implicitly performed by both client and server,
-   * and requires no further network traffic. However, users explictely have
-   * to be set inactive. */
-  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO ||
-     !INF_ADOPTED_IS_NO_OPERATION(inf_adopted_request_get_operation(request)))
-  {
-    /* TODO: We should offer a virtual function to flush all requests for
-     * local users, either here or even in InfSession via a vfunc, so that
-     * we don't accidentally make local users active by a delayed request. */
-    if(inf_user_get_status(INF_USER(user)) == INF_USER_INACTIVE)
-      g_object_set(G_OBJECT(user), "status", INF_USER_ACTIVE, NULL);
+      /* A request has been executed, meaning we are no longer up to date. Send
+       * a noop in some time, so that others know what we already processed. */
+      for(item = priv->local_users; item != NULL; item = g_slist_next(item))
+      {
+        local = (InfAdoptedSessionLocalUser*)item->data;
+        if(local->noop_time == 0)
+          /* Except we issued the request ourselves, of course. */
+          if(inf_user_get_id(INF_USER(local->user)) != id)
+            inf_adopted_session_start_noop_timer(session, local);
+      }
+    }
+
+    /* Mark inactive users active if they do something */
+    /* Note: This behaviour is implicitly performed by both client and server,
+     * and requires no further network traffic. However, users explictely have
+     * to be set inactive. */
+    operation = inf_adopted_request_get_operation(translated);
+    if(!INF_ADOPTED_IS_NO_OPERATION(operation))
+    {
+      /* TODO: We should offer a virtual function to flush all requests for
+       * local users, either here or even in InfSession via a vfunc, so that
+       * we don't accidentally make local users active by a delayed request. */
+      if(inf_user_get_status(INF_USER(user)) == INF_USER_INACTIVE)
+        g_object_set(G_OBJECT(user), "status", INF_USER_ACTIVE, NULL);
+    }
   }
 }
 
@@ -624,8 +629,8 @@ inf_adopted_session_create_algorithm(InfAdoptedSession* session)
 
   g_signal_connect(
     G_OBJECT(priv->algorithm),
-    "execute-request",
-    G_CALLBACK(inf_adopted_session_execute_request_cb),
+    "end-execute-request",
+    G_CALLBACK(inf_adopted_session_end_execute_request_cb),
     session
   );
 
@@ -763,7 +768,7 @@ inf_adopted_session_dispose(GObject* object)
   {
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->algorithm),
-      G_CALLBACK(inf_adopted_session_execute_request_cb),
+      G_CALLBACK(inf_adopted_session_end_execute_request_cb),
       session
     );
 

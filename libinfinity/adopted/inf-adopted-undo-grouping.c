@@ -312,20 +312,22 @@ inf_adopted_undo_grouping_add_request_cb(InfAdoptedRequestLog* log,
 }
 
 static void
-inf_adopted_undo_grouping_execute_request_cb(InfAdoptedAlgorithm* algorithm,
-                                             InfAdoptedUser* user,
-                                             InfAdoptedRequest* request,
-                                             gboolean apply,
-                                             gpointer user_data)
+inf_adopted_undo_grouping_end_execute_request_cb(InfAdoptedAlgorithm* algo,
+                                                 InfAdoptedUser* user,
+                                                 InfAdoptedRequest* request,
+                                                 InfAdoptedRequest* trans,
+                                                 const GError* error,
+                                                 gpointer user_data)
 {
   InfAdoptedUndoGrouping* grouping;
   InfAdoptedUndoGroupingPrivate* priv;
   guint user_id;
 
   /* Note that this signal handler is called _after_ the request has been
-   * executed.  If the execution causes requests in the request log to be
-   * removed, then this will still happen after the signal emission though,
-   * so all requests in our buffers are still valid at this point. */
+   * executed and the buffer and local user vector times updated. If the
+   * execution causes requests in the request log to be removed due to
+   * algorithm cleanup, then this will still happen after the signal emission
+   * though, so all requests in our buffers are still valid at this point. */
 
   grouping = INF_ADOPTED_UNDO_GROUPING(user_data);
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
@@ -709,7 +711,7 @@ inf_adopted_undo_grouping_set_algorithm(InfAdoptedUndoGrouping* grouping,
     {
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(priv->algorithm),
-        G_CALLBACK(inf_adopted_undo_grouping_execute_request_cb),
+        G_CALLBACK(inf_adopted_undo_grouping_end_execute_request_cb),
         grouping
       );
 
@@ -727,10 +729,10 @@ inf_adopted_undo_grouping_set_algorithm(InfAdoptedUndoGrouping* grouping,
     {
       g_object_ref(algorithm);
 
-      g_signal_connect_after(
+      g_signal_connect(
         G_OBJECT(priv->algorithm),
-        "execute-request",
-        G_CALLBACK(inf_adopted_undo_grouping_execute_request_cb),
+        "end-execute-request",
+        G_CALLBACK(inf_adopted_undo_grouping_end_execute_request_cb),
         grouping
       );
     }

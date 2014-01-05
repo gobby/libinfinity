@@ -43,8 +43,6 @@ struct _InfinotedPluginLogging {
   /* TODO: Make this a hash table, and use the thread ID as a key */
   gchar* extra_message;
   InfSessionProxy* current_session;
-  InfAdoptedRequest* current_request;
-  InfAdoptedUser* current_user;
 };
 
 typedef struct _InfinotedPluginLoggingSessionInfo
@@ -116,7 +114,10 @@ infinoted_plugin_logging_log_message_cb(InfinotedLog* log,
 {
   InfinotedPluginLogging* plugin;
   InfinotedPluginLoggingSessionInfo* info;
+  InfAdoptedSession* session;
+  InfAdoptedRequest* request;
   gchar* request_str;
+  InfUser* user;
   const gchar* user_name;
   InfXmlConnection* user_connection;
   gchar* user_connection_str;
@@ -129,9 +130,7 @@ infinoted_plugin_logging_log_message_cb(InfinotedLog* log,
     if(plugin->extra_message != NULL)
       infinoted_log_log(log, priority, "%s", plugin->extra_message);
 
-    if(plugin->current_session != NULL &&
-       plugin->current_request != NULL &&
-       plugin->current_user != NULL)
+    if(plugin->current_session)
     {
       info = infinoted_plugin_manager_get_session_info(
         plugin->manager,
@@ -141,13 +140,31 @@ infinoted_plugin_logging_log_message_cb(InfinotedLog* log,
 
       g_assert(info != NULL);
 
-      request_str = inf_adopted_state_vector_to_string(
-        inf_adopted_request_get_vector(plugin->current_request)
+      g_object_get(
+        G_OBJECT(plugin->current_session),
+        "session", &session,
+        NULL
       );
 
-      user_name = inf_user_get_name(INF_USER(plugin->current_user));
-      user_connection =
-        inf_user_get_connection(INF_USER(plugin->current_user));
+      request = inf_adopted_algorithm_get_execute_request(
+        inf_adopted_session_get_algorithm(session)
+      );
+
+      g_assert(request != NULL);
+
+      request_str = inf_adopted_state_vector_to_string(
+        inf_adopted_request_get_vector(request)
+      );
+
+      user = inf_user_table_lookup_user_by_id(
+        inf_session_get_user_table(INF_SESSION(session)),
+        inf_adopted_request_get_user_id(request)
+      );
+
+      g_assert(user != NULL);
+
+      user_name = inf_user_get_name(user);
+      user_connection = inf_user_get_connection(user);
 
       if(user_connection != NULL)
       {
@@ -177,48 +194,42 @@ infinoted_plugin_logging_log_message_cb(InfinotedLog* log,
       g_free(document_name);
       g_free(user_connection_str);
       g_free(request_str);
+
+      g_object_unref(session);
     }
   }
 }
 
 static void
-infinoted_plugin_logging_execute_request_before_cb(InfAdoptedAlgorithm* algo,
-                                                   InfAdoptedUser* user,
-                                                   InfAdoptedRequest* request,
-                                                   gboolean apply,
-                                                   gpointer user_data)
-{
-  InfinotedPluginLoggingSessionInfo* info;
-  info = (InfinotedPluginLoggingSessionInfo*)user_data;
-
-  g_assert(info->plugin->current_session == NULL);
-  g_assert(info->plugin->current_user == NULL);
-  g_assert(info->plugin->current_request == NULL);
-
-  /* Don't need to ref these */
-  info->plugin->current_session = info->proxy;
-  info->plugin->current_user = user;
-  info->plugin->current_request = request;
-}
-
-static void
-infinoted_plugin_logging_execute_request_after_cb(InfAdoptedAlgorithm* algo,
+infinoted_plugin_logging_begin_execute_request_cb(InfAdoptedAlgorithm* algo,
                                                   InfAdoptedUser* user,
                                                   InfAdoptedRequest* request,
-                                                  gboolean apply,
                                                   gpointer user_data)
 {
   InfinotedPluginLoggingSessionInfo* info;
   info = (InfinotedPluginLoggingSessionInfo*)user_data;
 
-  g_assert(info->plugin->current_session != NULL);
-  g_assert(info->plugin->current_user != NULL);
-  g_assert(info->plugin->current_request != NULL);
+  /* Don't need to ref this */
+  g_assert(info->plugin->current_session == NULL);
+  info->plugin->current_session = info->proxy;
+}
 
-  /* Don't need to ref these */
+static void
+infinoted_plugin_logging_end_execute_request_cb(InfAdoptedAlgorithm* algo,
+                                                InfAdoptedUser* user,
+                                                InfAdoptedRequest* request,
+                                                InfAdoptedRequest* translated,
+                                                const GError* error,
+                                                gpointer user_data)
+{
+  InfinotedPluginLoggingSessionInfo* info;
+  info = (InfinotedPluginLoggingSessionInfo*)user_data;
+
+  /* TODO: If error is set then log it here, so that the actual request that
+   * caused the error is written in the log file. */
+
+  g_assert(info->plugin->current_session != NULL);
   info->plugin->current_session = NULL;
-  info->plugin->current_user = NULL;
-  info->plugin->current_request = NULL;
 }
 
 static void
@@ -311,15 +322,15 @@ infinoted_plugin_logging_notify_status_cb(InfSession* session,
 
     g_signal_connect(
       G_OBJECT(algorithm),
-      "execute-request",
-      G_CALLBACK(infinoted_plugin_logging_execute_request_before_cb),
+      "begin-execute-request",
+      G_CALLBACK(infinoted_plugin_logging_begin_execute_request_cb),
       info
     );
 
     g_signal_connect_after(
       G_OBJECT(algorithm),
-      "execute-request",
-      G_CALLBACK(infinoted_plugin_logging_execute_request_after_cb),
+      "end-execute-request",
+      G_CALLBACK(infinoted_plugin_logging_end_execute_request_cb),
       info
     );
   }
@@ -357,8 +368,6 @@ infinoted_plugin_logging_initialize(InfinotedPluginManager* manager,
 
   plugin->extra_message = NULL;
   plugin->current_session = NULL;
-  plugin->current_request = NULL;
-  plugin->current_user = NULL;
 }
 
 static void
@@ -479,15 +488,15 @@ infinoted_plugin_logging_session_added(const InfBrowserIter* iter,
 
       g_signal_connect(
         G_OBJECT(algorithm),
-        "execute-request",
-        G_CALLBACK(infinoted_plugin_logging_execute_request_before_cb),
+        "begin-execute-request",
+        G_CALLBACK(infinoted_plugin_logging_begin_execute_request_cb),
         info
       );
 
       g_signal_connect_after(
         G_OBJECT(algorithm),
-        "execute-request",
-        G_CALLBACK(infinoted_plugin_logging_execute_request_after_cb),
+        "end-execute-request",
+        G_CALLBACK(infinoted_plugin_logging_end_execute_request_cb),
         info
       );
     }
@@ -545,13 +554,13 @@ infinoted_plugin_logging_session_removed(const InfBrowserIter* iter,
 
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(algorithm),
-        G_CALLBACK(infinoted_plugin_logging_execute_request_before_cb),
+        G_CALLBACK(infinoted_plugin_logging_begin_execute_request_cb),
         info
       );
 
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(algorithm),
-        G_CALLBACK(infinoted_plugin_logging_execute_request_after_cb),
+        G_CALLBACK(infinoted_plugin_logging_end_execute_request_cb),
         info
       );
     }

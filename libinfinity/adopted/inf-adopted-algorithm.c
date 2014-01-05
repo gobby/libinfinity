@@ -120,7 +120,9 @@ enum {
 enum {
   CAN_UNDO_CHANGED,
   CAN_REDO_CHANGED,
-  EXECUTE_REQUEST,
+
+  BEGIN_EXECUTE_REQUEST,
+  END_EXECUTE_REQUEST,
 
   LAST_SIGNAL
 };
@@ -1256,7 +1258,7 @@ inf_adopted_algorithm_log_request(InfAdoptedAlgorithm* algorithm,
   }
 }
 
-static void
+static InfAdoptedRequest*
 inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
                                     InfAdoptedUser* user,
                                     InfAdoptedRequest* request,
@@ -1324,7 +1326,207 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
     log_request
   );
 
+  return log_request;
+}
+
+static void
+inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
+                                      InfAdoptedUser* user,
+                                      InfAdoptedRequest* request,
+                                      gboolean apply)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedRequestLog* log;
+  InfAdoptedRequest* translated;
+  InfAdoptedRequest* in_request;
+  InfAdoptedRequest* log_request;
+  gint64 execution_time;
+
+  InfAdoptedRequest* original;
+  InfAdoptedStateVector* v;
+  gboolean equivalent;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+
+  g_assert(priv->execute_request == NULL); /* not re-entrant */
+  priv->execute_request = request;
+
+  execution_time = inf_adopted_algorithm_get_real_time();
+  inf_adopted_request_set_execute_time(request, execution_time);
+
+  g_signal_emit(
+    G_OBJECT(algorithm),
+    algorithm_signals[BEGIN_EXECUTE_REQUEST],
+    0,
+    user,
+    request
+  );
+
+  g_assert(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(request),
+      priv->current
+    ) == TRUE
+  );
+
+  log = inf_adopted_user_get_request_log(user);
+
+  /* Adjust vector time for Undo/Redo operations because they only depend on
+   * their original operation. */
+#ifndef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
+  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
+  {
+    original = inf_adopted_request_log_original_request(log, request);
+
+    v = inf_adopted_state_vector_copy(
+      inf_adopted_request_get_vector(original)
+    );
+
+    inf_adopted_state_vector_set(
+      v,
+      inf_adopted_request_get_user_id(request),
+      inf_adopted_state_vector_get(
+        inf_adopted_request_get_vector(request),
+        inf_adopted_request_get_user_id(request)
+      )
+    );
+
+    switch(inf_adopted_request_get_request_type(request))
+    {
+    case INF_ADOPTED_REQUEST_UNDO:
+      in_request = inf_adopted_request_new_undo(
+        v,
+        inf_adopted_request_get_user_id(request),
+        inf_adopted_request_get_receive_time(request)
+      );
+
+      break;
+    case INF_ADOPTED_REQUEST_REDO:
+      in_request = inf_adopted_request_new_redo(
+        v,
+        inf_adopted_request_get_user_id(request),
+        inf_adopted_request_get_receive_time(request)
+      );
+
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    inf_adopted_request_set_execute_time(in_request, execution_time);
+    inf_adopted_state_vector_free(v);
+  }
+  else
+  {
+    in_request = request;
+    g_object_ref(in_request);
+  }
+#else
+  in_request = request;
+  g_object_ref(in_request);
+#endif
+
+  g_assert(
+    inf_adopted_request_get_request_type(
+      inf_adopted_request_log_original_request(log, request)
+    ) == INF_ADOPTED_REQUEST_DO
+  );
+
+  translated = inf_adopted_algorithm_translate_request(
+    algorithm,
+#ifdef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
+    inf_adopted_request_log_original_request(log, request),
+#else
+    in_request,
+#endif
+    priv->current
+  );
+
+  g_assert(
+    inf_adopted_request_get_request_type(translated) == INF_ADOPTED_REQUEST_DO
+  );
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+    algorithm
+  );
+
+  if(apply == TRUE)
+  {
+    log_request = inf_adopted_algorithm_apply_request(
+      algorithm,
+      user,
+      translated,
+      in_request
+    );
+  }
+  else
+  {
+    inf_adopted_algorithm_log_request(
+      algorithm,
+      log,
+      in_request
+    );
+    
+    log_request = in_request;
+    g_object_ref(log_request);
+  }
+
+  g_object_unref(in_request);
+
+  /* TODO: We only need to do this if we changed the current state vector
+   * time <=> if the current request was added to the log */
+  if(priv->buffer_modified_time != NULL)
+  {
+    equivalent = inf_adopted_algorithm_buffer_states_equivalent(
+      algorithm,
+      priv->buffer_modified_time,
+      priv->current
+    );
+
+    if(equivalent == TRUE)
+    {
+      inf_buffer_set_modified(priv->buffer, FALSE);
+      inf_adopted_state_vector_free(priv->buffer_modified_time);
+      priv->buffer_modified_time =
+        inf_adopted_state_vector_copy(priv->current);
+    }
+    else
+    {
+      /* The buffer does this automatically when applying an operation: */
+      /*inf_buffer_set_modified(priv->buffer, TRUE);*/
+    }
+  }
+  else
+  {
+    /* When the modified flag is set to false, then we create the
+     * buffer_modified_time, so when it is unset, the flag needs to be set.
+     * Otherwise, we didn't get notified correctly. */
+    g_assert(inf_buffer_get_modified(priv->buffer) == TRUE);
+  }
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+    algorithm
+  );
+
+  g_signal_emit(
+    G_OBJECT(algorithm),
+    algorithm_signals[END_EXECUTE_REQUEST],
+    0,
+    user,
+    log_request,
+    translated,
+    NULL
+  );
+
+  g_object_unref(translated);
   g_object_unref(log_request);
+
+  priv->execute_request = NULL;
 }
 
 static void
@@ -1624,180 +1826,6 @@ inf_adopted_algorithm_can_redo_changed(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
-inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
-                                      InfAdoptedUser* user,
-                                      InfAdoptedRequest* request,
-                                      gboolean apply)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequestLog* log;
-  InfAdoptedRequest* translated;
-  InfAdoptedRequest* log_request;
-  gint64 execution_time;
-
-  InfAdoptedRequest* original;
-  InfAdoptedStateVector* v;
-  gboolean equivalent;
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  g_assert(priv->execute_request == NULL); /* not re-entrant */
-  priv->execute_request = request;
-
-  g_assert(
-    inf_adopted_state_vector_causally_before(
-      inf_adopted_request_get_vector(request),
-      priv->current
-    ) == TRUE
-  );
-
-  log = inf_adopted_user_get_request_log(user);
-  execution_time = inf_adopted_algorithm_get_real_time();
-
-  inf_adopted_request_set_execute_time(request, execution_time);
-
-  /* Adjust vector time for Undo/Redo operations because they only depend on
-   * their original operation. */
-#ifndef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
-  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
-  {
-    original = inf_adopted_request_log_original_request(log, request);
-
-    v = inf_adopted_state_vector_copy(
-      inf_adopted_request_get_vector(original)
-    );
-
-    inf_adopted_state_vector_set(
-      v,
-      inf_adopted_request_get_user_id(request),
-      inf_adopted_state_vector_get(
-        inf_adopted_request_get_vector(request),
-        inf_adopted_request_get_user_id(request)
-      )
-    );
-
-    switch(inf_adopted_request_get_request_type(request))
-    {
-    case INF_ADOPTED_REQUEST_UNDO:
-      log_request = inf_adopted_request_new_undo(
-        v,
-        inf_adopted_request_get_user_id(request),
-        inf_adopted_request_get_receive_time(request)
-      );
-
-      break;
-    case INF_ADOPTED_REQUEST_REDO:
-      log_request = inf_adopted_request_new_redo(
-        v,
-        inf_adopted_request_get_user_id(request),
-        inf_adopted_request_get_receive_time(request)
-      );
-
-      break;
-    default:
-      g_assert_not_reached();
-      break;
-    }
-
-    inf_adopted_request_set_execute_time(log_request, execution_time);
-    inf_adopted_state_vector_free(v);
-  }
-  else
-  {
-    log_request = request;
-    g_object_ref(log_request);
-  }
-#else
-  log_request = request;
-  g_object_ref(log_request);
-#endif
-
-  g_assert(
-    inf_adopted_request_get_request_type(
-      inf_adopted_request_log_original_request(log, request)
-    ) == INF_ADOPTED_REQUEST_DO
-  );
-
-  translated = inf_adopted_algorithm_translate_request(
-    algorithm,
-#ifdef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
-    inf_adopted_request_log_original_request(log, request),
-#else
-    log_request,
-#endif
-    priv->current
-  );
-
-  g_assert(inf_adopted_request_get_request_type(translated) == INF_ADOPTED_REQUEST_DO);
-
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
-    algorithm
-  );
-
-  if(apply == TRUE)
-  {
-    inf_adopted_algorithm_apply_request(
-      algorithm,
-      user,
-      translated,
-      log_request
-    );
-  }
-  else
-  {
-    inf_adopted_algorithm_log_request(
-      algorithm,
-      log,
-      log_request
-    );
-  }
-
-  g_object_unref(translated);
-  g_object_unref(log_request);
-
-  /* TODO: We only need to do this if we changed the current state vector
-   * time <=> if the current request was added to the log */
-  if(priv->buffer_modified_time != NULL)
-  {
-    equivalent = inf_adopted_algorithm_buffer_states_equivalent(
-      algorithm,
-      priv->buffer_modified_time,
-      priv->current
-    );
-
-    if(equivalent == TRUE)
-    {
-      inf_buffer_set_modified(priv->buffer, FALSE);
-      inf_adopted_state_vector_free(priv->buffer_modified_time);
-      priv->buffer_modified_time =
-        inf_adopted_state_vector_copy(priv->current);
-    }
-    else
-    {
-      /* The buffer does this automatically when applying an operation: */
-      /*inf_buffer_set_modified(priv->buffer, TRUE);*/
-    }
-  }
-  else
-  {
-    /* When the modified flag is set to false, then we create the
-     * buffer_modified_time, so when it is unset, the flag needs to be set.
-     * Otherwise, we didn't get notified correctly. */
-    g_assert(inf_buffer_get_modified(priv->buffer) == TRUE);
-  }
-
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
-    algorithm
-  );
-
-  priv->execute_request = NULL;
-}
-
-static void
 inf_adopted_algorithm_class_init(gpointer g_class,
                                  gpointer class_data)
 {
@@ -1818,8 +1846,8 @@ inf_adopted_algorithm_class_init(gpointer g_class,
 
   algorithm_class->can_undo_changed = inf_adopted_algorithm_can_undo_changed;
   algorithm_class->can_redo_changed = inf_adopted_algorithm_can_redo_changed;
-  algorithm_class->execute_request = inf_adopted_algorithm_execute_request;
-  algorithm_class->apply_request = inf_adopted_algorithm_apply_request;
+  algorithm_class->begin_execute_request = NULL;
+  algorithm_class->end_execute_request = NULL;
 
   g_object_class_install_property(
     object_class,
@@ -1938,31 +1966,73 @@ inf_adopted_algorithm_class_init(gpointer g_class,
   );
   
   /**
-   * InfAdoptedAlgorithm::execute-request:
+   * InfAdoptedAlgorithm::begin-execute-request:
    * @algorithm: The #InfAdoptedAlgorithm executing a request.
    * @user: The #InfAdoptedUser executing the request.
    * @request: The #InfAdoptedRequest being executed.
-   * @apply: Whether the request will be applied after execution.
    *
-   * This signal is emitted every time the algorithm executes a request.
-   * @request is the request that @algorithm will execute. @request can
-   * generally not be applied to the current state, and it might also be an
-   * undo or redo request. The default handler of this signal computes the
-   * operation that can be applied to the buffer, and applies it when @apply
-   * is %TRUE.
+   * This signal is emitted every time the algorithm executes a request, i.e.
+   * transforms it such that it can be applied to the current state, resolves
+   * undo/redo operations and applies the resulting operation to the buffer.
    */
-  algorithm_signals[EXECUTE_REQUEST] = g_signal_new(
-    "execute-request",
+  algorithm_signals[BEGIN_EXECUTE_REQUEST] = g_signal_new(
+    "begin-execute-request",
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, execute_request),
+    G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, begin_execute_request),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT_BOOLEAN,
+    inf_marshal_VOID__OBJECT_OBJECT,
     G_TYPE_NONE,
-    3,
+    2,
+    INF_ADOPTED_TYPE_USER,
+    INF_ADOPTED_TYPE_REQUEST
+  );
+
+  /**
+   * InfAdoptedAlgorithm::end-execute-request:
+   * @algorithm: The #InfAdoptedAlgorithm executing a request.
+   * @user: The #InfAdoptedUser executing the request.
+   * @request: The #InfAdoptedRequest that was executed.
+   * @translated: The result of the request transformation, or %NULL.
+   * @error: The error that occurred during execution, or %NULL.
+   *
+   * This signal is emitted after a request has been executed. The @request
+   * parameter is not necessarily the same as the one in the corresponding
+   * emission of #InfAdoptedAlgorithm::begin-execute-request, however its
+   * effect on the buffer is the same. The difference is that the request in
+   * this signal might be reversible while the request in the
+   * #InfAdoptedAlgorithm::begin-execute-request emission might not be
+   * reversible. The algorithm can make some requests reversible during
+   * their execution.
+   *
+   * The @translated request is the result of the transformation, i.e. it is
+   * always a %INF_ADOPTED_REQUEST_DO type request and its state vector
+   * corresponds to the current state. It has already been applied on the
+   * buffer by the algorithm.
+   *
+   * It can happen that an error occurs during execution. Usually this is due
+   * to invalid input, such as a request that cannot be transformed to the
+   * current state, a %INF_ADOPTED_REQUEST_UNDO request which has no
+   * corresponding %INF_ADOPTED_REQUEST_DO or %INF_ADOPTED_REQUEST_REDO
+   * request, or a request that ends up in an invalid operation (e.g.
+   * inserting text behind the end of the document). If such an error occurs
+   * then @request is the same as the one in the
+   * %InfAdoptedAlgorithm::begin-execute-request emission, @translated is
+   * %NULL and @error contains information on the error occured.
+   */
+  algorithm_signals[END_EXECUTE_REQUEST] = g_signal_new(
+    "end-execute-request",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, end_execute_request),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT_OBJECT_OBJECT_POINTER,
+    G_TYPE_NONE,
+    4,
     INF_ADOPTED_TYPE_USER,
     INF_ADOPTED_TYPE_REQUEST,
-    G_TYPE_BOOLEAN
+    INF_ADOPTED_TYPE_REQUEST,
+    G_TYPE_POINTER /* GError* */
   );
 }
 
@@ -2150,14 +2220,7 @@ inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
     inf_adopted_algorithm_get_real_time() /* TODO: Should be a parameter? */
   );
 
-  g_signal_emit(
-    G_OBJECT(algorithm),
-    algorithm_signals[EXECUTE_REQUEST],
-    0,
-    user,
-    request,
-    FALSE
-  );
+  inf_adopted_algorithm_execute_request(algorithm, user, request, FALSE);
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
@@ -2203,14 +2266,7 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
     inf_adopted_algorithm_get_real_time()
   );
 
-  g_signal_emit(
-    G_OBJECT(algorithm),
-    algorithm_signals[EXECUTE_REQUEST],
-    0,
-    user,
-    request,
-    TRUE
-  );
+  inf_adopted_algorithm_execute_request(algorithm, user, request, TRUE);
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
@@ -2254,14 +2310,7 @@ inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
     inf_adopted_algorithm_get_real_time()
   );
 
-  g_signal_emit(
-    G_OBJECT(algorithm),
-    algorithm_signals[EXECUTE_REQUEST],
-    0,
-    user,
-    request,
-    TRUE
-  );
+  inf_adopted_algorithm_execute_request(algorithm, user, request, TRUE);
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
@@ -2305,14 +2354,7 @@ inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
     inf_adopted_algorithm_get_real_time()
   );
 
-  g_signal_emit(
-    G_OBJECT(algorithm),
-    algorithm_signals[EXECUTE_REQUEST],
-    0,
-    user,
-    request,
-    TRUE
-  );
+  inf_adopted_algorithm_execute_request(algorithm, user, request, TRUE);
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
@@ -2477,11 +2519,9 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
   }
   else
   {
-    g_signal_emit(
-      G_OBJECT(algorithm),
-      algorithm_signals[EXECUTE_REQUEST],
-      0,
-      user,
+    inf_adopted_algorithm_execute_request(
+      algorithm,
+      INF_ADOPTED_USER(user),
       request,
       TRUE
     );
@@ -2500,12 +2540,10 @@ inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
           user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
           g_assert(user != NULL);
 
-          g_signal_emit(
-            G_OBJECT(algorithm),
-            algorithm_signals[EXECUTE_REQUEST],
-            0,
-            user,
-            queued_request,
+          inf_adopted_algorithm_execute_request(
+            algorithm,
+            INF_ADOPTED_USER(user),
+            request,
             TRUE
           );
 

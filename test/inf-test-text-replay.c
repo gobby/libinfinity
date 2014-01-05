@@ -190,11 +190,10 @@ inf_test_text_replay_request_typestring(InfAdoptedRequest* request)
 static gint64 test;
 
 static void
-inf_test_text_replay_execute_request_cb_before(InfAdoptedAlgorithm* algorithm,
-                                               InfAdoptedUser* user,
-                                               InfAdoptedRequest* request,
-                                               gboolean apply,
-                                               gpointer user_data)
+inf_test_text_replay_begin_execute_request_cb(InfAdoptedAlgorithm* algorithm,
+                                              InfAdoptedUser* user,
+                                              InfAdoptedRequest* request,
+                                              gpointer user_data)
 {
   gchar* current_str;
   gchar* request_str;
@@ -215,7 +214,6 @@ inf_test_text_replay_execute_request_cb_before(InfAdoptedAlgorithm* algorithm,
       inf_adopted_request_get_vector(request)
     );
 
-    /* TODO: Write what type of request it is */
     fprintf(
       stderr,
       "WARNING: Transforming %s request \"%s\" of user \"%s\" to state \"%s\""
@@ -235,11 +233,12 @@ inf_test_text_replay_execute_request_cb_before(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
-inf_test_text_replay_execute_request_cb_after(InfAdoptedAlgorithm* algorithm,
-                                              InfAdoptedUser* user,
-                                              InfAdoptedRequest* request,
-                                              gboolean apply,
-                                              gpointer user_data)
+inf_test_text_replay_end_execute_request_cb(InfAdoptedAlgorithm* algorithm,
+                                            InfAdoptedUser* user,
+                                            InfAdoptedRequest* request,
+                                            InfAdoptedRequest* translated,
+                                            const GError* error,
+                                            gpointer user_data)
 {
   InfAdoptedStateVector* current;
   gchar* current_str;
@@ -248,21 +247,40 @@ inf_test_text_replay_execute_request_cb_after(InfAdoptedAlgorithm* algorithm,
 
   time = g_get_monotonic_time();
 
-  if(time - test > 10000)
+  if(translated != NULL)
   {
-    current = inf_adopted_state_vector_copy(
+    if(time - test > 10000.)
+    {
+      current_str = inf_adopted_state_vector_to_string(
+        inf_adopted_request_get_vector(translated)
+      );
+
+      request_str = inf_adopted_state_vector_to_string(
+        inf_adopted_request_get_vector(request)
+      );
+
+      fprintf(
+        stderr,
+        "WARNING: Transforming %s request \"%s\" of user \"%s\" to state "
+        "\"%s\" took %.3g ms\n",
+        inf_test_text_replay_request_typestring(request),
+        request_str,
+        inf_user_get_name(INF_USER(user)),
+        current_str,
+        (time - test)/1000.
+      );
+
+      g_free(current_str);
+      g_free(request_str);
+    }
+  }
+  else
+  {
+    g_assert(error != NULL);
+
+    current_str = inf_adopted_state_vector_to_string(
       inf_adopted_algorithm_get_current(algorithm)
     );
-    if(inf_adopted_request_affects_buffer(request))
-    {
-      inf_adopted_state_vector_add(
-        current,
-        inf_user_get_id(INF_USER(user)),
-        -1
-      );
-    }
-    current_str = inf_adopted_state_vector_to_string(current);
-    inf_adopted_state_vector_free(current);
 
     request_str = inf_adopted_state_vector_to_string(
       inf_adopted_request_get_vector(request)
@@ -270,13 +288,13 @@ inf_test_text_replay_execute_request_cb_after(InfAdoptedAlgorithm* algorithm,
 
     fprintf(
       stderr,
-      "WARNING: Transforming %s request \"%s\" of user \"%s\" to state \"%s\" "
-      "took %.3g ms\n",
+      "WARNING: Transforming %s request \"%s\" of user \"%s\" to "
+      "state \"%s\" failed: %s",
       inf_test_text_replay_request_typestring(request),
       request_str,
       inf_user_get_name(INF_USER(user)),
       current_str,
-      (time - test)/1000.0
+      error->message
     );
 
     g_free(current_str);
@@ -395,15 +413,15 @@ int main(int argc, char* argv[])
 
       g_signal_connect(
         data.algorithm,
-        "execute-request",
-        G_CALLBACK(inf_test_text_replay_execute_request_cb_before),
+        "begin-execute-request",
+        G_CALLBACK(inf_test_text_replay_begin_execute_request_cb),
         content
       );
 
-      g_signal_connect_after(
+      g_signal_connect(
         data.algorithm,
-        "execute-request",
-        G_CALLBACK(inf_test_text_replay_execute_request_cb_after),
+        "end-execute-request",
+        G_CALLBACK(inf_test_text_replay_end_execute_request_cb),
         content
       );
 

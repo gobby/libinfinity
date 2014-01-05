@@ -162,11 +162,10 @@ inf_adopted_session_record_user_joined(InfAdoptedSessionRecord* record,
 }
 
 static void
-inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
-                                              InfAdoptedUser* user,
-                                              InfAdoptedRequest* request,
-                                              gboolean apply,
-                                              gpointer user_data)
+inf_adopted_session_record_begin_execute_request_cb(InfAdoptedAlgorithm* algo,
+                                                    InfAdoptedUser* user,
+                                                    InfAdoptedRequest* req,
+                                                    gpointer user_data)
 {
   InfAdoptedSessionRecord* record;
   InfAdoptedSessionRecordPrivate* priv;
@@ -183,22 +182,18 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   previous = g_hash_table_lookup(priv->last_send_table, user);
   g_assert(previous != NULL);
 
-  session_class->request_to_xml(priv->session, xml, request, previous, FALSE);
+  session_class->request_to_xml(priv->session, xml, req, previous, FALSE);
 
   inf_xml_util_set_attribute_double(
     xml,
     "received",
-    inf_adopted_request_get_receive_time(request) / 1000000.
+    inf_adopted_request_get_receive_time(req) / 1000000.
   );
 
-  /* Note that execute_time of request is not yet set at this point, since it
-   * is only set in the default handler of execute-request. However, we want
-   * to write the record already before, so that if there is a problem during
-   * execution we have written the request into the record. */
   inf_xml_util_set_attribute_double(
     xml,
     "executed",
-    inf_adopted_session_record_get_real_time() / 1000000.
+    inf_adopted_request_get_execute_time(req) / 1000000.
   );
 
   inf_adopted_session_record_write_node(record, xml);
@@ -210,8 +205,8 @@ inf_adopted_session_record_execute_request_cb(InfAdoptedAlgorithm* algorithm,
 
   /* Update last send entry */
   previous =
-    inf_adopted_state_vector_copy(inf_adopted_request_get_vector(request));
-  if(inf_adopted_request_affects_buffer(request))
+    inf_adopted_state_vector_copy(inf_adopted_request_get_vector(req));
+  if(inf_adopted_request_affects_buffer(req))
     inf_adopted_state_vector_add(previous, inf_user_get_id(INF_USER(user)), 1);
   g_hash_table_insert(priv->last_send_table, user, previous);
 }
@@ -282,8 +277,8 @@ inf_adopted_session_record_real_start(InfAdoptedSessionRecord* record)
 
   g_signal_connect(
     G_OBJECT(algorithm),
-    "execute-request",
-    G_CALLBACK(inf_adopted_session_record_execute_request_cb),
+    "begin-execute-request",
+    G_CALLBACK(inf_adopted_session_record_begin_execute_request_cb),
     record
   );
 
@@ -755,7 +750,7 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
 
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(algorithm),
-        G_CALLBACK(inf_adopted_session_record_execute_request_cb),
+        G_CALLBACK(inf_adopted_session_record_begin_execute_request_cb),
         record
       );
     }
