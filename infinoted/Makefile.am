@@ -36,7 +36,9 @@ libinfinoted_plugin_manager_0_6_la_SOURCES = \
 	infinoted-parameter.h \
 	infinoted-parameter.c \
 	infinoted-plugin-manager.h \
-	infinoted-plugin-manager.c
+	infinoted-plugin-manager.c \
+	infinoted-util.h \
+	infinoted-util.c
 
 # Compile the rest of infinoted as an executable binary
 infinoted_0_6_CPPFLAGS = \
@@ -70,8 +72,7 @@ infinoted_0_6_SOURCES = \
 	infinoted-signal.c \
 	infinoted-startup.c \
 	infinoted-traffic-logger.c \
-	infinoted-transformation-protector.c \
-	infinoted-util.c
+	infinoted-transformation-protector.c
 
 noinst_HEADERS = \
 	infinoted-config-reload.h \
@@ -85,8 +86,7 @@ noinst_HEADERS = \
 	infinoted-signal.h \
 	infinoted-startup.h \
 	infinoted-traffic-logger.h \
-	infinoted-transformation-protector.h \
-	infinoted-util.h
+	infinoted-transformation-protector.h
 
 # Create pid file directory
 pidfiledir = ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)
