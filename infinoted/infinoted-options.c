@@ -854,7 +854,9 @@ infinoted_options_load(InfinotedOptions* options,
   create_key = options->create_key;
   create_certificate = options->create_certificate;
   plugin_parameters = NULL;
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
   daemonize = options->daemonize;
+#endif
   kill_daemon = FALSE;
   display_version = FALSE;
 
@@ -960,7 +962,9 @@ infinoted_options_load(InfinotedOptions* options,
 
   options->create_key = create_key;
   options->create_certificate = create_certificate;
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = daemonize;
+#endif
 
   /* Next, read the configuration file into a GKeyFile. The configuration file
    * can be overridden on the command line, so we can only do this after
