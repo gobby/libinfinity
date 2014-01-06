@@ -109,22 +109,10 @@ InfAdoptedRequest*
 inf_adopted_algorithm_get_execute_request(InfAdoptedAlgorithm* algorithm);
 
 InfAdoptedRequest*
-inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
-                                              InfAdoptedUser* user,
-                                              InfAdoptedOperation* operation);
-
-InfAdoptedRequest*
 inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
+                                       InfAdoptedRequestType type,
                                        InfAdoptedUser* user,
                                        InfAdoptedOperation* operation);
-
-InfAdoptedRequest*
-inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
-                                    InfAdoptedUser* user);
-
-InfAdoptedRequest*
-inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
-                                    InfAdoptedUser* user);
 
 InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
@@ -132,8 +120,9 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedStateVector* to);
 
 void
-inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
-                                      InfAdoptedRequest* request);
+inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
+                                      InfAdoptedRequest* request,
+                                      gboolean apply);
 
 gboolean
 inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,

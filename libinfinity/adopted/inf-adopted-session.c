@@ -74,6 +74,8 @@ struct _InfAdoptedSessionPrivate {
   InfIoTimeout* noop_timeout;
   /* User to send the time for */
   InfAdoptedSessionLocalUser* next_noop_user;
+  /* Buffer for requests that are not ready to be executed yet */
+  GPtrArray* request_buffer;
 };
 
 enum {
@@ -263,12 +265,18 @@ inf_adopted_session_noop_timeout_func(gpointer user_data)
   g_assert(priv->next_noop_user != NULL);
 
   op = INF_ADOPTED_OPERATION(inf_adopted_no_operation_new());
-  request = inf_adopted_algorithm_generate_request_noexec(
+
+  request = inf_adopted_algorithm_generate_request(
     priv->algorithm,
+    INF_ADOPTED_REQUEST_DO,
     priv->next_noop_user->user,
     op
   );
+
   g_object_unref(op);
+
+  /* There is no need to actually execute the request, since it does not
+   * do anything anyway. */
 
   /* This resets noop_time for this user, determines the next user for
    * which to generate a noop request and schedules the new timeout. */
@@ -437,26 +445,86 @@ inf_adopted_session_process_request(InfAdoptedSession* session,
                                     InfAdoptedUser* user)
 {
   InfAdoptedSessionPrivate* priv;
+  InfAdoptedStateVector* request_vector;
+  InfAdoptedStateVector* current_vector;
   gboolean reject_request;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
+  request_vector = inf_adopted_request_get_vector(request);
+  current_vector = inf_adopted_algorithm_get_current(priv->algorithm);
 
-  g_signal_emit(
-    G_OBJECT(session),
-    session_signals[CHECK_REQUEST],
-    0,
-    request,
-    user,
-    &reject_request
-  );
-
-  if(!reject_request)
+  if(inf_adopted_state_vector_causally_before(request_vector, current_vector))
   {
-    inf_adopted_algorithm_receive_request(priv->algorithm, request);
+    g_signal_emit(
+      G_OBJECT(session),
+      session_signals[CHECK_REQUEST],
+      0,
+      request,
+      user,
+      &reject_request
+    );
+    
+    if(reject_request)
+      return FALSE;
+
+    inf_adopted_algorithm_execute_request(priv->algorithm, request, TRUE);
     return TRUE;
   }
+  else
+  {
+    if(priv->request_buffer == NULL)
+      priv->request_buffer = g_ptr_array_new();
+    g_ptr_array_add(priv->request_buffer, request);
+    g_object_ref(request);
+    return TRUE;
+  }
+}
 
-  return FALSE;
+static void
+inf_adopted_session_process_buffered_requests(InfAdoptedSession* session)
+{
+  InfAdoptedSessionPrivate* priv;
+  InfUserTable* user_table;
+  InfAdoptedStateVector* current;
+
+  guint i;
+  InfAdoptedRequest* request;
+  InfAdoptedStateVector* vector;
+
+  guint user_id;
+  InfUser* user;
+
+  priv = INF_ADOPTED_SESSION_PRIVATE(session);
+
+  if(priv->request_buffer != NULL)
+  {
+    user_table = inf_session_get_user_table(INF_SESSION(session));
+    current = inf_adopted_algorithm_get_current(priv->algorithm);
+    for(i = 0; i < priv->request_buffer->len; ++i)
+    {
+      request =
+        INF_ADOPTED_REQUEST(g_ptr_array_index(priv->request_buffer, i));
+      vector = inf_adopted_request_get_vector(request);
+
+      if(inf_adopted_state_vector_causally_before(vector, current))
+      {
+        g_ptr_array_remove_index_fast(priv->request_buffer, i);
+
+        user_id = inf_adopted_request_get_user_id(request);
+        user = inf_user_table_lookup_user_by_id(user_table, user_id);
+        g_assert(INF_ADOPTED_IS_USER(user));
+
+        inf_adopted_session_process_request(
+          session,
+          request,
+          INF_ADOPTED_USER(user)
+        );
+
+        g_object_unref(request);
+        return inf_adopted_session_process_buffered_requests(session);
+      }
+    }
+  }
 }
 
 /*
@@ -657,6 +725,7 @@ inf_adopted_session_init(GTypeInstance* instance,
   priv->local_users = NULL;
   priv->noop_timeout = NULL;
   priv->next_noop_user = NULL;
+  priv->request_buffer = NULL;
 }
 
 static GObject*
@@ -734,6 +803,7 @@ inf_adopted_session_dispose(GObject* object)
   InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
   InfUserTable* user_table;
+  guint i;
 
   session = INF_ADOPTED_SESSION(object);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
@@ -763,6 +833,14 @@ inf_adopted_session_dispose(GObject* object)
   G_OBJECT_CLASS(parent_class)->dispose(object);
 
   g_assert(priv->local_users == NULL);
+
+  if(priv->request_buffer != NULL)
+  {
+    for(i = 0; i < priv->request_buffer->len; ++i)
+      g_object_unref(g_ptr_array_index(priv->request_buffer, i));
+    g_ptr_array_free(priv->request_buffer, TRUE);
+    priv->request_buffer = NULL;
+  }
 
   if(priv->algorithm != NULL)
   {
@@ -983,6 +1061,10 @@ inf_adopted_session_process_xml_run(InfSession* session,
   InfAdoptedSessionClass* session_class;
   InfAdoptedRequest* request;
   InfAdoptedUser* user;
+  guint user_id;
+
+  InfAdoptedStateVector* user_vector;
+  InfAdoptedStateVector* request_vector;
 
   gboolean has_num;
   gboolean process_request;
@@ -1028,17 +1110,38 @@ inf_adopted_session_process_xml_run(InfSession* session,
       g_propagate_error(error, local_error);
       return INF_COMMUNICATION_SCOPE_PTP;
     }
-    
+
+    user_id = inf_user_get_id(INF_USER(user));
+    user_vector = inf_adopted_user_get_vector(user);
+
     request = session_class->xml_to_request(
       INF_ADOPTED_SESSION(session),
       xml,
-      inf_adopted_user_get_vector(user),
+      user_vector,
       FALSE,
       error
     );
 
     if(request == NULL)
       return INF_COMMUNICATION_SCOPE_PTP;
+
+    request_vector = inf_adopted_request_get_vector(request);
+
+    g_assert(
+      inf_adopted_state_vector_causally_before(user_vector, request_vector)
+    );
+
+    g_assert(
+      inf_adopted_request_get_index(request) ==
+      inf_adopted_state_vector_get(user_vector, user_id)
+    );
+
+    /* Update the user vector */
+    user_vector = inf_adopted_state_vector_copy(request_vector);
+    if(inf_adopted_request_affects_buffer(request))
+      inf_adopted_state_vector_add(user_vector, user_id, has_num ? num : 1);
+    /* Note that this function takes ownership of user_vector */
+    inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
 
     process_request = inf_adopted_session_process_request(
       INF_ADOPTED_SESSION(session),
@@ -1074,6 +1177,15 @@ inf_adopted_session_process_xml_run(InfSession* session,
     }
 
     g_object_unref(request);
+
+    /* The processed request(s) might have caused some of the buffered
+     * requests to become ready. Note that there is no error handling here,
+     * since the buffered requests are not related to this request. In order
+     * to handle a failure here, the InfAdoptedAlgorithm::end-execute-request
+     * signal should be used. */
+    inf_adopted_session_process_buffered_requests(
+      INF_ADOPTED_SESSION(session)
+    );
 
     /* Requests can always be forwarded since user is given. */
     return INF_COMMUNICATION_SCOPE_GROUP;
@@ -1527,6 +1639,7 @@ inf_adopted_session_undo(InfAdoptedSession* session,
                          guint n)
 {
   InfAdoptedSessionPrivate* priv;
+  InfAdoptedRequest* first_request;
   InfAdoptedRequest* request;
   guint i;
 
@@ -1537,11 +1650,27 @@ inf_adopted_session_undo(InfAdoptedSession* session,
   /* TODO: Check whether we can issue n undo requests before doing anything */
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
-  request = inf_adopted_algorithm_generate_undo(priv->algorithm, user);
-  for(i = 1; i < n; ++i)
-    inf_adopted_algorithm_generate_undo(priv->algorithm, user);
-  inf_adopted_session_broadcast_n_requests(session, request, n);
-  g_object_unref(request);  
+
+  first_request = NULL;
+  for(i = 0; i < n; ++i)
+  {
+    request = inf_adopted_algorithm_generate_request(
+      priv->algorithm,
+      INF_ADOPTED_REQUEST_UNDO,
+      user,
+      NULL
+    );
+
+    inf_adopted_algorithm_execute_request(priv->algorithm, request, TRUE);
+
+    if(first_request == NULL)
+      first_request = request;
+    else
+      g_object_unref(request);
+  }
+
+  inf_adopted_session_broadcast_n_requests(session, first_request, n);
+  g_object_unref(first_request);
 }
 
 /**
@@ -1559,6 +1688,7 @@ inf_adopted_session_redo(InfAdoptedSession* session,
                          guint n)
 {
   InfAdoptedSessionPrivate* priv;
+  InfAdoptedRequest* first_request;
   InfAdoptedRequest* request;
   guint i;
 
@@ -1569,11 +1699,27 @@ inf_adopted_session_redo(InfAdoptedSession* session,
   g_return_if_fail(n >= 1);
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
-  request = inf_adopted_algorithm_generate_redo(priv->algorithm, user);
-  for(i = 1; i < n; ++i)
-    inf_adopted_algorithm_generate_redo(priv->algorithm, user);
-  inf_adopted_session_broadcast_n_requests(session, request, n);
-  g_object_unref(request);
+
+  first_request = NULL;
+  for(i = 0; i < n; ++i)
+  {
+    request = inf_adopted_algorithm_generate_request(
+      priv->algorithm,
+      INF_ADOPTED_REQUEST_REDO,
+      user,
+      NULL
+    );
+
+    inf_adopted_algorithm_execute_request(priv->algorithm, request, TRUE);
+
+    if(first_request == NULL)
+      first_request = request;
+    else
+      g_object_unref(request);
+  }
+
+  inf_adopted_session_broadcast_n_requests(session, first_request, n);
+  g_object_unref(first_request);
 }
 
 /**

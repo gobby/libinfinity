@@ -72,8 +72,6 @@
  * issue buffer-altering requests. This way we keep the asymptotic complexity
  * dynamically as O(active users^2). */
 
-#define INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
-
 typedef struct _InfAdoptedAlgorithmLocalUser InfAdoptedAlgorithmLocalUser;
 struct _InfAdoptedAlgorithmLocalUser {
   InfAdoptedUser* user;
@@ -93,8 +91,6 @@ struct _InfAdoptedAlgorithmPrivate {
 
   InfUserTable* user_table;
   InfBuffer* buffer;
-  /* doubly-linked so we can easily remove an element from the middle */
-  GList* queue;
 
   /* Users in user table. We need to iterate over them very often, so we
    * keep them as array here. */
@@ -600,7 +596,7 @@ inf_adopted_algorithm_buffer_states_equivalent(InfAdoptedAlgorithm* algorithm,
     second_n = inf_adopted_state_vector_get(second, user_id);
 
     /* TODO: This algorithm can probably be optimized by moving it into 
-     * request log. Note the similarity to is_component_reachable. */
+     * request log. */
     while(second_n > first_n)
     {
       /* If we dropped too much state, then we can't say whether the two
@@ -701,77 +697,6 @@ inf_adopted_algorithm_update_local_user_times(InfAdoptedAlgorithm* algorithm)
       inf_adopted_state_vector_copy(priv->current)
     );
   }
-}
-
-/* TODO: Move this into request log? */
-static gboolean
-inf_adopted_algorithm_is_component_reachable(InfAdoptedAlgorithm* algorithm,
-                                             InfAdoptedStateVector* v,
-                                             InfAdoptedUser* component)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequestLog* log;
-  InfAdoptedRequest* request;
-  InfAdoptedRequestType type;
-  InfAdoptedStateVector* current;
-  guint n;
-  
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  log = inf_adopted_user_get_request_log(component);
-  current = v;
-  g_assert(log != NULL);
-
-  for(;;)
-  {
-    n = inf_adopted_state_vector_get(
-      current,
-      inf_user_get_id(INF_USER(component))
-    );
-
-    g_assert(n >= inf_adopted_request_log_get_begin(log));
-    /* Can be equal to end if the corresponding request is not yet
-     * inserted in the log. */
-    g_assert(n <= inf_adopted_request_log_get_end(log));
-    if(n == inf_adopted_request_log_get_begin(log)) return TRUE;
-
-    request = inf_adopted_request_log_get_request(log, n - 1);
-    type = inf_adopted_request_get_request_type(request);
-
-    if(type == INF_ADOPTED_REQUEST_DO)
-    {
-      return inf_adopted_state_vector_causally_before_inc(
-        inf_adopted_request_get_vector(request),
-        v,
-        inf_adopted_request_get_user_id(request)
-      );
-    }
-    else
-    {
-      current = inf_adopted_request_get_vector(
-        inf_adopted_request_log_prev_associated(log, request)
-      );
-    }
-  }
-}
-
-static gboolean
-inf_adopted_algorithm_is_reachable(InfAdoptedAlgorithm* algorithm,
-                                   InfAdoptedStateVector* v)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedUser** user;
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  g_assert(
-    inf_adopted_state_vector_causally_before(v, priv->current) == TRUE
-  );
-
-  for(user = priv->users_begin; user != priv->users_end; ++ user)
-    if(!inf_adopted_algorithm_is_component_reachable(algorithm, v, *user))
-      return FALSE;
-  
-  return TRUE;
 }
 
 /* We can cache requests if:
@@ -1038,6 +963,7 @@ inf_adopted_algorithm_translate_request_forward(InfAdoptedAlgorithm* algorithm,
       }
     }
 
+    /* If next_req == NULL, to is not reachable in state space */
     g_assert(next_req != NULL);
 
     g_object_unref(cur_req);
@@ -1048,213 +974,68 @@ inf_adopted_algorithm_translate_request_forward(InfAdoptedAlgorithm* algorithm,
   return cur_req;
 }
 
-/* This should only ever be called by
- * inf_adopted_algorithm_translate_request() after it did the cache and
- * validity checks */
-static InfAdoptedRequest*
-inf_adopted_algorithm_translate_request_nocache(InfAdoptedAlgorithm* algorithm,
-                                                InfAdoptedRequest* request,
-                                                InfAdoptedStateVector* to)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedUser** user_it; /* user iterator */
-  InfUser* user; /* points to current user (mostly *user_it) */
-  guint user_id; /* Corresponding ID */
-  InfAdoptedRequestLog* log; /* points to current log */
-  InfAdoptedStateVector* vector; /* always points to request's vector */
-
-  InfAdoptedRequest* associated;
-  InfAdoptedRequest* translated;
-  InfAdoptedRequest* result;
-  gint by;
-  guint n;
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  vector = inf_adopted_request_get_vector(request);
-  result = NULL;
-
-  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
-  {
-    user_id = inf_adopted_request_get_user_id(request);
-    user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
-    log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
-
-    /* Try late mirror if this is not a do request */
-    associated = inf_adopted_request_log_prev_associated(log, request);
-    g_assert(associated != NULL);
-
-    n = inf_adopted_state_vector_get(to, user_id);
-    by = n - inf_adopted_state_vector_get(
-      inf_adopted_request_get_vector(associated),
-      user_id
-    );
-
-    inf_adopted_state_vector_add(to, user_id, -by);
-
-    if(inf_adopted_algorithm_is_reachable(algorithm, to))
-    {
-      translated = inf_adopted_algorithm_translate_request(
-        algorithm,
-        associated,
-        to
-      );
-
-      result = inf_adopted_request_mirror(translated, by);
-
-      g_object_unref(translated);
-    }
-
-    /* Reset to for other routines to use */
-    inf_adopted_state_vector_set(to, user_id, n);
-    if(result) return result;
-  }
-  else
-  {
-    /* The request is a do request: We might already be done if we are
-     * already at the state we are supposed to translate request to. */
-    if(inf_adopted_state_vector_compare(vector, to) == 0)
-    {
-      g_object_ref(request);
-      return request;
-    }
-  }
-
-  for(user_it = priv->users_begin; user_it != priv->users_end; ++ user_it)
-  {
-    user = INF_USER(*user_it);
-    user_id = inf_user_get_id(user);
-    if(user_id == inf_adopted_request_get_user_id(request)) continue;
-
-    n = inf_adopted_state_vector_get(to, user_id);
-    log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
-
-    g_assert(n >= inf_adopted_request_log_get_begin(log));
-    if(n == inf_adopted_request_log_get_begin(log)) continue;
-
-    /* Fold late, if possible */
-    associated = inf_adopted_request_log_get_request(log, n - 1);
-    if(inf_adopted_request_get_request_type(associated) !=
-       INF_ADOPTED_REQUEST_DO)
-    {
-      associated = inf_adopted_request_log_prev_associated(log, associated);
-      g_assert(associated != NULL);
-
-      by = n - inf_adopted_state_vector_get(
-        inf_adopted_request_get_vector(associated),
-        user_id
-      );
-
-      inf_adopted_state_vector_add(to, user_id, -by);
-
-      if(inf_adopted_algorithm_is_reachable(algorithm, to) &&
-         inf_adopted_state_vector_causally_before(vector, to) == TRUE)
-      {
-        translated = inf_adopted_algorithm_translate_request(
-          algorithm,
-          request,
-          to
-        );
-
-        result = inf_adopted_request_fold(
-          translated,
-          user_id,
-          by
-        );
-
-        g_object_unref(translated);
-      }
-
-      /* Reset to for other routines to use */
-      inf_adopted_state_vector_set(to, user_id, n);
-      if(result) return result;
-    }
-
-    /* Transform into direction we are not going to fold later */
-    if(inf_adopted_state_vector_get(vector, user_id) < n)
-/*       inf_adopted_state_vector_get(to, user_id))*/
-    {
-      inf_adopted_state_vector_set(to, user_id, n - 1);
-      if(inf_adopted_algorithm_is_reachable(algorithm, to))
-      {
-        associated = inf_adopted_request_log_get_request(log, n - 1);
-
-        result = inf_adopted_algorithm_transform_request(
-          algorithm,
-          request,
-          associated,
-          to
-        );
-      }
-
-      /* Reset to be reused */
-      inf_adopted_state_vector_set(to, user_id, n);
-      if(result) return result;
-    }
-  }
-
-#if 0
-  /* Last resort: Transform always */
-  for(user_it = priv->users_begin; user_it != priv->users_end; ++ user_it)
-  {
-    user = INF_USER(*user_it);
-    user_id = inf_user_get_id(user);
-    if(user_id == inf_adopted_request_get_user_id(request)) continue;
-
-    n = inf_adopted_state_vector_get(v, user_id);
-    log = inf_adopted_user_get_request_log(INF_ADOPTED_USER(user));
-
-    g_assert(n >= inf_adopted_request_log_get_begin(log));
-    if(n == inf_adopted_request_log_get_begin(log)) continue;
-
-    if(inf_adopted_state_vector_get(vector, user_id) <
-       inf_adopted_state_vector_get(to, user_id))
-    {
-      inf_adopted_state_vector_set(v, user_id, n - 1);
-      if(inf_adopted_algorithm_is_reachable(algorithm, v))
-      {
-        associated = inf_adopted_request_log_get_request(log, n - 1);
-
-        result = inf_adopted_algorithm_transform_request(
-          algorithm,
-          request,
-          associated,
-          v
-        );
-
-        goto done;
-      }
-      else
-      {
-        /* Reset to be reused */
-        inf_adopted_state_vector_set(v, user_id, n);
-      }
-    }
-  }
-#endif
-
-  g_assert_not_reached();
-  return NULL;
-}
-
 static void
 inf_adopted_algorithm_log_request(InfAdoptedAlgorithm* algorithm,
-                                  InfAdoptedRequestLog* log,
+                                  InfAdoptedUser* user,
                                   InfAdoptedRequest* request)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  InfAdoptedRequestLog* log;
+/*  InfAdoptedStateVector* user_vector;
+  InfAdoptedStateVector* request_vector;*/
+  guint user_id;
+  gboolean equivalent;
 
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  log = inf_adopted_user_get_request_log(user);
+/*  user_vector = inf_adopted_user_get_vector(user);
+  request_vector = inf_adopted_request_get_vector(request);*/
+  user_id = inf_user_get_id(INF_USER(user));
+
+  g_assert(inf_adopted_request_get_user_id(request) == user_id);
+
+  /* Now update our local state. There are only updates required if the
+   * request is buffer-altering. */
   if(inf_adopted_request_affects_buffer(request))
   {
+    /* First, add to request log */
     inf_adopted_request_log_add_request(log, request);
-
-    inf_adopted_state_vector_add(
-      priv->current,
-      inf_adopted_request_get_user_id(request),
-      1
-    );
-
+    /* Update current document state */
+    inf_adopted_state_vector_add(priv->current, user_id, 1);
+    /* Update local user times */
     inf_adopted_algorithm_update_local_user_times(algorithm);
+
+    /* Unset the modified flag of the buffer if the state is equivalent
+     * (reachable only by folding, i.e. skipping undo/redo pairs) to the
+     * known state when the buffer was not considered modified. */
+    if(priv->buffer_modified_time != NULL)
+    {
+      equivalent = inf_adopted_algorithm_buffer_states_equivalent(
+        algorithm,
+        priv->buffer_modified_time,
+        priv->current
+      );
+
+      if(equivalent == TRUE)
+      {
+        inf_buffer_set_modified(priv->buffer, FALSE);
+        inf_adopted_state_vector_free(priv->buffer_modified_time);
+        priv->buffer_modified_time =
+          inf_adopted_state_vector_copy(priv->current);
+      }
+      else
+      {
+        /* The buffer does this automatically when applying an operation: */
+        /*inf_buffer_set_modified(priv->buffer, TRUE);*/
+      }
+    }
+    else
+    {
+      /* When the modified flag is set to false, then we create the
+       * buffer_modified_time, so when it is unset, the flag needs to be set.
+       * Otherwise, we didn't get notified correctly. */
+      g_assert(inf_buffer_get_modified(priv->buffer) == TRUE);
+    }
   }
 }
 
@@ -1262,7 +1043,7 @@ static InfAdoptedRequest*
 inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
                                     InfAdoptedUser* user,
                                     InfAdoptedRequest* request,
-                                    InfAdoptedRequest* orig_request)
+                                    InfAdoptedRequest* translated)
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedOperation* reversible_operation;
@@ -1270,15 +1051,18 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
+  /* TODO: Assert that the  user ID
+   * for request and translated are the same and that translated can be
+   * applied in the current state, and that translated is a DO request. */
+
   /* Apply the operation to the buffer. If this originated from a DO request,
    * make the operation reversible before adding it to the request log. */
-  if(inf_adopted_request_get_request_type(orig_request) ==
-     INF_ADOPTED_REQUEST_DO)
+  if(inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO)
   {
     /* Make the operation reversible */
     reversible_operation = inf_adopted_operation_apply_transformed(
-      inf_adopted_request_get_operation(orig_request),
       inf_adopted_request_get_operation(request),
+      inf_adopted_request_get_operation(translated),
       user,
       priv->buffer
     );
@@ -1289,21 +1073,21 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
      * operations before that by the same user. */
     if(reversible_operation == NULL)
     {
-      reversible_operation = inf_adopted_request_get_operation(orig_request);
+      reversible_operation = inf_adopted_request_get_operation(request);
       g_object_ref(reversible_operation);
     }
 
     /* Create the log request from the reversible operation */
     log_request = inf_adopted_request_new_do(
-      inf_adopted_request_get_vector(orig_request),
-      inf_adopted_request_get_user_id(orig_request),
+      inf_adopted_request_get_vector(request),
+      inf_adopted_request_get_user_id(request),
       reversible_operation,
-      inf_adopted_request_get_receive_time(orig_request)
+      inf_adopted_request_get_receive_time(request)
     );
 
     inf_adopted_request_set_execute_time(
       log_request,
-      inf_adopted_request_get_execute_time(orig_request)
+      inf_adopted_request_get_execute_time(request)
     );
 
     g_object_unref(reversible_operation);
@@ -1311,222 +1095,16 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
   else
   {
     inf_adopted_operation_apply(
-      inf_adopted_request_get_operation(request),
+      inf_adopted_request_get_operation(translated),
       user,
       priv->buffer
     );
 
-    log_request = orig_request;
+    log_request = request;
     g_object_ref(log_request);
   }
-
-  inf_adopted_algorithm_log_request(
-    algorithm,
-    inf_adopted_user_get_request_log(user),
-    log_request
-  );
 
   return log_request;
-}
-
-static void
-inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
-                                      InfAdoptedUser* user,
-                                      InfAdoptedRequest* request,
-                                      gboolean apply)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequestLog* log;
-  InfAdoptedRequest* translated;
-  InfAdoptedRequest* in_request;
-  InfAdoptedRequest* log_request;
-  gint64 execution_time;
-
-  InfAdoptedRequest* original;
-  InfAdoptedStateVector* v;
-  gboolean equivalent;
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  g_assert(priv->execute_request == NULL); /* not re-entrant */
-  priv->execute_request = request;
-
-  execution_time = inf_adopted_algorithm_get_real_time();
-  inf_adopted_request_set_execute_time(request, execution_time);
-
-  g_signal_emit(
-    G_OBJECT(algorithm),
-    algorithm_signals[BEGIN_EXECUTE_REQUEST],
-    0,
-    user,
-    request
-  );
-
-  g_assert(
-    inf_adopted_state_vector_causally_before(
-      inf_adopted_request_get_vector(request),
-      priv->current
-    ) == TRUE
-  );
-
-  log = inf_adopted_user_get_request_log(user);
-
-  /* Adjust vector time for Undo/Redo operations because they only depend on
-   * their original operation. */
-#ifndef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
-  if(inf_adopted_request_get_request_type(request) != INF_ADOPTED_REQUEST_DO)
-  {
-    original = inf_adopted_request_log_original_request(log, request);
-
-    v = inf_adopted_state_vector_copy(
-      inf_adopted_request_get_vector(original)
-    );
-
-    inf_adopted_state_vector_set(
-      v,
-      inf_adopted_request_get_user_id(request),
-      inf_adopted_state_vector_get(
-        inf_adopted_request_get_vector(request),
-        inf_adopted_request_get_user_id(request)
-      )
-    );
-
-    switch(inf_adopted_request_get_request_type(request))
-    {
-    case INF_ADOPTED_REQUEST_UNDO:
-      in_request = inf_adopted_request_new_undo(
-        v,
-        inf_adopted_request_get_user_id(request),
-        inf_adopted_request_get_receive_time(request)
-      );
-
-      break;
-    case INF_ADOPTED_REQUEST_REDO:
-      in_request = inf_adopted_request_new_redo(
-        v,
-        inf_adopted_request_get_user_id(request),
-        inf_adopted_request_get_receive_time(request)
-      );
-
-      break;
-    default:
-      g_assert_not_reached();
-      break;
-    }
-
-    inf_adopted_request_set_execute_time(in_request, execution_time);
-    inf_adopted_state_vector_free(v);
-  }
-  else
-  {
-    in_request = request;
-    g_object_ref(in_request);
-  }
-#else
-  in_request = request;
-  g_object_ref(in_request);
-#endif
-
-  g_assert(
-    inf_adopted_request_get_request_type(
-      inf_adopted_request_log_original_request(log, request)
-    ) == INF_ADOPTED_REQUEST_DO
-  );
-
-  translated = inf_adopted_algorithm_translate_request(
-    algorithm,
-#ifdef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
-    inf_adopted_request_log_original_request(log, request),
-#else
-    in_request,
-#endif
-    priv->current
-  );
-
-  g_assert(
-    inf_adopted_request_get_request_type(translated) == INF_ADOPTED_REQUEST_DO
-  );
-
-  inf_signal_handlers_block_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
-    algorithm
-  );
-
-  if(apply == TRUE)
-  {
-    log_request = inf_adopted_algorithm_apply_request(
-      algorithm,
-      user,
-      translated,
-      in_request
-    );
-  }
-  else
-  {
-    inf_adopted_algorithm_log_request(
-      algorithm,
-      log,
-      in_request
-    );
-    
-    log_request = in_request;
-    g_object_ref(log_request);
-  }
-
-  g_object_unref(in_request);
-
-  /* TODO: We only need to do this if we changed the current state vector
-   * time <=> if the current request was added to the log */
-  if(priv->buffer_modified_time != NULL)
-  {
-    equivalent = inf_adopted_algorithm_buffer_states_equivalent(
-      algorithm,
-      priv->buffer_modified_time,
-      priv->current
-    );
-
-    if(equivalent == TRUE)
-    {
-      inf_buffer_set_modified(priv->buffer, FALSE);
-      inf_adopted_state_vector_free(priv->buffer_modified_time);
-      priv->buffer_modified_time =
-        inf_adopted_state_vector_copy(priv->current);
-    }
-    else
-    {
-      /* The buffer does this automatically when applying an operation: */
-      /*inf_buffer_set_modified(priv->buffer, TRUE);*/
-    }
-  }
-  else
-  {
-    /* When the modified flag is set to false, then we create the
-     * buffer_modified_time, so when it is unset, the flag needs to be set.
-     * Otherwise, we didn't get notified correctly. */
-    g_assert(inf_buffer_get_modified(priv->buffer) == TRUE);
-  }
-
-  inf_signal_handlers_unblock_by_func(
-    G_OBJECT(priv->buffer),
-    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
-    algorithm
-  );
-
-  g_signal_emit(
-    G_OBJECT(algorithm),
-    algorithm_signals[END_EXECUTE_REQUEST],
-    0,
-    user,
-    log_request,
-    translated,
-    NULL
-  );
-
-  g_object_unref(translated);
-  g_object_unref(log_request);
-
-  priv->execute_request = NULL;
 }
 
 static void
@@ -1547,7 +1125,6 @@ inf_adopted_algorithm_init(GTypeInstance* instance,
   priv->buffer_modified_time = NULL;
   priv->user_table = NULL;
   priv->buffer = NULL;
-  priv->queue = NULL;
 
   /* Lookup by user, user is not refed because the request log holds a 
    * reference anyway. */
@@ -1632,11 +1209,6 @@ inf_adopted_algorithm_dispose(GObject* object)
 
   while(priv->local_users != NULL)
     inf_adopted_algorithm_local_user_free(algorithm, priv->local_users->data);
-
-  for(item = priv->queue; item != NULL; item = g_list_next(item))
-    g_object_unref(G_OBJECT(item->data));
-  g_list_free(priv->queue);
-  priv->queue = NULL;
 
   g_free(priv->users_begin);
 
@@ -2173,193 +1745,69 @@ inf_adopted_algorithm_get_execute_request(InfAdoptedAlgorithm* algorithm)
 }
 
 /**
- * inf_adopted_algorithm_generate_request_noexec:
- * @algorithm: A #InfAdoptedAlgorithm.
- * @user: A local #InfAdoptedUser.
- * @operation: A #InfAdoptedOperation.
- *
- * Creates a #InfAdoptedRequest for the given operation, executed by @user.
- * The user needs to have the %INF_USER_LOCAL flag set.
- *
- * The operation is not applied to the buffer, so you are responsible that
- * the operation is applied before the next request is processed or generated.
- * This may be useful if you are applying multiple operations, but want
- * to only make a single request out of them to save bandwidth.
- *
- * One drawback of using this function with respect to
- * inf_adopted_algorithm_generate_request() is that if the given operation
- * is not reversible, it cannot be made reversible anymore because the
- * information that would be needed is no longer available in the buffer at
- * the time the request is generated.
- *
- * Return Value: A #InfAdoptedRequest that needs to be transmitted to the
- * other non-local users.
- **/
-InfAdoptedRequest*
-inf_adopted_algorithm_generate_request_noexec(InfAdoptedAlgorithm* algorithm,
-                                              InfAdoptedUser* user,
-                                              InfAdoptedOperation* operation)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequest* request;
-
-  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
-  g_return_val_if_fail(
-    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0,
-    NULL
-  );
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  request = inf_adopted_request_new_do(
-    priv->current,
-    inf_user_get_id(INF_USER(user)),
-    operation,
-    inf_adopted_algorithm_get_real_time() /* TODO: Should be a parameter? */
-  );
-
-  inf_adopted_algorithm_execute_request(algorithm, user, request, FALSE);
-
-  inf_adopted_algorithm_cleanup(algorithm);
-  inf_adopted_algorithm_update_undo_redo(algorithm);
-
-  return request;
-}
-
-/**
  * inf_adopted_algorithm_generate_request:
  * @algorithm: A #InfAdoptedAlgorithm.
- * @user: A local #InfAdoptedUser.
- * @operation: A #InfAdoptedOperation.
+ * @type: The type of request to create.
+ * @user: The user for which to create the request.
+ * @operation: The operation to perform, or %NULL.
  *
- * Creates a #InfAdoptedRequest for the given operation, executed by @user.
- * The user needs to have the %INF_USER_LOCAL flag set. @operation is
- * applied to the buffer (by @user).
+ * Creates a new request that can be applied to the current document state.
+ * The request is made by the given user. If operation is of type
+ * %INF_ADOPTED_REQUEST_DO, then @operation specifies the operation to be
+ * performed. Otherwise, @operation must be %NULL.
  *
- * Return Value: A #InfAdoptedRequest that needs to be transmitted to the
- * other non-local users.
- **/
+ * To apply the effect of the request to the document, run
+ * inf_adopted_algorithm_execute_request(). Note that even if the effect
+ * is already applied to the document, the function must still be called
+ * with the @apply parameter set to %FALSE, so that the algorithm knows that
+ * the request has been applied.
+ *
+ * Returns: A new #InfAdoptedRequest. Free with g_object_unref() when no
+ * longer needed.
+ */
 InfAdoptedRequest*
 inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
+                                       InfAdoptedRequestType type,
                                        InfAdoptedUser* user,
                                        InfAdoptedOperation* operation)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequest* request;
 
   g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
+
   g_return_val_if_fail(
-    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0,
+    type != INF_ADOPTED_REQUEST_DO || INF_ADOPTED_IS_OPERATION(operation),
     NULL
   );
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
-  request = inf_adopted_request_new_do(
-    priv->current,
-    inf_user_get_id(INF_USER(user)),
-    operation,
-    inf_adopted_algorithm_get_real_time()
-  );
-
-  inf_adopted_algorithm_execute_request(algorithm, user, request, TRUE);
-
-  inf_adopted_algorithm_cleanup(algorithm);
-  inf_adopted_algorithm_update_undo_redo(algorithm);
-
-  return request;
-}
-
-/**
- * inf_adopted_algorithm_generate_undo:
- * @algorithm: A #InfAdoptedAlgorithm.
- * @user: A local #InfAdoptedUser.
- *
- * Creates a request of type %INF_ADOPTED_REQUEST_UNDO for the given
- * user and with the current vector time. The user needs to have the
- * %INF_USER_LOCAL flag set. It also applies the effect of the operation to
- * the buffer.
- *
- * Return Value: A #InfAdoptedRequest that needs to be transmitted to the
- * other non-local users.
- **/
-InfAdoptedRequest*
-inf_adopted_algorithm_generate_undo(InfAdoptedAlgorithm* algorithm,
-                                    InfAdoptedUser* user)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequest* request;
-
-  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
-  g_return_val_if_fail(
-    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0,
-    NULL
-  );
-  g_return_val_if_fail(inf_adopted_algorithm_can_undo(algorithm, user), NULL);
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  request = inf_adopted_request_new_undo(
-    priv->current,
-    inf_user_get_id(INF_USER(user)),
-    inf_adopted_algorithm_get_real_time()
-  );
-
-  inf_adopted_algorithm_execute_request(algorithm, user, request, TRUE);
-
-  inf_adopted_algorithm_cleanup(algorithm);
-  inf_adopted_algorithm_update_undo_redo(algorithm);
-
-  return request;
-}
-
-/**
- * inf_adopted_algorithm_generate_redo:
- * @algorithm: A #InfAdoptedAlgorithm.
- * @user: A local #InfAdoptedUser.
- *
- * Creates a request of type %INF_ADOPTED_REQUEST_REDO for the given
- * user and with the current vector time. The user needs to have the
- * %INF_USER_LOCAL flag set. It also applies the effect of the operation to
- * the buffer.
- *
- * Return Value: A #InfAdoptedRequest that needs to be transmitted to the
- * other non-local users.
- **/
-InfAdoptedRequest*
-inf_adopted_algorithm_generate_redo(InfAdoptedAlgorithm* algorithm,
-                                    InfAdoptedUser* user)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequest* request;
-
-  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), NULL);
-  g_return_val_if_fail(INF_ADOPTED_IS_USER(user), NULL);
-  g_return_val_if_fail(
-    (inf_user_get_flags(INF_USER(user)) & INF_USER_LOCAL) != 0,
-    NULL
-  );
-  g_return_val_if_fail(inf_adopted_algorithm_can_redo(algorithm, user), NULL);
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-
-  request = inf_adopted_request_new_redo(
-    priv->current,
-    inf_user_get_id(INF_USER(user)),
-    inf_adopted_algorithm_get_real_time()
-  );
-
-  inf_adopted_algorithm_execute_request(algorithm, user, request, TRUE);
-
-  inf_adopted_algorithm_cleanup(algorithm);
-  inf_adopted_algorithm_update_undo_redo(algorithm);
-
-  return request;
+  switch(type)
+  {
+  case INF_ADOPTED_REQUEST_DO:
+    return inf_adopted_request_new_do(
+      priv->current,
+      inf_user_get_id(INF_USER(user)),
+      operation,
+      inf_adopted_algorithm_get_real_time()
+    );
+  case INF_ADOPTED_REQUEST_UNDO:
+    return inf_adopted_request_new_undo(
+      priv->current,
+      inf_user_get_id(INF_USER(user)),
+      inf_adopted_algorithm_get_real_time()
+    );
+  case INF_ADOPTED_REQUEST_REDO:
+    return inf_adopted_request_new_redo(
+      priv->current,
+      inf_user_get_id(INF_USER(user)),
+      inf_adopted_algorithm_get_real_time()
+    );
+  default:
+    g_return_val_if_reached(NULL);
+    return NULL;
+  }
 }
 
 /**
@@ -2420,11 +1868,6 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     NULL
   );
 
-  g_return_val_if_fail(
-    inf_adopted_algorithm_is_reachable(algorithm, to) == TRUE,
-    NULL
-  );
-
   /* If the request affects the buffer, then it might have been cached
    * earlier. */
   if(inf_adopted_request_affects_buffer(request))
@@ -2437,13 +1880,8 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
     }
   }
 
-#ifdef INF_ADOPTED_ALGORITHM_FORWARD_TRANSLATE
   /* New algorithm */
   result = inf_adopted_algorithm_translate_request_forward(
-#else
-  /* Old algorithm -- incorrect, fails test-55.xml */
-  result = inf_adopted_algorithm_translate_request_nocache(
-#endif
     algorithm,
     request,
     to
@@ -2462,102 +1900,164 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
 }
 
 /**
- * inf_adopted_algorithm_receive_request:
+ * inf_adopted_algorithm_execute_request:
  * @algorithm: A #InfAdoptedAlgorithm.
- * @request:  A #InfAdoptedRequest from a non-local user.
+ * @request: The request to execute.
+ * @apply: Whether to apply the request to the buffer.
  *
- * This function processes a request received from a non-local user and
- * applies its operation to the buffer.
- **/
+ * This function transforms the given request such that it can be applied to
+ * the current document state and then applies it the buffer and adds it to
+ * the request log of the algorithm, so that it is used for future
+ * transformations of other requests.
+ *
+ * If @apply is %FALSE then the request is not applied to the buffer. In this
+ * case, it is assumed that the buffer is already modified, and that the
+ * request is made as a result from the buffer modification. This also means
+ * that the request must be applicable to the current document state, without
+ * requiring transformation.
+ *
+ * In addition, the function emits the
+ * #InfAdoptedAlgorithm::begin-execute-request and
+ * #InfAdoptedAlgorithm::end-execute-request signals, and makes
+ * inf_adopted_algorithm_get_execute_request() return @request during that
+ * period.
+ *
+ * This allows other code to hook in before and after request processing. This
+ * does not cause any loss of generality because this function is not
+ * re-entrant anyway: it cannot work when used concurrently by multiple
+ * threads nor in a recursive manner, because only when one request has been
+ * added to the log the next request can be translated, since it might need
+ * the previous request for the translation path and it needs to be translated
+ * to a state where the effect of the previous request is included so that it
+ * can consistently applied to the buffer.
+ */
 void
-inf_adopted_algorithm_receive_request(InfAdoptedAlgorithm* algorithm,
-                                      InfAdoptedRequest* request)
+inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
+                                      InfAdoptedRequest* request,
+                                      gboolean apply)
 {
   InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedRequest* queued_request;
-  InfAdoptedStateVector* vector;
-  InfAdoptedStateVector* user_vector;
+  InfAdoptedUser* user;
+  InfAdoptedRequestLog* log;
 
-  guint user_id;
-  InfUser* user;
-
-  GList* item;
+  InfAdoptedRequest* original;
+  InfAdoptedRequest* translated;
+  InfAdoptedRequest* log_request;
 
   g_return_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm));
   g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  user_id = inf_adopted_request_get_user_id(request);
-  user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
+
+  g_return_if_fail(
+    inf_adopted_state_vector_causally_before(
+      inf_adopted_request_get_vector(request),
+      priv->current
+    )
+  );
+
+  g_return_if_fail(
+    apply == TRUE || (
+      inf_adopted_state_vector_compare(
+        inf_adopted_request_get_vector(request),
+        priv->current
+      ) == 0 && 
+      inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
+    )
+  );
+
+  user = INF_ADOPTED_USER(
+    inf_user_table_lookup_user_by_id(
+      priv->user_table,
+      inf_adopted_request_get_user_id(request)
+    )
+  );
+
   g_return_if_fail(user != NULL);
 
-  vector = inf_adopted_request_get_vector(request);
-  user_vector = inf_adopted_user_get_vector(INF_ADOPTED_USER(user));
-  g_return_if_fail( ((inf_user_get_flags(user)) & INF_USER_LOCAL) == 0);
+  g_return_if_fail(priv->execute_request == NULL); /* not re-entrant */
+  priv->execute_request = request;
 
-  /* Update user vector if this is the newest request from that user. */
-  if(inf_adopted_state_vector_causally_before(user_vector, vector))
+  inf_adopted_request_set_execute_time(
+    request,
+    inf_adopted_algorithm_get_real_time()
+  );
+
+  g_signal_emit(
+    G_OBJECT(algorithm),
+    algorithm_signals[BEGIN_EXECUTE_REQUEST],
+    0,
+    user,
+    request
+  );
+
+  log = inf_adopted_user_get_request_log(user);
+  original = inf_adopted_request_log_original_request(log, request);
+
+  g_assert(
+    inf_adopted_request_get_request_type(original) == INF_ADOPTED_REQUEST_DO
+  );
+
+  translated = inf_adopted_algorithm_translate_request(
+    algorithm,
+    original,
+    priv->current
+  );
+
+  g_assert(
+    inf_adopted_request_get_request_type(translated) == INF_ADOPTED_REQUEST_DO
+  );
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+    algorithm
+  );
+
+  if(apply == TRUE)
   {
-    /* Update remote user's vector: We know which requests the remote user
-     * already has processed. */
-    user_vector = inf_adopted_state_vector_copy(vector);
-    if(inf_adopted_request_affects_buffer(request))
-      inf_adopted_state_vector_add(user_vector, inf_user_get_id(user), 1);
-
-    inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
-  }
-
-  /* TODO: Errorcheck that we can apply the request. That means: If it's a
-   * DO request, check vector timestamps, if it's an undo or redo request,
-   * then check can_undo/can_redo. This means this function needs to take a
-   * GError**. */
-
-  if(inf_adopted_state_vector_causally_before(vector, priv->current) == FALSE)
-  {
-    priv->queue = g_list_prepend(priv->queue, request);
-    g_object_ref(G_OBJECT(request));
+    log_request = inf_adopted_algorithm_apply_request(
+      algorithm,
+      user,
+      request,
+      translated
+    );
   }
   else
   {
-    inf_adopted_algorithm_execute_request(
-      algorithm,
-      INF_ADOPTED_USER(user),
-      request,
-      TRUE
-    );
-
-    /* process queued requests that might have become executable now. */
-    /* TODO: Do this in an idle handler, to stay responsive. */
-    do
-    {
-      for(item = priv->queue; item != NULL; item = g_list_next(item))
-      {
-        queued_request = INF_ADOPTED_REQUEST(item->data);
-        vector = inf_adopted_request_get_vector(queued_request);
-        if(inf_adopted_state_vector_causally_before(vector, priv->current))
-        {
-          user_id = inf_adopted_request_get_user_id(queued_request);
-          user = inf_user_table_lookup_user_by_id(priv->user_table, user_id);
-          g_assert(user != NULL);
-
-          inf_adopted_algorithm_execute_request(
-            algorithm,
-            INF_ADOPTED_USER(user),
-            request,
-            TRUE
-          );
-
-          g_object_unref(G_OBJECT(queued_request));
-          priv->queue = g_list_delete_link(priv->queue, item);
-
-          break;
-        }
-      }
-    } while(item != NULL);
+    log_request = request;
+    g_object_ref(request);
   }
+
+  inf_adopted_algorithm_log_request(
+    algorithm,
+    user,
+    log_request
+  );
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(priv->buffer),
+    G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+    algorithm
+  );
 
   inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
+
+  g_signal_emit(
+    G_OBJECT(algorithm),
+    algorithm_signals[END_EXECUTE_REQUEST],
+    0,
+    user,
+    log_request,
+    translated,
+    NULL
+  );
+
+  g_object_unref(translated);
+  g_object_unref(log_request);
+
+  priv->execute_request = NULL;
 }
 
 /**
