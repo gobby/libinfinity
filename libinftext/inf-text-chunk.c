@@ -89,7 +89,6 @@ gsize inf_text_chunk_get_byte_index_utf8(InfTextChunk* self,
                                          gsize bytes,
                                          guint offset)
 {
-/*#define CHUNK_CHECK_INTEGRITY*/
 #ifdef CHUNK_CHECK_INTEGRITY
   g_assert(offset <= g_utf8_strlen(self, bytes));
 #endif
@@ -105,6 +104,12 @@ gsize inf_text_chunk_get_byte_index_iconv(InfTextChunk* self,
   /* We convert the segment's text into UCS-4, character by character.
    * This assumes every UCS-4 character is 4 bytes in length */
 
+  /* This is quite inefficient, but a general-purpose solution. It looks like
+   * libicu has a function, UCharIteratorMove, which would allow us to move
+   * directly N characters ahead and get the new byte index.
+   * TODO: We could profile it, and if it brings a benefit, we could use it,
+   * maybe with an option to fall back to iconv at configure time */
+
   GIConv cd;
   gchar buffer[4];
 
@@ -115,8 +120,6 @@ gsize inf_text_chunk_get_byte_index_iconv(InfTextChunk* self,
   guint count;
   gsize result;
 
-  /* TODO: Can we use some faster glib UTF-8 functions in case
-   * self->encoding is UTF-8? */
   cd = g_iconv_open("UCS-4", g_quark_to_string(self->encoding));
   g_assert(cd != (GIConv)-1);
 
