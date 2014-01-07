@@ -40,6 +40,24 @@ typedef struct _InfAdoptedAlgorithm InfAdoptedAlgorithm;
 typedef struct _InfAdoptedAlgorithmClass InfAdoptedAlgorithmClass;
 
 /**
+ * InfAdoptedAlgorithmError:
+ * @INF_ADOPTED_ALGORITHM_ERROR_NO_UNDO: An undo request was about to be
+ * executed but there is no operation to undo.
+ * @INF_ADOPTED_ALGORITHM_ERROR_NO_REDO: A redo request was about to be
+ * executed but there is no operation to redo.
+ * @INF_ADOPTED_ALGORITHM_ERROR_FAILED: No further specified error code.
+ *
+ * Error codes for #InfAdoptedAlgorithm. These can occur when invalid requests
+ * are passed to inf_adopted_algorithm_execute_request().
+ */
+typedef enum _InfAdoptedAlgorithmError {
+  INF_ADOPTED_ALGORITHM_ERROR_NO_UNDO,
+  INF_ADOPTED_ALGORITHM_ERROR_NO_REDO,
+  
+  INF_ADOPTED_ALGORITHM_ERROR_FAILED
+} InfAdoptedAlgorithmError;
+
+/**
  * InfAdoptedAlgorithmClass:
  * @can_undo_changed: Default signal handler for the
  * #InfAdoptedAlgorithm::can_undo_changed signal.
@@ -119,10 +137,11 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
                                         InfAdoptedRequest* request,
                                         InfAdoptedStateVector* to);
 
-void
+gboolean
 inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
                                       InfAdoptedRequest* request,
-                                      gboolean apply);
+                                      gboolean apply,
+                                      GError** error);
 
 gboolean
 inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,

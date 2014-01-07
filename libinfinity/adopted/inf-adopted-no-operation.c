@@ -75,12 +75,14 @@ inf_adopted_no_operation_get_flags(InfAdoptedOperation* operation)
   return INF_ADOPTED_OPERATION_REVERSIBLE;
 }
 
-static void
+static gboolean
 inf_adopted_no_operation_apply(InfAdoptedOperation* operation,
                                InfAdoptedUser* by,
-                               InfBuffer* buffer)
+                               InfBuffer* buffer,
+                               GError** error)
 {
   /* Does nothing */
+  return TRUE;
 }
 
 static InfAdoptedOperation*

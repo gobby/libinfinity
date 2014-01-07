@@ -26,6 +26,7 @@
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-no-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -236,10 +237,11 @@ inf_text_default_delete_operation_get_flags(InfAdoptedOperation* operation)
          INF_ADOPTED_OPERATION_REVERSIBLE;
 }
 
-static void
+static gboolean
 inf_text_default_delete_operation_apply(InfAdoptedOperation* operation,
                                         InfAdoptedUser* by,
-                                        InfBuffer* buffer)
+                                        InfBuffer* buffer,
+                                        GError** error)
 {
   InfTextDefaultDeleteOperationPrivate* priv;
 
@@ -257,12 +259,30 @@ inf_text_default_delete_operation_apply(InfAdoptedOperation* operation,
   );
 #endif /* DELETE_OPERATION_CHECK_TEXT_MATCH */
 
-  inf_text_buffer_erase_text(
-    INF_TEXT_BUFFER(buffer),
-    priv->position,
-    inf_text_chunk_get_length(priv->chunk),
-    INF_USER(by)
-  );
+  if(priv->position + inf_text_chunk_get_length(priv->chunk) >
+     inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer)))
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
+      INF_TEXT_OPERATION_ERROR_INVALID_DELETE,
+      "%s",
+      _("Attempt to remove text from after the end of the document")
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    inf_text_buffer_erase_text(
+      INF_TEXT_BUFFER(buffer),
+      priv->position,
+      inf_text_chunk_get_length(priv->chunk),
+      INF_USER(by)
+    );
+
+    return TRUE;
+  }
 }
 
 static InfAdoptedOperation*

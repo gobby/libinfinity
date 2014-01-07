@@ -96,6 +96,7 @@ def_to_operation(const operation_def* def,
   InfAdoptedOperation* operation2;
   InfTextDefaultBuffer* buf;
   InfTextChunk* new_document;
+  gboolean result;
 
   switch(def->type)
   {
@@ -134,7 +135,15 @@ def_to_operation(const operation_def* def,
 
     buf = inf_text_default_buffer_new("UTF-8");
     inf_text_buffer_insert_chunk(INF_TEXT_BUFFER(buf), 0, document, NULL);
-    inf_adopted_operation_apply(operation1, user, INF_BUFFER(buf));
+
+    result = inf_adopted_operation_apply(
+      operation1,
+      user,
+      INF_BUFFER(buf),
+      NULL
+    );
+
+    g_assert(result == TRUE);
 
     new_document = inf_text_buffer_get_slice(
       INF_TEXT_BUFFER(buf),
@@ -164,19 +173,20 @@ def_to_operation(const operation_def* def,
 
 static gboolean
 test_undo(InfAdoptedOperation* op,
-          InfAdoptedUser* user)
+          InfAdoptedUser* user,
+          GError** error)
 {
-  InfTextDefaultBuffer* first;
-  InfTextDefaultBuffer* second;
+  InfTextBuffer* first;
+  InfTextBuffer* second;
   InfAdoptedOperation* reverted;
   InfTextChunk* first_chunk;
   InfTextChunk* second_chunk;
   int result;
 
-  first = inf_text_default_buffer_new("UTF-8");
+  first = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
 
   inf_text_buffer_insert_text(
-    INF_TEXT_BUFFER(first),
+    first,
     0,
     EXAMPLE_DOCUMENT,
     strlen(EXAMPLE_DOCUMENT),
@@ -184,9 +194,9 @@ test_undo(InfAdoptedOperation* op,
     NULL
   );
 
-  second = inf_text_default_buffer_new("UTF-8");
+  second = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
   inf_text_buffer_insert_text(
-    INF_TEXT_BUFFER(second),
+    second,
     0,
     EXAMPLE_DOCUMENT,
     strlen(EXAMPLE_DOCUMENT),
@@ -194,9 +204,22 @@ test_undo(InfAdoptedOperation* op,
     NULL
   );
 
-  inf_adopted_operation_apply(op, user, INF_BUFFER(first));
+  if(!inf_adopted_operation_apply(op, user, INF_BUFFER(first), error))
+  {
+    g_object_unref(first);
+    g_object_unref(second);
+    return FALSE;
+  }
+
   reverted = inf_adopted_operation_revert(op);
-  inf_adopted_operation_apply(reverted, user, INF_BUFFER(first));
+  if(!inf_adopted_operation_apply(reverted, user, INF_BUFFER(first), error))
+  {
+    g_object_unref(first);
+    g_object_unref(second);
+    g_object_unref(reverted);
+    return FALSE;
+  }
+
   g_object_unref(reverted);
 
   first_chunk = inf_text_buffer_get_slice(
@@ -204,6 +227,7 @@ test_undo(InfAdoptedOperation* op,
     0,
     inf_text_buffer_get_length(INF_TEXT_BUFFER(first))
   );
+
   second_chunk = inf_text_buffer_get_slice(
     INF_TEXT_BUFFER(second),
     0,
@@ -214,8 +238,8 @@ test_undo(InfAdoptedOperation* op,
 
   inf_text_chunk_free(first_chunk);
   inf_text_chunk_free(second_chunk);
-  g_object_unref(G_OBJECT(first));
-  g_object_unref(G_OBJECT(second));
+  g_object_unref(first);
+  g_object_unref(second);
 
   return result;
 }
@@ -225,16 +249,17 @@ test_c1(InfAdoptedOperation* op1,
         InfAdoptedOperation* op2,
         InfAdoptedUser* user1,
         InfAdoptedUser* user2,
-        InfAdoptedConcurrencyId cid12)
+        InfAdoptedConcurrencyId cid12,
+        GError** error)
 {
-  InfTextDefaultBuffer* first;
-  InfTextDefaultBuffer* second;
+  InfBuffer* first;
+  InfBuffer* second;
   InfTextChunk* first_chunk;
   InfTextChunk* second_chunk;
   InfAdoptedOperation* transformed;
   int result;
 
-  first = inf_text_default_buffer_new("UTF-8");
+  first = INF_BUFFER(inf_text_default_buffer_new("UTF-8"));
 
   inf_text_buffer_insert_text(
     INF_TEXT_BUFFER(first),
@@ -245,7 +270,8 @@ test_c1(InfAdoptedOperation* op1,
     NULL
   );
 
-  second = inf_text_default_buffer_new("UTF-8");
+  second = INF_BUFFER(inf_text_default_buffer_new("UTF-8"));
+
   inf_text_buffer_insert_text(
     INF_TEXT_BUFFER(second),
     0,
@@ -255,15 +281,43 @@ test_c1(InfAdoptedOperation* op1,
     NULL
   );
 
-  inf_adopted_operation_apply(op1, user1, INF_BUFFER(first));
+  if(!inf_adopted_operation_apply(op1, user1, first, error))
+  {
+    g_object_unref(first);
+    g_object_unref(second);
+    return FALSE;
+  }
+
   transformed = inf_adopted_operation_transform(op2, op1, op2, op1, -cid12);
-  inf_adopted_operation_apply(transformed, user2, INF_BUFFER(first));
+
+  if(!inf_adopted_operation_apply(transformed, user2, first, error))
+  {
+    g_object_unref(first);
+    g_object_unref(second);
+    g_object_unref(transformed);
+    return FALSE;
+  }
+
   g_object_unref(G_OBJECT(transformed));
 
-  inf_adopted_operation_apply(op2, user2, INF_BUFFER(second));
+  if(!inf_adopted_operation_apply(op2, user2, second, error))
+  {
+    g_object_unref(first);
+    g_object_unref(second);
+    return FALSE;
+  }
+
   transformed = inf_adopted_operation_transform(op1, op2, op1, op2, cid12);
-  inf_adopted_operation_apply(transformed, user1, INF_BUFFER(second));
-  g_object_unref(G_OBJECT(transformed));
+
+  if(!inf_adopted_operation_apply(transformed, user1, second, error))
+  {
+    g_object_unref(first);
+    g_object_unref(second);
+    g_object_unref(transformed);
+    return FALSE;
+  }
+
+  g_object_unref(transformed);
 
   first_chunk = inf_text_buffer_get_slice(
     INF_TEXT_BUFFER(first),
@@ -280,8 +334,8 @@ test_c1(InfAdoptedOperation* op1,
 
   inf_text_chunk_free(first_chunk);
   inf_text_chunk_free(second_chunk);
-  g_object_unref(G_OBJECT(first));
-  g_object_unref(G_OBJECT(second));
+  g_object_unref(first);
+  g_object_unref(second);
 
   return result;
 }
@@ -293,7 +347,8 @@ test_c2(InfAdoptedOperation* op1,
         InfAdoptedConcurrencyId cid12,
         InfAdoptedConcurrencyId cid13,
         InfAdoptedConcurrencyId cid23,
-        InfAdoptedUser* user3)
+        InfAdoptedUser* user3,
+        GError** error)
 {
   InfAdoptedOperation* temp1;
   InfAdoptedOperation* temp2;
@@ -338,8 +393,19 @@ test_c2(InfAdoptedOperation* op1,
   g_object_unref(G_OBJECT(temp1));
   g_object_unref(G_OBJECT(temp2));
 
-  inf_adopted_operation_apply(result1, user3, INF_BUFFER(first));
-  inf_adopted_operation_apply(result2, user3, INF_BUFFER(second));
+  if(!inf_adopted_operation_apply(result1, user3, INF_BUFFER(first), error))
+  {
+    g_object_unref(result1);
+    g_object_unref(result2);
+    return FALSE;
+  }
+
+  if(!inf_adopted_operation_apply(result2, user3, INF_BUFFER(second), error))
+  {
+    g_object_unref(result1);
+    g_object_unref(result2);
+    return FALSE;
+  }
 
   first_chunk = inf_text_buffer_get_slice(
     INF_TEXT_BUFFER(first),
@@ -384,7 +450,7 @@ perform_undo(InfAdoptedOperation** begin,
   for(_1 = begin; _1 != end; ++ _1)
   {
     ++ result->total;
-    if(test_undo(*_1, users[_1 - begin]))
+    if(test_undo(*_1, users[_1 - begin], NULL))
       ++ result->passed;
   }
 }
@@ -397,6 +463,8 @@ perform_c1(InfAdoptedOperation** begin,
 {
   InfAdoptedOperation** _1;
   InfAdoptedOperation** _2;
+  InfAdoptedUser* user1;
+  InfAdoptedUser* user2;
 
   for(_1 = begin; _1 != end; ++ _1)
   {
@@ -404,8 +472,11 @@ perform_c1(InfAdoptedOperation** begin,
     {
       if(_1 != _2)
       {
+        user1 = users[_1 - begin];
+        user2 = users[_2 - begin];
+
         ++ result->total;
-        if(test_c1(*_1, *_2, users[_1 - begin], users[_2 - begin], cid(_1, _2)))
+        if(test_c1(*_1, *_2, user1, user2, cid(_1, _2), NULL))
           ++ result->passed;
       }
     }
@@ -424,6 +495,7 @@ perform_c2(InfAdoptedOperation** begin,
   InfAdoptedConcurrencyId cid12;
   InfAdoptedConcurrencyId cid13;
   InfAdoptedConcurrencyId cid23;
+  InfAdoptedUser* user3;
 
   for(_1 = begin; _1 != end; ++ _1)
   {
@@ -436,9 +508,10 @@ perform_c2(InfAdoptedOperation** begin,
           cid12 = cid(_1, _2);
           cid13 = cid(_1, _3);
           cid23 = cid(_2, _3);
+          user3 = users[_3 - begin];
 
           ++ result->total;
-          if(test_c2(*_1, *_2, *_3, cid12, cid13, cid23, users[_3 - begin]))
+          if(test_c2(*_1, *_2, *_3, cid12, cid13, cid23, user3, NULL))
             ++ result->passed;
         }
       }
@@ -543,3 +616,5 @@ int main()
 
   return retval;
 }
+
+/* vim:set et sw=2 ts=2: */

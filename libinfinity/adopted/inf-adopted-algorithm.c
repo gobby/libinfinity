@@ -17,10 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/adopted/inf-adopted-algorithm.h>
-#include <libinfinity/inf-marshal.h>
-#include <libinfinity/inf-signals.h>
-
 /**
  * SECTION:inf-adopted-algorithm
  * @title: InfAdoptedAlgorithm
@@ -71,6 +67,11 @@
  * the users array (users_begin, users_end). Readd users as soon as they
  * issue buffer-altering requests. This way we keep the asymptotic complexity
  * dynamically as O(active users^2). */
+
+#include <libinfinity/adopted/inf-adopted-algorithm.h>
+#include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
+#include <libinfinity/inf-i18n.h>
 
 typedef struct _InfAdoptedAlgorithmLocalUser InfAdoptedAlgorithmLocalUser;
 struct _InfAdoptedAlgorithmLocalUser {
@@ -1043,17 +1044,25 @@ static InfAdoptedRequest*
 inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
                                     InfAdoptedUser* user,
                                     InfAdoptedRequest* request,
-                                    InfAdoptedRequest* translated)
+                                    InfAdoptedRequest* translated,
+                                    GError** error)
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedOperation* reversible_operation;
   InfAdoptedRequest* log_request;
+
+  GError* local_error;
+  gchar* request_str;
+  gchar* translated_str;
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
   /* TODO: Assert that the  user ID
    * for request and translated are the same and that translated can be
    * applied in the current state, and that translated is a DO request. */
+
+  local_error = NULL;
+  log_request = NULL;
 
   /* Apply the operation to the buffer. If this originated from a DO request,
    * make the operation reversible before adding it to the request log. */
@@ -1064,46 +1073,85 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
       inf_adopted_request_get_operation(request),
       inf_adopted_request_get_operation(translated),
       user,
-      priv->buffer
+      priv->buffer,
+      &local_error
     );
 
-    /* It can happen that we could not make the operation reversible, in which
-     * case we use the original operation. If the original operation does
-     * affect the buffer, this means that it cannot be undone, or any
-     * operations before that by the same user. */
-    if(reversible_operation == NULL)
+    if(local_error == NULL)
     {
-      reversible_operation = inf_adopted_request_get_operation(request);
-      g_object_ref(reversible_operation);
+      g_assert(reversible_operation != NULL);
+
+      /* It can happen that we could not make the operation reversible, or
+       * that it was reversible already in the first place, in which case we
+       * get the same as the original operation from apply_transformed. */
+      if(reversible_operation == inf_adopted_request_get_operation(request))
+      {
+        log_request = request;
+        g_object_ref(log_request);
+        g_object_unref(reversible_operation);
+      }
+      else
+      {
+        /* Create the log request from the reversible operation */
+        log_request = inf_adopted_request_new_do(
+          inf_adopted_request_get_vector(request),
+          inf_adopted_request_get_user_id(request),
+          reversible_operation,
+          inf_adopted_request_get_receive_time(request)
+        );
+
+        inf_adopted_request_set_execute_time(
+          log_request,
+          inf_adopted_request_get_execute_time(request)
+        );
+
+        g_object_unref(reversible_operation);
+      }
     }
-
-    /* Create the log request from the reversible operation */
-    log_request = inf_adopted_request_new_do(
-      inf_adopted_request_get_vector(request),
-      inf_adopted_request_get_user_id(request),
-      reversible_operation,
-      inf_adopted_request_get_receive_time(request)
-    );
-
-    inf_adopted_request_set_execute_time(
-      log_request,
-      inf_adopted_request_get_execute_time(request)
-    );
-
-    g_object_unref(reversible_operation);
   }
   else
   {
     inf_adopted_operation_apply(
       inf_adopted_request_get_operation(translated),
       user,
-      priv->buffer
+      priv->buffer,
+      &local_error
     );
 
-    log_request = request;
-    g_object_ref(log_request);
+    if(local_error == NULL)
+    {
+      log_request = request;
+      g_object_ref(log_request);
+    }
   }
 
+  if(local_error != NULL)
+  {
+    g_assert(log_request == NULL);
+
+    request_str = inf_adopted_state_vector_to_string(
+      inf_adopted_request_get_vector(request)
+    );
+
+    translated_str = inf_adopted_state_vector_to_string(
+      inf_adopted_request_get_vector(translated)
+    );
+
+    g_propagate_prefixed_error(
+      error,
+      local_error,
+      _("Failed to apply request \"%s\" from user \"%s\" at state \"%s\": "),
+      request_str,
+      inf_user_get_name(INF_USER(user)),
+      translated_str
+    );
+
+    g_free(request_str);
+    g_free(translated_str);
+    return NULL;
+  }
+
+  g_assert(log_request != NULL);
   return log_request;
 }
 
@@ -1580,7 +1628,10 @@ inf_adopted_algorithm_class_init(gpointer g_class,
    * The @translated request is the result of the transformation, i.e. it is
    * always a %INF_ADOPTED_REQUEST_DO type request and its state vector
    * corresponds to the current state. It has already been applied on the
-   * buffer by the algorithm.
+   * buffer by the algorithm. If @request is of type %INF_ADOPTED_REQUEST_UNDO
+   * or %INF_ADOPTED_REQUEST_REDO then @translated represents the operation
+   * that actually was performed on the buffer to undo or redo the effect of
+   * a previous request.
    *
    * It can happen that an error occurs during execution. Usually this is due
    * to invalid input, such as a request that cannot be transformed to the
@@ -1589,8 +1640,8 @@ inf_adopted_algorithm_class_init(gpointer g_class,
    * request, or a request that ends up in an invalid operation (e.g.
    * inserting text behind the end of the document). If such an error occurs
    * then @request is the same as the one in the
-   * %InfAdoptedAlgorithm::begin-execute-request emission, @translated is
-   * %NULL and @error contains information on the error occured.
+   * %InfAdoptedAlgorithm::begin-execute-request emission, @translated may or
+   * may not be %NULL and @error contains information on the error occured.
    */
   algorithm_signals[END_EXECUTE_REQUEST] = g_signal_new(
     "end-execute-request",
@@ -1904,6 +1955,7 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
  * @algorithm: A #InfAdoptedAlgorithm.
  * @request: The request to execute.
  * @apply: Whether to apply the request to the buffer.
+ * @error: Location to store error information, if any.
  *
  * This function transforms the given request such that it can be applied to
  * the current document state and then applies it the buffer and adds it to
@@ -1930,11 +1982,25 @@ inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
  * the previous request for the translation path and it needs to be translated
  * to a state where the effect of the previous request is included so that it
  * can consistently applied to the buffer.
+ *
+ * There are also runtime errors that can occur if @request execution fails.
+ * In this case the function returns %FALSE and @error is set. Possible
+ * reasons for this include @request being an %INF_ADOPTED_REQUEST_UNDO or
+ * %INF_ADOPTED_REQUEST_REDO request without there being an operation to
+ * undo or redo, or if the translated operation cannot be applied to the
+ * buffer. This usually means that the input @request was invalid. However,
+ * this is not considered a programmer error because typically requests are
+ * received from untrusted input sources such as network connections.
+ * Note that there cannot be any runtime errors if @apply is set to %FALSE.
+ * In that case it is safe to call the function with %NULL error.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
  */
-void
+gboolean
 inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
                                       InfAdoptedRequest* request,
-                                      gboolean apply)
+                                      gboolean apply,
+                                      GError** error)
 {
   InfAdoptedAlgorithmPrivate* priv;
   InfAdoptedUser* user;
@@ -1943,6 +2009,9 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   InfAdoptedRequest* original;
   InfAdoptedRequest* translated;
   InfAdoptedRequest* log_request;
+
+  GError* local_error;
+  gchar* request_str;
 
   g_return_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm));
   g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
@@ -1991,6 +2060,76 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     request
   );
 
+  local_error = NULL;
+  switch(inf_adopted_request_get_request_type(request))
+  {
+  case INF_ADOPTED_REQUEST_DO:
+    /* nothing to check, DO requests can always be made */
+    break;
+  case INF_ADOPTED_REQUEST_UNDO:
+    if(!inf_adopted_algorithm_can_undo(algorithm, user))
+    {
+      request_str = inf_adopted_state_vector_to_string(
+        inf_adopted_request_get_vector(request)
+      );
+
+      g_set_error(
+        &local_error,
+        g_quark_from_static_string("INF_ADOPTED_ALGORITHM_ERROR"),
+        INF_ADOPTED_ALGORITHM_ERROR_NO_UNDO,
+        _("The request \"%s\" from user \"%s\" is an UNDO request but there "
+          "is no request to be undone."),
+        request_str,
+        inf_user_get_name(INF_USER(user))
+      );
+      
+      g_free(request_str);
+    }
+
+    break;
+  case INF_ADOPTED_REQUEST_REDO:
+    if(!inf_adopted_algorithm_can_redo(algorithm, user))
+    {
+      request_str = inf_adopted_state_vector_to_string(
+        inf_adopted_request_get_vector(request)
+      );
+
+      g_set_error(
+        &local_error,
+        g_quark_from_static_string("INF_ADOPTED_ALGORITHM_ERROR"),
+        INF_ADOPTED_ALGORITHM_ERROR_NO_REDO,
+        _("The request \"%s\" from user \"%s\" is a REDO request but there "
+          "is no request to be redone."),
+        request_str,
+        inf_user_get_name(INF_USER(user))
+      );
+
+      g_free(request_str);
+    }
+
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  if(local_error != NULL)
+  {
+    g_signal_emit(
+      G_OBJECT(algorithm),
+      algorithm_signals[END_EXECUTE_REQUEST],
+      0,
+      user,
+      request,
+      NULL,
+      local_error
+    );
+
+    priv->execute_request = NULL;
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
   log = inf_adopted_user_get_request_log(user);
   original = inf_adopted_request_log_original_request(log, request);
 
@@ -2020,8 +2159,34 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
       algorithm,
       user,
       request,
-      translated
+      translated,
+      &local_error
     );
+
+    if(local_error != NULL)
+    {
+      inf_signal_handlers_unblock_by_func(
+        G_OBJECT(priv->buffer),
+        G_CALLBACK(inf_adopted_algorithm_buffer_notify_modified_cb),
+        algorithm
+      );
+
+      g_signal_emit(
+        G_OBJECT(algorithm),
+        algorithm_signals[END_EXECUTE_REQUEST],
+        0,
+        user,
+        request,
+        translated,
+        local_error
+      );
+
+      priv->execute_request = NULL;
+      g_object_unref(translated);
+
+      g_propagate_error(error, local_error);
+      return FALSE;
+    }
   }
   else
   {
@@ -2058,6 +2223,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   g_object_unref(log_request);
 
   priv->execute_request = NULL;
+  return TRUE;
 }
 
 /**

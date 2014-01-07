@@ -20,9 +20,11 @@
 #include <libinftext/inf-text-move-operation.h>
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
+#include <libinftext/inf-text-buffer.h>
 #include <libinftext/inf-text-user.h>
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/inf-i18n.h>
 
 typedef struct _InfTextMoveOperationPrivate InfTextMoveOperationPrivate;
 struct _InfTextMoveOperationPrivate {
@@ -202,24 +204,45 @@ inf_text_move_operation_get_flags(InfAdoptedOperation* operation)
   return 0;
 }
 
-static void
+static gboolean
 inf_text_move_operation_apply(InfAdoptedOperation* operation,
                               InfAdoptedUser* by,
-                              InfBuffer* buffer)
+                              InfBuffer* buffer,
+                              GError** error)
 {
   InfTextMoveOperationPrivate* priv;
+  guint length;
 
   g_assert(INF_TEXT_IS_MOVE_OPERATION(operation));
   g_assert(INF_TEXT_IS_USER(by));
 
   priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);  
+  length = inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer));
 
-  inf_text_user_set_selection(
-    INF_TEXT_USER(by),
-    priv->position,
-    priv->length,
-    TRUE /* explicit move request */
-  );
+  if(priv->position > length ||
+     priv->position + priv->length > length)
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
+      INF_TEXT_OPERATION_ERROR_INVALID_MOVE,
+      "%s",
+      _("Attempt to move cursor or selection beyond the end of the document")
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    inf_text_user_set_selection(
+      INF_TEXT_USER(by),
+      priv->position,
+      priv->length,
+      TRUE /* explicit move request */
+    );
+
+    return TRUE;
+  }
 }
 
 static void

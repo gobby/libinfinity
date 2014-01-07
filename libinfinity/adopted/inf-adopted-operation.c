@@ -200,7 +200,7 @@ inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
  * and @against, then @operation_lcs and @against_lcs must not be %NULL. In
  * this case they must be the same operations as @operation and @against at
  * the earlierst state to which both of them can be transformed. This
- * information can then used to resolve any conflicts in the transformation
+ * information can then be used to resolve any conflicts in the transformation
  * of @operation against @against.
  *
  * The @concurrency_id parameter is used if
@@ -301,26 +301,32 @@ inf_adopted_operation_get_flags(InfAdoptedOperation* operation)
  * @operation: A #InfAdoptedOperation.
  * @by: A #InfAdoptedUser.
  * @buffer: The #InfBuffer to apply the operation to.
+ * @error: Location to store error information, if any, or %NULL.
  *
  * Applies @operation to @buffer. The operation is considered to be applied by
- * user @by.
+ * user @by. If the operation cannot be applied then @error is set and the
+ * function returns %FALSE.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
  **/
-void
+gboolean
 inf_adopted_operation_apply(InfAdoptedOperation* operation,
                             InfAdoptedUser* by,
-                            InfBuffer* buffer)
+                            InfBuffer* buffer,
+                            GError** error)
 {
   InfAdoptedOperationIface* iface;
 
   g_return_if_fail(INF_ADOPTED_IS_OPERATION(operation));
   g_return_if_fail(INF_ADOPTED_IS_USER(by));
   g_return_if_fail(INF_IS_BUFFER(buffer));
+  g_return_if_fail(error == NULL || *error == NULL);
 
   iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
 
   /* apply must be implemented */
   g_assert(iface->apply != NULL);
-  (*iface->apply)(operation, by, buffer);
+  return (*iface->apply)(operation, by, buffer, error);
 }
 
 /**
@@ -329,6 +335,7 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
  * @transformed: A transformed version of @operation.
  * @by: The #InfAdoptedUser applying the operation.
  * @buffer: The #InfBuffer to apply the operation to.
+ * @error: Location to store error information, if any, or %NULL.
  *
  * Applies @transformed to @buffer. The operation is considered to be applied
  * by user @by. The operation @transformed must have originated from
@@ -345,7 +352,8 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
  * @operation, but reversible, and returns it. The function can use
  * information from the transformed operation and the buffer to construct
  * the reversible operation. If a reversible operation cannot be constructed,
- * the function returns %NULL, but still applies the transformed operation
+ * the function returns an additional reference on @operation, and still
+ * applies the transformed operation
  * to the buffer.
  *
  * For example, an operation that deletes text in a text editor would be
@@ -355,17 +363,15 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
  * actual text that is being removed can be restored by looking it up in
  * the buffer, making the operation reversible.
  *
- * In summary, if the function returns a non-%NULL value, it is a reversible
- * operation with identical effect as @operation.
- *
- * Returns: A #InfAdoptedOperation, or %NULL. Free with g_object_unref() when
- * no longer needed.
+ * Returns: A #InfAdoptedOperation, or %NULL on error. Free with
+ * g_object_unref() when no longer needed.
  */
 InfAdoptedOperation*
 inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
                                         InfAdoptedOperation* transformed,
                                         InfAdoptedUser* by,
-                                        InfBuffer* buffer)
+                                        InfBuffer* buffer,
+                                        GError** error)
 {
   InfAdoptedOperationIface* iface;
   InfAdoptedOperationFlags flags;
@@ -375,6 +381,7 @@ inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(transformed), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(by), NULL);
   g_return_val_if_fail(INF_IS_BUFFER(buffer), NULL);
+  g_return_if_fail(error == NULL || *error == NULL);
 
   iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
 
@@ -386,24 +393,30 @@ inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
   {
     if(iface->apply_transformed != NULL)
     {
-      return (*iface->apply_transformed)(operation, transformed, by, buffer);
+      return (*iface->apply_transformed)(
+        operation,
+        transformed,
+        by,
+        buffer,
+        error
+      );
     }
     else
     {
       /* apply must be implemented */
       g_assert(iface->apply != NULL);
-      (*iface->apply)(transformed, by, buffer);
+      if(!(*iface->apply)(transformed, by, buffer, error))
+        return NULL;
 
-      return NULL;
+      g_object_ref(operation);
+      return operation;
     }
   }
   else
   {
     /* apply must be implemented */
     g_assert(iface->apply != NULL);
-    (*iface->apply)(transformed, by, buffer);
-
-    if( (flags & INF_ADOPTED_OPERATION_REVERSIBLE) == 0)
+    if(!(*iface->apply)(transformed, by, buffer, error))
       return NULL;
 
     g_object_ref(operation);

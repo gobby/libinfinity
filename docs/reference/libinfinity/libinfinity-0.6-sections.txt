@@ -910,6 +910,7 @@ INF_ADOPTED_TYPE_REQUEST_TYPE
 <SECTION>
 <FILE>inf-adopted-algorithm</FILE>
 <TITLE>InfAdoptedAlgorithm</TITLE>
+InfAdoptedAlgorithmError
 InfAdoptedAlgorithm
 InfAdoptedAlgorithmClass
 inf_adopted_algorithm_new

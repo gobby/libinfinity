@@ -24,6 +24,7 @@
 #include <libinftext/inf-text-buffer.h>
 
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/inf-i18n.h>
 
 typedef struct _InfTextDefaultInsertOperationPrivate
   InfTextDefaultInsertOperationPrivate;
@@ -198,10 +199,11 @@ inf_text_default_insert_operation_get_flags(InfAdoptedOperation* operation)
          INF_ADOPTED_OPERATION_REVERSIBLE;
 }
 
-static void
+static gboolean
 inf_text_default_insert_operation_apply(InfAdoptedOperation* operation,
                                         InfAdoptedUser* by,
-                                        InfBuffer* buffer)
+                                        InfBuffer* buffer,
+                                        GError** error)
 {
   InfTextDefaultInsertOperationPrivate* priv;
 
@@ -210,12 +212,29 @@ inf_text_default_insert_operation_apply(InfAdoptedOperation* operation,
 
   priv = INF_TEXT_DEFAULT_INSERT_OPERATION_PRIVATE(operation);
 
-  inf_text_buffer_insert_chunk(
-    INF_TEXT_BUFFER(buffer),
-    priv->position,
-    priv->chunk,
-    INF_USER(by)
-  );
+  if(priv->position > inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer)))
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
+      INF_TEXT_OPERATION_ERROR_INVALID_INSERT,
+      "%s",
+      _("Attempt to insert text after the end of the document")
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    inf_text_buffer_insert_chunk(
+      INF_TEXT_BUFFER(buffer),
+      priv->position,
+      priv->chunk,
+      INF_USER(by)
+    );
+
+    return TRUE;
+  }
 }
 
 static InfAdoptedOperation*

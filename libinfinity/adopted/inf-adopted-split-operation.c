@@ -407,10 +407,11 @@ inf_adopted_split_operation_get_flags(InfAdoptedOperation* operation)
   return result;
 }
 
-static void
+static gboolean
 inf_adopted_split_operation_apply(InfAdoptedOperation* operation,
                                   InfAdoptedUser* by,
-                                  InfBuffer* buffer)
+                                  InfBuffer* buffer,
+                                  GError** error)
 {
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperationPrivate* priv;
@@ -418,15 +419,19 @@ inf_adopted_split_operation_apply(InfAdoptedOperation* operation,
   split = INF_ADOPTED_SPLIT_OPERATION(operation);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(split);
 
-  inf_adopted_operation_apply(priv->first, by, buffer);
-  inf_adopted_operation_apply(priv->second, by, buffer);
+  if(!inf_adopted_operation_apply(priv->first, by, buffer, error))
+    return FALSE;
+  if(!inf_adopted_operation_apply(priv->second, by, buffer, error))
+    return FALSE;
+  return TRUE;
 }
 
 static InfAdoptedOperation*
 inf_adopted_split_operation_apply_transformed(InfAdoptedOperation* operation,
                                               InfAdoptedOperation* transformed,
                                               InfAdoptedUser* by,
-                                              InfBuffer* buffer)
+                                              InfBuffer* buffer,
+                                              GError** error)
 {
   InfAdoptedSplitOperation* split;
   InfAdoptedSplitOperation* trans_split;
@@ -451,40 +456,47 @@ inf_adopted_split_operation_apply_transformed(InfAdoptedOperation* operation,
     priv->first,
     trans_priv->first,
     by,
-    buffer
+    buffer,
+    error
   );
+
+  if(ret_first == NULL)
+    return NULL;
 
   ret_second = inf_adopted_operation_apply_transformed(
     priv->second,
     trans_priv->second,
     by,
-    buffer
+    buffer,
+    error
   );
-
-  if(ret_first == NULL && ret_second == NULL)
-    return NULL;
-
-  if(ret_first == NULL)
-  {
-    ret_first = priv->first;
-    g_object_ref(priv->first);
-  }
 
   if(ret_second == NULL)
   {
-    ret_second = priv->second;
-    g_object_ref(priv->second);
+    g_object_unref(ret_first);
+    return NULL;
   }
 
-  result = inf_adopted_split_operation_new(
-    ret_first,
-    ret_second
-  );
+  if(ret_first == priv->first && ret_second == priv->second)
+  {
+    /* No operation was modifide to be reversible; skip this case */
+    g_object_unref(ret_first);
+    g_object_unref(ret_second);
+    return operation;
+  }
+  else
+  {
+    /* Otherwise create a new operation */
+    result = inf_adopted_split_operation_new(
+      ret_first,
+      ret_second
+    );
 
-  g_object_unref(ret_first);
-  g_object_unref(ret_second);
+    g_object_unref(ret_first);
+    g_object_unref(ret_second);
 
-  return INF_ADOPTED_OPERATION(result);
+    return INF_ADOPTED_OPERATION(result);
+  }
 }
 
 static InfAdoptedOperation*

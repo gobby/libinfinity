@@ -247,7 +247,7 @@ inf_test_text_replay_end_execute_request_cb(InfAdoptedAlgorithm* algorithm,
 
   time = g_get_monotonic_time();
 
-  if(translated != NULL)
+  if(error == NULL)
   {
     if(time - test > 10000.)
     {
@@ -289,7 +289,7 @@ inf_test_text_replay_end_execute_request_cb(InfAdoptedAlgorithm* algorithm,
     fprintf(
       stderr,
       "WARNING: Transforming %s request \"%s\" of user \"%s\" to "
-      "state \"%s\" failed: %s",
+      "state \"%s\" failed: %s\n",
       inf_test_text_replay_request_typestring(request),
       request_str,
       inf_user_get_name(INF_USER(user)),

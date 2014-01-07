@@ -227,7 +227,8 @@ inf_text_session_broadcast_caret_selection(InfTextSession* session,
     operation
   );
 
-  inf_adopted_algorithm_execute_request(algorithm, request, FALSE);
+  /* This cannot fail since operation is not applied */
+  inf_adopted_algorithm_execute_request(algorithm, request, FALSE, NULL);
 
   g_object_unref(operation);
 
@@ -542,8 +543,9 @@ inf_text_session_buffer_text_inserted_cb(InfTextBuffer* buffer,
       INF_ADOPTED_USER(user),
       operation
     );
-    
-    inf_adopted_algorithm_execute_request(algorithm, request, FALSE);
+
+    /* This cannot fail since operation is not applied */
+    inf_adopted_algorithm_execute_request(algorithm, request, FALSE, NULL);
 
     inf_adopted_session_broadcast_request(
       INF_ADOPTED_SESSION(session),
@@ -620,7 +622,8 @@ inf_text_session_buffer_text_erased_cb(InfTextBuffer* buffer,
       operation
     );
 
-    inf_adopted_algorithm_execute_request(algorithm, request, FALSE);
+    /* This cannot fail since operation is not applied */
+    inf_adopted_algorithm_execute_request(algorithm, request, FALSE, NULL);
 
     inf_adopted_session_broadcast_request(
       INF_ADOPTED_SESSION(session),

@@ -25,6 +25,7 @@
 
 #include <libinfinity/adopted/inf-adopted-split-operation.h>
 #include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/inf-i18n.h>
 
 /* recon is helper information to reconstruct the original delete operation.
  * It stores the parts that have been erased from the remote delete operation
@@ -355,10 +356,11 @@ inf_text_remote_delete_operation_get_flags(InfAdoptedOperation* operation)
   return INF_ADOPTED_OPERATION_AFFECTS_BUFFER;
 }
 
-static void
+static gboolean
 inf_text_remote_delete_operation_apply(InfAdoptedOperation* operation,
                                        InfAdoptedUser* by,
-                                       InfBuffer* buffer)
+                                       InfBuffer* buffer,
+                                       GError** error)
 {
   InfTextRemoteDeleteOperationPrivate* priv;
 
@@ -367,25 +369,45 @@ inf_text_remote_delete_operation_apply(InfAdoptedOperation* operation,
 
   priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
 
-  inf_text_buffer_erase_text(
-    INF_TEXT_BUFFER(buffer),
-    priv->position,
-    priv->length,
-    INF_USER(by)
-  );
+  if(priv->position + priv->length >
+     inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer)))
+  {
+    g_set_error(
+      error,
+      g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
+      INF_TEXT_OPERATION_ERROR_INVALID_DELETE,
+      "%s",
+      _("Attempt to remove text from after the end of the document")
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    inf_text_buffer_erase_text(
+      INF_TEXT_BUFFER(buffer),
+      priv->position,
+      priv->length,
+      INF_USER(by)
+    );
+    
+    return TRUE;
+  }
 }
 
 static InfAdoptedOperation*
 inf_text_remote_delete_operation_apply_transformed(InfAdoptedOperation* op,
                                                    InfAdoptedOperation* trans,
                                                    InfAdoptedUser* by,
-                                                   InfBuffer* buffer)
+                                                   InfBuffer* buffer,
+                                                   GError** error)
 {
   InfTextRemoteDeleteOperationPrivate* priv;
   InfTextChunk* chunk;
   InfTextChunk* temp_slice;
   GSList* list;
   GSList* item;
+  InfAdoptedOperation* operation;
   GSList* recon_list;
   GSList* recon_item;
   InfTextRemoteDeleteOperationRecon* recon;
@@ -417,6 +439,8 @@ inf_text_remote_delete_operation_apply_transformed(InfAdoptedOperation* op,
   {
     g_assert(INF_TEXT_IS_REMOTE_DELETE_OPERATION(item->data));
     priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(item->data);
+
+    operation = INF_ADOPTED_OPERATION(item->data);
 
     if(priv->length > 0)
     {
@@ -458,11 +482,12 @@ inf_text_remote_delete_operation_apply_transformed(InfAdoptedOperation* op,
     if(priv->length > 0)
       inf_text_remote_delete_operation_recon_free(recon_list);
 
-    inf_adopted_operation_apply(
-      INF_ADOPTED_OPERATION(item->data),
-      by,
-      buffer
-    );
+    if(!inf_adopted_operation_apply(operation, by, buffer, error))
+    {
+      g_slist_free(list);
+      inf_text_chunk_free(chunk);
+      return NULL;
+    }
   }
 
   g_slist_free(list);
@@ -525,7 +550,6 @@ inf_text_remote_delete_operation_transform_overlap(
   InfTextChunk* chunk;
   GObject* result;
   InfTextRemoteDeleteOperationPrivate* result_priv;
-
 
   /* It is actually possible that two remote delete operations are
    * transformed against each other (actually the parts of a splitted

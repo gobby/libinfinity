@@ -442,7 +442,8 @@ inf_adopted_session_broadcast_n_requests(InfAdoptedSession* session,
 static gboolean
 inf_adopted_session_process_request(InfAdoptedSession* session,
                                     InfAdoptedRequest* request,
-                                    InfAdoptedUser* user)
+                                    InfAdoptedUser* user,
+                                    GError** error)
 {
   InfAdoptedSessionPrivate* priv;
   InfAdoptedStateVector* request_vector;
@@ -465,10 +466,24 @@ inf_adopted_session_process_request(InfAdoptedSession* session,
     );
     
     if(reject_request)
-      return FALSE;
+    {
+      g_set_error(
+        error,
+        inf_adopted_session_error_quark,
+        INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
+        "%s",
+        _("The request was rejected via the API")
+      );
 
-    inf_adopted_algorithm_execute_request(priv->algorithm, request, TRUE);
-    return TRUE;
+      return FALSE;
+    }
+
+    return inf_adopted_algorithm_execute_request(
+      priv->algorithm,
+      request,
+      TRUE,
+      error
+    );
   }
   else
   {
@@ -514,10 +529,15 @@ inf_adopted_session_process_buffered_requests(InfAdoptedSession* session)
         user = inf_user_table_lookup_user_by_id(user_table, user_id);
         g_assert(INF_ADOPTED_IS_USER(user));
 
+        /* Note that there is no error handling here, since the buffered
+         * requests are not related to the request which has currently been
+         * received. In order to handle a failure here, the
+         * InfAdoptedAlgorithm::end-execute-request signal should be used. */
         inf_adopted_session_process_request(
           session,
           request,
-          INF_ADOPTED_USER(user)
+          INF_ADOPTED_USER(user),
+          NULL
         );
 
         g_object_unref(request);
@@ -1073,6 +1093,9 @@ inf_adopted_session_process_xml_run(InfSession* session,
   InfAdoptedRequest* copy_req;
   guint i;
 
+  gchar* request_str;
+  gchar* user_str;
+
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
   if(strcmp((const char*)xml->name, "request") == 0)
@@ -1111,6 +1134,9 @@ inf_adopted_session_process_xml_run(InfSession* session,
       return INF_COMMUNICATION_SCOPE_PTP;
     }
 
+    if(has_num == FALSE)
+      num = 1;
+
     user_id = inf_user_get_id(INF_USER(user));
     user_vector = inf_adopted_user_get_vector(user);
 
@@ -1127,14 +1153,35 @@ inf_adopted_session_process_xml_run(InfSession* session,
 
     request_vector = inf_adopted_request_get_vector(request);
 
-    g_assert(
-      inf_adopted_state_vector_causally_before(user_vector, request_vector)
-    );
+    if(!inf_adopted_state_vector_causally_before(user_vector, request_vector))
+    {
+      /* Note that this can actually not happen, since the request time is
+       * transferred as a diff to the previous user time. If the absolute
+       * time were transmitted this would need to be handled as an error. */
+      g_assert_not_reached();
+    }
+    else if(inf_adopted_request_get_index(request) !=
+            inf_adopted_state_vector_get(user_vector, user_id))
+    {
+      request_str = inf_adopted_state_vector_to_string(request_vector);
+      user_str = inf_adopted_state_vector_to_string(user_vector);
 
-    g_assert(
-      inf_adopted_request_get_index(request) ==
-      inf_adopted_state_vector_get(user_vector, user_id)
-    );
+      g_set_error(
+        error,
+        inf_adopted_session_error_quark,
+        INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
+        _("Request \"%s\" by user \"%s\" is not consecutive with respect to "
+          "previously received request \"%s\""),
+        request_str,
+        inf_user_get_name(INF_USER(user)),
+        user_str
+      );
+
+      g_free(request_str);
+      g_free(user_str);
+      g_object_unref(request);
+      return INF_COMMUNICATION_SCOPE_PTP;
+    }
 
     /* Update the user vector */
     user_vector = inf_adopted_state_vector_copy(request_vector);
@@ -1143,51 +1190,58 @@ inf_adopted_session_process_xml_run(InfSession* session,
     /* Note that this function takes ownership of user_vector */
     inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
 
-    process_request = inf_adopted_session_process_request(
-      INF_ADOPTED_SESSION(session),
-      request,
-      user
-    );
-
-    /* Apply the request more than once if num is given. This is mostly used
-     * for multiple undos and redos, but is in general allowed for any
+    /* Apply the request more than once if num >= 2 is given. This is mostly
+     * used for multiple undos and redos, but is in general allowed for any
      * request. */
-    if(has_num)
+    for(i = 0; i < num; ++i)
     {
-      for(i = 1; process_request && i < num; ++i)
+      if(i == 0)
       {
-        /* TODO: This is a bit of a hack since requests are normally
-         * immutable. It avoids an additional vector copy here though. */
+        copy_req = request;
+        g_object_ref(copy_req);
+      }
+      else
+      {
         copy_req = inf_adopted_request_copy(request);
 
+        /* TODO: This is a bit of a hack since requests are normally
+         * immutable. It avoids an additional vector copy here though. */
         inf_adopted_state_vector_add(
           inf_adopted_request_get_vector(copy_req),
           inf_user_get_id(INF_USER(user)),
           i
         );
-
-        process_request = inf_adopted_session_process_request(
-          INF_ADOPTED_SESSION(session),
-          copy_req,
-          user
-        );
-
-        g_object_unref(copy_req);
       }
+
+      process_request = inf_adopted_session_process_request(
+        INF_ADOPTED_SESSION(session),
+        copy_req,
+        user,
+        error
+      );
+
+      g_object_unref(copy_req);
+
+      /* If an error occured then break here, and do not process the
+       * subsequent requests -- they will likely fail as well. */
+      if(process_request == FALSE)
+        break;
     }
 
     g_object_unref(request);
 
     /* The processed request(s) might have caused some of the buffered
-     * requests to become ready. Note that there is no error handling here,
-     * since the buffered requests are not related to this request. In order
-     * to handle a failure here, the InfAdoptedAlgorithm::end-execute-request
-     * signal should be used. */
-    inf_adopted_session_process_buffered_requests(
-      INF_ADOPTED_SESSION(session)
-    );
+     * requests to become ready. */
+    if(i > 0)
+    {
+      inf_adopted_session_process_buffered_requests(
+        INF_ADOPTED_SESSION(session)
+      );
+    }
 
-    /* Requests can always be forwarded since user is given. */
+    /* Requests can always be forwarded since user is given. Explicitly allow
+     * forwarding if the request could not be applied... maybe others are more
+     * lucky? In the worst case it will just fail for them as well. */
     return INF_COMMUNICATION_SCOPE_GROUP;
   }
 
@@ -1642,6 +1696,7 @@ inf_adopted_session_undo(InfAdoptedSession* session,
   InfAdoptedRequest* first_request;
   InfAdoptedRequest* request;
   guint i;
+  gboolean result;
 
   g_return_if_fail(INF_ADOPTED_IS_SESSION(session));
   g_return_if_fail(INF_ADOPTED_IS_USER(user));
@@ -1661,7 +1716,15 @@ inf_adopted_session_undo(InfAdoptedSession* session,
       NULL
     );
 
-    inf_adopted_algorithm_execute_request(priv->algorithm, request, TRUE);
+    result = inf_adopted_algorithm_execute_request(
+      priv->algorithm,
+      request,
+      TRUE,
+      NULL
+    );
+
+    /* This cannot fail if the input parameters have been checked before. */
+    g_assert(result == TRUE);
 
     if(first_request == NULL)
       first_request = request;
@@ -1691,6 +1754,7 @@ inf_adopted_session_redo(InfAdoptedSession* session,
   InfAdoptedRequest* first_request;
   InfAdoptedRequest* request;
   guint i;
+  gboolean result;
 
   /* TODO: Check whether we can issue n redo requests before doing anything */
 
@@ -1710,7 +1774,15 @@ inf_adopted_session_redo(InfAdoptedSession* session,
       NULL
     );
 
-    inf_adopted_algorithm_execute_request(priv->algorithm, request, TRUE);
+    result = inf_adopted_algorithm_execute_request(
+      priv->algorithm,
+      request,
+      TRUE,
+      NULL
+    );
+
+    /* This cannot fail if the input parameters have been checked before. */
+    g_assert(result == TRUE);
 
     if(first_request == NULL)
       first_request = request;

@@ -118,14 +118,16 @@ struct _InfAdoptedOperationIface {
 
   InfAdoptedOperationFlags (*get_flags)(InfAdoptedOperation* operation);
 
-  void (*apply)(InfAdoptedOperation* operation,
-                InfAdoptedUser* by,
-                InfBuffer* buffer);
+  gboolean (*apply)(InfAdoptedOperation* operation,
+                    InfAdoptedUser* by,
+                    InfBuffer* buffer,
+                    GError** error);
 
   InfAdoptedOperation* (*apply_transformed)(InfAdoptedOperation* operation,
                                             InfAdoptedOperation* transformed,
                                             InfAdoptedUser* by,
-                                            InfBuffer* buffer);
+                                            InfBuffer* buffer,
+                                            GError** error);
 
   InfAdoptedOperation* (*revert)(InfAdoptedOperation* operation);
 };
@@ -163,16 +165,18 @@ inf_adopted_operation_copy(InfAdoptedOperation* operation);
 InfAdoptedOperationFlags
 inf_adopted_operation_get_flags(InfAdoptedOperation* operation);
 
-void
+gboolean
 inf_adopted_operation_apply(InfAdoptedOperation* operation,
                             InfAdoptedUser* by,
-                            InfBuffer* buffer);
+                            InfBuffer* buffer,
+                            GError** error);
 
 InfAdoptedOperation*
 inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
                                         InfAdoptedOperation* transformed,
                                         InfAdoptedUser* by,
-                                        InfBuffer* buffer);
+                                        InfBuffer* buffer,
+                                        GError** error);
 
 gboolean
 inf_adopted_operation_is_reversible(InfAdoptedOperation* operation);

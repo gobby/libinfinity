@@ -28,6 +28,27 @@ G_BEGIN_DECLS
  * inf-text-delete-operation.h each of which needs both. */
 
 /**
+ * InfTextOperationError:
+ * @INF_TEXT_OPERATION_ERROR_INVALID_INSERT: A #InfTextInsertOperation
+ * attempted to insert text after the end of the buffer.
+ * @INF_TEXT_OPERATION_ERROR_INVALID_DELETE: A #InfTextDeleteOperation
+ * attempted to delete text from after the end of the buffer.
+ * @INF_TEXT_OPERATION_ERROR_INVALID_MOVE: A #InfTextMoveOperation attempted
+ * to move the cursor of a user behind the end of the buffer.
+ * @INF_TEXT_OPERATION_ERROR_FAILED: No further specified error code.
+ *
+ * Error codes that can occur when applying a #InfTextInsertOperation,
+ * #InfTextDeleteOperation or #InfTextMoveOperation to the buffer.
+ */
+typedef enum _InfTextOperationError {
+  INF_TEXT_OPERATION_ERROR_INVALID_INSERT,
+  INF_TEXT_OPERATION_ERROR_INVALID_DELETE,
+  INF_TEXT_OPERATION_ERROR_INVALID_MOVE,
+
+  INF_TEXT_OPERATION_ERROR_FAILED
+} InfTextOperationError;
+
+/**
  * InfTextDeleteOperation:
  *
  * #InfTextDeleteOperation is an opaque data type. You should only access it

@@ -52,6 +52,7 @@ INF_TEXT_REMOTE_DELETE_OPERATION_GET_CLASS
 <SECTION>
 <FILE>inf-text-session</FILE>
 InfTextSessionError
+InfTextOperationError
 <TITLE>InfTextSession</TITLE>
 InfTextSession
 InfTextSessionClass
