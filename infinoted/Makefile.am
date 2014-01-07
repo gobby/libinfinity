@@ -14,7 +14,7 @@ lib_LTLIBRARIES = libinfinoted-plugin-manager-0.6.la
 libinfinoted_plugin_manager_0_6_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinoted_CFLAGS) \
-	$(infinity_CFLAGS)
+	$(infinity_CFLAGS) \
 	-DPLUGIN_LIBPATH=\"${libdir}\" \
 	-DPLUGIN_PATH=\"${plugin_path}\" \
 	-DNOTE_PLUGIN_PATH=\"${note_plugin_path}\" \
