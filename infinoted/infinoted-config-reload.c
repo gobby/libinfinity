@@ -402,32 +402,6 @@ infinoted_config_reload(InfinotedRun* run,
     }
   }
 
-  if(run->protector != NULL)
-  {
-    if(startup->options->max_transformation_vdiff > 0)
-    {
-      infinoted_transformation_protector_set_max_vdiff(
-        run->protector,
-        startup->options->max_transformation_vdiff
-      );
-
-      run->protector->log = startup->log;
-    }
-    else
-    {
-      infinoted_transformation_protector_free(run->protector);
-      run->protector = NULL;
-    }
-  }
-  else if(startup->options->max_transformation_vdiff > 0)
-  {
-    run->protector = infinoted_transformation_protector_new(
-      run->directory,
-      startup->log,
-      startup->options->max_transformation_vdiff
-    );
-  }
-
   if(run->traffic_logger != NULL)
   {
     if(startup->options->traffic_log_directory == NULL ||

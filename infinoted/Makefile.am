@@ -71,8 +71,7 @@ infinoted_0_6_SOURCES = \
 	infinoted-run.c \
 	infinoted-signal.c \
 	infinoted-startup.c \
-	infinoted-traffic-logger.c \
-	infinoted-transformation-protector.c
+	infinoted-traffic-logger.c
 
 noinst_HEADERS = \
 	infinoted-config-reload.h \
@@ -85,8 +84,7 @@ noinst_HEADERS = \
 	infinoted-run.h \
 	infinoted-signal.h \
 	infinoted-startup.h \
-	infinoted-traffic-logger.h \
-	infinoted-transformation-protector.h
+	infinoted-traffic-logger.h
 
 # Create pid file directory
 pidfiledir = ${localstatedir}/run/infinoted-$(LIBINFINITY_API_VERSION)

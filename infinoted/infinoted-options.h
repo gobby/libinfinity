@@ -56,7 +56,6 @@ struct _InfinotedOptions {
   guint sync_interval;
   gchar* sync_hook;
 
-  guint max_transformation_vdiff;
   gchar* traffic_log_directory;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON

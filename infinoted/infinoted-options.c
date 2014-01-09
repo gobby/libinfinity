@@ -225,20 +225,6 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
        "into the sync-directory."),
     N_("PROGRAM")
   }, {
-    "max-transformation-vdiff",
-    INFINOTED_PARAMETER_INT,
-    0,
-    offsetof(InfinotedOptions, max_transformation_vdiff),
-    infinoted_parameter_convert_nonnegative,
-    0,
-    N_("Maximum number of transformations allowed for one request. If "
-       "processing a request would exceed this number of transformations, "
-       "the connection is automatically unsubscribed from the document. "
-       "The option can be used to prevent server overload from clients "
-       "lagging very far behind, or from malicious clients. Set to 0 to "
-       "process all transformations. [Default=0]"),
-    N_("TRANSFORMATIONS")
-  }, {
     "traffic-log-directory",
     INFINOTED_PARAMETER_STRING,
     0,
@@ -1096,7 +1082,6 @@ infinoted_options_new(const gchar* const* config_files,
   options->sync_directory = NULL;
   options->sync_interval = 0;
   options->sync_hook = NULL;
-  options->max_transformation_vdiff = 0;
   options->traffic_log_directory = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON

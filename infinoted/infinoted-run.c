@@ -363,19 +363,6 @@ infinoted_run_new(InfinotedStartup* startup,
     run->dsync = NULL;
   }
 
-  if(startup->options->max_transformation_vdiff > 0)
-  {
-    run->protector = infinoted_transformation_protector_new(
-      run->directory,
-      startup->log,
-      startup->options->max_transformation_vdiff
-    );
-  }
-  else
-  {
-    run->protector = NULL;
-  }
-
   if(startup->options->traffic_log_directory != NULL)
   {
     run->traffic_logger = infinoted_traffic_logger_new(
@@ -408,9 +395,6 @@ infinoted_run_free(InfinotedRun* run)
 
   if(run->traffic_logger != NULL)
     infinoted_traffic_logger_free(run->traffic_logger);
-
-  if(run->protector != NULL)
-    infinoted_transformation_protector_free(run->protector);
 
   if(run->dsync != NULL)
     infinoted_directory_sync_free(run->dsync);
