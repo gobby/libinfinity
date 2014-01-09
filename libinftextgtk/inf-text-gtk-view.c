@@ -1486,10 +1486,12 @@ inf_text_gtk_view_user_selection_changed_cb_idle_func(gpointer user_data)
   InfTextGtkViewUser* view_user;
   view_user = (InfTextGtkViewUser*)user_data;
 
+  g_assert(view_user->revalidate_idle != 0);
+  view_user->revalidate_idle = 0;
+
   /* Revalidate */
   inf_text_gtk_view_user_invalidate_user_area(view_user);
 
-  view_user->revalidate_idle = 0;
   return FALSE;
 }
 
@@ -1536,12 +1538,15 @@ inf_text_gtk_view_user_selection_changed_cb(InfTextUser* user,
      * coordinates at this point. We need to wait for the textview to
      * revalidate onscreen lines first (which it does in an idle handler,
      * note higher numbers indicate less priority). */
-    view_user->revalidate_idle = g_idle_add_full(
-      GTK_TEXT_VIEW_PRIORITY_VALIDATE + 1,
-      inf_text_gtk_view_user_selection_changed_cb_idle_func,
-      view_user,
-      NULL
-    );
+    if(view_user->revalidate_idle == 0)
+    {
+      view_user->revalidate_idle = g_idle_add_full(
+        GTK_TEXT_VIEW_PRIORITY_VALIDATE + 1,
+        inf_text_gtk_view_user_selection_changed_cb_idle_func,
+        view_user,
+        NULL
+      );
+    }
   }
 }
 
