@@ -75,29 +75,13 @@ infinoted_util_create_dirname(const gchar* path,
                               GError** error)
 {
   gchar* dirname;
-  int save_errno;
+  gboolean result;
 
   dirname = g_path_get_dirname(path);
-
-  if(g_mkdir_with_parents(dirname, 0700) != 0)
-  {
-    save_errno = errno;
-
-    g_set_error(
-      error,
-      g_quark_from_static_string("ERRNO_ERROR"),
-      save_errno,
-      _("Could not create directory \"%s\": %s"),
-      dirname,
-      strerror(save_errno)
-    );
-
-    g_free(dirname);
-    return FALSE;
-  }
-
+  result = inf_file_util_create_directory(dirname, 0700, error);
   g_free(dirname);
-  return TRUE;
+
+  return result;
 }
 
 /**

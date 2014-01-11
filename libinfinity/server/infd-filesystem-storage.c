@@ -21,6 +21,7 @@
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-storage.h>
+#include <libinfinity/common/inf-file-util.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -32,9 +33,7 @@
 #include <string.h>
 #include <errno.h>
 
-#ifdef G_OS_WIN32
-# include <windows.h>
-#else
+#ifndef G_OS_WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <fcntl.h>
@@ -97,14 +96,14 @@ infd_filesystem_storage_set_root_directory(InfdFilesystemStorage* storage,
   InfdFilesystemStoragePrivate* priv;
   gchar* converted;
   GError* error;
-  int ret;
 
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
 
   error = NULL;
   converted = g_filename_from_utf8(root_directory, -1, NULL, NULL, &error);
 
-  /* TODO: We should somehow report at least this error further upwards */
+  /* TODO: We should somehow report at least this error further upwards, and
+   * let the user decide what to do. */
   if(converted == NULL)
   {
     g_warning(
@@ -116,14 +115,15 @@ infd_filesystem_storage_set_root_directory(InfdFilesystemStorage* storage,
   }
   else
   {
-    ret = g_mkdir_with_parents(converted, 0755);
-    if(ret == -1)
+    if(!inf_file_util_create_directory(converted, 0755, &error))
     {
       g_warning(
         _("Failed to create root directory: %s\n"
           "Subsequent storage operations will most likely fail\n"),
-        strerror(errno)
+        error->message
       );
+
+      g_error_free(error);
     }
 
     g_free(priv->root_directory);
@@ -135,110 +135,14 @@ static void
 infd_filesystem_storage_system_error(int code,
                                      GError** error)
 {
-  /* TODO_Win32: Use FormatMessage or something on Win32,
-   * or probably better g_win32_error_message(). */
-  /* TODO: Actually we should get away from including system error codes
-   * in these errors, as they get eventually sent over the net */
   g_set_error(
     error,
-    infd_filesystem_storage_system_error_quark,
-    code,
+    G_FILE_ERROR,
+    g_file_error_from_errno(code),
     "%s",
-    strerror(code)
+    g_strerror(code)
   );
 }
-
-static gboolean
-infd_filesystem_storage_remove_rec(const gchar* path,
-                                   GError** error)
-{
-#ifdef G_OS_WIN32
-  SHFILEOPSTRUCTW op;
-  gunichar2* from;
-  glong len;
-  gboolean result;
-  int error_code;
-
-  from = g_utf8_to_utf16(path, -1, NULL, &len, error);
-  if(!from) return FALSE;
-
-  from = g_realloc(from, (len+2)*sizeof(gunichar2));
-  from[len+1] = L'\0';
-
-  op.hwnd = NULL;
-  op.wFunc = FO_DELETE;
-  op.pFrom = from;
-  op.pTo = NULL;
-  op.fFlags = FOF_SILENT | FOF_NOERRORUI | FOF_NOCONFIRMATION;
-  op.fAnyOperationsAborted = 0;
-  op.hNameMappings = NULL;
-  op.lpszProgressTitle = NULL;
-
-  result = TRUE;
-  error_code = SHFileOperationW(&op);
-  if(error_code != 0 || op.fAnyOperationsAborted != 0)
-  {
-    g_set_error(
-      error,
-      infd_filesystem_storage_error_quark,
-      INFD_FILESYSTEM_STORAGE_ERROR_REMOVE_FILES,
-      "Failed to remove files from disk"
-    );
-
-    result = FALSE;
-  }
-
-  g_free(from);
-  return result;
-#else
-  /* TODO: Use the REMOVE_FILES error code when something fails below */
-  GDir* dir;
-  const gchar* name;
-  gchar* child;
-  int ret;
-
-  ret = g_unlink(path);
-  if(ret == -1)
-  {
-    if(errno == EISDIR || errno == EPERM)
-    {
-      dir = g_dir_open(path, 0, error);
-      if(dir == NULL) return FALSE;
-
-      for(name = g_dir_read_name(dir);
-          name != NULL;
-          name = g_dir_read_name(dir))
-      {
-        child = g_build_filename(path, name, NULL);
-        if(infd_filesystem_storage_remove_rec(child, error) == FALSE)
-        {
-          g_free(child);
-          return FALSE;
-        }
-
-        g_free(child);
-      }
-
-      g_dir_close(dir);
-
-      ret = g_rmdir(path);
-      if(ret == -1)
-      {
-        infd_filesystem_storage_system_error(errno, error);
-        return FALSE;
-      }
-    }
-    else
-    {
-      infd_filesystem_storage_system_error(errno, error);
-      return FALSE;
-    }
-  }
-
-  return TRUE;
-#endif
-}
-
 
 static int
 infd_filesystem_storage_read_xml_stream_read_func(void* context,
@@ -339,7 +243,7 @@ infd_filesystem_storage_read_xml_file(InfdFilesystemStorage* storage,
   
   if(stream == NULL)
   {
-    infd_filesystem_storage_system_error(errno, error);
+    infd_filesystem_storage_system_error(save_errno, error);
     return NULL;
   }
 
@@ -485,6 +389,52 @@ infd_filesystem_storage_get_property(GObject* object,
   }
 }
 
+static gboolean
+infd_filesystem_storage_storage_read_subdirectory_list_func(const gchar* name,
+                                                            const gchar* path,
+                                                            InfFileType type,
+                                                            gpointer data,
+                                                            GError** error)
+{
+  GSList** list;
+  gchar* converted_name;
+  gsize name_len;
+  gchar* separator;
+
+  list = (GSList**)data;
+  converted_name = g_filename_to_utf8(name, -1, NULL, &name_len, error);
+  if(converted_name == NULL) return FALSE;
+
+  if(type == INF_FILE_TYPE_DIR)
+  {
+    *list = g_slist_prepend(
+      *list,
+      infd_storage_node_new_subdirectory(converted_name)
+    );
+  }
+  else if(type == INF_FILE_TYPE_REG)
+  {
+    if(!g_str_has_suffix(converted_name, ".xml.acl") &&
+       strcmp(converted_name, "accounts.xml") != 0 &&
+       strcmp(converted_name, "global-acl.xml") != 0)
+    {
+      /* The note type identifier is behind the last '.' */
+      separator = g_strrstr_len(converted_name, name_len, ".");
+      if(separator != NULL)
+      {
+        *separator = '\0';
+        *list = g_slist_prepend(
+          *list,
+          infd_storage_node_new_note(converted_name, separator + 1)
+        );
+      }
+    }
+  }
+
+  g_free(converted_name);
+  return TRUE;
+}
+
 static GSList*
 infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
                                                   const gchar* path,
@@ -493,23 +443,9 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
   InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
   GSList* list;
-#if !defined(G_OS_WIN32) && !defined(__APPLE__)
-  int dir_fd;
-  DIR* dir;
-  struct dirent* dir_entry;
-  struct dirent* dir_result;
-  struct stat stat_buf;
-  int saved_errno;
-  enum { F_UNKNOWN, F_DIR, F_REG, F_LNK } filetype;
-#else
-  GDir* dir;
-  const gchar* name;
-#endif
   gchar* converted_name;
   gchar* full_name;
-  gchar* file_path;
-  gchar* separator;
-  gsize name_len;
+  gboolean result;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
@@ -526,154 +462,21 @@ infd_filesystem_storage_storage_read_subdirectory(InfdStorage* storage,
 
   list = NULL;
 
-#if !defined(G_OS_WIN32) && !defined(__APPLE__)
-  dir_fd = open(full_name, O_NOFOLLOW | O_RDONLY);
-  if(dir_fd == -1 || (dir = fdopendir(dir_fd)) == NULL)
-  {
-    infd_filesystem_storage_system_error(errno, error);
-    if(dir_fd != -1) close(dir_fd);
-    g_free(full_name);
-    return NULL;
-  }
+  result = inf_file_util_list_directory(
+    full_name,
+    infd_filesystem_storage_storage_read_subdirectory_list_func,
+    &list,
+    error
+  );
 
-  dir_entry = g_malloc(offsetof(struct dirent, d_name) +
-                       fpathconf(dir_fd, _PC_NAME_MAX) + 1);
-
-  for(saved_errno = readdir_r(dir, dir_entry, &dir_result);
-      saved_errno == 0 && dir_result != NULL;
-      saved_errno = readdir_r(dir, dir_entry, &dir_result))
-  {
-    converted_name = g_filename_to_utf8(dir_result->d_name,
-                                        -1,
-                                        NULL,
-                                        &name_len,
-                                        NULL);
-    if(converted_name != NULL && strcmp(converted_name, ".") != 0
-                              && strcmp(converted_name, "..") != 0)
-    {
-      filetype = F_UNKNOWN;
-
-#ifdef HAVE_D_TYPE
-      if(dir_result->d_type == DT_LNK)
-        filetype = F_LNK;
-      else if(dir_result->d_type == DT_DIR)
-        filetype = F_DIR;
-      else if(dir_result->d_type == DT_REG)
-        filetype = F_REG;
-      else if(dir_result->d_type == DT_UNKNOWN)
-#endif
-      {
-        /* Some filesystems, such as reiserfs, don't support reporting the
-         * entry's file type. In that case we do an additional lstat here.
-         * Also lstat if d_type is not available on this platform. */
-        file_path = g_build_filename(full_name, dir_result->d_name, NULL);
-        if(lstat(file_path, &stat_buf) == 0)
-        {
-          if(S_ISDIR(stat_buf.st_mode))
-            filetype = F_DIR;
-          else if(S_ISREG(stat_buf.st_mode))
-            filetype = F_REG;
-          else if(S_ISLNK(stat_buf.st_mode))
-            filetype = F_LNK;
-        }
-        g_free(file_path);
-      }
-
-      if(filetype != F_LNK && filetype != F_UNKNOWN)
-      {
-        if(filetype == F_DIR)
-        {
-          list = g_slist_prepend(
-            list,
-            infd_storage_node_new_subdirectory(converted_name)
-          );
-        }
-        else if(filetype == F_REG)
-        {
-          if(!g_str_has_suffix(converted_name, ".xml.acl") &&
-             strcmp(converted_name, "accounts.xml") != 0 &&
-             strcmp(converted_name, "global-acl.xml") != 0)
-          {
-            /* The note type identifier is behind the last '.' */
-            separator = g_strrstr_len(converted_name, name_len, ".");
-            if(separator != NULL)
-            {
-              *separator = '\0';
-              list = g_slist_prepend(
-                list,
-                infd_storage_node_new_note(converted_name, separator + 1)
-              );
-            }
-          }
-        }
-      }
-    }
-
-    g_free(converted_name);
-  }
-
-  g_free(dir_entry);
-  if(closedir(dir) == -1)
-  {
-    infd_filesystem_storage_system_error(errno, error);
-    infd_storage_node_list_free(list);
-    g_free(full_name);
-    return NULL;
-  }
-
-  if(saved_errno != 0)
-  {
-    infd_filesystem_storage_system_error(saved_errno, error);
-    infd_storage_node_list_free(list);
-    g_free(full_name);
-    return NULL;
-  }
-#else
-  dir = g_dir_open(full_name, 0, error);
-
-  if(dir == NULL)
-    return NULL;
-
-  for(name = g_dir_read_name(dir); name != NULL; name = g_dir_read_name(dir))
-  {
-    converted_name = g_filename_to_utf8(name, -1, NULL, &name_len, NULL);
-    if(converted_name != NULL)
-    {
-      file_path = g_build_filename(full_name, name, NULL);
-      if(g_file_test(file_path, G_FILE_TEST_IS_DIR))
-      {
-        list = g_slist_prepend(
-          list,
-          infd_storage_node_new_subdirectory(converted_name)
-        );
-      }
-      else if(g_file_test(file_path, G_FILE_TEST_IS_REGULAR))
-      {
-        if(!g_str_has_suffix(converted_name, ".xml.acl") &&
-           strcmp(converted_name, "accounts.xml") != 0 &&
-           strcmp(converted_name, "global-acl.xml") != 0)
-        {
-          /* The note type identifier is behind the last '.' */
-          separator = g_strrstr_len(converted_name, name_len, ".");
-          if(separator != NULL)
-          {
-            *separator = '\0';
-            list = g_slist_prepend(
-              list,
-              infd_storage_node_new_note(converted_name, separator + 1)
-            );
-          }
-        }
-      }
-
-      g_free(converted_name);
-      g_free(file_path);
-    }
-  }
-
-  g_dir_close(dir);
-#endif
   g_free(full_name);
+
+  if(result == FALSE)
+  {
+    infd_storage_node_list_free(list);
+    return NULL;
+  }
+
   return list;
 }
 
@@ -686,8 +489,7 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
   InfdFilesystemStoragePrivate* priv;
   gchar* converted_name;
   gchar* full_name;
-  int ret;
-  int save_errno;
+  gboolean result;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
@@ -702,18 +504,10 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
   full_name = g_build_filename(priv->root_directory, converted_name, NULL);
   g_free(converted_name);
 
-  ret = g_mkdir(full_name, 0755);
-  save_errno = errno;
-
+  result = inf_file_util_create_single_directory(full_name, 0755, error);
   g_free(full_name);
-  if(ret == -1)
-  {
-    infd_filesystem_storage_system_error(save_errno, error);
-    return FALSE;
-  }
 
-
-  return TRUE;
+  return result;
 }
 
 static gboolean
@@ -727,10 +521,7 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   gchar* converted_name;
   gchar* disk_name;
   gchar* full_name;
-#ifdef G_OS_WIN32
-  gchar* sep;
-#endif
-  gboolean ret;
+  gboolean result;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
@@ -741,14 +532,6 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
   if(converted_name == NULL)
     return FALSE;
-
-#ifdef G_OS_WIN32
-  /* This is required for SHFileOperation. Maybe we should do it at a central
-   * place also for the other file operations... */
-  for(sep = converted_name; *sep != '\0'; ++sep)
-    if(*sep == '/')
-      *sep = '\\';
-#endif
 
   if(identifier != NULL)
   {
@@ -763,10 +546,10 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   full_name = g_build_filename(priv->root_directory, disk_name, NULL);
   g_free(disk_name);
 
-  ret = infd_filesystem_storage_remove_rec(full_name, error);
+  result = inf_file_util_delete(full_name, error);
   g_free(full_name);
 
-  return ret;
+  return result;
 }
 
 static InfdAclAccountInfo**

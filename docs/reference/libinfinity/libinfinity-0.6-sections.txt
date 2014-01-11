@@ -1389,6 +1389,20 @@ inf_cert_util_get_expiration_time
 </SECTION>
 
 <SECTION>
+<FILE>inf-file-util</FILE>
+<TITLE>InfFileUtil</TITLE>
+InfFileType
+InfFileListFunc
+inf_file_util_create_single_directory
+inf_file_util_create_directory
+inf_file_util_list_directory
+inf_file_util_delete_file
+inf_file_util_delete_single_directory
+inf_file_util_delete_directory
+inf_file_util_delete
+</SECTION>
+
+<SECTION>
 <FILE>inf-init</FILE>
 <TITLE>InfInit</TITLE>
 inf_init
