@@ -368,6 +368,8 @@ infinoted_plugin_logging_initialize(InfinotedPluginManager* manager,
 
   plugin->extra_message = NULL;
   plugin->current_session = NULL;
+
+  return TRUE;
 }
 
 static void

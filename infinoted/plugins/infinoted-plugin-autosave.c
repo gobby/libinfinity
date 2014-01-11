@@ -240,6 +240,8 @@ infinoted_plugin_autosave_initialize(InfinotedPluginManager* manager,
   plugin = (InfinotedPluginAutosave*)plugin_info;
 
   plugin->manager = manager;
+
+  return TRUE;
 }
 
 static void
@@ -327,7 +329,7 @@ static const InfinotedParameterInfo INFINOTED_PLUGIN_AUTOSAVE_OPTIONS[] = {
        "no user logged into them for 60 seconds."),
     N_("SECONDS")
   }, {
-    "autosave-hook",
+    "hook",
     INFINOTED_PARAMETER_STRING,
     0,
     offsetof(InfinotedPluginAutosave, hook),

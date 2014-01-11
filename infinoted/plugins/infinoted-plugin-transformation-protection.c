@@ -136,6 +136,8 @@ infinoted_plugin_transformation_protection_initialize(
   plugin = (InfinotedPluginTransformationProtection*)plugin_info;
 
   plugin->manager = manager;
+
+  return TRUE;
 }
 
 static void

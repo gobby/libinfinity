@@ -52,6 +52,8 @@ infinoted_plugin_linekeeper_initialize(InfinotedPluginManager* manager,
   plugin = (InfinotedPluginLinekeeper*)plugin_info;
 
   plugin->manager = manager;
+
+  return TRUE;
 }
 
 static void
