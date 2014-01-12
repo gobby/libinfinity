@@ -448,12 +448,15 @@ inf_file_util_delete_single_directory(const gchar* path,
   }
 
   g_free(path16);
+  return TRUE;
 #else
   if(g_rmdir(path) == -1)
   {
     inf_file_util_set_error_from_errno(error, errno);
     return FALSE;
   }
+
+  return TRUE;
 #endif
 }
 
