@@ -189,42 +189,6 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
        "client certificate issued by one of the CAs from this file."),
     N_("CA-FILE"),
   }, {
-    "sync-directory",
-    INFINOTED_PARAMETER_STRING,
-    0,
-    offsetof(InfinotedOptions, sync_directory),
-    infinoted_parameter_convert_filename,
-    0,
-    N_("A directory, into which to periodically store a copy of the document "
-       "tree in plain text, without any infinote metadata such as which user "
-       "wrote what part of the document. The infinote metadata is still "
-       "available in the root directory. This option can be used to "
-       "(automatically) process the files on the server whenever they "
-       "change. Document synchronization is disabled when this option is "
-       "not set."),
-    N_("DIRECTORY"),
-  }, {
-    "sync-interval",
-    INFINOTED_PARAMETER_INT,
-    0,
-    offsetof(InfinotedOptions, sync_interval),
-    infinoted_parameter_convert_nonnegative,
-    0,
-    N_("Interval, in seconds, within which to store documents to the "
-       "specified sync-directory. If the interval is 0, document "
-       "synchronization is disabled. [Default=0]"),
-    N_("INTERVAL")
-  }, {
-    "sync-hook",
-    INFINOTED_PARAMETER_STRING,
-    0,
-    offsetof(InfinotedOptions, sync_hook),
-    infinoted_parameter_convert_filename,
-    0,
-    N_("Command to run every time a copy of a document has been saved "
-       "into the sync-directory."),
-    N_("PROGRAM")
-  }, {
     "traffic-log-directory",
     INFINOTED_PARAMETER_STRING,
     0,
@@ -338,55 +302,6 @@ infinoted_options_validate(InfinotedOptions* options,
         "file, either create one using the --create-certificate command line "
         "agument, or disable TLS via by setting the security policy to "
         "\"no-tls\".")
-    );
-
-    return FALSE;
-  }
-  else if( (options->sync_directory != NULL && options->sync_interval == 0))
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION,
-      "%s",
-      _("A synchronization directory is given, but synchronization interval "
-        "is not set. Please either set a nonzero synchronization interval "
-        "or unset the synchronization directory using the sync-directory "
-        "and sync-interval command line or config file options.")
-    );
-
-    return FALSE;
-  }
-  else if(options->sync_directory == NULL && options->sync_interval != 0)
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION,
-      "%s",
-      _("A synchronization interval is given, but the synchronization "
-        "directory is not set. Please either set a valid synchronization "
-        "directory, or set the synchronization interval to zero using the "
-        "sync-directory and sync-interval command line or config file "
-        "options.")
-    );
-
-    return FALSE;
-  }
-  else if(options->sync_hook != NULL &&
-          (options->sync_interval == 0 || options->sync_directory == NULL))
-  {
-    g_set_error(
-      error,
-      infinoted_options_error_quark(),
-      INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION,
-      "%s",
-      _("A synchronization hook is given, but either the synchronization "
-        "directory or the synchronization interval is not set. Please "
-        "either set a valid synchronization interval and directory,"
-        "or unset the synchronization hook using the sync-directory, "
-        "sync-interval and sync-hook sync-hook command line or config file "
-        "options.")
     );
 
     return FALSE;
@@ -1079,9 +994,6 @@ infinoted_options_new(const gchar* const* config_files,
   options->pam_allowed_groups = NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
   options->ca_list_file = NULL;
-  options->sync_directory = NULL;
-  options->sync_interval = 0;
-  options->sync_hook = NULL;
   options->traffic_log_directory = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
@@ -1120,8 +1032,6 @@ infinoted_options_free(InfinotedOptions* options)
   g_strfreev(options->pam_allowed_groups);
 #endif
   g_free(options->ca_list_file);
-  g_free(options->sync_directory);
-  g_free(options->sync_hook);
 
   if(options->config_key_file != NULL)
     g_key_file_free(options->config_key_file);

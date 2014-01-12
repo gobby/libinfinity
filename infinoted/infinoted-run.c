@@ -347,22 +347,6 @@ infinoted_run_new(InfinotedStartup* startup,
 
   run->record = infinoted_record_new(run->directory);
 
-  if(startup->options->sync_interval > 0 &&
-     startup->options->sync_directory != NULL)
-  {
-    run->dsync = infinoted_directory_sync_new(
-      run->directory,
-      startup->log,
-      startup->options->sync_directory,
-      startup->options->sync_interval,
-      startup->options->sync_hook
-    );
-  }
-  else
-  {
-    run->dsync = NULL;
-  }
-
   if(startup->options->traffic_log_directory != NULL)
   {
     run->traffic_logger = infinoted_traffic_logger_new(
@@ -395,9 +379,6 @@ infinoted_run_free(InfinotedRun* run)
 
   if(run->traffic_logger != NULL)
     infinoted_traffic_logger_free(run->traffic_logger);
-
-  if(run->dsync != NULL)
-    infinoted_directory_sync_free(run->dsync);
 
   if(run->xmpp6 != NULL)
   {

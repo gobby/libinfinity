@@ -52,10 +52,6 @@ struct _InfinotedOptions {
 #endif /* LIBINFINITY_HAVE_PAM */
   gchar* ca_list_file;
 
-  gchar* sync_directory;
-  guint sync_interval;
-  gchar* sync_hook;
-
   gchar* traffic_log_directory;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
@@ -71,8 +67,6 @@ typedef enum _InfinotedOptionsError {
   INFINOTED_OPTIONS_ERROR_INVALID_CREATE_OPTIONS,
   INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
   INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
-  INFINOTED_OPTIONS_ERROR_INVALID_SYNC_COMBINATION,
-  INFINOTED_OPTIONS_ERROR_INVALID_AUTOSAVE_COMBINATION,
   INFINOTED_OPTIONS_ERROR_INVALID_AUTHENTICATION_SETTINGS
 } InfinotedOptionsError;
 

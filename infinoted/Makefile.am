@@ -53,7 +53,6 @@ infinoted_0_6_CPPFLAGS = \
 
 infinoted_0_6_LDADD = \
 	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
-	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS) \
@@ -62,7 +61,6 @@ infinoted_0_6_LDADD = \
 infinoted_0_6_SOURCES = \
 	infinoted-config-reload.c \
 	infinoted-dh-params.c \
-	infinoted-directory-sync.c \
 	infinoted-main.c \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
@@ -76,7 +74,6 @@ infinoted_0_6_SOURCES = \
 noinst_HEADERS = \
 	infinoted-config-reload.h \
 	infinoted-dh-params.h \
-	infinoted-directory-sync.h \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-pam.h \
