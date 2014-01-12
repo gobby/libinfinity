@@ -70,6 +70,3 @@ Others:
  * Change the storage interface to be asynchronous
    * take the chance and require gio
      * port the network code to gnio?
- * Change the request API so that requests can finish during the call to the
-   main function. This would enable us to get rid of that horrible locreqs
-   in InfdDirectory
