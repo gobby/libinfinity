@@ -112,13 +112,47 @@ enum {
 
 static GObjectClass* parent_class;
 static guint tcp_connection_signals[LAST_SIGNAL];
-static GQuark inf_tcp_connection_error_quark;
+
+static GQuark
+inf_tcp_connection_error_quark(void)
+{
+  return g_quark_from_static_string("INF_TCP_CONNECTION_ERROR");
+}
 
 static void
+inf_tcp_connection_make_system_error(int code,
+                                     GError** error)
+{
+#ifdef G_OS_WIN32
+  gchar* error_message;
+  error_message = g_win32_error_message(code);
+
+  g_set_error(
+    error,
+    inf_tcp_connection_error_quark(),
+    code,
+    "%s",
+    error_message
+  );
+
+  g_free(error_message);
+#else
+  g_set_error(
+    error,
+    inf_tcp_connection_error_quark(),
+    code,
+    "%s",
+    strerror(code)
+  );
+#endif
+}
+
+static gboolean
 inf_tcp_connection_addr_info(InfNativeSocket socket,
                              gboolean local,
                              InfIpAddress** address,
-                             guint* port)
+                             guint* port,
+                             GError** error)
 {
   union {
     struct sockaddr in_generic;
@@ -126,13 +160,22 @@ inf_tcp_connection_addr_info(InfNativeSocket socket,
     struct sockaddr_in6 in6;
   } native_addr;
   socklen_t len;
+  int res;
+  int code;
 
   len = sizeof(native_addr);
 
   if(local == TRUE)
-    getsockname(socket, &native_addr.in_generic, &len);
+    res = getsockname(socket, &native_addr.in_generic, &len);
   else
-    getpeername(socket, &native_addr.in_generic, &len);
+    res = getpeername(socket, &native_addr.in_generic, &len);
+
+  if(res == -1)
+  {
+    code = INF_TCP_CONNECTION_LAST_ERROR;
+    inf_tcp_connection_make_system_error(code, error);
+    return FALSE;
+  }
 
   switch(native_addr.in_generic.sa_family)
   {
@@ -152,34 +195,8 @@ inf_tcp_connection_addr_info(InfNativeSocket socket,
     g_assert_not_reached();
     break;
   }
-}
 
-static void
-inf_tcp_connection_make_system_error(int code,
-                                     GError** error)
-{
-#ifdef G_OS_WIN32
-  gchar* error_message;
-  error_message = g_win32_error_message(code);
-
-  g_set_error(
-    error,
-    inf_tcp_connection_error_quark,
-    code,
-    "%s",
-    error_message
-  );
-
-  g_free(error_message);
-#else
-  g_set_error(
-    error,
-    inf_tcp_connection_error_quark,
-    code,
-    "%s",
-    strerror(code)
-  );
-#endif
+  return TRUE;
 }
 
 static void
@@ -606,6 +623,7 @@ inf_tcp_connection_get_property(GObject* object,
   InfTcpConnectionPrivate* priv;
   InfIpAddress* address;
   guint port;
+  GError* error;
 #ifndef G_OS_WIN32
   char device_name[IF_NAMESIZE];
 #endif
@@ -629,13 +647,39 @@ inf_tcp_connection_get_property(GObject* object,
     break;
   case PROP_LOCAL_ADDRESS:
     g_assert(priv->socket != INVALID_SOCKET);
-    inf_tcp_connection_addr_info(priv->socket, TRUE, &address, NULL);
-    g_value_take_boxed(value, address);
+
+    error = NULL;
+    inf_tcp_connection_addr_info(priv->socket, TRUE, &address, NULL, &error);
+
+    if(error != NULL)
+    {
+      g_warning(_("Failed to retrieve local address: %s"), error->message);
+      g_error_free(error);
+      g_value_set_boxed(value, NULL);
+    }
+    else
+    {
+      g_value_take_boxed(value, address);
+    }
+
     break;
   case PROP_LOCAL_PORT:
     g_assert(priv->socket != INVALID_SOCKET);
-    inf_tcp_connection_addr_info(priv->socket, TRUE, NULL, &port);
-    g_value_set_uint(value, port);
+
+    error = NULL;
+    inf_tcp_connection_addr_info(priv->socket, TRUE, NULL, &port, &error);
+
+    if(error != NULL)
+    {
+      g_warning(_("Failed to retrieve local port: %s"), error->message);
+      g_error_free(error);
+      g_value_set_uint(value, 0);
+    }
+    else
+    {
+      g_value_set_uint(value, port);
+    }
+
     break;
   case PROP_DEVICE_INDEX:
     g_value_set_uint(value, priv->device_index);
@@ -643,7 +687,7 @@ inf_tcp_connection_get_property(GObject* object,
   case PROP_DEVICE_NAME:
 #ifdef G_OS_WIN32
     /* TODO: We can probably implement this using GetInterfaceInfo() */
-    g_warning("The device-name property is not implemented on Win32");
+    g_warning(_("The device-name property is not implemented on Win32"));
     g_value_set_string(value, NULL);
 #else
     if(priv->device_index == 0)
@@ -722,10 +766,6 @@ inf_tcp_connection_class_init(gpointer g_class,
   tcp_connection_class->sent = NULL;
   tcp_connection_class->received = NULL;
   tcp_connection_class->error = inf_tcp_connection_error;
-
-  inf_tcp_connection_error_quark = g_quark_from_static_string(
-    "INF_TCP_CONNECTION_ERROR"
-  );
 
   g_object_class_install_property(
     object_class,
@@ -1383,6 +1423,8 @@ inf_tcp_connection_get_remote_port(InfTcpConnection* connection)
 InfTcpConnection*
 _inf_tcp_connection_accepted(InfIo* io,
                              InfNativeSocket socket,
+                             InfIpAddress* address,
+                             guint port,
                              GError** error)
 {
   InfTcpConnection* connection;
@@ -1394,9 +1436,6 @@ _inf_tcp_connection_accepted(InfIo* io,
 #else
   int result;
 #endif
-
-  InfIpAddress* address;
-  guint port;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(socket != INVALID_SOCKET, NULL);
@@ -1426,7 +1465,6 @@ _inf_tcp_connection_accepted(InfIo* io,
   }
 #endif
 
-  inf_tcp_connection_addr_info(socket, FALSE, &address, &port);
   g_return_val_if_fail(address != NULL, NULL);
   g_return_val_if_fail(port != 0, NULL);
 

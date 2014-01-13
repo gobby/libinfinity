@@ -191,6 +191,9 @@ infd_tcp_server_io(InfNativeSocket* socket,
     struct sockaddr_in6 in6;
   } native_addr;
 
+  InfIpAddress* address;
+  guint port;
+
   server = INFD_TCP_SERVER(user_data);
   priv = INFD_TCP_SERVER_PRIVATE(server);
   g_object_ref(G_OBJECT(server));
@@ -232,12 +235,31 @@ infd_tcp_server_io(InfNativeSocket* socket,
       }
       else if(new_socket != INVALID_SOCKET)
       {
+        switch(native_addr.in_generic.sa_family)
+        {
+        case AF_INET:
+          address = inf_ip_address_new_raw4(native_addr.in.sin_addr.s_addr);
+          port = ntohs(native_addr.in.sin_port);
+          break;
+        case AF_INET6:
+          address = inf_ip_address_new_raw6(native_addr.in6.sin6_addr.s6_addr);
+          port = ntohs(native_addr.in6.sin6_port);
+          break;
+        default:
+          g_assert_not_reached();
+          break;
+        }
+
         error = NULL;
         connection = _inf_tcp_connection_accepted(
           priv->io,
           new_socket,
+          address,
+          port,
           &error
         );
+
+        /* _inf_tcp_connection_accepted() takes ownership of address */
 
         if(connection != NULL)
         {
@@ -248,7 +270,7 @@ infd_tcp_server_io(InfNativeSocket* socket,
             connection
           );
 
-          g_object_unref(G_OBJECT(connection));
+          g_object_unref(connection);
         }
         else
         {
@@ -260,6 +282,7 @@ infd_tcp_server_io(InfNativeSocket* socket,
           );
 
           g_error_free(error);
+          closesocket(new_socket);
         }
       }
     } while( (new_socket != INVALID_SOCKET ||
