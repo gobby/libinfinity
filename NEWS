@@ -1,3 +1,8 @@
+libinfinity 0.5.5:
+
+	* Fix a crash in infinoted when nmap scans the infinote port (Rainer
+	Rehak).
+
 libinfinity 0.5.4:
 
 	* Fix crashes that can happen when the connection goes down at
