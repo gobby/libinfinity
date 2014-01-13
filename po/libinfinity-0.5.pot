@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?"
 "product=glib&keywords=I18N+L10N&component=general\n"
-"POT-Creation-Date: 2012-03-25 14:12+0200\n"
+"POT-Creation-Date: 2014-01-13 14:40+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1118,13 +1118,28 @@ msgstr ""
 msgid "Received unexpected XML message \"%s\" while synchronizing"
 msgstr ""
 
-#: ../libinfinity/common/inf-tcp-connection.c:584
+#: ../libinfinity/common/inf-tcp-connection.c:601
 #, c-format
 msgid "Interface `%s' does not exist"
 msgstr ""
 
+#: ../libinfinity/common/inf-tcp-connection.c:656
+#, c-format
+msgid "Failed to retrieve local address: %s"
+msgstr ""
+
+#: ../libinfinity/common/inf-tcp-connection.c:674
+#, c-format
+msgid "Failed to retrieve local port: %s"
+msgstr ""
+
+#. TODO: We can probably implement this using GetInterfaceInfo()
+#: ../libinfinity/common/inf-tcp-connection.c:690
+msgid "The device-name property is not implemented on Win32"
+msgstr ""
+
 #. Failed to get name for device <Index>: <Reason>
-#: ../libinfinity/common/inf-tcp-connection.c:659
+#: ../libinfinity/common/inf-tcp-connection.c:703
 #, c-format
 msgid "Failed to get name for device %u: %s"
 msgstr ""
@@ -1343,50 +1358,50 @@ msgstr ""
 msgid "An unknown authentication error has occured"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:1047
+#: ../libinfinity/common/inf-xmpp-connection.c:1092
 msgid "The server did not provide a certificate"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:1890
+#: ../libinfinity/common/inf-xmpp-connection.c:1935
 msgid "Stream is not yet secured with TLS"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:1957
+#: ../libinfinity/common/inf-xmpp-connection.c:2002
 msgid "Stream is not yet authorized"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:2085
+#: ../libinfinity/common/inf-xmpp-connection.c:2130
 msgid "The server does not offer a suitable authentication mechanism"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:2130
+#: ../libinfinity/common/inf-xmpp-connection.c:2175
 msgid "The server does not support transport layer security (TLS)"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:2153
+#: ../libinfinity/common/inf-xmpp-connection.c:2198
 msgid "The server requires transport layer security (TLS)"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:2187
+#: ../libinfinity/common/inf-xmpp-connection.c:2232
 msgid "The server does not provide any authentication mechanism"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:2245
+#: ../libinfinity/common/inf-xmpp-connection.c:2290
 msgid "The server cannot perform the TLS handshake"
 msgstr ""
 
 #. XML Warning from <IP Address>: <Warning Text>
-#: ../libinfinity/common/inf-xmpp-connection.c:2724
+#: ../libinfinity/common/inf-xmpp-connection.c:2769
 #, c-format
 msgid "XML warning from %s: %s\n"
 msgstr ""
 
 #. The server sent something which is not XML
-#: ../libinfinity/common/inf-xmpp-connection.c:2768
+#: ../libinfinity/common/inf-xmpp-connection.c:2813
 msgid "Remote site is not an XMPP server"
 msgstr ""
 
-#: ../libinfinity/common/inf-xmpp-connection.c:4241
+#: ../libinfinity/common/inf-xmpp-connection.c:4299
 msgid "The server certificate is not trusted"
 msgstr ""
 
