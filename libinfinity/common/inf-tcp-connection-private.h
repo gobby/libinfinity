@@ -29,6 +29,8 @@ G_BEGIN_DECLS
 InfTcpConnection*
 _inf_tcp_connection_accepted(InfIo* io,
                              InfNativeSocket socket,
+                             InfIpAddress* address,
+                             guint port,
                              GError** error);
 
 G_END_DECLS
