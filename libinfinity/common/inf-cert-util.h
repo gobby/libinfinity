@@ -72,6 +72,10 @@ gnutls_x509_crt_t
 inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
                                GError** error);
 
+gboolean
+inf_cert_util_check_certificate_signature(gnutls_x509_crt_t cert,
+                                          gnutls_x509_privkey_t key);
+
 gchar*
 inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
                             const char* oid,

@@ -765,6 +765,42 @@ inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
 }
 
 /**
+ * inf_cert_util_check_certificate_signature:
+ * @cert: The certificate to be checked.
+ * @key: The private key to be checked.
+ *
+ * This function returns %TRUE if @key was used to sign @cert, or %FALSE
+ * otherwise.
+ *
+ * Returns: %TRUE if @cert was signed with @key, or %FALSE otherwise.
+ */
+gboolean
+inf_cert_util_check_certificate_signature(gnutls_x509_crt_t cert,
+                                          gnutls_x509_privkey_t key)
+{
+  unsigned char cert_id[20];
+  size_t cert_id_size;
+  unsigned char key_id[20];
+  size_t key_id_size;
+
+  g_return_val_if_fail(cert != NULL, FALSE);
+  g_return_val_if_fail(key != NULL, FALSE);
+
+  cert_id_size = 20;
+  if(gnutls_x509_crt_get_key_id(cert, 0, cert_id, &cert_id_size) != 0)
+    return FALSE;
+
+  key_id_size = 20;
+  if(gnutls_x509_privkey_get_key_id(key, 0, key_id, &key_id_size) != 0)
+    return FALSE;
+
+  if(memcmp(cert_id, key_id, 20) != 0)
+    return FALSE;
+
+  return TRUE;
+}
+
+/**
  * inf_cert_util_get_dn_by_oid:
  * @cert: An initialized #gnutls_x509_crt_t.
  * @oid: The name of the requested entry.
