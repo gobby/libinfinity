@@ -2939,7 +2939,7 @@ infd_directory_node_explore(InfdDirectory* directory,
   if(local_error != NULL)
   {
     g_free(path);
-    inf_request_fail(INF_REQUEST(request), local_error);
+    if(request != NULL) inf_request_fail(INF_REQUEST(request), local_error);
     g_propagate_error(error, local_error);
     return FALSE;
   }
@@ -2979,7 +2979,7 @@ infd_directory_node_explore(InfdDirectory* directory,
       g_ptr_array_free(acls, TRUE);
       infd_storage_node_list_free(list);
       g_free(path);
-      inf_request_fail(INF_REQUEST(request), local_error);
+      if(request != NULL) inf_request_fail(INF_REQUEST(request), local_error);
       g_propagate_error(error, local_error);
       return FALSE;
     }
@@ -2988,7 +2988,7 @@ infd_directory_node_explore(InfdDirectory* directory,
   }
 
   g_free(path);
-  infd_explore_request_initiated(request, acls->len);
+  if(request != NULL) infd_explore_request_initiated(request, acls->len);
 
   /* Second pass, fill the directory tree */
   index = 0;
@@ -3052,18 +3052,22 @@ infd_directory_node_explore(InfdDirectory* directory,
       infd_directory_node_register(directory, new_node, NULL, NULL);
     }
 
-    infd_explore_request_progress(request);
+    if(request != NULL) infd_explore_request_progress(request);
   }
 
   g_ptr_array_free(acls, TRUE);
 
-  iter.node_id = node->id;
-  iter.node = node;
-  inf_node_request_finished(
-    INF_NODE_REQUEST(request),
-    &iter,
-    NULL
-  );
+  if(request != NULL)
+  {
+    iter.node_id = node->id;
+    iter.node = node;
+
+    inf_node_request_finished(
+      INF_NODE_REQUEST(request),
+      &iter,
+      NULL
+    );
+  }
 
   infd_storage_node_list_free(list);
 
@@ -5845,12 +5849,14 @@ infd_directory_set_storage(InfdDirectory* directory,
                            InfdStorage* storage)
 {
   InfdDirectoryPrivate* priv;
-
   InfdDirectoryNode* child;
+  GError* error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(priv->storage != NULL)
+  /* If we are setting a new storage, then remove all documents. If we are
+   * going to no storage, then keep current set of documents. */
+  if(storage != NULL)
   {
     /* TODO: Update last seen times of all connected users,
      * and write user list to storage. */
@@ -5869,9 +5875,10 @@ infd_directory_set_storage(InfdDirectory* directory,
         infd_directory_node_free(directory, child);
       }
     }
-
-    g_object_unref(G_OBJECT(priv->storage));
   }
+
+  if(priv->storage != NULL)
+    g_object_unref(priv->storage);
 
   priv->storage = storage;
 
@@ -5890,12 +5897,24 @@ infd_directory_set_storage(InfdDirectory* directory,
        * infd_directory_node_explore(). */
       priv->root->shared.subdir.explored = FALSE;
 
-      /* TODO: Error handling? */
-      /* TODO: Do make requests here */
-      infd_directory_node_explore(directory, priv->root, NULL, NULL);
+      /* Do not make a request here, since we don't formally re-explore the
+       * root node -- once a node is explored, it always stays explored. */
+
+      error = NULL;
+      infd_directory_node_explore(directory, priv->root, NULL, &error);
+
+      if(error != NULL)
+      {
+        g_warning(
+          _("Failed to explore the root directory of the new storage: %s"),
+          error->message
+        );
+
+        g_error_free(error);
+      }
     }
 
-    g_object_ref(G_OBJECT(storage));
+    g_object_ref(storage);
   }
 }
 
