@@ -483,19 +483,24 @@ inf_discovery_avahi_service_browser_callback(AvahiServiceBrowser* browser,
   switch(event)
   {
   case AVAHI_BROWSER_NEW:
-    discovery_info = g_slice_new(InfDiscoveryInfo);
-    discovery_info->service_name = g_strdup(name);
-    discovery_info->service_type = info->type;
-    discovery_info->domain = g_strdup(domain);
-    discovery_info->interface = interface;
-    discovery_info->protocol = protocol;
+    /* Ignore what we published ourselves */
+    if((flags & AVAHI_LOOKUP_RESULT_OUR_OWN) == 0)
+    {
+      discovery_info = g_slice_new(InfDiscoveryInfo);
+      discovery_info->service_name = g_strdup(name);
+      discovery_info->service_type = info->type;
+      discovery_info->domain = g_strdup(domain);
+      discovery_info->interface = interface;
+      discovery_info->protocol = protocol;
 
-    discovery_info->service_resolver = NULL;
-    discovery_info->resolved = NULL;
-    discovery_info->resolv = NULL;
+      discovery_info->service_resolver = NULL;
+      discovery_info->resolved = NULL;
+      discovery_info->resolv = NULL;
 
-    info->discovered = g_slist_prepend(info->discovered, discovery_info);
-    inf_discovery_discovered(INF_DISCOVERY(avahi), discovery_info);
+      info->discovered = g_slist_prepend(info->discovered, discovery_info);
+      inf_discovery_discovered(INF_DISCOVERY(avahi), discovery_info);
+    }
+
     break;
   case AVAHI_BROWSER_REMOVE:
     for(item = info->discovered; item != NULL; item = g_slist_next(item))
