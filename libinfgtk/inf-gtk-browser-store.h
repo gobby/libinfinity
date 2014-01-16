@@ -65,6 +65,11 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
                                      const gchar* name);
 
 void
+inf_gtk_browser_store_add_browser(InfGtkBrowserStore* store,
+                                  InfBrowser* browser,
+                                  const gchar* name);
+
+void
 inf_gtk_browser_store_remove_connection(InfGtkBrowserStore* store,
                                         InfXmlConnection* connection);
 

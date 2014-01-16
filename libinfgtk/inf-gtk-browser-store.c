@@ -360,11 +360,11 @@ inf_gtk_browser_store_item_set_browser(InfGtkBrowserStore* store,
 
 /* takes ownership of name */
 static InfGtkBrowserStoreItem*
-inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
-                               InfDiscovery* discovery,
-                               InfDiscoveryInfo* info,
-                               InfXmlConnection* connection,
-                               gchar* name)
+inf_gtk_browser_store_add_item_by_browser(InfGtkBrowserStore* store,
+                                          InfDiscovery* discovery,
+                                          InfDiscoveryInfo* info,
+                                          InfBrowser* browser,
+                                          gchar* name)
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
@@ -372,11 +372,10 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
   GtkTreePath* path;
   GtkTreeIter iter;
   guint index;
-  InfcBrowser* browser;
 
   g_assert(
-    connection == NULL ||
-    inf_gtk_browser_store_find_item_by_connection(store, connection) == NULL
+    browser == NULL ||
+    inf_gtk_browser_store_find_item_by_browser(store, browser) == NULL
   );
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
@@ -423,6 +422,34 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
 
   gtk_tree_model_row_inserted(GTK_TREE_MODEL(store), path, &iter);
 
+  if(browser != NULL)
+    inf_gtk_browser_store_item_set_browser(store, item, path, browser);
+
+  gtk_tree_path_free(path);
+  return item;
+}
+
+
+/* takes ownership of name */
+static InfGtkBrowserStoreItem*
+inf_gtk_browser_store_add_item_by_connection(InfGtkBrowserStore* store,
+                                             InfDiscovery* discovery,
+                                             InfDiscoveryInfo* info,
+                                             InfXmlConnection* connection,
+                                             gchar* name)
+{
+  InfGtkBrowserStorePrivate* priv;
+  InfcBrowser* browser;
+  InfGtkBrowserStoreItem* item;
+
+  g_assert(
+    connection == NULL ||
+    inf_gtk_browser_store_find_item_by_connection(store, connection) == NULL
+  );
+
+  priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
+  browser = NULL;
+
   if(connection != NULL)
   {
     browser = infc_browser_new(
@@ -432,22 +459,26 @@ inf_gtk_browser_store_add_item(InfGtkBrowserStore* store,
     );
 
     /* The connection is not set if the browser could not find a "central"
-     * method for the connection's network. */
-    /* TODO: Set error */
-    if(infc_browser_get_connection(browser) != NULL)
+     * method for the connection's network. I don't think this can happen. */
+    if(infc_browser_get_connection(browser) == NULL)
     {
-      inf_gtk_browser_store_item_set_browser(
-        store,
-        item,
-        path,
-        INF_BROWSER(browser)
-      );
+      g_object_unref(browser);
+      g_free(name);
+      return NULL;
     }
-
-    g_object_unref(G_OBJECT(browser));
   }
 
-  gtk_tree_path_free(path);
+  item = inf_gtk_browser_store_add_item_by_browser(
+    store,
+    discovery,
+    info,
+    INF_BROWSER(browser),
+    name
+  );
+
+  if(browser != NULL)
+    g_object_unref(browser);
+
   return item;
 }
 
@@ -521,7 +552,7 @@ inf_gtk_browser_store_discovered_cb(InfDiscovery* discovery,
                                     InfDiscoveryInfo* info,
                                     gpointer user_data)
 {
-  inf_gtk_browser_store_add_item(
+  inf_gtk_browser_store_add_item_by_browser(
     INF_GTK_BROWSER_STORE(user_data),
     discovery,
     info,
@@ -2379,7 +2410,7 @@ inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,
   {
     info = (InfDiscoveryInfo*)item->data;
 
-    inf_gtk_browser_store_add_item(
+    inf_gtk_browser_store_add_item_by_browser(
       store,
       discovery,
       info,
@@ -2416,13 +2447,10 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
-  InfXmlConnectionStatus status;
   gchar* remote_id;
 
   g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
-
-  g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
   item = inf_gtk_browser_store_find_item_by_connection(store, connection);
@@ -2433,7 +2461,7 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
     {
       g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
 
-      item = inf_gtk_browser_store_add_item(
+      item = inf_gtk_browser_store_add_item_by_connection(
         store,
         NULL,
         NULL,
@@ -2443,7 +2471,7 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
     }
     else
     {
-      item = inf_gtk_browser_store_add_item(
+      item = inf_gtk_browser_store_add_item_by_connection(
         store,
         NULL,
         NULL,
@@ -2454,6 +2482,44 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
   }
 
   return item->browser;
+}
+
+/**
+ * inf_gtk_browser_store_add_browser:
+ * @store: A #InfGtkBrowserStore.
+ * @browser: A #InfBrowser.
+ * @name: Name for the item.
+ *
+ * This function adds a browser to the @store. @store will show up
+ * an item for the browser if there is not already one. This allows to
+ * browse the explored part of the browser. The @name parameter must not be
+ * %NULL.
+ **/
+void
+inf_gtk_browser_store_add_browser(InfGtkBrowserStore* store,
+                                  InfBrowser* browser,
+                                  const gchar* name)
+{
+  InfGtkBrowserStorePrivate* priv;
+  InfGtkBrowserStoreItem* item;
+
+  g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(name != NULL);
+
+  priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
+  item = inf_gtk_browser_store_find_item_by_browser(store, browser);
+
+  if(item == NULL)
+  {
+    inf_gtk_browser_store_add_item_by_browser(
+      store,
+      NULL,
+      NULL,
+      browser,
+      g_strdup(name)
+    );
+  }
 }
 
 /**
