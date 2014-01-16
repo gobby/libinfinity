@@ -1048,47 +1048,24 @@ inf_gtk_browser_view_browser_removed(InfGtkBrowserView* view,
  */
 
 static void
-inf_gtk_browser_view_set_browser_cb_before(InfGtkBrowserModel* model,
-                                           GtkTreePath* path,
-                                           GtkTreeIter* iter,
-                                           InfBrowser* new_browser,
-                                           gpointer user_data)
+inf_gtk_browser_view_set_browser_cb(InfGtkBrowserModel* model,
+                                    GtkTreePath* path,
+                                    GtkTreeIter* iter,
+                                    InfBrowser* old_browser,
+                                    InfBrowser* new_browser,
+                                    gpointer user_data)
 {
   InfGtkBrowserView* view;
-  InfGtkBrowserViewPrivate* priv;
-  InfBrowser* browser;
   InfGtkBrowserViewBrowser* view_browser;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
-  priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-  gtk_tree_model_get(
-    GTK_TREE_MODEL(model),
-    iter,
-    INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
-    -1
-  );
-
-  /* Old browser was removed */
-  if(browser != NULL)
-  {
-    view_browser = inf_gtk_browser_view_find_view_browser(view, browser);
-    g_assert(view_browser != NULL);
-
+  /* Find the old browser for this item, if there is any, and remove it. */
+  view_browser = inf_gtk_browser_view_find_view_browser(view, old_browser);
+  if(view_browser != NULL)
     inf_gtk_browser_view_browser_removed(view, view_browser);
-  }
-}
 
-static void
-inf_gtk_browser_view_set_browser_cb_after(InfGtkBrowserModel* model,
-                                          GtkTreePath* path,
-                                          GtkTreeIter* iter,
-                                          InfBrowser* new_browser,
-                                          gpointer user_data)
-{
-  InfGtkBrowserView* view;
-  view = INF_GTK_BROWSER_VIEW(user_data);
-
+  /* Add a view browser for the new item */
   if(new_browser != NULL)
     inf_gtk_browser_view_browser_added(view, new_browser, path, iter);
 }
@@ -1230,6 +1207,7 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
   GtkTreeIter parent_iter;
   InfGtkBrowserModelStatus status;
   InfDiscoveryInfo* info;
+  InfBrowser* browser;
 
   view = INF_GTK_BROWSER_VIEW(user_data);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -1241,11 +1219,15 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
       iter,
       INF_GTK_BROWSER_MODEL_COL_STATUS, &status,
       INF_GTK_BROWSER_MODEL_COL_DISCOVERY_INFO, &info,
+      INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
       -1
     );
 
-    /* Explore root node as soon as the connection is ready */
-    if(status == INF_GTK_BROWSER_MODEL_CONNECTED)
+    /* Explore root node as soon as the connection is ready. The second
+     * condition is required since this might be called before
+     * set_browser_cb. */
+    if(status == INF_GTK_BROWSER_MODEL_CONNECTED &&
+       inf_gtk_browser_view_find_view_browser(view, browser) != NULL)
     {
       inf_gtk_browser_view_initial_root_explore(view, path, iter);
     }
@@ -1255,6 +1237,9 @@ inf_gtk_browser_view_row_changed_cb(GtkTreeModel* model,
      * in the set-browser signal handler. */
     if(info != NULL && status == INF_GTK_BROWSER_MODEL_ERROR)
       priv->info_resolvs = g_slist_remove(priv->info_resolvs, info);
+
+    if(browser != NULL)
+      g_object_unref(browser);
   }
 }
 
@@ -1392,13 +1377,7 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(current_model),
-      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_before),
-      view
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(current_model),
-      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_after),
+      G_CALLBACK(inf_gtk_browser_view_set_browser_cb),
       view
     );
   }
@@ -1467,18 +1446,11 @@ inf_gtk_browser_view_set_model(InfGtkBrowserView* view,
       G_CALLBACK(inf_gtk_browser_view_rows_reordered_cb),
       view
     );
-    
-    g_signal_connect(
-      G_OBJECT(model),
-      "set-browser",
-      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_before),
-      view
-    );
 
     g_signal_connect_after(
       G_OBJECT(model),
       "set-browser",
-      G_CALLBACK(inf_gtk_browser_view_set_browser_cb_after),
+      G_CALLBACK(inf_gtk_browser_view_set_browser_cb),
       view
     );
   }

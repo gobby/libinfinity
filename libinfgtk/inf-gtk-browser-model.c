@@ -59,14 +59,19 @@ inf_gtk_browser_model_base_init(gpointer g_class)
     /**
      * InfGtkBrowserModel::set-browser:
      * @model: The #InfGtkBrowserModel emitting the signal.
-     * @path: A #GtkTreePath pointing to the newly created browser.
-     * @iter: A #GtkTreeIter pointing to the newly created browser.
-     * @browser: The newly created #InfcBrowser.
+     * @path: A #GtkTreePath pointing to the item with a new browesr.
+     * @iter: A #GtkTreeIter pointing to the item with a new browser.
+     * @old_browser: The previous #InfBrowser.
+     * @new_browser: The new #InfBrowser.
      *
-     * This signal is emitted every time a new browser is inserted to the
-     * model. This means either that a completely new item was inserted, or
-     * that an item providing only a discovery has been resolved (see
-     * inf_gtk_browser_model_resolve()).
+     * This signal is emitted every time the #InfBrowser for one of the
+     * model's top-level entries change. This means either that a completely
+     * new item was inserted, that an item providing only a discovery has
+     * been resolved (see inf_gtk_browser_model_resolve()), or that a
+     * top-level entry has been removed.
+     *
+     * During emission of the signal the actual value in the model might
+     * either be the old or the new browser.
      */
     browser_model_signals[SET_BROWSER] = g_signal_new(
       "set-browser",
@@ -74,11 +79,12 @@ inf_gtk_browser_model_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfGtkBrowserModelIface, set_browser),
       NULL, NULL,
-      inf_marshal_VOID__BOXED_BOXED_OBJECT,
+      inf_marshal_VOID__BOXED_BOXED_OBJECT_OBJECT,
       G_TYPE_NONE,
-      3,
+      4,
       GTK_TYPE_TREE_PATH | G_SIGNAL_TYPE_STATIC_SCOPE,
       GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_BROWSER,
       INF_TYPE_BROWSER
     );
 
@@ -171,7 +177,8 @@ inf_gtk_browser_model_get_type()
  * @model: A #InfGtkBrowserModel.
  * @path: A #GtkTreePath to a top-level row.
  * @iter: A #GtkTreeIter pointing to the same row.
- * @browser: The new #InfcBrowser to set.
+ * @old_browser: The browser which was set at this row before.
+ * @new_browser: The new #InfBrowser to set for this row.
  *
  * Emits the #InfGtkBrowserModel::set-browser signal. This is supposed to only
  * be called by implementations of #InfGtkBrowserModel whenever they set or
@@ -181,12 +188,14 @@ void
 inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
                                   GtkTreePath* path,
                                   GtkTreeIter* iter,
-                                  InfBrowser* browser)
+                                  InfBrowser* old_browser,
+                                  InfBrowser* new_browser)
 {
   g_return_if_fail(INF_GTK_IS_BROWSER_MODEL(model));
   g_return_if_fail(path != NULL);
   g_return_if_fail(iter != NULL);
-  g_return_if_fail(browser == NULL || INF_IS_BROWSER(browser));
+  g_return_if_fail(old_browser == NULL || INF_IS_BROWSER(old_browser));
+  g_return_if_fail(new_browser == NULL || INF_IS_BROWSER(new_browser));
 
   g_signal_emit(
     G_OBJECT(model),
@@ -194,7 +203,8 @@ inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
     0,
     path,
     iter,
-    browser
+    old_browser,
+    new_browser
   );
 }
 

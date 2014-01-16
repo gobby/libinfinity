@@ -34,7 +34,8 @@ static void
 inf_gtk_browser_model_sort_set_browser_cb(InfGtkBrowserModel* model,
                                           GtkTreePath* path,
                                           GtkTreeIter* iter,
-                                          InfBrowser* browser,
+                                          InfBrowser* old_browser,
+                                          InfBrowser* new_browser,
                                           gpointer user_data)
 {
   GtkTreeModelSort* model_sort;
@@ -50,7 +51,8 @@ inf_gtk_browser_model_sort_set_browser_cb(InfGtkBrowserModel* model,
     INF_GTK_BROWSER_MODEL(user_data),
     own_path,
     &own_iter,
-    browser
+    old_browser,
+    new_browser
   );
 
   gtk_tree_path_free(own_path);
@@ -80,7 +82,7 @@ inf_gtk_browser_model_sort_sync_child_model(InfGtkBrowserModelSort* model,
   {
     g_object_ref(child_model);
 
-    g_signal_connect(
+    g_signal_connect_after(
       G_OBJECT(child_model),
       "set-browser",
       G_CALLBACK(inf_gtk_browser_model_sort_set_browser_cb),

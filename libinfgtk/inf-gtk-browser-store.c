@@ -354,6 +354,7 @@ inf_gtk_browser_store_item_set_browser(InfGtkBrowserStore* store,
     INF_GTK_BROWSER_MODEL(store),
     path,
     &tree_iter,
+    item->browser,
     browser
   );
 }
@@ -1460,7 +1461,7 @@ inf_gtk_browser_store_tree_model_get_value(GtkTreeModel* model,
     g_value_set_object(value, item->discovery);
     break;
   case INF_GTK_BROWSER_MODEL_COL_BROWSER:
-    g_value_init(value, INFC_TYPE_BROWSER);
+    g_value_init(value, INF_TYPE_BROWSER);
     g_value_set_object(value, G_OBJECT(item->browser));
     break;
   case INF_GTK_BROWSER_MODEL_COL_STATUS:
@@ -1899,7 +1900,8 @@ static void
 inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
                                                 GtkTreePath* path,
                                                 GtkTreeIter* tree_iter,
-                                                InfBrowser* browser)
+                                                InfBrowser* old_browser,
+                                                InfBrowser* new_browser)
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
@@ -1918,6 +1920,7 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
   if(item->browser != NULL)
   {
+    g_assert(item->browser == old_browser);
     g_object_get(G_OBJECT(item->browser), "status", &status, NULL);
     if(status == INF_BROWSER_OPEN)
     {
@@ -2006,11 +2009,11 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
   }
 
   /* Set up new browser */
-  item->browser = browser;
+  item->browser = new_browser;
 
-  if(browser != NULL)
+  if(new_browser != NULL)
   {
-    g_object_ref(browser);
+    g_object_ref(new_browser);
 
     g_signal_connect(
       G_OBJECT(item->browser),

@@ -132,7 +132,8 @@ struct _InfGtkBrowserModelIface {
   void(*set_browser)(InfGtkBrowserModel* model,
                      GtkTreePath* path,
                      GtkTreeIter* iter,
-                     InfBrowser* browser);
+                     InfBrowser* old_browser,
+                     InfBrowser* new_browser);
 
   /* virtual functions */
   void(*resolve)(InfGtkBrowserModel* model,
@@ -155,7 +156,8 @@ void
 inf_gtk_browser_model_set_browser(InfGtkBrowserModel* model,
                                   GtkTreePath* path,
                                   GtkTreeIter* iter,
-                                  InfBrowser* browser);
+                                  InfBrowser* old_browser,
+                                  InfBrowser* new_browser);
 
 void
 inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
