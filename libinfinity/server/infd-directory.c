@@ -7900,7 +7900,8 @@ infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
  * @user_data: Additional data to pass to the callback function.
  *
  * Calls @func for each connection in @directory that has previously been
- * added to the directory.
+ * added to the directory. It is allowed to add and remove connections while
+ * this function is being called.
  */
 void
 infd_directory_foreach_connection(InfdDirectory* directory,
@@ -7908,22 +7909,25 @@ infd_directory_foreach_connection(InfdDirectory* directory,
                                   gpointer userdata)
 {
   InfdDirectoryPrivate* priv;
-  GHashTableIter iter;
-  gpointer key;
+  GList* keys;
+  GList* item;
 
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   g_return_if_fail(func != NULL);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_hash_table_iter_init(&iter, priv->connections);
-  while (g_hash_table_iter_next(&iter, &key, NULL))
+  keys = g_hash_table_get_keys(priv->connections);
+
+  for(item = keys; item != NULL; item = item->next)
   {
-    func(INF_XML_CONNECTION(key), userdata);
+    /* Make sure the entry still exists: */
+    if(g_hash_table_lookup(priv->connections, item->data) != NULL)
+      func(INF_XML_CONNECTION(item->data), userdata);
   }
+
+  g_list_free(keys);
 }
-
-
 
 /**
  * infd_directory_iter_save_session:
