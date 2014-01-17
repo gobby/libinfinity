@@ -7108,6 +7108,7 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
     node = (InfdDirectoryNode*)iter->node;
   }
 
+  list = NULL;
   for(item = priv->subscription_requests; item != NULL; item = item->next)
   {
     request = NULL;
