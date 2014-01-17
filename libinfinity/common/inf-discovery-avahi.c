@@ -548,19 +548,39 @@ inf_discovery_avahi_service_browser_callback(AvahiServiceBrowser* browser,
 static void
 inf_discovery_avahi_entry_group_add_service(InfLocalPublisherItem* item)
 {
-  /* TODO: Error handling */
-  avahi_entry_group_add_service(
-    item->entry_group,
-    AVAHI_IF_UNSPEC,
-    AVAHI_PROTO_UNSPEC,
-    0,
-    item->name,
-    item->type,
-    NULL,
-    NULL,
-    item->port,
-    NULL
-  );
+  char* new_name;
+  int res;
+
+  do
+  {
+    res = avahi_entry_group_add_service(
+      item->entry_group,
+      AVAHI_IF_UNSPEC,
+      AVAHI_PROTO_UNSPEC,
+      0,
+      item->name,
+      item->type,
+      NULL,
+      NULL,
+      item->port,
+      NULL
+    );
+
+    if(res != AVAHI_ERR_COLLISION) break;
+
+    new_name = avahi_alternative_service_name(item->name);
+    avahi_free(item->name);
+    item->name = new_name;
+  } while(1);
+
+  if(res != 0)
+  {
+    g_warning(
+      "Failed to publish service \"%s\" via avahi: %s",
+      item->name,
+      avahi_strerror(res)
+    );
+  }
 }
 
 static void
@@ -590,7 +610,6 @@ inf_discovery_avahi_entry_group_callback(AvahiEntryGroup* group,
     avahi_free(item->name);
     item->name = new_name;
 
-    /* TODO: Error handling */
     avahi_entry_group_reset(item->entry_group);
     inf_discovery_avahi_entry_group_add_service(item);
     avahi_entry_group_commit(item->entry_group);
