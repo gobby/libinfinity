@@ -2107,6 +2107,20 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
   /* TODO: Emit row_inserted for the whole tree in browser, and
    * row-has-child-toggled where appropriate. */
   gtk_tree_model_row_changed(GTK_TREE_MODEL(model), path, tree_iter);
+
+  if(item->browser != NULL && item->status == INF_GTK_BROWSER_MODEL_CONNECTED)
+  {
+    inf_browser_get_root(item->browser, &iter);
+    if(inf_browser_get_explored(item->browser, &iter) &&
+       inf_browser_get_child(item->browser, &iter))
+    {
+      gtk_tree_model_row_has_child_toggled(
+        GTK_TREE_MODEL(model),
+        path,
+        tree_iter
+      );
+    }
+  }
 }
 
 static void
