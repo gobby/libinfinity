@@ -1351,7 +1351,7 @@ inf_browser_set_acl(InfBrowser* browser,
  * inf_browser_check_acl:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node in a browser.
- * @account: A #InfAclAccount whose permission to check.
+ * @account: A #InfAclAccount whose permission to check, or %NULL.
  * @check_mask: A bitmask of #InfAclSetting<!-- -->s with permissions to
  * check.
  * @out_mask: Output parameter with the granted permissions, or %NULL.
@@ -1371,6 +1371,11 @@ inf_browser_set_acl(InfBrowser* browser,
  * available for the node @iter points to and all of its parent nodes. If
  * @account is not the default or the local account, these need to be queried
  * before using inf_browser_query_acl().
+ *
+ * If @account is %NULL it is assumed that local access to the directory is
+ * available and the function always returns %TRUE.
+ *
+ * Returns: %TRUE if all checked permissions are granted, or %FALSE otherwise.
  */
 gboolean
 inf_browser_check_acl(InfBrowser* browser,
@@ -1389,8 +1394,14 @@ inf_browser_check_acl(InfBrowser* browser,
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
-  g_return_val_if_fail(account != NULL, FALSE);
   g_return_val_if_fail(check_mask != NULL, FALSE);
+
+  if(account == NULL)
+  {
+    if(out_mask != NULL)
+      *out_mask = *check_mask;
+    return TRUE;
+  }
 
   if(strcmp(account->id, "default") != 0)
     default_account = inf_browser_lookup_acl_account(browser, "default");
