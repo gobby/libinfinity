@@ -770,10 +770,14 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
       }
     }
   }
-  else
+  else if(INFC_IS_BROWSER(browser))
   {
+    /* Show synchronization status on client side only, on server side
+     * there is nothing to report. */
     proxy = INF_SESSION_PROXY(
-      infc_browser_iter_get_sync_in(INFC_BROWSER(browser), iter));
+      infc_browser_iter_get_sync_in(INFC_BROWSER(browser), iter)
+    );
+
     if(proxy == NULL)
       proxy = inf_browser_get_session(browser, iter);
 
@@ -1168,10 +1172,14 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
         }
       }
     }
-    else
+    else if(INFC_IS_BROWSER(browser))
     {
+      /* Show synchronization status on client side only, on server side
+       * there is nothing to report. */
       proxy = INF_SESSION_PROXY(
-        infc_browser_iter_get_sync_in(INFC_BROWSER(browser), browser_iter));
+        infc_browser_iter_get_sync_in(INFC_BROWSER(browser), browser_iter)
+      );
+
       if(proxy == NULL)
         proxy = inf_browser_get_session(browser, browser_iter);
 
@@ -1549,7 +1557,7 @@ inf_gtk_browser_view_row_activated(GtkTreeView* tree_view,
       -1
     );
 
-    if(browser != NULL)
+    if(browser != NULL && INFC_IS_BROWSER(browser))
     {
       g_assert(infc_browser_get_connection(INFC_BROWSER(browser)) != NULL);
       g_object_get(G_OBJECT(browser), "status", &browser_status, NULL);
@@ -2109,10 +2117,14 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
           }
         }
       }
-      else
+      else if(INFC_IS_BROWSER(browser))
       {
         /* Show progress of either sync-in or synchronization
-         * due to subscription. */
+         * due to subscription. Note that we only do this for
+         * InfcBrowser objects, not InfdDirectory objects. For an
+         * InfdDirectory during sync-in the node is not yet created,
+         * and synchronization to individual clients we cannot show
+         * easily in the GUI. */
         proxy = INF_SESSION_PROXY(
           infc_browser_iter_get_sync_in(INFC_BROWSER(browser), browser_iter));
         if(proxy == NULL)

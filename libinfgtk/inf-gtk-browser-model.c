@@ -262,7 +262,7 @@ inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
   InfGtkBrowserModelIface* iface;
 
   g_return_val_if_fail(INF_GTK_IS_BROWSER_MODEL(model), FALSE);
-  g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
+  g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(tree_iter != NULL, FALSE);
 
   iface = INF_GTK_BROWSER_MODEL_GET_IFACE(model);

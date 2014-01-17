@@ -111,7 +111,7 @@ inf_gtk_browser_store_find_item_by_connection(InfGtkBrowserStore* store,
 
   for(item = priv->first_item; item != NULL; item = item->next)
   {
-    if(item->browser != NULL)
+    if(item->browser != NULL && INFC_IS_BROWSER(item->browser))
     {
       browser = INFC_BROWSER(item->browser);
       if(infc_browser_get_connection(browser) == connection)
