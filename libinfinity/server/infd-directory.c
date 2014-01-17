@@ -2987,6 +2987,8 @@ infd_directory_node_explore(InfdDirectory* directory,
     g_ptr_array_add(acls, sheet_set);
   }
 
+  node->shared.subdir.explored = TRUE;
+
   g_free(path);
   if(request != NULL) infd_explore_request_initiated(request, acls->len);
 
@@ -3071,7 +3073,6 @@ infd_directory_node_explore(InfdDirectory* directory,
 
   infd_storage_node_list_free(list);
 
-  node->shared.subdir.explored = TRUE;
   return TRUE;
 }
 
