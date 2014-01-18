@@ -98,6 +98,7 @@ infd_note_plugin_chat_session_read(InfdStorage* storage,
     "InfChat",
     path,
     "r",
+    NULL,
     error
   );
 
@@ -188,6 +189,7 @@ infd_note_plugin_chat_session_write(InfdStorage* storage,
     "InfChat",
     path,
     "w",
+    NULL,
     error
   );
 

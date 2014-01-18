@@ -68,6 +68,7 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
                              const gchar* identifier,
                              const gchar* path,
                              const gchar* mode,
+                             gchar** full_path,
                              GError** error);
 
 G_END_DECLS

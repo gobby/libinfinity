@@ -1027,7 +1027,7 @@ infd_filesystem_storage_get_type(void)
  * given directory on the file system. The directory is created if it does
  * not exist.
  *
- * Return Value: A new #InfdFilesystemStorage.
+ * Returns: A new #InfdFilesystemStorage.
  **/
 InfdFilesystemStorage*
 infd_filesystem_storage_new(const gchar* root_directory)
@@ -1047,20 +1047,26 @@ infd_filesystem_storage_new(const gchar* root_directory)
  * infd_filesystem_storage_open:
  * @storage: A #InfdFilesystemStorage.
  * @identifier: The type of node to open.
- * @path: Tha path to open.
+ * @path: The path to open, in UTF-8.
  * @mode: Either "r" for reading or "w" for writing.
+ * @full_path: Return location of the full filename, or %NULL.
  * @error: Location to store error information, if any.
  *
  * Opens a file in the given path within the storage's root directory. If
  * the file exists already, and @mode is set to "w", the file is overwritten.
  *
- * Return Value: A stream for the open file. Close with fclose().
+ * If @full_path is not %NULL, then it will be set to a newly allocated
+ * string which contains the full name of the opened file, in the Glib file
+ * name encoding. Note that @full_path will also be set if the function fails.
+ *
+ * Returns: A stream for the open file. Close with fclose().
  **/
 FILE*
 infd_filesystem_storage_open(InfdFilesystemStorage* storage,
                              const gchar* identifier,
                              const gchar* path,
                              const gchar* mode,
+                             gchar** full_path,
                              GError** error)
 {
   InfdFilesystemStoragePrivate* priv;
@@ -1101,7 +1107,11 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
     res = fdopen(fd, mode);
 #endif
   save_errno = errno;
-  g_free(full_name);
+
+  if(full_path != NULL)
+    *full_path = full_name;
+  else
+    g_free(full_name);
 
   if(res == NULL)
   {

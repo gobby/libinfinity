@@ -290,6 +290,7 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     "InfText",
     path,
     "r",
+    NULL,
     error
   );
 
@@ -454,6 +455,7 @@ infd_note_plugin_text_session_write(InfdStorage* storage,
     "InfText",
     path,
     "w",
+    NULL,
     error
   );
 
