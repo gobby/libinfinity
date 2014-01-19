@@ -25,6 +25,7 @@ libinftext_0_6_la_HEADERS = \
 	inf-text-default-delete-operation.h \
 	inf-text-default-insert-operation.h \
 	inf-text-delete-operation.h \
+	inf-text-filesystem-format.h \
 	inf-text-insert-operation.h \
 	inf-text-move-operation.h \
 	inf-text-operations.h \
@@ -40,6 +41,7 @@ libinftext_0_6_la_SOURCES = \
 	inf-text-default-delete-operation.c \
 	inf-text-default-insert-operation.c \
 	inf-text-delete-operation.c \
+	inf-text-filesystem-format.c \
 	inf-text-insert-operation.c \
 	inf-text-move-operation.c \
 	inf-text-remote-delete-operation.c \

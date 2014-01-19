@@ -236,3 +236,10 @@ INF_TEXT_TYPE_CHUNK
 inf_text_chunk_get_type
 </SECTION>
 
+<SECTION>
+<FILE>inf-text-filesystem-format</FILE>
+<TITLE>InfTextFilesystemFormat</TITLE>
+InfTextFilesystemFormatError
+inf_text_filesystem_format_read
+inf_text_filesystem_format_write
+</SECTION>

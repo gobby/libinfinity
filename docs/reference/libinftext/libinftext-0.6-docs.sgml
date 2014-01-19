@@ -29,5 +29,6 @@
     <xi:include href="xml/inf-text-default-insert-operation.xml"/>
     <xi:include href="xml/inf-text-remote-delete-operation.xml"/>
     <xi:include href="xml/inf-text-move-operation.xml"/>
+    <xi:include href="xml/inf-text-filesystem-format.xml"/>
   </chapter>
 </book>
