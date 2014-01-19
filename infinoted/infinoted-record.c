@@ -115,6 +115,7 @@ static void
 infinoted_record_directory_subscribe_session_cb(InfBrowser* browser,
                                                 const InfBrowserIter* iter,
                                                 InfSessionProxy* proxy,
+                                                InfRequest* request,
                                                 gpointer user_data)
 {
   InfinotedRecord* record;

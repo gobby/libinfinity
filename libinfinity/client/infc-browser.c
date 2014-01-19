@@ -597,24 +597,34 @@ infc_browser_session_remove_session(InfcBrowser* browser,
 
 static void
 infc_browser_node_register(InfcBrowser* browser,
-                           InfcBrowserNode* node)
+                           InfcBrowserNode* node,
+                           InfcNodeRequest* request)
 {
   InfBrowserIter iter;
   iter.node_id = node->id;
   iter.node = node;
 
-  inf_browser_node_added(INF_BROWSER(browser), &iter);
+  inf_browser_node_added(
+    INF_BROWSER(browser),
+    &iter,
+    INF_NODE_REQUEST(request)
+  );
 }
 
 static void
 infc_browser_node_unregister(InfcBrowser* browser,
-                             InfcBrowserNode* node)
+                             InfcBrowserNode* node,
+                             InfcNodeRequest* request)
 {
   InfBrowserIter iter;
   iter.node_id = node->id;
   iter.node = node;
 
-  inf_browser_node_removed(INF_BROWSER(browser), &iter);
+  inf_browser_node_removed(
+    INF_BROWSER(browser),
+    &iter,
+    INF_NODE_REQUEST(request)
+  );
 }
 
 /* Required by infc_browser_node_free */
@@ -783,16 +793,6 @@ infc_browser_node_free(InfcBrowser* browser,
 
   g_free(node->name);
   g_slice_free(InfcBrowserNode, node);
-}
-
-static gboolean
-infc_browser_node_remove(InfcBrowser* browser,
-                         InfcBrowserNode* node,
-                         GError** error)
-{
-  infc_browser_node_unregister(browser, node);
-  infc_browser_node_free(browser, node);
-  return TRUE;
 }
 
 /*
@@ -1026,7 +1026,7 @@ infc_browser_disconnected(InfcBrowser* browser)
 
   if(priv->root != NULL)
   {
-    infc_browser_node_unregister(browser, priv->root);
+    infc_browser_node_unregister(browser, priv->root, NULL);
     infc_browser_node_free(browser, priv->root);
     priv->root = NULL;
   }
@@ -1760,13 +1760,27 @@ infc_browser_sync_in_synchronization_failed_cb(InfSession* session,
                                                gpointer user_data)
 {
   InfcBrowserSyncIn* sync_in;
+  InfcBrowser* browser;
+  InfcNodeRequest* request;
+  InfcBrowserNode* node;
+
   sync_in = (InfcBrowserSyncIn*)user_data;
 
   /* Ignore if this affects the synchronization to another connection */
   if(connection != sync_in->connection) return;
 
-  infc_browser_node_remove(sync_in->browser, sync_in->node, NULL);
-  infc_browser_remove_sync_in(sync_in->browser, sync_in);
+  browser = sync_in->browser;
+  node = sync_in->node;
+
+  g_object_ref(browser);
+
+  /* The request for the sync-in was already considered successful, now that
+   * the synchronization failed we remove the node again without request */
+  infc_browser_remove_sync_in(browser, sync_in);
+  infc_browser_node_unregister(browser, node, NULL);
+  infc_browser_node_free(browser, node);
+
+  g_object_unref(browser);
 }
 
 static void
@@ -1862,6 +1876,7 @@ infc_browser_remove_sync_in(InfcBrowser* browser,
 static InfcBrowserNode*
 infc_browser_node_add_subdirectory(InfcBrowser* browser,
                                    InfcBrowserNode* parent,
+                                   InfcNodeRequest* request,
                                    guint id,
                                    const gchar* name,
                                    const InfAclSheetSet* sheet_set)
@@ -1882,7 +1897,7 @@ infc_browser_node_add_subdirectory(InfcBrowser* browser,
     sheet_set
   );
 
-  infc_browser_node_register(browser, node);
+  infc_browser_node_register(browser, node, request);
 
   return node;
 }
@@ -1890,6 +1905,7 @@ infc_browser_node_add_subdirectory(InfcBrowser* browser,
 static InfcBrowserNode*
 infc_browser_node_add_note(InfcBrowser* browser,
                            InfcBrowserNode* parent,
+                           InfcNodeRequest* request,
                            guint id,
                            const gchar* name,
                            const gchar* type,
@@ -1924,7 +1940,7 @@ infc_browser_node_add_note(InfcBrowser* browser,
     );
   }
 
-  infc_browser_node_register(browser, node);
+  infc_browser_node_register(browser, node, request);
   return node;
 }
 
@@ -2229,6 +2245,7 @@ infc_browser_create_group_from_xml(InfcBrowser* browser,
 static gboolean
 infc_browser_subscribe_session(InfcBrowser* browser,
                                InfcBrowserNode* node,
+                               InfcNodeRequest* request,
                                InfCommunicationJoinedGroup* group,
                                InfXmlConnection* connection,
                                gboolean initial_sync)
@@ -2284,7 +2301,8 @@ infc_browser_subscribe_session(InfcBrowser* browser,
   inf_browser_subscribe_session(
     INF_BROWSER(browser),
     &iter,
-    INF_SESSION_PROXY(proxy)
+    INF_SESSION_PROXY(proxy),
+    INF_REQUEST(request)
   );
 
   /* The default handler refs the proxy */
@@ -2465,9 +2483,15 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   priv->status = INF_BROWSER_OPEN;
   g_object_notify(G_OBJECT(browser), "status");
 
-  inf_browser_acl_account_added(INF_BROWSER(browser), default_account);
+  inf_browser_acl_account_added(INF_BROWSER(browser), default_account, NULL);
   if(priv->local_account != default_account)
-    inf_browser_acl_account_added(INF_BROWSER(browser), priv->local_account);
+  {
+    inf_browser_acl_account_added(
+      INF_BROWSER(browser),
+      priv->local_account,
+      NULL
+    );
+  }
 
   return TRUE;
 }
@@ -2699,6 +2723,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
     node = infc_browser_node_add_subdirectory(
       browser,
       parent,
+      request,
       id,
       (const gchar*)name,
       sheet_set
@@ -2796,6 +2821,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
       node = infc_browser_node_add_note(
         browser,
         parent,
+        request,
         id,
         (const gchar*)name,
         (const gchar*)type,
@@ -3031,21 +3057,19 @@ infc_browser_handle_remove_node(InfcBrowser* browser,
     NULL
   );
 
+  g_assert(request == NULL || INFC_IS_NODE_REQUEST(request));
+
+  infc_browser_node_unregister(browser, node, INFC_NODE_REQUEST(request));
+
   if(request != NULL)
   {
-    g_assert(INFC_IS_NODE_REQUEST(request));
     iter.node_id = node->id;
     iter.node = node;
     inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
-  /* TODO: Make sure to not finish the request successfully before being
-   * sure this returned TRUE. However, when the node is removed we no longer
-   * can have an iter to it. */
-  if(infc_browser_node_remove(browser, node, error) == FALSE)
-    return FALSE;
-
+  infc_browser_node_free(browser, node);
   return TRUE;
 }
 
@@ -3661,7 +3685,12 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
   if(acl_request != NULL)
     infc_acl_account_list_request_progress(acl_request);
 
-  inf_browser_acl_account_added(INF_BROWSER(browser), account);
+  inf_browser_acl_account_added(
+    INF_BROWSER(browser),
+    account,
+    INF_ACL_ACCOUNT_LIST_REQUEST(acl_request)
+  );
+
   return TRUE;
 }
 
@@ -3729,7 +3758,13 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
     if(sheet_set->n_sheets > 0)
     {
       node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
-      inf_browser_acl_changed(INF_BROWSER(browser), &iter, sheet_set);
+
+      inf_browser_acl_changed(
+        INF_BROWSER(browser),
+        &iter,
+        sheet_set,
+        INF_NODE_REQUEST(request)
+      );
     }
 
     inf_acl_sheet_set_free(sheet_set);
@@ -4130,7 +4165,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
       inf_browser_subscribe_session(
         INF_BROWSER(browser),
         NULL,
-        INF_SESSION_PROXY(proxy)
+        INF_SESSION_PROXY(proxy),
+        INF_REQUEST(subreq->shared.chat.request)
       );
 
       /* The default handler refs the proxy */
@@ -4156,6 +4192,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
         infc_browser_subscribe_session(
           browser,
           subreq->shared.session.node,
+          subreq->shared.session.request,
           subreq->shared.session.subscription_group,
           connection,
           TRUE
@@ -4195,6 +4232,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
         node = infc_browser_node_add_note(
           browser,
           subreq->shared.add_node.parent,
+          subreq->shared.add_node.request,
           node_id,
           subreq->shared.add_node.name,
           subreq->shared.add_node.plugin->note_type,
@@ -4208,6 +4246,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
         infc_browser_subscribe_session(
           browser,
           node,
+          subreq->shared.add_node.request,
           subreq->shared.add_node.subscription_group,
           connection,
           FALSE
@@ -4267,6 +4306,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
         node = infc_browser_node_add_note(
           browser,
           subreq->shared.sync_in.parent,
+          subreq->shared.sync_in.request,
           node_id,
           subreq->shared.sync_in.name,
           subreq->shared.sync_in.plugin->note_type,
@@ -4311,7 +4351,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           inf_browser_subscribe_session(
             INF_BROWSER(browser),
             &iter,
-            INF_SESSION_PROXY(proxy)
+            INF_SESSION_PROXY(proxy),
+            INF_REQUEST(subreq->shared.sync_in.request)
           );
         }
 
@@ -4351,7 +4392,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 static void
 infc_browser_browser_subscribe_session(InfBrowser* browser,
                                        const InfBrowserIter* iter,
-                                       InfSessionProxy* proxy)
+                                       InfSessionProxy* proxy,
+                                       InfRequest* request)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;

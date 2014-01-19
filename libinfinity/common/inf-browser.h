@@ -131,14 +131,17 @@ struct _InfBrowserIface {
                 const GError* error);
 
   void (*node_added)(InfBrowser* browser,
-                     const InfBrowserIter* iter);
+                     const InfBrowserIter* iter,
+                     InfNodeRequest* request);
 
   void (*node_removed)(InfBrowser* browser,
-                       const InfBrowserIter* iter);
+                       const InfBrowserIter* iter,
+                       InfNodeRequest* request);
 
   void (*subscribe_session)(InfBrowser* browser,
                             const InfBrowserIter* iter,
-                            InfSessionProxy* proxy);
+                            InfSessionProxy* proxy,
+                            InfRequest* request);
 
   void (*unsubscribe_session)(InfBrowser* browser,
                               const InfBrowserIter* iter,
@@ -149,11 +152,13 @@ struct _InfBrowserIface {
                         InfRequest* request);
 
   void (*acl_account_added)(InfBrowser* browser,
-                            const InfAclAccount* account);
+                            const InfAclAccount* account,
+                            InfAclAccountListRequest* request);
 
   void (*acl_changed)(InfBrowser* browser,
                       const InfBrowserIter* iter,
-                      const InfAclSheetSet* sheet_set);
+                      const InfAclSheetSet* sheet_set,
+                      InfNodeRequest* request);
 
   /* Virtual functions */
 
@@ -404,16 +409,19 @@ inf_browser_error(InfBrowser* browser,
 
 void
 inf_browser_node_added(InfBrowser* browser,
-                       const InfBrowserIter* iter);
+                       const InfBrowserIter* iter,
+                       InfNodeRequest* request);
 
 void
 inf_browser_node_removed(InfBrowser* browser,
-                         const InfBrowserIter* iter);
+                         const InfBrowserIter* iter,
+                         InfNodeRequest* request);
 
 void
 inf_browser_subscribe_session(InfBrowser* browser,
                               const InfBrowserIter* iter,
-                              InfSessionProxy* proxy);
+                              InfSessionProxy* proxy,
+                              InfRequest* request);
 
 void
 inf_browser_unsubscribe_session(InfBrowser* browser,
@@ -427,12 +435,14 @@ inf_browser_begin_request(InfBrowser* browser,
 
 void
 inf_browser_acl_account_added(InfBrowser* browser,
-                              const InfAclAccount* account);
+                              const InfAclAccount* account,
+                              InfAclAccountListRequest* request);
 
 void
 inf_browser_acl_changed(InfBrowser* browser,
                         const InfBrowserIter* iter,
-                        const InfAclSheetSet* update);
+                        const InfAclSheetSet* update,
+                        InfNodeRequest* request);
 
 G_END_DECLS
 

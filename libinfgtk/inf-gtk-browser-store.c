@@ -173,11 +173,13 @@ inf_gtk_browser_store_browser_error_cb(InfBrowser* browser,
 static void
 inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
                                     InfBrowserIter* iter,
+                                    InfNodeRequest* request,
                                     gpointer user_data);
 
 static void
 inf_gtk_browser_store_node_removed_cb(InfBrowser* browser,
                                       InfBrowserIter* iter,
+                                      InfNodeRequest* request,
                                       gpointer user_data);
 
 static void
@@ -698,6 +700,7 @@ inf_gtk_browser_store_browser_notify_status_cb(GObject* object,
 static void
 inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
                                     InfBrowserIter* iter,
+                                    InfNodeRequest* request,
                                     gpointer user_data)
 {
   InfGtkBrowserStore* store;
@@ -759,6 +762,7 @@ inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
 static void
 inf_gtk_browser_store_node_removed_cb(InfBrowser* browser,
                                       InfBrowserIter* iter,
+                                      InfNodeRequest* request,
                                       gpointer user_data)
 {
   InfGtkBrowserStore* store;

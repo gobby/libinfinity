@@ -112,6 +112,7 @@ inf_browser_base_init(gpointer g_class)
      * InfBrowser::node-added:
      * @browser: The #InfBrowser object emitting the signal.
      * @iter: An iterator pointing to the newly added node.
+     * @request: The request that lead to the node being added, or %NULL.
      *
      * This signal is emitted when a node is added to the browser.
      */
@@ -121,16 +122,18 @@ inf_browser_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, node_added),
       NULL, NULL,
-      inf_marshal_VOID__BOXED,
+      inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
-      1,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+      2,
+      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_NODE_REQUEST
     );
 
     /**
      * InfBrowser::node-removed:
      * @browser: The #InfBrowser object emitting the signal.
      * @iter: An iterator pointing to the node being removed.
+     * @request: The request that lead to the node being removed, or %NULL.
      *
      * This signal is emitted just before a node is being removed from the
      * browser. The iterator is still valid and can be used to access the
@@ -142,10 +145,11 @@ inf_browser_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, node_removed),
       NULL, NULL,
-      inf_marshal_VOID__BOXED,
+      inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
-      1,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
+      2,
+      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_NODE_REQUEST
     );
 
     /**
@@ -154,11 +158,14 @@ inf_browser_base_init(gpointer g_class)
      * @iter: An iterator pointing to the node to which a subscription.
      * was made, or %NULL.
      * @session: The subscribed session.
+     * @request: The request that lead to the subscription, or %NULL.
      *
      * This signal is emitted whenever the browser is subscribed to a session.
      * This can happen as a result of a inf_browser_subscribe() or
      * inf_browser_add_note() call, but it is also possible that a
      * subscription is initiated without user interaction.
+     *
+     * When @iter is non-%NULL then @request is a #InfNodeRequest.
      *
      * If @iter is %NULL the session was a global session and not attached to
      * a particular node.
@@ -169,11 +176,12 @@ inf_browser_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, subscribe_session),
       NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
+      inf_marshal_VOID__BOXED_OBJECT_OBJECT,
       G_TYPE_NONE,
-      2,
+      3,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      G_TYPE_OBJECT
+      INF_TYPE_SESSION_PROXY,
+      INF_TYPE_REQUEST
     );
 
     /**
@@ -248,6 +256,7 @@ inf_browser_base_init(gpointer g_class)
      * InfBrowser::acl-account-added:
      * @browser: The #InfBrowser object emitting the signal.
      * @account: The new #InfAclAccount.
+     * @request: The request which lead to the newly added account, or %NULL.
      *
      * This signal is emitted whenever a new account is added to the browser,
      * and the account list has been queried with
@@ -259,10 +268,11 @@ inf_browser_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, acl_account_added),
       NULL, NULL,
-      inf_marshal_VOID__BOXED,
+      inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
-      1,
-      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
+      2,
+      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_ACL_ACCOUNT_LIST_REQUEST
     );
 
     /**
@@ -270,6 +280,7 @@ inf_browser_base_init(gpointer g_class)
      * @browser: The #InfBrowser object emitting the signal.
      * @iter: An iterator pointing to the node for which the ACL has changed.
      * @sheet_set: A #InfAclSheetSet containing the changed ACL sheets.
+     * @request: The request which lead to the ACL being changed, or %NULL.
      *
      * This signal is emitted whenever an ACL for the node @iter points to
      * are changed. This signal is emitted whenever the ACL change for the
@@ -286,11 +297,12 @@ inf_browser_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, acl_changed),
       NULL, NULL,
-      inf_marshal_VOID__BOXED_BOXED,
+      inf_marshal_VOID__BOXED_BOXED_OBJECT,
       G_TYPE_NONE,
-      2,
+      3,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_ACL_SHEET_SET | G_SIGNAL_TYPE_STATIC_SCOPE
+      INF_TYPE_ACL_SHEET_SET | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_NODE_REQUEST
     );
 
     g_object_interface_install_property(
@@ -1493,22 +1505,27 @@ inf_browser_error(InfBrowser* browser,
  * inf_browser_node_added:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to the newly added node.
+ * @request: The #InfNodeRequest that was used to add or explore the node,
+ * or %NULL.
  *
  * This function emits the #InfBrowser::node-added signal on @browser. It is
  * meant to be used by interface implementations only.
  */
 void
 inf_browser_node_added(InfBrowser* browser,
-                       const InfBrowserIter* iter)
+                       const InfBrowserIter* iter,
+                       InfNodeRequest* request)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(iter != NULL);
+  g_return_if_fail(request == NULL || INF_IS_NODE_REQUEST(request));
 
   g_signal_emit(
     browser,
     browser_signals[NODE_ADDED],
     0,
-    iter
+    iter,
+    request
   );
 }
 
@@ -1516,22 +1533,26 @@ inf_browser_node_added(InfBrowser* browser,
  * inf_browser_node_removed:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to the node to be removed.
+ * @request: The #InfNodeRequest that was used to delete the node, or %NULL.
  *
  * This function emits the #InfBrowser::node-removed signal on @browser. It
  * is meant to be used by interface implementations only.
  */
 void
 inf_browser_node_removed(InfBrowser* browser,
-                         const InfBrowserIter* iter)
+                         const InfBrowserIter* iter,
+                         InfNodeRequest* request)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(iter != NULL);
+  g_return_if_fail(request == NULL || INF_IS_NODE_REQUEST(request));
 
   g_signal_emit(
     browser,
     browser_signals[NODE_REMOVED],
     0,
-    iter
+    iter,
+    request
   );
 }
 
@@ -1541,24 +1562,29 @@ inf_browser_node_removed(InfBrowser* browser,
  * @iter: A #InfBrowserIter pointing to the node to whose session a
  * subscription was made, or %NULL.
  * @proxy: A session proxy for the newly subscribed session.
+ * @request: The #InfRequest that was used to initiate the subscription,
+ * or %NULL.
  *
  * This function emits the #InfBrowser::subscribe-session signal on @browser.
- * It is meant to be used by interface implementations only.
+ * It is meant to be used by interface implementations only. 
  */
 void
 inf_browser_subscribe_session(InfBrowser* browser,
                               const InfBrowserIter* iter,
-                              InfSessionProxy* proxy)
+                              InfSessionProxy* proxy,
+                              InfRequest* request)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(G_IS_OBJECT(proxy));
+  g_return_if_fail(request == NULL || INF_IS_REQUEST(request));
 
   g_signal_emit(
     browser,
     browser_signals[SUBSCRIBE_SESSION],
     0,
     iter,
-    proxy
+    proxy,
+    request
   );
 }
 
@@ -1626,23 +1652,31 @@ inf_browser_begin_request(InfBrowser* browser,
 /**
  * inf_browser_acl_account_added:
  * @browser: A #InfBrowser.
- * @InfAclAccount: The new #InfAclAccount.
+ * @account: The new #InfAclAccount.
+ * @request: The #InfAclAccountListRequest that was used to query the
+ * account list, or %NULL.
  *
  * This function emits the #InfBrowser::acl-account-added signal on @browser.
  * It is meant to be used by interface implementations only.
  */
 void
 inf_browser_acl_account_added(InfBrowser* browser,
-                              const InfAclAccount* account)
+                              const InfAclAccount* account,
+                              InfAclAccountListRequest* request)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(account != NULL);
+
+  g_return_if_fail(
+    request == NULL || INF_IS_ACL_ACCOUNT_LIST_REQUEST(request)
+  );
 
   g_signal_emit(
     browser,
     browser_signals[ACL_ACCOUNT_ADDED],
     0,
-    account
+    account,
+    request
   );
 }
 
@@ -1651,6 +1685,7 @@ inf_browser_acl_account_added(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to the node for which the ACL has changed.
  * @sheet_set: A #InfAclSheetSet containing the changed ACL sheets.
+ * @request: The #InfNodeRequest that was used to change the ACL, or %NULL.
  *
  * This function emits the #InfBrowser::acl-changed signal on @browser. It
  * is meant to be used by interface implementations only.
@@ -1658,18 +1693,21 @@ inf_browser_acl_account_added(InfBrowser* browser,
 void
 inf_browser_acl_changed(InfBrowser* browser,
                         const InfBrowserIter* iter,
-                        const InfAclSheetSet* sheet_set)
+                        const InfAclSheetSet* sheet_set,
+                        InfNodeRequest* request)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(iter != NULL);
   g_return_if_fail(sheet_set != NULL);
+  g_return_if_fail(request == NULL || INF_IS_NODE_REQUEST(request));
 
   g_signal_emit(
     browser,
     browser_signals[ACL_CHANGED],
     0,
     iter,
-    sheet_set
+    sheet_set,
+    request
   );
 }
 

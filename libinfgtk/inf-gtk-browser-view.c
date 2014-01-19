@@ -650,6 +650,7 @@ static void
 inf_gtk_browser_view_subscribe_session_cb(InfBrowser* browser,
                                           InfBrowserIter* iter,
                                           InfSessionProxy* proxy,
+                                          InfRequest* request,
                                           gpointer user_data)
 {
   InfGtkBrowserViewBrowser* view_browser;

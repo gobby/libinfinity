@@ -404,6 +404,7 @@ infinoted_plugin_directory_sync_buffer_text_erased_cb(InfTextBuffer* buffer,
 static void
 infinoted_plugin_directory_sync_node_removed_cb(InfBrowser* browser,
                                                 const InfBrowserIter* iter,
+                                                InfNodeRequest* request,
                                                 gpointer user_data)
 {
   InfinotedPluginDirectorySync* plugin;

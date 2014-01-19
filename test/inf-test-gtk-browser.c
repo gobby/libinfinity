@@ -614,6 +614,7 @@ static void
 on_subscribe_session(InfcBrowser* browser,
                      const InfBrowserIter* iter,
                      InfcSessionProxy* proxy,
+                     InfRequest* request,
                      gpointer user_data)
 {
   GtkWidget* window;

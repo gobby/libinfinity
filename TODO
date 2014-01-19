@@ -70,3 +70,7 @@ Others:
  * Change the storage interface to be asynchronous
    * take the chance and require gio
      * port the network code to gnio?
+ * Also create InfcRequests for remotely triggered actions that do not come
+   with a local request. Such requests would have the "seq" property set to
+   some invalid value. Basically all operations made should have a request
+   for them, the parameter should never be NULL.

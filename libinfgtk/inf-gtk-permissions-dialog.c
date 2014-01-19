@@ -331,6 +331,7 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
 static void
 inf_gtk_permissions_dialog_node_removed_cb(InfBrowser* browser,
                                            const InfBrowserIter* iter,
+                                           InfNodeRequest* request,
                                            gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
@@ -346,6 +347,7 @@ inf_gtk_permissions_dialog_node_removed_cb(InfBrowser* browser,
 static void
 inf_gtk_permissions_dialog_acl_account_added_cb(InfBrowser* browser,
                                                 const InfAclAccount* account,
+                                                InfAclAccountListRequest* req,
                                                 gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
@@ -395,6 +397,7 @@ static void
 inf_gtk_permissions_dialog_acl_changed_cb(InfBrowser* browser,
                                           const InfBrowserIter* iter,
                                           const InfAclSheetSet* sheet_set,
+                                          InfNodeRequest* request,
                                           gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;

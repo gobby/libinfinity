@@ -500,6 +500,7 @@ static void
 infinoted_plugin_manager_subscribe_session_cb(InfBrowser* browser,
                                               const InfBrowserIter* iter,
                                               InfSessionProxy* proxy,
+                                              InfRequest* request,
                                               gpointer user_data)
 {
   InfinotedPluginManager* manager;
