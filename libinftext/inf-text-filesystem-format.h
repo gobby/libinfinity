@@ -50,6 +50,7 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
                                 InfIo* io,
                                 InfCommunicationManager* manager,
                                 const gchar* path,
+                                InfUserTable* user_table,
                                 InfTextBuffer* buffer,
                                 GError** error);
 

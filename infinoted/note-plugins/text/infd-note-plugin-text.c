@@ -64,11 +64,13 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
                                    gpointer user_data,
                                    GError** error)
 {
+  InfUserTable* user_table;
   InfTextBuffer* buffer;
   InfTextSession* session;
 
   g_assert(INFD_IS_FILESYSTEM_STORAGE(storage));
 
+  user_table = inf_user_table_new();
   buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
 
   session = inf_text_filesystem_format_read(
@@ -76,11 +78,14 @@ infd_note_plugin_text_session_read(InfdStorage* storage,
     io,
     manager,
     path,
+    user_table,
     buffer,
     error
   );
 
+  g_object_unref(user_table);
   g_object_unref(buffer);
+
   return INF_SESSION(session);
 }
 

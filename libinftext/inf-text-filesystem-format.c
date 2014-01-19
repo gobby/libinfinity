@@ -285,15 +285,18 @@ inf_text_filesystem_format_write_foreach_user_func(InfUser* user,
  * @io: The mainloop object to use for the new session.
  * @manager: The #InfCommunicationManager to use for the new session.
  * @path: Storage path to retrieve the session from.
+ * @user_table: An empty #InfUserTable to use as the new session's user table.
  * @buffer: An empty #InfTextBuffer to use as the new session's buffer.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Reads a text session from @path in storage. The file is expected to have
  * been saved with inf_text_filesystem_format_write() before. A new session
- * is created with the given @io and @manager. The @buffer parameter should be
- * an empty #InfTextBuffer, and the document will be written into this buffer.
- * It is then used as the buffer behind the newly created session. If the
- * function fails %FALSE is returned and @error is set.
+ * is created with the given @io and @manager. The @user_table parameter
+ * should be an empty user table that will be used for the session, and the
+ * @buffer parameter should be an empty #InfTextBuffer, and the document will
+ * be written into this buffer. It is then used as the buffer behind the
+ * newly created session. If the function fails %FALSE is returned and @error
+ * is set.
  *
  * Returns: A new #InfTextSession, or %NULL on error.
  */
@@ -302,10 +305,10 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
                                 InfIo* io,
                                 InfCommunicationManager* manager,
                                 const gchar* path,
+                                InfUserTable* user_table,
                                 InfTextBuffer* buffer,
                                 GError** error)
 {
-  InfUserTable* user_table;
   InfTextSession* session;
 
   FILE* stream;
@@ -359,8 +362,6 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
   );
 
   g_free(uri);
-
-  user_table = inf_user_table_new();
 
   if(doc == NULL)
   {
@@ -430,10 +431,7 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
   }
 
   if(result == FALSE)
-  {
-    g_object_unref(user_table);
     return NULL;
-  }
 
   session = inf_text_session_new_with_user_table(
     manager,
@@ -445,7 +443,6 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
     NULL
   );
 
-  g_object_unref(user_table);
   return session;
 }
 
