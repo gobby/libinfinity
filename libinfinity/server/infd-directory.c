@@ -1417,7 +1417,7 @@ infd_directory_create_session_proxy(InfdDirectory* directory,
     priv->io,
     priv->communication_manager,
     status,
-    sync_g,
+    INF_COMMUNICATION_GROUP(sync_g),
     sync_conn,
     plugin->user_data
   );

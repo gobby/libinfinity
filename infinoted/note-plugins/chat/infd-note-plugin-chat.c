@@ -37,7 +37,7 @@ static InfSession*
 infd_note_plugin_chat_session_new(InfIo* io,
                                   InfCommunicationManager* manager,
                                   InfSessionStatus status,
-                                  InfCommunicationHostedGroup* sync_group,
+                                  InfCommunicationGroup* sync_group,
                                   InfXmlConnection* sync_connection,
                                   gpointer user_data)
 {

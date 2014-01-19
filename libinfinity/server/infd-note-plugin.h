@@ -35,7 +35,7 @@ G_BEGIN_DECLS
 typedef InfSession*(*InfdNotePluginSessionNew)(InfIo*,
                                                InfCommunicationManager*,
                                                InfSessionStatus,
-                                               InfCommunicationHostedGroup*,
+                                               InfCommunicationGroup*,
                                                InfXmlConnection*,
                                                gpointer);
 

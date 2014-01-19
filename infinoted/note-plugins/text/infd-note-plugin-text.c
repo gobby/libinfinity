@@ -33,7 +33,7 @@ static InfSession*
 infd_note_plugin_text_session_new(InfIo* io,
                                   InfCommunicationManager* manager,
                                   InfSessionStatus status,
-                                  InfCommunicationHostedGroup* sync_group,
+                                  InfCommunicationGroup* sync_group,
                                   InfXmlConnection* sync_connection,
                                   gpointer user_data)
 {
@@ -47,11 +47,12 @@ infd_note_plugin_text_session_new(InfIo* io,
     buffer,
     io,
     status,
-    INF_COMMUNICATION_GROUP(sync_group),
+    sync_group,
     sync_connection
   );
 
   g_object_unref(buffer);
+
   return INF_SESSION(session);
 }
 

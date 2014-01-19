@@ -65,7 +65,7 @@ static InfSession*
 inf_test_gtk_browser_session_new(InfIo* io,
                                  InfCommunicationManager* manager,
                                  InfSessionStatus status,
-                                 InfCommunicationJoinedGroup* sync_group,
+                                 InfCommunicationGroup* sync_group,
                                  InfXmlConnection* sync_connection,
                                  gpointer user_data)
 {
@@ -84,7 +84,7 @@ inf_test_gtk_browser_session_new(InfIo* io,
     io,
     user_table,
     status,
-    INF_COMMUNICATION_GROUP(sync_group),
+    sync_group,
     sync_connection
   );
 

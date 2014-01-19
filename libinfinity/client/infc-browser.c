@@ -2250,7 +2250,7 @@ infc_browser_subscribe_session(InfcBrowser* browser,
       priv->io,
       priv->communication_manager,
       INF_SESSION_SYNCHRONIZING,
-      group,
+      INF_COMMUNICATION_GROUP(group),
       connection,
       node->shared.known.plugin->user_data
     );
