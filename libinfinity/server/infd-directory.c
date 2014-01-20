@@ -2358,14 +2358,17 @@ infd_directory_add_sync_in(InfdDirectory* directory,
   
   g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
-  g_signal_connect(
+  /* Connect after the default handler, so that the session status has changed
+   * before our callbacks are called. This makes sure that the session status
+   * is RUNNING when we emit the "subscribe-session" signal. */
+  g_signal_connect_after(
     G_OBJECT(session),
     "synchronization-failed",
     G_CALLBACK(infd_directory_sync_in_synchronization_failed_cb),
     sync_in
   );
 
-  g_signal_connect(
+  g_signal_connect_after(
     G_OBJECT(session),
     "synchronization-complete",
     G_CALLBACK(infd_directory_sync_in_synchronization_complete_cb),
