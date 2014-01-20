@@ -40,8 +40,11 @@ typedef struct _InfRequestIface InfRequestIface;
 
 /**
  * InfRequestIface:
+ * @fail: Virtual function for notification when the request failed.
+ * @is_local: Virtual function to check whether the request is local or
+ * remote.
  *
- * Default signal handlers for the #InfRequest interface.
+ * Virtual functions of the #InfRequest interface.
  */
 struct _InfRequestIface {
   /*< private >*/
@@ -50,6 +53,8 @@ struct _InfRequestIface {
   /*< public >*/
   void (*fail)(InfRequest* request,
                const GError* error);
+
+  gboolean (*is_local)(InfRequest* request);
 };
 
 GType
@@ -58,6 +63,9 @@ inf_request_get_type(void) G_GNUC_CONST;
 void
 inf_request_fail(InfRequest* request,
                  const GError* error);
+
+gboolean
+inf_request_is_local(InfRequest* request);
 
 G_END_DECLS
 

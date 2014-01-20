@@ -162,6 +162,17 @@ infc_acl_account_list_request_request_fail(InfRequest* request,
   );
 }
 
+static gboolean
+infc_acl_account_list_request_is_local(InfRequest* request)
+{
+  InfcAclAccountListRequestPrivate* priv;
+  priv = INFC_ACL_ACCOUNT_LIST_REQUEST_PRIVATE(request);
+
+  if(priv->seq == 0)
+    return FALSE;
+  return TRUE;
+}
+
 static void
 infc_acl_account_list_request_class_init(gpointer g_class,
                                          gpointer class_data)
@@ -193,6 +204,7 @@ infc_acl_account_list_request_request_init(gpointer g_iface,
   iface = (InfRequestIface*)g_iface;
 
   iface->fail = infc_acl_account_list_request_request_fail;
+  iface->is_local = infc_acl_account_list_request_is_local;
 }
 
 static void

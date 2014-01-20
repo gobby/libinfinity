@@ -155,9 +155,20 @@ infc_node_request_request_fail(InfRequest* request,
   inf_node_request_finished(INF_NODE_REQUEST(request), NULL, error);
 }
 
+static gboolean
+infc_node_request_is_local(InfRequest* request)
+{
+  InfcNodeRequestPrivate* priv;
+  priv = INFC_NODE_REQUEST_PRIVATE(request);
+
+  if(priv->seq == 0)
+    return FALSE;
+  return TRUE;
+}
+
 static void
 infc_node_request_node_request_finished(InfNodeRequest* request,
-                                        InfBrowserIter* iter,
+                                        const InfBrowserIter* iter,
                                         const GError* error)
 {
   InfcNodeRequest* node_request;
@@ -212,6 +223,7 @@ infc_node_request_request_init(gpointer g_iface,
   iface = (InfRequestIface*)g_iface;
 
   iface->fail = infc_node_request_request_fail;
+  iface->is_local = infc_node_request_is_local;
 }
 
 static void

@@ -152,6 +152,17 @@ infc_chat_request_request_fail(InfRequest* request,
   );
 }
 
+static gboolean
+infc_chat_request_is_local(InfRequest* request)
+{
+  InfcChatRequestPrivate* priv;
+  priv = INFC_CHAT_REQUEST_PRIVATE(request);
+
+  if(priv->seq == 0)
+    return FALSE;
+  return TRUE;
+}
+
 static void
 infc_chat_request_class_init(gpointer g_class,
                              gpointer class_data)
@@ -204,6 +215,7 @@ infc_chat_request_request_init(gpointer g_iface,
   iface = (InfRequestIface*)g_iface;
 
   iface->fail = infc_chat_request_request_fail;
+  iface->is_local = infc_chat_request_is_local;
 }
 
 static void

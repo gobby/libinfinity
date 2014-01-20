@@ -25,10 +25,10 @@
  * @see_also: #InfBrowserRequest
  * @stability: Unstable
  *
- * #InfRequest represents an asynchronous operation. This is a basic interface
- * which allows to query the type of the operation. More specific operations
- * are possible on more specialized interfaces or classes, such as
- * #InfBrowserRequest or #InfcUserRequest.
+ * #InfRequest represents a potentially asynchronous operation. This is a
+ * basic interface which allows to query the type of the operation.
+ * More specific operations are possible on more specialized interfaces
+ * or classes, such as #InfBrowserRequest or #InfcUserRequest.
  */
 
 #include <libinfinity/common/inf-request.h>
@@ -113,7 +113,30 @@ inf_request_fail(InfRequest* request,
   iface = INF_REQUEST_GET_IFACE(request);
   g_return_if_fail(iface->fail != NULL);
 
-  return iface->fail(request, error);
+  iface->fail(request, error);
+}
+
+/**
+ * inf_request_is_local:
+ * @request: A #InfRequest.
+ *
+ * Returns whether @request is local or remote. A local request was triggered
+ * by a local API call, whereas a remote request was caused by a remote
+ * participant from the network.
+ *
+ * Returns: %TRUE if the request is local and %FALSE if it is remote.
+ */
+gboolean
+inf_request_is_local(InfRequest* request)
+{
+  InfRequestIface* iface;
+
+  g_return_val_if_fail(INF_IS_REQUEST(request), FALSE);
+
+  iface = INF_REQUEST_GET_IFACE(request);
+  g_return_val_if_fail(iface->is_local != NULL, FALSE);
+
+  return iface->is_local(request);
 }
 
 /* vim:set et sw=2 ts=2: */

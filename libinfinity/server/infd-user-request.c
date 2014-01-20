@@ -132,6 +132,17 @@ infd_user_request_request_fail(InfRequest* request,
   inf_user_request_finished(INF_USER_REQUEST(request), NULL, error);
 }
 
+static gboolean
+infd_user_request_request_is_local(InfRequest* request)
+{
+  /* TODO: At the moment, user requests are always local, because no requests
+   * are generated for remote user joins. We should change this, and create
+   * such requests also for remote user joins, and set the "requestor"
+   * property for InfdUserRequest just the same way we do it for
+   * InfdNodeRequest. */
+  return TRUE;
+}
+
 static void
 infd_user_request_class_init(gpointer g_class,
                              gpointer class_data)
@@ -160,6 +171,7 @@ infd_user_request_request_init(gpointer g_iface,
   iface = (InfRequestIface*)g_iface;
 
   iface->fail = infd_user_request_request_fail;
+  iface->is_local = infd_user_request_request_is_local;
 }
 
 static void

@@ -173,6 +173,17 @@ infd_node_request_request_fail(InfRequest* request,
   inf_node_request_finished(INF_NODE_REQUEST(request), NULL, error);
 }
 
+static gboolean
+infd_node_request_request_is_local(InfRequest* request)
+{
+  InfdNodeRequestPrivate* priv;
+  priv = INFD_NODE_REQUEST_PRIVATE(request);
+
+  if(priv->requestor != NULL)
+    return FALSE;
+  return TRUE;
+}
+
 static void
 infd_node_request_class_init(gpointer g_class,
                              gpointer class_data)
@@ -228,6 +239,7 @@ infd_node_request_request_init(gpointer g_iface,
   iface = (InfRequestIface*)g_iface;
 
   iface->fail = infd_node_request_request_fail;
+  iface->is_local = infd_node_request_request_is_local;
 }
 
 static void

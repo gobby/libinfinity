@@ -153,9 +153,20 @@ infc_certificate_request_request_fail(InfRequest* request,
   );
 }
 
+static gboolean
+infc_certificate_request_is_local(InfRequest* request)
+{
+  InfcCertificateRequestPrivate* priv;
+  priv = INFC_CERTIFICATE_REQUEST_PRIVATE(request);
+
+  if(priv->seq == 0)
+    return FALSE;
+  return TRUE;
+}
+
 static void
 infc_certificate_request_class_init(gpointer g_class,
-                             gpointer class_data)
+                                    gpointer class_data)
 {
   GObjectClass* object_class;
   InfcCertificateRequestClass* request_class;
@@ -206,6 +217,7 @@ infc_certificate_request_request_init(gpointer g_iface,
   iface = (InfRequestIface*)g_iface;
 
   iface->fail = infc_certificate_request_request_fail;
+  iface->is_local = infc_certificate_request_is_local;
 }
 
 static void
