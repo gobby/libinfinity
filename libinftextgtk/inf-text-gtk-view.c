@@ -1938,8 +1938,8 @@ inf_text_gtk_view_dispose(GObject* object)
   view = INF_TEXT_GTK_VIEW(object);
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
 
-  inf_text_gtk_view_set_view(view, NULL);
   inf_text_gtk_view_set_user_table(view, NULL);
+  inf_text_gtk_view_set_view(view, NULL);
 
   g_assert(priv->active_user == NULL);
   g_assert(priv->users == NULL);

@@ -346,18 +346,27 @@ static void
 inf_text_gtk_viewport_user_invalidate_user_area(InfTextGtkViewportUser* user)
 {
   InfTextGtkViewportPrivate* priv;
+  GtkWidget* scrollbar;
+
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(user->viewport);
 
   if(priv->show_user_markers &&
      user->rectangle.width > 0 && user->rectangle.height > 0)
   {
-    gtk_widget_queue_draw_area(
-      gtk_scrolled_window_get_vscrollbar(priv->scroll),
-      user->rectangle.x,
-      user->rectangle.y,
-      user->rectangle.width,
-      user->rectangle.height
-    );
+    scrollbar = gtk_scrolled_window_get_vscrollbar(priv->scroll);
+
+    /* During destruction of the widget it can happen that there is no
+     * vertical scrollbar anymore, so check for it here. */
+    if(scrollbar != NULL)
+    {
+      gtk_widget_queue_draw_area(
+        scrollbar,
+        user->rectangle.x,
+        user->rectangle.y,
+        user->rectangle.width,
+        user->rectangle.height
+      );
+    }
   }
 }
 
@@ -943,8 +952,8 @@ inf_text_gtk_viewport_dispose(GObject* object)
   viewport = INF_TEXT_GTK_VIEWPORT(object);
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
 
-  inf_text_gtk_viewport_set_scrolled_window(viewport, NULL);
   inf_text_gtk_viewport_set_user_table(viewport, NULL);
+  inf_text_gtk_viewport_set_scrolled_window(viewport, NULL);
 
   g_assert(priv->active_user == NULL);
   g_assert(priv->users == NULL);
