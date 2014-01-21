@@ -529,12 +529,15 @@ inf_gtk_io_io_remove_watch(InfIo* io,
                            InfIoWatch* watch)
 {
   InfGtkIoPrivate* priv;
+  guint watch_id;
 
   priv = INF_GTK_IO_PRIVATE(io);
   g_mutex_lock(priv->mutex);
 
   g_assert(g_slist_find(priv->watches, watch) != NULL);
+
   priv->watches = g_slist_remove(priv->watches, watch);
+  watch_id = watch->id;
 
   if(watch->executing)
   {
@@ -555,7 +558,7 @@ inf_gtk_io_io_remove_watch(InfIo* io,
   /* Note that we can do this safely without having locked the mutex because
    * if the callback function is currently being invoked then its user_data
    * will not be destroyed immediately. */
-  g_source_remove(watch->id);
+  g_source_remove(watch_id);
 }
 
 static InfIoTimeout*
