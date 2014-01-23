@@ -1385,28 +1385,6 @@ infd_directory_create_session_proxy_with_group(InfdDirectory* directory,
 }
 
 static InfdSessionProxy*
-infd_directory_create_session_proxy_for_node(InfdDirectory* directory,
-                                             guint node_id,
-                                             InfSession* session)
-{
-  InfdDirectoryPrivate* priv;
-  InfCommunicationHostedGroup* group;
-  InfdSessionProxy* proxy;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
-  group = infd_directory_create_subscription_group(directory, node_id);
-
-  proxy = infd_directory_create_session_proxy_with_group(
-    directory,
-    session,
-    group
-  );
-
-  g_object_unref(group);
-  return proxy;
-}
-
-static InfdSessionProxy*
 infd_directory_create_session_proxy(InfdDirectory* directory,
                                     const InfdNotePlugin* plugin,
                                     InfSessionStatus status,
@@ -2527,10 +2505,10 @@ infd_directory_add_subreq_add_node(InfdDirectory* directory,
 
   if(session != NULL)
   {
-    proxy = infd_directory_create_session_proxy_for_node(
+    proxy = infd_directory_create_session_proxy_with_group(
       directory,
-      node_id,
-      session
+      session,
+      group
     );
   }
   else
@@ -3217,10 +3195,10 @@ infd_directory_node_add_note(InfdDirectory* directory,
     {
       if(session != NULL)
       {
-        proxy = infd_directory_create_session_proxy_for_node(
+        proxy = infd_directory_create_session_proxy_with_group(
           directory,
-          node_id,
-          session
+          session,
+          group
         );
       }
       else
@@ -3514,6 +3492,7 @@ infd_directory_node_make_session(InfdDirectory* directory,
   InfSession* session;
   GSList* item;
   InfdDirectorySubreq* subreq;
+  InfCommunicationHostedGroup* group;
   InfdSessionProxy* proxy;
   gchar* path;
 
@@ -3561,12 +3540,15 @@ infd_directory_node_make_session(InfdDirectory* directory,
    * as we just read it from the storage, we don't consider it modified. */
   inf_buffer_set_modified(inf_session_get_buffer(session), FALSE);
 
-  proxy = infd_directory_create_session_proxy_for_node(
+  group = infd_directory_create_subscription_group(directory, node->id);
+
+  proxy = infd_directory_create_session_proxy_with_group(
     directory,
-    node->id,
-    session
+    session,
+    group
   );
 
+  g_object_unref(group);
   g_object_unref(session);
 
   return proxy;
