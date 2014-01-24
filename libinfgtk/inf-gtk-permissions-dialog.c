@@ -239,6 +239,8 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
       INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
       NULL
     );
+
+    account = NULL;
   }
   else
   {
