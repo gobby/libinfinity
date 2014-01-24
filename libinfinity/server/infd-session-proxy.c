@@ -698,6 +698,16 @@ infd_session_proxy_session_close_cb(InfSession* session,
     );
   }
 
+  /* Set local users to unavailable */
+  while(priv->local_users != NULL)
+  {
+    g_object_set(
+      G_OBJECT(priv->local_users->data),
+      "status", INF_USER_UNAVAILABLE,
+      NULL
+    );
+  }
+
   g_object_unref(priv->subscription_group);
   priv->subscription_group = NULL;
 }

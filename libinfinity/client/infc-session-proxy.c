@@ -298,7 +298,8 @@ infc_session_proxy_release_connection(InfcSessionProxy* proxy)
   priv->request_manager = NULL;
 
   /* Set status of all users to unavailable */
-  /* TODO: Keep local users available */
+  /* TODO: Keep local users available if session is still open. Then make
+   * sure when the session is closed everybody is set to unavailable. */
   inf_user_table_foreach_user(
     inf_session_get_user_table(priv->session),
     infc_session_proxy_release_connection_foreach_user_func,
