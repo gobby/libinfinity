@@ -292,6 +292,7 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
 {
   InfCommunicationCentralMethodPrivate* priv;
   InfCommunicationObject* target;
+  InfCommunicationGroup* group;
   InfCommunicationScope scope;
   gchar* remote_id;
   gchar* publisher_id;
@@ -299,9 +300,17 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
   target = inf_communication_group_get_target(priv->group);
+  group = priv->group;
 
   if(target != NULL)
   {
+    /* Make sure we stay alive, so we can check our connection list and
+     * publisher flag after the callback. This means we also need to keep
+     * group and target alive, to ensure the correct deinitialization order */
+    g_object_ref(target);
+    g_object_ref(group);
+    g_object_ref(method);
+
     scope = inf_communication_object_received(
       target,
       connection,
@@ -323,6 +332,10 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
         }
       }
     }
+
+    g_object_unref(method);
+    g_object_unref(group);
+    g_object_unref(target);
 
     return scope;
   }
