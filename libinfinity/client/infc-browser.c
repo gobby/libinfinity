@@ -596,6 +596,36 @@ infc_browser_session_remove_session(InfcBrowser* browser,
 }
 
 static void
+infc_browser_session_remove_child_sessions(InfcBrowser* browser,
+                                           InfcBrowserNode* node)
+{
+  InfcBrowserNode* child;
+
+  switch(node->type)
+  {
+  case INFC_BROWSER_NODE_SUBDIRECTORY:
+    if(node->shared.subdir.explored == TRUE)
+    {
+      for(child = node->shared.subdir.child;
+          child != NULL;
+          child = child->next)
+      {
+        infc_browser_session_remove_child_sessions(browser, child);
+      }
+    }
+
+    break;
+  case INFC_BROWSER_NODE_NOTE_KNOWN:
+    if(node->shared.known.session != NULL)
+      infc_browser_session_remove_session(browser, node);
+    break;
+  case INFC_BROWSER_NODE_NOTE_UNKNOWN:
+    /* nothing to do */
+    break;
+  }
+}
+
+static void
 infc_browser_node_register(InfcBrowser* browser,
                            InfcBrowserNode* node,
                            InfcNodeRequest* request)
@@ -662,9 +692,8 @@ infc_browser_node_free(InfcBrowser* browser,
 
     break;
   case INFC_BROWSER_NODE_NOTE_KNOWN:
-    if(node->shared.known.session != NULL)
-      infc_browser_session_remove_session(browser, node);
-
+    /* Is first unlinked with remove_child_sessions */
+    g_assert(node->shared.known.session == NULL);
     break;
   case INFC_BROWSER_NODE_NOTE_UNKNOWN:
     g_free(node->shared.unknown.type);
@@ -1026,6 +1055,7 @@ infc_browser_disconnected(InfcBrowser* browser)
 
   if(priv->root != NULL)
   {
+    infc_browser_session_remove_child_sessions(browser, priv->root);
     infc_browser_node_unregister(browser, priv->root, NULL);
     infc_browser_node_free(browser, priv->root);
     priv->root = NULL;
@@ -3059,17 +3089,23 @@ infc_browser_handle_remove_node(InfcBrowser* browser,
 
   g_assert(request == NULL || INFC_IS_NODE_REQUEST(request));
 
-  infc_browser_node_unregister(browser, node, INFC_NODE_REQUEST(request));
-
   if(request != NULL)
   {
+    g_object_ref(request);
+
     iter.node_id = node->id;
     iter.node = node;
     inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
+  infc_browser_session_remove_child_sessions(browser, node);
+  infc_browser_node_unregister(browser, node, INFC_NODE_REQUEST(request));
   infc_browser_node_free(browser, node);
+
+  if(request != NULL)
+    g_object_unref(request);
+
   return TRUE;
 }
 
