@@ -193,6 +193,22 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
         );
       }
     }
+    else
+    {
+      /* No memmoving has to be performed */
+      g_assert(n == 0 || n == priv->num_messages);
+
+      if(n == 0)
+      {
+        g_assert(priv->first_message > 0);
+        --priv->first_message;
+      }
+      else
+      {
+        g_assert(priv->first_message + priv->num_messages <
+                 priv->alloc_messages);
+      }
+    }
 
     ++ priv->num_messages;
   }
