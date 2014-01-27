@@ -37,10 +37,18 @@ typedef struct _InfinotedPluginLinekeeperSessionInfo
   InfinotedPluginLinekeeperSessionInfo;
 struct _InfinotedPluginLinekeeperSessionInfo {
   InfinotedPluginLinekeeper* plugin;
+  InfSessionProxy* proxy;
   InfUserRequest* request;
   InfUser* user;
   InfTextBuffer* buffer;
   InfIoDispatch* dispatch;
+};
+
+typedef struct _InfinotedPluginLinekeeperHasAvailableUsersData
+  InfinotedPluginLinekeeperHasAvailableUsersData;
+struct _InfinotedPluginLinekeeperHasAvailableUsersData {
+  InfUser* own_user;
+  gboolean has_available_user;
 };
 
 static gboolean
@@ -215,6 +223,79 @@ infinoted_plugin_linekeeper_text_erased_cb(InfTextBuffer* buffer,
 }
 
 static void
+infinoted_plugin_linekeeper_remove_user(
+  InfinotedPluginLinekeeperSessionInfo* info)
+{
+  InfSession* session;
+  InfUser* user;
+
+  g_assert(info->user != NULL);
+  g_assert(info->request == NULL);
+
+  user = info->user;
+  info->user = NULL;
+
+  g_object_get(G_OBJECT(info->proxy), "session", &session, NULL); 
+
+  inf_session_set_user_status(session, user, INF_USER_UNAVAILABLE);
+  g_object_unref(user);
+
+  inf_signal_handlers_disconnect_by_func(
+    G_OBJECT(info->buffer),
+    G_CALLBACK(infinoted_plugin_linekeeper_text_inserted_cb),
+    info
+  );
+
+  inf_signal_handlers_disconnect_by_func(
+    G_OBJECT(info->buffer),
+    G_CALLBACK(infinoted_plugin_linekeeper_text_erased_cb),
+    info
+  );
+
+  g_object_unref(session);
+}
+
+static void
+infinoted_plugin_linekeeper_has_available_users_foreach_func(InfUser* user,
+                                                             gpointer udata)
+{
+  InfinotedPluginLinekeeperHasAvailableUsersData* data;
+  data = (InfinotedPluginLinekeeperHasAvailableUsersData*)udata;
+
+  /* Return TRUE if there are non-local users connected */
+  if(user != data->own_user &&
+     inf_user_get_status(user) != INF_USER_UNAVAILABLE &&
+     (inf_user_get_flags(user) & INF_USER_LOCAL) == 0)
+  {
+    data->has_available_user = TRUE;
+  }
+}
+
+static gboolean
+infinoted_plugin_linekeeper_has_available_users(
+  InfinotedPluginLinekeeperSessionInfo* info)
+{
+  InfinotedPluginLinekeeperHasAvailableUsersData data;
+  InfSession* session;
+  InfUserTable* user_table;
+
+  g_object_get(G_OBJECT(info->proxy), "session", &session, NULL); 
+  user_table = inf_session_get_user_table(session);
+
+  data.has_available_user = FALSE;
+  data.own_user = info->user;
+
+  inf_user_table_foreach_user(
+    user_table,
+    infinoted_plugin_linekeeper_has_available_users_foreach_func,
+    &data
+  );
+
+  g_object_unref(session);
+  return data.has_available_user;
+}
+
+static void
 infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
                                          InfUser* user,
                                          const GError* error,
@@ -254,6 +335,89 @@ infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
       G_CALLBACK(infinoted_plugin_linekeeper_text_erased_cb),
       info
     );
+
+    /* It can happen that while the request is being processed, the situation
+     * changes again. */
+    if(infinoted_plugin_linekeeper_has_available_users(info) == FALSE)
+    {
+      infinoted_plugin_linekeeper_remove_user(info);
+    }
+  }
+}
+
+static void
+infinoted_plugin_linekeeper_add_available_user_cb(InfUserTable* user_table,
+                                                  InfUser* user,
+                                                  gpointer user_data);
+
+static void
+infinoted_plugin_linekeeper_join_user(
+  InfinotedPluginLinekeeperSessionInfo* info)
+{
+  InfSession* session;
+  InfUserTable* user_table;
+
+  g_assert(info->user == NULL);
+  g_assert(info->request == NULL);
+
+  g_object_get(G_OBJECT(info->proxy), "session", &session, NULL);
+  user_table = inf_session_get_user_table(session);
+
+  /* Prevent double user join attempt by blocking the callback for
+   * joining our local user. */
+  g_signal_handlers_block_by_func(
+    user_table,
+    G_CALLBACK(infinoted_plugin_linekeeper_add_available_user_cb),
+    info
+  );
+
+  info->request = inf_text_session_join_user(
+    info->proxy,
+    "LineKeeper",
+    INF_USER_ACTIVE,
+    0.0,
+    inf_text_buffer_get_length(info->buffer),
+    0,
+    infinoted_plugin_linekeeper_user_join_cb,
+    info
+  );
+
+  g_signal_handlers_unblock_by_func(
+    user_table,
+    G_CALLBACK(infinoted_plugin_linekeeper_add_available_user_cb),
+    info
+  );
+
+  g_object_unref(session);
+}
+
+static void
+infinoted_plugin_linekeeper_add_available_user_cb(InfUserTable* user_table,
+                                                  InfUser* user,
+                                                  gpointer user_data)
+{
+  InfinotedPluginLinekeeperSessionInfo* info;
+  info = (InfinotedPluginLinekeeperSessionInfo*)user_data;
+
+  if(info->user == NULL && info->request == NULL &&
+     infinoted_plugin_linekeeper_has_available_users(info))
+  {
+    infinoted_plugin_linekeeper_join_user(info);
+  }
+}
+
+static void
+infinoted_plugin_linekeeper_remove_available_user_cb(InfUserTable* user_table,
+                                                     InfUser* user,
+                                                     gpointer user_data)
+{
+  InfinotedPluginLinekeeperSessionInfo* info;
+  info = (InfinotedPluginLinekeeperSessionInfo*)user_data;
+
+  if(info->user != NULL &&
+     !infinoted_plugin_linekeeper_has_available_users(info))
+  {
+    infinoted_plugin_linekeeper_remove_user(info);
   }
 }
 
@@ -265,30 +429,43 @@ infinoted_plugin_linekeeper_session_added(const InfBrowserIter* iter,
 {
   InfinotedPluginLinekeeperSessionInfo* info;
   InfSession* session;
+  InfUserTable* user_table;
   InfUserRequest* request;
 
   info = (InfinotedPluginLinekeeperSessionInfo*)session_info;
 
   info->plugin = (InfinotedPluginLinekeeper*)plugin_info;
+  info->proxy = proxy;
   info->request = NULL;
   info->user = NULL;
   info->dispatch = NULL;
+  g_object_ref(proxy);
 
   g_object_get(G_OBJECT(proxy), "session", &session, NULL);
   g_assert(inf_session_get_status(session) == INF_SESSION_RUNNING);
   info->buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
   g_object_ref(info->buffer);
 
-  info->request = inf_text_session_join_user(
-    proxy,
-    "LineKeeper",
-    INF_USER_ACTIVE,
-    0.0,
-    inf_text_buffer_get_length(info->buffer),
-    0,
-    infinoted_plugin_linekeeper_user_join_cb,
+  user_table = inf_session_get_user_table(session);
+
+  g_signal_connect(
+    G_OBJECT(user_table),
+    "add-available-user",
+    G_CALLBACK(infinoted_plugin_linekeeper_add_available_user_cb),
     info
   );
+
+  g_signal_connect(
+    G_OBJECT(user_table),
+    "remove-available-user",
+    G_CALLBACK(infinoted_plugin_linekeeper_remove_available_user_cb),
+    info
+  );
+
+  /* Only join a user when there are other nonlocal users available, so that
+   * we don't keep the session from going idle. */
+  if(infinoted_plugin_linekeeper_has_available_users(info) == TRUE)
+    infinoted_plugin_linekeeper_join_user(info);
 
   g_object_unref(session);
 }
@@ -301,8 +478,25 @@ infinoted_plugin_linekeeper_session_removed(const InfBrowserIter* iter,
 {
   InfinotedPluginLinekeeperSessionInfo* info;
   InfdDirectory* directory;
+  InfSession* session;
+  InfUserTable* user_table;
 
   info = (InfinotedPluginLinekeeperSessionInfo*)session_info;
+
+  g_object_get(G_OBJECT(info->proxy), "session", &session, NULL);
+  user_table = inf_session_get_user_table(session);
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(user_table),
+    G_CALLBACK(infinoted_plugin_linekeeper_add_available_user_cb),
+    info
+  );
+
+  g_signal_handlers_disconnect_by_func(
+    G_OBJECT(user_table),
+    G_CALLBACK(infinoted_plugin_linekeeper_remove_available_user_cb),
+    info
+  );
 
   if(info->dispatch != NULL)
   {
@@ -311,31 +505,15 @@ infinoted_plugin_linekeeper_session_removed(const InfBrowserIter* iter,
     info->dispatch = NULL;
   }
 
-  if(info->buffer != NULL)
-  {
-    if(info->user != NULL)
-    {
-      inf_signal_handlers_disconnect_by_func(
-        G_OBJECT(info->buffer),
-        G_CALLBACK(infinoted_plugin_linekeeper_text_inserted_cb),
-        info
-      );
-
-      inf_signal_handlers_disconnect_by_func(
-        G_OBJECT(info->buffer),
-        G_CALLBACK(infinoted_plugin_linekeeper_text_erased_cb),
-        info
-      );
-    }
-
-    g_object_unref(info->buffer);
-    info->buffer = NULL;
-  }
-
   if(info->user != NULL)
   {
-    g_object_unref(info->user);
-    info->user = NULL;
+    infinoted_plugin_linekeeper_remove_user(info);
+  }
+
+  if(info->buffer != NULL)
+  {
+    g_object_unref(info->buffer);
+    info->buffer = NULL;
   }
 
   if(info->request != NULL)
@@ -348,6 +526,11 @@ infinoted_plugin_linekeeper_session_removed(const InfBrowserIter* iter,
 
     info->request = NULL;
   }
+
+  g_assert(info->proxy != NULL);
+  g_object_unref(info->proxy);
+
+  g_object_unref(session);
 }
 
 static const InfinotedParameterInfo INFINOTED_PLUGIN_LINEKEEPER_OPTIONS[] = {
