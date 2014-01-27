@@ -65,7 +65,6 @@ infinoted_0_6_SOURCES = \
 	infinoted-note-plugin.c \
 	infinoted-options.c \
 	infinoted-pam.c \
-	infinoted-record.c \
 	infinoted-run.c \
 	infinoted-signal.c \
 	infinoted-startup.c \
@@ -77,7 +76,6 @@ noinst_HEADERS = \
 	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-pam.h \
-	infinoted-record.h \
 	infinoted-run.h \
 	infinoted-signal.h \
 	infinoted-startup.h \

@@ -3,6 +3,7 @@ plugin_LTLIBRARIES = \
 	libinfinoted-plugin-directory-sync.la \
 	libinfinoted-plugin-linekeeper.la \
 	libinfinoted-plugin-logging.la \
+	libinfinoted-plugin-record.la \
 	libinfinoted-plugin-transformation-protection.la
 
 plugindir = ${libdir}/infinoted-$(LIBINFINITY_API_VERSION)/plugins
@@ -48,6 +49,14 @@ libinfinoted_plugin_logging_la_LIBADD = \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 
+libinfinoted_plugin_record_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(inftext_LIBS) \
+	$(infinity_LIBS)
+
 libinfinoted_plugin_transformation_protection_la_LIBADD = \
 	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
@@ -67,6 +76,9 @@ libinfinoted_plugin_linekeeper_la_SOURCES = \
 
 libinfinoted_plugin_logging_la_SOURCES = \
 	infinoted-plugin-logging.c
+
+libinfinoted_plugin_record_la_SOURCES = \
+	infinoted-plugin-record.c
 
 libinfinoted_plugin_transformation_protection_la_SOURCES = \
 	infinoted-plugin-transformation-protection.c

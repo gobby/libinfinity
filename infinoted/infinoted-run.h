@@ -22,7 +22,6 @@
 
 #include <libinfinity/inf-config.h>
 
-#include <infinoted/infinoted-record.h>
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-plugin-manager.h>
 #include <infinoted/infinoted-traffic-logger.h>
@@ -51,8 +50,6 @@ struct _InfinotedRun {
   InfdXmppServer* xmpp4;
   InfdXmppServer* xmpp6;
   gnutls_dh_params_t dh_params;
-
-  InfinotedRecord* record;
 
 #ifdef LIBINFINITY_HAVE_AVAHI
   InfDiscoveryAvahi* avahi;

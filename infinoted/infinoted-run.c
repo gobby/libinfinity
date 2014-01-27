@@ -345,8 +345,6 @@ infinoted_run_new(InfinotedStartup* startup,
 
   inf_ip_address_free(address);
 
-  run->record = infinoted_record_new(run->directory);
-
   if(startup->options->traffic_log_directory != NULL)
   {
     run->traffic_logger = infinoted_traffic_logger_new(
@@ -407,9 +405,6 @@ infinoted_run_free(InfinotedRun* run)
     infinoted_plugin_manager_free(run->plugin_manager);
     run->plugin_manager = NULL;
   }
-
-  if(run->record != NULL)
-    infinoted_record_free(run->record);
 
   /* TODO: Unregister certificate callbacks */
 
