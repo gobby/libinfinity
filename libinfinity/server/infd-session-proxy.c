@@ -154,6 +154,22 @@ infd_session_proxy_find_subscription(InfdSessionProxy* proxy,
   return (InfdSessionProxySubscription*)item->data;
 }
 
+static gboolean
+infd_session_proxy_check_idle(InfdSessionProxy* proxy)
+{
+  InfdSessionProxyPrivate* priv;
+  priv = INFD_SESSION_PROXY_PRIVATE(proxy);
+
+  if(priv->subscriptions == NULL &&
+     priv->local_users == NULL &&
+     !inf_session_has_synchronizations(priv->session))
+  {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
 static void
 infd_session_proxy_user_notify_status_cb(InfUser* user,
                                          const GParamSpec* pspec,
@@ -183,6 +199,12 @@ infd_session_proxy_user_notify_status_cb(InfUser* user,
     else
     {
       priv->local_users = g_slist_remove(priv->local_users, user);
+
+      if(priv->idle == FALSE && infd_session_proxy_check_idle(proxy) == TRUE)
+      {
+        priv->idle = TRUE;
+        g_object_notify(G_OBJECT(proxy), "idle");
+      }
     }
 
     inf_signal_handlers_disconnect_by_func(
@@ -455,6 +477,12 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   else
   {
     priv->local_users = g_slist_prepend(priv->local_users, user);
+
+    if(priv->idle == TRUE)
+    {
+      priv->idle = FALSE;
+      g_object_notify(G_OBJECT(proxy), "idle");
+    }
   }
 
   return user;
@@ -602,6 +630,7 @@ infd_session_proxy_synchronization_complete_cb(InfSession* session,
 
   /* Set idle if no more synchronizations are running */
   if(!priv->idle && priv->subscriptions == NULL &&
+     priv->local_users == NULL &&
      !inf_session_has_synchronizations(session))
   {
     priv->idle = TRUE;
@@ -756,8 +785,11 @@ infd_session_proxy_constructor(GType type,
   g_assert(priv->session != NULL);
 
   /* Set unidle when session is currently being synchronized */
-  if(inf_session_get_status(priv->session) == INF_SESSION_SYNCHRONIZING)
+  if(inf_session_get_status(priv->session) == INF_SESSION_SYNCHRONIZING ||
+     priv->local_users != NULL)
+  {
     priv->idle = FALSE;
+  }
 
   /* TODO: We could perhaps optimize by only setting the subscription
    * group when there are subscribed connections. */
@@ -1002,7 +1034,7 @@ infd_session_proxy_add_subscription(InfdSessionProxy* proxy,
   subscription = infd_session_proxy_subscription_new(connection, seq_id);
   priv->subscriptions = g_slist_prepend(priv->subscriptions, subscription);
 
-  if(priv->idle)
+  if(priv->idle == TRUE)
   {
     priv->idle = FALSE;
     g_object_notify(G_OBJECT(proxy), "idle");
@@ -1038,8 +1070,7 @@ infd_session_proxy_remove_subscription(InfdSessionProxy* proxy,
   priv->subscriptions = g_slist_remove(priv->subscriptions, subscr);
   infd_session_proxy_subscription_free(subscr);
 
-  if(!priv->idle && priv->subscriptions == NULL &&
-     !inf_session_has_synchronizations(priv->session))
+  if(priv->idle == FALSE && infd_session_proxy_check_idle(proxy) == TRUE)
   {
     priv->idle = TRUE;
     g_object_notify(G_OBJECT(proxy), "idle");
