@@ -24,7 +24,6 @@
 
 #include <infinoted/infinoted-startup.h>
 #include <infinoted/infinoted-plugin-manager.h>
-#include <infinoted/infinoted-traffic-logger.h>
 
 #include <libinfinity/server/infd-server-pool.h>
 #include <libinfinity/server/infd-directory.h>
@@ -44,8 +43,6 @@ struct _InfinotedRun {
   InfdServerPool* pool;
 
   InfinotedPluginManager* plugin_manager;
-
-  InfinotedTrafficLogger* traffic_logger;
 
   InfdXmppServer* xmpp4;
   InfdXmppServer* xmpp6;

@@ -371,41 +371,6 @@ infinoted_config_reload(InfinotedRun* run,
   infinoted_plugin_manager_free(run->plugin_manager);
   run->plugin_manager = plugin_manager;
 
-  if(run->traffic_logger != NULL)
-  {
-    if(startup->options->traffic_log_directory == NULL ||
-       strcmp(run->traffic_logger->path,
-              startup->options->traffic_log_directory) != 0)
-    {
-      infinoted_traffic_logger_free(run->traffic_logger);
-      run->traffic_logger = NULL;
-
-      if(startup->options->traffic_log_directory != NULL)
-      {
-        run->traffic_logger = infinoted_traffic_logger_new(
-          run->directory,
-          startup->log,
-          startup->options->traffic_log_directory
-        );
-      }
-    }
-    else
-    {
-      run->traffic_logger->log = startup->log;
-    }
-  }
-  else
-  {
-    if(startup->options->traffic_log_directory != NULL)
-    {
-      run->traffic_logger = infinoted_traffic_logger_new(
-        run->directory,
-        startup->log,
-        startup->options->traffic_log_directory
-      );
-    }
-  }
-
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   /* Remember whether we have been daemonized; this is not a config file
    * option, so not properly set in our newly created startup. */

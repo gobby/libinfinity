@@ -52,8 +52,6 @@ struct _InfinotedOptions {
 #endif /* LIBINFINITY_HAVE_PAM */
   gchar* ca_list_file;
 
-  gchar* traffic_log_directory;
-
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   gboolean daemonize;
 #endif

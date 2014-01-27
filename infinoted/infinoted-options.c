@@ -189,19 +189,6 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
        "client certificate issued by one of the CAs from this file."),
     N_("CA-FILE"),
   }, {
-    "traffic-log-directory",
-    INFINOTED_PARAMETER_STRING,
-    0,
-    offsetof(InfinotedOptions, traffic_log_directory),
-    infinoted_parameter_convert_filename,
-    0,
-    N_("A directory into which to store the (decrypted) network traffic "
-       "between the server and the clients, with one file for each "
-       "connection. This option should only be used for debugging purposes, "
-       "since it stores the unencrypted network traffic on the server's "
-       "file system."),
-    N_("DIRECTORY")
-  }, {
     NULL,
     0,
     0,
@@ -994,7 +981,6 @@ infinoted_options_new(const gchar* const* config_files,
   options->pam_allowed_groups = NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
   options->ca_list_file = NULL;
-  options->traffic_log_directory = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = FALSE;
@@ -1018,7 +1004,6 @@ infinoted_options_new(const gchar* const* config_files,
 void
 infinoted_options_free(InfinotedOptions* options)
 {
-  g_free(options->traffic_log_directory);
   g_free(options->log_path);
   g_free(options->key_file);
   g_free(options->certificate_file);

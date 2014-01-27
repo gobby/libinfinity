@@ -4,6 +4,7 @@ plugin_LTLIBRARIES = \
 	libinfinoted-plugin-linekeeper.la \
 	libinfinoted-plugin-logging.la \
 	libinfinoted-plugin-record.la \
+	libinfinoted-plugin-traffic-logging.la \
 	libinfinoted-plugin-transformation-protection.la
 
 plugindir = ${libdir}/infinoted-$(LIBINFINITY_API_VERSION)/plugins
@@ -79,6 +80,9 @@ libinfinoted_plugin_logging_la_SOURCES = \
 
 libinfinoted_plugin_record_la_SOURCES = \
 	infinoted-plugin-record.c
+
+libinfinoted_plugin_traffic_logging_la_SOURCES = \
+	infinoted-plugin-traffic-logging.c
 
 libinfinoted_plugin_transformation_protection_la_SOURCES = \
 	infinoted-plugin-transformation-protection.c
