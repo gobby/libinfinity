@@ -190,6 +190,7 @@ inf_browser_base_init(gpointer g_class)
      * @iter: An iterator pointing to the node from which a subscription.
      * was removed, or %NULL.
      * @session: The session to which the subscription was removed.
+     * @request: The request that lead to the unsubscription, or %NULL.
      *
      * This signal is emitted whenever a session is detached from a browser
      * node. This can happen when a subscribed session is closed, or, in
@@ -209,7 +210,8 @@ inf_browser_base_init(gpointer g_class)
      * returns %NULL afterwards, it means the session is no longer connected.
      *
      * If @iter is %NULL the session was a global session and not attached to
-     * a particular node.
+     * a particular node. When @iter is non-%NULL then @request is a
+     * #InfNodeRequest.
      */
     browser_signals[UNSUBSCRIBE_SESSION] = g_signal_new(
       "unsubscribe-session",
@@ -217,11 +219,12 @@ inf_browser_base_init(gpointer g_class)
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, unsubscribe_session),
       NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
+      inf_marshal_VOID__BOXED_OBJECT_OBJECT,
       G_TYPE_NONE,
-      2,
+      3,
       INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      G_TYPE_OBJECT
+      INF_TYPE_SESSION_PROXY,
+      INF_TYPE_REQUEST
     );
 
     /**
@@ -1594,6 +1597,8 @@ inf_browser_subscribe_session(InfBrowser* browser,
  * @iter: A #InfBrowserIter pointing to the node to whose session the
  * subscription was removed, or %NULL.
  * @proxy: A session proxy for the unsubscribed session.
+ * @request: The #InfRequest due to which the session was unsubscribed,
+ * or %NULL.
  *
  * This function emits the #InfBrowser::unsubscribe-session signal on
  * @browser. It is meant to be used by interface implementations only.
@@ -1601,17 +1606,20 @@ inf_browser_subscribe_session(InfBrowser* browser,
 void
 inf_browser_unsubscribe_session(InfBrowser* browser,
                                 const InfBrowserIter* iter,
-                                InfSessionProxy* proxy)
+                                InfSessionProxy* proxy,
+                                InfRequest* request)
 {
   g_return_if_fail(INF_IS_BROWSER(browser));
   g_return_if_fail(G_IS_OBJECT(proxy));
+  g_return_if_fail(request == NULL || INF_IS_REQUEST(request));
 
   g_signal_emit(
     browser,
     browser_signals[UNSUBSCRIBE_SESSION],
     0,
     iter,
-    proxy
+    proxy,
+    request
   );
 }
 

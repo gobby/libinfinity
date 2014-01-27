@@ -559,7 +559,8 @@ infc_browser_session_notify_subscription_group_cb(InfSession* session,
 
 static void
 infc_browser_session_remove_session(InfcBrowser* browser,
-                                    InfcBrowserNode* node)
+                                    InfcBrowserNode* node,
+                                    InfcRequest* request)
 {
   InfSession* session;
   InfcSessionProxy* proxy;
@@ -588,7 +589,8 @@ infc_browser_session_remove_session(InfcBrowser* browser,
   inf_browser_unsubscribe_session(
     INF_BROWSER(browser),
     &iter,
-    INF_SESSION_PROXY(proxy)
+    INF_SESSION_PROXY(proxy),
+    INF_REQUEST(request)
   );
 
   g_object_unref(session);
@@ -597,7 +599,8 @@ infc_browser_session_remove_session(InfcBrowser* browser,
 
 static void
 infc_browser_session_remove_child_sessions(InfcBrowser* browser,
-                                           InfcBrowserNode* node)
+                                           InfcBrowserNode* node,
+                                           InfcRequest* request)
 {
   InfcBrowserNode* child;
 
@@ -610,14 +613,14 @@ infc_browser_session_remove_child_sessions(InfcBrowser* browser,
           child != NULL;
           child = child->next)
       {
-        infc_browser_session_remove_child_sessions(browser, child);
+        infc_browser_session_remove_child_sessions(browser, child, request);
       }
     }
 
     break;
   case INFC_BROWSER_NODE_NOTE_KNOWN:
     if(node->shared.known.session != NULL)
-      infc_browser_session_remove_session(browser, node);
+      infc_browser_session_remove_session(browser, node, request);
     break;
   case INFC_BROWSER_NODE_NOTE_UNKNOWN:
     /* nothing to do */
@@ -878,7 +881,7 @@ infc_browser_session_notify_subscription_group_cb(InfSession* session,
       g_assert(proxy_session == session);
       g_object_unref(proxy_session);
 
-      infc_browser_session_remove_session(browser, node);
+      infc_browser_session_remove_session(browser, node, NULL);
     }
     else
     {
@@ -905,7 +908,8 @@ infc_browser_session_notify_subscription_group_cb(InfSession* session,
       inf_browser_unsubscribe_session(
         INF_BROWSER(browser),
         NULL,
-        INF_SESSION_PROXY(proxy)
+        INF_SESSION_PROXY(proxy),
+        NULL
       );
 
       g_object_unref(proxy);
@@ -1055,7 +1059,7 @@ infc_browser_disconnected(InfcBrowser* browser)
 
   if(priv->root != NULL)
   {
-    infc_browser_session_remove_child_sessions(browser, priv->root);
+    infc_browser_session_remove_child_sessions(browser, priv->root, NULL);
     infc_browser_node_unregister(browser, priv->root, NULL);
     infc_browser_node_free(browser, priv->root);
     priv->root = NULL;
@@ -3099,7 +3103,12 @@ infc_browser_handle_remove_node(InfcBrowser* browser,
     infc_request_manager_remove_request(priv->request_manager, request);
   }
 
-  infc_browser_session_remove_child_sessions(browser, node);
+  infc_browser_session_remove_child_sessions(
+    browser,
+    node,
+    INFC_REQUEST(request)
+  );
+
   infc_browser_node_unregister(browser, node, INFC_NODE_REQUEST(request));
   infc_browser_node_free(browser, node);
 

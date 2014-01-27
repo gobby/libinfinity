@@ -74,8 +74,3 @@ Others:
    with a local request. Such requests would have the "seq" property set to
    some invalid value. Basically all operations made should have a request
    for them, the parameter should never be NULL.
-   * Make sure to first remove all sessions in InfcBrowser, and then
-     unregister the node, not vice versa.
-   * At the same time, add a InfRequest parameter to
-     unsubscribe-session, which would be NULL except a remove-node request has
-     deleted the session.

@@ -356,7 +356,8 @@ infd_directory_node_make_path(InfdDirectoryNode* node,
 /* Required by infd_directory_session_save_timeout_func() */
 static void
 infd_directory_node_unlink_session(InfdDirectory* directory,
-                                   InfdDirectoryNode* node);
+                                   InfdDirectoryNode* node,
+                                   InfdNodeRequest* request);
 
 static void
 infd_directory_session_save_timeout_data_free(gpointer data)
@@ -421,7 +422,8 @@ infd_directory_session_save_timeout_func(gpointer user_data)
   {
     infd_directory_node_unlink_session(
       timeout_data->directory,
-      timeout_data->node
+      timeout_data->node,
+      NULL
     );
   }
 
@@ -1523,7 +1525,8 @@ infd_directory_node_link_session(InfdDirectory* directory,
 
 static void
 infd_directory_node_unlink_session(InfdDirectory* directory,
-                                   InfdDirectoryNode* node)
+                                   InfdDirectoryNode* node,
+                                   InfdNodeRequest* request)
 {
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
@@ -1539,7 +1542,8 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
   inf_browser_unsubscribe_session(
     INF_BROWSER(directory),
     &iter,
-    INF_SESSION_PROXY(node->shared.note.session)
+    INF_SESSION_PROXY(node->shared.note.session),
+    INF_REQUEST(request)
   );
 }
 
@@ -1547,6 +1551,7 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
 static void
 infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
                                           InfdDirectoryNode* node,
+                                          InfdNodeRequest* request,
                                           gboolean save_notes)
 {
   InfdDirectoryPrivate* priv;
@@ -1569,6 +1574,7 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
         infd_directory_node_unlink_child_sessions(
           directory,
           child,
+          request,
           save_notes
         );
       }
@@ -1626,7 +1632,7 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
         g_free(path);
       }
 
-      infd_directory_node_unlink_session(directory, node);
+      infd_directory_node_unlink_session(directory, node, request);
     }
 
     break;
@@ -3471,7 +3477,13 @@ infd_directory_node_remove(InfdDirectory* directory,
     /* Need to unlink child sessions explicitely before unregistering, so
      * remove-session is emitted before node-removed. Don't save changes since
      * we just removed the note anyway. */
-    infd_directory_node_unlink_child_sessions(directory, node, FALSE);
+    infd_directory_node_unlink_child_sessions(
+      directory,
+      node,
+      request,
+      FALSE
+    );
+
     infd_directory_node_unregister(directory, node, request, seq);
     infd_directory_node_free(directory, node);
 
@@ -5873,7 +5885,13 @@ infd_directory_set_storage(InfdDirectory* directory,
       while((child = priv->root->shared.subdir.child) != NULL)
       {
         /* TODO: Do make requests here */
-        infd_directory_node_unlink_child_sessions(directory, child, TRUE);
+        infd_directory_node_unlink_child_sessions(
+          directory,
+          child,
+          NULL,
+          TRUE
+        );
+
         infd_directory_node_unregister(directory, child, NULL, NULL);
         infd_directory_node_free(directory, child);
       }
@@ -6091,7 +6109,13 @@ infd_directory_dispose(GObject* object)
 
   /* This frees the complete directory tree and saves sessions into the
    * storage. */
-  infd_directory_node_unlink_child_sessions(directory, priv->root, TRUE);
+  infd_directory_node_unlink_child_sessions(
+    directory,
+    priv->root,
+    NULL,
+    TRUE
+  );
+
   infd_directory_node_free(directory, priv->root);
   priv->root = NULL;
 
@@ -6484,7 +6508,8 @@ infd_directory_browser_subscribe_session(InfBrowser* browser,
 static void
 infd_directory_browser_unsubscribe_session(InfBrowser* browser,
                                            const InfBrowserIter* iter,
-                                           InfSessionProxy* proxy)
+                                           InfSessionProxy* proxy,
+                                           InfRequest* request)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;

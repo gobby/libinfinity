@@ -145,7 +145,8 @@ struct _InfBrowserIface {
 
   void (*unsubscribe_session)(InfBrowser* browser,
                               const InfBrowserIter* iter,
-                              InfSessionProxy* proxy);
+                              InfSessionProxy* proxy,
+                              InfRequest* request);
 
   void (*begin_request)(InfBrowser* browser,
                         const InfBrowserIter* iter,
@@ -426,7 +427,8 @@ inf_browser_subscribe_session(InfBrowser* browser,
 void
 inf_browser_unsubscribe_session(InfBrowser* browser,
                                 const InfBrowserIter* iter,
-                                InfSessionProxy* proxy);
+                                InfSessionProxy* proxy,
+                                InfRequest* request);
 
 void
 inf_browser_begin_request(InfBrowser* browser,
