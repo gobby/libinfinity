@@ -46,13 +46,17 @@ struct _InfUserTableForeachUserData {
 typedef struct _InfUserTablePrivate InfUserTablePrivate;
 struct _InfUserTablePrivate {
   GHashTable* table;
+  /* TODO: It would be smarter to map the hash table to a helper struct
+   * which stores the user availability, locality and the InfUser object */
+  GSList* availables;
   GSList* locals;
 };
 
 enum {
   ADD_USER,
   REMOVE_USER,
-
+  ADD_AVAILABLE_USER,
+  REMOVE_AVAILABLE_USER,
   ADD_LOCAL_USER,
   REMOVE_LOCAL_USER,
 
@@ -83,29 +87,56 @@ inf_user_table_check_local_cb(GObject* object,
 {
   InfUserTable* user_table;
   InfUserTablePrivate* priv;
-  GSList* item;
+  InfUser* user;
+  GSList* available_item;
+  GSList* local_item;
 
   user_table = INF_USER_TABLE(user_data);
   priv = INF_USER_TABLE_PRIVATE(user_table);
-  item = g_slist_find(priv->locals, INF_USER(object));
+  user = INF_USER(object);
 
-  if(inf_user_table_is_local(INF_USER(object)) && item == NULL)
+  available_item = g_slist_find(priv->availables, user);
+  local_item = g_slist_find(priv->locals, user);
+
+  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE &&
+     available_item == NULL)
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[ADD_AVAILABLE_USER],
+      0,
+      user
+    );
+  }
+
+  if(inf_user_table_is_local(INF_USER(object)) && local_item == NULL)
   {
     g_signal_emit(
       G_OBJECT(user_table),
       user_table_signals[ADD_LOCAL_USER],
       0,
-      INF_USER(object)
+      user
     );
   }
   
-  if(!inf_user_table_is_local(INF_USER(object)) && item != NULL)
+  if(!inf_user_table_is_local(INF_USER(object)) && local_item != NULL)
   {
     g_signal_emit(
       G_OBJECT(user_table),
       user_table_signals[REMOVE_LOCAL_USER],
       0,
-      INF_USER(object)
+      user
+    );
+  }
+
+  if(inf_user_get_status(user) == INF_USER_UNAVAILABLE &&
+     available_item != NULL)
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[REMOVE_AVAILABLE_USER],
+      0,
+      user
     );
   }
 }
@@ -169,6 +200,7 @@ inf_user_table_init(GTypeInstance* instance,
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
   priv->table = g_hash_table_new_full(NULL, NULL, NULL, NULL);
+  priv->availables = NULL;
   priv->locals = NULL;
 }
 
@@ -183,6 +215,9 @@ inf_user_table_dispose(GObject* object)
 
   g_slist_free(priv->locals);
   priv->locals = NULL;
+
+  g_slist_free(priv->availables);
+  priv->availables = NULL;
 
   g_hash_table_foreach(
     priv->table,
@@ -231,12 +266,15 @@ inf_user_table_add_user_handler(InfUserTable* user_table,
     user_table
   );
 
-  g_signal_connect(
-    G_OBJECT(user),
-    "notify::flags",
-    G_CALLBACK(inf_user_table_check_local_cb),
-    user_table
-  );
+  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[ADD_AVAILABLE_USER],
+      0,
+      user
+    );
+  }
 
   if(inf_user_table_is_local(user))
   {
@@ -269,9 +307,41 @@ inf_user_table_remove_user_handler(InfUserTable* user_table,
     );
   }
 
+  if(inf_user_get_status(user) != INF_USER_UNAVAILABLE)
+  {
+    g_signal_emit(
+      G_OBJECT(user_table),
+      user_table_signals[REMOVE_AVAILABLE_USER],
+      0,
+      user
+    );
+  }
+
   inf_user_table_unref_user(user_table, user);
   g_assert(g_hash_table_lookup(priv->table, GUINT_TO_POINTER(id)) == user);
   g_hash_table_remove(priv->table, GUINT_TO_POINTER(id));
+}
+
+static void
+inf_user_table_add_available_user(InfUserTable* user_table,
+                                  InfUser* user)
+{
+  InfUserTablePrivate* priv;
+  priv = INF_USER_TABLE_PRIVATE(user_table);
+
+  g_assert(g_slist_find(priv->availables, user) == NULL);
+  priv->availables = g_slist_prepend(priv->availables, user);
+}
+
+static void
+inf_user_table_remove_available_user(InfUserTable* user_table,
+                                     InfUser* user)
+{
+  InfUserTablePrivate* priv;
+  priv = INF_USER_TABLE_PRIVATE(user_table);
+
+  g_assert(g_slist_find(priv->availables, user) != NULL);
+  priv->availables = g_slist_remove(priv->availables, user);
 }
 
 static void
@@ -314,6 +384,9 @@ inf_user_table_class_init(gpointer g_class,
 
   user_table_class->add_user = inf_user_table_add_user_handler;
   user_table_class->remove_user = inf_user_table_remove_user_handler;
+  user_table_class->add_available_user = inf_user_table_add_available_user;
+  user_table_class->remove_available_user =
+    inf_user_table_remove_available_user;
   user_table_class->add_local_user = inf_user_table_add_local_user;
   user_table_class->remove_local_user = inf_user_table_remove_local_user;
 
@@ -358,6 +431,51 @@ inf_user_table_class_init(gpointer g_class,
     G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, remove_user),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_USER
+  );
+
+  /**
+   * InfUserTable::add-available-user:
+   * @user_table: The #InfUserTable in which @user became available.
+   * @user: The #InfUser that became available.
+   *
+   * This signal is emitted when a user in the user table becomes available,
+   * i.e. its status is not %INF_USER_UNAVAILABLE. The signal is also emitted
+   * when a new user is added to the user table who is available, in addition
+   * to #InfUserTable::add-user and possibly #InfUserTable::add-local-user.
+   */
+  user_table_signals[ADD_AVAILABLE_USER] = g_signal_new(
+    "add-available-user",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfUserTableClass, add_available_user),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_USER
+  );
+
+  /**
+   * InfUserTable::remove-available-user:
+   * @user_table: The #InfUserTable in which @user became unavailable.
+   * @user: The #InfUser that became unavailable.
+   *
+   * This signal is emitted when a user in the user table became unavailable,
+   * i.e. its status has changed to %INF_USER_UNAVAILABLE. The signal is also
+   * emitted when a user who was available has been removed from the user
+   * table, in addition to #InfUserTable::remove-user and possibly
+   * #InfUserTable::remove-local-user.
+   */
+  user_table_signals[REMOVE_AVAILABLE_USER] = g_signal_new(
+    "remove-available-user",
+    G_OBJECT_CLASS_TYPE(object_class),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfUserTableClass, remove_available_user),
     NULL, NULL,
     inf_marshal_VOID__OBJECT,
     G_TYPE_NONE,

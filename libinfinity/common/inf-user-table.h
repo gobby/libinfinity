@@ -41,6 +41,10 @@ typedef struct _InfUserTableClass InfUserTableClass;
  * @add_user: Default signal handler for the #InfUserTable::add_user signal.
  * @remove_user: Default signal handler for the #InfUserTable::remove_user
  * signal.
+ * @add_available_user: Default signal handler for the
+ * #InfUserTable::add-available-user signal.
+ * @remove_available_user: Default signal handler for the
+ * #InfUserTable::remove-available-user signal.
  * @add_local_user: Default signal handler for the
  * #InfUserTable::add_local_user signal.
  * @remove_local_user: Default signal handler for the
@@ -59,6 +63,12 @@ struct _InfUserTableClass {
 
   void(*remove_user)(InfUserTable* user_table,
                      InfUser* user);
+
+  void(*add_available_user)(InfUserTable* user_table,
+                            InfUser* user);
+
+  void(*remove_available_user)(InfUserTable* user_table,
+                               InfUser* user);
 
   void(*add_local_user)(InfUserTable* user_table,
                         InfUser* user);
