@@ -68,6 +68,13 @@ inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
                                 const gchar* filename,
                                 GError** error);
 
+gboolean
+inf_cert_util_write_certificate_with_key(gnutls_x509_privkey_t key,
+                                         gnutls_x509_crt_t* certs,
+                                         guint n_certs,
+                                         const gchar* filename,
+                                         GError** error);
+
 gnutls_x509_crt_t
 inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
                                GError** error);

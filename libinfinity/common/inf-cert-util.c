@@ -116,6 +116,114 @@ inf_cert_util_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   return 0;
 }
 
+static gboolean
+inf_cert_util_write_certificates_channel(gnutls_x509_crt_t* certs,
+                                         guint n_certs,
+                                         GIOChannel* channel,
+                                         GError** error)
+{
+  guint i;
+  gnutls_x509_crt_t cert;
+  int res;
+  size_t size;
+  gchar* buffer;
+  GIOStatus status;
+
+  for(i = 0; i < n_certs; ++ i)
+  {
+    if(i > 0)
+    {
+      status = g_io_channel_write_chars(channel, "\n", 1, NULL, error);
+      if(status != G_IO_STATUS_NORMAL)
+        return FALSE;
+    }
+
+    cert = (gnutls_x509_crt_t)certs[i];
+    size = 0;
+    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &size);
+    if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+    {
+      inf_gnutls_set_error(error, res);
+      return FALSE;
+    }
+
+    buffer = g_malloc(size);
+    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, buffer, &size);
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      g_free(buffer);
+      inf_gnutls_set_error(error, res);
+      return FALSE;
+    }
+
+    status = g_io_channel_write_chars(channel, buffer, size, NULL, error);
+    g_free(buffer);
+
+    if(status != G_IO_STATUS_NORMAL)
+      return FALSE;
+  }
+
+  return TRUE;
+}
+
+static gboolean
+inf_cert_util_write_private_key_channel(gnutls_x509_privkey_t key,
+                                        GIOChannel* channel,
+                                        GError** error)
+{
+  unsigned char* data;
+  size_t size;
+  int res;
+  gboolean bres;
+  GIOStatus status;
+
+  size = 0;
+  data = NULL;
+  bres = FALSE;
+
+  res = gnutls_x509_privkey_export(
+    key,
+    GNUTLS_X509_FMT_PEM,
+    NULL,
+    &size
+  );
+
+  g_assert(res != 0); /* cannot succeed */
+  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+  {
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+  else
+  {
+    data = g_malloc(size);
+
+    res = gnutls_x509_privkey_export(
+      key,
+      GNUTLS_X509_FMT_PEM,
+      data,
+      &size
+    );
+
+    if(res != 0)
+    {
+      g_free(data);
+      inf_gnutls_set_error(error, res);
+      return FALSE;
+    }
+    else
+    {
+      status = g_io_channel_write_chars(channel, data, size, NULL, error);
+      g_free(data);
+
+      if(status != G_IO_STATUS_NORMAL)
+        return FALSE;
+    }
+  }
+
+  return TRUE;
+}
+
 static gchar*
 inf_cert_util_format_time(time_t time)
 {
@@ -452,46 +560,24 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
                                 const gchar* filename,
                                 GError** error)
 {
-  unsigned char* data;
-  size_t size;
-  int res;
-  gboolean bres;
+  GIOChannel* channel;
+  GIOStatus status;
+  gboolean result;
 
-  size = 0;
-  data = NULL;
-  bres = FALSE;
+  channel = g_io_channel_new_file(filename, "w", error);
+  if(channel == NULL) return FALSE;
 
-  res = gnutls_x509_privkey_export(
-    key,
-    GNUTLS_X509_FMT_PEM,
-    NULL,
-    &size
-  );
-
-  g_assert(res != 0); /* cannot succeed */
-  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+  status = g_io_channel_set_encoding(channel, NULL, error);
+  if(status != G_IO_STATUS_NORMAL)
   {
-    inf_gnutls_set_error(error, res);
-  }
-  else
-  {
-    data = g_malloc(size);
-    res = gnutls_x509_privkey_export(
-      key,
-      GNUTLS_X509_FMT_PEM,
-      data,
-      &size
-    );
-
-    if(res != 0)
-      inf_gnutls_set_error(error, res);
-    else
-      bres = g_file_set_contents(filename, (gchar*)data, size, error);
-
-    g_free(data);
+    g_io_channel_unref(channel);
+    return FALSE;
   }
 
-  return bres;
+  result = inf_cert_util_write_private_key_channel(key, channel, error);
+
+  g_io_channel_unref(channel);
+  return result;
 }
 
 /**
@@ -644,12 +730,8 @@ inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
                                 GError** error)
 {
   GIOChannel* channel;
-  guint i;
-  gnutls_x509_crt_t cert;
-  int res;
-  size_t size;
-  gchar* buffer;
   GIOStatus status;
+  gboolean result;
 
   channel = g_io_channel_new_file(filename, "w", error);
   if(channel == NULL) return FALSE;
@@ -661,50 +743,68 @@ inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
     return FALSE;
   }
 
-  for(i = 0; i < n_certs; ++ i)
-  {
-    if(i > 0)
-    {
-      status = g_io_channel_write_chars(channel, "\n", 1, NULL, error);
-      if(status != G_IO_STATUS_NORMAL)
-      {
-        g_io_channel_unref(channel);
-        return FALSE;
-      }
-    }
-
-    cert = (gnutls_x509_crt_t)certs[i];
-    size = 0;
-    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &size);
-    if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
-    {
-      g_io_channel_unref(channel);
-      inf_gnutls_set_error(error, res);
-      return FALSE;
-    }
-
-    buffer = g_malloc(size);
-    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, buffer, &size);
-    if(res != GNUTLS_E_SUCCESS)
-    {
-      g_free(buffer);
-      g_io_channel_unref(channel);
-      inf_gnutls_set_error(error, res);
-      return FALSE;
-    }
-
-    status = g_io_channel_write_chars(channel, buffer, size, NULL, error);
-    g_free(buffer);
-
-    if(status != G_IO_STATUS_NORMAL)
-    {
-      g_io_channel_unref(channel);
-      return FALSE;
-    }
-  }
+  result = inf_cert_util_write_certificates_channel(
+    certs,
+    n_certs,
+    channel,
+    error
+  );
 
   g_io_channel_unref(channel);
-  return TRUE;
+  return result;
+}
+
+/**
+ * inf_cert_util_write_certificate_with_key:
+ * @key: An initialized #gnutls_x509_privkey_t structure.
+ * @certs: An array of #gnutls_x509_crt_t objects.
+ * @n_certs: Number of certificates in the error.
+ * @filename: The path at which to store the certificates.
+ * @error: Location to store error information, if any.
+ *
+ * This function writes both the private key @key as well as the
+ * certificates in the array @certs to disk, in PEM format. If an error
+ * occurs the function returns %FALSE and @error is set.
+ *
+ * Returns: %TRUE on success or %FALSE otherwise.
+ */
+gboolean
+inf_cert_util_write_certificate_with_key(gnutls_x509_privkey_t key,
+                                         gnutls_x509_crt_t* certs,
+                                         guint n_certs,
+                                         const gchar* filename,
+                                         GError** error)
+{
+  GIOChannel* channel;
+  GIOStatus status;
+  gboolean result;
+
+  channel = g_io_channel_new_file(filename, "w", error);
+  if(channel == NULL) return FALSE;
+
+  status = g_io_channel_set_encoding(channel, NULL, error);
+  if(status != G_IO_STATUS_NORMAL)
+  {
+    g_io_channel_unref(channel);
+    return FALSE;
+  }
+
+  result = inf_cert_util_write_private_key_channel(key, channel, error);
+  if(result == FALSE)
+  {
+    g_io_channel_unref(channel);
+    return FALSE;
+  }
+
+  result = inf_cert_util_write_certificates_channel(
+    certs,
+    n_certs,
+    channel,
+    error
+  );
+
+  g_io_channel_unref(channel);
+  return result;
 }
 
 /**
