@@ -20,7 +20,7 @@
 /**
  * SECTION:inf-text-buffer
  * @title: InfTextBuffer
- * @short_description: Interface for the text storage of an #InfTextSession.
+ * @short_description: Interface for the text storage of an #InfTextSession
  * @include: libinftext/inf-text-buffer.h
  * @see_also: #InfTextDefaultBuffer
  * @stability: Unstable

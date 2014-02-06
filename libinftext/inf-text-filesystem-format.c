@@ -21,7 +21,7 @@
  * SECTION:inf-text-filesystem-format
  * @title: Storage of text sessions on the file system
  * @short_description: Utility functions to deal with storing
- * #InfTextSession<!-- -->s in #InfdFilesystemStorage.
+ * InfTextSessions in filesystem storage
  * @include: libinftext/inf-text-filesystem-storage.h
  * @see_also: #InfTextSession, #InfdFilesystemStorage
  * @stability: Unstable
