@@ -122,6 +122,9 @@ gconstpointer
 inf_text_chunk_iter_get_text(InfTextChunkIter* iter);
 
 guint
+inf_text_chunk_iter_get_offset(InfTextChunkIter* iter);
+
+guint
 inf_text_chunk_iter_get_length(InfTextChunkIter* iter);
 
 gsize

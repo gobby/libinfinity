@@ -296,6 +296,13 @@ inf_text_default_buffer_buffer_iter_get_text(InfTextBuffer* buffer,
 }
 
 static guint
+inf_text_default_buffer_buffer_iter_get_offset(InfTextBuffer* buffer,
+                                               InfTextBufferIter* iter)
+{
+  return inf_text_chunk_iter_get_offset(&iter->chunk_iter);
+}
+
+static guint
 inf_text_default_buffer_buffer_iter_get_length(InfTextBuffer* buffer,
                                                InfTextBufferIter* iter)
 {
@@ -374,6 +381,7 @@ inf_text_default_buffer_text_buffer_init(gpointer g_iface,
   iface->iter_next = inf_text_default_buffer_buffer_iter_next;
   iface->iter_prev = inf_text_default_buffer_buffer_iter_prev;
   iface->iter_get_text = inf_text_default_buffer_buffer_iter_get_text;
+  iface->iter_get_offset = inf_text_default_buffer_buffer_iter_get_offset;
   iface->iter_get_length = inf_text_default_buffer_buffer_iter_get_length;
   iface->iter_get_bytes = inf_text_default_buffer_buffer_iter_get_bytes;
   iface->iter_get_author = inf_text_default_buffer_buffer_iter_get_author;

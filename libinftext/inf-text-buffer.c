@@ -452,6 +452,32 @@ inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
 }
 
 /**
+ * inf_text_buffer_iter_get_offset:
+ * @buffer: A #InfTextBuffer.
+ * @iter: A #InfTextBufferIter pointing into @buffer.
+ *
+ * Returns the offset of the first character in the segment @iter points
+ * to, in characters.
+ *
+ * Return Value: The offset of the first character in the segment @iter
+ * points to.
+ **/
+guint
+inf_text_buffer_iter_get_offset(InfTextBuffer* buffer,
+                                InfTextBufferIter* iter)
+{
+  InfTextBufferIface* iface;
+
+  g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
+  g_return_val_if_fail(iter != NULL, 0);
+
+  iface = INF_TEXT_BUFFER_GET_IFACE(buffer);
+  g_return_val_if_fail(iface->iter_get_offset != NULL, 0);
+
+  return iface->iter_get_offset(buffer, iter);
+}
+
+/**
  * inf_text_buffer_iter_get_length:
  * @buffer: A #InfTextBuffer.
  * @iter: A #InfTextBufferIter pointing into @buffer.

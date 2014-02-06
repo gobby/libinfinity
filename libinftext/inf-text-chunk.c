@@ -1357,6 +1357,26 @@ inf_text_chunk_iter_get_text(InfTextChunkIter* iter)
 }
 
 /**
+ * inf_text_chunk_iter_get_offset:
+ * @iter: An initialized #InfTextChunkIter.
+ *
+ * Returns the offset of the first character in the segment @iter points to.
+ *
+ * Return Value: The offset of the first characters in the segment @iter
+ * points to.
+ **/
+guint
+inf_text_chunk_iter_get_offset(InfTextChunkIter* iter)
+{
+  InfTextChunkSegment* first;
+
+  g_return_val_if_fail(iter != NULL, 0);
+
+  first = (InfTextChunkSegment*)g_sequence_get(iter->first);
+  return first->offset;
+}
+
+/**
  * inf_text_chunk_iter_get_length:
  * @iter: An initialized #InfTextChunkIter.
  *

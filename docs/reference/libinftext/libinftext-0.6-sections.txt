@@ -159,6 +159,7 @@ inf_text_buffer_destroy_iter
 inf_text_buffer_iter_next
 inf_text_buffer_iter_prev
 inf_text_buffer_iter_get_text
+inf_text_buffer_iter_get_offset
 inf_text_buffer_iter_get_length
 inf_text_buffer_iter_get_bytes
 inf_text_buffer_iter_get_author
@@ -228,6 +229,7 @@ inf_text_chunk_iter_init_end
 inf_text_chunk_iter_next
 inf_text_chunk_iter_prev
 inf_text_chunk_iter_get_text
+inf_text_chunk_iter_get_offset
 inf_text_chunk_iter_get_length
 inf_text_chunk_iter_get_bytes
 inf_text_chunk_iter_get_author

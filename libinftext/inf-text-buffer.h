@@ -69,6 +69,8 @@ typedef struct _InfTextBufferIter InfTextBufferIter;
  * previous segment.
  * @iter_get_text: Virtual function to obtain the text of a segment a
  * #InfTextBufferIter points to.
+ * @iter_get_offset: Virtual function to obtain the offset of the first
+ * character in the segment a #InfTextBufferIter points to.
  * @iter_get_length: Virtual function to obtain the length of a segment a
  * #InfTextBufferIter points to.
  * @iter_get_bytes: Virtual function to obtain the number of bytes in a
@@ -123,6 +125,9 @@ struct _InfTextBufferIface {
 
   gpointer(*iter_get_text)(InfTextBuffer* buffer,
                            InfTextBufferIter* iter);
+
+  guint(*iter_get_offset)(InfTextBuffer* buffer,
+                          InfTextBufferIter* iter);
 
   guint(*iter_get_length)(InfTextBuffer* buffer,
                           InfTextBufferIter* iter);
@@ -200,6 +205,10 @@ inf_text_buffer_iter_prev(InfTextBuffer* buffer,
 gpointer
 inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
                               InfTextBufferIter* iter);
+
+guint
+inf_text_buffer_iter_get_offset(InfTextBuffer* buffer,
+                                InfTextBufferIter* iter);
 
 guint
 inf_text_buffer_iter_get_length(InfTextBuffer* buffer,
