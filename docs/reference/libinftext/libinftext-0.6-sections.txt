@@ -190,6 +190,22 @@ INF_TEXT_DEFAULT_BUFFER_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-text-fixline-buffer</FILE>
+<TITLE>InfTextFixlineBuffer</TITLE>
+InfTextFixlineBuffer
+InfTextFixlineBufferClass
+inf_text_fixline_buffer_new
+<SUBSECTION Standard>
+INF_TEXT_FIXLINE_BUFFER
+INF_TEXT_IS_FIXLINE_BUFFER
+INF_TEXT_TYPE_FIXLINE_BUFFER
+inf_text_fixline_buffer_get_type
+INF_TEXT_FIXLINE_BUFFER_CLASS
+INF_TEXT_IS_FIXLINE_BUFFER_CLASS
+INF_TEXT_FIXLINE_BUFFER_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>inf-text-move-operation</FILE>
 <TITLE>InfTextMoveOperation</TITLE>
 InfTextMoveOperation

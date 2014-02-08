@@ -22,6 +22,7 @@
     <xi:include href="xml/inf-text-user.xml"/>
     <xi:include href="xml/inf-text-chunk.xml"/>
     <xi:include href="xml/inf-text-default-buffer.xml"/>
+    <xi:include href="xml/inf-text-fixline-buffer.xml"/>
     <xi:include href="xml/inf-text-undo-grouping.xml"/>
     <xi:include href="xml/inf-text-insert-operation.xml"/>
     <xi:include href="xml/inf-text-delete-operation.xml"/>
