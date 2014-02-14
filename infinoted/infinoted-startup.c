@@ -225,7 +225,7 @@ infinoted_startup_load_cas(InfinotedStartup* startup,
       startup->n_cas
     );
 
-    if(res != 0)
+    if(res < 0)
     {
       infinoted_startup_free_certificate_array(startup->cas, startup->n_cas);
       startup->cas = NULL;
