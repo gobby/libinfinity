@@ -41,6 +41,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <dirent.h>
 #endif
 
 #ifdef G_OS_WIN32
