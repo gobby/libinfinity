@@ -2038,8 +2038,8 @@ static guint
 inf_text_gtk_buffer_buffer_iter_get_length(InfTextBuffer* buffer,
                                            InfTextBufferIter* iter)
 {
-  return gtk_text_iter_get_offset(&iter->begin) -
-    gtk_text_iter_get_offset(&iter->end);
+  return gtk_text_iter_get_offset(&iter->end) -
+    gtk_text_iter_get_offset(&iter->begin);
 }
 
 static gsize
