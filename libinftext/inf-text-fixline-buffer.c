@@ -1132,7 +1132,7 @@ inf_text_fixline_buffer_buffer_insert_text(InfTextBuffer* buffer,
   if(pos >= buf_len && inf_text_fixline_buffer_chunk_only_newlines(chunk))
   {
     /* Add the added newlines only to the keep */
-    g_assert(priv->n_keep > 0);
+    g_assert(priv->n_keep >= 0);
     g_assert(pos - buf_len <= (guint)priv->n_keep);
 
     priv->keep = g_realloc(
