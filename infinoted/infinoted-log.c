@@ -180,6 +180,7 @@ infinoted_log_write(InfinotedLog* log,
   if(priv->log_file != NULL)
   {
     fprintf(priv->log_file, "%s\n", final_text);
+    fflush(priv->log_file);
   }
 
   g_free(final_text);
