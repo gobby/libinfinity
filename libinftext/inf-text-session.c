@@ -209,12 +209,36 @@ inf_text_session_broadcast_caret_selection(InfTextSession* session,
   InfAdoptedOperation* operation;
   InfAdoptedAlgorithm* algorithm;
   InfAdoptedRequest* request;
+  guint buf_len;
   guint position;
   int sel;
+  guint end;
 
   algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
   position = inf_text_user_get_caret_position(local->user);
   sel = inf_text_user_get_selection_length(local->user);
+  end = position + sel;
+
+  /* Clamp position and selection to buffer length. The only case when this is
+   * needed is when a local user's position is beyond the end of the document
+   * since there are some local document modifications. This can happen with
+   * for example InfTextFixlineBuffer. */
+  /* TODO: This should be handled more cleverly, by propagating the user
+   * position and selection through the buffer, to make sure that at this
+   * point it is always consistent with the infinote view of the buffer. */
+  buf_len = inf_text_buffer_get_length(
+    INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)))
+  );
+
+  if(position > buf_len)
+    position = buf_len;
+  if(end > buf_len)
+    end = buf_len;
+
+  if(end >= position)
+    sel = (int)(end - position);
+  else
+    sel = -(int)(position - end);
 
   operation = INF_ADOPTED_OPERATION(
     inf_text_move_operation_new(position, sel)
