@@ -58,6 +58,14 @@ libinfinoted_plugin_record_la_LIBADD = \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 
+libinfinoted_plugin_traffic_logging_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(inftext_LIBS) \
+	$(infinity_LIBS)
+
 libinfinoted_plugin_transformation_protection_la_LIBADD = \
 	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
