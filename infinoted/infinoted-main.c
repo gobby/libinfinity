@@ -46,6 +46,7 @@ infinoted_main_run(InfinotedStartup* startup,
   InfinotedSignal* sig;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
+  mode_t prev_umask;
   pid_t pid;
   int saved_errno;
 #endif
@@ -61,6 +62,8 @@ infinoted_main_run(InfinotedStartup* startup,
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   if(startup->options->daemonize)
   {
+    prev_umask = umask(0777);
+
     if(daemon_retval_init() == -1)
     {
       infinoted_run_free(run);
@@ -128,11 +131,14 @@ infinoted_main_run(InfinotedStartup* startup,
       daemon_retval_send(0);
     }
 
-    /* libdaemon < 0.14 sets our umask to 0777, preventing the file storage
-     * backend from working correctly. 0.14 uses 0077, but the documentation
-     * still says 0777, and, anyway, 0.14 does not seem widespread enough
-     * right now. */
-    umask(0077);
+    /* libdaemon sets the umask to either 0777 (< 0.14) or 0077 (>= 0.14).
+     * We don't want either of that, to make sure the directory tree is
+     * always readable by us and potentially by others (for example, a
+     * webserver providing read access to the documents). Therefore, reset
+     * the umask here to what it previously was, so the system administrator
+     * can define the umask by setting it before launching infinoted.
+     * See also http://gobby.0x539.de/trac/ticket/617.  */
+    umask(prev_umask);
   }
 #endif
 
