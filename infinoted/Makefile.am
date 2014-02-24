@@ -52,7 +52,7 @@ infinoted_0_6_CPPFLAGS = \
 	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
 infinoted_0_6_LDADD = \
-	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS) \
