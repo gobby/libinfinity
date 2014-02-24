@@ -1100,7 +1100,7 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   if(strcmp(mode, "r") == 0) open_mode = O_RDONLY;
   else if(strcmp(mode, "w") == 0) open_mode = O_CREAT | O_WRONLY | O_TRUNC;
   else g_assert_not_reached();
-  fd = open(full_name, O_NOFOLLOW | open_mode, 0600);
+  fd = open(full_name, O_NOFOLLOW | open_mode, 0644);
   if(fd == -1)
     res = NULL;
   else
