@@ -21,9 +21,6 @@
 #define __INFC_BROWSER_H__
 
 #include <libinfinity/client/infc-session-proxy.h>
-#include <libinfinity/client/infc-node-request.h>
-#include <libinfinity/client/infc-chat-request.h>
-#include <libinfinity/client/infc-certificate-request.h>
 #include <libinfinity/client/infc-note-plugin.h>
 #include <libinfinity/common/inf-browser.h>
 #include <libinfinity/common/inf-xml-connection.h>
@@ -88,10 +85,10 @@ const InfcNotePlugin*
 infc_browser_lookup_plugin(InfcBrowser* browser,
                            const gchar* note_type);
 
-InfcNodeRequest*
+InfRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
                                const InfBrowserIter* iter,
-                               InfNodeRequestFunc func,
+                               InfRequestFunc func,
                                gpointer user_data);
 
 InfcSessionProxy*
@@ -106,22 +103,22 @@ gboolean
 infc_browser_iter_is_valid(InfcBrowser* browser,
                            const InfBrowserIter* iter);
 
-InfcChatRequest*
+InfRequest*
 infc_browser_subscribe_chat(InfcBrowser* browser,
-                            InfcChatRequestFunc func,
+                            InfRequestFunc func,
                             gpointer user_data);
 
-InfcChatRequest*
+InfRequest*
 infc_browser_get_subscribe_chat_request(InfcBrowser* browser);
 
 InfcSessionProxy*
 infc_browser_get_chat_session(InfcBrowser* browser);
 
-InfcCertificateRequest*
+InfRequest*
 infc_browser_request_certificate(InfcBrowser* browser,
                                  gnutls_x509_crq_t crq,
                                  const gchar* extra_data,
-                                 InfcCertificateRequestFunc func,
+                                 InfRequestFunc func,
                                  gpointer user_data,
                                  GError** error);
 

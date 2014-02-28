@@ -49,7 +49,7 @@ struct _InfGtkBrowserViewExplore {
   InfGtkBrowserViewBrowser* view_browser;
   GtkTreeRowReference* reference;
 
-  InfExploreRequest* request;
+  InfRequest* request;
 };
 
 typedef struct _InfGtkBrowserViewSync InfGtkBrowserViewSync;
@@ -135,7 +135,7 @@ inf_gtk_browser_view_find_view_browser(InfGtkBrowserView* view,
 static InfGtkBrowserViewExplore*
 inf_gtk_browser_view_find_explore(InfGtkBrowserView* view,
                                   InfGtkBrowserViewBrowser* view_browser,
-                                  InfExploreRequest* request)
+                                  InfRequest* request)
 {
   GSList* item;
   InfGtkBrowserViewExplore* explore;
@@ -288,23 +288,9 @@ inf_gtk_browser_view_session_synchronization_failed_cb(InfSession* session,
 }
 
 static void
-inf_gtk_browser_view_explore_request_notify_total_cb(GObject* request,
-                                                     GParamSpec* pspec,
-                                                     gpointer user_data)
-{
-  InfGtkBrowserViewExplore* explore;
-  explore = (InfGtkBrowserViewExplore*)user_data;
-  
-  inf_gtk_browser_view_redraw_for_reference(
-    explore->view_browser->view,
-    explore->reference
-  );
-}
-
-static void
-inf_gtk_browser_view_explore_request_notify_current_cb(GObject* request,
-                                                       GParamSpec* pspec,
-                                                       gpointer user_data)
+inf_gtk_browser_view_explore_request_notify_progress_cb(GObject* request,
+                                                        GParamSpec* pspec,
+                                                        gpointer user_data)
 {
   InfGtkBrowserViewExplore* explore;
   InfGtkBrowserView* view;
@@ -353,8 +339,8 @@ inf_gtk_browser_view_explore_request_notify_current_cb(GObject* request,
 }
 
 static void
-inf_gtk_browser_view_explore_request_finished_cb(InfExploreRequest* request,
-                                                 const InfBrowserIter* iter,
+inf_gtk_browser_view_explore_request_finished_cb(InfRequest* request,
+                                                 const InfRequestResult* res,
                                                  const GError* error,
                                                  gpointer user_data)
 {
@@ -491,7 +477,7 @@ inf_gtk_browser_view_sync_removed(InfGtkBrowserView* view,
 static void
 inf_gtk_browser_view_explore_added(InfGtkBrowserView* view,
                                    InfBrowser* browser,
-                                   InfExploreRequest* request,
+                                   InfRequest* request,
                                    GtkTreePath* path,
                                    GtkTreeIter* iter)
 {
@@ -524,15 +510,8 @@ inf_gtk_browser_view_explore_added(InfGtkBrowserView* view,
 
   g_signal_connect_after(
     G_OBJECT(request),
-    "notify::total",
-    G_CALLBACK(inf_gtk_browser_view_explore_request_notify_total_cb),
-    explore
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(request),
-    "notify::current",
-    G_CALLBACK(inf_gtk_browser_view_explore_request_notify_current_cb),
+    "notify::progress",
+    G_CALLBACK(inf_gtk_browser_view_explore_request_notify_progress_cb),
     explore
   );
 
@@ -572,13 +551,7 @@ inf_gtk_browser_view_explore_removed(InfGtkBrowserView* view,
 
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(expl->request),
-    G_CALLBACK(inf_gtk_browser_view_explore_request_notify_total_cb),
-    expl
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(expl->request),
-    G_CALLBACK(inf_gtk_browser_view_explore_request_notify_current_cb),
+    G_CALLBACK(inf_gtk_browser_view_explore_request_notify_progress_cb),
     expl
   );
 
@@ -617,8 +590,6 @@ inf_gtk_browser_view_begin_request_explore_node_cb(InfBrowser* browser,
   view = view_browser->view;
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
 
-  g_assert(INF_IS_EXPLORE_REQUEST(request));
-
   result = inf_gtk_browser_model_browser_iter_to_tree_iter(
     INF_GTK_BROWSER_MODEL(model),
     browser,
@@ -637,7 +608,7 @@ inf_gtk_browser_view_begin_request_explore_node_cb(InfBrowser* browser,
     inf_gtk_browser_view_explore_added(
       view,
       browser,
-      INF_EXPLORE_REQUEST(request),
+      request,
       path,
       &tree_iter
     );
@@ -763,7 +734,7 @@ inf_gtk_browser_view_walk_requests(InfGtkBrowserView* view,
         inf_gtk_browser_view_explore_added(
           view,
           browser,
-          INF_EXPLORE_REQUEST(request),
+          request,
           path,
           &tree_iter
         );
@@ -1154,7 +1125,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
         explore = inf_gtk_browser_view_find_explore(
           view,
           view_browser,
-          INF_EXPLORE_REQUEST(request)
+          request
         );
 
         /* TODO: The correct way to do this would probably be to ignore
@@ -1166,7 +1137,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
           inf_gtk_browser_view_explore_added(
             view,
             browser,
-            INF_EXPLORE_REQUEST(request),
+            request,
             path,
             iter
           );
@@ -2048,8 +2019,6 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
   InfSessionProxy* proxy;
   InfSession* session;
   InfXmlConnection* connection;
-  guint current;
-  guint total;
   gdouble progress;
   gboolean progress_set;
 
@@ -2086,8 +2055,7 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
         {
           g_object_get(
             G_OBJECT(request),
-            "current", &current,
-            "total", &total,
+            "progress", &progress,
             NULL
           );
 
@@ -2096,16 +2064,8 @@ inf_gtk_browser_view_progress_data_func(GtkTreeViewColumn* column,
            * the server has not yet arrived. In that case we still don't show
            * the progress bar anymore, since from the client's perspective
            * everything has finished and all explored nodes are usable. */
-          /* If total equals zero it can either be that the exploration request
-           * has not yet been initiated or that the subdirectory has no child
-           * nodes. */
-          if(current < total || total == 0)
+          if(progress < 1.0)
           {
-            if(total > 0)
-              progress = (gdouble)current / (gdouble)total;
-            else
-              progress = 0.0;
-
             g_object_set(
               G_OBJECT(renderer),
               "visible", TRUE,

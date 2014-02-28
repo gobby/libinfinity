@@ -21,6 +21,7 @@
 #define __INFC_REQUEST_MANAGER_H__
 
 #include <libinfinity/client/infc-request.h>
+#include <libinfinity/common/inf-request.h>
 #include <libxml/tree.h>
 #include <glib-object.h>
 
@@ -78,6 +79,11 @@ infc_request_manager_add_request_valist(InfcRequestManager* manager,
 void
 infc_request_manager_remove_request(InfcRequestManager* manager,
                                     InfcRequest* request);
+
+void
+infc_request_manager_finish_request(InfcRequestManager* manager,
+                                    InfcRequest* request,
+                                    InfRequestResult* result);
 
 void
 infc_request_manager_fail_request(InfcRequestManager* manager,

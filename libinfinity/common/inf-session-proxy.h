@@ -20,8 +20,8 @@
 #ifndef __INF_SESSION_PROXY_H__
 #define __INF_SESSION_PROXY_H__
 
-#include <libinfinity/common/inf-user-request.h>
 #include <libinfinity/common/inf-user.h>
+#include <libinfinity/common/inf-request.h>
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -55,21 +55,21 @@ struct _InfSessionProxyIface {
   /* Signals */
 
   /*< public >*/
-  InfUserRequest* (*join_user)(InfSessionProxy* proxy,
-                               guint n_params,
-                               const GParameter* params,
-                               InfUserRequestFunc func,
-                               gpointer user_data);
+  InfRequest* (*join_user)(InfSessionProxy* proxy,
+                           guint n_params,
+                           const GParameter* params,
+                           InfRequestFunc func,
+                           gpointer user_data);
 };
 
 GType
 inf_session_proxy_get_type(void) G_GNUC_CONST;
 
-InfUserRequest*
+InfRequest*
 inf_session_proxy_join_user(InfSessionProxy* proxy,
                             guint n_params,
                             const GParameter* params,
-                            InfUserRequestFunc func,
+                            InfRequestFunc func,
                             gpointer user_data);
 
 G_END_DECLS

@@ -8,26 +8,16 @@ libinfinity_client_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity/client
 
 libinfinity_client_la_SOURCES = \
-	infc-acl-account-list-request.c \
 	infc-browser.c \
-	infc-certificate-request.c \
-	infc-chat-request.c \
-	infc-explore-request.c \
-	infc-node-request.c \
+	infc-progress-request.c \
 	infc-request.c \
 	infc-request-manager.c \
-	infc-session-proxy.c \
-	infc-user-request.c
+	infc-session-proxy.c
 
 libinfinity_client_la_HEADERS = \
-	infc-acl-account-list-request.h \
 	infc-browser.h \
-	infc-certificate-request.h \
-	infc-chat-request.h \
-	infc-explore-request.h \
-	infc-node-request.h \
 	infc-note-plugin.h \
+	infc-progress-request.h \
 	infc-request.h \
 	infc-request-manager.h \
-	infc-session-proxy.h \
-	infc-user-request.h
+	infc-session-proxy.h

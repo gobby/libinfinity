@@ -26,8 +26,10 @@ G_BEGIN_DECLS
 
 #define INFC_TYPE_REQUEST                 (infc_request_get_type())
 #define INFC_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFC_TYPE_REQUEST, InfcRequest))
+#define INFC_REQUEST_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INFC_TYPE_REQUEST, InfcRequestClass))
 #define INFC_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFC_TYPE_REQUEST))
-#define INFC_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFC_TYPE_REQUEST, InfcRequestIface))
+#define INFC_IS_REQUEST_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFC_TYPE_REQUEST))
+#define INFC_REQUEST_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFC_TYPE_REQUEST, InfcRequestClass))
 
 /**
  * InfcRequest:
@@ -36,16 +38,22 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfcRequest InfcRequest;
-typedef struct _InfcRequestIface InfcRequestIface;
+typedef struct _InfcRequestClass InfcRequestClass;
 
 /**
- * InfcRequestIface:
+ * InfcRequestClass:
  *
- * Default signal handlers for the #InfcRequest interface.
+ * This structure does not contain any public fields.
  */
-struct _InfcRequestIface {
+struct _InfcRequestClass {
   /*< private >*/
-  GTypeInterface parent;
+  GObjectClass parent_class;
+
+  /*< public >*/
+};
+
+struct _InfcRequest {
+  GObject parent;
 };
 
 GType

@@ -39,11 +39,10 @@
  */
 
 #include <libinfinity/client/infc-session-proxy.h>
-#include <libinfinity/client/infc-user-request.h>
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/common/inf-session-proxy.h>
 #include <libinfinity/common/inf-session.h>
-#include <libinfinity/common/inf-user-request.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
@@ -602,8 +601,11 @@ infc_session_proxy_handle_user_join(InfcSessionProxy* proxy,
   {
     if(request != NULL)
     {
-      inf_user_request_finished(INF_USER_REQUEST(request), user, NULL);
-      infc_request_manager_remove_request(priv->request_manager, request);
+      infc_request_manager_finish_request(
+        priv->request_manager,
+        request,
+        inf_request_result_make_join_user(INF_SESSION_PROXY(proxy), user)
+      );
     }
 
     return TRUE;
@@ -735,8 +737,11 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
 
   if(request != NULL)
   {
-    inf_user_request_finished(INF_USER_REQUEST(request), user, NULL);
-    infc_request_manager_remove_request(priv->request_manager, request);
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_join_user(INF_SESSION_PROXY(proxy), user)
+    );
   }
 
   return TRUE;
@@ -1002,11 +1007,11 @@ infc_session_proxy_communication_object_received(InfCommunicationObject* obj,
  * InfSessionProxy implementation
  */
 
-InfUserRequest*
+InfRequest*
 infc_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
                                            guint n_params,
                                            const GParameter* params,
-                                           InfUserRequestFunc func,
+                                           InfRequestFunc func,
                                            gpointer user_data)
 {
   InfcSessionProxyPrivate* priv;
@@ -1031,7 +1036,7 @@ infc_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_USER_REQUEST,
+    INFC_TYPE_REQUEST,
     "user-join",
     G_CALLBACK(func),
     user_data,
@@ -1049,7 +1054,7 @@ infc_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
     xml
   );
 
-  return INF_USER_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 /*

@@ -10,7 +10,6 @@ libinfinity_common_ladir = \
 
 libinfinity_common_la_SOURCES = \
 	inf-acl.c \
-	inf-acl-account-list-request.c \
 	inf-browser.c \
 	inf-browser-iter.c \
 	inf-buffer.c \
@@ -22,15 +21,14 @@ libinfinity_common_la_SOURCES = \
 	inf-discovery-avahi.c \
 	inf-discovery.c \
 	inf-error.c \
-	inf-explore-request.c \
 	inf-file-util.c \
 	inf-init.c \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
-	inf-node-request.c \
 	inf-protocol.c \
 	inf-request.c \
+	inf-request-result.c \
 	inf-sasl-context.c \
 	inf-session.c \
 	inf-session-proxy.c \
@@ -38,7 +36,6 @@ libinfinity_common_la_SOURCES = \
 	inf-standalone-io.c \
 	inf-tcp-connection.c \
 	inf-user.c \
-	inf-user-request.c \
 	inf-user-table.c \
 	inf-xml-connection.c \
 	inf-xml-util.c \
@@ -47,7 +44,6 @@ libinfinity_common_la_SOURCES = \
 
 libinfinity_common_la_HEADERS = \
 	inf-acl.h \
-	inf-acl-account-list-request.h \
 	inf-browser.h \
 	inf-browser-iter.h \
 	inf-buffer.h \
@@ -59,15 +55,14 @@ libinfinity_common_la_HEADERS = \
 	inf-discovery.h \
 	inf-discovery-avahi.h \
 	inf-error.h \
-	inf-explore-request.h \
 	inf-file-util.h \
 	inf-init.h \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \
-	inf-node-request.h \
 	inf-protocol.h \
 	inf-request.h \
+	inf-request-result.h \
 	inf-sasl-context.h \
 	inf-session.h \
 	inf-session-proxy.h \
@@ -75,7 +70,6 @@ libinfinity_common_la_HEADERS = \
 	inf-standalone-io.h \
 	inf-tcp-connection.h \
 	inf-user.h \
-	inf-user-request.h \
 	inf-user-table.h \
 	inf-xml-connection.h \
 	inf-xml-util.h \

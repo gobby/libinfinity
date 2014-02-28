@@ -30,10 +30,10 @@
  **/
 
 #include <libinfinity/client/infc-browser.h>
+#include <libinfinity/client/infc-progress-request.h>
 #include <libinfinity/client/infc-request-manager.h>
-#include <libinfinity/client/infc-explore-request.h>
-#include <libinfinity/client/infc-acl-account-list-request.h>
 
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -79,7 +79,7 @@ typedef struct _InfcBrowserIterGetChatRequestForeachData
   InfcBrowserIterGetChatRequestForeachData;
 struct _InfcBrowserIterGetChatRequestForeachData {
   const InfBrowserIter* iter;
-  InfcChatRequest* result;
+  InfcRequest* result;
 };
 
 typedef struct _InfcBrowserIterGetSyncInRequestsForeachData
@@ -149,13 +149,13 @@ struct _InfcBrowserSubreq {
 
   union {
     struct {
-      InfcChatRequest* request;
+      InfcRequest* request;
       InfCommunicationJoinedGroup* subscription_group;
     } chat;
 
     struct {
       InfcBrowserNode* node;
-      InfcNodeRequest* request;
+      InfcRequest* request;
       InfCommunicationJoinedGroup* subscription_group;
     } session;
 
@@ -164,7 +164,7 @@ struct _InfcBrowserSubreq {
       const InfcNotePlugin* plugin;
       gchar* name;
       InfAclSheetSet* sheet_set;
-      InfcNodeRequest* request;
+      InfcRequest* request;
       InfCommunicationJoinedGroup* subscription_group;
     } add_node;
 
@@ -173,7 +173,7 @@ struct _InfcBrowserSubreq {
       const InfcNotePlugin* plugin;
       gchar* name;
       InfAclSheetSet* sheet_set;
-      InfcNodeRequest* request;
+      InfcRequest* request;
       InfCommunicationJoinedGroup* synchronization_group;
       InfCommunicationJoinedGroup* subscription_group; /* can be NULL */
       InfSession* session;
@@ -288,22 +288,20 @@ infc_browser_browser_list_pending_requests_foreach_func(InfcRequest* request,
                                                         gpointer user_data)
 {
   InfcBrowserListPendingRequestsForeachData* data;
-  InfcNodeRequest* node_request;
   guint node_id;
 
   data = (InfcBrowserListPendingRequestsForeachData*)user_data;
-  if(INFC_IS_NODE_REQUEST(request))
-  {
-    node_request = INFC_NODE_REQUEST(request);
-    g_object_get(G_OBJECT(node_request), "node-id", &node_id, NULL);
+  g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
 
-    if(data->iter != NULL && node_id == data->iter->node_id)
-      data->result = g_slist_prepend(data->result, node_request);
+  if(node_id == G_MAXUINT)
+  {
+    if(data->iter == NULL)
+      data->result = g_slist_prepend(data->result, request);
   }
   else
   {
-    if(data->iter == NULL)
-      data->result = g_slist_prepend(data->result, node_request);
+    if(data->iter != NULL && node_id == data->iter->node_id)
+      data->result = g_slist_prepend(data->result, request);
   }
 }
 
@@ -312,25 +310,22 @@ infc_browser_iter_get_sync_in_requests_foreach_func(InfcRequest* request,
                                                     gpointer user_data)
 {
   InfcBrowserIterGetSyncInRequestsForeachData* data;
-  InfcNodeRequest* node_request;
   InfSession* session;
   guint node_id;
 
   data = (InfcBrowserIterGetSyncInRequestsForeachData*)user_data;
-  g_assert(INFC_IS_NODE_REQUEST(request));
 
   /* This is only a sync-in request if we assigned a session to sync with */
-  node_request = INFC_NODE_REQUEST(request);
   session = g_object_get_qdata(
-    G_OBJECT(node_request),
+    G_OBJECT(request),
     infc_browser_sync_in_session_quark
   );
 
-  if(session)
+  if(session != NULL)
   {
-    g_object_get(G_OBJECT(node_request), "node-id", &node_id, NULL);
-    if(node_id == data->iter->node_id)
-      data->result = g_slist_prepend(data->result, node_request);
+    g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+    if(node_id != G_MAXUINT && node_id == data->iter->node_id)
+      data->result = g_slist_prepend(data->result, request);
   }
 }
 
@@ -341,14 +336,13 @@ infc_browser_get_chat_request_foreach_func(InfcRequest* request,
   InfcBrowserIterGetChatRequestForeachData* data;
 
   data = (InfcBrowserIterGetChatRequestForeachData*)user_data;
-  g_assert(INFC_IS_CHAT_REQUEST(request));
 
   /* There can only be one such request: */
   g_assert(data->result == NULL);
 
   /* TODO: Stop foreach when we found the request. Requires changes in
    * InfcRequestManager. */
-  data->result = INFC_CHAT_REQUEST(request);
+  data->result = request;
 }
 
 /*
@@ -631,33 +625,25 @@ infc_browser_session_remove_child_sessions(InfcBrowser* browser,
 static void
 infc_browser_node_register(InfcBrowser* browser,
                            InfcBrowserNode* node,
-                           InfcNodeRequest* request)
+                           InfcRequest* request)
 {
   InfBrowserIter iter;
   iter.node_id = node->id;
   iter.node = node;
 
-  inf_browser_node_added(
-    INF_BROWSER(browser),
-    &iter,
-    INF_NODE_REQUEST(request)
-  );
+  inf_browser_node_added(INF_BROWSER(browser), &iter, INF_REQUEST(request));
 }
 
 static void
 infc_browser_node_unregister(InfcBrowser* browser,
                              InfcBrowserNode* node,
-                             InfcNodeRequest* request)
+                             InfcRequest* request)
 {
   InfBrowserIter iter;
   iter.node_id = node->id;
   iter.node = node;
 
-  inf_browser_node_removed(
-    INF_BROWSER(browser),
-    &iter,
-    INF_NODE_REQUEST(request)
-  );
+  inf_browser_node_removed(INF_BROWSER(browser), &iter, INF_REQUEST(request));
 }
 
 /* Required by infc_browser_node_free */
@@ -1542,7 +1528,7 @@ infc_browser_add_subreq_common(InfcBrowser* browser,
 
 static InfcBrowserSubreq*
 infc_browser_add_subreq_chat(InfcBrowser* browser,
-                             InfcChatRequest* request,
+                             InfcRequest* request,
                              InfCommunicationJoinedGroup* group)
 {
   InfcBrowserSubreq* subreq;
@@ -1568,7 +1554,7 @@ infc_browser_add_subreq_chat(InfcBrowser* browser,
 static InfcBrowserSubreq*
 infc_browser_add_subreq_session(InfcBrowser* browser,
                                 InfcBrowserNode* node,
-                                InfcNodeRequest* request,
+                                InfcRequest* request,
                                 InfCommunicationJoinedGroup* group)
 {
   InfcBrowserSubreq* subreq;
@@ -1598,7 +1584,7 @@ infc_browser_add_subreq_add_node(InfcBrowser* browser,
                                  const InfcNotePlugin* plugin,
                                  const gchar* name,
                                  const InfAclSheetSet* sheet_set,
-                                 InfcNodeRequest* request,
+                                 InfcRequest* request,
                                  InfCommunicationJoinedGroup* group)
 {
   InfcBrowserSubreq* subreq;
@@ -1633,7 +1619,7 @@ infc_browser_add_subreq_sync_in(InfcBrowser* browser,
                                 const InfcNotePlugin* plugin,
                                 const gchar* name,
                                 const InfAclSheetSet* sheet_set,
-                                InfcNodeRequest* request,
+                                InfcRequest* request,
                                 InfSession* session,
                                 InfCommunicationJoinedGroup* sync_group,
                                 InfCommunicationJoinedGroup* sub_group)
@@ -1795,7 +1781,6 @@ infc_browser_sync_in_synchronization_failed_cb(InfSession* session,
 {
   InfcBrowserSyncIn* sync_in;
   InfcBrowser* browser;
-  InfcNodeRequest* request;
   InfcBrowserNode* node;
 
   sync_in = (InfcBrowserSyncIn*)user_data;
@@ -1910,7 +1895,7 @@ infc_browser_remove_sync_in(InfcBrowser* browser,
 static InfcBrowserNode*
 infc_browser_node_add_subdirectory(InfcBrowser* browser,
                                    InfcBrowserNode* parent,
-                                   InfcNodeRequest* request,
+                                   InfcRequest* request,
                                    guint id,
                                    const gchar* name,
                                    const InfAclSheetSet* sheet_set)
@@ -1939,7 +1924,7 @@ infc_browser_node_add_subdirectory(InfcBrowser* browser,
 static InfcBrowserNode*
 infc_browser_node_add_note(InfcBrowser* browser,
                            InfcBrowserNode* parent,
-                           InfcNodeRequest* request,
+                           InfcRequest* request,
                            guint id,
                            const gchar* name,
                            const gchar* type,
@@ -2106,16 +2091,63 @@ infc_browser_get_node_from_xml_typed(InfcBrowser* browser,
   }
 }
 
-static InfcNodeRequest*
+static gboolean
+infc_browser_validate_progress_request(InfcBrowser* browser,
+                                       InfcProgressRequest* request,
+                                       GError** error)
+{
+  guint current;
+  guint total;
+
+  if(infc_progress_request_get_initiated(request) == FALSE)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NOT_INITIATED,
+      "%s",
+      inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_INITIATED)
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    g_object_get(
+      G_OBJECT(request),
+      "current", &current,
+      "total", &total,
+      NULL
+    );
+
+    if(current >= total)
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
+        "%s",
+        inf_directory_strerror(INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN)
+      );
+
+      return FALSE;
+    }
+    else
+    {
+      return TRUE;
+    }
+  }
+}
+
+static InfcRequest*
 infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
                                            xmlNodePtr xml,
                                            GError** error)
 {
   InfcBrowserPrivate* priv;
   InfcRequest* request;
-  guint current;
-  guint total;
   gchar* type;
+  gboolean result;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
@@ -2141,8 +2173,8 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
         _("The request contains a sequence number refering to a request of "
-          "type '%s', but a request of either 'explore' or 'add-node' was "
-          "expected."),
+          "type '%s', but a request of either 'explore-node' or 'add-node' "
+          "was expected."),
         type
       );
 
@@ -2150,46 +2182,19 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
       return NULL;
     }
 
-    g_assert(INFC_IS_NODE_REQUEST(request));
-
     /* For explore request, we do some basic sanity checking here */
     if(strcmp(type, "explore-node") == 0)
     {
-      /* TODO: Make a InfProgressRequest interface, and then move this code
-       * into a separate function, sharing it with the add-user checks. */
-      g_assert(INFC_IS_EXPLORE_REQUEST(request));
+      g_assert(INFC_IS_PROGRESS_REQUEST(request));
 
-      g_object_get(
-        G_OBJECT(request),
-        "current", &current,
-        "total", &total,
-        NULL
+      result = infc_browser_validate_progress_request(
+        browser,
+        INFC_PROGRESS_REQUEST(request),
+        error
       );
 
-      if(infc_explore_request_get_initiated(INFC_EXPLORE_REQUEST(request)) ==
-         FALSE)
+      if(result == FALSE)
       {
-        g_set_error(
-          error,
-          inf_directory_error_quark(),
-          INF_DIRECTORY_ERROR_NOT_INITIATED,
-          "%s",
-          inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_INITIATED)
-        );
-
-        g_free(type);
-        return NULL;
-      }
-      else if(current >= total)
-      {
-        g_set_error(
-          error,
-          inf_directory_error_quark(),
-          INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
-          "%s",
-          inf_directory_strerror(INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN)
-        );
-
         g_free(type);
         return NULL;
       }
@@ -2198,34 +2203,48 @@ infc_browser_get_add_node_request_from_xml(InfcBrowser* browser,
     g_free(type);
   }
 
-  return INFC_NODE_REQUEST(request);
+  return request;
 }
 
 static void
 infc_browser_process_add_node_request(InfcBrowser* browser,
-                                      InfcNodeRequest* request,
+                                      InfcRequest* request,
                                       InfcBrowserNode* node)
 {
   InfcBrowserPrivate* priv;
+  InfBrowserIter parent_iter;
   InfBrowserIter iter;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
-  if(INFC_IS_EXPLORE_REQUEST(request))
+  if(INFC_IS_PROGRESS_REQUEST(request))
   {
-    infc_explore_request_progress(
-      INFC_EXPLORE_REQUEST(request)
-    );
+    infc_progress_request_progress(INFC_PROGRESS_REQUEST(request));
   }
   else
   {
+    g_object_get(G_OBJECT(request), "node-id", &parent_iter.node_id, NULL);
+    g_assert(parent_iter.node_id != G_MAXUINT);
+
+    parent_iter.node = g_hash_table_lookup(
+      priv->nodes,
+      GUINT_TO_POINTER(parent_iter.node_id)
+    );
+
+    g_assert(parent_iter.node != NULL);
+
     iter.node_id = node->id;
     iter.node = node;
-    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
+    g_assert(node->parent == parent_iter.node);
 
-    infc_request_manager_remove_request(
+    infc_request_manager_finish_request(
       priv->request_manager,
-      INFC_REQUEST(request)
+      request,
+      inf_request_result_make_add_node(
+        INF_BROWSER(browser),
+        &parent_iter,
+        &iter
+      )
     );
   }
 }
@@ -2276,10 +2295,10 @@ infc_browser_create_group_from_xml(InfcBrowser* browser,
 
 /* If initial_sync is TRUE, then the session is initially synchronized in the 
  * subscription group. Otherwise, an empty session is used. */
-static gboolean
+static void
 infc_browser_subscribe_session(InfcBrowser* browser,
                                InfcBrowserNode* node,
-                               InfcNodeRequest* request,
+                               InfcRequest* request,
                                InfCommunicationJoinedGroup* group,
                                InfXmlConnection* connection,
                                gboolean initial_sync)
@@ -2341,7 +2360,6 @@ infc_browser_subscribe_session(InfcBrowser* browser,
 
   /* The default handler refs the proxy */
   g_object_unref(proxy);
-  return TRUE;
 }
 
 static gboolean
@@ -2555,12 +2573,14 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   );
 
   if(request == NULL) return FALSE;
-  g_assert(INFC_IS_EXPLORE_REQUEST(request));
+  g_assert(INFC_IS_PROGRESS_REQUEST(request));
 
   if(!inf_xml_util_get_attribute_uint_required(xml, "total", &total, error))
     return FALSE;
 
   g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+  g_assert(node_id != G_MAXUINT);
+
   node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
 
   if(node == NULL)
@@ -2602,7 +2622,7 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   else
   {
     node->shared.subdir.explored = TRUE;
-    infc_explore_request_initiated(INFC_EXPLORE_REQUEST(request), total);
+    infc_progress_request_initiated(INFC_PROGRESS_REQUEST(request), total);
     return TRUE;
   }
 }
@@ -2630,7 +2650,7 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
   );
 
   if(request == NULL) return FALSE;
-  g_assert(INFC_IS_EXPLORE_REQUEST(request));
+  g_assert(INFC_IS_PROGRESS_REQUEST(request));
 
   g_object_get(G_OBJECT(request), "current", &current, "total", &total, NULL);
   if(current < total)
@@ -2658,11 +2678,12 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
      * cancelled before. */
     g_assert(iter.node != NULL);
 
-    /*((InfcBrowserNode*)iter.node)->shared.subdir.explored = TRUE;*/
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_explore_node(INF_BROWSER(browser), &iter)
+    );
 
-    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
-    if(priv->status == INF_BROWSER_OPEN)
-      infc_request_manager_remove_request(priv->request_manager, request);
     return TRUE;
   }
 }
@@ -2680,7 +2701,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
   xmlChar* name;
   xmlChar* type;
   InfAclSheetSet* sheet_set;
-  InfcNodeRequest* request;
+  InfcRequest* request;
   GError* local_error;
 
   xmlNodePtr child;
@@ -2786,7 +2807,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
 
       /* Request must be a node-request at this point. <add-node> messages
        * resulting from a node exploration cannot yield subscription. */
-      if(request != NULL && !INFC_IS_NODE_REQUEST(request))
+      if(request != NULL && INFC_IS_PROGRESS_REQUEST(request))
       {
         g_set_error(
           error,
@@ -2838,7 +2859,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
               plugin,
               (const gchar*)name,
               sheet_set,
-              INFC_NODE_REQUEST(request),
+              request,
               group
             );
 
@@ -2972,8 +2993,6 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
 
   /* We always set both session and plugin quark: */
   g_assert(plugin != NULL);
-  /* We only set this on node requests */
-  g_assert(INFC_IS_NODE_REQUEST(request));
 
   result = FALSE;
 
@@ -3042,7 +3061,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
               plugin,
               (const gchar*)name,
               sheet_set,
-              INFC_NODE_REQUEST(request),
+              request,
               session,
               sync_group,
               child != NULL ? sync_group : NULL
@@ -3091,25 +3110,22 @@ infc_browser_handle_remove_node(InfcBrowser* browser,
     NULL
   );
 
-  g_assert(request == NULL || INFC_IS_NODE_REQUEST(request));
-
   if(request != NULL)
   {
     g_object_ref(request);
 
     iter.node_id = node->id;
     iter.node = node;
-    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
-    infc_request_manager_remove_request(priv->request_manager, request);
+
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_remove_node(INF_BROWSER(browser), &iter)
+    );
   }
 
-  infc_browser_session_remove_child_sessions(
-    browser,
-    node,
-    INFC_REQUEST(request)
-  );
-
-  infc_browser_node_unregister(browser, node, INFC_NODE_REQUEST(request));
+  infc_browser_session_remove_child_sessions(browser, node, request);
+  infc_browser_node_unregister(browser, node, request);
   infc_browser_node_free(browser, node);
 
   if(request != NULL)
@@ -3194,15 +3210,7 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
     NULL
   );
 
-  g_assert(INFC_IS_NODE_REQUEST(request));
-
-  subreq = infc_browser_add_subreq_session(
-    browser,
-    node,
-    INFC_NODE_REQUEST(request),
-    group
-  );
-
+  subreq = infc_browser_add_subreq_session(browser, node, request, group);
   g_object_unref(group);
 
   infc_browser_subscribe_ack(browser, connection, subreq);
@@ -3259,14 +3267,7 @@ infc_browser_handle_subscribe_chat(InfcBrowser* browser,
     NULL
   );
 
-  g_assert(request == NULL || INFC_IS_CHAT_REQUEST(request));
-
-  subreq = infc_browser_add_subreq_chat(
-    browser,
-    INFC_CHAT_REQUEST(request),
-    group
-  );
-
+  subreq = infc_browser_add_subreq_chat(browser, request, group);
   g_object_unref(group);
 
   infc_browser_subscribe_ack(browser, connection, subreq);
@@ -3305,7 +3306,6 @@ infc_browser_handle_save_session_in_progress(InfcBrowser* browser,
 
   if(request != NULL)
   {
-    g_assert(INFC_IS_NODE_REQUEST(request));
     /* TODO: Make a special save request that could now emit
      * an in-progress signal */
   }
@@ -3345,11 +3345,14 @@ infc_browser_handle_saved_session(InfcBrowser* browser,
 
   if(request != NULL)
   {
-    g_assert(INFC_IS_NODE_REQUEST(request));
     iter.node_id = node->id;
     iter.node = node;
-    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
-    infc_request_manager_remove_request(priv->request_manager, request);
+
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_save_session(INF_BROWSER(browser), &iter)
+    );
   }
 
   return TRUE;
@@ -3515,13 +3518,14 @@ infc_browser_handle_certificate_generated(InfcBrowser* browser,
 
   new_chain = inf_certificate_chain_new(all_certs, n_certs + 1);
 
-  infc_certificate_request_finished(
-    INFC_CERTIFICATE_REQUEST(request),
-    new_chain,
-    NULL
+  infc_request_manager_finish_request(
+    priv->request_manager,
+    request,
+    inf_request_result_make_create_certificate(
+      INF_BROWSER(browser),
+      new_chain
+    )
   );
-
-  infc_request_manager_remove_request(priv->request_manager, request);
 
   inf_certificate_chain_unref(new_chain);
   return TRUE;
@@ -3553,7 +3557,7 @@ infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
   );
 
   if(request == NULL) return FALSE;
-  g_assert(INFC_IS_ACL_ACCOUNT_LIST_REQUEST(request));
+  g_assert(INFC_IS_PROGRESS_REQUEST(request));
 
   if(!inf_xml_util_get_attribute_uint_required(xml, "total", &total, error))
     return FALSE;
@@ -3573,12 +3577,7 @@ infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
   else
   {
     priv->account_list_queried = TRUE;
-
-    infc_acl_account_list_request_initiated(
-      INFC_ACL_ACCOUNT_LIST_REQUEST(request),
-      total
-    );
-
+    infc_progress_request_initiated(INFC_PROGRESS_REQUEST(request), total);
     return TRUE;
   }
 }
@@ -3606,7 +3605,7 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   );
 
   if(request == NULL) return FALSE;
-  g_assert(INFC_IS_ACL_ACCOUNT_LIST_REQUEST(request));
+  g_assert(INFC_IS_PROGRESS_REQUEST(request));
 
   g_object_get(G_OBJECT(request), "current", &current, "total", &total, NULL);
   if(current < total)
@@ -3624,13 +3623,11 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   }
   else
   {
-    inf_acl_account_list_request_finished(
-      INF_ACL_ACCOUNT_LIST_REQUEST(request),
-      NULL
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_query_acl_account_list(INF_BROWSER(browser))
     );
-
-    if(priv->status == INF_BROWSER_OPEN)
-      infc_request_manager_remove_request(priv->request_manager, request);
 
     return TRUE;
   }
@@ -3645,9 +3642,8 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
   InfcBrowserPrivate* priv;
   GError* local_error;
   InfcRequest* request;
-  InfcAclAccountListRequest* acl_request;
-  guint current;
-  guint total;
+  gboolean result;
+
   InfAclAccount* account;
   gchar* id;
 
@@ -3667,45 +3663,18 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
     return FALSE;
   }
 
-  acl_request = NULL;
   if(request != NULL)
   {
-    g_assert(INFC_IS_ACL_ACCOUNT_LIST_REQUEST(request));
-    acl_request = INFC_ACL_ACCOUNT_LIST_REQUEST(request);
+    g_assert(INFC_IS_PROGRESS_REQUEST(request));
 
-    g_object_get(
-      G_OBJECT(request),
-      "current", &current,
-      "total", &total,
-      NULL
+    result = infc_browser_validate_progress_request(
+      browser,
+      INFC_PROGRESS_REQUEST(request),
+      error
     );
 
-    if(infc_acl_account_list_request_get_initiated(acl_request) == FALSE)
-    {
-      g_set_error(
-        error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_NOT_INITIATED,
-        "%s",
-        _("\"query-acl-account-list\" request was not initiated yet, but "
-          "\"add-acl-account\" was already received")
-      );
-
+    if(result == FALSE)
       return FALSE;
-    }
-    else if(current >= total)
-    {
-      g_set_error(
-        error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
-        "%s",
-        _("More users were added in response to \"query-acl-account-list\" "
-          "than initially proclaimed")
-      );
-
-      return FALSE;
-    }
   }
 
   account = inf_acl_account_from_xml(xml, error);
@@ -3727,13 +3696,13 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
 
   g_hash_table_insert(priv->accounts, account->id, account);
 
-  if(acl_request != NULL)
-    infc_acl_account_list_request_progress(acl_request);
+  if(request != NULL)
+    infc_progress_request_progress(INFC_PROGRESS_REQUEST(request));
 
   inf_browser_acl_account_added(
     INF_BROWSER(browser),
     account,
-    INF_ACL_ACCOUNT_LIST_REQUEST(acl_request)
+    INF_REQUEST(request)
   );
 
   return TRUE;
@@ -3778,8 +3747,6 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
     error
   );
 
-  g_assert(request == NULL || INF_IS_NODE_REQUEST(request));
-
   /* Remember that we have queried this ACL */
   if(request != NULL)
   {
@@ -3789,8 +3756,21 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
       g_assert(node->acl_queried == FALSE);
       node->acl_queried = TRUE;
     }
+    else if(strcmp(request_type, "set-acl") != 0)
+    {
+      g_set_error(
+        error,
+        inf_request_error_quark(),
+        INF_REQUEST_ERROR_INVALID_SEQ,
+        _("The request contains a sequence number refering to a request of "
+          "type '%s', but a request of either 'query-acl' or 'set-acl' "
+          "was expected."),
+        request_type
+      );
 
-    g_free(request_type);
+      g_free(request_type);
+      return FALSE;
+    }
   }
 
   iter.node_id = node->id;
@@ -3808,7 +3788,7 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
         INF_BROWSER(browser),
         &iter,
         sheet_set,
-        INF_NODE_REQUEST(request)
+        INF_REQUEST(request)
       );
     }
 
@@ -3816,7 +3796,31 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   }
 
   if(request != NULL)
-    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
+  {
+    g_object_get(G_OBJECT(request), "type", &request_type, NULL);
+    if(strcmp(request_type, "query-acl") == 0)
+    {
+      infc_request_manager_finish_request(
+        priv->request_manager,
+        request,
+        inf_request_result_make_query_acl(
+          INF_BROWSER(browser),
+          &iter,
+          node->acl
+        )
+      );
+    }
+    else
+    {
+      infc_request_manager_finish_request(
+        priv->request_manager,
+        request,
+        inf_request_result_make_set_acl(INF_BROWSER(browser), &iter)
+      );
+    }
+
+    g_free(request_type);
+  }
 
   return TRUE;
 }
@@ -4148,6 +4152,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
   InfcBrowserSubreq* subreq;
   InfChatSession* session;
   InfcSessionProxy* proxy;
+
+  InfBrowserIter parent_iter;
   InfBrowserIter iter;
 
   /* TODO: Can we do this in enqueued already? */
@@ -4214,18 +4220,20 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
         INF_REQUEST(subreq->shared.chat.request)
       );
 
-      /* The default handler refs the proxy */
-      g_object_unref(proxy);
-
       if(subreq->shared.chat.request != NULL)
       {
-        infc_chat_request_finished(subreq->shared.chat.request, NULL);
-
-        infc_request_manager_remove_request(
+        infc_request_manager_finish_request(
           priv->request_manager,
-          INFC_REQUEST(subreq->shared.chat.request)
+          subreq->shared.chat.request,
+          inf_request_result_make_subscribe_chat(
+            INF_BROWSER(browser),
+            INF_SESSION_PROXY(proxy)
+          )
         );
       }
+
+      /* The default handler of the subscribe-session signal refs the proxy */
+      g_object_unref(proxy);
 
       break;
     case INFC_BROWSER_SUBREQ_SESSION:
@@ -4248,15 +4256,21 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
           iter.node = subreq->shared.session.node;
           iter.node_id = node_id;
 
-          inf_node_request_finished(
-            INF_NODE_REQUEST(subreq->shared.session.request),
-            &iter,
-            NULL
+          g_assert(
+            subreq->shared.session.node->type == INFC_BROWSER_NODE_NOTE_KNOWN
           );
 
-          infc_request_manager_remove_request(
+          proxy = subreq->shared.session.node->shared.known.session;
+          g_assert(proxy != NULL);
+
+          infc_request_manager_finish_request(
             priv->request_manager,
-            INFC_REQUEST(subreq->shared.session.request)
+            subreq->shared.session.request,
+            inf_request_result_make_subscribe_session(
+              INF_BROWSER(browser),
+              &iter,
+              INF_SESSION_PROXY(proxy)
+            )
           );
         }
       }
@@ -4300,18 +4314,19 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
         /* Finish request */
         if(subreq->shared.add_node.request != NULL)
         {
+          parent_iter.node_id = subreq->shared.sync_in.parent->id;
+          parent_iter.node = subreq->shared.sync_in.parent;
           iter.node = node;
           iter.node_id = node_id;
 
-          inf_node_request_finished(
-            INF_NODE_REQUEST(subreq->shared.add_node.request),
-            &iter,
-            NULL
-          );
-
-          infc_request_manager_remove_request(
+          infc_request_manager_finish_request(
             priv->request_manager,
-            INFC_REQUEST(subreq->shared.add_node.request)
+            subreq->shared.add_node.request,
+            inf_request_result_make_add_node(
+              INF_BROWSER(browser),
+              &parent_iter,
+              &iter
+            )
           );
         }
       }
@@ -4361,6 +4376,8 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
         g_assert(node->type == INFC_BROWSER_NODE_NOTE_KNOWN);
 
+        parent_iter.node_id = subreq->shared.sync_in.parent->id;
+        parent_iter.node = subreq->shared.sync_in.parent;
         iter.node_id = node->id;
         iter.node = node;
 
@@ -4408,15 +4425,14 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
 
         g_assert(subreq->shared.sync_in.request != NULL);
 
-        inf_node_request_finished(
-          INF_NODE_REQUEST(subreq->shared.sync_in.request),
-          &iter,
-          NULL
-        );
-
-        infc_request_manager_remove_request(
+        infc_request_manager_finish_request(
           priv->request_manager,
-          INFC_REQUEST(subreq->shared.sync_in.request)
+          subreq->shared.sync_in.request,
+          inf_request_result_make_add_node(
+            INF_BROWSER(browser),
+            &parent_iter,
+            &iter
+          )
         );
       }
 
@@ -4606,10 +4622,10 @@ infc_browser_browser_get_child(InfBrowser* browser,
   }
 }
 
-static InfExploreRequest*
+static InfRequest*
 infc_browser_browser_explore(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             InfNodeRequestFunc func,
+                             InfRequestFunc func,
                              gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -4634,7 +4650,7 @@ infc_browser_browser_explore(InfBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_EXPLORE_REQUEST,
+    INFC_TYPE_PROGRESS_REQUEST,
     "explore-node",
     G_CALLBACK(func),
     user_data,
@@ -4653,7 +4669,7 @@ infc_browser_browser_explore(InfBrowser* browser,
     xml
   );
 
-  return INF_EXPLORE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 static gboolean
@@ -4686,7 +4702,7 @@ infc_browser_browser_is_subdirectory(InfBrowser* browser,
   return FALSE;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infc_browser_browser_add_note(InfBrowser* infbrowser,
                               const InfBrowserIter* iter,
                               const char* name,
@@ -4694,7 +4710,7 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
                               const InfAclSheetSet* sheet_set,
                               InfSession* session,
                               gboolean initial_subscribe,
-                              InfNodeRequestFunc func,
+                              InfRequestFunc func,
                               gpointer user_data)
 {
   InfcBrowser* browser;
@@ -4722,7 +4738,7 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "add-node",
     G_CALLBACK(func),
     user_data,
@@ -4732,7 +4748,7 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
 
   if(session != NULL)
   {
-    /* TODO: Add a InfcSyncInRequest, deriving from InfcNodeRequest that
+    /* TODO: Add a InfcSyncInRequest, deriving from InfcRequest that
      * carries session and plugin, so we don't need g_object_set_qdata for the
      * session and plugin. */
     g_object_ref(session);
@@ -4773,15 +4789,15 @@ infc_browser_browser_add_note(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
-static InfNodeRequest*
+static InfRequest*
 infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
                                       const InfBrowserIter* iter,
                                       const char* name,
                                       const InfAclSheetSet* sheet_set,
-                                      InfNodeRequestFunc func,
+                                      InfRequestFunc func,
                                       gpointer user_data)
 {
   InfcBrowser* browser;
@@ -4805,7 +4821,7 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "add-node",
     G_CALLBACK(func), user_data,
     "node-id", iter->node_id,
@@ -4828,13 +4844,13 @@ infc_browser_browser_add_subdirectory(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
-static InfNodeRequest*
+static InfRequest*
 infc_browser_browser_remove_node(InfBrowser* infbrowser,
                                  const InfBrowserIter* iter,
-                                 InfNodeRequestFunc func,
+                                 InfRequestFunc func,
                                  gpointer user_data)
 {
   InfcBrowser* browser;
@@ -4860,7 +4876,7 @@ infc_browser_browser_remove_node(InfBrowser* infbrowser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "remove-node",
     G_CALLBACK(func),
     user_data,
@@ -4879,7 +4895,7 @@ infc_browser_browser_remove_node(InfBrowser* infbrowser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 static const gchar*
@@ -4925,10 +4941,10 @@ infc_browser_browser_get_node_type(InfBrowser* infbrowser,
   }
 }
 
-static InfNodeRequest*
+static InfRequest*
 infc_browser_browser_subscribe(InfBrowser* browser,
                                const InfBrowserIter* iter,
-                               InfNodeRequestFunc func,
+                               InfRequestFunc func,
                                gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -4959,7 +4975,7 @@ infc_browser_browser_subscribe(InfBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "subscribe-session",
     G_CALLBACK(func),
     user_data,
@@ -4978,7 +4994,7 @@ infc_browser_browser_subscribe(InfBrowser* browser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 static InfSessionProxy*
@@ -5044,7 +5060,7 @@ infc_browser_browser_list_pending_requests(InfBrowser* browser,
 
 static gboolean
 infc_browser_browser_iter_from_request(InfBrowser* browser,
-                                       InfNodeRequest* request,
+                                       InfRequest* request,
                                        InfBrowserIter* iter)
 {
   InfcBrowserPrivate* priv;
@@ -5052,11 +5068,12 @@ infc_browser_browser_iter_from_request(InfBrowser* browser,
   guint node_id;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
-  g_return_val_if_fail(INFC_IS_NODE_REQUEST(request), FALSE);
+  g_return_val_if_fail(INFC_IS_REQUEST(request), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
 
   priv = INFC_BROWSER_PRIVATE(browser);
   g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+  if(node_id == G_MAXUINT) return FALSE;
 
   node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
   if(node == NULL) return FALSE;
@@ -5066,9 +5083,9 @@ infc_browser_browser_iter_from_request(InfBrowser* browser,
   return TRUE;
 }
 
-static InfAclAccountListRequest*
+static InfRequest*
 infc_browser_browser_query_acl_account_list(InfBrowser* browser,
-                                            InfAclAccountListRequestFunc func,
+                                            InfRequestFunc func,
                                             gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -5092,7 +5109,7 @@ infc_browser_browser_query_acl_account_list(InfBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_ACL_ACCOUNT_LIST_REQUEST,
+    INFC_TYPE_PROGRESS_REQUEST,
     "query-acl-account-list",
     G_CALLBACK(func),
     user_data,
@@ -5109,7 +5126,7 @@ infc_browser_browser_query_acl_account_list(InfBrowser* browser,
     xml
   );
 
-  return INF_ACL_ACCOUNT_LIST_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 static const InfAclAccount**
@@ -5168,10 +5185,10 @@ infc_browser_browser_lookup_acl_account(InfBrowser* browser,
   return (const InfAclAccount*)g_hash_table_lookup(priv->accounts, id);
 }
 
-static InfNodeRequest*
+static InfRequest*
 infc_browser_browser_query_acl(InfBrowser* browser,
                                const InfBrowserIter* iter,
-                               InfNodeRequestFunc func,
+                               InfRequestFunc func,
                                gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -5195,7 +5212,7 @@ infc_browser_browser_query_acl(InfBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "query-acl",
     G_CALLBACK(func),
     user_data,
@@ -5214,7 +5231,7 @@ infc_browser_browser_query_acl(InfBrowser* browser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 static gboolean
@@ -5260,11 +5277,11 @@ infc_browser_browser_get_acl(InfBrowser* browser,
   return node->acl;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infc_browser_browser_set_acl(InfBrowser* browser,
                              const InfBrowserIter* iter,
                              const InfAclSheetSet* sheet_set,
-                             InfNodeRequestFunc func,
+                             InfRequestFunc func,
                              gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -5283,7 +5300,7 @@ infc_browser_browser_set_acl(InfBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "set-acl",
     G_CALLBACK(func),
     user_data,
@@ -5304,7 +5321,7 @@ infc_browser_browser_set_acl(InfBrowser* browser,
     xml
   );
 
-  return INF_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 /*
@@ -5648,17 +5665,17 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
  *
  * The request might either finish during the call to this function, in which
  * case @func will be called and %NULL being returned. If the request does not
- * finish within the function call, a #InfNodeRequest object is returned,
- * where @func has been installed for the #InfNodeRequest::finished signal,
+ * finish within the function call, a #InfRequest object is returned,
+ * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Return Value: A #InfcNodeRequest that may be used to get notified when
+ * Return Value: A #InfRequest that may be used to get notified when
  * the request finishes or fails.
  **/
-InfcNodeRequest*
+InfRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
                                const InfBrowserIter* iter,
-                               InfNodeRequestFunc func,
+                               InfRequestFunc func,
                                gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -5677,7 +5694,7 @@ infc_browser_iter_save_session(InfcBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_NODE_REQUEST,
+    INFC_TYPE_REQUEST,
     "save-session",
     G_CALLBACK(func),
     user_data,
@@ -5696,7 +5713,7 @@ infc_browser_iter_save_session(InfcBrowser* browser,
     xml
   );
 
-  return INFC_NODE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 /**
@@ -5823,16 +5840,16 @@ infc_browser_iter_is_valid(InfcBrowser* browser,
  *
  * The request might either finish during the call to this function, in which
  * case @func will be called and %NULL being returned. If the request does not
- * finish within the function call, a #InfcChatRequest object is returned,
- * where @func has been installed for the #InfcChatRequest::finished signal,
+ * finish within the function call, a #InfRequest object is returned,
+ * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfcChatRequest that may be used to get notified when
+ * Returns: A #InfRequest that may be used to get notified when
  * the request finishes or fails.
  */
-InfcChatRequest*
+InfRequest*
 infc_browser_subscribe_chat(InfcBrowser* browser,
-                            InfcChatRequestFunc func,
+                            InfRequestFunc func,
                             gpointer user_data)
 {
   InfcBrowserPrivate* priv;
@@ -5852,7 +5869,7 @@ infc_browser_subscribe_chat(InfcBrowser* browser,
   /* This should really be a separate request type */
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_CHAT_REQUEST,
+    INFC_TYPE_REQUEST,
     "subscribe-chat",
     G_CALLBACK(func),
     user_data,
@@ -5869,22 +5886,22 @@ infc_browser_subscribe_chat(InfcBrowser* browser,
     xml
   );
 
-  return INFC_CHAT_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 /**
  * infc_browser_get_subscribe_chat_request:
  * @browser: A #InfcBrowser.
  *
- * Returns the #InfcChatRequest that represests the request sent to the server
+ * Returns the #InfRequest that represests the request sent to the server
  * which attempts to subscribe to its chat. If there is no such request
  * running, then the function returns %NULL. After such a request finishes,
  * call infc_browser_get_chat_session() to get the #InfcSessionProxy for the
  * chat session. To initiate the request, call infc_browser_subscribe_chat().
  *
- * Returns: A #InfcChatRequest, or %NULL.
+ * Returns: A #InfRequest, or %NULL.
  */
-InfcChatRequest*
+InfRequest*
 infc_browser_get_subscribe_chat_request(InfcBrowser* browser)
 {
   InfcBrowserPrivate* priv;
@@ -5905,7 +5922,7 @@ infc_browser_get_subscribe_chat_request(InfcBrowser* browser)
     );
   }
 
-  return data.result;
+  return INF_REQUEST(data.result);
 }
 
 /**
@@ -5946,19 +5963,19 @@ infc_browser_get_chat_session(InfcBrowser* browser)
  *
  * The request might either finish during the call to this function, in which
  * case @func will be called and %NULL being returned. If the request does not
- * finish within the function call, a #InfcCertificateRequest object is
+ * finish within the function call, a #InfRequest object is
  * returned, where @func has been installed for the
- * #InfcCertificateRequest::finished signal, so that it is called as soon as
+ * #InfRequest::finished signal, so that it is called as soon as
  * the request finishes.
  *
- * Returns: A #InfcCertificateRequest that can be used to get notified when
+ * Returns: A #InfRequest that can be used to get notified when
  * the request finishes, or %NULL on error.
  */
-InfcCertificateRequest*
+InfRequest*
 infc_browser_request_certificate(InfcBrowser* browser,
                                  gnutls_x509_crq_t crq,
                                  const gchar* extra_data,
-                                 InfcCertificateRequestFunc func,
+                                 InfRequestFunc func,
                                  gpointer user_data,
                                  GError** error)
 {
@@ -5998,7 +6015,7 @@ infc_browser_request_certificate(InfcBrowser* browser,
 
   request = infc_request_manager_add_request(
     priv->request_manager,
-    INFC_TYPE_CERTIFICATE_REQUEST,
+    INFC_TYPE_REQUEST,
     "request-certificate",
     G_CALLBACK(func),
     user_data,
@@ -6019,7 +6036,7 @@ infc_browser_request_certificate(InfcBrowser* browser,
     xml
   );
 
-  return INFC_CERTIFICATE_REQUEST(request);
+  return INF_REQUEST(request);
 }
 
 /* vim:set et sw=2 ts=2: */

@@ -2088,16 +2088,16 @@ inf_text_session_flush_requests_for_user(InfTextSession* session,
  * This functions creates a user join request for an #InfTextSession. This is
  * a shortcut for inf_session_proxy_join_user().
  *
- * Returns: A #InfUserRequest, or %NULL on error.
+ * Returns: A #InfRequest, or %NULL on error.
  */
-InfUserRequest*
+InfRequest*
 inf_text_session_join_user(InfSessionProxy* proxy,
                            const gchar* name,
                            InfUserStatus status,
                            gdouble hue,
                            guint caret_position,
                            int selection_length,
-                           InfUserRequestFunc func,
+                           InfRequestFunc func,
                            gpointer user_data)
 {
 #define N_PARAMS 6u
@@ -2111,7 +2111,7 @@ inf_text_session_join_user(InfSessionProxy* proxy,
   };
 
   InfSession* session;
-  InfUserRequest* request;
+  InfRequest* request;
   guint i;
 
   g_return_val_if_fail(INF_IS_SESSION_PROXY(proxy), NULL);

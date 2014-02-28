@@ -22,16 +22,24 @@
  * @title: InfRequest
  * @short_description: Asynchronous request
  * @include: libinfinity/common/inf-request.h
- * @see_also: #InfBrowserRequest
  * @stability: Unstable
  *
  * #InfRequest represents a potentially asynchronous operation. This is a
- * basic interface which allows to query the type of the operation.
- * More specific operations are possible on more specialized interfaces
- * or classes, such as #InfBrowserRequest or #InfcUserRequest.
+ * basic interface which allows to query the type of the operation and
+ * to be notified when the request finishes.
  */
 
 #include <libinfinity/common/inf-request.h>
+#include <libinfinity/common/inf-request-result.h>
+#include <libinfinity/inf-marshal.h>
+
+enum {
+  FINISHED,
+
+  LAST_SIGNAL
+};
+
+static guint request_signals[LAST_SIGNAL];
 
 static void
 inf_request_base_init(gpointer g_class)
@@ -49,6 +57,42 @@ inf_request_base_init(gpointer g_class)
         NULL,
         G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
       )
+    );
+
+    g_object_interface_install_property(
+      g_class,
+      g_param_spec_double(
+        "progress",
+        "Progress",
+        "Percentage of completion of the request",
+        0.0,
+        1.0,
+        0.0,
+        G_PARAM_READABLE
+      )
+    );
+
+    /**
+     * InfRequest::finished:
+     * @request: The #InfRequest which finished.
+     * @result: A #InfRequestResult which contains the result of the request.
+     * @error: Error information in case the request failed, or %NULL
+     * otherwise.
+     *
+     * This signal is emitted when the request finishes. If @error is
+     * non-%NULL the request failed, otherwise it finished successfully.
+     */
+    request_signals[FINISHED] = g_signal_new(
+      "finished",
+      INF_TYPE_REQUEST,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfRequestIface, finished),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_POINTER,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_REQUEST_RESULT | G_SIGNAL_TYPE_STATIC_SCOPE,
+      G_TYPE_POINTER /* GError* */
     );
 
     initialized = TRUE;
@@ -97,23 +141,49 @@ inf_request_get_type(void)
  * @request: A #InfRequest.
  * @error: A #GError describing the reason for why the request failed.
  *
- * Declares the request as failed. What this actually does is defined by the
- * actual class implementing this interface. Usually a signal is emitted which
- * lets higher level objects know that an operation has failed.
+ * Declares the request as failed by emitting the #InfRequest::finished
+ * signal with the given error.
  */
 void
 inf_request_fail(InfRequest* request,
                  const GError* error)
 {
-  InfRequestIface* iface;
-
   g_return_if_fail(INF_IS_REQUEST(request));
   g_return_if_fail(error != NULL);
 
-  iface = INF_REQUEST_GET_IFACE(request);
-  g_return_if_fail(iface->fail != NULL);
+  g_signal_emit(
+    request,
+    request_signals[FINISHED],
+    0,
+    NULL,
+    error
+  );
+}
 
-  iface->fail(request, error);
+/**
+ * inf_request_fail:
+ * @request: A #InfRequest.
+ * @result: A #InfRequestResult containing the result of the request.
+ *
+ * Declares the request as succeeded by emitting the #InfRequest::finished
+ * signal with the given result. The function takes ownership of @result.
+ */
+void
+inf_request_finish(InfRequest* request,
+                   InfRequestResult* result)
+{
+  g_return_if_fail(INF_IS_REQUEST(request));
+  g_return_if_fail(result != NULL);
+
+  g_signal_emit(
+    request,
+    request_signals[FINISHED],
+    0,
+    result,
+    NULL
+  );
+
+  inf_request_result_free(result);
 }
 
 /**

@@ -40,9 +40,9 @@
  */
 
 #include <libinfinity/server/infd-session-proxy.h>
-#include <libinfinity/server/infd-user-request.h>
+#include <libinfinity/server/infd-request.h>
 #include <libinfinity/common/inf-session-proxy.h>
-#include <libinfinity/common/inf-user-request.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
@@ -1293,14 +1293,14 @@ infd_session_proxy_communication_object_received(InfCommunicationObject* obj,
  * InfSessionProxy implementation
  */
 
-static InfUserRequest*
+static InfRequest*
 infd_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
                                            guint n_params,
                                            const GParameter* params,
-                                           InfUserRequestFunc func,
+                                           InfRequestFunc func,
                                            gpointer user_data)
 {
-  InfdUserRequest* request;
+  InfdRequest* request;
   GArray* array;
 
   guint i;
@@ -1312,7 +1312,7 @@ infd_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
   g_return_val_if_fail(INFD_IS_SESSION_PROXY(proxy), NULL);
 
   request = g_object_new(
-    INFD_TYPE_USER_REQUEST,
+    INFD_TYPE_REQUEST,
     "type", "user-join",
     NULL
   );
@@ -1351,9 +1351,19 @@ infd_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
     g_value_unset(&g_array_index(array, GParameter, i).value);
   g_array_free(array, TRUE);
 
-  inf_user_request_finished(INF_USER_REQUEST(request), user, error);
-  if(error) g_error_free(error);
+  if(error != NULL)
+  {
+    inf_request_fail(INF_REQUEST(request), error);
+  }
+  else
+  {
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_join_user(proxy, user)
+    );
+  }
 
+  if(error) g_error_free(error);
   g_object_unref(request);
   return NULL;
 }

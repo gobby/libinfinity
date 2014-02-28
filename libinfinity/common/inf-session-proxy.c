@@ -109,18 +109,18 @@ inf_session_proxy_get_type(void)
  *
  * The request might either finish during the call to this function, in which
  * case @func will be called and %NULL being returned. If the request does not
- * finish within the function call, a #InfUserRequest object is returned,
- * where @func has been installed for the #InfUserRequest::finished signal,
+ * finish within the function call, a #InfRequest object is returned,
+ * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfUserRequest object that may be used to get notified
+ * Returns: A #InfRequest object that may be used to get notified
  * when the request finishes, or %NULL.
  */
-InfUserRequest*
+InfRequest*
 inf_session_proxy_join_user(InfSessionProxy* proxy,
                             guint n_params,
                             const GParameter* params,
-                            InfUserRequestFunc func,
+                            InfRequestFunc func,
                             gpointer user_data)
 {
   InfSessionProxyIface* iface;

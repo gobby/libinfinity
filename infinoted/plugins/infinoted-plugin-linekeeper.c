@@ -38,7 +38,7 @@ typedef struct _InfinotedPluginLinekeeperSessionInfo
 struct _InfinotedPluginLinekeeperSessionInfo {
   InfinotedPluginLinekeeper* plugin;
   InfSessionProxy* proxy;
-  InfUserRequest* request;
+  InfRequest* request;
   InfUser* user;
   InfTextBuffer* buffer;
   InfIoDispatch* dispatch;
@@ -296,12 +296,14 @@ infinoted_plugin_linekeeper_has_available_users(
 }
 
 static void
-infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
-                                         InfUser* user,
+infinoted_plugin_linekeeper_user_join_cb(InfRequest* request,
+                                         const InfRequestResult* result,
                                          const GError* error,
                                          gpointer user_data)
 {
   InfinotedPluginLinekeeperSessionInfo* info;
+  InfUser* user;
+
   info = (InfinotedPluginLinekeeperSessionInfo*)user_data;
 
   info->request = NULL;
@@ -316,6 +318,8 @@ infinoted_plugin_linekeeper_user_join_cb(InfUserRequest* request,
   }
   else
   {
+    inf_request_result_get_join_user(result, NULL, &user);
+
     info->user = user;
     g_object_ref(info->user);
 
@@ -430,7 +434,6 @@ infinoted_plugin_linekeeper_session_added(const InfBrowserIter* iter,
   InfinotedPluginLinekeeperSessionInfo* info;
   InfSession* session;
   InfUserTable* user_table;
-  InfUserRequest* request;
 
   info = (InfinotedPluginLinekeeperSessionInfo*)session_info;
 

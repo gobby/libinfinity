@@ -41,7 +41,6 @@
 
 #include <libinfgtk/inf-gtk-permissions-dialog.h>
 #include <libinfgtk/inf-gtk-acl-sheet-view.h>
-#include <libinfinity/common/inf-acl-account-list-request.h>
 #include <libinfinity/inf-i18n.h>
 
 typedef struct _InfGtkPermissionsDialogPrivate InfGtkPermissionsDialogPrivate;
@@ -52,8 +51,8 @@ struct _InfGtkPermissionsDialogPrivate {
   GtkListStore* account_store;
   gboolean show_full_list;
 
-  InfAclAccountListRequest* query_acl_account_list_request;
-  InfNodeRequest* query_acl_request;
+  InfRequest* query_acl_account_list_request;
+  InfRequest* query_acl_request;
   GSList* set_acl_requests;
 
   GtkWidget* tree_view;
@@ -85,8 +84,8 @@ static void
 inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog);
 
 static void
-inf_gtk_permissions_dialog_set_acl_finished_cb(InfNodeRequest* request,
-                                               const InfBrowserIter* iter,
+inf_gtk_permissions_dialog_set_acl_finished_cb(InfRequest* request,
+                                               const InfRequestResult* result,
                                                const GError* error,
                                                gpointer user_data)
 {
@@ -120,7 +119,7 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
   InfGtkPermissionsDialogPrivate* priv;
   const InfAclSheet* sheet;
   InfAclSheetSet sheet_set;
-  InfNodeRequest* request;
+  InfRequest* request;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
@@ -333,7 +332,7 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
 static void
 inf_gtk_permissions_dialog_node_removed_cb(InfBrowser* browser,
                                            const InfBrowserIter* iter,
-                                           InfNodeRequest* request,
+                                           InfRequest* request,
                                            gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
@@ -349,7 +348,7 @@ inf_gtk_permissions_dialog_node_removed_cb(InfBrowser* browser,
 static void
 inf_gtk_permissions_dialog_acl_account_added_cb(InfBrowser* browser,
                                                 const InfAclAccount* account,
-                                                InfAclAccountListRequest* req,
+                                                InfRequest* request,
                                                 gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
@@ -399,7 +398,7 @@ static void
 inf_gtk_permissions_dialog_acl_changed_cb(InfBrowser* browser,
                                           const InfBrowserIter* iter,
                                           const InfAclSheetSet* sheet_set,
-                                          InfNodeRequest* request,
+                                          InfRequest* request,
                                           gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
@@ -507,7 +506,8 @@ inf_gtk_permissions_dialog_name_data_func(GtkTreeViewColumn* column,
 
 static void
 inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
-  InfAclAccountListRequest* request,
+  InfRequest* request,
+  const InfRequestResult* res,
   const GError* error,
   gpointer user_data)
 {
@@ -522,8 +522,8 @@ inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
 }
 
 static void
-inf_gtk_permissions_dialog_query_acl_finished_cb(InfNodeRequest* request,
-                                                 const InfBrowserIter* iter,
+inf_gtk_permissions_dialog_query_acl_finished_cb(InfRequest* request,
+                                                 const InfRequestResult* res,
                                                  const GError* error,
                                                  gpointer user_data)
 {
@@ -604,12 +604,10 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
     if(inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST) &&
        priv->query_acl_account_list_request == NULL && error == NULL)
     {
-      priv->query_acl_account_list_request = INF_ACL_ACCOUNT_LIST_REQUEST(
-        inf_browser_get_pending_request(
-          priv->browser,
-          NULL,
-          "query-acl-account-list"
-        )
+      priv->query_acl_account_list_request = inf_browser_get_pending_request(
+        priv->browser,
+        NULL,
+        "query-acl-account-list"
       );
 
       if(priv->query_acl_account_list_request == NULL)
@@ -641,12 +639,10 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       if(inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACL) &&
          priv->query_acl_request == NULL && error == NULL)
       {
-        priv->query_acl_request = INF_NODE_REQUEST(
-          inf_browser_get_pending_request(
-            priv->browser,
-            &priv->browser_iter,
-            "query-acl"
-          )
+        priv->query_acl_request = inf_browser_get_pending_request(
+          priv->browser,
+          &priv->browser_iter,
+          "query-acl"
         );
 
         if(priv->query_acl_request == NULL)

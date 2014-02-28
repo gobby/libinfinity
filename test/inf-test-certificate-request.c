@@ -37,12 +37,13 @@ struct _InfTestCertificateRequest {
 };
 
 static void
-inf_test_certificate_request_finished_cb(InfcCertificateRequest* request,
-                                         InfCertificateChain* chain,
+inf_test_certificate_request_finished_cb(InfRequest* request,
+                                         const InfRequestResult* result,
                                          const GError* error,
                                          gpointer user_data)
 {
   InfTestCertificateRequest* test;
+  InfCertificateChain* chain;
   guint n_certs;
   guint i;
   gnutls_datum_t datum;
@@ -60,6 +61,7 @@ inf_test_certificate_request_finished_cb(InfcCertificateRequest* request,
   else
   {
     fprintf(stderr, "Certificate generated!\n\n");
+    inf_request_result_get_create_certificate(result, NULL, &chain);
 
     n_certs = inf_certificate_chain_get_n_certificates(chain);
     for(i = 0; i < n_certs; ++i)
@@ -128,7 +130,7 @@ inf_test_certificate_request_notify_status_cb(GObject* object,
   InfTestCertificateRequest* test;
   InfBrowserStatus status;
   gnutls_x509_crq_t crq;
-  InfcCertificateRequest* request;
+  InfRequest* request;
   GError* error;
   int res;
 

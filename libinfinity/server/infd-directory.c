@@ -35,10 +35,11 @@
  **/
 
 #include <libinfinity/server/infd-directory.h>
-#include <libinfinity/server/infd-node-request.h>
-#include <libinfinity/server/infd-explore-request.h>
+#include <libinfinity/server/infd-request.h>
+#include <libinfinity/server/infd-progress-request.h>
 #include <libinfinity/common/inf-session.h>
 #include <libinfinity/common/inf-chat-session.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -121,7 +122,7 @@ struct _InfdDirectorySyncIn {
   InfAclSheetSet* sheet_set;
   const InfdNotePlugin* plugin;
   InfdSessionProxy* proxy;
-  InfdNodeRequest* request;
+  InfdRequest* request;
 };
 
 typedef enum _InfdDirectorySubreqType {
@@ -143,7 +144,7 @@ struct _InfdDirectorySubreq {
   union {
     struct {
       InfdSessionProxy* session;
-      InfdNodeRequest* request;
+      InfdRequest* request;
     } session;
 
     struct {
@@ -154,7 +155,7 @@ struct _InfdDirectorySubreq {
       InfAclSheetSet* sheet_set;
       /* TODO: Isn't group already present in proxy? */
       InfdSessionProxy* proxy;
-      InfdNodeRequest* request;
+      InfdRequest* request;
     } add_node;
 
     struct {
@@ -166,7 +167,7 @@ struct _InfdDirectorySubreq {
       InfAclSheetSet* sheet_set;
       /* TODO: Aren't the groups already present in proxy? */
       InfdSessionProxy* proxy;
-      InfdNodeRequest* request;
+      InfdRequest* request;
     } sync_in;
   } shared;
 };
@@ -357,7 +358,7 @@ infd_directory_node_make_path(InfdDirectoryNode* node,
 static void
 infd_directory_node_unlink_session(InfdDirectory* directory,
                                    InfdDirectoryNode* node,
-                                   InfdNodeRequest* request);
+                                   InfdRequest* request);
 
 static void
 infd_directory_session_save_timeout_data_free(gpointer data)
@@ -853,7 +854,7 @@ infd_directory_announce_acl_sheets_for_connection(InfdDirectory* directory,
 static void
 infd_directory_announce_acl_sheets(InfdDirectory* directory,
                                    InfdDirectoryNode* node,
-                                   InfdNodeRequest* request,
+                                   InfdRequest* request,
                                    const InfAclSheetSet* sheet_set,
                                    InfXmlConnection* except)
 {
@@ -915,7 +916,7 @@ infd_directory_announce_acl_sheets(InfdDirectory* directory,
     INF_BROWSER(directory),
     &iter,
     sheet_set,
-    INF_NODE_REQUEST(request)
+    INF_REQUEST(request)
   );
 }
 
@@ -1501,7 +1502,7 @@ infd_directory_session_proxy_ensure(InfdDirectory* directory,
 static void
 infd_directory_node_link_session(InfdDirectory* directory,
                                  InfdDirectoryNode* node,
-                                 InfdNodeRequest* request,
+                                 InfdRequest* request,
                                  InfdSessionProxy* proxy)
 {
   InfdDirectoryPrivate* priv;
@@ -1526,7 +1527,7 @@ infd_directory_node_link_session(InfdDirectory* directory,
 static void
 infd_directory_node_unlink_session(InfdDirectory* directory,
                                    InfdDirectoryNode* node,
-                                   InfdNodeRequest* request)
+                                   InfdRequest* request)
 {
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
@@ -1551,7 +1552,7 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
 static void
 infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
                                           InfdDirectoryNode* node,
-                                          InfdNodeRequest* request,
+                                          InfdRequest* request,
                                           gboolean save_notes)
 {
   InfdDirectoryPrivate* priv;
@@ -2075,7 +2076,7 @@ infd_directory_make_seq(InfdDirectory* directory,
 static void
 infd_directory_node_register(InfdDirectory* directory,
                              InfdDirectoryNode* node,
-                             InfdNodeRequest* request,
+                             InfdRequest* request,
                              InfXmlConnection* except,
                              const gchar* seq)
 {
@@ -2094,7 +2095,7 @@ infd_directory_node_register(InfdDirectory* directory,
   inf_browser_node_added(
     INF_BROWSER(directory),
     &iter,
-    INF_NODE_REQUEST(request)
+    INF_REQUEST(request)
   );
 
   xml = infd_directory_node_register_to_xml(node);
@@ -2140,7 +2141,7 @@ infd_directory_node_register(InfdDirectory* directory,
 static void
 infd_directory_node_unregister(InfdDirectory* directory,
                                InfdDirectoryNode* node,
-                               InfdNodeRequest* request,
+                               InfdRequest* request,
                                const gchar* seq)
 {
   InfdDirectoryPrivate* priv;
@@ -2155,7 +2156,7 @@ infd_directory_node_unregister(InfdDirectory* directory,
   inf_browser_node_removed(
     INF_BROWSER(directory),
     &iter,
-    INF_NODE_REQUEST(request)
+    INF_REQUEST(request)
   );
 
   xml = infd_directory_node_unregister_to_xml(node);
@@ -2201,7 +2202,7 @@ infd_directory_sync_in_synchronization_failed_cb(InfSession* session,
    * notification required since the synchronization failed on the remote site
    * as well. */
   InfdDirectorySyncIn* sync_in;
-  InfdNodeRequest* request;
+  InfdRequest* request;
 
   sync_in = (InfdDirectorySyncIn*)user_data;
   request = sync_in->request;
@@ -2224,7 +2225,8 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfBrowserIter iter;
-  InfdNodeRequest* request;
+  InfBrowserIter parent;
+  InfdRequest* request;
   InfdSessionProxy* proxy;
   gchar* path;
   gboolean ret;
@@ -2250,6 +2252,8 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   proxy = sync_in->proxy;
   g_object_ref(proxy);
 
+  parent.node_id = sync_in->parent->id;
+  parent.node = sync_in->parent;
   infd_directory_remove_sync_in(directory, sync_in);
 
   /* Don't send to conn since the completed synchronization already lets the
@@ -2298,10 +2302,9 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
   iter.node_id = node->id;
   iter.node = node;
 
-  inf_node_request_finished(
-    INF_NODE_REQUEST(request),
-    &iter,
-    NULL
+  inf_request_finish(
+    INF_REQUEST(request),
+    inf_request_result_make_add_node(INF_BROWSER(directory), &parent, &iter)
   );
 
   g_object_unref(request);
@@ -2310,7 +2313,7 @@ infd_directory_sync_in_synchronization_complete_cb(InfSession* session,
 static InfdDirectorySyncIn*
 infd_directory_add_sync_in(InfdDirectory* directory,
                            InfdDirectoryNode* parent,
-                           InfdNodeRequest* request,
+                           InfdRequest* request,
                            guint node_id,
                            const gchar* name,
                            const InfAclSheetSet* sheet_set,
@@ -2471,7 +2474,7 @@ infd_directory_add_subreq_chat(InfdDirectory* directory,
 static InfdDirectorySubreq*
 infd_directory_add_subreq_session(InfdDirectory* directory,
                                   InfXmlConnection* connection,
-                                  InfdNodeRequest* request,
+                                  InfdRequest* request,
                                   guint node_id,
                                   InfdSessionProxy* proxy)
 {
@@ -2496,7 +2499,7 @@ static InfdDirectorySubreq*
 infd_directory_add_subreq_add_node(InfdDirectory* directory,
                                    InfXmlConnection* connection,
                                    InfCommunicationHostedGroup* group,
-                                   InfdNodeRequest* request,
+                                   InfdRequest* request,
                                    InfdDirectoryNode* parent,
                                    guint node_id,
                                    const gchar* name,
@@ -2569,7 +2572,7 @@ infd_directory_add_subreq_sync_in(InfdDirectory* directory,
                                   InfXmlConnection* connection,
                                   InfCommunicationHostedGroup* sync_group,
                                   InfCommunicationHostedGroup* sub_group,
-                                  InfdNodeRequest* request,
+                                  InfdRequest* request,
                                   InfdDirectoryNode* parent,
                                   guint node_id,
                                   const gchar* name,
@@ -2855,7 +2858,7 @@ infd_directory_node_is_name_available(InfdDirectory* directory,
 static gboolean
 infd_directory_node_explore(InfdDirectory* directory,
                             InfdDirectoryNode* node,
-                            InfdExploreRequest* request,
+                            InfdProgressRequest* request,
                             GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -2938,7 +2941,7 @@ infd_directory_node_explore(InfdDirectory* directory,
   node->shared.subdir.explored = TRUE;
 
   g_free(path);
-  if(request != NULL) infd_explore_request_initiated(request, acls->len);
+  if(request != NULL) infd_progress_request_initiated(request, acls->len);
 
   /* Second pass, fill the directory tree */
   index = 0;
@@ -3002,13 +3005,13 @@ infd_directory_node_explore(InfdDirectory* directory,
       infd_directory_node_register(
         directory,
         new_node,
-        INFD_NODE_REQUEST(request),
+        INFD_REQUEST(request),
         NULL,
         NULL
       );
     }
 
-    if(request != NULL) infd_explore_request_progress(request);
+    if(request != NULL) infd_progress_request_progress(request);
   }
 
   g_ptr_array_free(acls, TRUE);
@@ -3018,10 +3021,9 @@ infd_directory_node_explore(InfdDirectory* directory,
     iter.node_id = node->id;
     iter.node = node;
 
-    inf_node_request_finished(
-      INF_NODE_REQUEST(request),
-      &iter,
-      NULL
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_explore_node(INF_BROWSER(directory), &iter)
     );
   }
 
@@ -3033,7 +3035,7 @@ infd_directory_node_explore(InfdDirectory* directory,
 static InfdDirectoryNode*
 infd_directory_node_add_subdirectory(InfdDirectory* directory,
                                      InfdDirectoryNode* parent,
-                                     InfdNodeRequest* request,
+                                     InfdRequest* request,
                                      const gchar* name,
                                      const InfAclSheetSet* sheet_set,
                                      InfXmlConnection* connection,
@@ -3044,6 +3046,9 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   InfdDirectoryNode* node;
   gboolean result;
   gchar* path;
+
+  InfBrowserIter parent_iter;
+  InfBrowserIter iter;
 
   g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
   g_assert(parent->shared.subdir.explored == TRUE);
@@ -3079,6 +3084,21 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
     node->shared.subdir.explored = TRUE;
 
     infd_directory_node_register(directory, node, request, NULL, seq);
+
+    parent_iter.node_id = parent->id;
+    parent_iter.node = parent;
+    iter.node_id = node->id;
+    iter.node = node;
+
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_add_node(
+        INF_BROWSER(directory),
+        &parent_iter,
+        &iter
+      )
+    );
+
     return node;
   }
 }
@@ -3086,7 +3106,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
 static gboolean
 infd_directory_node_add_note(InfdDirectory* directory,
                              InfdDirectoryNode* parent,
-                             InfdNodeRequest* request,
+                             InfdRequest* request,
                              const gchar* name,
                              const InfAclSheetSet* sheet_set,
                              const InfdNotePlugin* plugin,
@@ -3098,7 +3118,6 @@ infd_directory_node_add_note(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfBrowserIter iter;
   guint node_id;
   InfCommunicationHostedGroup* group;
   xmlNodePtr xml;
@@ -3108,6 +3127,9 @@ infd_directory_node_add_note(InfdDirectory* directory,
   InfdSessionProxy* proxy;
   gboolean ensured;
   GError* local_error;
+
+  InfBrowserIter parent_iter;
+  InfBrowserIter iter;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -3244,13 +3266,18 @@ infd_directory_node_add_note(InfdDirectory* directory,
         infd_directory_node_link_session(directory, node, request, proxy);
         g_object_unref(proxy);
 
+        parent_iter.node_id = parent->id;
+        parent_iter.node = parent;
         iter.node_id = node->id;
         iter.node = node;
 
-        inf_node_request_finished(
-          INF_NODE_REQUEST(request),
-          &iter,
-          NULL
+        inf_request_finish(
+          INF_REQUEST(request),
+          inf_request_result_make_add_node(
+            INF_BROWSER(directory),
+            &parent_iter,
+            &iter
+          )
         );
       }
     }
@@ -3271,7 +3298,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
 static gboolean
 infd_directory_node_add_sync_in(InfdDirectory* directory,
                                 InfdDirectoryNode* parent,
-                                InfdNodeRequest* request,
+                                InfdRequest* request,
                                 const gchar* name,
                                 const InfAclSheetSet* sheet_set,
                                 const InfdNotePlugin* plugin,
@@ -3428,7 +3455,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 static gboolean
 infd_directory_node_remove(InfdDirectory* directory,
                            InfdDirectoryNode* node,
-                           InfdNodeRequest* request,
+                           InfdRequest* request,
                            const gchar* seq,
                            GError** error)
 {
@@ -3472,7 +3499,10 @@ infd_directory_node_remove(InfdDirectory* directory,
   }
   else
   {
-    inf_node_request_finished(INF_NODE_REQUEST(request), &iter, NULL);
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_remove_node(INF_BROWSER(directory), &iter)
+    );
 
     /* Need to unlink child sessions explicitely before unregistering, so
      * remove-session is emitted before node-removed. Don't save changes since
@@ -3829,7 +3859,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   GSList* item;
-  InfdExploreRequest* request;
+  InfdProgressRequest* request;
   InfBrowserIter iter;
   GError* local_error;
   InfdDirectoryNode* child;
@@ -3852,9 +3882,9 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 
   if(node->shared.subdir.explored == FALSE)
   {
-    request = INFD_EXPLORE_REQUEST(
+    request = INFD_PROGRESS_REQUEST(
       g_object_new(
-        INFD_TYPE_EXPLORE_REQUEST,
+        INFD_TYPE_PROGRESS_REQUEST,
         "type", "explore-node",
         "node-id", node->id,
         "requestor", connection,
@@ -3971,7 +4001,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   InfAclSheetSet* sheet_set;
   InfAclMask perms;
   InfdNotePlugin* plugin;
-  InfdNodeRequest* request;
+  InfdRequest* request;
   xmlChar* name;
   xmlChar* type;
   gchar* seq;
@@ -4085,9 +4115,9 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     return FALSE;
   }
 
-  request = INFD_NODE_REQUEST(
+  request = INFD_REQUEST(
     g_object_new(
-      INFD_TYPE_NODE_REQUEST,
+      INFD_TYPE_REQUEST,
       "type", "add-node",
       "node-id", parent->id,
       "requestor", connection,
@@ -4178,7 +4208,7 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
 {
   InfdDirectoryNode* node;
   gchar* seq;
-  InfdNodeRequest* request;
+  InfdRequest* request;
   InfBrowserIter iter;
   gboolean result;
 
@@ -4202,9 +4232,9 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
     if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
       return FALSE;
 
-    request = INFD_NODE_REQUEST(
+    request = INFD_REQUEST(
       g_object_new(
-        INFD_TYPE_NODE_REQUEST,
+        INFD_TYPE_REQUEST,
         "type", "remove-node",
         "node-id", node->id,
         "requestor", connection,
@@ -4239,7 +4269,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
   InfdDirectorySubreq* subreq;
   InfdSessionProxy* proxy;
   InfBrowserIter iter;
-  InfdNodeRequest* request;
+  InfdRequest* request;
   InfCommunicationGroup* group;
   const gchar* method;
   gchar* seq;
@@ -4310,9 +4340,9 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
    * storage. */
   if(request == NULL && proxy == NULL)
   {
-    request = INFD_NODE_REQUEST(
+    request = INFD_REQUEST(
       g_object_new(
-        INFD_TYPE_NODE_REQUEST,
+        INFD_TYPE_REQUEST,
         "type", "subscribe-session",
         "node-id", node->id,
         "requestor", connection,
@@ -4484,6 +4514,8 @@ infd_directory_handle_save_session(InfdDirectory* directory,
     "session", &session,
     NULL
   );
+
+  /* TODO: Make a request */
 
   result = node->shared.note.plugin->session_write(
     priv->storage,
@@ -5136,7 +5168,7 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
   gchar* seq;
   GError* local_error;
   InfAclSheetSet* sheet_set;
-  InfdNodeRequest* request;
+  InfdRequest* request;
   InfBrowserIter iter;
   xmlNodePtr reply_xml;
 
@@ -5203,9 +5235,9 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
     return FALSE;
   }
 
-  request = INFD_NODE_REQUEST(
+  request = INFD_REQUEST(
     g_object_new(
-      INFD_TYPE_NODE_REQUEST,
+      INFD_TYPE_REQUEST,
       "type", "set-acl",
       "node-id", node->id,
       "requestor", connection,
@@ -5253,10 +5285,9 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
     reply_xml
   );
 
-  inf_node_request_finished(
-    INF_NODE_REQUEST(request),
-    &iter,
-    NULL
+  inf_request_finish(
+    INF_REQUEST(request),
+    inf_request_result_make_set_acl(INF_BROWSER(directory), &iter)
   );
 
   g_object_unref(request);
@@ -5274,7 +5305,6 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectorySubreq* subreq;
   InfdDirectoryNode* node;
-  InfBrowserIter iter;
   GSList* item;
   InfdDirectorySubreq* subsubreq;
   InfdDirectorySyncIn* sync_in;
@@ -5282,6 +5312,9 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   InfSession* session;
   InfdDirectoryConnectionInfo* info;
   GError* local_error;
+
+  InfBrowserIter parent_iter;
+  InfBrowserIter iter;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -5395,10 +5428,13 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
         iter.node_id = node->id;
         iter.node = node;
 
-        inf_node_request_finished(
-          INF_NODE_REQUEST(subreq->shared.session.request),
-          &iter,
-          NULL
+        inf_request_finish(
+          INF_REQUEST(subreq->shared.session.request),
+          inf_request_result_make_subscribe_session(
+            INF_BROWSER(directory),
+            &iter,
+            INF_SESSION_PROXY(subreq->shared.session.session)
+          )
         );
       }
     }
@@ -5477,13 +5513,18 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
 
       g_assert(subreq->shared.add_node.request != NULL);
 
+      parent_iter.node_id = subreq->shared.add_node.parent->id;
+      parent_iter.node = subreq->shared.add_node.parent;
       iter.node_id = node->id;
       iter.node = node;
 
-      inf_node_request_finished(
-        INF_NODE_REQUEST(subreq->shared.add_node.request),
-        &iter,
-        NULL
+      inf_request_finish(
+        INF_REQUEST(subreq->shared.add_node.request),
+        inf_request_result_make_add_node(
+          INF_BROWSER(directory),
+          &parent_iter,
+          &iter
+        )
       );
     }
     else
@@ -5621,7 +5662,7 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
   InfdDirectorySubreq* subreq;
   InfdDirectorySubreq* subsubreq;
   GSList* item;
-  InfdNodeRequest* other_request;
+  InfdRequest* other_request;
   gchar* path;
   gboolean result;
   GError* local_error;
@@ -6654,16 +6695,16 @@ infd_directory_browser_get_child(InfBrowser* browser,
   return TRUE;
 }
 
-static InfExploreRequest*
+static InfRequest*
 infd_directory_browser_explore(InfBrowser* browser,
                                const InfBrowserIter* iter,
-                               InfNodeRequestFunc func,
+                               InfRequestFunc func,
                                gpointer user_data)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfdExploreRequest* request;
+  InfdProgressRequest* request;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -6675,7 +6716,7 @@ infd_directory_browser_explore(InfBrowser* browser,
   g_return_val_if_fail(node->shared.subdir.explored == FALSE, NULL);
 
   request = g_object_new(
-    INFD_TYPE_EXPLORE_REQUEST,
+    INFD_TYPE_PROGRESS_REQUEST,
     "type", "explore-node",
     "node-id", node->id,
     "requestor", NULL,
@@ -6742,7 +6783,7 @@ infd_directory_browser_is_subdirectory(InfBrowser* browser,
   return TRUE;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infd_directory_browser_add_note(InfBrowser* browser,
                                 const InfBrowserIter* iter,
                                 const char* name,
@@ -6750,14 +6791,14 @@ infd_directory_browser_add_note(InfBrowser* browser,
                                 const InfAclSheetSet* sheet_set,
                                 InfSession* session,
                                 gboolean initial_subscribe,
-                                InfNodeRequestFunc func,
+                                InfRequestFunc func,
                                 gpointer user_data)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   const InfdNotePlugin* plugin;
-  InfdNodeRequest* request;
+  InfdRequest* request;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -6772,7 +6813,7 @@ infd_directory_browser_add_note(InfBrowser* browser,
   g_return_val_if_fail(plugin != NULL, NULL);
 
   request = g_object_new(
-    INFD_TYPE_NODE_REQUEST,
+    INFD_TYPE_REQUEST,
     "type", "add-node",
     "node-id", node->id,
     "requestor", NULL,
@@ -6809,18 +6850,18 @@ infd_directory_browser_add_note(InfBrowser* browser,
   return NULL;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infd_directory_browser_add_subdirectory(InfBrowser* browser,
                                         const InfBrowserIter* iter,
                                         const char* name,
                                         const InfAclSheetSet* sheet_set,
-                                        InfNodeRequestFunc func,
+                                        InfRequestFunc func,
                                         gpointer user_data)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfdNodeRequest* request;
+  InfdRequest* request;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -6832,7 +6873,7 @@ infd_directory_browser_add_subdirectory(InfBrowser* browser,
   g_return_val_if_fail(node->shared.subdir.explored == TRUE, NULL);
 
   request = g_object_new(
-    INFD_TYPE_NODE_REQUEST,
+    INFD_TYPE_REQUEST,
     "type", "add-node",
     "node-id", node->id,
     "requestor", NULL,
@@ -6866,16 +6907,16 @@ infd_directory_browser_add_subdirectory(InfBrowser* browser,
   return NULL;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infd_directory_browser_remove_node(InfBrowser* browser,
                                    const InfBrowserIter* iter,
-                                   InfNodeRequestFunc func,
+                                   InfRequestFunc func,
                                    gpointer user_data)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfdNodeRequest* request;
+  InfdRequest* request;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -6885,7 +6926,7 @@ infd_directory_browser_remove_node(InfBrowser* browser,
   node = (InfdDirectoryNode*)iter->node;
 
   request = g_object_new(
-    INFD_TYPE_NODE_REQUEST,
+    INFD_TYPE_REQUEST,
     "type", "remove-node",
     "node-id", node->id,
     "requestor", NULL,
@@ -6945,17 +6986,17 @@ infd_directory_browser_get_node_type(InfBrowser* browser,
   return node->shared.note.plugin->note_type;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infd_directory_browser_subscribe(InfBrowser* browser,
                                  const InfBrowserIter* iter,
-                                 InfNodeRequestFunc func,
+                                 InfRequestFunc func,
                                  gpointer user_data)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
   InfdDirectorySubreq* subreq;
-  InfdNodeRequest* request;
+  InfdRequest* request;
   InfdSessionProxy* proxy;
   GSList* item;
   GError* error;
@@ -7009,7 +7050,7 @@ infd_directory_browser_subscribe(InfBrowser* browser,
   else
   {
     request = g_object_new(
-      INFD_TYPE_NODE_REQUEST,
+      INFD_TYPE_REQUEST,
       "type", "subscribe-session",
       "node-id", node->id,
       "requestor", NULL,
@@ -7077,7 +7118,14 @@ infd_directory_browser_subscribe(InfBrowser* browser,
     infd_directory_node_link_session(directory, node, request, proxy);
     g_object_unref(proxy);
 
-    inf_node_request_finished(INF_NODE_REQUEST(request), iter, NULL);
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_subscribe_session(
+        INF_BROWSER(directory),
+        iter,
+        INF_SESSION_PROXY(proxy)
+      )
+    );
   }
   else
   {
@@ -7188,7 +7236,7 @@ infd_directory_browser_list_pending_requests(InfBrowser* browser,
 
 static gboolean
 infd_directory_browser_iter_from_request(InfBrowser* browser,
-                                         InfNodeRequest* request,
+                                         InfRequest* request,
                                          InfBrowserIter* iter)
 {
   InfdDirectory* directory;
@@ -7200,6 +7248,7 @@ infd_directory_browser_iter_from_request(InfBrowser* browser,
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_object_get(G_OBJECT(request), "node-id", &node_id, NULL);
+  if(node_id == G_MAXUINT) return FALSE;
   
   node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
   if(node == NULL) return FALSE;
@@ -7209,9 +7258,9 @@ infd_directory_browser_iter_from_request(InfBrowser* browser,
   return TRUE;
 }
 
-static InfAclAccountListRequest*
+static InfRequest*
 infd_directory_browser_query_acl_account_list(InfBrowser* browser,
-                                              InfAclAccountListRequestFunc fn,
+                                              InfRequestFunc func,
                                               gpointer user_data)
 {
   /* This should not be called because get_acl_account_list always returns the
@@ -7270,10 +7319,10 @@ infd_directory_browser_lookup_acl_account(InfBrowser* browser,
   return &info->account;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infd_directory_browser_query_acl(InfBrowser* browser,
                                  const InfBrowserIter* iter,
-                                 InfNodeRequestFunc func,
+                                 InfRequestFunc func,
                                  gpointer user_data)
 {
   /* We always have the full ACL since we read it directly with the
@@ -7309,17 +7358,17 @@ infd_directory_browser_get_acl(InfBrowser* browser,
   return node->acl;
 }
 
-static InfNodeRequest*
+static InfRequest*
 infd_directory_browser_set_acl(InfBrowser* browser,
                                const InfBrowserIter* iter,
                                const InfAclSheetSet* sheet_set,
-                               InfNodeRequestFunc func,
+                               InfRequestFunc func,
                                gpointer user_data)
 {
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
-  InfdNodeRequest* request;
+  InfdRequest* request;
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -7329,7 +7378,7 @@ infd_directory_browser_set_acl(InfBrowser* browser,
   node = (InfdDirectoryNode*)iter->node;
 
   request = g_object_new(
-    INFD_TYPE_NODE_REQUEST,
+    INFD_TYPE_REQUEST,
     "type", "set-acl",
     "node-id", node->id,
     "requestor", NULL,
@@ -7359,6 +7408,11 @@ infd_directory_browser_set_acl(InfBrowser* browser,
   );
 
   infd_directory_write_acl(directory, node);
+
+  inf_request_finish(
+    INF_REQUEST(request),
+    inf_request_result_make_set_acl(INF_BROWSER(directory), iter)
+  );
 
   g_object_unref(request);
   return NULL;

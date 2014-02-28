@@ -593,6 +593,30 @@ infc_request_manager_remove_request(InfcRequestManager* manager,
 }
 
 /**
+ * infc_request_manager_finish_request:
+ * @manager: A #InfcRequestManager.
+ * @request: A #InfcRequest that has previously been added to @manager.
+ * @result: The request result.
+ *
+ * Marks @request as finished using inf_request_finish() and then removes the
+ * request from the manager. The function takes ownership of @result.
+ **/
+void
+infc_request_manager_finish_request(InfcRequestManager* manager,
+                                    InfcRequest* request,
+                                    InfRequestResult* result)
+{
+  g_return_if_fail(INFC_IS_REQUEST_MANAGER(manager));
+  g_return_if_fail(INFC_IS_REQUEST(request));
+  g_return_if_fail(result != NULL);
+
+  g_object_ref(request);
+  infc_request_manager_remove_request(manager, request);
+  inf_request_finish(INF_REQUEST(request), result);
+  g_object_unref(request);
+}
+
+/**
  * infc_request_manager_fail_request:
  * @manager: A #InfcRequestManager.
  * @request: A #InfcRequest that has previously been added to @manager.

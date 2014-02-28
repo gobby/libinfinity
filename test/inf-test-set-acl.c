@@ -37,13 +37,14 @@ struct _InfTestSetAcl {
 };
 
 static void
-inf_test_set_acl_set_acl_finished_cb(InfNodeRequest* request,
-                                     const InfBrowserIter* iter,
+inf_test_set_acl_set_acl_finished_cb(InfRequest* request,
+                                     const InfRequestResult* result,
                                      const GError* error,
                                      gpointer user_data)
 {
   InfTestSetAcl* test;
   const InfAclSheetSet* sheet_set;
+  const InfBrowserIter* iter;
   guint i;
 
   test = (InfTestSetAcl*)user_data;
@@ -54,6 +55,7 @@ inf_test_set_acl_set_acl_finished_cb(InfNodeRequest* request,
   }
   else
   {
+    inf_request_result_get_set_acl(result, NULL, &iter);
     sheet_set = inf_browser_get_acl(test->browser, iter);
     fprintf(stderr, "New root node ACL:\n");
     for(i = 0; i < sheet_set->n_sheets; ++i)
@@ -72,8 +74,8 @@ inf_test_set_acl_set_acl_finished_cb(InfNodeRequest* request,
 }
 
 static void
-inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
-                                       const InfBrowserIter* iter,
+inf_test_set_acl_query_acl_finished_cb(InfRequest* request,
+                                       const InfRequestResult* result,
                                        const GError* error,
                                        gpointer user_data)
 {
@@ -81,6 +83,7 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
   InfAclSheetSet* sheet_set;
   const InfAclAccount* account;
   InfAclSheet* sheet;
+  const InfBrowserIter* iter;
   guint i;
 
   test = (InfTestSetAcl*)user_data;
@@ -92,6 +95,8 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
   }
   else
   {
+    inf_request_result_get_query_acl(result, NULL, &iter, NULL);
+
     sheet_set =
       inf_acl_sheet_set_copy(inf_browser_get_acl(test->browser, iter));
 
@@ -127,7 +132,8 @@ inf_test_set_acl_query_acl_finished_cb(InfNodeRequest* request,
 }
 
 static void
-inf_test_set_acl_query_account_list_finished_cb(InfAclAccountListRequest* req,
+inf_test_set_acl_query_account_list_finished_cb(InfRequest* request,
+                                                const InfRequestResult* res,
                                                 const GError* error,
                                                 gpointer user_data)
 {

@@ -20,6 +20,8 @@
 #ifndef __INF_REQUEST_H__
 #define __INF_REQUEST_H__
 
+#include <libinfinity/common/inf-certificate-chain.h>
+
 #include <glib-object.h>
 
 G_BEGIN_DECLS
@@ -28,6 +30,14 @@ G_BEGIN_DECLS
 #define INF_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_REQUEST, InfRequest))
 #define INF_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_REQUEST))
 #define INF_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_REQUEST, InfRequestIface))
+
+/**
+ * InfRequestResult:
+ *
+ * #InfRequestResult is an opaque data type. You should only access it
+ * via the public API functions.
+ */
+typedef struct _InfRequestResult InfRequestResult;
 
 /**
  * InfRequest:
@@ -40,7 +50,7 @@ typedef struct _InfRequestIface InfRequestIface;
 
 /**
  * InfRequestIface:
- * @fail: Virtual function for notification when the request failed.
+ * @finished: Default signal handler of the #InfRequest::finished signal.
  * @is_local: Virtual function to check whether the request is local or
  * remote.
  *
@@ -51,11 +61,27 @@ struct _InfRequestIface {
   GTypeInterface parent;
 
   /*< public >*/
-  void (*fail)(InfRequest* request,
-               const GError* error);
+  void (*finished)(InfRequest* request,
+                   const InfRequestResult* result,
+                   const GError* error);
 
   gboolean (*is_local)(InfRequest* request);
 };
+
+/**
+ * InfRequestFunc:
+ * @request: The #InfRequest that emits the signal.
+ * @result: A #InfRequestResult which contains the result of the request.
+ * @error: Error information in case the request failed, or %NULL
+ * otherwise.
+ * @user_data: Additional data set when the signal handler was connected.
+ *
+ * Signature of a signal handler for the #InfRequest::finished signal.
+ */
+typedef void(*InfRequestFunc)(InfRequest* request,
+                              const InfRequestResult* result,
+                              const GError* error,
+                              gpointer user_data);
 
 GType
 inf_request_get_type(void) G_GNUC_CONST;
@@ -63,6 +89,10 @@ inf_request_get_type(void) G_GNUC_CONST;
 void
 inf_request_fail(InfRequest* request,
                  const GError* error);
+
+void
+inf_request_finish(InfRequest* request,
+                   InfRequestResult* result);
 
 gboolean
 inf_request_is_local(InfRequest* request);

@@ -84,14 +84,14 @@ void
 inf_text_session_flush_requests_for_user(InfTextSession* session,
                                          InfTextUser* user);
 
-InfUserRequest*
+InfRequest*
 inf_text_session_join_user(InfSessionProxy* proxy,
                            const gchar* name,
                            InfUserStatus status,
                            gdouble hue,
                            guint caret_position,
                            int selection_length,
-                           InfUserRequestFunc func,
+                           InfRequestFunc func,
                            gpointer user_data);
 
 G_END_DECLS

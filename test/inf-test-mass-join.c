@@ -78,8 +78,8 @@ static const InfcNotePlugin INF_TEST_MASS_JOIN_TEXT_PLUGIN = {
 };
 
 static void
-inf_test_mass_join_user_join_finished_cb(InfUserRequest* request,
-                                         InfUser* user,
+inf_test_mass_join_user_join_finished_cb(InfRequest* request,
+                                         const InfRequestResult* result,
                                          const GError* error,
                                          gpointer user_data)
 {
@@ -173,15 +173,17 @@ inf_test_mass_join_session_synchronization_complete_cb(InfSession* session,
 }
 
 static void
-inf_test_mass_join_subscribe_finished_cb(InfNodeRequest* request,
-                                         const InfBrowserIter* iter,
+inf_test_mass_join_subscribe_finished_cb(InfRequest* request,
+                                         const InfRequestResult* result,
                                          const GError* error,
                                          gpointer user_data)
 {
   InfTestMassJoiner* joiner;
+  const InfBrowserIter* iter;
   InfSession* session;
 
   joiner = (InfTestMassJoiner*)user_data;
+  inf_request_result_get_subscribe_session(result, NULL, &iter);
 
   joiner->session = INFC_SESSION_PROXY(
     inf_browser_get_session(
@@ -230,8 +232,8 @@ inf_test_mass_join_subscribe_finished_cb(InfNodeRequest* request,
 }
 
 static void
-inf_test_mass_join_explore_finished_cb(InfNodeRequest* request,
-                                       const InfBrowserIter* explore_iter,
+inf_test_mass_join_explore_finished_cb(InfRequest* request,
+                                       const InfRequestResult* result,
                                        const GError* error,
                                        gpointer user_data)
 {

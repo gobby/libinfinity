@@ -107,12 +107,14 @@ inf_chat_test_buffer_receive_message_cb(InfChatSession* session,
 }
 
 static void
-inf_test_chat_userjoin_finished_cb(InfUserRequest* request,
-                                   InfUser* user,
+inf_test_chat_userjoin_finished_cb(InfRequest* request,
+                                   const InfRequestResult* result,
                                    const GError* error,
                                    gpointer user_data)
 {
   InfTestChat* test;
+  InfUser* user;
+
   test = (InfTestChat*)user_data;
 
   if(error == NULL)
@@ -130,6 +132,7 @@ inf_test_chat_userjoin_finished_cb(InfUserRequest* request,
     );
 #endif
 
+    inf_request_result_get_join_user(result, NULL, &user);
     test->self = user;
   }
   else
@@ -146,7 +149,7 @@ inf_chat_test_session_synchronization_complete_cb(InfSession* session,
 {
   InfTestChat* test;
   InfcSessionProxy* proxy;
-  InfUserRequest* request;
+  InfRequest* request;
   GParameter params[1] = { { "name", { 0 } } };
 
   printf("Synchronization complete, joining user...\n");
@@ -194,7 +197,8 @@ inf_chat_test_session_close_cb(InfSession* session,
 }
 
 static void
-inf_chat_test_subscribe_finished_cb(InfcChatRequest* request,
+inf_chat_test_subscribe_finished_cb(InfRequest* request,
+                                    const InfRequestResult* result,
                                     const GError* error,
                                     gpointer user_data)
 {

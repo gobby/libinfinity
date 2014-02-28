@@ -47,7 +47,7 @@ struct _InfTestGtkBrowserWindow {
   InfTextGtkViewport* viewport;
   InfSessionProxy* proxy;
   InfUser* user;
-  InfUserRequest* request;
+  InfRequest* request;
 };
 
 typedef struct _InfTestGtkBrowserChatWindow InfTestGtkBrowserChatWindow;
@@ -58,7 +58,7 @@ struct _InfTestGtkBrowserChatWindow {
   InfChatBuffer* buffer;
   InfSessionProxy* proxy;
   InfUser* user;
-  InfUserRequest* request;
+  InfRequest* request;
 };
 
 static InfSession*
@@ -185,12 +185,13 @@ request_chat_join(InfTestGtkBrowserChatWindow* test,
                   const gchar* user_name);
 
 static void
-on_chat_join_finished(InfUserRequest* request,
-                      InfUser* user,
+on_chat_join_finished(InfRequest* request,
+                      const InfRequestResult* result,
                       const GError* error,
                       gpointer user_data)
 {
   InfTestGtkBrowserChatWindow* test;
+  InfUser* user;
   gchar* new_name;
   gchar* text;
 
@@ -204,6 +205,7 @@ on_chat_join_finished(InfUserRequest* request,
 
   if(error == NULL)
   {
+    inf_request_result_get_join_user(result, NULL, &user);
     inf_gtk_chat_set_active_user(INF_GTK_CHAT(test->chat), user);
 
     text = g_strdup_printf("Joined as %s", inf_user_get_name(user));
@@ -241,12 +243,13 @@ request_join(InfTestGtkBrowserWindow* test,
              const gchar* user_name);
 
 static void
-on_join_finished(InfUserRequest* request,
-                 InfUser* user,
+on_join_finished(InfRequest* request,
+                 const InfRequestResult* result,
                  const GError* error,
                  gpointer user_data)
 {
   InfTestGtkBrowserWindow* test;
+  InfUser* user;
   InfSession* session;
   InfAdoptedAlgorithm* algorithm;
   gboolean undo;
@@ -263,6 +266,7 @@ on_join_finished(InfUserRequest* request,
 
   if(error == NULL)
   {
+    inf_request_result_get_join_user(result, NULL, &user);
     inf_text_gtk_buffer_set_active_user(test->buffer, INF_TEXT_USER(user));
     inf_text_gtk_view_set_active_user(test->view, INF_TEXT_USER(user));
     inf_text_gtk_viewport_set_active_user(
@@ -305,7 +309,7 @@ static void
 request_chat_join(InfTestGtkBrowserChatWindow* test,
                   const gchar* user_name)
 {
-  InfUserRequest* request;
+  InfRequest* request;
   gchar* text;
 
   GParameter params[1] = { { "name", { 0 } } };
@@ -338,7 +342,7 @@ static void
 request_join(InfTestGtkBrowserWindow* test,
              const gchar* user_name)
 {
-  InfUserRequest* request;
+  InfRequest* request;
   InfSession* session;
   InfAdoptedStateVector* v;
   GtkTextBuffer* buffer;
@@ -757,6 +761,8 @@ on_activate(InfGtkBrowserView* view,
   const InfcNotePlugin* plugin;
   InfRequest* request;
 
+  printf("activate\n");
+
   gtk_tree_model_get(
     GTK_TREE_MODEL(gtk_tree_view_get_model(GTK_TREE_VIEW(view))),
     iter,
@@ -803,14 +809,18 @@ static void
 on_set_browser(InfGtkBrowserModel* model,
                GtkTreePath* path,
                GtkTreeIter* iter,
-               InfcBrowser* browser,
+               InfBrowser* old_browser,
+               InfBrowser* browser,
                gpointer user_data)
 {
   InfBrowserStatus status;
 
   if(browser != NULL)
   {
-    infc_browser_add_plugin(browser, &INF_TEST_GTK_BROWSER_TEXT_PLUGIN);
+    infc_browser_add_plugin(
+      INFC_BROWSER(browser),
+      &INF_TEST_GTK_BROWSER_TEXT_PLUGIN
+    );
 
     g_signal_connect_after(
       G_OBJECT(browser),
@@ -822,7 +832,7 @@ on_set_browser(InfGtkBrowserModel* model,
     g_object_get(G_OBJECT(browser), "status", &status, NULL);
     if(status == INF_BROWSER_OPEN)
     {
-      infc_browser_subscribe_chat(browser, NULL, NULL);
+      infc_browser_subscribe_chat(INFC_BROWSER(browser), NULL, NULL);
     }
     else
     {
