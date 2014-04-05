@@ -1,3 +1,7 @@
+if !WIN32
+nonwin_plugins = libinfinoted-plugin-document-stream.la
+endif
+
 plugin_LTLIBRARIES = \
 	libinfinoted-plugin-autosave.la \
 	libinfinoted-plugin-directory-sync.la \
@@ -5,7 +9,8 @@ plugin_LTLIBRARIES = \
 	libinfinoted-plugin-logging.la \
 	libinfinoted-plugin-record.la \
 	libinfinoted-plugin-traffic-logging.la \
-	libinfinoted-plugin-transformation-protection.la
+	libinfinoted-plugin-transformation-protection.la \
+	$(nonwin_plugins)
 
 plugindir = ${libdir}/infinoted-$(LIBINFINITY_API_VERSION)/plugins
 
@@ -74,6 +79,16 @@ libinfinoted_plugin_transformation_protection_la_LIBADD = \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
 
+if !WIN32
+libinfinoted_plugin_document_stream_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(inftext_LIBS) \
+	$(infinity_LIBS)
+endif
+
 libinfinoted_plugin_autosave_la_SOURCES = \
 	infinoted-plugin-autosave.c
 
@@ -94,3 +109,9 @@ libinfinoted_plugin_traffic_logging_la_SOURCES = \
 
 libinfinoted_plugin_transformation_protection_la_SOURCES = \
 	infinoted-plugin-transformation-protection.c
+
+if !WIN32
+libinfinoted_plugin_document_stream_la_SOURCES = \
+	util/infinoted-plugin-util-navigate-browser.c \
+	infinoted-plugin-document-stream.c
+endif

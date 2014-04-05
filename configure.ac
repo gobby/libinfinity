@@ -63,7 +63,9 @@ case "$host_os" in
 *)
   platform='unix'
   ;;
-esac        
+esac
+
+AM_CONDITIONAL([WIN32], test "$platform" = "win32")
 
 # Check for MSG_NOSIGNAL
 AC_MSG_CHECKING(for MSG_NOSIGNAL)

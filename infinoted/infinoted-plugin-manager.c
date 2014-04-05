@@ -706,6 +706,20 @@ infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager)
 }
 
 /**
+ * infinoted_plugin_manager_get_io:
+ * @manager: A #InfinotedPluginManager.
+ *
+ * Returns the #InfIo of the #InfdDirectory used by the plugin manager.
+ *
+ * Returns: A #InfIo owned by the plugin manager.
+ */
+InfIo*
+infinoted_plugin_manager_get_io(InfinotedPluginManager* manager)
+{
+  return infd_directory_get_io(manager->directory);
+}
+
+/**
  * infinoted_plugin_manager_get_log:
  * @manager: A #InfinotedPluginManager.
  *

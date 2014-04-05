@@ -113,6 +113,9 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager);
 InfdDirectory*
 infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager);
 
+InfIo*
+infinoted_plugin_manager_get_io(InfinotedPluginManager* manager);
+
 InfinotedLog*
 infinoted_plugin_manager_get_log(InfinotedPluginManager* manager);
 
