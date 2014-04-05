@@ -509,7 +509,10 @@ infinoted_plugin_directory_sync_session_added(const InfBrowserIter* iter,
    * not be allowed on Windows. */
 #ifdef G_OS_WIN32
   path = inf_browser_get_path(
-    INF_BROWSER(infinoted_plugin_manager_get_directory(info->plugin->manager))
+    INF_BROWSER(
+      infinoted_plugin_manager_get_directory(info->plugin->manager)
+    ),
+    iter
   );
 
   for(pos = path; *pos != '\0'; ++pos)
