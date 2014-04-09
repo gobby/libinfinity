@@ -449,6 +449,12 @@ inf_adopted_session_process_request(InfAdoptedSession* session,
   InfAdoptedStateVector* request_vector;
   InfAdoptedStateVector* current_vector;
   gboolean reject_request;
+  GError* local_error;
+  gboolean execute_result;
+
+  xmlNodePtr reply_xml;
+  gchar* request_str;
+  gchar* current_str;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   request_vector = inf_adopted_request_get_vector(request);
@@ -464,26 +470,84 @@ inf_adopted_session_process_request(InfAdoptedSession* session,
       user,
       &reject_request
     );
+
+    local_error = NULL;
     
     if(reject_request)
     {
       g_set_error(
-        error,
+        &local_error,
         inf_adopted_session_error_quark,
         INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
         "%s",
         _("The request was rejected via the API")
       );
 
-      return FALSE;
+      execute_result = FALSE;
+    }
+    else
+    {
+      execute_result = inf_adopted_algorithm_execute_request(
+        priv->algorithm,
+        request,
+        TRUE,
+        &local_error
+      );
     }
 
-    return inf_adopted_algorithm_execute_request(
-      priv->algorithm,
-      request,
-      TRUE,
-      error
-    );
+    if(local_error != NULL)
+    {
+      /* Send a message back to where the request came from, to let them
+       * know we couldn't handle this. Note that at the moment this is not
+       * explicitly handled, but it can aid in debugging. */
+      if(inf_user_get_connection(INF_USER(user)) != NULL)
+      {
+        /* Send a message back to where we got this request from, to inform
+         * them that the request cannot be handled. */
+        request_str = inf_adopted_state_vector_to_string(request_vector);
+        current_str = inf_adopted_state_vector_to_string(current_vector);
+
+        reply_xml = xmlNewNode(NULL, (const xmlChar*)"invalid-request");
+
+        inf_xml_util_set_attribute(
+          reply_xml,
+          "request",
+          request_str
+        );
+
+        inf_xml_util_set_attribute(
+          reply_xml,
+          "state",
+          current_str
+        );
+
+        inf_xml_util_set_attribute_uint(
+          reply_xml,
+          "user",
+          inf_user_get_id(INF_USER(user))
+        );
+
+        xmlNewChild(
+          reply_xml,
+          NULL,
+          (const xmlChar*)"reason",
+          (const xmlChar*)local_error->message
+        );
+
+        g_free(request_str);
+        g_free(current_str);
+
+        inf_communication_group_send_message(
+          inf_session_get_subscription_group(INF_SESSION(session)),
+          inf_user_get_connection(INF_USER(user)),
+          reply_xml
+        );
+      }
+
+      g_propagate_error(error, local_error);
+    }
+
+    return execute_result;
   }
   else
   {
