@@ -24,6 +24,7 @@
 #include <libinftext/inf-text-buffer.h>
 
 #include <libinfinity/adopted/inf-adopted-session-record.h>
+#include <libinfinity/common/inf-cert-util.h>
 
 #include <libinfinity/inf-i18n.h>
 
@@ -52,6 +53,44 @@ struct _InfinotedPluginLoggingSessionInfo {
   InfSessionProxy* proxy;
   InfBrowserIter iter;
 };
+
+static gchar*
+infinoted_plugin_logging_connection_string(InfXmlConnection* connection)
+{
+  gchar* remote_id;
+  InfCertificateChain* remote_certificate;
+  gchar* name;
+  gchar* result;
+
+  g_object_get(
+    G_OBJECT(connection),
+    "remote-id", &remote_id,
+    "remote-certificate", &remote_certificate,
+    NULL
+  );
+
+  name = NULL;
+  if(remote_certificate != NULL)
+  {
+    name = inf_cert_util_get_dn_by_oid(
+      inf_certificate_chain_get_own_certificate(remote_certificate),
+      GNUTLS_OID_X520_COMMON_NAME,
+      0
+    );
+
+    inf_certificate_chain_unref(remote_certificate);
+  }
+
+  if(name != NULL)
+    result = g_strdup_printf("%s (%s)", remote_id, name);
+  else
+    result = g_strdup_printf("%s (no client certificate)", remote_id);
+
+  g_free(remote_id);
+  g_free(name);
+
+  return result;
+}
 
 static gchar*
 infinoted_plugin_logging_get_document_name(
@@ -168,11 +207,8 @@ infinoted_plugin_logging_log_message_cb(InfinotedLog* log,
 
       if(user_connection != NULL)
       {
-        g_object_get(
-          G_OBJECT(user_connection),
-          "remote-id", &user_connection_str,
-          NULL
-        );
+        user_connection_str =
+          infinoted_plugin_logging_connection_string(user_connection);
       }
       else
       {
@@ -238,19 +274,19 @@ infinoted_plugin_logging_connection_error_cb(InfXmlConnection* connection,
                                              gpointer user_data)
 {
   InfinotedPluginLogging* plugin;
-  gchar* remote_id;
+  gchar* connection_str;
 
   plugin = (InfinotedPluginLogging*)user_data;
-  g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
+  connection_str = infinoted_plugin_logging_connection_string(connection);
 
   infinoted_log_error(
     infinoted_plugin_manager_get_log(plugin->manager),
     _("Error from connection %s: %s"),
-    remote_id,
+    connection_str,
     error->message
   );
 
-  g_free(remote_id);
+  g_free(connection_str);
 }
 
 static void
@@ -271,7 +307,7 @@ infinoted_pluggin_logging_session_error_cb(InfSession* session,
 
   info = (InfinotedPluginLoggingSessionInfo*)user_data;
 
-  g_object_get(G_OBJECT(connection), "remote-id", &connection_str, NULL);
+  connection_str = infinoted_plugin_logging_connection_string(connection);
 
   document_name = infinoted_plugin_logging_get_document_name(info);
 
@@ -386,12 +422,60 @@ infinoted_plugin_logging_deinitialize(gpointer plugin_info)
 }
 
 static void
+infinoted_plugin_logging_connection_notify_status_cb(GObject* object,
+                                                     GParamSpec* pspec,
+                                                     gpointer user_data)
+{
+  InfinotedPluginLogging* plugin;
+  gchar* connection_str;
+  InfXmlConnectionStatus status;
+
+  plugin = (InfinotedPluginLogging*)user_data;
+
+  g_object_get(G_OBJECT(object), "status", &status, NULL);
+
+  switch(status)
+  {
+  case INF_XML_CONNECTION_OPENING:
+    /* Nothing happened */
+    break;
+  case INF_XML_CONNECTION_OPEN:
+    connection_str =
+      infinoted_plugin_logging_connection_string(INF_XML_CONNECTION(object));
+
+    infinoted_log_info(
+      infinoted_plugin_manager_get_log(plugin->manager),
+      _("%s connected"),
+      connection_str
+    );
+
+    g_free(connection_str);
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(object),
+      G_CALLBACK(infinoted_plugin_logging_connection_notify_status_cb),
+      plugin
+    );
+
+    break;
+  case INF_XML_CONNECTION_CLOSING:
+  case INF_XML_CONNECTION_CLOSED:
+    /* This is handled in infinoted_plugin_logging_connection_removed() */
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+}
+
+static void
 infinoted_plugin_logging_connection_added(InfXmlConnection* connection,
                                           gpointer plugin_info,
                                           gpointer connection_info)
 {
   InfinotedPluginLogging* plugin;
-  gchar* remote_id;
+  gchar* connection_str;
+  InfXmlConnectionStatus status;
 
   plugin = (InfinotedPluginLogging*)plugin_info;
 
@@ -407,15 +491,39 @@ infinoted_plugin_logging_connection_added(InfXmlConnection* connection,
 
   if(plugin->log_connections)
   {
-    g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
+    g_object_get(G_OBJECT(connection), "status", &status, NULL);
 
-    infinoted_log_info(
-      infinoted_plugin_manager_get_log(plugin->manager),
-      _("%s connected"),
-      remote_id
-    );
+    switch(status)
+    {
+    case INF_XML_CONNECTION_OPENING:
+      g_signal_connect(
+        G_OBJECT(connection),
+        "notify::status",
+        G_CALLBACK(infinoted_plugin_logging_connection_notify_status_cb),
+        plugin
+      );
 
-    g_free(remote_id);
+      break;
+    case INF_XML_CONNECTION_OPEN:
+      /* If the connection is in CONNECTING status, then wait for
+       * CONNECTED, to be able to read the certificate. If CONNECTION_REMOVED
+       * happens before CONNECTED, then skip the certificate, but print the
+       * connection attempt nevertheless. */
+      connection_str = infinoted_plugin_logging_connection_string(connection);
+
+      infinoted_log_info(
+        infinoted_plugin_manager_get_log(plugin->manager),
+        _("%s connected"),
+        connection_str
+      );
+
+      g_free(connection_str);
+
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
   }
 }
 
@@ -425,7 +533,8 @@ infinoted_plugin_logging_connection_removed(InfXmlConnection* connection,
                                             gpointer connection_info)
 {
   InfinotedPluginLogging* plugin;
-  gchar* remote_id;
+  gchar* connection_str;
+  guint n_connected;
 
   plugin = (InfinotedPluginLogging*)plugin_info;
 
@@ -440,15 +549,33 @@ infinoted_plugin_logging_connection_removed(InfXmlConnection* connection,
 
   if(plugin->log_connections)
   {
-    g_object_get(G_OBJECT(connection), "remote-id", &remote_id, NULL);
-
-    infinoted_log_info(
-      infinoted_plugin_manager_get_log(plugin->manager),
-      _("%s disconnected"),
-      remote_id
+    n_connected = inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(connection),
+      G_CALLBACK(infinoted_plugin_logging_connection_notify_status_cb),
+      plugin
     );
 
-    g_free(remote_id);
+    connection_str = infinoted_plugin_logging_connection_string(connection);
+
+    if(n_connected > 0)
+    {
+      /* The connection went down before being fully functional */
+      infinoted_log_info(
+        infinoted_plugin_manager_get_log(plugin->manager),
+        _("Unsuccessful connection attempt from %s"),
+        connection_str
+      );
+    }
+    else
+    {
+      infinoted_log_info(
+        infinoted_plugin_manager_get_log(plugin->manager),
+        _("%s disconnected"),
+        connection_str
+      );
+    }
+
+    g_free(connection_str);
   }
 }
 

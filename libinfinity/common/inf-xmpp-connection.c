@@ -570,6 +570,10 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
     priv->sasl_remote_mechanisms = NULL;
   }
 
+  /* Keep the certificates alive, in case they still need to be accessed after
+   * the connection was closed. They are reset before a new connection is
+   * made. */
+#if 0
   if(priv->own_cert != NULL)
   {
     gnutls_x509_crt_deinit(priv->own_cert);
@@ -585,6 +589,7 @@ inf_xmpp_connection_clear(InfXmppConnection* xmpp)
 
     g_object_notify(G_OBJECT(xmpp), "remote-certificate");
   }
+#endif
 
   if(priv->session != NULL)
   {
@@ -3313,6 +3318,23 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
 
     break;
   case INF_TCP_CONNECTION_CONNECTED:
+    /* Clear previous certificates before opening a new connection */
+    if(priv->own_cert != NULL)
+    {
+      gnutls_x509_crt_deinit(priv->own_cert);
+      priv->own_cert = NULL;
+
+      g_object_notify(G_OBJECT(xmpp), "local-certificate");
+    }
+
+    if(priv->peer_cert != NULL)
+    {
+      inf_certificate_chain_unref(priv->peer_cert);
+      priv->peer_cert = NULL;
+
+      g_object_notify(G_OBJECT(xmpp), "remote-certificate");
+    }
+
     g_assert(priv->status == INF_XMPP_CONNECTION_CONNECTING);
     /* No notify required, because it does not change the xml status */
     priv->status = INF_XMPP_CONNECTION_CONNECTED;
@@ -3600,9 +3622,23 @@ inf_xmpp_connection_dispose(GObject* object)
   inf_xmpp_connection_set_tcp(xmpp, NULL);
 
   g_assert(priv->session == NULL);
-  g_assert(priv->own_cert == NULL);
-  g_assert(priv->peer_cert == NULL);
   g_assert(priv->sasl_session == NULL);
+
+  if(priv->own_cert != NULL)
+  {
+    gnutls_x509_crt_deinit(priv->own_cert);
+    priv->own_cert = NULL;
+
+    g_object_notify(G_OBJECT(xmpp), "local-certificate");
+  }
+
+  if(priv->peer_cert != NULL)
+  {
+    inf_certificate_chain_unref(priv->peer_cert);
+    priv->peer_cert = NULL;
+
+    g_object_notify(G_OBJECT(xmpp), "remote-certificate");
+  }
 
   if(priv->sasl_own_context != NULL)
   {
