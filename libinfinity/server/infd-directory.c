@@ -1511,7 +1511,9 @@ infd_directory_node_link_session(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(node->type == INFD_STORAGE_NODE_NOTE);
-  g_assert(node->shared.note.session == NULL);
+  g_assert(node->shared.note.session == NULL ||
+           (node->shared.note.session == proxy &&
+            node->shared.note.weakref == TRUE));
 
   iter.node = node;
   iter.node_id = node->id;
@@ -1633,7 +1635,8 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
         g_free(path);
       }
 
-      infd_directory_node_unlink_session(directory, node, request);
+      if(node->shared.note.weakref == FALSE)
+        infd_directory_node_unlink_session(directory, node, request);
     }
 
     break;
