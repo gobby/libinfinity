@@ -23,8 +23,11 @@
 #include <infinoted/infinoted-parameter.h>
 #include <infinoted/infinoted-log.h>
 
+#include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-buffer.h>
 
+#include <libinfinity/common/inf-chat-session.h>
+#include <libinfinity/common/inf-chat-buffer.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <sys/types.h>
@@ -69,12 +72,16 @@ struct _InfinotedPluginDocumentStreamStream {
   InfinotedPluginDocumentStreamQueue send_queue;
   InfinotedPluginDocumentStreamQueue recv_queue;
 
+  gchar* username;
+
   /* set if either subscribe_request or proxy are set */
   InfBrowserIter iter;
 
   InfinotedPluginUtilNavigateData* navigate_handle;
   InfRequest* subscribe_request;
+  InfRequest* user_request;
   InfSessionProxy* proxy;
+  InfUser* user;
   InfBuffer* buffer;
 };
 
@@ -171,6 +178,12 @@ infinoted_plugin_document_stream_subscribe_func(InfRequest* request,
                                                 gpointer user_data);
 
 static void
+infinoted_plugin_document_stream_user_join_func(InfRequest* request,
+                                                const InfRequestResult* res,
+                                                const GError* error,
+                                                gpointer user_data);
+
+static void
 infinoted_plugin_document_stream_close_stream(
   InfinotedPluginDocumentStreamStream* stream);
 
@@ -256,7 +269,101 @@ infinoted_plugin_document_stream_text_erased_cb(InfTextBuffer* buffer,
 }
 
 static void
-infinoted_plugin_document_stream_sync(
+infinoted_plugin_document_stream_chat_send_message(
+  InfinotedPluginDocumentStreamStream* stream,
+  const InfChatBufferMessage* ms)
+{
+  guint32 comm;
+  guint64 timestamp;
+  guint16 type;
+  guint16 namelen;
+  guint16 textlen;
+  gboolean alive;
+
+  comm = 6; /* CHAT */
+  timestamp = (guint64)ms->time;
+  type = (guint16)ms->type;
+  namelen = strlen(inf_user_get_name(ms->user));
+  textlen = ms->length;
+
+  alive = infinoted_plugin_document_stream_send(stream, &comm, 4);
+  if(alive)
+    alive = infinoted_plugin_document_stream_send(stream, &timestamp, 8);
+  if(alive)
+    alive = infinoted_plugin_document_stream_send(stream, &type, 2);
+  if(alive)
+    alive = infinoted_plugin_document_stream_send(stream, &namelen, 2);
+  if(alive)
+    alive = infinoted_plugin_document_stream_send(stream, inf_user_get_name(ms->user), namelen);
+  if(alive)
+    alive = infinoted_plugin_document_stream_send(stream, &textlen, 2);
+  if(alive && textlen > 0)
+    alive = infinoted_plugin_document_stream_send(stream, ms->text, textlen);
+}
+
+static void
+infinoted_plugin_document_stream_chat_add_message_cb(InfChatBuffer* buffer,
+                                                     InfChatBufferMessage* ms,
+                                                     gpointer user_data)
+{
+  InfinotedPluginDocumentStreamStream* stream;
+  stream = (InfinotedPluginDocumentStreamStream*)user_data;
+
+  infinoted_plugin_document_stream_chat_send_message(stream, ms);
+}
+
+static void
+infinoted_plugin_document_stream_chat_add_message(
+  InfinotedPluginDocumentStreamStream* stream,
+  const gchar* message,
+  gsize len)
+{
+  g_assert(stream->user != NULL);
+
+  inf_signal_handlers_block_by_func(
+    G_OBJECT(stream->buffer),
+    infinoted_plugin_document_stream_chat_add_message_cb,
+    stream
+  );
+
+  inf_chat_buffer_add_message(
+    INF_CHAT_BUFFER(stream->buffer),
+    stream->user,
+    message,
+    len,
+    time(NULL),
+    0
+  );
+
+  inf_signal_handlers_unblock_by_func(
+    G_OBJECT(stream->buffer),
+    infinoted_plugin_document_stream_chat_add_message_cb,
+    stream
+  );
+}
+
+static void
+infinoted_plugin_document_stream_sync_chat(
+  InfinotedPluginDocumentStreamStream* stream)
+{
+  InfChatBuffer* buffer;
+  guint n_messages;
+  guint i;
+  const InfChatBufferMessage* message;
+
+  g_assert(INF_IS_CHAT_BUFFER(stream->buffer));
+  buffer = INF_CHAT_BUFFER(stream->buffer);
+  n_messages = inf_chat_buffer_get_n_messages(buffer);
+
+  for(i = 0; i < n_messages; ++i)
+  {
+    message = inf_chat_buffer_get_message(buffer, i);
+    infinoted_plugin_document_stream_chat_send_message(stream, message);
+  }
+}
+
+static void
+infinoted_plugin_document_stream_sync_text(
   InfinotedPluginDocumentStreamStream* stream)
 {
   InfTextBuffer* buffer;
@@ -301,36 +408,46 @@ infinoted_plugin_document_stream_sync(
 
 static void
 infinoted_plugin_document_stream_start(
-  InfinotedPluginDocumentStreamStream* stream,
-  InfSessionProxy* proxy)
+  InfinotedPluginDocumentStreamStream* stream)
 {
   InfSession* session;
   InfBuffer* buffer;
 
-  stream->proxy = proxy;
-  g_object_ref(proxy);
-
-  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+  g_object_get(G_OBJECT(stream->proxy), "session", &session, NULL);
 
   buffer = inf_session_get_buffer(session);
   stream->buffer = buffer;
   g_object_ref(buffer);
 
-  infinoted_plugin_document_stream_sync(stream);
+  if(INF_TEXT_IS_SESSION(session))
+  {
+    infinoted_plugin_document_stream_sync_text(stream);
 
-  g_signal_connect(
-    G_OBJECT(buffer),
-    "text-inserted",
-    G_CALLBACK(infinoted_plugin_document_stream_text_inserted_cb),
-    stream
-  );
+    g_signal_connect(
+      G_OBJECT(buffer),
+      "text-inserted",
+      G_CALLBACK(infinoted_plugin_document_stream_text_inserted_cb),
+      stream
+    );
 
-  g_signal_connect(
-    G_OBJECT(buffer),
-    "text-erased",
-    G_CALLBACK(infinoted_plugin_document_stream_text_erased_cb),
-    stream
-  );
+    g_signal_connect(
+      G_OBJECT(buffer),
+      "text-erased",
+      G_CALLBACK(infinoted_plugin_document_stream_text_erased_cb),
+      stream
+    );
+  }
+  else if(INF_IS_CHAT_SESSION(session))
+  {
+    infinoted_plugin_document_stream_sync_chat(stream);
+    
+    g_signal_connect_after(
+      G_OBJECT(buffer),
+      "add-message",
+      G_CALLBACK(infinoted_plugin_document_stream_chat_add_message_cb),
+      stream
+    );
+  }
 
   g_object_unref(session);
 }
@@ -341,6 +458,8 @@ infinoted_plugin_document_stream_stop(
   gboolean send_stop)
 {
   guint32 comm;
+  InfSession* session;
+
   if(send_stop)
   {
     comm = 5; /* STOP */
@@ -348,28 +467,50 @@ infinoted_plugin_document_stream_stop(
       return;
   }
 
-  if(stream->buffer != NULL)
+  if(stream->user != NULL)
   {
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(stream->buffer),
-      G_CALLBACK(infinoted_plugin_document_stream_text_inserted_cb),
-      stream
-    );
+    g_assert(stream->proxy != NULL);
+    g_object_get(G_OBJECT(stream->proxy), "session", &session, NULL);
+    inf_session_set_user_status(session, stream->user, INF_USER_UNAVAILABLE);
+    g_object_unref(session);
 
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(stream->buffer),
-      G_CALLBACK(infinoted_plugin_document_stream_text_erased_cb),
-      stream
-    );
-
-    g_object_unref(stream->buffer);
-    stream->buffer = NULL;
+    g_object_unref(stream->user);
+    stream->user = NULL;
   }
 
   if(stream->proxy != NULL)
   {
     g_object_unref(stream->proxy);
     stream->proxy = NULL;
+  }
+
+  if(stream->buffer != NULL)
+  {
+    if(INF_TEXT_IS_BUFFER(stream->buffer))
+    {
+      inf_signal_handlers_disconnect_by_func(
+        G_OBJECT(stream->buffer),
+        G_CALLBACK(infinoted_plugin_document_stream_text_inserted_cb),
+        stream
+      );
+
+      inf_signal_handlers_disconnect_by_func(
+        G_OBJECT(stream->buffer),
+        G_CALLBACK(infinoted_plugin_document_stream_text_erased_cb),
+        stream
+      );
+    }
+    else if(INF_IS_CHAT_BUFFER(stream->buffer))
+    {
+      inf_signal_handlers_disconnect_by_func(
+        G_OBJECT(stream->buffer),
+        G_CALLBACK(infinoted_plugin_document_stream_chat_add_message_cb),
+        stream
+      );
+    }
+
+    g_object_unref(stream->buffer);
+    stream->buffer = NULL;
   }
 
   if(stream->subscribe_request != NULL)
@@ -382,6 +523,91 @@ infinoted_plugin_document_stream_stop(
 
     stream->subscribe_request = NULL;
   }
+
+  if(stream->user_request != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(stream->user_request),
+      G_CALLBACK(infinoted_plugin_document_stream_user_join_func),
+      stream
+    );
+
+    stream->user_request = NULL;
+  }
+}
+
+static void
+infinoted_plugin_document_stream_user_join_func(InfRequest* request,
+                                                const InfRequestResult* res,
+                                                const GError* error,
+                                                gpointer user_data)
+{
+  InfinotedPluginDocumentStreamStream* stream;
+  InfUser* user;
+
+  stream = (InfinotedPluginDocumentStreamStream*)user_data;
+  stream->user_request = NULL;
+
+  if(error != NULL)
+  {
+    infinoted_plugin_document_stream_send_error(stream, error->message);
+  }
+  else
+  {
+    inf_request_result_get_join_user(res, &user);
+
+    g_assert(stream->user == NULL);
+    stream->user = user;
+    g_object_ref(stream->user);
+
+    infinoted_plugin_document_stream_start(stream);
+  }
+}
+
+static void
+infinoted_plugin_document_stream_subscribe_done(
+  InfinotedPluginDocumentStreamStream* stream,
+  InfSessionProxy* proxy)
+{
+  InfSession* session;
+  GParameter params[2] = {
+    { "name", { 0 } },
+    { "status", { 0 } }
+  };
+
+  g_assert(stream->proxy == NULL);
+  stream->proxy = proxy;
+  g_object_ref(proxy);
+
+  g_object_get(G_OBJECT(proxy), "session", &session, NULL);
+
+  if(INF_TEXT_IS_SESSION(session))
+  {
+    infinoted_plugin_document_stream_start(stream);
+  }
+  else if(INF_IS_CHAT_SESSION(session))
+  {
+    g_value_init(&params[0].value, G_TYPE_STRING);
+    g_value_set_static_string(&params[0].value, stream->username);
+
+    g_value_init(&params[1].value, INF_TYPE_USER_STATUS);
+    g_value_set_enum(&params[1].value, INF_USER_ACTIVE);
+
+    /* Join a user */
+    stream->user_request = inf_session_proxy_join_user(
+      INF_SESSION_PROXY(proxy),
+      2,
+      params,
+      infinoted_plugin_document_stream_user_join_func,
+      stream
+    );
+  }
+  else
+  {
+    g_assert_not_reached();
+  }
+
+  g_object_unref(session);
 }
 
 static void
@@ -403,7 +629,7 @@ infinoted_plugin_document_stream_subscribe_func(InfRequest* request,
   else
   {
     inf_request_result_get_subscribe_session(res, NULL, NULL, &proxy);
-    infinoted_plugin_document_stream_start(stream, proxy);
+    infinoted_plugin_document_stream_subscribe_done(stream, proxy);
   }
 }
 
@@ -426,11 +652,14 @@ infinoted_plugin_document_stream_navigate_func(InfBrowser* browser,
   }
   else
   {
-    /* TODO: Support chat nodes, too */
     if(inf_browser_is_subdirectory(browser, iter) || 
-       strcmp(inf_browser_get_node_type(browser, iter), "InfText") != 0)
+       (strcmp(inf_browser_get_node_type(browser, iter), "InfText") != 0 &&
+        strcmp(inf_browser_get_node_type(browser, iter), "InfChat") != 0))
     {
-      infinoted_plugin_document_stream_send_error(stream, "Not a text node");
+      infinoted_plugin_document_stream_send_error(
+        stream,
+        _("Not a text or chat node")
+      );
     }
     else
     {
@@ -438,7 +667,7 @@ infinoted_plugin_document_stream_navigate_func(InfBrowser* browser,
       proxy = inf_browser_get_session(browser, iter);
       if(proxy != NULL)
       {
-        infinoted_plugin_document_stream_start(stream, proxy);
+        infinoted_plugin_document_stream_subscribe_done(stream, proxy);
       }
       else
       {
@@ -474,13 +703,57 @@ infinoted_plugin_document_stream_navigate_func(InfBrowser* browser,
 }
 
 static gboolean
+infinoted_plugin_document_stream_process_send_chat_message(
+  InfinotedPluginDocumentStreamStream* stream,
+  const gchar** data,
+  gsize* len)
+{
+  guint16 text_len;
+  const gchar* text;
+
+  if(*len < 2) return FALSE;
+  text_len = *(guint16*)(*data);
+  *data += 2; *len -= 2;
+
+  if(*len < text_len) return FALSE;
+  text = *data;
+  *data += text_len; *len -= text_len;
+
+  if(!INF_IS_CHAT_BUFFER(stream->buffer))
+  {
+    infinoted_plugin_document_stream_send_error(
+      stream,
+      "Not a chat session"
+    );
+  }
+  else
+  {
+    infinoted_plugin_document_stream_chat_add_message(stream, text, text_len);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 infinoted_plugin_document_stream_process_get_document(
   InfinotedPluginDocumentStreamStream* stream,
   const gchar** data,
   gsize* len)
 {
+  guint16 user_len;
+  const gchar* user_name;
   guint16 doc_len;
   const gchar* doc_name;
+
+  /* get size of user name string */
+  if(*len < 2) return FALSE;
+  user_len = *(guint16*)(*data);
+  *data += 2; *len -= 2;
+
+  /* get user name string */
+  if(*len < user_len) return FALSE;
+  user_name = *data;
+  *data += user_len; *len -= user_len;
 
   /* get size of document string */
   if(*len < 2) return FALSE;
@@ -502,6 +775,8 @@ infinoted_plugin_document_stream_process_get_document(
   }
   else
   {
+    stream->username = g_strndup(user_name, user_len);
+
     stream->navigate_handle = infinoted_plugin_util_navigate_to(
       INF_BROWSER(
         infinoted_plugin_manager_get_directory(stream->plugin->manager)
@@ -533,6 +808,12 @@ infinoted_plugin_document_stream_process(
   {
   case 0: /* get document */
     return infinoted_plugin_document_stream_process_get_document(
+      stream,
+      data,
+      len
+    );
+  case 1: /* send chat message */
+    return infinoted_plugin_document_stream_process_send_chat_message(
       stream,
       data,
       len
@@ -808,12 +1089,14 @@ infinoted_plugin_document_stream_io_func(InfNativeSocket* socket,
                                          gpointer user_data)
 {
   InfinotedPluginDocumentStreamStream* stream;
+  InfinotedPluginManager* manager;
   int val;
   int errval;
   socklen_t len;
   GError* error;
 
   stream = (InfinotedPluginDocumentStreamStream*)user_data;
+  manager = stream->plugin->manager;
 
   if(event & INF_IO_ERROR)
   {
@@ -822,7 +1105,7 @@ infinoted_plugin_document_stream_io_func(InfNativeSocket* socket,
     if(val == -1)
     {
       infinoted_log_warning(
-        infinoted_plugin_manager_get_log(stream->plugin->manager),
+        infinoted_plugin_manager_get_log(manager),
         "Failed to obtain error from socket: %s",
         strerror(errno)
       );
@@ -837,7 +1120,7 @@ infinoted_plugin_document_stream_io_func(InfNativeSocket* socket,
       else
       {
         infinoted_log_warning(
-          infinoted_plugin_manager_get_log(stream->plugin->manager),
+          infinoted_plugin_manager_get_log(manager),
           "Document stream error: %s",
           strerror(errval)
         );
@@ -850,7 +1133,7 @@ infinoted_plugin_document_stream_io_func(InfNativeSocket* socket,
     if(!infinoted_plugin_document_stream_io_in(stream, &error))
     {
       infinoted_log_warning(
-        infinoted_plugin_manager_get_log(stream->plugin->manager),
+        infinoted_plugin_manager_get_log(manager),
         "Document stream error: %s",
         error->message
       );
@@ -864,7 +1147,7 @@ infinoted_plugin_document_stream_io_func(InfNativeSocket* socket,
     if(!infinoted_plugin_document_stream_io_out(stream, &error))
     {
       infinoted_log_warning(
-        infinoted_plugin_manager_get_log(stream->plugin->manager),
+        infinoted_plugin_manager_get_log(manager),
         "Document stream error: %s",
         error->message
       );
@@ -893,13 +1176,17 @@ infinoted_plugin_document_stream_add_stream(
     NULL
   );
 
+  stream->username = NULL;
+
   stream->status = INFINOTED_PLUGIN_DOCUMENT_STREAM_NORMAL;
   infinoted_plugin_document_stream_queue_initialize(&stream->send_queue);
   infinoted_plugin_document_stream_queue_initialize(&stream->recv_queue);
 
   stream->navigate_handle = NULL;
   stream->subscribe_request = NULL;
+  stream->user_request = NULL;
   stream->proxy = NULL;
+  stream->user = NULL;
   stream->buffer = NULL;
 
   plugin->streams = g_slist_prepend(plugin->streams, stream);
@@ -911,7 +1198,7 @@ infinoted_plugin_document_stream_close_stream(
 {
   stream->plugin->streams = g_slist_remove(stream->plugin->streams, stream);
 
-  if(stream->buffer != NULL || stream->subscribe_request != NULL)
+  if(stream->proxy != NULL || stream->subscribe_request != NULL)
     infinoted_plugin_document_stream_stop(stream, FALSE);
 
   if(stream->navigate_handle != NULL)
@@ -928,7 +1215,11 @@ infinoted_plugin_document_stream_close_stream(
     stream->watch
   );
 
+  g_free(stream->username);
+  stream->username = NULL;
+
   close(stream->socket);
+  stream->socket = -1;
 
   if(stream->status == INFINOTED_PLUGIN_DOCUMENT_STREAM_NORMAL)
     g_slice_free(InfinotedPluginDocumentStreamStream, stream);
