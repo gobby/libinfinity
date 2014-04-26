@@ -1172,7 +1172,6 @@ inf_acl_sheet_set_from_xml(xmlNodePtr xml,
       }
 
       read_sheet.account = lookup_func((const char*)account_id, user_data);
-      xmlFree(account_id);
 
       if(read_sheet.account == NULL)
       {
@@ -1181,12 +1180,15 @@ inf_acl_sheet_set_from_xml(xmlNodePtr xml,
           inf_request_error_quark(),
           INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
           _("No such ACL account with ID \"%s\""),
-          read_sheet.account->id
+          (const char*)account_id
         );
 
+        xmlFree(account_id);
         g_array_free(array, TRUE);
         return FALSE;
       }
+
+      xmlFree(account_id);
 
       for(i = 0; i < array->len; ++i)
       {
