@@ -47,6 +47,7 @@ enum {
   UNSUBSCRIBE_SESSION,
   BEGIN_REQUEST, /* detailed */
   ACL_ACCOUNT_ADDED,
+  ACL_ACCOUNT_REMOVED,
   ACL_CHANGED,
 
   LAST_SIGNAL
@@ -270,6 +271,30 @@ inf_browser_base_init(gpointer g_class)
       INF_TYPE_BROWSER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, acl_account_added),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_OBJECT,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_REQUEST
+    );
+
+    /**
+     * InfBrowser::acl-account-removed:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @account: The removed #InfAclAccount.
+     * @request: The request which lead to the removal of the account,
+     * or %NULL.
+     *
+     * This signal is emitted whenever an account is removed from the browser,
+     * and the account list has been queried with
+     * inf_browser_query_account_list().
+     */
+    browser_signals[ACL_ACCOUNT_REMOVED] = g_signal_new(
+      "acl-account-removed",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, acl_account_removed),
       NULL, NULL,
       inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
@@ -1659,8 +1684,7 @@ inf_browser_begin_request(InfBrowser* browser,
  * inf_browser_acl_account_added:
  * @browser: A #InfBrowser.
  * @account: The new #InfAclAccount.
- * @request: The #InfRequest that was used to query the
- * account list, or %NULL.
+ * @request: The #InfRequest that was used to add the account, or %NULL.
  *
  * This function emits the #InfBrowser::acl-account-added signal on @browser.
  * It is meant to be used by interface implementations only.
@@ -1677,6 +1701,33 @@ inf_browser_acl_account_added(InfBrowser* browser,
   g_signal_emit(
     browser,
     browser_signals[ACL_ACCOUNT_ADDED],
+    0,
+    account,
+    request
+  );
+}
+
+/**
+ * inf_browser_acl_account_removed:
+ * @browser: A #InfBrowser.
+ * @account: The removed #InfAclAccount.
+ * @request: The #InfRequest that was used to remove the account, or %NULL.
+ *
+ * This function emits the #InfBrowser::acl-account-removed signal on @browser.
+ * It is meant to be used by interface implementations only.
+ */
+void
+inf_browser_acl_account_removed(InfBrowser* browser,
+                                const InfAclAccount* account,
+                                InfRequest* request)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(account != NULL);
+  g_return_if_fail(request == NULL || INF_IS_REQUEST(request));
+
+  g_signal_emit(
+    browser,
+    browser_signals[ACL_ACCOUNT_REMOVED],
     0,
     account,
     request

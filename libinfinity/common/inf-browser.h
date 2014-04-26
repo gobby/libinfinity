@@ -153,6 +153,10 @@ struct _InfBrowserIface {
                             const InfAclAccount* account,
                             InfRequest* request);
 
+  void (*acl_account_removed)(InfBrowser* browser,
+                              const InfAclAccount* account,
+                              InfRequest* request);
+
   void (*acl_changed)(InfBrowser* browser,
                       const InfBrowserIter* iter,
                       const InfAclSheetSet* sheet_set,
@@ -435,6 +439,11 @@ void
 inf_browser_acl_account_added(InfBrowser* browser,
                               const InfAclAccount* account,
                               InfRequest* request);
+
+void
+inf_browser_acl_account_removed(InfBrowser* browser,
+                                const InfAclAccount* account,
+                                InfRequest* request);
 
 void
 inf_browser_acl_changed(InfBrowser* browser,

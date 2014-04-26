@@ -631,7 +631,7 @@ infd_directory_release_session(InfdDirectory* directory,
  * ACLs
  */
 
-static const InfAclAccount*
+const InfAclAccount*
 infd_directory_acl_account_lookup_func(const gchar* id,
                                        gpointer user_data)
 {
@@ -1800,6 +1800,7 @@ infd_directory_node_new_note(InfdDirectory* directory,
 static void
 infd_directory_remove_sync_in(InfdDirectory* directory,
                               InfdDirectorySyncIn* sync_in);
+
 static void
 infd_directory_remove_subreq(InfdDirectory* directory,
                              InfdDirectorySubreq* request);
@@ -1965,6 +1966,266 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
       child->acl_connections,
       connection
     );
+  }
+}
+
+/*
+ * Permission enforcement
+ */
+
+/* Return the permissions needed to create a new node */
+static void
+infd_directory_get_add_node_permissions(InfdDirectory* directory,
+                                        InfAclMask* out,
+                                        gboolean initial_subscribe,
+                                        gboolean sync_in,
+                                        const InfAclSheetSet* sheet_set)
+{
+  inf_acl_mask_clear(out); /* TODO: _set1(INF_ACL_CAN_ADD_NODE) */
+  if(initial_subscribe == TRUE)
+    inf_acl_mask_or1(out, INF_ACL_CAN_SUBSCRIBE_SESSION);
+  /* TODO: (1 << INF_ACL_CAN_SYNC_IN) */
+  if(sheet_set != NULL && sheet_set->n_sheets > 0)
+    inf_acl_mask_or1(out, INF_ACL_CAN_SET_ACL);
+}
+
+/* Enforces the ACL on the given node. If the exploration permission is no
+ * longer given for this node, then explorations and subscriptions are also
+ * removed from all children. Returns whether node is still explored by
+ * the connection.
+ *
+ * Note this function does not enforce all ACLs recursively! */
+static gboolean
+infd_directory_enforce_single_acl(InfdDirectory* directory,
+                                  InfXmlConnection* connection,
+                                  InfdDirectoryNode* node,
+                                  gboolean is_explored)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryConnectionInfo* info;
+  const InfAclAccount* account;
+
+  InfBrowser* browser;
+  InfBrowserIter iter;
+  InfAclMask mask;
+  xmlNodePtr child_xml;
+  InfdDirectoryNode* child;
+  InfdSessionProxy* proxy;
+  GSList* item;
+  GSList* next;
+  InfdDirectorySubreq* subreq;
+  InfdDirectorySyncIn* sync_in;
+  InfXmlConnection* sync_in_connection;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+  info = g_hash_table_lookup(priv->connections, connection);
+  g_assert(info != NULL);
+  account = &info->account->account;
+
+  browser = INF_BROWSER(directory);
+  iter.node = node;
+  iter.node_id = node->id;
+
+  if(node->type == INFD_STORAGE_NODE_SUBDIRECTORY)
+  {
+    if(g_slist_find(node->shared.subdir.connections, connection) != NULL)
+    {
+      /* Remove exploration if new account does not have permission, or
+       * if one of the parent folders is no longer explored */
+      /*inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);*/
+      if(!is_explored ||
+         !TRUE) /*inf_browser_check_acl(browser, &iter, account, &mask, NULL))*/
+      {
+        node->shared.subdir.connections =
+          g_slist_remove(node->shared.subdir.connections, connection);
+        is_explored = FALSE;
+
+        /* If there are subscription requests to create a node into this node
+         * from this connection, then mark them as canceled, so that we don't
+         * create the node in handle_subscribe_ack(). The client might
+         * actually create the node if it does not register the new ACL early
+         * enough, but that's okay because it removes it again as
+         * soon as it does. */
+        for(item = priv->subscription_requests; item != NULL; item = next)
+        {
+          next = item->next;
+          subreq = (InfdDirectorySubreq*)item->data;
+
+          switch(subreq->type)
+          {
+          case INFD_DIRECTORY_SUBREQ_CHAT:
+          case INFD_DIRECTORY_SUBREQ_SESSION:
+            break;
+          case INFD_DIRECTORY_SUBREQ_ADD_NODE:
+            if(subreq->connection == connection)
+              if(subreq->shared.add_node.parent->id == node->id)
+                subreq->shared.add_node.parent = NULL;
+            break;
+          case INFD_DIRECTORY_SUBREQ_SYNC_IN:
+          case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+            if(subreq->connection == connection)
+              if(subreq->shared.sync_in.parent->id == node->id)
+                subreq->shared.sync_in.parent = NULL;
+            break;
+          default:
+            g_assert_not_reached();
+            break;
+          }
+        }
+
+        /* Remove sync-ins whose parent is gone */
+        g_object_get(
+          G_OBJECT(sync_in->request),
+          "requestor", &sync_in_connection,
+          NULL
+        );
+
+        for(item = priv->sync_ins; item != NULL; item = next)
+        {
+          next = item->next;
+          sync_in = (InfdDirectorySyncIn*)item->data;
+          if(sync_in_connection == connection && sync_in->parent == node)
+            infd_directory_remove_sync_in(directory, sync_in);
+        }
+
+        g_object_unref(sync_in_connection);
+
+        for(child = node->shared.subdir.child;
+            child != NULL;
+            child = child->next)
+        {
+          infd_directory_enforce_single_acl(
+            directory,
+            connection,
+            child,
+            FALSE
+          );
+        }
+      }
+    }
+    else
+    {
+      is_explored = FALSE;
+    }
+  }
+  else
+  {
+    is_explored = FALSE;
+    proxy = node->shared.note.session;
+    if(proxy != NULL)
+    {
+      if(infd_session_proxy_is_subscribed(proxy, connection))
+      {
+        /* Remove subscription if no longer allowed, or if parent directory
+         * is no longer explored */
+        inf_acl_mask_set1(&mask, INF_ACL_CAN_SUBSCRIBE_SESSION);
+        if(!is_explored ||
+           !inf_browser_check_acl(browser, &iter, account, &mask, NULL))
+        {
+          infd_session_proxy_unsubscribe(proxy, connection);
+        }
+        else
+        {
+          /* TODO: Remove joined users if join-user
+           * permissions are no longer granted. */
+        }
+      }
+    }
+  }
+
+  if(g_slist_find(node->acl_connections, connection) != NULL)
+  {
+    inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACL);
+    if(!is_explored ||
+       !inf_browser_check_acl(browser, &iter, account, &mask, NULL))
+    {
+      node->acl_connections =
+        g_slist_remove(node->acl_connections, connection);
+    }
+    else
+    {
+      /* Also remove it if the INF_ACL_CAN_QUERY_ACCOUNT_LIST flag was
+       * removed on the root node, since the account list is required to
+       * query ACLs. */
+      iter.node = priv->root;
+      iter.node_id = priv->root->id;
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
+      if(!inf_browser_check_acl(browser, &iter, account, &mask, NULL))
+      {
+        node->acl_connections =
+          g_slist_remove(node->acl_connections, connection);
+      }
+    }
+  }
+
+  return is_explored;
+}
+
+/* Enforce ACL for the given node and all its children for info. If
+ * reply_xml is set, then fill it with information about ACL for all
+ * nodes for info's account. This is used when a connection is
+ * switching accounts. */
+static void
+infd_directory_enforce_acl(InfdDirectory* directory,
+                           InfXmlConnection* conn,
+                           InfdDirectoryNode* node,
+                           xmlNodePtr reply_xml)
+{
+  InfdDirectoryPrivate* priv;
+  InfBrowser* browser;
+  InfBrowserIter iter;
+  InfAclMask mask;
+
+  InfdDirectoryNode* child;
+  InfdDirectoryConnectionInfo* info;
+  const InfAclAccount* account;
+  const InfAclSheet* sheet;
+  xmlNodePtr child_xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(node == priv->root)
+  {
+    browser = INF_BROWSER(directory);
+    iter.node = priv->root;
+    iter.node_id = priv->root->id;
+    inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
+    if(!inf_browser_check_acl(browser, &iter, account, &mask, NULL))
+    {
+      priv->account_list_connections =
+        g_slist_remove(priv->account_list_connections, conn);
+    }
+  }
+
+  if(infd_directory_enforce_single_acl(directory, conn, node, TRUE) == TRUE)
+  {
+    g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+
+    for(child = node->shared.subdir.child; child != NULL; child = child->next)
+    {
+      infd_directory_enforce_acl(directory, conn, child, reply_xml);
+    }
+  }
+
+  /* If this node has ACLs set for the new account, then add this to the
+   * reply XML, so that the remote host knows its own permissions
+   * on the node */
+  if(reply_xml != NULL)
+  {
+    if(node->acl != NULL)
+    {
+      info = g_hash_table_lookup(priv->connections, conn);
+      g_assert(info != NULL);
+      account = &info->account->account;
+
+      sheet = inf_acl_sheet_set_find_const_sheet(node->acl, account);
+      if(sheet != NULL)
+      {
+        child_xml = xmlNewChild(reply_xml, NULL, (const xmlChar*)"acl", NULL);
+        inf_xml_util_set_attribute_uint(child_xml, "node-id", node->id);
+        inf_acl_sheet_perms_to_xml(&sheet->mask, &sheet->perms, child_xml);
+      }
+    }
   }
 }
 
@@ -4053,12 +4314,13 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       subscribe_sync_conn = TRUE;
   }
 
-  inf_acl_mask_clear(&perms); /* TODO: _set1(INF_ACL_CAN_ADD_NODE) */
-  if(subscribe_sync_conn == TRUE)
-    inf_acl_mask_or1(&perms, INF_ACL_CAN_SUBSCRIBE_SESSION);
-  /* TODO: (1 << INF_ACL_CAN_SYNC_IN) */
-  if(sheet_set != NULL && sheet_set->n_sheets > 0)
-    inf_acl_mask_or1(&perms, INF_ACL_CAN_SET_ACL);
+  infd_directory_get_add_node_permissions(
+    directory,
+    &perms,
+    subscribe_sync_conn,
+    perform_sync_in,
+    sheet_set
+  );
 
   if(!infd_directory_check_auth(directory, parent, connection, &perms, error))
     return FALSE;
@@ -5173,6 +5435,14 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
   InfAclSheetSet* sheet_set;
   InfdRequest* request;
   InfBrowserIter iter;
+  const InfAclAccount* default_account;
+  const InfAclSheet* default_sheet;
+  const InfAclSheet* account_sheet;
+  GHashTableIter conn_iter;
+  gpointer key;
+  gpointer value;
+  InfXmlConnection* conn;
+  InfdDirectoryConnectionInfo* info;
   xmlNodePtr reply_xml;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -5258,6 +5528,30 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
 
   node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
 
+  /* Apply the effect of the new ACL */
+  default_account = g_hash_table_lookup(priv->accounts, "default");
+  g_assert(default_account != NULL);
+  default_sheet =
+    inf_acl_sheet_set_find_const_sheet(sheet_set, default_account);
+
+  g_hash_table_iter_init(&conn_iter, priv->connections);
+  while(g_hash_table_iter_next(&conn_iter, &key, &value))
+  {
+    conn = (InfXmlConnection*)key;
+    info = (InfdDirectoryConnectionInfo*)value;
+
+    if(default_sheet == NULL)
+    {
+      account_sheet = inf_acl_sheet_set_find_const_sheet(
+        sheet_set,
+        &info->account->account
+      );
+    }
+
+    if(default_sheet != NULL || account_sheet != NULL)
+      infd_directory_enforce_acl(directory, conn, node, NULL);
+  }
+
   /* Announce to all connections but this one, since for this connection we
    * need to set the seq (done below) */
   infd_directory_announce_acl_sheets(
@@ -5308,6 +5602,10 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   InfdDirectorySubreq* subreq;
   InfdDirectoryNode* node;
+  InfXmlConnection* conn;
+  InfAclMask perms;
+  xmlNodePtr reply_xml;
+
   GSList* item;
   InfdDirectorySubreq* subsubreq;
   InfdDirectorySyncIn* sync_in;
@@ -5344,6 +5642,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
      * between subreq generation and <subscribe-ack/> handling - the group
      * is always called InfChat so the client joins the correct group in
      * all cases. */
+    /* TODO: check for CAN_SUBSCRIBE_CHAT at this point... */
     if(priv->chat_session != NULL)
     {
       infd_session_proxy_subscribe_to(
@@ -5401,8 +5700,12 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     }
 
     /* The node this client wants to subscribe might have been removed in the
-     * meanwhile. */
-    if(node != NULL)
+     * meanwhile. Also, make sure that the permissions are still granted. */
+    local_error = NULL;
+    conn = connection;
+    inf_acl_mask_set1(&perms, INF_ACL_CAN_SUBSCRIBE_SESSION);
+    if(node != NULL &&
+       infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(node->type == INFD_STORAGE_NODE_NOTE);
 
@@ -5445,22 +5748,25 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     {
       if(subreq->shared.session.request != NULL)
       {
-        local_error = NULL;
-        g_set_error(
-          &local_error,
-          inf_directory_error_quark(),
-          INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-          "%s",
-          _("The node to be subscribed to has been removed")
-        );
+        if(local_error == NULL)
+        {
+          g_set_error(
+            &local_error,
+            inf_directory_error_quark(),
+            INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+            "%s",
+            _("The node to be subscribed to has been removed")
+          );
+        }
 
         inf_request_fail(
           INF_REQUEST(subreq->shared.session.request),
           local_error
         );
-
-        g_error_free(local_error);
       }
+
+      if(local_error != NULL)
+        g_error_free(local_error);
     }
 
     infd_session_proxy_subscribe_to(
@@ -5473,7 +5779,22 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     break;
   case INFD_DIRECTORY_SUBREQ_ADD_NODE:
     g_assert(subreq->shared.add_node.request != NULL);
-    if(subreq->shared.add_node.parent != NULL)
+    node = subreq->shared.add_node.parent;
+
+    /* The parent node might have been removed meanwhile, also check that the
+     * permissions are still granted. */
+    local_error = NULL;
+    conn = connection;
+    infd_directory_get_add_node_permissions(
+      directory,
+      &perms,
+      TRUE,
+      FALSE,
+      subreq->shared.add_node.sheet_set
+    );
+
+    if(node != NULL &&
+       infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(
         infd_directory_node_is_name_available(
@@ -5482,6 +5803,13 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
           subreq->shared.add_node.name,
           NULL
         ) == TRUE
+      );
+
+      g_assert(
+        g_slist_find(
+          subreq->shared.add_node.parent->shared.subdir.connections,
+          subreq->connection
+        ) != NULL
       );
 
       proxy = subreq->shared.add_node.proxy;
@@ -5539,14 +5867,35 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       proxy = subreq->shared.add_node.proxy;
       g_object_ref(proxy);
 
-      local_error = NULL;
-      g_set_error(
-        &local_error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-        "%s",
-        _("The parent node of the node to be added has been removed")
-      );
+      if(local_error == NULL)
+      {
+        g_set_error(
+          &local_error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+          "%s",
+          _("The parent node of the node to be added has been removed")
+        );
+      }
+
+      if(node != NULL)
+      {
+        /* If the parent node still exists, then the client has created the
+         * node, and we refused it because the permissions are no longer
+         * granted. Even though we close the session, the client does not know
+         * that the node was not even created. For the client, the ACL
+         * update comes too late, so it cannot know that the request failed.
+         * Therefore, send a remove-node message for the client to get rid
+         * of the node again. */
+        reply_xml = xmlNewNode(NULL, (const xmlChar*)"remove-node");
+        inf_xml_util_set_attribute_uint(reply_xml, "id", subreq->node_id);
+
+        inf_communication_group_send_message(
+          INF_COMMUNICATION_GROUP(priv->group),
+          connection,
+          reply_xml
+        );
+      }
 
       inf_request_fail(
         INF_REQUEST(subreq->shared.add_node.request),
@@ -5565,6 +5914,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
   case INFD_DIRECTORY_SUBREQ_SYNC_IN:
   case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
     g_assert(subreq->shared.sync_in.request != NULL);
+    node = subreq->shared.sync_in.parent;
 
     /* Group and method are OK for the client, so start synchronization */
     g_object_get(
@@ -5576,7 +5926,20 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     inf_session_synchronize_from(session);
     g_object_unref(session);
 
-    if(subreq->shared.sync_in.parent != NULL)
+    /* The parent node might have been removed meanwhile, also check that the
+     * permissions are still granted. */
+    local_error = NULL;
+    conn = connection;
+    infd_directory_get_add_node_permissions(
+      directory,
+      &perms,
+      TRUE,
+      FALSE,
+      subreq->shared.sync_in.sheet_set
+    );
+
+    if(node != NULL &&
+       infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(
         infd_directory_node_is_name_available(
@@ -5585,6 +5948,13 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
           subreq->shared.sync_in.name,
           NULL
         ) == TRUE
+      );
+
+      g_assert(
+        g_slist_find(
+          subreq->shared.sync_in.parent->shared.subdir.connections,
+          subreq->connection
+        ) != NULL
       );
 
       proxy = subreq->shared.sync_in.proxy;
@@ -5610,15 +5980,23 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       proxy = subreq->shared.sync_in.proxy;
       g_object_ref(proxy);
 
-      local_error = NULL;
-      g_set_error(
-        &local_error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-        "%s",
-        _("The parent node of the node to be added has been removed")
-      );
+      if(local_error == NULL)
+      {
+        g_set_error(
+          &local_error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_NO_SUCH_NODE,
+          "%s",
+          _("The parent node of the node to be added has been removed")
+        );
+      }
 
+      /* If the parent node still exists, then the client has created the
+       * node, and we refused it because the permissions are no longer
+       * granted. We don't need to do anything extra, though, since we
+       * cancel the synchronization, and that will let the client know not
+       * to create the node. */
+      
       inf_request_fail(
         INF_REQUEST(subreq->shared.sync_in.request),
         local_error
@@ -7588,6 +7966,7 @@ infd_directory_browser_init(gpointer g_iface,
   iface->unsubscribe_session = infd_directory_browser_unsubscribe_session;
   iface->begin_request = NULL;
   iface->acl_account_added = NULL;
+  iface->acl_account_removed = NULL;
   iface->acl_changed = NULL;
 
   iface->get_root = infd_directory_browser_get_root;

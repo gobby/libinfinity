@@ -159,6 +159,8 @@ struct _InfcBrowserSubreq {
       InfCommunicationJoinedGroup* subscription_group;
     } session;
 
+    /* TODO: It would simplify some code if we merge the add_node
+     * and sync_in blocks. */
     struct {
       InfcBrowserNode* parent;
       const InfcNotePlugin* plugin;
@@ -736,6 +738,7 @@ infc_browser_node_free(InfcBrowser* browser,
 
           g_error_free(error);
 
+          g_object_unref(request->shared.session.request);
           request->shared.session.request = NULL;
         }
       }
@@ -763,6 +766,7 @@ infc_browser_node_free(InfcBrowser* browser,
 
           g_error_free(error);
 
+          g_object_unref(request->shared.add_node.request);
           request->shared.add_node.request = NULL;
         }
       }
@@ -790,6 +794,7 @@ infc_browser_node_free(InfcBrowser* browser,
 
         g_error_free(error);
 
+        g_object_unref(request->shared.sync_in.request);
         request->shared.sync_in.request = NULL;
       }
 
@@ -811,6 +816,342 @@ infc_browser_node_free(InfcBrowser* browser,
 
   g_free(node->name);
   g_slice_free(InfcBrowserNode, node);
+}
+
+/* Enforce the ACL for the current user. If the server changes ACLs or we are
+ * switching accounts, then we need to update our internal state to the new
+ * permissions. */
+static void
+infc_browser_enforce_single_acl(InfcBrowser* browser,
+                                InfcBrowserNode* node,
+                                InfcRequest* request)
+{
+  InfcBrowserPrivate* priv;
+  InfBrowser* ibrowser;
+  InfBrowserIter iter;
+  const InfAclAccount* account;
+  InfAclMask mask;
+  InfcRequest* req;
+  GError* error;
+  InfcBrowserNode* child;
+  GSList* item;
+  InfcBrowserSubreq* subreq;
+  gboolean query_acl_allowed;
+  const InfAclAccount* default_account;
+  InfAclSheetSet* sheet_set;
+  InfAclSheet* sheet;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  ibrowser = INF_BROWSER(browser);
+  iter.node = node;
+  iter.node_id = node->id;
+  account = priv->local_account;
+
+  if(node->type == INFC_BROWSER_NODE_SUBDIRECTORY)
+  {
+    if(node->shared.subdir.explored == TRUE)
+    {
+      /*inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);*/
+      if(/*inf_browser_check_acl(browser, &iter, account, &mask, NULL)*/TRUE == FALSE)
+      {
+        req = INFC_REQUEST(
+          inf_browser_get_pending_request(
+            ibrowser,
+            &iter,
+            "explore-node"
+          )
+        );
+
+        if(req != NULL)
+        {
+          error = NULL;
+
+          g_set_error(
+            &error,
+            inf_request_error_quark(),
+            INF_REQUEST_ERROR_NOT_AUTHORIZED,
+            "%s",
+            _("Permissions to explore this node have been revoked")
+          );
+
+          infc_request_manager_fail_request(priv->request_manager, req, error);
+          g_error_free(error);
+        }
+
+        while(node->shared.subdir.child != NULL)
+        {
+          child = node->shared.subdir.child;
+          infc_browser_node_unregister(browser, child, request);
+          infc_browser_node_free(browser, child);
+        }
+
+        /* Cancel any subscription request that wants to create a node in this
+         * node. It is important to this here and not in
+         * communication_object_sent(), so that there are no inconsistencies
+         * when the server re-explores the node for us. */
+        for(item = priv->subscription_requests; item != NULL; )
+        {
+          subreq = (InfcBrowserSubreq*)item->data;
+          item = item->next;
+
+          switch(subreq->type)
+          {
+          case INFC_BROWSER_SUBREQ_CHAT:
+          case INFC_BROWSER_SUBREQ_SESSION:
+            break;
+          case INFC_BROWSER_SUBREQ_ADD_NODE:
+            if(subreq->shared.add_node.parent == node)
+            {
+              subreq->shared.add_node.parent = NULL;
+              if(subreq->shared.add_node.request != NULL)
+              {
+                error = NULL;
+
+                g_set_error(
+                  &error,
+                  inf_request_error_quark(),
+                  INF_REQUEST_ERROR_NOT_AUTHORIZED,
+                  "%s",
+                  _("Permissions to explore the parent node "
+                    "have been revoked")
+                );
+
+                infc_request_manager_fail_request(
+                  priv->request_manager,
+                  subreq->shared.add_node.request,
+                  error
+                );
+
+                g_error_free(error);
+
+                g_object_unref(subreq->shared.add_node.request);
+                subreq->shared.add_node.request = NULL;
+              }
+            }
+            break;
+          case INFC_BROWSER_SUBREQ_SYNC_IN:
+            if(subreq->shared.sync_in.parent == node)
+            {
+              subreq->shared.sync_in.parent = NULL;
+              if(subreq->shared.sync_in.request != NULL)
+              {
+                error = NULL;
+
+                g_set_error(
+                  &error,
+                  inf_request_error_quark(),
+                  INF_REQUEST_ERROR_NOT_AUTHORIZED,
+                  "%s",
+                  _("Permissions to explore the parent node "
+                    "have been revoked")
+                );
+
+                infc_request_manager_fail_request(
+                  priv->request_manager,
+                  subreq->shared.sync_in.request,
+                  error
+                );
+
+                g_error_free(error);
+
+                g_object_unref(subreq->shared.sync_in.request);
+                subreq->shared.sync_in.request = NULL;
+              }
+            }
+
+            break;
+          default:
+            g_assert_not_reached();
+            break;
+          }
+        }
+
+        node->shared.subdir.explored = FALSE;
+      }
+    }
+  }
+  else
+  {
+    /* Don't handle subscriptions explicitely, they will be ended by the
+     * server on session level (or, if the server allows them to live on,
+     * even better). */
+  }
+
+  /* TODO: on account change, add the sheets for the new account, but this
+   * also needs to happen when acl_queried is FALSE */
+  if(node->acl_queried == TRUE)
+  {
+    query_acl_allowed = FALSE;
+    inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACL);
+    if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == TRUE)
+    {
+      iter.node = priv->root;
+      iter.node_id = priv->root->id;
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
+      if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == TRUE)
+        query_acl_allowed = TRUE;
+    }
+
+    /* If query-acl was revoked, then update the sheet set by removing all
+     * sheets other than the default one and the one for our account. */
+    if(query_acl_allowed == FALSE)
+    {
+      if(node->acl != NULL)
+        sheet_set = inf_acl_sheet_set_get_clear_sheets(node->acl);
+      else
+        sheet_set = inf_acl_sheet_set_new();
+
+      default_account = g_hash_table_lookup(priv->accounts, "default");
+      g_assert(default_account != NULL);
+
+      sheet = inf_acl_sheet_set_find_sheet(sheet_set, default_account);
+      if(sheet != NULL) inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
+
+      if(priv->local_account != default_account)
+      {
+        sheet = inf_acl_sheet_set_find_sheet(sheet_set, priv->local_account);
+        if(sheet != NULL) inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
+      }
+
+      node->acl_queried = FALSE;
+
+      node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
+
+      /* Check subscription requests for this node, and adapt the sheet set,
+       * so that the sheet set is correct when the node is
+       * eventually created. */
+      for(item = priv->subscription_requests; item != NULL; )
+      {
+        subreq = (InfcBrowserSubreq*)item->data;
+        item = item->next;
+
+        switch(subreq->type)
+        {
+        case INFC_BROWSER_SUBREQ_CHAT:
+        case INFC_BROWSER_SUBREQ_SESSION:
+          break;
+        case INFC_BROWSER_SUBREQ_ADD_NODE:
+          if(subreq->shared.add_node.parent == node)
+          {
+            subreq->shared.add_node.sheet_set =
+              inf_acl_sheet_set_merge_sheets(
+                subreq->shared.add_node.sheet_set,
+                sheet_set
+              );
+          }
+
+          break;
+        case INFC_BROWSER_SUBREQ_SYNC_IN:
+          if(subreq->shared.sync_in.parent == node)
+          {
+            subreq->shared.sync_in.sheet_set = inf_acl_sheet_set_merge_sheets(
+              subreq->shared.sync_in.sheet_set,
+              sheet_set
+            );
+          }
+
+          break;
+        default:
+          g_assert_not_reached();
+          break;
+        }
+      }
+
+      inf_browser_acl_changed(
+        INF_BROWSER(browser),
+        &iter,
+        sheet_set,
+        INF_REQUEST(request)
+      );
+
+      inf_acl_sheet_set_free(sheet_set);
+    }
+  }
+}
+
+static void
+infc_browser_enforce_acl(InfcBrowser* browser,
+                         InfcBrowserNode* node,
+                         InfcRequest* request)
+{
+  InfBrowser* ibrowser;
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* child;
+  InfBrowserIter iter;
+  InfAclMask mask;
+  gboolean account_list_queried_removed;
+
+  GList* keys;
+  GList* item;
+  const InfAclAccount* account;
+  const InfAclAccount* default_account;
+  InfAclAccount* rem_account;
+
+  ibrowser = INF_BROWSER(browser);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  /* First, check whether the account_list_queried flag needs to be reset
+   * because we lost the can-query-account-list permission. If yes, update
+   * our state so that inf_browser_get_acl_account_list() returns the
+   * updated value for all callbacks we are doing in the course of the
+   * enforcement procedure. */
+  account_list_queried_removed = FALSE;
+  if(node == priv->root && priv->account_list_queried)
+  {
+    iter.node = node;
+    iter.node_id = node->id;
+    inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
+    account = priv->local_account;
+
+    if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == FALSE)
+    {
+      priv->account_list_queried = FALSE;
+      account_list_queried_removed = TRUE;
+    }
+  }
+
+  /* Enforce ACL for this node */
+  infc_browser_enforce_single_acl(browser, node, request);
+
+  /* Enforce it for all children. Note that if the explore-node permission was
+   * revoked, then the above call has already removed all child nodes. */
+  if(node->type == INFC_BROWSER_NODE_SUBDIRECTORY)
+  {
+    for(child = node->shared.subdir.child; child != NULL; child = child->next)
+    {
+      infc_browser_enforce_acl(browser, child, request);
+    }
+  }
+
+  /* Finally, remove ACL accounts, if account-list-query permission was
+   * removed. */
+  if(account_list_queried_removed)
+  {
+    default_account = g_hash_table_lookup(priv->accounts, "default");
+    g_assert(default_account != NULL);
+
+    /* In infd_directory_enforce_single_acl(), we made sure that the ACL
+     * accounts to be removed are no longer in use. */
+    keys = g_hash_table_get_keys(priv->accounts);
+    for(item = keys; item != NULL; item = g_list_next(item))
+    {
+      rem_account = g_hash_table_lookup(priv->accounts, item->data);
+      if(rem_account != default_account && rem_account != priv->local_account)
+      {
+        g_hash_table_steal(priv->accounts, item->data);
+
+        inf_browser_acl_account_removed(
+          ibrowser,
+          rem_account,
+          INF_REQUEST(request)
+        );
+
+        inf_acl_account_free(rem_account);
+      }
+    }
+
+    g_list_free(keys);
+  }
 }
 
 /*
@@ -3783,6 +4124,7 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
     if(sheet_set->n_sheets > 0)
     {
       node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
+      infc_browser_enforce_acl(browser, node, request);
 
       inf_browser_acl_changed(
         INF_BROWSER(browser),
@@ -3791,6 +4133,12 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
         INF_REQUEST(request)
       );
     }
+
+    /* TODO: Here, enforce new ACLs. remove queried acls if query-acl flag is
+     * removed, remove acl-account-list flag and all queried acls if we don't
+     * have the account list, unexplore explored directories if explore flag
+     * is gone. If subscribe flag is gone, do nothing, the server will end it
+     * on the session level. */
 
     inf_acl_sheet_set_free(sheet_set);
   }
@@ -5432,6 +5780,7 @@ infc_browser_browser_init(gpointer g_iface,
   iface->unsubscribe_session = NULL;
   iface->begin_request = NULL;
   iface->acl_account_added = NULL;
+  iface->acl_account_removed = NULL;
   iface->acl_changed = NULL;
 
   iface->get_root = infc_browser_browser_get_root;

@@ -185,14 +185,47 @@ inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
                                              guint n_accounts)
 {
   InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeModel* model;
+  gboolean* have_accounts;
+  GtkTreeIter iter;
+  const InfAclAccount* account;
+  gboolean has_row;
   guint i;
 
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+  model = GTK_TREE_MODEL(priv->account_store);
+
+  /* Remove all accounts that are not present in the given account list.
+   * Flag accounts that we have found, and then add all the un-flagged ones.
+   * This way we keep the overlapping accounts in the list, which should
+   * provide a smooth user experience, for example when an item in the list
+   * is selected it is not removed and re-added. */
+  have_accounts = g_malloc(n_accounts * sizeof(gboolean));
+  for(i = 0; i < n_accounts; ++i)
+    have_accounts[i] = FALSE;
+
+  has_row = gtk_tree_model_get_iter_first(model, &iter);
+  while(has_row)
+  {
+    gtk_tree_model_get(model, &iter, 0, &account, -1);
+    for(i = 0; i < n_accounts; ++i)
+      if(account == accounts[i])
+        break;
+
+    if(i != n_accounts)
+    {
+      have_accounts[i] = TRUE;
+      has_row = gtk_tree_model_iter_next(model, &iter);
+    }
+    else
+    {
+      has_row = gtk_list_store_remove(priv->account_store, &iter);
+    }
+  }
 
   for(i = 0; i < n_accounts; ++i)
   {
-    /* Make sure not to fill an account twice */
-    if(!inf_gtk_permissions_dialog_find_account(dialog, accounts[i], NULL))
+    if(!have_accounts[i])
     {
       gtk_list_store_insert_with_values(
         priv->account_store,
@@ -204,6 +237,8 @@ inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
       );
     }
   }
+
+  g_free(have_accounts);
 }
 
 static void
@@ -392,6 +427,31 @@ inf_gtk_permissions_dialog_acl_account_added_cb(InfBrowser* browser,
       );
     }
   }
+}
+
+static void
+inf_gtk_permissions_dialog_acl_account_removed_cb(InfBrowser* browser,
+                                                  const InfAclAccount* account,
+                                                  InfRequest* request,
+                                                  gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  gboolean have_account;
+  GtkTreeIter iter;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* The account is not necessarily always in the list, for example if we have
+   * permissions to query the user list but not to query the ACL for the
+   * current node, we might get this callback but not have all accounts in the
+   * list. */
+  have_account =
+    inf_gtk_permissions_dialog_find_account(dialog, account, &iter);
+
+  if(have_account)
+    gtk_list_store_remove(priv->account_store, &iter);
 }
 
 static void
@@ -813,6 +873,13 @@ inf_gtk_permissions_dialog_register(InfGtkPermissionsDialog* dialog)
 
   g_signal_connect(
     priv->browser,
+    "acl-account-removed",
+    G_CALLBACK(inf_gtk_permissions_dialog_acl_account_removed_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    priv->browser,
     "acl-changed",
     G_CALLBACK(inf_gtk_permissions_dialog_acl_changed_cb),
     dialog
@@ -836,6 +903,12 @@ inf_gtk_permissions_dialog_unregister(InfGtkPermissionsDialog* dialog)
   inf_signal_handlers_disconnect_by_func(
     priv->browser,
     G_CALLBACK(inf_gtk_permissions_dialog_acl_account_added_cb),
+    dialog
+  );
+
+  inf_signal_handlers_disconnect_by_func(
+    priv->browser,
+    G_CALLBACK(inf_gtk_permissions_dialog_acl_account_removed_cb),
     dialog
   );
 

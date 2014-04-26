@@ -297,7 +297,8 @@ inf_browser_node_added
 inf_browser_node_removed
 inf_browser_subscribe_session
 inf_browser_begin_request
-inf_browser_acl_user_added
+inf_browser_acl_account_added
+inf_browser_acl_account_removed
 inf_browser_acl_changed
 <SUBSECTION Standard>
 INF_BROWSER

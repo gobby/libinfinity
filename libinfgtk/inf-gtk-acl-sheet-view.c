@@ -561,7 +561,7 @@ inf_gtk_acl_sheet_view_get_property(GObject* object,
 
 static void
 inf_gtk_acl_sheet_view_class_init(gpointer g_class,
-                        gpointer class_data)
+                                  gpointer class_data)
 {
   GObjectClass* object_class;
   InfGtkAclSheetViewClass* sheet_view_class;
