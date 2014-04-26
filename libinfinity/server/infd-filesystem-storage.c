@@ -522,6 +522,7 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   gchar* disk_name;
   gchar* full_name;
   gboolean result;
+  int save_errno;
 
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
@@ -536,7 +537,6 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   if(identifier != NULL)
   {
     disk_name = g_strconcat(converted_name, ".", identifier, NULL);
-    g_free(converted_name);
   }
   else
   {
@@ -544,11 +544,31 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   }
 
   full_name = g_build_filename(priv->root_directory, disk_name, NULL);
-  g_free(disk_name);
+  if(disk_name != converted_name) g_free(disk_name);
 
   result = inf_file_util_delete(full_name, error);
   g_free(full_name);
 
+  if(result == TRUE)
+  {
+    disk_name = g_strconcat(converted_name, ".xml.acl", NULL);
+    full_name = g_build_filename(priv->root_directory, disk_name, NULL);
+    g_free(disk_name);
+
+    if(g_unlink(full_name) == -1)
+    {
+      save_errno = errno;
+      if(save_errno != ENOENT)
+      {
+        infd_filesystem_storage_system_error(save_errno, error);
+        result = FALSE;
+      }
+    }
+
+    g_free(full_name);
+  }
+
+  g_free(converted_name);
   return result;
 }
 
