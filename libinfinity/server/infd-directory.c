@@ -2016,6 +2016,7 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
   InfdDirectorySubreq* subreq;
   InfdDirectorySyncIn* sync_in;
   InfXmlConnection* sync_in_connection;
+  gboolean retval;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   info = g_hash_table_lookup(priv->connections, connection);
@@ -2026,6 +2027,7 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
   iter.node = node;
   iter.node_id = node->id;
 
+  retval = TRUE;
   if(node->type == INFD_STORAGE_NODE_SUBDIRECTORY)
   {
     if(g_slist_find(node->shared.subdir.connections, connection) != NULL)
@@ -2038,7 +2040,7 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
       {
         node->shared.subdir.connections =
           g_slist_remove(node->shared.subdir.connections, connection);
-        is_explored = FALSE;
+        retval = FALSE;
 
         /* If there are subscription requests to create a node into this node
          * from this connection, then mark them as canceled, so that we don't
@@ -2106,12 +2108,12 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
     }
     else
     {
-      is_explored = FALSE;
+      retval = FALSE;
     }
   }
   else
   {
-    is_explored = FALSE;
+    retval = FALSE;
     proxy = node->shared.note.session;
     if(proxy != NULL)
     {
@@ -2159,7 +2161,7 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
     }
   }
 
-  return is_explored;
+  return retval;
 }
 
 /* Enforce ACL for the given node and all its children for info. If
