@@ -671,6 +671,77 @@ inf_gtk_browser_view_subscribe_session_cb(InfBrowser* browser,
   g_object_unref(session);
 }
 
+static void
+inf_gtk_browser_view_acl_changed_cb(InfBrowser* browser,
+                                    const InfBrowserIter* iter,
+                                    const InfAclSheetSet* sheet_set,
+                                    InfRequest* request,
+                                    gpointer user_data)
+{
+  InfGtkBrowserViewBrowser* view_browser;
+  InfGtkBrowserView* view;
+  GtkTreeModel* model;
+  GtkTreeIter tree_iter;
+  GtkTreeIter parent_iter;
+  GtkTreePath* path;
+  gboolean result;
+  const InfAclAccount* account;
+  InfAclMask mask;
+  InfRequest* pending_request;
+
+  view_browser = (InfGtkBrowserViewBrowser*)user_data;
+  view = view_browser->view;
+  model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
+
+  result = inf_gtk_browser_model_browser_iter_to_tree_iter(
+    INF_GTK_BROWSER_MODEL(model),
+    browser,
+    iter,
+    &tree_iter
+  );
+
+  /* The model might be a filter model that does not contain the session
+   * being synchronized, so do not assert here. */
+  if(result == TRUE)
+  {
+    /* If this node is a subdirectory node, then explore it if its parent
+     * is expanded. If it is the root node, then always explore it. */
+    if(gtk_tree_model_iter_parent(model, &parent_iter, &tree_iter) == TRUE)
+    {
+      path = gtk_tree_model_get_path(model, &parent_iter);
+      result = gtk_tree_view_row_expanded(GTK_TREE_VIEW(view), path);
+      gtk_tree_path_free(path);
+    }
+    else
+    {
+      result = TRUE;
+    }
+
+    account = inf_browser_get_acl_local_account(browser);
+    inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+
+    if(result == TRUE && /* row expanded or root node */
+       inf_browser_is_subdirectory(browser, iter) == TRUE &&
+       inf_browser_get_explored(browser, iter) == FALSE &&
+       inf_browser_check_acl(browser, iter, account, &mask, NULL))
+    {
+      pending_request = inf_browser_get_pending_request(
+        browser,
+        iter,
+        "explore-node"
+      );
+
+      if(pending_request == NULL)
+        inf_browser_explore(browser, iter, NULL, NULL);
+    }
+
+    /* Redraw the row to show the new ACL */
+    path = gtk_tree_model_get_path(model, &tree_iter);
+    inf_gtk_browser_view_redraw_row(view, path, &tree_iter);
+    gtk_tree_path_free(path);
+  }
+}
+
 /*
  * Browser management
  */
@@ -804,6 +875,8 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
   InfBrowserStatus browser_status;
+  const InfAclAccount* account;
+  InfAclMask mask;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
   model = gtk_tree_view_get_model(GTK_TREE_VIEW(view));
@@ -831,11 +904,12 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
       );
 
       /* Explore root node if it is not already explored */
-      if(request == NULL)
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+      account = inf_browser_get_acl_local_account(browser);
+      if(request == NULL &&
+         inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
       {
-        request = INF_REQUEST(
-          inf_browser_explore(INF_BROWSER(browser), browser_iter, NULL, NULL)
-        );
+        request = inf_browser_explore(browser, browser_iter, NULL, NULL);
       }
 
       if(view_browser->initial_root_expansion == TRUE)
@@ -942,6 +1016,13 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
     view_browser
   );
 
+  g_signal_connect_after(
+    G_OBJECT(browser),
+    "acl-changed",
+    G_CALLBACK(inf_gtk_browser_view_acl_changed_cb),
+    view_browser
+  );
+
   /* TODO: Watch a signal to be notified when a sync-in begins. */
 
   gtk_tree_model_get(
@@ -1012,6 +1093,12 @@ inf_gtk_browser_view_browser_removed(InfGtkBrowserView* view,
     view_browser
   );
 
+  inf_signal_handlers_disconnect_by_func(
+    G_OBJECT(view_browser->browser),
+    G_CALLBACK(inf_gtk_browser_view_acl_changed_cb),
+    view_browser
+  );
+
   gtk_tree_row_reference_free(view_browser->reference);
   g_object_unref(view_browser->browser);
 
@@ -1062,6 +1149,8 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   InfGtkBrowserViewExplore* explore;
   gboolean explored;
   GtkTreePath* parent_path;
+  const InfAclAccount* account;
+  InfAclMask mask;
 
   GObject* object;
   InfSessionProxy* proxy;
@@ -1097,21 +1186,18 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
 
       if(request == NULL)
       {
-        explored =
-          inf_browser_get_explored(INF_BROWSER(browser), browser_iter);
-        if(explored == FALSE)
+        explored = inf_browser_get_explored(browser, browser_iter);
+        account = inf_browser_get_acl_local_account(browser);
+        inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+        if(explored == FALSE &&
+           inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
         {
           parent_path = gtk_tree_path_copy(path);
           gtk_tree_path_up(parent_path);
 
           if(gtk_tree_view_row_expanded(GTK_TREE_VIEW(view), parent_path))
           {
-            inf_browser_explore(
-              INF_BROWSER(browser),
-              browser_iter,
-              NULL,
-              NULL
-            );
+            inf_browser_explore(browser, browser_iter, NULL, NULL);
           }
 
           gtk_tree_path_free(parent_path);
@@ -1449,6 +1535,8 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
   InfRequest* pending_request;
+  const InfAclAccount* account;
+  InfAclMask mask;
 
   model = gtk_tree_view_get_model(tree_view);
 
@@ -1465,10 +1553,14 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   /* Explore all child nodes that are not yet explored */
   if(inf_browser_get_child(browser, browser_iter))
   {
+    account = inf_browser_get_acl_local_account(browser);
+    inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+
     do
     {
       if(inf_browser_is_subdirectory(browser, browser_iter) == TRUE &&
-         inf_browser_get_explored(browser, browser_iter) == FALSE)
+         inf_browser_get_explored(browser, browser_iter) == FALSE &&
+         inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
       {
         pending_request = inf_browser_get_pending_request(
           browser,
@@ -1477,13 +1569,13 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
         );
 
         if(pending_request == NULL)
-          inf_browser_explore(INF_BROWSER(browser), browser_iter, NULL, NULL);
+          inf_browser_explore(browser, browser_iter, NULL, NULL);
       }
-    } while(inf_browser_get_next(INF_BROWSER(browser), browser_iter));
+    } while(inf_browser_get_next(browser, browser_iter));
   }
 
   inf_browser_iter_free(browser_iter);
-  g_object_unref(G_OBJECT(browser));
+  g_object_unref(browser);
 
   if(GTK_TREE_VIEW_CLASS(parent_class)->row_expanded != NULL)
     GTK_TREE_VIEW_CLASS(parent_class)->row_expanded(tree_view, iter, path);
@@ -1860,6 +1952,9 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
   InfDiscovery* discovery;
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
+  InfAclMask mask;
+  const InfAclAccount* account;
+  const gchar* stock_id;
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
   {
@@ -1876,10 +1971,25 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
 
     /* TODO: Set icon depending on note type, perhaps also on whether
      * we are subscribed or not. */
+    account = inf_browser_get_acl_local_account(browser);
     if(inf_browser_is_subdirectory(browser, browser_iter))
-      g_object_set(G_OBJECT(renderer), "stock-id", GTK_STOCK_DIRECTORY, NULL);
+    {
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+      if(inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+        stock_id = GTK_STOCK_DIRECTORY;
+      else
+        stock_id = GTK_STOCK_DIALOG_AUTHENTICATION;
+      g_object_set(G_OBJECT(renderer), "stock-id", stock_id, NULL);
+    }
     else
-      g_object_set(G_OBJECT(renderer), "stock-id", GTK_STOCK_FILE, NULL);
+    {
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_SUBSCRIBE_SESSION);
+      if(inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+        stock_id = GTK_STOCK_FILE;
+      else
+        stock_id = GTK_STOCK_DIALOG_AUTHENTICATION;
+      g_object_set(G_OBJECT(renderer), "stock-id", stock_id, NULL);
+    }
 
     inf_browser_iter_free(browser_iter);
     g_object_unref(G_OBJECT(browser));
