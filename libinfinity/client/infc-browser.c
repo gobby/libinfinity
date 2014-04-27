@@ -820,11 +820,14 @@ infc_browser_node_free(InfcBrowser* browser,
 
 /* Enforce the ACL for the current user. If the server changes ACLs or we are
  * switching accounts, then we need to update our internal state to the new
- * permissions. */
+ * permissions. new_sheet contains a ACL sheet for the current user which we
+ * add to the node's ACL. This is used when before enforcing the new ACL the
+ * ACL for this node was not known. */
 static void
 infc_browser_enforce_single_acl(InfcBrowser* browser,
                                 InfcBrowserNode* node,
-                                InfcRequest* request)
+                                InfcRequest* request,
+                                const InfAclSheet* new_sheet)
 {
   InfcBrowserPrivate* priv;
   InfBrowser* ibrowser;
@@ -836,16 +839,18 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
   InfcBrowserNode* child;
   GSList* item;
   InfcBrowserSubreq* subreq;
-  gboolean query_acl_allowed;
   const InfAclAccount* default_account;
   InfAclSheetSet* sheet_set;
   InfAclSheet* sheet;
+  InfAclSheet* added_sheet;
 
   priv = INFC_BROWSER_PRIVATE(browser);
   ibrowser = INF_BROWSER(browser);
   iter.node = node;
   iter.node_id = node->id;
   account = priv->local_account;
+
+  g_assert(new_sheet == NULL || new_sheet->account == account);
 
   if(node->type == INFC_BROWSER_NODE_SUBDIRECTORY)
   {
@@ -977,11 +982,11 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
      * even better). */
   }
 
-  /* TODO: on account change, add the sheets for the new account, but this
-   * also needs to happen when acl_queried is FALSE */
+  /* Check if query-acl was revoked, and if yes, reset the acl_queried flag
+   * for the node. */
   if(node->acl_queried == TRUE)
   {
-    query_acl_allowed = FALSE;
+    node->acl_queried = FALSE;
     inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACL);
     if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == TRUE)
     {
@@ -989,32 +994,44 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
       iter.node_id = priv->root->id;
       inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
       if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == TRUE)
-        query_acl_allowed = TRUE;
+        node->acl_queried = TRUE;
+    }
+  }
+
+  /* If query-acl was revoked, then update the sheet set by removing all
+   * sheets other than the default one and the one for our account. */
+  if(node->acl_queried == FALSE)
+  {
+    if(node->acl != NULL)
+      sheet_set = inf_acl_sheet_set_get_clear_sheets(node->acl);
+    else
+      sheet_set = inf_acl_sheet_set_new();
+
+    default_account = g_hash_table_lookup(priv->accounts, "default");
+    g_assert(default_account != NULL);
+
+    sheet = inf_acl_sheet_set_find_sheet(sheet_set, default_account);
+    if(sheet != NULL) inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
+
+    if(priv->local_account != default_account)
+    {
+      sheet = inf_acl_sheet_set_find_sheet(sheet_set, priv->local_account);
+
+      if(sheet != NULL)
+      {
+        inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
+        g_assert(new_sheet == NULL);
+      }
+      else if(new_sheet != NULL)
+      {
+        added_sheet =
+          inf_acl_sheet_set_add_sheet(sheet_set, new_sheet->account);
+        *added_sheet = *new_sheet;
+      }
     }
 
-    /* If query-acl was revoked, then update the sheet set by removing all
-     * sheets other than the default one and the one for our account. */
-    if(query_acl_allowed == FALSE)
+    if(sheet_set != NULL && sheet_set->n_sheets > 0)
     {
-      if(node->acl != NULL)
-        sheet_set = inf_acl_sheet_set_get_clear_sheets(node->acl);
-      else
-        sheet_set = inf_acl_sheet_set_new();
-
-      default_account = g_hash_table_lookup(priv->accounts, "default");
-      g_assert(default_account != NULL);
-
-      sheet = inf_acl_sheet_set_find_sheet(sheet_set, default_account);
-      if(sheet != NULL) inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
-
-      if(priv->local_account != default_account)
-      {
-        sheet = inf_acl_sheet_set_find_sheet(sheet_set, priv->local_account);
-        if(sheet != NULL) inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
-      }
-
-      node->acl_queried = FALSE;
-
       node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
 
       /* Check subscription requests for this node, and adapt the sheet set,
@@ -1063,23 +1080,24 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
         sheet_set,
         INF_REQUEST(request)
       );
-
-      inf_acl_sheet_set_free(sheet_set);
     }
+
+    inf_acl_sheet_set_free(sheet_set);
   }
 }
 
 static void
 infc_browser_enforce_acl(InfcBrowser* browser,
                          InfcBrowserNode* node,
-                         InfcRequest* request)
+                         InfcRequest* request,
+                         GHashTable* new_acls)
 {
   InfBrowser* ibrowser;
   InfcBrowserPrivate* priv;
   InfcBrowserNode* child;
   InfBrowserIter iter;
   InfAclMask mask;
-  gboolean account_list_queried_removed;
+  const InfAclSheet* sheet;
 
   GList* keys;
   GList* item;
@@ -1095,7 +1113,6 @@ infc_browser_enforce_acl(InfcBrowser* browser,
    * our state so that inf_browser_get_acl_account_list() returns the
    * updated value for all callbacks we are doing in the course of the
    * enforcement procedure. */
-  account_list_queried_removed = FALSE;
   if(node == priv->root && priv->account_list_queried)
   {
     iter.node = node;
@@ -1106,12 +1123,14 @@ infc_browser_enforce_acl(InfcBrowser* browser,
     if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == FALSE)
     {
       priv->account_list_queried = FALSE;
-      account_list_queried_removed = TRUE;
     }
   }
 
   /* Enforce ACL for this node */
-  infc_browser_enforce_single_acl(browser, node, request);
+  sheet = NULL;
+  if(new_acls != NULL)
+    sheet = g_hash_table_lookup(new_acls, GUINT_TO_POINTER(node->id));
+  infc_browser_enforce_single_acl(browser, node, request, sheet);
 
   /* Enforce it for all children. Note that if the explore-node permission was
    * revoked, then the above call has already removed all child nodes. */
@@ -1119,13 +1138,13 @@ infc_browser_enforce_acl(InfcBrowser* browser,
   {
     for(child = node->shared.subdir.child; child != NULL; child = child->next)
     {
-      infc_browser_enforce_acl(browser, child, request);
+      infc_browser_enforce_acl(browser, child, request, new_acls);
     }
   }
 
   /* Finally, remove ACL accounts, if account-list-query permission was
    * removed. */
-  if(account_list_queried_removed)
+  if(priv->account_list_queried == FALSE)
   {
     default_account = g_hash_table_lookup(priv->accounts, "default");
     g_assert(default_account != NULL);
@@ -4050,6 +4069,101 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_change_acl_account(InfcBrowser* browser,
+                                       InfXmlConnection* connection,
+                                       xmlNodePtr xml,
+                                       GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfAclAccount* account;
+  InfAclAccount* existing_account;
+  GHashTable* new_acls;
+  xmlNodePtr child;
+  gboolean res;
+  InfAclSheet* sheet;
+  guint node_id;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  account = inf_acl_account_from_xml(xml, error);
+  if(account == NULL) return FALSE;
+
+  existing_account = g_hash_table_lookup(priv->accounts, account->id);
+  if(existing_account != NULL)
+  {
+    inf_acl_account_free(account);
+    account = existing_account;
+  }
+
+  new_acls = g_hash_table_new_full(
+    NULL,
+    NULL,
+    NULL,
+    (GDestroyNotify)inf_acl_sheet_free
+  );
+
+  for(child = xml->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+    if(strcmp((const gchar*)child->name, "acl") == 0)
+    {
+      res = inf_xml_util_get_attribute_uint_required(
+        child,
+        "node-id",
+        &node_id,
+        error
+      );
+
+      if(res == FALSE)
+      {
+        if(account != existing_account)
+          inf_acl_account_free(account);
+        g_hash_table_destroy(new_acls);
+        return FALSE;
+      }
+
+      sheet = inf_acl_sheet_new(account);
+
+      res = inf_acl_sheet_perms_from_xml(
+        child,
+        &sheet->mask,
+        &sheet->perms,
+        error
+      );
+
+      if(res == FALSE)
+      {
+        inf_acl_sheet_free(sheet);
+        if(account != existing_account)
+          inf_acl_account_free(account);
+        g_hash_table_destroy(new_acls);
+        return FALSE;
+      }
+
+      g_hash_table_insert(new_acls, GUINT_TO_POINTER(node_id), sheet);
+    }
+  }
+
+  if(account != existing_account)
+  {
+    g_hash_table_insert(priv->accounts, account->id, account);
+
+    inf_browser_acl_account_added(
+      INF_BROWSER(browser),
+      account,
+      NULL
+    );
+  }
+
+  priv->local_account = account;
+  infc_browser_enforce_acl(browser, priv->root, NULL, new_acls);
+  g_hash_table_destroy(new_acls);
+
+  inf_browser_acl_local_account_changed(INF_BROWSER(browser), account, NULL);
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_set_acl(InfcBrowser* browser,
                             InfXmlConnection* connection,
                             xmlNodePtr xml,
@@ -4124,7 +4238,7 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
     if(sheet_set->n_sheets > 0)
     {
       node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
-      infc_browser_enforce_acl(browser, node, request);
+      infc_browser_enforce_acl(browser, node, request, NULL);
 
       inf_browser_acl_changed(
         INF_BROWSER(browser),
@@ -4419,6 +4533,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const gchar*)node->name, "add-acl-account") == 0)
   {
     infc_browser_handle_add_acl_account(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "change-acl-account") == 0)
+  {
+    infc_browser_handle_change_acl_account(
       browser,
       connection,
       node,
@@ -5781,6 +5904,7 @@ infc_browser_browser_init(gpointer g_iface,
   iface->begin_request = NULL;
   iface->acl_account_added = NULL;
   iface->acl_account_removed = NULL;
+  iface->acl_local_account_changed = NULL;
   iface->acl_changed = NULL;
 
   iface->get_root = infc_browser_browser_get_root;

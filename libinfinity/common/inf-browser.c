@@ -48,6 +48,7 @@ enum {
   BEGIN_REQUEST, /* detailed */
   ACL_ACCOUNT_ADDED,
   ACL_ACCOUNT_REMOVED,
+  ACL_LOCAL_ACCOUNT_CHANGED,
   ACL_CHANGED,
 
   LAST_SIGNAL
@@ -295,6 +296,30 @@ inf_browser_base_init(gpointer g_class)
       INF_TYPE_BROWSER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, acl_account_removed),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_OBJECT,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_REQUEST
+    );
+
+    /**
+     * InfBrowser::acl-local-account-changed:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @account: The new local #InfAclAccount.
+     * @request: The request which triggered the account change, or %NULL.
+     *
+     * This signal is emitted whenever the account into which the local host
+     * is logged into changes. This can happen for example on a delayed login,
+     * or when the current account is deleted from the server in which case
+     * the host is demoted to the default account.
+     */
+    browser_signals[ACL_LOCAL_ACCOUNT_CHANGED] = g_signal_new(
+      "acl-local-account-changed",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, acl_local_account_changed),
       NULL, NULL,
       inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
@@ -1728,6 +1753,33 @@ inf_browser_acl_account_removed(InfBrowser* browser,
   g_signal_emit(
     browser,
     browser_signals[ACL_ACCOUNT_REMOVED],
+    0,
+    account,
+    request
+  );
+}
+
+/**
+ * inf_browser_acl_local_account_changed:
+ * @browser: A #InfBrowser.
+ * @account: The new local #InfAclAccount.
+ * @request: The #InfRequest that triggered the account change, or %NULL.
+ *
+ * This function emits the #InfBrowser::acl-local-account-changed signal
+ * on @browser. It is meant to be used by interface implementations only.
+ */
+void
+inf_browser_acl_local_account_changed(InfBrowser* browser,
+                                      const InfAclAccount* account,
+                                      InfRequest* request)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(account != NULL);
+  g_return_if_fail(request == NULL || INF_IS_REQUEST(request));
+
+  g_signal_emit(
+    browser,
+    browser_signals[ACL_LOCAL_ACCOUNT_CHANGED],
     0,
     account,
     request

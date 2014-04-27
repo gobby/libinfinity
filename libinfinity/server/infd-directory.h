@@ -99,6 +99,11 @@ infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
                                               InfXmlConnection* connection);
 
 void
+infd_directory_set_acl_account_for_connection(InfdDirectory* directory,
+                                              InfXmlConnection* connection,
+                                              const InfAclAccount* account);
+
+void
 infd_directory_foreach_connection(InfdDirectory* directory,
                                   InfdDirectoryForeachConnectionFunc func,
                                   gpointer user_data);

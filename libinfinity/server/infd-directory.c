@@ -2186,6 +2186,9 @@ infd_directory_enforce_acl(InfdDirectory* directory,
   xmlNodePtr child_xml;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  info = g_hash_table_lookup(priv->connections, conn);
+  g_assert(info != NULL);
+  account = &info->account->account;
 
   if(node == priv->root)
   {
@@ -2217,10 +2220,6 @@ infd_directory_enforce_acl(InfdDirectory* directory,
   {
     if(node->acl != NULL)
     {
-      info = g_hash_table_lookup(priv->connections, conn);
-      g_assert(info != NULL);
-      account = &info->account->account;
-
       sheet = inf_acl_sheet_set_find_const_sheet(node->acl, account);
       if(sheet != NULL)
       {
@@ -2230,6 +2229,60 @@ infd_directory_enforce_acl(InfdDirectory* directory,
       }
     }
   }
+}
+
+static void
+infd_directory_change_acl_account(InfdDirectory* directory,
+                                  InfXmlConnection* connection,
+                                  const InfdAclAccountInfo* new_account)
+{
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryConnectionInfo* info;
+  gboolean is_default_account;
+  gboolean is_acl_account_list_connection;
+  xmlNodePtr xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Set new account */
+  info = g_hash_table_lookup(priv->connections, connection);
+  g_assert(info != NULL);
+
+  if(info->account == new_account) return;
+  info->account = new_account;
+
+  /* Check whether we need to transfer ACLs for the new account to the
+   * connection. */
+  is_default_account = FALSE;
+  if(strcmp(new_account->account.id, "default") == 0)
+    is_default_account = TRUE;
+
+  is_acl_account_list_connection = FALSE;
+  if(g_slist_find(priv->account_list_connections, connection) != NULL)
+    is_acl_account_list_connection = TRUE;
+
+  /* TODO: Don't send this always; if we are removing an account and this
+   * leads to someone being demoted to default, then maybe the
+   * remove-acl-account message is enough. */
+  xml = xmlNewNode(NULL, (const xmlChar*)"change-acl-account");
+  inf_acl_account_to_xml(&new_account->account, xml);
+
+  /* Enforce the ACLs of the new account on the connection. While
+   * we do this, we also fill in the ACL sheets for all nodes of the
+   * new connection, to be transferred. */
+  infd_directory_enforce_acl(
+    directory,
+    connection,
+    priv->root,
+    (is_default_account || is_acl_account_list_connection) ? NULL : xml
+  );
+
+  /* Send to client */
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    connection,
+    xml
+  );
 }
 
 /*
@@ -7975,6 +8028,7 @@ infd_directory_browser_init(gpointer g_iface,
   iface->begin_request = NULL;
   iface->acl_account_added = NULL;
   iface->acl_account_removed = NULL;
+  iface->acl_local_account_changed = NULL;
   iface->acl_changed = NULL;
 
   iface->get_root = infd_directory_browser_get_root;
@@ -8344,7 +8398,7 @@ infd_directory_add_connection(InfdDirectory* directory,
 }
 
 /**
- * infd_directory_get_acl_user_for_connection:
+ * infd_directory_get_acl_account_for_connection:
  * @directory: A #InfdDirectory.
  * @connection: A @connection added to @directory.
  *
@@ -8353,7 +8407,7 @@ infd_directory_add_connection(InfdDirectory* directory,
  * with infd_directory_add_connection(). If no special login was performed,
  * the default account is returned.
  *
- * A #InfAclAccount owned by @directory. It must not be freed.
+ * Returns: A #InfAclAccount owned by @directory. It must not be freed.
  */
 const InfAclAccount*
 infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
@@ -8373,6 +8427,40 @@ infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
 
   g_assert(info != NULL);
   return &info->account->account;
+}
+
+/**
+ * infd_directory_set_acl_account_for_connection:
+ * @directory: A #InfdDirectory.
+ * @connection: A @connection added to @directory.
+ * @account: A #InfAclAccount available in @directory.
+ *
+ * This function changes the #InfAclAccount that the given connection is
+ * logged into. The @connection must have been added to the directory before
+ * with infd_directory_add_connection(). In order to remove a login, @account
+ * should be set to the default account.
+ */
+void
+infd_directory_set_acl_account_for_connection(InfdDirectory* directory,
+                                              InfXmlConnection* connection,
+                                              const InfAclAccount* account)
+{
+  InfdDirectoryPrivate* priv;
+  const InfdAclAccountInfo* info;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
+  g_return_val_if_fail(account != NULL, NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  info = (const InfdAclAccountInfo*)g_hash_table_lookup(
+    priv->accounts,
+    account->id
+  );
+
+  g_assert(info != NULL);
+  infd_directory_change_acl_account(directory, connection, info);
 }
 
 /**

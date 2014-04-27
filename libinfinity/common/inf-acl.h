@@ -223,6 +223,9 @@ inf_acl_mask_has(const InfAclMask* mask,
                  InfAclSetting setting);
 
 InfAclSheet*
+inf_acl_sheet_new(const InfAclAccount* account);
+
+InfAclSheet*
 inf_acl_sheet_copy(const InfAclSheet* sheet);
 
 void

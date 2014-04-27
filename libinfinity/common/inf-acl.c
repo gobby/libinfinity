@@ -616,6 +616,29 @@ inf_acl_mask_has(const InfAclMask* mask,
 }
 
 /**
+ * inf_acl_sheet_new:
+ * @account: A #InfAclAccount.
+ *
+ * Creates a dynamically allocated #InfAclSheet. This is usually not
+ * needed because you can copy the structs by value, but it is useful
+ * for properties and bindings. The new sheet will hold permissions for the
+ * given account. The permissions will initially be all masked out.
+ *
+ * Returns: A new #InfAclSheet. Free with inf_acl_sheet_free() when no longer
+ * in use.
+ */
+InfAclSheet*
+inf_acl_sheet_new(const InfAclAccount* account)
+{
+  InfAclSheet* sheet;
+  sheet = g_slice_new(InfAclSheet);
+  sheet->account = account;
+  inf_acl_mask_clear(&sheet->mask);
+  inf_acl_mask_clear(&sheet->perms); /* not strictly required */
+  return sheet;
+}
+
+/**
  * inf_acl_sheet_copy:
  * @sheet: A #InfAclSheet.
  *
