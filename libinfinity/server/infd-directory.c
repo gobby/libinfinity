@@ -2074,21 +2074,22 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
         }
 
         /* Remove sync-ins whose parent is gone */
-        g_object_get(
-          G_OBJECT(sync_in->request),
-          "requestor", &sync_in_connection,
-          NULL
-        );
-
         for(item = priv->sync_ins; item != NULL; item = next)
         {
           next = item->next;
           sync_in = (InfdDirectorySyncIn*)item->data;
+
+          g_object_get(
+            G_OBJECT(sync_in->request),
+            "requestor", &sync_in_connection,
+            NULL
+          );
+
           if(sync_in_connection == connection && sync_in->parent == node)
             infd_directory_remove_sync_in(directory, sync_in);
-        }
 
-        g_object_unref(sync_in_connection);
+          g_object_unref(sync_in_connection);
+        }
 
         for(child = node->shared.subdir.child;
             child != NULL;
