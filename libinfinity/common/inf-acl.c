@@ -56,6 +56,7 @@
   ((x >= (n) * (1 << 6) && x < (n + 1) * (1 << 6)) ? MAKE_MASK(x) : 0)
 
 #define MAKE_DEFAULT_MASK(n) \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_EXPLORE_NODE) | \
 	MAKE_CHECKED_MASK(n, INF_ACL_CAN_SUBSCRIBE_SESSION) | \
 	MAKE_CHECKED_MASK(n, INF_ACL_CAN_JOIN_USER)
 
@@ -106,6 +107,10 @@ inf_acl_setting_get_type(void)
   {
     static const GEnumValue acl_setting_values[] = {
       {
+        INF_ACL_CAN_EXPLORE_NODE,
+        "INF_ACL_CAN_EXPLORE_NODE",
+        "can-explore-node"
+      }, {
         INF_ACL_CAN_SUBSCRIBE_SESSION,
         "INF_ACL_CAN_SUBSCRIBE_SESSION",
         "can-subscribe-session"

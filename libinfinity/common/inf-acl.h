@@ -47,6 +47,8 @@ struct _InfAclAccount {
 
 /**
  * InfAclSetting:
+ * @INF_ACL_CAN_EXPLORE_NODE: The user is allowed to explore a subdirectory
+ * node in the directory tree.
  * @INF_ACL_CAN_SUBSCRIBE_SESSION: The user is allowed to subscribe to a
  * session in the directory tree.
  * @INF_ACL_CAN_JOIN_USER: The user is allowed to join a user into the
@@ -62,6 +64,7 @@ struct _InfAclAccount {
  * users.
  */
 typedef enum _InfAclSetting {
+  INF_ACL_CAN_EXPLORE_NODE,
   INF_ACL_CAN_SUBSCRIBE_SESSION,
   INF_ACL_CAN_JOIN_USER,
 

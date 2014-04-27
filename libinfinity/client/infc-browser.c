@@ -851,8 +851,8 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
   {
     if(node->shared.subdir.explored == TRUE)
     {
-      /*inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);*/
-      if(/*inf_browser_check_acl(browser, &iter, account, &mask, NULL)*/TRUE == FALSE)
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+      if(!inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL))
       {
         req = INFC_REQUEST(
           inf_browser_get_pending_request(

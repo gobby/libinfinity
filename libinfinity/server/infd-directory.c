@@ -2034,9 +2034,9 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
     {
       /* Remove exploration if new account does not have permission, or
        * if one of the parent folders is no longer explored */
-      /*inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);*/
+      inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
       if(!is_explored ||
-         !TRUE) /*inf_browser_check_acl(browser, &iter, account, &mask, NULL))*/
+         !inf_browser_check_acl(browser, &iter, account, &mask, NULL))
       {
         node->shared.subdir.connections =
           g_slist_remove(node->shared.subdir.connections, connection);
@@ -4125,6 +4125,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdDirectoryNode* node;
+  InfAclMask perms;
   GSList* item;
   InfdProgressRequest* request;
   InfBrowserIter iter;
@@ -4146,6 +4147,10 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
   );
 
   if(node == NULL) return FALSE;
+
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_EXPLORE_NODE);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
+    return FALSE;
 
   if(node->shared.subdir.explored == FALSE)
   {
