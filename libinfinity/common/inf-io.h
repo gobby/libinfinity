@@ -20,11 +20,9 @@
 #ifndef __INF_IO_H__
 #define __INF_IO_H__
 
-#include <glib-object.h>
+#include <libinfinity/common/inf-native-socket.h>
 
-#ifdef G_OS_WIN32
-#include <winsock2.h>
-#endif
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
@@ -47,18 +45,6 @@ typedef struct _InfIoIface InfIoIface;
 typedef struct _InfIoWatch InfIoWatch;
 typedef struct _InfIoTimeout InfIoTimeout;
 typedef struct _InfIoDispatch InfIoDispatch;
-
-/**
- * InfNativeSocket:
- *
- * Native socket type on the target platform. This typedef is a simple #int
- * on Unix and a #SOCKET on Windows.
- */
-#ifdef G_OS_WIN32
-typedef SOCKET InfNativeSocket;
-#else
-typedef int InfNativeSocket;
-#endif
 
 /**
  * InfIoEvent:

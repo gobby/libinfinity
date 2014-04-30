@@ -57,6 +57,7 @@
     <xi:include href="xml/inf-sasl-context.xml"/>
     <xi:include href="xml/inf-error.xml"/>
     <xi:include href="xml/inf-protocol.xml"/>
+    <xi:include href="xml/inf-native-socket.xml"/>
     <xi:include href="xml/inf-buffer.xml"/>
   </chapter>
 

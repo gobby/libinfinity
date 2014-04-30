@@ -259,6 +259,14 @@ INF_TYPE_TCP_CONNECTION_STATUS
 </SECTION>
 
 <SECTION>
+<FILE>inf-native-socket</FILE>
+<TITLE>InfNativeSocket</TITLE>
+InfNativeSocket
+inf_native_socket_error_quark
+inf_native_socket_make_error
+</SECTION>
+
+<SECTION>
 <FILE>inf-browser</FILE>
 <TITLE>InfBrowser</TITLE>
 InfBrowser

@@ -21,6 +21,7 @@
 #include <libinfinity/common/inf-tcp-connection-private.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
+#include <libinfinity/common/inf-native-socket.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -41,28 +42,6 @@
 # include <string.h>
 #else
 # include <ws2tcpip.h>
-#endif
-
-#ifdef G_OS_WIN32
-# define INF_TCP_CONNECTION_SENDRECV_FLAGS 0
-# define INF_TCP_CONNECTION_LAST_ERROR     WSAGetLastError()
-# define INF_TCP_CONNECTION_EINTR          WSAEINTR
-# define INF_TCP_CONNECTION_EAGAIN         WSAEWOULDBLOCK
-/* This is not a typo here. On Windows, connect() returns WSAEWOULDBLOCK on
- * a non-blocking socket. */
-# define INF_TCP_CONNECTION_EINPROGRESS    WSAEWOULDBLOCK
-#else
-# ifdef HAVE_MSG_NOSIGNAL
-#  define INF_TCP_CONNECTION_SENDRECV_FLAGS MSG_NOSIGNAL
-# else
-#  define INF_TCP_CONNECTION_SENDRECV_FLAGS 0
-# endif
-# define INF_TCP_CONNECTION_LAST_ERROR     errno
-# define INF_TCP_CONNECTION_EINTR          EINTR
-# define INF_TCP_CONNECTION_EAGAIN         EAGAIN
-# define INF_TCP_CONNECTION_EINPROGRESS    EINPROGRESS
-# define closesocket(s) close(s)
-# define INVALID_SOCKET -1
 #endif
 
 typedef struct _InfTcpConnectionPrivate InfTcpConnectionPrivate;
@@ -113,40 +92,6 @@ enum {
 static GObjectClass* parent_class;
 static guint tcp_connection_signals[LAST_SIGNAL];
 
-static GQuark
-inf_tcp_connection_error_quark(void)
-{
-  return g_quark_from_static_string("INF_TCP_CONNECTION_ERROR");
-}
-
-static void
-inf_tcp_connection_make_system_error(int code,
-                                     GError** error)
-{
-#ifdef G_OS_WIN32
-  gchar* error_message;
-  error_message = g_win32_error_message(code);
-
-  g_set_error(
-    error,
-    inf_tcp_connection_error_quark(),
-    code,
-    "%s",
-    error_message
-  );
-
-  g_free(error_message);
-#else
-  g_set_error(
-    error,
-    inf_tcp_connection_error_quark(),
-    code,
-    "%s",
-    strerror(code)
-  );
-#endif
-}
-
 static gboolean
 inf_tcp_connection_addr_info(InfNativeSocket socket,
                              gboolean local,
@@ -172,8 +117,8 @@ inf_tcp_connection_addr_info(InfNativeSocket socket,
 
   if(res == -1)
   {
-    code = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(code, error);
+    code = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(code, error);
     return FALSE;
   }
 
@@ -206,7 +151,7 @@ inf_tcp_connection_system_error(InfTcpConnection* connection,
   GError* error;
   error = NULL;
 
-  inf_tcp_connection_make_system_error(code, &error);
+  inf_native_socket_make_error(code, &error);
 
   g_signal_emit(
     G_OBJECT(connection),
@@ -244,15 +189,15 @@ inf_tcp_connection_send_real(InfTcpConnection* connection,
       priv->socket,
       send_data,
       send_len,
-      INF_TCP_CONNECTION_SENDRECV_FLAGS
+      INF_NATIVE_SOCKET_SENDRECV_FLAGS
     );
 
     /* Preserve error code so that it is not modified by future calls */
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
 
     if(result < 0 &&
-       errcode != INF_TCP_CONNECTION_EINTR &&
-       errcode != INF_TCP_CONNECTION_EAGAIN)
+       errcode != INF_NATIVE_SOCKET_EINTR &&
+       errcode != INF_NATIVE_SOCKET_EAGAIN)
     {
       inf_tcp_connection_system_error(connection, errcode);
       return FALSE;
@@ -268,7 +213,7 @@ inf_tcp_connection_send_real(InfTcpConnection* connection,
       send_len -= result;
     }
   } while( (send_len > 0) &&
-           (result > 0 || errcode == INF_TCP_CONNECTION_EINTR) &&
+           (result > 0 || errcode == INF_NATIVE_SOCKET_EINTR) &&
            (priv->socket != INVALID_SOCKET) );
 
   *len -= send_len;
@@ -330,12 +275,12 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
 
   do
   {
-    result = recv(priv->socket, buf, 2048, INF_TCP_CONNECTION_SENDRECV_FLAGS);
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    result = recv(priv->socket, buf, 2048, INF_NATIVE_SOCKET_SENDRECV_FLAGS);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
 
     if(result < 0 &&
-       errcode != INF_TCP_CONNECTION_EINTR &&
-       errcode != INF_TCP_CONNECTION_EAGAIN)
+       errcode != INF_NATIVE_SOCKET_EINTR &&
+       errcode != INF_NATIVE_SOCKET_EAGAIN)
     {
       inf_tcp_connection_system_error(connection, errcode);
     }
@@ -354,7 +299,7 @@ inf_tcp_connection_io_incoming(InfTcpConnection* connection)
       );
     }
   } while( ((result > 0) ||
-            (result < 0 && errcode == INF_TCP_CONNECTION_EINTR)) &&
+            (result < 0 && errcode == INF_NATIVE_SOCKET_EINTR)) &&
            (priv->status != INF_TCP_CONNECTION_CLOSED));
 }
 
@@ -1153,11 +1098,7 @@ inf_tcp_connection_open(InfTcpConnection* connection,
 
   if(priv->socket == INVALID_SOCKET)
   {
-    inf_tcp_connection_make_system_error(
-      INF_TCP_CONNECTION_LAST_ERROR,
-      error
-    );
-
+    inf_native_socket_make_error(INF_NATIVE_SOCKET_LAST_ERROR, error);
     return FALSE;
   }
 
@@ -1166,8 +1107,8 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   result = fcntl(priv->socket, F_GETFL);
   if(result == INVALID_SOCKET)
   {
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(errcode, error);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
 
     closesocket(priv->socket);
     priv->socket = INVALID_SOCKET;
@@ -1176,8 +1117,8 @@ inf_tcp_connection_open(InfTcpConnection* connection,
 
   if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(errcode, error);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
 
     closesocket(priv->socket);
     priv->socket = INVALID_SOCKET;
@@ -1187,8 +1128,8 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   argp = 1;
   if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
   {
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(errcode, error);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
 
     closesocket(priv->socket);
     priv->socket = INVALID_SOCKET;
@@ -1200,19 +1141,19 @@ inf_tcp_connection_open(InfTcpConnection* connection,
   do
   {
     result = connect(priv->socket, addr, addrlen);
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
     if(result == -1 &&
-       errcode != INF_TCP_CONNECTION_EINTR &&
-       errcode != INF_TCP_CONNECTION_EINPROGRESS)
+       errcode != INF_NATIVE_SOCKET_EINTR &&
+       errcode != INF_NATIVE_SOCKET_EINPROGRESS)
     {
-      inf_tcp_connection_make_system_error(errcode, error);
+      inf_native_socket_make_error(errcode, error);
 
       closesocket(priv->socket);
       priv->socket = INVALID_SOCKET;
 
       return FALSE;
     }
-  } while(result == -1 && errcode != INF_TCP_CONNECTION_EINPROGRESS);
+  } while(result == -1 && errcode != INF_NATIVE_SOCKET_EINPROGRESS);
 
   if(result == 0)
   {
@@ -1444,23 +1385,23 @@ _inf_tcp_connection_accepted(InfIo* io,
   result = fcntl(socket, F_GETFL);
   if(result == -1)
   {
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(errcode, error);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
     return NULL;
   }
 
   if(fcntl(socket, F_SETFL, result | O_NONBLOCK) == -1)
   {
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(errcode, error);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
     return NULL;
   }
 #else
   argp = 1;
   if(ioctlsocket(socket, FIONBIO, &argp) != 0)
   {
-    errcode = INF_TCP_CONNECTION_LAST_ERROR;
-    inf_tcp_connection_make_system_error(errcode, error);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
     return NULL;
   }
 #endif
