@@ -1177,7 +1177,7 @@ inf_text_fixline_buffer_buffer_insert_text(InfTextBuffer* buffer,
     g_memmove(
       priv->keep,
       priv->keep + (pos - buf_len),
-      (pos - buf_len) * sizeof(guint)
+      ((guint)priv->n_keep - (pos - buf_len)) * sizeof(guint)
     );
 
     priv->keep = g_realloc(priv->keep, (pos - buf_len) * sizeof(guint));
