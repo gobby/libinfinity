@@ -40,10 +40,12 @@
 
 #include "config.h"
 
-#ifdef HAVE_MSG_NOSIGNAL
+#ifndef G_OS_WIN32
+# ifdef HAVE_MSG_NOSIGNAL
 const int INF_NATIVE_SOCKET_SENDRECV_FLAGS = MSG_NOSIGNAL;
-#else
+# else
 const int INF_NATIVE_SOCKET_SENDRECV_FLAGS = 0;
+# endif
 #endif
 
 /**
