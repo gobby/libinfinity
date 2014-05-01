@@ -1137,7 +1137,7 @@ inf_text_fixline_buffer_buffer_insert_text(InfTextBuffer* buffer,
 
     priv->keep = g_realloc(
       priv->keep,
-      priv->n_keep + inf_text_chunk_get_length(chunk)
+      (priv->n_keep + inf_text_chunk_get_length(chunk)) * sizeof(guint)
     );
 
     if(pos - buf_len < priv->n_keep)
