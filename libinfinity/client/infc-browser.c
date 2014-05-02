@@ -4091,6 +4091,23 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
   existing_account = g_hash_table_lookup(priv->accounts, account->id);
   if(existing_account != NULL)
   {
+    if(strcmp(account->name, existing_account->name) != 0)
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
+        _("Account with ID \"%s\", name \"%s\" exists already with different "
+          "name \"%s\""),
+        account->id,
+        account->name,
+        existing_account->name
+      );
+
+      inf_acl_account_free(account);
+      return FALSE;
+    }
+
     inf_acl_account_free(account);
     account = existing_account;
   }
