@@ -818,6 +818,64 @@ infc_browser_node_free(InfcBrowser* browser,
   g_slice_free(InfcBrowserNode, node);
 }
 
+static void
+infc_browser_remove_acl_sheet_from_sheet_set(InfAclSheetSet* sheet_set,
+                                             const InfAclAccount* account)
+{
+  InfAclSheet* sheet;
+
+  if(sheet_set != NULL)
+  {
+    sheet = inf_acl_sheet_set_find_sheet(sheet_set, account);
+    if(sheet != NULL)
+      inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
+  }
+}
+
+static void
+infc_browser_remove_account_from_sheets(InfcBrowser* browser,
+                                        InfcBrowserNode* node,
+                                        const InfAclAccount* account)
+{
+  InfcBrowserNode* child;
+  InfAclSheet* sheet;
+  InfAclSheet announce_sheet;
+  InfAclSheetSet sheet_set;
+  InfBrowserIter iter;
+
+  if(node->type == INFC_BROWSER_NODE_SUBDIRECTORY &&
+     node->shared.subdir.explored)
+  {
+    for(child = node->shared.subdir.child; child != NULL; child = child->next)
+    {
+      infc_browser_remove_account_from_sheets(browser, child, account);
+    }
+  }
+
+  if(node->acl != NULL)
+  {
+    sheet = inf_acl_sheet_set_find_sheet(node->acl, account);
+    if(sheet != NULL)
+    {
+      announce_sheet = *sheet;
+      inf_acl_sheet_set_remove_sheet(node->acl, sheet);
+
+      /* Clear the mask, to announce that all permissions
+       * have been reset to default */
+      inf_acl_mask_clear(&announce_sheet.mask);
+
+      sheet_set.own_sheets = NULL;
+      sheet_set.sheets = &announce_sheet;
+      sheet_set.n_sheets = 1;
+
+      iter.node = node;
+      iter.node_id = node->id;
+
+      inf_browser_acl_changed(INF_BROWSER(browser), &iter, &sheet_set, NULL);
+    }
+  }
+}
+
 /* Enforce the ACL for the current user. If the server changes ACLs or we are
  * switching accounts, then we need to update our internal state to the new
  * permissions. new_sheet contains a ACL sheet for the current user which we
@@ -4181,6 +4239,102 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_remove_acl_account(InfcBrowser* browser,
+                                       InfXmlConnection* connection,
+                                       xmlNodePtr xml,
+                                       GError** error)
+{
+  InfcBrowserPrivate* priv;
+  xmlChar* account_id;
+  InfAclAccount* account;
+  const InfAclAccount* default_account;
+  GSList* item;
+  InfcBrowserSubreq* subreq;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  account_id = inf_xml_util_get_attribute_required(xml, "id", error);
+  if(account_id == NULL) return FALSE;
+
+  account = g_hash_table_lookup(priv->accounts, account_id);
+  if(account == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
+      _("No such account with ID \"%s\""),
+      account_id
+    );
+
+    xmlFree(account_id);
+    return FALSE;
+  }
+
+  xmlFree(account_id);
+
+  default_account = g_hash_table_lookup(priv->accounts, "default");
+  if(account == default_account)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
+      "%s",
+      _("The default account cannot be removed")
+    );
+
+    return FALSE;
+  }
+
+  if(priv->local_account == account)
+  {
+    /* Own account was removed: Demote to default account */
+    priv->local_account = default_account;
+    infc_browser_enforce_acl(browser, priv->root, NULL, NULL);
+  }
+
+  if(priv->account_list_queried)
+  {
+    /* Remove sheet from all nodes and subreqs */
+    infc_browser_remove_account_from_sheets(browser, priv->root, account);
+
+    for(item = priv->subscription_requests; item != NULL; item = item->next)
+    {
+      subreq = (InfcBrowserSubreq*)item->data;
+
+      switch(subreq->type)
+      {
+      case INFC_BROWSER_SUBREQ_CHAT:
+      case INFC_BROWSER_SUBREQ_SESSION:
+        break;
+      case INFC_BROWSER_SUBREQ_ADD_NODE:
+        infc_browser_remove_acl_sheet_from_sheet_set(
+          subreq->shared.add_node.sheet_set,
+          account
+        );
+
+        break;
+      case INFC_BROWSER_SUBREQ_SYNC_IN:
+        infc_browser_remove_acl_sheet_from_sheet_set(
+          subreq->shared.sync_in.sheet_set,
+          account
+        );
+
+        break;
+      }
+    }
+
+    /* remove account */
+    g_hash_table_steal(priv->accounts, account->id);
+    inf_browser_acl_account_removed(INF_BROWSER(browser), account, NULL);
+    inf_acl_account_free(account);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_set_acl(InfcBrowser* browser,
                             InfXmlConnection* connection,
                             xmlNodePtr xml,
@@ -4559,6 +4713,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const gchar*)node->name, "change-acl-account") == 0)
   {
     infc_browser_handle_change_acl_account(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "remove-acl-account") == 0)
+  {
+    infc_browser_handle_remove_acl_account(
       browser,
       connection,
       node,

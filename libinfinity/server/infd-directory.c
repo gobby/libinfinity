@@ -2244,6 +2244,13 @@ infd_directory_change_acl_account(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  g_assert(
+    g_hash_table_lookup(
+      priv->accounts,
+      new_account->account.id
+    ) == new_account
+  );
+
   /* Set new account */
   info = g_hash_table_lookup(priv->connections, connection);
   g_assert(info != NULL);
@@ -2261,9 +2268,6 @@ infd_directory_change_acl_account(InfdDirectory* directory,
   if(g_slist_find(priv->account_list_connections, connection) != NULL)
     is_acl_account_list_connection = TRUE;
 
-  /* TODO: Don't send this always; if we are removing an account and this
-   * leads to someone being demoted to default, then maybe the
-   * remove-acl-account message is enough. */
   xml = xmlNewNode(NULL, (const xmlChar*)"change-acl-account");
   inf_acl_account_to_xml(&new_account->account, xml);
 
@@ -2283,6 +2287,202 @@ infd_directory_change_acl_account(InfdDirectory* directory,
     connection,
     xml
   );
+}
+
+static void
+infd_directory_remove_acl_sheet_from_sheet_set(InfAclSheetSet* sheet_set,
+                                               const InfAclAccount* account)
+{
+  InfAclSheet* sheet;
+
+  if(sheet_set != NULL)
+  {
+    sheet = inf_acl_sheet_set_find_sheet(sheet_set, account);
+    if(sheet != NULL)
+      inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
+  }
+}
+
+static void
+infd_directory_remove_account_from_sheets(InfdDirectory* directory,
+                                          InfdDirectoryNode* node,
+                                          const InfdAclAccountInfo* account)
+{
+  InfdDirectoryNode* child;
+  InfAclSheet* sheet;
+  InfAclSheetSet sheet_set;
+  InfAclSheet announce_sheet;
+  InfBrowserIter iter;
+
+  if(node->type == INFD_STORAGE_NODE_SUBDIRECTORY &&
+     node->shared.subdir.explored == TRUE)
+  {
+    for(child = node->shared.subdir.child; child != NULL; child = child->next)
+    {
+      infd_directory_remove_account_from_sheets(directory, child, account);
+    }
+  }
+
+  if(node->acl != NULL)
+  {
+    sheet = inf_acl_sheet_set_find_sheet(node->acl, &account->account);
+    if(sheet != NULL)
+    {
+      announce_sheet = *sheet;
+      inf_acl_sheet_set_remove_sheet(node->acl, sheet);
+
+      /* Clear the mask, to announce that all permissions
+       * have been reset to default */
+      inf_acl_mask_clear(&announce_sheet.mask);
+
+      sheet_set.own_sheets = NULL;
+      sheet_set.sheets = &announce_sheet;
+      sheet_set.n_sheets = 1;
+
+      iter.node = node;
+      iter.node_id = node->id;
+
+      inf_browser_acl_changed(
+        INF_BROWSER(directory),
+        &iter,
+        &sheet_set,
+        NULL
+      );
+    }
+  }
+}
+
+static void
+infd_directory_remove_acl_account(InfdDirectory* directory,
+                                  InfdAclAccountInfo* account)
+{
+  InfdDirectoryPrivate* priv;
+  GHashTableIter iter;
+  gpointer key;
+  gpointer value;
+  InfdDirectoryConnectionInfo* info;
+  const InfdAclAccountInfo* default_account;
+  GSList* notify_connections;
+  GSList* item;
+  InfdDirectorySyncIn* sync_in;
+  InfdDirectorySubreq* subreq;
+  xmlNodePtr xml;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_assert(
+    g_hash_table_lookup(priv->accounts, account->account.id) == account
+  );
+
+  default_account = g_hash_table_lookup(priv->accounts, "default");
+  g_assert(default_account != NULL);
+  g_assert(account != default_account);
+
+  /* First, demote all connections with this account to the default account,
+   * and make a list of connections that need to be notified about the removed
+   * account. */
+  notify_connections = NULL;
+  g_hash_table_iter_init(&iter, priv->connections);
+  while(g_hash_table_iter_next(&iter, &key, &value))
+  {
+    info = (InfdDirectoryConnectionInfo*)value;
+    if(info->account == account)
+    {
+      info->account = default_account;
+
+      infd_directory_enforce_acl(
+        directory,
+        (InfXmlConnection*)key,
+        priv->root,
+        NULL
+      );
+
+      notify_connections = g_slist_prepend(notify_connections, key);
+    }
+    else if(g_slist_find(priv->account_list_connections, key) != NULL)
+    {
+      notify_connections = g_slist_prepend(notify_connections, key);
+    }
+  }
+
+  /* Next, remove this account from all ACL sheets. Note that we do not do
+   * this for sheets that we do not have explored yet. The permissions will
+   * be dropped automatically as soon as the node is explored. Note that this
+   * is a bit of a security issue at the moment: if an account with the
+   * previous ID is re-created, then the existing permissions of non-explored
+   * nodes are taken for the new account. */
+  /* TODO: This should be fixed in one way or another. */
+  infd_directory_remove_account_from_sheets(directory, priv->root, account);
+
+  /* Remove ACL sheet from sync-ins and subscription requests. */
+  for(item = priv->sync_ins; item != NULL; item = item->next)
+  {
+    sync_in = (InfdDirectorySyncIn*)item->data;
+
+    infd_directory_remove_acl_sheet_from_sheet_set(
+      sync_in->sheet_set,
+      &account->account
+    );
+  }
+
+  for(item = priv->subscription_requests; item != NULL; item = item->next)
+  {
+    subreq = (InfdDirectorySubreq*)item->data;
+
+    switch(subreq->type)
+    {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
+    case INFD_DIRECTORY_SUBREQ_SESSION:
+      break;
+    case INFD_DIRECTORY_SUBREQ_ADD_NODE:
+      infd_directory_remove_acl_sheet_from_sheet_set(
+        subreq->shared.add_node.sheet_set,
+        &account->account
+      );
+
+      break;
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN:
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+      infd_directory_remove_acl_sheet_from_sheet_set(
+        subreq->shared.sync_in.sheet_set,
+        &account->account
+      );
+
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+  }
+
+  /* Then, send requests */
+  if(notify_connections != NULL)
+  {
+    xml = xmlNewNode(NULL, (const xmlChar*)"remove-acl-account");
+    inf_xml_util_set_attribute(xml, "id", account->account.id);
+
+    for(item = notify_connections; item != NULL; item = item->next)
+    {
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        (InfXmlConnection*)item->data,
+        (item->next == NULL) ? xml : xmlCopyNode(xml, 1)
+      );
+    }
+  }
+
+  g_slist_free(notify_connections);
+
+  /* Then, make callback */
+  g_hash_table_steal(priv->accounts, account->account.id);
+
+  inf_browser_acl_account_removed(
+    INF_BROWSER(directory),
+    &account->account,
+    NULL
+  );
+
+  infd_acl_account_info_free(account);
 }
 
 /*

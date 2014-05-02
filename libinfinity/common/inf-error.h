@@ -156,6 +156,8 @@ typedef enum _InfUserError {
  * already been queried before.
  * @INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT: When adding a new account the new
  * account ID exists already in the account list.
+ * @INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT: There is no such account with the
+ * given ID.
  * @INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED: The ACL for a node has
  * already been queried before.
  * @INF_DIRECTORY_ERROR_ACL_NOT_QUERIED: The ACL for a node has
@@ -194,6 +196,7 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
   INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED,
   INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
+  INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
   INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED,
   INF_DIRECTORY_ERROR_ACL_NOT_QUERIED,
 

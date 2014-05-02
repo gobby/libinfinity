@@ -216,6 +216,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("The account list has already been queried before");
   case INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT:
     return _("An account with this ID exists already");
+  case INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT:
+    return _("There is no such account with the given ID");
   case INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED:
     return _("The ACL has already been queried");
   case INF_DIRECTORY_ERROR_ACL_NOT_QUERIED:
