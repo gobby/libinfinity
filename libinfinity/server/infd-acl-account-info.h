@@ -31,6 +31,8 @@ G_BEGIN_DECLS
 /**
  * InfdAclAccountInfo:
  * @account: The basic account information for this account.
+ * @transient: If %TRUE, the account is not stored to disk and only exists
+ * as long as the server is running.
  * @certificates: The SHA256 fingerprints of the certificates associated with
  * this account.
  * @n_certificates: The number of certificates associated to this account.
@@ -45,6 +47,7 @@ G_BEGIN_DECLS
 typedef struct _InfdAclAccountInfo InfdAclAccountInfo;
 struct _InfdAclAccountInfo {
   InfAclAccount account;
+  gboolean transient;
   gchar** certificates;
   guint n_certificates;
   gchar* password_salt;
@@ -58,7 +61,8 @@ infd_acl_account_info_get_type(void) G_GNUC_CONST;
 
 InfdAclAccountInfo*
 infd_acl_account_info_new(const gchar* id,
-                          const gchar* name);
+                          const gchar* name,
+                          gboolean transient);
 
 InfdAclAccountInfo*
 infd_acl_account_info_copy(const InfdAclAccountInfo* info);

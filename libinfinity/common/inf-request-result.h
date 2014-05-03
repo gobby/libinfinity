@@ -113,6 +113,26 @@ inf_request_result_get_query_acl_account_list(const InfRequestResult* result,
                                               InfBrowser** browser);
 
 InfRequestResult*
+inf_request_result_make_create_acl_account(InfBrowser* browser,
+                                           const InfAclAccount* account,
+                                           InfCertificateChain* certificate);
+
+void
+inf_request_result_get_create_acl_account(const InfRequestResult* result,
+                                          InfBrowser** browser,
+                                          const InfAclAccount** account,
+                                          InfCertificateChain** certificate);
+
+InfRequestResult*
+inf_request_result_make_remove_acl_account(InfBrowser* browser,
+                                           const InfAclAccount* account);
+
+void
+inf_request_result_get_remove_acl_account(const InfRequestResult* result,
+                                          InfBrowser** browser,
+                                          const InfAclAccount** account);
+
+InfRequestResult*
 inf_request_result_make_query_acl(InfBrowser* browser,
                                   const InfBrowserIter* iter,
                                   const InfAclSheetSet* sheet_set);
@@ -131,15 +151,6 @@ void
 inf_request_result_get_set_acl(const InfRequestResult* result,
                                InfBrowser** browser,
                                const InfBrowserIter** iter);
-
-InfRequestResult*
-inf_request_result_make_create_certificate(InfBrowser* browser,
-                                           InfCertificateChain* certificate);
-
-void
-inf_request_result_get_create_certificate(const InfRequestResult* result,
-                                          InfBrowser** browser,
-                                          InfCertificateChain** certificate);
 
 InfRequestResult*
 inf_request_result_make_join_user(InfSessionProxy* proxy,

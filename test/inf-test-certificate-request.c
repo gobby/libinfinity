@@ -61,7 +61,7 @@ inf_test_certificate_request_finished_cb(InfRequest* request,
   else
   {
     fprintf(stderr, "Certificate generated!\n\n");
-    inf_request_result_get_create_certificate(result, NULL, &chain);
+    inf_request_result_get_create_acl_account(result, NULL, NULL, &chain);
 
     n_certs = inf_certificate_chain_get_n_certificates(chain);
     for(i = 0; i < n_certs; ++i)
@@ -171,23 +171,12 @@ inf_test_certificate_request_notify_status_cb(GObject* object,
     gnutls_x509_crq_sign2(crq, test->key, GNUTLS_DIG_SHA1, 0);
 
     error = NULL;
-    request = infc_browser_request_certificate(
-      INFC_BROWSER(object),
+    request = inf_browser_create_acl_account(
+      INF_BROWSER(object),
       crq,
-      "Administrator",
       inf_test_certificate_request_finished_cb,
-      test,
-      &error
+      test
     );
-
-    if(error != NULL)
-    {
-      fprintf(stderr, "Failed to request certificate: %s\n", error->message);
-      g_error_free(error);
-
-      if(inf_standalone_io_loop_running(test->io))
-        inf_standalone_io_loop_quit(test->io);
-    }
 
     gnutls_x509_crq_deinit(crq);
   }

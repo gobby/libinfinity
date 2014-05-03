@@ -70,18 +70,23 @@ infd_acl_account_info_get_type(void)
 /** infd_acl_account_info_new:
  * @id: The unique account ID for the new account.
  * @name: A human readable account name, or %NULL.
+ * @transient: Whether the account should be transient or not.
  *
  * Creates a new #InfdAcLAccountInfo with the given ID and name. The @name
  * parameter is optional and allowed to be %NULL. The account is created with
  * no associated certificates, unset password and unspecified first and last
  * seen times (meaning the user was never seen).
  *
+ * If @transient is set to %TRUE, the account is never stored to disk and only
+ * exists for the lifetime of the current session.
+ *
  * Returns: A new #InfdAclAccountInfo. Free with infd_acl_account_info_free()
  * when no longer needed.
  */
 InfdAclAccountInfo*
 infd_acl_account_info_new(const gchar* id,
-                          const gchar* name)
+                          const gchar* name,
+                          gboolean transient)
 {
   InfdAclAccountInfo* info;
 
@@ -90,6 +95,7 @@ infd_acl_account_info_new(const gchar* id,
   info = g_slice_new(InfdAclAccountInfo);
   info->account.id = g_strdup(id);
   info->account.name = g_strdup(name);
+  info->transient = transient;
   info->certificates = NULL;
   info->n_certificates = 0;
   info->password_salt = NULL;
@@ -561,7 +567,7 @@ infd_acl_account_info_from_xml(xmlNodePtr xml,
       g_ptr_array_add(certificate_array, xmlNodeGetContent(child));
   }
 
-  info = infd_acl_account_info_new(account->id, account->name);
+  info = infd_acl_account_info_new(account->id, account->name, FALSE);
   inf_acl_account_free(account);
 
   info->certificates = g_malloc(sizeof(gchar*) * certificate_array->len);

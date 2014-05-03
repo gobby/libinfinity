@@ -20,7 +20,7 @@
 /**
  * SECTION:inf-request-result
  * @title: Result of an asynchronous request
- * @short_description: Requset results for the infinote requests
+ * @short_description: Request results for the infinote requests
  * @include: libinfinity/common/inf-request-result.h
  * @stability: Unstable
  *
@@ -561,6 +561,134 @@ inf_request_result_get_query_acl_account_list(const InfRequestResult* result,
   if(browser != NULL) *browser = data->browser;
 }
 
+typedef struct _InfRequestResultCreateAclAccount
+  InfRequestResultCreateAclAccount;
+struct _InfRequestResultCreateAclAccount {
+  InfBrowser* browser;
+  const InfAclAccount* account;
+  InfCertificateChain* certificate;
+};
+
+/**
+ * inf_request_result_make_create_acl_account:
+ * @browser: A #InfBrowser.
+ * @account: The created #InfAclAccount.
+ * @certificate: The certificate which can be used to log into @account.
+ *
+ * Creates a new #InfRequestResult for a "create-acl-account" request, see
+ * inf_browser_create_acl_account(). The #InfRequestResult object is only valid
+ * as long as the caller maintains a reference to @browser.
+ *
+ * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ */
+InfRequestResult*
+inf_request_result_make_create_acl_account(InfBrowser* browser,
+                                           const InfAclAccount* account,
+                                           InfCertificateChain* certificate)
+{
+  InfRequestResultCreateAclAccount* data;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(certificate != NULL, NULL);
+
+  data = g_malloc(sizeof(InfRequestResultCreateAclAccount));
+
+  data->browser = browser;
+  data->account = account;
+  data->certificate = certificate;
+
+  return inf_request_result_new(data, sizeof(*data));
+}
+
+/**
+ * inf_request_result_get_create_acl_account:
+ * @result: A #InfRequestResult:
+ * @browser: Output value of the browser that made the request, or %NULL.
+ * @account: Output value for the created #InfAclAccount, or %NULL.
+ * @certificate: Output value for the certificate which can be used to log
+ * into the account, or %NULL.
+ *
+ * Decomposes @result into its components. The object must have been created
+ * with inf_request_result_make_create_acl_account().
+ */
+void
+inf_request_result_get_create_acl_account(const InfRequestResult* result,
+                                          InfBrowser** browser,
+                                          const InfAclAccount** account,
+                                          InfCertificateChain** certificate)
+{
+  const InfRequestResultCreateAclAccount* data;
+
+  g_return_if_fail(result != NULL);
+  g_return_if_fail(result->len == sizeof(InfRequestResultCreateAclAccount));
+
+  data = (const InfRequestResultCreateAclAccount*)result->data;
+
+  if(browser != NULL) *browser = data->browser;
+  if(account != NULL) *account = data->account;
+  if(certificate != NULL) *certificate = data->certificate;
+}
+
+typedef struct _InfRequestResultRemoveAclAccount
+  InfRequestResultRemoveAclAccount;
+struct _InfRequestResultRemoveAclAccount {
+  InfBrowser* browser;
+  const InfAclAccount* account;
+};
+
+/**
+ * inf_request_result_make_remove_acl_account:
+ * @browser: A #InfBrowser.
+ * @account: The removed #InfAclAccount.
+ *
+ * Creates a new #InfRequestResult for a "remove-acl-account" request, see
+ * inf_browser_remove_acl_account(). The #InfRequestResult object is only valid
+ * as long as the caller maintains a reference to @browser.
+ *
+ * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ */
+InfRequestResult*
+inf_request_result_make_remove_acl_account(InfBrowser* browser,
+                                           const InfAclAccount* account)
+{
+  InfRequestResultRemoveAclAccount* data;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(account != NULL, NULL);
+
+  data = g_malloc(sizeof(InfRequestResultRemoveAclAccount));
+
+  data->browser = browser;
+  data->account = account;
+
+  return inf_request_result_new(data, sizeof(*data));
+}
+
+/**
+ * inf_request_result_get_remove_acl_account:
+ * @result: A #InfRequestResult:
+ * @browser: Output value of the browser that made the request, or %NULL.
+ * @account: Output value for the removed #InfAclAccount, or %NULL.
+ *
+ * Decomposes @result into its components. The object must have been created
+ * with inf_request_result_make_remove_acl_account().
+ */
+void
+inf_request_result_get_remove_acl_account(const InfRequestResult* result,
+                                          InfBrowser** browser,
+                                          const InfAclAccount** account)
+{
+  const InfRequestResultRemoveAclAccount* data;
+
+  g_return_if_fail(result != NULL);
+  g_return_if_fail(result->len == sizeof(InfRequestResultRemoveAclAccount));
+
+  data = (const InfRequestResultRemoveAclAccount*)result->data;
+
+  if(browser != NULL) *browser = data->browser;
+  if(account != NULL) *account = data->account;
+}
+
 typedef struct _InfRequestResultQueryAcl InfRequestResultQueryAcl;
 struct _InfRequestResultQueryAcl {
   InfBrowser* browser;
@@ -684,66 +812,6 @@ inf_request_result_get_set_acl(const InfRequestResult* result,
 
   if(browser != NULL) *browser = data->browser;
   if(iter != NULL) *iter = data->iter;
-}
-
-typedef struct _InfRequestResultCreateCertificate
-  InfRequestResultCreateCertificate;
-struct _InfRequestResultCreateCertificate {
-  InfBrowser* browser;
-  InfCertificateChain* certificate;
-};
-
-/**
- * inf_request_result_make_create_certificate:
- * @browser: A #InfBrowser.
- * @certificate: The created certificate.
- *
- * Creates a new #InfRequestResult for a "create-certificate" request, see
- * infc_browser_create_certificate(). The #InfRequestResult object is only valid
- * as long as the caller maintains a reference to @browser and @certificate.
- *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
- */
-InfRequestResult*
-inf_request_result_make_create_certificate(InfBrowser* browser,
-                                           InfCertificateChain* certificate)
-{
-  InfRequestResultCreateCertificate* data;
-
-  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(certificate != NULL, NULL);
-
-  data = g_malloc(sizeof(InfRequestResultCreateCertificate));
-
-  data->browser = browser;
-  data->certificate = certificate;
-
-  return inf_request_result_new(data, sizeof(*data));
-}
-
-/**
- * inf_request_result_get_create_certificate:
- * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the generated certificate.
- *
- * Decomposes @result into its components. The object must have been created
- * with inf_request_result_make_create_certificate().
- */
-void
-inf_request_result_get_create_certificate(const InfRequestResult* result,
-                                          InfBrowser** browser,
-                                          InfCertificateChain** certificate)
-{
-  const InfRequestResultCreateCertificate* data;
-
-  g_return_if_fail(result != NULL);
-  g_return_if_fail(result->len == sizeof(InfRequestResultCreateCertificate));
-
-  data = (const InfRequestResultCreateCertificate*)result->data;
-
-  if(browser != NULL) *browser = data->browser;
-  if(certificate != NULL) *certificate = data->certificate;
 }
 
 typedef struct _InfRequestResultJoinUser InfRequestResultJoinUser;

@@ -114,14 +114,6 @@ infc_browser_get_subscribe_chat_request(InfcBrowser* browser);
 InfcSessionProxy*
 infc_browser_get_chat_session(InfcBrowser* browser);
 
-InfRequest*
-infc_browser_request_certificate(InfcBrowser* browser,
-                                 gnutls_x509_crq_t crq,
-                                 const gchar* extra_data,
-                                 InfRequestFunc func,
-                                 gpointer user_data,
-                                 GError** error);
-
 G_END_DECLS
 
 #endif /* __INFC_BROWSER_H__ */

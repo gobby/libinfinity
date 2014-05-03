@@ -672,7 +672,8 @@ infd_directory_write_account_list_foreach_func(gpointer key,
   /* This is for writing the account list to storage. We omit writing the
    * default account. */
   if(strcmp(info->account.id, "default") != 0)
-    data->accounts[data->index++] = info;
+    if(info->transient == FALSE)
+      data->accounts[data->index++] = info;
 }
 
 static void
@@ -725,7 +726,8 @@ infd_directory_write_account_list(InfdDirectory* directory)
 
 static void
 infd_directory_announce_acl_account(InfdDirectory* directory,
-                                    const InfdAclAccountInfo* info)
+                                    const InfdAclAccountInfo* info,
+                                    InfXmlConnection* except)
 {
   InfdDirectoryPrivate* priv;
   GSList* item;
@@ -742,12 +744,14 @@ infd_directory_announce_acl_account(InfdDirectory* directory,
       item = g_slist_next(item))
   {
     connection = INF_XML_CONNECTION(item->data);
-
-    inf_communication_group_send_message(
-      INF_COMMUNICATION_GROUP(priv->group),
-      connection,
-      xmlCopyNode(xml, 1)
-    );
+    if(connection != except)
+    {
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        connection,
+        xmlCopyNode(xml, 1)
+      );
+    }
   }
 
   inf_browser_acl_account_added(INF_BROWSER(directory), &info->account, NULL);
@@ -1028,18 +1032,9 @@ infd_directory_read_acl(InfdDirectory* directory,
     info = g_hash_table_lookup(priv->accounts, storage_acl->account_id);
 
     /* It is possible that we do not find this user in the user table. For
-     * example this can happen if reading the initial user table failed. In
-     * that case, we issue a warning here and omit the ACL for this
-     * account. */
-    if(info == NULL)
-    {
-      g_warning(
-        "Reading ACL for node \"%s\": Account ID \"%s\" does not exist.",
-        path,
-        storage_acl->account_id
-      );
-    }
-    else
+     * example this can happen if reading the initial user table failed, or if
+     * the account was removed. */
+    if(info != NULL)
     {
       sheet = inf_acl_sheet_set_add_sheet(sheet_set, &info->account);
       sheet->mask = storage_acl->mask;
@@ -1069,6 +1064,9 @@ infd_directory_write_acl(InfdDirectory* directory,
     infd_directory_node_get_path(node, &path, NULL);
     error = NULL;
 
+    /* TODO: Don't write sheets for transient accounts. It does not make much
+     * difference, because the transient user account is not stored, so the
+     * sheet will be rejected anyway when it is read from disk next time. */
     infd_storage_write_acl(priv->storage, path, node->acl, &error);
 
     if(error != NULL)
@@ -1120,7 +1118,7 @@ infd_directory_read_root_acl(InfdDirectory* directory)
   g_hash_table_remove_all(priv->accounts);
   g_hash_table_remove_all(priv->accounts_by_certificate);
 
-  default_account = infd_acl_account_info_new("default", NULL);
+  default_account = infd_acl_account_info_new("default", NULL, FALSE);
 
   g_hash_table_insert(
     priv->accounts,
@@ -1128,7 +1126,7 @@ infd_directory_read_root_acl(InfdDirectory* directory)
     default_account
   );
 
-  infd_directory_announce_acl_account(directory, default_account);
+  infd_directory_announce_acl_account(directory, default_account, NULL);
 
   accounts = infd_storage_read_account_list(
     priv->storage,
@@ -1215,7 +1213,7 @@ infd_directory_read_root_acl(InfdDirectory* directory)
           }
         }
 
-        infd_directory_announce_acl_account(directory, accounts[i]);
+        infd_directory_announce_acl_account(directory, accounts[i], NULL);
       }
     }
 
@@ -2352,9 +2350,289 @@ infd_directory_remove_account_from_sheets(InfdDirectory* directory,
   }
 }
 
+static gnutls_x509_crt_t
+infd_directory_create_certificate_from_crq(InfdDirectory* directory,
+                                           gnutls_x509_crq_t crq,
+                                           guint64 validity,
+                                           GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gnutls_x509_crt_t cert;
+  int res;
+  guint64 timestamp;
+  gchar serial_buffer[5];
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(priv->certificate == NULL || priv->private_key == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
+      "%s",
+      _("Server does not support issuing certificates")
+    );
+
+    return NULL;
+  }
+
+  res = gnutls_x509_crt_init(&cert);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  res = gnutls_x509_crt_set_crq(cert, crq);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  timestamp = time(NULL);
+  serial_buffer[4] = (timestamp      ) & 0xff;
+  serial_buffer[3] = (timestamp >>  8) & 0xff;
+  serial_buffer[2] = (timestamp >> 16) & 0xff;
+  serial_buffer[1] = (timestamp >> 24) & 0xff;
+  serial_buffer[0] = (timestamp >> 32) & 0xff;
+
+  res = gnutls_x509_crt_set_serial(cert, serial_buffer, 5);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  /* Set the activation time a bit in the past, so that if the client
+   * checks the certificate and has its clock slightly offset it doesn't
+   * find the certificate invalid. */
+  res = gnutls_x509_crt_set_activation_time(cert, timestamp - DAYS / 10);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  res = gnutls_x509_crt_set_expiration_time(cert, timestamp + validity);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  res = gnutls_x509_crt_set_basic_constraints(cert, 0, -1);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  res = gnutls_x509_crt_set_key_usage(cert, GNUTLS_KEY_DIGITAL_SIGNATURE);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  res = gnutls_x509_crt_set_version(cert, 3);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  /* The certificate is now set up, we can sign it. */
+  res = gnutls_x509_crt_sign2(
+    cert,
+    inf_certificate_chain_get_own_certificate(priv->certificate),
+    priv->private_key,
+    GNUTLS_DIG_SHA256,
+    0
+  );
+
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  return cert;
+}
+
+static InfdAclAccountInfo*
+infd_directory_create_acl_account_with_certificates(InfdDirectory* directory,
+                                                    const gchar* account_id,
+                                                    const gchar* account_name,
+                                                    gboolean transient,
+                                                    gnutls_x509_crt_t* certs,
+                                                    guint n_certs,
+                                                    InfXmlConnection* conn,
+                                                    GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  guint i;
+  gchar* fingerprint;
+  InfdAclAccountInfo* info;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  if(g_hash_table_lookup(priv->accounts, account_id) != NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
+      _("Account with ID \"%s\" exists already"),
+      account_id
+    );
+
+    return NULL;
+  }
+
+  info = infd_acl_account_info_new(account_id, account_name, transient);
+
+  /* Check that fingerprints do not overlap. */
+  for(i = 0; i < n_certs; ++i)
+  {
+    /* TODO: Switch to DN */
+    fingerprint = inf_cert_util_get_fingerprint(certs[i], GNUTLS_DIG_SHA256);
+    if(g_hash_table_lookup(priv->accounts_by_certificate, fingerprint) != NULL)
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
+        "%s",
+        _("The fingerprint of the certificate overlaps with another "
+          "certificate. This is possible, but highly unlikely. Please "
+          "try creating the certificate again and the error should disappear.")
+      );
+
+      g_free(fingerprint);
+      infd_acl_account_info_free(info);
+      return NULL;
+    }
+
+    infd_acl_account_info_add_certificate(info, fingerprint);
+    g_free(fingerprint);
+  }
+
+  g_hash_table_insert(priv->accounts, info->account.id, info);
+
+  for(i = 0; i < info->n_certificates; ++i)
+  {
+    g_hash_table_insert(
+      priv->accounts_by_certificate,
+      info->certificates[i],
+      info
+    );
+  }
+
+  infd_directory_announce_acl_account(directory, info, conn);
+  if(transient == FALSE)
+    infd_directory_write_account_list(directory);
+
+  return info;
+}
+
+static InfdAclAccountInfo*
+infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
+                                                   gnutls_x509_crt_t cert,
+                                                   InfXmlConnection* conn,
+                                                   GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* name;
+  gchar* account_id;
+  InfdAclAccountInfo* info;
+  gchar* fingerprint;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Check that a common name is set in the certificate. Without a common
+   * name, we cannot associate the certificate to an account. */
+  name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
+  if(name == NULL || name[0] == '\0')
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
+      "%s",
+      _("The certificate request has no common name set")
+    );
+
+    g_free(name);
+    return NULL;
+  }
+
+  /* Create an account ID */
+  account_id = g_strdup_printf("user:%s", name);
+  info = g_hash_table_lookup(priv->accounts, account_id);
+
+  /* If there is a certificate with the same name, replace its
+   * certificates with the new certificate. */
+  /* TODO: Do this only if this existing certificate is used for conn's
+   * account, otherwise bail... */
+  if(info != NULL)
+  {
+    while(info->n_certificates > 0)
+    {
+      g_hash_table_remove(
+        priv->accounts_by_certificate,
+        info->certificates[0]
+      );
+
+      infd_acl_account_info_remove_certificate(info, info->certificates[0]);
+    }
+
+    fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
+    infd_acl_account_info_add_certificate(info, fingerprint);
+    g_free(fingerprint);
+
+    g_hash_table_insert(
+      priv->accounts_by_certificate,
+      info->certificates[0],
+      info
+    );
+
+    infd_directory_write_account_list(directory);
+  }
+  else
+  {
+    info = infd_directory_create_acl_account_with_certificates(
+      directory,
+      account_id,
+      name,
+      FALSE,
+      &cert,
+      1,
+      conn,
+      error
+    );
+  }
+
+  g_free(account_id);
+  g_free(name);
+
+  return info;
+}
+
 static void
 infd_directory_remove_acl_account(InfdDirectory* directory,
-                                  InfdAclAccountInfo* account)
+                                  InfdAclAccountInfo* account,
+                                  const gchar* seq,
+                                  InfdRequest* request)
 {
   InfdDirectoryPrivate* priv;
   GHashTableIter iter;
@@ -2460,6 +2738,7 @@ infd_directory_remove_acl_account(InfdDirectory* directory,
   {
     xml = xmlNewNode(NULL, (const xmlChar*)"remove-acl-account");
     inf_xml_util_set_attribute(xml, "id", account->account.id);
+    if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
 
     for(item = notify_connections; item != NULL; item = item->next)
     {
@@ -2475,6 +2754,17 @@ infd_directory_remove_acl_account(InfdDirectory* directory,
 
   /* Then, make callback */
   g_hash_table_steal(priv->accounts, account->account.id);
+
+  if(request != NULL)
+  {
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_remove_acl_account(
+        INF_BROWSER(directory),
+        &account->account
+      )
+    );
+  }
 
   inf_browser_acl_account_removed(
     INF_BROWSER(directory),
@@ -5161,18 +5451,15 @@ infd_directory_handle_subscribe_chat(InfdDirectory* directory,
 }
 
 static gboolean
-infd_directory_handle_request_certificate(InfdDirectory* directory,
-                                          InfXmlConnection* connection,
-                                          xmlNodePtr xml,
-                                          GError** error)
+infd_directory_handle_create_acl_account(InfdDirectory* directory,
+                                         InfXmlConnection* connection,
+                                         xmlNodePtr xml,
+                                         GError** error)
 {
   InfdDirectoryPrivate* priv;
-  gchar* seq;
   xmlNodePtr child;
-  xmlNodePtr subchild;
   int res;
 
-  const char* extra;
   gnutls_datum_t crq_text;
   gnutls_x509_crq_t crq;
 
@@ -5180,30 +5467,11 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   size_t cert_size;
   gchar* cert_buffer;
 
-  time_t timestamp;
-  gchar serial_buffer[5];
-
-  gchar* fingerprint;
-  gchar* account_id;
-  gchar* name;
+  gchar* seq;
+  xmlNodePtr reply_xml;
   InfdAclAccountInfo* info;
 
-  xmlNodePtr reply_xml;
-
   priv = INFD_DIRECTORY_PRIVATE(directory);
-
-  if(priv->certificate == NULL || priv->private_key == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
-      _("Server does not support issuing certificates")
-    );
-
-    return FALSE;
-  }
 
   /* TODO: Check that the issuing connection is authorized */
 
@@ -5212,12 +5480,7 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   {
     if(child->type != XML_ELEMENT_NODE) continue;
 
-    if(strcmp((const char*)child->name, "extra") == 0)
-    {
-      if(child->children != NULL && child->children->type == XML_TEXT_NODE)
-        extra = (const gchar*)child->content;
-    }
-    else if(strcmp((const char*)child->name, "crq") == 0)
+    if(strcmp((const char*)child->name, "crq") == 0)
     {
       if(child->children != NULL && child->children->type == XML_TEXT_NODE)
       {
@@ -5268,124 +5531,21 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   /* OK, so now we have a good certificate request in front of us. Now, go
    * ahead, create the certificate and sign it with the server's key. */
 
-  res = gnutls_x509_crt_init(&cert);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crq_deinit(crq);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_set_crq(cert, crq);
-  gnutls_x509_crq_deinit(crq);
-
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  timestamp = time(NULL);
-  serial_buffer[4] = (timestamp      ) & 0xff;
-  serial_buffer[3] = (timestamp >>  8) & 0xff;
-  serial_buffer[2] = (timestamp >> 16) & 0xff;
-  serial_buffer[1] = (timestamp >> 24) & 0xff;
-  serial_buffer[0] = (timestamp >> 32) & 0xff;
-
-  res = gnutls_x509_crt_set_serial(cert, serial_buffer, 5);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  /* Set the activation time a bit in the past, so that if the client
-   * checks the certificate and has its clock slightly offset it doesn't
-   * find the certificate invalid. */
-  res = gnutls_x509_crt_set_activation_time(cert, timestamp - DAYS / 10);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_set_expiration_time(cert, timestamp + 365 * DAYS);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_set_basic_constraints(cert, 0, -1);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_set_key_usage(cert, GNUTLS_KEY_DIGITAL_SIGNATURE);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_set_version(cert, 3);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  /* The certificate is now set up, we can sign it. */
-  res = gnutls_x509_crt_sign2(
-    cert,
-    inf_certificate_chain_get_own_certificate(priv->certificate),
-    priv->private_key,
-    GNUTLS_DIG_SHA1,
-    0
+  cert = infd_directory_create_certificate_from_crq(
+    directory,
+    crq,
+    365 * DAYS,
+    error
   );
 
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
+  gnutls_x509_crq_deinit(crq);
+  if(cert == NULL) return FALSE;
 
-  /* Check whether the fingerprint clashes with an existing certificate. This
-   * is very unlikely, but we cannot handle it at the moment. */
-  fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
-  if(g_hash_table_lookup(priv->accounts_by_certificate, fingerprint) != NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
-      "%s",
-      _("The fingerprint of the generated certificate exists already. This "
-        "is possible, but highly unlikely. Please try creating the "
-        "certificate again and the error should disappear.")
-    );
-
-    g_free(fingerprint);
-    gnutls_x509_crt_deinit(cert);
-    return FALSE;
-  }
-
-  /* Now, export it to PEM format and send it back to the client */
+  /* Export the certificate to PEM format and send it back to the client */
   cert_size = 0;
   res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &cert_size);
   if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
   {
-    g_free(fingerprint);
     gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
@@ -5402,84 +5562,39 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   if(res != GNUTLS_E_SUCCESS)
   {
     g_free(cert_buffer);
-    g_free(fingerprint);
     gnutls_x509_crt_deinit(cert);
     inf_gnutls_set_error(error, res);
     return FALSE;
   }
 
+  /* Create seq */
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
   {
     g_free(cert_buffer);
-    g_free(fingerprint);
     gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
     return FALSE;
   }
 
-  /* Check that a common name is set in the certificate. Without a common
-   * name, we cannot associate the certificate to an account. */
-  name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
-  if(name == NULL || name[0] == '\0')
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
-      "%s",
-      _("The certificate request has no common name set")
-    );
+  /* At this point, the request is validated and nothing can fail anymore. */
 
-    g_free(seq);
-    g_free(cert_buffer);
-    g_free(fingerprint);
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  /* Now, find an account with the common name of the certificate. If we find
-   * one, we assume the certificate was generated for this account, and
-   * replace all other certificates with the new one. */
-  account_id = g_strdup_printf("user:%s", name);
-  info = g_hash_table_lookup(priv->accounts, account_id);
-
-  if(info != NULL)
-  {
-    while(info->n_certificates > 0)
-    {
-      g_hash_table_remove(
-        priv->accounts_by_certificate,
-        info->certificates[0]
-      );
-
-      infd_acl_account_info_remove_certificate(info, info->certificates[0]);
-    }
-  }
-  else
-  {
-    info = infd_acl_account_info_new(account_id, name);
-    g_hash_table_insert(priv->accounts, info->account.id, info);
-    infd_directory_announce_acl_account(directory, info);
-  }
-
-  g_free(account_id);
-  g_free(name);
-
-  infd_acl_account_info_add_certificate(info, fingerprint);
-  g_free(fingerprint);
-
-  g_hash_table_insert(
-    priv->accounts_by_certificate,
-    info->certificates[0],
-    info
+  /* Create account */
+  info = infd_directory_create_acl_account_with_certificate(
+    directory,
+    cert,
+    connection,
+    error
   );
 
   gnutls_x509_crt_deinit(cert);
 
-  infd_directory_write_account_list(directory);
+  if(info == NULL)
+  {
+    g_free(seq);
+    g_free(cert_buffer);
+    return FALSE;
+  }
 
-  reply_xml = xmlNewNode(NULL, (const xmlChar*)"certificate-generated");
+  reply_xml = xmlNewNode(NULL, (const xmlChar*)"create-acl-account");
   child = xmlNewChild(reply_xml, NULL, (const xmlChar*)"certificate", NULL);
   xmlNodeAddContentLen(child, (const xmlChar*)cert_buffer, cert_size);
   g_free(cert_buffer);
@@ -5487,12 +5602,92 @@ infd_directory_handle_request_certificate(InfdDirectory* directory,
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);
   g_free(seq);
 
+  if(g_slist_find(priv->account_list_connections, connection) != NULL)
+    inf_acl_account_to_xml(&info->account, reply_xml);
+
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
     connection,
     reply_xml
   );
 
+  return TRUE;
+}
+
+static gboolean
+infd_directory_handle_remove_acl_account(InfdDirectory* directory,
+                                         InfXmlConnection* connection,
+                                         xmlNodePtr xml,
+                                         GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  xmlChar* account_id;
+  InfdAclAccountInfo* info;
+  gchar* seq;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Connection needs to have account list queried in order to remove an
+   * account. */
+  if(g_slist_find(priv->account_list_connections, connection) == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_ACCOUNT_LIST_NOT_QUERIED,
+      "%s",
+      _("The account list needs to be queried in order to remove an account")
+    );
+
+    return FALSE;
+  }
+
+  /* TODO: Auth */
+
+  account_id = inf_xml_util_get_attribute_required(xml, "id", error);
+  if(account_id == NULL) return FALSE;
+
+  if(strcmp(account_id, "default") == 0)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
+      "%s",
+      _("The default account cannot be removed")
+    );
+
+    xmlFree(account_id);
+    return FALSE;
+  }
+
+  info = g_hash_table_lookup(priv->accounts, account_id);
+  if(info == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
+      _("There is no such account with ID \"%s\""),
+      (const gchar*)account_id
+    );
+
+    xmlFree(account_id);
+    return FALSE;
+  }
+
+  xmlFree(account_id);
+
+  if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
+    return FALSE;
+
+  infd_directory_remove_acl_account(directory, info, seq, NULL);
+  g_free(seq);
+
+  /* Note that since account removal is only possible for connections that
+   * have queried the account list, the infd_directory_remove_acl_account()
+   * call is sending the reply XML to this connection as well. There is
+   * nothing left to do here. */
   return TRUE;
 }
 
@@ -6692,7 +6887,7 @@ infd_directory_init(GTypeInstance* instance,
 
   priv->chat_session = NULL;
 
-  info = infd_acl_account_info_new("default", NULL);
+  info = infd_acl_account_info_new("default", NULL, FALSE);
   g_hash_table_insert(priv->accounts, info->account.id, info);
 }
 
@@ -7023,9 +7218,18 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
-  else if(strcmp((const char*)node->name, "request-certificate") == 0)
+  else if(strcmp((const char*)node->name, "create-acl-account") == 0)
   {
-    infd_directory_handle_request_certificate(
+    infd_directory_handle_create_acl_account(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const char*)node->name, "remove-acl-account") == 0)
+  {
+    infd_directory_handle_remove_acl_account(
       directory,
       connection,
       node,
@@ -7962,6 +8166,129 @@ infd_directory_browser_lookup_acl_account(InfBrowser* browser,
 }
 
 static InfRequest*
+infd_directory_browser_create_acl_account(InfBrowser* browser,
+                                          gnutls_x509_crq_t crq,
+                                          InfRequestFunc func,
+                                          gpointer user_data)
+{
+  GError* error;
+  InfRequest* request;
+  gnutls_x509_crt_t cert;
+  InfCertificateChain* chain;
+  InfdAclAccountInfo* info;
+
+  request = g_object_new(
+    INFD_TYPE_REQUEST,
+    "type", "create-acl-account",
+    "requestor", NULL,
+    NULL
+  );
+
+  if(func != NULL)
+  {
+    g_signal_connect_after(
+      G_OBJECT(request),
+      "finished",
+      G_CALLBACK(func),
+      user_data
+    );
+  }
+
+  inf_browser_begin_request(browser, NULL, INF_REQUEST(request));
+
+  error = NULL;
+
+  cert = infd_directory_create_certificate_from_crq(
+    INFD_DIRECTORY(browser),
+    crq,
+    365 * DAYS,
+    &error
+  );
+
+  if(error != NULL)
+  {
+    inf_request_fail(request, error);
+    g_object_unref(request);
+    return NULL;
+  }
+
+  info = infd_directory_create_acl_account_with_certificate(
+    INFD_DIRECTORY(browser),
+    cert,
+    NULL,
+    &error
+  );
+
+  if(error != NULL)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_request_fail(request, error);
+    g_object_unref(request);
+    return NULL;
+  }
+
+  chain = inf_certificate_chain_new(&cert, 1);
+
+  inf_request_finish(
+    request,
+    inf_request_result_make_create_acl_account(
+      INF_BROWSER(browser),
+      &info->account,
+      chain
+    )
+  );
+
+  inf_certificate_chain_unref(chain);
+  g_object_unref(request);
+
+  return NULL;
+}
+
+static InfRequest*
+infd_directory_browser_remove_acl_account(InfBrowser* browser,
+                                          const InfAclAccount* account,
+                                          InfRequestFunc func,
+                                          gpointer user_data)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdRequest* request;
+  InfdAclAccountInfo* info;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  request = g_object_new(
+    INFD_TYPE_REQUEST,
+    "type", "remove-acl-account",
+    "requestor", NULL,
+    NULL
+  );
+
+  if(func != NULL)
+  {
+    g_signal_connect_after(
+      G_OBJECT(request),
+      "finished",
+      G_CALLBACK(func),
+      user_data
+    );
+  }
+
+  info = g_hash_table_lookup(priv->accounts, account->id);
+
+  g_assert(info != NULL);
+  g_assert(&info->account == account);
+
+  inf_browser_begin_request(browser, NULL, INF_REQUEST(request));
+
+  infd_directory_remove_acl_account(directory, info, NULL, request);
+
+  g_object_unref(request);
+  return NULL;
+}
+
+static InfRequest*
 infd_directory_browser_query_acl(InfBrowser* browser,
                                  const InfBrowserIter* iter,
                                  InfRequestFunc func,
@@ -8203,9 +8530,9 @@ infd_directory_class_init(gpointer g_class,
   g_object_class_override_property(object_class, PROP_STATUS, "status");
 }
 
-static void
+  static void
 infd_directory_communication_object_init(gpointer g_iface,
-                                         gpointer iface_data)
+    gpointer iface_data)
 {
   InfCommunicationObjectIface* iface;
   iface = (InfCommunicationObjectIface*)g_iface;
@@ -8213,9 +8540,9 @@ infd_directory_communication_object_init(gpointer g_iface,
   iface->received = infd_directory_communication_object_received;
 }
 
-static void
+  static void
 infd_directory_browser_init(gpointer g_iface,
-                            gpointer iface_data)
+    gpointer iface_data)
 {
   InfBrowserIface* iface;
   iface = (InfBrowserIface*)g_iface;
@@ -8254,6 +8581,8 @@ infd_directory_browser_init(gpointer g_iface,
   iface->get_acl_account_list = infd_directory_browser_get_acl_account_list;
   iface->get_acl_local_account = infd_directory_browser_get_acl_local_account;
   iface->lookup_acl_account = infd_directory_browser_lookup_acl_account;
+  iface->create_acl_account = infd_directory_browser_create_acl_account;
+  iface->remove_acl_account = infd_directory_browser_remove_acl_account;
   iface->query_acl = infd_directory_browser_query_acl;
   iface->has_acl = infd_directory_browser_has_acl;
   iface->get_acl = infd_directory_browser_get_acl;
@@ -8868,6 +9197,72 @@ infd_directory_get_chat_session(InfdDirectory* directory)
 {
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
   return INFD_DIRECTORY_PRIVATE(directory)->chat_session;
+}
+
+/* TODO: Try to share code
+ * between handle_request_certificate and create_acl_account and
+ * this function. */
+
+/**
+ * infd_directory_create_acl_account:
+ * @directory: A #InfdDirectory.
+ * @account_id: The ID for the new account.
+ * @account_name: The name of the new account.
+ * @transient: Whether the account should be transient or not.
+ * @certificates: An array of certificates to be associated to the account,
+ * or %NULL.
+ * @n_certificates: The number of certificates.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Creates a new account on the directory with the given @account_id and
+ * @account_name. If the @certificates array is not empty and a clients connects
+ * with one of the certificates, the client will automatically be logged into
+ * the account.
+ *
+ * If the @transient parameter is %TRUE then the account is made transient,
+ * i.e. it will not be stored to disk. When the server is re-started, the
+ * account will no longer exist. If the parameter is %FALSE, then the account
+ * is persistent.
+ *
+ * The given account ID must be unique, i.e. must not be in use already. The
+ * same is the case for the DN of the certificates.
+ *
+ * This function is similar to inf_browser_create_acl_account(), but it
+ * allows more options.
+ *
+ * Returns: A new #InfAclAccount, or %NULL in case of error.
+ */
+const InfAclAccount*
+infd_directory_create_acl_account(InfdDirectory* directory,
+                                  const gchar* account_id,
+                                  const gchar* account_name,
+                                  gboolean transient,
+                                  gnutls_x509_crt_t* certificates,
+                                  guint n_certificates,
+                                  GError** error)
+{
+  InfdAclAccountInfo* info;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(account_id != NULL, NULL);
+  g_return_val_if_fail(account_name != NULL, NULL);
+  g_return_val_if_fail(certificates != NULL || n_certificates == 0, NULL);
+
+  info = infd_directory_create_acl_account_with_certificates(
+    directory,
+    account_id,
+    account_name,
+    transient,
+    certificates,
+    n_certificates,
+    NULL,
+    error
+  );
+
+  if(info == NULL)
+    return NULL;
+
+  return &info->account;
 }
 
 /* vim:set et sw=2 ts=2: */

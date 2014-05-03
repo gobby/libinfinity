@@ -1264,6 +1264,79 @@ inf_browser_lookup_acl_account(InfBrowser* browser,
 }
 
 /**
+ * inf_browser_create_acl_account:
+ * @browser: A #InfBrowser.
+ * @crq: A certificate request.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Requests creation of a new account. If the request succeeds, @crq will be
+ * used by the server to create a certificate which is sent back to the
+ * client and is associated to the newly created account.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned, where
+ * @func has been installed for the #InfRequest::finished signal, so that it
+ * is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest that can be used to get notified when the
+ * request finishes or fails.
+ */
+InfRequest*
+inf_browser_create_acl_account(InfBrowser* browser,
+                               gnutls_x509_crq_t crq,
+                               InfRequestFunc func,
+                               gpointer user_data)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(crq != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->create_acl_account != NULL, NULL);
+
+  return iface->create_acl_account(browser, crq, func, user_data);
+}
+
+/**
+ * inf_browser_remove_acl_account:
+ * @browser: A #InfBrowser.
+ * @acc: A ACL account.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Requests deletion of the given account.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned, where
+ * @func has been installed for the #InfRequest::finished signal, so that it
+ * is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest that can be used to get notified when the
+ * request finishes or fails.
+ */
+InfRequest*
+inf_browser_remove_acl_account(InfBrowser* browser,
+                               const InfAclAccount* acc,
+                               InfRequestFunc func,
+                               gpointer user_data)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(acc != NULL, NULL);
+  g_return_val_if_fail(strcmp(acc->id, "default") != 0, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->remove_acl_account != NULL, NULL);
+
+  return iface->remove_acl_account(browser, acc, func, user_data);
+}
+
+/**
  * inf_browser_query_acl:
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to a node for which to query the ACLs.

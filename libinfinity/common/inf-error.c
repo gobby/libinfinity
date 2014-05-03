@@ -214,6 +214,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("The certificate is invalid or not trusted");
   case INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED:
     return _("The account list has already been queried before");
+  case INF_DIRECTORY_ERROR_ACCOUNT_LIST_NOT_QUERIED:
+    return _("The account list has not been queried");
   case INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT:
     return _("An account with this ID exists already");
   case INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT:

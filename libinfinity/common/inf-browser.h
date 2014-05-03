@@ -79,6 +79,10 @@ typedef enum _InfBrowserStatus {
  * #InfBrowser::begin-request signal.
  * @acl_account_added: Default signal handler for the
  * #InfBrowser::acl-account-added signal.
+ * @acl_account_removed: Default signal handler for the
+ * #InfBrowser::acl-account-removed signal.
+ * @acl_local_account_changed: Default signal handler for the
+ * #InfBrowser::acl-local-account-changed signal.
  * @acl_changed: Default signal handler for the
  * #InfBrowser::acl-changed signal.
  * @get_root: Virtual function to return the root node of the browser.
@@ -108,6 +112,8 @@ typedef enum _InfBrowserStatus {
  * @get_acl_local_account: Virtual function to return the ACL account of the
  * local host.
  * @lookup_acl_account: Virtual function to find an account by its ID.
+ * @create_acl_account: Virtual function to create a new account.
+ * @remove_acl_account: Virtual function to remove an account.
  * @query_acl: Virtual function for querying the ACL for a node for all
  * other users.
  * @has_acl: Virtual function for checking whether the ACL has been queried
@@ -236,6 +242,16 @@ struct _InfBrowserIface {
 
   const InfAclAccount* (*lookup_acl_account)(InfBrowser* browser,
                                              const gchar* id);
+
+  InfRequest* (*create_acl_account)(InfBrowser* browser,
+                                    gnutls_x509_crq_t crq,
+                                    InfRequestFunc func,
+                                    gpointer user_data);
+
+  InfRequest* (*remove_acl_account)(InfBrowser* browser,
+                                    const InfAclAccount* acc,
+                                    InfRequestFunc func,
+                                    gpointer user_data);
 
   InfRequest* (*query_acl)(InfBrowser* browser,
                            const InfBrowserIter* iter,
@@ -378,6 +394,18 @@ inf_browser_get_acl_local_account(InfBrowser* browser);
 const InfAclAccount*
 inf_browser_lookup_acl_account(InfBrowser* browser,
                                const gchar* id);
+
+InfRequest*
+inf_browser_create_acl_account(InfBrowser* browser,
+                               gnutls_x509_crq_t crq,
+                               InfRequestFunc func,
+                               gpointer user_data);
+
+InfRequest*
+inf_browser_remove_acl_account(InfBrowser* browser,
+                               const InfAclAccount* acc,
+                               InfRequestFunc func,
+                               gpointer user_data);
 
 InfRequest*
 inf_browser_query_acl(InfBrowser* browser,

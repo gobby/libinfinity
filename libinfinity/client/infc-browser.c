@@ -3777,179 +3777,6 @@ infc_browser_handle_saved_session(InfcBrowser* browser,
 }
 
 static gboolean
-infc_browser_handle_certificate_generated(InfcBrowser* browser,
-                                          InfXmlConnection* connection,
-                                          xmlNodePtr xml,
-                                          GError** error)
-{
-  InfcBrowserPrivate* priv;
-  InfcRequest* request;
-  xmlNodePtr child;
-  gnutls_datum_t cert_text;
-
-  int res;
-  gnutls_x509_crt_t cert;
-  InfCertificateChain* chain;
-  gnutls_x509_crt_t root_cert;
-
-  int verify_result;
-  guint n_certs;
-  guint i;
-  gnutls_x509_crt_t* all_certs;
-  InfCertificateChain* new_chain;
-
-  priv = INFC_BROWSER_PRIVATE(browser);
-
-  request = infc_request_manager_get_request_by_xml(
-    priv->request_manager,
-    "request-certificate",
-    xml,
-    NULL
-  );
-
-  if(request == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
-      "%s",
-      _("No certificate request has been made")
-    );
-
-    return FALSE;
-  }
-
-  cert_text.data = NULL;
-  for(child = xml->children; child != NULL; child = child->next)
-  {
-    if(child->type != XML_ELEMENT_NODE) continue;
-
-    if(strcmp((const char*)child->name, "certificate") == 0)
-    {
-      if(child->children != NULL && child->children->type == XML_TEXT_NODE)
-      {
-        cert_text.data = (char*)child->children->content;
-        cert_text.size = strlen(cert_text.data);
-      }
-    }
-  }
-
-  if(cert_text.data == NULL)
-  {
-    g_set_error(
-      error,
-      inf_request_error_quark(),
-      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
-      _("No certificate provided")
-    );
-
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_init(&cert);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  res = gnutls_x509_crt_import(cert, &cert_text, GNUTLS_X509_FMT_PEM);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
-
-  g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
-  if(chain == NULL)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
-      _("Cannot verify the certificate without server certificate")
-    );
-
-    gnutls_x509_crt_deinit(cert);
-    return FALSE;
-  }
-
-  /* Verify that it is signed
-   * a) correctly
-   * b) by the server itself */
-  root_cert = inf_certificate_chain_get_root_certificate(chain);
-
-  /* TODO: Validate the whole chain after it was constructed,
-   * using gnutls_x509_crt_list_verify(). */
-  res = gnutls_x509_crt_verify(
-    cert,
-    &root_cert,
-    1,
-    GNUTLS_VERIFY_DO_NOT_ALLOW_X509_V1_CA_CRT,
-    &verify_result
-  );
-
-  inf_certificate_chain_unref(chain);
-  if(res != GNUTLS_E_SUCCESS || (verify_result & GNUTLS_CERT_INVALID) != 0)
-  {
-    if(res != GNUTLS_E_SUCCESS)
-    {
-      inf_gnutls_set_error(error, res);
-    }
-    else
-    {
-      g_set_error(
-        error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
-        _("Server sent an invalid certificate (%d)"),
-        verify_result
-      );
-    }
-
-    gnutls_x509_crt_deinit(cert);
-    return FALSE;
-  }
-
-  n_certs = inf_certificate_chain_get_n_certificates(chain);
-  all_certs = g_malloc(sizeof(gnutls_x509_crt_t) * (n_certs + 1));
-  all_certs[0] = cert;
-  for(i = 0; i < n_certs; ++i)
-  {
-    all_certs[i+1] = inf_cert_util_copy_certificate(
-      inf_certificate_chain_get_nth_certificate(chain, i),
-      error
-    );
-
-    if(all_certs[i+1] == NULL)
-    {
-      for(; i > 0; --i)
-        gnutls_x509_crt_deinit(all_certs[i]);
-      gnutls_x509_crt_deinit(cert);
-      return FALSE;
-    }
-  }
-
-  new_chain = inf_certificate_chain_new(all_certs, n_certs + 1);
-
-  infc_request_manager_finish_request(
-    priv->request_manager,
-    request,
-    inf_request_result_make_create_certificate(
-      INF_BROWSER(browser),
-      new_chain
-    )
-  );
-
-  inf_certificate_chain_unref(new_chain);
-  return TRUE;
-}
-
-static gboolean
 infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
                                            InfXmlConnection* connection,
                                            xmlNodePtr xml,
@@ -4104,8 +3931,8 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
-      "%s",
-      _("Server sent a duplicate account in \"query-acl-account-list\"")
+      _("Server sent a duplicate account with ID \"%s\""),
+      account->id
     );
 
     inf_acl_account_free(account);
@@ -4239,12 +4066,219 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_create_acl_account(InfcBrowser* browser,
+                                       InfXmlConnection* connection,
+                                       xmlNodePtr xml,
+                                       GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr child;
+  gnutls_datum_t cert_text;
+
+  int res;
+  gnutls_x509_crt_t cert;
+  InfCertificateChain* chain;
+  gnutls_x509_crt_t root_cert;
+
+  int verify_result;
+  guint n_certs;
+  guint i;
+  gnutls_x509_crt_t* all_certs;
+  InfCertificateChain* new_chain;
+  InfAclAccount* account;
+  InfAclAccount* existing_account;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "create-acl-account",
+    xml,
+    NULL
+  );
+
+  if(request == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
+      "%s",
+      _("No certificate request has been made")
+    );
+
+    return FALSE;
+  }
+
+  cert_text.data = NULL;
+  for(child = xml->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+
+    if(strcmp((const char*)child->name, "certificate") == 0)
+    {
+      if(child->children != NULL && child->children->type == XML_TEXT_NODE)
+      {
+        cert_text.data = (char*)child->children->content;
+        cert_text.size = strlen(cert_text.data);
+      }
+    }
+  }
+
+  if(cert_text.data == NULL)
+  {
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
+      _("No certificate provided")
+    );
+
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_init(&cert);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  res = gnutls_x509_crt_import(cert, &cert_text, GNUTLS_X509_FMT_PEM);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return FALSE;
+  }
+
+  g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
+  if(chain == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
+      "%s",
+      _("Cannot verify the certificate without server certificate")
+    );
+
+    gnutls_x509_crt_deinit(cert);
+    return FALSE;
+  }
+
+  /* Verify that it is signed
+   * a) correctly
+   * b) by the server itself */
+  root_cert = inf_certificate_chain_get_root_certificate(chain);
+
+  /* TODO: Validate the whole chain after it was constructed,
+   * using gnutls_x509_crt_list_verify(). */
+  res = gnutls_x509_crt_verify(
+    cert,
+    &root_cert,
+    1,
+    GNUTLS_VERIFY_DO_NOT_ALLOW_X509_V1_CA_CRT,
+    &verify_result
+  );
+
+  inf_certificate_chain_unref(chain);
+  if(res != GNUTLS_E_SUCCESS || (verify_result & GNUTLS_CERT_INVALID) != 0)
+  {
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      inf_gnutls_set_error(error, res);
+    }
+    else
+    {
+      g_set_error(
+        error,
+        inf_directory_error_quark(),
+        INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
+        _("Server sent an invalid certificate (%d)"),
+        verify_result
+      );
+    }
+
+    gnutls_x509_crt_deinit(cert);
+    return FALSE;
+  }
+
+  n_certs = inf_certificate_chain_get_n_certificates(chain);
+  all_certs = g_malloc(sizeof(gnutls_x509_crt_t) * (n_certs + 1));
+  all_certs[0] = cert;
+  for(i = 0; i < n_certs; ++i)
+  {
+    all_certs[i+1] = inf_cert_util_copy_certificate(
+      inf_certificate_chain_get_nth_certificate(chain, i),
+      error
+    );
+
+    if(all_certs[i+1] == NULL)
+    {
+      for(; i > 0; --i)
+        gnutls_x509_crt_deinit(all_certs[i]);
+      gnutls_x509_crt_deinit(cert);
+      return FALSE;
+    }
+  }
+
+  new_chain = inf_certificate_chain_new(all_certs, n_certs + 1);
+
+  account = NULL;
+  if(priv->account_list_queried == TRUE)
+  {
+    account = inf_acl_account_from_xml(xml, error);
+    if(account == NULL)
+    {
+      inf_certificate_chain_unref(new_chain);
+      return FALSE;
+    }
+
+    /* Note that it is allowed that the account already exists, in which
+     * case we have created a new certificate for that account. */
+    existing_account = g_hash_table_lookup(priv->accounts, account->id);
+    if(existing_account != NULL)
+    {
+      inf_acl_account_free(account);
+      account = existing_account;
+    }
+    else
+    {
+      g_hash_table_insert(priv->accounts, account->id, account);
+
+      inf_browser_acl_account_added(
+        INF_BROWSER(browser),
+        account,
+        INF_REQUEST(request)
+      );
+    }
+  }
+
+  infc_request_manager_finish_request(
+    priv->request_manager,
+    request,
+    inf_request_result_make_create_acl_account(
+      INF_BROWSER(browser),
+      account,
+      new_chain
+    )
+  );
+
+  inf_certificate_chain_unref(new_chain);
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_remove_acl_account(InfcBrowser* browser,
                                        InfXmlConnection* connection,
                                        xmlNodePtr xml,
                                        GError** error)
 {
   InfcBrowserPrivate* priv;
+  InfcRequest* request;
   xmlChar* account_id;
   InfAclAccount* account;
   const InfAclAccount* default_account;
@@ -4252,6 +4286,13 @@ infc_browser_handle_remove_acl_account(InfcBrowser* browser,
   InfcBrowserSubreq* subreq;
 
   priv = INFC_BROWSER_PRIVATE(browser);
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "remove-acl-account",
+    xml,
+    NULL
+  );
 
   account_id = inf_xml_util_get_attribute_required(xml, "id", error);
   if(account_id == NULL) return FALSE;
@@ -4327,8 +4368,38 @@ infc_browser_handle_remove_acl_account(InfcBrowser* browser,
 
     /* remove account */
     g_hash_table_steal(priv->accounts, account->id);
+
+    if(request != NULL)
+    {
+      infc_request_manager_finish_request(
+        priv->request_manager,
+        request,
+        inf_request_result_make_remove_acl_account(
+          INF_BROWSER(browser),
+          account
+        )
+      );
+    }
+
     inf_browser_acl_account_removed(INF_BROWSER(browser), account, NULL);
     inf_acl_account_free(account);
+  }
+  else
+  {
+    if(request != NULL)
+    {
+      /* This should not really happen, since one needs to have the account list
+       * queried before one can remove an ACL account. However, in case some
+       * server allows it without, let's correctly handle this case here. */
+      infc_request_manager_finish_request(
+        priv->request_manager,
+        request,
+        inf_request_result_make_remove_acl_account(
+          INF_BROWSER(browser),
+          account
+        )
+      );
+    }
   }
 
   return TRUE;
@@ -4674,15 +4745,6 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
-  else if(strcmp((const gchar*)node->name, "certificate-generated") == 0)
-  {
-    infc_browser_handle_certificate_generated(
-      browser,
-      connection,
-      node,
-      &local_error
-    );
-  }
   else if(strcmp((const gchar*)node->name, "acl-account-list-begin") == 0)
   {
     infc_browser_handle_acl_account_list_begin(
@@ -4713,6 +4775,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const gchar*)node->name, "change-acl-account") == 0)
   {
     infc_browser_handle_change_acl_account(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "create-acl-account") == 0)
+  {
+    infc_browser_handle_create_acl_account(
       browser,
       connection,
       node,
@@ -5837,6 +5908,114 @@ infc_browser_browser_lookup_acl_account(InfBrowser* browser,
 }
 
 static InfRequest*
+infc_browser_browser_create_acl_account(InfBrowser* browser,
+                                        gnutls_x509_crq_t crq,
+                                        InfRequestFunc func,
+                                        gpointer user_data)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr xml;
+  xmlNodePtr crqNode;
+
+  GError* error;
+  gchar* crq_text;
+  size_t size;
+  int res;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_REQUEST,
+    "create-acl-account",
+    G_CALLBACK(func),
+    user_data,
+    NULL
+  );
+
+  inf_browser_begin_request(INF_BROWSER(browser), NULL, INF_REQUEST(request));
+
+  size = 0;
+  res = gnutls_x509_crq_export(crq, GNUTLS_X509_FMT_PEM, NULL, &size);
+  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
+  {
+    error = NULL;
+    inf_gnutls_set_error(&error, res);
+
+    infc_request_manager_fail_request(priv->request_manager, request, error);
+    g_error_free(error);
+
+    g_object_unref(request);
+    return NULL;
+  }
+
+  crq_text = g_malloc(size);
+  res = gnutls_x509_crq_export(crq, GNUTLS_X509_FMT_PEM, crq_text, &size);
+  if(res != GNUTLS_E_SUCCESS)
+  {
+    g_free(crq_text);
+
+    error = NULL;
+    inf_gnutls_set_error(&error, res);
+
+    infc_request_manager_fail_request(priv->request_manager, request, error);
+    g_error_free(error);
+
+    g_object_unref(request);
+    return NULL;
+  }
+
+  xml = infc_browser_request_to_xml(request);
+  crqNode = xmlNewChild(xml, NULL, (const xmlChar*)"crq", NULL);
+  xmlNodeAddContentLen(crqNode, (const xmlChar*)crq_text, size);
+  g_free(crq_text);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INF_REQUEST(request);
+}
+
+static InfRequest*
+infc_browser_browser_remove_acl_account(InfBrowser* browser,
+                                        const InfAclAccount* account,
+                                        InfRequestFunc func,
+                                        gpointer user_data)
+{
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  xmlNodePtr xml;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_REQUEST,
+    "remove-acl-account",
+    G_CALLBACK(func),
+    user_data,
+    NULL
+  );
+
+  inf_browser_begin_request(INF_BROWSER(browser), NULL, INF_REQUEST(request));
+
+  xml = infc_browser_request_to_xml(request);
+  inf_xml_util_set_attribute(xml, "id", account->id);
+
+  inf_communication_group_send_message(
+    INF_COMMUNICATION_GROUP(priv->group),
+    priv->connection,
+    xml
+  );
+
+  return INF_REQUEST(request);
+}
+
+static InfRequest*
 infc_browser_browser_query_acl(InfBrowser* browser,
                                const InfBrowserIter* iter,
                                InfRequestFunc func,
@@ -6109,6 +6288,8 @@ infc_browser_browser_init(gpointer g_iface,
   iface->get_acl_account_list = infc_browser_browser_get_acl_account_list;
   iface->get_acl_local_account = infc_browser_browser_get_acl_local_account;
   iface->lookup_acl_account = infc_browser_browser_lookup_acl_account;
+  iface->create_acl_account = infc_browser_browser_create_acl_account;
+  iface->remove_acl_account = infc_browser_browser_remove_acl_account;
   iface->query_acl = infc_browser_browser_query_acl;
   iface->has_acl = infc_browser_browser_has_acl;
   iface->get_acl = infc_browser_browser_get_acl;
@@ -6592,104 +6773,6 @@ infc_browser_get_chat_session(InfcBrowser* browser)
 {
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   return INFC_BROWSER_PRIVATE(browser)->chat_session;
-}
-
-/**
- * infc_browser_request_certificate:
- * @browser: A #InfcBrowser.
- * @crt: A .X509 certificate request.
- * @extra_data: Extra data to be associated to the entity.
- * @error: Location to store error information, if any.
- * @func: The function to be called when the request finishes, or %NULL.
- * @user_data: Additional data to pass to @func.
- *
- * Requests a new certificate at the server. The server is expected to sign
- * it with its certificate and send us the signed certificate back.
- * @extra_data is some extra data to be associated to the new certificate.
- * However, this is not stored within the certificate but centrally on the
- * server. This allows to change the @extra_data later without having to
- * issue a new certificate.
- *
- * The function may fail in case there is a problem serializing the
- * certificate request. In that case the function returns %NULL and @error
- * is set.
- *
- * The request might either finish during the call to this function, in which
- * case @func will be called and %NULL being returned. If the request does not
- * finish within the function call, a #InfRequest object is
- * returned, where @func has been installed for the
- * #InfRequest::finished signal, so that it is called as soon as
- * the request finishes.
- *
- * Returns: A #InfRequest that can be used to get notified when
- * the request finishes, or %NULL on error.
- */
-InfRequest*
-infc_browser_request_certificate(InfcBrowser* browser,
-                                 gnutls_x509_crq_t crq,
-                                 const gchar* extra_data,
-                                 InfRequestFunc func,
-                                 gpointer user_data,
-                                 GError** error)
-{
-  InfcBrowserPrivate* priv;
-  InfcRequest* request;
-  xmlNodePtr xml;
-  xmlNodePtr extra;
-  xmlNodePtr crqNode;
-
-  gchar* crq_text;
-  size_t size;
-  int res;
-
-  g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(crq != NULL, NULL);
-
-  priv = INFC_BROWSER_PRIVATE(browser);
-  g_return_val_if_fail(priv->connection != NULL, NULL);
-  g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
-
-  size = 0;
-  res = gnutls_x509_crq_export(crq, GNUTLS_X509_FMT_PEM, NULL, &size);
-  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
-  {
-    inf_gnutls_set_error(error, res);
-    return NULL;
-  }
-
-  crq_text = g_malloc(size);
-  res = gnutls_x509_crq_export(crq, GNUTLS_X509_FMT_PEM, crq_text, &size);
-  if(res != GNUTLS_E_SUCCESS)
-  {
-    g_free(crq_text);
-    inf_gnutls_set_error(error, res);
-    return NULL;
-  }
-
-  request = infc_request_manager_add_request(
-    priv->request_manager,
-    INFC_TYPE_REQUEST,
-    "request-certificate",
-    G_CALLBACK(func),
-    user_data,
-    NULL
-  );
-
-  inf_browser_begin_request(INF_BROWSER(browser), NULL, INF_REQUEST(request));
-
-  xml = infc_browser_request_to_xml(request);
-  extra = xmlNewChild(xml, NULL, (const xmlChar*)"extra", NULL);
-  xmlNodeAddContent(extra, (const xmlChar*)extra_data);
-  crqNode = xmlNewChild(xml, NULL, (const xmlChar*)"crq", NULL);
-  xmlNodeAddContentLen(crqNode, (const xmlChar*)crq_text, size);
-
-  inf_communication_group_send_message(
-    INF_COMMUNICATION_GROUP(priv->group),
-    priv->connection,
-    xml
-  );
-
-  return INF_REQUEST(request);
 }
 
 /* vim:set et sw=2 ts=2: */

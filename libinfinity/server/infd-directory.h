@@ -120,6 +120,15 @@ infd_directory_enable_chat(InfdDirectory* directory,
 InfdSessionProxy*
 infd_directory_get_chat_session(InfdDirectory* directory);
 
+const InfAclAccount*
+infd_directory_create_acl_account(InfdDirectory* directory,
+                                  const gchar* account_id,
+                                  const gchar* account_name,
+                                  gboolean transient,
+                                  gnutls_x509_crt_t* certificates,
+                                  guint n_certificates,
+                                  GError** error);
+
 G_END_DECLS
 
 #endif /* __INFD_DIRECTORY_H__ */
