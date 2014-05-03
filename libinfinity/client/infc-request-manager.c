@@ -724,6 +724,7 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
     error
   );
 
+  xmlFree(seq_attr);
   if(!has_seq) return NULL;
 
   /* Not our seq ID */
