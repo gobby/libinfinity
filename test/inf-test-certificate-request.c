@@ -83,6 +83,7 @@ inf_test_certificate_request_finished_cb(InfRequest* request,
     for(i = 0; i < n_certs; ++i)
     {
       cert = inf_certificate_chain_get_nth_certificate(chain, i);
+      cert_size = 0;
       gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &cert_size);
       cert_pem = g_malloc(cert_size);
       gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, cert_pem, &cert_size);
@@ -90,6 +91,7 @@ inf_test_certificate_request_finished_cb(InfRequest* request,
       g_free(cert_pem);
     }
 
+    cert_size = 0;
     gnutls_x509_privkey_export(
       test->key,
       GNUTLS_X509_FMT_PEM,
@@ -102,7 +104,7 @@ inf_test_certificate_request_finished_cb(InfRequest* request,
     gnutls_x509_privkey_export(
       test->key,
       GNUTLS_X509_FMT_PEM,
-      NULL,
+      cert_pem,
       &cert_size
     );
 
