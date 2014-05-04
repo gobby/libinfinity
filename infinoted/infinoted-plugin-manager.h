@@ -44,6 +44,7 @@ typedef struct _InfinotedPluginManager InfinotedPluginManager;
 struct _InfinotedPluginManager {
   InfdDirectory* directory;
   InfinotedLog* log;
+  InfCertificateCredentials* credentials;
   gchar* path;
 
   GSList* plugins;
@@ -102,6 +103,7 @@ typedef enum _InfinotedPluginManagerError {
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
                              InfinotedLog* log,
+                             InfCertificateCredentials* creds,
                              const gchar* plugin_path,
                              const gchar* const* plugins,
                              GKeyFile* options,
@@ -118,6 +120,9 @@ infinoted_plugin_manager_get_io(InfinotedPluginManager* manager);
 
 InfinotedLog*
 infinoted_plugin_manager_get_log(InfinotedPluginManager* manager);
+
+InfCertificateCredentials*
+infinoted_plugin_manager_get_credentials(InfinotedPluginManager* manager);
 
 GQuark
 infinoted_plugin_manager_error_quark(void);

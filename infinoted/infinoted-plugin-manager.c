@@ -549,6 +549,8 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
  * infinoted_plugin_manager_new:
  * @directory: The #InfdDirectory on which plugins should operate.
  * @log: The #InfinotedLog to write log messages to.
+ * @creds: The #InfCertificateCredentials used to secure data transfer with
+ * the clients, or %NULL.
  * @plugin_path: A path to the plugin modules.
  * @plugins: A list of plugins to load, or %NULL.
  * @options: A #GKeyFile with configuration options for the plugins.
@@ -565,6 +567,7 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
                              InfinotedLog* log,
+                             InfCertificateCredentials* creds,
                              const gchar* plugin_path,
                              const gchar* const* plugins,
                              GKeyFile* options,
@@ -578,10 +581,14 @@ infinoted_plugin_manager_new(InfdDirectory* directory,
 
   plugin_manager->directory = directory;
   plugin_manager->log = log;
+  plugin_manager->credentials = creds;
   plugin_manager->path = g_strdup(plugin_path);
   plugin_manager->plugins = NULL;
   plugin_manager->connections = g_hash_table_new(NULL, NULL);
   plugin_manager->sessions = g_hash_table_new(NULL, NULL);
+
+  if(creds != NULL)
+    inf_certificate_credentials_ref(creds);
 
   g_object_ref(directory);
   g_object_ref(log);
@@ -688,6 +695,9 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager)
 
   g_free(manager->path);
 
+  if(manager->credentials != NULL)
+    inf_certificate_credentials_unref(manager->credentials);
+
   g_object_unref(manager->directory);
   g_object_unref(manager->log);
 
@@ -738,6 +748,21 @@ infinoted_plugin_manager_get_log(InfinotedPluginManager* manager)
 }
 
 /**
+ * infinoted_plugin_manager_get_credentials:
+ * @manager: A #InfinotedPluginManager.
+ *
+ * Returns the #InfCertificateCredentials used for securing the data transfer
+ * with all clients.
+ *
+ * Returns: A #InfCertificateCredentials object owned by the plugin manager.
+ */
+InfCertificateCredentials*
+infinoted_plugin_manager_get_credentials(InfinotedPluginManager* manager)
+{
+  return manager->credentials;
+}
+
+/**
  * infinoted_plugin_manager_error_quark:
  *
  * Returns the #GQuark for errors from the InfinotedPluginManager module.
@@ -774,7 +799,7 @@ infinoted_plugin_manager_get_connection_info(InfinotedPluginManager* mgr,
 }
 
 /**
- * infinoted_plugin_manager_get_connection_info:
+ * infinoted_plugin_manager_get_session_info:
  * @mgr: A #InfinotedPluginManager.
  * @plugin_info: The @plugin_info pointer of a plugin instance.
  * @proxy: The #InfSessionProxy for which to retrieve plugin data.
