@@ -27,6 +27,27 @@
 
 G_BEGIN_DECLS
 
+/**
+ * InfCertUtilDescription:
+ * @validity: The number of seconds the certificate is valid, beginning from
+ * the current time.
+ * @dn_common_name: The common name of the certificate, or %NULL.
+ * @san_dnsname: The DNS name of the certificate, or %NULL.
+ *
+ * This structure contains information that is used to generate a certificate
+ * with the inf_cert_util_create_certificate(),
+ * inf_cert_util_create_self_signed_certificate() and
+ * inf_cert_util_create_signed_certificate() functions.
+ */
+typedef struct _InfCertUtilDescription InfCertUtilDescription;
+struct _InfCertUtilDescription {
+  guint64 validity;
+
+  const gchar* dn_common_name;
+
+  const gchar* san_dnsname;
+};
+
 gnutls_dh_params_t
 inf_cert_util_create_dh_params(GError** error);
 
@@ -54,7 +75,20 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
                                 GError** error);
 
 gnutls_x509_crt_t
+inf_cert_util_create_certificate(gnutls_x509_privkey_t key,
+                                 const InfCertUtilDescription* desc,
+                                 GError** error);
+
+gnutls_x509_crt_t
+inf_cert_util_create_signed_certificate(gnutls_x509_privkey_t key,
+                                        const InfCertUtilDescription* desc,
+                                        gnutls_x509_crt_t sign_cert,
+                                        gnutls_x509_privkey_t sign_key,
+                                        GError** error);
+
+gnutls_x509_crt_t
 inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
+                                             const InfCertUtilDescription* desc,
                                              GError** error);
 
 GPtrArray*

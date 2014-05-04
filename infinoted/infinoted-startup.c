@@ -88,6 +88,7 @@ infinoted_startup_load_certificate(InfinotedLog* log,
                                    guint* n_certificates,
                                    GError** error)
 {
+  InfCertUtilDescription desc;
   gnutls_x509_crt_t* result;
   gnutls_x509_crt_t cert;
   GPtrArray* certs;
@@ -99,8 +100,13 @@ infinoted_startup_load_certificate(InfinotedLog* log,
     if(infinoted_util_create_dirname(certificate_file, error) == FALSE)
       return NULL;
 
+
     infinoted_log_info(log, _("Generating self-signed certificate..."));
-    cert = inf_cert_util_create_self_signed_certificate(key, error);
+    desc.validity = 365 * 24 * 3600;
+    desc.dn_common_name = g_get_host_name();
+    desc.san_dnsname = g_get_host_name();
+
+    cert = inf_cert_util_create_self_signed_certificate(key, &desc, error);
     if(cert == NULL) return NULL;
 
     res = inf_cert_util_write_certificate(&cert, 1, certificate_file, error);

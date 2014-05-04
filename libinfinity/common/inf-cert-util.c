@@ -54,34 +54,34 @@
 static const unsigned int DAYS = 24 * 60 * 60;
 
 static int
-inf_cert_util_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
-                                                  gnutls_x509_privkey_t key)
+inf_cert_util_create_certificate_impl(gnutls_x509_crt_t cert,
+                                      gnutls_x509_privkey_t key,
+                                      const InfCertUtilDescription* desc)
 {
-  gint32 default_serial;
   char buffer[5];
   time_t timestamp;
-  const gchar* hostname;
   int res;
 
   res = gnutls_x509_crt_set_key(cert, key);
   if(res != 0) return res;
 
-  default_serial = (gint32)time(NULL);
-  buffer[4] = (default_serial      ) & 0xff;
-  buffer[3] = (default_serial >>  8) & 0xff;
-  buffer[2] = (default_serial >> 16) & 0xff;
-  buffer[1] = (default_serial >> 24) & 0xff;
-  buffer[0] = 0;
+  timestamp = time(NULL);
+
+  buffer[4] = (timestamp      ) & 0xff;
+  buffer[3] = (timestamp >>  8) & 0xff;
+  buffer[2] = (timestamp >> 16) & 0xff;
+  buffer[1] = (timestamp >> 24) & 0xff;
+  buffer[0] = (timestamp >> 32) & 0xff0;
 
   res = gnutls_x509_crt_set_serial(cert, buffer, 5);
   if(res != 0) return res;
 
-  timestamp = time(NULL);
-
-  res = gnutls_x509_crt_set_activation_time(cert, timestamp);
+  /* Set the activation time a bit in the past, so that if someones
+   * clock is slightly offset they don't find the certificate invalid */
+  res = gnutls_x509_crt_set_activation_time(cert, timestamp - DAYS / 10);
   if(res != 0) return res;
 
-  res = gnutls_x509_crt_set_expiration_time(cert, timestamp + 365 * DAYS);
+  res = gnutls_x509_crt_set_expiration_time(cert, timestamp + desc->validity);
   if(res != 0) return res;
 
   res = gnutls_x509_crt_set_basic_constraints(cert, 0, -1);
@@ -93,25 +93,29 @@ inf_cert_util_create_self_signed_certificate_impl(gnutls_x509_crt_t cert,
   res = gnutls_x509_crt_set_version(cert, 3);
   if(res != 0) return res;
 
-  hostname = g_get_host_name();
-  res = gnutls_x509_crt_set_dn_by_oid(
-    cert,
-    GNUTLS_OID_X520_COMMON_NAME,
-    0,
-    hostname,
-    strlen(hostname)
-  );
-  if(res != 0) return res;
+  if(desc->dn_common_name != NULL)
+  {
+    res = gnutls_x509_crt_set_dn_by_oid(
+      cert,
+      GNUTLS_OID_X520_COMMON_NAME,
+      0,
+      desc->dn_common_name,
+      strlen(desc->dn_common_name)
+    );
 
-  res = gnutls_x509_crt_set_subject_alternative_name(
-    cert,
-    GNUTLS_SAN_DNSNAME,
-    hostname
-  );
-  if(res != 0) return res;
+    if(res != 0) return res;
+  }
 
-  res = gnutls_x509_crt_sign2(cert, cert, key, GNUTLS_DIG_SHA1, 0);
-  if(res != 0) return res;
+  if(desc->san_dnsname != NULL)
+  {
+    res = gnutls_x509_crt_set_subject_alternative_name(
+      cert,
+      GNUTLS_SAN_DNSNAME,
+      desc->san_dnsname
+    );
+
+    if(res != 0) return res;
+  }
 
   return 0;
 }
@@ -581,18 +585,22 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
 }
 
 /**
- * inf_cert_util_create_self_signed_certificate:
- * @key: The key with which to sign the certificate.
- * @error: Location to store error information, if any.
+ * inf_cert_util_create_certificate:
+ * @key: The private key to be used for the new certificate.
+ * @desc: The certificate properties.
+ * @error: Location to store error information, if any, or %NULL.
  *
- * Creates an new self-signed X.509 certificate signed with @key.
+ * Creates a new X.509 certificate with the given key and properties. If
+ * an error occurs the function returns %NULL and @error is set. The
+ * returned certificate will not be signed.
  *
- * Returns: A certificate to be freed with gnutls_x509_crt_deinit(),
- * or %NULL on error.
+ * Returns: A new #gnutls_x509_crt_t, or %NULL. Free with
+ * gnutls_x509_crt_deinit() when no longer needed.
  */
 gnutls_x509_crt_t
-inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
-                                             GError** error)
+inf_cert_util_create_certificate(gnutls_x509_privkey_t key,
+                                 const InfCertUtilDescription* desc,
+                                 GError** error)
 {
   gnutls_x509_crt_t cert;
   int res;
@@ -604,7 +612,95 @@ inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
     return NULL;
   }
 
-  res = inf_cert_util_create_self_signed_certificate_impl(cert, key);
+  res = inf_cert_util_create_certificate_impl(cert, key, desc);
+  if(res != 0)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  return cert;
+}
+
+/**
+ * inf_cert_util_create_signed_certificate:
+ * @key: The private key to be used for the new certificate.
+ * @desc: The certificate properties.
+ * @sign_cert: A certificate used to sign the newly created certificate.
+ * @sign_key: The private key for @sign_cert.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Creates a new X.509 certificate with the given key and properties. If
+ * an error occurs the function returns %NULL and @error is set. The
+ * returned certificate will be signed by @sign_cert.
+ *
+ * Returns: A new #gnutls_x509_crt_t, or %NULL. Free with
+ * gnutls_x509_crt_deinit() when no longer needed.
+ */
+gnutls_x509_crt_t
+inf_cert_util_create_signed_certificate(gnutls_x509_privkey_t key,
+                                        const InfCertUtilDescription* desc,
+                                        gnutls_x509_crt_t sign_cert,
+                                        gnutls_x509_privkey_t sign_key,
+                                        GError** error)
+{
+  gnutls_x509_crt_t cert;
+  int res;
+
+  cert = inf_cert_util_create_certificate(key, desc, error);
+  if(cert == NULL) return NULL;
+
+  res = gnutls_x509_crt_sign2(
+    cert,
+    sign_cert,
+    sign_key,
+    GNUTLS_DIG_SHA256,
+    0
+  );
+
+  if(res != 0)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_gnutls_set_error(error, res);
+    return NULL;
+  }
+
+  return cert;
+}
+
+/**
+ * inf_cert_util_create_self_signed_certificate:
+ * @key: The private key to be used for the new certificate.
+ * @desc: The certificate properties.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Creates a new X.509 certificate with the given key and properties. If
+ * an error occurs the function returns %NULL and @error is set. The
+ * returned certificate will be signed by itself.
+ *
+ * Returns: A new #gnutls_x509_crt_t, or %NULL. Free with
+ * gnutls_x509_crt_deinit() when no longer needed.
+ */
+gnutls_x509_crt_t
+inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
+                                             const InfCertUtilDescription* desc,
+                                             GError** error)
+{
+  gnutls_x509_crt_t cert;
+  int res;
+
+  cert = inf_cert_util_create_certificate(key, desc, error);
+  if(cert == NULL) return NULL;
+
+  res = gnutls_x509_crt_sign2(
+    cert,
+    cert,
+    key,
+    GNUTLS_DIG_SHA256,
+    0
+  );
+
   if(res != 0)
   {
     gnutls_x509_crt_deinit(cert);
