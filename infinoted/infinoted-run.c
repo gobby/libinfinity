@@ -34,78 +34,6 @@
 static const guint8 INFINOTED_RUN_IPV6_ANY_ADDR[16] =
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-static void
-infinoted_run_directory_certificate_cb(InfXmppConnection* connection,
-                                       gnutls_session_t session,
-                                       InfCertificateChain* chain,
-                                       gpointer user_data)
-{
-  InfinotedRun* run;
-  unsigned int verify_result;
-  int res;
-  gboolean authenticated;
-
-  /* TODO: Is there a way to tell the client why we don't like its certificate? */
-
-  run = (InfinotedRun*)user_data;
-  authenticated = TRUE;
-
-  if(run->startup->cas != NULL)
-  {
-    if(chain != NULL)
-    {
-      res = gnutls_x509_crt_list_verify(
-        inf_certificate_chain_get_raw(chain),
-        inf_certificate_chain_get_n_certificates(chain),
-        run->startup->cas,
-        run->startup->n_cas,
-        NULL,
-        0,
-        GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
-        &verify_result
-      );
-
-      if(res != GNUTLS_E_SUCCESS ||
-         (verify_result & GNUTLS_CERT_INVALID) != 0)
-      {
-        authenticated = FALSE;
-      }
-    }
-    else
-    {
-      /* No certificate was sent */
-
-      /* TODO: We cann call a gnutls function to request the certificate,
-       * which might result at a nicer error message on the client */
-      authenticated = FALSE;
-    }
-  }
-
-  if(authenticated == TRUE)
-    inf_xmpp_connection_certificate_verify_continue(connection);
-  else
-    inf_xmpp_connection_certificate_verify_cancel(connection);
-}
-
-static void
-infinoted_run_directory_connection_added(InfdDirectory* directory,
-                                         InfXmlConnection* connection,
-                                         gpointer user_data)
-{
-  InfinotedRun* run;
-  run = (InfinotedRun*)user_data;
-
-  if(INF_IS_XMPP_CONNECTION(connection))
-  {
-    inf_xmpp_connection_set_certificate_callback(
-      INF_XMPP_CONNECTION(connection),
-      GNUTLS_CERT_REQUEST, /* request a client certificate */
-      infinoted_run_directory_certificate_cb,
-      run
-    );
-  }
-}
-
 static gboolean
 infinoted_run_load_directory(InfinotedRun* run,
                              InfinotedStartup* startup,
@@ -131,19 +59,6 @@ infinoted_run_load_directory(InfinotedRun* run,
     INF_IO(run->io),
     INFD_STORAGE(storage),
     communication_manager
-  );
-
-  infd_directory_set_certificate(
-    run->directory,
-    startup->private_key,
-    startup->certificates
-  );
-
-  g_signal_connect(
-    G_OBJECT(run->directory),
-    "connection-added",
-    G_CALLBACK(infinoted_run_directory_connection_added),
-    run
   );
 
   infd_directory_enable_chat(run->directory, TRUE);
@@ -391,8 +306,6 @@ infinoted_run_free(InfinotedRun* run)
     infinoted_plugin_manager_free(run->plugin_manager);
     run->plugin_manager = NULL;
   }
-
-  /* TODO: Unregister certificate callbacks */
 
   g_object_unref(run->io);
   g_object_unref(run->directory);

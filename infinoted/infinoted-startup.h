@@ -36,9 +36,6 @@ struct _InfinotedStartup {
   InfCertificateChain* certificates;
   InfCertificateCredentials* credentials;
   InfSaslContext* sasl_context;
-
-  gnutls_x509_crt_t* cas;
-  guint n_cas;
 };
 
 InfinotedStartup*

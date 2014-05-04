@@ -50,7 +50,6 @@ struct _InfinotedOptions {
   gchar** pam_allowed_users;
   gchar** pam_allowed_groups;
 #endif /* LIBINFINITY_HAVE_PAM */
-  gchar* ca_list_file;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   gboolean daemonize;

@@ -4,6 +4,7 @@ endif
 
 plugin_LTLIBRARIES = \
 	libinfinoted-plugin-autosave.la \
+	libinfinoted-plugin-certificate-auth.la \
 	libinfinoted-plugin-directory-sync.la \
 	libinfinoted-plugin-linekeeper.la \
 	libinfinoted-plugin-logging.la \
@@ -29,6 +30,12 @@ libinfinoted_plugin_autosave_la_LIBADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(inftext_LIBS) \
+	$(infinity_LIBS)
+
+libinfinoted_plugin_certificate_auth_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
 	$(infinity_LIBS)
 
 libinfinoted_plugin_directory_sync_la_LIBADD = \
@@ -91,6 +98,9 @@ endif
 
 libinfinoted_plugin_autosave_la_SOURCES = \
 	infinoted-plugin-autosave.c
+
+libinfinoted_plugin_certificate_auth_la_SOURCES = \
+	infinoted-plugin-certificate-auth.c
 
 libinfinoted_plugin_directory_sync_la_SOURCES = \
 	infinoted-plugin-directory-sync.c

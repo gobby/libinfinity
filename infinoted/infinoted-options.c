@@ -179,16 +179,6 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     N_("GROUPS")
 #endif
   }, {
-    "ca-list-file",
-    INFINOTED_PARAMETER_STRING,
-    0,
-    offsetof(InfinotedOptions, ca_list_file),
-    infinoted_parameter_convert_filename,
-    0,
-    N_("If set, require clients to authenticate themselves by showing a "
-       "client certificate issued by one of the CAs from this file."),
-    N_("CA-FILE"),
-  }, {
     NULL,
     0,
     0,
@@ -980,7 +970,6 @@ infinoted_options_new(const gchar* const* config_files,
   options->pam_allowed_users = NULL;
   options->pam_allowed_groups = NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
-  options->ca_list_file = NULL;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   options->daemonize = FALSE;
@@ -1016,7 +1005,6 @@ infinoted_options_free(InfinotedOptions* options)
   g_strfreev(options->pam_allowed_users);
   g_strfreev(options->pam_allowed_groups);
 #endif
-  g_free(options->ca_list_file);
 
   if(options->config_key_file != NULL)
     g_key_file_free(options->config_key_file);
