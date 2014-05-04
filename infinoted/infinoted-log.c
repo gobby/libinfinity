@@ -210,6 +210,8 @@ infinoted_log_entry(InfinotedLog* log,
   --priv->recursion_depth;
 
   /*g_rec_mutex_unlock(priv->mutex);*/
+
+  g_free(text);
 }
 
 static void

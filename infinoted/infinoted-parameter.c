@@ -378,6 +378,9 @@ infinoted_parameter_convert_filename(gpointer out,
   out_str = (gchar**)out;
   in_str = (gchar**)in;
 
+  /* free previous entry */
+  g_free(*out_str);
+
   if(*in_str != NULL && **in_str != '\0')
   {
     *out_str = g_filename_from_utf8(*in_str, -1, NULL, NULL, error);
