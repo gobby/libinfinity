@@ -59,8 +59,8 @@ infinoted_startup_load_key(InfinotedLog* log,
 
     /* TODO: Open the key file beforehand */
 
-    infinoted_log_info(log, _("Generating 2048 bit RSA private key..."));
-    key = inf_cert_util_create_private_key(GNUTLS_PK_RSA, 2048, error);
+    infinoted_log_info(log, _("Generating 4096 bit RSA private key..."));
+    key = inf_cert_util_create_private_key(GNUTLS_PK_RSA, 4096, error);
 
     if(key == NULL)
       return NULL;
