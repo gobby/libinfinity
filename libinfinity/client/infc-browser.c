@@ -1497,6 +1497,12 @@ infc_browser_disconnected(InfcBrowser* browser)
     g_object_notify(G_OBJECT(browser), "chat-session");
   }
 
+  if(priv->welcome_timeout != NULL)
+  {
+    inf_io_remove_timeout(priv->io, priv->welcome_timeout);
+    priv->welcome_timeout = NULL;
+  }
+
   priv->status = INF_BROWSER_CLOSED;
   g_object_notify(G_OBJECT(browser), "status");
   g_object_thaw_notify(G_OBJECT(browser));
