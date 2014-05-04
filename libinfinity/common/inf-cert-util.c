@@ -961,18 +961,18 @@ inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
 }
 
 /**
- * inf_cert_util_check_certificate_signature:
+ * inf_cert_util_check_certificate_key:
  * @cert: The certificate to be checked.
  * @key: The private key to be checked.
  *
- * This function returns %TRUE if @key was used to sign @cert, or %FALSE
- * otherwise.
+ * This function returns %TRUE if @key is the private key belonging to @cert,
+ * or %FALSE otherwise.
  *
  * Returns: %TRUE if @cert was signed with @key, or %FALSE otherwise.
  */
 gboolean
-inf_cert_util_check_certificate_signature(gnutls_x509_crt_t cert,
-                                          gnutls_x509_privkey_t key)
+inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
+                                    gnutls_x509_privkey_t key)
 {
   unsigned char cert_id[20];
   size_t cert_id_size;
