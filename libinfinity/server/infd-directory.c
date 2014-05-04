@@ -670,7 +670,7 @@ infd_directory_write_account_list_foreach_func(gpointer key,
   info = (const InfdAclAccountInfo*)value;
 
   /* This is for writing the account list to storage. We omit writing the
-   * default account. */
+   * default account, and all transient accounts. */
   if(strcmp(info->account.id, "default") != 0)
     if(info->transient == FALSE)
       data->accounts[data->index++] = info;
@@ -696,8 +696,6 @@ infd_directory_write_account_list(InfdDirectory* directory)
       infd_directory_write_account_list_foreach_func,
       &data
     );
-
-    g_assert(data.index == g_hash_table_size(priv->accounts) - 1);
 
     error = NULL;
     infd_storage_write_account_list(
