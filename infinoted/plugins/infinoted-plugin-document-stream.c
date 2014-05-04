@@ -1402,25 +1402,17 @@ infinoted_plugin_document_stream_initialize(InfinotedPluginManager* manager,
   );
 
   if(!infinoted_plugin_document_stream_set_nonblock(plugin->socket, error))
-  {
-    close(plugin->socket);
-    plugin->socket = -1;
     return FALSE;
-  }
 
   if(bind(plugin->socket, (struct sockaddr*)&addr, sizeof(addr)) == -1)
   {
     infinoted_plugin_document_stream_make_system_error(errno, error);
-    close(plugin->socket);
-    plugin->socket = -1;
     return FALSE;
   }
 
   if(listen(plugin->socket, 5) == -1)
   {
     infinoted_plugin_document_stream_make_system_error(errno, error);
-    close(plugin->socket);
-    plugin->socket = -1;
     return FALSE;
   }
 

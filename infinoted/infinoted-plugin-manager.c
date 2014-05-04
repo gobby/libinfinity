@@ -384,6 +384,9 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
 
     if(local_error != NULL)
     {
+      if(instance->plugin->on_deinitialize != NULL)
+        instance->plugin->on_deinitialize(instance+1);
+
       g_free(instance);
       g_module_close(module);
 

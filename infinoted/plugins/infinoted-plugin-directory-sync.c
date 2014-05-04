@@ -448,11 +448,7 @@ infinoted_plugin_directory_sync_initialize(InfinotedPluginManager* manager,
   plugin->manager = manager;
 
   if(inf_file_util_create_directory(plugin->directory, 0700, error) == FALSE)
-  {
-    g_free(plugin->directory);
-    g_free(plugin->hook);
     return FALSE;
-  }
 
   g_signal_connect(
     G_OBJECT(infinoted_plugin_manager_get_directory(manager)),
