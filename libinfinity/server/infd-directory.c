@@ -9199,10 +9199,6 @@ infd_directory_get_chat_session(InfdDirectory* directory)
   return INFD_DIRECTORY_PRIVATE(directory)->chat_session;
 }
 
-/* TODO: Try to share code
- * between handle_request_certificate and create_acl_account and
- * this function. */
-
 /**
  * infd_directory_create_acl_account:
  * @directory: A #InfdDirectory.
