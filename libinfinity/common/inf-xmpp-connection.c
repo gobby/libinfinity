@@ -103,6 +103,7 @@ struct _InfXmppConnectionPrivate {
   InfXmppConnectionSecurityPolicy security_policy;
 
   InfXmppConnectionStatus status;
+  gnutls_certificate_request_t certificate_request;
   InfXmppConnectionCrtCallback certificate_callback;
   gpointer certificate_callback_user_data;
 
@@ -1372,7 +1373,7 @@ inf_xmpp_connection_tls_init(InfXmppConnection* xmpp)
     {
       gnutls_certificate_server_set_request(
         priv->session,
-        GNUTLS_CERT_REQUEST
+        priv->certificate_request
       );
     }
     break;
@@ -3540,6 +3541,7 @@ inf_xmpp_connection_init(GTypeInstance* instance,
   priv->remote_hostname = NULL;
   priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
 
+  priv->certificate_request = GNUTLS_CERT_IGNORE;
   priv->certificate_callback = NULL;
   priv->certificate_callback_user_data = NULL;
 
@@ -4442,6 +4444,7 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
 /**
  * inf_xmpp_connection_set_certificate_callback:
  * @xmpp: A #InfXmppConnection.
+ * @req: Whether to request a client certificate from the peer.
  * @cb: Function to be called to verify the peer's certificate, or %NULL.
  * @user_data: Additional data to pass to the callback function.
  *
@@ -4465,6 +4468,7 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
  */
 void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
+                                             gnutls_certificate_request_t req,
                                              InfXmppConnectionCrtCallback cb,
                                              gpointer user_data)
 {
@@ -4473,6 +4477,7 @@ inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
   g_return_if_fail(INF_IS_XMPP_CONNECTION(xmpp));
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  priv->certificate_request = req;
   priv->certificate_callback = cb;
   priv->certificate_callback_user_data = user_data;
 }

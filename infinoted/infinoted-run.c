@@ -99,6 +99,7 @@ infinoted_run_directory_connection_added(InfdDirectory* directory,
   {
     inf_xmpp_connection_set_certificate_callback(
       INF_XMPP_CONNECTION(connection),
+      GNUTLS_CERT_REQUEST, /* request a client certificate */
       infinoted_run_directory_certificate_cb,
       run
     );

@@ -172,6 +172,7 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp);
 
 void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
+                                             gnutls_certificate_request_t req,
                                              InfXmppConnectionCrtCallback cb,
                                              gpointer user_data);
 

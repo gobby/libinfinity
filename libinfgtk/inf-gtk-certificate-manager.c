@@ -602,6 +602,7 @@ inf_gtk_certificate_manager_add_connection_cb(InfXmppManager* manager,
   {
     inf_xmpp_connection_set_certificate_callback(
       connection,
+      GNUTLS_CERT_REQUIRE, /* require a server certificate */
       inf_gtk_certificate_manager_certificate_func,
       user_data
     );
