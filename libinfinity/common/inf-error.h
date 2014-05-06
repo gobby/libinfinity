@@ -256,6 +256,13 @@ inf_gnutls_set_error(GError** error,
                      int error_code);
 
 GQuark
+inf_gnutls_certificate_verification_error_quark(void);
+
+void
+inf_gnutls_certificate_verification_set_error(GError** error,
+                                              int verify);
+
+GQuark
 inf_gsasl_error_quark(void);
 
 void

@@ -1185,6 +1185,8 @@ inf_authentication_detail_error_quark
 inf_authentication_detail_strerror
 inf_gnutls_error_quark
 inf_gnutls_set_error
+inf_gnutls_certification_verification_error_quark
+inf_gnutls_certification_verification_set_error
 inf_gsasl_error_quark
 inf_gsasl_set_error
 </SECTION>

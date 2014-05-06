@@ -310,6 +310,63 @@ inf_gnutls_set_error(GError** error,
 }
 
 /**
+ * inf_gnutls_certificate_verification_error_quark:
+ *
+ * Error domain for GnuTLS certificate verification errors. Errors in this
+ * domain will be GnuTLS certificate verification results as returned by
+ * gnutls_certificate_verify_peers2(). See #GError for information on
+ * error domains.
+ *
+ * Returns: A GQuark.
+ */
+GQuark
+inf_gnutls_certificate_verification_error_quark(void)
+{
+  return g_quark_from_static_string(
+    "INF_GNUTLS_CERTIFICATE_VERIFICATION_ERROR"
+  );
+}
+
+/**
+ * inf_gnutls_certificate_verification_set_error:
+ * @error: Location to store the error, or %NULL.
+ * @verify: A GnuTLS certificate verification code.
+ *
+ * Sets a #GError from a certificate verification result.
+ * If @error is %NULL, does nothing.
+ */
+void
+inf_gnutls_certificate_verification_set_error(GError** error,
+                                              int verify)
+{
+  const gchar* message;
+
+  if(error != NULL)
+  {
+    if(verify & GNUTLS_CERT_REVOKED)
+      message = _("The certificate was revoked");
+    else if(verify & GNUTLS_CERT_SIGNER_NOT_FOUND)
+      message = _("The certificate was not signed by a trusted CA");
+    else if(verify & GNUTLS_CERT_SIGNER_NOT_CA)
+      message = _("The signer of the certificate is not a CA");
+    else if(verify & GNUTLS_CERT_INSECURE_ALGORITHM)
+      message = _("The certificate uses an insecure algorithm");
+    else if(verify & GNUTLS_CERT_NOT_ACTIVATED)
+      message = _("The certificate is not yet activated");
+    else if(verify & GNUTLS_CERT_EXPIRED)
+      message = _("The certificate has expired");
+    else if(verify & GNUTLS_CERT_INVALID)
+      message = _("The certificate is invalid");
+
+    *error = g_error_new_literal(
+      inf_gnutls_certificate_verification_error_quark(),
+      verify,
+      message
+    );
+  }
+}
+
+/**
  * inf_gsasl_error_quark:
  *
  * Error domain for GNU SASL errors. Errors in this domain will be GNU SASL
