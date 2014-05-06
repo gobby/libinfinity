@@ -212,7 +212,8 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
     priv->queries = g_slist_remove(priv->queries, query);
     inf_gtk_certificate_manager_query_free(query);
 
-    inf_xmpp_connection_certificate_verify_cancel(connection);
+    /* TODO: report reason */
+    inf_xmpp_connection_certificate_verify_cancel(connection, NULL);
     break;
   default:
     g_assert_not_reached();
@@ -401,8 +402,10 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
   if(ret < 0)
   {
-    g_warning(_("Could not verify certificate: %s"), gnutls_strerror(ret));
-    inf_xmpp_connection_certificate_verify_cancel(connection);
+    error = NULL;
+    inf_gnutls_set_error(ret, &error);
+    inf_xmpp_connection_certificate_verify_cancel(connection, error);
+    g_error_free(error);
   }
   else
   {

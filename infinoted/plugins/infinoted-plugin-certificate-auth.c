@@ -107,6 +107,7 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
   InfinotedPluginCertificateAuth* plugin;
   int res;
   int verify_result;
+  GError* error;
 
   plugin = (InfinotedPluginCertificateAuth*)user_data;
 
@@ -123,10 +124,22 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
       &verify_result
     );
 
-    if(res != GNUTLS_E_SUCCESS || (verify_result & GNUTLS_CERT_INVALID) != 0)
-      inf_xmpp_connection_certificate_verify_cancel(xmpp);
+    error = NULL;
+
+    if(res != GNUTLS_E_SUCCESS)
+      inf_gnutls_set_error(res, &error);
+    else if( (verify_result & GNUTLS_CERT_INVALID) != 0)
+      inf_gnutls_certificate_verification_set_error(res, &error);
+
+    if(error != NULL)
+    {
+      inf_xmpp_connection_certificate_verify_cancel(xmpp, error);
+      g_error_free(error);
+    }
     else
+    {
       inf_xmpp_connection_certificate_verify_continue(xmpp);
+    }
   }
   else
   {

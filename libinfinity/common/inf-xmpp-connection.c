@@ -4507,17 +4507,26 @@ inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp)
 /**
  * inf_xmpp_connection_certificate_verify_cancel:
  * @xmpp: A #InfXmppConnection.
+ * @error: Reason why the certificate is not trusted, or %NULL.
  *
  * Call this function when your callback set in
  * inf_xmpp_connection_set_certificate_callback() was called and you do not
  * trust the peer's certificate. The connection will then be closed with a
  * corresponding error.
+ *
+ * If @error is non-%NULL, then it should contain a reason why the certificate
+ * was not trusted. If you verified the peer's certificate with
+ * gnutls_certificate_verify_peers2(), or gnutls_x509_crt_list_verify(), then
+ * a corresponding error can be generated with the verification result
+ * with inf_gnutls_verification_result_set_error(). The reason is then shown
+ * to the local user.
  */
 void
-inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
+inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,
+                                              const GError* error)
 {
   InfXmppConnectionPrivate* priv;
-  GError* error;
+  GError* local_error;
 
   g_return_if_fail(INF_IS_XMPP_CONNECTION(xmpp));
 
@@ -4527,23 +4536,47 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp)
 
   if(priv->site == INF_XMPP_CONNECTION_CLIENT)
   {
-    error = g_error_new_literal(
-      inf_xmpp_connection_error_quark,
-      INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
-      _("The server certificate is not trusted")
-    );
+    if(error == NULL)
+    {
+      local_error = g_error_new_literal(
+        inf_xmpp_connection_error_quark,
+        INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+        _("The server certificate is not trusted")
+      );
+    }
+    else
+    {
+      local_error = g_error_new(
+        inf_xmpp_connection_error_quark,
+        INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+        _("The server certificate is not trusted: %s"),
+        error->message
+      );
+    }
   }
   else
   {
-    error = g_error_new_literal(
-      inf_xmpp_connection_error_quark,
-      INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
-      _("The client certificate is not trusted")
-    );
+    if(error == NULL)
+    {
+      local_error = g_error_new_literal(
+        inf_xmpp_connection_error_quark,
+        INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+        _("The client certificate is not trusted")
+      );
+    }
+    else
+    {
+      local_error = g_error_new(
+        inf_xmpp_connection_error_quark,
+        INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
+        _("The client certificate is not trusted: %s"),
+        error->message
+      );
+    }
   }
 
-  inf_xml_connection_error(INF_XML_CONNECTION(xmpp), error);
-  g_error_free(error);
+  inf_xml_connection_error(INF_XML_CONNECTION(xmpp), local_error);
+  g_error_free(local_error);
 
   inf_xmpp_connection_terminate(xmpp);
 }
