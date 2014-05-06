@@ -286,7 +286,7 @@ inf_text_chunk_get_segment(InfTextChunk* self,
   }
   else
   {
-    if(*index)
+    if(index != NULL)
       *index = 0;
   }
   
