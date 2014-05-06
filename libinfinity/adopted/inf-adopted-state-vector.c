@@ -822,6 +822,8 @@ inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
     NULL
   );
 
+  g_assert(vec->data != NULL || vec->size == 0);
+
   str = g_string_sized_new(vec->size * 12);
   vec_pos = 0;
 
@@ -830,7 +832,7 @@ inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
     orig_comp = orig->data + orig_pos;
     if(orig_comp->n == 0) continue;
 
-    g_assert(vec_pos != vec->size);
+    g_assert(vec_pos < vec->size);
     vec_comp = vec->data + vec_pos;
     while(vec_comp->id < orig_comp->id)
     {
@@ -841,7 +843,7 @@ inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
 
       ++vec_pos;
 
-      g_assert(vec_pos != vec->size);
+      g_assert(vec_pos < vec->size);
       vec_comp = vec->data + vec_pos;
     }
 
@@ -866,7 +868,7 @@ inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
 
   /* All remaining components in vec have no counterpart in orig, meaning
    * their values in orig are implicitely zero. */
-  while(vec_pos != vec->size)
+  while(vec_pos < vec->size)
   {
     vec_comp = vec->data + vec_pos;
     if (vec_comp->n > 0)

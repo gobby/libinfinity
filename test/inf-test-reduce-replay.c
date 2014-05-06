@@ -548,6 +548,11 @@ inf_test_reduce_replay_reduce(xmlDocPtr doc,
     /* Play next request */
     if(inf_adopted_session_replay_play_next(local_replay, &error))
     {
+      /* The InfAdoptedSessionReply is synchronized with our request
+       * variable, so if we could play another step, request cannot be
+       * NULL at this point. */
+      g_assert(request != NULL);
+
       ++i;
       fprintf(stderr, "%.6u... ", i);
       fflush(stderr);
