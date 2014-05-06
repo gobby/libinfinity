@@ -6674,6 +6674,8 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
   GSList* item;
+  InfdDirectorySyncIn* sync_in;
+  InfXmlConnection* sync_in_connection;
   InfdDirectorySubreq* request;
   InfdDirectoryConnectionInfo* info;
 
@@ -6682,8 +6684,39 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
 
   /* TODO: Update last seen time, and write user list to storage */
 
+  /* Remove sync-ins from this connection */
+  item = priv->sync_ins;
+  while(item != NULL)
+  {
+    sync_in = (InfdDirectorySyncIn*)item->data;
+    item = item->next;
+
+    g_object_get(
+      G_OBJECT(sync_in->request),
+      "requestor", &sync_in_connection,
+      NULL
+    );
+
+    if(sync_in_connection == connection)
+      infd_directory_remove_sync_in(directory, sync_in);
+
+    g_object_unref(sync_in_connection);
+  }
+
+  /* Remove all subscription requests for this connection */
+  item = priv->subscription_requests;
+  while(item != NULL)
+  {
+    request = (InfdDirectorySubreq*)item->data;
+    item = item->next;
+
+    if(request->connection == connection)
+      infd_directory_remove_subreq(directory, request);
+  }
+
   priv->account_list_connections =
     g_slist_remove(priv->account_list_connections, connection);
+
   if(priv->root != NULL)
   {
     if(priv->root->shared.subdir.explored == TRUE)
@@ -6699,17 +6732,6 @@ infd_directory_member_removed_cb(InfCommunicationGroup* group,
         connection
       );
     }
-  }
-
-  /* Remove all subscription requests for this connection */
-  item = priv->subscription_requests;
-  while(item != NULL)
-  {
-    request = (InfdDirectorySubreq*)item->data;
-    item = item->next;
-
-    if(request->connection == connection)
-      infd_directory_remove_subreq(directory, request);
   }
 
   info = g_hash_table_lookup(priv->connections, connection);
@@ -6744,6 +6766,7 @@ infd_directory_set_storage(InfdDirectory* directory,
   GError* error;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
+  g_assert(priv->root != NULL);
 
   /* If we are setting a new storage, then remove all documents. If we are
    * going to no storage, then keep current set of documents. */
@@ -6752,8 +6775,7 @@ infd_directory_set_storage(InfdDirectory* directory,
     /* TODO: Update last seen times of all connected users,
      * and write user list to storage. */
 
-    /* priv->root may be NULL if this is called from dispose. */
-    if(priv->root != NULL && priv->root->shared.subdir.explored == TRUE)
+    if(priv->root->shared.subdir.explored == TRUE)
     {
       /* Clear directory tree. This will cause all sessions to be saved in
        * storage. Note that sessions are not closed, but further
@@ -6975,29 +6997,7 @@ infd_directory_dispose(GObject* object)
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  /* Disable chat if any */
-  if(priv->chat_session != NULL)
-    infd_directory_enable_chat(directory, FALSE);
-
-  /* Cancel sync-ins */
-  while(priv->sync_ins != NULL)
-    infd_directory_remove_sync_in(directory, priv->sync_ins->data);
-
-  /* This frees the complete directory tree and saves sessions into the
-   * storage. */
-  infd_directory_node_unlink_child_sessions(
-    directory,
-    priv->root,
-    NULL,
-    TRUE
-  );
-
-  infd_directory_node_free(directory, priv->root);
-  priv->root = NULL;
-
-  g_hash_table_destroy(priv->nodes);
-  priv->nodes = NULL;
-
+  /* First, remove all connections */
   for(g_hash_table_iter_init(&iter, priv->connections);
       g_hash_table_iter_next(&iter, &key, NULL);
       g_hash_table_iter_init(&iter, priv->connections))
@@ -7009,24 +7009,41 @@ infd_directory_dispose(GObject* object)
   }
   
   g_assert(g_hash_table_size(priv->connections) == 0);
-
-  /* Should have been cleared by removing all connections */
   g_assert(priv->subscription_requests == NULL);
-
-  g_slist_free(priv->account_list_connections);
+  g_assert(priv->account_list_connections == NULL);
+  g_assert(priv->sync_ins == NULL);
 
   /* We have dropped all references to connections now, so these do not try
    * to tell anyone that the directory tree has gone or whatever. */
-
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(priv->group),
     G_CALLBACK(infd_directory_member_removed_cb),
     directory
   );
 
+  /* Disable chat if any */
+  if(priv->chat_session != NULL)
+    infd_directory_enable_chat(directory, FALSE);
+
+  /* This frees the complete directory tree and saves sessions into the
+   * storage. */
+  infd_directory_node_unlink_child_sessions(
+    directory,
+    priv->root,
+    NULL,
+    TRUE
+  );
+
+  infd_directory_set_storage(directory, NULL);
+
+  infd_directory_node_free(directory, priv->root);
+  priv->root = NULL;
+
+  g_hash_table_destroy(priv->nodes);
+  priv->nodes = NULL;
+
   g_object_unref(priv->group);
   g_object_unref(priv->communication_manager);
-  infd_directory_set_storage(directory, NULL);
 
   g_hash_table_destroy(priv->connections);
   priv->connections = NULL;
