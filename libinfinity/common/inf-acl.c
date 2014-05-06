@@ -990,7 +990,7 @@ inf_acl_sheet_set_merge_sheets(InfAclSheetSet* sheet_set,
   guint i;
   InfAclSheet* sheet;
 
-  g_return_if_fail(other != NULL);
+  g_return_val_if_fail(other != NULL, NULL);
 
   if(sheet_set == NULL)
     sheet_set = inf_acl_sheet_set_new();

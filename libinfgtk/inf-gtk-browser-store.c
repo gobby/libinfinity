@@ -2456,8 +2456,8 @@ inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,
   InfGtkBrowserStoreItem* item;
   gchar* remote_id;
 
-  g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_val_if_fail(INF_GTK_IS_BROWSER_STORE(store), NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
   item = inf_gtk_browser_store_find_item_by_connection(store, connection);

@@ -8975,9 +8975,9 @@ infd_directory_set_acl_account_for_connection(InfdDirectory* directory,
   InfdDirectoryPrivate* priv;
   const InfdAclAccountInfo* info;
 
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
-  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
-  g_return_val_if_fail(account != NULL, NULL);
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
+  g_return_if_fail(account != NULL);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 

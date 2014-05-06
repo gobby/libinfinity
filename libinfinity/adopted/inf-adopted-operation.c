@@ -317,10 +317,10 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
 {
   InfAdoptedOperationIface* iface;
 
-  g_return_if_fail(INF_ADOPTED_IS_OPERATION(operation));
-  g_return_if_fail(INF_ADOPTED_IS_USER(by));
-  g_return_if_fail(INF_IS_BUFFER(buffer));
-  g_return_if_fail(error == NULL || *error == NULL);
+  g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), FALSE);
+  g_return_val_if_fail(INF_ADOPTED_IS_USER(by), FALSE);
+  g_return_val_if_fail(INF_IS_BUFFER(buffer), FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
 
   iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
 
@@ -381,7 +381,7 @@ inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(transformed), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(by), NULL);
   g_return_val_if_fail(INF_IS_BUFFER(buffer), NULL);
-  g_return_if_fail(error == NULL || *error == NULL);
+  g_return_val_if_fail(error == NULL || *error == NULL, NULL);
 
   iface = INF_ADOPTED_OPERATION_GET_IFACE(operation);
 

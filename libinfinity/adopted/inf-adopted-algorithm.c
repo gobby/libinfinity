@@ -2013,26 +2013,28 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   GError* local_error;
   gchar* request_str;
 
-  g_return_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm));
-  g_return_if_fail(INF_ADOPTED_IS_REQUEST(request));
+  g_return_val_if_fail(INF_ADOPTED_IS_ALGORITHM(algorithm), FALSE);
+  g_return_val_if_fail(INF_ADOPTED_IS_REQUEST(request), FALSE);
 
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
-  g_return_if_fail(
+  g_return_val_if_fail(
     inf_adopted_state_vector_causally_before(
       inf_adopted_request_get_vector(request),
       priv->current
-    )
+    ),
+    FALSE
   );
 
-  g_return_if_fail(
+  g_return_val_if_fail(
     apply == TRUE || (
       inf_adopted_state_vector_compare(
         inf_adopted_request_get_vector(request),
         priv->current
       ) == 0 && 
       inf_adopted_request_get_request_type(request) == INF_ADOPTED_REQUEST_DO
-    )
+    ),
+    FALSE
   );
 
   user = INF_ADOPTED_USER(
@@ -2042,9 +2044,10 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     )
   );
 
-  g_return_if_fail(user != NULL);
+  g_return_val_if_fail(user != NULL, FALSE);
 
-  g_return_if_fail(priv->execute_request == NULL); /* not re-entrant */
+  /* not re-entrant */
+  g_return_val_if_fail(priv->execute_request == NULL, FALSE);
   priv->execute_request = request;
 
   inf_adopted_request_set_execute_time(

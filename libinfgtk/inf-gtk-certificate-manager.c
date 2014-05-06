@@ -19,7 +19,7 @@
 
 /* TODO: Rename to InfGtkCertificateChecker */
 /* TODO: Put the non-GUI-relevant parts of this code into libinfinity */
-/* TODO: Support CRLs */
+/* TODO: Support CRLs/OCSP */
 
 #include <libinfgtk/inf-gtk-certificate-manager.h>
 #include <libinfgtk/inf-gtk-certificate-dialog.h>
