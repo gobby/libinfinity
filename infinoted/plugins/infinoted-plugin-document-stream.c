@@ -1008,7 +1008,7 @@ infinoted_plugin_document_stream_io_in(
   {
   case INFINOTED_PLUGIN_DOCUMENT_STREAM_NORMAL:
     g_assert_not_reached();
-    break;
+    return FALSE;
   case INFINOTED_PLUGIN_DOCUMENT_STREAM_RECEIVING:
     stream->status = INFINOTED_PLUGIN_DOCUMENT_STREAM_NORMAL;
 
@@ -1020,19 +1020,16 @@ infinoted_plugin_document_stream_io_in(
     }
 
     if(bytes == 0)
-    {
       infinoted_plugin_document_stream_close_stream(stream);
-      return TRUE;
-    }
-    
-    break;
+
+    return TRUE;
   case INFINOTED_PLUGIN_DOCUMENT_STREAM_CLOSED:
     /* The stream was closed during the received callback. */
     g_slice_free(InfinotedPluginDocumentStreamStream, stream);
-    break;
+    return TRUE;
   default:
     g_assert_not_reached();
-    break;
+    return FALSE;
   }
 }
 
