@@ -125,120 +125,82 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
     info_text = g_string_sized_new(256);
 
     if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
+       INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED)
     {
-      ctext = _("The certificate of the host has changed!");
-      markup = g_markup_printf_escaped("<b>%s</b>", ctext);
-
-      g_string_append(info_text, markup);
-      g_free(markup);
-      g_string_append_c(info_text, ' ');
+      /* TODO: Here it might also be interesting to show the stored
+       * certificate */
 
       if(priv->certificate_flags &
          INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED)
       {
+        ctext = _("The host has presented a new certificate");
+        markup = g_markup_printf_escaped("<b>%s</b>", ctext);
+
+        g_string_append(info_text, markup);
+        g_free(markup);
+        g_string_append_c(info_text, ' ');
+
         g_string_append(
           info_text,
-          _("The previous certificate of the server has expired.")
+          _("Its previous certificate has expired. Please make sure that you "
+            "trust the new certificate.")
         );
       }
       else
       {
-        /* TODO: Don't show this if the issuer of the new certificate
-         * is trusted, either because it's in the trust file or because it
-         * is in the known hosts file. */
+        ctext = _("The host has presented an unexpected certificate!");
+        markup = g_markup_printf_escaped("<b>%s</b>", ctext);
+
+        g_string_append(info_text, markup);
+        g_free(markup);
+        g_string_append_c(info_text, ' ');
+
         g_string_append(
           info_text,
-          _("It is possible that the connection to the server is being "
-            "hijacked. It is also possible that the host just has got a new "
-            "certificate. However, please only continue the connection if "
-            "you expected this warning.")
+          _("This means someone might be eavesdropping on the connection. "
+            "Only connect if you expected this message, otherwise please "
+            "contact the server administrator.")
         );
       }
     }
-
-    if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED)
+    else
     {
-      if(info_text->len > 0)
-        g_string_append(info_text, "\n\n");
-
       g_string_append(
         info_text,
-        _("The certificate issuer is not trusted.")
+        _("The server certificate cannot be verified automatically. Please "
+          "make sure that you trust this host before proceeding.")
       );
 
-      if(gnutls_x509_crt_check_issuer(own_cert, own_cert))
+      if(priv->certificate_flags &
+        INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN)
       {
-        g_string_append_c(info_text, ' ');
-        g_string_append(info_text, _("The certificate is self-signed."));
+        if(info_text->len > 0)
+          g_string_append(info_text, "\n\n");
+
+        g_string_append(
+          info_text,
+          _("The issuer of the certificate is not known.")
+        );
       }
-    }
 
-    if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_INVALID)
-    {
-      if(info_text->len > 0)
-        g_string_append(info_text, "\n\n");
+      if(priv->certificate_flags &
+         INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH)
+      {
+        if(info_text->len > 0)
+          g_string_append(info_text, "\n\n");
 
-      ctext = _("The certificate is invalid!");
-      markup = g_markup_printf_escaped("<b>%s</b>", ctext);
-      g_string_append(info_text, markup);
-      g_free(markup);
-    }
+        text = inf_cert_util_get_hostname(own_cert);
 
-    if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH)
-    {
-      if(info_text->len > 0)
-        g_string_append(info_text, "\n\n");
+        g_string_append_printf(
+          info_text,
+          _("The hostname of the server, \"%s\", does not match the hostname "
+            "the certificate is issued to, \"%s\"."),
+          priv->hostname,
+          text
+        );
 
-      text = inf_cert_util_get_hostname(own_cert);
-
-      g_string_append_printf(
-        info_text,
-        _("The hostname of the server, \"%s\", does not match the hostname "
-          "the certificate is issued to, \"%s\"."),
-        priv->hostname,
-        text
-      );
-
-      g_free(text);
-    }
-
-    if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED)
-    {
-      if(info_text->len > 0)
-        g_string_append(info_text, "\n\n");
-
-      text = inf_cert_util_get_expiration_time(own_cert);
-
-      g_string_append_printf(
-        info_text,
-        _("The certificate has expired. The expiration date was %s"),
-        text
-      );
-
-      g_free(text);
-    }
-
-    if(priv->certificate_flags &
-       INF_GTK_CERTIFICATE_DIALOG_CERT_NOT_ACTIVATED)
-    {
-      if(info_text->len > 0)
-        g_string_append(info_text, "\n\n");
-
-      text = inf_cert_util_get_activation_time(own_cert);
-
-      g_string_append_printf(
-        info_text,
-        _("The certificate has not yet been activated. "
-          "Activation date is %s"),
-        text
-      );
-
-      g_free(text);
+        g_free(text);
+      }
     }
 
     info = gtk_label_new(NULL);
@@ -755,29 +717,17 @@ inf_gtk_certificate_dialog_flags_get_type(void)
   {
     static const GFlagsValue certificate_dialog_flags_type_values[] = {
       {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_NOT_ACTIVATED,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_NOT_ACTIVATED",
-        "cert-not-activated"
-      }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED",
-        "cert-expired"
-      }, {
         INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH,
         "INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH",
         "cert-hostname-mismatch"
       }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED",
-        "cert-not-trusted"
+        INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN,
+        "INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN",
+        "cert-not-known"
       }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_INVALID,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_INVALID",
-        "cert-invalid"
-      }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED",
-        "cert-changed"
+        INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED,
+        "INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED",
+        "cert-unexpected"
       }, {
         INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED,
         "INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED",

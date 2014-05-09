@@ -37,23 +37,26 @@
 typedef struct _InfGtkCertificateManagerQuery InfGtkCertificateManagerQuery;
 struct _InfGtkCertificateManagerQuery {
   InfGtkCertificateManager* manager;
+  GHashTable* known_hosts;
   InfXmppConnection* connection;
   InfGtkCertificateDialog* dialog;
   GtkWidget* checkbutton;
-  gnutls_x509_crt_t old_certificate; /* points into known_hosts array */
   InfCertificateChain* certificate_chain;
 };
 
-typedef struct _InfGtkCertificateManagerPrivate InfGtkCertificateManagerPrivate;
+typedef struct _InfGtkCertificateManagerPrivate
+  InfGtkCertificateManagerPrivate;
 struct _InfGtkCertificateManagerPrivate {
   GtkWindow* parent_window;
   InfXmppManager* xmpp_manager;
 
   gchar* known_hosts_file;
-  GPtrArray* known_hosts;
-
   GSList* queries;
 };
+
+typedef enum _InfGtkCertificateManagerError {
+  INF_GTK_CERTIFICATE_MANAGER_ERROR_DUPLICATE_HOST_ENTRY
+} InfGtkCertificateManagerError;
 
 enum {
   PROP_0,
@@ -61,13 +64,29 @@ enum {
   PROP_PARENT_WINDOW,
   PROP_XMPP_MANAGER,
 
-  PROP_TRUST_FILE,
   PROP_KNOWN_HOSTS_FILE
 };
 
 #define INF_GTK_CERTIFICATE_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CERTIFICATE_MANAGER, InfGtkCertificateManagerPrivate))
 
+/* When a host presents a certificate different from one that we have pinned,
+ * usually we warn the user that something fishy is going on. However, if the
+ * pinned certificate has expired or will expire soon, then we kind of expect
+ * the certificate to change, and issue a less "flashy" warning message. This
+ * value defines how long before the pinned certificate expires we show a
+ * less dramatic warning message. */
+static const unsigned int
+INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE = 3 * 24 * 3600; /* 3 days */
+
 static GObjectClass* parent_class;
+
+static GQuark
+inf_gtk_certificate_manager_verify_error_quark(void)
+{
+  return g_quark_from_static_string(
+    "INF_GTK_CERTIFICATE_MANAGER_VERIFY_ERROR"
+  );
+}
 
 #if 0
 static InfGtkCertificateManagerQuery*
@@ -107,7 +126,372 @@ inf_gtk_certificate_manager_query_free(InfGtkCertificateManagerQuery* query)
   g_object_unref(query->connection);
   inf_certificate_chain_unref(query->certificate_chain);
   gtk_widget_destroy(GTK_WIDGET(query->dialog));
+  g_hash_table_unref(query->known_hosts);
   g_slice_free(InfGtkCertificateManagerQuery, query);
+}
+
+static gboolean
+inf_gtk_certificate_manager_compare_fingerprint(gnutls_x509_crt_t cert1,
+                                                gnutls_x509_crt_t cert2,
+                                                GError** error)
+{
+  static const unsigned int SHA256_DIGEST_SIZE = 32;
+
+  size_t size;
+  guchar cert1_fingerprint[SHA256_DIGEST_SIZE];
+  guchar cert2_fingerprint[SHA256_DIGEST_SIZE];
+
+  int ret;
+  int cmp;
+
+  size = SHA256_DIGEST_SIZE;
+
+  ret = gnutls_x509_crt_get_fingerprint(
+    cert1,
+    GNUTLS_DIG_SHA256,
+    cert1_fingerprint,
+    &size
+  );
+
+  if(ret == GNUTLS_E_SUCCESS)
+  {
+    g_assert(size == SHA256_DIGEST_SIZE);
+
+    ret = gnutls_x509_crt_get_fingerprint(
+      cert2,
+      GNUTLS_DIG_SHA256,
+      cert2_fingerprint,
+      &size
+    );
+  }
+
+  if(ret != GNUTLS_E_SUCCESS)
+  {
+    inf_gnutls_set_error(ret, error);
+    return FALSE;
+  }
+
+  cmp = memcmp(cert1_fingerprint, cert2_fingerprint, SHA256_DIGEST_SIZE);
+  if(cmp != 0) return FALSE;
+
+  return TRUE;
+}
+
+static void
+inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
+                                            const gchar* known_hosts_file)
+{
+  InfGtkCertificateManagerPrivate* priv;
+  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
+
+  /* TODO: If there are running queries, the we need to load the new hosts
+   * file and then change it in all queries. */
+  g_assert(priv->queries == NULL);
+
+  g_free(priv->known_hosts_file);
+  priv->known_hosts_file = g_strdup(known_hosts_file);
+}
+
+static GHashTable*
+inf_gtk_certificate_manager_load_known_hosts(InfGtkCertificateManager* mgr,
+                                             GError** error)
+{
+  InfGtkCertificateManagerPrivate* priv;
+  GHashTable* table;
+  gchar* content;
+  gsize size;
+  GError* local_error;
+
+  gchar* out_buf;
+  gsize out_buf_len;
+  gchar* pos;
+  gchar* prev;
+  gchar* next;
+  gchar* sep;
+
+  gsize len;
+  gsize out_len;
+  gint base64_state;
+  guint base64_save;
+
+  gnutls_datum_t data;
+  gnutls_x509_crt_t cert;
+  int res;
+
+  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(mgr);
+
+  table = g_hash_table_new_full(
+    g_str_hash,
+    g_str_equal,
+    g_free,
+    (GDestroyNotify)gnutls_x509_crt_deinit
+  );
+
+  local_error = NULL;
+  g_file_get_contents(priv->known_hosts_file, &content, &size, &local_error);
+  if(local_error != NULL)
+  {
+    if(local_error->domain == G_FILE_ERROR &&
+       local_error->code == G_FILE_ERROR_NOENT)
+    {
+      return table;
+    }
+
+    g_propagate_prefixed_error(
+      error,
+      local_error,
+      _("Failed to open known hosts file \"%s\": "),
+      priv->known_hosts_file
+    );
+
+    g_hash_table_destroy(table);
+    return NULL;
+  }
+
+  out_buf = NULL;
+  out_buf_len = 0;
+  prev = content;
+  for(prev = content; prev != NULL; prev = next)
+  {
+    pos = strchr(prev, '\n');
+    next = NULL;
+
+    if(pos == NULL)
+      pos = content + size;
+    else
+      next = pos + 1;
+
+    sep = memchr(prev, ':', pos - prev);
+    if(sep == NULL) continue; /* ignore line */
+
+    *sep = '\0';
+    if(g_hash_table_lookup(table, prev) != NULL)
+    {
+      g_set_error(
+        error,
+        g_quark_from_static_string("INF_GTK_CERTIFICATE_MANAGER_ERROR"),
+        INF_GTK_CERTIFICATE_MANAGER_ERROR_DUPLICATE_HOST_ENTRY,
+        _("Certificate for host \"%s\" appears twice in "
+          "known hosts file \"%s\""),
+        prev,
+        priv->known_hosts_file
+      );
+
+      g_hash_table_destroy(table);
+      g_free(out_buf);
+      g_free(content);
+      return NULL;
+    }
+
+    /* decode base64, import DER certificate */
+    len = (pos - (sep + 1));
+    out_len = len * 3 / 4;
+
+    if(out_len > out_buf_len)
+    {
+      out_buf = g_realloc(out_buf, out_len);
+      out_buf_len = out_len;
+    }
+
+    base64_state = 0;
+    base64_save = 0;
+
+    out_len = g_base64_decode_step(
+      sep + 1,
+      len,
+      out_buf,
+      &base64_state,
+      &base64_save
+    );
+
+    cert = NULL;
+    res = gnutls_x509_crt_init(&cert);
+    if(res == GNUTLS_E_SUCCESS)
+    {
+      data.data = out_buf;
+      data.size = out_len;
+      res = gnutls_x509_crt_import(cert, &data, GNUTLS_X509_FMT_DER);
+    }
+
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      inf_gnutls_set_error(&local_error, res);
+
+      g_propagate_prefixed_error(
+        error,
+        local_error,
+        _("Failed to read certificate for host \"%s\" from "
+          "known hosts file \"%s\": "),
+        prev,
+        priv->known_hosts_file
+      );
+
+      if(cert != NULL)
+        gnutls_x509_crt_deinit(cert);
+
+      g_hash_table_destroy(table);
+      g_free(out_buf);
+      g_free(content);
+      return NULL;
+    }
+
+    g_hash_table_insert(table, g_strdup(prev), cert);
+  }
+
+  g_free(out_buf);
+  g_free(content);
+  return table;
+}
+
+static GHashTable*
+inf_gtk_certificate_manager_ref_known_hosts(InfGtkCertificateManager* mgr,
+                                            GError** error)
+{
+  InfGtkCertificateManagerPrivate* priv;
+  InfGtkCertificateManagerQuery* query;
+
+  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(mgr);
+  if(priv->queries != NULL)
+  {
+    query = (InfGtkCertificateManagerQuery*)priv->queries->data;
+    g_hash_table_ref(query->known_hosts);
+    return query->known_hosts;
+  }
+  else
+  {
+    return inf_gtk_certificate_manager_load_known_hosts(mgr, error);
+  }
+}
+
+static gboolean
+inf_gtk_certificate_manager_write_known_hosts(InfGtkCertificateManager* mgr,
+                                              GHashTable* table,
+                                              GError** error)
+{
+  InfGtkCertificateManagerPrivate* priv;
+  gchar* dirname;
+  GIOChannel* channel;
+  GIOStatus status;
+
+  GHashTableIter iter;
+  gpointer key;
+  gpointer value;
+  const gchar* hostname;
+  gnutls_x509_crt_t cert;
+
+  size_t size;
+  int res;
+  gchar* buffer;
+  gchar* encoded_cert;
+
+  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(mgr);
+  
+  /* Note that we pin the whole certificate and not only the public key of
+   * our known hosts. This allows us to differentiate two cases when a
+   * host presents a new certificate:
+   *    a) The old certificate has expired or is very close to expiration. In
+   *       this case we still show a message to the user asking whether they
+   *       trust the new certificate.
+   *    b) The old certificate was perfectly valid. In this case we show a
+   *       message saying that the certificate change was unexpected, and
+   *       unless it was expected the host should not be trusted.
+   */
+  dirname = g_path_get_dirname(priv->known_hosts_file);
+  if(!inf_file_util_create_directory(dirname, 0755, error))
+  {
+    g_free(dirname);
+    return FALSE;
+  }
+
+  g_free(dirname);
+
+  channel = g_io_channel_new_file(priv->known_hosts_file, "w", error);
+  if(channel == NULL) return FALSE;
+
+  status = g_io_channel_set_encoding(channel, NULL, error);
+  if(status != G_IO_STATUS_NORMAL)
+  {
+    g_io_channel_unref(channel);
+    return FALSE;
+  }
+
+  g_hash_table_iter_init(&iter, table);
+  while(g_hash_table_iter_next(&iter, &key, &value))
+  {
+    hostname = (const gchar*)key;
+    cert = (gnutls_x509_crt_t)value;
+
+    size = 0;
+    res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_DER, NULL, &size);
+    g_assert(res != GNUTLS_E_SUCCESS);
+
+    buffer = NULL;
+    if(res == GNUTLS_E_SHORT_MEMORY_BUFFER)
+    {
+      buffer = g_malloc(size);
+      res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_DER, buffer, &size);
+    }
+
+    if(res != GNUTLS_E_SUCCESS)
+    {
+      g_free(buffer);
+      g_io_channel_unref(channel);
+      inf_gnutls_set_error(res, error);
+      return FALSE;
+    }
+
+    encoded_cert = g_base64_encode(buffer, size);
+    g_free(buffer);
+
+    status = g_io_channel_write_chars(channel, hostname, strlen(hostname), NULL, error);
+    if(status == G_IO_STATUS_NORMAL)
+      status = g_io_channel_write_chars(channel, ":", 1, NULL, error);
+    if(status == G_IO_STATUS_NORMAL)
+      status = g_io_channel_write_chars(channel, encoded_cert, strlen(encoded_cert), NULL, error);
+    if(status == G_IO_STATUS_NORMAL)
+      status = g_io_channel_write_chars(channel, "\n", 1, NULL, error);
+
+    g_free(encoded_cert);
+
+    if(status != G_IO_STATUS_NORMAL)
+    {
+      g_io_channel_unref(channel);
+      return FALSE;
+    }
+  }
+
+  g_io_channel_unref(channel);
+  return TRUE;
+}
+
+static void
+inf_gtk_certificate_manager_write_known_hosts_with_warning(
+  InfGtkCertificateManager* mgr,
+  GHashTable* table)
+{
+  InfGtkCertificateManagerPrivate* priv;
+  GError* error;
+  gboolean result;
+
+  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(mgr);
+  error = NULL;
+
+  result = inf_gtk_certificate_manager_write_known_hosts(
+    mgr,
+    table,
+    &error
+  );
+
+  if(error != NULL)
+  {
+    g_warning(
+      _("Failed to write file with known hosts \"%s\": %s"),
+      priv->known_hosts_file,
+      error->message
+    );
+
+    g_error_free(error);
+  }
 }
 
 static void
@@ -117,81 +501,72 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
 {
   InfGtkCertificateManagerQuery* query;
   InfGtkCertificateManagerPrivate* priv;
-  InfGtkCertificateDialogFlags flags;
-
-  GSList* item;
-  InfGtkCertificateManagerQuery* other_query;
-  guint i;
-
-  gnutls_x509_crt_t own;
-  gnutls_x509_crt_t copied_own;
   InfXmppConnection* connection;
+
+  gchar* hostname;
+  gnutls_x509_crt_t cert;
+  gnutls_x509_crt_t known_cert;
+  GError* error;
+  gboolean cert_equal;
 
   query = (InfGtkCertificateManagerQuery*)user_data;
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(query->manager);
-  g_object_get(G_OBJECT(dialog), "certificate-flags", &flags, NULL);
 
-  /* If the certificate changed, and we shall remember the answer, then we
-   * remove the old certificate from the known hosts file. If the user
-   * accepted the connection, then we will add the new certificate below. */
-  if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED)
-  {
-    if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(query->checkbutton)))
-    {
-      /* Make sure the certificate is not currently in use by
-       * another dialog. */
-      for(item = priv->queries; item != NULL; item = g_slist_next(item))
-      {
-        other_query = (InfGtkCertificateManagerQuery*)item->data;
-        if(query != other_query)
-          if(query->old_certificate == other_query->old_certificate)
-            break;
-      }
-
-      if(item == NULL)
-      {
-        for(i = 0; i < priv->known_hosts->len; ++ i)
-        {
-          if(g_ptr_array_index(priv->known_hosts, i) ==
-             query->old_certificate)
-          {
-            gnutls_x509_crt_deinit(query->old_certificate);
-            g_ptr_array_remove_index_fast(priv->known_hosts, i);
-            break;
-          }
-        }
-      } 
-
-      query->old_certificate = NULL;
-    }
-  }
-
-  own = inf_certificate_chain_get_own_certificate(query->certificate_chain);
   connection = query->connection;
   g_object_ref(connection);
 
   switch(response_id)
   {
   case GTK_RESPONSE_ACCEPT:
-    if( (flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED) ||
-        (flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED))
-    {
-      if(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(query->checkbutton)))
-      {
-        /* We should not add the same certificate twice, meaning we don't
-         * already have a certificate for this host. If we had an older one,
-         * then it should have been removed above. */
-        g_assert(query->old_certificate == NULL);
+    g_object_get(
+      G_OBJECT(query->connection),
+      "remote-hostname", &hostname,
+      NULL
+    );
 
-        copied_own = inf_cert_util_copy_certificate(own, NULL);
-        if(copied_own != NULL)
-          g_ptr_array_add(priv->known_hosts, copied_own);
+    /* Add the certificate to the known hosts file, but only if it is not
+     * already, to avoid unnecessary disk I/O. */
+    cert =
+      inf_certificate_chain_get_own_certificate(query->certificate_chain);
+    known_cert = g_hash_table_lookup(query->known_hosts, hostname);
+
+    error = NULL;
+    cert_equal = FALSE;
+    if(known_cert != NULL)
+    {
+      cert_equal = inf_gtk_certificate_manager_compare_fingerprint(
+        cert,
+        known_cert,
+        &error
+      );
+
+      if(error == NULL && !cert_equal)
+      {
+        cert = inf_cert_util_copy_certificate(cert, &error);
       }
     }
 
-    /* We do this before calling verify_continue since this could cause a
-     * status notify, in which our signal handler would already remove the
-     * query. We would then try to free it again at the end of this call. */
+    if(error != NULL)
+    {
+      g_warning(
+        _("Failed to add certificate to list of known hosts: %s"),
+        error->message
+      );
+    }
+    else if(!cert_equal)
+    {
+      g_hash_table_insert(query->known_hosts, hostname, cert);
+
+      inf_gtk_certificate_manager_write_known_hosts_with_warning(
+        query->manager,
+        query->known_hosts
+      );
+    }
+    else
+    {
+      g_free(hostname);
+    }
+
     priv->queries = g_slist_remove(priv->queries, query);
     inf_gtk_certificate_manager_query_free(query);
 
@@ -199,20 +574,8 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
     break;
   case GTK_RESPONSE_REJECT:
   case GTK_RESPONSE_DELETE_EVENT:
-    if( (flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED) ||
-        (flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED))
-    {
-      /* TODO: Remember that the connection was rejected if the checkbutton
-       * is active. */
-    }
-
-    /* We do this before calling verify_cancel since this could cause a
-     * status notify, in which our signal handler would already remove the
-     * query. We would then try to free it again at the end of this call. */
     priv->queries = g_slist_remove(priv->queries, query);
     inf_gtk_certificate_manager_query_free(query);
-
-    /* TODO: report reason */
     inf_xmpp_connection_certificate_verify_cancel(connection, NULL);
     break;
   default:
@@ -248,74 +611,6 @@ inf_gtk_certificate_manager_notify_status_cb(GObject* object,
 }
 
 static void
-inf_gtk_certificate_manager_free_certificate_array(GPtrArray* array)
-{
-  guint i;
-  for(i = 0; i < array->len; ++ i)
-    gnutls_x509_crt_deinit((gnutls_x509_crt_t)g_ptr_array_index(array, i));
-  g_ptr_array_free(array, TRUE);
-}
-
-static void
-inf_gtk_certificate_manager_set_known_hosts(InfGtkCertificateManager* manager,
-                                            const gchar* known_hosts_file)
-{
-  InfGtkCertificateManagerPrivate* priv;
-  gchar* path;
-  int ret;
-  GError* error;
-  int save_errno;
-
-  priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
-
-  if(priv->known_hosts_file != NULL)
-  {
-    if(priv->known_hosts != NULL)
-    {
-      path = g_path_get_dirname(priv->known_hosts_file);
-      ret = g_mkdir_with_parents(path, 0700);
-      save_errno = errno;
-      g_free(path);
-
-      if(ret != 0)
-      {
-        /* TODO_Win32: Is the error code also in errno on Windows? */
-        g_warning(
-          _("Failed to save known hosts file: %s\n"),
-          strerror(save_errno)
-        );
-      }
-      else
-      {
-        error = NULL;
-        ret = inf_cert_util_write_certificate(
-          (gnutls_x509_crt_t*)priv->known_hosts->pdata,
-          priv->known_hosts->len,
-          priv->known_hosts_file,
-          &error
-        );
-
-        if(ret == FALSE)
-        {
-          g_warning(
-            _("Failed to save known hosts file: %s\n"),
-            error->message
-          );
-          g_error_free(error);
-        }
-      }
-
-      inf_gtk_certificate_manager_free_certificate_array(priv->known_hosts);
-      priv->known_hosts = NULL;
-    }
-
-    g_free(priv->known_hosts_file);
-  }
-
-  priv->known_hosts_file = g_strdup(known_hosts_file);
-}
-
-static void
 inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
                                              gnutls_session_t session,
                                              InfCertificateChain* chain,
@@ -325,18 +620,18 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   InfGtkCertificateManagerPrivate* priv;
 
   InfGtkCertificateDialogFlags flags;
-  gnutls_x509_crt_t own;
+  gnutls_x509_crt_t presented_cert;
+  gnutls_x509_crt_t known_cert;
   gchar* hostname;
-  time_t t;
+
+  gboolean match_hostname;
+  gboolean issuer_known;
 
   int ret;
   unsigned int verify;
-
-  gchar* own_hostname;
-  gnutls_x509_crt_t known;
-  guint i;
-  gchar* own_fingerprint;
-  gchar* known_fingerprint;
+  GHashTable* table;
+  gboolean cert_equal;
+  time_t expiration_time;
 
   InfGtkCertificateManagerQuery* query;
   gchar* text;
@@ -350,145 +645,122 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   manager = INF_GTK_CERTIFICATE_MANAGER(user_data);
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
 
-  if(priv->known_hosts == NULL && priv->known_hosts_file != NULL)
-  {
-    error = NULL;
-
-    priv->known_hosts = inf_cert_util_read_certificate(
-      priv->known_hosts_file,
-      NULL,
-      &error
-    );
-
-    if(priv->known_hosts == NULL)
-    {
-      /* If the known hosts file was nonexistant, then this is not an error
-       * since we will write to end when being finalized, with hosts we
-       * met (and trusted) during the session. */
-      if(error->domain != g_file_error_quark() ||
-         error->code != G_FILE_ERROR_NOENT)
-      {
-        g_warning(_("Could not load known hosts file: %s"), error->message);
-
-        g_free(priv->known_hosts_file);
-        priv->known_hosts_file = NULL;
-        g_object_notify(G_OBJECT(manager), "known-hosts-file");
-      }
-      else
-      {
-        priv->known_hosts = g_ptr_array_new();
-      }
-
-      g_error_free(error);
-    }
-  }
-
   g_object_get(G_OBJECT(connection), "remote-hostname", &hostname, NULL);
-  own = inf_certificate_chain_get_own_certificate(chain);
+  presented_cert = inf_certificate_chain_get_own_certificate(chain);
 
-  flags = 0;
-  if(!gnutls_x509_crt_check_hostname(own, hostname))
-    flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH;
+  match_hostname = gnutls_x509_crt_check_hostname(presented_cert, hostname);
 
-  t = gnutls_x509_crt_get_activation_time(own);
-  if(t == (time_t)(-1) || t > time(NULL))
-    flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_NOT_ACTIVATED;
-
-  t = gnutls_x509_crt_get_expiration_time(own);
-  if(t == (time_t)(-1) || t < time(NULL))
-    flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_EXPIRED;
-
+  /* First, validate the certificate */
   ret = gnutls_certificate_verify_peers2(session, &verify);
+  error = NULL;
 
-  if(ret < 0)
+  if(ret != GNUTLS_E_SUCCESS)
+    inf_gnutls_set_error(&error, ret);
+
+  /* Remove the GNUTLS_CERT_ISSUER_NOT_KNOWN flag from the verification
+   * result, and if the certificate is still invalid, then set an error. */
+  if(error == NULL)
   {
-    error = NULL;
-    inf_gnutls_set_error(ret, &error);
-    inf_xmpp_connection_certificate_verify_cancel(connection, error);
-    g_error_free(error);
-  }
-  else
-  {
-    if((verify & GNUTLS_CERT_INVALID) != 0)
-      flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_INVALID;
-
-#define GNUTLS_CERT_ISSUER_NOT_TRUSTED \
-  (GNUTLS_CERT_SIGNER_NOT_FOUND | GNUTLS_CERT_SIGNER_NOT_CA)
-
-    if((verify & GNUTLS_CERT_ISSUER_NOT_TRUSTED) != 0)
+    issuer_known = TRUE;
+    if(verify & GNUTLS_CERT_SIGNER_NOT_FOUND)
     {
-      flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED;
-      /* If the certificate is invalid because of this, then unset the
-       * invalid flag again. We handle the two cases separately. */
-      if((verify & ~GNUTLS_CERT_ISSUER_NOT_TRUSTED) == GNUTLS_CERT_INVALID)
-        flags &= ~INF_GTK_CERTIFICATE_DIALOG_CERT_INVALID;
+      issuer_known = FALSE;
+      verify &= ~GNUTLS_CERT_SIGNER_NOT_FOUND;
+
+      /* If this was the only reason why the certificate was considered
+       * invalid, then skip it at this point. */
+      if(verify == GNUTLS_CERT_INVALID)
+        verify = 0;
     }
 
-    own_hostname = inf_cert_util_get_hostname(own);
-    /* We don't ever trust hosts for which we have a certificate without
-     * hostname, as we can't identify the certificate with the corresponding
-     * host */
-    if(own_hostname != NULL)
+    if(verify & GNUTLS_CERT_INVALID)
+      inf_gnutls_certificate_verification_set_error(&error, verify);
+  }
+
+  /* Look up the host in our database of pinned certificates if we could not
+   * fully verify the certificate, i.e. if either the issuer is not known or
+   * the hostname of the connection does not match the certificate. */
+  table = NULL;
+  if(error == NULL)
+  {
+    known_cert = NULL;
+    if(!match_hostname || !issuer_known)
     {
-      for(i = 0; i < priv->known_hosts->len; ++ i)
+      /* If we cannot load the known host file, then cancel the connection.
+       * Otherwise it might happen that someone shows us a certificate that we
+       * tell the user we don't know, if though actually for that host we expect
+       * a different certificate. */
+      table = inf_gtk_certificate_manager_ref_known_hosts(manager, &error);
+      if(table != NULL)
+        known_cert = g_hash_table_lookup(table, hostname);
+    }
+  }
+
+  /* Next, configure the flags for the dialog to be shown based on the
+   * verification result, and on whether the pinned certificate matches
+   * the one presented by the host or not. */
+  flags = 0;
+  if(error == NULL)
+  {
+    if(known_cert != NULL)
+    {
+      cert_equal = inf_gtk_certificate_manager_compare_fingerprint(
+        known_cert,
+        presented_cert,
+        &error
+      );
+
+      if(error == NULL && cert_equal == FALSE)
       {
-        known = (gnutls_x509_crt_t)g_ptr_array_index(priv->known_hosts, i);
-        if(gnutls_x509_crt_check_hostname(known, own_hostname))
+        if(!match_hostname)
+          flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH;
+        if(!issuer_known)
+          flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN;
+
+        flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED;
+        expiration_time = gnutls_x509_crt_get_expiration_time(presented_cert);
+        if(expiration_time != (time_t)(-1) &&
+           time(NULL) > INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE)
         {
-          /* TODO: Compare this as binary, not as string */
-          own_fingerprint =
-            inf_cert_util_get_fingerprint(own, GNUTLS_DIG_SHA1);
-          known_fingerprint =
-            inf_cert_util_get_fingerprint(known, GNUTLS_DIG_SHA1);
+          flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
+        }
+      }
+    }
+    else
+    {
+      if(!match_hostname)
+        flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH;
+      if(!issuer_known)
+        flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN;
+    }
+  }
 
-          if(strcmp(own_fingerprint, known_fingerprint) == 0)
-          {
-            /* We know this host, so we trust it, even if the issuer is 
-             * not a CA. */
-            flags &= ~INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED;
-          }
-          else
-          {
-            /* The fingerprint does not match, so the certificate for this
-             * host has changed. If the new cert is CA signed we don't care. */
-            if(flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED)
-            {
-              flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED;
-
-              /* Check whether it has changed because the old one expired
-               * (then we have expected the certificate change, otherwise
-               * something strange is going on). */
-              t = gnutls_x509_crt_get_expiration_time(known);
-              if(t == (time_t)(-1) || t < time(NULL))
-                flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
-            }
-          }
-
-          g_free(own_fingerprint);
-          g_free(known_fingerprint);
-          break;
+  /* Now proceed either by accepting the connection, rejecting it, or
+   * bothering the user with an annoying dialog. */
+  if(error == NULL)
+  {
+    if(flags == 0)
+    {
+      if(match_hostname && issuer_known)
+      {
+        /* Remove the pinned entry if we now have a valid certificate for
+         * this host. */
+        if(table != NULL && g_hash_table_remove(table, hostname) == TRUE)
+        {
+          inf_gtk_certificate_manager_write_known_hosts_with_warning(
+            manager,
+            table
+          );
         }
       }
 
-      /* Host not found in known hosts list */
-      if(i == priv->known_hosts->len)
-        known = NULL;
-    }
-
-    g_free(own_hostname);
-
-    if(flags == 0)
-    {
-      /* Nothing to complain about, continue connection immediately. */
       inf_xmpp_connection_certificate_verify_continue(connection);
-
-      /* TODO: Add host to known hosts list, so that we can warn when its
-       * certificate changes? */
     }
     else
     {
       query = g_slice_new(InfGtkCertificateManagerQuery);
       query->manager = manager;
+      query->known_hosts = table;
       query->connection = connection;
       query->dialog = inf_gtk_certificate_dialog_new(
         priv->parent_window,
@@ -502,7 +774,8 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
         chain
       );
       query->certificate_chain = chain;
-      query->old_certificate = known;
+
+      table = NULL;
 
       g_object_ref(query->connection);
       inf_certificate_chain_ref(chain);
@@ -543,14 +816,17 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
       gtk_button_set_image(GTK_BUTTON(button), image);
 
-      /* TODO: Do we want a default response here? Which one? */
-
       text = g_strdup_printf(
-        _("Do you want to continue the connection to host %s?"),
+        _("Do you want to continue the connection to host \"%s\"? If you "
+          "choose to continue, this certificate will be trusted in the "
+          "future when connecting to this host."),
         hostname
       );
 
       label = gtk_label_new(text);
+      gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
+      gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_WORD_CHAR);
+      gtk_label_set_width_chars(GTK_LABEL(label), 60);
       gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
       gtk_widget_show(label);
       g_free(text);
@@ -561,35 +837,19 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       vbox = GTK_DIALOG(query->dialog)->vbox;
 #endif
 
-
       gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
-
-      text = g_strdup_printf(
-        _("Trust the certificate of host %s in the future"),
-        hostname
-      );
-
-      query->checkbutton = gtk_check_button_new_with_label(text);
-
-      /* TODO: Be able to remember any answer, not only the one to
-       * "issuer not trusted" */
-      if((flags & INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_TRUSTED) ||
-         (flags & INF_GTK_CERTIFICATE_DIALOG_CERT_CHANGED) )
-      {
-        gtk_widget_show(query->checkbutton);
-      }
-
-      g_free(text);
-
-      gtk_box_pack_start(GTK_BOX(vbox), query->checkbutton, FALSE, FALSE, 0);
-
-      /* TODO: In which cases should the checkbutton be checked by default? */
 
       priv->queries = g_slist_prepend(priv->queries, query);
       gtk_window_present(GTK_WINDOW(query->dialog));
     }
   }
+  else
+  {
+    inf_xmpp_connection_certificate_verify_cancel(connection, error);
+    g_error_free(error);
+  }
 
+  if(table != NULL) g_hash_table_unref(table);
   g_free(hostname);
 }
 
@@ -624,9 +884,7 @@ inf_gtk_certificate_manager_init(GTypeInstance* instance,
 
   priv->parent_window = NULL;
   priv->xmpp_manager = NULL;
-
   priv->known_hosts_file = NULL;
-  priv->known_hosts = NULL;
 }
 
 static void
@@ -674,7 +932,7 @@ inf_gtk_certificate_manager_finalize(GObject* object)
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
 
   inf_gtk_certificate_manager_set_known_hosts(manager, NULL);
-  g_free(priv->known_hosts_file);
+  g_assert(priv->known_hosts_file == NULL);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
