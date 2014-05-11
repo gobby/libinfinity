@@ -5,4 +5,4 @@ compiler:
 before_install:
     - sudo apt-get update -qq
     - sudo apt-get install -qq gtk-doc-tools libgnutls-dev libgsasl7-dev libxml2-dev libgtk-3-dev libavahi-client-dev libdaemon-dev libpam-dev
-script: ./autogen.sh && ./configure --with-gtk3 --with-infgtk --with-inftextgtk --with-avahi --with-libdaemon --enable-gtk-doc && make && make check
+script: ./autogen.sh --with-gtk3 --with-infgtk --with-inftextgtk --with-avahi --with-libdaemon --enable-gtk-doc && make && make check
