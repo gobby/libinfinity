@@ -48,6 +48,17 @@ inf_test_text_cleanup_error_quark()
   return g_quark_from_static_string("INF_TEST_TEXT_CLEANUP_ERROR");
 }
 
+static void
+error_cb(InfSession* session,
+         InfXmlConnection* connection,
+         xmlNodePtr xml,
+         const GError* error,
+         gpointer user_data)
+{
+  GError** error_loc = (GError**)user_data;
+  *error_loc = g_error_copy(error);
+}
+
 static gboolean
 perform_test(guint max_total_log_size,
              InfTextChunk* initial,
@@ -118,6 +129,13 @@ perform_test(guint max_total_log_size,
       NULL
     )
   );
+
+  g_signal_connect(
+    G_OBJECT(session),
+    "error",
+    G_CALLBACK(error_cb),
+    &local_error
+  );
   
   algorithm = inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session));
 
@@ -138,6 +156,12 @@ perform_test(guint max_total_log_size,
         NULL,
         request
       );
+
+      if(local_error != NULL)
+      {
+        g_prefix_error(&local_error, "[%d] ", request->line);
+        goto fail;
+      }
     }
     else
     {
@@ -163,7 +187,8 @@ perform_test(guint max_total_log_size,
           error,
           inf_test_text_cleanup_error_quark(),
           INF_TEST_TEXT_CLEANUP_USER_UNAVAILABLE,
-          "User ID '%u' not available",
+          "[%d] User ID '%u' not available",
+          request->line,
           verify_user_id
         );
         
@@ -190,7 +215,8 @@ perform_test(guint max_total_log_size,
             error,
             inf_test_text_cleanup_error_quark(),
             INF_TEST_TEXT_CLEANUP_VERIFY_FAILED,
-            "Log size does not match; got %u, but expected %u",
+            "[%d] Log size does not match; got %u, but expected %u",
+            request->line,
             log_size,
             verify_log_size
           );
@@ -217,7 +243,8 @@ perform_test(guint max_total_log_size,
             error,
             inf_test_text_cleanup_error_quark(),
             INF_TEST_TEXT_CLEANUP_VERIFY_FAILED,
-            "can-undo does not match; got %d, but expected %d",
+            "[%d] can-undo does not match; got %d, but expected %d",
+            request->line,
             (guint)result,
             verify_can_undo
           );
@@ -244,7 +271,8 @@ perform_test(guint max_total_log_size,
             error,
             inf_test_text_cleanup_error_quark(),
             INF_TEST_TEXT_CLEANUP_VERIFY_FAILED,
-            "can-redo does not match; got %d, but expected %d",
+            "[%d] can-redo does not match; got %d, but expected %d",
+            request->line,
             (guint)result,
             verify_can_redo
           );
