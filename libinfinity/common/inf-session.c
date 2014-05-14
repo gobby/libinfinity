@@ -1612,6 +1612,8 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
           node,
           local_error
         );
+
+        g_error_free(local_error);
       }
 
       return scope;
