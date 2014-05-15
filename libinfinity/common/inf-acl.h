@@ -47,14 +47,27 @@ struct _InfAclAccount {
 
 /**
  * InfAclSetting:
+ * @INF_ACL_CAN_ADD_SUBDIRECTORY: The user is allowed to create a new
+ * subdirectory node.
+ * @INF_ACL_CAN_ADD_DOCUMENT: The user is allowed to create a new leaf node.
+ * @INF_ACL_CAN_SYNC_IN: The user is allowed to create documents with
+ * non-empty content.
+ * @INF_ACL_CAN_REMOVE_NODE: The user is allowed to remove a child node.
  * @INF_ACL_CAN_EXPLORE_NODE: The user is allowed to explore a subdirectory
  * node in the directory tree.
+ * @INF_ACL_CAN_SUBSCRIBE_CHAT: The user can subscribe to the global
+ * server-wide chat.
  * @INF_ACL_CAN_SUBSCRIBE_SESSION: The user is allowed to subscribe to a
  * session in the directory tree.
  * @INF_ACL_CAN_JOIN_USER: The user is allowed to join a user into the
  * session which corresponds to the node.
  * @INF_ACL_CAN_QUERY_ACCOUNT_LIST: The user is allowed to query the full list
  * of ACL accounts.
+ * @INF_ACL_CAN_CREATE_ACCOUNT: The user can create a new account on the
+ * server.
+ * @INF_ACL_CAN_OVERRIDE_ACCOUNT: The user can create an account under a name
+ * that exists already, overriding the login credentials.
+ * @INF_ACL_CAN_REMOVE_ACCOUNT: The user can remove user accounts.
  * @INF_ACL_CAN_QUERY_ACL: The user is allowed to query the full ACL for
  * this node.
  * @INF_ACL_CAN_SET_ACL: The user is allowed to change the ACL of this node,
@@ -64,11 +77,21 @@ struct _InfAclAccount {
  * users.
  */
 typedef enum _InfAclSetting {
+  INF_ACL_CAN_ADD_SUBDIRECTORY,
+  INF_ACL_CAN_ADD_DOCUMENT,
+  INF_ACL_CAN_SYNC_IN,
+  INF_ACL_CAN_REMOVE_NODE,
+
   INF_ACL_CAN_EXPLORE_NODE,
+  INF_ACL_CAN_SUBSCRIBE_CHAT,
   INF_ACL_CAN_SUBSCRIBE_SESSION,
   INF_ACL_CAN_JOIN_USER,
 
   INF_ACL_CAN_QUERY_ACCOUNT_LIST,
+  INF_ACL_CAN_CREATE_ACCOUNT,
+  INF_ACL_CAN_OVERRIDE_ACCOUNT,
+  INF_ACL_CAN_REMOVE_ACCOUNT,
+
   INF_ACL_CAN_QUERY_ACL,
   INF_ACL_CAN_SET_ACL,
 

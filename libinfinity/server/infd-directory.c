@@ -1973,14 +1973,21 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
 static void
 infd_directory_get_add_node_permissions(InfdDirectory* directory,
                                         InfAclMask* out,
+                                        gboolean subdirectory,
                                         gboolean initial_subscribe,
                                         gboolean sync_in,
                                         const InfAclSheetSet* sheet_set)
 {
-  inf_acl_mask_clear(out); /* TODO: _set1(INF_ACL_CAN_ADD_NODE) */
+  if(subdirectory)
+    inf_acl_mask_set1(out, INF_ACL_CAN_ADD_SUBDIRECTORY);
+  else
+    inf_acl_mask_set1(out, INF_ACL_CAN_ADD_DOCUMENT);
+
   if(initial_subscribe == TRUE)
     inf_acl_mask_or1(out, INF_ACL_CAN_SUBSCRIBE_SESSION);
-  /* TODO: (1 << INF_ACL_CAN_SYNC_IN) */
+  if(sync_in == TRUE)
+    inf_acl_mask_or1(out, INF_ACL_CAN_SYNC_IN);
+
   if(sheet_set != NULL && sheet_set->n_sheets > 0)
     inf_acl_mask_or1(out, INF_ACL_CAN_SET_ACL);
 }
@@ -2543,19 +2550,13 @@ infd_directory_create_acl_account_with_certificates(InfdDirectory* directory,
   return info;
 }
 
-static InfdAclAccountInfo*
-infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
-                                                   gnutls_x509_crt_t cert,
-                                                   InfXmlConnection* conn,
-                                                   GError** error)
+static gboolean
+infd_directory_account_info_from_certificate(gnutls_x509_crt_t cert,
+                                             gchar** account_id,
+                                             gchar** account_name,
+                                             GError** error)
 {
-  InfdDirectoryPrivate* priv;
   gchar* name;
-  gchar* account_id;
-  InfdAclAccountInfo* info;
-  gchar* fingerprint;
-
-  priv = INFD_DIRECTORY_PRIVATE(directory);
 
   /* Check that a common name is set in the certificate. Without a common
    * name, we cannot associate the certificate to an account. */
@@ -2571,17 +2572,33 @@ infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
     );
 
     g_free(name);
-    return NULL;
+    return FALSE;
   }
 
-  /* Create an account ID */
-  account_id = g_strdup_printf("user:%s", name);
+  *account_id = g_strdup_printf("user:%s", name);
+  *account_name = name;
+
+  return TRUE;
+}
+
+static InfdAclAccountInfo*
+infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
+                                                   const gchar* account_id,
+                                                   const gchar* account_name,
+                                                   gnutls_x509_crt_t cert,
+                                                   InfXmlConnection* conn,
+                                                   GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  InfdAclAccountInfo* info;
+  gchar* fingerprint;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
   info = g_hash_table_lookup(priv->accounts, account_id);
 
   /* If there is a certificate with the same name, replace its
    * certificates with the new certificate. */
-  /* TODO: Do this only if this existing certificate is used for conn's
-   * account, otherwise bail... */
   if(info != NULL)
   {
     while(info->n_certificates > 0)
@@ -2611,7 +2628,7 @@ infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
     info = infd_directory_create_acl_account_with_certificates(
       directory,
       account_id,
-      name,
+      account_name,
       FALSE,
       &cert,
       1,
@@ -2619,9 +2636,6 @@ infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
       error
     );
   }
-
-  g_free(account_id);
-  g_free(name);
 
   return info;
 }
@@ -4822,6 +4836,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   xmlNodePtr child;
   gboolean perform_sync_in;
   gboolean subscribe_sync_conn;
+  gboolean is_subdirectory;
   gboolean node_added;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -4847,12 +4862,23 @@ infd_directory_handle_add_node(InfdDirectory* directory,
 
   if(local_error != NULL)
   {
-    xmlFree(name);
-    g_free(seq);
     g_propagate_error(error, local_error);
     return FALSE;
   }
 
+  type = inf_xml_util_get_attribute_required(xml, "type", error);
+  if(type == NULL)
+  {
+    if(sheet_set != NULL)
+      inf_acl_sheet_set_free(sheet_set);
+    return FALSE;
+  }
+
+  if(strcmp((const gchar*)type, "InfSubdirectory") == 0)
+    is_subdirectory = TRUE;
+  else
+    is_subdirectory = FALSE;
+    
   /* Check for sync-in/subscribe flags */
   perform_sync_in = subscribe_sync_conn = FALSE;
   for(child = xml->children; child != NULL; child = child->next)
@@ -4866,23 +4892,21 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   infd_directory_get_add_node_permissions(
     directory,
     &perms,
+    is_subdirectory,
     subscribe_sync_conn,
     perform_sync_in,
     sheet_set
   );
 
   if(!infd_directory_check_auth(directory, parent, connection, &perms, error))
-    return FALSE;
-
-  type = inf_xml_util_get_attribute_required(xml, "type", error);
-  if(type == NULL)
   {
     if(sheet_set != NULL)
       inf_acl_sheet_set_free(sheet_set);
+    xmlFree(type);
     return FALSE;
   }
 
-  if(strcmp((const gchar*)type, "InfSubdirectory") == 0)
+  if(is_subdirectory == TRUE)
   {
     /* No plugin because we want to create a directory */
     plugin = NULL;
@@ -5026,6 +5050,9 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
   InfBrowserIter iter;
   gboolean result;
 
+  InfdDirectoryNode* up;
+  InfAclMask perms;
+
   node = infd_directory_get_node_from_xml(directory, xml, "id", error);
   if(node == NULL) return FALSE;
 
@@ -5043,6 +5070,12 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
   }
   else
   {
+    /* Check the remove node permission on the parent node */
+    up = node->parent;
+    inf_acl_mask_set1(&perms, INF_ACL_CAN_REMOVE_NODE);
+    if(!infd_directory_check_auth(directory, up, connection, &perms, error))
+      return FALSE;
+
     if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
       return FALSE;
 
@@ -5380,6 +5413,9 @@ infd_directory_handle_subscribe_chat(InfdDirectory* directory,
   gchar* seq;
   xmlNodePtr reply_xml;
 
+  InfdDirectoryNode* node;
+  InfAclMask perms;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   /* TODO: Bail if this connection is either currently being synchronized to
@@ -5398,6 +5434,11 @@ infd_directory_handle_subscribe_chat(InfdDirectory* directory,
 
     return FALSE;
   }
+
+  node = priv->root;
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_SUBSCRIBE_CHAT);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
+    return FALSE;
 
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
     return FALSE;
@@ -5468,6 +5509,11 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
   gchar* seq;
   xmlNodePtr reply_xml;
   InfdAclAccountInfo* info;
+
+  InfdDirectoryNode* node;
+  InfAclMask perms;
+  gchar* name;
+  gchar* id;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -5573,16 +5619,44 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
     return FALSE;
   }
 
+  /* Check permissions */
+  if(!infd_directory_account_info_from_certificate(cert, &id, &name, error))
+  {
+    g_free(cert_buffer);
+    gnutls_x509_crt_deinit(cert);
+    g_free(seq);
+    return FALSE;
+  }
+
+  node = priv->root;
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_CREATE_ACCOUNT);
+  if(g_hash_table_lookup(priv->accounts, id) != NULL)
+    inf_acl_mask_or1(&perms, INF_ACL_CAN_OVERRIDE_ACCOUNT);
+
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
+  {
+    g_free(cert_buffer);
+    gnutls_x509_crt_deinit(cert);
+    g_free(id);
+    g_free(name);
+    g_free(seq);
+    return FALSE;
+  }
+
   /* At this point, the request is validated and nothing can fail anymore. */
 
-  /* Create account */
+  /* Create account. This function checks permissions of the connection. */
   info = infd_directory_create_acl_account_with_certificate(
     directory,
+    id,
+    name,
     cert,
     connection,
     error
   );
 
+  g_free(id);
+  g_free(name);
   gnutls_x509_crt_deinit(cert);
 
   if(info == NULL)
@@ -5623,6 +5697,9 @@ infd_directory_handle_remove_acl_account(InfdDirectory* directory,
   InfdAclAccountInfo* info;
   gchar* seq;
 
+  InfdDirectoryNode* node;
+  InfAclMask perms;
+
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   /* Connection needs to have account list queried in order to remove an
@@ -5640,7 +5717,10 @@ infd_directory_handle_remove_acl_account(InfdDirectory* directory,
     return FALSE;
   }
 
-  /* TODO: Auth */
+  node = priv->root;
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_REMOVE_ACCOUNT);
+  if(!infd_directory_check_auth(directory, node, connection, &perms, error))
+    return FALSE;
 
   account_id = inf_xml_util_get_attribute_required(xml, "id", error);
   if(account_id == NULL) return FALSE;
@@ -6242,6 +6322,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     infd_directory_get_add_node_permissions(
       directory,
       &perms,
+      FALSE,
       TRUE,
       FALSE,
       subreq->shared.add_node.sheet_set
@@ -6387,6 +6468,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     infd_directory_get_add_node_permissions(
       directory,
       &perms,
+      FALSE,
       TRUE,
       FALSE,
       subreq->shared.sync_in.sheet_set
@@ -8189,8 +8271,13 @@ infd_directory_browser_create_acl_account(InfBrowser* browser,
   GError* error;
   InfRequest* request;
   gnutls_x509_crt_t cert;
+  gnutls_x509_crt_t* certs;
   InfCertificateChain* chain;
   InfdAclAccountInfo* info;
+
+  gchar* account_id;
+  gchar* account_name;
+  gboolean ret;
 
   request = g_object_new(
     INFD_TYPE_REQUEST,
@@ -8227,10 +8314,10 @@ infd_directory_browser_create_acl_account(InfBrowser* browser,
     return NULL;
   }
 
-  info = infd_directory_create_acl_account_with_certificate(
-    INFD_DIRECTORY(browser),
+  ret = infd_directory_account_info_from_certificate(
     cert,
-    NULL,
+    &account_id,
+    &account_name,
     &error
   );
 
@@ -8242,7 +8329,30 @@ infd_directory_browser_create_acl_account(InfBrowser* browser,
     return NULL;
   }
 
-  chain = inf_certificate_chain_new(&cert, 1);
+  info = infd_directory_create_acl_account_with_certificate(
+    INFD_DIRECTORY(browser),
+    account_id,
+    account_name,
+    cert,
+    NULL,
+    &error
+  );
+
+  g_free(account_id);
+  g_free(account_name);
+
+  if(error != NULL)
+  {
+    gnutls_x509_crt_deinit(cert);
+    inf_request_fail(request, error);
+    g_object_unref(request);
+    return NULL;
+  }
+
+  certs = g_malloc(sizeof(gnutls_x509_crt_t));
+  *certs = cert;
+
+  chain = inf_certificate_chain_new(certs, 1);
 
   inf_request_finish(
     request,

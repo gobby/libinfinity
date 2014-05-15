@@ -56,12 +56,21 @@
   ((x >= (n) * (1 << 6) && x < (n + 1) * (1 << 6)) ? MAKE_MASK(x) : 0)
 
 #define MAKE_DEFAULT_MASK(n) \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_ADD_SUBDIRECTORY) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_ADD_DOCUMENT) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_SYNC_IN) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_REMOVE_NODE) | \
 	MAKE_CHECKED_MASK(n, INF_ACL_CAN_EXPLORE_NODE) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_SUBSCRIBE_CHAT) | \
 	MAKE_CHECKED_MASK(n, INF_ACL_CAN_SUBSCRIBE_SESSION) | \
 	MAKE_CHECKED_MASK(n, INF_ACL_CAN_JOIN_USER)
 
 #define MAKE_ROOT_MASK(n) \
-	MAKE_CHECKED_MASK(n, INF_ACL_CAN_QUERY_ACCOUNT_LIST)
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_SUBSCRIBE_CHAT) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_QUERY_ACCOUNT_LIST) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_CREATE_ACCOUNT) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_OVERRIDE_ACCOUNT) | \
+	MAKE_CHECKED_MASK(n, INF_ACL_CAN_REMOVE_ACCOUNT)
 
 #define MAKE_FULL_MASK(m) \
 	{ m(0), m(1), m(2), m(3) }
@@ -107,9 +116,29 @@ inf_acl_setting_get_type(void)
   {
     static const GEnumValue acl_setting_values[] = {
       {
+        INF_ACL_CAN_ADD_SUBDIRECTORY,
+        "INF_ACL_CAN_ADD_SUBDIRECTORY",
+        "can-add-subdirectory"
+      }, {
+        INF_ACL_CAN_ADD_DOCUMENT,
+        "INF_ACL_CAN_ADD_DOCUMENT",
+        "can-add-document"
+      }, {
+        INF_ACL_CAN_SYNC_IN,
+        "INF_ACL_CAN_SYNC_IN",
+        "can-sync-in"
+      }, {
+        INF_ACL_CAN_REMOVE_NODE,
+        "INF_ACL_CAN_REMOVE_NODE",
+        "can-remove-node"
+      }, {
         INF_ACL_CAN_EXPLORE_NODE,
         "INF_ACL_CAN_EXPLORE_NODE",
         "can-explore-node"
+      }, {
+        INF_ACL_CAN_SUBSCRIBE_CHAT,
+        "INF_ACL_CAN_SUBSCRIBE_CHAT",
+        "can-subscribe-chat"
       }, {
         INF_ACL_CAN_SUBSCRIBE_SESSION,
         "INF_ACL_CAN_SUBSCRIBE_SESSION",
@@ -122,6 +151,18 @@ inf_acl_setting_get_type(void)
         INF_ACL_CAN_QUERY_ACCOUNT_LIST,
         "INF_ACL_CAN_QUERY_ACCOUNT_LIST",
         "can-query-account-list"
+      }, {
+        INF_ACL_CAN_CREATE_ACCOUNT,
+        "INF_ACL_CAN_CREATE_ACCOUNT",
+        "can-create-account"
+      }, {
+        INF_ACL_CAN_OVERRIDE_ACCOUNT,
+        "INF_ACL_CAN_OVERRIDE_ACCOUNT",
+        "can-override-account"
+      }, {
+        INF_ACL_CAN_REMOVE_ACCOUNT,
+        "INF_ACL_CAN_REMOVE_ACCOUNT",
+        "can-remove-account"
       }, {
         INF_ACL_CAN_QUERY_ACL,
         "INF_ACL_CAN_QUERY_ACL",
