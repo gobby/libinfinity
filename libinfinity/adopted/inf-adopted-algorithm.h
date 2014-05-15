@@ -143,6 +143,9 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
                                       gboolean apply,
                                       GError** error);
 
+void
+inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm);
+
 gboolean
 inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
                                InfAdoptedUser* user);

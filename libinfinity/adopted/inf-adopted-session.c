@@ -1247,10 +1247,8 @@ inf_adopted_session_process_xml_run(InfSession* session,
       return INF_COMMUNICATION_SCOPE_PTP;
     }
 
-    /* Update the user vector */
+    /* Update the user vector to the state of the request. */
     user_vector = inf_adopted_state_vector_copy(request_vector);
-    if(inf_adopted_request_affects_buffer(request))
-      inf_adopted_state_vector_add(user_vector, user_id, has_num ? num : 1);
     /* Note that this function takes ownership of user_vector */
     inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
 
@@ -1286,6 +1284,18 @@ inf_adopted_session_process_xml_run(InfSession* session,
 
       g_object_unref(copy_req);
 
+      /* Update the user vector again, including the component of the processed request. */
+      if(inf_adopted_request_affects_buffer(request))
+      {
+        user_vector = inf_adopted_state_vector_copy(
+          inf_adopted_request_get_vector(copy_req)
+        );
+
+        inf_adopted_state_vector_add(user_vector, user_id, 1);
+        /* Note that this function takes ownership of user_vector */
+        inf_adopted_user_set_vector(INF_ADOPTED_USER(user), user_vector);
+      }
+
       /* If an error occured then break here, and do not process the
        * subsequent requests -- they will likely fail as well. */
       if(process_request == FALSE)
@@ -1302,6 +1312,12 @@ inf_adopted_session_process_xml_run(InfSession* session,
         INF_ADOPTED_SESSION(session)
       );
     }
+
+    /* Cleanup requests that are no longer used after
+     * having processed everything */
+    inf_adopted_algorithm_cleanup(
+      inf_adopted_session_get_algorithm(INF_ADOPTED_SESSION(session))
+    );
 
     /* Requests can always be forwarded since user is given. Explicitly allow
      * forwarding if the request could not be applied... maybe others are more

@@ -263,126 +263,6 @@ inf_adopted_algorithm_can_undo_redo(InfAdoptedAlgorithm* algorithm,
   }
 }
 
-/* TODO: This is "only" some kind of garbage collection that does not need
- * to be done after _every_ request received. */
-static void
-inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
-{
-  InfAdoptedAlgorithmPrivate* priv;
-  InfAdoptedStateVector* temp;
-  InfAdoptedStateVector* lcp;
-  InfAdoptedUser** user;
-  InfAdoptedRequestLog* log;
-  InfAdoptedRequest* req;
-  InfAdoptedStateVector* req_vec;
-  InfAdoptedStateVector* low_vec;
-  gboolean req_before_lcp;
-  guint n;
-  guint id;
-  guint vdiff;
-
-  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
-  g_assert(priv->users_begin != priv->users_end);
-
-  /* We don't do cleanup in case the total log size is G_MAXUINT, which
-   * means we keep all requests without limit. */
-  if(priv->max_total_log_size == G_MAXUINT)
-    return;
-
-  /* We remove every request whose "lower related" request has a greater
-   * vdiff to the lcp then max-total-log-size from both request log and
-   * the request cache. The lcp is a common state that _all_ sites are
-   * guaranteed to have reached. Related requests not causally before lcp are
-   * always kept, though. This should not happen if max-total-log-size is
-   * reasonably high and the network latency reasonably low, but we can't
-   * guarentee it does not happen. It just means we can't drop a request that
-   * another site has not yet processed, although it is old enough.*/
-
-  /* The "upper related" request of a request A is the next-newer request so
-   * that all requests before the "upper related" request can be removed
-   * without any remaining request in the log still refering to a removed
-   * one. See also inf_adopted_request_log_upper_related(). */
-
-  /* Note that we could be more intelligent here. It would be enough if the
-   * oldest request of a set of related requests is old enough to be removed.
-   * But we would need to make sure that the requests between the oldest and
-   * the upper related are not required anymore. I am not sure whether there
-   * are additional conditions. However, in the current case, some requests
-   * are just kept a bit longer than necessary, in favor of simplicity. */
-
-  lcp = inf_adopted_state_vector_copy(priv->current);
-  for(user = priv->users_begin; user != priv->users_end; ++ user)
-  {
-    if(inf_user_get_status(INF_USER(*user)) != INF_USER_UNAVAILABLE)
-    {
-      temp = inf_adopted_algorithm_least_common_predecessor(
-        algorithm,
-        lcp,
-        inf_adopted_user_get_vector(*user)
-      );
-
-      inf_adopted_state_vector_free(lcp);
-      lcp = temp;
-    }
-  }
-
-  for(user = priv->users_begin; user != priv->users_end; ++ user)
-  {
-    id = inf_user_get_id(INF_USER(*user));
-    log = inf_adopted_user_get_request_log(*user);
-    n = inf_adopted_request_log_get_begin(log);
-
-    /* Remove all sets of related requests whose upper related request has
-     * a large enough vdiff to lcp. */
-    while(n < inf_adopted_request_log_get_end(log))
-    {
-      req = inf_adopted_request_log_upper_related(log, n);
-      req_vec = inf_adopted_request_get_vector(req);
-
-      /* We can only remove requests that are causally before lcp,
-       * as explained above. We need to compare the target vector time of the
-       * request, though, and not the source which is why we increase the
-       * request's user's component by one. This is because of the fact that
-       * the request needs to be available to reach its target vector time. */
-      req_before_lcp = inf_adopted_state_vector_causally_before_inc(
-        req_vec,
-        lcp,
-        id
-      );
-
-      if(!req_before_lcp)
-        break;
-
-      /* TODO: Experimentally, I try using the lower related for the vdiff
-       * here. If it doesn't work out, then we will need to use the upper
-       * related. Note that changing this requires changing the cleanup
-       * tests, too. */
-      low_vec = inf_adopted_request_get_vector(
-        inf_adopted_request_log_get_request(log, n)
-      );
-
-      vdiff = inf_adopted_state_vector_vdiff(low_vec, lcp);
-
-      /* TODO: Again, I experimentally changed <= to < here. If the vdiff is
-       * equal to the log size, then nobody can do anything with the request
-       * set anymore: Everybody already processed every request in the set
-       * (otherwise, the causally_before_ check above would have failed), and
-       * the user in question cannot Undo anymore since this would require one
-       * too much request in the request log. Note again that changing this
-       * requires changing the cleanup tests, too. */
-      if(vdiff < priv->max_total_log_size)
-        break;
-
-      /* Check next set of related requests */
-      n = inf_adopted_state_vector_get(req_vec, id) + 1;
-    }
-
-    inf_adopted_request_log_remove_requests(log, n);
-  }
-
-  inf_adopted_state_vector_free(lcp);
-}
-
 /* Updates the can_undo and can_redo fields of the
  * InfAdoptedAlgorithmLocalUsers. */
 static void
@@ -2209,7 +2089,6 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
     algorithm
   );
 
-  inf_adopted_algorithm_cleanup(algorithm);
   inf_adopted_algorithm_update_undo_redo(algorithm);
 
   g_signal_emit(
@@ -2227,6 +2106,137 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
 
   priv->execute_request = NULL;
   return TRUE;
+}
+
+/**
+ * inf_adopted_algorithm_cleanup:
+ * @algorithm: A #InfAdoptedAlgorithm.
+ *
+ * Removes requests in all users request logs which are no longer needed. This
+ * includes requests which cannot be undone or redone anymore due to the
+ * constraints of the #InfAdoptedAlgorithm:max-total-log-size property, and
+ * requests that every participant is guaranteed to have processed already.
+ *
+ * This function can be called after every executed request to keep memory use
+ * to a minimum, or it can be called in regular intervals, or it can also be
+ * omitted if the request history should be preserved.
+ **/
+void
+inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
+{
+  InfAdoptedAlgorithmPrivate* priv;
+  InfAdoptedStateVector* temp;
+  InfAdoptedStateVector* lcp;
+  InfAdoptedUser** user;
+  InfAdoptedRequestLog* log;
+  InfAdoptedRequest* req;
+  InfAdoptedStateVector* req_vec;
+  InfAdoptedStateVector* low_vec;
+  gboolean req_before_lcp;
+  guint n;
+  guint id;
+  guint vdiff;
+
+  priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
+  g_assert(priv->users_begin != priv->users_end);
+
+  /* We don't do cleanup in case the total log size is G_MAXUINT, which
+   * means we keep all requests without limit. */
+  if(priv->max_total_log_size == G_MAXUINT)
+    return;
+
+  /* We remove every request whose "lower related" request has a greater
+   * vdiff to the lcp then max-total-log-size from both request log and
+   * the request cache. The lcp is a common state that _all_ sites are
+   * guaranteed to have reached. Related requests not causally before lcp are
+   * always kept, though. This should not happen if max-total-log-size is
+   * reasonably high and the network latency reasonably low, but we can't
+   * guarentee it does not happen. It just means we can't drop a request that
+   * another site has not yet processed, although it is old enough.*/
+
+  /* The "upper related" request of a request A is the next-newer request so
+   * that all requests before the "upper related" request can be removed
+   * without any remaining request in the log still refering to a removed
+   * one. See also inf_adopted_request_log_upper_related(). */
+
+  /* Note that we could be more intelligent here. It would be enough if the
+   * oldest request of a set of related requests is old enough to be removed.
+   * But we would need to make sure that the requests between the oldest and
+   * the upper related are not required anymore. I am not sure whether there
+   * are additional conditions. However, in the current case, some requests
+   * are just kept a bit longer than necessary, in favor of simplicity. */
+
+  lcp = inf_adopted_state_vector_copy(priv->current);
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
+  {
+    if(inf_user_get_status(INF_USER(*user)) != INF_USER_UNAVAILABLE)
+    {
+      temp = inf_adopted_algorithm_least_common_predecessor(
+        algorithm,
+        lcp,
+        inf_adopted_user_get_vector(*user)
+      );
+
+      inf_adopted_state_vector_free(lcp);
+      lcp = temp;
+    }
+  }
+
+  for(user = priv->users_begin; user != priv->users_end; ++ user)
+  {
+    id = inf_user_get_id(INF_USER(*user));
+    log = inf_adopted_user_get_request_log(*user);
+    n = inf_adopted_request_log_get_begin(log);
+
+    /* Remove all sets of related requests whose upper related request has
+     * a large enough vdiff to lcp. */
+    while(n < inf_adopted_request_log_get_end(log))
+    {
+      req = inf_adopted_request_log_upper_related(log, n);
+      req_vec = inf_adopted_request_get_vector(req);
+
+      /* We can only remove requests that are causally before lcp,
+       * as explained above. We need to compare the target vector time of the
+       * request, though, and not the source which is why we increase the
+       * request's user's component by one. This is because of the fact that
+       * the request needs to be available to reach its target vector time. */
+      req_before_lcp = inf_adopted_state_vector_causally_before_inc(
+        req_vec,
+        lcp,
+        id
+      );
+
+      if(!req_before_lcp)
+        break;
+
+      /* TODO: Experimentally, I try using the lower related for the vdiff
+       * here. If it doesn't work out, then we will need to use the upper
+       * related. Note that changing this requires changing the cleanup
+       * tests, too. */
+      low_vec = inf_adopted_request_get_vector(
+        inf_adopted_request_log_get_request(log, n)
+      );
+
+      vdiff = inf_adopted_state_vector_vdiff(low_vec, lcp);
+
+      /* TODO: Again, I experimentally changed <= to < here. If the vdiff is
+       * equal to the log size, then nobody can do anything with the request
+       * set anymore: Everybody already processed every request in the set
+       * (otherwise, the causally_before_ check above would have failed), and
+       * the user in question cannot Undo anymore since this would require one
+       * too much request in the request log. Note again that changing this
+       * requires changing the cleanup tests, too. */
+      if(vdiff < priv->max_total_log_size)
+        break;
+
+      /* Check next set of related requests */
+      n = inf_adopted_state_vector_get(req_vec, id) + 1;
+    }
+
+    inf_adopted_request_log_remove_requests(log, n);
+  }
+
+  inf_adopted_state_vector_free(lcp);
 }
 
 /**
