@@ -5918,7 +5918,7 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
     return FALSE;
   }
 
-  inf_acl_mask_set1(&perms, 1 << INF_ACL_CAN_QUERY_ACL);
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_QUERY_ACL);
   if(!infd_directory_check_auth(directory, node, connection, &perms, error))
     return FALSE;
 
