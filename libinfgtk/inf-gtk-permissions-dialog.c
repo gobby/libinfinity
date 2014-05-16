@@ -54,6 +54,10 @@ struct _InfGtkPermissionsDialogPrivate {
   InfRequest* query_acl_account_list_request;
   InfRequest* query_acl_request;
   GSList* set_acl_requests;
+  GSList* remove_acl_account_requests;
+
+  GtkMenu* popup_menu;
+  const InfAclAccount* popup_account;
 
   GtkWidget* tree_view;
   GtkWidget* sheet_view;
@@ -443,6 +447,12 @@ inf_gtk_permissions_dialog_acl_account_removed_cb(InfBrowser* browser,
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
+  if(priv->popup_menu != NULL && account == priv->popup_account)
+    gtk_menu_popdown(priv->popup_menu);
+
+  g_assert(priv->popup_menu == NULL);
+  g_assert(priv->popup_account == NULL);
+
   /* The account is not necessarily always in the list, for example if we have
    * permissions to query the user list but not to query the ACL for the
    * current node, we might get this callback but not have all accounts in the
@@ -486,6 +496,409 @@ inf_gtk_permissions_dialog_selection_changed_cb(GtkTreeSelection* selection,
   InfGtkPermissionsDialog* dialog;
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   inf_gtk_permissions_dialog_update_sheet(dialog);
+}
+
+static void
+inf_gtk_permissions_dialog_remove_acl_account_finished_cb(
+  InfRequest* request,
+  const InfRequestResult* result,
+  const GError* error,
+  gpointer user_data);
+
+static void
+inf_gtk_permissions_dialog_remove_acl_account_request(
+  InfGtkPermissionsDialog* dialog,
+  InfRequest* request)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  g_assert(g_slist_find(priv->remove_acl_account_requests, request) != NULL);
+
+  g_signal_handlers_disconnect_by_func(
+    request,
+    G_CALLBACK(inf_gtk_permissions_dialog_remove_acl_account_finished_cb),
+    dialog
+  );
+
+  priv->remove_acl_account_requests =
+    g_slist_remove(priv->remove_acl_account_requests, request);
+
+  g_object_unref(request);
+}
+
+static void
+inf_gtk_permissions_dialog_remove_acl_account_finished_cb(
+  InfRequest* request,
+  const InfRequestResult* result,
+  const GError* error,
+  gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+
+  /* TODO: Should we show this error to the user inside the dialog, or
+   * with a message dialog? */
+  if(error != NULL)
+  {
+    g_warning("Failed to remove account: %s\n", error->message);
+  }
+
+  inf_gtk_permissions_dialog_remove_acl_account_request(dialog, request);
+}
+
+static void
+inf_gtk_permissions_dialog_popup_delete_account_cb(GtkMenuItem* item,
+                                                   gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  InfRequest* request;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  g_assert(priv->popup_menu != NULL);
+  g_assert(priv->popup_account != NULL);
+
+  request = inf_browser_remove_acl_account(
+    priv->browser,
+    priv->popup_account,
+    inf_gtk_permissions_dialog_remove_acl_account_finished_cb,
+    dialog
+  );
+
+  if(request != NULL)
+  {
+    g_object_ref(request);
+
+    priv->remove_acl_account_requests = g_slist_prepend(
+      priv->remove_acl_account_requests,
+      request
+    );
+  }
+}
+
+/* TODO: The popup handling code should be shared between this class and
+ * InfGtkBrowserView. */
+
+static gboolean
+inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
+                                          GtkMenu* menu)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkWidget* item;
+
+  InfBrowserIter root;
+  InfAclMask perms;
+
+  guint n_accounts;
+  const InfAclAccount** accounts;
+  const InfAclAccount* account;
+  GtkTreeSelection* selection;
+  GtkTreeIter iter;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+  g_assert(priv->popup_menu == NULL);
+
+  /* Make sure that we have permissions to remove accounts */
+  inf_browser_get_root(priv->browser, &root);
+  inf_acl_mask_set1(&perms, INF_ACL_CAN_REMOVE_ACCOUNT);
+
+  inf_browser_check_acl(
+    priv->browser,
+    &root,
+    inf_browser_get_acl_local_account(priv->browser),
+    &perms,
+    &perms
+  );
+
+  if(!inf_acl_mask_has(&perms, INF_ACL_CAN_REMOVE_ACCOUNT))
+    return FALSE;
+
+  /* Make sure we have the account list queried */
+  accounts = inf_browser_get_acl_account_list(priv->browser, &n_accounts);
+  if(!accounts)
+    return FALSE;
+  g_free(accounts);
+
+  /* Make sure the selected account is not the default account */
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+  if(!gtk_tree_selection_get_selected(selection, NULL, &iter))
+    return FALSE;
+
+  gtk_tree_model_get(
+    GTK_TREE_MODEL(priv->account_store),
+    &iter,
+    0, &account,
+    -1
+  );
+
+  if(strcmp(account->id, "default") == 0)
+    return FALSE;
+ 
+  /* Then, show a menu item to remove an account. */
+  item = gtk_image_menu_item_new_with_mnemonic(_("_Delete Account"));
+
+  gtk_image_menu_item_set_image(
+    GTK_IMAGE_MENU_ITEM(item),
+    gtk_image_new_from_stock(GTK_STOCK_DELETE, GTK_ICON_SIZE_MENU)
+  );
+
+  g_signal_connect(
+    G_OBJECT(item),
+    "activate",
+    G_CALLBACK(inf_gtk_permissions_dialog_popup_delete_account_cb),
+    dialog
+  );
+
+  gtk_widget_show(item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+
+  /* TODO: These two items need to be added for popdown and stuff,
+   * popup_menu needs to be maintained and tracked. */
+  priv->popup_menu = menu;
+  priv->popup_account = account;
+
+  return TRUE;
+}
+
+static void
+inf_gtk_permissions_dialog_popup_menu_detach_func(GtkWidget* attach_widget,
+                                                  GtkMenu* menu)
+{
+}
+
+static void
+inf_gtk_permissions_dialog_popup_menu_position_func(GtkMenu* menu,
+                                                    gint* x,
+                                                    gint* y,
+                                                    gboolean* push_in,
+                                                    gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  GdkWindow* bin_window;
+  GdkScreen* screen;
+  GtkRequisition menu_req;
+  GdkRectangle monitor;
+  gint monitor_num;
+  gint orig_x;
+  gint orig_y;
+  gint height;
+
+  GtkTreeSelection* selection;
+  GtkTreeModel* model;
+  GtkTreeIter selected_iter;
+  GtkTreePath* selected_path;
+  GdkRectangle cell_area;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* Place menu below currently selected row */
+
+  bin_window = gtk_tree_view_get_bin_window(GTK_TREE_VIEW(priv->tree_view));
+  gdk_window_get_origin(bin_window, &orig_x, &orig_y);
+
+  screen = gtk_widget_get_screen(GTK_WIDGET(priv->tree_view));
+  monitor_num = gdk_screen_get_monitor_at_window(screen, bin_window);
+  if(monitor_num < 0) monitor_num = 0;
+  gtk_menu_set_monitor(menu, monitor_num);
+
+  gdk_screen_get_monitor_geometry(screen, monitor_num, &monitor);
+  gtk_widget_size_request(GTK_WIDGET(menu), &menu_req);
+
+#if GTK_CHECK_VERSION(2, 91, 0)
+  height = gdk_window_get_height(bin_window);
+#else
+  gdk_drawable_get_size(GDK_DRAWABLE(bin_window), NULL, &height);
+#endif
+
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+  gtk_tree_selection_get_selected(selection, &model, &selected_iter);
+  selected_path = gtk_tree_model_get_path(model, &selected_iter);
+  gtk_tree_view_get_cell_area(
+    GTK_TREE_VIEW(priv->tree_view),
+    selected_path,
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 0),
+    &cell_area
+  );
+  gtk_tree_path_free(selected_path);
+
+  g_assert(cell_area.height > 0);
+
+  if(gtk_widget_get_direction(GTK_WIDGET(priv->tree_view)) ==
+     GTK_TEXT_DIR_LTR)
+  {
+    *x = orig_x + cell_area.x + cell_area.width - menu_req.width;
+  }
+  else
+  {
+    *x = orig_x + cell_area.x;
+  }
+
+  *y = orig_y + cell_area.y + cell_area.height;
+
+  /* Keep within widget */
+  if(*y < orig_y)
+    *y = orig_y;
+  if(*y > orig_y + height)
+    *y = orig_y + height;
+
+  /* Keep on screen */
+  if(*y + menu_req.height > monitor.y + monitor.height)
+    *y = monitor.y + monitor.height - menu_req.height;
+  if(*y < monitor.y)
+    *y = monitor.y;
+
+  *push_in = FALSE;
+}
+
+static void
+inf_gtk_permissions_dialog_popup_selection_done_cb(GtkMenu* menu,
+                                                   gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  g_assert(priv->popup_menu != NULL);
+  
+  priv->popup_menu = NULL;
+  priv->popup_account = NULL;
+}
+
+static gboolean
+inf_gtk_permissions_dialog_show_popup(InfGtkPermissionsDialog* dialog,
+                                      guint button, /* 0 if triggered by keyboard */
+                                      guint32 time)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkWidget* menu;
+  gboolean result;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  menu = gtk_menu_new();
+
+  g_signal_connect(
+    G_OBJECT(menu),
+    "selection-done",
+    G_CALLBACK(inf_gtk_permissions_dialog_popup_selection_done_cb),
+    dialog
+  );
+
+  gtk_menu_attach_to_widget(
+    GTK_MENU(menu),
+    GTK_WIDGET(priv->tree_view),
+    inf_gtk_permissions_dialog_popup_menu_detach_func
+  );
+
+  if(inf_gtk_permissions_dialog_populate_popup(dialog, GTK_MENU(menu)))
+  {
+    result = TRUE;
+
+    if(button)
+    {
+      gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, button, time);
+    }
+    else
+    {
+      gtk_menu_popup(
+        GTK_MENU(menu),
+        NULL,
+        NULL,
+        inf_gtk_permissions_dialog_popup_menu_position_func,
+        priv->tree_view,
+        button,
+        time
+      );
+
+      gtk_menu_shell_select_first(GTK_MENU_SHELL(menu), FALSE);
+    }
+  }
+  else
+  {
+    result = FALSE;
+    gtk_widget_destroy(menu);
+  }
+
+  return result;
+}
+
+static gboolean
+inf_gtk_permissions_dialog_button_press_event_cb(GtkWidget* treeview,
+                                                 GdkEventButton* event,
+                                                 gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  GtkTreePath* path;
+  gboolean has_path;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+
+  if(event->button == 3 &&
+     event->window == gtk_tree_view_get_bin_window(GTK_TREE_VIEW(treeview)))
+  {
+    has_path = gtk_tree_view_get_path_at_pos(
+      GTK_TREE_VIEW(treeview),
+      event->x,
+      event->y,
+      &path,
+      NULL,
+      NULL,
+      NULL
+    );
+
+    if(has_path)
+    {
+      gtk_tree_selection_select_path(
+        gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview)),
+        path
+      );
+
+      gtk_tree_path_free(path);
+
+      return inf_gtk_permissions_dialog_show_popup(
+        dialog,
+        event->button,
+        event->time
+      );
+    }
+  }
+
+  return FALSE;
+}
+
+static gboolean
+inf_gtk_permissions_dialog_key_press_event_cb(GtkWidget* treeview,
+                                              GdkEventKey* event,
+                                              gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  GtkTreeSelection* selection;
+  GtkTreeIter iter;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+
+#if GTK_CHECK_VERSION(2,90,7)
+  if(event->keyval == GDK_KEY_Menu)
+#else
+  if(event->keyval == GDK_Menu)
+#endif
+  {
+    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
+    if(gtk_tree_selection_get_selected(selection, NULL, &iter))
+    {
+      return inf_gtk_permissions_dialog_show_popup(dialog, 0, event->time);
+    }
+  }
+
+  return FALSE;
 }
 
 static int
@@ -967,6 +1380,10 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   priv->query_acl_account_list_request = NULL;
   priv->query_acl_request = NULL;
   priv->set_acl_requests = NULL;
+  priv->remove_acl_account_requests = NULL;
+
+  priv->popup_menu = NULL;
+  priv->popup_account = NULL;
 
   column = gtk_tree_view_column_new();
   gtk_tree_view_column_set_title(column, _("Accounts"));
@@ -986,6 +1403,20 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   priv->tree_view =
     gtk_tree_view_new_with_model(GTK_TREE_MODEL(priv->account_store));
   gtk_tree_view_append_column(GTK_TREE_VIEW(priv->tree_view), column);
+
+  g_signal_connect(
+    G_OBJECT(priv->tree_view),
+    "key-press-event",
+    G_CALLBACK(inf_gtk_permissions_dialog_key_press_event_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->tree_view),
+    "button-press-event",
+    G_CALLBACK(inf_gtk_permissions_dialog_button_press_event_cb),
+    dialog
+  );
 
   selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
   gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
@@ -1125,6 +1556,14 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(object);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  while(priv->remove_acl_account_requests != NULL)
+  {
+    inf_gtk_permissions_dialog_remove_acl_account_request(
+      dialog,
+      priv->remove_acl_account_requests->data
+    );
+  }
 
   if(priv->browser != NULL)
   {
@@ -1364,6 +1803,9 @@ inf_gtk_permissions_dialog_set_node(InfGtkPermissionsDialog* dialog,
   g_return_if_fail((browser == NULL) == (iter == NULL));
 
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(priv->popup_menu != NULL)
+    gtk_menu_popdown(priv->popup_menu);
 
   if(priv->browser != NULL)
   {
