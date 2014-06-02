@@ -4425,6 +4425,10 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   gchar* request_type;
   InfBrowserIter iter;
 
+  const InfAclAccount* default_account;
+  InfAclSheet* default_sheet;
+  InfAclMask default_mask;
+
   priv = INFC_BROWSER_PRIVATE(browser);
 
   node = infc_browser_get_node_from_xml(browser, xml, "id", error);
@@ -4485,6 +4489,48 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   {
     if(sheet_set->n_sheets > 0)
     {
+      /* If the root node permissions are changed, make sure that none are
+       * masked out and reset them to the default values instead. This can
+       * happen if we are running against an older server which does not
+       * support all permissions that we do support. */
+      if(node == priv->root)
+      {
+        default_account = g_hash_table_lookup(priv->accounts, "default");
+        g_assert(default_account != NULL);
+
+        default_sheet =
+          inf_acl_sheet_set_find_sheet(sheet_set, default_account);
+        if(default_sheet != NULL)
+        {
+          default_mask = default_sheet->mask;
+
+          /* Make sure that all masked-out bits
+           * in permissions are set to zero */
+          inf_acl_mask_and(
+            &default_sheet->perms,
+            &default_sheet->mask,
+            &default_sheet->perms
+          );
+
+          /* Next, set the masked out bits to their default values */
+          inf_acl_mask_neg(&default_mask, &default_mask);
+
+          inf_acl_mask_and(
+            &default_mask,
+            &INF_ACL_MASK_DEFAULT,
+            &default_mask
+          );
+
+          inf_acl_mask_or(
+            &default_sheet->perms,
+            &default_mask,
+            &default_sheet->perms
+          );
+
+          default_sheet->mask = INF_ACL_MASK_ALL;
+        }
+      }
+
       node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
       infc_browser_enforce_acl(browser, node, request, NULL);
 
@@ -4495,12 +4541,6 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
         INF_REQUEST(request)
       );
     }
-
-    /* TODO: Here, enforce new ACLs. remove queried acls if query-acl flag is
-     * removed, remove acl-account-list flag and all queried acls if we don't
-     * have the account list, unexplore explored directories if explore flag
-     * is gone. If subscribe flag is gone, do nothing, the server will end it
-     * on the session level. */
 
     inf_acl_sheet_set_free(sheet_set);
   }
