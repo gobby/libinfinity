@@ -42,6 +42,7 @@
 #include <libinfgtk/inf-gtk-permissions-dialog.h>
 #include <libinfgtk/inf-gtk-acl-sheet-view.h>
 #include <libinfinity/inf-i18n.h>
+#include <gdk/gdkkeysyms.h>
 
 typedef struct _InfGtkPermissionsDialogPrivate InfGtkPermissionsDialogPrivate;
 struct _InfGtkPermissionsDialogPrivate {
