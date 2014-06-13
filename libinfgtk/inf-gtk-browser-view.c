@@ -992,7 +992,7 @@ inf_gtk_browser_view_browser_added(InfGtkBrowserView* view,
 
   view_browser->explores = NULL;
   view_browser->syncs = NULL;
-  view_browser->initial_root_expansion = FALSE;
+  view_browser->initial_root_expansion = TRUE;
 
   view_browser->reference = gtk_tree_row_reference_new_proxy(
     G_OBJECT(priv->column),
