@@ -2530,6 +2530,28 @@ inf_gtk_browser_store_add_browser(InfGtkBrowserStore* store,
 }
 
 /**
+ * inf_gtk_browser_store_remove_browser:
+ * @store: A #InfGtkBrowserStore
+ * @browser: A #InfBrowser contained in @store.
+ *
+ * This function removes the entry for the given browser from @store.
+ */
+void
+inf_gtk_browser_store_remove_browser(InfGtkBrowserStore* store,
+                                     InfBrowser* browser)
+{
+  InfGtkBrowserStoreItem* item;
+
+  g_return_if_fail(INF_GTK_IS_BROWSER_STORE(store));
+  g_return_if_fail(INF_IS_BROWSER(browser));
+
+  item = inf_gtk_browser_store_find_item_by_browser(store, browser);
+  g_return_if_fail(item != NULL);
+
+  inf_gtk_browser_store_remove_item (store, item);
+}
+
+/**
  * inf_gtk_browser_store_remove_connection:
  * @store: A #InfGtkBrowserStore.
  * @connection: A #InfXmlConnection contained in @store.
