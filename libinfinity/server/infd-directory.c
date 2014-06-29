@@ -1545,6 +1545,7 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
 
   g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
   g_assert(node->shared.note.session != NULL);
+  g_assert(node->shared.note.weakref == FALSE);
 
   iter.node = node;
   iter.node_id = node->id;
@@ -6418,7 +6419,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       subreq->shared.add_node.sheet_set
     );
 
-    if(node != NULL &&
+    if(node != NULL && subreq->shared.add_node.plugin != NULL &&
        infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(
@@ -6494,6 +6495,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
 
       if(local_error == NULL)
       {
+        /* TODO: Better error message needed: It could also be that the
+         * permissions were changed or the note plugin was unloaded. */
         g_set_error(
           &local_error,
           inf_directory_error_quark(),
@@ -6564,7 +6567,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       subreq->shared.sync_in.sheet_set
     );
 
-    if(node != NULL &&
+    if(node != NULL && subreq->shared.sync_in.plugin != NULL &&
        infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(
@@ -6606,6 +6609,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       proxy = subreq->shared.sync_in.proxy;
       g_object_ref(proxy);
 
+      /* TODO: Better error message needed: It could also be that the
+       * permissions were changed or the note plugin was unloaded. */
       if(local_error == NULL)
       {
         g_set_error(
@@ -9071,6 +9076,116 @@ infd_directory_add_plugin(InfdDirectory* directory,
   }
 
   return TRUE;
+}
+
+/**
+ * infd_directory_remove_plugin:
+ * @directory: A #InfdDirectory.
+ * @plugin: The plugin to remove.
+ *
+ * Removes a note plugin from the directory. If there are any sessions running
+ * using this plugin, they are unsubscribed from the directory.
+ */
+void
+infd_directory_remove_plugin(InfdDirectory* directory,
+                             const InfdNotePlugin* plugin)
+{
+  InfdDirectoryPrivate* priv;
+  GQuark note_type;
+  GHashTableIter iter;
+  gpointer value;
+  InfdDirectoryNode* node;
+  InfdSessionProxy* proxy;
+
+  GSList* item;
+  GSList* next;
+  InfdDirectorySyncIn* sync_in;
+  InfdDirectorySubreq* subreq;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(plugin != NULL, FALSE);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_return_if_fail(
+    g_hash_table_lookup(priv->plugins, plugin->note_type) == plugin
+  );
+
+  /* Turn unknown nodes into known nodes */
+  note_type = g_quark_from_string(plugin->note_type);
+  g_hash_table_iter_init(&iter, priv->nodes);
+  while(g_hash_table_iter_next(&iter, NULL, &value))
+  {
+    node = (InfdDirectoryNode*)value;
+    if(node->type == INFD_DIRECTORY_NODE_NOTE &&
+       node->shared.note.plugin == plugin)
+    {
+      /* First, remove the note's session, if any */
+      if(node->shared.note.session != NULL &&
+         node->shared.note.weakref == FALSE)
+      {
+        infd_directory_node_unlink_session(directory, node, NULL);
+      }
+      
+      if(node->shared.note.session != NULL)
+      {
+        infd_directory_release_session(
+          directory,
+          node,
+          node->shared.note.session
+        );
+      }
+
+      g_assert(node->shared.note.session == NULL);
+      g_assert(node->shared.note.plugin == plugin);
+      g_assert(node->shared.note.save_timeout == NULL);
+      g_assert(node->shared.note.weakref == FALSE);
+
+      /* Then, change the type to unknown */
+      node->type = INFD_DIRECTORY_NODE_UNKNOWN;
+      node->shared.unknown.type = g_quark_from_string(plugin->note_type);
+    }
+  }
+
+  /* Remove all sync-ins with this plugin */
+  for(item = priv->sync_ins; item != NULL; item = next)
+  {
+    next = item->next;
+    sync_in = (InfdDirectorySyncIn*)item->data;
+    if(sync_in->plugin == plugin)
+      infd_directory_remove_sync_in(directory, sync_in);
+  }
+
+  /* Remove plugin from all subscription requests, the requests will
+   * subsequently fail in handle_subscribe_ack(). */
+  for(item = priv->subscription_requests; item != NULL; item = next)
+  {
+    next = item->next;
+    subreq = (InfdDirectorySubreq*)item->data;
+
+    switch(subreq->type)
+    {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
+      break;
+    case INFD_DIRECTORY_SUBREQ_SESSION:
+      break;
+    case INFD_DIRECTORY_SUBREQ_ADD_NODE:
+      if(subreq->shared.add_node.plugin == plugin)
+        subreq->shared.add_node.plugin = NULL;
+      break;
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN:
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+      if(subreq->shared.sync_in.plugin == plugin)
+        subreq->shared.sync_in.plugin = NULL;
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+  }
+
+  /* Finally, remove the plugin from the list of loaded plugins */
+  g_hash_table_remove(priv->plugins, plugin->note_type);
 }
 
 /**

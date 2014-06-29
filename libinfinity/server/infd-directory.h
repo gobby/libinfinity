@@ -85,6 +85,10 @@ gboolean
 infd_directory_add_plugin(InfdDirectory* directory,
                           const InfdNotePlugin* plugin);
 
+void
+infd_directory_remove_plugin(InfdDirectory* directory,
+                             const InfdNotePlugin* plugin);
+
 const InfdNotePlugin*
 infd_directory_lookup_plugin(InfdDirectory* directory,
                              const gchar* note_type);
