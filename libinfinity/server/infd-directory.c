@@ -4731,7 +4731,7 @@ infd_directory_get_node_from_xml_typed(InfdDirectory* directory,
         g_set_error(
           error,
           inf_directory_error_quark(),
-          INF_DIRECTORY_ERROR_NOT_A_NOTE,
+          INF_DIRECTORY_ERROR_NOTE_TYPE_UNSUPPORTED,
           _("Node with ID \"%u\" has unsupported type \"%s\""),
           node->id,
           g_quark_to_string(node->shared.unknown.type)
@@ -8204,10 +8204,14 @@ infd_directory_browser_get_session(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_NOTE, NULL);
-  
+  g_return_val_if_fail(node->type != INFD_DIRECTORY_NODE_SUBDIRECTORY, NULL);
+
+  if(node->type == INFD_DIRECTORY_NODE_UNKNOWN) return NULL;
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
+
   if(node->shared.note.session == NULL || node->shared.note.weakref == TRUE)
     return NULL;
+
   return INF_SESSION_PROXY(node->shared.note.session);
 }
 

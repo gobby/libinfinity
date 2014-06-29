@@ -1,11 +1,10 @@
-SUBDIRS = . plugins note-plugins
+SUBDIRS = . plugins
 
 # TODO: Find a way to have the version number set automatically.
 bin_PROGRAMS = infinoted-0.6
 dist_man1_MANS = infinoted-0.6.man
 
 plugin_path = infinoted-$(LIBINFINITY_API_VERSION)/plugins
-note_plugin_path = infinoted-$(LIBINFINITY_API_VERSION)/note-plugins
 
 # Compile the plugin manager as a shared library:
 # TODO: Find a way to have the version number set automatically.
@@ -17,7 +16,6 @@ libinfinoted_plugin_manager_0_6_la_CPPFLAGS = \
 	$(infinity_CFLAGS) \
 	-DPLUGIN_LIBPATH=\"${libdir}\" \
 	-DPLUGIN_PATH=\"${plugin_path}\" \
-	-DNOTE_PLUGIN_PATH=\"${note_plugin_path}\" \
 	-DLOCALSTATEDIR=\"${localstatedir}\" \
 	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
@@ -47,7 +45,6 @@ infinoted_0_6_CPPFLAGS = \
 	$(infinity_CFLAGS) \
 	-DPLUGIN_LIBPATH=\"${libdir}\" \
 	-DPLUGIN_PATH=\"${plugin_path}\" \
-	-DNOTE_PLUGIN_PATH=\"${note_plugin_path}\" \
 	-DLOCALSTATEDIR=\"${localstatedir}\" \
 	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
@@ -62,7 +59,6 @@ infinoted_0_6_SOURCES = \
 	infinoted-config-reload.c \
 	infinoted-dh-params.c \
 	infinoted-main.c \
-	infinoted-note-plugin.c \
 	infinoted-options.c \
 	infinoted-pam.c \
 	infinoted-run.c \
@@ -72,7 +68,6 @@ infinoted_0_6_SOURCES = \
 noinst_HEADERS = \
 	infinoted-config-reload.h \
 	infinoted-dh-params.h \
-	infinoted-note-plugin.h \
 	infinoted-options.h \
 	infinoted-pam.h \
 	infinoted-run.h \

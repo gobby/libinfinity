@@ -129,7 +129,7 @@ const InfinotedParameterInfo INFINOTED_OPTIONS[] = {
     N_("Additional plugins to load. This option can be specified more than "
        "once to load multiple plugins. Plugin options can be configured in "
        "the configuration file (one section for each plugin), or with the "
-       "--plugin-parameter option."),
+       "--plugin-parameter option. [Default=note-text]"),
     N_("PLUGIN-NAME")
   }, {
     "password",
@@ -963,7 +963,9 @@ infinoted_options_new(const gchar* const* config_files,
   options->security_policy = INF_XMPP_CONNECTION_SECURITY_ONLY_TLS;
   options->root_directory =
     g_build_filename(g_get_home_dir(), ".infinote", NULL);
-  options->plugins = NULL;
+  options->plugins = g_malloc(2 * sizeof(gchar*));
+  options->plugins[0] = g_strdup("note-text");
+  options->plugins[1] = NULL;
   options->password = NULL;
 #ifdef LIBINFINITY_HAVE_PAM
   options->pam_service = NULL;
