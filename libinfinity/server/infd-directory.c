@@ -9106,8 +9106,8 @@ infd_directory_remove_plugin(InfdDirectory* directory,
   InfdDirectorySyncIn* sync_in;
   InfdDirectorySubreq* subreq;
 
-  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
-  g_return_val_if_fail(plugin != NULL, FALSE);
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(plugin != NULL);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
