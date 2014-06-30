@@ -2585,6 +2585,8 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     error
   );
 
+  if(node == NULL) return FALSE;
+
   if(node->shared.subdir.explored == FALSE)
     if(infd_directory_node_explore(directory, node, error) == FALSE)
       return FALSE;
