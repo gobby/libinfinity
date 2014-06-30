@@ -427,7 +427,8 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
 #endif
   {
     /* Invalidate cursors/selections */
-    if(priv->show_remote_cursors || priv->show_remote_selections)
+    if(priv->show_remote_cursors || priv->show_remote_selections ||
+       priv->show_remote_current_lines)
     {
       window = gtk_text_view_get_window(priv->textview, GTK_TEXT_WINDOW_TEXT);
 #if GTK_CHECK_VERSION(2, 91, 0)
@@ -498,26 +499,26 @@ inf_text_gtk_view_user_invalidate_user_area(InfTextGtkViewUser* view_user)
             inf_text_gtk_view_get_left_margin(priv->textview) +
             inf_text_gtk_view_get_right_margin(priv->textview);
         }
+
+        gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
       }
 
-     gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
-   }
+      /* Invalidate current lines */
+      if(priv->show_remote_current_lines)
+      {
+        gtk_text_view_buffer_to_window_coords(
+          priv->textview,
+          GTK_TEXT_WINDOW_TEXT,
+          0, view_user->line_y,
+          NULL, &invalidate_rect.y
+        );
 
-    /* Invalidate current lines */
-    if(priv->show_remote_current_lines)
-    {
-      gtk_text_view_buffer_to_window_coords(
-        priv->textview,
-        GTK_TEXT_WINDOW_TEXT,
-        0, view_user->line_y,
-        NULL, &invalidate_rect.y
-      );
-
-      /* -1 to stay consistent with GtkSourceView */
-      invalidate_rect.x =
-        inf_text_gtk_view_get_left_margin(priv->textview) - 1;
-      invalidate_rect.width = window_width - invalidate_rect.x;
-      invalidate_rect.height = view_user->line_height;
+        /* -1 to stay consistent with GtkSourceView */
+        invalidate_rect.x =
+          inf_text_gtk_view_get_left_margin(priv->textview) - 1;
+        invalidate_rect.width = window_width - invalidate_rect.x;
+        invalidate_rect.height = view_user->line_height;
+      }
 
       gdk_window_invalidate_rect(window, &invalidate_rect, FALSE);
     }
