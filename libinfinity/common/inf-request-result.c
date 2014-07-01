@@ -208,10 +208,74 @@ inf_request_result_get_add_node(const InfRequestResult* result,
   if(new_node != NULL) *new_node = data->new_node;
 }
 
+typedef struct _InfRequestResultRenameNode InfRequestResultRenameNode;
+struct _InfRequestResultRenameNode {
+  InfBrowser* browser;
+  const InfBrowserIter* iter;
+  const char* new_name;
+};
+
+/**
+ * inf_request_result_make_add_node:
+ * @browser: A #InfBrowser.
+ * @iter: An iterator pointing to the node to which was renamed.
+ *
+ * Creates a new #InfRequestResult for an "rename-node" request, see
+ * inf_browser_rename_node(). The #InfRequestResult object is only valid
+ * as long as the caller maintains a reference to @browser.
+ *
+ * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ */
+InfRequestResult*
+inf_request_result_make_rename_node(InfBrowser* browser,
+                                    const InfBrowserIter* iter,
+				    const char* new_name)
+{
+  InfRequestResultRenameNode* data;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+
+  data = g_malloc(sizeof(InfRequestResultRenameNode));
+
+  data->browser = browser;
+  data->iter = iter;
+  data->new_name = new_name;
+
+  return inf_request_result_new(data, sizeof(*data));
+}
+
+/**
+ * inf_request_result_get_rename_node:
+ * @result: A #InfRequestResult:
+ * @browser: Output value of the browser that made the request, or %NULL.
+ * @iter: Output value for the node that has been renamed, or %NULL.
+ *
+ * Decomposes @result into its components. The object must have been created
+ * with inf_request_result_make_rename_node().
+ */
+void
+inf_request_result_get_rename_node(const InfRequestResult* result,
+                                   InfBrowser** browser,
+                                   const InfBrowserIter** iter,
+				   const char** new_name)
+{
+  const InfRequestResultRenameNode* data;
+
+  g_return_if_fail(result != NULL);
+  g_return_if_fail(result->len == sizeof(InfRequestResultRenameNode));
+  data = (const InfRequestResultRenameNode*)result->data;
+
+  if(browser != NULL) *browser = data->browser;
+  if(iter != NULL) *iter = data->iter;
+  if(new_name != NULL) *new_name = data->new_name;
+}
+
 typedef struct _InfRequestResultRemoveNode InfRequestResultRemoveNode;
 struct _InfRequestResultRemoveNode {
   InfBrowser* browser;
   const InfBrowserIter* iter;
+  const char* new_name;
 };
 
 /**

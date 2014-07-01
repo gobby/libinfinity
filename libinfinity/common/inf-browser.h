@@ -208,6 +208,11 @@ struct _InfBrowserIface {
                                   const InfAclSheetSet* acl,
                                   InfRequestFunc func,
                                   gpointer user_data);
+  InfRequest* (*rename_node)(InfBrowser* browser,
+                             const InfBrowserIter* iter,
+			     const char* new_name,
+                             InfRequestFunc func,
+                             gpointer user_data);
   InfRequest* (*remove_node)(InfBrowser* browser,
                              const InfBrowserIter* iter,
                              InfRequestFunc func,
@@ -335,6 +340,13 @@ inf_browser_add_subdirectory(InfBrowser* browser,
                              const InfAclSheetSet* acl,
                              InfRequestFunc func,
                              gpointer user_data);
+
+InfRequest*
+inf_browser_rename_node(InfBrowser* browser,
+                        const InfBrowserIter* iter,
+			const char* new_name,
+                        InfRequestFunc func,
+                        gpointer user_data);
 
 InfRequest*
 inf_browser_remove_node(InfBrowser* browser,

@@ -865,6 +865,42 @@ inf_browser_add_subdirectory(InfBrowser* browser,
 }
 
 /**
+ * inf_browser_rename_node:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Requests to rename the node @iter points to.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned,
+ * where @func has been installed for the #InfRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest which can be used to get notified when the
+ * request finishes.
+ */
+InfRequest*
+inf_browser_rename_node(InfBrowser* browser,
+                        const InfBrowserIter* iter,
+			const char* new_name,
+                        InfRequestFunc func,
+                        gpointer user_data)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->rename_node != NULL, NULL);
+
+  return iface->rename_node(browser, iter, new_name, func, user_data);
+}
+
+/**
  * inf_browser_remove_node:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node inside @browser.

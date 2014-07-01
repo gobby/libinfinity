@@ -3513,6 +3513,55 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
 }
 
 static gboolean
+infc_browser_handle_rename_node(InfcBrowser* browser,
+                                InfXmlConnection* connection,
+                                xmlNodePtr xml,
+                                GError** error)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserNode* node;
+  InfcRequest* request;
+  InfBrowserIter iter;
+  xmlChar* new_name;
+
+  if((new_name = inf_xml_util_get_attribute_required(xml, "new_name", error)) == NULL) return FALSE;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  node = infc_browser_get_node_from_xml(browser, xml, "id", error);
+  if(node == NULL)
+  {
+    xmlFree(new_name);
+    return FALSE;
+  }
+
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "rename-node",
+    xml,
+    NULL
+  );
+
+  if(request != NULL)
+  {
+    g_object_ref(request);
+
+    iter.node_id = node->id;
+    iter.node = node;
+
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_rename_node(INF_BROWSER(browser), &iter, new_name)
+    );
+  }
+
+  if(request != NULL)
+    g_object_unref(request);
+
+  return TRUE;
+}
+
+static gboolean
 infc_browser_handle_remove_node(InfcBrowser* browser,
                                 InfXmlConnection* connection,
                                 xmlNodePtr xml,
@@ -4740,6 +4789,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const gchar*)node->name, "sync-in") == 0)
   {
     infc_browser_handle_sync_in(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "rename-node") == 0)
+  {
+    infc_browser_handle_rename_node(
       browser,
       connection,
       node,
