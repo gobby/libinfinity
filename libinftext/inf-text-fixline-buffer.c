@@ -778,7 +778,7 @@ inf_text_fixline_buffer_text_erased_cb(InfTextBuffer* buffer,
       priv->n_keep += (chunk_length - (end - pos));
 
       new_chunk = inf_text_chunk_copy(chunk);
-      inf_text_chunk_erase(new_chunk, pos + chunk_length - end, end - pos);
+      inf_text_chunk_erase(new_chunk, end - pos, chunk_length - (end - pos));
 
       inf_text_buffer_text_erased(
         INF_TEXT_BUFFER(user_data),

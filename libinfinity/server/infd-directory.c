@@ -67,6 +67,12 @@ struct _InfdDirectoryGetAclAccountListData {
   guint index;
 };
 
+typedef enum _InfdDirectoryNodeType {
+  INFD_DIRECTORY_NODE_SUBDIRECTORY,
+  INFD_DIRECTORY_NODE_NOTE,
+  INFD_DIRECTORY_NODE_UNKNOWN,
+} InfdDirectoryNodeType;
+
 typedef struct _InfdDirectoryNode InfdDirectoryNode;
 struct _InfdDirectoryNode {
   InfdDirectoryNode* parent;
@@ -76,7 +82,7 @@ struct _InfdDirectoryNode {
   InfAclSheetSet* acl;
   GSList* acl_connections;
 
-  InfdStorageNodeType type;
+  InfdDirectoryNodeType type;
   guint id;
   gchar* name;
 
@@ -91,6 +97,11 @@ struct _InfdDirectoryNode {
       /* Whether we hold a weak reference or a strong reference on session */
       gboolean weakref;
     } note;
+
+    struct {
+      /* Note type */
+      GQuark type;
+    } unknown;
 
     struct {
       /* List of connections that have this folder open and have to be
@@ -252,12 +263,12 @@ static const unsigned int DAYS = 24 * 60 * 60;
 /* These make sure that node is a subdirectory node */
 #define infd_directory_return_if_subdir_fail(node) \
   g_return_if_fail( \
-    ((InfdDirectoryNode*)node)->type == INFD_STORAGE_NODE_SUBDIRECTORY \
+    ((InfdDirectoryNode*)node)->type == INFD_DIRECTORY_NODE_SUBDIRECTORY \
   )
 
 #define infd_directory_return_val_if_subdir_fail(node, val) \
   g_return_val_if_fail( \
-    ((InfdDirectoryNode*)node)->type == INFD_STORAGE_NODE_SUBDIRECTORY, \
+    ((InfdDirectoryNode*)node)->type == INFD_DIRECTORY_NODE_SUBDIRECTORY, \
     val \
   )
 
@@ -378,7 +389,7 @@ infd_directory_session_save_timeout_func(gpointer user_data)
 
   timeout_data = (InfdDirectorySessionSaveTimeoutData*)user_data;
 
-  g_assert(timeout_data->node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(timeout_data->node->type == INFD_DIRECTORY_NODE_NOTE);
   g_assert(timeout_data->node->shared.note.save_timeout != NULL);
   priv = INFD_DIRECTORY_PRIVATE(timeout_data->directory);
   error = NULL;
@@ -584,7 +595,7 @@ infd_directory_release_session(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
   g_assert(node->shared.note.session == session);
 
   if(node->shared.note.save_timeout != NULL)
@@ -1506,7 +1517,7 @@ infd_directory_node_link_session(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
   g_assert(node->shared.note.session == NULL ||
            (node->shared.note.session == proxy &&
             node->shared.note.weakref == TRUE));
@@ -1532,8 +1543,9 @@ infd_directory_node_unlink_session(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
   g_assert(node->shared.note.session != NULL);
+  g_assert(node->shared.note.weakref == FALSE);
 
   iter.node = node;
   iter.node_id = node->id;
@@ -1563,7 +1575,7 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
 
   switch(node->type)
   {
-  case INFD_STORAGE_NODE_SUBDIRECTORY:
+  case INFD_DIRECTORY_NODE_SUBDIRECTORY:
     if(node->shared.subdir.explored == TRUE)
     {
       for(child = node->shared.subdir.child;
@@ -1580,7 +1592,7 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
     }
 
     break;
-  case INFD_STORAGE_NODE_NOTE:
+  case INFD_DIRECTORY_NODE_NOTE:
     if(node->shared.note.session != NULL)
     {
       if(save_notes)
@@ -1636,6 +1648,9 @@ infd_directory_node_unlink_child_sessions(InfdDirectory* directory,
     }
 
     break;
+  case INFD_DIRECTORY_NODE_UNKNOWN:
+    /* Nothing to do */
+    break;
   default:
     g_assert_not_reached();
     break;
@@ -1676,7 +1691,7 @@ infd_directory_node_unlink(InfdDirectoryNode* node)
   }
   else 
   {
-    g_assert(node->parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+    g_assert(node->parent->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
     node->parent->shared.subdir.child = node->next;
   }
 
@@ -1691,7 +1706,7 @@ infd_directory_node_unlink(InfdDirectoryNode* node)
 static InfdDirectoryNode*
 infd_directory_node_new_common(InfdDirectory* directory,
                                InfdDirectoryNode* parent,
-                               InfdStorageNodeType type,
+                               InfdDirectoryNodeType type,
                                guint node_id,
                                gchar* name,
                                const InfAclSheetSet* sheet_set,
@@ -1749,7 +1764,7 @@ infd_directory_node_new_subdirectory(InfdDirectory* directory,
   node = infd_directory_node_new_common(
     directory,
     parent,
-    INFD_STORAGE_NODE_SUBDIRECTORY,
+    INFD_DIRECTORY_NODE_SUBDIRECTORY,
     node_id,
     name,
     sheet_set,
@@ -1777,7 +1792,7 @@ infd_directory_node_new_note(InfdDirectory* directory,
   node = infd_directory_node_new_common(
     directory,
     parent,
-    INFD_STORAGE_NODE_NOTE,
+    INFD_DIRECTORY_NODE_NOTE,
     node_id,
     name,
     sheet_set,
@@ -1791,6 +1806,33 @@ infd_directory_node_new_note(InfdDirectory* directory,
 
   return node;
 }
+
+static InfdDirectoryNode*
+infd_directory_node_new_unknown(InfdDirectory* directory,
+                                InfdDirectoryNode* parent,
+                                guint node_id,
+                                gchar* name,
+                                const InfAclSheetSet* sheet_set,
+                                gboolean write_acl,
+                                const gchar* note_type)
+{
+  InfdDirectoryNode* node;
+
+  node = infd_directory_node_new_common(
+    directory,
+    parent,
+    INFD_DIRECTORY_NODE_UNKNOWN,
+    node_id,
+    name,
+    sheet_set,
+    write_acl
+  );
+
+  node->shared.unknown.type = g_quark_from_string(note_type);
+
+  return node;
+}
+
 
 /* Required by infd_directory_node_free() */
 static void
@@ -1821,7 +1863,7 @@ infd_directory_node_free(InfdDirectory* directory,
 
   switch(node->type)
   {
-  case INFD_STORAGE_NODE_SUBDIRECTORY:
+  case INFD_DIRECTORY_NODE_SUBDIRECTORY:
     g_slist_free(node->shared.subdir.connections);
 
     /* Free child nodes */
@@ -1834,7 +1876,7 @@ infd_directory_node_free(InfdDirectory* directory,
     }
 
     break;
-  case INFD_STORAGE_NODE_NOTE:
+  case INFD_DIRECTORY_NODE_NOTE:
     /* Sessions must have been explicitely unlinked before; we might still
      * have weak references though. */
     g_assert(node->shared.note.session == NULL ||
@@ -1849,6 +1891,9 @@ infd_directory_node_free(InfdDirectory* directory,
       );
     }
 
+    break;
+  case INFD_DIRECTORY_NODE_UNKNOWN:
+    /* Nothing to do */
     break;
   default:
     g_assert_not_reached();
@@ -1917,7 +1962,7 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
   InfdDirectoryNode* child;
   GSList* item;
 
-  g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
   g_assert(node->shared.subdir.explored == TRUE);
 
   item = g_slist_find(node->shared.subdir.connections, connection);
@@ -1937,7 +1982,7 @@ infd_directory_node_remove_connection(InfdDirectoryNode* node,
           child != NULL;
           child = child->next)
       {
-        if(child->type == INFD_STORAGE_NODE_SUBDIRECTORY &&
+        if(child->type == INFD_DIRECTORY_NODE_SUBDIRECTORY &&
            child->shared.subdir.explored == TRUE)
         {
           infd_directory_node_remove_connection(child, connection);
@@ -2031,7 +2076,7 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
   iter.node_id = node->id;
 
   retval = TRUE;
-  if(node->type == INFD_STORAGE_NODE_SUBDIRECTORY)
+  if(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY)
   {
     if(g_slist_find(node->shared.subdir.connections, connection) != NULL)
     {
@@ -2208,7 +2253,7 @@ infd_directory_enforce_acl(InfdDirectory* directory,
 
   if(infd_directory_enforce_single_acl(directory, conn, node, TRUE) == TRUE)
   {
-    g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+    g_assert(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
 
     for(child = node->shared.subdir.child; child != NULL; child = child->next)
     {
@@ -2317,7 +2362,7 @@ infd_directory_remove_account_from_sheets(InfdDirectory* directory,
   InfAclSheet announce_sheet;
   InfBrowserIter iter;
 
-  if(node->type == INFD_STORAGE_NODE_SUBDIRECTORY &&
+  if(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY &&
      node->shared.subdir.explored == TRUE)
   {
     for(child = node->shared.subdir.child; child != NULL; child = child->next)
@@ -2795,7 +2840,7 @@ static xmlNodePtr
 infd_directory_node_desc_register_to_xml(const gchar* node_name,
                                          guint node_id,
                                          InfdDirectoryNode* parent,
-                                         const InfdNotePlugin* plugin,
+                                         const gchar* plugin_type,
                                          const gchar* name)
 {
   xmlNodePtr xml;
@@ -2805,11 +2850,7 @@ infd_directory_node_desc_register_to_xml(const gchar* node_name,
   inf_xml_util_set_attribute_uint(xml, "id", node_id);
   inf_xml_util_set_attribute_uint(xml, "parent", parent->id);
   inf_xml_util_set_attribute(xml, "name", name);
-
-  if(plugin != NULL)
-    inf_xml_util_set_attribute(xml, "type", plugin->note_type);
-  else
-    inf_xml_util_set_attribute(xml, "type", "InfSubdirectory");
+  inf_xml_util_set_attribute(xml, "type", plugin_type);
 
   return xml;
 }
@@ -2819,16 +2860,20 @@ static xmlNodePtr
 infd_directory_node_register_to_xml(InfdDirectoryNode* node)
 {
   const InfdNotePlugin* plugin;
+  const gchar* plugin_type;
 
   g_assert(node->parent != NULL);
 
   switch(node->type)
   {
-  case INFD_STORAGE_NODE_SUBDIRECTORY:
-    plugin = NULL;
+  case INFD_DIRECTORY_NODE_SUBDIRECTORY:
+    plugin_type = "InfSubdirectory";
     break;
-  case INFD_STORAGE_NODE_NOTE:
-    plugin = node->shared.note.plugin;
+  case INFD_DIRECTORY_NODE_NOTE:
+    plugin_type = node->shared.note.plugin->note_type;
+    break;
+  case INFD_DIRECTORY_NODE_UNKNOWN:
+    plugin_type = g_quark_to_string(node->shared.unknown.type);
     break;
   default:
     g_assert_not_reached();
@@ -2839,7 +2884,7 @@ infd_directory_node_register_to_xml(InfdDirectoryNode* node)
     "add-node",
     node->id,
     node->parent,
-    plugin,
+    plugin_type,
     node->name
   );
 }
@@ -3702,7 +3747,7 @@ infd_directory_node_explore(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(priv->storage != NULL);
-  g_assert(node->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
   g_assert(node->shared.subdir.explored == FALSE);
 
   local_error = NULL;
@@ -3804,6 +3849,18 @@ infd_directory_node_explore(InfdDirectory* directory,
           plugin
         );
       }
+      else
+      {
+        new_node = infd_directory_node_new_unknown(
+          directory,
+          node,
+          priv->node_counter++,
+          g_strdup(storage_node->name),
+          sheet_set,
+          FALSE,
+          storage_node->identifier
+        );
+      }
 
       break;
     default:
@@ -3872,7 +3929,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   InfBrowserIter parent_iter;
   InfBrowserIter iter;
 
-  g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(parent->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
   g_assert(parent->shared.subdir.explored == TRUE);
   g_assert(request != NULL);
 
@@ -3955,7 +4012,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(parent->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
   g_assert(parent->shared.subdir.explored == TRUE);
   g_assert(request != NULL);
 
@@ -4000,7 +4057,7 @@ infd_directory_node_add_note(InfdDirectory* directory,
           "add-node",
           node_id,
           parent,
-          plugin,
+          plugin->note_type,
           name
         );
 
@@ -4146,7 +4203,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  g_assert(parent->type == INFD_STORAGE_NODE_SUBDIRECTORY);
+  g_assert(parent->type == INFD_DIRECTORY_NODE_SUBDIRECTORY);
   g_assert(parent->shared.subdir.explored == TRUE);
 
   local_error = NULL;
@@ -4210,7 +4267,7 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
         "sync-in",
         node_id,
         parent,
-        plugin,
+        plugin->note_type,
         name
       );
 
@@ -4285,6 +4342,7 @@ infd_directory_node_remove(InfdDirectory* directory,
   gchar* path;
   InfBrowserIter iter;
   GError* local_error;
+  const gchar* note_type;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -4299,11 +4357,25 @@ infd_directory_node_remove(InfdDirectory* directory,
   {
     infd_directory_node_get_path(node, &path, NULL);
 
+    switch(node->type)
+    {
+    case INFD_DIRECTORY_NODE_SUBDIRECTORY:
+      note_type = NULL;
+      break;
+    case INFD_DIRECTORY_NODE_NOTE:
+      note_type = node->shared.note.plugin->note_type;
+      break;
+    case INFD_DIRECTORY_NODE_UNKNOWN:
+      note_type = g_quark_to_string(node->shared.unknown.type);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
     infd_storage_remove_node(
       priv->storage,
-      node->type == INFD_STORAGE_NODE_NOTE ?
-        node->shared.note.plugin->note_type :
-        NULL,
+      note_type,
       path,
       &local_error
     );
@@ -4360,7 +4432,7 @@ infd_directory_node_make_session(InfdDirectory* directory,
   InfdSessionProxy* proxy;
   gchar* path;
 
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -4643,26 +4715,43 @@ infd_directory_get_node_from_xml_typed(InfdDirectory* directory,
   {
     switch(type)
     {
-    case INFD_STORAGE_NODE_SUBDIRECTORY:
+    case INFD_DIRECTORY_NODE_SUBDIRECTORY:
       g_set_error(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
-        "%s",
-        inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY)
+        _("Node with ID \"%u\" is not a subdirectory node"),
+        node->id
       );
 
       return NULL;
-    case INFD_STORAGE_NODE_NOTE:
-      g_set_error(
-        error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_NOT_A_NOTE,
-        "%s",
-        inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_A_NOTE)
-      );
+    case INFD_DIRECTORY_NODE_NOTE:
+      if(node->type == INFD_DIRECTORY_NODE_UNKNOWN)
+      {
+        g_set_error(
+          error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_NOTE_TYPE_UNSUPPORTED,
+          _("Node with ID \"%u\" has unsupported type \"%s\""),
+          node->id,
+          g_quark_to_string(node->shared.unknown.type)
+        );
+      }
+      else
+      {
+        g_set_error(
+          error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_NOT_A_NOTE,
+          _("Node with ID \"%u\" is not a leaf node"),
+          node->id
+        );
+      }
 
       return NULL;
+    case INFD_DIRECTORY_NODE_UNKNOWN:
+      g_assert_not_reached(); /* TODO: Needs to be implemented */
+      break;
     default:
       g_assert_not_reached();
       return NULL;
@@ -4697,7 +4786,7 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
     directory,
     xml,
     "id",
-    INFD_STORAGE_NODE_SUBDIRECTORY,
+    INFD_DIRECTORY_NODE_SUBDIRECTORY,
     error
   );
 
@@ -4845,7 +4934,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     directory,
     xml,
     "parent",
-    INFD_STORAGE_NODE_SUBDIRECTORY,
+    INFD_DIRECTORY_NODE_SUBDIRECTORY,
     error
   );
 
@@ -5129,7 +5218,7 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     directory,
     xml,
     "id",
-    INFD_STORAGE_NODE_NOTE,
+    INFD_DIRECTORY_NODE_NOTE,
     error
   );
 
@@ -5318,7 +5407,7 @@ infd_directory_handle_save_session(InfdDirectory* directory,
     directory,
     xml,
     "id",
-    INFD_STORAGE_NODE_NOTE,
+    INFD_DIRECTORY_NODE_NOTE,
     error
   );
 
@@ -6238,10 +6327,10 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     local_error = NULL;
     conn = connection;
     inf_acl_mask_set1(&perms, INF_ACL_CAN_SUBSCRIBE_SESSION);
-    if(node != NULL &&
+    if(node != NULL && node->type != INFD_DIRECTORY_NODE_UNKNOWN &&
        infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
-      g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+      g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
 
       g_assert(node->shared.note.session == NULL ||
                node->shared.note.session == subreq->shared.session.session);
@@ -6282,6 +6371,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
     {
       if(subreq->shared.session.request != NULL)
       {
+        /* TODO: Better error message needed: It could also be that the
+         * permissions were changed or the note plugin was unloaded. */
         if(local_error == NULL)
         {
           g_set_error(
@@ -6328,7 +6419,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       subreq->shared.add_node.sheet_set
     );
 
-    if(node != NULL &&
+    if(node != NULL && subreq->shared.add_node.plugin != NULL &&
        infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(
@@ -6404,6 +6495,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
 
       if(local_error == NULL)
       {
+        /* TODO: Better error message needed: It could also be that the
+         * permissions were changed or the note plugin was unloaded. */
         g_set_error(
           &local_error,
           inf_directory_error_quark(),
@@ -6474,7 +6567,7 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       subreq->shared.sync_in.sheet_set
     );
 
-    if(node != NULL &&
+    if(node != NULL && subreq->shared.sync_in.plugin != NULL &&
        infd_directory_check_auth(directory, node, conn, &perms, &local_error))
     {
       g_assert(
@@ -6516,6 +6609,8 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       proxy = subreq->shared.sync_in.proxy;
       g_object_ref(proxy);
 
+      /* TODO: Better error message needed: It could also be that the
+       * permissions were changed or the note plugin was unloaded. */
       if(local_error == NULL)
       {
         g_set_error(
@@ -7436,7 +7531,7 @@ infd_directory_browser_subscribe_session(InfBrowser* browser,
   node = (InfdDirectoryNode*)iter->node;
 
   g_assert(INFD_IS_SESSION_PROXY(proxy));
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
 
   g_assert(node->shared.note.session == NULL ||
            (node->shared.note.session == INFD_SESSION_PROXY(proxy) &&
@@ -7504,7 +7599,7 @@ infd_directory_browser_unsubscribe_session(InfBrowser* browser,
   node = (InfdDirectoryNode*)iter->node;
 
   g_assert(INFD_IS_SESSION_PROXY(proxy));
-  g_assert(node->type == INFD_STORAGE_NODE_NOTE);
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
 
   g_assert(node->shared.note.session == INFD_SESSION_PROXY(proxy));
   g_assert(node->shared.note.weakref == FALSE);
@@ -7627,7 +7722,7 @@ infd_directory_browser_get_child(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, FALSE);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY, FALSE);
   g_return_val_if_fail(node->shared.subdir.explored == TRUE, FALSE);
 
   node = node->shared.subdir.child;
@@ -7655,7 +7750,7 @@ infd_directory_browser_explore(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, NULL);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY, NULL);
   g_return_val_if_fail(node->shared.subdir.explored == FALSE, NULL);
 
   request = g_object_new(
@@ -7703,7 +7798,7 @@ infd_directory_browser_get_explored(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, FALSE);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY, FALSE);
   return node->shared.subdir.explored;
 }
 
@@ -7721,7 +7816,7 @@ infd_directory_browser_is_subdirectory(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, FALSE);
 
   node = (InfdDirectoryNode*)iter->node;
-  if(node->type != INFD_STORAGE_NODE_SUBDIRECTORY)
+  if(node->type != INFD_DIRECTORY_NODE_SUBDIRECTORY)
     return FALSE;
   return TRUE;
 }
@@ -7749,7 +7844,7 @@ infd_directory_browser_add_note(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, NULL);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY, NULL);
   g_return_val_if_fail(node->shared.subdir.explored == TRUE, NULL);
 
   plugin = infd_directory_lookup_plugin(directory, type);
@@ -7812,7 +7907,7 @@ infd_directory_browser_add_subdirectory(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_SUBDIRECTORY, NULL);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_SUBDIRECTORY, NULL);
   g_return_val_if_fail(node->shared.subdir.explored == TRUE, NULL);
 
   request = g_object_new(
@@ -7925,8 +8020,21 @@ infd_directory_browser_get_node_type(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
-  return node->shared.note.plugin->note_type;
+  g_return_val_if_fail(node->type != INFD_DIRECTORY_NODE_SUBDIRECTORY, NULL);
+
+  switch(node->type)
+  {
+  case INFD_DIRECTORY_NODE_SUBDIRECTORY:
+    g_assert_not_reached();
+    return NULL;
+  case INFD_DIRECTORY_NODE_NOTE:
+    return node->shared.note.plugin->note_type;
+  case INFD_DIRECTORY_NODE_UNKNOWN:
+    return g_quark_to_string(node->shared.unknown.type);
+  default:
+    g_assert_not_reached();
+    return NULL;
+  }
 }
 
 static InfRequest*
@@ -7950,7 +8058,7 @@ infd_directory_browser_subscribe(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_NOTE, NULL);
   g_return_val_if_fail(
     node->shared.note.session == NULL ||
     node->shared.note.weakref == TRUE,
@@ -8096,10 +8204,14 @@ infd_directory_browser_get_session(InfBrowser* browser,
   infd_directory_return_val_if_iter_fail(directory, iter, NULL);
 
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, NULL);
-  
+  g_return_val_if_fail(node->type != INFD_DIRECTORY_NODE_SUBDIRECTORY, NULL);
+
+  if(node->type == INFD_DIRECTORY_NODE_UNKNOWN) return NULL;
+  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
+
   if(node->shared.note.session == NULL || node->shared.note.weakref == TRUE)
     return NULL;
+
   return INF_SESSION_PROXY(node->shared.note.session);
 }
 
@@ -8915,6 +9027,10 @@ infd_directory_add_plugin(InfdDirectory* directory,
                           const InfdNotePlugin* plugin)
 {
   InfdDirectoryPrivate* priv;
+  GQuark note_type;
+  GHashTableIter iter;
+  gpointer value;
+  InfdDirectoryNode* node;
 
   g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
   g_return_val_if_fail(plugin != NULL, FALSE);
@@ -8945,7 +9061,135 @@ infd_directory_add_plugin(InfdDirectory* directory,
     *(gpointer*)(gpointer)&plugin
   );
 
+  /* Turn unknown nodes into known nodes */
+  note_type = g_quark_from_string(plugin->note_type);
+  g_hash_table_iter_init(&iter, priv->nodes);
+  while(g_hash_table_iter_next(&iter, NULL, &value))
+  {
+    node = (InfdDirectoryNode*)value;
+    if(node->type == INFD_DIRECTORY_NODE_UNKNOWN &&
+       node->shared.unknown.type == note_type)
+    {
+      node->type = INFD_DIRECTORY_NODE_NOTE;
+
+      node->shared.note.session = NULL;
+      node->shared.note.plugin = plugin;
+      node->shared.note.save_timeout = NULL;
+      node->shared.note.weakref = FALSE;
+    }
+  }
+
   return TRUE;
+}
+
+/**
+ * infd_directory_remove_plugin:
+ * @directory: A #InfdDirectory.
+ * @plugin: The plugin to remove.
+ *
+ * Removes a note plugin from the directory. If there are any sessions running
+ * using this plugin, they are unsubscribed from the directory.
+ */
+void
+infd_directory_remove_plugin(InfdDirectory* directory,
+                             const InfdNotePlugin* plugin)
+{
+  InfdDirectoryPrivate* priv;
+  GQuark note_type;
+  GHashTableIter iter;
+  gpointer value;
+  InfdDirectoryNode* node;
+  InfdSessionProxy* proxy;
+
+  GSList* item;
+  GSList* next;
+  InfdDirectorySyncIn* sync_in;
+  InfdDirectorySubreq* subreq;
+
+  g_return_if_fail(INFD_IS_DIRECTORY(directory));
+  g_return_if_fail(plugin != NULL);
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  g_return_if_fail(
+    g_hash_table_lookup(priv->plugins, plugin->note_type) == plugin
+  );
+
+  /* Turn unknown nodes into known nodes */
+  note_type = g_quark_from_string(plugin->note_type);
+  g_hash_table_iter_init(&iter, priv->nodes);
+  while(g_hash_table_iter_next(&iter, NULL, &value))
+  {
+    node = (InfdDirectoryNode*)value;
+    if(node->type == INFD_DIRECTORY_NODE_NOTE &&
+       node->shared.note.plugin == plugin)
+    {
+      /* First, remove the note's session, if any */
+      if(node->shared.note.session != NULL &&
+         node->shared.note.weakref == FALSE)
+      {
+        infd_directory_node_unlink_session(directory, node, NULL);
+      }
+      
+      if(node->shared.note.session != NULL)
+      {
+        infd_directory_release_session(
+          directory,
+          node,
+          node->shared.note.session
+        );
+      }
+
+      g_assert(node->shared.note.session == NULL);
+      g_assert(node->shared.note.plugin == plugin);
+      g_assert(node->shared.note.save_timeout == NULL);
+      g_assert(node->shared.note.weakref == FALSE);
+
+      /* Then, change the type to unknown */
+      node->type = INFD_DIRECTORY_NODE_UNKNOWN;
+      node->shared.unknown.type = g_quark_from_string(plugin->note_type);
+    }
+  }
+
+  /* Remove all sync-ins with this plugin */
+  for(item = priv->sync_ins; item != NULL; item = next)
+  {
+    next = item->next;
+    sync_in = (InfdDirectorySyncIn*)item->data;
+    if(sync_in->plugin == plugin)
+      infd_directory_remove_sync_in(directory, sync_in);
+  }
+
+  /* Remove plugin from all subscription requests, the requests will
+   * subsequently fail in handle_subscribe_ack(). */
+  for(item = priv->subscription_requests; item != NULL; item = next)
+  {
+    next = item->next;
+    subreq = (InfdDirectorySubreq*)item->data;
+
+    switch(subreq->type)
+    {
+    case INFD_DIRECTORY_SUBREQ_CHAT:
+      break;
+    case INFD_DIRECTORY_SUBREQ_SESSION:
+      break;
+    case INFD_DIRECTORY_SUBREQ_ADD_NODE:
+      if(subreq->shared.add_node.plugin == plugin)
+        subreq->shared.add_node.plugin = NULL;
+      break;
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN:
+    case INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE:
+      if(subreq->shared.sync_in.plugin == plugin)
+        subreq->shared.sync_in.plugin = NULL;
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+  }
+
+  /* Finally, remove the plugin from the list of loaded plugins */
+  g_hash_table_remove(priv->plugins, plugin->note_type);
 }
 
 /**
@@ -9180,7 +9424,7 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
   node = (InfdDirectoryNode*)iter->node;
-  g_return_val_if_fail(node->type == INFD_STORAGE_NODE_NOTE, FALSE);
+  g_return_val_if_fail(node->type == INFD_DIRECTORY_NODE_NOTE, FALSE);
 
   if(priv->storage == NULL)
   {

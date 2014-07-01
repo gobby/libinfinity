@@ -8,6 +8,8 @@ plugin_LTLIBRARIES = \
 	libinfinoted-plugin-directory-sync.la \
 	libinfinoted-plugin-linekeeper.la \
 	libinfinoted-plugin-logging.la \
+	libinfinoted-plugin-note-chat.la \
+	libinfinoted-plugin-note-text.la \
 	libinfinoted-plugin-record.la \
 	libinfinoted-plugin-traffic-logging.la \
 	libinfinoted-plugin-transformation-protection.la \
@@ -55,6 +57,20 @@ libinfinoted_plugin_linekeeper_la_LIBADD = \
 	$(infinity_LIBS)
 
 libinfinoted_plugin_logging_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(inftext_LIBS) \
+	$(infinity_LIBS)
+
+libinfinoted_plugin_note_chat_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(infinity_LIBS)
+
+libinfinoted_plugin_note_text_la_LIBADD = \
 	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
@@ -110,6 +126,12 @@ libinfinoted_plugin_linekeeper_la_SOURCES = \
 
 libinfinoted_plugin_logging_la_SOURCES = \
 	infinoted-plugin-logging.c
+
+libinfinoted_plugin_note_chat_la_SOURCES = \
+	infinoted-plugin-note-chat.c
+
+libinfinoted_plugin_note_text_la_SOURCES = \
+	infinoted-plugin-note-text.c
 
 libinfinoted_plugin_record_la_SOURCES = \
 	infinoted-plugin-record.c

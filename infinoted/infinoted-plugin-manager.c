@@ -18,6 +18,7 @@
  */
 
 #include <infinoted/infinoted-plugin-manager.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <gmodule.h>
 
@@ -419,6 +420,13 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
     infinoted_plugin_manager_add_session
   );
 
+  infinoted_log_info(
+    manager->log,
+    _("Loaded plugin \"%s\" from \"%s\""),
+    plugin_name,
+    g_module_name(module)
+  );
+
   manager->plugins = g_slist_prepend(manager->plugins, instance);
 
   return TRUE;
@@ -454,8 +462,14 @@ infinoted_plugin_manager_unload_plugin(InfinotedPluginManager* manager,
   if(instance->plugin->on_deinitialize != NULL)
     instance->plugin->on_deinitialize(instance+1);
 
+  infinoted_log_info(
+    manager->log,
+    _("Unloaded plugin \"%s\" from \"%s\""),
+    instance->plugin->name,
+    g_module_name(instance->module)
+  );
+
   g_module_close(instance->module);
-  
   g_free(instance);
 }
 

@@ -20,7 +20,6 @@
 #include <infinoted/infinoted-run.h>
 #include <infinoted/infinoted-dh-params.h>
 #include <infinoted/infinoted-util.h>
-#include <infinoted/infinoted-note-plugin.h>
 
 #include <libinfinity/server/infd-filesystem-storage.h>
 #include <libinfinity/server/infd-tcp-server.h>
@@ -65,40 +64,6 @@ infinoted_run_load_directory(InfinotedRun* run,
 
   g_object_unref(storage);
   g_object_unref(communication_manager);
-
-  /* Load note plugins */
-#ifdef G_OS_WIN32
-  module_path = g_win32_get_package_installation_directory_of_module(NULL);
-  plugin_path = g_build_filename(module_path, "lib", NOTE_PLUGIN_PATH, NULL);
-  g_free(module_path);
-#else
-  plugin_path = g_build_filename(PLUGIN_LIBPATH, NOTE_PLUGIN_PATH, NULL);
-#endif
-
-  result = infinoted_note_plugin_load_directory(
-    plugin_path,
-    run->directory,
-    startup->log
-  );
-
-  g_free(plugin_path);
-
-  if(!result)
-  {
-    g_object_unref(run->directory);
-    g_object_unref(run->io);
-    run->directory = NULL;
-    run->io = NULL;
-
-    g_set_error(
-      error,
-      g_quark_from_static_string("INFINOTED_STARTUP_ERROR"),
-      0,
-      "Failed to load note plugins"
-    );
-
-    return FALSE;
-  }
 
   /* Load server plugins via plugin manager */
 #ifdef G_OS_WIN32
