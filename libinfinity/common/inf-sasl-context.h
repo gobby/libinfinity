@@ -170,6 +170,9 @@ inf_sasl_context_session_feed(InfSaslContextSession* session,
                               InfSaslContextSessionFeedFunc func,
                               gpointer user_data);
 
+gboolean
+inf_sasl_context_session_is_processing(InfSaslContextSession* session);
+
 G_END_DECLS
 
 #endif /* __INF_SASL_CONTEXT_H__ */

@@ -1702,19 +1702,35 @@ inf_xmpp_connection_sasl_request(InfXmppConnection* xmpp,
                                  const gchar* input)
 {
   InfXmppConnectionPrivate* priv;
+  GError* error;
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
   g_assert(priv->status == INF_XMPP_CONNECTION_AUTHENTICATING);
   g_assert(priv->sasl_session != NULL);
 
-  inf_sasl_context_session_feed(
-    priv->sasl_session,
-    input,
-    inf_xmpp_connection_sasl_request_feed_func,
-    xmpp
-  );
+  if(inf_sasl_context_session_is_processing(priv->sasl_session))
+  {
+    /* We cannot have two requests at the same time. SASL does not allow this,
+     * the procedure is always
+     * challenge -> response -> challenge -> response -> ...
+     * Also, technically, InfSaslContext does not support
+     * this at the moment. */
+    error = NULL;
+    inf_gsasl_set_error(&error, GSASL_INTEGRITY_ERROR);
+    inf_xmpp_connection_sasl_error(xmpp, error);
+    g_error_free(error);
+  }
+  else
+  {
+    inf_sasl_context_session_feed(
+      priv->sasl_session,
+      input,
+      inf_xmpp_connection_sasl_request_feed_func,
+      xmpp
+    );
 
-  /* Wait for feed_func to be called */
+    /* Wait for feed_func to be called */
+  }
 }
 
 static void

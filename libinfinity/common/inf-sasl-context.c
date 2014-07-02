@@ -79,6 +79,10 @@ struct _InfSaslContextSession {
    * InfIoDispatch pointer before executing the dispatch. */
   InfIoDispatch* dispatch;
   GThread* thread;
+  /* This flag tells whether we are currently processing user data in the
+   * helper thread. It is meant as a simple indicator in the main thread
+   * whether more data can be given to the context or not. */
+  gboolean stepping;
 
   /* used in session thread only */
   gchar* step64;
@@ -317,6 +321,9 @@ inf_sasl_context_session_message_func(gpointer user_data)
       break;
     }
 
+    g_assert(message->session->stepping == TRUE);
+    message->session->stepping = FALSE;
+
     message->shared.stepped.func(
       message->session,
       message->shared.stepped.data,
@@ -480,6 +487,8 @@ inf_sasl_context_start_session(InfSaslContext* context,
   session->session_io = inf_standalone_io_new();
   session->dispatch = NULL;
   session->thread = NULL;
+  session->stepping = FALSE;
+
   session->status = INF_SASL_CONTEXT_SESSION_OUTER;
   session->step64 = NULL;
   session->retval = GSASL_OK;
@@ -1075,7 +1084,10 @@ inf_sasl_context_session_feed(InfSaslContextSession* session,
 {
   g_return_if_fail(session != NULL);
   g_return_if_fail(func != NULL);
+  g_return_if_fail(session->stepping == FALSE);
   /*g_return_if_fail(session->context->callback != NULL); not threadsafe */
+
+  session->stepping = TRUE;
 
   inf_io_add_dispatch(
     INF_IO(session->session_io),
@@ -1083,6 +1095,20 @@ inf_sasl_context_session_feed(InfSaslContextSession* session,
     inf_sasl_context_message_step(session, data, func, user_data),
     inf_sasl_context_message_free
   );
+}
+
+/**
+ * inf_sasl_context_session_is_processing:
+ * @session: A #InfSaslContextSession.
+ *
+ * Returns whether the session is currently asynchronously processing data
+ * fed to it with inf_sasl_context_session_feed(). In this case the first
+ * call needs to finish before another one is allowed to be made. */
+gboolean
+inf_sasl_context_session_is_processing(InfSaslContextSession* session)
+{
+  g_return_if_fail(session != NULL);
+  return session->stepping;
 }
 
 /* vim:set et sw=2 ts=2: */
