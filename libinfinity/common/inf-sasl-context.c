@@ -71,7 +71,7 @@ struct _InfSaslContextSession {
   Gsasl_session* session;
   gpointer session_data;
   InfIo* main_io;
-  InfStandaloneIo* session_io;
+  GAsyncQueue* session_queue;
   /* query or stepped dispatch, protected by context mutex */
   /* TODO: This is required because Inf(StandaloneIo) can not guarantee to
    * return before the dispatch is executed in another thread. We would not
@@ -259,13 +259,11 @@ inf_sasl_context_session_message_func(gpointer user_data)
   case INF_SASL_CONTEXT_MESSAGE_TERMINATE:
     /* session thread */
     message->session->status = INF_SASL_CONTEXT_SESSION_TERMINATE;
-    inf_standalone_io_loop_quit(message->session->session_io);
     break;
   case INF_SASL_CONTEXT_MESSAGE_CONTINUE:
     /* session thread */
     g_assert(message->session->status == INF_SASL_CONTEXT_SESSION_INNER);
     message->session->retval = message->shared.cont.retval;
-    inf_standalone_io_loop_quit(message->session->session_io);
     break;
   case INF_SASL_CONTEXT_MESSAGE_STEP:
     /* session thread */
@@ -278,7 +276,6 @@ inf_sasl_context_session_message_func(gpointer user_data)
     message->shared.step.data = NULL; /* prevent deletion */
 
     message->session->status = INF_SASL_CONTEXT_SESSION_INNER;
-    inf_standalone_io_loop_quit(message->session->session_io);
     break;
   case INF_SASL_CONTEXT_MESSAGE_QUERY:
     /* main thread */
@@ -347,6 +344,8 @@ inf_sasl_context_gsasl_callback(Gsasl* gsasl,
                                 Gsasl_property prop)
 {
   InfSaslContextSession* session;
+  InfSaslContextMessage* message;
+
   session = (InfSaslContextSession*)gsasl_session_hook_get(gsasl_session);
 
   /* if the status is TERMINATE then get out of the inner loop by
@@ -367,8 +366,14 @@ inf_sasl_context_gsasl_callback(Gsasl* gsasl,
 
   g_mutex_unlock(session->context->mutex);
 
-  /* wait for continue */
-  inf_standalone_io_loop(session->session_io);
+  session->retval = G_MAXINT;
+  while(session->status == INF_SASL_CONTEXT_SESSION_INNER &&
+        session->retval == G_MAXINT)
+  {
+    message = g_async_queue_pop(session->session_queue);
+    inf_sasl_context_session_message_func(message);
+    inf_sasl_context_message_free(message);
+  }
 
   g_mutex_lock(session->context->mutex);
 
@@ -384,6 +389,8 @@ static void*
 inf_sasl_context_thread_func(gpointer data)
 {
   InfSaslContextSession* session;
+  InfSaslContextMessage* message;
+
   session = (InfSaslContextSession*)data;
 
   int retval;
@@ -397,10 +404,14 @@ inf_sasl_context_thread_func(gpointer data)
     switch(session->status)
     {
     case INF_SASL_CONTEXT_SESSION_OUTER:
-      inf_standalone_io_loop(session->session_io);
+      message = g_async_queue_pop(session->session_queue);
+      inf_sasl_context_session_message_func(message);
+      inf_sasl_context_message_free(message);
       break;
     case INF_SASL_CONTEXT_SESSION_INNER:
       g_mutex_lock(session->context->mutex);
+
+      g_assert(session->dispatch == NULL);
 
       /* This might call the gsasl callback once or more in which we wait
        * for input from the main thread. */
@@ -453,7 +464,6 @@ inf_sasl_context_thread_func(gpointer data)
         if(output) gsasl_free(output);
       }
 
-
       break;
     case INF_SASL_CONTEXT_SESSION_TERMINATE:
     default:
@@ -484,7 +494,8 @@ inf_sasl_context_start_session(InfSaslContext* context,
   session->session_data = session_data;
   session->main_io = io;
   g_object_ref(session->main_io);
-  session->session_io = inf_standalone_io_new();
+  session->session_queue =
+    g_async_queue_new_full(inf_sasl_context_message_free);
   session->dispatch = NULL;
   session->thread = NULL;
   session->stepping = FALSE;
@@ -508,7 +519,7 @@ inf_sasl_context_start_session(InfSaslContext* context,
   if(session->thread == NULL)
   {
     context->sessions = g_slist_remove(context->sessions, session);
-    g_object_unref(session->session_io);
+    g_async_queue_unref(session->session_queue);
     g_object_unref(session->main_io);
     g_slice_free(InfSaslContextSession, session);
     return NULL;
@@ -961,11 +972,9 @@ inf_sasl_context_stop_session(InfSaslContext* context,
   g_mutex_unlock(context->mutex);
 
   /* Tell client thread to terminate */
-  inf_io_add_dispatch(
-    INF_IO(session->session_io),
-    inf_sasl_context_session_message_func,
-    inf_sasl_context_message_terminate(session),
-    inf_sasl_context_message_free
+  g_async_queue_push(
+    session->session_queue,
+    inf_sasl_context_message_terminate(session)
   );
 
   g_thread_join(session->thread);
@@ -978,7 +987,11 @@ inf_sasl_context_stop_session(InfSaslContext* context,
   gsasl_finish(session->session);
   g_mutex_unlock(context->mutex);
 
-  g_object_unref(session->session_io);
+  /* Note that this assertion should hold because us pushing the terminate
+   * message into the end of the queue, and all other queued messages will
+   * have been processed before. */
+  g_async_queue_unref(session->session_queue);
+
   g_object_unref(session->main_io);
 
   g_free(session->step64);
@@ -1053,11 +1066,9 @@ inf_sasl_context_session_continue(InfSaslContextSession* session,
 {
   g_return_if_fail(session != NULL);
 
-  inf_io_add_dispatch(
-    INF_IO(session->session_io),
-    inf_sasl_context_session_message_func,
-    inf_sasl_context_message_continue(session, retval),
-    inf_sasl_context_message_free
+  g_async_queue_push(
+    session->session_queue,
+    inf_sasl_context_message_continue(session, retval)
   );
 }
 
@@ -1089,11 +1100,9 @@ inf_sasl_context_session_feed(InfSaslContextSession* session,
 
   session->stepping = TRUE;
 
-  inf_io_add_dispatch(
-    INF_IO(session->session_io),
-    inf_sasl_context_session_message_func,
-    inf_sasl_context_message_step(session, data, func, user_data),
-    inf_sasl_context_message_free
+  g_async_queue_push(
+    session->session_queue,
+    inf_sasl_context_message_step(session, data, func, user_data)
   );
 }
 
