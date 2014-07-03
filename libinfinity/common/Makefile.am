@@ -10,6 +10,7 @@ libinfinity_common_ladir = \
 
 libinfinity_common_la_SOURCES = \
 	inf-acl.c \
+	inf-async-operation.c \
 	inf-browser.c \
 	inf-browser-iter.c \
 	inf-buffer.c \
@@ -45,6 +46,7 @@ libinfinity_common_la_SOURCES = \
 
 libinfinity_common_la_HEADERS = \
 	inf-acl.h \
+	inf-async-operation.h \
 	inf-browser.h \
 	inf-browser-iter.h \
 	inf-buffer.h \

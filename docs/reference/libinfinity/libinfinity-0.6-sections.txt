@@ -1255,6 +1255,17 @@ INF_TYPE_CERTIFICATE_CREDENTIALS
 </SECTION>
 
 <SECTION>
+<FILE>inf-async-operation</FILE>
+<TITLE>InfAsyncOperation</TITLE>
+InfAsyncOperation
+InfAsyncOperationRunFunc
+InfAsyncOperationDoneFunc
+inf_async_operation_new
+inf_async_operation_start
+inf_async_operation_free
+</SECTION>
+
+<SECTION>
 <FILE>inf-sasl-context</FILE>
 <TITLE>InfSaslContext</TITLE>
 InfSaslContext

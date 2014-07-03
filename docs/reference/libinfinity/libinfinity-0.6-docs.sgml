@@ -49,6 +49,7 @@
     <xi:include href="xml/inf-xmpp-manager.xml"/>
     <xi:include href="xml/inf-io.xml"/>
     <xi:include href="xml/inf-standalone-io.xml"/>
+    <xi:include href="xml/inf-async-operation.xml"/>
     <xi:include href="xml/inf-certificate-chain.xml"/>
     <xi:include href="xml/inf-file-util.xml"/>
     <xi:include href="xml/inf-cert-util.xml"/>
