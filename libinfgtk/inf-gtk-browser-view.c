@@ -297,7 +297,7 @@ inf_gtk_browser_view_explore_request_notify_progress_cb(GObject* request,
   GtkTreeModel* model;
   GtkTreePath* path;
   GtkTreeIter iter;
-  gpointer initial_expansion;
+  GSList* initial_expansion_list;
 
   explore = (InfGtkBrowserViewExplore*)user_data;
   view = explore->view_browser->view;
@@ -309,7 +309,7 @@ inf_gtk_browser_view_explore_request_notify_progress_cb(GObject* request,
   gtk_tree_model_get_iter(model, &iter, path);
   inf_gtk_browser_view_redraw_row(view, path, &iter);
 
-  initial_expansion = g_object_get_data(
+  initial_expansion_list = g_object_steal_data(
       G_OBJECT(explore->request),
       INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
   );
@@ -323,17 +323,23 @@ inf_gtk_browser_view_explore_request_notify_progress_cb(GObject* request,
    * any children. If we don't have any, then we can't expand of course. The
    * extra g_object_set_data does not need to be undone since the request
    * most likely vanishes anyway after exploration. */
-  if(initial_expansion == view &&
+  if(g_slist_find(initial_expansion_list, view) != NULL &&
      gtk_tree_model_iter_has_child(model, &iter))
   {
-    g_object_set_data(
-      G_OBJECT(explore->request),
-      INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
-      NULL
+    initial_expansion_list = g_slist_remove(
+      initial_expansion_list,
+      view
     );
 
     gtk_tree_view_expand_row(GTK_TREE_VIEW(view), path, FALSE);
   }
+
+  g_object_set_data_full(
+    G_OBJECT(explore->request),
+    INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
+    initial_expansion_list,
+    (GDestroyNotify)g_slist_free
+  );
 
   gtk_tree_path_free(path);
 }
@@ -870,6 +876,7 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
 {
   InfGtkBrowserViewPrivate* priv;
   InfRequest* request;
+  GSList* initial_expansion_list;
   InfGtkBrowserViewBrowser* view_browser;
   GtkTreeModel* model;
   InfBrowser* browser;
@@ -923,21 +930,26 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
            * expand. */
           if(request != NULL)
           {
-            /* There should always only be one view to do initial root expansion
-             * because only one view can have issued the request. */
-            g_assert(
-              g_object_get_data(
-                G_OBJECT(request),
-                INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
-              ) == NULL
-            );
-
             /* Remember to do initial root expansion when the node has been
              * explored. */
-            g_object_set_data(
+            initial_expansion_list = g_object_steal_data(
+              G_OBJECT(request),
+              INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION
+            );
+
+            if(g_slist_find(initial_expansion_list, view) == NULL)
+            {
+              initial_expansion_list = g_slist_prepend(
+                initial_expansion_list,
+                view
+              );
+            }
+
+            g_object_set_data_full(
               G_OBJECT(request),
               INF_GTK_BROWSER_VIEW_INITIAL_EXPANSION,
-              view
+              initial_expansion_list,
+              (GDestroyNotify)g_slist_free
             );
           }
         }
