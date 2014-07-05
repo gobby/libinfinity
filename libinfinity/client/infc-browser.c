@@ -4444,7 +4444,10 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   );
 
   if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
     return FALSE;
+  }
 
   /* request can either by query-acl or set-acl */
   request = infc_request_manager_get_request_by_xml_required(
