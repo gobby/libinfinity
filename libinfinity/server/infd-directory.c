@@ -2162,23 +2162,26 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
   else
   {
     retval = FALSE;
-    proxy = node->shared.note.session;
-    if(proxy != NULL)
+    if(node->type == INFD_DIRECTORY_NODE_NOTE)
     {
-      if(infd_session_proxy_is_subscribed(proxy, connection))
+      proxy = node->shared.note.session;
+      if(proxy != NULL)
       {
-        /* Remove subscription if no longer allowed, or if parent directory
-         * is no longer explored */
-        inf_acl_mask_set1(&mask, INF_ACL_CAN_SUBSCRIBE_SESSION);
-        if(!is_explored ||
-           !inf_browser_check_acl(browser, &iter, account, &mask, NULL))
+        if(infd_session_proxy_is_subscribed(proxy, connection))
         {
-          infd_session_proxy_unsubscribe(proxy, connection);
-        }
-        else
-        {
-          /* TODO: Remove joined users if join-user
-           * permissions are no longer granted. */
+          /* Remove subscription if no longer allowed, or if parent directory
+           * is no longer explored */
+          inf_acl_mask_set1(&mask, INF_ACL_CAN_SUBSCRIBE_SESSION);
+          if(!is_explored ||
+             !inf_browser_check_acl(browser, &iter, account, &mask, NULL))
+          {
+            infd_session_proxy_unsubscribe(proxy, connection);
+          }
+          else
+          {
+            /* TODO: Remove joined users if join-user
+             * permissions are no longer granted. */
+          }
         }
       }
     }
