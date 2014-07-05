@@ -109,6 +109,23 @@ INF_GTK_IO_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>inf-gtk-account-creation-dialog</FILE>
+<TITLE>InfGtkAccountCreationsDialog</TITLE>
+InfGtkAccountCreationsDialog
+InfGtkAccountCreationsDialogClass
+inf_gtk_account_creation_dialog_new
+inf_gtk_account_creation_dialog_set_browser
+<SUBSECTION Standard>
+INF_GTK_ACCOUNT_CREATION_DIALOG
+INF_GTK_ACCOUNT_CREATION_DIALOG_CLASS
+INF_GTK_ACCOUNT_CREATION_DIALOG_GET_CLASS
+INF_GTK_IS_ACCOUNT_CREATION_DIALOG
+INF_GTK_IS_ACCOUNT_CREATION_DIALOG_CLASS
+INF_GTK_TYPE_ACCOUNT_CREATION_DIALOG
+inf_gtk_account_creation_dialog_get_type
+</SECTION>
+
+<SECTION>
 <FILE>inf-gtk-permissions-dialog</FILE>
 <TITLE>InfGtkPermissionsDialog</TITLE>
 InfGtkPermissionsDialog

@@ -20,6 +20,7 @@ libadd = \
 	$(infinity_LIBS)
 
 headers = \
+	inf-gtk-account-creation-dialog.h \
 	inf-gtk-acl-sheet-view.h \
 	inf-gtk-browser-model.h \
 	inf-gtk-browser-model-filter.h \
@@ -34,6 +35,7 @@ headers = \
 	inf-gtk-permissions-dialog.h
 
 sources = \
+	inf-gtk-account-creation-dialog.c \
 	inf-gtk-acl-sheet-view.c \
 	inf-gtk-browser-model.c \
 	inf-gtk-browser-model-filter.c \
