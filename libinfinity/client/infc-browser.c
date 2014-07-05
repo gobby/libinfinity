@@ -1469,6 +1469,7 @@ infc_browser_disconnected(InfcBrowser* browser)
     priv->root = NULL;
   }
 
+  priv->account_list_queried = FALSE;
   priv->local_account = NULL;
 
   if(priv->accounts != NULL)
