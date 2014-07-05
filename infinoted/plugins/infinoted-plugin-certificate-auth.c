@@ -199,6 +199,7 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
   InfRequest* request;
 
   plugin = (InfinotedPluginCertificateAuth*)plugin_info;
+  plugin->manager = manager;
 
   creds = infinoted_plugin_manager_get_credentials(manager);
   if(creds == NULL)
@@ -214,8 +215,6 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
 
     return FALSE;
   }
-
-  plugin->manager = manager;
 
   read_certs =
     inf_cert_util_read_certificate(plugin->ca_list_file, NULL, error);
