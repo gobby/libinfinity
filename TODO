@@ -30,7 +30,7 @@ Modernization:
  * Use GFile API for InfdFilesystemStorage
  * Use G_DEFINE_TYPE and friends
  * Replace constructor by constructed
- * Use GtkBox and GtkGrid
+ * Use GtkBox and GtkGrid, use GtkBuilder for widgets/dialogs
  * g_set_error_literal
 
 Others:

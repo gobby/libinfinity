@@ -5606,8 +5606,6 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  /* TODO: Check that the issuing connection is authorized */
-
   crq_text.data = NULL;
   for(child = xml->children; child != NULL; child = child->next)
   {
