@@ -212,10 +212,7 @@ inf_file_util_create_directory(const gchar* path,
   result = inf_file_util_create_directory(dirname, mode, error);
   g_free(dirname);
 
-  if(result == FALSE)
-    return FALSE;
-
-  return inf_file_util_create_single_directory(path, mode, error);
+  return result && inf_file_util_create_single_directory(path, mode, error);
 }
 
 /**
@@ -510,6 +507,61 @@ inf_file_util_delete(const gchar* path,
     return inf_file_util_delete_directory(path, error);
   else
     return inf_file_util_delete_file(path, error);
+}
+
+/**
+ * inf_file_util_rename:
+ * @old_path: Path to the object to rename.
+ * @new_path: Path which the object should be renamed to.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Renames the file or directory at @path. If the function fails
+ * %FALSE is returned and @error is set.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
+ */
+gboolean
+inf_file_util_rename(const gchar* old_path,
+		     const gchar* new_path,
+                     GError** error)
+{
+#ifdef G_OS_WIN32
+  gunichar2 *old_path16, *new_path16;
+  int code;
+
+  old_path16 = g_utf8_to_utf16(old_path, -1, NULL, NULL, error);
+  if(!old_path16) return FALSE;
+  new_path16 = g_utf8_to_utf16(new_path, -1, NULL, NULL, error);
+  if(!new_path16)
+  {
+    g_free(old_path16);
+    return FALSE;
+  }
+
+  if(!MoveFile(old_path16, new_path16))
+  {
+    g_free(old_path16);
+    g_free(new_path16);
+    code = GetLastError();
+    inf_file_util_set_error_from_win32(error, code);
+    return FALSE;
+  }
+
+  g_free(old_path16);
+  g_free(new_path16);
+  return TRUE;
+#else
+  int code;
+
+  if(g_rename(old_path, new_path) == -1)
+  {
+    code = errno;
+    inf_file_util_set_error_from_errno(error, code);
+    return FALSE;
+  }
+
+  return TRUE;
+#endif
 }
 
 /* vim:set et sw=2 ts=2: */

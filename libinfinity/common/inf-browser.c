@@ -42,6 +42,7 @@
 enum {
   ERROR_,
   NODE_ADDED,
+  NODE_RENAMED,
   NODE_REMOVED,
   SUBSCRIBE_SESSION,
   UNSUBSCRIBE_SESSION,
@@ -123,6 +124,29 @@ inf_browser_base_init(gpointer g_class)
       INF_TYPE_BROWSER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, node_added),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_OBJECT,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_REQUEST
+    );
+
+    /**
+     * InfBrowser::node-renamed:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @iter: An iterator pointing to the node being renamed.
+     * @request: The request that lead to the node being renamed, or %NULL.
+     *
+     * This signal is emitted just before a node is being renamed.
+     * The iterator is still valid and can be used to access the
+     * node which will be renamed.
+     */
+    browser_signals[NODE_RENAMED] = g_signal_new(
+      "node-renamed",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, node_renamed),
       NULL, NULL,
       inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
@@ -1686,6 +1710,35 @@ inf_browser_node_added(InfBrowser* browser,
     0,
     iter,
     request
+  );
+}
+
+/**
+ * inf_browser_node_renamed:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to the node to be renamed.
+ * @request: The #InfRequest that was used to rename the node, or %NULL.
+ *
+ * This function emits the #InfBrowser::node-renamed signal on @browser. It
+ * is meant to be used by interface implementations only.
+ */
+void
+inf_browser_node_renamed(InfBrowser* browser,
+                         const InfBrowserIter* iter,
+                         InfRequest* request,
+                         const gchar* new_name)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(iter != NULL);
+  g_return_if_fail(request == NULL || INF_IS_REQUEST(request));
+
+  g_signal_emit(
+    browser,
+    browser_signals[NODE_RENAMED],
+    0,
+    iter,
+    request,
+    new_name
   );
 }
 

@@ -212,7 +212,7 @@ typedef struct _InfRequestResultRenameNode InfRequestResultRenameNode;
 struct _InfRequestResultRenameNode {
   InfBrowser* browser;
   const InfBrowserIter* iter;
-  const char* new_name;
+  const gchar* new_name;
 };
 
 /**
@@ -229,7 +229,7 @@ struct _InfRequestResultRenameNode {
 InfRequestResult*
 inf_request_result_make_rename_node(InfBrowser* browser,
                                     const InfBrowserIter* iter,
-				    const char* new_name)
+                                    const gchar* new_name)
 {
   InfRequestResultRenameNode* data;
 
@@ -250,6 +250,7 @@ inf_request_result_make_rename_node(InfBrowser* browser,
  * @result: A #InfRequestResult:
  * @browser: Output value of the browser that made the request, or %NULL.
  * @iter: Output value for the node that has been renamed, or %NULL.
+ * @new_name: Output value for the name of the node that has been renamed, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_rename_node().
@@ -258,7 +259,7 @@ void
 inf_request_result_get_rename_node(const InfRequestResult* result,
                                    InfBrowser** browser,
                                    const InfBrowserIter** iter,
-				   const char** new_name)
+                                   const gchar** new_name)
 {
   const InfRequestResultRenameNode* data;
 
@@ -275,7 +276,6 @@ typedef struct _InfRequestResultRemoveNode InfRequestResultRemoveNode;
 struct _InfRequestResultRemoveNode {
   InfBrowser* browser;
   const InfBrowserIter* iter;
-  const char* new_name;
 };
 
 /**

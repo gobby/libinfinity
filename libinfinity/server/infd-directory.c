@@ -2904,6 +2904,22 @@ infd_directory_node_unregister_to_xml(InfdDirectoryNode* node)
   return xml;
 }
 
+/* Creates XML request to tell someone about a renamed node */
+static xmlNodePtr
+infd_directory_node_rename_to_xml(InfdDirectoryNode* node, const gchar* new_name)
+{
+  xmlNodePtr xml;
+  gchar id_buf[16];
+
+  sprintf(id_buf, "%u", node->id);
+
+  xml = xmlNewNode(NULL, (const xmlChar*)"rename-node");
+  xmlNewProp(xml, (const xmlChar*)"id", (const xmlChar*)id_buf);
+  xmlNewProp(xml, (const xmlChar*)"new_name", (const xmlChar*)new_name);
+
+  return xml;
+}
+
 static gboolean
 infd_directory_make_seq(InfdDirectory* directory,
                         InfXmlConnection* connection,
@@ -4332,6 +4348,114 @@ infd_directory_node_add_sync_in(InfdDirectory* directory,
 }
 
 static gboolean
+infd_directory_node_rename(InfdDirectory* directory,
+                           InfdDirectoryNode* node,
+                           InfdRequest* request,
+                           const gchar* seq,
+			   const xmlChar* new_name,
+                           GError** error)
+{
+  InfdDirectoryPrivate* priv;
+  gchar* path;
+  InfBrowserIter iter;
+  GError* local_error;
+  const gchar* note_type;
+  gchar* converted_name;
+  gchar* temp_name;
+  xmlNodePtr xml;
+  GSList* item;
+
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* Cannot rename the root node */
+  /* TODO: Move the error check here so we have same error checking for
+   * local and remote requests. */
+  g_assert(node->parent != NULL);
+  g_assert(request != NULL);
+
+  local_error = NULL;
+  if(priv->storage != NULL)
+  {
+    infd_directory_node_get_path(node, &path, NULL);
+
+    switch(node->type)
+    {
+    case INFD_DIRECTORY_NODE_SUBDIRECTORY:
+      note_type = NULL;
+      break;
+    case INFD_DIRECTORY_NODE_NOTE:
+      note_type = node->shared.note.plugin->note_type;
+      break;
+    case INFD_DIRECTORY_NODE_UNKNOWN:
+      note_type = g_quark_to_string(node->shared.unknown.type);
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
+    infd_directory_node_make_path(node->parent, new_name, &converted_name, NULL);
+
+    infd_storage_rename_node(
+      priv->storage,
+      note_type,
+      path,
+      converted_name,
+      &local_error
+    );
+
+    g_free(path);
+    g_free(converted_name);
+  }
+
+  iter.node_id = node->id;
+  iter.node = node;
+
+  if(local_error != NULL)
+  {
+    inf_request_fail(INF_REQUEST(request), local_error);
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+  else
+  {
+    /* Apply new name to the node */
+    temp_name = node->name;
+    node->name = g_strdup(new_name);
+    g_free(temp_name);
+
+    inf_request_finish(
+      INF_REQUEST(request),
+      inf_request_result_make_rename_node(INF_BROWSER(directory), &iter, new_name)
+    );
+
+    inf_browser_node_renamed(
+      INF_BROWSER(directory),
+      &iter,
+      INF_REQUEST(request)
+    );
+
+    xml = infd_directory_node_rename_to_xml(node, new_name);
+    if(seq != NULL) inf_xml_util_set_attribute(xml, "seq", seq);
+
+    for(item = node->parent->shared.subdir.connections;
+        item != NULL;
+        item = g_slist_next(item))
+    {
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        INF_XML_CONNECTION(item->data),
+        xmlCopyNode(xml, 1)
+      );
+    }
+  }
+
+  xmlFreeNode(xml);
+
+  return TRUE;
+}
+
+static gboolean
 infd_directory_node_remove(InfdDirectory* directory,
                            InfdDirectoryNode* node,
                            InfdRequest* request,
@@ -4379,7 +4503,7 @@ infd_directory_node_remove(InfdDirectory* directory,
       path,
       &local_error
     );
-    
+
     g_free(path);
   }
 
@@ -5125,6 +5249,82 @@ infd_directory_handle_add_node(InfdDirectory* directory,
   g_free(seq);
 
   return node_added;
+}
+
+static gboolean
+infd_directory_handle_rename_node(InfdDirectory* directory,
+                                  InfXmlConnection* connection,
+                                  const xmlNodePtr xml,
+                                  GError** error)
+{
+  InfdDirectoryNode* node;
+  gchar* seq;
+  InfdRequest* request;
+  InfBrowserIter iter;
+  xmlChar* new_name;
+  gboolean result;
+
+  InfdDirectoryNode* up;
+  InfAclMask perms;
+
+  if((new_name = inf_xml_util_get_attribute_required(xml, "new_name", error)) == NULL) return FALSE;
+
+  node = infd_directory_get_node_from_xml(directory, xml, "id", error);
+  if(node == NULL)
+  {
+    g_free(new_name);
+    return FALSE;
+  }
+
+  if(node->parent == NULL)
+  {
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_ROOT_NODE_RENAME_ATTEMPT,
+      "%s",
+      _("The root node cannot be renamed")
+    );
+
+    g_free(new_name);
+    return FALSE;
+  }
+  else
+  {
+    /* Check the remove node permission on the parent node (which means rename node permissions) */
+    up = node->parent;
+    inf_acl_mask_set1(&perms, INF_ACL_CAN_REMOVE_NODE);
+    if(!infd_directory_check_auth(directory, up, connection, &perms, error) ||
+      !infd_directory_make_seq(directory, connection, xml, &seq, error))
+    {
+      g_free(new_name);
+      return FALSE;
+    }
+
+    request = INFD_REQUEST(
+      g_object_new(
+        INFD_TYPE_REQUEST,
+        "type", "rename-node",
+        "node-id", node->id,
+        "requestor", connection,
+        NULL
+      )
+    );
+
+    iter.node_id = node->id;
+    iter.node = node;
+    inf_browser_begin_request(
+      INF_BROWSER(directory),
+      &iter,
+      INF_REQUEST(request)
+    );
+
+    result = infd_directory_node_rename(directory, node, request, seq, new_name, error);
+    g_object_unref(request);
+    g_free(new_name);
+
+    return result;
+  }
 }
 
 static gboolean
@@ -7374,6 +7574,15 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
       &local_error
     );
   }
+  else if(strcmp((const char*)node->name, "rename-node") == 0)
+  {
+    infd_directory_handle_rename_node(
+      directory,
+      connection,
+      node,
+      &local_error
+    );
+  }
   else if(strcmp((const char*)node->name, "remove-node") == 0)
   {
     infd_directory_handle_remove_node(
@@ -7940,6 +8149,51 @@ infd_directory_browser_add_subdirectory(InfBrowser* browser,
     NULL,
     NULL
   );
+
+  g_object_unref(request);
+  return NULL;
+}
+
+static InfRequest*
+infd_directory_browser_rename_node(InfBrowser* browser,
+                                   const InfBrowserIter* iter,
+				   const gchar* new_name,
+                                   InfRequestFunc func,
+                                   gpointer user_data)
+{
+  InfdDirectory* directory;
+  InfdDirectoryPrivate* priv;
+  InfdDirectoryNode* node;
+  InfdRequest* request;
+
+  directory = INFD_DIRECTORY(browser);
+  priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  infd_directory_return_val_if_iter_fail(directory, iter, NULL);
+
+  node = (InfdDirectoryNode*)iter->node;
+
+  request = g_object_new(
+    INFD_TYPE_REQUEST,
+    "type", "remove-node",
+    "node-id", node->id,
+    "requestor", NULL,
+    NULL
+  );
+
+  if(func != NULL)
+  {
+    g_signal_connect_after(
+      G_OBJECT(request),
+      "finished",
+      G_CALLBACK(func),
+      user_data
+    );
+  }
+
+  inf_browser_begin_request(browser, iter, INF_REQUEST(request));
+
+  infd_directory_node_rename(directory, node, request, NULL, new_name, NULL);
 
   g_object_unref(request);
   return NULL;
@@ -8805,6 +9059,7 @@ infd_directory_browser_init(gpointer g_iface,
   iface->is_subdirectory = infd_directory_browser_is_subdirectory;
   iface->add_note = infd_directory_browser_add_note;
   iface->add_subdirectory = infd_directory_browser_add_subdirectory;
+  iface->rename_node = infd_directory_browser_rename_node;
   iface->remove_node = infd_directory_browser_remove_node;
   iface->get_node_name = infd_directory_browser_get_node_name;
   iface->get_node_type = infd_directory_browser_get_node_type;

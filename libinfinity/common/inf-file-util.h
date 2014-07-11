@@ -92,6 +92,11 @@ gboolean
 inf_file_util_delete(const gchar* path,
                      GError** error);
 
+gboolean
+inf_file_util_rename(const gchar* old_path,
+		     const gchar* new_path,
+                     GError** error);
+
 G_END_DECLS
 
 #endif /* __INF_FILE_UTIL_H__ */

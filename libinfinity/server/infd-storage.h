@@ -56,7 +56,7 @@ typedef struct _InfdStorageAcl InfdStorageAcl;
 struct _InfdStorageAcl {
   gchar* account_id;
   InfAclMask mask;
-  InfAclMask perms;  
+  InfAclMask perms;
 };
 
 struct _InfdStorageIface {
@@ -75,6 +75,12 @@ struct _InfdStorageIface {
   gboolean (*create_subdirectory)(InfdStorage* storage,
                                   const gchar* path,
                                   GError** error);
+
+  gboolean (*rename_node)(InfdStorage* storage,
+                          const gchar* identifier,
+                          const gchar* old_name,
+                          const gchar* new_name,
+                          GError** error);
 
   /* TODO: Remove the identifier here */
   gboolean (*remove_node)(InfdStorage* storage,
@@ -151,6 +157,13 @@ gboolean
 infd_storage_create_subdirectory(InfdStorage* storage,
                                  const gchar* path,
                                  GError** error);
+
+gboolean
+infd_storage_rename_node(InfdStorage* storage,
+                         const gchar* identifier,
+                         const gchar* old_name,
+			 const gchar* new_name,
+                         GError** error);
 
 gboolean
 infd_storage_remove_node(InfdStorage* storage,

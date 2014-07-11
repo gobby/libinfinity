@@ -137,6 +137,11 @@ struct _InfBrowserIface {
                      const InfBrowserIter* iter,
                      InfRequest* request);
 
+  void (*node_renamed)(InfBrowser* browser,
+                       const InfBrowserIter* iter,
+                       InfRequest* request,
+                       const gchar* new_name);
+
   void (*node_removed)(InfBrowser* browser,
                        const InfBrowserIter* iter,
                        InfRequest* request);
@@ -344,7 +349,7 @@ inf_browser_add_subdirectory(InfBrowser* browser,
 InfRequest*
 inf_browser_rename_node(InfBrowser* browser,
                         const InfBrowserIter* iter,
-			const char* new_name,
+                        const char* new_name,
                         InfRequestFunc func,
                         gpointer user_data);
 

@@ -360,6 +360,38 @@ infd_storage_create_subdirectory(InfdStorage* storage,
 }
 
 /**
+ * infd_storage_rename_node:
+ * @storage: A #InfdStorage
+ * @identifier: The type of the node to rename, or %NULL to rename a
+ * subdirectory (TODO: This shouldn't be necessary).
+ * @path: A path pointing to an existing node.
+ * @error: Location to store error information.
+ * @new_name: The name which to rename the node to.
+ *
+ * Renames the node at path.
+ *
+ * Returns: %TRUE on success.
+ **/
+gboolean
+infd_storage_rename_node(InfdStorage* storage,
+                         const gchar* identifier,
+                         const gchar* old_name,
+			 const gchar* new_name,
+                         GError** error)
+{
+  InfdStorageIface* iface;
+
+  g_return_val_if_fail(INFD_IS_STORAGE(storage), FALSE);
+  g_return_val_if_fail(old_name != NULL, FALSE);
+  g_return_val_if_fail(new_name != NULL, FALSE);
+
+  iface = INFD_STORAGE_GET_IFACE(storage);
+  g_return_val_if_fail(iface->rename_node != NULL, FALSE);
+
+  return iface->rename_node(storage, identifier, old_name, new_name, error);
+}
+
+/**
  * infd_storage_remove_node:
  * @storage: A #InfdStorage
  * @identifier: The type of the node to remove, or %NULL to remove a

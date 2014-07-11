@@ -511,6 +511,85 @@ infd_filesystem_storage_storage_create_subdirectory(InfdStorage* storage,
 }
 
 static gboolean
+infd_filesystem_storage_storage_rename_node(InfdStorage* storage,
+                                            const gchar* identifier,
+                                            const gchar* old_path,
+                                            const gchar* new_path,
+                                            GError** error)
+{
+  InfdFilesystemStorage *fs_storage;
+  InfdFilesystemStoragePrivate *priv;
+  gchar *old_converted_name, *new_converted_name,
+  *old_disk_name, *new_disk_name,
+  *old_full_name, *new_full_name;
+  gboolean result;
+  int save_errno;
+
+  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
+
+  if(!infd_filesystem_storage_verify_path(new_path, error))
+    return FALSE;
+
+  old_converted_name = g_filename_from_utf8(old_path, -1, NULL, NULL, error);
+  if(!old_converted_name) return FALSE;
+  new_converted_name = g_filename_from_utf8(new_path, -1, NULL, NULL, error);
+  if(!new_converted_name)
+  {
+    g_free(old_converted_name);
+    return FALSE;
+  }
+
+  if(identifier != NULL)
+  {
+    old_disk_name = g_strconcat(old_converted_name, ".", identifier, NULL);
+    new_disk_name = g_strconcat(new_converted_name, ".", identifier, NULL);
+  }
+  else
+  {
+    old_disk_name = old_converted_name;
+    new_disk_name = new_converted_name;
+  }
+
+  old_full_name = g_build_filename(priv->root_directory, old_disk_name, NULL);
+  new_full_name = g_build_filename(priv->root_directory, new_disk_name, NULL);
+  if(old_disk_name != old_converted_name) g_free(old_disk_name);
+  if(new_disk_name != new_converted_name) g_free(new_disk_name);
+
+  result = inf_file_util_rename(old_full_name, new_full_name, error);
+  g_free(old_full_name);
+  g_free(new_full_name);
+
+  if(result == TRUE)
+  {
+    old_disk_name = g_strconcat(old_converted_name, ".xml.acl", NULL);
+    new_disk_name = g_strconcat(new_converted_name, ".xml.acl", NULL);
+    old_full_name = g_build_filename(priv->root_directory, old_disk_name, NULL);
+    new_full_name = g_build_filename(priv->root_directory, new_disk_name, NULL);
+    g_free(old_disk_name);
+    g_free(new_disk_name);
+
+    if(g_rename(old_full_name, new_full_name) == -1)
+    {
+      save_errno = errno;
+      if(save_errno != ENOENT)
+      {
+        infd_filesystem_storage_system_error(save_errno, error);
+        result = FALSE;
+      }
+    }
+
+    g_free(old_full_name);
+    g_free(new_full_name);
+  }
+
+  g_free(old_converted_name);
+  g_free(new_converted_name);
+
+  return result;
+}
+
+static gboolean
 infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
                                             const gchar* identifier,
                                             const gchar* path,
@@ -798,7 +877,7 @@ infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
       acl = g_slice_new(InfdStorageAcl);
       acl->account_id = g_strdup((const gchar*)account_id);
       xmlFree(account_id);
-      
+
       if(!inf_acl_sheet_perms_from_xml(child, &acl->mask, &acl->perms, error))
       {
         g_free(acl->account_id);
@@ -983,6 +1062,8 @@ infd_filesystem_storage_storage_init(gpointer g_iface,
     infd_filesystem_storage_storage_read_subdirectory;
   iface->create_subdirectory =
     infd_filesystem_storage_storage_create_subdirectory;
+  iface->rename_node =
+    infd_filesystem_storage_storage_rename_node;
   iface->remove_node =
     infd_filesystem_storage_storage_remove_node;
 
