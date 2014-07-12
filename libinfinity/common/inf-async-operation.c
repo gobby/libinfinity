@@ -205,9 +205,9 @@ gboolean
 inf_async_operation_start(InfAsyncOperation* op,
                           GError** error)
 {
-  g_return_if_fail(op != NULL);
-  g_return_if_fail(op->thread == NULL);
-  g_return_if_fail(op->mutex == NULL);
+  g_return_val_if_fail(op != NULL, FALSE);
+  g_return_val_if_fail(op->thread == NULL, FALSE);
+  g_return_val_if_fail(op->mutex == NULL, FALSE);
 
   op->mutex = g_mutex_new();
 
