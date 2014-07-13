@@ -45,10 +45,8 @@ typedef enum _InfTextFilesystemFormatError {
   INF_TEXT_FILESYSTEM_FORMAT_ERROR_NO_SUCH_USER
 } InfTextFilesystemFormatError;
 
-InfTextSession*
+gboolean
 inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
-                                InfIo* io,
-                                InfCommunicationManager* manager,
                                 const gchar* path,
                                 InfUserTable* user_table,
                                 InfTextBuffer* buffer,
@@ -56,8 +54,9 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
 
 gboolean
 inf_text_filesystem_format_write(InfdFilesystemStorage* storage,
-                                 InfTextSession* session,
                                  const gchar* path,
+                                 InfUserTable* user_table,
+                                 InfTextBuffer* buffer,
                                  GError** error);
 
 G_END_DECLS

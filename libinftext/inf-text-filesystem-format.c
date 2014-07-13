@@ -282,35 +282,29 @@ inf_text_filesystem_format_write_foreach_user_func(InfUser* user,
 /**
  * inf_text_filesystem_format_read:
  * @storage: A #InfdFilesystemStorage.
- * @io: The mainloop object to use for the new session.
- * @manager: The #InfCommunicationManager to use for the new session.
  * @path: Storage path to retrieve the session from.
  * @user_table: An empty #InfUserTable to use as the new session's user table.
  * @buffer: An empty #InfTextBuffer to use as the new session's buffer.
  * @error: Location to store error information, if any, or %NULL.
  *
- * Reads a text session from @path in storage. The file is expected to have
- * been saved with inf_text_filesystem_format_write() before. A new session
- * is created with the given @io and @manager. The @user_table parameter
- * should be an empty user table that will be used for the session, and the
- * @buffer parameter should be an empty #InfTextBuffer, and the document will
- * be written into this buffer. It is then used as the buffer behind the
- * newly created session. If the function fails %FALSE is returned and @error
- * is set.
+ * Reads a text session from @path in @storage. The file is expected to have
+ * been saved with inf_text_filesystem_format_write() before. The @user_table
+ * parameter should be an empty user table that will be used for the session,
+ * and the @buffer parameter should be an empty #InfTextBuffer, and the
+ * document will be written into this buffer. If the function succeeds, the
+ * user table and buffer can be used to create an #InfTextSession with
+ * inf_text_session_new_with_user_table(). If the function fails, %FALSE is
+ * returned and @error is set.
  *
- * Returns: A new #InfTextSession, or %NULL on error.
+ * Returns: %TRUE on success or %FALSE on error.
  */
-InfTextSession*
+gboolean
 inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
-                                InfIo* io,
-                                InfCommunicationManager* manager,
                                 const gchar* path,
                                 InfUserTable* user_table,
                                 InfTextBuffer* buffer,
                                 GError** error)
 {
-  InfTextSession* session;
-
   FILE* stream;
   gchar* full_path;
   gchar* uri;
@@ -322,8 +316,6 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
   gboolean result;
 
   g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), NULL);
-  g_return_val_if_fail(INF_IS_IO(io), NULL);
-  g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(manager), NULL);
   g_return_val_if_fail(path != NULL, NULL);
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
@@ -430,44 +422,31 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
     xmlFreeDoc(doc);
   }
 
-  if(result == FALSE)
-    return NULL;
-
-  session = inf_text_session_new_with_user_table(
-    manager,
-    buffer,
-    io,
-    user_table,
-    INF_SESSION_RUNNING,
-    NULL,
-    NULL
-  );
-
-  return session;
+  return result;
 }
 
 /**
  * inf_text_filesystem_format_write:
  * @storage: A #InfdFilesystemStorage.
- * @session: The #InfTextSession to write.
  * @path: Storage path where to write the session to.
+ * @user_table: The #InfUserTable to write.
+ * @buffer: The #InfTextBuffer to write.
  * @error: Location to store error information, if any, or %NULL.
  *
- * Writes the given text session @session into the filesystem storage at
+ * Writes the given user table and buffer into the filesystem storage at
  * @path. If successful, the session can then be read back with
- * inf_text_filesystem_format_read(). If the function fails %FALSE is
+ * inf_text_filesystem_format_read(). If the function fails, %FALSE is
  * returned and @error is set.
  *
  * Returns: %TRUE on success or %FALSE on error.
  */
 gboolean
 inf_text_filesystem_format_write(InfdFilesystemStorage* storage,
-                                 InfTextSession* session,
                                  const gchar* path,
+                                 InfUserTable* user_table,
+                                 InfTextBuffer* buffer,
                                  GError** error)
 {
-  InfUserTable* table;
-  InfTextBuffer* buffer;
   InfTextBufferIter* iter;
   xmlNodePtr buffer_node;
   xmlNodePtr segment_node;
@@ -486,12 +465,10 @@ inf_text_filesystem_format_write(InfdFilesystemStorage* storage,
   InfTextFilesystemFormatWriteData data;
 
   g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), FALSE);
-  g_return_val_if_fail(INF_TEXT_IS_SESSION(session), FALSE);
   g_return_val_if_fail(path != NULL, FALSE);
+  g_return_val_if_fail(INF_IS_USER_TABLE(user_table), FALSE);
+  g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), FALSE);
   g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
-
-  buffer = INF_TEXT_BUFFER(inf_session_get_buffer(INF_SESSION(session)));
-  table = inf_session_get_user_table(INF_SESSION(session));
 
   is_utf8 = TRUE;
   if(strcmp(inf_text_buffer_get_encoding(buffer), "UTF-8") != 0)
@@ -582,7 +559,7 @@ inf_text_filesystem_format_write(InfdFilesystemStorage* storage,
    * users that have contributed to the document. The others we drop, to
    * avoid cluttering the user table too much. */
   inf_user_table_foreach_user(
-    table,
+    user_table,
     inf_text_filesystem_format_write_foreach_user_func,
     &data
   );

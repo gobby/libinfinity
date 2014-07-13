@@ -70,6 +70,7 @@ infinoted_plugin_note_text_session_read(InfdStorage* storage,
 {
   InfUserTable* user_table;
   InfTextBuffer* buffer;
+  gboolean result;
   InfTextSession* session;
 
   g_assert(INFD_IS_FILESYSTEM_STORAGE(storage));
@@ -77,14 +78,29 @@ infinoted_plugin_note_text_session_read(InfdStorage* storage,
   user_table = inf_user_table_new();
   buffer = INF_TEXT_BUFFER(inf_text_default_buffer_new("UTF-8"));
 
-  session = inf_text_filesystem_format_read(
+  result = inf_text_filesystem_format_read(
     INFD_FILESYSTEM_STORAGE(storage),
-    io,
-    manager,
     path,
     user_table,
     buffer,
     error
+  );
+
+  if(result == FALSE)
+  {
+    g_object_unref(user_table);
+    g_object_unref(buffer);
+    return NULL;
+  }
+
+  session = inf_text_session_new_with_user_table(
+    manager,
+    buffer,
+    io,
+    user_table,
+    INF_SESSION_RUNNING,
+    NULL,
+    NULL
   );
 
   g_object_unref(user_table);
@@ -102,8 +118,9 @@ infinoted_plugin_note_text_session_write(InfdStorage* storage,
 {
   return inf_text_filesystem_format_write(
     INFD_FILESYSTEM_STORAGE(storage),
-    INF_TEXT_SESSION(session),
     path,
+    inf_session_get_user_table(session),
+    INF_TEXT_BUFFER(inf_session_get_buffer(session)),
     error
   );
 }
