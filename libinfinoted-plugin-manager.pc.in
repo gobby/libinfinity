@@ -1,0 +1,11 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libinfinoted-plugin-manager
+Description: Infinoted API accessible to plugins
+Requires: libinfinity-@LIBINFINITY_API_VERSION@
+Version: @VERSION@
+Libs: -L${libdir} -linfinoted-plugin-manager-@LIBINFINITY_API_VERSION@
+Cflags: -I${includedir}/libinfinoted-plugin-manager-@LIBINFINITY_API_VERSION@

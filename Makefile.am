@@ -17,6 +17,7 @@ endif
 
 if WITH_INFINOTED
 SUBDIRS += infinoted
+pkgconfig_DATA += libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).pc
 endif
 
 SUBDIRS += pixmaps test docs po

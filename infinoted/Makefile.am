@@ -29,14 +29,19 @@ libinfinoted_plugin_manager_0_6_la_LIBADD = \
 	$(infinity_LIBS)
 
 libinfinoted_plugin_manager_0_6_la_SOURCES = \
-	infinoted-log.h \
 	infinoted-log.c \
-	infinoted-parameter.h \
 	infinoted-parameter.c \
-	infinoted-plugin-manager.h \
 	infinoted-plugin-manager.c \
-	infinoted-util.h \
 	infinoted-util.c
+
+libinfinoted_plugin_manager_0_6_la_HEADERS = \
+	infinoted-log.h \
+	infinoted-parameter.h \
+	infinoted-plugin-manager.h \
+	infinoted-util.h
+
+libinfinoted_plugin_manager_0_6_ladir = \
+	$(includedir)/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION)/infinoted
 
 # Compile the rest of infinoted as an executable binary
 infinoted_0_6_CPPFLAGS = \

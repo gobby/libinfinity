@@ -335,6 +335,7 @@ AC_CONFIG_FILES(
   libinftext-libinfinity_api_version.pc:libinftext.pc.in
   libinf${infgtkver}-libinfinity_api_version.pc:libinfgtk.pc.in
   libinftext${infgtkver}-libinfinity_api_version.pc:libinftextgtk.pc.in
+  libinfinoted-plugin-manager-libinfinity_api_version.pc:libinfinoted-plugin-manager.pc.in
 )
 
 AC_OUTPUT
