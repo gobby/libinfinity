@@ -636,6 +636,7 @@ infd_directory_release_session(InfdDirectory* directory,
   }
 
   node->shared.note.session = NULL;
+  node->shared.note.weakref = FALSE;
 }
 
 /*
