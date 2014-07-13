@@ -669,6 +669,25 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager)
 {
   GSList* item;
 
+  while(manager->plugins != NULL)
+  {
+    infinoted_plugin_manager_unload_plugin(
+      manager,
+      (InfinotedPluginInstance*)manager->plugins->data
+    );
+  }
+
+  g_assert(g_hash_table_size(manager->connections) == 0);
+  g_hash_table_unref(manager->connections);
+
+  g_assert(g_hash_table_size(manager->sessions) == 0);
+  g_hash_table_unref(manager->sessions);
+
+  g_free(manager->path);
+
+  if(manager->credentials != NULL)
+    inf_certificate_credentials_unref(manager->credentials);
+
   inf_signal_handlers_disconnect_by_func(
     G_OBJECT(manager->directory),
     G_CALLBACK(infinoted_plugin_manager_connection_added_cb),
@@ -692,25 +711,6 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager)
     G_CALLBACK(infinoted_plugin_manager_unsubscribe_session_cb),
     manager
   );
-
-  while(manager->plugins != NULL)
-  {
-    infinoted_plugin_manager_unload_plugin(
-      manager,
-      (InfinotedPluginInstance*)manager->plugins->data
-    );
-  }
-
-  g_assert(g_hash_table_size(manager->connections) == 0);
-  g_hash_table_unref(manager->connections);
-
-  g_assert(g_hash_table_size(manager->sessions) == 0);
-  g_hash_table_unref(manager->sessions);
-
-  g_free(manager->path);
-
-  if(manager->credentials != NULL)
-    inf_certificate_credentials_unref(manager->credentials);
 
   g_object_unref(manager->directory);
   g_object_unref(manager->log);
