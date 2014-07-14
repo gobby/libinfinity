@@ -159,7 +159,9 @@ typedef const InfAclAccount* (*InfAclAccountLookupFunc)(const gchar* id,
 
 extern const InfAclMask INF_ACL_MASK_ALL;
 extern const InfAclMask INF_ACL_MASK_DEFAULT;
-extern const InfAclMask INF_ACL_MASK_ROOT;
+extern const InfAclMask INF_ACL_MASK_ROOT; /* only applicable for root node */
+extern const InfAclMask INF_ACL_MASK_SUBDIRECTORY; /* only applicable for subdirectory node */
+extern const InfAclMask INF_ACL_MASK_LEAF; /* only applicable for leaf node */
 
 GType
 inf_acl_account_get_type(void) G_GNUC_CONST;

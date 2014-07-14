@@ -259,7 +259,8 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
   const InfAclSheetSet* sheet_set;
   const InfAclSheet* sheet;
   InfAclSheet default_sheet;
-  InfAclMask nonroot_mask;
+  InfAclMask show_mask;
+  InfAclMask neg_mask;
 
   InfBrowserIter test_iter;
 
@@ -315,9 +316,8 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
   }
 
   /* Block default column if this is the default sheet of the root node */
-  
-
   test_iter = priv->browser_iter;
+  show_mask = INF_ACL_MASK_ALL;
   if(!inf_browser_get_parent(priv->browser, &test_iter))
   {
     /* This is the root node. Block default column if this is the default
@@ -340,11 +340,6 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
         TRUE
       );
     }
-
-    inf_gtk_acl_sheet_view_set_permission_mask(
-      INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
-      &INF_ACL_MASK_ALL
-    );
   }
   else
   {
@@ -355,12 +350,24 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
       TRUE
     );
 
-    inf_acl_mask_neg(&INF_ACL_MASK_ROOT, &nonroot_mask);
-    inf_gtk_acl_sheet_view_set_permission_mask(
-      INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
-      &nonroot_mask
-    );
+    /* Remove root-only permissions */
+    inf_acl_mask_neg(&INF_ACL_MASK_ROOT, &neg_mask);
+    inf_acl_mask_and(&show_mask, &neg_mask, &show_mask);
   }
+
+  /* If the node is a subdirectory, we don't hide the permissions that
+   * only work for leaf nodes, since they are applied to all leaf nodes in
+   * the subdirectory, unless overridden. */
+  if(!inf_browser_is_subdirectory(priv->browser, &priv->browser_iter))
+  {
+    inf_acl_mask_neg(&INF_ACL_MASK_SUBDIRECTORY, &neg_mask);
+    inf_acl_mask_and(&show_mask, &neg_mask, &show_mask);
+  }
+
+  inf_gtk_acl_sheet_view_set_permission_mask(
+    INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+    &show_mask
+  );
 
   inf_signal_handlers_unblock_by_func(
     G_OBJECT(priv->sheet_view),
