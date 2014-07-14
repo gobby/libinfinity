@@ -209,6 +209,7 @@ struct _InfdDirectoryPrivate {
   guint node_counter;
   GHashTable* nodes; /* Mapping from id to node */
   InfdDirectoryNode* root;
+  InfAclSheetSet* orig_root_acl; /* in case root->acl is altered */
 
   GSList* sync_ins;
   GSList* subscription_requests;
@@ -1063,6 +1064,7 @@ infd_directory_write_acl(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfBrowserIter iter;
+  InfAclSheetSet* acl;
   gchar* path;
   GError* error;
 
@@ -1074,10 +1076,16 @@ infd_directory_write_acl(InfdDirectory* directory,
     infd_directory_node_get_path(node, &path, NULL);
     error = NULL;
 
+    /* In case this is the root node, store the original non-altered ACL. This
+     * allows to keep certain permissions at the original value, even if they
+     * are disabled in the current configuration. */
+    acl = node->acl;
+    if(node == priv->root) acl = priv->orig_root_acl;
+
     /* TODO: Don't write sheets for transient accounts. It does not make much
      * difference, because the transient user account is not stored, so the
      * sheet will be rejected anyway when it is read from disk next time. */
-    infd_storage_write_acl(priv->storage, path, node->acl, &error);
+    infd_storage_write_acl(priv->storage, path, acl, &error);
 
     if(error != NULL)
     {
@@ -1113,6 +1121,7 @@ infd_directory_read_root_acl(InfdDirectory* directory)
 
   InfAclSheetSet* sheet_set;
   InfAclSheet* default_sheet;
+  InfAclSheet* sheet;
   InfAclMask default_mask;
   InfAclMask tmp_mask;
   GError* error;
@@ -1121,7 +1130,7 @@ infd_directory_read_root_acl(InfdDirectory* directory)
 
   error = NULL;
 
-  /* Remove existing user accounts, we are going to lead new ones
+  /* Remove existing user accounts, we are going to load new ones
    * from storage. */
   /* TODO: Emit an account-removed signal,
    * and send it to account_list_connections */
@@ -1253,6 +1262,10 @@ infd_directory_read_root_acl(InfdDirectory* directory)
   default_account = g_hash_table_lookup(priv->accounts, "default");
   g_assert(default_account != NULL);
 
+  /* Will be reset below: */
+  if(priv->orig_root_acl != NULL)
+    inf_acl_sheet_set_free(priv->orig_root_acl);
+
   if(error != NULL)
   {
     g_assert(sheet_set == NULL);
@@ -1286,6 +1299,8 @@ infd_directory_read_root_acl(InfdDirectory* directory)
       sheet_set
     );
 
+    priv->orig_root_acl = inf_acl_sheet_set_copy(priv->root->acl);
+
     infd_directory_announce_acl_sheets(
       directory,
       priv->root,
@@ -1308,6 +1323,32 @@ infd_directory_read_root_acl(InfdDirectory* directory)
     inf_acl_mask_or(&default_sheet->perms, &tmp_mask, &default_sheet->perms);
 
     default_sheet->mask = INF_ACL_MASK_ALL;
+
+    /* Set original ACL as read from disk */
+    priv->orig_root_acl = inf_acl_sheet_set_copy(priv->root->acl);
+    priv->orig_root_acl = inf_acl_sheet_set_merge_sheets(
+      priv->orig_root_acl,
+      sheet_set
+    );
+
+    /* For the actual permissions to use, remove the CAN_ADD_ACCOUNT
+     * permission if we do not have a certificate set, because in that case
+     * we cannot create new accounts. */
+    if(priv->private_key == NULL || priv->certificate == NULL)
+    {
+      g_assert(sheet_set->own_sheets != NULL);
+      for(i = 0; i < sheet_set->n_sheets; ++i)
+      {
+        sheet = &sheet_set->own_sheets[i];
+        if(inf_acl_mask_has(&sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT))
+        {
+          /* Remove the INF_ACL_CAN_CREATE_ACCOUNT flag */
+          inf_acl_mask_set1(&tmp_mask, INF_ACL_CAN_CREATE_ACCOUNT);
+          inf_acl_mask_neg(&tmp_mask, &tmp_mask);
+          inf_acl_mask_and(&sheet->perms, &tmp_mask, &sheet->perms);
+        }
+      }
+    }
 
     /* Note that the sheets array already includes sheets that clear the
      * existing ACL. */
@@ -6069,6 +6110,8 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
   InfXmlConnection* conn;
   InfdDirectoryConnectionInfo* info;
   xmlNodePtr reply_xml;
+  guint i;
+  const InfAclSheet* sheet;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -6127,6 +6170,30 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
     return FALSE;
   }
 
+  /* Make sure the CAN_CREATE_ACCOUNT permission cannot be activated when
+   * we cannot support it. */
+  if(node == priv->root &&
+     (priv->private_key == NULL || priv->certificate == NULL))
+  {
+    for(i = 0; i < sheet_set->n_sheets; ++i)
+    {
+      sheet = &sheet_set->sheets[i];
+      if(inf_acl_mask_has(&sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT) &&
+         inf_acl_mask_has(&sheet->perms, INF_ACL_CAN_CREATE_ACCOUNT))
+      {
+        g_set_error(
+          error,
+          inf_directory_error_quark(),
+          INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
+          "%s",
+          _("This server does not support account creation")
+        );
+
+        return FALSE;
+      }
+    }
+  }
+
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
   {
     inf_acl_sheet_set_free(sheet_set);
@@ -6152,6 +6219,13 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
   );
 
   node->acl = inf_acl_sheet_set_merge_sheets(node->acl, sheet_set);
+  if(node == priv->root)
+  {
+    priv->orig_root_acl = inf_acl_sheet_set_merge_sheets(
+      priv->orig_root_acl,
+      sheet_set
+    );
+  }
 
   /* Apply the effect of the new ACL */
   default_account = g_hash_table_lookup(priv->accounts, "default");
@@ -7081,6 +7155,7 @@ infd_directory_init(GTypeInstance* instance,
     FALSE
   );
 
+  priv->orig_root_acl = NULL;
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
 
@@ -7215,8 +7290,13 @@ infd_directory_dispose(GObject* object)
 
   infd_directory_set_storage(directory, NULL);
 
+  g_assert(priv->root != NULL);
   infd_directory_node_free(directory, priv->root);
   priv->root = NULL;
+
+  g_assert(priv->orig_root_acl != NULL);
+  inf_acl_sheet_set_free(priv->orig_root_acl);
+  priv->orig_root_acl = NULL;
 
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
@@ -8994,8 +9074,18 @@ infd_directory_set_certificate(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
 
+  guint i;
+  const InfAclAccount* account;
+  const InfAclSheet* orig_sheet;
+  const InfAclSheet* sheet;
+  InfAclSheetSet* merge_sheets;
+  InfAclSheet* merge_sheet;
+  InfAclMask neg_mask;
+
   g_return_if_fail(INFD_IS_DIRECTORY(directory));
   priv = INFD_DIRECTORY_PRIVATE(directory);
+
+  /* TODO: assert that the key belongs to the certificate */
 
   if(priv->certificate != NULL)
     inf_certificate_chain_unref(priv->certificate);
@@ -9008,6 +9098,82 @@ infd_directory_set_certificate(InfdDirectory* directory,
 
   g_object_notify(G_OBJECT(directory), "private-key");
   g_object_notify(G_OBJECT(directory), "certificate");
+
+  merge_sheets = inf_acl_sheet_set_new();
+
+  if(key != NULL && cert != NULL)
+  {
+    /* We have a valid key and certificate set. If the
+     * INF_ACL_CAN_CREATE_ACCOUNT permission was originally set on the root
+     * node, then enable it now. */
+    for(i = 0; i < priv->orig_root_acl->n_sheets; ++i)
+    {
+      orig_sheet = &priv->orig_root_acl->sheets[i];
+      if(inf_acl_mask_has(&orig_sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT) &&
+         inf_acl_mask_has(&orig_sheet->perms, INF_ACL_CAN_CREATE_ACCOUNT))
+      {
+        account = orig_sheet->account;
+        sheet = inf_acl_sheet_set_find_const_sheet(priv->root->acl, account);
+
+        if(sheet == NULL ||
+           (inf_acl_mask_has(&sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT) &&
+            !inf_acl_mask_has(&sheet->perms, INF_ACL_CAN_CREATE_ACCOUNT)))
+        {
+          /* Add a sheet which adds the INF_ACL_CAN_CREATE_ACCOUNT for this
+           * account to the merge sheetset. */
+          merge_sheet = inf_acl_sheet_set_add_sheet(merge_sheets, account);
+          merge_sheet->mask = sheet->mask;
+          merge_sheet->perms = sheet->perms;
+
+          inf_acl_mask_or1(&merge_sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT);
+          inf_acl_mask_or1(&merge_sheet->perms, INF_ACL_CAN_CREATE_ACCOUNT);
+        }
+      }
+    }
+  }
+  else
+  {
+    /* The key and certificate were removed, so revoke the
+     * INF_ACL_CAN_CREATE_ACCOUNT permission, since we no longer can
+     * generate certificates for the new account. */
+    for(i = 0; i < priv->root->acl->n_sheets; ++i)
+    {
+      sheet = &priv->root->acl->sheets[i];
+      if(inf_acl_mask_has(&sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT) &&
+         inf_acl_mask_has(&sheet->perms, INF_ACL_CAN_CREATE_ACCOUNT))
+      {
+        /* Add a sheet which removes the INF_ACL_CAN_CREATE_ACCOUNT for this
+         * account to the merge sheetset. */
+        merge_sheet = inf_acl_sheet_set_add_sheet(merge_sheets, account);
+
+        merge_sheet->mask = sheet->mask;
+        inf_acl_mask_or1(&merge_sheet->mask, INF_ACL_CAN_CREATE_ACCOUNT);
+
+        inf_acl_mask_set1(&neg_mask, INF_ACL_CAN_CREATE_ACCOUNT);
+        inf_acl_mask_neg(&neg_mask, &neg_mask);
+        inf_acl_mask_and(&sheet->perms, &neg_mask, &merge_sheet->perms);
+      }
+    }
+  }
+
+  if(merge_sheets->n_sheets > 0)
+  {
+    priv->root->acl =
+      inf_acl_sheet_set_merge_sheets(priv->root->acl, merge_sheets);
+
+    /* Note that we do not need to call enforce the new ACLs here, since
+     * we only change the INF_ACL_CAN_CREATE_ACCOUNT permission. */
+
+    infd_directory_announce_acl_sheets(
+      directory,
+      priv->root,
+      NULL,
+      merge_sheets,
+      NULL
+    );
+  }
+
+  inf_acl_sheet_set_free(merge_sheets);
 }
 
 /**
