@@ -741,10 +741,9 @@ inf_gtk_browser_view_acl_changed_cb(InfBrowser* browser,
         inf_browser_explore(browser, iter, NULL, NULL);
     }
 
-    /* Redraw the row to show the new ACL */
-    path = gtk_tree_model_get_path(model, &tree_iter);
-    inf_gtk_browser_view_redraw_row(view, path, &tree_iter);
-    gtk_tree_path_free(path);
+    /* Redraw to show the new ACL. Since the ACL might propagate recursively,
+     * simply redraw the whole widget. */
+    gtk_widget_queue_draw(GTK_WIDGET(view));
   }
 }
 
