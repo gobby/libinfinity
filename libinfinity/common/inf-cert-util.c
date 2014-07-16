@@ -997,6 +997,42 @@ inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
 }
 
 /**
+ * inf_cert_util_get_dn:
+ * @cert: An initialized #gnutls_x509_crt_t.
+ *
+ * Retrieves the full distinguished name (DN) from the certificate, allocating
+ * memory for the return value.
+ *
+ * Returns: The DN of the certificate. Free with g_free() after use.
+ */
+gchar*
+inf_cert_util_get_dn(gnutls_x509_crt_t cert)
+{
+  size_t size;
+  gchar* buffer;
+  int ret;
+
+  buffer = NULL;
+  size = 0;
+
+  ret = gnutls_x509_crt_get_dn(cert, buffer, &size);
+  if(ret == GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE) return NULL;
+
+  g_assert(ret == GNUTLS_E_SHORT_MEMORY_BUFFER);
+
+  buffer = g_malloc(size);
+  ret = gnutls_x509_crt_get_dn(cert, buffer, &size);
+
+  if(ret < 0)
+  {
+    g_free(buffer);
+    buffer = NULL;
+  }
+
+  return buffer;
+}
+
+/**
  * inf_cert_util_get_dn_by_oid:
  * @cert: An initialized #gnutls_x509_crt_t.
  * @oid: The name of the requested entry.

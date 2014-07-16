@@ -118,6 +118,9 @@ inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
                                     gnutls_x509_privkey_t key);
 
 gchar*
+inf_cert_util_get_dn(gnutls_x509_crt_t cert);
+
+gchar*
 inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
                             const char* oid,
                             unsigned int index);
