@@ -941,13 +941,56 @@ infd_directory_get_account_for_certificate(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdAclAccountInfo* info;
+  gchar* dn;
   gchar* fingerprint;
+  guint i;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
+  dn = inf_cert_util_get_dn(cert);
+  info = g_hash_table_lookup(priv->accounts_by_certificate, dn);
+
+  if(info != NULL)
+  {
+    g_free(dn);
+    return info;
+  }
+
+  /* If we could not find any certificate with the given DN, then check the
+   * key fingerprint. In an earlier version, we identified users by key and
+   * not by DN, so not to break existing directories, we also need to check
+   * the key fingerprint. If we have a positive match, then we also replace
+   * the fingerprint by the DN of the certificate to silently migrate to DN
+   * everywhere. */
+
   fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
   info = g_hash_table_lookup(priv->accounts_by_certificate, fingerprint);
+
+  if(info != NULL)
+  {
+    /* Replace the fingerprint by the DN. */
+    g_hash_table_remove(priv->accounts_by_certificate, fingerprint);
+    g_hash_table_insert(priv->accounts_by_certificate, dn, info);
+
+    for(i = 0; i < info->n_certificates; ++i)
+    {
+      if(strcmp(info->certificates[i], fingerprint) == 0)
+      {
+        g_free(info->certificates[i]);
+        info->certificates[i] = dn;
+        dn = NULL;
+        break;
+      }
+    }
+
+    g_assert(i < info->n_certificates);
+  }
+
   g_free(fingerprint);
+  g_free(dn);
+
+  /* Don't write the updated account list to disk here, since this is already
+   * done after this function is called anyway. */
 
   return info;
 }
@@ -2576,7 +2619,7 @@ infd_directory_create_acl_account_with_certificates(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   guint i;
-  gchar* fingerprint;
+  gchar* dn;
   InfdAclAccountInfo* info;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -2596,30 +2639,27 @@ infd_directory_create_acl_account_with_certificates(InfdDirectory* directory,
 
   info = infd_acl_account_info_new(account_id, account_name, transient);
 
-  /* Check that fingerprints do not overlap. */
+  /* Check that certificates do not overlap. */
   for(i = 0; i < n_certs; ++i)
   {
-    /* TODO: Switch to DN */
-    fingerprint = inf_cert_util_get_fingerprint(certs[i], GNUTLS_DIG_SHA256);
-    if(g_hash_table_lookup(priv->accounts_by_certificate, fingerprint) != NULL)
+    dn = inf_cert_util_get_dn(certs[i]);
+    if(g_hash_table_lookup(priv->accounts_by_certificate, dn) != NULL)
     {
       g_set_error(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
-        "%s",
-        _("The fingerprint of the certificate overlaps with another "
-          "certificate. This is possible, but highly unlikely. Please "
-          "try creating the certificate again and the error should disappear.")
+        _("There is more than one certificate with DN \"%s\""),
+        dn
       );
 
-      g_free(fingerprint);
+      g_free(dn);
       infd_acl_account_info_free(info);
       return NULL;
     }
 
-    infd_acl_account_info_add_certificate(info, fingerprint);
-    g_free(fingerprint);
+    infd_acl_account_info_add_certificate(info, dn);
+    g_free(dn);
   }
 
   g_hash_table_insert(priv->accounts, info->account.id, info);
@@ -2681,7 +2721,7 @@ infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfdAclAccountInfo* info;
-  gchar* fingerprint;
+  gchar* dn;
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
@@ -2701,9 +2741,9 @@ infd_directory_create_acl_account_with_certificate(InfdDirectory* directory,
       infd_acl_account_info_remove_certificate(info, info->certificates[0]);
     }
 
-    fingerprint = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
-    infd_acl_account_info_add_certificate(info, fingerprint);
-    g_free(fingerprint);
+    dn = inf_cert_util_get_dn(cert);
+    infd_acl_account_info_add_certificate(info, dn);
+    g_free(dn);
 
     g_hash_table_insert(
       priv->accounts_by_certificate,

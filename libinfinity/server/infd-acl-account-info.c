@@ -319,24 +319,24 @@ infd_acl_account_info_check_password(const InfdAclAccountInfo* info,
 /**
  * infd_acl_account_info_add_certificate:
  * @info: A #InfdAclAccountInfo.
- * @fingerprint: A certificate fingerprint.
+ * @dn: A certificate DN.
  *
  * Registers a certificate with this account. This allows a client to log into
- * the account by showing a certificate with the given fingerprint.
+ * the account by showing a certificate with the given DN.
  */
 void
 infd_acl_account_info_add_certificate(InfdAclAccountInfo* info,
-                                      const gchar* fingerprint)
+                                      const gchar* dn)
 {
   g_return_if_fail(info != NULL);
-  g_return_if_fail(fingerprint != NULL);
+  g_return_if_fail(dn != NULL);
 
   info->certificates = g_realloc(
     info->certificates,
     sizeof(gchar*) * (info->n_certificates + 1)
   );
 
-  info->certificates[info->n_certificates] = g_strdup(fingerprint);
+  info->certificates[info->n_certificates] = g_strdup(dn);
 
   ++info->n_certificates;
 }
@@ -344,24 +344,24 @@ infd_acl_account_info_add_certificate(InfdAclAccountInfo* info,
 /**
  * infd_acl_account_info_remove_certificate:
  * @info: A #InfdAclAccountInfo.
- * @fingerprint: A certificate fingerprint registered with @info.
+ * @dn: A certificate DN registered with @info.
  *
- * Removes the given fingerprint from the list of certificates in @info.
- * Showing a certificate with the given fingerprint no longer allows to log
+ * Removes the given DN from the list of certificates in @info.
+ * Showing a certificate with the given DN no longer allows to log
  * into this account.
  */
 void
 infd_acl_account_info_remove_certificate(InfdAclAccountInfo* info,
-                                         const gchar* fingerprint)
+                                         const gchar* dn)
 {
   guint i;
 
   g_return_if_fail(info != NULL);
-  g_return_if_fail(fingerprint != NULL);
+  g_return_if_fail(dn != NULL);
 
   for(i = 0; i < info->n_certificates; ++i)
   {
-    if(strcmp(info->certificates[i], fingerprint) == 0)
+    if(strcmp(info->certificates[i], dn) == 0)
     {
       g_free(info->certificates[i]);
       info->certificates[i] = info->certificates[info->n_certificates - 1];
