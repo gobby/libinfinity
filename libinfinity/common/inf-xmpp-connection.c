@@ -4122,7 +4122,7 @@ inf_xmpp_connection_class_init(gpointer g_class,
       "Credentials",
       "The certificate credentials for GnuTLS",
       INF_TYPE_CERTIFICATE_CREDENTIALS,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -4134,7 +4134,7 @@ inf_xmpp_connection_class_init(gpointer g_class,
       "SASL context",
       "The SASL context used for authentication",
       INF_TYPE_SASL_CONTEXT,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -4146,7 +4146,7 @@ inf_xmpp_connection_class_init(gpointer g_class,
       "SASL Mechanisms",
       "Whitespace separated list of SASL mechanisms to accept/offer",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
