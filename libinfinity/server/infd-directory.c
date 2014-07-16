@@ -1342,7 +1342,10 @@ infd_directory_read_root_acl(InfdDirectory* directory)
       sheet_set
     );
 
-    priv->orig_root_acl = inf_acl_sheet_set_copy(priv->root->acl);
+    if(priv->root->acl != NULL)
+      priv->orig_root_acl = inf_acl_sheet_set_copy(priv->root->acl);
+    else
+      priv->orig_root_acl = NULL;
 
     infd_directory_announce_acl_sheets(
       directory,
@@ -1368,7 +1371,11 @@ infd_directory_read_root_acl(InfdDirectory* directory)
     default_sheet->mask = INF_ACL_MASK_ALL;
 
     /* Set original ACL as read from disk */
-    priv->orig_root_acl = inf_acl_sheet_set_copy(priv->root->acl);
+    if(priv->root->acl != NULL)
+      priv->orig_root_acl = inf_acl_sheet_set_copy(priv->root->acl);
+    else
+      priv->orig_root_acl = NULL;
+
     priv->orig_root_acl = inf_acl_sheet_set_merge_sheets(
       priv->orig_root_acl,
       sheet_set
