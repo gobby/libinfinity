@@ -1116,7 +1116,7 @@ inf_sasl_context_session_feed(InfSaslContextSession* session,
 gboolean
 inf_sasl_context_session_is_processing(InfSaslContextSession* session)
 {
-  g_return_if_fail(session != NULL);
+  g_return_val_if_fail(session != NULL, FALSE);
   return session->stepping;
 }
 
