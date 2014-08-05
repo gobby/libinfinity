@@ -22,6 +22,8 @@ infinote consists of the following parts:
   Infinote plugin implementing real-time collaborative text editing
 - **libinftextgtk:**
   Implements the InfTextBuffer interface with a GtkTextBuffer as backend
+- **libinfinoted-plugin-manager:**
+  Provides an interface to infinoted for plugins.
 
 ## Requirements
 
