@@ -53,6 +53,8 @@ typedef enum _InfFileType {
  * inf_file_util_list_directory(). If the function returns %FALSE then
  * directory traversal is stopped immediately. In addition @error can be set
  * and it is propagated to the caller of inf_file_util_list_directory().
+ *
+ * Returns: %TRUE if the iteration should be continued or %FALSE otherwise.
  */
 typedef gboolean(*InfFileListFunc)(const gchar* name,
                                    const gchar* path,

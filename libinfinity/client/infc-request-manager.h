@@ -37,20 +37,50 @@ G_BEGIN_DECLS
 typedef struct _InfcRequestManager InfcRequestManager;
 typedef struct _InfcRequestManagerClass InfcRequestManagerClass;
 
+/**
+ * InfcRequestManagerClass:
+ * @request_add: Default signal handler for the
+ * #InfcRequestManager::request-add signal.
+ * @request_remove: Default signal handler for the
+ * #InfcRequestManager::request-remove signal.
+ *
+ * This structure contains the default signal handlers of the
+ * #InfcRequestManager class.
+ */
 struct _InfcRequestManagerClass {
+  /*< private >*/
   GObjectClass parent_class;
 
+  /*< public >*/
   void (*request_add)(InfcRequestManager* manager,
                       InfcRequest* request);
   void (*request_remove)(InfcRequestManager* manager,
                          InfcRequest* request);
 };
 
+/**
+ * InfcRequestManager:
+ *
+ * #InfcRequestManager is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfcRequestManager {
+  /*< private >*/
   GObject parent;
 };
 
-typedef void(*InfcRequestManagerForeachFunc)(InfcRequest*, gpointer);
+/**
+ * InfcRequestManagerForeachFunc:
+ * @request: The current request.
+ * @user_data: Additional data passed to
+ * infc_request_manager_foreach_request() or
+ * infc_request_manager_foreach_named_request().
+ *
+ * This signature specifies the callback type when iterating over all
+ * requests of the request manager.
+ */
+typedef void(*InfcRequestManagerForeachFunc)(InfcRequest* request,
+                                             gpointer user_data);
 
 GType
 infc_request_manager_get_type(void) G_GNUC_CONST;

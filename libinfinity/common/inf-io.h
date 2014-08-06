@@ -42,8 +42,31 @@ G_BEGIN_DECLS
 typedef struct _InfIo InfIo;
 typedef struct _InfIoIface InfIoIface;
 
+/**
+ * InfIoWatch:
+ *
+ * #InfIoWatch represents a watch on a #InfNativeSocket for events to occur.
+ * It is an opaque data type. You should only access it via the public
+ * API functions.
+ */
 typedef struct _InfIoWatch InfIoWatch;
+
+/**
+ * InfIoTimeout:
+ *
+ * #InfIoTimeout represents a timer which will call a specified function in
+ * the future. It is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 typedef struct _InfIoTimeout InfIoTimeout;
+
+/**
+ * InfIoDispatch:
+ *
+ * #InfIoDispatch represents a function to be called by the thread executing
+ * the #InfIo object. It is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 typedef struct _InfIoDispatch InfIoDispatch;
 
 /**

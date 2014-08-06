@@ -776,7 +776,9 @@ inf_adopted_request_log_get_type(void)
  * @user_id: The ID of the #InfAdoptedUser to create a request log for. The
  * request log only contains requests of that particular user.
  *
- * Return Value: A new #InfAdoptedRequestLog.
+ * Creates a new #InfAdoptedRequestLog for the user with the given ID.
+ *
+ * Returns: A new #InfAdoptedRequestLog.
  **/
 InfAdoptedRequestLog*
 inf_adopted_request_log_new(guint user_id)
@@ -933,7 +935,7 @@ inf_adopted_request_log_get_request(InfAdoptedRequestLog* log,
 }
 
 /**
- * inf_adopted_request_add_request:
+ * inf_adopted_request_log_add_request:
  * @log: A #InfAdoptedRequestLog.
  * @request: A #InfAdoptedRequest.
  *

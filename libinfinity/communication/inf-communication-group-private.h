@@ -37,7 +37,7 @@ _inf_communication_group_remove_member(InfCommunicationGroup* group,
 void
 _inf_communication_group_foreach_method(InfCommunicationGroup* group,
                                         InfCommunicationGroupForeachFunc func,
-					gpointer user_data);
+                                        gpointer user_data);
 
 #endif /* __INF_COMMUNICATION_GROUP_PRIVATE_H__ */
 

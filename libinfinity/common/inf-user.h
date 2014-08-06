@@ -68,15 +68,16 @@ typedef enum InfUserFlags {
 
 /**
  * InfUserClass:
- *
  * @set_status: Virtual function to change the status of a user. This is a
  * hook for user subclasses to react on status change.
  *
  * This structure contains virtual functions for the #InfUser class.
  */
 struct _InfUserClass {
+  /*< private >*/
   GObjectClass parent_class;
 
+  /*< public >*/
   void (*set_status)(InfUser* user,
                      InfUserStatus status);
 };
@@ -88,6 +89,7 @@ struct _InfUserClass {
  * the public API functions.
  */
 struct _InfUser {
+  /*< private >*/
   GObject parent;
   gpointer priv;
 };

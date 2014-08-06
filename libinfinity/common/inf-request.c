@@ -161,7 +161,7 @@ inf_request_fail(InfRequest* request,
 }
 
 /**
- * inf_request_fail:
+ * inf_request_finish:
  * @request: A #InfRequest.
  * @result: A #InfRequestResult containing the result of the request.
  *

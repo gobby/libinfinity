@@ -46,46 +46,157 @@ G_BEGIN_DECLS
 typedef struct _InfXmppConnection InfXmppConnection;
 typedef struct _InfXmppConnectionClass InfXmppConnectionClass;
 
+/**
+ * InfXmppConnectionSite:
+ * @INF_XMPP_CONNECTION_SERVER: The local site of this connection is an
+ * XMPP server and the remote counterpart is a client.
+ * @INF_XMPP_CONNECTION_CLIENT: The local site of this connection is a
+ * XMPP client and the remote counterpart is a server.
+ *
+ * Specifies whether the local site of the connection is a client or a
+ * server.
+ */
 typedef enum _InfXmppConnectionSite {
   INF_XMPP_CONNECTION_SERVER,
   INF_XMPP_CONNECTION_CLIENT
 } InfXmppConnectionSite;
 
+/**
+ * InfXmppConnectionSecurityPolicy:
+ * @INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED: In the case of a server, do
+ * not offer TLS to the client. As a client, only connect if the server does
+ * not require TLS.
+ * @INF_XMPP_CONNECTION_SECURITY_ONLY_TLS: In the case of a server, require
+ * all connections to be TLS-secured. As a client, only connect if the server
+ * supports TLS.
+ * @INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED: In the case of a
+ * server, offer both unsecured and secured messaging to the client. As a
+ * client, use unsecured communication unless TLS is required by the server.
+ * @INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS: In the case of a server,
+ * offer both unsecured and secured messaging to the client. As a client,
+ * use TLS unless not supported by the server.
+ *
+ * The #InfXmppConnectionSecurityPolicy enumeration specifies various options
+ * of how to deal with the other site allowing or requiring TLS-secured
+ * connections. Note that if the local site is a server, then
+ * @INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED and
+ * @INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS are equivalent.
+ */
 typedef enum _InfXmppConnectionSecurityPolicy {
-  /* Server: Do not offer TLS.
-   * Client: Only connect if TLS is not required. */
   INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
-  /* Server: Require TLS.
-   * Client: Only connect if TLS is available. */
   INF_XMPP_CONNECTION_SECURITY_ONLY_TLS,
-  /* Server: Offer both.
-   * Client: Use unsecured communication unless TLS is required */
   INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED,
-  /* Server: Offer both.
-   * Client: Use TLS-secured communication unless TLS is not available. */
   INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS
 } InfXmppConnectionSecurityPolicy;
 
+/**
+ * InfXmppConnectionError:
+ * @INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED: Server does not support TLS,
+ * but the security policy is set to %INF_XMPP_CONNECTION_SECURITY_ONLY_TLS.
+ * @INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED: The server requires TLS, but the
+ * security policy is set to %INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED.
+ * @INF_XMPP_CONNECTION_ERROR_TLS_FAILURE: Server cannot proceed with the TLS
+ * handshake.
+ * @INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED: The server did not
+ * provide a certificate.
+ * @INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED: The server certificate
+ * is not trusted. Whether the server certificate is trusted or not is defined
+ * by the API user, by providing a certificate callback with
+ * inf_xmpp_connection_set_certificate_callback().
+ * @INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED: The server does not
+ * provide any authentication mechanisms.
+ * @INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM: The server does not offer
+ * a suitable authentication mechanism that is accepted by the client.
+ * @INF_XMPP_CONNECTION_ERROR_FAILED: General error code for otherwise
+ * unknown errors.
+ *
+ * Specifies the error codes in the
+ * <literal>INF_XMPP_CONNECTION_ERROR</literal> error domain.
+ */
 typedef enum _InfXmppConnectionError {
-  /* Server does not support TLS */
   INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
-  /* The server requires TLS, but we don't want TLS */
   INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED,
-  /* Got <failure> as response to <starttls> */
   INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
-  /* The server did not provide a certificate */
   INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
-  /* The server certificate is not trusted */
   INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
-  /* Server does not provide authentication mechanisms */
   INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED,
-  /* Server does not offer a suitable machnism */
   INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM,
 
   INF_XMPP_CONNECTION_ERROR_FAILED
 } InfXmppConnectionError;
 
-/* As defined in RFC 3920, section 4.7.3 */
+/**
+ * InfXmppConnectionStreamError:
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_BAD_FORMAT: The entity has sent XML that
+ * cannot be processed.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_BAD_NAMESPACE_PREFIX: The entity has sent
+ * a namespace prefix that is unsupported, or has sent no namespace prefix on
+ * an element that requires such a prefix.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_CONFLICT: The server is closing the
+ * active stream for this entity because a new stream has been initiated
+ * that conflicts with the existing stream.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_CONNECTION_TIMEOUT: The entity has not
+ * generated any traffic over the stream for some period of time.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_HOST_GONE: The value of the 'to'
+ * attribute provided by the initiating entity in the stream header
+ * corresponds to a hostname that is no longer hosted by the server.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_HOST_UNKNOWN: The value of the 'to'
+ * attribute provided by the initiating entity in the stream header does
+ * not correspond to a hostname that is hosted by the server.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_IMPROPER_ADDRESSING: A stanza sent
+ * between two servers lacks a 'to' or 'from' attribute.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_INTERNAL_SERVER_ERROR: The server has
+ * experienced a misconfiguration or an otherwise-undefined internal error
+ * that prevents it from servicing the stream.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_FROM: The JID or hostname
+ * provided in a 'from' address does not match an authorized JID or
+ * validated domain negotiated between servers via SASL or dialback, or
+ * between a client and a server via authentication and resource binding.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_ID: The stream ID or dialback
+ * ID is invalid or does not match an ID previously provided.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_NAMESPACE: The streams namespace
+ * is something other than <literal>http://etherx.jabber.org/streams</literal>
+ * or the dialback namespace name is something other than
+ * <literal>jabber:server:dialback</literal>.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_INVALID_XML: The entity has sent invalid
+ * XML over the stream to a server that performs validation.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_NOT_AUTHORIZED: The entity has attempted
+ * to send data before the stream has been authenticated, or otherwise is not
+ * authorized to perform an action related to stream negotiation.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_POLICY_VIOLATION: The entity has violated
+ * some local service policy.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_REMOTE_CONNECTION_FAILED: The server is
+ * unable to properly connect to a remote entity that is required for
+ * authentication or authorization.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_RESOURCE_CONSTRAINT: The server lacks the
+ * system resources necessary to service the stream.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_RESTRICTED_XML: The entity has attempted
+ * to send restricted XML features.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_SEE_OTHER_HOST: The server will not
+ * provide service to the initiating entity but is redirecting traffic
+ * to another host.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_SYSTEM_SHUTDOWN: The server is being
+ * shut down and all active streams are being closed.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_UNDEFINED_CONDITION: The error condition
+ * is not one of those defined by the other conditions.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_UNSUPPORTED_ENCODING: The initiating
+ * entity has encoded the stream in an encoding that is not supported by
+ * the server.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_UNSUPPORTED_STANZA_TYPE: The initiating
+ * entity has sent a first-level child of the stream that is not supported
+ * by the server.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_UNSUPPORTED_VERSION: The value of the
+ * 'version' attribute provided by the initiating entity in the stream header
+ * specifies a version of XMPP that is not supported by the server.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_XML_NOT_WELL_FORMED: The initiating
+ * entity has sent XML that is not well-formed.
+ * @INF_XMPP_CONNECTION_STREAM_ERROR_FAILED: General error code for otherwise
+ * unknown errors.
+ *
+ * Specifies the error codes in the
+ * <literal>INF_XMPP_CONNECTION_STREAM_ERROR</literal> error domain. These
+ * errors correspond to the ones defined in RFC 3920, section 4.7.3.
+ */
 typedef enum _InfXmppConnectionStreamError {
   INF_XMPP_CONNECTION_STREAM_ERROR_BAD_FORMAT,
   INF_XMPP_CONNECTION_STREAM_ERROR_BAD_NAMESPACE_PREFIX,
@@ -115,7 +226,34 @@ typedef enum _InfXmppConnectionStreamError {
   INF_XMPP_CONNECTION_STREAM_ERROR_FAILED
 } InfXmppConnectionStreamError;
 
-/* As defined in RFC 3920, section 6.4 */
+/**
+ * InfXmppConnectionAuthError:
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_ABORTED: The receiving entity acknowledged
+ * an <literal>&lt;abort/&gt;</literal> element sent by the initiating entity.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_INCORRECT_ENCODING: The data provided by
+ * the initiating entity could not be processed because the Base64 encoding
+ * is incorrect.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_INVALID_AUTHZID: The authzid provided by
+ * the initiating entity is invalid, either because it is incorrectly
+ * formatted or because the initiating entity does not have permissions
+ * to authorize that ID.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_INVALID_MECHANISM: The initiating entity
+ * did not provide a mechanism or requested a mechanism that is not supported
+ * by the receiving entity.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_MECHANISM_TOO_WEAK: The mechanism requsted
+ * by the initiating entity is weaker than server policy permits for that
+ * initiating entity.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_NOT_AUTHORIZED: The authentication failed
+ * because the initiating entity did not provide valid credentials.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_TEMPORARY_AUTH_FAILURE: The authentication
+ * failed because of a temporary error condition within the receiving entity.
+ * @INF_XMPP_CONNECTION_AUTH_ERROR_FAILED: General error code for otherwise
+ * unknown errors.
+ *
+ * Specifies the error codes in the
+ * <literal>INF_XMPP_CONNECTION_AUTH_ERROR</literal> error domain. These
+ * errors correspond to the ones defined in RFC 3920, section 6.4.
+ */
 typedef enum _InfXmppConnectionAuthError {
   INF_XMPP_CONNECTION_AUTH_ERROR_ABORTED,
   INF_XMPP_CONNECTION_AUTH_ERROR_INCORRECT_ENCODING,
@@ -128,15 +266,39 @@ typedef enum _InfXmppConnectionAuthError {
   INF_XMPP_CONNECTION_AUTH_ERROR_FAILED
 } InfXmppConnectionAuthError;
 
-
+/**
+ * InfXmppConnectionClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfXmppConnectionClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfXmppConnection:
+ *
+ * #InfXmppConnection is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfXmppConnection {
+  /*< private >*/
   GObject parent;
 };
 
+/**
+ * InfXmppConnectionCrtCallback:
+ * @xmpp: The #InfXmppConnection validating a certificate.
+ * @session: The underlying GnuTLS session.
+ * @chain: The certificate chain presented by the remote host.
+ * @user_data: Additional data supplied when
+ * inf_xmpp_connection_set_certificate_callback() was called.
+ *
+ * Specifies the callback signature for the certificate callback set with
+ * inf_xmpp_connection_set_certificate_callback(). The callback should decide
+ * whether to trust the certificate in @chain or not.
+ */
 typedef void(*InfXmppConnectionCrtCallback)(InfXmppConnection* xmpp,
                                             gnutls_session_t session,
                                             InfCertificateChain* chain,

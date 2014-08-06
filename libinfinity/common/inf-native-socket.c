@@ -27,6 +27,10 @@
  * This module provides a common way to access the BSD socket API. While
  * the API is mostly equivalent on Linux and Windows, there are some subtle
  * differences for which uniform identifiers are provided.
+ *
+ * Before #InfNativeSocket can be used, on Windows WinSock2 must be
+ * initialized. You can either do this manually, or call inf_init() which
+ * does it for you.
  */
 
 #include <libinfinity/common/inf-native-socket.h>
@@ -52,6 +56,8 @@ const int INF_NATIVE_SOCKET_SENDRECV_FLAGS = 0;
  * inf_native_socket_error_quark:
  *
  * Returns a #GQuark representing the INF_NATIVE_SOCKET_ERROR domain.
+ *
+ * Returns: A #GQuark representing the INF_NATIVE_SOCKET_ERROR domain.
  */
 GQuark
 inf_native_socket_error_quark(void)

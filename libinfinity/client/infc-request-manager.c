@@ -17,6 +17,26 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infc-request-manager
+ * @short_description: Keeps track of pending asynchronous requests
+ * @see_also: #InfRequest, #InfcRequest, #InfcBrowser, #InfcSessionProxy
+ * @include: libinfinity/client/infc-request-manager.h
+ * @stability: Unstable
+ *
+ * This class keeps track of requests sent by #InfcBrowser and
+ * #InfcSessionProxy (typically via the #InfBrowser and #InfSessionProxy
+ * APIs). It is used internally by #InfcBrowser and #InfcSessionProxy, and
+ * usually end-users of the libinfinity API do not need to use this class
+ * directly.
+ *
+ * Requests can be added with the infc_request_manager_add_request() and
+ * infc_request_manager_add_request_valist() methods and retrieved back via
+ * their unique seq number with infc_request_manager_get_request_by_seq(). In
+ * addition to this basic API, there are various convenience functions
+ * available as well.
+ **/
+
 #include <libinfinity/client/infc-request-manager.h>
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -306,6 +326,14 @@ infc_request_manager_class_init(gpointer g_class,
     )
   );
 
+  /**
+   * InfcRequestManager::request-add:
+   * @manager: The #InfcRequestManager emitting the signal.
+   * @request: The #InfcRequest that was added.
+   *
+   * This signal is emitted whenever a request was added to the request
+   * manager.
+   */
   request_manager_signals[REQUEST_ADD] = g_signal_new(
     "request-add",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -318,6 +346,16 @@ infc_request_manager_class_init(gpointer g_class,
     INFC_TYPE_REQUEST
   );
 
+  /**
+   * InfcRequestManager::request-remove:
+   * @manager: The #InfcRequestManager emitting the signal.
+   * @request: The #InfcRequest that was removed.
+   *
+   * This signal is emitted whenever a request was removed from the request
+   * manager. Typically this happens when the request has finished (either
+   * successfully or unsuccessfully). It can also happen when the client is
+   * disconnected from the server while a request was still pending.
+   */
   request_manager_signals[REQUEST_REMOVE] = g_signal_new(
     "request-remove",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -382,7 +420,7 @@ infc_request_manager_new(guint seq_id)
 /**
  * infc_request_manager_add_request:
  * @manager: A #InfcRequestManager.
- * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
+ * @request_type: The type of request to add, such as #InfcProgressRequest.
  * @request_name: The name of the request, such as "explore-node" or
  * "subscribe-session".
  * @callback: A #GCallback that will be called when the request has completed,
@@ -430,7 +468,7 @@ infc_request_manager_add_request(InfcRequestManager* manager,
 /**
  * infc_request_manager_add_request_valist:
  * @manager: A #InfcRequestManager.
- * @request_type: The type of request to add, such as %INFC_TYPE_NODE_REQUEST.
+ * @request_type: The type of request to add, such as #InfcProgressRequest.
  * @request_name: The name of the request, such as &quot;explore-node&quot; or
  * &quot;subscribe-session&quot;
  * @callback: A #GCallback that will be called when the request has completed,

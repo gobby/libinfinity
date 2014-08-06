@@ -17,6 +17,24 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-xmpp-connection
+ * @title: InfXmppConnection
+ * @short_description: Implementation of the XMPP core protocol
+ * @include: libinfinity/common/inf-xmpp-connection.h
+ * @stability: Unstable
+ *
+ * This class implements the XMPP protocol as defined by RFC 3920. It handles
+ * the authentication and authorization. Once the connection is established,
+ * XML messages can be sent and received with the API of the
+ * #InfXmlConnection interface.
+ *
+ * Note that any sort of XML messages can be exchanged, and that the XML does
+ * not need to adhere to the XMPP standard. It is in the responsibility of the
+ * user of this class to send only XML message that the remote counterpart can
+ * understand.
+ **/
+
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xml-util.h>
@@ -383,7 +401,7 @@ inf_xmpp_connection_stream_strerror(InfXmppConnectionStreamError code)
   case INF_XMPP_CONNECTION_STREAM_ERROR_POLICY_VIOLATION:
     return _("The entity has violated some local service policy");
   case INF_XMPP_CONNECTION_STREAM_ERROR_REMOTE_CONNECTION_FAILED:
-    return _("The server is unable to property connect to a remote entity "
+    return _("The server is unable to properly connect to a remote entity "
              "that is required for authentication or authorization");
   case INF_XMPP_CONNECTION_STREAM_ERROR_RESOURCE_CONSTRAINT:
     return _("The server lacks the system resources necessary to service the "
@@ -4534,8 +4552,8 @@ inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp)
  * was not trusted. If you verified the peer's certificate with
  * gnutls_certificate_verify_peers2(), or gnutls_x509_crt_list_verify(), then
  * a corresponding error can be generated with the verification result
- * with inf_gnutls_verification_result_set_error(). The reason is then shown
- * to the local user.
+ * with inf_gnutls_certificate_verification_set_error(). The reason is then
+ * shown to the local user.
  */
 void
 inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,

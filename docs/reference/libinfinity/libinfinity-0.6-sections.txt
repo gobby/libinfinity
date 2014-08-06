@@ -86,7 +86,6 @@ INF_ADOPTED_SESSION_REPLAY_GET_CLASS
 <SECTION>
 <FILE>infc-browser</FILE>
 <TITLE>InfcBrowser</TITLE>
-InfcBrowserStatus
 InfcBrowser
 InfcBrowserClass
 infc_browser_new
@@ -94,31 +93,9 @@ infc_browser_get_communication_manager
 infc_browser_get_connection
 infc_browser_add_plugin
 infc_browser_lookup_plugin
-infc_browser_iter_get_root
-infc_browser_iter_get_next
-infc_browser_iter_get_prev
-infc_browser_iter_get_parent
-infc_browser_iter_get_explored
-infc_browser_iter_get_child
-infc_browser_iter_explore
-infc_browser_iter_get_name
-infc_browser_iter_get_path
-infc_browser_iter_is_subdirectory
-infc_browser_add_subdirectory
-infc_browser_add_note
-infc_browser_add_note_with_content
-infc_browser_remove_node
-infc_browser_iter_get_note_type
-infc_browser_iter_get_plugin
-infc_browser_iter_subscribe_session
 infc_browser_iter_save_session
-infc_browser_iter_get_session
 infc_browser_iter_get_sync_in
-infc_browser_iter_get_subscribe_request
-infc_browser_iter_get_explore_request
 infc_browser_iter_get_sync_in_requests
-infc_browser_iter_from_node_request
-infc_browser_iter_from_explore_request
 infc_browser_iter_is_valid
 infc_browser_subscribe_chat
 infc_browser_get_subscribe_chat_request
@@ -131,8 +108,6 @@ infc_browser_get_type
 INFC_BROWSER_CLASS
 INFC_IS_BROWSER_CLASS
 INFC_BROWSER_GET_CLASS
-INFC_TYPE_BROWSER_STATUS
-infc_browser_status_get_type
 </SECTION>
 
 <SECTION>
@@ -187,8 +162,6 @@ INFC_REQUEST_MANAGER_GET_CLASS
 InfcSessionProxy
 InfcSessionProxyClass
 infc_session_proxy_set_connection
-infc_session_proxy_join_user
-infc_session_proxy_get_session
 infc_session_proxy_get_connection
 infc_session_proxy_get_subscription_group
 <SUBSECTION Standard>
@@ -261,8 +234,15 @@ INF_TYPE_TCP_CONNECTION_STATUS
 <FILE>inf-native-socket</FILE>
 <TITLE>InfNativeSocket</TITLE>
 InfNativeSocket
+INF_NATIVE_SOCKET_EAGAIN
+INF_NATIVE_SOCKET_EINPROGRESS
+INF_NATIVE_SOCKET_EINTR
+INF_NATIVE_SOCKET_LAST_ERROR
+INF_NATIVE_SOCKET_SENDRECV_FLAGS
+INVALID_SOCKET
 inf_native_socket_error_quark
 inf_native_socket_make_error
+closesocket
 </SECTION>
 
 <SECTION>
@@ -279,6 +259,7 @@ inf_browser_get_child
 inf_browser_is_ancestor
 inf_browser_explore
 inf_browser_get_explored
+inf_browser_is_subdirectory
 inf_browser_add_note
 inf_browser_add_subdirectory
 inf_browser_remove_node
@@ -305,6 +286,7 @@ inf_browser_error
 inf_browser_node_added
 inf_browser_node_removed
 inf_browser_subscribe_session
+inf_browser_unsubscribe_session
 inf_browser_begin_request
 inf_browser_acl_account_added
 inf_browser_acl_account_removed
@@ -328,11 +310,30 @@ InfAclSetting
 InfAclMask
 InfAclSheet
 InfAclSheetSet
+InfAclAccountLookupFunc
 inf_acl_account_new
 inf_acl_account_copy
 inf_acl_account_free
 inf_acl_account_from_xml
 inf_acl_account_to_xml
+inf_acl_mask_copy
+inf_acl_mask_free
+inf_acl_mask_clear
+inf_acl_mask_empty
+inf_acl_mask_equal
+inf_acl_mask_set1
+inf_acl_mask_setv
+inf_acl_mask_and
+inf_acl_mask_and1
+inf_acl_mask_or
+inf_acl_mask_or1
+inf_acl_mask_neg
+inf_acl_mask_has
+INF_ACL_MASK_ALL
+INF_ACL_MASK_DEFAULT
+INF_ACL_MASK_LEAF
+INF_ACL_MASK_ROOT
+INF_ACL_MASK_SUBDIRECTORY
 inf_acl_sheet_new
 inf_acl_sheet_copy
 inf_acl_sheet_free
@@ -344,8 +345,12 @@ inf_acl_sheet_set_copy
 inf_acl_sheet_set_free
 inf_acl_sheet_set_add_sheet
 inf_acl_sheet_set_remove_sheet
+inf_acl_sheet_set_merge_sheets
+inf_acl_sheet_set_get_clear_sheets
 inf_acl_sheet_set_find_sheet
 inf_acl_sheet_set_find_const_sheet
+inf_acl_sheet_set_from_xml
+inf_acl_sheet_set_to_xml
 <SUBSECTION Standard>
 inf_acl_account_get_type
 inf_acl_setting_get_type
@@ -633,6 +638,7 @@ INF_IS_SESSION_PROXY
 INF_TYPE_SESSION_PROXY
 INF_SESSION_PROXY_GET_IFACE
 inf_session_proxy_get_type
+INF_TYPE_SESSION_PROXY_STATUS
 </SECTION>
 
 <SECTION>
@@ -744,14 +750,13 @@ InfAdoptedOperationIface
 InfAdoptedOperationFlags
 InfAdoptedConcurrencyId
 inf_adopted_operation_need_concurrency_id
-inf_adopted_operation_get_concurrency_id
 inf_adopted_operation_transform
 inf_adopted_operation_copy
 inf_adopted_operation_get_flags
 inf_adopted_operation_apply
+inf_adopted_operation_apply_transformed
 inf_adopted_operation_is_reversible
 inf_adopted_operation_revert
-inf_adopted_operation_make_reversible
 <SUBSECTION Standard>
 INF_ADOPTED_OPERATION
 INF_ADOPTED_IS_OPERATION
@@ -801,7 +806,6 @@ inf_adopted_request_get_receive_time
 inf_adopted_request_get_execute_time
 inf_adopted_request_set_execute_time
 inf_adopted_request_need_concurrency_id
-inf_adopted_request_get_concurrency_id
 inf_adopted_request_transform
 inf_adopted_request_mirror
 inf_adopted_request_fold
@@ -927,6 +931,7 @@ infd_acl_account_info_from_xml
 infd_acl_account_info_to_xml
 <SUBSECTION Standard>
 infd_acl_account_info_get_type
+INFD_TYPE_ACL_ACCOUNT_INFO
 </SECTION>
 
 <SECTION>
@@ -1033,21 +1038,6 @@ INFD_PROGRESS_REQUEST_GET_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>infd-user-request</FILE>
-<TITLE>InfdUserRequest</TITLE>
-InfdUserRequest
-InfdUserRequestClass
-<SUBSECTION Standard>
-INFD_USER_REQUEST
-INFD_IS_USER_REQUEST
-INFD_TYPE_USER_REQUEST
-infd_user_request_get_type
-INFD_USER_REQUEST_CLASS
-INFD_IS_USER_REQUEST_CLASS
-INFD_USER_REQUEST_GET_CLASS
-</SECTION>
-
-<SECTION>
 <FILE>infd-xml-server</FILE>
 <TITLE>InfdXmlServer</TITLE>
 InfdXmlServer
@@ -1092,14 +1082,22 @@ InfdStorage
 InfdStorageIface
 InfdStorageNodeType
 InfdStorageNode
+InfdStorageAcl
 infd_storage_node_new_subdirectory
 infd_storage_node_new_note
 infd_storage_node_copy
 infd_storage_node_free
 infd_storage_node_list_free
+infd_storage_acl_copy
+infd_storage_acl_free
+infd_storage_acl_list_free
 infd_storage_read_subdirectory
 infd_storage_create_subdirectory
 infd_storage_remove_node
+infd_storage_read_account_list
+infd_storage_write_account_list
+infd_storage_read_acl
+infd_storage_write_acl
 <SUBSECTION Standard>
 INFD_STORAGE
 INFD_IS_STORAGE
@@ -1110,6 +1108,8 @@ infd_storage_node_get_type
 infd_storage_get_type
 INFD_TYPE_STORAGE_NODE_TYPE
 INFD_TYPE_STORAGE_NODE
+INFD_TYPE_STORAGE_ACL
+infd_storage_acl_get_type
 </SECTION>
 
 <SECTION>
@@ -1117,8 +1117,6 @@ INFD_TYPE_STORAGE_NODE
 <TITLE>InfdSessionProxy</TITLE>
 InfdSessionProxy
 InfdSessionProxyClass
-infd_session_proxy_get_session
-infd_session_proxy_add_user
 infd_session_proxy_subscribe_to
 infd_session_proxy_unsubscribe
 infd_session_proxy_has_subscriptions
@@ -1156,18 +1154,8 @@ INFD_TYPE_FILESYSTEM_STORAGE_ITER
 <SECTION>
 <FILE>infc-note-plugin</FILE>
 <TITLE>InfcNotePlugin</TITLE>
+InfcNotePluginSessionNew
 InfcNotePlugin
-</SECTION>
-
-<SECTION>
-<FILE>infc-browser-iter</FILE>
-<TITLE>InfcBrowserIter</TITLE>
-InfcBrowserIter
-infc_browser_iter_copy
-infc_browser_iter_free
-<SUBSECTION Standard>
-infc_browser_iter_get_type
-INFC_TYPE_BROWSER_ITER
 </SECTION>
 
 <SECTION>
@@ -1187,8 +1175,8 @@ inf_authentication_detail_error_quark
 inf_authentication_detail_strerror
 inf_gnutls_error_quark
 inf_gnutls_set_error
-inf_gnutls_certification_verification_error_quark
-inf_gnutls_certification_verification_set_error
+inf_gnutls_certificate_verification_error_quark
+inf_gnutls_certificate_verification_set_error
 inf_gsasl_error_quark
 inf_gsasl_set_error
 </SECTION>
@@ -1401,6 +1389,9 @@ inf_adopted_state_vector_get_type
 <SECTION>
 <FILE>infd-note-plugin</FILE>
 <TITLE>InfdNotePlugin</TITLE>
+InfdNotePluginSessionNew
+InfdNotePluginSessionRead
+InfdNotePluginSessionWrite
 InfdNotePlugin
 </SECTION>
 

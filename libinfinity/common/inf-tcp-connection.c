@@ -17,6 +17,22 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-tcp-connection
+ * @title: InfTcpConnection
+ * @short_description: Represents a TCP-based connection to a remote host
+ * @include: libinfinity/common/inf-tcp-connection.h
+ * @stability: Unstable
+ *
+ * #InfTcpConnection represents a TCP connection to a remove host. It is a
+ * wrapper around a native socket object and integrates into the main loop
+ * provided by #InfIo. An arbitrary amount of data can be sent with the
+ * object, extra data will be buffered and automatically transmitted once
+ * kernel space becomes available.
+ **/
+
+
+
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-tcp-connection-private.h>
 #include <libinfinity/common/inf-ip-address.h>
@@ -817,9 +833,11 @@ inf_tcp_connection_class_init(gpointer g_class,
 
   /**
    * InfTcpConnection::sent:
-   * @connection: The #InfTcpConnection through which the data has been sent
-   * @data: A #gpointer refering to the data that has been sent
-   * @length: A #guint holding the number of bytes that has been sent
+   * @connection: The #InfTcpConnection through which the data has been sent.
+   * @data: A #gpointer refering to the data that has been sent.
+   * @length: A #guint holding the number of bytes that has been sent.
+   *
+   * This signal is emitted whenever data has been sent over the connection.
    */
   tcp_connection_signals[SENT] = g_signal_new(
     "sent",
@@ -836,9 +854,13 @@ inf_tcp_connection_class_init(gpointer g_class,
 
   /**
    * InfTcpConnection::received:
-   * @connection: The #InfTcpConnection through which the data has been received
-   * @data: A #gpointer refering to the data that has been received
-   * @length: A #guint holding the number of bytes that has been received
+   * @connection: The #InfTcpConnection through which the data has been
+   * received.
+   * @data: A #gpointer refering to the data that has been received.
+   * @length: A #guint holding the number of bytes that has been received.
+   *
+   * This signal is emitted whenever data has been received from the
+   * connection.
    */
   tcp_connection_signals[RECEIVED] = g_signal_new(
     "received",
@@ -855,8 +877,12 @@ inf_tcp_connection_class_init(gpointer g_class,
 
   /**
    * InfTcpConnection::error:
-   * @connection: The erroneous #InfTcpConnection
-   * @error: A pointer to a #GError object with details on the error
+   * @connection: The erroneous #InfTcpConnection.
+   * @error: A pointer to a #GError object with details on the error.
+   *
+   * This signal is emitted when an error occured with the connection. If the
+   * error is fatal, the connection will change its status to
+   * %INF_TCP_CONNECTION_CLOSED.
    */
   tcp_connection_signals[ERROR_] = g_signal_new(
     "error",

@@ -126,7 +126,7 @@ inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
                             unsigned int index);
 
 gchar*
-inf_cert_util_get_issuer_dn_by_oid(gnutls_x509_crt_t crt,
+inf_cert_util_get_issuer_dn_by_oid(gnutls_x509_crt_t cert,
                                    const char* oid,
                                    unsigned int index);
 

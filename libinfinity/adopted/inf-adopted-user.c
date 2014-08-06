@@ -25,7 +25,7 @@
  * @see_also: #InfAdoptedSession, #InfAdoptedAlgorithm
  * @stability: Unstable
  *
- * #InfAdoptedUser is a #InfUser-derived class that is used in
+ * #InfAdoptedUser is a #InfUser<!-- -->-derived class that is used in
  * #InfAdoptedSession. It holds all user-specific information that is needed
  * by #InfAdoptedAlgorithm to handle the concurrency control. This includes
  * the user's request log which stores all the requests made by the user and

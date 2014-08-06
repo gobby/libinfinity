@@ -73,8 +73,8 @@ typedef enum _InfBrowserStatus {
  * signal.
  * @subscribe_session: Default signal handler for the
  * #InfBrowser::subscribe-session signal.
- * @begin_explore: Default signal handler for the
- * #InfBrowser::begin-explore signal.
+ * @unsubscribe_session: Default signal handler for the
+ * #InfBrowser::unsubscribe-session signal.
  * @begin_request: Default signal handler for the
  * #InfBrowser::begin-request signal.
  * @acl_account_added: Default signal handler for the
@@ -93,6 +93,8 @@ typedef enum _InfBrowserStatus {
  * @explore: Virtual function to start exploring a node.
  * @get_explored: Virtual function to query whether a node is explored
  * already.
+ * @is_subdirectory: Virtual function to find out whether a node is a
+ * subdirectory node.
  * @add_note: Virtual function to add a new leaf node to the directory.
  * @add_subdirectory: Virtual function to a new subdirectory node to the
  * directory.
@@ -485,7 +487,7 @@ inf_browser_acl_local_account_changed(InfBrowser* browser,
 void
 inf_browser_acl_changed(InfBrowser* browser,
                         const InfBrowserIter* iter,
-                        const InfAclSheetSet* update,
+                        const InfAclSheetSet* sheet_set,
                         InfRequest* request);
 
 G_END_DECLS

@@ -205,7 +205,7 @@ infd_storage_node_copy(InfdStorageNode* node)
  * @node: A #InfdStorageNode.
  *
  * Frees a #InfdStorageNode allocated with
- * infd_storage_node_new_subdirectory(), infd_storage_node_new_node() or
+ * infd_storage_node_new_subdirectory(), infd_storage_node_new_note() or
  * infd_storage_node_copy().
  **/
 void
@@ -267,7 +267,7 @@ infd_storage_acl_copy(InfdStorageAcl* acl)
 
 /**
  * infd_storage_acl_free:
- * @node: A #InfdStorageAcl.
+ * @acl: A #InfdStorageAcl.
  *
  * Frees a #InfdStorageAcl allocated with
  * infd_storage_acl_copy().
@@ -304,7 +304,7 @@ infd_storage_acl_list_free(GSList* node_list)
 }
 
 /**
- * infd_directory_read_subdirectory:
+ * infd_storage_read_subdirectory:
  * @storage: A #InfdStorage
  * @path: A path pointing to a subdirectory node.
  * @error: Location to store error information.

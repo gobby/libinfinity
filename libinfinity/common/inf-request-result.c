@@ -215,7 +215,7 @@ struct _InfRequestResultRemoveNode {
 };
 
 /**
- * inf_request_result_make_add_node:
+ * inf_request_result_make_remove_node:
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to the node to which was removed.
  *
@@ -278,7 +278,7 @@ struct _InfRequestResultExploreNode {
  * @iter: An iterator pointing to the node to which was explored.
  *
  * Creates a new #InfRequestResult for an "explore-node" request, see
- * inf_browser_explore_node(). The #InfRequestResult object is only valid
+ * inf_browser_explore(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
  * Returns: A new #InfRequestResult. Free with inf_request_result_free().
@@ -336,8 +336,8 @@ struct _InfRequestResultSaveSession {
  * @iter: An iterator pointing to the node to which was saved.
  *
  * Creates a new #InfRequestResult for a "save-session" request, see
- * infc_browser_save_session(). The #InfRequestResult object is only valid
- * as long as the caller maintains a reference to @browser.
+ * infc_browser_iter_save_session(). The #InfRequestResult object is only
+ * valid as long as the caller maintains a reference to @browser.
  *
  * Returns: A new #InfRequestResult. Free with inf_request_result_free().
  */

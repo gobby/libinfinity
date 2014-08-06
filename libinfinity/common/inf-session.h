@@ -174,6 +174,7 @@ typedef enum _InfSessionSyncError {
  * properties.
  * @close: Default signal handler for the #InfSession::close signal. This
  * cancels currently running synchronization in #InfSession.
+ * @error: Default signal handler for the #InfSession::error signal.
  * @synchronization_begin: Default signal handler for the
  * #InfSession::synchronization-begin signal. The default handler queues the
  * synchronization messages.

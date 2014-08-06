@@ -36,7 +36,7 @@ G_BEGIN_DECLS
  * @INF_TEXT_FILESYSTEM_FORMAT_ERROR_NO_SUCH_USER: A segment of the text
  * document is written by a user which does not exist.
  *
- * Errors that can occur when reading a #InfTextSystem from a
+ * Errors that can occur when reading a #InfTextSession from a
  * #InfdFilesystemStorage.
  */
 typedef enum _InfTextFilesystemFormatError {

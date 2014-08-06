@@ -111,8 +111,8 @@ INF_GTK_IO_GET_CLASS
 <SECTION>
 <FILE>inf-gtk-account-creation-dialog</FILE>
 <TITLE>InfGtkAccountCreationsDialog</TITLE>
-InfGtkAccountCreationsDialog
-InfGtkAccountCreationsDialogClass
+InfGtkAccountCreationDialog
+InfGtkAccountCreationDialogClass
 inf_gtk_account_creation_dialog_new
 inf_gtk_account_creation_dialog_set_browser
 <SUBSECTION Standard>

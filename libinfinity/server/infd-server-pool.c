@@ -486,7 +486,7 @@ infd_server_pool_add_server(InfdServerPool* server_pool,
 }
 
 /**
- * inf_server_pool_add_local_publisher:
+ * infd_server_pool_add_local_publisher:
  * @server_pool: A #InfdServerPool.
  * @server: A #InfdXmppServer added to @server_pool.
  * @publisher: A #InfLocalPublisher.

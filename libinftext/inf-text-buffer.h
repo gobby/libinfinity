@@ -59,10 +59,12 @@ typedef struct _InfTextBufferIter InfTextBufferIter;
  * @get_slice: Virtual function to extract a slice of text from the buffer.
  * @insert_text: Virtual function to insert text into the buffer.
  * @erase_text: Virtual function to remove text from the buffer.
- * @create_iter: Virtual function to create a #InfTextBufferIter, used for
- * traversing through buffer segments.
+ * @create_begin_iter: Virtual function to create a #InfTextBufferIter at the
+ * beginning of the buffer, used for traversing through buffer segments.
+ * @create_end_iter: Virtual function to create a #InfTextBufferIter at the
+ * end of the buffer, used for traversing through buffer segments.
  * @destroy_iter: Virtual function to destroy an iterator created with
- * the @create_iter function.
+ * the @create_begin_iter and @create_end_iter functions.
  * @iter_next: Virtual function to advance a #InfTextBufferIter to the next
  * segment.
  * @iter_prev: Virtual function to retreat a #InfTextBufferIter to the

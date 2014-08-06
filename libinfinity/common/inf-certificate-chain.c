@@ -179,7 +179,7 @@ inf_certificate_chain_get_nth_certificate(const InfCertificateChain* chain,
 }
 
 /**
- * inf_certificate_get_n_certificates:
+ * inf_certificate_chain_get_n_certificates:
  * @chain: A #InfCertificateChain.
  *
  * Returns the number of certificates in @chain.

@@ -39,8 +39,20 @@ G_BEGIN_DECLS
 typedef struct _InfTcpConnection InfTcpConnection;
 typedef struct _InfTcpConnectionClass InfTcpConnectionClass;
 
+/**
+ * InfTcpConnectionClass:
+ * @sent: Default signal handler for the #InfTcpConnection::sent signal.
+ * @received: Default signal handler for the #InfTcpConnection::received
+ * signal.
+ * @error: Default signal handler for the #InfTcpConnection::error signal.
+ *
+ * This structure contains the default signal handlers of #InfTcpConnection.
+ */
 struct _InfTcpConnectionClass {
+  /*< private >*/
   GObjectClass parent_class;
+
+  /*< public >*/
 
   /* Signals */
   void (*sent)(InfTcpConnection* connection,
@@ -55,10 +67,29 @@ struct _InfTcpConnectionClass {
                 GError* error);
 };
 
+/**
+ * InfTcpConnection:
+ *
+ * #InfTcpConnection is an opaque data type. You should only access it via
+ * the public API functions.
+ */
 struct _InfTcpConnection {
+  /*< private >*/
   GObject parent;
 };
 
+/**
+ * InfTcpConnectionStatus:
+ * @INF_TCP_CONNECTION_CONNECTING: A new connection is currently being
+ * established.
+ * @INF_TCP_CONNECTION_CONNECTED: The connection is ready to send and
+ * receive data.
+ * @INF_TCP_CONNECTION_CLOSED: The connection is closed. Before data can be
+ * transmitted, it needs to be opened with inf_tcp_connection_open().
+ *
+ * #InfTcpConnectionStatus specifies the connection status of a
+ * #InfTcpConnection.
+ */
 typedef enum _InfTcpConnectionStatus {
   INF_TCP_CONNECTION_CONNECTING,
   INF_TCP_CONNECTION_CONNECTED,

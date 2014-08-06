@@ -41,8 +41,11 @@ typedef struct _InfGtkAccountCreationDialogClass InfGtkAccountCreationDialogClas
 
 /**
  * InfGtkAccountCreationDialogClass:
+ * @account_created: Default signal handler for the
+ * #InfGtkAccountCreationDialog::account-created signal.
  *
- * This structure does not contain any public fields.
+ * This structure contains the default signal handlers for the
+ * #InfGtkAccountCreationDialog class.
  */
 struct _InfGtkAccountCreationDialogClass {
   /*< private >*/

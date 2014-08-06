@@ -131,7 +131,8 @@ struct _InfAclSheet {
   InfAclMask perms;
 };
 
-/** InfAclSheetSet:
+/**
+ * InfAclSheetSet:
  * @sheets: An array of #InfAclSheet objects.
  * @n_sheets: The number of elements in the @sheets array.
  *
@@ -153,6 +154,8 @@ struct _InfAclSheetSet {
  *
  * This callback function is used in inf_acl_sheet_set_from_xml() to resolve
  * account IDs to actual #InfAclAccount structures.
+ *
+ * Returns: The #InfAclAccount with the given ID, or %NULL.
  */
 typedef const InfAclAccount* (*InfAclAccountLookupFunc)(const gchar* id,
                                                         gpointer user_data);

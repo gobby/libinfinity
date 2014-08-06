@@ -81,11 +81,11 @@ infd_acl_account_info_check_password(const InfdAclAccountInfo* info,
 
 void
 infd_acl_account_info_add_certificate(InfdAclAccountInfo* info,
-                                      const gchar* fingerprint);
+                                      const gchar* dn);
 
 void
 infd_acl_account_info_remove_certificate(InfdAclAccountInfo* info,
-                                         const gchar* fingerprint);
+                                         const gchar* dn);
 
 void
 infd_acl_account_info_update_time(InfdAclAccountInfo* info);

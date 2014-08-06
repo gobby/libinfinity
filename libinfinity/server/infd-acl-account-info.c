@@ -27,7 +27,7 @@
  *
  * This structure contains all account information that is available on the
  * server side, including sensitive authentication information. This structure
- * is saved on storage, but only the #InfAccountInfo part of it does ever
+ * is saved on storage, but only the #InfAclAccount part of it does ever
  * leave the server.
  */
 
@@ -67,12 +67,13 @@ infd_acl_account_info_get_type(void)
   return acl_account_info_type;
 }
 
-/** infd_acl_account_info_new:
+/**
+ * infd_acl_account_info_new:
  * @id: The unique account ID for the new account.
  * @name: A human readable account name, or %NULL.
  * @transient: Whether the account should be transient or not.
  *
- * Creates a new #InfdAcLAccountInfo with the given ID and name. The @name
+ * Creates a new #InfdAclAccountInfo with the given ID and name. The @name
  * parameter is optional and allowed to be %NULL. The account is created with
  * no associated certificates, unset password and unspecified first and last
  * seen times (meaning the user was never seen).

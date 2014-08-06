@@ -167,8 +167,6 @@ inf_browser_base_init(gpointer g_class)
      * inf_browser_add_note() call, but it is also possible that a
      * subscription is initiated without user interaction.
      *
-     * When @iter is non-%NULL then @request is a #InfNodeRequest.
-     *
      * If @iter is %NULL the session was a global session and not attached to
      * a particular node.
      */
@@ -208,12 +206,12 @@ inf_browser_base_init(gpointer g_class)
      * In order to find out whether the local host was unsubscribed from a
      * session and the connection to the other session participants has been
      * lost, the #InfSession:subscription-group property should be monitored,
-     * and if that property changes and inf_session_get_subscription_group()
-     * returns %NULL afterwards, it means the session is no longer connected.
+     * and if that property changes and
+     * inf_session_get_subscription_group() returns %NULL afterwards,
+     * it means the session is no longer connected.
      *
      * If @iter is %NULL the session was a global session and not attached to
-     * a particular node. When @iter is non-%NULL then @request is a
-     * #InfNodeRequest.
+     * a particular node.
      */
     browser_signals[UNSUBSCRIBE_SESSION] = g_signal_new(
       "unsubscribe-session",
@@ -265,7 +263,7 @@ inf_browser_base_init(gpointer g_class)
      *
      * This signal is emitted whenever a new account is added to the browser,
      * and the account list has been queried with
-     * inf_browser_query_account_list().
+     * inf_browser_query_acl_account_list().
      */
     browser_signals[ACL_ACCOUNT_ADDED] = g_signal_new(
       "acl-account-added",
@@ -289,7 +287,7 @@ inf_browser_base_init(gpointer g_class)
      *
      * This signal is emitted whenever an account is removed from the browser,
      * and the account list has been queried with
-     * inf_browser_query_account_list().
+     * inf_browser_query_acl_account_list().
      */
     browser_signals[ACL_ACCOUNT_REMOVED] = g_signal_new(
       "acl-account-removed",
@@ -952,7 +950,7 @@ inf_browser_get_node_type(InfBrowser* browser,
 }
 
 /**
- * g:
+ * inf_browser_get_path:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node inside @browser.
  *
@@ -1109,7 +1107,7 @@ inf_browser_iter_from_request(InfBrowser* browser,
  * inf_browser_get_pending_request:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node inside @browser, or %NULL.
- * @type: The type of request.
+ * @request_type: The type of request.
  *
  * Returns a pending request for the node @iter points to which matches type
  * @request_type. If there is no such request the function returns %NULL.
@@ -1129,14 +1127,14 @@ inf_browser_iter_from_request(InfBrowser* browser,
 InfRequest*
 inf_browser_get_pending_request(InfBrowser* browser,
                                 const InfBrowserIter* iter,
-                                const gchar* type)
+                                const gchar* request_type)
 {
   GSList* list;
   InfRequest* request;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
-  list = inf_browser_list_pending_requests(browser, iter, type);
+  list = inf_browser_list_pending_requests(browser, iter, request_type);
 
   request = NULL;
   if(list != NULL)
@@ -1186,7 +1184,7 @@ inf_browser_query_acl_account_list(InfBrowser* browser,
  * @n_accounts: An output parameter for the total number of accounts.
  *
  * Returns an array of accounts, if they have been queried before
- * with inf_browser_query_account_list(). If the account list has not been
+ * with inf_browser_query_acl_account_list(). If the account list has not been
  * queried, %NULL is returned. Note that this does not mean that there are no
  * known accounts, it only means that the full list is not available. The
  * local ccount with inf_browser_get_acl_local_account() is always available
@@ -1242,7 +1240,7 @@ inf_browser_get_acl_local_account(InfBrowser* browser)
  * @id: The account ID to look up.
  *
  * Looks up the account with the given ID. If the account list has not been
- * queried with inf_browser_query_account_list() before, only the default
+ * queried with inf_browser_query_acl_account_list() before, only the default
  * account and the local account can be looked up using this function. If
  * there is no account with the given ID the function returns %NULL.
  *
@@ -1378,16 +1376,16 @@ inf_browser_query_acl(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to a node for which to check full ACL
  * availability.
- * @user: The user to check ACL availability for, or %NULL.
+ * @account: The account to check ACL availability for, or %NULL.
  *
- * This function returns whether the ACL sheet for the given user is available
- * or not. If the function returns %FALSE then inf_browser_query_acl() can be
- * called in order to retrieve the full ACL. If @user is %NULL the function
- * checks whether the full ACL is available, i.e. the ACL sheets for all
- * users. Usually the ACL sheets for the default user and the local user are
- * always available.
+ * This function returns whether the ACL sheet for the given account is
+ * available or not. If the function returns %FALSE then
+ * inf_browser_query_acl() can be called in order to retrieve the full ACL.
+ * If @account is %NULL the function checks whether the full ACL is available,
+ * i.e. the ACL sheets for all accounts. Usually the ACL sheets for the
+ * default account and the local account are always available.
  *
- * Returns: %TRUE when the ACL sheet for @user is available or %FALSE
+ * Returns: %TRUE when the ACL sheet for @account is available or %FALSE
  * otherwise.
  */
 gboolean

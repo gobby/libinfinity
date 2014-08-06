@@ -34,9 +34,20 @@ G_BEGIN_DECLS
 typedef struct _InfTextGtkHueChooser InfTextGtkHueChooser;
 typedef struct _InfTextGtkHueChooserClass InfTextGtkHueChooserClass;
 
+/**
+ * InfTextGtkHueChooserClass:
+ * @hue_change: Default signal handler for the
+ * #InfTextGtkHueChooser::hue-change signal.
+ * @move: Default signal handler for the #InfTextGtkHueChooser::move signal.
+ *
+ * This structure contains default signal handlers of the
+ * #InfTextGtkHueChooser class.
+ */
 struct _InfTextGtkHueChooserClass {
+  /*< private >*/
   GtkWidgetClass parent_class;
 
+  /*< public >*/
   void(*hue_change)(InfTextGtkHueChooser* chooser,
                     gdouble hue);
 
@@ -44,7 +55,14 @@ struct _InfTextGtkHueChooserClass {
               GtkDirectionType direction);
 };
 
+/**
+ * InfTextGtkHueChooser:
+ *
+ * #InfTextGtkHueChooser is an opaque data type. You should only access it
+ * via the public API functions.
+ */
 struct _InfTextGtkHueChooser {
+  /*< private >*/
   GtkWidget parent;
 };
 

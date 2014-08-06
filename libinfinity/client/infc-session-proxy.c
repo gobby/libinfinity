@@ -1310,7 +1310,7 @@ infc_session_proxy_get_connection(InfcSessionProxy* proxy)
 }
 
 /**
- * infc_session_proxy_get_group:
+ * infc_session_proxy_get_subscription_group:
  * @proxy: A #InfcSessionProxy.
  *
  * Returns the group with all subscribed connections to the session, or %NULL

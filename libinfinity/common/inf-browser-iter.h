@@ -26,8 +26,16 @@ G_BEGIN_DECLS
 
 #define INF_TYPE_BROWSER_ITER              (inf_browser_iter_get_type())
 
+/**
+ * InfBrowserIter:
+ *
+ * The #InfBrowserIter structure is opaque, however it is guaranteed that
+ * it can be copied by value and does not hold any dynamic data that would
+ * need to be freed explicitly.
+ */
 typedef struct _InfBrowserIter InfBrowserIter;
 struct _InfBrowserIter {
+  /*< private >*/
   guint node_id;
   gpointer node;
 };

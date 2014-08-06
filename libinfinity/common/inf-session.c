@@ -2024,7 +2024,8 @@ inf_session_class_init(gpointer g_class,
    * the session is in an inconsistent state, or it might be recoverable.
    * This signal can be used to handle the error or to write error
    * information into a log file or bring to a user's attention in another
-   * manner. */
+   * manner.
+   */
   session_signals[ERROR] = g_signal_new(
     "error",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -2053,7 +2054,7 @@ inf_session_class_init(gpointer g_class,
    * is emitted when @session is being synchronized itself, because that can
    * happen at construction time only when no one had a chance to connect
    * signal handlers anyway.
-   **/
+   */
   session_signals[SYNCHRONIZATION_BEGIN] = g_signal_new(
     "synchronization-begin",
     G_OBJECT_CLASS_TYPE(object_class),
@@ -2440,7 +2441,6 @@ inf_session_get_status(InfSession* session)
  * @session: A #InfSession.
  * @params: Construction parameters for the #InfUser (or derived) object.
  * @n_params: Number of parameters.
- * @error: Location to store error information.
  *
  * Adds a user to @session. The user object is constructed via the
  * user_new vfunc of #InfSessionClass. This will create a new #InfUser
@@ -2456,7 +2456,7 @@ inf_session_get_status(InfSession* session)
  * If @params comes from an untrusted source, they should be checked first
  * with the validate_user_props virtual function.
  *
- * Return Value: The new #InfUser, or %NULL in case of an error.
+ * Returns: The new #InfUser.
  **/
 InfUser*
 inf_session_add_user(InfSession* session,

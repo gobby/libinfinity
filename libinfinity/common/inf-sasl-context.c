@@ -1112,7 +1112,10 @@ inf_sasl_context_session_feed(InfSaslContextSession* session,
  *
  * Returns whether the session is currently asynchronously processing data
  * fed to it with inf_sasl_context_session_feed(). In this case the first
- * call needs to finish before another one is allowed to be made. */
+ * call needs to finish before another one is allowed to be made.
+ *
+ * Returns: Whether @session is currently processing data asynchronously.
+ */
 gboolean
 inf_sasl_context_session_is_processing(InfSaslContextSession* session)
 {

@@ -219,6 +219,9 @@ typedef enum _InfDirectoryError {
  * interrupted on the server side.
  * @INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR: An error occured while
  * checking user permissions.
+ *
+ * These errors can give an additional hint why the SASL
+ * authentication failed.
  */
 typedef enum _InfAuthenticationDetailError {
   INF_AUTHENTICATION_DETAIL_ERROR_AUTHENTICATION_FAILED,

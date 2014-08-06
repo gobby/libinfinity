@@ -355,7 +355,7 @@ inf_acl_account_from_xml(xmlNodePtr xml,
 
 /**
  * inf_acl_account_to_xml:
- * @user: A #InfAclAccount.
+ * @account: A #InfAclAccount.
  * @xml: The XML node to write the account attributes to.
  *
  * Serializes the properties of @account into the XML node @xml. The function
@@ -1091,7 +1091,7 @@ inf_acl_sheet_set_merge_sheets(InfAclSheetSet* sheet_set,
 }
 
 /**
- * inf_acl_sheet_set_get_clears_sheets:
+ * inf_acl_sheet_set_get_clear_sheets:
  * @sheet_set: A #InfAclSheetSet.
  *
  * Returns a new sheet set with all sheets that are present in @sheet_set,

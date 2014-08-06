@@ -22,7 +22,7 @@
  * @title: InfdProgressRequest
  * @short_description: Watch progress of node exploration
  * @include: libinfinity/server/infd-progress-request.h
- * @see_also: #InfProgressRequest, #InfdNodeRequest, #InfdDirectory
+ * @see_also: #InfRequest, #InfdRequest, #InfdDirectory
  * @stability: Unstable
  *
  * This class represents a request which consists of multiple steps and

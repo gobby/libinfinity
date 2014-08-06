@@ -18,7 +18,7 @@
  */
 
 /**
- * SECTION:inf-session_proxy
+ * SECTION:inf-session-proxy
  * @title: InfSessionProxy
  * @short_description: Joining users into a session
  * @include: libinfinity/common/inf-session_proxy.h

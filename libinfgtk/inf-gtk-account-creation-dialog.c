@@ -861,22 +861,22 @@ inf_gtk_account_creation_dialog_new(GtkWindow* parent,
 
 /**
  * inf_gtk_account_creation_dialog_set_browser:
- * @dialog: A #InfGtkAccountCreationDialog.
+ * @dlg: A #InfGtkAccountCreationDialog.
  * @browser: The #InfBrowser for which to create a new account, or %NULL.
  *
  * Changes the browser for which to create a new account.
  */
 void
-inf_gtk_account_creation_dialog_set_browser(InfGtkAccountCreationDialog* dialog,
+inf_gtk_account_creation_dialog_set_browser(InfGtkAccountCreationDialog* dlg,
                                             InfBrowser* browser)
 {
   InfGtkAccountCreationDialogPrivate* priv;
   GSList* item;
 
-  g_return_if_fail(INF_GTK_IS_ACCOUNT_CREATION_DIALOG(dialog));
+  g_return_if_fail(INF_GTK_IS_ACCOUNT_CREATION_DIALOG(dlg));
   g_return_if_fail(browser == NULL || INF_IS_BROWSER(browser));
 
-  priv = INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(dialog);
+  priv = INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(dlg);
 
   if(priv->browser != NULL)
   {
@@ -899,7 +899,7 @@ inf_gtk_account_creation_dialog_set_browser(InfGtkAccountCreationDialog* dialog,
         G_CALLBACK(
           inf_gtk_account_creation_dialog_create_account_finished_cb
         ),
-        dialog
+        dlg
       );
 
       g_object_unref(priv->create_account_request);
@@ -909,13 +909,13 @@ inf_gtk_account_creation_dialog_set_browser(InfGtkAccountCreationDialog* dialog,
     inf_signal_handlers_disconnect_by_func(
       priv->browser,
       G_CALLBACK(inf_gtk_account_creation_dialog_acl_changed_cb),
-      dialog
+      dlg
     );
 
     inf_signal_handlers_disconnect_by_func(
       priv->browser,
       G_CALLBACK(inf_gtk_account_creation_dialog_notify_status_cb),
-      dialog
+      dlg
     );
 
     g_object_unref(priv->browser);
@@ -931,19 +931,19 @@ inf_gtk_account_creation_dialog_set_browser(InfGtkAccountCreationDialog* dialog,
       G_OBJECT(priv->browser),
       "acl-changed",
       G_CALLBACK(inf_gtk_account_creation_dialog_acl_changed_cb),
-      dialog
+      dlg
     );
 
     g_signal_connect(
       G_OBJECT(priv->browser),
       "notify::status",
       G_CALLBACK(inf_gtk_account_creation_dialog_notify_status_cb),
-      dialog
+      dlg
     );
   }
 
-  g_object_notify(G_OBJECT(dialog), "browser");
-  inf_gtk_account_creation_dialog_update(dialog, NULL);
+  g_object_notify(G_OBJECT(dlg), "browser");
+  inf_gtk_account_creation_dialog_update(dlg, NULL);
 }
 
 /* vim:set et sw=2 ts=2: */

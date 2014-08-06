@@ -17,6 +17,19 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:inf-text-gtk-hue-chooser
+ * @title: InfTextGtkHueChooser
+ * @short_description: A GTK+ widget for selecting a hue value
+ * @include: libinftextgtk/inf-text-gtk-hue-chooser.h
+ * @see_also: #InfTextGtkHueChooser
+ * @stability: Unstable
+ *
+ * #InfTextGtkHueChooser is a widget which allows the user to select a hue
+ * value without selecting also saturation and lightness at the same time. It
+ * only presents the hue circle without the inner triangle.
+ */
+
 #include <libinftextgtk/inf-text-gtk-hue-chooser.h>
 #include <libinfinity/inf-marshal.h>
 
@@ -1010,6 +1023,13 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
   hue_chooser_class->hue_change = inf_text_gtk_hue_chooser_hue_change;
   hue_chooser_class->move = inf_text_gtk_hue_chooser_move;
 
+  /**
+   * InfTextGtkHueChooser::hue-change:
+   * @chooser: The #InfTextGtkHueChooser emitting the signal.
+   * @hue: The new hue value.
+   *
+   * This signal is emitted whenever the hue value is changed.
+   */
   hue_chooser_signals[HUE_CHANGE] = g_signal_new(
     "hue-change",
     G_OBJECT_CLASS_TYPE(gobject_class),
@@ -1022,6 +1042,13 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
     G_TYPE_DOUBLE
   );
 
+  /**
+   * InfTextGtkHueChooser::move:
+   * @chooser: The #InfTextGtkHueChooser emitting the signal.
+   * @direction: The direction in which the move was mode.
+   *
+   * This is an action signal emitted when the selection is moved by the user.
+   */
   hue_chooser_signals[MOVE] = g_signal_new(
     "move",
     G_OBJECT_CLASS_TYPE(gobject_class),

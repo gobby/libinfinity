@@ -9109,7 +9109,7 @@ infd_directory_get_communication_manager(InfdDirectory* directory)
  *
  * At the moment, the directory certificate is used to sign incoming
  * certificate requests. Selected clients can request a certificate signed
- * with the server's certificates, see infc_browser_request_certificate().
+ * with the server's certificates, see inf_browser_create_acl_account().
  * If the server certificate is set with this function, the request is handled
  * properly. If no certificate is set with this function, such a request is
  * rejected.

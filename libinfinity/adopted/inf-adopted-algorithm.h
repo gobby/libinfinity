@@ -63,10 +63,10 @@ typedef enum _InfAdoptedAlgorithmError {
  * #InfAdoptedAlgorithm::can_undo_changed signal.
  * @can_redo_changed: Default signal handler for the
  * #InfAdoptedAlgorithm::can_redo_changed signal.
- * @execute_request: Default signal handler for the
- * #InfAdoptedAlgorithm::execute_request signal.
- * @apply_request: Default signal handler for the
- * #InfAdoptedAlgorithm::apply_request signal.
+ * @begin_execute_request: Default signal handler for the
+ * #InfAdoptedAlgorithm::begin-execute-request signal.
+ * @end_execute_request: Default signal handler for the
+ * #InfAdoptedAlgorithm::end-execute-request signal.
  *
  * Signals for the #InfAdoptedAlgorithm class.
  */
