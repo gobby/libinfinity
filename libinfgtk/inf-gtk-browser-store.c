@@ -2052,10 +2052,19 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
   /* Set status to invalid if there aren't any connection information anymore.
    * Keep the item if an error is set, so it can be displayed. */
-  if(item->browser == NULL && item->info == NULL && item->error == NULL)
+  if(item->browser == NULL && item->info == NULL &&
+     (item->error == NULL || item->status != INF_GTK_BROWSER_MODEL_ERROR))
   {
+    /* This can happen when an API call leads to a browser being unset */
+    /* Clear non-fatal error */
+    g_assert(item->status != INF_GTK_BROWSER_MODEL_ERROR);
+    if(item->error != NULL)
+    {
+      g_error_free(item->error);
+      item->error = NULL;
+    }
+
     item->status = INF_GTK_BROWSER_MODEL_INVALID;
-    /* TODO: What's up with this? Can this happen? Can we assert() here? */
   }
   else if(item->status != INF_GTK_BROWSER_MODEL_ERROR)
   {
