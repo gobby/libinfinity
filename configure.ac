@@ -324,6 +324,7 @@ AC_CONFIG_FILES([
         docs/reference/libinftext/Makefile
         docs/reference/libinfgtk/Makefile
         docs/reference/libinftextgtk/Makefile
+        docs/reference/libinfinoted-plugin-manager/Makefile
 
     po/Makefile.in
 ])

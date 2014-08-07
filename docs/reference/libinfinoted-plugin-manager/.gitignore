@@ -1,0 +1,13 @@
+libinfinoted-plugin-manager-0.6-decl-list.txt
+libinfinoted-plugin-manager-0.6-decl.txt
+libinfinoted-plugin-manager-0.6-undeclared.txt
+libinfinoted-plugin-manager-0.6-undocumented.txt
+libinfinoted-plugin-manager-0.6-unused.txt
+libinfinoted-plugin-manager-0.6.args
+libinfinoted-plugin-manager-0.6.hierarchy
+libinfinoted-plugin-manager-0.6.interfaces
+libinfinoted-plugin-manager-0.6.prerequisites
+libinfinoted-plugin-manager-0.6-overrides.txt
+libinfinoted-plugin-manager-0.6.signals
+tmpl
+*.bak

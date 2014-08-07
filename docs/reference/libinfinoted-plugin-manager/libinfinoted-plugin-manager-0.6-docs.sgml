@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
+  <!ENTITY version SYSTEM "../version.xml">
+  <!ENTITY api_version SYSTEM "../api_version.xml">
+]>
+
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>libinfinoted-plugin-manager-&api_version; Reference Manual</title>
+    <releaseinfo>
+      for libinfinoted-plugin-manager &version;.
+      The latest version of this documentation can be found on-line at
+      <ulink role="online-location" url="http://infinote.0x539.de/libinfinity/API/libinftext/index.html">http://infinote.0x539.de/libinfinity/API/libinfinoted-plugin-manager/</ulink>.
+    </releaseinfo>
+  </bookinfo>
+
+  <chapter>
+    <title>libinfinoted-plugin-manager API reference</title>
+    <xi:include href="xml/infinoted-plugin-manager.xml"/>
+    <xi:include href="xml/infinoted-parameter.xml"/>
+    <xi:include href="xml/infinoted-log.xml"/>
+    <xi:include href="xml/infinoted-util.xml"/>
+  </chapter>
+</book>

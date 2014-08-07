@@ -1,4 +1,4 @@
-SUBDIRS = . libinfinity libinftext libinfgtk libinftextgtk
+SUBDIRS = . libinfinity libinftext libinfgtk libinftextgtk libinfinoted-plugin-manager
 
 # Note that nodist doesn't work here actually because gtk-doc pulls them
 # in anyway (see content_files in a subdirectory's Makefile.am)
