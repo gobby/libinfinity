@@ -63,19 +63,19 @@ infinoted_plugin_note_chat_session_read_read_func(void* context,
                                                   char* buffer,
                                                   int len)
 {
-  int res;
-  res = fread(buffer, 1, len, (FILE*)context);
+  gsize res;
+  res = infd_filesystem_storage_stream_read((FILE*)context, buffer, len);
 
   if(ferror((FILE*)context))
     return -1;
 
-  return res;
+  return (int)res;
 }
 
 static int
-infd_note_plugin_chat_sesison_read_close_func(void* context)
+infinoted_plugin_note_chat_session_read_close_func(void* context)
 {
-  return fclose((FILE*)context);
+  return infd_filesystem_storage_stream_close((FILE*)context);
 }
 
 static InfSession*
@@ -111,7 +111,7 @@ infinoted_plugin_note_chat_session_read(InfdStorage* storage,
 
   doc = xmlReadIO(
     infinoted_plugin_note_chat_session_read_read_func,
-    infd_note_plugin_chat_sesison_read_close_func,
+    infinoted_plugin_note_chat_session_read_close_func,
     stream,
     path,
     "UTF-8",
@@ -205,10 +205,13 @@ infinoted_plugin_note_chat_session_write(InfdStorage* storage,
   doc = xmlNewDoc((const xmlChar*)"1.0");
   xmlDocSetRootElement(doc, root);
 
+  /* TODO: At this point, we should tell libxml2 to use
+   * infd_filesystem_storage_stream_write() instead of fwrite(),
+   * to prevent C runtime mixups. */
   if(xmlDocFormatDump(stream, doc, 1) == -1)
   {
     xmlerror = xmlGetLastError();
-    fclose(stream);
+    infd_filesystem_storage_stream_close(stream);
     xmlFreeDoc(doc);
 
     g_set_error(
@@ -222,7 +225,7 @@ infinoted_plugin_note_chat_session_write(InfdStorage* storage,
     return FALSE;
   }
 
-  fclose(stream);
+  infd_filesystem_storage_stream_close(stream);
   xmlFreeDoc(doc);
   return TRUE;
 }

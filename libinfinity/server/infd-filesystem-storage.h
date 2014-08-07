@@ -77,6 +77,19 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
                              gchar** full_path,
                              GError** error);
 
+int
+infd_filesystem_storage_stream_close(FILE* file);
+
+gsize
+infd_filesystem_storage_stream_read(FILE* file,
+                                    gpointer buffer,
+                                    gsize len);
+
+gsize
+infd_filesystem_storage_stream_write(FILE* file,
+                                     gconstpointer buffer,
+                                     gsize len);
+
 G_END_DECLS
 
 #endif /* __INFD_FILESYSTEM_STORAGE_H__ */

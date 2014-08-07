@@ -1141,6 +1141,9 @@ InfdFilesystemStorageClass
 infd_filesystem_storage_new
 infd_filesystem_storage_get_path
 infd_filesystem_storage_open
+infd_filesystem_storage_stream_close
+infd_filesystem_storage_stream_read
+infd_filesystem_storage_stream_write
 <SUBSECTION Standard>
 INFD_FILESYSTEM_STORAGE
 INFD_IS_FILESYSTEM_STORAGE

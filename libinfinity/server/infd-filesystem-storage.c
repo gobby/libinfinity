@@ -1176,4 +1176,63 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   return res;
 }
 
+/**
+ * infd_filesystem_storage_stream_close:
+ * @file: A #FILE opened with infd_filesystem_storage_open().
+ *
+ * This is a thin wrapper around fclose(). Use this function instead of
+ * fclose() if you have opened the file with infd_filesystem_storage_open(),
+ * to make sure that the same C runtime is closing the file that has opened
+ * it.
+ *
+ * Returns: The return value of fclose().
+ */
+int
+infd_filesystem_storage_stream_close(FILE* file)
+{
+  return fclose(file);
+}
+
+/**
+ * infd_filesystem_storage_stream_read:
+ * @file: A #FILE opened with infd_filesystem_storage_open().
+ * @buffer: A buffer into which to read data.
+ * @len: Maximum number of bytes to read.
+ *
+ * This is a thin wrapper around fread(). Use this function instead of
+ * fread() if you have opened the file with infd_filesystem_storage_open(),
+ * to make sure that the same C runtime is closing the file that has opened
+ * it.
+ *
+ * Returns: The return value of fread().
+ */
+gsize
+infd_filesystem_storage_stream_read(FILE* file,
+                                    gpointer buffer,
+                                    gsize len)
+{
+  return fread(buffer, 1, len, file);
+}
+
+/**
+ * infd_filesystem_storage_stream_write:
+ * @file: A #FILE opened with infd_filesystem_storage_open().
+ * @buffer: The data to write.
+ * @len: Maximum number of bytes to write.
+ *
+ * This is a thin wrapper around fwrite(). Use this function instead of
+ * fwrite() if you have opened the file with infd_filesystem_storage_open(),
+ * to make sure that the same C runtime is closing the file that has opened
+ * it.
+ *
+ * Returns: The return value of fwrite().
+ */
+gsize
+infd_filesystem_storage_stream_write(FILE* file,
+                                     gconstpointer buffer,
+                                     gsize len)
+{
+  return fwrite(buffer, 1, len, file);
+}
+
 /* vim:set et sw=2 ts=2: */
