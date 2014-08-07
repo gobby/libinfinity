@@ -36,22 +36,19 @@
 
 #include <libinfinity/server/infd-directory.h>
 
-#include <glib.h>
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
+#define INFINOTED_TYPE_PLUGIN_MANAGER                 (infinoted_plugin_manager_get_type())
+#define INFINOTED_PLUGIN_MANAGER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFINOTED_TYPE_PLUGIN_MANAGER, InfinotedPluginManager))
+#define INFINOTED_PLUGIN_MANAGER_CLASS(klass)         (G_TYPE_CHECK_CLASS_CAST((klass), INFINOTED_TYPE_PLUGIN_MANAGER, InfinotedPluginManagerClass))
+#define INFINOTED_IS_PLUGIN_MANAGER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFINOTED_TYPE_PLUGIN_MANAGER))
+#define INFINOTED_IS_PLUGIN_MANAGER_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFINOTED_TYPE_PLUGIN_MANAGER))
+#define INFINOTED_PLUGIN_MANAGER_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFINOTED_TYPE_PLUGIN_MANAGER, InfinotedPluginManagerClass))
+
 typedef struct _InfinotedPluginManager InfinotedPluginManager;
-struct _InfinotedPluginManager {
-  InfdDirectory* directory;
-  InfinotedLog* log;
-  InfCertificateCredentials* credentials;
-  gchar* path;
-
-  GSList* plugins;
-
-  GHashTable* connections; /* plugin + connection -> PluginConnectionInfo */
-  GHashTable* sessions; /* plugin + session -> PluginSessionInfo */
-};
+typedef struct _InfinotedPluginManagerClass InfinotedPluginManagerClass;
 
 typedef struct _InfinotedPlugin InfinotedPlugin;
 struct _InfinotedPlugin {
@@ -91,6 +88,27 @@ struct _InfinotedPlugin {
                             gpointer session_info);
 };
 
+/**
+ * InfinotedPluginManagerClass:
+ *
+ * This structure does not contain any public fields.
+ */
+struct _InfinotedPluginManagerClass {
+  /*< private >*/
+  GObjectClass parent_class;
+};
+
+/**
+ * InfinotedPluginManager:
+ *
+ * #InfinotedPluginManager is an opaque data type. You should only access it
+ * via the public API functions.
+ */
+struct _InfinotedPluginManager {
+  /*< private >*/
+  GObject parent;
+};
+
 typedef void(*InfinotedPluginManagerQueryUserFunc)(gpointer plugin_info,
                                                    InfUser* user,
                                                    const GError* error);
@@ -100,17 +118,20 @@ typedef enum _InfinotedPluginManagerError {
   INFINOTED_PLUGIN_MANAGER_ERROR_NO_ENTRY_POINT
 } InfinotedPluginManagerError;
 
+GType
+infinoted_plugin_manager_get_type(void) G_GNUC_CONST;
+
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
                              InfinotedLog* log,
-                             InfCertificateCredentials* creds,
-                             const gchar* plugin_path,
-                             const gchar* const* plugins,
-                             GKeyFile* options,
-                             GError** error);
+                             InfCertificateCredentials* creds);
 
-void
-infinoted_plugin_manager_free(InfinotedPluginManager* manager);
+gboolean
+infinoted_plugin_manager_load(InfinotedPluginManager* manager,
+                              const gchar* plugin_path,
+                              const gchar* const* plugins,
+                              GKeyFile* options,
+                              GError** error);
 
 InfdDirectory*
 infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager);

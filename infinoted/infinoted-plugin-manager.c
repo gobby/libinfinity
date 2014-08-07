@@ -17,10 +17,37 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infinoted-plugin-manager
+ * @title: InfinotedPluginManager
+ * @short_description: Loads and propagates events to infinoted plugins.
+ * @include: infinoted/infinoted-plugin-manager.h
+ * @stability: Unstable
+ *
+ * #InfinotedPluginManager handles the loading of plugins for the infinoted
+ * server. It initializes and deinitializes plugins, and it makes callbacks
+ * when connections or sessions are added or removed. Furthermore, it provides
+ * an interface for plugins to obtain and interact with the server itself,
+ * most notable its #InfdDirectory instance.
+ */
+
 #include <infinoted/infinoted-plugin-manager.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gmodule.h>
+
+typedef struct _InfinotedPluginManagerPrivate InfinotedPluginManagerPrivate;
+struct _InfinotedPluginManagerPrivate {
+  InfdDirectory* directory;
+  InfinotedLog* log;
+  InfCertificateCredentials* credentials;
+  gchar* path;
+
+  GSList* plugins;
+
+  GHashTable* connections; /* plugin + connection -> PluginConnectionInfo */
+  GHashTable* sessions; /* plugin + session -> PluginSessionInfo */
+};
 
 typedef struct _InfinotedPluginInstance InfinotedPluginInstance;
 struct _InfinotedPluginInstance {
@@ -41,6 +68,19 @@ typedef void(*InfinotedPluginManagerWalkDirectoryFunc)(
   const InfBrowserIter*,
   InfSessionProxy*);
 
+enum {
+  PROP_0,
+
+  PROP_DIRECTORY,
+  PROP_LOG,
+  PROP_CREDENTIALS,
+  PROP_PATH
+};
+
+#define INFINOTED_PLUGIN_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFINOTED_TYPE_PLUGIN_MANAGER, InfinotedPluginManagerPrivate))
+
+static GObjectClass* parent_class;
+
 static gpointer
 infinoted_plugin_manager_hash(gpointer first,
                               gpointer second)
@@ -57,18 +97,21 @@ infinoted_plugin_manager_add_connection(InfinotedPluginManager* manager,
                                         InfinotedPluginInstance* instance,
                                         InfXmlConnection* connection)
 {
+  InfinotedPluginManagerPrivate* priv;
   gpointer plugin_info;
   gpointer hash;
   gpointer connection_info;
 
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
   plugin_info = instance+1;
   hash = infinoted_plugin_manager_hash(plugin_info, connection);
-  g_assert(g_hash_table_lookup(manager->connections, hash) == NULL);
+  g_assert(g_hash_table_lookup(priv->connections, hash) == NULL);
 
   if(instance->plugin->connection_info_size > 0)
   {
     connection_info = g_slice_alloc(instance->plugin->connection_info_size);
-    g_hash_table_insert(manager->connections, hash, connection_info);
+    g_hash_table_insert(priv->connections, hash, connection_info);
   }
 
   if(instance->plugin->on_connection_added != NULL)
@@ -86,14 +129,17 @@ infinoted_plugin_manager_remove_connection(InfinotedPluginManager* manager,
                                            InfinotedPluginInstance* instance,
                                            InfXmlConnection* connection)
 {
+  InfinotedPluginManagerPrivate* priv;
   gpointer plugin_info;
   gpointer hash;
   gpointer connection_info;
 
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
   plugin_info = instance+1;
   hash = infinoted_plugin_manager_hash(plugin_info, connection);
   
-  connection_info = g_hash_table_lookup(manager->connections, hash);
+  connection_info = g_hash_table_lookup(priv->connections, hash);
 
   g_assert(
     instance->plugin->connection_info_size == 0 || connection_info != NULL
@@ -110,7 +156,7 @@ infinoted_plugin_manager_remove_connection(InfinotedPluginManager* manager,
 
   if(instance->plugin->connection_info_size > 0)
   {
-    g_hash_table_remove(manager->connections, hash);
+    g_hash_table_remove(priv->connections, hash);
     g_slice_free1(instance->plugin->connection_info_size, connection_info);
   }
 }
@@ -145,20 +191,23 @@ infinoted_plugin_manager_add_session(InfinotedPluginManager* manager,
                                      const InfBrowserIter* iter,
                                      InfSessionProxy* proxy)
 {
+  InfinotedPluginManagerPrivate* priv;
   gpointer plugin_info;
   gpointer hash;
   gpointer session_info;
+
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
   if(infinoted_plugin_manager_check_session_type(instance, proxy))
   {
     plugin_info = instance+1;
     hash = infinoted_plugin_manager_hash(plugin_info, proxy);
-    g_assert(g_hash_table_lookup(manager->sessions, hash) == NULL);
+    g_assert(g_hash_table_lookup(priv->sessions, hash) == NULL);
 
     if(instance->plugin->session_info_size > 0)
     {
       session_info = g_slice_alloc(instance->plugin->session_info_size);
-      g_hash_table_insert(manager->sessions, hash, session_info);
+      g_hash_table_insert(priv->sessions, hash, session_info);
     }
 
     if(instance->plugin->on_session_added != NULL)
@@ -179,16 +228,19 @@ infinoted_plugin_manager_remove_session(InfinotedPluginManager* manager,
                                         const InfBrowserIter* iter,
                                         InfSessionProxy* proxy)
 {
+  InfinotedPluginManagerPrivate* priv;
   gpointer plugin_info;
   gpointer hash;
   gpointer session_info;
+
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
   if(infinoted_plugin_manager_check_session_type(instance, proxy))
   {
     plugin_info = instance+1;
     hash = infinoted_plugin_manager_hash(plugin_info, proxy);
     
-    session_info = g_hash_table_lookup(manager->sessions, hash);
+    session_info = g_hash_table_lookup(priv->sessions, hash);
 
     g_assert(
       instance->plugin->session_info_size == 0 || session_info != NULL
@@ -206,7 +258,7 @@ infinoted_plugin_manager_remove_session(InfinotedPluginManager* manager,
 
     if(instance->plugin->session_info_size > 0)
     {
-      g_hash_table_remove(manager->sessions, hash);
+      g_hash_table_remove(priv->sessions, hash);
       g_slice_free1(instance->plugin->session_info_size, session_info);
     }
   }
@@ -221,11 +273,13 @@ infinoted_plugin_manager_walk_directory(
 {
   /* This function walks the whole directory tree recursively and
    * registers running sessions with the given plugin instance. */
+  InfinotedPluginManagerPrivate* priv;
   InfBrowser* browser;
   InfBrowserIter child;
   InfSessionProxy* proxy;
 
-  browser = INF_BROWSER(manager->directory);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+  browser = INF_BROWSER(priv->directory);
   if(inf_browser_is_subdirectory(browser, iter) == TRUE)
   {
     if(inf_browser_get_explored(browser, iter) == TRUE)
@@ -234,7 +288,12 @@ infinoted_plugin_manager_walk_directory(
       inf_browser_get_child(browser, &child);
       do
       {
-        infinoted_plugin_manager_walk_directory(manager, &child, instance, func);
+        infinoted_plugin_manager_walk_directory(
+          manager,
+          &child,
+          instance,
+          func
+        );
       } while(inf_browser_get_next(browser, &child));
     }
   }
@@ -285,6 +344,7 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
                                      GKeyFile* key_file,
                                      GError** error)
 {
+  InfinotedPluginManagerPrivate* priv;
   gchar* plugin_basename;
   gchar* plugin_filename;
 
@@ -297,6 +357,8 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
 
   InfBrowserIter root;
   InfinotedPluginManagerForeachConnectionData data;
+
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
   plugin_basename = g_strdup_printf(
     "libinfinoted-plugin-%s.%s",
@@ -406,13 +468,13 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
   data.manager = manager;
   data.instance = instance;
   infd_directory_foreach_connection(
-    manager->directory,
+    priv->directory,
     infinoted_plugin_manager_load_plugin_foreach_connection_func,
     &data
   );
 
   /* Register initial sessions with plugin */
-  inf_browser_get_root(INF_BROWSER(manager->directory), &root);
+  inf_browser_get_root(INF_BROWSER(priv->directory), &root);
   infinoted_plugin_manager_walk_directory(
     manager,
     &root,
@@ -421,13 +483,13 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
   );
 
   infinoted_log_info(
-    manager->log,
+    priv->log,
     _("Loaded plugin \"%s\" from \"%s\""),
     plugin_name,
     g_module_name(module)
   );
 
-  manager->plugins = g_slist_prepend(manager->plugins, instance);
+  priv->plugins = g_slist_prepend(priv->plugins, instance);
 
   return TRUE;
 }
@@ -436,13 +498,15 @@ static void
 infinoted_plugin_manager_unload_plugin(InfinotedPluginManager* manager,
                                        InfinotedPluginInstance* instance)
 {
+  InfinotedPluginManagerPrivate* priv;
   InfinotedPluginManagerForeachConnectionData data;
   InfBrowserIter root;
 
-  manager->plugins = g_slist_remove(manager->plugins, instance);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+  priv->plugins = g_slist_remove(priv->plugins, instance);
 
   /* Unregister all sessions with the plugin */
-  inf_browser_get_root(INF_BROWSER(manager->directory), &root);
+  inf_browser_get_root(INF_BROWSER(priv->directory), &root);
   infinoted_plugin_manager_walk_directory(
     manager,
     &root,
@@ -454,7 +518,7 @@ infinoted_plugin_manager_unload_plugin(InfinotedPluginManager* manager,
   data.manager = manager;
   data.instance = instance;
   infd_directory_foreach_connection(
-    manager->directory,
+    priv->directory,
     infinoted_plugin_manager_unload_plugin_foreach_connection_func,
     &data
   );
@@ -463,7 +527,7 @@ infinoted_plugin_manager_unload_plugin(InfinotedPluginManager* manager,
     instance->plugin->on_deinitialize(instance+1);
 
   infinoted_log_info(
-    manager->log,
+    priv->log,
     _("Unloaded plugin \"%s\" from \"%s\""),
     instance->plugin->name,
     g_module_name(instance->module)
@@ -479,11 +543,13 @@ infinoted_plugin_manager_connection_added_cb(InfdDirectory* directory,
                                              gpointer user_data)
 {
   InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
   GSList* item;
 
   manager = (InfinotedPluginManager*)user_data;
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
-  for(item = manager->plugins; item != NULL; item = item->next)
+  for(item = priv->plugins; item != NULL; item = item->next)
   {
     infinoted_plugin_manager_add_connection(
       manager,
@@ -499,11 +565,13 @@ infinoted_plugin_manager_connection_removed_cb(InfdDirectory* directory,
                                                gpointer user_data)
 {
   InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
   GSList* item;
 
   manager = (InfinotedPluginManager*)user_data;
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
-  for(item = manager->plugins; item != NULL; item = item->next)
+  for(item = priv->plugins; item != NULL; item = item->next)
   {
     infinoted_plugin_manager_remove_connection(
       manager,
@@ -521,11 +589,13 @@ infinoted_plugin_manager_subscribe_session_cb(InfBrowser* browser,
                                               gpointer user_data)
 {
   InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
   GSList* item;
 
   manager = (InfinotedPluginManager*)user_data;
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
-  for(item = manager->plugins; item != NULL; item = item->next)
+  for(item = priv->plugins; item != NULL; item = item->next)
   {
     infinoted_plugin_manager_add_session(
       manager,
@@ -544,11 +614,13 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
                                                 gpointer user_data)
 {
   InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
   GSList* item;
 
   manager = (InfinotedPluginManager*)user_data;
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
-  for(item = manager->plugins; item != NULL; item = item->next)
+  for(item = priv->plugins; item != NULL; item = item->next)
   {
     infinoted_plugin_manager_remove_session(
       manager,
@@ -559,88 +631,411 @@ infinoted_plugin_manager_unsubscribe_session_cb(InfBrowser* browser,
   }
 }
 
+static void
+infinoted_plugin_manager_set_directory(InfinotedPluginManager* manager,
+                                       InfdDirectory* directory)
+{
+  InfinotedPluginManagerPrivate* priv;
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
+  /* Directory can only be changed while no plugins are loaded. */
+  g_assert(priv->plugins == NULL);
+
+  if(priv->directory != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->directory),
+      G_CALLBACK(infinoted_plugin_manager_connection_added_cb),
+      manager
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->directory),
+      G_CALLBACK(infinoted_plugin_manager_connection_removed_cb),
+      manager
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->directory),
+      G_CALLBACK(infinoted_plugin_manager_subscribe_session_cb),
+      manager
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->directory),
+      G_CALLBACK(infinoted_plugin_manager_unsubscribe_session_cb),
+      manager
+    );
+
+    g_object_unref(priv->directory);
+  }
+
+  priv->directory = directory;
+
+  if(directory != NULL)
+  {
+    g_object_ref(priv->directory);
+
+    g_signal_connect_after(
+      G_OBJECT(directory),
+      "connection-added",
+      G_CALLBACK(infinoted_plugin_manager_connection_added_cb),
+      manager
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(directory),
+      "connection-removed",
+      G_CALLBACK(infinoted_plugin_manager_connection_removed_cb),
+      manager
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(directory),
+      "subscribe-session",
+      G_CALLBACK(infinoted_plugin_manager_subscribe_session_cb),
+      manager
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(directory),
+      "unsubscribe-session",
+      G_CALLBACK(infinoted_plugin_manager_unsubscribe_session_cb),
+      manager
+    );
+  }
+
+  g_object_notify(G_OBJECT(manager), "directory");
+}
+
+static void
+infinoted_plugin_manager_init(GTypeInstance* instance,
+                              gpointer g_class)
+{
+  InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
+
+  manager = INFINOTED_PLUGIN_MANAGER(instance);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
+  priv->directory = NULL;
+  priv->log = NULL;
+  priv->credentials = NULL;
+  priv->path = NULL;
+  priv->plugins = NULL;
+  priv->connections = g_hash_table_new(NULL, NULL);
+  priv->sessions = g_hash_table_new(NULL, NULL);
+}
+
+static void
+infinoted_plugin_manager_dispose(GObject* object)
+{
+  InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
+
+  manager = INFINOTED_PLUGIN_MANAGER(object);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
+  while(priv->plugins != NULL)
+  {
+    infinoted_plugin_manager_unload_plugin(
+      manager,
+      (InfinotedPluginInstance*)priv->plugins->data
+    );
+  }
+
+  if(priv->directory != NULL)
+    infinoted_plugin_manager_set_directory(manager, NULL);
+
+  if(priv->log != NULL)
+  {
+    g_object_unref(priv->log);
+    priv->log = NULL;
+  }
+
+  if(priv->credentials != NULL)
+  {
+    inf_certificate_credentials_unref(priv->credentials);
+    priv->credentials = NULL;
+  }
+
+  G_OBJECT_CLASS(parent_class)->dispose(object);
+}
+
+static void
+infinoted_plugin_manager_finalize(GObject* object)
+{
+  InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
+
+  manager = INFINOTED_PLUGIN_MANAGER(object);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
+  g_assert(g_hash_table_size(priv->connections) == 0);
+  g_assert(g_hash_table_size(priv->sessions) == 0);
+
+  g_hash_table_unref(priv->connections);
+  g_hash_table_unref(priv->sessions);
+
+  G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
+static void
+infinoted_plugin_manager_set_property(GObject* object,
+                                      guint prop_id,
+                                      const GValue* value,
+                                      GParamSpec* pspec)
+{
+  InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
+
+  manager = INFINOTED_PLUGIN_MANAGER(object);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
+  switch(prop_id)
+  {
+  case PROP_DIRECTORY:
+    g_assert(priv->directory == NULL); /* construct only */
+
+    infinoted_plugin_manager_set_directory(
+      manager,
+      INFD_DIRECTORY(g_value_get_object(value))
+    );
+
+    break;
+  case PROP_LOG:
+    g_assert(priv->log == NULL); /* construct only */
+    priv->log = INFINOTED_LOG(g_value_dup_object(value));
+    break;
+  case PROP_CREDENTIALS:
+    g_assert(priv->credentials == NULL); /* construct only */
+    priv->credentials = (InfCertificateCredentials*)g_value_dup_boxed(value);
+    break;
+  case PROP_PATH:
+    /* read only */
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infinoted_plugin_manager_get_property(GObject* object,
+                                      guint prop_id,
+                                      GValue* value,
+                                      GParamSpec* pspec)
+{
+  InfinotedPluginManager* manager;
+  InfinotedPluginManagerPrivate* priv;
+
+  manager = INFINOTED_PLUGIN_MANAGER(object);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+
+  switch(prop_id)
+  {
+  case PROP_DIRECTORY:
+    g_value_set_object(value, priv->directory);
+    break;
+  case PROP_LOG:
+    g_value_set_object(value, priv->log);
+    break;
+  case PROP_CREDENTIALS:
+    g_value_set_boxed(value, priv->credentials);
+    break;
+  case PROP_PATH:
+    g_value_set_string(value, priv->path);
+    break;
+  default:
+    G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+    break;
+  }
+}
+
+static void
+infinoted_plugin_manager_class_init(gpointer g_class,
+                                    gpointer class_data)
+{
+  GObjectClass* object_class;
+  object_class = G_OBJECT_CLASS(g_class);
+
+  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
+  g_type_class_add_private(g_class, sizeof(InfinotedPluginManagerPrivate));
+
+  object_class->dispose = infinoted_plugin_manager_dispose;
+  object_class->finalize = infinoted_plugin_manager_finalize;
+  object_class->set_property = infinoted_plugin_manager_set_property;
+  object_class->get_property = infinoted_plugin_manager_get_property;
+
+  g_object_class_install_property(
+    object_class,
+    PROP_DIRECTORY,
+    g_param_spec_object(
+      "directory",
+      "Directory",
+      "The infinote directory served by the server",
+      INFD_TYPE_DIRECTORY,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_LOG,
+    g_param_spec_object(
+      "log",
+      "Log",
+      "The log object into which to write log messages",
+      INFINOTED_TYPE_LOG,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_CREDENTIALS,
+    g_param_spec_boxed(
+      "credentials",
+      "Credentials",
+      "The server's TLS credentials",
+      INF_TYPE_CERTIFICATE_CREDENTIALS,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_PATH,
+    g_param_spec_string(
+      "path",
+      "Path",
+      "The path from which plugins are loaded",
+      NULL,
+      G_PARAM_READABLE
+    )
+  );
+}
+
+GType
+infinoted_plugin_manager_get_type(void)
+{
+  static GType plugin_manager_type = 0;
+
+  if(!plugin_manager_type)
+  {
+    static const GTypeInfo plugin_manager_type_info = {
+      sizeof(InfinotedPluginManagerClass), /* class_size */
+      NULL,                                /* base_init */
+      NULL,                                /* base_finalize */
+      infinoted_plugin_manager_class_init, /* class_init */
+      NULL,                                /* class_finalize */
+      NULL,                                /* class_data */
+      sizeof(InfinotedPluginManager),      /* instance_size */
+      0,                                   /* n_preallocs */
+      infinoted_plugin_manager_init,       /* instance_init */
+      NULL                                 /* value_table */
+    };
+
+    plugin_manager_type = g_type_register_static(
+      G_TYPE_OBJECT,
+      "InfinotedPluginManager",
+      &plugin_manager_type_info,
+      0
+    );
+  }
+
+  return plugin_manager_type;
+}
+
 /**
  * infinoted_plugin_manager_new:
  * @directory: The #InfdDirectory on which plugins should operate.
  * @log: The #InfinotedLog to write log messages to.
  * @creds: The #InfCertificateCredentials used to secure data transfer with
  * the clients, or %NULL.
- * @plugin_path: A path to the plugin modules.
- * @plugins: A list of plugins to load, or %NULL.
- * @options: A #GKeyFile with configuration options for the plugins.
- * @error: Location to store error information, if any, or %NULL.
  *
- * Creates a new #InfinotedPluginManager and loads all plugins specified
- * in @plugins from the location at @plugin_path. If loading one of the
- * module fails the function sets @error and returns %NULL. If @plugins is
- * %NULL, no plugins are initially loaded.
+ * Creates a new #InfinotedPluginManager with the given directory, log
+ * and credentials. These three objects will be available for plugins
+ * to enhance the infinoted functionality. Plugins can be loaded
+ * with infinoted_plugin_manager_load().
  *
- * Returns: A new #InfinotedPluginManager, or %NULL on error. Free with
- * infinoted_plugin_manager_free() when no longer needed.
+ * Returns: A new #InfinotedPluginManager.
  */
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
                              InfinotedLog* log,
-                             InfCertificateCredentials* creds,
-                             const gchar* plugin_path,
-                             const gchar* const* plugins,
-                             GKeyFile* options,
-                             GError** error)
+                             InfCertificateCredentials* creds)
 {
-  InfinotedPluginManager* plugin_manager;
+  GObject* object;
+
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), NULL);
+  g_return_val_if_fail(INFINOTED_IS_LOG(log), NULL);
+
+  object = g_object_new(
+    INFINOTED_TYPE_PLUGIN_MANAGER,
+    "directory", directory,
+    "log", log,
+    "credentials", creds,
+    NULL
+  );
+
+  return INFINOTED_PLUGIN_MANAGER(object);
+}
+
+/**
+ * infinoted_plugin_manager_load:
+ * @manager: A #InfinotedPluginManager.
+ * @plugin_path: The path from which to load plugins.
+ * @plugins: A list of plugins to load, or %NULL.
+ * @options: A #GKeyFile with configuration options for the plugins.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Loads all plugins specified in @plugins from the location at @plugin_path.
+ * If loading one of the module fails the function sets @error and returns
+ * %FALSE, and the object ends up with no plugins loaded. If @plugins is
+ * %NULL, no plugins are loaded.
+ * 
+ * If this function is called while there are already plugins loaded, all
+ * existing plugins are unloaded first.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
+ */
+gboolean
+infinoted_plugin_manager_load(InfinotedPluginManager* manager,
+                              const gchar* plugin_path,
+                              const gchar* const* plugins,
+                              GKeyFile* options,
+                              GError** error)
+{
+  InfinotedPluginManagerPrivate* priv;
   const gchar* const* plugin;
   gboolean result;
 
-  plugin_manager = g_slice_new(InfinotedPluginManager);
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(manager), FALSE);
+  g_return_val_if_fail(plugin_path != NULL, FALSE);
+  g_return_val_if_fail(options != NULL, FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
 
-  plugin_manager->directory = directory;
-  plugin_manager->log = log;
-  plugin_manager->credentials = creds;
-  plugin_manager->path = g_strdup(plugin_path);
-  plugin_manager->plugins = NULL;
-  plugin_manager->connections = g_hash_table_new(NULL, NULL);
-  plugin_manager->sessions = g_hash_table_new(NULL, NULL);
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
-  if(creds != NULL)
-    inf_certificate_credentials_ref(creds);
+  /* Unload existing plugins */
+  g_free(priv->path);
+  while(priv->plugins != NULL)
+  {
+    infinoted_plugin_manager_unload_plugin(
+      manager,
+      (InfinotedPluginInstance*)priv->plugins->data
+    );
+  }
 
-  g_object_ref(directory);
-  g_object_ref(log);
-
-  g_signal_connect_after(
-    G_OBJECT(directory),
-    "connection-added",
-    G_CALLBACK(infinoted_plugin_manager_connection_added_cb),
-    plugin_manager
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(directory),
-    "connection-removed",
-    G_CALLBACK(infinoted_plugin_manager_connection_removed_cb),
-    plugin_manager
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(directory),
-    "subscribe-session",
-    G_CALLBACK(infinoted_plugin_manager_subscribe_session_cb),
-    plugin_manager
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(directory),
-    "unsubscribe-session",
-    G_CALLBACK(infinoted_plugin_manager_unsubscribe_session_cb),
-    plugin_manager
-  );
+  /* Load new plugins */
+  priv->path = g_strdup(plugin_path);
 
   if(plugins != NULL)
   {
     for(plugin = plugins; *plugin != NULL; ++plugin)
     {
       result = infinoted_plugin_manager_load_plugin(
-        plugin_manager,
+        manager,
         plugin_path,
         *plugin,
         options,
@@ -649,73 +1044,20 @@ infinoted_plugin_manager_new(InfdDirectory* directory,
 
       if(result == FALSE)
       {
-        infinoted_plugin_manager_free(plugin_manager);
-        return NULL;
+        while(priv->plugins != NULL)
+        {
+          infinoted_plugin_manager_unload_plugin(
+            manager,
+            (InfinotedPluginInstance*)priv->plugins->data
+          );
+        }
+
+        return FALSE;
       }
     }
   }
 
-  return plugin_manager;
-}
-
-/**
- * infinoted_plugin_manager_free:
- * @manager: A #InfinotedPluginManager.
- *
- * Unloads all plugins and releases all resources associated with @manager.
- */
-void
-infinoted_plugin_manager_free(InfinotedPluginManager* manager)
-{
-  GSList* item;
-
-  while(manager->plugins != NULL)
-  {
-    infinoted_plugin_manager_unload_plugin(
-      manager,
-      (InfinotedPluginInstance*)manager->plugins->data
-    );
-  }
-
-  g_assert(g_hash_table_size(manager->connections) == 0);
-  g_hash_table_unref(manager->connections);
-
-  g_assert(g_hash_table_size(manager->sessions) == 0);
-  g_hash_table_unref(manager->sessions);
-
-  g_free(manager->path);
-
-  if(manager->credentials != NULL)
-    inf_certificate_credentials_unref(manager->credentials);
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(manager->directory),
-    G_CALLBACK(infinoted_plugin_manager_connection_added_cb),
-    manager
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(manager->directory),
-    G_CALLBACK(infinoted_plugin_manager_connection_removed_cb),
-    manager
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(manager->directory),
-    G_CALLBACK(infinoted_plugin_manager_subscribe_session_cb),
-    manager
-  );
-
-  inf_signal_handlers_disconnect_by_func(
-    G_OBJECT(manager->directory),
-    G_CALLBACK(infinoted_plugin_manager_unsubscribe_session_cb),
-    manager
-  );
-
-  g_object_unref(manager->directory);
-  g_object_unref(manager->log);
-
-  g_slice_free(InfinotedPluginManager, manager);
+  return TRUE;
 }
 
 /**
@@ -729,7 +1071,8 @@ infinoted_plugin_manager_free(InfinotedPluginManager* manager)
 InfdDirectory*
 infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager)
 {
-  return manager->directory;
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(manager), NULL);
+  return INFINOTED_PLUGIN_MANAGER_PRIVATE(manager)->directory;
 }
 
 /**
@@ -743,7 +1086,12 @@ infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager)
 InfIo*
 infinoted_plugin_manager_get_io(InfinotedPluginManager* manager)
 {
-  return infd_directory_get_io(manager->directory);
+  InfinotedPluginManagerPrivate* priv;
+
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(manager), NULL);
+
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
+  return infd_directory_get_io(priv->directory);
 }
 
 /**
@@ -758,7 +1106,8 @@ infinoted_plugin_manager_get_io(InfinotedPluginManager* manager)
 InfinotedLog*
 infinoted_plugin_manager_get_log(InfinotedPluginManager* manager)
 {
-  return manager->log;
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(manager), NULL);
+  return INFINOTED_PLUGIN_MANAGER_PRIVATE(manager)->log;
 }
 
 /**
@@ -773,7 +1122,8 @@ infinoted_plugin_manager_get_log(InfinotedPluginManager* manager)
 InfCertificateCredentials*
 infinoted_plugin_manager_get_credentials(InfinotedPluginManager* manager)
 {
-  return manager->credentials;
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(manager), NULL);
+  return INFINOTED_PLUGIN_MANAGER_PRIVATE(manager)->credentials;
 }
 
 /**
@@ -806,8 +1156,15 @@ infinoted_plugin_manager_get_connection_info(InfinotedPluginManager* mgr,
                                              gpointer plugin_info,
                                              InfXmlConnection* connection)
 {
+  InfinotedPluginManagerPrivate* priv;
+
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(mgr), NULL);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), NULL);
+
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(mgr);
+
   return g_hash_table_lookup(
-    mgr->connections,
+    priv->connections,
     infinoted_plugin_manager_hash(plugin_info, connection)
   );
 }
@@ -829,8 +1186,15 @@ infinoted_plugin_manager_get_session_info(InfinotedPluginManager* mgr,
                                           gpointer plugin_info,
                                           InfSessionProxy* proxy)
 {
+  InfinotedPluginManagerPrivate* priv;
+
+  g_return_val_if_fail(INFINOTED_IS_PLUGIN_MANAGER(mgr), NULL);
+  g_return_val_if_fail(INF_IS_SESSION_PROXY(proxy), NULL);
+
+  priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(mgr);
+
   return g_hash_table_lookup(
-    mgr->sessions,
+    priv->sessions,
     infinoted_plugin_manager_hash(plugin_info, proxy)
   );
 }

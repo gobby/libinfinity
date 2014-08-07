@@ -201,7 +201,11 @@ infinoted_config_reload(InfinotedRun* run,
   plugin_manager = infinoted_plugin_manager_new(
     run->directory,
     startup->log,
-    startup->credentials,
+    startup->credentials
+  );
+
+  result = infinoted_plugin_manager_load(
+    plugin_manager,
     plugin_path,
     (const gchar* const*)startup->options->plugins,
     startup->options->config_key_file,
@@ -211,8 +215,9 @@ infinoted_config_reload(InfinotedRun* run,
   g_free(plugin_path);
   infinoted_options_drop_config_file(startup->options);
 
-  if(plugin_manager == NULL)
+  if(result == FALSE)
   {
+    g_object_unref(plugin_manager);
     infinoted_startup_free(startup);
     return FALSE;
   }
@@ -253,7 +258,7 @@ infinoted_config_reload(InfinotedRun* run,
     if(tcp4 == NULL && tcp6 == NULL)
     {
       g_propagate_error(error, local_error);
-      infinoted_plugin_manager_free(plugin_manager);
+      g_object_unref(plugin_manager);
       if(filesystem_storage) g_object_unref(filesystem_storage);
       infinoted_startup_free(startup);
       return FALSE;
@@ -369,7 +374,7 @@ infinoted_config_reload(InfinotedRun* run,
   }
 
   g_assert(run->plugin_manager != NULL);
-  infinoted_plugin_manager_free(run->plugin_manager);
+  g_object_unref(run->plugin_manager);
   run->plugin_manager = plugin_manager;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON

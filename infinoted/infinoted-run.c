@@ -77,7 +77,11 @@ infinoted_run_load_directory(InfinotedRun* run,
   run->plugin_manager = infinoted_plugin_manager_new(
     run->directory,
     startup->log,
-    startup->credentials,
+    startup->credentials
+  );
+
+  result = infinoted_plugin_manager_load(
+    run->plugin_manager,
     plugin_path,
     (const gchar* const*)startup->options->plugins,
     startup->options->config_key_file,
@@ -87,10 +91,12 @@ infinoted_run_load_directory(InfinotedRun* run,
   g_free(plugin_path);
   infinoted_options_drop_config_file(startup->options);
 
-  if(run->plugin_manager == NULL)
+  if(result == FALSE)
   {
+    g_object_unref(run->plugin_manager);
     g_object_unref(run->directory);
     g_object_unref(run->io);
+    run->plugin_manager = NULL;
     run->directory = NULL;
     run->io = NULL;
     return FALSE;
@@ -268,7 +274,7 @@ infinoted_run_free(InfinotedRun* run)
 
   if(run->plugin_manager != NULL)
   {
-    infinoted_plugin_manager_free(run->plugin_manager);
+    g_object_unref(run->plugin_manager);
     run->plugin_manager = NULL;
   }
 
