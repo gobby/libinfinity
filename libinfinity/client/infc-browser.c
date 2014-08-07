@@ -4451,12 +4451,18 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   }
 
   /* request can either by query-acl or set-acl */
-  request = infc_request_manager_get_request_by_xml_required(
+  request = infc_request_manager_get_request_by_xml(
     priv->request_manager,
     NULL,
     xml,
-    error
+    &local_error
   );
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
 
   /* Remember that we have queried this ACL */
   if(request != NULL)
