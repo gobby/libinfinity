@@ -7657,59 +7657,65 @@ infd_directory_browser_subscribe_session(InfBrowser* browser,
 {
   InfdDirectoryNode* node;
 
-  node = (InfdDirectoryNode*)iter->node;
-
-  g_assert(INFD_IS_SESSION_PROXY(proxy));
-  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
-
-  g_assert(node->shared.note.session == NULL ||
-           (node->shared.note.session == INFD_SESSION_PROXY(proxy) &&
-            node->shared.note.weakref == TRUE));
-
-  g_object_ref(proxy);
-
-  /* Re-link a previous session which was kept around by somebody else */
-  if(node->shared.note.session != NULL)
+  /* If iter is NULL then we are linking the global chat session, which is
+   * already taken care of directly by infd_directory_enable_chat(), and
+   * does not need any further handling here in the default handler. */
+  if(iter != NULL)
   {
-    g_object_weak_unref(
-      G_OBJECT(node->shared.note.session),
-      infd_directory_session_weak_ref_cb,
-      node
+    node = (InfdDirectoryNode*)iter->node;
+
+    g_assert(INFD_IS_SESSION_PROXY(proxy));
+    g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
+
+    g_assert(node->shared.note.session == NULL ||
+             (node->shared.note.session == INFD_SESSION_PROXY(proxy) &&
+              node->shared.note.weakref == TRUE));
+
+    g_object_ref(proxy);
+
+    /* Re-link a previous session which was kept around by somebody else */
+    if(node->shared.note.session != NULL)
+    {
+      g_object_weak_unref(
+        G_OBJECT(node->shared.note.session),
+        infd_directory_session_weak_ref_cb,
+        node
+      );
+    }
+    else
+    {
+      node->shared.note.session = INFD_SESSION_PROXY(proxy);
+    }
+
+    node->shared.note.weakref = FALSE;
+
+    g_object_set_qdata(
+      G_OBJECT(proxy),
+      infd_directory_node_id_quark,
+      GUINT_TO_POINTER(node->id)
     );
-  }
-  else
-  {
-    node->shared.note.session = INFD_SESSION_PROXY(proxy);
-  }
 
-  node->shared.note.weakref = FALSE;
+    g_signal_connect(
+      G_OBJECT(proxy),
+      "notify::idle",
+      G_CALLBACK(infd_directory_session_idle_notify_cb),
+      INFD_DIRECTORY(browser)
+    );
 
-  g_object_set_qdata(
-    G_OBJECT(proxy),
-    infd_directory_node_id_quark,
-    GUINT_TO_POINTER(node->id)
-  );
-
-  g_signal_connect(
-    G_OBJECT(proxy),
-    "notify::idle",
-    G_CALLBACK(infd_directory_session_idle_notify_cb),
-    INFD_DIRECTORY(browser)
-  );
-
-  g_signal_connect(
-    G_OBJECT(proxy),
-    "reject-user-join",
-    G_CALLBACK(infd_directory_session_reject_user_join_cb),
-    INFD_DIRECTORY(browser)
-  );
+    g_signal_connect(
+      G_OBJECT(proxy),
+      "reject-user-join",
+      G_CALLBACK(infd_directory_session_reject_user_join_cb),
+      INFD_DIRECTORY(browser)
+    );
   
-  /* TODO: Drop the session if it gets closed; don't even weak-ref
-   * it in that case */
+    /* TODO: Drop the session if it gets closed; don't even weak-ref
+     * it in that case */
 
-  if(infd_session_proxy_is_idle(node->shared.note.session))
-  {
-    infd_directory_start_session_save_timeout(INFD_DIRECTORY(browser), node);
+    if(infd_session_proxy_is_idle(node->shared.note.session))
+    {
+      infd_directory_start_session_save_timeout(INFD_DIRECTORY(browser), node);
+    }
   }
 }
 
@@ -7725,32 +7731,39 @@ infd_directory_browser_unsubscribe_session(InfBrowser* browser,
 
   directory = INFD_DIRECTORY(browser);
   priv = INFD_DIRECTORY_PRIVATE(directory);
-  node = (InfdDirectoryNode*)iter->node;
 
-  g_assert(INFD_IS_SESSION_PROXY(proxy));
-  g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
-
-  g_assert(node->shared.note.session == INFD_SESSION_PROXY(proxy));
-  g_assert(node->shared.note.weakref == FALSE);
-
-  /* Remove save timeout. We are just keeping a weak reference to the session
-   * in order to be able to re-use it when it is requested again and if
-   * someone else is going to keep it around anyway, but in all other regards
-   * we behave like we have dropped the session fully from memory. */
-  if(node->shared.note.save_timeout != NULL)
+  /* If iter is NULL then we are linking the global chat session, which is
+   * already taken care of directly by infd_directory_enable_chat(), and
+   * does not need any further handling here in the default handler. */
+  if(iter != NULL)
   {
-    inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
-    node->shared.note.save_timeout = NULL;
+    node = (InfdDirectoryNode*)iter->node;
+
+    g_assert(INFD_IS_SESSION_PROXY(proxy));
+    g_assert(node->type == INFD_DIRECTORY_NODE_NOTE);
+
+    g_assert(node->shared.note.session == INFD_SESSION_PROXY(proxy));
+    g_assert(node->shared.note.weakref == FALSE);
+
+    /* Remove save timeout. We are just keeping a weak reference to the session
+     * in order to be able to re-use it when it is requested again and if
+     * someone else is going to keep it around anyway, but in all other regards
+     * we behave like we have dropped the session fully from memory. */
+    if(node->shared.note.save_timeout != NULL)
+    {
+      inf_io_remove_timeout(priv->io, node->shared.note.save_timeout);
+      node->shared.note.save_timeout = NULL;
+    }
+
+    g_object_weak_ref(
+      G_OBJECT(node->shared.note.session),
+      infd_directory_session_weak_ref_cb,
+      node
+    );
+
+    node->shared.note.weakref = TRUE;
+    g_object_unref(node->shared.note.session);
   }
-
-  g_object_weak_ref(
-    G_OBJECT(node->shared.note.session),
-    infd_directory_session_weak_ref_cb,
-    node
-  );
-
-  node->shared.note.weakref = TRUE;
-  g_object_unref(node->shared.note.session);
 }
 
 static gboolean
@@ -9733,8 +9746,6 @@ infd_directory_enable_chat(InfdDirectory* directory,
         )
       );
 
-      /* TODO: Call inf_browser_subscribe_session */
-
       inf_communication_group_set_target(
         INF_COMMUNICATION_GROUP(group),
         INF_COMMUNICATION_OBJECT(priv->chat_session)
@@ -9744,17 +9755,30 @@ infd_directory_enable_chat(InfdDirectory* directory,
       g_object_unref(group);
 
       g_object_notify(G_OBJECT(directory), "chat-session");
+
+      inf_browser_subscribe_session(
+        INF_BROWSER(directory),
+        NULL,
+        INF_SESSION_PROXY(priv->chat_session),
+        NULL
+      );
+
     }
   }
   else
   {
     if(priv->chat_session != NULL)
     {
+      inf_browser_unsubscribe_session(
+        INF_BROWSER(directory),
+        NULL,
+        INF_SESSION_PROXY(priv->chat_session),
+        NULL
+      );
+
       g_object_get(G_OBJECT(priv->chat_session), "session", &session, NULL);
       inf_session_close(session);
       g_object_unref(session);
-
-      /* TODO: Call inf_browser_unsubscribe_session */
 
       g_object_unref(priv->chat_session);
       priv->chat_session = NULL;
