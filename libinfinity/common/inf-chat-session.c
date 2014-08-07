@@ -1152,7 +1152,7 @@ inf_chat_session_get_type(void)
 /**
  * inf_chat_session_new:
  * @manager: A #InfCommunicationManager.
- * @backlog_size: The number of messages to store.
+ * @buffer: The #InfChatBuffer to use for the session.
  * @status: Initial status of the session. If this is
  * %INF_SESSION_SYNCHRONIZING or %INF_SESSION_PRESYNC, then @sync_group and
  * @sync_connection need to be set.
@@ -1161,13 +1161,9 @@ inf_chat_session_get_type(void)
  * @sync_connection: A connection to synchronize the session from. Ignored if
  * @status is %INF_SESSION_RUNNING.
  *
- * Creates a new #InfChatSession with no initial messages. The communication
- * manager is used to send and receive requests from subscription and
- * synchronization.
- *
- * @backlog_size specifies how much messages to save before dropping old
- * messages. This also limits how many old messages are transferred when
- * synchronizing the session.
+ * Creates a new #InfChatSession with the messages contained in @buffer as
+ * initial messages. The communication manager is used to send and receive
+ * requests from subscription and synchronization.
  *
  * If @status is %INF_SESSION_PRESYNC or %INF_SESSION_SYNCHRONIZING, then the
  * session will initially be synchronized, meaning an initial backlog is
@@ -1179,15 +1175,15 @@ inf_chat_session_get_type(void)
  */
 InfChatSession*
 inf_chat_session_new(InfCommunicationManager* manager,
-                     guint backlog_size,
+                     InfChatBuffer* buffer,
                      InfSessionStatus status,
                      InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection)
 {
-  InfChatBuffer* buffer;
   InfChatSession* session;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_MANAGER(manager), NULL);
+  g_return_val_if_fail(INF_IS_CHAT_BUFFER(buffer), NULL);
 
   g_return_val_if_fail(
     (status == INF_SESSION_RUNNING &&
@@ -1197,10 +1193,6 @@ inf_chat_session_new(InfCommunicationManager* manager,
      INF_IS_XML_CONNECTION(sync_connection)),
     NULL
   );
-
-  /* This actually does more than just g_object_new, but I think language
-   * bindings can just copy this. */
-  buffer = inf_chat_buffer_new(backlog_size);
 
   session = INF_CHAT_SESSION(
     g_object_new(
@@ -1214,7 +1206,6 @@ inf_chat_session_new(InfCommunicationManager* manager,
     )
   );
 
-  g_object_unref(buffer);
   return session;
 }
 

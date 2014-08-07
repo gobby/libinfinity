@@ -21,6 +21,7 @@
 #include <infinoted/infinoted-parameter.h>
 
 #include <libinfinity/server/infd-filesystem-storage.h>
+#include <libinfinity/server/infd-chat-filesystem-format.h>
 #include <libinfinity/common/inf-chat-session.h>
 
 #include <libinfinity/inf-i18n.h>
@@ -45,37 +46,21 @@ infinoted_plugin_note_chat_session_new(InfIo* io,
                                        InfXmlConnection* sync_connection,
                                        gpointer user_data)
 {
+  InfChatBuffer* buffer;
   InfChatSession* session;
+
+  buffer = inf_chat_buffer_new(256);
 
   session = inf_chat_session_new(
     manager,
-    256,
+    buffer,
     status,
     INF_COMMUNICATION_GROUP(sync_group),
     sync_connection
   );
 
+  g_object_unref(buffer);
   return INF_SESSION(session);
-}
-
-static int
-infinoted_plugin_note_chat_session_read_read_func(void* context,
-                                                  char* buffer,
-                                                  int len)
-{
-  gsize res;
-  res = infd_filesystem_storage_stream_read((FILE*)context, buffer, len);
-
-  if(ferror((FILE*)context))
-    return -1;
-
-  return (int)res;
-}
-
-static int
-infinoted_plugin_note_chat_session_read_close_func(void* context)
-{
-  return infd_filesystem_storage_stream_close((FILE*)context);
 }
 
 static InfSession*
@@ -86,87 +71,36 @@ infinoted_plugin_note_chat_session_read(InfdStorage* storage,
                                         gpointer user_data,
                                         GError** error)
 {
-  InfChatSession* session;
-
-  FILE* stream;
-  xmlDocPtr doc;
-  xmlErrorPtr xmlerror;
-  xmlNodePtr root;
+  InfChatBuffer* buffer;
   gboolean result;
+  InfChatSession* session;
 
   g_assert(INFD_IS_FILESYSTEM_STORAGE(storage));
 
-  /* TODO: Use a SAX parser for better performance */
-  stream = infd_filesystem_storage_open(
+  buffer = inf_chat_buffer_new(256);
+
+  result = infd_chat_filesystem_format_read(
     INFD_FILESYSTEM_STORAGE(storage),
-    "InfChat",
     path,
-    "r",
-    NULL,
+    buffer,
     error
   );
 
-  if(stream == NULL)
-    return FALSE;
-
-  doc = xmlReadIO(
-    infinoted_plugin_note_chat_session_read_read_func,
-    infinoted_plugin_note_chat_session_read_close_func,
-    stream,
-    path,
-    "UTF-8",
-    XML_PARSE_NOWARNING | XML_PARSE_NOERROR
-  );
-
-  result = TRUE;
-
-  if(doc == NULL)
-  {
-    xmlerror = xmlGetLastError();
-
-    g_set_error(
-      error,
-      g_quark_from_static_string("LIBXML2_PARSER_ERROR"),
-      xmlerror->code,
-      "Error parsing XML in file '%s': [%d]: %s",
-      path,
-      xmlerror->line,
-      xmlerror->message
-    );
-
-    result = FALSE;
-  }
-  else
-  {
-    root = xmlDocGetRootElement(doc);
-    if(strcmp((const char*)root->name, "inf-chat-session") != 0)
-    {
-      g_set_error(
-        error,
-        g_quark_from_static_string("INFINOTED_PLUGIN_NOTE_CHAT_ERROR"),
-        INFINOTED_PLUGIN_NOTE_CHAT_ERROR_NOT_A_CHAT_SESSION,
-        "Error processing file '%s': %s",
-        path,
-        "The document is not a chat session"
-      );
-
-      result = FALSE;
-    }
-
-    xmlFreeDoc(doc);
-  }
-
   if(result == FALSE)
+  {
+    g_object_unref(buffer);
     return NULL;
+  }
 
   session = inf_chat_session_new(
     manager,
-    256,
+    buffer,
     INF_SESSION_RUNNING,
     NULL,
     NULL
   );
 
+  g_object_unref(buffer);
   return INF_SESSION(session);
 }
 
@@ -177,57 +111,12 @@ infinoted_plugin_note_chat_session_write(InfdStorage* storage,
                                          gpointer user_data,
                                          GError** error)
 {
-  xmlNodePtr root;
-
-  FILE* stream;
-  xmlDocPtr doc;
-  xmlErrorPtr xmlerror;
-
-  g_assert(INFD_IS_FILESYSTEM_STORAGE(storage));
-  g_assert(INF_IS_CHAT_SESSION(session));
-
-  /* Open stream before exporting buffer to XML so possible errors are
-   * catched earlier. */
-  stream = infd_filesystem_storage_open(
+  return infd_chat_filesystem_format_write(
     INFD_FILESYSTEM_STORAGE(storage),
-    "InfChat",
     path,
-    "w",
-    NULL,
+    INF_CHAT_BUFFER(inf_session_get_buffer(session)),
     error
   );
-
-  if(stream == NULL)
-    return FALSE;
-
-  root = xmlNewNode(NULL, (const xmlChar*)"inf-chat-session");
-
-  doc = xmlNewDoc((const xmlChar*)"1.0");
-  xmlDocSetRootElement(doc, root);
-
-  /* TODO: At this point, we should tell libxml2 to use
-   * infd_filesystem_storage_stream_write() instead of fwrite(),
-   * to prevent C runtime mixups. */
-  if(xmlDocFormatDump(stream, doc, 1) == -1)
-  {
-    xmlerror = xmlGetLastError();
-    infd_filesystem_storage_stream_close(stream);
-    xmlFreeDoc(doc);
-
-    g_set_error(
-      error,
-      g_quark_from_static_string("LIBXML2_OUTPUT_ERROR"),
-      xmlerror->code,
-      "%s",
-      xmlerror->message
-    );
-
-    return FALSE;
-  }
-
-  infd_filesystem_storage_stream_close(stream);
-  xmlFreeDoc(doc);
-  return TRUE;
 }
 
 const InfdNotePlugin INFINOTED_PLUGIN_NOTE_CHAT_PLUGIN = {

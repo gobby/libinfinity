@@ -315,11 +315,11 @@ inf_text_filesystem_format_read(InfdFilesystemStorage* storage,
   xmlNodePtr child;
   gboolean result;
 
-  g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), NULL);
-  g_return_val_if_fail(path != NULL, NULL);
-  g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
-  g_return_val_if_fail(error == NULL || *error == NULL, NULL);
-  g_return_val_if_fail(inf_text_buffer_get_length(buffer) == 0, NULL);
+  g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), FALSE);
+  g_return_val_if_fail(path != NULL, FALSE);
+  g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
+  g_return_val_if_fail(inf_text_buffer_get_length(buffer) == 0, FALSE);
 
   /* TODO: Use a SAX parser for better performance */
   full_path = NULL;

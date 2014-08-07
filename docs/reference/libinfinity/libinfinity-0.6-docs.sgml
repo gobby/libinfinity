@@ -92,6 +92,7 @@
     <title>Libinfinity server side API</title>
     <xi:include href="xml/infd-directory.xml"/>
     <xi:include href="xml/infd-note-plugin.xml"/>
+    <xi:include href="xml/infd-chat-filesystem-format.xml"/>
     <xi:include href="xml/infd-acl-account-info.xml"/>
     <xi:include href="xml/infd-storage.xml"/>
     <xi:include href="xml/infd-filesystem-storage.xml"/>

@@ -9707,6 +9707,7 @@ infd_directory_enable_chat(InfdDirectory* directory,
 {
   InfdDirectoryPrivate* priv;
   InfCommunicationHostedGroup* group;
+  InfChatBuffer* chat_buffer;
   InfChatSession* chat_session;
   InfSession* session;
 
@@ -9728,13 +9729,17 @@ infd_directory_enable_chat(InfdDirectory* directory,
         methods
       );
 
+      chat_buffer = inf_chat_buffer_new(256);
+
       chat_session = inf_chat_session_new(
         priv->communication_manager,
-        256,
+        chat_buffer,
         INF_SESSION_RUNNING,
         NULL,
         NULL
       );
+
+      g_object_unref(chat_buffer);
 
       priv->chat_session = INFD_SESSION_PROXY(
         g_object_new(

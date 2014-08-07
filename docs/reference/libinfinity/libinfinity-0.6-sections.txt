@@ -1637,3 +1637,10 @@ inf_chat_buffer_get_type
 INF_TYPE_CHAT_BUFFER
 </SECTION>
 
+<SECTION>
+<FILE>infd-chat-filesystem-format</FILE>
+<TITLE>InfdChatFilesystemFormat</TITLE>
+InfdChatFilesystemFormatError
+infd_chat_filesystem_format_read
+infd_chat_filesystem_format_write
+</SECTION>

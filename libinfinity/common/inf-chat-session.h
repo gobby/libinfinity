@@ -91,7 +91,7 @@ inf_chat_session_get_type(void) G_GNUC_CONST;
 
 InfChatSession*
 inf_chat_session_new(InfCommunicationManager* manager,
-                     guint backlog_size,
+                     InfChatBuffer* buffer,
                      InfSessionStatus status,
                      InfCommunicationGroup* sync_group,
                      InfXmlConnection* sync_connection);

@@ -9,6 +9,7 @@ libinfinity_server_ladir = \
 
 libinfinity_server_la_SOURCES = \
 	infd-acl-account-info.c \
+	infd-chat-filesystem-format.c \
 	infd-directory.c \
 	infd-filesystem-storage.c \
 	infd-progress-request.c \
@@ -22,6 +23,7 @@ libinfinity_server_la_SOURCES = \
 
 libinfinity_server_la_HEADERS = \
 	infd-acl-account-info.h \
+	infd-chat-filesystem-format.h \
 	infd-directory.h \
 	infd-filesystem-storage.h \
 	infd-note-plugin.h \

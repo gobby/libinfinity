@@ -4928,6 +4928,7 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
   GSList* item;
   InfCommunicationJoinedGroup* sync_group;
   InfcBrowserSubreq* subreq;
+  InfChatBuffer* buffer;
   InfChatSession* session;
   InfcSessionProxy* proxy;
 
@@ -4966,14 +4967,18 @@ infc_browser_communication_object_sent(InfCommunicationObject* object,
       /* OK, do the subscription */
       g_assert(priv->chat_session == NULL);
 
+      buffer = inf_chat_buffer_new(256);
+
       /* Synchronize in subscription group: */
       session = inf_chat_session_new(
         priv->communication_manager,
-        256,
+        buffer,
         INF_SESSION_SYNCHRONIZING,
         INF_COMMUNICATION_GROUP(subreq->shared.chat.subscription_group),
         connection
       );
+
+      g_object_unref(buffer);
 
       proxy = g_object_new(INFC_TYPE_SESSION_PROXY, "session", session, NULL);
 
