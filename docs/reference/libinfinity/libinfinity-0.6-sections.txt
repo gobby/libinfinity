@@ -1139,6 +1139,7 @@ InfdFilesystemStorageError
 InfdFilesystemStorage
 InfdFilesystemStorageClass
 infd_filesystem_storage_new
+infd_filesystem_storage_get_path
 infd_filesystem_storage_open
 <SUBSECTION Standard>
 INFD_FILESYSTEM_STORAGE

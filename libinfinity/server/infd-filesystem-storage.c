@@ -1064,6 +1064,47 @@ infd_filesystem_storage_new(const gchar* root_directory)
 }
 
 /**
+ * infd_filesystem_storage_get_path:
+ * @storage: A #InfdFilesystemStorage.
+ * @identifier: The type of node to open.
+ * @path: The path to open, in UTF-8.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Returns the full file name to the given path within the storage's root
+ * directory. The function might fail if @path contains invalid characters.
+ * If the function fails, %NULL is returned and @error is set.
+ *
+ * Returns: An absolute filename path to be freed with g_free(), or %NULL.
+ */
+gchar*
+infd_filesystem_storage_get_path(InfdFilesystemStorage* storage,
+                                 const gchar* identifier,
+                                 const gchar* path,
+                                 GError** error)
+{
+  InfdFilesystemStoragePrivate* priv;
+  gchar* converted_name;
+  gchar* disk_name;
+  gchar* full_name;
+
+  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
+  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
+    return NULL;
+
+  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
+  if(converted_name == NULL)
+    return NULL;
+
+  disk_name = g_strconcat(converted_name, ".", identifier, NULL);
+  g_free(converted_name);
+
+  full_name = g_build_filename(priv->root_directory, disk_name, NULL);
+  g_free(disk_name);
+
+  return full_name;
+}
+
+/**
  * infd_filesystem_storage_open:
  * @storage: A #InfdFilesystemStorage.
  * @identifier: The type of node to open.
@@ -1089,9 +1130,6 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
                              gchar** full_path,
                              GError** error)
 {
-  InfdFilesystemStoragePrivate* priv;
-  gchar* converted_name;
-  gchar* disk_name;
   gchar* full_name;
   FILE* res;
   int save_errno;
@@ -1100,19 +1138,15 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   int open_mode;
 #endif
 
-  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
-  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
+  full_name = infd_filesystem_storage_get_path(
+    storage,
+    identifier,
+    path,
+    error
+  );
+
+  if(full_name == NULL)
     return NULL;
-
-  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
-  if(converted_name == NULL)
-    return NULL;
-
-  disk_name = g_strconcat(converted_name, ".", identifier, NULL);
-  g_free(converted_name);
-
-  full_name = g_build_filename(priv->root_directory, disk_name, NULL);
-  g_free(disk_name);
 
 #ifdef G_OS_WIN32
   res = g_fopen(full_name, mode);

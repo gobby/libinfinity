@@ -63,6 +63,12 @@ infd_filesystem_storage_get_type(void) G_GNUC_CONST;
 InfdFilesystemStorage*
 infd_filesystem_storage_new(const gchar* root_directory);
 
+gchar*
+infd_filesystem_storage_get_path(InfdFilesystemStorage* storage,
+                                 const gchar* identifier,
+                                 const gchar* path,
+                                 GError** error);
+
 FILE*
 infd_filesystem_storage_open(InfdFilesystemStorage* storage,
                              const gchar* identifier,
