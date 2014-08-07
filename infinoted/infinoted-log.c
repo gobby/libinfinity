@@ -494,11 +494,11 @@ infinoted_log_close(InfinotedLog* log)
 }
 
 /**
- * infinoted_log_error:
+ * infinoted_log_log:
  * @log: A #InfinotedLog.
  * @prio: Priority of the logged message.
  * @fmt: A printf-style format string.
- * ...: Format arguments.
+ * @...: Format arguments.
  *
  * Logs a message with the given priority. The priority is one of %LOG_ERR,
  * %LOG_WARNING or %LOG_INFO.  If the server is daemonized, log to syslog,
@@ -521,7 +521,7 @@ infinoted_log_log(InfinotedLog* log,
  * infinoted_log_error:
  * @log: A #InfinotedLog.
  * @fmt: A printf-style format string.
- * ...: Format arguments.
+ * @...: Format arguments.
  *
  * Logs an error message. If the server is daemonized, log to syslog,
  * otherwise log to stderr. If a logfile is given in the options when @log
@@ -542,7 +542,7 @@ infinoted_log_error(InfinotedLog* log,
  * infinoted_log_warning:
  * @log: A #InfinotedLog.
  * @fmt: A printf-style format string.
- * ...: Format arguments.
+ * @...: Format arguments.
  *
  * Logs a warning message. If the server is daemonized, log to syslog,
  * otherwise log to stderr. If a logfile is given in the options when @log
@@ -563,7 +563,7 @@ infinoted_log_warning(InfinotedLog* log,
  * infinoted_log_info:
  * @log: A #InfinotedLog.
  * @fmt: A printf-style format string.
- * ...: Format arguments.
+ * @...: Format arguments.
  *
  * Logs an info message. If the server is daemonized, log to syslog,
  * otherwise log to stderr. If a logfile is given in the options when @log

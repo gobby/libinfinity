@@ -50,6 +50,56 @@ G_BEGIN_DECLS
 typedef struct _InfinotedPluginManager InfinotedPluginManager;
 typedef struct _InfinotedPluginManagerClass InfinotedPluginManagerClass;
 
+/**
+ * InfinotedPlugin:
+ * @name: The name of the plugin. The filename of the shared object should
+ * be <literal>libinfinoted-plugin-<emphasis>&lt;name&gt;</emphasis></literal>.
+ * @description: A human-readable description of what the plugin does.
+ * @options: A 0-terminated list of plugin parameters. The parameters are
+ * provided to the plugin via the infinoted configuration file or the command
+ * line. The last element of the list must have the @name field set to %NULL.
+ * @info_size: The size of the plugin instance structure. When the plugin
+ * is instantiated, this amount of memory will be allocated for the plugin
+ * instance. This field must be different from 0.
+ * @connection_info_size: The size of the plugin's connection info structure.
+ * For each plugin instance, this amount of memory will be allocated for each
+ * connection of the server. The plugin can use it to store
+ * connection-specific data. This field can be 0.
+ * @session_info_size: The size of the plugin's session info structure. For
+ * each plugin instance, this amount of memory will be allocated for each
+ * session that is currently active on the server. The plugin can use it to
+ * store session-specific data. This field can be 0.
+ * @session_type: If non-%NULL, specifies the session type handled by the
+ * plugin. Only for sessions of this type or a derived type a session info
+ * structure is allocated. The @on_session_added and @on_session_removed
+ * callbacks are always made, independent of this field.
+ * @on_info_initialize: Function called after the plugin has been
+ * instantiated. It should initialize all fields of the plugin instance
+ * to a sane default value.
+ * @on_initialize: Function called to initialize the plugin. The function can
+ * return %FALSE and set the @error parameter to prevent the plugin from
+ * being used. The server will not be started in this case. Even if this
+ * function returns %FALSE, @on_deinitialize will be called on the plugin to
+ * clean up partly constructed plugin data by this function.
+ * @on_deinitialize: Function called when the plugin is unloaded. Should clean
+ * up all resources the plugin has allocated.
+ * @on_connection_added: Function called when there is a new connection to the
+ * server. It is also called for all existing connections at the time the
+ * plugin is loaded.
+ * @on_connection_removed: Function called when a client connection has been
+ * dropped. It is also called for all existing connections right before the
+ * plugin is unloaded.
+ * @on_session_added: Function called when a new session has become active on
+ * the server. It is also called for all existing sessions at the time the
+ * plugin is loaded.
+ * @on_session_removed: Function called when a session has become inactive and
+ * the server is freeing resources allocated to it. It is also called for all
+ * existing sessions right before the plugin is unloaded.
+ *
+ * Declares a InfinotedPlugin. If an instance of this structure is called
+ * <literal>INFINOTED_PLUGIN</literal> and exported from a shared object, it
+ * can be loaded as a plugin by infinoted.
+ */
 typedef struct _InfinotedPlugin InfinotedPlugin;
 struct _InfinotedPlugin {
   const gchar* name;
@@ -109,10 +159,17 @@ struct _InfinotedPluginManager {
   GObject parent;
 };
 
-typedef void(*InfinotedPluginManagerQueryUserFunc)(gpointer plugin_info,
-                                                   InfUser* user,
-                                                   const GError* error);
-
+/**
+ * InfinotedPluginManagerError:
+ * @INFINOTED_PLUGIN_MANAGER_ERROR_OPEN_FAILED: Failed to open the code module
+ * of a plugin.
+ * @INFINOTED_PLUGIN_MANAGER_ERROR_NO_ENTRY_POINT: The code module of a plugin
+ * does not provide the <literal>INFINOTED_PLUGIN</literal> symbol.
+ *
+ * Error codes for the <literal>INFINOTED_PLUGIN_MANAGER_ERROR</literal>
+ * error domain. These errors can occur when loading a plugin with
+ * infinoted_plugin_manager_load().
+ */
 typedef enum _InfinotedPluginManagerError {
   INFINOTED_PLUGIN_MANAGER_ERROR_OPEN_FAILED,
   INFINOTED_PLUGIN_MANAGER_ERROR_NO_ENTRY_POINT

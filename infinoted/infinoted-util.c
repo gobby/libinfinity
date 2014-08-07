@@ -17,6 +17,18 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infinoted-util
+ * @title: InfinotedUtil
+ * @short_description: Miscellaneous helper functions.
+ * @include: infinoted/infinoted-util.h
+ * @stability: Unstable
+ *
+ * This section contains a few helper functions that are used in the
+ * infinoted implementation and are exposed to the plugin interface for
+ * convenience of plugin developers.
+ */
+
 #include <infinoted/infinoted-util.h>
 
 #include <libinfinity/inf-i18n.h>
@@ -121,7 +133,6 @@ infinoted_util_set_errno_error(GError** error,
   }
 }
 
-#ifdef LIBINFINITY_HAVE_LIBDAEMON
 
 /**
  * infinoted_util_daemon_set_global_pid_file_proc:
@@ -131,11 +142,13 @@ infinoted_util_set_errno_error(GError** error,
 void
 infinoted_util_daemon_set_global_pid_file_proc(void)
 {
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
   daemon_pid_file_proc = infinoted_util_get_pidfile_path_system;
+#endif
 }
 
 /**
- * infinoted_util_daemon_set_global_pid_file_proc:
+ * infinoted_util_daemon_set_local_pid_file_proc:
  *
  * When attempting to read or write the PID file use the local file which is
  * in the owner's home directory.
@@ -143,7 +156,9 @@ infinoted_util_daemon_set_global_pid_file_proc(void)
 void
 infinoted_util_daemon_set_local_pid_file_proc(void)
 {
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
   daemon_pid_file_proc = infinoted_util_get_pidfile_path_user;
+#endif
 }
 
 /**
@@ -158,13 +173,15 @@ infinoted_util_daemon_set_local_pid_file_proc(void)
 int
 infinoted_util_daemon_pid_file_kill(int sig)
 {
-#ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+# ifdef DAEMON_PID_FILE_KILL_WAIT_AVAILABLE
   return daemon_pid_file_kill_wait(sig, 5);
-#else
+# else
   return daemon_pid_file_kill(sig);
+# endif
+#else
+  return 0;
 #endif
 }
-
-#endif
 
 /* vim:set et sw=2 ts=2: */

@@ -1,14 +1,15 @@
 <SECTION>
 <FILE>infinoted-log</FILE>
 <TITLE>InfinotedLog</TITLE>
+InfinotedLog
 InfinotedLogClass
-infinoted_log_close
-infinoted_log_error
-infinoted_log_info
-infinoted_log_log
 infinoted_log_new
 infinoted_log_open
+infinoted_log_close
+infinoted_log_log
+infinoted_log_info
 infinoted_log_warning
+infinoted_log_error
 <SUBSECTION Standard>
 INFINOTED_IS_LOG
 INFINOTED_IS_LOG_CLASS
@@ -21,13 +22,17 @@ infinoted_log_get_type
 
 <SECTION>
 <FILE>infinoted-parameter</FILE>
-InfinotedParameterConvertFunc
-InfinotedParameterError
-InfinotedParameterFlags
-InfinotedParameterInfo
 InfinotedParameterType
-InfinotedParameterTypedValue
+InfinotedParameterFlags
 InfinotedParameterValue
+InfinotedParameterTypedValue
+InfinotedParameterConvertFunc
+InfinotedParameterInfo
+InfinotedParameterError
+infinoted_parameter_typed_value_new
+infinoted_parameter_typed_value_free
+infinoted_parameter_error_quark
+infinoted_parameter_load_from_key_file
 infinoted_parameter_convert_boolean
 infinoted_parameter_convert_filename
 infinoted_parameter_convert_nonnegative
@@ -36,28 +41,24 @@ infinoted_parameter_convert_positive
 infinoted_parameter_convert_security_policy
 infinoted_parameter_convert_string
 infinoted_parameter_convert_string_list
-infinoted_parameter_error_quark
-infinoted_parameter_load_from_key_file
-infinoted_parameter_typed_value_free
-infinoted_parameter_typed_value_new
 </SECTION>
 
 <SECTION>
 <FILE>infinoted-plugin-manager</FILE>
 <TITLE>InfinotedPluginManager</TITLE>
-InfinotedPlugin
+InfinotedPluginManager
 InfinotedPluginManagerClass
+InfinotedPlugin
 InfinotedPluginManagerError
-InfinotedPluginManagerQueryUserFunc
-infinoted_plugin_manager_error_quark
-infinoted_plugin_manager_get_connection_info
-infinoted_plugin_manager_get_credentials
+infinoted_plugin_manager_new
+infinoted_plugin_manager_load
 infinoted_plugin_manager_get_directory
 infinoted_plugin_manager_get_io
 infinoted_plugin_manager_get_log
+infinoted_plugin_manager_get_credentials
+infinoted_plugin_manager_get_connection_info
 infinoted_plugin_manager_get_session_info
-infinoted_plugin_manager_load
-infinoted_plugin_manager_new
+infinoted_plugin_manager_error_quark
 <SUBSECTION Standard>
 INFINOTED_IS_PLUGIN_MANAGER
 INFINOTED_IS_PLUGIN_MANAGER_CLASS
@@ -71,9 +72,9 @@ infinoted_plugin_manager_get_type
 <SECTION>
 <FILE>infinoted-util</FILE>
 infinoted_util_create_dirname
-infinoted_util_daemon_pid_file_kill
+infinoted_util_set_errno_error
 infinoted_util_daemon_set_global_pid_file_proc
 infinoted_util_daemon_set_local_pid_file_proc
-infinoted_util_set_errno_error
+infinoted_util_daemon_pid_file_kill
 </SECTION>
 

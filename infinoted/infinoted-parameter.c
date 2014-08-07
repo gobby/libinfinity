@@ -17,6 +17,24 @@
  * MA 02110-1301, USA.
  */
 
+/**
+ * SECTION:infinoted-parameter
+ * @title: InfinotedParameter
+ * @short_description: Declare parameters of infinoted plugins.
+ * @include: infinoted/infinoted-parameter.h
+ * @stability: Unstable
+ *
+ * The #InfinotedParameterInfo structure allows to declare a parameter that
+ * can then be used as an input value to a plugin. While the types for input
+ * data are limited, the mechanism allows to provide a powerful validation and
+ * transformation function which can turn the input value to the final
+ * internal representation in the plugin data structure.
+ *
+ * Parameters are declared by providing a #InfinotedParameterInfo structure,
+ * and an array of such structures is then given to #InfinotedPlugin which
+ * declares a plugin.
+ */
+
 #include "config.h"
 
 #include <infinoted/infinoted-parameter.h>
