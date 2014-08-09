@@ -33,6 +33,19 @@ Modernization:
  * Use GtkBox and GtkGrid, use GtkBuilder for widgets/dialogs
  * g_set_error_literal
 
+Protocol Break:
+  The following features would be nice to have, but they require breaking
+  the protocol. Maybe it could be introduced such that new clients can still
+  talk to old servers.
+
+  * Change the transformation function such that all text that starts with a
+    newline character is transformed to the right when two insert operations
+    are at the same location. This would allow people to create a new line at
+    the end of the line where someone else is currently typing while not
+    interrupting their workflow. It would also making the linekeeper plugin
+    safe from such conflicts. If we do this, we also need to add some unit
+    tests in test/session which check that it is implemented correctly.
+
 Others:
 
  * Split InfXmppConnection (XMPP)
