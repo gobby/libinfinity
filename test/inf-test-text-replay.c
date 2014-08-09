@@ -451,7 +451,7 @@ int main(int argc, char* argv[])
       else
       {
         fprintf(stderr, "\n");
-        /*inf_test_util_print_buffer(INF_TEXT_BUFFER(buffer));*/
+        inf_test_util_print_buffer(INF_TEXT_BUFFER(buffer));
       }
 
       g_string_free(content, TRUE);
