@@ -1120,6 +1120,34 @@ infd_storage_acl_get_type
 </SECTION>
 
 <SECTION>
+<FILE>infd-account-storage</FILE>
+<TITLE>InfdAccountStorage</TITLE>
+InfdAccountStorage
+InfdAccountStorageIface
+InfdAccountStorageSupport
+infd_account_storage_get_support
+infd_account_storage_supports
+infd_account_storage_lookup_accounts
+infd_account_storage_lookup_accounts_by_name
+infd_account_storage_list_accounts
+infd_account_storage_add_account
+infd_account_storage_remove_account
+infd_account_storage_login_by_certificate
+infd_account_storage_login_by_password
+infd_account_storage_set_certificate
+infd_account_storage_set_password
+infd_account_storage_account_added
+infd_account_storage_account_removed
+<SUBSECTION Standard>
+infd_account_storage_get_type
+infd_account_storage_support_get_type
+INFD_ACCOUNT_STORAGE
+INFD_ACCOUNT_STORAGE_GET_IFACE
+INFD_IS_ACCOUNT_STORAGE
+INFD_TYPE_ACCOUNT_STORAGE
+</SECTION>
+
+<SECTION>
 <FILE>infd-session-proxy</FILE>
 <TITLE>InfdSessionProxy</TITLE>
 InfdSessionProxy

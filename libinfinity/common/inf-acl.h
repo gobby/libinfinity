@@ -70,6 +70,7 @@ typedef GQuark InfAclAccountId;
  */
 typedef struct _InfAclAccount InfAclAccount;
 struct _InfAclAccount {
+  /*< public >*/
   InfAclAccountId id;
   gchar* name;
 };
