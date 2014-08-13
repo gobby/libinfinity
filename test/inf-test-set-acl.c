@@ -268,6 +268,12 @@ main(int argc, char* argv[])
     n_certs = array->len;
     certs = (gnutls_x509_crt_t*)g_ptr_array_free(array, FALSE);
 
+    if(n_certs == 0)
+    {
+      fprintf(stderr, "File does not contain a certificate\n");
+      return EXIT_FAILURE;
+    }
+
     key = inf_cert_util_read_private_key(argv[1], &error);
 
     if(error != NULL)
