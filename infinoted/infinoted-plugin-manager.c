@@ -285,16 +285,18 @@ infinoted_plugin_manager_walk_directory(
     if(inf_browser_get_explored(browser, iter) == TRUE)
     {
       child = *iter;
-      inf_browser_get_child(browser, &child);
-      do
+      if(inf_browser_get_child(browser, &child))
       {
-        infinoted_plugin_manager_walk_directory(
-          manager,
-          &child,
-          instance,
-          func
-        );
-      } while(inf_browser_get_next(browser, &child));
+        do
+        {
+          infinoted_plugin_manager_walk_directory(
+            manager,
+            &child,
+            instance,
+            func
+          );
+        } while(inf_browser_get_next(browser, &child));
+      }
     }
   }
   else
