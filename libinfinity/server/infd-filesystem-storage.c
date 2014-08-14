@@ -875,7 +875,7 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
         inf_xml_util_set_attribute(
           child,
           "account",
-          sheet_set->sheets[i].account->id
+          inf_acl_account_id_to_string(sheet_set->sheets[i].account)
         );
 
         inf_acl_sheet_perms_to_xml(

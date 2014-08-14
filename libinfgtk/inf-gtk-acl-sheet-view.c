@@ -345,6 +345,7 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
   renderer = gtk_cell_renderer_text_new();
   column = gtk_tree_view_column_new();
   gtk_tree_view_column_set_title(column, "Permission");
+  gtk_tree_view_column_set_expand(column, TRUE);
   gtk_tree_view_column_pack_start(column, renderer, TRUE);
   gtk_tree_view_column_add_attribute(column, renderer, "text", 0);
   gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), column);

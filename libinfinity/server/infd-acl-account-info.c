@@ -85,16 +85,16 @@ infd_acl_account_info_get_type(void)
  * when no longer needed.
  */
 InfdAclAccountInfo*
-infd_acl_account_info_new(const gchar* id,
+infd_acl_account_info_new(InfAclAccountId id,
                           const gchar* name,
                           gboolean transient)
 {
   InfdAclAccountInfo* info;
 
-  g_return_val_if_fail(id != NULL, NULL);
+  g_return_val_if_fail(id != 0, NULL);
 
   info = g_slice_new(InfdAclAccountInfo);
-  info->account.id = g_strdup(id);
+  info->account.id = id;
   info->account.name = g_strdup(name);
   info->transient = transient;
   info->certificates = NULL;
@@ -166,7 +166,6 @@ infd_acl_account_info_free(InfdAclAccountInfo* info)
   g_free(info->certificates);
 
   g_free(info->account.name);
-  g_free(info->account.id);
 
   g_slice_free(InfdAclAccountInfo, info);
 }

@@ -30,10 +30,10 @@
  * available users and allows the permissions for each of them to be changed,
  * using a #InfGtkAclSheetView widget.
  *
- * If either the "can-query-user-list" or the "can-query-acl" permissions are
- * not granted for the local user, the dialog only shows the permissions for
- * the default user and the local user. The dialog also comes with a status
- * text to inform the user why certain functionality is not available.
+ * If the "can-query-acl" permission is not granted for the local user, the
+ * dialog only shows the permissions for the default user and the local user.
+ * The dialog also comes with a status text to inform the user why certain
+ * functionality is not available.
  *
  * The dialog class reacts to changes to the ACL in real time, and also if the
  * node that is being monitored is removed.
@@ -41,8 +41,24 @@
 
 #include <libinfgtk/inf-gtk-permissions-dialog.h>
 #include <libinfgtk/inf-gtk-acl-sheet-view.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/inf-i18n.h>
 #include <gdk/gdkkeysyms.h>
+
+enum {
+  INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID = 0,
+  INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME = 1
+};
+
+typedef struct _InfGtkPermissionsDialogPendingSheet
+  InfGtkPermissionsDialogPendingSheet;
+struct _InfGtkPermissionsDialogPendingSheet {
+  InfGtkPermissionsDialog* dialog;
+  GtkTreeRowReference* row;
+  InfAclSheet sheet;
+  InfAclAccountId last_combo_changed_id;
+  InfRequest* lookup_request;
+};
 
 typedef struct _InfGtkPermissionsDialogPrivate InfGtkPermissionsDialogPrivate;
 struct _InfGtkPermissionsDialogPrivate {
@@ -50,20 +66,34 @@ struct _InfGtkPermissionsDialogPrivate {
   InfBrowserIter browser_iter;
 
   GtkListStore* account_store;
-  gboolean show_full_list;
 
+  /* If accounts is NULL, then the account list is not available. Note that we
+   * only need the account list when the user adds a new sheet, to present her
+   * the available users to choose from. If the list is not available, we
+   * perform a reverse lookup. */
   InfRequest* query_acl_account_list_request;
+  gboolean account_list_queried;
+  InfAclAccount* accounts;
+  guint n_accounts;
+
   InfRequest* query_acl_request;
   GSList* set_acl_requests;
   GSList* remove_acl_account_requests;
+  GSList* lookup_acl_account_requests;
+
+  GSList* pending_sheets;
 
   GtkMenu* popup_menu;
-  const InfAclAccount* popup_account;
+  InfAclAccountId popup_account;
 
+  GtkCellRenderer* renderer;
   GtkWidget* tree_view;
   GtkWidget* sheet_view;
   GtkWidget* status_image;
   GtkWidget* status_text;
+
+  GtkWidget* add_button;
+  GtkWidget* remove_button;
 };
 
 enum {
@@ -87,6 +117,78 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
 
 static void
 inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog);
+
+static gboolean
+inf_gtk_permissions_dialog_find_account(InfGtkPermissionsDialog* dialog,
+                                        InfAclAccountId account,
+                                        GtkTreeIter* out_iter)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  gpointer row_account_id;
+  GtkTreeModel* model;
+  GtkTreeIter iter;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+  model = GTK_TREE_MODEL(priv->account_store);
+
+  if(gtk_tree_model_get_iter_first(model, &iter))
+  {
+    do
+    {
+      gtk_tree_model_get(
+        model,
+        &iter,
+        INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+        &row_account_id,
+        -1
+      );
+
+      if(row_account_id == INF_ACL_ACCOUNT_ID_TO_POINTER(account))
+      {
+        if(out_iter != NULL)
+          *out_iter = iter;
+        return TRUE;
+      }
+    } while(gtk_tree_model_iter_next(model, &iter));
+  }
+
+  return FALSE;
+}
+
+static InfGtkPermissionsDialogPendingSheet*
+inf_gtk_permissions_dialog_find_pending_sheet(InfGtkPermissionsDialog* dialog,
+                                              GtkTreeIter* iter)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeModel* model;
+  GtkTreePath* path;
+  GSList* item;
+  InfGtkPermissionsDialogPendingSheet* pending;
+  GtkTreePath* pending_path;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+  model = GTK_TREE_MODEL(priv->account_store);
+
+  path = gtk_tree_model_get_path(model, iter);
+  for(item = priv->pending_sheets; item != NULL; item = item->next)
+  {
+    pending = (InfGtkPermissionsDialogPendingSheet*)item->data;
+    pending_path = gtk_tree_row_reference_get_path(pending->row);
+    g_assert(pending_path != NULL);
+
+    if(gtk_tree_path_compare(path, pending_path) == 0)
+    {
+      gtk_tree_path_free(path);
+      gtk_tree_path_free(pending_path);
+      return pending;
+    }
+
+    gtk_tree_path_free(pending_path);
+  }
+
+  gtk_tree_path_free(path);
+  return NULL;
+}
 
 static void
 inf_gtk_permissions_dialog_set_acl_finished_cb(InfRequest* request,
@@ -117,6 +219,22 @@ inf_gtk_permissions_dialog_set_acl_finished_cb(InfRequest* request,
 }
 
 static void
+inf_gtk_permissions_dialog_selection_changed_cb(GtkTreeSelection* selection,
+                                                gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+
+  /* Update the sheet that is displayed */
+  inf_gtk_permissions_dialog_update_sheet(dialog);
+
+  /* Also update the account list itself -- if the previously selected entry
+   * does not have any permissions set, for example because the user set
+   * everything to default, then remove the account from the account list. */
+  inf_gtk_permissions_dialog_update(dialog, NULL);
+}
+
+static void
 inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
                                             gpointer user_data)
 {
@@ -125,6 +243,11 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
   const InfAclSheet* sheet;
   InfAclSheetSet sheet_set;
   InfRequest* request;
+
+  GtkTreeSelection* selection;
+  gboolean has_selection;
+  GtkTreeIter iter;
+  InfGtkPermissionsDialogPendingSheet* pending;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
@@ -135,67 +258,527 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
 
   g_assert(sheet != NULL);
 
-  sheet_set.own_sheets = NULL;
-  sheet_set.sheets = sheet;
-  sheet_set.n_sheets = 1;
-
-  request = inf_browser_set_acl(
-    priv->browser,
-    &priv->browser_iter,
-    &sheet_set,
-    inf_gtk_permissions_dialog_set_acl_finished_cb,
-    dialog
-  );
-
-  if(request != NULL)
+  /* If the sheet does not have an ID set, the lookup is still in progress.
+   * In that case, we run the ACL setting once we have looked up the ID. */
+  if(sheet->account != 0)
   {
-    priv->set_acl_requests = g_slist_prepend(priv->set_acl_requests, request);
-    g_object_ref(request);
+    sheet_set.own_sheets = NULL;
+    sheet_set.sheets = sheet;
+    sheet_set.n_sheets = 1;
+
+    request = inf_browser_set_acl(
+      priv->browser,
+      &priv->browser_iter,
+      &sheet_set,
+      inf_gtk_permissions_dialog_set_acl_finished_cb,
+      dialog
+    );
+
+    if(request != NULL)
+    {
+      priv->set_acl_requests =
+        g_slist_prepend(priv->set_acl_requests, request);
+      g_object_ref(request);
+    }
+  }
+  else
+  {
+    /* Must be a pending sheet */
+    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+    has_selection = gtk_tree_selection_get_selected(selection, NULL, &iter);
+    g_assert(has_selection);
+
+    pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &iter);
+    g_assert(pending != NULL);
+
+    pending->sheet = *sheet;
   }
 }
 
-static gboolean
-inf_gtk_permissions_dialog_find_account(InfGtkPermissionsDialog* dialog,
-                                        const InfAclAccount* account,
-                                        GtkTreeIter* out_iter)
+static int
+inf_gtk_permissions_dialog_account_sort_func(GtkTreeModel* model,
+                                             GtkTreeIter* a,
+                                             GtkTreeIter* b,
+                                             gpointer user_data)
 {
+  InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
-  const InfAclAccount* row_account;
-  GtkTreeModel* model;
-  GtkTreeIter iter;
 
+  InfAclAccountId default_id;
+  gpointer account_a_id_ptr;
+  gpointer account_b_id_ptr;
+  InfAclAccountId account_a_id;
+  InfAclAccountId account_b_id;
+  const gchar* account_a_id_str;
+  const gchar* account_b_id_str;
+  gchar* account_a_name;
+  gchar* account_b_name;
+
+  int result;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
-  model = GTK_TREE_MODEL(priv->account_store);
 
-  if(gtk_tree_model_get_iter_first(model, &iter))
+  gtk_tree_model_get(
+    model,
+    a,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID, &account_a_id_ptr,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME, &account_a_name,
+    -1
+  );
+
+  gtk_tree_model_get(
+    model,
+    b,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID, &account_b_id_ptr,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME, &account_b_name,
+    -1
+  );
+
+  account_a_id = INF_ACL_ACCOUNT_POINTER_TO_ID(account_a_id_ptr);
+  account_b_id = INF_ACL_ACCOUNT_POINTER_TO_ID(account_b_id_ptr);
+  account_a_id_str = inf_acl_account_id_to_string(account_a_id);
+  account_b_id_str = inf_acl_account_id_to_string(account_b_id);
+
+  /* default sorts before anything */
+  default_id = inf_acl_account_id_from_string("default");
+  if(account_a_id == default_id)
   {
-    do
-    {
-      gtk_tree_model_get(model, &iter, 0, &row_account, -1);
-      if(row_account == account)
-      {
-        if(out_iter != NULL)
-          *out_iter = iter;
-        return TRUE;
-      }
-    } while(gtk_tree_model_iter_next(model, &iter));
+    if(account_b_id == default_id)
+      result = 0;
+    else
+      result = -1;
+  }
+  else if(account_b_id == default_id)
+  {
+    result = 1;
+  }
+  /* Next, accounts with user name and ID sort before accounts without
+   * one of the two*/
+  else if(account_a_name != NULL && account_a_id != 0)
+  {
+    if(account_b_name != NULL && account_b_id != 0)
+      result = g_utf8_collate(account_a_name, account_b_name);
+    else
+      result = -1;
+  }
+  else if(account_b_name != NULL && account_b_id != 0)
+  {
+    result = 1;
+  }
+  /* Next, accounts with ID but no user name are preferred. Such accounts
+   * have a lookup pending, but the sheet is synchronized. */
+  else if(account_a_name == NULL && account_a_id != 0)
+  {
+    if(account_b_name == NULL && account_b_id != 0)
+      result = g_utf8_collate(account_a_id_str, account_b_id_str);
+    else
+      result = -1;
+  }
+  else if(account_b_name == NULL && account_b_id != 0)
+  {
+    result = 1;
+  }
+  /* Next, accounts with user name but no ID. These are recently added
+   * entries, and the ID lookup is still in progress. The sheets are
+   * not yet synchronized. If the ID lookup fails, the entry is removed. */
+  else if(account_a_name != NULL && account_a_id == 0)
+  {
+    if(account_b_name != NULL && account_b_id == 0)
+      result = g_utf8_collate(account_a_name, account_b_name);
+    else
+      result = -1;
+  }
+  else if(account_b_name != NULL && account_b_id == 0)
+  {
+    result = 1;
+  }
+  /* Now, it would mean that both A and B do have neither ID nor name
+   * set. This cannot be, since this can only happen with newly created
+   * entries, but these entries get a name set immediately. */
+  else
+  {
+    g_assert_not_reached();
+    result = 0;
   }
 
-  return FALSE;
+  g_free(account_a_name);
+  g_free(account_b_name);
+  return result;
+}
+
+static void
+inf_gtk_permissions_dialog_lookup_by_name_finished_cb(
+  InfRequest* request,
+  const InfRequestResult* result,
+  const GError* error,
+  gpointer user_data);
+
+static void
+inf_gtk_permissions_dialog_remove_pending_sheet(
+  InfGtkPermissionsDialog* dialog,
+  InfGtkPermissionsDialogPendingSheet* pending)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreePath* path;
+  GtkTreeIter iter;
+  gboolean has_iter;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(pending->lookup_request != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(pending->lookup_request),
+      G_CALLBACK(inf_gtk_permissions_dialog_lookup_by_name_finished_cb),
+      pending
+    );
+
+    g_object_unref(pending->lookup_request);
+  }
+
+  /* Remove sheet from the list, so that when gtk_list_store_remove() causes
+   * an update (due to the tree selection changing), there is no invalid
+   * pending sheet in the list anymore. */
+  priv->pending_sheets = g_slist_remove(priv->pending_sheets, pending);
+
+  /* Remove the entry from the list, except the pending sheet was realized,
+   * i.e. the ID was looked up. */
+  if(pending->row != NULL)
+  {
+    path = gtk_tree_row_reference_get_path(pending->row);
+    g_assert(path != NULL);
+
+    has_iter = gtk_tree_model_get_iter(
+      GTK_TREE_MODEL(priv->account_store),
+      &iter,
+      path
+    );
+
+    g_assert(has_iter == TRUE);
+    gtk_list_store_remove(priv->account_store, &iter);
+    gtk_tree_path_free(path);
+
+    gtk_tree_row_reference_free(pending->row);
+  }
+
+  g_slice_free(InfGtkPermissionsDialogPendingSheet, pending);
+}
+
+static void
+inf_gtk_permissions_dialog_realize_pending_sheet(
+  InfGtkPermissionsDialog* dialog,
+  InfGtkPermissionsDialogPendingSheet* pending,
+  InfAclAccountId id,
+  const gchar* name)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeIter iter;
+  GtkTreePath* path;
+  gboolean has_iter;
+
+  InfAclSheet pending_sheet;
+  InfAclSheetSet sheet_set;
+  InfRequest* request;
+
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  pending_sheet = pending->sheet;
+  pending_sheet.account = id;
+
+  if(inf_gtk_permissions_dialog_find_account(dialog, id, &iter))
+  {
+    /* An entry with that ID exists already. Don't try to merge it with the
+     * pending sheet here, but just discard the pending sheet. */
+    path = gtk_tree_model_get_path(
+      GTK_TREE_MODEL(priv->account_store),
+      &iter
+    );
+
+    /* When selecting the already existing entry, block the
+     * selection-changed handler, so that it does not already cause an
+     * update of the dialog. We do the update after we have also removed
+     * the pending sheet */
+    inf_signal_handlers_block_by_func(
+      G_OBJECT(gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view))),
+      G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+      dialog
+    );
+
+    gtk_tree_view_set_cursor(
+      GTK_TREE_VIEW(priv->tree_view),
+      path,
+      gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 0),
+      FALSE
+    );
+
+    inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+
+    inf_signal_handlers_unblock_by_func(
+      G_OBJECT(gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view))),
+      G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+      dialog
+    );
+
+    gtk_tree_path_free(path);
+
+    /* Update currently displayed sheet, since we have changed the selection
+     * with blocked selection-changed signal handler */
+    inf_gtk_permissions_dialog_update_sheet(dialog);
+  }
+  else
+  {
+    path = gtk_tree_row_reference_get_path(pending->row);
+    g_assert(path != NULL);
+
+    has_iter  = gtk_tree_model_get_iter(
+      GTK_TREE_MODEL(priv->account_store),
+      &iter,
+      path
+    );
+
+    g_assert(has_iter == TRUE);
+
+    /* Set the entry in the list store */
+    gtk_list_store_set(
+      priv->account_store,
+      &iter,
+      INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID, INF_ACL_ACCOUNT_ID_TO_POINTER(id),
+      INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME, name,
+      -1
+    );
+
+    /* Remove the pending item. Free the tree row reference before, so that
+     * inf_gtk_permissions_dialog_remove_pending_sheet does not remove the
+     * realized entry from the list store. */
+    gtk_tree_row_reference_free(pending->row);
+    pending->row = NULL;
+
+    inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+
+    /* Set the realized sheet on the sheet view. This is important, so that
+     * when the sheet view emits its changed signal, the account ID is no
+     * longer set to 0. */
+    inf_signal_handlers_block_by_func(
+      G_OBJECT(priv->sheet_view),
+      G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
+      dialog
+    );
+
+    inf_gtk_acl_sheet_view_set_sheet(
+      INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+      &pending_sheet
+    );
+
+    inf_signal_handlers_unblock_by_func(
+      G_OBJECT(priv->sheet_view),
+      G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
+      dialog
+    );
+
+    /* If there are alreay options set, then set the corresponding ACL. Note
+     * that in principle our "changed" signal handler would do that, but we
+     * have blocked it above. This allows us to reduce network traffic when the
+     * mask is empty. */
+    if(!inf_acl_mask_empty(&pending_sheet.mask))
+    {
+      sheet_set.own_sheets = NULL;
+      sheet_set.sheets = &pending_sheet;
+      sheet_set.n_sheets = 1;
+
+      request = inf_browser_set_acl(
+        priv->browser,
+        &priv->browser_iter,
+        &sheet_set,
+        inf_gtk_permissions_dialog_set_acl_finished_cb,
+        dialog
+      );
+
+      if(request != NULL)
+      {
+        priv->set_acl_requests =
+          g_slist_prepend(priv->set_acl_requests, request);
+        g_object_ref(request);
+      }
+    }
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_lookup_by_name_finished_cb(
+  InfRequest* request,
+  const InfRequestResult* result,
+  const GError* error,
+  gpointer user_data)
+{
+  InfGtkPermissionsDialogPendingSheet* pending;
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  const InfAclAccount* accounts;
+  guint n_accounts;
+
+  pending = (InfGtkPermissionsDialogPendingSheet*)user_data;
+  dialog = pending->dialog;
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(pending->lookup_request != NULL)
+  {
+    g_object_unref(pending->lookup_request);
+    pending->lookup_request = NULL;
+  }
+
+  if(error != NULL)
+  {
+    g_warning("Failed to reverse lookup: %s", error->message);
+    inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+  }
+  else
+  {
+    inf_request_result_get_lookup_acl_accounts(
+      result,
+      NULL,
+      &accounts,
+      &n_accounts
+    );
+
+    if(n_accounts > 0)
+    {
+      /* There is at least one user with the given name. If there are more,
+       * we cannot distinguish between them, so just take the first */
+      if(n_accounts > 1)
+      {
+        g_warning(
+          "Multiple accounts with the same name \"%s\"",
+          accounts[0].name
+        );
+      }
+
+      inf_gtk_permissions_dialog_realize_pending_sheet(
+        dialog,
+        pending,
+        accounts[0].id,
+        accounts[0].name
+      );
+    }
+    else
+    {
+      /* There is no user with this name */
+      inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+    }
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_lookup_acl_accounts_finished_cb(
+  InfRequest* request,
+  const InfRequestResult* result,
+  const GError* error,
+  gpointer user_data);
+
+static void
+inf_gtk_permissions_dialog_remove_lookup_acl_accounts_request(
+  InfGtkPermissionsDialog* dialog,
+  InfRequest* request)
+{
+  InfGtkPermissionsDialogPrivate* priv;
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  inf_signal_handlers_disconnect_by_func(
+    request,
+    G_CALLBACK(inf_gtk_permissions_dialog_lookup_acl_accounts_finished_cb),
+    dialog
+  );
+
+  /* Can finish instantly */
+  if(g_slist_find(priv->lookup_acl_account_requests, request) != NULL)
+  {
+    priv->lookup_acl_account_requests =
+      g_slist_remove(priv->lookup_acl_account_requests, request);
+
+    g_object_unref(request);
+  }
+}
+
+static void
+inf_gtk_permissions_dialog_lookup_acl_accounts_finished_cb(
+  InfRequest* request,
+  const InfRequestResult* result,
+  const GError* error,
+  gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  const InfAclAccount* accounts;
+  guint n_accounts;
+  guint i;
+  GtkTreeIter iter;
+  InfAclAccountId account_id;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  if(error != NULL)
+  {
+    /* TODO: Should we show this in the dialog? */
+    g_warning("Failed to look up accounts: %s\n", error->message);
+  }
+  else
+  {
+    inf_request_result_get_lookup_acl_accounts(
+      result,
+      NULL,
+      &accounts,
+      &n_accounts
+    );
+
+    for(i = 0; i < n_accounts; ++i)
+    {
+      if(accounts[i].name != NULL)
+      {
+        account_id = accounts[i].id;
+        if(inf_gtk_permissions_dialog_find_account(dialog, account_id, &iter))
+        {
+          gtk_list_store_set(
+            GTK_LIST_STORE(priv->account_store),
+            &iter,
+            INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+            accounts[i].name,
+            -1
+          );
+        }
+      }
+    }
+  }
+
+  inf_gtk_permissions_dialog_remove_lookup_acl_accounts_request(
+    dialog,
+    request
+  );
 }
 
 static void
 inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
-                                             const InfAclAccount** accounts,
-                                             guint n_accounts)
+                                             const InfAclAccountId* ids,
+                                             guint n_ids)
 {
   InfGtkPermissionsDialogPrivate* priv;
   GtkTreeModel* model;
   gboolean* have_accounts;
   GtkTreeIter iter;
-  const InfAclAccount* account;
+  gpointer account_id_ptr;
+  InfAclAccountId account_id;
   gboolean has_row;
   guint i;
+
+  InfAclAccountId* lookup_ids;
+  guint n_lookup_ids;
+  guint lookup_index;
+  const gchar* new_account_name;
+
+  InfAclMask perms;
+  const InfAclAccount* default_account;
+  const InfAclAccount* local_account;
+  InfRequest* request;
 
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
   model = GTK_TREE_MODEL(priv->account_store);
@@ -205,44 +788,122 @@ inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
    * This way we keep the overlapping accounts in the list, which should
    * provide a smooth user experience, for example when an item in the list
    * is selected it is not removed and re-added. */
-  have_accounts = g_malloc(n_accounts * sizeof(gboolean));
-  for(i = 0; i < n_accounts; ++i)
+  have_accounts = g_malloc(n_ids * sizeof(gboolean));
+  for(i = 0; i < n_ids; ++i)
     have_accounts[i] = FALSE;
+  n_lookup_ids = n_ids;
 
   has_row = gtk_tree_model_get_iter_first(model, &iter);
   while(has_row)
   {
-    gtk_tree_model_get(model, &iter, 0, &account, -1);
-    for(i = 0; i < n_accounts; ++i)
-      if(account == accounts[i])
-        break;
+    gtk_tree_model_get(
+      model,
+      &iter,
+      INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+      &account_id_ptr,
+      -1
+    );
+    
+    account_id = INF_ACL_ACCOUNT_POINTER_TO_ID(account_id_ptr);
 
-    if(i != n_accounts)
+    if(account_id == 0)
     {
-      have_accounts[i] = TRUE;
+      /* This is a pending account, keep it */
       has_row = gtk_tree_model_iter_next(model, &iter);
     }
     else
     {
-      has_row = gtk_list_store_remove(priv->account_store, &iter);
+      for(i = 0; i < n_ids; ++i)
+        if(account_id == ids[i])
+          break;
+
+      if(i < n_ids)
+      {
+        have_accounts[i] = TRUE;
+        has_row = gtk_tree_model_iter_next(model, &iter);
+        --n_lookup_ids;
+      }
+      else
+      {
+        has_row = gtk_list_store_remove(priv->account_store, &iter);
+      }
     }
   }
 
-  for(i = 0; i < n_accounts; ++i)
+  if(n_lookup_ids > 0)
+    lookup_ids = g_malloc(sizeof(InfAclAccountId) * n_lookup_ids);
+  lookup_index = 0;
+
+  default_account = inf_browser_get_acl_default_account(priv->browser);
+  local_account = inf_browser_get_acl_local_account(priv->browser);
+
+  for(i = 0; i < n_ids; ++i)
   {
     if(!have_accounts[i])
     {
+      if(ids[i] == default_account->id)
+        new_account_name = default_account->name;
+      else if(local_account != NULL && ids[i] == local_account->id)
+        new_account_name = local_account->name;
+      else
+        new_account_name = NULL;
+
       gtk_list_store_insert_with_values(
         priv->account_store,
         NULL,
         -1,
-        0,
-        accounts[i],
+        INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+        INF_ACL_ACCOUNT_ID_TO_POINTER(ids[i]),
+        INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+        new_account_name,
         -1
       );
+
+      /* If we don't know the account name, we need to look it up. */
+      if(new_account_name == NULL && ids[i] != default_account->id)
+        lookup_ids[lookup_index++] = ids[i];
     }
   }
 
+  /* Lookup accounts with unknown name, if we can. */
+  if(lookup_index > 0)
+  {
+    g_assert(lookup_index <= n_lookup_ids);
+
+    inf_acl_mask_set1(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
+
+    inf_browser_check_acl(
+      priv->browser,
+      &priv->browser_iter,
+      local_account ? local_account->id : 0,
+      &perms,
+      &perms
+    );
+
+    if(inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST))
+    {
+      request = inf_browser_lookup_acl_accounts(
+        priv->browser,
+        lookup_ids,
+        lookup_index,
+        inf_gtk_permissions_dialog_lookup_acl_accounts_finished_cb,
+        dialog
+      );
+
+      if(request != NULL)
+      {
+        g_object_ref(request);
+
+        priv->lookup_acl_account_requests = g_slist_prepend(
+          priv->lookup_acl_account_requests,
+          request
+        );
+      }
+    }
+  }
+
+  if(n_lookup_ids > 0)
+    g_free(lookup_ids);
   g_free(have_accounts);
 }
 
@@ -254,14 +915,16 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
 
   GtkTreeModel* model;
   GtkTreeIter iter;
-  const InfAclAccount* account;
-  const InfAclAccount* default_account;
+  gpointer account_id_ptr;
+  InfAclAccountId account_id;
+  InfAclAccountId default_id;
   const InfAclSheetSet* sheet_set;
   const InfAclSheet* sheet;
   InfAclSheet default_sheet;
   InfAclMask show_mask;
   InfAclMask neg_mask;
 
+  InfGtkPermissionsDialogPendingSheet* pending;
   InfBrowserIter test_iter;
 
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
@@ -280,31 +943,49 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
       NULL
     );
 
-    account = NULL;
+    account_id = 0;
   }
   else
   {
-    gtk_tree_model_get(model, &iter, 0, &account, -1);
-    g_assert(account != NULL);
+    gtk_tree_model_get(
+      model,
+      &iter,
+      INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+      &account_id_ptr,
+      -1
+    );
 
-    sheet = NULL;
-    sheet_set = inf_browser_get_acl(priv->browser, &priv->browser_iter);
-    if(sheet_set != NULL)
+    account_id = INF_ACL_ACCOUNT_POINTER_TO_ID(account_id_ptr);
+
+    if(account_id != 0)
     {
-      sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, account);
-      if(sheet != NULL)
+      sheet = NULL;
+      sheet_set = inf_browser_get_acl(priv->browser, &priv->browser_iter);
+      if(sheet_set != NULL)
       {
-        inf_gtk_acl_sheet_view_set_sheet(
-          INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
-          sheet
-        );
+        sheet = inf_acl_sheet_set_find_const_sheet(sheet_set, account_id);
       }
     }
-
-    /* No sheet: set default sheet (all permissions masked out) */
-    if(sheet == NULL)
+    else
     {
-      default_sheet.account = account;
+      /* It is (must be) a pending sheet */
+      pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &iter);
+      g_assert(pending != NULL);
+
+      sheet = &pending->sheet;
+    }
+
+    if(sheet != NULL)
+    {
+      inf_gtk_acl_sheet_view_set_sheet(
+        INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
+        sheet
+      );
+    }
+    else
+    {
+      /* No sheet: set default sheet (all permissions masked out) */
+      default_sheet.account = account_id;
       inf_acl_mask_clear(&default_sheet.mask);
       inf_acl_mask_clear(&default_sheet.perms);
 
@@ -322,11 +1003,9 @@ inf_gtk_permissions_dialog_update_sheet(InfGtkPermissionsDialog* dialog)
   {
     /* This is the root node. Block default column if this is the default
      * account. */
-    default_account =
-      inf_browser_lookup_acl_account(priv->browser, "default");
-    g_assert(default_account != NULL);
+    default_id = inf_acl_account_id_from_string("default");
 
-    if(account == default_account)
+    if(account_id == default_id)
     {
       inf_gtk_acl_sheet_view_set_show_default(
         INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
@@ -400,8 +1079,6 @@ inf_gtk_permissions_dialog_acl_account_added_cb(InfBrowser* browser,
 {
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
-  GtkTreeIter iter;
-  GtkTreePath* path;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
@@ -409,35 +1086,19 @@ inf_gtk_permissions_dialog_acl_account_added_cb(InfBrowser* browser,
   /* Add the new user to the user list. Note that this is also called when
    * the given user was updated, in which case we need to call row_changed,
    * since its name might have changed. */
-  if(priv->show_full_list == TRUE)
-  {  
-    /* Make sure not to fill an account twice */
-    if(inf_gtk_permissions_dialog_find_account(dialog, account, &iter))
-    {
-      path = gtk_tree_model_get_path(
-        GTK_TREE_MODEL(priv->account_store),
-        &iter
-      );
-      
-      gtk_tree_model_row_changed(
-        GTK_TREE_MODEL(priv->account_store),
-        path,
-        &iter
-      );
+  if(account->id != 0 && account->name != NULL && priv->accounts != NULL)
+  {
+    priv->accounts = g_realloc(
+      priv->accounts,
+      (priv->n_accounts + 1) * sizeof(InfAclAccount)
+    );
 
-      gtk_tree_path_free(path);
-    }
-    else
-    {
-      gtk_list_store_insert_with_values(
-        priv->account_store,
-        NULL,
-        -1,
-        0,
-        account,
-        -1
-      );
-    }
+    priv->accounts[priv->n_accounts].id = account->id;
+    priv->accounts[priv->n_accounts].name = g_strdup(account->name);
+    ++priv->n_accounts;
+
+    /* Need to update because the add button sensitivity might change */
+    inf_gtk_permissions_dialog_update(dialog, NULL);
   }
 }
 
@@ -450,26 +1111,46 @@ inf_gtk_permissions_dialog_acl_account_removed_cb(InfBrowser* browser,
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
   gboolean have_account;
-  GtkTreeIter iter;
+  guint i;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
-  if(priv->popup_menu != NULL && account == priv->popup_account)
+  g_assert(account->id != 0);
+
+  if(priv->popup_menu != NULL && account->id == priv->popup_account)
     gtk_menu_popdown(priv->popup_menu);
 
   g_assert(priv->popup_menu == NULL);
-  g_assert(priv->popup_account == NULL);
+  g_assert(priv->popup_account == 0);
 
-  /* The account is not necessarily always in the list, for example if we have
-   * permissions to query the user list but not to query the ACL for the
-   * current node, we might get this callback but not have all accounts in the
-   * list. */
+  /* The account should not be in the list anymore, since all ACL sheets for
+   * this account should have been removed first. */
   have_account =
-    inf_gtk_permissions_dialog_find_account(dialog, account, &iter);
+    inf_gtk_permissions_dialog_find_account(dialog, account->id, NULL);
+  g_assert(have_account == FALSE);
 
-  if(have_account)
-    gtk_list_store_remove(priv->account_store, &iter);
+  /* Update account list */
+  if(priv->accounts != NULL)
+  {
+    for(i = 0; i < priv->n_accounts; ++i)
+    {
+      if(priv->accounts[i].id == account->id)
+      {
+        priv->accounts[i] = priv->accounts[priv->n_accounts - 1];
+        --priv->n_accounts;
+
+        priv->accounts = g_realloc(
+          priv->accounts,
+          sizeof(InfAclAccount) * priv->n_accounts
+        );
+
+        /* Need to update because the add button sensitivity might change */
+        inf_gtk_permissions_dialog_update(dialog, NULL);
+        break;
+      }
+    }
+  }
 }
 
 static void
@@ -492,18 +1173,485 @@ inf_gtk_permissions_dialog_acl_changed_cb(InfBrowser* browser,
 
   /* If the node or one of its ancestors had their ACL changed, update the
    * view, since we might have been granted or revoked rights to see the
-   * user list or the ACL for this node. */
+   * user list or the ACL for this node, or the non-default ACL sheets
+   * have changed. */
   if(inf_browser_is_ancestor(browser, iter, &priv->browser_iter))
     inf_gtk_permissions_dialog_update(dialog, NULL);
 }
 
 static void
-inf_gtk_permissions_dialog_selection_changed_cb(GtkTreeSelection* selection,
-                                                gpointer user_data)
+inf_gtk_permissions_dialog_renderer_editing_started_cb(GtkCellRenderer* r,
+                                                       GtkCellEditable* edit,
+                                                       const gchar* path,
+                                                       gpointer user_data)
+{
+  /* In the editing_canceled signal handler, we need to know the path of the
+   * cell that was edited. However, it does not provide a path parameter.
+   * Therefore, store the path here in the cell renderer.
+   *
+   * Normally, we could simply query the selected row, however the row can
+   * be deselected without the editing actually being cancelled, for example
+   * when focusing another widget. */
+  g_object_set_data_full(
+    G_OBJECT(r),
+    "inf-gtk-permissions-dialog-path",
+    g_strdup(path),
+    g_free
+  );
+}
+
+static void
+inf_gtk_permissions_dialog_renderer_editing_canceled_cb(GtkCellRenderer* r,
+                                                        gpointer user_data)
 {
   InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  gchar* path_str;
+  GtkTreePath* path;
+  GtkTreeIter iter;
+  gboolean has_selected;
+  InfGtkPermissionsDialogPendingSheet* pending;
+
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
-  inf_gtk_permissions_dialog_update_sheet(dialog);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* Remove the editing facility of the cell renderer */
+  g_object_set(
+    G_OBJECT(priv->renderer),
+    "model", NULL,
+    "editable", FALSE,
+    NULL
+  );
+
+  path_str = g_object_steal_data(
+    G_OBJECT(r),
+    "inf-gtk-permissions-dialog-path"
+  );
+
+  /* Remove the pending sheet */
+  path = gtk_tree_path_new_from_string(path_str);
+  g_free(path_str);
+
+  has_selected = gtk_tree_model_get_iter(
+    GTK_TREE_MODEL(priv->account_store),
+    &iter,
+    path
+  );
+
+  g_assert(has_selected == TRUE);
+
+  pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &iter);
+  g_assert(pending != NULL);
+
+  inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+}
+
+static void
+inf_gtk_permissions_dialog_renderer_changed_cb(GtkCellRendererCombo* combo,
+                                               const gchar* path_str,
+                                               GtkTreeIter* combo_iter,
+                                               gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreePath* path;
+  GtkTreeIter view_iter;
+  gboolean has_path;
+  InfGtkPermissionsDialogPendingSheet* pending;
+  GtkTreeModel* model;
+  gpointer id_ptr;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  path = gtk_tree_path_new_from_string(path_str);
+
+  has_path = gtk_tree_model_get_iter(
+    GTK_TREE_MODEL(priv->account_store),
+    &view_iter,
+    path
+  );
+
+  g_assert(has_path);
+  gtk_tree_path_free(path);
+
+  pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &view_iter);
+  g_assert(pending != NULL);
+
+  g_object_get(G_OBJECT(combo), "model", &model, NULL);
+  g_assert(model != NULL);
+
+  gtk_tree_model_get(
+    model,
+    combo_iter,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+    &id_ptr,
+    -1
+  );
+
+  pending->last_combo_changed_id = INF_ACL_ACCOUNT_POINTER_TO_ID(id_ptr);
+  g_object_unref(model);
+}
+
+static void
+inf_gtk_permissions_dialog_renderer_edited_cb(GtkCellRendererCombo* renderer,
+                                              const gchar* path_str,
+                                              const gchar* text,
+                                              gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  gchar* path_str_obj;
+  GtkTreePath* path;
+  gboolean has_path;
+  GtkTreeIter view_iter;
+  InfGtkPermissionsDialogPendingSheet* pending;
+  GtkTreeModel* model;
+  InfRequest* request;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  path_str_obj = g_object_steal_data(
+    G_OBJECT(renderer),
+    "inf-gtk-permissions-dialog-path"
+  );
+
+  g_assert(strcmp(path_str_obj, path_str) == 0);
+  g_free(path_str_obj);
+
+  path = gtk_tree_path_new_from_string(path_str);
+
+  has_path = gtk_tree_model_get_iter(
+    GTK_TREE_MODEL(priv->account_store),
+    &view_iter,
+    path
+  );
+
+  g_assert(has_path);
+  gtk_tree_path_free(path);
+
+  pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &view_iter);
+  g_assert(pending != NULL);
+
+  /* If we selected a user with the combo box, find the corresponding ID */
+  g_object_get(G_OBJECT(renderer), "model", &model, NULL);
+
+  /* Remove the editing facility of the cell renderer */
+  g_object_set(
+    G_OBJECT(priv->renderer),
+    "model", NULL,
+    "editable", FALSE,
+    NULL
+  );
+
+  g_assert(model != NULL);
+
+  if(gtk_tree_model_iter_n_children(model, NULL) > 0)
+  {
+    g_assert(pending->last_combo_changed_id != 0);
+
+    inf_gtk_permissions_dialog_realize_pending_sheet(
+      dialog,
+      pending,
+      pending->last_combo_changed_id,
+      text
+    );
+  }
+  else
+  {
+    /* While we don't have an ID, set a name to show in the list */
+    gtk_list_store_set(
+      priv->account_store,
+      &view_iter,
+      INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+      text,
+      -1
+    );
+
+    /* Make a reverse lookup for the ID */
+    request = inf_browser_lookup_acl_account_by_name(
+      priv->browser,
+      text,
+      inf_gtk_permissions_dialog_lookup_by_name_finished_cb,
+      pending
+    );
+
+    if(request != NULL)
+    {
+      pending->lookup_request = request;
+      g_object_ref(request);
+    }
+  }
+
+  g_object_unref(model);
+}
+
+static void
+inf_gtk_permissions_dialog_add_clicked_cb(GtkButton* button,
+                                          gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeIter new_iter;
+  GtkTreePath* new_path;
+  InfGtkPermissionsDialogPendingSheet* pending;
+
+  GtkListStore* store;
+  const InfAclSheetSet* sheet_set;
+  const InfAclSheet* sheet;
+  guint i;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  /* If we are currently naming another pending sheet, then stop editing
+   * that. */
+  gtk_cell_renderer_stop_editing(priv->renderer, TRUE);
+
+  /* Insert a new entry without values */
+  gtk_list_store_insert_with_values(
+    priv->account_store,
+    &new_iter,
+    -1,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+    0,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    NULL,
+    -1
+  );
+
+  new_path = gtk_tree_model_get_path(
+    GTK_TREE_MODEL(priv->account_store),
+    &new_iter
+  );
+
+  pending = g_slice_new(InfGtkPermissionsDialogPendingSheet);
+
+  pending->dialog = dialog;
+  pending->row = gtk_tree_row_reference_new(
+    GTK_TREE_MODEL(priv->account_store),
+    new_path
+  );
+
+  pending->sheet.account = 0;
+  inf_acl_mask_clear(&pending->sheet.mask);
+  inf_acl_mask_clear(&pending->sheet.perms);
+
+  pending->last_combo_changed_id = 0;
+  pending->lookup_request = NULL;
+
+  priv->pending_sheets = g_slist_prepend(priv->pending_sheets, pending);
+
+  /* Prepare the cell renderer editing */
+  store = gtk_list_store_new(2, G_TYPE_POINTER, G_TYPE_STRING);
+  g_object_set(
+    G_OBJECT(priv->renderer),
+    "model", store,
+    "editable", TRUE,
+    "text-column", INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    NULL
+  );
+
+  /* TODO: If there are more than, say 25 accounts (should be configurable),
+   * then use a free edit instead, and add a GtkEntryCompletion with all the
+   * accounts, and perform a lookup-by-name in our cached list first. */
+  if(priv->accounts != NULL)
+  {
+    /* Create a list of possible accounts */
+    g_object_set(G_OBJECT(priv->renderer), "has-entry", FALSE, NULL);
+    sheet_set = inf_browser_get_acl(priv->browser, &priv->browser_iter);
+
+    for(i = 0; i < priv->n_accounts; ++i)
+    {
+      /* Skip the default user */
+      if(priv->accounts[i].name != NULL)
+      {
+        sheet = inf_acl_sheet_set_find_const_sheet(
+          sheet_set,
+          priv->accounts[i].id
+        );
+
+        if(sheet == NULL)
+        {
+          gtk_list_store_insert_with_values(
+            store,
+            NULL,
+            -1,
+            INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+            priv->accounts[i].id,
+            INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+            priv->accounts[i].name,
+            -1
+          );
+        }
+      }
+    }
+
+    /* Otherwise the add button would not be set to sensitive */
+    g_assert(gtk_tree_model_iter_n_children(GTK_TREE_MODEL(store), NULL) > 0);
+  }
+  else
+  {
+    /* Free editing. Note that we still need to set an (empty) model,
+     * otherwise the editing widget cannot be set by GtkCellRendererCombo.
+     * We could use GtkCellRendererText instead, but then we would need to
+     * juggle around with two cell renderers. */
+    g_object_set(G_OBJECT(priv->renderer), "has-entry", TRUE, NULL);
+  }
+
+  /* Sort the name list */
+  gtk_tree_sortable_set_sort_column_id(
+    GTK_TREE_SORTABLE(store),
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    GTK_SORT_ASCENDING
+  );
+
+  gtk_tree_sortable_set_sort_func(
+    GTK_TREE_SORTABLE(store),
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    inf_gtk_permissions_dialog_account_sort_func,
+    dialog,
+    NULL
+  );
+
+  g_object_unref(store);
+
+  /* Before we present the editing to the user, just select the row. This
+   * runs our signal handler for the selection change, which might remove a
+   * row from the list, which would close down the editing again. */
+  gtk_tree_selection_select_path(
+    gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+    new_path
+  );
+
+  /* Obtain the path from the row reference, in case the list store was
+   * altered by the selection change. */
+  gtk_tree_path_free(new_path);
+  new_path = gtk_tree_row_reference_get_path(pending->row);
+
+  gtk_tree_view_set_cursor(
+    GTK_TREE_VIEW(priv->tree_view),
+    new_path,
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 0),
+    TRUE
+  );
+
+  gtk_tree_path_free(new_path);
+}
+
+static void
+inf_gtk_permissions_dialog_remove_clicked_cb(GtkButton* button,
+                                             gpointer user_data)
+{
+  InfGtkPermissionsDialog* dialog;
+  InfGtkPermissionsDialogPrivate* priv;
+  GtkTreeSelection* selection;
+  GtkTreeIter selected_iter;
+  gpointer selected_id_ptr;
+  InfAclAccountId selected_id;
+  InfGtkPermissionsDialogPendingSheet* pending;
+  const InfAclSheetSet* sheet_set;
+  InfAclSheet set_sheet;
+  InfAclSheetSet set_sheet_set;
+  guint i;
+  InfRequest* request;
+  GtkTreeIter move_iter;
+  gboolean could_move;
+
+  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
+  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+  if(!gtk_tree_selection_get_selected(selection, NULL, &selected_iter))
+    return;
+
+  gtk_tree_model_get(
+    GTK_TREE_MODEL(priv->account_store),
+    &selected_iter,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+    &selected_id_ptr,
+    -1
+  );
+
+  selected_id = INF_ACL_ACCOUNT_POINTER_TO_ID(selected_id_ptr);
+  sheet_set = inf_browser_get_acl(priv->browser, &priv->browser_iter);
+
+  if(selected_id == 0)
+  {
+    /* This is a pending sheet */
+    pending = inf_gtk_permissions_dialog_find_pending_sheet(
+      dialog,
+      &selected_iter
+    );
+
+    g_assert(pending != NULL);
+    inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+  }
+  else if(sheet_set == NULL || sheet_set->n_sheets == 0)
+  {
+    /* It can be that the entry is only kept in the list because it is still
+     * selected, even though the sheet set is empty. In that case, simply
+     * remove the entry from the list. */
+    gtk_list_store_remove(priv->account_store, &selected_iter);
+  }
+  else
+  {
+    /* Mask-out all entries */
+    set_sheet.account = selected_id;
+    inf_acl_mask_clear(&set_sheet.mask);
+    inf_acl_mask_clear(&set_sheet.perms);
+    
+    set_sheet_set.n_sheets = 1;
+    set_sheet_set.own_sheets = NULL;
+    set_sheet_set.sheets = &set_sheet;
+
+    request = inf_browser_set_acl(
+      priv->browser,
+      &priv->browser_iter,
+      &set_sheet_set,
+      inf_gtk_permissions_dialog_set_acl_finished_cb,
+      dialog
+    );
+
+    if(request != NULL)
+    {
+      priv->set_acl_requests =
+        g_slist_prepend(priv->set_acl_requests, request);
+      g_object_ref(request);
+    }
+
+    /* At this point, the ACL might either have been changed instantly or not.
+     * In both cases, the selected item should not have been removed from the
+     * list store, and our iterator is still valid.
+     *
+     * In any case, we need to change the selection to a different item,
+     * otherwise, once the request finishes, the currently selected entry
+     * would not be removed. Note that there must be at least one other item,
+     * because the default entry is always shown and the default entry cannot
+     * be removed. */
+    move_iter = selected_iter;
+    could_move = gtk_tree_model_iter_next(
+      GTK_TREE_MODEL(priv->account_store),
+      &move_iter
+    );
+
+    if(!could_move)
+    {
+      move_iter = selected_iter;
+      could_move = gtk_tree_model_iter_previous(
+        GTK_TREE_MODEL(priv->account_store),
+        &move_iter
+      );
+    }
+
+    g_assert(could_move);
+
+    gtk_tree_selection_select_iter(
+      GTK_TREE_SELECTION(selection),
+      &move_iter
+    );
+  }
 }
 
 static void
@@ -514,7 +1662,7 @@ inf_gtk_permissions_dialog_remove_acl_account_finished_cb(
   gpointer user_data);
 
 static void
-inf_gtk_permissions_dialog_remove_acl_account_request(
+inf_gtk_permissions_dialog_remove_remove_acl_account_request(
   InfGtkPermissionsDialog* dialog,
   InfRequest* request)
 {
@@ -553,7 +1701,10 @@ inf_gtk_permissions_dialog_remove_acl_account_finished_cb(
     g_warning("Failed to remove account: %s\n", error->message);
   }
 
-  inf_gtk_permissions_dialog_remove_acl_account_request(dialog, request);
+  inf_gtk_permissions_dialog_remove_remove_acl_account_request(
+    dialog,
+    request
+  );
 }
 
 static void
@@ -568,7 +1719,7 @@ inf_gtk_permissions_dialog_popup_delete_account_cb(GtkMenuItem* item,
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
   g_assert(priv->popup_menu != NULL);
-  g_assert(priv->popup_account != NULL);
+  g_assert(priv->popup_account != 0);
 
   request = inf_browser_remove_acl_account(
     priv->browser,
@@ -602,8 +1753,11 @@ inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
   InfAclMask perms;
 
   guint n_accounts;
+  InfAclAccountId default_id;
+  const InfAclAccount* local_account;
   const InfAclAccount** accounts;
-  const InfAclAccount* account;
+  gpointer account_id_ptr;
+  InfAclAccountId account_id;
   GtkTreeSelection* selection;
   GtkTreeIter iter;
 
@@ -613,11 +1767,12 @@ inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
   /* Make sure that we have permissions to remove accounts */
   inf_browser_get_root(priv->browser, &root);
   inf_acl_mask_set1(&perms, INF_ACL_CAN_REMOVE_ACCOUNT);
+  local_account = inf_browser_get_acl_local_account(priv->browser);
 
   inf_browser_check_acl(
     priv->browser,
     &root,
-    inf_browser_get_acl_local_account(priv->browser),
+    local_account ? local_account->id : 0,
     &perms,
     &perms
   );
@@ -625,13 +1780,8 @@ inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
   if(!inf_acl_mask_has(&perms, INF_ACL_CAN_REMOVE_ACCOUNT))
     return FALSE;
 
-  /* Make sure we have the account list queried */
-  accounts = inf_browser_get_acl_account_list(priv->browser, &n_accounts);
-  if(!accounts)
-    return FALSE;
-  g_free(accounts);
-
-  /* Make sure the selected account is not the default account */
+  /* Make sure the selected account is not the default account or a
+   * pending account. */
   selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
   if(!gtk_tree_selection_get_selected(selection, NULL, &iter))
     return FALSE;
@@ -639,11 +1789,15 @@ inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
   gtk_tree_model_get(
     GTK_TREE_MODEL(priv->account_store),
     &iter,
-    0, &account,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+    &account_id_ptr,
     -1
   );
 
-  if(strcmp(account->id, "default") == 0)
+  account_id = INF_ACL_ACCOUNT_POINTER_TO_ID(account_id_ptr);
+
+  default_id = inf_acl_account_id_from_string("default");
+  if(account_id == 0 || account_id == default_id)
     return FALSE;
  
   /* Then, show a menu item to remove an account. */
@@ -667,7 +1821,7 @@ inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
   /* TODO: These two items need to be added for popdown and stuff,
    * popup_menu needs to be maintained and tracked. */
   priv->popup_menu = menu;
-  priv->popup_account = account;
+  priv->popup_account = INF_ACL_ACCOUNT_POINTER_TO_ID(account_id);
 
   return TRUE;
 }
@@ -777,7 +1931,7 @@ inf_gtk_permissions_dialog_popup_selection_done_cb(GtkMenu* menu,
   g_assert(priv->popup_menu != NULL);
   
   priv->popup_menu = NULL;
-  priv->popup_account = NULL;
+  priv->popup_account = 0;
 }
 
 static gboolean
@@ -909,58 +2063,6 @@ inf_gtk_permissions_dialog_key_press_event_cb(GtkWidget* treeview,
   return FALSE;
 }
 
-static int
-inf_gtk_permissions_dialog_account_sort_func(GtkTreeModel* model,
-                                             GtkTreeIter* a,
-                                             GtkTreeIter* b,
-                                             gpointer user_data)
-{
-  InfGtkPermissionsDialog* dialog;
-  InfGtkPermissionsDialogPrivate* priv;
-
-  const InfAclAccount* account_a;
-  const InfAclAccount* account_b;
-  const InfAclAccount* default_account;
-
-  dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
-  priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
-
-  gtk_tree_model_get(model, a, 0, &account_a, -1);
-  gtk_tree_model_get(model, b, 0, &account_b, -1);
-
-  /* default sorts before anything */
-  default_account = inf_browser_lookup_acl_account(priv->browser, "default");
-  if(account_a == default_account)
-  {
-    if(account_b == default_account)
-      return 0;
-    else
-      return 1;
-  }
-  else if(account_b == default_account)
-  {
-    return -1;
-  }
-  else
-  {
-    /* Next, accounts with user name sort before accounts without */
-    if(account_a->name == NULL)
-    {
-      if(account_b->name == NULL)
-        return g_utf8_collate(account_b->id, account_a->id);
-      else
-        return -1;
-    }
-    else
-    {
-      if(account_b->name == NULL)
-        return 1;
-      else
-        return g_utf8_collate(account_b->name, account_a->name);
-    }
-  }
-}
-
 static void
 inf_gtk_permissions_dialog_name_data_func(GtkTreeViewColumn* column,
                                           GtkCellRenderer* cell,
@@ -968,21 +2070,49 @@ inf_gtk_permissions_dialog_name_data_func(GtkTreeViewColumn* column,
                                           GtkTreeIter* iter,
                                           gpointer user_data)
 {
-  const InfAclAccount* account;
+  gpointer account_id_ptr;
+  InfAclAccountId account_id;
+  const gchar* account_id_str;
+  InfAclAccountId default_id;
+  gchar* account_name;
   gchar* str;
 
-  gtk_tree_model_get(model, iter, 0, &account, -1);
+  gtk_tree_model_get(
+    model,
+    iter,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID, &account_id_ptr,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME, &account_name,
+    -1
+  );
 
-  if(account->name != NULL)
+  account_id = INF_ACL_ACCOUNT_POINTER_TO_ID(account_id_ptr);
+  account_id_str = inf_acl_account_id_to_string(account_id);
+
+  if(account_name != NULL)
   {
-    g_object_set(G_OBJECT(cell), "text", account->name, NULL);
+    g_object_set(G_OBJECT(cell), "text", account_name, NULL);
   }
-  else
+  else if(account_id_str != NULL)
   {
-    str = g_strdup_printf("<%s>", account->id);
+    str = g_strdup_printf("<%s>", account_id_str);
     g_object_set(G_OBJECT(cell), "text", str, NULL);
     g_free(str);
   }
+  else
+  {
+    g_object_set(G_OBJECT(cell), "text", "", NULL);
+  }
+
+  /* Set red foreground color if either ID or name is missing, meaning we are
+   * still looking them up, or that some information is denied from us by
+   * the server. */
+  default_id = inf_acl_account_id_from_string("default");
+  if( (account_id == 0 || account_name == NULL) && account_id != default_id)
+    g_object_set(G_OBJECT(cell), "foreground", "red", NULL);
+  else
+    g_object_set(G_OBJECT(cell), "foreground-set", FALSE, NULL);
+
+  g_free(account_name);
 }
 
 static void
@@ -994,12 +2124,45 @@ inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
 {
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
+  const InfAclAccount* accounts;
+  guint n_accounts;
+  guint i;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
   priv->query_acl_account_list_request = NULL;
-  inf_gtk_permissions_dialog_update(dialog, error);
+
+  if(error != NULL)
+  {
+    g_warning("Error while querying account list: %s\n", error->message);
+  }
+  else
+  {
+    inf_request_result_get_query_acl_account_list(
+      res,
+      NULL,
+      &accounts,
+      &n_accounts,
+      NULL
+    );
+
+    for(i = 0; i < priv->n_accounts; ++i)
+      g_free(priv->accounts[i].name);
+
+    priv->accounts = g_realloc(
+      priv->accounts,
+      n_accounts * sizeof(InfAclAccount)
+    );
+
+    for(i = 0; i < n_accounts; ++i)
+    {
+      priv->accounts[i].id = accounts[i].id;
+      priv->accounts[i].name = g_strdup(accounts[i].name);
+    }
+
+    priv->n_accounts = n_accounts;
+  }
 }
 
 static void
@@ -1028,13 +2191,22 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
 
   InfAclMask perms;
 
-  const InfAclAccount** accounts;
-  const InfAclAccount* custom_accounts[2];
-  guint n_accounts;
-
+  GArray* accounts;
+  const InfAclAccount* local_account;
   const InfAclSheetSet* sheet_set;
-  gboolean have_full_acl;
-  guint n_children;
+  gboolean has_default;
+  InfAclAccountId default_id;
+  guint i;
+
+  GtkTreeSelection* selection;
+  GtkTreeIter selected_iter;
+  gpointer selected_id_ptr;
+  GtkTreePath* selected_path;
+  InfAclAccountId selected_id;
+  gboolean has_selected;
+  GSList* item;
+  InfGtkPermissionsDialogPendingSheet* pending;
+  GtkTreePath* pending_path;
 
   const gchar* query_acl_str;
   const gchar* set_acl_str;
@@ -1068,22 +2240,22 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   inf_acl_mask_set1(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
   inf_acl_mask_or1(&perms, INF_ACL_CAN_QUERY_ACL);
   inf_acl_mask_or1(&perms, INF_ACL_CAN_SET_ACL);
+  local_account = inf_browser_get_acl_local_account(priv->browser);
 
   inf_browser_check_acl(
     priv->browser,
     &priv->browser_iter,
-    inf_browser_get_acl_local_account(priv->browser),
+    local_account ? local_account->id : 0,
     &perms,
     &perms
   );
 
-  /* Request account list and ACL */
-  have_full_acl = FALSE;
-  accounts = inf_browser_get_acl_account_list(priv->browser, &n_accounts);
-  if(accounts == NULL)
+  /* Request account list */
+  if(priv->query_acl_account_list_request == NULL &&
+     priv->account_list_queried == FALSE)
   {
     if(inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST) &&
-       priv->query_acl_account_list_request == NULL && error == NULL)
+       inf_acl_mask_has(&perms, INF_ACL_CAN_SET_ACL))
     {
       priv->query_acl_account_list_request = inf_browser_get_pending_request(
         priv->browser,
@@ -1113,90 +2285,128 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       }
     }
   }
-  else
-  {
-    if(!inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
-    {
-      if(inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACL) &&
-         priv->query_acl_request == NULL && error == NULL)
-      {
-        priv->query_acl_request = inf_browser_get_pending_request(
-          priv->browser,
-          &priv->browser_iter,
-          "query-acl"
-        );
 
-        if(priv->query_acl_request == NULL)
-        {
-          priv->query_acl_request = inf_browser_query_acl(
-            priv->browser,
-            &priv->browser_iter,
-            inf_gtk_permissions_dialog_query_acl_finished_cb,
-            dialog
-          );
-        }
-        else
-        {
-          g_signal_connect(
-            G_OBJECT(priv->query_acl_request),
-            "finished",
-            G_CALLBACK(inf_gtk_permissions_dialog_query_acl_finished_cb),
-            dialog
-          );
-        }
-      }
-    }
-    else
-    {
-      have_full_acl = TRUE;
-    }
-  }
-
-  /* Fill the account list widget */
-  if(have_full_acl == TRUE)
+  /* Request ACL */
+  if(!inf_browser_has_acl(priv->browser, &priv->browser_iter, 0))
   {
-    if(priv->show_full_list == FALSE)
+    if(inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACL) &&
+       priv->query_acl_request == NULL && error == NULL)
     {
-      inf_gtk_permissions_dialog_fill_account_list(
-        dialog,
-        accounts,
-        n_accounts
+      priv->query_acl_request = inf_browser_get_pending_request(
+        priv->browser,
+        &priv->browser_iter,
+        "query-acl"
       );
 
-      priv->show_full_list = TRUE;
+      if(priv->query_acl_request == NULL)
+      {
+        priv->query_acl_request = inf_browser_query_acl(
+          priv->browser,
+          &priv->browser_iter,
+          inf_gtk_permissions_dialog_query_acl_finished_cb,
+          dialog
+        );
+      }
+      else
+      {
+        g_signal_connect(
+          G_OBJECT(priv->query_acl_request),
+          "finished",
+          G_CALLBACK(inf_gtk_permissions_dialog_query_acl_finished_cb),
+          dialog
+        );
+      }
     }
   }
-  else
+
+  /* Fill the account list widget. If an account is currently selected,
+   * keep it there until the selection changes, even if does not show
+   * up in the ACL sheet (anymore). */
+  accounts = g_array_new(FALSE, FALSE, sizeof(InfAclAccountId));
+  sheet_set = inf_browser_get_acl(priv->browser, &priv->browser_iter);
+  default_id = inf_acl_account_id_from_string("default");
+
+  selected_id = 0;
+  selected_path = NULL;
+  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+  if(gtk_tree_selection_get_selected(selection, NULL, &selected_iter))
   {
-    priv->show_full_list = FALSE;
+    gtk_tree_model_get(
+      GTK_TREE_MODEL(priv->account_store),
+      &selected_iter,
+      INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID,
+      &selected_id_ptr,
+      -1
+    );
 
-    custom_accounts[0] =
-      inf_browser_lookup_acl_account(priv->browser, "default");
-    custom_accounts[1] =
-      inf_browser_get_acl_local_account(priv->browser);
+    selected_id = INF_ACL_ACCOUNT_POINTER_TO_ID(selected_id_ptr);
 
-    if(custom_accounts[1] != NULL && custom_accounts[1] != custom_accounts[0])
-      n_accounts = 2;
-    else
-      n_accounts = 1;
-
-    inf_gtk_permissions_dialog_fill_account_list(
-      dialog,
-      custom_accounts,
-      n_accounts
+    selected_path = gtk_tree_model_get_path(
+      GTK_TREE_MODEL(priv->account_store),
+      &selected_iter
     );
   }
 
-  g_free(accounts);
+  has_default = FALSE;
+  has_selected = FALSE;
+  if(sheet_set != NULL)
+  {
+    for(i = 0; i < sheet_set->n_sheets; ++i)
+    {
+      g_array_append_val(accounts, sheet_set->sheets[i].account);
+      if(sheet_set->sheets[i].account == default_id)
+        has_default = TRUE;
+      if(sheet_set->sheets[i].account == selected_id)
+        has_selected = TRUE;
+    }
+  }
+
+  if(has_default == FALSE)
+    g_array_append_val(accounts, default_id);
+  if(selected_id != 0 && selected_id != default_id && has_selected == FALSE)
+    g_array_append_val(accounts, selected_id);
+
+  inf_gtk_permissions_dialog_fill_account_list(
+    dialog,
+    (InfAclAccountId*)accounts->data,
+    accounts->len
+  );
+
+  /* Remove all non-selected pending sheets that have an empty mask */
+  for(item = priv->pending_sheets; item != NULL; item = item->next)
+  {
+    pending = (InfGtkPermissionsDialogPendingSheet*)item->data;
+    if(inf_acl_mask_empty(&pending->sheet.mask))
+    {
+      pending_path = gtk_tree_row_reference_get_path(pending->row);
+      g_assert(pending_path != NULL);
+
+      if(selected_path == NULL ||
+         gtk_tree_path_compare(pending_path, selected_path) != 0)
+      {
+        gtk_tree_path_free(pending_path);
+        inf_gtk_permissions_dialog_remove_pending_sheet(dialog, pending);
+        break;
+      }
+
+      gtk_tree_path_free(pending_path);
+    }
+  }
+  
+  if(selected_path != NULL)
+    gtk_tree_path_free(selected_path);
 
   /* Set editability of the sheet view */
   if(!inf_acl_mask_has(&perms, INF_ACL_CAN_SET_ACL) ||
-     !inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
+     !inf_browser_has_acl(priv->browser, &priv->browser_iter, 0))
   {
     inf_gtk_acl_sheet_view_set_editable(
       INF_GTK_ACL_SHEET_VIEW(priv->sheet_view),
       FALSE
     );
+
+    gtk_widget_set_sensitive(priv->add_button, FALSE);
+    gtk_widget_set_sensitive(priv->remove_button, FALSE);
 
     gtk_image_set_from_stock(
       GTK_IMAGE(priv->status_image),
@@ -1213,6 +2423,21 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       TRUE
     );
 
+    /* Set add button to sensitive if:
+     * we don't have user list OR
+     * we have user list and not all users exist already in the sheet */
+    if(priv->accounts == NULL || accounts->len < priv->n_accounts)
+      gtk_widget_set_sensitive(priv->add_button, TRUE);
+    else
+      gtk_widget_set_sensitive(priv->add_button, FALSE);
+
+    /* Set remove button to sensitive if something other than the
+     * default account is selected. */
+    if(selected_id != default_id)
+      gtk_widget_set_sensitive(priv->remove_button, TRUE);
+    else
+      gtk_widget_set_sensitive(priv->remove_button, FALSE);
+
     gtk_image_set_from_stock(
       GTK_IMAGE(priv->status_image),
       GTK_STOCK_YES,
@@ -1221,6 +2446,8 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
 
     set_acl_str = _("Permission is <b>granted</b> to modify the permission list.");
   }
+
+  g_array_free(accounts, TRUE);
 
   /* Update status text */
   error_str = NULL;
@@ -1233,23 +2460,13 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
 
     query_acl_str = error_str;
   }
-  else if(priv->query_acl_account_list_request != NULL)
-  {
-    query_acl_str = _("Querying the account list from the server...");
-  }
   else if(priv->query_acl_request != NULL)
   {
-    query_acl_str = _("Querying current permissions for this node from the server...");
-  }
-  else if(!inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACCOUNT_LIST) &&
-          accounts == NULL)
-  {
-    query_acl_str = _("Permission is <b>not granted</b> to query the "
-                      "account list from the server. Showing only default "
-                      "permissions and permissions for the own account.");
+    query_acl_str = _("Querying current permissions for "
+                      "this node from the server...");
   }
   else if(!inf_acl_mask_has(&perms, INF_ACL_CAN_QUERY_ACL) &&
-          !inf_browser_has_acl(priv->browser, &priv->browser_iter, NULL))
+          !inf_browser_has_acl(priv->browser, &priv->browser_iter, 0))
   {
     query_acl_str = _("Permission is <b>not granted</b> to query the "
                       "permission list for this node from the server. "
@@ -1351,12 +2568,13 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
   GtkTreeViewColumn* column;
-  GtkCellRenderer* renderer;
   GtkTreeSelection* selection;
   GtkWidget* scroll;
   GtkWidget* hbox;
+  GtkWidget* buttons_hbox;
   GtkWidget* status_hbox;
   GtkWidget* vbox;
+  GtkWidget* account_list_vbox;
 
   GtkWidget* image;
   GtkWidget* image_hbox;
@@ -1366,46 +2584,79 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   dialog = INF_GTK_PERMISSIONS_DIALOG(instance);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
-  /* Do not use INF_TYPE_ACL_USER type, to avoid making a copy of the
-   * InfAclUser object. */
-  priv->account_store = gtk_list_store_new(1, G_TYPE_POINTER);
-  priv->show_full_list = FALSE;
+  /* The pointer is the account ID with INF_ACL_ACCOUNT_ID_TO_POINTER */
+  priv->account_store = gtk_list_store_new(2, G_TYPE_POINTER, G_TYPE_STRING);
 
   gtk_tree_sortable_set_sort_column_id(
     GTK_TREE_SORTABLE(priv->account_store),
-    0,
-    GTK_SORT_DESCENDING
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    GTK_SORT_ASCENDING
   );
 
   gtk_tree_sortable_set_sort_func(
     GTK_TREE_SORTABLE(priv->account_store),
-    0,
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
     inf_gtk_permissions_dialog_account_sort_func,
     dialog,
     NULL
   );
 
   priv->query_acl_account_list_request = NULL;
+  priv->account_list_queried = FALSE;
+  priv->accounts = NULL;
+  priv->n_accounts = 0;
+
   priv->query_acl_request = NULL;
   priv->set_acl_requests = NULL;
   priv->remove_acl_account_requests = NULL;
+  priv->lookup_acl_account_requests = NULL;
+
+  priv->pending_sheets = NULL;
 
   priv->popup_menu = NULL;
-  priv->popup_account = NULL;
+  priv->popup_account = 0;
 
   column = gtk_tree_view_column_new();
   gtk_tree_view_column_set_title(column, _("Accounts"));
   gtk_tree_view_column_set_spacing(column, 6);
 
-  renderer = gtk_cell_renderer_text_new();
-  gtk_tree_view_column_pack_start(column, renderer, FALSE);
+  priv->renderer = gtk_cell_renderer_combo_new();
+  gtk_tree_view_column_pack_start(column, priv->renderer, FALSE);
 
   gtk_tree_view_column_set_cell_data_func(
     column,
-    renderer,
+    priv->renderer,
     inf_gtk_permissions_dialog_name_data_func,
     NULL,
     NULL
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->renderer),
+    "editing-started",
+    G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_started_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->renderer),
+    "editing-canceled",
+    G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_canceled_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->renderer),
+    "edited",
+    G_CALLBACK(inf_gtk_permissions_dialog_renderer_edited_cb),
+    dialog
+  );
+
+  g_signal_connect(
+    G_OBJECT(priv->renderer),
+    "changed",
+    G_CALLBACK(inf_gtk_permissions_dialog_renderer_changed_cb),
+    dialog
   );
 
   priv->tree_view =
@@ -1455,6 +2706,75 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_container_add(GTK_CONTAINER(scroll), priv->tree_view);
   gtk_widget_show(scroll);
 
+  image = gtk_image_new_from_stock(GTK_STOCK_ADD, GTK_ICON_SIZE_BUTTON);
+  gtk_widget_show(image);
+
+  priv->add_button = gtk_button_new();
+  gtk_container_add(GTK_CONTAINER(priv->add_button), image);
+
+  g_signal_connect(
+    G_OBJECT(priv->add_button),
+    "clicked",
+    G_CALLBACK(inf_gtk_permissions_dialog_add_clicked_cb),
+    dialog
+  );
+
+  gtk_widget_show(priv->add_button);
+
+  image = gtk_image_new_from_stock(GTK_STOCK_REMOVE, GTK_ICON_SIZE_BUTTON);
+  gtk_widget_show(image);
+
+  priv->remove_button = gtk_button_new();
+  gtk_container_add(GTK_CONTAINER(priv->remove_button), image);
+
+  g_signal_connect(
+    G_OBJECT(priv->remove_button),
+    "clicked",
+    G_CALLBACK(inf_gtk_permissions_dialog_remove_clicked_cb),
+    dialog
+  );
+
+  gtk_widget_show(priv->remove_button);
+
+  buttons_hbox = gtk_hbox_new(FALSE, 12);
+
+  gtk_box_pack_start(
+    GTK_BOX(buttons_hbox),
+    priv->add_button,
+    FALSE,
+    FALSE,
+    0
+  );
+
+  gtk_box_pack_start(
+    GTK_BOX(buttons_hbox),
+    priv->remove_button,
+    FALSE,
+    FALSE,
+    0
+  );
+
+  gtk_widget_show(buttons_hbox);
+  account_list_vbox = gtk_vbox_new(FALSE, 12);
+
+  gtk_box_pack_start(
+    GTK_BOX(account_list_vbox),
+    scroll,
+    TRUE,
+    TRUE,
+    0
+  );
+
+  gtk_box_pack_start(
+    GTK_BOX(account_list_vbox),
+    buttons_hbox,
+    FALSE,
+    FALSE,
+    0
+  );
+
+  gtk_widget_show(account_list_vbox);
+
   priv->sheet_view = inf_gtk_acl_sheet_view_new();
 
   g_signal_connect(
@@ -1467,7 +2787,7 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_widget_show(priv->sheet_view);
 
   hbox = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(hbox), scroll, FALSE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(hbox), account_list_vbox, FALSE, TRUE, 0);
   gtk_box_pack_start(GTK_BOX(hbox), priv->sheet_view, TRUE, TRUE, 0);
   gtk_widget_show(hbox);
 
@@ -1529,7 +2849,8 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_box_pack_start(GTK_BOX(dialog_vbox), image_hbox, FALSE, FALSE, 0);
 
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
-  gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
+  gtk_window_set_resizable(GTK_WINDOW(dialog), TRUE);
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 640, 480);
 }
 
 static GObject*
@@ -1565,11 +2886,24 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
   dialog = INF_GTK_PERMISSIONS_DIALOG(object);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
+  if(priv->renderer != NULL)
+  {
+    gtk_cell_renderer_stop_editing(GTK_CELL_RENDERER(priv->renderer), TRUE);
+  }
+
   while(priv->remove_acl_account_requests != NULL)
   {
-    inf_gtk_permissions_dialog_remove_acl_account_request(
+    inf_gtk_permissions_dialog_remove_remove_acl_account_request(
       dialog,
       priv->remove_acl_account_requests->data
+    );
+  }
+
+  while(priv->lookup_acl_account_requests != NULL)
+  {
+    inf_gtk_permissions_dialog_remove_lookup_acl_accounts_request(
+      dialog,
+      priv->lookup_acl_account_requests->data
     );
   }
 
@@ -1578,10 +2912,27 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
     inf_gtk_permissions_dialog_set_node(dialog, NULL, NULL);
   }
 
+  g_assert(priv->set_acl_requests == NULL);
+  g_assert(priv->pending_sheets == NULL);
+
   if(priv->account_store != NULL)
   {
     g_object_unref(priv->account_store);
     priv->account_store = NULL;
+  }
+
+  /* During parent disposure, this callback might be called, leading to a
+   * crash since we have already disposed of all our resources, therefore
+   * explicitly disconnect here. */
+  if(priv->sheet_view != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->sheet_view),
+      G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
+      dialog
+    );
+
+    priv->sheet_view = NULL;
   }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -1593,9 +2944,14 @@ inf_gtk_permissions_dialog_finalize(GObject* object)
 {
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
+  guint i;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(object);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
+
+  for(i = 0; i < priv->n_accounts; ++i)
+    g_free(priv->accounts[i].name);
+  g_free(priv->accounts);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -1805,6 +3161,7 @@ inf_gtk_permissions_dialog_set_node(InfGtkPermissionsDialog* dialog,
 {
   InfGtkPermissionsDialogPrivate* priv;
   GSList* item;
+  guint i;
 
   g_return_if_fail(INF_GTK_IS_PERMISSIONS_DIALOG(dialog));
   g_return_if_fail(browser == NULL || INF_IS_BROWSER(browser));
@@ -1854,10 +3211,40 @@ inf_gtk_permissions_dialog_set_node(InfGtkPermissionsDialog* dialog,
 
     g_slist_free(priv->set_acl_requests);
     priv->set_acl_requests = NULL;
+
+    while(priv->pending_sheets != NULL)
+    {
+      inf_gtk_permissions_dialog_remove_pending_sheet(
+        dialog,
+        priv->pending_sheets->data
+      );
+    }
   }
 
+  for(i = 0; i < priv->n_accounts; ++i)
+    g_free(priv->accounts[i].name);
+  g_free(priv->accounts);
+  priv->accounts = NULL;
+  priv->n_accounts = 0;
+
+  /* While clearing the list store, block the selection changed callback of
+   * the treeview, otherwise it would cause
+   * inf_gtk_permissions_dialog_update() to be called, which would fill the
+   * tree view again while it is being cleared. We issue one update at the
+   * end of the node change. */
+  inf_signal_handlers_block_by_func(
+    gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+    G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+    dialog
+  );
+
   gtk_list_store_clear(priv->account_store);
-  priv->show_full_list = FALSE;
+
+  inf_signal_handlers_unblock_by_func(
+    gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+    G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+    dialog
+  );
 
   if(priv->browser != browser)
   {

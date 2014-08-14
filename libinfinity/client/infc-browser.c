@@ -61,11 +61,18 @@ typedef enum _InfcBrowserNodeType {
   INFC_BROWSER_NODE_NOTE_UNKNOWN = 1 << 2
 } InfcBrowserNodeType;
 
-typedef struct _InfcBrowserGetAclAccountListData
-  InfcBrowserGetAclAccountListData;
-struct _InfcBrowserGetAclAccountListData {
-  const InfAclAccount** accounts;
+typedef struct _InfcBrowserMakeAclAccountListData
+  InfcBrowserMakeAclAccountListData;
+struct _InfcBrowserMakeAclAccountListData {
+  InfAclAccount* accounts;
   guint index;
+};
+
+typedef struct _InfcBrowserLookupAclAccountByByNameData
+  InfcBrowserLookupAclAccountByByNameData;
+struct _InfcBrowserLookupAclAccountByByNameData {
+  const gchar* name;
+  GArray* accounts;
 };
 
 typedef struct _InfcBrowserListPendingRequestsForeachData
@@ -183,6 +190,12 @@ struct _InfcBrowserSubreq {
   } shared;
 };
 
+typedef enum _InfcBrowserAccountListStatus {
+  INFC_BROWSER_ACCOUNT_LIST_NOT_QUERIED,
+  INFC_BROWSER_ACCOUNT_LIST_NO_NOTIFICATIONS,
+  INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS
+} InfcBrowserAccountListStatus;
+
 typedef struct _InfcBrowserPrivate InfcBrowserPrivate;
 struct _InfcBrowserPrivate {
   InfIo* io;
@@ -202,7 +215,7 @@ struct _InfcBrowserPrivate {
 
   GHashTable* accounts; /* known accounts, id -> InfAclAccount* */
   const InfAclAccount* local_account;
-  gboolean account_list_queried;
+  InfcBrowserAccountListStatus account_list_status;
 
   GSList* sync_ins;
   GSList* subscription_requests;
@@ -260,29 +273,64 @@ static GObjectClass* parent_class;
 static GQuark infc_browser_session_proxy_quark;
 static GQuark infc_browser_sync_in_session_quark;
 static GQuark infc_browser_sync_in_plugin_quark;
+static GQuark infc_browser_lookup_acl_accounts_ids_quark;
+static GQuark infc_browser_lookup_acl_accounts_n_ids_quark;
+static GQuark infc_browser_lookup_acl_accounts_name_quark;
 
 /*
  * Callbacks
  */
 
 static void
-infc_browser_get_acl_account_list_foreach_func(gpointer key,
-                                               gpointer value,
-                                               gpointer user_data)
+infc_browser_make_acl_account_list_foreach_func(gpointer key,
+                                                gpointer value,
+                                                gpointer user_data)
 {
-  InfcBrowserGetAclAccountListData* data;
-  data = (InfcBrowserGetAclAccountListData*)user_data;
+  InfcBrowserMakeAclAccountListData* data;
+  data = (InfcBrowserMakeAclAccountListData*)user_data;
 
-  data->accounts[data->index++] = (const InfAclAccount*)value;
+  data->accounts[data->index++] = *(const InfAclAccount*)value;
 }
 
-static const InfAclAccount*
-infc_browser_acl_account_lookup_func(const gchar* id,
-                                     gpointer user_data)
+static void
+infc_browser_browser_lookup_acl_account_by_name_find_func(gpointer key,
+                                                          gpointer value,
+                                                          gpointer user_data)
 {
-  GHashTable* account_table;
-  account_table = (GHashTable*)user_data;
-  return (InfAclAccount*)g_hash_table_lookup(account_table, id);
+  const InfcBrowserLookupAclAccountByByNameData* data;
+  const InfAclAccount* acc;
+
+  data = (InfcBrowserLookupAclAccountByByNameData*)user_data;
+  acc = (const InfAclAccount*)value;
+
+  if(acc->name != NULL)
+   if(strcmp(acc->name, data->name) == 0)
+     g_array_append_val(data->accounts, *acc);
+}
+
+InfAclAccount*
+infc_browser_make_acl_account_list(InfcBrowser* browser,
+                                   guint* n_accounts)
+{
+  InfcBrowserPrivate* priv;
+  InfcBrowserMakeAclAccountListData data;
+  guint n;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+  n = g_hash_table_size(priv->accounts);
+
+  data.index = 0;
+  data.accounts = g_malloc(sizeof(InfAclAccount) * n);
+
+  g_hash_table_foreach(
+    priv->accounts,
+    infc_browser_make_acl_account_list_foreach_func,
+    &data
+  );
+
+  g_assert(data.index == n);
+  if(n_accounts != NULL) *n_accounts = n;
+  return data.accounts;
 }
 
 static void
@@ -820,7 +868,7 @@ infc_browser_node_free(InfcBrowser* browser,
 
 static void
 infc_browser_remove_acl_sheet_from_sheet_set(InfAclSheetSet* sheet_set,
-                                             const InfAclAccount* account)
+                                             InfAclAccountId account)
 {
   InfAclSheet* sheet;
 
@@ -835,7 +883,7 @@ infc_browser_remove_acl_sheet_from_sheet_set(InfAclSheetSet* sheet_set,
 static void
 infc_browser_remove_account_from_sheets(InfcBrowser* browser,
                                         InfcBrowserNode* node,
-                                        const InfAclAccount* account)
+                                        InfAclAccountId account)
 {
   InfcBrowserNode* child;
   InfAclSheet* sheet;
@@ -890,14 +938,14 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
   InfcBrowserPrivate* priv;
   InfBrowser* ibrowser;
   InfBrowserIter iter;
-  const InfAclAccount* account;
+  InfAclAccountId account;
   InfAclMask mask;
   InfcRequest* req;
   GError* error;
   InfcBrowserNode* child;
   GSList* item;
   InfcBrowserSubreq* subreq;
-  const InfAclAccount* default_account;
+  InfAclAccountId default_id;
   InfAclSheetSet* sheet_set;
   InfAclSheet* sheet;
   InfAclSheet* added_sheet;
@@ -906,7 +954,7 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
   ibrowser = INF_BROWSER(browser);
   iter.node = node;
   iter.node_id = node->id;
-  account = priv->local_account;
+  account = priv->local_account->id;
 
   g_assert(new_sheet == NULL || new_sheet->account == account);
 
@@ -1065,15 +1113,15 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
     else
       sheet_set = inf_acl_sheet_set_new();
 
-    default_account = g_hash_table_lookup(priv->accounts, "default");
-    g_assert(default_account != NULL);
+    default_id = inf_acl_account_id_from_string("default");
 
-    sheet = inf_acl_sheet_set_find_sheet(sheet_set, default_account);
+    sheet = inf_acl_sheet_set_find_sheet(sheet_set, default_id);
     if(sheet != NULL) inf_acl_sheet_set_remove_sheet(sheet_set, sheet);
 
-    if(priv->local_account != default_account)
+    if(priv->local_account->id != default_id)
     {
-      sheet = inf_acl_sheet_set_find_sheet(sheet_set, priv->local_account);
+      sheet =
+        inf_acl_sheet_set_find_sheet(sheet_set, priv->local_account->id);
 
       if(sheet != NULL)
       {
@@ -1156,31 +1204,26 @@ infc_browser_enforce_acl(InfcBrowser* browser,
   InfBrowserIter iter;
   InfAclMask mask;
   const InfAclSheet* sheet;
-
-  GList* keys;
-  GList* item;
-  const InfAclAccount* account;
-  const InfAclAccount* default_account;
-  InfAclAccount* rem_account;
+  InfAclAccountId account;
 
   ibrowser = INF_BROWSER(browser);
   priv = INFC_BROWSER_PRIVATE(browser);
 
   /* First, check whether the account_list_queried flag needs to be reset
-   * because we lost the can-query-account-list permission. If yes, update
-   * our state so that inf_browser_get_acl_account_list() returns the
-   * updated value for all callbacks we are doing in the course of the
-   * enforcement procedure. */
-  if(node == priv->root && priv->account_list_queried)
+   * because we lost the can-query-account-list permission. Technically we
+   * still have the account list queried, but we do not receive notifications
+   * anymore from the server if this permission has been revoked. */
+  if(node == priv->root &&
+     priv->account_list_status == INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS)
   {
     iter.node = node;
     iter.node_id = node->id;
     inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
-    account = priv->local_account;
+    account = priv->local_account->id;
 
     if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == FALSE)
     {
-      priv->account_list_queried = FALSE;
+      priv->account_list_status = INFC_BROWSER_ACCOUNT_LIST_NO_NOTIFICATIONS;
     }
   }
 
@@ -1200,35 +1243,9 @@ infc_browser_enforce_acl(InfcBrowser* browser,
     }
   }
 
-  /* Finally, remove ACL accounts, if account-list-query permission was
-   * removed. */
-  if(priv->account_list_queried == FALSE)
-  {
-    default_account = g_hash_table_lookup(priv->accounts, "default");
-    g_assert(default_account != NULL);
-
-    /* In infd_directory_enforce_single_acl(), we made sure that the ACL
-     * accounts to be removed are no longer in use. */
-    keys = g_hash_table_get_keys(priv->accounts);
-    for(item = keys; item != NULL; item = g_list_next(item))
-    {
-      rem_account = g_hash_table_lookup(priv->accounts, item->data);
-      if(rem_account != default_account && rem_account != priv->local_account)
-      {
-        g_hash_table_steal(priv->accounts, item->data);
-
-        inf_browser_acl_account_removed(
-          ibrowser,
-          rem_account,
-          INF_REQUEST(request)
-        );
-
-        inf_acl_account_free(rem_account);
-      }
-    }
-
-    g_list_free(keys);
-  }
+  /* Note that even if are no longer allowed to query the account list, we
+   * can still keep around our cache of accounts, it just will not be updated
+   * anymore from now on. */
 }
 
 /*
@@ -1469,7 +1486,7 @@ infc_browser_disconnected(InfcBrowser* browser)
     priv->root = NULL;
   }
 
-  priv->account_list_queried = FALSE;
+  priv->account_list_status = INFC_BROWSER_ACCOUNT_LIST_NOT_QUERIED;
   priv->local_account = NULL;
 
   if(priv->accounts != NULL)
@@ -1659,7 +1676,7 @@ infc_browser_init(GTypeInstance* instance,
 
   priv->accounts = NULL;
   priv->local_account = NULL;
-  priv->account_list_queried = FALSE;
+  priv->account_list_status = INFC_BROWSER_ACCOUNT_LIST_NOT_QUERIED;
 
   priv->sync_ins = NULL;
   priv->subscription_requests = NULL;
@@ -2803,6 +2820,7 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   InfAclSheetSet* sheet_set;
 
   xmlNodePtr node;
+  InfAclAccountId default_id;
   InfAclAccount* default_account;
   GError* local_error;
   InfAclSheet* sheet;
@@ -2875,14 +2893,20 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   g_assert(priv->local_account == NULL);
 
   priv->accounts = g_hash_table_new_full(
-    g_str_hash,
-    g_str_equal,
+    NULL,
+    NULL,
     NULL,
     (GDestroyNotify)inf_acl_account_free
   );
 
-  default_account = inf_acl_account_new("default", NULL);
-  g_hash_table_insert(priv->accounts, default_account->id, default_account);
+  default_id = inf_acl_account_id_from_string("default");
+  default_account = inf_acl_account_new(default_id, NULL);
+
+  g_hash_table_insert(
+    priv->accounts, 
+    INF_ACL_ACCOUNT_ID_TO_POINTER(default_account->id),
+    default_account
+  );
 
   priv->local_account = default_account;
   for(node = xml->children; node != NULL; node = node->next)
@@ -2901,7 +2925,7 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
       g_hash_table_insert(
         priv->accounts,
-        priv->local_account->id,
+        INF_ACL_ACCOUNT_ID_TO_POINTER(priv->local_account->id),
         (gpointer)priv->local_account
       );
 
@@ -2912,12 +2936,7 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   /* Load the root ACL sheet set */
   local_error = NULL;
 
-  sheet_set = inf_acl_sheet_set_from_xml(
-    xml,
-    infc_browser_acl_account_lookup_func,
-    priv->accounts,
-    &local_error
-  );
+  sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
 
   if(local_error != NULL)
   {
@@ -2934,7 +2953,7 @@ infc_browser_handle_welcome(InfcBrowser* browser,
   if(sheet_set == NULL)
     sheet_set = inf_acl_sheet_set_new();
 
-  sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_account);
+  sheet = inf_acl_sheet_set_add_sheet(sheet_set, default_id);
   default_mask = sheet->mask;
 
   inf_acl_mask_neg(&default_mask, &default_mask);
@@ -3183,12 +3202,7 @@ infc_browser_handle_add_node(InfcBrowser* browser,
     return FALSE;
   }
 
-  sheet_set = inf_acl_sheet_set_from_xml(
-    xml,
-    infc_browser_acl_account_lookup_func,
-    priv->accounts,
-    &local_error
-  );
+  sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
 
   if(local_error != NULL)
   {
@@ -3442,12 +3456,7 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
       {
         local_error = NULL;
 
-        sheet_set = inf_acl_sheet_set_from_xml(
-          xml,
-          infc_browser_acl_account_lookup_func,
-          priv->accounts,
-          &local_error
-        );
+        sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
 
         if(local_error != NULL)
         {
@@ -3792,6 +3801,8 @@ infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
   InfcBrowserPrivate* priv;
   InfcRequest* request;
   guint total;
+  guint notifications_enabled;
+  gboolean result;
 
   guint node_id;
   InfcBrowserNode* node;
@@ -3814,24 +3825,22 @@ infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
   if(!inf_xml_util_get_attribute_uint_required(xml, "total", &total, error))
     return FALSE;
 
-  if(priv->account_list_queried == TRUE)
-  {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_ACCOUNT_LIST_ALREADY_QUERIED,
-      "%s",
-      _("The account list has already been queried")
-    );
+  result = inf_xml_util_get_attribute_uint_required(
+    xml,
+    "notifications-enabled",
+    &notifications_enabled,
+    error
+  );
 
+  if(result == FALSE)
     return FALSE;
-  }
+
+  if(notifications_enabled)
+    priv->account_list_status = INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS;
   else
-  {
-    priv->account_list_queried = TRUE;
-    infc_progress_request_initiated(INFC_PROGRESS_REQUEST(request), total);
-    return TRUE;
-  }
+    priv->account_list_status = INFC_BROWSER_ACCOUNT_LIST_NO_NOTIFICATIONS;
+  infc_progress_request_initiated(INFC_PROGRESS_REQUEST(request), total);
+  return TRUE;
 }
 
 static gboolean
@@ -3845,6 +3854,10 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   guint current;
   guint total;
   InfBrowserIter iter;
+
+  InfAclAccount* accounts;
+  guint n_accounts;
+  gboolean does_notifications;
 
   priv = INFC_BROWSER_PRIVATE(browser);
 
@@ -3875,12 +3888,39 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   }
   else
   {
+    /* TODO: Currently, if the server does not report any entry anymore that
+     * we have in our account list at the moment, then we should delete that
+     * item from the account list. */
+    accounts = infc_browser_make_acl_account_list(browser, &n_accounts);
+
+    switch(priv->account_list_status)
+    {
+    case INFC_BROWSER_ACCOUNT_LIST_NOT_QUERIED:
+      g_assert_not_reached();
+      break;
+    case INFC_BROWSER_ACCOUNT_LIST_NO_NOTIFICATIONS:
+      does_notifications = FALSE;
+      break;
+    case INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS:
+      does_notifications = TRUE;
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+
     infc_request_manager_finish_request(
       priv->request_manager,
       request,
-      inf_request_result_make_query_acl_account_list(INF_BROWSER(browser))
+      inf_request_result_make_query_acl_account_list(
+        INF_BROWSER(browser),
+        accounts,
+        n_accounts,
+        does_notifications
+      )
     );
 
+    g_free(accounts);
     return TRUE;
   }
 }
@@ -3897,6 +3937,7 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
   gboolean result;
 
   InfAclAccount* account;
+  InfAclAccount* cache_account;
   gchar* id;
 
   priv = INFC_BROWSER_PRIVATE(browser);
@@ -3932,30 +3973,225 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
   account = inf_acl_account_from_xml(xml, error);
   if(account == NULL) return FALSE;
 
-  if(g_hash_table_lookup(priv->accounts, account->id) != NULL)
+  cache_account = g_hash_table_lookup(
+    priv->accounts,
+    INF_ACL_ACCOUNT_ID_TO_POINTER(account->id)
+  );
+
+  if(cache_account != NULL)
   {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
-      _("Server sent a duplicate account with ID \"%s\""),
-      account->id
+    /* Update account name, if it has changed */
+    if(strcmp(cache_account->name, account->name) != 0)
+    {
+      g_free(cache_account->name);
+      cache_account->name = g_strdup(account->name);
+    }
+  }
+  else
+  {
+    g_hash_table_insert(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(account->id),
+      account
     );
 
-    inf_acl_account_free(account);
-    return FALSE;
+    inf_browser_acl_account_added(
+      INF_BROWSER(browser),
+      account,
+      INF_REQUEST(request)
+    );
   }
-
-  g_hash_table_insert(priv->accounts, account->id, account);
 
   if(request != NULL)
     infc_progress_request_progress(INFC_PROGRESS_REQUEST(request));
 
-  inf_browser_acl_account_added(
-    INF_BROWSER(browser),
-    account,
-    INF_REQUEST(request)
+  return TRUE;
+}
+
+static gboolean
+infc_browser_handle_lookup_acl_accounts(InfcBrowser* browser,
+                                        InfXmlConnection* connection,
+                                        xmlNodePtr xml,
+                                        GError** error)
+{
+  InfcBrowserPrivate* priv;
+  GError* local_error;
+  InfcRequest* request;
+  xmlNodePtr child;
+
+  GPtrArray* accounts;
+  InfAclAccount* account;
+  InfAclAccount* existing_account;
+  InfAclAccount req_account;
+  InfcBrowserLookupAclAccountByByNameData lookup_data;
+  GArray* req_accounts;
+  guint i;
+
+  guint len;
+  gchar* name;
+  const InfAclAccountId* ids;
+  guint n_ids;
+
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  local_error = NULL;
+  request = infc_request_manager_get_request_by_xml(
+    priv->request_manager,
+    "lookup-acl-accounts",
+    xml,
+    error
   );
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return FALSE;
+  }
+
+  /* Read accounts from XML structure */
+  accounts = g_ptr_array_new();
+  for(child = xml->children; child != NULL; child = child->next)
+  {
+    if(child->type != XML_ELEMENT_NODE) continue;
+    if(strcmp((const gchar*)child->name, "account") == 0)
+    {
+      account = inf_acl_account_from_xml(child, error);
+      if(account == NULL)
+      {
+        for(i = 0; i < accounts->len; ++i)
+          inf_acl_account_free(accounts->pdata[i]);
+        g_ptr_array_free(accounts, TRUE);
+        return FALSE;
+      }
+
+      g_ptr_array_add(accounts, account);
+    }
+  }
+
+  /* Update local account table */
+  for(i = 0; i < accounts->len; ++i)
+  {
+    account = (InfAclAccount*)accounts->pdata[i];
+
+    existing_account = g_hash_table_lookup(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(account->id)
+    );
+
+    if(existing_account != NULL)
+    {
+      /* Update account name, if it has changed */
+      if(strcmp(existing_account->name, account->name) != 0)
+      {
+        g_free(existing_account->name);
+        existing_account->name = g_strdup(account->name);
+      }
+
+      inf_acl_account_free(account);
+    }
+    else
+    {
+      g_hash_table_insert(
+        priv->accounts,
+        INF_ACL_ACCOUNT_ID_TO_POINTER(account->id),
+        account
+      );
+
+      inf_browser_acl_account_added(
+        INF_BROWSER(browser),
+        account,
+        INF_REQUEST(request)
+      );
+    }
+  }
+
+  g_ptr_array_free(accounts, TRUE);
+
+  /* Lookup all requested IDs and names from local cache */
+  if(request != NULL)
+  {
+    ids = g_object_get_qdata(
+      G_OBJECT(request), 
+      infc_browser_lookup_acl_accounts_ids_quark
+    );
+
+    n_ids = GPOINTER_TO_UINT(
+      g_object_get_qdata(
+        G_OBJECT(request),
+        infc_browser_lookup_acl_accounts_n_ids_quark
+      )
+    );
+
+    name = g_object_get_qdata(
+      G_OBJECT(request),
+      infc_browser_lookup_acl_accounts_name_quark
+    );
+
+    req_accounts = g_array_new(FALSE, FALSE, sizeof(InfAclAccount));
+
+    if(ids != NULL)
+    {
+      g_assert(n_ids > 0);
+      for(i = 0; i < n_ids; ++i)
+      {
+        account = g_hash_table_lookup(
+          priv->accounts,
+          INF_ACL_ACCOUNT_ID_TO_POINTER(ids[i])
+        );
+
+        if(account != NULL)
+        {
+          g_array_append_val(req_accounts, *account);
+        }
+        else
+        {
+          /* The server has not sent us the name for this account. We suppose
+           * this means that this account does not exist. */
+          req_account.id = ids[i];
+          req_account.name = NULL;
+          g_array_append_val(req_accounts, req_account);
+        }
+      }
+    }
+
+    if(name != NULL)
+    {
+      len = req_accounts->len;
+
+      lookup_data.name = name;
+      lookup_data.accounts = req_accounts;
+
+      g_hash_table_foreach(
+        priv->accounts,
+        infc_browser_browser_lookup_acl_account_by_name_find_func,
+        &lookup_data
+      );
+
+      if(req_accounts->len == len)
+      {
+        /* No account with this name available; create a new result entry
+         * with 0 ID to indicate this to the caller. */
+        req_account.id = 0;
+        req_account.name = name;
+        g_array_append_val(req_accounts, req_account);
+      }
+    }
+
+    /* TODO: Here, remove duplicates, or make sure from the start that there
+     * will be no duplicates. */
+
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_lookup_acl_accounts(
+        INF_BROWSER(browser),
+        (InfAclAccount*)req_accounts->data,
+        req_accounts->len
+      )
+    );
+
+    g_array_free(req_accounts, TRUE);
+  }
 
   return TRUE;
 }
@@ -3980,24 +4216,18 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
   account = inf_acl_account_from_xml(xml, error);
   if(account == NULL) return FALSE;
 
-  existing_account = g_hash_table_lookup(priv->accounts, account->id);
+  existing_account = g_hash_table_lookup(
+    priv->accounts,
+    INF_ACL_ACCOUNT_ID_TO_POINTER(account->id)
+  );
+
   if(existing_account != NULL)
   {
     if(strcmp(account->name, existing_account->name) != 0)
     {
-      g_set_error(
-        error,
-        inf_directory_error_quark(),
-        INF_DIRECTORY_ERROR_DUPLICATE_ACCOUNT,
-        _("Account with ID \"%s\", name \"%s\" exists already with different "
-          "name \"%s\""),
-        account->id,
-        account->name,
-        existing_account->name
-      );
-
-      inf_acl_account_free(account);
-      return FALSE;
+      /* Update account name, if it has changed */
+      g_free(existing_account->name);
+      existing_account->name = g_strdup(account->name);
     }
 
     inf_acl_account_free(account);
@@ -4031,7 +4261,7 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
         return FALSE;
       }
 
-      sheet = inf_acl_sheet_new(account);
+      sheet = inf_acl_sheet_new(account->id);
 
       res = inf_acl_sheet_perms_from_xml(
         child,
@@ -4055,7 +4285,11 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
 
   if(account != existing_account)
   {
-    g_hash_table_insert(priv->accounts, account->id, account);
+    g_hash_table_insert(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(account->id),
+      account
+    );
 
     inf_browser_acl_account_added(
       INF_BROWSER(browser),
@@ -4234,34 +4468,38 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
 
   new_chain = inf_certificate_chain_new(all_certs, n_certs + 1);
 
-  account = NULL;
-  if(priv->account_list_queried == TRUE)
+  account = inf_acl_account_from_xml(xml, error);
+  if(account == NULL)
   {
-    account = inf_acl_account_from_xml(xml, error);
-    if(account == NULL)
-    {
-      inf_certificate_chain_unref(new_chain);
-      return FALSE;
-    }
+    inf_certificate_chain_unref(new_chain);
+    return FALSE;
+  }
 
-    /* Note that it is allowed that the account already exists, in which
-     * case we have created a new certificate for that account. */
-    existing_account = g_hash_table_lookup(priv->accounts, account->id);
-    if(existing_account != NULL)
-    {
-      inf_acl_account_free(account);
-      account = existing_account;
-    }
-    else
-    {
-      g_hash_table_insert(priv->accounts, account->id, account);
+  /* Note that it is allowed that the account already exists, in which
+   * case we have created a new certificate for that account. */
+  existing_account = g_hash_table_lookup(
+    priv->accounts,
+    INF_ACL_ACCOUNT_ID_TO_POINTER(account->id)
+  );
 
-      inf_browser_acl_account_added(
-        INF_BROWSER(browser),
-        account,
-        INF_REQUEST(request)
-      );
-    }
+  if(existing_account != NULL)
+  {
+    inf_acl_account_free(account);
+    account = existing_account;
+  }
+  else
+  {
+    g_hash_table_insert(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(account->id),
+      account
+    );
+
+    inf_browser_acl_account_added(
+      INF_BROWSER(browser),
+      account,
+      INF_REQUEST(request)
+    );
   }
 
   infc_request_manager_finish_request(
@@ -4287,8 +4525,10 @@ infc_browser_handle_remove_acl_account(InfcBrowser* browser,
   InfcBrowserPrivate* priv;
   InfcRequest* request;
   xmlChar* account_id;
-  InfAclAccount* account;
-  const InfAclAccount* default_account;
+  InfAclAccountId account;
+  InfAclAccount* acc;
+  InfAclAccount report_acc;
+  InfAclAccountId default_id;
   GSList* item;
   InfcBrowserSubreq* subreq;
 
@@ -4304,25 +4544,21 @@ infc_browser_handle_remove_acl_account(InfcBrowser* browser,
   account_id = inf_xml_util_get_attribute_required(xml, "id", error);
   if(account_id == NULL) return FALSE;
 
-  account = g_hash_table_lookup(priv->accounts, account_id);
-  if(account == NULL)
+  account = inf_acl_account_id_from_string((const gchar*)account_id);
+  if(account == 0)
   {
-    g_set_error(
-      error,
-      inf_directory_error_quark(),
-      INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
-      _("No such account with ID \"%s\""),
-      account_id
-    );
-
+    /* The server has notified us about the removal of an account that we
+     * never heard about. This can happen if the server has notifications
+     * enabled but we have never queried the account list. */
     xmlFree(account_id);
-    return FALSE;
+    return TRUE;
   }
 
   xmlFree(account_id);
 
-  default_account = g_hash_table_lookup(priv->accounts, "default");
-  if(account == default_account)
+  default_id = inf_acl_account_id_from_string("default");
+
+  if(account == default_id)
   {
     g_set_error(
       error,
@@ -4335,79 +4571,88 @@ infc_browser_handle_remove_acl_account(InfcBrowser* browser,
     return FALSE;
   }
 
-  if(priv->local_account == account)
+  if(priv->local_account->id == account)
   {
     /* Own account was removed: Demote to default account */
-    priv->local_account = default_account;
+    priv->local_account = g_hash_table_lookup(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(default_id)
+    );
+
+    g_assert(priv->local_account != NULL);
     infc_browser_enforce_acl(browser, priv->root, NULL, NULL);
+
+    inf_browser_acl_local_account_changed(
+      INF_BROWSER(browser),
+      priv->local_account,
+      NULL
+    );
   }
 
-  if(priv->account_list_queried)
+  /* Remove sheet from all nodes and subreqs */
+  infc_browser_remove_account_from_sheets(browser, priv->root, account);
+
+  for(item = priv->subscription_requests; item != NULL; item = item->next)
   {
-    /* Remove sheet from all nodes and subreqs */
-    infc_browser_remove_account_from_sheets(browser, priv->root, account);
+    subreq = (InfcBrowserSubreq*)item->data;
 
-    for(item = priv->subscription_requests; item != NULL; item = item->next)
+    switch(subreq->type)
     {
-      subreq = (InfcBrowserSubreq*)item->data;
-
-      switch(subreq->type)
-      {
-      case INFC_BROWSER_SUBREQ_CHAT:
-      case INFC_BROWSER_SUBREQ_SESSION:
-        break;
-      case INFC_BROWSER_SUBREQ_ADD_NODE:
-        infc_browser_remove_acl_sheet_from_sheet_set(
-          subreq->shared.add_node.sheet_set,
-          account
-        );
-
-        break;
-      case INFC_BROWSER_SUBREQ_SYNC_IN:
-        infc_browser_remove_acl_sheet_from_sheet_set(
-          subreq->shared.sync_in.sheet_set,
-          account
-        );
-
-        break;
-      }
-    }
-
-    /* remove account */
-    g_hash_table_steal(priv->accounts, account->id);
-
-    if(request != NULL)
-    {
-      infc_request_manager_finish_request(
-        priv->request_manager,
-        request,
-        inf_request_result_make_remove_acl_account(
-          INF_BROWSER(browser),
-          account
-        )
+    case INFC_BROWSER_SUBREQ_CHAT:
+    case INFC_BROWSER_SUBREQ_SESSION:
+      break;
+    case INFC_BROWSER_SUBREQ_ADD_NODE:
+      infc_browser_remove_acl_sheet_from_sheet_set(
+        subreq->shared.add_node.sheet_set,
+        account
       );
-    }
 
-    inf_browser_acl_account_removed(INF_BROWSER(browser), account, NULL);
-    inf_acl_account_free(account);
+      break;
+    case INFC_BROWSER_SUBREQ_SYNC_IN:
+      infc_browser_remove_acl_sheet_from_sheet_set(
+        subreq->shared.sync_in.sheet_set,
+        account
+      );
+
+      break;
+    }
+  }
+
+  /* remove account */
+  acc = g_hash_table_lookup(
+    priv->accounts,
+    INF_ACL_ACCOUNT_ID_TO_POINTER(account)
+  );
+
+  if(acc != NULL)
+  {
+    g_hash_table_steal(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(account)
+    );
   }
   else
   {
-    if(request != NULL)
-    {
-      /* This should not really happen, since one needs to have the account list
-       * queried before one can remove an ACL account. However, in case some
-       * server allows it without, let's correctly handle this case here. */
-      infc_request_manager_finish_request(
-        priv->request_manager,
-        request,
-        inf_request_result_make_remove_acl_account(
-          INF_BROWSER(browser),
-          account
-        )
-      );
-    }
+    report_acc.id = account;
+    report_acc.name = NULL; /* unknown */
+    acc = &report_acc;
   }
+
+  if(request != NULL)
+  {
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_remove_acl_account(
+        INF_BROWSER(browser),
+        acc
+      )
+    );
+  }
+
+  inf_browser_acl_account_removed(INF_BROWSER(browser), acc, NULL);
+  if(acc != &report_acc)
+    inf_acl_account_free(acc);
 
   return TRUE;
 }
@@ -4426,7 +4671,7 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
   gchar* request_type;
   InfBrowserIter iter;
 
-  const InfAclAccount* default_account;
+  InfAclAccountId default_id;
   InfAclSheet* default_sheet;
   InfAclMask default_mask;
 
@@ -4437,13 +4682,7 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
 
   local_error = NULL;
 
-  sheet_set = inf_acl_sheet_set_from_xml(
-    xml,
-    infc_browser_acl_account_lookup_func,
-    priv->accounts,
-    &local_error
-  );
-
+  sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
   if(local_error != NULL)
   {
     g_propagate_error(error, local_error);
@@ -4505,11 +4744,10 @@ infc_browser_handle_set_acl(InfcBrowser* browser,
        * support all permissions that we do support. */
       if(node == priv->root)
       {
-        default_account = g_hash_table_lookup(priv->accounts, "default");
-        g_assert(default_account != NULL);
+        default_id = inf_acl_account_id_from_string("default");
 
         default_sheet =
-          inf_acl_sheet_set_find_sheet(sheet_set, default_account);
+          inf_acl_sheet_set_find_sheet(sheet_set, default_id);
         if(default_sheet != NULL)
         {
           default_mask = default_sheet->mask;
@@ -4822,6 +5060,15 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
   else if(strcmp((const gchar*)node->name, "add-acl-account") == 0)
   {
     infc_browser_handle_add_acl_account(
+      browser,
+      connection,
+      node,
+      &local_error
+    );
+  }
+  else if(strcmp((const gchar*)node->name, "lookup-acl-accounts") == 0)
+  {
+    infc_browser_handle_lookup_acl_accounts(
       browser,
       connection,
       node,
@@ -5875,11 +6122,13 @@ infc_browser_browser_query_acl_account_list(InfBrowser* browser,
   InfcRequest* request;
   xmlNodePtr xml;
 
+  InfAclAccount* accounts;
+  guint n_accounts;
+
   g_return_val_if_fail(INFC_IS_BROWSER(browser), NULL);
   priv = INFC_BROWSER_PRIVATE(browser);
 
   g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
-  g_return_val_if_fail(priv->account_list_queried == FALSE, NULL);
 
   g_return_val_if_fail(
     inf_browser_get_pending_request(
@@ -5901,47 +6150,67 @@ infc_browser_browser_query_acl_account_list(InfBrowser* browser,
 
   inf_browser_begin_request(browser, NULL, INF_REQUEST(request));
 
-  xml = infc_browser_request_to_xml(request);
+  switch(priv->account_list_status)
+  {
+  case INFC_BROWSER_ACCOUNT_LIST_NOT_QUERIED:
+  case INFC_BROWSER_ACCOUNT_LIST_NO_NOTIFICATIONS:
+    xml = infc_browser_request_to_xml(request);
 
-  inf_communication_group_send_message(
-    INF_COMMUNICATION_GROUP(priv->group),
-    priv->connection,
-    xml
-  );
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
+      priv->connection,
+      xml
+    );
+
+    break;
+  case INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS:
+    /* Our cache is up to date, i.e. serve from cache */
+    accounts = infc_browser_make_acl_account_list(
+      INFC_BROWSER(browser),
+      &n_accounts
+    );
+
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_query_acl_account_list(
+        INF_BROWSER(browser),
+        accounts,
+        n_accounts,
+        TRUE
+      )
+    );
+
+    g_free(accounts);
+    request = NULL;
+    break;
+  }
 
   return INF_REQUEST(request);
 }
 
-static const InfAclAccount**
-infc_browser_browser_get_acl_account_list(InfBrowser* infbrowser,
-                                          guint* n_accounts)
+static const InfAclAccount*
+infc_browser_browser_get_acl_default_account(InfBrowser* infbrowser)
 {
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
-  InfcBrowserGetAclAccountListData data;
+  InfAclAccountId default_id;
+  InfAclAccount* default_account;
 
   browser = INFC_BROWSER(infbrowser);
   priv = INFC_BROWSER_PRIVATE(browser);
 
   g_return_val_if_fail(priv->status == INF_BROWSER_OPEN, NULL);
 
-  if(priv->account_list_queried == FALSE)
-    return NULL;
+  default_id = inf_acl_account_id_from_string("default");
 
-  *n_accounts = g_hash_table_size(priv->accounts);
-  if(*n_accounts == 0)
-    return NULL;
-
-  data.accounts = g_malloc(sizeof(InfAclAccount*) * (*n_accounts));
-  data.index = 0;
-
-  g_hash_table_foreach(
+  default_account = g_hash_table_lookup(
     priv->accounts,
-    infc_browser_get_acl_account_list_foreach_func,
-    &data
+    INF_ACL_ACCOUNT_ID_TO_POINTER(default_id)
   );
 
-  return data.accounts;
+  g_assert(default_account != NULL);
+  return default_account;
 }
 
 static const InfAclAccount*
@@ -5959,13 +6228,226 @@ infc_browser_browser_get_acl_local_account(InfBrowser* infbrowser)
   return priv->local_account;
 }
 
-static const InfAclAccount*
-infc_browser_browser_lookup_acl_account(InfBrowser* browser,
-                                        const gchar* id)
+static InfRequest*
+infc_browser_browser_lookup_acl_accounts(InfBrowser* infbrowser,
+                                         const InfAclAccountId* ids,
+                                         guint n_ids,
+                                         InfRequestFunc func,
+                                         gpointer user_data)
 {
+  InfcBrowser* browser;
   InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  guint i;
+  const InfAclAccount* account;
+  InfAclAccount* accounts;
+  guint n_accounts;
+  xmlNodePtr xml;
+
+  InfAclAccountId* ids_req;
+
+  browser = INFC_BROWSER(infbrowser);
   priv = INFC_BROWSER_PRIVATE(browser);
-  return (const InfAclAccount*)g_hash_table_lookup(priv->accounts, id);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_REQUEST,
+    "lookup-acl-accounts",
+    G_CALLBACK(func),
+    user_data,
+    NULL
+  );
+
+  if(priv->account_list_status != INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS)
+    xml = infc_browser_request_to_xml(request);
+  else
+    xml = NULL;
+
+  accounts = g_malloc(sizeof(InfAclAccount) * n_ids);
+  n_accounts = 0;
+
+  /* Lookup each account from server that we don't have in our cache */
+  for(i = 0; i < n_ids; ++i)
+  {
+    account = g_hash_table_lookup(
+      priv->accounts,
+      INF_ACL_ACCOUNT_ID_TO_POINTER(ids[i])
+    );
+
+    if(account != NULL)
+    {
+      accounts[i] = *account;
+      ++n_accounts;
+    }
+    else
+    {
+      accounts[i].id = ids[i];
+      accounts[i].name = NULL;
+
+      if(xml != NULL)
+      {
+        xmlNewChild(
+          xml,
+          NULL,
+          (const xmlChar*)"id",
+          (const xmlChar*)inf_acl_account_id_to_string(ids[i])
+        );
+      }
+    }
+  }
+
+  if(xml == NULL || n_accounts == n_ids)
+  {
+    /* All lookup IDs are available from cache */
+    if(xml != NULL) xmlFreeNode(xml);
+
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_lookup_acl_accounts(
+        INF_BROWSER(browser),
+        accounts,
+        n_ids
+      )
+    );
+
+    request = NULL;
+  }
+  else
+  {
+    /* TODO: Add a InfcLookupAclAccountsRequest, deriving from InfcRequest
+     * that carries ids and n_ids, so we don't need
+     * g_object_set_qdata for the session and plugin. */
+
+    /* Remember all IDs that we were asked to look up, also the ones that are
+     * available already, so that we can finish the request in one go when
+     * the server reply is available. */
+    ids_req = g_malloc(sizeof(InfAclAccountId) * n_ids);
+    for(i = 0; i < n_ids; ++i)
+      ids_req[i] = ids[i];
+
+    g_object_set_qdata_full(
+      G_OBJECT(request),
+      infc_browser_lookup_acl_accounts_ids_quark,
+      ids_req,
+      g_free
+    );
+
+    g_object_set_qdata(
+      G_OBJECT(request),
+      infc_browser_lookup_acl_accounts_n_ids_quark,
+      GUINT_TO_POINTER(n_ids)
+    );
+
+    /* Need to send a request */
+    inf_communication_group_send_message(
+      INF_COMMUNICATION_GROUP(priv->group),
+      priv->connection,
+      xml
+    );
+  }
+
+  g_free(accounts);
+  return INF_REQUEST(request);
+}
+
+static InfRequest*
+infc_browser_browser_lookup_acl_account_by_name(InfBrowser* infbrowser,
+                                                const gchar* name,
+                                                InfRequestFunc func,
+                                                gpointer user_data)
+{
+  InfcBrowser* browser;
+  InfcBrowserPrivate* priv;
+  InfcRequest* request;
+  GArray* cached_accounts;
+  InfcBrowserLookupAclAccountByByNameData lookup_data;
+  InfAclAccount result_acc;
+
+  xmlNodePtr xml;
+
+  browser = INFC_BROWSER(infbrowser);
+  priv = INFC_BROWSER_PRIVATE(browser);
+
+  request = infc_request_manager_add_request(
+    priv->request_manager,
+    INFC_TYPE_REQUEST,
+    "lookup-acl-accounts",
+    G_CALLBACK(func),
+    user_data,
+    NULL
+  );
+
+  lookup_data.name = name;
+  lookup_data.accounts = g_array_new(FALSE, FALSE, sizeof(InfAclAccount));
+
+  g_hash_table_foreach(
+    priv->accounts,
+    infc_browser_browser_lookup_acl_account_by_name_find_func,
+    &lookup_data
+  );
+
+  if(lookup_data.accounts->len == 0)
+  {
+    if(priv->account_list_status == INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS)
+    {
+      /* We know that the entry does not exist */
+      result_acc.id = 0;
+      result_acc.name = (gchar*)name;
+
+      infc_request_manager_finish_request(
+        priv->request_manager,
+        request,
+        inf_request_result_make_lookup_acl_accounts(
+          INF_BROWSER(browser),
+          &result_acc,
+          1
+        )
+      );
+
+      request = NULL;
+    }
+    else
+    {
+      /* Make a server request */
+      xml = infc_browser_request_to_xml(request);
+      xmlNewChild(xml, NULL, (const xmlChar*)"name", (const xmlChar*)name);
+
+      g_object_set_qdata_full(
+        G_OBJECT(request),
+        infc_browser_lookup_acl_accounts_name_quark,
+        g_strdup(name),
+        g_free
+      );
+
+      inf_communication_group_send_message(
+        INF_COMMUNICATION_GROUP(priv->group),
+        priv->connection,
+        xml
+      );
+    }
+  }
+  else
+  {
+    /* Use cache value */
+    infc_request_manager_finish_request(
+      priv->request_manager,
+      request,
+      inf_request_result_make_lookup_acl_accounts(
+        INF_BROWSER(browser),
+        (InfAclAccount*)lookup_data.accounts->data,
+        lookup_data.accounts->len
+      )
+    );
+
+    request = NULL;
+  }
+
+  g_array_free(lookup_data.accounts, TRUE);
+
+  /* Note that cached account names point to the hash table entries
+   * and have not been copied, so do not need to be freed here. */
+  return INF_REQUEST(request);
 }
 
 static InfRequest*
@@ -6043,7 +6525,7 @@ infc_browser_browser_create_acl_account(InfBrowser* browser,
 
 static InfRequest*
 infc_browser_browser_remove_acl_account(InfBrowser* browser,
-                                        const InfAclAccount* account,
+                                        InfAclAccountId account,
                                         InfRequestFunc func,
                                         gpointer user_data)
 {
@@ -6065,7 +6547,12 @@ infc_browser_browser_remove_acl_account(InfBrowser* browser,
   inf_browser_begin_request(INF_BROWSER(browser), NULL, INF_REQUEST(request));
 
   xml = infc_browser_request_to_xml(request);
-  inf_xml_util_set_attribute(xml, "id", account->id);
+
+  inf_xml_util_set_attribute(
+    xml,
+    "id",
+    inf_acl_account_id_to_string(account)
+  );
 
   inf_communication_group_send_message(
     INF_COMMUNICATION_GROUP(priv->group),
@@ -6128,10 +6615,11 @@ infc_browser_browser_query_acl(InfBrowser* browser,
 static gboolean
 infc_browser_browser_has_acl(InfBrowser* browser,
                              const InfBrowserIter* iter,
-                             const InfAclAccount* account)
+                             InfAclAccountId account)
 {
   InfcBrowserPrivate* priv;
   InfcBrowserNode* node;
+  InfAclAccountId default_id;
 
   g_return_val_if_fail(INFC_IS_BROWSER(browser), FALSE);
   infc_browser_return_val_if_iter_fail(INFC_BROWSER(browser), iter, FALSE);
@@ -6144,9 +6632,13 @@ infc_browser_browser_has_acl(InfBrowser* browser,
     return TRUE;
 
   /* Otherwise we only have the local user and the default user sheets */
-  if(account != NULL)
+  if(account != 0)
   {
-    if(account == priv->local_account || strcmp(account->id, "default") == 0)
+    if(account == priv->local_account->id)
+      return TRUE;
+
+    default_id = inf_acl_account_id_from_string("default");
+    if(account == default_id)
       return TRUE;
   }
 
@@ -6247,6 +6739,18 @@ infc_browser_class_init(gpointer g_class,
     "infc-browser-sync-in-plugin-quark"
   );
 
+  infc_browser_lookup_acl_accounts_ids_quark = g_quark_from_static_string(
+    "infc-browser-lookup-acl-accounts-ids-quark"
+  );
+
+  infc_browser_lookup_acl_accounts_n_ids_quark = g_quark_from_static_string(
+    "infc-browser-lookup-acl-accounts-n-ids-quark"
+  );
+
+  infc_browser_lookup_acl_accounts_name_quark = g_quark_from_static_string(
+    "infc-browser-lookup-acl-accounts-name-quark"
+  );
+
   g_object_class_install_property(
     object_class,
     PROP_IO,
@@ -6345,10 +6849,12 @@ infc_browser_browser_init(gpointer g_iface,
   iface->list_pending_requests = infc_browser_browser_list_pending_requests;
   iface->iter_from_request = infc_browser_browser_iter_from_request;
 
-  iface->query_acl_account_list = infc_browser_browser_query_acl_account_list;
-  iface->get_acl_account_list = infc_browser_browser_get_acl_account_list;
+  iface->get_acl_default_account = infc_browser_browser_get_acl_default_account;
   iface->get_acl_local_account = infc_browser_browser_get_acl_local_account;
-  iface->lookup_acl_account = infc_browser_browser_lookup_acl_account;
+  iface->query_acl_account_list = infc_browser_browser_query_acl_account_list;
+  iface->lookup_acl_accounts = infc_browser_browser_lookup_acl_accounts;
+  iface->lookup_acl_account_by_name =
+    infc_browser_browser_lookup_acl_account_by_name;
   iface->create_acl_account = infc_browser_browser_create_acl_account;
   iface->remove_acl_account = infc_browser_browser_remove_acl_account;
   iface->query_acl = infc_browser_browser_query_acl;

@@ -183,6 +183,7 @@ inf_gtk_account_creation_dialog_update(InfGtkAccountCreationDialog* dialog,
   const gchar* text;
   gchar* markup;
   gboolean activatable;
+  const InfAclAccount* local_account;
 
   priv = INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(dialog);
   activatable = TRUE;
@@ -206,10 +207,12 @@ inf_gtk_account_creation_dialog_update(InfGtkAccountCreationDialog* dialog,
       inf_browser_get_root(priv->browser, &iter);
       inf_acl_mask_set1(&perms, INF_ACL_CAN_CREATE_ACCOUNT);
 
+      local_account = inf_browser_get_acl_local_account(priv->browser);
+
       inf_browser_check_acl(
         priv->browser,
         &iter,
-        inf_browser_get_acl_local_account(priv->browser),
+        local_account != NULL ? local_account->id : 0,
         &perms,
         &perms
       );

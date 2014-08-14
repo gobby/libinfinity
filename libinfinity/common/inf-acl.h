@@ -33,6 +33,35 @@ G_BEGIN_DECLS
 #define INF_TYPE_ACL_SHEET_SET             (inf_acl_sheet_set_get_type())
 
 /**
+ * InfAclAccountId:
+ *
+ * This type represents a unique identifier for a user account.
+ */
+typedef GQuark InfAclAccountId;
+
+/**
+ * INF_ACL_ACCOUNT_ID_TO_POINTER:
+ * @id: A #InfAclAccountId.
+ *
+ * Converts a #InfAclAccountId to a pointer such that the pointer
+ * represents a unique representation of the given ID. The pointer should not
+ * be used for anything else except comparisons with other pointer obtained
+ * in this way, for example in hash table lookups.
+ */
+#define INF_ACL_ACCOUNT_ID_TO_POINTER(id) \
+  (GUINT_TO_POINTER(id))
+
+/**
+ * INF_ACL_ACCOUNT_POINTER_TO_ID:
+ * @ptr: A pointer obtained with %INF_ACL_ACCOUNT_ID_TO_POINTER.
+ *
+ * Converts a pointer obtained with %INF_ACL_ACCOUNT_ID_TO_POINTER back into
+ * the original #InfAclAccountId value.
+ */
+#define INF_ACL_ACCOUNT_POINTER_TO_ID(ptr) \
+  (GPOINTER_TO_UINT(ptr))
+
+/**
  * InfAclAccount:
  * @id: A unique ID for this account.
  * @name: A human readable account name.
@@ -41,7 +70,7 @@ G_BEGIN_DECLS
  */
 typedef struct _InfAclAccount InfAclAccount;
 struct _InfAclAccount {
-  gchar* id;
+  InfAclAccountId id;
   gchar* name;
 };
 
@@ -126,7 +155,7 @@ struct _InfAclMask {
  */
 typedef struct _InfAclSheet InfAclSheet;
 struct _InfAclSheet {
-  const InfAclAccount* account;
+  InfAclAccountId account;
   InfAclMask mask;
   InfAclMask perms;
 };
@@ -146,19 +175,6 @@ struct _InfAclSheetSet {
   const InfAclSheet* sheets;
   guint n_sheets;
 };
-
-/**
- * InfAclAccountLookupFunc:
- * @id: The ID to look up.
- * @user_data: Additional data
- *
- * This callback function is used in inf_acl_sheet_set_from_xml() to resolve
- * account IDs to actual #InfAclAccount structures.
- *
- * Returns: The #InfAclAccount with the given ID, or %NULL.
- */
-typedef const InfAclAccount* (*InfAclAccountLookupFunc)(const gchar* id,
-                                                        gpointer user_data);
 
 extern const InfAclMask INF_ACL_MASK_ALL;
 extern const InfAclMask INF_ACL_MASK_DEFAULT;
@@ -181,8 +197,14 @@ inf_acl_sheet_get_type(void) G_GNUC_CONST;
 GType
 inf_acl_sheet_set_get_type(void) G_GNUC_CONST;
 
+const gchar*
+inf_acl_account_id_to_string(InfAclAccountId account);
+
+InfAclAccountId
+inf_acl_account_id_from_string(const gchar* id);
+
 InfAclAccount*
-inf_acl_account_new(const gchar* id,
+inf_acl_account_new(InfAclAccountId id,
                     const gchar* name);
 
 InfAclAccount*
@@ -251,7 +273,7 @@ inf_acl_mask_has(const InfAclMask* mask,
                  InfAclSetting setting);
 
 InfAclSheet*
-inf_acl_sheet_new(const InfAclAccount* account);
+inf_acl_sheet_new(InfAclAccountId account);
 
 InfAclSheet*
 inf_acl_sheet_copy(const InfAclSheet* sheet);
@@ -285,7 +307,7 @@ inf_acl_sheet_set_free(InfAclSheetSet* sheet_set);
 
 InfAclSheet*
 inf_acl_sheet_set_add_sheet(InfAclSheetSet* sheet_set,
-                            const InfAclAccount* account);
+                            InfAclAccountId account);
 
 void
 inf_acl_sheet_set_remove_sheet(InfAclSheetSet* sheet_set,
@@ -300,16 +322,14 @@ inf_acl_sheet_set_get_clear_sheets(const InfAclSheetSet* sheet_set);
 
 InfAclSheet*
 inf_acl_sheet_set_find_sheet(InfAclSheetSet* sheet_set,
-                             const InfAclAccount* account);
+                             InfAclAccountId account);
 
 const InfAclSheet*
 inf_acl_sheet_set_find_const_sheet(const InfAclSheetSet* sheet_set,
-                                   const InfAclAccount* account);
+                                   InfAclAccountId account);
 
 InfAclSheetSet*
 inf_acl_sheet_set_from_xml(xmlNodePtr xml,
-                           InfAclAccountLookupFunc lookup_func,
-                           gpointer user_data,
                            GError** error);
 
 void

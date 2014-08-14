@@ -60,7 +60,7 @@ GType
 infd_acl_account_info_get_type(void) G_GNUC_CONST;
 
 InfdAclAccountInfo*
-infd_acl_account_info_new(const gchar* id,
+infd_acl_account_info_new(InfAclAccountId id,
                           const gchar* name,
                           gboolean transient);
 

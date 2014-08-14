@@ -108,12 +108,15 @@ typedef enum _InfBrowserStatus {
  * requests for a node in a browser.
  * @iter_from_request: Virtual function to return an iterator pointing to the
  * node a given request was made for.
- * @query_acl_account_list: Virtual function for querying the list of
- * accounts.
- * @get_acl_account_list: Virtual function for obtaining the list of accounts.
+ * @get_acl_default_account: Virtual function to return the
+ * &quot;default&quot; ACL account.
  * @get_acl_local_account: Virtual function to return the ACL account of the
  * local host.
- * @lookup_acl_account: Virtual function to find an account by its ID.
+ * @query_acl_account_list: Virtual function for querying the list of
+ * accounts.
+ * @lookup_acl_accounts: Virtual function to find accounts by their ID.
+ * @lookup_acl_account_by_name: Virtual function to find an account by its
+ * name.
  * @create_acl_account: Virtual function to create a new account.
  * @remove_acl_account: Virtual function to remove an account.
  * @query_acl: Virtual function for querying the ACL for a node for all
@@ -233,17 +236,24 @@ struct _InfBrowserIface {
                                 InfRequest* request,
                                 InfBrowserIter* iter);
 
+  const InfAclAccount* (*get_acl_default_account)(InfBrowser* browser);
+
+  const InfAclAccount* (*get_acl_local_account)(InfBrowser* browser);
+
   InfRequest* (*query_acl_account_list)(InfBrowser* browser,
                                         InfRequestFunc func,
                                         gpointer user_data);
 
-  const InfAclAccount** (*get_acl_account_list)(InfBrowser* browser,
-                                                guint* n_accounts);
+  InfRequest* (*lookup_acl_accounts)(InfBrowser* browser,
+                                     const InfAclAccountId* ids,
+                                     guint n_ids,
+                                     InfRequestFunc func,
+                                     gpointer user_data);
 
-  const InfAclAccount* (*get_acl_local_account)(InfBrowser* browser);
-
-  const InfAclAccount* (*lookup_acl_account)(InfBrowser* browser,
-                                             const gchar* id);
+  InfRequest* (*lookup_acl_account_by_name)(InfBrowser* browser,
+                                            const gchar* name,
+                                            InfRequestFunc func,
+                                            gpointer user_data);
 
   InfRequest* (*create_acl_account)(InfBrowser* browser,
                                     gnutls_x509_crq_t crq,
@@ -251,7 +261,7 @@ struct _InfBrowserIface {
                                     gpointer user_data);
 
   InfRequest* (*remove_acl_account)(InfBrowser* browser,
-                                    const InfAclAccount* acc,
+                                    InfAclAccountId account,
                                     InfRequestFunc func,
                                     gpointer user_data);
 
@@ -262,7 +272,7 @@ struct _InfBrowserIface {
 
   gboolean (*has_acl)(InfBrowser* browser,
                       const InfBrowserIter* iter,
-                      const InfAclAccount* account);
+                      InfAclAccountId account);
 
   const InfAclSheetSet* (*get_acl)(InfBrowser* browser,
                                    const InfBrowserIter* iter);
@@ -381,21 +391,29 @@ inf_browser_get_pending_request(InfBrowser* browser,
                                 const InfBrowserIter* iter,
                                 const gchar* request_type);
 
+const InfAclAccount*
+inf_browser_get_acl_default_account(InfBrowser* browser);
+
+const InfAclAccount*
+inf_browser_get_acl_local_account(InfBrowser* browser);
+
 InfRequest*
 inf_browser_query_acl_account_list(InfBrowser* browser,
                                    InfRequestFunc func,
                                    gpointer user_data);
 
-const InfAclAccount**
-inf_browser_get_acl_account_list(InfBrowser* browser,
-                                 guint* n_accounts);
+InfRequest*
+inf_browser_lookup_acl_accounts(InfBrowser* browser,
+                                const InfAclAccountId* ids,
+                                guint n_ids,
+                                InfRequestFunc func,
+                                gpointer user_data);
 
-const InfAclAccount*
-inf_browser_get_acl_local_account(InfBrowser* browser);
-
-const InfAclAccount*
-inf_browser_lookup_acl_account(InfBrowser* browser,
-                               const gchar* id);
+InfRequest*
+inf_browser_lookup_acl_account_by_name(InfBrowser* browser,
+                                       const gchar* name,
+                                       InfRequestFunc func,
+                                       gpointer user_data);
 
 InfRequest*
 inf_browser_create_acl_account(InfBrowser* browser,
@@ -405,7 +423,7 @@ inf_browser_create_acl_account(InfBrowser* browser,
 
 InfRequest*
 inf_browser_remove_acl_account(InfBrowser* browser,
-                               const InfAclAccount* acc,
+                               InfAclAccountId account,
                                InfRequestFunc func,
                                gpointer user_data);
 
@@ -418,7 +436,7 @@ inf_browser_query_acl(InfBrowser* browser,
 gboolean
 inf_browser_has_acl(InfBrowser* browser,
                     const InfBrowserIter* iter,
-                    const InfAclAccount* account);
+                    InfAclAccountId account);
 
 const InfAclSheetSet*
 inf_browser_get_acl(InfBrowser* browser,
@@ -434,7 +452,7 @@ inf_browser_set_acl(InfBrowser* browser,
 gboolean
 inf_browser_check_acl(InfBrowser* browser,
                       const InfBrowserIter* iter,
-                      const InfAclAccount* account,
+                      InfAclAccountId account,
                       const InfAclMask* check_mask,
                       InfAclMask* out_mask);
 

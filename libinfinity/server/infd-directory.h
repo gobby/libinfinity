@@ -126,7 +126,7 @@ infd_directory_get_chat_session(InfdDirectory* directory);
 
 const InfAclAccount*
 infd_directory_create_acl_account(InfdDirectory* directory,
-                                  const gchar* account_id,
+                                  InfAclAccountId account_id,
                                   const gchar* account_name,
                                   gboolean transient,
                                   gnutls_x509_crt_t* certificates,

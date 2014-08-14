@@ -262,8 +262,7 @@ inf_browser_base_init(gpointer g_class)
      * @request: The request which lead to the newly added account, or %NULL.
      *
      * This signal is emitted whenever a new account is added to the browser,
-     * and the account list has been queried with
-     * inf_browser_query_acl_account_list().
+     * and the browser supports account list notification.
      */
     browser_signals[ACL_ACCOUNT_ADDED] = g_signal_new(
       "acl-account-added",
@@ -286,8 +285,7 @@ inf_browser_base_init(gpointer g_class)
      * or %NULL.
      *
      * This signal is emitted whenever an account is removed from the browser,
-     * and the account list has been queried with
-     * inf_browser_query_acl_account_list().
+     * and the browser supports account list notification.
      */
     browser_signals[ACL_ACCOUNT_REMOVED] = g_signal_new(
       "acl-account-removed",
@@ -1145,72 +1143,32 @@ inf_browser_get_pending_request(InfBrowser* browser,
 }
 
 /**
- * inf_browser_query_acl_account_list:
+ * inf_browser_get_acl_default_account:
  * @browser: A #InfBrowser.
- * @func: The function to be called when the request finishes, or %NULL.
- * @user_data: Additional data to pass to @func.
  *
- * Queries the list of accounts in @browser. When this call has finished,
- * inf_browser_get_acl_account_list() can be called in order to retrieve the
- * account list.
+ * Returns the default #InfAclAccount representing unauthenticated users, and
+ * which is used to look up permissions if no permissions are explicitly
+ * specified in the ACL of a particular node for a particular account.
  *
- * The request might either finish during the call to this function, in which
- * case @func will be called and %NULL being returned. If the request does not
- * finish within the function call, a #InfRequest object is returned, where
- * @func has been installed for the #InfRequest::finished signal, so that it
- * is called as soon as the request finishes.
- *
- * Returns: A #InfRequest that can be used to be notified when
- * the request finishes.
+ * Returns: A #InfAclAccount. The returned value is owned by the browser and
+ * must not be freed.
  */
-InfRequest*
-inf_browser_query_acl_account_list(InfBrowser* browser,
-                                   InfRequestFunc func,
-                                   gpointer user_data)
+const InfAclAccount*
+inf_browser_get_acl_default_account(InfBrowser* browser)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->query_acl_account_list != NULL, NULL);
+  g_return_val_if_fail(iface->get_acl_default_account != NULL, NULL);
 
-  return iface->query_acl_account_list(browser, func, user_data);
-}
-
-/**
- * inf_browser_get_acl_account_list:
- * @browser: A #InfBrowser.
- * @n_accounts: An output parameter for the total number of accounts.
- *
- * Returns an array of accounts, if they have been queried before
- * with inf_browser_query_acl_account_list(). If the account list has not been
- * queried, %NULL is returned. Note that this does not mean that there are no
- * known accounts, it only means that the full list is not available. The
- * local ccount with inf_browser_get_acl_local_account() is always available
- * for example, even if this function returns %NULL.
- *
- * Returns: A %NULL-terminated list of #InfAclAccount objects, or %NULL. Free
- * with g_free() when no longer needed.
- */
-const InfAclAccount**
-inf_browser_get_acl_account_list(InfBrowser* browser,
-                                 guint* n_accounts)
-{
-  InfBrowserIface* iface;
-
-  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(n_accounts != NULL, NULL);
-
-  iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->get_acl_account_list != NULL, NULL);
-
-  return iface->get_acl_account_list(browser, n_accounts);
+  return iface->get_acl_default_account(browser);
 }
 
 /**
  * inf_browser_get_acl_local_account:
- * @browser: A #InfBrowser
+ * @browser: A #InfBrowser.
  *
  * Returns the #InfAclAccount representing the local host. This can be used to
  * check whether the local account is allowed to perform certain operations in
@@ -1235,30 +1193,132 @@ inf_browser_get_acl_local_account(InfBrowser* browser)
 }
 
 /**
- * inf_browser_lookup_acl_account:
+ * inf_browser_query_acl_account_list:
  * @browser: A #InfBrowser.
- * @id: The account ID to look up.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
  *
- * Looks up the account with the given ID. If the account list has not been
- * queried with inf_browser_query_acl_account_list() before, only the default
- * account and the local account can be looked up using this function. If
- * there is no account with the given ID the function returns %NULL.
+ * Queries the list of accounts in @browser. When this call has finished,
+ * a list of accounts is available, and also a flag whether the browser
+ * supports notification of accounts. If it does, then the
+ * #InfBrowser::acl-account-added and #InfBrowser::acl-account-removed signals
+ * are emitted when the account list changes, and the next time this function
+ * is called, it might be available to serve the account list from the cache
+ * without blocking.
  *
- * Returns: A #InfAclAccount owned by the browser, or %NULL.
+ * It can also be that the browser does not support listing of accounts at
+ * all. In this case, the request will fail with an error code of
+ * %INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned, where
+ * @func has been installed for the #InfRequest::finished signal, so that it
+ * is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest that can be used to be notified when
+ * the request finishes, or %NULL.
  */
-const InfAclAccount*
-inf_browser_lookup_acl_account(InfBrowser* browser,
-                               const gchar* id)
+InfRequest*
+inf_browser_query_acl_account_list(InfBrowser* browser,
+                                   InfRequestFunc func,
+                                   gpointer user_data)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(id != NULL, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->lookup_acl_account != NULL, NULL);
+  g_return_val_if_fail(iface->query_acl_account_list != NULL, NULL);
 
-  return iface->lookup_acl_account(browser, id);
+  return iface->query_acl_account_list(browser, func, user_data);
+}
+
+/**
+ * inf_browser_lookup_acl_accounts:
+ * @browser: A #InfBrowser.
+ * @ids: An array of account IDs to look up.
+ * @n_ids: The number of elements in the array.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Looks up the accounts with the given IDs. If the account list has been
+ * queried with inf_browser_query_acl_account_list() before, then it is
+ * likely that this function returns instantly, otherwise an asynchronous
+ * operation might be started.
+ *
+ * The request result contains an array of #InfAclAccount objects for the
+ * given account IDs, which contain the account names as well. If one account
+ * ID does not belong to an actual account, the #InfAclAccount.name field will
+ * be %NULL.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned, where
+ * @func has been installed for the #InfRequest::finished signal, so that it
+ * is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest that can be used to be notified when
+ * the request finishes, or %NULL.
+ */
+InfRequest*
+inf_browser_lookup_acl_accounts(InfBrowser* browser,
+                                const InfAclAccountId* ids,
+                                guint n_ids,
+                                InfRequestFunc func,
+                                gpointer user_data)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(ids != NULL, NULL);
+  g_return_val_if_fail(n_ids > 0, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->lookup_acl_accounts != NULL, NULL);
+
+  return iface->lookup_acl_accounts(browser, ids, n_ids, func, user_data);
+}
+
+/**
+ * inf_browser_lookup_acl_account_by_name:
+ * @browser: A #InfBrowser.
+ * @name: The name of the user account to look up.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Looks up the account(s) with the given name. While in principal, there can
+ * be many accounts with the same name, in practise user names are often
+ * unique.
+ *
+ * The request result contains an array of #InfAclAccount objects, all with
+ * the same name. If there is only one entry with ID set to 0, there are no
+ * accounts with the given name.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned, where
+ * @func has been installed for the #InfRequest::finished signal, so that it
+ * is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest that can be used to be notified when
+ * the request finishes, or %NULL.
+ */
+InfRequest*
+inf_browser_lookup_acl_account_by_name(InfBrowser* browser,
+                                       const gchar* name,
+                                       InfRequestFunc func,
+                                       gpointer user_data)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(name != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->lookup_acl_account_by_name != NULL, NULL);
+
+  return iface->lookup_acl_account_by_name(browser, name, func, user_data);
 }
 
 /**
@@ -1301,7 +1361,7 @@ inf_browser_create_acl_account(InfBrowser* browser,
 /**
  * inf_browser_remove_acl_account:
  * @browser: A #InfBrowser.
- * @acc: A ACL account.
+ * @account: The ID of the account to remove.
  * @func: The function to be called when the request finishes, or %NULL.
  * @user_data: Additional data to pass to @func.
  *
@@ -1318,20 +1378,25 @@ inf_browser_create_acl_account(InfBrowser* browser,
  */
 InfRequest*
 inf_browser_remove_acl_account(InfBrowser* browser,
-                               const InfAclAccount* acc,
+                               InfAclAccountId account,
                                InfRequestFunc func,
                                gpointer user_data)
 {
   InfBrowserIface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
-  g_return_val_if_fail(acc != NULL, NULL);
-  g_return_val_if_fail(strcmp(acc->id, "default") != 0, NULL);
+  g_return_val_if_fail(account != 0, NULL);
 
   iface = INF_BROWSER_GET_IFACE(browser);
-  g_return_val_if_fail(iface->remove_acl_account != NULL, NULL);
+  g_return_val_if_fail(iface->get_acl_default_account != NULL, NULL);
 
-  return iface->remove_acl_account(browser, acc, func, user_data);
+  g_return_val_if_fail(
+    account != iface->get_acl_default_account(browser)->id,
+    NULL
+  );
+
+  g_return_val_if_fail(iface->remove_acl_account != NULL, NULL);
+  return iface->remove_acl_account(browser, account, func, user_data);
 }
 
 /**
@@ -1376,12 +1441,12 @@ inf_browser_query_acl(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to a node for which to check full ACL
  * availability.
- * @account: The account to check ACL availability for, or %NULL.
+ * @account: The account to check ACL availability for, or 0.
  *
  * This function returns whether the ACL sheet for the given account is
  * available or not. If the function returns %FALSE then
  * inf_browser_query_acl() can be called in order to retrieve the full ACL.
- * If @account is %NULL the function checks whether the full ACL is available,
+ * If @account is 0, the function checks whether the full ACL is available,
  * i.e. the ACL sheets for all accounts. Usually the ACL sheets for the
  * default account and the local account are always available.
  *
@@ -1391,7 +1456,7 @@ inf_browser_query_acl(InfBrowser* browser,
 gboolean
 inf_browser_has_acl(InfBrowser* browser,
                     const InfBrowserIter* iter,
-                    const InfAclAccount* account)
+                    InfAclAccountId account)
 {
   InfBrowserIface* iface;
 
@@ -1485,7 +1550,7 @@ inf_browser_set_acl(InfBrowser* browser,
  * inf_browser_check_acl:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node in a browser.
- * @account: A #InfAclAccount whose permission to check, or %NULL.
+ * @account: The ID of the account whose permission to check, or %NULL.
  * @check_mask: A bitmask of #InfAclSetting<!-- -->s with permissions to
  * check.
  * @out_mask: Output parameter with the granted permissions, or %NULL.
@@ -1506,7 +1571,7 @@ inf_browser_set_acl(InfBrowser* browser,
  * @account is not the default or the local account, these need to be queried
  * before using inf_browser_query_acl().
  *
- * If @account is %NULL it is assumed that local access to the directory is
+ * If account is 0, it is assumed that local access to the directory is
  * available and the function always returns %TRUE.
  *
  * Returns: %TRUE if all checked permissions are granted, or %FALSE otherwise.
@@ -1514,7 +1579,7 @@ inf_browser_set_acl(InfBrowser* browser,
 gboolean
 inf_browser_check_acl(InfBrowser* browser,
                       const InfBrowserIter* iter,
-                      const InfAclAccount* account,
+                      InfAclAccountId account,
                       const InfAclMask* check_mask,
                       InfAclMask* out_mask)
 {
@@ -1530,16 +1595,15 @@ inf_browser_check_acl(InfBrowser* browser,
   g_return_val_if_fail(iter != NULL, FALSE);
   g_return_val_if_fail(check_mask != NULL, FALSE);
 
-  if(account == NULL)
+  if(account == 0)
   {
     if(out_mask != NULL)
       *out_mask = *check_mask;
     return TRUE;
   }
 
-  if(strcmp(account->id, "default") != 0)
-    default_account = inf_browser_lookup_acl_account(browser, "default");
-  else
+  default_account = inf_browser_get_acl_default_account(browser);
+  if(default_account->id == account)
     default_account = NULL;
 
   remaining_mask = *check_mask;
@@ -1572,7 +1636,7 @@ inf_browser_check_acl(InfBrowser* browser,
       {
         sheet = inf_acl_sheet_set_find_const_sheet(
           sheet_set,
-          default_account
+          default_account->id
         );
 
         if(sheet != NULL)

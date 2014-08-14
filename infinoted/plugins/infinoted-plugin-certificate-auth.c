@@ -45,6 +45,7 @@ struct _InfinotedPluginCertificateAuth {
   gnutls_x509_privkey_t ca_key;
   guint ca_key_index;
 
+  InfAclAccountId super_id;
   InfRequest* set_acl_request;
 };
 
@@ -169,6 +170,7 @@ infinoted_plugin_certificate_auth_info_initialize(gpointer plugin_info)
   plugin->ca_key = NULL;
   plugin->ca_key_index = G_MAXUINT;
 
+  plugin->super_id = 0;
   plugin->set_acl_request = NULL;
 }
 
@@ -343,7 +345,7 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
 
     super_account = infd_directory_create_acl_account(
       infinoted_plugin_manager_get_directory(plugin->manager),
-      "super",
+      inf_acl_account_id_from_string("super"),
       _("Super User"),
       TRUE, /* transient */
       &super_cert,
@@ -357,6 +359,8 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
       gnutls_x509_privkey_deinit(super_key);
       return FALSE;
     }
+
+    plugin->super_id = super_account->id;
 
     chain[0] = super_cert;
     chain[1] = plugin->cas[plugin->ca_key_index];
@@ -380,7 +384,7 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
       &iter
     );
 
-    sheet.account = super_account;
+    sheet.account = super_account->id;
     sheet.mask = INF_ACL_MASK_ALL;
     sheet.perms = INF_ACL_MASK_ALL;
     sheet_set.n_sheets = 1;
@@ -409,7 +413,6 @@ static void
 infinoted_plugin_certificate_auth_deinitialize(gpointer plugin_info)
 {
   InfinotedPluginCertificateAuth* plugin;
-  const InfAclAccount* super_account;
   InfRequest* remove_acl_account_request;
   InfCertificateCredentials* creds;
   guint i;
@@ -420,16 +423,11 @@ infinoted_plugin_certificate_auth_deinitialize(gpointer plugin_info)
    * since the acocunt is transient and therefore is not written to disk,
    * so will not be re-created at the next server start. However, to be sure,
    * we explicitly remove the account at this point. */
-  super_account = inf_browser_lookup_acl_account(
-    INF_BROWSER(infinoted_plugin_manager_get_directory(plugin->manager)),
-    "super"
-  );
-
-  if(super_account != NULL)
+  if(plugin->super_id != 0)
   {
     remove_acl_account_request = inf_browser_remove_acl_account(
       INF_BROWSER(infinoted_plugin_manager_get_directory(plugin->manager)),
-      super_account,
+      plugin->super_id,
       infinoted_plugin_certificate_auth_remove_acl_account_cb,
       plugin
     );

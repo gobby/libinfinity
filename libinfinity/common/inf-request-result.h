@@ -106,11 +106,28 @@ inf_request_result_get_subscribe_chat(const InfRequestResult* result,
                                       InfSessionProxy** proxy);
 
 InfRequestResult*
-inf_request_result_make_query_acl_account_list(InfBrowser* browser);
+inf_request_result_make_query_acl_account_list(InfBrowser* browser,
+                                               const InfAclAccount* accounts,
+                                               guint n_accounts,
+                                               gboolean does_notifications);
 
 void
 inf_request_result_get_query_acl_account_list(const InfRequestResult* result,
-                                              InfBrowser** browser);
+                                              InfBrowser** browser,
+                                              const InfAclAccount** accounts,
+                                              guint* n_accounts,
+                                              gboolean* does_notifications);
+
+InfRequestResult*
+inf_request_result_make_lookup_acl_accounts(InfBrowser* browser,
+                                            const InfAclAccount* accounts,
+                                            guint n_accounts);
+
+void
+inf_request_result_get_lookup_acl_accounts(const InfRequestResult* result,
+                                           InfBrowser** browser,
+                                           const InfAclAccount** accounts,
+                                           guint* n_accounts);
 
 InfRequestResult*
 inf_request_result_make_create_acl_account(InfBrowser* browser,

@@ -692,6 +692,7 @@ inf_gtk_browser_view_acl_changed_cb(InfBrowser* browser,
   GtkTreePath* path;
   gboolean result;
   const InfAclAccount* account;
+  InfAclAccountId account_id;
   InfAclMask mask;
   InfRequest* pending_request;
 
@@ -726,10 +727,13 @@ inf_gtk_browser_view_acl_changed_cb(InfBrowser* browser,
     account = inf_browser_get_acl_local_account(browser);
     inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
 
+    account_id = 0;
+    if(account != NULL) account_id = account->id;
+
     if(result == TRUE && /* row expanded or root node */
        inf_browser_is_subdirectory(browser, iter) == TRUE &&
        inf_browser_get_explored(browser, iter) == FALSE &&
-       inf_browser_check_acl(browser, iter, account, &mask, NULL))
+       inf_browser_check_acl(browser, iter, account_id, &mask, NULL))
     {
       pending_request = inf_browser_get_pending_request(
         browser,
@@ -882,6 +886,7 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
   InfBrowserIter* browser_iter;
   InfBrowserStatus browser_status;
   const InfAclAccount* account;
+  InfAclAccountId acc_id;
   InfAclMask mask;
 
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -912,8 +917,12 @@ inf_gtk_browser_view_initial_root_explore(InfGtkBrowserView* view,
       /* Explore root node if it is not already explored */
       inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
       account = inf_browser_get_acl_local_account(browser);
+
+      acc_id = 0;
+      if(account != NULL) acc_id = account->id;
+
       if(request == NULL &&
-         inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+         inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
       {
         request = inf_browser_explore(browser, browser_iter, NULL, NULL);
       }
@@ -1161,6 +1170,7 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
   gboolean explored;
   GtkTreePath* parent_path;
   const InfAclAccount* account;
+  InfAclAccountId acc_id;
   InfAclMask mask;
 
   GObject* object;
@@ -1198,10 +1208,14 @@ inf_gtk_browser_view_row_inserted_cb(GtkTreeModel* model,
       if(request == NULL)
       {
         explored = inf_browser_get_explored(browser, browser_iter);
-        account = inf_browser_get_acl_local_account(browser);
         inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
+
+        account = inf_browser_get_acl_local_account(browser);
+        acc_id = 0;
+        if(account != NULL) acc_id = account->id;
+
         if(explored == FALSE &&
-           inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+           inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
         {
           parent_path = gtk_tree_path_copy(path);
           gtk_tree_path_up(parent_path);
@@ -1547,6 +1561,7 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   InfBrowserIter* browser_iter;
   InfRequest* pending_request;
   const InfAclAccount* account;
+  InfAclAccountId acc_id;
   InfAclMask mask;
 
   model = gtk_tree_view_get_model(tree_view);
@@ -1567,11 +1582,14 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
     account = inf_browser_get_acl_local_account(browser);
     inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
 
+    acc_id = 0;
+    if(account != NULL) acc_id = account->id;
+
     do
     {
       if(inf_browser_is_subdirectory(browser, browser_iter) == TRUE &&
          inf_browser_get_explored(browser, browser_iter) == FALSE &&
-         inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+         inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
       {
         pending_request = inf_browser_get_pending_request(
           browser,
@@ -1965,6 +1983,7 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
   InfBrowserIter* browser_iter;
   InfAclMask mask;
   const InfAclAccount* account;
+  InfAclAccountId acc_id;
   const gchar* stock_id;
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
@@ -1983,10 +2002,13 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
     /* TODO: Set icon depending on note type, perhaps also on whether
      * we are subscribed or not. */
     account = inf_browser_get_acl_local_account(browser);
+    acc_id = 0;
+    if(account != NULL) acc_id = account->id;
+
     if(inf_browser_is_subdirectory(browser, browser_iter))
     {
       inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
-      if(inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+      if(inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
         stock_id = GTK_STOCK_DIRECTORY;
       else
         stock_id = GTK_STOCK_DIALOG_AUTHENTICATION;
@@ -1995,7 +2017,7 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
     else
     {
       inf_acl_mask_set1(&mask, INF_ACL_CAN_SUBSCRIBE_SESSION);
-      if(inf_browser_check_acl(browser, browser_iter, account, &mask, NULL))
+      if(inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
         stock_id = GTK_STOCK_FILE;
       else
         stock_id = GTK_STOCK_DIALOG_AUTHENTICATION;

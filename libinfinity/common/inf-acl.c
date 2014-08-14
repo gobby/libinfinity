@@ -258,6 +258,36 @@ inf_acl_sheet_set_get_type(void)
 }
 
 /**
+ * inf_acl_account_id_to_string:
+ * @account: A #InfAclAccountId.
+ *
+ * Translates the given account ID to a unique string identifier.
+ *
+ * Returns: A string representation of the given account ID, or %NULL if
+ * the account does not exist. The return value must not be freed.
+ */
+const gchar*
+inf_acl_account_id_to_string(InfAclAccountId account)
+{
+  return g_quark_to_string(account);
+}
+
+/**
+ * inf_acl_account_id_from_string:
+ * @id: A string representation of an account ID.
+ *
+ * Converts the given string into a unique account identifier which can be
+ * used with the rest of the ACL API.
+ *
+ * Returns: The account ID which is equivalent to the given string.
+ */
+InfAclAccountId
+inf_acl_account_id_from_string(const gchar* id)
+{
+  return g_quark_from_string(id);
+}
+
+/**
  * inf_acl_account_new:
  * @id: The unique ID of the new account.
  * @name: The human-readable name of the new account.
@@ -267,15 +297,15 @@ inf_acl_sheet_set_get_type(void)
  * Returns: A new #InfAclAccount object.
  */
 InfAclAccount*
-inf_acl_account_new(const gchar* id,
+inf_acl_account_new(const InfAclAccountId id,
                     const gchar* name)
 {
   InfAclAccount* account;
 
-  g_return_val_if_fail(id != NULL, NULL);
+  g_return_val_if_fail(id != 0, NULL);
 
   account = g_slice_new(InfAclAccount);
-  account->id = g_strdup(id);
+  account->id = id;
   account->name = g_strdup(name);
   return account;
 }
@@ -297,7 +327,7 @@ inf_acl_account_copy(const InfAclAccount* account)
   g_return_val_if_fail(account != NULL, NULL);
 
   new_account = g_slice_new(InfAclAccount);
-  new_account->id = g_strdup(account->id);
+  new_account->id = account->id;
   new_account->name = g_strdup(account->name);
   return new_account;
 }
@@ -311,7 +341,6 @@ inf_acl_account_copy(const InfAclAccount* account)
 void
 inf_acl_account_free(InfAclAccount* account)
 {
-  g_free(account->id);
   g_free(account->name);
   g_slice_free(InfAclAccount, account);
 }
@@ -343,7 +372,7 @@ inf_acl_account_from_xml(xmlNodePtr xml,
   account_name = inf_xml_util_get_attribute(xml, "name");
 
   new_account = inf_acl_account_new(
-    (const gchar*)account_id,
+    inf_acl_account_id_from_string((const gchar*)account_id),
     (const gchar*)account_name
   );
 
@@ -366,7 +395,11 @@ void
 inf_acl_account_to_xml(const InfAclAccount* account,
                        xmlNodePtr xml)
 {
-  inf_xml_util_set_attribute(xml, "id", account->id);
+  inf_xml_util_set_attribute(
+    xml,
+    "id",
+    inf_acl_account_id_to_string(account->id)
+  );
 
   if(account->name != NULL)
     inf_xml_util_set_attribute(xml, "name", account->name);
@@ -677,7 +710,7 @@ inf_acl_mask_has(const InfAclMask* mask,
 
 /**
  * inf_acl_sheet_new:
- * @account: A #InfAclAccount.
+ * @account: The #InfAclAccountId representing a unique account id.
  *
  * Creates a dynamically allocated #InfAclSheet. This is usually not
  * needed because you can copy the structs by value, but it is useful
@@ -688,7 +721,7 @@ inf_acl_mask_has(const InfAclMask* mask,
  * in use.
  */
 InfAclSheet*
-inf_acl_sheet_new(const InfAclAccount* account)
+inf_acl_sheet_new(InfAclAccountId account)
 {
   InfAclSheet* sheet;
   sheet = g_slice_new(InfAclSheet);
@@ -946,7 +979,7 @@ inf_acl_sheet_set_free(InfAclSheetSet* sheet_set)
 /**
  * inf_acl_sheet_set_add_sheet:
  * @sheet_set: A #InfAclSheetSet.
- * @account: The account for which to add a new sheet.
+ * @account: The #InfAclAccountId representing a unique account ID.
  *
  * Adds a new default sheet for @account to @sheet_set. The function returns
  * a pointer to the new sheet. The pointer stays valid as long as no other
@@ -960,12 +993,12 @@ inf_acl_sheet_set_free(InfAclSheetSet* sheet_set)
  */
 InfAclSheet*
 inf_acl_sheet_set_add_sheet(InfAclSheetSet* sheet_set,
-                            const InfAclAccount* account)
+                            InfAclAccountId account)
 {
   guint i;
 
   g_return_val_if_fail(sheet_set != NULL, NULL);
-  g_return_val_if_fail(account != NULL, NULL);
+  g_return_val_if_fail(account != 0, NULL);
 
   g_return_val_if_fail(
     sheet_set->own_sheets != NULL || sheet_set->n_sheets == 0,
@@ -1142,7 +1175,8 @@ inf_acl_sheet_set_get_clear_sheets(const InfAclSheetSet* sheet_set)
 /**
  * inf_acl_sheet_set_find_sheet:
  * @sheet_set: A #InfAclSheetSet.
- * @account: The #InfAclAccount whose ACL sheet is to be found.
+ * @account: The #InfAclAccountId representing the unique account ID of the
+ * account whose ACL sheet is to be found.
  *
  * Returns the #InfAclSheet for @account. If there is no such sheet in
  * @sheet_set, the function returns %NULL.
@@ -1154,12 +1188,12 @@ inf_acl_sheet_set_get_clear_sheets(const InfAclSheetSet* sheet_set)
  */
 InfAclSheet*
 inf_acl_sheet_set_find_sheet(InfAclSheetSet* sheet_set,
-                             const InfAclAccount* account)
+                             InfAclAccountId account)
 {
   guint i;
 
   g_return_val_if_fail(sheet_set != NULL, NULL);
-  g_return_val_if_fail(account != NULL, NULL);
+  g_return_val_if_fail(account != 0, NULL);
 
   g_return_val_if_fail(
     sheet_set->own_sheets != NULL || sheet_set->n_sheets == 0,
@@ -1176,7 +1210,8 @@ inf_acl_sheet_set_find_sheet(InfAclSheetSet* sheet_set,
 /**
  * inf_acl_sheet_set_find_const_sheet:
  * @sheet_set: A #InfAclSheetSet.
- * @account: The #InfAclAccount whose ACL sheet is to be found.
+ * @account: The #InfAclAccountId representing the unique account ID of the
+ * account whose ACL sheet is to be found.
  *
  * Returns the #InfAclSheet for @account. If there is no such sheet in
  * @sheet_set, the function returns %NULL.
@@ -1190,12 +1225,12 @@ inf_acl_sheet_set_find_sheet(InfAclSheetSet* sheet_set,
  */
 const InfAclSheet*
 inf_acl_sheet_set_find_const_sheet(const InfAclSheetSet* sheet_set,
-                                   const InfAclAccount* account)
+                                   InfAclAccountId account)
 {
   guint i;
 
   g_return_val_if_fail(sheet_set != NULL, NULL);
-  g_return_val_if_fail(account != NULL, NULL);
+  g_return_val_if_fail(account != 0, NULL);
 
   for(i = 0; i < sheet_set->n_sheets; ++i)
     if(sheet_set->sheets[i].account == account)
@@ -1207,9 +1242,6 @@ inf_acl_sheet_set_find_const_sheet(const InfAclSheetSet* sheet_set,
 /**
  * inf_acl_sheet_set_from_xml:
  * @xml: The XML node from which to read the sheet set.
- * @lookup_func: A lookup function to transform account IDs to #InfAclAccount
- * objects.
- * @user_data: Additional data to pass to the lookup function.
  * @error: Location to read error information, if any.
  *
  * Reads a sheet set from @xml that has been written with
@@ -1222,8 +1254,6 @@ inf_acl_sheet_set_find_const_sheet(const InfAclSheetSet* sheet_set,
  */
 InfAclSheetSet*
 inf_acl_sheet_set_from_xml(xmlNodePtr xml,
-                           InfAclAccountLookupFunc lookup_func,
-                           gpointer user_data,
                            GError** error)
 {
   xmlNodePtr acl;
@@ -1232,7 +1262,6 @@ inf_acl_sheet_set_from_xml(xmlNodePtr xml,
   InfAclSheet read_sheet;
 
   xmlChar* account_id;
-  const InfAclAccount* account;
   guint i;
   gboolean result;
 
@@ -1259,22 +1288,7 @@ inf_acl_sheet_set_from_xml(xmlNodePtr xml,
         return NULL;
       }
 
-      read_sheet.account = lookup_func((const char*)account_id, user_data);
-
-      if(read_sheet.account == NULL)
-      {
-        g_set_error(
-          error,
-          inf_request_error_quark(),
-          INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
-          _("No such ACL account with ID \"%s\""),
-          (const char*)account_id
-        );
-
-        xmlFree(account_id);
-        g_array_free(array, TRUE);
-        return FALSE;
-      }
+      read_sheet.account = g_quark_from_string((const char*)account_id);
 
       xmlFree(account_id);
 
@@ -1287,7 +1301,7 @@ inf_acl_sheet_set_from_xml(xmlNodePtr xml,
             inf_request_error_quark(),
             INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
             _("Permissions for account ID \"%s\" defined more than once"),
-            read_sheet.account->id
+            g_quark_to_string(read_sheet.account)
           );
 
           g_array_free(array, TRUE);
@@ -1357,7 +1371,7 @@ inf_acl_sheet_set_to_xml(const InfAclSheetSet* sheet_set,
       inf_xml_util_set_attribute(
         sheet,
         "id",
-        sheet_set->sheets[i].account->id
+        g_quark_to_string(sheet_set->sheets[i].account)
       );
 
       inf_acl_sheet_perms_to_xml(

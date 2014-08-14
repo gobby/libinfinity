@@ -511,11 +511,18 @@ typedef struct _InfRequestResultQueryAclAccountList
   InfRequestResultQueryAclAccountList;
 struct _InfRequestResultQueryAclAccountList {
   InfBrowser* browser;
+  const InfAclAccount* accounts;
+  guint n_accounts;
+  gboolean does_notifications;
 };
 
 /**
  * inf_request_result_make_query_acl_account_list:
  * @browser: A #InfBrowser.
+ * @accounts: The list of accounts.
+ * @n_accounts: The number of items in the account list.
+ * @does_notifications: Whether the server notifies the clients about added
+ * or removed accounts.
  *
  * Creates a new #InfRequestResult for a "query-acl-account-list" request, see
  * inf_browser_query_acl_account_list(). The #InfRequestResult object is only valid
@@ -524,7 +531,10 @@ struct _InfRequestResultQueryAclAccountList {
  * Returns: A new #InfRequestResult. Free with inf_request_result_free().
  */
 InfRequestResult*
-inf_request_result_make_query_acl_account_list(InfBrowser* browser)
+inf_request_result_make_query_acl_account_list(InfBrowser* browser,
+                                               const InfAclAccount* accounts,
+                                               guint n_accounts,
+                                               gboolean does_notifications)
 {
   InfRequestResultQueryAclAccountList* data;
 
@@ -533,6 +543,9 @@ inf_request_result_make_query_acl_account_list(InfBrowser* browser)
   data = g_malloc(sizeof(InfRequestResultQueryAclAccountList));
 
   data->browser = browser;
+  data->accounts = accounts;
+  data->n_accounts = n_accounts;
+  data->does_notifications = does_notifications;
 
   return inf_request_result_new(data, sizeof(*data));
 }
@@ -541,13 +554,20 @@ inf_request_result_make_query_acl_account_list(InfBrowser* browser)
  * inf_request_result_get_query_acl_account_list:
  * @result: A #InfRequestResult:
  * @browser: Output value of the browser that made the request, or %NULL.
+ * @accounts: Output value for the list of accounts, or %NULL.
+ * @n_accounts: Output value for the size of the account list, or %NULL.
+ * @does_notifications: Output value for the flag whether the server notifies
+ * the client about added or removed accounts, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_query_acl_account_list().
  */
 void
 inf_request_result_get_query_acl_account_list(const InfRequestResult* result,
-                                              InfBrowser** browser)
+                                              InfBrowser** browser,
+                                              const InfAclAccount** accounts,
+                                              guint* n_accounts,
+                                              gboolean* does_notifications)
 {
   const InfRequestResultQueryAclAccountList* data;
 
@@ -559,6 +579,78 @@ inf_request_result_get_query_acl_account_list(const InfRequestResult* result,
   data = (const InfRequestResultQueryAclAccountList*)result->data;
 
   if(browser != NULL) *browser = data->browser;
+  if(accounts != NULL) *accounts = data->accounts;
+  if(n_accounts != NULL) *n_accounts = data->n_accounts;
+  if(does_notifications != NULL)
+    *does_notifications = data->does_notifications;
+}
+
+typedef struct _InfRequestResultLookupAclAccounts
+  InfRequestResultLookupAclAccounts;
+struct _InfRequestResultLookupAclAccounts {
+  InfBrowser* browser;
+  const InfAclAccount* accounts;
+  guint n_accounts;
+};
+
+/**
+ * inf_request_result_make_lookup_acl_accounts:
+ * @browser: A #InfBrowser.
+ * @accounts: The list of accounts.
+ * @n_accounts: The number of entries in the account list.
+ *
+ * Creates a new #InfRequestResult for a "lookup-acl-accounts" request, see
+ * inf_browser_lookup_acl_accounts(). The #InfRequestResult object is only valid
+ * as long as the caller maintains a reference to @browser.
+ *
+ * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ */
+InfRequestResult*
+inf_request_result_make_lookup_acl_accounts(InfBrowser* browser,
+                                            const InfAclAccount* accounts,
+                                            guint n_accounts)
+{
+  InfRequestResultLookupAclAccounts* data;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+
+  data = g_malloc(sizeof(InfRequestResultLookupAclAccounts));
+
+  data->browser = browser;
+  data->accounts = accounts;
+  data->n_accounts = n_accounts;
+
+  return inf_request_result_new(data, sizeof(*data));
+}
+
+/**
+ * inf_request_result_get_lookup_acl_accounts:
+ * @result: A #InfRequestResult:
+ * @browser: Output value of the browser that made the request, or %NULL.
+ * @accounts: Output value for the list of accounts, or %NULL.
+ * @n_accounts: Output value for the size of the account list, or %NULL.
+ *
+ * Decomposes @result into its components. The object must have been created
+ * with inf_request_result_make_lookup_acl_accounts().
+ */
+void
+inf_request_result_get_lookup_acl_accounts(const InfRequestResult* result,
+                                           InfBrowser** browser,
+                                           const InfAclAccount** accounts,
+                                           guint* n_accounts)
+{
+  const InfRequestResultLookupAclAccounts* data;
+
+  g_return_if_fail(result != NULL);
+  g_return_if_fail(
+    result->len == sizeof(InfRequestResultLookupAclAccounts)
+  );
+
+  data = (const InfRequestResultLookupAclAccounts*)result->data;
+
+  if(browser != NULL) *browser = data->browser;
+  if(accounts != NULL) *accounts = data->accounts;
+  if(n_accounts != NULL) *n_accounts = data->n_accounts;
 }
 
 typedef struct _InfRequestResultCreateAclAccount
