@@ -245,7 +245,7 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
     plugin->n_cas
   );
 
-  if(res != GNUTLS_E_SUCCESS)
+  if(res < 0)
   {
     inf_gnutls_set_error(error, res);
     return FALSE;
