@@ -602,6 +602,10 @@ inf_gtk_permissions_dialog_realize_pending_sheet(
         g_object_ref(request);
       }
     }
+
+    /* Update the widget itself, since the add and remove buttons might
+     * change their sensitivity after the realization. */
+    inf_gtk_permissions_dialog_update(dialog, NULL);
   }
 }
 
