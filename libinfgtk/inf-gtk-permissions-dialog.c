@@ -2895,6 +2895,32 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
   if(priv->renderer != NULL)
   {
     gtk_cell_renderer_stop_editing(GTK_CELL_RENDERER(priv->renderer), TRUE);
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->renderer),
+      G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_started_cb),
+      dialog
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->renderer),
+      G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_canceled_cb),
+      dialog
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->renderer),
+      G_CALLBACK(inf_gtk_permissions_dialog_renderer_edited_cb),
+      dialog
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->renderer),
+      G_CALLBACK(inf_gtk_permissions_dialog_renderer_changed_cb),
+      dialog
+    );
+
+    priv->renderer = NULL;
   }
 
   while(priv->remove_acl_account_requests != NULL)
