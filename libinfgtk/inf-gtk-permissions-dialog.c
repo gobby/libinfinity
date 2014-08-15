@@ -1468,10 +1468,15 @@ inf_gtk_permissions_dialog_add_clicked_cb(GtkButton* button,
       /* Skip the default user */
       if(priv->accounts[i].name != NULL)
       {
-        sheet = inf_acl_sheet_set_find_const_sheet(
-          sheet_set,
-          priv->accounts[i].id
-        );
+        sheet = NULL;
+
+        if(sheet_set != NULL)
+        {
+          sheet = inf_acl_sheet_set_find_const_sheet(
+            sheet_set,
+            priv->accounts[i].id
+          );
+        }
 
         if(sheet == NULL)
         {
