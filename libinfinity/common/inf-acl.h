@@ -306,6 +306,9 @@ inf_acl_sheet_set_copy(const InfAclSheetSet* sheet_set);
 void
 inf_acl_sheet_set_free(InfAclSheetSet* sheet_set);
 
+void
+inf_acl_sheet_set_sink(InfAclSheetSet* sheet_set);
+
 InfAclSheet*
 inf_acl_sheet_set_add_sheet(InfAclSheetSet* sheet_set,
                             InfAclAccountId account);

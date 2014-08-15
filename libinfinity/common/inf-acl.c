@@ -963,6 +963,34 @@ inf_acl_sheet_set_copy(const InfAclSheetSet* sheet_set)
 }
 
 /**
+ * inf_acl_sheet_set_sink:
+ * @sheet_set: A #InfAclSheetSet.
+ *
+ * If a sheet set was created with inf_acl_sheet_set_new_external(), this
+ * function lifts the restrictions that come with it by making an internal
+ * copy of the ACL sheets.
+ */
+void
+inf_acl_sheet_set_sink(InfAclSheetSet* sheet_set)
+{
+  g_return_if_fail(sheet_set != NULL);
+
+  if(sheet_set->own_sheets == NULL && sheet_set->n_sheets > 0)
+  {
+    sheet_set->own_sheets =
+      g_malloc(sheet_set->n_sheets * sizeof(InfAclSheet));
+
+    memcpy(
+      sheet_set->own_sheets,
+      sheet_set->sheets,
+      sheet_set->n_sheets * sizeof(InfAclSheet)
+    );
+
+    sheet_set->sheets = sheet_set->own_sheets;
+  }
+}
+
+/**
  * inf_acl_sheet_set_free:
  * @sheet_set: A #InfAclSheetSet.
  *

@@ -348,6 +348,7 @@ inf_acl_sheet_set_new
 inf_acl_sheet_set_new_external
 inf_acl_sheet_set_copy
 inf_acl_sheet_set_free
+inf_acl_sheet_set_sink
 inf_acl_sheet_set_add_sheet
 inf_acl_sheet_set_remove_sheet
 inf_acl_sheet_set_merge_sheets
