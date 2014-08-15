@@ -42,6 +42,7 @@
 #include <libinfgtk/inf-gtk-permissions-dialog.h>
 #include <libinfgtk/inf-gtk-acl-sheet-view.h>
 #include <libinfinity/common/inf-request-result.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 #include <gdk/gdkkeysyms.h>
 
@@ -2132,10 +2133,15 @@ inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
   priv->query_acl_account_list_request = NULL;
+  priv->account_list_queried = TRUE;
 
   if(error != NULL)
   {
-    g_warning("Error while querying account list: %s\n", error->message);
+    if(error->domain != inf_directory_error_quark() ||
+       error->code != INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED)
+    {
+      g_warning("Error while querying account list: %s\n", error->message);
+    }
   }
   else
   {
