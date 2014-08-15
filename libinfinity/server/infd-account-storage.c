@@ -22,7 +22,7 @@
  * @title: InfdAccountStorage
  * @short_description: Interface to user account database
  * @include: libinfinity/server/infd-account-storage.h
- * @see_also: #InfdDirectory, #InfdStandaloneAccountStorage
+ * @see_also: #InfdDirectory, #InfdFilesystemAccountStorage
  * @stability: Unstable
  *
  * #InfdAccountStorage provides an interface for #InfdDirectory to access a
@@ -48,7 +48,7 @@
  * various external sources, such as SQL databases, LDAP or PAM.
  * Libinfinity also provides a standalone implementation of this interface,
  * which stores the account list as a file in the file system, see
- * #InfdStandaloneAccountStorage.
+ * #InfdFilesystemAccountStorage.
  */
 
 #include <libinfinity/server/infd-account-storage.h>

@@ -35,8 +35,6 @@ G_BEGIN_DECLS
 #define INFD_IS_FILESYSTEM_STORAGE_CLASS(klass)      (G_TYPE_CHECK_CLASS_TYPE((klass), INFD_TYPE_FILESYSTEM_STORAGE))
 #define INFD_FILESYSTEM_STORAGE_GET_CLASS(obj)       (G_TYPE_INSTANCE_GET_CLASS((obj), INFD_TYPE_FILESYSTEM_STORAGE, InfdFilesystemStorageClass))
 
-#define INFD_TYPE_FILESYSTEM_STORAGE_ITER            (infd_filesystem_storage_iter_get_type())
-
 typedef struct _InfdFilesystemStorage InfdFilesystemStorage;
 typedef struct _InfdFilesystemStorageClass InfdFilesystemStorageClass;
 

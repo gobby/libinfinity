@@ -1189,7 +1189,24 @@ infd_filesystem_storage_get_type
 INFD_FILESYSTEM_STORAGE_CLASS
 INFD_IS_FILESYSTEM_STORAGE_CLASS
 INFD_FILESYSTEM_STORAGE_GET_CLASS
-INFD_TYPE_FILESYSTEM_STORAGE_ITER
+</SECTION>
+
+<SECTION>
+<FILE>infd-filesystem-account-storage</FILE>
+<TITLE>InfdFilesystemAccountStorage</TITLE>
+InfdFilesystemAccountStorage
+InfdFilesystemAccountStorageClass
+InfdFilesystemAccountStorageError
+infd_filesystem_account_storage_new
+infd_filesystem_account_storage_set_filesystem
+<SUBSECTION Standard>
+INFD_FILESYSTEM_ACCOUNT_STORAGE
+INFD_FILESYSTEM_ACCOUNT_STORAGE_CLASS
+INFD_FILESYSTEM_ACCOUNT_STORAGE_GET_CLASS
+INFD_TYPE_FILESYSTEM_ACCOUNT_STORAGE
+INFD_IS_FILESYSTEM_ACCOUNT_STORAGE
+INFD_IS_FILESYSTEM_ACCOUNT_STORAGE_CLASS
+infd_filesystem_account_storage_get_type
 </SECTION>
 
 <SECTION>

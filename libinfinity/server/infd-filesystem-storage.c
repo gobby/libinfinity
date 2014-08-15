@@ -442,20 +442,17 @@ infd_filesystem_storage_storage_read_subdirectory_list_func(const gchar* name,
   }
   else if(type == INF_FILE_TYPE_REG)
   {
-    if(!g_str_has_suffix(converted_name, ".xml.acl") &&
-       strcmp(converted_name, "accounts.xml") != 0 &&
-       strcmp(converted_name, "global-acl.xml") != 0)
+    /* The note type identifier is behind the last '.'. Only note
+     * types starting with "Inf" are recognized, other files are
+     * auxiliary files in the directory. */
+    separator = g_strrstr_len(converted_name, name_len, ".");
+    if(separator != NULL && strncmp(separator + 1, "Inf", 3) == 0)
     {
-      /* The note type identifier is behind the last '.' */
-      separator = g_strrstr_len(converted_name, name_len, ".");
-      if(separator != NULL)
-      {
-        *separator = '\0';
-        *list = g_slist_prepend(
-          *list,
-          infd_storage_node_new_note(converted_name, separator + 1)
-        );
-      }
+      *separator = '\0';
+      *list = g_slist_prepend(
+        *list,
+        infd_storage_node_new_note(converted_name, separator + 1)
+      );
     }
   }
 
@@ -1044,6 +1041,11 @@ infd_filesystem_storage_new(const gchar* root_directory)
  * directory. The function might fail if @path contains invalid characters.
  * If the function fails, %NULL is returned and @error is set.
  *
+ * Only if @identifier starts with &quot;Inf&quot;, the file will show up in
+ * the directory listing of infd_storage_read_subdirectory(). Other
+ * identifiers can be used to store custom data in the filesystem, linked to
+ * this #InfdFilesystemStorage object.
+ *
  * Returns: An absolute filename path to be freed with g_free(), or %NULL.
  */
 gchar*
@@ -1090,7 +1092,13 @@ infd_filesystem_storage_get_path(InfdFilesystemStorage* storage,
  * string which contains the full name of the opened file, in the Glib file
  * name encoding. Note that @full_path will also be set if the function fails.
  *
- * Returns: A stream for the open file. Close with fclose().
+ * Only if @identifier starts with &quot;Inf&quot;, the file will show up in
+ * the directory listing of infd_storage_read_subdirectory(). Other
+ * identifiers can be used to store custom data in the filesystem, linked to
+ * this #InfdFilesystemStorage object.
+ *
+ * Returns: A stream for the open file. Close with
+ * infd_filesystem_storage_stream_close().
  **/
 FILE*
 infd_filesystem_storage_open(InfdFilesystemStorage* storage,
