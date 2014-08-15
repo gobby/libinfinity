@@ -56,7 +56,6 @@ enum {
 
 static GObjectClass* parent_class;
 static GQuark infd_filesystem_storage_error_quark;
-static GQuark infd_filesystem_storage_system_error_quark;
 
 /* Checks whether path is valid, and sets error if not */
 static gboolean
@@ -164,28 +163,80 @@ infd_filesystem_storage_read_xml_stream_close_func(void* context)
   return fclose((FILE*)context);
 }
 
-/* TODO: Unify these a bit: Make these functions available in the public
- * API, use in infinoted-plugin-text. Also, share code between this and
- * infd_filesystem_storage_open. */
-static xmlDocPtr
-infd_filesystem_storage_read_xml_stream(InfdFilesystemStorage* storage,
-                                        FILE* stream,
-                                        const char* filename,
-                                        const char* toplevel_tag,
-                                        GError** error)
+/* The following functions don't check the given path, and should only be used
+ * when it has been checked before with infd_filesystem_storage_verify_path().
+ * The public functions do check the path before calling any of these. */
+static FILE*
+infd_filesystem_storage_open_impl(InfdFilesystemStorage* storage,
+                                  const gchar* path,
+                                  const gchar* mode,
+                                  GError** error)
 {
+  FILE* res;
+  int save_errno;
+#ifndef G_OS_WIN32
+  int fd;
+  int open_mode;
+#endif
+
+#ifdef G_OS_WIN32
+  res = g_fopen(path, mode);
+#else
+  if(strcmp(mode, "r") == 0) open_mode = O_RDONLY;
+  else if(strcmp(mode, "w") == 0) open_mode = O_CREAT | O_WRONLY | O_TRUNC;
+  else g_assert_not_reached();
+  fd = open(path, O_NOFOLLOW | open_mode, 0644);
+  if(fd == -1)
+    res = NULL;
+  else
+    res = fdopen(fd, mode);
+#endif
+  save_errno = errno;
+
+  if(res == NULL)
+  {
+    infd_filesystem_storage_system_error(save_errno, error);
+    return NULL;
+  }
+
+  return res;
+}
+
+xmlDocPtr
+infd_filesystem_storage_read_xml_file_impl(InfdFilesystemStorage* storage,
+                                           const gchar* path,
+                                           const gchar* toplevel_tag,
+                                           GError** error)
+{
+  FILE* file;
+  gchar* uri;
+
   xmlDocPtr doc;
   xmlNodePtr root;
   xmlErrorPtr xmlerror;
 
+  file = infd_filesystem_storage_open_impl(storage, path, "r", error);
+  if(file == NULL)
+    return NULL;
+
+  uri = g_filename_to_uri(path, NULL, error);
+
+  if(uri == NULL)
+  {
+    fclose(file);
+    return NULL;
+  }
+
   doc = xmlReadIO(
     infd_filesystem_storage_read_xml_stream_read_func,
     infd_filesystem_storage_read_xml_stream_close_func,
-    stream,
-    filename,
+    file,
+    uri,
     "UTF-8",
     XML_PARSE_NOWARNING | XML_PARSE_NOERROR
   );
+
+  g_free(uri);
 
   if(doc == NULL)
   {
@@ -196,22 +247,22 @@ infd_filesystem_storage_read_xml_stream(InfdFilesystemStorage* storage,
       g_quark_from_static_string("LIBXML2_PARSER_ERROR"),
       xmlerror->code,
       _("Error parsing XML in file \"%s\": [%d]: %s"),
-      filename,
+      xmlerror->file,
       xmlerror->line,
       xmlerror->message
     );
   }
-  else
+  else if(toplevel_tag != NULL)
   {
     root = xmlDocGetRootElement(doc);
-    if(strcmp((const char*)root->name, toplevel_tag) != 0)
+    if(root == NULL || strcmp((const char*)root->name, toplevel_tag) != 0)
     {
       g_set_error(
         error,
         infd_filesystem_storage_error_quark,
         INFD_FILESYSTEM_STORAGE_ERROR_INVALID_FORMAT,
         _("Error processing file \"%s\": Toplevel tag is not \"%s\""),
-        filename,
+        doc->name,
         toplevel_tag
       );
 
@@ -223,73 +274,28 @@ infd_filesystem_storage_read_xml_stream(InfdFilesystemStorage* storage,
   return doc;
 }
 
-static xmlDocPtr
-infd_filesystem_storage_read_xml_file(InfdFilesystemStorage* storage,
-                                      const char* filename,
-                                      const char* toplevel_tag,
-                                      GError** error)
+gboolean
+infd_filesystem_storage_write_xml_file_impl(InfdFilesystemStorage* storage,
+                                            const gchar* path,
+                                            xmlDocPtr doc,
+                                            GError** error)
 {
   InfdFilesystemStoragePrivate* priv;
-  gchar* full_name;
-  FILE* stream;
-  int save_errno;
-  xmlDocPtr doc;
+  FILE* file;
 
-  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
-
-  full_name = g_build_filename(priv->root_directory, filename, NULL);
-  stream = fopen(full_name, "r");
-  save_errno = errno;
-  
-  if(stream == NULL)
-  {
-    infd_filesystem_storage_system_error(save_errno, error);
-    return NULL;
-  }
-
-  doc = infd_filesystem_storage_read_xml_stream(
-    storage,
-    stream,
-    full_name,
-    toplevel_tag,
-    error
-  );
-
-  g_free(full_name);
-  /* TODO: stream is already closed by xmlReadIO(?). Check, both in
-   * success and in error case. */
-  return doc;
-}
-
-static gboolean
-infd_filesystem_storage_write_xml_file(InfdFilesystemStorage* storage,
-                                       const char* filename,
-                                       xmlDocPtr doc,
-                                       GError** error)
-{
-  InfdFilesystemStoragePrivate* priv;
-  gchar* full_name;
-  FILE* stream;
   int save_errno;
   xmlErrorPtr xmlerror;
 
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
 
-  full_name = g_build_filename(priv->root_directory, filename, NULL);
-  stream = fopen(full_name, "w");
-  save_errno = errno;
-  g_free(full_name);
-
-  if(stream == NULL)
-  {
-    infd_filesystem_storage_system_error(save_errno, error);
+  file = infd_filesystem_storage_open_impl(storage, path, "w", error);
+  if(file == NULL)
     return FALSE;
-  }
 
-  if(xmlDocFormatDump(stream, doc, 1) == -1)
+  if(xmlDocFormatDump(file, doc, 1) == -1)
   {
     xmlerror = xmlGetLastError();
-    fclose(stream);
+    fclose(file);
     /* TODO: unlink? */
 
     g_set_error(
@@ -303,13 +309,35 @@ infd_filesystem_storage_write_xml_file(InfdFilesystemStorage* storage,
     return FALSE;
   }
 
-  if(fclose(stream) != 0)
+  if(fclose(file) != 0)
   {
+    save_errno = errno;
     infd_filesystem_storage_system_error(save_errno, error);
     return FALSE;
   }
 
   return TRUE;
+}
+
+static gchar*
+infd_filesystem_storage_get_acl_path(InfdFilesystemStorage* storage,
+                                     const gchar* path,
+                                     GError** error)
+{
+  gchar* full_path;
+
+  if(strcmp(path, "/") != 0)
+  {
+    full_path =
+      infd_filesystem_storage_get_path(storage, "xml.acl", path, error);
+  }
+  else
+  {
+    full_path =
+      infd_filesystem_storage_get_path(storage, "xml", "global-acl", error);
+  }
+
+  return full_path;
 }
 
 static void
@@ -579,9 +607,8 @@ infd_filesystem_storage_storage_read_account_list(InfdStorage* storage,
 {
   InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
-  gchar* full_name;
   FILE* stream;
-  int save_errno;
+  GError* local_error;
 
   xmlDocPtr doc;
   xmlNodePtr root;
@@ -593,37 +620,33 @@ infd_filesystem_storage_storage_read_account_list(InfdStorage* storage,
   fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
 
-  full_name = g_build_filename(priv->root_directory, "accounts.xml", NULL);
+  local_error = NULL;
 
-  stream = fopen(full_name, "r");
-  save_errno = errno;
+  doc = infd_filesystem_storage_read_xml_file(
+    INFD_FILESYSTEM_STORAGE(storage),
+    "xml",
+    "accounts",
+    "inf-acl-account-list",
+    &local_error
+  );
 
-  if(stream == NULL)
+  if(local_error != NULL)
   {
-    g_free(full_name);
-    if(save_errno == ENOENT)
+    if(local_error->domain == G_FILE_ERROR &&
+       local_error->code == G_FILE_ERROR_NOENT)
     {
       /* The account file does not exist. This is not an error, but just means
        * the account list is empty. */
       *n_accounts = 0;
+      g_error_free(local_error);
       return NULL;
     }
-    else
-    {
-      infd_filesystem_storage_system_error(save_errno, error);
-      return NULL;
-    }
+
+    g_propagate_error(error, local_error);
+    return NULL;
   }
 
-  doc = infd_filesystem_storage_read_xml_stream(
-    INFD_FILESYSTEM_STORAGE(storage),
-    stream,
-    full_name,
-    "inf-acl-account-list",
-    error
-  );
 
-  g_free(full_name);
   if(doc == NULL)
     return NULL;
 
@@ -688,7 +711,8 @@ infd_filesystem_storage_storage_write_account_list(
 
   result = infd_filesystem_storage_write_xml_file(
     fs_storage,
-    "accounts.xml",
+    "xml",
+    "accounts",
     doc,
     error
   );
@@ -702,12 +726,11 @@ infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
                                          const gchar* path,
                                          GError** error)
 {
+  InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
-  gchar* converted_name;
-  gchar* disk_name;
-  gchar* full_name;
-  FILE* stream;
-  int save_errno;
+  gchar* full_path;
+  GError* local_error;
+
   xmlDocPtr doc;
   xmlNodePtr root;
   xmlNodePtr child;
@@ -715,67 +738,36 @@ infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
   InfdStorageAcl* acl;
   xmlChar* account_id;
 
+  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
-  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
-    return NULL;
 
-  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
-  if(converted_name == NULL)
-    return NULL;
+  full_path = infd_filesystem_storage_get_acl_path(fs_storage, path, error);
+  if(full_path == NULL) return NULL;
 
-  if(strcmp(converted_name, "/") != 0)
+  local_error = NULL;
+  doc = infd_filesystem_storage_read_xml_file_impl(
+    fs_storage,
+    full_path,
+    "inf-acl",
+    &local_error
+  );
+
+  g_free(full_path);
+
+  if(local_error != NULL)
   {
-    disk_name = g_strconcat(converted_name, ".xml.acl", NULL);
-    g_free(converted_name);
-
-    full_name = g_build_filename(priv->root_directory, disk_name, NULL);
-    g_free(disk_name);
-  }
-  else
-  {
-    full_name = g_build_filename(
-      priv->root_directory,
-      "global-acl.xml",
-      NULL
-    );
-
-    g_free(converted_name);
-  }
-
-  stream = fopen(full_name, "r");
-  save_errno = errno;
-
-  if(stream == NULL)
-  {
-    g_free(full_name);
-    if(save_errno == ENOENT)
+    if(local_error->domain == G_FILE_ERROR &&
+       local_error->code == G_FILE_ERROR_NOENT)
     {
       /* The ACL file does not exist. This is not an error, but just means
        * the ACL is empty. */
+      g_error_free(local_error);
       return NULL;
     }
-    else
-    {
-      infd_filesystem_storage_system_error(save_errno, error);
-      return NULL;
-    }
-  }
 
-  doc = infd_filesystem_storage_read_xml_stream(
-    INFD_FILESYSTEM_STORAGE(storage),
-    stream,
-    full_name,
-    "inf-acl",
-    error
-  );
-
-  /* TODO: stream is already closed by xmlReadIO(?). Check, both in
-   * success and in error case. */
-
-  g_free(full_name);
-
-  if(doc == NULL)
+    g_propagate_error(error, local_error);
     return NULL;
+  }
 
   root = xmlDocGetRootElement(doc);
   list = NULL;
@@ -830,10 +822,10 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
                                           const InfAclSheetSet* sheet_set,
                                           GError** error)
 {
+  InfdFilesystemStorage* fs_storage;
   InfdFilesystemStoragePrivate* priv;
-  gchar* converted_name;
-  gchar* disk_name;
-  gchar* full_name;
+  gchar* full_path;
+
   xmlNodePtr root;
   xmlNodePtr child;
   guint i;
@@ -841,26 +833,11 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
   gboolean result;
   int save_errno;
 
+  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
-  if(infd_filesystem_storage_verify_path(path, error) == FALSE)
-    return FALSE;
 
-  /* TODO: A function which gives us the file name, to share in read_acl
-   * and write_acl. */
-  converted_name = g_filename_from_utf8(path, -1, NULL, NULL, error);
-  if(converted_name == NULL)
-    return FALSE;
-
-  if(strcmp(converted_name, "/") != 0)
-  {
-    disk_name = g_strconcat(converted_name, ".xml.acl", NULL);
-    g_free(converted_name);
-  }
-  else
-  {
-    disk_name = g_strdup("global-acl.xml");
-    g_free(converted_name);
-  }
+  full_path = infd_filesystem_storage_get_acl_path(fs_storage, path, error);
+  if(full_path == NULL) return FALSE;
 
   root = NULL;
   if(sheet_set != NULL)
@@ -895,28 +872,25 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
 
   if(root == NULL)
   {
-    full_name = g_build_filename(priv->root_directory, disk_name, NULL);
-    if(g_unlink(full_name) == -1)
+    if(g_unlink(full_path) == -1)
     {
       save_errno = errno;
       if(save_errno != ENOENT)
       {
-        g_free(full_name);
+        g_free(full_path);
         infd_filesystem_storage_system_error(save_errno, error);
         return FALSE;
       }
     }
-
-    g_free(full_name);
   }
   else
   {
     doc = xmlNewDoc((const xmlChar*)"1.0");
     xmlDocSetRootElement(doc, root);
 
-    result = infd_filesystem_storage_write_xml_file(
+    result = infd_filesystem_storage_write_xml_file_impl(
       INFD_FILESYSTEM_STORAGE(storage),
-      disk_name,
+      full_path,
       doc,
       error
     );
@@ -925,12 +899,12 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
 
     if(result == FALSE)
     {
-      g_free(full_name);
+      g_free(full_path);
       return FALSE;
     }
   }
 
-  g_free(disk_name);
+  g_free(full_path);
   return TRUE;
 }
 
@@ -953,10 +927,6 @@ infd_filesystem_storage_class_init(gpointer g_class,
 
   infd_filesystem_storage_error_quark = g_quark_from_static_string(
     "INFD_FILESYSTEM_STORAGE_ERROR"
-  );
-
-  infd_filesystem_storage_system_error_quark = g_quark_from_static_string(
-    "INFD_FILESYSTEM_STORAGE_SYSTEM_ERROR"
   );
 
   g_object_class_install_property(
@@ -1132,11 +1102,12 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
 {
   gchar* full_name;
   FILE* res;
-  int save_errno;
-#ifndef G_OS_WIN32
-  int fd;
-  int open_mode;
-#endif
+
+  g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), NULL);
+  g_return_val_if_fail(identifier != NULL, NULL);
+  g_return_val_if_fail(path != NULL, NULL);
+  g_return_val_if_fail(mode != NULL, NULL);
+  g_return_val_if_fail(error == NULL || *error == NULL, NULL);
 
   full_name = infd_filesystem_storage_get_path(
     storage,
@@ -1148,32 +1119,124 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
   if(full_name == NULL)
     return NULL;
 
-#ifdef G_OS_WIN32
-  res = g_fopen(full_name, mode);
-#else
-  if(strcmp(mode, "r") == 0) open_mode = O_RDONLY;
-  else if(strcmp(mode, "w") == 0) open_mode = O_CREAT | O_WRONLY | O_TRUNC;
-  else g_assert_not_reached();
-  fd = open(full_name, O_NOFOLLOW | open_mode, 0644);
-  if(fd == -1)
-    res = NULL;
-  else
-    res = fdopen(fd, mode);
-#endif
-  save_errno = errno;
+  res = infd_filesystem_storage_open_impl(
+    storage,
+    full_name,
+    mode,
+    error
+  );
 
   if(full_path != NULL)
     *full_path = full_name;
   else
     g_free(full_name);
 
-  if(res == NULL)
-  {
-    infd_filesystem_storage_system_error(save_errno, error);
-    return NULL;
-  }
-
   return res;
+}
+
+/**
+ * infd_filesystem_storage_read_xml_file:
+ * @storage: A #InfdFilesystemStorage.
+ * @identifier: The type of node to open.
+ * @path: The path to open, in UTF-8.
+ * @toplevel_tag: The expected toplevel XML tag name, or %NULL.
+ * @error: Location to store error information, if any.
+ *
+ * Opens a file in the given path, and parses its XML content. See
+ * infd_filesystem_storage_open() for how @identifier and @path should be
+ * interpreted.
+ *
+ * If @toplevel_tag is non-%NULL, then this function generates an error if
+ * the XML document read has a toplevel tag with a different name.
+ *
+ * Returns: A new XML document, or %NULL on error. Free with xmlDocFree().
+ **/
+xmlDocPtr
+infd_filesystem_storage_read_xml_file(InfdFilesystemStorage* storage,
+                                      const gchar* identifier,
+                                      const gchar* path,
+                                      const gchar* toplevel_tag,
+                                      GError** error)
+{
+  gchar* full_name;
+  xmlDocPtr res;
+
+  g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), NULL);
+  g_return_val_if_fail(identifier != NULL, NULL);
+  g_return_val_if_fail(path != NULL, NULL);
+  g_return_val_if_fail(error == NULL || *error == NULL, NULL);
+
+
+  full_name = infd_filesystem_storage_get_path(
+    storage,
+    identifier,
+    path,
+    error
+  );
+  
+  if(full_name == NULL)
+    return NULL;
+
+  res = infd_filesystem_storage_read_xml_file_impl(
+    storage,
+    full_name,
+    toplevel_tag,
+    error
+  );
+
+  g_free(full_name);
+  return res;
+}
+
+/**
+ * infd_filesystem_storage_write_xml_file:
+ * @storage: A #InfdFilesystemStorage.
+ * @identifier: The type of node to write.
+ * @path: The path to write to, in UTF-8.
+ * @doc: The XML document to write.
+ * @error: Location to store error information, if any.
+ *
+ * Writes the XML doument in @doc into a file in the filesystem indicated
+ * by @identifier and @path. See infd_filesystem_storage_open() for how
+ * @identifier and @path should be interpreted.
+ *
+ * Returns: %TRUE on success or %FALSE on error.
+ **/
+gboolean
+infd_filesystem_storage_write_xml_file(InfdFilesystemStorage* storage,
+                                       const gchar* identifier,
+                                       const gchar* path,
+                                       xmlDocPtr doc,
+                                       GError** error)
+{
+  gchar* full_name;
+  gboolean result;
+
+  g_return_val_if_fail(INFD_IS_FILESYSTEM_STORAGE(storage), FALSE);
+  g_return_val_if_fail(identifier != NULL, FALSE);
+  g_return_val_if_fail(path != NULL, FALSE);
+  g_return_val_if_fail(doc != NULL, FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
+
+  full_name = infd_filesystem_storage_get_path(
+    storage,
+    identifier,
+    path,
+    error
+  );
+  
+  if(full_name == NULL)
+    return FALSE;
+
+  result = infd_filesystem_storage_write_xml_file_impl(
+    storage,
+    full_name,
+    doc,
+    error
+  );
+
+  g_free(full_name);
+  return result;
 }
 
 /**

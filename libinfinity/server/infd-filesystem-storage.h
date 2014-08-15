@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include <libxml/tree.h>
+
 #include <stdio.h>
 
 G_BEGIN_DECLS
@@ -76,6 +78,20 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
                              const gchar* mode,
                              gchar** full_path,
                              GError** error);
+
+xmlDocPtr
+infd_filesystem_storage_read_xml_file(InfdFilesystemStorage* storage,
+                                      const gchar* identifier,
+                                      const gchar* path,
+                                      const gchar* toplevel_tag,
+                                      GError** error);
+
+gboolean
+infd_filesystem_storage_write_xml_file(InfdFilesystemStorage* storage,
+                                       const gchar* identifier,
+                                       const gchar* path,
+                                       xmlDocPtr doc,
+                                       GError** error);
 
 int
 infd_filesystem_storage_stream_close(FILE* file);
