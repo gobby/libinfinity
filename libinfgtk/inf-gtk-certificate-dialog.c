@@ -133,7 +133,7 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       if(priv->certificate_flags &
          INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED)
       {
-        ctext = _("The host has presented a new certificate");
+        ctext = _("The host has presented a new certificate.");
         markup = g_markup_printf_escaped("<b>%s</b>", ctext);
 
         g_string_append(info_text, markup);

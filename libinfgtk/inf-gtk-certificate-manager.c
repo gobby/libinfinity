@@ -626,6 +626,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
   gboolean match_hostname;
   gboolean issuer_known;
+  gnutls_x509_crt_t root_cert;
 
   int ret;
   unsigned int verify;
@@ -665,16 +666,32 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
     if(verify & GNUTLS_CERT_SIGNER_NOT_FOUND)
     {
       issuer_known = FALSE;
-      verify &= ~GNUTLS_CERT_SIGNER_NOT_FOUND;
 
-      /* If this was the only reason why the certificate was considered
-       * invalid, then skip it at this point. */
-      if(verify == GNUTLS_CERT_INVALID)
-        verify = 0;
+      /* Re-validate the certificate for other failure reasons --
+       * unfortunately the gnutls_certificate_verify_peers2() call
+       * does not tell us whether the certificate is otherwise invalid
+       * if a signer is not found already. */
+      /* TODO: Here it would be good to use the verify flags from the
+       * certificate credentials, but GnuTLS does not have API to
+       * retrieve them. */
+      root_cert = inf_certificate_chain_get_root_certificate(chain);
+
+      ret = gnutls_x509_crt_list_verify(
+        inf_certificate_chain_get_raw(chain),
+        inf_certificate_chain_get_n_certificates(chain),
+        &root_cert,
+        1,
+        NULL,
+        0,
+        GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
+        &verify
+      );
+
+      if(ret != GNUTLS_E_SUCCESS)
+        inf_gnutls_set_error(&error, ret);
+      else if(verify & GNUTLS_CERT_INVALID)
+        inf_gnutls_certificate_verification_set_error(&error, verify);
     }
-
-    if(verify & GNUTLS_CERT_INVALID)
-      inf_gnutls_certificate_verification_set_error(&error, verify);
   }
 
   /* Look up the host in our database of pinned certificates if we could not
@@ -718,11 +735,14 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
           flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN;
 
         flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED;
-        expiration_time = gnutls_x509_crt_get_expiration_time(presented_cert);
-        if(expiration_time != (time_t)(-1) &&
-           time(NULL) > INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE)
+        expiration_time = gnutls_x509_crt_get_expiration_time(known_cert);
+        if(expiration_time != (time_t)(-1))
         {
-          flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
+          expiration_time -= INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE;
+          if(time(NULL) > expiration_time)
+          {
+            flags |= INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED;
+          }
         }
       }
     }
