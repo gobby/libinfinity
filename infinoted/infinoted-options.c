@@ -833,9 +833,10 @@ infinoted_options_load(InfinotedOptions* options,
       exit(0);
     }
 #endif
+
+    g_option_context_free(context);
   }
 
-  g_option_context_free(context);
   g_free(entries);
 
   options->create_key = create_key;
@@ -877,13 +878,16 @@ infinoted_options_load(InfinotedOptions* options,
 
   /* With the key file in hands, we now override any options given on the
    * command line. */
-  g_hash_table_foreach(
-    cmdline_options,
-    infinoted_options_args_to_keyfile_foreach_func,
-    key_file
-  );
+  if(argc != NULL && argv != NULL)
+  {
+    g_hash_table_foreach(
+      cmdline_options,
+      infinoted_options_args_to_keyfile_foreach_func,
+      key_file
+    );
 
-  g_hash_table_unref(cmdline_options);
+    g_hash_table_unref(cmdline_options);
+  }
 
   if(plugin_parameters != NULL)
   {
