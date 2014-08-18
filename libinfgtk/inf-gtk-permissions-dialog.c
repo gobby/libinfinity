@@ -773,7 +773,7 @@ inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
   gpointer account_id_ptr;
   InfAclAccountId account_id;
   gboolean has_row;
-  guint i;
+  guint i, j;
 
   InfAclAccountId* lookup_ids;
   guint n_lookup_ids;
@@ -847,11 +847,27 @@ inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
     if(!have_accounts[i])
     {
       if(ids[i] == default_account->id)
+      {
         new_account_name = default_account->name;
+      }
       else if(local_account != NULL && ids[i] == local_account->id)
+      {
         new_account_name = local_account->name;
+      }
       else
+      {
+        /* If we have queried the account list, lookup the account in the
+         * queried list. */
         new_account_name = NULL;
+        for(j = 0; j < priv->n_accounts; ++j)
+        {
+          if(priv->accounts[j].id == ids[i])
+          {
+            new_account_name = priv->accounts[j].name;
+            break;
+          }
+        }
+      }
 
       gtk_list_store_insert_with_values(
         priv->account_store,
