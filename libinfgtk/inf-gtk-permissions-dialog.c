@@ -457,6 +457,7 @@ inf_gtk_permissions_dialog_remove_pending_sheet(
     );
 
     g_assert(has_iter == TRUE);
+
     gtk_list_store_remove(priv->account_store, &iter);
     gtk_tree_path_free(path);
 
@@ -826,11 +827,25 @@ inf_gtk_permissions_dialog_fill_account_list(InfGtkPermissionsDialog* dialog,
       {
         have_accounts[i] = TRUE;
         has_row = gtk_tree_model_iter_next(model, &iter);
+
+        g_assert(n_lookup_ids > 0);
         --n_lookup_ids;
       }
       else
       {
+        inf_signal_handlers_block_by_func(
+          gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+          G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+          dialog
+        );
+
         has_row = gtk_list_store_remove(priv->account_store, &iter);
+
+        inf_signal_handlers_unblock_by_func(
+          gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+          G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+          dialog
+        );
       }
     }
   }
@@ -1132,6 +1147,7 @@ inf_gtk_permissions_dialog_acl_account_removed_cb(InfBrowser* browser,
   InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
   gboolean have_account;
+  GtkTreeIter iter;
   guint i;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
@@ -1146,10 +1162,34 @@ inf_gtk_permissions_dialog_acl_account_removed_cb(InfBrowser* browser,
   g_assert(priv->popup_account == 0);
 
   /* The account should not be in the list anymore, since all ACL sheets for
-   * this account should have been removed first. */
+   * this account should have been removed first. However, it can happen when
+   * the removed account is selected, and therefore not removed when the ACL
+   * update is notified. Therefore, we remove the entry here even if it is
+   * selected, since the account no longer exists. */
   have_account =
-    inf_gtk_permissions_dialog_find_account(dialog, account->id, NULL);
-  g_assert(have_account == FALSE);
+    inf_gtk_permissions_dialog_find_account(dialog, account->id, &iter);
+  if(have_account == TRUE)
+  {
+    /* It is important that we block this signal handler here, otherwise
+     * the selection might be changed while we delete the currently selected
+     * account, which can trigger an update and iteration in the list store
+     * while the call to gtk_list_store_remove() has not yet completed. */
+    inf_signal_handlers_block_by_func(
+      gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+      G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+      dialog
+    );
+
+    gtk_list_store_remove(priv->account_store, &iter);
+
+    inf_signal_handlers_unblock_by_func(
+      gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+      G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
+      dialog
+    );
+
+    inf_gtk_permissions_dialog_update_sheet(dialog);
+  }
 
   /* Update account list */
   if(priv->accounts != NULL)
@@ -1166,12 +1206,14 @@ inf_gtk_permissions_dialog_acl_account_removed_cb(InfBrowser* browser,
           sizeof(InfAclAccount) * priv->n_accounts
         );
 
-        /* Need to update because the add button sensitivity might change */
-        inf_gtk_permissions_dialog_update(dialog, NULL);
         break;
       }
     }
   }
+
+  /* Need to update because the add button sensitivity might change, and
+   * the selected account might change. */
+  inf_gtk_permissions_dialog_update(dialog, NULL);
 }
 
 static void
@@ -2420,12 +2462,6 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   if(selected_id != 0 && selected_id != default_id && has_selected == FALSE)
     g_array_append_val(accounts, selected_id);
 
-  inf_gtk_permissions_dialog_fill_account_list(
-    dialog,
-    (InfAclAccountId*)accounts->data,
-    accounts->len
-  );
-
   /* Remove all non-selected pending sheets that have an empty mask */
   for(item = priv->pending_sheets; item != NULL; item = item->next)
   {
@@ -2446,9 +2482,17 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       gtk_tree_path_free(pending_path);
     }
   }
-  
+
   if(selected_path != NULL)
     gtk_tree_path_free(selected_path);
+
+  /* Note that this might remove rows, and therefore
+   * invalidate selected_path */
+  inf_gtk_permissions_dialog_fill_account_list(
+    dialog,
+    (InfAclAccountId*)accounts->data,
+    accounts->len
+  );
 
   /* Set editability of the sheet view */
   if(!inf_acl_mask_has(&perms, INF_ACL_CAN_SET_ACL) ||
