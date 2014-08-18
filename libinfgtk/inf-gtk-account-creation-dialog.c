@@ -585,6 +585,8 @@ inf_gtk_account_creation_dialog_init(GTypeInstance* instance,
 
   gtk_widget_set_can_default(priv->generate_button, TRUE);
   gtk_widget_grab_default(priv->generate_button);
+
+  gtk_window_set_title(GTK_WINDOW(dialog), _("Create New Account"));
 }
 
 static GObject*
