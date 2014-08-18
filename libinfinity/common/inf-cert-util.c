@@ -121,10 +121,10 @@ inf_cert_util_create_certificate_impl(gnutls_x509_crt_t cert,
 }
 
 static gboolean
-inf_cert_util_write_certificates_channel(gnutls_x509_crt_t* certs,
-                                         guint n_certs,
-                                         GIOChannel* channel,
-                                         GError** error)
+inf_cert_util_write_certificates_string(gnutls_x509_crt_t* certs,
+                                        guint n_certs,
+                                        GString* string,
+                                        GError** error)
 {
   guint i;
   gnutls_x509_crt_t cert;
@@ -137,9 +137,7 @@ inf_cert_util_write_certificates_channel(gnutls_x509_crt_t* certs,
   {
     if(i > 0)
     {
-      status = g_io_channel_write_chars(channel, "\n", 1, NULL, error);
-      if(status != G_IO_STATUS_NORMAL)
-        return FALSE;
+      g_string_append_c(string, '\n');
     }
 
     cert = (gnutls_x509_crt_t)certs[i];
@@ -160,20 +158,19 @@ inf_cert_util_write_certificates_channel(gnutls_x509_crt_t* certs,
       return FALSE;
     }
 
-    status = g_io_channel_write_chars(channel, buffer, size, NULL, error);
+    /* TODO: We could optimize this by directly filling string's buffer,
+     * instead of copying the output buffer here. */
+    g_string_append_len(string, buffer, size);
     g_free(buffer);
-
-    if(status != G_IO_STATUS_NORMAL)
-      return FALSE;
   }
 
   return TRUE;
 }
 
 static gboolean
-inf_cert_util_write_private_key_channel(gnutls_x509_privkey_t key,
-                                        GIOChannel* channel,
-                                        GError** error)
+inf_cert_util_write_private_key_string(gnutls_x509_privkey_t key,
+                                       GString* string,
+                                       GError** error)
 {
   unsigned char* data;
   size_t size;
@@ -217,11 +214,10 @@ inf_cert_util_write_private_key_channel(gnutls_x509_privkey_t key,
     }
     else
     {
-      status = g_io_channel_write_chars(channel, data, size, NULL, error);
+      /* TODO: We could optimize this by directly filling string's buffer,
+       * instead of copying the output buffer here. */
+      g_string_append_len(string, data, size);
       g_free(data);
-
-      if(status != G_IO_STATUS_NORMAL)
-        return FALSE;
     }
   }
 
@@ -564,23 +560,26 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
                                 const gchar* filename,
                                 GError** error)
 {
-  GIOChannel* channel;
-  GIOStatus status;
+  GString* string;
   gboolean result;
 
-  channel = g_io_channel_new_file(filename, "w", error);
-  if(channel == NULL) return FALSE;
+  string = g_string_sized_new(4096);
 
-  status = g_io_channel_set_encoding(channel, NULL, error);
-  if(status != G_IO_STATUS_NORMAL)
+  result = inf_cert_util_write_private_key_string(key, string, error);
+  if(result == FALSE)
   {
-    g_io_channel_unref(channel);
+    g_string_free(string, TRUE);
     return FALSE;
   }
 
-  result = inf_cert_util_write_private_key_channel(key, channel, error);
+  result = g_file_set_contents(
+    filename,
+    string->str,
+    string->len,
+    error
+  );
 
-  g_io_channel_unref(channel);
+  g_string_free(string, TRUE);
   return result;
 }
 
@@ -825,29 +824,72 @@ inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
                                 const gchar* filename,
                                 GError** error)
 {
-  GIOChannel* channel;
-  GIOStatus status;
+  GString* string;
   gboolean result;
 
-  channel = g_io_channel_new_file(filename, "w", error);
-  if(channel == NULL) return FALSE;
+  string = g_string_sized_new(n_certs * 4096);
 
-  status = g_io_channel_set_encoding(channel, NULL, error);
-  if(status != G_IO_STATUS_NORMAL)
-  {
-    g_io_channel_unref(channel);
-    return FALSE;
-  }
-
-  result = inf_cert_util_write_certificates_channel(
+  result = inf_cert_util_write_certificates_string(
     certs,
     n_certs,
-    channel,
+    string,
     error
   );
 
-  g_io_channel_unref(channel);
+  if(result == FALSE)
+  {
+    g_string_free(string, TRUE);
+    return FALSE;
+  }
+
+  result = g_file_set_contents(
+    filename,
+    string->str,
+    string->len,
+    error
+  );
+
+  g_string_free(string, TRUE);
   return result;
+}
+
+/**
+ * inf_cert_util_write_certificate_mem:
+ * @certs: An array of #gnutls_x509_crt_t objects.
+ * @n_certs: Number of certificates in the error.
+ * @error: Location to store error information, if any.
+ *
+ * This function writes the certificates in the array @certs into memory, in
+ * PEM format. If an error occurs the function returns %NULL and @error
+ * is set.
+ *
+ * Returns: A string with PEM-encoded certificate data, or %NULL on error.
+ * Free with g_free().
+ */
+gchar*
+inf_cert_util_write_certificate_mem(gnutls_x509_crt_t* certs,
+                                    guint n_certs,
+                                    GError** error)
+{
+  GString* string;
+  gboolean result;
+
+  string = g_string_sized_new(n_certs * 4096);
+
+  result = inf_cert_util_write_certificates_string(
+    certs,
+    n_certs,
+    string,
+    error
+  );
+
+  if(result == FALSE)
+  {
+    g_string_free(string, TRUE);
+    return FALSE;
+  }
+
+  return g_string_free(string, FALSE);
 }
 
 /**
@@ -871,35 +913,39 @@ inf_cert_util_write_certificate_with_key(gnutls_x509_privkey_t key,
                                          const gchar* filename,
                                          GError** error)
 {
-  GIOChannel* channel;
-  GIOStatus status;
+  GString* string;
   gboolean result;
 
-  channel = g_io_channel_new_file(filename, "w", error);
-  if(channel == NULL) return FALSE;
+  string = g_string_sized_new( (n_certs + 1) * 4096);
 
-  status = g_io_channel_set_encoding(channel, NULL, error);
-  if(status != G_IO_STATUS_NORMAL)
-  {
-    g_io_channel_unref(channel);
-    return FALSE;
-  }
-
-  result = inf_cert_util_write_private_key_channel(key, channel, error);
+  result = inf_cert_util_write_private_key_string(key, string, error);
   if(result == FALSE)
   {
-    g_io_channel_unref(channel);
+    g_string_free(string, TRUE);
     return FALSE;
   }
 
-  result = inf_cert_util_write_certificates_channel(
+  result = inf_cert_util_write_certificates_string(
     certs,
     n_certs,
-    channel,
+    string,
     error
   );
 
-  g_io_channel_unref(channel);
+  if(result == FALSE)
+  {
+    g_string_free(string, TRUE);
+    return FALSE;
+  }
+
+  g_file_set_contents(
+    filename,
+    string->str,
+    string->len,
+    error
+  );
+
+  g_string_free(string, TRUE);
   return result;
 }
 
