@@ -166,12 +166,16 @@ infinoted_main(int argc,
                GError** error)
 {
   InfinotedStartup* startup;
-  gboolean result;
+  InfinotedLog* log;
+  GError* local_error;
 
   startup = infinoted_startup_new(&argc, &argv, error);
 
   if(startup == NULL)
     return FALSE;
+
+  log = startup->log;
+  g_object_ref(log);
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
   if(startup->options->daemonize)
@@ -181,9 +185,23 @@ infinoted_main(int argc,
   }
 #endif
 
-  result = infinoted_main_run(startup, error);
+  /* If an error happens here, write it to the log file as well, so that
+   * the system administrator is notified for errors that happen after
+   * forking into the background also in the log file. */
+  local_error = NULL;
+  infinoted_main_run(startup, &local_error);
 
-  return result;
+  if(local_error != NULL)
+  {
+    infinoted_log_error(log, "%s", local_error->message);
+    g_propagate_error(error, local_error);
+
+    g_object_unref(log);
+    return FALSE;
+  }
+
+  g_object_unref(log);
+  return TRUE;
 }
 
 int
