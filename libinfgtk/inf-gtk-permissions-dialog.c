@@ -2154,6 +2154,9 @@ inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
   guint n_accounts;
   guint i;
 
+  InfAclAccountId account_id;
+  GtkTreeIter iter;
+
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
@@ -2178,6 +2181,26 @@ inf_gtk_permissions_dialog_query_acl_account_list_finished_cb(
       NULL
     );
 
+    /* Update user names from local account cache */
+    for(i = 0; i < n_accounts; ++i)
+    {
+      if(accounts[i].name != NULL)
+      {
+        account_id = accounts[i].id;
+        if(inf_gtk_permissions_dialog_find_account(dialog, account_id, &iter))
+        {
+          gtk_list_store_set(
+            GTK_LIST_STORE(priv->account_store),
+            &iter,
+            INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+            accounts[i].name,
+            -1
+          );
+        }
+      }
+    }
+
+    /* Update local account cache */
     for(i = 0; i < priv->n_accounts; ++i)
       g_free(priv->accounts[i].name);
 
