@@ -1093,16 +1093,9 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
    * for the node. */
   if(node->acl_queried == TRUE)
   {
-    node->acl_queried = FALSE;
     inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACL);
-    if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == TRUE)
-    {
-      iter.node = priv->root;
-      iter.node_id = priv->root->id;
-      inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
-      if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == TRUE)
-        node->acl_queried = TRUE;
-    }
+    if(inf_browser_check_acl(ibrowser, &iter, account, &mask, NULL) == FALSE)
+      node->acl_queried = FALSE;
   }
 
   /* If query-acl was revoked, then update the sheet set by removing all

@@ -2321,20 +2321,6 @@ infd_directory_enforce_single_acl(InfdDirectory* directory,
       node->acl_connections =
         g_slist_remove(node->acl_connections, connection);
     }
-    else
-    {
-      /* Also remove it if the INF_ACL_CAN_QUERY_ACCOUNT_LIST flag was
-       * removed on the root node, since the account list is required to
-       * query ACLs. */
-      iter.node = priv->root;
-      iter.node_id = priv->root->id;
-      inf_acl_mask_set1(&mask, INF_ACL_CAN_QUERY_ACCOUNT_LIST);
-      if(!inf_browser_check_acl(browser, &iter, account, &mask, NULL))
-      {
-        node->acl_connections =
-          g_slist_remove(node->acl_connections, connection);
-      }
-    }
   }
 
   return retval;
