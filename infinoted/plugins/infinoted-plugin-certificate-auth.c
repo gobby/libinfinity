@@ -114,6 +114,10 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
 
   if(chain != NULL)
   {
+    /* Note that we don't require client certificates to be signed by a CA.
+     * We only require them to be signed by one of the certificates in our
+     * list, but we don't care whether that's a CA or not. A common use case
+     * is to sign client certificates with our own server certificate. */
     res = gnutls_x509_crt_list_verify(
       inf_certificate_chain_get_raw(chain),
       inf_certificate_chain_get_n_certificates(chain),
@@ -121,7 +125,7 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
       plugin->n_cas,
       NULL,
       0,
-      GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
+      GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT | GNUTLS_VERIFY_DISABLE_CA_SIGN,
       &verify_result
     );
 

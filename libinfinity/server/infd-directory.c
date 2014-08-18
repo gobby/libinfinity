@@ -5741,7 +5741,9 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
   gnutls_x509_crq_t crq;
 
   gnutls_x509_crt_t cert;
-  size_t cert_size;
+  gnutls_x509_crt_t* certs;
+  guint n_certs;
+  guint i;
   gchar* cert_buffer;
 
   gchar* seq;
@@ -5822,30 +5824,23 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
   if(cert == NULL) return FALSE;
 
   /* Export the certificate to PEM format and send it back to the client */
-  cert_size = 0;
-  res = gnutls_x509_crt_export(cert, GNUTLS_X509_FMT_PEM, NULL, &cert_size);
-  if(res != GNUTLS_E_SHORT_MEMORY_BUFFER)
-  {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
-  }
+  g_assert(priv->certificate != NULL);
 
-  cert_buffer = g_malloc(cert_size);
-  res = gnutls_x509_crt_export(
-    cert,
-    GNUTLS_X509_FMT_PEM,
-    cert_buffer,
-    &cert_size
-  );
+  n_certs = inf_certificate_chain_get_n_certificates(priv->certificate) + 1;
+  certs = g_malloc(n_certs * sizeof(gnutls_x509_crt_t));
 
-  if(res != GNUTLS_E_SUCCESS)
+  for(i = 0; i < n_certs - 1; ++i)
   {
-    g_free(cert_buffer);
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
-    return FALSE;
+    certs[i + 1] =
+      inf_certificate_chain_get_nth_certificate(priv->certificate, i);
   }
+  certs[0] = cert;
+
+  cert_buffer = inf_cert_util_write_certificate_mem(certs, n_certs, error);
+  g_free(certs);
+
+  if(cert_buffer == NULL)
+    return FALSE;
 
   /* Create seq */
   if(!infd_directory_make_seq(directory, connection, xml, &seq, error))
@@ -5908,7 +5903,7 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
 
   reply_xml = xmlNewNode(NULL, (const xmlChar*)"create-acl-account");
   child = xmlNewChild(reply_xml, NULL, (const xmlChar*)"certificate", NULL);
-  xmlNodeAddContentLen(child, (const xmlChar*)cert_buffer, cert_size);
+  xmlNodeAddContent(child, (const xmlChar*)cert_buffer);
   g_free(cert_buffer);
 
   if(seq != NULL) inf_xml_util_set_attribute(reply_xml, "seq", seq);

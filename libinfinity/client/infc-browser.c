@@ -4319,13 +4319,11 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
 
   int res;
   gnutls_x509_crt_t cert;
-  InfCertificateChain* chain;
-  gnutls_x509_crt_t root_cert;
 
-  int verify_result;
+  gnutls_x509_crt_t* certs;
   guint n_certs;
-  guint i;
-  gnutls_x509_crt_t* all_certs;
+  GError* local_error;
+  int verify_result;
   InfCertificateChain* new_chain;
   InfAclAccount* account;
   InfAclAccount* existing_account;
@@ -4380,21 +4378,42 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
     return FALSE;
   }
 
-  res = gnutls_x509_crt_init(&cert);
-  if(res != GNUTLS_E_SUCCESS)
+  n_certs = 10;
+  certs = g_malloc(n_certs * sizeof(gnutls_x509_crt_t));
+
+  res = gnutls_x509_crt_list_import(
+    certs,
+    &n_certs,
+    &cert_text,
+    GNUTLS_X509_FMT_PEM,
+    GNUTLS_X509_CRT_LIST_FAIL_IF_UNSORTED |
+    GNUTLS_X509_CRT_LIST_IMPORT_FAIL_IF_EXCEED
+  );
+
+  if(res < 0)
   {
+    g_free(certs);
     inf_gnutls_set_error(error, res);
     return FALSE;
   }
-
-  res = gnutls_x509_crt_import(cert, &cert_text, GNUTLS_X509_FMT_PEM);
-  if(res != GNUTLS_E_SUCCESS)
+  else if(res == 0)
   {
-    gnutls_x509_crt_deinit(cert);
-    inf_gnutls_set_error(error, res);
+    g_set_error(
+      error,
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
+      "%s",
+      _("No certificate provided")
+    );
+
+    g_free(certs);
     return FALSE;
   }
 
+  certs = g_realloc(certs, n_certs * sizeof(gnutls_x509_crt_t));
+  new_chain = inf_certificate_chain_new(certs, n_certs);
+
+#if 0
   g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
   if(chain == NULL)
   {
@@ -4410,22 +4429,30 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
     return FALSE;
   }
 
-  /* Verify that it is signed
-   * a) correctly
-   * b) by the server itself */
   root_cert = inf_certificate_chain_get_root_certificate(chain);
+#endif
 
-  /* TODO: Validate the whole chain after it was constructed,
-   * using gnutls_x509_crt_list_verify(). */
-  res = gnutls_x509_crt_verify(
-    cert,
-    &root_cert,
+  /* Verify that it is signed correctly. Note that we do not check who signed
+   * the certificate. This is debatable, but it makes things a bit easier for
+   * us. This allows the server to directly use its certificate to sign our
+   * client certificate, and it does not need an extra (self-signed) CA
+   * certificate for that. In the latter case it would be harder for us to
+   * verify that we trust that CA. The certificate we obtained this way can
+   * only be used for identifying ourselves with the server, since for other
+   * purposes the server would make sure that our certificate was signed by
+   * an actual CA. And we have to trust the server anyway, or otherwise it
+   * could compromise all our data. */
+  res = gnutls_x509_crt_list_verify(
+    certs,
+    n_certs,
+    &certs[n_certs - 1],
     1,
-    GNUTLS_VERIFY_DO_NOT_ALLOW_X509_V1_CA_CRT,
+    NULL,
+    0,
+    GNUTLS_VERIFY_DO_NOT_ALLOW_X509_V1_CA_CRT | GNUTLS_VERIFY_DISABLE_CA_SIGN,
     &verify_result
   );
 
-  inf_certificate_chain_unref(chain);
   if(res != GNUTLS_E_SUCCESS || (verify_result & GNUTLS_CERT_INVALID) != 0)
   {
     if(res != GNUTLS_E_SUCCESS)
@@ -4434,39 +4461,27 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
     }
     else
     {
+      local_error = NULL;
+
+      inf_gnutls_certificate_verification_set_error(
+        &local_error,
+        verify_result
+      );
+
       g_set_error(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
-        _("Server sent an invalid certificate (%d)"),
-        verify_result
+        _("Server sent an invalid certificate (%s)"),
+        local_error->message
       );
+
+      g_error_free(local_error);
     }
 
-    gnutls_x509_crt_deinit(cert);
+    inf_certificate_chain_unref(new_chain);
     return FALSE;
   }
-
-  n_certs = inf_certificate_chain_get_n_certificates(chain);
-  all_certs = g_malloc(sizeof(gnutls_x509_crt_t) * (n_certs + 1));
-  all_certs[0] = cert;
-  for(i = 0; i < n_certs; ++i)
-  {
-    all_certs[i+1] = inf_cert_util_copy_certificate(
-      inf_certificate_chain_get_nth_certificate(chain, i),
-      error
-    );
-
-    if(all_certs[i+1] == NULL)
-    {
-      for(; i > 0; --i)
-        gnutls_x509_crt_deinit(all_certs[i]);
-      gnutls_x509_crt_deinit(cert);
-      return FALSE;
-    }
-  }
-
-  new_chain = inf_certificate_chain_new(all_certs, n_certs + 1);
 
   account = inf_acl_account_from_xml(xml, error);
   if(account == NULL)
