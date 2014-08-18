@@ -98,14 +98,19 @@ gboolean
 infd_directory_add_connection(InfdDirectory* directory,
                               InfXmlConnection* connection);
 
-const InfAclAccount*
+void
+infd_directory_get_support_mask(InfdDirectory* directory,
+                                InfAclMask* mask);
+
+InfAclAccountId
 infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
                                               InfXmlConnection* connection);
 
-void
+gboolean
 infd_directory_set_acl_account_for_connection(InfdDirectory* directory,
                                               InfXmlConnection* connection,
-                                              const InfAclAccount* account);
+                                              InfAclAccountId account_id,
+                                              GError** error);
 
 void
 infd_directory_foreach_connection(InfdDirectory* directory,
@@ -124,9 +129,8 @@ infd_directory_enable_chat(InfdDirectory* directory,
 InfdSessionProxy*
 infd_directory_get_chat_session(InfdDirectory* directory);
 
-const InfAclAccount*
+InfAclAccountId
 infd_directory_create_acl_account(InfdDirectory* directory,
-                                  InfAclAccountId account_id,
                                   const gchar* account_name,
                                   gboolean transient,
                                   gnutls_x509_crt_t* certificates,

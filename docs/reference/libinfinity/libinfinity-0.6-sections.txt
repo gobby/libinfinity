@@ -319,6 +319,7 @@ INF_ACL_ACCOUNT_POINTER_TO_ID
 inf_acl_account_new
 inf_acl_account_copy
 inf_acl_account_free
+inf_acl_account_array_free
 inf_acl_account_from_xml
 inf_acl_account_to_xml
 inf_acl_mask_copy
@@ -924,25 +925,6 @@ INF_ADOPTED_REQUEST_LOG_GET_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>infd-acl-account-info</FILE>
-<TITLE>InfdAclAccountInfo</TITLE>
-InfdAclAccountInfo
-infd_acl_account_info_new
-infd_acl_account_info_copy
-infd_acl_account_info_free
-infd_acl_account_info_set_password
-infd_acl_account_info_check_password
-infd_acl_account_info_add_certificate
-infd_acl_account_info_remove_certificate
-infd_acl_account_info_update_time
-infd_acl_account_info_from_xml
-infd_acl_account_info_to_xml
-<SUBSECTION Standard>
-infd_acl_account_info_get_type
-INFD_TYPE_ACL_ACCOUNT_INFO
-</SECTION>
-
-<SECTION>
 <FILE>infd-xmpp-server</FILE>
 <TITLE>InfdXmppServer</TITLE>
 InfdXmppServer
@@ -996,6 +978,7 @@ infd_directory_add_plugin
 infd_directory_remove_plugin
 infd_directory_lookup_plugin
 infd_directory_add_connection
+infd_directory_get_support_mask
 infd_directory_get_acl_account_for_connection
 infd_directory_set_acl_account_for_connection
 infd_directory_foreach_connection
@@ -1102,8 +1085,6 @@ infd_storage_acl_list_free
 infd_storage_read_subdirectory
 infd_storage_create_subdirectory
 infd_storage_remove_node
-infd_storage_read_account_list
-infd_storage_write_account_list
 infd_storage_read_acl
 infd_storage_write_acl
 <SUBSECTION Standard>

@@ -214,6 +214,10 @@ inf_acl_account_copy(const InfAclAccount* account);
 void
 inf_acl_account_free(InfAclAccount* account);
 
+void
+inf_acl_account_array_free(InfAclAccount* accounts,
+                           guint n_accounts);
+
 InfAclAccount*
 inf_acl_account_from_xml(xmlNodePtr xml,
                          GError** error);

@@ -390,67 +390,6 @@ infd_storage_remove_node(InfdStorage* storage,
 }
 
 /**
- * infd_storage_read_account_list:
- * @storage: A #InfdStorage.
- * @n_accounts: Output paramater for the number of accounts read.
- * @error: Location to store error information, if any.
- *
- * Reads the account list from the storage. It returns an array of
- * #InfdAclAccountInfo objects. The length of the array is returned in the
- * @n_accounts parameter.
- *
- * Returns: A possibly empty array of #InfdAclAccountInfo objects.
- * Free each element with infd_acl_account_info_free() and the array itself
- * with g_free() when no longer needed.
- */
-InfdAclAccountInfo**
-infd_storage_read_account_list(InfdStorage* storage,
-                               guint* n_accounts,
-                               GError** error)
-{
-  InfdStorageIface* iface;
-
-  g_return_val_if_fail(INFD_IS_STORAGE(storage), NULL);
-  g_return_val_if_fail(n_accounts != NULL, NULL);
-  g_return_val_if_fail(error == NULL || *error == NULL, NULL);
-
-  iface = INFD_STORAGE_GET_IFACE(storage);
-  g_return_val_if_fail(iface->read_account_list != NULL, NULL);
-
-  return iface->read_account_list(storage, n_accounts, error);
-}
-
-/**
- * infd_storage_write_account_list:
- * @storage: A #InfdStorage.
- * @accounts: An array of #InfdAclAccountInfo objects.
- * @n_accounts: Number of elements in the @accounts array.
- * @error: Location to store error information, if any.
- *
- * Writes the list of known accounts to the storage. If an error occurs, the
- * function returns %FALSE and @error is set.
- *
- * Returns: %TRUE on success or %FALSE on error.
- */
-gboolean
-infd_storage_write_account_list(InfdStorage* storage,
-                                const InfdAclAccountInfo** accounts,
-                                guint n_accounts,
-                                GError** error)
-{
-  InfdStorageIface* iface;
-
-  g_return_val_if_fail(INFD_IS_STORAGE(storage), FALSE);
-  g_return_val_if_fail(accounts != NULL || n_accounts == 0, FALSE);
-  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
-
-  iface = INFD_STORAGE_GET_IFACE(storage);
-  g_return_val_if_fail(iface->write_account_list != NULL, FALSE);
-
-  return iface->write_account_list(storage, accounts, n_accounts, error);
-}
-
-/**
  * infd_storage_read_acl:
  * @storage: A #InfdStorage.
  * @path: A path pointing to an existing node.

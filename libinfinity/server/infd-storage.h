@@ -22,7 +22,6 @@
 
 #include <glib-object.h>
 
-#include <libinfinity/server/infd-acl-account-info.h>
 #include <libinfinity/common/inf-acl.h>
 
 G_BEGIN_DECLS
@@ -83,17 +82,6 @@ struct _InfdStorageIface {
                           GError** error);
 
   /* TODO: Add further methods to copy, move and expunge nodes */
-
-  /* TODO: There should be a method to only add/change one account. */
-
-  InfdAclAccountInfo** (*read_account_list)(InfdStorage* storage,
-                                            guint* n_accounts,
-                                            GError** error);
-
-  gboolean (*write_account_list)(InfdStorage* storage,
-                                 const InfdAclAccountInfo** accounts,
-                                 guint n_accounts,
-                                 GError** error);
 
   GSList* (*read_acl)(InfdStorage* storage,
                       const gchar* path,
@@ -157,17 +145,6 @@ infd_storage_remove_node(InfdStorage* storage,
                          const gchar* identifier,
                          const gchar* path,
                          GError** error);
-
-InfdAclAccountInfo**
-infd_storage_read_account_list(InfdStorage* storage,
-                               guint* n_accounts,
-                               GError** error);
-
-gboolean
-infd_storage_write_account_list(InfdStorage* storage,
-                                const InfdAclAccountInfo** accounts,
-                                guint n_accounts,
-                                GError** error);
 
 GSList*
 infd_storage_read_acl(InfdStorage* storage,

@@ -597,127 +597,6 @@ infd_filesystem_storage_storage_remove_node(InfdStorage* storage,
   return result;
 }
 
-static InfdAclAccountInfo**
-infd_filesystem_storage_storage_read_account_list(InfdStorage* storage,
-                                                  guint* n_accounts,
-                                                  GError** error)
-{
-  InfdFilesystemStorage* fs_storage;
-  InfdFilesystemStoragePrivate* priv;
-  FILE* stream;
-  GError* local_error;
-
-  xmlDocPtr doc;
-  xmlNodePtr root;
-  xmlNodePtr child;
-  GPtrArray* array;
-  InfdAclAccountInfo* info;
-  guint i;
-
-  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
-  priv = INFD_FILESYSTEM_STORAGE_PRIVATE(fs_storage);
-
-  local_error = NULL;
-
-  doc = infd_filesystem_storage_read_xml_file(
-    INFD_FILESYSTEM_STORAGE(storage),
-    "xml",
-    "accounts",
-    "inf-acl-account-list",
-    &local_error
-  );
-
-  if(local_error != NULL)
-  {
-    if(local_error->domain == G_FILE_ERROR &&
-       local_error->code == G_FILE_ERROR_NOENT)
-    {
-      /* The account file does not exist. This is not an error, but just means
-       * the account list is empty. */
-      *n_accounts = 0;
-      g_error_free(local_error);
-      return NULL;
-    }
-
-    g_propagate_error(error, local_error);
-    return NULL;
-  }
-
-
-  if(doc == NULL)
-    return NULL;
-
-  array = g_ptr_array_sized_new(128);
-
-  root = xmlDocGetRootElement(doc);
-  for(child = root->children; child != NULL; child = child->next)
-  {
-    if(child->type != XML_ELEMENT_NODE) continue;
-
-    if(strcmp((const char*)child->name, "account") == 0)
-    {
-      info = infd_acl_account_info_from_xml(child, error);
-      if(info == NULL)
-      {
-        for(i = 0; i < array->len; ++i)
-        {
-          infd_acl_account_info_free(
-            (InfdAclAccountInfo*)g_ptr_array_index(array, i)
-          );
-        }
-
-        g_ptr_array_free(array, TRUE);
-        xmlFreeDoc(doc);
-        return NULL;
-      }
-
-      g_ptr_array_add(array, info);
-    }
-  }
-
-  xmlFreeDoc(doc);
-  *n_accounts = array->len;
-  return (InfdAclAccountInfo**)g_ptr_array_free(array, FALSE);
-}
-
-static gboolean
-infd_filesystem_storage_storage_write_account_list(
-  InfdStorage* storage,
-  const InfdAclAccountInfo** accounts,
-  guint n_accounts,
-  GError** error)
-{
-  InfdFilesystemStorage* fs_storage;
-  xmlNodePtr root;
-  xmlNodePtr child;
-  guint i;
-  xmlDocPtr doc;
-  gboolean result;
-
-  fs_storage = INFD_FILESYSTEM_STORAGE(storage);
-
-  root = xmlNewNode(NULL, (const xmlChar*)"inf-acl-account-list");
-  for(i = 0; i < n_accounts; ++i)
-  {
-    child = xmlNewChild(root, NULL, (const xmlChar*)"account", NULL);
-    infd_acl_account_info_to_xml(accounts[i], child);
-  }
-
-  doc = xmlNewDoc((const xmlChar*)"1.0");
-  xmlDocSetRootElement(doc, root);
-
-  result = infd_filesystem_storage_write_xml_file(
-    fs_storage,
-    "xml",
-    "accounts",
-    doc,
-    error
-  );
-
-  xmlFreeDoc(doc);
-  return result;
-}
-
 static GSList*
 infd_filesystem_storage_storage_read_acl(InfdStorage* storage,
                                          const gchar* path,
@@ -952,11 +831,6 @@ infd_filesystem_storage_storage_init(gpointer g_iface,
     infd_filesystem_storage_storage_create_subdirectory;
   iface->remove_node =
     infd_filesystem_storage_storage_remove_node;
-
-  iface->read_account_list =
-    infd_filesystem_storage_storage_read_account_list;
-  iface->write_account_list =
-    infd_filesystem_storage_storage_write_account_list;
   iface->read_acl =
     infd_filesystem_storage_storage_read_acl;
   iface->write_acl =

@@ -346,6 +346,23 @@ inf_acl_account_free(InfAclAccount* account)
 }
 
 /**
+ * inf_acl_account_array_free:
+ * @accounts: An array of #InfAclAccount objects.
+ * @n_accounts: The number of elements in the array.
+ *
+ * Releases all resources allocated by an array of #InfAclAccount<!-- -->s.
+ */
+void inf_acl_account_array_free(InfAclAccount* accounts,
+                                guint n_accounts)
+{
+  guint i;
+
+  for(i = 0; i < n_accounts; ++i)
+    g_free(accounts[i].name);
+  g_free(accounts);
+}
+
+/**
  * inf_acl_account_from_xml:
  * @xml: An XML node.
  * @error: Location to store error information, if any.

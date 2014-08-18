@@ -195,10 +195,11 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
   gnutls_x509_privkey_t super_key;
   InfCertUtilDescription desc;
   gnutls_x509_crt_t super_cert;
-  const InfAclAccount* super_account;
+  InfAclAccountId super_id;
   gnutls_x509_crt_t chain[2];
   gboolean written;
 
+  InfdDirectory* directory;
   InfBrowserIter iter;
   InfAclSheetSet sheet_set;
   InfAclSheet sheet;
@@ -347,9 +348,8 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
       return FALSE;
     }
 
-    super_account = infd_directory_create_acl_account(
+    super_id = infd_directory_create_acl_account(
       infinoted_plugin_manager_get_directory(plugin->manager),
-      inf_acl_account_id_from_string("super"),
       _("Super User"),
       TRUE, /* transient */
       &super_cert,
@@ -357,14 +357,14 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
       error
     );
 
-    if(super_account == NULL)
+    if(super_id == 0)
     {
       gnutls_x509_crt_deinit(super_cert);
       gnutls_x509_privkey_deinit(super_key);
       return FALSE;
     }
 
-    plugin->super_id = super_account->id;
+    plugin->super_id = super_id;
 
     chain[0] = super_cert;
     chain[1] = plugin->cas[plugin->ca_key_index];
@@ -388,15 +388,17 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
       &iter
     );
 
-    sheet.account = super_account->id;
+    directory = infinoted_plugin_manager_get_directory(plugin->manager);
+
+    sheet.account = super_id;
     sheet.mask = INF_ACL_MASK_ALL;
-    sheet.perms = INF_ACL_MASK_ALL;
+    infd_directory_get_support_mask(directory, &sheet.perms);
     sheet_set.n_sheets = 1;
     sheet_set.own_sheets = NULL;
     sheet_set.sheets = &sheet;
 
     request = inf_browser_set_acl(
-      INF_BROWSER(infinoted_plugin_manager_get_directory(plugin->manager)),
+      INF_BROWSER(directory),
       &iter,
       &sheet_set,
       infinoted_plugin_certificate_auth_set_acl_cb,

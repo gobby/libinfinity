@@ -23,7 +23,9 @@
 #include <infinoted/infinoted-pam.h>
 
 #include <libinfinity/server/infd-filesystem-storage.h>
+#include <libinfinity/server/infd-filesystem-account-storage.h>
 #include <libinfinity/inf-config.h>
+#include <libinfinity/inf-i18n.h>
 
 #include <string.h>
 
@@ -70,6 +72,7 @@ infinoted_config_reload(InfinotedRun* run,
 
   InfdStorage* storage;
   InfdFilesystemStorage* filesystem_storage;
+  InfdFilesystemAccountStorage* filesystem_account_storage;
   gchar* root_directory;
   gboolean result;
 
@@ -180,54 +183,29 @@ infinoted_config_reload(InfinotedRun* run,
   g_object_unref(storage);
   filesystem_storage = NULL;
 
-  /* Re-initialize plugin system. Right now we re-create the whole plugin
-   * manager, i.e. re-loading all plugins. We only use the new plugins if
-   * everything else goes well.
-   *
-   * TODO: Here we could be smarter:
-   *   - add/remove changed plugins
-   *   - optional callback to existing plugins to read the new configuration
-   */
-  /* TODO: The path determination is copied from infinoted-run.c... it should
-   * probably go into a separate function, or inside plugin manager. */
-#ifdef G_OS_WIN32
-  module_path = g_win32_get_package_installation_directory_of_module(NULL);
-  plugin_path = g_build_filename(module_path, "lib", PLUGIN_PATH, NULL);
-  g_free(module_path);
-#else
-  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_PATH, NULL);
-#endif
-
-  plugin_manager = infinoted_plugin_manager_new(
-    run->directory,
-    startup->log,
-    startup->credentials
-  );
-
-  result = infinoted_plugin_manager_load(
-    plugin_manager,
-    plugin_path,
-    (const gchar* const*)startup->options->plugins,
-    startup->options->config_key_file,
-    error
-  );
-
-  g_free(plugin_path);
-  infinoted_options_drop_config_file(startup->options);
-
-  if(result == FALSE)
-  {
-    g_object_unref(plugin_manager);
-    infinoted_startup_free(startup);
-    return FALSE;
-  }
-
+  filesystem_account_storage = NULL;
   if(strcmp(root_directory, startup->options->root_directory) != 0)
   {
     /* Root directory changes. I don't think this is actually useful, but
      * all code is there, so let's support it. */
     filesystem_storage =
       infd_filesystem_storage_new(startup->options->root_directory);
+    filesystem_account_storage = infd_filesystem_account_storage_new();
+
+    result = infd_filesystem_account_storage_set_filesystem(
+      filesystem_account_storage,
+      filesystem_storage,
+      error
+    );
+
+    if(result == FALSE)
+    {
+      g_object_unref(filesystem_account_storage);
+      g_object_unref(filesystem_storage);
+      g_object_unref(plugin_manager);
+      infinoted_startup_free(startup);
+      return FALSE;
+    }
   }
 
   /* This should be the last thing that may fail which we do, because we
@@ -260,6 +238,8 @@ infinoted_config_reload(InfinotedRun* run,
       g_propagate_error(error, local_error);
       g_object_unref(plugin_manager);
       if(filesystem_storage) g_object_unref(filesystem_storage);
+      if(filesystem_account_storage)
+        g_object_unref(filesystem_account_storage);
       infinoted_startup_free(startup);
       return FALSE;
     }
@@ -362,19 +342,80 @@ infinoted_config_reload(InfinotedRun* run,
     }
   }
 
+  /* Now, re-initialize plugins. This is a bit tricky, because it can fail,
+   * and because we need to unload the previous plugins first.
+   *
+   * TODO: It would be better if we only add or remove plugins that did not
+   * exist before, and for the rest we call a _reload_params() function. That
+   * function should be allowed to fail, and if it fails, the plugin is
+   * unloaded.
+   */
+
+  /* TODO: Make sure this unloads all plugins... at the moment it wouldn't
+   * happen if some plugin ref-ed the plugin manager. */
+  g_assert(run->plugin_manager != NULL);
+  g_object_unref(run->plugin_manager);
+
+  /* TODO: Storage and account storage should not be updated if they have
+   * been altered by a plugin... maybe the storage itself should be turned
+   * into a plugin. */
   if(filesystem_storage != NULL)
   {
     g_object_set(
       G_OBJECT(run->directory),
       "storage", filesystem_storage,
+      "account-storage", filesystem_account_storage,
       NULL
     );
 
     g_object_unref(filesystem_storage);
+    g_object_unref(filesystem_account_storage);
   }
 
-  g_assert(run->plugin_manager != NULL);
-  g_object_unref(run->plugin_manager);
+#ifdef G_OS_WIN32
+  module_path = g_win32_get_package_installation_directory_of_module(NULL);
+  plugin_path = g_build_filename(module_path, "lib", PLUGIN_PATH, NULL);
+  g_free(module_path);
+#else
+  plugin_path = g_build_filename(PLUGIN_LIBPATH, PLUGIN_PATH, NULL);
+#endif
+
+  plugin_manager = infinoted_plugin_manager_new(
+    run->directory,
+    startup->log,
+    startup->credentials
+  );
+
+  local_error = NULL;
+
+  result = infinoted_plugin_manager_load(
+    plugin_manager,
+    plugin_path,
+    (const gchar* const*)startup->options->plugins,
+    startup->options->config_key_file,
+    &local_error
+  );
+
+  g_free(plugin_path);
+  infinoted_options_drop_config_file(startup->options);
+
+  if(result == FALSE)
+  {
+    infinoted_log_error(
+      startup->log,
+      _("Failed to re-load plugins: %s"),
+      local_error->message
+    );
+
+    infinoted_log_error(
+      startup->log,
+      _("Plugins are disabled. Please fix the problem and reload "
+        "configuration again.")
+    );
+
+    g_error_free(local_error);
+  }
+
   run->plugin_manager = plugin_manager;
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
@@ -411,7 +452,7 @@ infinoted_config_reload(InfinotedRun* run,
     run->directory,
     infinoted_config_reload_update_connection_sasl_context,
     startup->sasl_context
-   );
+  );
 
   infinoted_startup_free(run->startup);
   run->startup = startup;
