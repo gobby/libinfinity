@@ -276,6 +276,7 @@ static GQuark infc_browser_sync_in_plugin_quark;
 static GQuark infc_browser_lookup_acl_accounts_ids_quark;
 static GQuark infc_browser_lookup_acl_accounts_n_ids_quark;
 static GQuark infc_browser_lookup_acl_accounts_name_quark;
+static GQuark infc_browser_query_acl_account_list_accounts_quark;
 
 /*
  * Callbacks
@@ -3835,6 +3836,13 @@ infc_browser_handle_acl_account_list_begin(InfcBrowser* browser,
   if(result == FALSE)
     return FALSE;
 
+  g_object_set_qdata_full(
+    G_OBJECT(request),
+    infc_browser_query_acl_account_list_accounts_quark,
+    g_hash_table_new(NULL, NULL),
+    (GDestroyNotify)g_hash_table_destroy
+  );
+
   if(notifications_enabled)
     priv->account_list_status = INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS;
   else
@@ -3854,6 +3862,14 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   guint current;
   guint total;
   InfBrowserIter iter;
+
+  InfAclAccountId default_id;
+  GHashTable* table;
+  GHashTableIter hash_iter;
+  gpointer value;
+  InfAclAccount* account;
+  GSList* to_be_removed;
+  GSList* item;
 
   InfAclAccount* accounts;
   guint n_accounts;
@@ -3888,9 +3904,45 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   }
   else
   {
-    /* TODO: Currently, if the server does not report any entry anymore that
-     * we have in our account list at the moment, then we should delete that
-     * item from the account list. */
+    /* Remove all accounts that we have in our account list but has not been
+     * listed by the server now. These seem to have been removed since the
+     * last time we queried the account list. */
+    table = g_object_get_qdata(
+      G_OBJECT(request),
+      infc_browser_query_acl_account_list_accounts_quark
+    );
+
+    to_be_removed = NULL;
+    default_id = inf_acl_account_id_from_string("default");
+    g_hash_table_iter_init(&hash_iter, priv->accounts);
+    while(g_hash_table_iter_next(&hash_iter, NULL, &value))
+    {
+      /* Server does not explicitly send default and local account */
+      account = (InfAclAccount*)value;
+      if(account != priv->local_account &&
+         account->id != default_id &&
+         g_hash_table_lookup(table, account) == NULL)
+      {
+        /* We cannot remove the item directly, since we are currently
+         * iterating over the hash table. */
+        to_be_removed = g_slist_prepend(to_be_removed, account);
+      }
+    }
+
+    for(item = to_be_removed; item != NULL; item = item->next)
+    {
+      account = (InfAclAccount*)item->data;
+
+      g_hash_table_steal(
+        priv->accounts,
+        INF_ACL_ACCOUNT_ID_TO_POINTER(account->id)
+      );
+
+      inf_browser_acl_account_removed(INF_BROWSER(browser), account, NULL);
+      inf_acl_account_free(account);
+    }
+
+    /* Now with the updated account list, we can report back to the caller */
     accounts = infc_browser_make_acl_account_list(browser, &n_accounts);
 
     switch(priv->account_list_status)
@@ -3923,6 +3975,22 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
     g_free(accounts);
     return TRUE;
   }
+}
+
+static void
+infc_browser_handle_add_acl_account_foreach_func(InfcRequest* request,
+                                                 gpointer user_data)
+{
+  GHashTable* table;
+
+  table = g_object_get_qdata(
+    G_OBJECT(request),
+    infc_browser_query_acl_account_list_accounts_quark
+  );
+
+  /* Only insert a pointer to the account object
+   * in the permanent hash table. */
+  g_hash_table_insert(table, user_data, user_data);
 }
 
 static gboolean
@@ -3986,6 +4054,8 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
       g_free(cache_account->name);
       cache_account->name = g_strdup(account->name);
     }
+
+    inf_acl_account_free(account);
   }
   else
   {
@@ -4000,10 +4070,19 @@ infc_browser_handle_add_acl_account(InfcBrowser* browser,
       account,
       INF_REQUEST(request)
     );
+
+    cache_account = account;
   }
 
   if(request != NULL)
     infc_progress_request_progress(INFC_PROGRESS_REQUEST(request));
+
+  infc_request_manager_foreach_named_request(
+    priv->request_manager,
+    "query-acl-account-list",
+    infc_browser_handle_add_acl_account_foreach_func,
+    cache_account
+  );
 
   return TRUE;
 }
@@ -4091,6 +4170,20 @@ infc_browser_handle_lookup_acl_accounts(InfcBrowser* browser,
     }
     else
     {
+      /* Should not happen, as we should have served this from our cache. If
+       * this happens, the server lied to us. */
+      if(priv->account_list_status == INFC_BROWSER_ACCOUNT_LIST_NOTIFICATIONS)
+      {
+        g_warning(
+          _("Unknown account ID \"%s\" in server reply of "
+            "\"%s\". Typically, this means the server claimed it notified us "
+            "about new connections as soon as they are available, but it "
+            "did not do so."),
+          inf_acl_account_id_to_string(account->id),
+          "lookup-acl-accounts"
+        );
+      }
+
       g_hash_table_insert(
         priv->accounts,
         INF_ACL_ACCOUNT_ID_TO_POINTER(account->id),
@@ -6765,6 +6858,11 @@ infc_browser_class_init(gpointer g_class,
   infc_browser_lookup_acl_accounts_name_quark = g_quark_from_static_string(
     "infc-browser-lookup-acl-accounts-name-quark"
   );
+
+  infc_browser_query_acl_account_list_accounts_quark =
+    g_quark_from_static_string(
+      "infc-browser-query-acl-account-list-accounts-quark"
+    );
 
   g_object_class_install_property(
     object_class,
