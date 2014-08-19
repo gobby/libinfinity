@@ -1748,7 +1748,7 @@ infd_filesystem_account_storage_new(void)
 /**
  * infd_filesystem_account_storage_set_filesystem:
  * @s: A #InfdFilesystemAccountStorage.
- * @fs: The underlying #InfdFileSystemStorage to use.
+ * @fs: The underlying #InfdFilesystemStorage to use.
  * @error: Location for error information, if any, or %NULL.
  *
  * Uses @fs as the underlying #InfdFilesystemStorage for @s. The
