@@ -29,12 +29,20 @@
  * provided by #InfIo. An arbitrary amount of data can be sent with the
  * object, extra data will be buffered and automatically transmitted once
  * kernel space becomes available.
+ *
+ * The TCP connection properties should be set and then
+ * inf_tcp_connection_open() be called to open a connection. If the
+ * #InfTcpConnection:resolver property is set, then
+ * #InfTcpConnection:remote-address and #InfTcpConnection:remote-port are
+ * ignored, and the hostname as configured in the resolver will be resolved.
+ * When the hostname has been resolved and a connection has been made, the
+ * #InfTcpConnection:remote-address and #InfTcpConnection:remote-port
+ * properties are updated to reflect the address actually connected to.
  **/
-
-
 
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-tcp-connection-private.h>
+#include <libinfinity/common/inf-name-resolver.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-native-socket.h>
@@ -66,6 +74,9 @@ struct _InfTcpConnectionPrivate {
   InfIoEvent events;
   InfIoWatch* watch;
 
+  InfNameResolver* resolver;
+  guint resolver_index;
+
   InfTcpConnectionStatus status;
   InfNativeSocket socket;
 
@@ -83,6 +94,7 @@ enum {
   PROP_0,
 
   PROP_IO,
+  PROP_RESOLVER,
 
   PROP_STATUS,
 
@@ -179,6 +191,342 @@ inf_tcp_connection_system_error(InfTcpConnection* connection,
   g_error_free(error);
 }
 
+static void
+inf_tcp_connection_io(InfNativeSocket* socket,
+                      InfIoEvent events,
+                      gpointer user_data);
+
+
+static void
+inf_tcp_connection_connected(InfTcpConnection* connection)
+{
+  InfTcpConnectionPrivate* priv;
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  priv->status = INF_TCP_CONNECTION_CONNECTED;
+  priv->front_pos = 0;
+  priv->back_pos = 0;
+
+  priv->events = INF_IO_INCOMING | INF_IO_ERROR;
+
+  if(priv->watch == NULL)
+  {
+    priv->watch = inf_io_add_watch(
+      priv->io,
+      &priv->socket,
+      priv->events,
+      inf_tcp_connection_io,
+      connection,
+      NULL
+    );
+  }
+  else
+  {
+    inf_io_update_watch(priv->io, priv->watch, priv->events);
+  }
+
+  g_object_freeze_notify(G_OBJECT(connection));
+
+  /* Update adresses from resolver */
+  if(priv->resolver != NULL)
+  {
+    if(priv->remote_address != NULL)
+      inf_ip_address_free(priv->remote_address);
+
+    priv->remote_address = inf_ip_address_copy(
+      inf_name_resolver_get_address(priv->resolver, priv->resolver_index)
+    );
+
+    priv->remote_port =
+      inf_name_resolver_get_port(priv->resolver, priv->resolver_index);
+
+    g_object_notify(G_OBJECT(connection), "remote-address");
+    g_object_notify(G_OBJECT(connection), "remote-port");
+
+    priv->resolver_index = 0;
+  }
+
+  g_object_notify(G_OBJECT(connection), "status");
+  g_object_notify(G_OBJECT(connection), "local-address");
+  g_object_notify(G_OBJECT(connection), "local-port");
+  g_object_thaw_notify(G_OBJECT(connection));
+}
+
+static gboolean
+inf_tcp_connection_open_with_resolver(InfTcpConnection* connection,
+                                      GError** error);
+
+/* Handles when an error occurred during connection. Returns FALSE when the
+ * error was fatal. In this case, it has already emitted the "error" signal.
+ * Returns TRUE, if another connection attempt is made. */
+static gboolean
+inf_tcp_connection_connection_error(InfTcpConnection* connection,
+                                    const GError* error)
+{
+  InfTcpConnectionPrivate* priv;
+
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  if(priv->socket != INVALID_SOCKET)
+  {
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+  }
+
+  if(priv->watch != NULL)
+  {
+    priv->events = 0;
+
+    inf_io_remove_watch(priv->io, priv->watch);
+    priv->watch = NULL;
+  }
+
+  if(priv->resolver != NULL)
+  {
+    /* Try next address, if there is one */
+    if(priv->resolver_index < inf_name_resolver_get_n_addresses(priv->resolver))
+    {
+      ++priv->resolver_index;
+      if(inf_tcp_connection_open_with_resolver(connection, NULL) == TRUE)
+        return TRUE;
+    }
+
+    /* No new addresses available */
+    priv->resolver_index = 0;
+  }
+
+  g_signal_emit(
+    G_OBJECT(connection),
+    tcp_connection_signals[ERROR_],
+    0,
+    error
+  );
+
+  return FALSE;
+}
+
+static gboolean
+inf_tcp_connection_open_real(InfTcpConnection* connection,
+                             const InfIpAddress* address,
+                             guint port,
+                             GError** error)
+{
+  InfTcpConnectionPrivate* priv;
+
+#ifdef G_OS_WIN32
+  u_long argp;
+#endif
+
+  union {
+    struct sockaddr_in in;
+    struct sockaddr_in6 in6;
+  } native_address;
+
+  struct sockaddr* addr;
+  socklen_t addrlen;
+  int result;
+  int errcode;
+  GError* local_error;
+
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  g_assert(priv->status == INF_TCP_CONNECTION_CLOSED ||
+           priv->status == INF_TCP_CONNECTION_CONNECTING);
+
+  /* Close previous socket */
+  if(priv->socket != INVALID_SOCKET)
+    closesocket(priv->socket);
+
+  switch(inf_ip_address_get_family(address))
+  {
+  case INF_IP_ADDRESS_IPV4:
+    priv->socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    addr = (struct sockaddr*)&native_address.in;
+    addrlen = sizeof(struct sockaddr_in);
+
+    memcpy(
+      &native_address.in.sin_addr,
+      inf_ip_address_get_raw(address),
+      sizeof(struct in_addr)
+    );
+
+    native_address.in.sin_family = AF_INET;
+    native_address.in.sin_port = htons(port);
+
+    break;
+  case INF_IP_ADDRESS_IPV6:
+    priv->socket = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
+    addr = (struct sockaddr*)&native_address.in6;
+    addrlen = sizeof(struct sockaddr_in6);
+
+    memcpy(
+      &native_address.in6.sin6_addr,
+      inf_ip_address_get_raw(address),
+      sizeof(struct in6_addr)
+    );
+
+    native_address.in6.sin6_family = AF_INET6;
+    native_address.in6.sin6_port = htons(port);
+    native_address.in6.sin6_flowinfo = 0;
+    native_address.in6.sin6_scope_id = priv->device_index;
+
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  if(priv->socket == INVALID_SOCKET)
+  {
+    inf_native_socket_make_error(INF_NATIVE_SOCKET_LAST_ERROR, error);
+    return FALSE;
+  }
+
+  /* Set socket non-blocking */
+#ifndef G_OS_WIN32
+  result = fcntl(priv->socket, F_GETFL);
+  if(result == INVALID_SOCKET)
+  {
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
+
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+    return FALSE;
+  }
+
+  if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
+  {
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
+
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+    return FALSE;
+  }
+#else
+  argp = 1;
+  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
+  {
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
+
+    closesocket(priv->socket);
+    priv->socket = INVALID_SOCKET;
+    return FALSE;
+  }
+#endif
+
+  /* Connect */
+  do
+  {
+    result = connect(priv->socket, addr, addrlen);
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    if(result == -1 &&
+       errcode != INF_NATIVE_SOCKET_EINTR &&
+       errcode != INF_NATIVE_SOCKET_EINPROGRESS)
+    {
+      local_error = NULL;
+      inf_native_socket_make_error(errcode, &local_error);
+      if(inf_tcp_connection_connection_error(connection, local_error) == TRUE)
+      {
+        /* In this case, we could recover from the error by connecting to a
+         * different address. */
+        g_error_free(local_error);
+        return TRUE;
+      }
+
+      g_propagate_error(error, local_error);
+      return FALSE;
+    }
+  } while(result == -1 && errcode != INF_NATIVE_SOCKET_EINPROGRESS);
+
+  if(result == 0)
+  {
+    /* Connection fully established */
+    inf_tcp_connection_connected(connection);
+  }
+  else
+  {
+    g_assert(priv->watch == NULL);
+
+    /* Connection establishment in progress */
+    priv->events = INF_IO_OUTGOING | INF_IO_ERROR;
+
+    priv->watch = inf_io_add_watch(
+      priv->io,
+      &priv->socket,
+      priv->events,
+      inf_tcp_connection_io,
+      connection,
+      NULL
+    );
+
+    if(priv->status != INF_TCP_CONNECTION_CONNECTING)
+    {
+      priv->status = INF_TCP_CONNECTION_CONNECTING;
+      g_object_notify(G_OBJECT(connection), "status");
+    }
+  }
+
+  return TRUE;
+}
+
+static gboolean
+inf_tcp_connection_open_with_resolver(InfTcpConnection* connection,
+                                      GError** error)
+{
+  InfTcpConnectionPrivate* priv;
+  GError* local_error;
+  gboolean success;
+
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  g_assert(priv->status == INF_TCP_CONNECTION_CLOSED ||
+           priv->status == INF_TCP_CONNECTION_CONNECTING);
+
+  if(inf_name_resolver_finished(priv->resolver))
+  {
+    if(priv->resolver_index < 
+       inf_name_resolver_get_n_addresses(priv->resolver))
+    {
+      return inf_tcp_connection_open_real(
+        connection,
+        inf_name_resolver_get_address(priv->resolver, priv->resolver_index),
+        inf_name_resolver_get_port(priv->resolver, priv->resolver_index),
+        error
+      );
+    }
+
+    /* We need to look up more addresses */
+    g_object_freeze_notify(G_OBJECT(connection));
+    if(priv->status != INF_TCP_CONNECTION_CONNECTING)
+    {
+      priv->status = INF_TCP_CONNECTION_CONNECTING;
+      g_object_notify(G_OBJECT(connection), "status");
+    }
+
+    local_error = NULL;
+    if(priv->resolver_index == 0)
+      success = inf_name_resolver_start(priv->resolver, &local_error);
+    else
+      success = inf_name_resolver_lookup_backup(priv->resolver, &local_error);
+
+    if(local_error != NULL)
+    {
+      inf_tcp_connection_connection_error(connection, local_error);
+      g_propagate_error(error, local_error);
+    }
+
+    g_object_thaw_notify(G_OBJECT(connection));
+    return success;
+  }
+
+  /* The resolver is currently doing something. Wait until it finishes, and
+   * then try again. */
+  return TRUE;
+}
+
 static gboolean
 inf_tcp_connection_send_real(InfTcpConnection* connection,
                              gconstpointer data,
@@ -234,47 +582,6 @@ inf_tcp_connection_send_real(InfTcpConnection* connection,
 
   *len -= send_len;
   return TRUE;
-}
-
-/* Required by inf_tcp_connection_connected */
-static void
-inf_tcp_connection_io(InfNativeSocket* socket,
-                      InfIoEvent events,
-                      gpointer user_data);
-
-static void
-inf_tcp_connection_connected(InfTcpConnection* connection)
-{
-  InfTcpConnectionPrivate* priv;
-  priv = INF_TCP_CONNECTION_PRIVATE(connection);
-
-  priv->status = INF_TCP_CONNECTION_CONNECTED;
-  priv->front_pos = 0;
-  priv->back_pos = 0;
-
-  priv->events = INF_IO_INCOMING | INF_IO_ERROR;
-
-  if(priv->watch == NULL)
-  {
-    priv->watch = inf_io_add_watch(
-      priv->io,
-      &priv->socket,
-      priv->events,
-      inf_tcp_connection_io,
-      connection,
-      NULL
-    );
-  }
-  else
-  {
-    inf_io_update_watch(priv->io, priv->watch, priv->events);
-  }
-
-  g_object_freeze_notify(G_OBJECT(connection));
-  g_object_notify(G_OBJECT(connection), "status");
-  g_object_notify(G_OBJECT(connection), "local-address");
-  g_object_notify(G_OBJECT(connection), "local-port");
-  g_object_thaw_notify(G_OBJECT(connection));
 }
 
 static void
@@ -398,10 +705,13 @@ inf_tcp_connection_io(InfNativeSocket* socket,
   InfTcpConnectionPrivate* priv;
   socklen_t len;
   int errcode;
+  GError* error;
 
   connection = INF_TCP_CONNECTION(user_data);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
   g_object_ref(G_OBJECT(connection));
+
+  g_assert(priv->status != INF_TCP_CONNECTION_CLOSED);
 
   if(events & INF_IO_ERROR)
   {
@@ -418,9 +728,32 @@ inf_tcp_connection_io(InfNativeSocket* socket,
     /* TODO: Maybe we should change this by mapping G_IO_HUP to
      * INF_IO_INCOMING, hoping recv() does the right thing then. */
     if(errcode != 0)
-      inf_tcp_connection_system_error(connection, errcode);
+    {
+      error = NULL;
+      inf_native_socket_make_error(errcode, &error);
+
+      if(priv->status == INF_TCP_CONNECTION_CONNECTING)
+      {
+        inf_tcp_connection_connection_error(connection, error);
+      }
+      else
+      {
+        g_signal_emit(
+          G_OBJECT(connection),
+          tcp_connection_signals[ERROR_],
+          0,
+          error
+        );
+      }
+
+      /* Error has been reported via signal emission, and there is nothing
+       * else to do with it. */
+      g_error_free(error);
+    }
     else
+    {
       inf_tcp_connection_close(connection);
+    }
   }
   else
   {
@@ -442,6 +775,70 @@ inf_tcp_connection_io(InfNativeSocket* socket,
 }
 
 static void
+inf_tcp_connection_resolved_cb(InfNameResolver* resolver,
+                               const GError* error,
+                               gpointer user_data)
+{
+  InfTcpConnection* connection;
+  InfTcpConnectionPrivate* priv;
+
+  connection = INF_TCP_CONNECTION(user_data);
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  if(priv->status == INF_TCP_CONNECTION_CONNECTING)
+  {
+    if(error != NULL)
+    {
+      /* If there was an error, no additional addresses are available */
+      g_assert(
+        priv->resolver_index == inf_name_resolver_get_n_addresses(resolver)
+      );
+
+      inf_tcp_connection_connection_error(connection, error);
+    }
+    else
+    {
+      /* If there was no error, try opening a connection to the resolved
+       * address(es). */
+      inf_tcp_connection_open_with_resolver(connection, NULL);
+    }
+  }
+}
+
+static void
+inf_tcp_connection_set_resolver(InfTcpConnection* connection,
+                                InfNameResolver* resolver)
+{
+  InfTcpConnectionPrivate* priv;
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  if(priv->resolver != NULL)
+  {
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(priv->resolver),
+      G_CALLBACK(inf_tcp_connection_resolved_cb),
+      connection
+    );
+
+    g_object_unref(priv->resolver);
+  }
+
+  priv->resolver = resolver;
+
+  if(resolver != NULL)
+  {
+    g_object_ref(resolver);
+
+    g_signal_connect(
+      G_OBJECT(resolver),
+      "resolved",
+      G_CALLBACK(inf_tcp_connection_resolved_cb),
+      connection
+    );
+  }
+}
+
+static void
 inf_tcp_connection_init(GTypeInstance* instance,
                         gpointer g_class)
 {
@@ -454,6 +851,8 @@ inf_tcp_connection_init(GTypeInstance* instance,
   priv->io = NULL;
   priv->events = 0;
   priv->watch = NULL;
+  priv->resolver = NULL;
+  priv->resolver_index = 0;
   priv->status = INF_TCP_CONNECTION_CLOSED;
   priv->socket = INVALID_SOCKET;
 
@@ -479,9 +878,11 @@ inf_tcp_connection_dispose(GObject* object)
   if(priv->status != INF_TCP_CONNECTION_CLOSED)
     inf_tcp_connection_close(connection);
 
+  inf_tcp_connection_set_resolver(connection, NULL);
+
   if(priv->io != NULL)
   {
-    g_object_unref(G_OBJECT(priv->io));
+    g_object_unref(priv->io);
     priv->io = NULL;
   }
 
@@ -530,6 +931,15 @@ inf_tcp_connection_set_property(GObject* object,
     g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
     if(priv->io != NULL) g_object_unref(G_OBJECT(priv->io));
     priv->io = INF_IO(g_value_dup_object(value));
+    break;
+  case PROP_RESOLVER:
+    g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
+
+    inf_tcp_connection_set_resolver(
+      connection,
+      INF_NAME_RESOLVER(g_value_get_object(value))
+    );
+
     break;
   case PROP_REMOTE_ADDRESS:
     g_assert(priv->status == INF_TCP_CONNECTION_CLOSED);
@@ -596,6 +1006,9 @@ inf_tcp_connection_get_property(GObject* object,
   {
   case PROP_IO:
     g_value_set_object(value, G_OBJECT(priv->io));
+    break;
+  case PROP_RESOLVER:
+    g_value_set_object(value, G_OBJECT(priv->resolver));
     break;
   case PROP_STATUS:
     g_value_set_enum(value, priv->status);
@@ -737,6 +1150,18 @@ inf_tcp_connection_class_init(gpointer g_class,
       "I/O handler",
       INF_TYPE_IO,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_RESOLVER,
+    g_param_spec_object(
+      "resolver",
+      "Resolver",
+      "The hostname resolver",
+      INF_TYPE_NAME_RESOLVER,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
 
@@ -993,7 +1418,9 @@ inf_tcp_connection_new(InfIo* io,
       "io", io,
       "remote-address", remote_addr,
       "remote-port", remote_port,
-      NULL));
+      NULL
+    )
+  );
 
   return tcp;
 }
@@ -1006,7 +1433,7 @@ inf_tcp_connection_new(InfIo* io,
  * @error: Location to store error information.
  *
  * Creates a new #InfTcpConnection and connects it to the given TCP endpoint.
- * Like inf_tcp_connection_new, but calls inf_tcp_connection_open().
+ * Like inf_tcp_connection_new(), but calls inf_tcp_connection_open().
  *
  * Returns: A new #InfTcpConnection, or %NULL on error. Free with
  * g_object_unref().
@@ -1036,6 +1463,44 @@ inf_tcp_connection_new_and_open(InfIo* io,
 }
 
 /**
+ * inf_tcp_connection_new_resolve:
+ * @io: A #InfIo object used to watch for activity.
+ * @resolver: The hostname resolver object used to look up the remote
+ * hostname.
+ *
+ * Creates a new #InfTcpConnection and instead of setting the remote IP
+ * address and port number directly, a hostname resolver is used to look up
+ * the remote hostname before connecting. This has the advantage that all
+ * available addresses for that hostname are tried before giving up.
+ *
+ * The argument is stored as a property for an eventual
+ * inf_tcp_connection_open() call, this function itself does not
+ * establish a connection.
+ *
+ * Returns: A new #InfTcpConnection. Free with g_object_unref().
+ */
+InfTcpConnection*
+inf_tcp_connection_new_resolve(InfIo* io,
+                               InfNameResolver* resolver)
+{
+  InfTcpConnection* tcp;
+
+  g_return_val_if_fail(INF_IS_IO(io), NULL);
+  g_return_val_if_fail(INF_IS_NAME_RESOLVER(resolver), NULL);
+
+  tcp = INF_TCP_CONNECTION(
+    g_object_new(
+      INF_TYPE_TCP_CONNECTION,
+      "io", io,
+      "resolver", resolver,
+      NULL
+    )
+  );
+
+  return tcp;
+}
+
+/**
  * inf_tcp_connection_open:
  * @connection: A #InfTcpConnection.
  * @error: Location to store error information.
@@ -1055,158 +1520,38 @@ inf_tcp_connection_open(InfTcpConnection* connection,
                         GError** error)
 {
   InfTcpConnectionPrivate* priv;
-/*  char device_name[IF_NAMESIZE];*/
-
-#ifdef G_OS_WIN32
-  u_long argp;
-#endif
-
-  union {
-    struct sockaddr_in in;
-    struct sockaddr_in6 in6;
-  } native_address;
-
-  struct sockaddr* addr;
-  socklen_t addrlen;
-  int result;
-  int errcode;
 
   g_return_val_if_fail(INF_IS_TCP_CONNECTION(connection), FALSE);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
 
   g_return_val_if_fail(priv->io != NULL, FALSE);
   g_return_val_if_fail(priv->status == INF_TCP_CONNECTION_CLOSED, FALSE);
-  g_return_val_if_fail(priv->remote_address != NULL, FALSE);
-  g_return_val_if_fail(priv->remote_port != 0, FALSE);
 
-  /* Close previous socket */
-  if(priv->socket != INVALID_SOCKET)
-    closesocket(priv->socket);
+  g_return_val_if_fail(
+    priv->remote_address != NULL || priv->resolver != NULL,
+    FALSE
+  );
 
-  switch(inf_ip_address_get_family(priv->remote_address))
+  g_return_val_if_fail(
+    priv->remote_port != 0 ||
+    priv->resolver != NULL,
+    FALSE
+  );
+
+  if(priv->resolver != NULL)
   {
-  case INF_IP_ADDRESS_IPV4:
-    priv->socket = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    addr = (struct sockaddr*)&native_address.in;
-    addrlen = sizeof(struct sockaddr_in);
-
-    memcpy(
-      &native_address.in.sin_addr,
-      inf_ip_address_get_raw(priv->remote_address),
-      sizeof(struct in_addr)
-    );
-
-    native_address.in.sin_family = AF_INET;
-    native_address.in.sin_port = htons(priv->remote_port);
-
-    break;
-  case INF_IP_ADDRESS_IPV6:
-    priv->socket = socket(PF_INET6, SOCK_STREAM, IPPROTO_TCP);
-    addr = (struct sockaddr*)&native_address.in6;
-    addrlen = sizeof(struct sockaddr_in6);
-
-    memcpy(
-      &native_address.in6.sin6_addr,
-      inf_ip_address_get_raw(priv->remote_address),
-      sizeof(struct in6_addr)
-    );
-
-    native_address.in6.sin6_family = AF_INET6;
-    native_address.in6.sin6_port = htons(priv->remote_port);
-    native_address.in6.sin6_flowinfo = 0;
-    native_address.in6.sin6_scope_id = priv->device_index;
-
-    break;
-  default:
-    g_assert_not_reached();
-    break;
-  }
-
-  if(priv->socket == INVALID_SOCKET)
-  {
-    inf_native_socket_make_error(INF_NATIVE_SOCKET_LAST_ERROR, error);
-    return FALSE;
-  }
-
-  /* Set socket non-blocking */
-#ifndef G_OS_WIN32
-  result = fcntl(priv->socket, F_GETFL);
-  if(result == INVALID_SOCKET)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-
-  if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-#else
-  argp = 1;
-  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-#endif
-
-  /* Connect */
-  do
-  {
-    result = connect(priv->socket, addr, addrlen);
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    if(result == -1 &&
-       errcode != INF_NATIVE_SOCKET_EINTR &&
-       errcode != INF_NATIVE_SOCKET_EINPROGRESS)
-    {
-      inf_native_socket_make_error(errcode, error);
-
-      closesocket(priv->socket);
-      priv->socket = INVALID_SOCKET;
-
-      return FALSE;
-    }
-  } while(result == -1 && errcode != INF_NATIVE_SOCKET_EINPROGRESS);
-
-  if(result == 0)
-  {
-    /* Connection fully established */
-    inf_tcp_connection_connected(connection);
+    g_assert(priv->resolver_index == 0);
+    return inf_tcp_connection_open_with_resolver(connection, error);
   }
   else
   {
-    g_assert(priv->watch == NULL);
-
-    /* Connection establishment in progress */
-    priv->events = INF_IO_OUTGOING | INF_IO_ERROR;
-
-    priv->watch = inf_io_add_watch(
-      priv->io,
-      &priv->socket,
-      priv->events,
-      inf_tcp_connection_io,
+    return inf_tcp_connection_open_real(
       connection,
-      NULL
+      priv->remote_address,
+      priv->remote_port,
+      error
     );
-
-    priv->status = INF_TCP_CONNECTION_CONNECTING;
-    g_object_notify(G_OBJECT(connection), "status");
   }
-
-  return TRUE;
 }
 
 /**

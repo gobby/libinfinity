@@ -29,8 +29,8 @@
 static void
 received_cb(InfTcpConnection* connection,
             gconstpointer buffer,
-	    guint len,
-	    gpointer user_data)
+            guint len,
+            gpointer user_data)
 {
   printf("Received: \033[00;32m%.*s\033[00;00m", (int)len, (const char*)buffer);
   fflush(stdout);
@@ -39,8 +39,8 @@ received_cb(InfTcpConnection* connection,
 static void
 sent_cb(InfTcpConnection* connection,
         gconstpointer buffer,
-	guint len,
-	gpointer user_data)
+        guint len,
+        gpointer user_data)
 {
   printf("Sent: \033[00;34m%.*s\033[00;00m", (int)len, (const char*)buffer);
   fflush(stdout);
@@ -49,21 +49,76 @@ sent_cb(InfTcpConnection* connection,
 static void
 error_cb(InfTcpConnection* connection,
          GError* error,
-	 gpointer user_data)
+         gpointer user_data)
 {
-  fprintf(stderr, "Error occured: %s\n", error->message);
+  fprintf(stderr, "Connection Error occured: %s\n", error->message);
   if(inf_standalone_io_loop_running(INF_STANDALONE_IO(user_data)))
     inf_standalone_io_loop_quit(INF_STANDALONE_IO(user_data));
 }
 
 static void
+resolved_cb(InfNameResolver* resolver,
+            const GError* error,
+            gpointer user_data)
+{
+  gchar* hostname;
+  gchar* service;
+  gchar* srv;
+  guint i;
+  gchar* str;
+
+  if(error != NULL)
+  {
+    fprintf(stderr, "Resolver error: %s\n", error->message);
+  }
+  else
+  {
+    g_object_get(
+      G_OBJECT(resolver),
+      "hostname", &hostname,
+      "service", &service,
+      "srv", &srv,
+      NULL
+    );
+
+    printf(
+      "Resolved hostname %s (SRV %s):\n",
+      hostname,
+      srv ? srv : "(nul)"
+    );
+
+    g_free(hostname);
+    g_free(service);
+    g_free(srv);
+
+    for(i = 0; i < inf_name_resolver_get_n_addresses(resolver); ++i)
+    {
+      str = inf_ip_address_to_string(
+        inf_name_resolver_get_address(resolver, i)
+      );
+
+      printf(
+        "  %u: %s (port %u)\n",
+        i,
+        str,
+        inf_name_resolver_get_port(resolver, i)
+      );
+
+      g_free(str);
+    }
+  }
+}
+
+static void
 notify_status_cb(InfTcpConnection* connection,
-                 const gchar* property,
-		 gpointer user_data)
+                 GParamSpec* pspec,
+                 gpointer user_data)
 {
   InfTcpConnectionStatus status;
   InfIpAddress* addr;
   guint port;
+  InfNameResolver* resolver;
+  gchar* addr_str_tmp;
   gchar* addr_str;
 
   g_object_get(
@@ -71,19 +126,33 @@ notify_status_cb(InfTcpConnection* connection,
     "status", &status,
     "remote-address", &addr,
     "remote-port", &port,
+    "resolver", &resolver,
     NULL
   );
 
-  addr_str = inf_ip_address_to_string(addr);
-  inf_ip_address_free(addr);
+  if(addr != NULL)
+  {
+    addr_str_tmp = inf_ip_address_to_string(addr);
+    addr_str = g_strdup_printf("%s:%u", addr_str_tmp, port);
+    g_free(addr_str_tmp);
+  }
+  else
+  {
+    g_object_get(G_OBJECT(resolver), "hostname", &addr_str, NULL);
+  }
+
+  if(addr != NULL)
+    inf_ip_address_free(addr);
+  if(resolver != NULL)
+    g_object_unref(resolver);
 
   switch(status)
   {
   case INF_TCP_CONNECTION_CONNECTING:
-    printf("Connecting to %s:%u\n", addr_str, port);
+    printf("Connecting to %s\n", addr_str);
     break;
   case INF_TCP_CONNECTION_CONNECTED:
-    printf("Connected to %s:%u\n", addr_str, port);
+    printf("Connected to %s\n", addr_str);
 
     g_object_get(
       G_OBJECT(connection),
@@ -100,7 +169,7 @@ notify_status_cb(InfTcpConnection* connection,
     inf_tcp_connection_send(connection, "Hello, World!\n", 14);
     break;
   case INF_TCP_CONNECTION_CLOSED:
-    printf("Connection to %s:%u closed\n", addr_str, port);
+    printf("Connection to %s closed\n", addr_str);
     if(inf_standalone_io_loop_running(INF_STANDALONE_IO(user_data)))
       inf_standalone_io_loop_quit(INF_STANDALONE_IO(user_data));
     break;
@@ -114,20 +183,29 @@ notify_status_cb(InfTcpConnection* connection,
 
 int main(int argc, char* argv[])
 {
-  InfIpAddress* addr;
   InfStandaloneIo* io;
+  InfNameResolver* resolver;
   InfTcpConnection* connection;
   GError* error;
 
   g_type_init();
 
-  addr = inf_ip_address_new_loopback4();
   io = inf_standalone_io_new();
+
+  resolver =
+    inf_name_resolver_new(INF_IO(io), "0x539.de", "5223", "_jabber._tcp");
+
+  g_signal_connect(
+    G_OBJECT(resolver),
+    "resolved",
+    G_CALLBACK(resolved_cb),
+    io
+  );
+
   error = NULL;
 
-  connection = inf_tcp_connection_new(INF_IO(io), addr, 5223);
-
-  inf_ip_address_free(addr);
+  connection = inf_tcp_connection_new_resolve(INF_IO(io), resolver);
+  g_object_unref(resolver);
 
   g_signal_connect(
     G_OBJECT(connection),

@@ -235,6 +235,7 @@ InfTcpConnection
 InfTcpConnectionClass
 inf_tcp_connection_new
 inf_tcp_connection_new_and_open
+inf_tcp_connection_new_resolve
 inf_tcp_connection_open
 inf_tcp_connection_close
 inf_tcp_connection_send

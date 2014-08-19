@@ -20,6 +20,7 @@
 #ifndef __INF_TCP_CONNECTION_H__
 #define __INF_TCP_CONNECTION_H__
 
+#include <libinfinity/common/inf-name-resolver.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 
@@ -112,6 +113,10 @@ inf_tcp_connection_new_and_open(InfIo* io,
                                 const InfIpAddress* remote_addr,
                                 guint remote_port,
                                 GError** error);
+
+InfTcpConnection*
+inf_tcp_connection_new_resolve(InfIo* io,
+                               InfNameResolver* resolver);
 
 gboolean
 inf_tcp_connection_open(InfTcpConnection* connection,
