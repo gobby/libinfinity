@@ -873,7 +873,8 @@ inf_xmpp_connection_terminate(InfXmppConnection* xmpp)
     if(priv->status != INF_XMPP_CONNECTION_CLOSING_STREAM)
     {
       priv->status = INF_XMPP_CONNECTION_CLOSING_GNUTLS;
-      g_object_notify(G_OBJECT(xmpp), "status");
+      if(priv->parsing == 0)
+        g_object_notify(G_OBJECT(xmpp), "status");
     }
     else
     {
@@ -3279,6 +3280,8 @@ inf_xmpp_connection_received_cb(InfTcpConnection* tcp,
           NULL
         );
       }
+
+      g_object_notify(G_OBJECT(xmpp), "status");
     }
     else if(priv->status == INF_XMPP_CONNECTION_AUTH_CONNECTED)
     {
@@ -3330,7 +3333,9 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
 
       priv->status = INF_XMPP_CONNECTION_CLOSED;
       priv->position = 0;
-      g_object_notify(G_OBJECT(xmpp), "status");
+
+      if(priv->parsing == 0)
+        g_object_notify(G_OBJECT(xmpp), "status");
     }
     else
     {
