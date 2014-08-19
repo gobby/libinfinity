@@ -206,6 +206,28 @@ INF_LOCAL_PUBLISHER_GET_IFACE
 </SECTION>
 
 <SECTION>
+<FILE>inf-name-resolver</FILE>
+<TITLE>InfNameResolver</TITLE>
+InfNameResolver
+InfNameResolverClass
+inf_name_resolver_new
+inf_name_resolver_start
+inf_name_resolver_lookup_backup
+inf_name_resolver_finished
+inf_name_resolver_get_n_addresses
+inf_name_resolver_get_address
+inf_name_resolver_get_port
+<SUBSECTION Standard>
+INF_NAME_RESOLVER
+INF_IS_NAME_RESOLVER
+INF_TYPE_NAME_RESOLVER
+INF_NAME_RESOLVER_CLASS
+INF_IS_NAME_RESOLVER_CLASS
+INF_NAME_RESOLVER_GET_CLASS
+inf_name_resolver_get_type
+</SECTION>
+
+<SECTION>
 <FILE>inf-tcp-connection</FILE>
 <TITLE>InfTcpConnection</TITLE>
 InfTcpConnectionStatus

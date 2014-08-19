@@ -27,6 +27,7 @@ libinfinity_common_la_SOURCES = \
 	inf-io.c \
 	inf-ip-address.c \
 	inf-local-publisher.c \
+	inf-name-resolver.c \
 	inf-native-socket.c \
 	inf-protocol.c \
 	inf-request.c \
@@ -63,6 +64,7 @@ libinfinity_common_la_HEADERS = \
 	inf-io.h \
 	inf-ip-address.h \
 	inf-local-publisher.h \
+	inf-name-resolver.h \
 	inf-native-socket.h \
 	inf-protocol.h \
 	inf-request.h \

@@ -110,7 +110,7 @@ PKG_CHECK_MODULES([infinity], [$infinity_libraries])
 PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.16 gobject-2.0 >= 2.16 libxml-2.0])
 
 if test $platform = 'win32'; then
-  infinity_LIBS="$infinity_LIBS -lws2_32"
+  infinity_LIBS="$infinity_LIBS -lws2_32 -ldnsapi"
 fi
 
 ###################################
