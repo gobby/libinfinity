@@ -75,6 +75,15 @@ inf_name_resolver_new(InfIo* io,
                       const gchar* service,
                       const gchar* srv);
 
+const gchar*
+inf_name_resolver_get_hostname(InfNameResolver* resolver);
+
+const gchar*
+inf_name_resolver_get_service(InfNameResolver* resolver);
+
+const gchar*
+inf_name_resolver_get_srv(InfNameResolver* resolver);
+
 gboolean
 inf_name_resolver_start(InfNameResolver* resolver,
                         GError** error);

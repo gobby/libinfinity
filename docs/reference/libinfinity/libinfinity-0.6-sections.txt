@@ -211,6 +211,9 @@ INF_LOCAL_PUBLISHER_GET_IFACE
 InfNameResolver
 InfNameResolverClass
 inf_name_resolver_new
+inf_name_resolver_get_hostname
+inf_name_resolver_get_service
+inf_name_resolver_get_srv
 inf_name_resolver_start
 inf_name_resolver_lookup_backup
 inf_name_resolver_finished
@@ -680,6 +683,7 @@ InfXmppManager
 InfXmppManagerClass
 inf_xmpp_manager_new
 inf_xmpp_manager_lookup_connection_by_address
+inf_xmpp_manager_lookup_connection_by_hostname
 inf_xmpp_manager_contains_connection
 inf_xmpp_manager_add_connection
 inf_xmpp_manager_remove_connection

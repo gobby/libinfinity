@@ -38,12 +38,10 @@ typedef struct _InfXmppManagerClass InfXmppManagerClass;
 
 /**
  * InfXmppManagerClass:
- * @add_connection: Default signal handler for the
- * #InfXmppManager::add-connection signal. It adds the connection to the
- * manager's internal storage.
- * @remove_connection: Default signal handler for the
- * #InfXmppManager::remove-connection signal. It removes the connection from
- * the manager's internal storage.
+ * @connection_added: Default signal handler for the
+ * #InfXmppManager::connection-added signal.
+ * @connection_removed: Default signal handler for the
+ * #InfXmppManager::connection-removed signal.
  *
  * This structure contains the default signal handlers for #InfXmppManager.
  */
@@ -52,10 +50,11 @@ struct _InfXmppManagerClass {
   GObjectClass parent_class;
 
   /*< public >*/
-  void(*add_connection)(InfXmppManager* manager,
-                        InfXmppConnection* connection);
-  void(*remove_connection)(InfXmppManager* manager,
-                           InfXmppConnection* connection);
+  void(*connection_added)(InfXmppManager* manager,
+                          InfXmppConnection* connection);
+  void(*connection_removed)(InfXmppManager* manager,
+                            InfXmppConnection* connection,
+                            InfXmppConnection* replaced_by);
 };
 
 /**
@@ -79,6 +78,12 @@ InfXmppConnection*
 inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
                                               const InfIpAddress* address,
                                               guint port);
+
+InfXmppConnection*
+inf_xmpp_manager_lookup_connection_by_hostname(InfXmppManager* manager,
+                                               const gchar* hostname,
+                                               const gchar* service,
+                                               const gchar* srv);
 
 gboolean
 inf_xmpp_manager_contains_connection(InfXmppManager* manager,

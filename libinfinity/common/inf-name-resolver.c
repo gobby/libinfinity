@@ -1240,6 +1240,51 @@ inf_name_resolver_new(InfIo* io,
 }
 
 /**
+ * inf_name_resolver_get_hostname:
+ * @resolver: A #InfNameResolver.
+ *
+ * Returns the currently configured hostname that @resolver will look up.
+ *
+ * Returns: The currently configured hostname.
+ */
+const gchar*
+inf_name_resolver_get_hostname(InfNameResolver* resolver)
+{
+  g_return_val_if_fail(INF_IS_NAME_RESOLVER(resolver), NULL);
+  return INF_NAME_RESOLVER_PRIVATE(resolver)->hostname;
+}
+
+/**
+ * inf_name_resolver_get_service:
+ * @resolver: A #InfNameResolver.
+ *
+ * Returns the currently configured service that @resolver will look up.
+ *
+ * Returns: The currently configured service.
+ */
+const gchar*
+inf_name_resolver_get_service(InfNameResolver* resolver)
+{
+  g_return_val_if_fail(INF_IS_NAME_RESOLVER(resolver), NULL);
+  return INF_NAME_RESOLVER_PRIVATE(resolver)->service;
+}
+
+/**
+ * inf_name_resolver_get_srv:
+ * @resolver: A #InfNameResolver.
+ *
+ * Returns the currently configured SRV record that @resolver will look up.
+ *
+ * Returns: The currently configured SRV record.
+ */
+const gchar*
+inf_name_resolver_get_srv(InfNameResolver* resolver)
+{
+  g_return_val_if_fail(INF_IS_NAME_RESOLVER(resolver), NULL);
+  return INF_NAME_RESOLVER_PRIVATE(resolver)->srv;
+}
+
+/**
  * inf_name_resolver_start:
  * @resolver: A #InfNameResolver.
  * @error: Location to store error information, if any.

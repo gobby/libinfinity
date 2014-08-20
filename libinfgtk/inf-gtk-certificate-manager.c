@@ -874,9 +874,9 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 }
 
 static void
-inf_gtk_certificate_manager_add_connection_cb(InfXmppManager* manager,
-                                              InfXmppConnection* connection,
-                                              gpointer user_data)
+inf_gtk_certificate_manager_connection_added_cb(InfXmppManager* manager,
+                                                InfXmppConnection* connection,
+                                                gpointer user_data)
 {
   InfXmppConnectionSite site;
   g_object_get(G_OBJECT(connection), "site", &site, NULL);
@@ -981,8 +981,8 @@ inf_gtk_certificate_manager_set_property(GObject* object,
 
     g_signal_connect(
       G_OBJECT(priv->xmpp_manager),
-      "add-connection",
-      G_CALLBACK(inf_gtk_certificate_manager_add_connection_cb),
+      "connection-added",
+      G_CALLBACK(inf_gtk_certificate_manager_connection_added_cb),
       manager
     );
 
