@@ -164,7 +164,6 @@ inf_adopted_undo_grouping_add_request(InfAdoptedUndoGrouping* grouping,
     g_assert(priv->n_items < priv->n_alloc);
     item = &priv->items[(priv->first_item + priv->item_pos) % priv->n_alloc];
 
-    /* We don't ref request, it is kept alive by the request log anyway */
     item->request = request;
     g_object_ref(request);
 
@@ -399,6 +398,9 @@ static void
 inf_adopted_undo_grouping_deinit_user(InfAdoptedUndoGrouping* grouping)
 {
   InfAdoptedUndoGroupingPrivate* priv;
+  InfAdoptedRequest* request;
+  guint i;
+
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
 
   g_assert(priv->user != NULL);
@@ -411,6 +413,13 @@ inf_adopted_undo_grouping_deinit_user(InfAdoptedUndoGrouping* grouping)
 
   g_object_unref(priv->user);
   priv->user = NULL;
+
+  for(i = 0; i < priv->n_items; ++i)
+  {
+    request =
+      priv->items[(priv->first_item + i) % priv->n_alloc].request;
+    g_object_unref(request);
+  }
 
   g_free(priv->items);
   priv->items = NULL;
