@@ -80,6 +80,29 @@ INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE = 3 * 24 * 3600; /* 3 days */
 
 static GObjectClass* parent_class;
 
+/* memrchr does not seem to be available everywhere, so we implement it
+ * ourselves. */
+static void*
+inf_gtk_certificate_manager_memrchr(void* buf,
+                                    char c,
+                                    size_t len)
+{
+  char* pos;
+  char* end;
+
+  pos = buf + len;
+  end = buf;
+
+  while(pos >= end)
+  {
+    if(*(pos - 1) == c)
+      return pos - 1;
+    --pos;
+  }
+
+  return NULL;
+}
+
 static GQuark
 inf_gtk_certificate_manager_verify_error_quark(void)
 {
@@ -261,7 +284,7 @@ inf_gtk_certificate_manager_load_known_hosts(InfGtkCertificateManager* mgr,
     else
       next = pos + 1;
 
-    sep = memchr(prev, ':', pos - prev);
+    sep = inf_gtk_certificate_manager_memrchr(prev, ':', pos - prev);
     if(sep == NULL) continue; /* ignore line */
 
     *sep = '\0';
