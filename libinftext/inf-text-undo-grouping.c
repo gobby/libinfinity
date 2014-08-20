@@ -87,6 +87,9 @@ inf_text_undo_grouping_get_translated_position(InfAdoptedAlgorithm* algorithm,
   InfAdoptedOperation* move_op;
   InfAdoptedStateVector* move_vec;
   InfAdoptedRequest* move_req;
+
+  InfAdoptedRequest* moved_req;
+  InfAdoptedOperation* moved_op;
   guint move_pos;
 
   move_id = inf_adopted_request_get_user_id(from);
@@ -105,20 +108,24 @@ inf_text_undo_grouping_get_translated_position(InfAdoptedAlgorithm* algorithm,
     move_op,
     inf_adopted_request_get_receive_time(from)
   );
+
   inf_adopted_state_vector_free(move_vec);
+  g_object_unref(move_op);
 
   /* This should always succeed because of the vdiff check in
    * inf_text_undo_grouping_group_requests(). */
-  inf_adopted_algorithm_translate_request(
+  moved_req = inf_adopted_algorithm_translate_request(
     algorithm,
     move_req,
     inf_adopted_request_get_vector(to)
   );
 
   g_object_unref(move_req);
+  moved_op = inf_adopted_request_get_operation(moved_req);
   move_pos =
-    inf_text_move_operation_get_position(INF_TEXT_MOVE_OPERATION(move_op));
-  g_object_unref(move_op);
+    inf_text_move_operation_get_position(INF_TEXT_MOVE_OPERATION(moved_op));
+
+  g_object_unref(moved_req);
   return move_pos;
 }
 
