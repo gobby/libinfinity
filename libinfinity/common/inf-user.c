@@ -90,7 +90,16 @@ static void
 inf_user_dispose(GObject* object)
 {
   InfUser* user;
+  InfUserPrivate* priv;
+
   user = INF_USER(object);
+  priv = INF_USER_PRIVATE(user);
+
+  if(priv->connection != NULL)
+  {
+    g_object_unref(priv->connection);
+    priv->connection = NULL;
+  }
 
   G_OBJECT_CLASS(parent_class)->dispose(object);
 }
