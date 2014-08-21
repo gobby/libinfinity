@@ -188,7 +188,15 @@ int main(int argc, char* argv[])
   InfTcpConnection* connection;
   GError* error;
 
+  error = NULL;
+
   g_type_init();
+  if(inf_init(&error) == FALSE)
+  {
+    fprintf(stderr, error->message);
+    g_error_free(error);
+    return 1;
+  }
 
   io = inf_standalone_io_new();
 
@@ -201,8 +209,6 @@ int main(int argc, char* argv[])
     G_CALLBACK(resolved_cb),
     io
   );
-
-  error = NULL;
 
   connection = inf_tcp_connection_new_resolve(INF_IO(io), resolver);
   g_object_unref(resolver);
