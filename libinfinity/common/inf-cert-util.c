@@ -71,7 +71,7 @@ inf_cert_util_create_certificate_impl(gnutls_x509_crt_t cert,
   buffer[3] = (timestamp >>  8) & 0xff;
   buffer[2] = (timestamp >> 16) & 0xff;
   buffer[1] = (timestamp >> 24) & 0xff;
-  buffer[0] = (timestamp >> 32) & 0xff0;
+  buffer[0] = (timestamp >> 32) & 0xff;
 
   res = gnutls_x509_crt_set_serial(cert, buffer, 5);
   if(res != 0) return res;
