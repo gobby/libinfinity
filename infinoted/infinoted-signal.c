@@ -156,9 +156,20 @@ infinoted_signal_sighup_handler(int sig)
 #ifdef G_OS_WIN32
 BOOL WINAPI infinoted_signal_console_handler(DWORD fdwCtrlType)
 {
+  InfinotedRun* run;
+
+  run = _infinoted_signal_server;
+  _infinoted_signal_server = NULL;
+
   /* TODO: Don't terminate for CTRL_LOGOFF_EVENT? */
-  infinoted_signal_terminate();
-  /* Doesn't matter, we exit() anyway */
+
+  /* Shutdown the server properly. Unlike with UNIX signal handlers we should
+   * be good to do this, since this function seems to be called in an extra
+   * thread. */
+  if(run != NULL)
+    infinoted_run_stop(run);
+
+  /* Doesn't matter, we exit() anyway (in the main thread) */
   return TRUE;
 }
 #endif
