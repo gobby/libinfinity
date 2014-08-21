@@ -503,7 +503,7 @@ infd_filesystem_account_storage_load_file(InfdFilesystemStorage* storage,
       /* The account file does not exist. This is not an error, but just means
        * the account list is empty. */
       g_error_free(local_error);
-      return NULL;
+      return table;
     }
 
     g_propagate_error(error, local_error);
