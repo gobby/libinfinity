@@ -1625,6 +1625,9 @@ inf_gtk_permissions_dialog_remove_clicked_cb(GtkButton* button,
   guint i;
   InfRequest* request;
   GtkTreeIter move_iter;
+#if !GTK_CHECK_VERSION(3,0,0)
+  GtkTreePath* move_path;
+#endif
   gboolean could_move;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
@@ -1707,10 +1710,29 @@ inf_gtk_permissions_dialog_remove_clicked_cb(GtkButton* button,
     if(!could_move)
     {
       move_iter = selected_iter;
+#if GTK_CHECK_VERSION(3,0,0)
       could_move = gtk_tree_model_iter_previous(
         GTK_TREE_MODEL(priv->account_store),
         &move_iter
       );
+#else
+      move_path = gtk_tree_model_get_path(
+        GTK_TREE_MODEL(priv->account_store),
+        &move_iter
+      );
+
+      could_move = gtk_tree_path_prev(move_path);
+      if(could_move == TRUE)
+      {
+        gtk_tree_model_get_iter(
+          GTK_TREE_MODEL(priv->account_store),
+          &move_iter,
+          move_path
+        );
+      }
+
+      gtk_tree_path_free(move_path);
+#endif
     }
 
     g_assert(could_move);
