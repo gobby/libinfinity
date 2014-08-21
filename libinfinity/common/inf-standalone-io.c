@@ -882,6 +882,22 @@ inf_standalone_io_io_remove_watch(InfIo* io,
   watch_iter = inf_standalone_io_find_watch(INF_STANDALONE_IO(io), watch);
   if(watch_iter != NULL)
   {
+#ifdef G_OS_WIN32
+    if(WSAEventSelect(*watch->socket, *watch->event, 0) == SOCKET_ERROR)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSAEventSelect() failed: %s", error_message);
+      g_free(error_message);
+    }
+
+    if(WSACloseEvent(*watch->event) == FALSE)
+    {
+      error_message = g_win32_error_message(WSAGetLastError());
+      g_warning("WSACloseEvent() failed: %s", error_message);
+      g_free(error_message);
+    }
+#endif
+
     /* TODO: If we are currently polling we should not modify the fds array
      * array but do this after wakeup directly after the poll call. */
     if(watch->executing)
@@ -900,24 +916,8 @@ inf_standalone_io_io_remove_watch(InfIo* io,
       g_slice_free(InfIoWatch, watch);
     }
 
-#ifdef G_OS_WIN32
-    if(WSAEventSelect(*watch->socket, *watch->event, 0) == SOCKET_ERROR)
-    {
-      error_message = g_win32_error_message(WSAGetLastError());
-      g_warning("WSAEventSelect() failed: %s", error_message);
-      g_free(error_message);
-    }
-
-    if(WSACloseEvent(*watch->event) == FALSE)
-    {
-      error_message = g_win32_error_message(WSAGetLastError());
-      g_warning("WSACloseEvent() failed: %s", error_message);
-      g_free(error_message);
-    }
-#endif
-
     /* Remove watch by replacing it by the last pollfd/watch */
-    index = 1 + watch_iter - priv->watches;
+    index = 1 + (watch_iter - priv->watches);
     if(index != priv->fd_size - 1)
     {
       memcpy(
