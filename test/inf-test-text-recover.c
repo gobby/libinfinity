@@ -48,11 +48,11 @@ inf_test_util_print_buffer(InfTextBuffer* buffer)
 
 static InfSession*
 inf_test_text_recover_session_new(InfIo* io,
-                                 InfCommunicationManager* manager,
-                                 InfSessionStatus status,
-                                 InfCommunicationJoinedGroup* sync_group,
-                                 InfXmlConnection* sync_connection,
-                                 gpointer user_data)
+                                  InfCommunicationManager* manager,
+                                  InfSessionStatus status,
+                                  InfCommunicationGroup* sync_group,
+                                  InfXmlConnection* sync_connection,
+                                  gpointer user_data)
 {
   InfTextDefaultBuffer* buffer;
   InfTextSession* session;
@@ -63,7 +63,7 @@ inf_test_text_recover_session_new(InfIo* io,
     INF_TEXT_BUFFER(buffer),
     io,
     status,
-    INF_COMMUNICATION_GROUP(sync_group),
+    sync_group,
     sync_connection
   );
   g_object_unref(buffer);

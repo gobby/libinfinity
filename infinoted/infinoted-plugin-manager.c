@@ -32,6 +32,7 @@
  */
 
 #include <infinoted/infinoted-plugin-manager.h>
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gmodule.h>

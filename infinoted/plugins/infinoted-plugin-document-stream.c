@@ -26,8 +26,10 @@
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-buffer.h>
 
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-chat-buffer.h>
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <sys/types.h>
@@ -322,7 +324,7 @@ infinoted_plugin_document_stream_chat_add_message(
 
   inf_signal_handlers_block_by_func(
     G_OBJECT(stream->buffer),
-    infinoted_plugin_document_stream_chat_add_message_cb,
+    G_CALLBACK(infinoted_plugin_document_stream_chat_add_message_cb),
     stream
   );
 
@@ -337,7 +339,7 @@ infinoted_plugin_document_stream_chat_add_message(
 
   inf_signal_handlers_unblock_by_func(
     G_OBJECT(stream->buffer),
-    infinoted_plugin_document_stream_chat_add_message_cb,
+    G_CALLBACK(infinoted_plugin_document_stream_chat_add_message_cb),
     stream
   );
 }
@@ -554,7 +556,7 @@ infinoted_plugin_document_stream_user_join_func(InfRequest* request,
   }
   else
   {
-    inf_request_result_get_join_user(res, &user);
+    inf_request_result_get_join_user(res, NULL, &user);
 
     g_assert(stream->user == NULL);
     stream->user = user;

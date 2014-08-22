@@ -39,6 +39,7 @@
 #include <libinfinity/server/infd-account-storage.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gnutls/gnutls.h>

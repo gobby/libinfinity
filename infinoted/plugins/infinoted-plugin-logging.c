@@ -26,6 +26,7 @@
 #include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/common/inf-cert-util.h>
 
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <libxml/xmlsave.h>

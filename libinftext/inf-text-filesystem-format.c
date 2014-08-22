@@ -36,6 +36,8 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <string.h>
+
 typedef struct _InfTextFilesystemFormatWriteData {
   xmlNodePtr root;
   GHashTable* encountered_authors;

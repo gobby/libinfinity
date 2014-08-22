@@ -24,6 +24,7 @@
 #include <libinfinity/common/inf-chat-session.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-tcp-connection.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>

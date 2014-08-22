@@ -24,6 +24,7 @@
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-buffer.h>
 
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <string.h>

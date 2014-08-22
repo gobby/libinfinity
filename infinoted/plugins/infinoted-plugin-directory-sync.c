@@ -20,11 +20,13 @@
 #include <infinoted/infinoted-plugin-manager.h>
 #include <infinoted/infinoted-parameter.h>
 #include <infinoted/infinoted-log.h>
+#include <infinoted/infinoted-util.h>
 
 #include <libinftext/inf-text-session.h>
 #include <libinftext/inf-text-buffer.h>
 
 #include <libinfinity/common/inf-file-util.h>
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <string.h>

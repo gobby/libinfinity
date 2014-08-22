@@ -31,10 +31,13 @@
  **/
 
 #include <libinfgtk/inf-gtk-account-creation-dialog.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-async-operation.h>
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gnutls/x509.h>
 #include <string.h>

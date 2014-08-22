@@ -22,6 +22,8 @@
 #include <infinoted/infinoted-log.h>
 
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 typedef enum _InfinotedPluginCertificateAuthError {
@@ -132,9 +134,9 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
     error = NULL;
 
     if(res != GNUTLS_E_SUCCESS)
-      inf_gnutls_set_error(res, &error);
+      inf_gnutls_set_error(&error, res);
     else if( (verify_result & GNUTLS_CERT_INVALID) != 0)
-      inf_gnutls_certificate_verification_set_error(res, &error);
+      inf_gnutls_certificate_verification_set_error(&error, res);
 
     if(error != NULL)
     {

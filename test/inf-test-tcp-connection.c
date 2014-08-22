@@ -20,6 +20,7 @@
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -193,7 +194,7 @@ int main(int argc, char* argv[])
   g_type_init();
   if(inf_init(&error) == FALSE)
   {
-    fprintf(stderr, error->message);
+    fprintf(stderr, "%s", error->message);
     g_error_free(error);
     return 1;
   }

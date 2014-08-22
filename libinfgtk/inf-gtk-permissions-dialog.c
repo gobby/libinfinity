@@ -44,7 +44,10 @@
 #include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
 #include <gdk/gdkkeysyms.h>
+
+#include <string.h>
 
 enum {
   INF_GTK_PERMISSIONS_DIALOG_COLUMN_ID = 0,

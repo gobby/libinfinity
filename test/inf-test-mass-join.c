@@ -24,6 +24,7 @@
 #include <libinfinity/adopted/inf-adopted-session.h>
 #include <libinfinity/adopted/inf-adopted-algorithm.h>
 #include <libinfinity/adopted/inf-adopted-state-vector.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-ip-address.h>
@@ -31,6 +32,8 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-protocol.h>
 #include <libinfinity/common/inf-init.h>
+
+#include <string.h>
 
 typedef struct _InfTestMassJoiner InfTestMassJoiner;
 struct _InfTestMassJoiner {
@@ -183,7 +186,7 @@ inf_test_mass_join_subscribe_finished_cb(InfRequest* request,
   InfSession* session;
 
   joiner = (InfTestMassJoiner*)user_data;
-  inf_request_result_get_subscribe_session(result, NULL, &iter);
+  inf_request_result_get_subscribe_session(result, NULL, &iter, NULL);
 
   joiner->session = INFC_SESSION_PROXY(
     inf_browser_get_session(

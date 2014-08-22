@@ -40,6 +40,8 @@
 #include <infinoted/infinoted-parameter.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <string.h>
+
 static void
 infinoted_parameter_free_data(InfinotedParameterType type,
                               InfinotedParameterValue* value)

@@ -31,11 +31,11 @@
 
 #include <infinoted/infinoted-util.h>
 
+#include <libinfinity/common/inf-file-util.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-config.h>
 
 #ifdef LIBINFINITY_HAVE_LIBDAEMON
-#include <libdaemon/dlog.h>
 #include <libdaemon/dpid.h>
 
 #include <unistd.h> /* for access(2) */

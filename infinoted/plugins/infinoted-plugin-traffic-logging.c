@@ -19,11 +19,14 @@
 
 #include <infinoted/infinoted-plugin-manager.h>
 #include <infinoted/infinoted-parameter.h>
+#include <infinoted/infinoted-util.h>
 
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <libxml/xmlsave.h>
 
+#include <string.h>
 #include <errno.h>
 
 typedef struct _InfinotedPluginTrafficLogging InfinotedPluginTrafficLogging;

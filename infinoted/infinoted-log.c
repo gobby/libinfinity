@@ -32,6 +32,7 @@
  **/
 
 #include <infinoted/infinoted-log.h>
+#include <infinoted/infinoted-util.h>
 
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
@@ -40,6 +41,10 @@
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
+
+#ifdef LIBINFINITY_HAVE_LIBDAEMON
+# include <libdaemon/dlog.h>
+#endif
 
 #ifdef G_OS_WIN32
 /* Arbitrary; they are not used currently anyway */

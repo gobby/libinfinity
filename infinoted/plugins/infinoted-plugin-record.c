@@ -20,6 +20,7 @@
 #include <infinoted/infinoted-plugin-manager.h>
 #include <infinoted/infinoted-parameter.h>
 #include <infinoted/infinoted-log.h>
+#include <infinoted/infinoted-util.h>
 
 #include <libinfinity/adopted/inf-adopted-session-record.h>
 #include <libinfinity/inf-i18n.h>

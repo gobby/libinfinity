@@ -19,7 +19,11 @@
 
 #include <infinoted/plugins/util/infinoted-plugin-util-navigate-browser.h>
 
+#include <libinfinity/common/inf-request-result.h>
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
+
+#include <string.h>
 
 struct _InfinotedPluginUtilNavigateData {
   gboolean initial;

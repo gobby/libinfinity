@@ -26,6 +26,8 @@
 
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-cert-util.h>
+#include <libinfinity/common/inf-file-util.h>
+#include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
@@ -190,7 +192,7 @@ inf_gtk_certificate_manager_compare_fingerprint(gnutls_x509_crt_t cert1,
 
   if(ret != GNUTLS_E_SUCCESS)
   {
-    inf_gnutls_set_error(ret, error);
+    inf_gnutls_set_error(error, ret);
     return FALSE;
   }
 
@@ -459,7 +461,7 @@ inf_gtk_certificate_manager_write_known_hosts(InfGtkCertificateManager* mgr,
     {
       g_free(buffer);
       g_io_channel_unref(channel);
-      inf_gnutls_set_error(res, error);
+      inf_gnutls_set_error(error, res);
       return FALSE;
     }
 

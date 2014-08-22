@@ -29,10 +29,11 @@
 #include <libinfinity/common/inf-xmpp-manager.h>
 #include <libinfinity/common/inf-discovery-avahi.h>
 #include <libinfinity/common/inf-chat-session.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-protocol.h>
-#include <libinfinity/inf-signals.h>
 #include <libinfinity/common/inf-init.h>
+#include <libinfinity/inf-signals.h>
 
 #include <gtk/gtk.h>
 

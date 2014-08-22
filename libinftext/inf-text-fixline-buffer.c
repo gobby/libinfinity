@@ -36,6 +36,7 @@
 #include <libinftext/inf-text-fixline-buffer.h>
 #include <libinftext/inf-text-user.h>
 #include <libinfinity/common/inf-buffer.h>
+#include <libinfinity/inf-signals.h>
 
 #include <string.h>
 
