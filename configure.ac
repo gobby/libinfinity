@@ -100,6 +100,19 @@ AC_TRY_COMPILE([#include <dirent.h>
                [ AC_MSG_RESULT(no)]
 )
 
+# Check for O_NOFOLLOW
+AC_MSG_CHECKING(for O_NOFOLLOW)
+AC_TRY_COMPILE([#include <sys/types.h>
+                #include <sys/stat.h>
+                #include <fcntl.h> ],
+               [ printf("%d\n", O_NOFOLLOW); ],
+               [ AC_MSG_RESULT(yes)
+                 AC_DEFINE(HAVE_O_NOFOLLOW, 1,
+                           [Define this symbol if the O_NOFOLLOW flag is
+                            supported on your system])],
+               [ AC_MSG_RESULT(no)]
+)
+
 ###################################
 # Check for regular dependencies
 ###################################

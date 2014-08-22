@@ -87,9 +87,10 @@ infinoted_plugin_manager_hash(gpointer first,
                               gpointer second)
 {
   /* This function creates a hash out of two pointer values */
-  guintptr hash = 5381;
-  hash = hash * 33 + (guintptr)first;
-  hash = hash * 33 + (guintptr)second;
+  /* TODO: Switch to guintptr with glib 2.18 */
+  gsize hash = 5381;
+  hash = hash * 33 + (gsize)first;
+  hash = hash * 33 + (gsize)second;
   return (gpointer)hash;
 }
 

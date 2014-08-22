@@ -258,7 +258,11 @@ inf_file_util_list_directory(const gchar* path,
   gboolean result;
   GError* local_error;
 
+#ifdef HAVE_O_NOFOLLOW
   dir_fd = open(path, O_NOFOLLOW | O_RDONLY);
+#else
+  dir_fd = open(path, O_RDONLY);
+#endif
   if(dir_fd == -1 || (dir = fdopendir(dir_fd)) == NULL)
   {
     inf_file_util_set_error_from_errno(error, errno);
