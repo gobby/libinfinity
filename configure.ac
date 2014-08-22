@@ -4,7 +4,7 @@ m4_define([libinfinity_libtool_version], [0:0:0])
 
 AC_PREREQ(2.60)
 AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
-AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news foreign])
+AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news foreign tar-pax])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-init.c])

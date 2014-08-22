@@ -144,6 +144,7 @@ libinfinoted_plugin_transformation_protection_la_SOURCES = \
 
 if !WIN32
 libinfinoted_plugin_document_stream_la_SOURCES = \
+	util/infinoted-plugin-util-navigate-browser.h \
 	util/infinoted-plugin-util-navigate-browser.c \
 	infinoted-plugin-document-stream.c
 endif
