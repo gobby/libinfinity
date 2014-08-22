@@ -35,6 +35,8 @@
 #include <libinfinity/server/infd-chat-filesystem-format.h>
 #include <libinfinity/inf-i18n.h>
 
+#include <string.h>
+
 static GQuark
 infd_chat_filesystem_format_error_quark()
 {

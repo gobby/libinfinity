@@ -31,6 +31,9 @@
 
 #include <libinfinity/common/inf-file-util.h>
 
+#include <glib/gstdio.h>
+#include <string.h>
+
 #include "config.h"
 
 #ifdef G_OS_WIN32

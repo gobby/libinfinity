@@ -5356,7 +5356,7 @@ static InfdDirectoryNode*
 infd_directory_get_node_from_xml_typed(InfdDirectory* directory,
                                        xmlNodePtr xml,
                                        const gchar* attrib,
-                                       InfdStorageNodeType type,
+                                       InfdDirectoryNodeType type,
                                        GError** error)
 {
   InfdDirectoryNode* node;
@@ -9903,7 +9903,7 @@ infd_directory_browser_lookup_acl_accounts(InfBrowser* browser,
       inf_request_fail(INF_REQUEST(request), error);
       g_error_free(error);
       g_object_unref(request);
-      return;
+      return NULL;
     }
 
     for(i = 0; i < nontransient_ids->len; ++i)
@@ -10006,7 +10006,7 @@ infd_directory_browser_lookup_acl_account_by_name(InfBrowser* browser,
       inf_request_fail(INF_REQUEST(request), error);
       g_object_unref(request);
       g_error_free(error);
-      return;
+      return NULL;
     }
   }
   else
@@ -11152,9 +11152,9 @@ infd_directory_set_acl_account_for_connection(InfdDirectory* directory,
   InfAclAccount* account;
   GError* local_error;
 
-  g_return_if_fail(INFD_IS_DIRECTORY(directory));
-  g_return_if_fail(INF_IS_XML_CONNECTION(connection));
-  g_return_if_fail(account != 0);
+  g_return_val_if_fail(INFD_IS_DIRECTORY(directory), FALSE);
+  g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
+  g_return_val_if_fail(account != 0, FALSE);
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 

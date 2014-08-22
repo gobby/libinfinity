@@ -46,6 +46,7 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-native-socket.h>
+#include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 

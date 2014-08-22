@@ -24,6 +24,8 @@
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
+#include <string.h>
+
 /**
  * SECTION:inf-xmpp-manager
  * @title: InfXmppManager
@@ -233,9 +235,7 @@ inf_xmpp_manager_key_cmp(gconstpointer first,
       first_key->shared.hostname.srv,
       second_key->shared.hostname.srv
     );
-    if(cmp != 0) return cmp;
-
-    break;
+    return cmp;
   default:
     g_assert_not_reached();
     return 0;
