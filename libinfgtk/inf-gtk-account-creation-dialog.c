@@ -586,7 +586,11 @@ inf_gtk_account_creation_dialog_init(GTypeInstance* instance,
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
   gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 
+#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_set_can_default(priv->generate_button, TRUE);
+#else
+  GTK_WIDGET_SET_FLAGS(priv->generate_button, GTK_CAN_DEFAULT);
+#endif
   gtk_widget_grab_default(priv->generate_button);
 
   gtk_window_set_title(GTK_WINDOW(dialog), _("Create New Account"));
