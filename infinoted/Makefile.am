@@ -1,16 +1,16 @@
 SUBDIRS = . plugins
 
 # TODO: Find a way to have the version number set automatically.
-bin_PROGRAMS = infinoted-0.6
-dist_man1_MANS = infinoted-0.6.man
+bin_PROGRAMS = infinoted-0.7
+dist_man1_MANS = infinoted-0.7.man
 
 plugin_path = infinoted-$(LIBINFINITY_API_VERSION)/plugins
 
 # Compile the plugin manager as a shared library:
 # TODO: Find a way to have the version number set automatically.
-lib_LTLIBRARIES = libinfinoted-plugin-manager-0.6.la
+lib_LTLIBRARIES = libinfinoted-plugin-manager-0.7.la
 
-libinfinoted_plugin_manager_0_6_la_CPPFLAGS = \
+libinfinoted_plugin_manager_0_7_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinoted_CFLAGS) \
 	$(infinity_CFLAGS) \
@@ -19,32 +19,32 @@ libinfinoted_plugin_manager_0_6_la_CPPFLAGS = \
 	-DLOCALSTATEDIR=\"${localstatedir}\" \
 	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
-libinfinoted_plugin_manager_0_6_la_LDFLAGS = \
+libinfinoted_plugin_manager_0_7_la_LDFLAGS = \
 	-no-undefined \
 	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
-libinfinoted_plugin_manager_0_6_la_LIBADD = \
+libinfinoted_plugin_manager_0_7_la_LIBADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS)
 
-libinfinoted_plugin_manager_0_6_la_SOURCES = \
+libinfinoted_plugin_manager_0_7_la_SOURCES = \
 	infinoted-log.c \
 	infinoted-parameter.c \
 	infinoted-plugin-manager.c \
 	infinoted-util.c
 
-libinfinoted_plugin_manager_0_6_la_HEADERS = \
+libinfinoted_plugin_manager_0_7_la_HEADERS = \
 	infinoted-log.h \
 	infinoted-parameter.h \
 	infinoted-plugin-manager.h \
 	infinoted-util.h
 
-libinfinoted_plugin_manager_0_6_ladir = \
+libinfinoted_plugin_manager_0_7_ladir = \
 	$(includedir)/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION)/infinoted
 
 # Compile the rest of infinoted as an executable binary
-infinoted_0_6_CPPFLAGS = \
+infinoted_0_7_CPPFLAGS = \
 	-I${top_srcdir} \
 	$(infinoted_CFLAGS) \
 	$(infinity_CFLAGS) \
@@ -53,14 +53,14 @@ infinoted_0_6_CPPFLAGS = \
 	-DLOCALSTATEDIR=\"${localstatedir}\" \
 	-DLIBINFINITY_API_VERSION=\"$(LIBINFINITY_API_VERSION)\"
 
-infinoted_0_6_LDADD = \
+infinoted_0_7_LDADD = \
 	libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(infinoted_LIBS) \
 	$(infinity_LIBS) \
 	$(libdaemon_LIBS)
 
-infinoted_0_6_SOURCES = \
+infinoted_0_7_SOURCES = \
 	infinoted-config-reload.c \
 	infinoted-dh-params.c \
 	infinoted-main.c \

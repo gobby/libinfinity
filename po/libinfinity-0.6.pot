@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?"
 "product=glib&keywords=I18N+L10N&component=general\n"
-"POT-Creation-Date: 2014-08-22 11:39-0400\n"
+"POT-Creation-Date: 2014-08-23 13:25-0400\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -348,12 +348,12 @@ msgid ""
 "\"allow-tls\" or \"require-tls\""
 msgstr ""
 
-#: ../infinoted/infinoted-plugin-manager.c:490
+#: ../infinoted/infinoted-plugin-manager.c:491
 #, c-format
 msgid "Loaded plugin \"%s\" from \"%s\""
 msgstr ""
 
-#: ../infinoted/infinoted-plugin-manager.c:534
+#: ../infinoted/infinoted-plugin-manager.c:535
 #, c-format
 msgid "Unloaded plugin \"%s\" from \"%s\""
 msgstr ""
@@ -869,7 +869,7 @@ msgstr ""
 msgid "Create _Account"
 msgstr ""
 
-#: ../libinfgtk/inf-gtk-account-creation-dialog.c:592
+#: ../libinfgtk/inf-gtk-account-creation-dialog.c:596
 msgid "Create New Account"
 msgstr ""
 

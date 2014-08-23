@@ -1,17 +1,17 @@
 SUBDIRS = communication common adopted server client .
 
 # TODO: Find a way to have the version number set automatically.
-lib_LTLIBRARIES = libinfinity-0.6.la
+lib_LTLIBRARIES = libinfinity-0.7.la
 
-libinfinity_0_6_la_CPPFLAGS = \
+libinfinity_0_7_la_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinity_CFLAGS)
 
-libinfinity_0_6_la_LDFLAGS = \
+libinfinity_0_7_la_LDFLAGS = \
 	-no-undefined \
 	-version-info $(LIBINFINITY_LIBTOOL_VERSION)
 
-libinfinity_0_6_la_LIBADD = \
+libinfinity_0_7_la_LIBADD = \
 	server/libinfinity_server.la \
 	client/libinfinity_client.la \
 	adopted/libinfinity_adopted.la \
@@ -33,10 +33,10 @@ inf-marshal.c: inf-marshal.in
 BUILT_SOURCES = inf-marshal.h inf-marshal.c
 CLEANFILES = inf-marshal.h inf-marshal.c
 
-libinfinity_0_6_ladir = \
+libinfinity_0_7_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity
 
-libinfinity_0_6_la_HEADERS = \
+libinfinity_0_7_la_HEADERS = \
 	inf-config.h
 
 noinst_HEADERS = \
@@ -45,7 +45,7 @@ noinst_HEADERS = \
 	inf-marshal.h \
 	inf-signals.h
 
-libinfinity_0_6_la_SOURCES = \
+libinfinity_0_7_la_SOURCES = \
 	inf-dll.c \
 	inf-i18n.c \
 	inf-marshal.c \
