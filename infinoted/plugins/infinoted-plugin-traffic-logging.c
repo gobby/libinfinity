@@ -199,7 +199,7 @@ infinoted_plugin_traffic_logging_connection_added(
   g_free(basename);
 
   error = NULL;
-  if(infinoted_util_create_dirname(info->filename, error) == FALSE)
+  if(infinoted_util_create_dirname(info->filename, &error) == FALSE)
   {
     basename = g_path_get_dirname(info->filename);
 
