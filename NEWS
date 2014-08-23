@@ -1,3 +1,50 @@
+libinfinity 0.6.0:
+
+	* infinoted: Introduced a plugin infrastructure, and ported some of
+	  the previous functionality to plugins.
+	* infinoted: Add a plugin for client authentication with certificates.
+	* Add a system for user management and access control lists (ACLs).
+	* Change certificate checker to a trust-on-first-use (SSH-like)
+	  mechanism when the signer cannot be verified.
+	* Code refactorings, and many new interfaces and APIs.
+
+libinfinity 0.5.5:
+
+	* Fix a crash in infinoted when nmap scans the infinote port (Rainer
+	Rehak).
+
+libinfinity 0.5.4:
+
+	* Fix crashes that can happen when the connection goes down at
+	  unexpected moments.
+	* Fix a crash when when drawing remote cursors or selections and the
+	  initial document has not yet been fully transmitted.
+	* Fix a possible crash when undoing or redoing many operations in a
+	  row (Sven Brauch).
+
+libinfinity 0.5.3:
+
+	* Fix a crash when a connection goes down at the moment libinfinity
+	  is trying to send data.
+	* Fix possible undefined behavior at type registration (Colomban
+	  Wendling).
+
+libinfinity 0.5.2:
+
+	* Fix a crash when a server certificate does not have a hostname set
+	* Fix a crash when the remote side sends invalid UTF-8
+	* Fix compilation with glib >= 2.31
+
+libinfinity 0.5.1:
+
+	* infinoted: Update directory sync settings on config reload
+	* infinoted: Fix a crash when directory sync was enabled (#556)
+	* Fix the build on Mac OS X (#563)
+	* Disallow node names containing non-printable or only space
+	  characters
+	* Fixed a reference leak in infd_directory_add_note()
+	* Fixed a crash in infd_directory_iter_get_session()
+
 libinfinity 0.5.0:
 
 	* infinoted: Added the --pam-server, --allow-user and --allow-group
