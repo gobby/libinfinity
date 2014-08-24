@@ -1,3 +1,7 @@
+libinfinity 0.6.1:
+	* Explicitly link against libresolv on unix-based systems, to avoid
+	  a possible build failure.
+
 libinfinity 0.6.0:
 
 	* infinoted: Introduced a plugin infrastructure, and ported some of
