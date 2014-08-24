@@ -80,8 +80,8 @@ GTKDOC_LIBS = \
 	$(inftextgtk_LIBS) \
 	$(top_builddir)/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	$(top_builddir)/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
-	$(top_builddir)/libinfgtk/libinf$(infgtkver)-$(LIBINFINITY_API_VERSION).la \
-	$(top_builddir)/libinftextgtk/libinftext$(infgtkver)-$(LIBINFINITY_API_VERSION).la
+	$(top_builddir)/libinfgtk/libinfgtk-$(LIBINFINITY_API_VERSION).la \
+	$(top_builddir)/libinftextgtk/libinftextgtk-$(LIBINFINITY_API_VERSION).la
 
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make

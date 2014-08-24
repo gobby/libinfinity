@@ -267,13 +267,8 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
 
   textview = gtk_bin_get_child(GTK_BIN(priv->scroll));
   scrollbar = gtk_scrolled_window_get_vscrollbar(priv->scroll);
-#if GTK_CHECK_VERSION(2,20,0)
   if(GTK_IS_TEXT_VIEW(textview) && scrollbar != NULL &&
      gtk_widget_get_realized(textview))
-#else
-  if(GTK_IS_TEXT_VIEW(textview) && scrollbar != NULL &&
-     GTK_WIDGET_REALIZED(textview))
-#endif
   {
     gtk_text_buffer_get_iter_at_offset(
       gtk_text_view_get_buffer(GTK_TEXT_VIEW(textview)),
@@ -303,11 +298,7 @@ inf_text_gtk_viewport_user_compute_user_area(InfTextGtkViewportUser* user)
       NULL
     );
 
-#if GTK_CHECK_VERSION(2,18,0)
     gtk_widget_get_allocation(scrollbar, &allocation);
-#else
-    allocation = scrollbar->allocation;
-#endif
 
     scroll_ox = border;
     scroll_oy = border + stepper_size + stepper_spacing;
@@ -371,15 +362,9 @@ inf_text_gtk_viewport_user_invalidate_user_area(InfTextGtkViewportUser* user)
 }
 
 static gboolean
-#if GTK_CHECK_VERSION(2, 91, 0)
 inf_text_gtk_viewport_scrollbar_draw_cb(GtkWidget* scrollbar,
                                         cairo_t* cr,
                                         gpointer user_data)
-#else
-inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
-                                                GdkEventExpose* event,
-                                                gpointer user_data)
-#endif
 {
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
@@ -391,23 +376,13 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
   GSList* item;
   double line_width;
 
-#if GTK_CHECK_VERSION(2, 91, 0)
   GdkRectangle clip_area;
-#else
-  cairo_t* cr;
-#endif
 
   viewport = INF_TEXT_GTK_VIEWPORT(user_data);
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
 
   /* Can this happen? */
-#if GTK_CHECK_VERSION(2, 91, 0)
   if(!gtk_cairo_should_draw_window(cr, gtk_widget_get_window(scrollbar)))
-#elif GTK_CHECK_VERSION(2,14,0)
-  if(event->window != gtk_widget_get_window(scrollbar))
-#else
-  if(event->window != GTK_WIDGET(scrollbar)->window)
-#endif
     return FALSE;
 
   if(priv->show_user_markers)
@@ -420,7 +395,6 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
     s = MIN(MAX(s, 0.5), 0.8);
     v = MAX(v, 0.5);
 
-#if GTK_CHECK_VERSION(2, 91, 0)
     gtk_cairo_transform_to_window(
       cr,
       GTK_WIDGET(scrollbar),
@@ -428,9 +402,6 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
     );
 
     gdk_cairo_get_clip_rectangle(cr, &clip_area);
-#else
-    cr = gdk_cairo_create(event->window);
-#endif
 
     line_width = cairo_get_line_width(cr);
     for(item = priv->users; item != NULL; item = item->next)
@@ -438,15 +409,7 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
       viewport_user = (InfTextGtkViewportUser*)item->data;
       rectangle = &viewport_user->rectangle;
 
-#if GTK_CHECK_VERSION(2, 91, 0)
       if(gdk_rectangle_intersect(&clip_area, rectangle, NULL))
-#elif GTK_CHECK_VERSION(2,90,5)
-      if(cairo_region_contains_rectangle(event->region, rectangle) !=
-         CAIRO_REGION_OVERLAP_OUT)
-#else
-      if(gdk_region_rect_in(event->region, rectangle) !=
-         GDK_OVERLAP_RECTANGLE_OUT)
-#endif
       {
         h = inf_text_user_get_hue(viewport_user->user);
 
@@ -469,10 +432,6 @@ inf_text_gtk_viewport_scrollbar_expose_event_cb(GtkWidget* scrollbar,
         cairo_fill(cr);
       }
     }
-
-#if ! GTK_CHECK_VERSION(2, 91, 0)
-    cairo_destroy(cr);
-#endif
   }
 
   return FALSE;
@@ -799,11 +758,7 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
 
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(scrollbar),
-#if GTK_CHECK_VERSION(2, 91, 0)
         G_CALLBACK(inf_text_gtk_viewport_scrollbar_draw_cb),
-#else
-        G_CALLBACK(inf_text_gtk_viewport_scrollbar_expose_event_cb),
-#endif
         viewport
       );
     }
@@ -845,21 +800,12 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
       viewport
     );
 
-#if GTK_CHECK_VERSION(2, 91, 0)
     g_signal_connect_after(
       G_OBJECT(scrollbar),
       "draw",
       G_CALLBACK(inf_text_gtk_viewport_scrollbar_draw_cb),
       viewport
     );
-#else
-    g_signal_connect_after(
-      G_OBJECT(scrollbar),
-      "expose-event",
-      G_CALLBACK(inf_text_gtk_viewport_scrollbar_expose_event_cb),
-      viewport
-    );
-#endif
   }
 
   g_object_notify(G_OBJECT(viewport), "scrolled-window");

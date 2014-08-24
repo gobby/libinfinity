@@ -1,9 +1,5 @@
 # TODO: Find a way to have the version number set automatically.
-if WITH_GTK3
-lib_LTLIBRARIES = libinfgtk3-0.7.la
-else
 lib_LTLIBRARIES = libinfgtk-0.7.la
-endif
 
 cppflags = \
 	-I$(top_srcdir) \
@@ -49,15 +45,6 @@ sources = \
 	inf-gtk-io.c \
 	inf-gtk-permissions-dialog.c
 
-if WITH_GTK3
-libinfgtk3_0_7_la_CPPFLAGS = $(cppflags)
-libinfgtk3_0_7_la_LDFLAGS = $(ldflags)
-libinfgtk3_0_7_la_LIBADD = $(libadd)
-libinfgtk3_0_7_la_HEADERS = $(headers)
-libinfgtk3_0_7_la_SOURCES = $(sources)
-libinfgtk3_0_7_ladir = \
-	$(includedir)/libinfgtk3-$(LIBINFINITY_API_VERSION)/libinfgtk
-else
 libinfgtk_0_7_la_CPPFLAGS = $(cppflags)
 libinfgtk_0_7_la_LDFLAGS = $(ldflags)
 libinfgtk_0_7_la_LIBADD = $(libadd)
@@ -65,4 +52,3 @@ libinfgtk_0_7_la_HEADERS = $(headers)
 libinfgtk_0_7_la_SOURCES = $(sources)
 libinfgtk_0_7_ladir = \
 	$(includedir)/libinfgtk-$(LIBINFINITY_API_VERSION)/libinfgtk
-endif

@@ -809,11 +809,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       query->connection = connection;
       query->dialog = inf_gtk_certificate_dialog_new(
         priv->parent_window,
-#if GTK_CHECK_VERSION(2,90,7)
         0,
-#else
-        GTK_DIALOG_NO_SEPARATOR,
-#endif
         flags,
         hostname,
         chain
@@ -876,12 +872,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       gtk_widget_show(label);
       g_free(text);
 
-#if GTK_CHECK_VERSION(2,14,0)
       vbox = gtk_dialog_get_content_area(GTK_DIALOG(query->dialog));
-#else
-      vbox = GTK_DIALOG(query->dialog)->vbox;
-#endif
-
       gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 
       priv->queries = g_slist_prepend(priv->queries, query);

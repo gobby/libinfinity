@@ -1628,9 +1628,6 @@ inf_gtk_permissions_dialog_remove_clicked_cb(GtkButton* button,
   guint i;
   InfRequest* request;
   GtkTreeIter move_iter;
-#if !GTK_CHECK_VERSION(3,0,0)
-  GtkTreePath* move_path;
-#endif
   gboolean could_move;
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
@@ -1713,29 +1710,11 @@ inf_gtk_permissions_dialog_remove_clicked_cb(GtkButton* button,
     if(!could_move)
     {
       move_iter = selected_iter;
-#if GTK_CHECK_VERSION(3,0,0)
+
       could_move = gtk_tree_model_iter_previous(
         GTK_TREE_MODEL(priv->account_store),
         &move_iter
       );
-#else
-      move_path = gtk_tree_model_get_path(
-        GTK_TREE_MODEL(priv->account_store),
-        &move_iter
-      );
-
-      could_move = gtk_tree_path_prev(move_path);
-      if(could_move == TRUE)
-      {
-        gtk_tree_model_get_iter(
-          GTK_TREE_MODEL(priv->account_store),
-          &move_iter,
-          move_path
-        );
-      }
-
-      gtk_tree_path_free(move_path);
-#endif
     }
 
     g_assert(could_move);
@@ -1965,11 +1944,7 @@ inf_gtk_permissions_dialog_popup_menu_position_func(GtkMenu* menu,
   gdk_screen_get_monitor_geometry(screen, monitor_num, &monitor);
   gtk_widget_size_request(GTK_WIDGET(menu), &menu_req);
 
-#if GTK_CHECK_VERSION(2, 91, 0)
   height = gdk_window_get_height(bin_window);
-#else
-  gdk_drawable_get_size(GDK_DRAWABLE(bin_window), NULL, &height);
-#endif
 
   selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
   gtk_tree_selection_get_selected(selection, &model, &selected_iter);
@@ -2140,11 +2115,7 @@ inf_gtk_permissions_dialog_key_press_event_cb(GtkWidget* treeview,
 
   dialog = INF_GTK_PERMISSIONS_DIALOG(user_data);
 
-#if GTK_CHECK_VERSION(2,90,7)
   if(event->keyval == GDK_KEY_Menu)
-#else
-  if(event->keyval == GDK_Menu)
-#endif
   {
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
     if(gtk_tree_selection_get_selected(selection, NULL, &iter))
@@ -2962,11 +2933,7 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_box_pack_start(GTK_BOX(image_hbox), vbox, TRUE, TRUE, 0);
   gtk_widget_show(image_hbox);
 
-#if GTK_CHECK_VERSION(2,14,0)
   dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-#else
-  dialog_vbox = GTK_DIALOG(dialog)->vbox;
-#endif
 
   gtk_box_set_spacing(GTK_BOX(dialog_vbox), 12);
   gtk_box_pack_start(GTK_BOX(dialog_vbox), image_hbox, FALSE, FALSE, 0);
@@ -3283,11 +3250,6 @@ inf_gtk_permissions_dialog_new(GtkWindow* parent,
 
   if(dialog_flags & GTK_DIALOG_DESTROY_WITH_PARENT)
     gtk_window_set_destroy_with_parent(GTK_WINDOW(object), TRUE);
-
-#if !GTK_CHECK_VERSION(2,90,7)
-  if(dialog_flags & GTK_DIALOG_NO_SEPARATOR)
-    gtk_dialog_set_has_separator(GTK_DIALOG(object), FALSE);
-#endif
 
   gtk_window_set_transient_for(GTK_WINDOW(object), parent);
   return INF_GTK_PERMISSIONS_DIALOG(object);

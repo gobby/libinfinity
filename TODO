@@ -23,8 +23,8 @@ Performance (Some ideas to improve performance, profile to verify!):
 Modernization:
  * Use G_TYPE_ERROR for signals with an error parameter
     and G_TYPE_ARRAY for InfdSessionProxy::block-user-join
+ * Fix usage of deprecated GTK+ APIs, including stock icons
  * ffi marshalling
- * Phase-out GTK2 support
  * Use g_get_monotonic_time/g_get_real_time where a time is needed
  * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
@@ -32,6 +32,7 @@ Modernization:
  * Replace constructor by constructed
  * Use GtkBox and GtkGrid, use GtkBuilder for widgets/dialogs
  * g_set_error_literal
+ * Replace GdkColor by GdkRGBA, remove background parameter in inf_text_gtk_buffer_set_fade
 
 Protocol Break:
   The following features would be nice to have, but they require breaking

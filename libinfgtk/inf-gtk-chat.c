@@ -375,11 +375,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
   /* This must not be pressed for tab completion to be triggered: */
 #define MASK (GDK_SHIFT_MASK | GDK_CONTROL_MASK | GDK_MOD1_MASK)
 
-#if GTK_CHECK_VERSION(2,90,7)
   if(event->keyval == GDK_KEY_Tab && (event->state & MASK) == 0)
-#else
-  if(event->keyval == GDK_Tab && (event->state & MASK) == 0)
-#endif
   {
     index = gtk_editable_get_position(GTK_EDITABLE(widget));
     if(priv->completion_text != NULL && index != priv->completion_end)
@@ -669,11 +665,7 @@ inf_gtk_chat_init(GTypeInstance* instance,
   gtk_text_view_set_indent(GTK_TEXT_VIEW(priv->chat_view), -12);
   /* TODO: this prevents copying via ctrl+c - maybe the entry ctrl+c
    * should catch this and copy from the textview instead: */
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_set_can_focus(priv->chat_view, FALSE);
-#else
-  GTK_WIDGET_UNSET_FLAGS(priv->chat_view, GTK_CAN_FOCUS);
-#endif
   gtk_widget_show(priv->chat_view);
 
   /* TODO: These should probably be style properties: */

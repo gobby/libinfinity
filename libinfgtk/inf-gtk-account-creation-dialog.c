@@ -574,11 +574,7 @@ inf_gtk_account_creation_dialog_init(GTypeInstance* instance,
   gtk_box_pack_start(GTK_BOX(imagebox), vbox, FALSE, TRUE, 0);
   gtk_widget_show(imagebox);
 
-#if GTK_CHECK_VERSION(2,14,0)
   dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-#else
-  dialog_vbox = GTK_DIALOG(dialog)->vbox;
-#endif
 
   gtk_box_set_spacing(GTK_BOX(dialog_vbox), 12);
   gtk_box_pack_start(GTK_BOX(dialog_vbox), imagebox, FALSE, FALSE, 0);
@@ -586,11 +582,7 @@ inf_gtk_account_creation_dialog_init(GTypeInstance* instance,
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
   gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_set_can_default(priv->generate_button, TRUE);
-#else
-  GTK_WIDGET_SET_FLAGS(priv->generate_button, GTK_CAN_DEFAULT);
-#endif
   gtk_widget_grab_default(priv->generate_button);
 
   gtk_window_set_title(GTK_WINDOW(dialog), _("Create New Account"));
@@ -861,11 +853,6 @@ inf_gtk_account_creation_dialog_new(GtkWindow* parent,
 
   if(dialog_flags & GTK_DIALOG_DESTROY_WITH_PARENT)
     gtk_window_set_destroy_with_parent(GTK_WINDOW(object), TRUE);
-
-#if !GTK_CHECK_VERSION(2,90,7)
-  if(dialog_flags & GTK_DIALOG_NO_SEPARATOR)
-    gtk_dialog_set_has_separator(GTK_DIALOG(object), FALSE);
-#endif
 
   gtk_window_set_transient_for(GTK_WINDOW(object), parent);
   return INF_GTK_ACCOUNT_CREATION_DIALOG(object);

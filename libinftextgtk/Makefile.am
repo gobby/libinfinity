@@ -1,9 +1,5 @@
 # TODO: Find a way to have the version number set automatically.
-if WITH_GTK3
-lib_LTLIBRARIES = libinftextgtk3-0.7.la
-else
 lib_LTLIBRARIES = libinftextgtk-0.7.la
-endif
 
 cppflags = \
 	-I$(top_srcdir) \
@@ -34,15 +30,6 @@ sources = \
 	inf-text-gtk-view.c \
 	inf-text-gtk-viewport.c
 
-if WITH_GTK3
-libinftextgtk3_0_7_la_CPPFLAGS = $(cppflags)
-libinftextgtk3_0_7_la_LDFLAGS = $(ldflags)
-libinftextgtk3_0_7_la_LIBADD = $(libadd)
-libinftextgtk3_0_7_la_HEADERS = $(headers)
-libinftextgtk3_0_7_la_SOURCES = $(sources)
-libinftextgtk3_0_7_ladir = \
-	$(includedir)/libinftextgtk3-$(LIBINFINITY_API_VERSION)/libinftextgtk
-else
 libinftextgtk_0_7_la_CPPFLAGS = $(cppflags)
 libinftextgtk_0_7_la_LDFLAGS = $(ldflags)
 libinftextgtk_0_7_la_LIBADD = $(libadd)
@@ -50,4 +37,3 @@ libinftextgtk_0_7_la_HEADERS = $(headers)
 libinftextgtk_0_7_la_SOURCES = $(sources)
 libinftextgtk_0_7_ladir = \
 	$(includedir)/libinftextgtk-$(LIBINFINITY_API_VERSION)/libinftextgtk
-endif

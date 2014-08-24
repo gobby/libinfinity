@@ -552,14 +552,8 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
 
   gtk_widget_show(priv->main_vbox);
 
-#if GTK_CHECK_VERSION(2,14,0)
   vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-#else
-  vbox = GTK_DIALOG(dialog)->vbox;
-#endif
-
   gtk_box_pack_start(GTK_BOX(vbox), priv->main_vbox, TRUE, TRUE, 0);
-
   gtk_box_set_spacing(GTK_BOX(vbox), 12);
 
   gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
@@ -825,11 +819,6 @@ inf_gtk_certificate_dialog_new(GtkWindow* parent,
 
   if(dialog_flags & GTK_DIALOG_DESTROY_WITH_PARENT)
     gtk_window_set_destroy_with_parent(GTK_WINDOW(object), TRUE);
-
-#if !GTK_CHECK_VERSION(2,90,7)
-  if(dialog_flags & GTK_DIALOG_NO_SEPARATOR)
-    gtk_dialog_set_has_separator(GTK_DIALOG(object), FALSE);
-#endif
 
   gtk_window_set_transient_for(GTK_WINDOW(object), parent);
   return INF_GTK_CERTIFICATE_DIALOG(object);

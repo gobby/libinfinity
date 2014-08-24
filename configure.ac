@@ -129,31 +129,6 @@ else
 fi
 
 ###################################
-# Check for GTK+ 3
-###################################
-
-AC_ARG_WITH([gtk3], AS_HELP_STRING([--with-gtk3],
-            [Builds libinfgtk and libinftextgtk against GTK+ 3 [[default=no]]]),
-	    [with_gtk3=$withval], [with_gtk3=no])
-
-if test "x$with_gtk3" = "xyes"
-then
-	gtk_requirement="gtk+-3.0 >= 2.90.6"
-	gtk_version=3
-	infgtkver=gtk3
-else
-	gtk_requirement="gtk+-2.0 >= 2.12"
-	gtk_version=2
-	infgtkver=gtk
-fi
-
-AM_CONDITIONAL([WITH_GTK3], test "x$with_gtk3" = "xyes")
-
-AC_SUBST(gtk_requirement)
-AC_SUBST(gtk_version)
-AC_SUBST(infgtkver)
-
-###################################
 # libinftextgtk optional package
 ###################################
 
@@ -161,6 +136,7 @@ AC_ARG_WITH([inftextgtk], AS_HELP_STRING([--with-inftextgtk],
             [Builds the libinftextgtk library [[default=auto]]]),
             [with_inftextgtk=$withval], [with_inftextgtk=auto])
 
+gtk_requirement="gtk+-3.0 >= 3.0.0"
 if test "x$with_inftextgtk" = "xauto"
 then
   PKG_CHECK_MODULES([inftextgtk], [$gtk_requirement], [with_inftextgtk=yes], [with_inftextgtk=no])
@@ -175,6 +151,8 @@ then
 fi
 
 AM_CONDITIONAL([WITH_INFTEXTGTK], test "x$with_inftextgtk" = "xyes")
+
+AC_SUBST(gtk_requirement)
 
 ###############################
 # libinfgtk optional package
@@ -349,8 +327,8 @@ AC_CONFIG_FILES([
 AC_CONFIG_FILES(
   libinfinity-libinfinity_api_version.pc:libinfinity.pc.in
   libinftext-libinfinity_api_version.pc:libinftext.pc.in
-  libinf${infgtkver}-libinfinity_api_version.pc:libinfgtk.pc.in
-  libinftext${infgtkver}-libinfinity_api_version.pc:libinftextgtk.pc.in
+  libinfgtk-libinfinity_api_version.pc:libinfgtk.pc.in
+  libinftextgtk-libinfinity_api_version.pc:libinftextgtk.pc.in
   libinfinoted-plugin-manager-libinfinity_api_version.pc:libinfinoted-plugin-manager.pc.in
 )
 
@@ -363,7 +341,6 @@ Build optional packages:
   infinoted: $with_infinoted
 
 Enable support for:
-  gtk: version $gtk_version
   avahi: $use_avahi
   libdaemon: $use_libdaemon
   pam: $use_pam

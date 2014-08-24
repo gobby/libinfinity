@@ -174,11 +174,7 @@ inf_text_gtk_hue_chooser_is_in_ring(InfTextGtkHueChooser* chooser,
   gdouble outer;
   gdouble dist_sqr;
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_get_allocation(GTK_WIDGET(chooser), &allocation);
-#else
-  allocation = GTK_WIDGET(chooser)->allocation;
-#endif
 
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
   center_x = allocation.width / 2.0;
@@ -204,11 +200,7 @@ inf_text_gtk_hue_chooser_hue_by_coords(InfTextGtkHueChooser* chooser,
   double dy;
   double angle;
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_get_allocation(GTK_WIDGET(chooser), &allocation);
-#else
-  allocation = GTK_WIDGET(chooser)->allocation;
-#endif
 
   center_x = allocation.width / 2.0;
   center_y = allocation.height / 2.0;
@@ -259,11 +251,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
     NULL
   );
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_get_allocation(GTK_WIDGET(chooser), &allocation);
-#else
-  allocation = GTK_WIDGET(chooser)->allocation;
-#endif
 
   center_x = allocation.width / 2.0;
   center_y = allocation.height / 2.0;
@@ -385,13 +373,8 @@ inf_text_gtk_hue_chooser_init(GTypeInstance* instance,
   hue_chooser = INF_TEXT_GTK_HUE_CHOOSER(instance);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(hue_chooser);
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_set_has_window(GTK_WIDGET(hue_chooser), FALSE);
   gtk_widget_set_can_focus(GTK_WIDGET(hue_chooser), TRUE);
-#else
-  GTK_WIDGET_SET_FLAGS(hue_chooser, GTK_NO_WINDOW);
-  GTK_WIDGET_SET_FLAGS(hue_chooser, GTK_CAN_FOCUS);
-#endif
 
   priv->hue = 0.0;
   priv->window = NULL;
@@ -512,17 +495,8 @@ inf_text_gtk_hue_chooser_realize(GtkWidget* widget)
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
-#if GTK_CHECK_VERSION(2,20,0)
   gtk_widget_set_realized(widget, TRUE);
-#else
-  GTK_WIDGET_SET_FLAGS(widget, GTK_REALIZED);
-#endif
-
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_get_allocation(widget, &allocation);
-#else
-  allocation = widget->allocation;
-#endif
 
   attr.window_type = GDK_WINDOW_CHILD;
   attr.x = allocation.x;
@@ -543,11 +517,7 @@ inf_text_gtk_hue_chooser_realize(GtkWidget* widget)
   parent_window = gtk_widget_get_parent_window(widget);
   g_object_ref(parent_window);
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_set_window(widget, parent_window);
-#else
-  widget->window = parent_window;
-#endif
 
   priv->window = gdk_window_new(parent_window, &attr, GDK_WA_X | GDK_WA_Y);
   gdk_window_set_user_data(priv->window, chooser);
@@ -594,7 +564,6 @@ inf_text_gtk_hue_chooser_calculate_width_and_height(GtkWidget *widget)
   return priv->size + 2 * (focus_width + focus_pad);
 }
 
-#if GTK_CHECK_VERSION(2,91,6)
 static void
 inf_text_gtk_hue_chooser_get_preferred_width(GtkWidget *widget,
                                              gint *minimum,
@@ -613,17 +582,6 @@ inf_text_gtk_hue_chooser_get_preferred_height(GtkWidget *widget,
     inf_text_gtk_hue_chooser_calculate_width_and_height(widget);
 }
 
-#else
-
-static void
-inf_text_gtk_hue_chooser_size_request(GtkWidget* widget,
-                                      GtkRequisition* requisition)
-{
-  requisition->width = requisition->height =
-    inf_text_gtk_hue_chooser_calculate_width_and_height(widget);
-}
-#endif
-
 static void
 inf_text_gtk_hue_chooser_size_allocate(GtkWidget* widget,
                                        GtkAllocation* allocation)
@@ -634,17 +592,9 @@ inf_text_gtk_hue_chooser_size_allocate(GtkWidget* widget,
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
-#if GTK_CHECK_VERSION(2,18,0)
   gtk_widget_set_allocation(widget, allocation);
-#else
-  widget->allocation = *allocation;
-#endif
 
-#if GTK_CHECK_VERSION(2,20,0)
   if(gtk_widget_get_realized(widget))
-#else
-  if(GTK_WIDGET_REALIZED(widget))
-#endif
   {
     /* TODO: Keep 1:1 aspect ratio, center within allocation, set size
      * accordingly, always request only ring_width * 2. */
@@ -688,7 +638,6 @@ inf_text_gtk_hue_chooser_button_press_event(GtkWidget* widget,
       GDK_CROSSHAIR
     );
 
-#if GTK_CHECK_VERSION(2, 91, 0)
     gdk_device_grab(
       gdk_event_get_device((GdkEvent*)event),
       priv->window,
@@ -700,18 +649,7 @@ inf_text_gtk_hue_chooser_button_press_event(GtkWidget* widget,
       cursor,
       event->time
     );
-#else
-    gdk_pointer_grab(
-      priv->window,
-      FALSE,
-      GDK_POINTER_MOTION_MASK |
-      GDK_POINTER_MOTION_HINT_MASK |
-      GDK_BUTTON_RELEASE_MASK,
-      NULL,
-      cursor,
-      event->time
-    );
-#endif
+
     gdk_cursor_unref(cursor);
     gtk_widget_grab_focus(widget);
   }
@@ -738,17 +676,11 @@ inf_text_gtk_hue_chooser_button_release_event(GtkWidget* widget,
   hue = inf_text_gtk_hue_chooser_hue_by_coords(chooser, event->x, event->y);
   inf_text_gtk_hue_chooser_set_hue(chooser, hue);
 
-#if GTK_CHECK_VERSION(2, 91, 0)
   gdk_device_ungrab(
     gdk_event_get_device((GdkEvent*)event),
     event->time
   );
-#else
-  gdk_display_pointer_ungrab(
-    gdk_drawable_get_display(event->window),
-    event->time
-  );
-#endif
+
   return TRUE;
 }
 
@@ -774,7 +706,6 @@ inf_text_gtk_hue_chooser_motion_notify_event(GtkWidget* widget,
   return TRUE;
 }
 
-#if GTK_CHECK_VERSION(2,91,0)
 static gboolean
 inf_text_gtk_hue_chooser_draw(GtkWidget* widget,
                               cairo_t* cr)
@@ -796,90 +727,6 @@ inf_text_gtk_hue_chooser_draw(GtkWidget* widget,
 
   return FALSE;
 }
-#else
-static gboolean
-inf_text_gtk_hue_chooser_expose_event(GtkWidget* widget,
-                                      GdkEventExpose* event)
-{
-  InfTextGtkHueChooser* chooser;
-  InfTextGtkHueChooserPrivate* priv;
-  GtkAllocation allocation;
-  GdkRectangle rect;
-  GdkRectangle dest;
-  cairo_t* cr;
-
-  chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
-  priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
-
-#if GTK_CHECK_VERSION(2,18,0)
-  if(!(gtk_widget_is_drawable(widget) &&
-       event->window == gtk_widget_get_window(widget)))
-  {
-    return FALSE;
-  }
-#else
-  if(!(GTK_WIDGET_DRAWABLE(widget) && event->window == widget->window))
-    return FALSE;
-#endif
-
-#if GTK_CHECK_VERSION(2,18,0)
-  gtk_widget_get_allocation(widget, &allocation);
-#else
-  allocation = widget->allocation;
-#endif
-
-  rect.x = allocation.x;
-  rect.y = allocation.y;
-  rect.width = allocation.width;
-  rect.height = allocation.height;
-
-  if(!gdk_rectangle_intersect(&event->area, &rect, &dest))
-    return FALSE;
-
-#if GTK_CHECK_VERSION(2,14,0)
-  cr = gdk_cairo_create(gtk_widget_get_window(widget));
-#else
-  cr = gdk_cairo_create(widget->window);
-#endif
-  cairo_translate(cr, allocation.x, allocation.y);
-
-  inf_text_gtk_hue_chooser_paint(
-    chooser,
-    cr,
-    dest.x - allocation.x,
-    dest.y - allocation.y,
-    dest.width,
-    dest.height
-  );
-
-  cairo_destroy(cr);
-
-#if GTK_CHECK_VERSION(2,18,0)
-  if(gtk_widget_has_focus(widget))
-#else
-  if(GTK_WIDGET_HAS_FOCUS(widget))
-#endif
-  {
-    /* This looks irritating: */
-#if 0
-    gtk_paint_focus(
-      widget->style,
-      widget->window,
-      GTK_WIDGET_STATE(widget),
-      &event->area,
-      widget,
-      NULL,
-      widget->allocation.x,
-      widget->allocation.y,
-      widget->allocation.width,
-      widget->allocation.height
-    );
-#endif
-  }
-
-  return FALSE;
-}
-#endif
 
 static gboolean
 inf_text_gtk_hue_chooser_focus(GtkWidget* widget,
@@ -891,11 +738,7 @@ inf_text_gtk_hue_chooser_focus(GtkWidget* widget,
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
-#if GTK_CHECK_VERSION(2,18,0)
   if(!gtk_widget_has_focus(widget))
-#else
-  if(!GTK_WIDGET_HAS_FOCUS(widget))
-#endif
   {
     gtk_widget_grab_focus(GTK_WIDGET(widget));
     return TRUE;
@@ -997,14 +840,10 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
   widget_class->unmap = inf_text_gtk_hue_chooser_unmap;
   widget_class->realize = inf_text_gtk_hue_chooser_realize;
   widget_class->unrealize = inf_text_gtk_hue_chooser_unrealize;
-#if GTK_CHECK_VERSION(2,91,6)
   widget_class->get_preferred_height =
     inf_text_gtk_hue_chooser_get_preferred_height;
   widget_class->get_preferred_width =
     inf_text_gtk_hue_chooser_get_preferred_width;
-#else
-  widget_class->size_request = inf_text_gtk_hue_chooser_size_request;
-#endif
   widget_class->size_allocate = inf_text_gtk_hue_chooser_size_allocate;
   widget_class->button_press_event =
     inf_text_gtk_hue_chooser_button_press_event;
@@ -1012,11 +851,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
     inf_text_gtk_hue_chooser_button_release_event;
   widget_class->motion_notify_event =
     inf_text_gtk_hue_chooser_motion_notify_event;
-#if GTK_CHECK_VERSION(2,91,0)
   widget_class->draw = inf_text_gtk_hue_chooser_draw;
-#else
-  widget_class->expose_event = inf_text_gtk_hue_chooser_expose_event;
-#endif
   widget_class->focus = inf_text_gtk_hue_chooser_focus;
   widget_class->grab_broken_event = inf_text_gtk_hue_chooser_grab_broken_event;
 
@@ -1079,11 +914,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_Up,
-#else
-    GDK_Up,
-#endif
     0,
     "move",
     1,
@@ -1093,11 +924,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_KP_Up,
-#else
-    GDK_KP_Up,
-#endif
     0,
     "move",
     1,
@@ -1107,11 +934,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_Down,
-#else
-    GDK_Down,
-#endif
     0,
     "move",
     1,
@@ -1121,11 +944,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_KP_Down,
-#else
-    GDK_KP_Down,
-#endif
     0,
     "move",
     1,
@@ -1135,11 +954,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_Right,
-#else
-    GDK_Right,
-#endif
     0,
     "move",
     1,
@@ -1149,11 +964,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_KP_Right,
-#else
-    GDK_KP_Right,
-#endif
     0,
     "move",
     1,
@@ -1163,11 +974,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_Left,
-#else
-    GDK_Left,
-#endif
     0,
     "move",
     1,
@@ -1177,11 +984,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
 
   gtk_binding_entry_add_signal(
     binding_set,
-#if GTK_CHECK_VERSION(2,90,7)
     GDK_KEY_KP_Left,
-#else
-    GDK_KP_Left,
-#endif
     0,
     "move",
     1,

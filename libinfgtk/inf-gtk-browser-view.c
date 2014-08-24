@@ -186,11 +186,7 @@ inf_gtk_browser_view_redraw_row(InfGtkBrowserView* view,
    * in the GTK+ treeview and friends. */
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
-#if GTK_CHECK_VERSION(2,20,0)
   if(gtk_widget_get_realized(GTK_WIDGET(view)))
-#else
-  if(GTK_WIDGET_REALIZED(GTK_WIDGET(view)))
-#endif
   {
     gtk_tree_view_get_cell_area(
       GTK_TREE_VIEW(view),
@@ -1804,11 +1800,7 @@ inf_gtk_browser_view_popup_menu_position_func(GtkMenu* menu,
   gdk_screen_get_monitor_geometry(screen, monitor_num, &monitor);
   gtk_widget_size_request(GTK_WIDGET(menu), &menu_req);
 
-#if GTK_CHECK_VERSION(2, 91, 0)
-      height = gdk_window_get_height(bin_window);
-#else
-      gdk_drawable_get_size(GDK_DRAWABLE(bin_window), NULL, &height);
-#endif
+  height = gdk_window_get_height(bin_window);
 
   selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   gtk_tree_selection_get_selected(selection, &model, &selected_iter);
@@ -1946,11 +1938,7 @@ inf_gtk_browser_view_key_press_event(GtkWidget* treeview,
   GtkTreeSelection* selection;
   GtkTreeIter iter;
 
-#if GTK_CHECK_VERSION(2,90,7)
   if(event->keyval == GDK_KEY_Menu)
-#else
-  if(event->keyval == GDK_Menu)
-#endif
   {
     selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
     if(gtk_tree_selection_get_selected(selection, NULL, &iter))
@@ -2560,11 +2548,7 @@ inf_gtk_browser_view_get_property(GObject* object,
  * GtkObject / GtkWidget overrides */
 
 static void
-#if GTK_CHECK_VERSION(2, 91, 0)
 inf_gtk_browser_view_destroy(GtkWidget* object)
-#else
-inf_gtk_browser_view_destroy(GtkObject* object)
-#endif
 {
   InfGtkBrowserView* view;
   InfGtkBrowserViewPrivate* priv;
@@ -2574,13 +2558,8 @@ inf_gtk_browser_view_destroy(GtkObject* object)
 
   inf_gtk_browser_view_set_model(view, NULL);
 
-#if GTK_CHECK_VERSION(2, 91, 0)
   if(GTK_WIDGET_CLASS(parent_class)->destroy)
     GTK_WIDGET_CLASS(parent_class)->destroy(object);
-#else
-  if(GTK_OBJECT_CLASS(parent_class)->destroy)
-    GTK_OBJECT_CLASS(parent_class)->destroy(object);
-#endif
 }
 
 /*
@@ -2595,21 +2574,13 @@ inf_gtk_browser_view_class_init(gpointer g_class,
   GtkWidgetClass* widget_class;
   InfGtkBrowserViewClass* view_class;
   GtkTreeViewClass* tree_class;
-#if ! GTK_CHECK_VERSION(2, 91, 0)
-  GtkObjectClass *gtk_object_class;
-#endif
 
   object_class = G_OBJECT_CLASS(g_class);
   widget_class = GTK_WIDGET_CLASS(g_class);
   view_class = INF_GTK_BROWSER_VIEW_CLASS(g_class);
   tree_class = GTK_TREE_VIEW_CLASS(g_class);
 
-#if ! GTK_CHECK_VERSION(2, 91, 0)
-  gtk_object_class = GTK_OBJECT_CLASS(g_class);
-  gtk_object_class->destroy = inf_gtk_browser_view_destroy;
-#else
   widget_class->destroy = inf_gtk_browser_view_destroy;
-#endif
 
   parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
   g_type_class_add_private(g_class, sizeof(InfGtkBrowserViewPrivate));

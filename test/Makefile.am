@@ -185,8 +185,8 @@ inf_test_gtk_browser_SOURCES = \
 	inf-test-gtk-browser.c
 
 inf_test_gtk_browser_LDADD = \
-	${top_builddir}/libinftextgtk/libinftext$(infgtkver)-$(LIBINFINITY_API_VERSION).la \
-	${top_builddir}/libinfgtk/libinf$(infgtkver)-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftextgtk/libinftextgtk-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfgtk/libinfgtk-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	${inftextgtk_LIBS} ${infgtk_LIBS} ${inftext_LIBS} ${infinity_LIBS}
