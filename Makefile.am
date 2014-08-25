@@ -22,6 +22,8 @@ endif
 
 SUBDIRS += pixmaps test docs po
 
+EXTRA_DIST = README.md
+
 DISTCHECK_CONFIGURE_FLAGS=--enable-gtk-doc
 
 MAINTAINERCLEANFILES = \
