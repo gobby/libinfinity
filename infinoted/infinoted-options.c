@@ -702,7 +702,7 @@ infinoted_options_load(InfinotedOptions* options,
     }, {
       "plugin-parameter", 0, 0,
       G_OPTION_ARG_STRING_ARRAY, &plugin_parameters,
-      N_("Allows to override configuration entries for plugins from the "
+      N_("Allows one to override configuration entries for plugins from the "
          "command line. The syntax is --plugin-parameter=plugin:key:value, "
          "where plugin is the name of the plugin for which to override a "
          "configuration parameter, key is the parameter which to override "
