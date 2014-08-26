@@ -32,7 +32,7 @@ The server's private key
 The server's certificate
 .TP
 \fB\-\-certificate\-chain\fR
-The certificate chain to the root certificate, if not included in the file given in --certificate-file.
+The certificate chain to the root certificate, if not included in the file given in \-\-certificate\-file.
 .TP
 \fB\-\-create\-key\fR
 Creates a new random private key
@@ -56,12 +56,12 @@ sessions into the tree periodically. The default directory is
 ~/.infinote.
 .TP
 \fB\-\-plugins\fR=\fIPLUGIN1;PLUGIN2;...\fR
-Additional plugins to load, separated by semi-colon. Plugin options can be configured in the configuration file (one section for each plugin), or with the --plugin-parameter option.
+Additional plugins to load, separated by semi-colon. Plugin options can be configured in the configuration file (one section for each plugin), or with the \-\-plugin\-parameter option.
 .TP
 \fB\-\-plugin-parameter\fR=\fIPLUGIN:KEY:VALUE\fR
 Sets the option KEY for plugin PLUGIN to the given VALUE. Normally, plugin
 options are specified in the configuration file, but this command line
-option allows to set or override plugin options on the command line.
+option allows one to set or override plugin options on the command line.
 .TP
 \fB\-P\fR, \fB\-\-password\fR=\fIPASSWORD\fR
 Require given password on connections
