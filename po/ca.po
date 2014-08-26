@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: libinfinity\n"
 "Report-Msgid-Bugs-To: http://bugzilla.gnome.org/enter_bug.cgi?"
 "product=glib&keywords=I18N+L10N&component=general\n"
-"POT-Creation-Date: 2014-08-22 11:39-0400\n"
+"POT-Creation-Date: 2014-08-27 01:11+0200\n"
 "PO-Revision-Date: 2009-12-10 07:26+0000\n"
 "Last-Translator: David Planella <Unknown>\n"
 "Language-Team: Catalan <ca@li.org>\n"
@@ -264,10 +264,10 @@ msgstr ""
 
 #: ../infinoted/infinoted-options.c:705
 msgid ""
-"Allows to override configuration entries for plugins from the command line. "
-"The syntax is --plugin-parameter=plugin:key:value, where plugin is the name "
-"of the plugin for which to override a configuration parameter, key is the "
-"parameter which to override and value is the new value of the parameter"
+"Allows one to override configuration entries for plugins from the command "
+"line. The syntax is --plugin-parameter=plugin:key:value, where plugin is the "
+"name of the plugin for which to override a configuration parameter, key is "
+"the parameter which to override and value is the new value of the parameter"
 msgstr ""
 
 #: ../infinoted/infinoted-options.c:710
@@ -350,12 +350,12 @@ msgid ""
 "\"allow-tls\" or \"require-tls\""
 msgstr ""
 
-#: ../infinoted/infinoted-plugin-manager.c:490
+#: ../infinoted/infinoted-plugin-manager.c:491
 #, c-format
 msgid "Loaded plugin \"%s\" from \"%s\""
 msgstr ""
 
-#: ../infinoted/infinoted-plugin-manager.c:534
+#: ../infinoted/infinoted-plugin-manager.c:535
 #, c-format
 msgid "Unloaded plugin \"%s\" from \"%s\""
 msgstr ""
@@ -875,7 +875,7 @@ msgstr ""
 msgid "Create _Account"
 msgstr ""
 
-#: ../libinfgtk/inf-gtk-account-creation-dialog.c:592
+#: ../libinfgtk/inf-gtk-account-creation-dialog.c:596
 msgid "Create New Account"
 msgstr ""
 
