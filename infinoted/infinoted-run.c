@@ -51,23 +51,6 @@ infinoted_run_load_directory(InfinotedRun* run,
 
   storage = infd_filesystem_storage_new(startup->options->root_directory);
 
-  /* Set an account storage, too. This can be replaced by something more fancy
-   * by a plugin. */
-  account_storage = infd_filesystem_account_storage_new();
-
-  result = infd_filesystem_account_storage_set_filesystem(
-    account_storage,
-    storage,
-    error
-  );
-
-  if(result == FALSE)
-  {
-    g_object_unref(account_storage);
-    g_object_unref(storage);
-    return FALSE;
-  }
-
   communication_manager = inf_communication_manager_new();
 
   run->io = inf_standalone_io_new();
@@ -78,17 +61,8 @@ infinoted_run_load_directory(InfinotedRun* run,
     communication_manager
   );
 
-  g_object_set(
-    G_OBJECT(run->directory),
-    "account-storage",
-    account_storage,
-    NULL
-  );
-
   infd_directory_enable_chat(run->directory, TRUE);
 
-  g_object_unref(storage);
-  g_object_unref(account_storage);
   g_object_unref(communication_manager);
 
   /* Load server plugins via plugin manager */
@@ -119,6 +93,8 @@ infinoted_run_load_directory(InfinotedRun* run,
 
   if(result == FALSE)
   {
+    g_object_unref(storage);
+
     g_object_unref(run->plugin_manager);
     g_object_unref(run->directory);
     g_object_unref(run->io);
@@ -127,6 +103,47 @@ infinoted_run_load_directory(InfinotedRun* run,
     run->io = NULL;
     return FALSE;
   }
+
+  /* Set an account storage, too. This can be replaced by something more fancy
+   * by a plugin. */
+  /* TODO: This filesystem storage should be moved into a plugin, so that
+   * users can enable it optionally. */
+  g_object_get(G_OBJECT(run->directory), "account-storage", &account_storage, NULL);
+  if(account_storage == NULL)
+  {
+    account_storage = infd_filesystem_account_storage_new();
+
+    result = infd_filesystem_account_storage_set_filesystem(
+      account_storage,
+      storage,
+      error
+    );
+
+    if(result == FALSE)
+    {
+      g_object_unref(storage);
+      g_object_unref(account_storage);
+
+      g_object_unref(run->plugin_manager);
+      g_object_unref(run->directory);
+      g_object_unref(run->io);
+      run->plugin_manager = NULL;
+      run->directory = NULL;
+      run->io = NULL;
+
+      return FALSE;
+    }
+
+    g_object_set(
+      G_OBJECT(run->directory),
+      "account-storage",
+      account_storage,
+      NULL
+    );
+  }
+
+  g_object_unref(storage);
+  g_object_unref(account_storage);
 
   return TRUE;
 }
