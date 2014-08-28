@@ -55,8 +55,8 @@ to this, when the autosave plugin is enabled, it is possible to save
 sessions into the tree periodically. The default directory is
 ~/.infinote.
 .TP
-\fB\-\-plugins\fR=\fIPLUGIN1;PLUGIN2;...\fR
-Additional plugins to load, separated by semi-colon. Plugin options can be configured in the configuration file (one section for each plugin), or with the \-\-plugin\-parameter option.
+\fB\-\-plugins\fR=\fIPLUGIN\fR
+Additional plugin to load. Repeat the option on the command-line to specify multiple plugins and semi-colons in the configuration file. Plugin options can be configured in the configuration file (one section for each plugin), or with the \-\-plugin\-parameter option.
 .TP
 \fB\-\-plugin-parameter\fR=\fIPLUGIN:KEY:VALUE\fR
 Sets the option KEY for plugin PLUGIN to the given VALUE. Normally, plugin
