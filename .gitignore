@@ -32,3 +32,5 @@ inftodo
 libinfinity-*.tar.bz2
 libinfinity-*.tar.gz
 mkinstalldirs
+test-driver
+ar-lib
