@@ -88,3 +88,22 @@ Others:
    with a local request. Such requests would have the "seq" property set to
    some invalid value. Basically all operations made should have a request
    for them, the parameter should never be NULL.
+ * InfcBrowser and InfdDirectory have grown very large. This code should be
+   refactored a bit, and allow plugins to dynamically add handling of
+   network messages. Stuff like create-acl-account could then perhaps be
+   delegated to the certificate-auth plugin... in that particular case maybe
+   better a hook into the create_acl_account impl, but custom network messages
+   might still be nice for git integration.
+   * InfDirectoryTree: Implements the basic tree structure,
+     with node management functions.
+   * Inf(c)RemoteBrowser: Owns a InfDirectoryTree, implements the InfBrowser
+     interface with a server connection.
+   * Inf(d)StorageBrowser: Owns a InfDirectoryTree, implements the InfBrowser
+     interface with a storage backend (--enable async storage backend here!).
+   * Inf(d)Server: References a InfBrowser, and implements the networking
+     on top of it. This approach would even allow implementing a "delegating"
+     server which does not serve the content itself but actually asks another
+     server, by using a InfRemoteBrowser as a backend.
+ * Threading: Better support for multi-core CPUs, ideally by running each
+   InfCommunicationGroup in a separate thread. Would need many adaptions in
+   other code to be thread-safe.
