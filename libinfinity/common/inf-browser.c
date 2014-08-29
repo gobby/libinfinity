@@ -42,6 +42,7 @@
 enum {
   ERROR_,
   NODE_ADDED,
+  NODE_RENAMED,
   NODE_REMOVED,
   SUBSCRIBE_SESSION,
   UNSUBSCRIBE_SESSION,
@@ -123,6 +124,29 @@ inf_browser_base_init(gpointer g_class)
       INF_TYPE_BROWSER,
       G_SIGNAL_RUN_LAST,
       G_STRUCT_OFFSET(InfBrowserIface, node_added),
+      NULL, NULL,
+      inf_marshal_VOID__BOXED_OBJECT,
+      G_TYPE_NONE,
+      2,
+      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+      INF_TYPE_REQUEST
+    );
+
+    /**
+     * InfBrowser::node-renamed:
+     * @browser: The #InfBrowser object emitting the signal.
+     * @iter: An iterator pointing to the node being renamed.
+     * @request: The request that lead to the node being renamed, or %NULL.
+     *
+     * This signal is emitted just before a node is being renamed.
+     * The iterator is still valid and can be used to access the
+     * node which will be renamed.
+     */
+    browser_signals[NODE_RENAMED] = g_signal_new(
+      "node-renamed",
+      INF_TYPE_BROWSER,
+      G_SIGNAL_RUN_LAST,
+      G_STRUCT_OFFSET(InfBrowserIface, node_renamed),
       NULL, NULL,
       inf_marshal_VOID__BOXED_OBJECT,
       G_TYPE_NONE,
@@ -858,6 +882,42 @@ inf_browser_add_subdirectory(InfBrowser* browser,
 
   g_return_val_if_fail(iface->add_subdirectory != NULL, NULL);
   return iface->add_subdirectory(browser, iter, name, acl, func, user_data);
+}
+
+/**
+ * inf_browser_rename_node:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @func: The function to be called when the request finishes, or %NULL.
+ * @user_data: Additional data to pass to @func.
+ *
+ * Requests to rename the node @iter points to.
+ *
+ * The request might either finish during the call to this function, in which
+ * case @func will be called and %NULL being returned. If the request does not
+ * finish within the function call, a #InfRequest object is returned,
+ * where @func has been installed for the #InfRequest::finished signal,
+ * so that it is called as soon as the request finishes.
+ *
+ * Returns: A #InfRequest which can be used to get notified when the
+ * request finishes.
+ */
+InfRequest*
+inf_browser_rename_node(InfBrowser* browser,
+                        const InfBrowserIter* iter,
+			const char* new_name,
+                        InfRequestFunc func,
+                        gpointer user_data)
+{
+  InfBrowserIface* iface;
+
+  g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
+  g_return_val_if_fail(iter != NULL, NULL);
+
+  iface = INF_BROWSER_GET_IFACE(browser);
+  g_return_val_if_fail(iface->rename_node != NULL, NULL);
+
+  return iface->rename_node(browser, iter, new_name, func, user_data);
 }
 
 /**
@@ -1712,6 +1772,35 @@ inf_browser_node_added(InfBrowser* browser,
     0,
     iter,
     request
+  );
+}
+
+/**
+ * inf_browser_node_renamed:
+ * @browser: A #InfBrowser.
+ * @iter: A #InfBrowserIter pointing to the node to be renamed.
+ * @request: The #InfRequest that was used to rename the node, or %NULL.
+ *
+ * This function emits the #InfBrowser::node-renamed signal on @browser. It
+ * is meant to be used by interface implementations only.
+ */
+void
+inf_browser_node_renamed(InfBrowser* browser,
+                         const InfBrowserIter* iter,
+                         InfRequest* request,
+                         const gchar* new_name)
+{
+  g_return_if_fail(INF_IS_BROWSER(browser));
+  g_return_if_fail(iter != NULL);
+  g_return_if_fail(request == NULL || INF_IS_REQUEST(request));
+
+  g_signal_emit(
+    browser,
+    browser_signals[NODE_RENAMED],
+    0,
+    iter,
+    request,
+    new_name
   );
 }
 

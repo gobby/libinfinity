@@ -177,6 +177,13 @@ inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
                                     gpointer user_data);
 
 static void
+inf_gtk_browser_store_node_renamed_cb(InfBrowser* browser,
+                                      InfBrowserIter* iter,
+                                      InfRequest* request,
+                                      gpointer user_data,
+                                      const gchar* new_name);
+
+static void
 inf_gtk_browser_store_node_removed_cb(InfBrowser* browser,
                                       InfBrowserIter* iter,
                                       InfRequest* request,
@@ -759,6 +766,16 @@ inf_gtk_browser_store_node_added_cb(InfBrowser* browser,
 
     gtk_tree_path_free(path);
   }
+}
+
+static void
+inf_gtk_browser_store_node_renamed_cb(InfBrowser* browser,
+                                      InfBrowserIter* iter,
+                                      InfRequest* request,
+                                      gpointer user_data,
+                                      const gchar* new_name)
+{
+  /* TODO: Update the renamed node in the tree */
 }
 
 static void
@@ -1968,6 +1985,12 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(item->browser),
+      G_CALLBACK(inf_gtk_browser_store_node_renamed_cb),
+      model
+    );
+
+    inf_signal_handlers_disconnect_by_func(
+      G_OBJECT(item->browser),
       G_CALLBACK(inf_gtk_browser_store_node_removed_cb),
       model
     );
@@ -2023,6 +2046,13 @@ inf_gtk_browser_store_browser_model_set_browser(InfGtkBrowserModel* model,
       G_OBJECT(item->browser),
       "node-added",
       G_CALLBACK(inf_gtk_browser_store_node_added_cb),
+      model
+    );
+
+    g_signal_connect_after(
+      G_OBJECT(item->browser),
+      "node-renamed",
+      G_CALLBACK(inf_gtk_browser_store_node_renamed_cb),
       model
     );
 

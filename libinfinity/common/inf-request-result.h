@@ -59,6 +59,17 @@ inf_request_result_get_add_node(const InfRequestResult* result,
                                 const InfBrowserIter** new_node);
 
 InfRequestResult*
+inf_request_result_make_rename_node(InfBrowser* browser,
+                                    const InfBrowserIter* iter,
+				    const char* new_name);
+
+void
+inf_request_result_get_rename_node(const InfRequestResult* result,
+                                   InfBrowser** browser,
+                                   const InfBrowserIter** iter,
+				   const char** new_name);
+
+InfRequestResult*
 inf_request_result_make_remove_node(InfBrowser* browser,
                                     const InfBrowserIter* iter);
 

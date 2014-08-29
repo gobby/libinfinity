@@ -180,6 +180,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("Node is not a note");
   case INF_DIRECTORY_ERROR_NOTE_TYPE_UNSUPPORTED:
     return _("The node type is not supported by the server");
+  case INF_DIRECTORY_ERROR_ROOT_NODE_RENAME_ATTEMPT:
+    return _("The root node cannot be renamed");
   case INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT:
     return _("The root node cannot be removed");
   case INF_DIRECTORY_ERROR_ALREADY_EXPLORED:
