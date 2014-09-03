@@ -109,7 +109,7 @@ struct _InfIoDispatch {
 typedef struct _InfStandaloneIoPrivate InfStandaloneIoPrivate;
 struct _InfStandaloneIoPrivate {
   InfStandaloneIoNativeEvent* events;
-  GMutex* mutex;
+  GMutex mutex;
 
   guint fd_size;
   guint fd_alloc;
@@ -228,11 +228,11 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   }
 
   priv->polling = TRUE;
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 
   result = inf_standalone_io_poll(priv->events, priv->fd_size, timeout);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
   priv->polling = FALSE;
 
 #ifdef G_OS_WIN32
@@ -269,14 +269,14 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
       if(elapsed >= cur_timeout->msecs)
       {
         priv->timeouts = g_list_delete_link(priv->timeouts, item);
-        g_mutex_unlock(priv->mutex);
+        g_mutex_unlock(&priv->mutex);
 
         cur_timeout->func(cur_timeout->user_data);
         if(cur_timeout->notify)
           cur_timeout->notify(cur_timeout->user_data);
         g_slice_free(InfIoTimeout, cur_timeout);
 
-        g_mutex_lock(priv->mutex);
+        g_mutex_lock(&priv->mutex);
         return;
       }
     }
@@ -321,18 +321,18 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
       /* protect from removing the watch object via
        * inf_io_remove_watch() when running the callback. */
       watch->executing = TRUE;
-      g_mutex_unlock(priv->mutex);
+      g_mutex_unlock(&priv->mutex);
 
       watch->func(watch->socket, events, watch->user_data);
 
-      g_mutex_lock(priv->mutex);
+      g_mutex_lock(&priv->mutex);
       watch->executing = FALSE;
       if(watch->disposed == TRUE)
       {
-        g_mutex_unlock(priv->mutex);
+        g_mutex_unlock(&priv->mutex);
         if(watch->notify) watch->notify(watch->user_data);
         g_slice_free(InfIoWatch, watch);
-        g_mutex_lock(priv->mutex);
+        g_mutex_lock(&priv->mutex);
       }
 
       return;
@@ -405,18 +405,18 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
             /* protect from removing the watch object via
              * inf_io_remove_watch() when running the callback. */
             watch->executing = TRUE;
-            g_mutex_unlock(priv->mutex);
+            g_mutex_unlock(&priv->mutex);
 
             watch->func(watch->socket, events, watch->user_data);
 
-            g_mutex_lock(priv->mutex);
+            g_mutex_lock(&priv->mutex);
             watch->executing = FALSE;
             if(watch->disposed == TRUE)
             {
-              g_mutex_unlock(priv->mutex);
+              g_mutex_unlock(&priv->mutex);
               if(watch->notify) watch->notify(watch->user_data);
               g_slice_free(InfIoWatch, watch);
-              g_mutex_lock(priv->mutex);
+              g_mutex_lock(&priv->mutex);
             }
 
             return;
@@ -432,14 +432,14 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
   {
     dispatch = (InfIoDispatch*)priv->dispatchs->data;
     priv->dispatchs = g_list_delete_link(priv->dispatchs, priv->dispatchs);
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
 
     dispatch->func(dispatch->user_data);
     if(dispatch->notify)
       dispatch->notify(dispatch->user_data);
     g_slice_free(InfIoDispatch, dispatch);
 
-    g_mutex_lock(priv->mutex);
+    g_mutex_lock(&priv->mutex);
   }
 }
 
@@ -457,7 +457,7 @@ inf_standalone_io_init(GTypeInstance* instance,
   io = INF_STANDALONE_IO(instance);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  priv->mutex = g_mutex_new();
+  g_mutex_init(&priv->mutex);
 
   priv->fd_size = 0;
   priv->fd_alloc = 4;
@@ -516,7 +516,7 @@ inf_standalone_io_finalize(GObject* object)
   io = INF_STANDALONE_IO(object);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   for(i = 1; i < priv->fd_size; ++i)
   {
@@ -592,8 +592,8 @@ inf_standalone_io_finalize(GObject* object)
   }
 #endif
 
-  g_mutex_unlock(priv->mutex);
-  g_mutex_free(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
+  g_mutex_clear(&priv->mutex);
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -724,14 +724,14 @@ inf_standalone_io_io_add_watch(InfIo* io,
     pevents |= (POLLERR | POLLHUP | POLLNVAL | POLLPRI);
 #endif
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   /* Watching the same socket for different events at least won't work on
    * Windows since WSAEventSelect cancels the effect of previous
    * WSAEventSelect calls for the same socket. */
   if(inf_standalone_io_find_watch_by_socket(INF_STANDALONE_IO(io), socket))
   {
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
     return NULL;
   }
 
@@ -767,7 +767,7 @@ inf_standalone_io_io_add_watch(InfIo* io,
     g_warning("WSACreateEvent() failed: %s", error_message);
     g_free(error_message);
 
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
     return NULL;
   }
 
@@ -779,7 +779,7 @@ inf_standalone_io_io_add_watch(InfIo* io,
     g_free(error_message);
 
     WSACloseEvent(priv->events[priv->fd_size]);
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
     return NULL;
   }
 #else
@@ -801,7 +801,7 @@ inf_standalone_io_io_add_watch(InfIo* io,
   ++priv->fd_size;
 
   inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 
   return watch;
 }
@@ -837,7 +837,7 @@ inf_standalone_io_io_update_watch(InfIo* io,
     pevents |= (POLLERR | POLLHUP | POLLNVAL | POLLPRI);
 #endif
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   watch_iter = inf_standalone_io_find_watch(INF_STANDALONE_IO(io), watch);
   if(watch_iter != NULL)
@@ -860,7 +860,7 @@ inf_standalone_io_io_update_watch(InfIo* io,
     inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
   }
 
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 }
 
 static void
@@ -877,7 +877,7 @@ inf_standalone_io_io_remove_watch(InfIo* io,
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   watch_iter = inf_standalone_io_find_watch(INF_STANDALONE_IO(io), watch);
   if(watch_iter != NULL)
@@ -940,7 +940,7 @@ inf_standalone_io_io_remove_watch(InfIo* io,
     inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
   }
 
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 }
 
 static InfIoTimeout*
@@ -962,10 +962,10 @@ inf_standalone_io_io_add_timeout(InfIo* io,
   timeout->user_data = user_data;
   timeout->notify = notify;
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
   priv->timeouts = g_list_prepend(priv->timeouts, timeout);
   inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 
   return timeout;
 }
@@ -979,13 +979,13 @@ inf_standalone_io_io_remove_timeout(InfIo* io,
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   item = g_list_find(priv->timeouts, timeout);
   if(item != NULL)
   {
     priv->timeouts = g_list_delete_link(priv->timeouts, item);
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
 
     if(timeout->notify)
       timeout->notify(timeout->user_data);
@@ -997,7 +997,7 @@ inf_standalone_io_io_remove_timeout(InfIo* io,
   }
   else
   {
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
   }
 }
 
@@ -1017,10 +1017,10 @@ inf_standalone_io_io_add_dispatch(InfIo* io,
   dispatch->user_data = user_data;
   dispatch->notify = notify;
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
   priv->dispatchs = g_list_prepend(priv->dispatchs, dispatch);
   inf_standalone_io_wakeup(INF_STANDALONE_IO(io));
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 
   return dispatch;
 }
@@ -1034,13 +1034,13 @@ inf_standalone_io_io_remove_dispatch(InfIo* io,
 
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   item = g_list_find(priv->dispatchs, dispatch);
   if(item != NULL)
   {
     priv->dispatchs = g_list_delete_link(priv->dispatchs, item);
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
 
     if(dispatch->notify)
       dispatch->notify(dispatch->user_data);
@@ -1052,7 +1052,7 @@ inf_standalone_io_io_remove_dispatch(InfIo* io,
   }
   else
   {
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex);
   }
 }
 
@@ -1160,13 +1160,13 @@ inf_standalone_io_iteration(InfStandaloneIo* io)
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
   g_object_ref(io);
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
-  g_return_val_if_fail(priv->polling == FALSE, g_mutex_unlock(priv->mutex));
+  g_return_val_if_fail(priv->polling == FALSE, g_mutex_unlock(&priv->mutex));
 
   inf_standalone_io_iteration_impl(io, INF_STANDALONE_IO_POLL_INFINITE);
 
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
   g_object_unref(io);
 }
 
@@ -1188,13 +1188,13 @@ inf_standalone_io_iteration_timeout(InfStandaloneIo* io,
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
   g_object_ref(io);
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
-  g_return_val_if_fail(priv->polling == FALSE, g_mutex_unlock(priv->mutex));
+  g_return_val_if_fail(priv->polling == FALSE, g_mutex_unlock(&priv->mutex));
 
   inf_standalone_io_iteration_impl(io, (int)timeout);
 
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
   g_object_unref(io);
 }
 
@@ -1214,16 +1214,16 @@ inf_standalone_io_loop(InfStandaloneIo* io)
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
   g_object_ref(io);
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   g_return_val_if_fail(
     priv->loop_running == FALSE,
-    g_mutex_unlock(priv->mutex)
+    g_mutex_unlock(&priv->mutex)
   );
 
   g_return_val_if_fail(
     priv->polling == FALSE,
-    g_mutex_unlock(priv->mutex)
+    g_mutex_unlock(&priv->mutex)
   );
 
   /* TODO: Actually we need to make sure that a previous loop() call in
@@ -1234,7 +1234,7 @@ inf_standalone_io_loop(InfStandaloneIo* io)
   while(priv->loop_running == TRUE)
     inf_standalone_io_iteration_impl(io, -1);
 
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
   g_object_unref(io);
 }
 
@@ -1253,13 +1253,13 @@ inf_standalone_io_loop_quit(InfStandaloneIo* io)
   g_return_if_fail(INF_IS_STANDALONE_IO(io));
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
 
   g_return_if_fail(priv->loop_running == TRUE);
   priv->loop_running = FALSE;
 
   inf_standalone_io_wakeup(io);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 }
 
 /**
@@ -1280,9 +1280,9 @@ inf_standalone_io_loop_running(InfStandaloneIo* io)
   g_return_val_if_fail(INF_IS_STANDALONE_IO(io), FALSE);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex);
   running = priv->loop_running;
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex);
 
   return running;
 }

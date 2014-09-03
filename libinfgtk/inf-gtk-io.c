@@ -50,6 +50,12 @@ struct _InfIoDispatch {
   GDestroyNotify notify;
 };
 
+typedef struct _InfGtkIoSharedMutex InfGtkIoSharedMutex;
+struct _InfGtkIoSharedMutex {
+  GMutex mutex;
+  int ref;
+};
+
 typedef struct _InfGtkIoUserdata InfGtkIoUserdata;
 struct _InfGtkIoUserdata {
   union {
@@ -58,16 +64,14 @@ struct _InfGtkIoUserdata {
     InfIoDispatch* dispatch;
   } shared;
 
-  GMutex* mutex;
-  int* mutexref;
+  InfGtkIoSharedMutex* mutex;
 };
 
 typedef struct _InfGtkIoPrivate InfGtkIoPrivate;
 struct _InfGtkIoPrivate {
   /* TODO: GMainContext */
 
-  GMutex* mutex;
-  int* mutexref; /* reference counter for the mutex */
+  InfGtkIoSharedMutex* mutex;
 
   GSList* watches;
   GSList* timeouts;
@@ -90,10 +94,10 @@ inf_gtk_io_userdata_free(gpointer data)
    * might or might not be called with it being locked already. However in
    * this case we can use an atomic operation instead. */
 
-  if(g_atomic_int_dec_and_test(userdata->mutexref) == TRUE)
+  if(g_atomic_int_dec_and_test(&userdata->mutex->ref) == TRUE)
   {
-    g_mutex_free(userdata->mutex);
-    g_free(userdata->mutexref);
+    g_mutex_clear(&userdata->mutex->mutex);
+    g_slice_free(InfGtkIoSharedMutex, userdata->mutex);
   }
 
   g_slice_free(InfGtkIoUserdata, userdata);
@@ -206,9 +210,9 @@ inf_gtk_io_init(GTypeInstance* instance,
   io = INF_GTK_IO(instance);
   priv = INF_GTK_IO_PRIVATE(io);
 
-  priv->mutex = g_mutex_new();
-  priv->mutexref = g_malloc(sizeof(int));
-  *priv->mutexref = 1;
+  priv->mutex = g_slice_new(InfGtkIoSharedMutex);
+  g_mutex_init(&priv->mutex->mutex);
+  priv->mutex->ref = 1;
 
   priv->watches = NULL;
   priv->timeouts = NULL;
@@ -221,12 +225,11 @@ inf_gtk_io_finalize(GObject* object)
   InfGtkIo* io;
   InfGtkIoPrivate* priv;
   GSList* item;
-  int mutexref;
 
   io = INF_GTK_IO(object);
   priv = INF_GTK_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex->mutex);
 
   for(item = priv->watches; item != NULL; item = g_slist_next(item))
   {
@@ -254,17 +257,17 @@ inf_gtk_io_finalize(GObject* object)
     inf_gtk_io_dispatch_free((InfIoDispatch*)item->data);
   }
   g_slist_free(priv->dispatchs);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   /* some callback userdata might still have a reference to the mutex, and
    * wait for the callback function to be called until it is released. The
    * callback function will do nothing since g_source_is_destroyed() will
    * return FALSE since we removed all sources above. But we need to keep
    * the mutex alive so that the callbacks can check. */
-  if(g_atomic_int_dec_and_test(priv->mutexref))
+  if(g_atomic_int_dec_and_test(&priv->mutex->ref))
   {
-    g_mutex_free(priv->mutex);
-    g_free(priv->mutexref);
+    g_mutex_clear(&priv->mutex->mutex);
+    g_slice_free(InfGtkIoSharedMutex, priv->mutex);
   }
 
   G_OBJECT_CLASS(parent_class)->finalize(object);
@@ -312,21 +315,21 @@ inf_gtk_io_watch_func(GIOChannel* channel,
   InfGtkIoPrivate* priv;
 
   userdata = (InfGtkIoUserdata*)user_data;
-  g_mutex_lock(userdata->mutex);
+  g_mutex_lock(&userdata->mutex->mutex);
   if(!g_source_is_destroyed(g_main_current_source()))
   {
-    /* At this point we now that InfGtkIo is still alive because otherwise
+    /* At this point we know that InfGtkIo is still alive because otherwise
      * the source would have been destroyed in _finalize. */
     watch = userdata->shared.watch;
 
     g_object_ref(watch->io);
     priv = INF_GTK_IO_PRIVATE(watch->io);
 
-    g_assert(*priv->mutexref > 1); /* Both InfGtkIo and we have a reference */
+    g_assert(priv->mutex->ref > 1); /* Both InfGtkIo and we have a reference */
     g_assert(g_slist_find(priv->watches, watch) != NULL);
 
     watch->executing = TRUE;
-    g_mutex_unlock(userdata->mutex);
+    g_mutex_unlock(&userdata->mutex->mutex);
 
     /* Note that at this point the watch object could be removed from the
      * list, but, since executing is set to TRUE, it is not freed. */
@@ -337,23 +340,23 @@ inf_gtk_io_watch_func(GIOChannel* channel,
       watch->user_data
     );
 
-    g_mutex_lock(userdata->mutex);
+    g_mutex_lock(&userdata->mutex->mutex);
     watch->executing = FALSE;
     g_object_unref(watch->io);
 
     if(watch->disposed == TRUE)
     {
-      g_mutex_unlock(userdata->mutex);
+      g_mutex_unlock(&userdata->mutex->mutex);
       inf_gtk_io_watch_free(watch);
     }
     else
     {
-      g_mutex_unlock(userdata->mutex);
+      g_mutex_unlock(&userdata->mutex->mutex);
     }
   }
   else
   {
-    g_mutex_unlock(userdata->mutex);
+    g_mutex_unlock(&userdata->mutex->mutex);
   }
 
   return TRUE;
@@ -367,25 +370,25 @@ inf_gtk_io_timeout_func(gpointer user_data)
   InfGtkIoUserdata* userdata;
 
   userdata = (InfGtkIoUserdata*)user_data;
-  g_mutex_lock(userdata->mutex);
+  g_mutex_lock(&userdata->mutex->mutex);
   if(!g_source_is_destroyed(g_main_current_source()))
   {
-    /* At this point we now that InfGtkIo is still alive because otherwise
+    /* At this point we know that InfGtkIo is still alive because otherwise
      * the source would have been destroyed in _finalize. */
     timeout = userdata->shared.timeout;
     priv = INF_GTK_IO_PRIVATE(timeout->io);
 
-    g_assert(*priv->mutexref > 1); /* Both InfGtkIo and we have a reference */
+    g_assert(priv->mutex->ref > 1); /* Both InfGtkIo and we have a reference */
     g_assert(g_slist_find(priv->timeouts, timeout) != NULL);
     priv->timeouts = g_slist_remove(priv->timeouts, timeout);
-    g_mutex_unlock(userdata->mutex);
+    g_mutex_unlock(&userdata->mutex->mutex);
 
     timeout->func(timeout->user_data);
     inf_gtk_io_timeout_free(timeout);
   }
   else
   {
-    g_mutex_unlock(userdata->mutex);
+    g_mutex_unlock(&userdata->mutex->mutex);
   }
 
   return FALSE;
@@ -399,25 +402,25 @@ inf_gtk_io_dispatch_func(gpointer user_data)
   InfGtkIoUserdata* userdata;
 
   userdata = (InfGtkIoUserdata*)user_data;
-  g_mutex_lock(userdata->mutex);
+  g_mutex_lock(&userdata->mutex->mutex);
   if(!g_source_is_destroyed(g_main_current_source()))
   {
-    /* At this point we now that InfGtkIo is still alive because otherwise
+    /* At this point we know that InfGtkIo is still alive because otherwise
      * the source would have been destroyed in _finalize. */
     dispatch = userdata->shared.dispatch;
     priv = INF_GTK_IO_PRIVATE(dispatch->io);
 
-    g_assert(*priv->mutexref > 1); /* Both InfGtkIo and we have a reference */
+    g_assert(priv->mutex->ref > 1); /* Both InfGtkIo and we have a reference */
     g_assert(g_slist_find(priv->dispatchs, dispatch) != NULL);
     priv->dispatchs = g_slist_remove(priv->dispatchs, dispatch);
-    g_mutex_unlock(userdata->mutex);
+    g_mutex_unlock(&userdata->mutex->mutex);
 
     dispatch->func(dispatch->user_data);
     inf_gtk_io_dispatch_free(dispatch);
   }
   else
   {
-    g_mutex_unlock(userdata->mutex);
+    g_mutex_unlock(&userdata->mutex->mutex);
   }
 
   return FALSE;
@@ -438,11 +441,11 @@ inf_gtk_io_io_add_watch(InfIo* io,
 
   priv = INF_GTK_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex->mutex);
   watch = inf_gtk_io_watch_lookup(INF_GTK_IO(io), socket);
   if(watch != NULL)
   {
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex->mutex);
     return NULL;
   }
 
@@ -457,8 +460,7 @@ inf_gtk_io_io_add_watch(InfIo* io,
   data = g_slice_new(InfGtkIoUserdata);
   data->shared.watch = watch;
   data->mutex = priv->mutex;
-  data->mutexref = priv->mutexref;
-  g_atomic_int_inc(data->mutexref);
+  g_atomic_int_inc(&data->mutex->ref);
 
 #ifdef G_OS_WIN32
   channel = g_io_channel_win32_new_socket(*socket);
@@ -478,7 +480,7 @@ inf_gtk_io_io_add_watch(InfIo* io,
   g_io_channel_unref(channel);
 
   priv->watches = g_slist_prepend(priv->watches, watch);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   return watch;
 }
@@ -493,16 +495,15 @@ inf_gtk_io_io_update_watch(InfIo* io,
   GIOChannel* channel;
 
   priv = INF_GTK_IO_PRIVATE(io);
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex->mutex);
 
   g_assert(g_slist_find(priv->watches, watch) != NULL);
 
   data = g_slice_new(InfGtkIoUserdata);
   data->shared.watch = watch;
   data->mutex = priv->mutex;
-  data->mutexref = priv->mutexref;
-  g_atomic_int_inc(data->mutexref);
-  g_mutex_unlock(priv->mutex);
+  g_atomic_int_inc(&data->mutex->ref);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   g_source_remove(watch->id);
 
@@ -532,7 +533,7 @@ inf_gtk_io_io_remove_watch(InfIo* io,
   guint watch_id;
 
   priv = INF_GTK_IO_PRIVATE(io);
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex->mutex);
 
   g_assert(g_slist_find(priv->watches, watch) != NULL);
 
@@ -547,11 +548,11 @@ inf_gtk_io_io_remove_watch(InfIo* io,
      * going to be disposed and remove it in the watch func right after
      * having called the callback. */
     watch->disposed = TRUE;
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex->mutex);
   }
   else
   {
-    g_mutex_unlock(priv->mutex);
+    g_mutex_unlock(&priv->mutex->mutex);
     inf_gtk_io_watch_free(watch);
   }
 
@@ -578,10 +579,9 @@ inf_gtk_io_io_add_timeout(InfIo* io,
   data = g_slice_new(InfGtkIoUserdata);
   data->shared.timeout = timeout;
   data->mutex = priv->mutex;
-  data->mutexref = priv->mutexref;
 
-  g_mutex_lock(priv->mutex);
-  g_atomic_int_inc(data->mutexref);
+  g_mutex_lock(&priv->mutex->mutex);
+  g_atomic_int_inc(&data->mutex->ref);
 
   timeout->id = g_timeout_add_full(
     G_PRIORITY_DEFAULT,
@@ -592,7 +592,7 @@ inf_gtk_io_io_add_timeout(InfIo* io,
   );
 
   priv->timeouts = g_slist_prepend(priv->timeouts, timeout);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   return timeout;
 }
@@ -605,10 +605,10 @@ inf_gtk_io_io_remove_timeout(InfIo* io,
 
   priv = INF_GTK_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex->mutex);
   g_assert(g_slist_find(priv->timeouts, timeout) != NULL);
   priv->timeouts = g_slist_remove(priv->timeouts, timeout);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   /* Note that we can do this safely without having locked the mutex because
    * if the callback function is currently being invoked then its user_data
@@ -634,10 +634,9 @@ inf_gtk_io_io_add_dispatch(InfIo* io,
   data = g_slice_new(InfGtkIoUserdata);
   data->shared.dispatch = dispatch;
   data->mutex = priv->mutex;
-  data->mutexref = priv->mutexref;
 
-  g_mutex_lock(priv->mutex);
-  g_atomic_int_inc(data->mutexref);
+  g_mutex_lock(&priv->mutex->mutex);
+  g_atomic_int_inc(&data->mutex->ref);
 
   dispatch->id = g_idle_add_full(
     G_PRIORITY_DEFAULT_IDLE,
@@ -647,7 +646,7 @@ inf_gtk_io_io_add_dispatch(InfIo* io,
   );
 
   priv->dispatchs = g_slist_prepend(priv->dispatchs, dispatch);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   return dispatch;
 }
@@ -660,10 +659,10 @@ inf_gtk_io_io_remove_dispatch(InfIo* io,
 
   priv = INF_GTK_IO_PRIVATE(io);
 
-  g_mutex_lock(priv->mutex);
+  g_mutex_lock(&priv->mutex->mutex);
   g_assert(g_slist_find(priv->dispatchs, dispatch) != NULL);
   priv->dispatchs = g_slist_remove(priv->dispatchs, dispatch);
-  g_mutex_unlock(priv->mutex);
+  g_mutex_unlock(&priv->mutex->mutex);
 
   /* Note that we can do this safely without having locked the mutex because
    * if the callback function is currently being invoked then its user_data
