@@ -117,10 +117,10 @@ AC_TRY_COMPILE([#include <sys/types.h>
 # Check for regular dependencies
 ###################################
 
-infinity_libraries='glib-2.0 >= 2.36 gobject-2.0 >= 2.36 gmodule-2.0 >= 2.36 libxml-2.0 gnutls >= 2.12.0 libgsasl >= 0.2.21'
+infinity_libraries='glib-2.0 >= 2.32 gobject-2.0 >= 2.32 gmodule-2.0 >= 2.32 libxml-2.0 gnutls >= 2.12.0 libgsasl >= 0.2.21'
 
 PKG_CHECK_MODULES([infinity], [$infinity_libraries])
-PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.36 gobject-2.0 >= 2.36 libxml-2.0])
+PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.32 gobject-2.0 >= 2.32 libxml-2.0])
 
 if test $platform = 'win32'; then
   infinity_LIBS="$infinity_LIBS -lws2_32 -ldnsapi"
@@ -182,7 +182,7 @@ AC_ARG_WITH([infinoted], AS_HELP_STRING([--with-infinoted],
 
 if test "x$with_infinoted" = "xyes"
 then
-  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.36 gobject-2.0 >= 2.36 gmodule-2.0 >= 2.36 gnutls >= 2.12.0])
+  PKG_CHECK_MODULES([infinoted], [glib-2.0 >= 2.32 gobject-2.0 >= 2.32 gmodule-2.0 >= 2.32 gnutls >= 2.12.0])
 fi
 
 AM_CONDITIONAL([WITH_INFINOTED], test "x$with_infinoted" = "xyes")

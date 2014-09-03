@@ -72,6 +72,9 @@ inf_init(GError** error)
     }
 #endif
 
+#if !GLIB_CHECK_VERSION(2,36,0)
+    g_type_init();
+#endif
     gnutls_global_init();
     _inf_gettext_init();
   }
