@@ -476,10 +476,10 @@ inf_name_resolver_lookup_srv(const gchar* query,
 
   /* libresolv uses a global struct for its operation, and is not threadsafe.
    * Therefore, we protect this function callby a mutex. */
-  static GStaticMutex mutex = G_STATIC_MUTEX_INIT;
+  static GMutex mutex;
 
   /* Make the DNS query */
-  g_static_mutex_lock(&mutex);
+  g_mutex_lock(&mutex);
 
   *n_srvs = 0;
   h_errno = 0;
@@ -490,13 +490,13 @@ inf_name_resolver_lookup_srv(const gchar* query,
     /* If the host was not found, simply return 0 SRV entries */
     if(h_errno != HOST_NOT_FOUND)
       inf_name_resolver_set_herrno_error(error, h_errno);
-    g_static_mutex_unlock(&mutex);
+    g_mutex_unlock(&mutex);
     return NULL;
   }
 
   /* At this point we have the DNS answer, and the rest of the function
    * is thread-safe. */
-  g_static_mutex_unlock(&mutex);
+  g_mutex_unlock(&mutex);
 
   if(len < sizeof(HEADER))
   {
