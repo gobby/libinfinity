@@ -45,7 +45,7 @@ infinoted:
 libinfgtk:
 
 - libinfinity
-- gtk+-2.0 >= 2.12 or gtk+-3.0 >= 2.90.6
+- gtk+-3.0 >= 3.2
 
 libinftext:
 
@@ -54,7 +54,7 @@ libinftext:
 libinftextgtk:
 
 - libinftext
-- gtk+-2.0 >= 2.12 or gtk+-3.0 >= 2.90.6
+- gtk+-3.0 >= 3.2
 
 ## Development
 
