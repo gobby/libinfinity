@@ -105,7 +105,6 @@ struct _InfTextGtkBufferPrivate {
   gdouble saturation;
   gdouble value;
   gdouble alpha;
-  GdkColor background;
 };
 
 enum {
@@ -120,7 +119,6 @@ enum {
   PROP_SATURATION,
   PROP_VALUE,
   PROP_ALPHA,
-  PROP_BACKGROUND,
 
   /* overriden */
   PROP_MODIFIED
@@ -216,7 +214,7 @@ inf_text_gtk_update_tag_color(InfTextGtkBuffer* buffer,
   gdouble hue;
   gdouble saturation;
   gdouble value;
-  GdkColor color;
+  GdkRGBA rgba;
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
@@ -225,14 +223,12 @@ inf_text_gtk_update_tag_color(InfTextGtkBuffer* buffer,
   value = priv->value;
   hsv_to_rgb(&hue, &saturation, &value);
 
-  color.red = hue * 0xffff * priv->alpha +
-    priv->background.red * (1. - priv->alpha);
-  color.green = saturation * 0xffff * priv->alpha +
-    priv->background.green * (1. - priv->alpha);
-  color.blue = value * 0xffff * priv->alpha +
-    priv->background.blue * (1. - priv->alpha);
+  rgba.red = hue;
+  rgba.green = saturation;
+  rgba.blue = value;
+  rgba.alpha = priv->alpha;
 
-  g_object_set(G_OBJECT(tag), "background-gdk", &color, NULL);
+  g_object_set(G_OBJECT(tag), "background-rgba", &rgba, NULL);
 }
 
 static void
@@ -1422,10 +1418,6 @@ inf_text_gtk_buffer_init(GTypeInstance* instance,
   priv->saturation = 0.35;
   priv->value = 1.0;
   priv->alpha = 1.0;
-
-  priv->background.red = 0xffff;
-  priv->background.green = 0xffff;
-  priv->background.blue = 0xffff;
 }
 
 static void
@@ -1517,18 +1509,7 @@ inf_text_gtk_buffer_set_property(GObject* object,
     );
     break;
   case PROP_ALPHA:
-    inf_text_gtk_buffer_set_fade(
-      buffer,
-      g_value_get_double(value),
-      &priv->background
-    );
-    break;
-  case PROP_BACKGROUND:
-    inf_text_gtk_buffer_set_fade(
-      buffer,
-      priv->alpha,
-      (GdkColor*)g_value_get_boxed(value)
-    );
+    inf_text_gtk_buffer_set_fade(buffer, g_value_get_double(value));
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1580,9 +1561,6 @@ inf_text_gtk_buffer_get_property(GObject* object,
     break;
   case PROP_ALPHA:
     g_value_set_double(value, priv->alpha);
-    break;
-  case PROP_BACKGROUND:
-    g_value_set_boxed(value, &priv->background);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -2223,18 +2201,6 @@ inf_text_gtk_buffer_class_init(gpointer g_class,
     )
   );
 
-  g_object_class_install_property(
-    object_class,
-    PROP_BACKGROUND,
-    g_param_spec_boxed(
-      "background",
-      "Background",
-      "The global background color",
-      GDK_TYPE_COLOR,
-      G_PARAM_READWRITE
-    )
-  );
-
   g_object_class_override_property(object_class, PROP_MODIFIED, "modified");
 }
 
@@ -2745,11 +2711,10 @@ inf_text_gtk_buffer_set_saturation_value(InfTextGtkBuffer* buffer,
  * inf_text_gtk_buffer_set_fade:
  * @buffer: A #InfTextGtkBuffer.
  * @alpha: An alpha value between 0.0 and 1.0.
- * @background: The background color of the text.
  *
- * This functions can be used to mix the user background color with another
- * background color, @background. Usually @background is meant to be set to
- * the background color of the #GtkTextView showing the buffer.
+ * This functions can be used to show the user background color with limited
+ * intensity, such that the background of the #GtkTextView showing the buffer
+ * partly shines through.
  *
  * An @alpha value of 1.0 means to fully show the user background color, a
  * value of 0.0 means to show the given background color. Values inbetween
@@ -2759,18 +2724,13 @@ inf_text_gtk_buffer_set_saturation_value(InfTextGtkBuffer* buffer,
  */
 void
 inf_text_gtk_buffer_set_fade(InfTextGtkBuffer* buffer,
-                             gdouble alpha,
-                             const GdkColor* background)
+                             gdouble alpha)
 {
   InfTextGtkBufferPrivate* priv;
   GtkTextTagTable* tag_table;
 
-  /* TODO: Once we can depend on GTK+ 3.2 or later, omit the background
-   * argument and set the alpha directly with GdkRGBA. */
-
   g_return_if_fail(INF_TEXT_GTK_IS_BUFFER(buffer));
   g_return_if_fail(alpha >= 0.0 && alpha <= 1.0);
-  g_return_if_fail(background != NULL);
 
   priv = INF_TEXT_GTK_BUFFER_PRIVATE(buffer);
 
@@ -2781,14 +2741,6 @@ inf_text_gtk_buffer_set_fade(InfTextGtkBuffer* buffer,
     g_object_notify(G_OBJECT(buffer), "alpha");
   }
 
-  if(background->red != priv->background.red ||
-     background->green != priv->background.green ||
-     background->blue != priv->background.blue)
-  {
-    priv->background = *background;
-    g_object_notify(G_OBJECT(buffer), "background");
-  }
-
   tag_table = gtk_text_buffer_get_tag_table(priv->buffer);
 
   gtk_text_tag_table_foreach(
@@ -2796,9 +2748,8 @@ inf_text_gtk_buffer_set_fade(InfTextGtkBuffer* buffer,
     inf_text_gtk_buffer_update_user_color_tag_table_foreach_func,
     buffer
   );
+
   g_object_thaw_notify(G_OBJECT(buffer));
-
-
 }
 
 /**

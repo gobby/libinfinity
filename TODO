@@ -32,7 +32,7 @@ Modernization:
  * Replace constructor by constructed
  * Use GtkBox and GtkGrid, use GtkBuilder for widgets/dialogs
  * g_set_error_literal
- * Replace GdkColor by GdkRGBA, remove background parameter in inf_text_gtk_buffer_set_fade
+ * Replace RGB to HSV conversions by gtk_hsv_to_rgb etc.
 
 Protocol Break:
   The following features would be nice to have, but they require breaking

@@ -120,8 +120,7 @@ inf_text_gtk_buffer_set_saturation_value(InfTextGtkBuffer* buffer,
 
 void
 inf_text_gtk_buffer_set_fade(InfTextGtkBuffer* buffer,
-                             gdouble alpha,
-                             const GdkColor* background);
+                             gdouble alpha);
 
 gdouble
 inf_text_gtk_buffer_get_saturation(InfTextGtkBuffer* buffer);
