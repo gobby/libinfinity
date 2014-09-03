@@ -786,6 +786,9 @@ inf_tcp_connection_resolved_cb(InfNameResolver* resolver,
   connection = INF_TCP_CONNECTION(user_data);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
 
+  /* Note that the connection could even be closed here, namely if
+   * tcp_connection_close() was called while we are still resolving. */
+
   if(priv->status == INF_TCP_CONNECTION_CONNECTING)
   {
     if(error != NULL)
@@ -1573,9 +1576,11 @@ inf_tcp_connection_close(InfTcpConnection* connection)
 
   priv->events = 0;
 
-  g_assert(priv->watch != NULL);
-  inf_io_remove_watch(priv->io, priv->watch);
-  priv->watch = NULL;
+  if(priv->watch != NULL)
+  {
+    inf_io_remove_watch(priv->io, priv->watch);
+    priv->watch = NULL;
+  }
 
   priv->front_pos = 0;
   priv->back_pos = 0;
