@@ -66,7 +66,6 @@ struct _InfGtkBrowserViewPrivate {
 
   /* Note that progress and status_text are never visible at the same time */
   GtkCellRenderer* renderer_icon;
-  GtkCellRenderer* renderer_status_icon; /* toplevel only */
   GtkCellRenderer* renderer_name;
   GtkCellRenderer* renderer_progress;
   GtkCellRenderer* renderer_status;
@@ -1966,13 +1965,14 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
                                     gpointer user_data)
 {
   GtkTreeIter iter_parent;
+  InfGtkBrowserModelStatus status;
   InfDiscovery* discovery;
   InfBrowser* browser;
   InfBrowserIter* browser_iter;
   InfAclMask mask;
   const InfAclAccount* account;
   InfAclAccountId acc_id;
-  const gchar* stock_id;
+  const gchar* icon_name;
 
   if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
   {
@@ -1997,19 +1997,21 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
     {
       inf_acl_mask_set1(&mask, INF_ACL_CAN_EXPLORE_NODE);
       if(inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
-        stock_id = GTK_STOCK_DIRECTORY;
+        icon_name = "folder";
       else
-        stock_id = GTK_STOCK_DIALOG_AUTHENTICATION;
-      g_object_set(G_OBJECT(renderer), "stock-id", stock_id, NULL);
+        /* Would be nice to have a more appropriate icon for this */
+        icon_name = "dialog-password";
+      g_object_set(G_OBJECT(renderer), "icon-name", icon_name, NULL);
     }
     else
     {
       inf_acl_mask_set1(&mask, INF_ACL_CAN_SUBSCRIBE_SESSION);
       if(inf_browser_check_acl(browser, browser_iter, acc_id, &mask, NULL))
-        stock_id = GTK_STOCK_FILE;
+        icon_name = "text-x-generic"; /* appropriate? */
       else
-        stock_id = GTK_STOCK_DIALOG_AUTHENTICATION;
-      g_object_set(G_OBJECT(renderer), "stock-id", stock_id, NULL);
+        /* Would be nice to have a more appropriate icon for this */
+        icon_name = "dialog-password";
+      g_object_set(G_OBJECT(renderer), "icon-name", icon_name, NULL);
     }
 
     inf_browser_iter_free(browser_iter);
@@ -2017,41 +2019,17 @@ inf_gtk_browser_view_icon_data_func(GtkTreeViewColumn* column,
   }
   else
   {
-    gtk_tree_model_get(
+    /* toplevel */
+
+    /* TODO: Set icon depending on discovery type (LAN, jabber, direct) */
+    /*gtk_tree_model_get(
       model,
       iter,
       INF_GTK_BROWSER_MODEL_COL_DISCOVERY, &discovery,
       INF_GTK_BROWSER_MODEL_COL_BROWSER, &browser,
       -1
-    );
+    );*/
 
-    /* TODO: Set icon depending on discovery type (LAN, jabber, direct) */
-    g_object_set(G_OBJECT(renderer), "stock-id", GTK_STOCK_NETWORK, NULL);
-
-    if(discovery != NULL) g_object_unref(G_OBJECT(discovery));
-    if(browser != NULL) g_object_unref(G_OBJECT(browser));
-  }
-}
-
-static void
-inf_gtk_browser_view_status_icon_data_func(GtkTreeViewColumn* column,
-                                           GtkCellRenderer* renderer,
-                                           GtkTreeModel* model,
-                                           GtkTreeIter* iter,
-                                           gpointer user_data)
-{
-  GtkTreeIter iter_parent;
-  InfGtkBrowserModelStatus status;
-  const gchar* stock_id;
-
-  if(gtk_tree_model_iter_parent(model, &iter_parent, iter))
-  {
-    /* inner node, ignore */
-    g_object_set(G_OBJECT(renderer), "visible", FALSE, NULL);
-  }
-  else
-  {
-    /* toplevel */
     gtk_tree_model_get(
       model,
       iter,
@@ -2065,25 +2043,25 @@ inf_gtk_browser_view_status_icon_data_func(GtkTreeViewColumn* column,
     case INF_GTK_BROWSER_MODEL_DISCOVERED:
     case INF_GTK_BROWSER_MODEL_RESOLVING:
     case INF_GTK_BROWSER_MODEL_CONNECTING:
-      stock_id = GTK_STOCK_DISCONNECT;
+      icon_name = "network-offline";
       break;
     case INF_GTK_BROWSER_MODEL_CONNECTED:
-      stock_id = GTK_STOCK_CONNECT;
+      /* TODO: Could choose to show network-transmit and/or
+       * network-transmit-received when there is activitiy */
+      icon_name = "network-idle";
       break;
     case INF_GTK_BROWSER_MODEL_ERROR:
-      stock_id = GTK_STOCK_DIALOG_ERROR;
+      icon_name = "network-error";
       break;
     default:
       g_assert_not_reached();
       break;
     }
     
-    g_object_set(
-      G_OBJECT(renderer),
-      "visible", TRUE,
-      "stock-id", stock_id,
-      NULL
-    );
+    g_object_set(G_OBJECT(renderer), "icon-name", icon_name, NULL);
+
+    /*if(discovery != NULL) g_object_unref(G_OBJECT(discovery));
+    if(browser != NULL) g_object_unref(G_OBJECT(browser));*/
   }
 }
 
@@ -2384,7 +2362,6 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   
   priv->renderer_icon = gtk_cell_renderer_pixbuf_new();
-  priv->renderer_status_icon = gtk_cell_renderer_pixbuf_new();
   priv->renderer_name = gtk_cell_renderer_text_new();
   priv->renderer_progress = gtk_cell_renderer_progress_new();
   priv->renderer_status = gtk_cell_renderer_text_new();
@@ -2393,15 +2370,8 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
   priv->info_resolvs = NULL;
 
   g_object_set(G_OBJECT(priv->renderer_status), "xpad", 10, NULL);
-  g_object_set(G_OBJECT(priv->renderer_status_icon), "xpad", 5, NULL);
 
   gtk_tree_view_column_pack_start(priv->column, priv->renderer_icon, FALSE);
-
-  gtk_tree_view_column_pack_start(
-    priv->column,
-    priv->renderer_status_icon,
-    FALSE
-  );
 
   gtk_tree_view_column_pack_start(priv->column, priv->renderer_name, FALSE);
   gtk_tree_view_column_pack_start(
@@ -2416,14 +2386,6 @@ inf_gtk_browser_view_init(GTypeInstance* instance,
     priv->column,
     priv->renderer_icon,
     inf_gtk_browser_view_icon_data_func,
-    NULL,
-    NULL
-  );
-
-  gtk_tree_view_column_set_cell_data_func(
-    priv->column,
-    priv->renderer_status_icon,
-    inf_gtk_browser_view_status_icon_data_func,
     NULL,
     NULL
   );

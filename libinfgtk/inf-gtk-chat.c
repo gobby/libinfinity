@@ -753,7 +753,7 @@ inf_gtk_chat_init(GTypeInstance* instance,
   gtk_widget_set_sensitive(priv->entry, FALSE);
   gtk_widget_show(priv->entry);
 
-  image = gtk_image_new_from_stock(GTK_STOCK_JUMP_TO, GTK_ICON_SIZE_BUTTON);
+  image = gtk_image_new_from_icon_name("go-jump", GTK_ICON_SIZE_BUTTON);
   priv->button = gtk_button_new_with_label(_("Send"));
   gtk_button_set_image(GTK_BUTTON(priv->button), image);
   g_signal_connect(

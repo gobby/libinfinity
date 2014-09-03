@@ -662,8 +662,6 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
   InfGtkCertificateManagerQuery* query;
   gchar* text;
   GtkWidget* vbox;
-  GtkWidget* button;
-  GtkWidget* image;
   GtkWidget* label;
 
   GError* error;
@@ -835,27 +833,17 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
         query
       );
 
-      image = gtk_image_new_from_stock(GTK_STOCK_CANCEL, GTK_ICON_SIZE_BUTTON);
-      gtk_widget_show(image);
-
-      button = gtk_dialog_add_button(
+      gtk_dialog_add_button(
         GTK_DIALOG(query->dialog),
         _("_Cancel connection"),
         GTK_RESPONSE_REJECT
       );
 
-      gtk_button_set_image(GTK_BUTTON(button), image);
-
-      image = gtk_image_new_from_stock(GTK_STOCK_CONNECT, GTK_ICON_SIZE_BUTTON);
-      gtk_widget_show(image);
-
-      button = gtk_dialog_add_button(
+      gtk_dialog_add_button(
         GTK_DIALOG(query->dialog),
         _("C_ontinue connection"),
         GTK_RESPONSE_ACCEPT
       );
-
-      gtk_button_set_image(GTK_BUTTON(button), image);
 
       text = g_strdup_printf(
         _("Do you want to continue the connection to host \"%s\"? If you "

@@ -93,7 +93,6 @@ struct _InfGtkPermissionsDialogPrivate {
   GtkCellRenderer* renderer;
   GtkWidget* tree_view;
   GtkWidget* sheet_view;
-  GtkWidget* status_image;
   GtkWidget* status_text;
 
   GtkWidget* add_button;
@@ -1873,12 +1872,7 @@ inf_gtk_permissions_dialog_populate_popup(InfGtkPermissionsDialog* dialog,
     return FALSE;
  
   /* Then, show a menu item to remove an account. */
-  item = gtk_image_menu_item_new_with_mnemonic(_("_Delete Account"));
-
-  gtk_image_menu_item_set_image(
-    GTK_IMAGE_MENU_ITEM(item),
-    gtk_image_new_from_stock(GTK_STOCK_DELETE, GTK_ICON_SIZE_MENU)
-  );
+  item = gtk_menu_item_new_with_mnemonic(_("_Delete Account"));
 
   g_signal_connect(
     G_OBJECT(item),
@@ -2312,13 +2306,6 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
   {
     gtk_list_store_clear(priv->account_store);
     gtk_label_set_text(GTK_LABEL(priv->status_text), _("No node selected"));
-
-    gtk_image_set_from_stock(
-      GTK_IMAGE(priv->status_image),
-      GTK_STOCK_DISCONNECT,
-      GTK_ICON_SIZE_BUTTON
-    );
-
     return;
   }
 
@@ -2502,12 +2489,6 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
     gtk_widget_set_sensitive(priv->add_button, FALSE);
     gtk_widget_set_sensitive(priv->remove_button, FALSE);
 
-    gtk_image_set_from_stock(
-      GTK_IMAGE(priv->status_image),
-      GTK_STOCK_NO,
-      GTK_ICON_SIZE_BUTTON
-    );
-
     set_acl_str = _("Permission is <b>not granted</b> to modify the permission list. It is read-only.");
   }
   else
@@ -2531,12 +2512,6 @@ inf_gtk_permissions_dialog_update(InfGtkPermissionsDialog* dialog,
       gtk_widget_set_sensitive(priv->remove_button, TRUE);
     else
       gtk_widget_set_sensitive(priv->remove_button, FALSE);
-
-    gtk_image_set_from_stock(
-      GTK_IMAGE(priv->status_image),
-      GTK_STOCK_YES,
-      GTK_ICON_SIZE_BUTTON
-    );
 
     set_acl_str = _("Permission is <b>granted</b> to modify the permission list.");
   }
@@ -2666,7 +2641,6 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   GtkWidget* scroll;
   GtkWidget* hbox;
   GtkWidget* buttons_hbox;
-  GtkWidget* status_hbox;
   GtkWidget* vbox;
   GtkWidget* account_list_vbox;
 
@@ -2800,7 +2774,7 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_container_add(GTK_CONTAINER(scroll), priv->tree_view);
   gtk_widget_show(scroll);
 
-  image = gtk_image_new_from_stock(GTK_STOCK_ADD, GTK_ICON_SIZE_BUTTON);
+  image = gtk_image_new_from_icon_name("list-add", GTK_ICON_SIZE_BUTTON);
   gtk_widget_show(image);
 
   priv->add_button = gtk_button_new();
@@ -2815,7 +2789,7 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
 
   gtk_widget_show(priv->add_button);
 
-  image = gtk_image_new_from_stock(GTK_STOCK_REMOVE, GTK_ICON_SIZE_BUTTON);
+  image = gtk_image_new_from_icon_name("list-remove", GTK_ICON_SIZE_BUTTON);
   gtk_widget_show(image);
 
   priv->remove_button = gtk_button_new();
@@ -2885,9 +2859,6 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_box_pack_start(GTK_BOX(hbox), priv->sheet_view, TRUE, TRUE, 0);
   gtk_widget_show(hbox);
 
-  priv->status_image = gtk_image_new();
-  gtk_widget_show(priv->status_image);
-
   priv->status_text = gtk_label_new(NULL);
   gtk_label_set_max_width_chars(GTK_LABEL(priv->status_text), 50);
   gtk_label_set_width_chars(GTK_LABEL(priv->status_text), 50);
@@ -2895,33 +2866,13 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
   gtk_misc_set_alignment(GTK_MISC(priv->status_text), 0.0, 0.5);
   gtk_widget_show(priv->status_text);
 
-  status_hbox = gtk_hbox_new(FALSE, 12);
-
-  gtk_box_pack_start(
-    GTK_BOX(status_hbox),
-    priv->status_image,
-    FALSE,
-    FALSE,
-    0
-  );
-
-  gtk_box_pack_start(
-    GTK_BOX(status_hbox),
-    priv->status_text,
-    TRUE,
-    TRUE,
-    0
-  );
-
-  gtk_widget_show(status_hbox);
-
   vbox = gtk_vbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(vbox), status_hbox, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), priv->status_text, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
   gtk_widget_show(vbox);
 
-  image = gtk_image_new_from_stock(
-    GTK_STOCK_DIALOG_AUTHENTICATION,
+  image = gtk_image_new_from_icon_name(
+    "dialog-password",
     GTK_ICON_SIZE_DIALOG
   );
 

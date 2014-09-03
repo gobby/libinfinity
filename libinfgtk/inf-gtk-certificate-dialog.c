@@ -397,8 +397,8 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
   priv->info_vbox = NULL;
   priv->upper_hbox = gtk_hbox_new(FALSE, 12);
 
-  image = gtk_image_new_from_stock(
-    GTK_STOCK_DIALOG_AUTHENTICATION,
+  image = gtk_image_new_from_icon_name(
+    "dialog-password",
     GTK_ICON_SIZE_DIALOG
   );
 
