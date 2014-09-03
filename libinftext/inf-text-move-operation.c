@@ -41,16 +41,15 @@ enum {
 
 #define INF_TEXT_MOVE_OPERATION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_MOVE_OPERATION, InfTextMoveOperationPrivate))
 
-static GObjectClass* parent_class;
+static void inf_text_move_operation_operation_iface_init(InfAdoptedOperationInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfTextMoveOperation, inf_text_move_operation, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextMoveOperation)
+  G_IMPLEMENT_INTERFACE(INF_ADOPTED_TYPE_OPERATION, inf_text_move_operation_operation_iface_init))
 
 static void
-inf_text_move_operation_init(GTypeInstance* instance,
-                             gpointer g_class)
+inf_text_move_operation_init(InfTextMoveOperation* operation)
 {
-  InfTextMoveOperation* operation;
   InfTextMoveOperationPrivate* priv;
-
-  operation = INF_TEXT_MOVE_OPERATION(instance);
   priv = INF_TEXT_MOVE_OPERATION_PRIVATE(operation);
 
   priv->position = 0;
@@ -246,14 +245,11 @@ inf_text_move_operation_apply(InfAdoptedOperation* operation,
 }
 
 static void
-inf_text_move_operation_class_init(gpointer g_class,
-                                   gpointer class_data)
+inf_text_move_operation_class_init(
+  InfTextMoveOperationClass* move_operation_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextMoveOperationPrivate));
+  object_class = G_OBJECT_CLASS(move_operation_class);
 
   object_class->set_property = inf_text_move_operation_set_property;
   object_class->get_property = inf_text_move_operation_get_property;
@@ -288,12 +284,9 @@ inf_text_move_operation_class_init(gpointer g_class,
 }
 
 static void
-inf_text_move_operation_operation_init(gpointer g_iface,
-                                       gpointer iface_data)
+inf_text_move_operation_operation_iface_init(
+  InfAdoptedOperationInterface* iface)
 {
-  InfAdoptedOperationIface* iface;
-  iface = (InfAdoptedOperationIface*)g_iface;
-
   iface->need_concurrency_id = inf_text_move_operation_need_concurrency_id;
   iface->transform = inf_text_move_operation_transform;
   iface->copy = inf_text_move_operation_copy;
@@ -301,49 +294,6 @@ inf_text_move_operation_operation_init(gpointer g_iface,
   iface->apply = inf_text_move_operation_apply;
   iface->apply_transformed = NULL;
   iface->revert = NULL;
-}
-
-GType
-inf_text_move_operation_get_type(void)
-{
-  static GType move_operation_type = 0;
-
-  if(!move_operation_type)
-  {
-    static const GTypeInfo move_operation_type_info = {
-      sizeof(InfTextMoveOperationClass),  /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_text_move_operation_class_init, /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      sizeof(InfTextMoveOperation),       /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_text_move_operation_init,       /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    static const GInterfaceInfo operation_info = {
-      inf_text_move_operation_operation_init,
-      NULL,
-      NULL
-    };
-
-    move_operation_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextMoveOperation",
-      &move_operation_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      move_operation_type,
-      INF_ADOPTED_TYPE_OPERATION,
-      &operation_info
-    );
-  }
-
-  return move_operation_type;
 }
 
 /**

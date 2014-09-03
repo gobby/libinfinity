@@ -48,7 +48,12 @@ enum {
 
 #define INF_TEXT_DEFAULT_DELETE_OPERATION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_DEFAULT_DELETE_OPERATION, InfTextDefaultDeleteOperationPrivate))
 
-static GObjectClass* parent_class;
+static void inf_text_default_delete_operation_operation_iface_init(InfAdoptedOperationInterface* iface);
+static void inf_text_default_delete_operation_delete_operation_iface_init(InfTextDeleteOperationInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfTextDefaultDeleteOperation, inf_text_default_delete_operation, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextDefaultDeleteOperation)
+  G_IMPLEMENT_INTERFACE(INF_ADOPTED_TYPE_OPERATION, inf_text_default_delete_operation_operation_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TEXT_TYPE_DELETE_OPERATION, inf_text_default_delete_operation_delete_operation_iface_init))
 
 #ifdef DELETE_OPERATION_CHECK_TEXT_MATCH
 static gboolean
@@ -91,13 +96,10 @@ inf_text_default_delete_operation_text_match(
 #endif /* DELETE_OPERATION_CHECK_TEXT_MATCH */
 
 static void
-inf_text_default_delete_operation_init(GTypeInstance* instance,
-                                       gpointer g_class)
+inf_text_default_delete_operation_init(
+  InfTextDefaultDeleteOperation* operation)
 {
-  InfTextDefaultDeleteOperation* operation;
   InfTextDefaultDeleteOperationPrivate* priv;
-
-  operation = INF_TEXT_DEFAULT_DELETE_OPERATION(instance);
   priv = INF_TEXT_DEFAULT_DELETE_OPERATION_PRIVATE(operation);
 
   priv->position = 0;
@@ -115,7 +117,7 @@ inf_text_default_delete_operation_finalize(GObject* object)
 
   inf_text_chunk_free(priv->chunk);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_default_delete_operation_parent_class)->finalize(object);
 }
 
 static void
@@ -411,14 +413,11 @@ inf_text_default_delete_operation_transform_split(
 }
 
 static void
-inf_text_default_delete_operation_class_init(gpointer g_class,
-                                             gpointer class_data)
+inf_text_default_delete_operation_class_init(
+  InfTextDefaultDeleteOperationClass* default_delete_operation_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextDefaultDeleteOperationPrivate));
+  object_class = G_OBJECT_CLASS(default_delete_operation_class);
 
   object_class->finalize = inf_text_default_delete_operation_finalize;
   object_class->set_property = inf_text_default_delete_operation_set_property;
@@ -452,12 +451,9 @@ inf_text_default_delete_operation_class_init(gpointer g_class,
 }
 
 static void
-inf_text_default_delete_operation_operation_init(gpointer g_iface,
-                                                 gpointer iface_data)
+inf_text_default_delete_operation_operation_iface_init(
+  InfAdoptedOperationInterface* iface)
 {
-  InfAdoptedOperationIface* iface;
-  iface = (InfAdoptedOperationIface*)g_iface;
-
   iface->need_concurrency_id =
     inf_text_default_delete_operation_need_concurrency_id;
   iface->transform = inf_text_default_delete_operation_transform;
@@ -469,12 +465,9 @@ inf_text_default_delete_operation_operation_init(gpointer g_iface,
 }
 
 static void
-inf_text_default_delete_operation_delete_operation_init(gpointer g_iface,
-                                                        gpointer iface_data)
+inf_text_default_delete_operation_delete_operation_iface_init(
+  InfTextDeleteOperationInterface* iface)
 {
-  InfTextDeleteOperationIface* iface;
-  iface = (InfTextDeleteOperationIface*)g_iface;
-
   iface->get_position = inf_text_default_delete_operation_get_position;
   iface->get_length = inf_text_default_delete_operation_get_length;
   iface->transform_position =
@@ -482,61 +475,6 @@ inf_text_default_delete_operation_delete_operation_init(gpointer g_iface,
   iface->transform_overlap =
     inf_text_default_delete_operation_transform_overlap;
   iface->transform_split = inf_text_default_delete_operation_transform_split;
-}
-
-GType
-inf_text_default_delete_operation_get_type(void)
-{
-  static GType default_delete_operation_type = 0;
-
-  if(!default_delete_operation_type)
-  {
-    static const GTypeInfo default_delete_operation_type_info = {
-      sizeof(InfTextDefaultDeleteOperationClass),   /* class_size */
-      NULL,                                         /* base_init */
-      NULL,                                         /* base_finalize */
-      inf_text_default_delete_operation_class_init, /* class_init */
-      NULL,                                         /* class_finalize */
-      NULL,                                         /* class_data */
-      sizeof(InfTextDefaultDeleteOperation),        /* instance_size */
-      0,                                            /* n_preallocs */
-      inf_text_default_delete_operation_init,       /* instance_init */
-      NULL                                          /* value_table */
-    };
-
-    static const GInterfaceInfo operation_info = {
-      inf_text_default_delete_operation_operation_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo delete_operation_info = {
-      inf_text_default_delete_operation_delete_operation_init,
-      NULL,
-      NULL
-    };
-
-    default_delete_operation_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextDefaultDeleteOperation",
-      &default_delete_operation_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      default_delete_operation_type,
-      INF_ADOPTED_TYPE_OPERATION,
-      &operation_info
-    );
-
-    g_type_add_interface_static(
-      default_delete_operation_type,
-      INF_TEXT_TYPE_DELETE_OPERATION,
-      &delete_operation_info
-    );
-  }
-
-  return default_delete_operation_type;
 }
 
 /**

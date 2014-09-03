@@ -59,8 +59,10 @@ enum {
 
 #define INF_GTK_ACL_SHEET_VIEW_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_ACL_SHEET_VIEW, InfGtkAclSheetViewPrivate))
 
-static GtkVBoxClass* parent_class;
 static guint acl_sheet_view_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfGtkAclSheetView, inf_gtk_acl_sheet_view, GTK_TYPE_VBOX,
+  G_ADD_PRIVATE(InfGtkAclSheetView))
 
 static void
 inf_gtk_acl_sheet_view_default_toggled_cb(GtkCellRenderer* cell,
@@ -305,10 +307,8 @@ inf_gtk_acl_sheet_view_update_editable(InfGtkAclSheetView* view)
  */
 
 static void
-inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
-                            gpointer g_class)
+inf_gtk_acl_sheet_view_init(InfGtkAclSheetView* view)
 {
-  InfGtkAclSheetView* view;
   InfGtkAclSheetViewPrivate* priv;
 
   GtkTreeSelection* selection;
@@ -316,7 +316,6 @@ inf_gtk_acl_sheet_view_init(GTypeInstance* instance,
   GtkCellRenderer* renderer;
   GtkWidget* scroll;
 
-  view = INF_GTK_ACL_SHEET_VIEW(instance);
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
 
   priv->store =
@@ -469,7 +468,7 @@ inf_gtk_acl_sheet_view_dispose(GObject* object)
   if(priv->sheet != NULL)
     inf_gtk_acl_sheet_view_set_sheet(view, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_acl_sheet_view_parent_class)->dispose(object);
 }
 
 static void
@@ -481,7 +480,7 @@ inf_gtk_acl_sheet_view_finalize(GObject* object)
   view = INF_GTK_ACL_SHEET_VIEW(object);
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_acl_sheet_view_parent_class)->finalize(object);
 }
 
 static void
@@ -561,17 +560,10 @@ inf_gtk_acl_sheet_view_get_property(GObject* object,
  */
 
 static void
-inf_gtk_acl_sheet_view_class_init(gpointer g_class,
-                                  gpointer class_data)
+inf_gtk_acl_sheet_view_class_init(InfGtkAclSheetViewClass* sheet_view_class)
 {
   GObjectClass* object_class;
-  InfGtkAclSheetViewClass* sheet_view_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  sheet_view_class = INF_GTK_ACL_SHEET_VIEW_CLASS(object_class);
-
-  parent_class = GTK_VBOX_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkAclSheetViewPrivate));
+  object_class = G_OBJECT_CLASS(sheet_view_class);
 
   object_class->dispose = inf_gtk_acl_sheet_view_dispose;
   object_class->finalize = inf_gtk_acl_sheet_view_finalize;
@@ -644,37 +636,6 @@ inf_gtk_acl_sheet_view_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_gtk_acl_sheet_view_get_type(void)
-{
-  static GType acl_sheet_view_type = 0;
-
-  if(!acl_sheet_view_type)
-  {
-    static const GTypeInfo acl_sheet_view_type_info = {
-      sizeof(InfGtkAclSheetViewClass),     /* class_size */
-      NULL,                                /* base_init */
-      NULL,                                /* base_finalize */
-      inf_gtk_acl_sheet_view_class_init,   /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      sizeof(InfGtkAclSheetView),          /* instance_size */
-      0,                                   /* n_preallocs */
-      inf_gtk_acl_sheet_view_init,         /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    acl_sheet_view_type = g_type_register_static(
-      GTK_TYPE_VBOX,
-      "InfGtkAclSheetView",
-      &acl_sheet_view_type_info,
-      0
-    );
-  }
-
-  return acl_sheet_view_type;
 }
 
 /*

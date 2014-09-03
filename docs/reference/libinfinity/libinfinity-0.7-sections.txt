@@ -193,7 +193,7 @@ INFC_REQUEST_GET_CLASS
 <FILE>inf-local-publisher</FILE>
 <TITLE>InfLocalPublisher</TITLE>
 InfLocalPublisher
-InfLocalPublisherIface
+InfLocalPublisherInterface
 InfLocalPublisherItem
 inf_local_publisher_publish
 inf_local_publisher_unpublish
@@ -275,7 +275,7 @@ closesocket
 <FILE>inf-browser</FILE>
 <TITLE>InfBrowser</TITLE>
 InfBrowser
-InfBrowserIface
+InfBrowserInterface
 InfBrowserStatus
 inf_browser_get_root
 inf_browser_get_next
@@ -412,7 +412,7 @@ INF_TYPE_BROWSER_ITER
 <FILE>inf-request</FILE>
 <TITLE>InfRequest</TITLE>
 InfRequest
-InfRequestIface
+InfRequestInterface
 InfRequestFunc
 inf_request_fail
 inf_request_finish
@@ -468,7 +468,7 @@ inf_request_result_get_type
 <FILE>inf-buffer</FILE>
 <TITLE>InfBuffer</TITLE>
 InfBuffer
-InfBufferIface
+InfBufferInterface
 inf_buffer_get_modified
 inf_buffer_set_modified
 <SUBSECTION Standard>
@@ -550,7 +550,7 @@ INF_TYPE_USER_FLAGS
 <FILE>inf-discovery</FILE>
 <TITLE>InfDiscovery</TITLE>
 InfDiscovery
-InfDiscoveryIface
+InfDiscoveryInterface
 InfDiscoveryInfo
 InfDiscoveryResolvCompleteFunc
 InfDiscoveryResolvErrorFunc
@@ -596,7 +596,7 @@ INF_USER_TABLE_GET_CLASS
 <FILE>inf-io</FILE>
 <TITLE>InfIo</TITLE>
 InfIo
-InfIoIface
+InfIoInterface
 InfNativeSocket
 InfIoEvent
 InfIoWatch
@@ -665,7 +665,7 @@ INF_TYPE_SESSION_STATUS
 <FILE>inf-session-proxy</FILE>
 <TITLE>InfSessionProxy</TITLE>
 InfSessionProxy
-InfSessionProxyIface
+InfSessionProxyInterface
 inf_session_proxy_join_user
 <SUBSECTION Standard>
 INF_SESSION_PROXY
@@ -737,7 +737,7 @@ INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY
 <FILE>inf-xml-connection</FILE>
 <TITLE>InfXmlConnection</TITLE>
 InfXmlConnection
-InfXmlConnectionIface
+InfXmlConnectionInterface
 InfXmlConnectionStatus
 inf_xml_connection_open
 inf_xml_connection_close
@@ -782,7 +782,7 @@ INF_TYPE_SIMULATED_CONNECTION_MODE
 <FILE>inf-adopted-operation</FILE>
 <TITLE>InfAdoptedOperation</TITLE>
 InfAdoptedOperation
-InfAdoptedOperationIface
+InfAdoptedOperationInterface
 InfAdoptedOperationFlags
 InfAdoptedConcurrencyId
 inf_adopted_operation_need_concurrency_id
@@ -1059,7 +1059,7 @@ INFD_PROGRESS_REQUEST_GET_CLASS
 <FILE>infd-xml-server</FILE>
 <TITLE>InfdXmlServer</TITLE>
 InfdXmlServer
-InfdXmlServerIface
+InfdXmlServerInterface
 InfdXmlServerStatus
 infd_xml_server_close
 infd_xml_server_new_connection
@@ -1097,7 +1097,7 @@ INFD_TYPE_TCP_SERVER_STATUS
 <SECTION>
 <FILE>infd-storage</FILE>
 InfdStorage
-InfdStorageIface
+InfdStorageInterface
 InfdStorageNodeType
 InfdStorageNode
 InfdStorageAcl
@@ -1132,7 +1132,7 @@ infd_storage_acl_get_type
 <FILE>infd-account-storage</FILE>
 <TITLE>InfdAccountStorage</TITLE>
 InfdAccountStorage
-InfdAccountStorageIface
+InfdAccountStorageInterface
 InfdAccountStorageSupport
 infd_account_storage_get_support
 infd_account_storage_supports
@@ -1468,7 +1468,7 @@ InfdNotePlugin
 <TITLE>InfCommunicationObject</TITLE>
 InfCommunicationScope
 InfCommunicationObject
-InfCommunicationObjectIface
+InfCommunicationObjectInterface
 inf_communication_object_received
 inf_communication_object_enqueued
 inf_communication_object_sent
@@ -1586,7 +1586,7 @@ INF_COMMUNICATION_REGISTRY_GET_CLASS
 <FILE>inf-communication-factory</FILE>
 <TITLE>InfCommunicationFactory</TITLE>
 InfCommunicationFactory
-InfCommunicationFactoryIface
+InfCommunicationFactoryInterface
 inf_communication_factory_supports_method
 inf_communication_factory_instantiate
 <SUBSECTION Standard>
@@ -1601,7 +1601,7 @@ inf_communication_factory_get_type
 <FILE>inf-communication-method</FILE>
 <TITLE>InfCommunicationMethod</TITLE>
 InfCommunicationMethod
-InfCommunicationMethodIface
+InfCommunicationMethodInterface
 inf_communication_method_add_member
 inf_communication_method_remove_member
 inf_communication_method_is_member

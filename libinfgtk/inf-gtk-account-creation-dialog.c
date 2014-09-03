@@ -80,8 +80,10 @@ enum {
 
 #define INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_ACCOUNT_CREATION_DIALOG, InfGtkAccountCreationDialogPrivate))
 
-static GtkDialogClass* parent_class;
 static guint account_creation_dialog_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfGtkAccountCreationDialog, inf_gtk_account_creation_dialog, GTK_TYPE_DIALOG,
+  G_ADD_PRIVATE(InfGtkAccountCreationDialog))
 
 static void
 inf_gtk_account_creation_dialog_keygen_result_free(gpointer data)
@@ -497,10 +499,8 @@ inf_gtk_account_creation_dialog_notify_status_cb(GObject* object,
  */
 
 static void
-inf_gtk_account_creation_dialog_init(GTypeInstance* instance,
-                                     gpointer g_class)
+inf_gtk_account_creation_dialog_init(InfGtkAccountCreationDialog* dialog)
 {
-  InfGtkAccountCreationDialog* dialog;
   InfGtkAccountCreationDialogPrivate* priv;
 
   GtkWidget* name_label;
@@ -510,7 +510,6 @@ inf_gtk_account_creation_dialog_init(GTypeInstance* instance,
   GtkWidget* imagebox;
   GtkWidget* dialog_vbox;
 
-  dialog = INF_GTK_ACCOUNT_CREATION_DIALOG(instance);
   priv = INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(dialog);
 
   priv->browser = NULL;
@@ -595,7 +594,7 @@ inf_gtk_account_creation_dialog_constructor(GType type,
 {
   GObject* object;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_gtk_account_creation_dialog_parent_class)->constructor(
     type,
     n_properties,
     properties
@@ -625,7 +624,7 @@ inf_gtk_account_creation_dialog_dispose(GObject* object)
 
   g_assert(priv->key == NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_account_creation_dialog_parent_class)->dispose(object);
 }
 
 
@@ -638,7 +637,7 @@ inf_gtk_account_creation_dialog_finalize(GObject* object)
   dialog = INF_GTK_ACCOUNT_CREATION_DIALOG(object);
   priv = INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(dialog);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_account_creation_dialog_parent_class)->finalize(object);
 }
 
 static void
@@ -703,22 +702,11 @@ inf_gtk_account_creation_dialog_get_property(GObject* object,
  */
 
 static void
-inf_gtk_account_creation_dialog_class_init(gpointer g_class,
-                                           gpointer class_data)
+inf_gtk_account_creation_dialog_class_init(
+  InfGtkAccountCreationDialogClass* account_creation_dialog_class)
 {
   GObjectClass* object_class;
-  InfGtkAccountCreationDialogClass* account_creation_dialog_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  account_creation_dialog_class =
-    INF_GTK_ACCOUNT_CREATION_DIALOG_CLASS(g_class);
-
-  parent_class = GTK_DIALOG_CLASS(g_type_class_peek_parent(g_class));
-
-  g_type_class_add_private(
-    g_class,
-    sizeof(InfGtkAccountCreationDialogPrivate)
-  );
+  object_class = G_OBJECT_CLASS(account_creation_dialog_class);
 
   object_class->constructor = inf_gtk_account_creation_dialog_constructor;
   object_class->dispose = inf_gtk_account_creation_dialog_dispose;
@@ -779,37 +767,6 @@ inf_gtk_account_creation_dialog_class_init(gpointer g_class,
     INF_TYPE_CERTIFICATE_CHAIN | G_SIGNAL_TYPE_STATIC_SCOPE,
     INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
   );
-}
-
-GType
-inf_gtk_account_creation_dialog_get_type(void)
-{
-  static GType account_creation_dialog_type = 0;
-
-  if(!account_creation_dialog_type)
-  {
-    static const GTypeInfo account_creation_dialog_type_info = {
-      sizeof(InfGtkAccountCreationDialogClass),    /* class_size */
-      NULL,                                        /* base_init */
-      NULL,                                        /* base_finalize */
-      inf_gtk_account_creation_dialog_class_init,  /* class_init */
-      NULL,                                        /* class_finalize */
-      NULL,                                        /* class_data */
-      sizeof(InfGtkAccountCreationDialog),         /* instance_size */
-      0,                                           /* n_preallocs */
-      inf_gtk_account_creation_dialog_init,        /* instance_init */
-      NULL                                         /* value_table */
-    };
-
-    account_creation_dialog_type = g_type_register_static(
-      GTK_TYPE_DIALOG,
-      "InfGtkAccountCreationDialog",
-      &account_creation_dialog_type_info,
-      0
-    );
-  }
-
-  return account_creation_dialog_type;
 }
 
 /*

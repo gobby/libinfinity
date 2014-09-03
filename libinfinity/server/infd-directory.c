@@ -273,13 +273,19 @@ static const unsigned int DAYS = 24 * 60 * 60;
 #define GPOINTER_TO_BOOLEAN(boolean) \
   ((gboolean) ((GPOINTER_TO_UINT(boolean) == 2) ? TRUE : FALSE))
 
-static GObjectClass* parent_class;
 static guint directory_signals[LAST_SIGNAL];
 static GQuark infd_directory_node_id_quark;
 
 /* Time a session needs to be idle before it is unloaded from RAM */
 /* TODO: This should be a property: */
 static const guint INFD_DIRECTORY_SAVE_TIMEOUT = 60000;
+
+static void infd_directory_communication_object_iface_init(InfCommunicationObjectInterface* iface);
+static void infd_directory_browser_iface_init(InfBrowserInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfdDirectory, infd_directory, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdDirectory)
+  G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_OBJECT, infd_directory_communication_object_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_BROWSER, infd_directory_browser_iface_init))
 
 /*
  * Path handling.
@@ -8402,13 +8408,9 @@ infd_directory_set_communication_manager(InfdDirectory* directory,
  */
 
 static void
-infd_directory_init(GTypeInstance* instance,
-                    gpointer g_class)
+infd_directory_init(InfdDirectory* directory)
 {
-  InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
-
-  directory = INFD_DIRECTORY(instance);
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   priv->io = NULL;
@@ -8467,7 +8469,7 @@ infd_directory_constructor(GType type,
   /* We only use central method for directory handling */
   static const gchar* const methods[] = { "centrol", NULL };
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(infd_directory_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -8608,7 +8610,7 @@ infd_directory_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infd_directory_parent_class)->dispose(object);
 }
 
 static void
@@ -8628,7 +8630,7 @@ infd_directory_finalize(GObject* object)
   }
   g_free(priv->transient_accounts);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_directory_parent_class)->finalize(object);
 }
 
 static void
@@ -10385,17 +10387,10 @@ infd_directory_browser_set_acl(InfBrowser* browser,
  * GType registration.
  */
 static void
-infd_directory_class_init(gpointer g_class,
-                          gpointer class_data)
+infd_directory_class_init(InfdDirectoryClass* directory_class)
 {
   GObjectClass* object_class;
-  InfdDirectoryClass* directory_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  directory_class = INFD_DIRECTORY_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdDirectoryPrivate));
+  object_class = G_OBJECT_CLASS(directory_class);
 
   object_class->constructor = infd_directory_constructor;
   object_class->dispose = infd_directory_dispose;
@@ -10537,23 +10532,16 @@ infd_directory_class_init(gpointer g_class,
   g_object_class_override_property(object_class, PROP_STATUS, "status");
 }
 
-  static void
-infd_directory_communication_object_init(gpointer g_iface,
-    gpointer iface_data)
+static void
+infd_directory_communication_object_iface_init(
+  InfCommunicationObjectInterface* iface)
 {
-  InfCommunicationObjectIface* iface;
-  iface = (InfCommunicationObjectIface*)g_iface;
-
   iface->received = infd_directory_communication_object_received;
 }
 
-  static void
-infd_directory_browser_init(gpointer g_iface,
-    gpointer iface_data)
+static void
+infd_directory_browser_iface_init(InfBrowserInterface* iface)
 {
-  InfBrowserIface* iface;
-  iface = (InfBrowserIface*)g_iface;
-
   iface->error = NULL;
   iface->node_added = NULL;
   iface->node_removed = NULL;
@@ -10597,61 +10585,6 @@ infd_directory_browser_init(gpointer g_iface,
   iface->has_acl = infd_directory_browser_has_acl;
   iface->get_acl = infd_directory_browser_get_acl;
   iface->set_acl = infd_directory_browser_set_acl;
-}
-
-GType
-infd_directory_get_type(void)
-{
-  static GType directory_type = 0;
-
-  if(!directory_type)
-  {
-    static const GTypeInfo directory_type_info = {
-      sizeof(InfdDirectoryClass),  /* class_size */
-      NULL,                        /* base_init */
-      NULL,                        /* base_finalize */
-      infd_directory_class_init,   /* class_init */
-      NULL,                        /* class_finalize */
-      NULL,                        /* class_data */
-      sizeof(InfdDirectory),       /* instance_size */
-      0,                           /* n_preallocs */
-      infd_directory_init,         /* instance_init */
-      NULL                         /* value_table */
-    };
-
-    static const GInterfaceInfo communication_object_info = {
-      infd_directory_communication_object_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo browser_info = {
-      infd_directory_browser_init,
-      NULL,
-      NULL
-    };
-
-    directory_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdDirectory",
-      &directory_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      directory_type,
-      INF_COMMUNICATION_TYPE_OBJECT,
-      &communication_object_info
-    );
-
-    g_type_add_interface_static(
-      directory_type,
-      INF_TYPE_BROWSER,
-      &browser_info
-    );
-  }
-
-  return directory_type;
 }
 
 /*

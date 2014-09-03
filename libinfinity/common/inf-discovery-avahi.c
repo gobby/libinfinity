@@ -140,8 +140,14 @@ enum {
 
 #define INF_DISCOVERY_AVAHI_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_DISCOVERY_AVAHI, InfDiscoveryAvahiPrivate))
 
-static GObjectClass* parent_class;
 static GQuark inf_discovery_avahi_error_quark;
+
+static void inf_discovery_avahi_discovery_iface_init(InfDiscoveryInterface* iface);
+static void inf_discovery_avahi_local_publisher_iface_init(InfLocalPublisherInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfDiscoveryAvahi, inf_discovery_avahi, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfDiscoveryAvahi)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_DISCOVERY, inf_discovery_avahi_discovery_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_LOCAL_PUBLISHER, inf_discovery_avahi_local_publisher_iface_init))
 
 /*
  * Destroy notification callbacks
@@ -1088,13 +1094,9 @@ inf_discovery_avahi_timeout_free(AvahiTimeout* timeout)
  */
 
 static void
-inf_discovery_avahi_init(GTypeInstance* instance,
-                         gpointer g_class)
+inf_discovery_avahi_init(InfDiscoveryAvahi* avahi)
 {
-  InfDiscoveryAvahi* avahi;
   InfDiscoveryAvahiPrivate* priv;
-
-  avahi = INF_DISCOVERY_AVAHI(instance);
   priv = INF_DISCOVERY_AVAHI_PRIVATE(avahi);
   
   priv->poll.userdata = avahi;
@@ -1132,7 +1134,7 @@ inf_discovery_avahi_constructor(GType type,
   GObject* object;
   InfDiscoveryAvahiPrivate* priv;
   
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_discovery_avahi_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -1195,7 +1197,7 @@ inf_discovery_avahi_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_discovery_avahi_parent_class)->dispose(object);
 }
 
 static void
@@ -1209,7 +1211,7 @@ inf_discovery_avahi_finalize(GObject* object)
 
   g_free(priv->sasl_mechanisms);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_discovery_avahi_parent_class)->finalize(object);
 }
 
 static void
@@ -1510,17 +1512,10 @@ inf_discovery_avahi_unpublish(InfLocalPublisher* publisher,
  */
 
 static void
-inf_discovery_avahi_class_init(gpointer g_class,
-                               gpointer class_data)
+inf_discovery_avahi_class_init(InfDiscoveryAvahiClass* avahi_class)
 {
   GObjectClass* object_class;
-  InfDiscoveryAvahiClass* avahi_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  avahi_class = INF_DISCOVERY_AVAHI_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfDiscoveryAvahiPrivate));
+  object_class = G_OBJECT_CLASS(avahi_class);
 
   object_class->constructor = inf_discovery_avahi_constructor;
   object_class->dispose = inf_discovery_avahi_dispose;
@@ -1607,12 +1602,8 @@ inf_discovery_avahi_class_init(gpointer g_class,
 }
 
 static void
-inf_discovery_avahi_discovery_init(gpointer g_iface,
-                                   gpointer iface_data)
+inf_discovery_avahi_discovery_iface_init(InfDiscoveryInterface* iface)
 {
-  InfDiscoveryIface* iface;
-  iface = (InfDiscoveryIface*)g_iface;
-
   iface->discover = inf_discovery_avahi_discover;
   iface->get_discovered = inf_discovery_avahi_get_discovered;
   iface->resolve = inf_discovery_avahi_resolve;
@@ -1623,69 +1614,11 @@ inf_discovery_avahi_discovery_init(gpointer g_iface,
 }
 
 static void
-inf_discovery_avahi_local_publisher_init(gpointer g_iface,
-                                         gpointer iface_data)
+inf_discovery_avahi_local_publisher_iface_init(
+  InfLocalPublisherInterface* iface)
 {
-  InfLocalPublisherIface* iface;
-  iface = (InfLocalPublisherIface*)g_iface;
-
   iface->publish = inf_discovery_avahi_publish;
   iface->unpublish = inf_discovery_avahi_unpublish;
-}
-
-GType
-inf_discovery_avahi_get_type(void)
-{
-  static GType discovery_avahi_type = 0;
-
-  if(!discovery_avahi_type)
-  {
-    static const GTypeInfo discovery_avahi_type_info = {
-      sizeof(InfDiscoveryAvahiClass),  /* class_size */
-      NULL,                            /* base_init */
-      NULL,                            /* base_finalize */
-      inf_discovery_avahi_class_init,  /* class_init */
-      NULL,                            /* class_finalize */
-      NULL,                            /* class_data */
-      sizeof(InfDiscoveryAvahi),       /* instance_size */
-      0,                               /* n_preallocs */
-      inf_discovery_avahi_init,        /* instance_init */
-      NULL                             /* value_table */
-    };
-
-    static const GInterfaceInfo discovery_info = {
-      inf_discovery_avahi_discovery_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo local_publisher_info = {
-      inf_discovery_avahi_local_publisher_init,
-      NULL,
-      NULL
-    };
-
-    discovery_avahi_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfDiscoveryAvahi",
-      &discovery_avahi_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      discovery_avahi_type,
-      INF_TYPE_DISCOVERY,
-      &discovery_info
-    );
-
-    g_type_add_interface_static(
-      discovery_avahi_type,
-      INF_TYPE_LOCAL_PUBLISHER,
-      &local_publisher_info
-    );
-  }
-
-  return discovery_avahi_type;
 }
 
 /*

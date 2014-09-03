@@ -29,14 +29,14 @@ G_BEGIN_DECLS
 #define INFD_TYPE_STORAGE                 (infd_storage_get_type())
 #define INFD_STORAGE(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFD_TYPE_STORAGE, InfdStorage))
 #define INFD_IS_STORAGE(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFD_TYPE_STORAGE))
-#define INFD_STORAGE_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_STORAGE, InfdStorageIface))
+#define INFD_STORAGE_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_STORAGE, InfdStorageInterface))
 
 #define INFD_TYPE_STORAGE_NODE_TYPE       (infd_storage_node_type_get_type())
 #define INFD_TYPE_STORAGE_NODE            (infd_storage_node_get_type())
 #define INFD_TYPE_STORAGE_ACL             (infd_storage_acl_get_type())
 
 typedef struct _InfdStorage InfdStorage;
-typedef struct _InfdStorageIface InfdStorageIface;
+typedef struct _InfdStorageInterface InfdStorageInterface;
 
 typedef enum _InfdStorageNodeType {
   INFD_STORAGE_NODE_SUBDIRECTORY,
@@ -58,7 +58,7 @@ struct _InfdStorageAcl {
   InfAclMask perms;  
 };
 
-struct _InfdStorageIface {
+struct _InfdStorageInterface {
   GTypeInterface parent;
 
   /* All these calls are supposed to be synchronous, e.g. completly perform

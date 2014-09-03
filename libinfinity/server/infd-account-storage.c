@@ -41,7 +41,7 @@
  * #InfdDirectory takes advantage of it. The only required operation is to be
  * able to look up an account name by its ID, and the reverse lookup, i.e.
  * find all accounts with a given name. The
- * #InfdAccountStorageIface.get_support() function returns a bitmask of the
+ * #InfdAccountStorageInterface.get_support() function returns a bitmask of the
  * supported operations.
  *
  * Implementations of this interface can couple the available accounts to
@@ -53,8 +53,52 @@
 
 #include <libinfinity/server/infd-account-storage.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-define-enum.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+
+static const GFlagsValue infd_account_storage_support_values[] = {
+  {
+    INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION",
+    "notification"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_LIST_ACCOUNTS,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_LIST_ACCOUNTS",
+    "list-accounts"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_ADD_ACCOUNT,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_ADD_ACCOUNT",
+    "add-account"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_REMOVE_ACCOUNT,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_REMOVE_ACCOUNT",
+    "remove-account"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_LOGIN,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_LOGIN",
+    "certificate-login"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_LOGIN,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_LOGIN",
+    "password-login"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_CHANGE,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_CHANGE",
+    "certificate-change"
+  }, {
+    INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_CHANGE,
+    "INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_CHANGE",
+    "password-change"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+INF_DEFINE_FLAGS_TYPE(InfdAccountStorageSupport, infd_account_storage_support, infd_account_storage_support_values)
+G_DEFINE_INTERFACE(InfdAccountStorage, infd_account_storage, G_TYPE_OBJECT)
 
 enum {
   ACCOUNT_ADDED,
@@ -66,149 +110,53 @@ enum {
 static guint account_storage_signals[LAST_SIGNAL];
 
 static void
-infd_account_storage_base_init(gpointer g_class)
+infd_account_storage_default_init(InfdAccountStorageInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  /**
+   * InfdAccountStorage::account-added:
+   * @storage: The #InfdAccountStorage emitting the signal.
+   * @info: The #InfAclAccount containing the account ID and account name
+   * of the added account.
+   *
+   * This signal is emitted whenever an account has been added to the
+   * account storage. However, the signal is only emitted if the storage
+   * implementations supports the %INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION
+   * support flag.
+   */
+  account_storage_signals[ACCOUNT_ADDED] = g_signal_new(
+    "account-added",
+    INFD_TYPE_ACCOUNT_STORAGE,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdAccountStorageInterface, account_added),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
 
-  if(!initialized)
-  {
-    /**
-     * InfdAccountStorage::account-added:
-     * @storage: The #InfdAccountStorage emitting the signal.
-     * @info: The #InfAclAccount containing the account ID and account name
-     * of the added account.
-     *
-     * This signal is emitted whenever an account has been added to the
-     * account storage. However, the signal is only emitted if the storage
-     * implementations supports the %INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION
-     * support flag.
-     */
-    account_storage_signals[ACCOUNT_ADDED] = g_signal_new(
-      "account-added",
-      INFD_TYPE_ACCOUNT_STORAGE,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfdAccountStorageIface, account_added),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED,
-      G_TYPE_NONE,
-      1,
-      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
-    );
-
-    /**
-     * InfdAccountStorage::account-removed:
-     * @storage: The #InfdAccountStorage emitting the signal.
-     * @info: The #InfAclAccount containing the account ID and account name
-     * of the removed account.
-     * 
-     * This signal is emitted whenever an account has been permanently removed
-     * from the storage. However, the signal is only emitted if the storage
-     * implementations supports the %INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION
-     * support flag.
-     */
-    account_storage_signals[ACCOUNT_REMOVED] = g_signal_new(
-      "account-removed",
-      INFD_TYPE_ACCOUNT_STORAGE,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfdAccountStorageIface, account_removed),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED,
-      G_TYPE_NONE,
-      1,
-      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-infd_account_storage_support_get_type(void)
-{
-  static GType account_storage_support_type = 0;
-
-  if(!account_storage_support_type)
-  {
-    static const GFlagsValue account_storage_support_values[] = {
-      {
-        INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION",
-        "notification"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_LIST_ACCOUNTS,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_LIST_ACCOUNTS",
-        "list-accounts"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_ADD_ACCOUNT,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_ADD_ACCOUNT",
-        "add-account"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_REMOVE_ACCOUNT,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_REMOVE_ACCOUNT",
-        "remove-account"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_LOGIN,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_LOGIN",
-        "certificate-login"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_LOGIN,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_LOGIN",
-        "password-login"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_CHANGE,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_CERTIFICATE_CHANGE",
-        "certificate-change"
-      }, {
-        INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_CHANGE,
-        "INFD_ACCOUNT_STORAGE_SUPPORT_PASSWORD_CHANGE",
-        "password-change"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    account_storage_support_type = g_flags_register_static(
-      "InfdAccountStorageSupport",
-      account_storage_support_values
-    );
-  }
-
-  return account_storage_support_type;
-}
-
-GType
-infd_account_storage_get_type(void)
-{
-  static GType account_storage_type = 0;
-
-  if(!account_storage_type)
-  {
-    static const GTypeInfo account_storage_info = {
-      sizeof(InfdAccountStorageIface),  /* class_size */
-      infd_account_storage_base_init,   /* base_init */
-      NULL,                             /* base_finalize */
-      NULL,                             /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      0,                                /* instance_size */
-      0,                                /* n_preallocs */
-      NULL,                             /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    account_storage_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfdAccountStorage",
-      &account_storage_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(account_storage_type, G_TYPE_OBJECT);
-  }
-
-  return account_storage_type;
+  /**
+   * InfdAccountStorage::account-removed:
+   * @storage: The #InfdAccountStorage emitting the signal.
+   * @info: The #InfAclAccount containing the account ID and account name
+   * of the removed account.
+   * 
+   * This signal is emitted whenever an account has been permanently removed
+   * from the storage. However, the signal is only emitted if the storage
+   * implementations supports the %INFD_ACCOUNT_STORAGE_SUPPORT_NOTIFICATION
+   * support flag.
+   */
+  account_storage_signals[ACCOUNT_REMOVED] = g_signal_new(
+    "account-removed",
+    INFD_TYPE_ACCOUNT_STORAGE,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfdAccountStorageInterface, account_removed),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
+  );
 }
 
 /**
@@ -224,7 +172,7 @@ infd_account_storage_get_type(void)
 InfdAccountStorageSupport
 infd_account_storage_get_support(InfdAccountStorage* storage)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), 0);
 
@@ -283,7 +231,7 @@ infd_account_storage_lookup_accounts(InfdAccountStorage* storage,
                                      guint n_accounts,
                                      GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), NULL);
   g_return_val_if_fail(accounts != NULL, NULL);
@@ -325,7 +273,7 @@ infd_account_storage_lookup_accounts_by_name(InfdAccountStorage* storage,
                                              guint* n_accounts,
                                              GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), NULL);
   g_return_val_if_fail(name != NULL, NULL);
@@ -365,7 +313,7 @@ infd_account_storage_list_accounts(InfdAccountStorage* storage,
                                    guint* n_accounts,
                                    GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), NULL);
   g_return_val_if_fail(n_accounts != NULL, NULL);
@@ -418,7 +366,7 @@ infd_account_storage_add_account(InfdAccountStorage* storage,
                                  const gchar* password,
                                  GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), 0);
   g_return_val_if_fail(name != NULL, 0);
@@ -460,7 +408,7 @@ infd_account_storage_remove_account(InfdAccountStorage* storage,
                                     InfAclAccountId account,
                                     GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), FALSE);
   g_return_val_if_fail(account != 0, FALSE);
@@ -505,7 +453,7 @@ infd_account_storage_login_by_certificate(InfdAccountStorage* storage,
                                           gnutls_x509_crt_t cert,
                                           GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), 0);
   g_return_val_if_fail(cert != 0, 0);
@@ -556,7 +504,7 @@ infd_account_storage_login_by_password(InfdAccountStorage* storage,
                                        const gchar* password,
                                        GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), 0);
   g_return_val_if_fail(username != 0, 0);
@@ -607,7 +555,7 @@ infd_account_storage_set_certificate(InfdAccountStorage* storage,
                                      guint n_certs,
                                      GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), FALSE);
   g_return_val_if_fail(account != 0, FALSE);
@@ -655,7 +603,7 @@ infd_account_storage_set_password(InfdAccountStorage* storage,
                                   const gchar* password,
                                   GError** error)
 {
-  InfdAccountStorageIface* iface;
+  InfdAccountStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_ACCOUNT_STORAGE(storage), FALSE);
   g_return_val_if_fail(account != 0, FALSE);

@@ -73,7 +73,12 @@ enum {
 
 #define INF_TEXT_FIXLINE_BUFFER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_FIXLINE_BUFFER, InfTextFixlineBufferPrivate))
 
-static GObjectClass* parent_class;
+static void inf_text_fixline_buffer_buffer_iface_init(InfBufferInterface* iface);
+static void inf_text_fixline_buffer_text_buffer_iface_init(InfTextBufferInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfTextFixlineBuffer, inf_text_fixline_buffer, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextFixlineBuffer)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_BUFFER, inf_text_fixline_buffer_buffer_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TEXT_TYPE_BUFFER, inf_text_fixline_buffer_text_buffer_iface_init))
 
 /* Checks whether chunk consists only of newline characters */
 static gboolean
@@ -823,13 +828,9 @@ inf_text_fixline_buffer_text_erased_cb(InfTextBuffer* buffer,
 }
 
 static void
-inf_text_fixline_buffer_init(GTypeInstance* instance,
-                             gpointer g_class)
+inf_text_fixline_buffer_init(InfTextFixlineBuffer* fixline_buffer)
 {
-  InfTextFixlineBuffer* fixline_buffer;
   InfTextFixlineBufferPrivate* priv;
-
-  fixline_buffer = INF_TEXT_FIXLINE_BUFFER(instance);
   priv = INF_TEXT_FIXLINE_BUFFER_PRIVATE(fixline_buffer);
 
   priv->io = NULL;
@@ -892,7 +893,7 @@ inf_text_fixline_buffer_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_fixline_buffer_parent_class)->dispose(object);
 }
 
 static void
@@ -906,7 +907,7 @@ inf_text_fixline_buffer_finalize(GObject* object)
 
   g_free(priv->keep);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_fixline_buffer_parent_class)->finalize(object);
 }
 
 static void
@@ -1652,14 +1653,11 @@ inf_text_fixline_buffer_buffer_iter_get_author(InfTextBuffer* buffer,
 }
 
 static void
-inf_text_fixline_buffer_class_init(gpointer g_class,
-                                   gpointer class_data)
+inf_text_fixline_buffer_class_init(
+  InfTextFixlineBufferClass* fixline_buffer_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextFixlineBufferPrivate));
+  object_class = G_OBJECT_CLASS(fixline_buffer_class);
 
   object_class->constructed = inf_text_fixline_buffer_constructed;
   object_class->dispose = inf_text_fixline_buffer_dispose;
@@ -1709,23 +1707,15 @@ inf_text_fixline_buffer_class_init(gpointer g_class,
 }
 
 static void
-inf_text_fixline_buffer_buffer_init(gpointer g_iface,
-                                    gpointer iface_data)
+inf_text_fixline_buffer_buffer_iface_init(InfBufferInterface* iface)
 {
-  InfBufferIface* iface;
-  iface = (InfBufferIface*)g_iface;
-
   iface->get_modified = inf_text_fixline_buffer_buffer_get_modified;
   iface->set_modified = inf_text_fixline_buffer_buffer_set_modified;
 }
 
 static void
-inf_text_fixline_buffer_text_buffer_init(gpointer g_iface,
-                                         gpointer iface_data)
+inf_text_fixline_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
 {
-  InfTextBufferIface* iface;
-  iface = (InfTextBufferIface*)g_iface;
-
   iface->get_encoding = inf_text_fixline_buffer_buffer_get_encoding;
   iface->get_length = inf_text_fixline_buffer_get_length;
   iface->get_slice = inf_text_fixline_buffer_buffer_get_slice;
@@ -1743,61 +1733,6 @@ inf_text_fixline_buffer_text_buffer_init(gpointer g_iface,
   iface->iter_get_author = inf_text_fixline_buffer_buffer_iter_get_author;
   iface->text_inserted = NULL;
   iface->text_erased = NULL;
-}
-
-GType
-inf_text_fixline_buffer_get_type(void)
-{
-  static GType fixline_buffer_type = 0;
-
-  if(!fixline_buffer_type)
-  {
-    static const GTypeInfo fixline_buffer_type_info = {
-      sizeof(InfTextFixlineBufferClass),  /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_text_fixline_buffer_class_init, /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      sizeof(InfTextFixlineBuffer),       /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_text_fixline_buffer_init,       /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    static const GInterfaceInfo buffer_info = {
-      inf_text_fixline_buffer_buffer_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo text_buffer_info = {
-      inf_text_fixline_buffer_text_buffer_init,
-      NULL,
-      NULL
-    };
-
-    fixline_buffer_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextFixlineBuffer",
-      &fixline_buffer_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      fixline_buffer_type,
-      INF_TYPE_BUFFER,
-      &buffer_info
-    );
-
-    g_type_add_interface_static(
-      fixline_buffer_type,
-      INF_TEXT_TYPE_BUFFER,
-      &text_buffer_info
-    );
-  }
-
-  return fixline_buffer_type;
 }
 
 /**

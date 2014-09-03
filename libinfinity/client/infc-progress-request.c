@@ -49,16 +49,13 @@ enum {
 
 #define INFC_PROGRESS_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_PROGRESS_REQUEST, InfcProgressRequestPrivate))
 
-static InfcRequestClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfcProgressRequest, infc_progress_request, INFC_TYPE_REQUEST,
+  G_ADD_PRIVATE(InfcProgressRequest))
 
 static void
-infc_progress_request_init(GTypeInstance* instance,
-                           gpointer g_class)
+infc_progress_request_init(InfcProgressRequest* request)
 {
-  InfcProgressRequest* request;
   InfcProgressRequestPrivate* priv;
-
-  request = INFC_PROGRESS_REQUEST(instance);
   priv = INFC_PROGRESS_REQUEST_PRIVATE(request);
 
   priv->current = 0;
@@ -76,8 +73,7 @@ infc_progress_request_finalize(GObject* object)
   request = INFC_PROGRESS_REQUEST(object);
   priv = INFC_PROGRESS_REQUEST_PRIVATE(request);
 
-  if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
-    G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infc_progress_request_parent_class)->finalize(object);
 }
 
 static void
@@ -140,17 +136,10 @@ infc_progress_request_get_property(GObject* object,
 }
 
 static void
-infc_progress_request_class_init(gpointer g_class,
-                                 gpointer class_data)
+infc_progress_request_class_init(InfcProgressRequestClass* request_class)
 {
   GObjectClass* object_class;
-  InfcProgressRequestClass* request_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  request_class = INFC_PROGRESS_REQUEST_CLASS(g_class);
-
-  parent_class = INFC_REQUEST_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfcProgressRequestPrivate));
+  object_class = G_OBJECT_CLASS(request_class);
 
   object_class->finalize = infc_progress_request_finalize;
   object_class->set_property = infc_progress_request_set_property;
@@ -185,37 +174,6 @@ infc_progress_request_class_init(gpointer g_class,
   );
 
   g_object_class_override_property(object_class, PROP_PROGRESS, "progress");
-}
-
-GType
-infc_progress_request_get_type(void)
-{
-  static GType progress_request_type = 0;
-
-  if(!progress_request_type)
-  {
-    static const GTypeInfo progress_request_type_info = {
-      sizeof(InfcProgressRequestClass),  /* class_size */
-      NULL,                              /* base_init */
-      NULL,                              /* base_finalize */
-      infc_progress_request_class_init,  /* class_init */
-      NULL,                              /* class_finalize */
-      NULL,                              /* class_data */
-      sizeof(InfcProgressRequest),       /* instance_size */
-      0,                                 /* n_preallocs */
-      infc_progress_request_init,        /* instance_init */
-      NULL                               /* value_table */
-    };
-
-    progress_request_type = g_type_register_static(
-      INFC_TYPE_REQUEST,
-      "InfcProgressRequest",
-      &progress_request_type_info,
-      0
-    );
-  }
-
-  return progress_request_type;
 }
 
 /**

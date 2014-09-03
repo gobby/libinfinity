@@ -49,16 +49,13 @@ enum {
 
 #define INFD_PROGRESS_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_PROGRESS_REQUEST, InfdProgressRequestPrivate))
 
-static InfdRequestClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfdProgressRequest, infd_progress_request, INFD_TYPE_REQUEST,
+  G_ADD_PRIVATE(InfdProgressRequest))
 
 static void
-infd_progress_request_init(GTypeInstance* instance,
-                           gpointer g_class)
+infd_progress_request_init(InfdProgressRequest* request)
 {
-  InfdProgressRequest* request;
   InfdProgressRequestPrivate* priv;
-
-  request = INFD_PROGRESS_REQUEST(instance);
   priv = INFD_PROGRESS_REQUEST_PRIVATE(request);
 
   priv->current = 0;
@@ -76,8 +73,7 @@ infd_progress_request_finalize(GObject* object)
   request = INFD_PROGRESS_REQUEST(object);
   priv = INFD_PROGRESS_REQUEST_PRIVATE(request);
 
-  if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
-    G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_progress_request_parent_class)->finalize(object);
 }
 
 static void
@@ -140,17 +136,10 @@ infd_progress_request_get_property(GObject* object,
 }
 
 static void
-infd_progress_request_class_init(gpointer g_class,
-                                gpointer class_data)
+infd_progress_request_class_init(InfdProgressRequestClass* request_class)
 {
   GObjectClass* object_class;
-  InfdProgressRequestClass* request_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  request_class = INFD_PROGRESS_REQUEST_CLASS(g_class);
-
-  parent_class = INFD_REQUEST_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdProgressRequestPrivate));
+  object_class = G_OBJECT_CLASS(request_class);
 
   object_class->finalize = infd_progress_request_finalize;
   object_class->set_property = infd_progress_request_set_property;
@@ -185,37 +174,6 @@ infd_progress_request_class_init(gpointer g_class,
   );
 
   g_object_class_override_property(object_class, PROP_PROGRESS, "progress");
-}
-
-GType
-infd_progress_request_get_type(void)
-{
-  static GType progress_request_type = 0;
-
-  if(!progress_request_type)
-  {
-    static const GTypeInfo progress_request_type_info = {
-      sizeof(InfdProgressRequestClass),  /* class_size */
-      NULL,                              /* base_init */
-      NULL,                              /* base_finalize */
-      infd_progress_request_class_init,  /* class_init */
-      NULL,                              /* class_finalize */
-      NULL,                              /* class_data */
-      sizeof(InfdProgressRequest),       /* instance_size */
-      0,                                 /* n_preallocs */
-      infd_progress_request_init,        /* instance_init */
-      NULL                               /* value_table */
-    };
-
-    progress_request_type = g_type_register_static(
-      INFD_TYPE_REQUEST,
-      "InfdProgressRequest",
-      &progress_request_type_info,
-      0
-    );
-  }
-
-  return progress_request_type;
 }
 
 /**

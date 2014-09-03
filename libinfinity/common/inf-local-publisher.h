@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_LOCAL_PUBLISHER                 (inf_local_publisher_get_type())
 #define INF_LOCAL_PUBLISHER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_LOCAL_PUBLISHER, InfLocalPublisher))
 #define INF_IS_LOCAL_PUBLISHER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_LOCAL_PUBLISHER))
-#define INF_LOCAL_PUBLISHER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_LOCAL_PUBLISHER, InfLocalPublisherIface))
+#define INF_LOCAL_PUBLISHER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_LOCAL_PUBLISHER, InfLocalPublisherInterface))
 
 /**
  * InfLocalPublisher:
@@ -38,7 +38,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfLocalPublisher InfLocalPublisher;
-typedef struct _InfLocalPublisherIface InfLocalPublisherIface;
+typedef struct _InfLocalPublisherInterface InfLocalPublisherInterface;
 
 /**
  * InfLocalPublisherItem:
@@ -49,7 +49,7 @@ typedef struct _InfLocalPublisherIface InfLocalPublisherIface;
 typedef struct _InfLocalPublisherItem InfLocalPublisherItem;
 
 /**
- * InfLocalPublisherIface:
+ * InfLocalPublisherInterface:
  * @publish: Virtual function to announce a service of the given type with
  * the given name on the given port. The returned #InfLocalPublisherItem is
  * valid as long as the service is published and the #InfLocalPublisher is
@@ -59,7 +59,7 @@ typedef struct _InfLocalPublisherItem InfLocalPublisherItem;
  *
  * Virtual functions for #InfLocalPublisher.
  */
-struct _InfLocalPublisherIface {
+struct _InfLocalPublisherInterface {
   /*< private >*/
   GTypeInterface parent;
 

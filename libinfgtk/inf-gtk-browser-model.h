@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 #define INF_GTK_TYPE_BROWSER_MODEL                 (inf_gtk_browser_model_get_type())
 #define INF_GTK_BROWSER_MODEL(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModel))
 #define INF_GTK_IS_BROWSER_MODEL(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_GTK_TYPE_BROWSER_MODEL))
-#define INF_GTK_BROWSER_MODEL_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModelIface))
+#define INF_GTK_BROWSER_MODEL_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_GTK_TYPE_BROWSER_MODEL, InfGtkBrowserModelInterface))
 
 #define INF_GTK_TYPE_BROWSER_MODEL_STATUS          (inf_gtk_browser_model_status_get_type())
 
@@ -43,7 +43,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfGtkBrowserModel InfGtkBrowserModel;
-typedef struct _InfGtkBrowserModelIface InfGtkBrowserModelIface;
+typedef struct _InfGtkBrowserModelInterface InfGtkBrowserModelInterface;
 
 /**
  * InfGtkBrowserModelStatus:
@@ -112,7 +112,7 @@ typedef enum _InfGtkBrowserModelColumn {
 } InfGtkBrowserModelColumn;
 
 /**
- * InfGtkBrowserModelIface:
+ * InfGtkBrowserModelInterface:
  * @set_browser: Default signal handler of the
  * #InfGtkBrowserModel::set-browser signal.
  * @resolve: Virtual function for resolving a discovered infinote service.
@@ -122,7 +122,7 @@ typedef enum _InfGtkBrowserModelColumn {
  * This structure contains virtual functions and signal handlers of the
  * #InfGtkBrowserModel interface.
  */
-struct _InfGtkBrowserModelIface {
+struct _InfGtkBrowserModelInterface {
   /*< private >*/
   GTypeInterface parent;
 

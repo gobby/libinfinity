@@ -17,8 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/adopted/inf-adopted-request.h>
-
 /**
  * SECTION:inf-adopted-request
  * @title: InfAdoptedRequest
@@ -36,6 +34,29 @@
  * also contains the state in which the operation can be applied to the
  * buffer and the user ID of the #InfAdoptedUser having generated the request.
  */
+
+#include <libinfinity/adopted/inf-adopted-request.h>
+#include <libinfinity/inf-define-enum.h>
+
+static const GEnumValue inf_adopted_request_type_values[] = {
+  {
+    INF_ADOPTED_REQUEST_DO,
+    "INF_ADOPTED_REQUEST_DO",
+    "do",
+  }, {
+    INF_ADOPTED_REQUEST_UNDO,
+    "INF_ADOPTED_REQUEST_UNDO",
+    "undo",
+  }, {
+    INF_ADOPTED_REQUEST_REDO,
+    "INF_ADOPTED_REQUEST_REDO",
+    "redo"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfAdoptedRequestPrivate InfAdoptedRequestPrivate;
 struct _InfAdoptedRequestPrivate {
@@ -64,16 +85,14 @@ enum {
 #define INF_ADOPTED_REQUEST_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST, InfAdoptedRequestPrivate))
 #define INF_ADOPTED_REQUEST_PRIVATE(obj)     ((InfAdoptedRequestPrivate*)(obj)->priv)
 
-static GObjectClass* parent_class;
+INF_DEFINE_ENUM_TYPE(InfAdoptedRequestType, inf_adopted_request_type, inf_adopted_request_type_values)
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedRequest, inf_adopted_request, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedRequest))
 
 static void
-inf_adopted_request_init(GTypeInstance* instance,
-                         gpointer g_class)
+inf_adopted_request_init(InfAdoptedRequest* request)
 {
-  InfAdoptedRequest* request;
   InfAdoptedRequestPrivate* priv;
-
-  request = INF_ADOPTED_REQUEST(instance);
   request->priv = INF_ADOPTED_REQUEST_GET_PRIVATE(request);
   priv = INF_ADOPTED_REQUEST_PRIVATE(request);
 
@@ -101,7 +120,7 @@ inf_adopted_request_dispose(GObject* object)
     priv->operation = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_request_parent_class)->dispose(object);
 }
 
 static void
@@ -116,7 +135,7 @@ inf_adopted_request_finalize(GObject* object)
  if(priv->vector != NULL)
   inf_adopted_state_vector_free(priv->vector);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_request_parent_class)->finalize(object);
 }
 
 static void
@@ -201,14 +220,10 @@ inf_adopted_request_get_property(GObject* object,
 }
 
 static void
-inf_adopted_request_class_init(gpointer g_class,
-                               gpointer class_data)
+inf_adopted_request_class_init(InfAdoptedRequestClass* request_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedRequestPrivate));
+  object_class = G_OBJECT_CLASS(request_class);
 
   object_class->dispose = inf_adopted_request_dispose;
   object_class->finalize = inf_adopted_request_finalize;
@@ -293,73 +308,6 @@ inf_adopted_request_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_adopted_request_type_get_type(void)
-{
-  static GType request_type_type = 0;
-
-  if(!request_type_type)
-  {
-    static const GEnumValue request_type_type_values[] = {
-      {
-        INF_ADOPTED_REQUEST_DO,
-        "INF_ADOPTED_REQUEST_DO",
-        "do",
-      }, {
-        INF_ADOPTED_REQUEST_UNDO,
-        "INF_ADOPTED_REQUEST_UNDO",
-        "undo",
-      }, {
-        INF_ADOPTED_REQUEST_REDO,
-        "INF_ADOPTED_REQUEST_REDO",
-        "redo"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    request_type_type = g_enum_register_static(
-      "InfAdoptedRequestType",
-      request_type_type_values
-    );
-  }
-
-  return request_type_type;
-}
-
-GType
-inf_adopted_request_get_type(void)
-{
-  static GType request_type = 0;
-
-  if(!request_type)
-  {
-    static const GTypeInfo request_type_info = {
-      sizeof(InfAdoptedRequestClass),   /* class_size */
-      NULL,                             /* base_init */
-      NULL,                             /* base_finalize */
-      inf_adopted_request_class_init,   /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      sizeof(InfAdoptedRequest),        /* instance_size */
-      0,                                /* n_preallocs */
-      inf_adopted_request_init,         /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    request_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedRequest",
-      &request_type_info,
-      0
-    );
-  }
-
-  return request_type;
 }
 
 /**

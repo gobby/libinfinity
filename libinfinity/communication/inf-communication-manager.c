@@ -57,7 +57,8 @@ struct _InfCommunicationManagerPrivate {
 
 #define INF_COMMUNICATION_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_MANAGER, InfCommunicationManagerPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfCommunicationManager, inf_communication_manager, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfCommunicationManager))
 
 static void
 inf_communication_manager_joined_key_free(gpointer key_)
@@ -175,13 +176,9 @@ inf_communication_manager_joined_group_unrefed(gpointer data,
  */
 
 static void
-inf_communication_manager_init(GTypeInstance* instance,
-                               gpointer g_class)
+inf_communication_manager_init(InfCommunicationManager* manager)
 {
-  InfCommunicationManager* manager;
   InfCommunicationManagerPrivate* priv;
-
-  manager = INF_COMMUNICATION_MANAGER(instance);
   priv = INF_COMMUNICATION_MANAGER_PRIVATE(manager);
 
   priv->registry = g_object_new(INF_COMMUNICATION_TYPE_REGISTRY, NULL);
@@ -235,60 +232,18 @@ inf_communication_manager_dispose(GObject* object)
     priv->registry = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_communication_manager_parent_class)->dispose(object);
 }
 
-/*
- * GType registration.
- */
-
 static void
-inf_communication_manager_class_init(gpointer g_class,
-                                     gpointer class_data)
+inf_communication_manager_class_init(
+  InfCommunicationManagerClass* manager_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfCommunicationManagerPrivate));
+  object_class = G_OBJECT_CLASS(manager_class);
 
   object_class->dispose = inf_communication_manager_dispose;
 }
-
-GType
-inf_communication_manager_get_type(void)
-{
-  static GType manager_type = 0;
-
-  if(!manager_type)
-  {
-    static const GTypeInfo manager_type_info = {
-      sizeof(InfCommunicationManagerClass),  /* class_size */
-      NULL,                                  /* base_init */
-      NULL,                                  /* base_finalize */
-      inf_communication_manager_class_init,  /* class_init */
-      NULL,                                  /* class_finalize */
-      NULL,                                  /* class_data */
-      sizeof(InfCommunicationManager),       /* instance_size */
-      0,                                     /* n_preallocs */
-      inf_communication_manager_init,        /* instance_init */
-      NULL                                   /* value_table */
-    };
-
-    manager_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfCommunicationManager",
-      &manager_type_info,
-      0
-    );
-  }
-
-  return manager_type;
-}
-
-/*
- * Public API.
- */
 
 /**
  * inf_communication_manager_new:

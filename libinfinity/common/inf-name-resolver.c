@@ -124,8 +124,10 @@ enum {
 
 #define INF_NAME_RESOLVER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_NAME_RESOLVER, InfNameResolverPrivate))
 
-static GObjectClass* parent_class;
 static guint name_resolver_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfNameResolver, inf_name_resolver, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfNameResolver))
 
 static void
 inf_name_resolver_result_nullify(InfNameResolverResult* result)
@@ -931,14 +933,10 @@ inf_name_resolver_backup_done_func(gpointer run_data,
 }
 
 static void
-inf_name_resolver_init(GTypeInstance* instance,
-                       gpointer g_class)
+inf_name_resolver_init(InfNameResolver* resolver)
 {
-  InfNameResolver* connection;
   InfNameResolverPrivate* priv;
-
-  connection = INF_NAME_RESOLVER(instance);
-  priv = INF_NAME_RESOLVER_PRIVATE(connection);
+  priv = INF_NAME_RESOLVER_PRIVATE(resolver);
 
   priv->io = NULL;
   priv->hostname = NULL;
@@ -953,11 +951,11 @@ inf_name_resolver_init(GTypeInstance* instance,
 static void
 inf_name_resolver_dispose(GObject* object)
 {
-  InfNameResolver* connection;
+  InfNameResolver* resolver;
   InfNameResolverPrivate* priv;
 
-  connection = INF_NAME_RESOLVER(object);
-  priv = INF_NAME_RESOLVER_PRIVATE(connection);
+  resolver = INF_NAME_RESOLVER(object);
+  priv = INF_NAME_RESOLVER_PRIVATE(resolver);
 
   if(priv->operation != NULL)
   {
@@ -971,17 +969,17 @@ inf_name_resolver_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_name_resolver_parent_class)->dispose(object);
 }
 
 static void
 inf_name_resolver_finalize(GObject* object)
 {
-  InfNameResolver* connection;
+  InfNameResolver* resolver;
   InfNameResolverPrivate* priv;
 
-  connection = INF_NAME_RESOLVER(object);
-  priv = INF_NAME_RESOLVER_PRIVATE(connection);
+  resolver = INF_NAME_RESOLVER(object);
+  priv = INF_NAME_RESOLVER_PRIVATE(resolver);
 
   inf_name_resolver_result_cleanup(&priv->result);
 
@@ -989,7 +987,7 @@ inf_name_resolver_finalize(GObject* object)
   g_free(priv->service);
   g_free(priv->srv);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_name_resolver_parent_class)->finalize(object);
 }
 
 static void
@@ -1069,17 +1067,10 @@ inf_name_resolver_get_property(GObject* object,
 }
 
 static void
-inf_name_resolver_class_init(gpointer g_class,
-                             gpointer class_data)
+inf_name_resolver_class_init(InfNameResolverClass* name_resolver_class)
 {
   GObjectClass* object_class;
-  InfNameResolverClass* name_resolver_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  name_resolver_class = INF_NAME_RESOLVER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfNameResolverPrivate));
+  object_class = G_OBJECT_CLASS(name_resolver_class);
 
   object_class->dispose = inf_name_resolver_dispose;
   object_class->finalize = inf_name_resolver_finalize;
@@ -1156,37 +1147,6 @@ inf_name_resolver_class_init(gpointer g_class,
     1,
     G_TYPE_POINTER /* GError */
   );
-}
-
-GType
-inf_name_resolver_get_type(void)
-{
-  static GType name_resolver_type = 0;
-
-  if(!name_resolver_type)
-  {
-    static const GTypeInfo name_resolver_type_info = {
-      sizeof(InfNameResolverClass),  /* class_size */
-      NULL,                          /* base_init */
-      NULL,                          /* base_finalize */
-      inf_name_resolver_class_init,  /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      sizeof(InfNameResolver),       /* instance_size */
-      0,                             /* n_preallocs */
-      inf_name_resolver_init,        /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    name_resolver_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfNameResolver",
-      &name_resolver_type_info,
-      0
-    );
-  }
-
-  return name_resolver_type;
 }
 
 /**

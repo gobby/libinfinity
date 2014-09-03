@@ -31,27 +31,12 @@
 
 #include <libinfinity/common/inf-certificate-credentials.h>
 
+G_DEFINE_BOXED_TYPE(InfCertificateCredentials, inf_certificate_credentials, inf_certificate_credentials_ref, inf_certificate_credentials_unref)
+
 struct _InfCertificateCredentials {
   guint ref_count;
   gnutls_certificate_credentials_t creds;
 };
-
-GType
-inf_certificate_credentials_get_type(void)
-{
-  static GType certificate_credentials_type = 0;
-
-  if(!certificate_credentials_type)
-  {
-    certificate_credentials_type = g_boxed_type_register_static(
-      "InfCertificateCredentials",
-      (GBoxedCopyFunc)inf_certificate_credentials_ref,
-      (GBoxedFreeFunc)inf_certificate_credentials_unref
-    );
-  }
-
-  return certificate_credentials_type;
-}
 
 /**
  * inf_certificate_credentials_new:

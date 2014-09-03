@@ -34,6 +34,8 @@
 
 #include <libinfinity/inf-marshal.h>
 
+G_DEFINE_INTERFACE(InfCommunicationMethod, inf_communication_method, G_TYPE_OBJECT)
+
 enum {
   ADD_MEMBER,
   REMOVE_MEMBER,
@@ -44,90 +46,47 @@ enum {
 static guint method_signals[LAST_SIGNAL];
 
 static void
-inf_communication_method_base_init(gpointer class)
+inf_communication_method_default_init(InfCommunicationMethodInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  /**
+   * InfCommunicationMethod::add-member:
+   * @method: The #InfCommunicationMethod emitting the signal.
+   * @connection: The #InfXmlConnection that was added.
+   *
+   * This signal is emitted whenever a new connection has been added to the
+   * group on the network this method handles.
+   */
+  method_signals[ADD_MEMBER] = g_signal_new(
+    "add-member",
+    INF_COMMUNICATION_TYPE_METHOD,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfCommunicationMethodInterface, add_member),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XML_CONNECTION
+  );
 
-  if(!initialized)
-  {
-    /**
-     * InfCommunicationMethod::add-member:
-     * @method: The #InfCommunicationMethod emitting the signal.
-     * @connection: The #InfXmlConnection that was added.
-     *
-     * This signal is emitted whenever a new connection has been added to the
-     * group on the network this method handles.
-     */
-    method_signals[ADD_MEMBER] = g_signal_new(
-      "add-member",
-      INF_COMMUNICATION_TYPE_METHOD,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfCommunicationMethodIface, add_member),
-      NULL, NULL,
-      inf_marshal_VOID__OBJECT,
-      G_TYPE_NONE,
-      1,
-      INF_TYPE_XML_CONNECTION
-    );
-
-    /**
-     * InfCommunicationMethod::remove-member:
-     * @method: The #InfCommunicationMethod emitting the signal.
-     * @connection: The #InfXmlConnection that was removed.
-     *
-     * This signal is emitted whenever a connection has been removed from the
-     * group on the network this method handles.
-     */
-    method_signals[REMOVE_MEMBER] = g_signal_new(
-      "remove-member",
-      INF_COMMUNICATION_TYPE_METHOD,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfCommunicationMethodIface, remove_member),
-      NULL, NULL,
-      inf_marshal_VOID__OBJECT,
-      G_TYPE_NONE,
-      1,
-      INF_TYPE_XML_CONNECTION
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_communication_method_get_type(void)
-{
-  static GType communication_method_type = 0;
-
-  if(!communication_method_type)
-  {
-    static const GTypeInfo communication_method_info = {
-      sizeof(InfCommunicationMethodIface),     /* class_size */
-      inf_communication_method_base_init,      /* base_init */
-      NULL,                                    /* base_finalize */
-      NULL,                                    /* class_init */
-      NULL,                                    /* class_finalize */
-      NULL,                                    /* class_data */
-      0,                                       /* instance_size */
-      0,                                       /* n_preallocs */
-      NULL,                                    /* instance_init */
-      NULL                                     /* value_table */
-    };
-
-    communication_method_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfCommunicationMethod",
-      &communication_method_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(
-      communication_method_type,
-      G_TYPE_OBJECT
-    );
-  }
-
-  return communication_method_type;
+  /**
+   * InfCommunicationMethod::remove-member:
+   * @method: The #InfCommunicationMethod emitting the signal.
+   * @connection: The #InfXmlConnection that was removed.
+   *
+   * This signal is emitted whenever a connection has been removed from the
+   * group on the network this method handles.
+   */
+  method_signals[REMOVE_MEMBER] = g_signal_new(
+    "remove-member",
+    INF_COMMUNICATION_TYPE_METHOD,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfCommunicationMethodInterface, remove_member),
+    NULL, NULL,
+    inf_marshal_VOID__OBJECT,
+    G_TYPE_NONE,
+    1,
+    INF_TYPE_XML_CONNECTION
+  );
 }
 
 /**
@@ -193,7 +152,7 @@ gboolean
 inf_communication_method_is_member(InfCommunicationMethod* method,
                                    InfXmlConnection* connection)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_METHOD(method), FALSE);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
@@ -217,7 +176,7 @@ inf_communication_method_send_single(InfCommunicationMethod* method,
                                      InfXmlConnection* connection,
                                      xmlNodePtr xml)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -242,7 +201,7 @@ void
 inf_communication_method_send_all(InfCommunicationMethod* method,
                                   xmlNodePtr xml)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(xml != NULL);
@@ -265,7 +224,7 @@ void
 inf_communication_method_cancel_messages(InfCommunicationMethod* method,
                                          InfXmlConnection* connection)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -297,7 +256,7 @@ inf_communication_method_received(InfCommunicationMethod* method,
                                   InfXmlConnection* connection,
                                   xmlNodePtr xml)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_METHOD(method), 0);
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), 0);
@@ -325,7 +284,7 @@ inf_communication_method_enqueued(InfCommunicationMethod* method,
                                   InfXmlConnection* connection,
                                   xmlNodePtr xml)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
@@ -352,7 +311,7 @@ inf_communication_method_sent(InfCommunicationMethod* method,
                               InfXmlConnection* connection,
                               xmlNodePtr xml)
 {
-  InfCommunicationMethodIface* iface;
+  InfCommunicationMethodInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_METHOD(method));
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));

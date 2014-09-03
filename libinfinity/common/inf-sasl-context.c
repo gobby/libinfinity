@@ -49,6 +49,8 @@
 
 #include <string.h>
 
+G_DEFINE_BOXED_TYPE(InfSaslContext, inf_sasl_context, inf_sasl_context_ref, inf_sasl_context_unref)
+
 typedef enum _InfSaslContextMessageType {
   /* main -> session */
   INF_SASL_CONTEXT_MESSAGE_TERMINATE,
@@ -531,23 +533,6 @@ inf_sasl_context_start_session(InfSaslContext* context,
 /*
  * Public API
  */
-
-GType
-inf_sasl_context_get_type(void)
-{
-  static GType sasl_context_type = 0;
-
-  if(!sasl_context_type)
-  {
-    sasl_context_type = g_boxed_type_register_static(
-      "InfSaslContext",
-      (GBoxedCopyFunc)inf_sasl_context_ref,
-      (GBoxedFreeFunc)inf_sasl_context_unref
-    );
-  }
-
-  return sasl_context_type;
-}
 
 /**
  * inf_sasl_context_new:

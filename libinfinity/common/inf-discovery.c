@@ -36,6 +36,8 @@
 #include <libinfinity/common/inf-discovery.h>
 #include <libinfinity/inf-marshal.h>
 
+G_DEFINE_INTERFACE(InfDiscovery, inf_discovery, G_TYPE_OBJECT)
+
 enum {
   DISCOVERED,
   UNDISCOVERED,
@@ -46,94 +48,54 @@ enum {
 static guint discovery_signals[LAST_SIGNAL];
 
 static void
-inf_discovery_base_init(gpointer g_class)
+inf_discovery_default_init(InfDiscoveryInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  /**
+   * InfDiscovery::discovered:
+   * @discoverer: The #InfDiscovery object discovering something
+   * @info: The #InfDiscoveryInfo describing the discovered service
+   *
+   * This signal is detailed. The detail is the name of the service that has
+   * been discovered, so you can connect to
+   * &quot;discovered::<emphasis>my-service-name</emphasis>&quot; if you are
+   * only interested in a particular service.
+   */
+  discovery_signals[DISCOVERED] = g_signal_new(
+    "discovered",
+    INF_TYPE_DISCOVERY,
+    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+    G_STRUCT_OFFSET(InfDiscoveryInterface, discovered),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER /* InfDiscoveryInfo* */
+  );
 
-  if(!initialized)
-  {
-    /**
-     * InfDiscovery::discovered:
-     * @discoverer: The #InfDiscovery object discovering something
-     * @info: The #InfDiscoveryInfo describing the discovered service
-     *
-     * This signal is detailed. The detail is the name of the service that has
-     * been discovered, so you can connect to
-     * &quot;discovered::<emphasis>my-service-name</emphasis>&quot; if you are
-     * only interested in a particular service.
-     */
-    discovery_signals[DISCOVERED] = g_signal_new(
-      "discovered",
-      INF_TYPE_DISCOVERY,
-      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-      G_STRUCT_OFFSET(InfDiscoveryIface, discovered),
-      NULL, NULL,
-      inf_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER /* InfDiscoveryInfo* */
-    );
-
-    /**
-     * InfDiscovery::undiscovered:
-     * @discoverer: The #InfDiscovery object undiscovering something
-     * @info: The #InfDiscoveryInfo describing the undiscovered service
-     * 
-     * This signal is emitted if a previously discovered service is no longer
-     * available.
-     *
-     * This signal is detailed. The detail is the name of the service that has
-     * been undiscovered, so you can connect to
-     * &quot;undiscovered::<emphasis>my-service-name</emphasis>&quot; if you
-     * are only interested in a particular service.
-     */
-    discovery_signals[UNDISCOVERED] = g_signal_new(
-      "undiscovered",
-      INF_TYPE_DISCOVERY,
-      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-      G_STRUCT_OFFSET(InfDiscoveryIface, undiscovered),
-      NULL, NULL,
-      inf_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_discovery_get_type(void)
-{
-  static GType discovery_type = 0;
-
-  if(!discovery_type)
-  {
-    static const GTypeInfo discovery_info = {
-      sizeof(InfDiscoveryIface),     /* class_size */
-      inf_discovery_base_init,       /* base_init */
-      NULL,                          /* base_finalize */
-      NULL,                          /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      0,                             /* instance_size */
-      0,                             /* n_preallocs */
-      NULL,                          /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    discovery_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfDiscovery",
-      &discovery_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(discovery_type, G_TYPE_OBJECT);
-  }
-
-  return discovery_type;
+  /**
+   * InfDiscovery::undiscovered:
+   * @discoverer: The #InfDiscovery object undiscovering something
+   * @info: The #InfDiscoveryInfo describing the undiscovered service
+   * 
+   * This signal is emitted if a previously discovered service is no longer
+   * available.
+   *
+   * This signal is detailed. The detail is the name of the service that has
+   * been undiscovered, so you can connect to
+   * &quot;undiscovered::<emphasis>my-service-name</emphasis>&quot; if you
+   * are only interested in a particular service.
+   */
+  discovery_signals[UNDISCOVERED] = g_signal_new(
+    "undiscovered",
+    INF_TYPE_DISCOVERY,
+    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+    G_STRUCT_OFFSET(InfDiscoveryInterface, undiscovered),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER
+  );
 }
 
 /**
@@ -154,7 +116,7 @@ void
 inf_discovery_discover(InfDiscovery* discovery,
                        const gchar* type)
 {
-  InfDiscoveryIface* iface;
+  InfDiscoveryInterface* iface;
 
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
   g_return_if_fail(type != NULL);
@@ -179,7 +141,7 @@ GSList*
 inf_discovery_get_discovered(InfDiscovery* discovery,
                              const gchar* type)
 {
-  InfDiscoveryIface* iface;
+  InfDiscoveryInterface* iface;
 
   g_return_val_if_fail(INF_IS_DISCOVERY(discovery), NULL);
   g_return_val_if_fail(type != NULL, NULL);
@@ -211,7 +173,7 @@ inf_discovery_resolve(InfDiscovery* discovery,
                       InfDiscoveryResolvErrorFunc error_func,
                       gpointer user_data)
 {
-  InfDiscoveryIface* iface;
+  InfDiscoveryInterface* iface;
 
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
   g_return_if_fail(info != NULL);
@@ -235,7 +197,7 @@ gchar*
 inf_discovery_info_get_service_name(InfDiscovery* discovery,
                                     InfDiscoveryInfo* info)
 {
-  InfDiscoveryIface* iface;
+  InfDiscoveryInterface* iface;
 
   g_return_val_if_fail(INF_IS_DISCOVERY(discovery), NULL);
   g_return_val_if_fail(info != NULL, NULL);
@@ -259,7 +221,7 @@ const gchar*
 inf_discovery_info_get_service_type(InfDiscovery* discovery,
                                     InfDiscoveryInfo* info)
 {
-  InfDiscoveryIface* iface;
+  InfDiscoveryInterface* iface;
 
   g_return_val_if_fail(INF_IS_DISCOVERY(discovery), NULL);
   g_return_val_if_fail(info != NULL, NULL);

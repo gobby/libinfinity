@@ -108,7 +108,8 @@ enum {
 
 #define INF_GTK_PERMISSIONS_DIALOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_PERMISSIONS_DIALOG, InfGtkPermissionsDialogPrivate))
 
-static GtkDialogClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfGtkPermissionsDialog, inf_gtk_permissions_dialog, GTK_TYPE_DIALOG,
+  G_ADD_PRIVATE(InfGtkPermissionsDialog))
 
 /*
  * Private functionality
@@ -2631,10 +2632,8 @@ inf_gtk_permissions_dialog_unregister(InfGtkPermissionsDialog* dialog)
  */
 
 static void
-inf_gtk_permissions_dialog_init(GTypeInstance* instance,
-                                gpointer g_class)
+inf_gtk_permissions_dialog_init(InfGtkPermissionsDialog* dialog)
 {
-  InfGtkPermissionsDialog* dialog;
   InfGtkPermissionsDialogPrivate* priv;
   GtkTreeViewColumn* column;
   GtkTreeSelection* selection;
@@ -2649,7 +2648,6 @@ inf_gtk_permissions_dialog_init(GTypeInstance* instance,
 
   GtkWidget* dialog_vbox;
 
-  dialog = INF_GTK_PERMISSIONS_DIALOG(instance);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
   /* The pointer is the account ID with INF_ACL_ACCOUNT_ID_TO_POINTER */
@@ -2902,7 +2900,7 @@ inf_gtk_permissions_dialog_constructor(GType type,
   GObject* object;
   InfGtkPermissionsDialogPrivate* priv;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_gtk_permissions_dialog_parent_class)->constructor(
     type,
     n_properties,
     properties
@@ -3002,7 +3000,7 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
     priv->sheet_view = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_permissions_dialog_parent_class)->dispose(object);
 }
 
 
@@ -3020,7 +3018,7 @@ inf_gtk_permissions_dialog_finalize(GObject* object)
     g_free(priv->accounts[i].name);
   g_free(priv->accounts);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_permissions_dialog_parent_class)->finalize(object);
 }
 
 static void
@@ -3085,14 +3083,11 @@ inf_gtk_permissions_dialog_get_property(GObject* object,
  */
 
 static void
-inf_gtk_permissions_dialog_class_init(gpointer g_class,
-                                       gpointer class_data)
+inf_gtk_permissions_dialog_class_init(
+  InfGtkPermissionsDialogClass* permissions_dialog_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = GTK_DIALOG_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkPermissionsDialogPrivate));
+  object_class = G_OBJECT_CLASS(permissions_dialog_class);
 
   object_class->constructor = inf_gtk_permissions_dialog_constructor;
   object_class->dispose = inf_gtk_permissions_dialog_dispose;
@@ -3124,37 +3119,6 @@ inf_gtk_permissions_dialog_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
-}
-
-GType
-inf_gtk_permissions_dialog_get_type(void)
-{
-  static GType permissions_dialog_type = 0;
-
-  if(!permissions_dialog_type)
-  {
-    static const GTypeInfo permissions_dialog_type_info = {
-      sizeof(InfGtkPermissionsDialogClass),    /* class_size */
-      NULL,                                    /* base_init */
-      NULL,                                    /* base_finalize */
-      inf_gtk_permissions_dialog_class_init,   /* class_init */
-      NULL,                                    /* class_finalize */
-      NULL,                                    /* class_data */
-      sizeof(InfGtkPermissionsDialog),         /* instance_size */
-      0,                                       /* n_preallocs */
-      inf_gtk_permissions_dialog_init,         /* instance_init */
-      NULL                                     /* value_table */
-    };
-
-    permissions_dialog_type = g_type_register_static(
-      GTK_TYPE_DIALOG,
-      "InfGtkPermissionsDialog",
-      &permissions_dialog_type_info,
-      0
-    );
-  }
-
-  return permissions_dialog_type;
 }
 
 /*

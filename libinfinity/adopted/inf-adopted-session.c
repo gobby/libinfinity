@@ -17,19 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-/* TODO: warning if no update from a particular non-local user for some time */
-
-#include <libinfinity/adopted/inf-adopted-session.h>
-#include <libinfinity/adopted/inf-adopted-no-operation.h>
-#include <libinfinity/common/inf-xml-util.h>
-#include <libinfinity/common/inf-error.h>
-#include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
-#include <libinfinity/inf-signals.h>
-
-#include <string.h>
-#include <time.h>
-
 /**
  * SECTION:inf-adopted-session
  * @title: InfAdoptedSession
@@ -48,6 +35,19 @@
  * to cleanup their request logs and request caches).
  */
 
+/* TODO: warning if no update from a particular non-local user for some time */
+
+#include <libinfinity/adopted/inf-adopted-session.h>
+#include <libinfinity/adopted/inf-adopted-no-operation.h>
+#include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-signals.h>
+
+#include <string.h>
+#include <time.h>
+
 typedef struct _InfAdoptedSessionToXmlSyncForeachData
   InfAdoptedSessionToXmlSyncForeachData;
 struct _InfAdoptedSessionToXmlSyncForeachData {
@@ -59,7 +59,7 @@ typedef struct _InfAdoptedSessionLocalUser InfAdoptedSessionLocalUser;
 struct _InfAdoptedSessionLocalUser {
   InfAdoptedUser* user;
   InfAdoptedStateVector* last_send_vector;
-  time_t noop_time;
+  time_t noop_time; /* TODO: should be monotonic time */
 };
 
 typedef struct _InfAdoptedSessionPrivate InfAdoptedSessionPrivate;
@@ -97,12 +97,14 @@ enum {
 
 #define INF_ADOPTED_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_SESSION, InfAdoptedSessionPrivate))
 
-static InfSessionClass* parent_class;
 static guint session_signals[LAST_SIGNAL];
 
 static GQuark inf_adopted_session_error_quark;
 /* TODO: This should perhaps be a property: */
 static const int INF_ADOPTED_SESSION_NOOP_INTERVAL = 30;
+
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedSession, inf_adopted_session, INF_TYPE_SESSION,
+  G_ADD_PRIVATE(InfAdoptedSession))
 
 /*
  * Utility functions.
@@ -794,13 +796,9 @@ inf_adopted_session_create_algorithm(InfAdoptedSession* session)
  */
 
 static void
-inf_adopted_session_init(GTypeInstance* instance,
-                         gpointer g_class)
+inf_adopted_session_init(InfAdoptedSession* session)
 {
-  InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
-
-  session = INF_ADOPTED_SESSION(instance);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
   priv->io = NULL;
@@ -823,7 +821,7 @@ inf_adopted_session_constructor(GType type,
   InfSessionStatus status;
   InfUserTable* user_table;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_adopted_session_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -914,7 +912,7 @@ inf_adopted_session_dispose(GObject* object)
 
   /* This calls the close vfunc if the session is running, in which we
    * free the local users. */
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_session_parent_class)->dispose(object);
 
   g_assert(priv->local_users == NULL);
 
@@ -957,7 +955,7 @@ inf_adopted_session_finalize(GObject* object)
   /* Should have been freed in close, called by dispose */
   g_assert(priv->local_users == NULL);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_session_parent_class)->finalize(object);
 }
 
 static void
@@ -1069,7 +1067,10 @@ inf_adopted_session_to_xml_sync(InfSession* session,
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
   g_assert(priv->algorithm != NULL);
 
-  INF_SESSION_CLASS(parent_class)->to_xml_sync(session, parent);
+  INF_SESSION_CLASS(inf_adopted_session_parent_class)->to_xml_sync(
+    session,
+    parent
+  );
 
   foreach_data.session = INF_ADOPTED_SESSION(session);
   foreach_data.parent_xml = parent;
@@ -1091,6 +1092,7 @@ inf_adopted_session_process_xml_sync(InfSession* session,
   InfAdoptedRequest* request;
   InfAdoptedUser* user;
   InfAdoptedRequestLog* log;
+  InfSessionClass* parent_class;
 
   if(strcmp((const char*)xml->name, "sync-request") == 0)
   {
@@ -1127,12 +1129,8 @@ inf_adopted_session_process_xml_sync(InfSession* session,
     return TRUE;
   }
 
-  return INF_SESSION_CLASS(parent_class)->process_xml_sync(
-    session,
-    connection, 
-    xml,
-    error
-  );
+  parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
+  return parent_class->process_xml_sync(session, connection, xml, error);
 }
 
 static InfCommunicationScope
@@ -1159,6 +1157,8 @@ inf_adopted_session_process_xml_run(InfSession* session,
 
   gchar* request_str;
   gchar* user_str;
+
+  InfSessionClass* parent_class;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
@@ -1325,12 +1325,8 @@ inf_adopted_session_process_xml_run(InfSession* session,
     return INF_COMMUNICATION_SCOPE_GROUP;
   }
 
-  return INF_SESSION_CLASS(parent_class)->process_xml_run(
-    session,
-    connection,
-    xml,
-    error
-  );
+  parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
+  return parent_class->process_xml_run(session, connection, xml, error);
 }
 
 static GArray*
@@ -1338,16 +1334,14 @@ inf_adopted_session_get_xml_user_props(InfSession* session,
                                        InfXmlConnection* conn,
                                        const xmlNodePtr xml)
 {
+  InfSessionClass* parent_class;
   GArray* array;
   GParameter* parameter;
   InfAdoptedStateVector* vector;
   xmlChar* time;
 
-  array = INF_SESSION_CLASS(parent_class)->get_xml_user_props(
-    session,
-    conn,
-    xml
-  );
+  parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
+  array = parent_class->get_xml_user_props(session, conn, xml);
 
   /* Vector time */
   time = inf_xml_util_get_attribute(xml, "time");
@@ -1365,29 +1359,6 @@ inf_adopted_session_get_xml_user_props(InfSession* session,
     }
   }
 
-  /* log-begin is not in the  spec */
-#if 0
-  /* Initial request log, only if ID is also given */
-  id_param = inf_session_lookup_user_property(
-    (const GParameter*)array->data,
-    array->len,
-    "id"
-  );
-
-  if(id_param != NULL &&
-     inf_xml_util_get_attribute_uint(xml, "log-begin", &log_begin, NULL))
-  {
-    log = inf_adopted_request_log_new(
-      g_value_get_uint(&id_param->value),
-      log_begin
-    );
-
-    parameter = inf_session_get_user_property(array, "request-log");
-    g_value_init(&parameter->value, INF_ADOPTED_TYPE_REQUEST_LOG);
-    g_value_take_object(&parameter->value, log);
-  }
-#endif
-
   return array;
 }
 
@@ -1397,16 +1368,13 @@ inf_adopted_session_set_xml_user_props(InfSession* session,
                                        guint n_params,
                                        xmlNodePtr xml)
 {
+  InfSessionClass* parent_class;
   const GParameter* time;
   InfAdoptedStateVector* vector;
   gchar* time_string;
 
-  INF_SESSION_CLASS(parent_class)->set_xml_user_props(
-    session,
-    params,
-    n_params,
-    xml
-  );
+  parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
+  parent_class->set_xml_user_props(session, params, n_params, xml);
 
   time = inf_session_lookup_user_property(params, n_params, "vector");
   if(time != NULL)
@@ -1416,19 +1384,6 @@ inf_adopted_session_set_xml_user_props(InfSession* session,
     inf_xml_util_set_attribute(xml, "time", time_string);
     g_free(time_string);
   }
-
-  /* log-begin is not in the spec */
-#if 0
-  log = inf_session_lookup_user_property(params, n_params, "request-log");
-  if(log != NULL)
-  {
-    log_begin = inf_adopted_request_log_get_begin(
-      INF_ADOPTED_REQUEST_LOG(g_value_get_object(&log->value))
-    );
-
-    inf_xml_util_set_attribute_uint(xml, "log-begin", log_begin);
-  }
-#endif
 }
 
 static gboolean
@@ -1438,10 +1393,12 @@ inf_adopted_session_validate_user_props(InfSession* session,
                                         InfUser* exclude,
                                         GError** error)
 {
+  InfSessionClass* parent_class;
   const GParameter* time;
   gboolean result;
 
-  result = INF_SESSION_CLASS(parent_class)->validate_user_props(
+  parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
+  result = parent_class->validate_user_props(
     session,
     params,
     n_params,
@@ -1477,6 +1434,7 @@ inf_adopted_session_close(InfSession* session)
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
 
+  /* Local user info is no longer required */
   for(item = priv->local_users; item != NULL; item = g_slist_next(item))
   {
     local = (InfAdoptedSessionLocalUser*)item->data;
@@ -1487,8 +1445,7 @@ inf_adopted_session_close(InfSession* session)
   g_slist_free(priv->local_users);
   priv->local_users = NULL;
 
-  /* Local user info is no longer required */
-  INF_SESSION_CLASS(parent_class)->close(session);
+  INF_SESSION_CLASS(inf_adopted_session_parent_class)->close(session);
 }
 
 static void
@@ -1517,18 +1474,17 @@ static void
 inf_adopted_session_synchronization_complete(InfSession* session,
                                              InfXmlConnection* connection)
 {
+  InfSessionClass* parent_class;
   InfAdoptedSessionPrivate* priv;
   InfSessionStatus status;
 
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
-  g_object_get(G_OBJECT(session), "status", &status, NULL);
+  status = inf_session_get_status(session);
 
   g_object_freeze_notify(G_OBJECT(session));
 
-  INF_SESSION_CLASS(parent_class)->synchronization_complete(
-    session,
-    connection
-  );
+  parent_class = INF_SESSION_CLASS(inf_adopted_session_parent_class);
+  parent_class->synchronization_complete(session, connection);
 
   if(status == INF_SESSION_SYNCHRONIZING)
   {
@@ -1560,19 +1516,13 @@ inf_adopted_session_check_request(InfAdoptedSession* session,
  */
 
 static void
-inf_adopted_session_class_init(gpointer g_class,
-                               gpointer class_data)
+inf_adopted_session_class_init(InfAdoptedSessionClass* adopted_session_class)
 {
   GObjectClass* object_class;
   InfSessionClass* session_class;
-  InfAdoptedSessionClass* adopted_session_class;
 
-  object_class = G_OBJECT_CLASS(g_class);
-  session_class = INF_SESSION_CLASS(g_class);
-  adopted_session_class = INF_ADOPTED_SESSION_CLASS(g_class);
-
-  parent_class = INF_SESSION_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedSessionPrivate));
+  object_class = G_OBJECT_CLASS(adopted_session_class);
+  session_class = INF_SESSION_CLASS(adopted_session_class);
 
   object_class->constructor = inf_adopted_session_constructor;
   object_class->dispose = inf_adopted_session_dispose;
@@ -1667,37 +1617,6 @@ inf_adopted_session_class_init(gpointer g_class,
       G_PARAM_READABLE
     )
   );
-}
-
-GType
-inf_adopted_session_get_type(void)
-{
-  static GType session_type = 0;
-
-  if(!session_type)
-  {
-    static const GTypeInfo session_type_info = {
-      sizeof(InfAdoptedSessionClass),   /* class_size */
-      NULL,                             /* base_init */
-      NULL,                             /* base_finalize */
-      inf_adopted_session_class_init,   /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      sizeof(InfAdoptedSession),        /* instance_size */
-      0,                                /* n_preallocs */
-      inf_adopted_session_init,         /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    session_type = g_type_register_static(
-      INF_TYPE_SESSION,
-      "InfAdoptedSession",
-      &session_type_info,
-      0
-    );
-  }
-
-  return session_type;
 }
 
 /*

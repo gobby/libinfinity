@@ -63,7 +63,10 @@ enum {
 
 #define INF_ADOPTED_SPLIT_OPERATION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_SPLIT_OPERATION, InfAdoptedSplitOperationPrivate))
 
-static GObjectClass* parent_class;
+static void inf_adopted_split_operation_operation_iface_init(InfAdoptedOperationInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedSplitOperation, inf_adopted_split_operation, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedSplitOperation)
+  G_IMPLEMENT_INTERFACE(INF_ADOPTED_TYPE_OPERATION, inf_adopted_split_operation_operation_iface_init))
 
 static void
 inf_adopted_split_operation_unsplit_impl(InfAdoptedSplitOperation* operation,
@@ -101,13 +104,9 @@ inf_adopted_split_operation_unsplit_impl(InfAdoptedSplitOperation* operation,
 }
 
 static void
-inf_adopted_split_operation_init(GTypeInstance* instance,
-                                 gpointer g_class)
+inf_adopted_split_operation_init(InfAdoptedSplitOperation* operation)
 {
-  InfAdoptedSplitOperation* operation;
   InfAdoptedSplitOperationPrivate* priv;
-
-  operation = INF_ADOPTED_SPLIT_OPERATION(instance);
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(operation);
 
   priv->first = NULL;
@@ -124,12 +123,18 @@ inf_adopted_split_operation_dispose(GObject* object)
   priv = INF_ADOPTED_SPLIT_OPERATION_PRIVATE(operation);
 
   if(priv->first != NULL)
-    g_object_unref(G_OBJECT(priv->first));
+  {
+    g_object_unref(priv->first);
+    priv->first = NULL;
+  }
 
   if(priv->second != NULL)
-    g_object_unref(G_OBJECT(priv->second));
+  {
+    g_object_unref(priv->second);
+    priv->second = NULL;
+  }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_split_operation_parent_class)->dispose(object);
 }
 
 static void
@@ -189,14 +194,11 @@ inf_adopted_split_operation_get_property(GObject* object,
 }
 
 static void
-inf_adopted_split_operation_class_init(gpointer g_class,
-                                       gpointer class_data)
+inf_adopted_split_operation_class_init(
+  InfAdoptedSplitOperationClass* split_operation_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedSplitOperationPrivate));
+  object_class = G_OBJECT_CLASS(split_operation_class);
 
   object_class->dispose = inf_adopted_split_operation_dispose;
   object_class->set_property = inf_adopted_split_operation_set_property;
@@ -479,7 +481,7 @@ inf_adopted_split_operation_apply_transformed(InfAdoptedOperation* operation,
 
   if(ret_first == priv->first && ret_second == priv->second)
   {
-    /* No operation was modifide to be reversible; skip this case */
+    /* No operation was modified to be reversible; skip this case */
     g_object_unref(ret_first);
     g_object_unref(ret_second);
     return operation;
@@ -524,12 +526,9 @@ inf_adopted_split_operation_revert(InfAdoptedOperation* operation)
 }
 
 static void
-inf_adopted_split_operation_operation_init(gpointer g_iface,
-                                           gpointer iface_data)
+inf_adopted_split_operation_operation_iface_init(
+  InfAdoptedOperationInterface* iface)
 {
-  InfAdoptedOperationIface* iface;
-  iface = (InfAdoptedOperationIface*)g_iface;
-
   iface->need_concurrency_id =
     inf_adopted_split_operation_need_concurrency_id;
   iface->transform = inf_adopted_split_operation_transform;
@@ -538,49 +537,6 @@ inf_adopted_split_operation_operation_init(gpointer g_iface,
   iface->apply = inf_adopted_split_operation_apply;
   iface->apply_transformed = inf_adopted_split_operation_apply_transformed;
   iface->revert = inf_adopted_split_operation_revert;
-}
-
-GType
-inf_adopted_split_operation_get_type(void)
-{
-  static GType split_operation_type = 0;
-
-  if(!split_operation_type)
-  {
-    static const GTypeInfo split_operation_type_info = {
-      sizeof(InfAdoptedSplitOperationClass),    /* class_size */
-      NULL,                                     /* base_init */
-      NULL,                                     /* base_finalize */
-      inf_adopted_split_operation_class_init,   /* class_init */
-      NULL,                                     /* class_finalize */
-      NULL,                                     /* class_data */
-      sizeof(InfAdoptedSplitOperation),         /* instance_size */
-      0,                                        /* n_preallocs */
-      inf_adopted_split_operation_init,         /* instance_init */
-      NULL                                      /* value_table */
-    };
-
-    static const GInterfaceInfo operation_info = {
-      inf_adopted_split_operation_operation_init,
-      NULL,
-      NULL
-    };
-
-    split_operation_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedSplitOperation",
-      &split_operation_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      split_operation_type,
-      INF_ADOPTED_TYPE_OPERATION,
-      &operation_info
-    );
-  }
-
-  return split_operation_type;
 }
 
 /**

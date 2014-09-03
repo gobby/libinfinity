@@ -65,8 +65,10 @@ enum {
 
 #define INF_USER_TABLE_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER_TABLE, InfUserTablePrivate))
 
-static GObjectClass* parent_class;
 static guint user_table_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfUserTable, inf_user_table, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfUserTable))
 
 static gboolean
 inf_user_table_is_local(InfUser* user)
@@ -190,13 +192,9 @@ inf_user_table_foreach_user_func(gpointer key,
 }
 
 static void
-inf_user_table_init(GTypeInstance* instance,
-                    gpointer g_class)
+inf_user_table_init(InfUserTable* user_table)
 {
-  InfUserTable* user_table;
   InfUserTablePrivate* priv;
-
-  user_table = INF_USER_TABLE(instance);
   priv = INF_USER_TABLE_PRIVATE(user_table);
 
   priv->table = g_hash_table_new_full(NULL, NULL, NULL, NULL);
@@ -226,7 +224,7 @@ inf_user_table_dispose(GObject* object)
   );
 
   g_hash_table_remove_all(priv->table);
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_user_table_parent_class)->dispose(object);
 }
 
 static void
@@ -240,7 +238,7 @@ inf_user_table_finalize(GObject* object)
 
   g_hash_table_destroy(priv->table);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_user_table_parent_class)->finalize(object);
 }
 
 static void
@@ -367,17 +365,10 @@ inf_user_table_remove_local_user(InfUserTable* user_table,
 }
 
 static void
-inf_user_table_class_init(gpointer g_class,
-                          gpointer class_data)
+inf_user_table_class_init(InfUserTableClass* user_table_class)
 {
   GObjectClass* object_class;
-  InfUserTableClass* user_table_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  user_table_class = INF_USER_TABLE_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfUserTablePrivate));
+  object_class = G_OBJECT_CLASS(user_table_class);
 
   object_class->dispose = inf_user_table_dispose;
   object_class->finalize = inf_user_table_finalize;
@@ -535,37 +526,6 @@ inf_user_table_class_init(gpointer g_class,
     1,
     INF_TYPE_USER
   );
-}
-
-GType
-inf_user_table_get_type(void)
-{
-  static GType user_table_type = 0;
-
-  if(!user_table_type)
-  {
-    static const GTypeInfo user_table_type_info = {
-      sizeof(InfUserTableClass),   /* class_size */
-      NULL,                        /* base_init */
-      NULL,                        /* base_finalize */
-      inf_user_table_class_init,   /* class_init */
-      NULL,                        /* class_finalize */
-      NULL,                        /* class_data */
-      sizeof(InfUserTable),        /* instance_size */
-      0,                           /* n_preallocs */
-      inf_user_table_init,         /* instance_init */
-      NULL                         /* value_table */
-    };
-
-    user_table_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfUserTable",
-      &user_table_type_info,
-      0
-    );
-  }
-
-  return user_table_type;
 }
 
 /**

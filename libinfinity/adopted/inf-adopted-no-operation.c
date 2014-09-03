@@ -39,11 +39,19 @@
 
 static GObjectClass* parent_class;
 
+static void inf_adopted_no_operation_operation_iface_init(InfAdoptedOperationInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedNoOperation, inf_adopted_no_operation, G_TYPE_OBJECT,
+  G_IMPLEMENT_INTERFACE(INF_ADOPTED_TYPE_OPERATION, inf_adopted_no_operation_operation_iface_init))
+
 static void
-inf_adopted_no_operation_class_init(gpointer g_class,
-                                    gpointer class_data)
+inf_adopted_no_operation_init(InfAdoptedNoOperation* operation)
 {
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
+}
+
+static void
+inf_adopted_no_operation_class_init(
+  InfAdoptedNoOperationClass* operation_class)
+{
 }
 
 static gboolean
@@ -92,12 +100,9 @@ inf_adopted_no_operation_revert(InfAdoptedOperation* operation)
 }
 
 static void
-inf_adopted_no_operation_operation_init(gpointer g_iface,
-                                           gpointer iface_data)
+inf_adopted_no_operation_operation_iface_init(
+  InfAdoptedOperationInterface* iface)
 {
-  InfAdoptedOperationIface* iface;
-  iface = (InfAdoptedOperationIface*)g_iface;
-
   iface->need_concurrency_id = inf_adopted_no_operation_need_concurrency_id;
   iface->transform = inf_adopted_no_operation_transform;
   iface->copy = inf_adopted_no_operation_copy;
@@ -105,49 +110,6 @@ inf_adopted_no_operation_operation_init(gpointer g_iface,
   iface->apply = inf_adopted_no_operation_apply;
   iface->apply_transformed = NULL;
   iface->revert = inf_adopted_no_operation_revert;
-}
-
-GType
-inf_adopted_no_operation_get_type(void)
-{
-  static GType no_operation_type = 0;
-
-  if(!no_operation_type)
-  {
-    static const GTypeInfo no_operation_type_info = {
-      sizeof(InfAdoptedNoOperationClass),    /* class_size */
-      NULL,                                  /* base_init */
-      NULL,                                  /* base_finalize */
-      inf_adopted_no_operation_class_init,   /* class_init */
-      NULL,                                  /* class_finalize */
-      NULL,                                  /* class_data */
-      sizeof(InfAdoptedNoOperation),         /* instance_size */
-      0,                                     /* n_preallocs */
-      NULL,                                  /* instance_init */
-      NULL                                   /* value_table */
-    };
-
-    static const GInterfaceInfo operation_info = {
-      inf_adopted_no_operation_operation_init,
-      NULL,
-      NULL
-    };
-
-    no_operation_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedNoOperation",
-      &no_operation_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      no_operation_type,
-      INF_ADOPTED_TYPE_OPERATION,
-      &operation_info
-    );
-  }
-
-  return no_operation_type;
 }
 
 /**

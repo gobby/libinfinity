@@ -80,7 +80,8 @@ enum {
 
 #define INFINOTED_PLUGIN_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFINOTED_TYPE_PLUGIN_MANAGER, InfinotedPluginManagerPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfinotedPluginManager, infinoted_plugin_manager, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfinotedPluginManager))
 
 static gpointer
 infinoted_plugin_manager_hash(gpointer first,
@@ -713,13 +714,9 @@ infinoted_plugin_manager_set_directory(InfinotedPluginManager* manager,
 }
 
 static void
-infinoted_plugin_manager_init(GTypeInstance* instance,
-                              gpointer g_class)
+infinoted_plugin_manager_init(InfinotedPluginManager* manager)
 {
-  InfinotedPluginManager* manager;
   InfinotedPluginManagerPrivate* priv;
-
-  manager = INFINOTED_PLUGIN_MANAGER(instance);
   priv = INFINOTED_PLUGIN_MANAGER_PRIVATE(manager);
 
   priv->directory = NULL;
@@ -763,7 +760,7 @@ infinoted_plugin_manager_dispose(GObject* object)
     priv->credentials = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infinoted_plugin_manager_parent_class)->dispose(object);
 }
 
 static void
@@ -781,7 +778,7 @@ infinoted_plugin_manager_finalize(GObject* object)
   g_hash_table_unref(priv->connections);
   g_hash_table_unref(priv->sessions);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infinoted_plugin_manager_parent_class)->finalize(object);
 }
 
 static void
@@ -856,14 +853,11 @@ infinoted_plugin_manager_get_property(GObject* object,
 }
 
 static void
-infinoted_plugin_manager_class_init(gpointer g_class,
-                                    gpointer class_data)
+infinoted_plugin_manager_class_init(
+  InfinotedPluginManagerClass* manager_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfinotedPluginManagerPrivate));
+  object_class = G_OBJECT_CLASS(manager_class);
 
   object_class->dispose = infinoted_plugin_manager_dispose;
   object_class->finalize = infinoted_plugin_manager_finalize;
@@ -917,37 +911,6 @@ infinoted_plugin_manager_class_init(gpointer g_class,
       G_PARAM_READABLE
     )
   );
-}
-
-GType
-infinoted_plugin_manager_get_type(void)
-{
-  static GType plugin_manager_type = 0;
-
-  if(!plugin_manager_type)
-  {
-    static const GTypeInfo plugin_manager_type_info = {
-      sizeof(InfinotedPluginManagerClass), /* class_size */
-      NULL,                                /* base_init */
-      NULL,                                /* base_finalize */
-      infinoted_plugin_manager_class_init, /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      sizeof(InfinotedPluginManager),      /* instance_size */
-      0,                                   /* n_preallocs */
-      infinoted_plugin_manager_init,       /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    plugin_manager_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfinotedPluginManager",
-      &plugin_manager_type_info,
-      0
-    );
-  }
-
-  return plugin_manager_type;
 }
 
 /**

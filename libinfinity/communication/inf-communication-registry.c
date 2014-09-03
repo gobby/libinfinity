@@ -91,7 +91,8 @@ struct _InfCommunicationRegistryPrivate {
 
 #define INF_COMMUNICATION_REGISTRY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_REGISTRY, InfCommunicationRegistryPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfCommunicationRegistry, inf_communication_registry, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfCommunicationRegistry))
 
 /* Maximum number of messages enqueued at the same time */
 static const guint INF_COMMUNICATION_REGISTRY_INNER_QUEUE_LIMIT = 5;
@@ -690,13 +691,9 @@ inf_communication_registry_group_unrefed(gpointer user_data,
  */
 
 static void
-inf_communication_registry_init(GTypeInstance* instance,
-                                gpointer g_class)
+inf_communication_registry_init(InfCommunicationRegistry* registry)
 {
-  InfCommunicationRegistry* registry;
   InfCommunicationRegistryPrivate* priv;
-
-  registry = INF_COMMUNICATION_REGISTRY(instance);
   priv = INF_COMMUNICATION_REGISTRY_PRIVATE(registry);
 
   priv->connections = g_hash_table_new(NULL, NULL);
@@ -758,60 +755,18 @@ inf_communication_registry_dispose(GObject* object)
   g_hash_table_unref(priv->connections);
   g_hash_table_unref(priv->entries);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_communication_registry_parent_class)->dispose(object);
 }
 
-/*
- * GType registration.
- */
-
 static void
-inf_communication_registry_class_init(gpointer g_class,
-                                     gpointer class_data)
+inf_communication_registry_class_init(
+  InfCommunicationRegistryClass* registry_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfCommunicationRegistryPrivate));
+  object_class = G_OBJECT_CLASS(registry_class);
 
   object_class->dispose = inf_communication_registry_dispose;
 }
-
-GType
-inf_communication_registry_get_type(void)
-{
-  static GType registry_type = 0;
-
-  if(!registry_type)
-  {
-    static const GTypeInfo registry_type_info = {
-      sizeof(InfCommunicationRegistryClass),  /* class_size */
-      NULL,                                   /* base_init */
-      NULL,                                   /* base_finalize */
-      inf_communication_registry_class_init,  /* class_init */
-      NULL,                                   /* class_finalize */
-      NULL,                                   /* class_data */
-      sizeof(InfCommunicationRegistry),       /* instance_size */
-      0,                                      /* n_preallocs */
-      inf_communication_registry_init,        /* instance_init */
-      NULL                                    /* value_table */
-    };
-
-    registry_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfCommunicationRegistry",
-      &registry_type_info,
-      0
-    );
-  }
-
-  return registry_type;
-}
-
-/*
- * Public API.
- */
 
 /**
  * inf_communication_registry_register:

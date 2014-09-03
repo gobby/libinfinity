@@ -97,8 +97,14 @@ enum {
 
 #define INFD_SESSION_PROXY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_SESSION_PROXY, InfdSessionProxyPrivate))
 
-static GObjectClass* parent_class;
 static guint session_proxy_signals[LAST_SIGNAL];
+
+static void infd_session_proxy_communication_object_iface_init(InfCommunicationObjectInterface* iface);
+static void infd_session_proxy_session_proxy_iface_init(InfSessionProxyInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfdSessionProxy, infd_session_proxy, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdSessionProxy)
+  G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_OBJECT, infd_session_proxy_communication_object_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_SESSION_PROXY, infd_session_proxy_session_proxy_iface_init))
 
 /*
  * SessionProxy subscriptions.
@@ -746,13 +752,9 @@ infd_session_proxy_session_close_cb(InfSession* session,
  */
 
 static void
-infd_session_proxy_init(GTypeInstance* instance,
-                        gpointer g_class)
+infd_session_proxy_init(InfdSessionProxy* session_proxy)
 {
-  InfdSessionProxy* session_proxy;
   InfdSessionProxyPrivate* priv;
-
-  session_proxy = INFD_SESSION_PROXY(instance);
   priv = INFD_SESSION_PROXY_PRIVATE(session_proxy);
 
   priv->io = NULL;
@@ -772,7 +774,7 @@ infd_session_proxy_constructor(GType type,
   InfdSessionProxy* session_proxy;
   InfdSessionProxyPrivate* priv;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(infd_session_proxy_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -870,6 +872,8 @@ infd_session_proxy_dispose(GObject* object)
   priv->io = NULL;
 
   g_object_unref(manager);
+
+  G_OBJECT_CLASS(infd_session_proxy_parent_class)->dispose(object);
 }
 
 static void
@@ -1373,17 +1377,10 @@ infd_session_proxy_session_proxy_join_user(InfSessionProxy* proxy,
  */
 
 static void
-infd_session_proxy_class_init(gpointer g_class,
-                              gpointer class_data)
+infd_session_proxy_class_init(InfdSessionProxyClass* proxy_class)
 {
   GObjectClass* object_class;
-  InfdSessionProxyClass* proxy_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  proxy_class = INFD_SESSION_PROXY_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdSessionProxyPrivate));
+  object_class = G_OBJECT_CLASS(proxy_class);
 
   object_class->constructor = infd_session_proxy_constructor;
   object_class->dispose = infd_session_proxy_dispose;
@@ -1514,80 +1511,18 @@ infd_session_proxy_class_init(gpointer g_class,
 }
 
 static void
-infd_session_proxy_communication_object_init(gpointer g_iface,
-                                             gpointer iface_data)
+infd_session_proxy_communication_object_iface_init(
+  InfCommunicationObjectInterface* iface)
 {
-  InfCommunicationObjectIface* iface;
-  iface = (InfCommunicationObjectIface*)g_iface;
-
   iface->sent = infd_session_proxy_communication_object_sent;
   iface->enqueued = infd_session_proxy_communication_object_enqueued;
   iface->received = infd_session_proxy_communication_object_received;
 }
 
 static void
-infd_session_proxy_session_proxy_init(gpointer g_iface,
-                                      gpointer iface_data)
+infd_session_proxy_session_proxy_iface_init(InfSessionProxyInterface* iface)
 {
-  InfSessionProxyIface* iface;
-  iface = (InfSessionProxyIface*)g_iface;
-
   iface->join_user = infd_session_proxy_session_proxy_join_user;
-}
-
-GType
-infd_session_proxy_get_type(void)
-{
-  static GType session_proxy_type = 0;
-
-  if(!session_proxy_type)
-  {
-    static const GTypeInfo session_proxy_type_info = {
-      sizeof(InfdSessionProxyClass),    /* class_size */
-      NULL,                             /* base_init */
-      NULL,                             /* base_finalize */
-      infd_session_proxy_class_init,    /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      sizeof(InfdSessionProxy),         /* instance_size */
-      0,                                /* n_preallocs */
-      infd_session_proxy_init,          /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    static const GInterfaceInfo communication_object_info = {
-      infd_session_proxy_communication_object_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo session_proxy_info = {
-      infd_session_proxy_session_proxy_init,
-      NULL,
-      NULL
-    };
-
-    session_proxy_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdSessionProxy",
-      &session_proxy_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      session_proxy_type,
-      INF_COMMUNICATION_TYPE_OBJECT,
-      &communication_object_info
-    );
-
-    g_type_add_interface_static(
-      session_proxy_type,
-      INF_TYPE_SESSION_PROXY,
-      &session_proxy_info
-    );
-  }
-
-  return session_proxy_type;
 }
 
 /*

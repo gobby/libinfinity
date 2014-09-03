@@ -37,6 +37,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+G_DEFINE_BOXED_TYPE(InfAdoptedStateVector, inf_adopted_state_vector, inf_adopted_state_vector_copy, inf_adopted_state_vector_free)
+
 /* NOTE: What the state vector actually counts is the amount of operations
  * performed by each user. This number is called a timestamp, although it has
  * nothing to do with actual time. */
@@ -49,12 +51,10 @@ struct _InfAdoptedStateVectorComponent {
 
 typedef struct _InfAdoptedStateVectorForeachData
   InfAdoptedStateVectorForeachData;
-
 struct _InfAdoptedStateVectorForeachData {
   InfAdoptedStateVectorForeachFunc func;
   gpointer user_data;
 };
-
 
 struct _InfAdoptedStateVector {
   gsize size;
@@ -142,23 +142,6 @@ inf_adopted_state_vector_insert(InfAdoptedStateVector* vec,
   comp->n = value;
 
   return comp;
-}
-
-GType
-inf_adopted_state_vector_get_type(void)
-{
-  static GType state_vector_type = 0;
-
-  if(!state_vector_type)
-  {
-    state_vector_type = g_boxed_type_register_static(
-      "InfAdoptedStateVector",
-      (GBoxedCopyFunc)inf_adopted_state_vector_copy,
-      (GBoxedFreeFunc)inf_adopted_state_vector_free
-    );
-  }
-
-  return state_vector_type;
 }
 
 /**

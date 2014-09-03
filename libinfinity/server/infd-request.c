@@ -53,16 +53,15 @@ enum {
 
 #define INFD_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_REQUEST, InfdRequestPrivate))
 
-static GObjectClass* parent_class;
+static void infd_request_request_iface_init(InfRequestInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfdRequest, infd_request, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdRequest)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_REQUEST, infd_request_request_iface_init))
 
 static void
-infd_request_init(GTypeInstance* instance,
-                  gpointer g_class)
+infd_request_init(InfdRequest* request)
 {
-  InfdRequest* request;
   InfdRequestPrivate* priv;
-
-  request = INFD_REQUEST(instance);
   priv = INFD_REQUEST_PRIVATE(request);
 
   priv->type = NULL;
@@ -86,9 +85,7 @@ infd_request_dispose(GObject* object)
     priv->requestor = NULL;
   }
 
-  if(G_OBJECT_CLASS(parent_class)->dispose != NULL)
-    G_OBJECT_CLASS(parent_class)->dispose(object);
-
+  G_OBJECT_CLASS(infd_request_parent_class)->dispose(object);
 }
 
 static void
@@ -102,8 +99,7 @@ infd_request_finalize(GObject* object)
 
   g_free(priv->type);
 
-  if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
-    G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_request_parent_class)->finalize(object);
 }
 
 static void
@@ -201,14 +197,10 @@ infd_request_request_is_local(InfRequest* request)
 }
 
 static void
-infd_request_class_init(gpointer g_class,
-                        gpointer class_data)
+infd_request_class_init(InfdRequestClass* request_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdRequestPrivate));
+  object_class = G_OBJECT_CLASS(request_class);
 
   object_class->dispose = infd_request_dispose;
   object_class->finalize = infd_request_finalize;
@@ -246,57 +238,10 @@ infd_request_class_init(gpointer g_class,
 }
 
 static void
-infd_request_request_init(gpointer g_iface,
-                          gpointer iface_data)
+infd_request_request_iface_init(InfRequestInterface* iface)
 {
-  InfRequestIface* iface;
-  iface = (InfRequestIface*)g_iface;
-
   iface->finished = infd_request_request_finished;
   iface->is_local = infd_request_request_is_local;
-}
-
-GType
-infd_request_get_type(void)
-{
-  static GType request_type = 0;
-
-  if(!request_type)
-  {
-    static const GTypeInfo request_type_info = {
-      sizeof(InfdRequestClass),  /* class_size */
-      NULL,                      /* base_init */
-      NULL,                      /* base_finalize */
-      infd_request_class_init,   /* class_init */
-      NULL,                      /* class_finalize */
-      NULL,                      /* class_data */
-      sizeof(InfdRequest),       /* instance_size */
-      0,                         /* n_preallocs */
-      infd_request_init,         /* instance_init */
-      NULL                       /* value_table */
-    };
-
-    static const GInterfaceInfo request_info = {
-      infd_request_request_init,
-      NULL,
-      NULL
-    };
-
-    request_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdRequest",
-      &request_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      request_type,
-      INF_TYPE_REQUEST,
-      &request_info
-    );
-  }
-
-  return request_type;
 }
 
 /* vim:set et sw=2 ts=2: */

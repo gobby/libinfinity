@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_REQUEST                 (inf_request_get_type())
 #define INF_REQUEST(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_REQUEST, InfRequest))
 #define INF_IS_REQUEST(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_REQUEST))
-#define INF_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_REQUEST, InfRequestIface))
+#define INF_REQUEST_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_REQUEST, InfRequestInterface))
 
 /**
  * InfRequestResult:
@@ -46,17 +46,17 @@ typedef struct _InfRequestResult InfRequestResult;
  * via the public API functions.
  */
 typedef struct _InfRequest InfRequest;
-typedef struct _InfRequestIface InfRequestIface;
+typedef struct _InfRequestInterface InfRequestInterface;
 
 /**
- * InfRequestIface:
+ * InfRequestInterface:
  * @finished: Default signal handler of the #InfRequest::finished signal.
  * @is_local: Virtual function to check whether the request is local or
  * remote.
  *
  * Virtual functions of the #InfRequest interface.
  */
-struct _InfRequestIface {
+struct _InfRequestInterface {
   /*< private >*/
   GTypeInterface parent;
 

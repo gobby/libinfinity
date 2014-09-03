@@ -72,7 +72,8 @@ enum {
 
 #define INF_TEXT_GTK_VIEWPORT_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_VIEWPORT, InfTextGtkViewportPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfTextGtkViewport, inf_text_gtk_viewport, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextGtkViewport))
 
 /* Converts from HSV to RGB */
 /* TODO: Use gtk_hsv_to_rgb from GTK+ 2.14 instead */
@@ -872,13 +873,9 @@ inf_text_gtk_viewport_set_user_table(InfTextGtkViewport* viewport,
 }
 
 static void
-inf_text_gtk_viewport_init(GTypeInstance* instance,
-                           gpointer g_class)
+inf_text_gtk_viewport_init(InfTextGtkViewport* viewport)
 {
-  InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
-
-  viewport = INF_TEXT_GTK_VIEWPORT(instance);
   priv = INF_TEXT_GTK_VIEWPORT_PRIVATE(viewport);
 
   priv->scroll = NULL;
@@ -904,7 +901,7 @@ inf_text_gtk_viewport_dispose(GObject* object)
   g_assert(priv->active_user == NULL);
   g_assert(priv->users == NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_text_gtk_viewport_parent_class)->dispose(object);
 }
 
 static void
@@ -992,14 +989,10 @@ inf_text_gtk_viewport_get_property(GObject* object,
 }
 
 static void
-inf_text_gtk_viewport_class_init(gpointer g_class,
-                                 gpointer class_data)
+inf_text_gtk_viewport_class_init(InfTextGtkViewportClass* viewport_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextGtkViewportPrivate));
+  object_class = G_OBJECT_CLASS(viewport_class);
 
   object_class->dispose = inf_text_gtk_viewport_dispose;
   object_class->set_property = inf_text_gtk_viewport_set_property;
@@ -1054,37 +1047,6 @@ inf_text_gtk_viewport_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_text_gtk_viewport_get_type(void)
-{
-  static GType viewport_type = 0;
-
-  if(!viewport_type)
-  {
-    static const GTypeInfo viewport_type_info = {
-      sizeof(InfTextGtkViewportClass),    /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_text_gtk_viewport_class_init,   /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      sizeof(InfTextGtkViewport),         /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_text_gtk_viewport_init,         /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    viewport_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextGtkViewport",
-      &viewport_type_info,
-      0
-    );
-  }
-
-  return viewport_type;
 }
 
 /**

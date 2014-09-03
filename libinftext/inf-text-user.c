@@ -43,17 +43,15 @@ enum {
 
 #define INF_TEXT_USER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_USER, InfTextUserPrivate))
 
-static InfUserClass* parent_class;
 static guint user_signals[LAST_SIGNAL] = { 0 };
 
-static void
-inf_text_user_init(GTypeInstance* instance,
-                   gpointer g_class)
-{
-  InfTextUser* user;
-  InfTextUserPrivate* priv;
+G_DEFINE_TYPE_WITH_CODE(InfTextUser, inf_text_user, INF_ADOPTED_TYPE_USER,
+  G_ADD_PRIVATE(InfTextUser))
 
-  user = INF_TEXT_USER(instance);
+static void
+inf_text_user_init(InfTextUser* user)
+{
+  InfTextUserPrivate* priv;
   priv = INF_TEXT_USER_PRIVATE(user);
 
   priv->caret = 0;
@@ -136,17 +134,10 @@ inf_text_user_selection_changed(InfTextUser* user,
 }
 
 static void
-inf_text_user_class_init(gpointer g_class,
-                         gpointer class_data)
+inf_text_user_class_init(InfTextUserClass* user_class)
 {
   GObjectClass* object_class;
-  InfTextUserClass* user_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  user_class = INF_TEXT_USER_CLASS(g_class);
-
-  parent_class = INF_USER_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextUserPrivate));
+  object_class = G_OBJECT_CLASS(user_class);
 
   object_class->set_property = inf_text_user_set_property;
   object_class->get_property = inf_text_user_get_property;
@@ -209,37 +200,6 @@ inf_text_user_class_init(gpointer g_class,
     G_TYPE_INT,
     G_TYPE_BOOLEAN
   );
-}
-
-GType
-inf_text_user_get_type(void)
-{
-  static GType user_type = 0;
-
-  if(!user_type)
-  {
-    static const GTypeInfo user_type_info = {
-      sizeof(InfTextUserClass),  /* class_size */
-      NULL,                      /* base_init */
-      NULL,                      /* base_finalize */
-      inf_text_user_class_init,  /* class_init */
-      NULL,                      /* class_finalize */
-      NULL,                      /* class_data */
-      sizeof(InfTextUser),       /* instance_size */
-      0,                         /* n_preallocs */
-      inf_text_user_init,        /* instance_init */
-      NULL                       /* value_table */
-    };
-
-    user_type = g_type_register_static(
-      INF_ADOPTED_TYPE_USER,
-      "InfTextUser",
-      &user_type_info,
-      0
-    );
-  }
-
-  return user_type;
 }
 
 /**

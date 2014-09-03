@@ -7,6 +7,7 @@ Performance (Some ideas to improve performance, profile to verify!):
     InfTextDefaultInsertOperation and InfTextDefaultDeleteOperation. Maybe we
     can improve this by not initializing the member variables by properties,
     but by setting them after the g_object_new() call.
+    Can we make InfAdoptedRequest a boxed type?
   * Move state vector helper functions in algorithm to InfAdoptedStateVector,
     with a better O(n) implementation.
   * Cache request.vector[request.user] in every request, this seems to be
@@ -27,12 +28,13 @@ Modernization:
  * Use g_get_monotonic_time/g_get_real_time where a time is needed
  * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
- * Use G_DEFINE_TYPE and friends
  * Replace constructor by constructed
  * Use GtkBox and GtkGrid, use GtkBuilder for widgets/dialogs
  * Fix usage of deprecated GTK+ APIs
  * g_set_error_literal
  * Replace RGB to HSV conversions by gtk_hsv_to_rgb etc.
+ * Fix the myriads of warnings with new gtk-doc when generating
+   documentation and running ./autogen.sh (if we can)
 
 Protocol Break:
   The following features would be nice to have, but they require breaking

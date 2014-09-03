@@ -80,8 +80,10 @@ enum {
 
 #define INFINOTED_LOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFINOTED_TYPE_LOG, InfinotedLogPrivate))
 
-static GObjectClass* parent_class;
 static guint log_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfinotedLog, infinoted_log, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfinotedLog))
 
 static void
 infinoted_log_handler(const gchar* log_domain,
@@ -220,13 +222,9 @@ infinoted_log_entry(InfinotedLog* log,
 }
 
 static void
-infinoted_log_init(GTypeInstance* instance,
-                   gpointer g_class)
+infinoted_log_init(InfinotedLog* log)
 {
-  InfinotedLog* log;
   InfinotedLogPrivate* priv;
-
-  log = INFINOTED_LOG(instance);
   priv = INFINOTED_LOG_PRIVATE(log);
 
   priv->file_path = NULL;
@@ -247,7 +245,7 @@ infinoted_log_finalize(GObject* object)
   if(priv->log_file != NULL)
     infinoted_log_close(log);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infinoted_log_parent_class)->finalize(object);
 }
 
 static void
@@ -309,17 +307,10 @@ infinoted_log_log_message(InfinotedLog* log,
 }
 
 static void
-infinoted_log_class_init(gpointer g_class,
-                         gpointer class_data)
+infinoted_log_class_init(InfinotedLogClass* log_class)
 {
   GObjectClass* object_class;
-  InfinotedLogClass* log_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  log_class = INFINOTED_LOG_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfinotedLogPrivate));
+  object_class = G_OBJECT_CLASS(log_class);
 
   object_class->finalize = infinoted_log_finalize;
   object_class->set_property = infinoted_log_set_property;
@@ -362,37 +353,6 @@ infinoted_log_class_init(gpointer g_class,
     G_TYPE_UINT,
     G_TYPE_STRING
   );
-}
-
-GType
-infinoted_log_get_type(void)
-{
-  static GType log_type = 0;
-
-  if(!log_type)
-  {
-    static const GTypeInfo log_type_info = {
-      sizeof(InfinotedLogClass), /* class_size */
-      NULL,                      /* base_init */
-      NULL,                      /* base_finalize */
-      infinoted_log_class_init,  /* class_init */
-      NULL,                      /* class_finalize */
-      NULL,                      /* class_data */
-      sizeof(InfinotedLog),      /* instance_size */
-      0,                         /* n_preallocs */
-      infinoted_log_init,        /* instance_init */
-      NULL                       /* value_table */
-    };
-
-    log_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfinotedLog",
-      &log_type_info,
-      0
-    );
-  }
-
-  return log_type;
 }
 
 /**

@@ -17,11 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/adopted/inf-adopted-request-log.h>
-#include <libinfinity/inf-marshal.h>
-
-#include <string.h> /* For (g_)memmove */
-
 /**
  * SECTION:inf-adopted-request-log
  * @title: InfAdoptedRequestLog
@@ -40,6 +35,11 @@
  * from the log, however requests can only be removed so that remaining Undo
  * or Redo requests do not refer to some request that is about to be removed.
  */
+
+#include <libinfinity/adopted/inf-adopted-request-log.h>
+#include <libinfinity/inf-marshal.h>
+
+#include <string.h> /* For (g_)memmove */
 
 typedef struct _InfAdoptedRequestLogCleanupCacheData
   InfAdoptedRequestLogCleanupCacheData;
@@ -98,9 +98,11 @@ enum {
 #define INF_ADOPTED_REQUEST_LOG_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_REQUEST_LOG, InfAdoptedRequestLogPrivate))
 #define INF_ADOPTED_REQUEST_LOG_PRIVATE(obj)     ((InfAdoptedRequestLogPrivate*)(obj)->priv)
 
-static GObjectClass* parent_class;
 static const guint INF_ADOPTED_REQUEST_LOG_INC = 0x80;
 static guint request_log_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedRequestLog, inf_adopted_request_log, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedRequestLog))
 
 #ifdef INF_ADOPTED_REQUEST_LOG_CHECK_RELATED
 static void
@@ -285,13 +287,9 @@ inf_adopted_request_log_find_associated(InfAdoptedRequestLog* log,
  */
 
 static void
-inf_adopted_request_log_init(GTypeInstance* instance,
-                             gpointer g_class)
+inf_adopted_request_log_init(InfAdoptedRequestLog* log)
 {
-  InfAdoptedRequestLog* log;
   InfAdoptedRequestLogPrivate* priv;
-
-  log = INF_ADOPTED_REQUEST_LOG(instance);
   log->priv = INF_ADOPTED_REQUEST_LOG_GET_PRIVATE(log);
   priv = INF_ADOPTED_REQUEST_LOG_PRIVATE(log);
 
@@ -331,7 +329,7 @@ inf_adopted_request_log_dispose(GObject* object)
   priv->end = 0;
   priv->offset = 0;
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_request_log_parent_class)->dispose(object);
 }
 
 static void
@@ -345,7 +343,7 @@ inf_adopted_request_log_finalize(GObject* object)
 
   g_free(priv->entries);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_request_log_parent_class)->finalize(object);
 }
 
 static void
@@ -630,17 +628,11 @@ inf_adopted_request_log_add_request_handler(InfAdoptedRequestLog* log,
 }
 
 static void
-inf_adopted_request_log_class_init(gpointer g_class,
-                                   gpointer class_data)
+inf_adopted_request_log_class_init(
+  InfAdoptedRequestLogClass* request_log_class)
 {
   GObjectClass* object_class;
-  InfAdoptedRequestLogClass* request_log_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  request_log_class = INF_ADOPTED_REQUEST_LOG_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedRequestLogPrivate));
+  object_class = G_OBJECT_CLASS(request_log_class);
 
   object_class->dispose = inf_adopted_request_log_dispose;
   object_class->finalize = inf_adopted_request_log_finalize;
@@ -734,37 +726,6 @@ inf_adopted_request_log_class_init(gpointer g_class,
     1,
     INF_ADOPTED_TYPE_REQUEST
   );
-}
-
-GType
-inf_adopted_request_log_get_type(void)
-{
-  static GType request_log_type = 0;
-
-  if(!request_log_type)
-  {
-    static const GTypeInfo request_log_type_info = {
-      sizeof(InfAdoptedRequestLogClass),    /* class_size */
-      NULL,                                 /* base_init */
-      NULL,                                 /* base_finalize */
-      inf_adopted_request_log_class_init,   /* class_init */
-      NULL,                                 /* class_finalize */
-      NULL,                                 /* class_data */
-      sizeof(InfAdoptedRequestLog),         /* instance_size */
-      0,                                    /* n_preallocs */
-      inf_adopted_request_log_init,         /* instance_init */
-      NULL                                  /* value_table */
-    };
-
-    request_log_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedRequestLog",
-      &request_log_type_info,
-      0
-    );
-  }
-
-  return request_log_type;
 }
 
 /*

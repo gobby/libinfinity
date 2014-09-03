@@ -34,12 +34,12 @@ G_BEGIN_DECLS
 #define INF_ADOPTED_TYPE_OPERATION                 (inf_adopted_operation_get_type())
 #define INF_ADOPTED_OPERATION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_ADOPTED_TYPE_OPERATION, InfAdoptedOperation))
 #define INF_ADOPTED_IS_OPERATION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_ADOPTED_TYPE_OPERATION))
-#define INF_ADOPTED_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_ADOPTED_TYPE_OPERATION, InfAdoptedOperationIface))
+#define INF_ADOPTED_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_ADOPTED_TYPE_OPERATION, InfAdoptedOperationInterface))
 
 #define INF_ADOPTED_TYPE_OPERATION_FLAGS           (inf_adopted_operation_flags_get_type())
 
 typedef struct _InfAdoptedOperation InfAdoptedOperation;
-typedef struct _InfAdoptedOperationIface InfAdoptedOperationIface;
+typedef struct _InfAdoptedOperationInterface InfAdoptedOperationInterface;
 
 /**
  * InfAdoptedConcurrencyId:
@@ -72,7 +72,7 @@ typedef enum _InfAdoptedOperationFlags {
 } InfAdoptedOperationFlags;
 
 /**
- * InfAdoptedOperationIface:
+ * InfAdoptedOperationInterface:
  * @need_concurrency_id: Virtual function to determine whether a concurrency
  * ID is required to transform @operation against @against.
  * @transform: Virtual function that transform @operation against @against and
@@ -100,7 +100,7 @@ typedef enum _InfAdoptedOperationFlags {
  * The virtual methods that need to be implemented by an operation to be used
  * with #InfAdoptedAlgorithm.
  */
-struct _InfAdoptedOperationIface {
+struct _InfAdoptedOperationInterface {
   /*< private >*/
   GTypeInterface parent;
 

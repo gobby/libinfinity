@@ -35,74 +35,30 @@
  **/
 
 #include <libinfinity/communication/inf-communication-object.h>
+#include <libinfinity/inf-define-enum.h>
 
-GType
-inf_communication_scope_get_type(void)
-{
-  static GType scope_type = 0;
-
-  if(!scope_type)
+static const GEnumValue inf_communication_scope_values[] = {
   {
-    static const GEnumValue scope_values[] = {
-      {
-        INF_COMMUNICATION_SCOPE_PTP,
-        "INF_COMMUNICATION_SCOPE_PTP",
-        "ptp"
-      }, {
-        INF_COMMUNICATION_SCOPE_GROUP,
-        "INF_COMMUNICATION_SCOPE_GROUP",
-        "group",
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    scope_type = g_enum_register_static(
-      "InfCommunicationScope",
-      scope_values
-    );
+    INF_COMMUNICATION_SCOPE_PTP,
+    "INF_COMMUNICATION_SCOPE_PTP",
+    "ptp"
+  }, {
+    INF_COMMUNICATION_SCOPE_GROUP,
+    "INF_COMMUNICATION_SCOPE_GROUP",
+    "group",
+  }, {
+    0,
+    NULL,
+    NULL
   }
+};
 
-  return scope_type;
-}
+INF_DEFINE_ENUM_TYPE(InfCommunicationScope, inf_communication_scope, inf_communication_scope_values)
+G_DEFINE_INTERFACE(InfCommunicationObject, inf_communication_object, G_TYPE_OBJECT)
 
-
-GType
-inf_communication_object_get_type(void)
+static void
+inf_communication_object_default_init(InfCommunicationObjectInterface* iface)
 {
-  static GType communication_object_type = 0;
-
-  if(!communication_object_type)
-  {
-    static const GTypeInfo communication_object_info = {
-      sizeof(InfCommunicationObjectIface),     /* class_size */
-      NULL,                                    /* base_init */
-      NULL,                                    /* base_finalize */
-      NULL,                                    /* class_init */
-      NULL,                                    /* class_finalize */
-      NULL,                                    /* class_data */
-      0,                                       /* instance_size */
-      0,                                       /* n_preallocs */
-      NULL,                                    /* instance_init */
-      NULL                                     /* value_table */
-    };
-
-    communication_object_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfCommunicationObject",
-      &communication_object_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(
-      communication_object_type,
-      G_TYPE_OBJECT
-    );
-  }
-
-  return communication_object_type;
 }
 
 /**
@@ -137,7 +93,7 @@ inf_communication_object_received(InfCommunicationObject* object,
                                   InfXmlConnection* conn,
                                   xmlNodePtr node)
 {
-  InfCommunicationObjectIface* iface;
+  InfCommunicationObjectInterface* iface;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_OBJECT(object), FALSE);
   /* temporarily commented-out: */
@@ -168,7 +124,7 @@ inf_communication_object_enqueued(InfCommunicationObject* object,
                                   InfXmlConnection* conn,
                                   xmlNodePtr node)
 {
-  InfCommunicationObjectIface* iface;
+  InfCommunicationObjectInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_OBJECT(object));
   g_return_if_fail(INF_IS_XML_CONNECTION(conn));
@@ -195,7 +151,7 @@ inf_communication_object_sent(InfCommunicationObject* object,
                               InfXmlConnection* conn,
                               xmlNodePtr node)
 {
-  InfCommunicationObjectIface* iface;
+  InfCommunicationObjectInterface* iface;
 
   g_return_if_fail(INF_COMMUNICATION_IS_OBJECT(object));
   g_return_if_fail(INF_IS_XML_CONNECTION(conn));

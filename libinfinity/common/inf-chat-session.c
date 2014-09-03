@@ -69,9 +69,11 @@ enum {
 
 #define INF_CHAT_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_CHAT_SESSION, InfChatSessionPrivate))
 
-static InfSessionClass* parent_class;
 static guint chat_session_signals[LAST_SIGNAL];
 static GQuark inf_chat_session_error_quark;
+
+G_DEFINE_TYPE_WITH_CODE(InfChatSession, inf_chat_session, INF_TYPE_SESSION,
+  G_ADD_PRIVATE(InfChatSession))
 
 /*
  * Error functions
@@ -599,13 +601,9 @@ inf_chat_session_add_message_cb(InfChatBuffer* buffer,
  */
 
 static void
-inf_chat_session_init(GTypeInstance* instance,
-                      gpointer g_class)
+inf_chat_session_init(InfChatSession* session)
 {
-  InfChatSession* session;
   InfChatSessionPrivate* priv;
-
-  session = INF_CHAT_SESSION(instance);
   priv = INF_CHAT_SESSION_PRIVATE(session);
 
   priv->log_filename = NULL;
@@ -633,7 +631,7 @@ inf_chat_session_constructor(GType type,
   InfUserTable* user_table;
   InfChatBuffer* buffer;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_chat_session_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -720,7 +718,7 @@ inf_chat_session_dispose(GObject* object)
     session
   );
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_chat_session_parent_class)->dispose(object);
 }
 
 static void
@@ -734,7 +732,7 @@ inf_chat_session_finalize(GObject* object)
 
   inf_chat_session_set_log_file(session, NULL, NULL);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_chat_session_parent_class)->finalize(object);
 }
 
 static void
@@ -802,11 +800,13 @@ inf_chat_session_to_xml_sync(InfSession* session,
                              xmlNodePtr parent)
 {
   InfChatBuffer* buffer;
+  InfSessionClass* parent_class;
   const InfChatBufferMessage* message;
   xmlNodePtr child;
   guint i;
 
   buffer = INF_CHAT_BUFFER(inf_session_get_buffer(session));
+  parent_class = INF_SESSION_CLASS(inf_chat_session_parent_class);
 
   g_assert(parent_class->to_xml_sync != NULL);
   parent_class->to_xml_sync(session, parent);
@@ -831,6 +831,8 @@ inf_chat_session_process_xml_sync(InfSession* session,
                                   xmlNodePtr xml,
                                   GError** error)
 {
+  InfSessionClass* parent_class;
+
   if(strcmp((const char*)xml->name, "message") == 0)
   {
     return inf_chat_session_receive_message(
@@ -842,6 +844,7 @@ inf_chat_session_process_xml_sync(InfSession* session,
   }
   else
   {
+    parent_class = INF_SESSION_CLASS(inf_chat_session_parent_class);
     g_assert(parent_class->process_xml_sync != NULL);
     return parent_class->process_xml_sync(session, connection, xml, error);
   }
@@ -853,6 +856,7 @@ inf_chat_session_process_xml_run(InfSession* session,
                                  xmlNodePtr xml,
                                  GError** error)
 {
+  InfSessionClass* parent_class;
   gboolean result;
 
   if(strcmp((const char*)xml->name, "message") == 0)
@@ -871,6 +875,7 @@ inf_chat_session_process_xml_run(InfSession* session,
   }
   else
   {
+    parent_class = INF_SESSION_CLASS(inf_chat_session_parent_class);
     g_assert(parent_class->process_xml_run != NULL);
     return parent_class->process_xml_run(session, connection, xml, error);
   }
@@ -880,9 +885,12 @@ static void
 inf_chat_session_synchronization_complete(InfSession* session,
                                           InfXmlConnection* connection)
 {
+  InfSessionClass* parent_class;
+
   if(inf_session_get_status(session) == INF_SESSION_SYNCHRONIZING)
     inf_chat_session_log_userlist(INF_CHAT_SESSION(session));
 
+  parent_class = INF_SESSION_CLASS(inf_chat_session_parent_class);
   g_assert(parent_class->synchronization_complete != NULL);
   parent_class->synchronization_complete(session, connection);
 }
@@ -892,6 +900,7 @@ inf_chat_session_synchronization_failed(InfSession* session,
                                         InfXmlConnection* connection,
                                         const GError* error)
 {
+  InfSessionClass* parent_class;
   InfChatSessionPrivate* priv;
   time_t cur_time;
   struct tm* tm;
@@ -917,6 +926,7 @@ inf_chat_session_synchronization_failed(InfSession* session,
     }
   }
 
+  parent_class = INF_SESSION_CLASS(inf_chat_session_parent_class);
   g_assert(parent_class->synchronization_failed != NULL);
   parent_class->synchronization_failed(session, connection, error);
 }
@@ -1018,19 +1028,13 @@ inf_chat_session_send_message_handler(InfChatSession* session,
  */
 
 static void
-inf_chat_session_class_init(gpointer g_class,
-                            gpointer class_data)
+inf_chat_session_class_init(InfChatSessionClass* chat_session_class)
 {
   GObjectClass* object_class;
   InfSessionClass* session_class;
-  InfChatSessionClass* chat_session_class;
 
-  object_class = G_OBJECT_CLASS(g_class);
-  session_class = INF_SESSION_CLASS(g_class);
-  chat_session_class = INF_CHAT_SESSION_CLASS(g_class);
-
-  parent_class = INF_SESSION_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfChatSessionPrivate));
+  object_class = G_OBJECT_CLASS(chat_session_class);
+  session_class = INF_SESSION_CLASS(chat_session_class);
 
   object_class->constructor = inf_chat_session_constructor;
   object_class->dispose = inf_chat_session_dispose;
@@ -1112,37 +1116,6 @@ inf_chat_session_class_init(gpointer g_class,
     1,
     INF_TYPE_CHAT_BUFFER_MESSAGE | G_SIGNAL_TYPE_STATIC_SCOPE
   );
-}
-
-GType
-inf_chat_session_get_type(void)
-{
-  static GType chat_session_type = 0;
-
-  if(!chat_session_type)
-  {
-    static const GTypeInfo chat_session_type_info = {
-      sizeof(InfChatSessionClass),  /* class_size */
-      NULL,                         /* base_init */
-      NULL,                         /* base_finalize */
-      inf_chat_session_class_init,  /* class_init */
-      NULL,                         /* class_finalize */
-      NULL,                         /* class_data */
-      sizeof(InfChatSession),       /* instance_size */
-      0,                            /* n_preallocs */
-      inf_chat_session_init,        /* instance_init */
-      NULL                          /* value_table */
-    };
-
-    chat_session_type = g_type_register_static(
-      INF_TYPE_SESSION,
-      "InfChatSession",
-      &chat_session_type_info,
-      0
-    );
-  }
-
-  return chat_session_type;
 }
 
 /*

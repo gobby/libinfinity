@@ -23,6 +23,7 @@
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-native-socket.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-define-enum.h>
 #include <config.h>
 
 #ifndef G_OS_WIN32
@@ -38,6 +39,22 @@
 #else
 # include <ws2tcpip.h>
 #endif
+
+static const GEnumValue infd_tcp_server_status_values[] = {
+  {
+    INFD_TCP_SERVER_CLOSED,
+    "INFD_TCP_SERVER_CLOSED",
+    "closed"
+  }, {
+    INFD_TCP_SERVER_OPEN,
+    "INFD_TCP_SERVER_OPEN",
+    "open"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfdTcpServerPrivate InfdTcpServerPrivate;
 struct _InfdTcpServerPrivate {
@@ -71,8 +88,11 @@ enum {
 
 #define INFD_TCP_SERVER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_TCP_SERVER, InfdTcpServerPrivate))
 
-static GObjectClass* parent_class;
 static guint tcp_server_signals[LAST_SIGNAL];
+
+INF_DEFINE_ENUM_TYPE(InfdTcpServerStatus, infd_tcp_server_status, infd_tcp_server_status_values)
+G_DEFINE_TYPE_WITH_CODE(InfdTcpServer, infd_tcp_server, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdTcpServer))
 
 /* TODO: The following functions are merely copied from inf-tcp-connection.c.
  * Probably they should belong into some inf-net-util.c file in
@@ -254,13 +274,9 @@ infd_tcp_server_io(InfNativeSocket* socket,
 }
 
 static void
-infd_tcp_server_init(GTypeInstance* instance,
-                     gpointer g_class)
+infd_tcp_server_init(InfdTcpServer* server)
 {
-  InfdTcpServer* server;
   InfdTcpServerPrivate* priv;
-
-  server = INFD_TCP_SERVER(instance);
   priv = INFD_TCP_SERVER_PRIVATE(server);
 
   priv->io = NULL;
@@ -290,7 +306,7 @@ infd_tcp_server_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infd_tcp_server_parent_class)->dispose(object);
 }
 
 static void
@@ -305,7 +321,7 @@ infd_tcp_server_finalize(GObject* object)
   if(priv->local_address != NULL)
     inf_ip_address_free(priv->local_address);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_tcp_server_parent_class)->finalize(object);
 }
 
 static void
@@ -403,17 +419,10 @@ infd_tcp_server_error(InfdTcpServer* server,
 }
 
 static void
-infd_tcp_server_class_init(gpointer g_class,
-                           gpointer class_data)
+infd_tcp_server_class_init(InfdTcpServerClass* tcp_server_class)
 {
   GObjectClass* object_class;
-  InfdTcpServerClass* tcp_server_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  tcp_server_class = INFD_TCP_SERVER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdTcpServerPrivate));
+  object_class = G_OBJECT_CLASS(tcp_server_class);
 
   object_class->dispose = infd_tcp_server_dispose;
   object_class->finalize = infd_tcp_server_finalize;
@@ -497,69 +506,6 @@ infd_tcp_server_class_init(gpointer g_class,
     1,
     G_TYPE_POINTER /* actually a GError* */
   );
-}
-
-GType
-infd_tcp_server_status_get_type(void)
-{
-  static GType tcp_server_status_type = 0;
-
-  if(!tcp_server_status_type)
-  {
-    static const GEnumValue tcp_server_status_values[] = {
-      {
-        INFD_TCP_SERVER_CLOSED,
-        "INFD_TCP_SERVER_CLOSED",
-        "closed"
-      }, {
-        INFD_TCP_SERVER_OPEN,
-        "INFD_TCP_SERVER_OPEN",
-        "open"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    tcp_server_status_type = g_enum_register_static(
-      "InfdTcpServerStatus",
-      tcp_server_status_values
-    );
-  }
-
-  return tcp_server_status_type;
-}
-
-GType
-infd_tcp_server_get_type(void)
-{
-  static GType tcp_server_type = 0;
-
-  if(!tcp_server_type)
-  {
-    static const GTypeInfo tcp_server_type_info = {
-      sizeof(InfdTcpServerClass),   /* class_size */
-      NULL,                         /* base_init */
-      NULL,                         /* base_finalize */
-      infd_tcp_server_class_init,   /* class_init */
-      NULL,                         /* class_finalize */
-      NULL,                         /* class_data */
-      sizeof(InfdTcpServer),        /* instance_size */
-      0,                            /* n_preallocs */
-      infd_tcp_server_init,         /* instance_init */
-      NULL                          /* value_table */
-    };
-
-    tcp_server_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdTcpServer",
-      &tcp_server_type_info,
-      0
-    );
-  }
-
-  return tcp_server_type;
 }
 
 /**

@@ -35,27 +35,12 @@
 
 #include <libinfinity/common/inf-request-result.h>
 
+G_DEFINE_BOXED_TYPE(InfRequestResult, inf_request_result, inf_request_result_copy, inf_request_result_free)
+
 struct _InfRequestResult {
   gpointer data;
   gsize len;
 };
-
-GType
-inf_request_result_get_type(void)
-{
-  static GType request_result_type = 0;
-
-  if(!request_result_type)
-  {
-    request_result_type = g_boxed_type_register_static(
-      "InfRequestResult",
-      (GBoxedCopyFunc)inf_request_result_copy,
-      (GBoxedFreeFunc)inf_request_result_free
-    );
-  }
-
-  return request_result_type;
-}
 
 /**
  * inf_request_result_new:

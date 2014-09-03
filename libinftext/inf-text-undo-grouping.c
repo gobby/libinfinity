@@ -17,14 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinftext/inf-text-undo-grouping.h>
-#include <libinftext/inf-text-default-insert-operation.h>
-#include <libinftext/inf-text-default-delete-operation.h>
-#include <libinftext/inf-text-insert-operation.h>
-#include <libinftext/inf-text-delete-operation.h>
-#include <libinftext/inf-text-move-operation.h>
-#include <libinftext/inf-text-chunk.h>
-
 /**
  * SECTION:inf-text-undo-grouping
  * @title:InfTextUndoGrouping
@@ -42,9 +34,17 @@
  * #InfAdoptedUndoGrouping::group-requests to perform the grouping.
  */
 
+#include <libinftext/inf-text-undo-grouping.h>
+#include <libinftext/inf-text-default-insert-operation.h>
+#include <libinftext/inf-text-default-delete-operation.h>
+#include <libinftext/inf-text-insert-operation.h>
+#include <libinftext/inf-text-delete-operation.h>
+#include <libinftext/inf-text-move-operation.h>
+#include <libinftext/inf-text-chunk.h>
+
 #define INF_TEXT_UNDO_GROUPING_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_UNDO_GROUPING, InfTextUndoGroupingPrivate))
 
-static InfAdoptedUndoGroupingClass* parent_class;
+G_DEFINE_TYPE(InfTextUndoGrouping, inf_text_undo_grouping, INF_ADOPTED_TYPE_UNDO_GROUPING)
 
 /* Returns the gunichar of the first character of a InfTextChunk */
 static gunichar
@@ -299,55 +299,21 @@ inf_text_undo_grouping_group_requests(InfAdoptedUndoGrouping* grouping,
   }
 }
 
-/*
- * GType registration.
- */
-
 static void
-inf_text_undo_grouping_class_init(gpointer g_class,
-                                  gpointer class_data)
+inf_text_undo_grouping_init(InfTextUndoGrouping* grouping)
 {
-  GObjectClass* object_class;
-  InfAdoptedUndoGroupingClass* undo_grouping_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  undo_grouping_class = INF_ADOPTED_UNDO_GROUPING_CLASS(g_class);
-
-  parent_class =
-    INF_ADOPTED_UNDO_GROUPING_CLASS(g_type_class_peek_parent(g_class));
-
-  undo_grouping_class->group_requests = inf_text_undo_grouping_group_requests;
 }
 
-GType
-inf_text_undo_grouping_get_type(void)
+static void
+inf_text_undo_grouping_class_init(
+  InfTextUndoGroupingClass* text_undo_grouping_class)
 {
-  static GType undo_grouping_type = 0;
+  InfAdoptedUndoGroupingClass* undo_grouping_class;
 
-  if(!undo_grouping_type)
-  {
-    static const GTypeInfo undo_grouping_type_info = {
-      sizeof(InfTextUndoGroupingClass),   /* class_size */
-      NULL,                              /* base_init */
-      NULL,                              /* base_finalize */
-      inf_text_undo_grouping_class_init,  /* class_init */
-      NULL,                              /* class_finalize */
-      NULL,                              /* class_data */
-      sizeof(InfTextUndoGrouping),        /* instance_size */
-      0,                                 /* n_preallocs */
-      NULL,                              /* instance_init */
-      NULL                               /* value_table */
-    };
+  undo_grouping_class =
+    INF_ADOPTED_UNDO_GROUPING_CLASS(text_undo_grouping_class);
 
-    undo_grouping_type = g_type_register_static(
-      INF_ADOPTED_TYPE_UNDO_GROUPING,
-      "InfTextUndoGrouping",
-      &undo_grouping_type_info,
-      0
-    );
-  }
-
-  return undo_grouping_type;
+  undo_grouping_class->group_requests = inf_text_undo_grouping_group_requests;
 }
 
 /*

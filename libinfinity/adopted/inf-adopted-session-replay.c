@@ -17,16 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/adopted/inf-adopted-session-replay.h>
-#include <libinfinity/common/inf-simulated-connection.h>
-#include <libinfinity/common/inf-standalone-io.h>
-#include <libinfinity/common/inf-xml-util.h>
-#include <libinfinity/inf-i18n.h>
-
-#include <libxml/xmlreader.h>
-
-#include <string.h>
-
 /**
  * SECTION:inf-adopted-session-replay
  * @title: InfAdoptedSessionReplay
@@ -44,6 +34,16 @@
  * replay, and then use inf_adopted_session_replay_get_session() to obtain
  * the replayed session.
  */
+
+#include <libinfinity/adopted/inf-adopted-session-replay.h>
+#include <libinfinity/common/inf-simulated-connection.h>
+#include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/inf-i18n.h>
+
+#include <libxml/xmlreader.h>
+
+#include <string.h>
 
 /* cf.
  * http://www.gnu.org/software/dotgnu/pnetlib-doc/System/Xml/XmlNodeType.html
@@ -79,8 +79,10 @@ enum {
 
 #define INF_ADOPTED_SESSION_REPLAY_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_SESSION_REPLAY, InfAdoptedSessionReplayPrivate))
 
-static GObjectClass* parent_class;
 static GQuark session_replay_error_quark;
+
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedSessionReplay, inf_adopted_session_replay, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedSessionReplay))
 
 static xmlNodePtr
 inf_adopted_session_replay_read_current(xmlTextReaderPtr reader,
@@ -526,14 +528,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
  */
 
 static void
-inf_adopted_session_replay_init(GTypeInstance* instance,
-                                gpointer g_class)
+inf_adopted_session_replay_init(InfAdoptedSessionReplay* replay)
 {
-  InfAdoptedSessionReplay* record;
   InfAdoptedSessionReplayPrivate* priv;
-
-  record = INF_ADOPTED_SESSION_REPLAY(instance);
-  priv = INF_ADOPTED_SESSION_REPLAY_PRIVATE(record);
+  priv = INF_ADOPTED_SESSION_REPLAY_PRIVATE(replay);
 
   priv->filename = NULL;
   priv->reader = NULL;
@@ -561,7 +559,7 @@ inf_adopted_session_replay_dispose(GObject* object)
 
   inf_adopted_session_replay_clear(replay);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_session_replay_parent_class)->dispose(object);
 }
 
 static void
@@ -575,7 +573,7 @@ inf_adopted_session_replay_finalize(GObject* object)
 
   g_assert(priv->filename == NULL);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_session_replay_parent_class)->finalize(object);
 }
 
 static void
@@ -632,14 +630,11 @@ inf_adopted_session_replay_get_property(GObject* object,
  */
 
 static void
-inf_adopted_session_replay_class_init(gpointer g_class,
-                                      gpointer class_data)
+inf_adopted_session_replay_class_init(
+  InfAdoptedSessionReplayClass* replay_class)
 {
   GObjectClass* object_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedSessionReplayPrivate));
+  object_class = G_OBJECT_CLASS(replay_class);
 
   object_class->dispose = inf_adopted_session_replay_dispose;
   object_class->finalize = inf_adopted_session_replay_finalize;
@@ -672,37 +667,6 @@ inf_adopted_session_replay_class_init(gpointer g_class,
       G_PARAM_READABLE
     )
   );
-}
-
-GType
-inf_adopted_session_replay_get_type(void)
-{
-  static GType session_replay_type = 0;
-
-  if(!session_replay_type)
-  {
-    static const GTypeInfo session_replay_type_info = {
-      sizeof(InfAdoptedSessionReplayClass),   /* class_size */
-      NULL,                                   /* base_init */
-      NULL,                                   /* base_finalize */
-      inf_adopted_session_replay_class_init,  /* class_init */
-      NULL,                                   /* class_finalize */
-      NULL,                                   /* class_data */
-      sizeof(InfAdoptedSessionReplay),        /* instance_size */
-      0,                                      /* n_preallocs */
-      inf_adopted_session_replay_init,        /* instance_init */
-      NULL                                    /* value_table */
-    };
-
-    session_replay_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedSessionReplay",
-      &session_replay_type_info,
-      0
-    );
-  }
-
-  return session_replay_type;
 }
 
 /*

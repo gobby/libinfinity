@@ -54,7 +54,10 @@ enum {
 
 #define INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_CENTRAL_METHOD, InfCommunicationCentralMethodPrivate))
 
-static GObjectClass* parent_class;
+static void inf_communication_central_method_method_iface_init(InfCommunicationMethodInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfCommunicationCentralMethod, inf_communication_central_method, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfCommunicationCentralMethod)
+  G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_METHOD, inf_communication_central_method_method_iface_init))
 
 static void
 inf_communication_central_method_notify_status_cb(GObject* object,
@@ -481,13 +484,9 @@ inf_communication_central_method_set_group(InfCommunicationCentralMethod* m,
  */
 
 static void
-inf_communication_central_method_init(GTypeInstance* instance,
-                                      gpointer g_class)
+inf_communication_central_method_init(InfCommunicationCentralMethod* method)
 {
-  InfCommunicationCentralMethod* method;
   InfCommunicationCentralMethodPrivate* priv;
-
-  method = INF_COMMUNICATION_CENTRAL_METHOD(instance);
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
   priv->group = NULL;
@@ -516,7 +515,7 @@ inf_communication_central_method_dispose(GObject* object)
   inf_communication_central_method_set_group(method, NULL);
   inf_communication_central_method_set_registry(method, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_communication_central_method_parent_class)->dispose(object);
 }
 
 static void
@@ -588,17 +587,11 @@ inf_communication_central_method_get_property(GObject* object,
  */
 
 static void
-inf_communication_central_method_class_init(gpointer g_class,
-                                            gpointer class_data)
+inf_communication_central_method_class_init(
+  InfCommunicationCentralMethodClass* method_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(
-    g_class,
-    sizeof(InfCommunicationCentralMethodPrivate)
-  );
+  object_class = G_OBJECT_CLASS(method_class);
 
   object_class->dispose = inf_communication_central_method_dispose;
   object_class->set_property = inf_communication_central_method_set_property;
@@ -630,12 +623,9 @@ inf_communication_central_method_class_init(gpointer g_class,
 }
 
 static void
-inf_communication_central_method_method_init(gpointer g_iface,
-                                             gpointer iface_data)
+inf_communication_central_method_method_iface_init(
+  InfCommunicationMethodInterface* iface)
 {
-  InfCommunicationMethodIface* iface;
-  iface = (InfCommunicationMethodIface*)g_iface;
-
   iface->add_member = inf_communication_central_method_add_member;
   iface->remove_member = inf_communication_central_method_remove_member;
   iface->is_member = inf_communication_central_method_is_member;
@@ -645,49 +635,6 @@ inf_communication_central_method_method_init(gpointer g_iface,
   iface->received = inf_communication_central_method_received;
   iface->enqueued = inf_communication_central_method_enqueued;
   iface->sent = inf_communication_central_method_sent;
-}
-
-GType
-inf_communication_central_method_get_type(void)
-{
-  static GType central_method_type = 0;
-
-  if(!central_method_type)
-  {
-    static const GTypeInfo central_method_type_info = {
-      sizeof(InfCommunicationCentralMethodClass),   /* class_size */
-      NULL,                                         /* base_init */
-      NULL,                                         /* base_finalize */
-      inf_communication_central_method_class_init,  /* class_init */
-      NULL,                                         /* class_finalize */
-      NULL,                                         /* class_data */
-      sizeof(InfCommunicationCentralMethod),        /* instance_size */
-      0,                                            /* n_preallocs */
-      inf_communication_central_method_init,        /* instance_init */
-      NULL                                          /* value_table */
-    };
-
-    static const GInterfaceInfo method_info = {
-      inf_communication_central_method_method_init,
-      NULL,
-      NULL
-    };
-
-    central_method_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfCommunicationCentralMethod",
-      &central_method_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      central_method_type,
-      INF_COMMUNICATION_TYPE_METHOD,
-      &method_info
-    );
-  }
-
-  return central_method_type;
 }
 
 /* vim:set et sw=2 ts=2: */

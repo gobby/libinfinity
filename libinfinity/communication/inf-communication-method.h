@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 #define INF_COMMUNICATION_TYPE_METHOD                 (inf_communication_method_get_type())
 #define INF_COMMUNICATION_METHOD(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_METHOD, InfCommunicationMethod))
 #define INF_COMMUNICATION_IS_METHOD(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_METHOD))
-#define INF_COMMUNICATION_METHOD_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_METHOD, InfCommunicationMethodIface))
+#define INF_COMMUNICATION_METHOD_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_METHOD, InfCommunicationMethodInterface))
 
 /**
  * InfCommunicationMethod:
@@ -41,10 +41,10 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfCommunicationMethod InfCommunicationMethod;
-typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
+typedef struct _InfCommunicationMethodInterface InfCommunicationMethodInterface;
 
 /**
- * InfCommunicationMethodIface:
+ * InfCommunicationMethodInterface:
  * @add_member: Default signal handler of the
  * #InfCommunicationMethod::add-member signal.
  * @remove_member: Default signal handler of the
@@ -66,7 +66,7 @@ typedef struct _InfCommunicationMethodIface InfCommunicationMethodIface;
  * The default signal handlers of virtual methods of #InfCommunicationMethod.
  * These implement communication within a #InfCommunicationGroup.
  */
-struct _InfCommunicationMethodIface {
+struct _InfCommunicationMethodInterface {
   /*< private >*/
   GTypeInterface parent;
 

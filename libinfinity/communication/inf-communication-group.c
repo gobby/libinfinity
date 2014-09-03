@@ -80,8 +80,10 @@ enum {
 
 #define INF_COMMUNICATION_GROUP_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_GROUP, InfCommunicationGroupPrivate))
 
-static GObjectClass* parent_class;
 static guint group_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_EXTENDED(InfCommunicationGroup, inf_communication_group, G_TYPE_OBJECT, G_TYPE_FLAG_ABSTRACT,
+  G_ADD_PRIVATE(InfCommunicationGroup))
 
 /*
  * Signal handlers
@@ -318,13 +320,9 @@ inf_communication_group_set_registry(InfCommunicationGroup* group,
  */
 
 static void
-inf_communication_group_init(GTypeInstance* instance,
-                             gpointer g_class)
+inf_communication_group_init(InfCommunicationGroup* group)
 {
-  InfCommunicationGroup* group;
   InfCommunicationGroupPrivate* priv;
-
-  group = INF_COMMUNICATION_GROUP(instance);
   priv = INF_COMMUNICATION_GROUP_PRIVATE(group);
 
   priv->communication_manager = NULL;
@@ -356,7 +354,7 @@ inf_communication_group_dispose(GObject* object)
   inf_communication_group_set_manager(group, NULL);
   inf_communication_group_set_target(group, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_communication_group_parent_class)->dispose(object);
 }
 
 static void
@@ -370,7 +368,7 @@ inf_communication_group_finalize(GObject* object)
 
   g_free(priv->name);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_communication_group_parent_class)->finalize(object);
 }
 
 static void
@@ -461,17 +459,10 @@ inf_communication_group_get_property(GObject* object,
  */
 
 static void
-inf_communication_group_class_init(gpointer g_class,
-                                   gpointer class_data)
+inf_communication_group_class_init(InfCommunicationGroupClass* group_class)
 {
   GObjectClass* object_class;
-  InfCommunicationGroupClass* group_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  group_class = INF_COMMUNICATION_GROUP_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfCommunicationGroupPrivate));
+  object_class = G_OBJECT_CLASS(group_class);
 
   object_class->dispose = inf_communication_group_dispose;
   object_class->finalize = inf_communication_group_finalize;
@@ -568,37 +559,6 @@ inf_communication_group_class_init(gpointer g_class,
     1,
     INF_TYPE_XML_CONNECTION
   );
-}
-
-GType
-inf_communication_group_get_type(void)
-{
-  static GType group_type = 0;
-
-  if(!group_type)
-  {
-    static const GTypeInfo group_type_info = {
-      sizeof(InfCommunicationGroupClass),  /* class_size */
-      NULL,                                /* base_init */
-      NULL,                                /* base_finalize */
-      inf_communication_group_class_init,  /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      sizeof(InfCommunicationGroup),       /* instance_size */
-      0,                                   /* n_preallocs */
-      inf_communication_group_init,        /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    group_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfCommunicationGroup",
-      &group_type_info,
-      G_TYPE_FLAG_ABSTRACT
-    );
-  }
-
-  return group_type;
 }
 
 /*

@@ -115,7 +115,8 @@ enum {
 
 #define INF_TEXT_GTK_VIEW_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_VIEW, InfTextGtkViewPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfTextGtkView, inf_text_gtk_view, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextGtkView))
 
 /* Converts from HSV to RGB */
 /* TODO: Use gtk_hsv_to_rgb from GTK+ 2.14 instead */
@@ -1790,13 +1791,9 @@ inf_text_gtk_view_set_user_table(InfTextGtkView* view,
 }
 
 static void
-inf_text_gtk_view_init(GTypeInstance* instance,
-                         gpointer g_class)
+inf_text_gtk_view_init(InfTextGtkView* view)
 {
-  InfTextGtkView* view;
   InfTextGtkViewPrivate* priv;
-
-  view = INF_TEXT_GTK_VIEW(instance);
   priv = INF_TEXT_GTK_VIEW_PRIVATE(view);
 
   priv->io = NULL;
@@ -1831,7 +1828,7 @@ inf_text_gtk_view_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_text_gtk_view_parent_class)->dispose(object);
 }
 
 static void
@@ -1946,14 +1943,10 @@ inf_text_gtk_view_get_property(GObject* object,
 }
 
 static void
-inf_text_gtk_view_class_init(gpointer g_class,
-                               gpointer class_data)
+inf_text_gtk_view_class_init(InfTextGtkViewClass* view_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextGtkViewPrivate));
+  object_class = G_OBJECT_CLASS(view_class);
 
   object_class->dispose = inf_text_gtk_view_dispose;
   object_class->set_property = inf_text_gtk_view_set_property;
@@ -2042,37 +2035,6 @@ inf_text_gtk_view_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_text_gtk_view_get_type(void)
-{
-  static GType view_type = 0;
-
-  if(!view_type)
-  {
-    static const GTypeInfo view_type_info = {
-      sizeof(InfTextGtkViewClass),    /* class_size */
-      NULL,                           /* base_init */
-      NULL,                           /* base_finalize */
-      inf_text_gtk_view_class_init,   /* class_init */
-      NULL,                           /* class_finalize */
-      NULL,                           /* class_data */
-      sizeof(InfTextGtkView),         /* instance_size */
-      0,                              /* n_preallocs */
-      inf_text_gtk_view_init,         /* instance_init */
-      NULL                            /* value_table */
-    };
-
-    view_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextGtkView",
-      &view_type_info,
-      0
-    );
-  }
-
-  return view_type;
 }
 
 /**

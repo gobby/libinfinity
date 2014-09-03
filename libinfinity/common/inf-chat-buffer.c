@@ -30,8 +30,45 @@
 
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-define-enum.h>
 
 #include <string.h>
+
+static const GEnumValue inf_chat_buffer_message_type_values[] = {
+  {
+    INF_CHAT_BUFFER_MESSAGE_NORMAL,
+    "INF_CHAT_BUFFER_MESSAGE_NORMAL",
+    "normal"
+  }, {
+    INF_CHAT_BUFFER_MESSAGE_EMOTE,
+    "INF_CHAT_BUFFER_MESSAGE_EMOTE",
+    "emote"
+  }, {
+    INF_CHAT_BUFFER_MESSAGE_USERJOIN,
+    "INF_CHAT_BUFFER_MESSAGE_USERJOIN",
+    "userjoin"
+  }, {
+    INF_CHAT_BUFFER_MESSAGE_USERPART,
+    "INF_CHAT_BUFFER_MESSAGE_USERPART",
+    "userpart"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+static const GFlagsValue inf_chat_buffer_message_flags_values[] = {
+  {
+    INF_CHAT_BUFFER_MESSAGE_BACKLOG,
+    "INF_CHAT_BUFFER_MESSAGE_BACKLOG",
+    "backlog"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfChatBufferPrivate InfChatBufferPrivate;
 struct _InfChatBufferPrivate {
@@ -64,8 +101,15 @@ enum {
 
 #define INF_CHAT_BUFFER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_CHAT_BUFFER, InfChatBufferPrivate))
 
-static GObjectClass* parent_class;
 static guint chat_buffer_signals[LAST_SIGNAL];
+
+static void inf_chat_buffer_buffer_iface_init(InfBufferInterface* iface);
+INF_DEFINE_ENUM_TYPE(InfChatBufferMessageType, inf_chat_buffer_message_type, inf_chat_buffer_message_type_values)
+INF_DEFINE_FLAGS_TYPE(InfChatBufferMessageFlags, inf_chat_buffer_message_flags, inf_chat_buffer_message_flags_values)
+G_DEFINE_BOXED_TYPE(InfChatBufferMessage, inf_chat_buffer_message, inf_chat_buffer_message_copy, inf_chat_buffer_message_free)
+G_DEFINE_TYPE_WITH_CODE(InfChatBuffer, inf_chat_buffer, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfChatBuffer)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_BUFFER, inf_chat_buffer_buffer_iface_init))
 
 /*
  * Message handling functions
@@ -263,13 +307,9 @@ inf_chat_buffer_reserve_message(InfChatBuffer* buffer,
  */
 
 static void
-inf_chat_buffer_init(GTypeInstance* instance,
-                     gpointer g_class)
+inf_chat_buffer_init(InfChatBuffer* buffer)
 {
-  InfChatBuffer* buffer;
   InfChatBufferPrivate* priv;
-
-  buffer = INF_CHAT_BUFFER(instance);
   priv = INF_CHAT_BUFFER_PRIVATE(buffer);
 
   priv->messages = NULL;
@@ -297,7 +337,7 @@ inf_chat_buffer_finalize(GObject* object)
     g_free(priv->messages[(priv->first_message + i) % priv->size].text);
   g_free(priv->messages);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_chat_buffer_parent_class)->finalize(object);
 }
 
 static void
@@ -413,17 +453,10 @@ inf_chat_buffer_buffer_set_modified(InfBuffer* buffer,
  */
 
 static void
-inf_chat_buffer_class_init(gpointer g_class,
-                            gpointer class_data)
+inf_chat_buffer_class_init(InfChatBufferClass* buffer_class)
 {
   GObjectClass* object_class;
-  InfChatBufferClass* buffer_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  buffer_class = INF_CHAT_BUFFER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfChatBufferPrivate));
+  object_class = G_OBJECT_CLASS(buffer_class);
 
   object_class->finalize = inf_chat_buffer_finalize;
   object_class->set_property = inf_chat_buffer_set_property;
@@ -467,143 +500,11 @@ inf_chat_buffer_class_init(gpointer g_class,
   );
 }
 
-GType
-inf_chat_buffer_message_type_get_type(void)
-{
-  static GType chat_buffer_message_type_type = 0;
-
-  if(!chat_buffer_message_type_type)
-  {
-    static const GEnumValue chat_buffer_message_type_type_values[] = {
-      {
-        INF_CHAT_BUFFER_MESSAGE_NORMAL,
-        "INF_CHAT_BUFFER_MESSAGE_NORMAL",
-        "normal"
-      }, {
-        INF_CHAT_BUFFER_MESSAGE_EMOTE,
-        "INF_CHAT_BUFFER_MESSAGE_EMOTE",
-        "emote"
-      }, {
-        INF_CHAT_BUFFER_MESSAGE_USERJOIN,
-        "INF_CHAT_BUFFER_MESSAGE_USERJOIN",
-        "userjoin"
-      }, {
-        INF_CHAT_BUFFER_MESSAGE_USERPART,
-        "INF_CHAT_BUFFER_MESSAGE_USERPART",
-        "userpart"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    chat_buffer_message_type_type = g_enum_register_static(
-      "InfChatBufferMessageType",
-      chat_buffer_message_type_type_values
-    );
-  }
-
-  return chat_buffer_message_type_type;
-}
-
-GType
-inf_chat_buffer_message_flags_get_type(void)
-{
-  static GType chat_buffer_message_flags_type = 0;
-
-  if(!chat_buffer_message_flags_type)
-  {
-    static const GFlagsValue chat_buffer_message_flags_type_values[] = {
-      {
-        INF_CHAT_BUFFER_MESSAGE_BACKLOG,
-        "INF_CHAT_BUFFER_MESSAGE_BACKLOG",
-        "backlog"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    chat_buffer_message_flags_type = g_flags_register_static(
-      "InfChatBufferMessageFlags",
-      chat_buffer_message_flags_type_values
-    );
-  }
-
-  return chat_buffer_message_flags_type;
-}
-
-GType
-inf_chat_buffer_message_get_type(void)
-{
-  static GType chat_buffer_message_type = 0;
-
-  if(!chat_buffer_message_type)
-  {
-    chat_buffer_message_type = g_boxed_type_register_static(
-      "InfChatBufferMessage",
-      (GBoxedCopyFunc)inf_chat_buffer_message_copy,
-      (GBoxedFreeFunc)inf_chat_buffer_message_free
-    );
-  }
-
-  return chat_buffer_message_type;
-}
-
 static void
-inf_chat_buffer_buffer_init(gpointer g_iface,
-                            gpointer iface_data)
+inf_chat_buffer_buffer_iface_init(InfBufferInterface* iface)
 {
-  InfBufferIface* iface;
-  iface = (InfBufferIface*)g_iface;
-
   iface->get_modified = inf_chat_buffer_buffer_get_modified;
   iface->set_modified = inf_chat_buffer_buffer_set_modified;
-}
-
-GType
-inf_chat_buffer_get_type(void)
-{
-  static GType chat_buffer_type = 0;
-
-  if(!chat_buffer_type)
-  {
-    static const GTypeInfo chat_buffer_type_info = {
-      sizeof(InfChatBufferClass),  /* class_size */
-      NULL,                        /* base_init */
-      NULL,                        /* base_finalize */
-      inf_chat_buffer_class_init,  /* class_init */
-      NULL,                        /* class_finalize */
-      NULL,                        /* class_data */
-      sizeof(InfChatBuffer),       /* instance_size */
-      0,                           /* n_preallocs */
-      inf_chat_buffer_init,        /* instance_init */
-      NULL                         /* value_table */
-    };
-
-    static const GInterfaceInfo buffer_info = {
-      inf_chat_buffer_buffer_init,
-      NULL,
-      NULL
-    };
-
-    chat_buffer_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfChatBuffer",
-      &chat_buffer_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      chat_buffer_type,
-      INF_TYPE_BUFFER,
-      &buffer_info
-    );
-  }
-
-  return chat_buffer_type;
 }
 
 /*

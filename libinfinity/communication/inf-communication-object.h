@@ -31,7 +31,7 @@ G_BEGIN_DECLS
 #define INF_COMMUNICATION_TYPE_OBJECT                 (inf_communication_object_get_type())
 #define INF_COMMUNICATION_OBJECT(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_OBJECT, InfCommunicationObject))
 #define INF_COMMUNICATION_IS_OBJECT(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_OBJECT))
-#define INF_COMMUNICATION_OBJECT_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_OBJECT, InfCommunicationObjectIface))
+#define INF_COMMUNICATION_OBJECT_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_OBJECT, InfCommunicationObjectInterface))
 
 #define INF_COMMUNICATION_TYPE_SCOPE                  (inf_communication_scope_get_type())
 
@@ -55,10 +55,10 @@ typedef enum _InfCommunicationScope {
  * via the public API functions.
  */
 typedef struct _InfCommunicationObject InfCommunicationObject;
-typedef struct _InfCommunicationObjectIface InfCommunicationObjectIface;
+typedef struct _InfCommunicationObjectInterface InfCommunicationObjectInterface;
 
 /**
- * InfCommunicationObjectIface:
+ * InfCommunicationObjectInterface:
  * @received: Called when a message for the group related to this
  * #InfCommunicationObject was received.
  * @enqueued: Called when a message to be sent to another group member has
@@ -70,7 +70,7 @@ typedef struct _InfCommunicationObjectIface InfCommunicationObjectIface;
  * The virtual methods of #InfCommunicationObject. These are called by the
  * #InfCommunicationMethod when appropriate.
  */
-struct _InfCommunicationObjectIface {
+struct _InfCommunicationObjectInterface {
   /*< private >*/
   GTypeInterface parent;
 

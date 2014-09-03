@@ -127,8 +127,10 @@ enum {
 #define INF_ADOPTED_ALGORITHM_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_ALGORITHM, InfAdoptedAlgorithmPrivate))
 #define INF_ADOPTED_ALGORITHM_PRIVATE(obj)     ((InfAdoptedAlgorithmPrivate*)(obj)->priv)
 
-static GObjectClass* parent_class;
 static guint algorithm_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedAlgorithm, inf_adopted_algorithm, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedAlgorithm))
 
 static gint64
 inf_adopted_algorithm_get_real_time()
@@ -1036,13 +1038,10 @@ inf_adopted_algorithm_apply_request(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
-inf_adopted_algorithm_init(GTypeInstance* instance,
-                           gpointer g_class)
+inf_adopted_algorithm_init(InfAdoptedAlgorithm* algorithm)
 {
-  InfAdoptedAlgorithm* algorithm;
   InfAdoptedAlgorithmPrivate* priv;
 
-  algorithm = INF_ADOPTED_ALGORITHM(instance);
   algorithm->priv = INF_ADOPTED_ALGORITHM_GET_PRIVATE(algorithm);
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
 
@@ -1094,7 +1093,7 @@ inf_adopted_algorithm_constructor(GType type,
   InfAdoptedAlgorithmPrivate* priv;
   gboolean modified;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_adopted_algorithm_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -1179,7 +1178,7 @@ inf_adopted_algorithm_dispose(GObject* object)
     priv->user_table = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_algorithm_parent_class)->dispose(object);
 }
 
 static void
@@ -1193,7 +1192,7 @@ inf_adopted_algorithm_finalize(GObject* object)
 
   inf_adopted_state_vector_free(priv->current);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_algorithm_parent_class)->finalize(object);
 }
 
 static void
@@ -1326,17 +1325,10 @@ inf_adopted_algorithm_can_redo_changed(InfAdoptedAlgorithm* algorithm,
 }
 
 static void
-inf_adopted_algorithm_class_init(gpointer g_class,
-                                 gpointer class_data)
+inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
 {
   GObjectClass* object_class;
-  InfAdoptedAlgorithmClass* algorithm_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  algorithm_class = INF_ADOPTED_ALGORITHM_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedAlgorithmPrivate));
+  object_class = G_OBJECT_CLASS(algorithm_class);
 
   object_class->constructor = inf_adopted_algorithm_constructor;
   object_class->dispose = inf_adopted_algorithm_dispose;
@@ -1537,37 +1529,6 @@ inf_adopted_algorithm_class_init(gpointer g_class,
     INF_ADOPTED_TYPE_REQUEST,
     G_TYPE_POINTER /* GError* */
   );
-}
-
-GType
-inf_adopted_algorithm_get_type(void)
-{
-  static GType algorithm_type = 0;
-
-  if(!algorithm_type)
-  {
-    static const GTypeInfo algorithm_type_info = {
-      sizeof(InfAdoptedAlgorithmClass),   /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_adopted_algorithm_class_init,   /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      sizeof(InfAdoptedAlgorithm),        /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_adopted_algorithm_init,         /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    algorithm_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedAlgorithm",
-      &algorithm_type_info,
-      0
-    );
-  }
-
-  return algorithm_type;
 }
 
 /**

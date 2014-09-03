@@ -41,7 +41,7 @@ INF_GTK_BROWSER_MODEL_FILTER_GET_CLASS
 <FILE>inf-gtk-browser-model</FILE>
 INF_GTK_TYPE_BROWSER_MODEL_STATUS
 InfGtkBrowserModel
-InfGtkBrowserModelIface
+InfGtkBrowserModelInterface
 InfGtkBrowserModelStatus
 InfGtkBrowserModelColumn
 inf_gtk_browser_model_set_browser

@@ -33,6 +33,8 @@
 #include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/inf-marshal.h>
 
+G_DEFINE_INTERFACE(InfRequest, inf_request, G_TYPE_OBJECT)
+
 enum {
   FINISHED,
 
@@ -42,94 +44,54 @@ enum {
 static guint request_signals[LAST_SIGNAL];
 
 static void
-inf_request_base_init(gpointer g_class)
+inf_request_default_init(InfRequestInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_string(
+      "type",
+      "Type",
+      "A string identifier for the type of the request",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 
-  if(!initialized)
-  {
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_string(
-        "type",
-        "Type",
-        "A string identifier for the type of the request",
-        NULL,
-        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-      )
-    );
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_double(
+      "progress",
+      "Progress",
+      "Percentage of completion of the request",
+      0.0,
+      1.0,
+      0.0,
+      G_PARAM_READABLE
+    )
+  );
 
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_double(
-        "progress",
-        "Progress",
-        "Percentage of completion of the request",
-        0.0,
-        1.0,
-        0.0,
-        G_PARAM_READABLE
-      )
-    );
-
-    /**
-     * InfRequest::finished:
-     * @request: The #InfRequest which finished.
-     * @result: A #InfRequestResult which contains the result of the request.
-     * @error: Error information in case the request failed, or %NULL
-     * otherwise.
-     *
-     * This signal is emitted when the request finishes. If @error is
-     * non-%NULL the request failed, otherwise it finished successfully.
-     */
-    request_signals[FINISHED] = g_signal_new(
-      "finished",
-      INF_TYPE_REQUEST,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfRequestIface, finished),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_POINTER,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_REQUEST_RESULT | G_SIGNAL_TYPE_STATIC_SCOPE,
-      G_TYPE_POINTER /* GError* */
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_request_get_type(void)
-{
-  static GType request_type = 0;
-
-  if(!request_type)
-  {
-    static const GTypeInfo request_info = {
-      sizeof(InfRequestIface),    /* class_size */
-      inf_request_base_init,      /* base_init */
-      NULL,                       /* base_finalize */
-      NULL,                       /* class_init */
-      NULL,                       /* class_finalize */
-      NULL,                       /* class_data */
-      0,                          /* instance_size */
-      0,                          /* n_preallocs */
-      NULL,                       /* instance_init */
-      NULL                        /* value_table */
-    };
-
-    request_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfRequest",
-      &request_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(request_type, G_TYPE_OBJECT);
-  }
-
-  return request_type;
+  /**
+   * InfRequest::finished:
+   * @request: The #InfRequest which finished.
+   * @result: A #InfRequestResult which contains the result of the request.
+   * @error: Error information in case the request failed, or %NULL
+   * otherwise.
+   *
+   * This signal is emitted when the request finishes. If @error is
+   * non-%NULL the request failed, otherwise it finished successfully.
+   */
+  request_signals[FINISHED] = g_signal_new(
+    "finished",
+    INF_TYPE_REQUEST,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfRequestInterface, finished),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_POINTER,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_REQUEST_RESULT | G_SIGNAL_TYPE_STATIC_SCOPE,
+    G_TYPE_POINTER /* GError* */
+  );
 }
 
 /*
@@ -199,7 +161,7 @@ inf_request_finish(InfRequest* request,
 gboolean
 inf_request_is_local(InfRequest* request)
 {
-  InfRequestIface* iface;
+  InfRequestInterface* iface;
 
   g_return_val_if_fail(INF_IS_REQUEST(request), FALSE);
 

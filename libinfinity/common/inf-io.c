@@ -41,74 +41,34 @@
  **/
 
 #include <libinfinity/common/inf-io.h>
+#include <libinfinity/inf-define-enum.h>
 
-GType
-inf_io_event_get_type(void)
-{
-  static GType io_event_type = 0;
-
-  if(!io_event_type)
+static const GFlagsValue inf_io_event_values[] = {
   {
-    static const GFlagsValue io_event_values[] = {
-      {
-        INF_IO_INCOMING,
-        "INF_IO_INCOMING",
-        "incoming"
-      }, {
-        INF_IO_OUTGOING,
-        "INF_IO_OUTGOING",
-        "outgoing"
-      }, {
-        INF_IO_ERROR,
-        "INF_IO_ERROR",
-        "error"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    io_event_type = g_flags_register_static(
-      "InfIoEvent",
-      io_event_values
-    );
+    INF_IO_INCOMING,
+    "INF_IO_INCOMING",
+    "incoming"
+  }, {
+    INF_IO_OUTGOING,
+    "INF_IO_OUTGOING",
+    "outgoing"
+  }, {
+    INF_IO_ERROR,
+    "INF_IO_ERROR",
+    "error"
+  }, {
+    0,
+    NULL,
+    NULL
   }
+};
 
-  return io_event_type;
-}
+INF_DEFINE_FLAGS_TYPE(InfIoEvent, inf_io_event, inf_io_event_values)
+G_DEFINE_INTERFACE(InfIo, inf_io, G_TYPE_OBJECT)
 
-GType
-inf_io_get_type(void)
+static void
+inf_io_default_init(InfIoInterface* iface)
 {
-  static GType io_type = 0;
-
-  if(!io_type)
-  {
-    static const GTypeInfo io_info = {
-      sizeof(InfIoIface),    /* class_size */
-      NULL,                  /* base_init */
-      NULL,                  /* base_finalize */
-      NULL,                  /* class_init */
-      NULL,                  /* class_finalize */
-      NULL,                  /* class_data */
-      0,                     /* instance_size */
-      0,                     /* n_preallocs */
-      NULL,                  /* instance_init */
-      NULL                   /* value_table */
-    };
-
-    io_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfIo",
-      &io_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(io_type, G_TYPE_OBJECT);
-  }
-
-  return io_type;
 }
 
 /**
@@ -134,7 +94,7 @@ inf_io_add_watch(InfIo* io,
                  gpointer user_data,
                  GDestroyNotify notify)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(socket != NULL, NULL);
@@ -161,7 +121,7 @@ inf_io_update_watch(InfIo* io,
                     InfIoWatch* watch,
                     InfIoEvent events)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_if_fail(INF_IS_IO(io));
   g_return_if_fail(watch != NULL);
@@ -184,7 +144,7 @@ void
 inf_io_remove_watch(InfIo* io,
                     InfIoWatch* watch)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_if_fail(INF_IS_IO(io));
   g_return_if_fail(watch != NULL);
@@ -216,7 +176,7 @@ inf_io_add_timeout(InfIo* io,
                    gpointer user_data,
                    GDestroyNotify notify)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(func != NULL, NULL);
@@ -238,7 +198,7 @@ void
 inf_io_remove_timeout(InfIo* io,
                       InfIoTimeout* timeout)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_if_fail(INF_IS_IO(io));
   g_return_if_fail(timeout != NULL);
@@ -269,7 +229,7 @@ inf_io_add_dispatch(InfIo* io,
                     gpointer user_data,
                     GDestroyNotify notify)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(func != NULL, NULL);
@@ -291,7 +251,7 @@ void
 inf_io_remove_dispatch(InfIo* io,
                        InfIoDispatch* dispatch)
 {
-  InfIoIface* iface;
+  InfIoInterface* iface;
 
   g_return_if_fail(INF_IS_IO(io));
   g_return_if_fail(dispatch != NULL);

@@ -74,8 +74,12 @@ enum {
 
 #define INFD_XMPP_SERVER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_XMPP_SERVER, InfdXmppServerPrivate))
 
-static GObjectClass* parent_class;
 static guint xmpp_server_signals[LAST_SIGNAL];
+
+static void infd_xmpp_server_xml_server_iface_init(InfdXmlServerInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfdXmppServer, infd_xmpp_server, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdXmppServer)
+  G_IMPLEMENT_INTERFACE(INFD_TYPE_XML_SERVER, infd_xmpp_server_xml_server_iface_init))
 
 static void
 infd_xmpp_server_new_connection_cb(InfdTcpServer* tcp_server,
@@ -340,13 +344,9 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
 }
 
 static void
-infd_xmpp_server_init(GTypeInstance* instance,
-                      gpointer g_class)
+infd_xmpp_server_init(InfdXmppServer* xmpp)
 {
-  InfdXmppServer* xmpp;
   InfdXmppServerPrivate* priv;
-
-  xmpp = INFD_XMPP_SERVER(instance);
   priv = INFD_XMPP_SERVER_PRIVATE(xmpp);
 
   priv->tcp = NULL;
@@ -368,7 +368,7 @@ infd_xmpp_server_constructor(GType type,
   InfdXmppServerPrivate* priv;
   GObject* obj;
 
-  obj = G_OBJECT_CLASS(parent_class)->constructor(
+  obj = G_OBJECT_CLASS(infd_xmpp_server_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -417,7 +417,7 @@ infd_xmpp_server_dispose(GObject* object)
     priv->tls_creds = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infd_xmpp_server_parent_class)->dispose(object);
 }
 
 static void
@@ -432,7 +432,7 @@ infd_xmpp_server_finalize(GObject* object)
   g_free(priv->local_hostname);
   g_free(priv->sasl_mechanisms);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_xmpp_server_parent_class)->finalize(object);
 }
 
 static void
@@ -568,17 +568,10 @@ infd_xmpp_server_xml_server_close(InfdXmlServer* xml)
 }
 
 static void
-infd_xmpp_server_class_init(gpointer g_class,
-                            gpointer class_data)
+infd_xmpp_server_class_init(InfdXmppServerClass* xmpp_class)
 {
   GObjectClass* object_class;
-  InfdXmppServerClass* xmpp_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  xmpp_class = INFD_XMPP_SERVER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdXmppServerPrivate));
+  object_class = G_OBJECT_CLASS(xmpp_class);
 
   object_class->constructor = infd_xmpp_server_constructor;
   object_class->dispose = infd_xmpp_server_dispose;
@@ -677,56 +670,9 @@ infd_xmpp_server_class_init(gpointer g_class,
 }
 
 static void
-infd_xmpp_server_xml_server_init(gpointer g_iface,
-                                 gpointer iface_data)
+infd_xmpp_server_xml_server_iface_init(InfdXmlServerInterface* iface)
 {
-  InfdXmlServerIface* iface;
-  iface = (InfdXmlServerIface*)g_iface;
-
   iface->close = infd_xmpp_server_xml_server_close;
-}
-
-GType
-infd_xmpp_server_get_type(void)
-{
-  static GType xmpp_server_type = 0;
-
-  if(!xmpp_server_type)
-  {
-    static const GTypeInfo xmpp_server_type_info = {
-      sizeof(InfdXmppServerClass),   /* class_size */
-      NULL,                          /* base_init */
-      NULL,                          /* base_finalize */
-      infd_xmpp_server_class_init,   /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      sizeof(InfdXmppServer),        /* instance_size */
-      0,                             /* n_preallocs */
-      infd_xmpp_server_init,         /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    static const GInterfaceInfo xml_server_info = {
-      infd_xmpp_server_xml_server_init,
-      NULL,
-      NULL
-    };
-
-    xmpp_server_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdXmppServer",
-      &xmpp_server_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      xmpp_server_type,
-      INFD_TYPE_XML_SERVER,
-      &xml_server_info
-    );
-  }
-
-  return xmpp_server_type;
 }
 
 /**

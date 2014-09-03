@@ -17,10 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/common/inf-simulated-connection.h>
-#include <libinfinity/common/inf-xml-connection.h>
-#include <libinfinity/inf-marshal.h>
-
 /**
  * SECTION:inf-simulated-connection
  * @title: InfSimulatedConnection
@@ -33,6 +29,31 @@
  * inf_simulated_connection_connect() to connect two such connections so that
  * data sent through one is received by the other.
  */
+
+#include <libinfinity/common/inf-simulated-connection.h>
+#include <libinfinity/common/inf-xml-connection.h>
+#include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-define-enum.h>
+
+static const GEnumValue inf_simulated_connection_mode_values[] = {
+  {
+    INF_SIMULATED_CONNECTION_IMMEDIATE,
+    "INF_SIMULATED_CONNECTION_IMMEDIATE",
+    "immediate"
+  }, {
+    INF_SIMULATED_CONNECTION_DELAYED,
+    "INF_SIMULATED_CONNECTION_DELAYED",
+    "delayed"
+  }, {
+    INF_SIMULATED_CONNECTION_IO_CONTROLLED,
+    "INF_SIMULATED_CONNECTION_IO_CONTROLLED",
+    "io-controlled"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfSimulatedConnectionPrivate InfSimulatedConnectionPrivate;
 struct _InfSimulatedConnectionPrivate {
@@ -65,7 +86,11 @@ enum {
 
 #define INF_SIMULATED_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_SIMULATED_CONNECTION, InfSimulatedConnectionPrivate))
 
-static GObjectClass* parent_class;
+static void inf_simulated_connection_xml_connection_iface_init(InfXmlConnectionInterface* iface);
+INF_DEFINE_ENUM_TYPE(InfSimulatedConnectionMode, inf_simulated_connection_mode, inf_simulated_connection_mode_values)
+G_DEFINE_TYPE_WITH_CODE(InfSimulatedConnection, inf_simulated_connection, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfSimulatedConnection)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_XML_CONNECTION, inf_simulated_connection_xml_connection_iface_init))
 
 static void
 inf_simulated_connection_clear_queue(InfSimulatedConnection* connection)
@@ -154,13 +179,9 @@ inf_simulated_connection_set_target(InfSimulatedConnection* connection,
  */
 
 static void
-inf_simulated_connection_init(GTypeInstance* instance,
-                              gpointer g_class)
+inf_simulated_connection_init(InfSimulatedConnection* connection)
 {
-  InfSimulatedConnection* connection;
   InfSimulatedConnectionPrivate* priv;
-
-  connection = INF_SIMULATED_CONNECTION(instance);
   priv = INF_SIMULATED_CONNECTION_PRIVATE(connection);
 
   priv->io = NULL;
@@ -187,7 +208,7 @@ inf_simulated_connection_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_simulated_connection_parent_class)->dispose(object);
 }
 
 static void
@@ -364,14 +385,11 @@ inf_simulated_connection_xml_connection_send(InfXmlConnection* connection,
  */
 
 static void
-inf_simulated_connection_class_init(gpointer g_class,
-                                    gpointer class_data)
+inf_simulated_connection_class_init(
+  InfSimulatedConnectionClass* connection_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfSimulatedConnectionPrivate));
+  object_class = G_OBJECT_CLASS(connection_class);
 
   object_class->dispose = inf_simulated_connection_dispose;
   object_class->set_property = inf_simulated_connection_set_property;
@@ -433,93 +451,11 @@ inf_simulated_connection_class_init(gpointer g_class,
 }
 
 static void
-inf_simulated_connection_xml_connection_init(gpointer g_iface,
-                                             gpointer iface_data)
+inf_simulated_connection_xml_connection_iface_init(
+  InfXmlConnectionInterface* iface)
 {
-  InfXmlConnectionIface* iface;
-  iface = (InfXmlConnectionIface*)g_iface;
-
   iface->close = inf_simulated_connection_xml_connection_close;
   iface->send = inf_simulated_connection_xml_connection_send;
-}
-
-GType
-inf_simulated_connection_mode_get_type(void)
-{
-  static GType mode_type = 0;
-
-  if(!mode_type)
-  {
-    static const GEnumValue mode_type_values[] = {
-      {
-        INF_SIMULATED_CONNECTION_IMMEDIATE,
-        "INF_SIMULATED_CONNECTION_IMMEDIATE",
-        "immediate"
-      }, {
-        INF_SIMULATED_CONNECTION_DELAYED,
-        "INF_SIMULATED_CONNECTION_DELAYED",
-        "delayed"
-      }, {
-        INF_SIMULATED_CONNECTION_IO_CONTROLLED,
-        "INF_SIMULATED_CONNECTION_IO_CONTROLLED",
-        "io-controlled"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    mode_type = g_enum_register_static(
-      "InfSimulatedConnectionMode",
-      mode_type_values
-    );
-  }
-
-  return mode_type;
-}
-
-GType
-inf_simulated_connection_get_type(void)
-{
-  static GType simulated_connection_type = 0;
-
-  if(!simulated_connection_type)
-  {
-    static const GTypeInfo simulated_connection_type_info = {
-      sizeof(InfSimulatedConnectionClass),   /* class_size */
-      NULL,                                  /* base_init */
-      NULL,                                  /* base_finalize */
-      inf_simulated_connection_class_init,   /* class_init */
-      NULL,                                  /* class_finalize */
-      NULL,                                  /* class_data */
-      sizeof(InfSimulatedConnection),        /* instance_size */
-      0,                                     /* n_preallocs */
-      inf_simulated_connection_init,         /* instance_init */
-      NULL                                   /* value_table */
-    };
-
-    static const GInterfaceInfo xml_connection_info = {
-      inf_simulated_connection_xml_connection_init,
-      NULL,
-      NULL
-    };
-
-    simulated_connection_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfSimulatedConnection",
-      &simulated_connection_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      simulated_connection_type,
-      INF_TYPE_XML_CONNECTION,
-      &xml_connection_info
-    );
-  }
-
-  return simulated_connection_type;
 }
 
 /*

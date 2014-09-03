@@ -17,10 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/adopted/inf-adopted-operation.h>
-#include <libinfinity/adopted/inf-adopted-split-operation.h>
-#include <libinfinity/adopted/inf-adopted-user.h>
-
 /**
  * SECTION:inf-adopted-operation
  * @title: InfAdoptedOperation
@@ -35,116 +31,54 @@
  * define transformation rules for transformation against other operations.
  **/
 
+#include <libinfinity/adopted/inf-adopted-operation.h>
+#include <libinfinity/adopted/inf-adopted-split-operation.h>
+#include <libinfinity/adopted/inf-adopted-user.h>
+#include <libinfinity/inf-define-enum.h>
+
+static const GEnumValue inf_adopted_concurrency_id_values[] = {
+  {
+    INF_ADOPTED_CONCURRENCY_SELF,
+    "INF_ADOPTED_CONCURRENCY_SELF",
+    "self"
+  }, {
+    INF_ADOPTED_CONCURRENCY_NONE,
+    "INF_ADOPTED_CONCURRENCY_NONE",
+    "none"
+  }, {
+    INF_ADOPTED_CONCURRENCY_OTHER,
+    "INF_ADOPTED_CONCURRENCY_OTHER",
+    "other"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+static const GFlagsValue inf_adopted_operation_flags_values[] = {
+  {
+    INF_ADOPTED_OPERATION_AFFECTS_BUFFER,
+    "INF_ADOPTED_OPERATION_AFFECTS_BUFFER",
+    "affects_buffer",
+  }, {
+    INF_ADOPTED_OPERATION_REVERSIBLE,
+    "INF_ADOPTED_OPERATION_REVERSIBLE",
+    "reversible",
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+INF_DEFINE_ENUM_TYPE(InfAdoptedConcurrencyId, inf_adopted_concurrency_id, inf_adopted_concurrency_id_values)
+INF_DEFINE_FLAGS_TYPE(InfAdoptedOperationFlags, inf_adopted_operation_flags, inf_adopted_operation_flags_values)
+G_DEFINE_INTERFACE(InfAdoptedOperation, inf_adopted_operation, G_TYPE_OBJECT)
+
 static void
-inf_adopted_operation_base_init(gpointer g_class)
+inf_adopted_operation_default_init(InfAdoptedOperationInterface* iface)
 {
-  static gboolean initialized = FALSE;
-
-  if(!initialized)
-  {
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_adopted_concurrency_id_get_type(void)
-{
-  static GType concurrency_id_type = 0;
-
-  if(!concurrency_id_type)
-  {
-    static const GEnumValue concurrency_id_type_values[] = {
-      {
-        INF_ADOPTED_CONCURRENCY_SELF,
-        "INF_ADOPTED_CONCURRENCY_SELF",
-        "self"
-      }, {
-        INF_ADOPTED_CONCURRENCY_NONE,
-        "INF_ADOPTED_CONCURRENCY_NONE",
-        "none"
-      }, {
-        INF_ADOPTED_CONCURRENCY_OTHER,
-        "INF_ADOPTED_CONCURRENCY_OTHER",
-        "other"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    concurrency_id_type = g_enum_register_static(
-      "InfAdoptedConcurrencyId",
-      concurrency_id_type_values
-    );
-  }
-
-  return concurrency_id_type;
-}
-
-GType
-inf_adopted_operation_flags_get_type(void)
-{
-  static GType operation_flags_type = 0;
-
-  if(!operation_flags_type)
-  {
-    static const GFlagsValue operation_flags_type_values[] = {
-      {
-        INF_ADOPTED_OPERATION_AFFECTS_BUFFER,
-        "INF_ADOPTED_OPERATION_AFFECTS_BUFFER",
-        "affects_buffer",
-      }, {
-        INF_ADOPTED_OPERATION_REVERSIBLE,
-        "INF_ADOPTED_OPERATION_REVERSIBLE",
-        "reversible",
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    operation_flags_type = g_flags_register_static(
-      "InfAdoptedOperationFlags",
-      operation_flags_type_values
-    );
-  }
-
-  return operation_flags_type;
-}
-
-GType
-inf_adopted_operation_get_type(void)
-{
-  static GType adopted_operation_type = 0;
-
-  if(!adopted_operation_type)
-  {
-    static const GTypeInfo adopted_operation_info = {
-      sizeof(InfAdoptedOperationIface),         /* class_size */
-      inf_adopted_operation_base_init,          /* base_init */
-      NULL,                                     /* base_finalize */
-      NULL,                                     /* class_init */
-      NULL,                                     /* class_finalize */
-      NULL,                                     /* class_data */
-      0,                                        /* instance_size */
-      0,                                        /* n_preallocs */
-      NULL,                                     /* instance_init */
-      NULL                                      /* value_table */
-    };
-
-    adopted_operation_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfAdoptedOperation",
-      &adopted_operation_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(adopted_operation_type, G_TYPE_OBJECT);
-  }
-
-  return adopted_operation_type;
 }
 
 /**
@@ -164,7 +98,7 @@ gboolean
 inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
                                           InfAdoptedOperation* against)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), FALSE);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(against), FALSE);
@@ -220,7 +154,7 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
                                 InfAdoptedOperation* against_lcs,
                                 InfAdoptedConcurrencyId concurrency_id)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(against), NULL);
@@ -263,7 +197,7 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
 InfAdoptedOperation*
 inf_adopted_operation_copy(InfAdoptedOperation* operation)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
 
@@ -284,7 +218,7 @@ inf_adopted_operation_copy(InfAdoptedOperation* operation)
 InfAdoptedOperationFlags
 inf_adopted_operation_get_flags(InfAdoptedOperation* operation)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), 0);
 
@@ -315,7 +249,7 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
                             InfBuffer* buffer,
                             GError** error)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), FALSE);
   g_return_val_if_fail(INF_ADOPTED_IS_USER(by), FALSE);
@@ -373,7 +307,7 @@ inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
                                         InfBuffer* buffer,
                                         GError** error)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
   InfAdoptedOperationFlags flags;
   InfAdoptedOperationFlags check_flags;
 
@@ -462,7 +396,7 @@ inf_adopted_operation_is_reversible(InfAdoptedOperation* operation)
 InfAdoptedOperation*
 inf_adopted_operation_revert(InfAdoptedOperation* operation)
 {
-  InfAdoptedOperationIface* iface;
+  InfAdoptedOperationInterface* iface;
 
   g_return_val_if_fail(INF_ADOPTED_IS_OPERATION(operation), NULL);
   g_assert(inf_adopted_operation_is_reversible(operation) == TRUE);

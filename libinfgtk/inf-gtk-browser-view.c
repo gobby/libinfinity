@@ -105,8 +105,10 @@ enum {
  * browsers from our array. The same holds for explore requests and
  * session synchronizations. */
 
-static GObjectClass* parent_class;
 static guint view_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfGtkBrowserView, inf_gtk_browser_view, GTK_TYPE_TREE_VIEW,
+  G_ADD_PRIVATE(InfGtkBrowserView))
 
 /*
  * Utility functions
@@ -1558,6 +1560,7 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   const InfAclAccount* account;
   InfAclAccountId acc_id;
   InfAclMask mask;
+  GtkTreeViewClass* parent_class;
 
   model = gtk_tree_view_get_model(tree_view);
 
@@ -1601,8 +1604,9 @@ inf_gtk_browser_view_row_expanded(GtkTreeView* tree_view,
   inf_browser_iter_free(browser_iter);
   g_object_unref(browser);
 
-  if(GTK_TREE_VIEW_CLASS(parent_class)->row_expanded != NULL)
-    GTK_TREE_VIEW_CLASS(parent_class)->row_expanded(tree_view, iter, path);
+  parent_class = GTK_TREE_VIEW_CLASS(inf_gtk_browser_view_parent_class);
+  if(parent_class->row_expanded != NULL)
+    parent_class->row_expanded(tree_view, iter, path);
 }
 
 static void
@@ -1625,6 +1629,7 @@ inf_gtk_browser_view_row_activated(GtkTreeView* tree_view,
   InfXmlConnectionStatus xml_status;
   GError* error;
   InfGtkBrowserViewBrowser* view_browser;
+  GtkTreeViewClass* parent_class;
 
   view = INF_GTK_BROWSER_VIEW(tree_view);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
@@ -1731,8 +1736,9 @@ inf_gtk_browser_view_row_activated(GtkTreeView* tree_view,
     g_object_unref(G_OBJECT(browser));
   }
 
-  if(GTK_TREE_VIEW_CLASS(parent_class)->row_activated != NULL)
-    GTK_TREE_VIEW_CLASS(parent_class)->row_activated(tree_view, path, column);
+  parent_class = GTK_TREE_VIEW_CLASS(inf_gtk_browser_view_parent_class);
+  if(parent_class->row_activated != NULL)
+    parent_class->row_activated(tree_view, path, column);
 }
 
 static void
@@ -1896,6 +1902,7 @@ inf_gtk_browser_view_button_press_event(GtkWidget* treeview,
 {
   GtkTreePath* path;
   gboolean has_path;
+  GtkWidgetClass* parent_class;
 
   if(event->button == 3 &&
      event->window == gtk_tree_view_get_bin_window(GTK_TREE_VIEW(treeview)))
@@ -1927,7 +1934,8 @@ inf_gtk_browser_view_button_press_event(GtkWidget* treeview,
     }
   }
 
-  return GTK_WIDGET_CLASS(parent_class)->button_press_event(treeview, event);
+  parent_class = GTK_WIDGET_CLASS(inf_gtk_browser_view_parent_class);
+  return parent_class->button_press_event(treeview, event);
 }
 
 static gboolean
@@ -1936,6 +1944,7 @@ inf_gtk_browser_view_key_press_event(GtkWidget* treeview,
 {
   GtkTreeSelection* selection;
   GtkTreeIter iter;
+  GtkWidgetClass* parent_class;
 
   if(event->keyval == GDK_KEY_Menu)
   {
@@ -1950,7 +1959,8 @@ inf_gtk_browser_view_key_press_event(GtkWidget* treeview,
     }
   }
 
-  return GTK_WIDGET_CLASS(parent_class)->key_press_event(treeview, event);
+  parent_class = GTK_WIDGET_CLASS(inf_gtk_browser_view_parent_class);
+  return parent_class->key_press_event(treeview, event);
 }
 
 /*
@@ -2348,14 +2358,11 @@ inf_gtk_browser_view_status_data_func(GtkTreeViewColumn* column,
  */
 
 static void
-inf_gtk_browser_view_init(GTypeInstance* instance,
-                          gpointer g_class)
+inf_gtk_browser_view_init(InfGtkBrowserView* view)
 {
-  InfGtkBrowserView* view;
   InfGtkBrowserViewPrivate* priv;
   GtkTreeSelection* selection;
 
-  view = INF_GTK_BROWSER_VIEW(instance);
   priv = INF_GTK_BROWSER_VIEW_PRIVATE(view);
 
   priv->column = gtk_tree_view_column_new();
@@ -2436,7 +2443,7 @@ inf_gtk_browser_view_dispose(GObject* object)
 
   inf_gtk_browser_view_set_model(view, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_browser_view_parent_class)->dispose(object);
 }
 
 static void
@@ -2450,7 +2457,7 @@ inf_gtk_browser_view_finalize(GObject* object)
 
   g_assert(priv->browsers == NULL);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_browser_view_parent_class)->finalize(object);
 }
 
 static void
@@ -2466,7 +2473,6 @@ inf_gtk_browser_view_set_property(GObject* object,
   switch(prop_id)
   {
   case PROP_MODEL:
-
     if (g_value_get_object(value) != NULL)
       g_assert(INF_GTK_IS_BROWSER_MODEL(g_value_get_object(value)));
 
@@ -2520,8 +2526,8 @@ inf_gtk_browser_view_destroy(GtkWidget* object)
 
   inf_gtk_browser_view_set_model(view, NULL);
 
-  if(GTK_WIDGET_CLASS(parent_class)->destroy)
-    GTK_WIDGET_CLASS(parent_class)->destroy(object);
+  if(GTK_WIDGET_CLASS(inf_gtk_browser_view_parent_class)->destroy)
+    GTK_WIDGET_CLASS(inf_gtk_browser_view_parent_class)->destroy(object);
 }
 
 /*
@@ -2529,34 +2535,27 @@ inf_gtk_browser_view_destroy(GtkWidget* object)
  */
 
 static void
-inf_gtk_browser_view_class_init(gpointer g_class,
-                                gpointer class_data)
+inf_gtk_browser_view_class_init(InfGtkBrowserViewClass* view_class)
 {
   GObjectClass* object_class;
   GtkWidgetClass* widget_class;
-  InfGtkBrowserViewClass* view_class;
   GtkTreeViewClass* tree_class;
 
-  object_class = G_OBJECT_CLASS(g_class);
-  widget_class = GTK_WIDGET_CLASS(g_class);
-  view_class = INF_GTK_BROWSER_VIEW_CLASS(g_class);
-  tree_class = GTK_TREE_VIEW_CLASS(g_class);
-
-  widget_class->destroy = inf_gtk_browser_view_destroy;
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkBrowserViewPrivate));
+  object_class = G_OBJECT_CLASS(view_class);
+  widget_class = GTK_WIDGET_CLASS(view_class);
+  tree_class = GTK_TREE_VIEW_CLASS(view_class);
 
   object_class->dispose = inf_gtk_browser_view_dispose;
   object_class->finalize = inf_gtk_browser_view_finalize;
   object_class->set_property = inf_gtk_browser_view_set_property;
   object_class->get_property = inf_gtk_browser_view_get_property;
 
-  tree_class->row_expanded = inf_gtk_browser_view_row_expanded;
-  tree_class->row_activated = inf_gtk_browser_view_row_activated;
-
+  widget_class->destroy = inf_gtk_browser_view_destroy;
   widget_class->button_press_event = inf_gtk_browser_view_button_press_event;
   widget_class->key_press_event = inf_gtk_browser_view_key_press_event;
+
+  tree_class->row_expanded = inf_gtk_browser_view_row_expanded;
+  tree_class->row_activated = inf_gtk_browser_view_row_activated;
 
   view_class->activate = NULL;
   view_class->selection_changed = NULL;
@@ -2599,37 +2598,6 @@ inf_gtk_browser_view_class_init(gpointer g_class,
     1,
     GTK_TYPE_MENU
   );
-}
-
-GType
-inf_gtk_browser_view_get_type(void)
-{
-  static GType browser_view_type = 0;
-
-  if(!browser_view_type)
-  {
-    static const GTypeInfo browser_view_type_info = {
-      sizeof(InfGtkBrowserViewClass),    /* class_size */
-      NULL,                              /* base_init */
-      NULL,                              /* base_finalize */
-      inf_gtk_browser_view_class_init,   /* class_init */
-      NULL,                              /* class_finalize */
-      NULL,                              /* class_data */
-      sizeof(InfGtkBrowserView),         /* instance_size */
-      0,                                 /* n_preallocs */
-      inf_gtk_browser_view_init,         /* instance_init */
-      NULL                               /* value_table */
-    };
-
-    browser_view_type = g_type_register_static(
-      GTK_TYPE_TREE_VIEW,
-      "InfGtkBrowserView",
-      &browser_view_type_info,
-      0
-    );
-  }
-
-  return browser_view_type;
 }
 
 /*

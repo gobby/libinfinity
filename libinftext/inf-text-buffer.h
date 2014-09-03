@@ -31,7 +31,7 @@ G_BEGIN_DECLS
 #define INF_TEXT_TYPE_BUFFER                 (inf_text_buffer_get_type())
 #define INF_TEXT_BUFFER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TEXT_TYPE_BUFFER, InfTextBuffer))
 #define INF_TEXT_IS_BUFFER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TEXT_TYPE_BUFFER))
-#define INF_TEXT_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_BUFFER, InfTextBufferIface))
+#define INF_TEXT_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_BUFFER, InfTextBufferInterface))
 
 /**
  * InfTextBuffer:
@@ -40,7 +40,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfTextBuffer InfTextBuffer;
-typedef struct _InfTextBufferIface InfTextBufferIface;
+typedef struct _InfTextBufferInterface InfTextBufferInterface;
 
 /**
  * InfTextBufferIter:
@@ -51,7 +51,7 @@ typedef struct _InfTextBufferIface InfTextBufferIface;
 typedef struct _InfTextBufferIter InfTextBufferIter;
 
 /**
- * InfTextBufferIface:
+ * InfTextBufferInterface:
  * @get_encoding: Virtual function which returns the character coding of the
  * buffer.
  * @get_length: Virtual function to return the total length of the text in
@@ -87,7 +87,7 @@ typedef struct _InfTextBufferIter InfTextBufferIter;
  * This structure contains virtual functions and signal handlers of the
  * #InfTextBuffer interface.
  */
-struct _InfTextBufferIface {
+struct _InfTextBufferInterface {
   /*< private >*/
   GTypeInterface parent;
 

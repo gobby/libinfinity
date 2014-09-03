@@ -46,6 +46,7 @@
 #include <libinfinity/common/inf-acl.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
+#include <libinfinity/inf-define-enum.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <string.h>
@@ -109,153 +110,75 @@ const InfAclMask INF_ACL_MASK_LEAF = {
   MAKE_FULL_MASK(MAKE_LEAF_MASK)
 };
 
-GType
-inf_acl_account_get_type(void)
-{
-  static GType acl_account_type = 0;
-
-  if(!acl_account_type)
+static const GEnumValue inf_acl_setting_values[] = {
   {
-    acl_account_type = g_boxed_type_register_static(
-      "InfAclAccount",
-      (GBoxedCopyFunc)inf_acl_account_copy,
-      (GBoxedFreeFunc)inf_acl_account_free
-    );
+    INF_ACL_CAN_ADD_SUBDIRECTORY,
+    "INF_ACL_CAN_ADD_SUBDIRECTORY",
+    "can-add-subdirectory"
+  }, {
+    INF_ACL_CAN_ADD_DOCUMENT,
+    "INF_ACL_CAN_ADD_DOCUMENT",
+    "can-add-document"
+  }, {
+    INF_ACL_CAN_SYNC_IN,
+    "INF_ACL_CAN_SYNC_IN",
+    "can-sync-in"
+  }, {
+    INF_ACL_CAN_REMOVE_NODE,
+    "INF_ACL_CAN_REMOVE_NODE",
+    "can-remove-node"
+  }, {
+    INF_ACL_CAN_EXPLORE_NODE,
+    "INF_ACL_CAN_EXPLORE_NODE",
+    "can-explore-node"
+  }, {
+    INF_ACL_CAN_SUBSCRIBE_CHAT,
+    "INF_ACL_CAN_SUBSCRIBE_CHAT",
+    "can-subscribe-chat"
+  }, {
+    INF_ACL_CAN_SUBSCRIBE_SESSION,
+    "INF_ACL_CAN_SUBSCRIBE_SESSION",
+    "can-subscribe-session"
+  }, {
+    INF_ACL_CAN_JOIN_USER,
+    "INF_ACL_CAN_JOIN_USER",
+    "can-join-user"
+  }, {
+    INF_ACL_CAN_QUERY_ACCOUNT_LIST,
+    "INF_ACL_CAN_QUERY_ACCOUNT_LIST",
+    "can-query-account-list"
+  }, {
+    INF_ACL_CAN_CREATE_ACCOUNT,
+    "INF_ACL_CAN_CREATE_ACCOUNT",
+    "can-create-account"
+  }, {
+    INF_ACL_CAN_OVERRIDE_ACCOUNT,
+    "INF_ACL_CAN_OVERRIDE_ACCOUNT",
+    "can-override-account"
+  }, {
+    INF_ACL_CAN_REMOVE_ACCOUNT,
+    "INF_ACL_CAN_REMOVE_ACCOUNT",
+    "can-remove-account"
+  }, {
+    INF_ACL_CAN_QUERY_ACL,
+    "INF_ACL_CAN_QUERY_ACL",
+    "can-query-acl"
+  }, {
+    INF_ACL_CAN_SET_ACL,
+    "INF_ACL_CAN_SET_ACL",
+    "can-set-acl"
+  }, {
+    0,
+    NULL,
+    NULL
   }
+};
 
-  return acl_account_type;
-}
-
-GType
-inf_acl_setting_get_type(void)
-{
-  static GType acl_setting_type = 0;
-
-  if(!acl_setting_type)
-  {
-    static const GEnumValue acl_setting_values[] = {
-      {
-        INF_ACL_CAN_ADD_SUBDIRECTORY,
-        "INF_ACL_CAN_ADD_SUBDIRECTORY",
-        "can-add-subdirectory"
-      }, {
-        INF_ACL_CAN_ADD_DOCUMENT,
-        "INF_ACL_CAN_ADD_DOCUMENT",
-        "can-add-document"
-      }, {
-        INF_ACL_CAN_SYNC_IN,
-        "INF_ACL_CAN_SYNC_IN",
-        "can-sync-in"
-      }, {
-        INF_ACL_CAN_REMOVE_NODE,
-        "INF_ACL_CAN_REMOVE_NODE",
-        "can-remove-node"
-      }, {
-        INF_ACL_CAN_EXPLORE_NODE,
-        "INF_ACL_CAN_EXPLORE_NODE",
-        "can-explore-node"
-      }, {
-        INF_ACL_CAN_SUBSCRIBE_CHAT,
-        "INF_ACL_CAN_SUBSCRIBE_CHAT",
-        "can-subscribe-chat"
-      }, {
-        INF_ACL_CAN_SUBSCRIBE_SESSION,
-        "INF_ACL_CAN_SUBSCRIBE_SESSION",
-        "can-subscribe-session"
-      }, {
-        INF_ACL_CAN_JOIN_USER,
-        "INF_ACL_CAN_JOIN_USER",
-        "can-join-user"
-      }, {
-        INF_ACL_CAN_QUERY_ACCOUNT_LIST,
-        "INF_ACL_CAN_QUERY_ACCOUNT_LIST",
-        "can-query-account-list"
-      }, {
-        INF_ACL_CAN_CREATE_ACCOUNT,
-        "INF_ACL_CAN_CREATE_ACCOUNT",
-        "can-create-account"
-      }, {
-        INF_ACL_CAN_OVERRIDE_ACCOUNT,
-        "INF_ACL_CAN_OVERRIDE_ACCOUNT",
-        "can-override-account"
-      }, {
-        INF_ACL_CAN_REMOVE_ACCOUNT,
-        "INF_ACL_CAN_REMOVE_ACCOUNT",
-        "can-remove-account"
-      }, {
-        INF_ACL_CAN_QUERY_ACL,
-        "INF_ACL_CAN_QUERY_ACL",
-        "can-query-acl"
-      }, {
-        INF_ACL_CAN_SET_ACL,
-        "INF_ACL_CAN_SET_ACL",
-        "can-set-acl"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    acl_setting_type = g_enum_register_static(
-      "InfAclSetting",
-      acl_setting_values
-    );
-  }
-
-  return acl_setting_type;
-}
-
-GType
-inf_acl_mask_get_type(void)
-{
-  static GType acl_mask_type = 0;
-
-  if(!acl_mask_type)
-  {
-    acl_mask_type = g_boxed_type_register_static(
-      "InfAclMask",
-      (GBoxedCopyFunc)inf_acl_mask_copy,
-      (GBoxedFreeFunc)inf_acl_mask_free
-    );
-  }
-
-  return acl_mask_type;
-}
-
-GType
-inf_acl_sheet_get_type(void)
-{
-  static GType acl_sheet_type = 0;
-
-  if(!acl_sheet_type)
-  {
-    acl_sheet_type = g_boxed_type_register_static(
-      "InfAclSheet",
-      (GBoxedCopyFunc)inf_acl_sheet_copy,
-      (GBoxedFreeFunc)inf_acl_sheet_free
-    );
-  }
-
-  return acl_sheet_type;
-}
-
-GType
-inf_acl_sheet_set_get_type(void)
-{
-  static GType acl_sheet_set_type = 0;
-
-  if(!acl_sheet_set_type)
-  {
-    acl_sheet_set_type = g_boxed_type_register_static(
-      "InfAclSheetSet",
-      (GBoxedCopyFunc)inf_acl_sheet_set_copy,
-      (GBoxedFreeFunc)inf_acl_sheet_set_free
-    );
-  }
-
-  return acl_sheet_set_type;
-}
+G_DEFINE_BOXED_TYPE(InfAclAccount, inf_acl_account, inf_acl_account_copy, inf_acl_account_free)
+INF_DEFINE_ENUM_TYPE(InfAclSetting, inf_acl_setting, inf_acl_setting_values)
+G_DEFINE_BOXED_TYPE(InfAclMask, inf_acl_mask, inf_acl_mask_copy, inf_acl_mask_free)
+G_DEFINE_BOXED_TYPE(InfAclSheet, inf_acl_sheet, inf_acl_sheet_copy, inf_acl_sheet_free)
+G_DEFINE_BOXED_TYPE(InfAclSheetSet, inf_acl_sheet_set, inf_acl_sheet_set_copy, inf_acl_sheet_set_free)
 
 /**
  * inf_acl_account_id_to_string:

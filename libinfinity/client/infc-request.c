@@ -51,16 +51,15 @@ enum {
 
 #define INFC_REQUEST_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_REQUEST, InfcRequestPrivate))
 
-static GObjectClass* parent_class;
+static void infc_request_request_iface_init(InfRequestInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfcRequest, infc_request, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfcRequest)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_REQUEST, infc_request_request_iface_init))
 
 static void
-infc_request_init(GTypeInstance* instance,
-                  gpointer g_class)
+infc_request_init(InfcRequest* request)
 {
-  InfcRequest* request;
   InfcRequestPrivate* priv;
-
-  request = INFC_REQUEST(instance);
   priv = INFC_REQUEST_PRIVATE(request);
 
   priv->type = NULL;
@@ -80,8 +79,7 @@ infc_request_finalize(GObject* object)
 
   g_free(priv->type);
 
-  if(G_OBJECT_CLASS(parent_class)->finalize != NULL)
-    G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infc_request_parent_class)->finalize(object);
 }
 
 static void
@@ -178,14 +176,10 @@ infc_request_finished(InfRequest* request,
 }
 
 static void
-infc_request_class_init(gpointer g_class,
-                        gpointer class_data)
+infc_request_class_init(InfcRequestClass* request_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfcRequestPrivate));
+  object_class = G_OBJECT_CLASS(request_class);
 
   object_class->finalize = infc_request_finalize;
   object_class->set_property = infc_request_set_property;
@@ -224,57 +218,10 @@ infc_request_class_init(gpointer g_class,
 }
 
 static void
-infc_request_request_init(gpointer g_iface,
-                          gpointer iface_data)
+infc_request_request_iface_init(InfRequestInterface* iface)
 {
-  InfRequestIface* iface;
-  iface = (InfRequestIface*)g_iface;
-
   iface->finished = infc_request_finished;
   iface->is_local = infc_request_is_local;
-}
-
-GType
-infc_request_get_type(void)
-{
-  static GType request_type = 0;
-
-  if(!request_type)
-  {
-    static const GTypeInfo request_type_info = {
-      sizeof(InfcRequestClass),   /* class_size */
-      NULL,                       /* base_init */
-      NULL,                       /* base_finalize */
-      infc_request_class_init,    /* class_init */
-      NULL,                       /* class_finalize */
-      NULL,                       /* class_data */
-      sizeof(InfcRequest),        /* instance_size */
-      0,                          /* n_preallocs */
-      infc_request_init,          /* instance_init */
-      NULL                        /* value_table */
-    };
-
-    static const GInterfaceInfo request_info = {
-      infc_request_request_init,
-      NULL,
-      NULL
-    };
-
-    request_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfcRequest",
-      &request_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      request_type,
-      INF_TYPE_REQUEST,
-      &request_info
-    );
-  }
-
-  return request_type;
 }
 
 /* vim:set et sw=2 ts=2: */

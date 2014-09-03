@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_SESSION_PROXY                 (inf_session_proxy_get_type())
 #define INF_SESSION_PROXY(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_SESSION_PROXY, InfSessionProxy))
 #define INF_IS_SESSION_PROXY(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_SESSION_PROXY))
-#define INF_SESSION_PROXY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_SESSION_PROXY, InfSessionProxyIface))
+#define INF_SESSION_PROXY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_SESSION_PROXY, InfSessionProxyInterface))
 
 #define INF_TYPE_SESSION_PROXY_STATUS          (inf_session_proxy_status_get_type())
 
@@ -40,15 +40,15 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfSessionProxy InfSessionProxy;
-typedef struct _InfSessionProxyIface InfSessionProxyIface;
+typedef struct _InfSessionProxyInterface InfSessionProxyInterface;
 
 /**
- * InfSessionProxyIface:
+ * InfSessionProxyInterface:
  * @join_user: Virtual function to join a user into the proxy's session.
  *
  * Virtual functions for the #InfSessionProxy interface.
  */
-struct _InfSessionProxyIface {
+struct _InfSessionProxyInterface {
   /*< private >*/
   GTypeInterface parent;
 

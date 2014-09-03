@@ -18,104 +18,32 @@
  */
 
 #include <libinfinity/server/infd-storage.h>
+#include <libinfinity/inf-define-enum.h>
 
-GType
-infd_storage_node_type_get_type(void)
-{
-  static GType storage_node_type_type = 0;
-
-  if(!storage_node_type_type)
+static const GEnumValue infd_storage_node_type_values[] = {
   {
-    static const GEnumValue storage_node_type_values[] = {
-      {
-        INFD_STORAGE_NODE_SUBDIRECTORY,
-        "INFD_STORAGE_NODE_SUBDIRECTORY",
-        "subdirectory"
-      }, {
-        INFD_STORAGE_NODE_NOTE,
-        "INFD_STORAGE_NODE_NOTE",
-        "note"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    storage_node_type_type = g_enum_register_static(
-      "InfdStorageNodeType",
-      storage_node_type_values
-    );
+    INFD_STORAGE_NODE_SUBDIRECTORY,
+    "INFD_STORAGE_NODE_SUBDIRECTORY",
+    "subdirectory"
+  }, {
+    INFD_STORAGE_NODE_NOTE,
+    "INFD_STORAGE_NODE_NOTE",
+    "note"
+  }, {
+    0,
+    NULL,
+    NULL
   }
+};
 
-  return storage_node_type_type;
-}
+INF_DEFINE_ENUM_TYPE(InfdStorageNodeType, infd_storage_node_type, infd_storage_node_type_values)
+G_DEFINE_BOXED_TYPE(InfdStorageNode, infd_storage_node, infd_storage_node_copy, infd_storage_node_free)
+G_DEFINE_BOXED_TYPE(InfdStorageAcl, infd_storage_acl, infd_storage_acl_copy, infd_storage_acl_free)
+G_DEFINE_INTERFACE(InfdStorage, infd_storage, G_TYPE_OBJECT)
 
-GType
-infd_storage_node_get_type(void)
+static void
+infd_storage_default_init(InfdStorageInterface* iface)
 {
-  static GType storage_node_type = 0;
-
-  if(!storage_node_type)
-  {
-    storage_node_type = g_boxed_type_register_static(
-      "InfdStorageNode",
-      (GBoxedCopyFunc)infd_storage_node_copy,
-      (GBoxedFreeFunc)infd_storage_node_free
-    );
-  }
-
-  return storage_node_type;
-}
-
-GType
-infd_storage_acl_get_type(void)
-{
-  static GType storage_acl_type = 0;
-
-  if(!storage_acl_type)
-  {
-    storage_acl_type = g_boxed_type_register_static(
-      "InfdStorageAcl",
-      (GBoxedCopyFunc)infd_storage_acl_copy,
-      (GBoxedFreeFunc)infd_storage_acl_free
-    );
-  }
-
-  return storage_acl_type;
-}
-
-GType
-infd_storage_get_type(void)
-{
-  static GType storage_type = 0;
-
-  if(!storage_type)
-  {
-    static const GTypeInfo storage_info = {
-      sizeof(InfdStorageIface),  /* class_size */
-      NULL,                      /* base_init */
-      NULL,                      /* base_finalize */
-      NULL,                      /* class_init */
-      NULL,                      /* class_finalize */
-      NULL,                      /* class_data */
-      0,                         /* instance_size */
-      0,                         /* n_preallocs */
-      NULL,                      /* instance_init */
-      NULL                       /* value_table */
-    };
-
-    storage_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfdStorage",
-      &storage_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(storage_type, G_TYPE_OBJECT);
-  }
-
-  return storage_type;
 }
 
 /**
@@ -322,7 +250,7 @@ infd_storage_read_subdirectory(InfdStorage* storage,
                                const gchar* path,
                                GError** error)
 {
-  InfdStorageIface* iface;
+  InfdStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_STORAGE(storage), NULL);
   g_return_val_if_fail(path != NULL, NULL);
@@ -348,7 +276,7 @@ infd_storage_create_subdirectory(InfdStorage* storage,
                                  const gchar* path,
                                  GError** error)
 {
-  InfdStorageIface* iface;
+  InfdStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_STORAGE(storage), FALSE);
   g_return_val_if_fail(path != NULL, FALSE);
@@ -378,7 +306,7 @@ infd_storage_remove_node(InfdStorage* storage,
                          const gchar* path,
                          GError** error)
 {
-  InfdStorageIface* iface;
+  InfdStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_STORAGE(storage), FALSE);
   g_return_val_if_fail(path != NULL, FALSE);
@@ -406,7 +334,7 @@ infd_storage_read_acl(InfdStorage* storage,
                       const gchar* path,
                       GError** error)
 {
-  InfdStorageIface* iface;
+  InfdStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_STORAGE(storage), NULL);
   g_return_val_if_fail(path != NULL, NULL);
@@ -437,7 +365,7 @@ infd_storage_write_acl(InfdStorage* storage,
                        const InfAclSheetSet* sheet_set,
                        GError** error)
 {
-  InfdStorageIface* iface;
+  InfdStorageInterface* iface;
 
   g_return_val_if_fail(INFD_IS_STORAGE(storage), FALSE);
   g_return_val_if_fail(path != NULL, FALSE);

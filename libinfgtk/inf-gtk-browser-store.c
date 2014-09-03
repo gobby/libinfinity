@@ -93,7 +93,12 @@ enum {
 
 #define INF_GTK_BROWSER_STORE_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_BROWSER_STORE, InfGtkBrowserStorePrivate))
 
-static GObjectClass* parent_class;
+static void inf_gtk_browser_store_tree_model_iface_init(GtkTreeModelIface* iface);
+static void inf_gtk_browser_store_browser_model_iface_init(InfGtkBrowserModelInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfGtkBrowserStore, inf_gtk_browser_store, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfGtkBrowserStore)
+  G_IMPLEMENT_INTERFACE(GTK_TYPE_TREE_MODEL, inf_gtk_browser_store_tree_model_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_GTK_TYPE_BROWSER_MODEL, inf_gtk_browser_store_browser_model_iface_init))
 
 /*
  * Utility functions
@@ -1076,13 +1081,9 @@ inf_gtk_browser_store_resolv_error_func(InfDiscoveryInfo* info,
  */
 
 static void
-inf_gtk_browser_store_init(GTypeInstance* instance,
-                           gpointer g_class)
+inf_gtk_browser_store_init(InfGtkBrowserStore* store)
 {
-  InfGtkBrowserStore* store;
   InfGtkBrowserStorePrivate* priv;
-
-  store = INF_GTK_BROWSER_STORE(instance);
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
 
   priv->stamp = g_random_int();
@@ -1139,7 +1140,7 @@ inf_gtk_browser_store_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_browser_store_parent_class)->dispose(object);
 }
 
 static void
@@ -2219,17 +2220,10 @@ inf_gtk_browser_store_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
  */
 
 static void
-inf_gtk_browser_store_class_init(gpointer g_class,
-                                 gpointer class_data)
+inf_gtk_browser_store_class_init(InfGtkBrowserStoreClass* browser_store_class)
 {
   GObjectClass* object_class;
-  InfGtkBrowserStoreClass* browser_store_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  browser_store_class = INF_GTK_BROWSER_STORE_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkBrowserStorePrivate));
+  object_class = G_OBJECT_CLASS(browser_store_class);
 
   object_class->dispose = inf_gtk_browser_store_dispose;
   object_class->set_property = inf_gtk_browser_store_set_property;
@@ -2261,12 +2255,8 @@ inf_gtk_browser_store_class_init(gpointer g_class,
 }
 
 static void
-inf_gtk_browser_store_tree_model_init(gpointer g_iface,
-                                      gpointer iface_data)
+inf_gtk_browser_store_tree_model_iface_init(GtkTreeModelIface* iface)
 {
-  GtkTreeModelIface* iface;
-  iface = (GtkTreeModelIface*)g_iface;
-
   iface->get_flags = inf_gtk_browser_store_tree_model_get_flags;
   iface->get_n_columns = inf_gtk_browser_store_tree_model_get_n_columns;
   iface->get_column_type = inf_gtk_browser_store_tree_model_get_column_type;
@@ -2282,73 +2272,15 @@ inf_gtk_browser_store_tree_model_init(gpointer g_iface,
 }
 
 static void
-inf_gtk_browser_store_browser_model_init(gpointer g_iface,
-                                         gpointer iface_data)
+inf_gtk_browser_store_browser_model_iface_init(
+  InfGtkBrowserModelInterface* iface)
 {
-  InfGtkBrowserModelIface* iface;
-  iface = (InfGtkBrowserModelIface*)g_iface;
-
   iface->set_browser = inf_gtk_browser_store_browser_model_set_browser;
   iface->resolve = inf_gtk_browser_store_browser_model_resolve;
   /* inf_gtk_browser_store_browser_model_browser_iter_to_tree_iter would be
    * consistent, but a _bit_ too long to fit properly into 80 chars ;) */
   iface->browser_iter_to_tree_iter =
     inf_gtk_browser_store_browser_iter_to_tree_iter;
-}
-
-GType
-inf_gtk_browser_store_get_type(void)
-{
-  static GType browser_store_type = 0;
-
-  if(!browser_store_type)
-  {
-    static const GTypeInfo browser_store_type_info = {
-      sizeof(InfGtkBrowserStoreClass),    /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_gtk_browser_store_class_init,   /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      sizeof(InfGtkBrowserStore),         /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_gtk_browser_store_init,         /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    static const GInterfaceInfo tree_model_info = {
-      inf_gtk_browser_store_tree_model_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo browser_model_info = {
-      inf_gtk_browser_store_browser_model_init,
-      NULL,
-      NULL
-    };
-
-    browser_store_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfGtkBrowserStore",
-      &browser_store_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      browser_store_type,
-      GTK_TYPE_TREE_MODEL,
-      &tree_model_info
-    );
-
-    g_type_add_interface_static(
-      browser_store_type,
-      INF_GTK_TYPE_BROWSER_MODEL,
-      &browser_model_info
-    );
-  }
-
-  return browser_store_type;
 }
 
 /*

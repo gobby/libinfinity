@@ -42,22 +42,7 @@
 
 #include <libinfinity/common/inf-browser-iter.h>
 
-GType
-inf_browser_iter_get_type(void)
-{
-  static GType browser_iter_type = 0;
-
-  if(!browser_iter_type)
-  {
-    browser_iter_type = g_boxed_type_register_static(
-      "InfBrowserIter",
-      (GBoxedCopyFunc)inf_browser_iter_copy,
-      (GBoxedFreeFunc)inf_browser_iter_free
-    );
-  }
-
-  return browser_iter_type;
-}
+G_DEFINE_BOXED_TYPE(InfBrowserIter, inf_browser_iter, inf_browser_iter_copy, inf_browser_iter_free)
 
 /**
  * inf_browser_iter_copy:

@@ -20,51 +20,11 @@
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
 
+G_DEFINE_INTERFACE(InfTextInsertOperation, inf_text_insert_operation, INF_ADOPTED_TYPE_OPERATION)
+
 static void
-inf_text_insert_operation_base_init(gpointer g_class)
+inf_text_insert_operation_default_init(InfTextInsertOperationInterface* iface)
 {
-  static gboolean initialized = FALSE;
-
-  if(!initialized)
-  {
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_text_insert_operation_get_type(void)
-{
-  static GType insert_operation_type = 0;
-
-  if(!insert_operation_type)
-  {
-    static const GTypeInfo insert_operation_info = {
-      sizeof(InfTextInsertOperationIface),    /* class_size */
-      inf_text_insert_operation_base_init,    /* base_init */
-      NULL,                                   /* base_finalize */
-      NULL,                                   /* class_init */
-      NULL,                                   /* class_finalize */
-      NULL,                                   /* class_data */
-      0,                                      /* instance_size */
-      0,                                      /* n_preallocs */
-      NULL,                                   /* instance_init */
-      NULL                                    /* value_table */
-    };
-
-    insert_operation_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfTextInsertOperation",
-      &insert_operation_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(
-      insert_operation_type,
-      INF_ADOPTED_TYPE_OPERATION
-    );
-  }
-
-  return insert_operation_type;
 }
 
 /**
@@ -78,7 +38,7 @@ inf_text_insert_operation_get_type(void)
 guint
 inf_text_insert_operation_get_position(InfTextInsertOperation* operation)
 {
-  InfTextInsertOperationIface* iface;
+  InfTextInsertOperationInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_INSERT_OPERATION(operation), 0);
 
@@ -99,7 +59,7 @@ inf_text_insert_operation_get_position(InfTextInsertOperation* operation)
 guint
 inf_text_insert_operation_get_length(InfTextInsertOperation* operation)
 {
-  InfTextInsertOperationIface* iface;
+  InfTextInsertOperationInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_INSERT_OPERATION(operation), 0);
 
@@ -162,7 +122,7 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
                                            InfTextInsertOperation* ag_lcs,
                                            InfAdoptedConcurrencyId cid)
 {
-  InfTextInsertOperationIface* iface;
+  InfTextInsertOperationInterface* iface;
   guint op_pos;
   guint against_pos;
   guint op_lcs_pos;
@@ -236,7 +196,7 @@ InfAdoptedOperation*
 inf_text_insert_operation_transform_delete(InfTextInsertOperation* operation,
                                            InfTextDeleteOperation* against)
 {
-  InfTextInsertOperationIface* iface;
+  InfTextInsertOperationInterface* iface;
   guint own_pos;
   guint other_pos;
   guint other_len;

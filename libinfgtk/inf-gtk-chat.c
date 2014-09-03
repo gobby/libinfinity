@@ -95,7 +95,8 @@ enum {
 
 #define INF_GTK_CHAT_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CHAT, InfGtkChatPrivate))
 
-static GtkVBoxClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfGtkChat, inf_gtk_chat, GTK_TYPE_VBOX,
+  G_ADD_PRIVATE(InfGtkChat))
 
 /*
  * Message representation
@@ -630,17 +631,14 @@ inf_gtk_chat_adjustment_value_changed_cb(GObject* object,
  */
 
 static void
-inf_gtk_chat_init(GTypeInstance* instance,
-                  gpointer g_class)
+inf_gtk_chat_init(InfGtkChat* chat)
 {
-  InfGtkChat* chat;
   InfGtkChatPrivate* priv;
 
   GtkWidget* scroll;
   GtkWidget* image;
   GtkWidget* hbox;
 
-  chat = INF_GTK_CHAT(instance);
   priv = INF_GTK_CHAT_PRIVATE(chat);
 
   priv->session = NULL;
@@ -786,7 +784,7 @@ inf_gtk_chat_dispose(GObject* object)
   if(priv->session != NULL)
     inf_gtk_chat_set_session(chat, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_chat_parent_class)->dispose(object);
 }
 
 static void
@@ -800,7 +798,7 @@ inf_gtk_chat_finalize(GObject* object)
 
   g_free(priv->completion_text);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_chat_parent_class)->finalize(object);
 }
 
 static void
@@ -864,14 +862,10 @@ inf_gtk_chat_get_property(GObject* object,
  */
 
 static void
-inf_gtk_chat_class_init(gpointer g_class,
-                        gpointer class_data)
+inf_gtk_chat_class_init(InfGtkChatClass* chat_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = GTK_VBOX_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkChatPrivate));
+  object_class = G_OBJECT_CLASS(chat_class);
 
   object_class->dispose = inf_gtk_chat_dispose;
   object_class->finalize = inf_gtk_chat_finalize;
@@ -901,37 +895,6 @@ inf_gtk_chat_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_gtk_chat_get_type(void)
-{
-  static GType chat_type = 0;
-
-  if(!chat_type)
-  {
-    static const GTypeInfo chat_type_info = {
-      sizeof(InfGtkChatClass),   /* class_size */
-      NULL,                      /* base_init */
-      NULL,                      /* base_finalize */
-      inf_gtk_chat_class_init,   /* class_init */
-      NULL,                      /* class_finalize */
-      NULL,                      /* class_data */
-      sizeof(InfGtkChat),        /* instance_size */
-      0,                         /* n_preallocs */
-      inf_gtk_chat_init,         /* instance_init */
-      NULL                       /* value_table */
-    };
-
-    chat_type = g_type_register_static(
-      GTK_TYPE_VBOX,
-      "InfGtkChat",
-      &chat_type_info,
-      0
-    );
-  }
-
-  return chat_type;
 }
 
 /*

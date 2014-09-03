@@ -29,47 +29,11 @@
 
 #include <libinfinity/common/inf-local-publisher.h>
 
+G_DEFINE_INTERFACE(InfLocalPublisher, inf_local_publisher, G_TYPE_OBJECT)
+
 static void
-inf_local_publisher_base_init(gpointer g_class)
+inf_local_publisher_default_init(InfLocalPublisherInterface* iface)
 {
-  static gboolean initialized = FALSE;
-  if(!initialized)
-  {
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_local_publisher_get_type(void)
-{
-  static GType local_publisher_type = 0;
-
-  if(!local_publisher_type)
-  {
-    static const GTypeInfo local_publisher_info = {
-      sizeof(InfLocalPublisherIface),     /* class_size */
-      inf_local_publisher_base_init,      /* base_init */
-      NULL,                               /* base_finalize */
-      NULL,                               /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      0,                                  /* instance_size */
-      0,                                  /* n_preallocs */
-      NULL,                               /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    local_publisher_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfLocalPublisher",
-      &local_publisher_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(local_publisher_type, G_TYPE_OBJECT);
-  }
-
-  return local_publisher_type;
 }
 
 /**
@@ -91,7 +55,7 @@ inf_local_publisher_publish(InfLocalPublisher* publisher,
                             const gchar* name,
                             guint port)
 {
-  InfLocalPublisherIface* iface;
+  InfLocalPublisherInterface* iface;
 
   g_return_val_if_fail(INF_IS_LOCAL_PUBLISHER(publisher), NULL);
   g_return_val_if_fail(type != NULL, NULL);
@@ -115,7 +79,7 @@ void
 inf_local_publisher_unpublish(InfLocalPublisher* publisher,
                               InfLocalPublisherItem* item)
 {
-  InfLocalPublisherIface* iface;
+  InfLocalPublisherInterface* iface;
 
   g_return_if_fail(INF_IS_LOCAL_PUBLISHER(publisher));
   g_return_if_fail(item != NULL);

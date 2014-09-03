@@ -34,9 +34,34 @@
 #include <libinfgtk/inf-gtk-certificate-view.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-define-enum.h>
 
 #include <gnutls/x509.h>
 #include <time.h>
+
+static const GFlagsValue inf_gtk_certificate_dialog_flags_values[] = {
+  {
+    INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH,
+    "INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH",
+    "cert-hostname-mismatch"
+  }, {
+    INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN,
+    "INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN",
+    "cert-not-known"
+  }, {
+    INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED,
+    "INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED",
+    "cert-unexpected"
+  }, {
+    INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED,
+    "INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED",
+    "cert-old-expired"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfGtkCertificateDialogPrivate InfGtkCertificateDialogPrivate;
 struct _InfGtkCertificateDialogPrivate {
@@ -64,7 +89,9 @@ enum {
 
 #define INF_GTK_CERTIFICATE_DIALOG_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CERTIFICATE_DIALOG, InfGtkCertificateDialogPrivate))
 
-static GtkDialogClass* parent_class;
+INF_DEFINE_FLAGS_TYPE(InfGtkCertificateDialogFlags, inf_gtk_certificate_dialog_flags, inf_gtk_certificate_dialog_flags_values)
+G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateDialog, inf_gtk_certificate_dialog, GTK_TYPE_DIALOG,
+  G_ADD_PRIVATE(InfGtkCertificateDialog))
 
 static void
 inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
@@ -368,9 +395,10 @@ inf_gtk_certificate_dialog_chain_data_func(GtkTreeViewColumn* column,
 }
 
 static void
-inf_gtk_certificate_dialog_init(GTypeInstance* instance,
-                                gpointer g_class)
+inf_gtk_certificate_dialog_init(InfGtkCertificateDialog* dialog)
 {
+  InfGtkCertificateDialogPrivate* priv;
+
   GtkWidget* image;
   GtkWidget* hbox;
   GtkWidget* scroll;
@@ -381,10 +409,6 @@ inf_gtk_certificate_dialog_init(GTypeInstance* instance,
   GtkIconTheme* theme;
   GtkIconInfo* icon_info;
 
-  InfGtkCertificateDialog* dialog;
-  InfGtkCertificateDialogPrivate* priv;
-
-  dialog = INF_GTK_CERTIFICATE_DIALOG(instance);
   priv = INF_GTK_CERTIFICATE_DIALOG_PRIVATE(dialog);
 
   priv->certificate_chain = NULL;
@@ -573,7 +597,7 @@ inf_gtk_certificate_dialog_finalize(GObject* object)
   inf_certificate_chain_unref(priv->certificate_chain);
   g_free(priv->hostname);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_certificate_dialog_parent_class)->finalize(object);
 }
 
 static void
@@ -651,14 +675,11 @@ inf_gtk_certificate_dialog_get_property(GObject* object,
  */
 
 static void
-inf_gtk_certificate_dialog_class_init(gpointer g_class,
-                                       gpointer class_data)
+inf_gtk_certificate_dialog_class_init(
+  InfGtkCertificateDialogClass* certificate_dialog_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = GTK_DIALOG_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkCertificateDialogPrivate));
+  object_class = G_OBJECT_CLASS(certificate_dialog_class);
 
   object_class->finalize = inf_gtk_certificate_dialog_finalize;
   object_class->set_property = inf_gtk_certificate_dialog_set_property;
@@ -700,77 +721,6 @@ inf_gtk_certificate_dialog_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_gtk_certificate_dialog_flags_get_type(void)
-{
-  static GType certificate_dialog_flags_type = 0;
-
-  if(!certificate_dialog_flags_type)
-  {
-    static const GFlagsValue certificate_dialog_flags_type_values[] = {
-      {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_HOSTNAME_MISMATCH",
-        "cert-hostname-mismatch"
-      }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_ISSUER_NOT_KNOWN",
-        "cert-not-known"
-      }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_UNEXPECTED",
-        "cert-unexpected"
-      }, {
-        INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED,
-        "INF_GTK_CERTIFICATE_DIALOG_CERT_OLD_EXPIRED",
-        "cert-old-expired"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    certificate_dialog_flags_type = g_flags_register_static(
-      "InfGtkCertificateDialogFlags",
-      certificate_dialog_flags_type_values
-    );
-  }
-
-  return certificate_dialog_flags_type;
-}
-
-GType
-inf_gtk_certificate_dialog_get_type(void)
-{
-  static GType certificate_dialog_type = 0;
-
-  if(!certificate_dialog_type)
-  {
-    static const GTypeInfo certificate_dialog_type_info = {
-      sizeof(InfGtkCertificateDialogClass),    /* class_size */
-      NULL,                                    /* base_init */
-      NULL,                                    /* base_finalize */
-      inf_gtk_certificate_dialog_class_init,   /* class_init */
-      NULL,                                    /* class_finalize */
-      NULL,                                    /* class_data */
-      sizeof(InfGtkCertificateDialog),         /* instance_size */
-      0,                                       /* n_preallocs */
-      inf_gtk_certificate_dialog_init,         /* instance_init */
-      NULL                                     /* value_table */
-    };
-
-    certificate_dialog_type = g_type_register_static(
-      GTK_TYPE_DIALOG,
-      "InfGtkCertificateDialog",
-      &certificate_dialog_type_info,
-      0
-    );
-  }
-
-  return certificate_dialog_type;
 }
 
 /*

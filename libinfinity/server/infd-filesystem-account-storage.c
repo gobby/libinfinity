@@ -78,7 +78,10 @@ enum {
 
 #define INFD_FILESYSTEM_ACCOUNT_STORAGE_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_FILESYSTEM_ACCOUNT_STORAGE, InfdFilesystemAccountStoragePrivate))
 
-static GObjectClass* parent_class;
+static void infd_filesystem_account_storage_account_storage_iface_init(InfdAccountStorageInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfdFilesystemAccountStorage, infd_filesystem_account_storage, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdFilesystemAccountStorage)
+  G_IMPLEMENT_INTERFACE(INFD_TYPE_ACCOUNT_STORAGE, infd_filesystem_account_storage_account_storage_iface_init))
 
 static GQuark
 infd_filesystem_account_storage_error_quark(void)
@@ -814,13 +817,9 @@ infd_filesystem_account_storage_remove_info(
 }
 
 static void
-infd_filesystem_account_storage_init(GTypeInstance* instance,
-                                     gpointer g_class)
+infd_filesystem_account_storage_init(InfdFilesystemAccountStorage* storage)
 {
-  InfdFilesystemAccountStorage* storage;
   InfdFilesystemAccountStoragePrivate* priv;
-
-  storage = INFD_FILESYSTEM_ACCOUNT_STORAGE(instance);
   priv = INFD_FILESYSTEM_ACCOUNT_STORAGE_PRIVATE(storage);
 
   priv->filesystem = NULL;
@@ -858,7 +857,7 @@ infd_filesystem_account_storage_dispose(GObject* object)
     priv->filesystem = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infd_filesystem_account_storage_parent_class)->dispose(object);
 }
 
 static void
@@ -874,7 +873,7 @@ infd_filesystem_account_storage_finalize(GObject* object)
   g_hash_table_destroy(priv->accounts_by_certificate);
   g_hash_table_destroy(priv->accounts);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_filesystem_account_storage_parent_class)->finalize(object);
 }
 
 static void
@@ -1620,22 +1619,11 @@ infd_filesystem_account_storage_set_password(InfdAccountStorage* s,
 }
 
 static void
-infd_filesystem_account_storage_class_init(gpointer g_class,
-                                           gpointer class_data)
+infd_filesystem_account_storage_class_init(
+  InfdFilesystemAccountStorageClass* filesystem_account_storage_class)
 {
   GObjectClass* object_class;
-  InfdFilesystemAccountStorageClass* filesystem_account_storage_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  filesystem_account_storage_class =
-    INFD_FILESYSTEM_ACCOUNT_STORAGE_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-
-  g_type_class_add_private(
-    g_class,
-    sizeof(InfdFilesystemAccountStoragePrivate)
-  );
+  object_class = G_OBJECT_CLASS(filesystem_account_storage_class);
 
   object_class->dispose = infd_filesystem_account_storage_dispose;
   object_class->finalize = infd_filesystem_account_storage_finalize;
@@ -1656,12 +1644,9 @@ infd_filesystem_account_storage_class_init(gpointer g_class,
 }
 
 static void
-infd_filesystem_account_storage_account_storage_init(gpointer g_iface,
-                                                     gpointer iface_data)
+infd_filesystem_account_storage_account_storage_iface_init(
+  InfdAccountStorageInterface* iface)
 {
-  InfdAccountStorageIface* iface;
-  iface = (InfdAccountStorageIface*)g_iface;
-
   iface->get_support = infd_filesystem_account_storage_get_support;
   iface->lookup_accounts = infd_filesystem_account_storage_lookup_accounts;
   iface->lookup_accounts_by_name =
@@ -1678,49 +1663,6 @@ infd_filesystem_account_storage_account_storage_init(gpointer g_iface,
 
   iface->account_added = NULL;
   iface->account_removed = NULL;
-}
-
-GType
-infd_filesystem_account_storage_get_type(void)
-{
-  static GType filesystem_account_storage_type = 0;
-
-  if(!filesystem_account_storage_type)
-  {
-    static const GTypeInfo filesystem_account_storage_type_info = {
-      sizeof(InfdFilesystemAccountStorageClass),  /* class_size */
-      NULL,                                       /* base_init */
-      NULL,                                       /* base_finalize */
-      infd_filesystem_account_storage_class_init, /* class_init */
-      NULL,                                       /* class_finalize */
-      NULL,                                       /* class_data */
-      sizeof(InfdFilesystemAccountStorage),       /* instance_size */
-      0,                                          /* n_preallocs */
-      infd_filesystem_account_storage_init,       /* instance_init */
-      NULL                                        /* value_table */
-    };
-
-    static const GInterfaceInfo account_storage_info = {
-      infd_filesystem_account_storage_account_storage_init,
-      NULL,
-      NULL
-    };
-
-    filesystem_account_storage_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdFilesystemAccountStorage",
-      &filesystem_account_storage_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      filesystem_account_storage_type,
-      INFD_TYPE_ACCOUNT_STORAGE,
-      &account_storage_info
-    );
-  }
-
-  return filesystem_account_storage_type;
 }
 
 /**

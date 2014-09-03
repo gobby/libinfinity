@@ -27,20 +27,20 @@ G_BEGIN_DECLS
 #define INF_TYPE_BUFFER                 (inf_buffer_get_type())
 #define INF_BUFFER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_BUFFER, InfBuffer))
 #define INF_IS_BUFFER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_BUFFER))
-#define INF_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_BUFFER, InfBufferIface))
+#define INF_BUFFER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_BUFFER, InfBufferInterface))
 
 typedef struct _InfBuffer InfBuffer;
-typedef struct _InfBufferIface InfBufferIface;
+typedef struct _InfBufferInterface InfBufferInterface;
 
 /**
- * InfBufferIface:
+ * InfBufferInterface:
  * @get_modified: Returns whether the buffer has been modified since the last
  * call to @set_modified set modified flag to %FALSE.
  * @set_modified: Set the current modified state of the buffer.
  *
  * The virtual methods of #InfBuffer.
  */
-struct _InfBufferIface {
+struct _InfBufferInterface {
   /*< private >*/
   GTypeInterface parent;
 

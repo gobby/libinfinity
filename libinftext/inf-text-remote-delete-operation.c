@@ -63,7 +63,12 @@ enum {
 
 #define INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_REMOTE_DELETE_OPERATION, InfTextRemoteDeleteOperationPrivate))
 
-static GObjectClass* parent_class;
+static void inf_text_remote_delete_operation_operation_iface_init(InfAdoptedOperationInterface* iface);
+static void inf_text_remote_delete_operation_delete_operation_iface_init(InfTextDeleteOperationInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfTextRemoteDeleteOperation, inf_text_remote_delete_operation, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextRemoteDeleteOperation)
+  G_IMPLEMENT_INTERFACE(INF_ADOPTED_TYPE_OPERATION, inf_text_remote_delete_operation_operation_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TEXT_TYPE_DELETE_OPERATION, inf_text_remote_delete_operation_delete_operation_iface_init))
 
 /* This appends an element to a GSList more efficiently than
  * g_slist_append() when the last item of the list in known. This updates
@@ -197,13 +202,9 @@ inf_text_remote_delete_operation_recon_feed(GSList* recon_list,
 }
 
 static void
-inf_text_remote_delete_operation_init(GTypeInstance* instance,
-                                      gpointer g_class)
+inf_text_remote_delete_operation_init(InfTextRemoteDeleteOperation* operation)
 {
-  InfTextRemoteDeleteOperation* operation;
   InfTextRemoteDeleteOperationPrivate* priv;
-
-  operation = INF_TEXT_REMOTE_DELETE_OPERATION(instance);
   priv = INF_TEXT_REMOTE_DELETE_OPERATION_PRIVATE(operation);
 
   priv->position = 0;
@@ -224,7 +225,7 @@ inf_text_remote_delete_operation_finalize(GObject* object)
 
   inf_text_remote_delete_operation_recon_free(priv->recon);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_remote_delete_operation_parent_class)->finalize(object);
 }
 
 static void
@@ -668,14 +669,11 @@ inf_text_remote_delete_operation_transform_split(
 }
 
 static void
-inf_text_remote_delete_operation_class_init(gpointer g_class,
-                                            gpointer class_data)
+inf_text_remote_delete_operation_class_init(
+  InfTextRemoteDeleteOperationClass* remote_delete_operation_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextRemoteDeleteOperationPrivate));
+  object_class = G_OBJECT_CLASS(remote_delete_operation_class);
 
   object_class->finalize = inf_text_remote_delete_operation_finalize;
   object_class->set_property = inf_text_remote_delete_operation_set_property;
@@ -711,12 +709,9 @@ inf_text_remote_delete_operation_class_init(gpointer g_class,
 }
 
 static void
-inf_text_remote_delete_operation_operation_init(gpointer g_iface,
-                                                gpointer iface_data)
+inf_text_remote_delete_operation_operation_iface_init(
+  InfAdoptedOperationInterface* iface)
 {
-  InfAdoptedOperationIface* iface;
-  iface = (InfAdoptedOperationIface*)g_iface;
-
   iface->need_concurrency_id =
     inf_text_remote_delete_operation_need_concurrency_id;
   iface->transform = inf_text_remote_delete_operation_transform;
@@ -730,12 +725,9 @@ inf_text_remote_delete_operation_operation_init(gpointer g_iface,
 }
 
 static void
-inf_text_remote_delete_operation_delete_operation_init(gpointer g_iface,
-                                                       gpointer iface_data)
+inf_text_remote_delete_operation_delete_operation_iface_init(
+  InfTextDeleteOperationInterface* iface)
 {
-  InfTextDeleteOperationIface* iface;
-  iface = (InfTextDeleteOperationIface*)g_iface;
-
   iface->get_position = inf_text_remote_delete_operation_get_position;
   iface->get_length = inf_text_remote_delete_operation_get_length;
   iface->transform_position =
@@ -743,61 +735,6 @@ inf_text_remote_delete_operation_delete_operation_init(gpointer g_iface,
   iface->transform_overlap =
     inf_text_remote_delete_operation_transform_overlap;
   iface->transform_split = inf_text_remote_delete_operation_transform_split;
-}
-
-GType
-inf_text_remote_delete_operation_get_type(void)
-{
-  static GType remote_delete_operation_type = 0;
-
-  if(!remote_delete_operation_type)
-  {
-    static const GTypeInfo remote_delete_operation_type_info = {
-      sizeof(InfTextRemoteDeleteOperationClass),   /* class_size */
-      NULL,                                        /* base_init */
-      NULL,                                        /* base_finalize */
-      inf_text_remote_delete_operation_class_init, /* class_init */
-      NULL,                                        /* class_finalize */
-      NULL,                                        /* class_data */
-      sizeof(InfTextRemoteDeleteOperation),        /* instance_size */
-      0,                                           /* n_preallocs */
-      inf_text_remote_delete_operation_init,       /* instance_init */
-      NULL                                         /* value_table */
-    };
-
-    static const GInterfaceInfo operation_info = {
-      inf_text_remote_delete_operation_operation_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo delete_operation_info = {
-      inf_text_remote_delete_operation_delete_operation_init,
-      NULL,
-      NULL
-    };
-
-    remote_delete_operation_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextRemoteDeleteOperation",
-      &remote_delete_operation_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      remote_delete_operation_type,
-      INF_ADOPTED_TYPE_OPERATION,
-      &operation_info
-    );
-
-    g_type_add_interface_static(
-      remote_delete_operation_type,
-      INF_TEXT_TYPE_DELETE_OPERATION,
-      &delete_operation_info
-    );
-  }
-
-  return remote_delete_operation_type;
 }
 
 /**

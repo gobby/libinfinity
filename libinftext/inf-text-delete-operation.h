@@ -31,12 +31,12 @@ G_BEGIN_DECLS
 #define INF_TEXT_TYPE_DELETE_OPERATION                 (inf_text_delete_operation_get_type())
 #define INF_TEXT_DELETE_OPERATION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TEXT_TYPE_DELETE_OPERATION, InfTextDeleteOperation))
 #define INF_TEXT_IS_DELETE_OPERATION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TEXT_TYPE_DELETE_OPERATION))
-#define INF_TEXT_DELETE_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_DELETE_OPERATION, InfTextDeleteOperationIface))
+#define INF_TEXT_DELETE_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_DELETE_OPERATION, InfTextDeleteOperationInterface))
 
-typedef struct _InfTextDeleteOperationIface InfTextDeleteOperationIface;
+typedef struct _InfTextDeleteOperationInterface InfTextDeleteOperationInterface;
 
 /**
- * InfTextDeleteOperationIface:
+ * InfTextDeleteOperationInterface:
  * @get_position: Virtual function to retrieve the start position of the
  * delete operation.
  * @get_length: Virtual function to retrieve the end position of the number
@@ -51,7 +51,7 @@ typedef struct _InfTextDeleteOperationIface InfTextDeleteOperationIface;
  * This structure contains virtual methods of the #InfTextDeleteOperation
  * interface.
  */
-struct _InfTextDeleteOperationIface {
+struct _InfTextDeleteOperationInterface {
   /*< private >*/
   GTypeInterface parent;
 

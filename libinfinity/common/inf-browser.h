@@ -32,7 +32,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_BROWSER                 (inf_browser_get_type())
 #define INF_BROWSER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_BROWSER, InfBrowser))
 #define INF_IS_BROWSER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_BROWSER))
-#define INF_BROWSER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_BROWSER, InfBrowserIface))
+#define INF_BROWSER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_BROWSER, InfBrowserInterface))
 
 #define INF_TYPE_BROWSER_STATUS          (inf_browser_status_get_type())
 
@@ -43,7 +43,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfBrowser InfBrowser;
-typedef struct _InfBrowserIface InfBrowserIface;
+typedef struct _InfBrowserInterface InfBrowserInterface;
 
 /**
  * InfBrowserStatus:
@@ -65,7 +65,7 @@ typedef enum _InfBrowserStatus {
 } InfBrowserStatus;
 
 /**
- * InfBrowserIface:
+ * InfBrowserInterface:
  * @error: Default signal handler for the #InfBrowser::error signal.
  * @node_added: Default signal handler for the #InfBrowser::node-added
  * signal.
@@ -128,7 +128,7 @@ typedef enum _InfBrowserStatus {
  *
  * Signals and virtual functions for the #InfBrowser interface.
  */
-struct _InfBrowserIface {
+struct _InfBrowserInterface {
   /*< private >*/
   GTypeInterface parent;
 

@@ -56,7 +56,8 @@ enum {
 
 #define INF_COMMUNICATION_JOINED_GROUP_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_JOINED_GROUP, InfCommunicationJoinedGroupPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfCommunicationJoinedGroup, inf_communication_joined_group, INF_COMMUNICATION_TYPE_GROUP,
+  G_ADD_PRIVATE(InfCommunicationJoinedGroup))
 
 /* Required by inf_communication_joined_group_publisher_notify_status_cb() */
 static void
@@ -150,13 +151,9 @@ inf_communication_joined_group_get_publisher_id(InfCommunicationGroup* group,
  */
 
 static void
-inf_communication_joined_group_init(GTypeInstance* instance,
-                                    gpointer g_class)
+inf_communication_joined_group_init(InfCommunicationJoinedGroup* group)
 {
-  InfCommunicationJoinedGroup* group;
   InfCommunicationJoinedGroupPrivate* priv;
-
-  group = INF_COMMUNICATION_JOINED_GROUP(instance);
   priv = INF_COMMUNICATION_JOINED_GROUP_PRIVATE(group);
 
   priv->publisher_conn = NULL;
@@ -172,7 +169,7 @@ inf_communication_joined_group_constructor(GType type,
   GObject* object;
   InfCommunicationJoinedGroupPrivate* priv;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->constructor(
     type,
     n_construct_properties,
     properties
@@ -210,7 +207,7 @@ inf_communication_joined_group_dispose(GObject* object)
 
   inf_communication_joined_group_set_publisher(group, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->dispose(object);
 }
 
 static void
@@ -225,7 +222,7 @@ inf_communication_joined_group_finalize(GObject* object)
   g_free(priv->publisher_id);
   g_free(priv->method);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->finalize(object);
 }
 
 static void
@@ -292,21 +289,14 @@ inf_communication_joined_group_get_property(GObject* object,
  */
 
 static void
-inf_communication_joined_group_class_init(gpointer g_class,
-                                          gpointer class_data)
+inf_communication_joined_group_class_init(
+  InfCommunicationJoinedGroupClass* joined_group_class)
 {
   GObjectClass* object_class;
   InfCommunicationGroupClass* group_class;
 
-  object_class = G_OBJECT_CLASS(g_class);
-  group_class = INF_COMMUNICATION_GROUP_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-
-  g_type_class_add_private(
-    g_class,
-    sizeof(InfCommunicationJoinedGroupPrivate)
-  );
+  object_class = G_OBJECT_CLASS(joined_group_class);
+  group_class = INF_COMMUNICATION_GROUP_CLASS(joined_group_class);
 
   object_class->constructor = inf_communication_joined_group_constructor;
   object_class->dispose = inf_communication_joined_group_dispose;
@@ -341,37 +331,6 @@ inf_communication_joined_group_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
-}
-
-GType
-inf_communication_joined_group_get_type(void)
-{
-  static GType joined_group_type = 0;
-
-  if(!joined_group_type)
-  {
-    static const GTypeInfo joined_group_type_info = {
-      sizeof(InfCommunicationJoinedGroupClass),   /* class_size */
-      NULL,                                       /* base_init */
-      NULL,                                       /* base_finalize */
-      inf_communication_joined_group_class_init,  /* class_init */
-      NULL,                                       /* class_finalize */
-      NULL,                                       /* class_data */
-      sizeof(InfCommunicationJoinedGroup),        /* instance_size */
-      0,                                          /* n_preallocs */
-      inf_communication_joined_group_init,        /* instance_init */
-      NULL                                        /* value_table */
-    };
-
-    joined_group_type = g_type_register_static(
-      INF_COMMUNICATION_TYPE_GROUP,
-      "InfCommunicationJoinedGroup",
-      &joined_group_type_info,
-      0
-    );
-  }
-
-  return joined_group_type;
 }
 
 /*

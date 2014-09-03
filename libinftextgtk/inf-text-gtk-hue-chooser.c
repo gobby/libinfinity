@@ -72,8 +72,10 @@ enum {
 
 #define INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_GTK_TYPE_HUE_CHOOSER, InfTextGtkHueChooserPrivate))
 
-static GtkWidgetClass* parent_class;
 static guint hue_chooser_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfTextGtkHueChooser, inf_text_gtk_hue_chooser, GTK_TYPE_WIDGET,
+  G_ADD_PRIVATE(InfTextGtkHueChooser))
 
 static const double INF_TEXT_GTK_HUE_CHOOSER_HUE_MOVE_DELTA = 0.002;
 
@@ -364,13 +366,9 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
  */
 
 static void
-inf_text_gtk_hue_chooser_init(GTypeInstance* instance,
-                              gpointer g_class)
+inf_text_gtk_hue_chooser_init(InfTextGtkHueChooser* hue_chooser)
 {
-  InfTextGtkHueChooser* hue_chooser;
   InfTextGtkHueChooserPrivate* priv;
-
-  hue_chooser = INF_TEXT_GTK_HUE_CHOOSER(instance);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(hue_chooser);
 
   gtk_widget_set_has_window(GTK_WIDGET(hue_chooser), FALSE);
@@ -392,7 +390,7 @@ inf_text_gtk_hue_chooser_dispose(GObject* object)
   hue_chooser = INF_TEXT_GTK_HUE_CHOOSER(object);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(hue_chooser);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_text_gtk_hue_chooser_parent_class)->dispose(object);
 }
 
 static void
@@ -404,7 +402,7 @@ inf_text_gtk_hue_chooser_finalize(GObject* object)
   hue_chooser = INF_TEXT_GTK_HUE_CHOOSER(object);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(hue_chooser);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_gtk_hue_chooser_parent_class)->finalize(object);
 }
 
 static void
@@ -466,7 +464,7 @@ inf_text_gtk_hue_chooser_map(GtkWidget* widget)
   chooser = INF_TEXT_GTK_HUE_CHOOSER(widget);
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
-  GTK_WIDGET_CLASS(parent_class)->map(widget);
+  GTK_WIDGET_CLASS(inf_text_gtk_hue_chooser_parent_class)->map(widget);
   gdk_window_show(priv->window);
 }
 
@@ -480,7 +478,7 @@ inf_text_gtk_hue_chooser_unmap(GtkWidget* widget)
   priv = INF_TEXT_GTK_HUE_CHOOSER_PRIVATE(chooser);
 
   gdk_window_hide(priv->window);
-  GTK_WIDGET_CLASS(parent_class)->unmap(widget);
+  GTK_WIDGET_CLASS(inf_text_gtk_hue_chooser_parent_class)->unmap(widget);
 }
 
 static void
@@ -540,7 +538,7 @@ inf_text_gtk_hue_chooser_unrealize(GtkWidget* widget)
   gdk_window_destroy(priv->window);
   priv->window = NULL;
 
-  GTK_WIDGET_CLASS(parent_class)->unrealize(widget);
+  GTK_WIDGET_CLASS(inf_text_gtk_hue_chooser_parent_class)->unrealize(widget);
 }
 
 static gint
@@ -814,27 +812,20 @@ inf_text_gtk_hue_chooser_move(InfTextGtkHueChooser* chooser,
  */
 
 static void
-inf_text_gtk_hue_chooser_class_init(gpointer g_class,
-                                    gpointer class_data)
+inf_text_gtk_hue_chooser_class_init(
+  InfTextGtkHueChooserClass* hue_chooser_class)
 {
-  GObjectClass* gobject_class;
+  GObjectClass* object_class;
   GtkWidgetClass* widget_class;
-  InfTextGtkHueChooserClass* hue_chooser_class;
   GtkBindingSet* binding_set;
 
-  gobject_class = G_OBJECT_CLASS(g_class);
-  widget_class = GTK_WIDGET_CLASS(g_class);
-  hue_chooser_class = INF_TEXT_GTK_HUE_CHOOSER_CLASS(g_class);
+  object_class = G_OBJECT_CLASS(hue_chooser_class);
+  widget_class = GTK_WIDGET_CLASS(hue_chooser_class);
 
-  parent_class = GTK_WIDGET_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextGtkHueChooserPrivate));
-
-  gobject_class->dispose = inf_text_gtk_hue_chooser_dispose;
-  gobject_class->finalize = inf_text_gtk_hue_chooser_finalize;
-  gobject_class->set_property = inf_text_gtk_hue_chooser_set_property;
-  gobject_class->get_property = inf_text_gtk_hue_chooser_get_property;
-
-  /*object_class->destroy = inf_text_gtk_hue_chooser_destroy;*/
+  object_class->dispose = inf_text_gtk_hue_chooser_dispose;
+  object_class->finalize = inf_text_gtk_hue_chooser_finalize;
+  object_class->set_property = inf_text_gtk_hue_chooser_set_property;
+  object_class->get_property = inf_text_gtk_hue_chooser_get_property;
 
   widget_class->map = inf_text_gtk_hue_chooser_map;
   widget_class->unmap = inf_text_gtk_hue_chooser_unmap;
@@ -867,7 +858,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
    */
   hue_chooser_signals[HUE_CHANGE] = g_signal_new(
     "hue-change",
-    G_OBJECT_CLASS_TYPE(gobject_class),
+    G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTextGtkHueChooserClass, hue_change),
     NULL, NULL,
@@ -886,7 +877,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
    */
   hue_chooser_signals[MOVE] = g_signal_new(
     "move",
-    G_OBJECT_CLASS_TYPE(gobject_class),
+    G_OBJECT_CLASS_TYPE(object_class),
     G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
     G_STRUCT_OFFSET(InfTextGtkHueChooserClass, move),
     NULL, NULL,
@@ -897,7 +888,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
   );
 
   g_object_class_install_property(
-    gobject_class,
+    object_class,
     PROP_HUE,
     g_param_spec_double(
       "hue",
@@ -910,7 +901,7 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
     )
   );
 
-  binding_set = gtk_binding_set_by_class(g_class);
+  binding_set = gtk_binding_set_by_class(object_class);
 
   gtk_binding_entry_add_signal(
     binding_set,
@@ -991,37 +982,6 @@ inf_text_gtk_hue_chooser_class_init(gpointer g_class,
     G_TYPE_ENUM,
     GTK_DIR_LEFT
   );
-}
-
-GType
-inf_text_gtk_hue_chooser_get_type(void)
-{
-  static GType hue_chooser_type = 0;
-
-  if(!hue_chooser_type)
-  {
-    static const GTypeInfo hue_chooser_type_info = {
-      sizeof(InfTextGtkHueChooserClass),   /* class_size */
-      NULL,                                /* base_init */
-      NULL,                                /* base_finalize */
-      inf_text_gtk_hue_chooser_class_init, /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      sizeof(InfTextGtkHueChooser),        /* instance_size */
-      0,                                   /* n_preallocs */
-      inf_text_gtk_hue_chooser_init,       /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    hue_chooser_type = g_type_register_static(
-      GTK_TYPE_WIDGET,
-      "InfTextGtkHueChooser",
-      &hue_chooser_type_info,
-      0
-    );
-  }
-
-  return hue_chooser_type;
 }
 
 /*

@@ -45,6 +45,34 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-certificate-chain.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-define-enum.h>
+
+static const GEnumValue inf_xml_connection_status_values[] = {
+  {
+    INF_XML_CONNECTION_CLOSED,
+    "INF_XML_CONNECTION_CLOSED",
+    "closed"
+  }, {
+    INF_XML_CONNECTION_CLOSING,
+    "INF_XML_CONNECTION_CLOSING",
+    "closing"
+  }, {
+    INF_XML_CONNECTION_OPEN,
+    "INF_XML_CONNECTION_OPEN",
+    "open"
+  }, {
+    INF_XML_CONNECTION_OPENING,
+    "INF_XML_CONNECTION_OPENING",
+    "opening"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+INF_DEFINE_ENUM_TYPE(InfXmlConnectionStatus, inf_xml_connection_status, inf_xml_connection_status_values)
+G_DEFINE_INTERFACE(InfXmlConnection, inf_xml_connection, G_TYPE_OBJECT)
 
 enum {
   SENT,
@@ -57,224 +85,144 @@ enum {
 static guint connection_signals[LAST_SIGNAL];
 
 static void
-inf_xml_connection_base_init(gpointer g_class)
+inf_xml_connection_default_init(InfXmlConnectionInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  /**
+   * InfXmlConnection::sent:
+   * @connection: The #InfXmlConnection through which @node has been sent 
+   * @node: An #xmlNodePtr refering to the XML node that has been sent
+   *
+   * Signal which is emitted when an XML node has been successfully
+   * transmitted with this connection.
+   */
+  connection_signals[SENT] = g_signal_new(
+    "sent",
+    INF_TYPE_XML_CONNECTION,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfXmlConnectionInterface, sent),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER
+  );
 
-  if(!initialized)
-  {
-    /**
-     * InfXmlConnection::sent:
-     * @connection: The #InfXmlConnection through which @node has been sent 
-     * @node: An #xmlNodePtr refering to the XML node that has been sent
-     *
-     * Signal which is emitted when an XML node has been successfully
-     * transmitted with this connection.
-     */
-    connection_signals[SENT] = g_signal_new(
-      "sent",
-      INF_TYPE_XML_CONNECTION,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfXmlConnectionIface, sent),
-      NULL, NULL,
-      inf_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER
-    );
+  /**
+   * InfXmlConnection::received:
+   * @connection: The #InfXmlConnection through which @node has been received
+   * @node: An #xmlNodePtr refering to the XML node that has been received
+   *
+   * Signal which is emitted when an XML node has been received by this
+   * connection.
+   */
+  connection_signals[RECEIVED] = g_signal_new(
+    "received",
+    INF_TYPE_XML_CONNECTION,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfXmlConnectionInterface, received),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER
+  );
 
-    /**
-     * InfXmlConnection::received:
-     * @connection: The #InfXmlConnection through which @node has been received
-     * @node: An #xmlNodePtr refering to the XML node that has been received
-     *
-     * Signal which is emitted when an XML node has been received by this
-     * connection.
-     */
-    connection_signals[RECEIVED] = g_signal_new(
-      "received",
-      INF_TYPE_XML_CONNECTION,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfXmlConnectionIface, received),
-      NULL, NULL,
-      inf_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER
-    );
+  /**
+   * InfXmlConnection::error:
+   * @connection: The erroneous #InfXmlConnection
+   * @error: A pointer to a #GError object with details on the error
+   *
+   * This signal is emitted when an error occurs for this connection.
+   * For example, if the connection cannot be established and the status
+   * changes from %INF_XML_CONNECTION_OPENING to %INF_XML_CONNECTION_CLOSED,
+   * then this signal is usually emitted with more details on the error.
+   *
+   * Note however that the error may or may not be fatal for the
+   * connection. If it is fatal, then a status notify to
+   * %INF_XML_CONNECTION_CLOSING or %INF_XML_CONNECTION_CLOSED will follow.
+   */
+  connection_signals[ERROR] = g_signal_new(
+    "error",
+    INF_TYPE_XML_CONNECTION,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfXmlConnectionInterface, error),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER /* actually a GError */
+  );
 
-    /**
-     * InfXmlConnection::error:
-     * @connection: The erroneous #InfXmlConnection
-     * @error: A pointer to a #GError object with details on the error
-     *
-     * This signal is emitted when an error occurs for this connection.
-     * For example, if the connection cannot be established and the status
-     * changes from %INF_XML_CONNECTION_OPENING to %INF_XML_CONNECTION_CLOSED,
-     * then this signal is usually emitted with more details on the error.
-     *
-     * Note however that the error may or may not be fatal for the
-     * connection. If it is fatal, then a status notify to
-     * %INF_XML_CONNECTION_CLOSING or %INF_XML_CONNECTION_CLOSED will follow.
-     */
-    connection_signals[ERROR] = g_signal_new(
-      "error",
-      INF_TYPE_XML_CONNECTION,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfXmlConnectionIface, error),
-      NULL, NULL,
-      inf_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER /* actually a GError */
-    );
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_enum(
+      "status",
+      "XmlConnection Status",
+      "The status of the connection.",
+      INF_TYPE_XML_CONNECTION_STATUS,
+      INF_XML_CONNECTION_CLOSED,
+      G_PARAM_READABLE
+    )
+  );
 
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_enum(
-        "status",
-        "XmlConnection Status",
-        "The status of the connection.",
-        INF_TYPE_XML_CONNECTION_STATUS,
-        INF_XML_CONNECTION_CLOSED,
-        G_PARAM_READABLE
-      )
-    );
+  /* The network of a connection should not change through lifetime. All
+   * users on a given network should be able to create direct connections
+   * between each user. For example, 'jabber' might be such a network,
+   * 'local' another one. All jabber user can have connections to other
+   * jabber users, but not to those on a local network. */
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_string(
+      "network",
+      "Network",
+      "An identifier for the type of network this connection is on",
+      NULL,
+      G_PARAM_READABLE
+    )
+  );
 
-    /* The network of a connection should not change through lifetime. All
-     * users on a given network should be able to create direct connections
-     * between each user. For example, 'jabber' might be such a network,
-     * 'local' another one. All jabber user can have connections to other
-     * jabber users, but not to those on a local network. */
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_string(
-        "network",
-        "Network",
-        "An identifier for the type of network this connection is on",
-        NULL,
-        G_PARAM_READABLE
-      )
-    );
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_string(
+      "local-id",
+      "Local ID",
+      "A unique identification on the network for the local site",
+      NULL,
+      G_PARAM_READABLE
+    )
+  );
 
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_string(
-        "local-id",
-        "Local ID",
-        "A unique identification on the network for the local site",
-        NULL,
-        G_PARAM_READABLE
-      )
-    );
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_string(
+      "remote-id",
+      "Remote ID",
+      "A unique identification on the network for the remote site",
+      NULL,
+      G_PARAM_READABLE
+    )
+  );
 
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_string(
-        "remote-id",
-        "Remote ID",
-        "A unique identification on the network for the remote site",
-        NULL,
-        G_PARAM_READABLE
-      )
-    );
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_pointer(
+      "local-certificate",
+      "Local Certificate",
+      "The X.509 certificate (gnutls_x509_crt_t) of the local site",
+      G_PARAM_READABLE
+    )
+  );
 
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_pointer(
-        "local-certificate",
-        "Local Certificate",
-        "The X.509 certificate (gnutls_x509_crt_t) of the local site",
-        G_PARAM_READABLE
-      )
-    );
-
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_boxed(
-        "remote-certificate",
-        "Remote Certificate",
-        "The X.509 certificate of the remote site",
-        INF_TYPE_CERTIFICATE_CHAIN,
-        G_PARAM_READABLE
-      )
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_xml_connection_status_get_type(void)
-{
-  static GType connection_status_type = 0;
-
-  if(!connection_status_type)
-  {
-    static const GEnumValue connection_status_values[] = {
-      {
-        INF_XML_CONNECTION_CLOSED,
-        "INF_XML_CONNECTION_CLOSED",
-        "closed"
-      }, {
-        INF_XML_CONNECTION_CLOSING,
-        "INF_XML_CONNECTION_CLOSING",
-        "closing"
-      }, {
-        INF_XML_CONNECTION_OPEN,
-        "INF_XML_CONNECTION_OPEN",
-        "open"
-      }, {
-        INF_XML_CONNECTION_OPENING,
-        "INF_XML_CONNECTION_OPENING",
-        "opening"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    connection_status_type = g_enum_register_static(
-      "InfXmlConnectionStatus",
-      connection_status_values
-    );
-  }
-
-  return connection_status_type;
-}
-
-GType
-inf_xml_connection_get_type(void)
-{
-  static GType xml_connection_type = 0;
-
-  if(!xml_connection_type)
-  {
-    static const GTypeInfo xml_connection_info = {
-      sizeof(InfXmlConnectionIface),     /* class_size */
-      inf_xml_connection_base_init,      /* base_init */
-      NULL,                              /* base_finalize */
-      NULL,                              /* class_init */
-      NULL,                              /* class_finalize */
-      NULL,                              /* class_data */
-      0,                                 /* instance_size */
-      0,                                 /* n_preallocs */
-      NULL,                              /* instance_init */
-      NULL                               /* value_table */
-    };
-
-    xml_connection_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfXmlConnection",
-      &xml_connection_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(xml_connection_type, G_TYPE_OBJECT);
-  }
-
-  return xml_connection_type;
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_boxed(
+      "remote-certificate",
+      "Remote Certificate",
+      "The X.509 certificate of the remote site",
+      INF_TYPE_CERTIFICATE_CHAIN,
+      G_PARAM_READABLE
+    )
+  );
 }
 
 /**
@@ -295,7 +243,7 @@ gboolean
 inf_xml_connection_open(InfXmlConnection* connection,
                         GError** error)
 {
-  InfXmlConnectionIface* iface;
+  InfXmlConnectionInterface* iface;
 
   g_return_val_if_fail(INF_IS_XML_CONNECTION(connection), FALSE);
   g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
@@ -315,7 +263,7 @@ inf_xml_connection_open(InfXmlConnection* connection,
 void
 inf_xml_connection_close(InfXmlConnection* connection)
 {
-  InfXmlConnectionIface* iface;
+  InfXmlConnectionInterface* iface;
 
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
 
@@ -335,7 +283,7 @@ inf_xml_connection_close(InfXmlConnection* connection)
 void inf_xml_connection_send(InfXmlConnection* connection,
                              xmlNodePtr xml)
 {
-  InfXmlConnectionIface* iface;
+  InfXmlConnectionInterface* iface;
 
   g_return_if_fail(INF_IS_XML_CONNECTION(connection));
   g_return_if_fail(xml != NULL);

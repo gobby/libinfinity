@@ -40,6 +40,7 @@ libinfinity_0_7_la_HEADERS = \
 	inf-config.h
 
 noinst_HEADERS = \
+	inf-define-enum.h \
 	inf-dll.h \
 	inf-i18n.h \
 	inf-marshal.h \

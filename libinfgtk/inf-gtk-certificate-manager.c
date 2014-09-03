@@ -71,6 +71,9 @@ enum {
 
 #define INF_GTK_CERTIFICATE_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CERTIFICATE_MANAGER, InfGtkCertificateManagerPrivate))
 
+G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateManager, inf_gtk_certificate_manager, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfGtkCertificateManager))
+
 /* When a host presents a certificate different from one that we have pinned,
  * usually we warn the user that something fishy is going on. However, if the
  * pinned certificate has expired or will expire soon, then we kind of expect
@@ -79,8 +82,6 @@ enum {
  * less dramatic warning message. */
 static const unsigned int
 INF_GTK_CERTIFICATE_MANAGER_EXPIRATION_TOLERANCE = 3 * 24 * 3600; /* 3 days */
-
-static GObjectClass* parent_class;
 
 /* memrchr does not seem to be available everywhere, so we implement it
  * ourselves. */
@@ -897,13 +898,9 @@ inf_gtk_certificate_manager_connection_added_cb(InfXmppManager* manager,
 }
 
 static void
-inf_gtk_certificate_manager_init(GTypeInstance* instance,
-                                 gpointer g_class)
+inf_gtk_certificate_manager_init(InfGtkCertificateManager* manager)
 {
-  InfGtkCertificateManager* manager;
   InfGtkCertificateManagerPrivate* priv;
-
-  manager = INF_GTK_CERTIFICATE_MANAGER(instance);
   priv = INF_GTK_CERTIFICATE_MANAGER_PRIVATE(manager);
 
   priv->parent_window = NULL;
@@ -943,7 +940,7 @@ inf_gtk_certificate_manager_dispose(GObject* object)
   g_slist_free(priv->queries);
   priv->queries = NULL;
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_certificate_manager_parent_class)->dispose(object);
 }
 
 static void
@@ -958,7 +955,7 @@ inf_gtk_certificate_manager_finalize(GObject* object)
   inf_gtk_certificate_manager_set_known_hosts(manager, NULL);
   g_assert(priv->known_hosts_file == NULL);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_gtk_certificate_manager_parent_class)->finalize(object);
 }
 
 static void
@@ -1038,17 +1035,11 @@ inf_gtk_certificate_manager_get_property(GObject* object,
  */
 
 static void
-inf_gtk_certificate_manager_class_init(gpointer g_class,
-                                       gpointer class_data)
+inf_gtk_certificate_manager_class_init(
+  InfGtkCertificateManagerClass* certificate_manager_class)
 {
   GObjectClass* object_class;
-  InfGtkCertificateManagerClass* certificate_manager_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  certificate_manager_class = INF_GTK_CERTIFICATE_MANAGER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkCertificateManagerPrivate));
+  object_class = G_OBJECT_CLASS(certificate_manager_class);
 
   object_class->dispose = inf_gtk_certificate_manager_dispose;
   object_class->finalize = inf_gtk_certificate_manager_finalize;
@@ -1090,37 +1081,6 @@ inf_gtk_certificate_manager_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_gtk_certificate_manager_get_type(void)
-{
-  static GType certificate_manager_type = 0;
-
-  if(!certificate_manager_type)
-  {
-    static const GTypeInfo certificate_manager_type_info = {
-      sizeof(InfGtkCertificateManagerClass),    /* class_size */
-      NULL,                                     /* base_init */
-      NULL,                                     /* base_finalize */
-      inf_gtk_certificate_manager_class_init,   /* class_init */
-      NULL,                                     /* class_finalize */
-      NULL,                                     /* class_data */
-      sizeof(InfGtkCertificateManager),         /* instance_size */
-      0,                                        /* n_preallocs */
-      inf_gtk_certificate_manager_init,         /* instance_init */
-      NULL                                      /* value_table */
-    };
-
-    certificate_manager_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfGtkCertificateManager",
-      &certificate_manager_type_info,
-      0
-    );
-  }
-
-  return certificate_manager_type;
 }
 
 /*

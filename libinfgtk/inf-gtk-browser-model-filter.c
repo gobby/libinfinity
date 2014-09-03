@@ -21,8 +21,6 @@
 
 #include <libinfgtk/inf-gtk-browser-model-filter.h>
 
-static GObjectClass* parent_class;
-
 typedef struct _InfGtkBrowserModelFilterPrivate
   InfGtkBrowserModelFilterPrivate;
 struct _InfGtkBrowserModelFilterPrivate {
@@ -30,6 +28,11 @@ struct _InfGtkBrowserModelFilterPrivate {
 };
 
 #define INF_GTK_BROWSER_MODEL_FILTER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_BROWSER_MODEL_FILTER, InfGtkBrowserModelFilterPrivate))
+
+static void inf_gtk_browser_model_filter_browser_model_iface_init(InfGtkBrowserModelInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfGtkBrowserModelFilter, inf_gtk_browser_model_filter, GTK_TYPE_TREE_MODEL_FILTER,
+  G_ADD_PRIVATE(InfGtkBrowserModelFilter)
+  G_IMPLEMENT_INTERFACE(INF_GTK_TYPE_BROWSER_MODEL, inf_gtk_browser_model_filter_browser_model_iface_init))
 
 static void
 inf_gtk_browser_model_filter_set_browser_cb(InfGtkBrowserModel* model,
@@ -127,18 +130,14 @@ inf_gtk_browser_model_filter_notify_model_cb(GObject* object,
  */
 
 static void
-inf_gtk_browser_model_filter_init(GTypeInstance* instance,
-                                  gpointer g_class)
+inf_gtk_browser_model_filter_init(InfGtkBrowserModelFilter* model_filter)
 {
-  InfGtkBrowserModelFilter* model_sort;
   InfGtkBrowserModelFilterPrivate* priv;
-
-  model_sort = INF_GTK_BROWSER_MODEL_FILTER(instance);
-  priv = INF_GTK_BROWSER_MODEL_FILTER_PRIVATE(model_sort);
+  priv = INF_GTK_BROWSER_MODEL_FILTER_PRIVATE(model_filter);
 
   /* Keep child model in sync with the one from GtkTreeModelFilter */
   g_signal_connect(
-    instance,
+    model_filter,
     "notify::model",
     G_CALLBACK(inf_gtk_browser_model_filter_notify_model_cb),
     NULL
@@ -152,7 +151,7 @@ inf_gtk_browser_model_filter_constructor(GType type,
 {
   GObject* object;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_gtk_browser_model_filter_parent_class)->constructor(
     type,
     n_construct_properties,
     properties
@@ -189,7 +188,7 @@ inf_gtk_browser_model_filter_dispose(GObject* object)
     NULL
   );
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_browser_model_filter_parent_class)->dispose(object);
 }
 
 /*
@@ -250,29 +249,20 @@ inf_gtk_browser_model_filter_browser_iter_to_tree_iter(InfGtkBrowserModel* m,
  */
 
 static void
-inf_gtk_browser_model_filter_class_init(gpointer g_class,
-                                        gpointer class_data)
+inf_gtk_browser_model_filter_class_init(
+  InfGtkBrowserModelFilterClass* browser_model_filter_class)
 {
   GObjectClass* object_class;
-  InfGtkBrowserModelFilterClass* browser_model_filter_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  browser_model_filter_class = INF_GTK_BROWSER_MODEL_FILTER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkBrowserModelFilterPrivate));
+  object_class = G_OBJECT_CLASS(browser_model_filter_class);
 
   object_class->constructor = inf_gtk_browser_model_filter_constructor;
   object_class->dispose = inf_gtk_browser_model_filter_dispose;
 }
 
 static void
-inf_gtk_browser_model_filter_browser_model_init(gpointer g_iface,
-                                                gpointer iface_data)
+inf_gtk_browser_model_filter_browser_model_iface_init(
+  InfGtkBrowserModelInterface* iface)
 {
-  InfGtkBrowserModelIface* iface;
-  iface = (InfGtkBrowserModelIface*)g_iface;
-
   iface->set_browser = NULL;
   iface->resolve = inf_gtk_browser_model_filter_resolve;
   /* inf_gtk_browser_model_filter_browser_model_browser_iter_to_tree_iter
@@ -280,49 +270,6 @@ inf_gtk_browser_model_filter_browser_model_init(gpointer g_iface,
    * chars ;) */
   iface->browser_iter_to_tree_iter =
     inf_gtk_browser_model_filter_browser_iter_to_tree_iter;
-}
-
-GType
-inf_gtk_browser_model_filter_get_type(void)
-{
-  static GType browser_model_filter_type = 0;
-
-  if(!browser_model_filter_type)
-  {
-    static const GTypeInfo browser_model_filter_type_info = {
-      sizeof(InfGtkBrowserModelFilterClass),    /* class_size */
-      NULL,                                     /* base_init */
-      NULL,                                     /* base_finalize */
-      inf_gtk_browser_model_filter_class_init,  /* class_init */
-      NULL,                                     /* class_finalize */
-      NULL,                                     /* class_data */
-      sizeof(InfGtkBrowserModelFilter),         /* instance_size */
-      0,                                        /* n_preallocs */
-      inf_gtk_browser_model_filter_init,        /* instance_init */
-      NULL                                      /* value_table */
-    };
-
-    static const GInterfaceInfo browser_model_info = {
-      inf_gtk_browser_model_filter_browser_model_init,
-      NULL,
-      NULL
-    };
-
-    browser_model_filter_type = g_type_register_static(
-      GTK_TYPE_TREE_MODEL_FILTER,
-      "InfGtkBrowserModelFilter",
-      &browser_model_filter_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      browser_model_filter_type,
-      INF_GTK_TYPE_BROWSER_MODEL,
-      &browser_model_info
-    );
-  }
-
-  return browser_model_filter_type;
 }
 
 /*

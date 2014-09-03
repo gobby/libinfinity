@@ -30,6 +30,7 @@
  **/
 
 #include <libinfinity/common/inf-ip-address.h>
+#include <libinfinity/inf-define-enum.h>
 
 #ifdef G_OS_WIN32
 # include <winsock2.h>
@@ -44,6 +45,22 @@
 
 #include <string.h>
 
+static const GEnumValue inf_ip_address_family_values[] = {
+  {
+    INF_IP_ADDRESS_IPV4,
+    "INF_IP_ADDRESS_IPV4",
+    "IPv4"
+  }, {
+    INF_IP_ADDRESS_IPV6,
+    "INF_IP_ADDRESS_IPV6",
+    "IPv6"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
 struct _InfIpAddress {
   InfIpAddressFamily family;
 
@@ -53,6 +70,9 @@ struct _InfIpAddress {
   } shared;
 };
 
+INF_DEFINE_ENUM_TYPE(InfIpAddressFamily, inf_ip_address_family, inf_ip_address_family_values)
+G_DEFINE_BOXED_TYPE(InfIpAddress, inf_ip_address, inf_ip_address_copy, inf_ip_address_free)
+
 static InfIpAddress*
 inf_ip_address_new_common(InfIpAddressFamily family)
 {
@@ -60,55 +80,6 @@ inf_ip_address_new_common(InfIpAddressFamily family)
   address = g_slice_new(InfIpAddress);
   address->family = family;
   return address;
-}
-
-GType
-inf_ip_address_family_get_type(void)
-{
-  static GType ip_address_family_type = 0;
-
-  if(!ip_address_family_type)
-  {
-    static const GEnumValue ip_address_family_values[] = {
-      {
-        INF_IP_ADDRESS_IPV4,
-        "INF_IP_ADDRESS_IPV4",
-        "IPv4"
-      }, {
-        INF_IP_ADDRESS_IPV6,
-        "INF_IP_ADDRESS_IPV6",
-        "IPv6"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    ip_address_family_type = g_enum_register_static(
-      "InfIpAddressFamily",
-      ip_address_family_values
-    );
-  }
-
-  return ip_address_family_type;
-}
-
-GType
-inf_ip_address_get_type(void)
-{
-  static GType ip_address_type = 0;
-
-  if(!ip_address_type)
-  {
-    ip_address_type = g_boxed_type_register_static(
-      "InfIpAddress",
-      (GBoxedCopyFunc)inf_ip_address_copy,
-      (GBoxedFreeFunc)inf_ip_address_free
-    );
-  }
-
-  return ip_address_type;
 }
 
 /**

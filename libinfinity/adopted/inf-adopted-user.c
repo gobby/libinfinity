@@ -53,16 +53,13 @@ enum {
 #define INF_ADOPTED_USER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_USER, InfAdoptedUserPrivate))
 #define INF_ADOPTED_USER_PRIVATE(obj)     ((InfAdoptedUserPrivate*)(obj)->priv)
 
-static InfUserClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedUser, inf_adopted_user, INF_TYPE_USER,
+  G_ADD_PRIVATE(InfAdoptedUser))
 
 static void
-inf_adopted_user_init(GTypeInstance* instance,
-                      gpointer g_class)
+inf_adopted_user_init(InfAdoptedUser* user)
 {
-  InfAdoptedUser* user;
   InfAdoptedUserPrivate* priv;
-
-  user = INF_ADOPTED_USER(instance);
   user->priv = INF_ADOPTED_USER_GET_PRIVATE(user);
   priv = INF_ADOPTED_USER_PRIVATE(user);
 
@@ -79,7 +76,7 @@ inf_adopted_user_constructor(GType type,
   InfAdoptedUser* user;
   InfAdoptedUserPrivate* priv;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_adopted_user_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -104,11 +101,11 @@ inf_adopted_user_dispose(GObject* object)
 
   if(priv->log != NULL)
   {
-    g_object_unref(G_OBJECT(priv->log));
+    g_object_unref(priv->log);
     priv->log = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_user_parent_class)->dispose(object);
 }
 
 static void
@@ -122,7 +119,7 @@ inf_adopted_user_finalize(GObject* object)
 
   inf_adopted_state_vector_free(priv->vector);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_user_parent_class)->finalize(object);
 }
 
 static void
@@ -157,7 +154,7 @@ inf_adopted_user_set_property(GObject* object,
       );
 
       priv->log = log;
-      g_object_ref(G_OBJECT(log));
+      g_object_ref(log);
     }
 
     break;
@@ -194,14 +191,10 @@ inf_adopted_user_get_property(GObject* object,
 }
 
 static void
-inf_adopted_user_class_init(gpointer g_class,
-                            gpointer class_data)
+inf_adopted_user_class_init(InfAdoptedUserClass* user_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = INF_USER_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedUserPrivate));
+  object_class = G_OBJECT_CLASS(user_class);
 
   object_class->constructor = inf_adopted_user_constructor;
   object_class->dispose = inf_adopted_user_dispose;
@@ -232,37 +225,6 @@ inf_adopted_user_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
-}
-
-GType
-inf_adopted_user_get_type(void)
-{
-  static GType user_type = 0;
-
-  if(!user_type)
-  {
-    static const GTypeInfo user_type_info = {
-      sizeof(InfAdoptedUserClass),  /* class_size */
-      NULL,                         /* base_init */
-      NULL,                         /* base_finalize */
-      inf_adopted_user_class_init,  /* class_init */
-      NULL,                         /* class_finalize */
-      NULL,                         /* class_data */
-      sizeof(InfAdoptedUser),       /* instance_size */
-      0,                            /* n_preallocs */
-      inf_adopted_user_init,        /* instance_init */
-      NULL                          /* value_table */
-    };
-
-    user_type = g_type_register_static(
-      INF_TYPE_USER,
-      "InfAdoptedUser",
-      &user_type_info,
-      0
-    );
-  }
-
-  return user_type;
 }
 
 /**

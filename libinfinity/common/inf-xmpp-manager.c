@@ -109,8 +109,10 @@ enum {
 
 #define INF_XMPP_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_XMPP_MANAGER, InfXmppManagerPrivate))
 
-static GObjectClass* parent_class;
 static guint xmpp_manager_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfXmppManager, inf_xmpp_manager, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfXmppManager))
 
 /* Make a deep copy of a key. This is typically not required for lookup, but
  * it is required for storage in the tree. */
@@ -718,13 +720,9 @@ inf_xmpp_manager_dispose_destroy_func(gpointer key,
 }
 
 static void
-inf_xmpp_manager_init(GTypeInstance* instance,
-                      gpointer g_class)
+inf_xmpp_manager_init(InfXmppManager* manager)
 {
-  InfXmppManager* manager;
   InfXmppManagerPrivate* priv;
-
-  manager = INF_XMPP_MANAGER(instance);
   priv = INF_XMPP_MANAGER_PRIVATE(manager);
 
   priv->connections = g_tree_new_full(
@@ -753,21 +751,14 @@ inf_xmpp_manager_dispose(GObject* object)
   g_tree_destroy(priv->connections);
   priv->connections = NULL;
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_xmpp_manager_parent_class)->dispose(object);
 }
 
 static void
-inf_xmpp_manager_class_init(gpointer g_class,
-                            gpointer class_data)
+inf_xmpp_manager_class_init(InfXmppManagerClass* xmpp_manager_class)
 {
   GObjectClass* object_class;
-  InfXmppManagerClass* xmpp_manager_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  xmpp_manager_class = INF_XMPP_MANAGER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfXmppManagerPrivate));
+  object_class = G_OBJECT_CLASS(xmpp_manager_class);
 
   object_class->dispose = inf_xmpp_manager_dispose;
   xmpp_manager_class->connection_added = NULL;
@@ -817,37 +808,6 @@ inf_xmpp_manager_class_init(gpointer g_class,
     INF_TYPE_XMPP_CONNECTION,
     INF_TYPE_XMPP_CONNECTION
   );
-}
-
-GType
-inf_xmpp_manager_get_type(void)
-{
-  static GType xmpp_manager_type = 0;
-
-  if(!xmpp_manager_type)
-  {
-    static const GTypeInfo xmpp_manager_type_info = {
-      sizeof(InfXmppManagerClass),  /* class_size */
-      NULL,                         /* base_init */
-      NULL,                         /* base_finalize */
-      inf_xmpp_manager_class_init,  /* class_init */
-      NULL,                         /* class_finalize */
-      NULL,                         /* class_data */
-      sizeof(InfXmppManager),       /* instance_size */
-      0,                            /* n_preallocs */
-      inf_xmpp_manager_init,        /* instance_init */
-      NULL                          /* value_table */
-    };
-
-    xmpp_manager_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfXmppManager",
-      &xmpp_manager_type_info,
-      0
-    );
-  }
-
-  return xmpp_manager_type;
 }
 
 /**

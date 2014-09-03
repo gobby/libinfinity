@@ -56,7 +56,8 @@ enum {
 
 #define INFD_SERVER_POOL_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_SERVER_POOL, InfdServerPoolPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfdServerPool, infd_server_pool, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdServerPool))
 
 static const gchar*
 infd_server_pool_get_local_service_name(void)
@@ -239,13 +240,9 @@ infd_server_pool_entry_free(InfdServerPool* server_pool,
 }
 
 static void
-infd_server_pool_init(GTypeInstance* instance,
-                      gpointer g_class)
+infd_server_pool_init(InfdServerPool* server_pool)
 {
-  InfdServerPool* server_pool;
   InfdServerPoolPrivate* priv;
-
-  server_pool = INFD_SERVER_POOL(instance);
   priv = INFD_SERVER_POOL_PRIVATE(server_pool);
 
   priv->directory = NULL;
@@ -293,7 +290,7 @@ infd_server_pool_dispose(GObject* object)
     priv->directory = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infd_server_pool_parent_class)->dispose(object);
 }
 
 static void
@@ -309,7 +306,7 @@ infd_server_pool_finalize(GObject* object)
   g_assert(g_hash_table_size(priv->servers) == 0);
   g_hash_table_destroy(priv->servers);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_server_pool_parent_class)->finalize(object);
 }
 
 static void
@@ -360,14 +357,10 @@ infd_server_pool_get_property(GObject* object,
 }
 
 static void
-infd_server_pool_class_init(gpointer g_class,
-                            gpointer class_data)
+infd_server_pool_class_init(InfdServerPoolClass* server_pool_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdServerPoolPrivate));
+  object_class = G_OBJECT_CLASS(server_pool_class);
 
   object_class->dispose = infd_server_pool_dispose;
   object_class->finalize = infd_server_pool_finalize;
@@ -385,37 +378,6 @@ infd_server_pool_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
     )
   );
-}
-
-GType
-infd_server_pool_get_type(void)
-{
-  static GType server_pool_type = 0;
-
-  if(!server_pool_type)
-  {
-    static const GTypeInfo server_pool_type_info = {
-      sizeof(InfdServerPoolClass),   /* class_size */
-      NULL,                          /* base_init */
-      NULL,                          /* base_finalize */
-      infd_server_pool_class_init,   /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      sizeof(InfdServerPool),        /* instance_size */
-      0,                             /* n_preallocs */
-      infd_server_pool_init,         /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    server_pool_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdServerPool",
-      &server_pool_type_info,
-      0
-    );
-  }
-
-  return server_pool_type;
 }
 
 /**

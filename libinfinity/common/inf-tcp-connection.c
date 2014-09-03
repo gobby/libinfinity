@@ -49,6 +49,7 @@
 #include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-define-enum.h>
 
 #include <unistd.h> /* For ssize_t */
 
@@ -68,6 +69,26 @@
 #else
 # include <ws2tcpip.h>
 #endif
+
+static const GEnumValue inf_tcp_connection_status_values[] = {
+  {
+    INF_TCP_CONNECTION_CONNECTING,
+    "INF_TCP_CONNECTION_CONNECTING",
+    "connecting"
+  }, {
+    INF_TCP_CONNECTION_CONNECTED,
+    "INF_TCP_CONNECTION_CONNECTED",
+    "connected"
+  }, {
+    INF_TCP_CONNECTION_CLOSED,
+    "INF_TCP_CONNECTION_CLOSED",
+    "closed"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfTcpConnectionPrivate InfTcpConnectionPrivate;
 struct _InfTcpConnectionPrivate {
@@ -118,8 +139,11 @@ enum {
 
 #define INF_TCP_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_TCP_CONNECTION, InfTcpConnectionPrivate))
 
-static GObjectClass* parent_class;
 static guint tcp_connection_signals[LAST_SIGNAL];
+
+INF_DEFINE_ENUM_TYPE(InfTcpConnectionStatus, inf_tcp_connection_status, inf_tcp_connection_status_values)
+G_DEFINE_TYPE_WITH_CODE(InfTcpConnection, inf_tcp_connection, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTcpConnection))
 
 static gboolean
 inf_tcp_connection_addr_info(InfNativeSocket socket,
@@ -843,13 +867,9 @@ inf_tcp_connection_set_resolver(InfTcpConnection* connection,
 }
 
 static void
-inf_tcp_connection_init(GTypeInstance* instance,
-                        gpointer g_class)
+inf_tcp_connection_init(InfTcpConnection* connection)
 {
-  InfTcpConnection* connection;
   InfTcpConnectionPrivate* priv;
-
-  connection = INF_TCP_CONNECTION(instance);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
 
   priv->io = NULL;
@@ -890,7 +910,7 @@ inf_tcp_connection_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_tcp_connection_parent_class)->dispose(object);
 }
 
 static void
@@ -910,7 +930,7 @@ inf_tcp_connection_finalize(GObject* object)
 
   g_free(priv->queue);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_tcp_connection_parent_class)->finalize(object);
 }
 
 static void
@@ -1124,17 +1144,10 @@ inf_tcp_connection_error(InfTcpConnection* connection,
 }
 
 static void
-inf_tcp_connection_class_init(gpointer g_class,
-                              gpointer class_data)
+inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
 {
   GObjectClass* object_class;
-  InfTcpConnectionClass* tcp_connection_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  tcp_connection_class = INF_TCP_CONNECTION_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTcpConnectionPrivate));
+  object_class = G_OBJECT_CLASS(tcp_connection_class);
 
   object_class->dispose = inf_tcp_connection_dispose;
   object_class->finalize = inf_tcp_connection_finalize;
@@ -1324,73 +1337,6 @@ inf_tcp_connection_class_init(gpointer g_class,
     1,
     G_TYPE_POINTER /* actually a GError* */
   );
-}
-
-GType
-inf_tcp_connection_status_get_type(void)
-{
-  static GType tcp_connection_status_type = 0;
-
-  if(!tcp_connection_status_type)
-  {
-    static const GEnumValue tcp_connection_status_values[] = {
-      {
-        INF_TCP_CONNECTION_CONNECTING,
-        "INF_TCP_CONNECTION_CONNECTING",
-        "connecting"
-      }, {
-        INF_TCP_CONNECTION_CONNECTED,
-        "INF_TCP_CONNECTION_CONNECTED",
-        "connected"
-      }, {
-        INF_TCP_CONNECTION_CLOSED,
-        "INF_TCP_CONNECTION_CLOSED",
-        "closed"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    tcp_connection_status_type = g_enum_register_static(
-      "InfTcpConnectionStatus",
-      tcp_connection_status_values
-    );
-  }
-
-  return tcp_connection_status_type;
-}
-
-GType
-inf_tcp_connection_get_type(void)
-{
-  static GType tcp_connection_type = 0;
-
-  if(!tcp_connection_type)
-  {
-    static const GTypeInfo tcp_connection_type_info = {
-      sizeof(InfTcpConnectionClass),  /* class_size */
-      NULL,                           /* base_init */
-      NULL,                           /* base_finalize */
-      inf_tcp_connection_class_init,  /* class_init */
-      NULL,                           /* class_finalize */
-      NULL,                           /* class_data */
-      sizeof(InfTcpConnection),       /* instance_size */
-      0,                              /* n_preallocs */
-      inf_tcp_connection_init,        /* instance_init */
-      NULL                            /* value_table */
-    };
-
-    tcp_connection_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTcpConnection",
-      &tcp_connection_type_info,
-      0
-    );
-  }
-
-  return tcp_connection_type;
 }
 
 /**

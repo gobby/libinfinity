@@ -30,11 +30,11 @@ G_BEGIN_DECLS
 #define INF_TEXT_TYPE_INSERT_OPERATION                 (inf_text_insert_operation_get_type())
 #define INF_TEXT_INSERT_OPERATION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperation))
 #define INF_TEXT_IS_INSERT_OPERATION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TEXT_TYPE_INSERT_OPERATION))
-#define INF_TEXT_INSERT_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperationIface))
+#define INF_TEXT_INSERT_OPERATION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TEXT_TYPE_INSERT_OPERATION, InfTextInsertOperationInterface))
 
-typedef struct _InfTextInsertOperationIface InfTextInsertOperationIface;
+typedef struct _InfTextInsertOperationInterface InfTextInsertOperationInterface;
 
-struct _InfTextInsertOperationIface {
+struct _InfTextInsertOperationInterface {
   GTypeInterface parent;
 
   /* Virtual table */

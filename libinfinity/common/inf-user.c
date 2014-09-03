@@ -34,8 +34,41 @@
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-define-enum.h>
 
 #include <string.h>
+
+static const GFlagsValue inf_user_flags_values[] = {
+  {
+    INF_USER_LOCAL,
+    "INF_USER_LOCAL",
+    "local"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+static const GEnumValue inf_user_status_values[] = {
+  {
+    INF_USER_ACTIVE,
+    "INF_USER_ACTIVE",
+    "active"
+  }, {
+    INF_USER_INACTIVE,
+    "INF_USER_INACTIVE",
+    "inactive"
+  }, {
+    INF_USER_UNAVAILABLE,
+    "INF_USER_UNAVAILABLE",
+    "unavailable"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfUserPrivate InfUserPrivate;
 struct _InfUserPrivate {
@@ -65,17 +98,18 @@ enum {
 #define INF_USER_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_USER, InfUserPrivate))
 #define INF_USER_PRIVATE(obj)     ((InfUserPrivate*)(obj)->priv)
 
-static GObjectClass* parent_class;
 static guint user_signals[LAST_SIGNAL];
 
+INF_DEFINE_FLAGS_TYPE(InfUserFlags, inf_user_flags, inf_user_flags_values)
+INF_DEFINE_ENUM_TYPE(InfUserStatus, inf_user_status, inf_user_status_values)
+G_DEFINE_TYPE_WITH_CODE(InfUser, inf_user, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfUser))
+
 static void
-inf_user_init(GTypeInstance* instance,
-              gpointer g_class)
+inf_user_init(InfUser* user)
 {
-  InfUser* user;
   InfUserPrivate* priv;
 
-  user = INF_USER(instance);
   user->priv = INF_USER_GET_PRIVATE(user);
   priv = INF_USER_PRIVATE(user);
 
@@ -101,7 +135,7 @@ inf_user_dispose(GObject* object)
     priv->connection = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_user_parent_class)->dispose(object);
 }
 
 static void
@@ -115,7 +149,7 @@ inf_user_finalize(GObject* object)
 
   g_free(priv->name);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_user_parent_class)->finalize(object);
 }
 
 static void
@@ -220,17 +254,10 @@ inf_user_set_status_handler(InfUser* user,
 }
 
 static void
-inf_user_class_init(gpointer g_class,
-                    gpointer class_data)
+inf_user_class_init(InfUserClass* user_class)
 {
   GObjectClass* object_class;
-  InfUserClass* user_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  user_class = INF_USER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfUserPrivate));
+  object_class = G_OBJECT_CLASS(user_class);
 
   object_class->dispose = inf_user_dispose;
   object_class->finalize = inf_user_finalize;
@@ -325,101 +352,6 @@ inf_user_class_init(gpointer g_class,
     1,
     INF_TYPE_USER_STATUS
   );
-}
-
-GType
-inf_user_flags_get_type(void)
-{
-  static GType user_flags_type = 0;
-
-  if(!user_flags_type)
-  {
-    static const GFlagsValue user_flags_type_values[] = {
-      {
-        INF_USER_LOCAL,
-        "INF_USER_LOCAL",
-        "local"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    user_flags_type = g_flags_register_static(
-      "InfUserFlags",
-      user_flags_type_values
-    );
-  }
-
-  return user_flags_type;
-}
-
-GType
-inf_user_status_get_type(void)
-{
-  static GType user_status_type = 0;
-
-  if(!user_status_type)
-  {
-    static const GEnumValue user_status_type_values[] = {
-      {
-        INF_USER_ACTIVE,
-        "INF_USER_ACTIVE",
-        "active"
-      }, {
-        INF_USER_INACTIVE,
-        "INF_USER_INACTIVE",
-        "inactive"
-      }, {
-        INF_USER_UNAVAILABLE,
-        "INF_USER_UNAVAILABLE",
-        "unavailable"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    user_status_type = g_enum_register_static(
-      "InfUserStatus",
-      user_status_type_values
-    );
-  }
-
-  return user_status_type;
-}
-
-GType
-inf_user_get_type(void)
-{
-  static GType user_type = 0;
-
-  if(!user_type)
-  {
-    static const GTypeInfo user_type_info = {
-      sizeof(InfUserClass),  /* class_size */
-      NULL,                  /* base_init */
-      NULL,                  /* base_finalize */
-      inf_user_class_init,   /* class_init */
-      NULL,                  /* class_finalize */
-      NULL,                  /* class_data */
-      sizeof(InfUser),       /* instance_size */
-      0,                     /* n_preallocs */
-      inf_user_init,         /* instance_init */
-      NULL                   /* value_table */
-    };
-
-    user_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfUser",
-      &user_type_info,
-      0
-    );
-  }
-
-  return user_type;
 }
 
 /**

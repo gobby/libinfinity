@@ -33,29 +33,14 @@
 
 #include <gnutls/x509.h>
 
+G_DEFINE_BOXED_TYPE(InfCertificateChain, inf_certificate_chain, inf_certificate_chain_ref, inf_certificate_chain_unref)
+
 struct _InfCertificateChain {
   guint ref_count;
 
   gnutls_x509_crt_t* certs;
   guint n_certs;
 };
-
-GType
-inf_certificate_chain_get_type(void)
-{
-  static GType certificate_chain_type = 0;
-
-  if(!certificate_chain_type)
-  {
-    certificate_chain_type = g_boxed_type_register_static(
-      "InfCertificateChain",
-      (GBoxedCopyFunc)inf_certificate_chain_ref,
-      (GBoxedFreeFunc)inf_certificate_chain_unref
-    );
-  }
-
-  return certificate_chain_type;
-}
 
 /**
  * inf_certificate_chain_new:

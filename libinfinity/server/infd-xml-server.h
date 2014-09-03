@@ -29,12 +29,12 @@ G_BEGIN_DECLS
 #define INFD_TYPE_XML_SERVER                 (infd_xml_server_get_type())
 #define INFD_XML_SERVER(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFD_TYPE_XML_SERVER, InfdXmlServer))
 #define INFD_IS_XML_SERVER(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFD_TYPE_XML_SERVER))
-#define INFD_XML_SERVER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_XML_SERVER, InfdXmlServerIface))
+#define INFD_XML_SERVER_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_XML_SERVER, InfdXmlServerInterface))
 
 #define INFD_TYPE_XML_SERVER_STATUS          (infd_xml_server_status_get_type())
 
 typedef struct _InfdXmlServer InfdXmlServer;
-typedef struct _InfdXmlServerIface InfdXmlServerIface;
+typedef struct _InfdXmlServerInterface InfdXmlServerInterface;
 
 typedef enum _InfdXmlServerStatus {
   INFD_XML_SERVER_CLOSED,
@@ -43,7 +43,7 @@ typedef enum _InfdXmlServerStatus {
   INFD_XML_SERVER_OPENING
 } InfdXmlServerStatus;
 
-struct _InfdXmlServerIface {
+struct _InfdXmlServerInterface {
   GTypeInterface parent;
 
   /* Virtual Table */

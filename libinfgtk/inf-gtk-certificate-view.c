@@ -55,7 +55,9 @@ enum {
 
 #define INF_GTK_CERTIFICATE_VIEW_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CERTIFICATE_VIEW, InfGtkCertificateViewPrivate))
 
-static GtkNotebookClass* parent_class;
+/* TODO: Should derive from another class, GtkBox or so... */
+G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateView, inf_gtk_certificate_view, GTK_TYPE_NOTEBOOK,
+  G_ADD_PRIVATE(InfGtkCertificateView))
 
 static void
 inf_gtk_certificate_view_set_label(GtkLabel* label,
@@ -197,15 +199,12 @@ inf_gtk_certificate_view_add_section(GtkSizeGroup* size_group,
 }
 
 static void
-inf_gtk_certificate_view_init(GTypeInstance* instance,
-                              gpointer g_class)
+inf_gtk_certificate_view_init(InfGtkCertificateView* view)
 {
-  InfGtkCertificateView* view;
   InfGtkCertificateViewPrivate* priv;
   PangoFontDescription* monospace_desc;
   gint size;
 
-  view = INF_GTK_CERTIFICATE_VIEW(instance);
   priv = INF_GTK_CERTIFICATE_VIEW_PRIVATE(view);
 
   priv->certificate = NULL;
@@ -290,7 +289,7 @@ inf_gtk_certificate_view_dispose(GObject* object)
     priv->general_size_group = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_gtk_certificate_view_parent_class)->dispose(object);
 }
 
 static void
@@ -348,14 +347,11 @@ inf_gtk_certificate_view_get_property(GObject* object,
  */
 
 static void
-inf_gtk_certificate_view_class_init(gpointer g_class,
-                                    gpointer class_data)
+inf_gtk_certificate_view_class_init(
+  InfGtkCertificateViewClass* certificate_view_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = GTK_NOTEBOOK_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfGtkCertificateViewPrivate));
+  object_class = G_OBJECT_CLASS(certificate_view_class);
 
   object_class->dispose = inf_gtk_certificate_view_dispose;
   object_class->set_property = inf_gtk_certificate_view_set_property;
@@ -371,37 +367,6 @@ inf_gtk_certificate_view_class_init(gpointer g_class,
       G_PARAM_READWRITE
     )
   );
-}
-
-GType
-inf_gtk_certificate_view_get_type(void)
-{
-  static GType certificate_view_type = 0;
-
-  if(!certificate_view_type)
-  {
-    static const GTypeInfo certificate_view_type_info = {
-      sizeof(InfGtkCertificateViewClass),    /* class_size */
-      NULL,                                  /* base_init */
-      NULL,                                  /* base_finalize */
-      inf_gtk_certificate_view_class_init,   /* class_init */
-      NULL,                                  /* class_finalize */
-      NULL,                                  /* class_data */
-      sizeof(InfGtkCertificateView),         /* instance_size */
-      0,                                     /* n_preallocs */
-      inf_gtk_certificate_view_init,         /* instance_init */
-      NULL                                   /* value_table */
-    };
-
-    certificate_view_type = g_type_register_static(
-      GTK_TYPE_NOTEBOOK,
-      "InfGtkCertificateView",
-      &certificate_view_type_info,
-      0
-    );
-  }
-
-  return certificate_view_type;
 }
 
 /*

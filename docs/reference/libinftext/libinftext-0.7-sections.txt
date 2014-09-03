@@ -18,7 +18,7 @@ INF_TEXT_DEFAULT_DELETE_OPERATION_GET_CLASS
 <SECTION>
 <FILE>inf-text-insert-operation</FILE>
 InfTextInsertOperation
-InfTextInsertOperationIface
+InfTextInsertOperationInterface
 inf_text_insert_operation_get_position
 inf_text_insert_operation_get_length
 inf_text_insert_operation_need_concurrency_id
@@ -126,7 +126,7 @@ INF_TEXT_DEFAULT_INSERT_OPERATION_GET_CLASS
 <SECTION>
 <FILE>inf-text-delete-operation</FILE>
 InfTextDeleteOperation
-InfTextDeleteOperationIface
+InfTextDeleteOperationInterface
 inf_text_delete_operation_get_position
 inf_text_delete_operation_get_length
 inf_text_delete_operation_need_concurrency_id
@@ -143,7 +143,7 @@ INF_TEXT_DELETE_OPERATION_GET_IFACE
 <SECTION>
 <FILE>inf-text-buffer</FILE>
 InfTextBuffer
-InfTextBufferIface
+InfTextBufferInterface
 InfTextBufferIter
 inf_text_buffer_get_encoding
 inf_text_buffer_get_length

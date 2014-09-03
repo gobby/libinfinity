@@ -37,40 +37,12 @@
 
 #include <libinfinity/communication/inf-communication-factory.h>
 
-GType
-inf_communication_factory_get_type(void)
+G_DEFINE_INTERFACE(InfCommunicationFactory, inf_communication_factory, G_TYPE_OBJECT)
+
+static void
+inf_communication_factory_default_init(
+  InfCommunicationFactoryInterface* iface)
 {
-  static GType communication_factory_type = 0;
-
-  if(!communication_factory_type)
-  {
-    static const GTypeInfo communication_factory_info = {
-      sizeof(InfCommunicationFactoryIface),    /* class_size */
-      NULL,                                    /* base_init */
-      NULL,                                    /* base_finalize */
-      NULL,                                    /* class_init */
-      NULL,                                    /* class_finalize */
-      NULL,                                    /* class_data */
-      0,                                       /* instance_size */
-      0,                                       /* n_preallocs */
-      NULL,                                    /* instance_init */
-      NULL                                     /* value_table */
-    };
-
-    communication_factory_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfCommunicationFactory",
-      &communication_factory_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(
-      communication_factory_type,
-      G_TYPE_OBJECT
-    );
-  }
-
-  return communication_factory_type;
 }
 
 /**
@@ -90,7 +62,7 @@ inf_communication_factory_supports_method(InfCommunicationFactory* factory,
                                           const gchar* network,
                                           const gchar* method_name)
 {
-  InfCommunicationFactoryIface* iface;
+  InfCommunicationFactoryInterface* iface;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_FACTORY(factory), FALSE);
   g_return_val_if_fail(network != NULL, FALSE);
@@ -124,7 +96,7 @@ inf_communication_factory_instantiate(InfCommunicationFactory* factory,
                                       InfCommunicationRegistry* registry,
                                       InfCommunicationGroup* group)
 {
-  InfCommunicationFactoryIface* iface;
+  InfCommunicationFactoryInterface* iface;
 
   g_return_val_if_fail(INF_COMMUNICATION_IS_FACTORY(factory), NULL);
   g_return_val_if_fail(network != NULL, NULL);

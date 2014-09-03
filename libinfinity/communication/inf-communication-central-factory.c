@@ -34,7 +34,9 @@
 
 #include <string.h>
 
-static GObjectClass* parent_class;
+static void inf_communication_central_factory_factory_iface_init(InfCommunicationFactoryInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfCommunicationCentralFactory, inf_communication_central_factory, G_TYPE_OBJECT,
+  G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_FACTORY, inf_communication_central_factory_factory_iface_init))
 
 static gboolean
 inf_communication_central_factory_supports_method(InfCommunicationFactory* fc,
@@ -61,69 +63,24 @@ inf_communication_central_factory_instantiate(InfCommunicationFactory* fc,
   );
 }
 
-/*
- * GType registration.
- */
-
 static void
-inf_communication_central_factory_class_init(gpointer g_class,
-                                            gpointer class_data)
+inf_communication_central_factory_init(
+  InfCommunicationCentralFactory* factory)
 {
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
 }
 
 static void
-inf_communication_central_factory_factory_init(gpointer g_iface,
-                                               gpointer iface_data)
+inf_communication_central_factory_class_init(
+  InfCommunicationCentralFactoryClass* factory_class)
 {
-  InfCommunicationFactoryIface* iface;
-  iface = (InfCommunicationFactoryIface*)g_iface;
+}
 
+static void
+inf_communication_central_factory_factory_iface_init(
+  InfCommunicationFactoryInterface* iface)
+{
   iface->supports_method = inf_communication_central_factory_supports_method;
   iface->instantiate = inf_communication_central_factory_instantiate;
-}
-
-GType
-inf_communication_central_factory_get_type(void)
-{
-  static GType central_factory_type = 0;
-
-  if(!central_factory_type)
-  {
-    static const GTypeInfo central_factory_type_info = {
-      sizeof(InfCommunicationCentralFactoryClass),   /* class_size */
-      NULL,                                          /* base_init */
-      NULL,                                          /* base_finalize */
-      inf_communication_central_factory_class_init,  /* class_init */
-      NULL,                                          /* class_finalize */
-      NULL,                                          /* class_data */
-      sizeof(InfCommunicationCentralFactory),        /* instance_size */
-      0,                                             /* n_preallocs */
-      NULL,                                          /* instance_init */
-      NULL                                           /* value_table */
-    };
-
-    static const GInterfaceInfo factory_info = {
-      inf_communication_central_factory_factory_init,
-      NULL,
-      NULL
-    };
-
-    central_factory_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfCommunicationCentralFactory",
-      &central_factory_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      central_factory_type,
-      INF_COMMUNICATION_TYPE_FACTORY,
-      &factory_info
-    );
-  }
-
-  return central_factory_type;
 }
 
 /*

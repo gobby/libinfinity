@@ -78,8 +78,10 @@ enum {
 
 #define INFC_REQUEST_MANAGER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFC_TYPE_REQUEST_MANAGER, InfcRequestManagerPrivate))
 
-static GObjectClass* parent_class;
 static guint request_manager_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfcRequestManager, infc_request_manager, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfcRequestManager))
 
 static void
 infc_request_manager_foreach_request_func(gpointer key,
@@ -176,14 +178,10 @@ infc_request_manager_parse_seq(const gchar* seq,
 }
 
 static void
-infc_request_manager_init(GTypeInstance* instance,
-                          gpointer g_class)
+infc_request_manager_init(InfcRequestManager* manager)
 {
-  InfcRequestManager* request_manager;
   InfcRequestManagerPrivate* priv;
-
-  request_manager = INFC_REQUEST_MANAGER(instance);
-  priv = INFC_REQUEST_MANAGER_PRIVATE(request_manager);
+  priv = INFC_REQUEST_MANAGER_PRIVATE(manager);
 
   priv->requests = g_hash_table_new_full(
     NULL,
@@ -208,8 +206,7 @@ infc_request_manager_dispose(GObject* object)
   g_hash_table_destroy(priv->requests);
   priv->requests = NULL;
 
-  if(parent_class->dispose != NULL)
-    parent_class->dispose(object);
+  G_OBJECT_CLASS(infc_request_manager_parent_class)->dispose(object);
 }
 
 static void
@@ -293,17 +290,11 @@ infc_request_manager_request_remove(InfcRequestManager* manager,
 }
 
 static void
-infc_request_manager_class_init(gpointer g_class,
-                                gpointer class_data)
+infc_request_manager_class_init(
+  InfcRequestManagerClass* request_manager_class)
 {
   GObjectClass* object_class;
-  InfcRequestManagerClass* request_manager_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  request_manager_class = INFC_REQUEST_MANAGER_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfcRequestManagerPrivate));
+  object_class = G_OBJECT_CLASS(request_manager_class);
 
   object_class->dispose = infc_request_manager_dispose;
   object_class->set_property = infc_request_manager_set_property;
@@ -367,37 +358,6 @@ infc_request_manager_class_init(gpointer g_class,
     1,
     INFC_TYPE_REQUEST
   );
-}
-
-GType
-infc_request_manager_get_type(void)
-{
-  static GType request_manager_type = 0;
-
-  if(!request_manager_type)
-  {
-    static const GTypeInfo request_manager_type_info = {
-      sizeof(InfcRequestManagerClass),  /* class_size */
-      NULL,                             /* base_init */
-      NULL,                             /* base_finalize */
-      infc_request_manager_class_init,  /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      sizeof(InfcRequestManager),       /* instance_size */
-      0,                                /* n_preallocs */
-      infc_request_manager_init,        /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    request_manager_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfcRequestManager",
-      &request_manager_type_info,
-      0
-    );
-  }
-
-  return request_manager_type;
 }
 
 /**

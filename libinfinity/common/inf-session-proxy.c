@@ -39,59 +39,21 @@
 #include <libinfinity/common/inf-session-proxy.h>
 #include <libinfinity/common/inf-session.h>
 
+G_DEFINE_INTERFACE(InfSessionProxy, inf_session_proxy, G_TYPE_OBJECT)
+
 static void
-inf_session_proxy_base_init(gpointer g_class)
+inf_session_proxy_default_init(InfSessionProxyInterface* iface)
 {
-  static gboolean initialized = FALSE;
-
-  if(!initialized)
-  {
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_object(
-        "session",
-        "Session",
-        "The underlying session object",
-        INF_TYPE_SESSION,
-        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
-      )
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_session_proxy_get_type(void)
-{
-  static GType session_proxy_type = 0;
-
-  if(!session_proxy_type)
-  {
-    static const GTypeInfo session_proxy_info = {
-      sizeof(InfSessionProxyIface),     /* class_size */
-      inf_session_proxy_base_init,      /* base_init */
-      NULL,                             /* base_finalize */
-      NULL,                             /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      0,                                /* instance_size */
-      0,                                /* n_preallocs */
-      NULL,                             /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    session_proxy_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfSessionProxy",
-      &session_proxy_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(session_proxy_type, G_TYPE_OBJECT);
-  }
-
-  return session_proxy_type;
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_object(
+      "session",
+      "Session",
+      "The underlying session object",
+      INF_TYPE_SESSION,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
+    )
+  );
 }
 
 /**
@@ -123,7 +85,7 @@ inf_session_proxy_join_user(InfSessionProxy* proxy,
                             InfRequestFunc func,
                             gpointer user_data)
 {
-  InfSessionProxyIface* iface;
+  InfSessionProxyInterface* iface;
 
   g_return_val_if_fail(INF_IS_SESSION_PROXY(proxy), NULL);
   g_return_val_if_fail(n_params == 0 || params != NULL, NULL);

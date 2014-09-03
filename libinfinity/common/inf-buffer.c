@@ -34,59 +34,21 @@
 
 #include <libinfinity/common/inf-buffer.h>
 
+G_DEFINE_INTERFACE(InfBuffer, inf_buffer, G_TYPE_OBJECT)
+
 static void
-inf_buffer_base_init(gpointer g_class)
+inf_buffer_default_init(InfBufferInterface* iface)
 {
-  static gboolean initialized = FALSE;
-
-  if(!initialized)
-  {
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_boolean(
-        "modified",
-        "Modified",
-        "Whether the buffer was modified since it has been saved",
-        FALSE,
-        G_PARAM_READWRITE
-      )
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_buffer_get_type(void)
-{
-  static GType buffer_type = 0;
-
-  if(!buffer_type)
-  {
-    static const GTypeInfo buffer_info = {
-      sizeof(InfBufferIface),        /* class_size */
-      inf_buffer_base_init,          /* base_init */
-      NULL,                          /* base_finalize */
-      NULL,                          /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      0,                             /* instance_size */
-      0,                             /* n_preallocs */
-      NULL,                          /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    buffer_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfBuffer",
-      &buffer_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(buffer_type, G_TYPE_OBJECT);
-  }
-
-  return buffer_type;
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_boolean(
+      "modified",
+      "Modified",
+      "Whether the buffer was modified since it has been saved",
+      FALSE,
+      G_PARAM_READWRITE
+    )
+  );
 }
 
 /**
@@ -101,7 +63,7 @@ inf_buffer_get_type(void)
 gboolean
 inf_buffer_get_modified(InfBuffer* buffer)
 {
-  InfBufferIface* iface;
+  InfBufferInterface* iface;
   gboolean modified;
 
   g_return_val_if_fail(INF_IS_BUFFER(buffer), FALSE);
@@ -134,7 +96,7 @@ void
 inf_buffer_set_modified(InfBuffer* buffer,
                         gboolean modified)
 {
-  InfBufferIface* iface;
+  InfBufferInterface* iface;
 
   g_return_if_fail(INF_IS_BUFFER(buffer));
 

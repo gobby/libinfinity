@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_DISCOVERY                 (inf_discovery_get_type())
 #define INF_DISCOVERY(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_DISCOVERY, InfDiscovery))
 #define INF_IS_DISCOVERY(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_DISCOVERY))
-#define INF_DISCOVERY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_DISCOVERY, InfDiscoveryIface))
+#define INF_DISCOVERY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_DISCOVERY, InfDiscoveryInterface))
 
 /**
  * InfDiscovery:
@@ -38,7 +38,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfDiscovery InfDiscovery;
-typedef struct _InfDiscoveryIface InfDiscoveryIface;
+typedef struct _InfDiscoveryInterface InfDiscoveryInterface;
 
 /**
  * InfDiscoveryInfo:
@@ -74,7 +74,7 @@ typedef void(*InfDiscoveryResolvErrorFunc)(InfDiscoveryInfo* info,
                                            gpointer user_data);
 
 /**
- * InfDiscoveryIface:
+ * InfDiscoveryInterface:
  * @discover: Virtual function to start discovery of services of the given
  * type. If the discovery was already started ealier, then this function does
  * nothing.
@@ -96,7 +96,7 @@ typedef void(*InfDiscoveryResolvErrorFunc)(InfDiscoveryInfo* info,
  * The virtual methods and default signal handlers of #InfDiscovery.
  * Implementing these allows discovering infinote servers.
  */
-struct _InfDiscoveryIface {
+struct _InfDiscoveryInterface {
   /*< private >*/
   GTypeInterface parent;
 

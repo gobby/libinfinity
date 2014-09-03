@@ -30,7 +30,7 @@ G_BEGIN_DECLS
 #define INF_COMMUNICATION_TYPE_FACTORY                 (inf_communication_factory_get_type())
 #define INF_COMMUNICATION_FACTORY(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_COMMUNICATION_TYPE_FACTORY, InfCommunicationFactory))
 #define INF_COMMUNICATION_IS_FACTORY(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_COMMUNICATION_TYPE_FACTORY))
-#define INF_COMMUNICATION_FACTORY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_FACTORY, InfCommunicationFactoryIface))
+#define INF_COMMUNICATION_FACTORY_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_COMMUNICATION_TYPE_FACTORY, InfCommunicationFactoryInterface))
 
 /**
  * InfCommunicationFactory:
@@ -39,10 +39,10 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfCommunicationFactory InfCommunicationFactory;
-typedef struct _InfCommunicationFactoryIface InfCommunicationFactoryIface;
+typedef struct _InfCommunicationFactoryInterface InfCommunicationFactoryInterface;
 
 /**
- * InfCommunicationFactoryIface:
+ * InfCommunicationFactoryInterface:
  * @supports_method: Returns whether the given method_name is supported for
  * the network in question by the factory.
  * @instantiate: Instantiates a communication method for the given method
@@ -51,7 +51,7 @@ typedef struct _InfCommunicationFactoryIface InfCommunicationFactoryIface;
  * The virtual methods of #InfCommunicationFactory. These handle instantiating
  * a #InfCommunicationMethod for a #InfCommunicationGroup.
  */
-struct _InfCommunicationFactoryIface {
+struct _InfCommunicationFactoryInterface {
   /*< private >*/
   GTypeInterface parent;
 

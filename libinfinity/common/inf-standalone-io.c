@@ -150,7 +150,10 @@ static const InfStandaloneIoEventTableEntry inf_standalone_io_event_table[] =
 
 #define INF_STANDALONE_IO_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_STANDALONE_IO, InfStandaloneIoPrivate))
 
-static GObjectClass* parent_class;
+static void inf_standalone_io_io_iface_init(InfIoInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfStandaloneIo, inf_standalone_io, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfStandaloneIo)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_IO, inf_standalone_io_io_iface_init))
 
 static guint
 inf_standalone_io_timeval_diff(GTimeVal* first,
@@ -444,17 +447,14 @@ inf_standalone_io_iteration_impl(InfStandaloneIo* io,
 }
 
 static void
-inf_standalone_io_init(GTypeInstance* instance,
-                       gpointer g_class)
+inf_standalone_io_init(InfStandaloneIo* io)
 {
-  InfStandaloneIo* io;
   InfStandaloneIoPrivate* priv;
 
 #ifdef G_OS_WIN32
   gchar* error_message;
 #endif
 
-  io = INF_STANDALONE_IO(instance);
   priv = INF_STANDALONE_IO_PRIVATE(io);
 
   g_mutex_init(&priv->mutex);
@@ -595,7 +595,7 @@ inf_standalone_io_finalize(GObject* object)
   g_mutex_unlock(&priv->mutex);
   g_mutex_clear(&priv->mutex);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_standalone_io_parent_class)->finalize(object);
 }
 
 static InfIoWatch**
@@ -1057,25 +1057,17 @@ inf_standalone_io_io_remove_dispatch(InfIo* io,
 }
 
 static void
-inf_standalone_io_class_init(gpointer g_class,
-                             gpointer class_data)
+inf_standalone_io_class_init(InfStandaloneIoClass* io_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfStandaloneIoPrivate));
+  object_class = G_OBJECT_CLASS(io_class);
 
   object_class->finalize = inf_standalone_io_finalize;
 }
 
 static void
-inf_standalone_io_io_init(gpointer g_iface,
-                          gpointer iface_data)
+inf_standalone_io_io_iface_init(InfIoInterface* iface)
 {
-  InfIoIface* iface;
-  iface = (InfIoIface*)g_iface;
-
   iface->add_watch = inf_standalone_io_io_add_watch;
   iface->update_watch = inf_standalone_io_io_update_watch;
   iface->remove_watch = inf_standalone_io_io_remove_watch;
@@ -1083,49 +1075,6 @@ inf_standalone_io_io_init(gpointer g_iface,
   iface->remove_timeout = inf_standalone_io_io_remove_timeout;
   iface->add_dispatch = inf_standalone_io_io_add_dispatch;
   iface->remove_dispatch = inf_standalone_io_io_remove_dispatch;
-}
-
-GType
-inf_standalone_io_get_type(void)
-{
-  static GType standalone_io_type = 0;
-
-  if(!standalone_io_type)
-  {
-    static const GTypeInfo standalone_io_type_info = {
-      sizeof(InfStandaloneIoClass),   /* class_size */
-      NULL,                           /* base_init */
-      NULL,                           /* base_finalize */
-      inf_standalone_io_class_init,   /* class_init */
-      NULL,                           /* class_finalize */
-      NULL,                           /* class_data */
-      sizeof(InfStandaloneIo),        /* instance_size */
-      0,                              /* n_preallocs */
-      inf_standalone_io_init,         /* instance_init */
-      NULL                            /* value_table */
-    };
-
-    static const GInterfaceInfo io_info = {
-      inf_standalone_io_io_init,
-      NULL,
-      NULL
-    };
-
-    standalone_io_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfStandaloneIo",
-      &standalone_io_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      standalone_io_type,
-      INF_TYPE_IO,
-      &io_info
-    );
-  }
-
-  return standalone_io_type;
 }
 
 /**

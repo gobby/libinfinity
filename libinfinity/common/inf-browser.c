@@ -35,9 +35,29 @@
  */
 
 #include <libinfinity/common/inf-browser.h>
+#include <libinfinity/inf-define-enum.h>
 #include <libinfinity/inf-marshal.h>
 
 #include <string.h>
+
+static const GEnumValue inf_browser_status_values[] = {
+  {
+    INF_BROWSER_CLOSED,
+    "INF_BROWSER_CLOSED",
+    "closed"
+  }, {
+    INF_BROWSER_OPENING,
+    "INF_BROWSER_OPENING",
+    "opening"
+  }, {
+    INF_BROWSER_OPEN,
+    "INF_BROWSER_OPEN",
+    "open"
+  }
+};
+
+INF_DEFINE_ENUM_TYPE(InfBrowserStatus, inf_browser_status, inf_browser_status_values)
+G_DEFINE_INTERFACE(InfBrowser, inf_browser, G_TYPE_OBJECT)
 
 enum {
   ERROR_,
@@ -82,357 +102,285 @@ inf_browser_extract_path(InfBrowser* browser,
 }
 
 static void
-inf_browser_base_init(gpointer g_class)
+inf_browser_default_init(InfBrowserInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  /**
+   * InfBrowser::error:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @error: A #GError describing what went wrong.
+   *
+   * This signal is emitted whenever there was an asynchronous error with
+   * the browser itself which was not the result of a particular user
+   * request. The error may or may not be fatal. If it is fatal the browser
+   * will also be closed which can be checked with the status property.
+   */
+  browser_signals[ERROR_] = g_signal_new(
+    "error",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, error),
+    NULL, NULL,
+    inf_marshal_VOID__POINTER,
+    G_TYPE_NONE,
+    1,
+    G_TYPE_POINTER /* GError* */
+  );
 
-  if(!initialized)
-  {
-    /**
-     * InfBrowser::error:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @error: A #GError describing what went wrong.
-     *
-     * This signal is emitted whenever there was an asynchronous error with
-     * the browser itself which was not the result of a particular user
-     * request. The error may or may not be fatal. If it is fatal the browser
-     * will also be closed which can be checked with the status property.
-     */
-    browser_signals[ERROR_] = g_signal_new(
-      "error",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, error),
-      NULL, NULL,
-      inf_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER /* GError* */
-    );
+  /**
+   * InfBrowser::node-added:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @iter: An iterator pointing to the newly added node.
+   * @request: The request that lead to the node being added, or %NULL.
+   *
+   * This signal is emitted when a node is added to the browser.
+   */
+  browser_signals[NODE_ADDED] = g_signal_new(
+    "node-added",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, node_added),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::node-added:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the newly added node.
-     * @request: The request that lead to the node being added, or %NULL.
-     *
-     * This signal is emitted when a node is added to the browser.
-     */
-    browser_signals[NODE_ADDED] = g_signal_new(
-      "node-added",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, node_added),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::node-removed:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @iter: An iterator pointing to the node being removed.
+   * @request: The request that lead to the node being removed, or %NULL.
+   *
+   * This signal is emitted just before a node is being removed from the
+   * browser. The iterator is still valid and can be used to access the
+   * node which will be removed.
+   */
+  browser_signals[NODE_REMOVED] = g_signal_new(
+    "node-removed",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, node_removed),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::node-removed:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the node being removed.
-     * @request: The request that lead to the node being removed, or %NULL.
-     *
-     * This signal is emitted just before a node is being removed from the
-     * browser. The iterator is still valid and can be used to access the
-     * node which will be removed.
-     */
-    browser_signals[NODE_REMOVED] = g_signal_new(
-      "node-removed",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, node_removed),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::subscribe-session:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @iter: An iterator pointing to the node to which a subscription.
+   * was made, or %NULL.
+   * @session: The subscribed session.
+   * @request: The request that lead to the subscription, or %NULL.
+   *
+   * This signal is emitted whenever the browser is subscribed to a session.
+   * This can happen as a result of a inf_browser_subscribe() or
+   * inf_browser_add_note() call, but it is also possible that a
+   * subscription is initiated without user interaction.
+   *
+   * If @iter is %NULL the session was a global session and not attached to
+   * a particular node.
+   */
+  browser_signals[SUBSCRIBE_SESSION] = g_signal_new(
+    "subscribe-session",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, subscribe_session),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT_OBJECT,
+    G_TYPE_NONE,
+    3,
+    INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_SESSION_PROXY,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::subscribe-session:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the node to which a subscription.
-     * was made, or %NULL.
-     * @session: The subscribed session.
-     * @request: The request that lead to the subscription, or %NULL.
-     *
-     * This signal is emitted whenever the browser is subscribed to a session.
-     * This can happen as a result of a inf_browser_subscribe() or
-     * inf_browser_add_note() call, but it is also possible that a
-     * subscription is initiated without user interaction.
-     *
-     * If @iter is %NULL the session was a global session and not attached to
-     * a particular node.
-     */
-    browser_signals[SUBSCRIBE_SESSION] = g_signal_new(
-      "subscribe-session",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, subscribe_session),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT_OBJECT,
-      G_TYPE_NONE,
-      3,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_SESSION_PROXY,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::unsubscribe-session:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @iter: An iterator pointing to the node from which a subscription.
+   * was removed, or %NULL.
+   * @session: The session to which the subscription was removed.
+   * @request: The request that lead to the unsubscription, or %NULL.
+   *
+   * This signal is emitted whenever a session is detached from a browser
+   * node. This can happen when a subscribed session is closed, or, in
+   * the case of a server, if the session is idle for a long time it is
+   * stored on disk and removed from memory.
+   *
+   * Note that this signal does not mean that the corresponding
+   * session can no longer be used. It only means that it is no longer
+   * associated to a browser node, for example also when the browser node
+   * is deleted. The session might still be intact, though, and can continue
+   * even when it is detached from the browser.
+   *
+   * In order to find out whether the local host was unsubscribed from a
+   * session and the connection to the other session participants has been
+   * lost, the #InfSession:subscription-group property should be monitored,
+   * and if that property changes and
+   * inf_session_get_subscription_group() returns %NULL afterwards,
+   * it means the session is no longer connected.
+   *
+   * If @iter is %NULL the session was a global session and not attached to
+   * a particular node.
+   */
+  browser_signals[UNSUBSCRIBE_SESSION] = g_signal_new(
+    "unsubscribe-session",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, unsubscribe_session),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT_OBJECT,
+    G_TYPE_NONE,
+    3,
+    INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_SESSION_PROXY,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::unsubscribe-session:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the node from which a subscription.
-     * was removed, or %NULL.
-     * @session: The session to which the subscription was removed.
-     * @request: The request that lead to the unsubscription, or %NULL.
-     *
-     * This signal is emitted whenever a session is detached from a browser
-     * node. This can happen when a subscribed session is closed, or, in
-     * the case of a server, if the session is idle for a long time it is
-     * stored on disk and removed from memory.
-     *
-     * Note that this signal does not mean that the corresponding
-     * session can no longer be used. It only means that it is no longer
-     * associated to a browser node, for example also when the browser node
-     * is deleted. The session might still be intact, though, and can continue
-     * even when it is detached from the browser.
-     *
-     * In order to find out whether the local host was unsubscribed from a
-     * session and the connection to the other session participants has been
-     * lost, the #InfSession:subscription-group property should be monitored,
-     * and if that property changes and
-     * inf_session_get_subscription_group() returns %NULL afterwards,
-     * it means the session is no longer connected.
-     *
-     * If @iter is %NULL the session was a global session and not attached to
-     * a particular node.
-     */
-    browser_signals[UNSUBSCRIBE_SESSION] = g_signal_new(
-      "unsubscribe-session",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, unsubscribe_session),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT_OBJECT,
-      G_TYPE_NONE,
-      3,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_SESSION_PROXY,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::begin-request:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @iter: An iterator pointing to the node for which a request is made, or
+   * %NULL.
+   * @request: The request being made.
+   *
+   * This signal is emitted whenever a request is made with the browser.
+   * The signal is detailed with the request type, so that it is possible to
+   * connect to e.g. "begin-request::add-subdirectory" to only get notified
+   * about subdirectory creation requests.
+   *
+   * If @iter is %NULL the request is a global request and not attached to a
+   * particular node.
+   */
+  browser_signals[BEGIN_REQUEST] = g_signal_new(
+    "begin-request",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+    G_STRUCT_OFFSET(InfBrowserInterface, begin_request),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::begin-request:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the node for which a request is made, or
-     * %NULL.
-     * @request: The request being made.
-     *
-     * This signal is emitted whenever a request is made with the browser.
-     * The signal is detailed with the request type, so that it is possible to
-     * connect to e.g. "begin-request::add-subdirectory" to only get notified
-     * about subdirectory creation requests.
-     *
-     * If @iter is %NULL the request is a global request and not attached to a
-     * particular node.
-     */
-    browser_signals[BEGIN_REQUEST] = g_signal_new(
-      "begin-request",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-      G_STRUCT_OFFSET(InfBrowserIface, begin_request),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::acl-account-added:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @account: The new #InfAclAccount.
+   * @request: The request which lead to the newly added account, or %NULL.
+   *
+   * This signal is emitted whenever a new account is added to the browser,
+   * and the browser supports account list notification.
+   */
+  browser_signals[ACL_ACCOUNT_ADDED] = g_signal_new(
+    "acl-account-added",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, acl_account_added),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::acl-account-added:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @account: The new #InfAclAccount.
-     * @request: The request which lead to the newly added account, or %NULL.
-     *
-     * This signal is emitted whenever a new account is added to the browser,
-     * and the browser supports account list notification.
-     */
-    browser_signals[ACL_ACCOUNT_ADDED] = g_signal_new(
-      "acl-account-added",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, acl_account_added),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::acl-account-removed:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @account: The removed #InfAclAccount.
+   * @request: The request which lead to the removal of the account,
+   * or %NULL.
+   *
+   * This signal is emitted whenever an account is removed from the browser,
+   * and the browser supports account list notification.
+   */
+  browser_signals[ACL_ACCOUNT_REMOVED] = g_signal_new(
+    "acl-account-removed",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, acl_account_removed),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::acl-account-removed:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @account: The removed #InfAclAccount.
-     * @request: The request which lead to the removal of the account,
-     * or %NULL.
-     *
-     * This signal is emitted whenever an account is removed from the browser,
-     * and the browser supports account list notification.
-     */
-    browser_signals[ACL_ACCOUNT_REMOVED] = g_signal_new(
-      "acl-account-removed",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, acl_account_removed),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::acl-local-account-changed:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @account: The new local #InfAclAccount.
+   * @request: The request which triggered the account change, or %NULL.
+   *
+   * This signal is emitted whenever the account into which the local host
+   * is logged into changes. This can happen for example on a delayed login,
+   * or when the current account is deleted from the server in which case
+   * the host is demoted to the default account.
+   */
+  browser_signals[ACL_LOCAL_ACCOUNT_CHANGED] = g_signal_new(
+    "acl-local-account-changed",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, acl_local_account_changed),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_OBJECT,
+    G_TYPE_NONE,
+    2,
+    INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::acl-local-account-changed:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @account: The new local #InfAclAccount.
-     * @request: The request which triggered the account change, or %NULL.
-     *
-     * This signal is emitted whenever the account into which the local host
-     * is logged into changes. This can happen for example on a delayed login,
-     * or when the current account is deleted from the server in which case
-     * the host is demoted to the default account.
-     */
-    browser_signals[ACL_LOCAL_ACCOUNT_CHANGED] = g_signal_new(
-      "acl-local-account-changed",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, acl_local_account_changed),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_OBJECT,
-      G_TYPE_NONE,
-      2,
-      INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
+  /**
+   * InfBrowser::acl-changed:
+   * @browser: The #InfBrowser object emitting the signal.
+   * @iter: An iterator pointing to the node for which the ACL has changed.
+   * @sheet_set: A #InfAclSheetSet containing the changed ACL sheets.
+   * @request: The request which lead to the ACL being changed, or %NULL.
+   *
+   * This signal is emitted whenever an ACL for the node @iter points to
+   * are changed. This signal is emitted whenever the ACL change for the
+   * local user, the default user, or for a node that all ACLs have been
+   * queried with inf_browser_query_acl().
+   *
+   * The @sheet_set parameter contains only the ACL sheets that have
+   * changed. In order to get the new full sheet set, call
+   * inf_browser_get_acl().
+   */
+  browser_signals[ACL_CHANGED] = g_signal_new(
+    "acl-changed",
+    INF_TYPE_BROWSER,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfBrowserInterface, acl_changed),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_BOXED_OBJECT,
+    G_TYPE_NONE,
+    3,
+    INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_ACL_SHEET_SET | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_REQUEST
+  );
 
-    /**
-     * InfBrowser::acl-changed:
-     * @browser: The #InfBrowser object emitting the signal.
-     * @iter: An iterator pointing to the node for which the ACL has changed.
-     * @sheet_set: A #InfAclSheetSet containing the changed ACL sheets.
-     * @request: The request which lead to the ACL being changed, or %NULL.
-     *
-     * This signal is emitted whenever an ACL for the node @iter points to
-     * are changed. This signal is emitted whenever the ACL change for the
-     * local user, the default user, or for a node that all ACLs have been
-     * queried with inf_browser_query_acl().
-     *
-     * The @sheet_set parameter contains only the ACL sheets that have
-     * changed. In order to get the new full sheet set, call
-     * inf_browser_get_acl().
-     */
-    browser_signals[ACL_CHANGED] = g_signal_new(
-      "acl-changed",
-      INF_TYPE_BROWSER,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfBrowserIface, acl_changed),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_BOXED_OBJECT,
-      G_TYPE_NONE,
-      3,
-      INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_ACL_SHEET_SET | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_REQUEST
-    );
-
-    g_object_interface_install_property(
-      g_class,
-      g_param_spec_enum(
-        "status",
-        "Browser Status",
-        "The connectivity status of the browser",
-        INF_TYPE_BROWSER_STATUS,
-        INF_BROWSER_CLOSED,
-        G_PARAM_READABLE
-      )
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_browser_status_get_type(void)
-{
-  static GType browser_status_type = 0;
-
-  if(!browser_status_type)
-  {
-    static const GEnumValue browser_status_values[] = {
-      {
-        INF_BROWSER_CLOSED,
-        "INF_BROWSER_CLOSED",
-        "closed"
-      }, {
-        INF_BROWSER_OPENING,
-        "INF_BROWSER_OPENING",
-        "opening"
-      }, {
-        INF_BROWSER_OPEN,
-        "INF_BROWSER_OPEN",
-        "open"
-      }
-    };
-
-    browser_status_type = g_enum_register_static(
-      "InfBrowserStatus",
-      browser_status_values
-    );
-  }
-
-  return browser_status_type;
-}
-
-GType
-inf_browser_get_type(void)
-{
-  static GType browser_type = 0;
-
-  if(!browser_type)
-  {
-    static const GTypeInfo browser_info = {
-      sizeof(InfBrowserIface),     /* class_size */
-      inf_browser_base_init,       /* base_init */
-      NULL,                        /* base_finalize */
-      NULL,                        /* class_init */
-      NULL,                        /* class_finalize */
-      NULL,                        /* class_data */
-      0,                           /* instance_size */
-      0,                           /* n_preallocs */
-      NULL,                        /* instance_init */
-      NULL                         /* value_table */
-    };
-
-    browser_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfBrowser",
-      &browser_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(browser_type, G_TYPE_OBJECT);
-  }
-
-  return browser_type;
+  g_object_interface_install_property(
+    iface,
+    g_param_spec_enum(
+      "status",
+      "Browser Status",
+      "The connectivity status of the browser",
+      INF_TYPE_BROWSER_STATUS,
+      INF_BROWSER_CLOSED,
+      G_PARAM_READABLE
+    )
+  );
 }
 
 /**
@@ -449,7 +397,7 @@ gboolean
 inf_browser_get_root(InfBrowser* browser,
                      InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -474,7 +422,7 @@ gboolean
 inf_browser_get_next(InfBrowser* browser,
                      InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -500,7 +448,7 @@ gboolean
 inf_browser_get_prev(InfBrowser* browser,
                      InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -525,7 +473,7 @@ gboolean
 inf_browser_get_parent(InfBrowser* browser,
                        InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -555,7 +503,7 @@ gboolean
 inf_browser_get_child(InfBrowser* browser,
                       InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -634,7 +582,7 @@ inf_browser_explore(InfBrowser* browser,
                     InfRequestFunc func,
                     gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -661,7 +609,7 @@ gboolean
 inf_browser_get_explored(InfBrowser* browser,
                          const InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -688,7 +636,7 @@ gboolean
 inf_browser_is_subdirectory(InfBrowser* browser,
                             const InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -770,7 +718,7 @@ inf_browser_add_note(InfBrowser* browser,
                      InfRequestFunc func,
                      gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -846,7 +794,7 @@ inf_browser_add_subdirectory(InfBrowser* browser,
                              InfRequestFunc func,
                              gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -886,7 +834,7 @@ inf_browser_remove_node(InfBrowser* browser,
                         InfRequestFunc func,
                         gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -910,7 +858,7 @@ const gchar*
 inf_browser_get_node_name(InfBrowser* browser,
                           const InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -934,7 +882,7 @@ const gchar*
 inf_browser_get_node_type(InfBrowser* browser,
                           const InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -994,7 +942,7 @@ inf_browser_subscribe(InfBrowser* browser,
                       InfRequestFunc func,
                       gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -1024,7 +972,7 @@ InfSessionProxy*
 inf_browser_get_session(InfBrowser* browser,
                         const InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -1061,7 +1009,7 @@ inf_browser_list_pending_requests(InfBrowser* browser,
                                   const InfBrowserIter* iter,
                                   const gchar* request_type)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
@@ -1089,7 +1037,7 @@ inf_browser_iter_from_request(InfBrowser* browser,
                               InfRequest* request,
                               InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(INF_IS_REQUEST(request), FALSE);
@@ -1156,7 +1104,7 @@ inf_browser_get_pending_request(InfBrowser* browser,
 const InfAclAccount*
 inf_browser_get_acl_default_account(InfBrowser* browser)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
@@ -1182,7 +1130,7 @@ inf_browser_get_acl_default_account(InfBrowser* browser)
 const InfAclAccount*
 inf_browser_get_acl_local_account(InfBrowser* browser)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
@@ -1224,7 +1172,7 @@ inf_browser_query_acl_account_list(InfBrowser* browser,
                                    InfRequestFunc func,
                                    gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
 
@@ -1268,7 +1216,7 @@ inf_browser_lookup_acl_accounts(InfBrowser* browser,
                                 InfRequestFunc func,
                                 gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(ids != NULL, NULL);
@@ -1310,7 +1258,7 @@ inf_browser_lookup_acl_account_by_name(InfBrowser* browser,
                                        InfRequestFunc func,
                                        gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(name != NULL, NULL);
@@ -1347,7 +1295,7 @@ inf_browser_create_acl_account(InfBrowser* browser,
                                InfRequestFunc func,
                                gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(crq != NULL, NULL);
@@ -1382,7 +1330,7 @@ inf_browser_remove_acl_account(InfBrowser* browser,
                                InfRequestFunc func,
                                gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(account != 0, NULL);
@@ -1425,7 +1373,7 @@ inf_browser_query_acl(InfBrowser* browser,
                       InfRequestFunc func,
                       gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -1458,7 +1406,7 @@ inf_browser_has_acl(InfBrowser* browser,
                     const InfBrowserIter* iter,
                     InfAclAccountId account)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -1493,7 +1441,7 @@ const InfAclSheetSet*
 inf_browser_get_acl(InfBrowser* browser,
                     const InfBrowserIter* iter)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -1534,7 +1482,7 @@ inf_browser_set_acl(InfBrowser* browser,
                     InfRequestFunc func,
                     gpointer user_data)
 {
-  InfBrowserIface* iface;
+  InfBrowserInterface* iface;
 
   g_return_val_if_fail(INF_IS_BROWSER(browser), NULL);
   g_return_val_if_fail(iter != NULL, NULL);

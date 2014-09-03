@@ -50,6 +50,8 @@
 
 #include <string.h>
 
+G_DEFINE_BOXED_TYPE(InfTextChunk, inf_text_chunk, inf_text_chunk_copy, inf_text_chunk_free)
+
 /* Don't check integrity in stable releases */
 /*#define CHUNK_CHECK_INTEGRITY*/
 
@@ -296,23 +298,6 @@ inf_text_chunk_get_segment(InfTextChunk* self,
 /*
  * Public API
  */
-
-GType
-inf_text_chunk_get_type(void)
-{
-  static GType chunk_type = 0;
-
-  if(!chunk_type)
-  {
-    chunk_type = g_boxed_type_register_static(
-      "InfTextChunk",
-      (GBoxedCopyFunc)inf_text_chunk_copy,
-      (GBoxedFreeFunc)inf_text_chunk_free
-    );
-  }
-
-  return chunk_type;
-}
 
 /**
  * inf_text_chunk_new:

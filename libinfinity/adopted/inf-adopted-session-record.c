@@ -17,16 +17,6 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfinity/adopted/inf-adopted-session-record.h>
-#include <libinfinity/common/inf-xml-util.h>
-#include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-signals.h>
-
-#include <libxml/xmlwriter.h>
-
-#include <errno.h>
-#include <string.h>
-
 /* TODO: Better error handling; we should have a proper InfErrnoError
  * (or InfSystemError or something), and we should check the fflush error
  * codes. */
@@ -53,6 +43,16 @@
  * <literal>inf-test-text-replay</literal> in the infinote test suite.
  */
 
+#include <libinfinity/adopted/inf-adopted-session-record.h>
+#include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/inf-i18n.h>
+#include <libinfinity/inf-signals.h>
+
+#include <libxml/xmlwriter.h>
+
+#include <errno.h>
+#include <string.h>
+
 /* TODO: Record user join/leave events, and update last send vectors on
  * rejoin. */
 
@@ -76,8 +76,10 @@ enum {
 
 #define INF_ADOPTED_SESSION_RECORD_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_SESSION_RECORD, InfAdoptedSessionRecordPrivate))
 
-static GObjectClass* parent_class;
 static GQuark libxml2_writer_error_quark;
+
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedSessionRecord, inf_adopted_session_record, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedSessionRecord))
 
 static gint64
 inf_adopted_session_record_get_real_time()
@@ -353,13 +355,9 @@ inf_adopted_session_record_synchronization_complete_cb(InfSession* session,
  */
 
 static void
-inf_adopted_session_record_init(GTypeInstance* instance,
-                                gpointer g_class)
+inf_adopted_session_record_init(InfAdoptedSessionRecord* record)
 {
-  InfAdoptedSessionRecord* record;
   InfAdoptedSessionRecordPrivate* priv;
-
-  record = INF_ADOPTED_SESSION_RECORD(instance);
   priv = INF_ADOPTED_SESSION_RECORD_PRIVATE(record);
 
   priv->session = NULL;
@@ -404,7 +402,7 @@ inf_adopted_session_record_dispose(GObject* object)
     priv->session = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_session_record_parent_class)->dispose(object);
 }
 
 static void
@@ -418,7 +416,7 @@ inf_adopted_session_record_finalize(GObject* object)
 
   g_assert(priv->filename == NULL);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_session_record_parent_class)->finalize(object);
 }
 
 static void
@@ -478,14 +476,11 @@ inf_adopted_session_record_get_property(GObject* object,
  */
 
 static void
-inf_adopted_session_record_class_init(gpointer g_class,
-                                      gpointer class_data)
+inf_adopted_session_record_class_init(
+  InfAdoptedSessionRecordClass* record_class)
 {
   GObjectClass* object_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedSessionRecordPrivate));
+  object_class = G_OBJECT_CLASS(record_class);
 
   object_class->dispose = inf_adopted_session_record_dispose;
   object_class->finalize = inf_adopted_session_record_finalize;
@@ -518,37 +513,6 @@ inf_adopted_session_record_class_init(gpointer g_class,
       G_PARAM_READABLE
     )
   );
-}
-
-GType
-inf_adopted_session_record_get_type(void)
-{
-  static GType session_record_type = 0;
-
-  if(!session_record_type)
-  {
-    static const GTypeInfo session_record_type_info = {
-      sizeof(InfAdoptedSessionRecordClass),   /* class_size */
-      NULL,                                   /* base_init */
-      NULL,                                   /* base_finalize */
-      inf_adopted_session_record_class_init,  /* class_init */
-      NULL,                                   /* class_finalize */
-      NULL,                                   /* class_data */
-      sizeof(InfAdoptedSessionRecord),        /* instance_size */
-      0,                                      /* n_preallocs */
-      inf_adopted_session_record_init,        /* instance_init */
-      NULL                                    /* value_table */
-    };
-
-    session_record_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedSessionRecord",
-      &session_record_type_info,
-      0
-    );
-  }
-
-  return session_record_type;
 }
 
 /*

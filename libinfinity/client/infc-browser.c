@@ -269,7 +269,6 @@ enum {
     val \
   )
 
-static GObjectClass* parent_class;
 static GQuark infc_browser_session_proxy_quark;
 static GQuark infc_browser_sync_in_session_quark;
 static GQuark infc_browser_sync_in_plugin_quark;
@@ -277,6 +276,13 @@ static GQuark infc_browser_lookup_acl_accounts_ids_quark;
 static GQuark infc_browser_lookup_acl_accounts_n_ids_quark;
 static GQuark infc_browser_lookup_acl_accounts_name_quark;
 static GQuark infc_browser_query_acl_account_list_accounts_quark;
+
+static void infc_browser_communication_object_iface_init(InfCommunicationObjectInterface* iface);
+static void infc_browser_browser_iface_init(InfBrowserInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfcBrowser, infc_browser, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfcBrowser)
+  G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_OBJECT, infc_browser_communication_object_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_BROWSER, infc_browser_browser_iface_init))
 
 /*
  * Callbacks
@@ -1646,13 +1652,9 @@ infc_browser_method_unsupported_error(const gchar* method_name,
  */
 
 static void
-infc_browser_init(GTypeInstance* instance,
-                  gpointer g_class)
+infc_browser_init(InfcBrowser* browser)
 {
-  InfcBrowser* browser;
   InfcBrowserPrivate* priv;
-
-  browser = INFC_BROWSER(instance);
   priv = INFC_BROWSER_PRIVATE(browser);
 
   priv->io = NULL;
@@ -1686,7 +1688,7 @@ infc_browser_constructor(GType type,
   InfcBrowser* browser;
   InfcBrowserPrivate* priv;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(infc_browser_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -1775,7 +1777,7 @@ infc_browser_dispose(GObject* object)
     priv->io = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(infc_browser_parent_class)->dispose(object);
 }
 
 static void
@@ -1790,7 +1792,7 @@ infc_browser_finalize(GObject* object)
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infc_browser_parent_class)->finalize(object);
 }
 
 static void
@@ -6821,14 +6823,10 @@ infc_browser_browser_set_acl(InfBrowser* browser,
  */
 
 static void
-infc_browser_class_init(gpointer g_class,
-                        gpointer class_data)
+infc_browser_class_init(InfcBrowserClass* browser_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfcBrowserPrivate));
+  object_class = G_OBJECT_CLASS(browser_class);
 
   object_class->constructor = infc_browser_constructor;
   object_class->dispose = infc_browser_dispose;
@@ -6917,23 +6915,16 @@ infc_browser_class_init(gpointer g_class,
 }
 
 static void
-infc_browser_communication_object_init(gpointer g_iface,
-                                       gpointer iface_data)
+infc_browser_communication_object_iface_init(
+  InfCommunicationObjectInterface* iface)
 {
-  InfCommunicationObjectIface* iface;
-  iface = (InfCommunicationObjectIface*)g_iface;
-
   iface->received = infc_browser_communication_object_received;
   iface->sent = infc_browser_communication_object_sent;
 }
 
 static void
-infc_browser_browser_init(gpointer g_iface,
-                          gpointer iface_data)
+infc_browser_browser_iface_init(InfBrowserInterface* iface)
 {
-  InfBrowserIface* iface;
-  iface = (InfBrowserIface*)g_iface;
-
   iface->error = NULL;
   iface->node_added = NULL;
   iface->node_removed = NULL;
@@ -6975,61 +6966,6 @@ infc_browser_browser_init(gpointer g_iface,
   iface->has_acl = infc_browser_browser_has_acl;
   iface->get_acl = infc_browser_browser_get_acl;
   iface->set_acl = infc_browser_browser_set_acl;
-}
-
-GType
-infc_browser_get_type(void)
-{
-  static GType browser_type = 0;
-
-  if(!browser_type)
-  {
-    static const GTypeInfo browser_type_info = {
-      sizeof(InfcBrowserClass),    /* class_size */
-      NULL,                        /* base_init */
-      NULL,                        /* base_finalize */
-      infc_browser_class_init,     /* class_init */
-      NULL,                        /* class_finalize */
-      NULL,                        /* class_data */
-      sizeof(InfcBrowser),         /* instance_size */
-      0,                           /* n_preallocs */
-      infc_browser_init,           /* instance_init */
-      NULL                         /* value_table */
-    };
-
-    static const GInterfaceInfo communication_object_info = {
-      infc_browser_communication_object_init,
-      NULL,
-      NULL
-    };
-    
-    static const GInterfaceInfo browser_info = {
-      infc_browser_browser_init,
-      NULL,
-      NULL
-    };
-
-    browser_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfcBrowser",
-      &browser_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      browser_type,
-      INF_COMMUNICATION_TYPE_OBJECT,
-      &communication_object_info
-    );
-    
-    g_type_add_interface_static(
-      browser_type,
-      INF_TYPE_BROWSER,
-      &browser_info
-    );
-  }
-
-  return browser_type;
 }
 
 /*

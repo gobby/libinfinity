@@ -44,6 +44,7 @@
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
+#include <libinfinity/inf-define-enum.h>
 
 #include <gnutls/x509.h>
 
@@ -52,6 +53,46 @@
 #include <ctype.h>
 
 #include "config.h"
+
+static const GEnumValue inf_xmpp_connection_site_values[] = {
+  {
+    INF_XMPP_CONNECTION_CLIENT,
+    "INF_XMPP_CONNECTION_CLIENT",
+    "client"
+  }, {
+    INF_XMPP_CONNECTION_SERVER,
+    "INF_XMPP_CONNECTION_SERVER",
+    "server"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+static const GEnumValue inf_xmpp_connection_security_policy_values[] = {
+  {
+    INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
+    "INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED",
+    "only-unsecured"
+  }, {
+    INF_XMPP_CONNECTION_SECURITY_ONLY_TLS,
+    "INF_XMPP_CONNECTION_SECURITY_ONLY_TLS",
+    "only-tls"
+  }, {
+    INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED,
+    "INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED",
+    "both-prefer-unsecured"
+  }, {
+    INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+    "INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS",
+    "both-prefer-tls"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 /* This is set in inf_init() in inf-init.c based on the existance of the
  * environment variable LIBINFINITY_DEBUG_PRINT_TRAFFIC. */
@@ -185,11 +226,16 @@ enum {
 
 #define INF_XMPP_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_XMPP_CONNECTION, InfXmppConnectionPrivate))
 
-static GObjectClass* parent_class;
-
 static GQuark inf_xmpp_connection_error_quark;
 static GQuark inf_xmpp_connection_stream_error_quark;
 static GQuark inf_xmpp_connection_auth_error_quark;
+
+static void inf_xmpp_connection_xml_connection_iface_init(InfXmlConnectionInterface* iface);
+INF_DEFINE_ENUM_TYPE(InfXmppConnectionSite, inf_xmpp_connection_site, inf_xmpp_connection_site_values)
+INF_DEFINE_ENUM_TYPE(InfXmppConnectionSecurityPolicy, inf_xmpp_connection_security_policy, inf_xmpp_connection_security_policy_values)
+G_DEFINE_TYPE_WITH_CODE(InfXmppConnection, inf_xmpp_connection, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfXmppConnection)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_XML_CONNECTION, inf_xmpp_connection_xml_connection_iface_init))
 
 /*
  * XMPP error handling
@@ -3564,14 +3610,10 @@ inf_xmpp_connection_get_address_id(InfIpAddress* addr,
  */
 
 static void
-inf_xmpp_connection_init(GTypeInstance* instance,
-                         gpointer g_class)
+inf_xmpp_connection_init(InfXmppConnection* connection)
 {
-  InfXmppConnection* io;
   InfXmppConnectionPrivate* priv;
-
-  io = INF_XMPP_CONNECTION(instance);
-  priv = INF_XMPP_CONNECTION_PRIVATE(io);
+  priv = INF_XMPP_CONNECTION_PRIVATE(connection);
 
   priv->tcp = NULL;
   priv->site = INF_XMPP_CONNECTION_CLIENT;
@@ -3620,7 +3662,7 @@ inf_xmpp_connection_constructor(GType type,
   InfTcpConnectionStatus status;
   GObject* obj;
 
-  obj = G_OBJECT_CLASS(parent_class)->constructor(
+  obj = G_OBJECT_CLASS(inf_xmpp_connection_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -3699,7 +3741,7 @@ inf_xmpp_connection_dispose(GObject* object)
     priv->creds = NULL;
   }
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_xmpp_connection_parent_class)->dispose(object);
 }
 
 static void
@@ -3719,7 +3761,7 @@ inf_xmpp_connection_finalize(GObject* object)
   if(priv->sasl_error)
     g_error_free(priv->sasl_error);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_xmpp_connection_parent_class)->finalize(object);
 }
 
 static void
@@ -4033,17 +4075,10 @@ inf_xmpp_connection_xml_connection_send(InfXmlConnection* connection,
  */
 
 static void
-inf_xmpp_connection_class_init(gpointer g_class,
-                               gpointer class_data)
+inf_xmpp_connection_class_init(InfXmppConnectionClass* xmpp_class)
 {
   GObjectClass* object_class;
-  InfXmppConnectionClass* xmpp_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  xmpp_class = INF_XMPP_CONNECTION_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfXmppConnectionPrivate));
+  object_class = G_OBJECT_CLASS(xmpp_class);
 
   object_class->constructor = inf_xmpp_connection_constructor;
   object_class->dispose = inf_xmpp_connection_dispose;
@@ -4192,130 +4227,12 @@ inf_xmpp_connection_class_init(gpointer g_class,
 }
 
 static void
-inf_xmpp_connection_xml_connection_init(gpointer g_iface,
-                                        gpointer iface_data)
+inf_xmpp_connection_xml_connection_iface_init(
+  InfXmlConnectionInterface* iface)
 {
-  InfXmlConnectionIface* iface;
-  iface = (InfXmlConnectionIface*)g_iface;
-
   iface->open = inf_xmpp_connection_xml_connection_open;
   iface->close = inf_xmpp_connection_xml_connection_close;
   iface->send = inf_xmpp_connection_xml_connection_send;
-}
-
-GType
-inf_xmpp_connection_site_get_type(void)
-{
-  static GType xmpp_connection_site_type = 0;
-
-  if(!xmpp_connection_site_type)
-  {
-    static const GEnumValue xmpp_connection_site_values[] = {
-      {
-        INF_XMPP_CONNECTION_CLIENT,
-        "INF_XMPP_CONNECTION_CLIENT",
-        "client"
-      }, {
-        INF_XMPP_CONNECTION_SERVER,
-        "INF_XMPP_CONNECTION_SERVER",
-        "server"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    xmpp_connection_site_type = g_enum_register_static(
-      "InfXmppConnectionSite",
-      xmpp_connection_site_values
-    );
-  }
-
-  return xmpp_connection_site_type;
-}
-
-GType
-inf_xmpp_connection_security_policy_get_type(void)
-{
-  static GType xmpp_connection_security_policy_type = 0;
-
-  if(!xmpp_connection_security_policy_type)
-  {
-    static const GEnumValue xmpp_connection_security_policy_values[] = {
-      {
-        INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED,
-        "INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED",
-        "only-unsecured"
-      }, {
-        INF_XMPP_CONNECTION_SECURITY_ONLY_TLS,
-        "INF_XMPP_CONNECTION_SECURITY_ONLY_TLS",
-        "only-tls"
-      }, {
-        INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED,
-        "INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_UNSECURED",
-        "both-prefer-unsecured"
-      }, {
-        INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
-        "INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS",
-        "both-prefer-tls"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    xmpp_connection_security_policy_type = g_enum_register_static(
-      "InfXmppConnectionSecurityPolicy",
-      xmpp_connection_security_policy_values
-    );
-  }
-
-  return xmpp_connection_security_policy_type;
-}
-
-GType
-inf_xmpp_connection_get_type(void)
-{
-  static GType xmpp_connection_type = 0;
-
-  if(!xmpp_connection_type)
-  {
-    static const GTypeInfo xmpp_connection_type_info = {
-      sizeof(InfXmppConnectionClass),   /* class_size */
-      NULL,                             /* base_init */
-      NULL,                             /* base_finalize */
-      inf_xmpp_connection_class_init,   /* class_init */
-      NULL,                             /* class_finalize */
-      NULL,                             /* class_data */
-      sizeof(InfXmppConnection),        /* instance_size */
-      0,                                /* n_preallocs */
-      inf_xmpp_connection_init,         /* instance_init */
-      NULL                              /* value_table */
-    };
-
-    static const GInterfaceInfo xml_connection_info = {
-      inf_xmpp_connection_xml_connection_init,
-      NULL,
-      NULL
-    };
-
-    xmpp_connection_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfXmppConnection",
-      &xmpp_connection_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      xmpp_connection_type,
-      INF_TYPE_XML_CONNECTION,
-      &xml_connection_info
-    );
-  }
-
-  return xmpp_connection_type;
 }
 
 /*

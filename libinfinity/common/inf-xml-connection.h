@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_XML_CONNECTION                 (inf_xml_connection_get_type())
 #define INF_XML_CONNECTION(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_XML_CONNECTION, InfXmlConnection))
 #define INF_IS_XML_CONNECTION(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_XML_CONNECTION))
-#define INF_XML_CONNECTION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_XML_CONNECTION, InfXmlConnectionIface))
+#define INF_XML_CONNECTION_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_XML_CONNECTION, InfXmlConnectionInterface))
 
 #define INF_TYPE_XML_CONNECTION_STATUS          (inf_xml_connection_status_get_type())
 
@@ -40,7 +40,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfXmlConnection InfXmlConnection;
-typedef struct _InfXmlConnectionIface InfXmlConnectionIface;
+typedef struct _InfXmlConnectionInterface InfXmlConnectionInterface;
 
 /**
  * InfXmlConnectionStatus:
@@ -60,7 +60,7 @@ typedef enum _InfXmlConnectionStatus {
 } InfXmlConnectionStatus;
 
 /**
- * InfXmlConnectionIface:
+ * InfXmlConnectionInterface:
  * @open: Virtual function to start the connection.
  * @close: Virtual function to stop the connection.
  * @send: Virtual function to transmit data over the connection.
@@ -72,7 +72,7 @@ typedef enum _InfXmlConnectionStatus {
  * Virtual functions and default signal handlers for the #InfXmlConnection
  * interface.
  */
-struct _InfXmlConnectionIface {
+struct _InfXmlConnectionInterface {
   /*< private >*/
   GTypeInterface parent;
 

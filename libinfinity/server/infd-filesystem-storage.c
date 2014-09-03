@@ -54,8 +54,12 @@ enum {
 
 #define INFD_FILESYSTEM_STORAGE_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INFD_TYPE_FILESYSTEM_STORAGE, InfdFilesystemStoragePrivate))
 
-static GObjectClass* parent_class;
 static GQuark infd_filesystem_storage_error_quark;
+
+static void infd_filesystem_storage_storage_iface_init(InfdStorageInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfdFilesystemStorage, infd_filesystem_storage, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfdFilesystemStorage)
+  G_IMPLEMENT_INTERFACE(INFD_TYPE_STORAGE, infd_filesystem_storage_storage_iface_init))
 
 /* Checks whether path is valid, and sets error if not */
 static gboolean
@@ -341,13 +345,9 @@ infd_filesystem_storage_get_acl_path(InfdFilesystemStorage* storage,
 }
 
 static void
-infd_filesystem_storage_init(GTypeInstance* instance,
-                             gpointer g_class)
+infd_filesystem_storage_init(InfdFilesystemStorage* storage)
 {
-  InfdFilesystemStorage* storage;
   InfdFilesystemStoragePrivate* priv;
-
-  storage = INFD_FILESYSTEM_STORAGE(instance);
   priv = INFD_FILESYSTEM_STORAGE_PRIVATE(storage);
 
   priv->root_directory = NULL;
@@ -364,7 +364,7 @@ infd_filesystem_storage_finalize(GObject* object)
 
   g_free(priv->root_directory);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(infd_filesystem_storage_parent_class)->finalize(object);
 }
 
 static void
@@ -785,17 +785,11 @@ infd_filesystem_storage_storage_write_acl(InfdStorage* storage,
 }
 
 static void
-infd_filesystem_storage_class_init(gpointer g_class,
-                                   gpointer class_data)
+infd_filesystem_storage_class_init(
+  InfdFilesystemStorageClass* filesystem_storage_class)
 {
   GObjectClass* object_class;
-  InfdFilesystemStorageClass* filesystem_storage_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  filesystem_storage_class = INFD_FILESYSTEM_STORAGE_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfdFilesystemStoragePrivate));
+  object_class = G_OBJECT_CLASS(filesystem_storage_class);
 
   object_class->finalize = infd_filesystem_storage_finalize;
   object_class->set_property = infd_filesystem_storage_set_property;
@@ -819,12 +813,8 @@ infd_filesystem_storage_class_init(gpointer g_class,
 }
 
 static void
-infd_filesystem_storage_storage_init(gpointer g_iface,
-                                     gpointer iface_data)
+infd_filesystem_storage_storage_iface_init(InfdStorageInterface* iface)
 {
-  InfdStorageIface* iface;
-  iface = (InfdStorageIface*)g_iface;
-
   iface->read_subdirectory =
     infd_filesystem_storage_storage_read_subdirectory;
   iface->create_subdirectory =
@@ -835,49 +825,6 @@ infd_filesystem_storage_storage_init(gpointer g_iface,
     infd_filesystem_storage_storage_read_acl;
   iface->write_acl =
     infd_filesystem_storage_storage_write_acl;
-}
-
-GType
-infd_filesystem_storage_get_type(void)
-{
-  static GType filesystem_storage_type = 0;
-
-  if(!filesystem_storage_type)
-  {
-    static const GTypeInfo filesystem_storage_type_info = {
-      sizeof(InfdFilesystemStorageClass),  /* class_size */
-      NULL,                                /* base_init */
-      NULL,                                /* base_finalize */
-      infd_filesystem_storage_class_init,  /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      sizeof(InfdFilesystemStorage),       /* instance_size */
-      0,                                   /* n_preallocs */
-      infd_filesystem_storage_init,        /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    static const GInterfaceInfo storage_info = {
-      infd_filesystem_storage_storage_init,
-      NULL,
-      NULL
-    };
-
-    filesystem_storage_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfdFilesystemStorage",
-      &filesystem_storage_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      filesystem_storage_type,
-      INFD_TYPE_STORAGE,
-      &storage_info
-    );
-  }
-
-  return filesystem_storage_type;
 }
 
 /**

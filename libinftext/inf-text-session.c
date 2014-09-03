@@ -78,8 +78,10 @@ struct _InfTextSessionEraseForeachData {
 
 #define INF_TEXT_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_SESSION, InfTextSessionPrivate))
 
-static InfAdoptedSessionClass* parent_class;
 static GQuark inf_text_session_error_quark;
+
+G_DEFINE_TYPE_WITH_CODE(InfTextSession, inf_text_session, INF_ADOPTED_TYPE_SESSION,
+  G_ADD_PRIVATE(InfTextSession))
 
 /*
  * Utility functions
@@ -742,13 +744,9 @@ inf_text_session_init_text_handlers(InfTextSession* session)
  */
 
 static void
-inf_text_session_init(GTypeInstance* instance,
-                      gpointer g_class)
+inf_text_session_init(InfTextSession* session)
 {
-  InfTextSession* session;
   InfTextSessionPrivate* priv;
-
-  session = INF_TEXT_SESSION(instance);
   priv = INF_TEXT_SESSION_PRIVATE(session);
 
   priv->caret_update_interval = 500;
@@ -765,7 +763,7 @@ inf_text_session_constructor(GType type,
   InfTextBuffer* buffer;
   InfSessionStatus status;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_text_session_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -859,7 +857,7 @@ inf_text_session_dispose(GObject* object)
     session
   );
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_text_session_parent_class)->dispose(object);
 }
 
 static void
@@ -871,7 +869,7 @@ inf_text_session_finalize(GObject* object)
   session = INF_TEXT_SESSION(object);
   priv = INF_TEXT_SESSION_PRIVATE(session);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_session_parent_class)->finalize(object);
 }
 
 static void
@@ -1010,8 +1008,10 @@ inf_text_session_to_xml_sync(InfSession* session,
   gsize bytes_left;
   GIConv cd;
 
-  g_assert(INF_SESSION_CLASS(parent_class)->to_xml_sync != NULL);
-  INF_SESSION_CLASS(parent_class)->to_xml_sync(session, parent);
+  INF_SESSION_CLASS(inf_text_session_parent_class)->to_xml_sync(
+    session,
+    parent
+  );
 
   buffer = INF_TEXT_BUFFER(inf_session_get_buffer(session));
   cd = g_iconv_open("UTF-8", inf_text_buffer_get_encoding(buffer));
@@ -1123,9 +1123,7 @@ inf_text_session_process_xml_sync(InfSession* session,
   }
   else
   {
-    g_assert(INF_SESSION_CLASS(parent_class)->process_xml_sync != NULL);
-
-    return INF_SESSION_CLASS(parent_class)->process_xml_sync(
+    return INF_SESSION_CLASS(inf_text_session_parent_class)->process_xml_sync(
       session,
       connection,
       xml,
@@ -1140,8 +1138,6 @@ inf_text_session_process_xml_run(InfSession* session,
                                  const xmlNodePtr xml,
                                  GError** error)
 {
-  g_assert(INF_SESSION_CLASS(parent_class)->process_xml_run != NULL);
-
   if(strcmp((const char*)xml->name, "user-color-change") == 0)
   {
     return inf_text_session_handle_user_color_change(
@@ -1153,7 +1149,7 @@ inf_text_session_process_xml_run(InfSession* session,
   }
   else
   {
-    return INF_SESSION_CLASS(parent_class)->process_xml_run(
+    return INF_SESSION_CLASS(inf_text_session_parent_class)->process_xml_run(
       session,
       connection,
       xml,
@@ -1167,19 +1163,15 @@ inf_text_session_get_xml_user_props(InfSession* session,
                                     InfXmlConnection* connection,
                                     const xmlNodePtr xml)
 {
+  InfSessionClass* parent_class;
   GArray* array;
   GParameter* parameter;
   guint caret;
   gint selection;
   gdouble hue;
 
-  g_assert(INF_SESSION_CLASS(parent_class)->get_xml_user_props != NULL);
-
-  array = INF_SESSION_CLASS(parent_class)->get_xml_user_props(
-    session,
-    connection,
-    xml
-  );
+  parent_class = INF_SESSION_CLASS(inf_text_session_parent_class);
+  array = parent_class->get_xml_user_props(session, connection, xml);
 
   /* TODO: Error reporting for get_xml_user_props */
   if(inf_xml_util_get_attribute_uint(xml, "caret", &caret, NULL))
@@ -1214,14 +1206,11 @@ inf_text_session_set_xml_user_props(InfSession* session,
                                     guint n_params,
                                     xmlNodePtr xml)
 {
+  InfSessionClass* parent_class;
   const GParameter* param;
 
-  INF_SESSION_CLASS(parent_class)->set_xml_user_props(
-    session,
-    params,
-    n_params,
-    xml
-  );
+  parent_class = INF_SESSION_CLASS(inf_text_session_parent_class);
+  parent_class->set_xml_user_props(session, params, n_params, xml);
 
   param = inf_session_lookup_user_property(
     params,
@@ -1276,10 +1265,12 @@ inf_text_session_validate_user_props(InfSession* session,
                                      InfUser* exclude,
                                      GError** error)
 {
+  InfSessionClass* parent_class;
   const GParameter* caret;
   gboolean result;
 
-  result = INF_SESSION_CLASS(parent_class)->validate_user_props(
+  parent_class = INF_SESSION_CLASS(inf_text_session_parent_class);
+  result = parent_class->validate_user_props(
     session,
     params,
     n_params,
@@ -1327,13 +1318,13 @@ static void
 inf_text_session_synchronization_complete(InfSession* session,
                                           InfXmlConnection* connection)
 {
+  InfSessionClass* parent_class;
   InfSessionStatus status;
+
+  parent_class = INF_SESSION_CLASS(inf_text_session_parent_class);
   status = inf_session_get_status(session);
 
-  INF_SESSION_CLASS(parent_class)->synchronization_complete(
-    session,
-    connection
-  );
+  parent_class->synchronization_complete(session, connection);
 
   /* init_text_handlers needs to access the algorithm which is created in the
    * parent class default signal handler which is why we call this afterwards.
@@ -1781,19 +1772,15 @@ fail:
  */
 
 static void
-inf_text_session_class_init(gpointer g_class,
-                            gpointer class_data)
+inf_text_session_class_init(InfTextSessionClass* text_session_class)
 {
   GObjectClass* object_class;
   InfSessionClass* session_class;
   InfAdoptedSessionClass* adopted_session_class;
 
-  object_class = G_OBJECT_CLASS(g_class);
-  session_class = INF_SESSION_CLASS(g_class);
-  adopted_session_class = INF_ADOPTED_SESSION_CLASS(g_class);
-
-  parent_class = INF_ADOPTED_SESSION_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextSessionPrivate));
+  object_class = G_OBJECT_CLASS(text_session_class);
+  session_class = INF_SESSION_CLASS(text_session_class);
+  adopted_session_class = INF_ADOPTED_SESSION_CLASS(text_session_class);
 
   object_class->constructor = inf_text_session_constructor;
   object_class->dispose = inf_text_session_dispose;
@@ -1831,37 +1818,6 @@ inf_text_session_class_init(gpointer g_class,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT
     )
   );
-}
-
-GType
-inf_text_session_get_type(void)
-{
-  static GType session_type = 0;
-
-  if(!session_type)
-  {
-    static const GTypeInfo session_type_info = {
-      sizeof(InfTextSessionClass),   /* class_size */
-      NULL,                          /* base_init */
-      NULL,                          /* base_finalize */
-      inf_text_session_class_init,   /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      sizeof(InfTextSession),        /* instance_size */
-      0,                             /* n_preallocs */
-      inf_text_session_init,         /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    session_type = g_type_register_static(
-      INF_ADOPTED_TYPE_SESSION,
-      "InfTextSession",
-      &session_type_info,
-      0
-    );
-  }
-
-  return session_type;
 }
 
 /*

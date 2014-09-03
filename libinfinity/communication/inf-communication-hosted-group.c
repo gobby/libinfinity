@@ -42,7 +42,8 @@ struct _InfCommunicationHostedGroupPrivate {
 
 #define INF_COMMUNICATION_HOSTED_GROUP_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_COMMUNICATION_TYPE_HOSTED_GROUP, InfCommunicationHostedGroupPrivate))
 
-static GObjectClass* parent_class;
+G_DEFINE_TYPE_WITH_CODE(InfCommunicationHostedGroup, inf_communication_hosted_group, INF_COMMUNICATION_TYPE_GROUP,
+  G_ADD_PRIVATE(InfCommunicationHostedGroup))
 
 static const gchar*
 inf_communication_hosted_group_get_method(InfCommunicationGroup* group,
@@ -78,13 +79,9 @@ inf_communication_hosted_group_get_publisher_id(InfCommunicationGroup* group,
  */
 
 static void
-inf_communication_hosted_group_init(GTypeInstance* instance,
-                                    gpointer g_class)
+inf_communication_hosted_group_init(InfCommunicationHostedGroup* group)
 {
-  InfCommunicationHostedGroup* group;
   InfCommunicationHostedGroupPrivate* priv;
-
-  group = INF_COMMUNICATION_HOSTED_GROUP(instance);
   priv = INF_COMMUNICATION_HOSTED_GROUP_PRIVATE(group);
 
   priv->methods = g_ptr_array_new();
@@ -104,7 +101,7 @@ inf_communication_hosted_group_finalize(GObject* object)
     g_free(g_ptr_array_index(priv->methods, i));
   g_ptr_array_free(priv->methods, TRUE);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_communication_hosted_group_parent_class)->finalize(object);
 }
 
 /*
@@ -112,58 +109,20 @@ inf_communication_hosted_group_finalize(GObject* object)
  */
 
 static void
-inf_communication_hosted_group_class_init(gpointer g_class,
-                                          gpointer class_data)
+inf_communication_hosted_group_class_init(
+  InfCommunicationHostedGroupClass* hosted_group_class)
 {
   GObjectClass* object_class;
   InfCommunicationGroupClass* group_class;
 
-  object_class = G_OBJECT_CLASS(g_class);
-  group_class = INF_COMMUNICATION_GROUP_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-
-  g_type_class_add_private(
-    g_class,
-    sizeof(InfCommunicationHostedGroupPrivate)
-  );
+  object_class = G_OBJECT_CLASS(hosted_group_class);
+  group_class = INF_COMMUNICATION_GROUP_CLASS(hosted_group_class);
 
   object_class->finalize = inf_communication_hosted_group_finalize;
 
   group_class->get_method = inf_communication_hosted_group_get_method;
   group_class->get_publisher_id =
     inf_communication_hosted_group_get_publisher_id;
-}
-
-GType
-inf_communication_hosted_group_get_type(void)
-{
-  static GType hosted_group_type = 0;
-
-  if(!hosted_group_type)
-  {
-    static const GTypeInfo hosted_group_type_info = {
-      sizeof(InfCommunicationHostedGroupClass),   /* class_size */
-      NULL,                                       /* base_init */
-      NULL,                                       /* base_finalize */
-      inf_communication_hosted_group_class_init,  /* class_init */
-      NULL,                                       /* class_finalize */
-      NULL,                                       /* class_data */
-      sizeof(InfCommunicationHostedGroup),        /* instance_size */
-      0,                                          /* n_preallocs */
-      inf_communication_hosted_group_init,        /* instance_init */
-      NULL                                        /* value_table */
-    };
-
-    hosted_group_type = g_type_register_static(
-      INF_COMMUNICATION_TYPE_GROUP,
-      "InfCommunicationHostedGroup",
-      &hosted_group_type_info,
-      0
-    );
-  }
-
-  return hosted_group_type;
 }
 
 /*

@@ -96,8 +96,10 @@ enum {
 
 #define INF_ADOPTED_UNDO_GROUPING_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_ADOPTED_TYPE_UNDO_GROUPING, InfAdoptedUndoGroupingPrivate))
 
-static GObjectClass* parent_class;
 static guint undo_grouping_signals[LAST_SIGNAL];
+
+G_DEFINE_TYPE_WITH_CODE(InfAdoptedUndoGrouping, inf_adopted_undo_grouping, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfAdoptedUndoGrouping))
 
 static void
 inf_adopted_undo_grouping_add_request(InfAdoptedUndoGrouping* grouping,
@@ -432,13 +434,9 @@ inf_adopted_undo_grouping_deinit_user(InfAdoptedUndoGrouping* grouping)
 }
 
 static void
-inf_adopted_undo_grouping_init(GTypeInstance* instance,
-                               gpointer g_class)
+inf_adopted_undo_grouping_init(InfAdoptedUndoGrouping* grouping)
 {
-  InfAdoptedUndoGrouping* grouping;
   InfAdoptedUndoGroupingPrivate* priv;
-
-  grouping = INF_ADOPTED_UNDO_GROUPING(instance);
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
 
   priv->algorithm = NULL;
@@ -465,7 +463,7 @@ inf_adopted_undo_grouping_dispose(GObject* object)
 
   inf_adopted_undo_grouping_set_algorithm(grouping, NULL, NULL);
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_adopted_undo_grouping_parent_class)->dispose(object);
 }
 
 static void
@@ -477,7 +475,7 @@ inf_adopted_undo_grouping_finalize(GObject* object)
   grouping = INF_ADOPTED_UNDO_GROUPING(object);
   priv = INF_ADOPTED_UNDO_GROUPING_PRIVATE(grouping);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_adopted_undo_grouping_parent_class)->finalize(object);
 }
 
 static void
@@ -551,17 +549,11 @@ inf_adopted_undo_grouping_group_requests(InfAdoptedUndoGrouping* grouping,
 }
 
 static void
-inf_adopted_undo_grouping_class_init(gpointer g_class,
-                                     gpointer class_data)
+inf_adopted_undo_grouping_class_init(
+  InfAdoptedUndoGroupingClass* undo_grouping_class)
 {
   GObjectClass* object_class;
-  InfAdoptedUndoGroupingClass* undo_grouping_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  undo_grouping_class = INF_ADOPTED_UNDO_GROUPING_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfAdoptedUndoGroupingPrivate));
+  object_class = G_OBJECT_CLASS(undo_grouping_class);
 
   object_class->dispose = inf_adopted_undo_grouping_dispose;
   object_class->finalize = inf_adopted_undo_grouping_finalize;
@@ -620,37 +612,6 @@ inf_adopted_undo_grouping_class_init(gpointer g_class,
     INF_ADOPTED_TYPE_REQUEST,
     INF_ADOPTED_TYPE_REQUEST
   );
-}
-
-GType
-inf_adopted_undo_grouping_get_type(void)
-{
-  static GType undo_grouping_type = 0;
-
-  if(!undo_grouping_type)
-  {
-    static const GTypeInfo undo_grouping_type_info = {
-      sizeof(InfAdoptedUndoGroupingClass),  /* class_size */
-      NULL,                                /* base_init */
-      NULL,                                /* base_finalize */
-      inf_adopted_undo_grouping_class_init, /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      sizeof(InfAdoptedUndoGrouping),       /* instance_size */
-      0,                                   /* n_preallocs */
-      inf_adopted_undo_grouping_init,       /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    undo_grouping_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfAdoptedUndoGrouping",
-      &undo_grouping_type_info,
-      0
-    );
-  }
-
-  return undo_grouping_type;
 }
 
 /**

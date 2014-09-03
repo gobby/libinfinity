@@ -40,51 +40,11 @@
 #include <libinftext/inf-text-insert-operation.h>
 #include <libinftext/inf-text-delete-operation.h>
 
+G_DEFINE_INTERFACE(InfTextDeleteOperation, inf_text_delete_operation, INF_ADOPTED_TYPE_OPERATION)
+
 static void
-inf_text_delete_operation_base_init(gpointer g_class)
+inf_text_delete_operation_default_init(InfTextDeleteOperationInterface* iface)
 {
-  static gboolean initialized = FALSE;
-
-  if(!initialized)
-  {
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_text_delete_operation_get_type(void)
-{
-  static GType delete_operation_type = 0;
-
-  if(!delete_operation_type)
-  {
-    static const GTypeInfo delete_operation_info = {
-      sizeof(InfTextDeleteOperationIface),    /* class_size */
-      inf_text_delete_operation_base_init,    /* base_init */
-      NULL,                                   /* base_finalize */
-      NULL,                                   /* class_init */
-      NULL,                                   /* class_finalize */
-      NULL,                                   /* class_data */
-      0,                                      /* instance_size */
-      0,                                      /* n_preallocs */
-      NULL,                                   /* instance_init */
-      NULL                                    /* value_table */
-    };
-
-    delete_operation_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfTextDeleteOperation",
-      &delete_operation_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(
-      delete_operation_type,
-      INF_ADOPTED_TYPE_OPERATION
-    );
-  }
-
-  return delete_operation_type;
 }
 
 /**
@@ -98,7 +58,7 @@ inf_text_delete_operation_get_type(void)
 guint
 inf_text_delete_operation_get_position(InfTextDeleteOperation* operation)
 {
-  InfTextDeleteOperationIface* iface;
+  InfTextDeleteOperationInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_DELETE_OPERATION(operation), 0);
 
@@ -119,7 +79,7 @@ inf_text_delete_operation_get_position(InfTextDeleteOperation* operation)
 guint
 inf_text_delete_operation_get_length(InfTextDeleteOperation* operation)
 {
-  InfTextDeleteOperationIface* iface;
+  InfTextDeleteOperationInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_DELETE_OPERATION(operation), 0);
 
@@ -164,7 +124,7 @@ InfAdoptedOperation*
 inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
                                            InfTextInsertOperation* against)
 {
-  InfTextDeleteOperationIface* iface;
+  InfTextDeleteOperationInterface* iface;
   guint own_pos;
   guint own_len;
   guint other_pos;
@@ -214,7 +174,7 @@ InfAdoptedOperation*
 inf_text_delete_operation_transform_delete(InfTextDeleteOperation* operation,
                                            InfTextDeleteOperation* against)
 {
-  InfTextDeleteOperationIface* iface;
+  InfTextDeleteOperationInterface* iface;
   guint own_pos;
   guint own_len;
   guint other_pos;

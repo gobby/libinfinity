@@ -29,7 +29,7 @@ G_BEGIN_DECLS
 #define INF_TYPE_IO                 (inf_io_get_type())
 #define INF_IO(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INF_TYPE_IO, InfIo))
 #define INF_IS_IO(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INF_TYPE_IO))
-#define INF_IO_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_IO, InfIoIface))
+#define INF_IO_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INF_TYPE_IO, InfIoInterface))
 
 #define INF_TYPE_IO_EVENT           (inf_io_event_get_type())
 
@@ -40,7 +40,7 @@ G_BEGIN_DECLS
  * API functions.
  */
 typedef struct _InfIo InfIo;
-typedef struct _InfIoIface InfIoIface;
+typedef struct _InfIoInterface InfIoInterface;
 
 /**
  * InfIoWatch:
@@ -116,7 +116,7 @@ typedef void(*InfIoTimeoutFunc)(gpointer user_data);
 typedef void(*InfIoDispatchFunc)(gpointer user_data);
 
 /**
- * InfIoIface:
+ * InfIoInterface:
  * @add_watch: Watches a socket for events to occur in which case @func is
  * called.
  * @update_watch: Updates a watch on a socket so that a different set of
@@ -136,7 +136,7 @@ typedef void(*InfIoDispatchFunc)(gpointer user_data);
  * timeouts and function dispatchers. All of these functions need to be
  * thread-safe.
  */
-struct _InfIoIface {
+struct _InfIoInterface {
   /*< private >*/
   GTypeInterface parent;
 

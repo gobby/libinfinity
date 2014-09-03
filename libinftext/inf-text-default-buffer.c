@@ -44,17 +44,18 @@ enum {
 
 #define INF_TEXT_DEFAULT_BUFFER_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TEXT_TYPE_DEFAULT_BUFFER, InfTextDefaultBufferPrivate))
 
-static GObjectClass* parent_class;
+static void inf_text_default_buffer_buffer_iface_init(InfBufferInterface* iface);
+static void inf_text_default_buffer_text_buffer_iface_init(InfTextBufferInterface* iface);
+G_DEFINE_TYPE_WITH_CODE(InfTextDefaultBuffer, inf_text_default_buffer, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfTextDefaultBuffer)
+  G_IMPLEMENT_INTERFACE(INF_TYPE_BUFFER, inf_text_default_buffer_buffer_iface_init)
+  G_IMPLEMENT_INTERFACE(INF_TEXT_TYPE_BUFFER, inf_text_default_buffer_text_buffer_iface_init))
 
 static void
-inf_text_default_buffer_init(GTypeInstance* instance,
-                             gpointer g_class)
+inf_text_default_buffer_init(InfTextDefaultBuffer* buffer)
 {
-  InfTextDefaultBuffer* default_buffer;
   InfTextDefaultBufferPrivate* priv;
-
-  default_buffer = INF_TEXT_DEFAULT_BUFFER(instance);
-  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(default_buffer);
+  priv = INF_TEXT_DEFAULT_BUFFER_PRIVATE(buffer);
 
   priv->encoding = NULL;
   priv->chunk = NULL;
@@ -73,7 +74,7 @@ inf_text_default_buffer_finalize(GObject* object)
   inf_text_chunk_free(priv->chunk);
   g_free(priv->encoding);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_text_default_buffer_parent_class)->finalize(object);
 }
 
 static void
@@ -324,14 +325,11 @@ inf_text_default_buffer_buffer_iter_get_author(InfTextBuffer* buffer,
 }
 
 static void
-inf_text_default_buffer_class_init(gpointer g_class,
-                                   gpointer class_data)
+inf_text_default_buffer_class_init(
+  InfTextDefaultBufferClass* default_buffer_class)
 {
   GObjectClass* object_class;
-  object_class = G_OBJECT_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfTextDefaultBufferPrivate));
+  object_class = G_OBJECT_CLASS(default_buffer_class);
 
   object_class->finalize = inf_text_default_buffer_finalize;
   object_class->set_property = inf_text_default_buffer_set_property;
@@ -353,23 +351,15 @@ inf_text_default_buffer_class_init(gpointer g_class,
 }
 
 static void
-inf_text_default_buffer_buffer_init(gpointer g_iface,
-                                    gpointer iface_data)
+inf_text_default_buffer_buffer_iface_init(InfBufferInterface* iface)
 {
-  InfBufferIface* iface;
-  iface = (InfBufferIface*)g_iface;
-
   iface->get_modified = inf_text_default_buffer_buffer_get_modified;
   iface->set_modified = inf_text_default_buffer_buffer_set_modified;
 }
 
 static void
-inf_text_default_buffer_text_buffer_init(gpointer g_iface,
-                                         gpointer iface_data)
+inf_text_default_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
 {
-  InfTextBufferIface* iface;
-  iface = (InfTextBufferIface*)g_iface;
-
   iface->get_encoding = inf_text_default_buffer_buffer_get_encoding;
   iface->get_length = inf_text_default_buffer_get_length;
   iface->get_slice = inf_text_default_buffer_buffer_get_slice;
@@ -387,61 +377,6 @@ inf_text_default_buffer_text_buffer_init(gpointer g_iface,
   iface->iter_get_author = inf_text_default_buffer_buffer_iter_get_author;
   iface->text_inserted = NULL;
   iface->text_erased = NULL;
-}
-
-GType
-inf_text_default_buffer_get_type(void)
-{
-  static GType default_buffer_type = 0;
-
-  if(!default_buffer_type)
-  {
-    static const GTypeInfo default_buffer_type_info = {
-      sizeof(InfTextDefaultBufferClass),  /* class_size */
-      NULL,                               /* base_init */
-      NULL,                               /* base_finalize */
-      inf_text_default_buffer_class_init, /* class_init */
-      NULL,                               /* class_finalize */
-      NULL,                               /* class_data */
-      sizeof(InfTextDefaultBuffer),       /* instance_size */
-      0,                                  /* n_preallocs */
-      inf_text_default_buffer_init,       /* instance_init */
-      NULL                                /* value_table */
-    };
-
-    static const GInterfaceInfo buffer_info = {
-      inf_text_default_buffer_buffer_init,
-      NULL,
-      NULL
-    };
-
-    static const GInterfaceInfo text_buffer_info = {
-      inf_text_default_buffer_text_buffer_init,
-      NULL,
-      NULL
-    };
-
-    default_buffer_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfTextDefaultBuffer",
-      &default_buffer_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      default_buffer_type,
-      INF_TYPE_BUFFER,
-      &buffer_info
-    );
-
-    g_type_add_interface_static(
-      default_buffer_type,
-      INF_TEXT_TYPE_BUFFER,
-      &text_buffer_info
-    );
-  }
-
-  return default_buffer_type;
 }
 
 /**

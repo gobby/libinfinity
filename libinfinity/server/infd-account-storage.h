@@ -31,7 +31,7 @@ G_BEGIN_DECLS
 #define INFD_TYPE_ACCOUNT_STORAGE                 (infd_account_storage_get_type())
 #define INFD_ACCOUNT_STORAGE(obj)                 (G_TYPE_CHECK_INSTANCE_CAST((obj), INFD_TYPE_ACCOUNT_STORAGE, InfdAccountStorage))
 #define INFD_IS_ACCOUNT_STORAGE(obj)              (G_TYPE_CHECK_INSTANCE_TYPE((obj), INFD_TYPE_ACCOUNT_STORAGE))
-#define INFD_ACCOUNT_STORAGE_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_ACCOUNT_STORAGE, InfdAccountStorageIface))
+#define INFD_ACCOUNT_STORAGE_GET_IFACE(inst)      (G_TYPE_INSTANCE_GET_INTERFACE((inst), INFD_TYPE_ACCOUNT_STORAGE, InfdAccountStorageInterface))
 
 /**
  * InfdAccountStorage:
@@ -40,7 +40,7 @@ G_BEGIN_DECLS
  * via the public API functions.
  */
 typedef struct _InfdAccountStorage InfdAccountStorage;
-typedef struct _InfdAccountStorageIface InfdAccountStorageIface;
+typedef struct _InfdAccountStorageInterface InfdAccountStorageInterface;
 
 /**
  * InfdAccountStorageSupport:
@@ -78,7 +78,7 @@ typedef enum _InfdAccountStorageSupport {
 } InfdAccountStorageSupport;
 
 /**
- * InfdAccountStorageIface:
+ * InfdAccountStorageInterface:
  * @get_support: Virtual function to get the list of supported operations
  * on the backend.
  * @list_accounts: Virtual function to obtain a list of all available accounts.
@@ -108,7 +108,7 @@ typedef enum _InfdAccountStorageSupport {
  * Implementing these allows an infinote server to set a specific source of
  * user accounts.
  */
-struct _InfdAccountStorageIface {
+struct _InfdAccountStorageInterface {
   /*< private >*/
   GTypeInterface parent;
 

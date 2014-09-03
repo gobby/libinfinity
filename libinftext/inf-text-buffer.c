@@ -42,6 +42,8 @@
 #include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/inf-marshal.h>
 
+G_DEFINE_INTERFACE(InfTextBuffer, inf_text_buffer, INF_TYPE_BUFFER)
+
 enum {
   TEXT_INSERTED,
   TEXT_ERASED,
@@ -52,75 +54,35 @@ enum {
 static guint text_buffer_signals[LAST_SIGNAL];
 
 static void
-inf_text_buffer_base_init(gpointer g_class)
+inf_text_buffer_default_init(InfTextBufferInterface* iface)
 {
-  static gboolean initialized = FALSE;
+  text_buffer_signals[TEXT_INSERTED] = g_signal_new(
+    "text-inserted",
+    INF_TEXT_TYPE_BUFFER,
+    G_SIGNAL_RUN_FIRST,
+    G_STRUCT_OFFSET(InfTextBufferInterface, text_inserted),
+    NULL, NULL,
+    inf_marshal_VOID__UINT_BOXED_OBJECT,
+    G_TYPE_NONE,
+    3,
+    G_TYPE_UINT,
+    INF_TEXT_TYPE_CHUNK | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_USER
+  );
 
-  if(!initialized)
-  {
-    text_buffer_signals[TEXT_INSERTED] = g_signal_new(
-      "text-inserted",
-      INF_TEXT_TYPE_BUFFER,
-      G_SIGNAL_RUN_FIRST,
-      G_STRUCT_OFFSET(InfTextBufferIface, text_inserted),
-      NULL, NULL,
-      inf_marshal_VOID__UINT_BOXED_OBJECT,
-      G_TYPE_NONE,
-      3,
-      G_TYPE_UINT,
-      INF_TEXT_TYPE_CHUNK | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_USER
-    );
-
-    text_buffer_signals[TEXT_ERASED] = g_signal_new(
-      "text-erased",
-      INF_TEXT_TYPE_BUFFER,
-      G_SIGNAL_RUN_FIRST,
-      G_STRUCT_OFFSET(InfTextBufferIface, text_erased),
-      NULL, NULL,
-      inf_marshal_VOID__UINT_BOXED_OBJECT,
-      G_TYPE_NONE,
-      3,
-      G_TYPE_UINT,
-      INF_TEXT_TYPE_CHUNK | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_USER
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_text_buffer_get_type(void)
-{
-  static GType text_buffer_type = 0;
-
-  if(!text_buffer_type)
-  {
-    static const GTypeInfo text_buffer_info = {
-      sizeof(InfTextBufferIface),    /* class_size */
-      inf_text_buffer_base_init,     /* base_init */
-      NULL,                          /* base_finalize */
-      NULL,                          /* class_init */
-      NULL,                          /* class_finalize */
-      NULL,                          /* class_data */
-      0,                             /* instance_size */
-      0,                             /* n_preallocs */
-      NULL,                          /* instance_init */
-      NULL                           /* value_table */
-    };
-
-    text_buffer_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfTextBuffer",
-      &text_buffer_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(text_buffer_type, INF_TYPE_BUFFER);
-  }
-
-  return text_buffer_type;
+  text_buffer_signals[TEXT_ERASED] = g_signal_new(
+    "text-erased",
+    INF_TEXT_TYPE_BUFFER,
+    G_SIGNAL_RUN_FIRST,
+    G_STRUCT_OFFSET(InfTextBufferInterface, text_erased),
+    NULL, NULL,
+    inf_marshal_VOID__UINT_BOXED_OBJECT,
+    G_TYPE_NONE,
+    3,
+    G_TYPE_UINT,
+    INF_TEXT_TYPE_CHUNK | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_USER
+  );
 }
 
 /**
@@ -136,7 +98,7 @@ inf_text_buffer_get_type(void)
 const gchar*
 inf_text_buffer_get_encoding(InfTextBuffer* buffer)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
 
@@ -157,7 +119,7 @@ inf_text_buffer_get_encoding(InfTextBuffer* buffer)
 guint
 inf_text_buffer_get_length(InfTextBuffer* buffer)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
 
@@ -183,7 +145,7 @@ inf_text_buffer_get_slice(InfTextBuffer* buffer,
                           guint pos,
                           guint len)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
 
@@ -213,7 +175,7 @@ inf_text_buffer_insert_text(InfTextBuffer* buffer,
                             guint len,
                             InfUser* user)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
   InfTextChunk* chunk;
 
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
@@ -256,7 +218,7 @@ inf_text_buffer_insert_chunk(InfTextBuffer* buffer,
                              InfTextChunk* chunk,
                              InfUser* user)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
   g_return_if_fail(chunk != NULL);
@@ -283,7 +245,7 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
                            guint len,
                            InfUser* user)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
   g_return_if_fail(user == NULL || INF_IS_USER(user));
@@ -312,7 +274,7 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
 InfTextBufferIter*
 inf_text_buffer_create_begin_iter(InfTextBuffer* buffer)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
 
@@ -340,7 +302,7 @@ inf_text_buffer_create_begin_iter(InfTextBuffer* buffer)
 InfTextBufferIter*
 inf_text_buffer_create_end_iter(InfTextBuffer* buffer)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
 
@@ -362,7 +324,7 @@ void
 inf_text_buffer_destroy_iter(InfTextBuffer* buffer,
                              InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_if_fail(INF_TEXT_IS_BUFFER(buffer));
   g_return_if_fail(iter != NULL);
@@ -388,7 +350,7 @@ gboolean
 inf_text_buffer_iter_next(InfTextBuffer* buffer,
                           InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -414,7 +376,7 @@ gboolean
 inf_text_buffer_iter_prev(InfTextBuffer* buffer,
                           InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), FALSE);
   g_return_val_if_fail(iter != NULL, FALSE);
@@ -440,7 +402,7 @@ gpointer
 inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
                               InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), NULL);
   g_return_val_if_fail(iter != NULL, NULL);
@@ -466,7 +428,7 @@ guint
 inf_text_buffer_iter_get_offset(InfTextBuffer* buffer,
                                 InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
   g_return_val_if_fail(iter != NULL, 0);
@@ -490,7 +452,7 @@ guint
 inf_text_buffer_iter_get_length(InfTextBuffer* buffer,
                                 InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
   g_return_val_if_fail(iter != NULL, 0);
@@ -514,7 +476,7 @@ gsize
 inf_text_buffer_iter_get_bytes(InfTextBuffer* buffer,
                                InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
   g_return_val_if_fail(iter != NULL, 0);
@@ -540,7 +502,7 @@ guint
 inf_text_buffer_iter_get_author(InfTextBuffer* buffer,
                                 InfTextBufferIter* iter)
 {
-  InfTextBufferIface* iface;
+  InfTextBufferInterface* iface;
 
   g_return_val_if_fail(INF_TEXT_IS_BUFFER(buffer), 0);
   g_return_val_if_fail(iter != NULL, 0);

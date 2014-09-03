@@ -40,6 +40,38 @@
 #include <libinfgtk/inf-gtk-browser-model.h>
 #include <libinfinity/client/infc-browser.h>
 #include <libinfinity/inf-marshal.h>
+#include <libinfinity/inf-define-enum.h>
+
+static const GEnumValue inf_gtk_browser_model_status_values[] = {
+  {
+    INF_GTK_BROWSER_MODEL_DISCOVERED,
+    "INF_GTK_BROWSER_MODEL_DISCOVERED",
+    "discovered"
+  }, {
+    INF_GTK_BROWSER_MODEL_RESOLVING,
+    "INF_GTK_BROWSER_MODEL_RESOLVING",
+    "resolving"
+  }, {
+    INF_GTK_BROWSER_MODEL_CONNECTING,
+    "INF_GTK_BROWSER_MODEL_CONNECTING",
+    "connecting"
+  }, {
+    INF_GTK_BROWSER_MODEL_CONNECTED,
+    "INF_GTK_BROWSER_MODEL_CONNECTED",
+    "connected"
+  }, {
+    INF_GTK_BROWSER_MODEL_ERROR,
+    "INF_GTK_BROWSER_MODEL_ERROR",
+    "error"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+INF_DEFINE_ENUM_TYPE(InfGtkBrowserModelStatus, inf_gtk_browser_model_status, inf_gtk_browser_model_status_values)
+G_DEFINE_INTERFACE(InfGtkBrowserModel, inf_gtk_browser_model, GTK_TYPE_TREE_MODEL)
 
 enum {
   SET_BROWSER,
@@ -50,126 +82,39 @@ enum {
 static guint browser_model_signals[LAST_SIGNAL];
 
 static void
-inf_gtk_browser_model_base_init(gpointer g_class)
+inf_gtk_browser_model_default_init(InfGtkBrowserModelInterface* iface)
 {
-  static gboolean initialized = FALSE;
-
-  if(!initialized)
-  {
-    /**
-     * InfGtkBrowserModel::set-browser:
-     * @model: The #InfGtkBrowserModel emitting the signal.
-     * @path: A #GtkTreePath pointing to the item with a new browesr.
-     * @iter: A #GtkTreeIter pointing to the item with a new browser.
-     * @old_browser: The previous #InfBrowser.
-     * @new_browser: The new #InfBrowser.
-     *
-     * This signal is emitted every time the #InfBrowser for one of the
-     * model's top-level entries change. This means either that a completely
-     * new item was inserted, that an item providing only a discovery has
-     * been resolved (see inf_gtk_browser_model_resolve()), or that a
-     * top-level entry has been removed.
-     *
-     * During emission of the signal the actual value in the model might
-     * either be the old or the new browser.
-     */
-    browser_model_signals[SET_BROWSER] = g_signal_new(
-      "set-browser",
-      INF_GTK_TYPE_BROWSER_MODEL,
-      G_SIGNAL_RUN_LAST,
-      G_STRUCT_OFFSET(InfGtkBrowserModelIface, set_browser),
-      NULL, NULL,
-      inf_marshal_VOID__BOXED_BOXED_OBJECT_OBJECT,
-      G_TYPE_NONE,
-      4,
-      GTK_TYPE_TREE_PATH | G_SIGNAL_TYPE_STATIC_SCOPE,
-      GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
-      INF_TYPE_BROWSER,
-      INF_TYPE_BROWSER
-    );
-
-    initialized = TRUE;
-  }
-}
-
-GType
-inf_gtk_browser_model_status_get_type(void)
-{
-  static GType browser_model_status_type = 0;
-
-  if(!browser_model_status_type)
-  {
-    static const GEnumValue browser_model_status_values[] = {
-      {
-        INF_GTK_BROWSER_MODEL_DISCOVERED,
-        "INF_GTK_BROWSER_MODEL_DISCOVERED",
-        "discovered"
-      }, {
-        INF_GTK_BROWSER_MODEL_RESOLVING,
-        "INF_GTK_BROWSER_MODEL_RESOLVING",
-        "resolving"
-      }, {
-        INF_GTK_BROWSER_MODEL_CONNECTING,
-        "INF_GTK_BROWSER_MODEL_CONNECTING",
-        "connecting"
-      }, {
-        INF_GTK_BROWSER_MODEL_CONNECTED,
-        "INF_GTK_BROWSER_MODEL_CONNECTED",
-        "connected"
-      }, {
-        INF_GTK_BROWSER_MODEL_ERROR,
-        "INF_GTK_BROWSER_MODEL_ERROR",
-        "error"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    browser_model_status_type = g_enum_register_static(
-      "InfGtkBrowserModelStatus",
-      browser_model_status_values
-    );
-  }
-
-  return browser_model_status_type;
-}
-
-GType
-inf_gtk_browser_model_get_type()
-{
-  static GType browser_model_type = 0;
-
-  if(!browser_model_type)
-  {
-    static const GTypeInfo browser_model_info = {
-      sizeof(InfGtkBrowserModelIface),     /* class_size */
-      inf_gtk_browser_model_base_init,     /* base_init */
-      NULL,                                /* base_finalize */
-      NULL,                                /* class_init */
-      NULL,                                /* class_finalize */
-      NULL,                                /* class_data */
-      0,                                   /* instance_size */
-      0,                                   /* n_preallocs */
-      NULL,                                /* instance_init */
-      NULL                                 /* value_table */
-    };
-
-    browser_model_type = g_type_register_static(
-      G_TYPE_INTERFACE,
-      "InfGtkBrowserModel",
-      &browser_model_info,
-      0
-    );
-
-    g_type_interface_add_prerequisite(
-      browser_model_type,
-      GTK_TYPE_TREE_MODEL
-    );
-  }
-
-  return browser_model_type;
+  /**
+   * InfGtkBrowserModel::set-browser:
+   * @model: The #InfGtkBrowserModel emitting the signal.
+   * @path: A #GtkTreePath pointing to the item with a new browesr.
+   * @iter: A #GtkTreeIter pointing to the item with a new browser.
+   * @old_browser: The previous #InfBrowser.
+   * @new_browser: The new #InfBrowser.
+   *
+   * This signal is emitted every time the #InfBrowser for one of the
+   * model's top-level entries change. This means either that a completely
+   * new item was inserted, that an item providing only a discovery has
+   * been resolved (see inf_gtk_browser_model_resolve()), or that a
+   * top-level entry has been removed.
+   *
+   * During emission of the signal the actual value in the model might
+   * either be the old or the new browser.
+   */
+  browser_model_signals[SET_BROWSER] = g_signal_new(
+    "set-browser",
+    INF_GTK_TYPE_BROWSER_MODEL,
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET(InfGtkBrowserModelInterface, set_browser),
+    NULL, NULL,
+    inf_marshal_VOID__BOXED_BOXED_OBJECT_OBJECT,
+    G_TYPE_NONE,
+    4,
+    GTK_TYPE_TREE_PATH | G_SIGNAL_TYPE_STATIC_SCOPE,
+    GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
+    INF_TYPE_BROWSER,
+    INF_TYPE_BROWSER
+  );
 }
 
 /**
@@ -224,7 +169,7 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
                               InfDiscovery* discovery,
                               InfDiscoveryInfo* info)
 {
-  InfGtkBrowserModelIface* iface;
+  InfGtkBrowserModelInterface* iface;
 
   g_return_if_fail(INF_GTK_IS_BROWSER_MODEL(model));
   g_return_if_fail(INF_IS_DISCOVERY(discovery));
@@ -259,7 +204,7 @@ inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,
                                                 const InfBrowserIter* iter,
                                                 GtkTreeIter* tree_iter)
 {
-  InfGtkBrowserModelIface* iface;
+  InfGtkBrowserModelInterface* iface;
 
   g_return_val_if_fail(INF_GTK_IS_BROWSER_MODEL(model), FALSE);
   g_return_val_if_fail(INF_IS_BROWSER(browser), FALSE);

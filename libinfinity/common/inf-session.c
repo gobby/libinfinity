@@ -64,12 +64,37 @@
 #include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
+#include <libinfinity/inf-define-enum.h>
 
 #include <string.h>
 
 /* TODO: Set buffer to non-editable during synchronization */
 /* TODO: Cache requests received by other group members
  * during synchronization and process them afterwards */
+
+static const GEnumValue inf_session_status_values[] = {
+  {
+    INF_SESSION_PRESYNC,
+    "INF_SESSION_PRESYNC",
+    "presync"
+  }, {
+    INF_SESSION_SYNCHRONIZING,
+    "INF_SESSION_SYNCHRONIZING",
+    "synchronizing"
+  }, {
+    INF_SESSION_RUNNING,
+    "INF_SESSION_RUNNING",
+    "running"
+  }, {
+    INF_SESSION_CLOSED,
+    "INF_SESSION_CLOSED",
+    "closed"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
 
 typedef struct _InfSessionSync InfSessionSync;
 struct _InfSessionSync {
@@ -152,9 +177,14 @@ enum {
 
 #define INF_SESSION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_SESSION, InfSessionPrivate))
 
-static GObjectClass* parent_class;
 static guint session_signals[LAST_SIGNAL];
 static GQuark inf_session_sync_error_quark;
+
+static void inf_session_communication_object_iface_init(InfCommunicationObjectInterface* iface);
+INF_DEFINE_ENUM_TYPE(InfSessionStatus, inf_session_status, inf_session_status_values)
+G_DEFINE_TYPE_WITH_CODE(InfSession, inf_session, G_TYPE_OBJECT,
+  G_ADD_PRIVATE(InfSession)
+  G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_OBJECT, inf_session_communication_object_iface_init))
 
 /*
  * Utility functions.
@@ -420,13 +450,9 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
  */
 
 static void
-inf_session_init(GTypeInstance* instance,
-                 gpointer g_class)
+inf_session_init(InfSession* session)
 {
-  InfSession* session;
   InfSessionPrivate* priv;
-
-  session = INF_SESSION(instance);
   priv = INF_SESSION_PRIVATE(session);
 
   priv->manager = NULL;
@@ -446,7 +472,7 @@ inf_session_constructor(GType type,
   InfSessionPrivate* priv;
   InfXmlConnection* sync_conn;
 
-  object = G_OBJECT_CLASS(parent_class)->constructor(
+  object = G_OBJECT_CLASS(inf_session_parent_class)->constructor(
     type,
     n_construct_properties,
     construct_properties
@@ -517,7 +543,7 @@ inf_session_dispose(GObject* object)
   g_object_unref(G_OBJECT(priv->manager));
   priv->manager = NULL;
 
-  G_OBJECT_CLASS(parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_session_parent_class)->dispose(object);
 }
 
 static void
@@ -529,7 +555,7 @@ inf_session_finalize(GObject* object)
   session = INF_SESSION(object);
   priv = INF_SESSION_PRIVATE(session);
 
-  G_OBJECT_CLASS(parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_session_parent_class)->finalize(object);
 }
 
 static void
@@ -1865,17 +1891,10 @@ inf_session_synchronization_failed_handler(InfSession* session,
  */
 
 static void
-inf_session_class_init(gpointer g_class,
-                       gpointer class_data)
+inf_session_class_init(InfSessionClass* session_class)
 {
   GObjectClass* object_class;
-  InfSessionClass* session_class;
-
-  object_class = G_OBJECT_CLASS(g_class);
-  session_class = INF_SESSION_CLASS(g_class);
-
-  parent_class = G_OBJECT_CLASS(g_type_class_peek_parent(g_class));
-  g_type_class_add_private(g_class, sizeof(InfSessionPrivate));
+  object_class = G_OBJECT_CLASS(session_class);
 
   object_class->constructor = inf_session_constructor;
   object_class->dispose = inf_session_dispose;
@@ -2149,98 +2168,12 @@ inf_session_class_init(gpointer g_class,
 }
 
 static void
-inf_session_communication_object_init(gpointer g_iface,
-                                      gpointer iface_data)
+inf_session_communication_object_iface_init(
+  InfCommunicationObjectInterface* iface)
 {
-  InfCommunicationObjectIface* iface;
-  iface = (InfCommunicationObjectIface*)g_iface;
-
   iface->sent = inf_session_communication_object_sent;
   iface->enqueued = inf_session_communication_object_enqueued;
   iface->received = inf_session_communication_object_received;
-}
-
-GType
-inf_session_status_get_type(void)
-{
-  static GType session_status_type = 0;
-
-  if(!session_status_type)
-  {
-    static const GEnumValue session_status_type_values[] = {
-      {
-        INF_SESSION_PRESYNC,
-        "INF_SESSION_PRESYNC",
-        "presync"
-      }, {
-        INF_SESSION_SYNCHRONIZING,
-        "INF_SESSION_SYNCHRONIZING",
-        "synchronizing"
-      }, {
-        INF_SESSION_RUNNING,
-        "INF_SESSION_RUNNING",
-        "running"
-      }, {
-        INF_SESSION_CLOSED,
-        "INF_SESSION_CLOSED",
-        "closed"
-      }, {
-        0,
-        NULL,
-        NULL
-      }
-    };
-
-    session_status_type = g_enum_register_static(
-      "InfSessionStatus",
-      session_status_type_values
-    );
-  }
-
-  return session_status_type;
-}
-
-GType
-inf_session_get_type(void)
-{
-  static GType session_type = 0;
-
-  if(!session_type)
-  {
-    static const GTypeInfo session_type_info = {
-      sizeof(InfSessionClass),  /* class_size */
-      NULL,                     /* base_init */
-      NULL,                     /* base_finalize */
-      inf_session_class_init,   /* class_init */
-      NULL,                     /* class_finalize */
-      NULL,                     /* class_data */
-      sizeof(InfSession),       /* instance_size */
-      0,                        /* n_preallocs */
-      inf_session_init,         /* instance_init */
-      NULL                      /* value_table */
-    };
-
-    static const GInterfaceInfo communication_object_info = {
-      inf_session_communication_object_init,
-      NULL,
-      NULL
-    };
-
-    session_type = g_type_register_static(
-      G_TYPE_OBJECT,
-      "InfSession",
-      &session_type_info,
-      0
-    );
-
-    g_type_add_interface_static(
-      session_type,
-      INF_COMMUNICATION_TYPE_OBJECT,
-      &communication_object_info
-    );
-  }
-
-  return session_type;
 }
 
 /*
