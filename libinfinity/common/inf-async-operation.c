@@ -36,7 +36,7 @@ struct _InfAsyncOperation {
   InfIo* io;
   InfIoDispatch* dispatch;
   GThread* thread;
-  GMutex* mutex;
+  GMutex mutex;
 
   InfAsyncOperationRunFunc run_func;
   InfAsyncOperationDoneFunc done_func;
@@ -52,11 +52,9 @@ inf_async_operation_dispatch(gpointer data)
   InfAsyncOperation* op;
   op = (InfAsyncOperation*)data;
 
-  g_assert(op->mutex != NULL);
-
-  g_mutex_lock(op->mutex);
+  g_mutex_lock(&op->mutex);
   op->dispatch = NULL;
-  g_mutex_unlock(op->mutex);
+  g_mutex_unlock(&op->mutex);
 
   if(op->done_func != NULL)
     op->done_func(op->run_data, op->user_data);
@@ -67,7 +65,7 @@ inf_async_operation_dispatch(gpointer data)
   op->run_data = NULL;
   op->run_notify = NULL;
   op->thread = NULL;
-  op->mutex = NULL;
+  g_mutex_clear(&op->mutex);
 
   inf_async_operation_free(op);
 }
@@ -80,7 +78,7 @@ inf_async_operation_thread_start(gpointer data)
 
   op->run_func(&op->run_data, &op->run_notify, op->user_data);
 
-  g_mutex_lock(op->mutex);
+  g_mutex_lock(&op->mutex);
   g_assert(op->dispatch == NULL);
 
   if(op->io != NULL)
@@ -92,15 +90,16 @@ inf_async_operation_thread_start(gpointer data)
       NULL
     );
 
-    g_mutex_unlock(op->mutex);
+    g_mutex_unlock(&op->mutex);
   }
   else
   {
     if(op->run_notify != NULL)
       op->run_notify(op->run_data);
 
-    g_mutex_unlock(op->mutex);
-    g_mutex_free(op->mutex);
+    g_mutex_unlock(&op->mutex);
+    g_mutex_clear(&op->mutex);
+    g_thread_unref(op->thread);
     g_slice_free(InfAsyncOperation, op);
   }
 
@@ -171,7 +170,6 @@ inf_async_operation_new(InfIo* io,
   op->io = io;
   op->dispatch = NULL;
   op->thread = NULL;
-  op->mutex = NULL;
 
   op->run_func = run_func;
   op->done_func = done_func;
@@ -207,29 +205,26 @@ inf_async_operation_start(InfAsyncOperation* op,
 {
   g_return_val_if_fail(op != NULL, FALSE);
   g_return_val_if_fail(op->thread == NULL, FALSE);
-  g_return_val_if_fail(op->mutex == NULL, FALSE);
 
-  op->mutex = g_mutex_new();
+  g_mutex_init(&op->mutex);
+  g_mutex_lock(&op->mutex);
 
-  g_mutex_lock(op->mutex);
-
-  op->thread = g_thread_create(
+  op->thread = g_thread_try_new(
+    "InfAsyncOperation",
     inf_async_operation_thread_start,
     op,
-    FALSE,
     error
   );
 
   if(op->thread == NULL)
   {
-    g_mutex_unlock(op->mutex);
-    g_mutex_free(op->mutex);
-    op->mutex = NULL;
+    g_mutex_unlock(&op->mutex);
+    g_mutex_clear(&op->mutex);
     inf_async_operation_free(op);
     return FALSE;
   }
 
-  g_mutex_unlock(op->mutex);
+  g_mutex_clear(&op->mutex);
   return TRUE;
 }
 
@@ -263,8 +258,7 @@ inf_async_operation_free(InfAsyncOperation* op)
   }
   else
   {
-    g_assert(op->mutex != NULL);
-    g_mutex_lock(op->mutex);
+    g_mutex_lock(&op->mutex);
     g_assert(op->io != NULL);
 
     if(op->dispatch == NULL)
@@ -281,7 +275,7 @@ inf_async_operation_free(InfAsyncOperation* op)
       );
 
       op->io = NULL;
-      g_mutex_unlock(op->mutex);
+      g_mutex_unlock(&op->mutex);
     }
     else
     {
@@ -291,8 +285,9 @@ inf_async_operation_free(InfAsyncOperation* op)
       inf_io_remove_dispatch(op->io, op->dispatch);
       if(op->run_notify != NULL) op->run_notify(op->run_data);
 
-      g_mutex_unlock(op->mutex);
-      g_mutex_free(op->mutex);
+      g_mutex_unlock(&op->mutex);
+      g_mutex_clear(&op->mutex);
+      g_thread_unref(op->thread);
       g_slice_free(InfAsyncOperation, op);
     }
   }

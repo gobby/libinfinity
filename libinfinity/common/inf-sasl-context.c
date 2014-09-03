@@ -134,7 +134,7 @@ struct _InfSaslContext {
 
   /* protects the session list, the callback function and access to the
    * Gsasl object. */
-  GMutex* mutex;
+  GMutex mutex;
 };
 
 /*
@@ -279,13 +279,13 @@ inf_sasl_context_session_message_func(gpointer user_data)
     break;
   case INF_SASL_CONTEXT_MESSAGE_QUERY:
     /* main thread */
-    g_mutex_lock(message->session->context->mutex);
+    g_mutex_lock(&message->session->context->mutex);
     g_assert(message->session->dispatch != NULL);
     message->session->dispatch = NULL;
 
     func = message->session->context->callback;
     func_user_data = message->session->context->callback_user_data;
-    g_mutex_unlock(message->session->context->mutex);
+    g_mutex_unlock(&message->session->context->mutex);
 
     func(
       message->session,
@@ -297,10 +297,10 @@ inf_sasl_context_session_message_func(gpointer user_data)
     break;
   case INF_SASL_CONTEXT_MESSAGE_STEPPED:
     /* main thread */
-    g_mutex_lock(message->session->context->mutex);
+    g_mutex_lock(&message->session->context->mutex);
     g_assert(message->session->dispatch != NULL);
     message->session->dispatch = NULL;
-    g_mutex_unlock(message->session->context->mutex);
+    g_mutex_unlock(&message->session->context->mutex);
 
     switch(message->shared.stepped.retval)
     {
@@ -364,7 +364,7 @@ inf_sasl_context_gsasl_callback(Gsasl* gsasl,
     inf_sasl_context_message_free
   );
 
-  g_mutex_unlock(session->context->mutex);
+  g_mutex_unlock(&session->context->mutex);
 
   session->retval = G_MAXINT;
   while(session->status == INF_SASL_CONTEXT_SESSION_INNER &&
@@ -375,7 +375,7 @@ inf_sasl_context_gsasl_callback(Gsasl* gsasl,
     inf_sasl_context_message_free(message);
   }
 
-  g_mutex_lock(session->context->mutex);
+  g_mutex_lock(&session->context->mutex);
 
   /* return on terminate */
   if(session->status == INF_SASL_CONTEXT_SESSION_TERMINATE)
@@ -409,7 +409,7 @@ inf_sasl_context_thread_func(gpointer data)
       inf_sasl_context_message_free(message);
       break;
     case INF_SASL_CONTEXT_SESSION_INNER:
-      g_mutex_lock(session->context->mutex);
+      g_mutex_lock(&session->context->mutex);
 
       g_assert(session->dispatch == NULL);
 
@@ -421,7 +421,7 @@ inf_sasl_context_thread_func(gpointer data)
         &output
       );
 
-      g_mutex_unlock(session->context->mutex);
+      g_mutex_unlock(&session->context->mutex);
 
       g_free(session->step64);
       session->step64 = NULL;
@@ -439,7 +439,7 @@ inf_sasl_context_thread_func(gpointer data)
 
         session->status = INF_SASL_CONTEXT_SESSION_OUTER;
 
-        g_mutex_lock(session->context->mutex);
+        g_mutex_lock(&session->context->mutex);
 
         g_assert(session->dispatch == NULL);
 
@@ -456,7 +456,7 @@ inf_sasl_context_thread_func(gpointer data)
           inf_sasl_context_message_free
         );
 
-        g_mutex_unlock(session->context->mutex);
+        g_mutex_unlock(&session->context->mutex);
       }
       else
       {
@@ -509,10 +509,10 @@ inf_sasl_context_start_session(InfSaslContext* context,
   context->sessions = g_slist_prepend(context->sessions, session);
   gsasl_session_hook_set(gsasl_session, session);
 
-  session->thread = g_thread_create(
+  session->thread = g_thread_try_new(
+    "InfSaslContext",
     inf_sasl_context_thread_func,
     session,
-    TRUE,
     error
   );
 
@@ -586,8 +586,8 @@ inf_sasl_context_new(GError** error)
 
   gsasl_callback_set(gsasl, inf_sasl_context_gsasl_callback);
   gsasl_callback_hook_set(gsasl, sasl);
-  
-  sasl->mutex = g_mutex_new();
+
+  g_mutex_init(&sasl->mutex);
 
   return sasl;
 }
@@ -640,7 +640,7 @@ inf_sasl_context_unref(InfSaslContext* context)
     /* Again we don't need to lock the mutex for this since all session
      * threads have been stopped at this point. */
     gsasl_done(context->gsasl);
-    g_mutex_free(context->mutex);
+    g_mutex_clear(&context->mutex);
 
     g_slice_free(InfSaslContext, context);
   }
@@ -671,10 +671,10 @@ inf_sasl_context_set_callback(InfSaslContext* context,
 {
   g_return_if_fail(context != NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   context->callback = callback;
   context->callback_user_data = user_data;
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 }
 
 /**
@@ -710,12 +710,12 @@ inf_sasl_context_client_start_session(InfSaslContext* context,
   g_return_val_if_fail(mech != NULL, NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
 
   status = gsasl_client_start(context->gsasl, mech, &gsasl_session);
   if(status != GSASL_OK)
   {
-    g_mutex_unlock(context->mutex);
+    g_mutex_unlock(&context->mutex);
     inf_gsasl_set_error(error, status);
     return NULL;
   }
@@ -731,11 +731,11 @@ inf_sasl_context_client_start_session(InfSaslContext* context,
   if(session == NULL)
   {
     gsasl_finish(gsasl_session);
-    g_mutex_unlock(context->mutex);
+    g_mutex_unlock(&context->mutex);
     return NULL;
   }
 
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
   return session;
 }
 
@@ -760,9 +760,9 @@ inf_sasl_context_client_list_mechanisms(InfSaslContext* context,
   g_return_val_if_fail(context != NULL, NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   ret = gsasl_client_mechlist(context->gsasl, &out);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   if(ret != GSASL_OK)
   {
@@ -793,9 +793,9 @@ inf_sasl_context_client_supports_mechanism(InfSaslContext* context,
   g_return_val_if_fail(context != NULL, FALSE);
   g_return_val_if_fail(mech != NULL, FALSE);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   result = gsasl_client_support_p(context->gsasl, mech);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   return result != 0;
 }
@@ -818,9 +818,9 @@ inf_sasl_context_client_suggest_mechanism(InfSaslContext* context,
   g_return_val_if_fail(context != NULL, NULL);
   g_return_val_if_fail(mechanisms != NULL, NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   suggestion = gsasl_client_suggest_mechanism(context->gsasl, mechanisms);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   return suggestion;
 }
@@ -858,12 +858,12 @@ inf_sasl_context_server_start_session(InfSaslContext* context,
   g_return_val_if_fail(mech != NULL, NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
 
   status = gsasl_server_start(context->gsasl, mech, &gsasl_session);
   if(status != GSASL_OK)
   {
-    g_mutex_unlock(context->mutex);
+    g_mutex_unlock(&context->mutex);
     inf_gsasl_set_error(error, status);
     return NULL;
   }
@@ -879,11 +879,11 @@ inf_sasl_context_server_start_session(InfSaslContext* context,
   if(session == NULL)
   {
     gsasl_finish(gsasl_session);
-    g_mutex_unlock(context->mutex);
+    g_mutex_unlock(&context->mutex);
     return NULL;
   }
 
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
   return session;
 }
 
@@ -908,9 +908,9 @@ inf_sasl_context_server_list_mechanisms(InfSaslContext* context,
   g_return_val_if_fail(context != NULL, NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   ret = gsasl_server_mechlist(context->gsasl, &out);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   if(ret != GSASL_OK)
   {
@@ -941,9 +941,9 @@ inf_sasl_context_server_supports_mechanism(InfSaslContext* context,
   g_return_val_if_fail(context != NULL, FALSE);
   g_return_val_if_fail(mech != NULL, FALSE);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   ret = gsasl_server_support_p(context->gsasl, mech);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   return ret != 0;
 }
@@ -966,10 +966,10 @@ inf_sasl_context_stop_session(InfSaslContext* context,
   g_return_if_fail(context != NULL);
   g_return_if_fail(session != NULL);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   g_return_if_fail(g_slist_find(context->sessions, session) != NULL);
   g_return_if_fail(session->context == context);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   /* Tell client thread to terminate */
   g_async_queue_push(
@@ -979,13 +979,13 @@ inf_sasl_context_stop_session(InfSaslContext* context,
 
   g_thread_join(session->thread);
 
-  g_mutex_lock(context->mutex);
+  g_mutex_lock(&context->mutex);
   if(session->dispatch != NULL)
     inf_io_remove_dispatch(session->main_io, session->dispatch);
 
   context->sessions = g_slist_remove(context->sessions, session);
   gsasl_finish(session->session);
-  g_mutex_unlock(context->mutex);
+  g_mutex_unlock(&context->mutex);
 
   /* Note that this assertion should hold because us pushing the terminate
    * message into the end of the queue, and all other queued messages will
@@ -1020,9 +1020,9 @@ inf_sasl_context_session_get_property(InfSaslContextSession* session,
 
   /* TODO: We should g_strdup the return value for thread safety reasons */
 
-  g_mutex_lock(session->context->mutex);
+  g_mutex_lock(&session->context->mutex);
   property = gsasl_property_fast(session->session, prop);
-  g_mutex_unlock(session->context->mutex);
+  g_mutex_unlock(&session->context->mutex);
 
   return property;
 }
@@ -1042,9 +1042,9 @@ inf_sasl_context_session_set_property(InfSaslContextSession* session,
 {
   g_return_if_fail(session != NULL);
 
-  g_mutex_lock(session->context->mutex);
+  g_mutex_lock(&session->context->mutex);
   gsasl_property_set(session->session, prop, value);
-  g_mutex_unlock(session->context->mutex);
+  g_mutex_unlock(&session->context->mutex);
 }
 
 /**

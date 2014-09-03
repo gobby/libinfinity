@@ -29,9 +29,8 @@ infinote consists of the following parts:
 
 libinfinity requires:
 
-- glib-2.0 >= 2.16
-- gobject-2.0 >= 2.16
-- gthread-2.0 >= 2.16
+- glib-2.0 >= 2.36
+- gobject-2.0 >= 2.36
 - libxml-2.0
 - gnutls >= 2.12.0
 - gsasl >= 0.2.21

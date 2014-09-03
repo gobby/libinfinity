@@ -51,9 +51,6 @@ inf_init(GError** error)
   gchar* error_message;
 #endif
 
-  if(!g_thread_supported())
-    g_thread_init(NULL);
-
   if(inf_init_counter == 0)
   {
 #ifdef G_OS_WIN32
@@ -74,7 +71,7 @@ inf_init(GError** error)
       return FALSE;
     }
 #endif
-    g_type_init();
+
     gnutls_global_init();
     _inf_gettext_init();
   }
