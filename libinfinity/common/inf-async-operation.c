@@ -224,7 +224,7 @@ inf_async_operation_start(InfAsyncOperation* op,
     return FALSE;
   }
 
-  g_mutex_clear(&op->mutex);
+  g_mutex_unlock(&op->mutex);
   return TRUE;
 }
 
