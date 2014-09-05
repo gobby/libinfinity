@@ -136,7 +136,7 @@ AC_ARG_WITH([inftextgtk], AS_HELP_STRING([--with-inftextgtk],
             [Builds the libinftextgtk library [[default=auto]]]),
             [with_inftextgtk=$withval], [with_inftextgtk=auto])
 
-gtk_requirement="gtk+-3.0 >= 3.2.0"
+gtk_requirement="gtk+-3.0 >= 3.10.0"
 if test "x$with_inftextgtk" = "xauto"
 then
   PKG_CHECK_MODULES([inftextgtk], [$gtk_requirement], [with_inftextgtk=yes], [with_inftextgtk=no])

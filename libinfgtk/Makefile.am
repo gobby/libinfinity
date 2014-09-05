@@ -28,7 +28,8 @@ headers = \
 	inf-gtk-certificate-view.h \
 	inf-gtk-chat.h \
 	inf-gtk-io.h \
-	inf-gtk-permissions-dialog.h
+	inf-gtk-permissions-dialog.h \
+	inf-gtk-resources.h
 
 sources = \
 	inf-gtk-account-creation-dialog.c \
@@ -43,7 +44,24 @@ sources = \
 	inf-gtk-certificate-view.c \
 	inf-gtk-chat.c \
 	inf-gtk-io.c \
-	inf-gtk-permissions-dialog.c
+	inf-gtk-permissions-dialog.c \
+	inf-gtk-resources.c
+
+resources = \
+	resources/ui/infgtkchat.ui
+
+inf-gtk-resources.h: resources/infgtk.gresources.xml
+	glib-compile-resources $< \
+		--target=$@ --sourcedir=$(srcdir)/resources \
+		--c-name _inf_gtk --generate-header --internal
+
+inf-gtk-resources.c: resources/infgtk.gresources.xml $(resources)
+	glib-compile-resources $< \
+		--target=$@ --sourcedir=$(srcdir)/resources \
+		--c-name _inf_gtk --generate-source --internal
+
+BUILT_SOURCES = inf-gtk-resources.h inf-gtk-resources.c
+CLEANFILES = inf-gtk-resources.h inf-gtk-resources.c
 
 libinfgtk_0_7_la_CPPFLAGS = $(cppflags)
 libinfgtk_0_7_la_LDFLAGS = $(ldflags)

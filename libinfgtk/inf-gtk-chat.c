@@ -64,15 +64,15 @@ struct _InfGtkChatEntryKeyPressEventCbForeachData {
 typedef struct _InfGtkChatPrivate InfGtkChatPrivate;
 struct _InfGtkChatPrivate {
   GtkWidget* chat_view;
-  GtkWidget* entry;
-  GtkWidget* button;
-  GtkAdjustment* vadj;
-  gdouble voffset;
-  InfGtkChatVMode vmode;
+  GtkWidget* chat_entry;
+  GtkWidget* send_button;
+  GtkAdjustment* scroll_vadj;
 
   InfChatSession* session;
   InfChatBuffer* buffer;
   InfUser* active_user;
+  gdouble voffset;
+  InfGtkChatVMode vmode;
 
   GtkTextTag* tag_normal;
   GtkTextTag* tag_system;
@@ -95,7 +95,7 @@ enum {
 
 #define INF_GTK_CHAT_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CHAT, InfGtkChatPrivate))
 
-G_DEFINE_TYPE_WITH_CODE(InfGtkChat, inf_gtk_chat, GTK_TYPE_VBOX,
+G_DEFINE_TYPE_WITH_CODE(InfGtkChat, inf_gtk_chat, GTK_TYPE_BOX,
   G_ADD_PRIVATE(InfGtkChat))
 
 /*
@@ -219,7 +219,8 @@ inf_gtk_chat_add_message(InfGtkChat* chat,
   if(message->flags & INF_CHAT_BUFFER_MESSAGE_BACKLOG)
     tag = priv->tag_backlog;
 
-  g_object_get( G_OBJECT(priv->vadj),
+  g_object_get(
+    G_OBJECT(priv->scroll_vadj),
     "value", &scroll_val,
     "upper", &scroll_upper,
     "page-size", &scroll_page_size,
@@ -250,6 +251,7 @@ static void
 inf_gtk_chat_commit_message(InfGtkChat* chat)
 {
   InfGtkChatPrivate* priv;
+  const gchar* orig_text;
   const gchar* text;
 
   priv = INF_GTK_CHAT_PRIVATE(chat);
@@ -258,7 +260,8 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
   g_assert(priv->buffer != NULL);
   g_assert(priv->active_user != NULL);
 
-  text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
+  orig_text = gtk_entry_get_text(GTK_ENTRY(priv->chat_entry));
+  text = orig_text;
 
   if(g_str_has_prefix(text, "/me") &&
      (text[3] == '\0' || g_unichar_isspace(g_utf8_get_char(text+3))))
@@ -271,9 +274,8 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
       priv->buffer,
       priv->active_user,
       text,
-      /* TODO: Use gtk_entry_get_text_length() - (text -
-       * gtk_entry_get_text())) once we can use GTK+ 2.14. */
-      strlen(text),
+      gtk_entry_get_text_length(GTK_ENTRY(priv->chat_entry)) -
+        (text - orig_text),
       time(NULL),
       0
     );
@@ -284,14 +286,13 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
       priv->buffer,
       priv->active_user,
       text,
-      /* TODO: Use gtk_entry_get_text_length() once we can use GTK+ 2.14. */
-      strlen(text),
+      gtk_entry_get_text_length(GTK_ENTRY(priv->chat_entry)),
       time(NULL),
       0
     );
   }
 
-  gtk_entry_set_text(GTK_ENTRY(priv->entry), "");
+  gtk_entry_set_text(GTK_ENTRY(priv->chat_entry), "");
 }
 
 /*
@@ -315,9 +316,16 @@ inf_gtk_chat_entry_changed_cb(GtkEntry* entry,
 {
   InfGtkChat* chat;
   InfGtkChatPrivate* priv;
+  const gchar* text;
 
   chat = INF_GTK_CHAT(user_data);
   priv = INF_GTK_CHAT_PRIVATE(chat);
+  text = gtk_entry_get_text(entry);
+
+  gtk_widget_set_sensitive(
+    priv->send_button,
+    text != NULL && *text != '\0'
+  );
 
   /* Reset tab completion */
   g_free(priv->completion_text);
@@ -397,7 +405,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
       /* No previous completion, so find completion text and completion
        * starting point. */
       begin = index;
-      text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
+      text = gtk_entry_get_text(GTK_ENTRY(priv->chat_entry));
       while(begin > 0)
       {
         begin = g_utf8_prev_char(&text[begin]) - text;
@@ -458,7 +466,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
       else
       {
         inf_signal_handlers_block_by_func(
-          G_OBJECT(priv->entry),
+          G_OBJECT(priv->chat_entry),
           G_CALLBACK(inf_gtk_chat_entry_changed_cb),
           chat
         );
@@ -474,7 +482,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
 
         position = priv->completion_start;
         gtk_editable_insert_text(
-          GTK_EDITABLE(priv->entry),
+          GTK_EDITABLE(priv->chat_entry),
           inf_user_get_name(complete),
           -1,
           &position
@@ -483,7 +491,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
         if(priv->completion_start == 0)
         {
           gtk_editable_insert_text(
-            GTK_EDITABLE(priv->entry),
+            GTK_EDITABLE(priv->chat_entry),
             ": ",
             2,
             &position
@@ -492,7 +500,7 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
         else
         {
           gtk_editable_insert_text(
-            GTK_EDITABLE(priv->entry),
+            GTK_EDITABLE(priv->chat_entry),
             " ",
             1,
             &position
@@ -500,10 +508,10 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
         }
 
         priv->completion_end = position;
-        gtk_editable_set_position(GTK_EDITABLE(priv->entry), position);
+        gtk_editable_set_position(GTK_EDITABLE(priv->chat_entry), position);
 
         inf_signal_handlers_unblock_by_func(
-          G_OBJECT(priv->entry),
+          G_OBJECT(priv->chat_entry),
           G_CALLBACK(inf_gtk_chat_entry_changed_cb),
           chat
         );
@@ -517,8 +525,8 @@ inf_gtk_chat_entry_key_press_event_cb(GtkWidget* widget,
 }
 
 static void
-inf_gtk_chat_entry_button_clicked_cb(GtkButton* button,
-                                     gpointer user_data)
+inf_gtk_chat_send_button_clicked_cb(GtkButton* button,
+                                    gpointer user_data)
 {
   inf_gtk_chat_commit_message(INF_GTK_CHAT(user_data));
 }
@@ -634,11 +642,6 @@ static void
 inf_gtk_chat_init(InfGtkChat* chat)
 {
   InfGtkChatPrivate* priv;
-
-  GtkWidget* scroll;
-  GtkWidget* image;
-  GtkWidget* hbox;
-
   priv = INF_GTK_CHAT_PRIVATE(chat);
 
   priv->session = NULL;
@@ -654,122 +657,7 @@ inf_gtk_chat_init(InfGtkChat* chat)
   priv->completion_end = 0;
   priv->completion_index = 0;
 
-  priv->chat_view = gtk_text_view_new();
-  gtk_text_view_set_editable(GTK_TEXT_VIEW(priv->chat_view), FALSE);
-  gtk_text_view_set_wrap_mode(
-    GTK_TEXT_VIEW(priv->chat_view),
-    GTK_WRAP_WORD_CHAR
-  );
-  gtk_text_view_set_indent(GTK_TEXT_VIEW(priv->chat_view), -12);
-  /* TODO: this prevents copying via ctrl+c - maybe the entry ctrl+c
-   * should catch this and copy from the textview instead: */
-  gtk_widget_set_can_focus(priv->chat_view, FALSE);
-  gtk_widget_show(priv->chat_view);
-
-  /* TODO: These should probably be style properties: */
-
-  priv->tag_normal = gtk_text_buffer_create_tag(
-    GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(priv->chat_view))),
-    "normal",
-    NULL
-  );
-
-  priv->tag_system = gtk_text_buffer_create_tag(
-    GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(priv->chat_view))),
-    "system",
-    "foreground", "#0000ff",
-    NULL
-  );
-
-  priv->tag_emote = gtk_text_buffer_create_tag(
-    GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(priv->chat_view))),
-    "emote",
-    "foreground", "#113322",
-    NULL
-  );
-
-  priv->tag_backlog = gtk_text_buffer_create_tag(
-    GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(priv->chat_view))),
-    "backlog",
-    "foreground", "#606060",
-    NULL
-  );
-
-  scroll = gtk_scrolled_window_new(NULL, NULL);
-  gtk_scrolled_window_set_shadow_type(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_SHADOW_IN
-  );
-  gtk_scrolled_window_set_policy(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_POLICY_AUTOMATIC,
-    GTK_POLICY_AUTOMATIC
-  );
-  gtk_container_add(GTK_CONTAINER(scroll), priv->chat_view);
-  priv->vadj =
-    gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scroll));
-  gtk_widget_show(scroll);
-
-  g_signal_connect(
-    G_OBJECT(priv->vadj),
-    "changed",
-    G_CALLBACK(inf_gtk_chat_adjustment_changed_cb),
-    chat
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->vadj),
-    "value-changed",
-    G_CALLBACK(inf_gtk_chat_adjustment_value_changed_cb),
-    chat
-  );
-
-  priv->entry = gtk_entry_new();
-  g_object_set(G_OBJECT(priv->entry), "truncate-multiline", TRUE, NULL);
-
-  g_signal_connect(
-    G_OBJECT(priv->entry),
-    "activate",
-    G_CALLBACK(inf_gtk_chat_entry_activate_cb),
-    chat
-  );
-
-  g_signal_connect_after(
-    G_OBJECT(priv->entry),
-    "changed",
-    G_CALLBACK(inf_gtk_chat_entry_changed_cb),
-    chat
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->entry),
-    "key-press-event",
-    G_CALLBACK(inf_gtk_chat_entry_key_press_event_cb),
-    chat
-  );
-
-  gtk_widget_set_sensitive(priv->entry, FALSE);
-  gtk_widget_show(priv->entry);
-
-  image = gtk_image_new_from_icon_name("go-jump", GTK_ICON_SIZE_BUTTON);
-  priv->button = gtk_button_new_with_label(_("Send"));
-  gtk_button_set_image(GTK_BUTTON(priv->button), image);
-  g_signal_connect(
-    G_OBJECT(priv->button),
-    "clicked",
-    G_CALLBACK(inf_gtk_chat_entry_button_clicked_cb),
-    chat
-  );
-  /*gtk_widget_show(priv->button);*/
-
-  hbox = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(hbox), priv->entry, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(hbox), priv->button, FALSE, TRUE, 0);
-  gtk_widget_show(hbox);
-
-  gtk_box_pack_start(GTK_BOX(chat), scroll, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(chat), hbox, FALSE, TRUE, 0);
-  gtk_box_set_spacing(GTK_BOX(chat), 6);
+  gtk_widget_init_template(GTK_WIDGET(chat));
 }
 
 static void
@@ -871,6 +759,89 @@ inf_gtk_chat_class_init(InfGtkChatClass* chat_class)
   object_class->finalize = inf_gtk_chat_finalize;
   object_class->set_property = inf_gtk_chat_set_property;
   object_class->get_property = inf_gtk_chat_get_property;
+
+  gtk_widget_class_set_template_from_resource(
+    GTK_WIDGET_CLASS(chat_class),
+    "/de/0x539/libinfgtk/ui/infgtkchat.ui"
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    scroll_vadj
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    chat_view
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    chat_entry
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    send_button
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    tag_normal
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    tag_system
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    tag_emote
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(chat_class),
+    InfGtkChat,
+    tag_backlog
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(chat_class),
+    inf_gtk_chat_adjustment_changed_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(chat_class),
+    inf_gtk_chat_adjustment_value_changed_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(chat_class),
+    inf_gtk_chat_send_button_clicked_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(chat_class),
+    inf_gtk_chat_entry_activate_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(chat_class),
+    inf_gtk_chat_entry_changed_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(chat_class),
+    inf_gtk_chat_entry_key_press_event_cb
+  );
 
   g_object_class_install_property(
     object_class,
@@ -1084,10 +1055,14 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
       chat
     );
 
-    gtk_widget_set_sensitive(priv->entry, TRUE);
+    gtk_widget_set_sensitive(priv->chat_entry, TRUE);
 
-    text = gtk_entry_get_text(GTK_ENTRY(priv->entry));
-    gtk_widget_set_sensitive(priv->button, text != NULL && *text != '\0');
+    text = gtk_entry_get_text(GTK_ENTRY(priv->chat_entry));
+
+    gtk_widget_set_sensitive(
+      priv->send_button,
+      text != NULL && *text != '\0'
+    );
 
     /* TODO: Only do this when there currently is no focus child: */
     /* TODO: Doesn't work anyway: */
@@ -1107,8 +1082,8 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
   }
   else
   {
-    gtk_widget_set_sensitive(priv->entry, FALSE);
-    gtk_widget_set_sensitive(priv->button, FALSE);
+    gtk_widget_set_sensitive(priv->chat_entry, FALSE);
+    gtk_widget_set_sensitive(priv->send_button, FALSE);
   }
 
   g_object_notify(G_OBJECT(chat), "active-user");
@@ -1151,7 +1126,7 @@ GtkWidget*
 inf_gtk_chat_get_entry(InfGtkChat* chat)
 {
   g_return_val_if_fail(INF_GTK_IS_CHAT(chat), NULL);
-  return INF_GTK_CHAT_PRIVATE(chat)->entry;
+  return INF_GTK_CHAT_PRIVATE(chat)->chat_entry;
 }
 
 /* vim:set et sw=2 ts=2: */

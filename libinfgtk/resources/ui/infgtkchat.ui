@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface domain="libinfgtk07">
+  <!-- interface-requires gtk+ 3.0 -->
+  <object class="GtkAdjustment" id="scroll_vadj">
+    <signal name="changed" handler="inf_gtk_chat_adjustment_changed_cb" swapped="no" />
+    <signal name="value-changed" handler="inf_gtk_chat_adjustment_value_changed_cb" swapped="no" />
+  </object>
+  <object class="GtkTextTagTable" id="chat_tag_table">
+    <child type="tag">
+      <object class="GtkTextTag" id="tag_normal">
+        <property name="name">normal</property>
+      </object>
+    </child>
+    <child type="tag">
+      <object class="GtkTextTag" id="tag_system">
+        <property name="name">system</property>
+        <property name="foreground">#0000ff</property>
+      </object>
+    </child>
+    <child type="tag">
+      <object class="GtkTextTag" id="tag_emote">
+        <property name="name">emote</property>
+        <property name="foreground">#113322</property>
+      </object>
+    </child>
+    <child type="tag">
+      <object class="GtkTextTag" id="tag_backlog">
+        <property name="name">backlog</property>
+        <property name="foreground">#606060</property>
+      </object>
+    </child>
+  </object>
+  <object class="GtkTextBuffer" id="chat_buffer">
+    <property name="tag-table">chat_tag_table</property>
+  </object>
+  <template class="InfGtkChat" parent="GtkBox">
+    <property name="orientation">vertical</property>
+    <property name="spacing">6</property>
+    <child>
+      <object class="GtkScrolledWindow" id="scroll_main">
+        <property name="visible">True</property>
+        <property name="vadjustment">scroll_vadj</property>
+        <property name="shadow_type">in</property>
+        <child>
+          <object class="GtkTextView" id="chat_view">
+            <property name="visible">True</property>
+            <property name="editable">False</property>
+            <property name="can-focus">False</property>
+            <property name="wrap-mode">word-char</property>
+            <property name="indent">-12</property>
+            <property name="buffer">chat_buffer</property>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">True</property>
+        <property name="fill">True</property>
+        <property name="position">0</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkBox" id="entry_box">
+        <property name="visible">True</property>
+        <property name="spacing">12</property>
+        <child>
+          <object class="GtkEntry" id="chat_entry">
+            <property name="visible">True</property>
+            <property name="sensitive">False</property>
+            <property name="truncate-multiline">True</property>
+            <signal name="activate" handler="inf_gtk_chat_entry_activate_cb" swapped="no" />
+            <signal name="changed" handler="inf_gtk_chat_entry_changed_cb" swapped="no" />
+            <signal name="key-press-event" handler="inf_gtk_chat_entry_key_press_event_cb" swapped="no" />
+          </object>
+          <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButton" id="send_button">
+            <property name="visible">False</property>
+            <property name="label" translatable="yes">Send</property>
+            <signal name="clicked" handler="inf_gtk_chat_send_button_clicked_cb" swapped="no" />
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">False</property>
+        <property name="position">1</property>
+      </packing>
+    </child>
+  </template>
+</interface>
