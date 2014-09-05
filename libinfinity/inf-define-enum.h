@@ -20,6 +20,8 @@
 #ifndef __INF_DEFINE_ENUM_H__
 #define __INF_DEFINE_ENUM_H__
 
+#include <glib-object.h>
+
 #define INF_DEFINE_ENUM_TYPE(TypeName, type_name, values) \
 GType \
 type_name##_get_type(void) \
