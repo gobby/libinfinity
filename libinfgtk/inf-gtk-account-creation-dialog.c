@@ -49,7 +49,7 @@ struct _InfGtkAccountCreationDialogPrivate {
   InfBrowser* browser;
 
   GtkWidget* status_text;
-  GtkWidget* generate_button;
+  GtkWidget* create_account_button;
   GtkWidget* name_entry;
 
   InfAsyncOperation* key_generator;
@@ -168,12 +168,12 @@ inf_gtk_account_creation_dialog_set_activatable(
   if(activatable)
   {
     /*gtk_widget_set_sensitive(priv->name_entry, TRUE);*/
-    gtk_widget_set_sensitive(priv->generate_button, TRUE);
+    gtk_widget_set_sensitive(priv->create_account_button, TRUE);
   }
   else
   {
     /*gtk_widget_set_sensitive(priv->name_entry, FALSE);*/
-    gtk_widget_set_sensitive(priv->generate_button, FALSE);
+    gtk_widget_set_sensitive(priv->create_account_button, FALSE);
   }
 }
 
@@ -502,89 +502,17 @@ static void
 inf_gtk_account_creation_dialog_init(InfGtkAccountCreationDialog* dialog)
 {
   InfGtkAccountCreationDialogPrivate* priv;
-
-  GtkWidget* name_label;
-  GtkWidget* box;
-  GtkWidget* vbox;
-  GtkWidget* image;
-  GtkWidget* imagebox;
-  GtkWidget* dialog_vbox;
-
   priv = INF_GTK_ACCOUNT_CREATION_DIALOG_PRIVATE(dialog);
 
+  priv->io = NULL;
   priv->browser = NULL;
   priv->key_generator = NULL;
   priv->create_account_request = NULL;
   priv->key = NULL;
 
-  name_label = gtk_label_new(_("Account Name:"));
-  gtk_widget_show(name_label);
+  gtk_widget_init_template(GTK_WIDGET(dialog));
 
-  priv->name_entry = gtk_entry_new();
-  gtk_entry_set_activates_default(GTK_ENTRY(priv->name_entry), TRUE);
-  gtk_widget_show(priv->name_entry);
-
-  g_signal_connect(
-    G_OBJECT(priv->name_entry),
-    "changed",
-    G_CALLBACK(inf_gtk_account_creation_dialog_entry_changed_cb),
-    dialog
-  );
-
-  priv->generate_button = gtk_button_new_with_mnemonic(_("Create _Account"));
-  gtk_widget_set_sensitive(priv->generate_button, FALSE);
-  gtk_widget_show(priv->generate_button);
-
-  g_signal_connect(
-    G_OBJECT(priv->generate_button),
-    "clicked",
-    G_CALLBACK(inf_gtk_account_creation_dialog_generate_clicked_cb),
-    dialog
-  );
-
-  box = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(box), name_label, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(box), priv->name_entry, FALSE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(box), priv->generate_button, FALSE, FALSE, 0);
-  gtk_widget_show(box);
-
-  priv->status_text = gtk_label_new("");
-  gtk_misc_set_alignment(GTK_MISC(priv->status_text), 0.0, 0.5);
-  gtk_label_set_line_wrap(GTK_LABEL(priv->status_text), TRUE);
-  gtk_label_set_max_width_chars(GTK_LABEL(priv->status_text), 50);
-  gtk_widget_show(priv->status_text);
-  vbox = gtk_vbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(vbox), box, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), priv->status_text, FALSE, FALSE, 0);
-  gtk_widget_show(vbox);
-
-  /* TODO: Make sure that icon name is available, otherwise hide the
-   * image in the dialog. */
-  image = gtk_image_new_from_icon_name(
-    "application-certificate",
-    GTK_ICON_SIZE_DIALOG
-  );
-
-  gtk_misc_set_alignment(GTK_MISC(image), 0.0, 0.0);
-  gtk_widget_show(image);
-
-  imagebox = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(imagebox), image, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(imagebox), vbox, FALSE, TRUE, 0);
-  gtk_widget_show(imagebox);
-
-  dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-  gtk_box_set_spacing(GTK_BOX(dialog_vbox), 12);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), imagebox, FALSE, FALSE, 0);
-
-  gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
-  gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
-
-  gtk_widget_set_can_default(priv->generate_button, TRUE);
-  gtk_widget_grab_default(priv->generate_button);
-
-  gtk_window_set_title(GTK_WINDOW(dialog), _("Create New Account"));
+  gtk_widget_grab_default(priv->create_account_button);
 }
 
 static GObject*
@@ -715,6 +643,39 @@ inf_gtk_account_creation_dialog_class_init(
   object_class->get_property = inf_gtk_account_creation_dialog_get_property;
 
   account_creation_dialog_class->account_created = NULL;
+
+  gtk_widget_class_set_template_from_resource(
+    GTK_WIDGET_CLASS(object_class),
+    "/de/0x539/libinfgtk/ui/infgtkaccountcreationdialog.ui"
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAccountCreationDialog,
+    status_text
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAccountCreationDialog,
+    create_account_button
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAccountCreationDialog,
+    name_entry
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_account_creation_dialog_entry_changed_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_account_creation_dialog_generate_clicked_cb
+  );
 
   g_object_class_install_property(
     object_class,
