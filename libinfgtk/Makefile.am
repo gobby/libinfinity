@@ -49,6 +49,7 @@ sources = \
 
 resources = \
 	resources/ui/infgtkaccountcreationdialog.ui \
+	resources/ui/infgtkaclsheetview.ui \
 	resources/ui/infgtkcertificatedialog.ui \
 	resources/ui/infgtkcertificateview.ui \
 	resources/ui/infgtkchat.ui

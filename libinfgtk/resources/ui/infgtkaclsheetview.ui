@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface domain="libinfgtk07">
+  <!-- interface-requires gtk+ 3.0 -->
+  <object class="GtkListStore" id="sheet_store">
+    <columns>
+      <column type="gchararray"/>
+      <column type="InfAclSetting"/>
+    </columns>
+  </object>
+  <template class="InfGtkAclSheetView" parent="GtkBox">
+    <property name="orientation">vertical</property>
+    <property name="spacing">6</property>
+    <child>
+      <object class="GtkScrolledWindow" id="scroll_main">
+        <property name="visible">True</property>
+        <property name="shadow_type">in</property>
+        <property name="min_content_width">250</property>
+        <child>
+          <object class="GtkTreeView" id="tree_view">
+            <property name="visible">True</property>
+            <property name="model">sheet_store</property>
+            <child internal-child="selection">
+              <object class="GtkTreeSelection" id="treeview-selection1"/>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="certificate_column">
+                <property name="title" translatable="yes">Permission</property>
+                <property name="expand">True</property>
+                <child>
+                  <object class="GtkCellRendererText" id="name_renderer"/>
+                  <attributes>
+                    <attribute name="text">0</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="default_column">
+                <property name="title" translatable="yes">Default</property>
+                <child>
+                  <object class="GtkCellRendererToggle" id="default_renderer">
+                    <property name="activatable">False</property>
+                    <property name="radio">True</property>
+                    <signal name="toggled" handler="inf_gtk_acl_sheet_view_default_toggled_cb" swapped="no"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="yes_column">
+                <property name="title" translatable="yes">Yes</property>
+                <child>
+                  <object class="GtkCellRendererToggle" id="yes_renderer">
+                    <property name="activatable">False</property>
+                    <property name="radio">True</property>
+                    <signal name="toggled" handler="inf_gtk_acl_sheet_view_yes_toggled_cb" swapped="no"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="no_column">
+                <property name="title" translatable="yes">No</property>
+                <child>
+                  <object class="GtkCellRendererToggle" id="no_renderer">
+                    <property name="activatable">False</property>
+                    <property name="radio">True</property>
+                    <signal name="toggled" handler="inf_gtk_acl_sheet_view_no_toggled_cb" swapped="no"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+      <packing>
+        <property name="expand">True</property>
+        <property name="fill">True</property>
+        <property name="position">0</property>
+      </packing>
+    </child>
+  </template>
+</interface>

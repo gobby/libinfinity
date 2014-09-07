@@ -34,8 +34,13 @@
 
 typedef struct _InfGtkAclSheetViewPrivate InfGtkAclSheetViewPrivate;
 struct _InfGtkAclSheetViewPrivate {
-  GtkListStore* store;
-  GtkWidget* treeview;
+  GtkListStore* sheet_store;
+  GtkWidget* tree_view;
+
+  GtkCellRendererToggle* default_renderer;
+  GtkCellRendererToggle* yes_renderer;
+  GtkCellRendererToggle* no_renderer;
+
   InfAclSheet* sheet;
   gboolean editable;
   InfAclMask permission_mask;
@@ -61,7 +66,7 @@ enum {
 
 static guint acl_sheet_view_signals[LAST_SIGNAL];
 
-G_DEFINE_TYPE_WITH_CODE(InfGtkAclSheetView, inf_gtk_acl_sheet_view, GTK_TYPE_VBOX,
+G_DEFINE_TYPE_WITH_CODE(InfGtkAclSheetView, inf_gtk_acl_sheet_view, GTK_TYPE_BOX,
   G_ADD_PRIVATE(InfGtkAclSheetView))
 
 static void
@@ -71,24 +76,21 @@ inf_gtk_acl_sheet_view_default_toggled_cb(GtkCellRenderer* cell,
 {
   InfGtkAclSheetView* view;
   InfGtkAclSheetViewPrivate* priv;
+  GtkTreeModel* model;
   GtkTreeIter iter;
   gboolean result;
   InfAclSetting setting;
 
   view = INF_GTK_ACL_SHEET_VIEW(user_data);
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  model = GTK_TREE_MODEL(priv->sheet_store);
 
-  result = gtk_tree_model_get_iter_from_string(
-    GTK_TREE_MODEL(priv->store),
-    &iter,
-    path_str
-  );
+  result = gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 
   g_assert(result == TRUE);
   g_assert(priv->sheet != NULL);
 
-  gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
-  
+  gtk_tree_model_get(model, &iter, 1, &setting, -1);
 
   if(inf_acl_mask_has(&priv->sheet->mask, setting))
   {
@@ -106,23 +108,21 @@ inf_gtk_acl_sheet_view_yes_toggled_cb(GtkCellRenderer* cell,
 {
   InfGtkAclSheetView* view;
   InfGtkAclSheetViewPrivate* priv;
+  GtkTreeModel* model;
   GtkTreeIter iter;
   gboolean result;
   InfAclSetting setting;
 
   view = INF_GTK_ACL_SHEET_VIEW(user_data);
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  model = GTK_TREE_MODEL(priv->sheet_store);
 
-  result = gtk_tree_model_get_iter_from_string(
-    GTK_TREE_MODEL(priv->store),
-    &iter,
-    path_str
-  );
+  result = gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 
   g_assert(result == TRUE);
   g_assert(priv->sheet != NULL);
 
-  gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
+  gtk_tree_model_get(model, &iter, 1, &setting, -1);
 
   if(!inf_acl_mask_has(&priv->sheet->mask, setting) ||
      !inf_acl_mask_has(&priv->sheet->perms, setting))
@@ -142,6 +142,7 @@ inf_gtk_acl_sheet_view_no_toggled_cb(GtkCellRenderer* cell,
 {
   InfGtkAclSheetView* view;
   InfGtkAclSheetViewPrivate* priv;
+  GtkTreeModel* model;
   GtkTreeIter iter;
   gboolean result;
   InfAclSetting setting;
@@ -149,16 +150,12 @@ inf_gtk_acl_sheet_view_no_toggled_cb(GtkCellRenderer* cell,
   view = INF_GTK_ACL_SHEET_VIEW(user_data);
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
 
-  result = gtk_tree_model_get_iter_from_string(
-    GTK_TREE_MODEL(priv->store),
-    &iter,
-    path_str
-  );
+  result = gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 
   g_assert(result == TRUE);
   g_assert(priv->sheet != NULL);
 
-  gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
+  gtk_tree_model_get(model, &iter, 1, &setting, -1);
 
   if(!inf_acl_mask_has(&priv->sheet->mask, setting) ||
      inf_acl_mask_has(&priv->sheet->perms, setting))
@@ -247,27 +244,6 @@ inf_gtk_acl_sheet_view_no_cell_data_func(GtkTreeViewColumn* column,
   }
 }
 
-static int
-inf_gtk_acl_sheet_view_sort_func(GtkTreeModel* model,
-                                 GtkTreeIter* a,
-                                 GtkTreeIter* b,
-                                 gpointer user_data)
-{
-  gchar* name_a;
-  gchar* name_b;
-  int result;
-
-  gtk_tree_model_get(model, a, 0, &name_a, -1);
-  gtk_tree_model_get(model, b, 0, &name_b, -1);
-
-  result = g_utf8_collate(name_a, name_b);
-
-  g_free(name_a);
-  g_free(name_b);
-
-  return result;
-}
-
 static void
 inf_gtk_acl_sheet_view_update_editable(InfGtkAclSheetView* view)
 {
@@ -288,7 +264,7 @@ inf_gtk_acl_sheet_view_update_editable(InfGtkAclSheetView* view)
 
   for(i = 1; i < 4; ++i)
   {
-    column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->treeview), i);
+    column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), i);
     list = gtk_cell_layout_get_cells(GTK_CELL_LAYOUT(column));
 
     for(item = list; item != NULL; item = item->next)
@@ -310,150 +286,50 @@ static void
 inf_gtk_acl_sheet_view_init(InfGtkAclSheetView* view)
 {
   InfGtkAclSheetViewPrivate* priv;
-
-  GtkTreeSelection* selection;
-  GtkTreeViewColumn* column;
-  GtkCellRenderer* renderer;
-  GtkWidget* scroll;
-
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
 
-  priv->store =
-    gtk_list_store_new(2, G_TYPE_STRING, INF_TYPE_ACL_SETTING);
-  priv->treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(priv->store));
   priv->sheet = NULL;
   priv->editable = FALSE;
   inf_acl_mask_clear(&priv->permission_mask);
 
+  gtk_widget_init_template(GTK_WIDGET(view));
+
+  gtk_tree_selection_set_mode(
+    gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view)),
+    GTK_SELECTION_NONE
+  );
+
   gtk_tree_sortable_set_sort_column_id(
-    GTK_TREE_SORTABLE(priv->store),
+    GTK_TREE_SORTABLE(priv->sheet_store),
     0,
     GTK_SORT_ASCENDING
   );
 
-  gtk_tree_sortable_set_sort_func(
-    GTK_TREE_SORTABLE(priv->store),
-    0,
-    inf_gtk_acl_sheet_view_sort_func,
+  gtk_tree_view_column_set_cell_data_func(
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 1),
+    GTK_CELL_RENDERER(priv->default_renderer),
+    inf_gtk_acl_sheet_view_default_cell_data_func,
+    view,
+    NULL
+  );
+
+  gtk_tree_view_column_set_cell_data_func(
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 2),
+    GTK_CELL_RENDERER(priv->yes_renderer),
+    inf_gtk_acl_sheet_view_yes_cell_data_func,
+    view,
+    NULL
+  );
+
+  gtk_tree_view_column_set_cell_data_func(
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 3),
+    GTK_CELL_RENDERER(priv->no_renderer),
+    inf_gtk_acl_sheet_view_no_cell_data_func,
     view,
     NULL
   );
 
   inf_gtk_acl_sheet_view_set_permission_mask(view, &INF_ACL_MASK_ALL);
-
-  renderer = gtk_cell_renderer_text_new();
-  column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, "Permission");
-  gtk_tree_view_column_set_expand(column, TRUE);
-  gtk_tree_view_column_pack_start(column, renderer, TRUE);
-  gtk_tree_view_column_add_attribute(column, renderer, "text", 0);
-  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), column);
-
-  renderer = gtk_cell_renderer_toggle_new();
-  g_object_set(renderer, "activatable", FALSE, NULL);
-
-  g_signal_connect(
-    G_OBJECT(renderer),
-    "toggled",
-    G_CALLBACK(inf_gtk_acl_sheet_view_default_toggled_cb),
-    view
-  );
-
-  gtk_cell_renderer_toggle_set_radio(
-    GTK_CELL_RENDERER_TOGGLE(renderer),
-    TRUE
-  );
-
-  column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, "Default");
-  gtk_tree_view_column_pack_start(column, renderer, FALSE);
-  gtk_tree_view_column_set_cell_data_func(
-    column,
-    renderer,
-    inf_gtk_acl_sheet_view_default_cell_data_func,
-    view,
-    NULL
-  );
-  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), column);
-
-  renderer = gtk_cell_renderer_toggle_new();
-  g_object_set(renderer, "activatable", FALSE, NULL);
-
-  g_signal_connect(
-    G_OBJECT(renderer),
-    "toggled",
-    G_CALLBACK(inf_gtk_acl_sheet_view_yes_toggled_cb),
-    view
-  );
-
-  gtk_cell_renderer_toggle_set_radio(
-    GTK_CELL_RENDERER_TOGGLE(renderer),
-    TRUE
-  );
-
-  column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, "Yes");
-  gtk_tree_view_column_pack_start(column, renderer, FALSE);
-  gtk_tree_view_column_set_cell_data_func(
-    column,
-    renderer,
-    inf_gtk_acl_sheet_view_yes_cell_data_func,
-    view,
-    NULL
-  );
-  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), column);
-
-  renderer = gtk_cell_renderer_toggle_new();
-  g_object_set(renderer, "activatable", FALSE, NULL);
-
-  g_signal_connect(
-    G_OBJECT(renderer),
-    "toggled",
-    G_CALLBACK(inf_gtk_acl_sheet_view_no_toggled_cb),
-    view
-  );
-
-  gtk_cell_renderer_toggle_set_radio(
-    GTK_CELL_RENDERER_TOGGLE(renderer),
-    TRUE
-  );
-
-  column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, "No");
-  gtk_tree_view_column_pack_start(column, renderer, FALSE);
-  gtk_tree_view_column_set_cell_data_func(
-    column,
-    renderer,
-    inf_gtk_acl_sheet_view_no_cell_data_func,
-    view,
-    NULL
-  );
-  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->treeview), column);
-
-  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->treeview));
-  gtk_tree_selection_set_mode(selection, GTK_SELECTION_NONE);
-
-  gtk_widget_show(priv->treeview);
-
-  scroll = gtk_scrolled_window_new(NULL, NULL);
-
-  gtk_scrolled_window_set_shadow_type(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_SHADOW_IN
-  );
-
-  gtk_scrolled_window_set_policy(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_POLICY_AUTOMATIC,
-    GTK_POLICY_AUTOMATIC
-  );
-
-  gtk_widget_set_size_request(scroll, 250, -1);
-  gtk_container_add(GTK_CONTAINER(scroll), priv->treeview);
-  gtk_widget_show(scroll);
-
-  gtk_box_pack_start(GTK_BOX(view), scroll, TRUE, TRUE, 0);
-  gtk_box_set_spacing(GTK_BOX(view), 6);
 }
 
 static void
@@ -571,6 +447,56 @@ inf_gtk_acl_sheet_view_class_init(InfGtkAclSheetViewClass* sheet_view_class)
   object_class->get_property = inf_gtk_acl_sheet_view_get_property;
   sheet_view_class->sheet_changed = NULL;
 
+  gtk_widget_class_set_template_from_resource(
+    GTK_WIDGET_CLASS(object_class),
+    "/de/0x539/libinfgtk/ui/infgtkaclsheetview.ui"
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAclSheetView,
+    sheet_store
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAclSheetView,
+    tree_view
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAclSheetView,
+    default_renderer
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAclSheetView,
+    yes_renderer
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkAclSheetView,
+    no_renderer
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_acl_sheet_view_default_toggled_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_acl_sheet_view_yes_toggled_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_acl_sheet_view_no_toggled_cb
+  );
+
   /**
    * InfGtkAclSheetView::sheet-changed:
    * @view: The #InfGtkAclSheetView that emitted the signal.
@@ -670,6 +596,7 @@ inf_gtk_acl_sheet_view_set_sheet(InfGtkAclSheetView* view,
                                  const InfAclSheet* sheet)
 {
   InfGtkAclSheetViewPrivate* priv;
+  GtkTreeModel* model;
   GtkTreeIter iter;
   GtkTreePath* path;
 
@@ -685,23 +612,24 @@ inf_gtk_acl_sheet_view_set_sheet(InfGtkAclSheetView* view,
   else
     priv->sheet = NULL;
 
-  if(gtk_tree_model_get_iter_first(GTK_TREE_MODEL(priv->store), &iter))
+  model = GTK_TREE_MODEL(priv->sheet_store);
+  if(gtk_tree_model_get_iter_first(model, &iter))
   {
     path = gtk_tree_path_new_first();
 
     do
     {
-      gtk_tree_model_row_changed(GTK_TREE_MODEL(priv->store), path, &iter);
+      gtk_tree_model_row_changed(model, path, &iter);
       gtk_tree_path_next(path);
-    } while(gtk_tree_model_iter_next(GTK_TREE_MODEL(priv->store), &iter));
+    } while(gtk_tree_model_iter_next(model, &iter));
 
     gtk_tree_path_free(path);
   }
   
   if(priv->sheet == NULL)
-    gtk_widget_set_sensitive(priv->treeview, FALSE);
+    gtk_widget_set_sensitive(priv->tree_view, FALSE);
   else
-    gtk_widget_set_sensitive(priv->treeview, TRUE);
+    gtk_widget_set_sensitive(priv->tree_view, TRUE);
 
   inf_gtk_acl_sheet_view_update_editable(view);
 
@@ -786,7 +714,7 @@ inf_gtk_acl_sheet_view_set_show_default(InfGtkAclSheetView* view,
   g_return_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view));
 
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
-  column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->treeview), 1);
+  column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 1);
 
   if(gtk_tree_view_column_get_visible(column) != show)
   {
@@ -812,7 +740,7 @@ inf_gtk_acl_sheet_view_get_show_default(InfGtkAclSheetView* view)
   g_return_val_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view), FALSE);
 
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
-  column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->treeview), 1);
+  column = gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 1);
 
   return gtk_tree_view_column_get_visible(column);
 }
@@ -830,6 +758,7 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
                                            const InfAclMask* mask)
 {
   InfGtkAclSheetViewPrivate* priv;
+  GtkTreeModel* model;
 
   InfAclMask add;
   InfAclMask remove;
@@ -842,6 +771,7 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
   InfAclSetting setting;
 
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  model = GTK_TREE_MODEL(priv->sheet_store);
 
   inf_acl_mask_neg(&priv->permission_mask, &add);
   inf_acl_mask_and(mask, &add, &add);
@@ -851,27 +781,16 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
 
   if(!inf_acl_mask_empty(&remove))
   {
-    has_element = gtk_tree_model_get_iter_first(
-      GTK_TREE_MODEL(priv->store),
-      &iter
-    );
-
+    has_element = gtk_tree_model_get_iter_first(model, &iter);
     g_assert(has_element == TRUE);
 
     while(has_element == TRUE)
     {
-      gtk_tree_model_get(GTK_TREE_MODEL(priv->store), &iter, 1, &setting, -1);
+      gtk_tree_model_get(model, &iter, 1, &setting, -1);
       if(inf_acl_mask_has(&remove, setting))
-      {
-        has_element = gtk_list_store_remove(priv->store, &iter);
-      }
+        has_element = gtk_list_store_remove(priv->sheet_store, &iter);
       else
-      {
-        has_element = gtk_tree_model_iter_next(
-          GTK_TREE_MODEL(priv->store),
-          &iter
-        );
-      }
+        has_element = gtk_tree_model_iter_next(model, &iter);
     }
   }
 
@@ -884,7 +803,7 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
       if(inf_acl_mask_has(&add, enum_class->values[i].value))
       {
         gtk_list_store_insert_with_values(
-          priv->store,
+          priv->sheet_store,
           NULL,
           -1,
           0, enum_class->values[i].value_nick,
