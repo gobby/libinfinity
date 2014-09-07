@@ -52,7 +52,8 @@ resources = \
 	resources/ui/infgtkaclsheetview.ui \
 	resources/ui/infgtkcertificatedialog.ui \
 	resources/ui/infgtkcertificateview.ui \
-	resources/ui/infgtkchat.ui
+	resources/ui/infgtkchat.ui \
+	resources/ui/infgtkpermissionsdialog.ui
 
 inf-gtk-resources.h: resources/infgtk.gresources.xml
 	glib-compile-resources $< \

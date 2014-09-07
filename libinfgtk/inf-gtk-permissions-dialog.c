@@ -90,13 +90,14 @@ struct _InfGtkPermissionsDialogPrivate {
   GtkMenu* popup_menu;
   InfAclAccountId popup_account;
 
-  GtkCellRenderer* renderer;
+  GtkWidget* status_text;
   GtkWidget* tree_view;
   GtkWidget* sheet_view;
-  GtkWidget* status_text;
 
   GtkWidget* add_button;
   GtkWidget* remove_button;
+
+  GtkCellRenderer* renderer;
 };
 
 enum {
@@ -260,42 +261,44 @@ inf_gtk_permissions_dialog_sheet_changed_cb(InfGtkAclSheetView* sheet_view,
     INF_GTK_ACL_SHEET_VIEW(priv->sheet_view)
   );
 
-  g_assert(sheet != NULL);
-
-  /* If the sheet does not have an ID set, the lookup is still in progress.
-   * In that case, we run the ACL setting once we have looked up the ID. */
-  if(sheet->account != 0)
+  /* This can be NULL during destruction, when the sheet view is reset. */
+  if(sheet != NULL)
   {
-    sheet_set.own_sheets = NULL;
-    sheet_set.sheets = sheet;
-    sheet_set.n_sheets = 1;
-
-    request = inf_browser_set_acl(
-      priv->browser,
-      &priv->browser_iter,
-      &sheet_set,
-      inf_gtk_permissions_dialog_set_acl_finished_cb,
-      dialog
-    );
-
-    if(request != NULL)
+    /* If the sheet does not have an ID set, the lookup is still in progress.
+     * In that case, we run the ACL setting once we have looked up the ID. */
+    if(sheet->account != 0)
     {
-      priv->set_acl_requests =
-        g_slist_prepend(priv->set_acl_requests, request);
-      g_object_ref(request);
+      sheet_set.own_sheets = NULL;
+      sheet_set.sheets = sheet;
+      sheet_set.n_sheets = 1;
+
+      request = inf_browser_set_acl(
+        priv->browser,
+        &priv->browser_iter,
+        &sheet_set,
+        inf_gtk_permissions_dialog_set_acl_finished_cb,
+        dialog
+      );
+
+      if(request != NULL)
+      {
+        priv->set_acl_requests =
+          g_slist_prepend(priv->set_acl_requests, request);
+        g_object_ref(request);
+      }
     }
-  }
-  else
-  {
-    /* Must be a pending sheet */
-    selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
-    has_selection = gtk_tree_selection_get_selected(selection, NULL, &iter);
-    g_assert(has_selection);
+    else
+    {
+      /* Must be a pending sheet */
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
+      has_selection = gtk_tree_selection_get_selected(selection, NULL, &iter);
+      g_assert(has_selection);
 
-    pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &iter);
-    g_assert(pending != NULL);
+      pending = inf_gtk_permissions_dialog_find_pending_sheet(dialog, &iter);
+      g_assert(pending != NULL);
 
-    pending->sheet = *sheet;
+      pending->sheet = *sheet;
+    }
   }
 }
 
@@ -1937,7 +1940,7 @@ inf_gtk_permissions_dialog_popup_menu_position_func(GtkMenu* menu,
   gtk_menu_set_monitor(menu, monitor_num);
 
   gdk_screen_get_monitor_geometry(screen, monitor_num, &monitor);
-  gtk_widget_size_request(GTK_WIDGET(menu), &menu_req);
+  gtk_widget_get_preferred_size(GTK_WIDGET(menu), NULL, &menu_req);
 
   height = gdk_window_get_height(bin_window);
 
@@ -2635,37 +2638,7 @@ static void
 inf_gtk_permissions_dialog_init(InfGtkPermissionsDialog* dialog)
 {
   InfGtkPermissionsDialogPrivate* priv;
-  GtkTreeViewColumn* column;
-  GtkTreeSelection* selection;
-  GtkWidget* scroll;
-  GtkWidget* hbox;
-  GtkWidget* buttons_hbox;
-  GtkWidget* vbox;
-  GtkWidget* account_list_vbox;
-
-  GtkWidget* image;
-  GtkWidget* image_hbox;
-
-  GtkWidget* dialog_vbox;
-
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
-
-  /* The pointer is the account ID with INF_ACL_ACCOUNT_ID_TO_POINTER */
-  priv->account_store = gtk_list_store_new(2, G_TYPE_POINTER, G_TYPE_STRING);
-
-  gtk_tree_sortable_set_sort_column_id(
-    GTK_TREE_SORTABLE(priv->account_store),
-    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
-    GTK_SORT_ASCENDING
-  );
-
-  gtk_tree_sortable_set_sort_func(
-    GTK_TREE_SORTABLE(priv->account_store),
-    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
-    inf_gtk_permissions_dialog_account_sort_func,
-    dialog,
-    NULL
-  );
 
   priv->query_acl_account_list_request = NULL;
   priv->account_list_queried = FALSE;
@@ -2682,214 +2655,29 @@ inf_gtk_permissions_dialog_init(InfGtkPermissionsDialog* dialog)
   priv->popup_menu = NULL;
   priv->popup_account = 0;
 
-  column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, _("Accounts"));
-  gtk_tree_view_column_set_spacing(column, 6);
+  gtk_widget_init_template(GTK_WIDGET(dialog));
 
-  priv->renderer = gtk_cell_renderer_combo_new();
-  gtk_tree_view_column_pack_start(column, priv->renderer, FALSE);
+  gtk_tree_sortable_set_sort_column_id(
+    GTK_TREE_SORTABLE(priv->account_store),
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    GTK_SORT_ASCENDING
+  );
+
+  gtk_tree_sortable_set_sort_func(
+    GTK_TREE_SORTABLE(priv->account_store),
+    INF_GTK_PERMISSIONS_DIALOG_COLUMN_NAME,
+    inf_gtk_permissions_dialog_account_sort_func,
+    dialog,
+    NULL
+  );
 
   gtk_tree_view_column_set_cell_data_func(
-    column,
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->tree_view), 0),
     priv->renderer,
     inf_gtk_permissions_dialog_name_data_func,
     NULL,
     NULL
   );
-
-  g_signal_connect(
-    G_OBJECT(priv->renderer),
-    "editing-started",
-    G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_started_cb),
-    dialog
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->renderer),
-    "editing-canceled",
-    G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_canceled_cb),
-    dialog
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->renderer),
-    "edited",
-    G_CALLBACK(inf_gtk_permissions_dialog_renderer_edited_cb),
-    dialog
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->renderer),
-    "changed",
-    G_CALLBACK(inf_gtk_permissions_dialog_renderer_changed_cb),
-    dialog
-  );
-
-  priv->tree_view =
-    gtk_tree_view_new_with_model(GTK_TREE_MODEL(priv->account_store));
-  gtk_tree_view_append_column(GTK_TREE_VIEW(priv->tree_view), column);
-
-  g_signal_connect(
-    G_OBJECT(priv->tree_view),
-    "key-press-event",
-    G_CALLBACK(inf_gtk_permissions_dialog_key_press_event_cb),
-    dialog
-  );
-
-  g_signal_connect(
-    G_OBJECT(priv->tree_view),
-    "button-press-event",
-    G_CALLBACK(inf_gtk_permissions_dialog_button_press_event_cb),
-    dialog
-  );
-
-  selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->tree_view));
-  gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
-
-  g_signal_connect(
-    G_OBJECT(selection),
-    "changed",
-    G_CALLBACK(inf_gtk_permissions_dialog_selection_changed_cb),
-    dialog
-  );
-
-  gtk_widget_show(priv->tree_view);
-
-  scroll = gtk_scrolled_window_new(NULL, NULL);
-  gtk_widget_set_size_request(scroll, 200, 350);
-
-  gtk_scrolled_window_set_shadow_type(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_SHADOW_IN
-  );
-
-  gtk_scrolled_window_set_policy(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_POLICY_AUTOMATIC,
-    GTK_POLICY_AUTOMATIC
-  );
-
-  gtk_container_add(GTK_CONTAINER(scroll), priv->tree_view);
-  gtk_widget_show(scroll);
-
-  image = gtk_image_new_from_icon_name("list-add", GTK_ICON_SIZE_BUTTON);
-  gtk_widget_show(image);
-
-  priv->add_button = gtk_button_new();
-  gtk_container_add(GTK_CONTAINER(priv->add_button), image);
-
-  g_signal_connect(
-    G_OBJECT(priv->add_button),
-    "clicked",
-    G_CALLBACK(inf_gtk_permissions_dialog_add_clicked_cb),
-    dialog
-  );
-
-  gtk_widget_show(priv->add_button);
-
-  image = gtk_image_new_from_icon_name("list-remove", GTK_ICON_SIZE_BUTTON);
-  gtk_widget_show(image);
-
-  priv->remove_button = gtk_button_new();
-  gtk_container_add(GTK_CONTAINER(priv->remove_button), image);
-
-  g_signal_connect(
-    G_OBJECT(priv->remove_button),
-    "clicked",
-    G_CALLBACK(inf_gtk_permissions_dialog_remove_clicked_cb),
-    dialog
-  );
-
-  gtk_widget_show(priv->remove_button);
-
-  buttons_hbox = gtk_hbox_new(FALSE, 12);
-
-  gtk_box_pack_start(
-    GTK_BOX(buttons_hbox),
-    priv->add_button,
-    FALSE,
-    FALSE,
-    0
-  );
-
-  gtk_box_pack_start(
-    GTK_BOX(buttons_hbox),
-    priv->remove_button,
-    FALSE,
-    FALSE,
-    0
-  );
-
-  gtk_widget_show(buttons_hbox);
-  account_list_vbox = gtk_vbox_new(FALSE, 12);
-
-  gtk_box_pack_start(
-    GTK_BOX(account_list_vbox),
-    scroll,
-    TRUE,
-    TRUE,
-    0
-  );
-
-  gtk_box_pack_start(
-    GTK_BOX(account_list_vbox),
-    buttons_hbox,
-    FALSE,
-    FALSE,
-    0
-  );
-
-  gtk_widget_show(account_list_vbox);
-
-  priv->sheet_view = inf_gtk_acl_sheet_view_new();
-
-  g_signal_connect(
-    G_OBJECT(priv->sheet_view),
-    "sheet-changed",
-    G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
-    dialog
-  );
-
-  gtk_widget_show(priv->sheet_view);
-
-  hbox = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(hbox), account_list_vbox, FALSE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(hbox), priv->sheet_view, TRUE, TRUE, 0);
-  gtk_widget_show(hbox);
-
-  priv->status_text = gtk_label_new(NULL);
-  gtk_label_set_max_width_chars(GTK_LABEL(priv->status_text), 50);
-  gtk_label_set_width_chars(GTK_LABEL(priv->status_text), 50);
-  gtk_label_set_line_wrap(GTK_LABEL(priv->status_text), TRUE);
-  gtk_misc_set_alignment(GTK_MISC(priv->status_text), 0.0, 0.5);
-  gtk_widget_show(priv->status_text);
-
-  vbox = gtk_vbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(vbox), priv->status_text, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-  gtk_widget_show(vbox);
-
-  image = gtk_image_new_from_icon_name(
-    "dialog-password",
-    GTK_ICON_SIZE_DIALOG
-  );
-
-  gtk_misc_set_alignment(GTK_MISC(image), 0.0, 0.0);
-  gtk_widget_show(image);
-
-  image_hbox = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(image_hbox), image, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(image_hbox), vbox, TRUE, TRUE, 0);
-  gtk_widget_show(image_hbox);
-
-  dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-  gtk_box_set_spacing(GTK_BOX(dialog_vbox), 12);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), image_hbox, FALSE, FALSE, 0);
-
-  gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
-  gtk_window_set_resizable(GTK_WINDOW(dialog), TRUE);
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 640, 480);
 }
 
 static GObject*
@@ -2925,37 +2713,6 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
   dialog = INF_GTK_PERMISSIONS_DIALOG(object);
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(dialog);
 
-  if(priv->renderer != NULL)
-  {
-    gtk_cell_renderer_stop_editing(GTK_CELL_RENDERER(priv->renderer), TRUE);
-
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->renderer),
-      G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_started_cb),
-      dialog
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->renderer),
-      G_CALLBACK(inf_gtk_permissions_dialog_renderer_editing_canceled_cb),
-      dialog
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->renderer),
-      G_CALLBACK(inf_gtk_permissions_dialog_renderer_edited_cb),
-      dialog
-    );
-
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->renderer),
-      G_CALLBACK(inf_gtk_permissions_dialog_renderer_changed_cb),
-      dialog
-    );
-
-    priv->renderer = NULL;
-  }
-
   while(priv->remove_acl_account_requests != NULL)
   {
     inf_gtk_permissions_dialog_remove_remove_acl_account_request(
@@ -2979,26 +2736,6 @@ inf_gtk_permissions_dialog_dispose(GObject* object)
 
   g_assert(priv->set_acl_requests == NULL);
   g_assert(priv->pending_sheets == NULL);
-
-  if(priv->account_store != NULL)
-  {
-    g_object_unref(priv->account_store);
-    priv->account_store = NULL;
-  }
-
-  /* During parent disposure, this callback might be called, leading to a
-   * crash since we have already disposed of all our resources, therefore
-   * explicitly disconnect here. */
-  if(priv->sheet_view != NULL)
-  {
-    inf_signal_handlers_disconnect_by_func(
-      G_OBJECT(priv->sheet_view),
-      G_CALLBACK(inf_gtk_permissions_dialog_sheet_changed_cb),
-      dialog
-    );
-
-    priv->sheet_view = NULL;
-  }
 
   G_OBJECT_CLASS(inf_gtk_permissions_dialog_parent_class)->dispose(object);
 }
@@ -3094,6 +2831,103 @@ inf_gtk_permissions_dialog_class_init(
   object_class->finalize = inf_gtk_permissions_dialog_finalize;
   object_class->set_property = inf_gtk_permissions_dialog_set_property;
   object_class->get_property = inf_gtk_permissions_dialog_get_property;
+
+  gtk_widget_class_set_template_from_resource(
+    GTK_WIDGET_CLASS(object_class),
+    "/de/0x539/libinfgtk/ui/infgtkpermissionsdialog.ui"
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    account_store
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    status_text
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    tree_view
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    sheet_view
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    add_button
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    remove_button
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkPermissionsDialog,
+    renderer
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_key_press_event_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_button_press_event_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_selection_changed_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_renderer_editing_started_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_renderer_editing_canceled_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_renderer_edited_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_renderer_changed_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_add_clicked_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_remove_clicked_cb
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_permissions_dialog_sheet_changed_cb
+  );
 
   g_object_class_install_property(
     object_class,

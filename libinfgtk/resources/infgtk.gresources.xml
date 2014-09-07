@@ -5,5 +5,6 @@
   <file preprocess="xml-stripblanks">ui/infgtkcertificatedialog.ui</file>
   <file preprocess="xml-stripblanks">ui/infgtkcertificateview.ui</file>
   <file preprocess="xml-stripblanks">ui/infgtkchat.ui</file>
+  <file preprocess="xml-stripblanks">ui/infgtkpermissionsdialog.ui</file>
  </gresource>
 </gresources>

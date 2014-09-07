@@ -2,17 +2,20 @@
 <!-- Generated with glade 3.18.3 -->
 <interface domain="libinfgtk07">
   <requires lib="gtk+" version="3.10"/>
-  <object class="GtkTreeStore" id="certificate_store">
+  <object class="GtkListStore" id="account_store">
     <columns>
-      <!-- column-name certificate -->
+      <!-- column-name account-id -->
       <column type="gpointer"/>
+      <!-- column-name account-name -->
+      <column type="gchararray"/>
     </columns>
   </object>
-  <template class="InfGtkCertificateDialog" parent="GtkDialog">
+  <template class="InfGtkPermissionsDialog" parent="GtkDialog">
     <property name="can_focus">False</property>
     <property name="border_width">12</property>
-    <property name="title" translatable="yes">Connection Not Secure</property>
-    <property name="resizable">False</property>
+    <property name="default_width">640</property>
+    <property name="default_height">480</property>
+    <property name="resizable">True</property>
     <property name="icon_name">dialog-password</property>
     <property name="type_hint">dialog</property>
     <child internal-child="vbox">
@@ -64,7 +67,7 @@
                 <property name="orientation">vertical</property>
                 <property name="spacing">6</property>
                 <child>
-                  <object class="GtkLabel" id="caption">
+                  <object class="GtkLabel" id="status_text">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="margin_bottom">12</property>
@@ -72,10 +75,6 @@
                     <property name="yalign">0</property>
                     <property name="wrap">True</property>
                     <property name="max_width_chars">60</property>
-                    <attributes>
-                      <attribute name="weight" value="bold"/>
-                      <attribute name="scale" value="1.2"/>
-                    </attributes>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -84,61 +83,46 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkLabel" id="info">
+                  <object class="GtkBox" id="box3">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
-                    <property name="yalign">0</property>
-                    <property name="selectable">True</property>
-                    <property name="wrap">True</property>
-                     <property name="max_width_chars">75</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkExpander" id="certificate_expander">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="margin_top">6</property>
+                    <property name="spacing">6</property>
                     <child>
-                      <object class="GtkBox" id="box3">
+                      <object class="GtkBox" id="box4">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="margin_left">12</property>
-                        <property name="spacing">12</property>
+                        <property name="orientation">vertical</property>
+                        <property name="spacing">6</property>
                         <child>
                           <object class="GtkScrolledWindow" id="scrolledwindow1">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="shadow_type">in</property>
                             <property name="min_content_width">200</property>
+                            <property name="min_content_height">350</property>
                             <child>
-                              <object class="GtkTreeView" id="certificate_tree_view">
+                              <object class="GtkTreeView" id="tree_view">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="model">certificate_store</property>
-                                <property name="show_expanders">False</property>
-                                <property name="level_indentation">12</property>
+                                <property name="model">account_store</property>
+                                <signal name="key-press-event" handler="inf_gtk_permissions_dialog_key_press_event_cb" swapped="no"/>
+                                <signal name="button-press-event" handler="inf_gtk_permissions_dialog_button_press_event_cb" swapped="no"/>
                                 <child internal-child="selection">
                                   <object class="GtkTreeSelection" id="treeview-selection1">
-                                    <signal name="changed" handler="inf_gtk_certificate_dialog_selection_changed_cb" swapped="no"/>
+                                    <signal name="changed" handler="inf_gtk_permissions_dialog_selection_changed_cb" swapped="no"/>
                                   </object>
                                 </child>
                                 <child>
                                   <object class="GtkTreeViewColumn" id="certificate_column">
                                     <property name="spacing">6</property>
-                                    <property name="title" translatable="yes">Certificate Chain</property>
+                                    <property name="title" translatable="yes">Accounts</property>
                                     <child>
-                                      <object class="GtkCellRendererPixbuf" id="icon_renderer">
-                                        <property name="icon_name">application-certificate</property>
+                                      <object class="GtkCellRendererCombo" id="renderer">
+                                        <signal name="editing-started" handler="inf_gtk_permissions_dialog_renderer_editing_started_cb" swapped="no"/>
+                                        <signal name="editing-canceled" handler="inf_gtk_permissions_dialog_renderer_editing_canceled_cb" swapped="no"/>
+                                        <signal name="edited" handler="inf_gtk_permissions_dialog_renderer_edited_cb" swapped="no"/>
+                                        <signal name="changed" handler="inf_gtk_permissions_dialog_renderer_changed_cb" swapped="no"/>
                                       </object>
-                                    </child>
-                                    <child>
-                                      <object class="GtkCellRendererText" id="text_renderer"/>
                                     </child>
                                   </object>
                                 </child>
@@ -146,36 +130,86 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="expand">False</property>
+                            <property name="expand">True</property>
                             <property name="fill">True</property>
                             <property name="position">0</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="InfGtkCertificateView" id="certificate_info_view">
+                          <object class="GtkBox" id="box6">
                             <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="spacing">12</property>
+                            <child>
+                              <object class="GtkButton" id="add_button">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">True</property>
+                                <signal name="clicked" handler="inf_gtk_permissions_dialog_add_clicked_cb" swapped="no"/>
+                                <child>
+                                  <object class="GtkImage" id="image1">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="icon_name">list-add</property>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkButton" id="remove_button">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">True</property>
+                                <signal name="clicked" handler="inf_gtk_permissions_dialog_remove_clicked_cb" swapped="no"/>
+                                <child>
+                                  <object class="GtkImage" id="image2">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="icon_name">list-remove</property>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
                           </object>
                           <packing>
-                            <property name="expand">True</property>
+                            <property name="expand">False</property>
                             <property name="fill">True</property>
                             <property name="position">1</property>
                           </packing>
                         </child>
                       </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
                     </child>
-                    <child type="label">
-                      <object class="GtkLabel" id="label1">
+                    <child>
+                      <object class="InfGtkAclSheetView" id="sheet_view">
                         <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">_View Certificate</property>
-                        <property name="use_underline">True</property>
+                        <signal name="sheet-changed" handler="inf_gtk_permissions_dialog_sheet_changed_cb" swapped="no"/>
                       </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
+                    <property name="expand">True</property>
                     <property name="fill">True</property>
-                    <property name="position">2</property>
+                    <property name="position">1</property>
                   </packing>
                 </child>
               </object>
