@@ -69,14 +69,14 @@ struct _InfGtkCertificateDialogPrivate {
   InfGtkCertificateDialogFlags certificate_flags;
   gchar* hostname;
 
-  GtkTreeStore* certificate_tree_store;
+  GtkTreeStore* certificate_store;
 
-  GtkWidget* main_vbox;
-  GtkWidget* upper_hbox;
-  GtkWidget* info_vbox;
+  GtkWidget* caption;
+  GtkWidget* info;
   GtkWidget* certificate_expander;
   GtkWidget* certificate_tree_view;
   GtkWidget* certificate_info_view;
+  GtkCellRenderer* text_renderer;
 };
 
 enum {
@@ -112,12 +112,6 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
 
   priv = INF_GTK_CERTIFICATE_DIALOG_PRIVATE(dialog);
 
-  if(priv->info_vbox != NULL)
-  {
-    gtk_container_remove(GTK_CONTAINER(priv->upper_hbox), priv->info_vbox);
-    priv->info_vbox = NULL;
-  }
-
   if(priv->certificate_flags != 0 && priv->hostname != NULL)
   {
     own_cert =
@@ -128,26 +122,8 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       priv->hostname
     );
 
-    caption = gtk_label_new(NULL);
-    gtk_misc_set_alignment(GTK_MISC(caption), 0.0, 0.0);
-    gtk_label_set_line_wrap(GTK_LABEL(caption), TRUE);
-    size = pango_font_description_get_size(
-      gtk_widget_get_style(caption)->font_desc);
-    font_desc = pango_font_description_new();
-    pango_font_description_set_weight(font_desc, PANGO_WEIGHT_BOLD);
-    pango_font_description_set_size(font_desc, size * PANGO_SCALE_LARGE);
-    gtk_widget_modify_font(caption, font_desc);
-    pango_font_description_free(font_desc);
-
-    normal_width_chars = gtk_label_get_max_width_chars(GTK_LABEL(caption));
-    gtk_label_set_max_width_chars(
-      GTK_LABEL(caption),
-      (gint)(normal_width_chars / PANGO_SCALE_LARGE)
-    );
-
-    gtk_label_set_text(GTK_LABEL(caption), text);
+    gtk_label_set_text(GTK_LABEL(priv->caption), text);
     g_free(text);
-    gtk_widget_show(caption);
 
     info_text = g_string_sized_new(256);
 
@@ -230,28 +206,13 @@ inf_gtk_certificate_dialog_renew_info(InfGtkCertificateDialog* dialog)
       }
     }
 
-    info = gtk_label_new(NULL);
-    markup = g_string_free(info_text, FALSE);
-    gtk_label_set_markup(GTK_LABEL(info), markup);
-    g_free(markup);
-
-    gtk_label_set_selectable(GTK_LABEL(info), TRUE);
-    gtk_label_set_line_wrap(GTK_LABEL(info), TRUE);
-    gtk_misc_set_alignment(GTK_MISC(info), 0.0, 0.0);
-    gtk_widget_show(info);
-
-    priv->info_vbox = gtk_vbox_new(FALSE, 12);
-    gtk_box_pack_start(GTK_BOX(priv->info_vbox), caption, FALSE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(priv->info_vbox), info, FALSE, TRUE, 0);
-    gtk_widget_show(priv->info_vbox);
-
-    gtk_box_pack_start(
-      GTK_BOX(priv->upper_hbox),
-      priv->info_vbox,
-      TRUE,
-      TRUE,
-      0
-    );
+    gtk_label_set_markup(GTK_LABEL(priv->info), info_text->str);
+    g_string_free(info_text, TRUE);
+  }
+  else
+  {
+    gtk_label_set_text(GTK_LABEL(priv->caption), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->info), NULL);
   }
 }
 
@@ -274,7 +235,7 @@ inf_gtk_certificate_dialog_set_chain(InfGtkCertificateDialog* dialog,
 
   priv->certificate_chain = chain;
 
-  gtk_tree_store_clear(priv->certificate_tree_store);
+  gtk_tree_store_clear(priv->certificate_store);
   inf_gtk_certificate_view_set_certificate(
     INF_GTK_CERTIFICATE_VIEW(priv->certificate_info_view),
     NULL
@@ -288,15 +249,15 @@ inf_gtk_certificate_dialog_set_chain(InfGtkCertificateDialog* dialog,
     for(i = inf_certificate_chain_get_n_certificates(chain); i > 0; -- i)
     {
       crt = inf_certificate_chain_get_nth_certificate(chain, i - 1);
-      gtk_tree_store_append(priv->certificate_tree_store, &new_row, parent);
-      gtk_tree_store_set(priv->certificate_tree_store, &new_row, 0, crt, -1);
+      gtk_tree_store_append(priv->certificate_store, &new_row, parent);
+      gtk_tree_store_set(priv->certificate_store, &new_row, 0, crt, -1);
 
       prev_row = new_row;
       parent = &prev_row;
     }
 
     path = gtk_tree_model_get_path(
-      GTK_TREE_MODEL(priv->certificate_tree_store),
+      GTK_TREE_MODEL(priv->certificate_store),
       &new_row
     );
 
@@ -345,7 +306,7 @@ inf_gtk_certificate_dialog_selection_changed_cb(GtkTreeSelection* selection,
   if(gtk_tree_selection_get_selected(selection, NULL, &iter))
   {
     gtk_tree_model_get(
-      GTK_TREE_MODEL(priv->certificate_tree_store),
+      GTK_TREE_MODEL(priv->certificate_store),
       &iter,
       0, &cert,
       -1
@@ -398,191 +359,26 @@ static void
 inf_gtk_certificate_dialog_init(InfGtkCertificateDialog* dialog)
 {
   InfGtkCertificateDialogPrivate* priv;
-
-  GtkWidget* image;
-  GtkWidget* hbox;
-  GtkWidget* scroll;
-  GtkWidget* vbox;
-  GtkTreeViewColumn* column;
-  GtkCellRenderer* renderer;
-  GtkTreeSelection* selection;
-  GtkIconTheme* theme;
-  GtkIconInfo* icon_info;
-
   priv = INF_GTK_CERTIFICATE_DIALOG_PRIVATE(dialog);
 
   priv->certificate_chain = NULL;
   priv->certificate_flags = 0;
   priv->hostname = NULL;
 
-  priv->certificate_tree_store = gtk_tree_store_new(1, G_TYPE_POINTER);
+  gtk_widget_init_template(GTK_WIDGET(dialog));
 
-  /* Warning */
-  priv->info_vbox = NULL;
-  priv->upper_hbox = gtk_hbox_new(FALSE, 12);
-
-  image = gtk_image_new_from_icon_name(
-    "dialog-password",
-    GTK_ICON_SIZE_DIALOG
+  gtk_tree_selection_set_mode(
+    gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->certificate_tree_view)),
+    GTK_SELECTION_BROWSE
   );
-
-  gtk_misc_set_alignment(GTK_MISC(image), 0.0, 0.0);
-  gtk_widget_show(image);
-
-  gtk_box_pack_start(
-    GTK_BOX(priv->upper_hbox),
-    image,
-    FALSE,
-    TRUE,
-    0
-  );
-
-  gtk_widget_show(priv->upper_hbox);
-
-  /* Certificate info */
-  column = gtk_tree_view_column_new();
-  gtk_tree_view_column_set_title(column, _("Certificate Chain"));
-  gtk_tree_view_column_set_spacing(column, 6);
-
-  renderer = gtk_cell_renderer_pixbuf_new();
-  theme = gtk_icon_theme_get_default();
-  icon_info = gtk_icon_theme_lookup_icon(
-    theme,
-    "application-certificate",
-    GTK_ICON_SIZE_MENU,
-    GTK_ICON_LOOKUP_USE_BUILTIN
-  );
-
-  if(icon_info != NULL)
-  {
-    g_object_set(
-      G_OBJECT(renderer),
-      "icon-name", "application-certificate",
-      NULL
-    );
-
-    gtk_icon_info_free(icon_info);
-  }
-  else
-  {
-    g_object_set(
-      G_OBJECT(renderer),
-      "visible", FALSE,
-      NULL
-    );
-  }
-
-  gtk_tree_view_column_pack_start(column, renderer, FALSE);
-
-  renderer = gtk_cell_renderer_text_new();
-  gtk_tree_view_column_pack_start(column, renderer, TRUE);
 
   gtk_tree_view_column_set_cell_data_func(
-    column,
-    renderer,
+    gtk_tree_view_get_column(GTK_TREE_VIEW(priv->certificate_tree_view), 0),
+    priv->text_renderer,
     inf_gtk_certificate_dialog_chain_data_func,
     NULL,
     NULL
   );
-
-  priv->certificate_tree_view = gtk_tree_view_new_with_model(
-    GTK_TREE_MODEL(priv->certificate_tree_store)
-  );
-
-  gtk_tree_view_append_column(
-    GTK_TREE_VIEW(priv->certificate_tree_view),
-    column
-  );
-
-  gtk_tree_view_set_show_expanders(
-    GTK_TREE_VIEW(priv->certificate_tree_view),
-    FALSE
-  );
-
-  gtk_tree_view_set_level_indentation(
-    GTK_TREE_VIEW(priv->certificate_tree_view),
-    12
-  );
-
-  selection =
-    gtk_tree_view_get_selection(GTK_TREE_VIEW(priv->certificate_tree_view));
-  gtk_tree_selection_set_mode(selection, GTK_SELECTION_BROWSE);
-
-  g_signal_connect(
-    G_OBJECT(selection),
-    "changed",
-    G_CALLBACK(inf_gtk_certificate_dialog_selection_changed_cb),
-    dialog
-  );
-
-  gtk_widget_show(priv->certificate_tree_view);
-
-  scroll = gtk_scrolled_window_new(NULL, NULL);
-  gtk_widget_set_size_request(scroll, 200, -1);
-
-  gtk_scrolled_window_set_shadow_type(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_SHADOW_IN
-  );
-
-  gtk_scrolled_window_set_policy(
-    GTK_SCROLLED_WINDOW(scroll),
-    GTK_POLICY_AUTOMATIC,
-    GTK_POLICY_AUTOMATIC
-  );
-
-  gtk_container_add(GTK_CONTAINER(scroll), priv->certificate_tree_view);
-  gtk_widget_show(scroll);
-
-  priv->certificate_info_view = inf_gtk_certificate_view_new();
-  gtk_widget_show(priv->certificate_info_view);
-
-  hbox = gtk_hbox_new(FALSE, 12);
-  gtk_box_pack_start(GTK_BOX(hbox), scroll, FALSE, FALSE, 0);
-
-  gtk_box_pack_start(
-    GTK_BOX(hbox),
-    priv->certificate_info_view,
-    TRUE,
-    TRUE,
-    0
-  );
-
-  gtk_widget_show(hbox);
-
-  priv->certificate_expander =
-    gtk_expander_new_with_mnemonic(_("_View Certificate"));
-  gtk_expander_set_spacing(GTK_EXPANDER(priv->certificate_expander), 6);
-  gtk_container_add(GTK_CONTAINER(priv->certificate_expander), hbox);
-
-  priv->main_vbox = gtk_vbox_new(FALSE, 12);
-
-  /* Main */
-  gtk_box_pack_start(
-    GTK_BOX(priv->main_vbox),
-    priv->upper_hbox,
-    FALSE,
-    TRUE,
-    0
-  );
-
-  gtk_box_pack_start(
-    GTK_BOX(priv->main_vbox),
-    priv->certificate_expander,
-    TRUE,
-    TRUE,
-    0
-  );
-
-  gtk_widget_show(priv->main_vbox);
-
-  vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_box_pack_start(GTK_BOX(vbox), priv->main_vbox, TRUE, TRUE, 0);
-  gtk_box_set_spacing(GTK_BOX(vbox), 12);
-
-  gtk_container_set_border_width(GTK_CONTAINER(dialog), 12);
-  gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
-  gtk_window_set_title(GTK_WINDOW(dialog), _("Connection not secure"));
 }
 
 static void
@@ -684,6 +480,58 @@ inf_gtk_certificate_dialog_class_init(
   object_class->finalize = inf_gtk_certificate_dialog_finalize;
   object_class->set_property = inf_gtk_certificate_dialog_set_property;
   object_class->get_property = inf_gtk_certificate_dialog_get_property;
+
+  gtk_widget_class_set_template_from_resource(
+    GTK_WIDGET_CLASS(object_class),
+    "/de/0x539/libinfgtk/ui/infgtkcertificatedialog.ui"
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    certificate_store
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    caption
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    info
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    certificate_expander
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    certificate_tree_view
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    certificate_info_view
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(object_class),
+    InfGtkCertificateDialog,
+    text_renderer
+  );
+
+  gtk_widget_class_bind_template_callback(
+    GTK_WIDGET_CLASS(object_class),
+    inf_gtk_certificate_dialog_selection_changed_cb
+  );
 
   g_object_class_install_property(
     object_class,

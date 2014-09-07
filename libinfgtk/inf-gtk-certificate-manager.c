@@ -856,7 +856,7 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
       label = gtk_label_new(text);
       gtk_label_set_line_wrap(GTK_LABEL(label), TRUE);
       gtk_label_set_line_wrap_mode(GTK_LABEL(label), PANGO_WRAP_WORD_CHAR);
-      gtk_label_set_width_chars(GTK_LABEL(label), 60);
+      gtk_label_set_max_width_chars(GTK_LABEL(label), 60);
       gtk_misc_set_alignment(GTK_MISC(label), 0.0, 0.0);
       gtk_widget_show(label);
       g_free(text);
