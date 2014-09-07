@@ -35,6 +35,7 @@ Modernization:
  * Replace RGB to HSV conversions by gtk_hsv_to_rgb etc.
  * Fix the myriads of warnings with new gtk-doc when generating
    documentation and running ./autogen.sh (if we can)
+ * Add GtkHeaderBars where useful
 
 Protocol Break:
   The following features would be nice to have, but they require breaking

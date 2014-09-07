@@ -49,6 +49,7 @@ sources = \
 
 resources = \
 	resources/ui/infgtkaccountcreationdialog.ui \
+	resources/ui/infgtkcertificateview.ui \
 	resources/ui/infgtkchat.ui
 
 inf-gtk-resources.h: resources/infgtk.gresources.xml

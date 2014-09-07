@@ -1,6 +1,7 @@
 <gresources>
  <gresource prefix="/de/0x539/libinfgtk">
-  <file preprocess="xml-stripblanks">ui/infgtkchat.ui</file>
   <file preprocess="xml-stripblanks">ui/infgtkaccountcreationdialog.ui</file>
+  <file preprocess="xml-stripblanks">ui/infgtkcertificateview.ui</file>
+  <file preprocess="xml-stripblanks">ui/infgtkchat.ui</file>
  </gresource>
 </gresources>

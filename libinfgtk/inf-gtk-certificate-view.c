@@ -28,13 +28,10 @@ typedef struct _InfGtkCertificateViewPrivate InfGtkCertificateViewPrivate;
 struct _InfGtkCertificateViewPrivate {
   gnutls_x509_crt_t certificate;
 
-  GtkWidget* general_vbox;
-  GtkSizeGroup* general_size_group;
-
-  GtkWidget* common_name;
-  GtkWidget* organization;
-  GtkWidget* organizational_unit;
-  GtkWidget* serial_number;
+  GtkWidget* subject_common_name;
+  GtkWidget* subject_organization;
+  GtkWidget* subject_organizational_unit;
+  GtkWidget* subject_serial_number;
 
   GtkWidget* issuer_common_name;
   GtkWidget* issuer_organization;
@@ -44,7 +41,7 @@ struct _InfGtkCertificateViewPrivate {
   GtkWidget* expiration_time;
 
   GtkWidget* sha1_fingerprint;
-  GtkWidget* md5_fingerprint;
+  GtkWidget* sha256_fingerprint;
 };
 
 enum {
@@ -55,8 +52,7 @@ enum {
 
 #define INF_GTK_CERTIFICATE_VIEW_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_GTK_TYPE_CERTIFICATE_VIEW, InfGtkCertificateViewPrivate))
 
-/* TODO: Should derive from another class, GtkBox or so... */
-G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateView, inf_gtk_certificate_view, GTK_TYPE_NOTEBOOK,
+G_DEFINE_TYPE_WITH_CODE(InfGtkCertificateView, inf_gtk_certificate_view, GTK_TYPE_GRID,
   G_ADD_PRIVATE(InfGtkCertificateView))
 
 static void
@@ -104,101 +100,6 @@ inf_gtk_certificate_view_set_label_issuer_dn_by_oid(gnutls_x509_crt_t cert,
 }
 
 static void
-inf_gtk_certificate_view_add_section(GtkSizeGroup* size_group,
-                                     GtkVBox* parent,
-                                     const gchar* title,
-                                     const gchar* first_caption,
-                                     ...)
-{
-  GtkWidget* table;
-  va_list valist;
-
-  const gchar* caption;
-  GtkWidget** location;
-  GtkWidget* caption_label;
-  unsigned int i;
-
-  GtkWidget* alignment;
-  GtkWidget* frame;
-  GtkWidget* title_label;
-  gchar* title_markup;
-
-  table = gtk_table_new(1, 2, FALSE);
-  gtk_table_set_col_spacings(GTK_TABLE(table), 12);
-  gtk_table_set_row_spacings(GTK_TABLE(table), 6);
-  va_start(valist, first_caption);
-
-  caption = first_caption;
-  for(i = 1; caption != NULL; ++ i)
-  {
-    location = va_arg(valist, GtkWidget**);
-
-    gtk_table_resize(GTK_TABLE(table), i, 2);
-
-    caption_label = gtk_label_new(caption);
-    gtk_misc_set_alignment(GTK_MISC(caption_label), 0.0, 0.0);
-    gtk_widget_show(caption_label);
-
-    *location = gtk_label_new(NULL);
-    gtk_misc_set_alignment(GTK_MISC(*location), 0.0, 0.0);
-    gtk_label_set_selectable(GTK_LABEL(*location), TRUE);
-    gtk_widget_show(*location);
-
-    gtk_size_group_add_widget(size_group, caption_label);
-
-    gtk_table_attach(
-      GTK_TABLE(table),
-      caption_label,
-      0,
-      1,
-      i-1,
-      i,
-      GTK_FILL,
-      GTK_FILL,
-      0,
-      0
-    );
-
-    gtk_table_attach(
-      GTK_TABLE(table),
-      *location,
-      1,
-      2,
-      i-1,
-      i,
-      GTK_EXPAND | GTK_FILL,
-      GTK_FILL,
-      0,
-      0
-    );
-
-    caption = va_arg(valist, const gchar*);
-  }
-
-  va_end(valist);
-  gtk_widget_show(table);
-
-  alignment = gtk_alignment_new(0.0, 0.0, 1.0, 1.0);
-  gtk_alignment_set_padding(GTK_ALIGNMENT(alignment), 6, 0, 12, 0);
-  gtk_container_add(GTK_CONTAINER(alignment), table);
-  gtk_widget_show(alignment);
-
-  frame = gtk_frame_new(NULL);
-  title_label = gtk_label_new(NULL);
-  title_markup = g_markup_printf_escaped("<b>%s</b>", title);
-  gtk_label_set_markup(GTK_LABEL(title_label), title_markup);
-  g_free(title_markup);
-  gtk_widget_show(title_label);
-
-  gtk_frame_set_label_widget(GTK_FRAME(frame), title_label);
-  gtk_frame_set_shadow_type(GTK_FRAME(frame), GTK_SHADOW_NONE);
-  gtk_container_add(GTK_CONTAINER(frame), alignment);
-  gtk_widget_show(frame);
-
-  gtk_box_pack_start(GTK_BOX(parent), frame, FALSE, FALSE, 0);
-}
-
-static void
 inf_gtk_certificate_view_init(InfGtkCertificateView* view)
 {
   InfGtkCertificateViewPrivate* priv;
@@ -208,88 +109,8 @@ inf_gtk_certificate_view_init(InfGtkCertificateView* view)
   priv = INF_GTK_CERTIFICATE_VIEW_PRIVATE(view);
 
   priv->certificate = NULL;
-  gtk_notebook_set_show_tabs(GTK_NOTEBOOK(view), FALSE);
-  gtk_notebook_set_show_border(GTK_NOTEBOOK(view), FALSE);
 
-  priv->general_vbox = gtk_vbox_new(FALSE, 12);
-  priv->general_size_group = gtk_size_group_new(GTK_SIZE_GROUP_HORIZONTAL);
-
-  inf_gtk_certificate_view_add_section(
-    priv->general_size_group,
-    GTK_VBOX(priv->general_vbox),
-    _("Issued To"),
-    _("Common Name:"), &priv->common_name,
-    _("Organization:"), &priv->organization,
-    _("Organizational Unit:"), &priv->organizational_unit,
-    _("Serial Number:"), &priv->serial_number,
-    NULL
-  );
-
-  inf_gtk_certificate_view_add_section(
-    priv->general_size_group,
-    GTK_VBOX(priv->general_vbox),
-    _("Issued By"),
-    _("Common Name:"), &priv->issuer_common_name,
-    _("Organization:"), &priv->issuer_organization,
-    _("Organizational Unit:"), &priv->issuer_organizational_unit,
-    NULL
-  );
-
-  inf_gtk_certificate_view_add_section(
-    priv->general_size_group,
-    GTK_VBOX(priv->general_vbox),
-    _("Validity"),
-    _("Issued On:"), &priv->activation_time,
-    _("Expires On:"), &priv->expiration_time,
-    NULL
-  );
-
-  inf_gtk_certificate_view_add_section(
-    priv->general_size_group,
-    GTK_VBOX(priv->general_vbox),
-    _("Fingerprints"),
-    _("SHA1 Fingerprint:"), &priv->sha1_fingerprint,
-    _("MD5 Fingerprint:"), &priv->md5_fingerprint,
-    NULL
-  );
-
-  size = pango_font_description_get_size(
-    gtk_widget_get_style(priv->serial_number)->font_desc);
-  monospace_desc = pango_font_description_new();
-  pango_font_description_set_family(monospace_desc, "Monospace");
-  pango_font_description_set_size(monospace_desc, size * PANGO_SCALE_SMALL);
-
-  gtk_widget_modify_font(priv->serial_number, monospace_desc);
-  gtk_widget_modify_font(priv->sha1_fingerprint, monospace_desc);
-  gtk_widget_modify_font(priv->md5_fingerprint, monospace_desc);
-
-  pango_font_description_free(monospace_desc);
-
-  gtk_notebook_append_page(
-    GTK_NOTEBOOK(view),
-    priv->general_vbox,
-    gtk_label_new(_("General"))
-  );
-
-  gtk_widget_show(priv->general_vbox);
-}
-
-static void
-inf_gtk_certificate_view_dispose(GObject* object)
-{
-  InfGtkCertificateView* view;
-  InfGtkCertificateViewPrivate* priv;
-
-  view = INF_GTK_CERTIFICATE_VIEW(object);
-  priv = INF_GTK_CERTIFICATE_VIEW_PRIVATE(view);
-
-  if(priv->general_size_group != NULL)
-  {
-    g_object_unref(priv->general_size_group);
-    priv->general_size_group = NULL;
-  }
-
-  G_OBJECT_CLASS(inf_gtk_certificate_view_parent_class)->dispose(object);
+  gtk_widget_init_template(GTK_WIDGET(view));
 }
 
 static void
@@ -353,9 +174,79 @@ inf_gtk_certificate_view_class_init(
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(certificate_view_class);
 
-  object_class->dispose = inf_gtk_certificate_view_dispose;
   object_class->set_property = inf_gtk_certificate_view_set_property;
   object_class->get_property = inf_gtk_certificate_view_get_property;
+
+  gtk_widget_class_set_template_from_resource(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    "/de/0x539/libinfgtk/ui/infgtkcertificateview.ui"
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    subject_common_name
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    subject_organization
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    subject_organizational_unit
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    subject_serial_number
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    issuer_common_name
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    issuer_organization
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    issuer_organizational_unit
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    activation_time
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    expiration_time
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    sha1_fingerprint
+  );
+
+  gtk_widget_class_bind_template_child_private(
+    GTK_WIDGET_CLASS(certificate_view_class),
+    InfGtkCertificateView,
+    sha256_fingerprint
+  );
 
   g_object_class_install_property(
     object_class,
@@ -443,10 +334,10 @@ inf_gtk_certificate_view_set_certificate(InfGtkCertificateView* view,
 
   if(cert == NULL)
   {
-    gtk_label_set_text(GTK_LABEL(priv->common_name), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->organization), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->organizational_unit), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->serial_number), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->subject_common_name), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->subject_organization), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->subject_organizational_unit), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->subject_serial_number), NULL);
 
     gtk_label_set_text(GTK_LABEL(priv->issuer_common_name), NULL);
     gtk_label_set_text(GTK_LABEL(priv->issuer_organization), NULL);
@@ -456,31 +347,31 @@ inf_gtk_certificate_view_set_certificate(InfGtkCertificateView* view,
     gtk_label_set_text(GTK_LABEL(priv->expiration_time), NULL);
 
     gtk_label_set_text(GTK_LABEL(priv->sha1_fingerprint), NULL);
-    gtk_label_set_text(GTK_LABEL(priv->md5_fingerprint), NULL);
+    gtk_label_set_text(GTK_LABEL(priv->sha256_fingerprint), NULL);
   }
   else
   {
     inf_gtk_certificate_view_set_label_dn_by_oid(
       cert,
-      GTK_LABEL(priv->common_name),
+      GTK_LABEL(priv->subject_common_name),
       GNUTLS_OID_X520_COMMON_NAME
     );
 
     inf_gtk_certificate_view_set_label_dn_by_oid(
       cert,
-      GTK_LABEL(priv->organization),
+      GTK_LABEL(priv->subject_organization),
       GNUTLS_OID_X520_ORGANIZATION_NAME
     );
 
     inf_gtk_certificate_view_set_label_dn_by_oid(
       cert,
-      GTK_LABEL(priv->organizational_unit),
+      GTK_LABEL(priv->subject_organizational_unit),
       GNUTLS_OID_X520_ORGANIZATIONAL_UNIT_NAME
     );
 
     value = inf_cert_util_get_serial_number(cert);
     inf_gtk_certificate_view_set_label(
-      GTK_LABEL(priv->serial_number),
+      GTK_LABEL(priv->subject_serial_number),
       value
     );
     g_free(value);
@@ -524,9 +415,9 @@ inf_gtk_certificate_view_set_certificate(InfGtkCertificateView* view,
     );
     g_free(value);
 
-    value = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_MD5);
+    value = inf_cert_util_get_fingerprint(cert, GNUTLS_DIG_SHA256);
     inf_gtk_certificate_view_set_label(
-      GTK_LABEL(priv->md5_fingerprint),
+      GTK_LABEL(priv->sha256_fingerprint),
       value
     );
     g_free(value);

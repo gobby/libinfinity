@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface domain="libinfgtk07">
+  <!-- interface-requires gtk+ 3.10 -->
+  <template class="InfGtkCertificateView" parent="GtkGrid">
+    <property name="orientation">vertical</property>
+    <property name="row-spacing">6</property>
+    <property name="column-spacing">12</property>
+    <child>
+      <object class="GtkLabel" id="caption_subject">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Issued To</property>
+        <property name="xalign">0</property>
+        <attributes>
+          <attribute name="weight" value="bold"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">0</property>
+        <property name="width">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_subject_common_name">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Common Name:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="subject_common_name">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">1</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_subject_organization">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Organization:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="subject_organization">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_subject_organizational_unit">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Organizational Unit:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">3</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="subject_organizational_unit">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">3</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_serial_number">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Serial Number:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">4</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="subject_serial_number">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+        <property name="selectable">True</property>
+        <attributes>
+          <attribute name="font-desc" value="Monospace"/>
+          <attribute name="scale" value="0.833333"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">4</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="caption_issuer">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Issued By</property>
+        <property name="xalign">0</property>
+        <attributes>
+          <attribute name="weight" value="bold"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">5</property>
+        <property name="width">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_issuer_common_name">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Common Name:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">6</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="issuer_common_name">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">6</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_issuer_organization">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Organization:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">7</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="issuer_organization">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">7</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_issuer_organizational_unit">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Organizational Unit:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">8</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="issuer_organizational_unit">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">8</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="caption_validity">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Validity</property>
+        <property name="xalign">0</property>
+        <attributes>
+          <attribute name="weight" value="bold"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">9</property>
+        <property name="width">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_activation_time">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Issued On:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">10</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="activation_time">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">10</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_expiration_time">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Expires On:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">11</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="expiration_time">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">11</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="caption_fingerprints">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">Fingerprints</property>
+        <property name="xalign">0</property>
+        <attributes>
+          <attribute name="weight" value="bold"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">12</property>
+        <property name="width">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_sha1_fingerprint">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">SHA-1 Fingerprint:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">13</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="sha1_fingerprint">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+        <property name="selectable">True</property>
+        <attributes>
+          <attribute name="font-desc" value="Monospace"/>
+          <attribute name="scale" value="0.833333"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">13</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="label_sha256_fingerprint">
+        <property name="visible">True</property>
+        <property name="label" translatable="yes">SHA-256 Fingerprint:</property>
+        <property name="margin-left">12</property>
+        <property name="xalign">0</property>
+        <property name="yalign">0</property>
+      </object>
+      <packing>
+        <property name="left_attach">0</property>
+        <property name="top_attach">14</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkLabel" id="sha256_fingerprint">
+        <property name="visible">True</property>
+        <property name="xalign">0</property>
+        <property name="selectable">True</property>
+        <property name="max-width-chars">47</property>
+        <property name="wrap">True</property>
+        <property name="wrap-mode">char</property>
+        <attributes>
+          <attribute name="font-desc" value="Monospace"/>
+          <attribute name="scale" value="0.833333"/>
+        </attributes>
+      </object>
+      <packing>
+        <property name="left_attach">1</property>
+        <property name="top_attach">14</property>
+      </packing>
+    </child>
+  </template>
+</interface>
