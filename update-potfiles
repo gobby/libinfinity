@@ -1,3 +1,8 @@
 #!/bin/sh
+for file in libinfgtk/resources/ui/*.ui; do
+	intltool-extract --type="gettext/glade" $file
+	git add $file
+done
+
 grep "_(" libinfinity libinftext libinfgtk libinftextgtk infinoted -R | \
 	sed -e 's/:.*//' | grep -v matches | uniq | sort > po/POTFILES.in

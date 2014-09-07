@@ -28,6 +28,13 @@ libinfgtk/inf-gtk-certificate-manager.c
 libinfgtk/inf-gtk-certificate-view.c
 libinfgtk/inf-gtk-chat.c
 libinfgtk/inf-gtk-permissions-dialog.c
+libinfgtk/inf-gtk-resources.c
+libinfgtk/resources/ui/infgtkaccountcreationdialog.ui.h
+libinfgtk/resources/ui/infgtkaclsheetview.ui.h
+libinfgtk/resources/ui/infgtkcertificatedialog.ui.h
+libinfgtk/resources/ui/infgtkcertificateview.ui.h
+libinfgtk/resources/ui/infgtkchat.ui.h
+libinfgtk/resources/ui/infgtkpermissionsdialog.ui.h
 libinfinity/adopted/inf-adopted-algorithm.c
 libinfinity/adopted/inf-adopted-session.c
 libinfinity/adopted/inf-adopted-session-record.c

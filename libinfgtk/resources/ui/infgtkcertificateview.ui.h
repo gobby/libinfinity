@@ -1,0 +1,12 @@
+char *s = N_("Issued To");
+char *s = N_("Common Name:");
+char *s = N_("Organization:");
+char *s = N_("Organizational Unit:");
+char *s = N_("Serial Number:");
+char *s = N_("Issued By");
+char *s = N_("Validity");
+char *s = N_("Issued On:");
+char *s = N_("Expires On:");
+char *s = N_("Fingerprints");
+char *s = N_("SHA-1 Fingerprint:");
+char *s = N_("SHA-256 Fingerprint:");

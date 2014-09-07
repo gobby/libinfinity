@@ -29,7 +29,6 @@ Modernization:
  * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
  * Replace constructor by constructed
- * Use GtkBox and GtkGrid, use GtkBuilder for widgets/dialogs
  * Fix usage of deprecated GTK+ APIs
  * g_set_error_literal
  * Replace RGB to HSV conversions by gtk_hsv_to_rgb etc.
