@@ -4,7 +4,7 @@ m4_define([libinfinity_libtool_version], [0:0:0])
 
 AC_PREREQ(2.60)
 AC_INIT([libinfinity], [libinfinity_version], [armin@arbur.net])
-AM_INIT_AUTOMAKE([-Wall dist-bzip2 check-news foreign tar-pax])
+AM_INIT_AUTOMAKE([-Wall -Wno-portability dist-bzip2 check-news foreign tar-pax subdir-objects])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES])
 AM_MAINTAINER_MODE
 AC_CONFIG_SRCDIR([libinfinity/common/inf-init.c])
@@ -18,6 +18,7 @@ AC_SUBST(LIBINFINITY_API_VERSION)
 AC_SUBST(LIBINFINITY_LIBTOOL_VERSION)
 
 AC_CANONICAL_HOST
+AM_SILENT_RULES([yes])
 
 # Remove -Wno-strict-prototypes for the feature tests
 has_strict_prototypes=""
