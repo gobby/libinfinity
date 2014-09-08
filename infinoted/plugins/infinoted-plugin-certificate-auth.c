@@ -47,6 +47,8 @@ struct _InfinotedPluginCertificateAuth {
   gnutls_x509_privkey_t ca_key;
   guint ca_key_index;
 
+  gint verify_flags;
+
   InfAclAccountId super_id;
   InfRequest* set_acl_request;
 };
@@ -116,10 +118,6 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
 
   if(chain != NULL)
   {
-    /* Note that we don't require client certificates to be signed by a CA.
-     * We only require them to be signed by one of the certificates in our
-     * list, but we don't care whether that's a CA or not. A common use case
-     * is to sign client certificates with our own server certificate. */
     res = gnutls_x509_crt_list_verify(
       inf_certificate_chain_get_raw(chain),
       inf_certificate_chain_get_n_certificates(chain),
@@ -127,7 +125,7 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
       plugin->n_cas,
       NULL,
       0,
-      GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT | GNUTLS_VERIFY_DISABLE_CA_SIGN,
+      plugin->verify_flags,
       &verify_result
     );
 
@@ -175,6 +173,14 @@ infinoted_plugin_certificate_auth_info_initialize(gpointer plugin_info)
   plugin->n_cas = 0;
   plugin->ca_key = NULL;
   plugin->ca_key_index = G_MAXUINT;
+
+  /* Note that we don't require client certificates to be signed by a CA,
+   * by default. We only require them to be signed by one of the certificates
+   * in our list, but we don't care whether that's a CA or not. A common use
+   * case is to sign client certificates with our own server certificate. */
+  plugin->verify_flags =
+    GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT |
+    GNUTLS_VERIFY_DISABLE_CA_SIGN;
 
   plugin->super_id = 0;
   plugin->set_acl_request = NULL;
@@ -542,6 +548,47 @@ infinoted_plugin_certificate_auth_connection_removed(InfXmlConnection* conn,
   }
 }
 
+static const GFlagsValue INFINOTED_PLUGIN_CERTIFICATE_AUTH_VERIFY_FLAGS[] = {
+  {
+    GNUTLS_VERIFY_DISABLE_CA_SIGN,
+    "GNUTLS_VERIFY_DISABLE_CA_SIGN",
+    "disable-ca-sign"
+  }, {
+    GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT,
+    "GNUTLS_VERIFY_ALLOW_X509_V1_CA_CRT",
+    "allow-v1-ca-certificate"
+  }, {
+    GNUTLS_VERIFY_ALLOW_SIGN_RSA_MD2,
+    "GNUTLS_VERIFY_ALLOW_SIGN_RSA_MD2",
+    "allow-md2"
+  }, {
+    GNUTLS_VERIFY_ALLOW_SIGN_RSA_MD2,
+    "GNUTLS_VERIFY_ALLOW_SIGN_RSA_MD2",
+    "allow-md5"
+  }, {
+    GNUTLS_VERIFY_DISABLE_TIME_CHECKS,
+    "GNUTLS_VERIFY_DISABLE_TIME_CHECKS",
+    "disable-time-checks"
+  }, {
+    0,
+    NULL,
+    NULL
+  }
+};
+
+static gboolean
+infinoted_plugin_certificate_auth_convert_verify_flags(gpointer in,
+                                                       gpointer out,
+                                                       GError** error)
+{
+  return infinoted_parameter_convert_flags(
+    in,
+    out,
+    INFINOTED_PLUGIN_CERTIFICATE_AUTH_VERIFY_FLAGS,
+    error
+  );
+}
+
 static const InfinotedParameterInfo INFINOTED_PLUGIN_CERTIFICATE_AUTH_OPTIONS[] = {
   { "ca-list",
     INFINOTED_PARAMETER_STRING,
@@ -589,6 +636,18 @@ static const InfinotedParameterInfo INFINOTED_PLUGIN_CERTIFICATE_AUTH_OPTIONS[] 
        "or the plugin is re-loaded. This option can only be given when "
        "the \"ca-key\" parameter is set."),
     N_("FILENAME")
+  }, {
+    "verification-flags",
+    INFINOTED_PARAMETER_STRING_LIST,
+    0,
+    offsetof(InfinotedPluginCertificateAuth, verify_flags),
+    infinoted_plugin_certificate_auth_convert_verify_flags,
+    0,
+    N_("Flags to be used when verifying a client certificate. Each of these "
+       "flags weakens the security, and so should be set only when "
+       "absolutely necessary, and it should be done with care. "
+       "[Default: disable-ca-sign]"),
+    N_("flag1;flag2;[...]")
   }, {
     NULL,
     0,
