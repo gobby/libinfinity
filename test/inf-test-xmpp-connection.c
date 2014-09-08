@@ -22,6 +22,7 @@
 #include <libinfinity/common/inf-tcp-connection.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,8 +78,12 @@ int main(int argc, char* argv[])
   InfXmppConnection* xmpp;
   GError* error;
 
-  gnutls_global_init();
-  g_type_init();
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return 1;
+  }
 
 #if 0
   addr = inf_ip_address_new_from_string("88.198.49.206"); /* This is jabber.0x539.de aka durotan.0x539.de */
@@ -86,7 +91,6 @@ int main(int argc, char* argv[])
   addr = inf_ip_address_new_from_string("127.0.0.1"); /* This is localhost aka loopback */
 #endif
   io = inf_standalone_io_new();
-  error = NULL;
 
   connection = inf_tcp_connection_new_and_open(INF_IO(io), addr, 5223, &error);
 
@@ -119,7 +123,6 @@ int main(int argc, char* argv[])
   if(connection)
     g_object_unref(G_OBJECT(connection));
 
-  gnutls_global_deinit();
   return 0;
 }
 

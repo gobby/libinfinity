@@ -133,8 +133,6 @@ int main(int argc, char* argv[])
   InfAdoptedStateVector* vec;
   InfAdoptedStateVector* vec2;
 
-  g_type_init();
-
   users[0] = 1;
   users[1] = 2;
 

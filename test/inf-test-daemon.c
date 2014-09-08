@@ -27,6 +27,7 @@
 #include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-protocol.h>
+#include <libinfinity/common/inf-init.h>
 
 #ifdef LIBINFINITY_HAVE_AVAHI
 #include <libinfinity/common/inf-discovery-avahi.h>
@@ -49,8 +50,12 @@ main(int argc, char* argv[])
 #endif
   GError* error;
 
-  gnutls_global_init();
-  g_type_init();
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return 1;
+  }
 
   io = inf_standalone_io_new();
 
@@ -61,7 +66,6 @@ main(int argc, char* argv[])
     NULL
   );
 
-  error = NULL;
   if(infd_tcp_server_open(server, &error) == FALSE)
   {
     fprintf(stderr, "Could not open server: %s\n", error->message);

@@ -28,6 +28,7 @@
 #include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <string.h>
 
@@ -416,7 +417,12 @@ int main(int argc, char* argv[])
 
   printf("Using random seed %u\n", rseed);
 
-  g_type_init();
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return 1;
+  }
 
   if(argc > dirarg)
     dir = argv[dirarg];
@@ -428,7 +434,6 @@ int main(int argc, char* argv[])
   result.passed = 0;
   result.time = 0.0;
 
-  error = NULL;
   timer = g_timer_new();
   retval = inf_test_util_dir_foreach(
     dir,

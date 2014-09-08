@@ -29,6 +29,7 @@
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-protocol.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <string.h>
 
@@ -307,8 +308,12 @@ main(int argc, char* argv[])
   InfTcpConnection* tcp_conn;
   GError* error;
 
-  gnutls_global_init();
-  g_type_init();
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return 1;
+  }
 
   test.io = inf_standalone_io_new();
 #ifndef G_OS_WIN32
@@ -318,7 +323,6 @@ main(int argc, char* argv[])
 
   address = inf_ip_address_new_loopback4();
 
-  error = NULL;
   tcp_conn =
     inf_tcp_connection_new_and_open(INF_IO(test.io), address, inf_protocol_get_default_port(), &error);
 

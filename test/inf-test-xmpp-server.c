@@ -21,6 +21,7 @@
 #include <libinfinity/server/infd-xml-server.h>
 #include <libinfinity/server/infd-tcp-server.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -138,11 +139,14 @@ int main(int argc, char* argv[])
   InfdXmppServer* xmpp;
   GError* error;
 
-  gnutls_global_init();
-  g_type_init();
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return 1;
+  }
 
   io = inf_standalone_io_new();
-  error = NULL;
 
   server = g_object_new(
     INFD_TYPE_TCP_SERVER,

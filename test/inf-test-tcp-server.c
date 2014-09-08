@@ -20,6 +20,7 @@
 #include <libinfinity/server/infd-tcp-server.h>
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-standalone-io.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,10 +176,14 @@ int main(int argc, char* argv[])
   InfdTcpServer* server;
   GError* error;
 
-  g_type_init();
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s", error->message);
+    return 1;
+  }
 
   io = inf_standalone_io_new();
-  error = NULL;
 
   server = g_object_new(
     INFD_TYPE_TCP_SERVER,

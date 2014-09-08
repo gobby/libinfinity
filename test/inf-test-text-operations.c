@@ -528,8 +528,6 @@ int main()
   guint i;
   int retval;
 
-  g_type_init();
-
   retval = 0;
 
   operations = g_malloc(

@@ -190,8 +190,6 @@ int main(int argc, char* argv[])
   GError* error;
 
   error = NULL;
-
-  g_type_init();
   if(inf_init(&error) == FALSE)
   {
     fprintf(stderr, "%s", error->message);

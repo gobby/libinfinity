@@ -28,6 +28,7 @@
 #include <libinfinity/common/inf-user-table.h>
 #include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-xml-util.h>
+#include <libinfinity/common/inf-init.h>
 
 #include <string.h>
 
@@ -416,17 +417,21 @@ int main(int argc, char* argv[])
   GError* error;
   test_result result;
 
-  g_type_init();
-
   if(argc > 1)
     dir = argv[1];
   else
     dir = "cleanup";
 
+  error = NULL;
+  if(!inf_init(&error))
+  {
+    fprintf(stderr, "%s\n", error->message);
+    return 1;
+  }
+
   result.total = 0;
   result.passed = 0;
 
-  error = NULL;
   if(inf_test_util_dir_foreach(dir, foreach_test_func, &result, &error) ==
      FALSE)
   {

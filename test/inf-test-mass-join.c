@@ -57,6 +57,7 @@ inf_test_mass_join_session_new(InfIo* io,
                                InfSessionStatus status,
                                InfCommunicationGroup* sync_group,
                                InfXmlConnection* sync_connection,
+                               const gchar* path,
                                gpointer user_data)
 {
   InfTextDefaultBuffer* buffer;

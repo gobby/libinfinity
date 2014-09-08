@@ -68,6 +68,7 @@ inf_test_gtk_browser_session_new(InfIo* io,
                                  InfSessionStatus status,
                                  InfCommunicationGroup* sync_group,
                                  InfXmlConnection* sync_connection,
+                                 const gchar* path,
                                  gpointer user_data)
 {
   InfTextGtkBuffer* buffer;
@@ -568,7 +569,7 @@ on_subscribe_chat_session(InfcBrowser* browser,
   status = gtk_label_new("Synchronizing chat...");
   gtk_widget_show(status);
 
-  vbox = gtk_vbox_new(FALSE, 6);
+  vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
   gtk_box_pack_start(GTK_BOX(vbox), chat, TRUE, TRUE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), status, FALSE, TRUE, 0);
   gtk_widget_show(vbox);
@@ -671,19 +672,19 @@ on_subscribe_session(InfcBrowser* browser,
   gtk_container_add(GTK_CONTAINER(scroll), textview);
   gtk_widget_show(scroll);
 
-  undo_button = gtk_button_new_from_stock(GTK_STOCK_UNDO);
-  redo_button = gtk_button_new_from_stock(GTK_STOCK_REDO);
+  undo_button = gtk_button_new_with_label("Undo");
+  redo_button = gtk_button_new_with_label("Redo");
   gtk_widget_set_sensitive(undo_button, FALSE);
   gtk_widget_set_sensitive(redo_button, FALSE);
   gtk_widget_show(undo_button);
   gtk_widget_show(redo_button);
 
-  hbox = gtk_hbutton_box_new();
+  hbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
   gtk_box_pack_start(GTK_BOX(hbox), undo_button, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(hbox), redo_button, FALSE, FALSE, 0);
   gtk_widget_show(hbox);
 
-  vbox = gtk_vbox_new(FALSE, 6);
+  vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
   gtk_box_pack_start(GTK_BOX(vbox), scroll, TRUE, TRUE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
   gtk_widget_show(vbox);
