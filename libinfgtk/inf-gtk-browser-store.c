@@ -1672,6 +1672,7 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
 {
   InfGtkBrowserStorePrivate* priv;
   InfGtkBrowserStoreItem* item;
+  InfBrowserStatus status;
   InfBrowserIter browser_iter;
 
   priv = INF_GTK_BROWSER_STORE_PRIVATE(model);
@@ -1682,6 +1683,10 @@ inf_gtk_browser_store_tree_model_iter_has_child(GtkTreeModel* model,
 
   browser_iter.node_id = GPOINTER_TO_UINT(iter->user_data2);
   browser_iter.node = iter->user_data3;
+
+  g_object_get(G_OBJECT(item->browser), "status", &status, NULL);
+  if(status != INF_BROWSER_OPEN)
+    return FALSE;
 
   if(browser_iter.node == NULL)
     inf_browser_get_root(item->browser, &browser_iter);
