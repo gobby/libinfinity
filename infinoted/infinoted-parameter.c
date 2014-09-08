@@ -619,4 +619,80 @@ infinoted_parameter_convert_security_policy(gpointer out,
   return TRUE;
 }
 
+/**
+ * infinoted_parameter_convert_flags:
+ * @out: The pointer to the output flags (a #gint).
+ * @in: The pointer to the input string list.
+ * @values: Allowed flag values.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Converts the string list that @in points to to a bitmask. This function
+ * can not directly be used as a convert function as expected by
+ * #InfinotedParameter since it has an additional argument. However, an
+ * actual convert function can make use of this function.
+ *
+ * Each string entry is interpreted as a value of a bitmask. The @values
+ * list specifies which string constant corresponds to which flag value.
+ *
+ * Returns: %TRUE on success, or %FALSE otherwise.
+ */
+gboolean
+infinoted_parameter_convert_flags(gpointer out,
+                                  gpointer in,
+                                  const GFlagsValue* values,
+                                  GError** error)
+{
+  GString* error_string;
+  const GFlagsValue* value;
+  gchar*** in_str;
+  gchar** cur;
+
+  *(gint*)out = 0;
+  in_str = (gchar***)in;
+
+  if(*in_str != NULL)
+  {
+    for(cur = *in_str; *cur != NULL; ++cur)
+    {
+      if( (*cur)[0] == '\0') continue;
+
+      for(value = values; value->value_name != NULL; ++value)
+      {
+        if(strcmp(*cur, value->value_nick) == 0 ||
+           strcmp(*cur, value->value_name) == 0)
+        {
+          break;
+        }
+      }
+
+      if(value->value_name == NULL)
+      {
+        error_string = g_string_sized_new(256);
+        for(value = values; value->value_name != NULL; ++value)
+        {
+          if(error_string->len > 0)
+            g_string_append(error_string, ", ");
+          g_string_append(error_string, value->value_nick);
+        }
+
+        g_set_error(
+          error,
+          infinoted_parameter_error_quark(),
+          INFINOTED_PARAMETER_ERROR_INVALID_FLAG,
+          _("\"%s\" is not a valid value. Allowed values are: %s."),
+          *cur,
+          error_string->str
+        );
+
+        g_string_free(error_string, TRUE);
+        return FALSE;
+      }
+
+      *(gint*)out |= value->value;
+    }
+  }
+
+  return TRUE;
+}
+
 /* vim:set et sw=2 ts=2: */

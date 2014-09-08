@@ -153,6 +153,8 @@ struct _InfinotedParameterInfo {
  * provided to the plugin.
  * @INFINOTED_PARAMETER_ERROR_INVALID_NUMBER: The number given as a parameter
  * is not valid, for example a negative time interval.
+ * @INFINOTED_PARAMETER_ERROR_INVALID_FLAG: The flag with the given name does
+ * not exist.
  * @INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY: A security policy given
  * as a parameter is not valid. The only allowed values are
  * &quot;no-tls&quot;, &quot;allow-tls&quot;, and &quot;require-tls&quot;.
@@ -164,6 +166,7 @@ struct _InfinotedParameterInfo {
 typedef enum _InfinotedParameterError {
   INFINOTED_PARAMETER_ERROR_REQUIRED,
   INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
+  INFINOTED_PARAMETER_ERROR_INVALID_FLAG,
   INFINOTED_PARAMETER_ERROR_INVALID_SECURITY_POLICY
 } InfinotedParameterError;
 
@@ -222,6 +225,12 @@ gboolean
 infinoted_parameter_convert_security_policy(gpointer out,
                                             gpointer in,
                                             GError** error);
+
+gboolean
+infinoted_parameter_convert_flags(gpointer out,
+                                  gpointer in,
+                                  const GFlagsValue* values,
+                                  GError** error);
 
 G_END_DECLS
 

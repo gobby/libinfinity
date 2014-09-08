@@ -41,6 +41,7 @@ infinoted_parameter_convert_positive
 infinoted_parameter_convert_security_policy
 infinoted_parameter_convert_string
 infinoted_parameter_convert_string_list
+infinoted_parameter_convert_flags
 </SECTION>
 
 <SECTION>
