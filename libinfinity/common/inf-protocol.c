@@ -21,7 +21,7 @@
  * SECTION:inf-protocol
  * @short_description: Infinote protocol parameters
  * @include: libinfinity/common/inf-protocol.h
- * @see_also: <link linkend="libinfinity-0.6-InfError">InfError</link>
+ * @see_also: <link linkend="libinfinity-0.7-InfError">InfError</link>
  * @stability: Unstable
  *
  * This section defines common protocol parameters used by libinfinity.

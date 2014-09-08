@@ -564,7 +564,7 @@ inf_browser_is_ancestor(InfBrowser* browser,
  * is a potentially lengthy process involing networking or I/O with slow
  * devices this function returns a @InfExploreRequest which can be used to
  * monitor the progress of the operation and get notified when the exploration
- * finishes. During exploration @InfBrowser::node-added signals are already
+ * finishes. During exploration #InfBrowser::node-added signals are already
  * emitted appropriately for every child explored inside @iter.
  *
  * The request might either finish during the call to this function, in which
@@ -687,8 +687,8 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * infc_browser_iter_get_sync_in() to get the session again.
  *
  * If @initial_subscribe is set, then, when the returned request finishes,
- * you might call infc_browser_iter_get_session() on the resulting
- * #InfcBrowserIter. However, that function is not guaranteed to return
+ * you might call inf_browser_get_session() on the resulting
+ * #InfBrowserIter. However, that function is not guaranteed to return
  * non-%NULL in this case since the node might have been created, but the
  * subscription could have failed.
  *

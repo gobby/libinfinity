@@ -1,1 +1,1 @@
-char *s = N_("Accounts");
+N_("Accounts");

@@ -239,7 +239,7 @@ infd_storage_acl_list_free(GSList* node_list)
  *
  * Reads a subdirectory from the storage. Returns a list of
  * InfdStorageNode objects. Both the list and the objects need to
- * be freed by the caller via infd_directory_free_node_list().
+ * be freed by the caller via infd_storage_node_list_free().
  *
  * Returns: A #GSList that contains #InfdStorageNode objects,
  * or %NULL if either the subdirectory is empty or an

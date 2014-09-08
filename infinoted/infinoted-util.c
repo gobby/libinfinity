@@ -165,8 +165,9 @@ infinoted_util_daemon_set_local_pid_file_proc(void)
  * infinoted_util_daemon_pid_file_kill:
  * @sig: The signal to send to the daemon process.
  *
- * This is a thin wrapper for daemon_pid_file_kill() which uses
- * daemon_pid_file_kill_wait() if available with a timeout of 5 seconds.
+ * This is a thin wrapper for <function>daemon_pid_file_kill()</function>
+ * which uses <function>daemon_pid_file_kill_wait()</function> if available
+ * with a timeout of 5 seconds.
  *
  * Returns: 0 if the signal was sent or nonzero otherwise.
  */

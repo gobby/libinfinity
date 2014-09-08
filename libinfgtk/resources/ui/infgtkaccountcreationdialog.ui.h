@@ -1,3 +1,3 @@
-char *s = N_("Create New Account");
-char *s = N_("Account Name:");
-char *s = N_("Create _Account");
+N_("Create New Account");
+N_("Account Name:");
+N_("Create _Account");

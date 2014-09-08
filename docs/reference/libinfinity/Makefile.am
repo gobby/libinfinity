@@ -26,9 +26,9 @@ SCANGOBJ_OPTIONS=
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
 if LIBINFINITY_HAVE_AVAHI
-IGNORE_HFILES="inf-marshal.h inf-i18n.h inf-signals.h inf-config.h inf-communication-group-private.h"
+IGNORE_HFILES="inf-marshal.h inf-i18n.h inf-signals.h inf-config.h inf-communication-group-private.h inf-define-enum.h"
 else
-IGNORE_HFILES="inf-marshal.h inf-i18n.h inf-signals.h inf-config.h inf-communication-group-private.h inf-discovery-avahi.h"
+IGNORE_HFILES="inf-marshal.h inf-i18n.h inf-signals.h inf-config.h inf-communication-group-private.h inf-define-enum.h inf-discovery-avahi.h"
 endif
 
 # Extra options to supply to gtkdoc-mkdb.

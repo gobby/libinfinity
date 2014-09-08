@@ -22,4 +22,8 @@
     <xi:include href="xml/infinoted-log.xml"/>
     <xi:include href="xml/infinoted-util.xml"/>
   </chapter>
+
+  <xi:include href="xml/annotation-glossary.xml">
+    <xi:fallback />
+  </xi:include>
 </book>

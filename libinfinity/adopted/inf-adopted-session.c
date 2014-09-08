@@ -1662,10 +1662,8 @@ inf_adopted_session_get_algorithm(InfAdoptedSession* session)
  * @request: A #InfAdoptedRequest obtained from @session's algorithm.
  *
  * Sends a request to all subscribed connections. The request should originate
- * from a call to inf_adopted_algorithm_generate_request_noexec(),
- * inf_adopted_algorithm_generate_request(),
- * inf_adopted_algorithm_generate_undo() or
- * inf_adopted_algorithm_generate_redo() with @session's #InfAdoptedAlgorithm.
+ * from a call to inf_adopted_algorithm_generate_request(), with
+ * @session's #InfAdoptedAlgorithm.
  **/
 void
 inf_adopted_session_broadcast_request(InfAdoptedSession* session,

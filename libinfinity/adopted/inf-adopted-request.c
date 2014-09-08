@@ -582,9 +582,9 @@ inf_adopted_request_get_receive_time(InfAdoptedRequest* request)
  * @request: A #InfAdoptedRequest.
  *
  * Returns the time when the request was executed by an #InfAdoptedAlgorithm,
- * see the #InfAdoptedAlgorithm::execute-request signal. The time is given in
- * microseconds since January 1, 1970. If the request was not yet executed,
- * the function returns 0.
+ * see inf_adopted_algorithm_execute_request(). The time is
+ * given in microseconds since January 1, 1970. If the request was not yet
+ * executed, the function returns 0.
  *
  * Returns: The time when the function was executed, or 0.
  */

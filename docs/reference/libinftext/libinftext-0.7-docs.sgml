@@ -32,4 +32,8 @@
     <xi:include href="xml/inf-text-move-operation.xml"/>
     <xi:include href="xml/inf-text-filesystem-format.xml"/>
   </chapter>
+
+  <xi:include href="xml/annotation-glossary.xml">
+    <xi:fallback />
+  </xi:include>
 </book>

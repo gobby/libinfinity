@@ -30,4 +30,8 @@
     <xi:include href="xml/inf-gtk-acl-sheet-view.xml"/>
     <xi:include href="xml/inf-gtk-io.xml"/>
   </chapter>
+
+  <xi:include href="xml/annotation-glossary.xml">
+    <xi:fallback />
+  </xi:include>
 </book>

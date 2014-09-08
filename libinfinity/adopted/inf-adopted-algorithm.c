@@ -33,12 +33,10 @@
  *
  * It is based on requests, represented by the #InfAdoptedRequest class. If
  * there is at least one local #InfUser in the algorithm's user table, then
- * you can create own reequests by the functions
- * inf_adopted_algorithm_generate_request(),
- * inf_adopted_algorithm_generate_request_noexec(),
- * inf_adopted_algorithm_generate_undo() and
- * inf_adopted_algorithm_generate_redo(). Remote requests can be applied via
- * inf_adopted_algorithm_receive_request(). This class does not take care of
+ * you can create own requests with the
+ * inf_adopted_algorithm_generate_request() function.
+ * Remote requests can be applied via
+ * inf_adopted_algorithm_execute_request(). This class does not take care of
  * transfering the generated requests to other users which is the scope of
  * #InfAdoptedSession.
  *
@@ -1414,7 +1412,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
    * This signal is emitted every time the can-undo state of a local user
    * in @algorithm's user table changed. The can-undo state defines whether
    * @user can generate an undo request
-   * (via inf_adopted_algorithm_generate_undo()) in the current situation, see
+   * (via inf_adopted_algorithm_generate_request()) in the current situation, see
    * also inf_adopted_algorithm_can_undo().
    */
   algorithm_signals[CAN_UNDO_CHANGED] = g_signal_new(
@@ -1441,7 +1439,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
    * This signal is emitted every time the can-redo state of a local user
    * in @algorithm's user table changed. The can-redo state defines whether
    * @user can generate a redo request
-   * (via inf_adopted_algorithm_generate_redo()) in the current situation, see
+   * (via inf_adopted_algorithm_generate_request()) in the current situation, see
    * also inf_adopted_algorithm_can_redo().
    */
   algorithm_signals[CAN_REDO_CHANGED] = g_signal_new(

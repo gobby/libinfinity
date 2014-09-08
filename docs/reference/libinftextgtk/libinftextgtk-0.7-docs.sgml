@@ -21,4 +21,8 @@
     <xi:include href="xml/inf-text-gtk-viewport.xml"/>
     <xi:include href="xml/inf-text-gtk-hue-chooser.xml"/>
   </chapter>
+
+  <xi:include href="xml/annotation-glossary.xml">
+    <xi:fallback />
+  </xi:include>
 </book>

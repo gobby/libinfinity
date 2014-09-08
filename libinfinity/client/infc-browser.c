@@ -7104,7 +7104,7 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
 /**
  * infc_browser_iter_save_session:
  * @browser: A #InfcBrowser.
- * @iter: A #InfcBrowserIter pointing to a note in @browser.
+ * @iter: A #InfBrowserIter pointing to a note in @browser.
  * @func: The function to be called when the request finishes, or %NULL.
  * @user_data: Additional data to pass to @func.
  *
@@ -7170,7 +7170,7 @@ infc_browser_iter_save_session(InfcBrowser* browser,
 /**
  * infc_browser_iter_get_sync_in:
  * @browser: A #InfcBrowser.
- * @iter: A #InfcBrowserIter pointing to a note in @browser.
+ * @iter: A #InfBrowserIter pointing to a note in @browser.
  *
  * Returns the #InfcSessionProxy that is used to synchronize the note @iter
  * points to to the server. Such a node is created by
@@ -7209,14 +7209,14 @@ infc_browser_iter_get_sync_in(InfcBrowser* browser,
 /**
  * infc_browser_iter_get_sync_in_requests:
  * @browser: A #InfcBrowser.
- * @iter: A #InfcBrowserIter pointing to a subdirectory node in @browser.
+ * @iter: A #InfBrowserIter pointing to a subdirectory node in @browser.
  *
- * Returns a list of all #InfcNodeRequest created with
+ * Returns a list of all #InfRequest<!-- -->s created with
  * inf_browser_add_note() with the node @iter points to as
  * parent. Such requests begin a synchronization to the server when they
  * have finished.
  *
- * Return Value: A list of #InfcNodeRequest<!-- -->s. Free with g_slist_free()
+ * Return Value: A list of #InfRequest<!-- -->s. Free with g_slist_free()
  * when done.
  **/
 GSList*
@@ -7254,10 +7254,10 @@ infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
 /**
  * infc_browser_iter_is_valid:
  * @browser: A #InfcBrowser.
- * @iter: A #InfcBrowserIter.
+ * @iter: A #InfBrowserIter.
  *
  * Returns whether @iter points to a valid node in @browser. This is
- * generally the case for any #InfcBrowserIter returned by one of the
+ * generally the case for any #InfBrowserIter returned by one of the
  * InfcBrowser functions, it gets invalid however as soon as the node it
  * points to is removed.
  *

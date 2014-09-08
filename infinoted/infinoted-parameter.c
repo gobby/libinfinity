@@ -628,7 +628,7 @@ infinoted_parameter_convert_security_policy(gpointer out,
  *
  * Converts the string list that @in points to to a bitmask. This function
  * can not directly be used as a convert function as expected by
- * #InfinotedParameter since it has an additional argument. However, an
+ * #InfinotedParameterInfo since it has an additional argument. However, an
  * actual convert function can make use of this function.
  *
  * Each string entry is interpreted as a value of a bitmask. The @values

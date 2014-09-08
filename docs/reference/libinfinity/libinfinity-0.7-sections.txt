@@ -597,7 +597,6 @@ INF_USER_TABLE_GET_CLASS
 <TITLE>InfIo</TITLE>
 InfIo
 InfIoInterface
-InfNativeSocket
 InfIoEvent
 InfIoWatch
 InfIoTimeout

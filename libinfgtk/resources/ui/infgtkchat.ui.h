@@ -1,1 +1,1 @@
-char *s = N_("Send");
+N_("Send");

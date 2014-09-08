@@ -121,4 +121,8 @@
     <xi:include href="xml/inf-communication-central-factory.xml"/>
     <xi:include href="xml/inf-communication-central-method.xml"/>
   </chapter>
+
+  <xi:include href="xml/annotation-glossary.xml">
+    <xi:fallback />
+  </xi:include>
 </book>

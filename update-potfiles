@@ -1,7 +1,8 @@
 #!/bin/sh
 for file in libinfgtk/resources/ui/*.ui; do
 	intltool-extract --type="gettext/glade" $file
-	git add $file
+	sed -i -e 's/char \*s = //' ${file}.h
+	git add ${file}.h
 done
 
 grep "_(" libinfinity libinftext libinfgtk libinftextgtk infinoted -R | \

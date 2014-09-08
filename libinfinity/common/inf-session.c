@@ -43,7 +43,7 @@
  * To be notified about changes other users make to a session, you need to
  * subscribe to the session (on client side), or wait for incoming
  * subscriptions (on server side). This is normally done by
- * infc_browser_iter_subscribe_session(). The first action that is performed
+ * inf_browser_subscribe(). The first action that is performed
  * upon subscription is a synchronization as described above. When the
  * synchronization is complete, the #InfSession::synchronization-complete signal
  * is emitted.
@@ -2436,8 +2436,7 @@ inf_session_add_user(InfSession* session,
  * Changes the status of the given @user which needs to have the
  * %INF_USER_LOCAL flag set for this function to be called. If the status
  * is changed to %INF_USER_UNAVAILABLE, then the user leaves the session. To
- * rejoin use infc_session_proxy_join_user() or infd_session_proxy_add_user(),
- * respectively for a proxy proxying @session.
+ * rejoin use inf_session_proxy_join_user() for a proxy proxying @session.
  **/
 void
 inf_session_set_user_status(InfSession* session,
