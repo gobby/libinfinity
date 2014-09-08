@@ -29,11 +29,8 @@ Modernization:
  * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
  * Replace constructor by constructed
- * Fix usage of deprecated GTK+ APIs
  * g_set_error_literal
  * Replace RGB to HSV conversions by gtk_hsv_to_rgb etc.
- * Fix the myriads of warnings with new gtk-doc when generating
-   documentation and running ./autogen.sh (if we can)
  * Add GtkHeaderBars where useful
 
 Protocol Break:

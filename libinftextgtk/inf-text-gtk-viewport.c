@@ -371,7 +371,8 @@ inf_text_gtk_viewport_scrollbar_draw_cb(GtkWidget* scrollbar,
   InfTextGtkViewportPrivate* priv;
   InfTextGtkViewportUser* viewport_user;
   GdkRectangle* rectangle;
-  GdkColor* color;
+  GtkStyleContext* style;
+  GdkRGBA bg;
   double h,s,v;
   double r,g,b;
   GSList* item;
@@ -388,10 +389,15 @@ inf_text_gtk_viewport_scrollbar_draw_cb(GtkWidget* scrollbar,
 
   if(priv->show_user_markers)
   {
-    color = &gtk_widget_get_style(scrollbar)->bg[GTK_STATE_NORMAL];
-    h = color->red / 65535.0;
-    s = color->green / 65535.0;
-    v = color->blue / 65535.0;
+    style = gtk_widget_get_style_context(GTK_WIDGET(scrollbar));
+    gtk_style_context_save(style);
+    gtk_style_context_add_class(style, GTK_STYLE_CLASS_VIEW);
+    gtk_style_context_get_background_color(style, GTK_STATE_FLAG_NORMAL, &bg);
+    gtk_style_context_restore(style);
+
+    h = bg.red;
+    s = bg.green;
+    v = bg.blue;
     rgb_to_hsv(&h, &s, &v);
     s = MIN(MAX(s, 0.5), 0.8);
     v = MAX(v, 0.5);
@@ -482,9 +488,8 @@ inf_text_gtk_viewport_adjustment_changed_cb(GtkAdjustment* adjustment,
 }
 
 static void
-inf_text_gtk_viewport_scrollbar_style_set_cb(GtkWidget* scrollbar,
-                                             GtkStyle* prev_style,
-                                             gpointer user_data)
+inf_text_gtk_viewport_scrollbar_style_updated_cb(GtkWidget* scrollbar,
+                                                 gpointer user_data)
 {
   InfTextGtkViewport* viewport;
   InfTextGtkViewportPrivate* priv;
@@ -753,7 +758,7 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
 
       inf_signal_handlers_disconnect_by_func(
         G_OBJECT(scrollbar),
-        G_CALLBACK(inf_text_gtk_viewport_scrollbar_style_set_cb),
+        G_CALLBACK(inf_text_gtk_viewport_scrollbar_style_updated_cb),
         viewport
       );
 
@@ -796,8 +801,8 @@ inf_text_gtk_viewport_set_scrolled_window(InfTextGtkViewport* viewport,
 
     g_signal_connect_after(
       G_OBJECT(scrollbar),
-      "style-set",
-      G_CALLBACK(inf_text_gtk_viewport_scrollbar_style_set_cb),
+      "style-updated",
+      G_CALLBACK(inf_text_gtk_viewport_scrollbar_style_updated_cb),
       viewport
     );
 

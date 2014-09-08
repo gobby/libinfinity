@@ -356,7 +356,7 @@ inf_text_gtk_view_get_left_margin(GtkTextView* view)
   gint margin;
   gint hadj;
 
-  hadjustment = gtk_text_view_get_hadjustment(view);
+  hadjustment = gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(view));
 
   margin = gtk_text_view_get_left_margin(view);
   if(!hadjustment) return margin;
@@ -376,7 +376,7 @@ inf_text_gtk_view_get_right_margin(GtkTextView* view)
   gdouble hupper;
   gdouble hpage;
 
-  hadjustment = gtk_text_view_get_hadjustment(view);
+  hadjustment = gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(view));
 
   margin = gtk_text_view_get_right_margin(view);
   if(!hadjustment) return margin;
@@ -650,7 +650,8 @@ inf_text_gtk_view_draw_before_cb(GtkWidget* widget,
   GtkAdjustment* vadjustment;
   GdkWindow *text_window;
 
-  GdkColor* color;
+  GtkStyleContext* style;
+  GdkRGBA bg;
   double h, s, v;
   double r, g, b;
 
@@ -681,13 +682,16 @@ inf_text_gtk_view_draw_before_cb(GtkWidget* widget,
 
     window_width = gdk_window_get_width(text_window);
 
-    /* Make selection color based on text color: If text is dark, selection
-     * is dark, if text is bright selection is bright. Note that we draw with
-     * 50% alpha only, so text remains readable. */
-    color = &gtk_widget_get_style(widget)->bg[GTK_STATE_NORMAL];
-    h = color->red / 65535.0;
-    s = color->green / 65535.0;
-    v = color->blue / 65535.0;
+    /* Make current line color depend on background. */
+    style = gtk_widget_get_style_context(GTK_WIDGET(priv->textview));
+    gtk_style_context_save(style);
+    gtk_style_context_add_class(style, GTK_STYLE_CLASS_VIEW);
+    gtk_style_context_get_background_color(style, GTK_STATE_FLAG_NORMAL, &bg);
+    gtk_style_context_restore(style);
+
+    h = bg.red;
+    s = bg.green;
+    v = bg.blue;
     rgb_to_hsv(&h, &s, &v);
     v = MAX(v, 0.3);
     s = MAX(s, 0.1 + 0.3*(1 - v));
@@ -719,8 +723,10 @@ inf_text_gtk_view_draw_before_cb(GtkWidget* widget,
 
         if(gdk_rectangle_intersect(&clip_area, &rect, NULL))
         {
-          hadjustment = gtk_text_view_get_hadjustment(priv->textview);
-          vadjustment = gtk_text_view_get_vadjustment(priv->textview);
+          hadjustment =
+            gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(priv->textview));
+          vadjustment =
+            gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(priv->textview));
 
           /* Construct pattern */
           rx = gtk_adjustment_get_value(vadjustment);
@@ -779,7 +785,9 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
   InfTextGtkView* view;
   InfTextGtkViewPrivate* priv;
   gint window_width;
+  GtkStyleContext* style;
   GdkColor* cursor_color;
+  GdkRGBA fg;
   double hc,sc,vc;
   double hs,ss,vs;
   GSList* item;
@@ -833,6 +841,12 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
   gtk_cairo_transform_to_window(cr, GTK_WIDGET(priv->textview), text_window);
   gdk_cairo_get_clip_rectangle(cr, &clip_area);
 
+  style = gtk_widget_get_style_context(GTK_WIDGET(priv->textview));
+  gtk_style_context_save(style);
+  gtk_style_context_add_class(style, GTK_STYLE_CLASS_VIEW);
+  gtk_style_context_get_color(style, GTK_STATE_FLAG_NORMAL, &fg);
+  gtk_style_context_restore(style);
+
   if(priv->show_remote_selections)
   {
     window_width = gdk_window_get_width(text_window);
@@ -840,11 +854,9 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
     /* Make selection color based on text color: If text is dark, selection
      * is dark, if text is bright selection is bright. Note that we draw with
      * 50% alpha only, so text remains readable. */
-    cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
-    hs = cursor_color->red / 65535.0;
-    ss = cursor_color->green / 65535.0;
-    vs = cursor_color->blue / 65535.0;
-
+    hs = fg.red;
+    ss = fg.green;
+    vs = fg.blue;
     rgb_to_hsv(&hs, &ss, &vs);
     vs = MAX(vs, 0.5);
     ss = 1.0 - 0.4*(vs);
@@ -1059,8 +1071,10 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
         g_assert(prev_toggle != NULL);
         g_assert(n_users > 0);
 
-        hadjustment = gtk_text_view_get_hadjustment(priv->textview);
-        vadjustment = gtk_text_view_get_vadjustment(priv->textview);
+        hadjustment =
+          gtk_scrollable_get_hadjustment(GTK_SCROLLABLE(priv->textview));
+        vadjustment =
+          gtk_scrollable_get_vadjustment(GTK_SCROLLABLE(priv->textview));
 
         /* Construct pattern */
         rx = gtk_adjustment_get_value(hadjustment);
@@ -1202,10 +1216,9 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
     }
     else
     {
-      cursor_color = &gtk_widget_get_style(widget)->text[GTK_STATE_NORMAL];
-      hc = cursor_color->red / 65535.0;
-      sc = cursor_color->green / 65535.0;
-      vc = cursor_color->blue / 65535.0;
+      hc = fg.red;
+      sc = fg.green;
+      vc = fg.blue;
     }
 
     rgb_to_hsv(&hc, &sc, &vc);
@@ -1248,9 +1261,8 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
 }
 
 static void
-inf_text_gtk_view_style_set_cb(GtkWidget* widget,
-                               GtkStyle* previous_style,
-                               gpointer user_data)
+inf_text_gtk_view_style_updated_cb(GtkWidget* widget,
+                                   gpointer user_data)
 {
   InfTextGtkView* view;
   InfTextGtkViewPrivate* priv;
@@ -1676,7 +1688,7 @@ inf_text_gtk_view_set_view(InfTextGtkView* view,
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->textview),
-      G_CALLBACK(inf_text_gtk_view_style_set_cb),
+      G_CALLBACK(inf_text_gtk_view_style_updated_cb),
       view
     );
 
@@ -1711,14 +1723,14 @@ inf_text_gtk_view_set_view(InfTextGtkView* view,
 
     g_signal_connect_after(
       G_OBJECT(gtk_view),
-      "style-set",
-      G_CALLBACK(inf_text_gtk_view_style_set_cb),
+      "style-updated",
+      G_CALLBACK(inf_text_gtk_view_style_updated_cb),
       view
     );
 
     /* This is required for the remote cursors showing up at the correct
      * position initially. Maybe gtk_text_view_get_iter_location() seems to
-     * return junk before. Note that also style-set is not enough. */
+     * return junk before. Note that also style-updated is not enough. */
     g_signal_connect_after(
       G_OBJECT(gtk_view),
       "size-allocate",

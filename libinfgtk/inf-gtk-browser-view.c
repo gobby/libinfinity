@@ -1803,7 +1803,7 @@ inf_gtk_browser_view_popup_menu_position_func(GtkMenu* menu,
   gtk_menu_set_monitor(menu, monitor_num);
 
   gdk_screen_get_monitor_geometry(screen, monitor_num, &monitor);
-  gtk_widget_size_request(GTK_WIDGET(menu), &menu_req);
+  gtk_widget_get_preferred_size(GTK_WIDGET(menu), NULL, &menu_req);
 
   height = gdk_window_get_height(bin_window);
 
