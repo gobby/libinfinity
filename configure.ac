@@ -276,6 +276,12 @@ AM_GLIB_GNU_GETTEXT
 AM_GLIB_DEFINE_LOCALEDIR(INF_LOCALEDIR)
 
 ###########
+# GObject Introspection
+###########
+
+GOBJECT_INTROSPECTION_CHECK([1.0])
+
+###########
 # Output
 ###########
 
@@ -287,12 +293,6 @@ fi
 AC_CONFIG_FILES([
   Makefile
     libinfinity/Makefile
-      libinfinity/communication/Makefile
-      libinfinity/common/Makefile
-      libinfinity/adopted/Makefile
-      libinfinity/server/Makefile
-      libinfinity/client/Makefile
-
     libinftext/Makefile
     libinfgtk/Makefile
     libinftextgtk/Makefile

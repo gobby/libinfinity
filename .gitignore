@@ -34,3 +34,6 @@ libinfinity-*.tar.gz
 mkinstalldirs
 test-driver
 ar-lib
+*.gir
+*.typelib
+*.dirstamp

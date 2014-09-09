@@ -213,11 +213,11 @@ inf_acl_account_id_from_string(const gchar* id)
 /**
  * inf_acl_account_new:
  * @id: The unique ID of the new account.
- * @name: The human-readable name of the new account.
+ * @name: (allow-none): The human-readable name of the new account.
  *
  * Creates a new #InfAclAccount.
  *
- * Returns: A new #InfAclAccount object.
+ * Returns: (transfer full): A new #InfAclAccount object.
  */
 InfAclAccount*
 inf_acl_account_new(const InfAclAccountId id,
@@ -239,8 +239,8 @@ inf_acl_account_new(const InfAclAccountId id,
  *
  * Creates a copy of @account.
  *
- * Returns: A new #InfAclAccount. Free with inf_acl_account_free() when no longer
- * needed.
+ * Returns: (transfer full): A new #InfAclAccount. Free with
+ * inf_acl_account_free() when no longer needed.
  */
 InfAclAccount*
 inf_acl_account_copy(const InfAclAccount* account)
@@ -270,7 +270,7 @@ inf_acl_account_free(InfAclAccount* account)
 
 /**
  * inf_acl_account_array_free:
- * @accounts: An array of #InfAclAccount objects.
+ * @accounts: (array length=n_accounts): An array of #InfAclAccount objects.
  * @n_accounts: The number of elements in the array.
  *
  * Releases all resources allocated by an array of #InfAclAccount<!-- -->s.
@@ -295,8 +295,8 @@ void inf_acl_account_array_free(InfAclAccount* accounts,
  * mandatory fields being missing, the function returns %NULL and @error is
  * set.
  *
- * Returns: A new #InfAclAccount on success, or %NULL on failure. Free with
- * inf_acl_account_free() when no longer needed.
+ * Returns: (transfer full): A new #InfAclAccount on success, or %NULL on
+ * failure. Free with inf_acl_account_free() when no longer needed.
  */
 InfAclAccount*
 inf_acl_account_from_xml(xmlNodePtr xml,
@@ -354,8 +354,8 @@ inf_acl_account_to_xml(const InfAclAccount* account,
  * by value. This function is mainly meant for the boxed type definition and
  * for language bindings.
  *
- * Returns: A new #InfAclMask. Free with inf_acl_mask_free() when no longer
- * needed.
+ * Returns: (transfer full): A new #InfAclMask. Free with inf_acl_mask_free()
+ * when no longer needed.
  */
 InfAclMask*
 inf_acl_mask_copy(const InfAclMask* mask)
@@ -450,7 +450,7 @@ inf_acl_mask_equal(const InfAclMask* lhs,
  * Initializes @mask such that all permissions are off except the one
  * corresponding to @setting.
  *
- * Returns: The mask itself.
+ * Returns: (transfer none): The mask itself.
  */
 InfAclMask*
 inf_acl_mask_set1(InfAclMask* mask,
@@ -471,13 +471,14 @@ inf_acl_mask_set1(InfAclMask* mask,
 /**
  * inf_acl_mask_setv:
  * @mask: The #InfAclMask to initialize.
- * @settings: An array of #InfAclSetting<!-- -->s to set.
+ * @settings: (array length=n_settings): An array of
+ * #InfAclSetting<!-- -->s to set.
  * @n_settings: The number of settings.
  *
  * Initializes @mask such that all permissions are off except the ones
  * specified in the @settings array.
  *
- * Returns: The mask itself.
+ * Returns: (transfer none): The mask itself.
  */
 InfAclMask*
 inf_acl_mask_setv(InfAclMask* mask,
@@ -507,12 +508,12 @@ inf_acl_mask_setv(InfAclMask* mask,
  * inf_acl_mask_and:
  * @lhs: First mask.
  * @rhs: Second mask.
- * @out: Output mask.
+ * @out: (out): Output mask.
  *
  * Computes the bitwise AND of @lhs and @rhs and writes the result to @out.
  * @out is allowed to be equivalent to @lhs and/or @rhs.
  *
- * Returns: The output mask.
+ * Returns: (transfer none): The output mask.
  */
 InfAclMask*
 inf_acl_mask_and(const InfAclMask* lhs,
@@ -539,7 +540,7 @@ inf_acl_mask_and(const InfAclMask* lhs,
  * Disables the bit corresponding to setting in @mask, leaving all other bits
  * alone.
  *
- * Returns: The mask itself.
+ * Returns: (transfer none): The mask itself.
  */
 InfAclMask*
 inf_acl_mask_and1(InfAclMask* mask,
@@ -557,12 +558,12 @@ inf_acl_mask_and1(InfAclMask* mask,
  * inf_acl_mask_or:
  * @lhs: First mask.
  * @rhs: Second mask.
- * @out: Output mask.
+ * @out: (out): Output mask.
  *
  * Computes the bitwise OR of @lhs and @rhs and writes the result to @out.
  * @out is allowed to be equivalent to @lhs and/or @rhs.
  *
- * Returns: The output mask.
+ * Returns: (transfer none): The output mask.
  */
 InfAclMask*
 inf_acl_mask_or(const InfAclMask* lhs,
@@ -589,7 +590,7 @@ inf_acl_mask_or(const InfAclMask* lhs,
  * Enables the bit corresponding to setting in @mask, leaving all other bits
  * alone.
  *
- * Returns: The mask itself.
+ * Returns: (transfer none): The mask itself.
  */
 InfAclMask*
 inf_acl_mask_or1(InfAclMask* mask,
@@ -606,12 +607,12 @@ inf_acl_mask_or1(InfAclMask* mask,
 /**
  * inf_acl_mask_neg:
  * @mask: The mask to negate.
- * @out: The output mask.
+ * @out: (out): The output mask.
  *
  * Negates the given mask bitwise and writes the result to @out. The output
  * mask is allowed to be equivalent to @mask itself.
  *
- * Returns: The output mask.
+ * Returns: (transfer full): The output mask.
  */
 InfAclMask*
 inf_acl_mask_neg(const InfAclMask* mask,
@@ -657,8 +658,8 @@ inf_acl_mask_has(const InfAclMask* mask,
  * for properties and bindings. The new sheet will hold permissions for the
  * given account. The permissions will initially be all masked out.
  *
- * Returns: A new #InfAclSheet. Free with inf_acl_sheet_free() when no longer
- * in use.
+ * Returns: (transfer full): A new #InfAclSheet. Free with
+ * inf_acl_sheet_free() when no longer in use.
  */
 InfAclSheet*
 inf_acl_sheet_new(InfAclAccountId account)
@@ -679,7 +680,7 @@ inf_acl_sheet_new(InfAclAccountId account)
  * applications because you can copy the structs by value, but it is useful
  * for properties and bindings. 
  *
- * Returns: A newly-allocated copy of @sheet. Free with
+ * Returns: (transfer full): A newly-allocated copy of @sheet. Free with
  * inf_acl_sheet_free() when no longer in use.
  */
 InfAclSheet*
@@ -708,8 +709,8 @@ inf_acl_sheet_free(InfAclSheet* sheet)
 /**
  * inf_acl_sheet_perms_from_xml:
  * @xml: The XML node to read from.
- * @mask: Output parameter to write the permission mask to.
- * @perms: Output parameter to write the permissions to.
+ * @mask: (out): Output parameter to write the permission mask to.
+ * @perms: (out): Output parameter to write the permissions to.
  * @error: Location to store error information, if any.
  *
  * This function extracts the permission mask and the permission flags from
@@ -815,7 +816,8 @@ inf_acl_sheet_perms_to_xml(const InfAclMask* mask,
  * Creates a new #InfAclSheetSet. Add sheets with
  * inf_acl_sheet_set_add_sheet().
  *
- * Returns: A new #InfAclSheetSet. Free with inf_acl_sheet_set_free().
+ * Returns: (transfer full): A new #InfAclSheetSet. Free with
+ * inf_acl_sheet_set_free().
  */
 InfAclSheetSet*
 inf_acl_sheet_set_new(void)
@@ -830,7 +832,7 @@ inf_acl_sheet_set_new(void)
 
 /**
  * inf_acl_sheet_set_new_external:
- * @sheets: An array of #InfAclSheet<!-- -->s
+ * @sheets: (array length=n_sheets): An array of #InfAclSheet<!-- -->s
  * @n_sheets: Number of elements in @sheets.
  *
  * Creates a new #InfAclSheetSet refererencing the given ACL sheets. The
@@ -841,8 +843,8 @@ inf_acl_sheet_set_new(void)
  * inf_acl_sheet_set_add_sheet(), or removed with
  * inf_acl_sheet_set_remove_sheet().
  *
- * Returns: A new #InfAclSheetSet. Free with inf_acl_sheet_set_free() when
- * no longer needed.
+ * Returns: (transfer full): A new #InfAclSheetSet. Free with
+ * inf_acl_sheet_set_free() when no longer needed.
  */
 InfAclSheetSet*
 inf_acl_sheet_set_new_external(const InfAclSheet* sheets,
@@ -867,8 +869,8 @@ inf_acl_sheet_set_new_external(const InfAclSheet* sheets,
  * inf_acl_sheet_set_new_external(), the copied sheet set will also only hold
  * a reference to the external sheets, and the same restrictions apply.
  *
- * Returns: A new #InfAclSheetSet. Free with inf_acl_sheet_set_free() when
- * no longer needed.
+ * Returns: (transfer full): A new #InfAclSheetSet. Free with
+ * inf_acl_sheet_set_free() when no longer needed.
  */
 InfAclSheetSet*
 inf_acl_sheet_set_copy(const InfAclSheetSet* sheet_set)
@@ -957,7 +959,7 @@ inf_acl_sheet_set_free(InfAclSheetSet* sheet_set)
  * This function can only be used if the sheet set has not been created with
  * the inf_acl_sheet_set_new_external() function.
  *
- * Returns: A #InfAclSheet for the new account.
+ * Returns: (transfer none): A #InfAclSheet for the new account.
  */
 InfAclSheet*
 inf_acl_sheet_set_add_sheet(InfAclSheetSet* sheet_set,
@@ -1029,7 +1031,7 @@ inf_acl_sheet_set_remove_sheet(InfAclSheetSet* sheet_set,
 
 /**
  * inf_acl_sheet_set_merge_sheets:
- * @sheet_set: A #InfAclSheetSet, or %NULL.
+ * @sheet_set: (allow-none) (transfer full): A #InfAclSheetSet, or %NULL.
  * @other: The sheet set to merge.
  *
  * Replaces all sheets that are present in @other in @sheet_set with the ones
@@ -1041,8 +1043,8 @@ inf_acl_sheet_set_remove_sheet(InfAclSheetSet* sheet_set,
  * created and returned, unless @other is empty. If the merged sheet set
  * ends up empty, it is freed and the function returns %NULL.
  *
- * Returns: The merged sheet set, or %NULL when the merged sheet set would
- * be empty.
+ * Returns: (allow-none) (transfer full): The merged sheet set, or %NULL
+ * when the merged sheet set would be empty.
  */
 InfAclSheetSet*
 inf_acl_sheet_set_merge_sheets(InfAclSheetSet* sheet_set,
@@ -1101,8 +1103,8 @@ inf_acl_sheet_set_merge_sheets(InfAclSheetSet* sheet_set,
  * the merge, the returned sheet set can be modified. This allows to replace
  * the current permissions with new ones atomically.
  *
- * Returns: A new #InfAclSheetSet. Free with inf_acl_sheet_set_free() when
- * no longer needed.
+ * Returns: (transfer full): A new #InfAclSheetSet. Free with
+ * inf_acl_sheet_set_free() when no longer needed.
  */
 InfAclSheetSet*
 inf_acl_sheet_set_get_clear_sheets(const InfAclSheetSet* sheet_set)
@@ -1152,7 +1154,7 @@ inf_acl_sheet_set_get_clear_sheets(const InfAclSheetSet* sheet_set)
  * This function can only be used if the sheet set has not been created with
  * the inf_acl_sheet_set_new_external() function.
  *
- * Returns: A #InfAclSheet for @account, or %NULL.
+ * Returns: (transfer none): A #InfAclSheet for @account, or %NULL.
  */
 InfAclSheet*
 inf_acl_sheet_set_find_sheet(InfAclSheetSet* sheet_set,
@@ -1189,7 +1191,7 @@ inf_acl_sheet_set_find_sheet(InfAclSheetSet* sheet_set,
  * that cannot be modified, but it can also be used on a sheet set created
  * with the inf_acl_sheet_set_new_external() function.
  *
- * Returns: A #InfAclSheet for @account, or %NULL.
+ * Returns: (transfer none): A #InfAclSheet for @account, or %NULL.
  */
 const InfAclSheet*
 inf_acl_sheet_set_find_const_sheet(const InfAclSheetSet* sheet_set,
@@ -1217,8 +1219,8 @@ inf_acl_sheet_set_find_const_sheet(const InfAclSheetSet* sheet_set,
  * %NULL and @error is set. If there is no ACL stored in @xml, the function
  * returns %NULL without setting @error.
  *
- * Returns: A #InfAclSheetSet, or %NULL. Free with inf_acl_sheet_set_free()
- * when no longer needed.
+ * Returns: (transfer full): A #InfAclSheetSet, or %NULL. Free with
+ * inf_acl_sheet_set_free() when no longer needed.
  */
 InfAclSheetSet*
 inf_acl_sheet_set_from_xml(xmlNodePtr xml,

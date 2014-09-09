@@ -75,3 +75,42 @@ libinfgtk_0_7_la_HEADERS = $(headers)
 libinfgtk_0_7_la_SOURCES = $(sources)
 libinfgtk_0_7_ladir = \
 	$(includedir)/libinfgtk-$(LIBINFINITY_API_VERSION)/libinfgtk
+
+if HAVE_INTROSPECTION
+-include $(INTROSPECTION_MAKEFILE)
+INTROSPECTION_GIRS = InfGtk-0.7.gir
+INTROSPECTION_SCANNER_ENV = CC="${CC}"
+INTROSPECTION_COMPILER_ARGS = \
+	--includedir=${top_builddir}/libinfinity
+
+InfGtk-0.7.gir: libinfgtk-0.7.la
+
+InfGtk_0_7_gir_SCANNERFLAGS = \
+	-I${top_srcdir} \
+	--add-include-path=$(top_builddir)/libinfinity \
+	-n InfGtk \
+	--identifier-prefix=InfGtk \
+	--warn-all
+
+InfGtk_0_7_gir_NAMESPACE = InfGtk
+InfGtk_0_7_gir_VERSION = 0.7
+InfGtk_0_7_gir_CFLAGS = $(infgtk_CFLAGS) $(infinity_CFLAGS)
+InfGtk_0_7_gir_LIBS = libinfgtk-0.7.la
+InfGtk_0_7_gir_FILES = \
+	$(libinfgtk_0_7_la_SOURCES) \
+	$(libinfgtk_0_7_la_HEADERS)
+
+InfGtk_0_7_gir_INCLUDES = Infinity-0.7 Gtk-3.0
+InfGtk_0_7_gir_PACKAGES = gtk+-3.0
+InfGtk_0_7_gir_EXPORT_PACKAGES = libinfgtk-0.7
+
+girdir = $(datadir)/gir-1.0
+gir_DATA = InfGtk-0.7.gir
+
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = InfGtk-0.7.typelib
+
+CLEANFILES += \
+	$(gir_DATA) \
+	$(typelib_DATA)
+endif
