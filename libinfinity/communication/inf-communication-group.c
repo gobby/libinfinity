@@ -588,7 +588,7 @@ inf_communication_group_get_name(InfCommunicationGroup* group)
  * Returns the group's target. The target of a group is the
  * #InfCommunicationObject to which received and sent messages are reported.
  *
- * Returns: A #InfCommunicationGroup, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfCommunicationGroup, or %NULL.
  */
 InfCommunicationObject*
 inf_communication_group_get_target(InfCommunicationGroup* group)
@@ -681,7 +681,7 @@ inf_communication_group_is_member(InfCommunicationGroup* group,
  * inf_communication_group_send_message:
  * @group: A #InfCommunicationGroup.
  * @connection: The #InfXmlConnection to which to send the message.
- * @xml: The message to send.
+ * @xml: (transfer full): The message to send.
  *
  * Sends a message @connection which must be a member of @group. @connection
  * needs to be a member of this group. This function takes ownership of @xml.
@@ -710,7 +710,7 @@ inf_communication_group_send_message(InfCommunicationGroup* group,
 /**
  * inf_communication_group_send_group_message:
  * @group: A #InfCommunicationGroup.
- * @xml: The message to send.
+ * @xml: (transfer full): The message to send.
  *
  * Sends a message to all members of @group. This function takes ownership
  * of @xml.
@@ -852,7 +852,7 @@ inf_communication_group_get_method_for_connection(InfCommunicationGroup* grp,
  * local ID, otherwise the remote ID of the connection to the publisher on
  * @for_connection's network is returned.
  *
- * Returns: The publisher's host ID. Free with g_free().
+ * Returns: (transfer full): The publisher's host ID. Free with g_free().
  */
 gchar*
 inf_communication_group_get_publisher_id(InfCommunicationGroup* group,

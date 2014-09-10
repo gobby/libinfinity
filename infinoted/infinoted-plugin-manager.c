@@ -914,18 +914,18 @@ infinoted_plugin_manager_class_init(
 }
 
 /**
- * infinoted_plugin_manager_new:
+ * infinoted_plugin_manager_new: (constructor)
  * @directory: The #InfdDirectory on which plugins should operate.
  * @log: The #InfinotedLog to write log messages to.
- * @creds: The #InfCertificateCredentials used to secure data transfer with
- * the clients, or %NULL.
+ * @creds: (allow-none): The #InfCertificateCredentials used to secure data
+ * transfer with the clients, or %NULL.
  *
  * Creates a new #InfinotedPluginManager with the given directory, log
  * and credentials. These three objects will be available for plugins
  * to enhance the infinoted functionality. Plugins can be loaded
  * with infinoted_plugin_manager_load().
  *
- * Returns: A new #InfinotedPluginManager.
+ * Returns: (transfer full): A new #InfinotedPluginManager.
  */
 InfinotedPluginManager*
 infinoted_plugin_manager_new(InfdDirectory* directory,
@@ -952,7 +952,8 @@ infinoted_plugin_manager_new(InfdDirectory* directory,
  * infinoted_plugin_manager_load:
  * @manager: A #InfinotedPluginManager.
  * @plugin_path: The path from which to load plugins.
- * @plugins: A list of plugins to load, or %NULL.
+ * @plugins: (array zero-terminated=1) (allow-none): A list of plugins to
+ * load, or %NULL.
  * @options: A #GKeyFile with configuration options for the plugins.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -1033,7 +1034,7 @@ infinoted_plugin_manager_load(InfinotedPluginManager* manager,
  *
  * Returns the #InfdDirectory used by the plugin manager.
  *
- * Returns: A #InfdDirectory owned by the plugin manager.
+ * Returns: (transfer none): A #InfdDirectory owned by the plugin manager.
  */
 InfdDirectory*
 infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager)
@@ -1048,7 +1049,7 @@ infinoted_plugin_manager_get_directory(InfinotedPluginManager* manager)
  *
  * Returns the #InfIo of the #InfdDirectory used by the plugin manager.
  *
- * Returns: A #InfIo owned by the plugin manager.
+ * Returns: (transfer none): A #InfIo owned by the plugin manager.
  */
 InfIo*
 infinoted_plugin_manager_get_io(InfinotedPluginManager* manager)
@@ -1068,7 +1069,7 @@ infinoted_plugin_manager_get_io(InfinotedPluginManager* manager)
  * Returns the #InfinotedLog that the plugin manager and the plugins do
  * write log messages to.
  *
- * Returns: A #InfinotedLog owned by the plugin manager.
+ * Returns: (transfer none): A #InfinotedLog owned by the plugin manager.
  */
 InfinotedLog*
 infinoted_plugin_manager_get_log(InfinotedPluginManager* manager)
@@ -1084,7 +1085,8 @@ infinoted_plugin_manager_get_log(InfinotedPluginManager* manager)
  * Returns the #InfCertificateCredentials used for securing the data transfer
  * with all clients.
  *
- * Returns: A #InfCertificateCredentials object owned by the plugin manager.
+ * Returns: (transfer none): A #InfCertificateCredentials object owned by the
+ * plugin manager.
  */
 InfCertificateCredentials*
 infinoted_plugin_manager_get_credentials(InfinotedPluginManager* manager)
@@ -1116,7 +1118,8 @@ infinoted_plugin_manager_error_quark(void)
  * @plugin_info. Returns %NULL if no such object exists, i.e. when the
  * plugin's @connection_info_size is set to 0.
  *
- * Returns: A pointer to the connection-specific plugin data, or %NULL.
+ * Returns: (transfer none) (allow-none): A pointer to the connection-specific
+ * plugin data, or %NULL.
  */
 gpointer
 infinoted_plugin_manager_get_connection_info(InfinotedPluginManager* mgr,
@@ -1146,7 +1149,8 @@ infinoted_plugin_manager_get_connection_info(InfinotedPluginManager* mgr,
  * @plugin_info. Returns %NULL if no such object exists, i.e. when the
  * plugin's @session_info_size is set to 0.
  *
- * Returns: A pointer to the session-specific plugin data, or %NULL.
+ * Returns: (transfer none) (allow-none): A pointer to the session-specific
+ * plugin data, or %NULL.
  */
 gpointer
 infinoted_plugin_manager_get_session_info(InfinotedPluginManager* mgr,

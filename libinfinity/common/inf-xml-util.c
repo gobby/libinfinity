@@ -293,7 +293,7 @@ inf_xml_util_valid_xml_char(gunichar codepoint)
 /**
  * inf_xml_util_add_child_text:
  * @xml: A #xmlNodePtr.
- * @text: The child text to add.
+ * @text: (array length=bytes): The child text to add.
  * @bytes: The number of bytes of @text.
  *
  * Adds the given text as child text to @xml in the same way
@@ -340,17 +340,19 @@ inf_xml_util_add_child_text(xmlNodePtr xml,
 /**
  * inf_xml_util_get_child_text:
  * @xml: A #xmlNodePtr
- * @bytes: Location to store number of bytes of child text, or %NULL.
- * @chars: Location to store number of characters of child text, or %NULL.
- * @error: Locatian to store error information if any, or %NULL.
+ * @bytes: (out) (allow-none): Location to store number of bytes of child
+ * text, or %NULL.
+ * @chars: (out) (allow-none): Location to store number of characters of child
+ * text, or %NULL.
+ * @error: Locatian to store error information, if any, or %NULL.
  *
  * Reads a node's child text. If there are &lt;uchar /&gt; child elements, as
  * added by inf_xml_util_add_child_text() this function will convert them
  * back to character codes. There should not be any other child elements in
  * @xml.
  *
- * Returns: The node's child text, or %NULL on error. Free with g_free() when
- * no longer needed.
+ * Returns: (array length=bytes) (transfer full): The node's child text, or %NULL on
+ * error. Free with g_free() when no longer needed.
  */
 gchar*
 inf_xml_util_get_child_text(xmlNodePtr xml,
@@ -412,8 +414,8 @@ inf_xml_util_get_child_text(xmlNodePtr xml,
  * mostly for consistency, and for not having to cast the @attribute argument
  * from char* to xmlChar*. The return value is a xmlChar*, though.
  *
- * Returns: The value of the attribute, or %NULL. Free with xmlFree() when no
- * longer needed.
+ * Returns: (transfer full): The value of the attribute, or %NULL. Free with
+ * xmlFree() when no longer needed.
  */
 xmlChar*
 inf_xml_util_get_attribute(xmlNodePtr xml,
@@ -432,8 +434,8 @@ inf_xml_util_get_attribute(xmlNodePtr xml,
  * @xml. If there is no such attribute then the function returns %NULL and
  * @error is set.
  *
- * Returns: The attribute's value, or %NULL on error. Free with xmlFree()
- * when no longer needed.
+ * Returns: (transfer full): The attribute's value, or %NULL on error.
+ * Free with xmlFree() when no longer needed.
  */
 xmlChar*
 inf_xml_util_get_attribute_required(xmlNodePtr xml,
@@ -462,7 +464,7 @@ inf_xml_util_get_attribute_required(xmlNodePtr xml,
  * inf_xml_util_get_attribute_int:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Reads the attribute named @attribute from the XML element @xml. The
@@ -499,7 +501,7 @@ inf_xml_util_get_attribute_int(xmlNodePtr xml,
  * inf_xml_util_get_attribute_int_required:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Reads the attribute named @attribute from the XML element @xml. The
@@ -534,7 +536,7 @@ inf_xml_util_get_attribute_int_required(xmlNodePtr xml,
  * inf_xml_util_get_attribute_long:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
@@ -563,7 +565,7 @@ inf_xml_util_get_attribute_long(xmlNodePtr xml,
  * inf_xml_util_get_attribute_long_required:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
@@ -592,7 +594,7 @@ inf_xml_util_get_attribute_long_required(xmlNodePtr xml,
  * inf_xml_util_get_attribute_uint:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
@@ -621,7 +623,7 @@ inf_xml_util_get_attribute_uint(xmlNodePtr xml,
  * inf_xml_util_get_attribute_uint_required:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
@@ -650,7 +652,7 @@ inf_xml_util_get_attribute_uint_required(xmlNodePtr xml,
  * inf_xml_util_get_attribute_ulong:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
@@ -679,7 +681,7 @@ inf_xml_util_get_attribute_ulong(xmlNodePtr xml,
  * inf_xml_util_get_attribute_ulong_required:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
@@ -708,7 +710,7 @@ inf_xml_util_get_attribute_ulong_required(xmlNodePtr xml,
  * inf_xml_util_get_attribute_double:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int(). The only difference
@@ -737,7 +739,7 @@ inf_xml_util_get_attribute_double(xmlNodePtr xml,
  * inf_xml_util_get_attribute_double_required:
  * @xml: A #xmlNodePtr.
  * @attribute: The name of the attribute to query.
- * @result: Location to store the read value.
+ * @result: (out): Location to store the read value.
  * @error: Location to store error information, if any.
  *
  * Behaves exactly like inf_xml_util_get_attribute_int_required(). The only
@@ -795,7 +797,7 @@ inf_xml_util_set_attribute_int(xmlNodePtr xml,
                                const gchar* attribute,
                                gint value)
 {
-  char buffer[sizeof(gint) * 3];
+  char buffer[sizeof(gint) * 3 + 1];
   sprintf(buffer, "%d", value);
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
@@ -815,7 +817,7 @@ inf_xml_util_set_attribute_long(xmlNodePtr xml,
                                 const gchar* attribute,
                                 glong value)
 {
-  char buffer[sizeof(glong) * 3];
+  char buffer[sizeof(glong) * 3 + 1];
   sprintf(buffer, "%ld", value);
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
@@ -835,7 +837,7 @@ inf_xml_util_set_attribute_uint(xmlNodePtr xml,
                                 const gchar* attribute,
                                 guint value)
 {
-  char buffer[sizeof(guint) * 3];
+  char buffer[sizeof(guint) * 3 + 1];
   sprintf(buffer, "%u", value);
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
@@ -855,7 +857,7 @@ inf_xml_util_set_attribute_ulong(xmlNodePtr xml,
                                  const gchar* attribute,
                                  gulong value)
 {
-  char buffer[sizeof(gulong) * 3];
+  char buffer[sizeof(gulong) * 3 + 1];
   sprintf(buffer, "%lu", value);
 
   xmlSetProp(xml, (const xmlChar*)attribute, (const xmlChar*)buffer);
@@ -892,8 +894,8 @@ inf_xml_util_set_attribute_double(xmlNodePtr xml,
  * inf_xml_util_add_child_text(). @name_space is set as the element's
  * namespace, if not %NULL.
  *
- * Returns: A new #xmlNodePtr. It is the caller's responsibility to dispose it
- * using xmlFreeNode().
+ * Returns: (transfer full): A new #xmlNodePtr. It is the caller's
+ * responsibility to dispose it using xmlFreeNode().
  */
 xmlNodePtr
 inf_xml_util_new_node_from_error(GError* error,
@@ -927,8 +929,9 @@ inf_xml_util_new_node_from_error(GError* error,
  * inf_xml_util_get_child_text(). The element name and namespace are ignored.
  * If @xml does not have the attributes as expected, %NULL is returned.
  *
- * Returns: A pointer to a new #GError, or %NULL on failure. It is the
- * caller's responsibility to dispose the #GError object using g_error_free().
+ * Returns: (transfer full): A pointer to a new #GError, or %NULL on
+ * failure. It is the caller's responsibility to dispose the #GError
+ * object using g_error_free().
  */
 GError*
 inf_xml_util_new_error_from_node(xmlNodePtr xml)

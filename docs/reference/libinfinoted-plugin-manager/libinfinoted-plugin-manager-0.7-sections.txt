@@ -30,6 +30,7 @@ InfinotedParameterConvertFunc
 InfinotedParameterInfo
 InfinotedParameterError
 infinoted_parameter_typed_value_new
+infinoted_parameter_typed_value_copy
 infinoted_parameter_typed_value_free
 infinoted_parameter_error_quark
 infinoted_parameter_load_from_key_file
@@ -42,6 +43,9 @@ infinoted_parameter_convert_security_policy
 infinoted_parameter_convert_string
 infinoted_parameter_convert_string_list
 infinoted_parameter_convert_flags
+<SUBSECTION Standard>
+INFINOTED_PARAMETER_TYPED_VALUE_TYPE
+infinoted_parameter_typed_value_get_type
 </SECTION>
 
 <SECTION>

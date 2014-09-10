@@ -529,11 +529,11 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
 }
 
 /**
- * inf_user_table_new:
+ * inf_user_table_new: (constructor)
  *
  * Creates a new, empty user table.
  *
- * Return Value: A #InfUserTable.
+ * Returns: (transfer full): A #InfUserTable.
  **/
 InfUserTable*
 inf_user_table_new(void)
@@ -587,7 +587,7 @@ inf_user_table_remove_user(InfUserTable* user_table,
  *
  * Returns the #InfUser with the given User ID in @user_table.
  *
- * Return Value: A #InfUser, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfUser, or %NULL.
  **/
 InfUser*
 inf_user_table_lookup_user_by_id(InfUserTable* user_table,
@@ -609,7 +609,7 @@ inf_user_table_lookup_user_by_id(InfUserTable* user_table,
  *
  * Returns an #InfUser with the given name if there is one.
  *
- * Return Value: A #InfUser, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfUser, or %NULL.
  **/
 InfUser*
 inf_user_table_lookup_user_by_name(InfUserTable* user_table,
@@ -635,7 +635,7 @@ inf_user_table_lookup_user_by_name(InfUserTable* user_table,
 /**
  * inf_user_table_foreach_user:
  * @user_table: A #InfUserTable.
- * @func: The function to call for each user.
+ * @func: (scope call): The function to call for each user.
  * @user_data: User data to pass to the function.
  *
  * Calls the given function for each user in the user_table. You should not
@@ -667,7 +667,7 @@ inf_user_table_foreach_user(InfUserTable* user_table,
 /**
  * inf_user_table_foreach_local_user:
  * @user_table: A #InfUserTable.
- * @func: The function to call for each user.
+ * @func: (scope call): The function to call for each user.
  * @user_data: User data to pass to the function.
  *
  * Calls the given function for each local user in the user_table. A local

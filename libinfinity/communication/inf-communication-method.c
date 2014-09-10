@@ -167,7 +167,7 @@ inf_communication_method_is_member(InfCommunicationMethod* method,
  * inf_communication_method_send_single:
  * @method: A #InfCommunicationMethod.
  * @connection: A #InfXmlConnection that is a group member.
- * @xml: The message to send.
+ * @xml: (transfer full): The message to send.
  *
  * Sends an XML message to @connection. This function takes ownership of @xml.
  */
@@ -192,7 +192,7 @@ inf_communication_method_send_single(InfCommunicationMethod* method,
 /**
  * inf_communication_method_send_all:
  * @method: A #InfCommunicationMethod.
- * @xml: The message to send.
+ * @xml: (transfer full): The message to send.
  *
  * Sends an XML message to all group members on this network. This function
  * takes ownership of @xml.

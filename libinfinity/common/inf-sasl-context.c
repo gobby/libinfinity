@@ -133,6 +133,7 @@ struct _InfSaslContext {
 
   InfSaslContextCallbackFunc callback;
   gpointer callback_user_data;
+  GDestroyNotify callback_notify;
 
   /* protects the session list, the callback function and access to the
    * Gsasl object. */
@@ -535,14 +536,14 @@ inf_sasl_context_start_session(InfSaslContext* context,
  */
 
 /**
- * inf_sasl_context_new:
+ * inf_sasl_context_new: (constructor)
  * @error: Location to store error information, if any.
  *
  * Creates a new #InfSaslContext with a reference count of 1. If the function
  * fails it returns %NULL and @error is set.
  *
- * Returns: A new #InfSaslContext, or %NULL on error. Free with
- * inf_sasl_context_unref() when no longer needed.
+ * Returns: (transfer full): A new #InfSaslContext, or %NULL on error. Free
+ * with inf_sasl_context_unref() when no longer needed.
  */
 InfSaslContext*
 inf_sasl_context_new(GError** error)
@@ -568,6 +569,7 @@ inf_sasl_context_new(GError** error)
 
   sasl->callback = NULL;
   sasl->callback_user_data = NULL;
+  sasl->callback_notify = NULL;
 
   gsasl_callback_set(gsasl, inf_sasl_context_gsasl_callback);
   gsasl_callback_hook_set(gsasl, sasl);
@@ -627,6 +629,9 @@ inf_sasl_context_unref(InfSaslContext* context)
     gsasl_done(context->gsasl);
     g_mutex_clear(&context->mutex);
 
+    if(context->callback_notify != NULL)
+      context->callback_notify(context->callback_user_data);
+
     g_slice_free(InfSaslContext, context);
   }
 }
@@ -636,6 +641,8 @@ inf_sasl_context_unref(InfSaslContext* context)
  * @context: A #InfSaslContext.
  * @callback: A function to call to query properties for authentication.
  * @user_data: Additional context to pass to @callback.
+ * @notify: Function called to destroy @user_data once it is no longer needed,
+ * or %NULL.
  *
  * Sets the callback to call when, during authentication, a certain properties
  * needs to be provided, such as a username or a password. The callback
@@ -652,13 +659,17 @@ inf_sasl_context_unref(InfSaslContext* context)
 void
 inf_sasl_context_set_callback(InfSaslContext* context,
                               InfSaslContextCallbackFunc callback,
-                              gpointer user_data)
+                              gpointer user_data,
+                              GDestroyNotify notify)
 {
   g_return_if_fail(context != NULL);
 
   g_mutex_lock(&context->mutex);
+  if(context->callback_notify != NULL)
+    context->callback_notify(context->callback_user_data);
   context->callback = callback;
   context->callback_user_data = user_data;
+  context->callback_notify = notify;
   g_mutex_unlock(&context->mutex);
 }
 
@@ -677,7 +688,7 @@ inf_sasl_context_set_callback(InfSaslContext* context,
  *
  * The callback function will be called in the thread that @io runs in.
  *
- * Returns: A #InfSaslContextSession.
+ * Returns: (transfer none): A #InfSaslContextSession.
  */
 InfSaslContextSession*
 inf_sasl_context_client_start_session(InfSaslContext* context,
@@ -732,15 +743,16 @@ inf_sasl_context_client_start_session(InfSaslContext* context,
  * Returns a newly allocated space-separated string containing SASL mechanisms
  * that @context supports for client sessions.
  *
- * Returns: A newly allocated string. Free with gsasl_free() when no longer
- * in use.
+ * Returns: (transfer full): A newly allocated string. Free with g_free()
+ * when no longer in use.
  */
-char*
+gchar*
 inf_sasl_context_client_list_mechanisms(InfSaslContext* context,
                                         GError** error)
 {
   int ret;
   char* out;
+  gchar* v;
 
   g_return_val_if_fail(context != NULL, NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
@@ -756,7 +768,10 @@ inf_sasl_context_client_list_mechanisms(InfSaslContext* context,
     return NULL;
   }
 
-  return out;
+  v = g_strdup(out);
+  gsasl_free(out);
+
+  return v;
 }
 
 /**
@@ -793,7 +808,7 @@ inf_sasl_context_client_supports_mechanism(InfSaslContext* context,
  * Given a list of SASL mechanisms this function suggests the which is the
  * "best" one to be used.
  *
- * Returns: The name of the suggested mechanism.
+ * Returns: (transfer none): The name of the suggested mechanism.
  */
 const char*
 inf_sasl_context_client_suggest_mechanism(InfSaslContext* context,
@@ -825,7 +840,7 @@ inf_sasl_context_client_suggest_mechanism(InfSaslContext* context,
  *
  * The callback function will be called in the thread that @io runs in.
  *
- * Returns: A #InfSaslContextSession.
+ * Returns: (transfer none): A #InfSaslContextSession.
  */
 InfSaslContextSession*
 inf_sasl_context_server_start_session(InfSaslContext* context,
@@ -880,8 +895,8 @@ inf_sasl_context_server_start_session(InfSaslContext* context,
  * Returns a newly allocated space-separated string containing SASL mechanisms
  * that @context supports for server sessions.
  *
- * Returns: A newly allocated string. Free with gsasl_free() when no longer
- * in use.
+ * Returns: (transfer full): A newly allocated string. Free with g_free()
+ * when no longer in use.
  */
 char*
 inf_sasl_context_server_list_mechanisms(InfSaslContext* context,
@@ -889,6 +904,7 @@ inf_sasl_context_server_list_mechanisms(InfSaslContext* context,
 {
   int ret;
   char* out;
+  gchar* v;
 
   g_return_val_if_fail(context != NULL, NULL);
   g_return_val_if_fail(error == NULL || *error == NULL, NULL);
@@ -904,7 +920,10 @@ inf_sasl_context_server_list_mechanisms(InfSaslContext* context,
     return NULL;
   }
 
-  return out;
+  v = g_strdup(out);
+  gsasl_free(out);
+
+  return v;
 }
 
 /**
@@ -992,8 +1011,8 @@ inf_sasl_context_stop_session(InfSaslContext* context,
  * yet exist then this function returns %NULL. It does not invoke the
  * #InfSaslContextCallbackFunc to query it.
  *
- * Returns: The value of the property, or %NULL. The value is owned by the
- * session and must not be freed.
+ * Returns: (allow-none): The value of the property, or %NULL. The value is
+ * owned by the session and must not be freed.
  */
 const char*
 inf_sasl_context_session_get_property(InfSaslContextSession* session,
@@ -1016,7 +1035,7 @@ inf_sasl_context_session_get_property(InfSaslContextSession* session,
  * inf_sasl_context_session_set_property:
  * @session: A #InfSaslContextSession.
  * @prop: A SASL property.
- * @value: The value to set the property to.
+ * @value: (allow-none): The value to set the property to.
  *
  * Sets the property @prop in @session to @value.
  */
@@ -1061,7 +1080,8 @@ inf_sasl_context_session_continue(InfSaslContextSession* session,
  * inf_sasl_context_session_feed:
  * @session: A #InfSaslContextSession.
  * @data: The data to feed to the SASL session.
- * @func: The function to call when the data has been processed.
+ * @func: (scope async): The function to call when the data has been
+ * processed.
  * @user_data: Additional user data to pass to @func.
  *
  * This function feeds data from the session's remote counterpart to @session.

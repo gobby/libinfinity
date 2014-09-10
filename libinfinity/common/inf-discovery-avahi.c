@@ -73,7 +73,6 @@ struct AvahiTimeout {
 typedef struct _InfDiscoveryAvahiInfoResolv InfDiscoveryAvahiInfoResolv;
 struct _InfDiscoveryAvahiInfoResolv {
   InfDiscoveryResolvCompleteFunc complete_func;
-  InfDiscoveryResolvErrorFunc error_func;
   gpointer user_data;
 };
 
@@ -180,6 +179,7 @@ inf_discovery_avahi_info_resolv_complete(InfDiscoveryInfo* info)
     resolv->complete_func(
       info,
       INF_XML_CONNECTION(info->resolved),
+      NULL,
       resolv->user_data
     );
 
@@ -201,7 +201,7 @@ inf_discovery_avahi_info_resolv_error(InfDiscoveryInfo* info,
   {
     resolv = (InfDiscoveryAvahiInfoResolv*)item->data;
 
-    resolv->error_func(info, error, resolv->user_data);
+    resolv->complete_func(info, NULL, error, resolv->user_data);
     g_slice_free(InfDiscoveryAvahiInfoResolv, resolv);
   }
 
@@ -1346,7 +1346,6 @@ static void
 inf_discovery_avahi_resolve(InfDiscovery* discovery,
                             InfDiscoveryInfo* info,
                             InfDiscoveryResolvCompleteFunc complete_func,
-                            InfDiscoveryResolvErrorFunc error_func,
                             gpointer user_data)
 {
   InfDiscoveryAvahiPrivate* priv;
@@ -1369,23 +1368,34 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
       error = NULL;
       if(!inf_xml_connection_open(INF_XML_CONNECTION(info->resolved), &error))
       {
-        error_func(info, error, user_data);
+        complete_func(info, NULL, error, user_data);
         g_error_free(error);
       }
       else
       {
-        complete_func(info, INF_XML_CONNECTION(info->resolved), user_data);
+        complete_func(
+          info,
+          INF_XML_CONNECTION(info->resolved),
+          NULL,
+          user_data
+        );
       }
 
       break;
     case INF_XML_CONNECTION_CLOSING:
       /* TODO: We should add ourselves to the resolver list, and wait for
        * the connection being closed and reopen it afterwards. */
-      error_func(info, NULL, user_data);
+      complete_func(info, NULL, NULL, user_data);
       break;
     case INF_XML_CONNECTION_OPENING:
     case INF_XML_CONNECTION_OPEN:
-      complete_func(info, INF_XML_CONNECTION(info->resolved), user_data);
+      complete_func(
+        info,
+        INF_XML_CONNECTION(info->resolved),
+        NULL,
+        user_data
+      );
+
       break;
     default:
       g_assert_not_reached();
@@ -1396,7 +1406,6 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
   {
     resolv = g_slice_new(InfDiscoveryAvahiInfoResolv);
     resolv->complete_func = complete_func;
-    resolv->error_func = error_func;
     resolv->user_data = user_data;
     info->resolv = g_slist_prepend(info->resolv, resolv);
 
@@ -1626,7 +1635,7 @@ inf_discovery_avahi_local_publisher_iface_init(
  */
 
 /**
- * inf_discovery_avahi_new:
+ * inf_discovery_avahi_new: (constructor)
  * @io: A #InfIo object used for watching sockets and timeouts.
  * @manager: A #InfXmppManager.
  * @creds: The certificate credentials used for GnuTLS encryption.
@@ -1651,7 +1660,7 @@ inf_discovery_avahi_local_publisher_iface_init(
  * the server. It can be %NULL, in which case all available mechanisms are
  * accepted.
  *
- * Return Value: A new #InfDiscoveryAvahi.
+ * Return Value: (transfer full): A new #InfDiscoveryAvahi.
  **/
 InfDiscoveryAvahi*
 inf_discovery_avahi_new(InfIo* io,

@@ -828,14 +828,14 @@ infd_filesystem_storage_storage_iface_init(InfdStorageInterface* iface)
 }
 
 /**
- * infd_filesystem_storage_new:
+ * infd_filesystem_storage_new: (constructor)
  * @root_directory: A directory name in UTF-8.
  *
  * Creates a new #InfdFilesystemStorage that stores its nodes in the
  * given directory on the file system. The directory is created if it does
  * not exist.
  *
- * Returns: A new #InfdFilesystemStorage.
+ * Returns: (transfer full): A new #InfdFilesystemStorage.
  **/
 InfdFilesystemStorage*
 infd_filesystem_storage_new(const gchar* root_directory)
@@ -867,7 +867,8 @@ infd_filesystem_storage_new(const gchar* root_directory)
  * identifiers can be used to store custom data in the filesystem, linked to
  * this #InfdFilesystemStorage object.
  *
- * Returns: An absolute filename path to be freed with g_free(), or %NULL.
+ * Returns: (type filename) (allow-none) (transfer full): An absolute
+ * filename path to be freed with g_free(), or %NULL.
  */
 gchar*
 infd_filesystem_storage_get_path(InfdFilesystemStorage* storage,
@@ -903,7 +904,8 @@ infd_filesystem_storage_get_path(InfdFilesystemStorage* storage,
  * @identifier: The type of node to open.
  * @path: The path to open, in UTF-8.
  * @mode: Either "r" for reading or "w" for writing.
- * @full_path: Return location of the full filename, or %NULL.
+ * @full_path: (out) (type filename) (transfer full): Return location
+ * of the full filename, or %NULL.
  * @error: Location to store error information, if any.
  *
  * Opens a file in the given path within the storage's root directory. If
@@ -918,7 +920,7 @@ infd_filesystem_storage_get_path(InfdFilesystemStorage* storage,
  * identifiers can be used to store custom data in the filesystem, linked to
  * this #InfdFilesystemStorage object.
  *
- * Returns: A stream for the open file. Close with
+ * Returns: (transfer full): A stream for the open file. Close with
  * infd_filesystem_storage_stream_close().
  **/
 FILE*
@@ -978,7 +980,8 @@ infd_filesystem_storage_open(InfdFilesystemStorage* storage,
  * If @toplevel_tag is non-%NULL, then this function generates an error if
  * the XML document read has a toplevel tag with a different name.
  *
- * Returns: A new XML document, or %NULL on error. Free with xmlDocFree().
+ * Returns: (transfer full) (allow-none): A new XML document, or %NULL on
+ * error. Free with xmlDocFree().
  **/
 xmlDocPtr
 infd_filesystem_storage_read_xml_file(InfdFilesystemStorage* storage,
@@ -1088,7 +1091,8 @@ infd_filesystem_storage_stream_close(FILE* file)
 /**
  * infd_filesystem_storage_stream_read:
  * @file: A #FILE opened with infd_filesystem_storage_open().
- * @buffer: A buffer into which to read data.
+ * @buffer: (type guint8*) (array length=len) (out): A buffer
+ * into which to read data.
  * @len: Maximum number of bytes to read.
  *
  * This is a thin wrapper around fread(). Use this function instead of

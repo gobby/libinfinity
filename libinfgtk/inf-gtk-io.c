@@ -693,11 +693,12 @@ inf_gtk_io_io_iface_init(InfIoInterface* iface)
 }
 
 /**
- * inf_gtk_io_new:
+ * inf_gtk_io_new: (constructor)
  *
  * Creates a new #InfGtkIo.
  *
- * Returns: A new #InfGtkIo. Free with g_object_unref() when no longer needed.
+ * Returns: (transfer full): A new #InfGtkIo. Free with g_object_unref()
+ * when no longer needed.
  **/
 InfGtkIo*
 inf_gtk_io_new(void)

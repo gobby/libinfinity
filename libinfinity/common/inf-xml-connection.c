@@ -276,7 +276,8 @@ inf_xml_connection_close(InfXmlConnection* connection)
 /**
  * inf_xml_connection_send:
  * @connection: A #InfXmlConnection.
- * @xml: A XML message to send. The function takes ownership of the XML node.
+ * @xml: (transfer full): A XML message to send. The function takes ownership
+ * of the XML node.
  *
  * Sends the given XML message to the remote host.
  **/
@@ -297,7 +298,7 @@ void inf_xml_connection_send(InfXmlConnection* connection,
 /**
  * inf_xml_connection_sent:
  * @connection: A #InfXmlConnection.
- * @xml: The XML message that has been sent.
+ * @xml: (transfer none): The XML message that has been sent.
  *
  * Emits the "sent" signal on @connection. This will most likely only be
  * useful to implementors.
@@ -319,7 +320,7 @@ void inf_xml_connection_sent(InfXmlConnection* connection,
 /**
  * inf_xml_connection_received:
  * @connection: A #InfXmlConnection.
- * @xml: The XML message that has been received.
+ * @xml: (transfer none): The XML message that has been received.
  *
  * Emits the "received" signal on @connection. This will most likely only
  * be useful to implementors.

@@ -55,8 +55,7 @@ InfTextGtk_0_7_gir_SCANNERFLAGS = \
 	--add-include-path=$(top_builddir)/libinftext \
 	--add-include-path=$(top_builddir)/libinfgtk \
 	-n InfTextGtk \
-	--identifier-prefix=InfTextGtk \
-	--warn-all
+	--identifier-prefix=InfTextGtk
 
 InfTextGtk_0_7_gir_NAMESPACE = InfTextGtk
 InfTextGtk_0_7_gir_VERSION = 0.7

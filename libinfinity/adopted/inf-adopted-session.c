@@ -1629,7 +1629,7 @@ inf_adopted_session_class_init(InfAdoptedSessionClass* adopted_session_class)
  *
  * Returns the #InfIo object of @session.
  *
- * Return Value: A #InfIo.
+ * Returns: (transfer none): A #InfIo.
  **/
 InfIo*
 inf_adopted_session_get_io(InfAdoptedSession* session)
@@ -1647,7 +1647,7 @@ inf_adopted_session_get_io(InfAdoptedSession* session)
  * because there the algorithm object is not yet created before successful
  * synchronization.
  *
- * Return Value: A #InfAdoptedAlgorithm, or %NULL.
+ * Returns: (transfer none): A #InfAdoptedAlgorithm, or %NULL.
  **/
 InfAdoptedAlgorithm*
 inf_adopted_session_get_algorithm(InfAdoptedSession* session)
@@ -1795,11 +1795,13 @@ inf_adopted_session_redo(InfAdoptedSession* session,
  * inf_adopted_session_read_request_info:
  * @session: A #InfAdoptedSession.
  * @xml: The XML to read the data from.
- * @diff_vec: The reference vector of the time vector of the request, or
- * %NULL.
- * @user: Location to store the user of the request, or %NULL.
- * @time: Location to store the state the request was made, or %NULL.
- * @operation: Location to store the operation of the request, or %NULL.
+ * @diff_vec: The reference vector of the time vector of the request, or %NULL.
+ * @user: (out) (transfer none) (allow-none): Location to store the user of
+ * the request, or %NULL.
+ * @time: (out) (transfer full) (allow-none): Location to store the state the
+ * request was made, or %NULL.
+ * @operation: (out) (transfer none) (allow-none): Location to store the
+ * operation of the request, or %NULL.
  * @error: Location to place an error, if any.
  *
  * This function reads common information such as the state vector the request

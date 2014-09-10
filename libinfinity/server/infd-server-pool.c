@@ -381,12 +381,12 @@ infd_server_pool_class_init(InfdServerPoolClass* server_pool_class)
 }
 
 /**
- * infd_server_pool_new:
+ * infd_server_pool_new: (constructor)
  * @directory: A #InfdDirectory to which to add incoming connections.
  *
  * Creates a new #InfdServerPool.
  *
- * Return Value: A new #InfdServerPool.
+ * Returns: (transfer full): A new #InfdServerPool.
  */
 InfdServerPool*
 infd_server_pool_new(InfdDirectory* directory)
@@ -527,7 +527,7 @@ infd_server_pool_remove_server(InfdServerPool* server_pool,
 /**
  * infd_server_pool_foreach_server:
  * @server_pool: A #InfdServerPool.
- * @func: The function to be called for each server.
+ * @func: (scope call): The function to be called for each server.
  * @user_data: Additional data to pass to @func.
  *
  * Calls @func for each server in pool registered with

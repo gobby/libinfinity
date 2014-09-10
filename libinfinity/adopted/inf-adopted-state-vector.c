@@ -158,11 +158,11 @@ inf_adopted_state_vector_error_quark(void)
 }
 
 /**
- * inf_adopted_state_vector_new:
+ * inf_adopted_state_vector_new: (constructor)
  *
  * Returns a new state vector with all components set to zero.
  *
- * Return Value: A new #InfAdoptedStateVector.
+ * Returns: (transfer full): A new #InfAdoptedStateVector.
  **/
 InfAdoptedStateVector*
 inf_adopted_state_vector_new(void)
@@ -183,7 +183,7 @@ inf_adopted_state_vector_new(void)
  *
  * Returns a copy of @vec.
  *
- * Return Value: A copy of @vec.
+ * Returns: (transfer full): A copy of @vec.
  **/
 InfAdoptedStateVector*
 inf_adopted_state_vector_copy(InfAdoptedStateVector* vec)
@@ -235,7 +235,7 @@ inf_adopted_state_vector_free(InfAdoptedStateVector* vec)
  * Returns the timestamp for the given component. Implicitely, all IDs
  * that the vector does not contain are assigned the timestamp 0.
  *
- * Return Value: The @component'th entry in the vector.
+ * Returns: The @component'th entry in the vector.
  */
 guint
 inf_adopted_state_vector_get(const InfAdoptedStateVector* vec,
@@ -315,7 +315,7 @@ inf_adopted_state_vector_add(InfAdoptedStateVector* vec,
 /**
  * inf_adopted_state_vector_foreach:
  * @vec: A #InfAdoptedStateVector.
- * @func: The function to call.
+ * @func: (scope call): The function to call.
  * @user_data: Additional data to pass to @func.
  *
  * Calls @func for each component in @vec. Note that there may be users for
@@ -346,7 +346,7 @@ inf_adopted_state_vector_foreach(const InfAdoptedStateVector* vec,
  * can be sorted. This function returns -1 if @first compares before @second,
  * 0 if they compare equal and 1 if @first compares after @second.
  *
- * Return Value: -1, 0 or 1.
+ * Returns: -1, 0 or 1.
  **/
 int
 inf_adopted_state_vector_compare(const InfAdoptedStateVector* first,
@@ -441,7 +441,7 @@ inf_adopted_state_vector_compare(const InfAdoptedStateVector* first,
  * components of @first are less or equal to the corresponding component in
  * @second.
  *
- * Return Value: Whether @second depends on @first.
+ * Returns: Whether @second depends on @first.
  **/
 gboolean
 inf_adopted_state_vector_causally_before(const InfAdoptedStateVector* first,
@@ -516,7 +516,7 @@ inf_adopted_state_vector_causally_before(const InfAdoptedStateVector* first,
  *
  * But it is more efficient.
  *
- * Return Value: Whether @second depends on @first with the
+ * Returns: Whether @second depends on @first with the
  * @inc_component<!-- -->th component increased by one.
  **/
 gboolean
@@ -662,7 +662,8 @@ inf_adopted_state_vector_vdiff(const InfAdoptedStateVector* first,
  *
  * Returns a string representation of @vec.
  *
- * Return Value: A newly-allocated string to be freed by the caller.
+ * Returns: (transfer full): A newly-allocated string to be freed by the
+ * caller.
  **/
 gchar*
 inf_adopted_state_vector_to_string(const InfAdoptedStateVector* vec)
@@ -699,7 +700,7 @@ inf_adopted_state_vector_to_string(const InfAdoptedStateVector* vec)
  * Recreates the #InfAdoptedStateVector from its string representation. If
  * an error occurs, the function returns %NULL and @error is set.
  *
- * Return Value: A new #InfAdoptedStateVector, or %NULL.
+ * Returns: (transfer full): A new #InfAdoptedStateVector, or %NULL.
  **/
 InfAdoptedStateVector*
 inf_adopted_state_vector_from_string(const gchar* str,
@@ -785,7 +786,8 @@ inf_adopted_state_vector_from_string(const gchar* str,
  * to recreate @vec from the string representation. Additionally,
  * inf_adopted_state_vector_causally_before(@orig, @vec) must hold.
  *
- * Return Value: A newly allocated string to be freed by the caller.
+ * Returns: (transfer full): A newly allocated string to be freed by the
+ * caller.
  **/
 gchar*
 inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
@@ -876,8 +878,8 @@ inf_adopted_state_vector_to_string_diff(const InfAdoptedStateVector* vec,
  * Recreates a vector from its string representation diff and the original
  * vector. If an error returns, the function returns %NULL and @error is set.
  *
- * Return Value: The created state vector, or %NULL on error. Free with
- * inf_adopted_state_vector_free() when no longer needed.
+ * Returns: (transfer full): The created state vector, or %NULL on error.
+ * Free with inf_adopted_state_vector_free() when no longer needed.
  **/
 InfAdoptedStateVector*
 inf_adopted_state_vector_from_string_diff(const gchar* str,

@@ -27,8 +27,6 @@
 
 G_BEGIN_DECLS
 
-/* TODO: GTypeModule stuff? */
-
 typedef InfSession*(*InfcNotePluginSessionNew)(InfIo*,
                                                InfCommunicationManager*,
                                                InfSessionStatus,
@@ -45,8 +43,6 @@ struct _InfcNotePlugin {
 
   InfcNotePluginSessionNew session_new;
 };
-
-G_END_DECLS
 
 #endif /* __INFC_NOTE_PLUGIN_H__ */
 

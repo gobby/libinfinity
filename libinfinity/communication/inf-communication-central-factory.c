@@ -92,8 +92,8 @@ inf_communication_central_factory_factory_iface_init(
  *
  * Returns the default #InfCommunicationCentralFactory.
  *
- * Returns: A #InfCommunicationCentralFactory. It should not be unrefed or
- * freed.
+ * Returns: (transfer none): A #InfCommunicationCentralFactory. It should not
+ * be unrefed or freed.
  */
 
 InfCommunicationFactory*

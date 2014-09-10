@@ -463,13 +463,13 @@ inf_simulated_connection_xml_connection_iface_init(
  */
 
 /**
- * inf_simulated_connection_new:
+ * inf_simulated_connection_new: (constructor)
  *
  * Creates a new #InfSimulatedConnection. A connection created this way cannot
  * be switched to %INF_SIMULATED_CONNECTION_IO_CONTROLLED mode. Use
  * inf_simulated_connection_new_with_io() instead if you intend to do that.
  *
- * Returns: A new #InfSimulatedConnection.
+ * Returns: (transfer full): A new #InfSimulatedConnection.
  **/
 InfSimulatedConnection*
 inf_simulated_connection_new(void)
@@ -480,7 +480,7 @@ inf_simulated_connection_new(void)
 }
 
 /**
- * inf_simulated_connection_new_with_io:
+ * inf_simulated_connection_new_with_io: (constructor)
  * @io: The main loop to be used for %INF_SIMULATED_CONNECTION_IO_CONTROLLED
  * mode.
  *
@@ -490,7 +490,7 @@ inf_simulated_connection_new(void)
  * inf_simulated_connection_new() is also good enough since the #InfIo object
  * is not required in that case.
  *
- * Returns: A new #InfSimulatedConnection.
+ * Returns: (transfer full): A new #InfSimulatedConnection.
  */
 InfSimulatedConnection*
 inf_simulated_connection_new_with_io(InfIo* io)

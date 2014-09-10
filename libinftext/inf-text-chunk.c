@@ -50,6 +50,7 @@
 
 #include <string.h>
 
+G_DEFINE_BOXED_TYPE(InfTextChunkIter, inf_text_chunk_iter, inf_text_chunk_iter_copy, inf_text_chunk_iter_free)
 G_DEFINE_BOXED_TYPE(InfTextChunk, inf_text_chunk, inf_text_chunk_copy, inf_text_chunk_free)
 
 /* Don't check integrity in stable releases */
@@ -300,13 +301,46 @@ inf_text_chunk_get_segment(InfTextChunk* self,
  */
 
 /**
- * inf_text_chunk_new:
+ * inf_text_chunk_iter_copy:
+ * @iter: A #InfTextChunkIter.
+ *
+ * Makes a dynamically-allocated copy of @iter. This is typically not needed
+ * because #InfTextChunkIter can be copied by value, however it might be
+ * useful to language bindings.
+ *
+ * Returns: (transfer full): A copy of @iter. Free with
+ * inf_text_chunk_iter_free().
+ */
+InfTextChunkIter*
+inf_text_chunk_iter_copy(const InfTextChunkIter* iter)
+{
+  InfTextChunkIter* new_iter;
+  new_iter = g_slice_new(InfTextChunkIter);
+  *new_iter = *iter;
+  return new_iter;
+}
+
+/**
+ * inf_text_chunk_iter_free:
+ * @iter: The #InfTextChunkIter to free.
+ *
+ * Frees all resources allocated with inf_text_chunk_iter_copy(). Must not
+ * be used with stack-allocated #InfTextChunkIter<!-- -->s.
+ */
+void
+inf_text_chunk_iter_free(InfTextChunkIter* iter)
+{
+  g_slice_free(InfTextChunkIter, iter);
+}
+
+/**
+ * inf_text_chunk_new: (constructor)
  * @encoding: A content encoding, such as "UTF-8" or "LATIN1".
  *
  * Creates a new #InfTextChunk with no initial content that holds text
  * in the given encoding. TODO: Allow binary data with %NULL encoding.
  *
- * Return Value: A new #InfTextChunk.
+ * Returns: (transfer full): A new #InfTextChunk.
  **/
 InfTextChunk*
 inf_text_chunk_new(const gchar* encoding)
@@ -334,7 +368,7 @@ inf_text_chunk_new(const gchar* encoding)
  *
  * Returns a copy of @self.
  *
- * Return Value: A new #InfTextChunk.
+ * Returns: (transfer full): A new #InfTextChunk.
  **/
 InfTextChunk*
 inf_text_chunk_copy(InfTextChunk* self)
@@ -390,7 +424,7 @@ inf_text_chunk_free(InfTextChunk* self)
  *
  * Returns the character encoding in which the content of @self is encoded.
  *
- * Return Value: The encoding of @self.
+ * Returns: The encoding of @self.
  **/
 const gchar*
 inf_text_chunk_get_encoding(InfTextChunk* self)
@@ -405,7 +439,7 @@ inf_text_chunk_get_encoding(InfTextChunk* self)
  *
  * Returns the number of characters contained in @self.
  *
- * Return Value: The number of characters of @self.
+ * Returns: The number of characters of @self.
  **/
 guint
 inf_text_chunk_get_length(InfTextChunk* self)
@@ -423,7 +457,7 @@ inf_text_chunk_get_length(InfTextChunk* self)
  * Returns a new #InfTextChunk containing a substring of @self, beginning
  * at character offset @begin and @length characters long.
  *
- * Return Value: A new #InfTextChunk.
+ * Returns: (transfer full): A new #InfTextChunk.
  **/
 InfTextChunk*
 inf_text_chunk_substring(InfTextChunk* self,
@@ -523,7 +557,8 @@ inf_text_chunk_substring(InfTextChunk* self,
  * inf_text_chunk_insert_text:
  * @self: A #InfTextChunk.
  * @offset: Character offset at which to insert text
- * @text: Text to insert.
+ * @text (type const guint8*) (array length=bytes) (transfer none): Text
+ * to insert.
  * @length: Number of characters contained in @text.
  * @bytes: Number of bytes of @text.
  * @author: User that wrote @text.
@@ -647,7 +682,7 @@ inf_text_chunk_insert_text(InfTextChunk* self,
  * inf_text_chunk_insert_chunk:
  * @self: A #InfTextChunk.
  * @offset: Character offset at which to insert text.
- * @text: Chunk to insert into @self.
+ * @text: (transfer none): Chunk to insert into @self.
  *
  * Inserts @text into @self at position @offset. @text and @self must
  * have the same encoding.
@@ -1113,13 +1148,14 @@ inf_text_chunk_erase(InfTextChunk* self,
 /**
  * inf_text_chunk_get_text:
  * @self: A #InfTextChunk.
- * @length: Location to write the number of bytes to, or %NULL.
+ * @length: (out): Location to write the number of bytes to, or %NULL.
  *
  * Returns the content of @self as an array. The text is encoded in
  * @self's encoding. @length is set to the number of bytes in the returned
  * buffer, if non-%NULL. The result is _not_ zero-terminated.
  *
- * Return Value: Content of @self. Free with g_free() if no longer in use.
+ * Returns: (type guint8*) (array length=length) (transfer full): Content of
+ * @self. Free with g_free() if no longer in use.
  **/
 gpointer
 inf_text_chunk_get_text(InfTextChunk* self,
@@ -1168,7 +1204,7 @@ inf_text_chunk_get_text(InfTextChunk* self,
  * Returns whether the two text chunks contain the same text and the same
  * segments were written by the same authors.
  *
- * Return Value: Whether the two chunks are equal.
+ * Returns: Whether the two chunks are equal.
  **/
 gboolean
 inf_text_chunk_equal(InfTextChunk* self,
@@ -1214,13 +1250,13 @@ inf_text_chunk_equal(InfTextChunk* self,
 /**
  * inf_text_chunk_iter_init_begin:
  * @self: A #InfTextChunk.
- * @iter: A #InfTextChunkIter.
+ * @iter: (out): A #InfTextChunkIter.
  *
  * Sets @iter to point to the first segment of @self. If there are no
  * segments (i.e. @self is empty), @iter is left untouched and the function
  * returns %FALSE.
  *
- * Return Value: Whether @iter was set.
+ * Returns: Whether @iter was set.
  **/
 gboolean
 inf_text_chunk_iter_init_begin(InfTextChunk* self,
@@ -1245,13 +1281,13 @@ inf_text_chunk_iter_init_begin(InfTextChunk* self,
 /**
  * inf_text_chunk_iter_init_end:
  * @self: A #InfTextChunk.
- * @iter: A #InfTextChunkIter.
+ * @iter: (out): A #InfTextChunkIter.
  *
  * Sets @iter to point to the last segment of @self. If there are no
  * segments (i.e. @self is empty), @iter is left untouched and the function
  * returns %FALSE.
  *
- * Return Value: Whether @iter was set.
+ * Returns: Whether @iter was set.
  **/
 gboolean
 inf_text_chunk_iter_init_end(InfTextChunk* self,
@@ -1280,7 +1316,7 @@ inf_text_chunk_iter_init_end(InfTextChunk* self,
  * Sets @iter to point to the next segment. If @iter already points to the
  * last segment, the function returns %FALSE.
  *
- * Return Value: Whether @iter was set.
+ * Returns: Whether @iter was set.
  **/
 gboolean
 inf_text_chunk_iter_next(InfTextChunkIter* iter)
@@ -1332,7 +1368,7 @@ inf_text_chunk_iter_prev(InfTextChunkIter* iter)
  * Returns the text of the segment @iter points to. The text is in the
  * underlaying #InfTextChunk's encoding.
  *
- * Return Value: The text of the segment @iter points to.
+ * Returns: (transfer none): The text of the segment @iter points to.
  **/
 gconstpointer
 inf_text_chunk_iter_get_text(InfTextChunkIter* iter)
@@ -1347,7 +1383,7 @@ inf_text_chunk_iter_get_text(InfTextChunkIter* iter)
  *
  * Returns the offset of the first character in the segment @iter points to.
  *
- * Return Value: The offset of the first characters in the segment @iter
+ * Returns: The offset of the first characters in the segment @iter
  * points to.
  **/
 guint
@@ -1367,7 +1403,7 @@ inf_text_chunk_iter_get_offset(InfTextChunkIter* iter)
  *
  * Returns the number of characters in the segment @iter points to.
  *
- * Return Value: The number of characters in the segment @iter points to.
+ * Returns: The number of characters in the segment @iter points to.
  **/
 guint
 inf_text_chunk_iter_get_length(InfTextChunkIter* iter)
@@ -1396,7 +1432,7 @@ inf_text_chunk_iter_get_length(InfTextChunkIter* iter)
  *
  * Returns the number of bytes in the segment @iter points to.
  *
- * Return Value: The number of bytes in the segment @iter points to.
+ * Returns: The number of bytes in the segment @iter points to.
  **/
 gsize
 inf_text_chunk_iter_get_bytes(InfTextChunkIter* iter)
@@ -1411,7 +1447,7 @@ inf_text_chunk_iter_get_bytes(InfTextChunkIter* iter)
  *
  * Returns the user ID of the author of the segment @iter points to.
  *
- * Return Value: The user ID of the author of the segment @iter points to.
+ * Returns: The user ID of the author of the segment @iter points to.
  **/
 guint
 inf_text_chunk_iter_get_author(InfTextChunkIter* iter)

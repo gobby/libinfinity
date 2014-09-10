@@ -60,8 +60,10 @@ inf_session_proxy_default_init(InfSessionProxyInterface* iface)
  * inf_session_proxy_join_user:
  * @proxy: A #InfSessionProxy.
  * @n_params: Number of parameters.
- * @params: Construction properties for the InfUser (or derived) object.
- * @func: Function to be called on completion of the user join, or %NULL.
+ * @params: (array length=n_params): Construction properties for the
+ * #InfUser (or derived) object.
+ * @func: (scope async): Function to be called on completion of the user
+ * join, or %NULL.
  * @user_data: Additional data to be passed to @func.
  *
  * Requests a user join for a user with the given properties (which must not
@@ -75,8 +77,8 @@ inf_session_proxy_default_init(InfSessionProxyInterface* iface)
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest object that may be used to get notified
- * when the request finishes, or %NULL.
+ * Returns: (transfer none): A #InfRequest object that may be used to get
+ * notified when the request finishes, or %NULL.
  */
 InfRequest*
 inf_session_proxy_join_user(InfSessionProxy* proxy,

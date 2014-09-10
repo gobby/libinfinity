@@ -372,7 +372,7 @@ inf_communication_joined_group_remove_member(InfCommunicationJoinedGroup* grp,
  * Returns a #InfXmlConnection to the group's publisher, or %NULL if the
  * publisher is no longer a group member.
  *
- * Returns: A #InfXmlConnection, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfXmlConnection, or %NULL.
  */
 InfXmlConnection*
 inf_communication_joined_group_get_publisher(InfCommunicationJoinedGroup* g)

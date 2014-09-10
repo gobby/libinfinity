@@ -73,7 +73,7 @@ infinoted_util_get_pidfile_path_system(void) {
 
 /**
  * infinoted_util_create_dirname:
- * @path: The filename to create a path to.
+ * @path: (type filename): The filename to create a path to.
  * @error: Location to store error information, if any.
  *
  * Creates directories leading to the given path. Does not create a directory
@@ -100,7 +100,7 @@ infinoted_util_create_dirname(const gchar* path,
  * infinoted_util_set_errno_error:
  * @error: A pointer to a #GError pointer, or %NULL.
  * @save_errno: An errno variable.
- * @prefix: A prefix string, or %NULL.
+ * @prefix: (allow-none): A prefix string, or %NULL.
  *
  * Sets @error to @save_errno with domain ERRNO_ERROR. If @prefix is
  * non-%NULL, @prefix is prefixed to @error's message, obtained by strerror().

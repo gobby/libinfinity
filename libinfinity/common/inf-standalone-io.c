@@ -1078,12 +1078,12 @@ inf_standalone_io_io_iface_init(InfIoInterface* iface)
 }
 
 /**
- * inf_standalone_io_new:
+ * inf_standalone_io_new: (constructor)
  *
  * Creates a new #InfStandaloneIo.
  *
- * Returns: A new #InfStandaloneIo. Free with g_object_unref() when no longer
- * needed.
+ * Returns: (transfer full): A new #InfStandaloneIo. Free with
+ * g_object_unref() when no longer needed.
  **/
 InfStandaloneIo*
 inf_standalone_io_new(void)

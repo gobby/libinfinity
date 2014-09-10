@@ -553,7 +553,6 @@ InfDiscovery
 InfDiscoveryInterface
 InfDiscoveryInfo
 InfDiscoveryResolvCompleteFunc
-InfDiscoveryResolvErrorFunc
 inf_discovery_discover
 inf_discovery_get_discovered
 inf_discovery_resolve

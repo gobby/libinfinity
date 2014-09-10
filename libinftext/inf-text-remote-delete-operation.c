@@ -738,7 +738,7 @@ inf_text_remote_delete_operation_delete_operation_iface_init(
 }
 
 /**
- * inf_text_remote_delete_operation_new:
+ * inf_text_remote_delete_operation_new: (constructor)
  * @position: The position at which to delete text.
  * @length: The number of characters to delete.
  *
@@ -752,7 +752,7 @@ inf_text_remote_delete_operation_delete_operation_iface_init(
  * However, it is easier to just use #InfTextDefaultDeleteOperation if you
  * want the operation to be reversible.
  *
- * Return Value: A new #InfTextRemoteDeleteOperation.
+ * Returns: (transfer full): A new #InfTextRemoteDeleteOperation.
  **/
 InfTextRemoteDeleteOperation*
 inf_text_remote_delete_operation_new(guint position,

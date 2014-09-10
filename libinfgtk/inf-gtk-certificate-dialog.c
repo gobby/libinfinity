@@ -576,19 +576,20 @@ inf_gtk_certificate_dialog_class_init(
  */
 
 /**
- * inf_gtk_certificate_dialog_new:
+ * inf_gtk_certificate_dialog_new: (constructor)
  * @parent: Parent #GtkWindow of the dialog.
  * @dialog_flags: Flags for the dialog, see #GtkDialogFlags.
  * @certificate_flags: What certificate warnings to show, see
  * #InfGtkCertificateDialogFlags.
  * @hostname: The host name of the server that provides the certificate.
- * @certificate_chain: The certificate chain provided by the server.
+ * @certificate_chain: (transfer none): The certificate chain provided by
+ * the server.
  *
  * Creates a new #InfGtkCertificateDialog. A #InfGtkCertificateDialog shows
  * warnings about a server's certificate to a user, for example when the
  * issuer is not trusted or the certificate is expired.
  *
- * Returns: A New #InfGtkCertificateDialog.
+ * Returns: (transfer full): A New #InfGtkCertificateDialog.
  */
 InfGtkCertificateDialog*
 inf_gtk_certificate_dialog_new(GtkWindow* parent,

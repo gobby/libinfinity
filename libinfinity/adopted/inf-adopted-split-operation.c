@@ -540,14 +540,14 @@ inf_adopted_split_operation_operation_iface_init(
 }
 
 /**
- * inf_adopted_split_operation_new:
+ * inf_adopted_split_operation_new: (constructor)
  * @first: one of the #InfAdoptedOperation<!-- -->s to be wrapped
  * @second: the other #InfAdoptedOperation to be wrapped
  *
  * Creates a new #InfAdoptedSplitOperation. A split operation is simply a
  * wrapper around two operations (which may in turn be split operations).
  *
- * Return Value: A new #InfAdoptedSplitOperation.
+ * Returns: (transfer full): A new #InfAdoptedSplitOperation.
  **/
 InfAdoptedSplitOperation*
 inf_adopted_split_operation_new(InfAdoptedOperation* first,
@@ -577,7 +577,8 @@ inf_adopted_split_operation_new(InfAdoptedOperation* first,
  * unsplitted. The returned list is guarenteed to not contain a
  * #InfAdoptedSplitOperation.
  *
- * Return Value: A list of operations. Free with g_slist_free() when done.
+ * Returns: (transfer container) (element-type InfAdoptedOperation): A
+ * list of operations. Free with g_slist_free() when done.
  **/
 GSList*
 inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
@@ -600,7 +601,7 @@ inf_adopted_split_operation_unsplit(InfAdoptedSplitOperation* operation)
  *
  * Transforms @other against @op.
  *
- * Return Value: The transformed operation.
+ * Returns: (transfer full): The transformed operation.
  **/
 InfAdoptedOperation*
 inf_adopted_split_operation_transform_other(InfAdoptedSplitOperation* op,

@@ -27,6 +27,8 @@
 
 G_BEGIN_DECLS
 
+#define INFINOTED_PARAMETER_TYPED_VALUE_TYPE        (infinoted_parameter_typed_value_get_type())
+
 /**
  * InfinotedParameterType:
  * @INFINOTED_PARAMETER_BOOLEAN: A boolean parameter.
@@ -173,8 +175,14 @@ typedef enum _InfinotedParameterError {
 GQuark
 infinoted_parameter_error_quark(void);
 
+GType
+infinoted_parameter_typed_value_get_type(void) G_GNUC_CONST;
+
 InfinotedParameterTypedValue*
 infinoted_parameter_typed_value_new(void);
+
+InfinotedParameterTypedValue*
+infinoted_parameter_typed_value_copy(const InfinotedParameterTypedValue* val);
 
 void
 infinoted_parameter_typed_value_free(gpointer data);
@@ -203,8 +211,8 @@ infinoted_parameter_convert_filename(gpointer out,
 
 gboolean
 infinoted_parameter_convert_boolean(gpointer out,
-                                   gpointer in,
-                                   GError** error);
+                                    gpointer in,
+                                    GError** error);
 
 gboolean
 infinoted_parameter_convert_port(gpointer out,

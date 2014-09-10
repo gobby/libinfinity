@@ -47,7 +47,7 @@ infd_storage_default_init(InfdStorageInterface* iface)
 }
 
 /**
- * infd_storage_node_new_subdirectory:
+ * infd_storage_node_new_subdirectory: (constructor)
  * @path: Path to the node.
  *
  * Creates a new #InfdStorageNode with type
@@ -55,7 +55,7 @@ infd_storage_default_init(InfdStorageInterface* iface)
  * is most likely only going to be used by #InfdStorage
  * implementations.
  *
- * Returns: A new #InfdStorageNode.
+ * Returns: (transfer full): A new #InfdStorageNode.
  **/
 InfdStorageNode*
 infd_storage_node_new_subdirectory(const gchar* path)
@@ -73,7 +73,7 @@ infd_storage_node_new_subdirectory(const gchar* path)
 }
 
 /**
- * infd_storage_node_new_note:
+ * infd_storage_node_new_note: (constructor)
  * @path: Path to the node.
  * @identifier: Identifier of the note type, for example 'InfText' for text
  * notes.
@@ -83,7 +83,7 @@ infd_storage_node_new_subdirectory(const gchar* path)
  * is most likely only going to be used by #InfdStorage
  * implementations.
  *
- * Returns: A new #InfdStorageNode.
+ * Returns: (transfer full): A new #InfdStorageNode.
  **/
 InfdStorageNode*
 infd_storage_node_new_note(const gchar* path,
@@ -109,10 +109,10 @@ infd_storage_node_new_note(const gchar* path,
  *
  * Creates a copy of a #InfdStorageNode object.
  *
- * Returns: A copy of @node.
+ * Returns: (transfer full): A copy of @node.
  **/
 InfdStorageNode*
-infd_storage_node_copy(InfdStorageNode* node)
+infd_storage_node_copy(const InfdStorageNode* node)
 {
   InfdStorageNode* new_node;
 
@@ -150,7 +150,8 @@ infd_storage_node_free(InfdStorageNode* node)
 
 /**
  * infd_storage_node_list_free:
- * @node_list: A list of #InfdStorageNode objects.
+ * @node_list: (element-type InfdStorageNode): A list of #InfdStorageNode
+ * objects.
  *
  * Frees a singly-linked list of #InfdStorageNode as returned by
  * infd_storage_read_subdirectory().
@@ -179,7 +180,7 @@ infd_storage_node_list_free(GSList* node_list)
  * Returns: A copy of @acl.
  **/
 InfdStorageAcl*
-infd_storage_acl_copy(InfdStorageAcl* acl)
+infd_storage_acl_copy(const InfdStorageAcl* acl)
 {
   InfdStorageAcl* new_acl;
 
@@ -211,7 +212,8 @@ infd_storage_acl_free(InfdStorageAcl* acl)
 
 /**
  * infd_storage_acl_list_free:
- * @acl_list: A list of #InfdStorageAcl objects.
+ * @acl_list: (element-type InfdStorageAcl): A list of #InfdStorageAcl
+ * objects.
  *
  * Frees a singly-linked list of #InfdStorageAcl as returned by
  * infd_storage_read_acls().
@@ -241,9 +243,9 @@ infd_storage_acl_list_free(GSList* node_list)
  * InfdStorageNode objects. Both the list and the objects need to
  * be freed by the caller via infd_storage_node_list_free().
  *
- * Returns: A #GSList that contains #InfdStorageNode objects,
- * or %NULL if either the subdirectory is empty or an
- * error occured.
+ * Returns: (transfer full) (element-type InfdStorageNode) (allow-none): A
+ * #GSList that contains #InfdStorageNode objects, or %NULL if either the
+ * subdirectory is empty or an error occured.
  **/
 GSList*
 infd_storage_read_subdirectory(InfdStorage* storage,
@@ -326,7 +328,8 @@ infd_storage_remove_node(InfdStorage* storage,
  * Reads the ACL for the node at the path @path from the storage. It returns
  * a list of #InfdStorageAcl objects.
  *
- * Returns: A possibly empty list of #InfdStorageAcl objects. Free with
+ * Returns: (transfer full) (element-type InfdStorageAcl) (allow-none): A
+ * possibly empty list of #InfdStorageAcl objects. Free with
  * infd_storage_acl_list_free() when no longer needed.
  */
 GSList*

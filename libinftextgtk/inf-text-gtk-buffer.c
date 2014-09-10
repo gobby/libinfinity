@@ -2232,7 +2232,7 @@ inf_text_gtk_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
 }
 
 /**
- * inf_text_gtk_buffer_new:
+ * inf_text_gtk_buffer_new: (constructor)
  * @buffer: The underlaying #GtkTextBuffer.
  * @user_table: The #InfUserTable containing the participating users.
  *
@@ -2240,7 +2240,7 @@ inf_text_gtk_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
  * #InfTextBuffer interface by using @buffer to store the text. User colors
  * are read from the users from @user_table.
  *
- * Return Value: A #InfTextGtkBuffer.
+ * Returns: (transfer full): A #InfTextGtkBuffer.
  **/
 InfTextGtkBuffer*
 inf_text_gtk_buffer_new(GtkTextBuffer* buffer,
@@ -2267,7 +2267,7 @@ inf_text_gtk_buffer_new(GtkTextBuffer* buffer,
  *
  * Returns the underlaying #GtkTextBuffer.
  *
- * Return Value: A #GtkTextBuffer.
+ * Returns: (transfer none): A #GtkTextBuffer.
  **/
 GtkTextBuffer*
 inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer)
@@ -2279,7 +2279,7 @@ inf_text_gtk_buffer_get_text_buffer(InfTextGtkBuffer* buffer)
 /**
  * inf_text_gtk_buffer_set_active_user:
  * @buffer: A #InfTextGtkBuffer.
- * @user: A #InfTextUser, or %NULL.
+ * @user: (allow-none): A #InfTextUser, or %NULL.
  *
  * Sets the active user for @buffer. The active user is the user by which
  * edits not issued through the #InfTextBuffer interface are performed (for
@@ -2360,7 +2360,7 @@ inf_text_gtk_buffer_set_active_user(InfTextGtkBuffer* buffer,
  *
  * Returns the current active user for @buffer.
  *
- * Return Value: A #InfTextUser.
+ * Returns: (transfer none) (allow-none): A #InfTextUser.
  **/
 InfTextUser*
 inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer)
@@ -2377,7 +2377,7 @@ inf_text_gtk_buffer_get_active_user(InfTextGtkBuffer* buffer)
  * Returns the #InfTextUser which wrote the character at @location. If there
  * is no such user, then %NULL is returned.
  *
- * Return Value: A #InfTextUser, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfTextUser, or %NULL.
  */
 InfTextUser*
 inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
@@ -2406,7 +2406,7 @@ inf_text_gtk_buffer_get_author(InfTextGtkBuffer* buffer,
  * marked by @tag. If @tag is not an author tag then the function returns
  * %NULL.
  *
- * Returns: A #InfTextUser, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfTextUser, or %NULL.
  */
 InfTextUser*
 inf_text_gtk_buffer_get_user_for_tag(InfTextGtkBuffer* buffer,
@@ -2422,8 +2422,9 @@ inf_text_gtk_buffer_get_user_for_tag(InfTextGtkBuffer* buffer,
  * inf_text_gtk_buffer_is_author_toggle:
  * @buffer: A #InfTextGtkBuffer.
  * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.
- * @user_on: A location to store a #InfTextUser, or %NULL.
- * @user_off: Another location to store a #InfTextUser, or %NULL.
+ * @user_on: (out) (allow-none): A location to store a #InfTextUser, or %NULL.
+ * @user_off: (out) (allow-none): Another location to store a #InfTextUser,
+ * or %NULL.
  *
  * This function returns %TRUE if the author of the text in @buffer changes
  * at @iter, or %FALSE otherwise. If it returns %TRUE, then the user who
@@ -2455,8 +2456,9 @@ inf_text_gtk_buffer_is_author_toggle(InfTextGtkBuffer* buffer,
  * inf_text_gtk_buffer_forward_to_author_toggle:
  * @buffer: A #InfTextGtkBuffer.
  * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.
- * @user_on: A location to store a #InfTextUser, or %NULL.
- * @user_off: Another location to store a #InfTextUser, or %NULL.
+ * @user_on: (out) (allow-none): A location to store a #InfTextUser, or %NULL.
+ * @user_off: (out) (allow-none): Another location to store a #InfTextUser,
+ * or %NULL.
  *
  * Moves @iter to the next point in @buffer's underlying #GtkTextBuffer where
  * the text has been written by another user. If @iter points to the end of
@@ -2488,8 +2490,9 @@ inf_text_gtk_buffer_forward_to_author_toggle(InfTextGtkBuffer* buffer,
  * inf_text_gtk_buffer_backward_to_author_toggle:
  * @buffer: A #InfTextGtkBuffer.
  * @iter: A #GtkTextIter pointing into @buffer's underlying #GtkTextBuffer.
- * @user_on: A location to store a #InfTextUser, or %NULL.
- * @user_off: Another location to store a #InfTextUser, or %NULL.
+ * @user_on: (out) (allow-none): A location to store a #InfTextUser, or %NULL.
+ * @user_off: (out) (allow-none): Another location to store a #InfTextUser,
+ * or %NULL.
  *
  * Moves @iter to the previous point in @buffer's underlying #GtkTextBuffer
  * where the text has been written by another user. If @iter points to the
@@ -2760,8 +2763,10 @@ inf_text_gtk_buffer_get_show_user_colors(InfTextGtkBuffer* buffer)
  * inf_text_gtk_buffer_show_user_colors:
  * @buffer: A #InfTextGtkBuffer.
  * @show: Whether to show or hide user colors.
- * @start: Beginning of the range for which to show or hide user colors.
- * @end: End of the range for which to show or hide user colors.
+ * @start: (in) (transfer none): Beginning of the range for which to show
+ * or hide user colors.
+ * @end: (in) (transfer none): End of the range for which to show or hide
+ * user colors.
  *
  * If @show is %FALSE, then don't show user colors (which user wrote what
  * text) as the background of the text, in the range from @start to @end.

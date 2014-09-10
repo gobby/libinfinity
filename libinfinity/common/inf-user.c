@@ -360,7 +360,7 @@ inf_user_class_init(InfUserClass* user_class)
  *
  * Returns the ID of the given #InfUser.
  *
- * Return Value: A numerical User ID.
+ * Returns: A numerical User ID.
  **/
 guint
 inf_user_get_id(InfUser* user)
@@ -375,7 +375,7 @@ inf_user_get_id(InfUser* user)
  *
  * Returns the name of the given #InfUser.
  *
- * Return Value: The user's name.
+ * Returns: (transfer none): The user's name.
  **/
 const gchar*
 inf_user_get_name(InfUser* user)
@@ -390,7 +390,7 @@ inf_user_get_name(InfUser* user)
  *
  * Returns the status of the given #InfUser.
  *
- * Return Value: The user's status.
+ * Returns: The user's status.
  **/
 InfUserStatus
 inf_user_get_status(InfUser* user)
@@ -405,7 +405,7 @@ inf_user_get_status(InfUser* user)
  *
  * Returns the flags for the given #InfUser.
  *
- * Return Value: The user's flags.
+ * Returns: The user's flags.
  **/
 InfUserFlags
 inf_user_get_flags(InfUser* user)
@@ -430,7 +430,7 @@ inf_user_get_flags(InfUser* user)
  * (%INF_USER_LOCAL flag set) or it is not available (status is
  * %INF_USER_UNAVAILABLE).
  *
- * Return Value: A #InfXmlConnection, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfXmlConnection, or %NULL.
  **/
 InfXmlConnection*
 inf_user_get_connection(InfUser* user)
@@ -447,7 +447,7 @@ inf_user_get_connection(InfUser* user)
  * meant to be shown to a user, but rather to serialize a user status, for
  * example to store it in XML.
  *
- * Returns: A static string representation of @status.
+ * Returns: (transfer none): A static string representation of @status.
  */
 const gchar*
 inf_user_status_to_string(InfUserStatus status)
@@ -464,7 +464,7 @@ inf_user_status_to_string(InfUserStatus status)
 /**
  * inf_user_status_from_string:
  * @string: A string representation of a #InfUserStatus.
- * @status: A pointer to a #InfUserStatus value, or %NULL.
+ * @status: (out) (allow-none): A pointer to a #InfUserStatus value, or %NULL.
  * @error: Location to store error information, if any.
  *
  * This function does the opposite of inf_user_status_to_string(). It turns

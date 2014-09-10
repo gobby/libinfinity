@@ -43,7 +43,7 @@ struct _InfRequestResult {
 };
 
 /**
- * inf_request_result_new:
+ * inf_request_result_new: (constructor)
  * @data: The data representing the result of the request.
  * @len: The length of the data.
  *
@@ -55,7 +55,8 @@ struct _InfRequestResult {
  * Under normal circumstances, this function should not be used, and instead
  * one of the inf_request_result_make_*() functions should be used. 
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free
+ * with inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_new(gpointer data,
@@ -74,7 +75,8 @@ inf_request_result_new(gpointer data,
  *
  * Creates a copy of @result.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_copy(const InfRequestResult* result)
@@ -107,14 +109,16 @@ inf_request_result_free(InfRequestResult* result)
 /**
  * inf_request_result_get:
  * @result: A #InfRequestResult.
- * @length: An output parameter for the length of the result data, or %NULL.
+ * @length: (out) (allow-none): An output parameter for the length of the
+ * result data, or %NULL.
  *
  * Returns the data of @result, as given to inf_request_result_new(). The
  * length of the data is stored in @length. Normally this function does not
  * need to be used and one of the inf_request_result_get_*() functions
  * should be used instead.
  *
- * Returns: A pointer to the request data.
+ * Returns: (transfer none) (type guint8) (array length=length): A pointer
+ * to the request data.
  */
 gconstpointer
 inf_request_result_get(const InfRequestResult* result,
@@ -144,7 +148,8 @@ struct _InfRequestResultAddNode {
  * #InfRequestResult object is only valid as long as the caller maintains
  * a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_add_node(InfBrowser* browser,
@@ -169,9 +174,12 @@ inf_request_result_make_add_node(InfBrowser* browser,
 /**
  * inf_request_result_get_add_node:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node to which a node has been added, or %NULL.
- * @new_node: Output value for the new node, or %NULL.
+ * @browser: (out) (allow-none) (transfer none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (allow-none) (transfer none): Output value for the node to
+ * which a node has been added, or %NULL.
+ * @new_node: (out) (allow-none) (transfer none): Output value for the
+ * new node, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_add_node().
@@ -208,7 +216,8 @@ struct _InfRequestResultRemoveNode {
  * inf_browser_remove_node(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_remove_node(InfBrowser* browser,
@@ -230,8 +239,10 @@ inf_request_result_make_remove_node(InfBrowser* browser,
 /**
  * inf_request_result_get_remove_node:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node that has been removed, or %NULL.
+ * @browser: (out) (allow-none) (transfer none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (allow-none) (transfer none): Output value for the node that
+ * has been removed, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_remove_node().
@@ -266,7 +277,8 @@ struct _InfRequestResultExploreNode {
  * inf_browser_explore(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_explore_node(InfBrowser* browser,
@@ -288,8 +300,10 @@ inf_request_result_make_explore_node(InfBrowser* browser,
 /**
  * inf_request_result_get_explore_node:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node that has been explored, or %NULL.
+ * @browser: (out) (allow-none) (transfer none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (allow-none) (transfer none): Output value for the node that
+ * has been explored, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_explore_node().
@@ -324,7 +338,8 @@ struct _InfRequestResultSaveSession {
  * infc_browser_iter_save_session(). The #InfRequestResult object is only
  * valid as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_save_session(InfBrowser* browser,
@@ -346,8 +361,10 @@ inf_request_result_make_save_session(InfBrowser* browser,
 /**
  * inf_request_result_get_save_session:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node that has been saved, or %NULL.
+ * @browser: (out) (allow-none) (transfer none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (allow-none) (transfer none): Output value for the node that
+ * has been saved, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_save_session().
@@ -385,7 +402,8 @@ struct _InfRequestResultSubscribeSession {
  * inf_browser_subscribe(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser and @proxy.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_subscribe_session(InfBrowser* browser,
@@ -410,9 +428,12 @@ inf_request_result_make_subscribe_session(InfBrowser* browser,
 /**
  * inf_request_result_get_subscribe_session:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node that has been subscribed to, or %NULL.
- * @proxy: Output value for the subscribed session's proxy, or %NULL.
+ * @browser: (out) (allow-none) (transfer none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (allow-none) (transfer none): Output value for the node that
+ * has been subscribed to, or %NULL.
+ * @proxy: (out) (allow-none) (transfer none): Output value for the subscribed
+ * session's proxy, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_subscribe_session().
@@ -449,7 +470,8 @@ struct _InfRequestResultSubscribeChat {
  * infc_browser_subscribe_chat(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser and @proxy.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_subscribe_chat(InfBrowser* browser,
@@ -471,8 +493,10 @@ inf_request_result_make_subscribe_chat(InfBrowser* browser,
 /**
  * inf_request_result_get_subscribe_chat:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @proxy: Output value for the subscribed session's proxy, or %NULL.
+ * @browser: (out) (allow-none) (transfer none): Output value of the browser
+ * that made the request, or %NULL.
+ * @proxy: (out) (allow-none) (transfer none): Output value for the
+ * subscribed session's proxy, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_subscribe_chat().
@@ -504,7 +528,7 @@ struct _InfRequestResultQueryAclAccountList {
 /**
  * inf_request_result_make_query_acl_account_list:
  * @browser: A #InfBrowser.
- * @accounts: The list of accounts.
+ * @accounts: (array length=n_accounts): The list of accounts.
  * @n_accounts: The number of items in the account list.
  * @does_notifications: Whether the server notifies the clients about added
  * or removed accounts.
@@ -513,7 +537,8 @@ struct _InfRequestResultQueryAclAccountList {
  * inf_browser_query_acl_account_list(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_query_acl_account_list(InfBrowser* browser,
@@ -538,9 +563,12 @@ inf_request_result_make_query_acl_account_list(InfBrowser* browser,
 /**
  * inf_request_result_get_query_acl_account_list:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @accounts: Output value for the list of accounts, or %NULL.
- * @n_accounts: Output value for the size of the account list, or %NULL.
+ * @browser: (out) (transfer none) (allow-none): Output value of the browser
+ * that made the request, or %NULL.
+ * @accounts: (out) (array length=n_accounts) (transfer none) (allow-none):
+ * Output value for the list of accounts, or %NULL.
+ * @n_accounts: (out) (transfer none) (allow-none): Output value for the size
+ * of the account list, or %NULL.
  * @does_notifications: Output value for the flag whether the server notifies
  * the client about added or removed accounts, or %NULL.
  *
@@ -581,14 +609,15 @@ struct _InfRequestResultLookupAclAccounts {
 /**
  * inf_request_result_make_lookup_acl_accounts:
  * @browser: A #InfBrowser.
- * @accounts: The list of accounts.
+ * @accounts: (array length=n_accounts): The list of accounts.
  * @n_accounts: The number of entries in the account list.
  *
  * Creates a new #InfRequestResult for a "lookup-acl-accounts" request, see
  * inf_browser_lookup_acl_accounts(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_lookup_acl_accounts(InfBrowser* browser,
@@ -611,9 +640,12 @@ inf_request_result_make_lookup_acl_accounts(InfBrowser* browser,
 /**
  * inf_request_result_get_lookup_acl_accounts:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @accounts: Output value for the list of accounts, or %NULL.
- * @n_accounts: Output value for the size of the account list, or %NULL.
+ * @browser: (out) (transfer none) (allow-none): Output value of the browser
+ * that made the request, or %NULL.
+ * @accounts: (out) (transfer none) (allow-none) (array length=n_accounts):
+ * Output value for the list of accounts, or %NULL.
+ * @n_accounts: (out) (transfer none) (allow-none): Output value for the size
+ * of the account list, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_lookup_acl_accounts().
@@ -650,13 +682,14 @@ struct _InfRequestResultCreateAclAccount {
  * inf_request_result_make_create_acl_account:
  * @browser: A #InfBrowser.
  * @account: The created #InfAclAccount.
- * @certificate: The certificate which can be used to log into @account.
+ * @certificate: (transfer none): The certificate which can be used to log into @account.
  *
  * Creates a new #InfRequestResult for a "create-acl-account" request, see
  * inf_browser_create_acl_account(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_create_acl_account(InfBrowser* browser,
@@ -680,10 +713,12 @@ inf_request_result_make_create_acl_account(InfBrowser* browser,
 /**
  * inf_request_result_get_create_acl_account:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @account: Output value for the created #InfAclAccount, or %NULL.
- * @certificate: Output value for the certificate which can be used to log
- * into the account, or %NULL.
+ * @browser: (out) (transfer none) (allow-none): Output value of the browser
+ * that made the request, or %NULL.
+ * @account: (out) (transfer none) (allow-none): Output value for the created
+ * #InfAclAccount, or %NULL.
+ * @certificate: (out) (transfer none) (allow-none): Output value for the
+ * certificate which can be used to log into the account, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_create_acl_account().
@@ -722,7 +757,8 @@ struct _InfRequestResultRemoveAclAccount {
  * inf_browser_remove_acl_account(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_remove_acl_account(InfBrowser* browser,
@@ -744,8 +780,10 @@ inf_request_result_make_remove_acl_account(InfBrowser* browser,
 /**
  * inf_request_result_get_remove_acl_account:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @account: Output value for the removed #InfAclAccount, or %NULL.
+ * @browser: (out) (transfer none) (allow-none): Output value of the browser
+ * that made the request, or %NULL.
+ * @account: (out) (transfer none) (allow-none): Output value for the removed
+ * #InfAclAccount, or %NULL.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_remove_acl_account().
@@ -783,7 +821,8 @@ struct _InfRequestResultQueryAcl {
  * inf_browser_query_acl(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser and @proxy.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_query_acl(InfBrowser* browser,
@@ -807,9 +846,12 @@ inf_request_result_make_query_acl(InfBrowser* browser,
 /**
  * inf_request_result_get_query_acl:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node whose ACL was queried.
- * @sheet_set: Output value for the node's ACL sheets.
+ * @browser: (out) (transfer none) (allow-none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (transfer none) (allow-none): Output value for the node
+ * whose ACL was queried.
+ * @sheet_set: (out) (transfer none) (allow-none): Output value for the
+ * node's ACL sheets.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_query_acl().
@@ -847,7 +889,8 @@ struct _InfRequestResultSetAcl {
  * inf_browser_set_acl(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @browser and @proxy.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_set_acl(InfBrowser* browser,
@@ -869,8 +912,10 @@ inf_request_result_make_set_acl(InfBrowser* browser,
 /**
  * inf_request_result_get_set_acl:
  * @result: A #InfRequestResult:
- * @browser: Output value of the browser that made the request, or %NULL.
- * @iter: Output value for the node whose ACL was set.
+ * @browser: (out) (transfer none) (allow-none): Output value of the browser
+ * that made the request, or %NULL.
+ * @iter: (out) (transfer none) (allow-none): Output value for the node whose
+ * ACL was set.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_set_acl().
@@ -906,7 +951,8 @@ struct _InfRequestResultJoinUser {
  * inf_session_proxy_join_user(). The #InfRequestResult object is only valid
  * as long as the caller maintains a reference to @proxy.
  *
- * Returns: A new #InfRequestResult. Free with inf_request_result_free().
+ * Returns: (transfer full): A new #InfRequestResult. Free with
+ * inf_request_result_free().
  */
 InfRequestResult*
 inf_request_result_make_join_user(InfSessionProxy* proxy,
@@ -928,8 +974,10 @@ inf_request_result_make_join_user(InfSessionProxy* proxy,
 /**
  * inf_request_result_get_join_user:
  * @result: A #InfRequestResult:
- * @proxy: Output value of the session proxy that made the request, or %NULL.
- * @user: Output value for the joined user.
+ * @proxy: (out) (transfer none) (allow-none): Output value of the session
+ * proxy that made the request, or %NULL.
+ * @user: (out) (transfer none) (allow-none): Output value for the joined
+ * user.
  *
  * Decomposes @result into its components. The object must have been created
  * with inf_request_result_make_join_user().

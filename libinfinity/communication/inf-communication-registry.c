@@ -968,7 +968,7 @@ inf_communication_registry_is_registered(InfCommunicationRegistry* registry,
  * @registry: A #InfCommunicationRegistry.
  * @group: The group for which to send the message #InfCommunicationGroup.
  * @connection: A registered #InfXmlConnection.
- * @xml: The message to send.
+ * @xml: (transfer full): The message to send.
  *
  * Sends an XML message to @connection. @connection must have been registered
  * with inf_communication_registry_register() before. If the message has been

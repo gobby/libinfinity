@@ -89,8 +89,7 @@ InfGtk_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
 	--add-include-path=$(top_builddir)/libinfinity \
 	-n InfGtk \
-	--identifier-prefix=InfGtk \
-	--warn-all
+	--identifier-prefix=InfGtk
 
 InfGtk_0_7_gir_NAMESPACE = InfGtk
 InfGtk_0_7_gir_VERSION = 0.7

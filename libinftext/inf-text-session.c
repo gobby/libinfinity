@@ -1825,15 +1825,15 @@ inf_text_session_class_init(InfTextSessionClass* text_session_class)
  */
 
 /**
- * inf_text_session_new:
+ * inf_text_session_new: (constructor)
  * @manager: A #InfCommunicationManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
  * @status: The initial status of the session.
- * @sync_group: A group in which the session is synchronized. Ignored if
- * @status is %INF_SESSION_RUNNING.
- * @sync_connection: A connection to synchronize the session from. Ignored if
- * @status is %INF_SESSION_RUNNING.
+ * @sync_group: (allow-none): A group in which the session is synchronized.
+ * Ignored if @status is %INF_SESSION_RUNNING.
+ * @sync_connection: (allow-none): A connection to synchronize the session
+ * from. Ignored if @status is %INF_SESSION_RUNNING.
  *
  * Creates a new #InfTextSession. The communication manager is used to send
  * and receive requests from subscription and synchronization. @buffer will be
@@ -1845,7 +1845,7 @@ inf_text_session_class_init(InfTextSessionClass* text_session_class)
  * retrieved from @sync_connection. If you are subscribed to the session, set
  * the subscription group via inf_session_set_subscription_group().
  *
- * Return Value: A new #InfTextSession.
+ * Returns: (transfer full): A new #InfTextSession.
  **/
 InfTextSession*
 inf_text_session_new(InfCommunicationManager* manager,
@@ -1885,16 +1885,16 @@ inf_text_session_new(InfCommunicationManager* manager,
 }
 
 /**
- * inf_text_session_new_with_user_table:
+ * inf_text_session_new_with_user_table: (constructor)
  * @manager: A #InfCommunicationManager.
  * @buffer: An initial #InfTextBuffer.
  * @io: A #InfIo object.
  * @user_table: A #InfUserTable.
  * @status: The initial status for the session.
- * @sync_group: A group in which the session is synchronized. Ignored if
- * @status is %INF_SESSION_RUNNING.
- * @sync_connection: A connection to synchronize the session from. Ignored if
- * @status is %INF_SESSION_RUNNING.
+ * @sync_group: (allow-none): A group in which the session is synchronized.
+ * Ignored if @status is %INF_SESSION_RUNNING.
+ * @sync_connection: (allow-none): A connection to synchronize the session
+ * from. Ignored if @status is %INF_SESSION_RUNNING.
  *
  * Creates a new #InfTextSession. The connection manager is used to send and
  * receive requests from subscription and synchronization. @buffer will be
@@ -1912,7 +1912,7 @@ inf_text_session_new(InfCommunicationManager* manager,
  * to another session, but different sessions cannot share the same user
  * object.
  *
- * Return Value: A new #InfTextSession.
+ * Returns: (transfer full): A new #InfTextSession.
  **/
 InfTextSession*
 inf_text_session_new_with_user_table(InfCommunicationManager* manager,
@@ -2038,13 +2038,14 @@ inf_text_session_flush_requests_for_user(InfTextSession* session,
  * @hue: The user color of the user to join.
  * @caret_position: The initial position of the new user's cursor.
  * @selection_length: The initial length of the new user's selection.
- * @func: Function to call after completion of the request, or %NULL.
+ * @func: (scope async): Function to call after completion of the request,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * This functions creates a user join request for an #InfTextSession. This is
  * a shortcut for inf_session_proxy_join_user().
  *
- * Returns: A #InfRequest, or %NULL on error.
+ * Returns: (transfer full): A #InfRequest, or %NULL.
  */
 InfRequest*
 inf_text_session_join_user(InfSessionProxy* proxy,

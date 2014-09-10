@@ -118,7 +118,7 @@ infc_request_manager_finish_request(InfcRequestManager* manager,
 void
 infc_request_manager_fail_request(InfcRequestManager* manager,
                                   InfcRequest* request,
-                                  GError* error);
+                                  const GError* error);
 
 void
 infc_request_manager_clear(InfcRequestManager* manager);

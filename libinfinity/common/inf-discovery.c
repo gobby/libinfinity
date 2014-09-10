@@ -134,8 +134,8 @@ inf_discovery_discover(InfDiscovery* discovery,
  *
  * Returns a list of discovered #InfDiscoveryInfo for the given type.
  *
- * Return Value: A newly allocated list that needs to be freed with
- * g_slist_free().
+ * Returns: (transfer container) (element-type InfDiscoveryInfo): A newly
+ * allocated list that needs to be freed with g_slist_free().
  **/
 GSList*
 inf_discovery_get_discovered(InfDiscovery* discovery,
@@ -156,21 +156,18 @@ inf_discovery_get_discovered(InfDiscovery* discovery,
  * inf_discovery_resolve:
  * @discovery: A #InfDiscovery.
  * @info: A #InfDiscoveryInfo discovered by @discovery.
- * @complete_func: A callback that will be called when the resolving process
- * has completed.
- * @error_func: A callback that will be called when an error has occured.
+ * @complete_func: (scope async): A callback that will be called when the
+ * resolving process has completed.
  * @user_data: Extra data to pass to @complete_func and @error_func.
  *
  * Attempts to resolve @info. Resolving a #InfDiscoveryInfo means creating
  * a #InfXmlConnection to the publisher. The connection might not be
- * open when @complete_func runs. This will call either @complete_func
- * or @error_func, but not both.
+ * open when @complete_func runs.
  **/
 void
 inf_discovery_resolve(InfDiscovery* discovery,
                       InfDiscoveryInfo* info,
                       InfDiscoveryResolvCompleteFunc complete_func,
-                      InfDiscoveryResolvErrorFunc error_func,
                       gpointer user_data)
 {
   InfDiscoveryInterface* iface;
@@ -181,7 +178,7 @@ inf_discovery_resolve(InfDiscovery* discovery,
   iface = INF_DISCOVERY_GET_IFACE(discovery);
   g_return_if_fail(iface->resolve != NULL);
 
-  iface->resolve(discovery, info, complete_func, error_func, user_data);
+  iface->resolve(discovery, info, complete_func, user_data);
 }
 
 /**
@@ -191,7 +188,8 @@ inf_discovery_resolve(InfDiscovery* discovery,
  *
  * Returns the service name of the discovered @info.
  *
- * Return Value: A string owned by @discovery.
+ * Returns: (transfer full): A newly allocated string.
+ * Free with g_free().
  **/
 gchar*
 inf_discovery_info_get_service_name(InfDiscovery* discovery,
@@ -215,7 +213,7 @@ inf_discovery_info_get_service_name(InfDiscovery* discovery,
  *
  * Returns the service type of the discovered @info.
  *
- * Return Value: A string owned by @discovery.
+ * Returns: (transfer none): A string owned by @discovery.
  **/
 const gchar*
 inf_discovery_info_get_service_type(InfDiscovery* discovery,

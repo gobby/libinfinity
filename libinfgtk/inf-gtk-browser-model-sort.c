@@ -264,12 +264,12 @@ inf_gtk_browser_model_sort_browser_model_iface_init(
  */
 
 /**
- * inf_gtk_browser_model_sort_new:
+ * inf_gtk_browser_model_sort_new: (constructor)
  * @child_model: A #InfGtkBrowserModel.
  *
  * Creates a new #InfGtkBrowserModelSort, sorting @child_model.
  *
- * Return Value: A new #InfGtkBrowserModelSort.
+ * Returns: (transfer full): A new #InfGtkBrowserModelSort.
  **/
 InfGtkBrowserModelSort*
 inf_gtk_browser_model_sort_new(InfGtkBrowserModel* child_model)

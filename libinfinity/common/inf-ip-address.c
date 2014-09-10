@@ -83,12 +83,12 @@ inf_ip_address_new_common(InfIpAddressFamily family)
 }
 
 /**
- * inf_ip_address_new_raw4:
+ * inf_ip_address_new_raw4: (constructor)
  * @address: An IPv4 address in network byte order.
  *
  * Creates a new IPv4 address.
  *
- * Return Value: A new #InfIpAddress.
+ * Returns: (transfer full): A new #InfIpAddress.
  **/
 InfIpAddress*
 inf_ip_address_new_raw4(guint32 address)
@@ -100,12 +100,12 @@ inf_ip_address_new_raw4(guint32 address)
 }
 
 /**
- * inf_ip_address_new_loopback4:
+ * inf_ip_address_new_loopback4: (constructor)
  *
  * Creates a new IPv4 address that contains the local host's IP address
  * ("127.0.0.1").
  *
- * Return Value: A new #InfIpAddress.
+ * Returns: (transfer full): A new #InfIpAddress.
  **/
 InfIpAddress*
 inf_ip_address_new_loopback4(void)
@@ -114,12 +114,12 @@ inf_ip_address_new_loopback4(void)
 }
 
 /**
- * inf_ip_address_new_raw6:
+ * inf_ip_address_new_raw6: (constructor)
  * @address: An IPv6 address in network bype order.
  *
  * Creates a new IPv6 address.
  *
- * Return Value: A new #InfIpAddress.
+ * Returns: (transfer full): A new #InfIpAddress.
  **/
 InfIpAddress*
 inf_ip_address_new_raw6(const guint8 address[16])
@@ -131,12 +131,12 @@ inf_ip_address_new_raw6(const guint8 address[16])
 }
 
 /**
- * inf_ip_address_new_loopback6:
+ * inf_ip_address_new_loopback6: (constructor)
  *
  * Creates a new IPv6 address that contains the local host's IP address
  * ("::1").
  *
- * Return Value: A new #InfIpAddress.
+ * Returns: (transfer full): A new #InfIpAddress.
  **/
 InfIpAddress*
 inf_ip_address_new_loopback6(void)
@@ -145,13 +145,13 @@ inf_ip_address_new_loopback6(void)
 }
 
 /**
- * inf_ip_address_new_from_string:
+ * inf_ip_address_new_from_string: (constructor)
  * @str: A string containing an IPv4 or IPv6 address in standard dots
  * notation.
  *
  * Creates a new IP address (either IPv4 or IPv6) from the given string.
  *
- * Return Value: A new #InfIpAddress, or %NULL.
+ * Returns: (transfer full): A new #InfIpAddress, or %NULL.
  **/
 InfIpAddress*
 inf_ip_address_new_from_string(const gchar* str)
@@ -234,7 +234,7 @@ inf_ip_address_new_from_string(const gchar* str)
  *
  * Creates a new #InfIpAddress that contains the same address as @address.
  *
- * Return Value: A new #InfIpAddress.
+ * Returns: A new #InfIpAddress.
  **/
 InfIpAddress*
 inf_ip_address_copy(const InfIpAddress* address)
@@ -269,7 +269,7 @@ inf_ip_address_free(InfIpAddress* address)
  *
  * Returns the address family of @address.
  *
- * Return Value: A #InfIpAddressFamily.
+ * Returns: A #InfIpAddressFamily.
  **/
 InfIpAddressFamily
 inf_ip_address_get_family(const InfIpAddress* address)
@@ -284,7 +284,7 @@ inf_ip_address_get_family(const InfIpAddress* address)
  * Returns either 32 bit (IPv4) or 128 bit (IPv6) raw address data in host
  * byte order of @address.
  *
- * Return Value: The raw address.
+ * Returns: (transfer none): The raw address.
  **/
 gconstpointer
 inf_ip_address_get_raw(const InfIpAddress* address)
@@ -308,7 +308,7 @@ inf_ip_address_get_raw(const InfIpAddress* address)
  * Returns a string representation of @address in standard dots format (like
  * "192.168.0.1" or "::1").
  *
- * Return Value: A newly-allocated string. Free with g_free().
+ * Returns: (transfer full): A newly-allocated string. Free with g_free().
  **/
 gchar*
 inf_ip_address_to_string(const InfIpAddress* address)
@@ -395,7 +395,7 @@ inf_ip_address_to_string(const InfIpAddress* address)
  *
  * Compares the two addresses for sorting.
  *
- * Return Value: -1 if @address1 compares before, 0 if it compares equal or
+ * Returns: -1 if @address1 compares before, 0 if it compares equal or
  * 1 if it compares after @address.
  **/
 int

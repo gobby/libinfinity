@@ -1055,14 +1055,14 @@ inf_text_gtk_viewport_class_init(InfTextGtkViewportClass* viewport_class)
 }
 
 /**
- * inf_text_gtk_viewport_new:
+ * inf_text_gtk_viewport_new: (constructor)
  * @scroll: A #GtkScrolledWindow.
  * @user_table: The #InfUserTable for the text session displayed in @viewport.
  *
  * Creates a new #InfTextGtkViewport for @scroll. This draws the position of
  * remote user's cursors into the scrollbars of @scroll.
  *
- * Returns: A new #InfTextGtkViewport.
+ * Returns: (transfer full): A new #InfTextGtkViewport.
  */
 InfTextGtkViewport*
 inf_text_gtk_viewport_new(GtkScrolledWindow* scroll,
@@ -1089,7 +1089,7 @@ inf_text_gtk_viewport_new(GtkScrolledWindow* scroll,
  *
  * Returns the underlying #GtkScrolledWindow.
  *
- * Return Value: The #InfTextGtkViewport's #GtkScrolledWindow.
+ * Returns: (transfer none): The #InfTextGtkViewport's #GtkScrolledWindow.
  **/
 GtkScrolledWindow*
 inf_text_gtk_viewport_get_scrolled_window(InfTextGtkViewport* viewport)
@@ -1105,7 +1105,7 @@ inf_text_gtk_viewport_get_scrolled_window(InfTextGtkViewport* viewport)
  * Returns the #InfUserTable containing the users of the session the
  * #InfTextGtkViewport's #GtkScrolledWindow is displaying.
  *
- * Returns: The #InfTextGtkViewport's #InfUserTable.
+ * Returns: (transfer none): The #InfTextGtkViewport's #InfUserTable.
  */
 InfUserTable*
 inf_text_gtk_viewport_get_user_table(InfTextGtkViewport* viewport)
@@ -1117,7 +1117,7 @@ inf_text_gtk_viewport_get_user_table(InfTextGtkViewport* viewport)
 /**
  * inf_text_gtk_viewport_set_active_user:
  * @viewport: A #InfTextGtkViewport.
- * @user: A user from @viewport's user table, or %NULL.
+ * @user: (allow-none): A user from @viewport's user table, or %NULL.
  *
  * Sets the user for which perspective to draw the viewport. The cursor
  * position for teh active user is not draws since it is assumed that the
@@ -1166,7 +1166,7 @@ inf_text_gtk_viewport_set_active_user(InfTextGtkViewport* viewport,
  * Returns the active user of @viewport. See
  * inf_text_gtk_viewport_set_active_user().
  *
- * Returns: The active user of @viewport.
+ * Returns: (transfer none) (allow-none): The active user of @viewport.
  */
 InfTextUser*
 inf_text_gtk_viewport_get_active_user(InfTextGtkViewport* viewport)

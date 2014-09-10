@@ -1530,13 +1530,13 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
 }
 
 /**
- * inf_adopted_algorithm_new:
+ * inf_adopted_algorithm_new: (constructor)
  * @user_table: The table of participating users.
  * @buffer: The buffer to apply operations to.
  *
  * Creates a #InfAdoptedAlgorithm.
  *
- * Return Value: A new #InfAdoptedAlgorithm.
+ * Returns: (transfer full): A new #InfAdoptedAlgorithm.
  **/
 InfAdoptedAlgorithm*
 inf_adopted_algorithm_new(InfUserTable* user_table,
@@ -1557,7 +1557,7 @@ inf_adopted_algorithm_new(InfUserTable* user_table,
 }
 
 /**
- * inf_adopted_algorithm_new_full:
+ * inf_adopted_algorithm_new_full: (constructor)
  * @user_table: The table of participating users.
  * @buffer: The buffer to apply operations to.
  * @max_total_log_size: The maxmimum number of operations to keep in all
@@ -1576,7 +1576,7 @@ inf_adopted_algorithm_new(InfUserTable* user_table,
  *
  * The default value is 2048.
  *
- * Return Value: A new #InfAdoptedAlgorithm.
+ * Returns: (transfer full): A new #InfAdoptedAlgorithm.
  **/
 InfAdoptedAlgorithm*
 inf_adopted_algorithm_new_full(InfUserTable* user_table,
@@ -1604,7 +1604,7 @@ inf_adopted_algorithm_new_full(InfUserTable* user_table,
  *
  * Returns the current vector time of @algorithm.
  *
- * Return Value: A #InfAdoptedStateVector owned by @algorithm.
+ * Returns: (transfer none): A #InfAdoptedStateVector owned by @algorithm.
  **/
 InfAdoptedStateVector*
 inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm)
@@ -1624,8 +1624,9 @@ inf_adopted_algorithm_get_current(InfAdoptedAlgorithm* algorithm)
  * execution is not re-entrant, i.e. two requests cannot be executed
  * concurrently at the same time, or recursively.
  *
- * Returns: The request that @algorithm is currently processing, or %NULL.
- * The return value must not be freed by the caller.
+ * Returns: (transfer none) (allow-none): The request that @algorithm is
+ * currently processing, or %NULL. The return value must not be freed by
+ * the caller.
  */
 InfAdoptedRequest*
 inf_adopted_algorithm_get_execute_request(InfAdoptedAlgorithm* algorithm)
@@ -1652,8 +1653,8 @@ inf_adopted_algorithm_get_execute_request(InfAdoptedAlgorithm* algorithm)
  * with the @apply parameter set to %FALSE, so that the algorithm knows that
  * the request has been applied.
  *
- * Returns: A new #InfAdoptedRequest. Free with g_object_unref() when no
- * longer needed.
+ * Returns: (transfer full): A new #InfAdoptedRequest. Free with
+ * g_object_unref() when no longer needed.
  */
 InfAdoptedRequest*
 inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
@@ -1704,7 +1705,7 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
  * inf_adopted_algorithm_translate_request:
  * @algorithm: A #InfAdoptedAlgorithm.
  * @request: A #InfAdoptedRequest.
- * @to: The state vector to translate @request to.
+ * @to: (transfer none): The state vector to translate @request to.
  *
  * Translates @request so that it can be applied to the document at state @to.
  * @request will not be modified but a new, translated request is returned
@@ -1715,8 +1716,8 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
  * translated in forward direction, so @request's vector time must be
  * causally before (see inf_adopted_state_vector_causally_before()) @to.
  *
- * Returns: A new or cached #InfAdoptedRequest. Free with g_object_unref()
- * when no longer needed.
+ * Returns: (transfer full): A new or cached #InfAdoptedRequest. Free with
+ * g_object_unref() when no longer needed.
  */
 InfAdoptedRequest*
 inf_adopted_algorithm_translate_request(InfAdoptedAlgorithm* algorithm,
@@ -2210,7 +2211,7 @@ inf_adopted_algorithm_cleanup(InfAdoptedAlgorithm* algorithm)
  * Undo request even if the max-total-log-size is already exceeded if @user
  * does not know yet that it is exceeded.
  *
- * Return Value: %TRUE if Undo is possible, %FALSE otherwise.
+ * Returns: %TRUE if Undo is possible, %FALSE otherwise.
  **/
 gboolean
 inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
@@ -2251,7 +2252,7 @@ inf_adopted_algorithm_can_undo(InfAdoptedAlgorithm* algorithm,
  * Redo request even if the max-total-log-size is already exceeded if @user
  * does not know yet that it is exceeded.
  *
- * Return Value: %TRUE if Redo is possible, %FALSE otherwise.
+ * Returns: %TRUE if Redo is possible, %FALSE otherwise.
  **/
 gboolean
 inf_adopted_algorithm_can_redo(InfAdoptedAlgorithm* algorithm,

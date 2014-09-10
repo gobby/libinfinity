@@ -674,15 +674,15 @@ inf_adopted_session_replay_class_init(
  */
 
 /**
- * inf_adopted_session_replay_new:
+ * inf_adopted_session_replay_new: (constructor)
  *
  * Creates a new #InfAdoptedSessionReplay. Use
  * inf_adopted_session_replay_set_record() to start the recording, and
  * inf_adopted_session_replay_play_next() or
  * inf_adopted_session_replay_play_to_end() to play it.
  *
- * Return Value: A new #InfAdoptedSessionReplay. Free with g_object_unref()
- * when no longer in use.
+ * Returns: (transfer full): A new #InfAdoptedSessionReplay. Free with
+ * g_object_unref() when no longer in use.
  **/
 InfAdoptedSessionReplay*
 inf_adopted_session_replay_new(void)
@@ -695,7 +695,7 @@ inf_adopted_session_replay_new(void)
 /**
  * inf_adopted_session_replay_set_record:
  * @replay: A #InfAdoptedSessionReplay.
- * @filename: Path to the record file to play.
+ * @filename: (type filename): Path to the record file to play.
  * @plugin: A #InfcNotePlugin for the note type of the recorded session.
  * @error: Location to store error information, if any.
  *
@@ -836,7 +836,7 @@ inf_adopted_session_replay_set_record(InfAdoptedSessionReplay* replay,
  * Returns the played back session, or %NULL if
  * inf_adopted_session_replay_set_record() was not yet called.
  *
- * Returns: A #InfAdoptedSessionReplay, or %NULL.
+ * Returns: (transfer none): A #InfAdoptedSessionReplay, or %NULL.
  */
 InfAdoptedSession*
 inf_adopted_session_replay_get_session(InfAdoptedSessionReplay* replay)

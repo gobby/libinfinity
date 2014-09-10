@@ -44,14 +44,14 @@ struct _InfCertificateChain {
 
 /**
  * inf_certificate_chain_new:
- * @certs: Array of certificates.
+ * @certs: (array length=n_certs): Array of certificates.
  * @n_certs: Number of elements in @certs.
  *
  * Creates a new #InfCertificateChain with the given certificates. The @certs
  * array needs to be allocated with g_malloc. This function takes ownership
  * of @certs.
  *
- * Return Value: A new #InfCertificateChain.
+ * Return Value: (transfer full): A new #InfCertificateChain.
  **/
 InfCertificateChain*
 inf_certificate_chain_new(gnutls_x509_crt_t* certs,

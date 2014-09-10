@@ -10592,7 +10592,7 @@ infd_directory_browser_iface_init(InfBrowserInterface* iface)
  */
 
  /**
- * infd_directory_new:
+ * infd_directory_new: (constructor)
  * @io: IO object to watch connections and schedule timeouts.
  * @storage: Storage backend that is used to read/write notes from
  * permanent memory into #InfBuffer objects, or %NULL.
@@ -10604,7 +10604,7 @@ infd_directory_browser_iface_init(InfBrowserInterface* iface)
  * keeps all content in memory. This can make sense for ad-hoc sessions where
  * no central document storage is required.
  *
- * Return Value: A new #InfdDirectory.
+ * Returns: (transfer full): A new #InfdDirectory.
  **/
 InfdDirectory*
 infd_directory_new(InfIo* io,
@@ -10634,7 +10634,7 @@ infd_directory_new(InfIo* io,
  *
  * Returns the IO object in use by the directory.
  *
- * Return Value: A #InfIo.
+ * Returns: (transfer none): A #InfIo.
  **/
 InfIo*
 infd_directory_get_io(InfdDirectory* directory)
@@ -10649,7 +10649,7 @@ infd_directory_get_io(InfdDirectory* directory)
  *
  * Returns the storage backend in use by the directory.
  *
- * Return Value: An #InfdStorage.
+ * Returns: (transfer none) (allow-none): An #InfdStorage.
  **/
 InfdStorage*
 infd_directory_get_storage(InfdDirectory* directory)
@@ -10664,7 +10664,7 @@ infd_directory_get_storage(InfdDirectory* directory)
  *
  * Returns the connection manager of the directory.
  *
- * Return Value: An #InfCommunicationManager.
+ * Returns: (transfer none): An #InfCommunicationManager.
  **/
 InfCommunicationManager*
 infd_directory_get_communication_manager(InfdDirectory* directory)
@@ -10677,7 +10677,7 @@ infd_directory_get_communication_manager(InfdDirectory* directory)
  * infd_directory_set_certificate:
  * @directory: A #InfdDirectory.
  * @key: The private key of the directory.
- * @cert: The certificate chain of the directory.
+ * @cert: (transfer none): The certificate chain of the directory.
  *
  * Sets the private key and certificate chain of the directory. The directory
  * does not use these for certificate authentication with added connections.
@@ -10738,7 +10738,7 @@ infd_directory_set_certificate(InfdDirectory* directory,
  * not matter, and the plugin's @session_read and @session_write functions
  * will not be used (and can therefore be %NULL).
  *
- * Return Value: Whether the plugin was added successfully.
+ * Returns: Whether the plugin was added successfully.
  **/
 gboolean
 infd_directory_add_plugin(InfdDirectory* directory,
@@ -10918,7 +10918,7 @@ infd_directory_remove_plugin(InfdDirectory* directory,
  * Returns the #InfdNotePlugin that handles the given note type, or %NULL
  * in case no corresponding plugin was added.
  *
- * Return Value: A #InfdNotePlugin, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfdNotePlugin, or %NULL.
  **/
 const InfdNotePlugin*
 infd_directory_lookup_plugin(InfdDirectory* directory,
@@ -11016,7 +11016,7 @@ infd_directory_add_connection(InfdDirectory* directory,
 /**
  * infd_directory_get_support_mask:
  * @directory: A #InfdDirectory.
- * @mask: A pointer to a #InfAclMask that will be filled.
+ * @mask: (out): A pointer to a #InfAclMask that will be filled.
  *
  * This function writes all operations supported by @directory to @mask. If
  * an operation is unsupported by the server, the corresponding field in the
@@ -11054,7 +11054,7 @@ infd_directory_get_support_mask(InfdDirectory* directory,
  * with infd_directory_add_connection(). If no special login was performed,
  * the default account is returned.
  *
- * Returns: A #InfAclAccountId.
+ * Returns: (transfer full): A #InfAclAccountId.
  */
 InfAclAccountId
 infd_directory_get_acl_account_for_connection(InfdDirectory* directory,
@@ -11148,7 +11148,8 @@ infd_directory_set_acl_account_for_connection(InfdDirectory* directory,
 /**
  * infd_directory_foreach_connection:
  * @directory: A #InfdDirectory.
- * @func: The function to call for each connection in @directory.
+ * @func: (scope call): The function to call for each connection in
+ * @directory.
  * @user_data: Additional data to pass to the callback function.
  *
  * Calls @func for each connection in @directory that has previously been
@@ -11190,11 +11191,11 @@ infd_directory_foreach_connection(InfdDirectory* directory,
  * Attempts to store the session the node @iter points to represents into the
  * background storage.
  *
- * Return Value: %TRUE if the operation succeeded, %FALSE otherwise.
+ * Returns: %TRUE if the operation succeeded, %FALSE otherwise.
  */
 gboolean
 infd_directory_iter_save_session(InfdDirectory* directory,
-                                 InfBrowserIter* iter,
+                                 const InfBrowserIter* iter,
                                  GError** error)
 {
   InfdDirectoryPrivate* priv;
@@ -11359,7 +11360,8 @@ infd_directory_enable_chat(InfdDirectory* directory,
  * (by getting the #InfChatBuffer from the proxy's #InfChatSession). If the
  * chat is disabled the function returns %NULL.
  *
- * Returns: A #InfdSessionProxy, or %NULL if the chat is disabled.
+ * Returns: (transfer none) (allow-none): A #InfdSessionProxy, or %NULL if
+ * the chat is disabled.
  */
 InfdSessionProxy*
 infd_directory_get_chat_session(InfdDirectory* directory)
@@ -11373,8 +11375,8 @@ infd_directory_get_chat_session(InfdDirectory* directory)
  * @directory: A #InfdDirectory.
  * @account_name: The name of the new account.
  * @transient: Whether the account should be transient or not.
- * @certificates: An array of certificates to be associated to the account,
- * or %NULL.
+ * @certificates: (array length=n_certificates) (allow-none): An array of
+ * certificates to be associated to the account, or %NULL.
  * @n_certificates: The number of certificates.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -11390,7 +11392,8 @@ infd_directory_get_chat_session(InfdDirectory* directory)
  * This function is similar to inf_browser_create_acl_account(), but it
  * allows more options.
  *
- * Returns: The account ID of the created account, or %NULL in case of error.
+ * Returns: (transfer full): The account ID of the created account, or 0
+ * in case of error.
  */
 InfAclAccountId
 infd_directory_create_acl_account(InfdDirectory* directory,

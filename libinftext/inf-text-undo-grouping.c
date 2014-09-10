@@ -321,11 +321,12 @@ inf_text_undo_grouping_class_init(
  */
 
 /**
- * inf_text_undo_grouping_new:
+ * inf_text_undo_grouping_new: (constructor)
  *
  * Creates a new #InfTextUndoGrouping.
  *
- * Return Value: A new #InfTextUndoGrouping. To be freed with g_object_unref().
+ * Returns: (transfer full): A new #InfTextUndoGrouping. To be freed with
+ * g_object_unref().
  **/
 InfTextUndoGrouping*
 inf_text_undo_grouping_new(void)

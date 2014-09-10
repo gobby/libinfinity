@@ -113,7 +113,7 @@ infd_storage_node_new_note(const gchar* path,
                            const gchar* identifier);
 
 InfdStorageNode*
-infd_storage_node_copy(InfdStorageNode* node);
+infd_storage_node_copy(const InfdStorageNode* node);
 
 void
 infd_storage_node_free(InfdStorageNode* node);
@@ -122,7 +122,7 @@ void
 infd_storage_node_list_free(GSList* node_list);
 
 InfdStorageAcl*
-infd_storage_acl_copy(InfdStorageAcl* acl);
+infd_storage_acl_copy(const InfdStorageAcl* acl);
 
 void
 infd_storage_acl_free(InfdStorageAcl* acl);

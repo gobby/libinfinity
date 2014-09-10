@@ -1123,7 +1123,7 @@ inf_chat_session_class_init(InfChatSessionClass* chat_session_class)
  */
 
 /**
- * inf_chat_session_new:
+ * inf_chat_session_new: (constructor)
  * @manager: A #InfCommunicationManager.
  * @buffer: The #InfChatBuffer to use for the session.
  * @status: Initial status of the session. If this is
@@ -1144,7 +1144,7 @@ inf_chat_session_class_init(InfChatSessionClass* chat_session_class)
  * you are subscribed to the session, set the subscription group via
  * inf_session_set_subscription_group().
  *
- * Returns: A new #InfChatSession.
+ * Returns: (transfer full): A new #InfChatSession.
  */
 InfChatSession*
 inf_chat_session_new(InfCommunicationManager* manager,
@@ -1185,7 +1185,7 @@ inf_chat_session_new(InfCommunicationManager* manager,
 /**
  * inf_chat_session_set_log_file:
  * @session: A #InfChatSession.
- * @log_file: A filename to store all received messages into.
+ * @log_file: (type filename): A filename to store all received messages into.
  * @error: Location to store error information, if any.
  *
  * Sets a file onto which all received messages are appended. The file is

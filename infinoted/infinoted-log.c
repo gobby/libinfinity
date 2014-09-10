@@ -356,12 +356,12 @@ infinoted_log_class_init(InfinotedLogClass* log_class)
 }
 
 /**
- * infinoted_log_new:
+ * infinoted_log_new: (constructor)
  *
  * Creates a new #InfinotedLog.
  *
- * Returns: A new #InfinotedLog. Free with g_object_unref() when no longer
- * needed.
+ * Returns: (transfer full): A new #InfinotedLog. Free with g_object_unref()
+ * when no longer needed.
  */
 InfinotedLog*
 infinoted_log_new(void)
@@ -373,7 +373,8 @@ infinoted_log_new(void)
 /**
  * infinoted_log_open:
  * @log: A #InfinotedLog.
- * @path: The path to the log file to write, or %NULL.
+ * @path: (type filename) (allow-none): The path to the log file to write,
+ * or %NULL.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Attempts to open the log file at the given path. If the log file could not
@@ -536,7 +537,8 @@ infinoted_log_warning(InfinotedLog* log,
  */
 void
 infinoted_log_info(InfinotedLog* log,
-                   const char* fmt,...)
+                   const char* fmt,
+                   ...)
 {
   va_list ap;
   va_start(ap, fmt);

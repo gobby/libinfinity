@@ -43,21 +43,48 @@ G_BEGIN_DECLS
 typedef struct _InfdDirectory InfdDirectory;
 typedef struct _InfdDirectoryClass InfdDirectoryClass;
 
+/**
+ * InfdDirectoryClass:
+ * @connection_added: Default signal handler for the
+ * #InfdDirectory::connection-added signal.
+ * @connection_removed: Default signal handler for the
+ * #InfdDirectory::connection-removed signal.
+ *
+ * Default signal handlers for #InfdDirectory.
+ */
 struct _InfdDirectoryClass {
+  /*< private >*/
   GObjectClass parent_class;
 
+  /*< public >*/
   void (*connection_added)(InfdDirectory* directory,
                            InfXmlConnection* connection);
   void (*connection_removed)(InfdDirectory* directory,
                              InfXmlConnection* connection);
 };
 
+/**
+ * InfdDirectory:
+ *
+ * #InfdDirectory is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfdDirectory {
+  /*< private >*/
   GObject parent;
 };
 
-typedef void(*InfdDirectoryForeachConnectionFunc)(InfXmlConnection*,
-                                                  gpointer);
+/**
+ * InfdDirectoryForeachConnectionFunc:
+ * @conn: The connection corresponding to the current iteration.
+ * @user_data: Additional data passed to the call to
+ * infd_directory_foreach_connection().
+ *
+ * This is the signature of the callback function passed to
+ * infd_directory_foreach_connection().
+ */
+typedef void(*InfdDirectoryForeachConnectionFunc)(InfXmlConnection* conn,
+                                                  gpointer user_data);
 
 GType
 infd_directory_get_type(void) G_GNUC_CONST;
@@ -119,7 +146,7 @@ infd_directory_foreach_connection(InfdDirectory* directory,
 
 gboolean
 infd_directory_iter_save_session(InfdDirectory* directory,
-                                 InfBrowserIter* iter,
+                                 const InfBrowserIter* iter,
                                  GError** error);
 
 void

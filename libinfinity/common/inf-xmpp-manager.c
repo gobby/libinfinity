@@ -811,11 +811,11 @@ inf_xmpp_manager_class_init(InfXmppManagerClass* xmpp_manager_class)
 }
 
 /**
- * inf_xmpp_manager_new:
+ * inf_xmpp_manager_new: (constructor)
  *
  * Creates a new xmpp manager.
  *
- * Returns: A new #InfXmppManager.
+ * Returns: (transfer full): A new #InfXmppManager.
  **/
 InfXmppManager*
 inf_xmpp_manager_new(void)
@@ -841,8 +841,8 @@ inf_xmpp_manager_new(void)
  * reopen it, or remove it from the manager using
  * inf_xmpp_manager_remove_connection() when that fails.
  *
- * Returns: A #InfXmppConnection with the given address and port, or %NULL on
- * error.
+ * Returns: (transfer none) (allow-none): A #InfXmppConnection with the given
+ * address and port, or %NULL if not found.
  **/
 InfXmppConnection*
 inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
@@ -871,8 +871,8 @@ inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
  * inf_xmpp_manager_lookup_connection_by_hostname:
  * @manager: A #InfXmppManager.
  * @hostname: The remote hostname to look for.
- * @service: The service string of the connection to look for.
- * @srv: The SRV record corresponding to the connection.
+ * @service: (allow-none): The service string of the connection to look for.
+ * @srv: (allow-none): The SRV record corresponding to the connection.
  *
  * Looks for a #InfXmppConnection contained in @manager whose underlaying
  * #InfTcpConnection has a #InfNameResolver with the given properties.
@@ -881,8 +881,8 @@ inf_xmpp_manager_lookup_connection_by_address(InfXmppManager* manager,
  * reopen it, or remove it from the manager using
  * inf_xmpp_manager_remove_connection() when that fails.
  *
- * Returns: A #InfXmppConnection with the given hostname, service and srv, 
- * or %NULL on error.
+ * Returns: (transfer none) (allow-none): A #InfXmppConnection with the given
+ * hostname, service and srv, or %NULL if not found.
  **/
 InfXmppConnection*
 inf_xmpp_manager_lookup_connection_by_hostname(InfXmppManager* manager,

@@ -2050,7 +2050,7 @@ inf_text_gtk_view_class_init(InfTextGtkViewClass* view_class)
 }
 
 /**
- * inf_text_gtk_view_new:
+ * inf_text_gtk_view_new: (constructor)
  * @io: A #InfIo.
  * @view: A #GtkTextView.
  * @user_table: The #InfUserTable for the text session displayed in @view.
@@ -2058,7 +2058,7 @@ inf_text_gtk_view_class_init(InfTextGtkViewClass* view_class)
  * Creates a new #InfTextGtkView for @view. This draws remote user's cursors
  * and selections into the text view.
  *
- * Returns: A new #InfTextGtkView.
+ * Returns: (transfer full): A new #InfTextGtkView.
  */
 InfTextGtkView*
 inf_text_gtk_view_new(InfIo* io,
@@ -2088,7 +2088,7 @@ inf_text_gtk_view_new(InfIo* io,
  *
  * Returns the underlying #GtkTextView.
  *
- * Return Value: The #InfTextGtkView's #GtkTextView.
+ * Returns: (transfer none): The #InfTextGtkView's #GtkTextView.
  **/
 GtkTextView*
 inf_text_gtk_view_get_text_view(InfTextGtkView* view)
@@ -2104,7 +2104,7 @@ inf_text_gtk_view_get_text_view(InfTextGtkView* view)
  * Returns the #InfUserTable containing the users of the session the
  * #InfTextGtkView's #GtkTextView is displaying.
  *
- * Returns: The #InfTextGtkView's #InfUserTable.
+ * Returns: (transfer none): The #InfTextGtkView's #InfUserTable.
  */
 InfUserTable*
 inf_text_gtk_view_get_user_table(InfTextGtkView* view)
@@ -2116,7 +2116,7 @@ inf_text_gtk_view_get_user_table(InfTextGtkView* view)
 /**
  * inf_text_gtk_view_set_active_user:
  * @view: A #InfTextGtkView.
- * @user: A user from @view's user table, or %NULL.
+ * @user: (allow-none): A user from @view's user table, or %NULL.
  *
  * Sets the user for which perspective to draw the view. The selection and
  * cursor position is not drawn for this user since it is assumed that the
@@ -2166,7 +2166,7 @@ inf_text_gtk_view_set_active_user(InfTextGtkView* view,
  *
  * Returns the active user of @view. See inf_text_gtk_view_set_active_user().
  *
- * Returns: The active user of @view.
+ * Returns: (transfer none) (allow-none): The active user of @view.
  */
 InfTextUser*
 inf_text_gtk_view_get_active_user(InfTextGtkView* view)

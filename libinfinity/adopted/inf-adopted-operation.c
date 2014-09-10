@@ -144,8 +144,8 @@ inf_adopted_operation_need_concurrency_id(InfAdoptedOperation* operation,
  * Usually, this is derived from the user IDs of the users who issued the two
  * conflicting operations.
  *
- * Return Value: The transformed #InfAdoptedOperation, or %NULL if the
- * transformation failed.
+ * Returns: (transfer full) (allow-none): The transformed
+ * #InfAdoptedOperation, or %NULL if the transformation failed.
  **/
 InfAdoptedOperation*
 inf_adopted_operation_transform(InfAdoptedOperation* operation,
@@ -192,7 +192,7 @@ inf_adopted_operation_transform(InfAdoptedOperation* operation,
  *
  * Returns a copy of @operation.
  *
- * Return Value: A copy of @operation.
+ * Returns: (transfer full): A copy of @operation.
  **/
 InfAdoptedOperation*
 inf_adopted_operation_copy(InfAdoptedOperation* operation)
@@ -213,7 +213,7 @@ inf_adopted_operation_copy(InfAdoptedOperation* operation)
  *
  * Returns the flags for @operation.
  *
- * Return Value: #InfAdoptedOperationFlags for @operation.
+ * Returns: #InfAdoptedOperationFlags for @operation.
  **/
 InfAdoptedOperationFlags
 inf_adopted_operation_get_flags(InfAdoptedOperation* operation)
@@ -297,8 +297,8 @@ inf_adopted_operation_apply(InfAdoptedOperation* operation,
  * actual text that is being removed can be restored by looking it up in
  * the buffer, making the operation reversible.
  *
- * Returns: A #InfAdoptedOperation, or %NULL on error. Free with
- * g_object_unref() when no longer needed.
+ * Returns: (transfer full): A #InfAdoptedOperation, or %NULL on error.
+ * Free with g_object_unref() when no longer needed.
  */
 InfAdoptedOperation*
 inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
@@ -364,7 +364,7 @@ inf_adopted_operation_apply_transformed(InfAdoptedOperation* operation,
  *
  * Returns whether @operation is reversible.
  *
- * Return Value: Whether @operation is reversible.
+ * Returns: Whether @operation is reversible.
  **/
 gboolean
 inf_adopted_operation_is_reversible(InfAdoptedOperation* operation)
@@ -391,7 +391,7 @@ inf_adopted_operation_is_reversible(InfAdoptedOperation* operation)
  * @operation must be reversible for this function to be called (i.e.
  * inf_adopted_operation_is_reversible() must return TRUE).
  *
- * Return Value: The reverse operation of @operation.
+ * Returns: (transfer full): The reverse operation of @operation.
  **/
 InfAdoptedOperation*
 inf_adopted_operation_revert(InfAdoptedOperation* operation)

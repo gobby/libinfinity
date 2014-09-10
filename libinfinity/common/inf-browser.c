@@ -386,7 +386,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
 /**
  * inf_browser_get_root:
  * @browser: A #InfBrowser.
- * @iter: An uninitialized #InfBrowserIter.
+ * @iter: (out): An uninitialized #InfBrowserIter.
  *
  * Sets @iter to point to the root node of @browser.
  *
@@ -411,7 +411,7 @@ inf_browser_get_root(InfBrowser* browser,
 /**
  * inf_browser_get_next:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @iter: (inout): A #InfBrowserIter pointing to a node inside @browser.
  *
  * Sets @iter to point to its next sibling node. If @iter points already to the
  * last node then @iter is left untouched and the function returns %FALSE.
@@ -436,7 +436,7 @@ inf_browser_get_next(InfBrowser* browser,
 /**
  * inf_browser_get_prev:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @iter: (inout): A #InfBrowserIter pointing to a node inside @browser.
  *
  * Sets @iter to point to its previous sibling node. If @iter points to the
  * first node already then @iter is left untouched and the function returns
@@ -462,7 +462,7 @@ inf_browser_get_prev(InfBrowser* browser,
 /**
  * inf_browser_get_parent:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser.
+ * @iter: (inout): A #InfBrowserIter pointing to a node inside @browser.
  *
  * Sets @iter to point to its parent node. If @iter is already the root node
  * then @iter is left untouched and the function returns %FALSE.
@@ -487,7 +487,8 @@ inf_browser_get_parent(InfBrowser* browser,
 /**
  * inf_browser_get_child:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a subdirectory node inside @browser.
+ * @iter: (inout): A #InfBrowserIter pointing to a subdirectory node inside
+ * @browser.
  *
  * Sets @iter to point to the first child of the subdirectory node it
  * currently points to. If the subdirectory does not contain any children or
@@ -555,7 +556,8 @@ inf_browser_is_ancestor(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside
  * @browser.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Requests the node @iter points to to be explored. Initally, subdirectory
@@ -573,8 +575,8 @@ inf_browser_is_ancestor(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest, or %NULL if @iter points to a
- * non-subdirectory node.
+ * Returns: (transfer none) (allow-none): A #InfRequest, or %NULL if @iter
+ * points to a non-subdirectory node.
  */
 InfRequest*
 inf_browser_explore(InfBrowser* browser,
@@ -653,11 +655,13 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside @browser.
  * @name: The name of the node to add.
  * @type: The type of the node to add.
- * @acl: A #InfAclSheetSet representing the initial ACL for this node, or
+ * @acl: (allow-none): A #InfAclSheetSet representing the initial ACL for
+ * this node, or %NULL.
+ * @session: (allow-none): A #InfSession with a session of type @type, or
  * %NULL.
- * @session: A #InfSession with a session of type @type, or %NULL.
  * @initial_subscribe: Whether to subscribe to the newly created session.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Adds a new leaf node to the browser. The new node is of type @type. If
@@ -704,8 +708,8 @@ inf_browser_is_subdirectory(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest which can be used to get notified when the
- * request finishes.
+ * Returns: (transfer none) (allow-none): A #InfRequest which can be used to
+ * get notified when the request finishes.
  */
 InfRequest*
 inf_browser_add_note(InfBrowser* browser,
@@ -764,9 +768,10 @@ inf_browser_add_note(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a subdirectory node inside @browser.
  * @name: The name of the node to add.
- * @acl: A #InfAclSheetSet representing the initial ACL for this node, or
- * %NULL.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @acl: (allow-none): A #InfAclSheetSet representing the initial ACL for
+ * this node, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Adds a new subdirectory node to the browser.
@@ -783,8 +788,8 @@ inf_browser_add_note(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest which can be used to get notified when the
- * request finishes.
+ * Returns: (transfer none) (allow-none): A #InfRequest which can be used to
+ * get notified when the request finishes.
  */
 InfRequest*
 inf_browser_add_subdirectory(InfBrowser* browser,
@@ -812,7 +817,8 @@ inf_browser_add_subdirectory(InfBrowser* browser,
  * inf_browser_remove_node:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a node inside @browser.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Requests to remove the node @iter points to. It may point to a
@@ -825,8 +831,8 @@ inf_browser_add_subdirectory(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest which can be used to get notified when the
- * request finishes.
+ * Returns: (transfer none) (allow-none): A #InfRequest which can be used to
+ * get notified when the request finishes.
  */
 InfRequest*
 inf_browser_remove_node(InfBrowser* browser,
@@ -904,7 +910,8 @@ inf_browser_get_node_type(InfBrowser* browser,
  * with a '/' and then has the name of the node and all its parents separated
  * by '/', much like a filesystem path on Unix.
  *
- * Returns: The path as a string. Free with g_free() when no longer needed.
+ * Returns: (transfer full): The path as a string. Free with g_free() when no
+ * longer needed.
  */
 gchar*
 inf_browser_get_path(InfBrowser* browser,
@@ -920,7 +927,8 @@ inf_browser_get_path(InfBrowser* browser,
  * inf_browser_subscribe:
  * @browser: A #InfBrowser.
  * @iter: A #InfBrowserIter pointing to a leaf node inside @browser.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Attempts to subscribe to the node @iter points to, i.e. obtain a
@@ -933,8 +941,8 @@ inf_browser_get_path(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest which can be used to get notified when the
- * request finishes.
+ * Returns: (transfer none) (allow-none): A #InfRequest which can be used to
+ * get notified when the request finishes.
  */
 InfRequest*
 inf_browser_subscribe(InfBrowser* browser,
@@ -965,8 +973,8 @@ inf_browser_subscribe(InfBrowser* browser,
  * session is not subscribed or the subscription request has not yet finished
  * the function returns %NULL.
  *
- * Returns: A @InfSessionProxy which contains the session. The proxy object
- * can be used to join a user into the session.
+ * Returns: (transfer none) (allow-none): A @InfSessionProxy which contains
+ * the session. The proxy object can be used to join a user into the session.
  */
 InfSessionProxy*
 inf_browser_get_session(InfBrowser* browser,
@@ -988,9 +996,10 @@ inf_browser_get_session(InfBrowser* browser,
 /**
  * inf_browser_list_pending_requests:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser, or %NULL.
- * @request_type: The type of request to return pending requests for, or
- * %NULL.
+ * @iter: (allow-none): A #InfBrowserIter pointing to a node inside @browser,
+ * or %NULL.
+ * @request_type: (allow-none): The type of request to return pending requests
+ * for, or %NULL.
  *
  * Returns a list of all pending requests for the node @iter points to which
  * match type @request_type. A pending request is a request which has been
@@ -1001,8 +1010,8 @@ inf_browser_get_session(InfBrowser* browser,
  *
  * If @iter is %NULL then the function returns all pending global requests.
  *
- * Returns: A list of #InfRequest<!-- -->s. Free with g_slist_free() when
- * no longer needed.
+ * Returns: (transfer container) (element-type InfRequest): A list of
+ * #InfRequest<!-- -->s. Free with g_slist_free() when no longer needed.
  */
 GSList*
 inf_browser_list_pending_requests(InfBrowser* browser,
@@ -1024,7 +1033,7 @@ inf_browser_list_pending_requests(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @request: A #InfRequest which has not yet finished and which was
  * issued by @browser.
- * @iter: An uninitialized #InfBrowserIter.
+ * @iter: (out): An uninitialized #InfBrowserIter.
  *
  * Sets @iter to the node for which @request was made. If that node does not
  * exist anymore or if @request has already finished the function returns
@@ -1052,8 +1061,9 @@ inf_browser_iter_from_request(InfBrowser* browser,
 /**
  * inf_browser_get_pending_request:
  * @browser: A #InfBrowser.
- * @iter: A #InfBrowserIter pointing to a node inside @browser, or %NULL.
- * @request_type: The type of request.
+ * @iter: (allow-none): A #InfBrowserIter pointing to a node inside @browser,
+ * or %NULL.
+ * @request_type: (allow-none): The type of request.
  *
  * Returns a pending request for the node @iter points to which matches type
  * @request_type. If there is no such request the function returns %NULL.
@@ -1068,7 +1078,7 @@ inf_browser_iter_from_request(InfBrowser* browser,
  * request at a time, and therefore this function is more convenient to use
  * than inf_browser_list_pending_requests().
  *
- * Returns: A #InfRequest, or %NULL.
+ * Returns: (allow-none) (transfer none): A #InfRequest, or %NULL.
  */
 InfRequest*
 inf_browser_get_pending_request(InfBrowser* browser,
@@ -1098,8 +1108,8 @@ inf_browser_get_pending_request(InfBrowser* browser,
  * which is used to look up permissions if no permissions are explicitly
  * specified in the ACL of a particular node for a particular account.
  *
- * Returns: A #InfAclAccount. The returned value is owned by the browser and
- * must not be freed.
+ * Returns: (transfer none): A #InfAclAccount. The returned value is owned by
+ * the browser and must not be freed.
  */
 const InfAclAccount*
 inf_browser_get_acl_default_account(InfBrowser* browser)
@@ -1124,8 +1134,8 @@ inf_browser_get_acl_default_account(InfBrowser* browser)
  * operations are allowed, because the browser represents a local infinote
  * directory.
  *
- * Returns: A #InfAclAccount, or %NULL. The returned value is owned by the
- * browser and must not be freed.
+ * Returns: (transfer none) (allow-none): A #InfAclAccount, or %NULL. The
+ * returned value is owned by the browser and must not be freed.
  */
 const InfAclAccount*
 inf_browser_get_acl_local_account(InfBrowser* browser)
@@ -1143,7 +1153,8 @@ inf_browser_get_acl_local_account(InfBrowser* browser)
 /**
  * inf_browser_query_acl_account_list:
  * @browser: A #InfBrowser.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Queries the list of accounts in @browser. When this call has finished,
@@ -1164,8 +1175,8 @@ inf_browser_get_acl_local_account(InfBrowser* browser)
  * @func has been installed for the #InfRequest::finished signal, so that it
  * is called as soon as the request finishes.
  *
- * Returns: A #InfRequest that can be used to be notified when
- * the request finishes, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfRequest that can be used to
+ * be notified when the request finishes, or %NULL.
  */
 InfRequest*
 inf_browser_query_acl_account_list(InfBrowser* browser,
@@ -1185,9 +1196,10 @@ inf_browser_query_acl_account_list(InfBrowser* browser,
 /**
  * inf_browser_lookup_acl_accounts:
  * @browser: A #InfBrowser.
- * @ids: An array of account IDs to look up.
+ * @ids: (array length=n_ids): An array of account IDs to look up.
  * @n_ids: The number of elements in the array.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Looks up the accounts with the given IDs. If the account list has been
@@ -1206,8 +1218,8 @@ inf_browser_query_acl_account_list(InfBrowser* browser,
  * @func has been installed for the #InfRequest::finished signal, so that it
  * is called as soon as the request finishes.
  *
- * Returns: A #InfRequest that can be used to be notified when
- * the request finishes, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfRequest that can be used to
+ * be notified when the request finishes, or %NULL.
  */
 InfRequest*
 inf_browser_lookup_acl_accounts(InfBrowser* browser,
@@ -1232,7 +1244,8 @@ inf_browser_lookup_acl_accounts(InfBrowser* browser,
  * inf_browser_lookup_acl_account_by_name:
  * @browser: A #InfBrowser.
  * @name: The name of the user account to look up.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Looks up the account(s) with the given name. While in principal, there can
@@ -1249,8 +1262,8 @@ inf_browser_lookup_acl_accounts(InfBrowser* browser,
  * @func has been installed for the #InfRequest::finished signal, so that it
  * is called as soon as the request finishes.
  *
- * Returns: A #InfRequest that can be used to be notified when
- * the request finishes, or %NULL.
+ * Returns: (allow-none) (transfer none): A #InfRequest that can be used to be
+ * notified when the request finishes, or %NULL.
  */
 InfRequest*
 inf_browser_lookup_acl_account_by_name(InfBrowser* browser,
@@ -1273,7 +1286,8 @@ inf_browser_lookup_acl_account_by_name(InfBrowser* browser,
  * inf_browser_create_acl_account:
  * @browser: A #InfBrowser.
  * @crq: A certificate request.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Requests creation of a new account. If the request succeeds, @crq will be
@@ -1286,8 +1300,8 @@ inf_browser_lookup_acl_account_by_name(InfBrowser* browser,
  * @func has been installed for the #InfRequest::finished signal, so that it
  * is called as soon as the request finishes.
  *
- * Returns: A #InfRequest that can be used to get notified when the
- * request finishes or fails.
+ * Returns: (transfer none) (allow-none): A #InfRequest that can be used to
+ * get notified when the request finishes or fails.
  */
 InfRequest*
 inf_browser_create_acl_account(InfBrowser* browser,
@@ -1310,7 +1324,8 @@ inf_browser_create_acl_account(InfBrowser* browser,
  * inf_browser_remove_acl_account:
  * @browser: A #InfBrowser.
  * @account: The ID of the account to remove.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Requests deletion of the given account.
@@ -1321,8 +1336,8 @@ inf_browser_create_acl_account(InfBrowser* browser,
  * @func has been installed for the #InfRequest::finished signal, so that it
  * is called as soon as the request finishes.
  *
- * Returns: A #InfRequest that can be used to get notified when the
- * request finishes or fails.
+ * Returns: (transfer none) (allow-none): A #InfRequest that can be used to
+ * get notified when the request finishes or fails.
  */
 InfRequest*
 inf_browser_remove_acl_account(InfBrowser* browser,
@@ -1351,7 +1366,8 @@ inf_browser_remove_acl_account(InfBrowser* browser,
  * inf_browser_query_acl:
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to a node for which to query the ACLs.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Queries the ACLs for all users of the node @iter points to. When the
@@ -1364,8 +1380,8 @@ inf_browser_remove_acl_account(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest which can be used to be notified when the
- * request finishes.
+ * Returns: (transfer none) (allow-none): A #InfRequest which can be used to
+ * be notified when the request finishes.
  */
 InfRequest*
 inf_browser_query_acl(InfBrowser* browser,
@@ -1457,7 +1473,8 @@ inf_browser_get_acl(InfBrowser* browser,
  * @browser: A #InfBrowser.
  * @iter: An iterator pointing to the node for which to change ACLs.
  * @sheet_set: An #InfAclSheetSet with the sheets to update.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Changes the ACLs for the node @iter points to. Existing sheets that are not
@@ -1472,8 +1489,8 @@ inf_browser_get_acl(InfBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest which can be used to be notified when the
- * request finishes.
+ * Returns: (transfer none) (allow-none): A #InfRequest which can be used to
+ * be notified when the request finishes.
  */
 InfRequest*
 inf_browser_set_acl(InfBrowser* browser,
@@ -1501,7 +1518,7 @@ inf_browser_set_acl(InfBrowser* browser,
  * @account: The ID of the account whose permission to check, or %NULL.
  * @check_mask: A bitmask of #InfAclSetting<!-- -->s with permissions to
  * check.
- * @out_mask: Output parameter with the granted permissions, or %NULL.
+ * @out_mask: (out): Output parameter with the granted permissions, or %NULL.
  *
  * Checks whether the given account has permissions to perform the operations
  * specified by @mask on the node @iter points to. The @mask parameter

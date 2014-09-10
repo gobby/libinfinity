@@ -265,12 +265,12 @@ inf_gtk_certificate_view_class_init(
  */
 
 /**
- * inf_gtk_certificate_view_new:
+ * inf_gtk_certificate_view_new: (constructor)
  *
  * Creates a new #InfGtkCertificateView. To show a certificate, use
  * inf_gtk_certificate_view_set_certificate() on the returned widget.
  *
- * Returns: A new #InfGtkCertificateView.
+ * Returns: (transfer floating): A new #InfGtkCertificateView.
  */
 GtkWidget*
 inf_gtk_certificate_view_new(void)
@@ -281,7 +281,7 @@ inf_gtk_certificate_view_new(void)
 }
 
 /**
- * inf_gtk_certificate_view_new_with_certificate:
+ * inf_gtk_certificate_view_new_with_certificate: (constructor)
  * @cert: The certificate to show.
  *
  * Creates a new #InfGtkCertificateView showing the given certificate. This
@@ -292,9 +292,8 @@ inf_gtk_certificate_view_new(void)
  * can make the view not showing it anymore by calling
  * inf_gtk_certificate_view_set_certificate() with %NULL as certificate.
  *
- * Returns: A new #InfGtkCertificateView.
+ * Returns: (transfer floating): A new #InfGtkCertificateView.
  */
-
 GtkWidget*
 inf_gtk_certificate_view_new_with_certificate(gnutls_x509_crt_t cert)
 {

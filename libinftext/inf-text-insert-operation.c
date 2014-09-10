@@ -33,7 +33,7 @@ inf_text_insert_operation_default_init(InfTextInsertOperationInterface* iface)
  *
  * Returns the position at which @operation inserts text.
  *
- * Return Value: The position to insert text.
+ * Returns: The position to insert text.
  **/
 guint
 inf_text_insert_operation_get_position(InfTextInsertOperation* operation)
@@ -54,7 +54,7 @@ inf_text_insert_operation_get_position(InfTextInsertOperation* operation)
  *
  * Returns the length of the text inserted by @operation.
  *
- * Return Value: The length of @operation.
+ * Returns: The length of @operation.
  **/
 guint
 inf_text_insert_operation_get_length(InfTextInsertOperation* operation)
@@ -113,7 +113,7 @@ inf_text_insert_operation_need_concurrency_id(InfTextInsertOperation* op,
  * Returns a new operation that includes the effect of @against into
  * @operation.
  *
- * Return Value: A new #InfAdoptedOperation.
+ * Returns: (transfer full): A new #InfAdoptedOperation.
  **/
 InfAdoptedOperation*
 inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
@@ -190,7 +190,7 @@ inf_text_insert_operation_transform_insert(InfTextInsertOperation* operation,
  * Returns a new operation that includes the effect of @against into
  * @operation.
  *
- * Return Value: A new #InfAdoptedOperation.
+ * Returns: (transfer full): A new #InfAdoptedOperation.
  **/
 InfAdoptedOperation*
 inf_text_insert_operation_transform_delete(InfTextInsertOperation* operation,

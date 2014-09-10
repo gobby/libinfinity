@@ -892,7 +892,8 @@ inf_gtk_certificate_manager_connection_added_cb(InfXmppManager* manager,
       connection,
       GNUTLS_CERT_REQUIRE, /* require a server certificate */
       inf_gtk_certificate_manager_certificate_func,
-      user_data
+      user_data,
+      NULL
     );
   }
 }
@@ -1088,13 +1089,13 @@ inf_gtk_certificate_manager_class_init(
  */
 
 /**
- * inf_gtk_certificate_manager_new:
+ * inf_gtk_certificate_manager_new: (constructor)
  * @parent_window: The #GtkWindow to which to make certificate approval
  * dialogs transient to.
  * @xmpp_manager: The #InfXmppManager whose #InfXmppConnection<!-- -->s to
  * manage the certificates for.
- * @known_hosts_file: Path pointing to a file that contains certificates of
- * known hosts, or %NULL.
+ * @known_hosts_file: (type filename) (allow-none): Path pointing to a file
+ * that contains certificates of known hosts, or %NULL.
  *
  * Creates a new #InfGtkCertificateManager. For each new client-side
  * #InfXmppConnection in @xmpp_manager, the certificate manager will verify
@@ -1105,7 +1106,7 @@ inf_gtk_certificate_manager_class_init(
  * approval. If the user approves the certificate, then it is inserted into
  * the @known_hosts_file.
  *
- * Returns: A new #InfGtkCertificateManager.
+ * Returns: (transfer full): A new #InfGtkCertificateManager.
  **/
 InfGtkCertificateManager*
 inf_gtk_certificate_manager_new(GtkWindow* parent_window,

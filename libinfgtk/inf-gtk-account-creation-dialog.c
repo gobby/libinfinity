@@ -735,7 +735,7 @@ inf_gtk_account_creation_dialog_class_init(
  */
 
 /**
- * inf_gtk_account_creation_dialog_new:
+ * inf_gtk_account_creation_dialog_new: (constructor)
  * @parent: Parent #GtkWindow of the dialog.
  * @dialog_flags: Flags for the dialog, see #GtkDialogFlags.
  * @io: A #InfIo object to schedule asynchronous operations.
@@ -744,8 +744,8 @@ inf_gtk_account_creation_dialog_class_init(
  * Creates a new #InfGtkAccountCreationDialog, which can be used to generate
  * a new account on the infinote directory represented by the given browser.
  *
- * Returns: A new #InfGtkAccountCreationDialog. Free with gtk_widget_destroy()
- * when no longer needed.
+ * Returns: (transfer full): A new #InfGtkAccountCreationDialog. Free with
+ * gtk_widget_destroy() when no longer needed.
  */
 InfGtkAccountCreationDialog*
 inf_gtk_account_creation_dialog_new(GtkWindow* parent,

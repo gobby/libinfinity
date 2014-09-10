@@ -110,8 +110,8 @@ struct _InfAdoptedOperationInterface {
 
   InfAdoptedOperation* (*transform)(InfAdoptedOperation* operation,
                                     InfAdoptedOperation* against,
-                                    InfAdoptedOperation* lcs_operation,
-                                    InfAdoptedOperation* lcs_against,
+                                    InfAdoptedOperation* operation_lcs,
+                                    InfAdoptedOperation* against_lcs,
                                     InfAdoptedConcurrencyId concurrency_id);
 
   InfAdoptedOperation* (*copy)(InfAdoptedOperation* operation);

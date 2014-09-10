@@ -203,18 +203,18 @@ inf_text_user_class_init(InfTextUserClass* user_class)
 }
 
 /**
- * inf_text_user_new:
+ * inf_text_user_new: (constructor)
  * @id: The user ID for this user.
  * @name: The user's name.
- * @vector: The state at which the user is at, or %NULL.
+ * @vector: (allow-none): The state at which the user is at, or %NULL.
  * @hue: The hue value of the user's color.
  *
  * Creates a new #InfTextUser. @id should be unique for all users working
  * together. #InfUserTable will refuse to add users with duplicate id. If
  * @vector is %NULL, then the vector with all components zero is used.
  *
- * Returns: A new #InfTextUser. Free with g_object_unref() when no longer
- * needed.
+ * Returns: (transfer full): A new #InfTextUser. Free with g_object_unref()
+ * when no longer needed.
  */
 InfTextUser*
 inf_text_user_new(guint id,
@@ -242,7 +242,7 @@ inf_text_user_new(guint id,
  *
  * Returns the position of @user's caret.
  *
- * Return Value: @user's caret position.
+ * Returns: @user's caret position.
  **/
 guint
 inf_text_user_get_caret_position(InfTextUser* user)
@@ -259,7 +259,7 @@ inf_text_user_get_caret_position(InfTextUser* user)
  * the caret position. Negative number mean selection towards the beginning
  * of the buffer.
  *
- * Return Value: @user's selection length in characters.
+ * Returns: @user's selection length in characters.
  **/
 gint
 inf_text_user_get_selection_length(InfTextUser* user)

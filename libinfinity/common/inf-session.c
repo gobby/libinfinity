@@ -2182,7 +2182,8 @@ inf_session_communication_object_iface_init(
 
 /**
  * inf_session_lookup_user_property:
- * @params: A pointer to an array of containing #GParameter values.
+ * @params: (array length=n_params): A pointer to an array of containing
+ * #GParameter values.
  * @n_params: The number of elements in the aforementioned array
  * @name: Name to look up.
  *
@@ -2209,13 +2210,13 @@ inf_session_lookup_user_property(const GParameter* params,
 
 /**
  * inf_session_get_user_property:
- * @array: A #GArray containing #GParameter values.
+ * @array: (element-type GParameter): A #GArray containing #GParameter values.
  * @name: Name to look up.
  *
  * Looks up the paremeter with the given name in @array. If there is no such
  * parameter, a new one will be created.
  *
- * Return Value: A #GParameter.
+ * Return Value: (transfer none): A #GParameter.
  **/
 GParameter*
 inf_session_get_user_property(GArray* array,
@@ -2315,7 +2316,7 @@ inf_session_close(InfSession* session)
  *
  * Returns the communication manager for @session.
  *
- * Return Value: A #InfCommunicationManager.
+ * Return Value: (transfer none): A #InfCommunicationManager.
  **/
 InfCommunicationManager*
 inf_session_get_communication_manager(InfSession* session)
@@ -2330,7 +2331,7 @@ inf_session_get_communication_manager(InfSession* session)
  *
  * Returns the buffer used by @session.
  *
- * Return Value: A #InfBuffer.
+ * Return Value: (transfer none): A #InfBuffer.
  **/
 InfBuffer*
 inf_session_get_buffer(InfSession* session)
@@ -2345,7 +2346,7 @@ inf_session_get_buffer(InfSession* session)
  *
  * Returns the user table used by @session.
  *
- * Return Value: A #InfUserTable.
+ * Return Value: (transfer none): A #InfUserTable.
  **/
 InfUserTable*
 inf_session_get_user_table(InfSession* session)
@@ -2372,7 +2373,8 @@ inf_session_get_status(InfSession* session)
 /**
  * inf_session_add_user:
  * @session: A #InfSession.
- * @params: Construction parameters for the #InfUser (or derived) object.
+ * @params: (array length=n_params): Construction parameters for the #InfUser
+ * (or derived) object.
  * @n_params: Number of parameters.
  *
  * Adds a user to @session. The user object is constructed via the
@@ -2389,7 +2391,7 @@ inf_session_get_status(InfSession* session)
  * If @params comes from an untrusted source, they should be checked first
  * with the validate_user_props virtual function.
  *
- * Returns: The new #InfUser.
+ * Returns: (transfer none): The new #InfUser.
  **/
 InfUser*
 inf_session_add_user(InfSession* session,
@@ -2831,7 +2833,7 @@ inf_session_has_synchronizations(InfSession* session)
  *
  * Returns the subscription group for @session, if any.
  *
- * Return Value: A #InfCommunicationGroup, or %NULL.
+ * Return Value: (transfer none): A #InfCommunicationGroup, or %NULL.
  **/
 InfCommunicationGroup*
 inf_session_get_subscription_group(InfSession* session)
@@ -2880,7 +2882,7 @@ inf_session_set_subscription_group(InfSession* session,
 /**
  * inf_session_send_to_subscriptions:
  * @session: A #InfSession.
- * @xml: The message to send.
+ * @xml: (transfer full): The message to send.
  *
  * Sends a XML message to the all members of @session's subscription group.
  * This function can only be called if the subscription group is non-%NULL. It

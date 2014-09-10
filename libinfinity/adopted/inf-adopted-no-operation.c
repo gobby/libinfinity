@@ -113,12 +113,12 @@ inf_adopted_no_operation_operation_iface_init(
 }
 
 /**
- * inf_adopted_no_operation_new:
+ * inf_adopted_no_operation_new: (constructor)
  *
  * Creates a new #InfAdoptedNoOperation. A no operation is an operation
  * that does nothing, but might be the result of a transformation.
  *
- * Return Value: A new #InfAdoptedNoOperation.
+ * Returns: (transfer full): A new #InfAdoptedNoOperation.
  **/
 InfAdoptedNoOperation*
 inf_adopted_no_operation_new(void)

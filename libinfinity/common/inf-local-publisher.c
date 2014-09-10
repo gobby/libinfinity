@@ -46,8 +46,8 @@ inf_local_publisher_default_init(InfLocalPublisherInterface* iface)
  * Publishes a service through @publisher so that it can be discovered with
  * an appropriate #InfDiscovery.
  *
- * Return Value: A #InfLocalPublisherItem that can be used to unpublish
- * the service again.
+ * Return Value: (transfer none): A #InfLocalPublisherItem that can be used
+ * to unpublish the service again.
  **/
 InfLocalPublisherItem*
 inf_local_publisher_publish(InfLocalPublisher* publisher,

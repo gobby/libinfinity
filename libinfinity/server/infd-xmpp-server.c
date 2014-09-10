@@ -236,7 +236,8 @@ infd_xmpp_server_setup_own_sasl_context(InfdXmppServer* xmpp)
       inf_sasl_context_set_callback(
         priv->sasl_context,
         infd_xmpp_server_sasl_cb,
-        xmpp
+        xmpp,
+        NULL
       );
 
       g_object_notify(G_OBJECT(xmpp), "sasl-context");
@@ -676,7 +677,7 @@ infd_xmpp_server_xml_server_iface_init(InfdXmlServerInterface* iface)
 }
 
 /**
- * infd_xmpp_server_new:
+ * infd_xmpp_server_new: (constructor)
  * @tcp: A #InfdTcpServer.
  * @policy: The initial security policy.
  * @creds: Certificate credentials used to secure any communication.
@@ -702,7 +703,7 @@ infd_xmpp_server_xml_server_iface_init(InfdXmlServerInterface* iface)
  * @sasl_mechanisms is %NULL, then all available mechanims will be offered.
  * If @sasl_context is %NULL, then this parameter is ignored.
  *
- * Return Value: A new #InfdXmppServer.
+ * Return Value: (transfer full): A new #InfdXmppServer.
  **/
 InfdXmppServer*
 infd_xmpp_server_new(InfdTcpServer* tcp,

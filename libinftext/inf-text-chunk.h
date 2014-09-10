@@ -26,6 +26,7 @@
 
 G_BEGIN_DECLS
 
+#define INF_TEXT_TYPE_CHUNK_ITER       (inf_text_chunk_iter_get_type())
 #define INF_TEXT_TYPE_CHUNK            (inf_text_chunk_get_type())
 
 /**
@@ -56,7 +57,16 @@ struct _InfTextChunkIter {
 };
 
 GType
+inf_text_chunk_iter_get_type(void) G_GNUC_CONST;
+
+GType
 inf_text_chunk_get_type(void) G_GNUC_CONST;
+
+InfTextChunkIter*
+inf_text_chunk_iter_copy(const InfTextChunkIter* iter);
+
+void
+inf_text_chunk_iter_free(InfTextChunkIter* iter);
 
 InfTextChunk*
 inf_text_chunk_new(const gchar* encoding);

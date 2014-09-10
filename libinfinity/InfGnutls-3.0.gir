@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <package name="gnutls"/>
+  <namespace name="InfGnutls" version="3.0"
+	     c:identifier-prefixes="gnutls"
+	     c:symbol-prefixes="gnutls">
+    <record name="X509Crt" c:type="gnutls_x509_crt_t"/>
+    <record name="X509PrivKey" c:type="gnutls_x509_privkey_t"/>
+    <record name="X509Crq" c:type="gnutls_x509_crq_t"/>
+    <record name="CertificateCredentials" c:type="gnutls_certificate_credentials_t"/>
+    <record name="DHParams" c:type="gnutls_dh_params_t"/>
+
+    <alias name="PKAlgorithm" c:type="gnutls_pk_algorithm_t">
+      <type name="gint" c:type="gint"/>
+    </alias>
+
+    <alias name="DigestAlgorithm" c:type="gnutls_digest_algorithm_t">
+      <type name="gint" c:type="gint"/>
+    </alias>
+
+    <function name="dummy" c:identifier="dummy">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

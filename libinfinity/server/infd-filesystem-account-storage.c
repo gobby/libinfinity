@@ -1666,14 +1666,14 @@ infd_filesystem_account_storage_account_storage_iface_init(
 }
 
 /**
- * infd_filesystem_account_storage_new:
+ * infd_filesystem_account_storage_new: (constructor)
  *
  * Creates a new #InfdFilesystemAccountStorage that stores its account list as
  * a file in the filesystem. Use
  * infd_filesystem_account_storage_set_filesystem() to set the underlying
  * #InfdFilesystemStorage object.
  *
- * Returns: A new #InfdFilesystemAccountStorage.
+ * Returns: (transfer full): A new #InfdFilesystemAccountStorage.
  **/
 InfdFilesystemAccountStorage*
 infd_filesystem_account_storage_new(void)

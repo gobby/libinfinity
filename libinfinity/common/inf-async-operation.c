@@ -124,10 +124,10 @@ inf_async_operation_io_unref_func(gpointer user_data,
 /**
  * inf_async_operation_new:
  * @io: The #InfIo object used to pass back the result of the operation.
- * @run_func: A function to run asynchronously in a worker thread, computing
- * the result of the operation.
- * @done_func: A function to be called in the thread of @io once the result
- * is available.
+ * @run_func: (scope async): A function to run asynchronously in a worker
+ * thread, computing the result of the operation.
+ * @done_func: (scope async): A function to be called in the thread of @io
+ * once the result is available.
  * @user_data: Additional user data to pass to both functions.
  *
  * This function creates a new #InfAsyncOperation. The function given by
@@ -150,8 +150,8 @@ inf_async_operation_io_unref_func(gpointer user_data,
  * operation is freed automatically, since it cannot pass back its result to
  * the main thread anymore.
  *
- * Returns: A new #InfAsyncOperation. Free with inf_async_operation_free() to
- * cancel the operation.
+ * Returns: (transfer full): A new #InfAsyncOperation. Free with
+ * inf_async_operation_free() to cancel the operation.
  */
 InfAsyncOperation*
 inf_async_operation_new(InfIo* io,
@@ -189,7 +189,7 @@ inf_async_operation_new(InfIo* io,
 
 /**
  * inf_async_operation_start:
- * @op: A #InfAsyncOperation.
+ * @op: (transfer full): A #InfAsyncOperation.
  * @error: Location to store error information, if any.
  *
  * Starts the operation given in @op. The operation must have been created

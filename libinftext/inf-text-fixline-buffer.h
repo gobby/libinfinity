@@ -39,7 +39,7 @@ typedef struct _InfTextFixlineBuffer InfTextFixlineBuffer;
 typedef struct _InfTextFixlineBufferClass InfTextFixlineBufferClass;
 
 /**
- * InfTextFixlineBuffer:
+ * InfTextFixlineBufferClass:
  *
  * This structure does not contain any public fields.
  */

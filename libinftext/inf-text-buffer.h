@@ -43,7 +43,7 @@ typedef struct _InfTextBuffer InfTextBuffer;
 typedef struct _InfTextBufferInterface InfTextBufferInterface;
 
 /**
- * InfTextBufferIter:
+ * InfTextBufferIter: (foreign)
  *
  * #InfTextBufferIter is an opaque data type. You should only access it
  * via the public API functions.

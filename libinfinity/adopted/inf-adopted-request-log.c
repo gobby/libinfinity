@@ -709,7 +709,7 @@ inf_adopted_request_log_class_init(
 
   /**
    * InfAdoptedRequestLog::add-request:
-   * @request_log: The #InfAdoptedRequestLog to which a new request is added.
+   * @log: The #InfAdoptedRequestLog to which a new request is added.
    * @request: The new request being added.
    *
    * This signal is emitted whenever a new request is added to the request log
@@ -733,13 +733,13 @@ inf_adopted_request_log_class_init(
  */
 
 /**
- * inf_adopted_request_log_new:
+ * inf_adopted_request_log_new: (constructor)
  * @user_id: The ID of the #InfAdoptedUser to create a request log for. The
  * request log only contains requests of that particular user.
  *
  * Creates a new #InfAdoptedRequestLog for the user with the given ID.
  *
- * Returns: A new #InfAdoptedRequestLog.
+ * Returns: (transfer full): A new #InfAdoptedRequestLog.
  **/
 InfAdoptedRequestLog*
 inf_adopted_request_log_new(guint user_id)
@@ -763,7 +763,7 @@ inf_adopted_request_log_new(guint user_id)
  *
  * Returns the ID of the user whose requests @log contains.
  *
- * Return Value: The log's user ID.
+ * Returns: The log's user ID.
  **/
 guint
 inf_adopted_request_log_get_user_id(InfAdoptedRequestLog* log)
@@ -778,7 +778,7 @@ inf_adopted_request_log_get_user_id(InfAdoptedRequestLog* log)
  *
  * Returns the first index (i.e. the index of the oldest request) in the log.
  *
- * Return Value: The first index in the log.
+ * Returns: The first index in the log.
  **/
 guint
 inf_adopted_request_log_get_begin(InfAdoptedRequestLog* log)
@@ -796,7 +796,7 @@ inf_adopted_request_log_get_begin(InfAdoptedRequestLog* log)
  * inf_adopted_request_log_get_end() - inf_adopted_request_log_get_begin()
  * reveals the number of requests in the log.
  *
- * Return Value: The index of the next request in the log.
+ * Returns: The index of the next request in the log.
  **/
 guint
 inf_adopted_request_log_get_end(InfAdoptedRequestLog* log)
@@ -878,8 +878,8 @@ inf_adopted_request_log_set_begin(InfAdoptedRequestLog* log,
  * Returns the request with the given index. Such a request must exist in
  * @log.
  *
- * Return Value: A #InfAdoptedRequest. The request is owned by the request
- * log, you do not need to free it.
+ * Returns: (transfer none): A #InfAdoptedRequest. The request is owned by
+ * the request log, you do not need to free it.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_get_request(InfAdoptedRequestLog* log,
@@ -1021,7 +1021,8 @@ inf_adopted_request_log_remove_requests(InfAdoptedRequestLog* log,
  * request, if any. If @request is a %INF_ADOPTED_REQUEST UNDO request, this
  * returns a request that redoes @request, if any.
  *
- * Return Value: The next associated request of @request, or %NULL.
+ * Returns: (transfer none) (allow-none): The next associated request of
+ * @request, or %NULL.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
@@ -1063,7 +1064,8 @@ inf_adopted_request_log_next_associated(InfAdoptedRequestLog* log,
  * of its own user must be equivalent to inf_adopted_request_log_get_end(),
  * in which case @request is treated as it if was the newest request in @log.
  *
- * Return Value: The previous associated request of @request, or %NULL.
+ * Returns: (transfer none) (allow-none): The previous associated request of
+ * @request, or %NULL.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
@@ -1131,8 +1133,8 @@ inf_adopted_request_log_prev_associated(InfAdoptedRequestLog* log,
  * of its own user must be equivalent to inf_adopted_request_log_get_end(),
  * in which case @request is treated as it if was the newest request in @log.
  *
- * Return Value: The original request of @request. This function never
- * returns %NULL.
+ * Returns: (transfer none): The original request of @request.
+ * This function never returns %NULL.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
@@ -1202,7 +1204,8 @@ inf_adopted_request_log_original_request(InfAdoptedRequestLog* log,
  * Returns the request that would be undone if a undo request was added to
  * the request log.
  *
- * Return Value: The next request to be undone, or %NULL.
+ * Returns: (transfer none) (allow-none): The next request to be undone, or
+ * %NULL.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log)
@@ -1224,7 +1227,8 @@ inf_adopted_request_log_next_undo(InfAdoptedRequestLog* log)
  * Returns the request that would be redone if a redo request was added to
  * the request log.
  *
- * Return Value: The next request to be redone, or %NULL.
+ * Returns: (transfer none) (allow-none): The next request to be redone, or
+ * %NULL.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
@@ -1251,8 +1255,8 @@ inf_adopted_request_log_next_redo(InfAdoptedRequestLog* log)
  * Note that the sets of related requests within a request log are
  * disjoint.
  *
- * Return Value: The newest request in @log being related to the @n<!-- -->th
- * request.
+ * Returns: (transfer none): The newest request in @log being related to the
+ * @n<!-- -->th request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
@@ -1285,8 +1289,8 @@ inf_adopted_request_log_upper_related(InfAdoptedRequestLog* log,
  * Note that the sets of related requests within a request log are
  * disjoint.
  *
- * Return Value: The oldest request in @log being related to the @n<!-- -->th
- * request.
+ * Returns: (transfer none): The oldest request in @log being related to the
+ * @n<!-- -->th request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_log_lower_related(InfAdoptedRequestLog* log,
@@ -1375,7 +1379,8 @@ inf_adopted_request_log_add_cached_request(InfAdoptedRequestLog* log,
  * See inf_adopted_request_log_add_cached_request() for an explanation of
  * the request cache.
  *
- * Returns: The cached #InfAdoptedRequest according to @vec, or %NULL.
+ * Returns: (transfer none) (allow-none): The cached #InfAdoptedRequest
+ * according to @vec, or %NULL.
  */
 InfAdoptedRequest*
 inf_adopted_request_log_lookup_cached_request(InfAdoptedRequestLog* log,

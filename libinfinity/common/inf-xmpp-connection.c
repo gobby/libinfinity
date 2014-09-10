@@ -165,6 +165,7 @@ struct _InfXmppConnectionPrivate {
   gnutls_certificate_request_t certificate_request;
   InfXmppConnectionCrtCallback certificate_callback;
   gpointer certificate_callback_user_data;
+  GDestroyNotify certificate_callback_notify;
 
   /* The number of chars given to the TCP connection 
    * waiting for being sent. */
@@ -1682,7 +1683,8 @@ inf_xmpp_connection_sasl_ensure(InfXmppConnection* xmpp)
       inf_sasl_context_set_callback(
         priv->sasl_context,
         inf_xmpp_connection_sasl_cb,
-        xmpp
+        xmpp,
+        NULL
       );
 
       g_object_notify(G_OBJECT(xmpp), "sasl-context");
@@ -2076,7 +2078,7 @@ inf_xmpp_connection_process_connected(InfXmppConnection* xmpp,
       }
 
       if(priv->sasl_local_mechanisms == NULL)
-        gsasl_free(mech_list);
+        g_free(mech_list);
     }
   }
 
@@ -3625,6 +3627,7 @@ inf_xmpp_connection_init(InfXmppConnection* connection)
   priv->certificate_request = GNUTLS_CERT_IGNORE;
   priv->certificate_callback = NULL;
   priv->certificate_callback_user_data = NULL;
+  priv->certificate_callback_notify = NULL;
 
   priv->position = 0;
   priv->messages = NULL;
@@ -3757,6 +3760,9 @@ inf_xmpp_connection_finalize(GObject* object)
   g_free(priv->remote_hostname);
   g_free(priv->sasl_local_mechanisms);
   g_free(priv->sasl_remote_mechanisms);
+
+  if(priv->certificate_callback_notify != NULL)
+    priv->certificate_callback_notify(priv->certificate_callback_user_data);
 
   if(priv->sasl_error)
     g_error_free(priv->sasl_error);
@@ -4240,17 +4246,18 @@ inf_xmpp_connection_xml_connection_iface_init(
  */
 
 /**
- * inf_xmpp_connection_new:
+ * inf_xmpp_connection_new: (constructor)
  * @tcp: The underlaying TCP connection to use.
  * @site: Whether this is a XMPP client or server.
- * @local_hostname: The hostname of the local host, or %NULL.
+ * @local_hostname: (allow-none): The hostname of the local host, or %NULL.
  * @remote_hostname: The hostname of the remote host.
  * @security_policy: Whether to use (or offer, as a server) TLS. See
  * #InfXmppConnectionSecurityPolicy for the meaning of this parameter.
- * @creds: Certificate credentials used to secure the communication.
- * @sasl_context: A SASL context used for authentication.
- * @sasl_mechanisms: A whitespace-separated list of SASL mechanisms to
- * accept/offer, or %NULL.
+ * @creds: (allow-none): Certificate credentials used to secure the
+ * communication.
+ * @sasl_context: (allow-none): A SASL context used for authentication.
+ * @sasl_mechanisms: (allow-none): A whitespace-separated list of SASL
+ * mechanisms to accept/offer, or %NULL.
  *
  * Creates a new #InfXmppConnection with @tcp as communication channel. No
  * attempt is being made to open @tcp, if it is not already open. However,
@@ -4287,7 +4294,7 @@ inf_xmpp_connection_xml_connection_iface_init(
  * is ignored. @sasl_mechanisms can be %NULL in which case all available
  * mechanisms are accepted or offered, respectively.
  *
- * Return Value: A new #InfXmppConnection.
+ * Returns: (transfer full): A new #InfXmppConnection.
  **/
 InfXmppConnection*
 inf_xmpp_connection_new(InfTcpConnection* tcp,
@@ -4359,8 +4366,8 @@ inf_xmpp_connection_get_tls_enabled(InfXmppConnection* xmpp)
  * only be used after the TLS handshake has completed, see
  * inf_xmpp_connection_get_tls_enabled().
  *
- * Returns: The certificate of the local host. The returned value should not
- * be freed, it is owned by the #InfXmppConnection.
+ * Returns: (transfer none): The certificate of the local host. The returned
+ * value should not be freed, it is owned by the #InfXmppConnection.
  */
 gnutls_x509_crt_t
 inf_xmpp_connection_get_own_certificate(InfXmppConnection* xmpp)
@@ -4382,8 +4389,8 @@ inf_xmpp_connection_get_own_certificate(InfXmppConnection* xmpp)
  * with. This function can only be used after the TLS handshake has completed,
  * see inf_xmpp_connection_get_tls_enabled().
  *
- * Returns: The certificate chain of the remote host. The returned value
- * should not be freed, it is owned by the #InfXmppConnection.
+ * Returns: (transfer none): The certificate chain of the remote host. The
+ * returned value should not be freed, it is owned by the #InfXmppConnection.
  */
 InfCertificateChain*
 inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
@@ -4400,9 +4407,11 @@ inf_xmpp_connection_get_peer_certificate(InfXmppConnection* xmpp)
 /**
  * inf_xmpp_connection_set_certificate_callback:
  * @xmpp: A #InfXmppConnection.
- * @req: Whether to request a client certificate from the peer.
- * @cb: Function to be called to verify the peer's certificate, or %NULL.
+ * @req: (type int): Whether to request a client certificate from the peer.
+ * @cb: (allow-none): Function to be called to verify the peer's
+ * certificate, or %NULL.
  * @user_data: Additional data to pass to the callback function.
+ * @notify: (allow-none): Function to call to free the user data, or %NULL.
  *
  * This function sets a callback that is called when the connection needs to
  * verify the peer's certificate. It does not need to respond immediately,
@@ -4426,16 +4435,20 @@ void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
                                              gnutls_certificate_request_t req,
                                              InfXmppConnectionCrtCallback cb,
-                                             gpointer user_data)
+                                             gpointer user_data,
+                                             GDestroyNotify notify)
 {
   InfXmppConnectionPrivate* priv;
 
   g_return_if_fail(INF_IS_XMPP_CONNECTION(xmpp));
 
   priv = INF_XMPP_CONNECTION_PRIVATE(xmpp);
+  if(priv->certificate_callback_notify != NULL)
+    priv->certificate_callback_notify(priv->certificate_callback_user_data);
   priv->certificate_request = req;
   priv->certificate_callback = cb;
   priv->certificate_callback_user_data = user_data;
+  priv->certificate_callback_notify = notify;
 }
 
 /**
@@ -4540,9 +4553,9 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,
 /**
  * inf_xmpp_connection_reset_sasl_authentication:
  * @xmpp: A #InfXmppConnection.
- * @new_context: The new sasl context to set, or %NULL.
- * @new_mechanisms: Allowed SASL mechanisms to use. Ignored if @new_context
- * is %NULL.
+ * @new_context: (allow-none): The new sasl context to set, or %NULL.
+ * @new_mechanisms: (allow-none): Allowed SASL mechanisms to use. Ignored if
+ * @new_context is %NULL.
  *
  * Sets a new SASL context and mechanisms to use for authentication. This does
  * not have any effect if authentication has already been performed. This can

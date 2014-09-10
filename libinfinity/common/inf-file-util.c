@@ -140,7 +140,7 @@ inf_file_util_delete_directory_list_func(const gchar* name,
 }
 /**
  * inf_file_util_create_single_directory:
- * @path: The directory to create.
+ * @path: (type filename): The directory to create.
  * @mode: Permissions to use for the newly created directory.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -188,7 +188,7 @@ inf_file_util_create_single_directory(const gchar* path,
 
 /**
  * inf_file_util_create_directory:
- * @path: The directory to create.
+ * @path: (type filename): The directory to create.
  * @mode: Permissions to use for the newly created directory.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -223,9 +223,9 @@ inf_file_util_create_directory(const gchar* path,
 
 /**
  * inf_file_util_list_directory:
- * @path: The directory to explore.
- * @func: Callback function to be called for each child of the directory at
- * @path.
+ * @path: (type filename): The directory to explore.
+ * @func: (scope call): Callback function to be called for each child of the
+ * directory at @path.
  * @user_data: Additional data to pass to @func.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -388,7 +388,7 @@ inf_file_util_list_directory(const gchar* path,
 
 /**
  * inf_file_util_delete_file:
- * @path: Path to the file to delete.
+ * @path: (type filename): Path to the file to delete.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Removes the file at @path if it is empty. Fails if @path points to a
@@ -429,7 +429,7 @@ inf_file_util_delete_file(const gchar* path,
 
 /**
  * inf_file_util_delete_single_directory:
- * @path: Path to the directory to delete.
+ * @path: (type filename): Path to the directory to delete.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Removes the directory at @path if it is empty, or fails otherwise. Fails
@@ -470,7 +470,7 @@ inf_file_util_delete_single_directory(const gchar* path,
 
 /**
  * inf_file_util_delete_directory:
- * @path: Path to the directory to delete.
+ * @path: (type filename): Path to the directory to delete.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Removes the directory at @path recursively. Fails if @path points to a
@@ -500,7 +500,7 @@ inf_file_util_delete_directory(const gchar* path,
 
 /**
  * inf_file_util_delete:
- * @path: Path to the object to delete.
+ * @path: (type filename): Path to the object to delete.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Removes the file or directory at @path. If it is a directory the directory

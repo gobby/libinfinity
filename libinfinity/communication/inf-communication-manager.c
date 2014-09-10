@@ -246,11 +246,11 @@ inf_communication_manager_class_init(
 }
 
 /**
- * inf_communication_manager_new:
+ * inf_communication_manager_new: (constructor)
  *
  * Creates a new #InfCommunicationManager.
  *
- * Returns: A new #InfCommunicationManager.
+ * Returns: (transfer full): A new #InfCommunicationManager.
  */
 InfCommunicationManager*
 inf_communication_manager_new(void)
@@ -262,7 +262,8 @@ inf_communication_manager_new(void)
  * inf_communication_manager_open_group:
  * @manager: A #InfCommunicationManager.
  * @group_name: A name for the new group.
- * @methods: Methods to support, or %NULL.
+ * @methods: (allow-none) (array zero-terminated=1): Methods to support, or
+ * %NULL.
  *
  * Opens a new communication group published by the local host. @group_name
  * is an identifier for the group via which other hosts can join the group
@@ -275,8 +276,8 @@ inf_communication_manager_new(void)
  * "central" method will be used, which is guaranteed to be supported for
  * all networks.
  *
- * Returns: A #InfCommunicationHostedGroup. Free with g_object_unref() to
- * leave the group.
+ * Returns: (transfer full): A #InfCommunicationHostedGroup. Free with
+ * g_object_unref() to leave the group.
  */
 InfCommunicationHostedGroup*
 inf_communication_manager_open_group(InfCommunicationManager* manager,
@@ -345,8 +346,8 @@ inf_communication_manager_open_group(InfCommunicationManager* manager,
  * inf_communication_manager_get_factory_for() for @publisher_conn's network
  * and @method returns %NULL).
  *
- * Returns: A new #InfCommunicationJoinedGroup, or %NULL. Free with
- * g_object_unref() to leave the group.
+ * Returns: (transfer full) (allow-none): A new #InfCommunicationJoinedGroup,
+ * or %NULL. Free with g_object_unref() to leave the group.
  */
 InfCommunicationJoinedGroup*
 inf_communication_manager_join_group(InfCommunicationManager* manager,
@@ -462,7 +463,8 @@ inf_communication_manager_add_factory(InfCommunicationManager* manager,
  * a #InfCommunicationMethod for @method_name on @network, or %NULL if the
  * network/method combination is not supported.
  *
- * Returns: A #InfCommunicationFactory, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfCommunicationFactory,
+ * or %NULL.
  */
 InfCommunicationFactory*
 inf_communication_manager_get_factory_for(InfCommunicationManager* manager,

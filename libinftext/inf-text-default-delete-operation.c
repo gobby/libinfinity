@@ -478,7 +478,7 @@ inf_text_default_delete_operation_delete_operation_iface_init(
 }
 
 /**
- * inf_text_default_delete_operation_new:
+ * inf_text_default_delete_operation_new: (constructor)
  * @position: The position at which to delete text.
  * @chunk: The text to delete.
  *
@@ -487,7 +487,7 @@ inf_text_default_delete_operation_delete_operation_iface_init(
  * cannot be applied, if there is some other text at that position in the
  * buffer.
  *
- * Return Value: A new #InfTextDefaultDeleteOperation.
+ * Returns: (transfer full): A new #InfTextDefaultDeleteOperation.
  **/
 InfTextDefaultDeleteOperation*
 inf_text_default_delete_operation_new(guint position,
@@ -513,7 +513,7 @@ inf_text_default_delete_operation_new(guint position,
  *
  * Returns the text deleted by @operation.
  *
- * Return Value: A #InfTextChunk, owned by the operation.
+ * Returns: (transfer none): A #InfTextChunk, owned by the operation.
  **/
 InfTextChunk*
 inf_text_default_delete_operation_get_chunk(

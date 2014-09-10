@@ -615,7 +615,7 @@ inf_adopted_undo_grouping_class_init(
 }
 
 /**
- * inf_adopted_undo_grouping_new:
+ * inf_adopted_undo_grouping_new: (constructor)
  *
  * Creates a new #InfAdoptedUndoGrouping. To start grouping requests, set a
  * user whose requests to group via inf_adopted_undo_grouping_set_algorithm().
@@ -623,7 +623,8 @@ inf_adopted_undo_grouping_class_init(
  * #InfAdoptedUndoGrouping::group-requests, so the user's initial requests can
  * be grouped correctly.
  *
- * Returns: A new #InfAdoptedUndoGrouping, to be freed via g_object_unref().
+ * Returns: (transfer full): A new #InfAdoptedUndoGrouping, to be freed
+ * via g_object_unref().
  */
 InfAdoptedUndoGrouping*
 inf_adopted_undo_grouping_new(void)
@@ -639,7 +640,7 @@ inf_adopted_undo_grouping_new(void)
  *
  * Returns the #InfAdoptedAlgorithm for @grouping.
  *
- * Returns: @grouping's algorithm.
+ * Returns: (transfer none): @grouping's algorithm.
  */
 InfAdoptedAlgorithm*
 inf_adopted_undo_grouping_get_algorithm(InfAdoptedUndoGrouping* grouping)

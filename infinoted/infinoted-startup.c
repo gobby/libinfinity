@@ -441,7 +441,8 @@ infinoted_startup_load(InfinotedStartup* startup,
     inf_sasl_context_set_callback(
       startup->sasl_context,
       infinoted_startup_sasl_callback,
-      startup
+      startup,
+      NULL
     );
   }
 

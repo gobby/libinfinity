@@ -51,7 +51,7 @@ G_DEFINE_BOXED_TYPE(InfBrowserIter, inf_browser_iter, inf_browser_iter_copy, inf
  * Makes a dynamically allocated copy of @iter. This should not be used by
  * applications because you can copy the structs by value.
  *
- * Return Value: A newly-allocated copy of @iter.
+ * Return Value: (transfer full): A newly-allocated copy of @iter.
  */
 InfBrowserIter*
 inf_browser_iter_copy(const InfBrowserIter* iter)

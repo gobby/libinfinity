@@ -227,6 +227,8 @@ INF_TEXT_MOVE_OPERATION_GET_CLASS
 <FILE>inf-text-chunk</FILE>
 InfTextChunk
 InfTextChunkIter
+inf_text_chunk_iter_copy
+inf_text_chunk_iter_free
 inf_text_chunk_new
 inf_text_chunk_copy
 inf_text_chunk_free
@@ -248,7 +250,9 @@ inf_text_chunk_iter_get_length
 inf_text_chunk_iter_get_bytes
 inf_text_chunk_iter_get_author
 <SUBSECTION Standard>
+INF_TEXT_TYPE_CHUNK_ITER
 INF_TEXT_TYPE_CHUNK
+inf_text_chunk_iter_get_type
 inf_text_chunk_get_type
 </SECTION>
 

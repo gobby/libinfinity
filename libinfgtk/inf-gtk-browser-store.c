@@ -903,6 +903,7 @@ inf_gtk_browser_store_begin_request_subscribe_session_cb(InfBrowser* browser,
 static void
 inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
                                            InfXmlConnection* connection,
+                                           const GError* error,
                                            gpointer user_data)
 {
   InfGtkBrowserStore* store;
@@ -926,8 +927,6 @@ inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
   store = INF_GTK_BROWSER_STORE(user_data);
   priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
   new_item = inf_gtk_browser_store_find_item_by_discovery_info(store, info);
-  old_item = inf_gtk_browser_store_find_item_by_connection(store, connection);
-
   g_assert(new_item != NULL);
   g_assert(new_item->status == INF_GTK_BROWSER_MODEL_RESOLVING);
 
@@ -936,144 +935,134 @@ inf_gtk_browser_store_resolv_complete_func(InfDiscoveryInfo* info,
   tree_iter.user_data2 = GUINT_TO_POINTER(0);
   tree_iter.user_data3 = NULL;
 
-  if(old_item != NULL)
+  if(error != NULL)
   {
-    g_assert(old_item != new_item);
+    new_item->status = INF_GTK_BROWSER_MODEL_ERROR;
+    new_item->error = g_error_copy(error);
 
-    /* There is already an item with the same connection. This is perhaps from
-     * another discovery or was inserted directly. We remove the current item
-     * and move the existing one to the place of it. */
-
-    count = 0;
-    prev = NULL;
-
-    for(cur = priv->first_item; cur != NULL; cur = cur->next)
-    {
-      if(cur == old_item) { old_pos = count; prev_old = prev; }
-      if(cur == new_item) { new_pos = count; prev_new = prev; }
-      ++ count;
-      prev = cur;
-    }
-
-    inf_gtk_browser_store_remove_item(store, new_item);
-    if(old_pos > new_pos) -- old_pos;
-    else -- new_pos;
-    -- count;
-
-    /* Reorder list if the two items were not adjacent */
-    if(new_pos != old_pos)
-    {
-      /* old item is last element, but it is moved elsewhere */
-      if(old_item->next == NULL)
-        priv->last_item = prev_old;
-
-      /* Unlink old_item */
-      if(prev_old != NULL)
-        prev_old->next = old_item->next;
-      else
-        priv->first_item = old_item->next;
-
-      /* Relink */
-      old_item->next = prev_new->next;
-
-      if(prev_new != NULL)
-        prev_new->next = old_item;
-      else
-        priv->first_item = old_item;
-
-      /* old_item has been moved to end of list */
-      if(old_item->next == NULL)
-        priv->last_item = old_item;
-
-      order = g_malloc(sizeof(gint) * count);
-      if(new_pos < old_pos)
-      {
-        for(i = 0; i < new_pos; ++ i)
-          order[i] = i;
-        order[new_pos] = old_pos;
-        for(i = new_pos + 1; i <= old_pos; ++ i)
-          order[i] = i - 1;
-        for(i = old_pos + 1; i < count; ++ i)
-          order[i] = i;
-      }
-      else
-      {
-        for(i = 0; i < old_pos; ++ i)
-          order[i] = i;
-        for(i = old_pos; i < new_pos; ++ i)
-          order[i] = i + 1;
-        order[new_pos] = old_pos;
-        for(i = new_pos + 1; i < count; ++ i)
-          order[i] = i;
-      }
-
-      path = gtk_tree_path_new();
-      gtk_tree_model_rows_reordered(GTK_TREE_MODEL(store), path, NULL, order);
-      gtk_tree_path_free(path);
-
-      /* TODO: Perhaps we should emit a signal so that the view can
-       * highlight and scroll to the existing item. And also so that it can
-       * over initial root exploration. */
-
-      g_free(order);
-    }
+    path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
+    gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &tree_iter);
+    gtk_tree_path_free(path);
   }
   else
   {
-    path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
+    old_item =
+      inf_gtk_browser_store_find_item_by_connection(store, connection);
 
-    browser = infc_browser_new(
-      priv->io,
-      priv->communication_manager,
-      connection
-    );
-
-    /* The connection is not set if the browser could not find a "central"
-     * method for the connection's network. */
-    /* TODO: Set error */
-    if(infc_browser_get_connection(browser) != NULL)
+    if(old_item != NULL)
     {
-      inf_gtk_browser_store_item_set_browser(
-        store,
-        new_item,
-        path,
-        INF_BROWSER(browser)
-      );
+      g_assert(old_item != new_item);
+
+      /* There is already an item with the same connection. This is perhaps
+       * from another discovery or was inserted directly. We remove the
+       * current item and move the existing one to the place of it. */
+
+      count = 0;
+      prev = NULL;
+
+      for(cur = priv->first_item; cur != NULL; cur = cur->next)
+      {
+        if(cur == old_item) { old_pos = count; prev_old = prev; }
+        if(cur == new_item) { new_pos = count; prev_new = prev; }
+        ++ count;
+        prev = cur;
+      }
+
+      inf_gtk_browser_store_remove_item(store, new_item);
+      if(old_pos > new_pos) -- old_pos;
+      else -- new_pos;
+      -- count;
+
+      /* Reorder list if the two items were not adjacent */
+      if(new_pos != old_pos)
+      {
+        /* old item is last element, but it is moved elsewhere */
+        if(old_item->next == NULL)
+          priv->last_item = prev_old;
+
+        /* Unlink old_item */
+        if(prev_old != NULL)
+          prev_old->next = old_item->next;
+        else
+          priv->first_item = old_item->next;
+
+        /* Relink */
+        old_item->next = prev_new->next;
+
+        if(prev_new != NULL)
+          prev_new->next = old_item;
+        else
+          priv->first_item = old_item;
+
+        /* old_item has been moved to end of list */
+        if(old_item->next == NULL)
+          priv->last_item = old_item;
+
+        order = g_malloc(sizeof(gint) * count);
+        if(new_pos < old_pos)
+        {
+          for(i = 0; i < new_pos; ++ i)
+            order[i] = i;
+          order[new_pos] = old_pos;
+          for(i = new_pos + 1; i <= old_pos; ++ i)
+            order[i] = i - 1;
+          for(i = old_pos + 1; i < count; ++ i)
+            order[i] = i;
+        }
+        else
+        {
+          for(i = 0; i < old_pos; ++ i)
+            order[i] = i;
+          for(i = old_pos; i < new_pos; ++ i)
+            order[i] = i + 1;
+          order[new_pos] = old_pos;
+          for(i = new_pos + 1; i < count; ++ i)
+            order[i] = i;
+        }
+
+        path = gtk_tree_path_new();
+        gtk_tree_model_rows_reordered(
+          GTK_TREE_MODEL(store),
+          path,
+          NULL,
+          order
+        );
+        gtk_tree_path_free(path);
+
+        /* TODO: Perhaps we should emit a signal so that the view can
+         * highlight and scroll to the existing item. And also so that it can
+         * over initial root exploration. */
+
+        g_free(order);
+      }
     }
+    else
+    {
+      path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
 
-    g_object_unref(G_OBJECT(browser));
-    gtk_tree_path_free(path);
+      browser = infc_browser_new(
+        priv->io,
+        priv->communication_manager,
+        connection
+      );
+
+      /* The connection is not set if the browser could not find a "central"
+       * method for the connection's network. */
+      /* TODO: Set error */
+      if(infc_browser_get_connection(browser) != NULL)
+      {
+        inf_gtk_browser_store_item_set_browser(
+          store,
+          new_item,
+          path,
+          INF_BROWSER(browser)
+        );
+      }
+
+      g_object_unref(G_OBJECT(browser));
+      gtk_tree_path_free(path);
+    }
   }
-}
-
-static void
-inf_gtk_browser_store_resolv_error_func(InfDiscoveryInfo* info,
-                                        const GError* error,
-                                        gpointer user_data)
-{
-  InfGtkBrowserStore* store;
-  InfGtkBrowserStorePrivate* priv;
-  InfGtkBrowserStoreItem* item;
-  GtkTreeIter tree_iter;
-  GtkTreePath* path;
-
-  store = INF_GTK_BROWSER_STORE(user_data);
-  priv = INF_GTK_BROWSER_STORE_PRIVATE(store);
-  item = inf_gtk_browser_store_find_item_by_discovery_info(store, info);
-
-  g_assert(item != NULL);
-  g_assert(item->status == INF_GTK_BROWSER_MODEL_RESOLVING);
-  item->status = INF_GTK_BROWSER_MODEL_ERROR;
-  item->error = g_error_copy(error);
-
-  tree_iter.stamp = priv->stamp;
-  tree_iter.user_data = item;
-  tree_iter.user_data2 = GUINT_TO_POINTER(0);
-  tree_iter.user_data3 = NULL;
-
-  path = gtk_tree_model_get_path(GTK_TREE_MODEL(store), &tree_iter);
-  gtk_tree_model_row_changed(GTK_TREE_MODEL(store), path, &tree_iter);
-  gtk_tree_path_free(path);
 }
 
 /*
@@ -2178,7 +2167,6 @@ inf_gtk_browser_store_browser_model_resolve(InfGtkBrowserModel* model,
     discovery,
     info,
     inf_gtk_browser_store_resolv_complete_func,
-    inf_gtk_browser_store_resolv_error_func,
     model
   );
 }
@@ -2293,14 +2281,14 @@ inf_gtk_browser_store_browser_model_iface_init(
  */
 
 /**
- * inf_gtk_browser_store_new:
+ * inf_gtk_browser_store_new: (constructor)
  * @io: A #InfIo object for the created #InfcBrowser to schedule timeouts.
  * @comm_manager: The #InfCommunicationManager with which to explore
  * remote directories.
  *
  * Creates a new #InfGtkBrowserStore.
  *
- * Return Value: A new #InfGtkBrowserStore.
+ * Returns: (transfer full): A new #InfGtkBrowserStore.
  **/
 InfGtkBrowserStore*
 inf_gtk_browser_store_new(InfIo* io,
@@ -2380,7 +2368,7 @@ inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,
  * inf_gtk_browser_store_add_connection:
  * @store: A #InfGtkBrowserStore.
  * @connection: A #InfXmlConnection.
- * @name: Name for the item, or %NULL.
+ * @name: (allow-none): Name for the item, or %NULL.
  *
  * This function adds a connection to the @store. @store will show up
  * an item for the connection if there is not already one. This allows to
@@ -2391,7 +2379,7 @@ inf_gtk_browser_store_add_discovery(InfGtkBrowserStore* store,
  * The return value is the #InfBrowser for the added connection, or an
  * existing browser for the connection, if there is any.
  *
- * Returns: An #InfBrowser for the new connection.
+ * Returns: (transfer none): An #InfBrowser for the new connection.
  **/
 InfBrowser*
 inf_gtk_browser_store_add_connection(InfGtkBrowserStore* store,

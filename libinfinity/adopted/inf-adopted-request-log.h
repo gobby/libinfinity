@@ -49,7 +49,7 @@ struct _InfAdoptedRequestLogClass {
   GObjectClass parent_class;
 
   /*< public >*/
-  void(*add_request)(InfAdoptedRequestLog* request_log,
+  void(*add_request)(InfAdoptedRequestLog* log,
                      InfAdoptedRequest* request);
 };
 

@@ -986,12 +986,12 @@ inf_text_gtk_hue_chooser_class_init(
  */
 
 /**
- * inf_text_gtk_hue_chooser_new:
+ * inf_text_gtk_hue_chooser_new: (constructor)
  *
  * Creates a new #InfTextGtkHueChooser widget with the initial hue set to 0.0
  * (red).
  *
- * Return Value: A newly created #InfTextGtkHueChooser.
+ * Returns: (transfer floating): A newly created #InfTextGtkHueChooser.
  **/
 GtkWidget*
 inf_text_gtk_hue_chooser_new(void)
@@ -1002,13 +1002,13 @@ inf_text_gtk_hue_chooser_new(void)
 }
 
 /**
- * inf_text_gtk_hue_chooser_new_with_hue:
+ * inf_text_gtk_hue_chooser_new_with_hue: (constructor)
  * @hue: Initial hue value
  *
  * Creates a new #InfTextGtkHueChooser widget with the given hue as initial
  * value. @hue must be between 0.0 and 1.0.
  *
- * Return Value: A newly created #InfTextGtkHueChooser.
+ * Returns: (transfer floating): A newly created #InfTextGtkHueChooser.
  **/
 GtkWidget*
 inf_text_gtk_hue_chooser_new_with_hue(gdouble hue)

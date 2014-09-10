@@ -520,13 +520,13 @@ inf_adopted_session_record_class_init(
  */
 
 /**
- * inf_adopted_session_record_new:
+ * inf_adopted_session_record_new: (constructor)
  * @session: A #InfAdoptedSession.
  *
  * Creates a new #InfAdoptedSessionRecord, recording @session. To start
  * recording, call inf_adopted_session_record_start_recording().
  *
- * Return Value: A new #InfAdoptedSessionRecord.
+ * Return Value: (transfer full): A new #InfAdoptedSessionRecord.
  **/
 InfAdoptedSessionRecord*
 inf_adopted_session_record_new(InfAdoptedSession* session)
@@ -547,7 +547,7 @@ inf_adopted_session_record_new(InfAdoptedSession* session)
 /**
  * inf_adopted_session_record_start_recording:
  * @record: A #InfAdoptedSessionRecord.
- * @filename: The file in which to store the record.
+ * @filename: (type filename): The file in which to store the record.
  * @error: Location to store error information, if any.
  *
  * Starts to record the session. Make sure the session is not already closed

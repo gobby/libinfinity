@@ -1150,11 +1150,11 @@ inf_name_resolver_class_init(InfNameResolverClass* name_resolver_class)
 }
 
 /**
- * inf_name_resolver_new:
+ * inf_name_resolver_new: (constructor)
  * @io: A #InfIo object used to schedule events in the main thread.
  * @hostname: The hostname to look up.
- * @service: The name of the service to look up, or %NULL.
- * @srv: The SRV record to look up, or %NULL.
+ * @service: (allow-none): The name of the service to look up, or %NULL.
+ * @srv: (allow-none): The SRV record to look up, or %NULL.
  *
  * Creates a new #InfNameResolver. Use inf_name_resolver_start() to start
  * resolving the hostname.
@@ -1173,7 +1173,8 @@ inf_name_resolver_class_init(InfNameResolverClass* name_resolver_class)
  * inf_name_resolver_get_port() is then different from 0, then use that
  * port number, otherwise the default port number for the service.
  *
- * Returns: A new #InfNameResolver. Free with g_object_unref().
+ * Returns: (transfer full): A new #InfNameResolver. Free with
+ * g_object_unref().
  **/
 InfNameResolver*
 inf_name_resolver_new(InfIo* io,
@@ -1205,7 +1206,7 @@ inf_name_resolver_new(InfIo* io,
  *
  * Returns the currently configured hostname that @resolver will look up.
  *
- * Returns: The currently configured hostname.
+ * Returns: (allow-none): The currently configured hostname.
  */
 const gchar*
 inf_name_resolver_get_hostname(InfNameResolver* resolver)
@@ -1220,7 +1221,7 @@ inf_name_resolver_get_hostname(InfNameResolver* resolver)
  *
  * Returns the currently configured service that @resolver will look up.
  *
- * Returns: The currently configured service.
+ * Returns: (allow-none): The currently configured service.
  */
 const gchar*
 inf_name_resolver_get_service(InfNameResolver* resolver)
@@ -1235,7 +1236,7 @@ inf_name_resolver_get_service(InfNameResolver* resolver)
  *
  * Returns the currently configured SRV record that @resolver will look up.
  *
- * Returns: The currently configured SRV record.
+ * Returns: (allow-none): The currently configured SRV record.
  */
 const gchar*
 inf_name_resolver_get_srv(InfNameResolver* resolver)
@@ -1403,7 +1404,7 @@ inf_name_resolver_get_n_addresses(InfNameResolver* resolver)
  * Returns the @index<!-- -->th address looked up in the last hostname
  * resolution operation.
  *
- * Returns: The looked up #InfIpAddress.
+ * Returns: (transfer none): The looked up #InfIpAddress.
  */
 const InfIpAddress*
 inf_name_resolver_get_address(InfNameResolver* resolver,

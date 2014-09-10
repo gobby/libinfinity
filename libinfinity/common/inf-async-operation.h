@@ -53,7 +53,7 @@ typedef void(*InfAsyncOperationDoneFunc)(gpointer run_data,
                                          gpointer user_data);
 
 /**
- * InfAsyncOperation:
+ * InfAsyncOperation: (foreign)
  *
  * #InfAsyncOperation is an opaque data type and should only be accessed via
  * the public API functions.

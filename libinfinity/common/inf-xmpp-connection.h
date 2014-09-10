@@ -336,7 +336,8 @@ void
 inf_xmpp_connection_set_certificate_callback(InfXmppConnection* xmpp,
                                              gnutls_certificate_request_t req,
                                              InfXmppConnectionCrtCallback cb,
-                                             gpointer user_data);
+                                             gpointer user_data,
+                                             GDestroyNotify notify);
 
 void
 inf_xmpp_connection_certificate_verify_continue(InfXmppConnection* xmpp);

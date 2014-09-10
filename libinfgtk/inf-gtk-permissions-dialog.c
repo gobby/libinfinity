@@ -2960,20 +2960,21 @@ inf_gtk_permissions_dialog_class_init(
  */
 
 /**
- * inf_gtk_permissions_dialog_new:
+ * inf_gtk_permissions_dialog_new: (constructor)
  * @parent: Parent #GtkWindow of the dialog.
  * @dialog_flags: Flags for the dialog, see #GtkDialogFlags.
- * @browser: The #InfBrowser containing the node to show permissions for, or
- * %NULL.
- * @iter: An iterator pointing to the node to show permissions for, or %NULL.
+ * @browser: (allow-none): The #InfBrowser containing the node to show
+ * permissions for, or %NULL.
+ * @iter: (allow-none): An iterator pointing to the node to show permissions
+ * for, or %NULL.
  *
  * Creates a new #InfGtkPermissionsDialog, showing the ACL for the node
  * @iter points to inside @browser. If @browser is %NULL, @iter must be %NULL,
  * too. In that case no permissions are shown, and the node to be shown can
  * be set later with inf_gtk_permissions_dialog_set_node().
  *
- * Returns: A new #InfGtkPermissionsDialog. Free with gtk_widget_destroy()
- * when no longer needed.
+ * Returns: (transfer full): A new #InfGtkPermissionsDialog. Free with
+ * gtk_widget_destroy() when no longer needed.
  */
 InfGtkPermissionsDialog*
 inf_gtk_permissions_dialog_new(GtkWindow* parent,
@@ -3007,9 +3008,10 @@ inf_gtk_permissions_dialog_new(GtkWindow* parent,
 /**
  * inf_gtk_permissions_dialog_set_node:
  * @dialog: A #InfGtkPermissionsDialog.
- * @browser: The #InfBrowser containing the node to show permissions for, or
- * %NULL.
- * @iter: An iterator pointing to the node to show permissions for, or %NULL.
+ * @browser: (allow-none): The #InfBrowser containing the node to show
+ * permissions for, or %NULL.
+ * @iter: (allow-none): An iterator pointing to the node to show permissions
+ * for, or %NULL.
  *
  * Changes the node the dialog shows permissions for. To unset the node, both
  * @browser and @iter should be %NULL.

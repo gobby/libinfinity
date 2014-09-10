@@ -202,7 +202,8 @@ inf_acl_account_id_to_string(InfAclAccountId account)
  * Converts the given string into a unique account identifier which can be
  * used with the rest of the ACL API.
  *
- * Returns: The account ID which is equivalent to the given string.
+ * Returns: (transfer full): The account ID which is equivalent to the given
+ * string.
  */
 InfAclAccountId
 inf_acl_account_id_from_string(const gchar* id)

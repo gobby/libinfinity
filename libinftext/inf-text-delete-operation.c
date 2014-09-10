@@ -53,7 +53,7 @@ inf_text_delete_operation_default_init(InfTextDeleteOperationInterface* iface)
  *
  * Returns the position at which @operation starts to delete dext.
  *
- * Return Value: The position of @operation.
+ * Returns: The position of @operation.
  **/
 guint
 inf_text_delete_operation_get_position(InfTextDeleteOperation* operation)
@@ -74,7 +74,7 @@ inf_text_delete_operation_get_position(InfTextDeleteOperation* operation)
  *
  * Returns the number of characters deleted by @operation.
  *
- * Return Value: The length of @operation.
+ * Returns: The length of @operation.
  **/
 guint
 inf_text_delete_operation_get_length(InfTextDeleteOperation* operation)
@@ -118,7 +118,7 @@ inf_text_delete_operation_need_concurrency_id(InfTextDeleteOperation* op,
  * Returns a new operation that includes the effect of @against into
  * @operation.
  *
- * Return Value: A new #InfAdoptedOperation.
+ * Returns: (transfer full): A new #InfAdoptedOperation.
  **/
 InfAdoptedOperation*
 inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
@@ -168,7 +168,7 @@ inf_text_delete_operation_transform_insert(InfTextDeleteOperation* operation,
  * Returns a new operation that includes the effect of @against into
  * @operation.
  *
- * Return Value: A new #InfAdoptedOperation.
+ * Returns: (transfer full): A new #InfAdoptedOperation.
  **/
 InfAdoptedOperation*
 inf_text_delete_operation_transform_delete(InfTextDeleteOperation* operation,

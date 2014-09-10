@@ -297,7 +297,7 @@ inf_text_move_operation_operation_iface_init(
 }
 
 /**
- * inf_text_move_operation_new:
+ * inf_text_move_operation_new: (constructor)
  * @position: The position to place the user's caret at.
  * @length: The number of characters to select. Negative means selection
  * towards the beginning of the buffer.
@@ -305,7 +305,7 @@ inf_text_move_operation_operation_iface_init(
  * Creates a new move operation that, when applied, changes the caret and
  * selection of the applying user.
  *
- * Return Value: A new #InfTextMoveOperation.
+ * Returns: (transfer full): A new #InfTextMoveOperation.
  **/
 InfTextMoveOperation*
 inf_text_move_operation_new(guint position,
@@ -329,7 +329,7 @@ inf_text_move_operation_new(guint position,
  *
  * Returns the position at which @operation places the user's cursor.
  *
- * Return Value: The position of @operation.
+ * Returns: The position of @operation.
  **/
 guint
 inf_text_move_operation_get_position(InfTextMoveOperation* operation)
@@ -345,7 +345,7 @@ inf_text_move_operation_get_position(InfTextMoveOperation* operation)
  * Returns the length to which @operation changes the user's selection.
  * Negative means selection towards the beginning of the buffer.
  *
- * Return Value: The length of @operation.
+ * Returns: The length of @operation.
  **/
 gint
 inf_text_move_operation_get_length(InfTextMoveOperation* operation)
@@ -358,9 +358,10 @@ inf_text_move_operation_get_length(InfTextMoveOperation* operation)
  * inf_text_move_operation_transform_insert:
  * @insert_position: The position at which text is inserted.
  * @insert_length: The number of inserted characters.
- * @move_position: Points to the character offset to which the caret is moved.
- * @move_length: Points to the number of characters selected. Negative means
- * towards the beginning.
+ * @move_position: (inout): Points to the character offset to which the caret
+ * is moved.
+ * @move_length: (inout): Points to the number of characters selected.
+ * Negative means towards the beginning.
  * @left_gravity: Whether the move position and length have left gravity.
  *
  * Changes *@move_position and *@move_length so that they point to the same
@@ -435,9 +436,10 @@ inf_text_move_operation_transform_insert(guint insert_position,
  * inf_text_move_operation_transform_delete:
  * @delete_position: The position at which text is deleted.
  * @delete_length: The number of deleted characters.
- * @move_position: Points to the character offset to which the caret is moved.
- * @move_length: Points to the number of characters selected. Negative means
- * towards the beginning.
+ * @move_position: (inout): Points to the character offset to which the caret
+ * is moved.
+ * @move_length: (inout): Points to the number of characters selected.
+ * Negative means towards the beginning.
  *
  * Changes *@move_position and *@move_length so that they point to the same
  * region when @delete_length characters are deleted starting from

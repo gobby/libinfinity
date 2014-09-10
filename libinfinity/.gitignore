@@ -1,3 +1,6 @@
 inf-config.h
 inf-marshal.c
 inf-marshal.h
+Infinity-*.gir
+Infinityc-*.gir
+Infinityd-*.gir

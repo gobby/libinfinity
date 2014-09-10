@@ -39,7 +39,7 @@ G_BEGIN_DECLS
 typedef struct _InfSaslContext InfSaslContext;
 
 /**
- * InfSaslContextSession:
+ * InfSaslContextSession: (foreign)
  *
  * #InfSaslContextSession represents an ongoing authentication session. Create
  * with inf_sasl_context_server_start_session() or
@@ -111,7 +111,8 @@ inf_sasl_context_unref(InfSaslContext* context);
 void
 inf_sasl_context_set_callback(InfSaslContext* context,
                               InfSaslContextCallbackFunc callback,
-                              gpointer user_data);
+                              gpointer user_data,
+                              GDestroyNotify notify);
 
 InfSaslContextSession*
 inf_sasl_context_client_start_session(InfSaslContext* context,

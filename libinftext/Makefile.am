@@ -64,8 +64,7 @@ InfText_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
 	--add-include-path=$(top_builddir)/libinfinity \
 	-n InfText \
-	--identifier-prefix=InfText \
-	--warn-all
+	--identifier-prefix=InfText
 
 InfText_0_7_gir_NAMESPACE = InfText
 InfText_0_7_gir_VERSION = 0.7
@@ -75,7 +74,7 @@ InfText_0_7_gir_FILES = \
 	$(libinftext_0_7_la_SOURCES) \
 	$(libinftext_0_7_la_HEADERS)
 
-InfText_0_7_gir_INCLUDES = Infinity-0.7
+InfText_0_7_gir_INCLUDES = Infinity-0.7 Infinityd-0.7
 InfText_0_7_gir_PACKAGES = gobject-2.0
 InfText_0_7_gir_EXPORT_PACKAGES = libinftext-0.7
 

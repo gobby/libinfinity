@@ -2605,11 +2605,11 @@ inf_gtk_browser_view_class_init(InfGtkBrowserViewClass* view_class)
  */
 
 /**
- * inf_gtk_browser_view_new:
+ * inf_gtk_browser_view_new: (constructor)
  *
  * Creates a new #InfGtkBrowserView.
  *
- * Return Value: A new #InfGtkBrowserView.
+ * Returns: (transfer floating): A new #InfGtkBrowserView.
  **/
 GtkWidget*
 inf_gtk_browser_view_new(void)
@@ -2620,12 +2620,12 @@ inf_gtk_browser_view_new(void)
 }
 
 /**
- * inf_gtk_browser_view_new_with_model:
+ * inf_gtk_browser_view_new_with_model: (constructor)
  * @model: A #InfGtkBrowserModel.
  *
  * Creates a new #InfGtkBrowserView showing @model.
  *
- * Return Value: A new #InfGtkBrowserView.
+ * Returns: (transfer floating): A new #InfGtkBrowserView.
  **/
 GtkWidget*
 inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model)
@@ -2638,7 +2638,7 @@ inf_gtk_browser_view_new_with_model(InfGtkBrowserModel* model)
 /**
  * inf_gtk_browser_view_get_selected:
  * @view: A #InfGtkBrowserView.
- * @iter: An uninitialized #GtkTreeIter.
+ * @iter: (out): An uninitialized #GtkTreeIter.
  *
  * Sets @iter to point to the currently selected row in the browser view. If
  * no row is selected, @iter is left untouched and %FALSE is returned.
@@ -2660,7 +2660,7 @@ inf_gtk_browser_view_get_selected(InfGtkBrowserView* view,
 /**
  * inf_gtk_browser_view_set_selected:
  * @view: A #InfGtkBrowserView.
- * @iter: A #GtkTreeIter pointing to a row in @view.
+ * @iter: (transfer none): A #GtkTreeIter pointing to a row in @view.
  *
  * Sets the currently selected row to be @iter. If necessary, rows will be
  * expanded so that @iter is visible.

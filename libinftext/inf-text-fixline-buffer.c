@@ -1736,7 +1736,7 @@ inf_text_fixline_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
 }
 
 /**
- * inf_text_fixline_buffer_new:
+ * inf_text_fixline_buffer_new: (constructor)
  * @io: A #InfIo object to schedule timeouts.
  * @buffer: The underlying buffer for which to keep a fixed line count.
  * @n_lines: The number of lines to be kept fixed.
@@ -1744,7 +1744,7 @@ inf_text_fixline_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
  * Creates a new #InfTextFixlineBuffer which keeps the number of trailing
  * lines of the given underlying buffer fixed to @n_lines.
  *
- * Return Value: A #InfTextFixlineBuffer.
+ * Returns: (transfer full): A #InfTextFixlineBuffer.
  **/
 InfTextFixlineBuffer*
 inf_text_fixline_buffer_new(InfIo* io,

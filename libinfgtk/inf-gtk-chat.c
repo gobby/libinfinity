@@ -873,12 +873,12 @@ inf_gtk_chat_class_init(InfGtkChatClass* chat_class)
  */
 
 /**
- * inf_gtk_chat_new:
+ * inf_gtk_chat_new: (constructor)
  *
  * Creates a new #InfGtkChat. To show a chat conversation set a session to
  * show via inf_gtk_chat_set_session().
  *
- * Returns: A new #InfGtkChat.
+ * Returns: (transfer floating): A new #InfGtkChat.
  */
 GtkWidget*
 inf_gtk_chat_new(void)
@@ -1096,7 +1096,8 @@ inf_gtk_chat_set_active_user(InfGtkChat* chat,
  * Returns the active user for @chat as set with
  * inf_gtk_chat_set_active_user().
  *
- * Returns: The chat's active user, or %NULL if there is none.
+ * Returns: (transfer none) (allow-none): The chat's active user, or
+ * %NULL if there is none.
  */
 InfUser*
 inf_gtk_chat_get_active_user(InfGtkChat* chat)
@@ -1119,8 +1120,8 @@ inf_gtk_chat_get_active_user(InfGtkChat* chat)
  *
  * Returns the chat's text input entry.
  *
- * Returns: The chat's #GtkEntry. This is owned by the chat, so you don't
- * need to free it.
+ * Returns: (transfer none): The chat's #GtkEntry. This is owned by the chat,
+ * so you don't need to free it.
  */
 GtkWidget*
 inf_gtk_chat_get_entry(InfGtkChat* chat)

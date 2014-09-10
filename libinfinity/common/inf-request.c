@@ -125,7 +125,8 @@ inf_request_fail(InfRequest* request,
 /**
  * inf_request_finish:
  * @request: A #InfRequest.
- * @result: A #InfRequestResult containing the result of the request.
+ * @result: (transfer full): A #InfRequestResult containing the result of
+ * the request.
  *
  * Declares the request as succeeded by emitting the #InfRequest::finished
  * signal with the given result. The function takes ownership of @result.

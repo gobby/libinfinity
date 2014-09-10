@@ -517,7 +517,7 @@ inf_chat_buffer_buffer_iface_init(InfBufferInterface* iface)
  *
  * Creates a copy of the given message.
  *
- * Returns: A new #InfChatBufferMessage. Free with
+ * Returns: (transfer full): A new #InfChatBufferMessage. Free with
  * inf_chat_buffer_message_free() when no longer needed.
  */
 InfChatBufferMessage*
@@ -556,13 +556,13 @@ inf_chat_buffer_message_free(InfChatBufferMessage* message)
 }
 
 /**
- * inf_chat_buffer_new:
+ * inf_chat_buffer_new: (constructor)
  * @size: The number of messages to store.
  *
  * Creates a new #InfChatBuffer which contains no initial messages. @size
  * specifies how many messages to store before dropping old messages.
  *
- * Returns: A new #InfChatBuffer.
+ * Returns: (transfer full): A new #InfChatBuffer.
  */
 InfChatBuffer*
 inf_chat_buffer_new(guint size)
@@ -578,7 +578,7 @@ inf_chat_buffer_new(guint size)
  * inf_chat_buffer_add_message:
  * @buffer: A #InfChatBuffer.
  * @by: A #InfUser who wrote the message.
- * @message: The message text.
+ * @message: (array length=length): The message text.
  * @length: The length of @message, in bytes.
  * @time: The time at which the user has written the message.
  * @flags: Flags to set for the message to add.
@@ -617,7 +617,7 @@ inf_chat_buffer_add_message(InfChatBuffer* buffer,
  * inf_chat_buffer_add_emote_message:
  * @buffer: A #InfChatBuffer.
  * @by: A #InfUser who wrote the message.
- * @message: The message text.
+ * @message: (array length=length): The message text.
  * @length: The length of @message, in bytes.
  * @time: The time at which the user has written the message.
  * @flags: Flags to set for the message to add.

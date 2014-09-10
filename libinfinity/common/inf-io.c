@@ -84,7 +84,8 @@ inf_io_default_init(InfIoInterface* iface)
  * Monitors the given socket for activity and calls @func if one of the
  * events specified in @events occurs.
  *
- * Returns: A #InfIoWatch that can be used to update or remove the watch.
+ * Returns: (transfer none): A #InfIoWatch that can be used to update or
+ * remove the watch.
  **/
 InfIoWatch*
 inf_io_add_watch(InfIo* io,
@@ -167,7 +168,8 @@ inf_io_remove_watch(InfIo* io,
  * Calls @func after at least @msecs milliseconds have elapsed. The timeout
  * is removed after it has elapsed.
  *
- * Returns: A timeout handle that can be used to remove the timeout.
+ * Returns: (transfer none): A timeout handle that can be used to remove
+ * the timeout.
  **/
 InfIoTimeout*
 inf_io_add_timeout(InfIo* io,
@@ -220,8 +222,8 @@ inf_io_remove_timeout(InfIo* io,
  * Schedules @func to be called by the thread @io runs in. This function can
  * be used from a different thread to communicate to @io's thread.
  *
- * Returns: A dispatch handle that can be used to stop the dispatched function
- * from being called as long as it has not yet been called.
+ * Returns: (transfer none): A dispatch handle that can be used to stop the
+ * dispatched function from being called as long as it has not yet been called.
  **/
 InfIoDispatch*
 inf_io_add_dispatch(InfIo* io,

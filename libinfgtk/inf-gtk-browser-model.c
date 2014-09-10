@@ -186,7 +186,7 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
  * @model: A #InfGtkBrowserModel.
  * @browser:  A #InfBrowser.
  * @iter: A #InfBrowserIter pointing into @browser, or %NULL.
- * @tree_iter: A #GtkTreeIter that will be set by this function.
+ * @tree_iter: (out): A #GtkTreeIter that will be set by this function.
  *
  * Sets @tree_iter to point to the same node @iter refers to
  * within the model. If @browser is not known to @model, i.e. its connection
@@ -196,7 +196,7 @@ inf_gtk_browser_model_resolve(InfGtkBrowserModel* model,
  * If @iter is %NULL, the function sets @tree_iter to point to the top
  * level entry representing @browser.
  *
- * Return Value: Whether @tree_iter was set.
+ * Returns: Whether @tree_iter was set.
  **/
 gboolean
 inf_gtk_browser_model_browser_iter_to_tree_iter(InfGtkBrowserModel* model,

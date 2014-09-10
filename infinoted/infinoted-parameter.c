@@ -42,6 +42,8 @@
 
 #include <string.h>
 
+G_DEFINE_BOXED_TYPE(InfinotedParameterTypedValue, infinoted_parameter_typed_value, infinoted_parameter_typed_value_copy, infinoted_parameter_typed_value_free)
+
 static void
 infinoted_parameter_free_data(InfinotedParameterType type,
                               InfinotedParameterValue* value)
@@ -200,6 +202,44 @@ infinoted_parameter_typed_value_new(void)
 }
 
 /**
+ * infinoted_parameter_typed_value_copy:
+ * @val: The value to copy.
+ *
+ * Makes a dynamically allocated copy of @val.
+ *
+ * Returns: A new #InfinotedParameterTypedValue. Free with
+ * infinoted_parameter_typed_value_free() when no longer needed.
+ */
+InfinotedParameterTypedValue*
+infinoted_parameter_typed_value_copy(const InfinotedParameterTypedValue* val)
+{
+  InfinotedParameterTypedValue* v;
+  v = g_slice_new(InfinotedParameterTypedValue);
+  v->type = val->type;
+
+  switch(v->type)
+  {
+  case INFINOTED_PARAMETER_BOOLEAN:
+    v->value.yesno = val->value.yesno;
+    break;
+  case INFINOTED_PARAMETER_INT:
+    v->value.number = val->value.number;
+    break;
+  case INFINOTED_PARAMETER_STRING:
+    v->value.str = g_strdup(val->value.str);
+    break;
+  case INFINOTED_PARAMETER_STRING_LIST:
+    v->value.strv = g_strdupv(val->value.strv);
+    break;
+  default:
+    g_assert_not_reached();
+    break;
+  }
+
+  return v;
+}
+
+/**
  * infinoted_parameter_typed_value_free:
  * @data: The #InfinotedParameterTypedValue to free.
  *
@@ -222,7 +262,8 @@ infinoted_parameter_typed_value_free(gpointer data)
 
 /**
  * infinoted_parameter_load_from_key_file:
- * @infos: A 0-terminated array of #InfinotedParameterInfo objects.
+ * @infos: (array zero-terminated=1): A 0-terminated array of
+ * #InfinotedParameterInfo objects.
  * @key_file: The #GKeyFile to load parameter values from.
  * @group: The keyfile group to load the values from.
  * @base: The instance into which to write the read parameters.
@@ -274,8 +315,8 @@ infinoted_parameter_load_from_key_file(const InfinotedParameterInfo* infos,
 
 /**
  * infinoted_parameter_convert_string:
- * @out: The pointer to the output string location.
- * @in: A pointer to the input string location.
+ * @out: (type gchar**) (out): The pointer to the output string location.
+ * @in: (type gchar**) (in): A pointer to the input string location.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This is basically a no-op, moving the string from the @in location to the
@@ -317,8 +358,8 @@ infinoted_parameter_convert_string(gpointer out,
 
 /**
  * infinoted_parameter_convert_string_list:
- * @out: The pointer to the output string list.
- * @in: The pointer to the input string list.
+ * @out: (type gchar***) (out): The pointer to the output string list.
+ * @in: (type gchar***) (array zero-terminated=1) (in): The pointer to the input string list.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This is basically a no-op, moving the string list from the @in location to
@@ -374,8 +415,8 @@ infinoted_parameter_convert_string_list(gpointer out,
 
 /**
  * infinoted_parameter_convert_filename:
- * @out: The pointer to the output string location.
- * @in: A pointer to the input string location.
+ * @out: (type gchar**) (out): The pointer to the output string location.
+ * @in: (type gchar**) (in): A pointer to the input string location.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This function converts the input string from UTF-8
@@ -418,8 +459,8 @@ infinoted_parameter_convert_filename(gpointer out,
 
 /**
  * infinoted_parameter_convert_boolean:
- * @out: The pointer to the output #gboolean.
- * @in: The pointer to the input #gboolean.
+ * @out: (type gboolean*) (out): The pointer to the output #gboolean.
+ * @in: (type gboolean*) (in): The pointer to the input #gboolean.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This function simply writes the boolean value from @in to @out without any
@@ -443,8 +484,8 @@ infinoted_parameter_convert_boolean(gpointer out,
 
 /**
  * infinoted_parameter_convert_port:
- * @out: The pointer to the output #guint.
- * @in: The pointer to the input #gint.
+ * @out: (type guint*) (out): The pointer to the output #guint.
+ * @in: (type gint*) (in): The pointer to the input #gint.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This function validates the input number to be in the valid range for
@@ -485,8 +526,8 @@ infinoted_parameter_convert_port(gpointer out,
 
 /**
  * infinoted_parameter_convert_nonnegative:
- * @out: The pointer to the output #guint.
- * @in: The pointer to the input #gint.
+ * @out: (type guint*) (out): The pointer to the output #guint.
+ * @in: (type gint*) (in): The pointer to the input #gint.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This function validates the input number to be non-negative, and
@@ -525,8 +566,8 @@ infinoted_parameter_convert_nonnegative(gpointer out,
 
 /**
  * infinoted_parameter_convert_positive:
- * @out: The pointer to the output #guint.
- * @in: The pointer to the input #gint.
+ * @out: (type guint*) (out): The pointer to the output #guint.
+ * @in: (type gint*) (in): The pointer to the input #gint.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This function validates the input number to be positve, i.e. greater than
@@ -565,8 +606,9 @@ infinoted_parameter_convert_positive(gpointer out,
 
 /**
  * infinoted_parameter_convert_security_policy:
- * @out: The pointer to the output #InfXmppConnectionSecurityPolicy.
- * @in: The pointer to the input string location.
+ * @out: (type InfXmppConnectionSecurityPolicy*) (out): The pointer to the
+ * output #InfXmppConnectionSecurityPolicy.
+ * @in: (type gchar**) (in): The pointer to the input string location.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Converts the string that @in points to to an
@@ -621,8 +663,9 @@ infinoted_parameter_convert_security_policy(gpointer out,
 
 /**
  * infinoted_parameter_convert_flags:
- * @out: The pointer to the output flags (a #gint).
- * @in: The pointer to the input string list.
+ * @out: (type gint*) (out): The pointer to the output flags (a #gint).
+ * @in: (type gchar***) (in) (array zero-terminated=1): The pointer to the
+ * input string list.
  * @values: Allowed flag values.
  * @error: Location to store error information, if any, or %NULL.
  *

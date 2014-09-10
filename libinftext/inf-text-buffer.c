@@ -93,7 +93,7 @@ inf_text_buffer_default_init(InfTextBufferInterface* iface)
  * #InfTextChunk return values are encoded in this encoding and all
  * #InfTextChunk parameters are expected to be encoded in that encoding.
  *
- * Return Value: The character encoding for @buffer.
+ * Returns: The character encoding for @buffer.
  **/
 const gchar*
 inf_text_buffer_get_encoding(InfTextBuffer* buffer)
@@ -114,7 +114,7 @@ inf_text_buffer_get_encoding(InfTextBuffer* buffer)
  *
  * Returns the number of characters in @buffer.
  *
- * Return Value: The length of @buffer.
+ * Returns: The length of @buffer.
  **/
 guint
 inf_text_buffer_get_length(InfTextBuffer* buffer)
@@ -138,7 +138,7 @@ inf_text_buffer_get_length(InfTextBuffer* buffer)
  * Reads @len characters, starting at @pos, from the buffer, and returns them
  * as a #InfTextChunk.
  *
- * Return Value: A #InfTextChunk.
+ * Returns: (transfer full): A #InfTextChunk.
  **/
 InfTextChunk*
 inf_text_buffer_get_slice(InfTextBuffer* buffer,
@@ -159,10 +159,11 @@ inf_text_buffer_get_slice(InfTextBuffer* buffer,
  * inf_text_buffer_insert_text:
  * @buffer: A #InfTextBuffer.
  * @pos: A character offset into @buffer.
- * @text: A pointer to the text to insert.
+ * @text (type=guint8*) (array length=bytes) (transfer none): A pointer to
+ * the text to insert.
  * @len: The length (in characters) of @text.
  * @bytes: The length (in bytes) of @text.
- * @user: A #InfUser that has inserted the new text, or %NULL.
+ * @user: (allow-none): A #InfUser that has inserted the new text, or %NULL.
  *
  * Inserts @text into @buffer as written by @author. @text must be encoded in
  * the character encoding of the buffer, see inf_text_buffer_get_encoding().
@@ -205,8 +206,8 @@ inf_text_buffer_insert_text(InfTextBuffer* buffer,
  * inf_text_buffer_insert_chunk:
  * @buffer: A #InfTextBuffer.
  * @pos: A character offset into @buffer.
- * @chunk: A #InfTextChunk.
- * @user: A #InfUser inserting @chunk, or %NULL.
+ * @chunk: (transfer none): A #InfTextChunk.
+ * @user: (allow-none): A #InfUser inserting @chunk, or %NULL.
  *
  * Inserts a #InfTextChunk into @buffer. @user must not necessarily be the
  * author of @chunk (@chunk may even consist of multiple segments). This
@@ -235,7 +236,7 @@ inf_text_buffer_insert_chunk(InfTextBuffer* buffer,
  * @buffer: A #InfTextBuffer.
  * @pos: The position to begin deleting characters from.
  * @len: The amount of characters to delete.
- * @user: A #InfUser that erases the text, or %NULL.
+ * @user: (allow-none): A #InfUser that erases the text, or %NULL.
  *
  * Erases characters from the text buffer.
  **/
@@ -268,7 +269,7 @@ inf_text_buffer_erase_text(InfTextBuffer* buffer,
  * The iterator stays valid as long as the buffer remains unmodified and
  * must be freed with inf_text_buffer_destroy_iter() before.
  *
- * Return Value: A #InfTextBufferIter to be freed by
+ * Returns: (transfer full) (allow-none): A #InfTextBufferIter to be freed by
  * inf_text_buffer_destroy_iter() when done using it, or %NULL.
  **/
 InfTextBufferIter*
@@ -296,7 +297,7 @@ inf_text_buffer_create_begin_iter(InfTextBuffer* buffer)
  * The iterator stays valid as long as the buffer remains unmodified and
  * must be freed with inf_text_buffer_destroy_iter() before.
  *
- * Return Value: A #InfTextBufferIter to be freed by
+ * Returns: (transfer full) (allow-none): A #InfTextBufferIter to be freed by
  * inf_text_buffer_destroy_iter() when done using it, or %NULL.
  **/
 InfTextBufferIter*
@@ -315,7 +316,7 @@ inf_text_buffer_create_end_iter(InfTextBuffer* buffer)
 /**
  * inf_text_buffer_destroy_iter:
  * @buffer: A #InfTextBuffer.
- * @iter: A #InfTextBufferIter pointing into @buffer.
+ * @iter: (transfer full): A #InfTextBufferIter pointing into @buffer.
  *
  * Destroys a #InfTextBufferIter created by
  * inf_text_buffer_create_begin_iter() or inf_text_buffer_create_end_iter().
@@ -344,7 +345,7 @@ inf_text_buffer_destroy_iter(InfTextBuffer* buffer,
  * points to the last segment, @iter is left unmodified and the function
  * returns %FALSE.
  *
- * Return Value: Whether @iter was moved.
+ * Returns: Whether @iter was moved.
  **/
 gboolean
 inf_text_buffer_iter_next(InfTextBuffer* buffer,
@@ -370,7 +371,7 @@ inf_text_buffer_iter_next(InfTextBuffer* buffer,
  * already points to the first segment, @iter is left unmodified and the
  * function returns %FALSE.
  *
- * Return Value: Whether @iter was moved.
+ * Returns: Whether @iter was moved.
  **/
 gboolean
 inf_text_buffer_iter_prev(InfTextBuffer* buffer,
@@ -395,8 +396,8 @@ inf_text_buffer_iter_prev(InfTextBuffer* buffer,
  * Returns the text of the segment @iter points to. It is encoded in
  * @buffer's encoding (see inf_text_buffer_get_encoding()).
  *
- * Return Value: The text of the segment @iter points to. Free with g_free()
- * when done using it.
+ * Returns: (transfer full): The text of the segment @iter points to. Free
+ * with g_free() when done using it.
  **/
 gpointer
 inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
@@ -421,7 +422,7 @@ inf_text_buffer_iter_get_text(InfTextBuffer* buffer,
  * Returns the offset of the first character in the segment @iter points
  * to, in characters.
  *
- * Return Value: The offset of the first character in the segment @iter
+ * Returns: The offset of the first character in the segment @iter
  * points to.
  **/
 guint
@@ -446,7 +447,7 @@ inf_text_buffer_iter_get_offset(InfTextBuffer* buffer,
  *
  * Returns the length of the segment @iter points to, in characters.
  *
- * Return Value: The number of characters of the segment @iter points to.
+ * Returns: The number of characters of the segment @iter points to.
  **/
 guint
 inf_text_buffer_iter_get_length(InfTextBuffer* buffer,
@@ -470,7 +471,7 @@ inf_text_buffer_iter_get_length(InfTextBuffer* buffer,
  *
  * Returns the length of the segment @iter points to, in bytes.
  *
- * Return Value: The number of bytes of the segment @iter points to.
+ * Returns: The number of bytes of the segment @iter points to.
  **/
 gsize
 inf_text_buffer_iter_get_bytes(InfTextBuffer* buffer,
@@ -495,7 +496,7 @@ inf_text_buffer_iter_get_bytes(InfTextBuffer* buffer,
  * Returns the user ID of the user that has written the segment @iter points
  * to.
  *
- * Return Value: The user ID of the user that wrote the segment @iter points
+ * Returns: The user ID of the user that wrote the segment @iter points
  * to.
  **/
 guint
@@ -518,7 +519,7 @@ inf_text_buffer_iter_get_author(InfTextBuffer* buffer,
  * @buffer: A #InfTextBuffer.
  * @pos: A character offset into @buffer.
  * @chunk: A #InfTextChunk.
- * @user: A #InfUser inserting @chunk, or %NULL.
+ * @user: (allow-none): A #InfUser inserting @chunk, or %NULL.
  *
  * Emits the #InfTextBuffer::text-inserted signal. This is meant to be used
  * by interface implementations in their @insert_text function, or when text
@@ -549,7 +550,7 @@ inf_text_buffer_text_inserted(InfTextBuffer* buffer,
  * @buffer: A #InfTextBuffer.
  * @pos: The position to begin deleting characters from.
  * @chunk: A #InfTextChunk containing the erased text.
- * @user: A #InfUser that erases the text, or %NULL.
+ * @user: (allow-none): A #InfUser that erases the text, or %NULL.
  *
  * Emits the #InfTextBuffer::text-erased signal. This is meant to be used
  * by interface implementations in their @erase_text function, or when text

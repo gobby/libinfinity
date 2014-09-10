@@ -1232,7 +1232,7 @@ infc_session_proxy_set_connection(InfcSessionProxy* proxy,
  * Returns the connection that is used to transmit requests to the publisher
  * of the session, or %NULL if the session is not subscribed.
  *
- * Returns: A #InfXmlConnection, or %NULL.
+ * Returns: (transfer none): A #InfXmlConnection, or %NULL.
  **/
 InfXmlConnection*
 infc_session_proxy_get_connection(InfcSessionProxy* proxy)
@@ -1248,7 +1248,7 @@ infc_session_proxy_get_connection(InfcSessionProxy* proxy)
  * Returns the group with all subscribed connections to the session, or %NULL
  * if the session is not subscribed.
  *
- * Returns: A #InfCommunicationJoinedGroup, or %NULL.
+ * Returns: (transfer none): A #InfCommunicationJoinedGroup, or %NULL.
  **/
 InfCommunicationJoinedGroup*
 infc_session_proxy_get_subscription_group(InfcSessionProxy* proxy)

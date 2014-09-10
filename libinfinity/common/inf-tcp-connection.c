@@ -1340,7 +1340,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
 }
 
 /**
- * inf_tcp_connection_new:
+ * inf_tcp_connection_new: (constructor)
  * @io: A #InfIo object used to watch for activity.
  * @remote_addr: The address to eventually connect to.
  * @remote_port: The port to eventually connect to.
@@ -1349,7 +1349,8 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
  * an eventual inf_tcp_connection_open() call, this function itself does not
  * establish a connection.
  *
- * Returns: A new #InfTcpConnection. Free with g_object_unref().
+ * Returns: (transfer full): A new #InfTcpConnection. Free with
+ * g_object_unref().
  **/
 InfTcpConnection*
 inf_tcp_connection_new(InfIo* io,
@@ -1376,7 +1377,7 @@ inf_tcp_connection_new(InfIo* io,
 }
 
 /**
- * inf_tcp_connection_new_and_open:
+ * inf_tcp_connection_new_and_open: (constructor)
  * @io: A #InfIo object used to watch for activity.
  * @remote_addr: The address to connect to.
  * @remote_port: The port to connect to.
@@ -1385,8 +1386,8 @@ inf_tcp_connection_new(InfIo* io,
  * Creates a new #InfTcpConnection and connects it to the given TCP endpoint.
  * Like inf_tcp_connection_new(), but calls inf_tcp_connection_open().
  *
- * Returns: A new #InfTcpConnection, or %NULL on error. Free with
- * g_object_unref().
+ * Returns: (transfer full): A new #InfTcpConnection, or %NULL on error.
+ * Free with g_object_unref().
  **/
 InfTcpConnection*
 inf_tcp_connection_new_and_open(InfIo* io,
@@ -1413,7 +1414,7 @@ inf_tcp_connection_new_and_open(InfIo* io,
 }
 
 /**
- * inf_tcp_connection_new_resolve:
+ * inf_tcp_connection_new_resolve: (constructor)
  * @io: A #InfIo object used to watch for activity.
  * @resolver: The hostname resolver object used to look up the remote
  * hostname.
@@ -1427,7 +1428,8 @@ inf_tcp_connection_new_and_open(InfIo* io,
  * inf_tcp_connection_open() call, this function itself does not
  * establish a connection.
  *
- * Returns: A new #InfTcpConnection. Free with g_object_unref().
+ * Returns: (transfer full): A new #InfTcpConnection. Free with
+ * g_object_unref().
  */
 InfTcpConnection*
 inf_tcp_connection_new_resolve(InfIo* io,
@@ -1538,7 +1540,7 @@ inf_tcp_connection_close(InfTcpConnection* connection)
 /**
  * inf_tcp_connection_send:
  * @connection: A #InfTcpConnection with status %INF_TCP_CONNECTION_CONNECTED.
- * @data: The data to send.
+ * @data: (type guint8*) (array length=len): The data to send.
  * @len: Number of bytes to send.
  *
  * Sends data through the TCP connection. The data is not sent immediately,
@@ -1654,9 +1656,9 @@ inf_tcp_connection_send(InfTcpConnection* connection,
  *
  * Returns the IP address of the remote site.
  *
- * Return Value: A #InfIpAddress owned by @connection. You do not need to
- * free it, but need to make your own copy if you want to keep it longer than
- * @connection's lifetime.
+ * Returns: (transfer none): A #InfIpAddress owned by @connection. You do not
+ * need to free it, but need to make your own copy if you want to keep it
+ * longer than @connection's lifetime.
  **/
 InfIpAddress*
 inf_tcp_connection_get_remote_address(InfTcpConnection* connection)
@@ -1672,7 +1674,7 @@ inf_tcp_connection_get_remote_address(InfTcpConnection* connection)
  * Returns the port of the remote site to which @connection is (or was)
  * connected or connecting.
  *
- * Return Value: The port of the remote site.
+ * Returns: The port of the remote site.
  **/
 guint
 inf_tcp_connection_get_remote_port(InfTcpConnection* connection)

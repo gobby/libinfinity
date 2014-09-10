@@ -311,7 +311,7 @@ inf_adopted_request_class_init(InfAdoptedRequestClass* request_class)
 }
 
 /**
- * inf_adopted_request_new_do:
+ * inf_adopted_request_new_do: (constructor)
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  * @operation: The operation the user performed.
@@ -319,7 +319,7 @@ inf_adopted_request_class_init(InfAdoptedRequestClass* request_class)
  *
  * Creates a new #InfAdoptedRequest with type %INF_ADOPTED_REQUEST_DO.
  *
- * Return Value: A new DO request.
+ * Returns: (transfer full): A new DO request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_do(InfAdoptedStateVector* vector,
@@ -347,7 +347,7 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
 }
 
 /**
- * inf_adopted_request_new_undo:
+ * inf_adopted_request_new_undo: (constructor)
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  * @received: Time the request was received, in microseconds since the epoch.
@@ -357,7 +357,7 @@ inf_adopted_request_new_do(InfAdoptedStateVector* vector,
  * of the associated DO or REDO request, but must still be computed by
  * #InfAdoptedAlgorithm.
  *
- * Return Value: A new UNDO request.
+ * Returns: (transfer full): A new UNDO request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
@@ -382,7 +382,7 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
 }
 
 /**
- * inf_adopted_request_new_redo:
+ * inf_adopted_request_new_redo: (constructor)
  * @vector: The vector time at which the request was made.
  * @user_id: The ID of the user that made the request.
  * @received: Time the request was received, in microseconds since the epoch.
@@ -392,7 +392,7 @@ inf_adopted_request_new_undo(InfAdoptedStateVector* vector,
  * the associated UNDO request, but must still be computed by
  * #InfAdoptedAlgorithm.
  *
- * Return Value: A new REDO request.
+ * Returns: (transfer full): A new REDO request.
  **/
 InfAdoptedRequest*
 inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
@@ -422,7 +422,7 @@ inf_adopted_request_new_redo(InfAdoptedStateVector* vector,
  *
  * Creates a copy of @request with an initial reference count of 1.
  *
- * Return Value: A new #InfAdoptedRequest.
+ * Returns: (transfer full): A new #InfAdoptedRequest.
  **/
 InfAdoptedRequest*
 inf_adopted_request_copy(InfAdoptedRequest* request)
@@ -469,7 +469,7 @@ inf_adopted_request_copy(InfAdoptedRequest* request)
  *
  * Returns the request type of @request.
  *
- * Return Value: The type of @request.
+ * Returns: The type of @request.
  **/
 InfAdoptedRequestType
 inf_adopted_request_get_request_type(InfAdoptedRequest* request)
@@ -489,8 +489,8 @@ inf_adopted_request_get_request_type(InfAdoptedRequest* request)
  * Returns the vector time the request was made i.e. its operation can be
  * applied to the buffer.
  *
- * Return Value: The state vector of @request. The returned value should
- * not be freed, it is owned by the #InfAdoptedRequest.
+ * Returns: (transfer none): The state vector of @request. The returned value
+ * should not be freed, it is owned by the #InfAdoptedRequest.
  **/
 InfAdoptedStateVector*
 inf_adopted_request_get_vector(InfAdoptedRequest* request)
@@ -505,7 +505,7 @@ inf_adopted_request_get_vector(InfAdoptedRequest* request)
  *
  * Returns the user ID of the user that issued @request.
  *
- * Return Value: The request's user ID.
+ * Returns: The request's user ID.
  **/
 guint
 inf_adopted_request_get_user_id(InfAdoptedRequest* request)
@@ -521,7 +521,7 @@ inf_adopted_request_get_user_id(InfAdoptedRequest* request)
  * Returns the operation carried by the request. This can only be called if
  * the request's type is %INF_ADOPTED_REQUEST_DO.
  *
- * Return Value: The request's operation.
+ * Returns: (transfer none): The request's operation.
  **/
 InfAdoptedOperation*
 inf_adopted_request_get_operation(InfAdoptedRequest* request)
@@ -687,7 +687,8 @@ inf_adopted_request_need_concurrency_id(InfAdoptedRequest* request,
  * If the function inf_adopted_request_need_concurrency_id() returns %TRUE,
  * @request_lcs and @against_lcs must not be %NULL.
  *
- * Returns: A new #InfAdoptedRequest, the result of the transformation.
+ * Returns: (transfer full): A new #InfAdoptedRequest, the result of the
+ * transformation.
  **/
 InfAdoptedRequest*
 inf_adopted_request_transform(InfAdoptedRequest* request,
@@ -824,7 +825,7 @@ inf_adopted_request_transform(InfAdoptedRequest* request,
  * @request must be of type %INF_ADOPTED_REQUEST_DO and its operation must
  * be reversible.
  *
- * Returns: The mirrored request as a new #InfAdoptedRequest.
+ * Returns: (transfer full): The mirrored request as a new #InfAdoptedRequest.
  **/
 InfAdoptedRequest*
 inf_adopted_request_mirror(InfAdoptedRequest* request,
@@ -880,7 +881,7 @@ inf_adopted_request_mirror(InfAdoptedRequest* request,
  *
  * @into must not be the same user as the one that issued @request.
  *
- * Returns: The folded request as a new #InfAdoptedRequest.
+ * Returns: (transfer full): The folded request as a new #InfAdoptedRequest.
  **/
 InfAdoptedRequest*
 inf_adopted_request_fold(InfAdoptedRequest* request,

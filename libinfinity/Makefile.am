@@ -232,8 +232,8 @@ Infinityd-0.7.gir: libinfinity-0.7.la Infinity-0.7.gir
 Infinity_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
 	-n Infinity \
-	--identifier-prefix=Inf \
-	--warn-all
+	--add-include-path=${top_srcdir}/libinfinity \
+	--identifier-prefix=Inf
 
 Infinity_0_7_gir_NAMESPACE = Infinity
 Infinity_0_7_gir_VERSION = 0.7
@@ -243,7 +243,9 @@ Infinity_0_7_gir_FILES = \
 	$(commonSOURCES) \
 	$(commonHEADERS)
 
-Infinity_0_7_gir_INCLUDES = GObject-2.0
+# We ship simple "stub" .gir files for gnutls and gsasl, since we expose some
+# of these objects and expect the user of the library to use their API.
+Infinity_0_7_gir_INCLUDES = GObject-2.0 libxml2-2.0 InfGnutls-3.0 InfGsasl-1.0
 Infinity_0_7_gir_PACKAGES = gobject-2.0
 Infinity_0_7_gir_EXPORT_PACKAGES = libinfinity-0.7
 
@@ -253,10 +255,9 @@ Infinity_0_7_gir_EXPORT_PACKAGES = libinfinity-0.7
 # prefixes inside libinfinity are the same.
 Infinityc_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
-	--add-include-path=. \
+	--add-include-path=${top_srcdir}/libinfinity \
 	-n Infinityc \
-	--identifier-prefix=Infc \
-	--warn-all
+	--identifier-prefix=Infc
 
 Infinityc_0_7_gir_NAMESPACE = Infinityc
 Infinityc_0_7_gir_VERSION = 0.7
@@ -272,10 +273,9 @@ Infinityc_0_7_gir_EXPORT_PACKAGES = libinfinity-0.7
 
 Infinityd_0_7_gir_SCANNERFLAGS = \
 	-I${top_srcdir} \
-	--add-include-path=. \
+	--add-include-path=${top_srcdir}/libinfinity \
 	-n Infinityd \
-	--identifier-prefix=Infd \
-	--warn-all
+	--identifier-prefix=Infd
 
 Infinityd_0_7_gir_NAMESPACE = Infinityd
 Infinityd_0_7_gir_VERSION = 0.7
@@ -290,10 +290,10 @@ Infinityd_0_7_gir_PACKAGES = gobject-2.0
 Infinityd_0_7_gir_EXPORT_PACKAGES = libinfinity-0.7
 
 girdir = $(datadir)/gir-1.0
-gir_DATA = Infinity-0.7.gir Infinityc-0.7.gir Infinityd-0.7.gir
+gir_DATA = InfGnutls-3.0.gir InfGsasl-1.0.gir Infinity-0.7.gir Infinityc-0.7.gir Infinityd-0.7.gir
 
 typelibdir = $(libdir)/girepository-1.0
-typelib_DATA = Infinity-0.7.typelib Infinityc-0.7.typelib Infinityd-0.7.typelib
+typelib_DATA = InfGnutls-3.0.typelib InfGsasl-1.0.typelib Infinity-0.7.typelib Infinityc-0.7.typelib Infinityd-0.7.typelib
 
 CLEANFILES += \
 	$(gir_DATA) \

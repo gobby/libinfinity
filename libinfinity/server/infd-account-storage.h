@@ -163,10 +163,10 @@ struct _InfdAccountStorageInterface {
 
   /* Signals */
   void (*account_added)(InfdAccountStorage* storage,
-                        const InfAclAccount* info);
+                        const InfAclAccount* account);
 
   void (*account_removed)(InfdAccountStorage* storage,
-                          const InfAclAccount* info);
+                          const InfAclAccount* account);
 };
 
 GType

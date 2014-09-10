@@ -569,12 +569,12 @@ inf_gtk_acl_sheet_view_class_init(InfGtkAclSheetViewClass* sheet_view_class)
  */
 
 /**
- * inf_gtk_acl_sheet_view_new:
+ * inf_gtk_acl_sheet_view_new: (constructor)
  *
  * Creates a new #InfGtkAclSheetView. To show a sheet in the view, call
  * inf_gtk_acl_sheet_view_set_sheet().
  *
- * Returns: A new #InfGtkAclSheetView.
+ * Returns: (transfer full): A new #InfGtkAclSheetView.
  */
 GtkWidget*
 inf_gtk_acl_sheet_view_new(void)
@@ -587,7 +587,7 @@ inf_gtk_acl_sheet_view_new(void)
 /**
  * inf_gtk_acl_sheet_view_set_sheet:
  * @view: A #InfGtkAclSheetView.
- * @sheet: The #InfAclSheet to show.
+ * @sheet: (allow-none): The #InfAclSheet to show, or %NULL.
  *
  * Sets the @sheet to be displayed by @view.
  */
@@ -644,7 +644,8 @@ inf_gtk_acl_sheet_view_set_sheet(InfGtkAclSheetView* view,
  * Returns the sheet that is currently being displayed by @view, or %NULL if
  * there is no sheet displayed.
  *
- * Returns: A #InfAclSheet owned by @view, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfAclSheet owned by @view, or
+ * %NULL.
  */
 const InfAclSheet*
 inf_gtk_acl_sheet_view_get_sheet(InfGtkAclSheetView* view)
@@ -773,6 +774,9 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
   model = GTK_TREE_MODEL(priv->sheet_store);
 
+  g_return_if_fail(INF_GTK_IS_ACL_SHEET_VIEW(view));
+  g_return_if_fail(mask != NULL);
+
   inf_acl_mask_neg(&priv->permission_mask, &add);
   inf_acl_mask_and(mask, &add, &add);
 
@@ -830,7 +834,8 @@ inf_gtk_acl_sheet_view_set_permission_mask(InfGtkAclSheetView* view,
  * Returns a #InfAclMask specifies which permissions are currently being
  * shown by @view.
  *
- * Returns: A #InfAclMask owned by @view. It must not be freed.
+ * Returns: (transfer none): A #InfAclMask owned by @view. It must not be
+ * freed.
  */
 const InfAclMask*
 inf_gtk_acl_sheet_view_get_permission_mask(InfGtkAclSheetView* view)

@@ -6973,7 +6973,7 @@ infc_browser_browser_iface_init(InfBrowserInterface* iface)
  */
 
 /**
- * infc_browser_new:
+ * infc_browser_new: (constructor)
  * @io: A #InfIo object used to schedule timeouts.
  * @comm_manager: A #InfCommunicationManager to register the server connection
  * and which forwards incoming data to the browser or running sessions.
@@ -6981,7 +6981,7 @@ infc_browser_browser_iface_init(InfBrowserInterface* iface)
  *
  * Creates a new #InfcBrowser.
  *
- * Return Value: A new #InfcBrowser.
+ * Returns: (transfer full): A new #InfcBrowser.
  **/
 InfcBrowser*
 infc_browser_new(InfIo* io,
@@ -7011,7 +7011,7 @@ infc_browser_new(InfIo* io,
  *
  * Returns the communication manager of this browser.
  *
- * Return Value: A #InfCommunicationManager.
+ * Returns: (transfer none): A #InfCommunicationManager.
  **/
 InfCommunicationManager*
 infc_browser_get_communication_manager(InfcBrowser* browser)
@@ -7026,7 +7026,7 @@ infc_browser_get_communication_manager(InfcBrowser* browser)
  *
  * Returns the connection to the server.
  *
- * Return Value: A #InfXmlConnection.
+ * Returns: (transfer none): A #InfXmlConnection.
  **/
 InfXmlConnection*
 infc_browser_get_connection(InfcBrowser* browser)
@@ -7044,7 +7044,7 @@ infc_browser_get_connection(InfcBrowser* browser)
  * the plugin's type. Only one plugin of each type can be added to the
  * directory.
  *
- * Return Value: Whether the plugin was added successfully.
+ * Returns: (transfer none): Whether the plugin was added successfully.
  **/
 gboolean
 infc_browser_add_plugin(InfcBrowser* browser,
@@ -7086,7 +7086,7 @@ infc_browser_add_plugin(InfcBrowser* browser,
  * Returns a previously registered plugin (see infc_browser_add_plugin()) for
  * the given note type, or %NULL if there is no such plugin.
  *
- * Return Value: A #InfcNotePlugin, or %NULL.
+ * Returns: (transfer none): A #InfcNotePlugin, or %NULL.
  **/
 const InfcNotePlugin*
 infc_browser_lookup_plugin(InfcBrowser* browser,
@@ -7105,7 +7105,8 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
  * infc_browser_iter_save_session:
  * @browser: A #InfcBrowser.
  * @iter: A #InfBrowserIter pointing to a note in @browser.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request finishes,
+ * or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Requests that the server saves the note pointed to by @iter into its
@@ -7120,8 +7121,8 @@ infc_browser_lookup_plugin(InfcBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Return Value: A #InfRequest that may be used to get notified when
- * the request finishes or fails.
+ * Returns: (transfer none) (allow-none): A #InfRequest that may be used to
+ * get notified when the request finishes or fails.
  **/
 InfRequest*
 infc_browser_iter_save_session(InfcBrowser* browser,
@@ -7181,8 +7182,8 @@ infc_browser_iter_save_session(InfcBrowser* browser,
  * this case, this function returns the session that does the synchronization,
  * while inf_browser_get_session() would return %NULL.
  *
- * Return Value: A #InfcSessionProxy, or %NULL if we are currently not
- * synchronizing this node to the server.
+ * Returns: (transfer none) (allow-none): A #InfcSessionProxy, or %NULL if we
+ * are currently not synchronizing this node to the server.
  **/
 InfcSessionProxy*
 infc_browser_iter_get_sync_in(InfcBrowser* browser,
@@ -7216,8 +7217,8 @@ infc_browser_iter_get_sync_in(InfcBrowser* browser,
  * parent. Such requests begin a synchronization to the server when they
  * have finished.
  *
- * Return Value: A list of #InfRequest<!-- -->s. Free with g_slist_free()
- * when done.
+ * Returns: (transfer container) (element-type InfRequest): A list of
+ * #InfRequest<!-- -->s. Free with g_slist_free() when done.
  **/
 GSList*
 infc_browser_iter_get_sync_in_requests(InfcBrowser* browser,
@@ -7281,7 +7282,8 @@ infc_browser_iter_is_valid(InfcBrowser* browser,
 /**
  * infc_browser_subscribe_chat:
  * @browser: A #InfcBrowser.
- * @func: The function to be called when the request finishes, or %NULL.
+ * @func: (scope async): The function to be called when the request
+ * finishes, or %NULL.
  * @user_data: Additional data to pass to @func.
  *
  * Attempts to subscribe to the server's chat. When the operation finishes
@@ -7295,8 +7297,8 @@ infc_browser_iter_is_valid(InfcBrowser* browser,
  * where @func has been installed for the #InfRequest::finished signal,
  * so that it is called as soon as the request finishes.
  *
- * Returns: A #InfRequest that may be used to get notified when
- * the request finishes or fails.
+ * Returns: (transfer none) (allow-none): A #InfRequest that may be used to
+ * get notified when the request finishes or fails.
  */
 InfRequest*
 infc_browser_subscribe_chat(InfcBrowser* browser,
@@ -7350,7 +7352,7 @@ infc_browser_subscribe_chat(InfcBrowser* browser,
  * call infc_browser_get_chat_session() to get the #InfcSessionProxy for the
  * chat session. To initiate the request, call infc_browser_subscribe_chat().
  *
- * Returns: A #InfRequest, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfRequest, or %NULL.
  */
 InfRequest*
 infc_browser_get_subscribe_chat_request(InfcBrowser* browser)
@@ -7383,7 +7385,8 @@ infc_browser_get_subscribe_chat_request(InfcBrowser* browser)
  * Returns the #InfcSessionProxy representing the running chat session if the
  * local client is subscribed to it, or %NULL otherwise.
  *
- * Returns: A #InfcSessionProxy for the chat, or %NULL.
+ * Returns: (transfer none) (allow-none): A #InfcSessionProxy for the chat,
+ * or %NULL.
  */
 InfcSessionProxy*
 infc_browser_get_chat_session(InfcBrowser* browser)

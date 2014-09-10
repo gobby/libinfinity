@@ -212,7 +212,8 @@ infd_account_storage_supports(InfdAccountStorage* storage,
 /**
  * infd_account_storage_lookup_accounts:
  * @storage: A #InfdAccountStorage.
- * @accounts: An array of #InfAclAccountId<!-- -->s to look up.
+ * @accounts: (array length=n_accounts): An array of #InfAclAccountId<!-- -->s
+ * to look up.
  * @n_accounts: The number of elements in @accounts.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -222,8 +223,9 @@ infd_account_storage_supports(InfdAccountStorage* storage,
  * the #InfAclAccount.id field set to 0, it means that the account with the
  * corresponding ID in the @accounts array does not exist in @storage.
  *
- * Returns: An array of #InfAclAccount structures with @n_accounts entries.
- * Free with inf_acl_account_array_free().
+ * Returns: (array length=n_accounts) (transfer full): An array of
+ * #InfAclAccount structures with @n_accounts entries. Free with
+ * inf_acl_account_array_free().
  */
 InfAclAccount*
 infd_account_storage_lookup_accounts(InfdAccountStorage* storage,
@@ -248,7 +250,8 @@ infd_account_storage_lookup_accounts(InfdAccountStorage* storage,
  * infd_account_storage_lookup_accounts_by_name:
  * @storage: A #InfdAccountStorage.
  * @name: The name to look up.
- * @n_accounts: An output parameter holding the number of returned accounts.
+ * @n_accounts: (out): An output parameter holding the number of returned
+ * accounts.
  * @error: Location to store error information, if any, or %NULL.
  *
  * This function performs the &quot;reverse&quot; lookup: Given an account
@@ -263,8 +266,9 @@ infd_account_storage_lookup_accounts(InfdAccountStorage* storage,
  * lookup error occured or this is no account with the given name, a non-%NULL
  * error pointer should be passed and checked after the function call.
  *
- * Returns: An array of #InfAclAccount structures with length @n_accounts, or
- * %NULL on error or when @n_accounts is 0 or @error is set. Free with
+ * Returns: (array length=n_accounts) (transfer full): An array of
+ * #InfAclAccount structures with length @n_accounts, or %NULL on error
+ * or when @n_accounts is 0 or @error is set. Free with
  * inf_acl_account_array_free().
  */
 InfAclAccount*
@@ -289,7 +293,7 @@ infd_account_storage_lookup_accounts_by_name(InfdAccountStorage* storage,
 /**
  * infd_account_storage_list_accounts:
  * @storage: A #InfdAccountStorage.
- * @n_accounts: An output parameter holding the number of accounts
+ * @n_accounts: (out): An output parameter holding the number of accounts
  * in @storage.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -304,8 +308,9 @@ infd_account_storage_lookup_accounts_by_name(InfdAccountStorage* storage,
  * Note that this function might not be supported by the backend. See
  * infd_account_storage_get_support().
  *
- * Returns: An array of #InfAclAccount structures with length @n_accounts, or
- * %NULL if @n_accounts is 0 or @error is set. Free with
+ * Returns: (array length=n_accounts) (allow-none) (transfer full): An array
+ * of #InfAclAccount structures with length @n_accounts, or %NULL if
+ * @n_accounts is 0 or @error is set. Free with
  * inf_acl_account_array_free().
  */
 InfAclAccount*
@@ -340,11 +345,11 @@ infd_account_storage_list_accounts(InfdAccountStorage* storage,
  * infd_account_storage_add_account:
  * @storage: A #InfdAccountStorage.
  * @name: The name of the new account.
- * @certs: An array of certificates that can be used to login to the new
- * account, or %NULL.
+ * @certs: (array length=n_certs) (allow-none): An array of certificates that
+ * can be used to login to the new account, or %NULL.
  * @n_certs: The length of the certificate array.
- * @password: A password that can be used to login to the new account,
- * or %NULL.
+ * @password: (allow-none): A password that can be used to login to the
+ * new account, or %NULL.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Adds a new account to @storage. The account will have the given name. The
@@ -356,7 +361,8 @@ infd_account_storage_list_accounts(InfdAccountStorage* storage,
  * respectively. Note also that this function might not be supported at all
  * by the backend. See infd_account_storage_get_support().
  *
- * Returns: The #InfAclAccountId of the added account, or 0 on error.
+ * Returns: (transfer full): The #InfAclAccountId of the added account, or 0
+ * on error.
  */
 InfAclAccountId
 infd_account_storage_add_account(InfdAccountStorage* storage,
@@ -445,8 +451,8 @@ infd_account_storage_remove_account(InfdAccountStorage* storage,
  * Note that this function might not be supported by the backend. See
  * infd_account_storage_get_support().
  *
- * Returns: The account ID of the account associated to @cert, or 0 on error
- * or if there is no such account.
+ * Returns: (transfer full): The account ID of the account associated to
+ * @cert, or 0 on error or if there is no such account.
  */
 InfAclAccountId
 infd_account_storage_login_by_certificate(InfdAccountStorage* storage,
@@ -495,8 +501,8 @@ infd_account_storage_login_by_certificate(InfdAccountStorage* storage,
  * Note that this function might not be supported by the backend. See
  * infd_account_storage_get_support().
  *
- * Returns: The account ID of the account associated to @username if @password
- * is correct, or 0 otherwise.
+ * Returns: (transfer full): The account ID of the account associated to
+ * @username if @password is correct, or 0 otherwise.
  */
 InfAclAccountId
 infd_account_storage_login_by_password(InfdAccountStorage* storage,
@@ -532,7 +538,8 @@ infd_account_storage_login_by_password(InfdAccountStorage* storage,
  * infd_account_storage_set_certificate:
  * @storage: A #InfdAccountStorage.
  * @account: The ID of the account whose certificate to set.
- * @certs: An array of certificates, or %NULL if n_certs is 0.
+ * @certs: (array length=n_certs) (allow-none): An array of certificates,
+ * or %NULL if n_certs is 0.
  * @n_certs: The number of certificates in the certificate array.
  * @error: Location to store error information, if any.
  *

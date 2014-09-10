@@ -39,14 +39,35 @@ G_BEGIN_DECLS
 typedef struct _InfdServerPool InfdServerPool;
 typedef struct _InfdServerPoolClass InfdServerPoolClass;
 
+/**
+ * InfdServerPoolClass:
+ *
+ * This structure does not contain any public fields.
+ */
 struct _InfdServerPoolClass {
+  /*< private >*/
   GObjectClass parent_class;
 };
 
+/**
+ * InfdServerPool:
+ *
+ * #InfdServerPool is an opaque data type. You should only access it via the
+ * public API functions.
+ */
 struct _InfdServerPool {
+  /*< private >*/
   GObject parent;
 };
 
+/**
+ * InfdServerPoolForeachServerFunc:
+ * @server: The currently iterated server.
+ * @user_data: Additional data passed to infd_server_pool_foreach_server().
+ *
+ * This is the callback signature of the callback passed to
+ * infd_server_pool_foreach_server().
+ */
 typedef void(*InfdServerPoolForeachServerFunc)(InfdXmlServer* server,
                                                gpointer user_data);
 

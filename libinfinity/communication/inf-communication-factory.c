@@ -87,7 +87,7 @@ inf_communication_factory_supports_method(InfCommunicationFactory* factory,
  * factory needs to support that method, see
  * inf_communication_factory_supports_method().
  *
- * Returns: A new #InfCommunicationMethod.
+ * Returns: (transfer full): A new #InfCommunicationMethod.
  */
 InfCommunicationMethod*
 inf_communication_factory_instantiate(InfCommunicationFactory* factory,

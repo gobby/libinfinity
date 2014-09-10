@@ -307,8 +307,8 @@ inf_cert_util_free_array(GPtrArray* array,
  *
  * Creates new, random Diffie-Hellman parameters.
  *
- * Returns: New dhparams to be freed with gnutls_dh_params_deinit(),
- * or %NULL in case of error.
+ * Returns: (transfer full): New dhparams to be freed
+ * with gnutls_dh_params_deinit(), or %NULL in case of error.
  */
 gnutls_dh_params_t
 inf_cert_util_create_dh_params(GError** error)
@@ -338,14 +338,14 @@ inf_cert_util_create_dh_params(GError** error)
 
 /**
  * inf_cert_util_read_dh_params:
- * @filename: A path to a DH parameters file.
+ * @filename: (type filename): A path to a DH parameters file.
  * @error: Location to store error information, if any.
  *
  * Reads the Diffie-Hellman parameters located at @filename into a
  * gnutls_dh_params_t structure.
  *
- * Returns: New dhparams to be freed with gnutls_dh_params_deinit(),
- * or %NULL in case of error.
+ * Returns: (transfer full): New dhparams to be freed with
+ * gnutls_dh_params_deinit(), or %NULL in case of error.
  */
 gnutls_dh_params_t
 inf_cert_util_read_dh_params(const gchar* filename,
@@ -394,8 +394,9 @@ inf_cert_util_read_dh_params(const gchar* filename,
 
 /**
  * inf_cert_util_write_dh_params:
- * @params: An initialized #gnutls_dh_params_t structure.
- * @filename: The path at which so store @params.
+ * @params: (transfer none): An initialized #gnutls_dh_params_t
+ * structure.
+ * @filename: (type filename): The path at which so store @params.
  * @error: Location to store error information, if any.
  *
  * Writes the given Diffie-Hellman parameters to the given path on the
@@ -460,8 +461,8 @@ inf_cert_util_write_dh_params(gnutls_dh_params_t params,
  * wrapper around gnutls_x509_privkey_generate() which provides GError-style
  * error reporting.
  *
- * Returns: A new key to be freed with gnutls_x509_privkey_deinit(),
- * or %NULL if an error occured.
+ * Returns: (transfer full): A new key to be freed with
+ * gnutls_x509_privkey_deinit(), or %NULL if an error occured.
  */
 gnutls_x509_privkey_t
 inf_cert_util_create_private_key(gnutls_pk_algorithm_t algo,
@@ -491,13 +492,14 @@ inf_cert_util_create_private_key(gnutls_pk_algorithm_t algo,
 
 /**
  * inf_cert_util_read_private_key:
- * @filename: A path to a X.509 private key file
+ * @filename: (type filename): A path to a X.509 private key file
  * @error: Location for error information, if any.
  *
  * Reads the key located at @filename into a gnutls_x509_privkey_t
  * structure.
  *
- * Returns: A private key. Free with gnutls_x509_privkey_deinit().
+ * Returns: (transfer full): A private key. Free with
+ * gnutls_x509_privkey_deinit().
  */
 gnutls_x509_privkey_t
 inf_cert_util_read_private_key(const gchar* filename,
@@ -546,8 +548,9 @@ inf_cert_util_read_private_key(const gchar* filename,
 
 /**
  * inf_cert_util_write_private_key:
- * @key: An initialized #gnutls_x509_privkey_t structure.
- * @filename: The path at which so store the key.
+ * @key: (transfer none): An initialized #gnutls_x509_privkey_t
+ * structure.
+ * @filename: (type filename): The path at which so store the key.
  * @error: Location to store error information, if any.
  *
  * Writes @key to the location specified by @filename on the filesystem.
@@ -585,7 +588,8 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
 
 /**
  * inf_cert_util_create_certificate:
- * @key: The private key to be used for the new certificate.
+ * @key: (transfer none): The private key to be used for the new
+ * certificate.
  * @desc: The certificate properties.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -593,8 +597,8 @@ inf_cert_util_write_private_key(gnutls_x509_privkey_t key,
  * an error occurs the function returns %NULL and @error is set. The
  * returned certificate will not be signed.
  *
- * Returns: A new #gnutls_x509_crt_t, or %NULL. Free with
- * gnutls_x509_crt_deinit() when no longer needed.
+ * Returns: (transfer full): A new #gnutls_x509_crt_t, or %NULL.
+ * Free with gnutls_x509_crt_deinit() when no longer needed.
  */
 gnutls_x509_crt_t
 inf_cert_util_create_certificate(gnutls_x509_privkey_t key,
@@ -624,18 +628,20 @@ inf_cert_util_create_certificate(gnutls_x509_privkey_t key,
 
 /**
  * inf_cert_util_create_signed_certificate:
- * @key: The private key to be used for the new certificate.
+ * @key: (transfer none): The private key to be used for the new
+ * certificate.
  * @desc: The certificate properties.
- * @sign_cert: A certificate used to sign the newly created certificate.
- * @sign_key: The private key for @sign_cert.
+ * @sign_cert: (transfer none): A certificate used to sign the newly
+ * created certificate.
+ * @sign_key: (transfer none): The private key for @sign_cert.
  * @error: Location to store error information, if any, or %NULL.
  *
  * Creates a new X.509 certificate with the given key and properties. If
  * an error occurs the function returns %NULL and @error is set. The
  * returned certificate will be signed by @sign_cert.
  *
- * Returns: A new #gnutls_x509_crt_t, or %NULL. Free with
- * gnutls_x509_crt_deinit() when no longer needed.
+ * Returns: (transfer full): A new #gnutls_x509_crt_t, or %NULL.
+ * Free with gnutls_x509_crt_deinit() when no longer needed.
  */
 gnutls_x509_crt_t
 inf_cert_util_create_signed_certificate(gnutls_x509_privkey_t key,
@@ -670,7 +676,8 @@ inf_cert_util_create_signed_certificate(gnutls_x509_privkey_t key,
 
 /**
  * inf_cert_util_create_self_signed_certificate:
- * @key: The private key to be used for the new certificate.
+ * @key: (transfer none): The private key to be used for the new
+ * certificate.
  * @desc: The certificate properties.
  * @error: Location to store error information, if any, or %NULL.
  *
@@ -678,8 +685,8 @@ inf_cert_util_create_signed_certificate(gnutls_x509_privkey_t key,
  * an error occurs the function returns %NULL and @error is set. The
  * returned certificate will be signed by itself.
  *
- * Returns: A new #gnutls_x509_crt_t, or %NULL. Free with
- * gnutls_x509_crt_deinit() when no longer needed.
+ * Returns: (transfer full): A new #gnutls_x509_crt_t, or %NULL.
+ * Free with gnutls_x509_crt_deinit() when no longer needed.
  */
 gnutls_x509_crt_t
 inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
@@ -712,8 +719,9 @@ inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
 
 /**
  * inf_cert_util_read_certificate:
- * @filename: A path to a X.509 certificate file.
- * @current: An array of #gnutls_x509_crt_t objects, or %NULL.
+ * @filename: (type filename): A path to a X.509 certificate file.
+ * @current: (element-type gnutls_x509_crt_t) (allow-none) (transfer full): An
+ * array of #gnutls_x509_crt_t objects, or %NULL.
  * @error: Location to store error information, if any.
  *
  * Loads X.509 certificates in PEM format from the file at @filename. There
@@ -725,7 +733,8 @@ inf_cert_util_create_self_signed_certificate(gnutls_x509_privkey_t key,
  * @current is non-%NULL and the function succeeds, the return value is the
  * same as @current.
  *
- * Returns: An array of the read certificates, or %NULL on error.
+ * Returns: (transfer full) (element-type gnutls_x509_crt_t): An array of the
+ * read certificates, or %NULL on error.
  */
 GPtrArray*
 inf_cert_util_read_certificate(const gchar* filename,
@@ -807,9 +816,10 @@ inf_cert_util_read_certificate(const gchar* filename,
 
 /**
  * inf_cert_util_write_certificate:
- * @certs: An array of #gnutls_x509_crt_t objects.
+ * @certs: (array length=n_certs) (transfer none): An array of
+ * #gnutls_x509_crt_t objects.
  * @n_certs: Number of certificates in the error.
- * @filename: The path at which to store the certificates.
+ * @filename: (type filename): The path at which to store the certificates.
  * @error: Location to store error information, if any.
  *
  * This function writes the certificates in the array @certs to disk, in
@@ -855,7 +865,8 @@ inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
 
 /**
  * inf_cert_util_write_certificate_mem:
- * @certs: An array of #gnutls_x509_crt_t objects.
+ * @certs: (transfer none): An
+ * array of #gnutls_x509_crt_t objects.
  * @n_certs: Number of certificates in the error.
  * @error: Location to store error information, if any.
  *
@@ -863,8 +874,8 @@ inf_cert_util_write_certificate(gnutls_x509_crt_t* certs,
  * PEM format. If an error occurs the function returns %NULL and @error
  * is set.
  *
- * Returns: A string with PEM-encoded certificate data, or %NULL on error.
- * Free with g_free().
+ * Returns: (transfer full): A string with PEM-encoded certificate data, or
+ * %NULL on error. Free with g_free().
  */
 gchar*
 inf_cert_util_write_certificate_mem(gnutls_x509_crt_t* certs,
@@ -894,10 +905,12 @@ inf_cert_util_write_certificate_mem(gnutls_x509_crt_t* certs,
 
 /**
  * inf_cert_util_write_certificate_with_key:
- * @key: An initialized #gnutls_x509_privkey_t structure.
- * @certs: An array of #gnutls_x509_crt_t objects.
+ * @key: (transfer none): An initialized #gnutls_x509_privkey_t
+ * structure.
+ * @certs: (transfer none) (array length=n_certs): An array of
+ * #gnutls_x509_crt_t objects.
  * @n_certs: Number of certificates in the error.
- * @filename: The path at which to store the certificates.
+ * @filename: (type filename): The path at which to store the certificates.
  * @error: Location to store error information, if any.
  *
  * This function writes both the private key @key as well as the
@@ -951,14 +964,14 @@ inf_cert_util_write_certificate_with_key(gnutls_x509_privkey_t key,
 
 /**
  * inf_cert_util_copy_certificate:
- * @src: The certificate to copy.
+ * @src: (transfer none): The certificate to copy.
  * @error: Location to store error information, if any.
  *
  * Creates a copy of the certificate @src and returns the copy. If the
  * function fails %FALSE is returned and @error is set.
  *
- * Returns: A copy of @src, or %NULL on error. Free with
- * gnutls_x509_crt_deinit() when no longer in use.
+ * Returns: (transfer full): A copy of @src, or %NULL on error. Free
+ * with gnutls_x509_crt_deinit() when no longer in use.
  */
 gnutls_x509_crt_t
 inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
@@ -1008,8 +1021,8 @@ inf_cert_util_copy_certificate(gnutls_x509_crt_t src,
 
 /**
  * inf_cert_util_check_certificate_key:
- * @cert: The certificate to be checked.
- * @key: The private key to be checked.
+ * @cert: (transfer none): The certificate to be checked.
+ * @key: (transfer none): The private key to be checked.
  *
  * This function returns %TRUE if @key is the private key belonging to @cert,
  * or %FALSE otherwise.
@@ -1044,12 +1057,13 @@ inf_cert_util_check_certificate_key(gnutls_x509_crt_t cert,
 
 /**
  * inf_cert_util_get_dn:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  *
  * Retrieves the full distinguished name (DN) from the certificate, allocating
  * memory for the return value.
  *
- * Returns: The DN of the certificate. Free with g_free() after use.
+ * Returns: (transfer full): The DN of the certificate. Free with g_free()
+ * after use.
  */
 gchar*
 inf_cert_util_get_dn(gnutls_x509_crt_t cert)
@@ -1080,7 +1094,7 @@ inf_cert_util_get_dn(gnutls_x509_crt_t cert)
 
 /**
  * inf_cert_util_get_dn_by_oid:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  * @oid: The name of the requested entry.
  * @index: Index of the entry to retrieve.
  *
@@ -1089,8 +1103,8 @@ inf_cert_util_get_dn(gnutls_x509_crt_t cert)
  * return value. The function returns %NULL if there is no such entry in the
  * certificate.
  *
- * Returns: The certificate entry, or %NULL if it is not present. Free with
- * g_free() after use.
+ * Returns: (transfer full): The certificate entry, or %NULL if it is not
+ * present. Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
@@ -1123,7 +1137,7 @@ inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
 
 /**
  * inf_cert_util_get_issuer_dn_by_oid:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  * @oid: The name of the requested entry.
  * @index: Index of the entry to retrieve.
  *
@@ -1132,8 +1146,8 @@ inf_cert_util_get_dn_by_oid(gnutls_x509_crt_t cert,
  * allocating memory for the return value. The functions returns %NULL if
  * there is no such entry in the certificate.
  *
- * Returns: The certificate entry, or %NULL if it is not present. Free with
- * g_free() after use.
+ * Returns: (transfer full): The certificate entry, or %NULL if it is not
+ * present. Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_issuer_dn_by_oid(gnutls_x509_crt_t cert,
@@ -1181,14 +1195,14 @@ inf_cert_util_get_issuer_dn_by_oid(gnutls_x509_crt_t cert,
 
 /**
  * inf_cert_util_get_hostname:
- * @cert: An initialized gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized gnutls_x509_crt_t.
  *
  * Attempts to read the hostname of a certificate. This is done by looking
  * at the DNS name and IP address SANs. If both are not available, the common
  * name of the certificate is returned.
  *
- * Returns: The best guess for the certificate's hostname, or %NULL when
- * it cannot be retrieved. Free with g_free() after use.
+ * Returns: (transfer full) (allow-none): The best guess for the certificate's
+ * hostname, or %NULL when it cannot be retrieved. Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_hostname(gnutls_x509_crt_t cert)
@@ -1229,13 +1243,13 @@ inf_cert_util_get_hostname(gnutls_x509_crt_t cert)
 
 /**
  * inf_cert_util_get_serial_number:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  *
  * Read the serial number of a certificate and return it in hexadecimal
  * format. If the serial number cannot be read %NULL is returned.
  *
- * Returns: The serial number of the certificate, or %NULL. Free with g_free()
- * after use.
+ * Returns: (transfer full): The serial number of the certificate, or %NULL.
+ * Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_serial_number(gnutls_x509_crt_t cert)
@@ -1261,15 +1275,15 @@ inf_cert_util_get_serial_number(gnutls_x509_crt_t cert)
 
 /**
  * inf_cert_util_get_fingerprint:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  * @algo: The hashing algorithm to use.
  *
  * Returns the fingerprint of the certificate hashed with the specified
  * algorithm, in hexadecimal format. If the fingerprint cannot be read %NULL
  * is returned.
  *
- * Returns: The fingerprint of the certificate, or %NULL. Free with g_free()
- * after use.
+ * Returns: (transfer full): The fingerprint of the certificate, or %NULL.
+ * Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_fingerprint(gnutls_x509_crt_t cert,
@@ -1296,14 +1310,14 @@ inf_cert_util_get_fingerprint(gnutls_x509_crt_t cert,
 
 /**
  * inf_cert_util_get_activation_time:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  *
  * Returns the activation time of the certificate as a string in
  * human-readable format. If the activation time cannot be read %NULL is
  * returned.
  *
- * Returns: The activation time of the certificate, or %NULL. Free with
- * g_free() after use.
+ * Returns: (transfer full): The activation time of the certificate, or %NULL.
+ * Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_activation_time(gnutls_x509_crt_t cert)
@@ -1316,14 +1330,14 @@ inf_cert_util_get_activation_time(gnutls_x509_crt_t cert)
 
 /**
  * inf_cert_util_get_expiration_time:
- * @cert: An initialized #gnutls_x509_crt_t.
+ * @cert: (transfer none): An initialized #gnutls_x509_crt_t.
  *
  * Returns the expiration time of the certificate as a string in
  * human-readable format. If the expiration time cannot be read %NULL is
  * returned.
  *
- * Returns: The expiration time of the certificate, or %NULL. Free with
- * g_free() after use.
+ * Returns: (transfer full): The expiration time of the certificate, or %NULL.
+ * Free with g_free() after use.
  */
 gchar*
 inf_cert_util_get_expiration_time(gnutls_x509_crt_t cert)

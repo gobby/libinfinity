@@ -256,7 +256,7 @@ inf_adopted_user_get_component(InfAdoptedUser* user,
  *
  * Returns the current vector time of @user.
  *
- * Return Value: The current vector time of @user.
+ * Returns: (transfer none): The current vector time of @user.
  **/
 InfAdoptedStateVector*
 inf_adopted_user_get_vector(InfAdoptedUser* user)
@@ -295,7 +295,7 @@ inf_adopted_user_set_vector(InfAdoptedUser* user,
  *
  * Returns the request log of @user.
  *
- * Return Value: User's #InfAdoptedRequestLog.
+ * Returns: (transfer none): User's #InfAdoptedRequestLog.
  **/
 InfAdoptedRequestLog*
 inf_adopted_user_get_request_log(InfAdoptedUser* user)

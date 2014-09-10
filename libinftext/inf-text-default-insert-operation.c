@@ -350,14 +350,14 @@ inf_text_default_insert_operation_insert_operation_iface_init(
 }
 
 /**
- * inf_text_default_insert_operation_new:
+ * inf_text_default_insert_operation_new: (constructor)
  * @pos: The position at which to insert text.
  * @chunk: The text to insert.
  *
  * Creates a new insert operation that, when applied, inserts @chunk
  * at @pos.
  *
- * Return Value: A new #InfTextDefaultInsertOperation.
+ * Returns: (transfer full): A new #InfTextDefaultInsertOperation.
  **/
 InfTextDefaultInsertOperation*
 inf_text_default_insert_operation_new(guint pos,
@@ -383,7 +383,7 @@ inf_text_default_insert_operation_new(guint pos,
  *
  * Returns the text inserted by @operation.
  *
- * Return Value: A #InfTextChunk, owned by the operation.
+ * Returns: (transfer none): A #InfTextChunk, owned by the operation.
  **/
 InfTextChunk*
 inf_text_default_insert_operation_get_chunk(InfTextDefaultInsertOperation* operation)

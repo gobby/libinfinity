@@ -380,12 +380,12 @@ inf_text_default_buffer_text_buffer_iface_init(InfTextBufferInterface* iface)
 }
 
 /**
- * inf_text_default_buffer_new:
+ * inf_text_default_buffer_new: (constructor)
  * @encoding: The character encoding to use for the buffer.
  *
  * Creates a new, empty #InfTextDefaultBuffer.
  *
- * Return Value: A #InfTextDefaultBuffer.
+ * Returns: (transfer full): A #InfTextDefaultBuffer.
  **/
 InfTextDefaultBuffer*
 inf_text_default_buffer_new(const gchar* encoding)

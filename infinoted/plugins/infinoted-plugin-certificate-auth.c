@@ -520,7 +520,8 @@ infinoted_plugin_certificate_auth_connection_added(InfXmlConnection* conn,
       xmpp,
       cert_req,
       infinoted_plugin_certificate_auth_certificate_func,
-      plugin
+      plugin,
+      NULL
     );
   }
 }
@@ -542,6 +543,7 @@ infinoted_plugin_certificate_auth_connection_removed(InfXmlConnection* conn,
     inf_xmpp_connection_set_certificate_callback(
       xmpp,
       GNUTLS_CERT_IGNORE,
+      NULL,
       NULL,
       NULL
     );

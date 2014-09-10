@@ -52,26 +52,15 @@ typedef struct _InfDiscoveryInfo InfDiscoveryInfo;
  * InfDiscoveryResolvCompleteFunc:
  * @info: The resolved #InfDiscoveryInfo.
  * @connection: The resulting #InfXmlConnection.
+ * @error: Reason in case of failure.
  * @user_data: The user_data passed to inf_discovery_resolve().
  *
- * This callback is called when a call to inf_discovery_resolve() finished
- * successfully.
+ * This callback is called when a call to inf_discovery_resolve() finished.
  */
 typedef void(*InfDiscoveryResolvCompleteFunc)(InfDiscoveryInfo* info,
                                               InfXmlConnection* connection,
+                                              const GError* error,
                                               gpointer user_data);
-
-/**
- * InfDiscoveryResolvErrorFunc:
- * @info: The resolved #InfDiscoveryInfo.
- * @error: Reason for the failure.
- * @user_data: The user_data passed to inf_discovery_resolve().
- *
- * This callback is called when a call to inf_discovery_resolve() failed.
- */
-typedef void(*InfDiscoveryResolvErrorFunc)(InfDiscoveryInfo* info,
-                                           const GError* error,
-                                           gpointer user_data);
 
 /**
  * InfDiscoveryInterface:
@@ -110,7 +99,6 @@ struct _InfDiscoveryInterface {
   void (*resolve)(InfDiscovery* discovery,
                   InfDiscoveryInfo* info,
                   InfDiscoveryResolvCompleteFunc complete_func,
-                  InfDiscoveryResolvErrorFunc error_func,
                   gpointer user_data);
 
   gchar*(*info_get_service_name)(InfDiscovery* discovery,
@@ -142,7 +130,6 @@ void
 inf_discovery_resolve(InfDiscovery* discovery,
                       InfDiscoveryInfo* info,
                       InfDiscoveryResolvCompleteFunc complete_func,
-                      InfDiscoveryResolvErrorFunc error_func,
                       gpointer user_data);
 
 gchar*

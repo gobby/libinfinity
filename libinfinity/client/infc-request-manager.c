@@ -361,12 +361,12 @@ infc_request_manager_class_init(
 }
 
 /**
- * infc_request_manager_new:
+ * infc_request_manager_new: (constructor)
  * @seq_id: The local sequence ID.
  *
  * Creates a new #InfcRequestManager.
  *
- * Return Value: A newly allocated #InfcRequestManager.
+ * Returns: (transfer full): A newly allocated #InfcRequestManager.
  **/
 InfcRequestManager*
 infc_request_manager_new(guint seq_id)
@@ -383,8 +383,8 @@ infc_request_manager_new(guint seq_id)
  * @request_type: The type of request to add, such as #InfcProgressRequest.
  * @request_name: The name of the request, such as "explore-node" or
  * "subscribe-session".
- * @callback: A #GCallback that will be called when the request has completed,
- * or %NULL.
+ * @callback: (scope async): A #GCallback that will be called when the request
+ * has completed, or %NULL.
  * @user_data: Additional data passed to the callback.
  * @first_property_name: The first property name apart from name and seq to
  * set for the new request.
@@ -395,7 +395,8 @@ infc_request_manager_new(guint seq_id)
  * request's "finished" signal will be installed and made to invoke the given
  * callback.
  *
- * Return Value: The generated #InfcRequest (actually of type @request_type).
+ * Returns: (transfer none): The generated #InfcRequest (actually of type
+ * @request_type).
  **/
 InfcRequest*
 infc_request_manager_add_request(InfcRequestManager* manager,
@@ -431,8 +432,8 @@ infc_request_manager_add_request(InfcRequestManager* manager,
  * @request_type: The type of request to add, such as #InfcProgressRequest.
  * @request_name: The name of the request, such as &quot;explore-node&quot; or
  * &quot;subscribe-session&quot;
- * @callback: A #GCallback that will be called when the request has completed,
- * or %NULL.
+ * @callback: (scope async): A #GCallback that will be called when the request
+ * has completed, or %NULL.
  * @user_data: Additional data passed to the callback.
  * @first_property_name: The first property name apart from name and seq to
  * set for the new request.
@@ -443,7 +444,8 @@ infc_request_manager_add_request(InfcRequestManager* manager,
  * request's "finished" signal will be installed and made to invoke the given
  * callback.
  *
- * Return Value: The generated #InfcRequest (actually of type @request_type).
+ * Returns: (transfer none): The generated #InfcRequest (actually of type
+ * @request_type).
  */
 InfcRequest*
 infc_request_manager_add_request_valist(InfcRequestManager* manager,
@@ -594,7 +596,7 @@ infc_request_manager_remove_request(InfcRequestManager* manager,
  * infc_request_manager_finish_request:
  * @manager: A #InfcRequestManager.
  * @request: A #InfcRequest that has previously been added to @manager.
- * @result: The request result.
+ * @result: (transfer full): The request result.
  *
  * Marks @request as finished using inf_request_finish() and then removes the
  * request from the manager. The function takes ownership of @result.
@@ -626,7 +628,7 @@ infc_request_manager_finish_request(InfcRequestManager* manager,
 void
 infc_request_manager_fail_request(InfcRequestManager* manager,
                                   InfcRequest* request,
-                                  GError* error)
+                                  const GError* error)
 {
   g_return_if_fail(INFC_IS_REQUEST_MANAGER(manager));
   g_return_if_fail(INFC_IS_REQUEST(request));
@@ -658,8 +660,8 @@ infc_request_manager_clear(InfcRequestManager* manager)
  *
  * Returns a previously-added request that has the given seq.
  *
- * Return Value: The request with the given seq, or %NULL if there is no such
- * request.
+ * Returns: (transfer none) (allow-none): The request with the given seq,
+ * or %NULL if there is no such request.
  **/
 InfcRequest*
 infc_request_manager_get_request_by_seq(InfcRequestManager* manager,
@@ -689,8 +691,8 @@ infc_request_manager_get_request_by_seq(InfcRequestManager* manager,
  * attribute is set but the actual request is not present (or has another
  * name), the function returns %NULL and @error is set.
  *
- * Return Value: The resulting request, or %NULL if the "seq" attribute was
- * not present or an error occured.
+ * Returns: (transfer none) (allow-none): The resulting request, or %NULL
+ * if the "seq" attribute was not present or an error occured.
  **/
 InfcRequest*
 infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
@@ -775,7 +777,8 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
  * "seq" attribute is not set or the actual request is not present (or has
  * another name), the function returns %NULL and @error is set.
  *
- * Return Value: The resulting request, or %NULL if an error occured.
+ * Returns: (transfer none): The resulting request, or %NULL if an error
+ * occured.
  **/
 InfcRequest*
 infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
@@ -819,7 +822,7 @@ infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
 /**
  * infc_request_manager_foreach_request:
  * @manager: A #InfcRequestManager.
- * @func: The function to be called.
+ * @func: (scope call): The function to be called.
  * @user_data: Arbitrary data to be passed to @func.
  *
  * Calls the given function for each request that has been added to the
@@ -853,7 +856,7 @@ infc_request_manager_foreach_request(InfcRequestManager* manager,
  * infc_request_manager_foreach_named_request:
  * @manager: A #InfcRequestManager.
  * @name: The name of the request to look for.
- * @func: The function to be called.
+ * @func: (scope call): The function to be called.
  * @user_data: Arbitrary data to be passed to @func.
  *
  * Calls the given function for each request that has been added to the

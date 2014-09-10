@@ -277,12 +277,12 @@ inf_gtk_browser_model_filter_browser_model_iface_init(
  */
 
 /**
- * inf_gtk_browser_model_filter_new:
+ * inf_gtk_browser_model_filter_new: (constructor)
  * @child_model: A #InfGtkBrowserModel.
  *
  * Creates a new #InfGtkBrowserModelFilter, filtering @child_model.
  *
- * Return Value: A new #InfGtkBrowserModelFilter.
+ * Returns: (transfer full): A new #InfGtkBrowserModelFilter.
  **/
 InfGtkBrowserModelFilter*
 inf_gtk_browser_model_filter_new(InfGtkBrowserModel* child_model)
