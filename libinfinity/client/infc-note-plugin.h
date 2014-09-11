@@ -44,6 +44,8 @@ struct _InfcNotePlugin {
   InfcNotePluginSessionNew session_new;
 };
 
+G_END_DECLS
+
 #endif /* __INFC_NOTE_PLUGIN_H__ */
 
 /* vim:set et sw=2 ts=2: */
