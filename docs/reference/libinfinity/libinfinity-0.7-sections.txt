@@ -244,6 +244,8 @@ inf_tcp_connection_close
 inf_tcp_connection_send
 inf_tcp_connection_get_remote_address
 inf_tcp_connection_get_remote_port
+inf_tcp_connection_set_keepalive
+inf_tcp_connection_get_keepalive
 <SUBSECTION Standard>
 INF_TCP_CONNECTION
 INF_IS_TCP_CONNECTION
@@ -398,6 +400,22 @@ INF_TYPE_ACL_SHEET_SET
 </SECTION>
 
 <SECTION>
+<FILE>inf-keepalive</FILE>
+<TITLE>InfKeepalive</TITLE>
+InfKeepaliveMask
+InfKeepalive
+inf_keepalive_copy
+inf_keepalive_free
+inf_keepalive_apply
+inf_keepalive_load_default
+<SUBSECTION Standard>
+inf_keepalive_mask_get_type
+inf_keepalive_get_type
+INF_TYPE_KEEPALIVE_MASK
+INF_TYPE_KEEPALIVE
+</SECTION>
+
+<SECTION>
 <FILE>inf-browser-iter</FILE>
 <TITLE>InfBrowserIter</TITLE>
 InfBrowserIter
@@ -508,6 +526,8 @@ InfDiscoveryAvahiClass
 inf_discovery_avahi_new
 inf_discovery_avahi_set_security_policy
 inf_discovery_avahi_get_security_policy
+inf_discovery_avahi_set_keepalive
+inf_discovery_avahi_get_keepalive
 <SUBSECTION Standard>
 INF_DISCOVERY_AVAHI
 INF_IS_DISCOVERY_AVAHI
@@ -1080,6 +1100,8 @@ InfdTcpServerClass
 infd_tcp_server_bind
 infd_tcp_server_open
 infd_tcp_server_close
+infd_tcp_server_set_keepalive
+infd_tcp_server_get_keepalive
 <SUBSECTION Standard>
 INFD_TCP_SERVER
 INFD_IS_TCP_SERVER

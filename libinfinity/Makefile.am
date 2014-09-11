@@ -64,6 +64,7 @@ common_HEADERS = \
 	common/inf-init.h \
 	common/inf-io.h \
 	common/inf-ip-address.h \
+	common/inf-keepalive.h \
 	common/inf-local-publisher.h \
 	common/inf-name-resolver.h \
 	common/inf-native-socket.h \
@@ -164,6 +165,7 @@ commonSOURCES = \
 	common/inf-init.c \
 	common/inf-io.c \
 	common/inf-ip-address.c \
+	common/inf-keepalive.c \
 	common/inf-local-publisher.c \
 	common/inf-name-resolver.c \
 	common/inf-native-socket.c \

@@ -22,6 +22,7 @@
 
 #include <libinfinity/common/inf-name-resolver.h>
 #include <libinfinity/common/inf-ip-address.h>
+#include <libinfinity/common/inf-keepalive.h>
 #include <libinfinity/common/inf-io.h>
 
 #include <glib-object.h>
@@ -135,6 +136,14 @@ inf_tcp_connection_get_remote_address(InfTcpConnection* connection);
 
 guint
 inf_tcp_connection_get_remote_port(InfTcpConnection* connection);
+
+gboolean
+inf_tcp_connection_set_keepalive(InfTcpConnection* connection,
+                                 const InfKeepalive* keepalive,
+                                 GError** error);
+
+const InfKeepalive*
+inf_tcp_connection_get_keepalive(InfTcpConnection* connection);
 
 G_END_DECLS
 

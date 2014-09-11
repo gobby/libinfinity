@@ -101,6 +101,7 @@ struct _InfTcpConnectionPrivate {
 
   InfTcpConnectionStatus status;
   InfNativeSocket socket;
+  InfKeepalive keepalive;
 
   InfIpAddress* remote_address;
   guint remote_port;
@@ -119,6 +120,7 @@ enum {
   PROP_RESOLVER,
 
   PROP_STATUS,
+  PROP_KEEPALIVE,
 
   PROP_REMOTE_ADDRESS,
   PROP_REMOTE_PORT,
@@ -192,6 +194,58 @@ inf_tcp_connection_addr_info(InfNativeSocket socket,
   default:
     g_assert_not_reached();
     break;
+  }
+
+  return TRUE;
+}
+
+static gboolean
+inf_tcp_connection_configure_socket(InfNativeSocket socket,
+                                    const InfKeepalive* keepalive,
+                                    GError** error)
+{
+
+#ifdef G_OS_WIN32
+  u_long argp;
+#else
+  int result;
+#endif
+  int errcode;
+  GError* local_error;
+
+  /* Configure the connection's underlying socket, by setting keepalive and
+   * and nonblocking. */
+#ifndef G_OS_WIN32
+  result = fcntl(socket, F_GETFL);
+  if(result == INVALID_SOCKET)
+  {
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
+    return FALSE;
+  }
+
+  if(fcntl(socket, F_SETFL, result | O_NONBLOCK) == -1)
+  {
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
+    return FALSE;
+  }
+#else
+  argp = 1;
+  if(ioctlsocket(socket, FIONBIO, &argp) != 0)
+  {
+    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
+    inf_native_socket_make_error(errcode, error);
+    return FALSE;
+  }
+#endif
+
+  /* Error setting keepalives is not fatal */
+  local_error = NULL;
+  if(inf_keepalive_apply(keepalive, &socket, 0, &local_error) == FALSE)
+  {
+    g_warning("Failed to set keepalive on socket: %s", local_error->message);
+    g_error_free(local_error);
   }
 
   return TRUE;
@@ -309,7 +363,8 @@ inf_tcp_connection_connection_error(InfTcpConnection* connection,
   if(priv->resolver != NULL)
   {
     /* Try next address, if there is one */
-    if(priv->resolver_index < inf_name_resolver_get_n_addresses(priv->resolver))
+    if(priv->resolver_index <
+       inf_name_resolver_get_n_addresses(priv->resolver))
     {
       ++priv->resolver_index;
       if(inf_tcp_connection_open_with_resolver(connection, NULL) == TRUE)
@@ -338,10 +393,6 @@ inf_tcp_connection_open_real(InfTcpConnection* connection,
 {
   InfTcpConnectionPrivate* priv;
 
-#ifdef G_OS_WIN32
-  u_long argp;
-#endif
-
   union {
     struct sockaddr_in in;
     struct sockaddr_in6 in6;
@@ -351,6 +402,7 @@ inf_tcp_connection_open_real(InfTcpConnection* connection,
   socklen_t addrlen;
   int result;
   int errcode;
+  const InfKeepalive* keepalive;
   GError* local_error;
 
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -407,40 +459,14 @@ inf_tcp_connection_open_real(InfTcpConnection* connection,
     return FALSE;
   }
 
-  /* Set socket non-blocking */
-#ifndef G_OS_WIN32
-  result = fcntl(priv->socket, F_GETFL);
-  if(result == INVALID_SOCKET)
+  /* Set socket non-blocking and keepalive */
+  keepalive = &priv->keepalive;
+  if(!inf_tcp_connection_configure_socket(priv->socket, keepalive, error))
   {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-
     closesocket(priv->socket);
     priv->socket = INVALID_SOCKET;
     return FALSE;
   }
-
-  if(fcntl(priv->socket, F_SETFL, result | O_NONBLOCK) == -1)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-#else
-  argp = 1;
-  if(ioctlsocket(priv->socket, FIONBIO, &argp) != 0)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-
-    closesocket(priv->socket);
-    priv->socket = INVALID_SOCKET;
-    return FALSE;
-  }
-#endif
 
   /* Connect */
   do
@@ -879,6 +905,7 @@ inf_tcp_connection_init(InfTcpConnection* connection)
   priv->resolver_index = 0;
   priv->status = INF_TCP_CONNECTION_CLOSED;
   priv->socket = INVALID_SOCKET;
+  priv->keepalive.mask = 0;
 
   priv->remote_address = NULL;
   priv->remote_port = 0;
@@ -945,6 +972,7 @@ inf_tcp_connection_set_property(GObject* object,
   const gchar* device_string;
   unsigned int new_index;
 #endif
+  GError* error;
 
   connection = INF_TCP_CONNECTION(object);
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
@@ -963,6 +991,22 @@ inf_tcp_connection_set_property(GObject* object,
       connection,
       INF_NAME_RESOLVER(g_value_get_object(value))
     );
+
+    break;
+  case PROP_KEEPALIVE:
+    error = NULL;
+
+    inf_tcp_connection_set_keepalive(
+      connection,
+      (InfKeepalive*)g_value_get_boxed(value),
+      &error
+    );
+    
+    if(error != NULL)
+    {
+      g_warning("Failed to set keepalive settings: %s\n", error->message);
+      g_error_free(error);
+    }
 
     break;
   case PROP_REMOTE_ADDRESS:
@@ -1033,6 +1077,9 @@ inf_tcp_connection_get_property(GObject* object,
     break;
   case PROP_RESOLVER:
     g_value_set_object(value, G_OBJECT(priv->resolver));
+    break;
+  case PROP_KEEPALIVE:
+    g_value_set_boxed(value, &priv->keepalive);
     break;
   case PROP_STATUS:
     g_value_set_enum(value, priv->status);
@@ -1192,6 +1239,18 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
       INF_TYPE_TCP_CONNECTION_STATUS,
       INF_TCP_CONNECTION_CLOSED,
       G_PARAM_READABLE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_KEEPALIVE,
+    g_param_spec_boxed(
+      "keepalive",
+      "Keepalive",
+      "The keepalive settings for the connection",
+      INF_TYPE_KEEPALIVE,
+      G_PARAM_READWRITE
     )
   );
 
@@ -1683,6 +1742,62 @@ inf_tcp_connection_get_remote_port(InfTcpConnection* connection)
   return INF_TCP_CONNECTION_PRIVATE(connection)->remote_port;
 }
 
+/**
+ * inf_tcp_connection_set_keepalive:
+ * @connection: A #InfTcpConnection.
+ * @keepalive: New keepalive settings for the connection.
+ * @error: Location to store error information, if any, or %NULL.
+ *
+ * Sets the keepalive settings for @connection. When this function is not
+ * called, the system defaults are used. If the connection is closed, then
+ * the function always succeeds and stores the keepalive values internally.
+ * The values are actually set on the underlying socket when the connection
+ * is opened. If the connection is already open, the function might fail if
+ * the system call fails.
+ *
+ * Returns: %TRUE if the new keeplalive values were set, or %FALSE on error.
+ */
+gboolean
+inf_tcp_connection_set_keepalive(InfTcpConnection* connection,
+                                 const InfKeepalive* keepalive,
+                                 GError** error)
+{
+  InfTcpConnectionPrivate* priv;
+  InfKeepaliveMask mask;
+
+  g_return_val_if_fail(INF_IS_TCP_CONNECTION(connection), FALSE);
+  g_return_val_if_fail(keepalive != NULL, FALSE);
+  g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
+
+  priv = INF_TCP_CONNECTION_PRIVATE(connection);
+
+  if(priv->socket != INVALID_SOCKET)
+  {
+    mask = priv->keepalive.mask;
+    if(inf_keepalive_apply(keepalive, &priv->socket, mask, error) != TRUE)
+      return FALSE;
+  }
+
+  priv->keepalive = *keepalive;
+  return TRUE;
+}
+
+/**
+ * inf_tcp_connection_get_keepalive:
+ * @connection: A #InfTcpConnection.
+ *
+ * Returns the current keepalive settings for @connection.
+ *
+ * Returns: The current keepalive configuration for @connection, owned by
+ * @connection.
+ */
+const InfKeepalive*
+inf_tcp_connection_get_keepalive(InfTcpConnection* connection)
+{
+  g_return_val_if_fail(INF_IS_TCP_CONNECTION(connection), NULL);
+  return &INF_TCP_CONNECTION_PRIVATE(connection)->keepalive;
+}
+
 /* Creates a new TCP connection from an accepted socket. This is only used
  * by InfdTcpServer and should not be considered regular API. Do not call
  * this function. Language bindings should not wrap it. */
@@ -1691,45 +1806,20 @@ _inf_tcp_connection_accepted(InfIo* io,
                              InfNativeSocket socket,
                              InfIpAddress* address,
                              guint port,
+                             const InfKeepalive* keepalive,
                              GError** error)
 {
   InfTcpConnection* connection;
   InfTcpConnectionPrivate* priv;
   int errcode;
 
-#ifdef G_OS_WIN32
-  u_long argp;
-#else
-  int result;
-#endif
-
   g_return_val_if_fail(INF_IS_IO(io), NULL);
   g_return_val_if_fail(socket != INVALID_SOCKET, NULL);
+  g_return_val_if_fail(address != NULL, NULL);
+  g_return_val_if_fail(keepalive != NULL, NULL);
 
-#ifndef G_OS_WIN32
-  result = fcntl(socket, F_GETFL);
-  if(result == -1)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
+  if(inf_tcp_connection_configure_socket(socket, keepalive, error) != TRUE)
     return NULL;
-  }
-
-  if(fcntl(socket, F_SETFL, result | O_NONBLOCK) == -1)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-    return NULL;
-  }
-#else
-  argp = 1;
-  if(ioctlsocket(socket, FIONBIO, &argp) != 0)
-  {
-    errcode = INF_NATIVE_SOCKET_LAST_ERROR;
-    inf_native_socket_make_error(errcode, error);
-    return NULL;
-  }
-#endif
 
   g_return_val_if_fail(address != NULL, NULL);
   g_return_val_if_fail(port != 0, NULL);
@@ -1740,6 +1830,7 @@ _inf_tcp_connection_accepted(InfIo* io,
 
   priv = INF_TCP_CONNECTION_PRIVATE(connection);
   priv->socket = socket;
+  priv->keepalive = *keepalive;
 
   inf_tcp_connection_connected(connection);
   return connection;

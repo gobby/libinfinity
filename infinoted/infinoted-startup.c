@@ -483,6 +483,12 @@ infinoted_startup_new(int* argc,
     return NULL;
   }
 
+  startup->keepalive.mask =
+    INF_KEEPALIVE_ENABLED | INF_KEEPALIVE_TIME | INF_KEEPALIVE_INTERVAL;
+  startup->keepalive.enabled = TRUE;
+  startup->keepalive.time = 60;
+  startup->keepalive.interval = 5;
+
   return startup;
 }
 

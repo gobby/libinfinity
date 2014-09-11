@@ -36,6 +36,8 @@ struct _InfinotedStartup {
   InfCertificateChain* certificates;
   InfCertificateCredentials* credentials;
   InfSaslContext* sasl_context;
+
+  InfKeepalive keepalive;
 };
 
 InfinotedStartup*

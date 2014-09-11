@@ -76,6 +76,13 @@ infd_tcp_server_open(InfdTcpServer* server,
 void
 infd_tcp_server_close(InfdTcpServer* server);
 
+void
+infd_tcp_server_set_keepalive(InfdTcpServer* server,
+                              const InfKeepalive* keepalive);
+
+const InfKeepalive*
+infd_tcp_server_get_keepalive(InfdTcpServer* server);
+
 G_END_DECLS
 
 #endif /* __INFD_TCP_SERVER_H__ */

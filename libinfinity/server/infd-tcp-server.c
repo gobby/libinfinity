@@ -66,6 +66,8 @@ struct _InfdTcpServerPrivate {
 
   InfIpAddress* local_address;
   guint local_port;
+
+  InfKeepalive keepalive;
 };
 
 enum {
@@ -76,7 +78,9 @@ enum {
   PROP_STATUS,
 
   PROP_LOCAL_ADDRESS,
-  PROP_LOCAL_PORT
+  PROP_LOCAL_PORT,
+
+  PROP_KEEPALIVE
 };
 
 enum {
@@ -235,6 +239,7 @@ infd_tcp_server_io(InfNativeSocket* socket,
           new_socket,
           address,
           port,
+          &priv->keepalive,
           &error
         );
 
@@ -286,6 +291,8 @@ infd_tcp_server_init(InfdTcpServer* server)
 
   priv->local_address = NULL;
   priv->local_port = 0;
+
+  priv->keepalive.mask = 0;
 }
 
 static void
@@ -353,6 +360,10 @@ infd_tcp_server_set_property(GObject* object,
     g_assert(priv->status == INFD_TCP_SERVER_CLOSED);
     priv->local_port = g_value_get_uint(value);
     break;
+  case PROP_KEEPALIVE:
+    g_assert(g_value_get_boxed(value) != NULL);
+    priv->keepalive = *(const InfKeepalive*)g_value_get_boxed(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -384,6 +395,9 @@ infd_tcp_server_get_property(GObject* object,
     break;
   case PROP_LOCAL_PORT:
     g_value_set_uint(value, priv->local_port);
+    break;
+  case PROP_KEEPALIVE:
+    g_value_set_boxed(value, &priv->keepalive);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -479,6 +493,18 @@ infd_tcp_server_class_init(InfdTcpServerClass* tcp_server_class)
       0,
       65535,
       0,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_KEEPALIVE,
+    g_param_spec_boxed(
+      "keepalive",
+      "Keepalive",
+      "Keepalive settings for accepted connections",
+      INF_TYPE_KEEPALIVE,
       G_PARAM_READWRITE
     )
   );
@@ -711,6 +737,8 @@ infd_tcp_server_open(InfdTcpServer* server,
     }
   }
 
+  /* TODO: Should move this code to InfNativeSocket, so that it can be
+   * shared with InfTcpConnection */
 #ifndef G_OS_WIN32
   result = fcntl(priv->socket, F_GETFL);
   if(result == -1)
@@ -796,6 +824,39 @@ infd_tcp_server_close(InfdTcpServer* server)
 
   priv->status = INFD_TCP_SERVER_CLOSED;
   g_object_notify(G_OBJECT(server), "status");
+}
+
+/**
+ * infd_tcp_server_set_keepalive:
+ * @server: A #InfdTcpServer.
+ * @keepalive: The keepalive settings for accepted connections.
+ *
+ * Sets the keepalive settings for new connections accepted by the server.
+ */
+void
+infd_tcp_server_set_keepalive(InfdTcpServer* server,
+                              const InfKeepalive* keepalive)
+{
+  g_return_if_fail(INFD_IS_TCP_SERVER(server));
+  g_return_if_fail(keepalive != NULL);
+
+  INFD_TCP_SERVER_PRIVATE(server)->keepalive = *keepalive;
+}
+
+/**
+ * infd_tcp_server_get_keepalive:
+ * @server: A #InfdTcpServer.
+ *
+ * Obtains the current keepalive settings for accepted connections.
+ *
+ * Returns: A #InfKeepalive representing the keepalive configuration for
+ * accepted connections, owned by @server.
+ */
+const InfKeepalive*
+infd_tcp_server_get_keepalive(InfdTcpServer* server)
+{
+  g_return_val_if_fail(INFD_IS_TCP_SERVER(server), NULL);
+  return &INFD_TCP_SERVER_PRIVATE(server)->keepalive;
 }
 
 /* vim:set et sw=2 ts=2: */

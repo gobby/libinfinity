@@ -113,6 +113,8 @@ struct _InfDiscoveryAvahiPrivate {
   InfIo* io;
   InfXmppManager* xmpp_manager;
   InfXmppConnectionSecurityPolicy security_policy;
+  InfKeepalive keepalive;
+
   InfCertificateCredentials* creds;
   InfSaslContext* sasl_context;
   gchar* sasl_mechanisms;
@@ -129,12 +131,13 @@ enum {
   /* construct only */
   PROP_XMPP_MANAGER,
   PROP_IO,
+
+  /* read/write */
   PROP_CREDENTIALS,
   PROP_SASL_CONTEXT,
   PROP_SASL_MECHANISMS,
-
-  /* read/write */
-  PROP_SECURITY_POLICY
+  PROP_SECURITY_POLICY,
+  PROP_KEEPALIVE
 };
 
 #define INF_DISCOVERY_AVAHI_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_DISCOVERY_AVAHI, InfDiscoveryAvahiPrivate))
@@ -354,10 +357,12 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
       g_object_set(
         G_OBJECT(tcp),
         "device-index", discovery_info->interface,
-        NULL);
+        NULL
+      );
 
       error = NULL;
-      if(inf_tcp_connection_open(tcp, &error) == FALSE)
+      if(!inf_tcp_connection_set_keepalive(tcp, &priv->keepalive, &error) ||
+         !inf_tcp_connection_open(tcp, &error))
       {
         inf_discovery_avahi_info_resolv_error(discovery_info, error);
         g_error_free(error);
@@ -1111,6 +1116,7 @@ inf_discovery_avahi_init(InfDiscoveryAvahi* avahi)
   priv->io = NULL;
   priv->xmpp_manager = NULL;
   priv->security_policy = INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS;
+  priv->keepalive.mask = 0;
   priv->creds = NULL;
   priv->sasl_context = NULL;
   priv->sasl_mechanisms = NULL;
@@ -1250,6 +1256,10 @@ inf_discovery_avahi_set_property(GObject* object,
   case PROP_SECURITY_POLICY:
     priv->security_policy = g_value_get_enum(value);
     break;
+  case PROP_KEEPALIVE:
+    g_assert(g_value_get_boxed(value) != NULL);
+    priv->keepalive = *(const InfKeepalive*)g_value_get_boxed(value);
+    break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     break;
@@ -1287,6 +1297,9 @@ inf_discovery_avahi_get_property(GObject* object,
     break;
   case PROP_SECURITY_POLICY:
     g_value_set_enum(value, priv->security_policy);
+    break;
+  case PROP_KEEPALIVE:
+    g_value_set_boxed(value, &priv->keepalive);
     break;
   default:
     G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1568,7 +1581,7 @@ inf_discovery_avahi_class_init(InfDiscoveryAvahiClass* avahi_class)
       "Certificate credentials",
       "The GnuTLS certificate credentials used for encrypting XMPP streams",
       INF_TYPE_CERTIFICATE_CREDENTIALS,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+      G_PARAM_READWRITE
     )
   );
 
@@ -1580,7 +1593,7 @@ inf_discovery_avahi_class_init(InfDiscoveryAvahiClass* avahi_class)
       "SASL context",
       "The SASL context used for authentication",
       INF_TYPE_SASL_CONTEXT,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+      G_PARAM_READWRITE
     )
   );
 
@@ -1592,7 +1605,7 @@ inf_discovery_avahi_class_init(InfDiscoveryAvahiClass* avahi_class)
       "SASL mechanisms",
       "The accepted SASL mechanisms for authentication",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT
+      G_PARAM_READWRITE
     )
   );
 
@@ -1605,6 +1618,18 @@ inf_discovery_avahi_class_init(InfDiscoveryAvahiClass* avahi_class)
       "How to decide whether to use TLS",
       INF_TYPE_XMPP_CONNECTION_SECURITY_POLICY,
       INF_XMPP_CONNECTION_SECURITY_BOTH_PREFER_TLS,
+      G_PARAM_READWRITE
+    )
+  );
+
+  g_object_class_install_property(
+    object_class,
+    PROP_KEEPALIVE,
+    g_param_spec_boxed(
+      "keepalive",
+      "Keepalive",
+      "The keepalive settings for new connections",
+      INF_TYPE_KEEPALIVE,
       G_PARAM_READWRITE
     )
   );
@@ -1722,6 +1747,39 @@ inf_discovery_avahi_get_security_policy(InfDiscoveryAvahi* discovery)
   );
 
   return INF_DISCOVERY_AVAHI_PRIVATE(discovery)->security_policy;
+}
+
+/**
+ * inf_discovery_avahi_set_keepalive:
+ * @discovery: A #InfDiscoveryAvahi.
+ * @keepalive: The new keepalive configuration.
+ *
+ * Sets the keepalive settings for newly created connections. It does not
+ * affect already existing connections.
+ */
+void
+inf_discovery_avahi_set_keepalive(InfDiscoveryAvahi* discovery,
+                                  const InfKeepalive* keepalive)
+{
+  g_return_if_fail(INF_IS_DISCOVERY_AVAHI(discovery));
+  g_return_if_fail(keepalive != NULL);
+
+  INF_DISCOVERY_AVAHI_PRIVATE(discovery)->keepalive = *keepalive;
+}
+
+/**
+ * inf_discovery_avahi_get_keepalive:
+ * @discovery: A #InfDiscoveryAvahi.
+ *
+ * Returns the keepalive settings that will be used for new connections.
+ *
+ * Returns: A #InfKeepalive set for new connections, owned by @discovery.
+ */
+const InfKeepalive*
+inf_discovery_avahi_get_keepalive(InfDiscoveryAvahi* discovery)
+{
+  g_return_val_if_fail(INF_IS_DISCOVERY_AVAHI(discovery), NULL);
+  return &INF_DISCOVERY_AVAHI_PRIVATE(discovery)->keepalive;
 }
 
 #endif /* LIBINFINITY_HAVE_AVAHI */

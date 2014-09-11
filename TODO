@@ -26,7 +26,6 @@ Modernization:
     and G_TYPE_ARRAY for InfdSessionProxy::block-user-join
  * ffi marshalling
  * Use g_get_monotonic_time/g_get_real_time where a time is needed
- * Generate gobject introspection annotations, typelibs and girs
  * Use GFile API for InfdFilesystemStorage
  * Replace constructor by constructed
  * g_set_error_literal

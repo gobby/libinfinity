@@ -167,6 +167,8 @@ infinoted_run_create_server(InfinotedRun* run,
     )
   );
 
+  infd_tcp_server_set_keepalive(tcp, &startup->keepalive);
+
   if(!infd_tcp_server_bind(tcp, error))
   {
     g_object_unref(tcp);

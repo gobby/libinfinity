@@ -81,6 +81,13 @@ inf_discovery_avahi_set_security_policy(InfDiscoveryAvahi* discovery,
 InfXmppConnectionSecurityPolicy
 inf_discovery_avahi_get_security_policy(InfDiscoveryAvahi* discovery);
 
+void
+inf_discovery_avahi_set_keepalive(InfDiscoveryAvahi* discovery,
+                                  const InfKeepalive* keepalive);
+
+const InfKeepalive*
+inf_discovery_avahi_get_keepalive(InfDiscoveryAvahi* discovery);
+
 G_END_DECLS
 
 #endif /* LIBINFINITY_HAVE_AVAHI */

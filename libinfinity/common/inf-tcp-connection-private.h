@@ -21,6 +21,7 @@
 #define __INF_TCP_CONNECTION_PRIVATE_H__
 
 #include <libinfinity/common/inf-io.h>
+#include <libinfinity/common/inf-keepalive.h>
 
 #include <glib-object.h>
 
@@ -31,6 +32,7 @@ _inf_tcp_connection_accepted(InfIo* io,
                              InfNativeSocket socket,
                              InfIpAddress* address,
                              guint port,
+                             const InfKeepalive* keepalive,
                              GError** error);
 
 G_END_DECLS
