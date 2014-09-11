@@ -361,31 +361,6 @@ infd_xmpp_server_init(InfdXmppServer* xmpp)
   priv->sasl_mechanisms = NULL;
 }
 
-static GObject*
-infd_xmpp_server_constructor(GType type,
-                             guint n_construct_properties,
-                             GObjectConstructParam* construct_properties)
-{
-  InfdXmppServerPrivate* priv;
-  GObject* obj;
-
-  obj = G_OBJECT_CLASS(infd_xmpp_server_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
-
-  priv = INFD_XMPP_SERVER_PRIVATE(obj);
-  g_assert(priv->tcp != NULL);
-
-  g_assert(
-    priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED ||
-    priv->tls_creds != NULL
-  );
-
-  return obj;
-}
-
 static void
 infd_xmpp_server_dispose(GObject* object)
 {
@@ -574,7 +549,6 @@ infd_xmpp_server_class_init(InfdXmppServerClass* xmpp_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(xmpp_class);
 
-  object_class->constructor = infd_xmpp_server_constructor;
   object_class->dispose = infd_xmpp_server_dispose;
   object_class->finalize = infd_xmpp_server_finalize;
   object_class->set_property = infd_xmpp_server_set_property;

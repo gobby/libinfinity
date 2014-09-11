@@ -2680,18 +2680,13 @@ inf_gtk_permissions_dialog_init(InfGtkPermissionsDialog* dialog)
   );
 }
 
-static GObject*
-inf_gtk_permissions_dialog_constructor(GType type,
-                                       guint n_properties,
-                                       GObjectConstructParam* properties)
+static void
+inf_gtk_permissions_dialog_constructed(GObject* object)
 {
-  GObject* object;
   InfGtkPermissionsDialogPrivate* priv;
 
-  object = G_OBJECT_CLASS(inf_gtk_permissions_dialog_parent_class)->constructor(
-    type,
-    n_properties,
-    properties
+  G_OBJECT_CLASS(inf_gtk_permissions_dialog_parent_class)->constructed(
+    object
   );
 
   priv = INF_GTK_PERMISSIONS_DIALOG_PRIVATE(object);
@@ -2700,8 +2695,6 @@ inf_gtk_permissions_dialog_constructor(GType type,
     INF_GTK_PERMISSIONS_DIALOG(object),
     NULL
   );
-
-  return object;
 }
 
 static void
@@ -2826,7 +2819,7 @@ inf_gtk_permissions_dialog_class_init(
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(permissions_dialog_class);
 
-  object_class->constructor = inf_gtk_permissions_dialog_constructor;
+  object_class->constructed = inf_gtk_permissions_dialog_constructed;
   object_class->dispose = inf_gtk_permissions_dialog_dispose;
   object_class->finalize = inf_gtk_permissions_dialog_finalize;
   object_class->set_property = inf_gtk_permissions_dialog_set_property;

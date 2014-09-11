@@ -696,7 +696,7 @@ inf_adopted_session_add_local_user_cb(InfUserTable* user_table,
 }
 
 static void
-inf_adopted_session_constructor_foreach_local_user_func(InfUser* user,
+inf_adopted_session_constructed_foreach_local_user_func(InfUser* user,
                                                         gpointer user_data)
 {
   g_assert(INF_ADOPTED_IS_USER(user));
@@ -810,22 +810,15 @@ inf_adopted_session_init(InfAdoptedSession* session)
   priv->request_buffer = NULL;
 }
 
-static GObject*
-inf_adopted_session_constructor(GType type,
-                                guint n_construct_properties,
-                                GObjectConstructParam* construct_properties)
+static void
+inf_adopted_session_constructed(GObject* object)
 {
-  GObject* object;
   InfAdoptedSession* session;
   InfAdoptedSessionPrivate* priv;
   InfSessionStatus status;
   InfUserTable* user_table;
 
-  object = G_OBJECT_CLASS(inf_adopted_session_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_adopted_session_parent_class)->constructed(object);
 
   session = INF_ADOPTED_SESSION(object);
   priv = INF_ADOPTED_SESSION_PRIVATE(session);
@@ -872,11 +865,9 @@ inf_adopted_session_constructor(GType type,
    * though in synchronizing state no local users can exist. */
   inf_user_table_foreach_local_user(
     user_table,
-    inf_adopted_session_constructor_foreach_local_user_func,
+    inf_adopted_session_constructed_foreach_local_user_func,
     session
   );
-
-  return object;
 }
 
 static void
@@ -1524,7 +1515,7 @@ inf_adopted_session_class_init(InfAdoptedSessionClass* adopted_session_class)
   object_class = G_OBJECT_CLASS(adopted_session_class);
   session_class = INF_SESSION_CLASS(adopted_session_class);
 
-  object_class->constructor = inf_adopted_session_constructor;
+  object_class->constructed = inf_adopted_session_constructed;
   object_class->dispose = inf_adopted_session_dispose;
   object_class->finalize = inf_adopted_session_finalize;
   object_class->set_property = inf_adopted_session_set_property;

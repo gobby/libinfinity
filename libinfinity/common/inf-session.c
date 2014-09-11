@@ -463,20 +463,13 @@ inf_session_init(InfSession* session)
   priv->shared.run.syncs = NULL;
 }
 
-static GObject*
-inf_session_constructor(GType type,
-                        guint n_construct_properties,
-                        GObjectConstructParam* construct_properties)
+static void
+inf_session_constructed(GObject* object)
 {
-  GObject* object;
   InfSessionPrivate* priv;
   InfXmlConnection* sync_conn;
 
-  object = G_OBJECT_CLASS(inf_session_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_session_parent_class)->constructed(object);
 
   priv = INF_SESSION_PRIVATE(object);
 
@@ -514,8 +507,6 @@ inf_session_constructor(GType type,
       object
     );
   }
-
-  return object;
 }
 
 static void
@@ -1896,7 +1887,7 @@ inf_session_class_init(InfSessionClass* session_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(session_class);
 
-  object_class->constructor = inf_session_constructor;
+  object_class->constructed = inf_session_constructed;
   object_class->dispose = inf_session_dispose;
   object_class->finalize = inf_session_finalize;
   object_class->set_property = inf_session_set_property;

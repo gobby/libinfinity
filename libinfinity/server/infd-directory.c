@@ -8454,12 +8454,9 @@ infd_directory_init(InfdDirectory* directory)
   priv->chat_session = NULL;
 }
 
-static GObject*
-infd_directory_constructor(GType type,
-                           guint n_construct_properties,
-                           GObjectConstructParam* construct_properties)
+static void
+infd_directory_constructed(GObject* object)
 {
-  GObject* object;
   InfdDirectory* directory;
   InfdDirectoryPrivate* priv;
 
@@ -8469,11 +8466,7 @@ infd_directory_constructor(GType type,
   /* We only use central method for directory handling */
   static const gchar* const methods[] = { "centrol", NULL };
 
-  object = G_OBJECT_CLASS(infd_directory_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(infd_directory_parent_class)->constructed(object);
 
   directory = INFD_DIRECTORY(object);
   priv = INFD_DIRECTORY_PRIVATE(directory);
@@ -8525,7 +8518,6 @@ infd_directory_constructor(GType type,
    * when the storage property was set. */
 
   g_assert(g_hash_table_size(priv->connections) == 0);
-  return object;
 }
 
 static void
@@ -10392,7 +10384,7 @@ infd_directory_class_init(InfdDirectoryClass* directory_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(directory_class);
 
-  object_class->constructor = infd_directory_constructor;
+  object_class->constructed = infd_directory_constructed;
   object_class->dispose = infd_directory_dispose;
   object_class->finalize = infd_directory_finalize;
   object_class->set_property = infd_directory_set_property;

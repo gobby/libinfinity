@@ -67,27 +67,19 @@ inf_adopted_user_init(InfAdoptedUser* user)
   priv->log = NULL;
 }
 
-static GObject*
-inf_adopted_user_constructor(GType type,
-                             guint n_construct_properties,
-                             GObjectConstructParam* construct_properties)
+static void
+inf_adopted_user_constructed(GObject* object)
 {
-  GObject* object;
   InfAdoptedUser* user;
   InfAdoptedUserPrivate* priv;
 
-  object = G_OBJECT_CLASS(inf_adopted_user_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_adopted_user_parent_class)->constructed(object);
 
   user = INF_ADOPTED_USER(object);
   priv = INF_ADOPTED_USER_PRIVATE(user);
 
   /* Create empty request log if none was set during construction */
   priv->log = inf_adopted_request_log_new(inf_user_get_id(INF_USER(user)));
-  return object;
 }
 
 static void
@@ -196,7 +188,7 @@ inf_adopted_user_class_init(InfAdoptedUserClass* user_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(user_class);
 
-  object_class->constructor = inf_adopted_user_constructor;
+  object_class->constructed = inf_adopted_user_constructed;
   object_class->dispose = inf_adopted_user_dispose;
   object_class->finalize = inf_adopted_user_finalize;
   object_class->set_property = inf_adopted_user_set_property;

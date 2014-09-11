@@ -611,7 +611,7 @@ inf_chat_session_init(InfChatSession* session)
 }
 
 static void
-inf_chat_session_constructor_foreach_user_func(InfUser* user,
+inf_chat_session_constructed_foreach_user_func(InfUser* user,
                                                gpointer user_data)
 {
   g_signal_connect(
@@ -622,21 +622,13 @@ inf_chat_session_constructor_foreach_user_func(InfUser* user,
   );
 }
 
-static GObject*
-inf_chat_session_constructor(GType type,
-                             guint n_construct_properties,
-                             GObjectConstructParam* construct_properties)
+static void
+inf_chat_session_constructed(GObject* object)
 {
-  GObject* object;
   InfUserTable* user_table;
   InfChatBuffer* buffer;
 
-  object = G_OBJECT_CLASS(inf_chat_session_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
-
+  G_OBJECT_CLASS(inf_chat_session_parent_class)->constructed(object);
   user_table = inf_session_get_user_table(INF_SESSION(object));
 
   g_signal_connect_after(
@@ -655,7 +647,7 @@ inf_chat_session_constructor(GType type,
 
   inf_user_table_foreach_user(
     INF_USER_TABLE(user_table),
-    inf_chat_session_constructor_foreach_user_func,
+    inf_chat_session_constructed_foreach_user_func,
     object
   );
 
@@ -668,8 +660,6 @@ inf_chat_session_constructor(GType type,
     G_CALLBACK(inf_chat_session_add_message_cb),
     object
   );
-
-  return object;
 }
 
 static void
@@ -1036,7 +1026,7 @@ inf_chat_session_class_init(InfChatSessionClass* chat_session_class)
   object_class = G_OBJECT_CLASS(chat_session_class);
   session_class = INF_SESSION_CLASS(chat_session_class);
 
-  object_class->constructor = inf_chat_session_constructor;
+  object_class->constructed = inf_chat_session_constructed;
   object_class->dispose = inf_chat_session_dispose;
   object_class->finalize = inf_chat_session_finalize;
   object_class->set_property = inf_chat_session_set_property;

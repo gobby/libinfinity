@@ -1679,30 +1679,6 @@ infc_browser_init(InfcBrowser* browser)
   priv->chat_session = NULL;
 }
 
-static GObject*
-infc_browser_constructor(GType type,
-                         guint n_construct_properties,
-                         GObjectConstructParam* construct_properties)
-{
-  GObject* object;
-  InfcBrowser* browser;
-  InfcBrowserPrivate* priv;
-
-  object = G_OBJECT_CLASS(infc_browser_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
-
-  browser = INFC_BROWSER(object);
-  priv = INFC_BROWSER_PRIVATE(browser);
-
-  g_assert(priv->communication_manager != NULL);
-  g_assert(priv->io != NULL);
-
-  return object;
-}
-
 static void
 infc_browser_dispose(GObject* object)
 {
@@ -6828,7 +6804,6 @@ infc_browser_class_init(InfcBrowserClass* browser_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(browser_class);
 
-  object_class->constructor = infc_browser_constructor;
   object_class->dispose = infc_browser_dispose;
   object_class->finalize = infc_browser_finalize;
   object_class->set_property = infc_browser_set_property;

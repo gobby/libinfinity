@@ -3656,22 +3656,16 @@ inf_xmpp_connection_init(InfXmppConnection* connection)
   priv->sasl_error = NULL;
 }
 
-static GObject*
-inf_xmpp_connection_constructor(GType type,
-                                guint n_construct_properties,
-                                GObjectConstructParam* construct_properties)
+static void
+inf_xmpp_connection_constructed(GObject* object)
 {
   InfXmppConnectionPrivate* priv;
   InfTcpConnectionStatus status;
   GObject* obj;
 
-  obj = G_OBJECT_CLASS(inf_xmpp_connection_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_xmpp_connection_parent_class)->constructed(object);
 
-  priv = INF_XMPP_CONNECTION_PRIVATE(obj);
+  priv = INF_XMPP_CONNECTION_PRIVATE(object);
 
   g_assert(priv->tcp != NULL);
 
@@ -3692,8 +3686,6 @@ inf_xmpp_connection_constructor(GType type,
     priv->site == INF_XMPP_CONNECTION_CLIENT ||
     priv->creds != NULL
   );
-
-  return obj;
 }
 
 static void
@@ -4086,7 +4078,7 @@ inf_xmpp_connection_class_init(InfXmppConnectionClass* xmpp_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(xmpp_class);
 
-  object_class->constructor = inf_xmpp_connection_constructor;
+  object_class->constructed = inf_xmpp_connection_constructed;
   object_class->dispose = inf_xmpp_connection_dispose;
   object_class->finalize = inf_xmpp_connection_finalize;
   object_class->set_property = inf_xmpp_connection_set_property;

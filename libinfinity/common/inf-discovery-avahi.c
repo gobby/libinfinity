@@ -1132,19 +1132,12 @@ inf_discovery_avahi_init(InfDiscoveryAvahi* avahi)
   );
 }
 
-static GObject*
-inf_discovery_avahi_constructor(GType type,
-                                guint n_construct_properties,
-                                GObjectConstructParam* construct_properties)
+static void
+inf_discovery_avahi_constructed(GObject* object)
 {
-  GObject* object;
   InfDiscoveryAvahiPrivate* priv;
   
-  object = G_OBJECT_CLASS(inf_discovery_avahi_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_discovery_avahi_parent_class)->constructed(object);
 
   priv = INF_DISCOVERY_AVAHI_PRIVATE(object);
 
@@ -1152,7 +1145,6 @@ inf_discovery_avahi_constructor(GType type,
   g_assert(priv->io != NULL);
 
   inf_discovery_avahi_create_client(INF_DISCOVERY_AVAHI(object));
-  return object;
 }
 
 static void
@@ -1539,7 +1531,7 @@ inf_discovery_avahi_class_init(InfDiscoveryAvahiClass* avahi_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(avahi_class);
 
-  object_class->constructor = inf_discovery_avahi_constructor;
+  object_class->constructed = inf_discovery_avahi_constructed;
   object_class->dispose = inf_discovery_avahi_dispose;
   object_class->finalize = inf_discovery_avahi_finalize;
   object_class->set_property = inf_discovery_avahi_set_property;

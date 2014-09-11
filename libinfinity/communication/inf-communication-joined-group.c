@@ -161,21 +161,16 @@ inf_communication_joined_group_init(InfCommunicationJoinedGroup* group)
   priv->method = NULL;
 }
 
-static GObject*
-inf_communication_joined_group_constructor(GType type,
-                                           guint n_construct_properties,
-                                           GObjectConstructParam* properties)
+static void
+inf_communication_joined_group_constructed(GObject* object)
 {
-  GObject* object;
   InfCommunicationJoinedGroupPrivate* priv;
+  priv = INF_COMMUNICATION_JOINED_GROUP_PRIVATE(object);
 
-  object = G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    properties
+  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->constructed(
+    object
   );
 
-  priv = INF_COMMUNICATION_JOINED_GROUP_PRIVATE(object);
   g_assert(priv->publisher_conn != NULL);
   g_assert(priv->method != NULL);
 
@@ -192,8 +187,6 @@ inf_communication_joined_group_constructor(GType type,
     INF_COMMUNICATION_GROUP(object),
     priv->publisher_conn
   );
-
-  return object;
 }
 
 static void
@@ -207,7 +200,9 @@ inf_communication_joined_group_dispose(GObject* object)
 
   inf_communication_joined_group_set_publisher(group, NULL);
 
-  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->dispose(object);
+  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->dispose(
+    object
+  );
 }
 
 static void
@@ -222,7 +217,9 @@ inf_communication_joined_group_finalize(GObject* object)
   g_free(priv->publisher_id);
   g_free(priv->method);
 
-  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->finalize(object);
+  G_OBJECT_CLASS(inf_communication_joined_group_parent_class)->finalize(
+    object
+  );
 }
 
 static void
@@ -298,7 +295,7 @@ inf_communication_joined_group_class_init(
   object_class = G_OBJECT_CLASS(joined_group_class);
   group_class = INF_COMMUNICATION_GROUP_CLASS(joined_group_class);
 
-  object_class->constructor = inf_communication_joined_group_constructor;
+  object_class->constructed = inf_communication_joined_group_constructed;
   object_class->dispose = inf_communication_joined_group_dispose;
   object_class->finalize = inf_communication_joined_group_finalize;
   object_class->set_property = inf_communication_joined_group_set_property;

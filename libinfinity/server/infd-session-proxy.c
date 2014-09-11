@@ -765,23 +765,16 @@ infd_session_proxy_init(InfdSessionProxy* session_proxy)
   priv->idle = TRUE;
 }
 
-static GObject*
-infd_session_proxy_constructor(GType type,
-                               guint n_construct_properties,
-                               GObjectConstructParam* construct_properties)
+static void
+infd_session_proxy_constructed(GObject* object)
 {
-  GObject* object;
   InfdSessionProxy* session_proxy;
   InfdSessionProxyPrivate* priv;
 
-  object = G_OBJECT_CLASS(infd_session_proxy_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
-
   session_proxy = INFD_SESSION_PROXY(object);
   priv = INFD_SESSION_PROXY_PRIVATE(session_proxy);
+
+  G_OBJECT_CLASS(infd_session_proxy_parent_class)->constructed(object);
 
   g_assert(priv->subscription_group != NULL);
   g_assert(priv->session != NULL);
@@ -799,8 +792,6 @@ infd_session_proxy_constructor(GType type,
     priv->session,
     INF_COMMUNICATION_GROUP(priv->subscription_group)
   );
-
-  return object;
 }
 
 static void
@@ -1382,7 +1373,7 @@ infd_session_proxy_class_init(InfdSessionProxyClass* proxy_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(proxy_class);
 
-  object_class->constructor = infd_session_proxy_constructor;
+  object_class->constructed = infd_session_proxy_constructed;
   object_class->dispose = infd_session_proxy_dispose;
   object_class->set_property = infd_session_proxy_set_property;
   object_class->get_property = infd_session_proxy_get_property;

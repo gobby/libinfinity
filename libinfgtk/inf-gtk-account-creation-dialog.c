@@ -515,25 +515,17 @@ inf_gtk_account_creation_dialog_init(InfGtkAccountCreationDialog* dialog)
   gtk_widget_grab_default(priv->create_account_button);
 }
 
-static GObject*
-inf_gtk_account_creation_dialog_constructor(GType type,
-                                            guint n_properties,
-                                            GObjectConstructParam* properties)
+static void
+inf_gtk_account_creation_dialog_constructed(GObject* object)
 {
-  GObject* object;
-
-  object = G_OBJECT_CLASS(inf_gtk_account_creation_dialog_parent_class)->constructor(
-    type,
-    n_properties,
-    properties
+  G_OBJECT_CLASS(inf_gtk_account_creation_dialog_parent_class)->constructed(
+    object
   );
 
   inf_gtk_account_creation_dialog_update(
     INF_GTK_ACCOUNT_CREATION_DIALOG(object),
     NULL
   );
-
-  return object;
 }
 
 static void
@@ -636,7 +628,7 @@ inf_gtk_account_creation_dialog_class_init(
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(account_creation_dialog_class);
 
-  object_class->constructor = inf_gtk_account_creation_dialog_constructor;
+  object_class->constructed = inf_gtk_account_creation_dialog_constructed;
   object_class->dispose = inf_gtk_account_creation_dialog_dispose;
   object_class->finalize = inf_gtk_account_creation_dialog_finalize;
   object_class->set_property = inf_gtk_account_creation_dialog_set_property;

@@ -752,22 +752,15 @@ inf_text_session_init(InfTextSession* session)
   priv->caret_update_interval = 500;
 }
 
-static GObject*
-inf_text_session_constructor(GType type,
-                             guint n_construct_properties,
-                             GObjectConstructParam* construct_properties)
+static void
+inf_text_session_constructed(GObject* object)
 {
-  GObject* object;
   InfTextSession* session;
   InfTextSessionPrivate* priv;
   InfTextBuffer* buffer;
   InfSessionStatus status;
 
-  object = G_OBJECT_CLASS(inf_text_session_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_text_session_parent_class)->constructed(object);
 
   session = INF_TEXT_SESSION(object);
   priv = INF_TEXT_SESSION_PRIVATE(session);
@@ -788,8 +781,6 @@ inf_text_session_constructor(GType type,
 
   if(status == INF_SESSION_RUNNING)
     inf_text_session_init_text_handlers(session);
-
-  return object;
 }
 
 /*static void
@@ -1782,7 +1773,7 @@ inf_text_session_class_init(InfTextSessionClass* text_session_class)
   session_class = INF_SESSION_CLASS(text_session_class);
   adopted_session_class = INF_ADOPTED_SESSION_CLASS(text_session_class);
 
-  object_class->constructor = inf_text_session_constructor;
+  object_class->constructed = inf_text_session_constructed;
   object_class->dispose = inf_text_session_dispose;
   object_class->finalize = inf_text_session_finalize;
   object_class->set_property = inf_text_session_set_property;

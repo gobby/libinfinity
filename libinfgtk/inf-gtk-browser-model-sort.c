@@ -130,17 +130,11 @@ inf_gtk_browser_model_sort_init(InfGtkBrowserModelSort* model_sort)
   );
 }
 
-static GObject*
-inf_gtk_browser_model_sort_constructor(GType type,
-                                       guint n_construct_properties,
-                                       GObjectConstructParam* properties)
+static void
+inf_gtk_browser_model_sort_constructed(GObject* object)
 {
-  GObject* object;
-
-  object = G_OBJECT_CLASS(inf_gtk_browser_model_sort_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    properties
+  G_OBJECT_CLASS(inf_gtk_browser_model_sort_parent_class)->constructed(
+    object
   );
 
   /* Set initial model, we do not get notified for this */
@@ -150,8 +144,6 @@ inf_gtk_browser_model_sort_constructor(GType type,
       gtk_tree_model_sort_get_model(GTK_TREE_MODEL_SORT(object))
     )
   );
-
-  return object;
 }
 
 static void
@@ -243,7 +235,7 @@ inf_gtk_browser_model_sort_class_init(
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(browser_model_sort_class);
 
-  object_class->constructor = inf_gtk_browser_model_sort_constructor;
+  object_class->constructed = inf_gtk_browser_model_sort_constructed;
   object_class->dispose = inf_gtk_browser_model_sort_dispose;
 }
 

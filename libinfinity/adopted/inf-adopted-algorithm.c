@@ -1060,7 +1060,7 @@ inf_adopted_algorithm_init(InfAdoptedAlgorithm* algorithm)
 }
 
 static void
-inf_adopted_algorithm_constructor_foreach_user_func(InfUser* user,
+inf_adopted_algorithm_constructed_foreach_user_func(InfUser* user,
                                                     gpointer user_data)
 {
   InfAdoptedAlgorithm* algorithm;
@@ -1071,7 +1071,7 @@ inf_adopted_algorithm_constructor_foreach_user_func(InfUser* user,
 }
 
 static void
-inf_adopted_algorithm_constructor_foreach_local_user_func(InfUser* user,
+inf_adopted_algorithm_constructed_foreach_local_user_func(InfUser* user,
                                                           gpointer user_data)
 {
   InfAdoptedAlgorithm* algorithm;
@@ -1081,21 +1081,14 @@ inf_adopted_algorithm_constructor_foreach_local_user_func(InfUser* user,
   inf_adopted_algorithm_add_local_user(algorithm, INF_ADOPTED_USER(user));
 }
 
-static GObject*
-inf_adopted_algorithm_constructor(GType type,
-                                  guint n_construct_properties,
-                                  GObjectConstructParam* construct_properties)
+static void
+inf_adopted_algorithm_constructed(GObject* object)
 {
-  GObject* object;
   InfAdoptedAlgorithm* algorithm;
   InfAdoptedAlgorithmPrivate* priv;
   gboolean modified;
 
-  object = G_OBJECT_CLASS(inf_adopted_algorithm_parent_class)->constructor(
-    type,
-    n_construct_properties,
-    construct_properties
-  );
+  G_OBJECT_CLASS(inf_adopted_algorithm_parent_class)->constructed(object);
 
   algorithm = INF_ADOPTED_ALGORITHM(object);
   priv = INF_ADOPTED_ALGORITHM_PRIVATE(algorithm);
@@ -1103,23 +1096,19 @@ inf_adopted_algorithm_constructor(GType type,
   /* Add initial users */
   inf_user_table_foreach_user(
     priv->user_table,
-    inf_adopted_algorithm_constructor_foreach_user_func,
+    inf_adopted_algorithm_constructed_foreach_user_func,
     algorithm
   );
   
   inf_user_table_foreach_local_user(
     priv->user_table,
-    inf_adopted_algorithm_constructor_foreach_local_user_func,
+    inf_adopted_algorithm_constructed_foreach_local_user_func,
     algorithm
   );
 
   g_object_get(G_OBJECT(priv->buffer), "modified", &modified, NULL);
   if(modified == FALSE)
-  {
     priv->buffer_modified_time = inf_adopted_state_vector_copy(priv->current);
-  }
-
-  return object;
 }
 
 static void
@@ -1328,7 +1317,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
   GObjectClass* object_class;
   object_class = G_OBJECT_CLASS(algorithm_class);
 
-  object_class->constructor = inf_adopted_algorithm_constructor;
+  object_class->constructed = inf_adopted_algorithm_constructed;
   object_class->dispose = inf_adopted_algorithm_dispose;
   object_class->finalize = inf_adopted_algorithm_finalize;
   object_class->set_property = inf_adopted_algorithm_set_property;
