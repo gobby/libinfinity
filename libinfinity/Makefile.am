@@ -30,7 +30,8 @@ CLEANFILES = inf-marshal.h inf-marshal.c
 libinfinity_0_7_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity
 
-commonHEADERS = \
+adopteddir = $(libinfinity_0_7_ladir)/adopted
+adopted_HEADERS = \
 	adopted/inf-adopted-algorithm.h \
 	adopted/inf-adopted-no-operation.h \
 	adopted/inf-adopted-operation.h \
@@ -42,7 +43,10 @@ commonHEADERS = \
 	adopted/inf-adopted-split-operation.h \
 	adopted/inf-adopted-state-vector.h \
 	adopted/inf-adopted-undo-grouping.h \
-	adopted/inf-adopted-user.h \
+	adopted/inf-adopted-user.h
+
+commondir = $(libinfinity_0_7_ladir)/common
+common_HEADERS = \
 	common/inf-acl.h \
 	common/inf-async-operation.h \
 	common/inf-browser.h \
@@ -77,7 +81,10 @@ commonHEADERS = \
 	common/inf-xml-connection.h \
 	common/inf-xml-util.h \
 	common/inf-xmpp-connection.h \
-	common/inf-xmpp-manager.h \
+	common/inf-xmpp-manager.h
+
+communicationdir = $(libinfinity_0_7_ladir)/communication
+communication_HEADERS = \
 	communication/inf-communication-central-factory.h \
 	communication/inf-communication-central-method.h \
 	communication/inf-communication-factory.h \
@@ -89,7 +96,8 @@ commonHEADERS = \
 	communication/inf-communication-object.h \
 	communication/inf-communication-registry.h
 
-clientHEADERS = \
+clientdir = $(libinfinity_0_7_ladir)/client
+client_HEADERS = \
 	client/infc-browser.h \
 	client/infc-note-plugin.h \
 	client/infc-progress-request.h \
@@ -97,7 +105,8 @@ clientHEADERS = \
 	client/infc-request-manager.h \
 	client/infc-session-proxy.h
 
-serverHEADERS = \
+serverdir = $(libinfinity_0_7_ladir)/server
+server_HEADERS = \
 	server/infd-account-storage.h \
 	server/infd-chat-filesystem-format.h \
 	server/infd-directory.h \
@@ -114,9 +123,6 @@ serverHEADERS = \
 	server/infd-xmpp-server.h
 
 libinfinity_0_7_la_HEADERS = \
-	${commonHEADERS} \
-	${clientHEADERS} \
-	${serverHEADERS} \
 	inf-config.h
 
 noinst_HEADERS = \
@@ -241,7 +247,9 @@ Infinity_0_7_gir_CFLAGS = $(infinity_CFLAGS)
 Infinity_0_7_gir_LIBS = libinfinity-0.7.la
 Infinity_0_7_gir_FILES = \
 	$(commonSOURCES) \
-	$(commonHEADERS)
+	$(adopted_HEADERS) \
+	$(common_HEADERS) \
+	$(communication_HEADERS)
 
 # We ship simple "stub" .gir files for gnutls and gsasl, since we expose some
 # of these objects and expect the user of the library to use their API.
@@ -265,7 +273,7 @@ Infinityc_0_7_gir_CFLAGS = $(infinity_CFLAGS)
 Infinityc_0_7_gir_LIBS = libinfinity-0.7.la
 Infinityc_0_7_gir_FILES = \
 	$(clientSOURCES) \
-	$(clientHEADERS)
+	$(client_HEADERS)
 
 Infinityc_0_7_gir_INCLUDES = Infinity-0.7
 Infinityc_0_7_gir_PACKAGES = gobject-2.0
@@ -283,7 +291,7 @@ Infinityd_0_7_gir_CFLAGS = $(infinity_CFLAGS)
 Infinityd_0_7_gir_LIBS = libinfinity-0.7.la
 Infinityd_0_7_gir_FILES = \
 	$(serverSOURCES) \
-	$(serverHEADERS)
+	$(server_HEADERS)
 
 Infinityd_0_7_gir_INCLUDES = Infinity-0.7
 Infinityd_0_7_gir_PACKAGES = gobject-2.0
