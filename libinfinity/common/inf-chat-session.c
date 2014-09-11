@@ -462,11 +462,10 @@ inf_chat_session_receive_message(InfChatSession* session,
      (inf_user_get_status(message.user) == INF_USER_UNAVAILABLE ||
       inf_user_get_connection(message.user) != connection))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
-      "%s",
       _("User did not join from this connection")
     );
 
@@ -1226,11 +1225,10 @@ inf_chat_session_set_log_file(InfChatSession* session,
 
     if(new_file == NULL)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         G_FILE_ERROR,
         g_file_error_from_errno(save_errno),
-        "%s",
         strerror(save_errno)
       );
 

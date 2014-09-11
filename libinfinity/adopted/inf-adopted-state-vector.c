@@ -723,12 +723,11 @@ inf_adopted_state_vector_from_string(const gchar* str,
     id = strtoul(strpos, &endpos, 10);
     if(*endpos != ':')
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_adopted_state_vector_error_quark(),
         INF_ADOPTED_STATE_VECTOR_BAD_FORMAT,
-        "%s",
-        _("Expected ':' after ID")
+        _("Expected \":\" after ID")
       );
 
       inf_adopted_state_vector_free(vec);

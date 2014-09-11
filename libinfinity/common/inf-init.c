@@ -58,11 +58,11 @@ inf_init(GError** error)
     if(result != 0)
     {
       error_message = g_win32_error_message(result);
-      g_set_error(
+
+      g_set_error_literal(
         error,
         g_quark_from_static_string("INF_INIT_ERROR"),
         0,
-        "%s",
         error_message
       );
 

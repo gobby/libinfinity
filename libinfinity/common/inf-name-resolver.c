@@ -174,11 +174,10 @@ static void
 inf_name_resolver_set_herrno_error(GError** error,
                                    int code)
 {
-  g_set_error(
+  g_set_error_literal(
     error,
     g_quark_from_static_string("INF_NAME_RESOLVER_HERRNO_ERROR"),
     code,
-    "%s",
     hstrerror(code)
   );
 }
@@ -187,11 +186,10 @@ static void
 inf_name_resolver_set_errno_error(GError** error,
                                   int code)
 {
-  g_set_error(
+  g_set_error_literal(
     error,
     g_quark_from_static_string("INF_NAME_RESOLVER_ERRNO_ERROR"),
     code,
-    "%s",
     strerror(code)
   );
 }
@@ -199,11 +197,10 @@ inf_name_resolver_set_errno_error(GError** error,
 static void
 inf_name_resolver_set_incomplete_error(GError** error)
 {
-  g_set_error(
+  g_set_error_literal(
     error,
     g_quark_from_static_string("INF_NAME_RESOLVER_INCOMPLETE_ERROR"),
     0,
-    "%s",
     _("The reply from the DNS server is incomplete")
   );
 }
@@ -430,11 +427,10 @@ inf_name_resolver_lookup_srv(const gchar* query,
   {
     str = g_win32_error_message(status);
 
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("WIN32_ERROR"),
       status,
-      "%s",
       str
     );
 
@@ -599,11 +595,10 @@ inf_name_resolver_lookup_a_aaaa(const gchar* hostname,
 
   if(err != 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("GETADDRINFO_ERROR"),
       err,
-      "%s",
       gai_strerror(err)
     );
 

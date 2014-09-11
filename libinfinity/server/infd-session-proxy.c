@@ -293,12 +293,11 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
 
   if(name_param == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
-      _("Request does not contain required attribute 'name'")
+      _("Request does not contain required attribute \"name\"")
     );
 
     return NULL;
@@ -316,7 +315,7 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NAME_IN_USE,
-      _("Name '%s' already in use"),
+      _("Name \"%s\" already in use"),
       g_value_get_string(&name_param->value)
     );
 
@@ -328,11 +327,10 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   param = inf_session_get_user_property(user_props, "id");
   if(G_IS_VALUE(&param->value))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
-      inf_user_error_quark(),
-      INF_USER_ERROR_ID_PROVIDED,
-      "%s",
+      inf_request_error_quark(),
+      INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
       inf_user_strerror(INF_USER_ERROR_ID_PROVIDED)
     );
 
@@ -355,12 +353,11 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
   {
     if(g_value_get_enum(&param->value) == INF_USER_UNAVAILABLE)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
-        inf_user_error_quark(),
-        INF_USER_ERROR_STATUS_UNAVAILABLE,
-        "%s",
-        _("'status' attribute is 'unavailable' in user join request")
+        inf_request_error_quark(),
+        INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
+        _("\"status\" attribute is \"unavailable\" in user join request")
       );
 
       return NULL;
@@ -416,11 +413,10 @@ infd_session_proxy_perform_user_join(InfdSessionProxy* proxy,
 
   if(result == TRUE)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NOT_AUTHORIZED,
-      "%s",
       _("Permission denied")
     );
 

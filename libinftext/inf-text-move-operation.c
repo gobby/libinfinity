@@ -221,11 +221,10 @@ inf_text_move_operation_apply(InfAdoptedOperation* operation,
   if(priv->position > length ||
      priv->position + priv->length > length)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
       INF_TEXT_OPERATION_ERROR_INVALID_MOVE,
-      "%s",
       _("Attempt to move cursor or selection beyond the end of the document")
     );
 

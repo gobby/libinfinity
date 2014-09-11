@@ -2857,11 +2857,10 @@ infd_directory_create_certificate_from_crq(InfdDirectory* directory,
 
   if(priv->certificate == NULL || priv->private_key == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("Server does not support issuing certificates")
     );
 
@@ -2971,11 +2970,10 @@ infd_directory_account_name_from_certificate(gnutls_x509_crt_t cert,
   name = inf_cert_util_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0);
   if(name == NULL || name[0] == '\0')
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_INVALID_CERTIFICATE,
-      "%s",
       _("The certificate request has no common name set")
     );
 
@@ -3090,11 +3088,10 @@ infd_directory_create_acl_account_with_certificates(InfdDirectory* directory,
   }
   else
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("This server does not support creating accounts")
     );
 
@@ -3265,11 +3262,10 @@ infd_directory_remove_acl_account(InfdDirectory* directory,
   default_id = inf_acl_account_id_from_string("default");
   if(account_id == default_id)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
-      "%s",
       _("The default account cannot be removed")
     );
 
@@ -3349,11 +3345,10 @@ infd_directory_remove_acl_account(InfdDirectory* directory,
   }
   else
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("This server does not support removing accounts")
     );
 
@@ -5087,11 +5082,10 @@ infd_directory_check_auth(InfdDirectory* directory,
 
   if(result == FALSE)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NOT_AUTHORIZED,
-      "%s",
       _("Permission denied")
     );
 
@@ -5305,11 +5299,10 @@ infd_directory_get_subreq_from_xml(InfdDirectory* directory,
         return request;
     }
 
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_SUBSCRIPTION_REQUEST,
-      "%s",
       _("No subscription request for the server chat")
     );
   }
@@ -5362,11 +5355,10 @@ infd_directory_get_node_from_xml(InfdDirectory* directory,
   node = g_hash_table_lookup(priv->nodes, GUINT_TO_POINTER(node_id));
   if(node == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-      "%s",
       inf_directory_strerror(INF_DIRECTORY_ERROR_NO_SUCH_NODE)
     );
 
@@ -5506,11 +5498,10 @@ infd_directory_handle_explore_node(InfdDirectory* directory,
 
   if(g_slist_find(node->shared.subdir.connections, connection) != NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
-      "%s",
       inf_directory_strerror(INF_DIRECTORY_ERROR_ALREADY_EXPLORED)
     );
 
@@ -5686,11 +5677,10 @@ infd_directory_handle_add_node(InfdDirectory* directory,
       if(sheet_set != NULL)
         inf_acl_sheet_set_free(sheet_set);
 
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_TYPE_UNKNOWN,
-        "%s",
         inf_directory_strerror(INF_DIRECTORY_ERROR_TYPE_UNKNOWN)
       );
 
@@ -5819,11 +5809,10 @@ infd_directory_handle_remove_node(InfdDirectory* directory,
 
   if(node->parent == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
-      "%s",
       _("The root node cannot be removed")
     );
 
@@ -5916,11 +5905,10 @@ infd_directory_handle_subscribe_session(InfdDirectory* directory,
     {
       if(subreq->connection == connection)
       {
-        g_set_error(
+        g_set_error_literal(
           error,
           inf_directory_error_quark(),
           INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
-          "%s",
           inf_directory_strerror(INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED)
         );
 
@@ -6060,11 +6048,10 @@ infd_directory_handle_save_session(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
   if(priv->storage == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_STORAGE,
-      "%s",
       _("No background storage available")
     );
 
@@ -6086,11 +6073,10 @@ infd_directory_handle_save_session(InfdDirectory* directory,
   if(node->shared.note.session == NULL ||
      !infd_session_proxy_is_subscribed(node->shared.note.session, connection))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNSUBSCRIBED,
-      "%s",
       _("The requesting connection is not subscribed to the session")
     );
 
@@ -6185,11 +6171,10 @@ infd_directory_handle_subscribe_chat(InfdDirectory* directory,
 
   if(priv->chat_session == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_CHAT_DISABLED,
-      "%s",
       _("The chat is disabled")
     );
 
@@ -6295,11 +6280,10 @@ infd_directory_handle_create_acl_account(InfdDirectory* directory,
 
   if(crq_text.data == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
       _("No certificate request provided")
     );
 
@@ -6827,11 +6811,10 @@ infd_directory_handle_query_acl(InfdDirectory* directory,
 
   if(g_slist_find(node->acl_connections, connection) != NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ACL_ALREADY_QUERIED,
-      "%s",
       _("The ACL for this node has already been queried")
     );
 
@@ -6915,11 +6898,10 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
 
   if(g_slist_find(node->acl_connections, connection) == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ACL_NOT_QUERIED,
-      "%s",
       _("The ACL for this node has not been queried yet")
     );
 
@@ -6942,11 +6924,10 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
 
   if(sheet_set == NULL || sheet_set->n_sheets == 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
       _("The set-acl request does not have any ACL provided")
     );
 
@@ -6959,11 +6940,10 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
   {
     if(infd_directory_report_support_in_sheets(directory, sheet_set) == FALSE)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-        "%s",
         _("This server does not support the requested permissions")
       );
 
@@ -7227,11 +7207,10 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
          * permissions were changed or the note plugin was unloaded. */
         if(local_error == NULL)
         {
-          g_set_error(
+          g_set_error_literal(
             &local_error,
             inf_directory_error_quark(),
             INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-            "%s",
             _("The node to be subscribed to has been removed")
           );
         }
@@ -7349,11 +7328,10 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
       {
         /* TODO: Better error message needed: It could also be that the
          * permissions were changed or the note plugin was unloaded. */
-        g_set_error(
+        g_set_error_literal(
           &local_error,
           inf_directory_error_quark(),
           INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-          "%s",
           _("The parent node of the node to be added has been removed")
         );
       }
@@ -7465,11 +7443,10 @@ infd_directory_handle_subscribe_ack(InfdDirectory* directory,
        * permissions were changed or the note plugin was unloaded. */
       if(local_error == NULL)
       {
-        g_set_error(
+        g_set_error_literal(
           &local_error,
           inf_directory_error_quark(),
           INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-          "%s",
           _("The parent node of the node to be added has been removed")
         );
       }
@@ -7550,11 +7527,11 @@ infd_directory_handle_subscribe_nack(InfdDirectory* directory,
       subreq->type == INFD_DIRECTORY_SUBREQ_SYNC_IN_SUBSCRIBE))
   {
     local_error = NULL;
-    g_set_error(
+
+    g_set_error_literal(
       &local_error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_SUBSCRIPTION_REJECTED,
-      "%s",
       _("Client did not acknowledge initial subscription")
     );
 
@@ -8876,8 +8853,8 @@ infd_directory_communication_object_received(InfCommunicationObject* object,
       &local_error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE)
+      "Received unexpected network message \"%s\"",
+      (const gchar*)node->name
     );
   }
 
@@ -10328,11 +10305,10 @@ infd_directory_browser_set_acl(InfBrowser* browser,
     {
       error = NULL;
 
-      g_set_error(
+      g_set_error_literal(
         &error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-        "%s",
         _("This server does not support the requested permissions")
       );
 
@@ -11205,11 +11181,10 @@ infd_directory_iter_save_session(InfdDirectory* directory,
 
   if(priv->storage == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_STORAGE,
-      "%s",
       _("No background storage available")
     );
 

@@ -387,11 +387,10 @@ inf_session_connection_notify_status_cb(InfXmlConnection* connection,
   if(status == INF_XML_CONNECTION_CLOSED ||
      status == INF_XML_CONNECTION_CLOSING)
   {
-    g_set_error(
+    g_set_error_literal(
       &error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_CONNECTION_CLOSED,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_CONNECTION_CLOSED)
     );
 
@@ -777,11 +776,10 @@ inf_session_handle_user_status_change(InfSession* session,
   if(inf_user_get_status(user) == INF_USER_UNAVAILABLE ||
      inf_user_get_connection(user) != connection)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
-      "%s",
       _("User did not join from this connection")
     );
 
@@ -1099,11 +1097,10 @@ inf_session_validate_user_props_impl(InfSession* session,
   parameter = inf_session_lookup_user_property(params, n_params, "id");
   if(parameter == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_ID_NOT_PRESENT)
     );
 
@@ -1115,11 +1112,10 @@ inf_session_validate_user_props_impl(InfSession* session,
 
   if(user != NULL && user != exclude)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_ID_IN_USE,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_ID_IN_USE)
     );
 
@@ -1129,11 +1125,10 @@ inf_session_validate_user_props_impl(InfSession* session,
   parameter = inf_session_lookup_user_property(params, n_params, "name");
   if(parameter == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_NAME_NOT_PRESENT,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_NAME_NOT_PRESENT)
     );
 
@@ -1145,11 +1140,10 @@ inf_session_validate_user_props_impl(InfSession* session,
 
   if(user != NULL && user != exclude)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_NAME_IN_USE,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_NAME_IN_USE)
     );
 
@@ -1185,11 +1179,10 @@ inf_session_handle_received_sync_message(InfSession* session,
   {
     local_error = NULL;
 
-    g_set_error(
+    g_set_error_literal(
       &local_error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_SENDER_CANCELLED)
     );
 
@@ -1222,11 +1215,10 @@ inf_session_handle_received_sync_message(InfSession* session,
   {
     if(priv->shared.sync.messages_total > 0)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_session_sync_error_quark,
         INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC,
-        "%s",
         inf_session_sync_strerror(
           INF_SESSION_SYNC_ERROR_UNEXPECTED_BEGIN_OF_SYNC
         )
@@ -1239,11 +1231,10 @@ inf_session_handle_received_sync_message(InfSession* session,
       num_messages = xmlGetProp(node, (const xmlChar*)"num-messages");
       if(num_messages == NULL)
       {
-        g_set_error(
+        g_set_error_literal(
           error,
           inf_session_sync_error_quark,
           INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING,
-          "%s",
           inf_session_sync_strerror(
             INF_SESSION_SYNC_ERROR_NUM_MESSAGES_MISSING
           )
@@ -1284,11 +1275,10 @@ inf_session_handle_received_sync_message(InfSession* session,
     if(priv->shared.sync.messages_received !=
        priv->shared.sync.messages_total)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_session_sync_error_quark,
         INF_SESSION_SYNC_ERROR_UNEXPECTED_END_OF_SYNC,
-        "%s",
         inf_session_sync_strerror(
           INF_SESSION_SYNC_ERROR_UNEXPECTED_END_OF_SYNC
         )
@@ -1323,11 +1313,10 @@ inf_session_handle_received_sync_message(InfSession* session,
   {
     if(priv->shared.sync.messages_received == 0)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_session_sync_error_quark,
         INF_SESSION_SYNC_ERROR_EXPECTED_BEGIN_OF_SYNC,
-        "%s",
         inf_session_sync_strerror(
           INF_SESSION_SYNC_ERROR_EXPECTED_BEGIN_OF_SYNC
         )
@@ -1338,11 +1327,10 @@ inf_session_handle_received_sync_message(InfSession* session,
     else if(priv->shared.sync.messages_received ==
             priv->shared.sync.messages_total - 1)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_session_sync_error_quark,
         INF_SESSION_SYNC_ERROR_EXPECTED_END_OF_SYNC,
-        "%s",
         inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_EXPECTED_END_OF_SYNC)
       );
 
@@ -1548,11 +1536,10 @@ inf_session_communication_object_received(InfCommunicationObject* comm_object,
         }
         else
         {
-          g_set_error(
+          g_set_error_literal(
             &local_error,
             inf_session_sync_error_quark,
             INF_SESSION_SYNC_ERROR_FAILED,
-            "%s",
             inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_FAILED)
           );
         }
@@ -2585,11 +2572,10 @@ inf_session_cancel_synchronization(InfSession* session,
   case INF_SESSION_PRESYNC:
     g_return_if_fail(connection == priv->shared.presync.conn);
 
-    g_set_error(
+    g_set_error_literal(
       &error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED)
     );
 
@@ -2597,11 +2583,10 @@ inf_session_cancel_synchronization(InfSession* session,
   case INF_SESSION_SYNCHRONIZING:
     g_return_if_fail(connection == priv->shared.sync.conn);
 
-    g_set_error(
+    g_set_error_literal(
       &error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_RECEIVER_CANCELLED)
     );
 
@@ -2626,11 +2611,10 @@ inf_session_cancel_synchronization(InfSession* session,
       inf_communication_group_send_message(sync->group, sync->conn, xml);
     }
 
-    g_set_error(
+    g_set_error_literal(
       &error,
       inf_session_sync_error_quark,
       INF_SESSION_SYNC_ERROR_SENDER_CANCELLED,
-      "%s",
       inf_session_sync_strerror(INF_SESSION_SYNC_ERROR_SENDER_CANCELLED)
     );
 

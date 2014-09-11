@@ -78,11 +78,10 @@ inf_protocol_parse_version(const gchar* version,
   maj = strtoul(version, &endptr, 10);
   if(errno == ERANGE || maj > (unsigned long)G_MAXUINT)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "%s",
       _("Major part of version number causes overflow")
     );
 
@@ -91,11 +90,10 @@ inf_protocol_parse_version(const gchar* version,
 
   if(*endptr != '.')
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "%s",
       _("Version number parts are not separated by '.'")
     );
 
@@ -106,11 +104,10 @@ inf_protocol_parse_version(const gchar* version,
   min = strtoul(endptr+1, &endptr, 10);
   if(errno == ERANGE || min > (unsigned long)G_MAXUINT)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "%s",
       _("Minor part of version number causes overflow")
     );
 
@@ -119,11 +116,10 @@ inf_protocol_parse_version(const gchar* version,
 
   if(*endptr != '\0')
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_NUMBER,
-      "%s",
       _("Trailing characters after version number")
     );
 

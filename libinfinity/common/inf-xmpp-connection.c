@@ -972,11 +972,10 @@ inf_xmpp_connection_emit_auth_error(InfXmppConnection* xmpp,
   GError* error;
   error = NULL;
 
-  g_set_error(
+  g_set_error_literal(
     &error,
     inf_xmpp_connection_auth_error_quark,
     code,
-    "%s",
     inf_xmpp_connection_auth_strerror(code)
   );
 
@@ -1003,11 +1002,10 @@ inf_xmpp_connection_terminate_error(InfXmppConnection* xmpp,
            priv->status != INF_XMPP_CONNECTION_ENCRYPTION_REQUESTED);
 
   error = NULL;
-  g_set_error(
+  g_set_error_literal(
     &error,
     inf_xmpp_connection_stream_error_quark,
     code,
-    "%s",
     message != NULL ? message : inf_xmpp_connection_stream_strerror(code)
   );
 
@@ -1310,11 +1308,10 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
         {
           if(priv->site == INF_XMPP_CONNECTION_CLIENT)
           {
-            g_set_error(
+            g_set_error_literal(
               &error,
               inf_xmpp_connection_error_quark,
               INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
-              "%s",
               _("The server did not provide a certificate")
             );
           }
@@ -2320,11 +2317,10 @@ inf_xmpp_connection_sasl_suggest_mechanism(InfXmppConnection* xmpp,
 
   if(suggestion == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_xmpp_connection_error_quark,
       INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM,
-      "%s",
       _("The server does not offer a suitable authentication mechanism")
     );
   }
@@ -2388,11 +2384,11 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
          priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
       {
         error = NULL;
-        g_set_error(
+
+        g_set_error_literal(
           &error,
           inf_xmpp_connection_error_quark,
           INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED,
-          "%s",
           _("The server requires transport layer security (TLS)")
         );
 
@@ -2689,11 +2685,10 @@ inf_xmpp_connection_process_end_element(InfXmppConnection* xmpp,
       }
 
       error = NULL;
-      g_set_error(
+      g_set_error_literal(
         &error,
         inf_xmpp_connection_stream_error_quark,
         stream_code,
-        "%s",
         inf_xmpp_connection_stream_strerror(stream_code)
       );
 

@@ -96,11 +96,10 @@ inf_adopted_session_replay_read_current(xmlTextReaderPtr reader,
   {
     xml_error = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_XML,
-      "%s",
       xml_error->message
     );
 
@@ -121,11 +120,10 @@ inf_adopted_session_replay_handle_advance_result(int result,
   case -1:
     xml_error = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_XML,
-      "%s",
       xml_error->message
     );
 
@@ -150,21 +148,19 @@ inf_adopted_session_replay_handle_advance_required_result(int result,
   case -1:
     xml_error = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_XML,
-      "%s",
       xml_error->message
     );
 
     return FALSE;
   case 0:
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_UNEXPECTED_EOF,
-      "%s",
       _("Unexpected end of recording")
     );
 
@@ -353,11 +349,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
   name = xmlTextReaderConstName(reader);
   if(strcmp((const char*)name, "infinote-adopted-session-record") != 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_DOCUMENT,
-      "%s",
       _("Document is not a session recording")
     );
 
@@ -369,11 +364,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
   {
     xmlFree(value);
 
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_SESSION_TYPE,
-      "%s",
       _("Session type of the recording does not match")
     );
 
@@ -390,11 +384,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
   name = xmlTextReaderConstName(reader);
   if(strcmp((const char*)name, "initial") != 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_FORMAT,
-      "%s",
       _("Initial session state missing in recording")
     );
 
@@ -465,11 +458,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
     case INF_SESSION_RUNNING:
       g_signal_handler_disconnect(priv->session, handler);
 
-      g_set_error(
+      g_set_error_literal(
         error,
         session_replay_error_quark,
         INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_FORMAT,
-        "%s",
         _("Session switched to running without having finished playing "
           "the initial")
       );
@@ -486,11 +478,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
 
   if(xmlTextReaderNodeType(reader) != XML_READER_TYPE_END_ELEMENT)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_FORMAT,
-      "%s",
       _("Superfluous XML in initial session section")
     );
 
@@ -500,11 +491,10 @@ inf_adopted_session_replay_play_initial(InfAdoptedSessionReplay* replay,
   if(inf_session_get_status(INF_SESSION(priv->session)) ==
      INF_SESSION_SYNCHRONIZING)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_FORMAT,
-      "%s",
       _("Session is still in synchronizing state after having "
         "played the initial")
     );
@@ -734,11 +724,10 @@ inf_adopted_session_replay_set_record(InfAdoptedSessionReplay* replay,
   {
     xml_error = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_FILE,
-      "%s",
       xml_error->message
     );
 
@@ -896,11 +885,10 @@ inf_adopted_session_replay_play_next(InfAdoptedSessionReplay* replay,
 
   if(type != XML_READER_TYPE_ELEMENT)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       session_replay_error_quark,
       INF_ADOPTED_SESSION_REPLAY_ERROR_BAD_FORMAT,
-      "%s",
       _("Superfluous XML in requests section")
     );
 

@@ -164,11 +164,12 @@ static void
 infinoted_plugin_document_stream_make_system_error(int code,
                                                    GError** error)
 {
-  g_set_error(
+  g_set_error_literal(
     error,
-    g_quark_from_static_string("INFINOTED_PLUGIN_DOCUMENT_STREAM_SYSTEM_ERROR"),
+    g_quark_from_static_string(
+      "INFINOTED_PLUGIN_DOCUMENT_STREAM_SYSTEM_ERROR"
+    ),
     code,
-    "%s",
     strerror(code)
   );
 }

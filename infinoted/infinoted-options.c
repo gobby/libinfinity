@@ -199,11 +199,10 @@ infinoted_options_validate(InfinotedOptions* options,
 #ifdef LIBINFINITY_HAVE_PAM
   if(options->password != NULL && options->pam_service != NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_INVALID_AUTHENTICATION_SETTINGS,
-      "%s",
       _("Cannot use both server password and system authentication.")
     );
     return FALSE;
@@ -213,11 +212,10 @@ infinoted_options_validate(InfinotedOptions* options,
      && (options->pam_allowed_users != NULL
          || options->pam_allowed_groups != NULL))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_INVALID_AUTHENTICATION_SETTINGS,
-      "%s",
       _("Need a pam service to authenticate users.")
     );
     return FALSE;
@@ -241,11 +239,10 @@ infinoted_options_validate(InfinotedOptions* options,
 
   if(options->create_key == TRUE && options->create_certificate == FALSE)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_INVALID_CREATE_OPTIONS,
-      "%s",
       _("Creating a new private key also requires creating a new certificate "
         "signed with it.")
     );
@@ -255,11 +252,10 @@ infinoted_options_validate(InfinotedOptions* options,
   else if(security_policy != INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED && 
           options->key_file == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_EMPTY_KEY_FILE,
-      "%s",
       _("No private key file given. If you don't have a suitable key file, "
         "either create one using the --create-key command line argument, "
         "or disable TLS by setting the security policy to \"no-tls\".")
@@ -270,11 +266,10 @@ infinoted_options_validate(InfinotedOptions* options,
   else if(security_policy != INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED &&
           options->certificate_file == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_options_error_quark(),
       INFINOTED_OPTIONS_ERROR_EMPTY_CERTIFICATE_FILE,
-      "%s",
       _("No certificate file given. If you don't have a suitable certificate "
         "file, either create one using the --create-certificate command line "
         "agument, or disable TLS via by setting the security policy to "

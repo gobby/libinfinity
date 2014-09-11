@@ -984,11 +984,10 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
         {
           error = NULL;
 
-          g_set_error(
+          g_set_error_literal(
             &error,
             inf_request_error_quark(),
             INF_REQUEST_ERROR_NOT_AUTHORIZED,
-            "%s",
             _("Permissions to explore this node have been revoked")
           );
 
@@ -1025,11 +1024,10 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
               {
                 error = NULL;
 
-                g_set_error(
+                g_set_error_literal(
                   &error,
                   inf_request_error_quark(),
                   INF_REQUEST_ERROR_NOT_AUTHORIZED,
-                  "%s",
                   _("Permissions to explore the parent node "
                     "have been revoked")
                 );
@@ -1055,11 +1053,10 @@ infc_browser_enforce_single_acl(InfcBrowser* browser,
               {
                 error = NULL;
 
-                g_set_error(
+                g_set_error_literal(
                   &error,
                   inf_request_error_quark(),
                   INF_REQUEST_ERROR_NOT_AUTHORIZED,
-                  "%s",
                   _("Permissions to explore the parent node "
                     "have been revoked")
                 );
@@ -1351,11 +1348,10 @@ infc_browser_welcome_timeout_func(gpointer user_data)
   priv->welcome_timeout = NULL;
 
   error = NULL;
-  g_set_error(
+  g_set_error_literal(
     &error,
     inf_directory_error_quark(),
     INF_DIRECTORY_ERROR_NO_WELCOME_MESSAGE,
-    "%s",
     _("The server did not send an initial welcome message. This means that "
       "the server is running a lower version of the software which is "
       "incompatible to the client. Consider downgrading the client, or ask "
@@ -2450,8 +2446,8 @@ infc_browser_get_node_from_xml(InfcBrowser* browser,
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_NO_SUCH_NODE)
+      _("There is no such node with ID %u"),
+      node_id
     );
 
     return NULL;
@@ -2478,21 +2474,19 @@ infc_browser_get_node_from_xml_typed(InfcBrowser* browser,
   {
     if(mask & INFC_BROWSER_NODE_SUBDIRECTORY)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
-        "%s",
         inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY)
       );
     }
     else
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_NOT_A_NOTE,
-        "%s",
         inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_A_NOTE)
       );
     }
@@ -2515,11 +2509,10 @@ infc_browser_validate_progress_request(InfcBrowser* browser,
 
   if(infc_progress_request_get_initiated(request) == FALSE)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NOT_INITIATED,
-      "%s",
       inf_directory_strerror(INF_DIRECTORY_ERROR_NOT_INITIATED)
     );
 
@@ -2536,11 +2529,10 @@ infc_browser_validate_progress_request(InfcBrowser* browser,
 
     if(current >= total)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_directory_error_quark(),
         INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
-        "%s",
         inf_directory_strerror(INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN)
       );
 
@@ -2833,11 +2825,10 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
   if(server_major < own_major)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_VERSION_MISMATCH,
-      "%s",
       _("The server uses an older version of the protocol which is no longer "
         "supported by this client. Consider using an earlier version of it, "
         "or ask the server administrators to upgrade their software.")
@@ -2847,11 +2838,10 @@ infc_browser_handle_welcome(InfcBrowser* browser,
 
   if(server_major > own_major)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_VERSION_MISMATCH,
-      "%s",
       _("The server uses a newer version of the protocol which is not "
         "supported by this client. Consider upgrading your client.")
     );
@@ -3009,11 +2999,10 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
 
   if(node == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_NODE,
-      "%s",
       _("Node to explore does no longer exist")
     );
 
@@ -3021,11 +3010,10 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   }
   else if(node->type != INFC_BROWSER_NODE_SUBDIRECTORY)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NOT_A_SUBDIRECTORY,
-      "%s",
       _("Node to explore is not a subdirectory")
     );
 
@@ -3033,11 +3021,10 @@ infc_browser_handle_explore_begin(InfcBrowser* browser,
   }
   else if(node->shared.subdir.explored == TRUE)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
-      "%s",
       _("Node to explore is already explored")
     );
 
@@ -3079,11 +3066,10 @@ infc_browser_handle_explore_end(InfcBrowser* browser,
   g_object_get(G_OBJECT(request), "current", &current, "total", &total, NULL);
   if(current < total)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
-      "%s",
       _("Not all nodes were received before explore-end was received")
     );
 
@@ -3228,11 +3214,10 @@ infc_browser_handle_add_node(InfcBrowser* browser,
        * resulting from a node exploration cannot yield subscription. */
       if(request != NULL && INFC_IS_PROGRESS_REQUEST(request))
       {
-        g_set_error(
+        g_set_error_literal(
           error,
           inf_request_error_quark(),
           INF_REQUEST_ERROR_INVALID_SEQ,
-          "%s",
           _("Explored nodes cannot be initially be subscribed to")
         );
 
@@ -3399,11 +3384,10 @@ infc_browser_handle_sync_in(InfcBrowser* browser,
 
   if(session == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_SYNC_IN,
-      "%s",
       _("Received sync-in without having requested one")
     );
 
@@ -3590,11 +3574,10 @@ infc_browser_handle_subscribe_session(InfcBrowser* browser,
 
   if(node->shared.known.session != NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
-      "%s",
       _("Already subscribed to this session")
     );
 
@@ -3647,11 +3630,10 @@ infc_browser_handle_subscribe_chat(InfcBrowser* browser,
 
   if(priv->chat_session != NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_ALREADY_SUBSCRIBED,
-      "%s",
       _("Already subscribed to the chat session")
     );
 
@@ -3870,11 +3852,10 @@ infc_browser_handle_acl_account_list_end(InfcBrowser* browser,
   g_object_get(G_OBJECT(request), "current", &current, "total", &total, NULL);
   if(current < total)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_TOO_FEW_CHILDREN,
-      "%s",
       _("Not all users have been transmitted before "
         "user-list-end was received")
     );
@@ -4411,11 +4392,10 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
 
   if(request == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
-      "%s",
       _("No certificate request has been made")
     );
 
@@ -4439,11 +4419,10 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
 
   if(cert_text.data == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
       _("No certificate provided")
     );
 
@@ -4470,11 +4449,10 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
   }
   else if(res == 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
       _("No certificate provided")
     );
 
@@ -4489,11 +4467,10 @@ infc_browser_handle_create_acl_account(InfcBrowser* browser,
   g_object_get(G_OBJECT(connection), "remote-certificate", &chain, NULL);
   if(chain == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("Cannot verify the certificate without server certificate")
     );
 
@@ -4647,11 +4624,10 @@ infc_browser_handle_remove_acl_account(InfcBrowser* browser,
 
   if(account == default_id)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
-      "%s",
       _("The default account cannot be removed")
     );
 
@@ -4953,21 +4929,19 @@ infc_browser_handle_request_failed(InfcBrowser* browser,
 
   if(g_quark_from_string((gchar*)domain) == inf_directory_error_quark())
   {
-    g_set_error(
+    g_set_error_literal(
       &req_error,
       inf_directory_error_quark(),
       code,
-      "%s",
       inf_directory_strerror(code)
     );
   }
   else if(g_quark_from_string((gchar*)domain) == inf_request_error_quark())
   {
-    g_set_error(
+    g_set_error_literal(
       &req_error,
       inf_request_error_quark(),
       code,
-      "%s",
       inf_request_strerror(code)
     );
   }
@@ -5204,8 +5178,8 @@ infc_browser_communication_object_received(InfCommunicationObject* object,
       &local_error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE,
-      "%s",
-      inf_directory_strerror(INF_DIRECTORY_ERROR_UNEXPECTED_MESSAGE)
+      _("Received unexpected network message \"%s\""),
+      (const gchar*)node->name
     );
   }
 

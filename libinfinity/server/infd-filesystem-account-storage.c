@@ -182,11 +182,10 @@ infd_filesystem_account_storage_account_info_from_xml(xmlNodePtr xml,
   if( (password_salt != NULL && password_hash == NULL) ||
       (password_salt == NULL && password_hash != NULL))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infd_filesystem_account_storage_error_quark(),
       INFD_FILESYSTEM_ACCOUNT_STORAGE_ERROR_INVALID_FORMAT,
-      "%s",
       _("If one of \"password-hash\" or \"password-salt\" is provided, the "
         "other must be provided as well.")
     );
@@ -210,11 +209,10 @@ infd_filesystem_account_storage_account_info_from_xml(xmlNodePtr xml,
 
     if(hash_len != 32)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         infd_filesystem_account_storage_error_quark(),
         INFD_FILESYSTEM_ACCOUNT_STORAGE_ERROR_INVALID_FORMAT,
-        "%s",
         _("The length of the password salt is incorrect, it should "
           "be 32 bytes")
       );
@@ -1102,11 +1100,10 @@ infd_filesystem_account_storage_add_account(InfdAccountStorage* s,
 
   if(strlen(name) > 48)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infd_filesystem_account_storage_error_quark(),
       INFD_FILESYSTEM_ACCOUNT_STORAGE_ERROR_INVALID_FORMAT,
-      "%s",
       _("The account name is too long")
     );
 

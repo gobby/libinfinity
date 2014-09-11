@@ -327,11 +327,10 @@ infd_account_storage_list_accounts(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->list_accounts == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support acount listing")
     );
 
@@ -382,11 +381,10 @@ infd_account_storage_add_account(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->add_account == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support adding accounts")
     );
 
@@ -423,11 +421,10 @@ infd_account_storage_remove_account(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->remove_account == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support removing accounts")
     );
 
@@ -468,11 +465,10 @@ infd_account_storage_login_by_certificate(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->login_by_certificate == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support logging in with a certificate")
     );
 
@@ -520,11 +516,10 @@ infd_account_storage_login_by_password(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->login_by_password == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support logging in with a password")
     );
 
@@ -572,11 +567,10 @@ infd_account_storage_set_certificate(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->set_certificate == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support changing the certificate")
     );
 
@@ -619,11 +613,10 @@ infd_account_storage_set_password(InfdAccountStorage* storage,
   iface = INFD_ACCOUNT_STORAGE_GET_IFACE(storage);
   if(iface->set_password == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_directory_error_quark(),
       INF_DIRECTORY_ERROR_OPERATION_UNSUPPORTED,
-      "%s",
       _("The account backend does not support changing the password")
     );
 

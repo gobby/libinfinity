@@ -951,11 +951,10 @@ inf_text_session_handle_user_color_change(InfTextSession* session,
   if(inf_user_get_status(user) == INF_USER_UNAVAILABLE ||
      inf_user_get_connection(user) != connection)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_user_error_quark(),
       INF_USER_ERROR_NOT_JOINED,
-      "%s",
       _("User did not join from this connection")
     );
 
@@ -1279,12 +1278,11 @@ inf_text_session_validate_user_props(InfSession* session,
 
   if(caret == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
-      _("'caret' attribute in user message is missing")
+      _("\"caret\" attribute in user message is missing")
     );
 
     return FALSE;

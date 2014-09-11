@@ -82,21 +82,19 @@ inf_native_socket_make_error(int code,
   gchar* error_message;
   error_message = g_win32_error_message(code);
 
-  g_set_error(
+  g_set_error_literal(
     error,
     inf_native_socket_error_quark(),
     code,
-    "%s",
     error_message
   );
 
   g_free(error_message);
 #else
-  g_set_error(
+  g_set_error_literal(
     error,
     inf_native_socket_error_quark(),
     code,
-    "%s",
     strerror(code)
   );
 #endif

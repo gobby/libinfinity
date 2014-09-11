@@ -86,11 +86,10 @@ inf_file_util_set_error_from_win32(GError** error,
 
   message = g_win32_error_message(code);
 
-  g_set_error(
+  g_set_error_literal(
     error,
     G_FILE_ERROR,
     G_FILE_ERROR_FAILED,
-    "%s",
     message
   );
 
@@ -103,11 +102,10 @@ static void
 inf_file_util_set_error_from_errno(GError** error,
                                    int code)
 {
-  g_set_error(
+  g_set_error_literal(
     error,
     G_FILE_ERROR,
     g_file_error_from_errno(code),
-    "%s",
     g_strerror(code)
   );
 }

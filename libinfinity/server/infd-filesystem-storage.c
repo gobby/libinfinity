@@ -75,11 +75,10 @@ infd_filesystem_storage_verify_path(const gchar* path,
     if(*component == '\0' ||
        strcmp(*component, ".") == 0 || strcmp(*component, "..") == 0)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         infd_filesystem_storage_error_quark,
         INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
-        "%s",
         _("The path contains invalid components")
       );
 
@@ -138,11 +137,10 @@ static void
 infd_filesystem_storage_system_error(int code,
                                      GError** error)
 {
-  g_set_error(
+  g_set_error_literal(
     error,
     G_FILE_ERROR,
     g_file_error_from_errno(code),
-    "%s",
     g_strerror(code)
   );
 }
@@ -302,11 +300,10 @@ infd_filesystem_storage_write_xml_file_impl(InfdFilesystemStorage* storage,
     fclose(file);
     /* TODO: unlink? */
 
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("LIBXML2_OUTPUT_ERROR"),
       xmlerror->code,
-      "%s",
       xmlerror->message
     );
 

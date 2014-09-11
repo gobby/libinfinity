@@ -113,12 +113,10 @@ infinoted_pam_log_error(InfinotedLog* log,
     msg
   );
 
-  /* TODO: use g_set_error_literal in glib 2.18 */
-  g_set_error(
+  g_set_error_literal(
     error,
     inf_authentication_detail_error_quark(),
     INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR,
-    "%s",
     inf_authentication_detail_strerror(
       INF_AUTHENTICATION_DETAIL_ERROR_SERVER_ERROR
     )

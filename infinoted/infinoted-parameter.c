@@ -548,11 +548,10 @@ infinoted_parameter_convert_nonnegative(gpointer out,
 
   if(number < 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_parameter_error_quark(),
       INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
-      "%s",
       _("Number must not be negative")
     );
 
@@ -588,11 +587,10 @@ infinoted_parameter_convert_positive(gpointer out,
 
   if(number <= 0)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_parameter_error_quark(),
       INFINOTED_PARAMETER_ERROR_INVALID_NUMBER,
-      "%s",
       _("Number must be positive")
     );
 

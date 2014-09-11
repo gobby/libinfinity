@@ -175,11 +175,10 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
     case INF_ADOPTED_REQUEST_UNDO:
       if(inf_adopted_request_log_next_undo(log) == NULL)
       {
-        g_set_error(
+        g_set_error_literal(
           error,
           inf_adopted_session_error_quark,
           INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
-          "%s",
           _("Undo received, but no previous request found")
         );
 
@@ -192,11 +191,10 @@ inf_adopted_session_validate_request(InfAdoptedRequestLog* log,
     case INF_ADOPTED_REQUEST_REDO:
       if(inf_adopted_request_log_next_redo(log) == NULL)
       {
-        g_set_error(
+        g_set_error_literal(
           error,
           inf_adopted_session_error_quark,
           INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
-          "%s",
           _("Redo received, but no previous request found")
         );
 
@@ -477,11 +475,10 @@ inf_adopted_session_process_request(InfAdoptedSession* session,
     
     if(reject_request)
     {
-      g_set_error(
+      g_set_error_literal(
         &local_error,
         inf_adopted_session_error_quark,
         INF_ADOPTED_SESSION_ERROR_INVALID_REQUEST,
-        "%s",
         _("The request was rejected via the API")
       );
 
@@ -1170,11 +1167,10 @@ inf_adopted_session_process_xml_run(InfSession* session,
     if(inf_user_get_status(INF_USER(user)) == INF_USER_UNAVAILABLE ||
        inf_user_get_connection(INF_USER(user)) != connection)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_user_error_quark(),
         INF_USER_ERROR_NOT_JOINED,
-        "%s",
         _("User did not join from this connection")
       );
 
@@ -1402,12 +1398,11 @@ inf_adopted_session_validate_user_props(InfSession* session,
   time = inf_session_lookup_user_property(params, n_params, "vector");
   if(time == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_adopted_session_error_quark,
       INF_ADOPTED_SESSION_ERROR_MISSING_STATE_VECTOR,
-      "%s",
-      _("'time' attribute in user message is missing")
+      _("\"time\" attribute in user message is missing")
     );
 
     return FALSE;
@@ -1851,11 +1846,10 @@ inf_adopted_session_read_request_info(InfAdoptedSession* session,
 
     if(child == NULL)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_adopted_session_error_quark,
         INF_ADOPTED_SESSION_ERROR_MISSING_OPERATION,
-        "%s",
         _("Operation for request missing")
       );
 

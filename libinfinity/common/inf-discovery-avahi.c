@@ -443,11 +443,10 @@ inf_discovery_avahi_service_resolver_callback(AvahiServiceResolver* resolver,
   case AVAHI_RESOLVER_FAILURE:
     error = NULL;
 
-    g_set_error(
+    g_set_error_literal(
       &error,
       inf_discovery_avahi_error_quark,
       avahi_client_errno(avahi_service_resolver_get_client(resolver)),
-      "%s",
       avahi_strerror(
         avahi_client_errno(avahi_service_resolver_get_client(resolver))
       )
@@ -1437,11 +1436,10 @@ inf_discovery_avahi_resolve(InfDiscovery* discovery,
           avahi_service_resolver_get_client(info->service_resolver)
         );
 
-        g_set_error(
+        g_set_error_literal(
           &error,
           inf_discovery_avahi_error_quark,
           errno,
-          "%s",
           avahi_strerror(errno)
         );
 

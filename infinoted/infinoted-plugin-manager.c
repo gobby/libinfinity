@@ -379,11 +379,10 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
 
   if(module == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_plugin_manager_error_quark(),
       INFINOTED_PLUGIN_MANAGER_ERROR_OPEN_FAILED,
-      "%s",
       g_module_error()
     );
 
@@ -393,11 +392,10 @@ infinoted_plugin_manager_load_plugin(InfinotedPluginManager* manager,
 
   if(g_module_symbol(module, "INFINOTED_PLUGIN", (gpointer*)&plugin) == FALSE)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_plugin_manager_error_quark(),
       INFINOTED_PLUGIN_MANAGER_ERROR_NO_ENTRY_POINT,
-      "%s",
       g_module_error()
     );
     

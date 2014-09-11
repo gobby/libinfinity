@@ -123,11 +123,10 @@ infinoted_util_set_errno_error(GError** error,
   }
   else
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("ERRNO_ERROR"),
       save_errno,
-      "%s",
       strerror(save_errno)
     );
   }

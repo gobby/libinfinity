@@ -756,11 +756,10 @@ inf_acl_sheet_perms_from_xml(xmlNodePtr xml,
       }
       else
       {
-        g_set_error(
+        g_set_error_literal(
           error,
           inf_request_error_quark(),
           INF_REQUEST_ERROR_INVALID_ATTRIBUTE,
-          "%s",
           _("ACL field must be either \"yes\" or \"no\"")
         );
       }

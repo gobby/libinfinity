@@ -507,7 +507,7 @@ infc_session_proxy_translate_error_impl(InfcSessionProxy* proxy,
   error = NULL;
   if(error_msg != NULL)
   {
-    g_set_error(&error, domain, code, "%s", error_msg);
+    g_set_error_literal(&error, domain, code, error_msg);
   }
   else
   {
@@ -517,7 +517,7 @@ infc_session_proxy_translate_error_impl(InfcSessionProxy* proxy,
       &error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_UNKNOWN_DOMAIN,
-      _("Error comes from unknown error domain '%s' (code %u)"),
+      _("Error comes from unknown error domain \"%s\" (code %u)"),
       g_quark_to_string(domain),
       (guint)code
     );
@@ -655,12 +655,11 @@ infc_session_proxy_handle_user_rejoin(InfcSessionProxy* proxy,
 
   if(idparam == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_NO_SUCH_ATTRIBUTE,
-      "%s",
-      _("Request does not contain required attribute 'id'")
+      _("Request does not contain required attribute \"id\"")
     );
 
     goto error;

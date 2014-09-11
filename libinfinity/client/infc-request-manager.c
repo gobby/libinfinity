@@ -120,11 +120,10 @@ infc_request_manager_parse_seq(const gchar* seq,
   sid = strtoul(seq, &endptr, 10);
   if(errno == ERANGE || sid > (unsigned long)G_MAXUINT)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
-      "%s",
       _("Sequence identifier causes overflow")
     );
 
@@ -133,11 +132,10 @@ infc_request_manager_parse_seq(const gchar* seq,
 
   if(*endptr != '/')
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
-      "%s",
       _("Sequence components are not separated by '/'")
     );
 
@@ -148,11 +146,10 @@ infc_request_manager_parse_seq(const gchar* seq,
   snum = strtoul(endptr + 1, &endptr, 10);
   if(errno == ERANGE || snum > (unsigned long)G_MAXUINT)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
-      "%s",
       _("Sequence number causes overflow")
     );
 
@@ -161,11 +158,10 @@ infc_request_manager_parse_seq(const gchar* seq,
 
   if(*endptr != '\0')
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
-      "%s",
       _("Trailing characters after sequence number")
     );
 
@@ -737,8 +733,8 @@ infc_request_manager_get_request_by_xml(InfcRequestManager* manager,
       error,
       inf_request_error_quark(),
       INF_REQUEST_ERROR_INVALID_SEQ,
-      "%s",
-      _("The request contains an unknown sequence number")
+      _("No such sequence number %u"),
+      seq
     );
   }
   else
@@ -801,11 +797,10 @@ infc_request_manager_get_request_by_xml_required(InfcRequestManager* manager,
   {
     if(own_error == NULL)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         inf_request_error_quark(),
         INF_REQUEST_ERROR_INVALID_SEQ,
-        "%s",
         _("The request does not contain a sequence number, but one "
           "is required")
       );

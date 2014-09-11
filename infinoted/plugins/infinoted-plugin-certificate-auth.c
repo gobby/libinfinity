@@ -219,11 +219,10 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
   creds = infinoted_plugin_manager_get_credentials(manager);
   if(creds == NULL)
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       infinoted_plugin_certificate_auth_error_quark(),
       INFINOTED_PLUGIN_CERTIFICATE_AUTH_ERROR_NO_CREDENTIALS,
-      "%s",
       _("The certificate-auth plugin can only be used when TLS is enabled "
         "and a server certificate has been set.")
     );
@@ -282,11 +281,10 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
       gnutls_x509_privkey_deinit(plugin->ca_key);
       plugin->ca_key = NULL;
 
-      g_set_error(
+      g_set_error_literal(
         error,
         infinoted_plugin_certificate_auth_error_quark(),
         INFINOTED_PLUGIN_CERTIFICATE_AUTH_ERROR_NO_CA_FOR_KEY,
-        "%s",
         _("The given CA key does not match with any of the CA certificates")
       );
 
@@ -316,11 +314,10 @@ infinoted_plugin_certificate_auth_initialize(InfinotedPluginManager* manager,
   {
     if(plugin->ca_key == NULL)
     {
-      g_set_error(
+      g_set_error_literal(
         error,
         infinoted_plugin_certificate_auth_error_quark(),
         INFINOTED_PLUGIN_CERTIFICATE_AUTH_ERROR_NO_CA_KEY,
-        "%s",
         _("Cannot generate a superuser certificate without CA key")
       );
 

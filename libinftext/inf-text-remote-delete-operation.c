@@ -373,11 +373,10 @@ inf_text_remote_delete_operation_apply(InfAdoptedOperation* operation,
   if(priv->position + priv->length >
      inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer)))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
       INF_TEXT_OPERATION_ERROR_INVALID_DELETE,
-      "%s",
       _("Attempt to remove text from after the end of the document")
     );
 

@@ -583,11 +583,10 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
   {
     errcode = errno;
 
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("ERRNO_ERROR"),
       errcode,
-      "%s",
       strerror(errcode)
     );
 
@@ -602,11 +601,10 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
 
     xmlerror = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       libxml2_writer_error_quark,
       xmlerror->code,
-      "%s",
       xmlerror->message
     );
 
@@ -622,11 +620,10 @@ inf_adopted_session_record_start_recording(InfAdoptedSessionRecord* record,
 
     xmlerror = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       libxml2_writer_error_quark,
       xmlerror->code,
-      "%s",
       xmlerror->message
     );
 
@@ -734,11 +731,10 @@ inf_adopted_session_record_stop_recording(InfAdoptedSessionRecord* record,
   {
     xmlerror = xmlGetLastError();
 
-    g_set_error(
+    g_set_error_literal(
       error,
       libxml2_writer_error_quark,
       xmlerror->code,
-      "%s",
       xmlerror->message
     );
 

@@ -583,11 +583,10 @@ inf_text_filesystem_format_write(InfdFilesystemStorage* storage,
     infd_filesystem_storage_stream_close(stream);
     xmlFreeDoc(doc);
 
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("LIBXML2_OUTPUT_ERROR"),
       xmlerror->code,
-      "%s",
       xmlerror->message
     );
 

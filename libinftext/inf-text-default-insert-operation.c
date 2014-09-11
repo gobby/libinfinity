@@ -216,11 +216,10 @@ inf_text_default_insert_operation_apply(InfAdoptedOperation* operation,
 
   if(priv->position > inf_text_buffer_get_length(INF_TEXT_BUFFER(buffer)))
   {
-    g_set_error(
+    g_set_error_literal(
       error,
       g_quark_from_static_string("INF_TEXT_OPERATION_ERROR"),
       INF_TEXT_OPERATION_ERROR_INVALID_INSERT,
-      "%s",
       _("Attempt to insert text after the end of the document")
     );
 
