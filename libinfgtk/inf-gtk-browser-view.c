@@ -19,7 +19,6 @@
 
 #include <libinfgtk/inf-gtk-browser-view.h>
 #include <libinfinity/common/inf-discovery.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
@@ -2569,7 +2568,7 @@ inf_gtk_browser_view_class_init(InfGtkBrowserViewClass* view_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkBrowserViewClass, activate),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
@@ -2581,7 +2580,7 @@ inf_gtk_browser_view_class_init(InfGtkBrowserViewClass* view_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkBrowserViewClass, selection_changed),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     GTK_TYPE_TREE_ITER | G_SIGNAL_TYPE_STATIC_SCOPE
@@ -2593,7 +2592,7 @@ inf_gtk_browser_view_class_init(InfGtkBrowserViewClass* view_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkBrowserViewClass, populate_popup),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     GTK_TYPE_MENU

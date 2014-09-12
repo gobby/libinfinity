@@ -45,7 +45,6 @@
 #include <libinfinity/communication/inf-communication-manager.h>
 #include <libinfinity/communication/inf-communication-registry.h>
 #include <libinfinity/communication/inf-communication-group-private.h>
-#include <libinfinity/inf-marshal.h>
 
 #include <string.h>
 
@@ -535,7 +534,7 @@ inf_communication_group_class_init(InfCommunicationGroupClass* group_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfCommunicationGroupClass, member_added),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION
@@ -554,7 +553,7 @@ inf_communication_group_class_init(InfCommunicationGroupClass* group_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfCommunicationGroupClass, member_removed),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION

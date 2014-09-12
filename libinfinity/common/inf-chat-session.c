@@ -34,7 +34,6 @@
 #include <libinfinity/common/inf-error.h>
 
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 #include <errno.h>
@@ -1076,7 +1075,7 @@ inf_chat_session_class_init(InfChatSessionClass* chat_session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfChatSessionClass, receive_message),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INF_TYPE_CHAT_BUFFER_MESSAGE | G_SIGNAL_TYPE_STATIC_SCOPE
@@ -1100,7 +1099,7 @@ inf_chat_session_class_init(InfChatSessionClass* chat_session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfChatSessionClass, send_message),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INF_TYPE_CHAT_BUFFER_MESSAGE | G_SIGNAL_TYPE_STATIC_SCOPE

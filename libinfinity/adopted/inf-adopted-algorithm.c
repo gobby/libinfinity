@@ -67,7 +67,6 @@
  * dynamically as O(active users^2). */
 
 #include <libinfinity/adopted/inf-adopted-algorithm.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-i18n.h>
 
@@ -1410,7 +1409,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, can_undo_changed),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_BOOLEAN,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_ADOPTED_TYPE_USER,
@@ -1437,7 +1436,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, can_redo_changed),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_BOOLEAN,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_ADOPTED_TYPE_USER,
@@ -1460,7 +1459,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, begin_execute_request),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_ADOPTED_TYPE_USER,
@@ -1508,7 +1507,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedAlgorithmClass, end_execute_request),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT_OBJECT_POINTER,
+    NULL,
     G_TYPE_NONE,
     4,
     INF_ADOPTED_TYPE_USER,

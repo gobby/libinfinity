@@ -20,7 +20,6 @@
 #include <libinfgtk/inf-gtk-browser-store.h>
 #include <libinfgtk/inf-gtk-browser-model.h>
 #include <libinfinity/client/infc-browser.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 

@@ -34,7 +34,6 @@
  */
 
 #include <libinfinity/common/inf-discovery.h>
-#include <libinfinity/inf-marshal.h>
 
 G_DEFINE_INTERFACE(InfDiscovery, inf_discovery, G_TYPE_OBJECT)
 
@@ -66,7 +65,7 @@ inf_discovery_default_init(InfDiscoveryInterface* iface)
     G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
     G_STRUCT_OFFSET(InfDiscoveryInterface, discovered),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* InfDiscoveryInfo* */
@@ -91,7 +90,7 @@ inf_discovery_default_init(InfDiscoveryInterface* iface)
     G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
     G_STRUCT_OFFSET(InfDiscoveryInterface, undiscovered),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER

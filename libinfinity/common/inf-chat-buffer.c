@@ -29,7 +29,6 @@
 #include <libinfinity/common/inf-chat-buffer.h>
 
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 
 #include <string.h>
@@ -493,7 +492,7 @@ inf_chat_buffer_class_init(InfChatBufferClass* buffer_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfChatBufferClass, add_message),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INF_TYPE_CHAT_BUFFER_MESSAGE | G_SIGNAL_TYPE_STATIC_SCOPE

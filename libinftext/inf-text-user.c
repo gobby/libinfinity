@@ -18,7 +18,6 @@
  */
 
 #include <libinftext/inf-text-user.h>
-#include <libinfinity/inf-marshal.h>
 
 typedef struct _InfTextUserPrivate InfTextUserPrivate;
 struct _InfTextUserPrivate {
@@ -193,7 +192,7 @@ inf_text_user_class_init(InfTextUserClass* user_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTextUserClass, selection_changed),
     NULL, NULL,
-    inf_marshal_VOID__UINT_INT_BOOLEAN,
+    NULL,
     G_TYPE_NONE,
     3,
     G_TYPE_UINT,

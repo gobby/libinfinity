@@ -41,7 +41,6 @@
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gobject/gvaluecollector.h>
@@ -327,7 +326,7 @@ infc_request_manager_class_init(
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfcRequestManagerClass, request_add),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INFC_TYPE_REQUEST
@@ -349,7 +348,7 @@ infc_request_manager_class_init(
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfcRequestManagerClass, request_remove),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INFC_TYPE_REQUEST

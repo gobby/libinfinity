@@ -36,7 +36,6 @@
 
 #include <libinfinity/common/inf-browser.h>
 #include <libinfinity/inf-define-enum.h>
-#include <libinfinity/inf-marshal.h>
 
 #include <string.h>
 
@@ -120,7 +119,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, error),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* GError* */
@@ -140,7 +139,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, node_added),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -163,7 +162,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, node_removed),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -192,7 +191,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, subscribe_session),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT_OBJECT,
+    NULL,
     G_TYPE_NONE,
     3,
     INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -235,7 +234,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, unsubscribe_session),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT_OBJECT,
+    NULL,
     G_TYPE_NONE,
     3,
     INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -264,7 +263,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
     G_STRUCT_OFFSET(InfBrowserInterface, begin_request),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -286,7 +285,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, acl_account_added),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -309,7 +308,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, acl_account_removed),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -333,7 +332,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, acl_local_account_changed),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE,
@@ -362,7 +361,7 @@ inf_browser_default_init(InfBrowserInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfBrowserInterface, acl_changed),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     3,
     INF_TYPE_BROWSER_ITER | G_SIGNAL_TYPE_STATIC_SCOPE,

@@ -41,7 +41,6 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-error.h>
 
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-define-enum.h>

@@ -33,7 +33,6 @@
 #include <libinfinity/common/inf-user.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 
 #include <string.h>
@@ -347,7 +346,7 @@ inf_user_class_init(InfUserClass* user_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserClass, set_status),
     NULL, NULL,
-    inf_marshal_VOID__ENUM,
+    g_cclosure_marshal_VOID__ENUM,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER_STATUS

@@ -61,7 +61,6 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/communication/inf-communication-object.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 #include <libinfinity/inf-define-enum.h>
@@ -2004,7 +2003,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, close),
     NULL, NULL,
-    inf_marshal_VOID__VOID,
+    g_cclosure_marshal_VOID__VOID,
     G_TYPE_NONE,
     0
   );
@@ -2029,7 +2028,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, error),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_POINTER_POINTER,
+    NULL,
     G_TYPE_NONE,
     3,
     INF_TYPE_XML_CONNECTION,
@@ -2058,7 +2057,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, synchronization_begin),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_COMMUNICATION_TYPE_GROUP,
@@ -2086,7 +2085,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, synchronization_progress),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_DOUBLE,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_XML_CONNECTION,
@@ -2113,7 +2112,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, synchronization_complete),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION
@@ -2137,7 +2136,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfSessionClass, synchronization_failed),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_POINTER,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_XML_CONNECTION,

@@ -35,7 +35,6 @@
 #include <infinoted/infinoted-util.h>
 
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -346,7 +345,7 @@ infinoted_log_class_init(InfinotedLogClass* log_class)
     G_SIGNAL_RUN_FIRST,
     G_STRUCT_OFFSET(InfinotedLogClass, log_message),
     NULL, NULL,
-    inf_marshal_VOID__UINT_UINT_STRING,
+    NULL,
     G_TYPE_NONE,
     3,
     G_TYPE_UINT,

@@ -54,7 +54,6 @@
 #include <libinfinity/server/infd-account-storage.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-define-enum.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
 static const GFlagsValue infd_account_storage_support_values[] = {
@@ -129,7 +128,7 @@ infd_account_storage_default_init(InfdAccountStorageInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdAccountStorageInterface, account_added),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE
@@ -152,7 +151,7 @@ infd_account_storage_default_init(InfdAccountStorageInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdAccountStorageInterface, account_removed),
     NULL, NULL,
-    inf_marshal_VOID__BOXED,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
     INF_TYPE_ACL_ACCOUNT | G_SIGNAL_TYPE_STATIC_SCOPE

@@ -32,8 +32,6 @@
 
 #include <libinfinity/communication/inf-communication-method.h>
 
-#include <libinfinity/inf-marshal.h>
-
 G_DEFINE_INTERFACE(InfCommunicationMethod, inf_communication_method, G_TYPE_OBJECT)
 
 enum {
@@ -62,7 +60,7 @@ inf_communication_method_default_init(InfCommunicationMethodInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfCommunicationMethodInterface, add_member),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION
@@ -82,7 +80,7 @@ inf_communication_method_default_init(InfCommunicationMethodInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfCommunicationMethodInterface, remove_member),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION

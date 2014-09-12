@@ -46,7 +46,6 @@
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
@@ -1432,7 +1431,7 @@ infd_session_proxy_class_init(InfdSessionProxyClass* proxy_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdSessionProxyClass, add_subscription),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_UINT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_XML_CONNECTION,
@@ -1453,7 +1452,7 @@ infd_session_proxy_class_init(InfdSessionProxyClass* proxy_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdSessionProxyClass, remove_subscription),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION
@@ -1488,7 +1487,7 @@ infd_session_proxy_class_init(InfdSessionProxyClass* proxy_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdSessionProxyClass, reject_user_join),
     g_signal_accumulator_true_handled, NULL,
-    inf_marshal_BOOLEAN__OBJECT_POINTER_OBJECT,
+    NULL,
     G_TYPE_BOOLEAN,
     3,
     INF_TYPE_XML_CONNECTION,

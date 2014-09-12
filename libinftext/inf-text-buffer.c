@@ -40,7 +40,6 @@
 
 #include <libinftext/inf-text-buffer.h>
 #include <libinfinity/common/inf-buffer.h>
-#include <libinfinity/inf-marshal.h>
 
 G_DEFINE_INTERFACE(InfTextBuffer, inf_text_buffer, INF_TYPE_BUFFER)
 
@@ -62,7 +61,7 @@ inf_text_buffer_default_init(InfTextBufferInterface* iface)
     G_SIGNAL_RUN_FIRST,
     G_STRUCT_OFFSET(InfTextBufferInterface, text_inserted),
     NULL, NULL,
-    inf_marshal_VOID__UINT_BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     3,
     G_TYPE_UINT,
@@ -76,7 +75,7 @@ inf_text_buffer_default_init(InfTextBufferInterface* iface)
     G_SIGNAL_RUN_FIRST,
     G_STRUCT_OFFSET(InfTextBufferInterface, text_erased),
     NULL, NULL,
-    inf_marshal_VOID__UINT_BOXED_OBJECT,
+    NULL,
     G_TYPE_NONE,
     3,
     G_TYPE_UINT,

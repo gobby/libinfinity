@@ -18,7 +18,6 @@
  */
 
 #include <libinfinity/common/inf-user-table.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 #include <string.h>
@@ -399,7 +398,7 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, add_user),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER
@@ -423,7 +422,7 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, remove_user),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER
@@ -445,7 +444,7 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, add_available_user),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER
@@ -468,7 +467,7 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, remove_available_user),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER
@@ -495,7 +494,7 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, add_local_user),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER
@@ -521,7 +520,7 @@ inf_user_table_class_init(InfUserTableClass* user_table_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfUserTableClass, remove_local_user),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_USER

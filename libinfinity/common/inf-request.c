@@ -31,7 +31,6 @@
 
 #include <libinfinity/common/inf-request.h>
 #include <libinfinity/common/inf-request-result.h>
-#include <libinfinity/inf-marshal.h>
 
 G_DEFINE_INTERFACE(InfRequest, inf_request, G_TYPE_OBJECT)
 
@@ -86,7 +85,7 @@ inf_request_default_init(InfRequestInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfRequestInterface, finished),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_POINTER,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_REQUEST_RESULT | G_SIGNAL_TYPE_STATIC_SCOPE,

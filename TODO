@@ -24,7 +24,6 @@ Performance (Some ideas to improve performance, profile to verify!):
 Modernization:
  * Use G_TYPE_ERROR for signals with an error parameter
     and G_TYPE_ARRAY for InfdSessionProxy::block-user-join
- * ffi marshalling
  * Use g_get_monotonic_time/g_get_real_time where a time is needed
  * Use GFile API for InfdFilesystemStorage
  * Add GtkHeaderBars where useful

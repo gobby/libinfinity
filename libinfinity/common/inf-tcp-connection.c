@@ -47,7 +47,6 @@
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-native-socket.h>
 #include <libinfinity/inf-signals.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-define-enum.h>
 
@@ -1346,7 +1345,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTcpConnectionClass, sent),
     NULL, NULL,
-    inf_marshal_VOID__POINTER_UINT,
+    NULL,
     G_TYPE_NONE,
     2,
     G_TYPE_POINTER,
@@ -1369,7 +1368,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTcpConnectionClass, received),
     NULL, NULL,
-    inf_marshal_VOID__POINTER_UINT,
+    NULL,
     G_TYPE_NONE,
     2,
     G_TYPE_POINTER,
@@ -1391,7 +1390,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTcpConnectionClass, error),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* actually a GError* */

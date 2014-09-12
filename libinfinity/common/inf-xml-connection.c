@@ -44,7 +44,6 @@
 
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-certificate-chain.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 
 static const GEnumValue inf_xml_connection_status_values[] = {
@@ -101,7 +100,7 @@ inf_xml_connection_default_init(InfXmlConnectionInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfXmlConnectionInterface, sent),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER
@@ -121,7 +120,7 @@ inf_xml_connection_default_init(InfXmlConnectionInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfXmlConnectionInterface, received),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER
@@ -147,7 +146,7 @@ inf_xml_connection_default_init(InfXmlConnectionInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfXmlConnectionInterface, error),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* actually a GError */

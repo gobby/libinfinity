@@ -42,7 +42,6 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 #include <string.h>
@@ -1559,7 +1558,7 @@ inf_adopted_session_class_init(InfAdoptedSessionClass* adopted_session_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedSessionClass, check_request),
     g_signal_accumulator_true_handled, NULL,
-    inf_marshal_BOOLEAN__OBJECT_OBJECT,
+    NULL,
     G_TYPE_BOOLEAN,
     2,
     INF_ADOPTED_TYPE_REQUEST,

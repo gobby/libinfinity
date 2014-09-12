@@ -19,8 +19,6 @@
 
 #include <libinfgtk/inf-gtk-acl-sheet-view.h>
 
-#include <libinfinity/inf-marshal.h>
-
 /**
  * SECTION:inf-gtk-acl-sheet-view
  * @title: InfGtkAclSheetView
@@ -510,7 +508,7 @@ inf_gtk_acl_sheet_view_class_init(InfGtkAclSheetViewClass* sheet_view_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkAclSheetViewClass, sheet_changed),
     NULL, NULL,
-    inf_marshal_VOID__VOID,
+    g_cclosure_marshal_VOID__VOID,
     G_TYPE_NONE,
     0
   );

@@ -46,7 +46,6 @@
 #include <libinfinity/common/inf-xml-util.h>
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/communication/inf-communication-object.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 #include <libinfinity/inf-signals.h>
 
@@ -10471,7 +10470,7 @@ infd_directory_class_init(InfdDirectoryClass* directory_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdDirectoryClass, connection_added),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION
@@ -10491,7 +10490,7 @@ infd_directory_class_init(InfdDirectoryClass* directory_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdDirectoryClass, connection_removed),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION

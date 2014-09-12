@@ -39,7 +39,6 @@
 
 #include <libinfgtk/inf-gtk-browser-model.h>
 #include <libinfinity/client/infc-browser.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 
 static const GEnumValue inf_gtk_browser_model_status_values[] = {
@@ -107,7 +106,7 @@ inf_gtk_browser_model_default_init(InfGtkBrowserModelInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkBrowserModelInterface, set_browser),
     NULL, NULL,
-    inf_marshal_VOID__BOXED_BOXED_OBJECT_OBJECT,
+    NULL,
     G_TYPE_NONE,
     4,
     GTK_TYPE_TREE_PATH | G_SIGNAL_TYPE_STATIC_SCOPE,

@@ -18,7 +18,6 @@
  */
 
 #include <libinfinity/server/infd-xml-server.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 
 static const GEnumValue infd_xml_server_status_values[] = {
@@ -65,7 +64,7 @@ infd_xml_server_default_init(InfdXmlServerInterface* iface)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdXmlServerInterface, new_connection),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XML_CONNECTION

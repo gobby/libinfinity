@@ -22,7 +22,6 @@
 #include <libinfinity/common/inf-ip-address.h>
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/common/inf-native-socket.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 #include <config.h>
 
@@ -515,7 +514,7 @@ infd_tcp_server_class_init(InfdTcpServerClass* tcp_server_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdTcpServerClass, new_connection),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_TCP_CONNECTION
@@ -527,7 +526,7 @@ infd_tcp_server_class_init(InfdTcpServerClass* tcp_server_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfdTcpServerClass, error),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* actually a GError* */

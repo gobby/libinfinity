@@ -15,18 +15,6 @@ libinfinity_0_7_la_LIBADD = \
 	$(glib_LIBS) \
 	$(avahi_LIBS)
 
-inf-marshal.h: inf-marshal.in
-	glib-genmarshal --header --prefix=inf_marshal $< > $@
-
-# rewrite the output to avoid a warning for casting gpointer to a function
-# pointer type
-inf-marshal.c: inf-marshal.in
-	echo '#include <libinfinity/inf-marshal.h>' > $@
-	glib-genmarshal --body --prefix=inf_marshal $< | perl -pe 's/^  callback = \((GMarshalFunc_[^)]+)\) \(marshal_data \? marshal_data : cc->callback\);/  callback = *($$1*) (marshal_data ? &marshal_data : &cc->callback);/' >> $@
-
-BUILT_SOURCES = inf-marshal.h inf-marshal.c
-CLEANFILES = inf-marshal.h inf-marshal.c
-
 libinfinity_0_7_ladir = \
 	$(includedir)/libinfinity-$(LIBINFINITY_API_VERSION)/libinfinity
 
@@ -132,7 +120,6 @@ noinst_HEADERS = \
 	inf-define-enum.h \
 	inf-dll.h \
 	inf-i18n.h \
-	inf-marshal.h \
 	inf-signals.h
 
 commonSOURCES = \
@@ -223,10 +210,7 @@ libinfinity_0_7_la_SOURCES = \
 	${serverSOURCES} \
 	inf-dll.c \
 	inf-i18n.c \
-	inf-marshal.c \
 	inf-signals.c
-
-EXTRA_DIST = inf-marshal.in
 
 if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
@@ -305,7 +289,7 @@ gir_DATA = InfGnutls-3.0.gir InfGsasl-1.0.gir Infinity-0.7.gir Infinityc-0.7.gir
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = InfGnutls-3.0.typelib InfGsasl-1.0.typelib Infinity-0.7.typelib Infinityc-0.7.typelib Infinityd-0.7.typelib
 
-CLEANFILES += \
+CLEANFILES = \
 	$(gir_DATA) \
 	$(typelib_DATA)
 endif

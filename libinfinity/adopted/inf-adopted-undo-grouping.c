@@ -18,7 +18,6 @@
  */
 
 #include <libinfinity/adopted/inf-adopted-undo-grouping.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 /**
@@ -606,7 +605,7 @@ inf_adopted_undo_grouping_class_init(
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedUndoGroupingClass, group_requests),
     g_signal_accumulator_true_handled, NULL,
-    inf_marshal_BOOLEAN__OBJECT_OBJECT,
+    NULL,
     G_TYPE_BOOLEAN,
     2,
     INF_ADOPTED_TYPE_REQUEST,

@@ -37,7 +37,6 @@
  */
 
 #include <libinfinity/adopted/inf-adopted-request-log.h>
-#include <libinfinity/inf-marshal.h>
 
 #include <string.h> /* For (g_)memmove */
 
@@ -721,7 +720,7 @@ inf_adopted_request_log_class_init(
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfAdoptedRequestLogClass, add_request),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_ADOPTED_TYPE_REQUEST

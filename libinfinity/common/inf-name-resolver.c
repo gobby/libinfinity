@@ -38,7 +38,6 @@
 
 #include <libinfinity/common/inf-name-resolver.h>
 #include <libinfinity/common/inf-async-operation.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-i18n.h>
 
 /* For getaddrinfo */
@@ -1137,7 +1136,7 @@ inf_name_resolver_class_init(InfNameResolverClass* name_resolver_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfNameResolverClass, resolved),
     NULL, NULL,
-    inf_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
     G_TYPE_POINTER /* GError */

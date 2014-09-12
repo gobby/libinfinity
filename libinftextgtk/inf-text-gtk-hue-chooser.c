@@ -31,7 +31,6 @@
  */
 
 #include <libinftextgtk/inf-text-gtk-hue-chooser.h>
-#include <libinfinity/inf-marshal.h>
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>
@@ -776,7 +775,7 @@ inf_text_gtk_hue_chooser_class_init(
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfTextGtkHueChooserClass, hue_change),
     NULL, NULL,
-    inf_marshal_VOID__DOUBLE,
+    g_cclosure_marshal_VOID__DOUBLE,
     G_TYPE_NONE,
     1,
     G_TYPE_DOUBLE
@@ -795,7 +794,7 @@ inf_text_gtk_hue_chooser_class_init(
     G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION,
     G_STRUCT_OFFSET(InfTextGtkHueChooserClass, move),
     NULL, NULL,
-    inf_marshal_VOID__ENUM,
+    g_cclosure_marshal_VOID__ENUM,
     G_TYPE_NONE,
     1,
     GTK_TYPE_DIRECTION_TYPE

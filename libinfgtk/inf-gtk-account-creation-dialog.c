@@ -36,7 +36,6 @@
 #include <libinfinity/common/inf-cert-util.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/inf-i18n.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 #include <gnutls/x509.h>
@@ -713,7 +712,7 @@ inf_gtk_account_creation_dialog_class_init(
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfGtkAccountCreationDialogClass, account_created),
     NULL, NULL,
-    inf_marshal_VOID__POINTER_BOXED_BOXED,
+    NULL,
     G_TYPE_NONE,
     3,
     G_TYPE_POINTER, /* gnutls_x509_privkey_t */

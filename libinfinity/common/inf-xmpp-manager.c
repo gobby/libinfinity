@@ -21,7 +21,6 @@
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-tcp-connection.h>
 
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-signals.h>
 
 #include <string.h>
@@ -778,7 +777,7 @@ inf_xmpp_manager_class_init(InfXmppManagerClass* xmpp_manager_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfXmppManagerClass, connection_added),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT,
+    g_cclosure_marshal_VOID__OBJECT,
     G_TYPE_NONE,
     1,
     INF_TYPE_XMPP_CONNECTION
@@ -802,7 +801,7 @@ inf_xmpp_manager_class_init(InfXmppManagerClass* xmpp_manager_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfXmppManagerClass, connection_removed),
     NULL, NULL,
-    inf_marshal_VOID__OBJECT_OBJECT,
+    NULL,
     G_TYPE_NONE,
     2,
     INF_TYPE_XMPP_CONNECTION,

@@ -32,7 +32,6 @@
 
 #include <libinfinity/common/inf-simulated-connection.h>
 #include <libinfinity/common/inf-xml-connection.h>
-#include <libinfinity/inf-marshal.h>
 #include <libinfinity/inf-define-enum.h>
 
 static const GEnumValue inf_simulated_connection_mode_values[] = {
