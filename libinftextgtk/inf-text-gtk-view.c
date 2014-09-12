@@ -118,156 +118,6 @@ enum {
 G_DEFINE_TYPE_WITH_CODE(InfTextGtkView, inf_text_gtk_view, G_TYPE_OBJECT,
   G_ADD_PRIVATE(InfTextGtkView))
 
-/* Converts from HSV to RGB */
-/* TODO: Use gtk_hsv_to_rgb from GTK+ 2.14 instead */
-static void
-hsv_to_rgb(gdouble *h,
-           gdouble *s,
-           gdouble *v)
-{
-  gdouble hue, saturation, value;
-  gdouble f, p, q, t;
-
-  if (*s == 0.0)
-  {
-    *h = *v;
-    *s = *v;
-    *v = *v; /* heh */
-  }
-  else
-  {
-    hue = *h * 6.0;
-    saturation = *s;
-    value = *v;
-
-    if (hue == 6.0)
-      hue = 0.0;
-
-    f = hue - (int) hue;
-    p = value * (1.0 - saturation);
-    q = value * (1.0 - saturation * f);
-    t = value * (1.0 - saturation * (1.0 - f));
-
-    switch ((int) hue)
-    {
-    case 0:
-      *h = value;
-      *s = t;
-      *v = p;
-      break;
-
-    case 1:
-      *h = q;
-      *s = value;
-      *v = p;
-      break;
-
-    case 2:
-      *h = p;
-      *s = value;
-      *v = t;
-      break;
-
-    case 3:
-      *h = p;
-      *s = q;
-      *v = value;
-      break;
-
-    case 4:
-      *h = t;
-      *s = p;
-      *v = value;
-      break;
-
-    case 5:
-      *h = value;
-      *s = p;
-      *v = q;
-      break;
-
-    default:
-      g_assert_not_reached ();
-    }
-  }
-}
-
-/* Converts from RGB to HSV */
-/* TODO: Use gtk_rgb_to_hsv from GTK+ 2.14 instead */
-static void
-rgb_to_hsv (gdouble *r,
-            gdouble *g,
-            gdouble *b)
-{
-  gdouble red, green, blue;
-  gdouble h, s, v;
-  gdouble min, max;
-  gdouble delta;
-
-  red = *r;
-  green = *g;
-  blue = *b;
-
-  h = 0.0;
-
-  if (red > green)
-  {
-    if (red > blue)
-      max = red;
-    else
-      max = blue;
-
-    if (green < blue)
-      min = green;
-    else
-      min = blue;
-  }
-  else
-  {
-    if (green > blue)
-      max = green;
-    else
-      max = blue;
-
-    if (red < blue)
-      min = red;
-    else
-      min = blue;
-  }
-
-  v = max;
-
-  if (max != 0.0)
-    s = (max - min) / max;
-  else
-    s = 0.0;
-
-  if (s == 0.0)
-    h = 0.0;
-  else
-  {
-    delta = max - min;
-
-    if (red == max)
-      h = (green - blue) / delta;
-    else if (green == max)
-      h = 2 + (blue - red) / delta;
-    else if (blue == max)
-      h = 4 + (red - green) / delta;
-
-    h /= 6.0;
-
-    if (h < 0.0)
-      h += 1.0;
-    else if (h > 1.0)
-      h -= 1.0;
-  }
-
-  *r = h;
-  *g = s;
-  *b = v;
-}
-
 static InfTextGtkViewUser*
 inf_text_gtk_view_find_user(InfTextGtkView* view,
                             InfTextUser* user)
@@ -689,10 +539,7 @@ inf_text_gtk_view_draw_before_cb(GtkWidget* widget,
     gtk_style_context_get_background_color(style, GTK_STATE_FLAG_NORMAL, &bg);
     gtk_style_context_restore(style);
 
-    h = bg.red;
-    s = bg.green;
-    v = bg.blue;
-    rgb_to_hsv(&h, &s, &v);
+    gtk_rgb_to_hsv(bg.red, bg.green, bg.blue, &h, &s, &v);
     v = MAX(v, 0.3);
     s = MAX(s, 0.1 + 0.3*(1 - v));
 
@@ -743,8 +590,7 @@ inf_text_gtk_view_draw_before_cb(GtkWidget* widget,
           {
             view_user = (InfTextGtkViewUser*)prev_item->data;
             h = inf_text_user_get_hue(view_user->user);
-            r = h; g = s; b = v;
-            hsv_to_rgb(&r, &g, &b);
+            gtk_hsv_to_rgb(h, s, v, &r, &g, &b);
 
             cairo_pattern_add_color_stop_rgb(
               pattern,
@@ -854,10 +700,7 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
     /* Make selection color based on text color: If text is dark, selection
      * is dark, if text is bright selection is bright. Note that we draw with
      * 50% alpha only, so text remains readable. */
-    hs = fg.red;
-    ss = fg.green;
-    vs = fg.blue;
-    rgb_to_hsv(&hs, &ss, &vs);
+    gtk_rgb_to_hsv(fg.red, fg.green, fg.blue, &hs, &ss, &vs);
     vs = MAX(vs, 0.5);
     ss = 1.0 - 0.4*(vs);
 
@@ -1088,11 +931,7 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
         {
           view_user = ((InfTextGtkViewUserToggle*)item->data)->user;
           hs = inf_text_user_get_hue(view_user->user);
-
-          rs = hs;
-          gs = ss;
-          bs = vs;
-          hsv_to_rgb(&rs, &gs, &bs);
+          gtk_hsv_to_rgb(hs, ss, vs, &rs, &gs, &bs);
 
           cairo_pattern_add_color_stop_rgba(
             pattern,
@@ -1209,19 +1048,19 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
     gtk_widget_style_get (widget, "cursor-color", &cursor_color, NULL);
     if(cursor_color != NULL)
     {
-      hc = cursor_color->red / 65535.0;
-      sc = cursor_color->green / 65535.0;
-      vc = cursor_color->blue / 65535.0;
+      rc = cursor_color->red / 65535.0;
+      bc = cursor_color->green / 65535.0;
+      gc = cursor_color->blue / 65535.0;
       gdk_color_free(cursor_color);
     }
     else
     {
-      hc = fg.red;
-      sc = fg.green;
-      vc = fg.blue;
+      rc = fg.red;
+      bc = fg.green;
+      gc = fg.blue;
     }
 
-    rgb_to_hsv(&hc, &sc, &vc);
+    gtk_rgb_to_hsv(rc, bc, gc, &hc, &sc, &vc);
     sc = MIN(MAX(sc, 0.3), 0.8);
     vc = MAX(vc, 0.7);
 
@@ -1243,11 +1082,7 @@ inf_text_gtk_view_draw_after_cb(GtkWidget* widget,
         if(gdk_rectangle_intersect(&clip_area, &rct, NULL))
         {
           hc = inf_text_user_get_hue(view_user->user);
-
-          rc = hc;
-          gc = sc;
-          bc = vc;
-          hsv_to_rgb(&rc, &gc, &bc);
+          gtk_hsv_to_rgb(hc, sc, vc, &rc, &gc, &bc);
 
           cairo_set_source_rgb(cr, rc, gc, bc);
           gdk_cairo_rectangle(cr, &rct);

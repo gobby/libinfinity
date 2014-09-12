@@ -85,82 +85,6 @@ static const double INF_TEXT_GTK_HUE_CHOOSER_HUE_MOVE_DELTA = 0.002;
 
 #define INTENSITY(r, g, b) ((r) * 0.30 + (g) * 0.59 + (b) * 0.11)
 
-/* TODO: Use gtk_hsv_to_rgb from GTK+ 2.14 instead */
-static void
-inf_text_gtk_hue_chooser_hsv_to_rgb(gdouble* h,
-                                    gdouble* s,
-                                    gdouble* v)
-{
-  gdouble hue;
-  gdouble saturation;
-  gdouble value;
-  gdouble f, p, q, t;
-
-  if(*s == 0.0)
-  {
-    *h = *v;
-    *s = *v;
-    *v = *v; /* heh */
-  }
-  else
-  {
-    hue = *h * 6.0;
-    saturation = *s;
-    value = *v;
-
-    if(hue == 6.0)
-      hue = 0.0;
-
-    f = hue - (int)hue;
-    p = value * (1.0 - saturation);
-    q = value * (1.0 - saturation * f);
-    t = value * (1.0 - saturation * (1.0 - f));
-
-    switch((int)hue)
-    {
-    case 0:
-      *h = value;
-      *s = t;
-      *v = p;
-      break;
-
-    case 1:
-      *h = q;
-      *s = value;
-      *v = p;
-      break;
-
-    case 2:
-      *h = p;
-      *s = value;
-      *v = t;
-      break;
-
-    case 3:
-      *h = p;
-      *s = q;
-      *v = value;
-      break;
-
-    case 4:
-      *h = t;
-      *s = p;
-      *v = value;
-      break;
-
-    case 5:
-      *h = value;
-      *s = p;
-      *v = q;
-      break;
-
-    default:
-      g_assert_not_reached ();
-      break;
-    }
-  }
-}
-
 static gboolean
 inf_text_gtk_hue_chooser_is_in_ring(InfTextGtkHueChooser* chooser,
                                     gdouble x,
@@ -288,10 +212,7 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
 
       hue = angle / (2.0 * G_PI);
 
-      r = hue;
-      g = 1.0;
-      b = 1.0;
-      inf_text_gtk_hue_chooser_hsv_to_rgb(&r, &g, &b);
+      gtk_hsv_to_rgb(hue, 1.0, 1.0, &r, &g, &b);
 
       r_ = floor (r * 255 + 0.5);
       g_ = floor (g * 255 + 0.5);
@@ -312,14 +233,10 @@ inf_text_gtk_hue_chooser_paint(InfTextGtkHueChooser* chooser,
   );
 
   /* Now draw the value marker onto the source image, so that it
-   * will get properly clipped at the edges of the ring
-   */
+   * will get properly clipped at the edges of the ring */
   source_cr = cairo_create(source);
 
-  r = priv->hue;
-  g = 1.0;
-  b = 1.0;
-  inf_text_gtk_hue_chooser_hsv_to_rgb(&r, &g, &b);
+  gtk_hsv_to_rgb(priv->hue, 1.0, 1.0, &r, &g, &b);
 
   if(INTENSITY(r, g, b) > 0.5)
     cairo_set_source_rgb(source_cr, 0.0, 0.0, 0.0);

@@ -27,7 +27,6 @@ Modernization:
  * ffi marshalling
  * Use g_get_monotonic_time/g_get_real_time where a time is needed
  * Use GFile API for InfdFilesystemStorage
- * Replace RGB to HSV conversions by gtk_hsv_to_rgb etc.
  * Add GtkHeaderBars where useful
 
 Protocol Break:

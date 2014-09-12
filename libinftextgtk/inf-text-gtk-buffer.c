@@ -135,82 +135,6 @@ G_DEFINE_TYPE_WITH_CODE(InfTextGtkBuffer, inf_text_gtk_buffer, G_TYPE_OBJECT,
   G_IMPLEMENT_INTERFACE(INF_TYPE_BUFFER, inf_text_gtk_buffer_buffer_iface_init)
   G_IMPLEMENT_INTERFACE(INF_TEXT_TYPE_BUFFER, inf_text_gtk_buffer_text_buffer_iface_init))
 
-/* This function is stolen from gtkhsv.c from GTK+ */
-/* TODO: Use gtk_hsv_to_rgb from GTK+ 2.14 instead */
-/* Converts from HSV to RGB */
-static void
-hsv_to_rgb (gdouble *h,
-            gdouble *s,
-            gdouble *v)
-{
-  gdouble hue, saturation, value;
-  gdouble f, p, q, t;
-
-  if (*s == 0.0)
-  {
-    *h = *v;
-    *s = *v;
-    *v = *v; /* heh */
-  }
-  else
-  {
-    hue = *h * 6.0;
-    saturation = *s;
-    value = *v;
-
-    if (hue == 6.0)
-      hue = 0.0;
-
-    f = hue - (int) hue;
-    p = value * (1.0 - saturation);
-    q = value * (1.0 - saturation * f);
-    t = value * (1.0 - saturation * (1.0 - f));
-
-    switch ((int) hue)
-    {
-    case 0:
-      *h = value;
-      *s = t;
-      *v = p;
-      break;
-
-    case 1:
-      *h = q;
-      *s = value;
-      *v = p;
-      break;
-
-    case 2:
-      *h = p;
-      *s = value;
-      *v = t;
-      break;
-
-    case 3:
-      *h = p;
-      *s = q;
-      *v = value;
-      break;
-
-    case 4:
-      *h = t;
-      *s = p;
-      *v = value;
-      break;
-
-    case 5:
-      *h = value;
-      *s = p;
-      *v = q;
-      break;
-
-    default:
-      g_assert_not_reached ();
-      break;
-    }
-  }
-}
-
 static void
 inf_text_gtk_update_tag_color(InfTextGtkBuffer* buffer,
                               GtkTextTag* tag,
@@ -227,11 +151,8 @@ inf_text_gtk_update_tag_color(InfTextGtkBuffer* buffer,
   hue = inf_text_user_get_hue(user);
   saturation = priv->saturation;
   value = priv->value;
-  hsv_to_rgb(&hue, &saturation, &value);
 
-  rgba.red = hue;
-  rgba.green = saturation;
-  rgba.blue = value;
+  gtk_hsv_to_rgb(hue, saturation, value, &rgba.red, &rgba.green, &rgba.blue);
   rgba.alpha = priv->alpha;
 
   g_object_set(G_OBJECT(tag), "background-rgba", &rgba, NULL);
