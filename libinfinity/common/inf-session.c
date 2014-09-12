@@ -2033,7 +2033,7 @@ inf_session_class_init(InfSessionClass* session_class)
     3,
     INF_TYPE_XML_CONNECTION,
     G_TYPE_POINTER, /* actually a xmlNodePtr */
-    G_TYPE_POINTER /* actually a GError* */
+    G_TYPE_ERROR
   );
 
   /**
@@ -2140,7 +2140,7 @@ inf_session_class_init(InfSessionClass* session_class)
     G_TYPE_NONE,
     2,
     INF_TYPE_XML_CONNECTION,
-    G_TYPE_POINTER /* actually a GError* */
+    G_TYPE_ERROR
   );
 }
 

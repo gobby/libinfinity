@@ -89,7 +89,7 @@ inf_request_default_init(InfRequestInterface* iface)
     G_TYPE_NONE,
     2,
     INF_TYPE_REQUEST_RESULT | G_SIGNAL_TYPE_STATIC_SCOPE,
-    G_TYPE_POINTER /* GError* */
+    G_TYPE_ERROR /* GError* */
   );
 }
 

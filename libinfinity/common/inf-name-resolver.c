@@ -1136,10 +1136,10 @@ inf_name_resolver_class_init(InfNameResolverClass* name_resolver_class)
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET(InfNameResolverClass, resolved),
     NULL, NULL,
-    g_cclosure_marshal_VOID__POINTER,
+    g_cclosure_marshal_VOID__BOXED,
     G_TYPE_NONE,
     1,
-    G_TYPE_POINTER /* GError */
+    G_TYPE_ERROR
   );
 }
 

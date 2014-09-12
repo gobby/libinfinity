@@ -1513,7 +1513,7 @@ inf_adopted_algorithm_class_init(InfAdoptedAlgorithmClass* algorithm_class)
     INF_ADOPTED_TYPE_USER,
     INF_ADOPTED_TYPE_REQUEST,
     INF_ADOPTED_TYPE_REQUEST,
-    G_TYPE_POINTER /* GError* */
+    G_TYPE_ERROR
   );
 }
 

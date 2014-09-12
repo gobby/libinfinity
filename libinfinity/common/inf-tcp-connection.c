@@ -1393,7 +1393,7 @@ inf_tcp_connection_class_init(InfTcpConnectionClass* tcp_connection_class)
     g_cclosure_marshal_VOID__POINTER,
     G_TYPE_NONE,
     1,
-    G_TYPE_POINTER /* actually a GError* */
+    G_TYPE_ERROR
   );
 }
 

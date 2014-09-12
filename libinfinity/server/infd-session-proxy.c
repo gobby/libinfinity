@@ -1491,7 +1491,7 @@ infd_session_proxy_class_init(InfdSessionProxyClass* proxy_class)
     G_TYPE_BOOLEAN,
     3,
     INF_TYPE_XML_CONNECTION,
-    G_TYPE_POINTER, /* TODO: G_TYPE_ARRAY */
+    G_TYPE_ARRAY,
     INF_TYPE_USER
   );
 }
