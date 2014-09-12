@@ -290,6 +290,6 @@ typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = InfGnutls-3.0.typelib InfGsasl-1.0.typelib Infinity-0.7.typelib Infinityc-0.7.typelib Infinityd-0.7.typelib
 
 CLEANFILES = \
-	$(gir_DATA) \
+	$(INTROSPECTION_GIRS) \
 	$(typelib_DATA)
 endif
