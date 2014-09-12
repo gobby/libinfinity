@@ -578,7 +578,7 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
         error->message
       );
     }
-    else if(!cert_equal)
+    else if(known_cert != NULL && !cert_equal)
     {
       g_hash_table_insert(query->known_hosts, hostname, cert);
 
