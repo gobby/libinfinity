@@ -1,3 +1,11 @@
+libinfinity 0.6.2:
+	* Fix accounts being deleted when a plugin overrides the default
+	  account storage.
+	* The infinoted manual page has been corrected for the syntax of the
+	  --plugins option.
+	* A crash has been fixed when a connection is closed for which the
+	  the certificate dialog was shown.
+
 libinfinity 0.6.1:
 	* Explicitly link against libresolv on unix-based systems, to avoid
 	  a possible build failure.
