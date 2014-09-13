@@ -129,15 +129,6 @@ static guint algorithm_signals[LAST_SIGNAL];
 G_DEFINE_TYPE_WITH_CODE(InfAdoptedAlgorithm, inf_adopted_algorithm, G_TYPE_OBJECT,
   G_ADD_PRIVATE(InfAdoptedAlgorithm))
 
-static gint64
-inf_adopted_algorithm_get_real_time()
-{
-  /* TODO: Replace by g_get_real_time() once we depend on glib >=2.28 */
-  GTimeVal timeval;
-  g_get_current_time(&timeval);
-  return (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
-}
-
 /* Returns a new state vector v so that both first and second are causally
  * before v and so that there is no other state vector with the same property
  * that is causally before v. */
@@ -1669,19 +1660,19 @@ inf_adopted_algorithm_generate_request(InfAdoptedAlgorithm* algorithm,
       priv->current,
       inf_user_get_id(INF_USER(user)),
       operation,
-      inf_adopted_algorithm_get_real_time()
+      g_get_real_time()
     );
   case INF_ADOPTED_REQUEST_UNDO:
     return inf_adopted_request_new_undo(
       priv->current,
       inf_user_get_id(INF_USER(user)),
-      inf_adopted_algorithm_get_real_time()
+      g_get_real_time()
     );
   case INF_ADOPTED_REQUEST_REDO:
     return inf_adopted_request_new_redo(
       priv->current,
       inf_user_get_id(INF_USER(user)),
-      inf_adopted_algorithm_get_real_time()
+      g_get_real_time()
     );
   default:
     g_return_val_if_reached(NULL);
@@ -1878,10 +1869,7 @@ inf_adopted_algorithm_execute_request(InfAdoptedAlgorithm* algorithm,
   g_return_val_if_fail(priv->execute_request == NULL, FALSE);
   priv->execute_request = request;
 
-  inf_adopted_request_set_execute_time(
-    request,
-    inf_adopted_algorithm_get_real_time()
-  );
+  inf_adopted_request_set_execute_time(request, g_get_real_time());
 
   g_signal_emit(
     G_OBJECT(algorithm),

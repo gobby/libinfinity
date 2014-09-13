@@ -188,20 +188,6 @@ inf_test_text_replay_request_typestring(InfAdoptedRequest* request)
   }
 }
 
-/* TODO: Replace by g_get_monotonic_time once we depend on a higher
- * glib version. */
-static gint64
-inf_test_text_replay_monotonic_time()
-{
-  GTimeVal timeval;
-  gint64 current_time;
-
-  g_get_current_time(&timeval);
-  current_time = (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
-
-  return current_time;
-}
-
 static gint64 test;
 
 static void
@@ -244,7 +230,7 @@ inf_test_text_replay_begin_execute_request_cb(InfAdoptedAlgorithm* algorithm,
     g_free(request_str);
   }
 
-  test = inf_test_text_replay_monotonic_time();
+  test = g_get_monotonic_time();
 }
 
 static void
@@ -260,7 +246,7 @@ inf_test_text_replay_end_execute_request_cb(InfAdoptedAlgorithm* algorithm,
   gchar* request_str;
   gint64 time;
 
-  time = inf_test_text_replay_monotonic_time();
+  time = g_get_monotonic_time();
 
   if(error == NULL)
   {

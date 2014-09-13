@@ -87,15 +87,6 @@ G_DEFINE_TYPE_WITH_CODE(InfTextSession, inf_text_session, INF_ADOPTED_TYPE_SESSI
  * Utility functions
  */
 
-static gint64
-inf_text_session_get_real_time()
-{
-  /* TODO: Replace by g_get_real_time() once we depend on glib >=2.28 */
-  GTimeVal timeval;
-  g_get_current_time(&timeval);
-  return (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
-}
-
 /* Returns the difference between two GTimeVal, in milliseconds */
 static guint
 inf_text_session_timeval_diff(GTimeVal* first,
@@ -1725,7 +1716,7 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
       vector,
       user_id,
       operation,
-      inf_text_session_get_real_time()
+      g_get_real_time()
     );
     g_object_unref(operation);
     break;
@@ -1733,14 +1724,14 @@ inf_text_session_xml_to_request(InfAdoptedSession* session,
     request = inf_adopted_request_new_undo(
       vector,
       user_id,
-      inf_text_session_get_real_time()
+      g_get_real_time()
     );
     break;
   case INF_ADOPTED_REQUEST_REDO:
     request = inf_adopted_request_new_redo(
       vector,
       user_id,
-      inf_text_session_get_real_time()
+      g_get_real_time()
     );
     break;
   default:

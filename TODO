@@ -21,11 +21,6 @@ Performance (Some ideas to improve performance, profile to verify!):
     - G_DISABLE_CHECKS
     defined.
 
-Modernization:
- * Use g_get_monotonic_time/g_get_real_time where a time is needed
- * Use GFile API for InfdFilesystemStorage
- * Add GtkHeaderBars where useful
-
 Protocol Break:
   The following features would be nice to have, but they require breaking
   the protocol. Maybe it could be introduced such that new clients can still

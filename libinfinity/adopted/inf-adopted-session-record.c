@@ -81,15 +81,6 @@ static GQuark libxml2_writer_error_quark;
 G_DEFINE_TYPE_WITH_CODE(InfAdoptedSessionRecord, inf_adopted_session_record, G_TYPE_OBJECT,
   G_ADD_PRIVATE(InfAdoptedSessionRecord))
 
-static gint64
-inf_adopted_session_record_get_real_time()
-{
-  /* TODO: Replace by g_get_real_time() once we depend on glib >=2.28 */
-  GTimeVal timeval;
-  g_get_current_time(&timeval);
-  return (gint64)timeval.tv_sec * 1000000 + timeval.tv_usec;
-}
-
 static void
 inf_adopted_session_record_handle_xml_error(InfAdoptedSessionRecord* record)
 {
@@ -237,7 +228,7 @@ inf_adopted_session_record_add_user_cb(InfUserTable* user_table,
   inf_xml_util_set_attribute_double(
     xml,
     "executed",
-    inf_adopted_session_record_get_real_time() / 1000000.
+    g_get_real_time() / 1000000.
   );
 
   inf_adopted_session_record_write_node(record, xml);
