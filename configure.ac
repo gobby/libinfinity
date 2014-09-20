@@ -212,6 +212,29 @@ fi
 AM_CONDITIONAL([LIBINFINITY_HAVE_AVAHI], test "x$use_avahi" = "xyes")
 
 ####################
+# Check for gio
+####################
+
+AC_ARG_WITH([gio], AS_HELP_STRING([--with-gio],
+            [Enables avahi support [[default=auto]]]),
+            [use_gio=$withval], [use_gio=auto])
+
+if test "x$use_gio" = "xauto"
+then
+  PKG_CHECK_MODULES([gio], [gio-2.0 >= 2.40], [use_gio=yes], [use_gio=no])
+elif test "x$use_avahi" = "xyes"
+then
+  PKG_CHECK_MODULES([gio], [gio-2.0 >= 2.40])
+fi
+
+if test "x$use_gio" = "xyes"
+then
+  AC_DEFINE([LIBINFINITY_HAVE_GIO], 1, [Whether gio support is enabled])
+fi
+
+AM_CONDITIONAL([LIBINFINITY_HAVE_GIO], test "x$use_gio" = "xyes")
+
+####################
 # Check for libdaemon
 ####################
 

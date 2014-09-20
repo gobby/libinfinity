@@ -1,5 +1,11 @@
 if !WIN32
-nonwin_plugins = libinfinoted-plugin-document-stream.la
+nonwin_plugins = \
+	libinfinoted-plugin-document-stream.la
+
+if LIBINFINITY_HAVE_GIO
+nonwin_plugins += \
+	libinfinoted-plugin-dbus.la
+endif
 endif
 
 plugin_LTLIBRARIES = \
@@ -21,7 +27,8 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir) \
 	$(infinoted_CFLAGS) \
 	$(inftext_CFLAGS) \
-	$(infinity_CFLAGS)
+	$(infinity_CFLAGS) \
+	$(gio_CFLAGS)
 
 AM_LDFLAGS = \
 	-avoid-version -module -no-undefined
@@ -110,6 +117,17 @@ libinfinoted_plugin_document_stream_la_LIBADD = \
 	$(infinoted_LIBS) \
 	$(inftext_LIBS) \
 	$(infinity_LIBS)
+
+if LIBINFINITY_HAVE_GIO
+libinfinoted_plugin_dbus_la_LIBADD = \
+	${top_builddir}/infinoted/libinfinoted-plugin-manager-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinftext/libinftext-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	$(infinoted_LIBS) \
+	$(inftext_LIBS) \
+	$(infinity_LIBS) \
+	$(gio_LIBS)
+endif
 endif
 
 libinfinoted_plugin_autosave_la_SOURCES = \
@@ -147,4 +165,11 @@ libinfinoted_plugin_document_stream_la_SOURCES = \
 	util/infinoted-plugin-util-navigate-browser.h \
 	util/infinoted-plugin-util-navigate-browser.c \
 	infinoted-plugin-document-stream.c
+
+if LIBINFINITY_HAVE_GIO
+libinfinoted_plugin_dbus_la_SOURCES = \
+	util/infinoted-plugin-util-navigate-browser.h \
+	util/infinoted-plugin-util-navigate-browser.c \
+	infinoted-plugin-dbus.c
+endif
 endif
