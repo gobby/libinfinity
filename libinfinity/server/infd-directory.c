@@ -5053,6 +5053,77 @@ infd_directory_node_make_session(InfdDirectory* directory,
  */
 
 static gboolean
+infd_directory_verify_sheet_set(InfdDirectory* directory,
+                                const InfAclSheetSet* sheet_set,
+                                GError** error)
+{
+  InfAclSheetSet* changed_sheets;
+  InfAclSheetSet* copy;
+
+  /* TODO: infd_directory_verify_acl() should be able to operate such that
+   * it leaves the passed-in sheet set unmodified, and so that it just
+   * returns TRUE or FALSE depending on whether changes are needed. */
+  copy = inf_acl_sheet_set_copy(sheet_set);
+
+  changed_sheets = infd_directory_verify_acl(
+    directory,
+    copy,
+    NULL,
+    TRUE,
+    TRUE
+  );
+
+  inf_acl_sheet_set_free(copy);
+
+  if(changed_sheets != NULL)
+  {
+    g_assert(changed_sheets->n_sheets > 0);
+
+    g_set_error(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NO_SUCH_ACCOUNT,
+      "There is no such account with ID \"%s\"",
+      inf_acl_account_id_to_string(changed_sheets->sheets[0].account)
+    );
+
+    inf_acl_sheet_set_free(changed_sheets);
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static InfAclSheetSet*
+infd_directory_sheet_set_from_xml(InfdDirectory* directory,
+                                  xmlNodePtr xml,
+                                  GError** error)
+{
+  InfAclSheetSet* sheet_set;
+  GError* local_error;
+
+  local_error = NULL;
+  sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
+
+  if(local_error != NULL)
+  {
+    g_propagate_error(error, local_error);
+    return NULL;
+  }
+
+  if(sheet_set != NULL)
+  {
+    if(infd_directory_verify_sheet_set(directory, sheet_set, error) != TRUE)
+    {
+      inf_acl_sheet_set_free(sheet_set);
+      return NULL;
+    }
+  }
+
+  return sheet_set;
+}
+
+static gboolean
 infd_directory_check_auth(InfdDirectory* directory,
                           InfdDirectoryNode* node,
                           InfXmlConnection* connection,
@@ -5609,7 +5680,7 @@ infd_directory_handle_add_node(InfdDirectory* directory,
     return FALSE;
 
   local_error = NULL;
-  sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
+  sheet_set = infd_directory_sheet_set_from_xml(directory, xml, &local_error);
 
   if(local_error != NULL)
   {
@@ -6913,7 +6984,7 @@ infd_directory_handle_set_acl(InfdDirectory* directory,
 
   /* TODO: Introduce inf_acl_sheet_set_from_xml_required */
   local_error = NULL;
-  sheet_set = inf_acl_sheet_set_from_xml(xml, &local_error);
+  sheet_set = infd_directory_sheet_set_from_xml(directory, xml, &local_error);
 
   if(local_error != NULL)
   {
@@ -10293,6 +10364,15 @@ infd_directory_browser_set_acl(InfBrowser* browser,
 
   inf_browser_begin_request(browser, iter, INF_REQUEST(request));
 
+  error = NULL;
+  if(infd_directory_verify_sheet_set(directory, sheet_set, &error) != TRUE)
+  {
+    inf_request_fail(INF_REQUEST(request), error);
+    g_object_unref(request);
+    g_error_free(error);
+    return NULL;
+  }
+
   /* Make sure the CAN_CREATE_ACCOUNT permission cannot be activated when
    * we cannot support it. */
   if(node == priv->root)
@@ -10302,8 +10382,6 @@ infd_directory_browser_set_acl(InfBrowser* browser,
 
     if(infd_directory_report_support_in_sheets(directory, copy_set) == FALSE)
     {
-      error = NULL;
-
       g_set_error_literal(
         &error,
         inf_directory_error_quark(),
