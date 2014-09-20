@@ -147,6 +147,7 @@ inf_gtk_acl_sheet_view_no_toggled_cb(GtkCellRenderer* cell,
 
   view = INF_GTK_ACL_SHEET_VIEW(user_data);
   priv = INF_GTK_ACL_SHEET_VIEW_PRIVATE(view);
+  model = GTK_TREE_MODEL(priv->sheet_store);
 
   result = gtk_tree_model_get_iter_from_string(model, &iter, path_str);
 
