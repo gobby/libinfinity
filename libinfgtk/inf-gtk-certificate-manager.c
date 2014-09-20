@@ -564,11 +564,6 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
         known_cert,
         &error
       );
-
-      if(error == NULL && !cert_equal)
-      {
-        cert = inf_cert_util_copy_certificate(cert, &error);
-      }
     }
 
     if(error != NULL)
@@ -578,8 +573,9 @@ inf_gtk_certificate_manager_response_cb(GtkDialog* dialog,
         error->message
       );
     }
-    else if(known_cert != NULL && !cert_equal)
+    else if(!cert_equal)
     {
+      cert = inf_cert_util_copy_certificate(cert, &error);
       g_hash_table_insert(query->known_hosts, hostname, cert);
 
       inf_gtk_certificate_manager_write_known_hosts_with_warning(
