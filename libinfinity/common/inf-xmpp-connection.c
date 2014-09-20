@@ -3655,7 +3655,6 @@ inf_xmpp_connection_constructed(GObject* object)
 {
   InfXmppConnectionPrivate* priv;
   InfTcpConnectionStatus status;
-  GObject* obj;
 
   G_OBJECT_CLASS(inf_xmpp_connection_parent_class)->constructed(object);
 
@@ -3670,7 +3669,7 @@ inf_xmpp_connection_constructed(GObject* object)
 
   /* Initiate stream if connection is already established */
   if(status == INF_TCP_CONNECTION_CONNECTED)
-    inf_xmpp_connection_initiate(INF_XMPP_CONNECTION(obj));
+    inf_xmpp_connection_initiate(INF_XMPP_CONNECTION(object));
 
   /* If we are an the server and allow TLS, then we do need credentials for
    * this. We can't create them ourselves, because it requires
