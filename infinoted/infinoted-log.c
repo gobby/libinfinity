@@ -60,6 +60,7 @@ struct _InfinotedLogPrivate {
   gchar* file_path;
   FILE* log_file;
   GLogFunc prev_log_handler;
+  GRecMutex mutex;
 
   guint recursion_depth;
 };
@@ -206,7 +207,7 @@ infinoted_log_entry(InfinotedLog* log,
   priv = INFINOTED_LOG_PRIVATE(log);
   text = g_strdup_vprintf(fmt, args);
 
-  /*g_rec_mutex_lock(priv->mutex);*/
+  g_rec_mutex_lock(&priv->mutex);
 
   depth = priv->recursion_depth++;
 
@@ -215,7 +216,7 @@ infinoted_log_entry(InfinotedLog* log,
   g_assert(priv->recursion_depth == depth + 1);
   --priv->recursion_depth;
 
-  /*g_rec_mutex_unlock(priv->mutex);*/
+  g_rec_mutex_unlock(&priv->mutex);
 
   g_free(text);
 }
@@ -230,6 +231,8 @@ infinoted_log_init(InfinotedLog* log)
   priv->log_file = NULL;
   priv->prev_log_handler = NULL;
   priv->recursion_depth = 0;
+
+  g_rec_mutex_init(&priv->mutex);
 }
 
 static void
@@ -243,6 +246,8 @@ infinoted_log_finalize(GObject* object)
 
   if(priv->log_file != NULL)
     infinoted_log_close(log);
+
+  g_rec_mutex_clear(&priv->mutex);
 
   G_OBJECT_CLASS(infinoted_log_parent_class)->finalize(object);
 }
@@ -395,7 +400,9 @@ infinoted_log_open(InfinotedLog* log,
   g_return_val_if_fail(error == NULL || *error == NULL, FALSE);
 
   priv = INFINOTED_LOG_PRIVATE(log);
-  g_return_val_if_fail(priv->prev_log_handler == NULL, FALSE);
+  g_rec_mutex_lock(&priv->mutex);
+
+  g_assert(priv->prev_log_handler == NULL);
 
   if(path != NULL)
   {
@@ -415,6 +422,8 @@ infinoted_log_open(InfinotedLog* log,
     infinoted_log_handler,
     log
   );
+
+  g_rec_mutex_unlock(&priv->mutex);
 
   if(path != NULL)
     g_object_notify(G_OBJECT(log), "file-path");
@@ -438,7 +447,9 @@ infinoted_log_close(InfinotedLog* log)
   g_return_if_fail(INFINOTED_IS_LOG(log));
   priv = INFINOTED_LOG_PRIVATE(log);
 
-  g_return_if_fail(priv->prev_log_handler != NULL);
+  g_rec_mutex_lock(&priv->mutex);
+  g_assert(priv->prev_log_handler != NULL);
+
   if(priv->log_file != NULL)
   {
     g_assert(priv->file_path != NULL);
@@ -454,6 +465,7 @@ infinoted_log_close(InfinotedLog* log)
 
   g_log_set_default_handler(priv->prev_log_handler, NULL);
   priv->prev_log_handler = NULL;
+  g_rec_mutex_unlock(&priv->mutex);
 
   g_object_notify(G_OBJECT(log), "file-path");
 }
