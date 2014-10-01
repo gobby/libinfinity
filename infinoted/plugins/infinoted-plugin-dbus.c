@@ -149,6 +149,8 @@ infinoted_plugin_dbus_mask_from_variant(InfAclMask* mask,
   GVariantIter iter;
   const gchar* perm;
 
+  inf_acl_mask_clear(mask);
+
   enum_class = G_ENUM_CLASS(g_type_class_ref(INF_TYPE_ACL_SETTING));
   g_variant_iter_init(&iter, variant);
   while(g_variant_iter_next(&iter, "&s", &perm))
