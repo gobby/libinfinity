@@ -30,6 +30,7 @@ struct _InfinotedPluginUtilNavigateData {
   gchar* path;
   gsize len;
   gsize offset;
+  gboolean explore_last;
   InfinotedPluginUtilNavigateCallback cb;
   gpointer user_data;
   InfRequest* request;
@@ -88,6 +89,13 @@ infinoted_plugin_util_navigate_explored(InfBrowser* browser,
   g_assert(inf_browser_is_subdirectory(browser, iter));
   g_assert(inf_browser_get_explored(browser, iter));
 
+  /* In case we explored the last element */
+  if(data->offset == data->len)
+  {
+    infinoted_plugin_util_navigate_data_done(data, browser, iter, NULL);
+    return;
+  }
+
   /* Find the name of the next element */
   gsize sep;
   for(sep = data->offset; sep < data->len; ++sep)
@@ -101,7 +109,8 @@ infinoted_plugin_util_navigate_explored(InfBrowser* browser,
     do
     {
       name = inf_browser_get_node_name(browser, &child_iter);
-      if(strncmp(&data->path[data->offset], name, sep - data->offset) == 0)
+      if(strncmp(&data->path[data->offset], name, sep - data->offset) == 0 &&
+         name[sep - data->offset] == '\0')
       {
         /* Found the child node, now proceed with next iteration */
         if(sep < data->len)
@@ -184,7 +193,7 @@ infinoted_plugin_util_navigate_one(InfBrowser* browser,
   g_assert(data->request == NULL);
   g_assert(data->offset <= data->len);
 
-  if(data->offset == data->len)
+  if(data->offset == data->len && data->explore_last == FALSE)
   {
     infinoted_plugin_util_navigate_data_done(data, browser, iter, NULL);
   }
@@ -201,7 +210,7 @@ infinoted_plugin_util_navigate_one(InfBrowser* browser,
         &error,
         infinoted_plugin_util_navigate_error_quark(),
         INFINOTED_PLUGIN_UTIL_NAVIGATE_ERROR_NOT_EXIST,
-        _("The path \"%.*s\" does not exist"),
+        _("The path \"%.*s\" does not exist or is not a directory"),
         (int)data->len,
         data->path
       );
@@ -257,6 +266,7 @@ InfinotedPluginUtilNavigateData*
 infinoted_plugin_util_navigate_to(InfBrowser* browser,
                                   const gchar* path,
                                   gsize len,
+                                  gboolean explore_last,
                                   InfinotedPluginUtilNavigateCallback cb,
                                   gpointer user_data)
 {
@@ -287,6 +297,7 @@ infinoted_plugin_util_navigate_to(InfBrowser* browser,
   data->path = g_memdup(path, len);
   data->len = len;
   data->offset = 1;
+  data->explore_last = explore_last;
   data->cb = cb;
   data->user_data = user_data;
   data->request = NULL;

@@ -786,6 +786,7 @@ infinoted_plugin_document_stream_process_get_document(
       ),
       doc_name,
       doc_len,
+      FALSE,
       infinoted_plugin_document_stream_navigate_func,
       stream
     );

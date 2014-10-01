@@ -47,6 +47,7 @@ InfinotedPluginUtilNavigateData*
 infinoted_plugin_util_navigate_to(InfBrowser* browser,
                                   const gchar* path,
                                   gsize len,
+                                  gboolean explore_last,
                                   InfinotedPluginUtilNavigateCallback cb,
                                   gpointer user_data);
 

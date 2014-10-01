@@ -20,6 +20,7 @@
 #include "util/infinoted-plugin-util-navigate-browser.h"
 
 #include <infinoted/infinoted-plugin-manager.h>
+#include <libinfinity/common/inf-request-result.h>
 #include <libinfinity/inf-i18n.h>
 
 #include <gio/gio.h>
@@ -29,10 +30,23 @@
 static const gchar infinoted_plugin_dbus_introspection[] =
   "<node>"
   "  <interface name='org.infinote.server'>"
+  "    <method name='explore_node'>"
+  "      <arg type='s' name='node' direction='in'/>"
+  "      <arg type='a(ss)' name='nodelist' direction='out'/>"
+  "    </method>"
+  "    <method name='add_node'>"
+  "      <arg type='s' name='parent' direction='in'/>"
+  "      <arg type='s' name='name' direction='in'/>"
+  "      <arg type='s' name='type' direction='in'/>"
+  "      <arg type='a{sa{sb}}' name='sheet_set' direction='in'/>"
+  "    </method>"
+  "    <method name='remove_node'>"
+  "      <arg type='s' name='node' direction='in'/>"
+  "    </method>"
   "    <method name='query_acl'>"
   "      <arg type='s' name='node' direction='in'/>"
   "      <arg type='s' name='account' direction='in'/>"
-  "      <arg type='a{sa{sb}}' name='sheet-set' direction='out'/>"
+  "      <arg type='a{sa{sb}}' name='sheet_set' direction='out'/>"
   "    </method>"
   "    <method name='set_acl'>"
   "      <arg type='s' name='node' direction='in'/>"
@@ -285,6 +299,208 @@ infinoted_plugin_dbus_sheet_set_from_variant(GVariant* variant,
 }
 
 static void
+infinoted_plugin_dbus_explore_node(InfinotedPluginDbus* plugin,
+                                   InfinotedPluginDbusInvocation* invocation,
+                                   InfBrowser* browser,
+                                   const InfBrowserIter* iter)
+{
+  InfBrowserIter child_iter;
+  GVariantBuilder builder;
+
+  child_iter = *iter;
+  g_variant_builder_init(&builder, G_VARIANT_TYPE("a(ss)"));
+
+  if(inf_browser_get_child(browser, &child_iter))
+  {
+    do
+    {
+      if(inf_browser_is_subdirectory(browser, &child_iter))
+      {
+        g_variant_builder_add(
+          &builder,
+          "(ss)",
+          inf_browser_get_node_name(browser, &child_iter),
+          "InfSubdirectory"
+        );
+      }
+      else
+      {
+        g_variant_builder_add(
+          &builder,
+          "(ss)",
+          inf_browser_get_node_name(browser, &child_iter),
+          inf_browser_get_node_type(browser, &child_iter)
+        );
+      }
+    } while(inf_browser_get_next(browser, &child_iter));
+  }
+
+  g_dbus_method_invocation_return_value(
+    invocation->invocation,
+    g_variant_new("(@a(ss))", g_variant_builder_end(&builder))
+  );
+
+  infinoted_plugin_dbus_invocation_free(invocation->plugin, invocation);
+}
+
+static void
+infinoted_plugin_dbus_add_node_finished_cb(InfRequest* request,
+                                           const InfRequestResult* result,
+                                           const GError* error,
+                                           gpointer user_data)
+{
+  InfinotedPluginDbusInvocation* invocation;
+
+  invocation = (InfinotedPluginDbusInvocation*)user_data;
+  invocation->request = NULL;
+
+  if(error != NULL)
+  {
+    g_dbus_method_invocation_return_error_literal(
+      invocation->invocation,
+      G_DBUS_ERROR,
+      G_DBUS_ERROR_INVALID_ARGS,
+      error->message
+    );
+  }
+  else
+  {
+    g_dbus_method_invocation_return_value(
+      invocation->invocation,
+      g_variant_new_tuple(NULL, 0)
+    );
+  }
+
+  infinoted_plugin_dbus_invocation_free(invocation->plugin, invocation);
+}
+
+static void
+infinoted_plugin_dbus_add_node(InfinotedPluginDbus* plugin,
+                               InfinotedPluginDbusInvocation* invocation,
+                               InfBrowser* browser,
+                               const InfBrowserIter* iter)
+{
+  const gchar* name;
+  const gchar* type;
+  GVariant* sheet_set_variant;
+  InfAclSheetSet* sheet_set;
+  GError* error;
+  InfRequest* request;
+
+  g_variant_get_child(invocation->parameters, 1, "&s", &name);
+  g_variant_get_child(invocation->parameters, 2, "&s", &type);
+
+  g_variant_get_child(
+    invocation->parameters,
+    3,
+    "@a{sa{sb}}",
+    &sheet_set_variant
+  );
+
+  error = NULL;
+  sheet_set = infinoted_plugin_dbus_sheet_set_from_variant(
+    sheet_set_variant,
+    &error
+  );
+
+  g_variant_unref(sheet_set_variant);
+
+  if(error != NULL)
+  {
+    g_dbus_method_invocation_return_gerror(invocation->invocation, error);
+    g_error_free(error);
+    infinoted_plugin_dbus_invocation_free(plugin, invocation);
+  }
+  else
+  {
+    if(strcmp(type, "InfSubdirectory") == 0)
+    {
+      request = inf_browser_add_subdirectory(
+        browser,
+        iter,
+        name,
+        sheet_set,
+        infinoted_plugin_dbus_add_node_finished_cb,
+        invocation
+      );
+    }
+    else
+    {
+      request = inf_browser_add_note(
+        browser,
+        iter,
+        name,
+        type,
+        sheet_set,
+        NULL,
+        FALSE,
+        infinoted_plugin_dbus_add_node_finished_cb,
+        invocation
+      );
+    }
+
+    if(request != NULL)
+    {
+      invocation->request = request;
+      invocation->request_func = infinoted_plugin_dbus_add_node_finished_cb;
+    }
+  }
+}
+
+static void
+infinoted_plugin_dbus_remove_node_finished_cb(InfRequest* request,
+                                              const InfRequestResult* result,
+                                              const GError* error,
+                                              gpointer user_data)
+{
+  InfinotedPluginDbusInvocation* invocation;
+
+  invocation = (InfinotedPluginDbusInvocation*)user_data;
+  invocation->request = NULL;
+
+  if(error != NULL)
+  {
+    g_dbus_method_invocation_return_error_literal(
+      invocation->invocation,
+      G_DBUS_ERROR,
+      G_DBUS_ERROR_INVALID_ARGS,
+      error->message
+    );
+  }
+  else
+  {
+    g_dbus_method_invocation_return_value(
+      invocation->invocation,
+      g_variant_new_tuple(NULL, 0)
+    );
+  }
+
+  infinoted_plugin_dbus_invocation_free(invocation->plugin, invocation);
+}
+
+static void
+infinoted_plugin_dbus_remove_node(InfinotedPluginDbus* plugin,
+                                  InfinotedPluginDbusInvocation* invocation,
+                                  InfBrowser* browser,
+                                  const InfBrowserIter* iter)
+{
+  InfRequest* request;
+
+  request = inf_browser_remove_node(
+    browser,
+    iter,
+    infinoted_plugin_dbus_remove_node_finished_cb,
+    invocation
+  );
+
+  if(request != NULL)
+  {
+    invocation->request = request;
+    invocation->request_func = infinoted_plugin_dbus_remove_node_finished_cb;
+  }
+}
+
+static void
 infinoted_plugin_dbus_query_acl(InfinotedPluginDbus* plugin,
                                 InfinotedPluginDbusInvocation* invocation,
                                 InfBrowser* browser,
@@ -487,6 +703,33 @@ infinoted_plugin_dbus_navigate_done(InfBrowser* browser,
 
     infinoted_plugin_dbus_invocation_free(invocation->plugin, invocation);
   }
+  else if(strcmp(invocation->method_name, "explore_node") == 0)
+  {
+    infinoted_plugin_dbus_explore_node(
+      invocation->plugin,
+      invocation,
+      browser,
+      iter
+    );
+  }
+  else if(strcmp(invocation->method_name, "add_node") == 0)
+  {
+    infinoted_plugin_dbus_add_node(
+      invocation->plugin,
+      invocation,
+      browser,
+      iter
+    );
+  }
+  else if(strcmp(invocation->method_name, "remove_node") == 0)
+  {
+    infinoted_plugin_dbus_remove_node(
+      invocation->plugin,
+      invocation,
+      browser,
+      iter
+    );
+  }
   else if(strcmp(invocation->method_name, "query_acl") == 0)
   {
     infinoted_plugin_dbus_query_acl(
@@ -534,8 +777,10 @@ infinoted_plugin_dbus_main_invocation(gpointer user_data)
     g_slist_prepend(invocation->plugin->invocations, invocation);
   g_atomic_int_inc(&invocation->ref_count);
 
-  /* These commands take a path as the first parameter */
-  if(strcmp(invocation->method_name, "query_acl") == 0 ||
+  /* These commands take a path as the first parameter and do not
+   * require that path to be explored. */
+  if(strcmp(invocation->method_name, "remove_node") == 0 ||
+     strcmp(invocation->method_name, "query_acl") == 0 ||
      strcmp(invocation->method_name, "set_acl") == 0 ||
      strcmp(invocation->method_name, "check_acl") == 0)
   {
@@ -548,6 +793,29 @@ infinoted_plugin_dbus_main_invocation(gpointer user_data)
       INF_BROWSER(infinoted_plugin_manager_get_directory(invocation->plugin->manager)),
       path,
       len,
+      FALSE,
+      infinoted_plugin_dbus_navigate_done,
+      invocation
+    );
+    
+    if(navigate != NULL)
+      invocation->navigate = navigate;
+  }
+  /* These commands take a path as the first parameter and DO require that
+   * path to be explored. */
+  else if(strcmp(invocation->method_name, "explore_node") == 0 ||
+          strcmp(invocation->method_name, "add_node") == 0)
+  {
+    path = g_variant_get_string(
+      g_variant_get_child_value(invocation->parameters, 0),
+      &len
+    );
+
+    navigate = infinoted_plugin_util_navigate_to(
+      INF_BROWSER(infinoted_plugin_manager_get_directory(invocation->plugin->manager)),
+      path,
+      len,
+      TRUE,
       infinoted_plugin_dbus_navigate_done,
       invocation
     );
