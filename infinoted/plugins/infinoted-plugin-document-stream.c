@@ -584,7 +584,10 @@ infinoted_plugin_document_stream_subscribe_done(
 
   g_object_get(G_OBJECT(proxy), "session", &session, NULL);
 
-  if(INF_TEXT_IS_SESSION(session))
+  /* User join via document stream only works for chat sessions
+   * at the moment. */
+  if(stream->username == NULL || *stream->username == '\0' ||
+     INF_TEXT_IS_SESSION(session))
   {
     infinoted_plugin_document_stream_start(stream);
   }
