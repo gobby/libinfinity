@@ -449,7 +449,7 @@ infinoted_plugin_directory_sync_initialize(InfinotedPluginManager* manager,
 
   plugin->manager = manager;
 
-  if(inf_file_util_create_directory(plugin->directory, 0700, error) == FALSE)
+  if(inf_file_util_create_directory(plugin->directory, 0777, error) == FALSE)
     return FALSE;
 
   g_signal_connect(

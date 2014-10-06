@@ -90,7 +90,7 @@ infinoted_util_create_dirname(const gchar* path,
   gboolean result;
 
   dirname = g_path_get_dirname(path);
-  result = inf_file_util_create_directory(dirname, 0700, error);
+  result = inf_file_util_create_directory(dirname, 0777, error);
   g_free(dirname);
 
   return result;
