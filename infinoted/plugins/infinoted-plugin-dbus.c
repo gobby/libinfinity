@@ -962,7 +962,7 @@ infinoted_plugin_dbus_thread_func(gpointer plugin_info)
   plugin->context = g_main_context_new();
   g_main_context_push_thread_default(plugin->context);
 
-  plugin->loop = g_main_loop_new(plugin->context, TRUE);
+  plugin->loop = g_main_loop_new(plugin->context, FALSE);
   g_mutex_unlock(&plugin->mutex);
 
   plugin->id = g_bus_own_name(
@@ -981,6 +981,19 @@ infinoted_plugin_dbus_thread_func(gpointer plugin_info)
   g_bus_unown_name(plugin->id);
   plugin->id = 0;
 
+  /* TODO: This is an enormous hack. Apparently, g_bus_own_name starts some
+   * thread internally, and that thread is not stopped by g_bus_unown_name.
+   * When the plugin is then unloaded, it leads to a crash because the thread
+   * is still doing some cleanup work. I don't see a possibility for us here
+   * to wait for that thread to finish, so we simply wait 100ms.
+   *
+   * Waiting with quitting the main loop until either bus_acquired or
+   * name_lost are called does not help.
+   *
+   * A solution might be to not use the g_bus_own_name and g_bus_unown_name
+   * APIs, but some more low-level APIs.  */
+  g_usleep(100000);
+
   g_mutex_lock(&plugin->mutex);
   g_main_loop_unref(plugin->loop);
   plugin->loop = NULL;
@@ -990,6 +1003,18 @@ infinoted_plugin_dbus_thread_func(gpointer plugin_info)
   g_mutex_unlock(&plugin->mutex);
 
   return NULL;
+}
+
+static gboolean
+infinoted_plugin_dbus_deinitialize_thread_func(gpointer user_data)
+{
+  InfinotedPluginDbus* plugin;
+  plugin = (InfinotedPluginDbus*)user_data;
+
+  /* If none of the callbacks has been called yet, then wait for them to be
+   * called. */
+  g_main_loop_quit(plugin->loop);
+  return FALSE;
 }
 
 static void
@@ -1046,6 +1071,8 @@ static void
 infinoted_plugin_dbus_deinitialize(gpointer plugin_info)
 {
   InfinotedPluginDbus* plugin;
+  GMainContext* ctx;
+  GSource* source;
   GThread* thread;
 
   plugin = (InfinotedPluginDbus*)plugin_info;
@@ -1056,8 +1083,22 @@ infinoted_plugin_dbus_deinitialize(gpointer plugin_info)
     thread = plugin->thread;
     plugin->thread = NULL;
 
+    /* Tell the thread to quit */
     if(plugin->loop != NULL)
-      g_main_loop_quit(plugin->loop);
+    {
+      ctx = g_main_loop_get_context(plugin->loop);
+      source = g_idle_source_new();
+
+      g_source_set_callback(
+        source,
+        infinoted_plugin_dbus_deinitialize_thread_func,
+        plugin,
+        NULL
+      );
+
+      g_source_attach(source, ctx);
+    }
+
     g_mutex_unlock(&plugin->mutex);
 
     g_thread_join(thread);
