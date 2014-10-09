@@ -1,3 +1,10 @@
+libinfinity 0.6.3:
+	* infinoted: Fix a possible timing attack on the server password
+	  (Jann Horn).
+	* infinoted: Use mode 0777 instead of 0700 when creating directories
+	  in the directory-sync plugin.
+	* Write certificates not seen before into the known hosts file.
+
 libinfinity 0.6.2:
 	* Fix accounts being deleted when a plugin overrides the default
 	  account storage.
