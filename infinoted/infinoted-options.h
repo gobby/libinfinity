@@ -45,6 +45,7 @@ struct _InfinotedOptions {
   gchar** plugins;
 
   gchar* password;
+  gsize password_len;
 #ifdef LIBINFINITY_HAVE_PAM
   gchar* pam_service;
   gchar** pam_allowed_users;

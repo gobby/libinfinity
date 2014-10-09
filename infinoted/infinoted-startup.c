@@ -290,6 +290,9 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
   const char* username;
   const char* password;
   InfXmppConnection* xmpp;
+  gchar cmp;
+  gsize password_len;
+  gsize i;
 
 #ifdef LIBINFINITY_HAVE_PAM
   const gchar* pam_service;
@@ -367,7 +370,22 @@ infinoted_startup_sasl_callback(InfSaslContextSession* session,
 #endif /* LIBINFINITY_HAVE_PAM */
     {
       g_assert(startup->options->password != NULL);
-      if(strcmp(startup->options->password, password) == 0)
+
+      /* length-independent string compare */
+      cmp = 0;
+      password_len = strlen(password);
+      for(i = 0; i < startup->options->password_len; ++i)
+      {
+        if(i < password_len)
+          cmp |= (startup->options->password[i] ^ password[i]);
+        else
+          cmp |= (startup->options->password[i] ^ 0x00);
+      }
+
+      if(startup->options->password_len != password_len)
+        cmp |= 0xFF;
+
+      if(cmp == 0)
       {
         infinoted_log_info(
           startup->log,
