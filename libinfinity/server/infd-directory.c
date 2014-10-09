@@ -4289,6 +4289,7 @@ infd_directory_node_explore(InfdDirectory* directory,
   gchar* path;
   gsize len;
   gsize node_len;
+  gsize sep_len;
   gsize path_len;
   guint index;
 
@@ -4322,14 +4323,20 @@ infd_directory_node_explore(InfdDirectory* directory,
 
     /* Construct the storage path for this node */
     node_len = strlen(storage_node->name);
-    if(len + 1 + node_len < path_len)
+
+    sep_len = 1;
+    if(path[len - 1] == '/') sep_len = 0;
+
+    if(len + sep_len + node_len < path_len)
     {
-      path_len = len + 1 + node_len;
-      path = g_realloc(path, path_len + 1);
+      path_len = len + sep_len + node_len;
+      path = g_realloc(path, path_len + sep_len);
     }
 
-    path[len] = '/';
-    memcpy(path + len + 1, storage_node->name, node_len + 1);
+    if(sep_len > 0)
+      path[len] = '/';
+
+    memcpy(path + len + sep_len, storage_node->name, node_len + 1);
 
     /* Read ACL */
     sheet_set = infd_directory_read_acl(

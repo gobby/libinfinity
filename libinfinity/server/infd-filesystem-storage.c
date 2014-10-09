@@ -69,10 +69,20 @@ infd_filesystem_storage_verify_path(const gchar* path,
   gchar** components;
   gchar** component;
 
-  components = g_strsplit(path, "/", 0);
+  if(path[0] != '/')
+  {
+    g_set_error_literal(
+      error,
+      infd_filesystem_storage_error_quark,
+      INFD_FILESYSTEM_STORAGE_ERROR_INVALID_PATH,
+      _("The path does not start with \"/\"")
+    );
+  }
+
+  components = g_strsplit(path + 1, "/", 0);
   for(component = components; *component != NULL; ++ component)
   {
-    if(*component == '\0' ||
+    if(**component == '\0' ||
        strcmp(*component, ".") == 0 || strcmp(*component, "..") == 0)
     {
       g_set_error_literal(
@@ -335,7 +345,7 @@ infd_filesystem_storage_get_acl_path(InfdFilesystemStorage* storage,
   else
   {
     full_path =
-      infd_filesystem_storage_get_path(storage, "xml", "global-acl", error);
+      infd_filesystem_storage_get_path(storage, "xml", "/global-acl", error);
   }
 
   return full_path;

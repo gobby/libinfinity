@@ -492,7 +492,7 @@ infd_filesystem_account_storage_load_file(InfdFilesystemStorage* storage,
   doc = infd_filesystem_storage_read_xml_file(
     storage,
     "xml",
-    "accounts",
+    "/accounts",
     "inf-acl-account-list",
     &local_error
   );
