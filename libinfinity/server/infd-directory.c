@@ -1917,7 +1917,8 @@ infd_directory_session_proxy_ensure(InfdDirectory* directory,
     g_object_get(G_OBJECT(session), "sync-group", &sync_group, NULL);
     if(sync_group != NULL && sync_group != sub_group)
       inf_communication_group_set_target(sync_group, NULL);
-    g_object_unref(sync_group);
+    if(sync_group != NULL)
+      g_object_unref(sync_group);
 
     g_object_unref(proxy);
   }
