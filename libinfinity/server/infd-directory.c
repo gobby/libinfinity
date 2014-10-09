@@ -1070,7 +1070,6 @@ infd_directory_verify_acl(InfdDirectory* directory,
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
   g_assert(verify_accounts != NULL || lookup_if_not_cached == TRUE);
-  g_assert(lookup_if_not_cached == FALSE || priv->account_storage != NULL);
   g_assert(sheet_set->n_sheets == 0 || sheet_set->own_sheets != NULL);
 
   changed_sheets = NULL;
@@ -1135,23 +1134,47 @@ infd_directory_verify_acl(InfdDirectory* directory,
           }
         }
 
-        if(j == priv->n_transient_accounts)
+        if(j < priv->n_transient_accounts)
         {
-          /* Not a transient account either, so look up from storage */
-          if(to_be_looked_up == NULL)
+          ++i;
+        }
+        else
+        {
+          if(priv->account_storage != NULL)
           {
-            to_be_looked_up = g_array_new(
-              FALSE,
-              FALSE,
-              sizeof(InfAclAccountId)
-            );
-          }
+            /* Not a transient account either, so look up from storage */
+            if(to_be_looked_up == NULL)
+            {
+              to_be_looked_up = g_array_new(
+                FALSE,
+                FALSE,
+                sizeof(InfAclAccountId)
+              );
+            }
 
-          g_array_append_val(to_be_looked_up, sheet_set->sheets[i].account);
+            g_array_append_val(to_be_looked_up, sheet_set->sheets[i].account);
+            ++i;
+          }
+          else
+          {
+            /* We do not have an account storage, so the account does
+             * definitely not exist */
+            account_id = sheet_set->sheets[i].account;
+            inf_acl_sheet_set_remove_sheet(
+              sheet_set,
+              &sheet_set->own_sheets[i]
+            );
+
+            if(report_changed_sheets)
+            {
+              if(changed_sheets == NULL)
+                changed_sheets = inf_acl_sheet_set_new();
+              sheet = inf_acl_sheet_set_add_sheet(changed_sheets, account_id);
+              inf_acl_mask_clear(&sheet->mask);
+            }
+          }
         }
       }
-
-      ++i;
     }
   }
 
@@ -5071,6 +5094,7 @@ infd_directory_verify_sheet_set(InfdDirectory* directory,
    * it leaves the passed-in sheet set unmodified, and so that it just
    * returns TRUE or FALSE depending on whether changes are needed. */
   copy = inf_acl_sheet_set_copy(sheet_set);
+  inf_acl_sheet_set_sink(copy);
 
   changed_sheets = infd_directory_verify_acl(
     directory,
