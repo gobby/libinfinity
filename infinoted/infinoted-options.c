@@ -229,6 +229,9 @@ infinoted_options_validate(InfinotedOptions* options,
   requires_password = requires_password || options->pam_service != NULL;
 #endif /* LIBINFINITY_HAVE_PAM */
 
+  if(options->password != NULL)
+    options->password_len = strlen(options->password);
+
   if(requires_password &&
      options->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_UNSECURED)
   {
@@ -971,6 +974,7 @@ infinoted_options_new(const gchar* const* config_files,
   options->plugins[0] = g_strdup("note-text");
   options->plugins[1] = NULL;
   options->password = NULL;
+  options->password_len = 0;
 #ifdef LIBINFINITY_HAVE_PAM
   options->pam_service = NULL;
   options->pam_allowed_users = NULL;
