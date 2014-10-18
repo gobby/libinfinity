@@ -1,3 +1,6 @@
+libinfinity 0.6.4:
+	* Build fixes for Mac OS X (#7, Dominyk Tiller).
+
 libinfinity 0.6.3:
 	* infinoted: Fix a possible timing attack on the server password
 	  (Jann Horn).
