@@ -40,6 +40,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include "config.h"
+
 typedef enum _InfinotedPluginDocumentStreamStatus {
   INFINOTED_PLUGIN_DOCUMENT_STREAM_NORMAL,
   INFINOTED_PLUGIN_DOCUMENT_STREAM_RECEIVING,
@@ -882,7 +884,17 @@ infinoted_plugin_document_stream_send_direct(
 
   do
   {
-    bytes = send(stream->socket, data, len, MSG_NOSIGNAL);
+    bytes = send(
+      stream->socket,
+      data,
+      len,
+#ifdef HAVE_MSG_NOSIGNAL
+      MSG_NOSIGNAL
+#else
+      0
+#endif
+    );
+
     errcode = errno;
 
     if(bytes > 0)
@@ -990,7 +1002,11 @@ infinoted_plugin_document_stream_io_in(
       stream->socket,
       stream->recv_queue.data + queue_offset,
       stream->recv_queue.alloc - queue_offset,
+#ifdef HAVE_MSG_NOSIGNAL
       MSG_NOSIGNAL
+#else
+      0
+#endif
     );
 
     errcode = errno;
