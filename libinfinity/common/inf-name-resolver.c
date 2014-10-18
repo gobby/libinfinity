@@ -61,6 +61,8 @@
 # include <windns.h>
 #else
 # include <resolv.h>
+# include <arpa/nameser.h>
+# include <arpa/nameser_compat.h>
 #endif
 
 #include <errno.h>
