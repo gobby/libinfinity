@@ -251,6 +251,8 @@ int main()
     { "\n\n\n\n", "\n\n", 2, MKBUFINOP(3, "A"), "\n\n\nA\n", "\n\n\nA\n\n" },
     { "\n\n\n\n", "\n\n", 2, MKBUFINOP(4, "A"), "\n\n\n\nA", "\n\n\n\nA\n\n" },
 
+    { "\n\n\n\n\n", "\n\n", 2, MKBUFINOP(3, "A"), "\n\n\nA\n\n", "\n\n\nA\n\n" },
+
     /* 18: */
     { "", "\n\n", 2, MKBASEDLOP(0, 1), "", "\n\n" },
     { "", "\n\n", 2, MKBASEDLOP(1, 1), "", "\n\n" },

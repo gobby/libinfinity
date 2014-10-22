@@ -1182,7 +1182,11 @@ inf_text_fixline_buffer_buffer_insert_text(InfTextBuffer* buffer,
       ((guint)priv->n_keep - (pos - buf_len)) * sizeof(guint)
     );
 
-    priv->keep = g_realloc(priv->keep, (pos - buf_len) * sizeof(guint));
+    priv->keep = g_realloc(
+      priv->keep,
+      ((guint)priv->n_keep - (pos - buf_len)) * sizeof(guint)
+    );
+
     priv->n_keep -= (pos - buf_len);
 
     inf_text_buffer_insert_chunk(priv->buffer, buf_len, new_chunk, user);
