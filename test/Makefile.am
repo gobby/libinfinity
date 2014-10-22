@@ -23,7 +23,7 @@ noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-text-operations inf-test-text-session \
 	inf-test-text-cleanup inf-test-text-recover \
 	inf-test-text-replay inf-test-reduce-replay inf-test-mass-join \
-	inf-test-text-fixline
+	inf-test-text-fixline inf-test-traffic-replay
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
@@ -191,3 +191,10 @@ inf_test_gtk_browser_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	${inftextgtk_LIBS} ${infgtk_LIBS} ${inftext_LIBS} ${infinity_LIBS}
 endif
+
+inf_test_traffic_replay_SOURCES = \
+	inf-test-traffic-replay.c
+
+inf_test_traffic_replay_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	${infinity_LIBS}
