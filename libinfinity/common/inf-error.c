@@ -182,6 +182,8 @@ inf_directory_strerror(InfDirectoryError code)
     return _("The node type is not supported by the server");
   case INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT:
     return _("The root node cannot be removed");
+  case INF_DIRECTORY_ERROR_NOT_EXPLORED:
+    return _("Subdirectory is not explored");
   case INF_DIRECTORY_ERROR_ALREADY_EXPLORED:
     return _("Subdirectory has already been explored");
   case INF_DIRECTORY_ERROR_TYPE_UNKNOWN:

@@ -3148,6 +3148,18 @@ infc_browser_handle_add_node(InfcBrowser* browser,
 
   if(parent == NULL) return FALSE;
 
+  if(parent->shared.subdir.explored == FALSE)
+  {
+    g_set_error_literal(
+      error,
+      inf_directory_error_quark(),
+      INF_DIRECTORY_ERROR_NOT_EXPLORED,
+      _("The parent node has not been explored yet")
+    );
+
+    return FALSE;
+  }
+
   local_error = NULL;
   request =
     infc_browser_get_add_node_request_from_xml(browser, xml, &local_error);

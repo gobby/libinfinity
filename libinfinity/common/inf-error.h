@@ -119,6 +119,8 @@ typedef enum _InfUserError {
  * by the server.
  * @INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT: A &lt;remove-node&gt;
  * request attempted to remove a directory's root node, which is not allowed.
+ * @INF_DIRECTORY_ERROR_NOT_EXPLORED: An operation cannot be performed because
+ * the corresponding node is not explored.
  * @INF_DIRECTORY_ERROR_ALREADY_EXPLORED: The node given in an exploration
  * request has already been explored earlier.
  * @INF_DIRECTORY_ERROR_NOT_INITIATED: Exploration has begun before the client
@@ -184,6 +186,7 @@ typedef enum _InfDirectoryError {
   INF_DIRECTORY_ERROR_NOT_A_NOTE,
   INF_DIRECTORY_ERROR_NOTE_TYPE_UNSUPPORTED,
   INF_DIRECTORY_ERROR_ROOT_NODE_REMOVE_ATTEMPT,
+  INF_DIRECTORY_ERROR_NOT_EXPLORED,
   INF_DIRECTORY_ERROR_ALREADY_EXPLORED,
   INF_DIRECTORY_ERROR_NOT_INITIATED,
   INF_DIRECTORY_ERROR_TOO_MANY_CHILDREN,
