@@ -50,6 +50,7 @@ infinoted_plugin_traffic_logging_write(
   const gchar* fmt,
   ...)
 {
+  GTimeVal cur_timeval;
   time_t cur_time;
   struct tm* cur_tm;
   char time_msg[128];
@@ -57,10 +58,12 @@ infinoted_plugin_traffic_logging_write(
 
   g_assert(info->file != NULL);
 
-  cur_time = time(NULL);
+  g_get_current_time(&cur_timeval);
+  cur_time = cur_timeval.tv_sec;
   cur_tm = localtime(&cur_time);
-  strftime(time_msg, 128, "[%c] ", cur_tm);
+  strftime(time_msg, 128, "[%c ", cur_tm);
   fputs(time_msg, info->file);
+  fprintf(info->file, ".%06ld] ", cur_timeval.tv_usec);
 
   va_start(arglist, fmt);
   vfprintf(info->file, fmt, arglist);
