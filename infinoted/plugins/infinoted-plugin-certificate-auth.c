@@ -136,7 +136,7 @@ infinoted_plugin_certificate_auth_certificate_func(InfXmppConnection* xmpp,
     if(res != GNUTLS_E_SUCCESS)
       inf_gnutls_set_error(&error, res);
     else if( (verify_result & GNUTLS_CERT_INVALID) != 0)
-      inf_gnutls_certificate_verification_set_error(&error, res);
+      inf_gnutls_certificate_verification_set_error(&error, verify_result);
 
     if(error != NULL)
     {
