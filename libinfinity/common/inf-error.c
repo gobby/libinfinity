@@ -361,6 +361,8 @@ inf_gnutls_certificate_verification_set_error(GError** error,
       message = _("The certificate has expired");
     else if(verify & GNUTLS_CERT_INVALID)
       message = _("The certificate is invalid");
+    else
+      g_assert_not_reached();
 
     *error = g_error_new_literal(
       inf_gnutls_certificate_verification_error_quark(),
