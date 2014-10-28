@@ -781,6 +781,8 @@ infinoted_plugin_manager_finalize(GObject* object)
   g_hash_table_unref(priv->connections);
   g_hash_table_unref(priv->sessions);
 
+  g_free(priv->path);
+
   G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
