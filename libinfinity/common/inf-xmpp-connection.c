@@ -769,6 +769,7 @@ inf_xmpp_connection_send_chars(InfXmppConnection* xmpp,
        * disconnection callback because we wanted to keep the gnutls context
        * alive until gnutls_record_send() returns. */
       inf_xmpp_connection_clear(xmpp);
+      g_object_notify(G_OBJECT(xmpp), "status");
     }
   }
 }
@@ -3370,6 +3371,8 @@ inf_xmpp_connection_notify_status_cb(InfTcpConnection* tcp,
        * signal handler) then we can't delete the XML parser here (otherwise
        * libxml2 crashes, understandably). Instead, just set the status to
        * closed and clean up after XML parsing in _received_cb(). */
+      /* TODO: We should do the full cleanup here, and _received_cb() and
+       * send_chars should copy/ref everything they need on the stack. */
       if(priv->parsing == 0)
         inf_xmpp_connection_clear(xmpp);
 
