@@ -1113,6 +1113,8 @@ infinoted_plugin_dbus_deinitialize(gpointer plugin_info)
     plugin->invocations =
       g_slist_delete_link(plugin->invocations, plugin->invocations);
   }
+
+  g_free(plugin->bus_name);
 }
 
 static gboolean
