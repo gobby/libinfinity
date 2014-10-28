@@ -211,6 +211,7 @@ inf_communication_central_method_send_all(InfCommunicationMethod* method,
   GSList* item;
   InfXmlConnection* connection;
   gboolean is_registered;
+  InfXmlConnectionStatus status;
 
   priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
 
@@ -237,7 +238,11 @@ inf_communication_central_method_send_all(InfCommunicationMethod* method,
       connection
     );
 
-    if(is_registered)
+    /* in case our remove member was not yet called we also check the
+     * status here, i.e. if we are called in response to an earlier
+     * handler of the notify::status signal. */
+    g_object_get(G_OBJECT(connection), "status", &status, NULL);
+    if(is_registered && status == INF_XML_CONNECTION_OPEN)
     {
       if(connections->next != NULL)
       {

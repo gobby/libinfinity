@@ -100,6 +100,9 @@ static void
 inf_communication_registry_send_real(InfCommunicationRegistryEntry* entry,
                                      guint num_messages)
 {
+  InfXmlConnection* connection;
+  InfXmlConnectionStatus status;
+
   xmlNodePtr container;
   xmlNodePtr child;
   xmlNodePtr xml;
@@ -140,6 +143,12 @@ inf_communication_registry_send_real(InfCommunicationRegistryEntry* entry,
     entry->enqueued_list = container;
     child = container;
 
+    connection = entry->key.connection;
+    g_object_ref(connection);
+
+    g_object_get(G_OBJECT(connection), "status", &status, NULL);
+    g_assert(status == INF_XML_CONNECTION_OPEN);
+
     while(child != NULL)
     {
       /* TODO: The group could be unset at this point if called from
@@ -151,11 +160,7 @@ inf_communication_registry_send_real(InfCommunicationRegistryEntry* entry,
       {
         for(xml = child->children; xml != NULL; xml = xml->next)
         {
-          inf_communication_method_enqueued(
-            entry->method,
-            entry->key.connection,
-            xml
-          );
+          inf_communication_method_enqueued(entry->method, connection, xml);
         }
       }
 
@@ -174,8 +179,15 @@ inf_communication_registry_send_real(InfCommunicationRegistryEntry* entry,
        * will simply append to entry->enqueued_list, and we will enqueue and
        * send the messages within the next iteration(s).
        */
-      inf_xml_connection_send(entry->key.connection, xml);
+      inf_xml_connection_send(connection, xml);
+
+      /* Break if sending the data lead to connection closure */
+      g_object_get(G_OBJECT(connection), "status", &status, NULL);
+      if(status != INF_XML_CONNECTION_OPEN)
+        break;
     }
+
+    g_object_unref(connection);
   }
 }
 
