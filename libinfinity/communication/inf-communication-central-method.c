@@ -60,6 +60,85 @@ G_DEFINE_TYPE_WITH_CODE(InfCommunicationCentralMethod, inf_communication_central
   G_IMPLEMENT_INTERFACE(INF_COMMUNICATION_TYPE_METHOD, inf_communication_central_method_method_iface_init))
 
 static void
+inf_communication_central_method_broadcast(InfCommunicationMethod* method,
+                                           xmlNodePtr xml,
+                                           InfXmlConnection* except)
+{
+  InfCommunicationCentralMethodPrivate* priv;
+  InfCommunicationRegistry* registry;
+  InfCommunicationGroup* group;
+  GSList* connections;
+  GSList* item;
+  InfXmlConnection* connection;
+  gboolean is_registered;
+  InfXmlConnectionStatus status;
+
+  priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
+
+  /* Each of the inf_communication_registry_send() calls can do a callback
+   * which might possibly screw up our connection list completely. So be safe
+   * here by copying all relevant information on the stack. */
+  g_object_ref(method);
+  registry = g_object_ref(priv->registry);
+  group = g_object_ref(priv->group);
+
+  connections = g_slist_copy(priv->connections);
+  for(item = connections; item != NULL; item = item->next)
+    g_object_ref(item->data);
+
+  while(connections)
+  {
+    connection = INF_XML_CONNECTION(connections->data);
+
+    /* A callback from a prior iteration might have unregistered the
+     * connection. */
+    is_registered = inf_communication_registry_is_registered(
+      registry,
+      group,
+      connection
+    );
+
+    /* in case our remove member was not yet called we also check the
+     * status here, i.e. if we are called in response to a handler of the
+     * notify::status signal that ran before ours. */
+    g_object_get(G_OBJECT(connection), "status", &status, NULL);
+    if(is_registered &&
+       status == INF_XML_CONNECTION_OPEN &&
+       connection != except)
+    {
+      if(connections->next != NULL)
+      {
+        /* Keep ownership of XML if there might be more connections we should
+         * send it to. */
+        inf_communication_registry_send(
+          registry,
+          group,
+          connection,
+          xmlCopyNode(xml, 1)
+        );
+      }
+      else
+      {
+        /* Pass ownership of XML if this is definitely the last connection
+         * in the list. */
+        inf_communication_registry_send(registry, group, connection, xml);
+        xml = NULL;
+      }
+    }
+
+    g_object_unref(connection);
+    connections = g_slist_delete_link(connections, connections);
+  }
+
+  g_object_unref(method);
+  g_object_unref(registry);
+  g_object_unref(group);
+
+  if(xml != NULL)
+    xmlFreeNode(xml);
+}
+
+static void
 inf_communication_central_method_notify_status_cb(GObject* object,
                                                   GParamSpec* pspec,
                                                   gpointer user_data)
@@ -207,76 +286,7 @@ static void
 inf_communication_central_method_send_all(InfCommunicationMethod* method,
                                           xmlNodePtr xml)
 {
-  InfCommunicationCentralMethodPrivate* priv;
-  InfCommunicationRegistry* registry;
-  InfCommunicationGroup* group;
-  GSList* connections;
-  GSList* item;
-  InfXmlConnection* connection;
-  gboolean is_registered;
-  InfXmlConnectionStatus status;
-
-  priv = INF_COMMUNICATION_CENTRAL_METHOD_PRIVATE(method);
-
-  /* Each of the inf_communication_registry_send() calls can do a callback
-   * which might possibly screw up our connection list completely. So be safe
-   * here by copying all relevant information on the stack. */
-  g_object_ref(method);
-  registry = g_object_ref(priv->registry);
-  group = g_object_ref(priv->group);
-
-  connections = g_slist_copy(priv->connections);
-  for(item = connections; item != NULL; item = item->next)
-    g_object_ref(item->data);
-
-  while(connections)
-  {
-    connection = INF_XML_CONNECTION(connections->data);
-
-    /* A callback from a prior iteration might have unregistered the
-     * connection. */
-    is_registered = inf_communication_registry_is_registered(
-      registry,
-      group,
-      connection
-    );
-
-    /* in case our remove member was not yet called we also check the
-     * status here, i.e. if we are called in response to an earlier
-     * handler of the notify::status signal. */
-    g_object_get(G_OBJECT(connection), "status", &status, NULL);
-    if(is_registered && status == INF_XML_CONNECTION_OPEN)
-    {
-      if(connections->next != NULL)
-      {
-        /* Keep ownership of XML if there might be more connections we should
-         * send it to. */
-        inf_communication_registry_send(
-          registry,
-          group,
-          connection,
-          xmlCopyNode(xml, 1)
-        );
-      }
-      else
-      {
-        /* Pass ownership of XML if this is definitely the last connection
-         * in the list. */
-        inf_communication_registry_send(registry, group, connection, xml);
-        xml = NULL;
-      }
-    }
-
-    g_object_unref(connection);
-    connections = g_slist_delete_link(connections, connections);
-  }
-
-  g_object_unref(method);
-  g_object_unref(registry);
-  g_object_unref(group);
-
-  if(xml != NULL)
-    xmlFreeNode(xml);
+  inf_communication_central_method_broadcast(method, xml, NULL);
 }
 
 static void
@@ -327,18 +337,11 @@ inf_communication_central_method_received(InfCommunicationMethod* method,
 
     if(priv->is_publisher && scope == INF_COMMUNICATION_SCOPE_GROUP)
     {
-      for(item = priv->connections; item != NULL; item = item->next)
-      {
-        if(item->data != connection)
-        {
-          inf_communication_registry_send(
-            priv->registry,
-            priv->group,
-            INF_XML_CONNECTION(item->data),
-            xmlCopyNode(xml, 1)
-          );
-        }
-      }
+      inf_communication_central_method_broadcast(
+        method,
+        xmlCopyNode(xml, 1),
+        connection
+      );
     }
 
     g_object_unref(method);
