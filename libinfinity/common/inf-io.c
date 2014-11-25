@@ -43,6 +43,13 @@
 #include <libinfinity/common/inf-io.h>
 #include <libinfinity/inf-define-enum.h>
 
+typedef struct _InfIoWatchUnix InfIoWatchUnix;
+struct _InfIoWatchUnix {
+  InfNativeSocket socket;
+  gpointer user_data;
+  GDestroyNotify notify;
+};
+
 static const GFlagsValue inf_io_event_values[] = {
   {
     INF_IO_INCOMING,
@@ -65,6 +72,16 @@ static const GFlagsValue inf_io_event_values[] = {
 
 INF_DEFINE_FLAGS_TYPE(InfIoEvent, inf_io_event, inf_io_event_values)
 G_DEFINE_INTERFACE(InfIo, inf_io, G_TYPE_OBJECT)
+
+static void
+inf_io_watch_unix_free(gpointer data)
+{
+  InfIoWatchUnix* unixwatch;
+  unixwatch = (InfIoWatchUnix*)data;
+
+  unixwatch->notify(unixwatch->user_data);
+  g_slice_free(InfIoWatchUnix, unixwatch);
+}
 
 static void
 inf_io_default_init(InfIoInterface* iface)
@@ -106,6 +123,53 @@ inf_io_add_watch(InfIo* io,
 
   return iface->add_watch(io, socket, events, func, user_data, notify);
 }
+
+#ifdef G_OS_UNIX
+/**
+ * inf_io_add_watch_from_fd:
+ * @io: A #InfIo.
+ * @fd: The file descriptor to watch.
+ * @events: Events to watch for.
+ * @func: Function to be called when one of the events occurs.
+ * @user_data: Extra data to pass to @func.
+ * @notify: A #GDestroyNotify that is called when @user_data is no longer
+ * needed, or %NULL.
+ *
+ * Monitors the given file descriptor for activity and calls @func if one of
+ * the events specified in @events occurs. This is equivalent to
+ * inf_io_add_watch() for a socket that represents the given file descriptor,
+ * but takes care of the memory management of the file descriptor. This
+ * function is especially intended for language bindings. It is only available
+ * on unix-like operating systems.
+ *
+ * Returns: (transfer none): A #InfIoWatch that can be used to update or
+ * remove the watch.
+ **/
+InfIoWatch*
+inf_io_add_watch_from_fd(InfIo* io,
+                         int fd,
+                         InfIoEvent events,
+                         InfIoWatchFunc func,
+                         gpointer user_data,
+                         GDestroyNotify notify)
+{
+  InfIoWatchUnix* watch;
+
+  watch = g_slice_new(InfIoWatchUnix);
+  watch->socket = fd;
+  watch->user_data = user_data;
+  watch->notify = notify;
+
+  return inf_io_add_watch(
+    io,
+    &watch->socket,
+    events,
+    func,
+    watch,
+    inf_io_watch_unix_free
+  );
+}
+#endif
 
 /**
  * inf_io_update_watch:

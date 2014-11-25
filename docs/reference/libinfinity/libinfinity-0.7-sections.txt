@@ -624,6 +624,7 @@ InfIoWatchFunc
 InfIoTimeoutFunc
 InfIoDispatchFunc
 inf_io_add_watch
+inf_io_add_watch_from_fd
 inf_io_update_watch
 inf_io_remove_watch
 inf_io_add_timeout

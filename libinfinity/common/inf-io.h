@@ -88,7 +88,7 @@ typedef enum _InfIoEvent {
 
 /**
  * InfIoWatchFunc:
- * @socket: The socket on which an event occured.
+ * @socket: (array fixed-size=1): The socket on which an event occured.
  * @event: A bitmask of the events that occured.
  * @user_data: User-defined data specified in inf_io_add_watch().
  *
@@ -186,6 +186,16 @@ inf_io_add_watch(InfIo* io,
                  InfIoWatchFunc func,
                  gpointer user_data,
                  GDestroyNotify notify);
+
+#ifdef G_OS_UNIX
+InfIoWatch*
+inf_io_add_watch_from_fd(InfIo* io,
+                         int fd,
+                         InfIoEvent events,
+                         InfIoWatchFunc func,
+                         gpointer user_data,
+                         GDestroyNotify notify);
+#endif
 
 void
 inf_io_update_watch(InfIo* io,
