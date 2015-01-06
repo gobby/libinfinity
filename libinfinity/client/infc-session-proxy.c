@@ -120,7 +120,11 @@ infc_session_proxy_unsubscribe_connection(InfcSessionProxy* proxy)
     );
   }
 
-  infc_session_proxy_release_connection(proxy);
+  /* If an error occurs while sending the "session-unsubscribe" message, the
+   * connection is released already as a result of the connection status
+   * notify handler, so we need another check here. */
+  if(priv->connection != NULL)
+    infc_session_proxy_release_connection(proxy);
 }
 
 /*
