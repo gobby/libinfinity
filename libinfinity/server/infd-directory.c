@@ -8653,9 +8653,12 @@ infd_directory_dispose(GObject* object)
   infd_directory_node_free(directory, priv->root);
   priv->root = NULL;
 
-  g_assert(priv->orig_root_acl != NULL);
-  inf_acl_sheet_set_free(priv->orig_root_acl);
-  priv->orig_root_acl = NULL;
+  /* Can be NULL, for example when no storage is set */
+  if(priv->orig_root_acl != NULL)
+  {
+    inf_acl_sheet_set_free(priv->orig_root_acl);
+    priv->orig_root_acl = NULL;
+  }
 
   g_hash_table_destroy(priv->nodes);
   priv->nodes = NULL;
