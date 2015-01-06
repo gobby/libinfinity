@@ -4471,6 +4471,7 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
   InfdDirectoryNode* node;
   gboolean result;
   gchar* path;
+  GError* local_error;
 
   InfBrowserIter parent_iter;
   InfBrowserIter iter;
@@ -4481,11 +4482,17 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
 
   priv = INFD_DIRECTORY_PRIVATE(directory);
 
-  if(!infd_directory_node_is_name_available(directory, parent, name, error))
-  {
-    return NULL;
-  }
-  else
+  local_error = NULL;
+  node = NULL;
+
+  infd_directory_node_is_name_available(
+    directory,
+    parent,
+    name,
+    &local_error
+  );
+
+  if(local_error == NULL)
   {
     infd_directory_node_make_path(parent, name, &path, NULL);
 
@@ -4495,37 +4502,46 @@ infd_directory_node_add_subdirectory(InfdDirectory* directory,
       result = TRUE;
 
     g_free(path);
-    if(result == FALSE) return NULL;
+    if(result == TRUE)
+    {
+      node = infd_directory_node_new_subdirectory(
+        directory,
+        parent,
+        priv->node_counter++,
+        g_strdup(name),
+        sheet_set,
+        TRUE
+      );
 
-    node = infd_directory_node_new_subdirectory(
-      directory,
-      parent,
-      priv->node_counter++,
-      g_strdup(name),
-      sheet_set,
-      TRUE
-    );
+      node->shared.subdir.explored = TRUE;
 
-    node->shared.subdir.explored = TRUE;
+      infd_directory_node_register(directory, node, request, NULL, seq);
 
-    infd_directory_node_register(directory, node, request, NULL, seq);
+      parent_iter.node_id = parent->id;
+      parent_iter.node = parent;
+      iter.node_id = node->id;
+      iter.node = node;
 
-    parent_iter.node_id = parent->id;
-    parent_iter.node = parent;
-    iter.node_id = node->id;
-    iter.node = node;
-
-    inf_request_finish(
-      INF_REQUEST(request),
-      inf_request_result_make_add_node(
-        INF_BROWSER(directory),
-        &parent_iter,
-        &iter
-      )
-    );
-
-    return node;
+      inf_request_finish(
+        INF_REQUEST(request),
+        inf_request_result_make_add_node(
+          INF_BROWSER(directory),
+          &parent_iter,
+          &iter
+        )
+      );
+    }
   }
+
+  if(local_error != NULL)
+  {
+    g_assert(node == NULL);
+
+    inf_request_fail(INF_REQUEST(request), local_error);
+    g_propagate_error(error, local_error);
+  }
+
+  return node;
 }
 
 static gboolean
