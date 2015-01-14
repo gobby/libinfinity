@@ -126,7 +126,41 @@ PKG_CHECK_MODULES([inftext], [glib-2.0 >= 2.38 gobject-2.0 >= 2.38 libxml-2.0])
 if test $platform = 'win32'; then
   infinity_LIBS="$infinity_LIBS -lws2_32 -ldnsapi"
 else
-  infinity_LIBS="$infinity_LIBS -lresolv"
+  # Check whether we need libresolv for res_query()
+  # Can't use AC_SEARCH_LIBS because res_query is a macro defined in
+  # resolv.h
+  AC_MSG_CHECKING(for res_query)
+  AC_TRY_LINK(
+    [
+      #include <sys/types.h>
+      #include <netinet/in.h>
+      #include <arpa/nameser.h>
+      #include <resolv.h>
+    ],
+    [res_query(NULL, 0, 0, NULL, 0);],
+    [
+      # res_init() available in libc
+      AC_MSG_RESULT(yes)
+    ],
+    [
+      LIBS="-lresolv"
+      AC_TRY_LINK(
+        [
+          #include <sys/types.h>
+          #include <netinet/in.h>
+          #include <arpa/nameser.h>
+          #include <resolv.h>
+        ],
+        [res_query(NULL, 0, 0, NULL, 0);],
+        [
+          AC_MSG_RESULT(in libresolv)
+          LIBS=""
+          infinity_LIBS="$infinity_LIBS -lresolv" # res_init available in libresolv
+        ],
+        [AC_MSG_ERROR(res_query not provided by either libc or libresolv)]
+      )
+    ]
+  )
 fi
 
 ###################################
