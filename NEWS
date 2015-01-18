@@ -1,3 +1,12 @@
+libinfinity 0.6.5:
+	* Fix memory corruption in InfTextFixlineBuffer.
+	* infinoted: Fix error message in server log when a client certificate
+	  is not trusted.
+	* Fix various crashes related to sending data to already closed
+	  connections.
+	* Build fix when res_query is provided by libc, not libresolv, such
+	  as on FreeBSD (gobby #23, Samantha Michelle Smith).
+
 libinfinity 0.6.4:
 	* Build fixes for Mac OS X (#7, Dominyk Tiller).
 
