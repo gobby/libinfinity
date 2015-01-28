@@ -43,6 +43,7 @@
 #include <libinfinity/inf-define-enum.h>
 
 #if defined(G_OS_WIN32)
+# include <in6addr.h>
 # include <mstcpip.h>
 #elif defined(__linux__)
 # include <sys/types.h>
@@ -90,17 +91,18 @@ inf_keepalive_read_registry_dword(HKEY key,
   GError* error;
   DWORD out;
   DWORD size;
+  LONG result;
 
   if(key == NULL) return default_value;
 
   size = sizeof(out);
-  result = RegQueryValueEx(key, name, NULL, NULL, (LPDWORD)&out, &size);
+  result = RegQueryValueEx(key, name, NULL, NULL, (LPBYTE)&out, &size);
   if(result != ERROR_SUCCESS)
   {
     if(result != ERROR_FILE_NOT_FOUND)
     {
       error = NULL;
-      inf_native_socket_make_error(result, error);
+      inf_native_socket_make_error(result, &error);
 
       g_warning(
         "Failed to read registry key \"%s\": %s",
@@ -193,7 +195,7 @@ inf_keepalive_load_default_win32(InfKeepalive* keepalive,
       if(result != ERROR_FILE_NOT_FOUND)
       {
         error = NULL;
-        inf_native_socket_make_error(result, error);
+        inf_native_socket_make_error(result, &error);
         g_warning("Failed to open registry key: %s\n", error->message);
         g_error_free(error);
       }
