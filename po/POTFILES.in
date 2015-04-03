@@ -10,6 +10,7 @@ infinoted/infinoted-signal.c
 infinoted/infinoted-startup.c
 infinoted/plugins/infinoted-plugin-autosave.c
 infinoted/plugins/infinoted-plugin-certificate-auth.c
+infinoted/plugins/infinoted-plugin-dbus.c
 infinoted/plugins/infinoted-plugin-directory-sync.c
 infinoted/plugins/infinoted-plugin-document-stream.c
 infinoted/plugins/infinoted-plugin-linekeeper.c
