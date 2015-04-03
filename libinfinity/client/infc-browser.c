@@ -4309,7 +4309,8 @@ infc_browser_handle_change_acl_account(InfcBrowser* browser,
 
   if(existing_account != NULL)
   {
-    if(strcmp(account->name, existing_account->name) != 0)
+    if(account->name == NULL || existing_account->name == NULL ||
+       strcmp(account->name, existing_account->name) != 0)
     {
       /* Update account name, if it has changed */
       g_free(existing_account->name);
