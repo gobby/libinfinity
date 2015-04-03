@@ -1040,7 +1040,49 @@ infinoted_plugin_dbus_initialize(InfinotedPluginManager* manager,
                                  GError** error)
 {
   InfinotedPluginDbus* plugin;
+  gchar* gio_path;
+  GModule* gio_module;
+
   plugin = (InfinotedPluginDbus*)plugin_info;
+
+  /* Load the GIO dynamic library and make it resident. The reason for this
+   * is that the infinoted executable does not link against gio, but this
+   * module does. Therefore, when the module gets unloaded, libgio would be
+   * unloaded as well. However, gio registers several types into global
+   * gobject buffers such as the signal or property tables. After unloading,
+   * those registrations would still be around, and some static strings would
+   * even point to memory that is no longer available. This can lead to
+   * seemingly random crashes when accessing some signals or properties of
+   * intact objects/types, because gobject will scan its internal data
+   * structures that also contain the invalidated strings. To avoid this
+   * mess, we simply make sure that libgio stays around even after we are
+   * unloaded. */
+  gio_path = g_module_build_path(NULL, "gio-2.0");
+  gio_module = g_module_open(gio_path, 0);
+  g_free(gio_path);
+
+  if(gio_module == NULL)
+  {
+    /* The error might be consumed after we have been dlclose()'d, so
+     * use g_quark_from_string instead of g_quark_from_static_string. */
+    g_set_error(
+      error,
+      g_quark_from_string("INFINOTED_PLUGIN_DBUS_ERROR"),
+      0,
+      "%s",
+      g_module_error()
+    );
+
+    return FALSE;
+  }
+  else
+  {
+    g_module_make_resident(gio_module);
+    if(g_module_close(gio_module) != TRUE)
+    {
+      g_warning("Failed to close gio module: %s", g_module_error());
+    }
+  }
 
   plugin->manager = manager;
   g_mutex_init(&plugin->mutex);
