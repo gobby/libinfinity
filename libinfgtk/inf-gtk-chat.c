@@ -634,6 +634,56 @@ inf_gtk_chat_adjustment_value_changed_cb(GObject* object,
     priv->vmode = INF_GTK_CHAT_VMODE_ENABLED;
 }
 
+static gboolean
+inf_gtk_chat_textview_focus_in_cb(GtkWidget* widget,
+                                  GdkEvent* event,
+                                  gpointer user_data)
+{
+  InfGtkChat* chat;
+  InfGtkChatPrivate* priv;
+
+  chat = INF_GTK_CHAT(user_data);
+  priv = INF_GTK_CHAT_PRIVATE(chat);
+
+  gtk_widget_grab_focus(priv->chat_entry);
+
+  return TRUE;
+}
+
+static void
+inf_gtk_chat_entry_cope_clipboard_cb(GtkEntry* entry,
+                                     gpointer user_data)
+{
+  InfGtkChat* chat;
+  InfGtkChatPrivate* priv;
+  int cursor_position;
+  int selection_bound;
+  GtkTextBuffer* buffer;
+  GtkClipboard* clipboard;
+
+  chat = INF_GTK_CHAT(user_data);
+  priv = INF_GTK_CHAT_PRIVATE(chat);
+
+  g_object_get(
+    G_OBJECT(entry),
+    "cursor-position", &cursor_position,
+    "selection-bound", &selection_bound,
+    NULL
+  );
+
+  if(cursor_position == selection_bound)
+  {
+    buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(priv->chat_view));
+
+    clipboard = gtk_clipboard_get_for_display(
+      gtk_widget_get_display(priv->chat_view),
+      GDK_SELECTION_CLIPBOARD
+    );
+
+    gtk_text_buffer_copy_clipboard(buffer, clipboard);
+  }
+}
+
 /*
  * GObject overrides
  */
@@ -658,6 +708,26 @@ inf_gtk_chat_init(InfGtkChat* chat)
   priv->completion_index = 0;
 
   gtk_widget_init_template(GTK_WIDGET(chat));
+
+  /* Connect signals to handle copying. We don't want the textview to be
+   * able to have focus, however we want ctrl+c to copy its text. Therefore,
+   * whenever the textview receives focus, we give the focus to the text
+   * entry, and when the text entry is copying text, and does not have an
+   * own selection, we copy the textview's text instead. */
+  g_signal_connect(
+    priv->chat_view,
+    "focus-in-event",
+    G_CALLBACK(inf_gtk_chat_textview_focus_in_cb),
+    chat
+  );
+
+  g_signal_connect(
+    priv->chat_entry,
+    "copy-clipboard",
+    G_CALLBACK(inf_gtk_chat_entry_cope_clipboard_cb),
+    chat
+  );
+
 }
 
 static void

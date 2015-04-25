@@ -45,7 +45,8 @@
           <object class="GtkTextView" id="chat_view">
             <property name="visible">True</property>
             <property name="editable">False</property>
-            <property name="can-focus">False</property>
+            <property name="can-focus">True</property>
+            <property name="events">GDK_FOCUS_CHANGE_MASK</property>
             <property name="wrap-mode">word-char</property>
             <property name="indent">-12</property>
             <property name="buffer">chat_buffer</property>
