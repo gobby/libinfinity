@@ -1375,7 +1375,7 @@ inf_text_fixline_buffer_buffer_create_end_iter(InfTextBuffer* buffer)
     }
 
     iter = g_slice_new(InfTextBufferIter);
-    iter->base_iter = NULL;
+    iter->base_iter = base_iter;
   }
 
   return iter;
