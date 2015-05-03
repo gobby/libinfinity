@@ -1204,6 +1204,9 @@ inf_text_fixline_buffer_buffer_insert_text(InfTextBuffer* buffer,
     fixline_buffer
   );
 
+  /* Notify */
+  inf_text_buffer_text_inserted(buffer, pos, chunk, user);
+
   /* Keep the number of lines at the end fixed */
   inf_text_fixline_buffer_fix_lines(fixline_buffer);
 }
@@ -1216,6 +1219,7 @@ inf_text_fixline_buffer_buffer_erase_text(InfTextBuffer* buffer,
 {
   InfTextFixlineBuffer* fixline_buffer;
   InfTextFixlineBufferPrivate* priv;
+  InfTextChunk* erased_content;
   guint buf_len;
 
   fixline_buffer = INF_TEXT_FIXLINE_BUFFER(buffer);
@@ -1227,6 +1231,8 @@ inf_text_fixline_buffer_buffer_erase_text(InfTextBuffer* buffer,
     G_CALLBACK(inf_text_fixline_buffer_text_erased_cb),
     fixline_buffer
   );
+
+  erased_content = inf_text_buffer_get_slice(buffer, pos, len);
 
   if(pos + len > buf_len)
   {
@@ -1287,6 +1293,10 @@ inf_text_fixline_buffer_buffer_erase_text(InfTextBuffer* buffer,
     G_CALLBACK(inf_text_fixline_buffer_text_erased_cb),
     fixline_buffer
   );
+
+  /* Notify */
+  inf_text_buffer_text_erased(buffer, pos, erased_content, user);
+  inf_text_chunk_free(erased_content);
 
   /* Keep the number of lines at the end fixed */
   inf_text_fixline_buffer_fix_lines(fixline_buffer);
