@@ -1485,7 +1485,8 @@ inf_text_fixline_buffer_buffer_iter_prev(InfTextBuffer* buffer,
     if(iter->keep_begin == 0)
     {
       iter->base_iter = inf_text_buffer_create_end_iter(priv->buffer);
-      g_assert(iter->base_iter != NULL);
+      if(iter->base_iter == NULL)
+        return FALSE;
 
       return TRUE;
     }
