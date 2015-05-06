@@ -179,18 +179,20 @@ inf_gtk_chat_add_message(InfGtkChat* chat,
   case INF_CHAT_BUFFER_MESSAGE_NORMAL:
     tag = priv->tag_normal;
     text = g_strdup_printf(
-      "[%s] <%s> %s",
+      "[%s] <%s> %.*s",
       time_str,
       inf_user_get_name(message->user),
+      (int)message->length,
       message->text
     );
     break;
   case INF_CHAT_BUFFER_MESSAGE_EMOTE:
     tag = priv->tag_emote;
     text = g_strdup_printf(
-      "[%s] * %s %s",
+      "[%s] * %s %.*s",
       time_str,
       inf_user_get_name(message->user),
+      (int)message->length,
       message->text
     );
     break;
