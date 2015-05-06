@@ -35,6 +35,7 @@
 
 #include <libinftext/inf-text-fixline-buffer.h>
 #include <libinftext/inf-text-user.h>
+#include <libinftext/inf-text-move-operation.h>
 #include <libinfinity/common/inf-buffer.h>
 #include <libinfinity/inf-signals.h>
 
@@ -582,6 +583,9 @@ inf_text_fixline_buffer_text_inserted_cb(InfTextBuffer* buffer,
   guint buffer_length;
   guint end;
 
+  guint user_pos;
+  gint user_len;
+
   InfTextChunk* new_chunk;
   gchar stext[16];
   gchar* text;
@@ -638,11 +642,35 @@ inf_text_fixline_buffer_text_inserted_cb(InfTextBuffer* buffer,
       g_free(priv->keep);
       priv->keep = NULL;
     }
+
+    /* TODO: We don't know whether this was an insert-caret or not, but
+     * assume for now that it was. Advance the user's caret, which would
+     * account for the added newlines that we swallowed above. */
+    /* TODO: A better way might be to just skip this special handling
+     * altogether and just actually propagate this change. */
+    user_pos = inf_text_user_get_caret_position(INF_TEXT_USER(user));
+    user_len = inf_text_user_get_selection_length(INF_TEXT_USER(user));
+
+    inf_text_move_operation_transform_insert(
+      pos,
+      chunk_length,
+      &user_pos,
+      &user_len,
+      FALSE
+    );
+
+    inf_text_user_set_selection(
+      INF_TEXT_USER(user),
+      user_pos,
+      user_len,
+      TRUE
+    );
   }
   else
   {
     if(pos > end)
     {
+      /* TODO: Should we handle caret updates here as well? */
       g_assert(priv->n_keep < 0);
       g_assert((guint)(-priv->n_keep) >= pos - end);
 
@@ -706,6 +734,9 @@ inf_text_fixline_buffer_text_erased_cb(InfTextBuffer* buffer,
   guint use_keep;
   InfTextChunk* new_chunk;
 
+  guint user_pos;
+  gint user_len;
+
   priv = INF_TEXT_FIXLINE_BUFFER_PRIVATE(user_data);
 
   chunk_length = inf_text_chunk_get_length(chunk);
@@ -764,6 +795,28 @@ inf_text_fixline_buffer_text_erased_cb(InfTextBuffer* buffer,
         use_keep
       );
     }
+
+    /* TODO: We don't know whether this was an erase-caret or not, but
+     * assume for now that it was. Advance the user's caret, which would
+     * account for the removed newlines that we swallowed above. */
+    /* TODO: A better way might be to just skip this special handling
+     * altogether and just actually propagate this change. */
+    user_pos = inf_text_user_get_caret_position(INF_TEXT_USER(user));
+    user_len = inf_text_user_get_selection_length(INF_TEXT_USER(user));
+
+    inf_text_move_operation_transform_delete(
+      pos,
+      chunk_length,
+      &user_pos,
+      &user_len
+    );
+
+    inf_text_user_set_selection(
+      INF_TEXT_USER(user),
+      user_pos,
+      user_len,
+      TRUE
+    );
   }
   else
   {
@@ -778,6 +831,7 @@ inf_text_fixline_buffer_text_erased_cb(InfTextBuffer* buffer,
     else if(pos + chunk_length > end)
     {
       /* Propagate partly */
+      /* TODO: Should we handle caret updates here as well? */
       g_assert(priv->n_keep < 0);
       g_assert(chunk_length - (end - pos) <= (guint)(-priv->n_keep));
 
