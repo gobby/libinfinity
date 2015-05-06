@@ -67,7 +67,7 @@
           <object class="GtkEntry" id="chat_entry">
             <property name="visible">True</property>
             <property name="sensitive">False</property>
-            <property name="truncate-multiline">True</property>
+            <property name="truncate-multiline">False</property>
             <signal name="activate" handler="inf_gtk_chat_entry_activate_cb" swapped="no" />
             <signal name="changed" handler="inf_gtk_chat_entry_changed_cb" swapped="no" />
             <signal name="key-press-event" handler="inf_gtk_chat_entry_key_press_event_cb" swapped="no" />

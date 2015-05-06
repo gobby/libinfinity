@@ -250,11 +250,12 @@ inf_gtk_chat_add_message(InfGtkChat* chat,
 #define inf_utf8_next_char(p) ((p) + g_utf8_skip[*(const guchar *)(p)])
 
 static void
-inf_gtk_chat_commit_message(InfGtkChat* chat)
+inf_gtk_chat_send_message(InfGtkChat* chat,
+                          const gchar* text,
+                          gsize bytes)
 {
   InfGtkChatPrivate* priv;
   const gchar* orig_text;
-  const gchar* text;
 
   priv = INF_GTK_CHAT_PRIVATE(chat);
 
@@ -262,12 +263,11 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
   g_assert(priv->buffer != NULL);
   g_assert(priv->active_user != NULL);
 
-  orig_text = gtk_entry_get_text(GTK_ENTRY(priv->chat_entry));
-  text = orig_text;
-
   if(g_str_has_prefix(text, "/me") &&
      (text[3] == '\0' || g_unichar_isspace(g_utf8_get_char(text+3))))
   {
+    orig_text = text;
+
     text += 3;
     while(g_unichar_isspace(g_utf8_get_char(text)))
       text = inf_utf8_next_char(text);
@@ -276,8 +276,7 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
       priv->buffer,
       priv->active_user,
       text,
-      gtk_entry_get_text_length(GTK_ENTRY(priv->chat_entry)) -
-        (text - orig_text),
+      bytes - (text - orig_text),
       time(NULL),
       0
     );
@@ -288,11 +287,41 @@ inf_gtk_chat_commit_message(InfGtkChat* chat)
       priv->buffer,
       priv->active_user,
       text,
-      gtk_entry_get_text_length(GTK_ENTRY(priv->chat_entry)),
+      bytes,
       time(NULL),
       0
     );
   }
+}
+
+static void
+inf_gtk_chat_commit_message(InfGtkChat* chat)
+{
+  InfGtkChatPrivate* priv;
+  GtkEntryBuffer* entry_buffer;
+  gsize bytes;
+  const gchar* text;
+  const gchar* pos;
+
+  priv = INF_GTK_CHAT_PRIVATE(chat);
+
+  entry_buffer = gtk_entry_get_buffer(GTK_ENTRY(priv->chat_entry));
+  bytes = gtk_entry_buffer_get_bytes(entry_buffer);
+  text = gtk_entry_buffer_get_text(entry_buffer);
+
+  while( (pos = memchr(text, '\n', bytes)) != NULL)
+  {
+    /* Skip \r\n */
+    if(pos > text && *(pos - 1) == '\r')
+      inf_gtk_chat_send_message(chat, text, pos - text - 1);
+    else
+      inf_gtk_chat_send_message(chat, text, pos - text);
+
+    bytes -= ((pos - text) + 1);
+    text = pos + 1;
+  }
+
+  inf_gtk_chat_send_message(chat, text, bytes);
 
   gtk_entry_set_text(GTK_ENTRY(priv->chat_entry), "");
 }
