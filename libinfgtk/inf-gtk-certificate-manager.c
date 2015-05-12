@@ -709,9 +709,11 @@ inf_gtk_certificate_manager_certificate_func(InfXmppConnection* connection,
 
       if(ret != GNUTLS_E_SUCCESS)
         inf_gnutls_set_error(&error, ret);
-      else if(verify & GNUTLS_CERT_INVALID)
-        inf_gnutls_certificate_verification_set_error(&error, verify);
     }
+
+    if(error == NULL)
+      if(verify & GNUTLS_CERT_INVALID)
+        inf_gnutls_certificate_verification_set_error(&error, verify);
   }
 
   /* Look up the host in our database of pinned certificates if we could not
