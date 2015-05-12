@@ -266,13 +266,13 @@ infd_xmpp_server_set_tcp(InfdXmppServer* xmpp,
     /* TODO: Make sure there are no connections with sasl_own_context out
      * there anymore because otherwise the SASL callback might access an
      * invalid InfdServer pointer once we get finalized. */
-#if 0
+    /* TODO: Or, give data associated with the SASL context its own
+     * life cycle. Should be easy given that it has a destroy notify. */
     if(priv->sasl_own_context != NULL)
     {
       inf_sasl_context_unref(priv->sasl_own_context);
       priv->sasl_own_context = NULL;
     }
-#endif
 
     inf_signal_handlers_disconnect_by_func(
       G_OBJECT(priv->tcp),
