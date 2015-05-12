@@ -366,6 +366,7 @@ AC_CONFIG_FILES([
       test/util/Makefile
       test/session/Makefile
       test/cleanup/Makefile
+      test/certs/Makefile
 
     docs/Makefile
       docs/reference/Makefile

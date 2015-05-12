@@ -1,6 +1,7 @@
-SUBDIRS = util session cleanup
+SUBDIRS = util session cleanup certs
 TESTS = inf-test-state-vector inf-test-chunk inf-test-text-session \
-	inf-test-text-cleanup
+	inf-test-text-cleanup inf-test-text-fixline \
+	inf-test-certificate-validate
 
 AM_CPPFLAGS = \
 	-I${top_srcdir} \
@@ -23,7 +24,8 @@ noinst_PROGRAMS = inf-test-tcp-connection inf-test-xmpp-connection \
 	inf-test-text-operations inf-test-text-session \
 	inf-test-text-cleanup inf-test-text-recover \
 	inf-test-text-replay inf-test-reduce-replay inf-test-mass-join \
-	inf-test-text-fixline inf-test-traffic-replay
+	inf-test-text-fixline inf-test-traffic-replay \
+	inf-test-certificate-validate
 
 if WITH_INFTEXTGTK
 noinst_PROGRAMS += inf-test-gtk-browser
@@ -198,3 +200,12 @@ inf_test_traffic_replay_SOURCES = \
 inf_test_traffic_replay_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
 	${infinity_LIBS}
+
+inf_test_certificate_validate_SOURCES = \
+	inf-test-certificate-validate.c
+
+inf_test_certificate_validate_LDADD = \
+	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
+	${top_builddir}/libinfgtk/libinfgtk-$(LIBINFINITY_API_VERSION).la \
+	${infgtk_LIBS} ${infinity_LIBS}
+

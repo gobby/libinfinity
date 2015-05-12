@@ -7,7 +7,6 @@ Makefile.in
 libtool
 ltmain.sh
 *.pc
-*.pem
 config.log
 config.sub
 config.status
