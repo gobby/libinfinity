@@ -727,6 +727,7 @@ InfXmppConnectionStreamError
 InfXmppConnectionAuthError
 InfXmppConnection
 InfXmppConnectionClass
+inf_xmpp_connection_error_quark
 inf_xmpp_connection_new
 inf_xmpp_connection_get_tls_enabled
 inf_xmpp_connection_get_own_certificate

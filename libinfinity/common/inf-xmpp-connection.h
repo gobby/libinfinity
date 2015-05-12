@@ -313,6 +313,9 @@ inf_xmpp_connection_site_get_type(void) G_GNUC_CONST;
 GType
 inf_xmpp_connection_get_type(void) G_GNUC_CONST;
 
+GQuark
+inf_xmpp_connection_error_quark(void);
+
 InfXmppConnection*
 inf_xmpp_connection_new(InfTcpConnection* tcp,
                         InfXmppConnectionSite site,

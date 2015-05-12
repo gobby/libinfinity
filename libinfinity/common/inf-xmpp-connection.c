@@ -226,7 +226,6 @@ enum {
 
 #define INF_XMPP_CONNECTION_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), INF_TYPE_XMPP_CONNECTION, InfXmppConnectionPrivate))
 
-static GQuark inf_xmpp_connection_error_quark;
 static GQuark inf_xmpp_connection_stream_error_quark;
 static GQuark inf_xmpp_connection_auth_error_quark;
 
@@ -1310,7 +1309,7 @@ inf_xmpp_connection_tls_handshake(InfXmppConnection* xmpp)
           {
             g_set_error_literal(
               &error,
-              inf_xmpp_connection_error_quark,
+              inf_xmpp_connection_error_quark(),
               INF_XMPP_CONNECTION_ERROR_NO_CERTIFICATE_PROVIDED,
               _("The server did not provide a certificate")
             );
@@ -2319,7 +2318,7 @@ inf_xmpp_connection_sasl_suggest_mechanism(InfXmppConnection* xmpp,
   {
     g_set_error_literal(
       error,
-      inf_xmpp_connection_error_quark,
+      inf_xmpp_connection_error_quark(),
       INF_XMPP_CONNECTION_ERROR_NO_SUITABLE_MECHANISM,
       _("The server does not offer a suitable authentication mechanism")
     );
@@ -2364,7 +2363,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
        priv->security_policy == INF_XMPP_CONNECTION_SECURITY_ONLY_TLS)
     {
       error = g_error_new_literal(
-        inf_xmpp_connection_error_quark,
+        inf_xmpp_connection_error_quark(),
         INF_XMPP_CONNECTION_ERROR_TLS_UNSUPPORTED,
         _("The server does not support transport layer security (TLS)")
       );
@@ -2387,7 +2386,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
 
         g_set_error_literal(
           &error,
-          inf_xmpp_connection_error_quark,
+          inf_xmpp_connection_error_quark(),
           INF_XMPP_CONNECTION_ERROR_TLS_REQUIRED,
           _("The server requires transport layer security (TLS)")
         );
@@ -2421,7 +2420,7 @@ inf_xmpp_connection_process_features(InfXmppConnection* xmpp,
     if(child == NULL)
     {
       error = g_error_new_literal(
-        inf_xmpp_connection_error_quark,
+        inf_xmpp_connection_error_quark(),
         INF_XMPP_CONNECTION_ERROR_AUTHENTICATION_UNSUPPORTED,
         _("The server does not provide any authentication mechanism")
       );
@@ -2479,7 +2478,7 @@ inf_xmpp_connection_process_encryption(InfXmppConnection* xmpp,
   else if(strcmp((const gchar*)xml->name, "failure") == 0)
   {
     error = g_error_new_literal(
-      inf_xmpp_connection_error_quark,
+      inf_xmpp_connection_error_quark(),
       INF_XMPP_CONNECTION_ERROR_TLS_FAILURE,
       _("The server cannot perform the TLS handshake")
     );
@@ -4080,10 +4079,6 @@ inf_xmpp_connection_class_init(InfXmppConnectionClass* xmpp_class)
   object_class->set_property = inf_xmpp_connection_set_property;
   object_class->get_property = inf_xmpp_connection_get_property;
 
-  inf_xmpp_connection_error_quark = g_quark_from_static_string(
-    "INF_XMPP_CONNECTION_ERROR"
-  );
-
   inf_xmpp_connection_stream_error_quark = g_quark_from_static_string(
     "INF_XMPP_CONNECTION_STREAM_ERROR"
   );
@@ -4496,7 +4491,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,
     if(error == NULL)
     {
       local_error = g_error_new_literal(
-        inf_xmpp_connection_error_quark,
+        inf_xmpp_connection_error_quark(),
         INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
         _("The server certificate is not trusted")
       );
@@ -4504,7 +4499,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,
     else
     {
       local_error = g_error_new(
-        inf_xmpp_connection_error_quark,
+        inf_xmpp_connection_error_quark(),
         INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
         _("The server certificate is not trusted: %s"),
         error->message
@@ -4516,7 +4511,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,
     if(error == NULL)
     {
       local_error = g_error_new_literal(
-        inf_xmpp_connection_error_quark,
+        inf_xmpp_connection_error_quark(),
         INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
         _("The client certificate is not trusted")
       );
@@ -4524,7 +4519,7 @@ inf_xmpp_connection_certificate_verify_cancel(InfXmppConnection* xmpp,
     else
     {
       local_error = g_error_new(
-        inf_xmpp_connection_error_quark,
+        inf_xmpp_connection_error_quark(),
         INF_XMPP_CONNECTION_ERROR_CERTIFICATE_NOT_TRUSTED,
         _("The client certificate is not trusted: %s"),
         error->message
@@ -4735,6 +4730,19 @@ inf_xmpp_connection_get_sasl_error(InfXmppConnection* xmpp)
   g_return_val_if_fail(priv->sasl_context != NULL, NULL);
 
   return priv->sasl_error;
+}
+
+/**
+ * inf_xmpp_connection_error_quark:
+ *
+ * Error domain for generic connection errors. Errors in this domain will be
+ * from the #InfXmppConnectionError enumeration. See #GError for information
+ * on error domains.
+ */
+GQuark
+inf_xmpp_connection_error_quark(void)
+{
+  return g_quark_from_static_string("INF_XMPP_CONNECTION_ERROR");
 }
 
 /* vim:set et sw=2 ts=2: */
