@@ -19,9 +19,11 @@ nodist_noinst_DATA = version.xml api_version.xml
 # Remove the trailing newline of the version files, to have the entities
 # in the docbook XML substituted without it.
 version.xml: version.xml.in
+	rm -f version.xml
 	echo -n `cat version.xml.in` > version.xml
 
 api_version.xml: api_version.xml.in
+	rm -f api_version.xml
 	echo -n `cat api_version.xml.in` > api_version.xml
 
 CLEANFILES = version.xml api_version.xml
