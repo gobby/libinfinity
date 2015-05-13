@@ -1,3 +1,12 @@
+libinfinity 0.6.6:
+	* Fix certificates being only verified for expiration and other
+	  criteria such as weak algorithms if the CA is not trusted.
+	  (gobby #61)
+	* Fix some assertion failures and inconsistencies in
+	  InfTextFixlineBuffer.
+	* Fix a client-side crash when the server shuts down ordinarily
+	  while still connected.
+
 libinfinity 0.6.5:
 	* Fix memory corruption in InfTextFixlineBuffer.
 	* infinoted: Fix error message in server log when a client certificate
