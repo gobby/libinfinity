@@ -17,13 +17,11 @@
  * MA 02110-1301, USA.
  */
 
-#include <libinfgtk/inf-gtk-certificate-manager.h>
-#include <libinfgtk/inf-gtk-io.h>
-
 #include <libinfinity/server/infd-xmpp-server.h>
 #include <libinfinity/server/infd-xml-server.h>
+#include <libinfinity/common/inf-certificate-verify.h>
 #include <libinfinity/common/inf-cert-util.h>
-#include <libinfinity/common/inf-io.h>
+#include <libinfinity/common/inf-standalone-io.h>
 #include <libinfinity/common/inf-error.h>
 #include <libinfinity/common/inf-xml-connection.h>
 #include <libinfinity/common/inf-xmpp-connection.h>
@@ -31,8 +29,6 @@
 
 #include <gnutls/x509.h>
 #include <gnutls/gnutls.h>
-
-#include <gtk/gtk.h>
 
 typedef enum _InfTestCertificateValidateExpectation {
   INF_TEST_CERTIFICATE_VALIDATE_EXPECT_ACCEPT,
@@ -231,15 +227,18 @@ inf_test_validate_certificate_notify_status_cb(GObject* object,
                                                GParamSpec* pspec,
                                                gpointer user_data)
 {
+  InfStandaloneIo* io;
   InfXmlConnectionStatus status;
+
+  io = INF_STANDALONE_IO(user_data);
   g_object_get(G_OBJECT(object), "status", &status, NULL);
 
   if(status == INF_XML_CONNECTION_OPEN ||
      status == INF_XML_CONNECTION_CLOSING ||
      status == INF_XML_CONNECTION_CLOSED)
   {
-    if(gtk_main_level() > 0)
-      gtk_main_quit();
+    if(inf_standalone_io_loop_running(io))
+      inf_standalone_io_loop_quit(io);
   }
 }
 
@@ -263,7 +262,7 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   InfdXmppServer* server;
 
   InfXmppManager* xmpp_manager;
-  InfGtkCertificateManager* manager;
+  InfCertificateVerify* verify;
   InfXmppConnection* client;
 
   InfXmlConnectionStatus status;
@@ -272,7 +271,7 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   GError* conn_error;
 
   /* Setup server */
-  io = INF_IO(inf_gtk_io_new());
+  io = INF_IO(inf_standalone_io_new());
 
   server = inf_test_certificate_setup_server(
     io,
@@ -290,8 +289,7 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   /* Create client */
   xmpp_manager = inf_xmpp_manager_new();
 
-  manager = inf_gtk_certificate_manager_new(
-    NULL,
+  verify = inf_certificate_verify_new(
     xmpp_manager,
     desc->known_hosts_file
   );
@@ -303,12 +301,11 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
     error
   );
 
-  g_object_unref(io);
-
   if(client == NULL)
   {
+    g_object_unref(io);
     g_object_unref(xmpp_manager);
-    g_object_unref(manager);
+    g_object_unref(verify);
     g_object_unref(server);
     return FALSE;
   }
@@ -321,7 +318,7 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
     G_OBJECT(client),
     "notify::status",
     G_CALLBACK(inf_test_validate_certificate_notify_status_cb),
-    NULL
+    io
   );
 
   conn_error = NULL;
@@ -332,9 +329,10 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
     &conn_error
   );
 
-  /* TODO: Detect whether the dialog opens */
+  /* TODO: Detect whether check-certificate is emitted */
 
-  gtk_main();
+  inf_standalone_io_loop(INF_STANDALONE_IO(io));
+  g_object_unref(io);
 
   /* Evaluate result */
   result = TRUE;
@@ -385,7 +383,7 @@ inf_test_certificate_validate_run(const InfTestCertificateValidateDesc* desc,
   }
 
   g_object_unref(xmpp_manager);
-  g_object_unref(manager);
+  g_object_unref(verify);
   g_object_unref(server);
   g_object_unref(client);
   return result;
@@ -401,8 +399,6 @@ main(int argc,
 
   /* So that the certificate files are found */
   chdir("certs");
-
-  gtk_init(&argc, &argv);
 
   res = EXIT_SUCCESS;
   for(test = TESTS; test->name != NULL; ++test)

@@ -206,6 +206,5 @@ inf_test_certificate_validate_SOURCES = \
 
 inf_test_certificate_validate_LDADD = \
 	${top_builddir}/libinfinity/libinfinity-$(LIBINFINITY_API_VERSION).la \
-	${top_builddir}/libinfgtk/libinfgtk-$(LIBINFINITY_API_VERSION).la \
-	${infgtk_LIBS} ${infinity_LIBS}
+	${infinity_LIBS}
 
